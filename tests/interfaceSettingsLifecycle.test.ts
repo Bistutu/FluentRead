@@ -1,11 +1,14 @@
 import {createRequire} from 'node:module'
+import {readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
+import {parseHTML} from 'linkedom'
 import vue from '@vitejs/plugin-vue'
 import {createServer, type Plugin, type ViteDevServer} from 'vite'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 // 实际 SFC setup/watch/KeepAlive；原生弹窗和缓存由隔离生产扩展另验。
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
+const {renderToString} = createRequire(import.meta.url)('vue/server-renderer') as typeof import('vue/server-renderer')
 const key = '__frInterfaceSettingsLifecycle'
 let server: ViteDevServer, app: import('vue').App, state: Record<string, any>
 let mocks: Plugin
@@ -174,6 +177,34 @@ describe('实际界面字体设置与所属确认', () => {
     state.handleLayoutTabKeydown(key('Escape'));expect(preventDefault).toHaveBeenCalledTimes(4)
     expect(state.activeLayoutPanel).toBe('popupModule')
   })
+  it('皮肤单选组支持四方向循环和 Home/End，并聚焦到新选中项', async () => {
+    const options: {value: string}[] = state.groupedSkinOptions.flatMap((group: {options: {value: string}[]}) => group.options)
+    const focus = options.map(() => vi.fn()), preventDefault = vi.fn()
+    const key = (value: string) => ({key: value, preventDefault,
+      currentTarget: {querySelectorAll: () => focus.map((fn, index) => ({dataset: {skin: options[index].value}, focus: fn}))}} as unknown as KeyboardEvent)
+    expect(state.handleSkinKeydown).toBeTypeOf('function')
+    state.handleSkinKeydown(key('ArrowRight'))
+    expect(props.config.interfaceSkin).toBe(options[1].value);expect(focus[1]).toHaveBeenCalledOnce()
+    state.handleSkinKeydown(key('ArrowDown'));expect(props.config.interfaceSkin).toBe(options[2].value)
+    state.handleSkinKeydown(key('ArrowUp'));expect(props.config.interfaceSkin).toBe(options[1].value)
+    state.handleSkinKeydown(key('Home'));expect(props.config.interfaceSkin).toBe(options[0].value)
+    state.handleSkinKeydown(key('ArrowLeft'));expect(props.config.interfaceSkin).toBe(options.at(-1)!.value)
+    state.handleSkinKeydown(key('ArrowRight'));expect(props.config.interfaceSkin).toBe(options[0].value)
+    state.handleSkinKeydown(key('End'));expect(props.config.interfaceSkin).toBe(options.at(-1)!.value)
+    state.handleSkinKeydown(key('Escape'));expect(preventDefault).toHaveBeenCalledTimes(7)
+  })
+  it('皮肤控件失活或离开所属分类时不改配置、不抢焦点，恢复后仍可选择', async () => {
+    const focus = vi.fn(), preventDefault = vi.fn()
+    const key = {key: 'End', preventDefault, currentTarget: {querySelectorAll: () => [{dataset: {skin: 'compact'}, focus}]}} as unknown as KeyboardEvent
+    expect(state.selectInterfaceSkin).toBeTypeOf('function')
+    props.active = false;await settle();state.selectInterfaceSkin('compact');state.handleSkinKeydown(key)
+    expect(props.config.interfaceSkin).toBe('default');expect(focus).not.toHaveBeenCalled();expect(preventDefault).not.toHaveBeenCalled()
+    props.active = true;props.activePanel = 'layout';await settle();state.selectInterfaceSkin('compact');state.handleSkinKeydown(key)
+    expect(props.config.interfaceSkin).toBe('default')
+    props.activePanel = 'skin';await settle();state.selectInterfaceSkin('compact');expect(props.config.interfaceSkin).toBe('compact')
+    state.selectInterfaceSkin('unknown');expect(props.config.interfaceSkin).toBe('compact')
+    visible.value = false;await settle();state.handleSkinKeydown(key);expect(focus).not.toHaveBeenCalled()
+  })
   it('扩展和 userscript 的 Popup 布局均隐藏历史高亮入口，不写回非法 id 或改动阅读偏好', async () => {
     expect(state.popupQuickFeatureEditorItems.some((item: {id: string}) => item.id === 'highlight')).toBe(false)
     const saved = JSON.stringify(props.config)
@@ -225,5 +256,26 @@ describe('实际界面字体设置与所属确认', () => {
       expect(preview.orderedQuickFeatures.some((item: {id: string}) => item.id === 'highlight')).toBe(false)
       expect((await server.ssrLoadModule('/src/ui/popupQuickFeatureIcons.ts')).popupQuickFeatureIconPaths).not.toHaveProperty('highlight')
     } finally {previewApp.unmount()}
+  })
+  it.each(['missing', 'empty', 'embedded'] as const)('实际 Popup 预览图标 %s 时复用官方脚本资源或扩展回退', async kind => {
+    const original = Object.getOwnPropertyDescriptor(globalThis, '__FLUENTREAD_ICON_DATA__')
+    const officialIcon = `data:image/png;base64,${readFileSync(resolve(process.cwd(), 'public/icon/64.png')).toString('base64')}`
+    try {
+      if (kind === 'missing') delete globalThis.__FLUENTREAD_ICON_DATA__
+      else Object.defineProperty(globalThis, '__FLUENTREAD_ICON_DATA__', {configurable: true, writable: true, value: kind === 'empty' ? '' : officialIcon})
+      const component = (await server.ssrLoadModule('/src/features/settings/ui/components/PopupPreview.vue')).default
+      const previewApp = runtime.createSSRApp({render: () => runtime.h(component, {skin: {value: 'default'}})})
+      previewApp.config.warnHandler = () => {}
+      const html = await renderToString(previewApp)
+      const {document} = parseHTML(`<html><body>${html}</body></html>`)
+      const logos = document.querySelectorAll('img.preview-logo')
+      expect(logos).toHaveLength(1)
+      expect(logos[0].getAttribute('src')).toBe(kind === 'embedded' ? officialIcon : '/icon/128.png')
+      expect(logos[0].getAttribute('width')).toBe('32')
+      expect(logos[0].getAttribute('height')).toBe('32')
+    } finally {
+      if (original) Object.defineProperty(globalThis, '__FLUENTREAD_ICON_DATA__', original)
+      else delete globalThis.__FLUENTREAD_ICON_DATA__
+    }
   })
 })

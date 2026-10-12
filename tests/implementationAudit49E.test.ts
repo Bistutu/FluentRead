@@ -20,7 +20,7 @@ vi.mock('element-plus/es/components/select/style/css', () => ({}));
 vi.mock('element-plus', async () => {
     const {defineComponent, h, provide} = await import('vue');
     // Only the third-party select port is controlled; real UiSelect and feature templates run.
-    return {ElSelect: defineComponent({props: ['modelValue', 'disabled'], emits: ['update:modelValue'], setup(p, {slots, emit}) {
+    return {ClickOutside: {}, ElSelect: defineComponent({props: ['modelValue', 'disabled'], emits: ['update:modelValue'], setup(p, {slots, emit}) {
         provide('audit-select-port', {value: () => p.modelValue, disabled: () => p.disabled, select: (value: unknown) => emit('update:modelValue', value)});
         return () => h('div', {'data-select': '', 'aria-disabled': p.disabled}, slots.default?.());
     }})};

@@ -1,7 +1,7 @@
 <!--
 @file src/features/settings/ui/LocalDataManagement.vue
 文件职责：在备份与恢复页提供唯一的 FluentRead 数据迁移入口。
-主要内容：将设置、单词本和模型用量导出为一份版本化备份，自动识别完整备份与旧版单项文件，并在导入前预览影响。
+主要内容：将设置、单词本和模型用量导出为一份版本化备份，确认期随页面活跃归属失效；已接受并开始读取的导出继续下载，迟到提示与焦点归还仍核对归属。文件导入的读取确认与文本等待也复验活跃归属，失效后不再启动读取或解析、展示迟到预览；已确认导入继续完成各领域写入并消费旧预览，只允许本次打开的对话框关闭回调清理和归还焦点，避免迟到结果影响新视图。
 模块边界：组件只编排 runtime 协议和文件交互；各领域仓库继续拥有校验与合并规则，Anki 与清空等单词本操作留在单词本页。
 -->
 <template>
@@ -54,8 +54,8 @@
           v-model="pastedJson"
           type="textarea"
           :rows="8"
-          placeholder="粘贴 FluentRead JSON"
-          aria-label="粘贴 FluentRead JSON"
+          :placeholder="translateLegacy('粘贴 FluentRead JSON').replace('FluentRead', t('common.brand'))"
+          :aria-label="translateLegacy('粘贴 FluentRead JSON').replace('FluentRead', t('common.brand'))"
         />
         <div class="legacy-paste-actions">
           <el-button :disabled="busy || !pastedJson.trim()" @click="previewPastedImport($event)">预览恢复内容</el-button>
@@ -160,6 +160,7 @@ import {
   usesExactCredentialReplacement,
 } from '@/src/features/settings/model/dataBackup';
 import {buildCredentialPreviewChanges} from '@/src/features/settings/model/credentialPreview';
+import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
 import {
   VOCABULARY_BOOK_MESSAGE,
   type VocabularyBookExport,
@@ -174,8 +175,9 @@ import {toRestorableConfig} from '@/src/services/config/history';
 import SettingsGroup from './components/SettingsGroup.vue';
 import {useUiI18n} from '@/src/ui/i18n';
 
-const {t} = useUiI18n();
-const props = defineProps<{config: Config}>();
+const {t, translateLegacy} = useUiI18n();
+const props = withDefaults(defineProps<{config: Config; active?: boolean}>(), {active: true});
+const localDataContext = useSettingsActionContext(() => props.active, () => []);
 const importInput = useTemplateRef<HTMLInputElement>('data-import-input');
 const busy = ref(false);
 const restoreSourceVisible = ref(false);
@@ -187,6 +189,9 @@ const importPreviewVisible = ref(false);
 const sendRuntimeMessage = browser.runtime.sendMessage.bind(browser.runtime);
 let importTrigger: HTMLElement | null = null;
 let restoreActionTrigger: HTMLElement | null = null;
+const noopClosed = () => undefined;
+const clearImportPreview = shallowRef<() => void>(noopClosed);
+const clearRestoreSource = shallowRef<() => void>(noopClosed);
 
 const importSummary = computed(() => pendingImport.value ? summarizeLocalDataImport(pendingImport.value) : null);
 function prepareImportedConfig(target: LocalDataImport | null, current: Config): Config | null {
@@ -208,7 +213,7 @@ const credentialPreviewChanges = computed(() => importedConfig.value
   : []);
 const configChangeCount = computed(() => configPreviewDiff.value.changeCount + credentialPreviewChanges.value.length);
 const importKindLabel = computed(() => ({
-  complete: 'FluentRead 备份',
+  complete: translateLegacy('FluentRead 备份').replace(/FluentRead|플루언트리드/u, t('common.brand')),
   vocabulary: '旧版单词本备份',
   'model-usage': '旧版模型用量备份',
   config: '旧版配置文件',
@@ -251,10 +256,11 @@ async function modelUsageExport(): Promise<ModelUsageTransferDocument> {
 }
 
 async function exportCompleteBackup(event?: MouseEvent): Promise<void> {
-  if (busy.value) return;
+  if (!localDataContext.active.value || busy.value) return;
   const trigger = eventTarget(event);
+  const isCurrent = localDataContext.capture();
   const includePrivateContext = await chooseBackupContext();
-  if (includePrivateContext === null) return;
+  if (includePrivateContext === null || !isCurrent()) return;
   busy.value = true;
   try {
     const [configSnapshot, vocabulary, modelUsage] = await Promise.all([
@@ -268,12 +274,12 @@ async function exportCompleteBackup(event?: MouseEvent): Promise<void> {
       modelUsage,
     });
     downloadFile(`fluentread-backup-${dateStamp()}.json`, JSON.stringify(backup, null, 2), 'application/json;charset=utf-8');
-    ElMessage.success(`备份已导出：${vocabulary.entries.length} 个词条，${modelUsage.events.length} 条用量记录`);
+    if (isCurrent()) ElMessage.success(`备份已导出：${vocabulary.entries.length} 个词条，${modelUsage.events.length} 条用量记录`);
   } catch (error) {
-    ElMessage.error(`导出失败：${errorMessage(error)}`);
+    if (isCurrent()) ElMessage.error(`导出失败：${errorMessage(error)}`);
   } finally {
     busy.value = false;
-    await focusTriggerAfterBusy(trigger);
+    await focusTriggerAfterBusy(trigger, isCurrent);
   }
 }
 
@@ -296,7 +302,27 @@ async function chooseBackupContext(): Promise<boolean | null> {
 }
 
 function openRestoreSource(event: MouseEvent): void {
-  importTrigger = event.currentTarget as HTMLElement | null;
+  if (!busy.value && !importPreviewVisible.value) {
+    if (pendingImport.value) consumePendingImport(pendingImport.value);
+    clearImportPreview.value = noopClosed;
+  }
+  const trigger = event.currentTarget as HTMLElement | null;
+  const isCurrent = localDataContext.capture();
+  const previewAtOpen = clearImportPreview.value;
+  let handled = false;
+  const closed = () => {
+    if (handled || clearRestoreSource.value !== closed || restoreSourceVisible.value) return;
+    handled = true;
+    pastedJson.value = '';
+    restoreActionTrigger = null;
+    if (clearImportPreview.value !== previewAtOpen || importPreviewVisible.value) return;
+    if (importTrigger === trigger) importTrigger = null;
+    void focusTriggerAfterBusy(trigger, () => isCurrent()
+      && clearRestoreSource.value === closed && clearImportPreview.value === previewAtOpen
+      && !restoreSourceVisible.value && !importPreviewVisible.value);
+  };
+  clearRestoreSource.value = closed;
+  importTrigger = trigger;
   restoreSourceVisible.value = true;
 }
 
@@ -306,6 +332,22 @@ function chooseImport(event?: MouseEvent): void {
 }
 
 function showImportPreview(target: LocalDataImport, name: string, size: number): void {
+  const trigger = importTrigger;
+  const isCurrent = localDataContext.capture();
+  const sourceAtShow = clearRestoreSource.value;
+  let handled = false;
+  const closed = () => {
+    if (handled || clearImportPreview.value !== closed || clearRestoreSource.value !== sourceAtShow
+      || importPreviewVisible.value || restoreSourceVisible.value) return;
+    handled = true;
+    const pending = pendingImport.value;
+    if (pending) consumePendingImport(pending);
+    if (importTrigger === trigger) importTrigger = null;
+    void focusTriggerAfterBusy(trigger, () => isCurrent()
+      && clearImportPreview.value === closed && clearRestoreSource.value === sourceAtShow
+      && !restoreSourceVisible.value && !importPreviewVisible.value);
+  };
+  clearImportPreview.value = closed;
   pendingImport.value = target;
   pendingFileName.value = name;
   pendingFileSize.value = size;
@@ -317,9 +359,10 @@ async function readImportFile(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   input.value = '';
-  if (!file || busy.value) return;
+  if (!file || busy.value || !localDataContext.active.value) return;
   const trigger = restoreActionTrigger;
   restoreActionTrigger = null;
+  const isCurrent = localDataContext.capture();
   busy.value = true;
   try {
     if (vocabularyImportNeedsConfirmation(file.size)) {
@@ -333,13 +376,16 @@ async function readImportFile(event: Event): Promise<void> {
         return;
       }
     }
-    const parsed = parseLocalDataImport(JSON.parse(await file.text()));
+    if (!isCurrent()) return;
+    const text = await file.text();
+    if (!isCurrent()) return;
+    const parsed = parseLocalDataImport(JSON.parse(text));
     showImportPreview(parsed, file.name, file.size);
   } catch (error) {
-    ElMessage.error(`无法读取备份：${errorMessage(error)}`);
+    if (isCurrent()) ElMessage.error(`无法读取备份：${errorMessage(error)}`);
   } finally {
     busy.value = false;
-    await focusTriggerAfterBusy(trigger, () => restoreSourceVisible.value && !importPreviewVisible.value);
+    await focusTriggerAfterBusy(trigger, () => isCurrent() && restoreSourceVisible.value && !importPreviewVisible.value);
   }
 }
 
@@ -361,7 +407,8 @@ async function previewPastedImport(event?: MouseEvent): Promise<void> {
 
 async function applyPendingImport(): Promise<void> {
   const target = pendingImport.value;
-  if (!target || busy.value) return;
+  if (!target || busy.value || !localDataContext.active.value || !importPreviewVisible.value) return;
+  const isCurrent = localDataContext.capture();
   const configBaseFingerprint = target.kind === 'complete' || target.kind === 'config'
     ? JSON.stringify(prepareConfigForExport(props.config))
     : '';
@@ -377,42 +424,46 @@ async function applyPendingImport(): Promise<void> {
     }
   };
 
-  if (target.kind === 'complete' || target.kind === 'model-usage') {
-    const modelUsage = target.kind === 'complete' ? target.backup.modelUsage : target.modelUsage;
-    await run('模型用量', async () => {
-      const result = await requestModelUsage<ModelUsageImportResult>('import', modelUsage);
-      return `模型用量新增 ${result.importedCount}、跳过 ${result.duplicateCount}`;
-    });
-  }
-  if (target.kind === 'complete' || target.kind === 'vocabulary') {
-    const vocabulary = target.kind === 'complete' ? target.backup.vocabulary : target.vocabulary;
-    await run('单词本', async () => {
-      const result = await requestVocabulary<VocabularyImportResult>({
-        type: VOCABULARY_BOOK_MESSAGE,
-        action: 'importData',
-        data: vocabulary,
+  try {
+    if (target.kind === 'complete' || target.kind === 'model-usage') {
+      const modelUsage = target.kind === 'complete' ? target.backup.modelUsage : target.modelUsage;
+      await run('模型用量', async () => {
+        const result = await requestModelUsage<ModelUsageImportResult>('import', modelUsage);
+        return `模型用量新增 ${result.importedCount}、跳过 ${result.duplicateCount}`;
       });
-      return `单词本新增 ${result.inserted}、更新 ${result.updated}、跳过 ${result.skipped}`;
-    });
-  }
-  if (target.kind === 'complete' || target.kind === 'config') {
-    await run('设置', async () => {
-      if (JSON.stringify(prepareConfigForExport(props.config)) !== configBaseFingerprint) {
-        throw new Error('设置在导入期间已被其他页面修改，本次未覆盖；请重新预览后再导入设置');
-      }
-      const targetConfig = prepareImportedConfig(target, props.config);
-      if (!targetConfig) throw new Error('备份中不包含可恢复的设置');
-      await requestConfigSave(targetConfig, sendRuntimeMessage, {
-        credentialIntent: target.kind === 'complete' && usesExactCredentialReplacement(target.backup)
-          ? 'exact'
-          : 'changed-fields',
+    }
+    if (target.kind === 'complete' || target.kind === 'vocabulary') {
+      const vocabulary = target.kind === 'complete' ? target.backup.vocabulary : target.vocabulary;
+      await run('单词本', async () => {
+        const result = await requestVocabulary<VocabularyImportResult>({
+          type: VOCABULARY_BOOK_MESSAGE,
+          action: 'importData',
+          data: vocabulary,
+        });
+        return `单词本新增 ${result.inserted}、更新 ${result.updated}、跳过 ${result.skipped}`;
       });
-      return `设置已应用（${confirmedConfigChangeCount} 项需确认）`;
-    });
+    }
+    if (target.kind === 'complete' || target.kind === 'config') {
+      await run('设置', async () => {
+        if (JSON.stringify(prepareConfigForExport(props.config)) !== configBaseFingerprint) {
+          throw new Error('设置在导入期间已被其他页面修改，本次未覆盖；请重新预览后再导入设置');
+        }
+        const targetConfig = prepareImportedConfig(target, props.config);
+        if (!targetConfig) throw new Error('备份中不包含可恢复的设置');
+        await requestConfigSave(targetConfig, sendRuntimeMessage, {
+          credentialIntent: target.kind === 'complete' && usesExactCredentialReplacement(target.backup)
+            ? 'exact'
+            : 'changed-fields',
+        });
+        return `设置已应用（${confirmedConfigChangeCount} 项需确认）`;
+      });
+    }
+  } finally {
+    busy.value = false;
+    if (consumePendingImport(target)) importPreviewVisible.value = false;
   }
 
-  busy.value = false;
-  importPreviewVisible.value = false;
+  if (!isCurrent()) return;
   if (failures.length) {
     ElMessage.error(`导入完成但有失败项：${failures.join('；')}。已成功：${successes.join('；') || '无'}`);
   } else {
@@ -420,22 +471,12 @@ async function applyPendingImport(): Promise<void> {
   }
 }
 
-function clearImportPreview(): void {
+function consumePendingImport(target: LocalDataImport): boolean {
+  if (pendingImport.value !== target) return false;
   pendingImport.value = null;
   pendingFileName.value = '';
   pendingFileSize.value = 0;
-  const trigger = importTrigger;
-  importTrigger = null;
-  void nextTick(() => trigger?.focus());
-}
-
-function clearRestoreSource(): void {
-  pastedJson.value = '';
-  restoreActionTrigger = null;
-  if (importPreviewVisible.value) return;
-  const trigger = importTrigger;
-  importTrigger = null;
-  void nextTick(() => trigger?.focus());
+  return true;
 }
 
 function eventTarget(event?: MouseEvent): HTMLElement | null {
@@ -466,6 +507,9 @@ function downloadFile(name: string, body: string, type: string): void {
 }
 
 function errorMessage(error: unknown): string {
+  if (error instanceof TypeError && error.message === '不是受支持的 FluentRead 备份或旧版配置文件') {
+    return translateLegacy(error.message).replace('FluentRead', t('common.brand'));
+  }
   return error instanceof Error && error.message.trim() ? error.message : '请稍后重试';
 }
 

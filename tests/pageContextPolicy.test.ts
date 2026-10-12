@@ -39,7 +39,26 @@ describe('page translation context policy', () => {
 
     it('normalizes plain text and Markdown without erasing paragraph boundaries', () => {
         expect(normalizePageText('  A\n\tB\u3000 C  ')).toBe('A B C');
-        expect(normalizePageMarkdown('  A\r\n\tB\r\n\r\n\r\n C  ')).toBe('A\n B\n\n C');
+        expect(normalizePageMarkdown('  A\r\n\tB\r\n\r\n\r\n C  ')).toBe('A\n\tB\n\n C');
+    });
+
+    it('保留嵌套列表与续行缩进，避免改变正文的父子关系', () => {
+        const markdown = '- Parent\r\n\t- Child\r\n\t\t1. Grandchild\r\n    continued   text\r\n\r\n> Quote';
+        const normalized = normalizePageMarkdown(markdown);
+        expect(normalized).toBe('- Parent\n\t- Child\n\t\t1. Grandchild\n    continued text\n\n> Quote');
+        expect(buildPageTranslationContext({readableText: normalized})).toContain('\n\t\t1. Grandchild');
+    });
+
+    it('保留行尾两个空格的 Markdown 硬换行，同时折叠普通行内间隔', () => {
+        expect(normalizePageMarkdown('First   line  \r\nSecond\t  line\r\n\r\nThird line'))
+            .toBe('First line  \nSecond line\n\nThird line');
+    });
+
+    it('处理预算内长行尾空白时保留硬换行，不反复回溯', () => {
+        const trailing = ' '.repeat(pageContextLimits.defuddleText);
+        expect(normalizePageMarkdown(`First line${trailing}\nSecond line`))
+            .toBe('First line  \nSecond line');
+        expect(normalizePageMarkdown(`First${trailing}line`)).toBe('First line');
     });
 
     it('switches to bounded capture when any detached-DOM budget is exceeded', () => {

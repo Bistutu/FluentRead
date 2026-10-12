@@ -3,6 +3,7 @@
  * 全文富文本槽与批量请求在真实语言识别下的一致性：谷歌/微软批量、免费聚合会话缓存、普通供应商文本包、本地模型逐槽、
  * AI 跨候选合并与 $$$ 公式拆分都只提交未被同一判断跳过的槽，并按原索引回填；是否配置排除语言不改变识别深度；
  * 快照切换目标或排除语言后重新判断，不复用旧会话结果；取消与失败重试同样只涉及外语槽。只替换翻译客户端与配置存储。
+ * 批译缓存通过真实请求入口计数 slot key 序列化，覆盖不同原文、重复原文和部分已结算命中，并核对缓存身份与回填结果。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
@@ -56,7 +57,9 @@ import {
     captureFullPageTranslationConfig,
     clearFullPageTranslationRequestCache,
     translateTextSlots,
+    type FullPageTranslationSessionCache,
 } from '@/src/features/full-page-translation/content/translationRequest';
+import {createFullPageRequestSessionState} from '@/src/features/full-page-translation/content/requestSession';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import {collectLiveTranslationTextSlots, extractTranslationText, serializeTranslationSlots} from '@/src/core/translation/public';
 
@@ -270,6 +273,63 @@ describe('排除语言与快照变化', () => {
             .resolves.toEqual([`T:${german}`, `T:${english}`]);
         expect(submitted()).toEqual([english, german, english, german, english]);
         clearFullPageTranslationRequestCache(session);
+    });
+});
+
+describe('同次批译复制快照的 slot key 复用', () => {
+    it.each([
+        {name: '100 个不同原文', repeated: false, settled: 0},
+        {name: '100 个输入中的 50 个重复原文', repeated: true, settled: 0},
+        {name: '100 个输入中的 50 个已结算缓存命中', repeated: false, settled: 50},
+    ])('$name 只序列化每个输入一次，缓存身份和原索引回填保持一致', async ({repeated, settled}) => {
+        runtime.config.to = 'zh-Hans';
+        const snapshot = captureFullPageTranslationConfig({glossaryIds: ['fixture-glossary']});
+        const distinct = Array.from({length: 100}, (_, index) => `${english} Paragraph ${index}.`);
+        const inputs = repeated ? distinct.slice(0, 50).flatMap(origin => [origin, origin]) : distinct;
+        const session: FullPageTranslationSessionCache = {
+            active: true, translationSlotCache: new Map(), ...createFullPageRequestSessionState(),
+            allowNativeBatch: false,
+        };
+        const serialize = JSON.stringify;
+        const slotKeys: string[] = [];
+        const stringify = vi.spyOn(JSON, 'stringify').mockImplementation((value, replacer, space) => {
+            const key = serialize(value, replacer, space);
+            // 观察生产模块实际构造的逐槽键；不在测试中重写缓存键算法。
+            if (value && typeof value === 'object' && 'origin' in value
+                && 'glossaryRevision' in value && 'excludedLanguages' in value) slotKeys.push(key);
+            return key;
+        });
+        try {
+            if (settled) {
+                await expect(translateTextSlots(distinct.slice(0, settled), snapshot, undefined, undefined, session))
+                    .resolves.toEqual(distinct.slice(0, settled).map(origin => `T:${origin}`));
+                expect(new Set(slotKeys).size).toBe(settled);
+                expect([...session.translationSlotCache.values()].every(entry => entry.settled)).toBe(true);
+            }
+            const cachedKeys = [...session.translationSlotCache.keys()];
+            slotKeys.length = 0;
+            runtime.requests = [];
+
+            await expect(translateTextSlots(inputs, snapshot, undefined, undefined, session))
+                .resolves.toEqual(inputs.map(origin => `T:${origin}`));
+            expect(slotKeys).toHaveLength(100);
+            expect(slotKeys.map(key => JSON.parse(key).origin)).toEqual(inputs);
+            expect([...session.translationSlotCache.keys()]).toEqual([...new Set([...cachedKeys, ...slotKeys])]);
+            expect(submitted()).toEqual(distinct.slice(settled, repeated ? 50 : 100));
+            expect(runtime.requests).toHaveLength(1);
+            expect(runtime.requests[0]?.kind).toBe('batch');
+            for (const [key, entry] of session.translationSlotCache) {
+                const identity = JSON.parse(key);
+                expect(identity).toMatchObject({service: 'microsoft', model: 'default', thinking: false,
+                    from: 'auto', to: 'zh-Hans', glossaryIds: ['fixture-glossary'], excludedLanguages: [],
+                    enableAIContext: false});
+                expect(entry.settled).toBe(true);
+                await expect(entry.promise).resolves.toBe(`T:${identity.origin}`);
+            }
+        } finally {
+            stringify.mockRestore();
+            clearFullPageTranslationRequestCache(session);
+        }
     });
 });
 

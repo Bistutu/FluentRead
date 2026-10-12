@@ -2,7 +2,7 @@
  * @file src/services/translation/visionProbe.ts
  * 文件职责：结合手动设置、有效探测缓存与内置规则决定当前模型识图能力，并复用共享翻译链路探测未知模型。
  * 主要内容：冻结配置与严格测试提示词，生成随机 PNG，发送受信图片请求；缓存加载与探测共用调用者预算，取消和超时不写能力结论，只有匹配答案或明确图片输入拒绝落盘，缓存仅保存身份摘要与时间。
- * 模块边界：通过注入的翻译和存储端口执行副作用，不实现厂商协议、不读取页面图片、不改写用户配置或提示词。
+ * 模块边界：通过注入的翻译和存储端口执行副作用；消息名称由同层 types.ts 纯契约提供，本实现不再导出消息名称；不实现厂商协议、不读取页面图片、不改写用户配置或提示词。
  */
 import {resolveAreaRecognitionRoute, resolveModelVisionCapability, supportsVisionTransport, type AreaRecognitionRouteInput} from '@/src/core/config/vision';
 import {createVisionProbeIdentity, matchesVisionProbeAnswer, normalizeVisionProbeRecords, VISION_PROBE_TIMEOUT_MS,
@@ -13,8 +13,6 @@ import {attachTranslationImageInput, attachTranslationProviderConfig, attachTran
 import type {TranslationConfigSource, TranslationRequestMessage} from './types';
 
 export interface VisionProbeConfig extends TranslationConfigSource {modelVision?: Record<string, Record<string, boolean>>;}
-export const VISION_PROBE_MESSAGE = 'fluentReadModelVisionProbe';
-export const VISION_PROBE_CANCEL_MESSAGE = 'fluentReadModelVisionProbeCancel';
 export interface VisionProbePersistence {load(): Promise<unknown>; save(records: VisionProbeRecord[]): Promise<void>;}
 export interface VisionProbeOptions {force?: boolean; probeUnknown?: boolean; signal?: AbortSignal; timeoutMs?: number;}
 

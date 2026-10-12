@@ -5,7 +5,9 @@ import {
     type TranslationBroker,
     type TranslationRequestMessage,
 } from '@/src/services/translation/broker';
-import type {TranslationModelUsageRecord} from '@/src/services/translation/types';
+import type {TranslationConfigSource, TranslationModelUsageRecord} from '@/src/services/translation/types';
+import {Config} from '@/src/core/config/model';
+import {createInputBoxTranslationHandler} from '@/src/features/input-translation/background/handler';
 import {resolveTranslationLanguages} from '@/src/core/translation/languages';
 import {NativeBatchResponseError} from '@/src/core/translation/nativeBatch';
 import {serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
@@ -159,10 +161,11 @@ function installBroker(
     ready: Promise<unknown> = Promise.resolve(),
     includeModelUsageGeneration = true,
     persistenceGraceMs?: number,
+    current: TranslationConfigSource = mocks.config,
 ): void {
     const broker = createTranslationBroker({
         ready,
-        getConfig: () => mocks.config,
+        getConfig: () => current,
         providers: mocks.providers,
         cache: {
             get: mocks.cacheGet,
@@ -228,6 +231,19 @@ function deferred<T>() {
         reject = rejectPromise;
     });
     return {promise, reject, resolve};
+}
+
+// 可枚举 source getter 只统计实际生产 snapshot 的条目展开；不复制快照实现。
+function measuredProviderConfig(entryCount = 100) {
+    let entrySourceReads = 0;
+    const current = Object.assign(new Config(), {
+        service: 'mock', from: 'en', to: 'zh-Hans', useCache: false, enableAIContext: false, glossaryEnabled: false,
+        model: {mock: 'frozen-count-model'}, token: {mock: 'fixture-count-key'}, system_role: {mock: 'frozen-count-prompt'},
+        glossaryLibraries: [{id: 'count-library', name: 'Count', enabled: true, sourceLanguage: '', targetLanguage: '', domains: [],
+            entries: Array.from({length: entryCount}, (_, index) => ({id: `entry-${index}`, caseSensitive: false,
+                get source() {entrySourceReads += 1;return `term-${index}`;}, target: `术语${index}`}))}],
+    });
+    return {current, entryCount, reads: () => entrySourceReads, reset: () => {entrySourceReads = 0;}};
 }
 
 describe('translation broker', () => {
@@ -651,6 +667,95 @@ describe('translation broker', () => {
         expect(translationCacheIdentities().at(-1)).toMatchObject({service: 'ai', model: 'frozen-area-model'});
         await translateWithCache({origin: 'second text', useCache: false, TRANSLATION_PROVIDER_CONFIG: snapshot} as any);
         expect(translationCacheIdentities().at(-1)?.service).toBe('mock');
+    });
+
+    it('附着快照经过 ready 等待和配置变化仍使用原模型、凭据与嵌套规则，不复制丢弃的 fallback', async () => {
+        const measured = measuredProviderConfig();
+        const {current} = measured;
+        const snapshot = createTranslationProviderConfigSnapshot(current);
+        measured.reset();
+        const ready = deferred<void>();
+        installBroker(undefined, ready.promise, true, undefined, current);
+        mocks.service.mockResolvedValue('可信快照译文');
+        const result = translateWithCache(attachTranslationProviderConfig({origin: 'Frozen source', useCache: false}, snapshot));
+        await flushMicrotasks();
+        expect(measured.reads()).toBe(0);
+        expect(mocks.service).not.toHaveBeenCalled();
+        current.model.mock = 'live-model';current.token.mock = 'changed-key';current.system_role.mock = 'live-prompt';
+        current.glossaryLibraries[0].entries[0].target = '已修改';
+        ready.resolve();
+
+        await expect(result).resolves.toBe('可信快照译文');
+        expect(measured.reads()).toBe(0);
+        expect(mocks.service).toHaveBeenCalledOnce();
+        const used = getTranslationProviderConfig(mocks.service.mock.calls[0][0], current);
+        expect(used).toMatchObject({model: {mock: 'frozen-count-model'}, token: {mock: 'fixture-count-key'}, system_role: {mock: 'frozen-count-prompt'}});
+        expect(used.glossaryLibraries).toBe(snapshot.glossaryLibraries);
+        expect(used.glossaryLibraries![0].entries[0].target).toBe('术语0');
+        expect(Object.isFrozen(used.glossaryLibraries![0].entries[0])).toBe(true);
+        expect(translationCacheIdentities().at(-1)).toMatchObject({model: 'frozen-count-model', sourceText: 'Frozen source'});
+    });
+
+    it('无附着公开请求在 ready 后仅复制一次，每个新请求读取新配置且 provider 与缓存身份一致', async () => {
+        const measured = measuredProviderConfig();
+        const {current, entryCount} = measured;
+        const ready = deferred<void>();
+        installBroker(undefined, ready.promise, true, undefined, current);
+        mocks.service.mockResolvedValue('公开请求译文');
+        const result = translateWithCache({origin: 'Public source', useCache: false});
+        await flushMicrotasks();
+        expect(measured.reads()).toBe(0);
+        current.model.mock = 'ready-model';current.token.mock = 'ready-key';
+        ready.resolve();
+        await expect(result).resolves.toBe('公开请求译文');
+        expect(measured.reads()).toBe(entryCount);
+        let used = getTranslationProviderConfig(mocks.service.mock.calls[0][0], current);
+        expect(used.model.mock).toBe('ready-model');expect(used.token.mock).toBe('ready-key');
+        expect(translationCacheIdentities().at(-1)?.model).toBe('ready-model');
+
+        current.model.mock = 'next-model';current.glossaryLibraries[0].entries[0].target = '下一次';
+        await expect(translateWithCache({origin: 'Next source', useCache: false})).resolves.toBe('公开请求译文');
+        expect(measured.reads()).toBe(entryCount * 2);
+        used = getTranslationProviderConfig(mocks.service.mock.calls[1][0], current);
+        expect(used.model.mock).toBe('next-model');expect(used.glossaryLibraries![0].entries[0].target).toBe('下一次');
+        expect(translationCacheIdentities().at(-1)?.model).toBe('next-model');
+    });
+
+    it('真实输入框 handler → broker 仅保留入口必要的一次完整快照复制', async () => {
+        const measured = measuredProviderConfig();
+        const {current, entryCount} = measured;
+        installBroker(undefined, Promise.resolve(), true, undefined, current);
+        mocks.service.mockResolvedValue('输入框译文');
+        const handler = createInputBoxTranslationHandler({ready: Promise.resolve(), getConfig: () => current, translate: translateWithCache});
+        await expect(handler.handle({type: 'inputBoxTranslation', text: 'Input source', targetLang: 'zh-Hans'}))
+            .resolves.toEqual({success: true, translatedText: '输入框译文'});
+        console.info(JSON.stringify({lazyFallbackOperationEvidence: 'input-handler-to-broker', entries: entryCount,
+            entryCopies: measured.reads(), providerCalls: mocks.service.mock.calls.length}));
+        expect(measured.reads()).toBe(entryCount);
+        expect(mocks.service).toHaveBeenCalledOnce();
+        const used = getTranslationProviderConfig(mocks.service.mock.calls[0][0], current);
+        expect(used.model.mock).toBe('frozen-count-model');expect(used.token.mock).toBe('fixture-count-key');
+        expect(translationCacheIdentities().at(-1)).toMatchObject({model: used.model.mock, sourceText: 'Input source'});
+    });
+
+    it.each([false, true])('ready 等待中取消不会构造 fallback 或执行 provider，附着=%s', async attached => {
+        const measured = measuredProviderConfig();
+        const {current} = measured;
+        const snapshot = createTranslationProviderConfigSnapshot(current);
+        measured.reset();
+        const ready = deferred<void>();
+        const controller = new AbortController();
+        installBroker(undefined, ready.promise, true, undefined, current);
+        const message = attachTranslationRequestControl({origin: 'Cancelled ready source', useCache: false},
+            {signal: controller.signal, ownershipKey: 'count:ready-cancel'});
+        if (attached) attachTranslationProviderConfig(message, snapshot);
+        const result = translateWithCache(message);
+        const rejected = expect(result).rejects.toMatchObject({name: 'AbortError'});
+        await flushMicrotasks();controller.abort();await rejected;
+        ready.resolve();await flushMicrotasks();
+        expect(measured.reads()).toBe(0);
+        expect(mocks.service).not.toHaveBeenCalled();
+        expect(mocks.buildTranslationCacheKey).not.toHaveBeenCalled();
     });
 
     it('reuses persisted single cache entries, including successful unchanged results', async () => {

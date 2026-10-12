@@ -558,6 +558,27 @@ exports.launchFocusSafePersistentContext = async options => {
 };
 exports.newPageWithoutForeground = async () => {console.log('PUBLIC_AFTER_WORKER');if(videoCLI && mode.startsWith('scan-'))return videoPage;if(mode.startsWith('idb'))return page;if(mode==='worker-initial')return {setViewportSize:async()=>{},goto:async url=>{console.log('SELECTED_WORKER_URL',url);throw new Error('controlled readiness failure');}};throw new Error('controlled readiness failure');};
 exports.activateExtensionTabWithoutForeground=async()=>{};
+// Keep the production monitor's ready parser, permanent error and stop owner;
+// only its external compiler/process ports are controlled, never native focus.
+exports.startFocusEventMonitor = options => {
+ const {createFocusEventMonitor}=require(process.env.AUDIT_WORKSPACE+'/scripts/testing/mac-focus-event-monitor.cjs');
+ const directory=path.join(process.env.TMPDIR,'controlled-focus-observer');
+ let spawned=false,closed=false;
+ const observer=Object.assign(new EventEmitter(),{pid:process.pid,stdout:new EventEmitter(),stderr:new EventEmitter()});
+ observer.stdin=Object.assign(new EventEmitter(),{end:value=>{
+  if(value!=='stop\n')throw Error('controlled focus observer stop protocol mismatch');
+  console.log('FOCUS_OBSERVER_STOP_REQUESTED');queueMicrotask(()=>{closed=true;console.log('FOCUS_OBSERVER_CLOSED');observer.emit('close',0,null);});
+ }});
+ observer.kill=()=>{throw Error('unexpected controlled focus observer escalation');};
+ const monitor=createFocusEventMonitor(options,{
+  compile:async()=>{console.log('FOCUS_OBSERVER_COMPILE_PORT');fs.mkdirSync(directory);if(mode==='scan-focus-ready-failure')throw Error('controlled focus compile failure');return path.join(directory,'observer');},
+  spawn:()=>{spawned=true;console.log('FOCUS_OBSERVER_ACQUIRED');queueMicrotask(()=>observer.stdout.emit('data',Buffer.from(JSON.stringify({kind:'ready',pid:observer.pid,time:1000,monotonicMs:10})+'\n')));return observer;},
+  cleanup:async()=>{if(spawned&&!closed)throw Error('controlled focus observer cleanup before close');fs.rmSync(directory,{recursive:true,force:true});console.log('FOCUS_OBSERVER_CLEANUP');},
+ });
+ void monitor.ready.then(()=>console.log('FOCUS_OBSERVER_READY'),()=>{});
+ return monitor;
+};
+exports.queryMacFrontmostApplication=async()=>({pid:process.pid,name:'controlled external foreground port'});
 `);
     for (const directory of [join(packages, 'playwright'), join(packages, 'node_modules/playwright')]) {
         mkdirSync(directory, {recursive: true}); writeFileSync(join(directory, 'index.js'), `module.exports=require(${JSON.stringify(ports)});`);
@@ -996,11 +1017,35 @@ describe('audit49 J continuation3 complete manual cleanup consumers', () => {
             if (mode === 'scan-report') expect(observation.ownerStates[0]).toMatchObject({gone: true, timerCleared: true, fdClosed: true});
             else if (mode === 'scan-report-close') expect(observation.ownerStates[0]).toMatchObject({gone: true, profileExists: true, timerCleared: true, fdClosed: true});
             else expect(observation.ownerStates[0]).toMatchObject({gone: false, profileExists: true});
+            if (script === 'scripts/testing/run-changing-source-test.cjs') {
+              for (const marker of ['FOCUS_OBSERVER_COMPILE_PORT', 'FOCUS_OBSERVER_ACQUIRED', 'FOCUS_OBSERVER_READY', 'FOCUS_OBSERVER_STOP_REQUESTED', 'FOCUS_OBSERVER_CLOSED', 'FOCUS_OBSERVER_CLEANUP']) {
+                expect(result.stdout.split(marker), `${script} ${mode} ${marker} once`).toHaveLength(2);
+              }
+              expect(result.stdout + result.stderr).not.toContain('controlled focus observer cleanup before close');
+            }
           }
         } finally {
             for (const observation of observations) await observation.cleanup();
         }
     }, 60000);
+    it('changing-source focus readiness failure releases both fixtures without launching a browser actor', async () => {
+        const observation = await portCLI('scripts/testing/run-changing-source-test.cjs', 'scan-focus-ready-failure');
+        try {
+            const {result} = observation;
+            expect(result.stdout).toContain('ORIGINAL_CLI_LOADED');
+            expect(result.stdout + result.stderr).toContain('controlled focus compile failure');
+            expect(result.stdout).not.toContain('PUBLIC_LAUNCH_REACHED');
+            expect(result.stdout.split('FOCUS_OBSERVER_COMPILE_PORT')).toHaveLength(2);
+            expect(result.stdout.split('FOCUS_OBSERVER_CLEANUP')).toHaveLength(2);
+            for (const marker of ['FOCUS_OBSERVER_ACQUIRED', 'FOCUS_OBSERVER_READY', 'FOCUS_OBSERVER_STOP_REQUESTED', 'FOCUS_OBSERVER_CLOSED']) expect(result.stdout).not.toContain(marker);
+            expect(result.stdout.split('OWNED_HTTP_SERVER_CLOSED')).toHaveLength(3);
+            expect(result.stdout + result.stderr).not.toMatch(/TypeError|not a function|controlled focus observer cleanup before close/);
+            expect(result.timedOut).toBe(false);
+            expect(result.code).toBe(1);
+            expect(observation.profiles).toEqual([]);
+            expect(observation.ownerStates).toEqual([]);
+        } finally {await observation.cleanup();}
+    }, 20000);
 });
 
 

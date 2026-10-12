@@ -5,7 +5,7 @@
  * 模块边界：只编辑传入 Config 草稿；保存由 SettingsSections 统一处理，播放器实际应用由 content 层负责。
  -->
 <template>
-  <SettingsGroup class="video-subtitle-appearance-group" title="视频字幕外观" description="外观只影响 FluentRead 字幕，不改变 YouTube/X 原生字幕">
+  <SettingsGroup class="video-subtitle-appearance-group" title="视频字幕外观" :description="translateControlLabel('外观只影响 FluentRead 字幕，不改变 YouTube/X 原生字幕').replace('FluentRead', t('common.brand'))">
     <SettingsPreviewLayout class="video-subtitle-appearance-panel" label="视频字幕效果预览" sticky-preview data-video-subtitle-appearance>
       <template #preview>
         <div class="subtitle-preview-scene" :data-position="config.videoSubtitleAppearance.position" :data-auto-bottom="config.videoSubtitleAppearance.autoBottom" data-video-subtitle-preview-scene>
@@ -18,8 +18,8 @@
         <p class="subtitle-appearance-hint">切换显示内容、皮肤或位置，左侧示例立即更新</p>
       </template>
       <div class="subtitle-display-preferences">
-        <SettingsItem label="显示 FluentRead 字幕" description="临时隐藏字幕时保留翻译设置" :disabled="!config.videoTranslationEnabled">
-          <el-switch v-model="config.videoSubtitleVisible" aria-label="显示 FluentRead 视频字幕" :disabled="!config.videoTranslationEnabled" />
+        <SettingsItem :label="translateControlLabel('显示 FluentRead 字幕').replace('FluentRead', t('common.brand'))" description="临时隐藏字幕时保留翻译设置" :disabled="!config.videoTranslationEnabled">
+          <el-switch v-model="config.videoSubtitleVisible" :aria-label="translateControlLabel('显示 FluentRead 视频字幕').replace('FluentRead', t('common.brand'))" :disabled="!config.videoTranslationEnabled" />
         </SettingsItem>
         <SettingsItem label="字幕显示模式" description="选择原文和译文的呈现方式" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible">
           <SegmentedControl v-model="config.videoSubtitleDisplayMode" :options="displayModeOptions" label="视频字幕显示模式" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible" />
@@ -81,7 +81,7 @@ import UiSelect from '@/src/ui/components/UiSelect.vue';
 import {ElOption, ElColorPicker} from 'element-plus';
 import 'element-plus/es/components/color-picker/style/css';
 import {useUiI18n as useControlI18n} from '@/src/ui/i18n';
-const {translateLegacy: translateControlLabel} = useControlI18n();
+const {t, translateLegacy: translateControlLabel} = useControlI18n();
 
 import {computed} from 'vue';
 import type {CSSProperties} from 'vue';

@@ -1,4 +1,6 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
+import {MIN_CHROME_LANGUAGE_CONFIDENCE as sharedConfidence} from '@/src/core/language/confidence';
+import {MIN_CHROME_LANGUAGE_CONFIDENCE as detectionConfidence} from '@/src/core/language/detect';
 import {
     detectChromeLanguage,
     disposeChromeTranslationModels,
@@ -76,6 +78,8 @@ describe('Offscreen Chrome 翻译域', () => {
 
     it('只接受首名、有效且达到官方示例阈值的现代检测结果', () => {
         expect(MIN_CHROME_LANGUAGE_CONFIDENCE).toBe(0.4);
+        expect(MIN_CHROME_LANGUAGE_CONFIDENCE).toBe(detectionConfidence);
+        expect(MIN_CHROME_LANGUAGE_CONFIDENCE).toBe(sharedConfidence);
         expect(detectedLanguageFrom([{detectedLanguage: 'en', confidence: 0.4}])).toBe('en');
         expect(detectedLanguageFrom([{detectedLanguage: 'fr', confidence: 1}])).toBe('fr');
         expect(detectedLanguageFrom([{detectedLanguage: 'en', confidence: 0.399}])).toBeNull();

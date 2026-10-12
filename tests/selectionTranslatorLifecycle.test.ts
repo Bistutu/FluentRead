@@ -1,23 +1,26 @@
 /**
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
- * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理。
- * 模块边界：编译真实 Vue setup 并替换浏览器和渲染依赖，不模拟完整 UI 或声称真实浏览器验证。
+ * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口。
+ * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；新增入口可选官方模板和独立 Linkedom 节点树，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import * as speechProgress from '@/src/core/tts/speechProgress';
 import {createSelectionTtsContentController} from '@/src/features/selection-translation/content/selectionTtsContentController';
 import {readFileSync} from 'node:fs';
 import {afterEach, describe, expect, it, vi, type MockInstance} from 'vitest';
-import {compileScript, parse} from 'vue/compiler-sfc';
+import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
+import {parseHTML} from 'linkedom';
 import ts from 'typescript';
 import * as Vue from 'vue';
 import {Config} from '@/src/core/config/model';
 import * as selectionCore from '@/src/features/selection-translation/core';
+import * as translationErrors from '@/src/services/translation/errors';
 import * as harness from '@/src/core/config/harness';
 import {services} from '@/src/core/config/catalog';
 import * as runtimeMessages from '@/src/platform/browser/runtimeMessages';
 import * as detect from '@/src/core/language/detect';
+import * as partOfSpeech from '@/src/core/language/partOfSpeech';
 import * as wordNormalization from '@/src/features/selection-translation/services/wordNormalization';
 import * as vocabularyProtocol from '@/src/features/vocabulary/protocol';
 import * as hotkey from '@/src/core/hotkey';
@@ -27,8 +30,9 @@ vi.mock('webextension-polyfill', () => ({default: {}}));
 
 const filename = 'src/features/selection-translation/ui/SelectionTranslator.vue';
 const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
+const script = compileScript(descriptor, {id: 'selection-lifecycle'});
 type SelectionBuildTarget = 'chrome' | 'userscript';
-const setupSource = compileScript(descriptor, {id: 'selection-lifecycle'}).content;
+const setupSource = script.content;
 const compiledByTarget = new Map<SelectionBuildTarget, string>();
 function compileForTarget(target: SelectionBuildTarget): string {
     let compiled = compiledByTarget.get(target);
@@ -41,10 +45,87 @@ function compileForTarget(target: SelectionBuildTarget): string {
     }
     return compiled;
 }
+let compiledTemplate: string | undefined;
+function selectionTemplateCode() {
+    if (compiledTemplate === undefined) {
+        const result = compileTemplate({source: descriptor.template!.content, filename, id: 'selection-lifecycle',
+            compilerOptions: {bindingMetadata: script.bindings, hoistStatic: false}});
+        if (result.errors.length) throw new Error(result.errors.map(String).join('\n'));
+        compiledTemplate = ts.transpileModule(result.code, {
+            compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
+        }).outputText;
+    }
+    return compiledTemplate;
+}
+// 官方 SFC render 使用独立 DOM 节点树；不替换现有浏览器事件 port，
+// 不验证 CSS 布局、原生焦点、禁用控件的浏览器事件策略或真实语言切换。
+function createSelectionTemplatePort() {
+    const parsed = parseHTML('<html><body></body></html>');
+    const document = parsed.document;
+    const listeners = new WeakMap<Element, Map<string, EventListener>>();
+    let clickResult: unknown;
+    const renderer = Vue.createRenderer<Node, Element>({
+        createElement: (tag, namespace) => namespace === 'svg'
+            ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag),
+        createText: text => document.createTextNode(text),
+        createComment: text => document.createComment(text),
+        insert: (node, parent, anchor) => {parent.insertBefore(node, anchor ?? null);},
+        remove: node => {node.parentNode?.removeChild(node);},
+        setText: (node, text) => {node.nodeValue = text;},
+        setElementText: (node, text) => {node.textContent = text;},
+        parentNode: node => node.parentNode as Element | null,
+        nextSibling: node => node.nextSibling,
+        patchProp(element, key, previous, value) {
+            if (/^on[A-Z]/.test(key)) {
+                const event = key.slice(2).toLowerCase();
+                const registered = listeners.get(element) ?? new Map<string, EventListener>();
+                listeners.set(element, registered);
+                const old = registered.get(key);
+                if (old) element.removeEventListener(event, old);
+                registered.delete(key);
+                if (value) {
+                    const listener: EventListener = event => {
+                        for (const handler of Array.isArray(value) ? value : [value]) {
+                            const result = handler(event);
+                            if (event.type === 'click') clickResult = result;
+                        }
+                    };
+                    registered.set(key, listener);
+                    element.addEventListener(event, listener);
+                }
+            } else if (key === 'style') {
+                const style = (element as HTMLElement).style;
+                if (typeof value === 'string') style.cssText = value;
+                else {
+                    for (const name of Object.keys(previous && typeof previous === 'object' ? previous : {})) {
+                        if (!(name in (value ?? {}))) style.removeProperty(name.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`));
+                    }
+                    for (const [name, raw] of Object.entries(value ?? {})) {
+                        style.setProperty(name.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), String(raw ?? ''));
+                    }
+                }
+            } else if (value == null || (key === 'disabled' && value === false)) element.removeAttribute(key);
+            else element.setAttribute(key, value === true ? '' : String(value));
+        },
+    });
+    return {renderer, root: document.body,
+        click(element: Element) {
+            clickResult = undefined;
+            element.dispatchEvent(new parsed.window.Event('click', {bubbles: true}));
+            return Promise.resolve(clickResult);
+        }};
+}
+
 let app: Vue.App | undefined;
 afterEach(() => { app?.unmount(); app = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>, browserTarget: SelectionBuildTarget = 'chrome', configReady: Promise<void> = Promise.resolve()) {
+function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>,
+    targetOrProps: SelectionBuildTarget | Record<string, unknown> = 'chrome', readyOrTemplate: Promise<void> | boolean = Promise.resolve()) {
+    // 保留两侧原调用：主线 target/configReady 与本地 componentProps/可选完整模板。
+    const browserTarget = typeof targetOrProps === 'string' ? targetOrProps : 'chrome';
+    const componentProps = typeof targetOrProps === 'string' ? {} : targetOrProps;
+    const configReady = typeof readyOrTemplate === 'boolean' ? Promise.resolve() : readyOrTemplate;
+    const renderTemplate = typeof readyOrTemplate === 'boolean' ? readyOrTemplate : false;
     vi.useFakeTimers();
     const config = Object.assign(new Config(), {
         disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', theme: 'light',
@@ -91,7 +172,8 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     let stopTts: MockInstance<(notifyRemote?: boolean) => void>;
     let ttsRequestId = 0;
     const modules: Record<string, unknown> = {
-        './SpeechFollowText.vue': {},
+        './SpeechFollowText.vue': renderTemplate
+            ? {props: ['text'], setup: (props: {text: string}) => () => Vue.h('span', props.text)} : {},
         '@/src/features/reading-assistant/public': {createReadingEvidenceAnchor: () => ({locate: () => 'unavailable', check: () => 'unavailable', suspend: vi.fn(), clear: vi.fn(), dispose: vi.fn()})},
         '@/src/core/tts/speechProgress': speechProgress,
         '@/src/core/translation/result': {hasDistinctTranslation},
@@ -101,10 +183,12 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         '@/src/services/config/store': {config, configReady, requestConfigPatch, subscribeConfig: (listener: () => void) => { configListener = listener; return unsubscribeConfig; }},
         '@/src/app/translation/client': {translateText, translateTextBatch},
         '@/src/features/selection-translation/core': selectionCore,
+        '@/src/services/translation/errors': translationErrors,
         '@/src/features/selection-translation/services/wordNormalization': wordNormalization,
         '@/src/core/config/harness': harness,
         '@/src/core/config/catalog': {services},
         '@/src/core/language/detect': detect,
+        '@/src/core/language/partOfSpeech': partOfSpeech,
         '@/src/features/vocabulary/protocol': vocabularyProtocol,
         '@/src/core/hotkey': hotkey,
         '@/src/features/share-card/public': {isShareCardMounted: () => false},
@@ -125,25 +209,32 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         '@/src/ui/i18n': {useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})},
     };
     const exports: Record<string, any> = {};
-    new Function('require', 'exports', compileForTarget(browserTarget))((id: string) => {
+    const loadModule = (id: string) => {
         if (!(id in modules) && !id.startsWith('@/src/')) throw new Error(`Unexpected import: ${id}`);
         return modules[id] ?? {};
-    }, exports);
-    exports.default.render = () => null;
-    const renderer = Vue.createRenderer<Record<string, unknown>, Record<string, unknown>>({
+    };
+    new Function('require', 'exports', compileForTarget(browserTarget))(loadModule, exports);
+    const renderPort = renderTemplate ? createSelectionTemplatePort() : null;
+    if (renderPort) {
+        const renderExports: Record<string, any> = {};
+        new Function('require', 'exports', selectionTemplateCode())(loadModule, renderExports);
+        exports.default.render = renderExports.render;
+    } else exports.default.render = () => null;
+    const renderer = renderPort?.renderer ?? Vue.createRenderer<Record<string, unknown>, Record<string, unknown>>({
         patchProp() {}, insert() {}, remove() {}, createElement: () => ({}),
         createText: () => ({}), createComment: () => ({}), setText() {}, setElementText() {},
         parentNode: () => null, nextSibling: () => null,
     });
-    const currentApp = renderer.createApp(exports.default, {selectionAdapter});
+    const currentApp: Vue.App = renderer.createApp(exports.default, {selectionAdapter, ...componentProps});
     const lifecycleErrors = vi.fn();
     currentApp.config.errorHandler = lifecycleErrors;
     app = currentApp;
-    const vm = currentApp.mount({});
+    if (renderPort) currentApp.directive('ui-i18n', {});
+    const vm = currentApp.mount(renderPort?.root ?? {});
     const state = (vm.$ as any).setupState as Record<string, any>;
     return {state, event, browser, config, listeners, window, document, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
         registerContextMenu, get contextMenuHandler() {return contextMenuHandler;},
-        lifecycleErrors, unmount: () => { currentApp.unmount(); app = undefined; }};
+        lifecycleErrors, renderPort, unmount: () => { currentApp.unmount(); app = undefined; }};
 }
 
 describe('explicit free selection explanation', () => {
@@ -2191,5 +2282,811 @@ describe('selection card bounded layout work', () => {
         state.snapshot = {parts: [{kind: 'text', text: 'new'}]};
         expect(state.sourceTextParts).not.toBe(source);
         expect(state.sourceTextParts[0].offset).toBe(0);
+    });
+});
+
+
+describe('selection card Escape ownership', () => {
+    // These local target/trust ports exercise the real mounted capture listener;
+    // they do not reproduce native closed-shadow retargeting or dialog defaults.
+    function keyboardFixture() {
+        const fixture = mountSelection();
+        class KeyboardNode {
+            getRootNode() {return fixture.document;}
+        }
+        class KeyboardElement extends KeyboardNode {
+            constructor(readonly id = '') {super();}
+            contains(node: unknown) {return node === this;}
+        }
+        vi.stubGlobal('Node', KeyboardNode);
+        vi.stubGlobal('Element', KeyboardElement);
+        const host = new KeyboardElement('fluent-read-selection-translator-container');
+        const outside = new KeyboardElement('host-page-control');
+        const shareCard = new KeyboardElement('fluent-read-share-card-container');
+        Object.assign(fixture.document, {
+            getElementById: vi.fn((id: string) => id === host.id ? host : null),
+        });
+        const selected = Vue.markRaw({text: 'Keep the native dialog open.', parts: [], range: {} as Range});
+        const request = Vue.markRaw({text: selected.text, generation: 1, sourceLanguage: 'en', targetLanguage: 'zh-Hans'});
+        const controller = new AbortController();
+        const dismissTools = vi.fn(() => false);
+        fixture.state.snapshot = selected;
+        fixture.state.selectedText = selected.text;
+        fixture.state.showTooltip = true;
+        fixture.state.isLoading = true;
+        fixture.state.activeContentRequest = request;
+        fixture.state.translationAbortController = controller;
+        fixture.state.readingPanelRef = Vue.markRaw({dismissTools});
+        const handlers = [...(fixture.listeners.get('document:keydown') ?? [])];
+        expect(handlers).toHaveLength(1);
+        const handler = handlers[0];
+        if (!handler) throw new Error('Selection keydown capture listener was not mounted.');
+        expect(fixture.document.addEventListener).toHaveBeenCalledWith('keydown', handler, true);
+        const dispatch = (target = host, flags: Partial<Pick<KeyboardEvent, 'key' | 'isTrusted' | 'repeat' | 'isComposing'>> = {}) => {
+            const event = {target, key: 'Escape', isTrusted: true, repeat: false, isComposing: false,
+                preventDefault: vi.fn(), stopPropagation: vi.fn(), ...flags};
+            handler(event);
+            return event;
+        };
+        return {...fixture, host, outside, shareCard, selected, request, controller, dismissTools, dispatch};
+    }
+
+    it.each(['ordinary', 'repeat', 'isComposing'] as const)('consumes an owning card Escape with the existing %s ordering', mode => {
+        const fixture = keyboardFixture();
+        const event = fixture.dispatch(fixture.host, {repeat: mode === 'repeat', isComposing: mode === 'isComposing'});
+
+        expect(fixture.state.snapshot).toBeNull();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.activeContentRequest).toBeNull();
+        expect(fixture.controller.signal.aborted).toBe(true);
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.dismissedSelection).toBe(fixture.selected);
+        expect(event.preventDefault).toHaveBeenCalledOnce();
+        expect(event.stopPropagation).toHaveBeenCalledOnce();
+        expect(fixture.dismissTools).toHaveBeenCalledOnce();
+    });
+
+    it('consumes the tools Escape tier without closing the owning card or aborting its request', () => {
+        const fixture = keyboardFixture();
+        fixture.dismissTools.mockReturnValue(true);
+        const event = fixture.dispatch();
+
+        expect(fixture.state.snapshot).toBe(fixture.selected);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.activeContentRequest).toBe(fixture.request);
+        expect(fixture.controller.signal.aborted).toBe(false);
+        expect(fixture.state.isLoading).toBe(true);
+        expect(event.preventDefault).toHaveBeenCalledOnce();
+        expect(event.stopPropagation).toHaveBeenCalledOnce();
+        expect(fixture.dismissTools).toHaveBeenCalledOnce();
+    });
+
+    it.each(['outside with snapshot', 'own without snapshot', 'untrusted', 'share card', 'own non-Escape'] as const)(
+        'retains host event ownership for %s', condition => {
+            const fixture = keyboardFixture();
+            const noSnapshot = condition === 'own without snapshot';
+            if (noSnapshot) {
+                fixture.state.snapshot = null;
+                fixture.state.showTooltip = false;
+                fixture.state.activeContentRequest = null;
+                fixture.state.translationAbortController = null;
+                fixture.state.isLoading = false;
+            }
+            const target = condition === 'outside with snapshot' ? fixture.outside
+                : condition === 'share card' ? fixture.shareCard : fixture.host;
+            const event = fixture.dispatch(target, {isTrusted: condition !== 'untrusted',
+                key: condition === 'own non-Escape' ? 'ArrowLeft' : 'Escape'});
+            const closed = condition === 'outside with snapshot';
+
+            expect(fixture.state.snapshot).toBe(closed || noSnapshot ? null : fixture.selected);
+            expect(fixture.state.showTooltip).toBe(!closed && !noSnapshot);
+            expect(fixture.state.activeContentRequest).toBe(closed || noSnapshot ? null : fixture.request);
+            expect(fixture.controller.signal.aborted).toBe(closed);
+            expect(fixture.state.isLoading).toBe(!closed && !noSnapshot);
+            expect(event.preventDefault).not.toHaveBeenCalled();
+            expect(event.stopPropagation).not.toHaveBeenCalled();
+        },
+    );
+});
+
+
+describe('focused selection card dismissal requests', () => {
+    // The renderer stays null. Root activeElement and retargeted key/trust ports
+    // exercise the actual setup handler, not native browser focus behavior.
+    function focusedFixture() {
+        const dismiss = vi.fn();
+        const fixture = mountSelection(false, undefined, {onFocusedCardDismiss: dismiss});
+        const root: {activeElement: unknown} = {activeElement: null};
+        class FocusNode {
+            getRootNode() {return root;}
+        }
+        class FocusElement extends FocusNode {
+            readonly children = new Set<unknown>();
+            constructor(readonly id = '') {super();}
+            contains(value: unknown) {return this.children.has(value);}
+        }
+        vi.stubGlobal('Node', FocusNode);
+        vi.stubGlobal('Element', FocusElement);
+        const host = Vue.markRaw(new FocusElement('fluent-read-selection-translator-container'));
+        const card = Vue.markRaw(new FocusElement('card'));
+        const button = Vue.markRaw(new FocusElement('close-button'));
+        const outside = Vue.markRaw(new FocusElement('host-native-control'));
+        host.children.add(card);
+        card.children.add(button);
+        root.activeElement = button;
+        Object.assign(fixture.document, {activeElement: host,
+            getElementById: vi.fn((id: string) => id === host.id ? host : null)});
+        const selected = Vue.markRaw({text: 'Keep the native dialog open.', parts: [], range: {} as Range});
+        const controller = new AbortController();
+        const dismissTools = vi.fn(() => false);
+        fixture.state.snapshot = selected;
+        fixture.state.selectedText = selected.text;
+        fixture.state.showTooltip = true;
+        fixture.state.tooltipRef = card;
+        fixture.state.translationAbortController = controller;
+        fixture.state.readingPanelRef = Vue.markRaw({dismissTools});
+        const keydown = [...(fixture.listeners.get('document:keydown') ?? [])][0]!;
+        expect(keydown).toBeTypeOf('function');
+        const escape = (target: unknown = host, isTrusted = true) => {
+            const event = {target, key: 'Escape', isTrusted, repeat: false, isComposing: false,
+                preventDefault: vi.fn(), stopPropagation: vi.fn()};
+            keydown(event);
+            return event;
+        };
+        return {...fixture, dismiss, host, card, button, outside, root, selected, controller, dismissTools, escape};
+    }
+
+    it.each(['owned Escape', 'close button handler'] as const)('requests synchronous restoration before hiding for %s', trigger => {
+        const fixture = focusedFixture();
+        // document.activeElement is only the closed host; the actual card focus
+        // decision must read the card's root and not mistake this for no focus.
+        fixture.dismiss.mockImplementation(() => {
+            expect(fixture.state.snapshot).toBe(fixture.selected);
+            expect(fixture.state.showTooltip).toBe(true);
+            expect(fixture.controller.signal.aborted).toBe(false);
+        });
+        if (trigger === 'owned Escape') {
+            const event = fixture.escape();
+            expect(event.preventDefault).toHaveBeenCalledOnce();
+            expect(event.stopPropagation).toHaveBeenCalledOnce();
+        } else {
+            fixture.root.activeElement = fixture.card;
+            fixture.state.closeTooltip();
+        }
+
+        expect(fixture.dismiss).toHaveBeenCalledOnce();
+        expect(fixture.state.snapshot).toBeNull();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.controller.signal.aborted).toBe(true);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['outside Escape', 'untrusted Escape', 'no snapshot', 'tools tier', 'plain hideAll',
+        'configuration notification', 'unmount', 'focus outside card', 'hidden card', 'missing tooltip'] as const)(
+        'does not request focus restoration for %s', async condition => {
+            const fixture = focusedFixture();
+            if (condition === 'outside Escape') fixture.escape(fixture.outside);
+            else if (condition === 'untrusted Escape') fixture.escape(fixture.host, false);
+            else if (condition === 'no snapshot') {
+                fixture.state.snapshot = null;
+                fixture.escape();
+            } else if (condition === 'tools tier') {
+                fixture.dismissTools.mockReturnValue(true);
+                const event = fixture.escape();
+                expect(event.preventDefault).toHaveBeenCalledOnce();
+                expect(fixture.state.showTooltip).toBe(true);
+                expect(fixture.controller.signal.aborted).toBe(false);
+            } else if (condition === 'plain hideAll') fixture.state.hideAll();
+            else if (condition === 'configuration notification') {
+                fixture.config.harness.enabled = !fixture.config.harness.enabled;
+                fixture.state.selectionConfigVersion += 1;
+                await Vue.nextTick();
+                expect(fixture.state.snapshot).toBeNull();
+            } else if (condition === 'unmount') fixture.unmount();
+            else {
+                if (condition === 'focus outside card') fixture.root.activeElement = fixture.outside;
+                if (condition === 'hidden card') fixture.state.showTooltip = false;
+                if (condition === 'missing tooltip') fixture.state.tooltipRef = null;
+                fixture.state.closeTooltip();
+                expect(fixture.state.snapshot).toBeNull();
+            }
+
+            expect(fixture.dismiss).not.toHaveBeenCalled();
+            expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+        },
+    );
+});
+
+
+describe('selection translation authentication copy and request ownership', () => {
+    // Run the actual SFC catch with the real error protocol. Only the translation
+    // transport and browser message ports use the existing lifecycle fixture.
+    const authenticationCopy = '密钥或权限无效';
+    const genericCopy = '翻译失败，请重试';
+
+    function begin(fixture: ReturnType<typeof mountSelection>, text = 'Good ideas deserve attention.') {
+        fixture.config.from = 'en';
+        fixture.config.to = 'zh-Hans';
+        fixture.state.snapshot = Vue.markRaw({text, parts: [{kind: 'text', text}],
+            range: {getClientRects: () => []} as unknown as Range});
+        fixture.state.selectedText = text;
+        fixture.state.showTooltip = true;
+        return fixture.state.beginSelectionContentRequest(text);
+    }
+
+    function deferredTranslation() {
+        let resolve!: (text: string) => void;
+        let reject!: (cause: Error) => void;
+        const promise = new Promise<string>((yes, no) => {resolve = yes; reject = no;});
+        return {promise, resolve, reject};
+    }
+
+    function structuredAuthentication() {
+        const payload = translationErrors.serializeTranslationError({
+            message: 'PRIVATE_DIAGNOSTIC_OPAQUE_PROVIDER_DETAIL',
+            kind: 'authentication', retryable: false, statusCode: 403,
+        });
+        try {
+            translationErrors.unwrapTranslationResponse<never>(payload);
+        } catch (cause) {
+            expect(cause).toBeInstanceOf(translationErrors.TranslationRequestError);
+            return cause as translationErrors.TranslationRequestError;
+        }
+        throw new Error('The actual structured error protocol did not reject.');
+    }
+
+    it.each([
+        {label: 'missing API key', kind: 'authentication', copy: authenticationCopy,
+            cause: () => new Error('API key is not configured: PRIVATE_DIAGNOSTIC_MISSING_KEY')},
+        {label: 'structured authentication with an opaque message', kind: 'authentication', copy: authenticationCopy,
+            cause: structuredAuthentication},
+        {label: 'HTTP 401 through TranslationRequestError', kind: 'authentication', copy: authenticationCopy,
+            cause: () => new translationErrors.TranslationRequestError(translationErrors.serializeTranslationError({
+                message: 'HTTP 401: PRIVATE_DIAGNOSTIC_UNAUTHORIZED', statusCode: 401,
+            }))},
+        {label: 'HTTP 403', kind: 'authentication', copy: authenticationCopy,
+            cause: () => new Error('HTTP 403: PRIVATE_DIAGNOSTIC_FORBIDDEN')},
+        {label: 'rate limit mentioning an API key', kind: 'rate-limit', copy: genericCopy,
+            cause: () => new Error('429 rate limit for API key: PRIVATE_DIAGNOSTIC_RATE_LIMIT')},
+        {label: 'invalid model', kind: 'bad-request', copy: genericCopy,
+            cause: () => new Error('Invalid model: PRIVATE_DIAGNOSTIC_MODEL')},
+        {label: 'network failure', kind: 'network', copy: genericCopy,
+            cause: () => new TypeError('Failed to fetch: PRIVATE_DIAGNOSTIC_NETWORK')},
+        {label: 'unknown failure', kind: 'unknown', copy: genericCopy,
+            cause: () => new Error('PRIVATE_DIAGNOSTIC_UNKNOWN')},
+    ])('uses bounded UI copy for $label', async ({cause: createCause, kind, copy}) => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const request = begin(fixture);
+        const cause = createCause();
+        expect(translationErrors.serializeTranslationError(cause).kind).toBe(kind);
+        fixture.translateText.mockRejectedValueOnce(cause);
+
+        await fixture.state.requestTranslation(request);
+
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.state.error).toBe(copy);
+        expect(fixture.state.error).not.toContain('PRIVATE_DIAGNOSTIC');
+        expect(fixture.state.error).not.toBe(cause.message);
+        expect(fixture.state.activeContentRequest).toEqual(request);
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.state.isLoading).toBe(false);
+        expect(logged).toHaveBeenCalledWith('Selection translation error:', cause);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('ignores a late authentication failure while a replacement selection is still loading', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const old = deferredTranslation(), replacement = deferredTranslation();
+        fixture.translateText.mockReturnValueOnce(old.promise).mockReturnValueOnce(replacement.promise);
+        const oldRequest = begin(fixture, 'An earlier sentence.');
+        const oldPending = fixture.state.requestTranslation(oldRequest);
+        const oldController = fixture.state.translationAbortController;
+        const currentRequest = begin(fixture, 'The current sentence.');
+        const currentPending = fixture.state.requestTranslation(currentRequest);
+        const currentController = fixture.state.translationAbortController;
+        const activeRequest = fixture.state.activeContentRequest;
+
+        old.reject(structuredAuthentication());
+        await oldPending;
+
+        expect(oldController.signal.aborted).toBe(true);
+        expect(currentController.signal.aborted).toBe(false);
+        expect(fixture.state.activeContentRequest).toBe(activeRequest);
+        expect(fixture.state.translationAbortController).toBe(currentController);
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(true);
+        expect(fixture.state.translationResult).toBe('');
+        expect(logged).not.toHaveBeenCalled();
+        replacement.resolve('当前句子的译文。');
+        await currentPending;
+        expect(fixture.state.translationAnswer).toEqual({...currentRequest, answer: '当前句子的译文。'});
+        expect(fixture.state.translationResult).toBe('当前句子的译文。');
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('does not resurrect error copy after the owning selection card closes', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const response = deferredTranslation();
+        fixture.translateText.mockReturnValueOnce(response.promise);
+        const pending = fixture.state.requestTranslation(begin(fixture));
+        const controller = fixture.state.translationAbortController;
+
+        fixture.state.hideAll();
+        response.reject(structuredAuthentication());
+        await pending;
+
+        expect(controller.signal.aborted).toBe(true);
+        expect(fixture.state.snapshot).toBeNull();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.activeContentRequest).toBeNull();
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(logged).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('keeps AbortError silent even when its diagnostic contains authentication wording', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const request = begin(fixture);
+        fixture.translateText.mockRejectedValueOnce(new DOMException('API key: PRIVATE_DIAGNOSTIC_ABORT', 'AbortError'));
+
+        await fixture.state.requestTranslation(request);
+
+        expect(fixture.state.activeContentRequest).toEqual(request);
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(logged).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('allows an explicit manual retry to replace authentication copy with a successful translation', async () => {
+        const fixture = mountSelection();
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const request = begin(fixture);
+        fixture.translateText.mockRejectedValueOnce(structuredAuthentication());
+        await fixture.state.requestTranslation(request);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(fixture.state.error).toBe(authenticationCopy);
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+
+        fixture.translateText.mockResolvedValueOnce('好想法值得关注。');
+        fixture.state.retryTranslation();
+        await vi.advanceTimersByTimeAsync(0);
+        await Vue.nextTick();
+
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+        expect(fixture.state.activeContentRequest.generation).toBeGreaterThan(request.generation);
+        expect(fixture.state.translationAnswer).toEqual({...fixture.state.activeContentRequest, answer: '好想法值得关注。'});
+        expect(fixture.state.translationResult).toBe('好想法值得关注。');
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('preserves an independently completed dictionary answer when translation authentication later fails', async () => {
+        const fixture = mountSelection();
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const card = {word: 'read', normalizedWord: 'read', phonetics: [], sources: [],
+            meanings: [{partOfSpeech: '动词', definitions: [{definition: 'to understand written words',
+                translatedDefinition: '阅读并理解文字'}]}]};
+        fixture.browser.runtime.sendMessage.mockImplementation((message: any) => message.type === 'selectionWordLookup'
+            ? Promise.resolve({success: true, data: card}) : Promise.resolve({success: true, zoom: 1}));
+        const response = deferredTranslation();
+        fixture.translateText.mockReturnValueOnce(response.promise);
+        const request = begin(fixture, 'read');
+        const pending = fixture.state.requestTranslation(request);
+        await fixture.state.requestWordCard(request);
+        const completedCard = fixture.state.wordCard;
+        const completedAnswer = fixture.state.dictionaryAnswer;
+        expect(completedAnswer).toEqual({...request, answer: '阅读并理解文字'});
+
+        response.reject(structuredAuthentication());
+        await pending;
+
+        expect(fixture.state.error).toBe(authenticationCopy);
+        expect(fixture.state.wordCard).toBe(completedCard);
+        expect(fixture.state.dictionaryAnswer).toBe(completedAnswer);
+        expect(fixture.state.vocabularyAnswer).toBe('阅读并理解文字');
+        expect(fixture.state.wordCardError).toBe('');
+        expect(fixture.state.isWordCardLoading).toBe(false);
+        expect(fixture.state.isWordCardSupportLoading).toBe(false);
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.browser.runtime.sendMessage.mock.calls.filter(([message]) => message.type === 'selectionWordLookup')
+            .map(([message]) => message.translateFields)).toEqual([false, true]);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('uses bounded authentication copy after the real mixed code/prose batch request fails', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const parts: selectionCore.SelectionTextPart[] = [
+            {kind: 'text', text: 'Explain the call '},
+            {kind: 'code', text: 'reader.read()'},
+            {kind: 'text', text: ' before continuing.'},
+        ];
+        const text = 'Explain the call reader.read() before continuing.';
+        const request = begin(fixture, text);
+        const snapshot = Vue.markRaw({...fixture.state.snapshot, parts});
+        fixture.state.snapshot = snapshot;
+        const activeRequest = fixture.state.activeContentRequest;
+        expect(parts.map(part => part.text).join('')).toBe(text);
+        let rejectBatch!: (cause: Error) => void;
+        fixture.translateTextBatch.mockImplementationOnce(() => new Promise<string[]>((_resolve, reject) => {
+            rejectBatch = reject;
+        }));
+        const cause = structuredAuthentication();
+
+        const pending = fixture.state.requestTranslation(request);
+        const controller = fixture.state.translationAbortController;
+
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.translateTextBatch).toHaveBeenCalledOnce();
+        // The actual core function passes prose to the existing batch port.
+        // Code remains in the snapshot; no translation algorithm is copied here.
+        expect(fixture.translateTextBatch.mock.calls[0]?.[0]).toEqual(['Explain the call', 'before continuing.']);
+        expect(controller).toBeInstanceOf(AbortController);
+        expect(fixture.translateTextBatch.mock.calls[0]?.[2]).toEqual(expect.objectContaining({
+            signal: controller.signal, sourceLanguage: request.sourceLanguage, targetLanguage: request.targetLanguage,
+        }));
+        expect(controller.signal.aborted).toBe(false);
+        expect(fixture.state.isLoading).toBe(true);
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.translationParts).toEqual([]);
+
+        rejectBatch(cause);
+        await pending;
+
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.translateTextBatch).toHaveBeenCalledOnce();
+        expect(fixture.state.snapshot).toBe(snapshot);
+        expect(fixture.state.snapshot.parts).toBe(parts);
+        expect(parts).toEqual([
+            {kind: 'text', text: 'Explain the call '},
+            {kind: 'code', text: 'reader.read()'},
+            {kind: 'text', text: ' before continuing.'},
+        ]);
+        expect(fixture.state.selectedText).toBe(text);
+        expect(fixture.state.activeContentRequest).toBe(activeRequest);
+        expect(fixture.state.activeContentRequest).toEqual(request);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.error).toBe(authenticationCopy);
+        expect(fixture.state.error).not.toContain('PRIVATE_DIAGNOSTIC');
+        expect(fixture.state.error).not.toBe(cause.message);
+        expect(fixture.state.translationParts).toEqual([]);
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(controller.signal.aborted).toBe(false);
+        expect(fixture.state.isLoading).toBe(false);
+        expect(logged).toHaveBeenCalledWith('Selection translation error:', cause);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
+
+describe('selection authentication settings action ownership and rendered entry', () => {
+    const settingsMessage = {type: 'openOptionsPage', section: 'settings-general'};
+    const failureNotice = '无法打开设置，请从扩展菜单打开设置后重试';
+    const privateDetail = 'PRIVATE_SETTINGS_PROVIDER_CAUSE';
+    type Fixture = ReturnType<typeof mountSelection>;
+
+    function deferred<T>() {
+        let resolve!: (value: T) => void, reject!: (reason: Error) => void;
+        const promise = new Promise<T>((yes, no) => {resolve = yes; reject = no;});
+        return {promise, resolve, reject};
+    }
+
+    function authenticationCause() {
+        const response = translationErrors.serializeTranslationError({
+            message: privateDetail, kind: 'authentication', retryable: false, statusCode: 403,
+        });
+        try { translationErrors.unwrapTranslationResponse<never>(response); }
+        catch (cause) {
+            expect(cause).toBeInstanceOf(translationErrors.TranslationRequestError);
+            return cause as translationErrors.TranslationRequestError;
+        }
+        throw new Error('The real translation error protocol must reject.');
+    }
+
+    function begin(fixture: Fixture, text = 'Good ideas deserve attention.') {
+        fixture.state.snapshot = Vue.markRaw({text, parts: [{kind: 'text', text}],
+            range: {getClientRects: () => []} as unknown as Range});
+        fixture.state.selectedText = text;
+        fixture.state.showTooltip = true;
+        return fixture.state.beginSelectionContentRequest(text);
+    }
+
+    async function failedSelection(options: {render?: boolean; inline?: boolean; cause?: Error;
+        service?: string; selectionService?: string; adapter?: Record<string, unknown>} = {}) {
+        const fixture = mountSelection(false, options.adapter, {}, options.render === true);
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        fixture.config.from = 'en';
+        fixture.config.to = 'zh-Hans';
+        fixture.config.service = options.service ?? 'google';
+        fixture.config.selectionTranslationService = options.selectionService ?? '';
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        const card = {word: 'read', normalizedWord: 'read', phonetics: [], sources: [],
+            meanings: [{partOfSpeech: '动词', definitions: [{definition: 'to understand written words',
+                translatedDefinition: '阅读并理解文字'}]}]};
+        fixture.browser.runtime.sendMessage.mockImplementation((message: any) => message.type === 'selectionWordLookup'
+            ? Promise.resolve({success: true, data: card}) : Promise.resolve({success: true, zoom: 1}));
+        const translation = deferred<string>();
+        fixture.translateText.mockReturnValueOnce(translation.promise);
+        const request = begin(fixture, options.inline ? 'read' : undefined);
+        const pending = fixture.state.requestTranslation(request);
+        if (options.inline) await fixture.state.requestWordCard(request);
+        translation.reject(options.cause ?? authenticationCause());
+        await pending;
+        await Vue.nextTick();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+        return {...fixture, request};
+    }
+
+    function settingsCalls(fixture: Fixture) {
+        return fixture.browser.runtime.sendMessage.mock.calls.filter(([message]) => message.type === 'openOptionsPage');
+    }
+
+    function settingsResponse(fixture: Fixture, response: Promise<unknown>) {
+        fixture.browser.runtime.sendMessage.mockImplementation((message: any) => message.type === 'openOptionsPage'
+            ? response : Promise.resolve({success: true, zoom: 1}));
+    }
+
+    it.each([
+        {label: 'default built-in service', service: 'google', selectionService: '', dispatched: 'google'},
+        {label: 'different selected built-in service', service: 'deepseek', selectionService: 'openai', dispatched: 'openai'},
+        {label: 'selected custom profile', service: 'google', selectionService: 'custom:settings-owner', dispatched: 'custom:settings-owner'},
+    ])('opens only general settings for $label without changing translation or configuration', async options => {
+        const fixture = await failedSelection(options);
+        const authentication = fixture.state.authenticationError;
+        expect(authentication.service).toBe(options.dispatched);
+        expect(fixture.translateText.mock.calls[0]?.[2]).toEqual(expect.objectContaining({serviceOverride: options.dispatched}));
+        expect(settingsCalls(fixture)).toHaveLength(0);
+        const configBefore = JSON.stringify(fixture.config);
+        const active = fixture.state.activeContentRequest;
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture).map(([message]) => message)).toEqual([settingsMessage]);
+        expect(JSON.stringify(settingsCalls(fixture))).not.toContain('service');
+        expect(JSON.stringify(settingsCalls(fixture))).not.toContain(privateDetail);
+        expect(JSON.stringify(fixture.config)).toBe(configBefore);
+        expect(fixture.state.activeContentRequest).toBe(active);
+        expect(fixture.state.authenticationError).toBe(authentication);
+        expect(fixture.state.error).toBe('密钥或权限无效');
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.dictionaryAnswer).toBeNull();
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['standalone', 'dictionary inline'] as const)('renders both actions and dispatches the real configure click in the %s surface', async surface => {
+        const fixture = await failedSelection({render: true, inline: surface === 'dictionary inline'});
+        const port = fixture.renderPort!;
+        const selector = surface === 'standalone' ? '.fr-error-state' : '.fr-inline-error';
+        const other = surface === 'standalone' ? '.fr-inline-error' : '.fr-error-state';
+        expect(port.root.querySelector(other)).toBeNull();
+        const buttons = Array.from(port.root.querySelectorAll(`${selector} .fr-error-actions button`));
+        expect(buttons.map(button => button.textContent)).toEqual(['重试', '配置服务']);
+        expect(buttons).toHaveLength(2);
+        expect(buttons.every(button => button.getAttribute('type') === 'button')).toBe(true);
+        const dictionary = fixture.state.dictionaryAnswer, card = fixture.state.wordCard;
+        const calls = fixture.browser.runtime.sendMessage.mock.calls.length;
+        const response = deferred<unknown>();
+        settingsResponse(fixture, response.promise);
+        const pending = port.click(buttons[1]!);
+        const action = fixture.state.openingAuthenticationSettings;
+        await Vue.nextTick();
+        expect(action.authentication).toBe(fixture.state.authenticationError);
+        expect(buttons[1]!.hasAttribute('disabled')).toBe(true);
+        expect(buttons[0]!.hasAttribute('disabled')).toBe(false);
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture).map(([message]) => message)).toEqual([settingsMessage]);
+        response.resolve({success: true});
+        await pending;
+        await Vue.nextTick();
+        expect(buttons[1]!.hasAttribute('disabled')).toBe(false);
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledTimes(calls + 1);
+        expect(fixture.state.dictionaryAnswer).toBe(dictionary);
+        expect(fixture.state.wordCard).toBe(card);
+        if (surface === 'dictionary inline') {
+            expect(dictionary).toEqual({...fixture.request, answer: '阅读并理解文字'});
+            expect(port.root.querySelector('.fr-word-learning-card')?.textContent).toContain('阅读并理解文字');
+        }
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.state.error).toBe('密钥或权限无效');
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+        // Retry is the actual compiled template handler, not a setup-only assertion.
+        fixture.translateText.mockResolvedValueOnce('好想法值得关注。');
+        await port.click(buttons[0]!);
+        await vi.advanceTimersByTimeAsync(0);
+        await Vue.nextTick();
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.translationResult).toBe('好想法值得关注。');
+        expect(port.root.querySelector(`${selector} .fr-error-actions`)).toBeNull();
+        expect(fixture.state.authenticationError).toBeNull();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['standalone', 'dictionary inline'] as const)('renders only retry for an ordinary error in the %s surface', async surface => {
+        const fixture = await failedSelection({render: true, inline: surface === 'dictionary inline', cause: new TypeError('Failed to fetch')});
+        const selector = surface === 'standalone' ? '.fr-error-state' : '.fr-inline-error';
+        const buttons = Array.from(fixture.renderPort!.root.querySelectorAll(`${selector} .fr-error-actions button`));
+        expect(buttons.map(button => button.textContent)).toEqual(['重试']);
+        expect(fixture.state.authenticationError).toBeNull();
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture)).toHaveLength(0);
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['unsuccessful response', 'non-boolean success', 'missing response', 'rejected response', 'synchronous throw'] as const)('shows bounded feedback for the current action after %s', async outcome => {
+        const fixture = await failedSelection({inline: true});
+        const authentication = fixture.state.authenticationError;
+        const dictionary = fixture.state.dictionaryAnswer, card = fixture.state.wordCard;
+        const configBefore = JSON.stringify(fixture.config);
+        fixture.browser.runtime.sendMessage.mockImplementation((message: any) => {
+            if (message.type !== 'openOptionsPage') return Promise.resolve({success: true, zoom: 1});
+            if (outcome === 'synchronous throw') throw new Error(privateDetail);
+            if (outcome === 'rejected response') return Promise.reject(new Error(privateDetail));
+            if (outcome === 'missing response') return Promise.resolve(undefined);
+            return Promise.resolve({success: outcome === 'non-boolean success' ? 1 : false, error: privateDetail});
+        });
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture).map(([message]) => message)).toEqual([settingsMessage]);
+        expect(fixture.state.noticeMessage).toBe(failureNotice);
+        expect(fixture.state.noticeMessage).not.toContain(privateDetail);
+        expect(fixture.state.authenticationError).toBe(authentication);
+        expect(fixture.state.error).toBe('密钥或权限无效');
+        expect(fixture.state.dictionaryAnswer).toBe(dictionary);
+        expect(fixture.state.wordCard).toBe(card);
+        expect(fixture.state.translationResult).toBe('');
+        expect(JSON.stringify(fixture.config)).toBe(configBefore);
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['close', 'unmount', 'new selection', 'manual retry', 'provider change', 'target change',
+        'adapter invalidation', 'reading then return', 'hidden then return'] as const)('suppresses a late settings rejection after %s', async boundary => {
+        const acceptsRange = vi.fn(() => true);
+        const fixture = await failedSelection({adapter: {acceptsRange}});
+        const response = deferred<unknown>();
+        settingsResponse(fixture, response.promise);
+        const pending = fixture.state.openAuthenticationSettings();
+        expect(fixture.state.openingAuthenticationSettings).not.toBeNull();
+        if (boundary === 'close') fixture.state.hideAll();
+        else if (boundary === 'unmount') fixture.unmount();
+        else if (boundary === 'new selection') begin(fixture, 'A new current sentence.');
+        else if (boundary === 'manual retry') {
+            fixture.state.retryTranslation();
+            await vi.advanceTimersByTimeAsync(0);
+        } else if (boundary === 'provider change') fixture.config.service = 'microsoft';
+        else if (boundary === 'target change') {
+            fixture.config.to = 'fr';
+            fixture.notifyConfig();
+            expect(fixture.state.effectiveTargetLanguage).toBe('fr');
+            expect(fixture.state.authenticationError.request.targetLanguage).toBe('zh-Hans');
+        }
+        else if (boundary === 'adapter invalidation') acceptsRange.mockReturnValue(false);
+        else if (boundary === 'reading then return') {
+            fixture.state.readingMode = true;
+            expect(fixture.state.openingAuthenticationSettings).toBeNull();
+            fixture.state.readingMode = false;
+        } else {
+            fixture.state.showTooltip = false;
+            expect(fixture.state.openingAuthenticationSettings).toBeNull();
+            fixture.state.showTooltip = true;
+        }
+        await Vue.nextTick();
+        const current = {authentication: fixture.state.authenticationError, request: fixture.state.activeContentRequest,
+            error: fixture.state.error, translation: fixture.state.translationResult, dictionary: fixture.state.dictionaryAnswer};
+        if (boundary !== 'reading then return' && boundary !== 'hidden then return') {
+            await fixture.state.openAuthenticationSettings();
+            expect(settingsCalls(fixture)).toHaveLength(1);
+        }
+        // Transient reading/hidden revokes the original action even after return.
+        // Do not start a second unresolved action in this late-response table.
+        response.reject(new Error(privateDetail));
+        await pending;
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.state.authenticationError).toBe(current.authentication);
+        expect(fixture.state.activeContentRequest).toBe(current.request);
+        expect(fixture.state.error).toBe(current.error);
+        expect(fixture.state.translationResult).toBe(current.translation);
+        expect(fixture.state.dictionaryAnswer).toBe(current.dictionary);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['provider', 'target', 'adapter', 'reading', 'hidden'] as const)('rejects a new settings action when the original authentication loses its %s boundary', async boundary => {
+        const acceptsRange = vi.fn(() => true);
+        const fixture = await failedSelection({adapter: {acceptsRange}});
+        if (boundary === 'provider') fixture.config.service = 'microsoft';
+        else if (boundary === 'target') {
+            fixture.config.to = 'fr';
+            fixture.notifyConfig();
+            expect(fixture.state.effectiveTargetLanguage).toBe('fr');
+            expect(fixture.state.authenticationError.request.targetLanguage).toBe('zh-Hans');
+        }
+        else if (boundary === 'adapter') acceptsRange.mockReturnValue(false);
+        else if (boundary === 'reading') fixture.state.readingMode = true;
+        else fixture.state.showTooltip = false;
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.state.isAuthenticationErrorCurrent(fixture.state.authenticationError)).toBe(false);
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture)).toHaveLength(0);
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('keeps a newer action pending when an older action finishes after reading returns', async () => {
+        const fixture = await failedSelection();
+        const old = deferred<unknown>(), current = deferred<unknown>();
+        fixture.browser.runtime.sendMessage.mockImplementation((message: any) => {
+            if (message.type !== 'openOptionsPage') return Promise.resolve({success: true, zoom: 1});
+            return settingsCalls(fixture).length === 1 ? old.promise : current.promise;
+        });
+        const oldPending = fixture.state.openAuthenticationSettings();
+        const oldAction = fixture.state.openingAuthenticationSettings;
+        fixture.state.readingMode = true;
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        fixture.state.readingMode = false;
+        const currentPending = fixture.state.openAuthenticationSettings();
+        const currentAction = fixture.state.openingAuthenticationSettings;
+        expect(currentAction).not.toBe(oldAction);
+        expect(currentAction.authentication).toBe(oldAction.authentication);
+        old.reject(new Error(privateDetail));
+        await oldPending;
+        expect(fixture.state.openingAuthenticationSettings).toBe(currentAction);
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(settingsCalls(fixture).map(([message]) => message)).toEqual([settingsMessage, settingsMessage]);
+        current.resolve({success: true});
+        await currentPending;
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('allows general settings after an adapter authentication failure before service dispatch', async () => {
+        const cause = authenticationCause();
+        const fixture = mountSelection(false, {acceptsRange: () => true, context: () => {throw cause;}});
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        fixture.config.from = 'en';
+        fixture.config.to = 'zh-Hans';
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        const request = begin(fixture);
+        await fixture.state.requestTranslation(request);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.state.authenticationError.service).toBeUndefined();
+        expect(fixture.state.authenticationError.request).toEqual(request);
+        expect(fixture.state.isAuthenticationErrorCurrent(fixture.state.authenticationError)).toBe(true);
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture).map(([message]) => message)).toEqual([settingsMessage]);
+        expect(fixture.state.error).toBe('密钥或权限无效');
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
     });
 });

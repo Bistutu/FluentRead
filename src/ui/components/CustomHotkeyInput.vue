@@ -193,7 +193,7 @@ const parsedHotkey = computed<ParsedHotkey | null>(() => {
 });
 
 const isValidHotkey = computed(() => Boolean(
-  parsedHotkey.value?.isValid && !errorMessage.value && !conflictWarning.value,
+  !isRecording.value && parsedHotkey.value?.isValid && !errorMessage.value && !conflictWarning.value,
 ));
 
 const displayHotkey = computed(() => {
@@ -366,6 +366,9 @@ function handleKeyUp(event: KeyboardEvent) {
   event.preventDefault();
   event.stopPropagation();
 
+  // 尚无普通键时立即清空草稿；已有普通键则保留组合，允许先释放修饰键。
+  if (![...pressedKeys.value].some(key => Object.prototype.hasOwnProperty.call(REGULAR_KEYS, key))) pressedKeys.value.clear();
+
   // 延迟一点再生成快捷键，确保所有键都被记录
   if (recordingTimer !== null) clearTimeout(recordingTimer);
   recordingTimer = setTimeout(() => {
@@ -394,10 +397,13 @@ function generateHotkeyFromKeys() {
     }
   }
 
-  if (regularKey) {
-    currentHotkey.value = [...modifiers, regularKey].join('+');
+  if (!regularKey) {
+    // 等待期间新按下修饰键仍不算完成一次录制；普通键会重新记录当时仍按住的修饰键。
+    pressedKeys.value.clear();
+    return;
   }
 
+  currentHotkey.value = [...modifiers, regularKey].join('+');
   stopRecording();
 }
 

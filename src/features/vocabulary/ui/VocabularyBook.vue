@@ -155,12 +155,12 @@ import {applyInterfaceTheme} from '@/src/ui/interfaceAppearance'
 import {ElOption} from 'element-plus';
 function translateControlLabel(value: string): string { return translateLegacyText(value, normalizeUiLanguage(runtimeConfig.uiLanguage)); }
 
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, shallowRef, watch } from 'vue';
 import VocabularyStudy from './VocabularyStudy.vue';
 import CollectionEntry from './CollectionEntry.vue';
 import VocabularySource from './VocabularySource.vue';
 import {vocabularySourceContext, vocabularySourceLink} from '../source';
-import {ReadingAnswer} from '@/src/features/reading-assistant/public';
+import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
 import {ElMessageBox} from 'element-plus';
 import browser from 'webextension-polyfill';
 import {normalizeUiLanguage, translate, translateLegacyText, type TranslationParams} from '@/src/core/i18n';
@@ -211,7 +211,11 @@ const targetLanguageKey = ref('');
 const configBusy = ref(false);
 const entries = ref<VocabularyEntry[]>([]);
 const selectedEntryId = ref('');
-const studyEntry = computed(() => entries.value.find(entry => entry.id === selectedEntryId.value));
+const studyEntry = computed(() => {
+  const entryId = selectedEntryId.value;
+  if (entryId === '') return undefined;
+  return entries.value.find(entry => entry.id === entryId);
+});
 const recallDraft = ref('');
 const loading = ref(false);
 const actionBusy = ref(false);
@@ -724,7 +728,7 @@ async function importCollection(event: Event): Promise<void> {
     if (!lifecycle.isActive()) return;
     await loadEntries();
     showToast(`已导入：新增 ${result.inserted} 条，更新 ${result.updated} 条，跳过 ${result.skipped} 条`);
-  } catch (cause) {if (lifecycle.isActive()) showToast(cause instanceof SyntaxError ? '无法读取文件，请选择 FluentRead 导出的收藏 JSON 文件' : cause instanceof Error ? cause.message : '收藏导入失败');}
+  } catch (cause) {if (lifecycle.isActive()) showToast(cause instanceof SyntaxError ? t('learning.collection.fileReadFailed') : cause instanceof Error ? cause.message : '收藏导入失败');}
   finally {if (lifecycle.isActive()) actionBusy.value = false;}
 }
 
@@ -808,8 +812,12 @@ function handleBookChanged(message: unknown): undefined {
   if (lifecycle.isActive() && (message as VocabularyBookChangedMessage)?.type === VOCABULARY_BOOK_CHANGED_MESSAGE) void loadEntries();
   return undefined;
 }
+// 缓存保留复习会话与已接受的保存，只有当前显示的页面处理全局复习按键。
+let reviewKeyboardActive = true;
+onActivated(() => { reviewKeyboardActive = true; });
+onDeactivated(() => { reviewKeyboardActive = false; });
 function handleReviewKeyboard(event: KeyboardEvent): void {
-  if (!lifecycle.isActive() || !reviewActive.value || actionBusy.value) return;
+  if (!reviewKeyboardActive || !lifecycle.isActive() || !reviewActive.value || actionBusy.value) return;
   const target = event.target as HTMLElement | null;
   if (target?.matches('input, textarea, select, button, a')) return;
   if (event.key === 'Escape') { event.preventDefault(); finishReview(); return; }

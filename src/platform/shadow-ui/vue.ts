@@ -2,7 +2,7 @@
  * @file src/platform/shadow-ui/vue.ts
  *
  * 文件职责：把 Vue 应用挂载到扩展创建的隔离 Shadow DOM，并注入跨 feature 共享的基础样式与事件隔离设置。
- * 主要内容：定义 VueShadowMount 与 VueShadowUiOptions，依据 options 创建隔离宿主、样式和 app；异步创建前后检查扩展上下文，释放失败构建的 app 与 DOM，并按挂载归属返回由 WXT 管理的资源句柄。
+ * 主要内容：定义 VueShadowMount 与 VueShadowUiOptions，依据 options 创建隔离宿主、样式和 app，将 app 与当前自有容器交给装配 hook；异步创建前后检查扩展上下文，释放失败构建的 app 与 DOM，并按挂载归属返回由 WXT 管理的资源句柄。
  * 模块边界：本文件属于 platform 基础设施边界，只封装浏览器、网络、存储上下文或 Shadow DOM 机制；不决定翻译业务策略，不直接实现 feature，业务层通过类型化端口消费这里的能力。
  */
 
@@ -26,8 +26,8 @@ export interface VueShadowUiOptions {
   props?: Record<string, unknown> | ((container: HTMLElement) => Record<string, unknown>);
   zIndex?: number;
   mode?: 'open' | 'closed';
-  /** 将当前 app 的插件和全局组件注册交给调用方；默认只安装基础 i18n。 */
-  configureApp?: (app: VueApp) => void;
+  /** 将当前 app 与本次挂载的自有容器交给调用方注册插件和组件；默认只安装基础 i18n。 */
+  configureApp?: (app: VueApp, container: HTMLElement) => void;
   /** 让 Shadow UI 承载一个独立的全视口页面，而不是零尺寸浮层。 */
   viewport?: boolean;
 }
@@ -117,7 +117,7 @@ export async function createVueShadowUi(
       currentMount = mounted;
       if (initialMount === undefined) initialMount = mounted;
       try {
-        if (options.configureApp) options.configureApp(app);
+        if (options.configureApp) options.configureApp(app, container);
         else app.use(createUiI18nPlugin());
         // 配置 hook 同步重装时，旧 app 不能再覆盖新 owner 的容器。
         if (currentMount === mounted) mounted.instance = app.mount(container);

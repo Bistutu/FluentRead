@@ -1,7 +1,7 @@
 <!--
  * @file src/ui/components/UiSelect.vue
  * 文件职责：提供扩展界面统一的下拉选择外观，避免浏览器原生菜单破坏品牌风格。
- * 主要内容：复用 Element Plus 的选择、筛选、多选、键盘与弹层定位，支持按调用方需要独立关闭搜索装饰，单选长标签在关闭时自然换行，透传属性、事件和插槽；仅为 Shadow Root 菜单监听窄屏变化，缓存停用时关闭菜单并清理监听。
+ * 主要内容：复用 Element Plus 的选择、筛选、多选、键盘与弹层定位，支持按调用方需要独立关闭搜索装饰，单选长标签在关闭时自然换行，透传属性、事件和插槽；仅为 Shadow Root 菜单监听窄屏变化，以实例局部指令保留鼠标目标与外部传播，缓存停用时关闭菜单并清理监听。
  * 模块边界：不解释选项、不读写配置；选项内容和挂载容器由调用方提供，不用于宿主网页原生控件。
  -->
 <template>
@@ -36,7 +36,8 @@
 </template>
 <script setup lang="ts">
 import {computed, getCurrentInstance, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, useSlots, type Slots} from 'vue';
-import {ElSelect} from 'element-plus';
+import {ClickOutside, ElSelect as ElementSelect} from 'element-plus';
+import {createShadowSelectOutside} from '@/src/ui/shadowSelectOutside';
 import {useUiI18n} from '@/src/ui/i18n';
 import 'element-plus/es/components/select/style/css';
 defineOptions({inheritAttrs: false});
@@ -51,7 +52,10 @@ withDefaults(defineProps<{
 const {t} = useUiI18n();
 const menuOpen = ref(false);
 const slots: Slots = useSlots();
-const select = ref<InstanceType<typeof ElSelect>>();
+const select = ref<InstanceType<typeof ElementSelect>>();
+const shadowOutside = createShadowSelectOutside(ClickOutside);
+// 仅替换本实例的指令定义，保留原选择器与全局 ClickOutside。
+const ElSelect = {...ElementSelect, directives: {...ElementSelect.directives, ClickOutside: shadowOutside.directive}};
 const teleported = ref(true);
 const componentInstance = getCurrentInstance();
 const narrowViewport = ref(false);
@@ -80,14 +84,16 @@ onMounted(() => {
     teleported.value = false;
   }
   startViewportListener();
+  shadowOutside.start();
 });
-onActivated(startViewportListener);
+onActivated(() => {startViewportListener();shadowOutside.start();});
 onDeactivated(() => {
   select.value?.blur();
   menuOpen.value = false;
   stopViewportListener();
+  shadowOutside.stop();
 });
-onBeforeUnmount(stopViewportListener);
+onBeforeUnmount(() => {stopViewportListener();shadowOutside.stop();});
 defineExpose({
   focus: () => select.value?.focus(),
   blur: () => select.value?.blur(),
@@ -157,6 +163,8 @@ defineExpose({
   --el-text-color-placeholder: var(--muted, #737c8f);
   --el-fill-color-light: var(--surface-soft, #f7f8fb);
 }
+/* 退场菜单及时让出鼠标命中，避免切换选择器时截走松开事件。 */
+.fluentread-select-popper.el-zoom-in-top-leave-active { pointer-events: none; }
 .fluentread-select-popper .el-select-dropdown { max-width: calc(100vw - 26px); border-radius: inherit; }
 .fluentread-select-popper--searchable .el-select-dropdown { min-width: min(220px, calc(100vw - 26px)); }
 .fluentread-select-popper .el-select-dropdown__wrap { max-height: min(320px, 50vh); overscroll-behavior: contain; }

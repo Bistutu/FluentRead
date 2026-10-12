@@ -32,7 +32,7 @@ import {
     translateVideoSubtitleCues,
     VIDEO_CAPTION_SEGMENT_SELECTOR,
 } from '@/src/features/video-subtitle/content/runtime';
-import {applyVideoDisplayState, findVideoPlayer, findCaptionContainer} from '@/src/features/video-subtitle/content/ui';
+import {applyVideoDisplayState, findVideoPlayer, findCaptionContainer, getVisibleCaptionSegments} from '@/src/features/video-subtitle/content/ui';
 import {validateYoutubeTimedTextMessage} from '@/src/features/video-subtitle/content/youtubeTimedTextMessage';
 import {config} from '@/src/services/config/store';
 import { normalizeVideoSubtitleFontSize } from '@/src/core/config/model';
@@ -139,40 +139,135 @@ describe('YouTube 视频字幕识别', () => {
     });
 
     it('按播放器中的字幕片段合并文本，并忽略空片段', () => {
-        const segments = [
-            { textContent: '  This is ', contains: () => false },
-            { textContent: 'a test.\n', contains: () => false },
-            { textContent: '', contains: () => false },
-        ];
-        const container = {
-            querySelectorAll: (selector: string) => {
-                expect(selector).toBe(VIDEO_CAPTION_SEGMENT_SELECTOR);
-                return segments;
-            },
-        } as unknown as Element;
+        const {document} = parseHTML('<div id="captions"><span class="ytp-caption-segment">  This is </span><span class="ytp-caption-segment">a test.\n</span><span class="ytp-caption-segment"></span></div>');
+        const container = document.getElementById('captions')!;
+        const query = vi.spyOn(container, 'querySelectorAll');
 
         expect(readVisibleCaptionText(container)).toBe('This is a test.');
+        expect(query).toHaveBeenCalledWith(VIDEO_CAPTION_SEGMENT_SELECTOR);
         expect(readVisibleCaptionText(null)).toBe('');
     });
 
-    it('优先读取叶子字幕片段，避免 YouTube 嵌套节点重复拼接', () => {
-        const child = { textContent: 'A subtitle.', contains: () => false };
-        const parent = { textContent: 'A subtitle.', contains: (node: unknown) => node === child };
-        const container = {
-            querySelectorAll: () => [parent, child],
-        } as unknown as Element;
+    it('保留外层字幕片段的完整文本，避免嵌套节点重复拼接', () => {
+        const {document} = parseHTML('<div id="captions"><span id="outer" class="ytp-caption-segment">Before <i><span class="ytp-caption-segment">A subtitle.</span></i> after.</span></div>');
+        const container = document.getElementById('captions')!;
 
-        expect(readVisibleCaptionText(container)).toBe('A subtitle.');
+        expect(getVisibleCaptionSegments(container)).toEqual([document.getElementById('outer')]);
+        expect(readVisibleCaptionText(container)).toBe('Before A subtitle. after.');
     });
 
     it('存在原生字幕片段时忽略字幕设置等 captions-text 文本', () => {
-        const subtitle = { textContent: 'the axioms and the basics.', contains: () => false };
-        const settings = { textContent: '英语（自动生成）点击 查看设置', contains: () => false };
-        const container = {
-            querySelectorAll: (selector: string) => selector === VIDEO_CAPTION_SEGMENT_SELECTOR ? [subtitle] : [settings],
-        } as unknown as Element;
+        const {document} = parseHTML('<div id="captions"><span id="subtitle" class="ytp-caption-segment">the axioms and the basics.</span><span class="captions-text">英语（自动生成）点击 查看设置</span></div>');
+        const container = document.getElementById('captions')!;
 
+        expect(getVisibleCaptionSegments(container)).toEqual([document.getElementById('subtitle')]);
         expect(readVisibleCaptionText(container)).toBe('the axioms and the basics.');
+    });
+
+    it.each([
+        {count: 10, wrapped: false},
+        {count: 50, wrapped: true},
+        {count: 200, wrapped: false},
+    ])('分离的 $count 个原生片段不执行两两 contains 扫描（wrapper=$wrapped）', ({count, wrapped}) => {
+        const {document} = parseHTML('<div id="captions"></div>');
+        const container = document.getElementById('captions')!;
+        const segments = Array.from({length: count}, (_, index) => {
+            const segment = document.createElement('span');
+            segment.className = 'ytp-caption-segment';
+            segment.textContent = `word-${index}`;
+            if (wrapped) {
+                const wrapper = document.createElement('i');
+                wrapper.appendChild(segment);
+                container.appendChild(wrapper);
+            } else container.appendChild(segment);
+            return segment;
+        });
+        const contains = segments.map(segment => vi.spyOn(segment, 'contains'));
+
+        expect(getVisibleCaptionSegments(container)).toEqual(segments);
+        expect(contains.reduce((calls, spy) => calls + spy.mock.calls.length, 0)).toBe(0);
+        expect(readVisibleCaptionText(container)).toBe(segments.map(segment => segment.textContent).join(' '));
+        expect(contains.reduce((calls, spy) => calls + spy.mock.calls.length, 0)).toBe(0);
+    });
+
+    it('同一节点后续重挂、跨容器移动与新插入都重新读取当前候选关系', () => {
+        const {document} = parseHTML('<main><div id="captions"><span id="outer" class="ytp-caption-segment">Before <span id="middle" class="ytp-caption-segment">middle <span id="inner" class="ytp-caption-segment">inner</span></span> after.</span></div><div id="other"></div></main>');
+        const container = document.getElementById('captions')!;
+        const other = document.getElementById('other')!;
+        const outer = document.getElementById('outer')!;
+        const middle = document.getElementById('middle')!;
+        const inner = document.getElementById('inner')!;
+
+        expect(getVisibleCaptionSegments(container)).toEqual([outer]);
+        expect(readVisibleCaptionText(container)).toBe('Before middle inner after.');
+        container.appendChild(inner);
+        expect(getVisibleCaptionSegments(container)).toEqual([outer, inner]);
+        expect(readVisibleCaptionText(container)).toBe('Before middle after. inner');
+        other.appendChild(inner);
+        expect(getVisibleCaptionSegments(container)).toEqual([outer]);
+        expect(getVisibleCaptionSegments(other)).toEqual([inner]);
+        middle.appendChild(inner);
+        const added = document.createElement('span');
+        added.className = 'ytp-caption-segment'; added.textContent = 'Added.';
+        container.appendChild(added);
+        expect(getVisibleCaptionSegments(container)).toEqual([outer, added]);
+        expect(readVisibleCaptionText(container)).toBe('Before middle inner after. Added.');
+    });
+
+    it('容器本身与候选集外的祖先不能排除容器内的片段', () => {
+        const {document} = parseHTML('<div class="ytp-caption-segment"><div id="captions" class="ytp-caption-segment"><i><span id="first" class="ytp-caption-segment">First.</span></i><span id="second" class="ytp-caption-segment">Second.</span></div></div>');
+        const container = document.getElementById('captions')!;
+        const expected = [document.getElementById('first'), document.getElementById('second')];
+        expect(getVisibleCaptionSegments(container)).toEqual(expected);
+        expect(readVisibleCaptionText(container)).toBe('First. Second.');
+        container.remove();
+        expect(getVisibleCaptionSegments(container)).toEqual(expected);
+        expect(readVisibleCaptionText(container)).toBe('First. Second.');
+    });
+
+    it('没有原生片段时 fallback 同样保留外层候选，空容器保持为空', () => {
+        const {document} = parseHTML('<div id="captions"><span id="outer" class="captions-text">Before <i><span class="captions-text">fallback</span></i> after.</span><span id="second" class="captions-text">Second.</span></div><div id="empty" class="captions-text"></div>');
+        const container = document.getElementById('captions')!;
+        expect(getVisibleCaptionSegments(container)).toEqual([document.getElementById('outer'), document.getElementById('second')]);
+        expect(readVisibleCaptionText(container)).toBe('Before fallback after. Second.');
+        expect(getVisibleCaptionSegments(document.getElementById('empty')!)).toEqual([]);
+        expect(readVisibleCaptionText(document.getElementById('empty'))).toBe('');
+    });
+
+    it('取得静态节点列表后同步卸载的真实独立片段仍保留文本', () => {
+        const {document} = parseHTML('<div id="captions"><span class="ytp-caption-segment">First.</span><span class="ytp-caption-segment">Second.</span></div>');
+        const container = document.getElementById('captions')!;
+        const segments = Array.from(container.querySelectorAll<HTMLElement>(VIDEO_CAPTION_SEGMENT_SELECTOR));
+        const query = container.querySelectorAll.bind(container);
+        vi.spyOn(container, 'querySelectorAll').mockImplementationOnce((selector: string) => {
+            const result = query(selector);
+            result.forEach(segment => segment.remove());
+            return result;
+        });
+        expect(getVisibleCaptionSegments(container)).toEqual(segments);
+        expect(segments.every(segment => segment.parentElement === null)).toBe(true);
+        expect(getVisibleCaptionSegments(container)).toEqual([]);
+    });
+
+    it('滚动窗口保持每片段几何读取，下一次调用立即采用新裁剪位置', () => {
+        const {document} = parseHTML('<div id="captions"><div class="ytp-caption-window-rollup"><span id="first" class="ytp-caption-segment">First.</span><span id="second" class="ytp-caption-segment">Second.</span></div></div>');
+        const container = document.getElementById('captions')!;
+        const rollup = container.querySelector<HTMLElement>('.ytp-caption-window-rollup')!;
+        const first = document.getElementById('first')!, second = document.getElementById('second')!;
+        let windowTop = 100;
+        const rollupRect = vi.fn(() => ({top: windowTop, bottom: windowTop + 40, height: 40} as DOMRect));
+        const firstRect = vi.fn(() => ({top: 100, bottom: 120, height: 20} as DOMRect));
+        const secondRect = vi.fn(() => ({top: 150, bottom: 170, height: 20} as DOMRect));
+        rollup.getBoundingClientRect = rollupRect;
+        first.getBoundingClientRect = firstRect;
+        second.getBoundingClientRect = secondRect;
+        expect(getVisibleCaptionSegments(container)).toEqual([first]);
+        expect(rollupRect).toHaveBeenCalledTimes(2);
+        expect(firstRect).toHaveBeenCalledOnce(); expect(secondRect).toHaveBeenCalledOnce();
+        windowTop = 140;
+        expect(getVisibleCaptionSegments(container)).toEqual([second]);
+        expect(rollupRect).toHaveBeenCalledTimes(4);
+        expect(firstRect).toHaveBeenCalledTimes(2); expect(secondRect).toHaveBeenCalledTimes(2);
     });
 
     it('保留播放器菜单需要的三种显示模式，并为服务显示用户可读名称', () => {

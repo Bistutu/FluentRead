@@ -179,8 +179,9 @@ interface FullPageSession extends FullPageRequestSessionState, ModalPrioritySess
     /**
      * 用户在本次全文会话中显式恢复的候选标识。来源快照允许真实宿主编辑
      * 清除取消墓碑，同时让扩展自身产生的恢复 mutation 继续排除该片段。
+     * 按节点弱关联，不因保留取消记录而延长已被宿主删除节点的生命周期。
      */
-    userCancelledCandidates: Map<Node, string>;
+    userCancelledCandidates: WeakMap<Node, string>;
     /** 用户滚动期间暂停新增翻译/重排，等待虚拟列表稳定后再继续。 */
     scrollController: FullPageScrollController;
     /** 宿主连续拒绝 wrapper 后，对稳定边界内的同源候选停止写 DOM。 */
@@ -1379,7 +1380,7 @@ function resolveStatefulMutationTarget(element: Element): HTMLElement | false {
 }
 
 /**
- * materialize 行内段会把来源节点移入合成 span；全文的 loading spinner 延迟挂载。
+ * materialize 的 childList 可在延迟 spinner 创建前送达；尚未创建允许零产物，已登记则必须保持唯一归属。
  * 这些真实 childList 记录会在 beginTranslation 之后、异步 provider 仍待完成时送达。
  * 只有本 generation 捕获的精确来源所有权、HTML 和 Text 槽身份都保持完整时才接受；
  * 任何宿主插入（包括伪装成 FluentRead 产物的节点）都必然无法通过至少一项检查，
@@ -1391,9 +1392,8 @@ function isIntactLoadingSyntheticChildList(
 ): boolean {
     if (!state.syntheticSegment || !target.matches('[data-fr-translation-segment="true"]')) return false;
     const spinner = state.spinner;
-    if (spinner && (spinner.parentNode !== target || !spinner.matches('[data-fr-translation-owned="true"]'))) {
-        return false;
-    }
+    if (spinner !== undefined && (spinner.parentNode !== target || !spinner.matches('[data-fr-translation-owned="true"]'))) return false;
+
     const expectedSourceNodes = state.syntheticSourceNodes;
     if (!expectedSourceNodes) return false;
     const currentSourceNodes = Array.from(target.childNodes).filter((node) => node !== spinner);
@@ -1401,7 +1401,7 @@ function isIntactLoadingSyntheticChildList(
         currentSourceNodes.some((node, index) => node !== expectedSourceNodes[index])) return false;
 
     const artifacts = Array.from(target.querySelectorAll(TRANSLATION_ARTIFACT_SELECTOR));
-    if (artifacts.length !== (spinner ? 1 : 0) || (spinner && artifacts[0] !== spinner)) return false;
+    if (artifacts.length !== (spinner === undefined ? 0 : 1) || (spinner !== undefined && artifacts[0] !== spinner)) return false;
 
     const sourceClone = target.cloneNode(false) as HTMLElement;
     currentSourceNodes.forEach((node) => sourceClone.appendChild(node.cloneNode(true)));
@@ -2013,7 +2013,7 @@ function createFullPageSession(
         statefulAncestorsByTarget: new WeakMap(),
         lifecycleRetries: new WeakMap(),
         unchangedCandidates: new WeakMap(),
-        userCancelledCandidates: new Map(),
+        userCancelledCandidates: new WeakMap(),
         inFlightCandidates: new Map(),
         scrollController,
         bilingualRemountCapitulations: createBilingualRemountCapitulationRegistry(),
@@ -2067,7 +2067,7 @@ function disposeFullPageSession(session: FullPageSession): void {
     session.statefulTargetsByAncestor.clear();
     session.statefulAncestorsByTarget = new WeakMap();
     session.inFlightCandidates.clear();
-    session.userCancelledCandidates.clear();
+    session.userCancelledCandidates = new WeakMap();
     session.translationSlotCache.clear();
     session.dirtyRoots.clear();
     session.dirtyRootsBroadMode = false;

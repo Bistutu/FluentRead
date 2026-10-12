@@ -1,7 +1,7 @@
 <!--
  * @file src/features/reading-assistant/ui/HarnessReadingHistory.vue
  * 文件职责：在学习中心集中展示本机保存的 30 天阅读记录，并按原文查看完整问答。
- * 主要内容：提供分页记录列表、独立 Markdown 详情、刷新、删除和清空操作，以异步代次避免迟到读取覆盖当前界面。
+ * 主要内容：提供分页记录列表、独立 Markdown 详情、刷新、删除和清空操作，以异步代次避免迟到读取覆盖当前界面；清空确认只在发起页面仍挂载时继续；日期格式器在本组件每轮同步模板渲染内复用，下轮重新读取系统默认语言与时区。
  * 模块边界：只调用 reading-assistant 的记录客户端，不发起模型请求、不访问数据库实现，也不拥有设置或收藏功能。
  -->
 <template>
@@ -62,6 +62,7 @@
 import {ElMessageBox} from 'element-plus';
 import 'element-plus/es/components/message-box/style/css';
 import {useUiI18n} from "@/src/ui/i18n"
+import {useRenderDateFormatter} from '@/src/ui/dateFormat'
 const {t, translateLegacy} = useUiI18n()
 import {onBeforeUnmount, onMounted, ref} from 'vue'
 import ReadingAnswer from './ReadingAnswer.vue'
@@ -78,9 +79,10 @@ const historyMutating = ref(false)
 const historyError = ref('')
 let historyGeneration = 0
 let detailGeneration = 0
+let active = true
 const actionLabelFor = (value: string) => ({meaning: '读懂', grammar: '拆句', usage: '用法', practice: '练习'}[value] || '学习')
 const statusLabel = (value: string) => ({streaming: '生成中', completed: '已完成', stopped: '已停止', error: '未完成'}[value] || '未完成')
-const formatDate = (value: number) => new Intl.DateTimeFormat(undefined, {month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit'}).format(value)
+const formatDate = useRenderDateFormatter({month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit'})
 
 function backToHistoryList() {
   detailGeneration += 1
@@ -153,10 +155,10 @@ async function removeHistory(id: string) {
   }
 }
 async function clearHistory() {
-  if (historyMutating.value) return
+  if (!active || historyMutating.value) return
   try { await ElMessageBox.confirm(translateLegacy('清空本机全部阅读记录？删除后无法恢复。'), t('common.confirm'), {type: 'warning', confirmButtonText: t('common.confirm'), cancelButtonText: t('common.cancel')}) }
   catch { return }
-  if (historyMutating.value) return
+  if (!active || historyMutating.value) return
   historyMutating.value = true
   historyError.value = ''
   historyGeneration += 1
@@ -164,17 +166,19 @@ async function clearHistory() {
   backToHistoryList()
   try {
     await clearHarnessSessions()
+    if (!active) return
     historySessions.value = []
     historyOffset.value = 0
     historyHasMore.value = false
   } catch {
-    historyError.value = '清空记录失败，请重试。'
+    if (active) historyError.value = '清空记录失败，请重试。'
   } finally {
-    historyMutating.value = false
+    if (active) historyMutating.value = false
   }
 }
 onMounted(() => { void reloadHistory() })
 onBeforeUnmount(() => {
+  active = false
   historyGeneration += 1
   detailGeneration += 1
 })

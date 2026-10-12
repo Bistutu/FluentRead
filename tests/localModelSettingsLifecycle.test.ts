@@ -36,7 +36,7 @@ import browser from 'webextension-polyfill';
 import {normalizeConfig} from '@/src/core/config/model';
 import * as ttsModel from '@/src/core/config/localTts';
 import * as selectionTts from '@/src/core/config/selectionTts';
-import * as videoPublic from '@/src/features/video-subtitle/public';
+import * as videoPublic from '@/src/features/video-subtitle/domain/public';
 import * as settingsActionContext from '@/src/features/settings/model/useSettingsActionContext';
 import {createLocalTtsBackgroundHandlers} from '@/src/features/local-tts/background/handlers';
 import {createVideoSubtitleBackgroundHandlers} from '@/src/features/video-subtitle/background/handlers';
@@ -89,7 +89,7 @@ function loadClient(relative: string): Component {
     const dependencies: Record<string, any> = {
         vue: clientVue, 'webextension-polyfill': {default: browser}, '@element-plus/icons-vue': icons,
         '@/src/core/config/localTts': ttsModel, '@/src/core/config/selectionTts': selectionTts,
-        '@/src/features/video-subtitle/public': videoPublic,
+        '@/src/features/video-subtitle/domain/public': videoPublic,
         '../model/useSettingsActionContext': settingsActionContext,
         '@/src/core/download/progress': {LOCAL_TTS_DOWNLOAD_ID, videoModelDownloadId},
         '@/src/platform/browser/capabilities': {browserCapabilities: {extensionDom: true}},
@@ -321,6 +321,32 @@ it('rechecks missing Small tokenizer on return and offers the existing repair do
     expect(card.querySelector('.video-model-availability')!.textContent).toContain('可离线使用');
     expect(h.backend.videoKeys.has(getVideoAiModelFileUrl(model, 'tokenizer.json'))).toBe(true);
     expect(h.backend.videoOffscreen.send).toHaveBeenCalledOnce();
+});
+
+describe('video model settings pure public contract', () => {
+    it('loads the existing model and cache protocol without evaluating the player runtime', async () => {
+        vi.resetModules();
+        const evaluatePlayer = vi.fn(() => { throw new Error('model settings must not initialize the player runtime'); });
+        vi.doMock('@/src/features/video-subtitle/content/runtime', evaluatePlayer);
+        try {
+            const protocol = await import('@/src/features/video-subtitle/domain/public');
+            const transcription = await import('@/src/features/video-subtitle/transcription');
+            const cache = await import('@/src/features/video-subtitle/transcriptionCache');
+            expect(protocol.VIDEO_LOCAL_TRANSCRIPTION_MODELS).toBe(transcription.VIDEO_LOCAL_TRANSCRIPTION_MODELS);
+            expect(protocol.normalizeVideoLocalTranscriptionModels).toBe(transcription.normalizeVideoLocalTranscriptionModels);
+            expect(protocol.VIDEO_AI_SUBTITLE_CACHE_STATS_MESSAGE).toBe(cache.VIDEO_AI_SUBTITLE_CACHE_STATS_MESSAGE);
+            expect(protocol.VIDEO_AI_SUBTITLE_CACHE_CLEAR_MESSAGE).toBe(cache.VIDEO_AI_SUBTITLE_CACHE_CLEAR_MESSAGE);
+            expect(Object.keys(protocol).sort()).toEqual([
+                'VIDEO_AI_SUBTITLE_CACHE_CLEAR_MESSAGE', 'VIDEO_AI_SUBTITLE_CACHE_STATS_MESSAGE',
+                'VIDEO_LOCAL_TRANSCRIPTION_MODELS', 'VIDEO_LOCAL_TRANSCRIPTION_RECOMMENDED_MODEL',
+                'VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY', 'VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE',
+                'normalizeVideoLocalTranscriptionModels',
+            ].sort());
+            expect(evaluatePlayer).not.toHaveBeenCalled();
+        } finally {
+            vi.doUnmock('@/src/features/video-subtitle/content/runtime');
+        }
+    });
 });
 
 describe('entire captured public template event belongs to its rendered config', () => {

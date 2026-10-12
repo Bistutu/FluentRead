@@ -1,3 +1,9 @@
+/**
+ * @file tests/modelVisionSettingsLifecycle.test.ts
+ * 文件职责：运行实际模型识图设置组件与状态 composable，验证消息契约、请求归属和等待预算。
+ * 主要内容：观察真实 Vite 模块加载，确保纯消息契约不初始化探测实现、正文候选或语言检测器；核对实际 probe/cancel 发送与同一请求编号，覆盖配置等待、取消、迟到响应及缓存订阅生命周期。
+ * 模块边界：只控制浏览器、配置持久化和本地存储端口，不替换消息契约或探测策略，不证明真实供应商网络与浏览器样式。
+ */
 import {createRequire} from 'node:module'
 import {resolve} from 'node:path'
 import vue from '@vitejs/plugin-vue'
@@ -14,6 +20,7 @@ let props: {config: Config; service: string; model: string; active: boolean}, vi
 const send = vi.fn(), save = vi.fn(), queue = vi.fn(), read = vi.fn()
 const subscriptions: {callback: (value: unknown) => void; stop: ReturnType<typeof vi.fn>}[] = []
 const releases: (() => void)[] = [], jobs: Promise<unknown>[] = []
+const loadedModules: string[] = []
 function pending() {let resolve!: (value?: any) => void, reject!: (error: unknown) => void
   const promise = new Promise<any>((yes, no) => {resolve = yes;reject = no});releases.push(() => resolve(undefined));return {promise, resolve, reject}}
 async function settle() {for (let i = 0; i < 12; i++) await Promise.resolve();await runtime.nextTick();await runtime.nextTick()}
@@ -30,7 +37,7 @@ function mutate(reason: string) {
   if (reason === 'service') props.service = 'openai'
 }
 beforeEach(async () => {
-  vi.clearAllMocks();subscriptions.length = 0;releases.length = 0;jobs.length = 0
+  vi.clearAllMocks();subscriptions.length = 0;releases.length = 0;jobs.length = 0;loadedModules.length = 0
   queue.mockResolvedValue(undefined);save.mockResolvedValue(undefined);read.mockResolvedValue([])
   send.mockImplementation(async message => message.type === 'fluentReadModelVisionProbe'
     ? {success: true, capability: 'supported', source: 'probe'} : {cancelled: true})
@@ -43,6 +50,7 @@ beforeEach(async () => {
     if (/\/src\/services\/config\/store(?:\.ts)?$/u.test(id)) return '\0vision-config'
     return null
   }, load(id) {
+    loadedModules.push(id)
     if (id === '\0vision-child') return 'export default {render: () => null}'
     if (id === '\0vision-browser') return `export default {runtime: {sendMessage: globalThis.${key}.send}}`
     if (id === '\0vision-config') return `export const {queue: waitForConfigPersistenceQueue, save: requestConfigSave} = globalThis.${key}`
@@ -72,6 +80,28 @@ afterEach(async () => {
 })
 
 describe('实际模型识图设置的请求归属与等待预算', () => {
+  it('纯消息契约不初始化翻译实现，实际组件按同一契约发送探测和取消', async () => {
+    const contract = await server.ssrLoadModule('/src/services/translation/types.ts')
+    expect([contract.VISION_PROBE_MESSAGE, contract.VISION_PROBE_CANCEL_MESSAGE])
+      .toEqual(['fluentReadModelVisionProbe', 'fluentReadModelVisionProbeCancel'])
+    const contractModule = await server.moduleGraph.getModuleByUrl('/src/services/translation/types.ts')
+    expect(contractModule?.ssrTransformResult?.deps).toEqual([])
+    expect(loadedModules.filter(id => /\/src\/(?:services\/translation\/(?:visionProbe|requestSnapshot)|core\/translation\/(?:public|registry)|core\/site-adaptation\/compiler|providers\/translation\/registry|core\/language\/detect)\.ts(?:\?|$)/u.test(id)))
+      .toEqual([])
+
+    const response = pending()
+    send.mockImplementation(message => message.type === contract.VISION_PROBE_MESSAGE ? response.promise : Promise.resolve({cancelled: true}))
+    const identity = createVisionProbeIdentity(props.config, props.service, props.model), job = probe();await settle()
+    expect(send).toHaveBeenCalledOnce()
+    const request = send.mock.calls[0][0]
+    expect(request).toEqual({type: contract.VISION_PROBE_MESSAGE, service: 'deepseek', model: 'future-vision', identity, requestId: expect.any(String)})
+    expect(request.requestId).not.toBe('')
+    state.cancel();await job
+    expect(send.mock.calls.map(([message]) => message)).toEqual([request, {type: contract.VISION_PROBE_CANCEL_MESSAGE, requestId: request.requestId}])
+    expect(state.busy).toBe(false);expect(state.feedback).toBe('settings.services.visionProbeCancelled')
+    response.resolve({success: true, capability: 'supported', source: 'probe'});await settle()
+    expect(read).toHaveBeenCalledOnce();expect(state.feedback).toBe('settings.services.visionProbeCancelled')
+  })
   it('保存前等待队列，保存完成后才发送捕获的配置身份，并刷新能力状态', async () => {
     const waiting = pending(), saving = pending();queue.mockReturnValueOnce(waiting.promise);save.mockReturnValueOnce(saving.promise)
     const identity = createVisionProbeIdentity(props.config, props.service, props.model);const job = probe();await settle()

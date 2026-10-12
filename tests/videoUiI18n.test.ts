@@ -20,6 +20,7 @@ import {
 import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
 import {refreshVideoUiAccessibility, refreshVideoUiText, clearRenderedVideoTranslation, deactivateNormalizedVideoCaption, readVideoPlaybackTimeMs} from '@/src/features/video-subtitle/content/ui';
 import {VIDEO_LOCAL_TRANSCRIPTION_MODELS} from '@/src/features/video-subtitle/transcription';
+import {confirmVideoSubtitleExport} from '@/src/features/video-subtitle/content/exportPrompt';
 
 // 扩展运行时按需加载界面语言；本文件验证全部语言的文案契约，因此一次注册全部资源包。
 registerAllUiLanguageBundles();
@@ -327,6 +328,41 @@ describe('video player menu composition', () => {
     renderVideoModelPrompt(menu, {...choice, purpose: 'setup'}, 'zh-CN');
     expect(menu.querySelector('.fluent-read-video-model-prompt-title')?.textContent).toBe('下载 AI 字幕模型');
     expect(model.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('preserves an active subtitle export confirmation when the model prompt refresh has no selection', async () => {
+    const {document} = parseHTML('<!doctype html><body></body>');
+    vi.stubGlobal('document', document);
+    const menu = createVideoPlayerMenu('zh-CN', true);
+    menu.hidden = false;
+    document.body.appendChild(menu);
+    const controller = new AbortController();
+    const add = vi.spyOn(controller.signal, 'addEventListener');
+    const remove = vi.spyOn(controller.signal, 'removeEventListener');
+    const choice = confirmVideoSubtitleExport(menu, {total: 4, ready: 2, missing: 2, requests: 1,
+      human: 1, cached: 1, startMs: 4000, endMs: 7000}, true, controller.signal, key => key);
+    let settled = false;
+    void choice.then(() => {settled = true;});
+    try {
+      const panel = menu.querySelector('[data-export-prompt]');
+      expect(panel).not.toBeNull();
+      expect(menu.dataset.view).toBe('export-prompt');
+      const before = menu.innerHTML;
+      renderVideoModelPrompt(menu, null, 'zh-CN');
+      renderVideoModelPrompt(menu, null, 'en-US');
+      await Promise.resolve();
+      expect(settled).toBe(false);
+      expect(menu.innerHTML).toBe(before);
+      expect(menu.querySelector('[data-export-prompt]')).toBe(panel);
+      expect(menu.dataset.view).toBe('export-prompt');
+      expect(menu.querySelector<HTMLElement>('.fluent-read-video-menu-main')!.hidden).toBe(true);
+      controller.abort();
+      await expect(choice).resolves.toBe('cancel');
+      expect(menu.querySelector('[data-export-prompt]')).toBeNull();
+      expect(menu.dataset.view).toBe('main');
+      expect(menu.querySelector<HTMLElement>('.fluent-read-video-menu-main')!.hidden).toBe(false);
+      expect(remove).toHaveBeenCalledWith('abort', add.mock.calls.find(([type]) => type === 'abort')![1]);
+    } finally {controller.abort(); await choice; menu.remove();}
   });
 
   it('returns selection focus to a visible enabled model row, then uses visible controls during download or generation', () => {

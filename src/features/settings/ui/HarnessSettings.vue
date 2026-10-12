@@ -74,7 +74,7 @@
 <script setup lang="ts">
 import HarnessPromptSettings from './HarnessPromptSettings.vue';
 import SettingsPreviewLayout from './components/SettingsPreviewLayout.vue';
-import {ReadingAnswer} from '@/src/features/reading-assistant/public';
+import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
 import {sentenceSource, sentenceTranslation, sentenceAnalysis, learningPreviewAnswers} from '@/src/core/config/selectionPreview';
 import FeatureEnableCard from '@/src/ui/components/FeatureEnableCard.vue';
 import {computed, ref, toRef, watch} from 'vue'

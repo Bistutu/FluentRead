@@ -418,6 +418,41 @@ describe('translation provider request config snapshot', () => {
         expect(JSON.stringify(attached)).toBe('{"origin":"hello"}');
     });
 
+    it('沿用附着对象身份而不执行 lazy fallback，消息复制仍保留可信 symbol', () => {
+        const snapshot = createTranslationProviderConfigSnapshot(configSource());
+        const fallback = vi.fn(() => {throw new Error('unused fallback');});
+        const message = attachTranslationProviderConfig({origin: 'hello'}, snapshot);
+
+        expect(getTranslationProviderConfig(message, fallback)).toBe(snapshot);
+        expect(getTranslationProviderConfig(createTranslationRequestSnapshot(message), fallback)).toBe(snapshot);
+        expect(fallback).not.toHaveBeenCalled();
+        expect(JSON.stringify(message)).toBe('{"origin":"hello"}');
+    });
+
+    it('仅在缺失可信 symbol 时同步调用一次 factory，不接受同名 JSON 字段或跨调用保存结果', () => {
+        const snapshot = createTranslationProviderConfigSnapshot(configSource());
+        for (const message of [undefined, null, 'not-an-object', {}, {TRANSLATION_PROVIDER_CONFIG: snapshot}]) {
+            const fallback = vi.fn(() => snapshot);
+            const result = getTranslationProviderConfig(message, fallback);
+            expect(fallback).toHaveBeenCalledOnce();
+            expect(result).toBe(snapshot);
+        }
+        const next = createTranslationProviderConfigSnapshot(configSource({service: 'next'}));
+        const changingFallback = vi.fn().mockReturnValueOnce(snapshot).mockReturnValueOnce(next);
+        expect(getTranslationProviderConfig({}, changingFallback)).toBe(snapshot);
+        expect(getTranslationProviderConfig({}, changingFallback)).toBe(next);
+        expect(changingFallback).toHaveBeenCalledTimes(2);
+    });
+
+    it('同步原样抛出 miss factory 的异常而不替换或重复调用', () => {
+        const failure = new Error('snapshot unavailable');
+        const fallback = vi.fn(() => {throw failure;});
+        let thrown: unknown;
+        try {getTranslationProviderConfig({}, fallback);} catch (error) {thrown = error;}
+        expect(thrown).toBe(failure);
+        expect(fallback).toHaveBeenCalledOnce();
+    });
+
     it('keeps abort ownership process-local and out of runtime JSON', () => {
         const controller = new AbortController();
         const message = attachTranslationRequestControl({origin: 'hello'}, {

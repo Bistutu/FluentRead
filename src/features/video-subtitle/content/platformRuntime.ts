@@ -1,8 +1,8 @@
 /**
  * @file src/features/video-subtitle/content/platformRuntime.ts
  * 文件职责：在会议、Udemy 与 Disney+ 网页中挂载隔离的双语字幕，复用现有视频配置及翻译缓存。
- * 主要内容：观察原生字幕、读取浏览器字幕轨、自动开启明确的会议字幕按钮、优先目标语言人工轨；处理显示切换、失败重试、全屏、动态页面、大字号高度适配与所有权恢复。
- * 模块边界：只通过注入端口读取配置、翻译和保存设置，不采集音频、不访问账号接口，不修改网站播放器实现。
+ * 主要内容：观察原生字幕、读取浏览器字幕轨、自动开启明确的会议字幕按钮、优先目标语言人工轨；每轮只测量各视频一次，按当前文本、尺寸和字体输入去重布局，处理失败重试、全屏、动态页面、大字号适配与所有权恢复。
+ * 模块边界：只通过注入端口读取配置、翻译和保存设置；布局记录仅属于当前挂载，位置每轮重新读取，字体加载与卸载清除适配状态，不采集音频、不访问账号接口，不修改网站播放器实现。
  */
 import type {Config} from '@/src/core/config/model';
 import {getVideoSubtitleAppearanceCssVars} from '@/src/core/config/videoSubtitleAppearance';
@@ -26,6 +26,12 @@ function trackTextAt(track: TextTrack | null, time: number): string {
     if (!track?.cues || !Number.isFinite(time)) return '';
     return Array.from(track.cues).filter(cue => time >= cue.startTime && time < cue.endTime)
         .map(cue => (cue as VTTCue).text || '').join(' ').replace(/<[^>]*>/g, '').trim();
+}
+
+function setStyleIfChanged(style: CSSStyleDeclaration, property: string, value: string, priority = ''): void {
+    if (style.getPropertyValue(property) !== value || style.getPropertyPriority(property) !== priority) {
+        style.setProperty(property, value, priority);
+    }
 }
 
 /** 生命周期完全属于当前内容 feature；配置停用时取消请求并恢复本功能修改的原生显示。 */
@@ -56,6 +62,20 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
     let mediaKey = '';
     let fingerprint = getVideoTranslationConfigFingerprint(config);
     let pendingTimer: ReturnType<typeof setTimeout> | undefined;
+    let layoutInputs: {width: number; height: number; maximumHeight: number; fontSize: number; fontFamily: string; lineSpacing: string} | null = null;
+    let fittedInputs: readonly unknown[] | null = null;
+
+    const fit = () => {
+        const panel = sourceLine?.parentElement;
+        if (!panel || !sourceLine || !translatedLine || !retry || !mode || !layoutInputs) return;
+        const {width, height, maximumHeight, fontSize, fontFamily, lineSpacing} = layoutInputs;
+        const inputs = [width, height, maximumHeight, fontSize, fontFamily, lineSpacing, mode.value, mode.textContent,
+            sourceLine.textContent, sourceLine.hidden, translatedLine.textContent, retry.hidden, retry.textContent];
+        if (fittedInputs && inputs.every((value, index) => value === fittedInputs![index])) return;
+        fitVideoSubtitleFontSize(fontSize, maximumHeight,
+            size => setStyleIfChanged(panel.style, 'font-size', `${size}px`), () => panel.scrollHeight);
+        fittedInputs = inputs;
+    };
 
     const restoreCaptions = () => {
         captionVisibility.forEach((previous, node) => {
@@ -81,11 +101,13 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
     const clear = () => {
         generation += 1;
         signature = '';
+        layoutInputs = null;
+        fittedInputs = null;
         cache.cancelPending();
-        if (sourceLine) sourceLine.textContent = '';
-        if (translatedLine) translatedLine.textContent = '';
-        if (retry) retry.hidden = true;
-        if (host) host.hidden = true;
+        if (sourceLine?.textContent) sourceLine.textContent = '';
+        if (translatedLine?.textContent) translatedLine.textContent = '';
+        if (retry && !retry.hidden) retry.hidden = true;
+        if (host && !host.hidden) host.hidden = true;
     };
     const setTrackMode = (track: TextTrack, next: TextTrackMode) => {
         const owned = trackModes.get(track);
@@ -98,7 +120,10 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
     const ensureUi = () => {
         const parent = document.fullscreenElement || document.body;
         if (!parent) return;
-        if (host) { if (host.parentElement !== parent) parent.appendChild(host); return; }
+        if (host) {
+            if (host.parentElement !== parent) { parent.appendChild(host); fittedInputs = null; }
+            return;
+        }
         host = document.createElement('div');
         host.id = 'fluent-read-platform-captions';
         host.className = 'notranslate';
@@ -127,12 +152,16 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
     };
 
     const selectVideo = () => {
-        const candidates = Array.from(document.querySelectorAll<HTMLVideoElement>('video')).filter(node => {
+        let selected: {video: HTMLVideoElement; bounds: DOMRect; paused: boolean; area: number} | null = null;
+        for (const node of document.querySelectorAll<HTMLVideoElement>('video')) {
             const bounds = node.getBoundingClientRect();
-            return bounds.width > 0 && bounds.height > 0 && !node.closest('[hidden], [aria-hidden="true"]');
-        });
-        return candidates.sort((a, b) => Number(a.paused) - Number(b.paused)
-            || b.getBoundingClientRect().width * b.getBoundingClientRect().height - a.getBoundingClientRect().width * a.getBoundingClientRect().height)[0] || null;
+            if (!(bounds.width > 0 && bounds.height > 0) || node.closest('[hidden], [aria-hidden="true"]')) continue;
+            const paused = node.paused, area = bounds.width * bounds.height;
+            if (!selected || Number(paused) < Number(selected.paused) || (paused === selected.paused && area > selected.area)) {
+                selected = {video: node, bounds, paused, area};
+            }
+        }
+        return selected;
     };
     const nativeNodes = () => {
         let root: ParentNode = document;
@@ -187,7 +216,8 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
                 }
             }
         } else if (!config.videoMeetingAutoEnabled) restoreAutoButton();
-        const nextVideo = meeting ? null : selectVideo();
+        const selection = meeting ? null : selectVideo();
+        const nextVideo = selection?.video || null;
         const nextKey = nextVideo ? `${route}:${nextVideo.currentSrc || nextVideo.getAttribute('src') || ''}` : '';
         if (nextVideo !== video || nextKey !== mediaKey) {
             clear(); restoreCaptions(); cache.clear(); video = nextVideo; mediaKey = nextKey; sourceTrack = null; targetTrack = null;
@@ -202,49 +232,54 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
         if (!source) { clear(); restoreCaptions(); return; }
         ensureUi();
         if (!host || !sourceLine || !translatedLine || !mode) return;
-        for (const [key, value] of Object.entries(getVideoSubtitleAppearanceCssVars(config.videoSubtitleAppearance))) host.style.setProperty(key, value);
-        const bounds = video?.getBoundingClientRect();
+        const appearance = getVideoSubtitleAppearanceCssVars(config.videoSubtitleAppearance);
+        for (const [key, value] of Object.entries(appearance)) setStyleIfChanged(host.style, key, value);
+        const bounds = selection?.bounds;
         const width = (bounds?.width || window.innerWidth) * config.videoSubtitleAppearance.maxWidth / 100;
         const left = (bounds?.left || 0) + ((bounds?.width || window.innerWidth) - width) / 2;
         const top = bounds?.top || 0, height = bounds?.height || window.innerHeight;
-        host.style.setProperty('left', `${left}px`, 'important'); host.style.setProperty('width', `${width}px`, 'important');
+        setStyleIfChanged(host.style, 'left', `${left}px`, 'important'); setStyleIfChanged(host.style, 'width', `${width}px`, 'important');
         const position = config.videoSubtitleAppearance.position;
-        host.style.setProperty('top', `${top + height * (position === 'top' ? .08 : position === 'center' ? .5 : 1 - Math.max(.08, config.videoSubtitleAppearance.bottomOffset / 100))}px`, 'important');
-        host.style.setProperty('transform', position === 'top' ? 'none' : position === 'center' ? 'translateY(-50%)' : 'translateY(-100%)', 'important');
-        host.hidden = false;
-        mode.value = config.videoSubtitleDisplayMode;
-        sourceLine.hidden = config.videoSubtitleDisplayMode === 'translation-only';
+        setStyleIfChanged(host.style, 'top', `${top + height * (position === 'top' ? .08 : position === 'center' ? .5 : 1 - Math.max(.08, config.videoSubtitleAppearance.bottomOffset / 100))}px`, 'important');
+        setStyleIfChanged(host.style, 'transform', position === 'top' ? 'none' : position === 'center' ? 'translateY(-50%)' : 'translateY(-100%)', 'important');
+        if (host.hidden) host.hidden = false;
+        if (mode.value !== config.videoSubtitleDisplayMode) mode.value = config.videoSubtitleDisplayMode;
+        const sourceHidden = config.videoSubtitleDisplayMode === 'translation-only';
+        if (sourceLine.hidden !== sourceHidden) sourceLine.hidden = sourceHidden;
         const panel = sourceLine.parentElement!;
         const maximumHeight = Math.max(24, height * (position === 'center' ? .9 : .84));
-        panel.style.maxHeight = `${maximumHeight}px`;
-        const fit = () => fitVideoSubtitleFontSize(20 * config.videoSubtitleAppearance.fontScale / 100, maximumHeight,
-            size => { panel.style.fontSize = `${size}px`; }, () => panel.scrollHeight);
-        sourceLine.textContent = source;
-        fit();
+        setStyleIfChanged(panel.style, 'max-height', `${maximumHeight}px`);
+        layoutInputs = {width, height, maximumHeight, fontSize: 20 * config.videoSubtitleAppearance.fontScale / 100,
+            fontFamily: appearance['--fluent-read-video-subtitle-font-family'], lineSpacing: appearance['--fluent-read-video-subtitle-line-spacing']};
+        if (sourceLine.textContent !== source) sourceLine.textContent = source;
         nodes.forEach(node => {
             if (!captionVisibility.has(node)) captionVisibility.set(node, {value: node.style.getPropertyValue('visibility'), priority: node.style.getPropertyPriority('visibility')});
-            node.style.setProperty('visibility', 'hidden', 'important');
+            setStyleIfChanged(node.style, 'visibility', 'hidden', 'important');
         });
         for (const node of captionVisibility.keys()) if (!node.isConnected) captionVisibility.delete(node);
         const nextSignature = `${fingerprint}:${config.videoSubtitleDisplayMode}:${source}:${human}`;
-        if (nextSignature === signature) return;
+        if (nextSignature === signature) { fit(); return; }
         signature = nextSignature;
         const current = ++generation;
-        translatedLine.textContent = ''; retry!.hidden = true;
-        if (config.videoSubtitleDisplayMode === 'original-only') { cache.cancelPending(); return; }
+        if (translatedLine.textContent) translatedLine.textContent = '';
+        if (!retry!.hidden) retry!.hidden = true;
+        if (config.videoSubtitleDisplayMode === 'original-only') { cache.cancelPending(); fit(); return; }
         const show = (text: string) => {
             if (disposed || current !== generation || !translatedLine) return;
-            translatedLine.textContent = text === source && config.videoSubtitleDisplayMode === 'bilingual' ? '' : text;
+            const translation = text === source && config.videoSubtitleDisplayMode === 'bilingual' ? '' : text;
+            if (translatedLine.textContent !== translation) translatedLine.textContent = translation;
             fit();
         };
         if (human) { show(human); return; }
+        fit();
         void cache.request(source).then(show).catch(() => {
             if (disposed || current !== generation || !translatedLine || !retry) return;
-            translatedLine.textContent = ports.label('这句翻译失败'); retry.hidden = false;
+            translatedLine.textContent = ports.label('这句翻译失败'); retry.hidden = false; fit();
         });
     };
 
     const schedule = () => { if (!disposed && pendingTimer === undefined) pendingTimer = setTimeout(() => { pendingTimer = undefined; sync(); }, 80); };
+    const invalidateLayout = () => { fittedInputs = null; schedule(); };
     const releaseUserControls = (event: MouseEvent) => {
         if (!event.isTrusted) return;
         const target = event.target as Node | null;
@@ -261,16 +296,18 @@ export function mountPlatformCaptions(ports: PlatformCaptionPorts): () => void {
         if (next !== fingerprint) { fingerprint = next; cache.clear(); clear(); }
         sync();
     });
-    document.addEventListener('fullscreenchange', schedule);
+    document.addEventListener('fullscreenchange', invalidateLayout);
     document.addEventListener('seeking', schedule, true);
     document.addEventListener('click', releaseUserControls, true);
-    window.addEventListener('resize', schedule);
+    window.addEventListener('resize', invalidateLayout);
+    document.fonts?.addEventListener('loadingdone', invalidateLayout);
     sync();
     return () => {
         disposed = true; clear(); cache.clear(); restoreCaptions(); restoreAutoButton();
         observer.disconnect(); clearInterval(timer); if (pendingTimer !== undefined) clearTimeout(pendingTimer);
-        unsubscribe(); document.removeEventListener('fullscreenchange', schedule); document.removeEventListener('seeking', schedule, true);
+        unsubscribe(); document.removeEventListener('fullscreenchange', invalidateLayout); document.removeEventListener('seeking', schedule, true);
         document.removeEventListener('click', releaseUserControls, true);
-        window.removeEventListener('resize', schedule); host?.remove(); host = null;
+        window.removeEventListener('resize', invalidateLayout); document.fonts?.removeEventListener('loadingdone', invalidateLayout);
+        host?.remove(); host = null;
     };
 }

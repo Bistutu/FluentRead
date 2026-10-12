@@ -15,7 +15,8 @@ vi.mock('ai', () => ({streamText: streamResult, tool: (definition: unknown) => d
 vi.mock('@/src/services/harness/modelGateway', () => ({createHarnessLanguageModel: createModel, normalizeHarnessModelError: normalizeError}));
 
 import {UI_LANGUAGE_OPTIONS} from '@/src/core/i18n/language';
-import {HARNESS_ACTIONS, getDefaultHarnessPrompt, renderHarnessPrompt} from '@/src/core/config/harness';
+import {HARNESS_ACTIONS} from '@/src/core/config/harness';
+import {getDefaultHarnessPrompt, renderHarnessPrompt} from '@/src/core/harness/prompts';
 import {Config} from '@/src/core/config/model';
 import {createApiKeyRequirementKey} from '@/src/core/config/validation';
 import {createHarnessRuntime} from '@/src/services/harness/runtime';
@@ -315,7 +316,9 @@ describe('Harness runtime', () => {
         current.harness.systemPrompt = ' ';
         current.harness.actionPrompts.meaning = '';
         await createHarnessRuntime(() => current).run(request, new AbortController().signal);
-        expect(generateText.mock.calls[1][0].system).toContain('FluentRead 阅读学习助手');
+        expect(generateText.mock.calls[1][0].system).toContain(renderHarnessPrompt(getDefaultHarnessPrompt('system', current.uiLanguage), {
+            to: current.to, learningLevel: current.harness.learningLevel, explanationDepth: current.harness.explanationDepth,
+        }));
         expect(generateText.mock.calls[1][0].system).toContain('### 大意');
     });
     it('adds bounded user-curated memories only after opt-in and never offers model memory writes', async () => {

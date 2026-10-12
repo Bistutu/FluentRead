@@ -15,6 +15,7 @@ import {
     type FullPageQueueState,
 } from '@/src/features/full-page-translation/content/fullPageQueue';
 import type {TranslationCandidate} from '@/src/core/translation/public';
+import {createTranslationCore, getTranslationCandidateKey} from '@/src/core/translation/public';
 
 function priority(overrides: Partial<Parameters<typeof scoreFullPageCandidatePriority>[0]> = {}) {
     return scoreFullPageCandidatePriority({
@@ -129,6 +130,27 @@ function setRect(element: HTMLElement, top: number, bottom = top + 80): void {
         configurable: true,
         value: () => ({top, bottom, left: 0, right: 600, width: 600, height: bottom - top, x: 0, y: top}),
     });
+}
+
+/** 只消费真实 plan 的输出；保留夹具队列和元数据，以便同一会话的下一轮读取新布局。 */
+function collectPlan(queue: FullPageQueueState, plan: ReturnType<typeof createFullPageDispatchPlan>) {
+    const pending = [...queue.pending];
+    const selections = [];
+    let selection;
+    while ((selection = plan.next())) {
+        selections.push(selection);
+        queue.pending.delete(selection.key);
+    }
+    pending.forEach(([key, entry]) => queue.pending.set(key, entry));
+    return selections;
+}
+
+function lyricCandidates(document: Document, owners: number, lines: number): TranslationCandidate[] {
+    document.body.innerHTML = Array.from({length: owners}, (_, owner) =>
+        `<div class="lyrics">${Array.from({length: lines}, (_, line) =>
+            `<h3>Song ${owner}-${line}</h3><br>This lyric sentence needs a translation for the reader ${owner}-${line}.<br>`).join('')}</div>`).join('');
+    return createTranslationCore({url: new URL('https://www.darklyrics.com/lyrics/example.html')})
+        .discover(document).filter(entry => entry.element.className === 'lyrics' && entry.nodes?.length);
 }
 
 function withGlobalWindow<T>(value: unknown, callback: () => T): T {
@@ -375,6 +397,121 @@ describe('全文翻译候选队列', () => {
 
         removeFullPagePending(queue, third, candidates[2]!);
         expect(plan.next()).toBeUndefined();
+    });
+
+    it.each([
+        {owners: 1, lines: 100, mapped: true},
+        {owners: 1, lines: 100, mapped: false},
+        {owners: 20, lines: 5, mapped: true},
+        {owners: 100, lines: 1, mapped: true},
+    ])('同批共享 $owners 个锚点只测量一次，下一轮移动后重新定位（mapped=$mapped）', ({owners, lines, mapped}) => {
+        const {document} = parseHTML('<html><body></body></html>');
+        const entries = lyricCandidates(document, owners, lines);
+        expect(entries).toHaveLength(100);
+        const elements = [...new Set(entries.map(entry => entry.element))];
+        const positions = new Map(elements.map((element, index) => [element, 100 + index]));
+        const read = vi.fn((element: HTMLElement) => ({top: positions.get(element)!, bottom: positions.get(element)! + 80}));
+        elements.forEach(element => Object.defineProperty(element, 'getBoundingClientRect', {
+            configurable: true, value: () => read(element),
+        }));
+        const queue = state();
+        // 对照仍执行同一生产 plan，但每个候选使用不同的同几何锚点，避免复制排序或缓存算法。
+        const reference = state();
+        const referenceRead = vi.fn((element: HTMLElement) => ({top: positions.get(element)!, bottom: positions.get(element)! + 80}));
+        entries.forEach((entry, index) => {
+            const key = getTranslationCandidateKey(entry);
+            queueFullPageCandidate(queue, key, entry, `lyric-${index}`, 0);
+            if (mapped) queue.candidateAnchors.set(key, entry.element);
+            queueFullPageCandidate(reference, key, entry, `lyric-${index}`, 0);
+            const anchor = document.createElement('span');
+            document.body.append(anchor);
+            Object.defineProperty(anchor, 'getBoundingClientRect', {value: () => referenceRead(entry.element)});
+            reference.candidateAnchors.set(key, anchor);
+        });
+        const metadata = [...queue.pendingMetadata];
+        const options = {now: 1_000, viewportHeight: 600, isEligible: () => true,
+            resolveSource: () => { throw new Error('existing metadata must supply the source'); }};
+        const expected = collectPlan(reference, createFullPageDispatchPlan(reference, options));
+        const actual = collectPlan(queue, createFullPageDispatchPlan(queue, options));
+        expect(actual).toEqual(expected);
+        expect(read).toHaveBeenCalledTimes(owners);
+        expect(referenceRead).toHaveBeenCalledTimes(100);
+        expect([...queue.pendingMetadata]).toEqual(metadata);
+        expect(queue.nextPendingSequence).toBe(100);
+        expect(queue.inFlightCandidates.size).toBe(0);
+
+        positions.forEach((top, element) => positions.set(element, top + 5_000));
+        const laterExpected = collectPlan(reference, createFullPageDispatchPlan(reference, options));
+        const laterActual = collectPlan(queue, createFullPageDispatchPlan(queue, options));
+        expect(laterActual).toEqual(laterExpected);
+        expect(laterActual.every(entry => entry.priority.band === 'background')).toBe(true);
+        expect(read).toHaveBeenCalledTimes(owners * 2);
+        expect(referenceRead).toHaveBeenCalledTimes(200);
+        expect([...queue.pendingMetadata]).toEqual(metadata);
+    });
+
+    it.each(['throw', 'nonfinite'] as const)('同批锚点首次 %s 后继续读取直至恢复，优先级与序列不变', (failure) => {
+        const {document} = parseHTML('<html><body></body></html>');
+        const entries = lyricCandidates(document, 1, 20);
+        expect(entries).toHaveLength(20);
+        const owner = entries[0]!.element;
+        let attempts = 0;
+        const read = vi.fn(() => {
+            if (++attempts === 1) {
+                if (failure === 'throw') throw new Error('transient layout failure');
+                return {top: Number.NaN, bottom: 180};
+            }
+            return {top: 100, bottom: 180};
+        });
+        Object.defineProperty(owner, 'getBoundingClientRect', {value: read});
+        const queue = state();
+        const reference = state();
+        entries.forEach((entry, index) => {
+            const key = getTranslationCandidateKey(entry);
+            queueFullPageCandidate(queue, key, entry, `lyric-${index}`, 0);
+            queueFullPageCandidate(reference, key, entry, `lyric-${index}`, 0);
+            const anchor = document.createElement('span');
+            document.body.append(anchor);
+            Object.defineProperty(anchor, 'getBoundingClientRect', {value: () => {
+                if (index === 0) {
+                    if (failure === 'throw') throw new Error('same transient failure');
+                    return {top: Number.NaN, bottom: 180};
+                }
+                return {top: 100, bottom: 180};
+            }});
+            reference.candidateAnchors.set(key, anchor);
+        });
+        const options = {now: 1_000, viewportHeight: 600, isEligible: () => true, resolveSource: () => 'unused'};
+        const expected = collectPlan(reference, createFullPageDispatchPlan(reference, options));
+        const actual = collectPlan(queue, createFullPageDispatchPlan(queue, options));
+        expect(actual).toEqual(expected);
+        expect(actual.at(-1)?.priority).toMatchObject({band: 'background', sequence: 1});
+        expect(actual.slice(0, -1).every(entry => entry.priority.band === 'visible')).toBe(true);
+        expect(read).toHaveBeenCalledTimes(2);
+        const next = collectPlan(queue, createFullPageDispatchPlan(queue, options));
+        expect(read).toHaveBeenCalledTimes(3);
+        expect(next.map(entry => entry.priority.sequence)).toEqual(Array.from({length: 20}, (_, index) => index + 1));
+        expect(next.every(entry => entry.priority.band === 'visible')).toBe(true);
+    });
+
+    it.each(['disconnected', 'missing-api'] as const)('已测锚点在同批变为 %s 后仍先复验连接和 API', (change) => {
+        const {document} = parseHTML('<html><body></body></html>');
+        const entries = lyricCandidates(document, 1, 3);
+        const owner = entries[0]!.element;
+        const read = vi.fn(() => {
+            if (change === 'disconnected') owner.remove();
+            else Object.defineProperty(owner, 'getBoundingClientRect', {configurable: true, value: undefined});
+            return {top: 100, bottom: 180};
+        });
+        Object.defineProperty(owner, 'getBoundingClientRect', {configurable: true, value: read});
+        const queue = state();
+        entries.forEach((entry, index) => queueFullPageCandidate(queue, getTranslationCandidateKey(entry), entry, `lyric-${index}`, 0));
+        const selected = collectPlan(queue, createFullPageDispatchPlan(queue, {
+            now: 1_000, viewportHeight: 600, isEligible: () => true, resolveSource: () => 'unused',
+        }));
+        expect(read).toHaveBeenCalledOnce();
+        expect(selected.map(entry => entry.priority.band)).toEqual(['visible', 'background', 'background']);
+        expect(selected.map(entry => entry.priority.sequence)).toEqual([1, 2, 3]);
     });
 
     it('派发前复验资格和候选身份，取消过期后台项后不让新后台项抢占前景', () => {

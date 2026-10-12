@@ -1,6 +1,6 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
-import {translateLegacyText, type UiLanguage} from '@/src/core/i18n';
+import {translate, translateLegacyText, type UiLanguage} from '@/src/core/i18n';
 import {createImageTranslationBackgroundHandlers, IMAGE_TRANSLATE_MESSAGE_TYPE, IMAGE_TRANSLATE_TEXTS_MESSAGE_TYPE, IMAGE_CANCEL_MESSAGE_TYPE} from '@/src/features/image-translation/background/handlers';
 import {IMAGE_PROGRESS_MESSAGE_TYPE, isImageTranslationStage, normalizeImageProgress} from '@/src/features/image-translation/progress';
 import {createOpenOptionsPageHandler} from '@/src/features/settings/background';
@@ -593,6 +593,21 @@ describe('图片进度平台传输', () => {
 
 
 describe('图片控件界面语言', () => {
+    it.each(['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const)('品牌通过现有旧文案端口按 %s 本地化', language => {
+        const {document} = parseHTML('<html><body></body></html>');
+        vi.stubGlobal('document', document);
+        const ui = createImageControls({onAction() {}, onPrepare() {}, translate: source => translateLegacyText(source, language)});
+        try {
+            const brand = translate('common.brand', language);
+            expect(translateLegacyText('流畅阅读', language)).toBe(brand);
+            expect(ui.feedback.querySelector('.fr-image-feedback-title')!.textContent).toBe(`${brand} · ${translateLegacyText('图片翻译', language)}`);
+            expect(ui.button.title).toBe(`${brand} · ${translateLegacyText('翻译图片', language)}`);
+            expect(ui.button.getAttribute('aria-label')).toBe(ui.button.title);
+            ui.update('loading', '正在识别图片文字…', {progress: 42});
+            expect(ui.status.textContent).toContain('42%');
+            expect(ui.button.title).toBe(`${brand} · ${translateLegacyText('取消图片翻译', language)}`);
+        } finally {ui.dispose();}
+    });
     it('语言刷新只修改控件与状态，保留展开状态和原始译文', () => {
         const {document} = parseHTML('<html><body></body></html>');
         vi.stubGlobal('document', document);
@@ -612,6 +627,7 @@ describe('图片控件界面语言', () => {
         expect(details.hidden).toBe(false);
         language = 'zh-CN'; controls.refreshLanguage();
         expect(controls.button.textContent).toBe('原图');
+        expect(controls.button.title).toBe('流畅阅读 · 恢复原图');
         expect(details.textContent).toBe('原文');
         controls.dispose();
     });

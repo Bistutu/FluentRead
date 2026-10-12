@@ -8,6 +8,7 @@ import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {parseHTML} from 'linkedom';
 import {compileScript, compileStyle, compileTemplate, parse} from 'vue/compiler-sfc';
+import {useRenderDateFormatter} from '@/src/ui/dateFormat';
 import ts from 'typescript';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {DEFAULT_HARNESS_PREFERENCES, HARNESS_ACTIONS, isReadingActionSupported, isReadingFollowUpSupported} from '@/src/core/config/harness';
@@ -38,6 +39,8 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
   vi.stubGlobal('navigator',{clipboard:{writeText:writeClipboard}});
   const modules:Record<string,unknown>={
     vue:runtime,
+    // 日期复用属于本组件的真实 Vue update 生命周期，不能以格式化 stub 绕过。
+    '@/src/ui/dateFormat':{useRenderDateFormatter},
     '@/src/core/translation/result':{hasDistinctTranslation},
     '@/src/core/harness/evidence':{buildReadingEvidence, readingEvidenceText},
     '@/src/ui/i18n':{useUiI18n:()=>({t:(key:string)=>key,translateLegacy})},

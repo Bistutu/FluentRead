@@ -1,4 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {parseHTML} from 'linkedom';
+import {installOptionsApp} from '@/src/app/options';
 import {
     buildUserscriptSettingsUrl,
     closeUserscriptSettings,
@@ -39,6 +41,7 @@ describe('full userscript Options entry', () => {
     beforeEach(() => {
         mocks.createVueShadowUi.mockReset().mockResolvedValue({remove: mocks.remove});
         mocks.remove.mockReset();
+        vi.mocked(installOptionsApp).mockReset();
     });
 
     afterEach(() => {
@@ -119,6 +122,13 @@ describe('full userscript Options entry', () => {
         );
         const options = mocks.createVueShadowUi.mock.calls[0][1];
         expect(options.component).toEqual({name: 'OptionsApp'});
+        const {document} = parseHTML('<div id="owned-options-overlay"></div>');
+        const exactContainer = document.querySelector<HTMLElement>('#owned-options-overlay')!;
+        const fakeApp = {use: vi.fn(), component: vi.fn(), onUnmount: vi.fn()};
+        options.configureApp(fakeApp, exactContainer);
+        expect(installOptionsApp).toHaveBeenCalledOnce();
+        expect(installOptionsApp).toHaveBeenCalledWith(fakeApp, {documentRoot: null, uiRoot: exactContainer});
+        expect(vi.mocked(installOptionsApp).mock.calls[0][1]?.uiRoot).toBe(exactContainer);
         vi.stubGlobal('ShadowRoot', class {});
         vi.stubGlobal('HTMLElement', class {});
         expect(options.props({getRootNode: () => ({})})).toMatchObject({
@@ -127,6 +137,45 @@ describe('full userscript Options entry', () => {
             onClose: closeUserscriptSettings,
         });
         expect(window.location.hash).toBe('#host-route');
+        closeUserscriptSettings();
+        expect(mocks.remove).toHaveBeenCalledOnce();
+    });
+
+    it('configures the separate settings page with its own UI container and no host document permissions', async () => {
+        const openInTab = vi.fn();
+        vi.stubGlobal('window', {
+            location: {
+                href: 'https://example.test/article#fluentread-userscript-settings/settings-general',
+                hash: '#fluentread-userscript-settings/settings-general',
+            },
+            open: vi.fn(),
+        });
+        vi.stubGlobal('GM', {openInTab});
+        vi.stubGlobal('GM_openInTab', undefined);
+
+        await openUserscriptSettings({id: 'separate-context'}, 'settings-services');
+
+        expect(openInTab).not.toHaveBeenCalled();
+        expect(window.open).not.toHaveBeenCalled();
+        expect(mocks.createVueShadowUi).toHaveBeenCalledOnce();
+        const options = mocks.createVueShadowUi.mock.calls[0][1];
+        const {document} = parseHTML('<div id="owned-options-page"></div>');
+        const exactContainer = document.querySelector<HTMLElement>('#owned-options-page')!;
+        const fakeApp = {use: vi.fn(), component: vi.fn(), onUnmount: vi.fn()};
+        options.configureApp(fakeApp, exactContainer);
+        expect(installOptionsApp).toHaveBeenCalledOnce();
+        expect(installOptionsApp).toHaveBeenCalledWith(fakeApp, {documentRoot: null, uiRoot: exactContainer});
+        expect(vi.mocked(installOptionsApp).mock.calls[0][1]?.uiRoot).toBe(exactContainer);
+        vi.stubGlobal('ShadowRoot', class {});
+        vi.stubGlobal('HTMLElement', class {});
+        expect(options.props(exactContainer)).toMatchObject({
+            queryRoot: document,
+            settingsHashPrefix: '#fluentread-userscript-settings',
+            initialSection: undefined,
+            locationRouting: undefined,
+            onClose: undefined,
+        });
+        expect(window.location.hash).toBe('#fluentread-userscript-settings/settings-services');
         closeUserscriptSettings();
         expect(mocks.remove).toHaveBeenCalledOnce();
     });

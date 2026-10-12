@@ -433,6 +433,8 @@
       "tests/vocabularyVideoSource.test.ts"
     ],
     "functional": [
+      "tests/learningCenterLifecycle.test.ts",
+      "tests/dateFormatLifecycle.test.ts",
       "tests/finalCoveragePublicBoundariesA.test.ts",
       "tests/finalCoveragePublicBoundariesB.test.ts",
       "tests/implementationAudit48L.test.ts",
@@ -486,6 +488,7 @@
       "tests/translationStatsRepository.test.ts",
       "tests/offscreenMessageRouter.test.ts",
       "tests/pageContextDefuddle.test.ts",
+      "tests/pageContextMarkdown.test.ts",
       "tests/pageNotice.test.ts",
       "tests/translateApiPerformance.test.ts",
       "tests/tongyi.test.ts",
@@ -566,6 +569,7 @@
       "tests/usageDashboardLifecycle.test.ts",
       "tests/paragraphCopySettingsLifecycle.test.ts",
       "tests/settingsSectionsLifecycle.test.ts",
+      "tests/settingsSectionNavigationLifecycle.test.ts",
       "tests/translationRecorderLifecycle.test.ts",
       "tests/visionProbeStatusLifecycle.test.ts",
       "tests/interfaceAppearanceLifecycle.test.ts",
@@ -593,6 +597,8 @@
       "tests/documentBinaryLifecycle.test.ts",
       "tests/documentAppLifecycle.test.ts",
       "tests/sharedUiComponentsLifecycle.test.ts",
+      "tests/shadowSelectOutside.test.ts",
+      "tests/shadowColorPicker.test.ts",
       "tests/documentUserActions.test.ts",
       "tests/implementationAudit48A.test.ts",
       "tests/implementationAudit48B.test.ts",
@@ -691,6 +697,7 @@
       "tests/allNodesTranslationCore.test.ts",
       "tests/sameTargetLanguageRegression.test.ts",
       "tests/vocabularyReencounterLifecycle.test.ts",
+      "tests/vocabularyReencounterPanelLifecycle.test.ts",
       "tests/fullPageAttributeBoundary.test.ts",
       "tests/hnFirstTargetReadiness.test.ts",
       "tests/targetLanguageAdversarial.test.ts"

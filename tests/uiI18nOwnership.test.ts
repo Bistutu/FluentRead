@@ -1,7 +1,7 @@
 /**
  * @file tests/uiI18nOwnership.test.ts
  * 文件职责：执行实际共享 i18n 保存函数及 Selector，复现语言选择的异步身份问题。
- * 主要内容：覆盖资源先后、外部 revision、连续调用、销毁和组件失败提示；另以实际 store 和加密 IndexedDB 端口核对同步乐观回声、权威回滚与迟到失败，并验证真实指令在嵌套正文、语言切换及迟到文本中的所有权边界。
+ * 主要内容：覆盖资源先后、外部 revision、连续调用、销毁和组件失败提示；另以实际 store 和加密 IndexedDB 端口核对同步乐观回声、权威回滚与迟到失败，验证嵌套正文所有权、显式 UI 扫描根与 document 元信息的独立权限及插件清理。
  * 模块边界：组件细测使用可控存储端口；集成组直接 import 实际 i18n/store/repository/storage，只控制后台消息和语言资源加载，不调用浏览器或翻译供应商。
  */
 import 'fake-indexeddb/auto'
@@ -341,5 +341,100 @@ describe('SSR 语言夹具资源边界', () => {
     const h = await create()
     expect(h.context.language.value).toBe('zh-CN')
     expect(listen).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('公共 i18n 插件的扫描与 document 权限', () => {
+  function appPort() {
+    let context!: import('@/src/ui/i18n').UiI18nContext
+    let rootUnmount!: () => void
+    const nativeUnmount=vi.fn(), provide=vi.fn((_key:unknown,value:import('@/src/ui/i18n').UiI18nContext)=>{context=value})
+    const app={config:{globalProperties:{}},provide,directive:vi.fn(),mixin:(hooks:{beforeUnmount:()=>void})=>{rootUnmount=hooks.beforeUnmount},unmount:nativeUnmount}
+    return {app:app as unknown as import('vue').App,nativeUnmount,provide,context:()=>context,
+      rootUnmount:()=>{const vm:{$root?:unknown}={};vm.$root=vm;rootUnmount.call(vm)}}
+  }
+  function install(createPlugin:typeof import('@/src/ui/i18n').createUiI18nPlugin,port:ReturnType<typeof appPort>,options:import('@/src/ui/i18n').UiI18nPluginOptions) {
+    const plugin=createPlugin(options)
+    if(typeof plugin.install !== 'function')throw new Error('Actual UI i18n plugin must provide an install function')
+    plugin.install(port.app)
+  }
+
+  it.each([
+    {name:'未授权默认值',document:'undefined',ui:'undefined',scan:'none',metadata:false},
+    {name:'undefined 扫描根沿用 document',document:'body',ui:'undefined',scan:'body',metadata:true},
+    {name:'null document 的原禁用合同',document:'null',ui:'undefined',scan:'none',metadata:false},
+    {name:'自有容器扫描不授予宿主元信息',document:'null',ui:'owned',scan:'owned',metadata:false},
+    {name:'null 扫描根独立保留 document 元信息',document:'body',ui:'null',scan:'none',metadata:true},
+    {name:'独立自有容器与 document 元信息',document:'body',ui:'owned',scan:'owned',metadata:true},
+    {name:'显式自有容器与未指定 document',document:'undefined',ui:'owned',scan:'owned',metadata:false},
+  ] as const)('$name：中文→英文→中文不扩大扫描权限',async row=>{
+    const h=actualHarness=await createActualStoreHarness()
+    const core=await import('@/src/core/i18n'),bundles=await import('@/src/core/i18n/bundles')
+    core.registerUiLanguageBundle('en-US',bundles.UI_LANGUAGE_BUNDLES['en-US'])
+    expect(core.translateLegacyText('翻译','en-US')).not.toBe('翻译')
+    const {document,window}=parseHTML('<html lang="host-language"><head><title>Host title</title></head><body><button id="host" title="关闭">翻译</button><div id="owned"><button title="关闭">翻译</button></div></body></html>')
+    const observers:Array<{observe:ReturnType<typeof vi.fn>;disconnect:ReturnType<typeof vi.fn>}> = []
+    vi.stubGlobal('MutationObserver',class {observe=vi.fn();disconnect=vi.fn();constructor(){observers.push(this)}})
+    for(const [name,value] of Object.entries({document,Node:window.Node,NodeFilter:{SHOW_TEXT:4}}))vi.stubGlobal(name,value)
+    const owned=document.querySelector('#owned') as unknown as HTMLElement,host=document.querySelector('#host')!
+    document.documentElement.lang='host-language'
+    const root=(value:typeof row.document|typeof row.ui)=>value==='body'?document.body as unknown as HTMLElement:value==='owned'?owned:value==='null'?null:undefined
+    const port=appPort()
+    try {
+      install(h.i18n.createUiI18nPlugin,port,{documentRoot:root(row.document),uiRoot:root(row.ui),documentTitleKey:'metadata.optionsTitle'})
+      const context=port.context()
+      expect(observers).toHaveLength(row.scan==='none'?0:1)
+      if(row.scan!=='none')expect(observers[0].observe).toHaveBeenCalledWith(row.scan==='body'?document.body:owned,expect.objectContaining({subtree:true,childList:true,characterData:true,attributes:true}))
+      await h.commit('en-US',11)
+      await vi.waitFor(()=>expect(context.language.value).toBe('en-US'))
+      if(row.scan!=='none')await vi.waitFor(()=>expect(owned.querySelector('button')!.textContent).toBe(context.translateLegacy('翻译')))
+      expect(owned.querySelector('button')!.textContent).toBe(row.scan==='none'?'翻译':context.translateLegacy('翻译'))
+      expect(owned.querySelector('button')!.title).toBe(row.scan==='none'?'关闭':context.translateLegacy('关闭'))
+      expect(host.textContent).toBe(row.scan==='body'?context.translateLegacy('翻译'):'翻译')
+      expect(host.getAttribute('title')).toBe(row.scan==='body'?context.translateLegacy('关闭'):'关闭')
+      expect(document.documentElement.lang).toBe(row.metadata?'en-US':'host-language')
+      expect(document.title).toBe(row.metadata?context.t('metadata.optionsTitle'):'Host title')
+      await h.commit('zh-CN',12)
+      await vi.waitFor(()=>expect(context.language.value).toBe('zh-CN'))
+      if(row.scan!=='none')await vi.waitFor(()=>expect(owned.querySelector('button')!.textContent).toBe('翻译'))
+      expect(owned.querySelector('button')!.title).toBe('关闭');expect(host.textContent).toBe('翻译');expect(host.getAttribute('title')).toBe('关闭')
+      expect(document.documentElement.lang).toBe(row.metadata?'zh-CN':'host-language')
+      expect(document.title).toBe(row.metadata?context.t('metadata.optionsTitle'):'Host title')
+    } finally {port.app.unmount()}
+  })
+
+  it.each(['app.unmount','root mixin'] as const)('%s 先释放自有扫描资源，零号 timer 与迟到回调不能复活',async path=>{
+    const h=await create(),root=h.document.body
+    root.innerHTML='<button>翻译</button>'
+    const observers:Array<{observe:ReturnType<typeof vi.fn>;disconnect:ReturnType<typeof vi.fn>;callback:MutationCallback}>=[]
+    vi.stubGlobal('MutationObserver',class {observe=vi.fn();disconnect=vi.fn();constructor(readonly callback:MutationCallback){observers.push(this)}})
+    let queued!:()=>void
+    const timer=vi.spyOn(globalThis,'setTimeout').mockImplementation(((callback:()=>void)=>{queued=callback;return 0}) as unknown as typeof setTimeout)
+    const clear=vi.spyOn(globalThis,'clearTimeout').mockImplementation(()=>undefined),port=appPort()
+    install(h.uiModule.createUiI18nPlugin,port,{documentRoot:null,uiRoot:root})
+    const context=port.context(),dispose=vi.spyOn(context,'dispose'),observer=observers[0]
+    expect(observers).toHaveLength(1);expect(observer.observe).toHaveBeenCalledTimes(1);expect(timer).toHaveBeenCalledOnce()
+    if(path==='app.unmount')port.app.unmount();else port.rootUnmount()
+    expect(dispose).toHaveBeenCalledOnce();expect(clear).toHaveBeenCalledWith(0);expect(observer.disconnect).toHaveBeenCalledOnce()
+    const reads=observer.observe.mock.calls.length
+    queued();observer.callback([{type:'childList',target:root,addedNodes:[]} as unknown as MutationRecord],observer as unknown as MutationObserver)
+    h.foreign('en-US');await settle()
+    expect(context.language.value).toBe('zh-CN');expect(root.querySelector('button')!.textContent).toBe('翻译')
+    expect(observer.observe).toHaveBeenCalledTimes(reads);expect(timer).toHaveBeenCalledOnce()
+    port.app.unmount();port.rootUnmount()
+    expect(dispose).toHaveBeenCalledOnce();expect(observer.disconnect).toHaveBeenCalledOnce()
+    await expect(context.setLanguage('ja-JP')).resolves.toBe(false);expect(h.requests).toHaveLength(0)
+    expect(dispose.mock.invocationCallOrder[0]).toBeLessThan(port.nativeUnmount.mock.invocationCallOrder[0])
+  })
+
+  it('自有根 observe 抛错时保留原异常并释放资源，安装后的 unmount 和语言变化不能重连',async()=>{
+    const h=await create(),error=new Error('owned observe failed'),port=appPort()
+    const observe=vi.fn(()=>{throw error}),disconnect=vi.fn()
+    vi.stubGlobal('MutationObserver',class {observe=observe;disconnect=disconnect})
+    expect(()=>install(h.uiModule.createUiI18nPlugin,port,{documentRoot:null,uiRoot:h.document.body})).toThrow(error)
+    expect(observe).toHaveBeenCalledOnce();expect(disconnect).toHaveBeenCalledOnce();expect(port.provide).not.toHaveBeenCalled()
+    port.app.unmount();h.foreign('en-US');await settle()
+    expect(observe).toHaveBeenCalledOnce();expect(disconnect).toHaveBeenCalledOnce();expect(port.nativeUnmount).toHaveBeenCalledOnce()
   })
 })

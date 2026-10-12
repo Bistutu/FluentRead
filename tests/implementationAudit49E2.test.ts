@@ -8,6 +8,7 @@ import type {MangaInferenceMessage, MangaInferenceResponse} from '@/src/features
 import * as ort from 'onnxruntime-web/webgpu';
 import {mkdirSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
+import {createVirtualModelResponsePort, virtualModelBuffer} from './helpers/virtualModelResponse';
 
 const sdk = vi.hoisted(() => ({sessions: [] as any[], detectionSession: undefined as any, create: vi.fn(), initialize: vi.fn(), recognize: vi.fn(), destroy: vi.fn()}));
 vi.mock('onnxruntime-web/webgpu', () => ({env: {wasm: {}}, InferenceSession: {create: sdk.create}, Tensor: class {
@@ -24,9 +25,11 @@ vi.mock('ppu-paddle-ocr/web', () => ({PaddleOcrService: class {
 type Asset = {bytes: number; sha256: string};
 const rootUrl = 'https://huggingface.co/snowfluke/ppu-paddle-ocr-models/resolve/bf1d5edb0335d3262be7caf13f766ba274b4cadd/';
 const allAssets = [...MANGA_OCR_ASSETS, MANGA_INPAINT_ASSET];
-// Controlled metadata/crypto ports represent model capacities with one real byte;
-// these lifecycle tests do not claim real model hash/content verification.
-function bytesFor(asset: Asset): ArrayBuffer {const buffer = new ArrayBuffer(1); Object.defineProperty(buffer, 'byteLength', {value: asset.bytes}); return buffer;}
+const NativeResponse = globalThis.Response;
+// Explicitly tagged metadata/crypto/Response ports represent model capacities with one real byte.
+// These lifecycle tests prove capacity, verification state and cache ownership, not real model hash/content,
+// native large-body copying, or clone/bodyUsed semantics of virtual responses. Ordinary bodies remain native.
+function bytesFor(asset: Asset): ArrayBuffer {return virtualModelBuffer(asset.bytes);}
 function responseFor(asset: Asset): Response {return {ok: true, arrayBuffer: async () => bytesFor(asset)} as Response;}
 function assetFor(url: string): Asset {return allAssets.find(a => url.endsWith('path' in a ? a.path : 'lama-manga-dynamic.onnx'))!;}
 const stores = new Map<string, Map<string, Response>>();
@@ -95,6 +98,7 @@ function deferred<T>() {
     return {promise, resolve, reject};
 }
 beforeEach(async () => {
+    vi.stubGlobal('Response', createVirtualModelResponsePort(NativeResponse));
     vi.useFakeTimers({toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout']}); stores.clear(); onDelete = undefined; onPut = undefined; workers.length = 0;
     sdk.sessions.length = 0; sdk.detectionSession = undefined; sdk.create.mockReset(); sdk.initialize.mockReset().mockResolvedValue(undefined);
     sdk.destroy.mockReset().mockResolvedValue(undefined); sdk.recognize.mockReset().mockResolvedValue({results: [{text: 'Hello world', confidence: 1, box: {x: 8, y: 8, width: 16, height: 16}}]});

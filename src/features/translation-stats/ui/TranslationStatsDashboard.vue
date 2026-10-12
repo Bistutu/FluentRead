@@ -1,7 +1,7 @@
 <!--
  @file src/features/translation-stats/ui/TranslationStatsDashboard.vue
  文件职责：在 Options 设置页展示翻译请求统计，帮助用户了解请求规模、耗时分布和各翻译服务的表现。
- 主要内容：提供服务、模型与时间范围筛选，呈现请求量、文本量、耗时和缓存复用概览，可切换指标的趋势柱图，可排序且能取消筛选的服务表现与按选中服务显示的免费线路表，耗时与规模分布、失败原因，以及可按来源、状态与耗时排序的支持指定页跳转的请求记录和清除统计确认。
+ 主要内容：提供服务、模型与时间范围筛选，呈现请求量、文本量、耗时和缓存复用概览，可切换指标的趋势柱图，可排序且能取消筛选的服务表现与按选中服务显示的免费线路表，耗时与规模分布、失败原因，以及可按来源、状态与耗时排序的支持指定页跳转的请求记录和清除统计确认；请求记录日期格式器在每轮同步模板渲染内复用，下轮重新读取界面语言与系统默认时区。
  模块边界：组件只通过后台 translationStats 消息读取数值快照与记录，不直接访问 IndexedDB、不发起翻译，也不修改翻译设置；聚合、持久化与采集分别由 services、platform/storage 和翻译 broker 负责。
 -->
 <template>
@@ -481,6 +481,7 @@ import UiIcon from '@/src/ui/components/UiIcon.vue'
 import UiSelect from '@/src/ui/components/UiSelect.vue'
 import ServiceIcon from '@/src/ui/components/ServiceIcon.vue'
 import {useUiI18n} from '@/src/ui/i18n'
+import {useRenderDateFormatter} from '@/src/ui/dateFormat'
 import {options} from '@/src/core/config/catalog'
 import {getCustomOpenAIProviderLabel, type CustomOpenAIProvider} from '@/src/core/config/customOpenAI'
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation'
@@ -642,11 +643,9 @@ function formatDateTime(timestamp: number): string {
   return new Intl.DateTimeFormat(language.value, {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false}).format(timestamp)
 }
 
-function formatRequestTime(timestamp: number): string {
-  return new Intl.DateTimeFormat(language.value, {
-    month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-  }).format(timestamp)
-}
+const formatRequestTime = useRenderDateFormatter({
+  month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+}, () => language.value)
 
 function bucketLabel(row: TranslationStatsHistogramRow, kind: 'duration' | 'size'): string {
   const format = (value: number) => kind === 'duration' ? formatDuration(value) : formatNumber(value)

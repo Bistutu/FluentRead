@@ -16,13 +16,13 @@
       </header>
 
       <div class="notice">
-        该版本复用 FluentRead 当前翻译核心。截图 OCR、圈选翻译、Chrome 内置翻译和扩展右键菜单依赖浏览器扩展权限，userscript 中暂不提供。
+        该版本复用流畅阅读当前翻译核心。截图 OCR、圈选翻译、Chrome 内置翻译和扩展右键菜单依赖浏览器扩展权限，userscript 中暂不提供。
       </div>
 
       <div v-if="hydrated" class="settings-grid">
         <fieldset>
           <legend>基础设置</legend>
-          <label class="toggle"><span>启用 FluentRead</span><input v-model="draft.on" type="checkbox" /></label>
+          <label class="toggle"><span>启用流畅阅读</span><input v-model="draft.on" type="checkbox" /></label>
           <label><span>源语言</span><UiSelect v-model="draft.from" :append-to="menuContainer" filterable aria-label="源语言"><ElOption v-for="item in options.from" :key="item.value" :value="item.value" :label="item.label" /></UiSelect></label>
           <label><span>目标语言</span><UiSelect v-model="draft.to" :append-to="menuContainer" filterable aria-label="目标语言"><ElOption v-for="item in options.to" :key="item.value" :value="item.value" :label="item.label" /></UiSelect></label>
           <label><span>译文显示</span><UiSelect v-model="draft.display" :append-to="menuContainer" aria-label="译文显示"><ElOption v-for="item in options.display" :key="item.value" :value="item.value" :label="item.label" /></UiSelect></label>
@@ -209,7 +209,7 @@ import {
 } from '@/src/core/config/modelThinking';
 
 const emit = defineEmits<{close: []}>();
-const versionLabel = `FluentRead V${process.env.VUE_APP_VERSION} · Userscript V${process.env.VUE_APP_USERSCRIPT_VERSION}`;
+const versionLabel = `流畅阅读 V${process.env.VUE_APP_VERSION} · Userscript V${process.env.VUE_APP_USERSCRIPT_VERSION}`;
 const iconUrl = globalThis.__FLUENTREAD_ICON_DATA__ || '';
 const menuContainer = ref<HTMLElement>();
 const draft = ref(new Config());

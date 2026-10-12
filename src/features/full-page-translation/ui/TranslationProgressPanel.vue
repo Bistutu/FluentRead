@@ -7,7 +7,6 @@
 <template>
   <Transition name="fr-progress-panel">
     <aside
-      v-ui-i18n
       v-if="isVisible"
       class="fr-translation-progress"
       :class="{ 'fr-dark': isDark, 'fr-static': !animationsEnabled, 'fr-modal-waiting': isModalWaiting, 'fr-compact': isCompact, 'fr-failed': hasFailures, 'fr-idle': progress.running === 0 && progress.queued === 0 }"

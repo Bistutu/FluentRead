@@ -20,7 +20,7 @@
 | 悬浮和划词触发方式 | 想减少误触，或让查词更快 |
 | 自动翻译与网站规则 | 某些网站总要翻译，另一些希望保持原样 |
 
-<figure class="doc-figure"><a href="/screenshots/ui/zh-CN/settings-general.webp" target="_blank" rel="noopener"><img class="doc-screenshot" src="/screenshots/ui/zh-CN/settings-general.webp" width="2560" height="1600" alt="FluentRead 设置页面中的语言、翻译模式与译文样式" loading="lazy" /></a><figcaption>设置页中的语言、翻译模式与译文样式。</figcaption></figure>
+<figure class="doc-figure"><a href="/screenshots/ui/zh-CN/settings-general.webp" target="_blank" rel="noopener"><img class="doc-screenshot" src="/screenshots/ui/zh-CN/settings-general.webp" width="2560" height="1600" alt="流畅阅读设置页面中的语言、翻译模式与译文样式" loading="lazy" /></a><figcaption>设置页中的语言、翻译模式与译文样式。</figcaption></figure>
 
 <details class="guide-details">
 <summary>不翻译的语言</summary>
@@ -40,7 +40,7 @@
 
 ## 界面与菜单栏布局
 
-**界面风格** 的第一项是[译文样式](/guide/features#译文样式)：挑选双语译文的效果，自定义文字与独立背景色、线条、标记底色和精确字号，也可以直接输入 CSS 声明并预览、保存为自己的样式。“双语逐句高亮”放在下方的 **阅读辅助** 分组。随后可以选择浅色、深色与不同皮肤。进入 **菜单栏布局**，拖动预览里的区域或快捷卡片调整顺序；不常用的点“隐藏”，需要时再“添加”回来。也可以在列表中用方向按钮调整。
+**界面风格** 的第一项是[译文样式](/guide/features#译文样式)：挑选双语译文的效果，自定义文字与独立背景色、线条、标记底色和精确字号，也可以直接输入 CSS 声明并预览、保存为自己的样式。“双语逐句高亮”放在下方的 **阅读辅助** 分组。随后可以选择浅色、深色与不同皮肤。用 Tab 进入已选皮肤后，可按方向键切换，或按 Home、End 选择首项、末项；选择会自动保存，继续按 Tab 即可离开皮肤组。进入 **菜单栏布局**，拖动预览里的区域或快捷卡片调整顺序；不常用的点“隐藏”，需要时再“添加”回来。也可以在列表中用方向按钮调整。
 
 内置预设和“我的样式”都使用可视卡片。已保存样式的缩略图显示它自己的颜色、背景、字体与 CSS 效果，切换浅色或深色网页预览时会一起更新；点击卡片即可应用。
 

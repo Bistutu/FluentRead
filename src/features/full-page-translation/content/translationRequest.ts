@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/translationRequest.ts
  * 文件职责：为单次全文翻译会话冻结请求配置，并执行文本槽的批量、原生数组和显式 AI 跨候选合并、分包、回退与会话级结果复用。
- * 主要内容：冻结调用时的长段落换行与译文位置，操作身份区分展示设置而 provider 结果键仍只包含请求维度；在调用入口复制原文与服务/模型/语言/术语/排除列表快照，先过滤排除语言的文本槽再合批，在本地保留尚未排版的三美元公式源码，构造显式 client 参数，按服务选择批译策略；标记内部单条槽协议，由 broker 按冻结术语和同一截止时间逐槽校验；为本地模型只构造一次整段语言样本，为 Chrome auto 逐槽翻译保留无哨兵整段检测样本，按冻结服务偏好自动原生数组合批，关闭后保留逐项请求，完整结构校验后才分发，AI 只合并同父直接相邻候选并在协议失败后停用同快照合批，严格隔离取消归属并维护有界会话缓存。
+ * 主要内容：冻结调用时的长段落换行与译文位置，操作身份区分展示设置而 provider 结果键仍只包含请求维度；在调用入口复制原文与服务/模型/语言/术语/排除列表快照，先过滤排除语言的文本槽再合批；缺失条目携带同次复制快照生成的逐槽键，保持键维度、512 条容量与整请求取消归属，避免登记结果时重复序列化；在本地保留尚未排版的三美元公式源码，构造显式 client 参数，按服务选择批译策略；标记内部单条槽协议，由 broker 按冻结术语和同一截止时间逐槽校验；为本地模型只构造一次整段语言样本，为 Chrome auto 逐槽翻译保留无哨兵整段检测样本，按冻结服务偏好自动原生数组合批，关闭后保留逐项请求，完整结构校验后才分发，AI 只合并同父直接相邻候选并在协议失败后停用同快照合批，严格隔离取消归属并维护有界会话缓存。
  * 模块边界：本文件不发现候选、不持有 DOM 翻译状态也不渲染译文；runtime 提供会话缓存和取消作用域，client 负责后台协议与队列执行。
  */
 import {preparePageDiscourseContext} from '@/src/services/translation/context/pageDiscourse';
@@ -789,7 +789,8 @@ async function translateTextSlotsDirectly(
         }
 
         const resultPromises = new Array<Promise<string | undefined>>(origins.length);
-        const missing = new Map<string, {origin: string; indexes: number[]}>();
+        // 缺失条目复用首次按入口复制快照生成的键；只在本次批译内携带，不跨调用记忆快照。
+        const missing = new Map<string, {key: string; origin: string; indexes: number[]}>();
         for (const [index, origin] of origins.entries()) {
             const key = createCacheKey(origin, snapshot);
             const cached = fullPageSession.translationSlotCache.get(key);
@@ -801,7 +802,7 @@ async function translateTextSlotsDirectly(
             }
             const entry = missing.get(key);
             if (entry) entry.indexes.push(index);
-            else missing.set(key, {origin, indexes: [index]});
+            else missing.set(key, {key, origin, indexes: [index]});
         }
 
         if (missing.size > 0) {
@@ -818,8 +819,7 @@ async function translateTextSlotsDirectly(
                     ? translations
                     : null,
             );
-            entries.forEach(({origin, indexes}, entryIndex) => {
-                const key = createCacheKey(origin, snapshot);
+            entries.forEach(({key, indexes}, entryIndex) => {
                 const result = providerRequest.then((translations) => translations?.[entryIndex]);
                 rememberTranslation(fullPageSession, key, result);
                 indexes.forEach((index) => {

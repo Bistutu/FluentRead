@@ -1,7 +1,7 @@
 /**
  * @file src/app/translation/client.ts
  * 文件职责：作为页面与后台翻译 broker 之间的客户端代理，统一管理单条、批量和视频字幕翻译的队列、取消、重试、超时、上下文与统计。
- * 主要内容：在等待前冻结调用选项、原文数组、服务/模型与语言参数及各服务原生合批偏好，单条与批量文本共用同目标预检，批量只发送待译片段并按原索引回填，显式 skipLanguageDetection 可强制发送；免费聚合及谷歌内部换线免除外层重复重试，验证凭据与页面摘要上下文，使用 runtime 协议分派请求；为带调用者取消信号的文本、批量请求以及视频和 Chrome 内置翻译携带随机 clientRequestId，auto 时转发纯检测样本，并在页面取消/超时时通知后台停止真实 provider。
+ * 主要内容：在等待前冻结调用选项、原文数组、服务/模型与语言参数及各服务原生合批偏好，单条与批量文本共用同目标预检，批量只发送待译片段并按原索引回填，显式 skipLanguageDetection 可强制发送；免费聚合及谷歌内部换线免除外层重复重试，验证凭据与页面摘要上下文，使用 runtime 协议分派请求；为带调用者取消信号的文本、批量请求以及视频和 Chrome 内置翻译携带随机 clientRequestId，auto 时转发纯检测样本，并在页面取消/超时时通知后台停止真实 provider。 自动页面摘要等待随本调用信号结束，不中断其他调用共用的正文提取。
  * 模块边界：客户端不实现供应商协议、不直接读写翻译缓存，也不修改全文 DOM；内部槽请求保留空响应供调用方严格解析和逐槽回退，后台 runtime/broker 负责 provider 与缓存，各 feature 负责展示和会话状态。
  */
 /**
@@ -336,6 +336,7 @@ export async function translateText(origin: string, context: string = document.t
     selectedService,
     selectedModel,
     options.enableAIContext,
+    signal,
   );
   throwIfAborted(signal);
 
@@ -452,6 +453,7 @@ export async function translateTextBatch(
     selectedService,
     selectedModel,
     options.enableAIContext,
+    signal,
   );
   throwIfAborted(signal);
 
@@ -531,7 +533,8 @@ export async function translateVideoText(origin: string, signal?: AbortSignal, s
   const thinking = isModelThinkingEnabled(config.modelThinking, service, model);
   const languages = getTranslationLanguages({sourceLanguage});
   const useCache = config.useCache;
-  const pageContext = await resolvePageContext(undefined, service, model);
+  const pageContext = await resolvePageContext(undefined, service, model, undefined, signal);
+  throwIfAborted(signal);
   const aiSdkService = servicesType.isAiSdk(service);
   const retryPolicy = getTranslationRetryPolicy({}, service);
 
@@ -663,10 +666,33 @@ async function resolvePageContext(
   serviceOverride = config.service,
   modelOverride?: string,
   enableAIContextOverride?: boolean,
+  signal?: AbortSignal,
 ): Promise<string | undefined> {
   const service = serviceOverride || config.service;
   const selectedModel = resolveConfiguredModel(modelOverride || config.model[service], modelOverride || config.customModel[service]);
   if (!(enableAIContextOverride ?? config.enableAIContext)
     || !servicesType.isUseAIContext(service, selectedModel)) return undefined;
-  return suppliedContext?.trim().slice(0, 4000) || await getPageTranslationContext() || undefined;
+  const supplied = suppliedContext?.trim().slice(0, 4000);
+  if (supplied) return supplied;
+  throwIfAborted(signal);
+  const context = getPageTranslationContext();
+  if (!signal) return await context || undefined;
+
+  // 只取消本调用的等待；共享提取继续供其他调用使用，并消费迟到的成功或失败。
+  return new Promise<string | undefined>((resolve, reject) => {
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      signal.removeEventListener('abort', onAbort);
+      callback();
+    };
+    const onAbort = () => finish(() => reject(createAbortError()));
+    signal.addEventListener('abort', onAbort, {once: true});
+    void context.then(
+      (value) => finish(() => resolve(value || undefined)),
+      (error) => finish(() => reject(error)),
+    );
+    if (signal.aborted) onAbort();
+  });
 }

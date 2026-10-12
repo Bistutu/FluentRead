@@ -10,6 +10,8 @@ Open **Settings → Selection translation** and enable the feature. Every select
 
 English dictionary lookup does not require AI. Dictionary meanings are grouped by word class; these describe possible uses, not necessarily the word’s role in the current sentence. If lookup fails, the translation remains available.
 
+If translation shows “Invalid key or permission”, choose **Configure service**. In General settings, find the **Selection translation** row under service assignments and choose **Configure connection** to check the selected service’s key and permissions. Retry the translation manually after making changes. Opening settings preserves the default page translation service and does not retry automatically.
+
 <details class="guide-details">
 <summary>Activation and display</summary>
 

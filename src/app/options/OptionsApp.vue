@@ -1,8 +1,8 @@
 <!--
  @file src/app/options/OptionsApp.vue
  文件职责：实现扩展 Options 页的顶层布局，组织设置导航、全局搜索结果和学习中心入口，并把选中分区交给对应 feature UI。
- 主要内容：侧栏展示品牌与多语言宣传语；关于页以随界面语言显示产品名的宽幅品牌介绍、项目链接卡片、开源项目下方的微信交流按钮和独立赞赏区组织内容，联系二维码与赞赏码在当前页弹窗展示；渲染默认展开的分组侧栏、窄屏分类选择和全局搜索；普通设置连续展示并提供顶部滚动定位导航，统计保留任务视图切换，智能高亮锚点及搜索入口随脚本版能力隐藏，服务目录使用完整工作区，复用 settingsNavigation 的项目解析/过滤逻辑，在 SettingsSections 与 LearningCenter 之间切换并重置内容区滚动，同步 URL hash 的深链接与前进后退导航，兼容模型用量迁入翻译统计后的旧链接；界面根节点注册在卸载时只释放本页面句柄。
- 模块边界：组件负责页面壳、导航状态和主题、界面皮肤根属性同步，不定义具体配置字段、不直接写 browser.storage，也不实现词汇仓库；设置表单、收藏与阅读记录业务由各 feature 组件拥有。
+ 主要内容：侧栏展示品牌与多语言宣传语；关于页以随界面语言显示产品名的宽幅品牌介绍、项目链接卡片、开源项目下方的微信交流按钮和独立赞赏区组织内容，联系二维码与赞赏码在当前页弹窗展示；渲染默认展开的分组侧栏、窄屏分类选择和全局搜索，搜索只在同次派生内复用原始查询的小写值和语言入口判断，语言恢复查询优先展示现有软件语言入口并定位选择控件；普通设置连续展示并提供顶部滚动定位导航，统计保留任务视图切换，智能高亮锚点及搜索入口随脚本版能力隐藏，服务目录使用完整工作区，复用 settingsNavigation 的项目解析/过滤逻辑，在 SettingsSections 与 LearningCenter 之间切换并重置内容区滚动，同步 URL hash 的深链接与前进后退导航，兼容模型用量迁入翻译统计后的旧链接；界面根节点注册在卸载时只释放本页面句柄。
+ 模块边界：组件负责页面壳、导航状态和主题、界面皮肤根属性同步，不定义具体配置字段、不直接写 browser.storage，也不实现词汇仓库；设置表单、收藏与阅读记录业务由各 feature 组件拥有；学习栏目加载失败的重载动作在普通设置页保留栏目参数，页内设置只重载宿主文档。
 -->
 <template>
   <div class="settings-app" :class="{'has-overlay-close': Boolean(props.onClose)}">
@@ -10,7 +10,7 @@
       <a class="brand" :href="websiteUrl" target="_blank" rel="noopener noreferrer" :aria-label="t('options.aboutWebsite')" :title="t('options.aboutWebsite')">
         <img :src="iconUrl" alt="" />
         <div class="brand-copy">
-          <strong>流畅阅读</strong>
+          <strong data-i18n-ignore>{{ t('common.brand') }}</strong>
           <p class="sidebar-tagline" data-testid="brand-tagline" data-i18n-ignore>{{ t('brand.tagline') }}</p>
         </div>
       </a>
@@ -133,7 +133,7 @@
                   @click="openQrPreview('support')"
                 >
                   <!-- 绑定表达式让模板编译器保留 public 路径，避免再打包一份带 hash 的同图。 -->
-                  <img class="about-support-qr" :src="approveUrl" :alt="t('popup.donationCodeAlt')" width="1152" height="1152" />
+                  <img class="about-support-qr" :src="getSupportImageUrl(approveUrl)" :alt="t('popup.donationCodeAlt')" width="1152" height="1152" />
                   <span>{{ t('popup.donationWechat') }}</span>
                 </button>
                 <a class="about-support-method about-support-kofi-link" data-support-method="kofi" href="https://ko-fi.com/thinkstu" target="_blank" rel="noopener noreferrer">
@@ -169,7 +169,7 @@
     >
       <img
         class="about-approve-preview"
-        :src="qrPreviewKind === 'contact' ? wechatContactUrl : approveUrl"
+        :src="qrPreviewUrl"
         :alt="qrPreviewKind === 'contact' ? t('options.aboutWechatContactCodeAlt') : t('popup.donationCodeAlt')"
         :width="qrPreviewKind === 'contact' ? 888 : 1152"
         :height="qrPreviewKind === 'contact' ? 1131 : 1152"
@@ -180,7 +180,7 @@
 
 <script setup lang="ts">
 import UiIcon from '@/src/ui/components/UiIcon.vue'
-import wechatContactUrl from './assets/wechat-contact.jpg'
+import {getSupportImageUrl, getContactImageUrl} from './aboutImages'
 import {SETTINGS_TABBED_SECTION_IDS, settingsPagePanels, resolveSettingsPanel, filterNavigationItems, filterSettingsSearchTargets, isUiLanguageSearch, settingsSearchTargets} from '@/src/features/settings/model/navigation';
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import SettingsNavigationIcon from '@/src/features/settings/ui/SettingsNavigationIcon.vue'
@@ -216,11 +216,14 @@ const websiteUrl = 'https://read.thinkstu.com'
 const iconUrl = globalThis.__FLUENTREAD_ICON_DATA__ || '/icon/128.png'
 const approveUrl = globalThis.__FLUENTREAD_APPROVE_DATA__ || '/misc/approve.jpg'
 const approvePreviewVisible = ref(false)
+const qrPreviewUrl = ref<string>()
 const approvePreviewTrigger = ref<HTMLButtonElement | null>(null)
 const wechatContactTrigger = ref<HTMLButtonElement | null>(null)
 const qrPreviewKind = ref<'contact' | 'support'>('support')
 function openQrPreview(kind: 'contact' | 'support') {
+  const nextUrl = kind === 'contact' ? getContactImageUrl() : getSupportImageUrl(approveUrl)
   qrPreviewKind.value = kind
+  qrPreviewUrl.value = nextUrl
   approvePreviewVisible.value = true
 }
 function restoreApprovePreviewFocus() {
@@ -297,8 +300,16 @@ let cancelPendingSearchReveal: (() => void) | null = null
 const releaseInterfaceAppearanceRoot = props.appearanceRoot ? registerInterfaceAppearanceRoot(props.appearanceRoot) : () => {}
 
 const navigation = navigationItems
+function reloadLearningPage(tab: string): void {
+  if (props.locationRouting !== 'internal') {
+    const url = new URL(window.location.href)
+    url.searchParams.set('learningTab', tab)
+    window.history.replaceState(window.history.state, '', url)
+  }
+  window.location.reload()
+}
 const contentComponentProps = computed(() => activeSection.value === 'settings-vocabulary'
-  ? {onNavigate: selectSection, initialTab: new URLSearchParams(window.location.search).get('learningTab') || 'saved'}
+  ? {onNavigate: selectSection, onReload: reloadLearningPage, initialTab: new URLSearchParams(window.location.search).get('learningTab') || 'saved'}
   : {
       activeSection: activeSection.value,
       activePanel: activePanels.value.length ? activePanel.value : undefined,
@@ -314,7 +325,7 @@ const localizedNavigationGroups = computed(() => navigationGroups.map((group) =>
     ...item,
     label: translateLegacy(item.label),
     description: translateLegacy(item.description),
-    heading: translateLegacy(item.heading),
+    heading: translateLegacy(item.heading).replace('FluentRead', t('common.brand')),
     summary: translateLegacy(item.summary),
     kicker: translateLegacy(item.kicker),
     title: translateLegacy(item.title),
@@ -355,28 +366,38 @@ void configReady
   })
 
 type SearchResult = {id: string; sectionId: string; targetId?: string; panelId?: string; label: string; searchDescription: string}
-const filteredResults = computed<SearchResult[]>(() => [
-  ...Object.entries(settingsPagePanels).flatMap(([sectionId, panels]) => panels
-    .filter(panel => isAvailableSettingsEntry(panel) && query.value && `${t(panel.labelKey)} ${panel.searchTerms}`.toLocaleLowerCase().includes(query.value.toLocaleLowerCase()))
-    .map(panel => ({id: `${sectionId}/${panel.id}`, sectionId, panelId: panel.id, label: t(panel.labelKey), searchDescription: localizedNavigationItems.value.find(item => item.id === sectionId)?.label ?? ''}))),
-  ...filterSettingsSearchTargets(query.value, localizedSearchTargets.value).map(target => ({
-    id: target.id,
-    sectionId: target.sectionId,
-    targetId: target.targetId,
-    label: target.label,
-    searchDescription: target.description,
-  })),
-  ...filterNavigationItems(query.value, localizedNavigationItems.value).map(item => ({
-    id: item.id,
-    sectionId: item.id,
-    label: item.id === 'settings-general' && isUiLanguageSearch(query.value)
-      ? `${t('language.selectorLabel')} / Language`
-      : item.label,
-    searchDescription: item.id === 'settings-general' && isUiLanguageSearch(query.value)
-      ? t('language.settingsDescription')
-      : item.description,
-  })),
-])
+const filteredResults = computed<SearchResult[]>(() => {
+  const searchQuery = query.value
+  const keyword = searchQuery ? searchQuery.toLocaleLowerCase() : ''
+  const languageSearch = isUiLanguageSearch(searchQuery)
+  const results: SearchResult[] = [
+    ...Object.entries(settingsPagePanels).flatMap(([sectionId, panels]) => panels
+      .filter(panel => isAvailableSettingsEntry(panel) && searchQuery && `${t(panel.labelKey)} ${panel.searchTerms}`.toLocaleLowerCase().includes(keyword))
+      .map(panel => ({id: `${sectionId}/${panel.id}`, sectionId, panelId: panel.id, label: t(panel.labelKey), searchDescription: localizedNavigationItems.value.find(item => item.id === sectionId)?.label ?? ''}))),
+    ...filterSettingsSearchTargets(searchQuery, localizedSearchTargets.value).map(target => ({
+      id: target.id,
+      sectionId: target.sectionId,
+      targetId: target.targetId,
+      label: target.label,
+      searchDescription: target.description,
+    })),
+    ...filterNavigationItems(searchQuery, localizedNavigationItems.value).map(item => ({
+      id: item.id,
+      sectionId: item.id,
+      label: item.id === 'settings-general' && languageSearch
+        ? `${t('language.selectorLabel')} / Language`
+        : item.label,
+      searchDescription: item.id === 'settings-general' && languageSearch
+        ? t('language.settingsDescription')
+        : item.description,
+    })),
+  ]
+  if (languageSearch) {
+    const languageIndex = results.findIndex(result => result.id === 'settings-general')
+    if (languageIndex > 0) results.unshift(...results.splice(languageIndex, 1))
+  }
+  return results
+})
 
 function selectSection(requestedId: string, panelOrTargetId?: string) {
   if (disposed) return

@@ -1,14 +1,17 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {MANGA_INPAINT_ASSET, MANGA_OCR_ASSETS, MANGA_OCR_CACHE, MANGA_OCR_MODEL_BYTES,
     assertMangaOcrActive, loadMangaInpaintAsset, loadMangaOcrAssets, mangaOcrModelStatus, removeMangaOcrAssets, getMangaModelSource, setMangaModelSource, importMangaModel} from '@/src/features/image-translation/services/mangaOcrAssets';
+import {createVirtualModelResponsePort, virtualModelBuffer} from './helpers/virtualModelResponse';
 const allAssets=[...MANGA_OCR_ASSETS,MANGA_INPAINT_ASSET];
-// 用元数据模拟模型容量；生产浏览器专项另验证真实下载文件的完整 SHA-256。
-function buffer(bytes:number) {const value=new ArrayBuffer(1);Object.defineProperty(value,'byteLength',{value:bytes});return value;}
+const NativeResponse=globalThis.Response;
+// 虚拟容量与受控 digest 只验证容量、状态和缓存契约；标记 Response 端口不声称原生大模型复制，真实内容和完整 SHA-256 留给浏览器专项。
+const buffer=virtualModelBuffer;
 function response(bytes:number,status=200) {return {ok:status===200,status,arrayBuffer:vi.fn(async()=>buffer(bytes))} as unknown as Response;}
 function digest(bytes:number) {const asset=allAssets.find(asset=>asset.bytes===bytes)!;return Uint8Array.from(asset.sha256.match(/../g)!,part=>parseInt(part,16)).buffer;}
 let preferences:{match:ReturnType<typeof vi.fn>;put:ReturnType<typeof vi.fn>};
 let cache:{match:ReturnType<typeof vi.fn>;put:ReturnType<typeof vi.fn>;delete:ReturnType<typeof vi.fn>};
 beforeEach(async()=>{
+    vi.stubGlobal('Response',createVirtualModelResponsePort(NativeResponse));
     preferences={match:vi.fn(async()=>undefined),put:vi.fn(async()=>{})};
     cache={match:vi.fn(async()=>undefined),put:vi.fn(async()=>{}),delete:vi.fn(async()=>true)};
     vi.stubGlobal('caches',{open:vi.fn(async(name:string)=>name===MANGA_OCR_CACHE?cache:preferences),delete:vi.fn(async()=>true)});
@@ -19,6 +22,21 @@ beforeEach(async()=>{
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
 
 describe('漫画模型固定版本和完整性',()=>{
+    it('仅显式虚拟容量绕过原生复制，普通字节和流保真，未标记的伪容量仍被拒绝',async()=>{
+        const plain=new Response('public source');
+        expect(await plain.clone().text()).toBe('public source');expect(plain.bodyUsed).toBe(false);
+        expect(await plain.text()).toBe('public source');expect(plain.bodyUsed).toBe(true);
+        const bytes=new Uint8Array([0,255,3]);
+        expect(new Uint8Array(await new Response(bytes).arrayBuffer())).toEqual(bytes);
+        expect(new Uint8Array(await new Response(bytes.buffer).arrayBuffer())).toEqual(bytes);
+        const stream=new ReadableStream<Uint8Array>({start(controller){controller.enqueue(bytes);controller.close();}});
+        expect(new Uint8Array(await new Response(stream).arrayBuffer())).toEqual(bytes);
+        const virtual=buffer(MANGA_INPAINT_ASSET.bytes),held=await new Response(virtual).arrayBuffer();
+        expect(held).toBe(virtual);expect(held.byteLength).toBe(MANGA_INPAINT_ASSET.bytes);
+        expect(new Uint8Array(held)).toHaveLength(1);
+        const unmarked=new ArrayBuffer(1);Object.defineProperty(unmarked,'byteLength',{value:MANGA_OCR_ASSETS[0].bytes});
+        expect(()=>new Response(unmarked)).toThrow(RangeError);
+    });
     it('历史来源设置不影响自动下载，损坏来源仍校验失败后回退',async()=>{
         vi.stubGlobal('navigator',{language:'en-US'});
         expect(await getMangaModelSource()).toBe('auto');preferences.match.mockResolvedValue(new Response('bad'));expect(await getMangaModelSource()).toBe('auto');

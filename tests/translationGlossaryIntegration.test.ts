@@ -3,16 +3,41 @@ import {describe, expect, it, vi} from 'vitest';
 import {Config} from '@/src/core/config/model';
 import {resolveConfiguredModel, servicesType} from '@/src/core/config/catalog';
 import {buildGlossaryRevision, type GlossaryLibrary} from '@/src/core/glossary';
-import {serializeTranslationSlots} from '@/src/core/translation/public';
+import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/public';
 import {createTranslationBroker} from '@/src/services/translation/broker';
 import {supportsTranslationGlossary} from '@/src/services/translation/capabilities';
 import {
     attachTranslationGlossaryContext,
+    attachTranslationProviderConfig,
     createTranslationProviderConfigSnapshot,
     getTranslationGlossaryTerms,
     getTranslationProviderConfig,
 } from '@/src/services/translation/requestSnapshot';
 import type {TranslationRequestMessage, TranslationProviderConfigSnapshot} from '@/src/services/translation/types';
+
+type GlossaryResolutionEvent = {
+    api: 'resolveGlossary' | 'resolveGlossaryEntries';
+    text: string | string[];
+    terms: Array<{source: string; target: string; caseSensitive?: boolean}>;
+};
+const glossaryResolutionTrace = vi.hoisted(() => ({events: [] as GlossaryResolutionEvent[]}));
+vi.mock('@/src/core/glossary', async importOriginal => {
+    const actual = await importOriginal<typeof import('@/src/core/glossary')>();
+    return {...actual,
+        resolveGlossary: (...args: Parameters<typeof actual.resolveGlossary>) => {
+            const result = actual.resolveGlossary(...args);
+            glossaryResolutionTrace.events.push({api: 'resolveGlossary', text: args[1].text,
+                terms: result.terms.map(term => ({...term}))});
+            return result;
+        },
+        resolveGlossaryEntries: (...args: Parameters<typeof actual.resolveGlossaryEntries>) => {
+            const result = actual.resolveGlossaryEntries(...args);
+            glossaryResolutionTrace.events.push({api: 'resolveGlossaryEntries', text: args[1].text,
+                terms: result.terms.map(term => ({...term}))});
+            return result;
+        },
+    };
+});
 
 vi.mock('@/src/services/config/store', () => ({config: {to: 'zh-Hans'}}));
 import {
@@ -42,6 +67,7 @@ function harness() {
     config.model.openai = 'model-fixture';
     const cache = new Map<string, string>();
     const identities: Record<string, unknown>[] = [];
+    const resolutionCaptures: Array<{identity: Record<string, unknown>; eventEnd: number; providerCalls: number}> = [];
     const calls: Array<{message: Record<string, unknown>; snapshot: TranslationProviderConfigSnapshot; body: any}> = [];
     const provider = vi.fn(async (message: Record<string, unknown>): Promise<unknown> => {
         const snapshot = getTranslationProviderConfig(message, createTranslationProviderConfigSnapshot(config));
@@ -67,12 +93,35 @@ function harness() {
         getMissingCredentialMessage: () => null,
         getTranslationLanguages: request => ({sourceLanguage: request?.sourceLanguage ?? 'en', targetLanguage: request?.targetLanguage ?? 'zh-Hans'}),
         resolveConfiguredModel,
-        buildTranslationCacheKey: identity => {identities.push(identity); return JSON.stringify(identity);},
+        buildTranslationCacheKey: identity => {
+            identities.push(identity);
+            resolutionCaptures.push({identity, eventEnd: glossaryResolutionTrace.events.length, providerCalls: provider.mock.calls.length});
+            return JSON.stringify(identity);
+        },
         logger: {warn: vi.fn()},
     });
     const request = (message: TranslationRequestMessage) => broker.translateWithCache(attachTranslationGlossaryContext(message,
         {pageUrl: 'https://docs.example.com/article', context: 'page'}));
-    return {config, calls, identities, provider, cache, get, broker, request};
+    return {config, calls, identities, resolutionCaptures, provider, cache, get, broker, request};
+}
+
+// Checkpoints stop at the real cache-key dependency, before provider protection and quality validation.
+// The public request's first full-source selection is validated separately from each key's local work.
+function resolutionCheckpoint(h: ReturnType<typeof harness>) {
+    return {eventStart: glossaryResolutionTrace.events.length, captureStart: h.resolutionCaptures.length,
+        providerCalls: h.provider.mock.calls.length};
+}
+
+function keyResolutionRows(h: ReturnType<typeof harness>, start: ReturnType<typeof resolutionCheckpoint>,
+    text: string | string[], initialTerms: Array<{source: string; target: string}>) {
+    expect(glossaryResolutionTrace.events[start.eventStart]).toEqual({api: 'resolveGlossary', text, terms: initialTerms});
+    let cursor = start.eventStart + 1;
+    return h.resolutionCaptures.slice(start.captureStart).map(capture => {
+        expect(capture.providerCalls).toBe(start.providerCalls);
+        const events = glossaryResolutionTrace.events.slice(cursor, capture.eventEnd);
+        cursor = capture.eventEnd;
+        return {identity: capture.identity, events};
+    });
 }
 
 describe('术语库与真实翻译编排协作', () => {
@@ -342,6 +391,116 @@ describe('术语库与真实翻译编排协作', () => {
         h.config.glossaryLibraries[0].entries[0].target = '新术语';
         await expect(h.request({origin: 'agent', serviceOverride: 'tongyi', modelOverride: 'qwen-mt-plus',
             glossaryRevision: 'glossary-v1:disabled'})).rejects.toMatchObject({code: 'GLOSSARY_REVISION_CHANGED'});
+    });
+});
+
+describe('cache key glossary resolution', () => {
+    it('单条冷请求、热命中和禁缓存请求使用同一真实术语身份且每个key仅解析一次', async () => {
+        const h = harness();
+        const rows: ReturnType<typeof keyResolutionRows> = [];
+        const terms = [{source: 'agent', target: '智能体'}];
+        for (const useCache of [true, true, false]) {
+            h.config.useCache = useCache;
+            const start = resolutionCheckpoint(h);
+            await expect(h.request({origin: 'agent'})).resolves.toBe('智能体');
+            const current = keyResolutionRows(h, start, 'agent', terms);
+            expect(current).toHaveLength(1);
+            expect(current[0].identity).toMatchObject({requestMode: 'single', sourceText: 'agent', glossaryTerms: terms,
+                glossaryProtection: {version: 1, entries: [{source: 'agent', target: '智能体', caseSensitive: false}]}});
+            rows.push(...current);
+        }
+        expect(h.provider).toHaveBeenCalledTimes(2);
+        expect(h.get).toHaveBeenCalledTimes(2);
+        expect(rows.map(row => row.identity)).toEqual([rows[0].identity, rows[0].identity, rows[0].identity]);
+        expect(rows.map(row => row.events.length)).toEqual([1, 1, 1]);
+        expect(rows.map(row => row.events[0].api)).toEqual(['resolveGlossaryEntries', 'resolveGlossaryEntries', 'resolveGlossaryEntries']);
+    });
+
+    it('批量实际复用已缓存分项，未命中术语的分项不增加扫描，命中key复用raw条目', async () => {
+        const h = harness();
+        await expect(h.request({origin: ['agent']})).resolves.toEqual(['智能体']);
+        const start = resolutionCheckpoint(h);
+        const origin = ['agent', 'no match', 'unrelated'];
+        const allTerms = [{source: 'unrelated', target: '此条不该发送'}, {source: 'agent', target: '智能体'}];
+        await expect(h.request({origin})).resolves.toEqual(['智能体', '译文:no match', '此条不该发送']);
+        const rows = keyResolutionRows(h, start, origin, allTerms);
+        expect(rows.map(row => row.identity.sourceText)).toEqual([origin, ...origin]);
+        expect(rows[0].identity).toMatchObject({glossaryTerms: allTerms, glossaryProtection: {version: 1,
+            entries: [{source: 'unrelated', target: '此条不该发送', caseSensitive: false}, {source: 'agent', target: '智能体', caseSensitive: false}]}});
+        expect(rows[1].identity).toMatchObject({glossaryTerms: [{source: 'agent', target: '智能体'}]});
+        expect(rows[2].identity).not.toHaveProperty('glossaryTerms');
+        expect(rows[2].identity).not.toHaveProperty('glossaryProtection');
+        expect(rows[3].identity).toMatchObject({glossaryTerms: [{source: 'unrelated', target: '此条不该发送'}]});
+        expect(h.provider).toHaveBeenCalledTimes(2);
+        expect(h.calls.slice(1).map(call => call.message.sourceLanguageDetectionText)).toEqual(['no match\nunrelated', 'no match\nunrelated']);
+        expect(h.calls.slice(1).map(call => String(call.message.origin))).not.toContain('agent');
+        expect(rows[2].events).toHaveLength(1);
+        expect(rows[2].events[0]).toMatchObject({text: 'no match', terms: []});
+        expect([rows[0], rows[1], rows[3]].map(row => row.events.length)).toEqual([1, 1, 1]);
+        expect([rows[0], rows[1], rows[3]].map(row => row.events[0].api)).toEqual(['resolveGlossaryEntries', 'resolveGlossaryEntries', 'resolveGlossaryEntries']);
+    });
+
+    it.each([
+        ['hit', ['manual-token'], 'agent manual-token', '智能体 manual-token', 1],
+        ['miss', ['manual-token'], 'agent', '智能体', 0],
+        ['empty', [], 'agent', '智能体', 0],
+    ] as const)('protectedTokens %s保持现有分支、输出与key局部扫描', async (_label, tokens, origin, result, scans) => {
+        const h = harness();
+        const snapshot = createTranslationProviderConfigSnapshot({...h.config, glossaryProtectedTokens: tokens});
+        const start = resolutionCheckpoint(h);
+        await expect(h.request(attachTranslationProviderConfig({origin}, snapshot))).resolves.toBe(result);
+        const rows = keyResolutionRows(h, start, origin, [{source: 'agent', target: '智能体'}]);
+        expect(rows).toHaveLength(1);
+        if (scans) {
+            expect(rows[0].identity).toMatchObject({glossaryTerms: [{source: 'manual-token', target: 'manual-token'}],
+                glossaryProtection: {version: 1, entries: [{source: 'agent', target: '智能体', caseSensitive: false}]}});
+        } else {
+            expect(rows[0].identity).not.toHaveProperty('glossaryTerms');
+            expect(rows[0].identity).not.toHaveProperty('glossaryProtection');
+        }
+        expect(h.provider).toHaveBeenCalledTimes(1);
+        expect(rows[0].events.length).toBe(scans);
+        if (scans) expect(rows[0].events[0].api).toBe('resolveGlossaryEntries');
+    });
+
+    it('长词优先、大小写敏感与空target保护保持raw身份而提示词terms回退source', async () => {
+        const h = harness();
+        h.config.glossaryLibraries[0].entries = [
+            {id: 'short', source: 'agent', target: '短词', caseSensitive: false},
+            {id: 'long', source: 'agent system', target: '', caseSensitive: false},
+            {id: 'case', source: 'Token', target: '词元', caseSensitive: true},
+        ];
+        const origin = 'AGENT SYSTEM / Token / token / agent';
+        const terms = [{source: 'agent system', target: 'agent system'}, {source: 'agent', target: '短词'}, {source: 'Token', target: '词元'}];
+        const start = resolutionCheckpoint(h);
+        await expect(h.request({origin})).resolves.toBe('AGENT SYSTEM / 词元 / token / 短词');
+        const rows = keyResolutionRows(h, start, origin, terms);
+        expect(rows).toHaveLength(1);
+        expect(rows[0].identity).toMatchObject({glossaryTerms: terms, glossaryProtection: {version: 1,
+            entries: [{source: 'agent system', target: '', caseSensitive: false}, {source: 'agent', target: '短词', caseSensitive: false},
+                {source: 'Token', target: '词元', caseSensitive: true}]}});
+        expect(h.calls[0].snapshot.glossaryTerms).toEqual(terms);
+        expect(rows[0].events.length).toBe(1);
+        expect(rows[0].events[0].api).toBe('resolveGlossaryEntries');
+    });
+
+    it('完整槽协议按解包原文匹配而保留完整缓存source与原生槽校验', async () => {
+        const h = harness();
+        const sources = ['agent', 'Use agent'];
+        const packet = serializeTranslationSlots(sources);
+        h.config.glossaryLibraries[0].entries.push({id: 'protocol', source: packet.starts[0], target: '内部标记不外发', caseSensitive: true});
+        const start = resolutionCheckpoint(h);
+        const result = await h.request({origin: packet.payload, validateTranslationSlots: true});
+        expect(result).toBe(packet.payload.replaceAll('agent', '智能体'));
+        expect(parseTranslationSlots(packet, String(result))).toEqual(['智能体', 'Use 智能体']);
+        const terms = [{source: 'agent', target: '智能体'}];
+        const rows = keyResolutionRows(h, start, sources, terms);
+        expect(rows).toHaveLength(1);
+        expect(rows[0].identity).toMatchObject({requestMode: 'slot-protocol', sourceText: packet.payload, glossaryTerms: terms,
+            glossaryProtection: {version: 1, entries: [{source: 'agent', target: '智能体', caseSensitive: false}]}});
+        expect(JSON.stringify(h.calls[0].body)).not.toContain('内部标记不外发');
+        expect(rows[0].events.length).toBe(1);
+        expect(rows[0].events[0].api).toBe('resolveGlossaryEntries');
     });
 });
 

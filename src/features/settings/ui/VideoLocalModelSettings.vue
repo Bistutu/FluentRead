@@ -72,7 +72,7 @@ import {
   normalizeVideoLocalTranscriptionModels,
   VIDEO_LOCAL_TRANSCRIPTION_RECOMMENDED_MODEL,
   type VideoLocalTranscriptionModel,
-} from '@/src/features/video-subtitle/public';
+} from '@/src/features/video-subtitle/domain/public';
 import type {Config} from '@/src/core/config/model';
 import {videoModelDownloadId, type DownloadProgress as DownloadProgressValue} from '@/src/core/download/progress';
 import {browserCapabilities} from '@/src/platform/browser/capabilities';

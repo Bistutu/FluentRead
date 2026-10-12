@@ -10,6 +10,9 @@ import type {Config} from '@/src/core/config/model';
 import {resolveConfiguredModel} from '@/src/core/config/catalog';
 import type {VideoSubtitleCue} from './youtubeSubtitleData';
 
+/** 同一同步更新轮次的选择证据；数组身份、原文和第二次时钟读取相同才可复用。 */
+export type YoutubeCueSelection = ReturnType<typeof selectYoutubeCaptionCue> & {cues: readonly VideoSubtitleCue[]; source: string; currentMs: number};
+
 /** 渐进字幕沿用最短 500ms 展示区间，重叠时选择最新开始的原始 cue。 */
 export function findActiveVideoCaptionCue(cues: readonly VideoSubtitleCue[], currentMs: number): VideoSubtitleCue | null {
   if (!Number.isFinite(currentMs)) return null;

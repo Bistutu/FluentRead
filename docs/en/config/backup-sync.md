@@ -1,6 +1,6 @@
 # Backup & sync
 
-Updated: October 6, 2026.
+Updated: October 11, 2026.
 
 Save the settings and learning data you need before changing browsers, moving devices, or uninstalling. Full backups, settings history, and cloud configuration sync serve different purposes.
 
@@ -42,6 +42,12 @@ The dialog makes clear that only the cloud backup is deleted; settings and API k
 ## Local full backup
 
 Open **Settings → Backup & restore**, export a full data backup, and save the file. When importing, review the preview and its scope before restoring.
+
+Before exporting, choose whether to include saved word context. Closing the confirmation cancels the export. If you switch to another settings section or the learning center before confirming, return and start the export again. A backup already being prepared after confirmation continues to download.
+
+If you switch to another settings section or the learning center during large-file confirmation or file reading, a late result will not open an import preview. Return and select the file again.
+
+Once you confirm an import, restoration already in progress continues to completion. After you leave the section, a late result will not show a notification or move focus back to the original button.
 
 A full backup can contain API keys, provider credentials, and saved original text. Keep it private. Earlier backups remain importable according to the import preview.
 

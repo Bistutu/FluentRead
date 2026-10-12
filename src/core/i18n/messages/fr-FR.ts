@@ -1830,6 +1830,8 @@ export const frFRMessages = {
     "learning.localStorage": "Enregistré dans ce navigateur",
     "learning.localStorageHelp": "Aucun compte ni envoi des révisions. La navigation privée ne conserve pas les collections.",
     "learning.backup": "Sauvegarde et restauration",
+    "learning.panelLoadError": "Cette section n’a pas pu être ouverte. Rechargez la page pour réessayer.",
+    "learning.reloadPage": "Recharger la page",
     "learning.collection.actions": "Collection et révision",
     "learning.collection.reviewHelp": "Rappelez-vous, puis vérifiez. Jusqu’à 20 entrées par session.",
     "learning.collection.upToDate": "Aucune révision prévue. Continuez à apprendre avec votre collection.",

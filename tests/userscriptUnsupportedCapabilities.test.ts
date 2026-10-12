@@ -1,8 +1,6 @@
-import {describe, expect, it, vi} from 'vitest';
+import {describe, expect, it} from 'vitest';
+// Node 配置不编译 Vue 组件；空运行契约应能独立加载，不需要 mock 设置 UI。
 import {VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE as extensionTranscriptionStateMessage} from '@/src/features/video-subtitle/transcription';
-// Vitest 的 Node 配置不编译 Vue 组件；这里仅检验无浏览器 API 的运行时空适配器。
-vi.mock('@/src/features/image-translation/ui/ImageOcrSettings.vue', () => ({default: {}}));
-vi.mock('@/src/features/image-translation/ui/MangaSettings.vue', () => ({default: {}}));
 import {
     toggleMangaTranslation,
     openMangaEntry,

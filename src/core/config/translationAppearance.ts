@@ -2,12 +2,12 @@
  * @file src/core/config/translationAppearance.ts
  * 文件职责：定义网页双语译文的样式预设注册表，以及用户对译文颜色、独立背景、字号和自定义 CSS 声明等外观的微调契约。
  * 主要内容：维护预设的稳定编号、页面类名、旧版分组与设置页分类，并标注预设是否使用线条或底色、是否逐行绘制、是否悬停才显示；提供外观默认值、
- * 存储与导入值归一化、精选色板和颜色换算，以及把外观转换为 CSS 声明和页面样式表文本的纯函数，供设置预览与内容脚本共用。
+ * 存储与导入值归一化、精选色板和既有颜色库的纯函数换算，以及把外观转换为 CSS 声明和页面样式表文本的纯函数，供设置预览与内容脚本共用。
  * 模块边界：只处理纯数据与字符串，不访问 DOM、浏览器存储或配置仓库；预设的视觉规则位于 src/ui/styles/translation-display.css，
  * 页面样式表由 content composition root 注入，设置界面只消费这里导出的元数据与声明。
  */
 
-import {TinyColor} from '@ctrl/tinycolor';
+import {inputToRGB, rgbToHex} from '@ctrl/tinycolor';
 
 export type TranslationStyleCategory = 'text' | 'line' | 'mark' | 'card' | 'fun';
 export type TranslationStyleLegacyGroup = 'basic' | 'underline' | 'card' | 'highlight' | 'background' | 'special' | 'pro' | 'transparent' | 'fun';
@@ -313,10 +313,10 @@ export function normalizeTranslationColor(value: unknown): string {
             ? `#${values.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`
             : '';
     }
-    // 仅接受单个 CSS 命名色，不让配置值携带任意 CSS 片段进入网页样式表。
+    // 单个字母词兼容命名色与旧有裸 hex；仍拒绝透明色和任意 CSS 片段。
     if (!/^[a-z]{3,20}$/u.test(color)) return '';
-    const named = new TinyColor(color);
-    return named.isValid && named.getAlpha() === 1 ? named.toHexString().toLowerCase() : '';
+    const named = inputToRGB(color);
+    return named.ok && named.a === 1 ? `#${rgbToHex(named.r, named.g, named.b, false)}` : '';
 }
 
 export const MAX_TRANSLATION_CUSTOM_CSS_LENGTH = 2000;

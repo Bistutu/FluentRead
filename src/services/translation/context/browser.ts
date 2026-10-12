@@ -2,7 +2,7 @@
  * @file src/services/translation/context/browser.ts
  *
  * 文件职责：从当前浏览器页面捕获隐私受限、大小受控的翻译上下文，为页面摘要和大模型翻译提供可读背景。
- * 主要内容：克隆并清洗 DOM，排除表单、隐藏、脚本和敏感属性；大型页面有界捕获也检查根节点及祖先，避免绕过排除规则。优先使用 Defuddle 后回退正文提取，缓存 snapshot，并导出 getPageTranslationContext 与 resetPageTranslationContextCache。
+ * 主要内容：克隆并清洗 DOM，排除表单、隐藏、脚本和敏感属性；大型页面有界捕获也检查根节点及祖先，避免绕过排除规则。按需加载 Defuddle core 与结构化 Markdown 适配器，失败时回退正文提取，缓存 snapshot，并导出 getPageTranslationContext 与 resetPageTranslationContextCache。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 
@@ -38,7 +38,12 @@ interface PendingPageTranslationSnapshot {
 let cachedSnapshot: PageTranslationSnapshot | null = null;
 let pendingSnapshot: PendingPageTranslationSnapshot | null = null;
 let snapshotGeneration = 0;
-let defuddleModulePromise: Promise<typeof import('defuddle/full')> | null = null;
+interface ReadablePageExtractor {
+    Defuddle: typeof import('defuddle')['default'];
+    createReadablePageMarkdown: typeof import('./markdown')['createReadablePageMarkdown'];
+}
+
+let defuddleModulePromise: Promise<ReadablePageExtractor> | null = null;
 
 const PAGE_CONTEXT_EXCLUDED_SELECTOR = [
     'script', 'style', 'noscript', 'template', 'svg', 'math', 'pre', 'code',
@@ -201,9 +206,10 @@ function captureReadablePage(): CapturedReadablePage {
     return {url, documentSnapshot, bodySnapshot, boundedText: null};
 }
 
-function loadDefuddleModule(): Promise<typeof import('defuddle/full')> {
+function loadDefuddleModule(): Promise<ReadablePageExtractor> {
     if (defuddleModulePromise) return defuddleModulePromise;
-    const pending = import('defuddle/full');
+    const pending = Promise.all([import('defuddle'), import('./markdown')])
+        .then(([{default: Defuddle}, {createReadablePageMarkdown}]) => ({Defuddle, createReadablePageMarkdown}));
     const wrapped = pending.catch((error) => {
         if (defuddleModulePromise === wrapped) defuddleModulePromise = null;
         throw error;
@@ -215,20 +221,16 @@ function loadDefuddleModule(): Promise<typeof import('defuddle/full')> {
 async function extractReadablePageText(source: CapturedReadablePage): Promise<string> {
     if (source.boundedText !== null) return source.boundedText;
     try {
-        const {default: Defuddle, createMarkdownContent} = await loadDefuddleModule();
+        const {Defuddle, createReadablePageMarkdown} = await loadDefuddleModule();
         const snapshot = source.documentSnapshot;
 
         if (snapshot) {
             const result = await Promise.resolve(new Defuddle(snapshot, {
-                separateMarkdown: true,
                 url: source.url,
                 useAsync: false,
             }).parse());
 
-            if (result.contentMarkdown) return normalizePageMarkdown(result.contentMarkdown);
-            if (result.content && createMarkdownContent) {
-                return normalizePageMarkdown(createMarkdownContent(result.content, source.url));
-            }
+            if (result.content) return normalizePageMarkdown(createReadablePageMarkdown(result.content, snapshot));
         }
     } catch (error) {
         // 正文提取属于增强能力；解析器或 runtime 失败不能阻止正常翻译请求发送。

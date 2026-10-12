@@ -1,7 +1,7 @@
 <!--
  * @file src/features/share-card/ui/ShareCardStudio.vue
  * 文件职责：提供划词翻译结果的双语卡片编辑预览与图片导出。
- * 主要内容：让多语言导出操作完整换行，原生模态对话框、品牌色分段选择与开关、八套图片风格、双语编辑及 PNG 复制、保存；固定底栏提供醒目的成功、错误和忙碌反馈，外观等待配置水合并跟随外部更新，排队写回共享配置。
+ * 主要内容：让多语言导出操作完整换行，原生模态对话框、品牌色分段选择与开关、八套图片风格、双语编辑及 PNG 复制、保存；固定底栏提供醒目的成功、错误和忙碌反馈，外观等待配置水合并跟随外部更新，排队写回共享配置；署名按当前界面语言渲染，同语言资源到达后复用既有重绘与取消机制。
  * 模块边界：组件位于封闭 Shadow UI，不读取网页正文、不调用翻译服务；渲染与导出委托独立适配器，关闭时取消渲染、释放位图与 Blob URL，并使迟到回调失效。
  -->
 <template>
@@ -170,7 +170,7 @@ function scheduleRender(): void {
     const controller = new AbortController(); renderController = controller;
     renderTimer = setTimeout(async () => {
         try {
-            const rendered = await renderShareCard({...excerpt}, {...preferences.value}, controller.signal);
+            const rendered = await renderShareCard({...excerpt}, {...preferences.value}, controller.signal, t('common.brand'));
             if (!opened.value || current !== generation || disposed) { rendered.canvas.width = 0; rendered.canvas.height = 0; return; }
             releaseImage();
             rendered.canvas.setAttribute('role', 'img');
@@ -216,7 +216,7 @@ async function copyImage(): Promise<void> {
     } finally { if (!disposed && current === openGeneration) { busy.value = false; activeAction.value = ''; } }
 }
 watch(() => config.shareCard, () => { if (opened.value) syncPreferences(); }, {deep: true});
-watch([preferences, excerpt, language], scheduleRender, {deep: true, flush: 'sync'});
+watch([preferences, excerpt, language, () => t('common.brand')], scheduleRender, {deep: true, flush: 'sync'});
 onBeforeUnmount(() => { disposed = true; dialog.value?.close(); cleanup(); clearTimeout(renderTimer); releaseImage(); });
 defineExpose({open, close});
 </script>

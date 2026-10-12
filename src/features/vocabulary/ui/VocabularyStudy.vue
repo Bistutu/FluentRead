@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/VocabularyStudy.vue
  * 文件职责：围绕收藏的句子或表达提供听读、独立解释保存和定向学习。
- * 主要内容：句子与旧收藏统一使用领域识别规则，完整译文直接可见；展示原文、译文、解释与真实来源，复用 Harness 按需讲解或反馈造句；解释编辑保留当前阅读，来源变化和卸载取消旧请求。
+ * 主要内容：句子与旧收藏统一使用领域识别规则，完整译文直接可见；展示原文、译文、解释与真实来源，复用 Harness 按需讲解或反馈造句；解释编辑及无关配置通知保留当前阅读，来源、讲解设置变化和卸载取消旧请求。
  * 模块边界：不挑选随机词、不自动请求模型或改变掌握度；不访问数据库和服务密钥，问答沿用后台会话保存与模型配置。
  -->
 <template>
@@ -52,8 +52,10 @@
 import {useUiI18n} from "@/src/ui/i18n";
 const {t} = useUiI18n();
 import {computed, onBeforeUnmount, ref, watch} from 'vue';
-import {ReadingAnswer, streamReading} from '@/src/features/reading-assistant/public';
+import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
+import {streamReading} from '@/src/features/reading-assistant/public';
 import {config, subscribeConfig} from '@/src/services/config/store';
+import {getHarnessRequestConfigKey} from '@/src/core/config/harness';
 import browser from 'webextension-polyfill';
 import SavedExplanation from './SavedExplanation.vue';
 import VocabularySource from './VocabularySource.vue';
@@ -135,12 +137,12 @@ function run(nextMode: 'understand' | 'use'): void {
   } catch (failure) { if (owns()) { busy.value = false; error.value = failure instanceof Error ? failure.message : '讲解暂时不可用，请重试。'; } }
 }
 watch([() => props.entry.id, () => props.entry.term, () => props.entry.kind, () => JSON.stringify(props.entry.contexts), () => JSON.stringify(props.entry.translations)], reset);
-// 配置快照变化时使旧模型响应失效；下一次明确操作才重新发起请求。
-let revision = JSON.stringify(config);
+// 只比较讲解输入；计数和界面更新不打断当前回答，相关设置变化后仍等待下一次明确操作。
+let revision = getHarnessRequestConfigKey(config);
 const unsubscribe = subscribeConfig(next => {
   enabled.value = next.on && next.harness.enabled;
   contextAllowed.value = next.harness.contextMode === 'paragraph';
-  const nextRevision = JSON.stringify(next);
+  const nextRevision = getHarnessRequestConfigKey(next);
   if (revision !== nextRevision) { stop(); notice.value = '设置已更新，下次讲解会使用新的设置。'; revision = nextRevision; }
 });
 onBeforeUnmount(() => { active = false; stop(); unsubscribe(); });

@@ -77,7 +77,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import serviceBrandPaths from '@/src/ui/assets/serviceBrandPaths.json'
+import {getServiceBrandIcon} from '@/src/ui/assets/serviceBrandIcons'
 import {isCustomOpenAIProviderId} from '@/src/core/config/customOpenAI'
 
 const props = withDefaults(defineProps<{
@@ -103,9 +103,7 @@ const tone = computed(() => {
 
 const brandIcon = computed(() => {
   const service = props.service === 'doubaoWeb' ? 'doubao' : props.service
-  return Object.hasOwn(serviceBrandPaths, service)
-    ? serviceBrandPaths[service as keyof typeof serviceBrandPaths]
-    : undefined
+  return getServiceBrandIcon(service)
 })
 </script>
 

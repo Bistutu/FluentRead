@@ -14,13 +14,15 @@ const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
 const artifactsDir = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-startup-performance'));
 const runs = Number(arg('runs', '5'));
 assert(Number.isSafeInteger(runs) && runs >= 2 && runs <= 20);
+const kinds = arg('kinds', 'popup,options,content').split(',');
+assert(kinds.length > 0 && new Set(kinds).size === kinds.length && kinds.every(kind => ['popup', 'options', 'content'].includes(kind)));
 const {chromium} = require(path.join(arg('playwright-root',
   '/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules'), 'playwright'));
 const {launchFocusSafePersistentContext, newPageWithoutForeground} = require(arg('focus-safe-helper',
-  '/Users/thinkstu/.codex/skills/fluentread-extension-ui-test/scripts/focus-safe-browser.cjs'));
+  path.join(__dirname, 'focus-safe-browser.cjs')));
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.json'), 'utf8'));
 const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-startup-performance-'));
-const report = {extensionDir, version: manifest.version, runs,
+const report = {extensionDir, version: manifest.version, runs, kinds,
   method: 'Fresh temporary profile; first document then repeated new documents in one browser. Local files may be OS-cached. Timings are descriptive, not a cross-device guarantee.',
   samples: [], errors: []};
 fs.mkdirSync(artifactsDir, {recursive: true});
@@ -39,7 +41,14 @@ async function measure(context, kind, url, selector, iteration) {
   await client.send('Network.enable');
   await client.send('Performance.enable');
   await page.addInitScript(({selector}) => {
-    globalThis.__startupMeasurement = {readyMs: null, longTasks: []};
+    globalThis.__startupMeasurement = {readyMs: null, longTasks: [], fullConfigSerializations: 0};
+    const stringify = JSON.stringify;
+    JSON.stringify = function (value, ...args) {
+      if (value && typeof value === 'object' && 'uiLanguage' in value && 'harness' in value) {
+        globalThis.__startupMeasurement.fullConfigSerializations++;
+      }
+      return stringify.call(this, value, ...args);
+    };
     new PerformanceObserver(list => {
       for (const entry of list.getEntries()) globalThis.__startupMeasurement.longTasks.push({start: entry.startTime, duration: entry.duration});
     }).observe({type: 'longtask', buffered: true});
@@ -103,18 +112,31 @@ async function measure(context, kind, url, selector, iteration) {
     const origin = new URL(worker.url()).origin;
     // URL.origin 对扩展 scheme 返回 null，直接从已观察到的 worker URL 提取扩展地址。
     const extensionOrigin = origin === 'null' ? worker.url().match(/^chrome-extension:\/\/[^/]+/)[0] : origin;
+    // 首次安装欢迎页另有专项；启动对照使用已完成语言选择的真实后台配置。
+    const setup = await newPageWithoutForeground(context);
+    await setup.goto(`${extensionOrigin}/icon/128.png`);
+    await setup.evaluate(async () => {
+      const current = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
+      if (!current?.success) throw new Error('无法读取启动性能测试配置');
+      const patch = {uiLanguageSetupCompleted: true, uiLanguage: 'zh-CN', interfaceSkin: 'default', interfaceFont: 'system'};
+      const response = await chrome.runtime.sendMessage({type: 'persistConfig', mode: 'patch', config: patch,
+        expected: Object.fromEntries(Object.keys(patch).map(key => [key, current.value[key]])),
+        clientId: 'startup-performance-setup', sequence: 1, baseRevision: current.value.__fluentConfigRevision || 0});
+      if (!response?.success) throw new Error('无法准备启动性能测试配置');
+    });
+    await setup.close();
     const cases = [
       ['popup', `${extensionOrigin}/${manifest.action.default_popup}`, '.popup-shell[data-config-ready="true"]'],
       ['options', `${extensionOrigin}/${manifest.options_ui?.page || manifest.options_page}`, '#settings-general [data-testid="default-translation-service-card"]'],
       ['content', `http://127.0.0.1:${server.address().port}/`, '#fluent-read-page-styles'],
-    ];
+    ].filter(([kind]) => kinds.includes(kind));
     for (let iteration = 0; iteration < runs; iteration++) {
       for (const [kind, url, selector] of cases) await measure(context, kind, url, selector, iteration);
     }
     const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
     report.summary = Object.fromEntries(cases.map(([kind]) => {
       const samples = report.samples.filter(sample => sample.kind === kind);
-      return [kind, Object.fromEntries(['readyMs', 'scriptMs', 'taskMs', 'heapBytes', 'nodes', 'scriptBytes', 'cssBytes', 'idleTaskMs']
+      return [kind, Object.fromEntries(['readyMs', 'scriptMs', 'taskMs', 'heapBytes', 'nodes', 'scriptBytes', 'cssBytes', 'idleTaskMs', 'fullConfigSerializations']
         .map(metric => [metric, {first: samples[0][metric], median: median(samples.map(sample => sample[metric]))}]))];
     }));
     assert.equal(report.errors.length, 0, '扩展页面出现未处理错误');
@@ -126,20 +148,32 @@ async function measure(context, kind, url, selector, iteration) {
     console.error(error);
     process.exitCode = 1;
   } finally {
+    report.cleanupErrors = [];
     try {
-      fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));
+      if (session) {
+        await session.close();
+        fs.rmSync(profileDir, {recursive: true, force: true});
+      } else {
+        try {fs.rmdirSync(profileDir);} catch (error) {
+          if (error.code !== 'ENOTEMPTY') throw error;
+        }
+      }
+    } catch (error) {
+      report.ok = false;
+      report.cleanupErrors.push(error.stack);
+      console.error(error);
+      process.exitCode = 1;
     } finally {
       try {
-        if (session) {
-          await session.close();
-          fs.rmSync(profileDir, {recursive: true, force: true});
-        } else {
-          try {fs.rmdirSync(profileDir);} catch { /* Retain nonempty profiles after uncertain initialization. */ }
-        }
-      } finally {
         server.closeAllConnections();
-        await new Promise(resolve => server.close(resolve));
+        await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+      } catch (error) {
+        report.ok = false;
+        report.cleanupErrors.push(error.stack);
+        console.error(error);
+        process.exitCode = 1;
       }
+      fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));
     }
   }
 })();

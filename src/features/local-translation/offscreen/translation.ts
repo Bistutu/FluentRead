@@ -3,16 +3,16 @@
  *
  * 文件职责：在 Offscreen Document 中管理本地翻译 Worker、模型缓存和请求取消。
  * 主要内容：串行复用模型 Worker，按设备内存保温并保护排队请求，显式释放使旧队列失效；按模型切换时终止旧实例，隔离旧实例的迟到错误，并提供下载、状态、清除和文本翻译能力。
- * 模块边界：不读取配置、不访问宿主网页 DOM；语言码解析由 core 配置模块负责。
+ * 模块边界：不读取配置、不访问宿主网页 DOM；模型目录由 core 配置模块维护，指定与自动语言码解析由 core 语言模块负责。
  */
 import {withLocalInferenceBudget} from '@/src/shared/onnx/resources';
 import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
 import {
     LOCAL_TRANSLATION_MODELS,
     normalizeLocalTranslationModel,
-    resolveLocalTranslationLanguageCode,
     type LocalTranslationModelId,
 } from '@/src/core/config/localTranslation';
+import {resolveLocalTranslationLanguageCode} from '@/src/core/language/localTranslation';
 import {createLocalTranslationDownloadManager} from './downloads';
 import type {LocalTranslationDownloadSnapshot} from '@/src/core/config/localTranslation';
 

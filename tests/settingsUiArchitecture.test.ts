@@ -163,6 +163,16 @@ describe('options UI composition architecture', () => {
   it('keeps the WXT options entrypoint as a thin app composition shell', () => {
     const entrypoint = sourceBody('entrypoints/options/main.ts')
     expect(entrypoint).toBe("import { mountOptionsApp } from '@/src/app/options'\n\nmountOptionsApp('#app')\n")
+    const optionsEntry = sourceBody('src/app/options/index.ts')
+    const shadowPlatform = sourceBody('src/platform/shadow-ui/vue.ts')
+    expect(optionsEntry).toMatch(/uiRoot\?:\s*HTMLElement\s*\|\s*null;/u)
+    expect(optionsEntry).toMatch(/uiRoot:\s*installOptions\.uiRoot/u)
+    expect(shadowPlatform).toMatch(/configureApp\?:\s*\(app:\s*VueApp,\s*container:\s*HTMLElement\)\s*=>\s*void/u)
+    for (const path of ['src/app/options/index.ts', 'src/platform/shadow-ui/vue.ts', 'src/ui/i18n.ts']) {
+      const header = source(path).match(/^\/\*\*[\s\S]*?\*\//u)?.[0]
+      expect(header).toContain(`@file ${path}`)
+      expect(header).toMatch(/[\u4e00-\u9fff]/u)
+    }
   })
 
   it('defers options sections without dropping visited editing state and waits for hydrated UI resources', () => {
@@ -188,10 +198,16 @@ describe('options UI composition architecture', () => {
     expect(sections).toContain('if (attempts < 20) pendingScroll = window.requestAnimationFrame(scrollWhenMounted)')
     expect(sections).toContain('window.cancelAnimationFrame(pendingScroll)')
     for (const component of [
-      'ServiceCatalog', 'ServiceConfiguration', 'InterfaceSettings', 'VideoLocalModelSettings',
-      'LocalTtsSettings', 'ModelUsageDashboard', 'TranslationStatsDashboard', 'ConfigManagement', 'TranslationCenter',
+      'ServiceCatalog', 'ServiceConfiguration', 'InterfaceSettings',
+      'LocalTtsSettings', 'ConfigManagement', 'TranslationCenter',
     ]) {
       expect(sections).toContain(`const ${component} = defineAsyncComponent(`)
+    }
+    for (const component of [
+      'WritingSettings', 'ImageOcrSettings', 'MangaSettings', 'VideoLocalModelSettings',
+      'VideoSubtitleAppearanceSettings', 'ModelUsageDashboard', 'TranslationStatsDashboard', 'AreaTranslationSettings',
+    ]) {
+      expect(sections).toContain(`const ${component} = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(`)
     }
   })
 
@@ -199,9 +215,8 @@ describe('options UI composition architecture', () => {
     const popupEntry = source('src/app/popup/index.ts')
     const optionsEntry = source('src/app/options/index.ts')
     const requiredOptionsStyles = [
-      'base', 'button', 'collapse', 'col', 'dialog', 'divider', 'empty', 'icon', 'input',
-      'input-number', 'link', 'option', 'option-group', 'popover', 'row', 'select', 'switch',
-      'text', 'tooltip', 'message', 'message-box', 'color-picker',
+      'base', 'button', 'dialog', 'icon', 'input', 'input-number', 'option', 'option-group',
+      'popover', 'select', 'switch', 'tooltip', 'message', 'message-box', 'color-picker',
     ]
 
     expect(popupEntry).not.toContain('element-plus/dist/index.css')
@@ -227,7 +242,7 @@ describe('options UI composition architecture', () => {
     const dashboard = source('src/features/translation-stats/ui/TranslationStatsDashboard.vue')
     const dashboardBody = dashboard.replace(/^<!--[\s\S]*?-->\s*/u, '')
 
-    expect(settingsSections).toContain("const TranslationStatsDashboard = defineAsyncComponent(() => import('@/src/features/translation-stats/public').then(module => module.TranslationStatsDashboard))")
+    expect(settingsSections).toContain("const TranslationStatsDashboard = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('@/src/features/translation-stats/public').then(module => module.TranslationStatsDashboard))")
     expect(settingsSections).toContain("v-if=\"hasVisitedSection('settings-translation-stats')\"")
     expect(settingsSections).toContain(":active=\"viewActive && props.activeSection === 'settings-translation-stats' && props.activePanel !== 'usage'\"")
     expect(statsPublic).toContain("from './ui/TranslationStatsDashboard.vue'")
@@ -271,6 +286,7 @@ describe('options UI composition architecture', () => {
     const popupStyles = source('src/app/popup/popup.css')
     const imageSettings = source('src/features/image-translation/ui/ImageOcrSettings.vue')
     const imagePublic = source('src/features/image-translation/public.ts')
+    const imageUiPublic = source('src/features/image-translation/ui/public.ts')
     const modelUsageDashboard = source('src/features/model-usage/ui/ModelUsageDashboard.vue')
     const modelUsagePublic = source('src/features/model-usage/public.ts')
     const quickTranslationProfiles = source('src/features/settings/ui/QuickTranslationProfiles.vue')
@@ -285,7 +301,9 @@ describe('options UI composition architecture', () => {
     expect(optionsApp).toContain("window.removeEventListener('hashchange', syncSectionFromHash)")
     const learningCenter = source('src/features/settings/ui/LearningCenter.vue')
     expect(learningCenter).toContain("@/src/features/vocabulary/ui/public")
-    expect(learningCenter).toContain("@/src/features/reading-assistant/public")
+    expect(learningCenter).toContain("@/src/features/reading-assistant/ui/public")
+    expect(source('src/features/reading-assistant/public.ts')).not.toContain("from './ui/HarnessReadingHistory.vue'")
+    expect(source('src/features/reading-assistant/ui/public.ts')).toContain("from './HarnessReadingHistory.vue'")
     expect(source('src/features/vocabulary/public.ts')).not.toContain("from './ui/VocabularyBook.vue'")
     expect(source('src/features/vocabulary/ui/public.ts')).toContain("from './VocabularyBook.vue'")
     expect(settingsSections).not.toContain('@/entrypoints/')
@@ -347,7 +365,8 @@ describe('options UI composition architecture', () => {
     expect(popupLayoutPreview).toContain('usePopupLayoutReorder')
     expect(popupPreview).toContain('class="preview-language-pair"')
     expect(popupPreview).toContain('class="preview-service"')
-    expect(popupPreview).toContain(":src=\"'/icon/128.png'\"")
+    expect(popupPreview).toContain(':src="iconUrl"')
+    expect(popupPreview).toContain("const iconUrl = globalThis.__FLUENTREAD_ICON_DATA__ || '/icon/128.png'")
     expect(popupPreview).toContain('data-preview-popup-module="translation"')
     expect(popupPreview).toContain(':data-preview-quick-feature="feature.id"')
     expect(popupPreview).toContain('siteModuleNestedInTranslation')
@@ -430,7 +449,7 @@ describe('options UI composition architecture', () => {
     expect(sharedOcrSettings).toContain(':id="`${props.idPrefix}-ocr-pack-title`"')
     expect(sharedOcrSettings).toContain(':aria-labelledby="`${props.idPrefix}-ocr-pack-title`"')
     expect(sharedOcrSettings).not.toContain('id="image-ocr-pack-title"')
-    expect(settingsSections).toContain("const ModelUsageDashboard = defineAsyncComponent(() => import('@/src/features/model-usage/public').then(module => module.ModelUsageDashboard))")
+    expect(settingsSections).toContain("const ModelUsageDashboard = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('@/src/features/model-usage/public').then(module => module.ModelUsageDashboard))")
     expect(settingsSections).toContain('<SettingsPanel name="usage" :active="props.activePanel">')
     expect(settingsSections).toContain(":active=\"viewActive && props.activeSection === 'settings-translation-stats' && props.activePanel === 'usage'\"")
     expect(modelUsagePublic).toContain("from './ui/ModelUsageDashboard.vue'")
@@ -540,8 +559,8 @@ describe('options UI composition architecture', () => {
     expect(quickTranslationProfiles).toContain('inputBoxTranslationTriggerHotkey(props.config.inputBoxTranslationTrigger)')
     expect(translationShortcutSettings).toContain('previousFullPageHotkey')
     expect(translationShortcutSettings).toContain('previousSelectionTrigger')
-    expect(configManagement).toContain('<LocalDataManagement :config="config" />')
-    expect(configManagement.indexOf('<LocalDataManagement :config="config" />'))
+    expect(configManagement).toContain('<LocalDataManagement :config="config" :active="props.active && (!props.activePanel || props.activePanel === \'backup\')" />')
+    expect(configManagement.indexOf('<LocalDataManagement :config="config" :active="props.active && (!props.activePanel || props.activePanel === \'backup\')" />'))
       .toBeLessThan(configManagement.indexOf('<header class="history-heading">'))
     expect(configManagement).toContain('<h2>设置历史</h2>')
     expect(configManagement).toContain('<h2 id="automatic-backup-title">自动设置快照</h2>')
@@ -569,7 +588,7 @@ describe('options UI composition architecture', () => {
     expect(localDataManagement).toContain('@click="exportCompleteBackup($event)"')
     expect(localDataManagement).toContain('@click="chooseImport($event)"')
     expect(localDataManagement).toContain('@click="previewPastedImport($event)"')
-    expect(localDataManagement).toContain('await focusTriggerAfterBusy(trigger)')
+    expect(localDataManagement).toContain('await focusTriggerAfterBusy(trigger, isCurrent)')
     expect(localDataManagement).toContain('restoreSourceVisible.value && !importPreviewVisible.value')
     expect(localDataManagement).toContain('activeElement === document.body || activeElement === document.documentElement')
     expect(localDataManagement).toContain('chooseBackupContext')
@@ -596,7 +615,11 @@ describe('options UI composition architecture', () => {
     expect(inputTranslationMessages).toContain('"inputTranslation.triggerDescription"')
     expect(inputTranslationMessages).toContain('支持普通输入框和富文本编辑器；密码框和代码编辑器不会参与')
     expect(settingsSections).not.toContain('任何文本输入框')
-    expect(imagePublic).toContain("from './ui/ImageOcrSettings.vue'")
+    expect(imagePublic).not.toMatch(/from ['"]\.\/ui\/.*\.vue['"]/u)
+    expect(imageUiPublic).toContain("from './ImageOcrSettings.vue'")
+    expect(imageUiPublic).toContain("from './MangaSettings.vue'")
+    expect(settingsSections).toContain("import('@/src/features/image-translation/ui/public')")
+    expect(source('src/features/settings/ui/AreaTranslationSettings.vue')).toContain("from '@/src/features/image-translation/ui/public'")
     expect(imageSettings).toContain('当前浏览器暂不支持图片翻译与 OCR')
     expect(imageSettings).toContain("type: 'fluentReadImageOcrDownload'")
     expect(imageSettings).toContain('<style scoped src="./image-ocr-settings.css"></style>')
@@ -863,8 +886,9 @@ describe('options UI composition architecture', () => {
   it('hydrates settings drafts through normalizeConfig so nested edits cannot mutate the runtime baseline', () => {
     const settings = source('src/features/settings/ui/SettingsSections.vue')
 
-    expect(settings).toContain('Object.assign(config.value, normalizeConfig(nextConfig));')
-    expect(settings).toContain('Object.assign(config.value, normalizeConfig(runtimeConfig));')
+    expect(settings).toContain('Object.assign(config.value, normalizeConfig(value));')
+    expect(settings).toContain('hydrateConfigDraft(nextConfig);')
+    expect(settings).toContain('hydrateConfigDraft(runtimeConfig);')
     expect(settings).not.toContain('Object.assign(config.value, nextConfig);')
     expect(settings).not.toContain('Object.assign(config.value, runtimeConfig);')
   })
@@ -1337,6 +1361,30 @@ describe('options UI composition architecture', () => {
     expect(serviceConfiguration).toContain('data-chrome-preparation-progress')
     expect(serviceConfiguration).toContain('class="chrome-preparation-progress" detail="none"')
     expect(serviceConfiguration).toContain("chromeDownloadFraction.value = status.phase === 'downloading' ? status.loaded : undefined")
+  })
+
+  it('keeps writing preferences and reading answers separate from runtime panels', () => {
+    const writingSettings = source('src/features/settings/ui/WritingSettings.vue')
+    expect(writingSettings).toContain("@/src/features/writing-assistant/ui/public")
+    expect(writingSettings).not.toContain("@/src/features/writing-assistant/public")
+    expect(sourceBody('src/features/writing-assistant/ui/public.ts').trim()).toBe("export {default as WritingChoices} from './WritingChoices.vue';")
+
+    const readingPublic = sourceBody('src/features/reading-assistant/public.ts')
+    expect(readingPublic).not.toContain('.vue')
+    expect(readingPublic).toContain("from './client'")
+    expect(source('src/features/settings/ui/LearningMemoryManager.vue')).toContain("@/src/features/reading-assistant/public")
+    expect(sourceBody('src/features/reading-assistant/answer/public.ts')).toContain("from '../answerFormat'")
+    expect(sourceBody('src/features/reading-assistant/answer/public.ts')).not.toMatch(/\.vue|client/)
+    expect(source('src/features/writing-assistant/markdown.ts')).toContain("@/src/features/reading-assistant/answer/public")
+    expect(sourceBody('src/features/reading-assistant/ui/answer/public.ts').trim()).toBe("export {default as ReadingAnswer} from '../ReadingAnswer.vue';")
+    expect(sourceBody('src/features/reading-assistant/ui/panel/public.ts').trim()).toBe("export {default as ReadingPanel} from '../ReadingPanel.vue';")
+    for (const file of ['src/features/settings/ui/HarnessSettings.vue', 'src/features/settings/ui/SelectionSettings.vue',
+      'src/features/vocabulary/ui/VocabularyBook.vue', 'src/features/vocabulary/ui/ReencounterPanel.vue',
+      'src/features/vocabulary/ui/VocabularyStudy.vue', 'src/features/writing-assistant/ui/WritingPanel.vue']) {
+      expect(source(file), file).toContain("@/src/features/reading-assistant/ui/answer/public")
+    }
+    expect(source('src/features/selection-translation/ui/SelectionTranslator.vue')).toContain("@/src/features/reading-assistant/ui/panel/public")
+    expect(sourceBody('src/features/reading-assistant/ui/public.ts').trim()).toBe("export {default as HarnessReadingHistory} from './HarnessReadingHistory.vue';")
   })
 
   it('keeps feature pages on the shared label-left rows instead of bespoke grids', () => {

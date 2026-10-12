@@ -3,12 +3,12 @@
  *
  * 文件职责：静态汇总中文以外六种界面语言的完整资源包，作为构建期 JSON 生成、userscript 单文件产物与测试的唯一来源。
  * 主要内容：导出包含稳定资源、旧文案词典和按语言展开的旧文案模板的 UI_LANGUAGE_BUNDLES、把全部资源包注册进 i18n 注册表的 registerAllUiLanguageBundles，
- * 以及按 language.ts 路径规则生成扩展运行时按需加载文件的 createUiLanguageBundleFiles。
+ * 以及按 language.ts 路径规则生成扩展运行时按需加载文件的 createUiLanguageBundleFiles、复用七语品牌生成浏览器安装名称的 createExtensionNameLocaleFiles。
  * 模块边界：扩展的 content、background 和扩展页面不得直接 import 本文件，否则会把六种语言重新打进每个 bundle；
  * 它们通过 src/platform/i18n 按当前界面语言加载构建产物。本文件不访问浏览器 API，也不读写配置。
  */
 
-import {getUiLanguageBundlePath, registerUiLanguageBundle} from './index';
+import {getUiLanguageBundlePath, registerUiLanguageBundle, translate} from './index';
 import {createLegacyPatternSet} from './messages/legacy-patterns';
 import {enUSLegacyText, enUSMessages} from './messages/en-US';
 import {esESLegacyText, esESMessages} from './messages/es-ES';
@@ -39,5 +39,17 @@ export function createUiLanguageBundleFiles(): Array<{relativeDest: string; cont
     return Object.entries(UI_LANGUAGE_BUNDLES).map(([language, bundle]) => ({
         relativeDest: getUiLanguageBundlePath(language as RegisteredUiLanguage),
         contents: JSON.stringify(bundle),
+    }));
+}
+
+/** 构建期生成浏览器安装名称；完整界面资源仍遵守原有按需加载路径。 */
+export function createExtensionNameLocaleFiles(): Array<{relativeDest: string; contents: string}> {
+    const names = [
+        ['zh_CN', translate('common.brand', 'zh-CN')],
+        ...Object.entries(UI_LANGUAGE_BUNDLES).map(([language, bundle]) => [language.split('-')[0], bundle.messages['common.brand']]),
+    ];
+    return names.map(([locale, name]) => ({
+        relativeDest: `_locales/${locale}/messages.json`,
+        contents: JSON.stringify({extensionName: {message: name}}),
     }));
 }

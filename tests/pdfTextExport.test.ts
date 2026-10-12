@@ -1,14 +1,15 @@
 import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {PDFDocument} from 'pdf-lib';
+import {PDFDict, PDFDocument, PDFName, PDFRawStream} from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import {getDocument} from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type {TextItem} from 'pdfjs-dist/types/src/display/api';
 import {describe, expect, it, vi} from 'vitest';
 import type {ParsedDocument} from '@/src/features/document-translation/core/document';
-import {createDocumentDownload, type PdfReadingRenderer} from '@/src/features/document-translation/services/binary';
+import {createDocumentDownload, parseBinaryDocument, type PdfReadingRenderer} from '@/src/features/document-translation/services/binary';
 import {embedPdfReadingFont} from '@/src/features/document-translation/services/pdfReadingFont';
 import {renderPdfReadingPages} from '@/src/features/document-translation/ui/pdfPreview';
+import {paginatePdfReadingPlan} from '@/src/features/document-translation/core/pdfTextLayout';
 
 const fontBytes = new Uint8Array(readFileSync(new URL('../assets/pdf-fonts/FluentReadNotoSansSC-Regular.woff2', import.meta.url)));
 const textOnlyOptions = {pdfReadingRenderer: renderPdfReadingPages, pdfFontLoader: async () => fontBytes};
@@ -205,6 +206,38 @@ describe('visible Unicode PDF reading export', () => {
         expect(compact(pages[1])).toBe(compact(translations.join('')));
         expect(raster).not.toHaveBeenCalled();
         saveEvidence('bilingual-original-and-translation.pdf', bytes);
+    });
+
+    it('embeds a renderer region image alongside selectable translated text on the same reading page', async () => {
+        const png = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZlY4AAAAASUVORK5CYII=', 'base64'));
+        const source = await PDFDocument.create();
+        const page = source.addPage([600, 800]);
+        page.drawText('Original paragraph before the figure.', {x: 42, y: 700, size: 12});
+        page.drawImage(await source.embedPng(png), {x: 42, y: 500, width: 120, height: 80});
+        page.drawText('Figure 1. Original retained illustration', {x: 42, y: 480, size: 10});
+        page.drawText('Original paragraph after the figure.', {x: 42, y: 440, size: 12});
+        const document = await parseBinaryDocument('figure.pdf', await source.save());
+        const translations = document.segments.map((_segment, index) => `中文译文第${index + 1}段。`);
+        let renderedRegions = 0;
+        const renderer: PdfReadingRenderer = async function* (input) {
+            // 控制浏览器 PNG 端口，分页、字体、PDF 嵌入和文本导出仍执行真实生产模块。
+            for (const output of paginatePdfReadingPlan(input.plan, input.measureText)) {
+                if (output.items.some(item => item.kind === 'region')) {renderedRegions++;yield {...output, regionImage: png};}
+                else yield output;
+            }
+        };
+        const download = await createDocumentDownload(document, translations, 'translated', {...textOnlyOptions, pdfReadingRenderer: renderer});
+        expect(renderedRegions).toBe(1);
+        const bytes = download.data as Uint8Array;
+        expect(compact((await extract(bytes)).join(''))).toBe(compact(translations.join('')));
+        const output = await PDFDocument.load(bytes);
+        expect(output.getPageCount()).toBe(1);
+        const images = output.getPages()[0].node.Resources()!.lookup(PDFName.of('XObject'), PDFDict);
+        expect(images.values().some(value => {
+            const object = output.context.lookup(value);
+            return object instanceof PDFRawStream && object.dict.get(PDFName.of('Subtype')) === PDFName.of('Image');
+        })).toBe(true);
+        expect(document.segments.map(segment => segment.source).join('')).toContain('Original paragraph before the figure.');
     });
 
     it('keeps the default layout paired on one page even when a readable renderer is available', async () => {

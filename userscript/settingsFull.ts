@@ -137,8 +137,8 @@ async function mountSettingsUi(ctx: unknown, section?: string): Promise<void> {
                     onClose: separateSettingsPage ? undefined : closeUserscriptSettings,
                 };
             },
-            configureApp: (app) => {
-                installOptionsApp(app, {documentRoot: null});
+            configureApp: (app, container) => {
+                installOptionsApp(app, {documentRoot: null, uiRoot: container});
                 app.onUnmount(previewFonts.dispose);
             },
             viewport: true,
