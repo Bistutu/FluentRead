@@ -9,6 +9,14 @@ import type {LegacyPatternEntry, LegacyPatternSet, LocalizedLegacyPattern, Regis
 import {runtimeFeedbackPatterns} from './runtime-feedback-patterns';
 
 export const localizedLegacyPatterns: readonly LocalizedLegacyPattern[] = [
+    {pattern: "^当前网页有 (\\d+) 处相同原句。出现不同的已保存译法时，不会自动采用。$", localizedCaptures: [], messages: {
+        'en-US': "This page contains {1} instances of the same source sentence. Conflicting saved translations are not applied automatically.",
+        'ja-JP': "現在のページには同じ原文が {1} か所あります。異なる訳文が保存されている場合は、自動で採用しません。",
+        'ko-KR': "현재 페이지에 같은 원문이 {1}곳 있습니다. 서로 다른 번역문이 저장되어 있으면 자동으로 적용하지 않습니다.",
+        'fr-FR': "Cette page contient {1} occurrences de la même phrase source. Les traductions enregistrées en conflit ne sont pas appliquées automatiquement.",
+        'ru-RU': "На текущей странице {1} вхождений одного исходного предложения. Различающиеся сохранённые переводы не применяются автоматически.",
+        'es-ES': "Esta página contiene {1} apariciones de la misma frase original. Las traducciones guardadas en conflicto no se aplican automáticamente.",
+    }},
     {pattern: "^未能保存 (.+) 的网站设置，请重试$", localizedCaptures: [], messages: {
         'en-US': "Could not save site settings for {1}. Try again.",
         'ja-JP': "{1} のサイト設定を保存できませんでした。再試行してください。",

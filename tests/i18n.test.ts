@@ -957,6 +957,16 @@ describe('i18n 全量界面扫描', () => {
     }
     expect(audit.files.length).toBeGreaterThan(50);
     expect(missing).toEqual([]);
+    // 扫描器的插值占位不能成为固定译文；实际校订预览必须保留每次计算的句数。
+    for (const locale of ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const) {
+      for (const count of [0, 1, 12, 125]) {
+        const source = `当前网页有 ${count} 处相同原句。出现不同的已保存译法时，不会自动采用。`;
+        const translated = translateLegacyText(source, locale);
+        expect(translated, `${locale} ${count}`).not.toBe(source);
+        expect(translated.match(/\d+/gu), `${locale} ${count}`).toEqual([String(count)]);
+        if (locale !== 'ja-JP') expect(translated, `${locale} ${count}`).not.toMatch(/[\u3400-\u9fff]/u);
+      }
+    }
   });
 
   it('新增稳定资源必须提供实际译文，不能继承 English 掩盖遗漏', () => {
