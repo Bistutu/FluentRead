@@ -1480,9 +1480,36 @@ compile、architecture、audit 与四组测试共七阶段自然 0。architectur
 实际证据根为 `/private/tmp/fluentread-performance-experience-20261010/delivery-review-20261012/`：`unified-review-manifest/`、`preexisting-owner-repairs/`、`candidate-owners-attempt1/`、`candidate-sandbox-owners-attempt2/`、`repaired-owners-attempt2/`、`final-affected-owners-attempt1/RECEIPT.json`、`new-modules-coverage-attempt1/`、`I18N-EXACT-BASELINE-ARRAY-COMPARISON.json`、`main-baseline/` 与 `frozen-final-products/`。历史失败与全部原始回执保留；未使用或修改参考项目。
 
 
+## R63/R64：真实服务窗口故障、气泡遮挡修复与补充验收（2026-10-12）
+
+R63 在干净 `d8d7296883d228d8b48988ae16cb1c3197727a9a` 上重新完成 Chrome 构建，468 个产物与之前冻结版完整路径、字节及 SHA256 相同。后台第二屏的真实 Edge 通过中文引导和公开设置入口；唯一 provider 模块 GET 被 renderer 精确阻断，错误反馈确实出现。随后关闭按钮中心命中失败，根查看原始 PNG，发现添加入口的说明气泡覆盖反馈区域。该原生执行自然退出 1，22.255 s；未强制点击，缓存失败重开及刷新恢复没有执行。没有证明关闭按钮永久不可用，也没有测试移动指针后是否恢复。原失败完整保留。
+
+R64 正式修复仅涉及 `SettingsSections.vue` 和 `services/ServiceCatalog.vue`：父组件把现有加载/错误反馈可见状态传给服务目录，反馈显示或目录停用时禁用添加入口的说明气泡。反馈关闭后恢复帮助；添加按钮、加载器、保存、取消、配置归属和原有生命周期保持。两文件完整差异和上下文均经根与独立静审，没有未解决的静态问题。未使用或修改参考项目。
+
+当前候选为上述 `d8d7296` 加两处 Vue 工作树改动，实际回执明确记录 dirty 状态；本节文档在业务验证终结后补入，不冒称验证时已有新的干净提交。完整设置 owner 两文件 74/74 通过；补跑直接编译挂载服务目录的完整 owner 107/107 通过，均零失败、零 pending。类型检查、34 文件/1881 项架构检查和分类审计自然 0；audit 的 693 文件/12327 项仍是静态声明索引。服务目录测试中的 Tooltip 是夹具，因此不替代下述原生布局证据。
+
+四产品重新构建及清单、普通脚本校验完成，七阶段仍为 `[0,0,0,0,0,0,1]`，整体 success=false：
+
+| 当前产物 | 文件数 | 实际字节数 |
+| --- | ---: | ---: |
+| Chrome 目录 | 468 | 61,463,099 |
+| Firefox 目录 | 468 | 61,462,137 |
+| 普通脚本 | 1 | 2,036,661 |
+| 完整独立脚本 | 1 | 3,809,624 |
+
+相对 R62 冻结独立脚本增加 175 B；与之前实际构建的 main 基线 4,197,082 B 比较仍减少 387,458 B（约 9.2%）。沿用两臂共享同一已安装依赖、历史 lock 不同的口径，不称同锁独立安装反事实。原 3,600,000 B 预算仍超 209,624 B，没有提高阈值；普通脚本全文件逐字节保持。Chrome/Firefox 构建成功不代表 Firefox 运行时通过。
+
+新的有限原生补验使用精确绑定的新 Chrome、2,464 份生产输入、468 份产品及 36 份支持输入，真实 Edge 131.0.2903.147 自然退出 0，39.827 s。四阶段全部完成：中文引导、公开设置入口、精确模块阻断后的错误关闭及缓存失败重开、解除阻断后同页刷新及正常弹窗取消/重开。真实悬浮帮助观察三次，错误期气泡完全隐藏观察两次，两次公开关闭按钮中心命中与点击成功；未绕开气泡、强制点击或改写 DOM。阻断的唯一主 frame GET requestId `21457.119` 与 CDP loadingFailed、Playwright 实际失败请求交叉一致，blockedReason=inspector；这一个注入网络失败保留于原始诊断，非预期六类诊断为空。
+
+解除阻断及脱离故障 session 后复用同一页面 reload；正常弹窗首字段自然获得焦点，取消草稿并重开后四字段为空、无校验错误，也未新增 provider chunk 请求。该观察不证明 Vue 实例身份。后台窗口零前台激活事件，15 次自有前台检查均 false，另一次在建立 owner 前为 null；自有浏览器关闭、原 PID 消失、焦点监视停止、临时 profile 删除四项均 true，根另核实目录不存在。源、产品及支持输入前后守卫通过；五张原始 2544×1632 PNG 均经根查看，展示端缩放没有修改原图。
+
+R64 的即刻模块阻断与正常取消不覆盖持续 pending 时取消、迟到失败原生行为；相应受控生命周期测试与原生证据分开报告。主线相同的两项国际化失败（285 条缺失扫描记录、5 条未使用记录）、独立脚本预算失败、Greasy Fork 当前完整资源前置校验、最终 CPU/heap/整体启动、Firefox 运行、真实在线提供商、全部网站/设备及全仓执行仍未全部解决或验证。2026-10-12 11:49 CST 实读 PR #964 仍 OPEN，head=d8d7296、base=b000534、MERGEABLE/CLEAN，只有文档 build SUCCESS、deploy SKIPPED；最后修复尚未上传，未合并。主线已有失败是否纳入本次范围的澄清仍待用户回复，不跳过逐项 review 或失败检查。
+
+补充证据根：`/private/tmp/fluentread-performance-experience-20261010/round63-service-dialog-native/` 和 `round64-service-help-feedback/`。后者包括两文件源码 review、`affected-attempt1/RECEIPT.json`、`direct-owner-attempt1/RECEIPT.json`、`builds-attempt1/RECEIPT.json`、`FROZEN-PRODUCTS.json`、独立原生驱动/准备审查、`native-ready-attempt1/READY.json`、`NATIVE-RESULT1.json`、`native-service-dialog-attempt1/report.json` 和 `ROOT-NATIVE-RESULT-REVIEW.json`。历史失败不改写为通过。
+
 ## 后续候选
 
-当前分支已同步 main、完成 rebase 与 313 路径逐项审查，收尾修复后的 89 个相关 owner、单进程快捷键、类型与架构检查通过。主线已有两项国际化失败和独立脚本预算失败保持真实状态，范围澄清与远程合并仍待完成；当前完整脚本为 3809449 B，原 3600000 B 预算超 209449 B。暂不开展其他新增优化，许可、资源 pins、配置与异步生命周期边界继续保持。
+当前分支已同步 main、完成 rebase 与累计 313 路径逐项审查；R64 气泡修复另作增量审查，相关完整 owner、类型、架构及四阶段真实 Edge 验收通过。R62 的 89 个 owner 与单进程快捷键结果保留对应版本范围。主线已有两项国际化失败和独立脚本预算失败保持真实状态，范围澄清、最后修复上传与远程合并仍待完成；当前完整脚本为 3809624 B，原 3600000 B 预算超 209624 B。暂不开展其他新增优化，许可、资源 pins、配置与异步生命周期边界继续保持。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。
