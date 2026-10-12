@@ -2,6 +2,8 @@
 
 Make translations easy to distinguish from the original and comfortable to read.
 
+Under **Settings → Interface style**, **Sentence learning appearance** follows **Menu bar layout** and precedes **Interface font**.
+
 <GuideVisual kind="appearance" en />
 
 ## Adjust the translation style
