@@ -2,7 +2,7 @@ vi.mock('@/src/shared/onnx/resources', async original => ({...await original<any
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 const mocks = vi.hoisted(() => ({assets:vi.fn(),remove:vi.fn(),initialize:vi.fn(),recognize:vi.fn(),destroy:vi.fn(),options:vi.fn(),
     gpu:vi.fn(),cpuCreate:vi.fn(),sessions:[] as any[],inpaintDispose:vi.fn(),bitmapClose:vi.fn(),contexts:[] as any[],canvases:[] as any[],
-    workerPrepare:vi.fn(),workerRequest:vi.fn(),workerRelease:vi.fn(),workerDispose:vi.fn(),pace:vi.fn((operation:()=>Promise<unknown>)=>operation()),
+    workerPrepare:vi.fn(),workerRequest:vi.fn(),workerRelease:vi.fn(),workerDispose:vi.fn(),encode:vi.fn(),pace:vi.fn((operation:()=>Promise<unknown>)=>operation()),
     wasm:{numThreads:0,wasmPaths:undefined as unknown,proxy:true}}));
 vi.mock('@/src/features/image-translation/services/mangaOcrAssets', async importOriginal => ({...await importOriginal<any>(),loadMangaOcrAssets:mocks.assets,removeMangaOcrAssets:mocks.remove}));
 vi.mock('onnxruntime-web/webgpu',()=>({env:{wasm:mocks.wasm},InferenceSession:{create:mocks.cpuCreate}}));
@@ -10,18 +10,94 @@ vi.mock('@/src/shared/onnx/webgpu',()=>({probeWebGpu:mocks.gpu}));
 vi.mock('ppu-paddle-ocr/web',()=>({PaddleOcrService:class{constructor(options:unknown){mocks.options(options)}detectionSession=mocks.sessions[0];recognitionSession=mocks.sessions[1];async initialize(){return mocks.initialize();}recognize=mocks.recognize;destroy=mocks.destroy;}}));
 vi.mock('@/src/features/image-translation/services/mangaInpainting',()=>({mangaInpaintingRuntime:{dispose:mocks.inpaintDispose}}));
 vi.mock('@/src/features/image-translation/services/mangaInferenceClient',async original=>({...await original<any>(),mangaInferenceClient:{prepare:mocks.workerPrepare,request:mocks.workerRequest,release:mocks.workerRelease,dispose:mocks.workerDispose}}));
+vi.mock('@/src/features/image-translation/services/imageEncoding',()=>({encodeImageCanvas:mocks.encode}));
 import {createBrowserMangaOcr, createMangaOcrRuntime, mangaOcrRuntime, removeMangaModels, disposeMangaModels} from '@/src/features/image-translation/services/mangaOcr';
 const response = {results:[{text:'Hello world',confidence:0.99,box:{x:10,y:10,width:100,height:20}}]};
 const deferred = <T,>() => {let resolve!:(v:T)=>void,reject!:(e:unknown)=>void;const promise=new Promise<T>((a,b)=>{resolve=a;reject=b});return {promise,resolve,reject}};
 const tick = async () => {for(let i=0;i<6;i++)await Promise.resolve()};
 beforeEach(()=>{vi.useFakeTimers();vi.clearAllMocks();mocks.contexts=[];mocks.canvases=[];mocks.sessions=[];mocks.gpu.mockResolvedValue({available:false,info:''});mocks.assets.mockResolvedValue({charactersDictionary:new ArrayBuffer(4)});mocks.initialize.mockResolvedValue(undefined);mocks.destroy.mockResolvedValue(undefined);mocks.remove.mockResolvedValue(undefined);mocks.inpaintDispose.mockResolvedValue(undefined);mocks.recognize.mockResolvedValue(response);vi.stubGlobal('GPUDevice',class{get adapterInfo(){return {};}});vi.stubGlobal('chrome',{runtime:{getURL:(p:string)=>'chrome-extension://test'+p}});vi.stubGlobal('fetch',vi.fn(async()=>new Response(new Uint8Array([1,2,3]))));
-    mocks.workerPrepare.mockReset().mockResolvedValue(undefined);mocks.workerRequest.mockReset().mockResolvedValue(response);mocks.workerRelease.mockReset().mockResolvedValue(undefined);
+    mocks.workerPrepare.mockReset().mockResolvedValue(undefined);mocks.workerRequest.mockReset().mockResolvedValue(response);mocks.workerRelease.mockReset().mockResolvedValue(undefined);mocks.encode.mockReset().mockResolvedValue('data:image/png;base64,rasterized');
     vi.stubGlobal('createImageBitmap',vi.fn(async()=>({width:200,height:200,close:mocks.bitmapClose})));
     vi.stubGlobal('document',{createElement:vi.fn(()=>{const ctx={drawImage:vi.fn(),fillRect:vi.fn(),getImageData:vi.fn(()=>({data:new Uint8ClampedArray(200*200*4)}))};const canvas={width:0,height:0,getContext:vi.fn(()=>ctx)};mocks.contexts.push(ctx);mocks.canvases.push(canvas);return canvas;})});
 });
 afterEach(async()=>{await mangaOcrRuntime.dispose().catch(()=>undefined);vi.clearAllTimers();vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks()});
 
 describe('漫画本地神经 OCR 会话',()=>{
+    it.each([
+        'data:image/svg+xml;base64,PHN2Zy8+',
+        'data:IMAGE/SVG+XML;base64,PHN2Zy8+',
+        'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E',
+    ])('默认 Worker 将已解码 SVG 栅格化为 PNG 后识别，保留尺寸与借用图片：%s',async image=>{
+        const controller=new AbortController(),progress=vi.fn(),close=vi.fn();
+        const source={naturalWidth:460,naturalHeight:250,width:230,height:125,src:image,close} as unknown as HTMLImageElement;
+        mocks.encode.mockImplementationOnce(async(canvas,signal)=>{
+            expect(canvas).toMatchObject({width:460,height:250});expect(signal).toBe(controller.signal);
+            return 'data:image/png;base64,rasterized';
+        });
+        expect(await mangaOcrRuntime.recognize(image,'en',460,250,controller.signal,progress,source)).toHaveLength(1);
+        expect(mocks.encode).toHaveBeenCalledOnce();expect(mocks.encode.mock.calls[0][0]).toBe(mocks.canvases[0]);
+        expect(mocks.contexts[0].drawImage).toHaveBeenCalledWith(source,0,0);
+        expect(mocks.workerRequest).toHaveBeenCalledWith({type:'recognize',image:'data:image/png;base64,rasterized'},controller.signal,progress);
+        expect(mocks.canvases[0]).toMatchObject({width:0,height:0});
+        expect(source).toMatchObject({naturalWidth:460,naturalHeight:250,width:230,height:125,src:image});expect(close).not.toHaveBeenCalled();
+        expect(fetch).not.toHaveBeenCalled();expect(createImageBitmap).not.toHaveBeenCalled();expect(mocks.bitmapClose).not.toHaveBeenCalled();
+    });
+
+    it.each(['data:image/png;base64,png','data:image/jpeg;base64,jpeg','data:image/webp;base64,webp'])('默认 Worker 直接转发位图，不重复编码：%s',async image=>{
+        const controller=new AbortController(),progress=vi.fn();
+        const source={naturalWidth:200,naturalHeight:200,src:image} as HTMLImageElement;
+        expect(await mangaOcrRuntime.recognize(image,'en',200,200,controller.signal,progress,source)).toHaveLength(1);
+        expect(mocks.workerRequest).toHaveBeenCalledWith({type:'recognize',image},controller.signal,progress);
+        expect(mocks.encode).not.toHaveBeenCalled();expect(document.createElement).not.toHaveBeenCalled();
+        expect(source.src).toBe(image);
+    });
+
+    it.each(['context','drawing','encoding'])('默认 Worker 的 SVG 栅格化失败不发送推理，释放画布并保留原错误和图片：%s',async failureStage=>{
+        const image='data:image/svg+xml;base64,PHN2Zy8+';
+        const source={naturalWidth:460,naturalHeight:250,src:image} as HTMLImageElement;
+        const failure=new Error('SVG '+failureStage+' failed');
+        const canvasFactory=vi.mocked(document.createElement).getMockImplementation()!;
+        vi.mocked(document.createElement).mockImplementationOnce(()=>{
+            const canvas=canvasFactory('canvas');
+            if(failureStage==='context') vi.mocked((canvas as HTMLCanvasElement).getContext).mockReturnValue(null);
+            if(failureStage==='drawing') mocks.contexts.at(-1).drawImage.mockImplementationOnce(()=>{throw failure;});
+            return canvas;
+        });
+        if(failureStage==='encoding') mocks.encode.mockRejectedValueOnce(failure);
+        const pending=mangaOcrRuntime.recognize(image,'en',460,250,undefined,undefined,source);
+        if(failureStage==='context') await expect(pending).rejects.toThrow('浏览器不支持');
+        else await expect(pending).rejects.toBe(failure);
+        expect(mocks.workerRequest).not.toHaveBeenCalled();expect(mocks.canvases[0]).toMatchObject({width:0,height:0});
+        expect(mocks.encode).toHaveBeenCalledTimes(failureStage==='encoding'?1:0);
+        expect(source.src).toBe(image);expect(mocks.bitmapClose).not.toHaveBeenCalled();
+    });
+
+    it('默认 Worker 在 SVG 编码期间取消，丢弃迟到 PNG 并释放画布，暖端口仍可复用',async()=>{
+        const image='data:image/svg+xml;base64,PHN2Zy8+',controller=new AbortController(),pending=deferred<string>();
+        const source={naturalWidth:460,naturalHeight:250,src:image} as HTMLImageElement;
+        mocks.encode.mockReturnValueOnce(pending.promise);
+        const recognition=mangaOcrRuntime.recognize(image,'en',460,250,controller.signal,undefined,source);
+        await tick();expect(mocks.encode).toHaveBeenCalledWith(mocks.canvases[0],controller.signal);
+        expect(mocks.workerRequest).not.toHaveBeenCalled();
+        const cancelled=expect(recognition).rejects.toMatchObject({name:'AbortError'});
+        controller.abort();await cancelled;
+        pending.resolve('data:image/png;base64,late');await tick();
+        expect(mocks.workerRequest).not.toHaveBeenCalled();expect(mocks.canvases[0]).toMatchObject({width:0,height:0});
+        expect(mocks.workerRelease).not.toHaveBeenCalled();expect(source.src).toBe(image);
+        expect(await mangaOcrRuntime.recognize('data:image/png;base64,next','en',200,200)).toHaveLength(1);
+        expect(mocks.workerRequest).toHaveBeenCalledWith({type:'recognize',image:'data:image/png;base64,next'},undefined,undefined);
+        expect(mocks.workerPrepare).toHaveBeenCalledOnce();
+    });
+
+    it('默认 Worker 在 SVG 编码报告取消时释放画布，保留调用方图片且不转发推理',async()=>{
+        const image='data:image/svg+xml;base64,PHN2Zy8+',controller=new AbortController();
+        const source={naturalWidth:460,naturalHeight:250,src:image} as HTMLImageElement;
+        mocks.encode.mockImplementationOnce(async()=>{controller.abort();throw new DOMException('cancelled','AbortError');});
+        await expect(mangaOcrRuntime.recognize(image,'en',460,250,controller.signal,undefined,source)).rejects.toMatchObject({name:'AbortError'});
+        await tick();expect(mocks.workerRequest).not.toHaveBeenCalled();expect(mocks.workerRelease).not.toHaveBeenCalled();
+        expect(mocks.canvases[0]).toMatchObject({width:0,height:0});expect(source.src).toBe(image);
+    });
+
     it('默认 Worker 代理转发图片、取消信号与阶段，复用端口并在空闲后释放',async()=>{
         const controller=new AbortController(),progress=vi.fn();
         mocks.workerPrepare.mockImplementationOnce(async(kind,signal,notify)=>{

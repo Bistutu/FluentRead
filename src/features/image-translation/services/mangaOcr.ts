@@ -1,7 +1,7 @@
 /**
  * @file src/features/image-translation/services/mangaOcr.ts
  * 文件职责：在扩展独立 Worker 中按需运行 PaddleOCR 漫画识别，并隔离排队、取消、失败和空闲释放。
- * 主要内容：延迟导入浏览器 OCR 和本地 ONNX WASM，用频繁读取的画布完成 OCR 预处理，读取已校验模型并融合 ONNX 执行图，硬件可用时加速识别，GPU 故障有界切换 CPU；气泡外旁白与放大的独立气泡识别后按漫画策略分组，普通图片保留物理行供严格段落策略使用；滚动取消保留轻量模型端口，Worker owner 有界收尾，GPU 挂起重建一次 CPU 后端，空闲三分钟释放会话，统一清理 OCR 与修补会话。
+ * 主要内容：延迟导入浏览器 OCR 和本地 ONNX WASM，用频繁读取的画布完成 OCR 预处理，读取已校验模型并融合 ONNX 执行图，硬件可用时加速识别，GPU 故障有界切换 CPU；SVG 复用已解码原图异步转为无损 PNG 后进入 Worker，取消或失败释放自有画布且保留借用原图；气泡外旁白与放大的独立气泡识别后按漫画策略分组，普通图片保留物理行供严格段落策略使用；滚动取消保留轻量模型端口，Worker owner 有界收尾，GPU 挂起重建一次 CPU 后端，空闲三分钟释放会话，统一清理 OCR 与修补会话。
  * 模块边界：不访问宿主 DOM、不翻译文本、不处理译图；仅漫画及显式选择 PaddleOCR 的单张图片使用本模型；通用识别与圈选继续由 Tesseract 负责。
  */
 import {localWasmThreads, paceLocalInference} from '@/src/shared/onnx/resources';
@@ -13,6 +13,7 @@ import {assertMangaOcrActive, loadMangaOcrAssets, removeMangaOcrAssets, withMang
 import type {MangaRegion} from './mangaRegions';
 import {findMangaBubbles,collectMangaRegions,type MangaOcrPage} from './mangaBubbles';
 import {mangaInpaintingRuntime} from './mangaInpainting';
+import {encodeImageCanvas} from './imageEncoding';
 
 interface MangaOcrPort {
     recognize(image: string, options: {flatten: true; noCache: true; strategy: 'per-box';signal?:AbortSignal; decodedImage?: HTMLImageElement; progress?: MangaInferenceProgress}): Promise<MangaOcrPage>;
@@ -166,7 +167,32 @@ function createOcrCanvas(): HTMLCanvasElement | OffscreenCanvas {
 
 async function createWorkerMangaOcr(signal?: AbortSignal, progress?: Progress): Promise<MangaOcrPort> {
     await mangaInferenceClient.prepare('ocr', signal, progress);
-    return {recognize: (image, options) => mangaInferenceClient.request({type:'recognize', image}, options.signal, options.progress), destroy: () => mangaInferenceClient.release('ocr')};
+    return {
+        recognize: async (image, options) => {
+            let workerImage = image;
+            // Worker 的 Blob 位图解码器不能解码 SVG；DOM 预检已解码并限制了尺寸，
+            // 借用此源转 PNG，避免重抓原图或让 GPU/CPU 重试重复同一次解码错误。
+            if (options.decodedImage && /^data:image\/svg\+xml[;,]/iu.test(image)) {
+                assertMangaOcrActive(options.signal);
+                const source = options.decodedImage;
+                const canvas = document.createElement('canvas');
+                try {
+                    canvas.width = source.naturalWidth;
+                    canvas.height = source.naturalHeight;
+                    const context = canvas.getContext('2d');
+                    if (!context) throw new Error('浏览器不支持图片处理');
+                    context.drawImage(source, 0, 0);
+                    workerImage = await encodeImageCanvas(canvas, options.signal);
+                    assertMangaOcrActive(options.signal);
+                } finally {
+                    canvas.width = 0;
+                    canvas.height = 0;
+                }
+            }
+            return mangaInferenceClient.request({type:'recognize', image: workerImage}, options.signal, options.progress);
+        },
+        destroy: () => mangaInferenceClient.release('ocr'),
+    };
 }
 
 export const mangaOcrRuntime = createMangaOcrRuntime(createWorkerMangaOcr);
