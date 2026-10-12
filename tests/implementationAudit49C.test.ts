@@ -468,9 +468,9 @@ describe('audit49C video model and cache lifecycle in the client template', () =
         const {host} = await mount(VideoLocalModelSettings, {config: normalizeConfig({videoTranslationEnabled: true})});
         ports.send.mockResolvedValueOnce({success: false, error: 'controlled command failure'});
         host.querySelector<HTMLButtonElement>('.video-model-card button')!.click(); await settle();
-        expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('video.modelDownloadError');
+        expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('模型下载失败，请检查网络后重试');
         for (const listener of ports.storageListeners) listener({[VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY]: {}}, 'local'); await settle();
-        expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('video.modelDownloadError');
+        expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('模型下载失败，请检查网络后重试');
     });
 });
 
@@ -723,7 +723,7 @@ describe('audit49C followup1 cross-model convergence through public handlers and
         expect(await fixture.listener({type: 'fluentReadPrepareLocalVideoModel', model: 'base'}, {})).toMatchObject({success: true});
         worker.resolve({success: false, error: 'controlled failed download'}); await settle();
         expect(fixture.models()).toEqual(['base']); expectVideoModels(host, ['base']);
-        expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('video.modelDownloadError');
+        expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('模型下载失败，请检查网络后重试');
         await clickVideoModel(host, 'tiny'); expectVideoModels(host, ['tiny', 'base']);
         expect(host.querySelector('.video-model-management [role="alert"]')).toBeNull();
     });
@@ -734,7 +734,7 @@ describe('audit49C followup1 cross-model convergence through public handlers and
         await clickVideoModel(host, 'tiny'); await clickVideoModel(host, 'base');
         tinyWorker.resolve({success: false, error: 'tiny failed'}); await settle();
         expect(fixture.models()).toEqual(['base']); expectVideoModels(host, ['base']);
-        expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('video.modelDownloadError');
+        expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('模型下载失败，请检查网络后重试');
     });
     it('ignores a stale terminal read when a new command starts before that read is delivered', async () => {
         const fixture = videoHandlerFixture(); const {host} = await mount(VideoLocalModelSettings, {config: normalizeConfig({videoTranslationEnabled: true})});
@@ -766,7 +766,7 @@ describe('audit49C followup1 cross-model convergence through public handlers and
         fixture.failState(new Error('read failed after command failure'));
         await clickVideoModel(host, 'tiny');
         await fixture.storage.set({[VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY]: ['base']}); await settle();
-        expectVideoModels(host, ['base']); expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('video.modelDownloadError');
+        expectVideoModels(host, ['base']); expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('模型下载失败，请检查网络后重试');
     });
     it('preserves external state after an actual remove handler rejects and permits retry', async () => {
         const fixture = videoHandlerFixture(['tiny']); const worker = deferred<{success: boolean}>();
@@ -779,58 +779,73 @@ describe('audit49C followup1 cross-model convergence through public handlers and
         await clickVideoModel(host, 'tiny'); expect(fixture.models()).toEqual(['base']); expectVideoModels(host, ['base']);
         expect(host.querySelector('.video-model-management [role="alert"]')).toBeNull();
     });
-    it('executes source preference guards in the actual client render and sends only the current choice', async () => {
+    it('keeps automatic downloads behind current rendered model controls and rejects stale or disabled choices', async () => {
         videoHandlerFixture();
         const page = await mount(VideoLocalModelSettings, {config: normalizeConfig({videoTranslationEnabled: true, videoLocalModel: 'tiny'}), active: true});
         const state = page.state as {config: Config; active: boolean};
-        const select = () => ports.renderedEvents.findLast(event => event.tag === 'select' && Object.hasOwn(event.props, 'data-video-model-source'))!.props.onChange;
-        const older = select();
-        select()({target: {value: 'mirror'}}); await settle();
-        expect(Object.keys(state.config)).not.toContain('videoModelDownloadSource');
-        await clickVideoModel(page.host, 'tiny');
-        expect(ports.send.mock.calls.find(([message]) => message.type === 'fluentReadPrepareLocalVideoModel')![0].preference).toBe('mirror');
+        const oldChoose = capturedModelEvent('base', 'article'), oldDownload = capturedModelEvent('base', 'button');
         state.config = normalizeConfig({videoTranslationEnabled: true, videoLocalModel: 'tiny'}); await settle();
-        older({target: {value: 'official'}}); await settle();
-        select()({target: {value: 'invalid'}}); await settle();
-        state.config.videoTranslationEnabled = false; await settle(); select()({target: {value: 'official'}}); await settle();
-        state.config.videoTranslationEnabled = true; ports.browserCapabilities.extensionDom = false; await settle(); select()({target: {value: 'official'}}); await settle();
-        ports.browserCapabilities.extensionDom = true;
-        state.config = normalizeConfig({videoTranslationEnabled: true, videoLocalModel: 'tiny'}); await settle();
+        const messages = ports.send.mock.calls.length;
+        oldChoose(new Event('click')); await oldDownload(new Event('click')); await settle();
+        expect(state.config.videoLocalModel).toBe('tiny'); expect(ports.send).toHaveBeenCalledTimes(messages);
+        state.config.videoTranslationEnabled = false; await settle();
+        videoCard(page.host, 'base').dispatchEvent(new Event('click', {bubbles: true})); await settle();
+        expect(state.config.videoLocalModel).toBe('tiny');
+        state.config.videoTranslationEnabled = true; ports.browserCapabilities.extensionDom = false; await settle();
+        videoCard(page.host, 'base').dispatchEvent(new Event('click', {bubbles: true})); await settle();
+        expect(state.config.videoLocalModel).toBe('tiny');
+        ports.browserCapabilities.extensionDom = true; state.active = false; await settle();
+        const inactiveDownload = capturedModelEvent('base', 'button');
+        videoCard(page.host, 'base').dispatchEvent(new Event('click', {bubbles: true})); await inactiveDownload(new Event('click')); await settle();
+        expect(state.config.videoLocalModel).toBe('tiny'); expect(ports.send).toHaveBeenCalledTimes(messages);
+        state.active = true; await settle();
         await clickVideoModel(page.host, 'base');
         const requests = ports.send.mock.calls.filter(([message]) => message.type === 'fluentReadPrepareLocalVideoModel');
-        expect(requests.at(-1)![0].preference).toBe('mirror');
-        select()({target: {value: 'official'}}); await settle(); await clickVideoModel(page.host, 'small');
-        expect(ports.send.mock.calls.filter(([message]) => message.type === 'fluentReadPrepareLocalVideoModel').at(-1)![0].preference).toBe('official');
+        expect(requests).toHaveLength(1); expect(requests[0][0]).toMatchObject({model: 'base', preference: 'auto'});
+        expect(state.config.videoLocalModel).toBe('base'); expect(Object.keys(state.config)).not.toContain('videoModelDownloadSource');
+        expect(page.host.querySelector('[data-video-model-source]')).toBeNull();
     });
-    it('renders waiting, connecting, fallback and receiving metadata in the instrumented client without altering byte values', async () => {
+    it('renders real download byte progress while keeping connection and fallback sources internal, then permits retry', async () => {
         const gate = deferred<{success: boolean; error?: string}>(), fixture = videoHandlerFixture(); fixture.offscreen.send.mockReturnValueOnce(gate.promise);
         const {host} = await mount(VideoLocalModelSettings, {config: normalizeConfig({videoTranslationEnabled: true})});
         await clickVideoModel(host, 'small');
-        const status = () => host.querySelector('[data-video-model-transfer="small"]')!.textContent;
-        expect(status()).toBe('video.downloadWaiting');
-        for (const [transfer, key] of [
-            [{source: 'modelscope', attempt: 1, attempts: 3, state: 'connecting'}, 'video.downloadConnecting'],
-            [{source: 'hf-mirror', attempt: 2, attempts: 3, state: 'connecting'}, 'video.downloadSwitching'],
-            [{source: 'huggingface', attempt: 3, attempts: 3, state: 'receiving'}, 'video.downloadReceiving'],
-            [{source: 'other', attempt: 1, attempts: 1, state: 'receiving'}, 'video.downloadReceiving'],
+        const progress = () => host.querySelector('[data-video-model-progress="small"]')!;
+        expect(progress()).not.toBeNull(); expect(progress().getAttribute('data-state')).toBe('indeterminate');
+        expect(progress().querySelector('progress')!.hasAttribute('value')).toBe(false);
+        for (const transfer of [
+            {source: 'modelscope', attempt: 1, attempts: 3, state: 'connecting'},
+            {source: 'hf-mirror', attempt: 2, attempts: 3, state: 'connecting'},
+            {source: 'huggingface', attempt: 3, attempts: 3, state: 'receiving'},
+            {source: 'other', attempt: 1, attempts: 1, state: 'receiving'},
         ] as const) {
             for (const listener of ports.storageListeners) listener({[downloadProgressKey(videoModelDownloadId('small'))]: {newValue: {loaded: 200_000, total: 800_000, transfer}}}, 'local');
-            await settle(); expect(status()).toBe(key);
-            expect(host.querySelector('[data-video-model-progress="small"] progress')!.getAttribute('value')).toBe('200000');
+            await settle(); expect(progress().getAttribute('data-state')).toBe('determinate');
+            expect(progress().querySelector('progress')!.getAttribute('value')).toBe('200000');
+            expect(progress().querySelector('progress')!.getAttribute('max')).toBe('800000');
+            expect(progress().querySelector('.download-progress-detail')!.textContent).toBe('25% · 0.2 MB / 0.8 MB');
+            expect(host.querySelector('[data-video-model-transfer]')).toBeNull();
+            for (const source of ['modelscope', 'hf-mirror', 'huggingface']) expect(host.textContent).not.toContain(source);
         }
         gate.resolve({success: false, error: 'SOURCES_EXHAUSTED'}); await settle();
         expect(videoCard(host, 'small').querySelector('button')!.textContent!.trim()).toBe('video.downloadRetry');
+        expect(videoCard(host, 'small').querySelector<HTMLButtonElement>('button')!.disabled).toBe(false);
         await clickVideoModel(host, 'small');
+        expect(fixture.offscreen.send).toHaveBeenCalledTimes(2);
+        expect(videoCard(host, 'small').querySelector('.video-model-availability')!.textContent).toContain('可离线使用');
     });
-    it('keeps fixed source page links from selecting a model or invoking download', async () => {
+    it('keeps download sources private, changes the chosen model without downloading, and downloads only on its explicit button', async () => {
         videoHandlerFixture(); const {host, state} = await mount(VideoLocalModelSettings, {config: normalizeConfig({videoTranslationEnabled: true, videoLocalModel: 'small'})});
         const current = state as {config: Config};
-        const requests = ports.send.mock.calls.length, before = current.config.videoLocalModel;
+        const requests = ports.send.mock.calls.length;
+        expect(host.querySelector('.video-model-source-links')).toBeNull(); expect(host.querySelector('[data-video-model-source]')).toBeNull();
+        expect([...host.querySelectorAll('input[type="radio"]')].map(input => input.getAttribute('value'))).toEqual(['tiny', 'base', 'small']);
         let bubbled = 0; host.addEventListener('click', () => bubbled++);
-        const links = [...host.querySelectorAll<HTMLAnchorElement>('.video-model-source-links a')];
-        expect(links.map(link => link.getAttribute('href'))).toEqual(['https://huggingface.co/onnx-community/whisper-small', 'https://hf-mirror.com/onnx-community/whisper-small', 'https://modelscope.cn/models/onnx-community/whisper-small']);
-        for (const link of links) {expect(link.getAttribute('rel')).toBe('noopener noreferrer'); link.dispatchEvent(new Event('click', {bubbles: true}));}
-        await settle(); expect(bubbled).toBe(0); expect(current.config.videoLocalModel).toBe(before); expect(ports.send).toHaveBeenCalledTimes(requests);
+        videoCard(host, 'base').dispatchEvent(new Event('click', {bubbles: true})); await settle();
+        expect(current.config.videoLocalModel).toBe('base'); expect(ports.send).toHaveBeenCalledTimes(requests); expect(bubbled).toBe(1);
+        await clickVideoModel(host, 'base');
+        const downloads = ports.send.mock.calls.filter(([message]) => message.type === 'fluentReadPrepareLocalVideoModel');
+        expect(downloads).toHaveLength(1); expect(downloads[0][0]).toMatchObject({model: 'base', preference: 'auto'});
+        expect(current.config.videoLocalModel).toBe('base'); expect(bubbled).toBe(1);
     });
 });
 

@@ -16,6 +16,7 @@ import * as Vue from 'vue';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {normalizeConfig} from '@/src/core/config/model';
 import * as learning from '@/src/features/vocabulary/learningModel';
+import * as vocabularySource from '@/src/features/vocabulary/source';
 import * as i18n from '@/src/core/i18n';
 import * as result from '@/src/core/translation/result';
 import * as speech from '@/src/features/selection-translation/speech/public';
@@ -106,7 +107,7 @@ async function mountBook(honorAbort = true) {
         '@/src/platform/browser/capabilities': {browserCapabilities: {browser: 'chrome'}},
         '@/src/features/selection-translation/speech/public': speech,
         '@/src/services/config/store': {config, configReady: Promise.resolve(), requestConfigPatch: vi.fn(), subscribeConfig: () => () => {}},
-        '@/src/features/vocabulary/learningModel': learning, '../learningModel': learning, '@/src/core/translation/result': result,
+        '@/src/features/vocabulary/learningModel': learning, '../learningModel': learning, '../source': vocabularySource, '@/src/core/translation/result': result,
         '@/src/ui/i18n': {useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})},
     };
     function loadClient(relative: string): Vue.Component {
@@ -121,6 +122,7 @@ async function mountBook(honorAbort = true) {
         }, module.exports, module);
         return module.exports.default;
     }
+    modules['./VocabularySource.vue'] = {default: loadClient('src/features/vocabulary/ui/VocabularySource.vue')};
     modules['./CollectionEntry.vue'] = {default: loadClient('src/features/vocabulary/ui/CollectionEntry.vue')};
     const component = loadClient('src/features/vocabulary/ui/VocabularyBook.vue');
     const events = new WeakMap<Element, Record<string, any>>();

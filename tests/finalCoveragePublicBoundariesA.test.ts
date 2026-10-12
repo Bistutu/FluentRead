@@ -347,7 +347,8 @@ it('reports the unchanged source page before a changed PDF page, preserves order
     expect(rasterize).toHaveBeenCalledOnce();
     expect(rasterize.mock.calls[0][0]).toMatchObject({pageNumber: 2, translations: ['', '第二页']});
     const result = await PDFDocument.load(download.data as Uint8Array);
-    expect(result.getPages().map(page => page.getSize())).toEqual([{width: 400, height: 600}, {width: 810, height: 600}]);
+    // 默认双语导出保持两栏页宽；未改原页同样在左右两栏各绘制一次。
+    expect(result.getPages().map(page => page.getSize())).toEqual([{width: 810, height: 600}, {width: 810, height: 600}]);
     expect(download).toMatchObject({fileName: 'mixed.bilingual.pdf', mimeType: 'application/pdf'});
     expect(JSON.stringify(parsed)).toBe(before); expect(translations).toEqual([' Same first page ', '第二页']);
 });

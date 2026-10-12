@@ -1221,7 +1221,7 @@ describe('49F actual pinned-data virtual catalog consumer', () => {
             const module = await Reflect.apply(loader, {}, [id]);
             const compiled = await transformWithEsbuild(module, `${name}.js`, {format: 'cjs', target: 'es2018'});
             realm.module = {exports: {}};
-            runInContext(compiled.code, realm, {timeout: 5_000});
+            runInContext(`(function(module, exports) {${compiled.code}\n})(module, module.exports);`, realm, {timeout: 5_000});
             catalogs[name] = realm.module.exports.default;
         }
         return {catalogs, original};
