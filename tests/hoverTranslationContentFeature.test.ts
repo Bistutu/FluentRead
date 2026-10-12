@@ -1316,17 +1316,25 @@ describe('selection shortcut parsing in hover arbitration', () => {
         const split = vi.spyOn(String.prototype, 'split');
         try {
             const moves = Array.from({length: 200}, (_unused, index) => trustedEvent({clientX: index, clientY: 20}));
-            for (const move of moves) documentTarget.emit('mousemove', move);
-            const keyup = trustedEvent({key: 'Control', code: 'ControlLeft'});
-            windowTarget.emit('keyup', keyup);
-
-            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual(
-                Array.from({length: 200}, (_unused, index) => [index, 20, {delayMs: 120, continuous: true}]),
-            );
-            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            // 首点同步响应；其余输入分别推进一个真实处理帧，不把同帧洪峰当作 200 次候选识别。
+            for (const [index, move] of moves.entries()) {
+                documentTarget.emit('mousemove', move);
+                if (index > 0) windowTarget.flushAnimationFrame();
+            }
+            const translated = Array.from({length: 200}, (_unused, index) => [index, 20, {delayMs: 120, continuous: true}]);
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual(translated);
             expect(getConfigured).toHaveBeenCalledTimes(200);
             expect(getCustom).toHaveBeenCalledTimes(customReads);
             expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(candidateReads);
+            const keyup = trustedEvent({key: 'Control', code: 'ControlLeft'});
+            windowTarget.emit('keyup', keyup);
+
+            // 主线释放入口先按当前配置再仲裁选区；暖缓存只省解析，不省这一次 getter/候选检查。
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual(translated);
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            expect(getConfigured).toHaveBeenCalledTimes(201);
+            expect(getCustom).toHaveBeenCalledTimes(customReads + (configured === 'custom' ? 1 : 0));
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(candidateReads + (candidateReads > 0 ? 1 : 0));
             expect(deps.noteBilingualHostGesture).toHaveBeenCalledTimes(200);
             expect(keydown.preventDefault).toHaveBeenCalledOnce();
             expect(keydown.stopPropagation).toHaveBeenCalledOnce();
@@ -1365,14 +1373,19 @@ describe('selection shortcut parsing in hover arbitration', () => {
                 {configured: 'custom', custom: ' Alt '},
             ]) {
                 Object.assign(settings, step);
-                documentTarget.emit('mousemove', trustedEvent({clientX: x++, clientY: 20}));
-                documentTarget.emit('mousemove', trustedEvent({clientX: x++, clientY: 20}));
+                for (let frame = 0; frame < 2; frame++) {
+                    documentTarget.emit('mousemove', trustedEvent({clientX: x++, clientY: 20}));
+                    // 第一条已同步处理；之后每条输入由上一轮排入的帧读取当下 raw。
+                    if (x > 1) windowTarget.flushAnimationFrame();
+                }
             }
             vi.mocked(deps.hasActiveSelectionTranslationCandidate).mockReturnValue(true);
             documentTarget.emit('mousemove', trustedEvent({clientX: x++, clientY: 20}));
+            windowTarget.flushAnimationFrame();
             expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
             settings.custom = ' Ctrl ';
             documentTarget.emit('mousemove', trustedEvent({clientX: x, clientY: 20}));
+            windowTarget.flushAnimationFrame();
 
             expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual(
                 Array.from({length: 15}, (_unused, index) => [index, 20, {delayMs: 120, continuous: true}]),
@@ -1411,7 +1424,12 @@ describe('selection shortcut parsing in hover arbitration', () => {
         windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
         documentTarget.emit('mousemove', trustedEvent({clientX: 1, clientY: 20}));
         fail = true;
-        expect(() => documentTarget.emit('mousemove', trustedEvent({clientX: 2, clientY: 20}))).toThrow(cause);
+        documentTarget.emit('mousemove', trustedEvent({clientX: 2, clientY: 20}));
+        expect(getConfigured).toHaveBeenCalledOnce();
+        expect(getCustom).toHaveBeenCalledOnce();
+        expect(windowTarget.animationFrames.size).toBe(1);
+        expect(() => windowTarget.flushAnimationFrame()).toThrow(cause);
+        expect(windowTarget.animationFrames.size).toBe(0);
         expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[1, 20, {delayMs: 120, continuous: true}]]);
         expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
         expect(deps.hasActiveSelectionTranslationCandidate).not.toHaveBeenCalled();
@@ -1446,7 +1464,12 @@ describe('selection shortcut parsing in hover arbitration', () => {
             documentTarget.emit('mousemove', trustedEvent({clientX: 1, clientY: 20}));
             raw = ' Ctrl ';
             fail = true;
-            expect(() => documentTarget.emit('mousemove', trustedEvent({clientX: 2, clientY: 20}))).toThrow(cause);
+            documentTarget.emit('mousemove', trustedEvent({clientX: 2, clientY: 20}));
+            expect(getConfigured).toHaveBeenCalledOnce();
+            expect(getCustom).toHaveBeenCalledOnce();
+            expect(windowTarget.animationFrames.size).toBe(1);
+            expect(() => windowTarget.flushAnimationFrame()).toThrow(cause);
+            expect(windowTarget.animationFrames.size).toBe(0);
             expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
             expect(deps.hasActiveSelectionTranslationCandidate).not.toHaveBeenCalled();
             expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[1, 20, {delayMs: 120, continuous: true}]]);
@@ -1455,6 +1478,7 @@ describe('selection shortcut parsing in hover arbitration', () => {
             documentTarget.emit('mousemove', trustedEvent({clientX: 3, clientY: 20}));
             raw = ' Ctrl ';
             documentTarget.emit('mousemove', trustedEvent({clientX: 4, clientY: 20}));
+            windowTarget.flushAnimationFrame();
 
             expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([
                 [1, 20, {delayMs: 120, continuous: true}],
@@ -1510,24 +1534,43 @@ describe('selection shortcut parsing in hover arbitration', () => {
         const getCustom = vi.spyOn(deps, 'getCustomSelectionHotkey');
         selectionShortcut.value = sharedAtStart ? 'F9' : 'F10';
         dispatch('keydown', trustedEvent({key: 'F9', code: 'F9'}));
-        documentTarget.emit('selectionchange', trustedEvent());
-        selectionShortcut.value = sharedAtStart ? 'F10' : 'F9';
-        documentTarget.emit('selectionchange', trustedEvent());
-        const keyup = trustedEvent({key: 'F9', code: 'F9'});
-        dispatch('keyup', keyup);
+        expect(getConfigured).not.toHaveBeenCalled();
+        expect(getCustom).not.toHaveBeenCalled();
+        const split = vi.spyOn(String.prototype, 'split');
+        try {
+            documentTarget.emit('selectionchange', trustedEvent());
+            expect(getConfigured).toHaveBeenCalledOnce();
+            expect(getCustom).toHaveBeenCalledOnce();
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(sharedAtStart ? 1 : 0);
+            selectionShortcut.value = sharedAtStart ? 'F10' : 'F9';
+            documentTarget.emit('selectionchange', trustedEvent());
+            expect(getConfigured).toHaveBeenCalledTimes(2);
+            expect(getCustom).toHaveBeenCalledTimes(2);
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledOnce();
+            expect(deps.handleTranslation).not.toHaveBeenCalled();
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            const keyup = trustedEvent({key: 'F9', code: 'F9'});
+            dispatch('keyup', keyup);
 
-        expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[0, 0]]);
-        expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
-        expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledOnce();
-        expect(getConfigured).toHaveBeenCalledTimes(2);
-        expect(getCustom).toHaveBeenCalledTimes(2);
-        expect(deps.matchesSelectionTranslatorShortcut).toHaveBeenCalledOnce();
-        if (sharedAtStart) {
-            expect(keyup.stopPropagation).not.toHaveBeenCalled();
-            expect(documentKeyup.mock.calls).toEqual([[keyup]]);
-        } else {
-            expect(keyup.stopPropagation).toHaveBeenCalledOnce();
-            expect(documentKeyup).not.toHaveBeenCalled();
-        }
+            // 释放前仲裁使用已经变更的划词配置，事件交接仍服从 keydown 时的共享归属。
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[0, 0]]);
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(sharedAtStart ? 1 : 2);
+            expect(getConfigured).toHaveBeenCalledTimes(3);
+            expect(getCustom).toHaveBeenCalledTimes(3);
+            expect(deps.matchesSelectionTranslatorShortcut).toHaveBeenCalledOnce();
+            const parsed = (raw: string) => split.mock.contexts.filter(
+                (context, index) => String(context) === raw && (split.mock.calls[index][0] as unknown) === '+',
+            ).length;
+            expect(parsed('f9')).toBe(1);
+            expect(parsed('f10')).toBe(1);
+            if (sharedAtStart) {
+                expect(keyup.stopPropagation).not.toHaveBeenCalled();
+                expect(documentKeyup.mock.calls).toEqual([[keyup]]);
+            } else {
+                expect(keyup.stopPropagation).toHaveBeenCalledOnce();
+                expect(documentKeyup).not.toHaveBeenCalled();
+            }
+        } finally { split.mockRestore(); }
     });
 });

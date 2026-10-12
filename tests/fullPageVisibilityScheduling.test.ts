@@ -77,7 +77,8 @@ const runtime = vi.hoisted(() => ({
 
 vi.mock("@/src/app/translation/check", () => ({checkConfig: () => true}));
 vi.mock('@/src/features/full-page-translation/ui/modalProgressHint', () => ({syncModalTranslationHint: vi.fn()}));
-vi.mock("@/src/core/config/catalog", () => ({
+vi.mock("@/src/core/config/catalog", async (importOriginal) => ({
+    ...await importOriginal<typeof import('@/src/core/config/catalog')>(),
     services: {
         google: "google",
         bilibili: "bilibili",
@@ -341,9 +342,9 @@ import {
     restoreTranslationOwner,
 } from "@/src/features/full-page-translation/content/runtime";
 import {getTranslationState} from "@/src/features/full-page-translation/content/state";
+import {toggleTranslationSection} from '@/src/features/full-page-translation/content/sectionTranslation';
 import {createBilingualRemountCapitulationRegistry} from '@/src/features/full-page-translation/content/bilingualRemount';
 import {resetFullPageRouteSession, type FullPageRouteLifecycleSession} from '@/src/features/full-page-translation/content/routeLifecycle';
-import {toggleTranslationSection} from '@/src/features/full-page-translation/content/sectionTranslation';
 import {getTranslationToolbarStatus} from '@/src/features/full-page-translation/content/stateNotification';
 import {
     getFullPageTranslationProgress,

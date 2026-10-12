@@ -9,8 +9,9 @@ import ts from 'typescript';
 import {defineConfig, normalizePath, transformWithEsbuild, type Plugin} from 'vite';
 import {createUserscriptMetadata} from './metadata';
 import {createUserscriptCharacterDataCompressionPlugin} from './characterDataPlugin';
-import {createUserscriptInlineCssCompressionPlugin} from './inlineCssPlugin';
 import {createUserscriptFrancDataCompressionPlugin} from './francDataPlugin';
+import {createUserscriptTldtsDataCompressionPlugin} from './tldtsDataPlugin';
+import {createUserscriptInlineCssCompressionPlugin} from './inlineCssPlugin';
 import {createUserscriptAboutImagesCompressionPlugin} from './aboutImagesPlugin';
 import {createUserscriptServiceBrandIconsCompressionPlugin} from './serviceBrandIconsPlugin';
 import {UI_LANGUAGE_BUNDLES, zhCNMessages} from './languageBundles';
@@ -78,7 +79,7 @@ function serializeUiMessages(value: unknown): string {
 function userscriptPageMessages<T extends Record<string, string>>(messages: T): T {
     return Object.fromEntries(Object.entries(messages).filter(([key]) => !key.startsWith('document.'))) as T;
 }
-// 构建期复用已有 pako 编码中英界面词典，减少标准 gzip 数据；解压字节与运行时端口不变。
+// 构建期复用已有 pako 编码中英界面词典，减少标准 gzip 数据；解压格式与运行时端口不变。
 const gzipUiMessages = createRequire(import.meta.url)('pako').gzip as
     (data: Uint8Array, options: {level: number}) => Uint8Array;
 // 与中文内嵌目录一致，仅投影扩展文档页专用 key；固定远程与外部资源继续使用原 bundle。
@@ -532,7 +533,7 @@ export const userscriptAliases = [
 export default defineConfig({
     root,
     publicDir: false,
-    plugins: [unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), createUserscriptFrancDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptAboutImagesCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptServiceBrandIconsCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss(), createUserscriptInlineCssCompressionPlugin(root, !greasyForkSource)],
+    plugins: [unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), createUserscriptFrancDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptTldtsDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptAboutImagesCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptServiceBrandIconsCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss(), createUserscriptInlineCssCompressionPlugin(root, !greasyForkSource)],
     resolve: {
         alias: userscriptAliases,
     },

@@ -53,7 +53,7 @@ import {XHlsAudioReader} from './hlsAudioRuntime';
 import {XSubtitleLoader} from './xSubtitleLoader';
 import {VideoTranslationCache} from './translationCache';
 import {VideoPretranslationController} from './pretranslationController';
-import {getVideoTranslationConfigFingerprint, normalizeVideoCaptionText, revealVideoSubtitleTranslation, selectYoutubeCaptionCue, selectVideoSubtitleCueAtOffset, findProgressiveVideoCaptionCue, findActiveVideoCaptionCue, selectProgressiveVideoCaptionCue} from './subtitleLogic';
+import {getVideoTranslationConfigFingerprint, normalizeVideoCaptionText, revealVideoSubtitleTranslation, selectYoutubeCaptionCue, selectVideoSubtitleCueAtOffset, findProgressiveVideoCaptionCue, findActiveVideoCaptionCue, selectProgressiveVideoCaptionCue, type YoutubeCueSelection} from './subtitleLogic';
 export {translateVideoSubtitleCues, getVideoTranslationConfigFingerprint, normalizeVideoCaptionText, revealVideoSubtitleTranslation} from './subtitleLogic';
 export {getVideoSubtitleDownloadErrorMessage} from './ui';
 import { config, requestConfigPatch, subscribeConfig } from '@/src/services/config/store';
@@ -396,7 +396,6 @@ export function mountVideoSubtitleTranslation(): () => void {
     `${(cue as VideoSubtitleCue & { cueId?: string }).cueId || cue.startMs}:${normalizeVideoCaptionText(cue.text)}`;
 
   const findActiveProgressiveCue = () => findActiveVideoCaptionCue(pretranslationCues, getCurrentVideoTimeMs());
-  type YoutubeCueSelection = ReturnType<typeof selectYoutubeCaptionCue> & {cues: readonly VideoSubtitleCue[]; source: string; currentMs: number};
   const selectProgressiveCue = (source: string, selection?: YoutubeCueSelection): VideoSubtitleCue | null => {
     if (hasAdjustedTimeline()) return getAdjustedCaptionCue();
     if (isYouTubeVideoPage()) {
@@ -1528,10 +1527,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       const cues = pretranslationCues, currentMs = getCurrentVideoTimeMs();
       youtubeSelection = {...selectYoutubeCaptionCue(cues, source, currentMs), cues, source, currentMs};
     }
-    if (youtubeSelection?.stale) {
-      resetTranslationState();
-      return;
-    }
+    if (youtubeSelection?.stale) return resetTranslationState();
     const human = config.videoPreferHumanSubtitles && isYouTubeVideoPage()
       ? humanCaptions.at(getCurrentVideoTimeMs() - subtitleOffsetMs) : '';
     if (human) {

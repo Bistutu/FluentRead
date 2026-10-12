@@ -2,7 +2,7 @@
  * @file src/core/language/chineseText.ts
  *
  * 文件职责：以保守字形与中文词语证据区分简体、繁体、简繁同形和未知的纯汉字正文，供统一语言识别器使用。
- * 主要内容：按原顺序构造可逐对审核的简繁冲突表与 Unicode 简繁专属字数据证据，排除简繁混排、罕见扩展字和粤语口语；导出 classifyChineseHan、hasSimplifiedChineseEvidence 与 hasTraditionalChineseEvidence，保留日文、韩文排除中文语境所需的原有字形规则。
+ * 主要内容：按原顺序构造可逐对审核的简繁冲突表与 Unicode 简繁专属字数据证据，排除简繁混排、罕见扩展字和粤语口语；导出 classifyChineseHan、hasSimplifiedChineseEvidence 与 hasTraditionalChineseEvidence，包含登入、頁面、儲存与瀏覽器等中文界面词语，并保留日文、韩文排除中文语境所需的字形规则。
  * 模块边界：本文件属于 core 纯文本算法，只接受调用方已排除其他文字的汉字正文；不处理语言标签、不转换原文、不猜测地区或方言，不读取配置、页面、浏览器、网络或翻译服务。ChineseScript 仅作类型依赖，配置与纯标签消费者无需加载字符表和本模块。
  */
 

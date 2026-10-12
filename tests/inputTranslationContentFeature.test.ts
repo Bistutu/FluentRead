@@ -1660,7 +1660,7 @@ describe('input translation content feature', () => {
             release({success: true, translatedText: '你好'});
             await running;
             expect(harness.sendMessage).toHaveBeenCalledOnce();
-            expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: '当前请求原文', targetLang: 'zh'});
+            expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: '当前请求原文', targetLang: 'zh', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u)});
             expect(input.value).toBe('你好');
             expect(harness.tooltipRecords.at(-1).ui.mounted.textContent).toContain('翻译成功');
 
@@ -1685,7 +1685,8 @@ describe('input translation content feature', () => {
             await harness.fakeDocument.emit('keydown', third);
             expect(third.preventDefault).toHaveBeenCalledOnce();
             expect(harness.sendMessage).toHaveBeenCalledTimes(2);
-            expect(harness.sendMessage).toHaveBeenLastCalledWith({type: 'inputBoxTranslation', text: '后续序列原文=', targetLang: 'zh'});
+            expect(harness.sendMessage).toHaveBeenLastCalledWith({type: 'inputBoxTranslation', text: '后续序列原文=', targetLang: 'zh', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u)});
+            expect(harness.sendMessage.mock.calls[1][0].clientRequestId).not.toBe(harness.sendMessage.mock.calls[0][0].clientRequestId);
             expect(input.value).toBe('你好');
             expect(pendingUnrelatedReads).toBe(0);
             expect(sequenceUnrelatedReads).toBe(0);
@@ -1712,7 +1713,7 @@ describe('input translation content feature', () => {
             const unownedReads = readText.mock.calls.length;
             await harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
             expect(harness.sendMessage).toHaveBeenCalledOnce();
-            expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: '触发前的最新草稿', targetLang: 'zh'});
+            expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: '触发前的最新草稿', targetLang: 'zh', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u)});
             expect(text).toBe('你好');
             const restore = harness.tooltipRecords.at(-1).ui.mounted.children.at(-1).listeners.get('click')[0];
             text = '完成后用户继续编辑';

@@ -124,7 +124,7 @@ describe('full userscript Options entry', () => {
         expect(options.component).toEqual({name: 'OptionsApp'});
         const {document} = parseHTML('<div id="owned-options-overlay"></div>');
         const exactContainer = document.querySelector<HTMLElement>('#owned-options-overlay')!;
-        const fakeApp = {use: vi.fn(), component: vi.fn()};
+        const fakeApp = {use: vi.fn(), component: vi.fn(), onUnmount: vi.fn()};
         options.configureApp(fakeApp, exactContainer);
         expect(installOptionsApp).toHaveBeenCalledOnce();
         expect(installOptionsApp).toHaveBeenCalledWith(fakeApp, {documentRoot: null, uiRoot: exactContainer});
@@ -161,7 +161,7 @@ describe('full userscript Options entry', () => {
         const options = mocks.createVueShadowUi.mock.calls[0][1];
         const {document} = parseHTML('<div id="owned-options-page"></div>');
         const exactContainer = document.querySelector<HTMLElement>('#owned-options-page')!;
-        const fakeApp = {use: vi.fn(), component: vi.fn()};
+        const fakeApp = {use: vi.fn(), component: vi.fn(), onUnmount: vi.fn()};
         options.configureApp(fakeApp, exactContainer);
         expect(installOptionsApp).toHaveBeenCalledOnce();
         expect(installOptionsApp).toHaveBeenCalledWith(fakeApp, {documentRoot: null, uiRoot: exactContainer});

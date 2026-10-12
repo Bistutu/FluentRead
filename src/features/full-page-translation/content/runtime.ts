@@ -1380,8 +1380,8 @@ function resolveStatefulMutationTarget(element: Element): HTMLElement | false {
 }
 
 /**
- * materialize 将来源节点移入合成 span 后，真实 childList 可在延迟 spinner 创建前送达。
- * 仅尚未创建时允许零产物；已登记的 spinner 必须保持唯一归属。
+ * materialize 的 childList 可在延迟 spinner 创建前送达；尚未创建允许零产物，已登记则必须保持唯一归属。
+ * 这些真实 childList 记录会在 beginTranslation 之后、异步 provider 仍待完成时送达。
  * 只有本 generation 捕获的精确来源所有权、HTML 和 Text 槽身份都保持完整时才接受；
  * 任何宿主插入（包括伪装成 FluentRead 产物的节点）都必然无法通过至少一项检查，
  * 并继续进入 stale/重启路径。
@@ -1392,8 +1392,7 @@ function isIntactLoadingSyntheticChildList(
 ): boolean {
     if (!state.syntheticSegment || !target.matches('[data-fr-translation-segment="true"]')) return false;
     const spinner = state.spinner;
-    if (spinner !== undefined && spinner.parentNode !== target) return false;
-    if (spinner !== undefined && !spinner.matches('[data-fr-translation-owned="true"]')) return false;
+    if (spinner !== undefined && (spinner.parentNode !== target || !spinner.matches('[data-fr-translation-owned="true"]'))) return false;
 
     const expectedSourceNodes = state.syntheticSourceNodes;
     if (!expectedSourceNodes) return false;
@@ -1402,8 +1401,7 @@ function isIntactLoadingSyntheticChildList(
         currentSourceNodes.some((node, index) => node !== expectedSourceNodes[index])) return false;
 
     const artifacts = Array.from(target.querySelectorAll(TRANSLATION_ARTIFACT_SELECTOR));
-    if (artifacts.length !== (spinner === undefined ? 0 : 1)) return false;
-    if (spinner !== undefined && artifacts[0] !== spinner) return false;
+    if (artifacts.length !== (spinner === undefined ? 0 : 1) || (spinner !== undefined && artifacts[0] !== spinner)) return false;
 
     const sourceClone = target.cloneNode(false) as HTMLElement;
     currentSourceNodes.forEach((node) => sourceClone.appendChild(node.cloneNode(true)));

@@ -5,7 +5,10 @@
  * 模块边界：不自行调用网络或修改配置；缓存、取消、超时与最终结果验证仍由 broker 管理。
  */
 import {GlossaryPlaceholderError, protectGlossaryText, resolveGlossaryEntries, type GlossaryProtectionEntry} from '@/src/core/glossary';
-import {DocumentInlineMarkerError, documentInlineMarkerRanges, findDocumentLiteralTerms, normalizeDocumentInlineMarkers, parseTranslationSlots, protectDocumentMathText, serializeTranslationSlots, validateDocumentInlineMarkers} from '@/src/core/translation/public';
+import {DocumentInlineMarkerError, documentInlineMarkerRanges, normalizeDocumentInlineMarkers, validateDocumentInlineMarkers} from '@/src/core/translation/documentInlineMarkers';
+import {findDocumentLiteralTerms} from '@/src/core/translation/documentLiterals';
+import {protectDocumentMathText} from '@/src/core/translation/documentMathProtection';
+import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {attachTranslationProviderConfig, getTranslationGlossarySourceSlots, getTranslationGlossarySourceText} from './requestSnapshot';
 import type {TranslationProviderConfigSnapshot, TranslationRequestMessage} from './types';
 

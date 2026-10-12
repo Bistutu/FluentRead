@@ -1,7 +1,7 @@
 /**
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
- * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理和鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口。
+ * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口。
  * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；新增入口可选官方模板和独立 Linkedom 节点树，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -119,7 +119,13 @@ function createSelectionTemplatePort() {
 let app: Vue.App | undefined;
 afterEach(() => { app?.unmount(); app = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>, browserTarget: SelectionBuildTarget = 'chrome', configReady: Promise<void> = Promise.resolve(), componentProps: Record<string, unknown> = {}, renderTemplate = false) {
+function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>,
+    targetOrProps: SelectionBuildTarget | Record<string, unknown> = 'chrome', readyOrTemplate: Promise<void> | boolean = Promise.resolve()) {
+    // 保留两侧原调用：主线 target/configReady 与本地 componentProps/可选完整模板。
+    const browserTarget = typeof targetOrProps === 'string' ? targetOrProps : 'chrome';
+    const componentProps = typeof targetOrProps === 'string' ? {} : targetOrProps;
+    const configReady = typeof readyOrTemplate === 'boolean' ? Promise.resolve() : readyOrTemplate;
+    const renderTemplate = typeof readyOrTemplate === 'boolean' ? readyOrTemplate : false;
     vi.useFakeTimers();
     const config = Object.assign(new Config(), {
         disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', theme: 'light',
@@ -2389,7 +2395,7 @@ describe('focused selection card dismissal requests', () => {
     // exercise the actual setup handler, not native browser focus behavior.
     function focusedFixture() {
         const dismiss = vi.fn();
-        const fixture = mountSelection(false, undefined, 'chrome', Promise.resolve(), {onFocusedCardDismiss: dismiss});
+        const fixture = mountSelection(false, undefined, {onFocusedCardDismiss: dismiss});
         const root: {activeElement: unknown} = {activeElement: null};
         class FocusNode {
             getRootNode() {return root;}
@@ -2809,7 +2815,7 @@ describe('selection authentication settings action ownership and rendered entry'
 
     async function failedSelection(options: {render?: boolean; inline?: boolean; cause?: Error;
         service?: string; selectionService?: string; adapter?: Record<string, unknown>} = {}) {
-        const fixture = mountSelection(false, options.adapter, 'chrome', Promise.resolve(), {}, options.render === true);
+        const fixture = mountSelection(false, options.adapter, {}, options.render === true);
         vi.spyOn(console, 'error').mockImplementation(() => undefined);
         fixture.config.from = 'en';
         fixture.config.to = 'zh-Hans';
@@ -2977,7 +2983,12 @@ describe('selection authentication settings action ownership and rendered entry'
             fixture.state.retryTranslation();
             await vi.advanceTimersByTimeAsync(0);
         } else if (boundary === 'provider change') fixture.config.service = 'microsoft';
-        else if (boundary === 'target change') fixture.state.selectionTargetOverride = 'en';
+        else if (boundary === 'target change') {
+            fixture.config.to = 'fr';
+            fixture.notifyConfig();
+            expect(fixture.state.effectiveTargetLanguage).toBe('fr');
+            expect(fixture.state.authenticationError.request.targetLanguage).toBe('zh-Hans');
+        }
         else if (boundary === 'adapter invalidation') acceptsRange.mockReturnValue(false);
         else if (boundary === 'reading then return') {
             fixture.state.readingMode = true;
@@ -3012,7 +3023,12 @@ describe('selection authentication settings action ownership and rendered entry'
         const acceptsRange = vi.fn(() => true);
         const fixture = await failedSelection({adapter: {acceptsRange}});
         if (boundary === 'provider') fixture.config.service = 'microsoft';
-        else if (boundary === 'target') fixture.state.selectionTargetOverride = 'en';
+        else if (boundary === 'target') {
+            fixture.config.to = 'fr';
+            fixture.notifyConfig();
+            expect(fixture.state.effectiveTargetLanguage).toBe('fr');
+            expect(fixture.state.authenticationError.request.targetLanguage).toBe('zh-Hans');
+        }
         else if (boundary === 'adapter') acceptsRange.mockReturnValue(false);
         else if (boundary === 'reading') fixture.state.readingMode = true;
         else fixture.state.showTooltip = false;

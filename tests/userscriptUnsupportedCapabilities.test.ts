@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
-import {VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE as extensionTranscriptionStateMessage} from '@/src/features/video-subtitle/transcription';
 // Node 配置不编译 Vue 组件；空运行契约应能独立加载，不需要 mock 设置 UI。
+import {VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE as extensionTranscriptionStateMessage} from '@/src/features/video-subtitle/transcription';
 import {
     toggleMangaTranslation,
     openMangaEntry,

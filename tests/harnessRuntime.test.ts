@@ -316,7 +316,9 @@ describe('Harness runtime', () => {
         current.harness.systemPrompt = ' ';
         current.harness.actionPrompts.meaning = '';
         await createHarnessRuntime(() => current).run(request, new AbortController().signal);
-        expect(generateText.mock.calls[1][0].system).toContain('FluentRead 阅读学习助手');
+        expect(generateText.mock.calls[1][0].system).toContain(renderHarnessPrompt(getDefaultHarnessPrompt('system', current.uiLanguage), {
+            to: current.to, learningLevel: current.harness.learningLevel, explanationDepth: current.harness.explanationDepth,
+        }));
         expect(generateText.mock.calls[1][0].system).toContain('### 大意');
     });
     it('adds bounded user-curated memories only after opt-in and never offers model memory writes', async () => {

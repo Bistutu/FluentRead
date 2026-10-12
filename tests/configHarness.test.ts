@@ -4,9 +4,9 @@ import {UI_LANGUAGE_OPTIONS} from '@/src/core/i18n/language'
 import {getDefaultHarnessPrompt, resolveHarnessPrompt, renderHarnessPrompt} from '@/src/core/harness/prompts'
 import {type HarnessPromptKind} from '@/src/core/harness/promptDefaults'
 import { Config, normalizeConfig } from '@/src/core/config/model'
+import {getApiKeyRequirementKey, isApiKeyRequired} from '@/src/core/config/validation'
 import {customModelString, services, servicesType} from '@/src/core/config/catalog'
 import {BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation'
-import {getApiKeyRequirementKey, isApiKeyRequired} from '@/src/core/config/validation'
 
 describe('Harness config contract', () => {
   it('纯配置默认值与规范化不初始化多语言提示词数据或 resolver', async () => {

@@ -8,8 +8,8 @@ import {streamText, tool, type LanguageModel, type ModelMessage, type ToolSet} f
 import {z} from 'zod';
 import type {Config} from '@/src/core/config/model';
 import {isReadingService, isReadingActionSupported, isReadingFollowUpSupported, resolveHarnessModel, type HarnessActionId} from '@/src/core/config/harness';
-import {services} from '@/src/core/config/catalog';
 import {resolveHarnessPrompt, renderHarnessPrompt} from '@/src/core/harness/prompts';
+import {services} from '@/src/core/config/catalog';
 import {isApiKeyRequired} from '@/src/core/config/validation';
 import {createHarnessLanguageModel, normalizeHarnessModelError} from './modelGateway';
 import type {ReadingProgress, ReadingRequest, ReadingResponse} from '@/src/features/reading-assistant/types';

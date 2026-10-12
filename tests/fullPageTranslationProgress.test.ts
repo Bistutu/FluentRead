@@ -729,12 +729,12 @@ describe('进度面板稳定 key 的完整 DOM 与真实 i18n 生命周期', () 
       }
       takeRecords() {return this.native.takeRecords();}
     }
-    for (const [name, value] of Object.entries({document, window: {matchMedia: () => media}, Node: dom.window.Node,
+    for (const [name, value] of Object.entries({document, window: {location: {href: 'https://news.example.com/article'}, matchMedia: () => media}, Node: dom.window.Node,
       Element: dom.window.Element, HTMLElement: dom.window.HTMLElement, Event: dom.window.Event,
       MutationObserver: ObservedMutation, NodeFilter: {SHOW_TEXT: 4}})) vi.stubGlobal(name, value);
     const walkers = vi.spyOn(document, 'createTreeWalker');
     const elementQueries = vi.spyOn(dom.window.Element.prototype, 'querySelectorAll');
-    const config = {uiLanguage: language, uiLanguageSetupCompleted: true, animations: true, theme: 'auto', disableFloatingBall: false};
+    const config = {uiLanguage: language, uiLanguageSetupCompleted: true, animations: true, theme: 'auto', disableFloatingBall: false, floatingBallDisabledDomains: [] as string[]};
     let revision = 0;
     const listeners = new Set<(value: typeof config) => void>();
     const callbacks: Array<(value: typeof config) => void> = [];
@@ -788,6 +788,7 @@ describe('进度面板稳定 key 的完整 DOM 与真实 i18n 生命周期', () 
         if (id === '@/src/features/full-page-translation/progress') return progressApi;
         if (id === './progressPanelVisibility') return {createProgressPanelVisibility};
         if (id === '@/src/services/config/store') return store;
+        if (id === '@/src/core/site-rules/domain') return siteDomainApi;
         if (id === '@/src/ui/i18n') return i18n;
         throw new Error(`Unexpected full progress template dependency ${id}`);
       }, module.exports, module);

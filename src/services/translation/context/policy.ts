@@ -2,7 +2,7 @@
  * @file src/services/translation/context/policy.ts
  *
  * 文件职责：定义页面上下文的纯身份、预算与拼装策略，在不访问 DOM 的情况下区分页面路由与阅读锚点，并约束文本、Markdown 和元数据长度。
- * 主要内容：声明 pageContextLimits 与输入结构，以 getPageTranslationMaterialIdentity 保留路径、查询和哈希路由身份；规范化普通文本和 Markdown 行内空白，同时保留列表缩进与硬换行；判断是否启用 bounded capture，并由 buildPageTranslationContext 按预算组合标题、正文和可读 Markdown。
+ * 主要内容：声明 pageContextLimits 与输入结构，以 getPageTranslationMaterialIdentity 保留路径、查询和哈希路由身份，规范化普通文本和 Markdown 行内空白，同时保留列表缩进与硬换行，判断是否启用 bounded capture，并由 buildPageTranslationContext 按预算组合标题、正文和可读 Markdown。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 

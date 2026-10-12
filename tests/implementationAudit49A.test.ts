@@ -290,7 +290,7 @@ describe('49A input production public entries', () => {
   it('writes a valid runtime result through native value setter and host events', async () => {
     const f = inputFeature({success: true, translatedText: '你好'}); const changed = vi.fn(); f.input.addEventListener('input', changed);
     f.trigger(); await vi.waitFor(() => expect(f.input.value).toBe('你好'));
-    expect(changed).toHaveBeenCalledOnce(); expect(f.send).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: 'Hello', targetLang: 'zh-CN'});
+    expect(changed).toHaveBeenCalledOnce(); expect(f.send).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: 'Hello', targetLang: 'zh-CN', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u)});
   });
 });
 
@@ -302,7 +302,7 @@ function editablePage(onPaste: (element: HTMLElement, selection: any) => void) {
   const selection: any = {rangeCount: 0, getRangeAt: () => range, toString: () => range.toString(), removeAllRanges() {this.rangeCount = 0;}, addRange() {this.rangeCount = 1; page.document.dispatchEvent(new page.window.Event('selectionchange'));}};
   page.document.getSelection = () => selection;
   page.document.createRange = () => range as never;
-  const exec = vi.fn(() => {element.textContent = 'Native write'; return true;}); page.document.execCommand = exec;
+  const exec = vi.fn((_command: string, _ui: boolean, text: string) => {element.textContent = text; return true;}); page.document.execCommand = exec;
   class Transfer {setData() {}}
   Object.assign(page.window, {DataTransfer: Transfer, ClipboardEvent: class extends page.window.Event {constructor(type: string, options: EventInit) {super(type, options);}}});
   element.addEventListener('paste', () => onPaste(element, selection));
@@ -322,6 +322,15 @@ describe('49A editable write reentrancy', () => {
   it('preserves the native fallback for an unchanged unclaimed paste', async () => {
     const f = editablePage(() => {}); const pending = replaceEditableText(f.element, 'Translation', () => true);
     await vi.runAllTimersAsync(); expect(await pending).toBe('replaced'); expect(f.exec).toHaveBeenCalledWith('insertText', false, 'Translation');
+    expect(f.exec).toHaveBeenCalledOnce(); expect(f.element.textContent).toBe('Translation');
+  });
+  it('does not confirm a native command that reports success but writes different text', async () => {
+    const f = editablePage(() => {});
+    f.exec.mockImplementationOnce(() => {f.element.textContent = 'Native write'; return true;});
+    const pending = replaceEditableText(f.element, 'Translation', () => true);
+    await vi.runAllTimersAsync(); expect(await pending).toBe('unsupported');
+    expect(f.exec).toHaveBeenCalledOnce(); expect(f.exec).toHaveBeenCalledWith('insertText', false, 'Translation');
+    expect(f.element.textContent).toBe('Native write');
   });
 });
 

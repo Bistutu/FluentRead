@@ -16,15 +16,17 @@ import {inflateWithPako} from '@/userscript/pakoRuntime';
 import * as chineseCharacterData from '@/src/core/language/chineseVariants';
 import * as functionWordData from '@/src/core/language/functionWordData';
 import {createUserscriptCharacterDataCompressionPlugin} from '@/userscript/characterDataPlugin';
+import {createUserscriptFrancDataCompressionPlugin} from '@/userscript/francDataPlugin';
+import {createUserscriptTldtsDataCompressionPlugin} from '@/userscript/tldtsDataPlugin';
 import {createUserscriptAboutImagesCompressionPlugin} from '@/userscript/aboutImagesPlugin';
 import {createUserscriptServiceBrandIconsCompressionPlugin} from '@/userscript/serviceBrandIconsPlugin';
 import originalServiceBrandPaths from '@/src/ui/assets/serviceBrandPaths.json';
 import {getSupportImageUrl as getNormalSupportImageUrl, getContactImageUrl as getNormalContactImageUrl} from '@/src/app/options/aboutImages';
 import ordinaryContactAsset from '@/src/app/options/assets/wechat-contact.jpg';
-import {createUserscriptInlineCssCompressionPlugin} from '@/userscript/inlineCssPlugin';
-import {createUserscriptFrancDataCompressionPlugin} from '@/userscript/francDataPlugin';
 import {inflateWithPako as inflateBundledFrancData} from '@/userscript/pakoBundled';
+import {inflateBytesWithPako as inflateBundledTldtsData, decodeUtf8WithPako as decodeBundledTldtsLabels} from '@/userscript/pakoBundled';
 import {data as lockedFrancData} from 'franc-min/data.js';
+import {createUserscriptInlineCssCompressionPlugin} from '@/userscript/inlineCssPlugin';
 import {
     default as userscriptConfig,
     executionGuardEnd,
@@ -359,17 +361,6 @@ describe('userscript browser shim injection', () => {
         expect(moduleSource).toContain(createHash('sha256').update(gunzipSync(Buffer.from(base64!, 'base64'))).digest('hex'));
     });
 
-    it('applies the same document-page boundary to the embedded English catalog and preserves learning-center source copy', () => {
-        const defines = (userscriptConfig as {define: Record<string, string>}).define;
-        const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__)['en-US'];
-        const restored = JSON.parse(gunzipSync(Buffer.from(compressed, 'base64')).toString('utf8'));
-        const english = UI_LANGUAGE_BUNDLES['en-US'];
-        const messages = Object.fromEntries(Object.entries(english.messages).filter(([key]) => !key.startsWith('document.')));
-        expect(Object.keys(messages).length).toBeLessThan(Object.keys(english.messages).length);
-        expect(restored).toEqual({...english, messages});
-        expect(restored.legacyText['回到视频片段']).toBe(extensionBundles['en-US'].legacyText['回到视频片段']);
-    });
-
     it('embeds the English bundle without the reader-only keys and preserves every other field', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__) as Record<string, string>;
@@ -391,6 +382,16 @@ describe('userscript browser shim injection', () => {
         } finally {
             vi.unstubAllGlobals();
         }
+    });
+    it('applies the same document-page boundary to the embedded English catalog and preserves learning-center source copy', () => {
+        const defines = (userscriptConfig as {define: Record<string, string>}).define;
+        const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__)['en-US'];
+        const restored = JSON.parse(gunzipSync(Buffer.from(compressed, 'base64')).toString('utf8'));
+        const english = UI_LANGUAGE_BUNDLES['en-US'];
+        const messages = Object.fromEntries(Object.entries(english.messages).filter(([key]) => !key.startsWith('document.')));
+        expect(Object.keys(messages).length).toBeLessThan(Object.keys(english.messages).length);
+        expect(restored).toEqual({...english, messages});
+        expect(restored.legacyText['回到视频片段']).toBe(extensionBundles['en-US'].legacyText['回到视频片段']);
     });
 
     it('keeps all site rule JSON data intact when embedding compressed offline catalogs', () => {
@@ -800,6 +801,289 @@ describe('standalone locked franc pure-data encoding', () => {
         expect(readFileSync(dataPath, 'utf8')).toBe(original);
         const manifest = JSON.parse(readFileSync(resolve(dataPath, '../package.json'), 'utf8'));
         expect(manifest).toMatchObject({name: 'franc-min', version: '6.2.0', license: 'MIT'});
+    });
+});
+
+
+describe('standalone locked public and private suffix pure-data encoding', () => {
+    const require = createRequire(resolve(process.cwd(), 'package.json'));
+    const packageRoot = resolve(realpathSync(require.resolve('tldts/package.json')), '..');
+    const dataPath = realpathSync(resolve(packageRoot, 'dist/es6/src/data/trie.js'));
+    const original = readFileSync(dataPath, 'utf8');
+    const originalLicense = readFileSync(resolve(packageRoot, 'LICENSE'), 'utf8');
+    const exportNames = ['nodeFlags', 'edgeStart', 'edgeLength', 'edgeChild', 'labelText', 'rulesRoot', 'exceptionsRoot'] as const;
+    const arrayNames = ['nodeFlags', 'edgeStart', 'edgeLength', 'edgeChild'] as const;
+    type TrieData = {
+        nodeFlags: Uint8Array;
+        edgeStart: Uint16Array;
+        edgeLength: Uint8Array;
+        edgeChild: Uint16Array;
+        labelText: string;
+        rulesRoot: number;
+        exceptionsRoot: number;
+    };
+    const createPlugin = (enabled = true, root = process.cwd()) => createUserscriptTldtsDataCompressionPlugin(root, enabled) as unknown as {
+        name: string;
+        transform: (code: string, id: string) => {code: string; map: null} | null;
+    };
+    const restoreData = (moduleSource: string, inflate = inflateBundledTldtsData, decode = decodeBundledTldtsLabels): TrieData => {
+        const body = moduleSource.replace("import {inflateBytesWithPako, decodeUtf8WithPako} from '@/userscript/pakoBundled';", '')
+            .replace(/\bexport const\b/gu, 'const');
+        // 仅执行原厂或生成的纯数据声明，复用真实 bundled decoder；不运行匹配算法或完整 userscript。
+        return runInNewContext(body + '\n({' + exportNames.join(', ') + '});', {
+            atob, Uint8Array, Uint16Array, JSON, inflateBytesWithPako: inflate, decodeUtf8WithPako: decode,
+        }, {timeout: 5_000}) as TrieData;
+    };
+    const locked = restoreData(original);
+    const fixtureSource = (data: TrieData): string => [
+        'export const nodeFlags = new Uint8Array(' + JSON.stringify(Array.from(data.nodeFlags)) + ');',
+        'export const edgeStart = new Uint16Array(' + JSON.stringify(Array.from(data.edgeStart)) + ');',
+        'export const edgeLength = new Uint8Array(' + JSON.stringify(Array.from(data.edgeLength)) + ');',
+        'export const edgeChild = new Uint16Array(' + JSON.stringify(Array.from(data.edgeChild)) + ');',
+        'export const labelText = ' + JSON.stringify(data.labelText) + ';',
+        'export const rulesRoot = ' + JSON.stringify(data.rulesRoot) + ';',
+        'export const exceptionsRoot = ' + JSON.stringify(data.exceptionsRoot) + ';',
+    ].join('\n');
+
+    it('restores all seven exports, every typed-array value and both ICANN/private flag classes without changing order', () => {
+        const transformed = createPlugin().transform(original, dataPath)!;
+        const restored = restoreData(transformed.code);
+        expect(transformed.map).toBeNull();
+        expect(Object.keys(restored)).toEqual(exportNames);
+        expect(Object.keys(locked)).toEqual(exportNames);
+        for (const name of arrayNames) {
+            const actual = restored[name];
+            const expected = locked[name];
+            expect(actual.constructor).toBe(expected.constructor);
+            expect(Object.getPrototypeOf(actual)).toBe(Object.getPrototypeOf(expected));
+            expect(actual.length).toBe(expected.length);
+            expect(Array.from(actual)).toEqual(Array.from(expected));
+            expect(Buffer.from(actual.buffer, actual.byteOffset, actual.byteLength))
+                .toEqual(Buffer.from(expected.buffer, expected.byteOffset, expected.byteLength));
+        }
+        expect(locked.nodeFlags).toContain(1);
+        expect(locked.nodeFlags).toContain(2);
+        // String equality preserves every UTF-16 code unit, including labels in the exception/private tries.
+        expect(restored.labelText).toBe(locked.labelText);
+        expect(Buffer.from(restored.labelText, 'utf8')).toEqual(Buffer.from(locked.labelText, 'utf8'));
+        expect(restored.rulesRoot).toBe(locked.rulesRoot);
+        expect(restored.exceptionsRoot).toBe(locked.exceptionsRoot);
+    });
+
+    it('roundtrips boundary integers and escaped label text without retaining plain numeric arrays as exports', () => {
+        const data: TrieData = {
+            ...locked,
+            nodeFlags: locked.nodeFlags.slice(),
+            edgeStart: locked.edgeStart.slice(),
+            edgeLength: locked.edgeLength.slice(),
+            edgeChild: locked.edgeChild.slice(),
+            labelText: 'A𱊯A\0\ud800\n"\\',
+            rulesRoot: 0,
+            exceptionsRoot: locked.nodeFlags.length - 1,
+        };
+        // This is a codec-boundary fixture, not a new executable/domain-lookup fixture.
+        data.nodeFlags[0] = 0; data.nodeFlags[1] = 255;
+        data.edgeStart[0] = 0; data.edgeStart[1] = 65535;
+        data.edgeLength[0] = 0; data.edgeLength[1] = 255;
+        data.edgeChild[0] = 0; data.edgeChild[1] = 65535;
+        const restored = restoreData(createPlugin().transform(fixtureSource(data), dataPath)!.code);
+        for (const name of arrayNames) {
+            expect(restored[name].constructor).toBe(data[name].constructor);
+            expect(Array.from(restored[name])).toEqual(Array.from(data[name]));
+            expect(Array.isArray(restored[name])).toBe(false);
+        }
+        expect(restored.labelText).toBe(data.labelText);
+        expect(restored.rulesRoot).toBe(data.rulesRoot);
+        expect(restored.exceptionsRoot).toBe(data.exceptionsRoot);
+    });
+
+    it('defaults to disabled without resolving a dependency or parsing unknown data', () => {
+        const plugin = createUserscriptTldtsDataCompressionPlugin('/unavailable-suffix-root');
+        if (typeof plugin.transform !== 'function') throw new Error('Expected the public plugin transform hook');
+        expect(Reflect.apply(plugin.transform, plugin, ['export const nodeFlags = {', dataPath])).toBeNull();
+        expect(createPlugin(false, '/unavailable-suffix-root').transform(original, dataPath)).toBeNull();
+    });
+
+    it.each([
+        ['unknown-declaration', original + '\nexport const unknown = 1;'],
+        ['side-effect', original + '\nsideEffect();'],
+        ['let', original.replace('export const nodeFlags', 'export let nodeFlags')],
+        ['wrong-export', original.replace('export const nodeFlags', 'export const other')],
+        ['wrong-constructor', original.replace('new Uint8Array', 'new Uint32Array')],
+        ['call-element', original.replace('new Uint8Array([1,', 'new Uint8Array([sideEffect(),')],
+        ['spread-element', original.replace('new Uint8Array([1,', 'new Uint8Array([...other,')],
+        ['negative-element', original.replace('new Uint8Array([1,', 'new Uint8Array([-1,')],
+        ['fractional-element', original.replace('new Uint8Array([1,', 'new Uint8Array([1.5,')],
+        ['overflow-element', original.replace('new Uint8Array([1,', 'new Uint8Array([256,')],
+        ['wrong-array-length', fixtureSource({...locked, nodeFlags: new Uint8Array(1)})],
+        ['root-call', fixtureSource(locked).replace('export const rulesRoot = ' + locked.rulesRoot, 'export const rulesRoot = makeRoot()')],
+        ['root-outside-table', fixtureSource({...locked, exceptionsRoot: locked.nodeFlags.length})],
+        ['label-expression', fixtureSource(locked).replace('export const labelText = ' + JSON.stringify(locked.labelText), 'export const labelText = makeLabels()')],
+        ['wrong-export-order', fixtureSource(locked).split('\n').reverse().join('\n')],
+        ['default-export', 'export default {};'],
+        ['syntax', 'export const nodeFlags = ['],
+    ])('rejects %s instead of evaluating or compressing unknown source', (_label, source) => {
+        expect(() => createPlugin().transform(source, dataPath)).toThrow('seven locked static trie exports');
+    });
+
+    it.each([
+        ['raw', dataPath + '?raw'],
+        ['proxy', dataPath + '?commonjs-proxy'],
+        ['virtual', '\0' + dataPath],
+        ['algorithm', resolve(packageRoot, 'dist/es6/src/suffix-trie.js')],
+        ['unrelated-trie', resolve(process.cwd(), 'fake-tldts/dist/es6/src/data/trie.js')],
+    ])('leaves %s and disabled modules untouched without parsing them', (_label, id) => {
+        expect(createPlugin().transform('throw Error("must not parse")', id)).toBeNull();
+        expect(createPlugin(false).transform(original, id)).toBeNull();
+    });
+
+    it.each([
+        ['ordinary', '0', '0', false],
+        ['standalone', '1', '0', true],
+        ['greasy-fork', '0', '1', false],
+        ['standalone-and-greasy', '1', '1', false],
+    ] as const)('binds the actual %s config to the suffix data plugin and existing bundled decoder only in standalone mode', async (_label, standalone, greasy, enabled) => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', standalone);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', greasy);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        try {
+            vi.resetModules();
+            const {default: configuration, userscriptAliases: aliases} = await import('@/userscript/vite.config');
+            const config = configuration as unknown as {plugins: Array<{name?: string; transform?: unknown}>};
+            const plugin = config.plugins.find(item => item.name === 'compress-standalone-tldts-data') as unknown as ReturnType<typeof createPlugin>;
+            expect(plugin).toBeDefined();
+            const transformed = plugin.transform(original, dataPath);
+            if (enabled) {
+                const restored = restoreData(transformed!.code);
+                for (const name of arrayNames) expect(Array.from(restored[name])).toEqual(Array.from(locked[name]));
+                expect(restored.labelText).toBe(locked.labelText);
+                expect(restored.rulesRoot).toBe(locked.rulesRoot);
+                expect(restored.exceptionsRoot).toBe(locked.exceptionsRoot);
+            } else expect(transformed).toBeNull();
+            const bundled = aliases.find(alias => alias.find === '@/userscript/pakoRuntime');
+            expect(bundled?.replacement).toBe(standalone === '1' ? resolve(process.cwd(), 'userscript/pakoBundled.ts') : undefined);
+        } finally {
+            vi.unstubAllEnvs();
+            vi.resetModules();
+        }
+    });
+
+    it.each([
+        ['new-version', {name: 'tldts', version: '7.4.11'}],
+        ['wrong-package', {name: 'tldts-icann', version: '7.4.10'}],
+        ['missing-version', {name: 'tldts'}],
+    ])('fails closed for %s before resolving or transforming its data module', (_label, manifest) => {
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-suffix-data-owner-'));
+        try {
+            writeFileSync(resolve(fixture, 'package.json'), '{}');
+            const packageRoot = resolve(fixture, 'node_modules/tldts');
+            mkdirSync(packageRoot, {recursive: true});
+            writeFileSync(resolve(packageRoot, 'package.json'), JSON.stringify({...manifest, main: 'index.js'}));
+            expect(() => createPlugin(true, fixture)).toThrow('requires locked tldts 7.4.10');
+        } finally {
+            rmSync(fixture, {recursive: true, force: true});
+        }
+    });
+
+    it('propagates decoder failure and keeps the original module heading, digest and dependency bytes', () => {
+        const transformed = createPlugin().transform(original, dataPath)!;
+        const failure = new Error('controlled suffix decoder failure');
+        expect(() => restoreData(transformed.code, () => {throw failure;})).toThrow(failure);
+        expect(transformed.code.startsWith(original.slice(0, original.indexOf('export const nodeFlags')))).toBe(true);
+        expect(transformed.code).toContain('source sha256 ' + createHash('sha256').update(original).digest('hex'));
+        expect(readFileSync(dataPath, 'utf8')).toBe(original);
+        expect(readFileSync(resolve(packageRoot, 'LICENSE'), 'utf8')).toBe(originalLicense);
+    });
+
+    it('retains the actual original tldts MIT notice when the transformed module id enters the standalone entry', async () => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', '1');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', '0');
+        try {
+            vi.resetModules();
+            const {default: configuration} = await import('@/userscript/vite.config');
+            const plugins = (configuration as {plugins: Array<{name: string; generateBundle?: {handler: Function}}>}).plugins;
+            const plugin = plugins.find(item => item.name === 'bundle-userscript-css')!;
+            const entry = {type: 'chunk', isEntry: true, code: 'var suffixOwnerFixture = 1;', moduleIds: [dataPath]};
+            await Reflect.apply(plugin.generateBundle!.handler, {}, [{}, {'entry.js': entry}]);
+            expect(entry.code).toContain('tldts 7.4.10 — MIT');
+            expect(entry.code).toContain(originalLicense.trim());
+            expect(entry.moduleIds).toEqual([dataPath]);
+            expect(readFileSync(resolve(packageRoot, 'LICENSE'), 'utf8')).toBe(originalLicense);
+        } finally {
+            vi.unstubAllEnvs();
+            vi.resetModules();
+        }
+    });
+
+
+    it('restores all seven locked exports without TextDecoder or a manager decoder global', () => {
+        vi.stubGlobal('TextDecoder', undefined); vi.stubGlobal('pako', undefined);
+        try {
+            const restored = restoreData(createPlugin().transform(original, dataPath)!.code);
+            expect(Object.keys(restored)).toEqual(exportNames);
+            for (const name of arrayNames) {
+                expect(restored[name].constructor).toBe(locked[name].constructor);
+                expect(Array.from(restored[name])).toEqual(Array.from(locked[name]));
+                expect(Buffer.from(restored[name].buffer, restored[name].byteOffset, restored[name].byteLength))
+                    .toEqual(Buffer.from(locked[name].buffer, locked[name].byteOffset, locked[name].byteLength));
+            }
+            expect(restored.labelText).toBe(locked.labelText);
+            expect(restored.rulesRoot).toBe(locked.rulesRoot); expect(restored.exceptionsRoot).toBe(locked.exceptionsRoot);
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it.each(['A\0\ud800🧪汉字\n"\\', ''])('restores controlled JSON label text %j through the official UTF-8 fallback', labelText => {
+        vi.stubGlobal('TextDecoder', undefined);
+        try {
+            const fixture = {...locked, labelText};
+            const restored = restoreData(createPlugin().transform(fixtureSource(fixture), dataPath)!.code);
+            for (const name of arrayNames) expect(Array.from(restored[name])).toEqual(Array.from(fixture[name]));
+            // JSON.stringify preserves the isolated surrogate as an escape before UTF-8 decoding and JSON.parse restores it.
+            expect(restored.labelText).toBe(labelText);
+            expect(restored.rulesRoot).toBe(fixture.rulesRoot); expect(restored.exceptionsRoot).toBe(fixture.exceptionsRoot);
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it('reads a nonzero-offset binary result and exports arrays independent of its backing buffer', () => {
+        let supplied: Uint8Array | undefined;
+        const restored = restoreData(createPlugin().transform(original, dataPath)!.code, compressed => {
+            const decoded = inflateBundledTldtsData(compressed);
+            const backing = Buffer.alloc(decoded.byteLength + 13, 0xa5);
+            backing.set(decoded, 5); supplied = backing.subarray(5, 5 + decoded.byteLength);
+            return supplied;
+        });
+        expect(supplied).toBeDefined(); expect(supplied!.byteOffset).toBeGreaterThan(0);
+        for (const name of arrayNames) {
+            expect(restored[name].constructor).toBe(locked[name].constructor);
+            expect(restored[name].buffer).not.toBe(supplied!.buffer);
+            expect(Array.from(restored[name])).toEqual(Array.from(locked[name]));
+        }
+        supplied!.fill(0);
+        for (const name of arrayNames) expect(Array.from(restored[name])).toEqual(Array.from(locked[name]));
+        expect(restored.labelText).toBe(locked.labelText);
+        expect(restored.rulesRoot).toBe(locked.rulesRoot); expect(restored.exceptionsRoot).toBe(locked.exceptionsRoot);
+    });
+
+    it.each([
+        ['truncated bytes', 'Invalid locked suffix data length'],
+        ['extra bytes', 'Invalid locked suffix data length'],
+        ['non-string JSON labels', 'Invalid locked suffix labels'],
+    ])('fails closed for %s and can restore the next valid binary payload', (kind, expected) => {
+        const transformed = createPlugin().transform(original, dataPath)!.code;
+        expect(() => restoreData(transformed, compressed => {
+            const decoded = inflateBundledTldtsData(compressed);
+            if (kind === 'truncated bytes') return decoded.subarray(0, decoded.byteLength - 1);
+            if (kind === 'extra bytes') {const longer = new Uint8Array(decoded.byteLength + 1); longer.set(decoded); return longer;}
+            const invalid = Uint8Array.from(decoded);
+            const tableBytes = arrayNames.reduce((total, name) => total + locked[name].byteLength, 0);
+            invalid.fill(0x20, tableBytes); invalid.set(Buffer.from('null', 'utf8'), tableBytes);
+            return invalid;
+        })).toThrow(expected);
+        const restored = restoreData(transformed);
+        for (const name of arrayNames) expect(Array.from(restored[name])).toEqual(Array.from(locked[name]));
+        expect(restored.labelText).toBe(locked.labelText);
+        expect(restored.rulesRoot).toBe(locked.rulesRoot); expect(restored.exceptionsRoot).toBe(locked.exceptionsRoot);
     });
 });
 

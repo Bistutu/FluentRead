@@ -130,7 +130,6 @@ import {interfaceSkinOptions} from '@/src/core/config/interfaceAppearance';
 import {translationLoadingStyleOptions, type TranslationLoadingStyle} from '@/src/core/config/translationLoadingStyle';
 import brandPaths from '@/src/ui/assets/serviceBrandPaths.json';
 import {writingPreviewParagraphs} from '@/src/core/config/writingPreview';
-import {DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE} from '@/src/core/config/sentenceHighlight';
 import {provide, shallowRef, type Ref} from 'vue';
 import {localeContextKey, useLocale, useGlobalConfig, useGlobalComponentSettings} from 'element-plus';
 import type {Language, TranslatePair} from 'element-plus/es/locale';
@@ -145,6 +144,7 @@ import {translate, registerUiLanguageBundle, type UiLanguage, type TranslationPa
 import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles';
 import {FOCUS_AFTER_TRAPPED, FOCUS_AFTER_TRAPPED_OPTS, FOCUS_AFTER_RELEASED} from 'element-plus/es/components/focus-trap/index';
 
+import {DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE} from '@/src/core/config/sentenceHighlight';
 
 const apps = new Set<App>();
 async function settle() {await nextTick(); await nextTick();}

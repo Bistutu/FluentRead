@@ -48,7 +48,8 @@ async function mount(): Promise<void> {
     if (id === '@/src/services/config/store') return {config, subscribeConfig: (fn: () => void) => {subscription = fn; fn(); return unsubscribe;}};
     if (id === '@/src/core/config/videoSentenceLearningAppearance') return learningAppearance;
     if (id === '@/src/platform/browser/runtimeMessages') return {sendRuntimeMessage};
-    if (id === '@/src/features/reading-assistant/public') return {ReadingAnswer: {}, streamReading};
+    if (id === '@/src/features/reading-assistant/ui/answer/public') return {ReadingAnswer: {}};
+    if (id === '@/src/features/reading-assistant/public') return {streamReading};
     if (id === '@/src/features/vocabulary/public') return vocabulary;
     if (id === '../content/sentenceTimeline') return timeline;
     if (id === '../content/sentencePlayback') return playback;
