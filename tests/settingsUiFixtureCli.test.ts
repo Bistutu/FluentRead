@@ -348,15 +348,32 @@ const requireSettingsWait = createRequire(import.meta.url);
 const {waitForAsyncCondition} = requireSettingsWait(path.join(sourceRoot, 'scripts/testing/wait-for-async-condition.cjs'));
 const centerSource = readFileSync(path.join(sourceRoot, 'scripts/testing/run-settings-center-ui-test.cjs'), 'utf8');
 const centerAst = ts.createSourceFile('settings-center.cjs', centerSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
-const storageWaitCalls: ts.CallExpression[] = [];
+const storageWaitMessages = ['命名译文样式未持久化：期望 ', '旧存储迁移后缺少预期的加密配置记录'];
+const storageWaitCalls = new Map<string, ts.CallExpression>();
 function collectStorageWaits(node: ts.Node): void {
-    if (ts.isCallExpression(node) && node.expression.getText(centerAst) === 'waitForAsyncCondition') storageWaitCalls.push(node);
+    if (ts.isCallExpression(node) && node.expression.getText(centerAst) === 'waitForAsyncCondition') {
+        const options = node.arguments[1];
+        const message = options && ts.isObjectLiteralExpression(options)
+            ? options.properties.find(property => ts.isPropertyAssignment(property) && property.name.getText(centerAst) === 'message')
+            : undefined;
+        if (message && ts.isPropertyAssignment(message)) {
+            const text = ts.isTemplateExpression(message.initializer) ? message.initializer.head.text
+                : ts.isStringLiteralLike(message.initializer) ? message.initializer.text : undefined;
+            if (text && storageWaitMessages.includes(text)) {
+                if (storageWaitCalls.has(text)) throw new Error(`设置中心存储等待重复：${text}`);
+                storageWaitCalls.set(text, node);
+            }
+        }
+    }
     ts.forEachChild(node, collectStorageWaits);
 }
 collectStorageWaits(centerAst);
 function runStorageWait(index: number, page: unknown, {count = 2, activeName = '回归对照', timeout = 30000} = {}): Promise<void> {
-    if (storageWaitCalls.length !== 2) throw new Error('设置中心必须保留两个独立存储等待');
-    return new Script(`(async () => ${storageWaitCalls[index].getText(centerAst)})()`).runInNewContext({
+    // 动画和逐句高亮也需要存储等待；按实际失败文案定位本组两条谓词，
+    // 不依赖全脚本调用数量或 AST 遍历顺序，仍拒绝目标缺失与重复。
+    const call = storageWaitCalls.get(storageWaitMessages[index]);
+    if (storageWaitCalls.size !== storageWaitMessages.length || !call) throw new Error('设置中心必须保留两个独立存储等待');
+    return new Script(`(async () => ${call.getText(centerAst)})()`).runInNewContext({
         waitForAsyncCondition, page, count, activeName, timeout,
         configDatabaseName: 'FluentReadConfiguration',
         migratedRecordKeys: ['local:config', 'local:configAutoBackups', 'local:credentials'],

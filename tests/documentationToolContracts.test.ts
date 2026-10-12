@@ -86,7 +86,8 @@ function brandFixture(bilingual = false) {
 const workflow = '<ol class="ds"><li class="ds-current"><button type="button" aria-label="First" aria-current="step">1</button></li><li><button type="button" aria-label="Second">2</button></li><li><button type="button" aria-label="Third">3</button></li></ol>';
 function page(route: string, body: string) {
     const alternate = (route.startsWith('en/') ? route.slice(3) : 'en/' + route).replace(/index\.html$/, '').replace(/\.html$/, '');
-    return `<!doctype html><html><head><link rel="canonical" href="https://read.thinkstu.com/${route}"><link rel="alternate" hreflang="en" href="/${alternate}"></head><body><a class="bv-language" href="/${alternate}">Language</a>${body}</body></html>`;
+    const productName = route.startsWith('en/') ? 'FluentRead' : '流畅阅读';
+    return `<!doctype html><html><head><title>${productName}</title><meta property="og:site_name" content="${productName}"><link rel="canonical" href="https://read.thinkstu.com/${route}"><link rel="alternate" hreflang="en" href="/${alternate}"></head><body><a class="bv-language" href="/${alternate}">Language</a>${body}</body></html>`;
 }
 function home(prefix: string) {
     const english = Boolean(prefix), slogan = taglines[english ? 'en-US' : 'zh-CN'];
@@ -103,7 +104,7 @@ function docsFixture(extra = '') {
     write(root, 'src/core/i18n/messages/brand-taglines.json', JSON.stringify(taglines));
     for (const prefix of ['', 'en/']) {
         write(root, `${dist}/${prefix}index.html`, page(`${prefix}index.html`, home(prefix ? '/en' : '') + extra));
-        write(root, `${dist}/${prefix}docs/index.html`, page(`${prefix}docs/index.html`, `<h1>Documentation</h1><div class="VPNavBarTitle"><div class="title">流畅阅读 FluentRead</div></div><div class="fr-docs-start"><a href="/docs/">Start</a></div><div class="fr-docs-links">${'<a href="/docs/">Guide</a>'.repeat(20)}</div>`));
+        write(root, `${dist}/${prefix}docs/index.html`, page(`${prefix}docs/index.html`, `<h1>Documentation</h1><div class="VPNavBarTitle"><div class="title"><strong>${prefix ? 'FluentRead' : '流畅阅读'}</strong></div></div><div class="fr-docs-start"><a href="/docs/">Start</a></div><div class="fr-docs-links">${'<a href="/docs/">Guide</a>'.repeat(20)}</div>`));
         write(root, `${dist}/${prefix}config/translation-engines.html`, page(`${prefix}config/translation-engines.html`, '<h1>Engines</h1><div class="vp-doc">{{apiKey}}</div>'));
         write(root, `${dist}/${prefix}guide/input-translation.html`, page(`${prefix}guide/input-translation.html`, '<h1>Input</h1><div class="vp-doc">{{origin}} {{to}}</div>'));
         write(root, `docs/${prefix}guide/input-translation.md`, 'Fixture');

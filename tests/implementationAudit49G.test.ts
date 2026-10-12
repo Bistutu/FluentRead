@@ -213,7 +213,8 @@ async function shippedCatalogs() {
             if (typeof source !== 'string') throw new Error(`Catalog producer did not load ${name}`);
             const compiled = await vite.transformWithEsbuild(source, `${name}.js`, {format: 'cjs', target: 'es2018'});
             realm.module = {exports: {}};
-            runInContext(compiled.code, realm, {timeout: 5_000});
+            // CommonJS 模块各自拥有词法作用域；发布 data 仍在同一个管理器 realm 中共享。
+            runInContext(`(function () {\n${compiled.code}\n})()`, realm, {timeout: 5_000});
             catalogs[name] = realm.module.exports.default;
         }
         return {catalogs, original};
@@ -241,16 +242,19 @@ describe('audit 49G shipped userscript resources', () => {
         const {catalogs, original} = await shippedCatalogs();
         expect(original.established).toHaveLength(17);
         expect(realm.__FLUENTREAD_USERSCRIPT_DATA__.siteCatalogs.established).toEqual(original.established);
-        for (const rule of original.established) {
-            const current = catalogs.established.find((candidate: any) => candidate.id === rule.id);
-            if (JSON.stringify(current) === JSON.stringify(rule)) expect(current).toBe(rule);
-            else expect(current).not.toBe(rule);
-        }
-        expect(catalogs.websites).toBe(original.websites);
-        expect(catalogs.profiles).toBe(original.profiles);
         for (const name of ['established', 'profiles', 'websites']) {
             const expected = JSON.parse(readFileSync(resolve(process.cwd(), `src/core/site-adaptation/catalog/${name}.json`), 'utf8'));
             expect(catalogs[name]).toEqual(expected);
+            // 三个目录都可能有固定资源发布后的数据补丁；未更新的对象必须复用，更新对象必须替换。
+            if (JSON.stringify(expected) === JSON.stringify(original[name])) expect(catalogs[name]).toBe(original[name]);
+            else expect(catalogs[name]).not.toBe(original[name]);
+            for (const [key, rule] of Object.entries(original[name]) as Array<[string, any]>) {
+                const current = Array.isArray(expected) ? catalogs[name].find((candidate: any) => candidate.id === rule.id) : catalogs[name][key];
+                const wanted = Array.isArray(expected) ? expected.find((candidate: any) => candidate.id === rule.id) : expected[key];
+                if (!wanted) expect(current).toBeUndefined();
+                else if (JSON.stringify(wanted) === JSON.stringify(rule)) expect(current).toBe(rule);
+                else expect(current).not.toBe(rule);
+            }
         }
         const pending = [realm.__FLUENTREAD_USERSCRIPT_DATA__, catalogs];
         while (pending.length) {
