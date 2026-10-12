@@ -28,7 +28,8 @@ describe('图片 OCR 处理与结果缓存', () => {
     let pngBlob: Blob;
     let encodedSizes: Array<{width: number; height: number}>;
     let readers: Array<{result: string | null; readyState: number; onload: (() => void) | null; onerror: (() => void) | null; readAsDataURL: ReturnType<typeof vi.fn>; abort: ReturnType<typeof vi.fn>}>;
-    let context: {drawImage: ReturnType<typeof vi.fn>; fillRect: ReturnType<typeof vi.fn>; fillStyle: string; imageSmoothingEnabled: boolean; imageSmoothingQuality: string};
+    let sourcePixels: Uint8ClampedArray;
+    let context: {drawImage: ReturnType<typeof vi.fn>; getImageData: ReturnType<typeof vi.fn>; putImageData: ReturnType<typeof vi.fn>; fillRect: ReturnType<typeof vi.fn>; fillStyle: string; imageSmoothingEnabled: boolean; imageSmoothingQuality: string};
     let onImageCreated: (() => void) | undefined;
 
     it('把任务进度回调传入 OCR Worker，缓存命中不重放旧识别进度', async () => {
@@ -100,14 +101,45 @@ describe('图片 OCR 处理与结果缓存', () => {
         'data:image/png;base64,example',
         'DATA:IMAGE/PNG;BASE64,example',
         'data:image/png;charset=binary;base64,example',
-    ])('原尺寸 PNG 编码 %s 仍直接复用，不增加 Canvas', async input => {
+    ])('原尺寸不透明 PNG 编码 %s 检查透明通道后仍直接复用，不增加 PNG 编码', async input => {
         await recognizeImage(input, 'ko');
         expect(recognize).toHaveBeenCalledWith(input, 'kor+eng', expect.any(AbortSignal), undefined, expect.any(Function));
-        expect(context.drawImage).not.toHaveBeenCalled();
-        expect(document.createElement).not.toHaveBeenCalled();
+        expect(context.drawImage).toHaveBeenCalledWith(sources[0], 0, 0, 100, 100);
+        expect(document.createElement).toHaveBeenCalledOnce();
+        expect(context.getImageData).toHaveBeenCalledWith(0, 0, 100, 100);
+        expect(context.putImageData).not.toHaveBeenCalled();
         expect(canvas.toDataURL).not.toHaveBeenCalled();
         expect(canvas.toBlob).not.toHaveBeenCalled(); expect(readers).toHaveLength(0);
+        expect(canvas).toMatchObject({width: 0, height: 0});
+        expect(sources[0].src).toBe('');
     });
+    it.each(['png', 'webp', 'gif', 'avif'].flatMap(format => [false, true].map(white => ({format, white}))))(
+        '透明 $format 的白字=$white 仅在识别像素上合成对比底色，再以无损 PNG 识别', async ({format, white}) => {
+            sourcePixels = white
+                ? new Uint8ClampedArray([0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 128])
+                : new Uint8ClampedArray([200, 180, 170, 0, 0, 0, 0, 255, 0, 0, 0, 128]);
+            const originalPixels = new Uint8ClampedArray(sourcePixels);
+            const decoded = {naturalWidth: 512, naturalHeight: 256, src: 'borrowed-transparent', pixels: sourcePixels} as unknown as HTMLImageElement;
+            const lines = await recognizeImage(`data:image/${format};base64,transparent-${white}`, 'en', undefined, {decodedImage: decoded});
+            expect(context.drawImage).toHaveBeenCalledWith(decoded, 0, 0, 512, 256);
+            expect(context.getImageData).toHaveBeenCalledWith(0, 0, 512, 256);
+            const imageData = context.getImageData.mock.results[0].value;
+            expect(context.putImageData).toHaveBeenCalledWith(imageData, 0, 0);
+            expect([...imageData.data]).toEqual(white
+                ? [0, 0, 0, 255, 255, 255, 255, 255, 128, 128, 128, 255]
+                : [255, 255, 255, 255, 0, 0, 0, 255, 127, 127, 127, 255]);
+            expect(sourcePixels).toEqual(originalPixels);
+            expect(imageData.data).not.toBe(sourcePixels);
+            expect(encodedSizes).toEqual([{width: 512, height: 256}]);
+            expect(canvas.toBlob).toHaveBeenCalledWith(expect.any(Function), 'image/png');
+            expect(canvas.toDataURL).not.toHaveBeenCalled();
+            expect(recognize).toHaveBeenCalledWith(ENCODED_PNG, 'eng', expect.any(AbortSignal), undefined, expect.any(Function));
+            expect(lines).toEqual([{text: 'hello', bbox: {x0: 10, y0: 10, x1: 50, y1: 30}}]);
+            expect(decoded.src).toBe('borrowed-transparent');
+            expect(sources).toHaveLength(0);
+            expect(canvas).toMatchObject({width: 0, height: 0});
+        },
+    );
     it('清除语言包后丢弃 OCR 结果并重新识别', async () => {
         await recognizeImage('same', 'en');
         await recognizeImage('same', 'en');
@@ -134,7 +166,9 @@ describe('图片 OCR 处理与结果缓存', () => {
         onImageCreated = undefined;
         dimensions = {width: 100, height: 100};
         sources = [];
-        context = {drawImage: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: false, imageSmoothingQuality: 'low'};
+        sourcePixels = new Uint8ClampedArray([10, 20, 30, 255]);
+        context = {drawImage: vi.fn(), getImageData: vi.fn(() => ({data: new Uint8ClampedArray(sourcePixels), width: canvas.width, height: canvas.height})),
+            putImageData: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: false, imageSmoothingQuality: 'low'};
         pngBlob = new Blob([Uint8Array.from(atob(PNG_BASE64), byte => byte.charCodeAt(0))], {type: 'image/png'});
         encodedSizes = []; readers = [];
         canvas = {width: 0, height: 0, getContext: vi.fn(() => context), toDataURL: vi.fn(() => ENCODED_PNG),
@@ -194,7 +228,9 @@ describe('图片 OCR 处理与结果缓存', () => {
         expect((await recognizeImage('same', 'en'))[0].text).toBe('hello');
         expect(recognize).toHaveBeenCalledOnce();
         expect(sources).toHaveLength(1);
-        expect(document.createElement).not.toHaveBeenCalled();
+        expect(document.createElement).toHaveBeenCalledOnce();
+        expect(context.getImageData).toHaveBeenCalledOnce();
+        expect(canvas.toBlob).not.toHaveBeenCalled();
         expect(sources[0]).toMatchObject({src: '', onload: null, onerror: null});
     });
 
@@ -374,6 +410,75 @@ describe('图片 OCR 处理与结果缓存', () => {
         if (!borrowed) expect(sources.every(source => source.src === '')).toBe(true);
     });
 
+    it.each([false, true])('透明 PNG 借用解码图=%s 编码取消后释放识别像素，保留源并支持重新识别', async borrowed => {
+        dimensions = {width: 512, height: 256};
+        sourcePixels = new Uint8ClampedArray([0, 0, 0, 0, 255, 255, 255, 255]);
+        const unchangedPixels = new Uint8ClampedArray(sourcePixels);
+        const input = `data:image/png;base64,cancelled-transparent-${borrowed}`;
+        const controller = new AbortController();
+        const decoded = {naturalWidth: 512, naturalHeight: 256, src: 'borrowed-transparent'} as HTMLImageElement;
+        const options = borrowed ? {decodedImage: decoded} : {};
+        let complete!: BlobCallback;
+        canvas.toBlob.mockImplementationOnce((callback: BlobCallback) => {complete = callback;});
+        const operation = recognizeImage(input, 'en', controller.signal, options);
+        const outcome = operation.then(result => ({result}), error => ({error}));
+        await vi.waitFor(() => expect(canvas.toBlob).toHaveBeenCalledOnce());
+        expect(context.putImageData).toHaveBeenCalledOnce();
+        expect(canvas).toMatchObject({width: 512, height: 256});
+        expect(recognize).not.toHaveBeenCalled();
+        expect(sourcePixels).toEqual(unchangedPixels);
+        if (borrowed) expect(decoded.src).toBe('borrowed-transparent'); else expect(sources[0].src).toBe('');
+        controller.abort(); complete(pngBlob);
+        expect(await outcome).toMatchObject({error: {name: 'AbortError'}});
+        await vi.waitFor(() => expect(canvas).toMatchObject({width: 0, height: 0}));
+        expect(readers).toHaveLength(0);
+        expect(recognize).not.toHaveBeenCalled();
+        await expect(recognizeImage(input, 'en', undefined, options)).resolves.toHaveLength(1);
+        expect(recognize).toHaveBeenCalledOnce();
+        expect(recognize).toHaveBeenCalledWith(ENCODED_PNG, 'eng', expect.any(AbortSignal), undefined, expect.any(Function));
+        expect(sourcePixels).toEqual(unchangedPixels);
+        expect(decoded.src).toBe('borrowed-transparent');
+        expect(canvas).toMatchObject({width: 0, height: 0});
+        if (!borrowed) expect(sources.every(source => source.src === '')).toBe(true);
+    });
+
+    it('透明 PNG 像素读取完成时取消，不编码或进入 Worker，借出的源像素仍可重试', async () => {
+        sourcePixels = new Uint8ClampedArray([255, 255, 255, 255, 0, 0, 0, 0]);
+        const originalPixels = new Uint8ClampedArray(sourcePixels);
+        const controller = new AbortController();
+        const decoded = {naturalWidth: 512, naturalHeight: 256, src: 'borrowed-transparent'} as HTMLImageElement;
+        const readPixels = context.getImageData.getMockImplementation()!;
+        context.getImageData.mockImplementationOnce(() => {controller.abort(); return readPixels();});
+        await expect(recognizeImage('data:image/png;base64,pixel-abort', 'en', controller.signal, {decodedImage: decoded}))
+            .rejects.toMatchObject({name: 'AbortError'});
+        expect(canvas.toBlob).not.toHaveBeenCalled();
+        expect(recognize).not.toHaveBeenCalled();
+        expect(canvas).toMatchObject({width: 0, height: 0});
+        expect(decoded.src).toBe('borrowed-transparent');
+        expect(sourcePixels).toEqual(originalPixels);
+        await expect(recognizeImage('data:image/png;base64,pixel-abort', 'en', undefined, {decodedImage: decoded})).resolves.toHaveLength(1);
+        expect(recognize).toHaveBeenCalledOnce();
+    });
+
+    it.each(['pixels', 'writeback', 'encoding'])('透明 PNG %s 失败释放识别画布而保留借出的源，重试重新准备像素', async stage => {
+        sourcePixels = new Uint8ClampedArray([0, 0, 0, 0, 255, 255, 255, 255]);
+        const originalPixels = new Uint8ClampedArray(sourcePixels);
+        const decoded = {naturalWidth: 512, naturalHeight: 256, src: 'borrowed-transparent'} as HTMLImageElement;
+        if (stage === 'pixels') context.getImageData.mockImplementationOnce(() => {throw new Error('pixel read failed');});
+        if (stage === 'writeback') context.putImageData.mockImplementationOnce(() => {throw new Error('pixel write failed');});
+        if (stage === 'encoding') canvas.toBlob.mockImplementationOnce(() => {throw new Error('encode failed');});
+        await expect(recognizeImage('data:image/png;base64,pixel-failure', 'en', undefined, {decodedImage: decoded})).rejects.toThrow();
+        expect(recognize).not.toHaveBeenCalled();
+        expect(canvas).toMatchObject({width: 0, height: 0});
+        expect(decoded.src).toBe('borrowed-transparent');
+        expect(sourcePixels).toEqual(originalPixels);
+        await expect(recognizeImage('data:image/png;base64,pixel-failure', 'en', undefined, {decodedImage: decoded})).resolves.toHaveLength(1);
+        expect(recognize).toHaveBeenCalledOnce();
+        expect(recognize).toHaveBeenCalledWith(ENCODED_PNG, 'eng', expect.any(AbortSignal), undefined, expect.any(Function));
+        expect(sourcePixels).toEqual(originalPixels);
+        expect(decoded.src).toBe('borrowed-transparent');
+    });
+
     it('圈选小图放大加边后映回坐标，与普通图片分开缓存且不重复识别', async () => {
         await recognizeImage('same', 'en');
         const lines = await recognizeImage('same', 'en', undefined, {profile: 'area'});
@@ -476,10 +581,15 @@ describe('图片 OCR 处理与结果缓存', () => {
         expect(recognize).not.toHaveBeenCalled();
     });
 
-    it.each(['context', 'drawing', 'encoding'])('画布%s失败也释放画布像素与解码源', async stage => {
+    it.each(['context', 'drawing', 'pixels', 'writeback', 'encoding'])('画布%s失败也释放画布像素与解码源', async stage => {
         dimensions = {width: 8000, height: 1000};
         if (stage === 'context') canvas.getContext.mockReturnValueOnce(null);
         if (stage === 'drawing') context.drawImage.mockImplementationOnce(() => { throw new Error('draw failed'); });
+        if (stage === 'pixels') context.getImageData.mockImplementationOnce(() => {throw new Error('pixel read failed');});
+        if (stage === 'writeback') {
+            sourcePixels = new Uint8ClampedArray([255, 255, 255, 255, 0, 0, 0, 0]);
+            context.putImageData.mockImplementationOnce(() => {throw new Error('pixel write failed');});
+        }
         if (stage === 'encoding') canvas.toBlob.mockImplementationOnce(() => {throw new Error('encode failed');});
         await expect(recognizeImage('canvas-failure', 'en')).rejects.toThrow();
         expect(canvas).toMatchObject({width: 0, height: 0});

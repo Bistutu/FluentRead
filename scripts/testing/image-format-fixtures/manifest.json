@@ -1,0 +1,234 @@
+{
+  "version": 1,
+  "generator": "../generate-image-format-fixtures.py",
+  "pillowVersion": "12.3.0",
+  "fixtures": [
+    {
+      "name": "webp",
+      "tag": "baseline",
+      "format": "webp",
+      "file": "webp.webp",
+      "mime": "image/webp",
+      "width": 512,
+      "height": 256,
+      "expectedSource": [
+        "Hello reader",
+        "Please read this WebP message"
+      ],
+      "transparentCorner": false,
+      "transparentProbe": null,
+      "frames": 1,
+      "durationMs": null,
+      "firstFrameProbe": null,
+      "bytes": 3212,
+      "sha256": "a82cd8098d1ffa472217ce57d43a96c8fce711f7c94680626b78b23b58fc47f9"
+    },
+    {
+      "name": "gif",
+      "tag": "baseline",
+      "format": "gif",
+      "file": "gif.gif",
+      "mime": "image/gif",
+      "width": 512,
+      "height": 256,
+      "expectedSource": [
+        "Hello reader",
+        "Please read this GIF message"
+      ],
+      "transparentCorner": false,
+      "transparentProbe": null,
+      "frames": 1,
+      "durationMs": null,
+      "firstFrameProbe": null,
+      "bytes": 5680,
+      "sha256": "3bc517a04239d58b4c24db7a16fdffb39dceab1ecbccdc6f0b6df52ed5249156"
+    },
+    {
+      "name": "bmp",
+      "tag": "baseline",
+      "format": "bmp",
+      "file": "bmp.bmp",
+      "mime": "image/bmp",
+      "width": 512,
+      "height": 256,
+      "expectedSource": [
+        "Hello reader",
+        "Please read this BMP message"
+      ],
+      "transparentCorner": false,
+      "transparentProbe": null,
+      "frames": 1,
+      "durationMs": null,
+      "firstFrameProbe": null,
+      "bytes": 393270,
+      "sha256": "f713609978b4a97a4a40373fbd203c9ed8dd5209a209eae14d0d9ea5b8681f43"
+    },
+    {
+      "name": "avif",
+      "tag": "baseline",
+      "format": "avif",
+      "file": "avif.avif",
+      "mime": "image/avif",
+      "width": 512,
+      "height": 256,
+      "expectedSource": [
+        "Hello reader",
+        "Please read this AVIF message"
+      ],
+      "transparentCorner": false,
+      "transparentProbe": null,
+      "frames": 1,
+      "durationMs": null,
+      "firstFrameProbe": null,
+      "bytes": 7951,
+      "sha256": "684dad9bc3c53c3579772850ef3b3e564f08fb671ddc90357b807e16b27715c6"
+    },
+    {
+      "name": "ico",
+      "tag": "baseline",
+      "format": "ico",
+      "file": "ico.ico",
+      "mime": "image/x-icon",
+      "width": 256,
+      "height": 256,
+      "expectedSource": [
+        "Hello reader",
+        "Please read this icon message"
+      ],
+      "transparentCorner": false,
+      "transparentProbe": null,
+      "frames": 1,
+      "durationMs": null,
+      "firstFrameProbe": null,
+      "bytes": 21354,
+      "sha256": "574ad639ed55e1b8d5fdd79b261c5ad0a792883da7487de2f97b0d17fa315447"
+    },
+    {
+      "name": "webp-transparent-white",
+      "tag": "variant",
+      "format": "webp",
+      "file": "webp-transparent-white.webp",
+      "mime": "image/webp",
+      "width": 512,
+      "height": 256,
+      "expectedSource": [
+        "Hello reader",
+        "Please read this clear WebP message"
+      ],
+      "transparentCorner": true,
+      "transparentProbe": {
+        "x": 0,
+        "y": 0
+      },
+      "frames": 1,
+      "durationMs": null,
+      "firstFrameProbe": null,
+      "bytes": 3452,
+      "sha256": "9a83cca091cc67d404c257b43e0c81525033177851cfc79520c26397d610b8b0"
+    },
+    {
+      "name": "gif-transparent-white",
+      "tag": "variant",
+      "format": "gif",
+      "file": "gif-transparent-white.gif",
+      "mime": "image/gif",
+      "width": 512,
+      "height": 256,
+      "expectedSource": [
+        "Hello reader",
+        "Please read this clear GIF message"
+      ],
+      "transparentCorner": true,
+      "transparentProbe": {
+        "x": 0,
+        "y": 0
+      },
+      "frames": 1,
+      "durationMs": null,
+      "firstFrameProbe": null,
+      "bytes": 2229,
+      "sha256": "afbd8548a5039a8455be8e6769a7e00e447073644a3d49d070690af5b12c30b7"
+    },
+    {
+      "name": "avif-transparent-white",
+      "tag": "variant",
+      "format": "avif",
+      "file": "avif-transparent-white.avif",
+      "mime": "image/avif",
+      "width": 512,
+      "height": 256,
+      "expectedSource": [
+        "Hello reader",
+        "Please read this clear AVIF message"
+      ],
+      "transparentCorner": true,
+      "transparentProbe": {
+        "x": 0,
+        "y": 0
+      },
+      "frames": 1,
+      "durationMs": null,
+      "firstFrameProbe": null,
+      "bytes": 10013,
+      "sha256": "c5c00db498b3aba8e4a0724b2194f547d2ee69008a1c900f4b8685d04db2d0b8"
+    },
+    {
+      "name": "gif-animated",
+      "tag": "variant",
+      "format": "gif",
+      "file": "gif-animated.gif",
+      "mime": "image/gif",
+      "width": 512,
+      "height": 256,
+      "expectedSource": [
+        "Hello reader",
+        "Please read this moving GIF message"
+      ],
+      "transparentCorner": false,
+      "transparentProbe": null,
+      "frames": 2,
+      "durationMs": 800,
+      "firstFrameProbe": {
+        "x": 0,
+        "y": 0,
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "bytes": 12823,
+      "sha256": "f663c940bc88bfbfafe7223016ff6e46067b448f8fbf51fad998c4b4b159cba7"
+    },
+    {
+      "name": "webp-animated",
+      "tag": "variant",
+      "format": "webp",
+      "file": "webp-animated.webp",
+      "mime": "image/webp",
+      "width": 512,
+      "height": 256,
+      "expectedSource": [
+        "Hello reader",
+        "Please read this moving WebP message"
+      ],
+      "transparentCorner": false,
+      "transparentProbe": null,
+      "frames": 2,
+      "durationMs": 800,
+      "firstFrameProbe": {
+        "x": 0,
+        "y": 0,
+        "rgba": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "bytes": 7584,
+      "sha256": "12a15114366ed1c470a479c2d0d2e496fee5e5d63945bfc3e14541443ee24a46"
+    }
+  ]
+}

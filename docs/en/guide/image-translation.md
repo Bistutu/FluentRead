@@ -16,6 +16,8 @@ SVG flowcharts loaded as webpage images also support image translation. Switch t
 
 Light or dark text on transparent backgrounds is supported, and untouched areas retain the original transparency. JPEG recognition follows the orientation shown by the browser.
 
+WebP, GIF, BMP, AVIF and ICO use the same image translation flow. Animated images produce a static translation; switch back to view the original animation. Small ICO icons may skip the hover control, so use the image context menu when needed.
+
 ## Local model failures and controls
 
 Recognition and translation are separate steps. Short words or mixed languages can affect automatic detection, and a local model may only support specific language pairs. Failure messages explain model readiness, language support, browser compatibility, or timeouts. **Adjust local model** opens the model settings; **Change image translation service** opens the image settings. After changing the settings, return to the image and retry. The extension does not automatically send local text to an online service.
