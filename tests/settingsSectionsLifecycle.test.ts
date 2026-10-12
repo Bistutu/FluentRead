@@ -486,3 +486,240 @@ describe('高级设置全局请求限制实际父子装配', () => {
         expect(fixture.patch).toHaveBeenLastCalledWith(expect.objectContaining({translationRequestsPerMinute: 90}), expect.any(Function));
     });
 });
+
+
+/** 新故障场景独立 display port；旧 mountSections/fake Catalog 全文不改，也不声称真实 Catalog CSS/布局。 */
+async function mountProviderFailureSections() {
+    const gate = deferred<void>(), started = deferred<void>(), finished = deferred<void>();
+    const cause = new Error('fixture custom provider loader rejected');
+    // 仅给受控 gate 的无人消费清理分支装处理器；实际 loader 仍会收到同一拒绝。
+    void gate.promise.catch(() => undefined);
+    let requested = false, settled = false;
+    const reject = () => {if (!settled) {settled = true;gate.reject(cause);}};
+    const focus = vi.fn(), providerMounted = vi.fn(), providerUnmounted = vi.fn();
+    const patch = vi.fn(() => Promise.resolve()), unsubscribe = vi.fn();
+    const vueErrors: unknown[] = [];
+    const dom = parseHTML('<html><body><main id="fixture"></main></body></html>');
+    const media = {matches: false, onchange: null as (() => void) | null};
+    vi.stubGlobal('window', Object.assign(new EventTarget(), {location: {hash: '', search: '', protocol: 'chrome-extension:'},
+        navigator: {userAgent: ''}, matchMedia: () => media, requestAnimationFrame: () => 1, cancelAnimationFrame: () => {}}));
+    vi.stubGlobal('document', dom.document);vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
+    const loadProvider = vi.fn(async () => {
+        requested = true;started.resolve();
+        try {
+            await gate.promise;
+            const child = (await server!.ssrLoadModule('/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')).default;
+            compileClientTemplate(child, 'src/features/settings/ui/services/CustomOpenAIProviderDialog.vue');return child;
+        } finally {finished.resolve();}
+    });
+    const data = {loadProvider, config: {}, configReady: Promise.resolve(), subscribeConfig: (_listener: (value: unknown) => void) => unsubscribe,
+        requestConfigPatch: patch, handoffPendingConfigPatches: vi.fn(() => Promise.resolve()), theme: vi.fn(),
+        browser: {runtime: {sendMessage: vi.fn(() => Promise.resolve())}, tabs: {query: vi.fn(() => Promise.resolve([])), sendMessage: vi.fn(() => Promise.resolve())}}};
+    (globalThis as Record<string, unknown>)[key] = data;
+    const mocks: Plugin = {name: 'settings-provider-failure-display-ports', enforce: 'pre', resolveId(id, importer) {
+        if (id.endsWith('/CustomOpenAIProviderDialog.vue')) {
+            if (importer?.includes('SettingsSections.vue')) return '\0provider-failure-loader';return null;
+        }
+        if (id.endsWith('/SettingsPanel.vue')) return '\0provider-failure-panel';
+        if (id.endsWith('/ServiceCatalog.vue')) return '\0provider-failure-catalog';
+        if (id.endsWith('.vue') && !id.endsWith('/SettingsSections.vue')) return '\0provider-failure-child';
+        if (id.endsWith('/src/ui/i18n')) return '\0provider-failure-i18n';
+        if (id.endsWith('/src/services/config/store')) return '\0provider-failure-config';
+        if (id.endsWith('/src/ui/interfaceAppearance')) return '\0provider-failure-appearance';
+        if (id === 'webextension-polyfill') return '\0provider-failure-browser';
+        if (id === 'element-plus') return '\0provider-failure-element';
+        if (id === '@element-plus/icons-vue') return '\0provider-failure-icons';
+        if (id.endsWith('/src/platform/browser/capabilities')) return '\0provider-failure-capabilities';return null;
+    }, load(id) {
+        if (id === '\0provider-failure-panel') return `import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, slots.default?.());}};`;
+        if (id === '\0provider-failure-loader') return `export default await globalThis.${key}.loadProvider();`;
+        if (id === '\0provider-failure-catalog') return `import {h} from 'vue';export default {props: ['active'], emits: ['add:service'], setup(props, {emit, slots}) {return () => props.active ? h('section', {'data-fixture-catalog-display': ''}, [h('div', {'data-fixture-add-service-row': ''}, [h('button', {'data-testid': 'fixture-add-service', onClick: () => emit('add:service')}, '添加服务'), slots['add-service-status']?.()])]) : null}};`;
+        if (id === '\0provider-failure-child') return 'export default {render: () => null};';
+        // 固定中文 display port；这里只验证父状态，不证明真实本地化资源加载。
+        if (id === '\0provider-failure-i18n') return `import {ref} from 'vue';const copy = {'common.loading': '加载中…', 'learning.panelLoadError': '此栏目暂时无法打开，请重新加载页面后再试。', 'learning.reloadPage': '重新加载页面', 'common.close': '关闭'};export const useUiI18n = () => ({language: ref('zh-CN'), t: k => copy[k] ?? k, translateLegacy: t => t});export const localizeServiceOptions = options => options;`;
+        if (id === '\0provider-failure-config') return `export const {config, configReady, subscribeConfig, requestConfigPatch, handoffPendingConfigPatches} = globalThis.${key};`;
+        if (id === '\0provider-failure-appearance') return `export const applyInterfaceTheme = globalThis.${key}.theme;`;
+        if (id === '\0provider-failure-browser') return `export default globalThis.${key}.browser;`;
+        if (id === '\0provider-failure-element') return 'export const ElMessage = Object.assign(() => {}, {warning: () => {}});';
+        if (id === '\0provider-failure-icons') return 'export const ArrowRight = {};export const InfoFilled = {};export const Edit = {};';
+        if (id === '\0provider-failure-capabilities') return "export const browserCapabilities = {browser: 'chrome'};";return null;
+    }};
+    server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(), plugins: [mocks, vue()],
+        resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['element-plus', '@element-plus/icons-vue', 'webextension-polyfill']},
+        server: {hmr: false, middlewareMode: true}});
+    const component = (await server.ssrLoadModule('/src/features/settings/ui/SettingsSections.vue')).default;
+    compileClientTemplate(component, 'src/features/settings/ui/SettingsSections.vue');
+    // 每个动态创建节点的 focus 只记录，不影响旧 renderer 或全局 HTMLElement prototype。
+    const displayDocument = {createElement(name: string) {const node = dom.document.createElement(name);node.focus = focus;return node;},
+        createTextNode: dom.document.createTextNode.bind(dom.document), createComment: dom.document.createComment.bind(dom.document),
+        querySelector: dom.document.querySelector.bind(dom.document)} as unknown as Document;
+    const renderer = createDomRenderer(displayDocument, focus);
+    const props = runtime.reactive({activeSection: 'settings-services'}), visible = runtime.ref(true);
+    let state!: Record<string, any>;
+    app = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => visible.value
+        ? runtime.h(component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState;}})
+        : runtime.h({render: () => null}, {key: 'other'})})});
+    app.mixin({mounted() {if (this.$options.__name === 'CustomOpenAIProviderDialog') providerMounted();},
+        unmounted() {if (this.$options.__name === 'CustomOpenAIProviderDialog') providerUnmounted();}});
+    app.component('el-dialog', runtime.defineComponent({props: ['modelValue'], setup(dialogProps, {attrs, slots}) {
+        return () => runtime.h('div', {...attrs, 'data-fixture-open': String(dialogProps.modelValue)}, slots.default?.());
+    }}));
+    app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};
+    app.config.errorHandler = error => {vueErrors.push(error);};
+    app.mount(dom.document.querySelector('#fixture')!);await settle();
+    await vi.waitFor(() => expect(dom.document.querySelector('[data-testid="fixture-add-service"]')).not.toBeNull());
+    const flushRejectedLoader = async () => {
+        if (requested) {await finished.promise;await new Promise(resolve => setTimeout(resolve, 0));await settle();}
+        expect(vueErrors.filter(error => error !== cause)).toEqual([]);
+        expect(vueErrors.filter(error => error === cause).length).toBeLessThanOrEqual(1);
+    };
+    return {state, props, visible, document: dom.document, domWindow: dom.window, patch, focus, providerMounted, providerUnmounted, loadProvider, cause, vueErrors,
+        async add() {const button = dom.document.querySelector('[data-testid="fixture-add-service"]')!;button.dispatchEvent(new dom.window.Event('click', {bubbles: true}));await started.promise;await settle();},
+        // 真实父模板事件；允许传入已断开的旧按钮，用于验证旧 callback 的请求归属。
+        async feedbackClose(button?: Element | null) {
+            const target = button ?? dom.document.querySelector('[data-testid="custom-service-load-close"]');
+            expect(target).not.toBeNull();target!.dispatchEvent(new dom.window.Event('click', {bubbles: true}));await settle();
+        },
+        async reject() {reject();await flushRejectedLoader();}, async close() {reject();await flushRejectedLoader();}};
+}
+
+/** 只按受控 inline display/连接状态判显示；不包含真实 CSS 几何、Element Plus 或原生焦点证明。 */
+function providerFeedbackDisplayed(node: Element | null): boolean {
+    if (!node?.isConnected) return false;
+    for (let current: Element | null = node; current; current = current.parentElement) {
+        const element = current as HTMLElement;
+        if (element.hidden || element.style?.display === 'none' || element.style?.visibility === 'hidden'
+            || element.style?.opacity === '0' || element.getAttribute('aria-hidden') === 'true') return false;
+    }
+    return true;
+}
+function expectProviderFailureHasNoSideEffects(fixture: Awaited<ReturnType<typeof mountProviderFailureSections>>, before: string, patchCalls = 0) {
+    expect(fixture.document.querySelector('[data-testid="custom-service-dialog"]')).toBeNull();
+    expect(fixture.providerMounted).not.toHaveBeenCalled();expect(fixture.focus).not.toHaveBeenCalled();
+    expect(JSON.stringify(fixture.state.config)).toBe(before);expect(fixture.patch).toHaveBeenCalledTimes(patchCalls);
+}
+
+// 2 个普通声明 + 一个三项参数化声明；仅静态预计5展开，不冒称实际收集/通过。
+describe('新服务首次 loader 拒绝的父状态显示端口归属', () => {
+    it('首次公开添加 pending 时显示就地中文加载，未挂子实例、保存或聚焦', async () => {
+        const fixture = await mountProviderFailureSections();const before = JSON.stringify(fixture.state.config);
+        try {
+            await fixture.add();expect(fixture.loadProvider).toHaveBeenCalledOnce();
+            const loading = fixture.document.querySelector('[data-testid="custom-service-load-status"]');
+            expect(providerFeedbackDisplayed(loading)).toBe(true);expect(loading!.getAttribute('role')).toBe('status');
+            expect(loading!.textContent).toMatch(/加载/u);
+            const heading = loading!.closest('[data-fixture-add-service-row]');
+            expect(heading).not.toBeNull();expect(heading!.querySelector('[data-testid="fixture-add-service"]')).not.toBeNull();
+            expect(fixture.document.querySelector('[data-testid="custom-service-load-error"]')).toBeNull();
+            expectProviderFailureHasNoSideEffects(fixture, before);
+        } finally {await fixture.close();}
+    });
+    it('同次公开添加 reject 显示邻近中文错误，异常捕获不能替代错误节点', async () => {
+        const fixture = await mountProviderFailureSections();const before = JSON.stringify(fixture.state.config);
+        try {
+            await fixture.add();await fixture.reject();
+            const error = fixture.document.querySelector('[data-testid="custom-service-load-error"]');
+            expect(providerFeedbackDisplayed(error)).toBe(true);expect(error!.getAttribute('role')).toBe('alert');
+            expect(error!.textContent).toMatch(/无法(?:打开|加载)|加载失败/u);expect(error!.textContent).not.toContain(fixture.cause.message);
+            const heading = error!.closest('[data-fixture-add-service-row]');
+            expect(heading).not.toBeNull();expect(heading!.querySelector('[data-testid="fixture-add-service"]')).not.toBeNull();
+            expect(providerFeedbackDisplayed(fixture.document.querySelector('[data-testid="custom-service-load-status"]'))).toBe(false);
+            expectProviderFailureHasNoSideEffects(fixture, before);
+        } finally {await fixture.close();}
+    });
+    it.each(['section', 'keepalive', 'unmount'] as const)('%s之后迟到reject不展示/挂载/聚焦或追加保存，返回不复活旧请求', async reason => {
+        const fixture = await mountProviderFailureSections();const before = JSON.stringify(fixture.state.config);
+        try {
+            await fixture.add();expect(fixture.loadProvider).toHaveBeenCalledOnce();
+            if (reason === 'section') fixture.props.activeSection = 'settings-general';
+            else if (reason === 'keepalive') fixture.visible.value = false;
+            else {app!.unmount();app = undefined;}
+            await settle();const exitSaves = fixture.patch.mock.calls.length;
+            await fixture.reject();
+            for (const selector of ['custom-service-load-status', 'custom-service-load-error']) {
+                expect(providerFeedbackDisplayed(fixture.document.querySelector(`[data-testid="${selector}"]`))).toBe(false);
+            }
+            expectProviderFailureHasNoSideEffects(fixture, before, exitSaves);
+            if (reason !== 'unmount') {
+                fixture.props.activeSection = 'settings-services';fixture.visible.value = true;await settle();
+                for (const selector of ['custom-service-load-status', 'custom-service-load-error']) {
+                    expect(providerFeedbackDisplayed(fixture.document.querySelector(`[data-testid="${selector}"]`))).toBe(false);
+                }
+                expectProviderFailureHasNoSideEffects(fixture, before, exitSaves);expect(fixture.loadProvider).toHaveBeenCalledOnce();
+            }
+        } finally {await fixture.close();}
+    });
+});
+
+
+// 新增3个普通声明，连同上方原5项静态预计8展开；实际数量和结果待根执行。
+describe('服务窗口加载反馈公开关闭与已知失败归属', () => {
+    it('pending 重复公开添加仅一次加载，关闭后迟到拒绝无反馈、子实例或副作用', async () => {
+        const fixture = await mountProviderFailureSections();const before = JSON.stringify(fixture.state.config);
+        try {
+            await fixture.add();await fixture.add();expect(fixture.loadProvider).toHaveBeenCalledOnce();
+            expect(providerFeedbackDisplayed(fixture.document.querySelector('[data-testid="custom-service-load-status"]'))).toBe(true);
+            const close = fixture.document.querySelector('[data-testid="custom-service-load-close"]');
+            expect(providerFeedbackDisplayed(close)).toBe(true);expect(close!.textContent).toBe('关闭');
+            await fixture.feedbackClose(close);
+            for (const selector of ['custom-service-load-status', 'custom-service-load-error']) {
+                expect(providerFeedbackDisplayed(fixture.document.querySelector(`[data-testid="${selector}"]`))).toBe(false);
+            }
+            expectProviderFailureHasNoSideEffects(fixture, before);
+            await fixture.reject();
+            for (const selector of ['custom-service-load-status', 'custom-service-load-error']) {
+                expect(providerFeedbackDisplayed(fixture.document.querySelector(`[data-testid="${selector}"]`))).toBe(false);
+            }
+            expect(fixture.loadProvider).toHaveBeenCalledOnce();expectProviderFailureHasNoSideEffects(fixture, before);expect(fixture.vueErrors).toEqual([]);
+        } finally {await fixture.close();}
+    });
+    it('error 关闭后显式重新添加显示已知失败，不再加载且旧关闭节点不能撤销新反馈', async () => {
+        const fixture = await mountProviderFailureSections();const before = JSON.stringify(fixture.state.config);
+        try {
+            await fixture.add();await fixture.reject();
+            const oldError = fixture.document.querySelector('[data-testid="custom-service-load-error"]');
+            expect(providerFeedbackDisplayed(oldError)).toBe(true);expect(oldError!.getAttribute('role')).toBe('alert');
+            expect(oldError!.textContent).toContain('此栏目暂时无法打开，请重新加载页面后再试。');
+            const oldClose = fixture.document.querySelector('[data-testid="custom-service-load-close"]');
+            expect(providerFeedbackDisplayed(oldClose)).toBe(true);expect(oldClose!.textContent).toBe('关闭');
+            await fixture.feedbackClose(oldClose);
+            expect(providerFeedbackDisplayed(fixture.document.querySelector('[data-testid="custom-service-load-error"]'))).toBe(false);
+            expect(oldClose!.isConnected).toBe(false);expectProviderFailureHasNoSideEffects(fixture, before);
+            await fixture.add();expect(fixture.loadProvider).toHaveBeenCalledOnce();
+            const currentError = fixture.document.querySelector('[data-testid="custom-service-load-error"]');
+            const currentClose = fixture.document.querySelector('[data-testid="custom-service-load-close"]');
+            expect(providerFeedbackDisplayed(currentError)).toBe(true);expect(currentError).not.toBe(oldError);
+            expect(currentError!.getAttribute('role')).toBe('alert');
+            expect(currentError!.textContent).toContain('此栏目暂时无法打开，请重新加载页面后再试。');
+            expect(providerFeedbackDisplayed(currentClose)).toBe(true);expect(currentClose).not.toBe(oldClose);
+            expect(providerFeedbackDisplayed(fixture.document.querySelector('[data-testid="custom-service-load-status"]'))).toBe(false);
+            await fixture.feedbackClose(oldClose);
+            expect(fixture.document.querySelector('[data-testid="custom-service-load-error"]')).toBe(currentError);
+            expect(providerFeedbackDisplayed(currentError)).toBe(true);
+            expect(fixture.document.querySelector('[data-testid="custom-service-load-close"]')).toBe(currentClose);
+            expect(fixture.loadProvider).toHaveBeenCalledOnce();expect(fixture.vueErrors).toEqual([]);
+            expectProviderFailureHasNoSideEffects(fixture, before);
+        } finally {await fixture.close();}
+    });
+    it('section 离开后拒绝不复活，返回仅显式公开添加显示已知失败而不重新导入', async () => {
+        const fixture = await mountProviderFailureSections();const before = JSON.stringify(fixture.state.config);
+        try {
+            await fixture.add();fixture.props.activeSection = 'settings-general';await settle();
+            const exitSaves = fixture.patch.mock.calls.length;
+            await fixture.reject();
+            for (const selector of ['custom-service-load-status', 'custom-service-load-error']) {
+                expect(providerFeedbackDisplayed(fixture.document.querySelector(`[data-testid="${selector}"]`))).toBe(false);
+            }
+            fixture.props.activeSection = 'settings-services';await settle();
+            for (const selector of ['custom-service-load-status', 'custom-service-load-error']) {
+                expect(providerFeedbackDisplayed(fixture.document.querySelector(`[data-testid="${selector}"]`))).toBe(false);
+            }
+            await fixture.add();expect(fixture.loadProvider).toHaveBeenCalledOnce();
+            const error = fixture.document.querySelector('[data-testid="custom-service-load-error"]');
+            expect(providerFeedbackDisplayed(error)).toBe(true);expect(error!.getAttribute('role')).toBe('alert');
+            expect(error!.textContent).toContain('此栏目暂时无法打开，请重新加载页面后再试。');
+            expect(providerFeedbackDisplayed(fixture.document.querySelector('[data-testid="custom-service-load-status"]'))).toBe(false);
+            expect(fixture.vueErrors).toEqual([]);expectProviderFailureHasNoSideEffects(fixture, before, exitSaves);
+        } finally {await fixture.close();}
+    });
+});

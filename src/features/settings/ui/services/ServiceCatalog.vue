@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/services/ServiceCatalog.vue
  * 文件职责：以服务目录和清晰分层的配置工作区呈现翻译服务，窄屏按需展开目录，保持配置与默认使用分离。
- * 主要内容：侧栏展示全部内置及自定义服务，分组可单独收起，选中服务或回到本页时展开正在配置的服务所在分组；顶部分组导航点击后展开并滚动到对应分组，并随目录滚动同步高亮；搜索过滤目录时展开全部匹配分组，此时点击分组导航会清空搜索并回到完整目录；自定义按钮直接打开创建表单；右侧集中展示服务名称及接口性质徽章、模型、官网帮助和连接配置；目录搜索文本按需缓存，目录几何按帧合并并缓存分组位置，滚动只读取当前位置，活跃上下文限定操作并取消过期焦点、滚动与帧回调。
+ * 主要内容：侧栏展示全部内置及自定义服务，分组可单独收起，选中服务或回到本页时展开正在配置的服务所在分组；顶部分组导航点击后展开并滚动到对应分组，并随目录滚动同步高亮；搜索过滤目录时展开全部匹配分组，此时点击分组导航会清空搜索并回到完整目录；自定义按钮直接打开创建表单，入口下方的状态插槽由父组件反馈首次窗口加载；右侧集中展示服务名称及接口性质徽章、模型、官网帮助和连接配置；目录搜索文本按需缓存，目录几何按帧合并并缓存分组位置，滚动只读取当前位置，活跃上下文限定操作并取消过期焦点、滚动与帧回调。
  * 模块边界：目录提供“配置服务”和“自定义服务”入口，标题栏在检查连接左侧提供显式设为默认操作，通过独立事件交给外层 SettingsSections 持久化，不编辑凭据、不测试连接也不保存配置；分组收起状态只保存在本次页面会话，不写入配置，停用或切换上下文时取消目录帧并重建分组尺寸及字体观察，卸载时清理观察器与监听；详细表单归 ServiceConfiguration.vue，服务定义来自 core/config。
  -->
 <template>
@@ -42,6 +42,7 @@
           </button>
           </el-tooltip>
         </div>
+        <slot name="add-service-status" />
         <label class="catalog-search">
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></svg>
           <input :value="serviceQuery" :disabled="!active" :onInput="actions.updateQuery" type="search" :aria-label="t('settings.services.library.search')" :placeholder="t('settings.services.library.search')" />
