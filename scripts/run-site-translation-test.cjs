@@ -7,6 +7,7 @@
 // 都由 Playwright keyboard API 发送真实的浏览器按键。
 
 const {guardBrowserClose} = require('./testing/owned-browser-close.cjs');
+const {reportErrorCodes} = require('./testing/site-error-diagnostics.cjs');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -3360,7 +3361,10 @@ async function main() {
         }
       }
     } catch (error) {cleanupErrors.push(error);}
-    for (const error of cleanupErrors) process.stderr.write(`Cleanup failed: ${error.stack || error}\n`);
+    for (const error of cleanupErrors) {
+      process.stderr.write(`Cleanup failed: ${error.stack || error}\n`);
+      reportErrorCodes(error, 'cleanup');
+    }
     if (cleanupErrors.length && !primaryError) throw cleanupErrors[0];
   }
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
@@ -3369,6 +3373,7 @@ async function main() {
 if (require.main === module) {
   main().catch((error) => {
     process.stderr.write(`${error.stack || error}\n`);
+    reportErrorCodes(error, 'terminal');
     process.exitCode = 1;
   });
 }

@@ -3733,3 +3733,163 @@ describe('Factorio multilingual live-source catalog', () => {
     }
   });
 });
+
+
+describe('structured site failure diagnostic codes', () => {
+  const assert = require('node:assert/strict');
+  const {collectErrorCodes, reportErrorCodes} = require('../scripts/testing/site-error-diagnostics.cjs');
+  const coded = (code: string): Error & {code: string; cause?: unknown} =>
+    Object.assign(new Error('Browser close operation timed out'), {code});
+
+  it('keeps distinct timeout stage codes and shared primary cause references', () => {
+    const primary = coded('CDP_QUERY_TIMEOUT');
+    const error = new AggregateError([primary, coded('DETACH_TIMEOUT'), coded('NATIVE_CLOSE_TIMEOUT')],
+      'Browser close failed', {cause: primary});
+    assert.deepEqual(collectErrorCodes(error), {
+      id: 1, codeStatus: 'absent',
+      cause: {id: 2, codeStatus: 'reported', code: 'CDP_QUERY_TIMEOUT'},
+      errors: [{reference: 2}, {id: 3, codeStatus: 'reported', code: 'DETACH_TIMEOUT'},
+        {id: 4, codeStatus: 'reported', code: 'NATIVE_CLOSE_TIMEOUT'}],
+    });
+  });
+
+  it('does not infer a timeout stage from text or stack', () => {
+    const error = new Error('NATIVE_CLOSE_TIMEOUT Browser close operation timed out');
+    assert.deepEqual(collectErrorCodes(error), {id: 1, codeStatus: 'absent'});
+  });
+
+  it('reports the existing local public code vocabulary', () => {
+    for (const code of ['CDP_CONNECT_TIMEOUT', 'CDP_QUERY_TIMEOUT', 'DETACH_TIMEOUT',
+      'NATIVE_CLOSE_TIMEOUT', 'CONTEXT_CLOSE_TIMEOUT', 'PS_TIMEOUT', 'PROFILE_INVALID', 'PS_INVALID',
+      'PLATFORM_UNSUPPORTED', 'OWNERSHIP_UNKNOWN', 'IDENTITY_CHANGED', 'TERMINATION_TIMEOUT',
+      'PROFILE_CHANGED', 'HELPER_UNSUPPORTED', 'SESSION_UNGUARDED']) {
+      assert.equal(collectErrorCodes(coded(code)).code, code);
+    }
+  });
+
+  it('omits arbitrary code values and all sensitive error fields', () => {
+    const secret = 'api-token-should-not-be-persisted';
+    const error = Object.assign(new Error(secret), {
+      code: secret, name: secret, stack: secret, url: secret, token: secret, argv: [secret],
+    });
+    const encoded = JSON.stringify(collectErrorCodes(error));
+    assert.equal(encoded.includes(secret), false);
+    assert.deepEqual(JSON.parse(encoded), {id: 1, codeStatus: 'omitted'});
+    assert.equal(collectErrorCodes({code: 1}).codeStatus, 'omitted');
+    assert.equal(collectErrorCodes({code: 'UNKNOWN_BUT_UPPERCASE_TOKEN'}).codeStatus, 'omitted');
+  });
+
+  it('marks circular causes without revisiting or mutating errors', () => {
+    const first = coded('NATIVE_CLOSE_TIMEOUT'), second = coded('PS_TIMEOUT');
+    first.cause = second;
+    second.cause = first;
+    Object.freeze(first);
+    Object.freeze(second);
+    assert.deepEqual(collectErrorCodes(first), {
+      id: 1, codeStatus: 'reported', code: 'NATIVE_CLOSE_TIMEOUT',
+      cause: {id: 2, codeStatus: 'reported', code: 'PS_TIMEOUT', cause: {reference: 1}},
+    });
+    assert.equal(first.cause, second);
+    assert.equal(second.cause, first);
+  });
+
+  it('does not invoke code, cause, errors or array child getters', () => {
+    let reads = 0;
+    const getter = () => {reads += 1; throw new Error('Unexpected getter');};
+    const accessorError = Object.defineProperties({}, {
+      code: {get: getter}, cause: {get: getter}, errors: {get: getter},
+    });
+    assert.deepEqual(collectErrorCodes(accessorError), {
+      id: 1, codeStatus: 'unreadable', causeStatus: 'unreadable', errorsStatus: 'unreadable',
+    });
+    const children = [null];
+    Object.defineProperty(children, '0', {get: getter});
+    assert.deepEqual(collectErrorCodes({errors: children}), {
+      id: 1, codeStatus: 'absent', errors: [{codeStatus: 'unreadable'}],
+    });
+    assert.equal(reads, 0);
+  });
+
+  it('tolerates throwing property descriptors without replacing the original failure', () => {
+    const error = new Proxy({}, {getOwnPropertyDescriptor() {throw new Error('Descriptor unavailable');}});
+    assert.deepEqual(collectErrorCodes(error), {
+      id: 1, codeStatus: 'unreadable', causeStatus: 'unreadable', errorsStatus: 'unreadable',
+    });
+  });
+
+  it('does not inherit arbitrary codes or invoke primitive conversion', () => {
+    const inherited = Object.create({code: 'NATIVE_CLOSE_TIMEOUT'});
+    inherited.toString = () => {throw new Error('Conversion must not happen');};
+    assert.deepEqual(collectErrorCodes(inherited), {id: 1, codeStatus: 'absent'});
+    for (const value of [undefined, null, 'secret', 1, Symbol('secret'), 2n]) {
+      assert.deepEqual(collectErrorCodes(value), {codeStatus: 'non-object'});
+    }
+  });
+
+  it('retains available cause codes alongside malformed aggregate children', () => {
+    const error = {cause: coded('OWNERSHIP_UNKNOWN'), errors: new Set(['secret'])};
+    assert.deepEqual(collectErrorCodes(error), {
+      id: 1, codeStatus: 'absent', cause: {id: 2, codeStatus: 'reported', code: 'OWNERSHIP_UNKNOWN'},
+      errorsStatus: 'non-array',
+    });
+  });
+
+  it('bounds deep cause chains without recursive overflow', () => {
+    let error: unknown = coded('NATIVE_CLOSE_TIMEOUT');
+    for (let index = 0; index < 2000; index += 1) error = {cause: error};
+    const encoded = JSON.stringify(collectErrorCodes(error));
+    assert.ok(encoded.length < 5000);
+    assert.ok(encoded.includes('"truncated":true'));
+    assert.equal(encoded.includes('NATIVE_CLOSE_TIMEOUT'), false);
+  });
+
+  it('bounds huge aggregate children while preserving the first available phase code', () => {
+    const children = new Array(1_000_000).fill(coded('DETACH_TIMEOUT'));
+    children[0] = coded('CDP_CONNECT_TIMEOUT');
+    const result = collectErrorCodes({errors: children});
+    assert.equal(result.errors[0].code, 'CDP_CONNECT_TIMEOUT');
+    assert.equal(result.truncatedErrors, true);
+    assert.ok(result.errors.length <= 128);
+    assert.ok(JSON.stringify(result).length < 5000);
+  });
+
+  it('bounds many distinct nodes including nested branches', () => {
+    const children = Array.from({length: 200}, () => ({cause: coded('PS_TIMEOUT')}));
+    const result = collectErrorCodes({errors: children});
+    assert.equal(result.truncatedErrors, true);
+    assert.ok(JSON.stringify(result).length < 15000);
+  });
+
+  it('does not modify frozen error descriptors or exception identity', () => {
+    const error = Object.freeze(coded('IDENTITY_CHANGED'));
+    const before = Object.getOwnPropertyDescriptors(error);
+    let observed;
+    try {throw error;} catch (caught) {
+      reportErrorCodes(caught, 'terminal', () => {});
+      observed = caught;
+    }
+    assert.equal(observed, error);
+    assert.deepEqual(Object.getOwnPropertyDescriptors(error), before);
+  });
+
+  it('emits one parseable record with only the allowed terminal or cleanup phase', () => {
+    const lines: string[] = [];
+    for (const phase of ['terminal', 'cleanup', 'arbitrary-secret-phase']) {
+      reportErrorCodes(coded('NATIVE_CLOSE_TIMEOUT'), phase, (line: string) => lines.push(line));
+    }
+    assert.equal(lines.length, 2);
+    assert.equal(lines[0].endsWith('\n'), true);
+    const records = lines.map(line => JSON.parse(line.slice('[site-error-codes] '.length)));
+    assert.deepEqual(records.map(record => record.phase), ['terminal', 'cleanup']);
+    assert.ok(records.every(record => record.pid === process.pid));
+    assert.ok(records.every(record => record.error.code === 'NATIVE_CLOSE_TIMEOUT'));
+  });
+
+  it('suppresses diagnostic write failures while preserving CLI exit status', () => {
+    const before = process.exitCode;
+    assert.doesNotThrow(() => reportErrorCodes(coded('PS_TIMEOUT'), 'cleanup', () => {
+      throw new Error('stderr unavailable');
+    }));
+    assert.equal(process.exitCode, before);
+  });
+});
