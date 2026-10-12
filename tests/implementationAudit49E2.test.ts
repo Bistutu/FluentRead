@@ -47,6 +47,16 @@ const cachePort = (name: string) => {
 function seedModels() {stores.set(MANGA_OCR_CACHE, new Map([...MANGA_OCR_ASSETS.map(a => [rootUrl + a.path, responseFor(a)] as const), [MANGA_INPAINT_ASSET.url, responseFor(MANGA_INPAINT_ASSET)]]));}
 function controlledGpu() {vi.stubGlobal('GPUDevice', {prototype: {adapterInfo: {}}}); vi.stubGlobal('navigator', {gpu: {requestAdapter: async () => ({info: {vendor: 'controlled hardware port'}})}});}
 const pixels = () => new Uint8ClampedArray(32 * 32 * 4).fill(200);
+// This lifecycle fixture represents an opaque black decoded image. A zeroed
+// RGBA buffer represents transparency, not the intended opaque sample; keep
+// the production alpha preparation active while providing a complete Canvas port.
+const ocrCanvasWrites = vi.fn();
+const ocrCanvases: Array<{width: number; height: number}> = [];
+function opaqueOcrPixels(width: number, height: number) {
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let index = 3; index < data.length; index += 4) data[index] = 255;
+    return {data, width, height};
+}
 const region = {text: 'Hello world', fontSize: 8, bbox: {x0: 8, y0: 8, x1: 24, y1: 24}};
 const backgrounds = [{uniform: false, color: 'rgb(200,200,200)'}];
 const repair = (signal?: AbortSignal) => mangaInpaintingRuntime.repair(pixels(), 32, 32, [region], signal, undefined, undefined, backgrounds);
@@ -100,6 +110,7 @@ function deferred<T>() {
 beforeEach(async () => {
     vi.stubGlobal('Response', createVirtualModelResponsePort(NativeResponse));
     vi.useFakeTimers({toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout']}); stores.clear(); onDelete = undefined; onPut = undefined; workers.length = 0;
+    ocrCanvasWrites.mockClear(); ocrCanvases.length = 0;
     sdk.sessions.length = 0; sdk.detectionSession = undefined; sdk.create.mockReset(); sdk.initialize.mockReset().mockResolvedValue(undefined);
     sdk.destroy.mockReset().mockResolvedValue(undefined); sdk.recognize.mockReset().mockResolvedValue({results: [{text: 'Hello world', confidence: 1, box: {x: 8, y: 8, width: 16, height: 16}}]});
     sdk.create.mockImplementation(async () => {const port = {run: vi.fn(async ({image}) => ({inpainted: {data: new Float32Array(image.data), dispose() {}}})), release: vi.fn(async () => {})}; sdk.sessions.push(port); return port;});
@@ -110,7 +121,13 @@ beforeEach(async () => {
     vi.stubGlobal('Worker', ControlledInferenceWorker);
     vi.stubGlobal('createImageBitmap', vi.fn(async () => ({width: 32, height: 32, close: vi.fn()})));
     vi.stubGlobal('chrome', {runtime: {getURL: (path: string) => 'chrome-extension://fixture/' + path.replace(/^\/+/, '')}});
-    vi.stubGlobal('document', {createElement: () => ({width: 0, height: 0, getContext: () => ({drawImage() {}, getImageData: () => ({data: new Uint8ClampedArray(32 * 32 * 4)})})})});
+    vi.stubGlobal('document', {createElement: () => {
+        const canvas = {width: 0, height: 0, getContext: () => ({drawImage() {},
+            getImageData: (_x: number, _y: number, width: number, height: number) => opaqueOcrPixels(width, height),
+            putImageData: ocrCanvasWrites,
+        })};
+        ocrCanvases.push(canvas); return canvas;
+    }});
     modelFetch.mockReset().mockRejectedValue(new Error('unexpected controlled model request'));
     vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL, options?: RequestInit) => String(url) === 'controlled-image'
         ? Promise.resolve(new Response(new Uint8Array([0]), {headers: {'content-type': 'image/png'}}))
@@ -124,6 +141,8 @@ afterEach(async () => {
         // model whose SDK release failed. Preserve the strict timer assertion.
         await mangaOcrRuntime.dispose().catch(() => undefined);
         await mangaInpaintingRuntime.dispose().catch(() => undefined);
+        expect(ocrCanvasWrites).not.toHaveBeenCalled();
+        expect(ocrCanvases.every(canvas => canvas.width === 0 && canvas.height === 0)).toBe(true);
         expect(workers.every(worker => worker.terminate.mock.calls.length === 1)).toBe(true);
         expect(vi.getTimerCount()).toBe(0);
     } finally {vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks();}
@@ -303,8 +322,10 @@ describe('E2 real runtime removal admission', () => {
         sdk.create.mockImplementationOnce(async () => {abort.abort(); return {release};});
         sdk.recognize.mockImplementationOnce(async () => {await gpu.run(); return {results: []};});
         const port = await createBrowserMangaOcr();
-        try {await expect(port.recognize('fixture', {flatten: true, noCache: true, strategy: 'per-box', signal: abort.signal, decodedImage: {naturalWidth: 32, naturalHeight: 32} as HTMLImageElement})).rejects.toMatchObject({name: 'AbortError'});}
+        const decodedImage = {naturalWidth: 32, naturalHeight: 32, src: 'borrowed-source'} as HTMLImageElement;
+        try {await expect(port.recognize('fixture', {flatten: true, noCache: true, strategy: 'per-box', signal: abort.signal, decodedImage})).rejects.toMatchObject({name: 'AbortError'});}
         finally {await port.destroy();}
+        expect(decodedImage).toMatchObject({naturalWidth: 32, naturalHeight: 32, src: 'borrowed-source'});
         expect(release).toHaveBeenCalledOnce(); expect(gpuRelease).toHaveBeenCalledOnce();
     });
 

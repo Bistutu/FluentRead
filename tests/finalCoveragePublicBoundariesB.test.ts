@@ -144,6 +144,53 @@ describe('final boundary B physical OCR line ordering', () => {
 
 async function ocrSdkFixture(failFirst = false) {
     type SdkOptions = {errorHandler(reason: unknown): void; logger(message: unknown): void};
+    // PNG 也会经过真实 prepareOcrImage/flattenOcrAlpha；Canvas 外部端口提供完整、
+    // 不透明且与源图分离的 RGBA 副本，不替换像素处理、共享取消、Worker 或缓存模块。
+    const sourcePixels = new Uint8ClampedArray(100 * 100 * 4);
+    for (let index = 0; index < sourcePixels.length; index += 4) sourcePixels.set([28, 64, 96, 255], index);
+    const image = {naturalWidth: 100, naturalHeight: 100, src: 'borrowed-source', pixels: sourcePixels} as unknown as HTMLImageElement;
+    const readbacks: Array<{width: number; height: number; data: Uint8ClampedArray}> = [];
+    const canvases: Array<{width: number; height: number; getContext: ReturnType<typeof vi.fn>; toBlob: ReturnType<typeof vi.fn>}> = [];
+    const drawImage = vi.fn();
+    const getImageData = vi.fn();
+    const putImageData = vi.fn();
+    const createElement = vi.fn((tag: string) => {
+        if (tag !== 'canvas') throw new Error(`Unexpected OCR element ${tag}`);
+        let drawnPixels = new Uint8ClampedArray();
+        const canvas = {width: 0, height: 0,
+            getContext: vi.fn((kind: string) => {
+                if (kind !== '2d') return null;
+                return {
+                    drawImage: (source: HTMLImageElement, x: number, y: number, width: number, height: number) => {
+                        drawImage(source, x, y, width, height);
+                        if (source !== image || x !== 0 || y !== 0 || width !== 100 || height !== 100) {
+                            throw new Error('Opaque borrowed-image fixture received unexpected raster geometry');
+                        }
+                        drawnPixels = new Uint8ClampedArray(sourcePixels);
+                    },
+                    getImageData: (x: number, y: number, width: number, height: number) => {
+                        getImageData(x, y, width, height);
+                        if (x !== 0 || y !== 0 || width !== canvas.width || height !== canvas.height
+                            || drawnPixels.length !== width * height * 4) throw new Error('Incomplete Canvas RGBA fixture');
+                        const pixels = {width, height, data: new Uint8ClampedArray(drawnPixels)};
+                        readbacks.push(pixels);
+                        return pixels;
+                    },
+                    putImageData: (pixels: {data: Uint8ClampedArray}, x: number, y: number) => {
+                        putImageData(pixels, x, y);
+                        drawnPixels = new Uint8ClampedArray(pixels.data);
+                    },
+                    imageSmoothingEnabled: false,
+                    imageSmoothingQuality: 'low',
+                };
+            }),
+            // 原尺寸不透明 PNG 应复用原编码；若发生额外编码，明确失败而非悬挂回调。
+            toBlob: vi.fn(() => {throw new Error('Unexpected re-encoding of opaque original-size PNG');}),
+        };
+        canvases.push(canvas);
+        return canvas;
+    });
+    vi.stubGlobal('document', {createElement});
     const reason = new Error('boundary-b SDK recognition failure');
     const escaped: unknown[] = [];
     const sdkCallbacks: unknown[] = [];
@@ -171,16 +218,22 @@ async function ocrSdkFixture(failFirst = false) {
     port('tesseract.js', () => ({createWorker, PSM: {SPARSE_TEXT: 11, SPARSE_TEXT_OSD: 12, SINGLE_BLOCK: 6}}));
     vi.stubGlobal('chrome', {runtime: {getURL: (path: string) => `chrome-extension://boundary-b${path}`}});
     const {recognizeImage} = await import('@/src/features/image-translation/services/ocrRuntime');
-    return {recognizeImage, createWorker, worker, reason, escaped, sdkCallbacks};
+    return {recognizeImage, createWorker, worker, reason, escaped, sdkCallbacks,
+        image, sourcePixels, canvases, readbacks, createElement, drawImage, getImageData, putImageData};
 }
 
 describe('final boundary B actual OCR public consumer', () => {
     it('rejects cancellation after synchronous borrowed-image preparation without creating an SDK worker or caching a result', async () => {
         const fixture = await ocrSdkFixture();
-        const image = {naturalWidth: 100, naturalHeight: 100, src: 'borrowed-source'} as HTMLImageElement;
+        const {image} = fixture;
+        const originalPixels = new Uint8ClampedArray(fixture.sourcePixels);
         const controller = new AbortController();
         const operation = fixture.recognizeImage('data:image/png;base64,fixture', 'en', controller.signal, {decodedImage: image});
         const outcome = operation.then(value => ({value}), error => ({error}));
+        expect(fixture.drawImage).toHaveBeenCalledWith(image, 0, 0, 100, 100);
+        expect(fixture.getImageData).toHaveBeenCalledWith(0, 0, 100, 100);
+        expect(fixture.readbacks[0].data).toHaveLength(100 * 100 * 4);
+        expect(fixture.readbacks[0].data).not.toBe(fixture.sourcePixels);
         // public 调用已返回；准备后的 await 尚未恢复，真实调用方立即取消。
         controller.abort();
         expect(await outcome).toMatchObject({error: {name: 'AbortError', message: '图片 OCR 请求已取消'}});
@@ -192,11 +245,25 @@ describe('final boundary B actual OCR public consumer', () => {
             {text: 'Retried text', bbox: {x0: 1, y0: 2, x1: 70, y1: 20}},
         ]);
         expect(fixture.worker.recognize).toHaveBeenCalledOnce();
+        expect(fixture.worker.recognize).toHaveBeenCalledWith('data:image/png;base64,fixture', {}, {blocks: true}, expect.any(String));
+        await expect(fixture.recognizeImage('data:image/png;base64,fixture', 'en', undefined, {decodedImage: image})).resolves.toEqual([
+            {text: 'Retried text', bbox: {x0: 1, y0: 2, x1: 70, y1: 20}},
+        ]);
+        expect(fixture.worker.recognize).toHaveBeenCalledOnce();
+        expect(fixture.createElement).toHaveBeenCalledTimes(2);
+        expect(fixture.putImageData).not.toHaveBeenCalled();
+        expect(fixture.canvases.every(canvas => canvas.width === 0 && canvas.height === 0)).toBe(true);
+        expect(fixture.canvases.every(canvas => canvas.toBlob.mock.calls.length === 0)).toBe(true);
+        expect(fixture.readbacks.every(pixels => pixels.data.length === 100 * 100 * 4
+            && pixels.data.every((value, index) => value === originalPixels[index]))).toBe(true);
+        expect(fixture.sourcePixels).toEqual(originalPixels);
+        expect(image.src).toBe('borrowed-source');
     });
 
     it('consumes SDK error callbacks without escaping an exception and preserves the original job rejection for a clean retry', async () => {
         const fixture = await ocrSdkFixture(true);
-        const image = {naturalWidth: 100, naturalHeight: 100, src: 'borrowed-source'} as HTMLImageElement;
+        const {image} = fixture;
+        const originalPixels = new Uint8ClampedArray(fixture.sourcePixels);
         await expect(fixture.recognizeImage('data:image/png;base64,sdk-fixture', 'en', undefined, {decodedImage: image})).rejects.toBe(fixture.reason);
         expect(fixture.sdkCallbacks).toEqual([fixture.reason]);
         expect(fixture.escaped).toEqual([]);
@@ -206,6 +273,18 @@ describe('final boundary B actual OCR public consumer', () => {
         expect(fixture.createWorker).toHaveBeenCalledOnce();
         expect(fixture.worker.setParameters).toHaveBeenCalledOnce();
         expect(fixture.worker.recognize).toHaveBeenCalledTimes(2);
+        expect(fixture.worker.recognize).toHaveBeenLastCalledWith('data:image/png;base64,sdk-fixture', {}, {blocks: true}, expect.any(String));
+        await fixture.recognizeImage('data:image/png;base64,sdk-fixture', 'en', undefined, {decodedImage: image});
+        expect(fixture.worker.recognize).toHaveBeenCalledTimes(2);
+        expect(fixture.createElement).toHaveBeenCalledTimes(2);
+        expect(fixture.drawImage).toHaveBeenCalledWith(image, 0, 0, 100, 100);
+        expect(fixture.getImageData).toHaveBeenCalledWith(0, 0, 100, 100);
+        expect(fixture.putImageData).not.toHaveBeenCalled();
+        expect(fixture.canvases.every(canvas => canvas.width === 0 && canvas.height === 0)).toBe(true);
+        expect(fixture.canvases.every(canvas => canvas.toBlob.mock.calls.length === 0)).toBe(true);
+        expect(fixture.readbacks.every(pixels => pixels.data.length === 100 * 100 * 4
+            && pixels.data !== fixture.sourcePixels && pixels.data.every((value, index) => value === originalPixels[index]))).toBe(true);
+        expect(fixture.sourcePixels).toEqual(originalPixels);
         expect(image.src).toBe('borrowed-source');
     });
 });
