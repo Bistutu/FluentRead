@@ -1262,9 +1262,11 @@ type FloatingTreeOptions = {
   toolsDisplay?: 'hover' | 'always'; progressPanel?: boolean;
   toolStyle?: Partial<FloatingCdpStyle>; checkStyle?: Partial<FloatingCdpStyle>;
   checkQuad?: number[] | null;
+  nodeIdOffset?: number;
 };
 const floatingCli = require(resolve(PROJECT_ROOT, 'scripts/run-full-page-translation-test.cjs')) as {
   readFloatingUiState(page: unknown): Promise<FloatingCliState>;
+  readFloatingUiState(page: unknown, allowPending: true): Promise<FloatingCliState | null>;
   isCollapsedFloatingUiState(state: FloatingCliState, translated: boolean): boolean;
   isExpandedFloatingUiState(state: FloatingCliState): boolean;
 };
@@ -1279,6 +1281,7 @@ function makeFloatingCdpFixture(initial: FloatingTreeOptions = {}) {
   let styles: Map<number, FloatingCdpStyle>;
   let quads: Map<number, number[]>;
   let documentError: Error | undefined;
+  const styleReads = new Map<number, () => Promise<FloatingCdpStyle>>();
 
   function replace(options: FloatingTreeOptions) {
     const expanded = options.expanded === true;
@@ -1322,6 +1325,16 @@ function makeFloatingCdpFixture(initial: FloatingTreeOptions = {}) {
     if (options.checkQuad !== null) {
       quads.set(10, options.checkQuad ?? [42, 338, 56, 338, 56, 352, 42, 352]);
     }
+    if (options.nodeIdOffset) {
+      const offset = options.nodeIdOffset;
+      const rebase = (current: FloatingCdpNode) => {
+        current.nodeId += offset;
+        for (const child of [...(current.children || []), ...(current.shadowRoots || [])]) rebase(child);
+      };
+      rebase(root);
+      styles = new Map([...styles].map(([id, style]) => [id + offset, style]));
+      quads = new Map([...quads].map(([id, quad]) => [id + offset, quad]));
+    }
   }
   replace(initial);
   const page = {
@@ -1335,7 +1348,8 @@ function makeFloatingCdpFixture(initial: FloatingTreeOptions = {}) {
             return {root};
           }
           if (command === 'CSS.getComputedStyleForNode') {
-            const style = styles.get(params!.nodeId!);
+            const read = styleReads.get(params!.nodeId!);
+            const style = read ? await read() : styles.get(params!.nodeId!);
             if (!style) throw new Error(`Unexpected computed-style node ${params?.nodeId}`);
             return {computedStyle: Object.entries(style).map(([name, value]) => ({name, value}))};
           }
@@ -1351,12 +1365,15 @@ function makeFloatingCdpFixture(initial: FloatingTreeOptions = {}) {
       sessions.push(session);
       return session;
     })}),
+    waitForTimeout: vi.fn(async (_milliseconds: number) => undefined),
     // 执行 CLI 传入的原 viewport callback，而不是以预制结果替换 callback。
     evaluate: vi.fn(async (callback: () => unknown) => new Script(`(${callback.toString()})()`).runInNewContext({
       window: {innerWidth: 1280, innerHeight: 900},
     }, {timeout: 1000})),
   };
-  return {page, sessions, replace, failDocument: (error: Error) => {documentError = error;}};
+  return {page, sessions, replace, failDocument: (error: Error) => {documentError = error;},
+    controlStyle: (nodeId: number, read: () => Promise<FloatingCdpStyle>) => {styleReads.set(nodeId, read);},
+    clearStyleReads: () => styleReads.clear()};
 }
 
 describe('全文公开 CLI 的真实 CDP reader 与悬浮状态契约', () => {
@@ -1483,6 +1500,144 @@ describe('全文公开 CLI 的真实 CDP reader 与悬浮状态契约', () => {
     fixture.failDocument(error);
     await expect(floatingCli.readFloatingUiState(fixture.page)).rejects.toBe(error);
     expect(fixture.sessions[0].detach).toHaveBeenCalledTimes(1);
+  });
+});
+
+// 只在测试内存副本中访问既有 private waiter；正式 CLI 不增加导出或测试模式。
+describe('全文浮动 UI 的 CDP 节点换代采样', () => {
+  const missingNodeMessage = 'cdpSession.send: Protocol error (CSS.getComputedStyleForNode): Could not find node with given id';
+  function controlledWaiter(fixture: ReturnType<typeof makeFloatingCdpFixture>, onPoll = () => {}) {
+    let now = 0;
+    const sourcePath = resolve(PROJECT_ROOT, 'scripts/run-full-page-translation-test.cjs');
+    const module = {exports: {}};
+    new Script(readFileSync(sourcePath, 'utf8') +
+      '\nmodule.exports.__testWaitForFloatingUiState = waitForFloatingUiState;' +
+      '\nmodule.exports.__testAssertNoAutomaticFloatingExpansion = assertNoAutomaticFloatingExpansion;',
+    {filename: sourcePath}).runInNewContext({module, exports: module.exports,
+      require: createRequire(sourcePath), __dirname: dirname(sourcePath), process, console,
+      Date: {now: () => now}});
+    fixture.page.waitForTimeout.mockImplementation(async milliseconds => {now += milliseconds; onPoll();});
+    return {...module.exports as {
+      __testWaitForFloatingUiState(page: unknown, predicate: (state: FloatingCliState) => boolean,
+        timeout: number, description: string): Promise<FloatingCliState>;
+      __testAssertNoAutomaticFloatingExpansion(page: unknown, durationMs?: number): Promise<unknown>;
+    }, elapsed: () => now};
+  }
+
+  it.each([7, 6, 10])('nodeId=%s 在样式读取前失效时丢弃整样本，下个原50ms轮询重新读完整document', async nodeId => {
+    const fixture = makeFloatingCdpFixture({progressPanel: true});
+    const stale = new Error(missingNodeMessage);
+    fixture.controlStyle(nodeId, async () => {throw stale;});
+    const clock = controlledWaiter(fixture, () => {
+      fixture.clearStyleReads();
+      fixture.replace({progressPanel: true, nodeIdOffset: 100});
+    });
+    const predicate = vi.fn((state: FloatingCliState) => Boolean(state.progressPanel && state.progress?.running));
+    const state = await clock.__testWaitForFloatingUiState(fixture.page, predicate, 125, 'viewport progress');
+    expect(state.progress).toEqual({running: 2, remaining: 9, queued: 3, offscreen: 6});
+    expect(predicate).toHaveBeenCalledTimes(1);
+    expect(predicate).toHaveBeenCalledWith(state);
+    expect(fixture.sessions).toHaveLength(2);
+    expect(clock.elapsed()).toBe(50);
+    expect(fixture.page.waitForTimeout).toHaveBeenCalledOnce();
+    expect(fixture.page.waitForTimeout).toHaveBeenCalledWith(50);
+    expect(fixture.page.evaluate).toHaveBeenCalledOnce();
+    expect(fixture.sessions[0].send).toHaveBeenCalledWith('CSS.getComputedStyleForNode', {nodeId});
+    expect(fixture.sessions[1].send).toHaveBeenCalledWith('CSS.getComputedStyleForNode', {nodeId: nodeId + 100});
+    for (const session of fixture.sessions) {
+      expect(session.send.mock.calls.filter(([method]) => method === 'DOM.getDocument')).toHaveLength(1);
+      expect(session.detach).toHaveBeenCalledOnce();
+    }
+  });
+
+  it('持续失效仍在原deadline退出，既有50ms轮询不能刷新预算或把null样本交给predicate', async () => {
+    const fixture = makeFloatingCdpFixture({progressPanel: true});
+    fixture.controlStyle(10, async () => {throw new Error(missingNodeMessage);});
+    const clock = controlledWaiter(fixture);
+    const predicate = vi.fn(() => true);
+    await expect(clock.__testWaitForFloatingUiState(fixture.page, predicate, 125, 'stale deadline'))
+      .rejects.toThrow('stale deadline：null');
+    expect(predicate).not.toHaveBeenCalled();
+    expect(clock.elapsed()).toBe(150);
+    expect(fixture.sessions).toHaveLength(3);
+    expect(fixture.page.waitForTimeout.mock.calls).toEqual([[50], [50], [50]]);
+    expect(fixture.page.evaluate).not.toHaveBeenCalled();
+    for (const session of fixture.sessions) expect(session.detach).toHaveBeenCalledOnce();
+  });
+
+  it('重新读取到完整但不满足原progress条件的状态也必须超时，不能只因刷新成功而PASS', async () => {
+    const fixture = makeFloatingCdpFixture({progressPanel: true});
+    fixture.controlStyle(10, async () => {throw new Error(missingNodeMessage);});
+    const clock = controlledWaiter(fixture, () => {
+      fixture.clearStyleReads();
+      fixture.replace({progressPanel: false, nodeIdOffset: 100});
+    });
+    const predicate = vi.fn((state: FloatingCliState) => Boolean(state.progressPanel && state.progress?.running));
+    await expect(clock.__testWaitForFloatingUiState(fixture.page, predicate, 100, 'missing progress'))
+      .rejects.toThrow('missing progress');
+    expect(predicate).toHaveBeenCalledOnce();
+    expect(predicate.mock.calls[0][0]).toMatchObject({progressPanel: false, progress: null});
+    expect(clock.elapsed()).toBe(100);
+    expect(fixture.sessions).toHaveLength(2);
+  });
+
+  it.each([
+    'cdpSession.send: Protocol error (CSS.getComputedStyleForNode): Target closed',
+    'cdpSession.send: Protocol error (DOM.getBoxModel): Could not find node with given id',
+    'Could not find node with given id',
+    'CONTROLLED_UNKNOWN_CSS_FAILURE',
+  ])('未知或非精确CSS失效仍立即抛出同一错误：%s', async message => {
+    const fixture = makeFloatingCdpFixture();
+    const error = new Error(message);
+    fixture.controlStyle(10, async () => {throw error;});
+    const clock = controlledWaiter(fixture);
+    const predicate = vi.fn(() => true);
+    await expect(clock.__testWaitForFloatingUiState(fixture.page, predicate, 125, 'must stay fatal')).rejects.toBe(error);
+    expect(predicate).not.toHaveBeenCalled();
+    expect(fixture.page.waitForTimeout).not.toHaveBeenCalled();
+    expect(fixture.sessions).toHaveLength(1);
+    expect(fixture.sessions[0].detach).toHaveBeenCalledOnce();
+    expect(clock.elapsed()).toBe(0);
+  });
+
+  it('并行样式读取先失效且另一个仍pending时，未知CSS异常仍立即fatal而不被丢弃样本掩盖', async () => {
+    const fixture = makeFloatingCdpFixture();
+    const stale = new Error(missingNodeMessage);
+    const unknown = new Error('CONTROLLED_PARALLEL_CSS_FAILURE');
+    let release!: (style: FloatingCdpStyle) => void;
+    const pending = new Promise<FloatingCdpStyle>(resolve => {release = resolve;});
+    fixture.controlStyle(7, async () => {throw stale;});
+    fixture.controlStyle(6, () => pending);
+    fixture.controlStyle(10, async () => {throw unknown;});
+    const clock = controlledWaiter(fixture);
+    const predicate = vi.fn(() => true);
+    try {
+      await expect(clock.__testWaitForFloatingUiState(fixture.page, predicate, 125, 'parallel error')).rejects.toBe(unknown);
+      expect(predicate).not.toHaveBeenCalled();
+      expect(fixture.page.waitForTimeout).not.toHaveBeenCalled();
+      expect(fixture.sessions[0].detach).toHaveBeenCalledOnce();
+    } finally {release({opacity: '0', visibility: 'visible', display: 'flex'});}
+  });
+
+  it('document阶段即使抛出相同CSS字串也不是由特定style调用产生的pending状态', async () => {
+    const fixture = makeFloatingCdpFixture();
+    const error = new Error(missingNodeMessage);
+    fixture.failDocument(error);
+    const clock = controlledWaiter(fixture);
+    await expect(clock.__testWaitForFloatingUiState(fixture.page, () => true, 125, 'document failed')).rejects.toBe(error);
+    expect(fixture.page.waitForTimeout).not.toHaveBeenCalled();
+    expect(fixture.sessions[0].detach).toHaveBeenCalledOnce();
+  });
+
+  it('直接reader与无自动展开观察仍抛出原失效错误，不把空样本计作稳定成功', async () => {
+    const fixture = makeFloatingCdpFixture();
+    const stale = new Error(missingNodeMessage);
+    fixture.controlStyle(10, async () => {throw stale;});
+    await expect(floatingCli.readFloatingUiState(fixture.page)).rejects.toBe(stale);
+    const clock = controlledWaiter(fixture);
+    await expect(clock.__testAssertNoAutomaticFloatingExpansion(fixture.page)).rejects.toBe(stale);
+    expect(fixture.page.waitForTimeout).not.toHaveBeenCalled();
+    for (const session of fixture.sessions) expect(session.detach).toHaveBeenCalledOnce();
   });
 });
 
