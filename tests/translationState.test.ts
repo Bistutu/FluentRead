@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {parseHTML} from "linkedom";
+import {collectLiveTranslationTextSlots, getCurrentTranslationCore} from '@/src/core/translation/public';
 import {
     acquireTranslationLayoutOverride,
     beginTranslation,
@@ -31,6 +32,76 @@ import {
     unwrapUnownedSingleTextSlots,
     type TranslationState,
 } from "@/src/features/full-page-translation/content/state";
+
+describe('普通 owner 的结构签名与真实 Text 槽一致', () => {
+    it.each([
+        ['Brown 数字与空锚点', '1<tt>&nbsp;</tt><a name="(part._.Introduction)"></a>Introduction', ['Introduction']],
+        ['独立数值 badge', '<span>23</span>Introduction', ['Introduction']],
+        ['独立时钟', '<span>12:34</span>Introduction', ['Introduction']],
+        ['Roadmap 域名链接', '<span>Partner</span>Get the latest Frontend news from our sister site <a href="https://thenewstack.io/">TheNewStack.io</a>', ['Partner', 'Get the latest Frontend news from our sister site']],
+        ['URL 链接', 'Read <a href="https://example.com/">https://example.com/</a>', ['Read']],
+        ['普通链接文案', 'Read <a href="https://example.com/">the details</a>', ['Read', 'the details']],
+        ['句号独立槽', 'Introduction<span>.</span>', ['Introduction', '.']],
+        ['省略号独立槽', 'Introduction<span>…</span>', ['Introduction', '…']],
+        ['emoji 独立槽', 'Introduction<span>😀</span>', ['Introduction', '😀']],
+        ['保护内容', '<code>23</code><span translate="no">literal</span>Introduction', ['Introduction']],
+    ] as const)('%s 不修改 DOM 且两种签名收敛', (_name, markup, expectedSources) => {
+        const {document} = parseHTML(`<html><body><h3 id="owner">${markup}</h3></body></html>`);
+        const owner = document.querySelector<HTMLElement>('#owner')!;
+        const core = getCurrentTranslationCore();
+        const slots = collectLiveTranslationTextSlots(owner, core.shouldStayOriginal, undefined, {protectedElement: owner});
+        expect(slots.map(slot => slot.source)).toEqual(expectedSources);
+        const before = owner.outerHTML;
+        const captured = getTranslationSourceStructureSignature(owner, false, slots.map(slot => slot.node));
+        expect(getTranslationSourceStructureSignature(owner)).toBe(captured);
+        expect(owner.outerHTML).toBe(before);
+        const attempt = beginTranslation(owner, 'bilingual', 'content', false,
+            owner.textContent ?? '', slots.map(slot => slot.node))!;
+        try {
+            expect(markTranslationComplete(owner, attempt.state, attempt.generation, false)).toBe(true);
+            const wrapper = document.createElement('span');
+            wrapper.className = 'fluent-read-bilingual-content';
+            wrapper.setAttribute('data-fr-translation-owned', 'true');
+            wrapper.textContent = '介绍'; owner.appendChild(wrapper);
+            setBilingualContent(owner, wrapper);
+            expect(attempt.state.sourceStructureSignature).toBe(getTranslationSourceStructureSignature(owner));
+            // 此公共入口内部复核普通 owner 签名；不访问或替换私有状态。
+            expect(tryRepairBilingualTranslationArtifact(owner, attempt.state)).toBe('repaired');
+            expect(wrapper.parentNode).toBe(owner);
+        } finally { restoreTranslation(owner); }
+        expect(owner.outerHTML).toBe(before);
+    });
+
+    it.each([
+        ['独立数字', '<span>1</span>Introduction', (owner: HTMLElement) => {owner.querySelector('span')!.textContent = '2';}],
+        ['域名标识符', '<a href="https://example.com">example.com</a>Introduction', (owner: HTMLElement) => {owner.querySelector('a')!.textContent = 'other.example.com';}],
+        ['链接变为普通文案', '<a href="https://example.com">example.com</a>Introduction', (owner: HTMLElement) => {owner.querySelector('a')!.textContent = 'Read the details';}],
+        ['translate 保护', '<span>Readable source</span>Introduction', (owner: HTMLElement) => {owner.querySelector('span')!.setAttribute('translate', 'no');}],
+        ['hidden 保护', '<span>Readable source</span>Introduction', (owner: HTMLElement) => {owner.querySelector('span')!.setAttribute('hidden', '');}],
+        ['display 保护', '<span>Readable source</span>Introduction', (owner: HTMLElement) => {owner.querySelector<HTMLElement>('span')!.style.display = 'none';}],
+        ['visibility 保护', '<span>Readable source</span>Introduction', (owner: HTMLElement) => {owner.querySelector<HTMLElement>('span')!.style.visibility = 'hidden';}],
+    ] as const)('%s 变化仍改变来源签名', (_name, markup, mutate) => {
+        const {document} = parseHTML(`<html><body><h3 id="owner">${markup}</h3></body></html>`);
+        const owner = document.querySelector<HTMLElement>('#owner')!;
+        const view = document.defaultView!;
+        const previous = Object.getOwnPropertyDescriptor(view, 'getComputedStyle');
+        // linkedom 没有 CSS 计算能力，保护判定仍读取真实节点的 inline style。
+        Object.defineProperty(view, 'getComputedStyle', {configurable: true, value: (element: HTMLElement) => ({
+            display: element.style.display || 'block', visibility: element.style.visibility || 'visible',
+            position: 'static', getPropertyValue: (name: string) => element.style.getPropertyValue(name) || '',
+        })});
+        try {
+            const signature = getTranslationSourceStructureSignature(owner);
+            mutate(owner);
+            const changed = owner.outerHTML;
+            expect(getTranslationSourceStructureSignature(owner)).not.toBe(signature);
+            expect(owner.outerHTML).toBe(changed);
+        } finally {
+            if (previous) Object.defineProperty(view, 'getComputedStyle', previous);
+            else Reflect.deleteProperty(view, 'getComputedStyle');
+        }
+    });
+});
 
 /**
  * 用最小的 DOM 替身测试状态机，不把 jsdom 引入生产依赖。
