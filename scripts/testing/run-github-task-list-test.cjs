@@ -117,6 +117,17 @@ async function main() {
     const rows = [...document.querySelector(bodySelector).querySelectorAll(taskSelector)].filter(e => !e.closest(owned));
     return rows.length > 0 && rows.every(row => row.querySelectorAll(owned).length === expected);
   }, {bodySelector, taskSelector, owned, expected}, {timeout: args.timeout});
+  const waitFull = () => args.live ? waitTasks(1) : page.waitForFunction(({bodySelector, taskSelector, owned}) => {
+    const body = document.querySelector(bodySelector);
+    if (!body) return false;
+    const rows = [...body.querySelectorAll(taskSelector)].filter(row => !row.closest(owned));
+    const headings = body.querySelectorAll('[data-testid="task-heading"]');
+    const paragraphs = body.querySelectorAll('[data-testid="adjacent-paragraph"]');
+    if (rows.length === 0 || headings.length !== 1 || paragraphs.length !== 1) return false;
+    const owners = [headings[0], ...rows, paragraphs[0]];
+    return owners.every(owner => owner.querySelectorAll(owned).length === 1)
+      && body.querySelectorAll(owned).length === rows.length + 2;
+  }, {bodySelector, taskSelector, owned}, {timeout: args.timeout});
   const captureTaskGroup = async body => {
     const clip = await body.locator('li').filter({has: page.locator(taskSelector)}).first().evaluate(group => {
       const rect = group.getBoundingClientRect();
@@ -231,7 +242,7 @@ async function main() {
     result.hoverRetranslated = await state(); assertGranularity(result.hoverRetranslated);
     await hover(0); await waitCount(`${bodySelector} ${owned}`, 0);
 
-    await full(); await waitTasks(1); await waitCount('.fluent-read-loading', 0);
+    await full(); await waitFull(); await waitCount('.fluent-read-loading', 0);
     result.full = await state(); assertGranularity(result.full); await assertHost(); await assertRequests();
     await page.screenshot({caret: 'initial', path: path.join(args.artifactsDir, 'translated.png')});
     if (args.live) await captureTaskGroup(body);
@@ -239,7 +250,7 @@ async function main() {
     await full(); await waitCount(owned, 0); await page.waitForTimeout(200);
     result.restored = await state(); assert.deepEqual(result.restored, result.before); await assertHost();
     assert.equal(await body.innerHTML(), original, 'full restore must recover exact original source DOM');
-    await full(); await waitTasks(1); await waitCount('.fluent-read-loading', 0);
+    await full(); await waitFull(); await waitCount('.fluent-read-loading', 0);
     result.retranslated = await state(); assertGranularity(result.retranslated); await assertHost();
     assert.equal(result.retranslated.bodyTotal, result.full.bodyTotal, 'retranslation must not duplicate wrappers');
     await page.screenshot({caret: 'initial', path: path.join(args.artifactsDir, 'retranslated.png')});
@@ -307,7 +318,7 @@ async function main() {
       await assertRequests();
       await full(); await waitCount(owned, 0);
       assert.equal(await page.evaluate(() => window.taskListDynamicCheckbox.checked && window.taskListDynamicCheckbox.isConnected && window.taskListDynamicLink.isConnected), true);
-      await full(); await waitTasks(1); await waitCount('.fluent-read-loading', 0);
+      await full(); await waitFull(); await waitCount('.fluent-read-loading', 0);
       dynamic.retranslated = await state(); assertGranularity(dynamic.retranslated);
       assert.equal(dynamic.retranslated.taskWrappers.length, 4);
       await page.screenshot({caret: 'initial', path: path.join(args.artifactsDir, 'dynamic.png')});
@@ -322,7 +333,7 @@ async function main() {
       await full(); await waitCount(owned, 0);
       remount.restored = await state(); assertGranularity(remount.restored);
       assert.equal(await page.locator('[data-testid="task-content-1"]').count(), 1);
-      await full(); await waitTasks(1); await waitCount('.fluent-read-loading', 0);
+      await full(); await waitFull(); await waitCount('.fluent-read-loading', 0);
       remount.retranslated = await state(); assertGranularity(remount.retranslated);
       assert.deepEqual(remount.retranslated.taskWrappers, [1, 1, 1, 1]);
       await full(); await waitCount(owned, 0); remount.passed = true;
