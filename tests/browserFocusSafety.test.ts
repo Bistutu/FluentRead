@@ -657,7 +657,7 @@ describe('browser regression focus safety', () => {
         expect(source).toContain("['服务 / 模型', '输入', '缓存', '输出', '次数', '总计']");
         expect(source).toContain('index % 5 === 0');
         expect(source).toContain('index % 5 === 2');
-        expect(source).toContain('FluentRead 译文缓存或配置历史');
+        expect(source).toContain('流畅阅读 译文缓存或配置历史');
         expect(source).toContain("getByText('缓存读取未上报'");
         expect(source).toContain("getByText('暂时无法拆分输入与缓存构成'");
         expect(source).toContain("mode: 'patch'");

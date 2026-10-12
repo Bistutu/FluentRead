@@ -4,7 +4,7 @@ import {Script} from 'node:vm';
 import ts from 'typescript';
 import {parseHTML} from 'linkedom';
 import {describe, expect, it} from 'vitest';
-import {navigationGroups, navigationItems} from '@/src/features/settings/model/navigation';
+import {navigationGroups, navigationItems, SETTINGS_TABBED_SECTION_IDS} from '@/src/features/settings/model/navigation';
 import {interfaceSkinOptions, DEFAULT_POPUP_QUICK_FEATURE_ORDER, DEFAULT_POPUP_QUICK_FEATURE_VISIBILITY} from '@/src/core/config/interfaceAppearance';
 
 // Load only explicitly selected declarations. The CLI's launch, I/O and main()
@@ -65,10 +65,17 @@ describe('settings center CLI production contracts', () => {
     });
 });
 
-function navigationPage(mobileVisible: boolean, initiallyCollapsed = false) {
+function navigationPage(mobileVisible: boolean, initiallyCollapsed = false, panelKind: 'category' | 'anchor' = 'category') {
     const actions: string[] = [];
     let activeSection = '';
     let collapsed = initiallyCollapsed;
+    const {document} = parseHTML('<!doctype html><html><body><nav class="settings-page-tabs"></nav></body></html>');
+    const continuousPanels = ['translation', 'video-learning', 'skin', 'motion', 'layout', 'font'].map(id => {
+        const panel = document.createElement('section');
+        panel.dataset.settingsAnchor = id;
+        document.body.append(panel);
+        return panel;
+    });
     const page = {
         locator(selector: string): any {
             if (selector === 'select.mobile-settings-navigation') return {
@@ -76,7 +83,15 @@ function navigationPage(mobileVisible: boolean, initiallyCollapsed = false) {
                 selectOption: async (id: string) => {activeSection = id; actions.push(`mobile:${id}`);},
             };
             if (selector.startsWith('.settings-page-tabs')) return {
-                click: async () => {actions.push(`panel:${selector.match(/data-settings-category="([^"]+)"/)?.[1]}`);},
+                click: async () => {
+                    const id = selector.match(/data-settings-category="([^"]+)"/)?.[1];
+                    expect(id).toBeDefined();
+                    expect(selector).toContain(`button[data-settings-anchor-link="${id}"]`);
+                    const button = document.createElement('button');
+                    button.setAttribute(`data-settings-${panelKind === 'category' ? 'category' : 'anchor-link'}`, id!);
+                    document.querySelector('.settings-page-tabs')!.replaceChildren(button);
+                    actions.push(`panel:${id}`);
+                },
             };
             const id = selector.match(/data-section="([^"]+)"/)?.[1];
             if (!id) throw new Error(`Unexpected navigation selector: ${selector}`);
@@ -99,16 +114,41 @@ function navigationPage(mobileVisible: boolean, initiallyCollapsed = false) {
                 },
             };
         },
+        waitForFunction: async (predicate: (id: string) => boolean, id: string, options: {timeout: number}) => {
+            expect(options).toEqual({timeout: 30000});
+            expect(actions.at(-1)).toBe(`panel:${id}`);
+            const button = document.querySelector('.settings-page-tabs button')!;
+            // Run the actual CLI callback against DOM state, including the wrong
+            // aria-current value, so a no-op or permissive wait cannot pass.
+            expect(predicate(id)).toBe(false);
+            button.setAttribute('aria-current', panelKind === 'category' ? 'location' : 'true');
+            expect(predicate(id)).toBe(false);
+            button.setAttribute('aria-current', panelKind === 'category' ? 'true' : 'location');
+            expect(predicate(id)).toBe(true);
+            expect(predicate(`${id}-missing`)).toBe(false);
+            actions.push(`panel-active:${id}`);
+        },
     };
-    return {page, actions};
+    return {page, actions, document, continuousPanels};
 }
 
 describe('settings center CLI navigation interactions', () => {
     it.each([false, true])('uses the visible desktop/mobile navigation before selecting model usage (mobile=%s)', async mobile => {
-        const {selectSettingsSection} = bindings(['settingsNavigationSelector', 'selectSettingsSection']);
         const fixture = navigationPage(mobile);
+        const {selectSettingsSection} = bindings(['settingsNavigationSelector', 'selectSettingsSection'], {document: fixture.document});
         await selectSettingsSection(fixture.page, 'settings-translation-stats', 'usage');
-        expect(fixture.actions).toEqual([`${mobile ? 'mobile' : 'sidebar'}:settings-translation-stats`, 'active:settings-translation-stats', 'panel:usage']);
+        expect(fixture.actions).toEqual([`${mobile ? 'mobile' : 'sidebar'}:settings-translation-stats`, 'active:settings-translation-stats', 'panel:usage', 'panel-active:usage']);
+        expect(SETTINGS_TABBED_SECTION_IDS.has('settings-translation-stats')).toBe(true);
+    });
+
+    it.each([false, true])('waits for the motion anchor while retaining all continuous interface panels (mobile=%s)', async mobile => {
+        const fixture = navigationPage(mobile, false, 'anchor');
+        const {selectSettingsSection} = bindings(['settingsNavigationSelector', 'selectSettingsSection'], {document: fixture.document});
+        await selectSettingsSection(fixture.page, 'settings-interface', 'motion');
+        expect(fixture.actions).toEqual([`${mobile ? 'mobile' : 'sidebar'}:settings-interface`, 'active:settings-interface', 'panel:motion', 'panel-active:motion']);
+        expect(SETTINGS_TABBED_SECTION_IDS.has('settings-interface')).toBe(false);
+        expect(fixture.continuousPanels.map(panel => panel.dataset.settingsAnchor)).toEqual(['translation', 'video-learning', 'skin', 'motion', 'layout', 'font']);
+        expect(fixture.continuousPanels.every(panel => !panel.hidden)).toBe(true);
     });
 
     it('reopens a collapsed group before clicking its section', async () => {
