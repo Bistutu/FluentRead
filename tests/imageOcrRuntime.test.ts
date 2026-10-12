@@ -56,10 +56,55 @@ describe('图片 OCR 处理与结果缓存', () => {
         expect(decoded.src).toBe('owned');expect(sources).toHaveLength(0);
         expect(canvas.width).toBe(0);expect(canvas.height).toBe(0);
     });
-    it.each(['png', 'jpeg', 'jpg'])('原尺寸 %s 输入仍直接复用编码，不增加 Canvas', async format => {
-        const input = `data:image/${format};base64,example`;
+    it.each([
+        'data:image/jpeg;base64,exif-rotated',
+        'data:image/jpg;base64,exif-rotated',
+        'DATA:IMAGE/JPEG;BASE64,exif-rotated',
+        'data:image/jpeg;charset=binary;base64,exif-rotated',
+        'data:image/JPG;CHARSET=binary;base64,exif-rotated',
+    ])('JPEG 编码 %s 使用浏览器已完成方向纠正的自然尺寸 PNG，保持文字坐标和源所有权', async input => {
+        // 浏览器已根据 EXIF 将横向编码像素转为纵向图；显示尺寸不应影响 OCR 的原图坐标。
+        const decoded = {naturalWidth: 600, naturalHeight: 900, width: 120, height: 180, src: 'borrowed-jpeg'} as HTMLImageElement;
+        const lines = await recognizeImage(input, 'en', undefined, {decodedImage: decoded});
+        expect(context.drawImage).toHaveBeenCalledWith(decoded, 0, 0, 600, 900);
+        expect(encodedSizes).toEqual([{width: 600, height: 900}]);
+        expect(canvas.toBlob).toHaveBeenCalledWith(expect.any(Function), 'image/png');
+        expect(recognize).toHaveBeenCalledWith(ENCODED_PNG, 'eng', expect.any(AbortSignal), undefined, expect.any(Function));
+        expect(lines).toEqual([{text: 'hello', bbox: {x0: 10, y0: 10, x1: 50, y1: 30}}]);
+        expect(decoded.src).toBe('borrowed-jpeg');
+        expect(sources).toHaveLength(0);
+        expect(canvas).toMatchObject({width: 0, height: 0});
+    });
+    it('JPEG 自行解码后使用自然尺寸 PNG，并在 Worker 识别前释放自有源', async () => {
+        dimensions = {width: 600, height: 900};
+        recognize.mockImplementationOnce(async () => {
+            expect(sources[0].src).toBe('');
+            expect(canvas).toMatchObject({width: 0, height: 0});
+            return blockResult();
+        });
+        await recognizeImage('data:image/jpeg;base64,owned-exif-jpeg', 'en');
+        expect(context.drawImage).toHaveBeenCalledWith(sources[0], 0, 0, 600, 900);
+        expect(encodedSizes).toEqual([{width: 600, height: 900}]);
+        expect(recognize).toHaveBeenCalledWith(ENCODED_PNG, 'eng', expect.any(AbortSignal), undefined, expect.any(Function));
+        expect(sources[0]).toMatchObject({src: '', onload: null, onerror: null});
+    });
+    it('降采样的 JPEG 坐标映回浏览器纠正方向后的自然尺寸，不再次旋转或使用显示尺寸', async () => {
+        const decoded = {naturalWidth: 2048, naturalHeight: 8192, width: 256, height: 1024, src: 'large-jpeg'} as HTMLImageElement;
+        const lines = await recognizeImage('data:image/jpeg;base64,large-exif-jpeg', 'en', undefined, {decodedImage: decoded});
+        expect(context.drawImage).toHaveBeenCalledWith(decoded, 0, 0, 1024, 4096);
+        expect(encodedSizes).toEqual([{width: 1024, height: 4096}]);
+        expect(lines).toEqual([{text: 'hello', bbox: {x0: 20, y0: 20, x1: 100, y1: 60}}]);
+        expect(decoded.src).toBe('large-jpeg');
+    });
+    it.each([
+        'data:image/png;base64,example',
+        'DATA:IMAGE/PNG;BASE64,example',
+        'data:image/png;charset=binary;base64,example',
+    ])('原尺寸 PNG 编码 %s 仍直接复用，不增加 Canvas', async input => {
         await recognizeImage(input, 'ko');
         expect(recognize).toHaveBeenCalledWith(input, 'kor+eng', expect.any(AbortSignal), undefined, expect.any(Function));
+        expect(context.drawImage).not.toHaveBeenCalled();
+        expect(document.createElement).not.toHaveBeenCalled();
         expect(canvas.toDataURL).not.toHaveBeenCalled();
         expect(canvas.toBlob).not.toHaveBeenCalled(); expect(readers).toHaveLength(0);
     });
@@ -296,6 +341,37 @@ describe('图片 OCR 处理与结果缓存', () => {
         expect(readers).toHaveLength(0);
         expect(canvas).toMatchObject({width: 0, height: 0});
         expect(decoded.src).toBe('borrowed-image');
+    });
+
+    it.each([false, true])('JPEG 借用解码图=%s 编码取消后丢弃迟到 PNG 并清理像素，同图可重新识别', async borrowed => {
+        dimensions = {width: 600, height: 900};
+        const input = `data:image/jpeg;base64,cancelled-exif-${borrowed}`;
+        const controller = new AbortController();
+        const decoded = {naturalWidth: 600, naturalHeight: 900, src: 'borrowed-jpeg'} as HTMLImageElement;
+        const options = borrowed ? {decodedImage: decoded} : {};
+        let complete!: BlobCallback;
+        canvas.toBlob.mockImplementationOnce((callback: BlobCallback) => {complete = callback;});
+        const operation = recognizeImage(input, 'en', controller.signal, options);
+        const outcome = operation.then(result => ({result}), error => ({error}));
+        await vi.waitFor(() => expect(canvas.toBlob).toHaveBeenCalledOnce());
+        expect(canvas).toMatchObject({width: 600, height: 900});
+        expect(recognize).not.toHaveBeenCalled();
+        if (borrowed) expect(decoded.src).toBe('borrowed-jpeg'); else expect(sources[0].src).toBe('');
+        controller.abort();
+        complete(pngBlob);
+        expect(await outcome).toMatchObject({error: {name: 'AbortError'}});
+        await vi.waitFor(() => expect(canvas).toMatchObject({width: 0, height: 0}));
+        expect(readers).toHaveLength(0);
+        expect(recognize).not.toHaveBeenCalled();
+        await expect(recognizeImage(input, 'en', undefined, options)).resolves.toEqual([
+            {text: 'hello', bbox: {x0: 10, y0: 10, x1: 50, y1: 30}},
+        ]);
+        expect(recognize).toHaveBeenCalledOnce();
+        expect(recognize).toHaveBeenCalledWith(ENCODED_PNG, 'eng', expect.any(AbortSignal), undefined, expect.any(Function));
+        expect(readers).toHaveLength(1);
+        expect(canvas).toMatchObject({width: 0, height: 0});
+        expect(decoded.src).toBe('borrowed-jpeg');
+        if (!borrowed) expect(sources.every(source => source.src === '')).toBe(true);
     });
 
     it('圈选小图放大加边后映回坐标，与普通图片分开缓存且不重复识别', async () => {

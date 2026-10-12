@@ -38,6 +38,7 @@
       "tests/extensionSizeBudget.test.ts"
     ],
     "unit": [
+      "tests/imageOcrPixels.test.ts",
       "tests/googleRequestGate.test.ts",
       "tests/implementationAudit48H.test.ts",
       "tests/translationCenterSession.test.ts",
