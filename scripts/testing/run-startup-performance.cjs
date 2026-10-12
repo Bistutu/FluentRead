@@ -148,20 +148,30 @@ async function measure(context, kind, url, selector, iteration) {
     console.error(error);
     process.exitCode = 1;
   } finally {
+    report.cleanupErrors = [];
     try {
-      fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));
+      if (session) {
+        await session.close();
+        fs.rmSync(profileDir, {recursive: true, force: true});
+      } else {
+        try {fs.rmdirSync(profileDir);} catch (error) {
+          if (error.code !== 'ENOTEMPTY') throw error;
+        }
+      }
+    } catch (error) {
+      report.ok = false;
+      report.cleanupErrors.push(error.stack);
+      process.exitCode = 1;
     } finally {
       try {
-        if (session) {
-          await session.close();
-          fs.rmSync(profileDir, {recursive: true, force: true});
-        } else {
-          try {fs.rmdirSync(profileDir);} catch { /* Retain nonempty profiles after uncertain initialization. */ }
-        }
-      } finally {
         server.closeAllConnections();
-        await new Promise(resolve => server.close(resolve));
+        await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+      } catch (error) {
+        report.ok = false;
+        report.cleanupErrors.push(error.stack);
+        process.exitCode = 1;
       }
+      fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));
     }
   }
 })();

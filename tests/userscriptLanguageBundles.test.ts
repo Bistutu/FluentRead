@@ -179,13 +179,13 @@ describe('userscript remote UI language data', () => {
         }
         await assertLocalizedRegistration();
         expect(requests).toHaveLength(1);
-        expect(values.get(`fluentread:ui-language:${remoteFile}`)).toEqual(original);
+        expect(values.get(`fluentread:ui-language:${remoteFile}`)).toBe(JSON.stringify(original));
         // 注册补充不写回固定资源或GM缓存；离线读取同一旧资源也应本地化。
         vi.resetModules();
         globalThis.GM.xmlHttpRequest = () => { throw new Error('offline'); };
         await assertLocalizedRegistration();
         expect(requests).toHaveLength(1);
-        expect(values.get(`fluentread:ui-language:${remoteFile}`)).toEqual(original);
+        expect(values.get(`fluentread:ui-language:${remoteFile}`)).toBe(JSON.stringify(original));
         expect(readFileSync(resolve(languageDir, remoteFile), 'utf8')).toBe(remoteSource);
     });
 

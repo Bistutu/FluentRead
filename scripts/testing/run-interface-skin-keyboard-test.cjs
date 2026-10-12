@@ -104,10 +104,25 @@ fs.mkdirSync(artifactsDir, {recursive: true});
     report.failure = error.stack;
     process.exitCode = 1;
   } finally {
+    report.cleanup = {browserClosed: false, profileRemoved: false};
+    try {
+      if (session) {
+        await session.close();
+        report.cleanup.browserClosed = true;
+        fs.rmSync(profileDir, {recursive: true, force: true});
+        report.cleanup.profileRemoved = true;
+      } else {
+        // 初始化归属不确定时仅删除空目录，保留可能仍由浏览器使用的配置。
+        try { fs.rmdirSync(profileDir); report.cleanup.profileRemoved = true; }
+        catch (error) { if (error.code !== 'ENOTEMPTY') throw error; }
+      }
+    } catch (error) {
+      report.ok = false;
+      report.cleanupFailure = error.stack;
+      process.exitCode = 1;
+    }
     fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));
-    await session?.close();
-    if (session) fs.rmSync(profileDir, {recursive: true, force: true});
     console.log(JSON.stringify({ok: report.ok, initialTabStops: report.initialTabStops, checks: report.checks,
-      quickClose: report.quickClose, crossPageUpdate: report.crossPageUpdate, dark390: report.dark390, failure: report.failure}, null, 2));
+      quickClose: report.quickClose, crossPageUpdate: report.crossPageUpdate, dark390: report.dark390, failure: report.failure, cleanup: report.cleanup, cleanupFailure: report.cleanupFailure}, null, 2));
   }
 })();
