@@ -1213,6 +1213,7 @@ describe('49F actual pinned-data virtual catalog consumer', () => {
         const realm = createContext({});
         runInContext(readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8'), realm, {timeout: 5_000});
         const original = realm.__FLUENTREAD_USERSCRIPT_DATA__.siteCatalogs;
+        const originalSnapshot = JSON.stringify(original);
         const catalogs: Record<string, any> = {};
         for (const name of ['established', 'websites', 'profiles']) {
             const resolver = typeof plugin.resolveId === 'function' ? plugin.resolveId : plugin.resolveId!.handler;
@@ -1224,31 +1225,34 @@ describe('49F actual pinned-data virtual catalog consumer', () => {
             runInContext(`(function(module, exports) {${compiled.code}\n})(module, module.exports);`, realm, {timeout: 5_000});
             catalogs[name] = realm.module.exports.default;
         }
-        return {catalogs, original};
+        return {catalogs, original, originalSnapshot};
     }
 
     afterEach(() => vi.unstubAllEnvs());
 
     it('reconciles all 19 authoritative established rules without mutating pinned data and reuses every unchanged rule', async () => {
-        const {catalogs, original} = await loadCatalogs();
+        const {catalogs, original, originalSnapshot} = await loadCatalogs();
         expect(original.established).toHaveLength(17);
         expect(catalogs.established).toHaveLength(19);
         for (const name of ['established', 'websites', 'profiles']) {
-            expect(catalogs[name]).toEqual(JSON.parse(readFileSync(resolve(process.cwd(), `src/core/site-adaptation/catalog/${name}.json`), 'utf8')));
-        }
-        const authoritative = JSON.parse(readFileSync(resolve(process.cwd(), 'src/core/site-adaptation/catalog/established.json'), 'utf8'));
-        for (const rule of original.established) {
-            const expected = authoritative.find((current: any) => current.id === rule.id);
-            const actual = catalogs.established.find((current: any) => current.id === rule.id);
-            if (JSON.stringify(expected) === JSON.stringify(rule)) expect(actual).toBe(rule);
-            else {expect(actual).not.toBe(rule);expect(actual).toEqual(expected);}
+            const authoritative = JSON.parse(readFileSync(resolve(process.cwd(), `src/core/site-adaptation/catalog/${name}.json`), 'utf8'));
+            expect(catalogs[name]).toEqual(authoritative);
+            // 完全未变的目录保留整体身份；更新目录仍复用每条未变的固定资源规则。
+            if (JSON.stringify(authoritative) === JSON.stringify(original[name])) expect(catalogs[name]).toBe(original[name]);
+            else expect(catalogs[name]).not.toBe(original[name]);
+            if (Array.isArray(authoritative)) for (const rule of original[name]) {
+                const expected = authoritative.find((current: any) => current.id === rule.id);
+                const actual = catalogs[name].find((current: any) => current.id === rule.id);
+                if (JSON.stringify(expected) === JSON.stringify(rule)) expect(actual).toBe(rule);
+                else {expect(actual).not.toBe(rule);expect(actual).toEqual(expected);}
+            }
         }
         const github = catalogs.established.find((rule: any) => rule.id === 'github');
         expect(github.content.flatMap((entry: any) => entry.css)).toContain('a[data-testid="issue-listitem-title-link"]');
         expect(github.protect).toContain('[data-testid="issues-list-surface"] [class*="Description-module__container"]');
         expect(original.established.find((rule: any) => rule.id === 'github').protect)
             .not.toContain('[data-testid="issues-list-surface"] [class*="Description-module__container"]');
-        expect(catalogs.websites).toBe(original.websites); expect(catalogs.profiles).toBe(original.profiles);
+        expect(JSON.stringify(original)).toBe(originalSnapshot);
         expect(original.established).toHaveLength(17);
     });
 
