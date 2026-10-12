@@ -1427,9 +1427,29 @@ compile、architecture、audit 与四组测试共七阶段自然 0。architectur
 根证据目录 /private/tmp/fluentread-performance-experience-20261010/round60-service-dialog-feedback/。实际基线、旧源反例、两次候选及原两项语言失败见 baseline-attempt1/、baseline-extra-attempt1/、old-source-red-attempt1/、candidate-attempt1/、candidate-attempt2/、candidate-language-attempt1/；终态根和独立复核见 ROOT-VALIDATION-REVIEW.json、ROOT-CHECK-COUNTS.json、peer-final-test-review/。完整构建、产品及字节/资源/许可核对见 builds-attempt1/、frozen-builds-attempt1/、ROOT-FROZEN-PRODUCT-REVIEW.json、peer-final-product-review/。未使用或修改参考仓库；继续仅本地优化，不上传或发布。
 
 
+### 第五十七批：脚本目标移除不可达的右键菜单编辑器（R61）
+
+脚本入口原已用公开提示替代右键菜单编辑器，但未给父组件的异步 import 注册增加构建目标守卫，完整 IIFE 仍携带这个不可达组件。本批只在 SettingsSections 的 ContextMenuSettings 声明沿用现有 userscript ? null : defineAsyncComponent 模式。公共不可用说明、导航、配置、共享菜单 domain、GM 菜单和扩展版组件本体均保持；没有新依赖、别名、语言资源、预算或缓存机制，没有新增低影响实现镜像测试。此声明在 Chrome/Firefox 仍产生原组件注册，类型检查实际通过。
+
+本轮使用同一干净 R60 本地提交 5a23376b5、锁、Node/pnpm 和协调器完成新鲜基线与候选四产品，3279 份输入的唯一差异是这一个 SFC 声明，文件 81285→81335 B，原 owner 和全部测试名字没有改写。两臂 menu 62 + settings 101 + bundler 187 = 350 项全部通过，七文件完整 fullName/status/重数精确相同，没有新增、过滤或跳过案例。候选 compile、architecture 自然 0；architecture 为 34 文件/1881 项，与聚焦组重叠不累加；audit 为 693 文件/12325 项静态索引，不称全部执行，原受控日志保留。
+
+| 完整正式产品 | 本轮新鲜基线 | 本轮候选 | 实际字节差 |
+| --- | ---: | ---: | ---: |
+| Chrome 目录 | 61,462,921 | 61,462,965 | +44 |
+| Firefox 目录 | 61,461,959 | 61,461,915 | -44 |
+| 普通脚本 | 2,035,661 | 2,035,661 | 0 |
+| 独立脚本 | 3,813,676 | 3,808,449 | -5,227 |
+
+两臂各 938 份完整产物均核对字节与摘要；每扩展 468 文件，manifest、270 非代码静态资源和两个固定 MJS 保持。扩展仍有真实 ContextMenuSettings JS/CSS 产物，CSS 整字节相同；JS 的引用路径与文件摘要变化，不冒称代码文件全部相同。普通脚本整文件一致。独立脚本的组件名称由一次变为零次，实际解压其内嵌 CSS 后，原组件 scope 的 19 处归零；原完整 CSS 去掉文件末尾换行后存在于基线，候选不再带该 scope，CSS 解压字节 915361→913078（-2283）。解压只读产品，不执行扩展/GM 或模拟页面状态。两脚本 metadata/pins 与三个完整原始许可保持。
+
+两臂七产品阶段均 [0,0,0,0,0,0,1]，四构建、manifest 和普通脚本校验通过，独立脚本仍在原 3,600,000 B 预算处失败。候选仍超 208,449 B，不能把净减少量、成功冻结或其前十二阶段自然 0 当作所有门禁通过。既有 R60 语言失败与原生失败保持历史记录，本轮没有重跑并冒称它们已修复；没有 CPU/heap、启动延迟、Firefox 实机或脚本完整原生 UI 覆盖结论。公开提示在源码保持和构建可达性中核对，直接父 owner 的 Chrome 端口不冒充真实脚本提示挂载。
+
+证据目录 /private/tmp/fluentread-performance-experience-20261010/round61-context-menu-target-guard/：baseline-attempt1/、candidate-attempt1/、frozen-baseline/、frozen-candidate/、PRODUCT-COMPARISON.json、peer-source-review/ 与 peer-final-validation-review/。未借鉴或修改参考项目。用户本轮要求收尾后同步 main、rebase 并逐项 review；此处为合并前本地结果，未经最终审查的累计代码不会直接合并。
+
+
 ## 后续候选
 
-第五十六批已为添加服务窗口首次加载提供可关闭等待与错误反馈，462 项相关案例、类型和架构通过，语言组两项原基线失败保持；三个原生尝试完整保留为失败，第三次没有前台激活但未获得真实扩展模块请求暂停，新增错误 UI 尚缺原生覆盖。完整独立脚本为 3,813,676 B，原 3,600,000 B 预算仍超 213,676 B；反馈带来 1,048 B 成本，不声称性能或所有包改善。下一步核对脚本入口已公开禁用的右键菜单设置编辑器是否仍被 IIFE 携带，只在既有编译目标守卫处移除不可达子 UI，保留原提示、配置和扩展版能力，使用同锁、匹配完整产品测量实际字节。当前仅为静态候选，尚未修改或执行。继续保持许可、资源 pin、架构和原预算。
+第五十七批已给脚本入口不可达的右键菜单设置编辑器增加现有构建目标守卫，新鲜两臂350项相关案例、类型和架构通过，完整独立脚本减少5227 B至3808449 B；原3600000 B预算仍超208449 B，未放宽门槛或删除可达功能。下一步按用户新要求收尾当前分支，同步最新main并rebase，逐项审查整个累计差异，修复审查问题后重新验证；未经review的代码不合并，必要检查失败不绕过。暂不开展其他新增优化，许可、资源pins、配置与异步生命周期边界继续保持。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。
