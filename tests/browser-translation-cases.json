@@ -41,8 +41,8 @@
     ],
     "forbiddenSelectors": [
       "main svg.octicon",
-      "main [class*='ReposListItem-module__TopicsList']",
-      "main [class*='ReposListItem-module__LabelsContainer']",
+      "main [class*='ReposListItem-module__TopicsList'], main [data-listview-component='items-list'] [class*='TopicsList__']",
+      "main [class*='ReposListItem-module__LabelsContainer'], main [data-listview-component='items-list'] [class*='LabelsContainer__']",
       "main [data-listview-item-visibility-label='true']"
     ],
     "interactionSelectors": ["main a[href]"],
@@ -68,12 +68,12 @@
     ],
     "forbiddenSelectors": [
       "span[class*='IssueLabel']",
-      "[data-testid='issues-list-surface'] [class*='Description-module__container']",
+      "[data-testid='issues-list-surface'] [class*='Description-module__container'], [data-testid='issues-list-surface'] div:has(> span > [data-testid='author-filter-link']):has(> span > [data-testid='issue-activity-timestamp'])",
       "[data-testid='issue-activity-timestamp']"
     ],
     "forbiddenMustExistSelectors": [
       "span[class*='IssueLabel']",
-      "[data-testid='issues-list-surface'] [class*='Description-module__container']",
+      "[data-testid='issues-list-surface'] [class*='Description-module__container'], [data-testid='issues-list-surface'] div:has(> span > [data-testid='author-filter-link']):has(> span > [data-testid='issue-activity-timestamp'])",
       "[data-testid='issue-activity-timestamp']"
     ],
     "dynamicForbiddenSelectors": ["span[class*='IssueLabel']"],

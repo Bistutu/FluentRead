@@ -2785,24 +2785,30 @@ describe('translation candidate core', () => {
         expect(core.resolve(title)?.element).toBe(title);
     });
 
-    it('保护 GitHub 仓库列表的任意技术标签和受控元数据，正文相同词仍可翻译', () => {
+    it.each([
+        ['legacy', 'ReposListItem-module__TopicsList__fixture', 'ReposListItem-module__LabelsContainer__fixture', ''],
+        ['current-small', 'TopicsList__XBoKUv SmallScreenOnly__KktHod', 'LabelsContainer__Bi_rOW', 'data-listview-component="items-list"'],
+        ['current-large', 'TopicsList__XBoKUv HideOnSmallScreen__zMyWHa', 'LabelsContainer__Bi_rOW', 'data-listview-component="items-list"'],
+    ])('保护 GitHub %s 仓库列表的任意技术标签和受控元数据，正文相同词仍可翻译', (_variant, topicsClass, metadataClass, listAttributes) => {
         const {document, core} = page(`
-            <main><ul><li id="repository">
+            <main><ul ${listAttributes}><li id="repository">
                 <div data-listview-item-title-container="true"><h3><a href="/example/compiler">Compiler</a></h3>
                     <span id="visibility" data-listview-item-visibility-label="true">Public</span></div>
                 <div id="description" class="repos-list-description">Java and Python support the new QuasarLang2027 compiler. Public APIs remain useful.</div>
-                <div id="topics" class="ReposListItem-module__TopicsList__fixture">
+                <div id="topics" class="${topicsClass}">
                     <a href="/search?q=topic%3Ajava"><span>Java</span></a>
                     <a href="/search?q=topic%3Apython"><span>Python</span></a>
                     <a href="/topics/quasarlang2027"><span>QuasarLang2027</span></a>
                 </div>
-                <div id="metadata" class="ReposListItem-module__LabelsContainer__fixture">
+                <div id="metadata" class="${metadataClass}">
                     <div class="ReposListItem-module__LanguageLabelContainer__fixture"><span class="ReposListItem-module__PrimaryLanguageName__fixture">Go</span></div>
                     <span>Apache License 2.0</span><a href="/example/compiler/forks">14k forks</a>
                 </div>
             </li></ul>
             <article class="markdown-body"><p id="prose">Learn <a href="/topics/java">Java</a> and <a href="/topics/python">Python</a> through public examples.</p></article>
             <div id="generic-topic-class" class="TopicsList">Java and Python are discussed here.</div>
+            <section><div class="TopicsList__XBoKUv"><p id="outside-topic-prose">Technical topics remain readable outside the repository list.</p></div>
+                <div class="LabelsContainer__Bi_rOW"><p id="outside-label-prose">Labels are explained in ordinary prose outside the repository list.</p></div></section>
             </main>
         `, 'https://github.com/orgs/example/repositories');
         const protectedRegions = ['visibility', 'topics', 'metadata'].map((id) => document.getElementById(id)!);
@@ -2828,6 +2834,12 @@ describe('translation candidate core', () => {
         expect(createTranslationSourceSnapshot(prose, core.shouldStayOriginal).slots.map(({source}) => source))
             .toEqual(['Learn', 'Java', 'and', 'Python', 'through public examples.']);
         expect(candidates.some(({element}) => element.id === 'generic-topic-class')).toBe(true);
+        for (const id of ['outside-topic-prose', 'outside-label-prose']) {
+            const prose = document.getElementById(id)!;
+            expect(core.shouldStayOriginal(prose)).toBe(false);
+            expect(core.shouldIgnoreMutation(prose)).toBe(false);
+            expect(candidates.some(({element}) => element === prose)).toBe(true);
+        }
         const translatedHTML = applyTranslationsToSnapshot(snapshot, snapshot.slots.map(() => '正文译文'));
         for (const region of protectedRegions) {
             expect(snapshot.clone.querySelector(`#${region.id}`)).toBeNull();
@@ -2927,9 +2939,11 @@ describe('translation candidate core', () => {
     });
 
     it.each([
-        ['10084', 'kikyoulg', 'on Dec 6, 2024'],
-        ['9414', 'Preston2jager', 'on Jan 24, 2024'],
-    ])('owns the current GitHub issue #%s anchor in full and hover translation while preserving metadata', (number, author, date) => {
+        ['10084', 'kikyoulg', 'on Dec 6, 2024', 'Description-module__container__fixture'],
+        ['9414', 'Preston2jager', 'on Jan 24, 2024', 'Description-module__container__fixture'],
+        ['10084', 'kikyoulg', 'on Dec 6, 2024', 'container__W45oI6'],
+        ['9414', 'Preston2jager', 'on Jan 24, 2024', 'container__W45oI6'],
+    ])('owns GitHub issue #%s anchor with %s/%s metadata in %s across full and hover translation', (number, author, date, metadataClass) => {
         const {document, core} = page(`
             <main><div data-testid="issues-list-surface"><ul><li id="modern-row">
                 <div class="Title-module__container__fixture" data-listview-item-title-container="true">
@@ -2942,7 +2956,7 @@ describe('translation candidate core', () => {
                     </button></span>
                 </div>
                 <div class="MainContent-module__container__fixture"><div class="MainContent-module__inner__fixture">
-                    <div id="modern-metadata" class="Description-module__container__fixture">
+                    <div id="modern-metadata" class="${metadataClass}">
                         <span id="modern-repo">Eugeny/tabby#${number}</span><span> · <button type="button" data-testid="author-filter-link"
                             class="IssueListItem-module__authorLink__fixture"><span class="prc-VisuallyHidden-VisuallyHidden-Q0qSB">Filter by author </span>${author}</button>
                             <span id="modern-opened">opened</span> <relative-time data-testid="issue-activity-timestamp">${date}</relative-time>
@@ -3022,6 +3036,23 @@ describe('translation candidate core', () => {
         const prose = document.getElementById('description-prose')!;
         expect(core.shouldStayOriginal(description)).toBe(false);
         expect(core.shouldIgnoreMutation(description)).toBe(false);
+        expect(core.discover(document).some(({element}) => element === prose)).toBe(true);
+        expect(core.resolve(prose.firstChild)?.element).toBe(prose);
+    });
+
+    it.each([
+        ['missing-author', 'https://github.com/Eugeny/tabby/issues', 'data-testid="issues-list-surface"', '', '<relative-time data-testid="issue-activity-timestamp">yesterday</relative-time>'],
+        ['missing-timestamp', 'https://github.com/Eugeny/tabby/issues', 'data-testid="issues-list-surface"', '<button data-testid="author-filter-link">Fixture Author</button>', ''],
+        ['outside-surface', 'https://github.com/Eugeny/tabby/issues', '', '<button data-testid="author-filter-link">Fixture Author</button>', '<relative-time data-testid="issue-activity-timestamp">yesterday</relative-time>'],
+        ['other-host', 'https://example.test/issues', 'data-testid="issues-list-surface"', '<button data-testid="author-filter-link">Fixture Author</button>', '<relative-time data-testid="issue-activity-timestamp">yesterday</relative-time>'],
+    ])('keeps current metadata-container lookalike prose readable at %s', (_variant, url, surfaceAttributes, author, timestamp) => {
+        const {document, core} = page(`<main><div ${surfaceAttributes}><div id="lookalike" class="container__W45oI6">
+            <p id="lookalike-prose">The author opened a readable description with ordinary metadata words.</p>
+            <span>${author}${timestamp}</span></div></div></main>`, url);
+        const container = document.getElementById('lookalike')!;
+        const prose = document.getElementById('lookalike-prose')!;
+        expect(core.shouldStayOriginal(container)).toBe(false);
+        expect(core.shouldIgnoreMutation(container)).toBe(false);
         expect(core.discover(document).some(({element}) => element === prose)).toBe(true);
         expect(core.resolve(prose.firstChild)?.element).toBe(prose);
     });

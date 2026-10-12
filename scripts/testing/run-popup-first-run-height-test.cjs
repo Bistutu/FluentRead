@@ -75,6 +75,33 @@ async function inspectLanguages(page, width, dark) {
     document.documentElement.classList.toggle('dark', dark);
     scrollTo(0, 0);
   }, {width, dark});
+  // Capture the settled theme: text changes immediately, while card backgrounds
+  // still animate. Use the existing phase budget and read-only color sampling.
+  await page.waitForFunction(() => {
+    const root = getComputedStyle(document.documentElement);
+    const canvas = new OffscreenCanvas(1, 1);
+    const context = canvas.getContext('2d', {willReadFrequently: true});
+    if (!context) return false;
+    const pixel = color => {
+      if (!color || !CSS.supports('color', color)) return null;
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = color;
+      context.fillRect(0, 0, 1, 1);
+      return [...context.getImageData(0, 0, 1, 1).data].join(',');
+    };
+    try {
+      const cards = [...document.querySelectorAll('.onboarding-language-option')];
+      const panel = document.querySelector('.language-onboarding-card');
+      if (!cards.length || !panel || pixel(getComputedStyle(panel).backgroundColor) !== pixel(root.getPropertyValue('--surface').trim())) return false;
+      return cards.every(card => {
+        const actual = pixel(getComputedStyle(card).backgroundColor);
+        const expected = pixel(root.getPropertyValue(card.classList.contains('selected') ? '--brand-soft' : '--surface-soft').trim());
+        return actual !== null && actual === expected && !card.getAnimations().some(animation =>
+          typeof animation.transitionProperty === 'string' && /background/u.test(animation.transitionProperty)
+          && ['running', 'pending'].includes(animation.playState));
+      });
+    } finally {canvas.width = 0; canvas.height = 0;}
+  }, undefined, {timeout: args.timeout});
   const geometry = await page.evaluate(() => {
     const grid = document.querySelector('.onboarding-language-options').getBoundingClientRect();
     const shell = document.querySelector('.popup-shell');
@@ -84,6 +111,8 @@ async function inspectLanguages(page, width, dark) {
       return {
         language: option.dataset.language,
         text: option.innerText,
+        background: getComputedStyle(option).backgroundColor,
+        color: getComputedStyle(option).color,
         left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
         clipped: labels.some(label => label.scrollWidth > label.clientWidth + 1 || label.scrollHeight > label.clientHeight + 1),
       };

@@ -335,6 +335,9 @@ async function closeUnacquiredBrowserConnection(browser) {
 
 function createMacBackgroundSession(browser, context, windowPlacement) {
   let connectionClosing;
+  let guardedClose;
+  let guardedClosing;
+  let signalHandling;
   let signalsRouted = false;
   const session = {
     context,
@@ -345,32 +348,47 @@ function createMacBackgroundSession(browser, context, windowPlacement) {
     closeBrowserConnection,
     useGuardedClose,
   };
-  async function closeBrowserConnection() {
-    process.off('SIGINT', handleSigint);
-    process.off('SIGTERM', handleSigterm);
+  function closeBrowserConnection() {
     connectionClosing ||= (async () => {
       await browser.close();
     })();
-    await connectionClosing;
+    return connectionClosing;
+  }
+  function releaseSignalHandlers() {
+    process.off('SIGINT', handleSigint);
+    process.off('SIGTERM', handleSigterm);
+    signalsRouted = false;
+  }
+  function closeGuardedBrowser() {
+    if (!guardedClosing) {
+      const handler = guardedClose;
+      guardedClosing = Promise.resolve().then(() => handler.call(session)).finally(releaseSignalHandlers);
+    }
+    return guardedClosing;
   }
   function useGuardedClose(handler) {
     if (typeof handler !== 'function') throw new TypeError('Guarded close must be a function');
-    session.close = handler;
-    if (!signalsRouted) {
+    // Re-registering our wrapper must not turn its delegate into itself.
+    if (handler !== closeGuardedBrowser) guardedClose = handler;
+    session.close = closeGuardedBrowser;
+    if (!signalsRouted && !guardedClosing) {
       signalsRouted = true;
-      process.once('SIGINT', handleSigint);
-      process.once('SIGTERM', handleSigterm);
+      process.on('SIGINT', handleSigint);
+      process.on('SIGTERM', handleSigterm);
     }
   }
-  async function handleSignal(exitCode) {
-    try {
-      // Resolve the delegate at signal time; never retain the original close.
-      await session.close();
-    } catch (error) {
-      console.error('Guarded browser close failed; retain the profile:', error);
-    } finally {
-      process.exit(exitCode);
-    }
+  function handleSignal(exitCode) {
+    signalHandling ||= (async () => {
+      try {
+        // Resolve the delegate at signal time; never retain the original close.
+        await session.close();
+      } catch (error) {
+        console.error('Guarded browser close failed; retain the profile:', error);
+      } finally {
+        process.exit(exitCode);
+      }
+    })();
+    return signalHandling;
   }
   function handleSigint() { void handleSignal(130); }
   function handleSigterm() { void handleSignal(143); }

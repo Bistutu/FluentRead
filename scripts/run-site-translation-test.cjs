@@ -670,6 +670,26 @@ async function installCoverageTracker(page, rules) {
       }
       return {nodes, structure: JSON.stringify(structure)};
     };
+    // Only bounded missing-owner queries use presentation-filtered source. Raw
+    // canonical text/structure still guard coverage identity and restoration.
+    const completionQuerySource = (node) => {
+      const clone = node.cloneNode(true);
+      const liveDescendants = node.querySelectorAll('*');
+      const clonedDescendants = clone.querySelectorAll('*');
+      liveDescendants.forEach((live, index) => {
+        let style;
+        try { style = getComputedStyle(live); } catch { return; }
+        if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') {
+          clonedDescendants[index].remove();
+        }
+      });
+      clone.querySelectorAll(ownedSelector).forEach((owned) => owned.remove());
+      clone.querySelectorAll('[data-fr-translation-segment="true"]').forEach((segment) => {
+        segment.replaceWith(...segment.childNodes);
+      });
+      clone.querySelectorAll(protectedSelector).forEach((protectedNode) => protectedNode.remove());
+      return normalizeText(clone.textContent);
+    };
     const bindingCurrent = (binding) => {
       if (!binding || binding.pass !== completionPass || binding.sessionId !== completionSession ||
           binding.hostRevision !== metrics.hostMutationCount ||
@@ -686,6 +706,7 @@ async function installCoverageTracker(page, rules) {
           current.nodes.some((reference, index) => reference.deref() !== binding.identity.nodes[index].deref())) return false;
       const status = statusFor(found.state, found.record);
       return status.connected && status.eligible && status.source === binding.source &&
+        completionQuerySource(node) === binding.querySource &&
         !status.loading && !status.retry &&
         !node.querySelector(ownedSelector);
     };
@@ -693,11 +714,11 @@ async function installCoverageTracker(page, rules) {
       bindingCurrent(unchangedCompletions.get(recordToken(state, record)));
     const validReceipt = (receipt, binding) => receipt?.status === 'available' &&
       receipt.reason === 'accepted-result-identical' && receipt.sessionId === completionSession &&
-      receipt.source === binding.source && receipt.sourceCurrent === true &&
-      Array.isArray(receipt.sources) && receipt.sources.length === 1 && receipt.sources[0] === binding.source &&
+      receipt.source === binding.querySource && receipt.sourceCurrent === true &&
+      Array.isArray(receipt.sources) && receipt.sources.length === 1 && receipt.sources[0] === binding.querySource &&
       Array.isArray(receipt.outputs) && receipt.outputs.length === 1 &&
       typeof receipt.outputs[0] === 'string' && normalizeText(receipt.outputs[0]) !== '' &&
-      normalizeText(receipt.outputs[0]) === normalizeText(binding.source) &&
+      normalizeText(receipt.outputs[0]) === normalizeText(binding.querySource) &&
       Number.isSafeInteger(receipt.generation) && receipt.generation >= 0 &&
       typeof receipt.configuredService === 'string' && receipt.configuredService.trim() !== '' &&
       typeof receipt.targetLanguage === 'string' && receipt.targetLanguage.trim() !== '' &&
@@ -730,14 +751,16 @@ async function installCoverageTracker(page, rules) {
           const index = [...document.querySelectorAll(state.rule.selector)].indexOf(record.node);
           const identity = completionIdentity(record.node);
           if (!identity) return [];
-          const binding = {token, selector: state.rule.selector, index, source: record.sourceText,
+          const querySource = completionQuerySource(record.node);
+          if (!querySource) return [];
+          const binding = {token, selector: state.rule.selector, index, source: record.sourceText, querySource,
             sessionId, pass, nodeRef: new WeakRef(record.node), identity, deadline, hostRevision: metrics.hostMutationCount};
           if (index < 0 || !bindingCurrent(binding)) return [];
           const bindingId = ++nextBinding;
           completionBindings.set(bindingId, binding);
           binding.bindingId = bindingId;
           return [{bindingId, token, hostRevision: binding.hostRevision,
-            query: {selector: binding.selector, index, source: binding.source, sessionId}}];
+            query: {selector: binding.selector, index, source: binding.querySource, sessionId}}];
         });
       },
       acceptUnchangedQueries(batch, response, sessionId, pass) {
@@ -800,6 +823,7 @@ async function installCoverageTracker(page, rules) {
             const status = {...statusFor(found.state, found.record, token),
               verifiedUnchanged: recordVerifiedUnchanged(found.state, found.record),
               completionBindingId: unchangedCompletions.get(token)?.bindingId,
+              completionQuerySource: unchangedCompletions.get(token)?.querySource,
               completionPass, completionSessionId: completionSession};
             if (found.generationMatches ||
                 (!status.connected && found.state.rule.trackDynamic && found.record.translatedEver)) return status;
@@ -818,6 +842,7 @@ async function installCoverageTracker(page, rules) {
           return [{...statusFor(state, record, token),
             verifiedUnchanged: recordVerifiedUnchanged(state, record),
             completionBindingId: unchangedCompletions.get(token)?.bindingId,
+            completionQuerySource: unchangedCompletions.get(token)?.querySource,
             completionPass, completionSessionId: completionSession}];
         });
       },
@@ -864,7 +889,8 @@ async function installCoverageTracker(page, rules) {
             dynamicSeenCount: values.filter((record) => record.firstSeenAfterStart).length,
             translatedCount: translated.length,
             verifiedUnchangedCount: unchanged.length,
-            unchangedEvidence: unchanged.map(record => ({token: recordToken(state, record), source: record.sourceText,
+            unchangedEvidence: unchanged.map(record => ({token: recordToken(state, record),
+              source: unchangedCompletions.get(recordToken(state, record))?.querySource, canonicalSource: record.sourceText,
               bindingId: unchangedCompletions.get(recordToken(state, record))?.bindingId})),
             completedCount: translated.length + unchanged.length,
             completionSessionId: completionSession,
@@ -958,7 +984,7 @@ function authenticateCoverageStatuses(page, statuses) {
     const accepted = ledger?.accepted.get(status.completionBindingId);
     status.verifiedUnchanged = Boolean(status.verifiedUnchanged && accepted &&
       ledger.pass === status.completionPass && ledger.sessionId === status.completionSessionId &&
-      accepted.token === status.token && accepted.query.source === status.source);
+      accepted.token === status.token && accepted.query.source === status.completionQuerySource);
     if (status.verifiedUnchanged) trustedCompletionStatuses.set(status, {page, ledger});
   }
   return statuses;
@@ -1093,7 +1119,7 @@ async function verifyCoverageUnchanged(page, readCompletion, identity, timeout, 
             Array.isArray(response.outcomes) && response.outcomes.length === batch.length) {
           batch.forEach((item, index) => {
             const status = current.find(value => value.token === item.token && value.completionBindingId === item.bindingId);
-            if (status?.verifiedUnchanged && status.source === item.query.source &&
+            if (status?.verifiedUnchanged && status.completionQuerySource === item.query.source &&
                 acceptedOwnerCompletion(response.outcomes[index], item.query)) ledger.accepted.set(item.bindingId, item);
           });
         }

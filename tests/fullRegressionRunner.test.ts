@@ -81,7 +81,10 @@ describe('full regression runner', () => {
             command: 'node', args: ['--test', 'tests/agentBridge.test.mjs'],
         });
         expect(plan.steps.find((step: {id: string}) => step.id === 'focus-safe-browser-lifecycle')).toMatchObject({
-            phase: 'local', command: 'node', args: ['--test', 'tests/focusSafeBrowserOrdinaryLifecycle.test.mjs'],
+            phase: 'local', command: 'node', args: ['--test', '--test-concurrency=1',
+                'tests/focusSafeBrowserOrdinaryLifecycle.test.mjs',
+                'tests/focusSafeBrowserBackgroundSignal.test.mjs',
+                'tests/focusSafeBrowserBackgroundLifecycle.test.mjs'],
         });
         expect(plan.steps.filter((step: {id: string}) => step.id === 'document-live-http-evidence')).toEqual([
             expect.objectContaining({phase: 'local', command: 'node', args: ['--test', 'tests/documentLiveHttpEvidence.test.mjs']}),

@@ -2601,6 +2601,53 @@ describe('real-site translation matrix gates', () => {
     ]);
   });
 
+  it.each([
+    ['legacy', 'ReposListItem-module__TopicsList__fixture', 'ReposListItem-module__LabelsContainer__fixture'],
+    ['current-small', 'TopicsList__XBoKUv SmallScreenOnly__KktHod', 'LabelsContainer__Bi_rOW'],
+    ['current-large', 'TopicsList__XBoKUv HideOnSmallScreen__zMyWHa', 'LabelsContainer__Bi_rOW'],
+  ])('keeps GitHub %s repository topics and metadata mandatory while preserving description coverage', (_variant, topicsClass, labelsClass) => {
+    const {document} = parseHTML(`<main><ul data-listview-component="items-list"><li>
+      <a href="/microsoft/TypeScript">TypeScript</a><svg class="octicon"></svg>
+      <span id="visibility" data-listview-item-visibility-label="true">Public</span>
+      <div id="description" class="repos-list-description">TypeScript adds types to JavaScript.</div>
+      <div id="topics" class="${topicsClass}"><span>arbitrary-runtime-label</span></div>
+      <div id="metadata" class="${labelsClass}"><span>TypeScript</span><span>MIT License</span><span>42 forks</span></div>
+    </li></ul><p class="TopicsList__XBoKUv" id="outside-topics">A readable topic explanation.</p>
+      <p class="LabelsContainer__Bi_rOW" id="outside-labels">A readable label explanation.</p></main>`);
+    const config = cases['github-microsoft-repositories'];
+    const mandatory = resolveForbiddenMustExistSelectors(config.tier, config.forbiddenSelectors, [], []);
+    expect(mandatory).toEqual(config.forbiddenSelectors);
+    expect(mandatory).toHaveLength(4);
+    expect(mandatory.every(selector => document.querySelectorAll(selector).length > 0)).toBe(true);
+    expect([...document.querySelectorAll(config.forbiddenSelectors[1]!)].map(node => node.id)).toEqual(['topics']);
+    expect([...document.querySelectorAll(config.forbiddenSelectors[2]!)].map(node => node.id)).toEqual(['metadata']);
+    expect([...document.querySelectorAll(config.requiredSelectors[0]!)].map(node => node.id)).toEqual(['description']);
+    expect(config.coverageRules[0]!.sourceIncludes).toEqual(['TypeScript']);
+    expect(config.modes).toEqual(['hover', 'full']);
+    expect(config.url).toBe('https://github.com/orgs/microsoft/repositories?q=TypeScript&type=all&language=&sort=');
+  });
+
+  it.each(['Description-module__container__fixture', 'container__W45oI6'])('keeps GitHub issue metadata mandatory for %s without selecting the title or ordinary prose', metadataClass => {
+    const {document} = parseHTML(`<main><div data-testid="issues-list-surface"><ul><li>
+      <a id="title" data-testid="issue-10084-title-link" href="/Eugeny/tabby/issues/10084">right click not working</a>
+      <span id="label" class="prc-Token-IssueLabel-2IazM">T: Bug</span>
+      <div id="metadata" class="${metadataClass}"><span>Eugeny/tabby#10084</span><span>
+        <button data-testid="author-filter-link">Fixture Author</button> opened
+        <relative-time id="timestamp" data-testid="issue-activity-timestamp">yesterday</relative-time></span></div>
+      <div class="container__W45oI6" id="ordinary"><p>Ordinary description remains readable.</p></div>
+    </li></ul></div></main>`);
+    const config = cases['github-eugeny-issue-list'];
+    const mandatory = resolveForbiddenMustExistSelectors(config.tier, config.forbiddenSelectors, config.forbiddenMustExistSelectors, []);
+    expect(mandatory).toEqual(config.forbiddenSelectors);
+    expect(mandatory).toHaveLength(3);
+    expect(mandatory.every(selector => document.querySelectorAll(selector).length > 0)).toBe(true);
+    expect([...document.querySelectorAll(config.forbiddenSelectors[1]!)].map(node => node.id)).toEqual(['metadata']);
+    expect([...document.querySelectorAll(config.requiredSelectors[0]!)].map(node => node.id)).toEqual(['title']);
+    expect(config.dynamicForbiddenSelectors).toEqual(["span[class*='IssueLabel']"]);
+    expect(config.modes).toEqual(['hover', 'full']);
+    expect(config.url).toBe('https://github.com/Eugeny/tabby/issues?q=is%3Aissue%20state%3Aopen%20in%3Atitle%20%22right%20click%20not%20working%22');
+  });
+
   it('keeps modern manpage prose separate from mandatory command syntax and command labels', () => {
     const {document} = parseHTML('<main><div id="manpage-content"><h2 id="synopsis" class="Sh">SYNOPSIS</h2><section><p class="Pp HP"><b>apt</b> [<b>--help</b>]</p></section><h2 id="description" class="Sh">DESCRIPTION</h2><section><p class="Pp">The command provides a package management interface.</p><p class="Pp">Its manual explains the most common options.</p><p class="Pp"><b>update</b></p><div class="Bd-indent">Download package information from configured sources.</div></section></div></main>');
     const config = cases['ubuntu-apt-manpage'];
@@ -2833,6 +2880,8 @@ async function withCompletionFixture(
     trustedReader: (reply: CompletionReply) => Promise<(queries: CompletionQuery[], remainingMs?: number) => Promise<unknown>>;
     mutate: (records: unknown[]) => void; observerOptions: () => MutationObserverInit}) => Promise<void>,
   html = '<main><h2>Cookies</h2><h2>Cookies</h2><p>A full paragraph stays eligible.</p></main>',
+  additionalRules: unknown[] = [],
+  styleReader: (element: Element) => {display: string; visibility: string} = () => ({display: 'block', visibility: 'visible'}),
 ) {
   const {document, window} = parseHTML(`<html><body>${html}</body></html>`);
   Object.defineProperty(window.HTMLElement.prototype, 'getBoundingClientRect', {configurable: true,
@@ -2864,7 +2913,7 @@ async function withCompletionFixture(
   }};
   const globals = {window, document, Node: window.Node, HTMLElement: window.HTMLElement,
     HTMLAnchorElement: window.HTMLAnchorElement, MutationObserver: Observer, chrome,
-    getComputedStyle: () => ({display: 'block', visibility: 'visible'})};
+    getComputedStyle: styleReader};
   const previous = new Map<string, PropertyDescriptor | undefined>();
   for (const [name, value] of Object.entries(globals)) {
     previous.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
@@ -2884,6 +2933,7 @@ async function withCompletionFixture(
     {name: 'headings', selector: 'main h2', kind: 'heading', minInitial: 2, trackDynamic: true, sourceIncludes: ['Cookies']},
     {name: 'paragraphs', selector: 'main p', kind: 'content', minInitial: 1, trackDynamic: true,
       sourceIncludes: ['A full paragraph']},
+    ...additionalRules,
   ]);
   let tracker: CompletionTracker | undefined;
   try {
@@ -3891,5 +3941,130 @@ describe('structured site failure diagnostic codes', () => {
       throw new Error('stderr unavailable');
     }));
     assert.equal(process.exitCode, before);
+  });
+});
+
+describe('pubdev mandatory caption unchanged-query diagnostic', () => {
+  const background = '<h2>Cookies</h2><h2>Cookies</h2><p>A full paragraph stays eligible.</p>';
+  const clean = 'provider 6.1.5+1';
+  const copy = '<span class="pkg-page-title-copy"><img data-copy-content="provider: ^6.1.5+1" tabindex="0">' +
+    '<div class="pkg-page-title-copy-feedback" style="display:none"><span class="code">provider: ^6.1.5+1</span> copied to clipboard</div></span>';
+  const styles = (element: Element) => ({display: element.matches('.pkg-page-title-copy-feedback') ? 'none' : 'block', visibility: 'visible'});
+  it('keeps the clean caption mandatory and accepts only its exact identical-result receipt without DOM wrappers', async () => {
+    expect(isNaturalLanguageText(clean)).toBe(true);
+    await withCompletionFixture(async ({page, document, rules, trustedReader}) => {
+      const read = await trustedReader(queries => currentCompletionResponse(queries));
+      const identity = await beginCoverageCompletionPass(page, read);
+      await verifyCoverageUnchanged(page, read, identity, 1000);
+      const report = await readCoverageReport(page);
+      expect((report as Array<{name: string}>).find(state => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 1, completedCount: 1});
+      expect(() => assertCoverageReport(rules, report, 'exact clean caption')).not.toThrow();
+      expect(document.querySelectorAll('[data-fr-translation-owned="true"]')).toHaveLength(0);
+    }, '<main>' + background + '<h1>' + clean + '</h1></main>', withMandatoryHeadingCoverage([]), styles);
+  });
+  it('uses live visibility for the exact unchanged query while retaining hidden host structure in restoration', async () => {
+    await withCompletionFixture(async ({page, document, tracker, rules, trustedReader}) => {
+      const queriesSeen: CompletionQuery[] = [];
+      const read = await trustedReader(queries => {
+        queriesSeen.push(...queries);
+        return {status: 'success', sessionId: 10, outcomes: queries.map(query =>
+          query.selector === 'h1' && query.source !== clean
+            ? {status: 'unavailable', reason: 'no-current-accepted-completion'}
+            : acceptedCompletion(query))};
+      });
+      const identity = await beginCoverageCompletionPass(page, read);
+      await verifyCoverageUnchanged(page, read, identity, 1000);
+      const heading = document.querySelector('h1')!;
+      expect(heading.cloneNode(true).textContent?.replace(/\s+/gu, ' ').trim())
+        .toBe('provider 6.1.5+1 provider: ^6.1.5+1 copied to clipboard');
+      expect(queriesSeen.find(query => query.selector === 'h1')?.source).toBe(clean);
+      expect(isNaturalLanguageText(clean)).toBe(true);
+      const report = await readCoverageReport(page);
+      expect((report as Array<{name: string}>).find(state => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 1, completedCount: 1});
+      expect(() => assertCoverageReport(rules, report, 'exact visible caption')).not.toThrow();
+      expect(document.querySelectorAll('[data-fr-translation-owned="true"]')).toHaveLength(0);
+      expect(tracker.restorationReport()).toEqual(expect.arrayContaining([
+        expect.objectContaining({name: 'mandatory-visible-latin-h1', changedCount: 0})]));
+      const hiddenCode = document.querySelector('.pkg-page-title-copy-feedback .code')!;
+      const originalText = hiddenCode.textContent;
+      hiddenCode.textContent = 'provider: ^99.0.0';
+      expect(tracker.restorationReport()).toEqual(expect.arrayContaining([
+        expect.objectContaining({name: 'mandatory-visible-latin-h1', changedCount: 1})]));
+      expect((await readCoverageReport(page)).find((state: {name: string}) => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({verifiedUnchangedCount: 0, completedCount: 0});
+      hiddenCode.textContent = originalText;
+      expect(tracker.restorationReport()).toEqual(expect.arrayContaining([
+        expect.objectContaining({name: 'mandatory-visible-latin-h1', changedCount: 0})]));
+      const replacement = document.createElement('strong');
+      replacement.textContent = hiddenCode.textContent;
+      hiddenCode.replaceWith(replacement);
+      expect(tracker.restorationReport()).toEqual(expect.arrayContaining([
+        expect.objectContaining({name: 'mandatory-visible-latin-h1', changedCount: 1})]));
+    }, '<main>' + background + '<h1>' + clean + ' ' + copy + '</h1></main>', withMandatoryHeadingCoverage([]), styles);
+  });
+  it('does not give an eligible clean caption credit when accepted completion is absent', async () => {
+    await withCompletionFixture(async ({page, document, tracker, rules, trustedReader}) => {
+      const read = await trustedReader(queries => ({status: 'success', sessionId: 10,
+        outcomes: queries.map(() => ({status: 'unavailable', reason: 'no-current-accepted-completion'}))}));
+      const identity = await beginCoverageCompletionPass(page, read);
+      await verifyCoverageUnchanged(page, read, identity, 1000);
+      const report = await readCoverageReport(page);
+      expect((report as Array<{name: string}>).find(state => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 0, completedCount: 0});
+      expect(() => assertCoverageReport(rules, report, 'no completion')).toThrow('mandatory-visible-latin-h1');
+      expect(() => validateCoverageRevealStatuses(tracker.missingStatuses(tracker.snapshotMissing().map(item => item.token)), 'no completion'))
+        .toThrow('missing-wrapper');
+      expect(document.querySelectorAll('[data-fr-translation-owned="true"]')).toHaveLength(0);
+    }, '<main>' + background + '<h1>' + clean + ' ' + copy + '</h1></main>', withMandatoryHeadingCoverage([]), styles);
+  });
+  it('retains visible feedback text and rejects a receipt for only the caption', async () => {
+    await withCompletionFixture(async ({page, rules, trustedReader}) => {
+      const queriesSeen: CompletionQuery[] = [];
+      const read = await trustedReader(queries => {
+        queriesSeen.push(...queries);
+        return {status: 'success', sessionId: 10, outcomes: queries.map(query =>
+          query.selector === 'h1' && query.source !== clean
+            ? {status: 'unavailable', reason: 'no-current-accepted-completion'}
+            : acceptedCompletion(query))};
+      });
+      const identity = await beginCoverageCompletionPass(page, read);
+      await verifyCoverageUnchanged(page, read, identity, 1000);
+      expect(queriesSeen.find(query => query.selector === 'h1')?.source)
+        .toBe('provider 6.1.5+1 provider: ^6.1.5+1 copied to clipboard');
+      const report = await readCoverageReport(page);
+      expect((report as Array<{name: string}>).find(state => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 0, completedCount: 0});
+      expect(() => assertCoverageReport(rules, report, 'visible feedback')).toThrow('mandatory-visible-latin-h1');
+    }, '<main>' + background + '<h1>' + clean + ' ' + copy + '</h1></main>', withMandatoryHeadingCoverage([]),
+      () => ({display: 'block', visibility: 'visible'}));
+  });
+
+  it.each([
+    {display: 'none', visibility: 'visible'},
+    {display: 'block', visibility: 'hidden'},
+    {display: 'block', visibility: 'collapse'},
+  ])('requires the same live presentation when verifying a query: $display/$visibility', async (hiddenStyle) => {
+    let presentation = hiddenStyle;
+    await withCompletionFixture(async ({page, document, rules, trustedReader}) => {
+      const read = await trustedReader(queries => ({status: 'success', sessionId: 10,
+        outcomes: queries.map(query => query.selector === 'h1' && query.source !== clean
+          ? {status: 'unavailable', reason: 'no-current-accepted-completion'} : acceptedCompletion(query))}));
+      const identity = await beginCoverageCompletionPass(page, read);
+      await verifyCoverageUnchanged(page, read, identity, 1000);
+      expect((await readCoverageReport(page)).find((state: {name: string}) => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 1, completedCount: 1});
+      const htmlBefore = document.querySelector('h1')!.outerHTML;
+      // A stylesheet/media-query change can alter computed visibility without
+      // delivering a host DOM mutation or changing any captured node/attribute.
+      presentation = {display: 'block', visibility: 'visible'};
+      expect(document.querySelector('h1')!.outerHTML).toBe(htmlBefore);
+      const report = await readCoverageReport(page);
+      expect((report as Array<{name: string}>).find(state => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 0, completedCount: 0});
+      expect(() => assertCoverageReport(rules, report, 'presentation changed')).toThrow('mandatory-visible-latin-h1');
+    }, '<main>' + background + '<h1>' + clean + ' ' + copy + '</h1></main>', withMandatoryHeadingCoverage([]),
+      element => element.matches('.pkg-page-title-copy-feedback') ? presentation : {display: 'block', visibility: 'visible'});
   });
 });

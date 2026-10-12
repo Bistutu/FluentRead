@@ -1240,9 +1240,10 @@ describe('重挂来源快照的祖先预算和隔离', () => {
 const completionUnitOwners = new Set<HTMLElement>();
 function beginCompletionUnit(
     markup = '<p id="completion">Read the same English source.</p>',
-    options: {mode?: 'bilingual' | 'single'; scope?: 'content' | 'all'; synthetic?: boolean; withoutSourceNodes?: boolean; shell?: boolean} = {},
+    options: {mode?: 'bilingual' | 'single'; scope?: 'content' | 'all'; synthetic?: boolean; withoutSourceNodes?: boolean; shell?: boolean; prepareDocument?: (document: Document) => void} = {},
 ) {
     const {document} = parseHTML('<html><body><main' + (options.shell ? ' translate="no"' : '') + '>' + markup + '</main></body></html>');
+    options.prepareDocument?.(document as unknown as Document);
     const owner = document.querySelector<HTMLElement>('#completion')!;
     const scope = options.scope ?? 'content';
     const core = getCurrentTranslationCore(scope);
@@ -1567,5 +1568,52 @@ describe('同值完成证据的真实来源与会话边界', () => {
         expect(completion.read().status).toBe('unavailable');
         artifact.remove();
         expect(completion.read().status).toBe('available');
+    });
+});
+
+// Regression for exact completion-source matching when clipboard feedback is
+// CSS-hidden. Provider output is controlled; no live-provider causation is assumed.
+describe('pubdev caption identical-result source boundary diagnostic', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        completionUnitOwners.forEach(owner => restoreTranslation(owner));
+        completionUnitOwners.clear();
+    });
+    const markup = '<h1 id="completion" class="title pub-monochrome-icon-hoverable">provider 6.1.5+1 ' +
+        '<span class="pkg-page-title-copy"><img data-copy-content="provider: ^6.1.5+1" tabindex="0">' +
+        '<div class="pkg-page-title-copy-feedback" style="display:none"><span class="code">provider: ^6.1.5+1</span> copied to clipboard</div></span></h1>';
+    function makeCaption() {
+        return beginCompletionUnit(markup, {prepareDocument(document) {
+            Object.defineProperty(document.defaultView!, 'getComputedStyle', {configurable: true,
+                value: (element: Element) => ({
+                    display: element.matches('.pkg-page-title-copy-feedback')
+                        ? (element as HTMLElement).style.display
+                        : ['SPAN', 'IMG'].includes(element.tagName) ? 'inline' : 'block',
+                    visibility: 'visible', position: 'static', overflow: 'visible', fontFamily: 'Arial',
+                })});
+        }});
+    }
+    it('real source accepts the clean identical caption but cannot certify the raw feedback-polluted query', () => {
+        const fixture = makeCaption();
+        const rawCloneSource = (fixture.owner.cloneNode(true).textContent || '').replace(/\s+/gu, ' ').trim();
+        expect(fixture.state.sourceText).toBe('provider 6.1.5+1');
+        expect(fixture.slots).toHaveLength(1);
+        expect(rawCloneSource).toBe('provider 6.1.5+1 provider: ^6.1.5+1 copied to clipboard');
+        const completion = finishCompletionUnit(fixture);
+        expect(completion.read()).toMatchObject({status: 'available', reason: 'accepted-result-identical',
+            sources: ['provider 6.1.5+1'], outputs: ['provider 6.1.5+1']});
+        expect(completion.read({source: rawCloneSource})).toEqual({status: 'unavailable', reason: 'no-current-accepted-completion'});
+        expect(fixture.owner.querySelector('[data-fr-translation-owned="true"]')).toBeNull();
+    });
+    it('copy-feedback becoming visible invalidates the clean historical receipt; exact source return can reuse it', () => {
+        const fixture = makeCaption(), completion = finishCompletionUnit(fixture);
+        const feedback = fixture.owner.querySelector<HTMLElement>('.pkg-page-title-copy-feedback')!;
+        const exactStyle = feedback.getAttribute('style')!;
+        expect(completion.read().status).toBe('available');
+        feedback.style.display = 'block';
+        expect(completion.read().status).toBe('unavailable');
+        feedback.setAttribute('style', exactStyle);
+        expect(completion.read()).toMatchObject({status: 'available', requestBoundary: 'accepted-same-session-result-reuse'});
+        expect(fixture.owner.querySelector('[data-fr-translation-owned="true"]')).toBeNull();
     });
 });
