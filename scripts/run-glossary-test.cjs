@@ -10,10 +10,49 @@ const fs = require('node:fs');
 const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
+const {createHash} = require('node:crypto');
 
 function argument(name, fallback) {
   const index = process.argv.indexOf(`--${name}`);
   return index < 0 ? fallback : process.argv[index + 1];
+}
+
+// 只读取生产目录的静态字面量，不执行模块或复用添加副本的被测函数。
+// 浏览器必须保存与目录逐项相同的词对、大小写规则、语言和来源版本。
+function readBuiltinGlossaryCatalog() {
+  const ts = require('typescript');
+  const sourcePath = path.join(__dirname, '../src/core/glossary/builtins.ts');
+  const sourceFile = ts.createSourceFile(sourcePath, fs.readFileSync(sourcePath, 'utf8'), ts.ScriptTarget.Latest, true);
+  const declaration = sourceFile.statements.filter(ts.isVariableStatement)
+    .flatMap(statement => [...statement.declarationList.declarations])
+    .find(item => ts.isIdentifier(item.name) && item.name.text === 'BUILTIN_GLOSSARIES');
+  assert(declaration?.initializer && ts.isArrayLiteralExpression(declaration.initializer), '生产内置词库必须有完整静态目录');
+  const literal = node => {
+    if (ts.isStringLiteral(node)) return node.text;
+    if (ts.isNumericLiteral(node)) return Number(node.text);
+    if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
+    if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
+    if (ts.isArrayLiteralExpression(node)) return node.elements.map(literal);
+    if (ts.isObjectLiteralExpression(node)) return Object.fromEntries(node.properties.map(property => {
+      assert(ts.isPropertyAssignment(property) && (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)), '目录只能使用静态命名属性');
+      return [property.name.text, literal(property.initializer)];
+    }));
+    assert.fail(`内置词库有未支持的非静态数据：${node.getText(sourceFile)}`);
+  };
+  return literal(declaration.initializer);
+}
+
+function assertAdoptedBuiltin(library, preset) {
+  assert.deepEqual(library.preset, {id: preset.id, version: preset.version});
+  assert.equal(library.sourceLanguage, preset.sourceLanguage);
+  assert.equal(library.targetLanguage, preset.targetLanguage);
+  assert.deepEqual(library.entries, preset.terms.map(([source, target], index) => ({
+    id: `term-${index + 1}`, source, target, caseSensitive: preset.caseSensitive,
+  })), '添加与重新打开必须保留生产目录的全部词对及顺序，含空译词');
+}
+
+function documentTermToken(source, index) {
+  return `__FRTERM_${createHash('sha256').update(`0\0${source}`).digest('hex').slice(0, 12)}_${index}__`;
 }
 
 
@@ -67,6 +106,9 @@ async function startFixture() {
 async function main() {
   const suite = argument('suite', 'full');
   assert(['ui', 'full'].includes(suite), 'suite 仅支持 ui 或 full');
+  const builtinCatalog = suite === 'full' ? readBuiltinGlossaryCatalog() : [];
+  const aiBuiltin = builtinCatalog.find(preset => preset.id === 'ai-en-zh-hans');
+  if (suite === 'full') assert(aiBuiltin, 'AI 与机器学习词库必须存在于生产目录');
   const extensionDir = path.resolve(argument('extension-dir', '.output/chrome-mv3'));
   const packages = argument('playwright-root');
   const helperPath = argument('focus-safe-helper', path.join(__dirname, 'testing/focus-safe-browser.cjs'));
@@ -79,7 +121,8 @@ async function main() {
   const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-glossary-edge-'));
   const report = {ok: false, suite, extensionDir, artifactsDir, profileDir, service: suite === 'ui' ? null : 'loopback-openai-fixture',
     scope: suite === 'ui' ? 'glossary direct actions, stable settings disclosure, multi-library order/drafts, import/export, persistence and responsive themes' : 'production built-in glossary catalog/preview/adoption/removal, real matched-term requests, persistence, lossless language import/export, hover/full-page toggles, document selection, cache invalidation and responsive themes',
-    cases: [], consoleErrors: [], screenshots: [], persistenceCases: [], quickClose: null, crossPageSync: null, latestWriteWins: null};
+    cases: [], consoleErrors: [], screenshots: [], persistenceCases: [], quickClose: null, crossPageSync: null, latestWriteWins: null,
+    builtinCatalog: builtinCatalog.map(preset => ({id: preset.id, version: preset.version, entries: preset.terms.length}))};
   let fixture;
   let launched;
   let currentPage;
@@ -342,7 +385,7 @@ async function main() {
     await showSection('内置词库');
 
     await shot(options, 'glossary-builtin-catalog');
-    assert.equal(await ui.getByTestId('builtin-glossaries').locator('article').count(), 5);
+    assert.equal(await ui.getByTestId('builtin-glossaries').locator('article').count(), builtinCatalog.length);
     await ui.getByRole('button', {name: '预览 AI 与机器学习', exact: true}).click();
     const builtinPreview = options.getByTestId('builtin-glossary-preview');
     await builtinPreview.getByLabel('搜索原词或译词', {exact: true}).fill('context window');
@@ -351,8 +394,7 @@ async function main() {
     await shot(options, 'builtin-preview-search');
     await builtinPreview.getByRole('button', {name: '添加词库', exact: true}).click();
     let builtinState = await waitConfig(config => config.glossaryLibraries.length === 1);
-    assert.equal(builtinState.glossaryLibraries[0].entries.length, 60);
-    assert.deepEqual(builtinState.glossaryLibraries[0].preset, {id: 'ai-en-zh-hans', version: 1});
+    assertAdoptedBuiltin(builtinState.glossaryLibraries[0], aiBuiltin);
     assert.equal(builtinState.glossaryEnabled, false, '添加内置词库不能偷偷开启总开关');
     await ui.getByRole('switch', {name: '启用术语库'}).check();
     await waitConfig(config => config.glossaryEnabled);
@@ -380,7 +422,7 @@ async function main() {
     await builtinPage.close(); currentPage = options;
     await options.reload({waitUntil: 'domcontentloaded'}); await ui.waitFor();
     builtinState = await readConfig();
-    assert.deepEqual(builtinState.glossaryLibraries[0].preset, {id: 'ai-en-zh-hans', version: 1});
+    assertAdoptedBuiltin(builtinState.glossaryLibraries[0], aiBuiltin);
     const deleteBuiltin = async () => {
       await showSettings();
       await ui.getByRole('button', {name: '删除词库', exact: true}).click();
@@ -390,9 +432,10 @@ async function main() {
     await deleteBuiltin();
     await showSection('内置词库');
     await ui.getByRole('button', {name: '添加 AI 与机器学习', exact: true}).click();
-    await waitConfig(config => config.glossaryLibraries[0]?.entries.length === 60);
+    builtinState = await waitConfig(config => config.glossaryLibraries[0]?.entries.length === aiBuiltin.terms.length);
+    assertAdoptedBuiltin(builtinState.glossaryLibraries[0], aiBuiltin);
     await deleteBuiltin();
-    report.cases.push('five offline catalogs, searchable real preview, editable-copy adoption, source version persistence, deletion and re-addition; live pipeline sends only two matched terms and none when disabled');
+    report.cases.push('complete source catalog, searchable real preview, exact ordered editable-copy adoption, source version persistence, deletion and exact re-addition; live pipeline sends only two matched terms and none when disabled');
     await toolbarAction('新建术语库');
     const editor = ui.getByRole('region', {name: '词库设置'});
     await editor.getByLabel('词库名称', {exact: true}).fill('技术词库');
@@ -529,10 +572,16 @@ async function main() {
     await documentSettings.waitFor({state: 'visible'});
     await chooseComboboxOption(documentPage, documentSettings.getByRole('combobox', {name: '术语库使用方式', exact: true}), '不使用术语库');
     await waitConfig(config => Array.isArray(config.documentGlossaryIds) && config.documentGlossaryIds.length === 0);
+    const withoutGlossaryRequests = fixture.requests.length;
     await documentSettings.getByRole('button', {name: '开始翻译', exact: true}).click();
     await documentSettings.waitFor({state: 'hidden'});
     await documentPage.locator('.document-status').filter({hasText: /^翻译完成\s*·\s*1\s*\/\s*1$/}).waitFor();
-    assert.deepEqual(fixture.requests.at(-1).terms, []);
+    assert(fixture.requests.length > withoutGlossaryRequests, '文档禁用词库必须实际请求当前文本');
+    const literalSource = 'The agent uses FluentRead to understand this document.';
+    const brandToken = documentTermToken(literalSource, 0);
+    assert.deepEqual(fixture.requests.at(-1).terms, [{source: brandToken, target: brandToken}], '文档自动保护 CamelCase 品牌；禁用词库后不能发送 agent 用户术语');
+    assert.equal(fixture.requests.at(-1).source, literalSource.replace('FluentRead', brandToken));
+    assert.equal(await documentPage.frameLocator('.rich-preview-frame').locator('.fluentread-translation').innerText(), '测试译文：The 代理人 uses FluentRead to understand this document.', 'agent 使用普通供应商译法，FluentRead 原样回填且无占位符残留');
     report.crossPageSync = 'document selection persisted through shared background store';
     await documentPage.reload({waitUntil: 'domcontentloaded'});
     await documentPage.locator('input[type="file"]').setInputFiles({name: 'glossary.txt', mimeType: 'text/plain', buffer: Buffer.from('The agent uses FluentRead.')});
@@ -540,7 +589,7 @@ async function main() {
     await documentSettings.waitFor({state: 'visible'});
     await documentPage.waitForFunction(() => document.querySelector('.document-settings-dialog[open] [aria-label="术语库使用方式"]')?.closest('.el-select')?.querySelector('.el-select__selected-item:not(.el-select__input-wrapper)')?.textContent?.trim() === '不使用术语库');
     await shot(documentPage, 'glossary-document-persisted');
-    report.cases.push('document native glossary selector, explicit disable, actual provider request and reload persistence');
+    report.cases.push('document native glossary selector, explicit user-glossary disable, exact automatic brand token and local literal restore, ordinary agent translation and reload persistence');
 
     await chooseComboboxOption(documentPage, documentSettings.getByRole('combobox', {name: '术语库使用方式', exact: true}), '指定词库');
     const documentPicker = documentSettings.getByTestId('glossary-library-select');
@@ -550,8 +599,15 @@ async function main() {
     await documentSettings.getByRole('button', {name: '开始翻译', exact: true}).click();
     await documentSettings.waitFor({state: 'hidden'});
     await documentPage.locator('.document-status').filter({hasText: /^翻译完成\s*·\s*1\s*\/\s*1$/}).waitFor();
-    assert.equal(fixture.requests.at(-1).terms.length, 1);
-    assert(fixture.requests.at(-1).terms[0].source.startsWith('__FRTERM_'));
+    const selectedSource = 'The agent uses FluentRead.';
+    const selectedAgentToken = documentTermToken(selectedSource, 0);
+    const selectedBrandToken = documentTermToken(selectedSource, 1);
+    assert.deepEqual(fixture.requests.at(-1).terms, [
+      {source: selectedAgentToken, target: selectedAgentToken},
+      {source: selectedBrandToken, target: selectedBrandToken},
+    ], '指定词库的 agent 与自动保护的品牌都必须逐个保留');
+    assert.equal(fixture.requests.at(-1).source, `The ${selectedAgentToken} uses ${selectedBrandToken}.`);
+    assert.equal(await documentPage.frameLocator('.rich-preview-frame').locator('.fluentread-translation').innerText(), '测试译文：The 通用智能体 uses FluentRead.', '只应用选择的通用词库，不复用网站词库译法，品牌仍原样保留');
     await shot(documentPage, 'glossary-document-selected');
     report.cases.push('document selected global library uses imported zh-CN terms instead of website-scoped library');
 
