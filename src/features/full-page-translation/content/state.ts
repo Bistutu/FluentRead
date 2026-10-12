@@ -331,8 +331,9 @@ export function getTranslationSourceStructureSignature(
                         undefined,
                         protectionOptions,
                         protectionCache,
+                    // Text 保护检查为 false 时已保证 parentElement 存在。
                     ) && !(isIdentifierLikeText(raw) &&
-                        (current as Text).parentElement?.closest('a[href]')) ? 'text' : 'protected-text'),
+                        (current as Text).parentElement!.closest('a[href]')) ? 'text' : 'protected-text'),
                 text,
             ])) return SOURCE_STRUCTURE_OVERFLOW;
             continue;
