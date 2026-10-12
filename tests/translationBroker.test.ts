@@ -9,6 +9,8 @@ import type {TranslationConfigSource, TranslationModelUsageRecord} from '@/src/s
 import {Config} from '@/src/core/config/model';
 import {createInputBoxTranslationHandler} from '@/src/features/input-translation/background/handler';
 import {resolveTranslationLanguages} from '@/src/core/translation/languages';
+import {isDefinitePageContextLeak, isLikelyPageContextLeak} from '@/src/core/translation/prompts';
+import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
 import {NativeBatchResponseError} from '@/src/core/translation/nativeBatch';
 import {serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {currentModelIds, services, customModelString} from '@/src/core/config/catalog';
@@ -1941,25 +1943,58 @@ describe('translation broker', () => {
         warning.mockRestore();
     });
 
-    it('未膨胀的长上下文片段只触发一次无上下文重译并稳定复用复验缓存', async () => {
+    it.each([
+        {
+            variant: '默认中文目标的 CJK 连续片段',
+            sourceLanguage: 'en',
+            targetLanguage: undefined,
+            origin: 'The author describes the effects of winter weather on regional transport, including railway maintenance and the preparation of temporary services for small towns.',
+            reference: '这篇文章比较了沿海生态修复方法，并说明原生湿地如何减轻风暴对附近社区的破坏，附录还介绍了持续监测与长期保护措施。',
+            summary: '文章比较沿海生态修复方法。',
+        },
+        {
+            variant: '德文到英文的 ASCII 连续片段',
+            sourceLanguage: 'de',
+            targetLanguage: 'en',
+            origin: 'Der Autor beschreibt die Auswirkungen des winterlichen Wetters auf den regionalen Verkehr, einschließlich der Wartung von Eisenbahnen und der Vorbereitung zusätzlicher Verbindungen für kleinere Städte.',
+            reference: 'The article compares coastal restoration methods and explains why native wetlands can reduce storm damage for nearby communities.',
+            summary: 'A brief article summary.',
+        },
+    ])('未膨胀的长上下文片段只触发一次无上下文重译并稳定复用复验缓存：$variant', async ({sourceLanguage, targetLanguage, origin, reference, summary}) => {
         mocks.config.service = 'ai';
         mocks.config.enableAIContext = true;
-        const origin = 'The author describes the effects of winter weather on regional transport, including railway maintenance and the preparation of temporary services for small towns.';
-        const reference = 'The article compares coastal restoration methods and explains why native wetlands can reduce storm damage for nearby communities.';
         const pageContext = `Page title: Coastal research. ${reference} The appendix contains details of the monitoring schedule.`;
+        const request = {origin, pageContext, sourceLanguage, ...(targetLanguage ? {targetLanguage} : {})};
+        const effectiveTarget = targetLanguage ?? mocks.config.to;
         const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         mocks.service.mockImplementation((message: {summaryPrompt?: string}) => Promise.resolve(
-            message.summaryPrompt ? 'A brief article summary.' : reference,
+            message.summaryPrompt ? summary : reference,
         ));
 
+        // 两种目标语言均使用合法结果，只触发实际上下文检测器的软重合边界。
         expect(reference.length).toBeLessThan(origin.length);
-        await expect(translateWithCache({origin, pageContext})).resolves.toBe(reference);
+        expect(isLikelyUntranslatedResponse(origin, reference, effectiveTarget)).toBe(false);
+        expect(isClearlyWrongLanguageResponse(origin, reference, effectiveTarget)).toBe(false);
+        expect(isLikelyPageContextLeak(origin, reference, pageContext)).toBe(true);
+        expect(isDefinitePageContextLeak(origin, reference, pageContext)).toBe(false);
+        await expect(translateWithCache(request)).resolves.toBe(reference);
         const bodyCalls = mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt);
         expect(bodyCalls).toHaveLength(2);
+        expect(bodyCalls[0]?.[0]).toMatchObject({
+            origin, sourceLanguage, targetLanguage: effectiveTarget,
+            pageContext: expect.stringContaining(reference),
+        });
         expect(bodyCalls[1]?.[0]).toMatchObject({origin, context: '', pageContext: ''});
+        expect(warning).toHaveBeenCalledWith(
+            '[FluentRead] AI page context leaked into translation; retrying once without page context:',
+            expect.any(Error),
+        );
+        expect(warning).toHaveBeenCalledTimes(1);
         await flushMicrotasks();
-        await expect(translateWithCache({origin, pageContext})).resolves.toBe(reference);
+        expect(mocks.cacheSet.mock.calls.some(([, value]) => value === reference)).toBe(true);
+        await expect(translateWithCache(request)).resolves.toBe(reference);
         expect(mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt)).toHaveLength(2);
+        expect(warning).toHaveBeenCalledTimes(1);
         warning.mockRestore();
     });
 
