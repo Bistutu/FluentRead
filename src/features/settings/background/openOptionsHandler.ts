@@ -71,7 +71,7 @@ export function createOpenOptionsPageHandler(
                 await dependencies.openDefaultPage();
             } else {
                 const destination = typeof learningTab === 'string' ? learningTab : service;
-                if (typeof target === 'string') await dependencies.openSection(section, typeof destination === 'string' ? destination : undefined, target);
+                if (typeof target === 'string') await dependencies.openSection(section, destination, target);
                 else if (typeof destination === 'string') await dependencies.openSection(section, destination);
                 else await dependencies.openSection(section);
             }

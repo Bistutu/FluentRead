@@ -114,12 +114,40 @@ async function waitUntil(predicate, message, timeout = 10000) {
 async function clickNode(session, node, label) {
     assert(node?.nodeId, `没有找到可点击节点: ${label}`);
     await session.send('DOM.scrollIntoViewIfNeeded', {nodeId: node.nodeId});
-    const {model} = await session.send('DOM.getBoxModel', {nodeId: node.nodeId});
-    const q = model.content; const x = (q[0] + q[2] + q[4] + q[6]) / 4; const y = (q[1] + q[3] + q[5] + q[7]) / 4;
-    await session.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x, y, button: 'none'});
-    await session.send('Input.dispatchMouseEvent', {type: 'mousePressed', x, y, button: 'left', clickCount: 1});
-    await session.send('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y, button: 'left', clickCount: 1});
+    // 初次卡片挂载与 requestAnimationFrame 定位会改变几何；等真实目标连续帧稳定再发原生点击。
+    const {object} = await session.send('DOM.resolveNode', {nodeId: node.nodeId});
+    const diagnostic = {label, stage: result.stage, at: new Date().toISOString(), samples: []};
+    const stablePoint = async () => waitUntil(async () => {
+        const response = await session.send('Runtime.callFunctionOn', {objectId: object.objectId, returnByValue: true, awaitPromise:true,
+            functionDeclaration: `async function() {
+                const sample=()=>{
+                    const r=this.getBoundingClientRect(),root=this.getRootNode(),x=r.left+r.width/2,y=r.top+r.height/2;
+                    const hit=root.elementFromPoint?.(x,y),style=getComputedStyle(this);
+                    return {x,y,width:r.width,height:r.height,visible:this.isConnected&&r.width>0&&r.height>0&&style.visibility==='visible'&&style.display!=='none',
+                        matches:hit===this||this.contains(hit),hitTag:hit?.tagName,hitLabel:hit?.getAttribute('aria-label'),hitText:hit?.textContent?.trim().slice(0,80)};
+                };
+                const samples=[sample()];
+                for(let i=0;i<2;i++){await new Promise(resolve=>requestAnimationFrame(resolve));samples.push(sample());}
+                const value=samples[2];
+                const stable=samples.every(point=>point.visible&&point.matches&&['x','y','width','height'].every(key=>Math.abs(point[key]-value[key])<=0.25));
+                return {value,stable,samples};
+            }`});
+        const measured=response.result.value;
+        diagnostic.samples.push(measured);
+        return measured.stable ? measured.value : null;
+    }, `可点击目标尚未可见、命中或连续帧稳定: ${label}`);
+    try {
+        const hovered=await stablePoint();
+        await session.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:hovered.x,y:hovered.y,button:'none'});
+        const point=await stablePoint();
+        diagnostic.point=point;
+        (result.nativeClickDiagnostics ||= []).push(diagnostic);
+        fs.writeFileSync(path.join(args.artifactsDir,'native-click-diagnostics.json'),JSON.stringify(result.nativeClickDiagnostics,null,2)+'\n');
+        await session.send('Input.dispatchMouseEvent', {type:'mousePressed',x:point.x,y:point.y,button:'left',clickCount:1});
+        await session.send('Input.dispatchMouseEvent', {type:'mouseReleased',x:point.x,y:point.y,button:'left',clickCount:1});
+    } finally {await session.send('Runtime.releaseObject',{objectId:object.objectId});}
 }
+
 async function clickButton(page, label) {
     const {host, session} = await shadowSnapshot(page);
     const node = find(host, n => n.nodeName === 'BUTTON' && (attr(n, 'aria-label') === label || text(n).trim() === label));

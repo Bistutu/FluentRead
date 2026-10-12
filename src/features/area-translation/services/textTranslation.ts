@@ -146,7 +146,7 @@ export function prepareAreaTextTranslation(
         const selectedGlossaryIds = trustedContext.context === 'document' ? snapshot.documentGlossaryIds
             : trustedContext.context === 'video' ? snapshot.videoGlossaryIds : null;
         // 用户明确要求的固定译名与 broker 共用本次冻结语言、词库和可信网站范围，优先于同目标跳过。
-        const hasExplicitGlossary = mode === 'standard' && snapshot.glossaryEnabled && resolveGlossaryEntries(snapshot.glossaryLibraries ?? [], {
+        const hasExplicitGlossary = mode === 'standard' && snapshot.glossaryEnabled && resolveGlossaryEntries(snapshot.glossaryLibraries!, {
             text: sourceText, sourceLanguage: sourceLanguage.trim() || snapshot.from, targetLanguage: snapshot.to,
             pageUrl: trustedContext.pageUrl, glossaryIds: selectedGlossaryIds ? [...selectedGlossaryIds] : null,
         }).terms.length > 0;

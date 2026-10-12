@@ -233,6 +233,56 @@ describe('Explicit non-atomic inline reading containers', () => {
 });
 
 describe('Forced discovery synchronous inspection', () => {
+    it.each([false, true])('rescans an inline mutation from its explicit non-atomic reading owner (explicit target: %s)', explicitTarget => {
+        const {document} = parseHTML('<html><body><main><div id="owner">The opening remains readable. <span id="bridge"><span id="dirty">The changed inline sentence remains owned.</span></span> The closing remains readable.</div><p id="neighbor">The neighboring paragraph is outside this rescan.</p></main></body></html>');
+        const owner = document.getElementById('owner')!;
+        const dirty = document.getElementById('dirty')!;
+        const core = new TranslationCandidateCore({adapters: [{
+            id: 'inline-mutation-owner', matches: () => true,
+            decide: element => element === owner
+                ? {kind: 'force-target', atomic: false, reason: 'reading-owner', ...(explicitTarget ? {target: owner} : {})}
+                : {kind: 'pass'},
+        }]});
+        const original = document.body.innerHTML;
+        const full = core.discover(owner);
+        const partialSteps = [...core.discoverSteps(dirty)];
+        const partial = partialSteps.flatMap(step => step.candidate ? [step.candidate] : []);
+        expect(partialSteps[0]).toMatchObject({element: owner, phase: 'enter'});
+        expect(partial.map(candidate => candidate.element)).toEqual(full.map(candidate => candidate.element));
+        expect(partial).toHaveLength(1);
+        expect(partial[0]!.element).toBe(owner);
+        expect(extractTranslationText(partial[0]!.element, core.shouldStayOriginal)).toBe(owner.textContent);
+        expect(partialSteps.some(step => step.element.id === 'neighbor')).toBe(false);
+        expect(document.body.innerHTML).toBe(original);
+
+        dirty.textContent = 'A later inline mutation must keep the same reading owner.';
+        expect(core.discover(dirty).map(candidate => candidate.element)).toEqual([owner]);
+        expect(owner.textContent).toContain('A later inline mutation must keep the same reading owner.');
+    });
+
+    it.each(['atomic', 'redirect'] as const)('does not promote a partial rescan past the nearest %s adapter boundary', boundary => {
+        const {document} = parseHTML('<html><body><main><div id="outer"><div id="boundary"><span id="dirty">The inline mutation stays within its nearest boundary.</span></div></div><p id="redirect-target">An unrelated declared target.</p></main></body></html>');
+        const outer = document.getElementById('outer')!;
+        const nearest = document.getElementById('boundary')!;
+        const dirty = document.getElementById('dirty')!;
+        const target = document.getElementById('redirect-target')!;
+        const core = new TranslationCandidateCore({adapters: [{
+            id: 'nearest-reading-boundary', matches: () => true,
+            decide: element => element === nearest
+                ? boundary === 'atomic'
+                    ? {kind: 'force-target', atomic: true, reason: 'atomic-boundary'}
+                    : {kind: 'force-target', atomic: false, target, reason: 'redirect-boundary'}
+                : element === outer
+                    ? {kind: 'force-target', atomic: false, reason: 'outer-reading-owner'}
+                    : {kind: 'pass'},
+        }]});
+        const original = document.body.innerHTML;
+        const steps = [...core.discoverSteps(dirty)];
+        expect(steps[0]).toMatchObject({element: dirty, phase: 'enter'});
+        expect(steps.some(step => step.element === outer || step.element === target)).toBe(false);
+        expect(document.body.innerHTML).toBe(original);
+    });
+
     it('reuses the declared decision and wide ancestor selector misses within one enter step', () => {
         const {document} = parseHTML(`<html><body><main>${'<div>'.repeat(48)}<p id="source">The explicitly declared source remains independently readable.</p>${'</div>'.repeat(48)}</main></body></html>`);
         const source = document.getElementById('source')!;

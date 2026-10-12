@@ -60,6 +60,34 @@ function copyArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 }
 
 describe('binary document translation formats', () => {
+    it('detects unlabelled JPEG bytes and checks cancellation after loading the PDF source before rasterization', async () => {
+        const parsed = await parseBinaryDocument('sample.pdf', loadBytes('sample.pdf'));
+        const translations = parsed.segments.map(() => '完整译文');
+        const raster = vi.fn(async () => onePixelJpeg);
+        const jpeg = vi.spyOn(PDFDocument.prototype, 'embedJpg');
+        try {
+            const download = await createDocumentDownload(parsed, translations, 'bilingual', {signal: new AbortController().signal, pdfPageRasterizer: raster});
+            expect((await PDFDocument.load(download.data as Uint8Array)).getPageCount()).toBe(2);
+            expect(raster).toHaveBeenCalledTimes(2);
+            expect(jpeg).toHaveBeenCalledTimes(2);
+        } finally {jpeg.mockRestore();}
+
+        const controller = new AbortController();
+        const reason = new Error('Canceled after source PDF load');
+        const nativeLoad = PDFDocument.load.bind(PDFDocument);
+        const load = vi.spyOn(PDFDocument, 'load').mockImplementationOnce(async (...args) => {
+            const source = await nativeLoad(...args);
+            controller.abort(reason);
+            return source;
+        });
+        const canceledRaster = vi.fn(testRasterizer);
+        try {
+            await expect(createDocumentDownload(parsed, translations, 'bilingual', {signal: controller.signal, pdfPageRasterizer: canceledRaster})).rejects.toBe(reason);
+            expect(load).toHaveBeenCalledOnce();
+            expect(canceledRaster).not.toHaveBeenCalled();
+        } finally {load.mockRestore();}
+    });
+
     it.each(['bilingual', 'translated'] as const)('exports one original-layout %s page per source page without reflow snapshots', async mode => {
         const parsed = await parseBinaryDocument('sample.pdf', loadBytes('sample.pdf'));
         const raster = vi.fn(testRasterizer);

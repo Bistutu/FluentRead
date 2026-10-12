@@ -567,6 +567,17 @@ describe('PDF baseline and structural reading analysis', () => {
         expect(cells.filter(cell => cell.source === 'good').every(cell => cell.cellBounds!.height <= 11)).toBe(true);
         expect(atoms).toEqual(before);
     });
+    it('retains boundary-centred table labels when nearby rule coordinates merge or end at the last table edge', () => {
+        const graphics = [100, 140].map(y => ({kind: 'path' as const, x: 100, y, width: 300, height: 0}));
+        graphics.push({kind: 'path', x: 100.4, y: 100, width: 0, height: 40});
+        const atoms = [atom('Left', 90, 120, 20), atom('Right', 390, 120, 20), atom('Outside', 74, 180, 50)];
+        const before = structuredClone(atoms);
+        const blocks = analyze(atoms, graphics).blocks;
+        expect(blocks.find(block => block.source === 'Left')).toMatchObject({kind: 'table', preserveSource: false, cellBounds: {x: 100, width: 1}});
+        expect(blocks.find(block => block.source === 'Right')).toMatchObject({kind: 'table', preserveSource: false, cellBounds: {x: 400, width: 1}});
+        expect(blocks.find(block => block.source === 'Outside')).toMatchObject({kind: 'text', preserveSource: false});
+        expect(atoms).toEqual(before);
+    });
     it('recognizes shaded table rows and a shallow abstract box without treating real diagram labels as body text', () => {
         const graphics = [100, 125, 150, 175].map(y => ({kind: 'path' as const, x: 0, y, width: 508, height: 25}));
         const atoms = [100, 125, 150, 175].flatMap((y, row) => [atom(row ? 'Page dimensions' : 'Capability', 8, y + 16, 70, 8),

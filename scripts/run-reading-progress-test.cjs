@@ -51,9 +51,16 @@ async function installProvider(worker, translationUrl, blockedUrl) {
   await worker.evaluate(({translationUrl, blockedUrl}) => {
     if (globalThis.__readingProgressFixture) return;
     const nativeFetch = globalThis.fetch.bind(globalThis);
+    globalThis.__readingProgressFetches = [];
     globalThis.fetch = (input, init) => {
       const url = new URL(typeof input === 'string' || input instanceof URL ? String(input) : input.url);
       if (url.hostname === 'edge.microsoft.com' && url.pathname === '/translate/translatetext') {
+        // 真实微软 transport 同步提交 JSON 字符串；记录真实 fetch 开始而非 Node 收到正文的时刻。
+        const rawBody = typeof init?.body === 'string' ? init.body : null;
+        let payload = null;
+        try {payload = rawBody === null ? null : JSON.parse(rawBody);} catch { /* 保存原请求，稍后显式拒绝无法关联的证据。 */ }
+        globalThis.__readingProgressFetches.push({sequence: globalThis.__readingProgressFetches.length + 1,
+          startedAt: performance.timeOrigin + performance.now(), rawBody, payload});
         return nativeFetch(input instanceof Request ? new Request(translationUrl, input) : translationUrl, init);
       }
       if (/^https?:$/.test(url.protocol) && !['127.0.0.1', 'localhost', '::1'].includes(url.hostname)) return nativeFetch(`${blockedUrl}?url=${encodeURIComponent(url.href)}`);
@@ -82,14 +89,29 @@ async function toggle(page, helper, context) {
   await page.keyboard.down('Alt'); await page.keyboard.press('t'); await page.keyboard.up('Alt');
 }
 
-async function snapshot(page) {
-  return page.evaluate(() => ({
-    visible: [...document.querySelectorAll('[data-reading-index]')].filter(node => {const r = node.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight;}).map(node => Number(node.dataset.readingIndex)),
-    translated: [...document.querySelectorAll('[data-reading-index]')].filter(node => node.querySelector('.fluent-read-bilingual-content')).map(node => Number(node.dataset.readingIndex)),
-    wrappers: document.querySelectorAll('.fluent-read-bilingual-content').length,
-    scrollY: window.scrollY, scrollHeight: document.documentElement.scrollHeight, viewport: innerHeight,
-    chars: [...document.querySelectorAll('[data-reading-index]')].filter(node => node.querySelector('.fluent-read-bilingual-content')).reduce((n, node) => n + (node.firstChild?.textContent?.length || 0), 0),
-  }));
+async function snapshot(page, scrollIndex) {
+  return page.evaluate(({scrollIndex}) => {
+    let scrollStartedAt;
+    if (scrollIndex !== undefined) {
+      const target = document.querySelector(`#reading-paragraph-${scrollIndex}`);
+      if (!target) throw new Error(`缺少最终滚动目标：${scrollIndex}`);
+      scrollStartedAt = performance.timeOrigin + performance.now();
+      target.scrollIntoView({block: 'center', inline: 'nearest', behavior: 'instant'});
+    }
+    const state = {
+      visible: [...document.querySelectorAll('[data-reading-index]')].filter(node => {const r = node.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight;}).map(node => Number(node.dataset.readingIndex)),
+      translated: [...document.querySelectorAll('[data-reading-index]')].filter(node => node.querySelector('.fluent-read-bilingual-content')).map(node => Number(node.dataset.readingIndex)),
+      wrappers: document.querySelectorAll('.fluent-read-bilingual-content').length,
+      scrollY: window.scrollY, scrollHeight: document.documentElement.scrollHeight, viewport: innerHeight,
+      chars: [...document.querySelectorAll('[data-reading-index]')].filter(node => node.querySelector('.fluent-read-bilingual-content')).reduce((n, node) => n + (node.firstChild?.textContent?.length || 0), 0),
+    };
+    if (scrollStartedAt !== undefined) Object.assign(state, {scrollStartedAt, sampledAt: performance.timeOrigin + performance.now()});
+    return state;
+  }, {scrollIndex});
+}
+
+async function workerFetches(worker) {
+  return worker.evaluate(() => globalThis.__readingProgressFetches.map(entry => ({...entry, payload: Array.isArray(entry.payload) ? [...entry.payload] : entry.payload})));
 }
 
 async function waitFor(page, predicate, timeout) { await page.waitForFunction(predicate, undefined, {timeout}); }
@@ -99,6 +121,10 @@ function payloadParagraphs(provider, from = 0) {
     const matches = [...String(text).matchAll(/Paragraph (\d+)/g)];
     return matches.map(match => Number(match[1]));
   })))]
+}
+
+function fetchParagraphs(fetches) {
+  return [...new Set(fetches.flatMap(({payload}) => payload.flatMap(text => [...text.matchAll(/Paragraph (\d+)/g)].map(match => Number(match[1])))))];
 }
 
 async function waitForProviderIdle(page, provider, timeout, quietMs = 900) {
@@ -125,7 +151,7 @@ async function main() {
   const unexpectedNetwork = [], workerErrors = [], runtimeErrors = [];
   let pageServer, provider;
   let primaryError;
-  let session, context, page;
+  let session, context, page, worker;
   const report = {evidenceType: 'production-extension-equivalent-fixture', liveSite: false, fixtureChars: fixtureHtml().length, launchMode: null, focusPolicy: null, windowPlacement: null, scenarios: {}, requests: [], screenshots: []};
   let launchAttempted = false;
   try {
@@ -138,7 +164,7 @@ async function main() {
     ({context} = session); report.launchMode = session.launchMode; report.focusPolicy = session.focusPolicy; report.windowPlacement = session.windowPlacement;
     const install = worker => installProvider(worker, provider.translationUrl, provider.blockedUrl).catch(error => workerErrors.push(error.message));
     context.on('serviceworker', install);
-    const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000}); await installProvider(worker, provider.translationUrl, provider.blockedUrl);
+    worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000}); await installProvider(worker, provider.translationUrl, provider.blockedUrl);
     await context.route('**/*', async route => {const u = new URL(route.request().url()); if (/^https?:$/.test(u.protocol) && !['127.0.0.1', 'localhost', '::1'].includes(u.hostname)) {unexpectedNetwork.push(u.href); await route.abort('blockedbyclient');} else await route.continue();});
     const popup = await helper.newPageWithoutForeground(context, args.timeout); const extensionId = new URL(worker.url()).hostname;
     await popup.goto(`chrome-extension://${extensionId}/popup.html`); await config(popup, {fullPageTranslationMode: 'viewport', eagerTranslationCharacters: 0});
@@ -157,23 +183,40 @@ async function main() {
     await config(popup, {fullPageTranslationMode: 'viewport', eagerTranslationCharacters: 0}); await page.reload({waitUntil: 'domcontentloaded'}); await page.waitForSelector('#fluent-read-page-styles', {state: 'attached', timeout: args.timeout});
     const beforeScrollRequests = provider.requestCount(); const eagerZeroStartPayloadBaseline = provider.requestPayloads().length; await toggle(page, helper, context); await waitFor(page, () => document.querySelectorAll('[data-reading-index] .fluent-read-bilingual-content').length > 0, args.timeout); await waitForProviderIdle(page, provider, args.timeout, 600); const eagerZeroInitial = await snapshot(page); const eagerZeroPayloadBaseline = provider.requestPayloads().length; const initialPayloadParagraphs = payloadParagraphs(provider, eagerZeroStartPayloadBaseline);
     const scrollTargets = [2, 4, 6, 8];
+    const scrollCommands = [];
+    let finalScrollPayloadBaseline, finalScrollViewport;
     for (const index of scrollTargets) {
-      await page.locator(`#reading-paragraph-${index}`).scrollIntoViewIfNeeded();
+      const command = {index, startAt: Date.now()}; scrollCommands.push(command);
+      if (index === scrollTargets.at(-1)) {
+        // 滚动与可见集合在同一个 page JS turn 中完成，后续译文撑高不能改写这份快照。
+        finalScrollViewport = await snapshot(page, index); finalScrollPayloadBaseline = provider.requestPayloads().length;
+      } else await page.locator(`#reading-paragraph-${index}`).scrollIntoViewIfNeeded();
+      command.endAt = Date.now();
       await page.waitForTimeout(80);
     }
     const fastPass = await snapshot(page); const fastPayloadParagraphs = payloadParagraphs(provider, eagerZeroPayloadBaseline);
     await page.waitForTimeout(220); const settled = await snapshot(page); await waitForProviderIdle(page, provider, args.timeout, 600); const settledStable = await snapshot(page); const settledPayloadParagraphs = payloadParagraphs(provider, eagerZeroPayloadBaseline);
     const skipped = scrollTargets.slice(0, -1).filter(index => !settledPayloadParagraphs.includes(index));
     if (skipped.length === 0) throw new Error(`快速划过段落仍全部进入 provider 请求：${JSON.stringify({scrollTargets, settledPayloadParagraphs})}`);
-    const newPayloadParagraphs = settledPayloadParagraphs.filter(index => !initialPayloadParagraphs.includes(index));
-    if (newPayloadParagraphs.length === 0 || !settledStable.visible.includes(newPayloadParagraphs[0])) throw new Error(`停顿后首个新请求没有优先命中当前可见段落：${JSON.stringify({settledStable, initialPayloadParagraphs, settledPayloadParagraphs, newPayloadParagraphs})}`);
+    // worker 与 page 的 timeOrigin + now 共用浏览器单调时钟基准；旧请求即使后来才到 server，也不会进入新区间。
+    const fetchStarts = await workerFetches(worker);
+    if (fetchStarts.some((entry, index) => entry.sequence !== index + 1 || !Number.isFinite(entry.startedAt)
+      || !Array.isArray(entry.payload) || entry.payload.some(text => typeof text !== 'string'))) throw new Error('worker fetch 原始序列或正文无法精确关联阅读段落');
+    const overlappingFetches = fetchStarts.filter(entry => entry.startedAt >= finalScrollViewport.scrollStartedAt && entry.startedAt <= finalScrollViewport.sampledAt);
+    report.finalScroll = {payloadBaseline: finalScrollPayloadBaseline, viewport: finalScrollViewport, scrollCommands, fetchStarts, overlappingFetches};
+    // 极短的同步采样若与另一个 realm 的 fetch 真正交叉，明确报告取证歧义，不把不确定序列当作通过。
+    if (overlappingFetches.length) throw new Error(`最终滚动同步采样与 fetch 开始交叉，无法证明请求优先级：${JSON.stringify(report.finalScroll)}`);
+    const finalRegionFetches = fetchStarts.filter(entry => entry.startedAt > finalScrollViewport.scrollStartedAt);
+    const newPayloadParagraphs = fetchParagraphs(finalRegionFetches).filter(index => !initialPayloadParagraphs.includes(index));
+    Object.assign(report.finalScroll, {finalRegionFetches, newPayloadParagraphs});
+    if (newPayloadParagraphs.length === 0 || !finalScrollViewport.visible.includes(newPayloadParagraphs[0])) throw new Error(`最终滚动区域首个新请求没有优先命中当前可见段落：${JSON.stringify({finalScrollViewport, initialPayloadParagraphs, settledPayloadParagraphs, newPayloadParagraphs})}`);
     const reverseIndex = skipped[0]; await page.locator(`#reading-paragraph-${reverseIndex}`).scrollIntoViewIfNeeded(); await page.waitForTimeout(260); await waitForProviderIdle(page, provider, args.timeout, 500); const reverse = await snapshot(page); const reversePayloadParagraphs = payloadParagraphs(provider, eagerZeroPayloadBaseline);
     if (!reverse.translated.includes(reverseIndex) && !reversePayloadParagraphs.includes(reverseIndex)) throw new Error(`反向重入可见段落未恢复处理：${JSON.stringify({reverseIndex, reverse, reversePayloadParagraphs})}`);
     await page.screenshot({path: path.join(args.artifactsDir, 'reading-progress-scrolled.png')}); report.screenshots.push(path.join(args.artifactsDir, 'reading-progress-scrolled.png'));
-    report.scenarios.eagerZero = {defaultValue: 0, initial: eagerZeroInitial, initialPayloadParagraphs, fastPass, fastPayloadParagraphs, after220ms: settled, afterProviderStable: settledStable, settledPayloadParagraphs, newPayloadParagraphs, reverse, reversePayloadParagraphs, skipped, requestCountBefore: beforeScrollRequests, requestCountAfter: provider.requestCount(), visiblePriorityWindowMs: 220, scrollIntervalMs: 80, useCache: false, maxConcurrentTranslations: 1};
+    report.scenarios.eagerZero = {defaultValue: 0, initial: eagerZeroInitial, initialPayloadParagraphs, fastPass, fastPayloadParagraphs, after220ms: settled, afterProviderStable: settledStable, settledPayloadParagraphs, newPayloadParagraphs, finalScroll: report.finalScroll, reverse, reversePayloadParagraphs, skipped, requestCountBefore: beforeScrollRequests, requestCountAfter: provider.requestCount(), visiblePriorityWindowMs: 220, scrollIntervalMs: 80, useCache: false, maxConcurrentTranslations: 1};
     await toggle(page, helper, context); await waitFor(page, () => document.querySelectorAll('.fluent-read-bilingual-content').length === 0, args.timeout);
     await config(popup, {fullPageTranslationMode: 'all', eagerTranslationCharacters: 0}); await page.reload({waitUntil: 'domcontentloaded'}); await page.waitForSelector('#fluent-read-page-styles', {state: 'attached', timeout: args.timeout}); await toggle(page, helper, context); await waitFor(page, () => document.querySelectorAll('[data-reading-index] .fluent-read-bilingual-content').length === 10, args.timeout); const all = await snapshot(page); if (all.translated.length !== 10) throw new Error(`all 模式未译完：${JSON.stringify(all)}`); await page.screenshot({path: path.join(args.artifactsDir, 'reading-progress-all.png')}); report.screenshots.push(path.join(args.artifactsDir, 'reading-progress-all.png')); report.scenarios.all = all;
-    report.requests = report.requests.slice(-100); report.workerErrors = workerErrors; report.unexpectedNetwork = unexpectedNetwork; report.runtimeErrors = runtimeErrors;
+    report.workerErrors = workerErrors; report.unexpectedNetwork = unexpectedNetwork; report.runtimeErrors = runtimeErrors;
     if (workerErrors.length || unexpectedNetwork.length || runtimeErrors.length) throw new Error(`浏览器回归存在错误：${JSON.stringify({workerErrors, unexpectedNetwork, runtimeErrors})}`);
     report.passed = true;
   } catch (error) {
@@ -185,6 +228,9 @@ async function main() {
     const cleanup = async action => {
       try {await action();} catch (error) {cleanupErrors.push(error);}
     };
+    // 完整保留 fetch 启动及 server 接收的原始序列，不能只留被筛选出来的成功段落。
+    await cleanup(async () => {if (worker) report.workerFetches = await workerFetches(worker);});
+    if (provider) report.providerPayloads = provider.requestPayloads();
     let browserClosed = false;
     await cleanup(async () => {
       if (session) {await session.close(); browserClosed = true;}
