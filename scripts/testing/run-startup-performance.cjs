@@ -161,6 +161,7 @@ async function measure(context, kind, url, selector, iteration) {
     } catch (error) {
       report.ok = false;
       report.cleanupErrors.push(error.stack);
+      console.error(error);
       process.exitCode = 1;
     } finally {
       try {
@@ -169,6 +170,7 @@ async function measure(context, kind, url, selector, iteration) {
       } catch (error) {
         report.ok = false;
         report.cleanupErrors.push(error.stack);
+        console.error(error);
         process.exitCode = 1;
       }
       fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));

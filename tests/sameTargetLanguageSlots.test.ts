@@ -288,6 +288,7 @@ describe('同次批译复制快照的 slot key 复用', () => {
         const inputs = repeated ? distinct.slice(0, 50).flatMap(origin => [origin, origin]) : distinct;
         const session: FullPageTranslationSessionCache = {
             active: true, translationSlotCache: new Map(), ...createFullPageRequestSessionState(),
+            allowNativeBatch: false,
         };
         const serialize = JSON.stringify;
         const slotKeys: string[] = [];

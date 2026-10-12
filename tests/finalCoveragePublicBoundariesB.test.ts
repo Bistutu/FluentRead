@@ -340,7 +340,7 @@ describe('final boundary B free-web cancellation between completed chunks', () =
         controller.abort(reason);
         expect(await outcome).toEqual({error: reason});
         expect(fetcher).toHaveBeenCalledOnce();
-        expect(new URL(String(fetcher.mock.calls[0][0])).searchParams.get('q')).toBe('a'.repeat(1000));
+        expect(new URL(String(fetcher.mock.calls[0][0])).searchParams.get('q')).toBe('a'.repeat(500));
         expect(fetcher.mock.calls[0][1]).toMatchObject({signal: controller.signal, credentials: 'omit'});
     });
 });
