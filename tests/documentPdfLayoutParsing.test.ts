@@ -193,7 +193,8 @@ describe('real PDF structural parsing', () => {
         expect(radical.y + radical.height).toBeGreaterThan(712.292 + 9.9626 * .96);
         expect(document.binary.pages[4].blocks.filter(block => block.kind === 'formula').every(block => block.preserveSource)).toBe(true);
         expect(bytes).toEqual(before);
-    });
+    // 真实论文同时执行 PDF.js 与版面分析，单例保留有界期限，避免负载接近默认 5 秒。
+    }, 20_000);
 
     it('retains source bytes, correct column reading order, headings and baseline superscripts', async () => {
         const bytes = await fixture(); const before = new Uint8Array(bytes);

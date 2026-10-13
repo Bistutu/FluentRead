@@ -1,5 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
+import {realpathSync} from 'node:fs';
+import {searchForWorkspaceRoot} from 'vite';
 import vue from '@vitejs/plugin-vue';
 
 const configuredMaxWorkers = Number(process.env.FLUENTREAD_TEST_MAX_WORKERS);
@@ -7,6 +9,8 @@ const maxWorkers = Number.isInteger(configuredMaxWorkers) && configuredMaxWorker
 
 // 独立的 Vitest 配置（与 wxt 构建配置互不影响）
 export default defineConfig({
+    // worktree 可共享安装的依赖；客户端 SFC 测试须能加载其真实路径，保留默认严格文件边界。
+    server: {fs: {allow: [searchForWorkspaceRoot(__dirname), realpathSync(resolve(__dirname, 'node_modules'))]}},
     // 组件生命周期测试执行实际客户端 SFC 模板，让 V8 归因到原始 Vue 源码。
     plugins: [vue({include: [
         /\/src\/(?:features\/share-card\/ui\/ShareCardStudio|features\/selection-translation\/ui\/SelectionTranslator|features\/settings\/ui\/services\/RequestLimit(?:Settings|Fields)|features\/reading-assistant\/ui\/[^/]+|ui\/components\/(?:MarkdownContent|MarkdownTable|[^/]*Reading[^/]*)|features\/image-translation\/ui\/MangaEntry|app\/document-translation\/(?:DocumentApp|DocumentSegmentEditor)|ui\/components\/(?:CustomHotkeyInput|UiSelect|GlossaryLibrarySelect|ServiceIcon|TranslationLoadingPreview|UiIcon|FeatureEnableCard)|features\/settings\/ui\/components\/(?:FieldHelp|InterfaceSkinPreview|PopupLayoutPreview|PopupLayoutPreviewItem|SettingsGroup|SettingsItem|TranslationColorField|TranslationStylePreview|WritingStylePreview|SegmentedControl))\.vue$/,

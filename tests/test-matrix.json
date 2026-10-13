@@ -6,6 +6,7 @@
       "tests/architecture/providerBoundaries.test.ts",
       "tests/architecture/sourceFileHeaders.test.ts",
       "tests/architecture/verificationOwnership.test.ts",
+      "tests/testConfiguration.test.ts",
       "tests/backgroundConfigPersistenceHandler.test.ts",
       "tests/backgroundConfigStorage.test.ts",
       "tests/backgroundConnectionTestHandler.test.ts",
@@ -38,6 +39,7 @@
       "tests/extensionSizeBudget.test.ts"
     ],
     "unit": [
+      "tests/compiledVueFixture.test.ts",
       "tests/imageOcrPixels.test.ts",
       "tests/googleRequestGate.test.ts",
       "tests/implementationAudit48H.test.ts",
@@ -434,6 +436,7 @@
       "tests/vocabularyVideoSource.test.ts"
     ],
     "functional": [
+      "tests/processRegression.test.ts",
       "tests/learningCenterLifecycle.test.ts",
       "tests/dateFormatLifecycle.test.ts",
       "tests/finalCoveragePublicBoundariesA.test.ts",

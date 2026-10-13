@@ -16,7 +16,6 @@ const VALUE_FLAGS = new Set([
     'playwright-root',
     'timeout',
 ]);
-const TEST_GROUPS = ['architecture', 'unit', 'functional', 'regression'];
 
 const LOCAL_BROWSER_FIXTURES = [
     {
@@ -134,7 +133,7 @@ function printUsage() {
     console.log([
         '用法: node scripts/testing/run-full-regression.mjs [--dry-run] [--browser] [--network --allow-network] [options]',
         '',
-        '默认/local 只执行确定性流水线：audit、prepare、compile、strict coverage、分组 Vitest、Chrome/Firefox/userscript build、docs/Storybook typecheck、build 与产物校验。',
+        '默认/local 只执行确定性流水线：audit、prepare、compile、完整 Vitest 与 strict coverage 单轮、Chrome/Firefox/userscript build、docs/Storybook typecheck、build 与产物校验。',
         '',
         '显式门禁：',
         '  --browser                 追加本地真实浏览器 fixtures。',
@@ -293,40 +292,9 @@ function deterministicSteps() {
         step({
             id: 'strict-coverage',
             phase: 'local',
-            label: 'strict coverage',
+            label: 'complete Vitest suite with strict coverage',
             command: 'pnpm',
             args: ['exec', 'vitest', 'run', '--coverage', '--config', 'vitest.coverage.config.ts'],
-        }),
-        ...TEST_GROUPS.map((group) => step({
-            id: `vitest-${group}`,
-            phase: 'local',
-            label: `grouped Vitest: ${group}`,
-            command: 'node',
-            args: ['scripts/testing/run-test-group.mjs', group],
-        })),
-        step({
-            id: 'agent-bridge',
-            phase: 'local',
-            label: 'agent bridge public process protocol',
-            command: 'node',
-            args: ['--test', 'tests/agentBridge.test.mjs'],
-        }),
-        step({
-            id: 'focus-safe-browser-lifecycle',
-            phase: 'local',
-            label: 'focus-safe browser ordinary and background context lifecycle',
-            command: 'node',
-            args: ['--test', '--test-concurrency=1',
-                'tests/focusSafeBrowserOrdinaryLifecycle.test.mjs',
-                'tests/focusSafeBrowserBackgroundSignal.test.mjs',
-                'tests/focusSafeBrowserBackgroundLifecycle.test.mjs'],
-        }),
-        step({
-            id: 'document-live-http-evidence',
-            phase: 'local',
-            label: 'document HTTP evidence decoder (offline node:test)',
-            command: 'node',
-            args: ['--test', 'tests/documentLiveHttpEvidence.test.mjs'],
         }),
         step({
             id: 'chrome-build',

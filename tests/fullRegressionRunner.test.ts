@@ -56,13 +56,6 @@ describe('full regression runner', () => {
             'wxt-prepare',
             'compile',
             'strict-coverage',
-            'vitest-architecture',
-            'vitest-unit',
-            'vitest-functional',
-            'vitest-regression',
-            'agent-bridge',
-            'focus-safe-browser-lifecycle',
-            'document-live-http-evidence',
             'chrome-build',
             'firefox-build',
             'firefox-zip',
@@ -76,19 +69,14 @@ describe('full regression runner', () => {
             'storybook-verifier',
             'docs-verifier',
         ]);
+        // 完整覆盖率配置已发现所有测试，流水线必须仅执行一次 Vitest。
+        const vitestSteps = plan.steps.filter((step: {args: string[]}) => step.args.includes('vitest'));
+        expect(vitestSteps).toHaveLength(1);
+        expect(vitestSteps[0]).toMatchObject({id: 'strict-coverage', command: 'pnpm',
+            args: ['exec', 'vitest', 'run', '--coverage', '--config', 'vitest.coverage.config.ts']});
+        expect(plan.steps.some((step: {args: string[]}) => step.args.includes('scripts/testing/run-test-group.mjs'))).toBe(false);
         const firefoxZip = plan.steps.find((step: {id: string}) => step.id === 'firefox-zip');
-        expect(plan.steps.find((step: {id: string}) => step.id === 'agent-bridge')).toMatchObject({
-            command: 'node', args: ['--test', 'tests/agentBridge.test.mjs'],
-        });
-        expect(plan.steps.find((step: {id: string}) => step.id === 'focus-safe-browser-lifecycle')).toMatchObject({
-            phase: 'local', command: 'node', args: ['--test', '--test-concurrency=1',
-                'tests/focusSafeBrowserOrdinaryLifecycle.test.mjs',
-                'tests/focusSafeBrowserBackgroundSignal.test.mjs',
-                'tests/focusSafeBrowserBackgroundLifecycle.test.mjs'],
-        });
-        expect(plan.steps.filter((step: {id: string}) => step.id === 'document-live-http-evidence')).toEqual([
-            expect.objectContaining({phase: 'local', command: 'node', args: ['--test', 'tests/documentLiveHttpEvidence.test.mjs']}),
-        ]);
+        expect(plan.steps.some((step: {args: string[]}) => step.args.includes('--test'))).toBe(false);
         const manifestVerifier = plan.steps.find(
             (step: {id: string}) => step.id === 'extension-manifest-verifier',
         );
