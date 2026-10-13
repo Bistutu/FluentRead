@@ -7,6 +7,7 @@
  * 模块边界：资源只描述扩展自己的界面文本；翻译服务的源文本、目标文本和用户内容不属于这里。
  */
 import videoLearningText from './video-learning/zh-CN.json';
+import {compositeTranslationMessages} from './compositeTranslation';
 import {pdfReadingChineseMessages} from './pdfReading';
 import {informationHighlightChineseMessages} from './informationHighlight';
 import reencounterText from './reencounter/zh-CN.json';
@@ -25,6 +26,7 @@ export const zhCNMessages = {
     "popup.compact.translate": "翻译",
     "popup.compact.restore": "还原",
     ...videoLearningText,
+    ...compositeTranslationMessages['zh-CN'],
     ...pdfReadingChineseMessages,
     ...informationHighlightChineseMessages,
     ...reencounterText,

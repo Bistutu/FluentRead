@@ -174,6 +174,7 @@
         @update:default-service="setDefaultConfigurationService"
         @update:model="selectConfigurationModel"
         @add:service="openCustomProviderDialog"
+        @add:composite-service="openCompositeProviderDialog"
         @add:model="addConfigurationModel"
         @remove:model="removeConfigurationModel"
       >
@@ -198,6 +199,7 @@
             @update:model-thinking="updateSelectedConfigurationModelThinking"
             @update:custom-provider="updateSelectedCustomProvider"
             @delete:custom-provider="deleteSelectedCustomProvider"
+            @remove:service="deleteSelectedCompositeProvider"
           />
         </template>
       </ServiceCatalog>
@@ -532,6 +534,7 @@
       @confirm="handleCustomSelectionHotkeyConfirm"
       @cancel="handleCustomSelectionHotkeyCancel"
     />
+  <CompositeTranslationProviderDialog v-if="compositeProviderDialogRequested" :active="viewActive && props.activeSection === 'settings-services'" :config="config" :context="config" v-model="compositeProviderDialogOpen" @submit="createCompositeProvider" />
   <CustomOpenAIProviderDialog v-if="customProviderDialogRequested" :active="viewActive && props.activeSection === 'settings-services'" :context="config" v-model="customProviderDialogOpen" @submit="createCustomProvider" />
 </template>
 
@@ -558,6 +561,7 @@ import {
   withCustomOpenAIServiceOptions,
   type CustomOpenAIProvider,
 } from '@/src/core/config/customOpenAI';
+import {createNextCompositeTranslationProviderId, getCompositeTranslationProvider, isCompositeTranslationProviderId, normalizeCompositeTranslationProviders, removeCompositeTranslationProvider, withCompositeTranslationServiceOptions, type CompositeTranslationProvider} from '@/src/core/config/compositeTranslation';
 import {
   withModelThinkingPreference,
   withoutModelThinkingPreference,
@@ -601,6 +605,7 @@ import { hasSavedServiceConfiguration } from '@/src/ui/view-model/serviceLibrary
 import {getServiceCredentialGuide, getServiceWebsite} from '@/src/ui/view-model/serviceCatalog';
 const ServiceCatalog = defineAsyncComponent(() => import('./services/ServiceCatalog.vue'));
 const ServiceConfiguration = defineAsyncComponent(() => import('./services/ServiceConfiguration.vue'));
+const CompositeTranslationProviderDialog = defineAsyncComponent(() => import('./services/CompositeTranslationProviderDialog.vue'));
 const customProviderLoadState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
 const CustomOpenAIProviderDialog = defineAsyncComponent(async () => {
   customProviderLoadState.value = 'loading';
@@ -725,12 +730,13 @@ onActivated(() => {viewActive.value = true;});
 onDeactivated(() => {
   viewActive.value = false;
   customProviderDialogOpen.value = false;
+  compositeProviderDialogOpen.value = false;
   cancelPendingScroll();
 });
 onBeforeUnmount(() => {disposed = true;viewActive.value = false;cancelPendingScroll();});
 watch(() => props.activeSection, (section) => {
   if (section !== scrollDestination) cancelPendingScroll();
-  if (section !== 'settings-services') customProviderDialogOpen.value = false;
+  if (section !== 'settings-services') {customProviderDialogOpen.value = false;compositeProviderDialogOpen.value = false;}
 });
 
 function openSettingsSection(section: string, targetId?: string): void {
@@ -805,6 +811,8 @@ const {
 } = useTranslationShortcutSettings(config,
   kind => viewActive.value && props.activeSection === (kind === 'selection' ? 'settings-selection' : 'settings-translation'),
   () => applyingExternalConfig);
+const compositeProviderDialogOpen = ref(false);
+const compositeProviderDialogRequested = ref(false);
 const customProviderDialogOpen = ref(false);
 const customProviderDialogRequested = ref(false);
 const customProviderFeedbackContext = useSettingsActionContext(
@@ -862,6 +870,12 @@ void configReady
   .then(() => {
     if (disposed) return;
     hydrateConfigDraft(runtimeConfig);
+    // 动态 profile 要等配置水合后解析；同步 watcher 不能把尚未到达的合法直达目标提前清空。
+    if (configurationService.value === null && /^(?:chrome|moz)-extension:$/u.test(window.location.protocol) && requestedConfigurationService
+      && (getCustomOpenAIProvider(config.value.customOpenAIProviders, requestedConfigurationService)
+        || getCompositeTranslationProvider(config.value.compositeTranslationProviders, requestedConfigurationService))) {
+      configurationService.value = requestedConfigurationService;
+    }
     hydrated = true;
     updateTheme(config.value.theme || 'auto');
   })
@@ -915,10 +929,10 @@ const selectedConfigurationCredentialGuide = computed(
 // 导入、撤销或恢复可能在当前页面仍打开时删除正在编辑的 profile。
 // 失效的 custom:* 选择应立即回退到新的默认服务，避免渲染孤儿配置字段。
 watch(
-  () => [configurationService.value, config.value.customOpenAIProviders.map((provider) => provider.id)] as const,
+  () => [configurationService.value, config.value.customOpenAIProviders.map((provider) => provider.id), config.value.compositeTranslationProviders.map((provider) => provider.id)] as const,
   ([service]) => {
-    if (service && isCustomOpenAIProviderId(service)
-      && !getCustomOpenAIProvider(config.value.customOpenAIProviders, service)) {
+    if (service && (isCustomOpenAIProviderId(service) && !getCustomOpenAIProvider(config.value.customOpenAIProviders, service)
+      || isCompositeTranslationProviderId(service) && !getCompositeTranslationProvider(config.value.compositeTranslationProviders, service))) {
       configurationService.value = null;
     }
   },
@@ -932,8 +946,8 @@ const setConfigurationService = (value: string) => {
 type ServiceSource = { value: string };
 
 const serviceOptionsWithCustomProviders = computed(() => localizeServiceOptions(
-  withCustomOpenAIServiceOptions(options.services, config.value.customOpenAIProviders),
-  config.value.customOpenAIProviders,
+  withCompositeTranslationServiceOptions(withCustomOpenAIServiceOptions(options.services, config.value.customOpenAIProviders), config.value.compositeTranslationProviders),
+  [...config.value.customOpenAIProviders, ...config.value.compositeTranslationProviders],
   translateLegacy,
 ));
 const availableServiceOptions = computed(() => filterAvailableTranslationServices(serviceOptionsWithCustomProviders.value));
@@ -1012,6 +1026,37 @@ function openCustomProviderDialog(): void {
   if (disposed || !viewActive.value || props.activeSection !== 'settings-services') return;
   customProviderDialogRequested.value = true;
   customProviderDialogOpen.value = true;
+}
+
+function openCompositeProviderDialog(): void {
+  if (disposed || !viewActive.value || props.activeSection !== 'settings-services') return;
+  compositeProviderDialogRequested.value = true;
+  compositeProviderDialogOpen.value = true;
+}
+
+function createCompositeProvider(draft: Omit<CompositeTranslationProvider, 'id'>): void {
+  if (disposed || !viewActive.value || props.activeSection !== 'settings-services') return;
+  const id = createNextCompositeTranslationProviderId(config.value.compositeTranslationProviders);
+  updateConfigAtomically((next) => {
+    next.compositeTranslationProviders = normalizeCompositeTranslationProviders([
+      ...next.compositeTranslationProviders, {...draft, id},
+    ], next.customOpenAIProviders);
+  });
+  configurationService.value = id;
+  ElMessage({message: '组合翻译已添加', type: 'success', grouping: true, duration: 1800});
+}
+
+function deleteSelectedCompositeProvider(service: string): void {
+  if (disposed || !viewActive.value || props.activeSection !== 'settings-services'
+    || service !== selectedConfigurationService.value
+    || !getCompositeTranslationProvider(config.value.compositeTranslationProviders, service)) return;
+  updateConfigAtomically((next) => {
+    next.compositeTranslationProviders = removeCompositeTranslationProvider(next.compositeTranslationProviders, service);
+    // 归一化负责清理各功能、快捷方案与常用列表中的失效组合选择。
+    if (next.service === service) next.service = defaultOption.service;
+  });
+  configurationService.value = config.value.service;
+  ElMessage({message: '组合翻译已删除', type: 'success', grouping: true, duration: 1800});
 }
 
 function createCustomProvider(draft: CustomProviderDraft): void {

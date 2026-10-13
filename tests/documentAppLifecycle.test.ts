@@ -103,6 +103,35 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
+    it('preserves glossary and AI context for combinations and invalidates saved document settings after member edits', async () => {
+        const service = 'composite:document';
+        Object.assign(state.config, {from: 'en', to: 'zh-Hans', documentService: service, enableAIContext: true,
+            compositeTranslationProviders: [{id: service, name: 'Document combination', strategy: 'sequential', services: ['openai', 'google'], timeoutMs: 12000}]});
+        state.config.model.openai = 'gpt-4.1-mini';
+        state.config.customModel.openai = '';
+        state.config.token.openai = 'fixture-document-composite';
+        await state.loadFiles([file('combined.txt', 'The first paragraph explains translation.\n\nThe next paragraph explains caching.')]);
+        await flush();
+        expect(state.documentSupportsGlossary).toBe(true);
+        expect(state.credentialWarning).toBeNull();
+        ports.translate.mockImplementation(async (source: string) => `译 ${source}`);
+        await state.startTranslation(); await flush();
+        expect(ports.translate).toHaveBeenCalledTimes(2);
+        expect(ports.batch).not.toHaveBeenCalled();
+        for (const [, , options] of ports.translate.mock.calls) {
+            expect(options).toMatchObject({serviceOverride: service, enableAIContext: true});
+            expect(options.modelOverride).toBeFalsy();
+        }
+        expect(state.settingsChanged).toBe(false);
+        const translatedFingerprint = state.taskFingerprint;
+        state.config.compositeTranslationProviders[0].strategy = 'smart'; await flush();
+        expect(state.settingsChanged).toBe(true);
+        expect(state.translationActionLabel).toBe('按新设置翻译');
+        state.config.compositeTranslationProviders[0].strategy = 'sequential'; await flush();
+        expect(state.currentFingerprint).toBe(translatedFingerprint);
+        state.config.token.openai = 'changed-member-credential'; await flush();
+        expect(state.settingsChanged).toBe(true);
+    });
     it('keeps the exact original download copy localized and reacts to the shared language selection', async () => {
         for (const language of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES']) {
             const copy = getDocumentDownloadCopy(language);

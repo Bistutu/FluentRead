@@ -61,8 +61,10 @@ interface LocalizableServiceOption {
 
 interface ServiceProfileSummary {
     id: string;
-    endpoint: string;
-    models: string[];
+    name?: string;
+    endpoint?: string;
+    models?: string[];
+    services?: string[];
 }
 
 /** 在 UI 边界复用本次标签译文；profile 按需索引且保留重复 ID 首项，原始名称仍用于搜索。 */
@@ -82,12 +84,12 @@ export function localizeServiceOptions<T extends LocalizableServiceOption>(
             if (!profileIndex.has(id)) profileIndex.set(id, next);
             if (id === option.value) profile = profileIndex.get(id);
         }
-        const label = translateLegacy(option.label);
+        const label = profile?.name || translateLegacy(option.label);
         return {
             ...option,
             label,
-            description: option.description ? translateLegacy(option.description) : option.description,
-            searchTerms: [...(option.searchTerms || []), option.label, label, ...(profile ? [profile.endpoint, ...profile.models] : [])],
+            description: profile?.services ? undefined : option.description ? translateLegacy(option.description) : option.description,
+            searchTerms: [...(option.searchTerms || []), option.label, label, ...(profile ? [...(profile.endpoint ? [profile.endpoint] : []), ...(profile.models || [])] : [])],
         };
     });
 }

@@ -6,6 +6,7 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/ja-JP.json';
+import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/ja-JP.json';
@@ -26,6 +27,7 @@ export const jaJPMessages = {
     "popup.compact.translate": "翻訳",
     "popup.compact.restore": "戻す",
     ...videoLearningText,
+    ...compositeTranslationMessages['ja-JP'],
     ...pdfReadingMessages['ja-JP'],
     ...informationHighlightMessages['ja-JP'],
     ...reencounterText,
@@ -2429,6 +2431,7 @@ const jaJPLegacyTextBase: Readonly<Record<string, string>> = {
 
 export const jaJPLegacyText: Readonly<Record<string, string>> = {
     ...googleDriveText.legacy,
+    ...compositeTranslationLegacyText['ja-JP'],
     ...cloudBackupText.legacy,
     "腾讯交互翻译": "Tencent TranSmart",
     "火山翻译": "Volcengine 翻訳",

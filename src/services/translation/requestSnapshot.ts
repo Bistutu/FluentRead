@@ -1,7 +1,7 @@
 /**
  * @file src/services/translation/requestSnapshot.ts
  *
- * 文件职责：冻结翻译消息的可编辑字段与数组，并附加只读 provider 配置快照，复制并冻结服务合批偏好，消除异步缓存读取期间全局配置变化造成的请求身份错配。
+ * 文件职责：冻结翻译消息的可编辑字段与数组，并附加只读 provider 配置快照，复制并深度冻结服务合批偏好及组合成员配置，消除异步缓存读取期间全局配置变化造成的请求身份错配。
  * 主要内容：在入口一次读取消息字段并复制原文/术语数组，保留内部 symbol 描述符；配置读取沿用已附着的可信对象，未附着时才同步执行备用快照工厂，仍兼容 provider 的对象备用值；定义配置快照、剩余预算、内部取消、线路观察与可信术语来源，携带后台调度租约让实际网络及响应读取结束前持续占用并发槽，冻结术语规则并从完整文本槽协议恢复纯匹配原文及供文档逐槽结构校验复用的协议快照；以线性首尾边界扫描确定命名空间和最终外层槽数，保留来源中的字面标记和自定义命名空间，重复、交错与缺项仍由同一严格解析器拒绝；userscript 编译时裁剪扩展文档页专属的自动字面值扫描。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；文本槽恢复复用 core/translation/slotProtocol.ts 纯协议，不初始化 DOM 候选或网站规则；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
@@ -17,6 +17,7 @@ import type {
 import {normalizeFreeTranslationOrder, normalizeFreeTranslationMode} from '@/src/core/config/freeTranslation';
 import {normalizeApiKeyRecoveryMs} from '@/src/core/config/scheduling';
 import type {CustomOpenAIProvider} from '@/src/core/config/customOpenAI';
+import type {CompositeTranslationProvider} from '@/src/core/config/compositeTranslation';
 import {normalizeDeepLApiPlan} from '@/src/core/config/deepl';
 import {normalizeNativeBatchTranslationEnabled} from '@/src/core/config/nativeBatch';
 import {resolveGlossaryEntries} from '@/src/core/glossary';
@@ -390,6 +391,16 @@ function frozenCustomOpenAIProviders(
     })));
 }
 
+function frozenCompositeTranslationProviders(value: readonly CompositeTranslationProvider[] | undefined): readonly Readonly<CompositeTranslationProvider>[] {
+    return Object.freeze((value || []).map(provider => Object.freeze({
+        id: provider.id,
+        name: provider.name,
+        strategy: provider.strategy,
+        services: Object.freeze([...provider.services]) as unknown as string[],
+        timeoutMs: provider.timeoutMs,
+    })));
+}
+
 /**
  * 在任何 await 之前复制 provider 与缓存身份会读取的字段。嵌套映射和顶层对象
  * 均冻结，配置页后续原地修改不会改变已在途请求。
@@ -426,6 +437,7 @@ export function createTranslationProviderConfigSnapshot(
         customModel: frozenStringMap(source.customModel),
         modelThinking: frozenNestedBooleanMap(source.modelThinking),
         customOpenAIProviders: frozenCustomOpenAIProviders(source.customOpenAIProviders),
+        compositeTranslationProviders: frozenCompositeTranslationProviders(source.compositeTranslationProviders),
         proxy: frozenStringMap(source.proxy),
         customBody: frozenStringMap(source.customBody),
         customHeaders: frozenStringMap(source.customHeaders),

@@ -8,6 +8,22 @@ FluentRead displays translations produced by your selected service. Use the defa
 
 <GuideVisual kind="provider" en />
 
+## Combined translation services
+
+In **Translation services**, select **Add combination** beside **Custom service**, name the combination, and add at least two existing individual services, such as Google translation, Microsoft translation, and a custom AI endpoint. Use the up, down, and remove buttons to arrange members. Combinations cannot contain other combinations. After saving, the combination appears in the custom service directory and can be set as the default or selected from the extension menu, document reader, and other service selectors.
+
+| Strategy | How members are selected |
+| --- | --- |
+| Sequential | Start with the first member and try the next after a failure or timeout |
+| Random | Shuffle the list for each request and try remaining members after a failure or timeout |
+| Smart | Rank members by recent success rate and response speed, then try the next after a failure or timeout |
+
+Each request returns the first successful translation; it does not merge several translations. Smart routing evaluates availability and speed rather than translation quality. Each member keeps its own model, API key, prompts, and request limits. Configure the member services first; model selection and key rotation continue to follow each member's existing settings.
+
+The **Per-member timeout** defaults to 12 seconds and accepts 1–45 seconds. The complete request remains subject to the overall translation timeout, so later members may receive no attempt when the remaining budget runs out. Cancelling translation stops the current attempt and prevents further fallback. Fallback may send the same source to several providers and consume allowance at each provider. Consider their data policies and fees when choosing members.
+
+Select a saved combination to edit its name, members, strategy, and timeout, then select **Save**. **Check connection** in the title bar sends a short translation through the saved strategy. An imported combination or one whose member services were deleted may have no members; it is kept for repair and cannot translate or run a connection check. Deleting a combination keeps all member services and their settings.
+
 ## Multi-text requests and reliability
 
 Full-page translation automatically groups short passages with the same request settings when using Google translation, Microsoft translation, DeepL, Azure Translator, or Google Cloud Translation. Their native multi-text interfaces keep each source associated with its own result. **AI multi-paragraph translation** remains off by default; other machine translation services continue requesting passages individually.

@@ -30,7 +30,7 @@ beforeEach(async () => {
   }, load(id) {
     if (id === '\0editor-browser') return 'export default {declarativeNetRequest: {updateDynamicRules: () => {}}}'
     if (id === '\0editor-element') return "import {h, getCurrentInstance} from 'vue';export const ElPopover = {setup(_, {slots}) {const instance = getCurrentInstance();return () => h('div', {'data-port-popover-key': instance.vnode.key}, [slots.reference?.(), slots.default?.()])}}, ElButton = {}, ElCheckbox = {}, ElInput = {}"
-    if (id === '\0editor-i18n') return 'export const useUiI18n = () => ({t: key => key, translateLegacy: text => text})'
+    if (id === '\0editor-i18n') return 'export const useUiI18n = () => ({t: key => key, translateLegacy: text => text});export const localizeServiceOptions = options => options'
     return null
   }}
   server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
@@ -76,6 +76,37 @@ const picker = {options: [{value: 'fixed'}, {value: 'custom', removable: true}],
 function fillProvider() {Object.assign(state.draft, {name: 'Local', endpoint: 'http://localhost:11434/v1', apiKey: 'synthetic', model: 'local-model'})}
 
 describe('服务子编辑器的写入与焦点归属', () => {
+  it('组合创建校验至少两个成员、保存策略与超时且旧提交不跨重开', async () => {
+    await mount('CompositeTranslationProviderDialog', {config: runtime.reactive(new Config()), modelValue: true}, {onSubmit: emitted})
+    state.actions.submit();expect(state.errors.name).toBe('settings.services.composite.nameRequired');expect(emitted).not.toHaveBeenCalled()
+    Object.assign(state.draft, {name: ' Daily ', strategy: 'smart', services: ['google'], timeoutMs: 5000})
+    state.actions.submit();expect(state.errors.services).toBe('settings.services.composite.membersRequired')
+    const old = state.actions;props.modelValue = false;props.modelValue = true
+    Object.assign(state.draft, {name: ' Daily ', strategy: 'smart', services: ['google', 'microsoft'], timeoutMs: 5000})
+    old.submit();expect(emitted).not.toHaveBeenCalled();state.actions.submit()
+    expect(emitted).toHaveBeenCalledWith({name: 'Daily', strategy: 'smart', services: ['google', 'microsoft'], timeoutMs: 5000})
+    expect(state.draft.services).toEqual([])
+  })
+  it('组合成员添加拒绝嵌套，重排与移除使用服务身份且旧事件不能跨列表改动', async () => {
+    const draft = runtime.reactive({name: 'Daily', strategy: 'sequential', services: ['google', 'microsoft'], timeoutMs: 12000})
+    await mount('CompositeTranslationFields', {draft, members: [{value: 'google', label: 'Google'}, {value: 'microsoft', label: 'Microsoft'}, {value: 'custom:work', label: 'Work'}]}, {onUpdate: emitted})
+    state.selectedMember = 'composite:nested';state.actions.add();expect(emitted).not.toHaveBeenCalled()
+    state.selectedMember = 'custom:work';state.actions.add();expect(emitted).toHaveBeenLastCalledWith({services: ['google', 'microsoft', 'custom:work']})
+    state.actions.move('microsoft', -1);expect(emitted).toHaveBeenLastCalledWith({services: ['microsoft', 'google']})
+    const old = state.actions;draft.services.reverse();old.remove('google');expect(emitted).toHaveBeenCalledTimes(2)
+    state.actions.remove('google');expect(emitted).toHaveBeenLastCalledWith({services: ['microsoft']})
+    props.active = false;state.actions.strategy('smart');expect(emitted).toHaveBeenCalledTimes(3)
+  })
+  it('组合编辑显式保存，删除确认不能跨服务或配置身份', async () => {
+    const config = runtime.reactive(new Config())
+    config.compositeTranslationProviders = [{id: 'composite:first', name: 'First', strategy: 'sequential', services: ['google', 'microsoft'], timeoutMs: 12000}, {id: 'composite:second', name: 'Second', strategy: 'smart', services: ['microsoft', 'google'], timeoutMs: 10000}]
+    await mount('CompositeTranslationSettings', {config, service: 'composite:first'}, {onRemove: emitted})
+    state.actions.update({name: 'Renamed', strategy: 'random', timeoutMs: 3000});expect(config.compositeTranslationProviders[0].name).toBe('First')
+    state.actions.save();expect(config.compositeTranslationProviders[0]).toEqual({id: 'composite:first', name: 'Renamed', strategy: 'random', services: ['google', 'microsoft'], timeoutMs: 3000})
+    state.actions.remove();const old = state.deleteActions;props.service = 'composite:second';old.confirm();expect(emitted).not.toHaveBeenCalled();expect(state.deleteOpen).toBe(false)
+    state.actions.remove();state.deleteActions.confirm();expect(emitted).toHaveBeenCalledOnce()
+    expect(config.compositeTranslationProviders).toHaveLength(2)
+  })
   it('实际缓存模板的旧模型点击不得在服务切换后使用新的事件身份', async () => {
     const nodes = await mount('ModelPicker', picker, {onSelect: emitted}, true)
     const old = nodes.find(node => node.props.class === 'model-picker-option')!.props.onClick

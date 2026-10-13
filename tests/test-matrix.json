@@ -38,6 +38,11 @@
       "tests/extensionSizeBudget.test.ts"
     ],
     "unit": [
+      "tests/compositeTranslationConfig.test.ts",
+      "tests/compositeTranslationRouting.test.ts",
+      "tests/compositeTranslationBroker.test.ts",
+      "tests/compositeTranslationConnection.test.ts",
+      "tests/compositeServiceEditor.test.ts",
       "tests/imageOcrPixels.test.ts",
       "tests/googleRequestGate.test.ts",
       "tests/implementationAudit48H.test.ts",

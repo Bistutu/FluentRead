@@ -128,6 +128,7 @@ export function createInputBoxTranslationRequest(
     const service = normalizeInputBoxTranslationService(
         current.inputBoxTranslationService,
         current.customOpenAIProviders,
+        current.compositeTranslationProviders,
     ) || current.service;
     const model = normalizeInputBoxTranslationModel(current.inputBoxTranslationModel);
     const configuredModel = resolveConfiguredModel(current.model[service], current.customModel[service]);

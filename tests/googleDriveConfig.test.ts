@@ -6,6 +6,22 @@ import {buildDriveSyncDiff, driveSyncPayload as completePayload, driveValuesEqua
 const driveSyncPayload = (config: Record<string, unknown>) => completePayload(config, true);
 function complete(patch: Record<string, unknown> = {}) {return toDriveSyncConfig(normalizeConfig({...new Config(), videoServiceDefaultMigrated: true, ...patch}));}
 describe('Google Drive 完整快照和安全合并', () => {
+    it('普通备份携带公开组合策略，无运行统计或凭据；完整备份拒绝孤儿组合引用', () => {
+        const composite = {id: 'composite:work', name: '工作组合', strategy: 'smart', services: ['google', 'custom:fixture'], timeoutMs: 12_000};
+        const fixture = complete({service: composite.id, compositeTranslationProviders: [composite], customOpenAIProviders: [
+            {id: 'custom:fixture', name: 'Fixture', endpoint: 'https://fixture.invalid/v1', models: ['fixture-model']},
+        ], token: {'custom:fixture': 'synthetic-local-secret'}});
+        expect(parseDriveSyncPayload(driveSyncPayload(fixture)).compositeTranslationProviders).toEqual([composite]);
+        const publicSettings = projectDriveSyncConfig(fixture);
+        expect(publicSettings.compositeTranslationProviders).toEqual([composite]);
+        expect(JSON.stringify(publicSettings)).not.toContain('synthetic-local-secret');
+        expect(publicSettings).not.toHaveProperty('token');
+        expect(publicSettings).not.toHaveProperty('customOpenAIProviders');
+        const unknownRuntime = {...fixture, compositeTranslationProviders: [{...composite, runtimeStatistics: {successes: 5}}]};
+        expect(projectDriveSyncConfig(unknownRuntime)).not.toHaveProperty('compositeTranslationProviders');
+        expect(() => parseDriveSyncPayload(driveSyncPayload({...fixture, service: 'google', videoService: composite.id, compositeTranslationProviders: []}))).toThrow('不存在的组合翻译服务');
+    });
+
     it('备份差异复用设置名称，连接整组说明变更类别而不暴露凭据', () => {
         const diff=buildDriveSyncDiff(null,{translationScope:'content',hotkey:'Alt',inputBoxTranslationPrompt:'fixture-private-prompt',service:'google',token:{},proxy:{}},{translationScope:'all',hotkey:'Shift',inputBoxTranslationPrompt:'other-private-prompt',service:'bing',token:{openai:'fixture-private-key'},proxy:{openai:'https://private.invalid'}});
         expect(diff.changes.map(change=>change.label)).toEqual(['识别全部节点','鼠标悬浮快捷键','输入框翻译提示词','翻译连接与凭据（整组）']);

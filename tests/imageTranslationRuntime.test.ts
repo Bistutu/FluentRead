@@ -211,7 +211,7 @@ beforeEach(() => {
     settings.uiLanguage = 'zh-CN';
     settings.on = true; settings.disableImageTranslator = false; settings.to = 'zh-Hans'; settings.useCache = true;
     settings.theme = 'auto'; settings.modelThinking = {}; settings.system_role = {}; settings.user_role = {};
-    settings.imageTranslationService = ''; settings.service = 'google'; settings.model = {}; settings.customModel = {}; settings.customBody = {}; settings.proxy = {}; settings.customOpenAIProviders = []; settings.token = {};
+    settings.imageTranslationService = ''; settings.service = 'google'; settings.model = {}; settings.customModel = {}; settings.customBody = {}; settings.proxy = {}; settings.customOpenAIProviders = []; settings.compositeTranslationProviders = []; settings.token = {};
     client.translate.mockReset().mockResolvedValue(result);
     client.prepare.mockReset().mockResolvedValue(undefined);
     client.fetch.mockReset();
@@ -696,6 +696,26 @@ describe('图片翻译前台交互与生命周期', () => {
             env.click(); mutate(); env.click(); await flush();
         }
         expect(client.translate).toHaveBeenCalledTimes(4);
+        expect(env.button().dataset.phase).toBe('translated');
+    });
+
+    it('组合成员变化清空图片结果，未选服务修改仍可复用当前译图', async () => {
+        settings.service = 'composite:image';
+        settings.compositeTranslationProviders = [{id: settings.service, name: '图片组合', strategy: 'sequential', services: ['google', 'custom:fixture'], timeoutMs: 12_000}];
+        settings.customOpenAIProviders = [{id: 'custom:fixture', name: 'Fixture', endpoint: 'https://api.example.test/v1', models: ['fixture']}];
+        settings.token['custom:fixture'] = 'synthetic-private-member';
+        const env = setup(); env.hover(); env.click(); await flush(); env.click();
+        settings.token.openai = 'unrelated'; env.click(); await flush();
+        expect(client.translate).toHaveBeenCalledOnce();
+        for (const mutate of [
+            () => {settings.customOpenAIProviders[0].endpoint += '/changed';},
+            () => {settings.model.google = 'changed-model';},
+            () => {settings.token['custom:fixture'] = 'changed-key';},
+            () => {settings.compositeTranslationProviders[0].strategy = 'smart';},
+        ]) {
+            env.click(); mutate(); env.click(); await flush();
+        }
+        expect(client.translate).toHaveBeenCalledTimes(5);
         expect(env.button().dataset.phase).toBe('translated');
     });
 

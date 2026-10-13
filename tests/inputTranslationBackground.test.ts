@@ -76,6 +76,24 @@ describe('输入框翻译后台配置绑定', () => {
         expect(createInputBoxTranslationRequest(config, 'hello', 'zh').serviceOverride).toBe(services.microsoft);
     });
 
+    it('独立组合不会被规范化退回网页默认，成员模型及提示词仍沿用各自配置', () => {
+        const config = new Config();
+        config.service = services.google;
+        config.inputBoxTranslationService = 'composite:input';
+        config.compositeTranslationProviders = [{id: 'composite:input', name: '输入组合', strategy: 'smart', services: ['microsoft', 'deepseek'], timeoutMs: 12_000}];
+        config.model.deepseek = 'member-model';
+        config.user_role.deepseek = 'Member translation prompt';
+        config.inputBoxTranslationPrompt = 'Input override is only for individually selected AI';
+        const request = createInputBoxTranslationRequest(config, 'hello', 'zh-Hans');
+        expect(request.serviceOverride).toBe('composite:input');
+        expect(request.modelOverride).toBeUndefined();
+        const snapshot = getTranslationProviderConfig(request, config as never);
+        expect(snapshot.model.deepseek).toBe('member-model');
+        expect(snapshot.user_role.deepseek).toBe('Member translation prompt');
+        config.compositeTranslationProviders[0].services.reverse();
+        expect(snapshot.compositeTranslationProviders?.[0].services).toEqual(['microsoft', 'deepseek']);
+    });
+
     it('冻结独立 AI service/model/prompt，并忽略网页消息中的伪造字段', async () => {
         const config = new Config();
         config.service = services.microsoft;

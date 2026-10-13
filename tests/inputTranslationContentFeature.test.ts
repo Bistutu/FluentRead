@@ -579,6 +579,23 @@ describe('input translation content feature', () => {
         expect(isInputBoxTranslationEnabled({on: true, inputBoxTranslationTrigger: 'ctrl_enter'}, true)).toBe(false);
     });
 
+    it('组合成员连接更新使输入事务失效，成员凭据只进入安全摘要', () => {
+        const config: any = {on: true, inputBoxTranslationTrigger: 'ctrl_enter', inputBoxTranslationTarget: 'en', inputBoxTranslationService: 'composite:input',
+            compositeTranslationProviders: [{id: 'composite:input', name: '输入组合', strategy: 'sequential', services: ['google', 'deepseek'], timeoutMs: 12_000}],
+            token: {deepseek: 'synthetic-member-private'}, customBody: {}, model: {deepseek: 'fixture'},
+        };
+        const initial = inputBoxTranslationConfigKey(config);
+        expect(initial).not.toContain('synthetic-member-private');
+        config.token.openai = 'unrelated';
+        expect(inputBoxTranslationConfigKey(config)).toBe(initial);
+        for (const mutate of [() => {config.token.deepseek = 'changed';}, () => {config.customBody.google = '{"test":1}';},
+            () => {config.compositeTranslationProviders[0].services.reverse();}, () => {config.model.deepseek = 'changed';}]) {
+            const before = inputBoxTranslationConfigKey(config);
+            mutate();
+            expect(inputBoxTranslationConfigKey(config)).not.toBe(before);
+        }
+    });
+
     it('配置 key 只跟踪选中服务的模型、连接和凭据指纹', () => {
         const base: any = {
             on: true,

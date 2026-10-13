@@ -4,6 +4,22 @@ import {createGlossaryLibrary} from '@/src/core/glossary';
 import {getVideoTranslationConfigFingerprint, mergeBilingualVideoSubtitleCues, normalizeVideoCaptionText, revealVideoSubtitleTranslation, translateVideoSubtitleCues, selectYoutubeCaptionCue, selectVideoSubtitleCueAtOffset, selectVideoSubtitlePretranslationCues, findProgressiveVideoCaptionCue, findActiveVideoCaptionCue, selectProgressiveVideoCaptionCue} from '@/src/features/video-subtitle/content/subtitleLogic';
 
 describe('video subtitle logic', () => {
+  it('组合成员连接或策略更新使字幕缓存失效，无关服务不会改变成员摘要', () => {
+    const config = new Config();
+    config.videoService = 'composite:video';
+    config.compositeTranslationProviders = [{id: config.videoService, name: '字幕组合', strategy: 'sequential', services: ['google', 'deepseek'], timeoutMs: 12_000}];
+    config.token.deepseek = 'synthetic-member-private';
+    const initial = getVideoTranslationConfigFingerprint(config);
+    expect(initial).not.toContain('synthetic-member-private');
+    config.token.openai = 'unrelated';
+    expect(getVideoTranslationConfigFingerprint(config)).toBe(initial);
+    config.token.deepseek = 'synthetic-member-changed';
+    const changed = getVideoTranslationConfigFingerprint(config);
+    expect(changed).not.toBe(initial);
+    config.compositeTranslationProviders[0].strategy = 'smart';
+    expect(getVideoTranslationConfigFingerprint(config)).not.toBe(changed);
+  });
+
   it('X 渐进字幕保持短句区间与旧 DOM 匹配，未知文本不猜时间轴', () => {
     const first = {startMs: 0, durationMs: 100, text: 'First sentence'};
     const overlapping = {startMs: 50, durationMs: 100, text: 'Overlapping sentence'};

@@ -1,5 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
+import type {CompositeTranslationProvider} from '@/src/core/config/compositeTranslation';
 
 const mocks = vi.hoisted(() => ({
   config: {animations: true, translationLoadingStyle: 'minimal', service: 'deepseek', customOpenAIProviders: [] as Array<{
@@ -7,7 +8,7 @@ const mocks = vi.hoisted(() => ({
     name: string;
     endpoint: string;
     models: string[];
-  }>},
+  }>, compositeTranslationProviders: [] as CompositeTranslationProvider[]},
   showPageNotice: vi.fn(),
 }));
 
@@ -103,6 +104,7 @@ beforeEach(() => {
   mocks.config.translationLoadingStyle = 'minimal';
   mocks.config.service = 'deepseek';
   mocks.config.customOpenAIProviders = [];
+  mocks.config.compositeTranslationProviders = [];
   mocks.showPageNotice.mockReset();
 });
 
@@ -245,6 +247,13 @@ describe('全文翻译节点状态指示', () => {
       '你的请求频率过高，被【团队模型网关】拒绝了，请稍后再试吧~',
       'error',
     );
+  });
+
+  it('组合错误反馈显示用户保存的名称', () => {
+    mocks.config.service = 'composite:team';
+    mocks.config.compositeTranslationProviders = [{id: mocks.config.service, name: '团队翻译组合', strategy: 'smart', services: ['google', 'openai'], timeoutMs: 12_000}];
+    insertFailedTip(document.getElementById('target')!, 'quota exceeded', vi.fn()).querySelector<HTMLElement>('.fluent-read-reason')!.click();
+    expect(mocks.showPageNotice).toHaveBeenCalledWith('你的请求频率过高，被【团队翻译组合】拒绝了，请稍后再试吧~', 'error');
   });
 
   it('加载指示在 Shadow Root 内渲染所选样式，并区分缓存命中', () => {

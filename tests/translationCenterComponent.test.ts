@@ -7,6 +7,7 @@ import * as vue from 'vue';
 import {Config, normalizeConfig} from '@/src/core/config/model';
 import * as catalog from '@/src/core/config/catalog';
 import * as profiles from '@/src/core/config/customOpenAI';
+import * as composites from '@/src/core/config/compositeTranslation';
 import * as validation from '@/src/core/config/validation';
 import * as comparison from '@/src/features/translation-center/model/comparison';
 import {translate} from '@/src/core/i18n';
@@ -29,7 +30,7 @@ beforeEach(async () => {
   requestPatch = vi.fn().mockResolvedValue(undefined); translateText = vi.fn().mockResolvedValue('translated'); copy = vi.fn().mockResolvedValue(undefined);
   vi.stubGlobal('navigator', {platform: 'MacIntel', clipboard: {writeText: copy}});
   vi.stubGlobal('document', {body: {style: {userSelect: 'text'}}, addEventListener: vi.fn(), removeEventListener: vi.fn(), elementFromPoint: vi.fn()});
-  const api = {...catalog, ...profiles, ...validation, ...comparison, config, configReady: Promise.resolve(),
+  const api = {...catalog, ...profiles, ...composites, ...validation, ...comparison, config, configReady: Promise.resolve(),
     subscribeConfig: (fn: typeof subscription) => {subscription = fn; return vi.fn();}, requestConfigPatch: requestPatch, translateText, TranslationRequestError,
     filterAvailableTranslationServices: (items: any[]) => items.filter(item => item.value !== 'chromeTranslator'),
     isTranslationServiceAvailable: (service: string) => service !== 'chromeTranslator',
@@ -49,6 +50,24 @@ beforeEach(async () => {
 afterEach(() => {unmounted.forEach(fn => fn()); scope.stop(); vi.unstubAllGlobals(); vi.useRealTimers();});
 
 describe('translation center product workflow', () => {
+  it('keeps a combination label and marks completed results stale after member configuration changes', async () => {
+    const service = 'composite:center';
+    config.compositeTranslationProviders = [{id: service, name: 'Everyday', strategy: 'sequential', services: ['google', 'microsoft'], timeoutMs: 12000}];
+    config.translationCenterServices = [service]; subscription(config);
+    expect(state.serviceCategory(service)).toBe('组合');
+    expect(state.serviceLabel(service)).toBe('Everyday');
+    state.sourceText = 'Original'; state.runTranslation(); await vue.nextTick();
+    await vi.waitFor(() => expect(state.successfulCards).toHaveLength(1));
+    expect(translateText.mock.calls[0][2].modelOverride).toBeUndefined();
+    config.compositeTranslationProviders[0].strategy = 'smart'; subscription(config);
+    expect(state.isStale(state.cards[0])).toBe(true);
+    expect(state.successfulCards).toEqual([]);
+    state.retryService(service); await vue.nextTick();
+    await vi.waitFor(() => expect(state.successfulCards).toHaveLength(1));
+    config.proxy.google = 'https://changed.example'; subscription(config);
+    expect(state.isStale(state.cards[0])).toBe(true);
+    state.copyAllResults(); expect(copy).not.toHaveBeenCalled();
+  });
   it('starts with a small no-key selection and never changes the page default', () => {
     expect(state.cards.map((card: any) => card.service)).toEqual(['freeTranslation', 'google']);
     expect(requestPatch).not.toHaveBeenCalled(); expect(translateText).not.toHaveBeenCalled();

@@ -6,6 +6,7 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/ko-KR.json';
+import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/ko-KR.json';
@@ -26,6 +27,7 @@ export const koKRMessages = {
     "popup.compact.translate": "번역",
     "popup.compact.restore": "복원",
     ...videoLearningText,
+    ...compositeTranslationMessages['ko-KR'],
     ...pdfReadingMessages['ko-KR'],
     ...informationHighlightMessages['ko-KR'],
     ...reencounterText,
@@ -2429,6 +2431,7 @@ const koKRLegacyTextBase: Readonly<Record<string, string>> = {
 
 export const koKRLegacyText: Readonly<Record<string, string>> = {
     ...googleDriveText.legacy,
+    ...compositeTranslationLegacyText['ko-KR'],
     ...cloudBackupText.legacy,
     "腾讯交互翻译": "Tencent TranSmart",
     "火山翻译": "Volcengine 번역",
