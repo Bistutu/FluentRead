@@ -2420,7 +2420,10 @@ function findHoverTargetInPage({
     const rect = node.getBoundingClientRect();
     const style = getComputedStyle(node);
     return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' &&
-      naturalLanguage(text) && sourceIncludes.every((fragment) => text.includes(fragment));
+      // This positive hover flow requires a Chinese output; choose a source without Han
+      // rather than a Chinese title whose commit prefix or code names inflate Latin counts.
+      naturalLanguage(text) && !/[\u3400-\u9fff]/u.test(text) &&
+      sourceIncludes.every((fragment) => text.includes(fragment));
   });
   const result = matches[eligibleIndex] || null;
   return result ? {rawIndex: result.rawIndex, sourceText: result.text} : null;

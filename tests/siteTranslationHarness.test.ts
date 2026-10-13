@@ -4283,3 +4283,88 @@ describe('LearnOpenGL protected native slot contract', () => {
     });
   });
 });
+
+
+// Hover positive cases require an unambiguous source for their Chinese-output assertion.
+// Full coverage keeps every original natural-language candidate and its owner obligations.
+describe('hover source choice for the original Chinese-output flow', () => {
+  const mixedTitle = 'fix(translation): 修复 flex/grid 标签在仅译文模式下反复重译';
+  const selector = '[data-testid="listitem-title-link"]';
+
+  function hoverPage(page: Parameters<Parameters<typeof withCompletionFixture>[0]>[0]['page']) {
+    const waitForFunction = vi.fn(async (
+      fn: (argument: unknown) => unknown,
+      argument: unknown,
+      _options: {timeout: number},
+    ) => {
+      if (!fn(argument)) throw new Error('controlled hover target timeout');
+    });
+    return {...page, waitForFunction};
+  }
+
+  it('chooses the next source title without reducing original full-owner coverage', async () => {
+    const titleA = 'Fix repeated translation in flexible labels';
+    const titleB = 'Preserve ownership when a pull request title changes';
+    const html = '<main><h2>Cookies</h2><h2>Cookies</h2><p>A full paragraph stays eligible.</p>' +
+      [mixedTitle, titleA, titleB].map(text => `<a data-testid="listitem-title-link">${text}</a>`).join('') + '</main>';
+    await withCompletionFixture(async ({document, page, tracker}) => {
+      const actualPage = hoverPage(page);
+      const config = cases['github-project-pulls'];
+      const rule = normalizeCoverageRules(config.coverageRules)[0];
+      expect(rule).toMatchObject({selector, minInitial: 2, minSeen: 2, trackDynamic: true});
+      expect(isNaturalLanguageText(mixedTitle)).toBe(true);
+      expect(tracker.report().find(item => item.name === rule.name)).toMatchObject({seenCount: 3});
+      await expect(resolveHoverTarget(actualPage, {name: 'primary', selector, index: 0, sourceIncludes: []}, 100))
+        .resolves.toMatchObject({rawIndex: 1, sourceText: titleA});
+      await expect(resolveHoverTarget(actualPage, {name: 'second', selector, index: 1, sourceIncludes: []}, 100))
+        .resolves.toMatchObject({rawIndex: 2, sourceText: titleB});
+      expect(actualPage.waitForFunction).toHaveBeenCalledWith(expect.any(Function), expect.any(Object), {timeout: 100});
+      expect([...document.querySelectorAll(selector)].map(node => node.textContent)).toEqual([mixedTitle, titleA, titleB]);
+      expect(() => assertCoverageReport([rule], tracker.report(), 'untranslated original owners')).toThrow();
+    }, html, cases['github-project-pulls'].coverageRules);
+  });
+
+  it.each(['h1', 'h2', 'p', 'li'] as const)('retains the original %s semantic selector and source anchor', async tag => {
+    const scopedSelector = `.hover ${tag}`;
+    const first = 'Read the anchored source paragraph';
+    const second = 'Read another anchored source paragraph';
+    const html = `<main><div class="hover"><${tag}>${mixedTitle}</${tag}>` +
+      `<${tag}>A different visible paragraph</${tag}><${tag}>${first}</${tag}><${tag}>${second}</${tag}></div></main>`;
+    await withCompletionFixture(async ({page}) => {
+      const actualPage = hoverPage(page);
+      await expect(resolveHoverTarget(actualPage, {
+        name: tag, selector: scopedSelector, index: 1, sourceIncludes: ['anchored source'],
+      }, 100)).resolves.toMatchObject({rawIndex: 3, sourceText: second});
+      expect(actualPage.waitForFunction).toHaveBeenCalledWith(expect.any(Function), expect.objectContaining({
+        selector: scopedSelector, eligibleIndex: 1, sourceIncludes: ['anchored source'],
+      }), {timeout: 100});
+    }, html);
+  });
+
+  it('does not borrow Han from owned or protected descendants or select hidden or technical nodes', async () => {
+    const html = '<main><div class="hover"><p>HTTPS</p><p class="sr-only">Read the hidden paragraph</p>' +
+      '<p hidden>Read another hidden paragraph</p>' +
+      '<p>Read the visible source paragraph<span class="fluent-read-bilingual-content">已有译文</span><script>中文</script></p>' +
+      '</div></main>';
+    await withCompletionFixture(async ({document, page}) => {
+      await expect(resolveHoverTarget(hoverPage(page), {
+        name: 'paragraph', selector: '.hover p', index: 0, sourceIncludes: ['visible source'],
+      }, 100)).resolves.toMatchObject({rawIndex: 3, sourceText: 'Read the visible source paragraph'});
+      expect(document.querySelector('.fluent-read-bilingual-content')?.textContent).toBe('已有译文');
+      expect(document.querySelector('script')?.textContent).toBe('中文');
+    }, html, [], element => ({display: element.hasAttribute('hidden') ? 'none' : 'block', visibility: 'visible'}));
+  });
+
+  it('keeps a list with only Chinese or mixed titles failing within the original timeout', async () => {
+    const html = '<main><a data-testid="listitem-title-link">' + mixedTitle + '</a>' +
+      '<a data-testid="listitem-title-link">Fix API 配置与 UI 标签</a></main>';
+    await withCompletionFixture(async ({document, page}) => {
+      const actualPage = hoverPage(page);
+      await expect(resolveHoverTarget(actualPage, {name: 'primary', selector, index: 0, sourceIncludes: []}, 100))
+        .rejects.toThrow('controlled hover target timeout');
+      expect(actualPage.waitForFunction).toHaveBeenCalledTimes(1);
+      expect(actualPage.waitForFunction).toHaveBeenCalledWith(expect.any(Function), expect.any(Object), {timeout: 100});
+      expect(document.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(0);
+    }, html);
+  });
+});
