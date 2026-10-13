@@ -1,6 +1,17 @@
 import {describe,expect,it} from 'vitest';
 import {audioSpeechProgress,boundarySpeechProgress,parseSpeechCues,parseSpeechProgress,speechTextSlices,speechTextTokens,parseSpeechPlaybackPosition,seekSpeechTime} from '@/src/core/tts/speechProgress';
 describe('音频时间与安全跟读切片',()=>{
+    it('复用同一原文的分词仍保持每次跳转与分段边界一致',()=>{
+        const text="We’re publishing H2D，中文\n🙂 release.";
+        const tokens=Object.freeze(speechTextTokens(text));
+        const before=JSON.stringify(tokens);
+        const cues=[{startChar:0,endChar:16,startTime:0,endTime:4},{startChar:17,endChar:text.length,startTime:5,endTime:8}];
+        for(const time of [0,.3,2,4,4.5,5,6,8,100]) {
+            expect(audioSpeechProgress(text,time,8,cues,tokens)).toEqual(audioSpeechProgress(text,time,8,cues));
+        }
+        expect(audioSpeechProgress(text,1,8,[],tokens)).toEqual(audioSpeechProgress(text,1,8));
+        expect(JSON.stringify(tokens)).toBe(before);
+    });
     it('仅接受有序有效句段，损坏或超大数据不参与跟读',()=>{
         const cue={startChar:0,endChar:5,startTime:0,endTime:1};expect(parseSpeechCues([cue])).toEqual([cue]);
         for(const value of [null,{},Array(2049).fill(cue),[null],[{...cue,startChar:-1}],[{...cue,endChar:0}],[{...cue,startTime:-1}],[{...cue,endTime:0}],[{...cue,endTime:NaN}],[{...cue,startChar:.1}]])expect(parseSpeechCues(value)).toEqual([]);

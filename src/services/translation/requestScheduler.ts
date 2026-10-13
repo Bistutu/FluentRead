@@ -2,7 +2,7 @@
  * @file src/services/translation/requestScheduler.ts
  *
  * 文件职责：统一执行翻译任务的并发和请求启动速率限制，支持取消、截止时间、服务/模型 bucket 与真实 HTTP attempt。
- * 主要内容：复用 global/服务/模型 bucket、FIFO、取消、deadline 和 lease；真实 HTTP 响应把 Retry-After 冷却写入可信 quota 摘要，冷却中的线路不阻塞其他线路，broker SDK 逻辑等待不占槽，真实 HTTP attempt 复用同一 bucket 的并发与速率。
+ * 主要内容：保留 global/服务/模型动态 bucket、FIFO、取消、deadline 与真实 transport lease；同一可信 quota scope 共享 Retry-After 冷却，broker SDK 的真实 attempt 单独计并发和速率，旧直调 attempt 仍复用外层槽。
  * 模块边界：本模块只管理调度时序，不选择服务、不实现重试、不读取或写入配置；配置由调用方通过 getConfig 提供。
  */
 
@@ -134,6 +134,7 @@ export function createTranslationRequestScheduler(
     const now = dependencies.now ?? (() => Date.now());
     const buckets = new Map<string, BucketState>();
     const cooldowns = new Map<string, number>();
+    const activeRequests = new Set<PendingRequest<unknown>>();
     let pending: Array<PendingRequest<unknown> | undefined> = [];
     let head = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -202,6 +203,16 @@ export function createTranslationRequestScheduler(
             buckets.set(key, state);
         }
         return state;
+    }
+
+    function refreshActiveBuckets(config: TranslationRequestSchedulerConfig): void {
+        // 用户可在请求仍运行时切换沿用/自定义。启动时的 bucket 已不是当前约束，
+        // 因此按稳定请求身份重新投影所有在途任务；starts 继续保留原速率历史。
+        // settled 仅表示调用方收到结果，holdUntil 未结束的 transport 仍在集合里。
+        for (const state of buckets.values()) state.active = 0;
+        for (const entry of activeRequests) {
+            for (const key of keysFor(entry.identity, config)) stateFor(key).active += 1;
+        }
     }
 
     function limitFor(key: string, config: TranslationRequestSchedulerConfig): BucketLimit {
@@ -305,7 +316,7 @@ export function createTranslationRequestScheduler(
         };
     }
 
-    async function execute(entry: PendingRequest<unknown>, keys: readonly string[]): Promise<void> {
+    async function execute(entry: PendingRequest<unknown>): Promise<void> {
         const leaseState = createLease();
         try {
             const result = await entry.task(leaseState.lease);
@@ -324,9 +335,7 @@ export function createTranslationRequestScheduler(
             // 调用方可以先收到取消/超时；真实传输结束后才归还并发槽。
             leaseState.close();
             await Promise.all(leaseState.waits);
-            if (entry.countConcurrency) {
-                for (const key of keys) stateFor(key).active -= 1;
-            }
+            activeRequests.delete(entry);
             drain();
         }
     }
@@ -348,6 +357,7 @@ export function createTranslationRequestScheduler(
                 }
                 const config = currentConfig();
                 resetDrainMemo();
+                refreshActiveBuckets(config);
                 const current = readNow();
                 rejectInactive(current);
                 let earliest = Number.POSITIVE_INFINITY;
@@ -356,7 +366,7 @@ export function createTranslationRequestScheduler(
                 // 仍在等待的任务先行：扫描时累积这些 bucket key，每项判定只看自身 1~2 个 key，
                 // 避免对每个等待项回扫全部更早项造成 O(待处理数²)。
                 const waitingKeys = new Set<string>();
-                // 旧直调的 HTTP 重试复用外层槽；持槽的真实 attempt 进入同一 FIFO。
+                // 旧直调重试复用外层槽；真正独立计并发的 attempt 进入普通 FIFO。
                 const waitingAttemptKeys = new Set<string>();
                 const keepWaiting = (entry: PendingRequest<unknown>, keys: readonly string[]) => {
                     for (const key of keys) {
@@ -370,7 +380,7 @@ export function createTranslationRequestScheduler(
                     const cooldownWait = (cooldowns.get(clean(entry.identity?.quotaScope)) ?? current) - current;
                     if (cooldownWait > 0) {
                         earliest = Math.min(earliest, cooldownWait);
-                        // 冷却不是 global bucket 的 FIFO 阻塞；健康线路仍按既有 bucket 顺序入场。
+                        // 冷却只约束同一可信 quota scope，不反向阻塞健康线路。
                         continue;
                     }
                     const keys = keysFor(entry.identity, config);
@@ -389,12 +399,13 @@ export function createTranslationRequestScheduler(
                         continue;
                     }
                     pending[index] = undefined;
+                    if (entry.countConcurrency) activeRequests.add(entry);
                     for (const key of keys) {
                         const state = stateFor(key);
                         if (entry.countConcurrency) state.active += 1;
                         if (entry.countRate) state.starts.push(current);
                     }
-                    void execute(entry, keys);
+                    void execute(entry);
                 }
                 compact();
                 let nextDeadline = Number.POSITIVE_INFINITY;
@@ -402,29 +413,23 @@ export function createTranslationRequestScheduler(
                     const deadlineAt = pending[index]?.deadlineAt;
                     if (deadlineAt !== undefined && deadlineAt < nextDeadline) nextDeadline = deadlineAt;
                 }
-                // readNow 保证 current 有限，无 deadline 时 Infinity - current 仍为 Infinity。
-                let wake = Math.min(earliest, Math.max(0, nextDeadline - current));
-                for (const until of cooldowns.values()) wake = Math.min(wake, until - current);
-                if (wake < Number.POSITIVE_INFINITY) arm(wake);
+                const deadlineWait = nextDeadline === Number.POSITIVE_INFINITY
+                    ? Number.POSITIVE_INFINITY
+                    : Math.max(0, nextDeadline - current);
+                let nextWait = Math.min(earliest, deadlineWait);
+                for (const until of cooldowns.values()) nextWait = Math.min(nextWait, until - current);
+                if (nextWait < Number.POSITIVE_INFINITY) arm(nextWait);
             } while (drainRequested);
         } finally {
             draining = false;
         }
     }
 
-    function enqueue<T>(
-        task: (lease: TranslationRequestLease) => Promise<T>,
-        options: TranslationRequestSchedulerTaskOptions = {},
-        attemptOnly = false,
-    ): Promise<T> {
-        if (options.signal?.aborted) return Promise.reject(createAbortError());
+    function enqueue<T>(entry: PendingRequest<T>): Promise<T> {
+        if (entry.signal?.aborted) return Promise.reject(createAbortError());
         return new Promise<T>((resolve, reject) => {
-            const entry: PendingRequest<T> = {
-                ...options, task, attemptOnly,
-                countConcurrency: attemptOnly ? options.countConcurrency === true : options.countConcurrency !== false,
-                countRate: attemptOnly || options.countRate !== false,
-                resolve, reject, settled: false,
-            };
+            (entry as {resolve: typeof resolve; reject: typeof reject}).resolve = resolve;
+            (entry as {resolve: typeof resolve; reject: typeof reject}).reject = reject;
             if (entry.signal) {
                 const onAbort = () => {
                     entry.settled = true;
@@ -451,7 +456,29 @@ export function createTranslationRequestScheduler(
             cooldowns.set(scope, Math.max(cooldowns.get(scope) ?? 0, current + delay));
             drain();
         },
-        schedule: enqueue,
-        scheduleAttempt: <T>(task: () => Promise<T>, options?: TranslationRequestAttemptOptions) => enqueue(task, options, true),
+        schedule: <T>(task: (lease: TranslationRequestLease) => Promise<T>, options: TranslationRequestSchedulerTaskOptions = {}) => enqueue({
+            task,
+            signal: options.signal,
+            deadlineAt: options.deadlineAt,
+            identity: options.identity,
+            attemptOnly: false,
+            countConcurrency: options.countConcurrency !== false,
+            countRate: options.countRate !== false,
+            resolve: undefined as never,
+            reject: undefined as never,
+            settled: false,
+        }),
+        scheduleAttempt: <T>(task: () => Promise<T>, options: TranslationRequestAttemptOptions = {}) => enqueue({
+            task: async () => task(),
+            signal: options.signal,
+            deadlineAt: options.deadlineAt,
+            identity: options.identity,
+            attemptOnly: true,
+            countConcurrency: options.countConcurrency === true,
+            countRate: true,
+            resolve: undefined as never,
+            reject: undefined as never,
+            settled: false,
+        }),
     };
 }

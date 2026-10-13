@@ -1,39 +1,11 @@
-import type {UserscriptRuntimePort} from './localPort';
 import {getStoredValue, listStoredKeys, setStoredValue, storage as userscriptStorage} from './storage';
-
-/**
- * 只读脚本管理器注入的窗口隐私元数据；缺失、畸形、异常或别名冲突保持未知。
- * 不通过页面 URL、存储、payload 或浏览器 API 猜测；未知只限制持久化 UI，不冒充普通 quota。
- */
-export function getUserscriptPrivacyContext(): boolean | undefined {
-    try {
-        const infos: unknown[] = [typeof GM_info === 'undefined' ? undefined : GM_info,
-            typeof GM === 'undefined' ? undefined : GM?.info];
-        let context: boolean | undefined;
-        for (const info of infos) {
-            if (info === undefined) continue;
-            if (info === null || typeof info !== 'object') return undefined;
-            if (!Object.prototype.hasOwnProperty.call(info, 'isIncognito')) continue;
-            const value = (info as {isIncognito?: unknown}).isIncognito;
-            if (typeof value !== 'boolean' || (context !== undefined && context !== value)) return undefined;
-            context = value;
-        }
-        return context;
-    } catch {
-        return undefined;
-    }
-}
 
 type RuntimeListener = (
     message: any,
     sender: any,
     sendResponse: (response?: any) => void,
 ) => unknown;
-type PlatformMessageHandler = ((message: any) => Promise<any>) & {
-    connect?: (options: {name?: string}) => UserscriptRuntimePort;
-    closeConnections?: () => void;
-    dispose?: () => void;
-};
+type PlatformMessageHandler = ((message: any) => Promise<any>) & {dispose?: () => void};
 
 export const UNHANDLED_RUNTIME_MESSAGE = Symbol('unhandled-runtime-message');
 
@@ -74,17 +46,11 @@ export function resetPlatformMessageHandler(): void {
     setPlatformMessageHandler(defaultPlatformMessageHandler);
 }
 
-/** 阅读 owner 单独关闭；离页计数 flush 仍可消费原平台消息处理器。 */
-export function closePlatformConnections(): void {
-    platformMessageHandler.closeConnections?.();
-}
-
 /**
  * 在同一页面内模拟 webextension runtime 消息分派，兼容同步 sendResponse、Promise
  * 返回值以及返回 true 后异步应答三种监听器形式。
  */
 export async function dispatchContentMessage(message: any): Promise<any> {
-    const incognito = getUserscriptPrivacyContext();
     for (const listener of runtimeListeners) {
         let didRespond = false;
         let responseValue: any;
@@ -101,7 +67,7 @@ export async function dispatchContentMessage(message: any): Promise<any> {
         const pending = pendingResponses.get(listener) || new Set<() => void>();
         pending.add(cancel); pendingResponses.set(listener, pending);
         try {
-            const returned = listener(message, {tab: {id: 1, windowId: 1, incognito}, frameId: 0}, sendResponse);
+            const returned = listener(message, {tab: {id: 1, windowId: 1}, frameId: 0}, sendResponse);
             if (returned && typeof (returned as PromiseLike<unknown>).then === 'function') {
                 const value = await returned;
                 if (value !== undefined) return value;
@@ -126,10 +92,6 @@ function runtimeAssetUrl(path: string): string {
 }
 
 const runtime = {
-    connect(options: {name?: string} = {}): UserscriptRuntimePort {
-        if (!platformMessageHandler.connect) throw new Error('阅读连接尚未就绪');
-        return platformMessageHandler.connect(options);
-    },
     async sendMessage(message: any): Promise<any> {
         // 先交给 userscript 的“后台”适配器；未处理消息再回送内容侧监听器。
         const result = await platformMessageHandler(message);
@@ -156,9 +118,6 @@ const runtime = {
 
 const browser = {
     runtime,
-    extension: {
-        get inIncognitoContext(): boolean | undefined { return getUserscriptPrivacyContext(); },
-    },
     tabs: {
         async query(): Promise<Array<{id: number; windowId: number; active: boolean}>> {
             return [{id: 1, windowId: 1, active: true}];
@@ -203,7 +162,6 @@ const browser = {
 
 export const chrome = {
     runtime,
-    extension: browser.extension,
     storage: browser.storage,
 };
 

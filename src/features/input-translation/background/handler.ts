@@ -1,8 +1,8 @@
 /**
  * @file src/features/input-translation/background/handler.ts
  * 文件职责：定义输入框快捷翻译的后台消息处理器，在调用共享翻译 broker 前校验原文和目标语言，并统一返回成功译文结构。
- * 主要内容：解析纯文本、目标语言与可选请求标识，按可信发送者注册取消请求；在首次等待前快照 sender.tab 的三态隐私，等待配置水合并冻结服务配置，保留请求控制直到 provider 返回后检查取消；可信属于本次目标的普通文本直接保留原文。
- * 模块边界：此文件不监听键盘、不修改输入框也不绑定具体 provider；翻译实现与共享取消注册表由 composition root 注入。页面只能携带文本、目标语言和取消标识，不能提供服务凭据、隐私或内部 quota 上下文。
+ * 主要内容：包含 inputBoxTranslation 消息常量、请求/响应与依赖接口、非空字符串和可选请求标识解析，按发送者注册可取消请求，在配置水合和共享翻译 broker 调用期间响应取消，并冻结本地服务配置快照；可信属于本次目标的普通文本直接保留原文。
+ * 模块边界：此文件不监听键盘、不修改输入框也不绑定具体 provider；content feature 负责触发和提交，翻译实现与请求注册表由 composition root 注入，统一路由负责错误响应。网页消息只能携带纯文本、目标语言和取消标识，服务、模型、提示词与凭据均从后台配置读取。
  */
 import {servicesType, resolveConfiguredModel} from '@/src/core/config/catalog';
 import {Config} from '@/src/core/config/model';
@@ -16,9 +16,9 @@ import {
     supportsInputBoxTranslationPrompt,
 } from '@/src/core/config/inputTranslation';
 import {
-    attachTranslationProviderConfig,
     attachTranslationGlossaryContext,
     translationPrivacyContext,
+    attachTranslationProviderConfig,
     attachTranslationRequestControl,
     createTranslationProviderConfigSnapshot,
     type TranslationRequestControl,
@@ -169,19 +169,17 @@ export function createInputBoxTranslationHandler(
     return {
         type: INPUT_BOX_TRANSLATION_MESSAGE_TYPE,
         async handle(message, context = {}) {
+            const privacyContext = translationPrivacyContext(context);
             // 步骤 1：页面消息先经过严格协议收窄，避免对象、HTML 或空值进入翻译 broker。
             const text = parseRequiredString(message.text, 'text');
             const targetLanguage = parseRequiredString(message.targetLang, 'targetLang');
             const clientRequestId = parseClientRequestId(message.clientRequestId);
-            // 可信发送者隐私在首次等待前快照；页面 payload 不能覆盖普通、私密或未知来源。
-            const privacyContext = translationPrivacyContext(context);
             const translate = async (control?: TranslationRequestControl): Promise<InputBoxTranslationResponse> => {
                 const signal = control?.signal;
                 await waitForReady(dependencies.ready, signal);
                 // 步骤 2：服务、模型、提示词和凭据均从配置读取，并在 provider await 前冻结。
                 const request = createInputBoxTranslationRequest(dependencies.getConfig(), text, targetLanguage);
                 attachTranslationGlossaryContext(request, privacyContext);
-                // control symbol 不可枚举：在同一 request 上附加，之后不 spread 重建。
                 if (control) attachTranslationRequestControl(request, control);
                 if (shouldSkipTranslationForTarget(text, targetLanguage)) {
                     throwIfAborted(signal);

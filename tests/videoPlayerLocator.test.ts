@@ -44,6 +44,94 @@ afterEach(() => {
 });
 
 describe('video player locator', () => {
+  it('ignores native caption span churn but observes media visibility, source and reparenting', () => {
+    vi.useFakeTimers();
+    const fixture = setup('<div id="movie_player"><video></video><div class="captions"><span>Words</span></div></div>', 'https://www.youtube.com/watch?v=fixture');
+    let notify!: MutationCallback;
+    const frameState: {callback?: () => void} = {};
+    const flushFrame = () => {
+      frameState.callback?.();
+      frameState.callback = undefined;
+    };
+    Object.defineProperty(fixture.window, 'requestAnimationFrame', {configurable: true,
+      value: (callback: () => void) => { frameState.callback = callback; return 12; }});
+    vi.stubGlobal('MutationObserver', class {
+      constructor(callback: MutationCallback) { notify = callback; }
+      observe() {}
+      disconnect() {}
+    });
+    const locator = createVideoPlayerLocator({document: fixture.document, window: fixture.window});
+    const original = locator.sync()!;
+    const scans = vi.spyOn(fixture.document, 'querySelectorAll');
+    const caption = fixture.document.querySelector('.captions')!;
+    const mutation = (record: object) => notify([record] as MutationRecord[], {} as MutationObserver);
+    scans.mockClear();
+    for (let index = 0; index < 180; index += 1) {
+      mutation({type: 'childList', target: caption, addedNodes: [fixture.document.createElement('span')], removedNodes: []});
+      vi.advanceTimersByTime(16);
+    }
+    expect(frameState.callback).toBeUndefined();
+    expect(scans).not.toHaveBeenCalledWith('video');
+    // 无关 control 属性和同值 class 写入也不能转为布局重扫。
+    mutation({type: 'attributes', target: caption, attributeName: 'class', oldValue: 'captions', addedNodes: [], removedNodes: []});
+    caption.setAttribute('class', 'captions-new');
+    mutation({type: 'attributes', target: caption, attributeName: 'class', oldValue: 'captions', addedNodes: [], removedNodes: []});
+    const owned = fixture.document.createElement('div'); owned.className = 'fluent-read-video-ui';
+    mutation({type: 'attributes', target: owned, attributeName: 'style', oldValue: '', addedNodes: [], removedNodes: []});
+    notify([
+      {type: 'attributes', target: fixture.document.createTextNode('invalid attribute target'), addedNodes: [], removedNodes: []},
+      {type: 'attributes', target: owned, attributeName: 'style', oldValue: '', addedNodes: [], removedNodes: []},
+    ] as unknown as MutationRecord[], {} as MutationObserver);
+    expect(frameState.callback).toBeUndefined();
+    fixture.videos[0].setAttribute('src', 'blob:new-source');
+    mutation({type: 'attributes', target: fixture.videos[0], attributeName: 'src', oldValue: null, addedNodes: [], removedNodes: []});
+    flushFrame();
+    expect(locator.getTarget()?.key).not.toBe(original.key);
+    const player = fixture.document.getElementById('movie_player')!;
+    player.setAttribute('style', 'display:none');
+    mutation({type: 'attributes', target: player, attributeName: 'style', oldValue: null, addedNodes: [], removedNodes: []});
+    expect(frameState.callback).toBeTypeOf('function'); flushFrame();
+    const replacement = fixture.document.createElement('div'); replacement.className = 'html5-video-player';
+    fixture.document.body.appendChild(replacement); replacement.appendChild(fixture.videos[0]);
+    mutation({type: 'childList', target: player, addedNodes: [], removedNodes: [fixture.videos[0]]});
+    flushFrame();
+    expect(locator.getTarget()?.player).toBe(replacement);
+    locator.destroy(); scans.mockRestore();
+  });
+
+  it('refreshes source and track children immediately without treating an unrelated source as video content', () => {
+    const fixture = setup('<div id="movie_player"><video><source src="blob:first"><track src="captions-first.vtt"></video></div>', 'https://www.youtube.com/watch?v=fixture');
+    let notify!: MutationCallback;
+    const frameState: {callback?: () => void} = {};
+    const flushFrame = () => { frameState.callback?.(); frameState.callback = undefined; };
+    Object.defineProperty(fixture.window, 'requestAnimationFrame', {configurable: true,
+      value: (callback: () => void) => { frameState.callback = callback; return 14; }});
+    vi.stubGlobal('MutationObserver', class {
+      constructor(callback: MutationCallback) { notify = callback; }
+      observe() {}
+      disconnect() {}
+    });
+    const source = fixture.document.querySelector('source')!;
+    Object.defineProperty(fixture.videos[0], 'currentSrc', {configurable: true, get: () => source.isConnected ? source.getAttribute('src') : ''});
+    const locator = createVideoPlayerLocator({document: fixture.document, window: fixture.window});
+    const original = locator.sync()!;
+    const mutation = (record: object) => notify([record] as MutationRecord[], {} as MutationObserver);
+    source.setAttribute('src', 'blob:updated');
+    mutation({type: 'attributes', target: source, attributeName: 'src', oldValue: 'blob:first', addedNodes: [], removedNodes: []});
+    expect(frameState.callback).toBeTypeOf('function'); flushFrame();
+    expect(locator.getTarget()?.key).not.toBe(original.key);
+    const track = fixture.document.querySelector('track')!;
+    track.setAttribute('src', 'captions-updated.vtt');
+    mutation({type: 'attributes', target: track, attributeName: 'src', oldValue: 'captions-first.vtt', addedNodes: [], removedNodes: []});
+    expect(frameState.callback).toBeTypeOf('function'); flushFrame();
+    source.remove();
+    mutation({type: 'childList', target: fixture.videos[0], addedNodes: [], removedNodes: [source]});
+    expect(frameState.callback).toBeTypeOf('function'); flushFrame();
+    mutation({type: 'attributes', target: source, attributeName: 'src', oldValue: null, addedNodes: [], removedNodes: []});
+    expect(frameState.callback).toBeUndefined();
+    locator.destroy();
+  });
+
   it('resolves deeply nested media overlays while ignoring equally nested adjacent post text', () => {
     const nested = (id: string) => '<span>'.repeat(10) + `<span id="${id}">Media</span>` + '</span>'.repeat(10);
     const {document, window, videos} = setup(`<article><div class="media"><video></video><a href="/proof/status/111/video/1">${nested('media-link')}</a></div><p>${nested('post-text')}</p></article>`);

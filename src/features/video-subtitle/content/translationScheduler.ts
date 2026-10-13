@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/translationScheduler.ts
  * 文件职责：限制视频字幕的翻译并发，避免预取字幕挤占当前播放句子的处理机会。
- * 主要内容：按原文合并等待者、提升当前句优先级、限制预取占用，丢弃离开播放窗口的未启动预取，并在轨道切换时取消旧请求。
+ * 主要内容：按原文合并等待者、提升当前句优先级、限制预取占用；总在途已满时跳过无法启动的等待队列整理，任务完成后仍按优先级调度；丢弃离开播放窗口的未启动预取，并在轨道切换时取消旧请求。
  * 模块边界：只调度注入的翻译函数，不读取配置、播放器或浏览器消息；调用方管理译文缓存与时间轴。
  */
 interface TranslationJob {
@@ -65,6 +65,7 @@ export class VideoTranslationScheduler {
     }
 
     private pump(): void {
+        if (this.active >= 3) return;
         const waiting = [...this.jobs.values()].filter(job => !job.started)
             .sort((a, b) => a.priority - b.priority);
         for (const job of waiting) {

@@ -775,6 +775,7 @@ export function createInputTranslationContentFeature(
             : isSameEditableCaretState(readEditableCaretState(sequence.element), sequence.expectedCaret));
 
         const handleMutation = (event: Event) => {
+            if (!activeInputTranslationElement && !triggerSequence) return;
             const element = activeEventElement(event);
             if (!element || !isInputElement(element)) return;
             if (element !== activeInputTranslationElement && element !== triggerSequence?.element) return;

@@ -1,0 +1,25 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/run-video-sentence-learning-test.cjs --fullscreen-escape-probe-only --platforms youtube --extension-dir .output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --artifacts-dir /private/tmp/fluentread-video-learning-reliability-fullscreen-escape-probe
+youtube: Observed trusted Escape in fullscreen with extension configuration disabled
+youtube: Observed trusted Escape in fullscreen with extension configuration enabled and learning open
+{
+  "success": true,
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "scenario": "background-cdp-fullscreen-escape-control",
+      "success": true,
+      "checks": 2
+    }
+  ],
+  "liveCases": [],
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "report": "/private/tmp/fluentread-video-learning-reliability-fullscreen-escape-probe/report.json"
+}

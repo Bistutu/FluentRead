@@ -27,10 +27,19 @@ describe('userscript free translation settings', () => {
             freeTranslationMode: 'unexpected',
             freeTranslationOrder: ['sogouFree', 'sogouFree', 'unknown'],
             freeTranslationWeights: {sogouFree: 99},
+            // 首次升级插入 B站；下面再验证已升级配置保留用户关闭选择。
+            freeTranslationBilibiliDefaultApplied: false,
         });
         expect(normalized.freeTranslationMode).toBe('balanced');
-        expect(normalized.freeTranslationOrder).toEqual(['sogouFree']);
+        expect(normalized.freeTranslationOrder).toEqual(['bilibiliFree', 'sogouFree']);
+        expect(normalized.freeTranslationBilibiliDefaultApplied).toBe(true);
         expect(normalized).not.toHaveProperty('freeTranslationWeights');
         expect(new Config().freeTranslationMode).toBe('balanced');
+
+        const saved = normalizeConfig({
+            ...normalized,
+            freeTranslationOrder: ['unknown', 'sogouFree', null, 'sogouFree', 42],
+        });
+        expect(saved.freeTranslationOrder).toEqual(['sogouFree']);
     });
 });

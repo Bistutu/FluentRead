@@ -1,8 +1,8 @@
 <!--
  * @file src/features/reading-assistant/ui/ReadingAnswer.vue
  * 文件职责：统一呈现阅读回答、流式生成内容和已保存问答，提供清晰而紧凑的阅读层次。
- * 主要内容：把能够对应原文的首个词性表格提到回答顶部，纯表格章节的紧邻标题随之迁移，仍有正文的章节保留原标题；随后按原顺序呈现安全 Markdown 正文，流式追加时保留结构片段的选择，普通和不匹配表格保持原位，使用局部主题变量兼容选区 Shadow UI 与设置页面。
- * 模块边界：仅接收回答、可选原文与紧凑模式，不请求模型、不读取存储，不插入 HTML、不创建可点击外链或远程图片。
+ * 主要内容：把能够对应原文的首个词性表格提到回答顶部，纯表格章节的紧邻标题随之迁移，仍有正文的章节保留原标题；随后按原顺序呈现安全 Markdown 正文，流式追加时保留结构片段的选择，普通和不匹配表格保持原位，使用局部主题变量兼容选区 Shadow UI 与设置页面；有效引用显示原生定位按钮，无效引用保留快照状态，带引文的句法表保留表格以呈现每格依据，外部背景使用独立标记。
+ * 模块边界：仅接收回答、可选原文与紧凑模式，不请求模型、不读取存储，不插入 HTML、不创建可点击外链或远程图片；经引用身份和原句校验的依据只通过所属页面端口定位。
  -->
 <template>
   <div class="fr-reading-markdown" :class="{'is-compact': compact}" data-reading-answer data-i18n-ignore>
@@ -25,14 +25,18 @@
 </template>
 <script setup lang="ts">
 import SentenceAnalysis from './SentenceAnalysis.vue';
+import ReadingEvidence from './ReadingEvidence.vue';
+import {parseReadingEvidence, type ReadingEvidenceSource} from '@/src/core/harness/evidence';
+import type {ReadingEvidenceAnchor, ReadingEvidenceLocation} from '../evidenceAnchor';
 import {anchorSentenceAnalysis} from '../sentenceAnalysis';
 import {computed, h} from 'vue';
 import {readingAnswerBlocks, readingAnswerSpans} from '../answerFormat';
 import {useUiI18n} from '@/src/ui/i18n';
-const props = withDefaults(defineProps<{text: string; compact?: boolean; sourceText?: string}>(), {compact: true, sourceText: ''});
-const {translateLegacy} = useUiI18n();
+const props = withDefaults(defineProps<{text: string; compact?: boolean; sourceText?: string; evidenceSources?: readonly ReadingEvidenceSource[]; locateEvidence?: ReadingEvidenceAnchor['locate']; evidenceState?: ReadingEvidenceLocation}>(), {compact: true, sourceText: '', evidenceSources: () => []});
+const {translateLegacy, t} = useUiI18n();
 const blocks = computed(() => readingAnswerBlocks(props.text));
-const annotations = computed(() => blocks.value.map(block => anchorSentenceAnalysis(block, props.sourceText)));
+const annotations = computed(() => blocks.value.map(block => block.kind === 'table' && [...block.headers, ...block.rows.flat()].some(cell => cell.includes('[[cite:'))
+  ? null : anchorSentenceAnalysis(block, props.sourceText)));
 const structure = computed(() => {
   const index = annotations.value.findIndex(value => value !== null);
   if (index < 0) return null;
@@ -48,7 +52,11 @@ const structure = computed(() => {
 const bodyBlocks = computed(() => blocks.value.map((block, index) => ({block, index}))
   .filter(({index}) => index !== structure.value?.index && index !== structure.value?.headingIndex));
 const inlineTags = {text: 'span', strong: 'strong', emphasis: 'em', code: 'code'} as const;
-const AnswerInline = ({text}: {text: string}) => readingAnswerSpans(text).map(span => h(inlineTags[span.kind], span.text));
+const AnswerInline = ({text}: {text: string}) => parseReadingEvidence(text, props.evidenceSources).flatMap(block => {
+  if (block.kind === 'citation') return [h(ReadingEvidence, {citation: block, locateEvidence: props.locateEvidence, sourceState: props.evidenceState})];
+  if (block.kind === 'unavailable') return [h('span', {class: 'fr-reading-evidence-status', 'data-evidence-state': 'unverified'}, `${t('reading.evidence.unverified')} · ${block.text}`)];
+  return readingAnswerSpans(block.text.replaceAll('[[external]]', `【${t('reading.evidence.external')}】`)).map(span => h(inlineTags[span.kind], span.text));
+});
 </script>
 <style scoped>
 .fr-reading-markdown { --fr-answer-quote: var(--el-text-color-regular, inherit); --fr-answer-border: var(--el-border-color-lighter, #e9e9ef); --fr-answer-soft: var(--el-fill-color-lighter, #f8f8fa); --fr-answer-code: var(--el-fill-color-light, #f3f3f6); color: inherit; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }

@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/subtitleLogic.ts
  * 文件职责：提供字幕批量翻译、配置指纹和渐进文本展示的纯逻辑。
- * 主要内容：相同译文保留原文且不重复展示；合成双语导出文本、去重并限制批译并发，生成服务配置键，按原文进度截取译文与按时间选择渐进字幕；按播放速度选取当前句和八条不同的后续原文，排除过期字幕，并以手动偏移计算有效字幕区间。
+ * 主要内容：相同译文保留原文且不重复展示；合成双语导出文本、去重并限制批译并发，生成服务配置键，按原文进度截取译文与按时间选择渐进字幕；保持 X 短 cue 的最小展示区间与旧 DOM 文本切换语义；按播放速度选取当前句和八条不同的后续原文，排除过期字幕，并以手动偏移计算有效字幕区间。
  * 模块边界：只处理输入数据和注入翻译函数，不读取 DOM、全局配置或浏览器接口。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -9,6 +9,29 @@ import {buildGlossaryRevision} from '@/src/core/glossary';
 import type {Config} from '@/src/core/config/model';
 import {resolveConfiguredModel} from '@/src/core/config/catalog';
 import type {VideoSubtitleCue} from './youtubeSubtitleData';
+
+/** 同一同步更新轮次的选择证据；数组身份、原文和第二次时钟读取相同才可复用。 */
+export type YoutubeCueSelection = ReturnType<typeof selectYoutubeCaptionCue> & {cues: readonly VideoSubtitleCue[]; source: string; currentMs: number};
+
+/** 渐进字幕沿用最短 500ms 展示区间，重叠时选择最新开始的原始 cue。 */
+export function findActiveVideoCaptionCue(cues: readonly VideoSubtitleCue[], currentMs: number): VideoSubtitleCue | null {
+  if (!Number.isFinite(currentMs)) return null;
+  let active: VideoSubtitleCue | null = null;
+  for (const cue of cues) {
+    if (currentMs < cue.startMs || currentMs >= cue.startMs + Math.max(cue.durationMs, 500)) continue;
+    if (!active || cue.startMs > active.startMs) active = cue;
+  }
+  return active;
+}
+
+/** X 原生 DOM 残留旧句时跟随已匹配的时间轴，无文本匹配则交回实时翻译。 */
+export function selectProgressiveVideoCaptionCue(cues: readonly VideoSubtitleCue[], source: string, currentMs: number): VideoSubtitleCue | null {
+  const matched = findProgressiveVideoCaptionCue(cues, source, currentMs);
+  const active = findActiveVideoCaptionCue(cues, currentMs);
+  if (!active) return matched;
+  if (!matched) return null;
+  return active.startMs > matched.startMs ? active : matched;
+}
 
 /** 根据原文前缀和播放时间选择渐进字幕，支持重复句与短时单词片段。 */
 export function findProgressiveVideoCaptionCue(cues: readonly VideoSubtitleCue[], source: string, currentMs: number): VideoSubtitleCue | null {

@@ -1,8 +1,8 @@
 /**
  * @file src/features/selection-translation/content/modalDialogHost.ts
- * 文件职责：让划词翻译 Shadow host 在原生 showModal() 对话框的 top layer 中保持可见且可交互。
- * 主要内容：按选区 Range 查找共同的 dialog:modal，创建坐标 slot，迁移现有 host；宿主持续移除时停止重插，关闭或卸载时恢复。
- * 模块边界：本文件只管理 selection host 的 DOM 所有权和定位，不创建 Vue 实例、不读取配置、不调用翻译服务。
+ * 文件职责：管理划词翻译 Shadow host 在原生 modal dialog 中的定位、DOM 所有权和主动关闭卡片时的限定焦点归还。
+ * 主要内容：按选区 Range 查找共同 dialog:modal 并迁移 host；关闭、卸载或宿主拒绝时恢复 DOM；仅将持焦卡片的焦点归还仍活动的原生宿主。
+ * 模块边界：本文件管理 selection host 的 DOM 所有权、定位和定向焦点归还，不创建 Vue 实例、不读取配置、不调用翻译服务。
  */
 
 const MAX_OVERLAY_Z_INDEX = '2147483647';
@@ -147,6 +147,7 @@ function observerTargets(dialog: HTMLDialogElement): Set<Node> {
 export interface ModalDialogHostController {
     placeForRange: (range: Range | null) => boolean;
     restore: () => void;
+    restoreFromFocusedCard: () => void;
     dispose: () => void;
 }
 
@@ -164,6 +165,32 @@ export function createModalDialogHostController(host: HTMLElement): ModalDialogH
     let calibrationRetries = 0;
     let ownershipRepairs = 0;
     let rejectedDialog: HTMLDialogElement | null = null;
+    let dialogFocusTarget: HTMLElement | null = null;
+    const ownsFocus = (active: Element | null): boolean =>
+        active === host || Boolean(active && host.contains(active));
+
+    const isAvailableFocusTarget = (target: HTMLElement | null, dialog: HTMLDialogElement): target is HTMLElement => {
+        if (!target || target.ownerDocument !== ownerDocument || !target.isConnected ||
+            typeof target.focus !== 'function' || ownsFocus(target) ||
+            (target !== dialog && !dialog.contains(target)) || nearestModalDialog(target) !== dialog) return false;
+        try {
+            if (target.closest('[inert], [hidden]') || target.matches(':disabled')) return false;
+            const style = view?.getComputedStyle(target);
+            if (style?.display === 'none' || style?.visibility === 'hidden' || style?.visibility === 'collapse') return false;
+            if (typeof target.getClientRects === 'function' && target.getClientRects().length === 0) return false;
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
+    const rememberDialogFocus = (event?: FocusEvent) => {
+        if (!activeDialog || (event && !event.isTrusted) || typeof ownerDocument.hasFocus !== 'function' ||
+            !ownerDocument.hasFocus()) return;
+        const target = (event?.target ?? ownerDocument.activeElement) as HTMLElement | null;
+        if (!target || target.nodeType !== 1 || ownerDocument.activeElement !== target) return;
+        if (isAvailableFocusTarget(target, activeDialog)) dialogFocusTarget = target;
+    };
     const clearRejectedDialog = (event?: Event) => {
         if (event && !event.isTrusted && rejectedDialog?.open) return;
         rejectedDialog?.removeEventListener('close', clearRejectedDialog);
@@ -179,6 +206,7 @@ export function createModalDialogHostController(host: HTMLElement): ModalDialogH
     };
 
     const detachListeners = () => {
+        dialogFocusTarget = null;
         if (frame !== null && view) view.cancelAnimationFrame(frame);
         frame = null;
         mutationObserver?.disconnect();
@@ -188,6 +216,7 @@ export function createModalDialogHostController(host: HTMLElement): ModalDialogH
         if (!view || !activeDialog) return;
         const visualViewport = view.visualViewport;
         activeDialog.removeEventListener('close', restore);
+        activeDialog.removeEventListener('focusin', rememberDialogFocus, true);
         activeDialog.removeEventListener('scroll', scheduleSync, true);
         view.removeEventListener('scroll', scheduleSync);
         view.removeEventListener('resize', scheduleSync);
@@ -213,6 +242,27 @@ export function createModalDialogHostController(host: HTMLElement): ModalDialogH
         restoreHost();
         previousSlot?.remove();
     }
+
+    const restoreFromFocusedCard = () => {
+        const dialog = activeDialog;
+        if (disposed || !dialog || !slot || host.parentNode !== slot || slot.parentNode !== dialog ||
+            !host.isConnected || !isActiveModalDialog(dialog) || typeof ownerDocument.hasFocus !== 'function' ||
+            !ownerDocument.hasFocus() || !ownsFocus(ownerDocument.activeElement)) return;
+        const previousTarget = dialogFocusTarget;
+        // 迁出前确认卡片仍持有焦点；普通恢复和卸载不改焦点。
+        restore();
+        if (disposed || activeDialog || slot || !isActiveModalDialog(dialog) || !ownerDocument.hasFocus()) return;
+        const active = ownerDocument.activeElement;
+        if (active !== ownerDocument.body && active !== ownerDocument.documentElement && !ownsFocus(active)) return;
+        const target = isAvailableFocusTarget(previousTarget, dialog) ? previousTarget
+            : isAvailableFocusTarget(dialog, dialog) ? dialog : null;
+        if (!target) return;
+        try {
+            target.focus({preventScroll: true});
+        } catch {
+            // 焦点调用失败不撤销已完成的 DOM 清理。
+        }
+    };
 
     function syncPlacement() {
         if (disposed || !activeDialog || !slot) return;
@@ -246,6 +296,7 @@ export function createModalDialogHostController(host: HTMLElement): ModalDialogH
         if (!view || !activeDialog) return;
         const visualViewport = view.visualViewport;
         activeDialog.addEventListener('close', restore);
+        activeDialog.addEventListener('focusin', rememberDialogFocus, true);
         activeDialog.addEventListener('scroll', scheduleSync, {capture: true, passive: true});
         view.addEventListener('scroll', scheduleSync, {passive: true});
         view.addEventListener('resize', scheduleSync);
@@ -297,6 +348,7 @@ export function createModalDialogHostController(host: HTMLElement): ModalDialogH
         slot = createModalDialogHostSlot(ownerDocument);
         calibrationRetries = 0;
         ownershipRepairs = 0;
+        rememberDialogFocus();
         activeDialog.appendChild(slot);
         slot.appendChild(host);
         syncPlacement();
@@ -311,5 +363,5 @@ export function createModalDialogHostController(host: HTMLElement): ModalDialogH
         disposed = true;
     };
 
-    return {placeForRange, restore, dispose};
+    return {placeForRange, restore, restoreFromFocusedCard, dispose};
 }

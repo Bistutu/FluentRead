@@ -7,7 +7,7 @@
  * 判断限制：外语角色标签只在有界同子句内生效，后置标签还须直接述谓当前片段；未覆盖角色标签的文字，对普通多词 TitleCase 保守保留翻译，须有该项自身的缩写、内部大写或连字符证据才按名称计权。
  */
 
-import {classifyChineseHan, hasSimplifiedChineseEvidence, hasTraditionalChineseEvidence} from './chinese';
+import {classifyChineseHan, hasSimplifiedChineseEvidence, hasTraditionalChineseEvidence} from './chineseText';
 import {SCRIPT_UNIQUE_LANGUAGES, hasScriptUniqueVeto, segmentScriptWords, type ScriptWord, type WritingScript} from './scripts';
 import {assessStatisticalLanguage} from './statistical';
 import {classifyEmbeddedLatinWord, createLanguageDetectionCopy, isAcronymWord, isMixedCaseName, isNameVariantWord, isTechnicalAbbreviation} from './technicalTokens';

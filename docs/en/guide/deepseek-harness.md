@@ -10,6 +10,8 @@ Open **Settings → Selection translation** and enable the feature. Every select
 
 English dictionary lookup does not require AI. Dictionary meanings are grouped by word class; these describe possible uses, not necessarily the word’s role in the current sentence. If lookup fails, the translation remains available.
 
+If translation shows “Invalid key or permission”, choose **Configure service**. In General settings, find the **Selection translation** row under service assignments and choose **Configure connection** to check the selected service’s key and permissions. Retry the translation manually after making changes. Opening settings preserves the default page translation service and does not retry automatically.
+
 <details class="guide-details">
 <summary>Activation and display</summary>
 
@@ -34,13 +36,13 @@ The card includes 3,000 common English dictionary entries that work without a se
 
 The card keeps its position when switching learning tabs, streaming answers, or starting and stopping speech. Long content scrolls within the available space. Drag the card by its top or surrounding blank space to move it. Drag an edge or corner to resize it; long text scrolls inside. The next selection opens a new card at its default size near the selected text.
 
-When the target is Chinese or English, the card's language button can change the direction for this result without changing page translation settings. Selection behavior and language preferences are configured under **Selection translation**.
+The card starts with the FluentRead icon and Translate tab, with share, save and close controls on the right. Translation follows your language settings. For a Chinese or English target, enable bidirectional selection translation under **Selection translation** to reverse the direction based on the selected language. Activation preferences are configured there too.
 
 </details>
 
 ## Optional AI explanations
 
-Enable **AI explanations** and select a configured AI service and model on the right. Switch between learning actions in the preview on the left. Both columns have equal width and height on desktop; narrow screens show the preview above the settings. Opening a card does not call AI. Choose an action to request an explanation:
+Enable **AI explanations** and select a service and model. **Bilibili translation · Free** uses the official `Index-Translate-35B-A3B` model without an API key for basic **Understand** and **Usage** explanations. Full syntax analysis, practice and follow-ups require a general AI service. Other services keep their configured connection details. Opening a card does not call AI. Trigger an action to request an explanation:
 
 - **Understand** explains meaning, tone and references.
 - **Parts of speech & syntax** explains the sentence structure and labels source fragments.
@@ -50,6 +52,8 @@ Enable **AI explanations** and select a configured AI service and model on the r
 <GrammarDemo en />
 
 Choose a phrase to read its explanation, or ask a follow-up below the answer. Opening the card itself does not call AI.
+
+If no explanation service or model has been selected, and the default service is Bilibili or a translation service without explanation support, the card offers **Free AI explanations**. Click to enable Bilibili for the current selection. Existing preferences for other AI services are preserved; you can change services in settings. Bilibili currently excludes syntax analysis, practice and multi-turn follow-ups. Your saved actions and default action become available again when you switch to a general AI service. Explanations remain off by default. If the free endpoint is temporarily unavailable, retry later. This translation model can help explain meaning and usage, but reference resolution and source citation formatting can be inconsistent. Explanations do not establish that an answer is correct.
 
 <details class="guide-details">
 <summary>Explanation controls and answer reuse</summary>

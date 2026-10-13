@@ -1,4 +1,5 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {parseHTML} from 'linkedom';
 
 const mocks = vi.hoisted(() => ({
   createApp: vi.fn(),
@@ -133,5 +134,33 @@ describe('Vue Shadow UI 平台适配器', () => {
       hostId: 'failed-host',
       component: {name: 'FailedFixture'},
     })).rejects.toThrow('shadow unavailable');
+  });
+
+  it('把本次自有挂载容器交给 configureApp，并在配置完成后挂载同一 Vue app', async () => {
+    const fixture = shadowUi();
+    const instance = {kind: 'owned-component'};
+    const app = {use: vi.fn(), mount: vi.fn(() => instance), unmount: vi.fn()};
+    const configureApp = vi.fn();
+    mocks.createApp.mockReturnValue(app);
+    mocks.createShadowRootUi.mockResolvedValue(fixture.ui);
+
+    await createVueShadowUi({} as never, {
+      name: 'owned-configured-ui', hostId: 'owned-configured-host', component: {name: 'OwnedFixture'},
+      configureApp,
+    });
+
+    const [, options] = mocks.createShadowRootUi.mock.calls[0];
+    const {document} = parseHTML('<div id="owned-ui-container"></div>');
+    const exactContainer = document.querySelector<HTMLElement>('#owned-ui-container')!;
+    const mounted = options.onMount(exactContainer);
+    expect(configureApp).toHaveBeenCalledOnce();
+    expect(configureApp).toHaveBeenCalledWith(app, exactContainer);
+    expect(configureApp.mock.calls[0][1]).toBe(exactContainer);
+    expect(configureApp.mock.invocationCallOrder[0]).toBeLessThan(app.mount.mock.invocationCallOrder[0]);
+    expect(app.mount).toHaveBeenCalledWith(exactContainer);
+    expect(app.use).not.toHaveBeenCalled();
+    expect(mounted).toEqual({app, instance});
+    options.onRemove(mounted);
+    expect(app.unmount).toHaveBeenCalledOnce();
   });
 });

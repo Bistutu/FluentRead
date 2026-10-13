@@ -1,10 +1,32 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import posts from './fixtures/chinese-language-posts.json';
 import modelPost from './fixtures/chinese-language-model-post.json';
 import {detectChineseScript, shouldSkipChineseSelection, shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import {getChineseScript, normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 
 describe('中文书写体系与语言代码', () => {
+    it('中文标签与配置归一化不初始化正文算法或字符表', async () => {
+        vi.resetModules();
+        const evaluateText = vi.fn(() => { throw new Error('language tags must not initialize Chinese text detection'); });
+        const evaluateVariants = vi.fn(() => { throw new Error('language tags must not initialize Chinese character data'); });
+        vi.doMock('@/src/core/language/chineseText', evaluateText);
+        vi.doMock('@/src/core/language/chineseVariants', evaluateVariants);
+        try {
+            const labels = await import('@/src/core/language/chinese');
+            const {normalizeConfig} = await import('@/src/core/config/model');
+            expect(labels.normalizeChineseLanguageCode(' zh_TW ')).toBe('zh-Hant');
+            expect(labels.getChineseScript('ZH-cn')).toBe('Hans');
+            const config = normalizeConfig({from: 'zh-TW', to: 'zh_CN'});
+            expect(config.from).toBe('zh-Hant');
+            expect(config.to).toBe('zh-Hans');
+            expect(evaluateText).not.toHaveBeenCalled();
+            expect(evaluateVariants).not.toHaveBeenCalled();
+        } finally {
+            vi.doUnmock('@/src/core/language/chineseText');
+            vi.doUnmock('@/src/core/language/chineseVariants');
+        }
+    });
+
     const releaseNote = '云端模型清单允许清空，且不再连带拒掉无关偏好的保存';
     it.each([releaseNote, `${releaseNote} (84522b3)`])('用户反馈的发布说明有无提交哈希均识别为简体 %#', text => {
         expect(detectChineseScript(text)).toBe('Hans');

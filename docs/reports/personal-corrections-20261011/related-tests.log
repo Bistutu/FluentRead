@@ -1,0 +1,47 @@
+
+> FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/translationState.test.ts" "tests/bilingualReplay.test.ts" "tests/liveTextRender.test.ts" "tests/sentenceActionsMount.test.ts" "tests/implementationAudit48K.test.ts" "tests/optionsNavigation.test.ts" "tests/settingsUiArchitecture.test.ts" "tests/settingsSectionsLifecycle.test.ts" "tests/userscriptViteConfig.test.ts" "tests/userscriptUnsupportedCapabilities.test.ts"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/translationState.test.ts tests/bilingualReplay.test.ts tests/liveTextRender.test.ts tests/sentenceActionsMount.test.ts tests/implementationAudit48K.test.ts tests/optionsNavigation.test.ts tests/settingsUiArchitecture.test.ts tests/settingsSectionsLifecycle.test.ts tests/userscriptViteConfig.test.ts tests/userscriptUnsupportedCapabilities.test.ts
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+
+ ✓ tests/translationState.test.ts (98 tests) 2566ms
+   ✓ 指定节点翻译状态机 > removed subtree 查询不会读取大批无关 active owner 的状态 1654ms
+ ✓ tests/settingsUiArchitecture.test.ts (37 tests) 138ms
+ ✓ tests/implementationAudit48K.test.ts (33 tests) 642ms
+ ✓ tests/userscriptViteConfig.test.ts (35 tests) 2042ms
+ ✓ tests/bilingualReplay.test.ts (19 tests) 145ms
+ ✓ tests/optionsNavigation.test.ts (25 tests) 9ms
+stderr | tests/liveTextRender.test.ts
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (/Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/platform/storage/configStorageRuntime.ts:36:29)
+    at initializeConfig (/Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/services/config/store.ts:635:41)
+    at /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/services/config/store.ts:807:28
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at VitestExecutor.runModule (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:399:5)
+    at VitestExecutor.directRequest (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:381:5)
+    at VitestExecutor.cachedRequest (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:206:14)
+    at VitestExecutor.dependencyRequest (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:259:12)
+    at /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/features/full-page-translation/content/renderer.ts:2:31
+    at VitestExecutor.runModule (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:399:5)
+
+ ✓ tests/liveTextRender.test.ts (10 tests) 29ms
+ ✓ tests/settingsSectionsLifecycle.test.ts (10 tests) 6626ms
+   ✓ 设置主表单实际组件异步归属 > 离开服务设置关闭新服务对话框，隐藏时既不打开也不提交新服务 1014ms
+   ✓ 设置主表单实际组件异步归属 > 缓存离开时关闭全文与悬浮录制，恢复暂选模式，返回后仍可录制 746ms
+   ✓ 设置主表单实际组件异步归属 > 根组件导航时只委托定位，不再创建另一条逐帧查找链 759ms
+   ✓ 设置主表单实际组件异步归属 > 独立定位最新操作取代旧操作，离开或卸载后旧帧不能滚动 617ms
+   ✓ 设置主表单实际组件异步归属 > 卸载后到达的配置水合不改主题或提交旧配置 654ms
+   ✓ 设置主表单实际组件异步归属 > 快速设置更新共用一次标签页查询，发送最新状态，过滤非法 ID 695ms
+   ✓ 设置主表单实际组件异步归属 > 拒绝查询后释放任务，随后仍能广播；卸载后的结果不继续发消息 547ms
+   ✓ 设置主表单实际组件异步归属 > 服务列表直接复用已筛选能力结果，切换显示模式不会再分配同样的列表 577ms
+   ✓ 设置主表单实际组件异步归属 > 查询完成时采用外部最新模式和进度偏好，单个标签页同步异常不阻止其余消息 532ms
+   ✓ 设置主表单实际组件异步归属 > 已缓存或卸载时到达的规则检查不会继续导航或打开自定义服务 483ms
+ ✓ tests/sentenceActionsMount.test.ts (4 tests) 9ms
+ ✓ tests/userscriptUnsupportedCapabilities.test.ts (3 tests) 3ms
+
+ Test Files  10 passed (10)
+      Tests  274 passed (274)
+   Start at  16:29:40
+   Duration  19.77s (transform 2.51s, setup 0ms, collect 5.56s, tests 12.21s, environment 1ms, prepare 464ms)

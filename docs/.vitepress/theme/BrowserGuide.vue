@@ -240,7 +240,7 @@ const translation = computed(() =>
               (kind === 'first-translation' && step === 0),
           }"
         >
-          <img :src="withBase('/brand-icon.webp')" width="22" height="22" alt="FluentRead" />
+          <img :src="withBase('/brand-icon.webp')" width="22" height="22" :alt="t('流畅阅读', 'FluentRead')" />
           <StepCallout
             v-if="kind === 'pin' && [2, 3].includes(step)"
             :number="step + 1"
@@ -421,7 +421,7 @@ const translation = computed(() =>
                 />
               </span>
               <span v-if="kind === 'selection' && step === 3" class="bg-selection-icon bg-target">
-                <img :src="withBase('/brand-icon.webp')" width="24" height="24" alt="FluentRead" />
+                <img :src="withBase('/brand-icon.webp')" width="24" height="24" :alt="t('流畅阅读', 'FluentRead')" />
                 <StepCallout
                   :number="4"
                   :text="t('点击图标查看译文', 'Click to see the translation')"

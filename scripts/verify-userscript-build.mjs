@@ -1,3 +1,9 @@
+/**
+ * @file scripts/verify-userscript-build.mjs
+ * 文件职责：校验 userscript 产物的元信息、资源协议、体积与兼容性运行边界。
+ * 主要内容：静态断言及隔离 VM 兼容层检查；体积预算按已测量的共享功能增量调整。
+ * 模块边界：只读取构建产物，不安装脚本、不访问外部页面或修改运行配置。
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -56,7 +62,61 @@ const artifactBytes = Buffer.byteLength(source);
 // 相对主线 2,013,000 预算按实测最小增加 12 KB，余量 698 字节；基线本次重建超原预算 29 字节亦如实记录。
 // 比较与散列见 docs/reports/target-language-quality-20261011/userscript-size.json。
 // 不引入额外检测模型。
-const MAX_USERSCRIPT_BYTES = 2_025_000;
+// 网站连续导航的自动意图、请求取消域和增量发现重置增加 1,399 字节（0.0691%）：
+// 同依赖独立基线 25f5dca79 为 2,024,307，候选为 2,025,706；利用原余量后最小增加 1 KB。
+// 保留全部协议和执行边界校验，原始与最终散列见 docs/reports/site-rules-navigation-20261011/userscript-size.json。
+// 网站规则索引与生命周期通知合并的初轮产物增加 477 字节（0.0235%）：
+// 同依赖上一轮正确产物 c254eb935 为 2,025,894，初轮性能候选 d74fb7cfc 为 2,026,371。
+// 利用原余量后预算最小增加 1 KB；含稀疏名单失效修正的最终体积与散列见网站规则报告 performance.md。
+// 最后整合 c8a06bb5f：同依赖独立 main 为 2,024,873，网站规则全部修复与优化为 2,026,916。
+// 相对主线增加 2,043 字节（0.1009%）；沿用本任务的 2,027,000 预算，余 84 字节。
+
+// 阅读依据的有限来源、真实 DOM 锚点、紧凑 UI 与可读导出增加 14,305 字节（0.7065%）：
+// 同依赖干净 c8a06bb5f 为 2,024,873，最终候选为 2,039,178，原预算只余 127 字节。
+// 按既有 1 KB 步长最小增加 15 KB，保留全部协议与运行断言；见 reading-evidence-20261011 报告。
+// 合并 69d41e5e 最新主线后，同依赖基线 2,026,916、最终候选 2,041,173，增加 14,257 字节（0.7034%）。
+// 相对主线按实测最小增加 15 KB，预算 2,042,000、余 827 字节；全部校验保持。
+// 顶栏更多操作与有界菜单在上述候选上增加 1,893 字节，最终 2,043,066 字节。
+// 利用原余量后按实测最小再增加 2 KB，预算 2,044,000、余 934 字节；原断言保留。
+// 单篇篇章参考、完整来源证明及重挂语义复用在同依赖主线 69d41e5e1 上增加 16,503 字节（0.8142%）：
+// 独立主线产物为 2,026,916，候选为 2,043,419；利用原余量后预算最小增加 17 KB，余 581 字节。
+// 不增加抽取模型或远程依赖；完整对照、散列与运行边界见 discourse-context-20261011/verification.json。
+// 合入 99afdbf69 后的完整候选为 2,059,784 字节，按 1 KB 步长最小预算为 2,060,000，余 216 字节。
+// 同依赖独立主线为 2,043,588 字节，增加 16,196 字节（0.7925%）；主线预算只余 412 字节，最小增加 16 KB。
+// 最新主线独立基线与精确增量见 reading-evidence-20261011/userscript-size.json；所有校验保留。
+// 长页自有双语块的保守渲染隔离与外观/重挂清理增加 3,038 字节（0.1500%）：
+// 同依赖独立基线 7cabb3678 为 2,024,762，候选 962a5d98b 为 2,027,800；
+// 利用原余量后预算最小增加 3 KB，剩 200 字节。保留全部协议与执行边界检查；
+// 比较与散列见 docs/reports/long-page-rendering-20261011/userscript-size.json。
+// 整合主线 69d41e5e1 后，长页隔离、五条正文规则及局部扫描拥有者修复共增加 6,016 字节（0.2968%）：
+// 同依赖独立 main 为 2,026,872，候选为 2,032,888；相对 main 预算按实测最小增加 6 KB。
+// 保留全部协议和执行边界校验，余量 112 字节；记录见 common-site-expansion-20261011/userscript-size.json。
+// 再整合滚动调度 717a34034：独立 main 为 2,026,877，最终候选为 2,032,969（增 6,092，0.3006%）；
+// 沿用同一最小预算，余 31 字节；本轮最终集成散列同样记录在上述报告。
+// 再整合篇章参考主线 99afdbf69：同依赖独立 main 为 2,043,424，网站/长页候选为 2,049,560。
+// 增加 6,136 字节（0.3003%），利用主线余量后预算按实测最小增加 6 KB，余 440 字节；
+// 保留全部协议与执行边界校验，原始及最终对照见 common-site-expansion-20261011/userscript-size.json。
+// 合入 43f66b01d 并将原文依据缩为信息图标后，同依赖独立 main 为 2,049,516 字节，候选为 2,065,676。
+// 增加 16,160 字节（0.7885%）；主线 2,050,000 预算余 484 字节，按实测最小增加 16 KB，余 324 字节。
+// 完整对照见 reading-evidence-20261011/userscript-size.json，所有协议与执行边界断言保留。
+// 引文提示整合 11860f3f2：同依赖独立 main 为 2,047,876 字节，候选为 2,064,141；沿用预算，余 1,859。
+// 豆包实验线路：同依赖独立主线 1e414ea8c 为 2,064,354 字节，完整匿名协议候选为 2,072,803。
+// 增加 8,449 字节（0.4093%）；利用原余量后按既有 1 KB 步长最小增加 7 KB，余 197 字节。
+// 全部协议与执行边界断言保留；对照与散列见 doubao-web-free-957-20261011/userscript-size.json。
+// 整合 f9cf3fcb2 后，同依赖独立主线为 2,065,321，最终候选为 2,073,858（增 8,537，0.4133%）。
+// 按同一 1 KB 步长最小再增 1 KB，余 142 字节；保持全部执行断言，完整前后对照见同一报告。
+// 真实请求租约、免费备用链与实际模型限额修复：同依赖独立 ec6d1136e 为 2,064,692 字节，
+// 候选为 2,066,187，增加 1,495 字节（0.0724%）；超原预算 187 字节，按既有步长最小增加 1 KB。
+// 余量 813 字节，全部协议与运行断言保留；散列和重现方式见 docs/reports/ollama-concurrency-20261011/userscript-size.json。
+// 合入文档翻译主线 f9cf3fcb2 后：同依赖 main 为 2,065,321 字节，最终候选为 2,067,193。
+// 增加 1,872 字节（0.0906%）；相对 main 的 2,066,000 预算最小增加 2 KB，余 807 字节。
+// 补齐其他免费线路的错误/取消正文结算后为 2,067,868 字节：相对同一 main 增加 2,547（0.1233%）。
+// 继续使用相同最小预算，余 132 字节；报告保留正文补修前与最终候选的独立散列。
+// 初始与最终集成基线均记录于同一报告；所有协议、资源和执行断言保留。
+// 再整合豆包主线 a86180163：同依赖 main 为 2,073,858，含全部请求/正文/SSE 结算修复的候选为 2,076,455。
+// 增加 2,597 字节（0.1252%）；相对 main 预算按既有步长最小增加 3 KB，余 545 字节。
+// 最终基线、候选散列与之前集成数据保存在同一并发报告，全部原有断言保留。
+const MAX_USERSCRIPT_BYTES = 2_077_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);
@@ -71,7 +131,7 @@ const guardEnd = source.indexOf(guardEndMarker, guardCondition);
 const assertions = [
   [source.startsWith('// ==UserScript==\n'), 'metadata header must be the first bytes'],
   [source.includes(`// @version      ${packageJson.userscriptVersion}`), 'metadata must use userscriptVersion'],
-  [source.includes(`FluentRead V${packageJson.version} · Userscript V${packageJson.userscriptVersion}`), 'settings must distinguish the FluentRead and userscript versions'],
+  [source.includes(`流畅阅读 V${packageJson.version} · Userscript V${packageJson.userscriptVersion}`), 'settings must distinguish the localized product and userscript versions'],
   [source.includes('// @grant        GM_xmlhttpRequest'), 'GM_xmlhttpRequest grant is required'],
   [source.includes('// @grant        GM.getValue') && source.includes('// @grant        GM.setValue'), 'Safari GM storage grants are required'],
   [source.includes('// @grant        GM.xmlHttpRequest'), 'Safari GM request grant is required'],

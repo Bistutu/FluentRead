@@ -2,13 +2,18 @@ import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {basename, dirname, resolve} from 'node:path';
+import {gzipSync} from 'node:zlib';
 import {runInNewContext} from 'node:vm';
 import vue from '@vitejs/plugin-vue';
 import ts from 'typescript';
 import {defineConfig, normalizePath, transformWithEsbuild, type Plugin} from 'vite';
 import {createUserscriptMetadata} from './metadata';
-import {createUserscriptCharacterDataCompressionPlugin, readUserscriptCharacterDataResource} from './characterDataPlugin';
+import {createUserscriptCharacterDataCompressionPlugin} from './characterDataPlugin';
+import {createUserscriptFrancDataCompressionPlugin} from './francDataPlugin';
 import {createUserscriptTldtsDataCompressionPlugin} from './tldtsDataPlugin';
+import {createUserscriptInlineCssCompressionPlugin} from './inlineCssPlugin';
+import {createUserscriptAboutImagesCompressionPlugin} from './aboutImagesPlugin';
+import {createUserscriptServiceBrandIconsCompressionPlugin} from './serviceBrandIconsPlugin';
 import {UI_LANGUAGE_BUNDLES, zhCNMessages} from './languageBundles';
 
 const root = resolve(__dirname, '..');
@@ -17,7 +22,6 @@ const packageJson = JSON.parse(fs.readFileSync(resolve(root, 'package.json'), 'u
     userscriptVersion: string;
 };
 const iconDataUrl = `data:image/png;base64,${fs.readFileSync(resolve(root, 'public/icon/64.png')).toString('base64')}`;
-const approveDataUrl = `data:image/jpeg;base64,${fs.readFileSync(resolve(root, 'public/misc/approve.jpg')).toString('base64')}`;
 const bundleLibraries = process.env.FLUENTREAD_USERSCRIPT_STANDALONE === '1';
 const greasyForkSource = process.env.FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE === '1';
 const vendorUrl = process.env.FLUENTREAD_USERSCRIPT_VENDOR_URL;
@@ -28,13 +32,8 @@ if (greasyForkSource && (!allowedResourceUrl(vendorUrl) || !allowedResourceUrl(d
 }
 const vendorGlobals: Record<string, string> = {
     ai: 'FluentReadUserscriptVendor.ai',
-    zod: 'FluentReadUserscriptVendor.zod',
-    '@ai-sdk/anthropic': 'FluentReadUserscriptVendor.anthropic',
-    '@ai-sdk/google': 'FluentReadUserscriptVendor.google',
     '@ai-sdk/openai-compatible': 'FluentReadUserscriptVendor.openAICompatible',
     'crypto-js/sha256': 'FluentReadUserscriptVendor.sha256',
-    '@noble/hashes/sha2': 'FluentReadUserscriptVendor.vendorNobleSha2',
-    '@noble/hashes/utils': 'FluentReadUserscriptVendor.vendorNobleUtils',
     'crypto-js/md5': 'FluentReadUserscriptVendor.md5',
     'crypto-js/hmac-sha256': 'FluentReadUserscriptVendor.hmacSha256',
     'crypto-js/aes': 'FluentReadUserscriptVendor.aes',
@@ -43,7 +42,6 @@ const vendorGlobals: Record<string, string> = {
     'crypto-js/mode-ecb': 'FluentReadUserscriptVendor.modeEcb',
     'crypto-js/pad-pkcs7': 'FluentReadUserscriptVendor.padPkcs7',
     'dexie/dist/dexie.min.js': 'FluentReadUserscriptVendor.Dexie',
-    '@ctrl/tinycolor': 'FluentReadUserscriptVendor.vendorTinycolor',
     'franc-min': 'FluentReadUserscriptVendor.francMin',
 };
 function installedVersion(name: string): string {
@@ -54,7 +52,7 @@ function installedVersion(name: string): string {
 // 脚本管理器在安装时缓存固定版本的通用库；仓库资源固定到已发布提交，更新资源时同步换提交。
 const userscriptResourceCommit = '184a3d74f61b9d2a8d47080787f7e0180b98414d';
 // 语言文件的内容哈希来自合并后的消息目录，固定到首次包含这些文件的提交。
-const userscriptLanguageResourceCommit = '25f5dca794848782f717493ce0e08545a0e57b35';
+const userscriptLanguageResourceCommit = '240cbc42de9d1141c679fb595afea055397ac656';
 const pinnedIconUrl = `https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@${userscriptResourceCommit}/public/icon/64.png`;
 const iconMetaUrl = greasyForkSource ? pinnedIconUrl : iconDataUrl;
 const uiRequires = [
@@ -77,14 +75,20 @@ function serializeUiMessages(value: unknown): string {
     return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
         ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
 }
-// 构建期统一复用已安装的 pako level 9 编码静态数据；解压字节与运行时端口不变。
-const gzipStaticData = createRequire(import.meta.url)('pako').gzip as
+// 文档翻译页面（含 PDF 阅读器）只存在于扩展里；中英内嵌词典使用同一页面能力裁剪。
+function userscriptPageMessages<T extends Record<string, string>>(messages: T): T {
+    return Object.fromEntries(Object.entries(messages).filter(([key]) => !key.startsWith('document.'))) as T;
+}
+// 构建期复用已有 pako 编码中英界面词典，减少标准 gzip 数据；解压格式与运行时端口不变。
+const gzipUiMessages = createRequire(import.meta.url)('pako').gzip as
     (data: Uint8Array, options: {level: number}) => Uint8Array;
+// 与中文内嵌目录一致，仅投影扩展文档页专用 key；固定远程与外部资源继续使用原 bundle。
 const compressedUiLanguageBundles = greasyForkSource ? {} : Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language === 'en-US')
     .map(([language, bundle]) => [
     language,
-    Buffer.from(gzipStaticData(Buffer.from(serializeUiMessages(bundle)), {level: 9})).toString('base64'),
+    Buffer.from(gzipUiMessages(Buffer.from(serializeUiMessages({...bundle,
+        messages: userscriptPageMessages(bundle.messages)})), {level: 9})).toString('base64'),
 ]));
 const remoteUiLanguageBundles = Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language !== 'en-US')
@@ -114,99 +118,13 @@ const pinnedSiteCatalogs = greasyForkSource
     : undefined;
 const compressedCatalogPrefix = '\0fluentread-userscript-site-catalog:';
 const externalChineseMessagesId = '\0fluentread-userscript-zh-cn.js';
-const compressedServiceIconsId = '\0fluentread-userscript-service-icons.js';
-const serviceIconsPath = resolve(root, 'src/ui/assets/serviceBrandPaths.json');
-const serviceIconsConsumer = normalizePath(resolve(root, 'src/ui/components/ServiceIcon.vue'));
 
-// GF 只外置这六份原生 CSS ?inline 字符串；路径、消费者和查询均不扩大到其他资源。
-const externalInlineStylesPrefix = '\0fluentread-userscript-inline-style:';
-const inlineStyleFiles = [
-    ['translationDisplayStyles', 'src/ui/styles/translation-display.css', ['src/app/content/pageStyles.ts']],
-    ['pageStyles', 'src/app/content/page.css', ['src/app/content/pageStyles.ts']],
-    ['sentenceHighlightStyles', 'src/ui/styles/bilingual-sentence-highlight.css', ['src/app/content/pageStyles.ts']],
-    ['reencounterStyles', 'src/ui/styles/vocabulary-reencounter.css', ['src/app/content/pageStyles.ts', 'src/features/vocabulary/content/scanner.ts']],
-    ['noticeStyles', 'src/features/page-notice/content/notice.css', ['src/features/page-notice/content/notice.ts']],
-    ['pickerStyles', 'src/features/section-translation/content/picker.css', ['src/features/section-translation/content/picker.ts']],
-] as const;
-
-// 唯一额外源常量：不扩大六份 CSS 的 resolveId 白名单，不外置任何 DOM 函数。
-const loadingIndicatorStylesPath = normalizePath(resolve(root, 'src/ui/translationLoadingIndicator.ts'));
-const loadingIndicatorStylesName = 'LOADING_INDICATOR_STYLES';
-
-/** 资源生成和 GF 初始化值替换共用同一 AST 校验，不执行模块，也不接受计算值或影子绑定。 */
-function parseLoadingIndicatorStyles(code: string) {
-    const source = ts.createSourceFile(loadingIndicatorStylesPath, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    const unsupported = () => new Error('Userscript loading indicator styles must be one private top-level const string');
-    if ((source as ts.SourceFile & {parseDiagnostics: readonly ts.Diagnostic[]}).parseDiagnostics.length) throw unsupported();
-    let bindings = 0;
-    const visit = (node: ts.Node) => {
-        if (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isBindingElement(node)) {
-            if (ts.isIdentifier(node.name) && node.name.text === loadingIndicatorStylesName) bindings++;
-        } else if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
-            || ts.isClassDeclaration(node) || ts.isClassExpression(node) || ts.isEnumDeclaration(node)
-            || ts.isImportClause(node) || ts.isImportSpecifier(node) || ts.isNamespaceImport(node)) {
-            if (node.name?.text === loadingIndicatorStylesName) bindings++;
-        }
-        ts.forEachChild(node, visit);
-    };
-    visit(source);
-    const statement = source.statements.find(statement => ts.isVariableStatement(statement)
-        && statement.declarationList.declarations.some(declaration =>
-            ts.isIdentifier(declaration.name) && declaration.name.text === loadingIndicatorStylesName));
-    if (bindings !== 1 || !statement || !ts.isVariableStatement(statement) || statement.modifiers?.length
-        || !(statement.declarationList.flags & ts.NodeFlags.Const) || statement.declarationList.declarations.length !== 1) throw unsupported();
-    const initializer = statement.declarationList.declarations[0].initializer;
-    if (!initializer || !(ts.isStringLiteral(initializer) || ts.isNoSubstitutionTemplateLiteral(initializer))) throw unsupported();
-    return {source, initializer};
-}
-
-/** 明文资源按固定键顺序保留完整原字符串；需要 CSS 预处理的新依赖必须先经过 Vite 校验。 */
-export function readUserscriptInlineStylesResource(): Record<string, string> {
-    const styles = inlineStyleFiles.map(([name, path]) => {
-        const contents = fs.readFileSync(resolve(root, path), 'utf8');
-        if (contents.startsWith('\uFEFF') || /@import\b|url\s*\(|@apply\b/iu.test(contents)) {
-            throw new Error(`Userscript inline CSS requires Vite preprocessing: ${path}`);
-        }
-        return [name, contents];
-    });
-    const {initializer} = parseLoadingIndicatorStyles(fs.readFileSync(loadingIndicatorStylesPath, 'utf8'));
-    return Object.fromEntries([...styles, ['loadingIndicatorStyles', initializer.text]]);
-}
-
-/** 无损压缩站点规则、中文文案与 standalone 服务 SVG 数据，并引用 GF 明文样式；产品逻辑仍留在主文件中。 */
+/** 只压缩站点规则与中文文案数据；产品逻辑仍留在可审查的 userscript 主文件中。 */
 export function createUserscriptCatalogCompressionPlugin(): Plugin {
     return {
         name: 'compress-userscript-site-catalog',
         enforce: 'pre',
-        transform(code, id) {
-            if (!greasyForkSource || normalizePath(id) !== loadingIndicatorStylesPath) return null;
-            const {source, initializer} = parseLoadingIndicatorStyles(code);
-            this.addWatchFile(loadingIndicatorStylesPath);
-            const resourceRead = [
-                '(() => {',
-                '    const style = globalThis.__FLUENTREAD_USERSCRIPT_DATA__?.inlineStyles?.loadingIndicatorStyles;',
-                "    if (typeof style !== 'string') throw new Error('Missing pinned userscript inline style: loadingIndicatorStyles');",
-                '    return style;',
-                '})()',
-            ].join('\n');
-            return {code: code.slice(0, initializer.getStart(source)) + resourceRead + code.slice(initializer.end), map: null};
-        },
         resolveId(source, importer) {
-            if (greasyForkSource && importer && source.endsWith('.css?inline')
-                && source.indexOf('?') === source.length - '?inline'.length) {
-                const sourcePath = source.startsWith('@/')
-                    ? resolve(root, source.slice(2, -'?inline'.length))
-                    : resolve(dirname(importer), source.slice(0, -'?inline'.length));
-                const style = inlineStyleFiles.find(([, path, consumers]) =>
-                    normalizePath(sourcePath) === normalizePath(resolve(root, path))
-                    && consumers.some(consumer => normalizePath(importer) === normalizePath(resolve(root, consumer))));
-                if (style) return `${externalInlineStylesPrefix}${style[0]}.js`;
-            }
-            // 只替换完整单文件出口的私有 default JSON 消费者；其他模式和 query 保留原模块。
-            if (bundleLibraries && !greasyForkSource && !source.includes('?')
-                && importer && normalizePath(importer.split('?')[0]) === serviceIconsConsumer
-                && (source === '@/src/ui/assets/serviceBrandPaths.json'
-                    || normalizePath(source) === normalizePath(serviceIconsPath))) return compressedServiceIconsId;
             if (source === './messages/zh-CN'
                 && importer?.split('?')[0] === resolve(root, 'src/core/i18n/index.ts')) return externalChineseMessagesId;
             if (!importer || !source.endsWith('.json')) return null;
@@ -215,33 +133,10 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
             return siteCatalogFiles.has(sourcePath) ? `${compressedCatalogPrefix}${sourcePath}.js` : null;
         },
         load(id) {
-            if (greasyForkSource && id.startsWith(externalInlineStylesPrefix)) {
-                const style = inlineStyleFiles.find(([name]) => id === `${externalInlineStylesPrefix}${name}.js`);
-                if (!style) throw new Error(`Unexpected userscript inline style: ${id}`);
-                this.addWatchFile(resolve(root, style[1]));
-                return [
-                    `const style = globalThis.__FLUENTREAD_USERSCRIPT_DATA__?.inlineStyles?.${style[0]};`,
-                    `if (typeof style !== 'string') throw new Error('Missing pinned userscript inline style: ${style[0]}');`,
-                    'export default style;',
-                ].join('\n');
-            }
-            if (bundleLibraries && !greasyForkSource && id === compressedServiceIconsId) {
-                this.addWatchFile(serviceIconsPath);
-                // 不排序、不投影、不重写路径或属性，按原 JSON 顺序保留全部 SVG 值。
-                const contents = JSON.stringify(JSON.parse(fs.readFileSync(serviceIconsPath, 'utf8')));
-                const compressed = Buffer.from(gzipStaticData(Buffer.from(contents), {level: 9})).toString('base64');
-                return [
-                    `/* Non-code service SVG paths; sha256 ${createHash('sha256').update(contents).digest('hex')}. */`,
-                    "import {inflateWithPako} from '@/userscript/pakoRuntime';",
-                    `const bytes = Uint8Array.from(atob(${JSON.stringify(compressed)}), character => character.charCodeAt(0));`,
-                    'export default JSON.parse(inflateWithPako(bytes));',
-                ].join('\n');
-            }
             if (id === externalChineseMessagesId) {
                 if (greasyForkSource) return 'export const zhCNMessages = globalThis.__FLUENTREAD_USERSCRIPT_DATA__.zhCNMessages;';
-                // 文档翻译页面（含 PDF 阅读器）只存在于扩展里，油猴脚本不含该页面，它的文案不占用脚本体积。
-                const contents = serializeUiMessages(Object.fromEntries(Object.entries(zhCNMessages).filter(([key]) => !key.startsWith('document.'))) as typeof zhCNMessages);
-                const compressed = Buffer.from(gzipStaticData(Buffer.from(contents), {level: 9})).toString('base64');
+                const contents = serializeUiMessages(userscriptPageMessages(zhCNMessages));
+                const compressed = Buffer.from(gzipUiMessages(Buffer.from(contents), {level: 9})).toString('base64');
                 return [
                     `/* Non-code Chinese UI messages; sha256 ${createHash('sha256').update(contents).digest('hex')}. */`,
                     "import {inflateWithPako} from '@/userscript/pakoRuntime';",
@@ -277,7 +172,7 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
                 ].join('\n');
             }
             const contents = JSON.stringify(JSON.parse(fs.readFileSync(sourcePath, 'utf8')));
-            const compressed = Buffer.from(gzipStaticData(Buffer.from(contents), {level: 9})).toString('base64');
+            const compressed = gzipSync(Buffer.from(contents), {level: 9}).toString('base64');
             const digest = createHash('sha256').update(contents).digest('hex');
             return [
                 `/* Non-code site rules: ${normalizePath(sourcePath).slice(projectRoot.length)}; sha256 ${digest}. */`,
@@ -302,11 +197,11 @@ export const compatibilityPreludeEnd = '/* FluentRead userscript compatibility p
 export const executionGuardStart = '/* FluentRead userscript execution guard:start */';
 export const executionGuardEnd = '/* FluentRead userscript execution guard:end */';
 
-export function wrapUserscriptEntry(entryCode: string, bootstrapCode: string, thirdPartyNotices = '', includesServiceIcons = true): string {
+export function wrapUserscriptEntry(entryCode: string, bootstrapCode: string, thirdPartyNotices = ''): string {
     return [
         metadata,
         unicodeNotice,
-        ...(includesServiceIcons ? [serviceIconsNotice] : []),
+        serviceIconsNotice,
         ...(!bundleLibraries ? [tinycolorNotice] : []),
         ...(thirdPartyNotices ? [thirdPartyNotices] : []),
         executionGuardStart,
@@ -494,12 +389,31 @@ function bundleUserscriptCss(): Plugin {
     return {
         name: 'bundle-userscript-css',
         enforce: 'post',
+        transform: {
+            order: 'pre',
+            handler(code, id) {
+                // page.css 使用 ?inline 进入 JS，必须在 Vite CSS 转换前排除不可达的扩展来源提示。
+                if (normalizePath(id.split('?', 1)[0]) !== normalizePath(resolve(root, 'src/app/content/page.css'))) return null;
+                const withoutCorrectionBadge = code.replace(/\.fluent-read-bilingual-content\[data-fr-personal-correction="true"\]::after\s*\{[^}]*\}/gu, '');
+                return withoutCorrectionBadge === code ? null : {code: withoutCorrectionBadge, map: null};
+            },
+        },
         generateBundle: {
           order: 'post',
           async handler(_options, bundle) {
+            // 个人校订需要扩展后台作为唯一写入者；public 别名之外的直接导入也必须在构建期阻止。
+            const correctionFeatureRoot = `${resolve(root, 'src/features/personal-corrections')}/`;
+            const leakedCorrectionModule = Object.values(bundle)
+                .filter((item) => item.type === 'chunk')
+                .flatMap((item) => item.moduleIds)
+                .find((id) => id.startsWith(correctionFeatureRoot));
+            if (leakedCorrectionModule) {
+                throw new Error(`Userscript bundle contains unsupported personal correction feature: ${leakedCorrectionModule}`);
+            }
+
             const cssEntries = Object.entries(bundle).filter(([, item]) => item.type === 'asset' && item.fileName.endsWith('.css'));
             const css = cssEntries.map(([, item]) => String(item.type === 'asset' ? item.source : '')).join('\n');
-            const compressedCss = greasyForkSource ? '' : Buffer.from(gzipStaticData(Buffer.from(css, 'utf8'), {level: 9})).toString('base64');
+            const compressedCss = greasyForkSource ? '' : gzipSync(Buffer.from(css, 'utf8'), {level: 9}).toString('base64');
             cssEntries.forEach(([fileName]) => delete bundle[fileName]);
 
             if (greasyForkSource) {
@@ -508,16 +422,13 @@ function bundleUserscriptCss(): Plugin {
                     english: UI_LANGUAGE_BUNDLES['en-US'],
                     zhCNMessages,
                     siteCatalogs: siteCatalogData,
-                    characterData: readUserscriptCharacterDataResource(root),
-                    inlineStyles: readUserscriptInlineStylesResource(),
                     css,
                 };
                 this.emitFile({
                     type: 'asset',
                     fileName: 'fluentread-data.v1.js',
                     source: [
-                        '/* FluentRead non-code data: UI translations, site rules, character tables and CSS. */',
-                        unicodeNotice,
+                        '/* FluentRead non-code data: UI translations, site rules and CSS. */',
                         `globalThis.__FLUENTREAD_USERSCRIPT_DATA__=${JSON.stringify(data)};`,
                     ].join('\n'),
                 });
@@ -534,7 +445,6 @@ function bundleUserscriptCss(): Plugin {
             const bootstrap = [
                 `${compatibilityPreludeStart}\n${preludeCode}\n${compatibilityPreludeEnd}`,
                 `globalThis.__FLUENTREAD_ICON_DATA__=${JSON.stringify(iconMetaUrl)};`,
-                ...(bundleLibraries ? [`globalThis.__FLUENTREAD_APPROVE_DATA__=${JSON.stringify(approveDataUrl)};`] : []),
                 ...(greasyForkSource
                     ? ['globalThis.__fluentReadUserscriptCss=globalThis.__FLUENTREAD_USERSCRIPT_DATA__.css;']
                     : [`globalThis.__fluentReadUserscriptCssCompressed=${JSON.stringify(compressedCss)};`]),
@@ -546,9 +456,6 @@ function bundleUserscriptCss(): Plugin {
                 entry.code,
                 bootstrap,
                 bundleLibraries ? bundledLibraryNotices(entry.moduleIds) : '',
-                // 许可跟随实际打包的 SVG 模块；轻量出口不含此表，完整出口仍保留原许可全文。
-                entry.moduleIds.some((id) => id === compressedServiceIconsId
-                    || normalizePath(id).split('?')[0] === normalizePath(serviceIconsPath)),
             );
 
             entry.code = entry.code.replace(/[\uFFFE\uFFFF]/gu, (character) => {
@@ -597,11 +504,6 @@ function unwrapWxtEntrypoints(): Plugin {
 }
 
 export const userscriptAliases = [
-    // GF 的 HTTP(S) 页面不持久化模型用量或翻译统计；精确替换旁路端口，保留其他产物的原仓库。
-    ...(greasyForkSource ? [
-        {find: /^@\/src\/platform\/storage\/modelUsageRepository$/u, replacement: resolve(root, 'userscript/translationInsights.ts')},
-        {find: /^@\/src\/platform\/storage\/translationStatsRepository$/u, replacement: resolve(root, 'userscript/translationInsights.ts')},
-    ] : []),
     ...(bundleLibraries ? [{find: '@/userscript/pakoRuntime', replacement: resolve(root, 'userscript/pakoBundled.ts')}] : []),
     // dexie 官方 ESM 入口把自身注册到跨 realm 共享的 globalThis[Symbol.for('Dexie')]，版本不一致时会在
     // 模块求值阶段直接抛错。脚本管理器（如 Safari 的 Userscripts）把脚本注入页面主 world，与宿主页面共享
@@ -619,6 +521,7 @@ export const userscriptAliases = [
     {find: '@/src/features/image-translation/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/video-subtitle/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/vocabulary/content/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
+    {find: '@/src/features/personal-corrections/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/writing-assistant/public', replacement: resolve(root, 'userscript/writingAssistant.ts')},
     {find: /^\.\/chrome-translator$/u, replacement: resolve(root, 'userscript/chromeTranslator.ts')},
     {find: '@wxt-dev/storage', replacement: resolve(root, 'userscript/storage.ts')},
@@ -630,7 +533,7 @@ export const userscriptAliases = [
 export default defineConfig({
     root,
     publicDir: false,
-    plugins: [unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, greasyForkSource ? 'resource' : true), createUserscriptTldtsDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss()],
+    plugins: [unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), createUserscriptFrancDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptTldtsDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptAboutImagesCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptServiceBrandIconsCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss(), createUserscriptInlineCssCompressionPlugin(root, !greasyForkSource)],
     resolve: {
         alias: userscriptAliases,
     },
@@ -651,8 +554,9 @@ export default defineConfig({
         emptyOutDir: true,
         target: 'es2018',
         minify: greasyForkSource ? false : 'esbuild',
-        // 标准出口保留 CommonJS 的惰性初始化，避免混合 require 到达顺序改变最终包装。
-        ...(!bundleLibraries && !greasyForkSource ? {commonjsOptions: {strictRequires: true}} : {}),
+        // 锁定的 CommonJS 26 默认 auto 会因条件 require 的分析时机改变 MD5 初始化包装。
+        // 保留首次 require 的初始化顺序与循环依赖语义，使同源构建能稳定比较；不改库实现。
+        commonjsOptions: {strictRequires: true},
         sourcemap: false,
         cssCodeSplit: false,
         assetsInlineLimit: Number.MAX_SAFE_INTEGER,

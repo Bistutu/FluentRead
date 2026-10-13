@@ -5,25 +5,29 @@
  * 模块边界：不访问账号、私有组件状态或复制生产逻辑；Canvas 操作证明不等同于真实 PNG 像素/浏览器证明。
  */
 import {parseHTML} from 'linkedom';
-import {createRenderer, markRaw, nextTick, reactive, ref, type App} from 'vue';
+import {computed, createRenderer, markRaw, nextTick, reactive, ref, type App} from 'vue';
+import {normalizeUiLanguage, translate} from '@/src/core/i18n';
+import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {normalizeShareCardPreferences, SHARE_CARD_THEMES} from '@/src/core/config/shareCard';
 import {cardGraphemes, cardSourceDomain, cleanCardText, validateCardExcerpt, wrapCardText} from '@/src/features/share-card/core';
 import {renderShareCard} from '@/src/features/share-card/render';
 import {canCopyCardImage, copyCardImage, shareCardFilename} from '@/src/features/share-card/export';
 
-const ports = vi.hoisted(() => ({config: null as any, ready: Promise.resolve(), patch: vi.fn(), create: vi.fn(), notice: vi.fn(), send: vi.fn()}));
+const ports = vi.hoisted(() => ({config: null as any, ready: Promise.resolve(), patch: vi.fn(), create: vi.fn(), notice: vi.fn(), send: vi.fn(), brandOverride: null as {value: string | undefined} | null}));
 vi.mock('@/src/services/config/store', () => ({get config() {return ports.config;}, get configReady() {return ports.ready;}, requestConfigPatch: ports.patch}));
 vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: ports.send}}}));
 vi.mock('@/src/platform/shadow-ui', () => ({createVueShadowUi: ports.create}));
 vi.mock('@/src/features/page-notice/public', () => ({showPageNotice: ports.notice}));
-vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key, language: ref('en')})}));
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key === 'common.brand' ? ports.brandOverride?.value ?? translate(key, normalizeUiLanguage(ports.config.uiLanguage)) : key, language: computed(() => normalizeUiLanguage(ports.config.uiLanguage))})}));
 let app: App | undefined;
 let runtime: typeof import('@/src/features/share-card/public') | undefined;
 const resources: Array<() => void> = [];
+registerAllUiLanguageBundles();
 function deferred<T>() {let resolve!: (v: T) => void, reject!: (e: unknown) => void; const promise = new Promise<T>((a,b) => {resolve=a;reject=b;}); return {promise,resolve,reject};}
 async function settle() {for(let i=0;i<12;i++){await Promise.resolve();await nextTick();}}
 beforeEach(() => {
+    ports.brandOverride = ref(undefined);
     ports.config = reactive({on: true, uiLanguage:'en', shareCard:normalizeShareCardPreferences()}); ports.ready = Promise.resolve();
     ports.patch.mockReset().mockImplementation(async ({shareCard}) => {ports.config.shareCard = shareCard;});
     ports.create.mockReset();ports.notice.mockReset();ports.send.mockReset();
@@ -85,7 +89,7 @@ describe('audit48 J complete rendering through controlled Canvas port',()=>{
  it.each(SHARE_CARD_THEMES)('renders %s with columns/alignment/footer and exact literal text',async theme=>{
   const port=canvasPort();const result=await renderShareCard({original:'123 مرحبا',translation:'<svg>',source:'example.test'},normalizeShareCardPreferences({theme,fontSize:'large'}));
   expect(result.width).toBe(960);expect(result.height).toBeGreaterThanOrEqual(450);expect(result.blob.type).toBe('image/png');
-  expect(port.painted.map(x=>x.text)).toEqual(['123 مرحبا','<svg>','example.test','FluentRead']);
+  expect(port.painted.map(x=>x.text)).toEqual(['123 مرحبا','<svg>','example.test','流畅阅读']);
   expect(port.painted[0].direction).toBe('rtl');expect(port.painted[0].align).toBe(theme==='sky'||theme==='sunset'?'center':'right');
   expect(port.operations.filter(x=>x[0]==='save')).toHaveLength(1);expect(port.operations.filter(x=>x[0]==='restore')).toHaveLength(1);
  });
@@ -175,6 +179,21 @@ async function client(copyAvailable=true) {
 }
 
 describe('audit48 J actual ShareCardStudio client template and public runtime',()=>{
+ it('品牌通过实际工作台传入，语言和同语言资源迟到均重绘而保留摘录',async()=>{
+  ports.config.uiLanguage='zh-CN';const ctx=await client();await ctx.studio.open(ctx.source);await ctx.paint();
+  const first=ctx.port.canvases.at(-1),firstSize=[first.width,first.height],originalText=ctx.source.original;
+  expect(ctx.port.painted.at(-1).text).toBe('流畅阅读');expect(ctx.port.painted.map(x=>x.text).join(' ')).toContain(originalText);
+  ports.brandOverride!.value='流畅阅读';ports.config.uiLanguage='en-US';await ctx.paint();
+  expect(ctx.port.painted.at(-1).text).toBe('流畅阅读');
+  const beforeResource=ctx.port.canvases.length;
+  ports.brandOverride!.value='FluentRead';await ctx.paint();
+  expect(ctx.port.canvases.length).toBeGreaterThan(beforeResource);expect(ctx.port.painted.at(-1).text).toBe('FluentRead');
+  const foreign=ctx.port.canvases.at(-1);expect([foreign.width,foreign.height]).toEqual(firstSize);
+  expect(ctx.port.painted.map(x=>x.text).join(' ')).toContain(originalText);
+  ports.brandOverride!.value=undefined;ports.config.uiLanguage='zh-CN';await ctx.paint();
+  expect(ctx.port.painted.at(-1).text).toBe('流畅阅读');
+  ctx.studio.close();await settle();expect(ctx.urls.size).toBe(0);
+ });
  it('waits for config hydration before opening with persisted appearance and preserves the host',async()=>{
   const ready=deferred<void>();ports.ready=ready.promise;const ctx=await client();const opened=ctx.studio.open(ctx.source);await settle();
   expect(ctx.doc.querySelector('dialog')?.hasAttribute('open')).toBe(false);expect(ctx.doc.querySelector('[data-theme]')).toBeNull();

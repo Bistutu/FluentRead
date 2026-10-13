@@ -1,6 +1,9 @@
 import {createRequire} from 'node:module'
-import {resolve} from 'node:path'
+import {readFileSync} from 'node:fs'
+import {dirname, resolve} from 'node:path'
 import vue from '@vitejs/plugin-vue'
+import {compileScript, parse} from 'vue/compiler-sfc'
+import ts from 'typescript'
 import {createServer, type Plugin, type ViteDevServer} from 'vite'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
@@ -88,6 +91,15 @@ afterEach(async () => {
 })
 
 describe('实际服务连接配置的活跃生命周期与确认归属', () => {
+  it('当前模型限额随请求体实际模型变化，选择器模型继续用于其他设置', async () => {
+    props.service = 'ollama';props.config.model.ollama = 'gemma3:4b';props.config.customBody.ollama = '{"model":" qwen3:8b "}';await settle()
+    expect(state.effectiveModelLabel).toBe('gemma3:4b');expect(state.requestLimitModel).toBe('qwen3:8b')
+    props.config.customBody.ollama = '{"model":"{{model}}"}';await settle();expect(state.requestLimitModel).toBe('{{model}}')
+    props.config.customBody.ollama = '{invalid';await settle();expect(state.requestLimitModel).toBe('gemma3:4b')
+    props.service = 'gemini';props.config.model.gemini = 'gemini-2.5-pro';props.config.customBody.gemini = '{"model":"ignored"}';await settle()
+    expect(state.requestLimitModel).toBe('gemini-2.5-pro')
+  })
+
   it.each(['queue', 'save', 'response'])('单Key检查在%s的隐藏、缓存停用或卸载后立即收束且不写迟到结果', async phase => {
     for (const reason of ['hidden', 'cached', 'unmount']) {
       if (reason === 'cached') {props.active = true;await settle()}
@@ -207,4 +219,176 @@ it('直接传入普通配置与 provider 对象时仍保留确认身份，不要
   expect(config.user_role[provider.id]).toBe(defaultOption.user_role)
   state.confirmDeleteProvider();await settle();expect(state.serviceActionOpen).toBe(true)
   state.serviceActionButtons.confirm();await settle();expect(emitDelete).toHaveBeenCalledTimes(1)
+})
+
+
+// 独立客户端夹具执行同一个父 SFC 的完整模板；仅子模块的加载与生命周期为受控端口。
+// require 在模块求值阶段返回同步 child，在实际动态 import 时返回 deferred；因此旧静态
+// import 会立即计入加载，不用挂起整个 beforeEach 来伪造懒加载 RED。
+type ServiceClientNode = {tag: string; props: Record<string, unknown>; parent?: ServiceClientNode; children: ServiceClientNode[];
+  style: Record<string, unknown>; value?: unknown; addEventListener: () => void; removeEventListener: () => void}
+type LocalModule = {__esModule: true; default: import('vue').Component}
+type LocalPropsSnapshot = {config: Config; context: unknown; service: string; active: boolean}
+async function mountServiceClient(initialService = 'freeTranslation') {
+  vi.useFakeTimers()
+  const filename = resolve('src/features/settings/ui/services/ServiceConfiguration.vue')
+  const {descriptor, errors} = parse(readFileSync(filename, 'utf8'), {filename})
+  expect(errors).toEqual([])
+  const script = compileScript(descriptor, {id: 'service-configuration-client', inlineTemplate: true})
+  const snapshots: LocalPropsSnapshot[] = [], childProps: LocalPropsSnapshot[] = []
+  const mounted = vi.fn(), unmounted = vi.fn(), clientErrors: unknown[] = []
+  const localPort = runtime.defineComponent({
+    name: 'LocalModelLifecyclePort', props: {config: Object, context: null, service: String, active: Boolean},
+    setup(child) {
+      runtime.onMounted(() => {
+        mounted()
+        snapshots.push({config: child.config as Config, context: child.context, service: child.service!, active: child.active})
+        childProps.push(child as LocalPropsSnapshot)
+      })
+      runtime.onUnmounted(unmounted)
+      return () => runtime.h('section', {'data-local-model-port': '', 'data-active': String(child.active)})
+    },
+  })
+  // 动态 import 返回模块命名空间；Vue 据此取 default，不能用无标记普通对象代替。
+  const localModule: LocalModule = {__esModule: true, default: localPort}
+  const gates: {promise: Promise<LocalModule>; resolve: (value: LocalModule) => void; reject: (error: unknown) => void}[] = []
+  let evaluating = true
+  const requestLocal = vi.fn(() => {
+    if (evaluating) return localModule
+    let resolve!: (value: LocalModule) => void, reject!: (error: unknown) => void
+    const promise = new Promise<LocalModule>((yes, no) => {resolve = yes;reject = no})
+    const gate = {promise, resolve, reject};gates.push(gate)
+    return promise
+  })
+  const display = runtime.defineComponent({setup: (_, {slots}) => () => runtime.h('div', slots.default?.())})
+  const dependencies = new Map<string, unknown>([['vue', runtime], ['element-plus/es/components/tabs/style/css', {}]])
+  for (const item of Object.values(script.imports ?? {})) {
+    const id = item.source
+    if (item.isType || dependencies.has(id) || id === '../LocalTranslationModelSettings.vue') continue
+    if (id.endsWith('.vue')) {dependencies.set(id, {default: display});continue}
+    if (id === 'element-plus') {
+      dependencies.set(id, {ElMessage: {success: feedback}, ElTabs: display, ElTabPane: display});continue
+    }
+    const resolved = id.startsWith('.') ? resolve(dirname(filename), id) : id
+    dependencies.set(id, await server.ssrLoadModule(resolved))
+  }
+  const module = {exports: {} as {default: import('vue').Component}}
+  const code = ts.transpileModule(script.content, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText
+  new Function('require', 'exports', 'module', code)((id: string) => {
+    if (id === '../LocalTranslationModelSettings.vue') return requestLocal()
+    if (!dependencies.has(id)) throw new Error(`Unexpected service client dependency: ${id}`)
+    return dependencies.get(id)
+  }, module.exports, module)
+  evaluating = false
+  function node(tag: string): ServiceClientNode {return {tag, props: {}, children: [], style: {}, addEventListener: () => {}, removeEventListener: () => {}}}
+  function remove(n: ServiceClientNode) {
+    if (n.parent) {const list = n.parent.children, index = list.indexOf(n);if (index >= 0) list.splice(index, 1)}
+    n.parent = undefined
+  }
+  function insert(n: ServiceClientNode, parent: ServiceClientNode, anchor?: ServiceClientNode | null) {
+    remove(n);const index = anchor ? parent.children.indexOf(anchor) : -1
+    parent.children.splice(index < 0 ? parent.children.length : index, 0, n);n.parent = parent
+  }
+  const renderer = runtime.createRenderer<ServiceClientNode, ServiceClientNode>({
+    patchProp: (n, key, _before, value) => {n.props[key] = value}, insert, remove,
+    createElement: node, createText: () => node('#text'), createComment: () => node('#comment'),
+    setText: (n, value) => {n.value = value}, setElementText: (n, value) => {n.value = value},
+    parentNode: n => n.parent || null,
+    nextSibling: n => n.parent?.children[n.parent.children.indexOf(n) + 1] || null,
+    querySelector: () => null, setScopeId: () => {}, cloneNode: n => ({...n, children: []}),
+    insertStaticContent: (_html, parent, anchor) => {
+      const start = node('#static-start'), end = node('#static-end');insert(start, parent, anchor);insert(end, parent, anchor);return [start, end]
+    },
+  })
+  const source = runtime.shallowReactive({...props, config: runtime.reactive(new Config()), service: initialService,
+    active: true, compute: {showAI: false, showModel: false, showToken: false, requireApiKey: false, showServiceSecret: false}})
+  const shown = runtime.ref(true), host = node('#host')
+  const clientApp = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => shown.value
+    ? runtime.h(module.exports.default, source) : runtime.h({render: () => null}, {key: 'other-client'})})})
+  clientApp.config.errorHandler = error => {clientErrors.push(error)}
+  clientApp.config.warnHandler = () => {}
+  let stopped = false
+  const stop = () => {if (!stopped) {stopped = true;clientApp.unmount()}}
+  const finish = async () => {stop();for (const gate of gates) gate.resolve(localModule);await settle();vi.advanceTimersByTime(200);await settle()}
+  try {clientApp.mount(host);await settle()}
+  catch (error) {await finish();throw error}
+  const resolveLocal = (index = 0) => {expect(gates[index]).toBeDefined();gates[index].resolve(localModule)}
+  function localNodes(n = host): ServiceClientNode[] {return n.children.flatMap(child => [
+    ...(Object.hasOwn(child.props, 'data-local-model-port') ? [child] : []), ...localNodes(child),
+  ])}
+  return {source, shown, requestLocal, gates, snapshots, childProps, mounted, unmounted, clientErrors, resolveLocal, localNodes, stop, finish}
+}
+
+describe('实际服务父模板的本地子模块按需加载', () => {
+  it.each(['freeTranslation', 'google'])('普通服务%s不加载本地子模块或挂载模型 UI', async service => {
+    const h = await mountServiceClient(service)
+    try {expect(h.requestLocal).not.toHaveBeenCalled();expect(h.mounted).not.toHaveBeenCalled();expect(h.localNodes()).toHaveLength(0)}
+    finally {await h.finish()}
+  })
+  it('显式本地服务加载一次，正常返回复用已解析模块且创建新的所属实例', async () => {
+    const h = await mountServiceClient()
+    try {
+      expect(h.requestLocal).not.toHaveBeenCalled();h.source.service = 'localTranslation';await settle()
+      expect(h.requestLocal).toHaveBeenCalledOnce();expect(h.mounted).not.toHaveBeenCalled();expect(h.localNodes()).toHaveLength(0)
+      h.resolveLocal();await settle();expect(h.mounted).toHaveBeenCalledOnce();expect(h.localNodes()).toHaveLength(1)
+      expect(h.snapshots[0]).toMatchObject({config: h.source.config, context: h.source.config, service: 'localTranslation', active: true})
+      h.source.service = 'google';await settle();expect(h.unmounted).toHaveBeenCalledOnce();expect(h.localNodes()).toHaveLength(0)
+      h.source.service = 'localTranslation';await settle();expect(h.requestLocal).toHaveBeenCalledOnce();expect(h.mounted).toHaveBeenCalledTimes(2)
+      expect(h.localNodes()).toHaveLength(1);expect(h.clientErrors).toEqual([])
+    } finally {await h.finish()}
+  })
+  it.each(['service', 'unmount'])('等待时%s移除父或条件节点，迟到模块不能挂载旧实例', async reason => {
+    const h = await mountServiceClient('localTranslation')
+    try {
+      expect(h.requestLocal).toHaveBeenCalledOnce();expect(h.mounted).not.toHaveBeenCalled()
+      if (reason === 'service') h.source.service = 'google';else h.stop()
+      await settle();h.resolveLocal();await settle()
+      expect(h.mounted).not.toHaveBeenCalled();expect(h.localNodes()).toHaveLength(0);expect(h.clientErrors).toEqual([])
+      if (reason === 'service') {
+        h.source.service = 'localTranslation';await settle();expect(h.requestLocal).toHaveBeenCalledOnce()
+        expect(h.mounted).toHaveBeenCalledOnce();expect(h.snapshots[0].service).toBe('localTranslation')
+      }
+    } finally {await h.finish()}
+  })
+  it.each(['hidden', 'cached'])('等待时%s并替换配置，解析与返回都使用父模板当前归属', async reason => {
+    const h = await mountServiceClient('localTranslation')
+    try {
+      expect(h.mounted).not.toHaveBeenCalled()
+      const latest = runtime.reactive(new Config());latest.theme = 'dark';h.source.config = latest
+      // 外部 props 先提交到等待中的父实例；同 job 直接移入 KeepAlive 不会提交新 VNode。
+      await settle()
+      if (reason === 'hidden') h.source.active = false;else h.shown.value = false
+      await settle()
+      const returning = reason === 'cached' ? runtime.reactive(new Config()) : latest
+      if (reason === 'cached') h.source.config = returning
+      h.resolveLocal();await settle()
+      // KeepAlive 可在缓存容器内完成子挂载；每个实际挂载都必须是 inactive 且没有捕获旧配置。
+      expect(h.snapshots.every(item => item.active === false && item.config === latest && item.context === latest)).toBe(true)
+      if (reason === 'hidden') h.source.active = true;else h.shown.value = true
+      await settle();expect(h.mounted).toHaveBeenCalledOnce();expect(h.localNodes()).toHaveLength(1)
+      expect(h.childProps[0].active).toBe(true);expect(h.childProps[0].config).toBe(returning);expect(h.childProps[0].context).toBe(returning)
+      expect(h.clientErrors).toEqual([])
+    } finally {await h.finish()}
+  })
+  it('模块 resolve 与隐藏在同一 job 时首次子挂载不会获得旧 active', async () => {
+    const h = await mountServiceClient('localTranslation')
+    try {
+      expect(h.mounted).not.toHaveBeenCalled();h.resolveLocal();h.source.active = false;await settle()
+      expect(h.mounted).toHaveBeenCalledOnce();expect(h.snapshots[0].active).toBe(false);expect(h.childProps[0].active).toBe(false)
+      h.source.active = true;await settle();expect(h.childProps[0].active).toBe(true);expect(h.requestLocal).toHaveBeenCalledOnce()
+    } finally {await h.finish()}
+  })
+  it('加载拒绝由 Vue 观察且没有未处理拒绝，切离后重进允许一次新加载', async () => {
+    const h = await mountServiceClient('localTranslation'), unhandled: unknown[] = []
+    const onUnhandled = (error: unknown) => {unhandled.push(error)}
+    process.on('unhandledRejection', onUnhandled)
+    try {
+      expect(h.mounted).not.toHaveBeenCalled();const failure = new Error('controlled local UI chunk rejection')
+      h.gates[0].reject(failure);await settle();expect(h.clientErrors).toEqual([failure]);expect(h.mounted).not.toHaveBeenCalled()
+      h.source.service = 'google';await settle();h.source.service = 'localTranslation';await settle()
+      expect(h.requestLocal).toHaveBeenCalledTimes(2);expect(h.gates).toHaveLength(2)
+      h.resolveLocal(1);await settle();expect(h.mounted).toHaveBeenCalledOnce();expect(h.localNodes()).toHaveLength(1)
+      expect(unhandled).toEqual([])
+    } finally {process.off('unhandledRejection', onUnhandled);await h.finish()}
+  })
 })

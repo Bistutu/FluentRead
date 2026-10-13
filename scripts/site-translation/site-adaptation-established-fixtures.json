@@ -42,14 +42,47 @@
   {
     "id": "hacker-news",
     "url": "https://news.ycombinator.com/item?id=123",
-    "html": "<nav id=\"navigation\">Navigation controls remain unchanged</nav><main><div><span class=\"commtext\" id=\"body1\">This readable paragraph describes a useful feature with enough context for translation.</span></div><div class=\"toptext\" id=\"body2\">A second independent paragraph explains how this page keeps its source content stable.</div><span class=\"score\" id=\"protected\">One hundred points</span></main>",
+    "html": "<table><tr><td><span class=\"pagetop\" id=\"navigation\"><a href=\"/\">Hacker News</a> | new | past | comments</span></td></tr><tr><td class=\"title\"><span class=\"titleline\"><a id=\"story-title\" href=\"/item?id=123\">Ask HN: How can browser translation stay responsive?</a></span></td></tr><tr><td class=\"subtext\" id=\"protected\"><span class=\"score\">One hundred points</span> by <a class=\"hnuser\">fixture-reader</a> <span class=\"age\">three hours ago</span></td></tr><tr><td><div class=\"toptext\" id=\"body2\">A second independent paragraph explains how this page keeps its source content stable.</div></td></tr><tr class=\"comtr\"><td><span class=\"comhead\" id=\"comment-meta\"><a class=\"hnuser\">fixture-commenter</a> <span class=\"age\">two hours ago</span> | <a>parent</a> | <a>next</a> <a>[–]</a></span><div class=\"comment\"><span class=\"commtext\" id=\"body1\">This readable opening describes a <a href=\"https://example.test/reference\">useful reference</a> with <code>requestIdleCallback()</code>.<p id=\"body1-p1\">The next paragraph explains the implementation with enough context for translation.</p><p id=\"body1-p2\">The final paragraph discusses performance on a long discussion page.</p><pre id=\"code-block\"><code>function example() { return 42; }</code></pre></span><div class=\"reply\" id=\"reply\"><p><font><u><a>reply</a></u></font></p></div></div></td></tr><tr><td><a class=\"morelink\" id=\"more\">More</a></td></tr></table><form id=\"search\"><label>Search:</label><input name=\"q\"></form>",
     "required": [
-      "#body1",
+      "#story-title",
+      "#body1-p1",
+      "#body1-p2",
       "#body2"
     ],
     "forbidden": [
       "#navigation",
-      "#protected"
+      "#protected",
+      "#comment-meta",
+      "#reply",
+      "#code-block",
+      "#more",
+      "#search"
+    ],
+    "translationParts": [
+      {
+        "selector": "#body1 > [data-fr-translation-segment=\"true\"]",
+        "sourceIncludes": "This readable opening describes a useful reference with",
+        "preservedText": [
+          "requestIdleCallback()"
+        ],
+        "preservedMarkup": [
+          {
+            "selector": "code",
+            "text": "requestIdleCallback()"
+          }
+        ]
+      },
+      {
+        "selector": "#body1-p1",
+        "sourceIncludes": "The next paragraph explains the implementation with enough context for translation."
+      },
+      {
+        "selector": "#body1-p2",
+        "sourceIncludes": "The final paragraph discusses performance on a long discussion page."
+      }
+    ],
+    "restoreSelectors": [
+      "#body1"
     ]
   },
   {

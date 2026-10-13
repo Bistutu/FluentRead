@@ -200,9 +200,12 @@ for (const prefix of ['', '/en']) {
     'Feature workflows need three stages and one current stage'
   )
   const docsBrand = docs.get(resolve(prefix + '/docs/')).querySelector('.VPNavBarTitle .title')
-  assert(
-    docsBrand?.textContent.includes('流畅阅读') && docsBrand.textContent.includes('FluentRead')
-  )
+  const productName = prefix ? 'FluentRead' : '流畅阅读'
+  assert.equal(docsBrand?.querySelector('strong')?.textContent.trim(), productName)
+  for (const page of [home, docs.get(resolve(prefix + '/docs/'))]) {
+    assert.equal(page.querySelector('meta[property="og:site_name"]')?.getAttribute('content'), productName)
+    assert(page.querySelector('title')?.textContent.includes(productName), 'Page title needs its locale product name')
+  }
   assert.equal(
     home.querySelectorAll('.bv-browser-options a').length,
     3,

@@ -1,12 +1,12 @@
 /**
  * @file src/features/settings/model/chromeTranslationPreparation.ts
  * 文件职责：在扩展设置页的用户点击上下文中直接准备 Chrome 语言检测与本地翻译模型，并执行一轮确定性的语言识别和翻译自检。
- * 主要内容：解析自检语言对，首次等待前同步启动两个现代 API；转发有界进度，状态回调取消后停止后续操作，消费取消时的迟到拒绝；验证置信度、语言与翻译并释放资源。
+ * 主要内容：解析自检语言对，首次等待前同步启动两个现代 API；转发有界进度，状态回调取消后停止后续操作，消费取消时的迟到拒绝；私有固定校验样例按自身语言键精化泛中文检测结果，验证置信度、语言与翻译并释放资源。
  * 模块边界：本模块只服务设置页的主动连接检查，不读写配置、不发送 runtime 消息、不兼容 legacy translation API，也不参与网页正文的正式翻译链路。
  */
 
-import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
-import {detectChineseScript, MIN_CHROME_LANGUAGE_CONFIDENCE} from '@/src/core/language/detect';
+import {normalizeChineseLanguageCode, getChineseScript} from '@/src/core/language/chinese';
+import {MIN_CHROME_LANGUAGE_CONFIDENCE} from '@/src/core/language/confidence';
 
 export type ChromePreparationModel = 'language-detector' | 'translator';
 export type ChromePreparationPhase = 'initializing' | 'downloading' | 'verifying';
@@ -453,7 +453,7 @@ export async function prepareChromeTranslationInPage(
                 : translator.translate(pair.sampleText),
         ]), options.signal);
         const detectedCode = detectedLanguageFrom(detectedValue);
-        const script = detectedCode.toLowerCase() === 'zh' ? detectChineseScript(pair.sampleText) : undefined;
+        const script = detectedCode.toLowerCase() === 'zh' ? getChineseScript(languageSampleKey(pair.sourceLanguage)) : undefined;
         const detectedLanguage = script ? `zh-${script}` : detectedCode;
         if (languageComparisonKey(detectedLanguage) !== languageComparisonKey(pair.sourceLanguage)) {
             throw new ChromeTranslationPreparationError(

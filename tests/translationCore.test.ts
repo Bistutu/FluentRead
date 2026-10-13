@@ -37,6 +37,7 @@ import {
 } from '@/src/core/translation/dom';
 import {
     classifyGenericCandidate,
+    getAllScopeCandidateKind,
     getDirectInlineRuns,
     hasStructuralAncestor,
     hasDirectReadableText,
@@ -100,6 +101,187 @@ function candidateIds(document: Document, url?: string): string[] {
     const core = createTranslationCore({url: new URL(url ?? 'https://example.test/article')});
     return core.discover(document).map((candidate) => candidate.element.id).filter(Boolean);
 }
+
+describe('Hacker News reading boundaries', () => {
+    const hnUrl = 'https://news.ycombinator.com/item?id=123';
+    const readableText = (core: TranslationCandidateCore, candidate: ReturnType<TranslationCandidateCore['discover']>[number]) =>
+        extractTranslationTextFromNodes(candidate.nodes ?? [candidate.element], core.shouldStayOriginal);
+
+    it('separates Ask HN and comment paragraphs while retaining the direct opening text, links and inline code', () => {
+        const {document, core} = page(`
+            <table><tr><td class="title"><span class="titleline"><a id="story-title" href="item?id=123">Ask HN: How do you keep browser translation responsive?</a></span></td></tr>
+            <tr><td><div class="toptext" id="ask-body">The author introduces the question before the first paragraph.
+                <p id="ask-detail">The author explains the reading problem in detail.</p>
+            </div></td></tr>
+            <tr class="comtr"><td><div class="comment"><span class="commtext c00" id="comment-body">The reader shares a <a id="reference-link" href="https://example.test/guide">useful reference</a> and <code id="inline-code">requestIdleCallback()</code>.
+                <p id="comment-detail">The second paragraph explains how the implementation works.</p>
+                <p id="comment-conclusion">The final paragraph discusses performance on long threads.</p>
+                <pre id="code-block"><code>function sample() { return 42; }</code></pre>
+            </span></div></td></tr></table>
+        `, hnUrl);
+        const candidates = core.discover(document);
+        expect(candidates.map(candidate => candidate.element.id)).toEqual([
+            'story-title', 'ask-detail', 'ask-body', 'comment-detail', 'comment-conclusion', 'comment-body',
+        ]);
+        const opening = candidates.find(candidate => candidate.element.id === 'comment-body')!;
+        expect(opening.nodes).toBeDefined();
+        expect(readableText(core, opening)).toContain('useful reference');
+        expect(readableText(core, opening)).not.toContain('requestIdleCallback');
+        expect(readableText(core, opening)).not.toContain('second paragraph');
+        expect(core.resolve(document.getElementById('reference-link')!.firstChild)?.nodes).toEqual(opening.nodes);
+        expect(core.resolve(document.getElementById('comment-detail')!.firstChild)?.element.id).toBe('comment-detail');
+        expect(core.resolve(document.getElementById('ask-detail')!.firstChild)?.element.id).toBe('ask-detail');
+        expect(document.getElementById('inline-code')!.textContent).toBe('requestIdleCallback()');
+        const detail = document.getElementById('comment-detail') as HTMLElement;
+        const snapshot = createTranslationSourceSnapshot(detail, core.shouldStayOriginal);
+        expect(snapshot.slots.map(slot => slot.source).join(' ')).toContain('second paragraph');
+        expect(snapshot.clone.querySelector('pre')).toBeNull();
+        expect(candidates.some(candidate => candidate.element.id === 'code-block')).toBe(false);
+    });
+
+    it('prunes identity, vote and navigation metadata from full and hover discovery and ignores their mutations', () => {
+        const {document, core} = page(`
+            <table><tr><td><span class="pagetop" id="navigation"><a>Hacker News</a> | new | past | comments</span></td></tr>
+            <tr><td class="rank" id="rank">One</td><td class="votelinks" id="vote"><a>upvote this story</a></td><td class="title"><span class="titleline"><a id="story-title">A useful article about browser performance</a><span class="sitebit comhead" id="site-meta">(<a><span class="sitestr">example.test</span></a>)</span></span></td></tr>
+            <tr><td class="subtext" id="story-meta"><span class="score">one hundred points</span> by <a class="hnuser">reader</a> <span class="age">three hours ago</span> | hide | ten comments</td></tr>
+            <tr class="comtr"><td><span class="comhead" id="comment-meta"><a class="hnuser">reader</a> <span class="age">three hours ago</span> | <a>parent</a> | <a>next</a> <a>[–]</a></span>
+            <div class="comment"><span class="commtext" id="comment-body">This comment is the readable content of the discussion.</span><div class="reply" id="reply"><p><font><u><a>reply</a></u></font></p></div></div></td></tr>
+            <tr><td><a class="morelink" id="more">More</a></td></tr></table>
+            <span class="yclinks" id="footer"><a>Guidelines</a> | <a>FAQ</a></span><form id="search"><label>Search:</label><input name="q"></form>
+        `, hnUrl);
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['story-title', 'comment-body']);
+        for (const id of ['navigation', 'rank', 'vote', 'site-meta', 'story-meta', 'comment-meta', 'reply', 'more', 'footer', 'search']) {
+            const metadata = document.getElementById(id)!;
+            expect(core.resolve(metadata.firstChild), id).toBeNull();
+            expect(core.shouldStayOriginal(metadata), id).toBe(true);
+            expect(core.shouldIgnoreMutation(metadata), id).toBe(true);
+        }
+        expect(core.shouldIgnoreMutation(document.getElementById('comment-body')!)).toBe(false);
+    });
+
+    it.each(['/faq', '/newsguidelines.html'])('retains generic reading content on %s', path => {
+        const {document, core} = page('<main><h1 id="heading">Frequently asked questions</h1><p id="answer">This explanation should remain available for reading and translation.</p></main>', `https://news.ycombinator.com${path}`);
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['heading', 'answer']);
+        expect(core.resolve(document.getElementById('answer')!.firstChild)?.element.id).toBe('answer');
+    });
+
+    it('keeps dense thread discovery bounded by the visible prose and does not visit metadata descendants', () => {
+        const count = 300;
+        const {document, core} = page(`<table>${Array.from({length: count}, (_, index) => `<tr class="comtr"><td>
+            <span class="comhead"><a class="hnuser"><span id="metadata-${index}">reader ${index}</span></a><span class="age"><a>three hours ago</a></span><a>parent</a><a>next</a></span>
+            <div class="comment"><span class="commtext" id="comment-${index}">The direct introduction presents a useful idea.
+                <p id="detail-${index}">The implementation paragraph provides enough reading context.</p><p id="conclusion-${index}">The conclusion explains the tradeoff for a long discussion.</p>
+            </span><div class="reply"><p><font><u><a>reply</a></u></font></p></div></div>
+        </td></tr>`).join('')}</table>`, hnUrl);
+        const steps = [...core.discoverSteps(document)];
+        const candidates = steps.flatMap(step => step.candidate ? [step.candidate] : []);
+        expect(candidates).toHaveLength(count * 3);
+        expect(candidates.every(candidate => readableText(core, candidate).length < 100)).toBe(true);
+        expect(steps.some(step => step.element.id.startsWith('metadata-'))).toBe(false);
+        expect(steps.length).toBeLessThan(count * 21 + 10);
+    });
+});
+
+describe('Explicit non-atomic inline reading containers', () => {
+    function inlineCore() {
+        return new TranslationCandidateCore({url: new URL('https://inline-reader.test'), adapters: [
+            createDeclarativeAdapter({id: 'inline-reader', hosts: ['inline-reader.test'], genericCandidatePolicy: 'targets-only', targets: [
+                {selector: '.prose p', match: 'closest', reason: 'paragraph'},
+                {selector: '.prose', match: 'self', atomic: false, reason: 'container'},
+            ]}),
+        ]});
+    }
+
+    it('keeps ordinary inline containers outside the generic paragraph-splitting boundary', () => {
+        const {document} = page('<main><span id="inline">Opening text outside an explicitly selected reading container.<p id="paragraph">The nested paragraph remains independently readable.</p></span></main>');
+        const core = new TranslationCandidateCore({adapters: []});
+        const inline = document.getElementById('inline')!;
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['paragraph']);
+        expect(getDirectInlineRuns(inline, undefined, true)).toEqual([]);
+        expect(core.resolve(inline.firstChild)).toBeNull();
+    });
+
+    it('retains the explicit span opening beside a separate paragraph and rejects an empty container', () => {
+        const {document} = page('<main><span class="prose" id="source">The directly owned opening remains readable.<p id="paragraph">The nested paragraph has its own reading boundary.</p></span><span class="prose" id="empty"></span></main>');
+        const core = inlineCore();
+        const source = document.getElementById('source')!;
+        const candidates = core.discover(document);
+        expect(candidates.map(candidate => candidate.element.id)).toEqual(['paragraph', 'source']);
+        const opening = candidates.find(candidate => candidate.element === source)!;
+        expect(extractTranslationTextFromNodes(opening.nodes!)).toBe('The directly owned opening remains readable.');
+        expect(core.resolve(source.firstChild)?.nodes).toEqual(opening.nodes);
+        expect(core.resolve(document.getElementById('paragraph')!.firstChild)?.element.id).toBe('paragraph');
+        expect(core.resolve(document.getElementById('empty'))).toBeNull();
+    });
+
+    it('preserves an explicit container inside a shadow root without crossing its neighboring reading boundary', () => {
+        const {document} = page('<main><div id="host"><p id="light-neighbor">The light DOM paragraph is outside the explicit rule.</p></div></main>');
+        const host = document.getElementById('host')!;
+        const shadow = host.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<span class="prose" id="shadow-source">The shadow opening remains directly owned.<p id="shadow-paragraph">The shadow paragraph remains independently readable.</p></span><p id="shadow-neighbor">The neighboring shadow paragraph is outside the rule.</p>';
+        const core = inlineCore();
+        const original = shadow.innerHTML;
+        const candidates = core.discover(document);
+        expect(candidates.map(candidate => candidate.element.id)).toEqual(['shadow-paragraph', 'shadow-source']);
+        const source = shadow.querySelector('#shadow-source')!;
+        expect(core.resolve(source.firstChild)?.nodes).toEqual(candidates[1]!.nodes);
+        expect(core.resolve(shadow.querySelector('#shadow-paragraph')!.firstChild)?.element.id).toBe('shadow-paragraph');
+        expect(core.resolve(shadow.querySelector('#shadow-neighbor')!.firstChild)).toBeNull();
+        expect(core.resolve(document.getElementById('light-neighbor')!.firstChild)).toBeNull();
+        expect(shadow.innerHTML).toBe(original);
+    });
+});
+
+describe('Forced discovery synchronous inspection', () => {
+    it('reuses the declared decision and wide ancestor selector misses within one enter step', () => {
+        const {document} = parseHTML(`<html><body><main>${'<div>'.repeat(48)}<p id="source">The explicitly declared source remains independently readable.</p>${'</div>'.repeat(48)}</main></body></html>`);
+        const source = document.getElementById('source')!;
+        const prune = Array.from({length: 20}, (_, index) => `.missing-prune-${index}`);
+        const adapter = createDeclarativeAdapter({id: 'forced-step', hosts: ['step-reader.test'],
+            prune: [{selector: prune, reason: 'excluded'}],
+            targets: [{selector: '#source', match: 'closest', reason: 'reading-source'}]});
+        const decisions = vi.spyOn(adapter, 'decide');
+        const closestCalls: string[] = [];
+        const spies = Array.from(document.querySelectorAll('*')).map(element => {
+            const nativeClosest = element.closest.bind(element);
+            return vi.spyOn(element, 'closest').mockImplementation(selector => {
+                if (selector === prune.join(',')) closestCalls.push(selector);
+                return nativeClosest(selector);
+            });
+        });
+        try {
+            const core = new TranslationCandidateCore({url: new URL('https://step-reader.test'), adapters: [adapter]});
+            const steps = core.discoverSteps(source);
+            expect(steps.next().value).toMatchObject({element: source, phase: 'enter'});
+            expect(decisions.mock.calls.filter(([element]) => element === source)).toHaveLength(1);
+            expect(closestCalls).toHaveLength(2);
+            expect(steps.next().value?.candidate?.element).toBe(source);
+            expect(source.textContent).toBe('The explicitly declared source remains independently readable.');
+        } finally { decisions.mockRestore(); spies.forEach(spy => spy.mockRestore()); }
+    });
+
+    it.each(['hard-guard', 'site-prune', 'target-loss'] as const)('reads %s afresh after a generator yields its first forced candidate', mutation => {
+        const {document} = parseHTML('<html><body><main id="host" class="allowed"><p id="first">First explicitly eligible reading paragraph.</p><p id="second">Second independently eligible reading paragraph.</p></main></body></html>');
+        const host = document.getElementById('host')!;
+        const core = new TranslationCandidateCore({url: new URL('https://step-reader.test'), adapters: [
+            createDeclarativeAdapter({id: 'yield-boundary', hosts: ['step-reader.test'], genericCandidatePolicy: 'targets-only',
+                prune: [{selector: '.excluded', reason: 'excluded'}],
+                keepOriginal: [{selector: '.excluded', reason: 'excluded-source'}],
+                targets: [{selector: '.allowed p', match: 'closest', reason: 'eligible-paragraph'}]}),
+        ]});
+        const steps = core.discoverSteps(document);
+        let first: ReturnType<typeof steps.next>;
+        do { first = steps.next(); } while (!first.done && !first.value.candidate);
+        expect(first.value?.candidate?.element.id).toBe('first');
+        if (mutation === 'hard-guard') host.setAttribute('translate', 'no');
+        else if (mutation === 'site-prune') host.classList.add('excluded');
+        else host.classList.remove('allowed');
+        expect([...steps].flatMap(step => step.candidate ? [step.candidate.element.id] : [])).toEqual([]);
+        host.removeAttribute('translate');
+        host.className = 'allowed';
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['first', 'second']);
+    });
+});
 
 describe('Codeforces named form controls', () => {
     it('issue #492 continues discovery after a form input shadows tagName', () => {
@@ -780,6 +962,29 @@ describe('translation candidate core', () => {
         }
     });
 
+    it('正文同步批量解析拒绝文档和空命中后仍解析同批普通文本', () => {
+        const {document} = parseHTML('<html><body><p id="source">A readable source after invalid hits.</p></body></html>');
+        const source = document.querySelector('p')!;
+        const resolve = new TranslationCandidateCore().createSynchronousResolver();
+        expect(resolve(document)).toBeNull();
+        expect(resolve(undefined)).toBeNull();
+        expect(resolve(source.firstChild)?.element).toBe(source);
+    });
+
+    it('结构区中的容器保留独立语义标题但不吞并相邻导航文本', () => {
+        const {document} = parseHTML('<html><body><nav><div id="group">Navigation prefix.<h2 id="heading">A readable heading inside navigation.</h2>Navigation suffix.</div></nav></body></html>');
+        const candidates = new TranslationCandidateCore().discover(document);
+        expect(candidates.map(candidate => candidate.element.id)).toEqual(['heading']);
+        expect(candidates.some(candidate => candidate.nodes?.length)).toBe(false);
+    });
+
+    it('全部节点对 ARIA 工具栏自身和内部段落使用原位控件展示', () => {
+        const {document} = parseHTML('<html><body><div role="toolbar" id="toolbar"><p id="label">Toolbar status label.</p></div><p id="article">An independent reading paragraph.</p></body></html>');
+        expect(getAllScopeCandidateKind(document.querySelector('#toolbar')!)).toBe('control');
+        expect(getAllScopeCandidateKind(document.querySelector('#label')!)).toBe('control');
+        expect(getAllScopeCandidateKind(document.querySelector('#article')!)).toBe('content');
+    });
+
     it('正文批量解析不复用其他命中的外壳放行标记或保护边界', () => {
         const {document, core} = page('<div translate="no" id="shell"><p id="inside">Readable application paragraph.</p></div><p id="outside">Another readable paragraph.</p>');
         const resolve = core.createSynchronousResolver();
@@ -788,6 +993,21 @@ describe('translation candidate core', () => {
         const outside = resolve(document.querySelector('#outside'));
         expect(outside?.element).toBe(document.querySelector('#outside'));
         expect(outside?.allowTopLevelApplicationShell).toBeUndefined();
+    });
+
+    it('无适配器的正文同步解析接受文本，空与非元素命中不污染后续候选', () => {
+        const {document} = parseHTML('<html><body><main><p>Readable paragraph for synchronous resolution.</p></main></body></html>');
+        const paragraph = document.querySelector('p')!;
+        const core = new TranslationCandidateCore({scope: 'content', adapters: []});
+        const resolve = core.createSynchronousResolver();
+        expect(resolve(undefined)).toBeNull();
+        expect(resolve(null)).toBeNull();
+        expect(resolve(document.createComment('not readable text'))).toBeNull();
+        expect(resolve(document.createTextNode('Detached readable text.'))).toBeNull();
+        expect(resolve(paragraph.firstChild)?.element).toBe(paragraph);
+        expect(resolve(paragraph)?.element).toBe(paragraph);
+        expect(resolve(document)).toBeNull();
+        expect(paragraph.textContent).toBe('Readable paragraph for synchronous resolution.');
     });
 
     it('当前文档的同批解析按范围隔离核心，下一批反映新保护属性', () => {
@@ -1178,6 +1398,33 @@ describe('translation candidate core', () => {
             .flatMap((step) => step?.candidate ? [step.candidate.element.id] : []);
         expect(incremental).toEqual(core.discover(document).map((candidate) => candidate.element.id));
         expect(incremental).toHaveLength(200);
+    });
+
+    it.each(['content', 'all'] as const)('增量 %s 发现暂停时重挂 ShadowRoot 根节点，每个原文节点只访问和产出一次', scope => {
+        const {document} = parseHTML('<html><body><main><article-host></article-host></main></body></html>');
+        const shadow = document.querySelector('article-host')!.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<section><p id="first">First readable source paragraph.</p></section><p id="moved">Second readable source paragraph.</p>';
+        const section = shadow.querySelector('section')!;
+        const firstParagraph = shadow.querySelector('#first')!;
+        const moved = shadow.querySelector('#moved')!;
+        const core = new TranslationCandidateCore({scope, adapters: []});
+        const steps = core.discoverSteps(shadow);
+        const first = steps.next();
+        expect(first.done).toBe(false);
+        expect(first.value).toMatchObject({element: section, phase: 'enter'});
+        // 根列表已取快照；真实 DOM 在帧预算让出后把另一个根移入当前子树。
+        section.appendChild(moved);
+        const observed = [first.value, ...steps];
+        for (const element of [firstParagraph, moved]) {
+            expect(observed.filter(step => step?.element === element && step.phase === 'enter')).toHaveLength(1);
+            expect(observed.filter(step => step?.candidate?.element === element)).toHaveLength(1);
+        }
+        expect(observed.flatMap(step => step?.candidate ? [step.candidate.element] : []))
+            .toEqual([firstParagraph, moved]);
+        expect(section.children).toHaveLength(2);
+        expect(moved.parentNode).toBe(section);
+        expect(firstParagraph.textContent).toBe('First readable source paragraph.');
+        expect(moved.textContent).toBe('Second readable source paragraph.');
     });
 
     it('bounds one readability probe on an extremely wide subtree', () => {

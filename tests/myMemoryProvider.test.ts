@@ -202,4 +202,34 @@ describe('MyMemory 官方免费翻译适配器', () => {
             .rejects.toThrow('分片已取消');
         expect(fetchMock).not.toHaveBeenCalled();
     });
+    it.each(['http', 'abort'] as const)('MyMemory %s headers 后仍等待真实流式正文结算且保留错误分类', async mode => {
+        let body!: ReadableStreamDefaultController<Uint8Array>;
+        const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}),
+            {status: mode === 'http' ? 429 : 200, headers: {'Retry-After': '12'}});
+        const signal = new AbortController();
+        const reason = new Error('cancelled after headers');
+        fetchMock.mockImplementationOnce(async () => {if (mode === 'abort') signal.abort(reason); return response;});
+        let settled = false;
+        const result = translateMyMemoryText('Hello', {sourceLanguage: 'en', abortSignal: signal.signal}).then(
+            () => {settled = true; throw new Error('unexpected success');},
+            error => {settled = true; return error;},
+        );
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(settled).toBe(false);
+        body.close();
+        const error = await result;
+        if (mode === 'abort') expect(error).toBe(reason);
+        else expect(error).toMatchObject({statusCode: 429, retryAfterMs: 12000});
+    });
+
+    it('MyMemory 错误正文读取失败不覆盖原 HTTP 状态', async () => {
+        let body!: ReadableStreamDefaultController<Uint8Array>;
+        const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {status: 503});
+        fetchMock.mockImplementationOnce(async () => response);
+        const result = translateMyMemoryText('Hello', {sourceLanguage: 'en'}).catch(error => error);
+        await new Promise(resolve => setTimeout(resolve, 0));
+        body.error(new Error('body failed'));
+        expect(await result).toMatchObject({statusCode: 503});
+    });
+
 });

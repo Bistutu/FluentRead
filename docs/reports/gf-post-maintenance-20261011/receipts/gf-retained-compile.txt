@@ -1,6 +1,0 @@
-[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <existing-pnpm-9.12.1> compile
-
-> FluentRead-流畅阅读@0.0.37 compile <checkout>
-> node scripts/testing/run-resource-safe.mjs -- vue-tsc --noEmit
-
-[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: vue-tsc --noEmit

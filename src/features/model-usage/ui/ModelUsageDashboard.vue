@@ -1,7 +1,7 @@
 <!--
  @file src/features/model-usage/ui/ModelUsageDashboard.vue
  文件职责：在 Options 设置页展示当前浏览器保存的模型调用可观测数据，并提供筛选、请求明细和清除统计入口。
- 主要内容：按界面语言格式化 Token、输出速度、日期和耗时，呈现请求概览，支持双指标趋势及键盘选取、互斥 Token 构成、常驻平均构成、模型排行双向筛选，以及固定时间边界的指定页请求记录。
+ 主要内容：按界面语言格式化 Token、输出速度、日期和耗时，在本组件内以既有有界语言缓存复用速度与秒/分钟三套固定数字规则，呈现请求概览，支持双指标趋势及键盘选取、互斥 Token 构成、常驻平均构成、模型排行双向筛选，以及固定时间边界的指定页请求记录。
  模块边界：组件只消费后台白名单数据，不读取 API Key、不记录原文、译文、提示词或网址，也不直接访问 IndexedDB；事件采集、Token 解释、持久化及备份恢复由 services、providers、background 与统一“备份与恢复”页面拥有。
 -->
 <template>
@@ -474,7 +474,7 @@
         >
           <span class="usage-dialog-icon" aria-hidden="true">!</span>
           <h2 id="usage-reset-title">清除本机模型用量？</h2>
-          <p id="usage-reset-description">会删除本机请求记录及其汇总；不会删除 API Key、翻译设置、FluentRead 译文缓存或配置历史。此操作无法撤销。</p>
+          <p id="usage-reset-description">{{ translateLegacy('会删除本机请求记录及其汇总；不会删除 API Key、翻译设置、FluentRead 译文缓存或配置历史。此操作无法撤销。').replace('FluentRead', t('common.brand')) }}</p>
           <p v-if="resetError" class="usage-dialog-error" role="alert">{{ resetError }}</p>
           <div>
             <button ref="resetCancelButton" type="button" :disabled="resetting" @click="closeResetDialog">取消</button>
@@ -506,6 +506,7 @@ import {buildUsageComposition, buildUsageHealth, buildUsageTimeline, type UsageT
 import {formatTokenCount, formatUsageRate as formatRate} from '@/src/features/model-usage/model/tokenFormat'
 import ServiceIcon from '@/src/ui/components/ServiceIcon.vue'
 import {useUiI18n} from '@/src/ui/i18n'
+import {createNumberFormatter} from '@/src/core/i18n/numberFormat'
 import {
   MODEL_USAGE_REQUEST_MAX_PAGE_SIZE,
   MODEL_USAGE_REQUEST_PAGE_SIZE,
@@ -532,6 +533,9 @@ type RequestOutcomeFilter = '' | ModelUsageOutcome
 type RequestCacheFilter = '' | ModelUsageCacheStatus
 
 const BREAKDOWN_PREVIEW_COUNT = 8
+const speedFormatter = createNumberFormatter({maximumFractionDigits: 2})
+const secondFormatter = createNumberFormatter({style: 'unit', unit: 'second', unitDisplay: 'short', maximumFractionDigits: 2})
+const minuteFormatter = createNumberFormatter({style: 'unit', unit: 'minute', unitDisplay: 'short', maximumFractionDigits: 2})
 const requestPageSizeOptions = [20, 50, MODEL_USAGE_REQUEST_MAX_PAGE_SIZE] as const
 const numberFormatter = computed(() => new Intl.NumberFormat(language.value, {maximumFractionDigits: 0}))
 const requestDateFormatter = computed(() => new Intl.DateTimeFormat(language.value, {
@@ -755,15 +759,13 @@ function formatRequestTime(timestamp: number): string {
 }
 
 function formatSpeed(value: number | null | undefined): string {
-  return value == null || !Number.isFinite(value) ? '—' : new Intl.NumberFormat(language.value, {maximumFractionDigits: 2}).format(value)
+  return value == null || !Number.isFinite(value) ? '—' : speedFormatter(language.value).format(value)
 }
 
 function formatDuration(durationMs: number): string {
   if (!Number.isFinite(durationMs) || durationMs < 0) return '—'
   if (durationMs < 1_000) return `${Math.round(durationMs)} ms`
-  const unit = (value: number, name: 'second' | 'minute') => new Intl.NumberFormat(language.value, {
-    style: 'unit', unit: name, unitDisplay: 'short', maximumFractionDigits: 2,
-  }).format(value)
+  const unit = (value: number, name: 'second' | 'minute') => (name === 'second' ? secondFormatter : minuteFormatter)(language.value).format(value)
   if (durationMs < 60_000) return unit(durationMs / 1_000, 'second')
   const totalSeconds = Math.round(durationMs / 1_000)
   return `${unit(Math.floor(totalSeconds / 60), 'minute')} ${unit(totalSeconds % 60, 'second')}`

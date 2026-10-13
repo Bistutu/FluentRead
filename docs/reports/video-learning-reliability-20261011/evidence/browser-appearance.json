@@ -1,0 +1,94 @@
+{
+  "success": true,
+  "evidence": "Extract of the three appearance checks from the final complete browser reliability report; not an additional browser run",
+  "sourceReport": "./browser-reliability.json",
+  "artifact": {
+    "contentSha256": "d1166be072fa5682add0e7d4c468f0f0b0a0e4258931ccc0f7481a3d5b696943",
+    "version": "0.0.37"
+  },
+  "checks": [
+    {
+      "name": "The panel style entry opens the dedicated interface-center section with preview left and controls right",
+      "pass": true,
+      "details": {
+        "url": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/options.html?target=video-sentence-learning-appearance#settings-interface",
+        "layout": {
+          "example": {
+            "x": 275,
+            "y": 218.171875,
+            "width": 459,
+            "height": 497,
+            "top": 218.171875,
+            "right": 734,
+            "bottom": 715.171875,
+            "left": 275
+          },
+          "controls": {
+            "x": 758,
+            "y": 218.171875,
+            "width": 459,
+            "height": 497,
+            "top": 218.171875,
+            "right": 1217,
+            "bottom": 715.171875,
+            "left": 758
+          }
+        }
+      }
+    },
+    {
+      "name": "Trusted style controls persist layout, opacity, font scale, width and position without losing an open draft or reissuing translation",
+      "pass": true,
+      "details": {
+        "appearance": {
+          "layout": "comfortable",
+          "backgroundOpacity": 72,
+          "fontScale": 110,
+          "width": 400,
+          "position": "bottom-left"
+        },
+        "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/learning-appearance-settings.png"
+      }
+    },
+    {
+      "name": "A fresh video document restores the saved appearance and default bottom-left position while session drag stays local",
+      "pass": true,
+      "details": {
+        "host": {
+          "x": 32,
+          "y": 125.6796875,
+          "width": 400,
+          "height": 456.5546875,
+          "top": 125.6796875,
+          "right": 432,
+          "bottom": 582.234375,
+          "left": 32
+        },
+        "player": {
+          "x": 24,
+          "y": 98.234375,
+          "width": 960,
+          "height": 540,
+          "top": 98.234375,
+          "right": 984,
+          "bottom": 638.234375,
+          "left": 24
+        },
+        "layout": "comfortable",
+        "background": "rgba(24, 24, 28, 0.72)",
+        "originalFontSize": "20.9px",
+        "translationFontSize": "14.3px"
+      }
+    }
+  ],
+  "pageErrors": [],
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  }
+}

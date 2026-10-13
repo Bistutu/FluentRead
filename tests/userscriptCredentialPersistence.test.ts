@@ -45,14 +45,6 @@ async function loadConfigStore() {
     return module;
 }
 
-async function loadBootstrapConfig() {
-    const store = await loadConfigStore();
-    const bootstrap = await import('@/userscript/configRuntime');
-    await bootstrap.configReady;
-    expect(bootstrap.config).toBe(store.config);
-    return bootstrap;
-}
-
 describe('userscript credential persistence regression', () => {
     beforeEach(() => {
         userscriptStorage.values.clear();
@@ -68,7 +60,7 @@ describe('userscript credential persistence regression', () => {
             token: {openai: 'gm-secret-token'},
         });
 
-        const first = await loadBootstrapConfig();
+        const first = await loadConfigStore();
         expect(first.config.token.openai).toBe('gm-secret-token');
         expect(userscriptStorage.values.get('local:credentials')).toEqual(
             expect.objectContaining({token: {openai: 'gm-secret-token'}}),
@@ -84,7 +76,7 @@ describe('userscript credential persistence regression', () => {
             expect.objectContaining({token: {openai: 'gm-secret-token'}}),
         );
 
-        const reloaded = await loadBootstrapConfig();
+        const reloaded = await loadConfigStore();
         expect(reloaded.config.to).toBe('ja');
         expect(reloaded.config.token.openai).toBe('gm-secret-token');
     });
@@ -110,7 +102,7 @@ describe('userscript credential persistence regression', () => {
         // 整份保存同样需要返回提交 revision，发送方才不会把成功写入当成失败并回滚。
         await store.requestConfigSave({...store.config, to: 'ko'}, (message) => handler(message));
 
-        const reloaded = await loadBootstrapConfig();
+        const reloaded = await loadConfigStore();
         expect(reloaded.config).toMatchObject({floatingBallPosition: 'left', service: 'openai', to: 'ko'});
         expect(reloaded.config.token.openai).toBe('gm-secret-token');
     });

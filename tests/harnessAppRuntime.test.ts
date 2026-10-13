@@ -105,4 +105,18 @@ describe('Harness background composition', () => {
         expect(mocks.repository.recoverInterrupted).not.toHaveBeenCalled();
         expect(mocks.repository.prune).not.toHaveBeenCalled();
     });
+    it('keeps an anonymous B站 request alive for unused model or credential edits and cancels real service changes', () => {
+        mocks.config.harness.service = 'bilibili';
+        installHarnessBackgroundRuntime();
+        const changed = mocks.subscribe.mock.calls[0][0];
+        const unused = {...mocks.config, harness: {...mocks.config.harness, model: 'unused-model'},
+            token: {...mocks.config.token, bilibili: 'test-only-unused'}, proxy: {...mocks.config.proxy, bilibili: 'https://unused.test'},
+            apiKeys: {...mocks.config.apiKeys, bilibili: ['test-only-unused']},
+            customHeaders: {...mocks.config.customHeaders, bilibili: '{"x-unused":"test"}'}};
+        changed(unused);
+        expect(mocks.handler.cancelAll).not.toHaveBeenCalled();
+        changed({...unused, harness: {...unused.harness, service: 'openai', model: 'reader'}});
+        expect(mocks.handler.cancelAll).toHaveBeenCalledOnce();
+        expect(mocks.handler.cancelDisallowed).toHaveBeenCalledTimes(2);
+    });
 });

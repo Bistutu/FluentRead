@@ -1,4 +1,3 @@
-import {createUserscriptReadingRuntime} from './readingRuntime';
 import {createVisionProbeHandlers} from '@/src/app/background/handlers/visionProbe';
 import {modelVisionProbe} from '@/src/app/translation/visionProbeRuntime';
 import {runTranslationServiceConnectionTest} from '@/src/providers/translation/connectionTest';
@@ -11,7 +10,6 @@ import {
     getConfigRevision,
     prepareConfigPatchRequest,
     saveConfig,
-    subscribeConfig,
 } from '@/src/services/config/store';
 import {
     CONFIG_COUNT_INCREMENT_MESSAGE,
@@ -27,7 +25,7 @@ import {
 } from '@/src/app/translation/runtime';
 import {lookupWord} from '@/src/features/selection-translation/services/wordDictionary';
 import {createInputBoxTranslationHandler} from '@/src/features/input-translation/background';
-import {getUserscriptPrivacyContext, UNHANDLED_RUNTIME_MESSAGE} from './browser';
+import {UNHANDLED_RUNTIME_MESSAGE} from './browser';
 import {attachTranslationGlossaryContext, createTranslationProviderConfigSnapshot} from '@/src/services/translation/requestSnapshot';
 import {createTranslationRequestRegistry} from '@/src/app/background/handlers/translation';
 import {TRANSLATION_CANCEL_MESSAGE_TYPE} from '@/src/services/translation/types';
@@ -39,11 +37,9 @@ const UNSUPPORTED_CAPABILITY_MESSAGE = '该功能依赖浏览器扩展权限，u
  * 其余翻译、配置和缓存请求仍复用共享业务实现。
  */
 export function createPlatformMessageHandler(openSettings: () => void) {
-    const reading = createUserscriptReadingRuntime({ready: configReady, getConfig: () => config, subscribeConfig, privateContext: getUserscriptPrivacyContext});
     const visionHandlers = createVisionProbeHandlers({ready: configReady, getConfig: () => config, isSettingsUrl: () => true, resolve: modelVisionProbe.resolve});
     const inputRequestRegistry = createTranslationRequestRegistry();
-    const inputRequestContext = {sender: {url: globalThis.location?.href,
-        tab: {get incognito() { return getUserscriptPrivacyContext(); }}}};
+    const inputRequestContext = {sender: {url: globalThis.location?.href}};
 
     const inputBoxTranslationHandler = createInputBoxTranslationHandler({
         ready: configReady,
@@ -52,11 +48,8 @@ export function createPlatformMessageHandler(openSettings: () => void) {
         requestRegistry: inputRequestRegistry,
     });
 
-    let disposed = false;
-    const handle = async (message: any): Promise<any> => {
-        if (disposed) return UNHANDLED_RUNTIME_MESSAGE;
+    return async (message: any): Promise<any> => {
         if (!message || typeof message !== 'object') return UNHANDLED_RUNTIME_MESSAGE;
-        if (message.type === 'fluentReadHarness') return reading.handle(message);
         const visionHandler = visionHandlers.find(handler => handler.type === message.type);
         if (visionHandler) {
             try { return await visionHandler.handle(message, {}); }
@@ -173,16 +166,10 @@ export function createPlatformMessageHandler(openSettings: () => void) {
         if (typeof message.origin === 'string' || Array.isArray(message.origin)) {
             return translateWithCache(attachTranslationGlossaryContext({...message}, {
                 pageUrl: globalThis.location?.href,
-                privateContext: getUserscriptPrivacyContext(),
                 context: message.glossaryContext === 'video' ? 'video' : 'page',
             }));
         }
 
         return UNHANDLED_RUNTIME_MESSAGE;
     };
-    return Object.assign(handle, {connect: reading.connect, closeConnections: reading.closeConnections, dispose() {
-        if (disposed) return;
-        disposed = true;
-        reading.dispose();
-    }});
 }

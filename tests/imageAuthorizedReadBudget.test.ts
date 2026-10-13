@@ -56,6 +56,23 @@ function mountLongImage() {
     const windowListeners = new Map<string, Set<EventListener>>();
     const observers: Array<{disconnect: ReturnType<typeof vi.fn>}> = [];
     const canvases: HTMLCanvasElement[] = [];
+    const readers: Reader[] = [];
+    class Reader {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        readyState = 0;
+        result: string | null = null;
+        abort = vi.fn(() => {this.readyState = 2;});
+        readAsDataURL = vi.fn((_blob: Blob) => {
+            this.readyState = 1;
+            queueMicrotask(() => {
+                if (this.readyState !== 1) return;
+                this.result = PNG;this.readyState = 2;this.onload?.();
+            });
+        });
+        constructor() {readers.push(this);}
+    }
+    vi.stubGlobal('FileReader', Reader);
     const decoded: HTMLImageElement[] = [];
     const drawCalls: unknown[][] = [];
     const originalCreate = document.createElement.bind(document);
@@ -72,7 +89,8 @@ function mountLongImage() {
                     return {data: new Uint8ClampedArray(4)};
                 },
             })) as never;
-            canvas.toDataURL = () => PNG;
+            // 仅提供原生异步编码端口；保留实际 encodeImageCanvas 的预算、取消和读取器清理。
+            canvas.toBlob = vi.fn((callback: BlobCallback) => {queueMicrotask(() => callback(new Blob(['png'], {type: 'image/png'})));});
             canvases.push(canvas);
         }
         return element;
@@ -163,13 +181,14 @@ function mountLongImage() {
         expect(observers.every(observer => observer.disconnect.mock.calls.length > 0)).toBe(true);
         expect(canvases.every(canvas => canvas.width === 0 && canvas.height === 0)).toBe(true);
         expect(decoded.every(bitmap => bitmap.src === '' && bitmap.onload === null && bitmap.onerror === null)).toBe(true);
+        expect(readers.every(reader => reader.readyState === 2 && reader.onload === null && reader.onerror === null)).toBe(true);
         expect(vi.getTimerCount()).toBe(0);
     };
     // The transport's never-used branch must still consume teardown rejection.
     void extension.promise.catch(() => undefined);
     mountImageTranslator();
     expect(toggleMangaTranslation()).toBe(true);
-    return {image, page, pageFetch, extension, messages, authorizations, messageListeners, statuses, decoded, canvases, drawCalls,
+    return {image, page, pageFetch, extension, messages, authorizations, messageListeners, statuses, decoded, canvases, readers, drawCalls,
         securityErrors: () => securityErrors, pageSignal: () => pageSignal};
 }
 
@@ -217,6 +236,8 @@ describe('长漫画图片授权读取的总时间预算', () => {
         env.extension.resolve({success: true, image: PNG});
         await observePublic(() => env.statuses.at(-1)?.pending === false && env.statuses.at(-1)?.completed === 1, 'real session completes');
         expect(env.messages.filter(message => message.type === 'fluentReadImageTranslate')).toHaveLength(1);
+        expect(env.pageFetch).toHaveBeenCalledOnce();expect(env.readers).toHaveLength(1);
+        expect(env.readers[0].readAsDataURL).toHaveBeenCalledWith(expect.any(Blob));
         expect(env.messages.some(message => message.type === 'fluentReadImageCancel')).toBe(false);
         expect(env.messageListeners.size).toBe(0);
         expect(env.statuses.at(-1)).toMatchObject({active: true, pending: false, errors: 0, completed: 1});

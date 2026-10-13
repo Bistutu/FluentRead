@@ -54,15 +54,7 @@ describe('standalone userscript privacy boundaries', () => {
         const opens = vi.fn().mockResolvedValue(undefined);
         const closes = vi.fn();
         const count = vi.fn().mockResolvedValue(0);
-        let pageTranslationActive = false;
-        const translate = vi.fn(async () => {pageTranslationActive = true;});
-        const restore = vi.fn(() => {pageTranslationActive = false;});
-        let releaseMigration!: () => void;
-        const migrationReady = new Promise<void>((resolve) => {releaseMigration = resolve;});
-        const prepareConfig = vi.fn(() => migrationReady);
-        const preparationComplete = vi.fn();
-        const configImported = vi.fn();
-        const translationImported = vi.fn();
+        const translate = vi.fn().mockResolvedValue(undefined);
         const disposeBridge = vi.fn();
         let context: import('@/userscript/context').UserscriptContentContext | undefined;
         let resolveStart!: () => void;
@@ -78,23 +70,19 @@ describe('standalone userscript privacy boundaries', () => {
         vi.doMock('@/src/platform/shadow-ui/pageBridge', () => ({installShadowAndRouteBridge: () => disposeBridge}));
         vi.doMock('@/src/platform/http/runtime', () => ({setRuntimeFetch: vi.fn()}));
         vi.doMock('@/userscript/http', () => ({userscriptFetch: vi.fn()}));
-        vi.doMock('@/userscript/initialize', () => ({ensureUserscriptConfig: prepareConfig}));
+        vi.doMock('@/userscript/initialize', () => ({ensureUserscriptConfig: vi.fn().mockResolvedValue(undefined)}));
         vi.doMock('@/userscript/storage', () => ({
-            completeUserscriptConfigPreparation: preparationComplete, failUserscriptConfigPreparation: vi.fn(),
+            completeUserscriptConfigPreparation: vi.fn(), failUserscriptConfigPreparation: vi.fn(),
             getStoredValue: vi.fn(), listStoredKeys: vi.fn(), setStoredValue: vi.fn(), storage: {watch: vi.fn()},
         }));
         vi.doMock('@/userscript/count', () => ({getUserscriptConfigCount: count}));
         vi.doMock('@/userscript/compression', () => ({inflateGzipBase64: vi.fn()}));
         vi.doMock('@/userscript/settings', () => ({openUserscriptSettings: opens, closeUserscriptSettings: closes}));
         vi.doMock('@/entrypoints/content', () => ({default: {main: start}}));
-        vi.doMock('@/src/app/content/features', () => {
-            translationImported();
-            return {isFullPageTranslationActive: () => pageTranslationActive, restoreOriginalContent: restore, autoTranslateEnglishPage: translate};
-        });
-        vi.doMock('@/src/services/config/store', () => {
-            configImported();
-            return {configReady: Promise.resolve(), config: {count: 0}, saveConfig: vi.fn()};
-        });
+        vi.doMock('@/src/app/content/features', () => ({
+            isFullPageTranslationActive: () => false, restoreOriginalContent: vi.fn(), autoTranslateEnglishPage: translate,
+        }));
+        vi.doMock('@/src/services/config/store', () => ({configReady: Promise.resolve(), config: {count: 0}, saveConfig: vi.fn()}));
         let pagehide: EventListenerOrEventListenerObject | null | undefined;
         const leavePage = () => {
             // Node 不能构造可信浏览器事件；调用实际注册的 listener，与 49F 的受控事件端口一致。
@@ -114,15 +102,7 @@ describe('standalone userscript privacy boundaries', () => {
                 ? {success: true} : UNHANDLED_RUNTIME_MESSAGE);
             vi.doMock('@/userscript/platform', () => ({createPlatformMessageHandler: () => platform}));
             await import('@/userscript/main');
-            expect(prepareConfig).toHaveBeenCalledOnce();
-            expect(preparationComplete).not.toHaveBeenCalled();
-            expect(configImported).not.toHaveBeenCalled();
-            expect(translationImported).not.toHaveBeenCalled();
-            expect(start).not.toHaveBeenCalled();
-            releaseMigration();
             await vi.waitFor(() => expect(start).toHaveBeenCalledOnce());
-            expect(configImported.mock.invocationCallOrder[0]).toBeGreaterThan(preparationComplete.mock.invocationCallOrder[0]);
-            expect(translationImported.mock.invocationCallOrder[0]).toBeGreaterThan(preparationComplete.mock.invocationCallOrder[0]);
             pagehide = windowListeners.mock.calls.find(([type]) => type === 'pagehide')?.[1];
             expect(pagehide).toBeTruthy();
             expect(context?.isInvalid).toBe(false);
@@ -132,9 +112,6 @@ describe('standalone userscript privacy boundaries', () => {
             expect(opens).toHaveBeenCalledOnce(); expect(closes).toHaveBeenCalledOnce();
             expect(count).toHaveBeenCalledTimes(3);
             await expect(adapter.tabs.sendMessage(1, {type: 'userscriptTogglePageTranslation'})).resolves.toEqual({success: true});
-            expect(translate).toHaveBeenCalledOnce();
-            await expect(adapter.tabs.sendMessage(1, {type: 'userscriptTogglePageTranslation'})).resolves.toEqual({success: true});
-            expect(restore).toHaveBeenCalledOnce();
             expect(translate).toHaveBeenCalledOnce();
 
             if (phase === 'bootstrap failure') {
@@ -167,7 +144,6 @@ describe('standalone userscript privacy boundaries', () => {
             expect(opens).not.toHaveBeenCalled(); expect(closes).not.toHaveBeenCalled();
             expect(count).not.toHaveBeenCalled(); expect(translate).not.toHaveBeenCalled();
         } finally {
-            releaseMigration();
             resolveStart();
             try {leavePage(); context?.invalidate();}
             finally {
@@ -237,57 +213,5 @@ describe('standalone userscript privacy boundaries', () => {
         expect(userscriptHttp).not.toMatch(/console\.(?:log|debug|info|warn|error)\(/);
         expect(httpError).not.toMatch(/console\.(?:log|debug|info|warn|error)\(/);
         expect(gemini).not.toMatch(/console\.(?:log|debug|info|warn|error)\(/);
-    });
-});
-
-describe('userscript trusted privacy metadata', () => {
-    it.each([
-        ['legacy normal', {isIncognito: false}, undefined, false],
-        ['legacy private', {isIncognito: true}, undefined, true],
-        ['modern normal', undefined, {isIncognito: false}, false],
-        ['modern private', undefined, {isIncognito: true}, true],
-        ['missing', {scriptHandler: 'synthetic'}, undefined, undefined],
-        ['malformed', {isIncognito: 'false'}, undefined, undefined],
-        ['conflicting', {isIncognito: false}, {isIncognito: true}, undefined],
-        ['inherited', Object.create({isIncognito: false}), undefined, undefined],
-    ] as const)('keeps strict tri-state metadata and ignores message claims: %s', async (_name, legacy, modern, expected) => {
-        vi.resetModules();
-        vi.stubGlobal('GM_info', legacy);
-        vi.stubGlobal('GM', modern === undefined ? undefined : {info: modern});
-        vi.doMock('@/userscript/storage', () => ({getStoredValue: vi.fn(), listStoredKeys: vi.fn(),
-            setStoredValue: vi.fn(), storage: {watch: vi.fn()}}));
-        try {
-            const {default: browser, chrome, getUserscriptPrivacyContext, dispatchContentMessage} = await import('@/userscript/browser');
-            expect(getUserscriptPrivacyContext()).toBe(expected);
-            expect(browser.extension.inIncognitoContext).toBe(expected);
-            expect(chrome.extension.inIncognitoContext).toBe(expected);
-            // 既有 runtime 合同接收 Promise/sendResponse，不接收任意同步 object。
-            const listener = vi.fn(async (_message, sender) => ({privacy: sender.tab.incognito}));
-            browser.runtime.onMessage.addListener(listener);
-            try {
-                await expect(dispatchContentMessage({privateContext: expected !== true,
-                    sender: {tab: {incognito: expected !== true}}})).resolves.toEqual({privacy: expected});
-            } finally { browser.runtime.onMessage.removeListener(listener); }
-        } finally {
-            vi.doUnmock('@/userscript/storage'); vi.unstubAllGlobals(); vi.resetModules();
-        }
-    });
-
-    it('keeps throwing metadata unknown and reads later manager values without caching false', async () => {
-        vi.resetModules();
-        vi.stubGlobal('GM', undefined);
-        vi.stubGlobal('GM_info', Object.defineProperty({}, 'isIncognito', {get() {throw new Error('controlled metadata getter');}}));
-        vi.doMock('@/userscript/storage', () => ({getStoredValue: vi.fn(), listStoredKeys: vi.fn(),
-            setStoredValue: vi.fn(), storage: {watch: vi.fn()}}));
-        try {
-            const {getUserscriptPrivacyContext} = await import('@/userscript/browser');
-            expect(getUserscriptPrivacyContext()).toBeUndefined();
-            vi.stubGlobal('GM_info', {isIncognito: true});
-            expect(getUserscriptPrivacyContext()).toBe(true);
-            vi.stubGlobal('GM_info', {isIncognito: false});
-            expect(getUserscriptPrivacyContext()).toBe(false);
-        } finally {
-            vi.doUnmock('@/userscript/storage'); vi.unstubAllGlobals(); vi.resetModules();
-        }
     });
 });

@@ -1,7 +1,10 @@
 import {createRequire} from 'node:module';
+import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import {createServer, type Plugin, type ViteDevServer} from 'vite';
+import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
+import ts from 'typescript';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {Config} from '@/src/core/config/model';
 import {getHarnessModelCacheKey, DEFAULT_HARNESS_PREFERENCES} from '@/src/core/config/harness';
@@ -25,11 +28,11 @@ afterEach(async () => {
   delete (globalThis as Record<string, unknown>)[TEST_KEY];
 });
 
-async function mountPanel(overrides: Record<string, unknown> = {}, sessions: HarnessSession[] = [], runtimeBrowser?: Record<string, any>) {
+async function mountPanel(overrides: Record<string, unknown> = {}, sessions: HarnessSession[] = [], renderTemplate = false, syncView = false) {
   const calls: StreamCall[] = [];
   const sendMessage = vi.fn(async () => ({success: true}));
   const state = {
-    browser: runtimeBrowser ?? {runtime: {sendMessage}},
+    browser: {runtime: {sendMessage}},
     streamReading: (request: ReadingRequest, callbacks: StreamCall['callbacks']) => {
       const call = {request, callbacks, cancel: vi.fn()}; calls.push(call); return {cancel: call.cancel};
     },
@@ -42,7 +45,7 @@ async function mountPanel(overrides: Record<string, unknown> = {}, sessions: Har
     name: 'reading-lifecycle-mocks', enforce: 'pre',
     resolveId(id, importer) {
       if (id === 'webextension-polyfill') return '\0reading-browser';
-      if (!runtimeBrowser && id === '../client' && importer?.includes('/reading-assistant/ui/')) return '\0reading-client';
+      if (id === '../client' && importer?.includes('/reading-assistant/ui/')) return '\0reading-client';
       return null;
     },
     load(id) {
@@ -50,34 +53,234 @@ async function mountPanel(overrides: Record<string, unknown> = {}, sessions: Har
       if (id === '\0reading-client') return `export const {streamReading,getHarnessSession,listHarnessSessions,saveLearningMemory} = globalThis.${TEST_KEY};`;
       return null;
     },
+    transform(code, id) {
+      if (id !== resolve('src/features/reading-assistant/ui/ReadingPanel.vue')) return null;
+      // 无DOM端口也控制共享渲染函数中的输入指令；真实输入/IME/样式由 streamingResize 的 DOM 夹具验证。
+      return {code: code.replace(/\bvModelText(?=\s*,)/u, 'vModelText as domVModelText')
+        .replace('<script setup lang="ts">', '<script setup lang="ts">\nconst vModelText = {};'), map: null};
+    },
   };
-  server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(), define: runtimeBrowser ? {'import.meta.env.BROWSER': JSON.stringify('userscript')} : undefined, plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}}, server: {hmr: false, middlewareMode: true}, ssr: {noExternal: ['webextension-polyfill']}});
+  server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(), plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}}, server: {hmr: false, middlewareMode: true}, ssr: {noExternal: ['webextension-polyfill']}});
   const loaded = await server.ssrLoadModule('/src/features/reading-assistant/ui/ReadingPanel.vue');
   const component = loaded.default;
-  component.ssrRender = undefined; component.render = () => null;
-  const renderer = runtime.createRenderer<Record<string, never>, Record<string, unknown>>({
-    patchProp: () => undefined, insert: () => undefined, remove: () => undefined,
-    createElement: () => ({}), createText: () => ({}), createComment: () => ({}),
-    setText: () => undefined, setElementText: () => undefined, parentNode: () => null,
-    nextSibling: () => null, querySelector: () => null, setScopeId: () => undefined,
-    cloneNode: () => ({}), insertStaticContent: () => [{}, {}],
+  component.ssrRender = undefined;
+  if (renderTemplate) {
+    const filename = resolve('src/features/reading-assistant/ui/ReadingPanel.vue');
+    const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
+    const {bindings} = compileScript(descriptor, {id: 'reading-capability-test'});
+    const template = compileTemplate({source: descriptor.template!.content, filename, id: 'reading-capability-test', compilerOptions: {mode: 'function', bindingMetadata: bindings, expressionPlugins: ['typescript']}});
+    expect(template.errors).toEqual([]);
+    // 无DOM宿主只核对真实模板分支；输入赋值和显示样式属于受控端口，动作由真实setup执行。
+    component.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)({...runtime, vShow: {}, vModelText: {}});
+  } else component.render = () => null;
+  type HostNode = {parent?: HostNode; children: HostNode[]};
+  const removeNode = (node: HostNode) => {
+    if (!node.parent) return;
+    const siblings = node.parent.children; const index = siblings.indexOf(node);
+    if (index >= 0) siblings.splice(index, 1);
+    node.parent = undefined;
+  };
+  const insertNode = (node: HostNode, parent: HostNode, anchor?: HostNode | null) => {
+    removeNode(node); const index = anchor ? parent.children.indexOf(anchor) : -1;
+    parent.children.splice(index < 0 ? parent.children.length : index, 0, node); node.parent = parent;
+  };
+  const renderer = runtime.createRenderer<HostNode, HostNode>({
+    patchProp: () => undefined, insert: insertNode, remove: removeNode,
+    createElement: () => ({children: []}), createText: () => ({children: []}), createComment: () => ({children: []}),
+    setText: () => undefined, setElementText: () => undefined, parentNode: node => node.parent || null,
+    nextSibling: node => node.parent?.children[node.parent.children.indexOf(node) + 1] || null,
+    querySelector: () => null, setScopeId: () => undefined,
+    cloneNode: () => ({children: []}), insertStaticContent: (_text, parent, anchor) => {const node = {children: []}; insertNode(node, parent, anchor); return [node, node];},
   });
   const sourceChange = vi.fn();
-  const props = runtime.reactive({selection: {text: 'Practice helps.', sentence: 'Practice helps.', context: 'Practice helps every day.'}, preferences: {...DEFAULT_HARNESS_PREFERENCES, enabled: true}, active: true, targetLanguage: 'zh-CN', sourceLanguage: 'en', vocabularyEnabled: true, privateContext: false, animations: false, sourceTranslation: undefined as {source: string; text: string; pending?: boolean; error?: string} | undefined, onSourceChange: sourceChange, ...overrides});
-  let panel: any;
-  const app = renderer.createApp({setup: () => () => runtime.h(component, {...props, ref: (instance: any) => { if (instance) panel = instance.$.setupState; }})});
+  const props = runtime.reactive({service: '', initialAction: undefined as HarnessSession['intent'] | undefined, historyOnly: false, selection: {text: 'Practice helps.', sentence: 'Practice helps.', context: 'Practice helps every day.'}, preferences: {...DEFAULT_HARNESS_PREFERENCES, enabled: true}, active: true, targetLanguage: 'zh-CN', sourceLanguage: 'en', vocabularyEnabled: true, privateContext: false, animations: false, sourceTranslation: undefined as {source: string; text: string; pending?: boolean; error?: string} | undefined, onSourceChange: sourceChange, ...overrides});
+  const viewChange = vi.fn((view: {action: HarnessSession['intent']; history: boolean}) => {
+    if (syncView) Object.assign(props, {initialAction: view.action, historyOnly: view.history});
+  });
+  let panel: any, panelInstance: any;
+  const app = renderer.createApp({setup: () => () => runtime.h(component, {...props, onViewChange: viewChange, ref: (instance: any) => { if (instance) {panel = instance.$.setupState; panelInstance = instance.$;} }})});
   app.provide(runtime.ssrContextKey, {modules: new Set<string>()});
   app.config.warnHandler = () => undefined;
-  app.mount({}); unmount = () => app.unmount();
+  app.mount({children: []}); unmount = () => app.unmount();
   await runtime.nextTick();
   const finish = (text: string, call = calls.at(-1)!) => call.callbacks.result({success: true, text, service: 'deepseek', model: 'test-model', sessionId: 'session-a'});
-  return {panel, calls, props, sendMessage, sourceChange, finish, state, tick: runtime.nextTick, unmount: () => {app.unmount(); unmount = undefined;}};
+  return {panel, calls, props, sendMessage, sourceChange, finish, state, viewChange, tick: runtime.nextTick, rendered: () => panelInstance.subTree};
 }
+
+function renderedNodes(node: any): any[] {
+  if (!node || typeof node !== 'object') return [];
+  return [node, ...(node.component ? renderedNodes(node.component.subTree) : []), ...(Array.isArray(node.children) ? node.children.flatMap(renderedNodes) : [])];
+}
+
+describe('Bilibili basic reading capabilities', () => {
+  const storedSession = (id: string, intent: HarnessSession['intent'], question: string, status: HarnessSession['turns'][number]['status'], answer = 'Stored answer'): HarnessSession => ({
+    id, text: 'Historical source.', context: 'Historical paragraph.', createdAt: 1, updatedAt: 2, intent,
+    turns: [{id: `${id}-turn`, intent, question, status, answer, service: 'deepseek', model: 'stored-model', createdAt: 1}],
+  });
+  const buttonNamed = (tree: any, label: string) => renderedNodes(tree).find(node => node.type === 'button' && node.children === label);
+
+  it.each([
+    ['grammar', '词性与句法', 'error', 'Partial grammar'],
+    ['practice', '练习', 'stopped', ''],
+    ['meaning', 'Why is that?', 'error', 'Partial follow-up'],
+    ['usage', 'Why this usage?', 'stopped', ''],
+  ] as const)('preserves historical %s identity through parent navigation echoes and offers only supported generation', async (intent, question, status, answer) => {
+    const session = storedSession('old', intent, question, status, answer);
+    const preferences = {...DEFAULT_HARNESS_PREFERENCES, enabled: true, service: 'bilibili'};
+    const {panel, calls, props, tick, rendered} = await mountPanel({preferences, historyOnly: true}, [session], true, true);
+    await panel.restoreSession('old'); await tick();
+    const prompt = intent === 'grammar' || intent === 'practice' ? '' : question;
+    expect(calls).toHaveLength(0); expect(panel.intent).toBe(intent); expect(panel.currentTurnKey).toBe('old-turn');
+    expect(panel.answer).toBe(answer); expect(panel.currentQuestion).toBe(prompt); expect(panel.lastQuestion).toBe(prompt);
+    expect(props.initialAction).toBe(intent); expect(props.historyOnly).toBe(false);
+    expect(panel.retrySupported).toBe(false);
+    const retry = buttonNamed(rendered(), status === 'error' ? '重试' : '继续生成');
+    expect(retry?.props.disabled).toBe(true); expect(retry?.props.title).toContain('B站仅提供基础讲解');
+    expect(buttonNamed(rendered(), '重新生成')?.props.disabled).toBe(intent === 'grammar' || intent === 'practice');
+    expect(buttonNamed(rendered(), '切换服务')).toBeDefined();
+    panel.retry();
+    if (intent === 'grammar' || intent === 'practice') panel.regenerate();
+    await tick(); expect(calls).toHaveLength(0); expect(panel.feedback).toContain('B站仅提供基础讲解');
+    expect(panel.intent).toBe(intent); expect(panel.answer).toBe(answer); expect(panel.lastQuestion).toBe(prompt);
+    panel.openRecords(); await tick(); panel.closeRecords(); await tick();
+    expect(panel.currentTurnKey).toBe('old-turn'); expect(panel.answer).toBe(answer); expect(calls).toHaveLength(0);
+    props.preferences.service = 'deepseek'; await tick();
+    expect(panel.retrySupported).toBe(true); expect(panel.intent).toBe(intent); expect(panel.currentQuestion).toBe(prompt);
+    expect(buttonNamed(rendered(), '重新生成')?.props.disabled).toBe(false);
+    panel.retry(); expect(calls).toHaveLength(1);
+    expect(calls[0].request).toMatchObject({intent, question: prompt, selection: {text: 'Historical source.'}});
+  });
+
+  it('keeps basic Bilibili retries available when a restored meaning turn has no follow-up question', async () => {
+    const session = storedSession('base', 'meaning', '读懂', 'error');
+    const {panel, calls, tick, rendered} = await mountPanel({historyOnly: true, preferences: {...DEFAULT_HARNESS_PREFERENCES, enabled: true, service: 'bilibili'}}, [session], true, true);
+    await panel.restoreSession('base'); await tick();
+    expect(panel.currentQuestion).toBe(''); expect(panel.retrySupported).toBe(true);
+    expect(buttonNamed(rendered(), '重试')?.props.disabled).toBe(false);
+    panel.retry(); expect(calls).toHaveLength(1); expect(calls[0].request).toMatchObject({intent: 'meaning', question: '', history: []});
+  });
+
+  it('reacts to same-intent history questions and permits an explicit new basic explanation rather than retrying a Bilibili follow-up', async () => {
+    const sessions = [storedSession('base', 'meaning', '读懂', 'error'), storedSession('followup', 'meaning', 'What does this imply?', 'error')];
+    const {panel, calls, tick, rendered} = await mountPanel({historyOnly: true, preferences: {...DEFAULT_HARNESS_PREFERENCES, enabled: true, service: 'bilibili'}}, sessions, true, true);
+    await panel.restoreSession('base'); await tick(); expect(panel.retrySupported).toBe(true);
+    panel.openRecords(); await tick(); await panel.restoreSession('followup'); await tick();
+    expect(calls).toHaveLength(0); expect(panel.intent).toBe('meaning'); expect(panel.retrySupported).toBe(false);
+    expect(panel.currentQuestion).toBe('What does this imply?'); expect(panel.currentTurnKey).toBe('followup-turn');
+    expect(buttonNamed(rendered(), '重试')?.props.disabled).toBe(true);
+    panel.retry(); expect(calls).toHaveLength(0);
+    panel.regenerate(); expect(calls).toHaveLength(1); expect(calls[0].request).toMatchObject({intent: 'meaning', question: '', history: []});
+  });
+
+  it('preserves a disabled generic AI historical action and explains how to enable it instead of relabeling or requesting', async () => {
+    const session = storedSession('grammar', 'grammar', '词性与句法', 'error');
+    const {panel, calls, props, tick, rendered} = await mountPanel({historyOnly: true, preferences: {...DEFAULT_HARNESS_PREFERENCES, enabled: true, service: 'deepseek', actions: ['meaning', 'usage']}}, [session], true, true);
+    await panel.restoreSession('grammar'); await tick();
+    expect(panel.feedback).toBe('已打开上次的问答。');
+    expect(panel.intent).toBe('grammar'); expect(panel.answer).toBe('Stored answer'); expect(panel.retrySupported).toBe(false);
+    expect(buttonNamed(rendered(), '重试')?.props.disabled).toBe(true); expect(buttonNamed(rendered(), '重新生成')?.props.disabled).toBe(true);
+    expect(renderedNodes(rendered()).some(node => typeof node.children === 'string' && node.children.includes('当前动作未启用'))).toBe(true);
+    expect(renderedNodes(rendered()).find(node => node.type === 'input' && node.props?.['aria-label'] === '继续追问')?.props.disabled).toBe(true);
+    panel.question = 'Keep this draft'; panel.ask();
+    expect(panel.question).toBe('Keep this draft'); expect(buttonNamed(rendered(), '↑')?.props.disabled).toBe(true);
+    panel.retry(); panel.regenerate(); expect(calls).toHaveLength(0); expect(panel.feedback).toContain('当前动作未启用');
+    props.preferences.actions.push('grammar'); await tick();
+    expect(panel.intent).toBe('grammar'); expect(panel.retrySupported).toBe(true);
+    expect(renderedNodes(rendered()).find(node => node.type === 'input' && node.props?.['aria-label'] === '继续追问')?.props.disabled).toBe(false);
+    panel.retry(); expect(calls).toHaveLength(1); expect(calls[0].request).toMatchObject({intent: 'grammar', question: ''});
+  });
+
+  it.each(['bilibili', 'deepseek'])('returns from empty records once, preserves existing reading, and still handles explicit action/activation changes (%s)', async service => {
+    const {panel, calls, props, finish, tick} = await mountPanel({historyOnly: true, preferences: {...DEFAULT_HARNESS_PREFERENCES, enabled: true, service}}, [], true, true);
+    expect(calls).toHaveLength(0); panel.closeRecords(); await tick();
+    expect(calls).toHaveLength(1); expect(calls[0].request.intent).toBe('meaning');
+    finish('Current reading'); await tick();
+    panel.openRecords(); await tick(); panel.closeRecords(); await tick();
+    expect(calls).toHaveLength(1); expect(panel.answer).toBe('Current reading');
+    panel.openRecords(); await tick(); Object.assign(props, {initialAction: 'usage', historyOnly: false}); await tick();
+    expect(calls).toHaveLength(2); expect(calls[1].request.intent).toBe('usage');
+    finish('Usage answer'); await tick(); props.active = false; await tick(); props.active = true; await tick();
+    expect(panel.intent).toBe('usage'); expect(panel.answer).toBe('Usage answer'); expect(calls).toHaveLength(2);
+  });
+
+  it.each([false, true])('filters actions, hides follow-up, and restores paid controls without rewriting preferences (external=%s)', async externalNavigation => {
+    const preferences = {...DEFAULT_HARNESS_PREFERENCES, enabled: true, service: 'bilibili', defaultAction: 'grammar'};
+    const {panel, calls, props, finish, tick, rendered, sendMessage} = await mountPanel({preferences, externalNavigation}, [], true);
+    expect(panel.actions.map((action: any) => action.id)).toEqual(['meaning', 'usage']);
+    expect(panel.intent).toBe('meaning'); expect(calls).toHaveLength(1);
+    expect(calls[0].request.intent).toBe('meaning'); expect(props.preferences.defaultAction).toBe('grammar');
+    const storedActions = [...props.preferences.actions];
+    finish('Basic explanation'); await tick();
+    expect(renderedNodes(rendered()).some(node => node.type === 'form' && node.props?.class === 'fr-reading-followup')).toBe(false);
+    expect(renderedNodes(rendered()).some(node => typeof node.children === 'string' && node.children.includes('B站仅提供基础讲解'))).toBe(true);
+    panel.question = 'An unsupported follow-up'; panel.ask(); await panel.run('An unsupported retry', [], true); panel.startAction('grammar'); panel.startAction('practice');
+    expect(calls).toHaveLength(1); expect(panel.question).toBe('An unsupported follow-up');
+    await panel.openSettings(); expect(sendMessage).toHaveBeenCalledWith({type: 'openOptionsPage', section: 'settings-selection'});
+    props.preferences.service = 'deepseek'; await tick();
+    expect(panel.actions.map((action: any) => action.id)).toEqual(['meaning', 'grammar', 'usage', 'practice']);
+    expect(panel.followUpSupported).toBe(true);
+    expect(renderedNodes(rendered()).filter(node => node.type === 'form' && node.props?.class === 'fr-reading-followup')).toHaveLength(1);
+    expect(props.preferences.actions).toEqual(storedActions); expect(props.preferences.defaultAction).toBe('grammar');
+    panel.startAction('grammar'); finish('Full grammar'); panel.question = 'A supported follow-up'; panel.ask();
+    expect(calls.at(-1)!.request.intent).toBe('grammar'); expect(calls.at(-1)!.request.question).toBe('A supported follow-up');
+  });
+
+  it('uses an inherited effective service and rejects a delayed paid answer when it changes to Bilibili', async () => {
+    const {panel, calls, props, tick} = await mountPanel({service: 'deepseek', preferences: {...DEFAULT_HARNESS_PREFERENCES, enabled: true, defaultAction: 'grammar'}});
+    const oldCall = calls[0]; oldCall.callbacks.progress({kind: 'text', text: 'Current grammar'});
+    props.service = 'bilibili'; await tick();
+    expect(oldCall.cancel).toHaveBeenCalled(); expect(panel.followUpSupported).toBe(false);
+    expect(panel.actions.map((action: any) => action.id)).toEqual(['meaning', 'usage']);
+    oldCall.callbacks.result({success: true, text: 'Late grammar', service: 'deepseek', model: 'old'});
+    expect(panel.answer).toBe('Current grammar');
+    panel.startAction('meaning'); expect(calls.at(-1)!.request.intent).toBe('meaning');
+    expect(props.preferences.defaultAction).toBe('grammar');
+    props.service = 'deepseek'; await tick(); expect(panel.effectiveDefaultAction).toBe('grammar');
+  });
+});
+
+describe('reading evidence ownership', () => {
+  it('uses only the bounded authorized context and clears highlights when stopped or the source changes', async () => {
+    const clearEvidence = vi.fn();
+    const locateEvidence = vi.fn(() => 'located');
+    const {panel, props, calls, tick} = await mountPanel({clearEvidence, locateEvidence, sourceRevision: 0, preferences: {...DEFAULT_HARNESS_PREFERENCES, enabled: true, contextMode: 'paragraph', maxContextChars: 500}});
+    expect(panel.evidenceSources.some((source: any) => source.kind === 'context')).toBe(true);
+    expect(panel.evidenceLocator).toBe(locateEvidence);
+    const call = calls.at(-1)!;
+    call.callbacks.progress({kind: 'text', text: 'Received explanation'});
+    Object.assign(props, {sourceRevision: 1}); await tick();
+    expect(call.cancel).toHaveBeenCalled(); expect(clearEvidence).toHaveBeenCalled();
+    expect(panel.answer).toBe('Received explanation');
+    call.callbacks.result({success: true, text: 'Late explanation', service: 'deepseek', model: 'test'});
+    expect(panel.answer).toBe('Received explanation');
+    props.preferences.contextMode = 'selection'; await tick();
+    expect(panel.requestEvidenceSources.every((source: any) => source.kind === 'selection')).toBe(true);
+    expect(panel.evidenceSources.some((source: any) => source.kind === 'context')).toBe(true);
+    props.active = false; await tick(); expect(panel.evidenceLocator).toBeUndefined();
+  });
+
+  it('rejects a response immediately after navigation even before the observer/poll notification', async () => {
+    let state = 'located';
+    const {panel, calls} = await mountPanel({checkEvidence: () => state});
+    const call = calls.at(-1)!;
+    call.callbacks.progress({kind: 'text', text: 'Current text'});
+    state = 'navigated';
+    call.callbacks.result({success: true, text: 'Late after navigation', service: 'deepseek', model: 'test'});
+    expect(panel.answer).toBe('Current text'); expect(panel.stopped).toBe(true);
+    expect(call.cancel).toHaveBeenCalled();
+  });
+
+  it('retains restored quotes without granting the current page anchor to historical text', async () => {
+    const {panel, tick} = await mountPanel({locateEvidence: vi.fn(() => 'located')});
+    panel.historicalText = 'A saved sentence.'; panel.historicalContext = 'A saved sentence. It was from another page.'; await tick();
+    expect(panel.evidenceLocator).toBeUndefined();
+    expect(panel.requestEvidenceSources[0].text).toBe('A saved sentence.');
+  });
+});
 
 describe('reading action ownership and reuse', () => {
   it('has no active answer or model request before entering learning, and starts the default action after an empty history view', async () => {
     const {panel, calls, props, tick} = await mountPanel({active: false});
-    expect(panel.canPersistReading).toBe(true); // 缺省保留扩展记录能力；userscript 显式 false 单独覆盖。
     expect(panel.currentTurnKey).toBe(''); expect(calls).toHaveLength(0);
     Object.assign(props, {historyOnly: true, active: true}); await tick();
     expect(panel.showRecords).toBe(true); expect(calls).toHaveLength(0);
@@ -324,122 +527,4 @@ it('preserves the answer offset for late translations and respects manual upward
   props.sourceTranslation = {source: 'Practice helps.', text: '再更新的译文。'};
   await tick(); panel.cancelReadingPosition(); body.offsetTop = 240; await tick();
   expect(viewport.scrollTop).toBe(220);
-});
-
-
-
-
-describe('actual userscript ReadingPanel capability error through the real client', () => {
-  it('calls the real shim connect and reports its honest not-ready capability when the default platform has no stream transport', async () => {
-    const {default: shim, resetPlatformMessageHandler} = await import('@/userscript/browser');
-    resetPlatformMessageHandler();
-    expect(typeof Reflect.get(shim.runtime, 'connect')).toBe('function');
-    const connectReads = vi.fn(), connectCalls = vi.fn();
-    const runtimePort = new Proxy(shim.runtime, {get(target, key, receiver) {
-      const value = Reflect.get(target, key, receiver);
-      if (key !== 'connect') return value;
-      connectReads();
-      if (typeof value !== 'function') return value;
-      return (...args: unknown[]) => {connectCalls(...args); return Reflect.apply(value, target, args);};
-    }});
-    const fixture = await mountPanel({active: false, privateContext: true}, [], {...shim, runtime: runtimePort});
-    expect(fixture.calls).toHaveLength(0);
-    expect(connectReads).not.toHaveBeenCalled(); expect(connectCalls).not.toHaveBeenCalled();
-    fixture.props.active = true; await fixture.tick();
-    expect(connectReads).toHaveBeenCalled();
-    expect(connectCalls).toHaveBeenCalledWith({name: 'fluentReadHarnessStream'});
-    expect(fixture.panel.currentTurnKey).toMatch(/^reading-/u);
-    expect(fixture.panel.busy).toBe(false); expect(fixture.panel.answer).toBe('');
-    expect(fixture.panel.error).toMatch(/未就绪/u);
-    expect(fixture.panel.error).toMatch(/(?:阅读|userscript|脚本|stream|transport)/iu);
-    expect(fixture.panel.error).not.toMatch(/(?:TypeError|is not a function|undefined)/iu);
-    fixture.unmount();
-  });
-});
-
-describe('real ReadingPanel/client at a controlled semantic stream-port boundary', () => {
-  it('roundtrips the real request, progress, result and cancellation without replacing the reading client', async () => {
-    const {default: shim, setPlatformMessageHandler, resetPlatformMessageHandler} = await import('@/userscript/browser');
-    const cancelMessages: unknown[] = [];
-    setPlatformMessageHandler(async message => {
-      if (message?.type !== 'fluentReadHarness' || message.action !== 'cancel') throw new Error('Unexpected local synthetic message');
-      cancelMessages.push(message); return {success: true};
-    });
-    const ports: Array<ReturnType<typeof makePort>> = [];
-    function makePort() {
-      const messages = new Set<(message: unknown) => void>();
-      const disconnects = new Set<() => void>();
-      const port = {
-        postMessage: vi.fn(),
-        onMessage: {addListener: (listener: (message: unknown) => void) => messages.add(listener), removeListener: (listener: (message: unknown) => void) => messages.delete(listener)},
-        onDisconnect: {addListener: (listener: () => void) => disconnects.add(listener), removeListener: (listener: () => void) => disconnects.delete(listener)},
-        disconnect: vi.fn(() => {for (const listener of [...disconnects]) listener();}),
-        deliver: (message: unknown) => {for (const listener of [...messages]) listener(message);},
-        listenerCount: () => messages.size + disconnects.size,
-      };
-      return port;
-    }
-    const connect = vi.fn((_options: {name: string}) => {const port = makePort(); ports.push(port); return port;});
-    // Explicit test-only external port, with full protocol behavior; it is not a shim implementation.
-    const fixture = await mountPanel({active: false, privateContext: true}, [], {...shim, runtime: {...shim.runtime, connect}});
-    try {
-      expect(connect).not.toHaveBeenCalled();
-      fixture.props.active = true; await fixture.tick();
-      expect(fixture.calls).toHaveLength(0);
-      expect(connect).toHaveBeenCalledWith({name: 'fluentReadHarnessStream'});
-      expect(ports).toHaveLength(1);
-      const request = ports[0].postMessage.mock.calls[0][0] as ReadingRequest;
-      expect(request).toMatchObject({type: 'fluentReadHarness', action: 'run', intent: 'meaning', question: '', history: [], selection: {text: 'Practice helps.'}});
-      expect(request.requestId).toMatch(/^reading-/u);
-      expect(fixture.panel.busy).toBe(true); expect(fixture.panel.error).toBe('');
-      ports[0].deliver({type: 'progress', requestId: 'other', progress: {kind: 'text', text: 'Wrong request'}});
-      expect(fixture.panel.answer).toBe('');
-      ports[0].deliver({type: 'progress', requestId: request.requestId, progress: {kind: 'text', text: 'Controlled partial'}});
-      expect(fixture.panel.answer).toBe('Controlled partial');
-      ports[0].deliver({type: 'result', requestId: request.requestId, response: {success: true, text: 'Controlled complete', service: 'synthetic', model: 'local-fixture'}});
-      expect(fixture.panel.answer).toBe('Controlled complete'); expect(fixture.panel.busy).toBe(false);
-      expect(ports[0].disconnect).toHaveBeenCalledOnce(); expect(ports[0].listenerCount()).toBe(0);
-      fixture.panel.startAction('grammar'); await fixture.tick();
-      expect(ports).toHaveLength(2);
-      const secondRequest = ports[1].postMessage.mock.calls[0][0] as ReadingRequest;
-      fixture.panel.stop(); await fixture.tick();
-      expect(ports[1].disconnect).toHaveBeenCalledOnce(); expect(ports[1].listenerCount()).toBe(0);
-      expect(cancelMessages).toContainEqual({type: 'fluentReadHarness', action: 'cancel', requestId: secondRequest.requestId});
-      ports[1].deliver({type: 'progress', requestId: secondRequest.requestId, progress: {kind: 'text', text: 'Late partial'}});
-      expect(fixture.panel.answer).not.toBe('Late partial');
-      fixture.unmount();
-    } finally {resetPlatformMessageHandler();}
-  });
-});
-
-
-it('keeps normal-context temporary reading usable while blocking unsupported record and note persistence', async () => {
-  const {panel, calls, state, finish, tick} = await mountPanel({privateContext: false, persistenceSupported: false});
-  expect(panel.canPersistReading).toBe(false);
-  expect(panel.canSaveWord).toBe(true); // Vocabulary permission is independent of reading persistence.
-  finish('Temporary answer'); await tick();
-  panel.openRecords(); await tick();
-  expect(panel.showRecords).toBe(false);
-  expect(state.listHarnessSessions).not.toHaveBeenCalled();
-  await panel.restoreSession('saved-session');
-  expect(state.getHarnessSession).not.toHaveBeenCalled();
-  await panel.rememberLearning();
-  expect(state.saveLearningMemory).not.toHaveBeenCalled();
-  expect(panel.answer).toBe('Temporary answer');
-  panel.question = 'Why?'; panel.ask();
-  expect(calls).toHaveLength(2);
-  expect(calls[1].request.sessionId).toBeUndefined();
-  expect(calls[1].request.history?.at(-1)?.answer).toBe('Temporary answer');
-});
-
-
-it('starts reading on HTTP-like contexts without randomUUID while retaining the real request contract', async () => {
-  vi.stubGlobal('crypto', {});
-  const {panel, calls, finish} = await mountPanel({privateContext: true, persistenceSupported: false});
-  expect(calls).toHaveLength(1);
-  expect(calls[0].request.requestId).toMatch(/^reading-[\w.:-]+$/u);
-  expect(panel.busy).toBe(true);
-  finish('HTTP context answer');
-  expect(panel.error).toBe('');
-  expect(panel.answer).toBe('HTTP context answer');
 });

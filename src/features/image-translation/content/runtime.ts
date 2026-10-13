@@ -1,7 +1,7 @@
 /**
  * @file src/features/image-translation/content/runtime.ts
  * 文件职责：实现网页图片翻译的独立悬浮/右键入口、可信目标快照、异步请求所有权和单图及漫画连续模式的原图/译图切换，保持宿主图片与响应式图片资源不变。
- * 主要内容：单图失败提供模型与服务导航，译图操作条随指针隐藏并保留键盘入口；单图识别方式纳入缓存身份，切换后不复用旧结果；在封闭 Shadow DOM 中挂载原生译图，跟随图片盒模型与祖先裁切；合并布局更新，默认 12 张可配置的快速缓存和 100 页/16 MiB 二进制局部结果，靠近视口时直接预合成画布，无文字页只保留轻量完成标记；返页不复用已经取消的预合成，旧任务结束不能删除新任务；漫画状态以订阅快照发送并隔离同步异常，避免订阅变化重复递送或阻断请求和卸载；图片重载、独立服务及模型变化使结果失效，漫画返页复用结果不等待其他页推理；预合成不得撤下当前译图，单页反馈展示真实阶段与进度，隐藏漫画操作条，换图、取消与卸载时释放资源。
+ * 主要内容：单图失败提供模型与服务导航，译图操作条随指针隐藏并保留键盘入口；指针局部检查仅在本次调用内复用同图几何与样式读取，第二个重叠命中立即停止，下一帧重新定位；单图识别方式纳入缓存身份，切换后不复用旧结果；在封闭 Shadow DOM 中挂载原生译图，跟随图片盒模型与祖先裁切；合并布局更新，默认 12 张可配置的快速缓存和 100 页/16 MiB 二进制局部结果，靠近视口时直接预合成画布，无文字页只保留轻量完成标记；返页不复用已经取消的预合成，旧任务结束不能删除新任务；漫画状态以订阅快照发送并隔离同步异常，避免订阅变化重复递送或阻断请求和卸载；图片重载、独立服务及模型变化使结果失效，漫画返页复用结果不等待其他页推理；预合成不得撤下当前译图，单页反馈展示真实阶段与进度，隐藏漫画操作条，换图、取消与卸载时释放资源。
  * 模块边界：本运行时在读取预算内异步编码页面允许访问的 Canvas，污染画布先走网页 CORS，再按剩余预算授权后台读取当前任务图片；共用 PNG 编码器处理取消/迟到结果，识别、文本翻译、图像修复与语言包管理位于 background/services，控件交互由 controls 模块提供。
  */
 import {imageTranslationFailureCode, imageLocalFailureMessage, type ImageLocalFailure} from '../failure';
@@ -1086,20 +1086,32 @@ function imageAtPointer(event: Pick<MouseEvent, 'target' | 'clientX' | 'clientY'
         if (state.overlay === target || state.overlay.contains(target) || state.controls.reader.contains(target)) return state.image;
     }
     // 只在局部媒体容器里查找覆盖层下的图片；不穿透弹窗，也不扫描整个页面。
+    // 嵌套容器会再次包含同图，只在本次命中检查内复用几何与显隐判定；下一帧仍重新读取，避免换图或叠图后沿用旧结果。
+    const pointerHits = new Map<HTMLImageElement, boolean>();
     for (let container: Element | null = target, depth = 0; container && depth < 4; container = container.parentElement, depth++) {
         if (container === document.body || container === document.documentElement) break;
         if (container.matches('button, [role="button"], [role="dialog"]')) break;
-        const candidates = Array.from(container.querySelectorAll('img')).filter(image => {
-            const rect = image.getBoundingClientRect();
-            if (!(rect.width >= MIN_IMAGE_WIDTH && rect.height >= MIN_IMAGE_HEIGHT
-                && event.clientX >= rect.left && event.clientX < rect.right
-                && event.clientY >= rect.top && event.clientY < rect.bottom)) return false;
-            // 指针每帧都会扫描容器内图片；只有覆盖指针的图片才需要读取计算样式。
-            const style = getComputedStyle(image);
-            return style.visibility !== 'hidden' && style.display !== 'none';
-        });
-        if (candidates.length === 1) return candidates[0];
-        if (candidates.length > 1) return null;
+        let candidate: HTMLImageElement | null = null;
+        for (const image of container.querySelectorAll('img')) {
+            const cached = pointerHits.get(image);
+            let hit = cached;
+            if (hit === undefined) {
+                const rect = image.getBoundingClientRect();
+                hit = rect.width >= MIN_IMAGE_WIDTH && rect.height >= MIN_IMAGE_HEIGHT
+                    && event.clientX >= rect.left && event.clientX < rect.right
+                    && event.clientY >= rect.top && event.clientY < rect.bottom;
+                // 指针每帧都会扫描容器内图片；只有覆盖指针的图片才需要读取计算样式。
+                if (hit) {
+                    const style = getComputedStyle(image);
+                    hit = style.visibility !== 'hidden' && style.display !== 'none';
+                }
+                pointerHits.set(image, hit);
+            }
+            if (!hit) continue;
+            if (candidate) return null;
+            candidate = image;
+        }
+        if (candidate) return candidate;
     }
     return null;
 }

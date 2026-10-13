@@ -1,7 +1,7 @@
 /**
  * @file tests/contentRuntimeLifecycle.test.ts
  * 文件职责：验证内容应用启动、配置等待、页面暂停恢复与离开时的生命周期边界。
- * 主要内容：隔离各 feature 的组合根依赖，确认原始 XML 与失效上下文不会启动运行时，迟到初始化和伪造页面事件不会挂载功能，扩展端口撤销或拒绝注销也不会中断宿主页面清理。
+ * 主要内容：隔离各 feature 的组合根依赖，验证自动站点规则在文章导航、锚点跳转、禁用与恢复后的触发归属，以及原始 XML、失效上下文、迟到初始化和伪造页面事件的清理边界。
  * 模块边界：不测试各 feature 的 Vue 组件或真实翻译请求；跨域 frame 的身份与会话另有专门测试。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -10,7 +10,7 @@ import {isRawXmlContentDocument} from '@/src/shared/dom/documentType';
 
 const mocks = vi.hoisted(() => ({
     config: {
-        on: true, disabledExtensionDomains: [] as string[], bilingualSentenceHighlightEnabled: true,
+        on: true, autoTranslate: false, alwaysTranslateDomains: [] as string[], disabledExtensionDomains: [] as string[], bilingualSentenceHighlightEnabled: true,
         disableFloatingBall: true, disableSelectionTranslator: true, disableImageTranslator: true,
         selectionAreaEnabled: false, translationProgressPanelEnabled: false,
         writing: {enabled: false}, inputBoxTranslationTrigger: 'disabled', paragraphCopyEnabled: false, vocabularyReencounterEnabled: false,
@@ -18,9 +18,9 @@ const mocks = vi.hoisted(() => ({
     configReady: Promise.resolve(), subscribeConfig: vi.fn(),
     installPageStyles: vi.fn(), removeStyles: vi.fn(), syncHighlight: vi.fn(), mountParagraphCopyContentFeature: vi.fn(),
     mountInput: vi.fn(), invalidateInput: vi.fn(), restoreOriginal: vi.fn(),
-    resetRouteState: vi.fn(),
+    resetRouteState: vi.fn(), autoTranslate: vi.fn(), fullPageActive: false,
     addRuntimeListener: vi.fn(), removeRuntimeListener: vi.fn(), createMessageHandler: vi.fn(),
-    setBridges: vi.fn(),
+    setBridges: vi.fn(), siteAdaptationRouteChanged: vi.fn(),
     mountWriting: vi.fn(), unmountWriting: vi.fn(), writingMounted: false,
     floatingBallAllowed: true, shareCardMounted: false, mountShareCard: vi.fn(), mountReencounter: vi.fn(), unmountReencounter: vi.fn(),
 }));
@@ -28,6 +28,11 @@ vi.mock('@/src/features/writing-assistant/public', () => ({
     mountWritingAssistant: () => {mocks.writingMounted = true; mocks.mountWriting();},
     unmountWritingAssistant: () => {mocks.writingMounted = false; mocks.unmountWriting();},
     isWritingAssistantMounted: () => mocks.writingMounted,
+}));
+// 本测试只验证组合层生命周期，个人校订的 Vue UI 与页面端口由其专项覆盖。
+vi.mock('@/src/app/content/personalCorrections', () => ({
+    mountPersonalCorrectionContent: vi.fn(),
+    unmountPersonalCorrectionContent: vi.fn(),
 }));
 
 vi.mock('@/src/services/config/store', () => ({
@@ -55,6 +60,8 @@ vi.mock('@/src/app/content/features', () => ({
     isFloatingBallAllowedOnPage: () => mocks.floatingBallAllowed,
     restoreOriginalContent: mocks.restoreOriginal,
     resetFullPageTranslationRouteState: mocks.resetRouteState,
+    autoTranslateEnglishPage: mocks.autoTranslate,
+    isFullPageTranslationActive: () => mocks.fullPageActive,
     createInputTranslationContentFeature: () => ({mount: mocks.mountInput, invalidate: mocks.invalidateInput}),
     mountHoverTranslationContentFeature: () => vi.fn(),
 }));
@@ -79,7 +86,7 @@ vi.mock('@/src/app/content/informationHighlight', () => ({createPageInformationH
     feature: {id: 'information-highlight', isEnabled: () => mocks.config.on, mount: vi.fn(), unmount: vi.fn()},
 })}));
 vi.mock('@/src/app/content/siteAdaptationRuntime', () => ({
-    createContentSiteAdaptationRuntime: () => ({routeChanged: vi.fn(), update: vi.fn()}),
+    createContentSiteAdaptationRuntime: () => ({routeChanged: mocks.siteAdaptationRouteChanged, update: vi.fn()}),
     applyCoreTranslationPreferences: vi.fn(() => false),
 }));
 
@@ -399,6 +406,12 @@ describe('content composition root 冷启动与暂停恢复', () => {
         vi.resetModules();
         vi.clearAllMocks();
         mocks.config.on = true;
+        mocks.config.autoTranslate = false;
+        mocks.config.alwaysTranslateDomains = [];
+        mocks.fullPageActive = false;
+        mocks.siteAdaptationRouteChanged.mockReset();
+        mocks.restoreOriginal.mockImplementation(() => { mocks.fullPageActive = false; });
+        mocks.autoTranslate.mockImplementation(() => { mocks.fullPageActive = true; });
         mocks.config.writing.enabled = false;
         mocks.writingMounted = false;
         mocks.shareCardMounted = false;
@@ -422,6 +435,61 @@ describe('content composition root 冷启动与暂停恢复', () => {
     });
 
     afterEach(() => { invalidated?.(); vi.unstubAllGlobals(); });
+
+    it('恢复原文后进入下一篇文章重启始终翻译，锚点和重复路由不重复触发', async () => {
+        mocks.config.alwaysTranslateDomains = ['example.com'];
+        const {startContentApp} = await import('@/src/app/content/runtime');
+        const starting = startContentApp(context as never); ready(); await starting;
+        expect(mocks.autoTranslate).toHaveBeenCalledOnce();
+        mocks.fullPageActive = false;
+        Object.assign(page, {location: {href: 'https://example.com/article#contents'}});
+        document.dispatchEvent(new Event('fluentread-route-change'));
+        expect(mocks.autoTranslate).toHaveBeenCalledOnce();
+        expect(mocks.resetRouteState).not.toHaveBeenCalled();
+        Object.assign(page, {location: {href: 'https://example.com/next?chapter=2'}});
+        document.dispatchEvent(new Event('fluentread-route-change'));
+        expect(mocks.autoTranslate).toHaveBeenCalledTimes(2);
+        expect(mocks.resetRouteState).toHaveBeenCalledOnce();
+        document.dispatchEvent(new Event('fluentread-route-change'));
+        expect(mocks.autoTranslate).toHaveBeenCalledTimes(2);
+        expect(mocks.resetRouteState).toHaveBeenCalledOnce();
+    });
+
+    it('首页进入产品页时站点正文适配使旧会话失效后自动重启，不要求手动恢复', async () => {
+        Object.assign(page, {location: {href: 'https://www.producthunt.com/'}});
+        mocks.config.alwaysTranslateDomains = ['producthunt.com'];
+        const {startContentApp} = await import('@/src/app/content/runtime');
+        const starting = startContentApp(context as never); ready(); await starting;
+        expect(mocks.autoTranslate).toHaveBeenCalledOnce();
+        // 真实 siteAdaptationRuntime 在命中规则列表变化时恢复原文；这里只替换该端口，
+        // 检查 composition root 随后读取最新全文状态并按新页面意图继续自动翻译。
+        mocks.siteAdaptationRouteChanged.mockImplementation(() => mocks.restoreOriginal());
+        Object.assign(page, {location: {href: 'https://www.producthunt.com/products/reso'}});
+        document.dispatchEvent(new Event('fluentread-route-change'));
+        expect(mocks.restoreOriginal).toHaveBeenCalledOnce();
+        expect(mocks.autoTranslate).toHaveBeenCalledTimes(2);
+        expect(mocks.fullPageActive).toBe(true);
+    });
+
+    it('进入禁用页面立即清理，离开后复验名单并恢复自动翻译', async () => {
+        mocks.config.alwaysTranslateDomains = ['example.com'];
+        mocks.config.disabledExtensionDomains = ['blocked.test'];
+        const {startContentApp} = await import('@/src/app/content/runtime');
+        const starting = startContentApp(context as never); ready(); await starting;
+        expect(mocks.autoTranslate).toHaveBeenCalledOnce();
+        Object.assign(page, {location: {href: 'https://blocked.test/next'}});
+        document.dispatchEvent(new Event('fluentread-route-change'));
+        expect(mocks.restoreOriginal).toHaveBeenCalledOnce();
+        expect(mocks.removeStyles).toHaveBeenCalledOnce();
+        expect(mocks.setBridges).toHaveBeenLastCalledWith(document, false);
+        expect(mocks.autoTranslate).toHaveBeenCalledOnce();
+        mocks.fullPageActive = false;
+        Object.assign(page, {location: {href: 'https://example.com/next'}});
+        document.dispatchEvent(new Event('fluentread-route-change'));
+        await vi.waitFor(() => expect(mocks.autoTranslate).toHaveBeenCalledTimes(2));
+        expect(mocks.setBridges).toHaveBeenLastCalledWith(document, true);
+        expect(mocks.installPageStyles).toHaveBeenCalledTimes(2);
+    });
 
     it('空闲页面在扩展失效后主动清理，停止上下文检查且不再次挂载', async () => {
         vi.useFakeTimers();

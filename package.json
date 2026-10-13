@@ -39,6 +39,7 @@
     "test:selection-triggers": "node scripts/testing/run-resource-safe.mjs -- node scripts/run-selection-trigger-test.cjs",
     "test:pdf-selection": "node scripts/testing/run-resource-safe.mjs -- node scripts/run-pdf-selection-test.cjs",
     "test:translation-sites": "node scripts/testing/run-resource-safe.mjs -- node scripts/run-site-translation-matrix.cjs",
+    "test:video:learning": "node scripts/testing/run-resource-safe.mjs -- vitest run --config vitest.video-learning.config.ts",
     "test:video:fixture": "node scripts/testing/run-resource-safe.mjs -- node scripts/run-video-subtitle-fixture-test.cjs",
     "test:video:x-fixture": "node scripts/testing/run-resource-safe.mjs -- node scripts/run-x-subtitle-sync-test.cjs",
     "test:watch": "node scripts/testing/run-resource-safe.mjs -- vitest",
@@ -80,6 +81,7 @@
     "element-plus": "^2.9.3",
     "franc-min": "^6.2.0",
     "jszip": "3.10.1",
+    "mathml-to-latex": "1.8.0",
     "onnxruntime-web": "1.23.2",
     "pako": "2.1.0",
     "pdf-lib": "1.17.1",
@@ -88,6 +90,7 @@
     "saxes": "6.0.0",
     "tesseract.js": "^6.0.1",
     "tldts": "^7.4.10",
+    "turndown": "7.2.4",
     "webextension-polyfill": "^0.12.0",
     "zod": "3.25.76"
   },

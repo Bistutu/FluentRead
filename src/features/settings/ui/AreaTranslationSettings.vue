@@ -99,7 +99,7 @@ import {
 } from '@/src/core/config/quickTranslation';
 import {browserCapabilities} from '@/src/platform/browser/capabilities';
 import {getTranslationServiceUnavailableMessage} from '@/src/services/translation/capabilities';
-import {ImageOcrSettings} from '@/src/features/image-translation/public';
+import {ImageOcrSettings} from '@/src/features/image-translation/ui/public';
 import {useVisionProbeStatus} from './services/useVisionProbeStatus';
 import {useUiI18n} from '@/src/ui/i18n';
 import {useHotkeyDraft} from './useHotkeyDraft';

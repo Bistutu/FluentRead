@@ -1,0 +1,486 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-11T08:01:43.168Z",
+  "success": true,
+  "scope": "Existing 80 production-extension functional/UX fixture assertions after integrating origin/main; actual decoded local MP4; controlled original captions, translation and explanation. No new live-platform or performance probe.",
+  "artifact": {
+    "sourceCommit": "8954f647286499b50924b38e2e9b42176808b48a",
+    "integratedMain": "43f66b01dc7bb0523f6bc7866dc248efdcdbe071",
+    "extensionVersion": "0.0.37",
+    "buildLog": "/private/tmp/video-learning-merge-chrome.log",
+    "buildDurationSeconds": 39.7,
+    "hashAlgorithm": "SHA-256",
+    "hashes": {
+      "manifest.json": "961d10d94833c621d25cd57c2668613840b1b5ff2fc8aa96628448b12a767924",
+      "content-scripts/content.js": "6ae1b696c33c02e59aca70f4793be77ff64dc1eda672a5372c605b7e1bbd86ff",
+      "background.js": "816f41d85653601fda3755be562d2bcd4a0cfccb465be8945c319a11e535f14b"
+    },
+    "beforeAfterMatch": true,
+    "runnerSha256": "f8dbd7a531275d08903d96cbd0577335ea38eb7b42ae2d02408fa0024838970a"
+  },
+  "run": {
+    "exitCode": 0,
+    "assertionCount": 80,
+    "scenarioCount": 10,
+    "rawReport": "/private/tmp/fluentread-video-sentence-learning-merge-20261011/retry/report.json",
+    "fixtureCases": [
+      {
+        "platform": "youtube",
+        "success": true,
+        "checks": [
+          {
+            "name": "Production content-script styles keep the learning panel readable independently of host CSS",
+            "pass": true
+          },
+          {
+            "name": "Two source cues become one complete sentence with original 0–2500 ms timing and preserve paused playback",
+            "pass": true
+          },
+          {
+            "name": "A late timed-caption response from a different YouTube video cannot replace the current original timeline",
+            "pass": true
+          },
+          {
+            "name": "Next complete sentence retains source interval and nearby context without implicitly playing",
+            "pass": true
+          },
+          {
+            "name": "A Chinese source sentence keeps its own original timing and avoids a same-target provider call",
+            "pass": true
+          },
+          {
+            "name": "Unrelated translation-count broadcasts do not release the user loop",
+            "pass": true
+          },
+          {
+            "name": "A real media clock crosses the sentence end and loops to its original start, retaining user playback rate",
+            "pass": true
+          },
+          {
+            "name": "User pause remains authoritative while a loop is armed",
+            "pass": true
+          },
+          {
+            "name": "Closing playback assistance clears its mode without implicitly playing a user-paused video",
+            "pass": true
+          },
+          {
+            "name": "User seek outside the active sentence releases repeat control",
+            "pass": true
+          },
+          {
+            "name": "Sentence-end pause stops the real media clock at the source boundary",
+            "pass": true
+          },
+          {
+            "name": "Turning off end pause restores uninterrupted playback",
+            "pass": true
+          },
+          {
+            "name": "Unrelated translation-count broadcasts leave an in-flight explanation owned by the current sentence",
+            "pass": true
+          },
+          {
+            "name": "The existing reading service explains the complete source sentence with permitted neighboring caption context",
+            "pass": true
+          },
+          {
+            "name": "Learning and the existing video menu share FluentRead appearance and readable quotes independently of host Element variables",
+            "pass": true
+          },
+          {
+            "name": "Editing pins the complete sentence before typing and preserves editor focus when real playback reaches the next sentence",
+            "pass": true
+          },
+          {
+            "name": "Following playback returns the learning selection to the current media sentence",
+            "pass": true
+          },
+          {
+            "name": "Explicit stepping preserves its selection and returns to the same sentence translation/explanation drafts",
+            "pass": true
+          },
+          {
+            "name": "Collapsing and expanding the learning body preserves the selected sentence and confirmed drafts",
+            "pass": true
+          },
+          {
+            "name": "An explicit save preserves confirmed translation, title, neighboring context and stable deduplication identity",
+            "pass": true
+          },
+          {
+            "name": "A blank edited translation disables collection and remains an intentional draft after stepping away and back",
+            "pass": true
+          },
+          {
+            "name": "Clearing explanation keeps its focused editor mounted and an explicit save removes the existing persisted note",
+            "pass": true
+          },
+          {
+            "name": "A 390px player keeps learning inside its bounds with scrollable content, reachable saving and space for native controls",
+            "pass": true
+          },
+          {
+            "name": "Learning remains accessible in real browser fullscreen",
+            "pass": true
+          },
+          {
+            "name": "Closing learning restores keyboard focus to the FluentRead video entry",
+            "pass": true
+          },
+          {
+            "name": "Closing learning removes repeat/end-pause ownership so normal playback crosses the old boundary",
+            "pass": true
+          },
+          {
+            "name": "The existing learning center renders the reliable source link with the original sentence interval",
+            "pass": true
+          },
+          {
+            "name": "A source without a reliable URL preserves title/time and gives a recovery state without fabricating a link",
+            "pass": true
+          },
+          {
+            "name": "Rebuilding the player detaches learning ownership and keeps one video control; the replacement plays through the old range",
+            "pass": true
+          },
+          {
+            "name": "Changing video identity closes old learning and shows only the new original timeline with controls off",
+            "pass": true
+          },
+          {
+            "name": "Saving waits for translation or explicit user confirmation, and a delayed provider response preserves the edited translation",
+            "pass": true
+          }
+        ]
+      },
+      {
+        "platform": "youtube",
+        "scenario": "operation-improvements",
+        "success": true,
+        "checks": [
+          {
+            "name": "Rapid trusted stepping and a synchronous microtask burst immediately select the final source and coalesce translation transport",
+            "pass": true
+          },
+          {
+            "name": "Collapsed and closed panels release queued translation; hidden stepping waits until expansion to translate the current source",
+            "pass": true
+          },
+          {
+            "name": "Compact previous/next controls stay reachable, reset the reading scroll to the complete source and preserve keyboard playback assistance",
+            "pass": true
+          }
+        ]
+      },
+      {
+        "platform": "x",
+        "success": true,
+        "checks": [
+          {
+            "name": "Production content-script styles keep the learning panel readable independently of host CSS",
+            "pass": true
+          },
+          {
+            "name": "Two source cues become one complete sentence with original 0–2500 ms timing and preserve paused playback",
+            "pass": true
+          },
+          {
+            "name": "Next complete sentence retains source interval and nearby context without implicitly playing",
+            "pass": true
+          },
+          {
+            "name": "A Chinese source sentence keeps its own original timing and avoids a same-target provider call",
+            "pass": true
+          },
+          {
+            "name": "Unrelated translation-count broadcasts do not release the user loop",
+            "pass": true
+          },
+          {
+            "name": "A real media clock crosses the sentence end and loops to its original start, retaining user playback rate",
+            "pass": true
+          },
+          {
+            "name": "User pause remains authoritative while a loop is armed",
+            "pass": true
+          },
+          {
+            "name": "Closing playback assistance clears its mode without implicitly playing a user-paused video",
+            "pass": true
+          },
+          {
+            "name": "User seek outside the active sentence releases repeat control",
+            "pass": true
+          },
+          {
+            "name": "Sentence-end pause stops the real media clock at the source boundary",
+            "pass": true
+          },
+          {
+            "name": "Turning off end pause restores uninterrupted playback",
+            "pass": true
+          },
+          {
+            "name": "Unrelated translation-count broadcasts leave an in-flight explanation owned by the current sentence",
+            "pass": true
+          },
+          {
+            "name": "The existing reading service explains the complete source sentence with permitted neighboring caption context",
+            "pass": true
+          },
+          {
+            "name": "Learning and the existing video menu share FluentRead appearance and readable quotes independently of host Element variables",
+            "pass": true
+          },
+          {
+            "name": "Editing pins the complete sentence before typing and preserves editor focus when real playback reaches the next sentence",
+            "pass": true
+          },
+          {
+            "name": "Following playback returns the learning selection to the current media sentence",
+            "pass": true
+          },
+          {
+            "name": "Explicit stepping preserves its selection and returns to the same sentence translation/explanation drafts",
+            "pass": true
+          },
+          {
+            "name": "Collapsing and expanding the learning body preserves the selected sentence and confirmed drafts",
+            "pass": true
+          },
+          {
+            "name": "An explicit save preserves confirmed translation, title, neighboring context and stable deduplication identity",
+            "pass": true
+          },
+          {
+            "name": "A blank edited translation disables collection and remains an intentional draft after stepping away and back",
+            "pass": true
+          },
+          {
+            "name": "Clearing explanation keeps its focused editor mounted and an explicit save removes the existing persisted note",
+            "pass": true
+          },
+          {
+            "name": "A 390px player keeps learning inside its bounds with scrollable content, reachable saving and space for native controls",
+            "pass": true
+          },
+          {
+            "name": "Learning remains accessible in real browser fullscreen",
+            "pass": true
+          },
+          {
+            "name": "Closing learning restores keyboard focus to the FluentRead video entry",
+            "pass": true
+          },
+          {
+            "name": "Closing learning removes repeat/end-pause ownership so normal playback crosses the old boundary",
+            "pass": true
+          },
+          {
+            "name": "The existing learning center renders the reliable source link with the original sentence interval",
+            "pass": true
+          },
+          {
+            "name": "A source without a reliable URL preserves title/time and gives a recovery state without fabricating a link",
+            "pass": true
+          },
+          {
+            "name": "Returning from the X learning source restores the saved start using production fragment recovery",
+            "pass": true
+          },
+          {
+            "name": "Rebuilding the player detaches learning ownership and keeps one video control; the replacement plays through the old range",
+            "pass": true
+          },
+          {
+            "name": "Changing video identity closes old learning and shows only the new original timeline with controls off",
+            "pass": true
+          },
+          {
+            "name": "Saving waits for translation or explicit user confirmation, and a delayed provider response preserves the edited translation",
+            "pass": true
+          }
+        ]
+      },
+      {
+        "platform": "x",
+        "scenario": "operation-improvements",
+        "success": true,
+        "checks": [
+          {
+            "name": "Rapid trusted stepping and a synchronous microtask burst immediately select the final source and coalesce translation transport",
+            "pass": true
+          },
+          {
+            "name": "Collapsed and closed panels release queued translation; hidden stepping waits until expansion to translate the current source",
+            "pass": true
+          },
+          {
+            "name": "Compact previous/next controls stay reachable, reset the reading scroll to the complete source and preserve keyboard playback assistance",
+            "pass": true
+          }
+        ]
+      },
+      {
+        "platform": "youtube",
+        "scenario": "translated-only-track",
+        "success": true,
+        "checks": [
+          {
+            "name": "A translated-only YouTube timed-caption track is not exposed as an original sentence, repeat range or collectible source",
+            "pass": true
+          },
+          {
+            "name": "The same empty learning panel becomes available only when an original timed-caption track arrives",
+            "pass": true
+          }
+        ]
+      },
+      {
+        "platform": "x",
+        "scenario": "multiple-videos-without-index",
+        "success": true,
+        "checks": [
+          {
+            "name": "An unproven X video/status correspondence does not restore a source fragment onto the active media",
+            "pass": true
+          },
+          {
+            "name": "Explicit collection preserves sentence/title/time while omitting an unproven X source URL",
+            "pass": true
+          }
+        ]
+      },
+      {
+        "platform": "x",
+        "scenario": "multiple-videos-wrong-index",
+        "success": true,
+        "checks": [
+          {
+            "name": "An unproven X video/status correspondence does not restore a source fragment onto the active media",
+            "pass": true
+          },
+          {
+            "name": "Explicit collection preserves sentence/title/time while omitting an unproven X source URL",
+            "pass": true
+          }
+        ]
+      },
+      {
+        "platform": "x",
+        "scenario": "unassigned-quoted-status",
+        "success": true,
+        "checks": [
+          {
+            "name": "An unproven X video/status correspondence does not restore a source fragment onto the active media",
+            "pass": true
+          },
+          {
+            "name": "Explicit collection preserves sentence/title/time while omitting an unproven X source URL",
+            "pass": true
+          }
+        ]
+      },
+      {
+        "platform": "x",
+        "scenario": "multiple-videos-explicit-index",
+        "success": true,
+        "checks": [
+          {
+            "name": "An explicit local X video/N ancestor restores the matching media source fragment",
+            "pass": true
+          },
+          {
+            "name": "Explicit collection retains the locally proven X video/N source identity",
+            "pass": true
+          }
+        ]
+      },
+      {
+        "platform": "x",
+        "scenario": "single-dom-video-with-unproven-index",
+        "success": true,
+        "checks": [
+          {
+            "name": "An unproven X video/status correspondence does not restore a source fragment onto the active media",
+            "pass": true
+          },
+          {
+            "name": "Explicit collection preserves sentence/title/time while omitting an unproven X source URL",
+            "pass": true
+          }
+        ]
+      }
+    ],
+    "pageErrors": [],
+    "fixturePageErrors": [],
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 212,
+        "top": -990,
+        "width": 1280,
+        "height": 900
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false
+    },
+    "finalBrowserFrontmost": false,
+    "focusEvents": {
+      "nativeObserver": true,
+      "browserActivations": 0,
+      "observerClosed": true
+    },
+    "cleanup": {
+      "browserClosed": true,
+      "profileRemoved": true
+    },
+    "liveCaseCount": 0
+  },
+  "appearanceComparison": {
+    "reference": "../performance/functional-browser.json",
+    "platforms": [
+      {
+        "platform": "youtube",
+        "unchanged": true
+      },
+      {
+        "platform": "x",
+        "unchanged": true
+      }
+    ],
+    "newRepositoryScreenshots": false
+  },
+  "initialIncompleteAttempt": {
+    "completedCheckCount": 23,
+    "pendingOperation": "Runtime.evaluate(requestFullscreen, userGesture:true, awaitPromise:true)",
+    "ownedBrowserProcessCountAtObservation": 0,
+    "ownedCDP": {
+      "open": false,
+      "error": "ECONNREFUSED"
+    },
+    "fullscreenDOM": "unavailable after owned browser exit",
+    "focusResult": "unavailable",
+    "browserExitCause": "unknown",
+    "success": false,
+    "cleanup": {
+      "runnerExitCode": 130,
+      "runnerGone": true,
+      "observerGone": true,
+      "ownedProfileProcessCount": 0,
+      "profileRemoved": true,
+      "observerTemporaryDirectoryRemoved": true
+    },
+    "evidence": "/private/tmp/fluentread-video-sentence-learning-merge-20261011/initial-incomplete-owned-exit.json",
+    "classification": "Incomplete automation run; not counted as 80-check acceptance and not attributed to a product regression."
+  }
+}

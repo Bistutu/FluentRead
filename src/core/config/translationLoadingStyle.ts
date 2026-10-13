@@ -1,7 +1,7 @@
 /**
  * @file src/core/config/translationLoadingStyle.ts
  * 文件职责：定义网页段落翻译加载指示器的可选视觉样式、默认值与配置归一化规则。
- * 主要内容：维护低干扰默认样式和多种趣味预设的稳定标识、用户可见说明，并拒绝存储或导入中的未知值。
+ * 主要内容：维护动画预设与默认值；设置中的末尾“无”映射到现有动画开关，保留上次加载样式并兼容已保存配置。
  * 模块边界：本文件只描述纯配置与展示元数据，不创建 DOM、不运行动画，也不读写浏览器存储。
  */
 
@@ -116,6 +116,33 @@ export const translationLoadingStyleOptions = [
 export type TranslationLoadingStyle = typeof translationLoadingStyleOptions[number]['value']
 
 export const DEFAULT_TRANSLATION_LOADING_STYLE: TranslationLoadingStyle = 'ring'
+
+/** “无”是动画关闭状态的设置入口，不作为新的网页加载样式写入配置。 */
+export const translationLoadingStyleChoices = [
+  ...translationLoadingStyleOptions,
+  {
+    value: 'none',
+    label: '无',
+    description: '关闭界面动画，保留静态加载与结果反馈',
+    labelKey: 'settings.advanced.translationLoadingStyle.none.label',
+    descriptionKey: 'settings.advanced.translationLoadingStyle.none.description',
+  },
+] as const
+
+export type TranslationLoadingStyleChoice = typeof translationLoadingStyleChoices[number]['value']
+
+type AnimationSettings = {animations: boolean; translationLoadingStyle: TranslationLoadingStyle}
+
+/** 旧配置关闭动画时也在选择器中显示“无”，而不是误标记上一次的动画样式。 */
+export function getTranslationLoadingStyleChoice(config: AnimationSettings): TranslationLoadingStyleChoice {
+  return config.animations ? config.translationLoadingStyle : 'none'
+}
+
+/** 任一动画预设直接开启动画；关闭只修改原开关，保留用于静态反馈的样式。 */
+export function applyTranslationLoadingStyleChoice(config: AnimationSettings, choice: TranslationLoadingStyleChoice): void {
+  if (choice !== 'none') config.translationLoadingStyle = choice
+  config.animations = choice !== 'none'
+}
 
 /** 未知或缺失配置回到柔和圆环；已保存的合法样式保持不变。 */
 export function normalizeTranslationLoadingStyle(value: unknown): TranslationLoadingStyle {

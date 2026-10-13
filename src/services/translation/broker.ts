@@ -2,9 +2,8 @@
  * @file src/services/translation/broker.ts
  *
  * 文件职责：编排翻译请求的配置快照、语言解析、缓存、请求去重、超时与 provider 调用，是后台翻译用例的中心服务。
- * 主要内容：createTranslationBroker 同时支持单条、批量和页面摘要，验证 provider 返回数量、类型及明显的原文回显或错语种，空来源在本地保留，仅在原生批次响应结构异常时以相同取消所有权和剩余 deadline 逐段恢复，整批完成前不发布缓存；对完整多段协议逐槽修复上下文回显并拒绝空译文，以包含 Chrome auto 检测样本的完整身份构建缓存键，并按实际消费的云地域和凭据摘要、匿名额度身份、等待策略、清理代次与剩余 deadline 隔离 pending 请求；入口在等待前复制消息，批次摘要与分项缓存键只构建一次并复用，重复身份只读写一次；每次公开请求累计缓存复用、上游调用次数、耗时与免费链线路尝试，结束后向注入的统计端口交付只含规模数值、服务与线路标识的事件。 可核对的公开符号包括 createTranslationBroker、聚合导出。
- * 可信 quota 摘要隔离实际端点、模型、凭据和普通/私密/未知来源；SDK 真实 HTTP attempt 取得并发，逻辑重试不占槽；Doubao Seed 保持直接传输外层计数；pending 按可信隐私和有效凭据集合摘要隔离，transportLease 持槽直到原始传输结算。
- * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
+ * 主要内容：createTranslationBroker 同时支持单条、批量和页面摘要，验证 provider 返回数量、类型及明显的原文回显或错语种，空来源在本地保留，仅在原生批次响应结构异常时以相同取消所有权和剩余 deadline 逐段恢复，整批完成前不发布缓存；对完整多段协议逐槽修复上下文回显并拒绝空译文，以包含 Chrome auto 检测样本的完整身份构建缓存键，并按实际消费的云地域和凭据摘要、匿名额度身份、等待策略、清理代次与剩余 deadline 隔离 pending 请求；入口在等待前复制消息，ready 与取消检查后沿用可信配置快照，仅未附着的公开请求复制备用配置；批次摘要与分项缓存键只构建一次并复用，重复身份只读写一次；每次公开请求累计缓存复用、上游调用次数、耗时与免费链线路尝试，结束后向注入的统计端口交付只含规模数值、服务与线路标识的事件。 可核对的公开符号包括 createTranslationBroker、聚合导出。
+ * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；文本槽编码与解析复用 core/translation/slotProtocol.ts 纯协议，不初始化 DOM 候选或网站规则；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 
 import type {
@@ -37,7 +36,7 @@ import {
     type TranslationRemainingBudgetContext,
     type TranslationRouteObservation,
 } from './requestSnapshot';
-import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/public';
+import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
 import {hasTranslationContent} from '@/src/core/translation/result';
 import {isNativeBatchResponseError, validateNativeBatchResults} from '@/src/core/translation/nativeBatch';
@@ -50,11 +49,10 @@ import {
     isLikelyPageContextLeak,
 } from '@/src/core/translation/prompts';
 import {isCustomOpenAIProviderId, LEGACY_CUSTOM_OPENAI_PROVIDER_ID} from '@/src/core/config/customOpenAI';
-import {customModelString, resolveCloudRegion, services} from '@/src/core/config/catalog';
+import {resolveCloudRegion, services} from '@/src/core/config/catalog';
+import {resolveTranslationRequestModel} from '@/src/core/config/requestModel';
 import {getAliyunTranslationEndpoint} from '@/src/core/config/constants';
 import {getServiceApiKeys} from '@/src/core/config/apiKeys';
-import {currentConfiguredModel, getCurrentModel} from './templates';
-import {isDoubaoSeedTranslationModel} from '@/src/core/config/doubaoSeedTranslation';
 import {isModelThinkingEnabled} from '@/src/core/config/modelThinking';
 import {supportsVisionTransport} from '@/src/core/config/vision';
 import {
@@ -71,6 +69,9 @@ import {
     TranslationRequestSchedulerDeadlineError,
 } from './requestScheduler';
 import {serializeTranslationError} from './errors';
+import {currentConfiguredModel} from './templates';
+import {normalizeTranslationMaxRetries} from '@/src/core/config/scheduling';
+import {isDoubaoSeedTranslationModel} from '@/src/core/config/doubaoSeedTranslation';
 import {measureImageDataUrlBytes, measureTranslationText} from '@/src/services/translation-stats/measure';
 import {
     TRANSLATION_STATS_MAX_ROUTE_ATTEMPTS,
@@ -198,31 +199,8 @@ class GlossaryRevisionChangedError extends Error {
     }
 }
 
-/** 返回 provider 最终 payload 使用的模型身份，供 outer bucket 与实际 transport 共用。 */
-export function resolveTranslationRequestModel(
-    current: TranslationProviderConfigSnapshot,
-    service: string,
-    modelOverride: string | undefined,
-    isAiSdk: (service: string) => boolean,
-    isAI: (service: string) => boolean,
-): string {
-    const selected = service === services.gemini
-        ? modelOverride || (current.model[service] === customModelString ? current.customModel[service] : current.model[service]) || ''
-        : service === services.deepseek
-        ? getCurrentModel(service, modelOverride, current)
-        : isAiSdk(service)
-            ? currentConfiguredModel(current, service, modelOverride).replace(/（.*）/g, '')
-            : currentConfiguredModel(current, service, modelOverride);
-    const body = current.customBody?.[service];
-    if (!(isAI(service) && service !== services.gemini) || typeof body !== 'string' || !body.trim()) return selected;
-    try {
-        const parsed = JSON.parse(body) as {model?: unknown; Model?: unknown};
-        const requestedModel = service === services.huanYuanTranslation ? parsed?.Model : parsed?.model;
-        return typeof requestedModel === 'string' && requestedModel.trim() ? requestedModel.trim() : selected;
-    } catch {
-        return selected;
-    }
-}
+/** 保留既有 broker 公共入口，模型规则由设置页与后台共用的 core 函数维护。 */
+export {resolveTranslationRequestModel};
 
 export function createTranslationBroker(deps: TranslationBrokerDependencies): TranslationBroker {
     const pendingTranslations = new Map<string, Promise<string>>();
@@ -335,7 +313,12 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         sourceLanguageDetectionText?: string,
     ): string {
         const {config: current, service, sourceLanguage, targetLanguage} = execution;
-        const glossaryTerms = getTranslationGlossaryTerms(current, origin);
+        // 公开入口已冻结本次匹配范围；普通键复用保护条目，避免两次扫描同一术语库。
+        // token（包括空数组）继续按原 helper 筛选，未命中时不追加保护解析。
+        const glossaryEntries = current.glossaryProtectedTokens ? undefined : getGlossaryProtectionEntries(current, origin);
+        const glossaryTerms = glossaryEntries
+            ? glossaryEntries.map(({source, target}) => ({source, target: target || source}))
+            : getTranslationGlossaryTerms(current, origin);
 
         return deps.buildTranslationCacheKey({
             requestMode: mode,
@@ -355,12 +338,15 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 nativeBatch: [services.google, services.microsoft].map(id =>
                     [id, isNativeTranslationBatchEnabled(id, current.nativeBatchTranslationEnabled)]),
             }} : {}),
+            // v3 将相邻自动数学字面值合为有界保护组，旧文档缓存不能绕过完整恢复契约。
+            // 仅分隔文档请求；网页缓存、已保存译文和人工校订不清空。
+            ...(current.glossaryMatchContext?.context === 'document' ? {documentTranslationPolicy: {version: 3}} : {}),
             customBody: current.customBody[service] || '',
             ...(current.customHeaders?.[service] ? {customHeaders: current.customHeaders[service]} : {}),
             systemRole: current.system_role[service] || '',
             userRole: current.user_role[service] || '',
             ...(glossaryTerms.length ? {glossaryTerms, glossaryProtection: {version: 1,
-                entries: getGlossaryProtectionEntries(current, origin)}} : {}),
+                entries: glossaryEntries ?? getGlossaryProtectionEntries(current, origin)}} : {}),
             deepseekApiType: current.deepseekApiType,
             modelThinking: execution.thinking,
             transportProfile: deps.serviceTypes.isAiSdk(service)
@@ -548,10 +534,18 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         ]));
     }
 
-    function pendingIdentitySuffix(execution: TranslationRequestExecution): string {
+    function pendingIdentitySuffix(execution: TranslationRequestExecution, modelOverride?: string): string {
         const ownershipKey = execution.ownershipKey;
+        const {config: current, service} = execution;
+        const sdk = deps.serviceTypes.isAiSdk(service) && !(service === services.doubao
+            && isDoubaoSeedTranslationModel(currentConfiguredModel(current, service, modelOverride)));
+        const rotates = current.apiKeyRotationEnabled?.[service] !== false
+            && getServiceApiKeys(current, service).length > 1;
+        const retries = rotates ? 0 : current.translationMaxRetries === undefined
+            ? 2 : normalizeTranslationMaxRetries(current.translationMaxRetries);
         return (ownershipKey ? `:owner:${ownershipKey.length}:${ownershipKey}` : '')
-            + `:quota:${quotaDigest(execution, getEffectiveRequestModel(execution.config, execution.service))}`;
+            + `:quota:${quotaDigest(execution, getEffectiveRequestModel(current, service, modelOverride))}`
+            + (sdk ? `:sdk-retries:${retries}` : '');
     }
 
     function pendingAnonymousConfigSuffix(execution: TranslationRequestExecution): string {
@@ -702,7 +696,9 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         throwIfRequestAborted(execution.abortSignal);
         const timeoutMs = normalizeDeadlineTimeoutMs(message.requestTimeoutMs as number);
         const providerDeadline = now() + timeoutMs;
-        const model = getEffectiveRequestModel(execution.config, execution.service, message.modelOverride);
+        const model = getTranslationImageInput(message)
+            ? getEffectiveRequestModel({...execution.config, customBody: {}}, execution.service, message.modelOverride)
+            : getEffectiveRequestModel(execution.config, execution.service, message.modelOverride);
         const isAiSdk = deps.serviceTypes.isAiSdk(execution.service)
             && !(execution.service === services.doubao && isDoubaoSeedTranslationModel(
                 currentConfiguredModel(execution.config, execution.service, message.modelOverride),
@@ -711,6 +707,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             service: execution.service, model,
             ...(isAiSdk ? {quotaScope: quotaDigest(execution, model, true)} : {}),
         };
+
 
         try {
             return await requestScheduler.schedule(async (lease) => {
@@ -744,7 +741,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                             abortSignal: controller.signal,
                         }, (observation) => observations.push({...observation})),
                         (observation) => collectRouteAttempt(execution.trace, observation),
-                    ), requestScheduler, identity);
+                    ), requestScheduler, identity, isAiSdk ? undefined : lease);
 
                     let timer: ReturnType<typeof setTimeout>;
                     const timeout = new Promise<never>((_resolve, reject) => {
@@ -1260,7 +1257,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         }
 
         const summaryTimeoutMs = normalizeDeadlineTimeoutMs(requestTimeoutMs as number);
-        const pendingKey = `${buildPendingRequestKey(key, summaryTimeoutMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingIdentitySuffix(execution)}`;
+        const pendingKey = `${buildPendingRequestKey(key, summaryTimeoutMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingIdentitySuffix(execution, modelOverride)}`;
         const existing = pendingPageSummaries.get(pendingKey);
         if (existing) return runWithinDeadline(() => existing, requestDeadline, execution.abortSignal);
 
@@ -1353,7 +1350,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         );
         const imageInput = getTranslationImageInput(message);
         const imageSuffix = imageInput ? `:image:${sha256Hex(imageInput)}` : '';
-        const pendingKey = `${buildPendingRequestKey(key, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${imageSuffix}${pendingIdentitySuffix(execution)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
+        const pendingKey = `${buildPendingRequestKey(key, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${imageSuffix}${pendingIdentitySuffix(execution, message.modelOverride)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
         const existing = pendingTranslations.get(pendingKey);
         // 共享的是 provider 工作；每个等待者仍需保留自己的取消和截止边界。
         if (existing) {
@@ -1468,7 +1465,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         );
         // 完整批次身份只计算一次；AI 分项用定长摘要保留邻段和槽位语义，避免逐项携带整个批次。
         const batchFingerprint = cacheMode === 'ai-multi-segment' ? sha256Hex(batchKey) : '';
-        const pendingKey = `${buildPendingRequestKey(batchKey, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingIdentitySuffix(execution)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
+        const pendingKey = `${buildPendingRequestKey(batchKey, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingIdentitySuffix(execution, message.modelOverride)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true ? ':document-batch' : ''}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
         const existing = pendingBatches.get(pendingKey);
         if (existing) {
             execution.trace.shared = true;
@@ -1730,8 +1727,8 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         await runWithinDeadline(() => deps.ready, providerDeadline, requestControl?.signal);
         throwIfRequestAborted(requestControl?.signal);
 
-        // 步骤 1：圈选等受信后台事务沿用开始时的 symbol 快照；公开请求在 cache/provider await 前复制配置。
-        let current = getTranslationProviderConfig(message, createTranslationProviderConfigSnapshot(config()));
+        // 步骤 1：圈选等受信后台事务沿用开始时的 symbol 快照；未附着的公开请求才在 cache/provider await 前复制配置。
+        let current = getTranslationProviderConfig(message, () => createTranslationProviderConfigSnapshot(config()));
         const serviceOverride = message.serviceOverride;
         const selectedService = serviceOverride || current.service;
         trace.serviceId = selectedService;
@@ -1759,6 +1756,12 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             throw new GlossaryRevisionChangedError();
         }
         const glossarySource = getTranslationGlossaryContext(message);
+        // 文档合批只接受受信入口的数组；保留同一分项译文缓存，pending 则按执行策略隔离。
+        if (import.meta.env.BROWSER !== 'userscript' && message.documentBatch !== undefined
+            && (message.documentBatch !== true || !Array.isArray(message.origin) || glossarySource?.context !== 'document')) {
+            const {documentBatch: _ignored, ...withoutDocumentBatch} = message;
+            message = withoutDocumentBatch as TranslationRequestMessage;
+        }
         const glossaryContext = glossarySource?.context ?? message.glossaryContext ?? 'page';
         const selectedGlossaryIds = glossaryIds ?? (glossaryContext === 'document' ? current.documentGlossaryIds
             : glossaryContext === 'video' ? current.videoGlossaryIds : null);
@@ -1774,7 +1777,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         // Provider 只读取命中当前原文的词对；配置原文与域规则不会进入请求 JSON。
         current = Object.freeze({...current,
             glossaryTerms: Object.freeze(glossaryTerms.map(term => Object.freeze({...term}))),
-            glossaryMatchContext: Object.freeze({sourceLanguage, targetLanguage, pageUrl: glossarySource?.pageUrl,
+            glossaryMatchContext: Object.freeze({context: glossaryContext, sourceLanguage, targetLanguage, pageUrl: glossarySource?.pageUrl,
                 glossaryIds: selectedGlossaryIds ? Object.freeze([...selectedGlossaryIds]) : null}),
         });
         const execution: TranslationRequestExecution = {
@@ -1819,7 +1822,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         const requestGeneration = cacheGeneration;
         // 步骤 2：摘要是 AI 上下文增强，只拿 provider deadline 的一小段预算。
         const summaryBudget = Math.min(10_000, Math.max(1_000, Math.floor(providerBudget / 4)));
-        const pageContext = imageInput ? '' : await addPageSummary(
+        const summarizedPageContext = imageInput ? '' : await addPageSummary(
             execution,
             rawPageContext,
             useCache,
@@ -1828,6 +1831,12 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             message.modelOverride,
             summaryBudget,
         );
+        // 篇章证据不进入摘要缓存：每段只复用原有页面摘要，且总参考预算保持 4,000。
+        const discourse = !imageInput && isAIContextEnabled(execution, message.modelOverride)
+            && typeof message.discourseContext === 'string' ? message.discourseContext.slice(0, 2400) : '';
+        const pageContext = discourse
+            ? `${summarizedPageContext.slice(0, Math.max(0, 4000 - discourse.length - 48))}\n<discourse_evidence>\n${discourse}\n</discourse_evidence>`.slice(0, 4000)
+            : summarizedPageContext;
         const remainingProviderBudget = getRemainingDeadlineMs(providerDeadline);
 
         // 步骤 3：检测样本只属于本地翻译 auto；即使其他扩展页面手工构造该字段，
@@ -1835,10 +1844,11 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         const shouldCarryDetectionText = (selectedService === 'chromeTranslator' || selectedService === 'localTranslation')
             && sourceLanguage === 'auto'
             && Boolean(message.sourceLanguageDetectionText?.trim());
+        const {discourseContext: _rawDiscourse, ...withoutDiscourse} = message;
         const providerInput = shouldCarryDetectionText
-            ? message
+            ? withoutDiscourse as TranslationRequestMessage
             : (() => {
-                const {sourceLanguageDetectionText: _ignored, ...withoutDetectionText} = message;
+                const {sourceLanguageDetectionText: _ignored, ...withoutDetectionText} = withoutDiscourse;
                 return withoutDetectionText as TranslationRequestMessage;
             })();
 

@@ -1,54 +1,36 @@
 <!--
  * @file src/features/settings/ui/TranslationLoadingStyleSettings.vue
- * 文件职责：提供界面动画总开关与翻译加载样式选择，让用户在“界面风格”页面即时比较低干扰和趣味预设。
- * 主要内容：使用原生单选控件构建可访问的样式卡片，并为 15 种不同运动方案呈现轻量预览。
+ * 文件职责：用一个样式选择器控制界面动画，让用户在“界面风格”页面比较预设或选择末尾“无”关闭动态效果。
+ * 主要内容：用单层标题和说明引出 15 种运行时预览及独立静态选项，原生单选控件支持关闭后直接选择任意样式恢复动画。
  * 模块边界：本组件只修改父级传入的 Config 字段，不持久化配置、不创建网页内加载指示器，也不决定运行时动画调度策略。
 -->
 <template>
   <SettingsGroup
-    :title="t('settings.interface.animationLoading.label')"
+    :title="t('settings.advanced.translationLoadingStyle')"
     :description="t('settings.interface.animationLoading.description')"
   >
-    <SettingsItem
-      :label="t('settings.advanced.animations')"
-      :description="t('settings.advanced.animationsDescription')"
-    >
-      <el-switch
-        v-model="props.config.animations"
-        class="settings-toggle"
-        :aria-label="t('settings.advanced.animationsAria')"
-      />
-    </SettingsItem>
-
-    <SettingsItem
-      :label="t('settings.advanced.translationLoadingStyle')"
-      :description="t('settings.advanced.translationLoadingStyleDescription')"
-      stacked
-      :disabled="!props.config.animations"
-    >
+    <div class="loading-style-settings">
       <div
         class="loading-style-picker"
-        :class="{ 'is-disabled': !props.config.animations }"
         role="radiogroup"
         :aria-label="t('settings.advanced.translationLoadingStyleAria')"
-        :aria-disabled="!props.config.animations"
       >
         <label
-          v-for="option in translationLoadingStyleOptions"
+          v-for="option in translationLoadingStyleChoices"
           :key="option.value"
           class="loading-style-option"
           :class="{
-            selected: props.config.translationLoadingStyle === option.value,
-            disabled: !props.config.animations,
+            selected: selectedStyle === option.value,
+            'is-none': option.value === 'none',
           }"
+          :data-loading-style-choice="option.value"
         >
           <input
-            v-model="props.config.translationLoadingStyle"
+            v-model="selectedStyle"
             class="loading-style-radio"
             type="radio"
             name="translation-loading-style"
             :value="option.value"
-            :disabled="!props.config.animations"
             :aria-label="t('settings.advanced.translationLoadingStyleOptionAria', {
               label: t(option.labelKey),
               description: t(option.descriptionKey),
@@ -61,38 +43,47 @@
           >
             <i class="loading-style-preview-line" />
             <TranslationLoadingPreview
+              v-if="option.value !== 'none'"
               :loading-style="option.value"
               :animated="props.config.animations"
             />
           </span>
 
           <span class="loading-style-copy">
-            <strong>{{ t(option.labelKey) }}</strong>
+            <strong>{{ t(option.labelKey) }}<span v-if="option.value === 'none'" class="loading-style-static-badge">{{ t('settings.advanced.translationLoadingStyle.none.badge') }}</span></strong>
             <small>{{ t(option.descriptionKey) }}</small>
           </span>
 
           <span class="loading-style-check" aria-hidden="true"><i /></span>
         </label>
       </div>
-    </SettingsItem>
+    </div>
   </SettingsGroup>
 </template>
 
 <script lang="ts" setup>
 import type { Config } from '@/src/core/config/model'
-import { translationLoadingStyleOptions } from '@/src/core/config/translationLoadingStyle'
+import { computed } from 'vue'
+import { applyTranslationLoadingStyleChoice, getTranslationLoadingStyleChoice, translationLoadingStyleChoices } from '@/src/core/config/translationLoadingStyle'
 import TranslationLoadingPreview from '@/src/ui/components/TranslationLoadingPreview.vue'
 import { useUiI18n } from '@/src/ui/i18n'
 import SettingsGroup from './components/SettingsGroup.vue'
-import SettingsItem from './components/SettingsItem.vue'
 
 const props = defineProps<{
   config: Config
 }>()
 const { t } = useUiI18n()
+const selectedStyle = computed({
+  get: () => getTranslationLoadingStyleChoice(props.config),
+  set: value => applyTranslationLoadingStyleChoice(props.config, value),
+})
 </script>
 
 <style scoped>
+.loading-style-settings {
+  padding: 16px 20px;
+}
+
 .loading-style-picker {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 156px), 1fr));
@@ -116,7 +107,7 @@ const { t } = useUiI18n()
   transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
 }
 
-.loading-style-option:not(.disabled):hover {
+.loading-style-option:hover {
   border-color: rgba(239, 71, 118, .38);
   background: var(--surface-soft);
 }
@@ -127,8 +118,19 @@ const { t } = useUiI18n()
   box-shadow: 0 0 0 2px rgba(239, 71, 118, .08);
 }
 
-.loading-style-option.disabled {
-  cursor: not-allowed;
+.loading-style-option.is-none:not(.selected) {
+  border-style: dashed;
+  border-color: var(--muted);
+}
+
+.loading-style-static-badge {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  font-size: 9px;
+  font-weight: 400;
 }
 
 .loading-style-radio {
@@ -222,8 +224,10 @@ const { t } = useUiI18n()
   opacity: 1;
 }
 
-.loading-style-picker.is-disabled .loading-style-preview-line {
-  opacity: .22;
+@media (max-width: 700px) {
+  .loading-style-settings {
+    padding: 11px 12px;
+  }
 }
 
 @media (max-width: 480px) {

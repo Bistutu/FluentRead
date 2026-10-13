@@ -694,8 +694,9 @@ async function readSelectionUi(page) {
   const translationCopyButton = findCdpNode(host, node => cdpAttribute(node, 'data-copy-kind') === 'translation');
   const originalPre = findCdpDescendantByName(original, 'PRE');
   const translationPre = findCdpDescendantByName(translation, 'PRE');
-  const chineseTarget = findCdpNode(host, node => /^zh-/.test(cdpAttribute(node, 'data-target-language') || ''));
-  const englishTarget = findCdpNode(host, node => cdpAttribute(node, 'data-target-language') === 'en');
+  const navigation = findCdpNode(tooltip, node => hasCdpClass(node, 'fr-study-navigation'));
+  const standaloneHeader = findCdpNode(tooltip, node => hasCdpClass(node, 'fr-tooltip-header'));
+  const targetLanguageControl = findCdpNode(tooltip, node => cdpHasAttribute(node, 'data-target-language'));
   return {
     host: Boolean(host),
     configuredDelay: Number(cdpAttribute(translatorRoot, 'data-display-delay') || -1),
@@ -716,11 +717,13 @@ async function readSelectionUi(page) {
     retryButton: Boolean(findCdpNode(error, node => node.nodeName === 'BUTTON')),
     originalText: cdpText(originalPre).trim(),
     resultText: cdpText(translationPre).trim(),
-    direction: {
-      chinese: cdpAttribute(chineseTarget, 'aria-pressed') === 'true',
-      english: cdpAttribute(englishTarget, 'aria-pressed') === 'true',
-      chineseDisabled: cdpHasAttribute(chineseTarget, 'disabled'),
-      englishDisabled: cdpHasAttribute(englishTarget, 'disabled'),
+    navigation: {
+      present: Boolean(navigation),
+      standaloneHeader: Boolean(standaloneHeader),
+      targetLanguageControl: Boolean(targetLanguageControl),
+      close: Boolean(findCdpNode(navigation, node => hasCdpClass(node, 'fr-close-btn'))),
+      share: Boolean(findCdpNode(navigation, node => hasCdpClass(node, 'fr-share-card-entry'))),
+      vocabulary: Boolean(findCdpNode(navigation, node => hasCdpClass(node, 'fr-vocabulary-btn'))),
     },
     tooltipText: cdpText(tooltip).trim(),
     copyButtons: {
@@ -813,7 +816,7 @@ async function waitForSelectionUi(page, expected, description) {
     state = await readSelectionUi(page);
     const matches = Object.entries(expected).every(([key, value]) => key === 'resultPrefix'
       ? state.resultText.startsWith(String(value))
-      : state[key] === value);
+      : key === 'resultSuffix' ? state.resultText.endsWith(String(value)) : state[key] === value);
     if (matches) return;
     await page.waitForTimeout(50);
   }
@@ -846,20 +849,6 @@ async function clickSelectionCopyButton(page, kind) {
   await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
   await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1 });
   await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount: 1 });
-}
-
-async function clickSelectionTargetButton(page, language) {
-  await activateInputPage(page);
-  const {session, root} = await getSelectionUiTree(page);
-  const button = findCdpNode(root, node => cdpAttribute(node, 'data-target-language') === language);
-  if (!button) throw new Error(`找不到划词目标语言 ${language}`);
-  const {model} = await session.send('DOM.getBoxModel', {nodeId: button.nodeId});
-  const quad = model.border || model.content;
-  const x = (quad[0] + quad[2] + quad[4] + quad[6]) / 4;
-  const y = (quad[1] + quad[3] + quad[5] + quad[7]) / 4;
-  await session.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x, y});
-  await session.send('Input.dispatchMouseEvent', {type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1});
-  await session.send('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount: 1});
 }
 
 async function waitForCopyFeedback(page, expectedText) {
@@ -1862,6 +1851,20 @@ async function main() {
     }
 
     if (args.directionOnly) {
+      const popupActions = await popup.locator('.translate-action').evaluate(element => ({
+        buttons: [...element.querySelectorAll('button')].map(button => button.dataset.testid),
+        text: element.querySelector('[data-testid="page-translation"]')?.textContent.trim(),
+        keycaps: element.querySelectorAll('kbd').length,
+        readingEntry: element.querySelectorAll('.learning-entry').length,
+        height: element.getBoundingClientRect().height,
+      }));
+      assert(JSON.stringify(popupActions.buttons) === JSON.stringify(['page-translation', 'section-translation'])
+        && popupActions.keycaps === 0 && popupActions.readingEntry === 0 && popupActions.height <= 43
+        && !popupActions.text.includes('A↔译'), `独立按钮优化丢失或渐进阅读入口残留：${JSON.stringify(popupActions)}`);
+      const popupScreenshot = path.join(args.artifactsDir, 'popup-retained-compact-actions.png');
+      await popup.locator('.popup-shell').screenshot({path: popupScreenshot});
+      result.screenshots.push(popupScreenshot);
+      result.cases.push({id: 'popup.retained-compact-actions-without-study', status: 'passed', layout: popupActions});
       const saved = await readStoredConfig(popup);
       await patchStoredConfig(popup, {
         on: true, disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual',
@@ -1901,8 +1904,9 @@ async function main() {
       await clickSelectionIndicator(page);
       await waitForSelectionUi(page, {tooltip:true,translation:true,resultPrefix:'测试译文：'}, '中文反向翻译卡片');
       const chineseUi = await readSelectionUi(page);
-      assert(chineseUi.direction.english && chineseUi.direction.chineseDisabled,
-        `中文选区没有选中英语目标：${JSON.stringify(chineseUi.direction)}`);
+      assert(chineseUi.navigation.present && chineseUi.navigation.close
+        && !chineseUi.navigation.standaloneHeader && !chineseUi.navigation.targetLanguageControl && !chineseUi.brandIcon.present,
+        `顶部多余区域仍然存在或关闭入口丢失：${JSON.stringify(chineseUi.navigation)}`);
       assert(chineseUi.resultText.endsWith('[to=en]'), `中文反向请求没有译为英文：${chineseUi.resultText}`);
       assert(chineseUi.originalText === '你好，世界！', '反向翻译改写了选区原文');
       result.cases.push({id:'direction.chinese-to-english',status:'passed',ui:chineseUi});
@@ -1933,8 +1937,8 @@ async function main() {
       await clickSelectionIndicator(page);
       await waitForSelectionUi(page, {tooltip:true,translation:true,resultPrefix:'测试译文：'}, '英文反向翻译卡片');
       const englishUi = await readSelectionUi(page);
-      assert(englishUi.direction.chinese && englishUi.direction.englishDisabled,
-        `英文选区没有选中中文目标：${JSON.stringify(englishUi.direction)}`);
+      assert(!englishUi.navigation.targetLanguageControl && englishUi.navigation.close,
+        `反向翻译卡片恢复了语言按钮或丢失关闭入口：${JSON.stringify(englishUi.navigation)}`);
       assert(englishUi.resultText.endsWith('[to=zh-Hans]'), `英文反向请求没有译为中文：${englishUi.resultText}`);
       result.cases.push({id:'direction.english-to-chinese',status:'passed',ui:englishUi});
 
@@ -1945,17 +1949,19 @@ async function main() {
       await clickSelectionIndicator(page);
       await waitForSelectionUi(page, {tooltip:true,translation:true,resultPrefix:'测试译文：'}, '法语默认翻译卡片');
       const beforeSwitch = translationRequestCount;
-      await clickSelectionTargetButton(page, 'en');
-      await waitForSelectionUi(page, {tooltip:true,translation:true,resultPrefix:'测试译文：'}, '临时切换英语目标');
+      await patchStoredConfig(popup, {to:'en'});
+      await waitForSelectionUi(page, {tooltip:true,translation:true,resultPrefix:'测试译文：',resultSuffix:'[to=en]'}, '配置切换英语目标');
       const switchedUi = await readSelectionUi(page);
-      assert(switchedUi.direction.english && translationRequestCount === beforeSwitch + 1,
-        `卡片切换目标没有重新请求：${JSON.stringify({direction:switchedUi.direction,beforeSwitch,translationRequestCount})}`);
+      assert(translationRequestCount === beforeSwitch + 1,
+        `配置切换目标没有重新请求：${JSON.stringify({beforeSwitch,translationRequestCount})}`);
       assert(switchedUi.resultText.endsWith('[to=en]'), `卡片切换没有使用新目标：${switchedUi.resultText}`);
-      assert((await readStoredConfig(popup)).to === 'zh-Hans', '卡片切换修改了默认目标语言');
-      result.cases.push({id:'direction.card-only-target',status:'passed',ui:switchedUi,requests:translationRequestCount-beforeSwitch});
-      const switchScreenshot = path.join(args.artifactsDir,'direction-card-switch.png');
+      assert((await readStoredConfig(popup)).to === 'en', '配置切换没有持久化目标语言');
+      result.cases.push({id:'direction.config-target-refresh',status:'passed',ui:switchedUi,requests:translationRequestCount-beforeSwitch});
+      const switchScreenshot = path.join(args.artifactsDir,'direction-config-switch.png');
       await page.screenshot({path:switchScreenshot}); result.screenshots.push(switchScreenshot);
 
+      await patchStoredConfig(popup, {to:'zh-Hans'});
+      await page.waitForTimeout(600);
       translationResponseDelayMs = 700;
       await select('Une autre phrase française pour vérifier les réponses tardives.');
       await waitForSelectionUi(page, {indicator:true}, '延迟响应测试选区入口');
@@ -1964,11 +1970,11 @@ async function main() {
       const raceDeadline = Date.now() + 3000;
       while (translationRequestCount === beforeRace && Date.now() < raceDeadline) await page.waitForTimeout(20);
       assert(translationRequestCount === beforeRace + 1, '切换前的翻译请求没有启动');
-      await clickSelectionTargetButton(page, 'en');
-      await waitForSelectionUi(page, {tooltip:true,translation:true,resultPrefix:'测试译文：'}, '切换后的翻译响应');
+      await patchStoredConfig(popup, {to:'en'});
+      await waitForSelectionUi(page, {tooltip:true,translation:true,resultPrefix:'测试译文：',resultSuffix:'[to=en]'}, '配置切换后的翻译响应');
       await page.waitForTimeout(850);
       const raceUi = await readSelectionUi(page);
-      assert(raceUi.direction.english && raceUi.resultText.endsWith('[to=en]'),
+      assert(raceUi.resultText.endsWith('[to=en]'),
         `旧方向的迟到响应覆盖了新方向：${raceUi.resultText}`);
       result.cases.push({id:'direction.stale-response-isolation',status:'passed',ui:raceUi});
       translationResponseDelayMs = 0;
@@ -1986,6 +1992,7 @@ async function main() {
       await patchStoredConfig(popup, {
         on: true, disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual',
         selectionTranslatorTrigger: 'direct', selectionTranslatorDelay: 0,
+        selectionTranslatorAutoDismiss: false,
         to: 'zh-Hans', from: 'auto', service: 'microsoft', hotkey: 'none',
         harness: {...saved.harness, enabled: false},
       });
@@ -2011,7 +2018,14 @@ async function main() {
       }`);
       const gesture = async (selector, dx, dy, release = true) => {
         const r = await box(selector);
-        const x = r.x + r.width / 2, y = r.y + r.height / 2;
+        const point = selector === '.fr-study-navigation' ? await inspect(selector, `function(selector) {
+          const element = this.querySelector(selector), r = element.getBoundingClientRect();
+          const x = r.left + 7 * (r.width / element.offsetWidth), y = r.top + r.height / 2;
+          const hit = this.getRootNode().elementFromPoint(x, y);
+          if (!hit || !hit.closest('.fr-study-navigation') || hit.closest('button,a,input,textarea,select,[contenteditable]')) throw new Error('Navigation drag point is interactive or obscured');
+          return {x,y};
+        }`) : {x: r.x + r.width / 2, y: r.y + r.height / 2};
+        const {x, y} = point;
         await page.mouse.move(x, y);
         await page.mouse.down();
         await page.mouse.move(x + dx, y + dy, {steps: 12});
@@ -2078,7 +2092,7 @@ async function main() {
           await page.screenshot({path: path.join(args.artifactsDir, 'selection-zoom-cold-2.png')});
           result.cases.push({id: 'geometry.zoom-before-load', status: 'passed', coldZoom, coldCard});
           const beforeDrag = await box();
-          const afterDrag = await gesture('.fr-tooltip-header', 60, 20);
+          const afterDrag = await gesture('.fr-study-navigation', 60, 20);
           assert(near(afterDrag.x, beforeDrag.x + 60) && near(afterDrag.y, beforeDrag.y + 20), '200% 缩放下卡片拖动失败');
           const afterResize = await gesture('[data-resize-edge="se"]', 40, 20);
           assert(near(afterResize.width, afterDrag.width + 40) && near(afterResize.height, afterDrag.height + 20),
@@ -2105,7 +2119,7 @@ async function main() {
       const initial = await box();
       const source = (await readSelectionUi(page)).originalText;
       const requests = translationRequestCount;
-      const moved = await gesture('.fr-tooltip-header', 160, -60);
+      const moved = await gesture('.fr-study-navigation', 160, -60);
       assert(near(moved.x, initial.x + 160) && near(moved.y, initial.y - 60), `标题栏拖动失败 ${JSON.stringify({initial,moved})}`);
       const widened = await gesture('[data-resize-edge="se"]', 200, 80);
       assert(near(widened.width, moved.width + 200) && widened.height > moved.height, '右下角缩放失败');
@@ -2154,7 +2168,7 @@ async function main() {
       const selection = await inspect('', `function(){return this.getRootNode().getSelection()?.toString() || '';}`);
       assert(selection.length > 0, '无法选择卡片正文');
       result.cases.push({id:'geometry.blank-drag-and-text-selection',status:'passed'});
-      await gesture('.fr-tooltip-header', 2000, 2000);
+      await gesture('.fr-study-navigation', 2000, 2000);
       await inside();
       await gesture('[data-resize-edge="nw"]', 2000, 2000);
       const minimum = await inside();
@@ -2170,7 +2184,7 @@ async function main() {
       await ready();
       const reopened = await box();
       assert(near(reopened.width,388), '新选区未恢复默认宽度');
-      await gesture('.fr-tooltip-header', 60, 15, false);
+      await gesture('.fr-study-navigation', 60, 15, false);
       await page.keyboard.press('Escape');
       await page.mouse.up();
       await waitForSelectionUi(page, {tooltip:false}, '拖动中 Esc 关闭');
@@ -2185,7 +2199,7 @@ async function main() {
       await page.waitForTimeout(400);
       translationResponseDelayMs = 1400;
       await open(TARGET_TEXT + ' A delayed result should keep the chosen position.');
-      const loadingMoved = await gesture('.fr-tooltip-header', 60, 20);
+      const loadingMoved = await gesture('.fr-study-navigation', 60, 20);
       await ready();
       current = await box();
       assert(near(current.x,loadingMoved.x) && near(current.y,loadingMoved.y), '迟到译文覆盖了拖动位置');
@@ -2587,11 +2601,12 @@ async function main() {
     const directUi = await readSelectionUi(page);
     assert(directUi.selectionText === directSelection.text && !directUi.indicator && directUi.targetText === TARGET_TEXT, '直接弹出改变了入口或页面正文');
     assert(!directUi.tooltipText.includes('FluentRead')
-      && directUi.brandIcon.present
-      && directUi.brandIcon.src.includes('/icon/128.png')
+      && !directUi.brandIcon.present
+      && !directUi.navigation.standaloneHeader && !directUi.navigation.targetLanguageControl
+      && directUi.navigation.present && directUi.navigation.close && directUi.navigation.share
       && directUi.copyButtons.source
       && directUi.copyButtons.translation,
-    `翻译结果没有显示 FluentRead 图标或按内容卡提供独立复制入口：${JSON.stringify(directUi)}`);
+    `翻译卡没有移除多余头部或保留导航操作及独立复制入口：${JSON.stringify(directUi)}`);
     const directScreenshot = path.join(args.artifactsDir, 'selection-direct.png');
     await page.screenshot({ path: directScreenshot });
     result.screenshots.push(directScreenshot);

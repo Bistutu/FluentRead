@@ -1,0 +1,119 @@
+{
+  "beforeBytes": 2078921,
+  "afterBytes": 2061482,
+  "savedBytes": 17439,
+  "baselineBytes": 2077027,
+  "compressedStyleMatches": [
+    {
+      "bytes": 3972,
+      "sha256": "b53472b13dce490ea8af02131c157580e6e0c43ae336f8efe9032e4e5545c3af",
+      "prefix": ":host{color-scheme:light;font-family:-apple-system,Blin"
+    },
+    {
+      "bytes": 4145,
+      "sha256": "2565cb4bcdbc64766d8a5aff9e80bf3c78880943fae0107f24cf48ef2d28ef04",
+      "prefix": ":host{font-family:-apple-system,BlinkMacSystemFont,Sego"
+    },
+    {
+      "bytes": 9717,
+      "sha256": "792fea9cd42cb502ce4bb3bec3ad2d8b5a762886f968d4ef1638e4151f604c0a",
+      "prefix": ".fluent-read-bilingual-content{display:block;word-break"
+    },
+    {
+      "bytes": 5924,
+      "sha256": "4940ec5ab6fcf60d8cf3bb26f98f13fb430858c86c52c7dbd30226db29aa56a0",
+      "prefix": ".fluent-read-retry-wrapper{display:inline-flex!importan"
+    }
+  ],
+  "remainingCandidates": [
+    {
+      "bytes": 258,
+      "prefix": "::highlight(fluentread-vocabulary-reencounter){text-dec"
+    }
+  ],
+  "budgetBytes": 2078000,
+  "budgetRemainingBytes": 16518,
+  "candidateVersusBaselineBytes": -15545,
+  "beforeSha256": "9f43c5b506bc38752cb7b59eb279c012d01918285bdc400edcc3f156b497134c",
+  "candidateSha256": "987e1eee3420265ce286d3ac63aaea77c25474c2c95f15d60f5f277afbb734fa",
+  "baselineSha256": "e601c46abb29b6ec5cc05f15fc250f0d51fbb00a52e56419255d811a36b60d52",
+  "lockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+  "baselineLockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+  "allMatchedCssExact": true,
+  "sourceMap": false,
+  "addedRuntimeDependencies": false,
+  "newAsyncBoundary": false,
+  "greasyForkCompression": false,
+  "standalone": {
+    "candidateBytes": 4204164,
+    "baselineBytes": 4211060,
+    "budgetBytes": 3600000,
+    "baselineDescription": "e96b7c954 + one-line VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE adapter compatibility export; not immutable source",
+    "onlyExpectedAdapterPatch": true,
+    "candidateSha256": "6ff87d5415649a8560b49c88464c8a069726a702320e44c3ee8fc0cb9c285b24",
+    "baselineSha256": "5b1c453b48c849977edc7be9fab4bb8807efd9d3815ad3e8c01f58a0f6067474",
+    "originalBaselineBuild": "failed: existing missing adapter export",
+    "baselineWithAdapterVerifier": "failed: existing 3,600,000-byte budget",
+    "candidateVerifier": "failed: same existing budget; all preceding protocol assertions completed",
+    "deltaBytes": -6896
+  },
+  "finalStandardArtifact": {
+    "bytes": 2061358,
+    "sha256": "ac1fea9c67a17e74272fe836e6b3ba28aae8cf08b00210bddc88f1d74a0d716c",
+    "budgetBytes": 2078000,
+    "budgetRemainingBytes": 16642,
+    "restoredCssExact": true,
+    "restoredCss": [
+      {
+        "bytes": 3972,
+        "sha256": "b53472b13dce490ea8af02131c157580e6e0c43ae336f8efe9032e4e5545c3af"
+      },
+      {
+        "bytes": 4145,
+        "sha256": "2565cb4bcdbc64766d8a5aff9e80bf3c78880943fae0107f24cf48ef2d28ef04"
+      },
+      {
+        "bytes": 9717,
+        "sha256": "792fea9cd42cb502ce4bb3bec3ad2d8b5a762886f968d4ef1638e4151f604c0a"
+      },
+      {
+        "bytes": 5924,
+        "sha256": "4940ec5ab6fcf60d8cf3bb26f98f13fb430858c86c52c7dbd30226db29aa56a0"
+      }
+    ],
+    "sourceMain": "58ef643e85b51c3236fe05e15f94b627172a06d7",
+    "languageResourceCommit": "240cbc42de9d1141c679fb595afea055397ac656",
+    "scope": "Four CSS payloads introduced by inlineCssPlugin; unrelated existing compressed resources are excluded."
+  },
+  "finalStandardBaseline": {
+    "revision": "58ef643e85b51c3236fe05e15f94b627172a06d7",
+    "sourceArchiveSha256": "2be0f3945940b64678f8cf7d89241c19512ce999206aa48cc3f2c05d5aa042ba",
+    "sourceChanges": false,
+    "adapterPatch": false,
+    "baselineLockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "candidateLockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "sameLockfile": true,
+    "chrome": {
+      "buildSucceeded": true,
+      "artifactRoot": "/private/tmp/fluentread-video-learning-reliability-baseline-58ef643e85b5/.output/chrome-mv3",
+      "contentPath": "/private/tmp/fluentread-video-learning-reliability-baseline-58ef643e85b5/.output/chrome-mv3/content-scripts/content.js",
+      "contentBytes": 2972242,
+      "contentSha256": "35037bc8c71fcbf12c967e249f165e2de612f3e3f0cdb4cb9c6cb4268cf9904e",
+      "manifestSha256": "961d10d94833c621d25cd57c2668613840b1b5ff2fc8aa96628448b12a767924",
+      "sourceChangesAfterBuild": []
+    },
+    "userscript": {
+      "buildSucceeded": true,
+      "verifierSucceeded": true,
+      "path": "/private/tmp/fluentread-video-learning-reliability-baseline-58ef643e85b5/.output/userscript/fluent-read.user.js",
+      "bytes": 2076951,
+      "sha256": "21be25b31480475d687944403044f888faa88c52a3c5e4dfa972b29582ec9d79",
+      "budgetBytes": 2078000,
+      "sourceChangesAfterBuild": [],
+      "addedSourceFiles": []
+    },
+    "buildComplete": true,
+    "sourceFileCount": 1904,
+    "sourceEvidence": "matching-baseline-build.json"
+  }
+}

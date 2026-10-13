@@ -17,7 +17,7 @@ Chrome 商店打不开时，可以从 [GitHub 官方发布页](https://github.co
 <details class="guide-details">
 <summary>手机、油猴脚本与 Thunderbird</summary>
 
-支持扩展的 **安卓 Edge** 可从扩展入口搜索 FluentRead。安装后在扩展列表中打开流畅阅读菜单，再点击网页翻译。手机可通过菜单或悬浮球操作。iPhone/iPad 上的 Edge 是否支持扩展，请以浏览器提供的功能为准。
+支持扩展的 **安卓 Edge** 可从扩展入口搜索流畅阅读。安装后在扩展列表中打开流畅阅读菜单，再点击网页翻译。手机可通过菜单或悬浮球操作。iPhone/iPad 上的 Edge 是否支持扩展，请以浏览器提供的功能为准。
 
 其他安装方式：[油猴脚本](/guide/userscript) · [Thunderbird 邮件翻译](/guide/thunderbird)。
 

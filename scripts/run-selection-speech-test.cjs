@@ -52,7 +52,8 @@ async function main() {
   const ready=await support.waitForWorker(context);worker=ready.worker;const id=ready.extensionId;
   const newPage=async()=>{const tab=await helper.newPageWithoutForeground(context);tab.on('pageerror',error=>report.consoleErrors.push(error.message));return tab;};
   popup=await newPage();await popup.goto(`chrome-extension://${id}/popup.html`);await popup.locator('.popup-shell[data-config-ready="true"]').waitFor();
-  await support.patchStoredConfig(popup,{on:true,uiLanguage:'zh-CN',uiLanguageSetupCompleted:true,theme:'light',service:'microsoft',from:'auto',to:'zh-Hans',selectionTranslatorMode:'bilingual',selectionTranslatorPresentation:'card',selectionTranslatorTrigger:'icon',selectionTranslatorDelay:0,selectionTranslatorAutoDismiss:false,selectionTtsMode:'online-only',disableSelectionTranslator:false,useCache:false,hotkey:'none',floatingBallHotkey:'none'});
+  const saved=await support.readStoredConfig(popup);
+  await support.patchStoredConfig(popup,{on:true,uiLanguage:'zh-CN',uiLanguageSetupCompleted:true,theme:'light',service:'microsoft',from:'auto',to:'zh-Hans',selectionTranslatorMode:'bilingual',selectionTranslatorPresentation:'card',selectionTranslatorTrigger:'icon',selectionTranslatorDelay:0,selectionTranslatorAutoDismiss:false,selectionTtsMode:'online-only',disableSelectionTranslator:false,useCache:false,hotkey:'none',floatingBallHotkey:'none',harness:{...saved.harness,enabled:true}});
   await worker.evaluate(({audioBase64,translation})=>{
    const native=fetch.bind(globalThis);globalThis.__speechFixtureCalls=0;
    globalThis.fetch=async(input,init)=>{
@@ -73,6 +74,10 @@ async function main() {
   await page.mouse.move(points.sx,points.sy);await page.mouse.down();await page.mouse.move(points.ex,points.ey,{steps:14});await page.mouse.up();
   await until(()=>getNode(cls('fr-selection-indicator')),'Selection entry missing');await click(cls('fr-selection-indicator'));
   await until(async()=>await getNode(cls('fr-translation-result')) && await inspect(`function(){return this.querySelector('.fr-translation-result pre').textContent}`)===translation,'Translation missing');
+  const cardUi=await inspect(`function(){const navigation=this.querySelector('.fr-study-navigation');return {tabs:navigation?.querySelectorAll('.fr-study-toolbar button').length,close:!!navigation?.querySelector('.fr-close-btn'),share:!!navigation?.querySelector('.fr-share-card-entry'),header:!!this.querySelector('.fr-tooltip-header'),language:!!this.querySelector('[data-target-language]'),brand:!!this.querySelector('.fr-tooltip-brand-icon')}}`);
+  assert(cardUi.tabs===6&&cardUi.close&&cardUi.share);
+  assert(!cardUi.header&&!cardUi.language&&!cardUi.brand);
+  record('translation card starts with action tabs and keeps share and close without a language header');
   const original=await inspect(`function(){this.__speechWordNodes=Array.from(this.querySelectorAll('.fr-original-text .fr-speech-word'));this.__speechWordRects=this.__speechWordNodes.map(node=>{const r=node.getBoundingClientRect();return [r.x,r.y,r.width,r.height]});return this.querySelector('.fr-original-text pre').textContent}`);assert.equal(original,sentence);
   await click(node=>support.cdpAttribute(node,'aria-label')==='播放原文');
   await until(async()=>{const state=await position();return state&&state.time.endsWith('/ 0:20');},'Actual audio clock missing');

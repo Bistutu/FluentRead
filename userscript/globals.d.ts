@@ -20,6 +20,7 @@ declare global {
         data?: unknown;
         responseType?: 'arraybuffer' | 'blob' | 'json' | 'text';
         anonymous?: boolean;
+        redirect?: 'follow' | 'error' | 'manual';
         timeout?: number;
         onload?: (response: UserscriptXmlHttpResponse) => void;
         onerror?: (response: UserscriptXmlHttpResponse) => void;
@@ -31,12 +32,8 @@ declare global {
         abort?: () => void;
     }
 
-    interface UserscriptManagerInfo {
-        readonly isIncognito?: boolean;
-    }
-
     interface UserscriptModernApi {
-        readonly info?: UserscriptManagerInfo;
+        info?: UserscriptManagerInfo;
         getValue?: (key: string, defaultValue?: unknown) => unknown;
         setValue?: (key: string, value: unknown) => unknown;
         deleteValue?: (key: string) => unknown;
@@ -47,6 +44,11 @@ declare global {
     }
 
     var GM: UserscriptModernApi | undefined;
+    interface UserscriptManagerInfo {
+        scriptHandler?: string;
+        version?: string;
+        platform?: {browserName?: string; os?: string};
+    }
     var GM_info: UserscriptManagerInfo | undefined;
 
     var GM_getValue: undefined | (<T>(key: string, defaultValue?: T) => T | Promise<T>);
@@ -66,8 +68,6 @@ declare global {
         english: UiLanguageBundle;
         zhCNMessages: Record<string, unknown>;
         siteCatalogs: Record<string, unknown>;
-        characterData?: Record<'chineseVariants' | 'functionWordData', Record<string, string>>;
-        inlineStyles?: Record<'translationDisplayStyles' | 'pageStyles' | 'sentenceHighlightStyles' | 'reencounterStyles' | 'noticeStyles' | 'pickerStyles' | 'loadingIndicatorStyles', string>;
         css: string;
     } | undefined;
     var pako: {ungzip(data: Uint8Array, options?: {to?: string}): string | Uint8Array} | undefined;

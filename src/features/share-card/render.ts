@@ -1,6 +1,6 @@
 /**
  * @file src/features/share-card/render.ts
- * 文件职责：用本地 Canvas 排版双语摘录，生成预览与导出共用的高清 PNG。
+ * 文件职责：用本地 Canvas 排版双语摘录，生成预览与导出共用的高清 PNG；署名消费调用方提供的本地化品牌文本，默认显示中文名称。
  * 主要内容：相同译文保留原文且不重复展示；按八套主题字体真实度量换行，珊瑚上下分区，月白与蓝图双栏，晴空与落日居中，流光彩字，抹茶与书页衬线摘录；容量不足时拒绝裁切，取消或失败时释放位图与编码监听。
  * 模块边界：不截图宿主页面、不加载远程字体或图片、不上传文字；消费摘录与外观，装饰委托 themes，剪贴板及下载由导出适配器负责。
  */
@@ -16,7 +16,7 @@ const WIDTH = 640;
 const SCALE = 1.5;
 export interface RenderedShareCard {canvas: HTMLCanvasElement; blob: Blob; width: number; height: number}
 
-export async function renderShareCard(excerpt: ShareCardExcerpt, preferences: ShareCardPreferences, signal?: AbortSignal): Promise<RenderedShareCard> {
+export async function renderShareCard(excerpt: ShareCardExcerpt, preferences: ShareCardPreferences, signal?: AbortSignal, brandName = '流畅阅读'): Promise<RenderedShareCard> {
     signal?.throwIfAborted();
     const invalid = validateCardExcerpt(excerpt);
     if (invalid) throw new ShareCardRenderError(invalid);
@@ -100,7 +100,7 @@ export async function renderShareCard(excerpt: ShareCardExcerpt, preferences: Sh
         for (const line of footerLines) { context.fillText(line, inset, y); y += 17; }
         if (preferences.showBrand) {
             context.font = `500 10px ${CARD_SECONDARY_FONT}`; context.fillStyle = theme.accent;
-            context.textAlign = 'right'; context.fillText('FluentRead', WIDTH - inset, height - 49);
+            context.textAlign = 'right'; context.fillText(brandName, WIDTH - inset, height - 49);
         }
         const blob = await new Promise<Blob>((resolve, reject) => {
             const abort = () => { signal?.removeEventListener('abort', abort); reject(signal?.reason); };

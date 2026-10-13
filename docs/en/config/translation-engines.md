@@ -82,17 +82,19 @@ Requests are shared evenly at first. If a key fails, FluentRead tries another an
 
 ## The free service
 
-Free translation calls the enabled free endpoints. Compact cards let you choose which endpoints participate. Experimental endpoints are separate, with enabled choices listed in the summary.
+Free translation calls enabled endpoints operated by their providers. All endpoint cards are shown together, with connection status and allocation shares. Choose which ones participate; Automatic balance distributes requests, while Priority order tries them in list order.
 
 The default **Automatic balance** mode places Microsoft first and prefers it for the initial request. The background scheduler dynamically adapts distribution using success rate, response time, and recent errors. A failed request switches to another service. Disable entries or choose **Priority order** to try them in list order. Keep at least one enabled.
 
 The scheduler maintains these allocation signals automatically. Users configure only enabled services and the mode; health and performance records used for balancing stay local.
 
-Microsoft, Tencent TranSmart, Volcengine, Google, Youdao Web, ICIBA, Yandex, MyMemory, Sogou, Reverso, Lingva, and Apertium are enabled by default without API keys. DeepLX uses an unofficial public endpoint and is off by default; you can enable it manually. Sogou, Reverso, and Lingva remain experimental, and Apertium currently has no Chinese language pairs. Existing saved selections are preserved.
+New configurations enable all 17 free endpoints without API keys: Microsoft, Bilibili Translation, Tencent TranSmart, Volcengine, Doubao Web Translation, Google, Youdao Web, ICIBA, Yandex, MyMemory, Sogou, Reverso, Apertium, Alibaba Translate, ModernMT, Lara, and Lingvanex. Missing or invalid enabled-service lists use the same default. This default change does not re-enable Doubao in existing nonempty explicit lists. Doubao, Sogou, and Reverso use experimental web endpoints, and Apertium currently has no Chinese language pairs. DeepLX and Lingva have been removed from the free pool; standalone DeepLX can still be configured separately.
+
+**Doubao Web Translation** passed live connection and paragraph-translation checks using the production extension in isolated Edge. Separate command-line requests also returned anonymous translations, without an account login or API key. It is an experimental endpoint enabled by default and can be disabled in the free-service list. Access failures or unsupported targets move to another enabled endpoint. Traditional Chinese targets are currently unsupported and are never silently changed to Simplified Chinese. It uses anonymous guest parameters from the web service, refreshes temporary credentials automatically, and keeps them in memory only. It does not read personal account cookies or the Volcengine Ark API key configured for the separate Doubao service. These tests establish availability only on the local network at the time of testing. The web endpoint may change or stop working; keyless access does not guarantee permanent free access or continued availability.
 
 Rate limits normally pause a provider for minutes, blocked access for hours, and exhausted daily quotas for about a day. Recovery records are stored locally and survive background restarts. Each attempt has a five-second timeout by default.
 
-Free services have changing availability and allowances. Public interfaces and intermediaries have their own data policies. Keep only one entry, or select a standalone service, if you want requests to go to only that provider.
+Free services have changing availability and allowances. Provider web endpoints have their own data policies. Keep only one entry, or select a standalone service, if you want requests to go to only that provider.
 
 </details>
 
@@ -253,6 +255,8 @@ See Tencent's [official integration guide](https://cloud.tencent.com/document/pr
 ## Local models
 
 Install and run Ollama and download a model before connecting it. Performance depends on the model and computer.
+
+Ollama follows the same [request limits](/en/config/#request-limits). Under its **Request limits**, choose **Entire service → Custom** and set concurrency to **1** to share one active request slot across models and translation features. **Current model** limits only that model. After cancellation or timeout, the next request starts once the previous network request has finished.
 
 Pick **Ollama (local)** under aggregation platforms: it connects to `http://127.0.0.1:11434` by default and needs no API key; enter the name of a model you have pulled (for example `qwen3:8b`). If Ollama runs on another machine or port, enter the full `/v1/chat/completions` URL in **Server URL**. Browser extensions must be allowed as an origin: start Ollama with `OLLAMA_ORIGINS=*`, otherwise requests are rejected by CORS.
 

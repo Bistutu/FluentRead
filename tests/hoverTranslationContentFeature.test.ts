@@ -1298,3 +1298,279 @@ describe('shared hover shortcut release ownership', () => {
         expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[0, 0]]);
     });
 });
+
+describe('selection shortcut parsing in hover arbitration', () => {
+    it.each([
+        {label: 'direct mismatch', configured: 'Alt', custom: ' Ctrl ', raw: 'Alt', customReads: 0, candidateReads: 0},
+        {label: 'custom match', configured: 'custom', custom: ' Ctrl ', raw: ' Ctrl ', customReads: 200, candidateReads: 200},
+        {label: 'custom mismatch', configured: 'custom', custom: ' Alt ', raw: ' Alt ', customReads: 200, candidateReads: 0},
+    ])('$label 持续移动只复用解析，逐次配置与仲裁读取保持', ({configured, custom, raw, customReads, candidateReads}) => {
+        const getConfigured = vi.fn(() => configured);
+        const getCustom = vi.fn(() => custom);
+        const {deps, documentTarget, windowTarget} = mountHarness({
+            getConfiguredSelectionHotkey: getConfigured,
+            getCustomSelectionHotkey: getCustom,
+        });
+        const keydown = trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true});
+        windowTarget.emit('keydown', keydown);
+        const split = vi.spyOn(String.prototype, 'split');
+        try {
+            const moves = Array.from({length: 200}, (_unused, index) => trustedEvent({clientX: index, clientY: 20}));
+            // 首点同步响应；其余输入分别推进一个真实处理帧，不把同帧洪峰当作 200 次候选识别。
+            for (const [index, move] of moves.entries()) {
+                documentTarget.emit('mousemove', move);
+                if (index > 0) windowTarget.flushAnimationFrame();
+            }
+            const translated = Array.from({length: 200}, (_unused, index) => [index, 20, {delayMs: 120, continuous: true}]);
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual(translated);
+            expect(getConfigured).toHaveBeenCalledTimes(200);
+            expect(getCustom).toHaveBeenCalledTimes(customReads);
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(candidateReads);
+            const keyup = trustedEvent({key: 'Control', code: 'ControlLeft'});
+            windowTarget.emit('keyup', keyup);
+
+            // 主线释放入口先按当前配置再仲裁选区；暖缓存只省解析，不省这一次 getter/候选检查。
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual(translated);
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            expect(getConfigured).toHaveBeenCalledTimes(201);
+            expect(getCustom).toHaveBeenCalledTimes(customReads + (configured === 'custom' ? 1 : 0));
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(candidateReads + (candidateReads > 0 ? 1 : 0));
+            expect(deps.noteBilingualHostGesture).toHaveBeenCalledTimes(200);
+            expect(keydown.preventDefault).toHaveBeenCalledOnce();
+            expect(keydown.stopPropagation).toHaveBeenCalledOnce();
+            expect(keyup.preventDefault).not.toHaveBeenCalled();
+            expect(keyup.stopPropagation).not.toHaveBeenCalled();
+            for (const move of moves) {
+                expect(move.preventDefault).not.toHaveBeenCalled();
+                expect(move.stopPropagation).not.toHaveBeenCalled();
+            }
+            const selectionSplits = split.mock.contexts.filter(
+                (context, index) => String(context) === raw && (split.mock.calls[index][0] as unknown) === '+',
+            ).length;
+            expect(selectionSplits).toBe(1);
+        } finally { split.mockRestore(); }
+    });
+
+    it('逐次配置、空值和别名改变均按当前 raw 判定，custom getter 只在 custom 时读取', () => {
+        const settings = {configured: 'custom', custom: undefined as string | undefined};
+        const getConfigured = vi.fn(() => settings.configured);
+        const getCustom = vi.fn(() => settings.custom);
+        const {deps, documentTarget, windowTarget} = mountHarness({
+            getConfiguredSelectionHotkey: getConfigured,
+            getCustomSelectionHotkey: getCustom,
+        });
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        const split = vi.spyOn(String.prototype, 'split');
+        try {
+            let x = 0;
+            for (const step of [
+                {configured: 'custom', custom: undefined},
+                {configured: 'custom', custom: ''},
+                {configured: 'none', custom: ' Ctrl '},
+                {configured: 'Alt', custom: ' Ctrl '},
+                {configured: 'custom', custom: ' Alt '},
+                {configured: 'custom', custom: ' Option '},
+                {configured: 'custom', custom: ' Alt '},
+            ]) {
+                Object.assign(settings, step);
+                for (let frame = 0; frame < 2; frame++) {
+                    documentTarget.emit('mousemove', trustedEvent({clientX: x++, clientY: 20}));
+                    // 第一条已同步处理；之后每条输入由上一轮排入的帧读取当下 raw。
+                    if (x > 1) windowTarget.flushAnimationFrame();
+                }
+            }
+            vi.mocked(deps.hasActiveSelectionTranslationCandidate).mockReturnValue(true);
+            documentTarget.emit('mousemove', trustedEvent({clientX: x++, clientY: 20}));
+            windowTarget.flushAnimationFrame();
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            settings.custom = ' Ctrl ';
+            documentTarget.emit('mousemove', trustedEvent({clientX: x, clientY: 20}));
+            windowTarget.flushAnimationFrame();
+
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual(
+                Array.from({length: 15}, (_unused, index) => [index, 20, {delayMs: 120, continuous: true}]),
+            );
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledOnce();
+            expect(getConfigured).toHaveBeenCalledTimes(16);
+            expect(getCustom).toHaveBeenCalledTimes(12);
+            const parsed = (raw: string) => split.mock.contexts.filter(
+                (context, index) => String(context) === raw && (split.mock.calls[index][0] as unknown) === '+',
+            ).length;
+            expect(parsed('Alt')).toBe(1);
+            expect(parsed(' Alt ')).toBe(2);
+            expect(parsed(' Option ')).toBe(1);
+            expect(parsed(' Ctrl ')).toBe(1);
+        } finally { split.mockRestore(); }
+    });
+
+    it.each(['configured', 'custom'] as const)('%s getter 在缓存命中时仍逐次执行，异常原样传播后可继续仲裁', kind => {
+        const cause = new Error('selection shortcut getter failed');
+        let fail = false;
+        let raw = ' Alt ';
+        const getConfigured = vi.fn(() => {
+            if (kind === 'configured' && fail) throw cause;
+            return 'custom';
+        });
+        const getCustom = vi.fn(() => {
+            if (kind === 'custom' && fail) throw cause;
+            return raw;
+        });
+        const {deps, documentTarget, windowTarget} = mountHarness({
+            getConfiguredSelectionHotkey: getConfigured,
+            getCustomSelectionHotkey: getCustom,
+            hasActiveSelectionTranslationCandidate: vi.fn(() => true),
+        });
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 1, clientY: 20}));
+        fail = true;
+        documentTarget.emit('mousemove', trustedEvent({clientX: 2, clientY: 20}));
+        expect(getConfigured).toHaveBeenCalledOnce();
+        expect(getCustom).toHaveBeenCalledOnce();
+        expect(windowTarget.animationFrames.size).toBe(1);
+        expect(() => windowTarget.flushAnimationFrame()).toThrow(cause);
+        expect(windowTarget.animationFrames.size).toBe(0);
+        expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[1, 20, {delayMs: 120, continuous: true}]]);
+        expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+        expect(deps.hasActiveSelectionTranslationCandidate).not.toHaveBeenCalled();
+        fail = false;
+        raw = ' Ctrl ';
+        documentTarget.emit('mousemove', trustedEvent({clientX: 3, clientY: 20}));
+        expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+        expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledOnce();
+        expect(getConfigured).toHaveBeenCalledTimes(3);
+        expect(getCustom).toHaveBeenCalledTimes(kind === 'configured' ? 2 : 3);
+        expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[1, 20, {delayMs: 120, continuous: true}]]);
+    });
+
+    it('新 raw 解析异常不发布缓存，旧 raw 仍可复用且相同失败值重试后恢复取消', () => {
+        const cause = new Error('selection shortcut split failed');
+        let raw = ' Alt ';
+        let fail = false;
+        const getConfigured = vi.fn(() => 'custom');
+        const getCustom = vi.fn(() => raw);
+        const {deps, documentTarget, windowTarget} = mountHarness({
+            getConfiguredSelectionHotkey: getConfigured,
+            getCustomSelectionHotkey: getCustom,
+            hasActiveSelectionTranslationCandidate: vi.fn(() => true),
+        });
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        const nativeSplit = String.prototype.split;
+        const split = vi.spyOn(String.prototype, 'split').mockImplementation(function (this: string, ...args: Parameters<typeof nativeSplit>) {
+            if (String(this) === ' Ctrl ' && (args[0] as unknown) === '+' && fail) throw cause;
+            return Reflect.apply(nativeSplit, this, args) as string[];
+        });
+        try {
+            documentTarget.emit('mousemove', trustedEvent({clientX: 1, clientY: 20}));
+            raw = ' Ctrl ';
+            fail = true;
+            documentTarget.emit('mousemove', trustedEvent({clientX: 2, clientY: 20}));
+            expect(getConfigured).toHaveBeenCalledOnce();
+            expect(getCustom).toHaveBeenCalledOnce();
+            expect(windowTarget.animationFrames.size).toBe(1);
+            expect(() => windowTarget.flushAnimationFrame()).toThrow(cause);
+            expect(windowTarget.animationFrames.size).toBe(0);
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            expect(deps.hasActiveSelectionTranslationCandidate).not.toHaveBeenCalled();
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[1, 20, {delayMs: 120, continuous: true}]]);
+            fail = false;
+            raw = ' Alt ';
+            documentTarget.emit('mousemove', trustedEvent({clientX: 3, clientY: 20}));
+            raw = ' Ctrl ';
+            documentTarget.emit('mousemove', trustedEvent({clientX: 4, clientY: 20}));
+            windowTarget.flushAnimationFrame();
+
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([
+                [1, 20, {delayMs: 120, continuous: true}],
+                [3, 20, {delayMs: 120, continuous: true}],
+            ]);
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledOnce();
+            expect(getConfigured).toHaveBeenCalledTimes(4);
+            expect(getCustom).toHaveBeenCalledTimes(4);
+            const parsed = (value: string) => split.mock.contexts.filter(
+                (context, index) => String(context) === value && (split.mock.calls[index][0] as unknown) === '+',
+            ).length;
+            expect(parsed(' Alt ')).toBe(1);
+            expect(parsed(' Ctrl ')).toBe(2);
+        } finally { split.mockRestore(); }
+    });
+
+    it.each(['mousemove', 'selectionchange', 'pointerdown'] as const)('%s 使用暖解析缓存时仍按当前选区与原取消入口处理', consumer => {
+        const getConfigured = vi.fn(() => 'custom');
+        const getCustom = vi.fn(() => ' Ctrl ');
+        const hasSelection = vi.fn(() => false);
+        const {deps, documentTarget, windowTarget} = mountHarness({
+            getConfiguredSelectionHotkey: getConfigured,
+            getCustomSelectionHotkey: getCustom,
+            hasActiveSelectionTranslationCandidate: hasSelection,
+        });
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        const split = vi.spyOn(String.prototype, 'split');
+        try {
+            documentTarget.emit('mousemove', trustedEvent({clientX: 1, clientY: 20}));
+            hasSelection.mockReturnValue(true);
+            documentTarget.emit(consumer, trustedEvent({clientX: 2, clientY: 20}));
+            documentTarget.emit('mousemove', trustedEvent({clientX: 3, clientY: 20}));
+            documentTarget.emit('selectionchange', trustedEvent());
+            documentTarget.emit('pointerdown', trustedEvent());
+            windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[1, 20, {delayMs: 120, continuous: true}]]);
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+            expect(hasSelection).toHaveBeenCalledTimes(consumer === 'pointerdown' ? 1 : 2);
+            expect(getConfigured).toHaveBeenCalledTimes(2);
+            expect(getCustom).toHaveBeenCalledTimes(2);
+            const selectionSplits = split.mock.contexts.filter(
+                (context, index) => String(context) === ' Ctrl ' && (split.mock.calls[index][0] as unknown) === '+',
+            ).length;
+            expect(selectionSplits).toBe(1);
+        } finally { split.mockRestore(); }
+    });
+
+    it.each([true, false])('暖划词解析后配置改变仍保留开始时共享释放归属 sharedAtStart=%s', sharedAtStart => {
+        const {deps, selectionShortcut, documentTarget, documentKeyup, dispatch} = mountSharedHoverShortcutHarness();
+        const getConfigured = vi.spyOn(deps, 'getConfiguredSelectionHotkey');
+        const getCustom = vi.spyOn(deps, 'getCustomSelectionHotkey');
+        selectionShortcut.value = sharedAtStart ? 'F9' : 'F10';
+        dispatch('keydown', trustedEvent({key: 'F9', code: 'F9'}));
+        expect(getConfigured).not.toHaveBeenCalled();
+        expect(getCustom).not.toHaveBeenCalled();
+        const split = vi.spyOn(String.prototype, 'split');
+        try {
+            documentTarget.emit('selectionchange', trustedEvent());
+            expect(getConfigured).toHaveBeenCalledOnce();
+            expect(getCustom).toHaveBeenCalledOnce();
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(sharedAtStart ? 1 : 0);
+            selectionShortcut.value = sharedAtStart ? 'F10' : 'F9';
+            documentTarget.emit('selectionchange', trustedEvent());
+            expect(getConfigured).toHaveBeenCalledTimes(2);
+            expect(getCustom).toHaveBeenCalledTimes(2);
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledOnce();
+            expect(deps.handleTranslation).not.toHaveBeenCalled();
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            const keyup = trustedEvent({key: 'F9', code: 'F9'});
+            dispatch('keyup', keyup);
+
+            // 释放前仲裁使用已经变更的划词配置，事件交接仍服从 keydown 时的共享归属。
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[0, 0]]);
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(sharedAtStart ? 1 : 2);
+            expect(getConfigured).toHaveBeenCalledTimes(3);
+            expect(getCustom).toHaveBeenCalledTimes(3);
+            expect(deps.matchesSelectionTranslatorShortcut).toHaveBeenCalledOnce();
+            const parsed = (raw: string) => split.mock.contexts.filter(
+                (context, index) => String(context) === raw && (split.mock.calls[index][0] as unknown) === '+',
+            ).length;
+            expect(parsed('f9')).toBe(1);
+            expect(parsed('f10')).toBe(1);
+            if (sharedAtStart) {
+                expect(keyup.stopPropagation).not.toHaveBeenCalled();
+                expect(documentKeyup.mock.calls).toEqual([[keyup]]);
+            } else {
+                expect(keyup.stopPropagation).toHaveBeenCalledOnce();
+                expect(documentKeyup).not.toHaveBeenCalled();
+            }
+        } finally { split.mockRestore(); }
+    });
+});

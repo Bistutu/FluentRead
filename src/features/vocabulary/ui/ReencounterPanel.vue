@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/ReencounterPanel.vue
  * 文件职责：在独立 Shadow UI 中呈现阅读时再次遇见的表达与新旧原句对照。
- * 主要内容：提供可键盘访问的轻量入口、附近命中导航、真实原句和收藏参考；主动请求当前语境讲解，保留停止后的流式内容，支持重试、本次暂停和关闭标记。
+ * 主要内容：提供可键盘访问的轻量入口、附近命中导航、真实原句和收藏参考；主动请求当前语境讲解，无关配置通知保留当前回答，讲解输入变化与卸载取消旧请求，支持重试、本次暂停和关闭标记。
  * 模块边界：不扫描或改写网页、不读取词书数据库、不更新掌握度；读取交给内容挂载器，模型交给既有阅读助手，界面样式只作用于本组件。
  -->
 <template>
@@ -34,9 +34,11 @@ import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import browser from 'webextension-polyfill';
 import {config, subscribeConfig} from '@/src/services/config/store';
 import {getInterfaceSkinOption} from '@/src/core/config/interfaceAppearance';
+import {getHarnessRequestConfigKey} from '@/src/core/config/harness';
 import {useUiI18n} from '@/src/ui/i18n';
 import UiIcon from '@/src/ui/components/UiIcon.vue';
-import {ReadingAnswer, streamReading} from '@/src/features/reading-assistant/public';
+import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
+import {streamReading} from '@/src/features/reading-assistant/public';
 import type {ReencounterState} from '../content/reencounterState';
 import type {ReencounterOccurrence} from '../content/readingText';
 
@@ -100,7 +102,12 @@ watch(() => props.state.current, async (current, previous) => {
   else if (hadFocus) previousFocus?.focus({preventScroll: true});
 }, {immediate: true});
 watch(() => [answer.value, props.state.saved, props.state.loading], () => { void nextTick(place); });
-const unsubscribe = subscribeConfig(next => { prefs.value = {...next}; stop(); });
+let revision = getHarnessRequestConfigKey(config);
+const unsubscribe = subscribeConfig(next => {
+  prefs.value = {...next};
+  const nextRevision = getHarnessRequestConfigKey(next);
+  if (revision !== nextRevision) { stop(); revision = nextRevision; }
+});
 const mediaChanged = () => { systemDark.value = media.matches; };
 onMounted(() => {
   media.addEventListener('change', mediaChanged);

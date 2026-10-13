@@ -759,26 +759,155 @@ describe('漫画阅读规则与持久偏好', () => {
     });
 });
 
+// 漫画偏好归一化与正文目录的依赖边界；原 suite 与静态 imports 保持不变。
+import {vi} from 'vitest';
 
-describe('漫画规则的纯归一化模块边界', () => {
-    it('原 public 路径与窄模块共享同一组规则函数和完整行为', async () => {
-        const publicRules = await import('@/src/core/config/manga');
-        const rules = await import('@/src/core/config/mangaRules');
-        for (const key of ['normalizeMangaPrefetchPages', 'createMangaSiteRule', 'normalizeMangaSiteRules', 'normalizeMangaCachePages'] as const) {
-            expect(publicRules[key]).toBe(rules[key]);
+type MangaNormalizationContract = Pick<typeof import('@/src/core/config/manga'),
+    'normalizeMangaPrefetchPages' | 'createMangaSiteRule' | 'normalizeMangaSiteRules'
+    | 'normalizeMangaCachePages' | 'mangaCachePixelBudget'>;
+
+describe('漫画归一化的轻量配置入口', () => {
+    it.each(['catalog', 'profiles'] as const)('真实配置归一化不求值 %s 资源', async resource => {
+        const resourceId = resource === 'catalog'
+            ? '@/src/core/config/mangaSiteCatalog'
+            : '@/src/core/config/mangaReaderProfiles';
+        let reached = 0;
+        vi.resetModules();
+        vi.doMock(resourceId, () => {
+            reached += 1;
+            throw new Error(`配置入口不应求值漫画 ${resource} 资源`);
+        });
+        try {
+            const actualModel = await import('@/src/core/config/model');
+            const normalized = actualModel.normalizeConfig({
+                imageTranslationMangaSites: [{hostname: 'custom.example', pathPrefix: '/read/', selector: ' main img '}],
+                imageTranslationMangaPrefetchPages: 0,
+                imageTranslationMangaCachePages: 3.9,
+            });
+            expect(normalized.imageTranslationMangaSites).toEqual([
+                {hostname: 'custom.example', pathPrefix: '/read/', selector: 'main img'},
+            ]);
+            expect(normalized.imageTranslationMangaPrefetchPages).toBe(0);
+            expect(normalized.imageTranslationMangaCachePages).toBe(3);
+            expect(reached).toBe(0);
+        } catch (error) {
+            expect(reached, `真实 model 导入失败时的 ${resource} 哨兵调用数`).toBe(0);
+            throw error;
+        } finally {
+            vi.doUnmock(resourceId);
+            vi.resetModules();
         }
-        const source = [
-            {hostname: 'reader.invalid', pathPrefix: '/chapter', selector: 'main > img'},
-            {hostname: 'reader.invalid', pathPrefix: '/chapter', selector: 'article img'},
-            {hostname: 'reader.invalid', pathPrefix: 'invalid', selector: 'main img'},
-            {hostname: 'reader.invalid', pathPrefix: '/other', selector: 'section img'},
-        ];
-        expect(rules.normalizeMangaSiteRules(source)).toEqual([source[0], source[3]]);
-        expect(source[1].selector).toBe('article img');
-        expect(rules.normalizeMangaPrefetchPages(undefined)).toBe(3);
-        expect(rules.normalizeMangaPrefetchPages(0)).toBe(0);
-        expect(rules.normalizeMangaCachePages(undefined)).toBe(12);
-        expect(rules.normalizeMangaCachePages(100)).toBe(24);
-        expect(publicRules.mangaCachePixelBudget(2)).toBe(4_000_000);
+    });
+
+    it('旧公开入口直接导出同一归一化函数引用', async () => {
+        vi.resetModules();
+        try {
+            const legacy = await import('@/src/core/config/manga');
+            // importActual 在 case 内解析新路径；旧源缺新文件不会破坏原 suite 的收集。
+            const shared = await vi.importActual<MangaNormalizationContract>('@/src/core/config/mangaNormalization');
+            for (const key of ['normalizeMangaPrefetchPages', 'createMangaSiteRule', 'normalizeMangaSiteRules',
+                'normalizeMangaCachePages', 'mangaCachePixelBudget'] as const) {
+                expect(legacy[key], key).toBe(shared[key]);
+            }
+        } finally {
+            vi.resetModules();
+        }
+    });
+
+    it('真实 URL 归一化保留 IDN、构造先后与原异常空结果', async () => {
+        vi.resetModules();
+        try {
+            const actual = await import('@/src/core/config/manga');
+            const NativeURL = globalThis.URL;
+            const idn = 'https://뉴토끼대피소.com/read?lang=en#page2';
+            const expectedHostname = new NativeURL(idn).hostname;
+            const calls: string[] = [];
+            const order: string[] = [];
+            const rejectedUrl = 'https://controlled-rejected.example/read/';
+            class RecordingURL extends NativeURL {
+                constructor(input: string | URL, base?: string | URL) {
+                    const text = String(input);
+                    calls.push(text);
+                    order.push('url:' + text);
+                    if (text === rejectedUrl) throw new TypeError('controlled URL constructor rejection');
+                    super(input, base);
+                }
+            }
+            vi.stubGlobal('URL', RecordingURL);
+            expect(actual.createMangaSiteRule(idn, ' main img ')).toEqual({
+                hostname: expectedHostname, pathPrefix: '/read', selector: 'main img',
+            });
+            expect(expectedHostname).toMatch(/^xn--/u);
+            expect(actual.createMangaSiteRule('not a URL', 'img')).toBeNull();
+            const selector = {trim: vi.fn(() => 'img')};
+            expect(actual.createMangaSiteRule(rejectedUrl, selector as unknown as string)).toBeNull();
+            expect(selector.trim).not.toHaveBeenCalled();
+            order.length = 0;
+            const throwingSelector = {trim() {
+                order.push('selector');
+                throw new Error('controlled selector rejection');
+            }};
+            expect(actual.createMangaSiteRule('https://selector.example/read/', throwingSelector as unknown as string)).toBeNull();
+            expect(order).toEqual(['url:https://selector.example/read/', 'selector']);
+            expect(calls).toEqual([idn, 'not a URL', rejectedUrl, 'https://selector.example/read/']);
+        } finally {
+            vi.unstubAllGlobals();
+            vi.resetModules();
+        }
+    });
+
+    it('每条自定义规则真实校验 URL，保留去重顺序与字段读取异常', async () => {
+        vi.resetModules();
+        try {
+            const actual = await import('@/src/core/config/manga');
+            const NativeURL = globalThis.URL;
+            const idnHostname = new NativeURL('https://뉴토끼대피소.com/').hostname;
+            const calls: string[] = [];
+            class RecordingURL extends NativeURL {
+                constructor(input: string | URL, base?: string | URL) {
+                    calls.push(String(input));
+                    super(input, base);
+                }
+            }
+            vi.stubGlobal('URL', RecordingURL);
+            const rules = [
+                {hostname: 'first.example', pathPrefix: '/read/', selector: ' img '},
+                {hostname: 'first.example', pathPrefix: '/read/', selector: 'article img'},
+                {hostname: 'first.example', pathPrefix: '/read/../else/', selector: 'img'},
+                {hostname: idnHostname, pathPrefix: '/reader/', selector: 'figure > img'},
+            ];
+            const before = rules.map(rule => ({...rule}));
+            expect(actual.normalizeMangaSiteRules(rules)).toEqual([
+                {hostname: 'first.example', pathPrefix: '/read/', selector: 'img'},
+                {hostname: idnHostname, pathPrefix: '/reader/', selector: 'figure > img'},
+            ]);
+            expect(calls).toEqual(['https://first.example/read/', 'https://first.example/read/',
+                'https://first.example/read/../else/', `https://${idnHostname}/reader/`]);
+            expect(rules).toEqual(before);
+            const getterFailure = new Error('controlled hostname getter failure');
+            const inaccessible = {get hostname(): string {throw getterFailure;}, pathPrefix: '/read/', selector: 'img'};
+            expect(() => actual.normalizeMangaSiteRules([inaccessible])).toThrow(getterFailure);
+            expect(calls).toHaveLength(4);
+        } finally {
+            vi.unstubAllGlobals();
+            vi.resetModules();
+        }
+    });
+
+    it('快速缓存容量的损坏值和总像素预算保留原默认、下限与上限', async () => {
+        vi.resetModules();
+        try {
+            const actual = await import('@/src/core/config/manga');
+            for (const value of [undefined, Infinity]) {
+                expect(actual.normalizeMangaCachePages(value)).toBe(12);
+                expect(actual.mangaCachePixelBudget(value)).toBe(24_000_000);
+            }
+            for (const [value, pages, pixels] of [[0, 1, 2_000_000], [3.9, 3, 6_000_000], [999, 24, 48_000_000]]) {
+                expect(actual.normalizeMangaCachePages(value)).toBe(pages);
+                expect(actual.mangaCachePixelBudget(value)).toBe(pixels);
+            }
+        } finally {
+            vi.resetModules();
+        }
     });
 });

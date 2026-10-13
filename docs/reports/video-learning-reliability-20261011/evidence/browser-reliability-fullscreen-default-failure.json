@@ -1,0 +1,288 @@
+{
+  "success": false,
+  "evidence": "Production extension; real local MP4 clock; original timed-caption fixtures; deterministic translation; actual live probes reported separately",
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "scenario": "reported-keyboard-fullscreen-layout-reliability",
+      "checks": [
+        {
+          "name": "Sentence learning is a labelled button with an evident interactive affordance",
+          "pass": true,
+          "details": {
+            "text": "开始完整句学习",
+            "role": "BUTTON",
+            "border": "solid",
+            "background": "rgba(239, 71, 118, 0.2)",
+            "width": 266
+          }
+        },
+        {
+          "name": "Trusted shortcuts after clicking the video control learning without host speed changes or jumps to video zero",
+          "pass": true,
+          "details": {
+            "text": "完整句学习?3 / 4 · 0:06–0:07它们生活在海洋里。固定此句回到当前句译文编辑正在翻译…播放辅助关闭循环本句句末暂停前后语境They use rocks to open shells.它们生活在海洋里。A quiet final sentence.重播原句查看解释收藏此句",
+            "sentenceId": "sentence:4:6000:7000:ik76cc",
+            "index": "2",
+            "startMs": "6000",
+            "endMs": "7000",
+            "paused": true,
+            "time": 6,
+            "rate": 1,
+            "seeking": true,
+            "loop": "false",
+            "pauseAtEnd": "true",
+            "pinned": "true",
+            "translation": "正在翻译…"
+          }
+        },
+        {
+          "name": "Editing text keeps ordinary letter keys in the editor without changing playback assistance or speed",
+          "pass": true
+        },
+        {
+          "name": "Help is in normal document flow and leaves the original sentence readable",
+          "pass": true,
+          "details": {
+            "help": {
+              "x": 629,
+              "y": 390.6171875,
+              "width": 334,
+              "height": 70.78125,
+              "top": 390.6171875,
+              "right": 963,
+              "bottom": 461.3984375,
+              "left": 629
+            },
+            "original": {
+              "x": 629,
+              "y": 180.4765625,
+              "width": 334,
+              "height": 24.6484375,
+              "top": 180.4765625,
+              "right": 963,
+              "bottom": 205.125,
+              "left": 629
+            },
+            "overlap": false
+          }
+        },
+        {
+          "name": "Opening at compact player size and enlarging preserves reachable navigation, the panel and current edited draft",
+          "pass": true,
+          "details": {
+            "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-58ef-final/youtube-reliability-compact.png",
+            "compactBounds": {
+              "bodyHeight": 69,
+              "bodyScrollable": true,
+              "headerNavigationCount": 0,
+              "controls": [
+                {
+                  "action": "previous",
+                  "count": 1,
+                  "bounds": {
+                    "x": 57,
+                    "y": 225.234375,
+                    "width": 32,
+                    "height": 32,
+                    "top": 225.234375,
+                    "right": 89,
+                    "bottom": 257.234375,
+                    "left": 57
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "play",
+                  "count": 1,
+                  "bounds": {
+                    "x": 95,
+                    "y": 225.234375,
+                    "width": 262,
+                    "height": 32,
+                    "top": 225.234375,
+                    "right": 357,
+                    "bottom": 257.234375,
+                    "left": 95
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "next",
+                  "count": 1,
+                  "bounds": {
+                    "x": 363,
+                    "y": 225.234375,
+                    "width": 32,
+                    "height": 32,
+                    "top": 225.234375,
+                    "right": 395,
+                    "bottom": 257.234375,
+                    "left": 363
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "explain",
+                  "count": 1,
+                  "bounds": {
+                    "x": 57,
+                    "y": 264.234375,
+                    "width": 166,
+                    "height": 30,
+                    "top": 264.234375,
+                    "right": 223,
+                    "bottom": 294.234375,
+                    "left": 57
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "save",
+                  "count": 1,
+                  "bounds": {
+                    "x": 229,
+                    "y": 264.234375,
+                    "width": 166,
+                    "height": 30,
+                    "top": 264.234375,
+                    "right": 395,
+                    "bottom": 294.234375,
+                    "left": 229
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                }
+              ]
+            },
+            "state": {
+              "text": "完整句学习?2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句译文编辑操作回归草稿。播放辅助关闭循环本句句末暂停前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。重播原句查看解释收藏此句",
+              "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
+              "index": "1",
+              "startMs": "3000",
+              "endMs": "5500",
+              "paused": true,
+              "time": 3,
+              "rate": 1,
+              "seeking": false,
+              "loop": "false",
+              "pauseAtEnd": "true",
+              "pinned": "true",
+              "translation": "操作回归草稿。"
+            }
+          }
+        },
+        {
+          "name": "Arrow keys focused inside the subtitle menu keep menu ownership without stepping the learning sentence or changing its draft",
+          "pass": true
+        },
+        {
+          "name": "The subtitle menu opens and switches display mode in actual fullscreen without changing the selected source range or draft",
+          "pass": true,
+          "details": {
+            "text": "完整句学习?2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句译文编辑操作回归草稿。播放辅助关闭循环本句句末暂停前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。重播原句查看解释收藏此句",
+            "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
+            "index": "1",
+            "startMs": "3000",
+            "endMs": "5500",
+            "paused": true,
+            "time": 3,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "true",
+            "pinned": "true",
+            "translation": "操作回归草稿。"
+          }
+        },
+        {
+          "name": "Body focus during fullscreen keeps learning shortcuts scoped to its fullscreen media without reaching conflicting host shortcuts",
+          "pass": true
+        }
+      ],
+      "captures": [
+        {
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-58ef-final/youtube-reliability-video-menu.png",
+          "dom": "/private/tmp/fluentread-video-learning-reliability-reliability-58ef-final/youtube-reliability-video-menu.html"
+        },
+        {
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-58ef-final/youtube-reliability-fullscreen.png",
+          "dom": "/private/tmp/fluentread-video-learning-reliability-reliability-58ef-final/youtube-reliability-fullscreen.html"
+        }
+      ]
+    }
+  ],
+  "liveCases": [],
+  "pageErrors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "artifact": {
+    "contentSha256": "8ebb510f78ac406524eb1dd20dd4d5706c99c3155c45cf21d235040863bb4bf5",
+    "version": "0.0.37"
+  },
+  "focusObserver": {
+    "monitorPid": 74020,
+    "time": 1791731900079.3162,
+    "monotonicMs": 3157192140.1059585
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    },
+    "frontmostAfter": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    }
+  },
+  "failure": "page.waitForFunction: Timeout 15000ms exceeded.\n    at runReliabilityFixture (/Users/thinkstu/Desktop/copy/FluentRead-video-learning-reliability-20261011/scripts/run-video-sentence-learning-test.cjs:729:14)\n    at async main (/Users/thinkstu/Desktop/copy/FluentRead-video-learning-reliability-20261011/scripts/run-video-sentence-learning-test.cjs:1552:41)",
+  "failureState": {
+    "text": "完整句学习?2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句译文编辑操作回归草稿。播放辅助关闭循环本句句末暂停前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。重播原句查看解释收藏此句",
+    "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
+    "index": "1",
+    "startMs": "3000",
+    "endMs": "5500",
+    "paused": true,
+    "time": 3,
+    "rate": 1,
+    "seeking": false,
+    "loop": "false",
+    "pauseAtEnd": "true",
+    "pinned": "true",
+    "translation": "操作回归草稿。"
+  },
+  "captures": [
+    {
+      "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-58ef-final/failure.png",
+      "dom": "/private/tmp/fluentread-video-learning-reliability-reliability-58ef-final/failure.html"
+    }
+  ],
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  }
+}

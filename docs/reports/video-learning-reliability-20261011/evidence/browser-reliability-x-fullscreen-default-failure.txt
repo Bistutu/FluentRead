@@ -1,0 +1,32 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/run-video-sentence-learning-test.cjs --reliability-only --platforms x --extension-dir .output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --artifacts-dir /private/tmp/fluentread-video-learning-reliability-reliability-x-58ef-final
+x: Sentence learning is a labelled button with an evident interactive affordance
+x: Trusted shortcuts after clicking the video control learning without host speed changes or jumps to video zero
+x: Editing text keeps ordinary letter keys in the editor without changing playback assistance or speed
+x: Help is in normal document flow and leaves the original sentence readable
+x: Opening at compact player size and enlarging preserves reachable navigation, the panel and current edited draft
+x: Arrow keys focused inside the subtitle menu keep menu ownership without stepping the learning sentence or changing its draft
+x: The subtitle menu opens and switches display mode in actual fullscreen without changing the selected source range or draft
+x: Body focus during fullscreen keeps learning shortcuts scoped to its fullscreen media without reaching conflicting host shortcuts
+{
+  "success": false,
+  "fixtureCases": [
+    {
+      "platform": "x",
+      "scenario": "reported-keyboard-fullscreen-layout-reliability",
+      "success": false,
+      "checks": 8
+    }
+  ],
+  "liveCases": [],
+  "failure": "page.waitForFunction: Timeout 15000ms exceeded.",
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "report": "/private/tmp/fluentread-video-learning-reliability-reliability-x-58ef-final/report.json"
+}

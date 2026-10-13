@@ -1,0 +1,52 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/run-video-sentence-learning-test.cjs --fullscreen-lifecycle-only --platforms youtube,x --extension-dir .output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --artifacts-dir /private/tmp/fluentread-video-learning-reliability-lifecycle-58ef-final
+youtube: Sentence learning is a labelled button with an evident interactive affordance
+youtube: Trusted shortcuts after clicking the video control learning without host speed changes or jumps to video zero
+youtube: Editing text keeps ordinary letter keys in the editor without changing playback assistance or speed
+youtube: Help is in normal document flow and leaves the original sentence readable
+youtube: Opening at compact player size and enlarging preserves reachable navigation, the panel and current edited draft
+youtube: Arrow keys focused inside the subtitle menu keep menu ownership without stepping the learning sentence or changing its draft
+youtube: The subtitle menu opens and switches display mode in actual fullscreen without changing the selected source range or draft
+youtube: Body focus during fullscreen keeps learning shortcuts scoped to its fullscreen media without reaching conflicting host shortcuts
+youtube: Actual fullscreen API exit preserves the learning draft and restores the dragged position (browser-default Escape is not covered)
+youtube: Outside fullscreen Escape closes the open subtitle menu first and keeps the learning panel and draft
+youtube: A same-media inner fullscreen host and explicit API exit reparent the existing learning instance and keep drafts
+youtube: Outside fullscreen Escape closes learning and releases host keyboard ownership
+youtube: Selecting loop or end pause arms the current original range without seeking to time zero
+youtube: Closing learning cancels range ownership and leaves normal 1x playback advancing
+youtube: The panel style entry opens the dedicated interface-center section with preview left and controls right
+youtube: Trusted style controls persist layout, opacity, font scale, width and position without losing an open draft or reissuing translation
+youtube: A fresh video document restores the saved appearance and default bottom-left position while session drag stays local
+x: Sentence learning is a labelled button with an evident interactive affordance
+x: Trusted shortcuts after clicking the video control learning without host speed changes or jumps to video zero
+x: Editing text keeps ordinary letter keys in the editor without changing playback assistance or speed
+x: Help is in normal document flow and leaves the original sentence readable
+x: Opening at compact player size and enlarging preserves reachable navigation, the panel and current edited draft
+{
+  "success": false,
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "scenario": "reported-input-and-explicit-fullscreen-api-lifecycle",
+      "success": true,
+      "checks": 17
+    },
+    {
+      "platform": "x",
+      "scenario": "reported-input-and-explicit-fullscreen-api-lifecycle",
+      "success": false,
+      "checks": 5
+    }
+  ],
+  "liveCases": [],
+  "failure": "AssertionError [ERR_ASSERTION]: Panel did not move to user position: {\"before\":{\"x\":43,\"y\":246.9375,\"width\":277,\"height\":16.796875},\"dragged\":{\"x\":32,\"y\":234.2421875,\"width\":400,\"height\":372.9921875}}",
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "report": "/private/tmp/fluentread-video-learning-reliability-lifecycle-58ef-final/report.json"
+}

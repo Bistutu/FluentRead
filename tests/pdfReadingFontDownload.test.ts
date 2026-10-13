@@ -1,5 +1,6 @@
 import {createHash, webcrypto} from 'node:crypto';
 import {readFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {
     createPdfReadingFontLoader, getPdfReadingFontSources, loadPdfReadingFontBytes,
@@ -33,6 +34,14 @@ function harness(overrides: Partial<PdfReadingFontLoaderDependencies> = {}) {
 afterEach(() => {vi.useRealTimers(); vi.unstubAllGlobals();});
 
 describe('PDF reading font data download', () => {
+    it('pins an immutable source revision containing the maintained supplemental font', () => {
+        expect(PDF_READING_FONT_REVISION).toMatch(/^[a-f0-9]{40}$/u);
+        const pinned = execFileSync('git', ['show', `${PDF_READING_FONT_REVISION}:public${PDF_READING_FONT_PATH}`], {cwd: process.cwd(), maxBuffer: 6_000_000});
+        expect(pinned.byteLength).toBe(PDF_READING_FONT_BYTES);
+        expect(hash(pinned)).toBe(PDF_READING_FONT_SHA256);
+        expect(Buffer.compare(pinned, Buffer.from(fontBytes))).toBe(0);
+    });
+
     it('pins the same real bytes as the maintained font, persists them, and reopens offline', async () => {
         const h = harness();
         const downloaded = await h.load();

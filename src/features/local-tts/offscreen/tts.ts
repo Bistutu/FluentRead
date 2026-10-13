@@ -1,12 +1,13 @@
 /**
  * @file src/features/local-tts/offscreen/tts.ts
  * 文件职责：编排本地 Kokoro TTS 模型缓存、Worker 生命周期、下载状态和合成请求。
- * 主要内容：朗读不自动下载模型，串行复用一个 Worker；GPU 生命周期失败按总预算重建一次 CPU Worker，资源重建与显式取消分别校验代次；释放时取消在途及排队任务，模型操作互斥，真实下载字节进度原样发布。
+ * 主要内容：朗读不自动下载模型，串行复用一个 Worker，并按设备内存保留有界空闲会话；GPU 生命周期失败按总预算重建一次 CPU Worker，资源重建与显式取消分别校验代次；释放时取消在途及排队任务，模型操作互斥，真实下载字节进度原样发布。
  * 模块边界：只负责扩展自有 Offscreen 运行时，不决定在线/本地策略，也不直接操作网页 UI。
  */
 
 import {parseSpeechCues, type SpeechCue} from '@/src/core/tts/speechProgress';
 import {withLocalInferenceBudget} from '@/src/shared/onnx/resources';
+import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
 import {
     LOCAL_TTS_MODEL,
     LOCAL_TTS_MODEL_ID,
@@ -61,7 +62,6 @@ interface PendingWorkerRequest {
 type WorkerLifecycleError = Error & {retryableWorkerFailure?: true};
 
 const SYNTHESIS_TIMEOUT_MS = 120_000;
-const MODEL_IDLE_DISPOSE_MS = 30_000;
 
 let worker: Worker | null = null;
 let workerGeneration = 0;
@@ -107,7 +107,7 @@ function scheduleIdleDispose(): void {
     idleDisposeTimer = window.setTimeout(() => {
         idleDisposeTimer = undefined;
         if (pendingRequests.size === 0 && activeSyntheses === 0) terminateWorker();
-    }, MODEL_IDLE_DISPOSE_MS);
+    }, localModelIdleMs());
 }
 
 function rejectPending(error: Error): void {
@@ -284,6 +284,8 @@ export async function synthesizeLocalTts(
     if (signal?.aborted) throw createAbortError();
     if (removingModel) throw new Error('正在清除本地 TTS 模型，请稍后重试');
     if (!supportsLocalTtsLanguage(language)) throw new LocalTtsLanguageUnsupportedError(language);
+    // 文件校验和共享预算等待也属于本次请求，先撤销上一轮空闲回收。
+    clearIdleDispose();
     const generation = cancellationGeneration;
     activeSyntheses += 1;
     try {

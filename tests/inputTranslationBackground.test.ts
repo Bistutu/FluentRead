@@ -1,18 +1,13 @@
 /**
  * @file tests/inputTranslationBackground.test.ts
  * 文件职责：验证输入框翻译后台 handler 从本地配置建立冻结独立请求，拒绝网页侧伪造配置，并将可取消请求交给按发送者隔离的共享注册表。
- * 主要内容：覆盖 AI prompt 的默认与自定义变量、机器翻译忽略 prompt/model、源语言/上下文/词库隔离、缓存开关、可信发送者隐私在有无取消 ID 时的冻结、跨 tab 同 ID 取消隔离、同目标早退清理、配置水合取消、先取消后触发及 provider 迟到响应。
+ * 主要内容：覆盖 AI prompt 的默认与自定义变量、机器翻译忽略 prompt/model、源语言/上下文/词库隔离、缓存开关、取消字段收窄、同目标早退清理、配置水合取消、先取消后触发及 provider 迟到响应。
  * 模块边界：本文件使用内存 mock 翻译函数，不发起网络请求；provider 的真实协议由 translation broker 与 provider 专项测试负责。
  */
 import {describe, expect, it, vi} from 'vitest';
 import {Config} from '@/src/core/config/model';
 import {services} from '@/src/core/config/catalog';
-import {
-    getTranslationGlossaryContext,
-    getTranslationProviderConfig,
-    getTranslationRequestControl,
-    TRANSLATION_REQUEST_CONTROL,
-} from '@/src/services/translation/requestSnapshot';
+import {getTranslationProviderConfig, getTranslationRequestControl} from '@/src/services/translation/requestSnapshot';
 import {createTranslationCancelHandler, createTranslationRequestRegistry} from '@/src/app/background/handlers/translation';
 import {TRANSLATION_CANCEL_MESSAGE_TYPE} from '@/src/services/translation/types';
 import type {TranslationSingleRequestMessage} from '@/src/services/translation/types';
@@ -236,94 +231,6 @@ describe('输入框翻译后台配置绑定', () => {
         expect(request).not.toHaveProperty('clientRequestId');
         expect(request).not.toHaveProperty('signal');
         expect(request).not.toHaveProperty('ownershipKey');
-    });
-
-    it.each([false, true].flatMap(withRequestId => [
-        {privacy: 'normal', incognito: false},
-        {privacy: 'private', incognito: true},
-        {privacy: 'unknown', incognito: undefined},
-    ].map(privacy => ({withRequestId, ...privacy}))))
-    ('有取消 ID=$withRequestId 时仅信任 sender 的 $privacy 隐私，不接收网页自报范围', async ({withRequestId, incognito}) => {
-        const config = new Config();
-        const translate = vi.fn(async (_request: TranslationSingleRequestMessage) => '译文');
-        const handler = createInputBoxTranslationHandler({
-            ready: Promise.resolve(), getConfig: () => config, translate,
-            requestRegistry: createTranslationRequestRegistry(),
-        });
-        const forgedPrivacy = incognito !== true;
-        await expect(handler.handle({
-            type: 'inputBoxTranslation', text: 'synthetic input', targetLang: 'zh-Hans',
-            ...(withRequestId ? {clientRequestId: 'typed-privacy'} : {}),
-            privateContext: forgedPrivacy, incognito: forgedPrivacy,
-            sender: {tab: {incognito: forgedPrivacy}}, quotaScope: 'page-forged',
-        } as never, {sender: {tab: {id: 17, ...(incognito === undefined ? {} : {incognito})}}}))
-            .resolves.toEqual({success: true, translatedText: '译文'});
-        const request = translate.mock.calls[0][0];
-        const privacy = getTranslationGlossaryContext(request)!;
-        expect(privacy.privateContext).toBe(incognito);
-        expect(Object.isFrozen(privacy)).toBe(true);
-        for (const field of ['clientRequestId', 'privateContext', 'incognito', 'sender', 'quotaScope']) {
-            expect(request).not.toHaveProperty(field);
-        }
-        const control = getTranslationRequestControl(request);
-        if (withRequestId) {
-            expect(control?.signal.aborted).toBe(false);
-            expect(control?.ownershipKey).toContain('tab:17');
-            expect(Object.getOwnPropertyDescriptor(request, TRANSLATION_REQUEST_CONTROL)?.enumerable).toBe(false);
-        } else {
-            expect(control).toBeUndefined();
-        }
-    });
-
-    it.each([false, true])('有取消 ID=%s 时在首次配置等待前冻结发送者隐私', async withRequestId => {
-        const config = new Config();
-        let resolveReady!: () => void;
-        const ready = new Promise<void>(resolve => {resolveReady = resolve;});
-        const translate = vi.fn(async (_request: TranslationSingleRequestMessage) => '译文');
-        const handler = createInputBoxTranslationHandler({
-            ready, getConfig: () => config, translate, requestRegistry: createTranslationRequestRegistry(),
-        });
-        const context = {sender: {tab: {id: 17, incognito: true}}};
-        const pending = handler.handle({
-            type: 'inputBoxTranslation', text: 'synthetic input', targetLang: 'zh-Hans',
-            ...(withRequestId ? {clientRequestId: 'privacy-before-ready'} : {}),
-        }, context);
-        expect(translate).not.toHaveBeenCalled();
-        context.sender.tab.incognito = false;
-        resolveReady();
-        await expect(pending).resolves.toEqual({success: true, translatedText: '译文'});
-        expect(getTranslationGlossaryContext(translate.mock.calls[0][0])?.privateContext).toBe(true);
-    });
-
-    it('两个 tab 的同 ID 同时在途时，只取消所属 tab 并保留各自可信隐私', async () => {
-        const config = new Config();
-        const requestRegistry = createTranslationRequestRegistry();
-        const cancel = createTranslationCancelHandler(requestRegistry);
-        let resolveNormal!: (value: string) => void;
-        let resolvePrivate!: (value: string) => void;
-        const normalResult = new Promise<string>(resolve => {resolveNormal = resolve;});
-        const privateResult = new Promise<string>(resolve => {resolvePrivate = resolve;});
-        const translate = vi.fn((request: TranslationSingleRequestMessage) =>
-            request.origin === 'normal input' ? normalResult : privateResult);
-        const handler = createInputBoxTranslationHandler({ready: Promise.resolve(), getConfig: () => config, translate, requestRegistry});
-        const normalOwner = {sender: {id: 'controlled', tab: {id: 41, incognito: false}, frameId: 0}};
-        const privateOwner = {sender: {id: 'controlled', tab: {id: 42, incognito: true}, frameId: 0}};
-        const normalPending = handler.handle({type: 'inputBoxTranslation', text: 'normal input', targetLang: 'zh-Hans', clientRequestId: 'same-id'}, normalOwner);
-        const cancelled = expect(normalPending).rejects.toMatchObject({name: 'AbortError'});
-        const privatePending = handler.handle({type: 'inputBoxTranslation', text: 'private input', targetLang: 'zh-Hans', clientRequestId: 'same-id'}, privateOwner);
-        await vi.waitFor(() => expect(translate).toHaveBeenCalledTimes(2));
-        const normalRequest = translate.mock.calls.find(([request]) => request.origin === 'normal input')![0];
-        const privateRequest = translate.mock.calls.find(([request]) => request.origin === 'private input')![0];
-        expect(getTranslationGlossaryContext(normalRequest)?.privateContext).toBe(false);
-        expect(getTranslationGlossaryContext(privateRequest)?.privateContext).toBe(true);
-        expect(cancel.handle({type: TRANSLATION_CANCEL_MESSAGE_TYPE, clientRequestId: 'same-id'}, normalOwner))
-            .toMatchObject({cancelled: true});
-        expect(getTranslationRequestControl(normalRequest)?.signal.aborted).toBe(true);
-        expect(getTranslationRequestControl(privateRequest)?.signal.aborted).toBe(false);
-        resolveNormal('cancelled late result');
-        resolvePrivate('private result');
-        await cancelled;
-        await expect(privatePending).resolves.toEqual({success: true, translatedText: 'private result'});
     });
 
     it('已注册的同目标请求原文返回且不调用 broker，完成后清理 ownership 并保留已用标识', async () => {

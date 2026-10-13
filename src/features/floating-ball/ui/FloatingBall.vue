@@ -1,7 +1,7 @@
 <!--
  * @file src/features/floating-ball/ui/FloatingBall.vue
  * 文件职责：呈现用户开启后的页面悬浮工具，将全文翻译、品牌手柄和漫画入口按顺序组织，并保留拖动停靠与可选常驻模式。
- * 主要内容：品牌主体只显示圆形本地图标，上方翻译按钮分别呈现处理中、成功与失败，活动会话仍提供恢复原文动作；默认悬停展开、移出和 Escape 收回边缘，键盘聚焦与触屏轻点保持入口可操作。
+ * 主要内容：品牌主体只显示圆形本地图标，上方翻译按钮分别呈现处理中、成功与失败，活动会话仍提供恢复原文动作，用户可见名称复用当前界面语言的品牌文案；默认悬停展开、移出和 Escape 收回边缘，键盘聚焦与触屏轻点保持入口可操作。
  * 模块边界：它只负责视觉与局部交互，不直接调用浏览器消息、保存配置或执行全文翻译；这些副作用由 content/runtime 通过 props、事件和 defineExpose 桥接，外观配置的归一化留在 core/config。
  -->
 <template>
@@ -91,7 +91,7 @@
       v-if="showSettingsTool"
       class="floating-ball-tool floating-ball-settings floating-ball-item"
       type="button"
-      aria-label="打开 FluentRead 设置"
+      :aria-label="settingsActionLabel"
       title="打开设置"
       @pointerdown.stop
       @click.stop="handleSettingsClick"
@@ -231,12 +231,13 @@ const mangaTitle = computed(() => {
   const message = manga.pending ? manga.message || '正在处理当前漫画页' : manga.errors ? '部分页面未完成' : '连续翻译已开启';
   return `${t(message)} · ${t('暂停并显示原图')}`;
 });
+const settingsActionLabel = computed(() => t('打开 FluentRead 设置').replace('FluentRead', translateMessage('common.brand')));
 const mainActionLabel = computed(() => {
-  if (presentation.value.clickAction === 'settings') return `FluentRead · ${t('打开 FluentRead 设置')}`;
+  if (presentation.value.clickAction === 'settings') return `${translateMessage('common.brand')} · ${settingsActionLabel.value}`;
   if (presentation.value.clickAction === 'translate') {
-    return `FluentRead · ${translationActionLabel.value}`;
+    return `${translateMessage('common.brand')} · ${translationActionLabel.value}`;
   }
-  return 'FluentRead';
+  return translateMessage('common.brand');
 });
 const mainActionTitle = computed(() => {
   if (presentation.value.clickAction === 'settings') return '打开设置，按住可拖动';

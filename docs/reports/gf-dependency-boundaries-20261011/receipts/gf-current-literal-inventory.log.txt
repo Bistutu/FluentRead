@@ -1,2 +1,0 @@
-[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <pnpm9> exec node <evidence>/gf-literal-inventory.prototype.mjs <repo> <evidence>/original-retained-fluent-read.user.js <evidence>/GF-CURRENT-LITERAL-INVENTORY.json
-{"artifactBytes":2349380,"literalCount":16143,"bindingCount":2165,"literalSpanUnionUtf8Bytes":280578}

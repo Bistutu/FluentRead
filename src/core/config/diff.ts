@@ -653,6 +653,7 @@ const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
     videoSubtitleFontSize: {group: 'videoSubtitles', label: '视频字幕字号', format: (value) => formatNumber(value, '%')},
     videoSubtitleOffsetMs: {group: 'videoSubtitles', label: '字幕时间偏移', format: (value) => formatNumber(value, 'ms')},
     videoSubtitleAppearance: {group: 'videoSubtitles', label: '视频字幕外观'},
+    videoSentenceLearningAppearance: {group: 'videoSubtitles', label: '完整句学习外观'},
 
     useCache: {group: 'advanced', label: '缓存翻译结果', format: formatBoolean},
     translationCacheMaxBytes: {group: 'advanced', label: '翻译缓存容量上限', format: (value) => formatNumber(value, ' B')},
@@ -693,6 +694,9 @@ const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
     translationCenterLayout: {group: 'tools', label: '翻译中心结果布局', format: (value) => value === 'grid' ? '并排对比' : '列表阅读'},
     vocabularyBookEnabled: {group: 'tools', label: '单词本', format: formatBoolean},
     vocabularyReencounterEnabled: {group: 'tools', label: '再次遇见收藏表达', format: formatBoolean},
+    ...(import.meta.env?.BROWSER === 'userscript' ? {} : {
+        personalCorrectionsEnabled: {group: 'tools', label: '个人校订', format: formatBoolean} satisfies FieldDefinition,
+    }),
 };
 /** 云备份复用已知设置的名称；未知字段绝不将原始键当作可见标签。 */
 export function configDiffFieldLabel(field: string): string | undefined {

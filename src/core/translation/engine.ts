@@ -1,8 +1,8 @@
 /**
  * @file src/core/translation/engine.ts
  *
- * 文件职责：实现 DOM 节点到 TranslationCandidate 的核心解析引擎，协调安全守卫、站点适配器、布局边界和文本有效性。
- * 主要内容：按正文/全部节点范围协调候选；定义 TranslationCandidateCore、候选优选与键值函数，记录发现步骤和原因，按站点规则把显式换行拆为两种入口一致的内联候选，处理编辑器坐标命中屏障、hover 屏障、适配优先级、快照省略、缓存及坐标命中；同步只读批量解析复用全部范围及无站点适配/应用外壳例外的普通正文祖先守卫和文本保护，涉及显式外壳权限或站点重定向目标时独立解析；无元素子节点的非文档表面不重复探测不可能成立的内联分段，仍由完整候选分类复验文本和保护；悬浮命中独立后代的包裹层时禁止回退吞并整个容器，让独立 tooltip 不抢占外层控件候选，保证全文与悬浮共享决策。 可核对的公开符号包括 TranslationCoreInspection、TranslationDiscoveryStep、getTranslationCandidateKey、selectPreferredTranslationCandidate、TranslationCandidateCore。
+ * 文件职责：实现 DOM 节点到 TranslationCandidate 的核心解析引擎，协调安全守卫、站点适配器、布局边界和文本有效性；为显式非原子行内容器保留直属正文与独立子段落的一致发现和悬浮边界。
+ * 主要内容：按正文/全部节点范围协调候选；定义 TranslationCandidateCore、候选优选与键值函数，记录发现步骤和原因，按站点规则把显式换行拆为两种入口一致的内联候选，处理编辑器坐标命中屏障、hover 屏障、适配优先级、快照省略、缓存及坐标命中；局部脏内联子树仅在完整保护检查通过后回到最近显式非原子祖先重扫，不把每个正文子节点重定向成重复整段请求；发现强制目标时仅在当前 enter 的同步检查中复用既有决策和祖先选择器 miss，不跨生成器让出缓存；同步只读批量解析复用全部范围及无站点适配/应用外壳例外的普通正文祖先守卫和文本保护，涉及显式外壳权限或站点重定向目标时独立解析；无元素子节点的非文档表面不重复探测不可能成立的内联分段，仍由完整候选分类复验文本和保护；悬浮命中独立后代的包裹层时禁止回退吞并整个容器，让独立 tooltip 不抢占外层控件候选，保证全文与悬浮共享决策。 可核对的公开符号包括 TranslationCoreInspection、TranslationDiscoveryStep、getTranslationCandidateKey、selectPreferredTranslationCandidate、TranslationCandidateCore。
  * 模块边界：本文件属于可独立测试的 core 候选领域；可以读取传入 DOM 以计算结果，坐标命中栈与祖先守卫只在单次同步解析中复用，不跨手势缓存；不访问配置存储、不调用 provider、不注册页面监听器，也不负责译文渲染或 feature 生命周期。
  */
 
@@ -385,9 +385,8 @@ export class TranslationCandidateCore {
 
     private hardGuard(
         element: Element,
-        evaluationContext?: ResolutionEvaluationContext,
+        evaluationContext: ResolutionEvaluationContext,
     ): HardGuardResult {
-        if (!evaluationContext) return evaluateHardGuard(element);
         this.primeResolutionAncestry(element, evaluationContext);
         // primeResolutionAncestry 的正常、缓存命中与超深路径都会为命中元素写入结果。
         return evaluationContext.hardGuards.get(element)!;
@@ -453,7 +452,7 @@ export class TranslationCandidateCore {
     private inspectWithTextProtectionCache(
         element: Element,
         textProtectionCache: TranslationTextProtectionCache,
-        evaluationContext?: ResolutionEvaluationContext,
+        evaluationContext: ResolutionEvaluationContext,
     ): TranslationCoreInspection {
         const adapterContext = this.adapterContextForResolution(evaluationContext);
         const shouldStayOriginal = evaluationContext?.adapterContext
@@ -547,14 +546,11 @@ export class TranslationCandidateCore {
         element: Element,
         skipStructuralAncestorCheck: boolean,
         textProtectionCache: TranslationTextProtectionCache,
+        explicitContainer: boolean,
         candidateChildBarriers?: ReadonlySet<Element>,
         evaluationContext?: ResolutionEvaluationContext,
     ): TranslationCandidate[] {
-        if (!this.allowsGenericCandidates()) {
-            const decision = this.adapterDecision(element, evaluationContext).decision;
-            if (decision.kind !== 'force-target' || decision.atomic !== false ||
-                (decision.target ?? element) !== element) return [];
-        }
+        if (!this.allowsGenericCandidates() && !explicitContainer) return [];
         const candidates: TranslationCandidate[] = [];
         const atomicTargetCache = new WeakMap<Element, boolean>();
         const protectionOptions = evaluationContext?.textProtectionOptions;
@@ -581,6 +577,7 @@ export class TranslationCandidateCore {
             textProtectionCache,
             protectionOptions,
             this.scope,
+            explicitContainer,
         )) {
             const partitions = partitionInlineRunAtBarriers(
                 run,
@@ -662,7 +659,7 @@ export class TranslationCandidateCore {
             );
             summary = {
                 candidates: this.inlineRunCandidates(
-                    element, true, evaluationContext.textProtectionCache, childBarriers, evaluationContext,
+                    element, true, evaluationContext.textProtectionCache, explicitContainer, childBarriers, evaluationContext,
                 ),
                 blocksWholeCandidate: childBarriers.size > 0,
             };
@@ -708,7 +705,9 @@ export class TranslationCandidateCore {
 
             let ownsCandidate = false;
             let exhausted = false;
-            for (const step of this.discoverSteps(child)) {
+            // 子树屏障探测只查子树；脏根的显式正文提升属于外部增量入口。
+            // 保留既有控件提升，但不能为每个普通 inline 成员重新遍历整个正文。
+            for (const step of this.walkDiscoverySteps(child, false)) {
                 remainingSteps -= 1;
                 // discoverSteps 会把脏子树提升到所属控件边界重扫，因此步骤里也会出现兄弟节点
                 // 甚至父级自身的候选。只有落在该子节点内部的候选才代表它自己拥有翻译目标；
@@ -852,16 +851,46 @@ export class TranslationCandidateCore {
      * 使全文调用方可以执行帧预算而不改变候选语义。
      */
     *discoverSteps(root: Node): Generator<TranslationDiscoveryStep> {
+        yield* this.walkDiscoverySteps(root, true);
+    }
+
+    private *walkDiscoverySteps(root: Node, promoteExplicitOwner: boolean): Generator<TranslationDiscoveryStep> {
         const visited = new Set<Element>();
         const textProtectionCache = createTranslationTextProtectionCache();
         const roots: Element[] = [];
+        let initialAdapter: AdapterDecisionResult | undefined;
         if (isElementNode(root)) {
             // 动态控件可能先只有图标，再把文字写入内层 flex 标签。该标签本身不再是
             // 正文候选，因此局部重扫应回到同一控件边界；被明确保护的脏子树不能提升。
             const controlOwner = findTranslationControlOwner(root);
-            roots.push(controlOwner && controlOwner !== root &&
+            let scanRoot = controlOwner && controlOwner !== root &&
                 !evaluateHardGuard(root).prune && !this.hasAdapterPrunedAncestor(root)
-                ? controlOwner : root);
+                ? controlOwner : root;
+            if (promoteExplicitOwner && scanRoot === root && !controlOwner && this.scope === 'content' && this.adapters.length > 0) {
+                initialAdapter = this.adapterDecision(root);
+                if (initialAdapter.decision.kind === 'pass' &&
+                    !evaluateHardGuard(root).prune && !this.hasAdapterPrunedAncestor(root) &&
+                    !isTranslationTextElementProtected(root, this.shouldStayOriginal, textProtectionCache)) {
+                    // 硬守卫已验证整条 composed 祖先链不超过预算。这里只走 light DOM，
+                    // 不跨 ShadowRoot；遇到最近显式决策即停止，不越过原子目标或重定向。
+                    // 仅入口提升扫描根，完整遍历的子 frame 仍以自身决定边界和首段 run。
+                    let ancestor = root.parentElement;
+                    while (ancestor && !isDocumentSurface(ancestor)) {
+                        const ownAdapter = this.adapterDecision(ancestor);
+                        const decision = ownAdapter.decision;
+                        if (decision.kind !== 'pass') {
+                            if (decision.kind === 'force-target' && decision.atomic === false &&
+                                (decision.target ?? ancestor) === ancestor) {
+                                scanRoot = ancestor;
+                                initialAdapter = ownAdapter;
+                            }
+                            break;
+                        }
+                        ancestor = ancestor.parentElement;
+                    }
+                }
+            }
+            roots.push(scanRoot);
         } else if ('children' in root) {
             const children = (root as Document | ShadowRoot).children;
             for (let index = 0; index < children.length; index += 1) {
@@ -902,7 +931,10 @@ export class TranslationCandidateCore {
                     const hardGuard = frame.checkAncestors
                         ? evaluateHardGuard(frame.element)
                         : evaluateElementHardGuard(frame.element);
-                    const ownAdapter = this.adapterDecision(frame.element);
+                    // 入口探测与第一 enter 之间没有 yield；复用刚读取的自有决策后立即
+                    // 释放，后续节点或下一次扫描不会继承这次初始结果。
+                    const ownAdapter = initialAdapter ?? this.adapterDecision(frame.element);
+                    initialAdapter = undefined;
                     frame.ownAdapter = ownAdapter;
                     frame.shadowRoot = frame.element.shadowRoot;
                     frame.pruned = hardGuard.prune || ownAdapter.decision.kind === 'prune-subtree';
@@ -911,9 +943,15 @@ export class TranslationCandidateCore {
                         : 'children';
 
                     if (ownAdapter.decision.kind === 'force-target' && !hardGuard.prune) {
+                        // 本段检查在 enter 的 yield 之前完成；不把缓存放入 frame，
+                        // 后续节点仍读取让出后可能变化的宿主属性和站点决策。
+                        const forceContext = createResolutionEvaluationContext();
+                        forceContext.adapterContext = {...this.context, closestSelectorMisses: new WeakMap()};
+                        forceContext.adapterDecisions.set(frame.element, ownAdapter);
                         frame.forcedCandidate = this.inspectWithTextProtectionCache(
                             frame.element,
                             textProtectionCache,
+                            forceContext,
                         ).candidate ?? undefined;
                         frame.forcedAtomic = ownAdapter.decision.atomic !== false;
                         if (frame.forcedCandidate && ownAdapter.decision.atomic !== false) frame.phase = 'exit';
@@ -971,12 +1009,16 @@ export class TranslationCandidateCore {
                 }
 
                 if (!frame.exitCandidates) {
+                    const decision = frame.ownAdapter!.decision;
+                    const explicitContainer = decision.kind === 'force-target' && decision.atomic === false &&
+                        (decision.target ?? frame.element) === frame.element;
                     if (frame.forcedCandidate) {
                         frame.exitCandidates = frame.forcedAtomic === false && frame.descendantHasCandidate
                             ? this.inlineRunCandidates(
                                 frame.element,
                                 true,
                                 textProtectionCache,
+                                explicitContainer,
                                 frame.candidateChildBarriers,
                             )
                             : this.splitForcedCandidate(frame.forcedCandidate, frame.ownAdapter!.decision, textProtectionCache);
@@ -991,6 +1033,7 @@ export class TranslationCandidateCore {
                                 frame.element,
                                 true,
                                 textProtectionCache,
+                                explicitContainer,
                                 frame.candidateChildBarriers,
                             );
                     } else {
@@ -1001,7 +1044,7 @@ export class TranslationCandidateCore {
                         );
                         frame.exitCandidates = candidate ? [candidate] : this.scope === 'all'
                             ? this.inlineRunCandidates(
-                                frame.element, true, textProtectionCache, frame.candidateChildBarriers,
+                                frame.element, true, textProtectionCache, explicitContainer, frame.candidateChildBarriers,
                             )
                             : [];
                     }

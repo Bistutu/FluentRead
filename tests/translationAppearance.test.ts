@@ -80,6 +80,16 @@ describe('译文外观归一化', () => {
         }
     });
 
+    it('保留旧配置中仅含字母的裸 hex，仍拒绝带透明度或损坏的值', () => {
+        for (const [input, expected] of [
+            ['bad', '#bbaadd'], ['abcf', '#aabbcc'], ['ABCDEF', '#abcdef'],
+            ['abcdefff', '#abcdef'], [' abcf ', '#aabbcc'],
+            ['abcd', ''], ['abcdeffe', ''], ['abcdeg', ''],
+        ]) {
+            expect(normalizeTranslationColor(input)).toBe(expected);
+        }
+    });
+
     it('缺失、损坏或越界的外观回到默认值并按步长取整', () => {
         expect(normalizeTranslationAppearance(undefined)).toEqual(DEFAULT_TRANSLATION_APPEARANCE);
         expect(normalizeTranslationAppearance('broken')).toEqual(DEFAULT_TRANSLATION_APPEARANCE);

@@ -41,7 +41,7 @@ import SettingsGroup from './components/SettingsGroup.vue';
 import SettingsPreviewLayout from './components/SettingsPreviewLayout.vue';
 import HarnessSettings from './HarnessSettings.vue';
 import {sentenceAnalysis, sentenceSource, sentenceTranslation} from '@/src/core/config/selectionPreview';
-import {ReadingAnswer} from '@/src/features/reading-assistant/public';
+import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
 const props = defineProps<{config: Config}>();
 const emit = defineEmits<{navigate: [section: string]}>();
 const sentence = ref(false);

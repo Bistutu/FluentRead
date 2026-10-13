@@ -1,7 +1,7 @@
 <!--
 @file src/features/settings/ui/components/PopupPreview.vue
 文件职责：用真实 DOM 按菜单栏的实际结构、尺寸和皮肤变量还原一份 Popup，供风格预览和菜单栏布局预览共用，保证两处看到的是同一个界面。
-主要内容：依次绘制品牌与版本、赞赏与设置、语言与服务、网页及局部翻译、站点开关、快捷入口卡片和底部信息栏；按构建与实际平台能力过滤专属入口，区域与快捷入口按传入顺序渲染，传入编辑层级和排序控制器时叠加拖动手柄与插入提示。
+主要内容：优先复用脚本构建注入的品牌图标并保留扩展资源回退，依次绘制品牌与版本、赞赏与设置、语言与服务、网页及局部翻译、站点开关、快捷入口卡片和底部信息栏；按构建与实际平台能力过滤专属入口，区域与快捷入口按传入顺序渲染，传入编辑层级和排序控制器时叠加拖动手柄与插入提示。
 模块边界：只负责展示与把排序手势交给外部控制器，不读取用户配置、不连接浏览器状态，也不执行菜单栏业务；范例里的服务、快捷键和开关状态是固定示意，不代表用户当前设置。
 -->
 <template>
@@ -14,7 +14,7 @@
   >
     <header class="preview-header" aria-hidden="true">
       <span class="preview-brand">
-        <img class="preview-logo" :src="'/icon/128.png'" alt="" width="32" height="32" />
+        <img class="preview-logo" :src="iconUrl" alt="" width="32" height="32" />
         <span><strong>{{ t('common.brand') }}</strong><small>v{{ version }}</small></span>
       </span>
       <span class="preview-header-actions">
@@ -178,6 +178,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{'edit:scope': [scope: 'popupModule' | 'quickFeature']}>()
 const {t, translateLegacy} = useUiI18n()
+const iconUrl = globalThis.__FLUENTREAD_ICON_DATA__ || '/icon/128.png'
 
 // 固定范例用于比较外观，不表示这些服务、快捷键或开关已在用户配置中启用。
 const previewProviders = ['localTranslation', 'freeTranslation', 'microsoft', 'deepseek']

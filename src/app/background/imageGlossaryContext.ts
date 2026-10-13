@@ -7,7 +7,7 @@
 import type {BackgroundMessage, BackgroundMessageHandler} from './messageRouter';
 import {AREA_TRANSLATE_CAPTURE_MESSAGE_TYPE} from './handlers/areaTranslation';
 import {IMAGE_TRANSLATE_MESSAGE_TYPE, IMAGE_TRANSLATE_TEXTS_MESSAGE_TYPE} from './handlers/imageTranslation';
-import {attachTranslationGlossaryContext, translationPrivacyContext, type TrustedTranslationSenderContext} from '@/src/services/translation/requestSnapshot';
+import {attachTranslationGlossaryContext, createTranslationRequestSnapshot, translationPrivacyContext, type TrustedTranslationSenderContext} from '@/src/services/translation/requestSnapshot';
 
 export interface ImageGlossarySenderContext extends TrustedTranslationSenderContext {}
 
@@ -67,8 +67,14 @@ export function createImageGlossaryContext<TContext extends ImageGlossarySenderC
             return {
                 type: handler.type,
                 async handle(rawMessage, context) {
+                    const message = createTranslationRequestSnapshot(rawMessage) as ImageGlossaryMessage;
+                    // Capture trusted sender metadata before readiness can yield to mutable callers.
+                    const sender = context.sender;
+                    const tab = sender?.tab;
+                    context = {...context, ...(sender ? {sender: {...sender,
+                        ...(tab && typeof tab === 'object' ? {tab: {...tab}} : {}),
+                    }} : {})};
                     await dependencies.ready;
-                    const message = rawMessage as ImageGlossaryMessage;
                     if (startsTransaction) {
                         let id: string;
                         if (message.requestId === undefined) {
@@ -78,18 +84,24 @@ export function createImageGlossaryContext<TContext extends ImageGlossarySenderC
                         const frozen = snapshot(context, message.sourceLanguage);
                         active.set(id, frozen);
                         try {
-                            return await handler.handle({...message, requestId: id} as BackgroundMessage, context);
+                            const forwarded = Object.defineProperties({}, {
+                                ...Object.getOwnPropertyDescriptors(message),
+                                ...Object.getOwnPropertyDescriptors({requestId: id}),
+                            }) as BackgroundMessage;
+                            return await handler.handle(forwarded, context);
                         } finally {
                             active.delete(id);
                         }
                     }
-                    const sender = context.sender;
-                    const fromOffscreen = sender?.url === dependencies.offscreenUrl && sender.tab === undefined;
+                    const frozenSender = context.sender;
+                    const fromOffscreen = frozenSender?.url === dependencies.offscreenUrl && frozenSender.tab === undefined;
                     const frozen = fromOffscreen ? active.get(requestId(message.requestId)) : snapshot(context, undefined);
                     if (!frozen) throw new Error('图片翻译上下文已失效，请重新翻译');
-                    return handler.handle(attachTranslationGlossaryContext({
-                        ...message, glossaryRevision: frozen.glossaryRevision, sourceLanguage: frozen.sourceLanguage,
-                    }, {pageUrl: frozen.pageUrl, context: 'page',
+                    const forwarded = Object.defineProperties({}, {
+                        ...Object.getOwnPropertyDescriptors(message),
+                        ...Object.getOwnPropertyDescriptors({glossaryRevision: frozen.glossaryRevision, sourceLanguage: frozen.sourceLanguage}),
+                    }) as BackgroundMessage;
+                    return handler.handle(attachTranslationGlossaryContext(forwarded, {pageUrl: frozen.pageUrl, context: 'page',
                         ...(frozen.privateContext === undefined ? {} : {privateContext: frozen.privateContext})}), context);
                 },
             };

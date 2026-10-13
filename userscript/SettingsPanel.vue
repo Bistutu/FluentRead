@@ -1,3 +1,9 @@
+<!--
+ * @file userscript/SettingsPanel.vue
+ * 文件职责：提供 userscript 紧凑设置对话框，编辑翻译服务、触发方式、输入翻译与界面配置草稿。
+ * 主要内容：复用配置目录和持久化入口；动画样式末尾的“无”直接关闭界面动画并保留上次静态反馈样式。
+ * 模块边界：只管理设置草稿和保存反馈，不实现网页翻译或扩展专有能力。
+-->
 <template>
   <div ref="menuContainer" class="fr-userscript-settings-backdrop" :class="{ dark: isDark }" role="presentation" @click.self="close">
     <section class="fr-userscript-settings" role="dialog" aria-modal="true" aria-labelledby="fr-userscript-settings-title">
@@ -10,13 +16,13 @@
       </header>
 
       <div class="notice">
-        该版本复用 FluentRead 当前翻译核心。截图 OCR、圈选翻译、Chrome 内置翻译和扩展右键菜单依赖浏览器扩展权限，userscript 中暂不提供。
+        该版本复用流畅阅读当前翻译核心。截图 OCR、圈选翻译、Chrome 内置翻译和扩展右键菜单依赖浏览器扩展权限，userscript 中暂不提供。
       </div>
 
       <div v-if="hydrated" class="settings-grid">
         <fieldset>
           <legend>基础设置</legend>
-          <label class="toggle"><span>启用 FluentRead</span><input v-model="draft.on" type="checkbox" /></label>
+          <label class="toggle"><span>启用流畅阅读</span><input v-model="draft.on" type="checkbox" /></label>
           <label><span>源语言</span><UiSelect v-model="draft.from" :append-to="menuContainer" filterable aria-label="源语言"><ElOption v-for="item in options.from" :key="item.value" :value="item.value" :label="item.label" /></UiSelect></label>
           <label><span>目标语言</span><UiSelect v-model="draft.to" :append-to="menuContainer" filterable aria-label="目标语言"><ElOption v-for="item in options.to" :key="item.value" :value="item.value" :label="item.label" /></UiSelect></label>
           <label><span>译文显示</span><UiSelect v-model="draft.display" :append-to="menuContainer" aria-label="译文显示"><ElOption v-for="item in options.display" :key="item.value" :value="item.value" :label="item.label" /></UiSelect></label>
@@ -96,11 +102,10 @@
           <label><span>划词翻译</span><UiSelect v-model="draft.selectionTranslatorMode" :append-to="menuContainer" aria-label="划词翻译"><ElOption value="disabled" label="关闭" /><ElOption value="bilingual" label="原文 + 译文" /><ElOption value="translation-only" label="仅译文" /></UiSelect></label>
           <label v-if="draft.selectionTranslatorMode !== 'disabled'"><span>划词触发</span><UiSelect v-model="draft.selectionTranslatorTrigger" :append-to="menuContainer" aria-label="划词触发"><ElOption value="direct" label="直接显示" /><ElOption value="icon" label="翻译图标" /><ElOption value="dot" label="小圆点" /></UiSelect></label>
           <label><span>并发翻译数</span><input v-model.number="draft.maxConcurrentTranslations" type="number" min="1" max="20" /></label>
-          <label class="toggle"><span>界面动画</span><input v-model="draft.animations" type="checkbox" /></label>
           <label>
             <span>段落加载样式</span>
             <div class="translation-loading-style-control">
-              <UiSelect v-model="draft.translationLoadingStyle" :append-to="menuContainer" :disabled="!draft.animations" aria-label="段落加载样式"><ElOption v-for="item in translationLoadingStyleOptions" :key="item.value" :value="item.value" :label="item.label" /></UiSelect>
+              <UiSelect v-model="selectedLoadingStyle" :append-to="menuContainer" aria-label="段落加载样式"><ElOption v-for="item in translationLoadingStyleChoices" :key="item.value" :value="item.value" :label="item.label" /></UiSelect>
               <span class="translation-loading-style-reference" aria-label="当前动画参考" :title="selectedTranslationLoadingStyle?.description">
                 <i aria-hidden="true" />
                 <TranslationLoadingPreview :loading-style="draft.translationLoadingStyle" :animated="draft.animations" />
@@ -172,7 +177,7 @@ import {computed, onMounted, ref, watch} from 'vue';
 import browser from 'webextension-polyfill';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
 import {Config} from '@/src/core/config/model';
-import {translationLoadingStyleOptions} from '@/src/core/config/translationLoadingStyle';
+import {applyTranslationLoadingStyleChoice, getTranslationLoadingStyleChoice, translationLoadingStyleChoices} from '@/src/core/config/translationLoadingStyle';
 import TranslationLoadingPreview from '@/src/ui/components/TranslationLoadingPreview.vue';
 import UiSelect from '@/src/ui/components/UiSelect.vue';
 import {ElOption} from 'element-plus';
@@ -204,7 +209,7 @@ import {
 } from '@/src/core/config/modelThinking';
 
 const emit = defineEmits<{close: []}>();
-const versionLabel = `FluentRead V${process.env.VUE_APP_VERSION} · Userscript V${process.env.VUE_APP_USERSCRIPT_VERSION}`;
+const versionLabel = `流畅阅读 V${process.env.VUE_APP_VERSION} · Userscript V${process.env.VUE_APP_USERSCRIPT_VERSION}`;
 const iconUrl = globalThis.__FLUENTREAD_ICON_DATA__ || '';
 const menuContainer = ref<HTMLElement>();
 const draft = ref(new Config());
@@ -227,8 +232,12 @@ const customModelError = ref('');
 
 const styleOptions = options.styles.filter(item => !item.disabled && typeof item.value === 'number');
 const hoverOptions = options.keys.filter(item => !item.disabled);
-const selectedTranslationLoadingStyle = computed(() => translationLoadingStyleOptions.find(
-  item => item.value === draft.value.translationLoadingStyle,
+const selectedLoadingStyle = computed({
+  get: () => getTranslationLoadingStyleChoice(draft.value),
+  set: value => applyTranslationLoadingStyleChoice(draft.value, value),
+});
+const selectedTranslationLoadingStyle = computed(() => translationLoadingStyleChoices.find(
+  item => item.value === selectedLoadingStyle.value,
 ));
 const serviceOptions = computed(() => withCustomOpenAIServiceOptions(
   options.services,

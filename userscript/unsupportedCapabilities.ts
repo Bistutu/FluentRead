@@ -17,6 +17,12 @@ export function unmountImageTranslator(): void {}
 export function mountVocabularyReencounter(): void {}
 export function unmountVocabularyReencounter(): void {}
 
+/** 个人校订需要扩展后台串行写入；复用空适配器以隔离管理面板与内容监听器。 */
+export {
+    mountVocabularyReencounter as mountPersonalCorrections,
+    unmountVocabularyReencounter as unmountPersonalCorrections,
+};
+
 export function mountVideoSubtitleTranslation(): () => void {
     return () => undefined;
 }
@@ -31,7 +37,7 @@ export function toggleContextMenuImage(): boolean { return false; }
 /** Userscript 没有原生右键菜单，圈选翻译入口始终不可用。 */
 export function startAreaTranslationFromContextMenu(): boolean { return false; }
 
-// 完整设置页仍需要语言状态契约；扩展专属的内容运行时继续禁用。
+// 设置组件使用自己的 UI 公开入口；这里只保留配置状态与扩展能力的空运行契约。
 export {IMAGE_OCR_LANGUAGE_STATE_KEY, normalizeImageOcrLanguageCodes} from '@/src/features/image-translation/ocrLanguages';
 export const prepareImageOcrLanguages = async (): Promise<void> => undefined;
 

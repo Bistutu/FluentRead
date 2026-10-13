@@ -9,6 +9,22 @@ import type {LegacyPatternEntry, LegacyPatternSet, LocalizedLegacyPattern, Regis
 import {runtimeFeedbackPatterns} from './runtime-feedback-patterns';
 
 export const localizedLegacyPatterns: readonly LocalizedLegacyPattern[] = [
+    {pattern: "^未能保存 (.+) 的网站设置，请重试$", localizedCaptures: [], messages: {
+        'en-US': "Could not save site settings for {1}. Try again.",
+        'ja-JP': "{1} のサイト設定を保存できませんでした。再試行してください。",
+        'ko-KR': "{1}의 사이트 설정을 저장하지 못했습니다. 다시 시도하세요.",
+        'fr-FR': "Impossible d’enregistrer les réglages de {1}. Réessayez.",
+        'ru-RU': "Не удалось сохранить настройки сайта {1}. Повторите попытку.",
+        'es-ES': "No se pudieron guardar los ajustes de {1}. Reinténtalo.",
+    }},
+    {pattern: "^已保存 (.+)，恢复扩展后生效$", localizedCaptures: [], messages: {
+        'en-US': "Saved {1}; restore the extension for it to take effect.",
+        'ja-JP': "{1} を保存しました。拡張機能を有効に戻すと適用されます。",
+        'ko-KR': "{1} 저장됨. 확장 프로그램을 다시 사용하면 적용됩니다.",
+        'fr-FR': "{1} enregistré ; réactivez l’extension pour appliquer.",
+        'ru-RU': "{1} сохранено; включите расширение для применения.",
+        'es-ES': "{1} guardado; activa la extensión para aplicarlo.",
+    }},
     {pattern: "^翻译连接：(.+)；自定义服务：(\\d+)；凭据和地址已隐藏$", localizedCaptures: [], messages: {"en-US": "Connection: {1}; custom services: {2}; credentials and addresses hidden", "ja-JP": "接続：{1}；カスタムサービス：{2}；認証情報とアドレスは非表示", "ko-KR": "연결: {1}; 사용자 지정 서비스: {2}; 인증 정보와 주소 숨김", "fr-FR": "Connexion : {1} ; services personnalisés : {2} ; identifiants et adresses masqués", "ru-RU": "Подключение: {1}; своих сервисов: {2}; учётные данные и адреса скрыты", "es-ES": "Conexión: {1}; servicios personalizados: {2}; credenciales y direcciones ocultas"}},
     {pattern: "^Google Drive 请求失败（HTTP (\\d+)），请重试。$", localizedCaptures: [], messages: {"en-US": "Google Drive request failed (HTTP {1}). Try again.", "ja-JP": "Google Drive リクエスト失敗（HTTP {1}）。再試行してください。", "ko-KR": "Google Drive 요청 실패 (HTTP {1}). 다시 시도하세요.", "fr-FR": "Échec Google Drive (HTTP {1}). Réessayez.", "ru-RU": "Ошибка запроса Google Drive (HTTP {1}). Повторите попытку.", "es-ES": "Falló Google Drive (HTTP {1}). Reinténtalo."}},
     {pattern: "^读取 Google 账号失败（HTTP (\\d+)）。$", localizedCaptures: [], messages: {"en-US": "Unable to read Google account (HTTP {1}).", "ja-JP": "Google アカウント読み取り失敗（HTTP {1}）。", "ko-KR": "Google 계정 읽기 실패 (HTTP {1}).", "fr-FR": "Lecture du compte Google impossible (HTTP {1}).", "ru-RU": "Ошибка чтения аккаунта Google (HTTP {1}).", "es-ES": "No se pudo leer la cuenta Google (HTTP {1})."}},

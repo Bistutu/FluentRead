@@ -1,5 +1,5 @@
 import {EventEmitter} from 'node:events';
-import {mkdtempSync, mkdirSync, writeFileSync, utimesSync, rmSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, writeFileSync, utimesSync, rmSync, readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createRequire} from 'node:module';
@@ -1324,6 +1324,114 @@ describe('site translation coverage contract', () => {
     }
   });
 
+  function productHuntHoverFixture(mode = 'transparent') {
+    const {document} = parseHTML('<html><body><main><div data-test="homepage-section-today">' +
+      '<section data-container><div><span><a href="/products/first"><span id="overlay" data-target="true"></span>1. First Product</a></span>' +
+      '<span id="tagline">Build useful tools with your team.</span></div></section>' +
+      '<section data-container><div><span><a href="/products/second"><span id="other-overlay" data-target="true"></span>2. Other Product</a></span>' +
+      '<span>Another introduction.</span></div></section></div></main>' +
+      '<div id="dialog" role="dialog">Sign in</div><button id="button">Vote</button><span id="text-overlay">Covering text</span></body></html>');
+    const target = document.querySelector('#tagline')!;
+    const overlay = document.querySelector('#overlay')!;
+    const dialog = document.querySelector('#dialog')!;
+    const button = document.querySelector('#button')!;
+    const textOverlay = document.querySelector('#text-overlay')!;
+    let covered = mode === 'dialog';
+    if (mode === 'text-in-overlay') overlay.textContent = 'Covering text';
+    if (mode === 'dialog-ancestor') document.querySelector('main')!.setAttribute('role', 'dialog');
+    const emptyOverlay = mode === 'cross-card' ? document.querySelector('#other-overlay')! : overlay;
+    const stack = () => covered ? [dialog, overlay, target] : mode === 'button' ? [button, overlay, target] :
+      mode === 'intervening-text' ? [emptyOverlay, textOverlay, target] :
+        mode === 'missing-text-parent' ? [emptyOverlay, document.body] : [emptyOverlay, target, target.parentElement];
+    Object.defineProperty(document, 'createRange', {value: () => ({
+      selectNodeContents: vi.fn(),
+      getClientRects: () => [{left: 20, right: 220, top: 140, bottom: 160, width: 200, height: 20}],
+    })});
+    Object.defineProperty(document, 'elementFromPoint', {value: () => stack()[0]});
+    Object.defineProperty(document, 'elementsFromPoint', {value: stack});
+    Object.defineProperty(target, 'getBoundingClientRect', {value: () => ({
+      x: 20, y: 140, left: 20, right: 220, top: 140, bottom: 160, width: 200, height: 20,
+    })});
+    vi.stubGlobal('document', document);
+    vi.stubGlobal('window', {innerWidth: 1280, innerHeight: 900});
+    vi.stubGlobal('innerWidth', 1280);
+    vi.stubGlobal('innerHeight', 900);
+    vi.stubGlobal('location', new URL(mode === 'other-host' ? 'https://example.com/' :
+      mode === 'other-subdomain' ? 'https://help.producthunt.com/' :
+        mode === 'detail-path' ? 'https://www.producthunt.com/products/first' : 'https://www.producthunt.com/'));
+    vi.stubGlobal('getComputedStyle', (element: Element, pseudo?: string) => pseudo ? {
+      content: mode === 'painted-pseudo' && element === overlay && pseudo === '::before' ? '""' : 'none',
+    } : {
+      display: 'inline', visibility: 'visible', position: 'absolute',
+      left: '0px', right: '0px', top: '0px', bottom: '0px',
+      backgroundColor: mode === 'opaque' && element === overlay ? 'rgb(255, 255, 255)' : 'rgba(0, 0, 0, 0)',
+      backgroundImage: 'none', boxShadow: 'none', filter: 'none', backdropFilter: 'none',
+      borderTopWidth: '0px', borderRightWidth: '0px', borderBottomWidth: '0px', borderLeftWidth: '0px', outlineWidth: '0px',
+    });
+    return {document, target, cover: () => {covered = true;}};
+  }
+
+  it('finds Product Hunt introduction text beneath only its observed empty stretched product link without changing the host DOM', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const {document} = productHuntHoverFixture();
+    const html = document.body.innerHTML;
+    const page = {
+      evaluate: async (fn: (arg: unknown) => unknown, arg: unknown) => fn(arg),
+      mouse: {move: vi.fn()}, keyboard: {down: vi.fn(), up: vi.fn()},
+      waitForTimeout: async (ms: number) => {vi.advanceTimersByTime(ms);},
+      waitForFunction: vi.fn(),
+    };
+    try {
+      expect(findHoverTextPointInPage({selector: '#tagline', index: 0})).toMatchObject({
+        x: 90, y: 150, text: 'Build useful tools with your team.', hitPolicy: 'product-hunt-stretched-link',
+      });
+      await toggleHover(page, {scrollIntoViewIfNeeded: async () => undefined}, {selector: '#tagline', index: 0}, 1, 500);
+      expect(page.keyboard.down.mock.calls).toEqual([['Control']]);
+      expect(page.keyboard.up.mock.calls).toEqual([['Control']]);
+      expect(document.body.innerHTML).toBe(html);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
+  it.each(['opaque', 'dialog', 'dialog-ancestor', 'button', 'text-in-overlay', 'intervening-text',
+    'other-host', 'other-subdomain', 'detail-path', 'cross-card', 'missing-text-parent', 'painted-pseudo'])
+  ('rejects a Product Hunt stretched-link exception for %s', (mode) => {
+    const {document} = productHuntHoverFixture(mode);
+    const html = document.body.innerHTML;
+    try {
+      expect(findHoverTextPointInPage({selector: '#tagline', index: 0})).toBeNull();
+      expect(document.body.innerHTML).toBe(html);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('rechecks the Product Hunt hit stack after moving the pointer and sends no hotkey through a newly shown dialog', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const {document, cover} = productHuntHoverFixture();
+    const html = document.body.innerHTML;
+    const page = {
+      evaluate: async (fn: (arg: unknown) => unknown, arg: unknown) => fn(arg),
+      mouse: {move: vi.fn(async () => {cover();})}, keyboard: {down: vi.fn(), up: vi.fn()},
+      waitForTimeout: async (ms: number) => {vi.advanceTimersByTime(ms);},
+    };
+    try {
+      await expect(toggleHover(page, {scrollIntoViewIfNeeded: async () => undefined},
+        {selector: '#tagline', index: 0}, 1, 300)).rejects.toThrow('悬浮原文没有稳定且可命中的位置');
+      expect(page.mouse.move).toHaveBeenCalledOnce();
+      expect(page.keyboard.down).not.toHaveBeenCalled();
+      expect(page.keyboard.up).not.toHaveBeenCalled();
+      expect(document.body.innerHTML).toBe(html);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
   it.each([
     'What is a Frontend Developer?',
     '<strong>What is a Frontend Developer?</strong>',
@@ -2568,6 +2676,76 @@ describe('real-site translation matrix gates', () => {
     translation.textContent = `测试译文：${source}`;
     owner.appendChild(translation.cloneNode(true));
     expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+  });
+
+  it('compares local echo prose across actual inline Text slots while keeping exact code and link markup', () => {
+    const {document} = parseHTML('<p id="owner"><span class="fluent-read-bilingual-content">测试译文：This readable opening describes a <a href="https://example.test/reference">测试译文：useful reference</a> 测试译文：with <code>requestIdleCallback()</code>测试译文：.</span></p>');
+    const parts = [{selector: '#owner', sourceIncludes: 'This readable opening describes a useful reference with requestIdleCallback().',
+      preservedText: ['requestIdleCallback()'], omittedText: ['Fixture Author'],
+      preservedMarkup: [{selector: 'code', text: 'requestIdleCallback()'},
+        {selector: 'a[href="https://example.test/reference"]', text: '测试译文：useful reference'}]}];
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(true);
+    const wrapper = document.querySelector('.fluent-read-bilingual-content')!;
+    const code = wrapper.querySelector('code')!;
+    code.textContent = '测试译文：requestIdleCallback()';
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    code.textContent = 'requestIdleCallback()';
+    const link = wrapper.querySelector('a')!;
+    link.setAttribute('href', 'https://wrong.test/reference');
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    link.setAttribute('href', 'https://example.test/reference');
+    wrapper.insertAdjacentHTML('beforeend', '<span>Fixture 测试译文：Author</span>');
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    wrapper.lastChild!.remove();
+    wrapper.firstChild!.textContent = 'This readable 其他译文：opening describes a ';
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+  });
+
+  it('still rejects missing Chinese, missing prose, duplicate owners and duplicate wrappers in slot echoes', () => {
+    const {document} = parseHTML('<main><p id="owner"><span class="fluent-read-bilingual-content">测试译文：Readable <em>测试译文：inline source</em>测试译文： remains complete.</span></p></main>');
+    const parts = [{selector: '#owner', sourceIncludes: 'Readable inline source remains complete.'}];
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(true);
+    const owner = document.querySelector('#owner')!, wrapper = owner.querySelector('.fluent-read-bilingual-content')!;
+    const html = wrapper.innerHTML;
+    wrapper.innerHTML = html.replaceAll('测试译文：', '');
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    wrapper.innerHTML = html.replace('inline source', 'wrong source');
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    wrapper.innerHTML = html;
+    owner.append(wrapper.cloneNode(true));
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    owner.lastChild!.remove();
+    owner.parentElement!.append(owner.cloneNode(true));
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+  });
+
+  it('changes one original fixture Text slot despite a translated link clone and rejects two original links', async () => {
+    const source = readFileSync(new URL('../scripts/run-site-adaptation-test.cjs', import.meta.url), 'utf8');
+    const start = source.indexOf('async function fixtureHostWrite(');
+    const end = source.indexOf('async function runFixtureDynamic(', start);
+    expect(start).toBeGreaterThanOrEqual(0); expect(end).toBeGreaterThan(start);
+    const {document} = parseHTML('<html><body><p id="body">Original <a href="#same">inline source</a><span class="fluent-read-bilingual-content">测试 <a href="#same">译文 inline source</a></span></p></body></html>');
+    const {document: expected} = parseHTML('<html><body><p id="body">Original <a href="#same">inline source</a></p></body></html>');
+    const {Script} = require('node:vm');
+    const write = new Script(`(${source.slice(start, end)})`, {filename: 'actual-fixture-host-write.cjs'}).runInNewContext({
+      document, window: {__adaptationFixtureHost: expected}, NodeFilter: {SHOW_TEXT: 4},
+    }) as (page: {evaluate: (fn: (operation: unknown) => unknown, operation: unknown) => Promise<unknown>},
+      operation: Record<string, unknown>) => Promise<void>;
+    const page = {evaluate: async (fn: (operation: unknown) => unknown, operation: unknown) => fn(operation)};
+    const link = document.querySelector('#body > a')!, node = link.firstChild;
+    const wrapper = document.querySelector('.fluent-read-bilingual-content')!;
+    const wrapperHtml = wrapper.outerHTML;
+    await write(page, {kind: 'text', selector: '#body a', from: 'inline source', to: 'updated source'});
+    expect(link.firstChild).toBe(node);
+    expect(node?.textContent).toBe('updated source');
+    expect(link.getAttribute('href')).toBe('#same');
+    expect(expected.querySelector('#body a')?.textContent).toBe('updated source');
+    expect(wrapper.outerHTML).toBe(wrapperHtml);
+    document.querySelector('#body')!.insertAdjacentHTML('beforeend', '<a href="#second">second original</a>');
+    await expect(write(page, {kind: 'text', selector: '#body a', from: 'updated source', to: 'must reject'})).rejects.toThrow('must be unique');
+    expect(node?.textContent).toBe('updated source');
+    expect(expected.querySelector('#body a')?.textContent).toBe('updated source');
+    expect(wrapper.outerHTML).toBe(wrapperHtml);
   });
 
   it('targets visible package readme content while requiring both fenced and inline code protection', () => {

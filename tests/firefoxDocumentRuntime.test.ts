@@ -58,10 +58,37 @@ function createSubject(overrides: Partial<OffscreenMessageDependencies> = {}) {
 afterEach(() => {
     vi.unstubAllGlobals();
     vi.doUnmock('@/src/platform/browser/capabilities');
+    vi.doUnmock('@/src/app/offscreen/imageTranslation');
+    vi.doUnmock('@/src/app/offscreen/translation');
     vi.resetModules();
 });
 
 describe('Firefox shared DOM runtime', () => {
+    it('releases ordinary OCR and cached Chrome models when the shared runtime page exits', async () => {
+        const disposeOcr = vi.fn(), disposeChrome = vi.fn();
+        vi.doMock('@/src/app/offscreen/imageTranslation', async importOriginal => ({
+            ...await importOriginal<typeof import('@/src/app/offscreen/imageTranslation')>(),
+            disposeImageOcrWorker: disposeOcr,
+        }));
+        vi.doMock('@/src/app/offscreen/translation', async importOriginal => ({
+            ...await importOriginal<typeof import('@/src/app/offscreen/translation')>(),
+            disposeChromeTranslationModels: disposeChrome,
+        }));
+        const addEventListener = vi.fn();
+        const environment = {};
+        vi.stubGlobal('self', environment);
+        vi.stubGlobal('window', {addEventListener});
+        vi.stubGlobal('chrome', {runtime: {
+            id: 'exit-test', onMessage: {addListener: vi.fn()},
+            sendMessage: vi.fn(),
+        }});
+        const {startOffscreenApp} = await import('@/src/app/offscreen/runtime');
+        startOffscreenApp();
+        expect(addEventListener).toHaveBeenCalledWith('pagehide', expect.any(Function), {once: true});
+        addEventListener.mock.calls[0][1]();
+        expect(disposeOcr).toHaveBeenCalledOnce();
+        expect(disposeChrome).toHaveBeenCalledWith(environment);
+    });
     it('owns one hidden extension frame and recreates it after removal without touching unrelated nodes', async () => {
         const document = makeDocument();
         const unrelated = document.createElement('div');

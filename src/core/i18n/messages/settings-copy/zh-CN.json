@@ -46,7 +46,7 @@
     "learning.collection.exportFailed": "收藏导出失败",
     "learning.collection.largeImport": "这个收藏文件较大，读取可能需要一些时间。继续导入吗？",
     "learning.collection.continueImport": "继续导入",
-    "learning.collection.fileReadFailed": "无法读取文件，请选择 FluentRead 导出的收藏 JSON 文件",
+    "learning.collection.fileReadFailed": "无法读取文件，请选择流畅阅读导出的收藏 JSON 文件",
     "learning.collection.importFailed": "收藏导入失败",
     "learning.collection.studySteps": "听原句 · 看译文 · 留下解释",
     "learning.collection.understand": "理解这个句子",

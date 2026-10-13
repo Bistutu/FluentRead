@@ -10,6 +10,7 @@ import {
   TRANSLATION_CACHE_MAX_ENTRY_BYTES,
   TRANSLATION_CACHE_MEMORY_ENTRIES,
   TRANSLATION_CACHE_TTL_MS,
+  TRANSLATION_CACHE_TOUCH_FLUSH_MS,
   buildTranslationCacheKey,
   canonicalize,
   translationCache,
@@ -649,5 +650,144 @@ describe('translation cache delayed operation races', () => {
     await vi.waitFor(() => expect(clearing).toBeDefined());
     await clearing;
     await expect(translationCacheDb.entries.count()).resolves.toBe(0);
+  });
+});
+
+describe('translation cache definite oversize rejection', () => {
+  afterEach(async () => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    await resetCache();
+  });
+
+  it.each([
+    ['ordinary key', `v3:${'a'.repeat(64)}`],
+    ['large key', 'k'.repeat(TRANSLATION_CACHE_MAX_ENTRY_BYTES - 1)],
+  ])('counts an exact-limit %s but skips encoding its MAX+1 replacement', async (_label, key) => {
+    const value = 'x'.repeat(TRANSLATION_CACHE_MAX_ENTRY_BYTES - key.length);
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode');
+
+    await expect(translationCache.set(key, value, 1_000)).resolves.toBe(true);
+    expect(encode).toHaveBeenCalledTimes(2);
+    const before = await translationCacheDb.entries.get(key);
+    expect(before).toMatchObject({translation: value, byteSize: TRANSLATION_CACHE_MAX_ENTRY_BYTES});
+    encode.mockClear();
+
+    await expect(translationCache.set(key, `${value}x`, 2_000)).resolves.toBe(false);
+    await expect(translationCacheDb.entries.get(key)).resolves.toEqual(before);
+    await expect(translationCache.getStats(2_000)).resolves.toMatchObject({
+      bytes: TRANSLATION_CACHE_MAX_ENTRY_BYTES, entries: 1,
+    });
+    expect(encode).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['Chinese', '中', 3],
+    ['lone high surrogate', '\ud800', 3],
+    ['lone low surrogate', '\udc00', 3],
+    ['valid surrogate pair', '\ud83d\ude42', 4],
+  ] as const)('keeps native byte accounting for %s with an inconclusive unit bound', async (_label, unit, unitBytes) => {
+    const key = `v3:${'a'.repeat(64)}`;
+    const value = unit.repeat(Math.floor((TRANSLATION_CACHE_MAX_ENTRY_BYTES - key.length) / unitBytes) + 1);
+    expect(key.length + value.length).toBeLessThan(TRANSLATION_CACHE_MAX_ENTRY_BYTES);
+    expect(new TextEncoder().encode(key).byteLength + new TextEncoder().encode(value).byteLength)
+      .toBeGreaterThan(TRANSLATION_CACHE_MAX_ENTRY_BYTES);
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode');
+
+    await expect(translationCache.set(key, value, 1_000)).resolves.toBe(false);
+    await expect(translationCacheDb.entries.count()).resolves.toBe(0);
+    await expect(translationCache.getStats(1_000)).resolves.toMatchObject({bytes: 0, entries: 0});
+    expect(encode).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the old UTF-16 fallback limit when TextEncoder is unavailable', async () => {
+    vi.stubGlobal('TextEncoder', undefined);
+    const key = 'f';
+    const value = 'x'.repeat(TRANSLATION_CACHE_MAX_ENTRY_BYTES / 2 - key.length);
+
+    await expect(translationCache.set(key, value, 1_000)).resolves.toBe(true);
+    const before = await translationCacheDb.entries.get(key);
+    expect(before?.byteSize).toBe(TRANSLATION_CACHE_MAX_ENTRY_BYTES);
+    await expect(translationCache.set(key, `${value}x`, 2_000)).resolves.toBe(false);
+    await expect(translationCache.set(key, 'x'.repeat(TRANSLATION_CACHE_MAX_ENTRY_BYTES), 2_000)).resolves.toBe(false);
+    await expect(translationCacheDb.entries.get(key)).resolves.toEqual(before);
+    await expect(translationCache.getStats(2_000)).resolves.toMatchObject({
+      bytes: TRANSLATION_CACHE_MAX_ENTRY_BYTES, entries: 1,
+    });
+  });
+
+  it('keeps the existing row, hot value and pending touch until its original flush after an oversized replacement', async () => {
+    const key = 'pending-oversize';
+    await expect(translationCache.set(key, 'old value', 1_000)).resolves.toBe(true);
+    const before = await translationCacheDb.entries.get(key);
+    const totals = await translationCacheDb.totals.get('totals');
+    vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+    try {
+      const get = vi.spyOn(translationCacheDb.entries, 'get');
+      const transaction = vi.spyOn(translationCacheDb, 'transaction');
+      const bulkPut = vi.spyOn(translationCacheDb.entries, 'bulkPut');
+      const encode = vi.spyOn(TextEncoder.prototype, 'encode');
+      await expect(translationCache.get(key, 2_000)).resolves.toBe('old value');
+      expect(get).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(1);
+
+      await expect(translationCache.set(key,
+        'x'.repeat(TRANSLATION_CACHE_MAX_ENTRY_BYTES - key.length + 1),
+        1_000 + TRANSLATION_CACHE_TTL_MS + 1)).resolves.toBe(false);
+      expect(transaction).not.toHaveBeenCalled();
+      await expect(translationCache.get(key, 2_000)).resolves.toBe('old value');
+      expect(get).not.toHaveBeenCalled();
+      await expect(translationCacheDb.entries.get(key)).resolves.toEqual(before);
+      await expect(translationCacheDb.totals.get('totals')).resolves.toEqual(totals);
+      expect(vi.getTimerCount()).toBe(1);
+
+      await vi.advanceTimersByTimeAsync(TRANSLATION_CACHE_TOUCH_FLUSH_MS - 1);
+      expect(bulkPut).not.toHaveBeenCalled();
+      await expect(translationCacheDb.entries.get(key)).resolves.toEqual(before);
+      await vi.advanceTimersByTimeAsync(1);
+      await vi.waitFor(async () => {
+        await expect(translationCacheDb.entries.get(key)).resolves.toEqual({...before, lastAccessedAt: 2_000});
+      });
+      expect(bulkPut).toHaveBeenCalledOnce();
+      await expect(translationCacheDb.totals.get('totals')).resolves.toEqual(totals);
+      expect(vi.getTimerCount()).toBe(0);
+      expect(encode).not.toHaveBeenCalled();
+    } finally {
+      try {
+        await translationCache.clear();
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  });
+
+  it('retains non-string coercion and original coercion error identity on the native path', async () => {
+    const convert = vi.fn(() => 'x'.repeat(TRANSLATION_CACHE_MAX_ENTRY_BYTES));
+    const value = {toString: convert} as unknown as string;
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode');
+    await expect(translationCache.set('coercion', value, 1_000)).resolves.toBe(false);
+    expect(convert).toHaveBeenCalledOnce();
+    expect(encode).toHaveBeenCalledTimes(2);
+
+    const failure = new Error('coercion failed');
+    const fail = vi.fn(() => {throw failure;});
+    encode.mockClear();
+    await expect(translationCache.set({toString: fail} as unknown as string, 'value', 1_000)).rejects.toBe(failure);
+    expect(fail).toHaveBeenCalledOnce();
+    expect(encode).toHaveBeenCalledOnce();
+    await expect(translationCacheDb.entries.count()).resolves.toBe(0);
+  });
+
+  it('keeps a normal encoder failure but safely rejects a definitely oversized primitive without encoding', async () => {
+    const failure = new RangeError('controlled encoding allocation failure');
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode').mockImplementation(() => {throw failure;});
+
+    await expect(translationCache.set('ordinary', 'value', 1_000)).rejects.toBe(failure);
+    expect(encode).toHaveBeenCalledOnce();
+    encode.mockClear();
+    await expect(translationCache.set('oversized', 'x'.repeat(TRANSLATION_CACHE_MAX_ENTRY_BYTES), 1_000)).resolves.toBe(false);
+    await expect(translationCacheDb.entries.count()).resolves.toBe(0);
+    expect(encode).not.toHaveBeenCalled();
   });
 });

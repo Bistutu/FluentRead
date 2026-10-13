@@ -20,7 +20,7 @@ export interface BuiltinGlossary {
 /** 词对由 FluentRead 独立整理，随项目许可证分发；只作可调整的首选译法，不宣称是专业标准词典。 */
 export const BUILTIN_GLOSSARIES: readonly BuiltinGlossary[] = [
     {
-        id: 'ai-en-zh-hans', version: 1, nameKey: 'glossary.builtin.ai', descriptionKey: 'glossary.builtin.aiDescription',
+        id: 'ai-en-zh-hans', version: 2, nameKey: 'glossary.builtin.ai', descriptionKey: 'glossary.builtin.aiDescription',
         sourceLanguage: 'en', targetLanguage: 'zh-hans', caseSensitive: false,
         terms: [
             ['artificial intelligence', '人工智能'], ['machine learning', '机器学习'],
@@ -53,6 +53,9 @@ export const BUILTIN_GLOSSARIES: readonly BuiltinGlossary[] = [
             ['function calling', '函数调用'], ['multimodal model', '多模态模型'],
             ['diffusion model', '扩散模型'], ['model hallucination', '模型幻觉'],
             ['inference latency', '推理延迟'], ['speculative decoding', '推测解码'],
+            ['Transformer', ''], ['scaled dot-product attention', '缩放点积注意力'],
+            ['dot-product attention', '点积注意力'], ['encoder-decoder attention', '编码器-解码器注意力'],
+            ['softmax', ''],
         ],
     },
     {

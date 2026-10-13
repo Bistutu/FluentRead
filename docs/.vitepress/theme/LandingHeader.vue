@@ -12,7 +12,7 @@ defineProps<{ en?: boolean; languageLink: string }>()
         :aria-label="en ? 'FluentRead' : '流畅阅读'"
         ><img :src="withBase('/brand-icon.webp')" width="38" height="38" alt="" />
         <span class="bv-home-brand-text"
-          ><strong lang="zh-CN">流畅阅读</strong><small lang="en">FluentRead</small></span
+          ><strong :lang="en ? 'en' : 'zh-CN'">{{ en ? 'FluentRead' : '流畅阅读' }}</strong></span
         ></a
       >
       <div class="bv-home-links">

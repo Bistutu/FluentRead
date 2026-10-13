@@ -1,6 +1,6 @@
 /**
  * @file src/features/video-subtitle/content/playerMenu.ts
- * 文件职责：组装播放器字幕菜单，以紧凑行呈现显示方式、字幕时间、本地 AI 字幕与下载操作，并在同一弹层内提供模型下载确认。
+ * 文件职责：组装播放器字幕菜单，以紧凑行呈现显示方式、字幕时间、本地 AI 字幕与下载与完整句学习入口，并在同一弹层内提供模型下载确认。
  * 主要内容：X 首层聚焦显示方式和当前需要的操作，模型选择、校时、导出和重新识别放在可返回的选项页；复用稳定节点呈现字幕来源、故障恢复、实际音频读取及并行识别进度、模型下载进度和模型确认，生成预览期间不开放完整字幕导出。
  * 模块边界：只操作 FluentRead 自己的菜单节点，不读取存储、不发起识别或绑定全局事件；运行时负责配置、请求与清理。
  */
@@ -31,7 +31,7 @@ const WIDE_LAYOUT_MIN_PLAYER_WIDTH_PX = 300;
 /** 单列菜单高度超过播放器可用高度的这一比例时，改用更矮的双列，留出画面上半部分。 */
 const STACK_LAYOUT_MAX_HEIGHT_RATIO = .8;
 
-type IconName = 'settings' | 'minus' | 'plus' | 'reset' | 'sparkle' | 'download' | 'close' | 'back' | 'next';
+type IconName = 'settings' | 'minus' | 'plus' | 'reset' | 'sparkle' | 'download' | 'close' | 'back' | 'next' | 'learning';
 const ICON_PATHS: Record<IconName, string[]> = {
     settings: ['M4 7h9', 'M17 7h3', 'M4 17h3', 'M11 17h9', 'M15 5v4', 'M9 15v4'],
     minus: ['M6 12h12'],
@@ -42,6 +42,7 @@ const ICON_PATHS: Record<IconName, string[]> = {
     close: ['M7 7l10 10', 'M17 7 7 17'],
     back: ['M14 6l-6 6 6 6'],
     next: ['M10 6l6 6-6 6'],
+    learning: ['M5 4h14v16H5z', 'M8 8h8', 'M8 12h5'],
 };
 
 // YouTube 启用 Trusted Types，图标只能逐个创建节点，不能写入 innerHTML。
@@ -217,6 +218,9 @@ export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration:
 
     const main = createTextElement('div', 'fluent-read-video-menu-main', '');
     main.appendChild(createHeader(language, withLocalGeneration));
+    const learning = createButton('fluent-read-video-menu-item fluent-read-video-menu-learning', {'data-action': 'open-sentence-learning', role: 'menuitem'});
+    learning.append(createIcon('learning'), keyedText('span', 'fluent-read-video-menu-learning-label', 'video.learning.start', language), createIcon('next'));
+    main.appendChild(learning);
     if (withLocalGeneration) {
         const watch = createTextElement('div', 'fluent-read-video-menu-watch', '');
         const primary = createTextElement('div', 'fluent-read-video-menu-primary-ai', '');

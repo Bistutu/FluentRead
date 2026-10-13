@@ -5,7 +5,9 @@ import {
     type TranslationBroker,
     type TranslationRequestMessage,
 } from '@/src/services/translation/broker';
-import type {TranslationModelUsageRecord} from '@/src/services/translation/types';
+import type {TranslationConfigSource, TranslationModelUsageRecord} from '@/src/services/translation/types';
+import {Config} from '@/src/core/config/model';
+import {createInputBoxTranslationHandler} from '@/src/features/input-translation/background/handler';
 import {resolveTranslationLanguages} from '@/src/core/translation/languages';
 import {NativeBatchResponseError} from '@/src/core/translation/nativeBatch';
 import {serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
@@ -17,6 +19,7 @@ import {
 } from '@/src/services/translation/persistenceBarrier';
 import {
     attachTranslationRequestControl,
+    attachTranslationGlossaryContext,
     attachTranslationProviderConfig,
     createTranslationProviderConfigSnapshot,
     getTranslationProviderConfig,
@@ -158,10 +161,11 @@ function installBroker(
     ready: Promise<unknown> = Promise.resolve(),
     includeModelUsageGeneration = true,
     persistenceGraceMs?: number,
+    current: TranslationConfigSource = mocks.config,
 ): void {
     const broker = createTranslationBroker({
         ready,
-        getConfig: () => mocks.config,
+        getConfig: () => current,
         providers: mocks.providers,
         cache: {
             get: mocks.cacheGet,
@@ -227,6 +231,19 @@ function deferred<T>() {
         reject = rejectPromise;
     });
     return {promise, reject, resolve};
+}
+
+// 可枚举 source getter 只统计实际生产 snapshot 的条目展开；不复制快照实现。
+function measuredProviderConfig(entryCount = 100) {
+    let entrySourceReads = 0;
+    const current = Object.assign(new Config(), {
+        service: 'mock', from: 'en', to: 'zh-Hans', useCache: false, enableAIContext: false, glossaryEnabled: false,
+        model: {mock: 'frozen-count-model'}, token: {mock: 'fixture-count-key'}, system_role: {mock: 'frozen-count-prompt'},
+        glossaryLibraries: [{id: 'count-library', name: 'Count', enabled: true, sourceLanguage: '', targetLanguage: '', domains: [],
+            entries: Array.from({length: entryCount}, (_, index) => ({id: `entry-${index}`, caseSensitive: false,
+                get source() {entrySourceReads += 1;return `term-${index}`;}, target: `术语${index}`}))}],
+    });
+    return {current, entryCount, reads: () => entrySourceReads, reset: () => {entrySourceReads = 0;}};
 }
 
 describe('translation broker', () => {
@@ -495,6 +512,30 @@ describe('translation broker', () => {
         delete (policy as Partial<typeof policy>).freeTranslationOrder;
     });
 
+    it.each([false, true])('separates pre-validation document caches without clearing page caches, batch=%s', async batch => {
+        const source = 'Choose <g1>Document translation</g1> from the menu to open and read the file.';
+        const oldTranslation = '从菜单选择 <g1>Document translation</g1> 打开并阅读文件。';
+        const translation = '从菜单选择 <g1>文档翻译</g1> 打开并阅读文件。';
+        const request = (glossaryContext: 'page' | 'document'): TranslationRequestMessage => batch
+            ? {origin: [source], glossaryContext} : {origin: source, glossaryContext};
+        const previous = batch ? [oldTranslation] : oldTranslation;
+        const updated = batch ? [translation] : translation;
+        mocks.service.mockResolvedValueOnce(previous).mockResolvedValueOnce(updated);
+        // 旧文档契约没有内容政策字段；没有自动字面量的同源 page 请求复现该身份。
+        await expect(translateWithCache(request('page'))).resolves.toEqual(previous);
+        const oldIdentities = translationCacheIdentities().map(identity => ({...identity}));
+        expect(oldIdentities.every(identity => !('documentTranslationPolicy' in identity))).toBe(true);
+        const oldRecords = [...mocks.cacheStore.entries()];
+        await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        const newIdentities = translationCacheIdentities().slice(oldIdentities.length);
+        expect(newIdentities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":3}')).toBe(true);
+        await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
+        await expect(translateWithCache(request('page'))).resolves.toEqual(previous);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        for (const [key, value] of oldRecords) expect(mocks.cacheStore.get(key)).toBe(value);
+    });
+
     it.each([
         ['freeTranslation', false], ['freeTranslation', true],
         ['myMemory', false], ['myMemory', true],
@@ -538,6 +579,43 @@ describe('translation broker', () => {
         expect(await oldRequest).toBeInstanceOf(Error);
         expect(await newRequest).toBe('新策略译文');
         expect(mocks.service).toHaveBeenCalledTimes(2);
+    });
+
+    it('trusted document batch intent isolates pending execution while preserving reusable item caches', async () => {
+        Object.assign(mocks.config, {service: 'freeTranslation', useCache: false});
+        const grouped = deferred<string[]>(), scalar = deferred<string[]>();
+        mocks.service.mockImplementation(message => message.documentBatch === true ? grouped.promise : scalar.promise);
+        const documentRequest = (documentBatch: boolean) => attachTranslationGlossaryContext({
+            origin: ['First source', 'Second source'], glossaryContext: 'document' as const, documentBatch,
+        }, {context: 'document'});
+        const mutable = documentRequest(true);
+        const first = translateWithCache(mutable);
+        mutable.documentBatch = false;
+        const second = translateWithCache(documentRequest(false));
+        const third = translateWithCache(documentRequest(true));
+        await flushMicrotasks(80);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        expect(mocks.service.mock.calls.map(call => call[0].documentBatch)).toEqual([true, undefined]);
+        grouped.resolve(['分组一', '分组二']); scalar.resolve(['单段一', '单段二']);
+        await expect(first).resolves.toEqual(['分组一', '分组二']);
+        await expect(third).resolves.toEqual(['分组一', '分组二']);
+        await expect(second).resolves.toEqual(['单段一', '单段二']);
+        const identities = translationCacheIdentities();
+        expect(identities[0]).toEqual(identities[1]);
+        expect(identities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":3}')).toBe(true);
+        mocks.config.useCache = true;
+        mocks.service.mockImplementation(async message => message.origin.map((text: string) => `译:${text}`));
+        await translateWithCache(documentRequest(true));
+        const calls = mocks.service.mock.calls.length;
+        await translateWithCache(documentRequest(false));
+        expect(mocks.service).toHaveBeenCalledTimes(calls);
+    });
+
+    it.each(['page', 'document'] as const)('untrusted %s payload cannot enable document batch execution', async glossaryContext => {
+        mocks.config.service = 'freeTranslation';
+        mocks.service.mockResolvedValue(['合格译文']);
+        await translateWithCache({origin: ['Readable source'], glossaryContext, documentBatch: true});
+        expect(mocks.service.mock.calls[0]![0]).not.toHaveProperty('documentBatch');
     });
 
     it.each(['freeTranslation', 'myMemory'])('%s 在途去重归一默认值且忽略实际不用的 Key 与代理', async service => {
@@ -589,6 +667,95 @@ describe('translation broker', () => {
         expect(translationCacheIdentities().at(-1)).toMatchObject({service: 'ai', model: 'frozen-area-model'});
         await translateWithCache({origin: 'second text', useCache: false, TRANSLATION_PROVIDER_CONFIG: snapshot} as any);
         expect(translationCacheIdentities().at(-1)?.service).toBe('mock');
+    });
+
+    it('附着快照经过 ready 等待和配置变化仍使用原模型、凭据与嵌套规则，不复制丢弃的 fallback', async () => {
+        const measured = measuredProviderConfig();
+        const {current} = measured;
+        const snapshot = createTranslationProviderConfigSnapshot(current);
+        measured.reset();
+        const ready = deferred<void>();
+        installBroker(undefined, ready.promise, true, undefined, current);
+        mocks.service.mockResolvedValue('可信快照译文');
+        const result = translateWithCache(attachTranslationProviderConfig({origin: 'Frozen source', useCache: false}, snapshot));
+        await flushMicrotasks();
+        expect(measured.reads()).toBe(0);
+        expect(mocks.service).not.toHaveBeenCalled();
+        current.model.mock = 'live-model';current.token.mock = 'changed-key';current.system_role.mock = 'live-prompt';
+        current.glossaryLibraries[0].entries[0].target = '已修改';
+        ready.resolve();
+
+        await expect(result).resolves.toBe('可信快照译文');
+        expect(measured.reads()).toBe(0);
+        expect(mocks.service).toHaveBeenCalledOnce();
+        const used = getTranslationProviderConfig(mocks.service.mock.calls[0][0], current);
+        expect(used).toMatchObject({model: {mock: 'frozen-count-model'}, token: {mock: 'fixture-count-key'}, system_role: {mock: 'frozen-count-prompt'}});
+        expect(used.glossaryLibraries).toBe(snapshot.glossaryLibraries);
+        expect(used.glossaryLibraries![0].entries[0].target).toBe('术语0');
+        expect(Object.isFrozen(used.glossaryLibraries![0].entries[0])).toBe(true);
+        expect(translationCacheIdentities().at(-1)).toMatchObject({model: 'frozen-count-model', sourceText: 'Frozen source'});
+    });
+
+    it('无附着公开请求在 ready 后仅复制一次，每个新请求读取新配置且 provider 与缓存身份一致', async () => {
+        const measured = measuredProviderConfig();
+        const {current, entryCount} = measured;
+        const ready = deferred<void>();
+        installBroker(undefined, ready.promise, true, undefined, current);
+        mocks.service.mockResolvedValue('公开请求译文');
+        const result = translateWithCache({origin: 'Public source', useCache: false});
+        await flushMicrotasks();
+        expect(measured.reads()).toBe(0);
+        current.model.mock = 'ready-model';current.token.mock = 'ready-key';
+        ready.resolve();
+        await expect(result).resolves.toBe('公开请求译文');
+        expect(measured.reads()).toBe(entryCount);
+        let used = getTranslationProviderConfig(mocks.service.mock.calls[0][0], current);
+        expect(used.model.mock).toBe('ready-model');expect(used.token.mock).toBe('ready-key');
+        expect(translationCacheIdentities().at(-1)?.model).toBe('ready-model');
+
+        current.model.mock = 'next-model';current.glossaryLibraries[0].entries[0].target = '下一次';
+        await expect(translateWithCache({origin: 'Next source', useCache: false})).resolves.toBe('公开请求译文');
+        expect(measured.reads()).toBe(entryCount * 2);
+        used = getTranslationProviderConfig(mocks.service.mock.calls[1][0], current);
+        expect(used.model.mock).toBe('next-model');expect(used.glossaryLibraries![0].entries[0].target).toBe('下一次');
+        expect(translationCacheIdentities().at(-1)?.model).toBe('next-model');
+    });
+
+    it('真实输入框 handler → broker 仅保留入口必要的一次完整快照复制', async () => {
+        const measured = measuredProviderConfig();
+        const {current, entryCount} = measured;
+        installBroker(undefined, Promise.resolve(), true, undefined, current);
+        mocks.service.mockResolvedValue('输入框译文');
+        const handler = createInputBoxTranslationHandler({ready: Promise.resolve(), getConfig: () => current, translate: translateWithCache});
+        await expect(handler.handle({type: 'inputBoxTranslation', text: 'Input source', targetLang: 'zh-Hans'}))
+            .resolves.toEqual({success: true, translatedText: '输入框译文'});
+        console.info(JSON.stringify({lazyFallbackOperationEvidence: 'input-handler-to-broker', entries: entryCount,
+            entryCopies: measured.reads(), providerCalls: mocks.service.mock.calls.length}));
+        expect(measured.reads()).toBe(entryCount);
+        expect(mocks.service).toHaveBeenCalledOnce();
+        const used = getTranslationProviderConfig(mocks.service.mock.calls[0][0], current);
+        expect(used.model.mock).toBe('frozen-count-model');expect(used.token.mock).toBe('fixture-count-key');
+        expect(translationCacheIdentities().at(-1)).toMatchObject({model: used.model.mock, sourceText: 'Input source'});
+    });
+
+    it.each([false, true])('ready 等待中取消不会构造 fallback 或执行 provider，附着=%s', async attached => {
+        const measured = measuredProviderConfig();
+        const {current} = measured;
+        const snapshot = createTranslationProviderConfigSnapshot(current);
+        measured.reset();
+        const ready = deferred<void>();
+        const controller = new AbortController();
+        installBroker(undefined, ready.promise, true, undefined, current);
+        const message = attachTranslationRequestControl({origin: 'Cancelled ready source', useCache: false},
+            {signal: controller.signal, ownershipKey: 'count:ready-cancel'});
+        if (attached) attachTranslationProviderConfig(message, snapshot);
+        const result = translateWithCache(message);
+        const rejected = expect(result).rejects.toMatchObject({name: 'AbortError'});
+        await flushMicrotasks();controller.abort();await rejected;
+        ready.resolve();await flushMicrotasks();
+        expect(measured.reads()).toBe(0);
+        expect(mocks.service).not.toHaveBeenCalled();
+        expect(mocks.buildTranslationCacheKey).not.toHaveBeenCalled();
     });
 
     it('reuses persisted single cache entries, including successful unchanged results', async () => {
@@ -1581,6 +1748,37 @@ describe('translation broker', () => {
             pageContext: 'Page summary (AI-generated reference):\nAI summary\n\nAI article context',
         }));
         expect(mocks.config.enableAIContext).toBe(true);
+    });
+
+    it('篇章证据变更复用一次页面摘要且进入缓存身份，总预算不增长', async () => {
+        mocks.config.service = 'ai'; mocks.config.enableAIContext = true;
+        mocks.service.mockImplementation((message: {summaryPrompt?: string; origin: string}) =>
+            Promise.resolve(message.summaryPrompt ? '短摘要' : `${message.origin}-译文`));
+        for (const evidence of ['chapter-a', 'chapter-b', 'chapter-b']) {
+            await translateWithCache({origin: 'AP controls timing.', pageContext: 'Article context',
+                discourseContext: evidence});
+        }
+        expect(mocks.service.mock.calls.filter(([message]) => message.summaryPrompt)).toHaveLength(1);
+        expect(mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt)).toHaveLength(2);
+        const identities = translationCacheIdentities();
+        expect(identities.map(identity => identity.pageContext).some(context => context?.includes('chapter-a'))).toBe(true);
+        expect(identities.map(identity => identity.pageContext).some(context => context?.includes('chapter-b'))).toBe(true);
+        await translateWithCache({origin: 'An independent source.', pageContext: 'a'.repeat(4000),
+            discourseContext: 'b'.repeat(10000)});
+        const last = mocks.service.mock.calls.at(-1)![0];
+        expect(last.pageContext.length).toBeLessThanOrEqual(4000);
+        expect(last).not.toHaveProperty('discourseContext');
+        expect(last.pageContext).toContain('</discourse_evidence>');
+    });
+
+    it('关闭上下文或机器服务不外传篇章原始数据', async () => {
+        for (const service of ['ai', 'mock']) {
+            mocks.config.service = service;
+            await translateWithCache({origin: 'Independent source', discourseContext: 'Private evidence',
+                enableAIContext: false, useCache: false});
+            expect(mocks.service.mock.calls.at(-1)![0]).not.toHaveProperty('discourseContext');
+            expect(mocks.service.mock.calls.at(-1)![0].pageContext).toBe('');
+        }
     });
 
     it('请求级 AI 上下文策略覆盖实时配置，并同时约束摘要与正文 provider', async () => {

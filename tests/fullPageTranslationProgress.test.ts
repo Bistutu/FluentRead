@@ -692,3 +692,305 @@ describe('进度面板组件实时订阅与显隐', () => {
   });
 
 });
+
+// 以下只追加真实 key 化面板的完整渲染 owner，保留上方原进度、重入及 setup 用例。
+describe('进度面板稳定 key 的完整 DOM 与真实 i18n 生命周期', () => {
+  type Language = import('@/src/core/i18n').UiLanguage;
+  type RegisteredLanguage = import('@/src/core/i18n').RegisteredUiLanguage;
+  const languages: readonly Language[] = ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'];
+  const panelFile = 'src/features/full-page-translation/ui/TranslationProgressPanel.vue';
+  function pendingValue<T>() {
+    let resolve!: (value: T) => void, reject!: (error: unknown) => void;
+    const promise = new Promise<T>((yes, no) => {resolve = yes; reject = no;});
+    return {promise, resolve, reject};
+  }
+
+  async function fullRender(language: Language = 'zh-CN', preload = true, outerRoot = false) {
+    vi.resetModules(); vi.useFakeTimers();
+    const {parseHTML} = await import('linkedom');
+    const dom = parseHTML('<html lang="fixture-host-language"><head><title>Synthetic host title</title></head><body><aside id="outside"><p title="设置" aria-label="设置">设置</p></aside><div id="owner"></div></body></html>');
+    const document = dom.document as unknown as Document;
+    const root = document.querySelector('#owner') as HTMLElement;
+    const outside = document.querySelector('#outside')!;
+    const hostBefore = {outside: outside.outerHTML, title: document.title, lang: document.documentElement.getAttribute('lang')};
+    const mediaListeners = new Set<(event: MediaQueryListEvent) => void>();
+    const media = {matches: false, addEventListener: (_name: string, fn: (event: MediaQueryListEvent) => void) => mediaListeners.add(fn),
+      removeEventListener: (_name: string, fn: (event: MediaQueryListEvent) => void) => mediaListeners.delete(fn)};
+    const observers: Array<{root?: Node; active: boolean; observe: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn>}> = [];
+    const NativeObserver = dom.window.MutationObserver;
+    class ObservedMutation {
+      root?: Node; active = false;
+      native: MutationObserver;
+      observe = vi.fn((node: Node, options: MutationObserverInit) => {this.root = node; this.active = true; this.native.observe(node, options);});
+      disconnect = vi.fn(() => {this.active = false; this.native.disconnect();});
+      constructor(callback: MutationCallback) {
+        this.native = new NativeObserver((records: MutationRecord[]) => callback(records, this as unknown as MutationObserver)) as unknown as MutationObserver;
+        observers.push(this);
+      }
+      takeRecords() {return this.native.takeRecords();}
+    }
+    for (const [name, value] of Object.entries({document, window: {location: {href: 'https://news.example.com/article'}, matchMedia: () => media}, Node: dom.window.Node,
+      Element: dom.window.Element, HTMLElement: dom.window.HTMLElement, Event: dom.window.Event,
+      MutationObserver: ObservedMutation, NodeFilter: {SHOW_TEXT: 4}})) vi.stubGlobal(name, value);
+    const walkers = vi.spyOn(document, 'createTreeWalker');
+    const elementQueries = vi.spyOn(dom.window.Element.prototype, 'querySelectorAll');
+    const config = {uiLanguage: language, uiLanguageSetupCompleted: true, animations: true, theme: 'auto', disableFloatingBall: false, floatingBallDisabledDomains: [] as string[]};
+    let revision = 0;
+    const listeners = new Set<(value: typeof config) => void>();
+    const callbacks: Array<(value: typeof config) => void> = [];
+    const patches: Array<Record<string, unknown>> = [];
+    const emit = (patch: Partial<typeof config>) => {
+      Object.assign(config, patch); revision += 1;
+      for (const listener of listeners) listener({...config});
+    };
+    const store = {config, configReady: Promise.resolve(), getConfigRevision: () => revision,
+      subscribeConfig: (listener: (value: typeof config) => void) => {
+        listeners.add(listener); callbacks.push(listener); listener({...config});
+        return () => {listeners.delete(listener);};
+      }, requestConfigPatch: async (patch: Partial<typeof config>) => {patches.push({...patch}); emit(patch);}};
+    const core = await import('@/src/core/i18n');
+    const {UI_LANGUAGE_BUNDLES} = await import('@/src/core/i18n/bundles');
+    if (preload) for (const value of languages) if (value !== 'zh-CN') core.registerUiLanguageBundle(value, UI_LANGUAGE_BUNDLES[value]);
+    // 使用真实 loader 的 pending/验证/注册逻辑，只在 fetch 外部端口暂缓响应。
+    const platform = await vi.importActual<typeof import('@/src/platform/i18n/uiLanguageBundles')>('@/src/platform/i18n/uiLanguageBundles');
+    type Response = {ok: boolean; status: number; json: () => Promise<unknown>};
+    const fetches: Array<{language: RegisteredLanguage; gate: ReturnType<typeof pendingValue<Response>>}> = [];
+    const warns: unknown[][] = [];
+    const ensure = vi.fn(platform.createUiLanguageBundleLoader({resolveUrl: path => path, fetch: async path => {
+      const value = path.slice('i18n/'.length, -'.json'.length) as RegisteredLanguage;
+      if (!Object.hasOwn(UI_LANGUAGE_BUNDLES, value)) throw new Error('Unexpected owned language bundle path');
+      const gate = pendingValue<Response>(); fetches.push({language: value, gate}); return gate.promise;
+    }, warn: (...values) => warns.push(values)}));
+    vi.doMock('@/src/services/config/store', () => store);
+    vi.doMock('@/src/platform/i18n/uiLanguageBundles', () => ({ensureUiLanguageBundle: ensure}));
+    vi.doMock('webextension-polyfill', () => ({default: {runtime: {sendMessage: vi.fn(async () => ({success: true}))}}}));
+    let app: vue.App | undefined, context!: import('@/src/ui/i18n').UiI18nContext;
+    let closed = false;
+    const flush = async () => {
+      for (let index = 0; index < 4; index += 1) {
+        await vue.nextTick(); for (let tick = 0; tick < 6; tick += 1) await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(0);
+      }
+      await vue.nextTick();
+    };
+    const advance = async (ms: number) => {await vi.advanceTimersByTimeAsync(ms); await flush();};
+    try {
+      const i18n = await import('@/src/ui/i18n');
+      const {descriptor, errors} = parse(readFileSync(panelFile, 'utf8'), {filename: panelFile});
+      expect(errors).toEqual([]);
+      const script = compileScript(descriptor, {id: 'progress-panel-full-render-owner', inlineTemplate: true});
+      const code = ts.transpileModule(script.content, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
+      // 仅以同步 slot 端口代替 CSS 过渡；完整业务模板、Vue响应式、DOM事件均实际运行。
+      const TransitionPort = vue.defineComponent({inheritAttrs: false, props: {name: String}, setup: (_props, {slots}) => () => slots.default?.()});
+      const module = {exports: {} as {default: vue.Component}};
+      new Function('require', 'exports', 'module', code)((id: string) => {
+        if (id === 'vue') return {...vue, Transition: TransitionPort};
+        if (id === '@/src/features/full-page-translation/progress') return progressApi;
+        if (id === './progressPanelVisibility') return {createProgressPanelVisibility};
+        if (id === '@/src/services/config/store') return store;
+        if (id === '@/src/core/site-rules/domain') return siteDomainApi;
+        if (id === '@/src/ui/i18n') return i18n;
+        throw new Error(`Unexpected full progress template dependency ${id}`);
+      }, module.exports, module);
+      const eventHandlers = new WeakMap<Element, Map<string, EventListener>>();
+      // 仓库既有真实 Vue createRenderer/Linkedom 模式；只实现外部 DOM 端口，不复制业务。
+      const renderer = vue.createRenderer<Node, Element>({patchProp(element, name, _before, next) {
+        if (/^on[A-Z]/u.test(name)) {
+          const event = name.slice(2).toLowerCase(); let handlers = eventHandlers.get(element);
+          if (!handlers) {handlers = new Map(); eventHandlers.set(element, handlers);}
+          const previous = handlers.get(event); if (previous) element.removeEventListener(event, previous);
+          handlers.delete(event);
+          if (typeof next === 'function') {element.addEventListener(event, next as EventListener); handlers.set(event, next as EventListener);}
+          return;
+        }
+        if (name === 'class') {element.setAttribute('class', String(next ?? '')); return;}
+        if (name === 'style') {
+          if (typeof next === 'string') element.setAttribute('style', next);
+          else if (next && typeof next === 'object') Object.assign((element as HTMLElement).style, next);
+          else element.removeAttribute('style'); return;
+        }
+        if (next === null || next === undefined || (next === false && !/^(?:aria-|data-)/u.test(name))) element.removeAttribute(name);
+        else element.setAttribute(name, next === true && !/^(?:aria-|data-)/u.test(name) ? '' : String(next));
+      }, insert: (node, parent, anchor) => parent.insertBefore(node, anchor ?? null), remove: node => node.parentNode?.removeChild(node),
+        createElement: (tag, namespace) => namespace === 'svg' ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag),
+        createText: value => document.createTextNode(value), createComment: value => document.createComment(value),
+        setText: (node, value) => {node.nodeValue = value;}, setElementText: (element, value) => {element.textContent = value;},
+        parentNode: node => node.parentNode as Element | null, nextSibling: node => node.nextSibling,
+        querySelector: selector => document.querySelector(selector), setScopeId: (element, id) => element.setAttribute(id, ''),
+        cloneNode: node => node.cloneNode(true), insertStaticContent(html, parent, anchor) {
+          const template = document.createElement('template'); template.innerHTML = html;
+          const first = template.content.firstChild!, last = template.content.lastChild!;
+          parent.insertBefore(template.content, anchor ?? null); return [first, last];
+        }});
+      const mount = async () => {
+        if (app) throw new Error('Full progress fixture app already mounted');
+        app = renderer.createApp({setup() {
+          context = i18n.useUiI18n();
+          return () => vue.h(vue.Fragment, null, [vue.h(module.exports.default), ...(outerRoot ? [vue.h('button', {
+            'data-owned-legacy': 'true', title: '设置', 'aria-label': '设置'}, '设置')] : [])]);
+        }});
+        app.use(i18n.createUiI18nPlugin(outerRoot ? {documentRoot: null, uiRoot: root} : {}));
+        app.mount(root); await flush();
+      };
+      const unmount = async () => {app?.unmount(); app = undefined; await flush();};
+      await mount();
+      return {core, root, outside, config, patches, fetches, warns, ensure, listeners, callbacks, mediaListeners, observers,
+        context: () => context, flush, advance, mount, unmount,
+        panel: () => root.querySelector<HTMLElement>('.fr-translation-progress'),
+        language: async (value: Language) => {const result = await context.setLanguage(value); await flush(); return result;},
+        emit: async (patch: Partial<typeof config>) => {emit(patch); await flush();},
+        release: async (value: RegisteredLanguage, error?: Error) => {
+          await flush(); const request = [...fetches].reverse().find(entry => entry.language === value);
+          if (!request) throw new Error(`No actual pending language fetch: ${value}`);
+          if (error) request.gate.reject(error);
+          else request.gate.resolve({ok: true, status: 200, json: async () => UI_LANGUAGE_BUNDLES[value]});
+          await flush();
+        },
+        metrics: () => ({treeWalkers: walkers.mock.calls.filter(([node]) => (node as Element).classList?.contains('fr-translation-progress')).length,
+          wildcardQueries: elementQueries.mock.calls.filter(([selector], index) => selector === '*' &&
+            (elementQueries.mock.contexts[index] as Element).classList?.contains('fr-translation-progress')).length,
+          observers: observers.filter(entry => (entry.root as Element | undefined)?.classList?.contains('fr-translation-progress')).length}),
+        assertHost: () => expect({outside: outside.outerHTML, title: document.title, lang: document.documentElement.getAttribute('lang')}).toEqual(hostBefore),
+        close: async () => {
+          if (closed) return; closed = true;
+          try {await unmount(); const snapshot = getFullPageTranslationProgress(); if (snapshot.active) finishFullPageTranslationProgress(snapshot.sessionId);
+            for (const request of fetches) request.gate.resolve({ok: false, status: 410, json: async () => null}); await flush();
+            expect(listeners.size).toBe(0); expect(mediaListeners.size).toBe(0); expect(observers.every(entry => !entry.active)).toBe(true);
+          } finally {walkers.mockRestore(); elementQueries.mockRestore(); vi.doUnmock('@/src/services/config/store');
+            vi.doUnmock('@/src/platform/i18n/uiLanguageBundles'); vi.doUnmock('webextension-polyfill'); vi.unstubAllGlobals(); vi.resetModules();}
+        }};
+    } catch (error) {
+      app?.unmount(); for (const request of fetches) request.gate.resolve({ok: false, status: 410, json: async () => null});
+      walkers.mockRestore(); elementQueries.mockRestore(); vi.doUnmock('@/src/services/config/store');
+      vi.doUnmock('@/src/platform/i18n/uiLanguageBundles'); vi.doUnmock('webextension-polyfill'); vi.unstubAllGlobals(); vi.resetModules(); throw error;
+    }
+  }
+  type Fixture = Awaited<ReturnType<typeof fullRender>>;
+  async function publish(h: Fixture, sessionId: number, value: Parameters<typeof updateFullPageTranslationProgress>[1]) {
+    updateFullPageTranslationProgress(sessionId, value); await h.flush();
+  }
+  function expanded(h: Fixture, language: Language) {
+    const panel = h.panel()!, value = getFullPageTranslationProgress(), t = (key: string, params?: Record<string, number>) => h.core.translate(key, language, params);
+    expect(panel).not.toBeNull(); expect(panel.classList.contains('fr-compact')).toBe(false);
+    expect(panel.querySelector('strong')!.textContent).toBe(t(value.failed && value.running === 0 && value.queued === 0
+      ? 'fullPage.progress.failuresTitle' : value.modalPhase === 'translating' ? 'fullPage.progress.modalTranslating' : 'fullPage.progress.title'));
+    const counts = panel.querySelectorAll('.fr-progress-counts');
+    expect(counts[0].querySelectorAll('b')[0].textContent).toBe(String(value.running));
+    expect(counts[0].querySelectorAll('b')[1].textContent).toBe(String(value.remaining));
+    expect(counts[0].textContent).toContain(t('fullPage.progress.running')); expect(counts[0].textContent).toContain(t('fullPage.progress.remaining'));
+    if ((value.completed ?? 0) > 0 || (value.failed ?? 0) > 0) {
+      expect(counts[1].textContent).toContain(t('fullPage.progress.completed')); expect(counts[1].textContent).toContain(t('fullPage.progress.failed'));
+      expect([...counts[1].querySelectorAll('b')].map(node => node.textContent)).toEqual([String(value.completed ?? 0), String(value.failed ?? 0)]);
+    }
+    expect(panel.querySelector('.fr-progress-copy')!.getAttribute('aria-label')).toBe(t('fullPage.progress.aria', {
+      running: value.running, remaining: value.remaining, offscreen: value.offscreen}) + (value.failed ? ` · ${t('fullPage.progress.summaryAria', {completed: value.completed ?? 0, failed: value.failed})}` : ''));
+    const dismiss = panel.querySelector('.fr-progress-dismiss')!;
+    expect(dismiss.getAttribute('title')).toBe(t('fullPage.progress.hideTitle')); expect(dismiss.getAttribute('aria-label')).toBe(t('fullPage.progress.hide'));
+    const hint = panel.querySelector('small');
+    expect(hint?.textContent?.trim() ?? null).toBe(value.modalPhase === 'waiting' ? t('fullPage.progress.modalWaiting')
+      : value.offscreen > 0 ? t('fullPage.progress.offscreenHint', {count: value.offscreen}) : null);
+    const actions = panel.querySelectorAll<HTMLButtonElement>('.fr-progress-action');
+    expect([...actions].map(button => button.textContent)).toEqual(value.failed ? [t('fullPage.progress.retryFailed'), t('fullPage.progress.locateFailed')] : []);
+    for (const button of actions) expect(button.hasAttribute('disabled')).toBe((value.retryable ?? value.failed ?? 0) === 0);
+    h.assertHost();
+  }
+
+  it.each(languages)('%s 的真实模板保留计数、失败动作、模态、紧凑与重新显示的 key 文案', async language => {
+    const h = await fullRender(language); const actions: Array<{sessionId: number; action: string}> = [];
+    try {
+      const sessionId = startFullPageTranslationProgress();
+      progressApi.setFullPageFailureActions(sessionId, action => {actions.push({sessionId, action}); return 1;});
+      await publish(h, sessionId, {running: 1, queued: 2, offscreen: 9, completed: 3}); await h.advance(180); expanded(h, language);
+      await publish(h, sessionId, {running: 0, queued: 0, offscreen: 9, completed: 3, failed: 2, retryable: 2}); expanded(h, language);
+      for (const button of h.panel()!.querySelectorAll<HTMLButtonElement>('.fr-progress-action')) button.click(); await h.flush();
+      expect(actions).toEqual([{sessionId, action: 'retry'}, {sessionId, action: 'locate'}]);
+      await publish(h, sessionId, {running: 0, queued: 0, offscreen: 9, completed: 3, failed: 2, retryable: 0}); expanded(h, language);
+      await publish(h, sessionId, {running: 0, queued: 0, offscreen: 9, modalPhase: 'waiting', deferred: 3, failed: 0}); expanded(h, language);
+      await publish(h, sessionId, {running: 1, queued: 0, offscreen: 9, modalPhase: 'translating'}); expanded(h, language);
+      await h.emit({disableFloatingBall: true, theme: 'dark', animations: false});
+      await publish(h, sessionId, {running: 0, queued: 0, offscreen: 9}); await h.advance(599);
+      expect(h.panel()!.classList.contains('fr-compact')).toBe(false); await h.advance(1);
+      expect(h.panel()!.classList.contains('fr-compact')).toBe(true);
+      expect(h.panel()!.querySelector('[role="status"]')!.getAttribute('aria-label')).toBe(h.core.translate('fullPage.progress.compactOffscreen', language, {count: 9}));
+      expect(h.panel()!.classList.contains('fr-dark')).toBe(true); expect(h.panel()!.classList.contains('fr-static')).toBe(true);
+      await publish(h, sessionId, {running: 0, queued: 0, offscreen: 0});
+      expect(h.panel()!.querySelector('[role="status"]')!.getAttribute('aria-label')).toBe(h.core.translate('fullPage.progress.compactActive', language));
+      await publish(h, sessionId, {running: 1, queued: 0, offscreen: 0}); await h.advance(180); expanded(h, language);
+      h.panel()!.querySelector<HTMLButtonElement>('.fr-progress-dismiss')!.click(); await h.flush(); expect(h.panel()).toBeNull();
+      await publish(h, sessionId, {running: 2, queued: 0, offscreen: 0}); await h.advance(1000); expect(h.panel()).toBeNull();
+      finishFullPageTranslationProgress(sessionId); expect(progressApi.runFullPageFailureAction(sessionId, 'retry')).toBe(0);
+      const next = startFullPageTranslationProgress(); await publish(h, next, {running: 1, queued: 0, offscreen: 0});
+      await h.advance(180); expanded(h, language); finishFullPageTranslationProgress(next); await h.flush(); expect(h.panel()).toBeNull();
+      expect(h.patches).toEqual([]);
+    } finally {await h.close();}
+  });
+
+  it.each(['zh-CN', 'en-US'] as const)('%s 动态 key 面板的公开进度更新不建立自己的旧文案扫描器', async language => {
+    const h = await fullRender(language);
+    try {
+      const sessionId = startFullPageTranslationProgress(); await publish(h, sessionId, {running: 1, queued: 201, offscreen: 7}); await h.advance(180);
+      for (let index = 0; index < 100; index += 1) {await publish(h, sessionId, {running: 1, queued: 200 - index, offscreen: 7, completed: index}); expanded(h, language);}
+      expect(h.metrics()).toEqual({treeWalkers: 0, wildcardQueries: 0, observers: 0});
+    } finally {await h.close();}
+  });
+
+  it('当前语言真实资源到达后完整模板自动重绘，中文往返保留回退和 key 文案', async () => {
+    const h = await fullRender('fr-FR', false);
+    try {
+      const sessionId = startFullPageTranslationProgress(); await publish(h, sessionId, {running: 0, queued: 0, offscreen: 4, modalPhase: 'waiting'});
+      expanded(h, 'zh-CN'); expect(h.core.hasUiLanguageBundle('fr-FR')).toBe(false);
+      await h.release('fr-FR'); expanded(h, 'fr-FR'); expect(h.context().bundleRevision.value).toBeGreaterThan(0);
+      expect(await h.language('zh-CN')).toBe(true); expanded(h, 'zh-CN'); expect(await h.language('fr-FR')).toBe(true); expanded(h, 'fr-FR');
+      expect(h.metrics().treeWalkers).toBe(0);
+    } finally {await h.close();}
+  });
+
+  it('取消的旧语言加载不能覆盖后选语言的真实完整 DOM', async () => {
+    const h = await fullRender('zh-CN', false);
+    try {
+      const sessionId = startFullPageTranslationProgress(); await publish(h, sessionId, {running: 0, queued: 0, offscreen: 2, modalPhase: 'waiting'});
+      const old = h.context().setLanguage('en-US'); await h.flush(); const current = h.context().setLanguage('ja-JP'); await h.flush();
+      await h.release('ja-JP'); expect(await current).toBe(true); await h.flush(); expanded(h, 'ja-JP');
+      const settled = h.panel()!.outerHTML; await h.release('en-US'); expect(await old).toBe(false); await h.flush();
+      expect(h.panel()!.outerHTML).toBe(settled); expect(h.context().language.value).toBe('ja-JP');
+      expect(h.patches).toEqual([{uiLanguage: 'ja-JP', uiLanguageSetupCompleted: true}]);
+    } finally {await h.close();}
+  });
+
+  it('卸载后的迟到真实资源不写旧 DOM，重新挂载使用新 context 与当前资源', async () => {
+    const h = await fullRender('fr-FR', false);
+    try {
+      const sessionId = startFullPageTranslationProgress(); await publish(h, sessionId, {running: 0, queued: 0, offscreen: 2, modalPhase: 'waiting'});
+      const oldPanel = h.panel()!, oldContext = h.context(); await h.unmount(); const oldDom = oldPanel.outerHTML;
+      expect(h.listeners.size).toBe(0); expect(h.mediaListeners.size).toBe(0); expect(vi.getTimerCount()).toBe(0);
+      await h.release('fr-FR'); for (const callback of h.callbacks) callback({...h.config, uiLanguage: 'en-US'}); await h.flush();
+      expect(oldPanel.outerHTML).toBe(oldDom); expect(oldContext.language.value).toBe('fr-FR'); expect(oldContext.bundleRevision.value).toBe(0);
+      expect(h.root.innerHTML).toBe(''); await h.mount(); expect(h.context()).not.toBe(oldContext); expanded(h, 'fr-FR');
+      finishFullPageTranslationProgress(sessionId); await h.flush(); expect(h.panel()).toBeNull();
+      const next = startFullPageTranslationProgress(); await publish(h, next, {running: 1, queued: 0, offscreen: 0}); await h.advance(180); expanded(h, 'fr-FR');
+    } finally {await h.close();}
+  });
+
+  it('真实 loader 失败保持中文 key 回退，并允许另一个语言成功刷新', async () => {
+    const h = await fullRender('fr-FR', false);
+    try {
+      const sessionId = startFullPageTranslationProgress(); await publish(h, sessionId, {running: 0, queued: 0, offscreen: 2, modalPhase: 'waiting'});
+      await h.release('fr-FR', new Error('controlled language fetch failure')); expanded(h, 'zh-CN'); expect(h.warns).toHaveLength(1);
+      const next = h.context().setLanguage('en-US'); await h.flush(); await h.release('en-US'); expect(await next).toBe(true); await h.flush(); expanded(h, 'en-US');
+    } finally {await h.close();}
+  });
+
+  it('外层 owned scanner 仍迁移旧 sibling，七语切换保留面板、宿主与非拥有正文', async () => {
+    const h = await fullRender('en-US', true, true);
+    try {
+      const sessionId = startFullPageTranslationProgress(); await publish(h, sessionId, {running: 0, queued: 0, offscreen: 4, modalPhase: 'waiting'});
+      for (const language of languages) {
+        expect(await h.language(language)).toBe(true); expanded(h, language);
+        const sibling = h.root.querySelector('[data-owned-legacy]')!, text = h.core.translateLegacyText('设置', language);
+        expect(sibling.textContent).toBe(text); expect(sibling.getAttribute('title')).toBe(text); expect(sibling.getAttribute('aria-label')).toBe(text);
+        h.assertHost();
+      }
+      expect(h.observers.some(entry => entry.root === h.root && entry.active)).toBe(true);
+    } finally {await h.close();}
+  });
+});

@@ -90,7 +90,7 @@
 import {computed, nextTick, onBeforeUnmount, ref, shallowRef, watch} from 'vue';
 import browser from 'webextension-polyfill';
 import {Setting, Close, ArrowLeft, ArrowRight, ArrowDown, CopyDocument, RefreshRight, EditPen, Check, Operation} from '@element-plus/icons-vue';
-import {ReadingAnswer} from '@/src/features/reading-assistant/public';
+import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
 import {writingPlainText} from '../markdown';
 import {createWritingReference, type WritingReferenceState} from '../reference';
 import {useUiI18n} from '@/src/ui/i18n';

@@ -16,7 +16,7 @@ To try fixes that have not reached Greasy Fork, install the repository dependenc
 
 `pnpm test:userscript` also produces a smaller `.output/userscript/fluent-read.user.js`. Its pinned `@require` dependencies must download during installation. Violentmonkey has sometimes run that build before its dependencies were ready when installed from a file; the standalone build passed an immediate first-page test in an isolated real manager. Neither build is the version currently published on Greasy Fork.
 
-The repository also has a slim build intended for Greasy Fork's source rules. Run `pnpm build:userscript:greasyfork` to produce `.output/userscript-greasyfork/fluent-read.user.js`. Its readable source keeps the translation logic, while third-party libraries, UI text, site rules, and CSS load through `@require` URLs pinned to one Git commit. Installation requires network access, and this build uses the compact settings panel. The current source must pass the existing 2 MB size check before publication. Generating a file does not prove that the size check or submission review passed, and building it does not update the listing. To refresh the resources, run `node scripts/build-userscript-greasyfork.mjs --prepare-resources`, commit the two generated files, then run the normal build to pin both URLs to that commit.
+The repository also has a slim build intended for Greasy Fork's source rules. Run `pnpm build:userscript:greasyfork` to produce `.output/userscript-greasyfork/fluent-read.user.js`. Its readable source keeps the translation logic, while third-party libraries, UI text, site rules, and CSS load through `@require` URLs pinned to one Git commit. Installation requires network access, and this build uses the compact settings panel. The source is below Greasy Fork's 2 MB limit; acceptance still requires an actual submission review, and building it does not update the listing. To refresh the resources, run `node scripts/build-userscript-greasyfork.mjs --prepare-resources`, commit the two generated files, then run the normal build to pin both URLs to that commit.
 
 The repository’s **standalone build** opens the same full Options center used by the browser extension. Use the floating button or the script manager menu. Desktop managers with a dedicated active-tab API open it in a new tab at the current site’s URL; Android (including Via) and managers without that API open an isolated overlay on the current page without changing the site’s URL. Language, service, and appearance preferences are kept in the script manager’s private storage. Image translation, area translation, video subtitles, writing assistance, translation statistics, and model usage sections show an unavailable message in the userscript. The right-click menu and extension popup layout controls show an explanation too, so they cannot save settings that have no effect. The **slim build** keeps its compact settings panel. Check the installed version before expecting these changes from the Greasy Fork listing.
 
@@ -54,8 +54,6 @@ These steps follow the [official Userscripts installation and metadata documenta
 
 Translate pages and restore originals; translate selected or hovered text; use supported gestures, input translation, copying, and read-aloud; choose free, cloud, AI, or custom services. Preferences are saved in the script’s own settings; the repository’s standalone build has the full Options center.
 
-With reading assistance enabled, the selection card can analyze the authorized selection and continue with follow-up questions. Userscript answers stay in the current card: reading records and learning notes are not saved, and extension sessions or learning memories are not read. The browser extension retains its existing record support.
-
 For the slim build, the script manager downloads fixed versions of UI libraries from jsDelivr at installation; the standalone build includes them. Chinese and English UI text ships with both. On first use, Japanese, Korean, French, Russian, and Spanish UI text is downloaded from jsDelivr or GitHub and cached in the script manager’s private storage. These resource requests contain no page text or API keys. If you are offline before a language is cached, the UI temporarily falls back to Chinese.
 
 </details>
@@ -73,8 +71,6 @@ The script manager and webpage permissions limit available features. Image recog
 <summary>Data</summary>
 
 ## Data
-
-If the manager does not explicitly report a normal window, the selection card restricts vocabulary access and persistence. An unknown state does not mean an incognito window was detected; translation and temporary reading remain available.
 
 Configuration stays in the script manager’s private storage. Translation text goes to the service you select. UI libraries and language files come from jsDelivr or GitHub as described above. Keep credentials out of shared screenshots and public feedback; see [Data & privacy](/en/guide/privacy).
 
