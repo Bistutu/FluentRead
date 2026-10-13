@@ -1646,11 +1646,11 @@ function readPageContractStateInPage({
       signature.nativeSlotProjection = {tagName: slot.tagName, id: slot.id, directElementChildIndex: 6,
         attributes: attributes(slot), navIdentityValid: captureIdentity || identityMatches(node, slot, navIdentity.identity)};
       const protectedAttributes = [];
-      const collect = (current, position) => {
+      const collectProtectedAttributes = (current, position) => {
         protectedAttributes.push({position, tagName: current.tagName, attributes: attributes(current)});
-        if (current !== slot) [...current.children].forEach((child, index) => collect(child, [...position, index]));
+        if (current !== slot) [...current.children].forEach((child, index) => collectProtectedAttributes(child, [...position, index]));
       };
-      collect(node, []);
+      collectProtectedAttributes(node, []);
       signature.protectedAttributes = protectedAttributes;
       hostNativeDiagnostics.push({selector, slotId: slot.id, outerHTML: node.outerHTML,
         unprojectedStructure: JSON.stringify(visit(node, null))});
