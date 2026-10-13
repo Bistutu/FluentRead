@@ -1,6 +1,6 @@
 /**
  * @file tests/focusSafeBrowserBackgroundLifecycle.test.mjs
- * 验证后台 helper 与实际 owned guard 的组合生命周期：保持原计时预算，
+ * 验证 macOS 原生 helper 与实际 owned guard 的组合生命周期：保持原计时预算，
  * 对测试父进程创建的 Node actor 做实际身份查询，覆盖 pending、超时、
  * 身份拒绝与混合重复信号。VM seam 不新增生产导出，不启动浏览器或网络。
  */
@@ -194,6 +194,31 @@ if (process.argv.includes('--actor')) {
     assert.strictEqual(session.close(), first);
     await assert.rejects(session.close(), value => value === error);
     assert.equal(calls, 1); assertReleased(port); assert.deepEqual(port.exits, []);
+  });
+
+  test('foreground native session keeps the shared signal/delegate lifecycle and truthful metadata', options, async () => {
+    const port = new ProcessPort(), native = deferred(), cleanup = deferred(), entered = deferred();
+    const context = {}, placement = {mode: 'headed-centered', bounds: {left: 1920, top: 100, width: 1280, height: 900}};
+    let nativeCalls = 0, guardedCalls = 0;
+    const browser = {close() {assert.equal(this, browser); nativeCalls++; return native.promise;}};
+    const session = loadFactory(port)(browser, context, placement, {foreground: true});
+    assert.equal(session.launchMode, 'macos-foreground-cdp');
+    assert.equal(session.focusPolicy, 'foreground-authorized');
+    assert.strictEqual(session.context, context); assert.strictEqual(session.windowPlacement, placement);
+    session.useGuardedClose(function() {
+      assert.equal(this, session); guardedCalls++; entered.resolve();
+      return session.closeBrowserConnection().then(() => cleanup.promise);
+    });
+    const first = session.close(); await entered.promise;
+    assertRouted(port); assert.equal(port.emit('SIGINT'), true); assert.equal(port.emit('SIGTERM'), true);
+    assertRouted(port); assert.deepEqual(port.exits, []);
+    assert.strictEqual(session.close(), first);
+    native.resolve(); await native.promise;
+    assertRouted(port); assert.deepEqual(port.exits, []);
+    cleanup.resolve(); await first; await port.exitReady.promise;
+    assertReleased(port); assert.deepEqual(port.exits, [130]);
+    assert.equal(nativeCalls, 1); assert.equal(guardedCalls, 1);
+    assert.strictEqual(session.close(), first);
   });
 
   test('actual guard composition retains routing during native and owned pending, then exact actor gone', options, async t => {
