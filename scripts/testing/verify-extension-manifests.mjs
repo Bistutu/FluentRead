@@ -4,6 +4,7 @@ import {readFile, readdir} from 'node:fs/promises';
 import JSZip from 'jszip';
 import path from 'node:path';
 import process from 'node:process';
+import {isDeepStrictEqual} from 'node:util';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 
 const PROJECT_ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -80,6 +81,13 @@ function assert(condition, message) {
     if (!condition) throw new Error(message);
 }
 
+export function verifyChromeStoreManifest(storeManifest, localManifest) {
+    assert(!Object.hasOwn(storeManifest, 'key'), 'Chrome 商店 ZIP 不得包含开发用 key 字段');
+    const expected = {...localManifest};
+    delete expected.key;
+    assert(isDeepStrictEqual(storeManifest, expected), 'Chrome 商店清单除 key 外必须与本地构建一致');
+}
+
 function verifySharedFrameEntrypoint(manifest, files, browser) {
     const entries = manifest.content_scripts ?? [];
     const shared = entries.filter(entry => entry.js?.includes('content-scripts/supportedFrame.js'));
@@ -120,6 +128,7 @@ async function main() {
     const firefoxDir = path.resolve(PROJECT_ROOT, optionValue(args, '--firefox-dir', '.output/firefox-mv2'));
     const outputDir = path.resolve(PROJECT_ROOT, optionValue(args, '--output-dir', '.output'));
     const requireFirefoxArchives = args.includes('--require-firefox-archives');
+    const requireChromeArchive = args.includes('--require-chrome-archive');
     const [
         chromeManifest,
         firefoxManifest,
@@ -181,6 +190,15 @@ async function main() {
     verifySharedFrameEntrypoint(chromeManifest, chromeFiles, 'Chrome');
     verifySharedFrameEntrypoint(firefoxManifest, firefoxFiles, 'Firefox');
 
+    let chromeArchive = null;
+    if (requireChromeArchive) {
+        chromeArchive = `fluent-read-${chromeManifest.version}-chrome.zip`;
+        const archive = await JSZip.loadAsync(await readFile(path.join(outputDir, chromeArchive)), {checkCRC32: true});
+        const manifestEntry = archive.file('manifest.json');
+        assert(manifestEntry, 'Chrome 商店 ZIP 缺少 manifest.json');
+        verifyChromeStoreManifest(JSON.parse(await manifestEntry.async('string')), chromeManifest);
+    }
+
     let firefoxArchives = [];
     let firefoxArchiveOcrAssets = [];
     if (requireFirefoxArchives) {
@@ -221,6 +239,7 @@ async function main() {
             runtimeCapabilityMarker: chromeBuildMarker,
             artifacts: chromeArtifacts,
             ocrAssets: chromeOcrAssets.length,
+            storeArchive: chromeArchive,
         },
         firefox: {
             manifestVersion: 2,

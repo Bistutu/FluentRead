@@ -1,4 +1,6 @@
-import {readFileSync} from 'node:fs';
+import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import JSZip from 'jszip';
 import {createRequire} from 'node:module';
 import {dirname, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -8,9 +10,75 @@ import {defineUnlistedScript} from 'wxt/utils/define-unlisted-script';
 import {createHash} from 'node:crypto';
 import {GOOGLE_DRIVE_DEFAULT_CLIENT_ID, GOOGLE_DRIVE_EXTENSION_ID, GOOGLE_DRIVE_EXTENSION_PUBLIC_KEY, GOOGLE_DRIVE_SCOPES} from '@/src/platform/google-drive/constants';
 import type {Entrypoint, EntrypointGroup} from 'wxt';
-import {remoteConfigStorageBuildPlugin, createExtensionManifest, extendRemoteConfigBuildConfig, groupModuleWorkers} from '@/wxt.config';
+import {remoteConfigStorageBuildPlugin, createExtensionManifest, extendRemoteConfigBuildConfig, groupModuleWorkers, prepareExtensionStoreZip} from '@/wxt.config';
 
 const PROJECT_ROOT = resolve(__dirname, '..');
+
+describe('Chrome store ZIP packaging', () => {
+    async function fixture(manifest: Record<string, unknown>) {
+        const directory = mkdtempSync(resolve(tmpdir(), 'fluentread-store-zip-'));
+        const zipPath = resolve(directory, 'chrome.zip');
+        const archive = new JSZip();
+        archive.file('manifest.json', JSON.stringify(manifest));
+        archive.file('background.js', 'globalThis.packagingProbe = true;');
+        archive.file('asset.wasm', Buffer.from([0, 97, 115, 109, 255, 0]));
+        writeFileSync(zipPath, await archive.generateAsync({type: 'nodebuffer'}));
+        return {directory, zipPath};
+    }
+
+    it('商店包仅移除 key，保留 OAuth、权限和二进制，本地清单仍固定 ID', async () => {
+        const manifest = createExtensionManifest({browser: 'chrome', manifestVersion: 3});
+        const {directory, zipPath} = await fixture(manifest);
+        try {
+            const localManifest = resolve(directory, 'manifest.json');
+            const localBytes = JSON.stringify(manifest);
+            writeFileSync(localManifest, localBytes);
+            const before = await JSZip.loadAsync(readFileSync(zipPath), {checkCRC32: true});
+            await prepareExtensionStoreZip('chrome', zipPath);
+            const after = await JSZip.loadAsync(readFileSync(zipPath), {checkCRC32: true});
+            const expected = {...manifest}; delete expected.key;
+            expect(JSON.parse(await after.file('manifest.json')!.async('string'))).toEqual(expected);
+            expect(Object.keys(after.files).sort()).toEqual(Object.keys(before.files).sort());
+            for (const name of ['background.js', 'asset.wasm']) {
+                expect(await after.file(name)!.async('nodebuffer')).toEqual(await before.file(name)!.async('nodebuffer'));
+            }
+            expect(readFileSync(localManifest, 'utf8')).toBe(localBytes);
+            const once = readFileSync(zipPath);
+            await prepareExtensionStoreZip('chrome', zipPath);
+            expect(readFileSync(zipPath)).toEqual(once);
+        } finally {rmSync(directory, {recursive: true, force: true});}
+    });
+
+    it.each(['edge', 'firefox'])('%s ZIP 保持原字节，不进入 Chrome 重打包流程', async (browser) => {
+        const {directory, zipPath} = await fixture({manifest_version: 3, version: '0.0.37', key: 'control'});
+        try {
+            const before = readFileSync(zipPath);
+            await prepareExtensionStoreZip(browser, zipPath);
+            expect(readFileSync(zipPath)).toEqual(before);
+        } finally {rmSync(directory, {recursive: true, force: true});}
+    });
+
+    it('缺少清单时拒绝发布，原 ZIP 不被替换', async () => {
+        const {directory, zipPath} = await fixture({manifest_version: 3});
+        try {
+            const zip = await JSZip.loadAsync(readFileSync(zipPath)); zip.remove('manifest.json');
+            writeFileSync(zipPath, await zip.generateAsync({type: 'nodebuffer'}));
+            const before = readFileSync(zipPath);
+            await expect(prepareExtensionStoreZip('chrome', zipPath)).rejects.toThrow('缺少 manifest.json');
+            expect(readFileSync(zipPath)).toEqual(before);
+        } finally {rmSync(directory, {recursive: true, force: true});}
+    });
+
+    it('发行校验拒绝 key 或额外字段变化，接受仅删除 key 的商店清单', async () => {
+        const url = pathToFileURL(resolve(PROJECT_ROOT, 'scripts/testing/verify-extension-manifests.mjs')).href;
+        const {verifyChromeStoreManifest} = await import(/* @vite-ignore */ url);
+        const local = createExtensionManifest({browser: 'chrome', manifestVersion: 3});
+        const store = {...local}; delete store.key;
+        expect(() => verifyChromeStoreManifest(local, local)).toThrow('key');
+        expect(() => verifyChromeStoreManifest({...store, oauth2: undefined}, local)).toThrow('除 key');
+        expect(() => verifyChromeStoreManifest(store, local)).not.toThrow();
+    });
+});
 
 function buildEntrypoint(name: string, type: Entrypoint['type'] = 'unlisted-script'): Entrypoint {
     return {name, type, inputPath: `/entrypoints/${name}.ts`, outputDir: '/output', options: {}} as Entrypoint;

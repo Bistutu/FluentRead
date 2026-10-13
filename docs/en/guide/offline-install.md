@@ -17,7 +17,9 @@ CRXSOso is a third-party distribution website. Its version may differ from the o
 
 Open the [official GitHub release page](https://github.com/FluentRead/FluentRead/releases/latest). This address takes you to the latest stable release. Use that page for current packages and version information.
 
-Expand **Assets** below the release notes and choose the Chrome / Edge extension package ending in **`-chrome.zip`**. For checksums, download **`SHA256SUMS.txt`** from the same release’s Assets.
+Expand **Assets** below the release notes. Choose **`-chrome.zip`** for Chrome and **`-edge.zip`** for Edge; older releases without an Edge package can use the Chrome package. For checksums, download **`SHA256SUMS.txt`** from the same release’s Assets.
+
+The Chrome ZIP can also be uploaded to the store and omits the development-only `key` field. Developers who need a stable local extension ID can run `pnpm build` and load `.output/chrome-mv3`, which retains the fixed ID and OAuth configuration. `pnpm zip` removes `key` only from the store ZIP. Before release, run `pnpm verify:extension-manifests -- --require-chrome-archive --require-firefox-archives` to validate the packages.
 
 The **`-sources.zip`** file and GitHub’s automatic **Source code** downloads contain source code and cannot be installed directly.
 

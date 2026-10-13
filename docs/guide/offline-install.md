@@ -17,7 +17,9 @@ CRX搜搜是第三方分发网站，版本同步时间可能与官方商店不�
 
 打开 [GitHub 官方发布页](https://github.com/FluentRead/FluentRead/releases/latest)，这个地址会跳转到最新正式版。安装包和版本信息以发布页为准。
 
-在发布说明下方展开 **Assets**，选择文件名以 **`-chrome.zip`** 结尾的 Chrome / Edge 扩展包。如需校验文件，也可以在同一版本的 Assets 中下载 **`SHA256SUMS.txt`**。
+在发布说明下方展开 **Assets**，Chrome 选择 **`-chrome.zip`**，Edge 优先选择 **`-edge.zip`**；旧版本没有 Edge 专用包时可使用 Chrome 包。如需校验文件，也可以在同一版本的 Assets 中下载 **`SHA256SUMS.txt`**。
+
+Chrome ZIP 也可用于商店上传，不含本地开发用的 `key` 字段。开发者需要固定本地扩展 ID 时，运行 `pnpm build` 后加载 `.output/chrome-mv3`；该目录保留固定 ID 与 OAuth 配置，`pnpm zip` 只在生成的商店 ZIP 中移除 `key`。发行前可运行 `pnpm verify:extension-manifests -- --require-chrome-archive --require-firefox-archives` 校验包。
 
 **`-sources.zip`** 和 GitHub 自动生成的 **Source code** 是源码包，不能直接安装。
 
