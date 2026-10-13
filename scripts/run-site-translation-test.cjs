@@ -26,6 +26,8 @@ const trustedCoverageSnapshots = new WeakMap();
 const ownedCompletionReaders = new WeakSet();
 const ownerCompletionLedgers = new WeakMap();
 const trustedCompletionStatuses = new WeakMap();
+// Exact LearnOpenGL baseline/page handles only; context teardown destroys their DOM references.
+const protectedNavContractHandles = new WeakMap();
 const SINGLE_TOKEN_TECHNICAL_WORDS = new Set([
   'accept', 'api', 'authorization', 'cookie', 'css', 'etag', 'host', 'html', 'http', 'https', 'json',
   'referer', 'referrer', 'sql', 'tcp', 'tls', 'udp', 'uri', 'url', 'user-agent', 'xml',
@@ -1576,111 +1578,169 @@ async function waitForPageContract(
   await page.waitForTimeout(1000);
 }
 
-async function capturePageContract(
-  page,
-  requiredSelectors,
-  forbiddenSelectors,
-  interactionSelectors,
-  dynamicForbiddenSelectors,
-  optionalForbiddenSelectors,
-  mutableForbiddenSelectors = [],
-) {
-  return page.evaluate(({required, forbidden, interactions, dynamicForbidden, optionalForbidden, mutableForbidden}) => {
-    const normalizeText = (value) => String(value || '').replace(/\s+/gu, ' ').trim();
-    const ownedSelector = [
-      '.fluent-read-bilingual-content',
-      '.fluent-read-loading',
-      '.fluent-read-retry-wrapper',
-      '[data-fr-translation-owned="true"]',
-    ].join(', ');
-    const semanticSnapshot = (node) => {
-      if (!node) return {sourceText: '', structure: ''};
-      const clone = node.cloneNode(true);
-      clone.querySelectorAll(
-        '.fluent-read-bilingual-content, .fluent-read-loading, .fluent-read-retry-wrapper, [data-fr-translation-owned="true"]',
-      ).forEach((owned) => owned.remove());
-      clone.querySelectorAll('[data-fr-translation-segment="true"]').forEach((segment) => {
-        segment.replaceWith(...segment.childNodes);
-      });
-      const visit = (current) => {
-        if (current.nodeType === Node.TEXT_NODE) return normalizeText(current.nodeValue) ? '#text' : null;
-        if (current.nodeType !== Node.ELEMENT_NODE) return null;
-        return [current.tagName.toLowerCase(), [...current.childNodes].map(visit).filter(Boolean)];
-      };
-      return {sourceText: normalizeText(clone.textContent), structure: JSON.stringify(visit(clone))};
+// One serialized page callback keeps capture/assert projection predicates identical.
+// Only the exact observed LearnOpenGL native empty slot is opaque; no host DOM writes.
+function readPageContractStateInPage({
+  required, forbidden = [], interactions = [], dynamicForbidden = [], optionalForbidden = [],
+  mutableForbidden = [], baselineState, url, captureIdentity = false, navIdentity,
+}) {
+  const normalizeText = (value) => String(value || '').replace(/\s+/gu, ' ').trim();
+  const ownedSelector = [
+    '.fluent-read-bilingual-content', '.fluent-read-loading', '.fluent-read-retry-wrapper',
+    '[data-fr-translation-owned="true"]',
+  ].join(', ');
+  const attributes = (node) => [...node.attributes].map(({name, value}) => [name, value])
+    .sort(([a], [b]) => a.localeCompare(b));
+  const visit = (current, opaqueSlot) => {
+    if (current.nodeType === Node.TEXT_NODE) return normalizeText(current.nodeValue) ? '#text' : null;
+    if (current.nodeType !== Node.ELEMENT_NODE) return null;
+    return [current.tagName.toLowerCase(), current === opaqueSlot
+      ? ['#native-host-slot'] : [...current.childNodes].map((child) => visit(child, opaqueSlot)).filter(Boolean)];
+  };
+  const nativeSlotFor = (node, selector) => {
+    if (selector !== '#nav' || node.tagName !== 'DIV' || node.id !== 'nav' || typeof location === 'undefined' ||
+        location.href !== 'https://learnopengl.com/Getting-started/Coordinate-Systems' || document.querySelectorAll('#nav').length !== 1 ||
+        document.querySelectorAll('#leftfourthtenthad').length !== 1 || node.children.length !== 10) return null;
+    const slot = document.querySelector('#leftfourthtenthad');
+    if (slot?.tagName !== 'DIV' || slot.parentElement !== node || node.children[6] !== slot ||
+        normalizeText(slot.textContent) || slot.querySelector('a') || slot.matches(ownedSelector) ||
+        slot.querySelector(ownedSelector)) return null;
+    return slot;
+  };
+  const parentsOf = (anchor, nav) => {
+    const parents = [];
+    for (let parent = anchor.parentElement; parent; parent = parent.parentElement) {
+      parents.push(parent);
+      if (parent === nav) break;
+    }
+    return parents;
+  };
+  const makeIdentity = (nav, slot) => ({nav, slot, anchors: [...nav.querySelectorAll('a')].map((node) => ({
+    node, parents: parentsOf(node, nav), attributes: attributes(node), text: node.textContent,
+    href: node instanceof HTMLAnchorElement ? node.href : '', type: 'type' in node ? String(node.type || '') : '',
+  }))});
+  const identityMatches = (nav, slot, identity) => {
+    if (!identity || identity.nav !== nav || identity.slot !== slot || !nav.isConnected || !slot.isConnected) return false;
+    const anchors = [...nav.querySelectorAll('a')];
+    return anchors.length === identity.anchors.length && identity.anchors.every((initial, index) => {
+      const node = anchors[index], parents = parentsOf(node, nav);
+      return node === initial.node && node.isConnected && node.textContent === initial.text &&
+        (node instanceof HTMLAnchorElement ? node.href : '') === initial.href &&
+        ('type' in node ? String(node.type || '') : '') === initial.type &&
+        JSON.stringify(attributes(node)) === JSON.stringify(initial.attributes) &&
+        parents.length === initial.parents.length && parents.every((parent, i) => parent === initial.parents[i]);
+    });
+  };
+  let identity = null;
+  const hostNativeDiagnostics = [];
+  const forbiddenSignature = (node, selector) => {
+    const slot = nativeSlotFor(node, selector);
+    const project = Boolean(slot && (captureIdentity || navIdentity?.identity));
+    const signature = {
+      tagName: node.tagName, id: node.id, role: node.getAttribute('role') || '',
+      ariaLabel: node.getAttribute('aria-label') || '', value: 'value' in node ? String(node.value || '') : '',
+      text: normalizeText(node.textContent), structure: JSON.stringify(visit(node, project ? slot : null)),
     };
-    const firstVisibleTextNode = (selector) => [...document.querySelectorAll(selector)].find((node) => {
-      if (node.closest('[hidden], [aria-hidden="true"], [inert]')) return false;
-      const rect = node.getBoundingClientRect();
-      const style = getComputedStyle(node);
-      return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' &&
-          Boolean(node.textContent?.trim());
-    });
-    const forbiddenSignature = (node) => {
-      const visit = (current) => {
-        if (current.nodeType === Node.TEXT_NODE) return normalizeText(current.nodeValue) ? '#text' : null;
-        if (current.nodeType !== Node.ELEMENT_NODE) return null;
-        return [current.tagName.toLowerCase(), [...current.childNodes].map(visit).filter(Boolean)];
+    if (project) {
+      if (captureIdentity) identity = makeIdentity(node, slot);
+      signature.nativeSlotProjection = {tagName: slot.tagName, id: slot.id, directElementChildIndex: 6,
+        attributes: attributes(slot), navIdentityValid: captureIdentity || identityMatches(node, slot, navIdentity.identity)};
+      const protectedAttributes = [];
+      const collect = (current, position) => {
+        protectedAttributes.push({position, tagName: current.tagName, attributes: attributes(current)});
+        if (current !== slot) [...current.children].forEach((child, index) => collect(child, [...position, index]));
       };
-      return {
-        tagName: node.tagName,
-        id: node.id,
-        role: node.getAttribute('role') || '',
-        ariaLabel: node.getAttribute('aria-label') || '',
-        value: 'value' in node ? String(node.value || '') : '',
-        text: normalizeText(node.textContent),
-        structure: JSON.stringify(visit(node)),
-      };
-    };
-    const forbiddenState = forbidden.map((selector) => {
-      const nodes = [...document.querySelectorAll(selector)]
-        .filter((node) => !node.closest('.fluent-read-bilingual-content'));
-      return {
-        selector,
-        dynamic: dynamicForbidden.includes(selector),
-        optional: optionalForbidden.includes(selector),
-        mutable: mutableForbidden.includes(selector),
-        count: nodes.length,
-        translatedDescendants: nodes.reduce((count, node) =>
-          count + node.querySelectorAll('.fluent-read-bilingual-content').length, 0),
-        ownedDescendants: nodes.reduce((count, node) => count +
-          (node.matches(ownedSelector) ? 1 : 0) + node.querySelectorAll(ownedSelector).length, 0),
-        // 契约判断会比较每个禁止节点。快照只在少量固定页面契约阶段采集，
-        // 因此对长公式或代码页面执行完整拓扑遍历既有界也必要。
-        signatures: nodes.map(forbiddenSignature),
-      };
-    });
-    const requiredState = required.map((selector) => {
-      const node = firstVisibleTextNode(selector);
-      return {selector, minimumCount: document.querySelectorAll(selector).length, ...semanticSnapshot(node)};
-    });
-    const interactionState = interactions.map((selector) => {
-      const nodes = [...document.querySelectorAll(selector)]
-        .filter((node) => !node.closest('.fluent-read-bilingual-content'));
-      const node = nodes.find((candidate) => {
-        const rect = candidate.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0;
-      }) || nodes[0];
-      return {
-        selector,
-        minimumCount: nodes.length,
-        tagName: node?.tagName || '',
-        href: node instanceof HTMLAnchorElement ? node.href : '',
-        type: node && 'type' in node ? String(node.type || '') : '',
-        disabled: Boolean(node?.matches?.(':disabled')),
-        ariaDisabled: node?.getAttribute?.('aria-disabled') || '',
-        role: node?.getAttribute?.('role') || '',
-      };
-    });
-    return {requiredState, forbiddenState, interactionState};
-  }, {
-    required: requiredSelectors,
-    forbidden: forbiddenSelectors,
-    interactions: interactionSelectors,
-    dynamicForbidden: dynamicForbiddenSelectors,
-    optionalForbidden: optionalForbiddenSelectors,
-    mutableForbidden: mutableForbiddenSelectors,
+      collect(node, []);
+      signature.protectedAttributes = protectedAttributes;
+      hostNativeDiagnostics.push({selector, slotId: slot.id, outerHTML: node.outerHTML,
+        unprojectedStructure: JSON.stringify(visit(node, null))});
+    }
+    return signature;
+  };
+  const firstVisibleTextNode = (selector) => [...document.querySelectorAll(selector)].find((node) => {
+    if (node.closest('[hidden], [aria-hidden="true"], [inert]')) return false;
+    const rect = node.getBoundingClientRect(), style = getComputedStyle(node);
+    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' &&
+      Boolean(node.textContent?.trim());
   });
+  const definitions = baselineState ? baselineState.forbiddenState : forbidden.map((selector) => ({
+    selector, dynamic: dynamicForbidden.includes(selector), optional: optionalForbidden.includes(selector),
+    mutable: mutableForbidden.includes(selector),
+  }));
+  const forbiddenState = definitions.map(({selector, dynamic, optional, mutable}) => {
+    const nodes = [...document.querySelectorAll(selector)].filter((node) => !node.closest('.fluent-read-bilingual-content'));
+    return {selector, dynamic, optional, mutable, count: nodes.length,
+      translatedDescendants: nodes.reduce((count, node) => count + node.querySelectorAll('.fluent-read-bilingual-content').length, 0),
+      ownedDescendants: nodes.reduce((count, node) => count + (node.matches(ownedSelector) ? 1 : 0) + node.querySelectorAll(ownedSelector).length, 0),
+      signatures: nodes.map((node) => forbiddenSignature(node, selector))};
+  });
+  const semanticSnapshot = (node) => {
+    if (!node) return {sourceText: '', structure: ''};
+    const clone = node.cloneNode(true);
+    clone.querySelectorAll(ownedSelector).forEach((owned) => owned.remove());
+    clone.querySelectorAll('[data-fr-translation-segment="true"]').forEach((segment) => segment.replaceWith(...segment.childNodes));
+    return {sourceText: normalizeText(clone.textContent), structure: JSON.stringify(visit(clone, null))};
+  };
+  const requiredState = required.map((selector) => baselineState
+    ? {selector, count: document.querySelectorAll(selector).length, exists: Boolean(firstVisibleTextNode(selector))}
+    : {selector, minimumCount: document.querySelectorAll(selector).length, ...semanticSnapshot(firstVisibleTextNode(selector))});
+  const interactionDefinitions = baselineState ? baselineState.interactionState : interactions.map((selector) => ({selector}));
+  const interactionState = interactionDefinitions.map((initial) => {
+    const {selector} = initial;
+    const nodes = [...document.querySelectorAll(selector)].filter((node) => !node.closest('.fluent-read-bilingual-content'));
+    const matchesInitialIdentity = (candidate) => (candidate instanceof HTMLAnchorElement ? candidate.href : '') === initial.href &&
+      candidate.tagName === initial.tagName && ('type' in candidate ? String(candidate.type || '') : '') === initial.type &&
+      (candidate.getAttribute?.('role') || '') === initial.role;
+    const visible = (candidate) => {const rect = candidate.getBoundingClientRect(); return rect.width > 0 && rect.height > 0;};
+    const node = (baselineState && nodes.find(matchesInitialIdentity)) || nodes.find(visible) || nodes[0];
+    const common = {selector, tagName: node?.tagName || '', href: node instanceof HTMLAnchorElement ? node.href : '',
+      type: node && 'type' in node ? String(node.type || '') : '', disabled: Boolean(node?.matches?.(':disabled')),
+      ariaDisabled: node?.getAttribute?.('aria-disabled') || '', role: node?.getAttribute?.('role') || ''};
+    return baselineState ? {...common, count: nodes.length, connected: Boolean(node?.isConnected), focusable: Boolean(node &&
+      !node.matches(':disabled') && (node.matches('a[href], button, input, select, textarea, summary, [contenteditable="true"]') || node.tabIndex >= 0))}
+      : {...common, minimumCount: nodes.length};
+  });
+  const snapshot = baselineState ? {urlUnchanged: location.href === url,
+    documentHealthy: document.readyState !== 'loading' && Boolean(document.documentElement?.isConnected) && Boolean(document.body?.isConnected),
+    requiredState, forbiddenState, interactionState} : {requiredState, forbiddenState, interactionState};
+  if (hostNativeDiagnostics.length) snapshot.hostNativeDiagnostics = hostNativeDiagnostics;
+  return captureIdentity ? {snapshot, identity} : snapshot;
+}
+
+async function capturePageContract(
+  page, requiredSelectors, forbiddenSelectors, interactionSelectors, dynamicForbiddenSelectors,
+  optionalForbiddenSelectors, mutableForbiddenSelectors = [],
+) {
+  const argument = {required: requiredSelectors, forbidden: forbiddenSelectors, interactions: interactionSelectors,
+    dynamicForbidden: dynamicForbiddenSelectors, optionalForbidden: optionalForbiddenSelectors,
+    mutableForbidden: mutableForbiddenSelectors};
+  if (typeof page.url === 'function' && page.url() === 'https://learnopengl.com/Getting-started/Coordinate-Systems' &&
+      forbiddenSelectors.includes('#nav')) {
+    if (typeof page.evaluateHandle !== 'function') throw new Error('LearnOpenGL protected nav identity handle unavailable');
+    const handle = await page.evaluateHandle(readPageContractStateInPage, {...argument, captureIdentity: true});
+    try {
+      const snapshotHandle = await handle.getProperty('snapshot');
+      let snapshot, readingFailure, readFailed = false;
+      try {snapshot = await snapshotHandle.jsonValue();} catch (error) {readingFailure = error; readFailed = true;}
+      try {await snapshotHandle.dispose();} catch (cleanupError) {
+        if (readFailed) {
+          throw new AggregateError([readingFailure, cleanupError], 'Protected nav snapshot read/dispose failed', {cause: readingFailure});
+        }
+        throw cleanupError;
+      }
+      if (readFailed) throw readingFailure;
+      if (snapshot.forbiddenState.some(({signatures}) => signatures.some((signature) => signature.nativeSlotProjection))) {
+        protectedNavContractHandles.set(snapshot, {page, handle});
+      } else await handle.dispose();
+      return snapshot;
+    } catch (error) {
+      try {await handle.dispose();} catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], 'Protected nav snapshot/handle cleanup failed', {cause: error});
+      }
+      throw error;
+    }
+  }
+  return page.evaluate(readPageContractStateInPage, argument);
 }
 
 function reconcileForbiddenContractState(initial, current) {
@@ -1738,97 +1798,16 @@ function reconcileForbiddenContractState(initial, current) {
 }
 
 async function assertPageContract(page, baseline, requiredSelectors, expectedUrl, phase) {
-  const state = await page.evaluate(({baselineState, required, url}) => {
-    const normalizeText = (value) => String(value || '').replace(/\s+/gu, ' ').trim();
-    const ownedSelector = [
-      '.fluent-read-bilingual-content',
-      '.fluent-read-loading',
-      '.fluent-read-retry-wrapper',
-      '[data-fr-translation-owned="true"]',
-    ].join(', ');
-    const firstVisibleTextNode = (selector) => [...document.querySelectorAll(selector)].find((node) => {
-      if (node.closest('[hidden], [aria-hidden="true"], [inert]')) return false;
-      const rect = node.getBoundingClientRect();
-      const style = getComputedStyle(node);
-      return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' &&
-          Boolean(node.textContent?.trim());
-    });
-    const forbiddenSignature = (node) => {
-      const visit = (current) => {
-        if (current.nodeType === Node.TEXT_NODE) return normalizeText(current.nodeValue) ? '#text' : null;
-        if (current.nodeType !== Node.ELEMENT_NODE) return null;
-        return [current.tagName.toLowerCase(), [...current.childNodes].map(visit).filter(Boolean)];
-      };
-      return {
-        tagName: node.tagName,
-        id: node.id,
-        role: node.getAttribute('role') || '',
-        ariaLabel: node.getAttribute('aria-label') || '',
-        value: 'value' in node ? String(node.value || '') : '',
-        text: normalizeText(node.textContent),
-        structure: JSON.stringify(visit(node)),
-      };
-    };
-    const forbiddenState = baselineState.forbiddenState.map(({selector, dynamic, optional, mutable}) => {
-      const nodes = [...document.querySelectorAll(selector)]
-        .filter((node) => !node.closest('.fluent-read-bilingual-content'));
-      return {
-        selector,
-        dynamic,
-        optional,
-        mutable,
-        count: nodes.length,
-        translatedDescendants: nodes.reduce((count, node) =>
-          count + node.querySelectorAll('.fluent-read-bilingual-content').length, 0),
-        ownedDescendants: nodes.reduce((count, node) => count +
-          (node.matches(ownedSelector) ? 1 : 0) + node.querySelectorAll(ownedSelector).length, 0),
-        signatures: nodes.map(forbiddenSignature),
-      };
-    });
-    const requiredState = required.map((selector) => ({
-      selector,
-      count: document.querySelectorAll(selector).length,
-      exists: Boolean(firstVisibleTextNode(selector)),
-    }));
-    const interactionState = baselineState.interactionState.map(({selector}) => {
-      const nodes = [...document.querySelectorAll(selector)]
-        .filter((node) => !node.closest('.fluent-read-bilingual-content'));
-      const initial = baselineState.interactionState.find((item) => item.selector === selector);
-      const matchesInitialIdentity = (candidate) => {
-        const href = candidate instanceof HTMLAnchorElement ? candidate.href : '';
-        const type = candidate && 'type' in candidate ? String(candidate.type || '') : '';
-        return candidate.tagName === initial?.tagName && href === initial?.href && type === initial?.type &&
-          (candidate.getAttribute?.('role') || '') === initial?.role;
-      };
-      const node = nodes.find((candidate) => matchesInitialIdentity(candidate)) || nodes.find((candidate) => {
-        const rect = candidate.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0;
-      }) || nodes[0];
-      const focusable = Boolean(node && !node.matches(':disabled') && (
-        node.matches('a[href], button, input, select, textarea, summary, [contenteditable="true"]') ||
-        node.tabIndex >= 0
-      ));
-      return {
-        selector,
-        count: nodes.length,
-        tagName: node?.tagName || '',
-        href: node instanceof HTMLAnchorElement ? node.href : '',
-        type: node && 'type' in node ? String(node.type || '') : '',
-        disabled: Boolean(node?.matches?.(':disabled')),
-        ariaDisabled: node?.getAttribute?.('aria-disabled') || '',
-        role: node?.getAttribute?.('role') || '',
-        connected: Boolean(node?.isConnected),
-        focusable,
-      };
-    });
-    return {
-      urlUnchanged: location.href === url,
-      documentHealthy: document.readyState !== 'loading' && Boolean(document.documentElement?.isConnected) && Boolean(document.body?.isConnected),
-      requiredState,
-      forbiddenState,
-      interactionState,
-    };
-  }, {baselineState: baseline, required: requiredSelectors, url: expectedUrl});
+  const binding = protectedNavContractHandles.get(baseline);
+  const projected = baseline.forbiddenState.some(({signatures}) =>
+    signatures.some((signature) => signature.nativeSlotProjection));
+  if (projected && (!binding || binding.page !== page)) {
+    throw new Error(`${phase} protected nav baseline identity is unavailable or belongs to another page`);
+  }
+  const state = await page.evaluate(readPageContractStateInPage, {
+    baselineState: baseline, required: requiredSelectors, url: expectedUrl,
+    ...(binding ? {navIdentity: binding.handle} : {}),
+  });
 
   const errors = [];
   if (!state.urlUnchanged) errors.push(`URL 已变化：${page.url()}`);

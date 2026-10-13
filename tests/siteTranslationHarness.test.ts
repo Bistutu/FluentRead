@@ -4068,3 +4068,218 @@ describe('pubdev mandatory caption unchanged-query diagnostic', () => {
       element => element.matches('.pkg-page-title-copy-feedback') ? presentation : {display: 'block', visibility: 'visible'});
   });
 });
+
+describe('LearnOpenGL protected native slot contract', () => {
+  const exactUrl = 'https://learnopengl.com/Getting-started/Coordinate-Systems';
+  const html = `<html><body><div id="nav">
+    <div id="social"><a href="/social">Social</a></div><img src="nav-arrow.png">
+    <ol><li><a id="first-link" href="/Introduction">Introduction</a></li>
+      <li><a id="last-link" href="/Getting-started/Camera">Camera</a></li></ol>
+    <div id="menu_book"></div><div id="donate"></div><div id="lefttwotenthad"></div>
+    <div id="leftfourthtenthad"><div id="ezoic-pub-ad-placeholder-111"><div>
+      <span class="ezoic-ad" data-ez-name="Sidebar_1/observed">
+        <span class="ezoic-ad" id="div-gpt-ad-Sidebar_1/observed-0"></span>
+        <span class="reportline"><span><img alt="Ezoic" src="ezoic.png"></span></span>
+      </span></div></div></div>
+    <div id="leftsixthtenthad"><div></div></div><div id="lefteighttenthad"><div></div></div>
+    <div id="lefttenthtenthad"></div></div></body></html>`;
+  type PagePort = Parameters<typeof assertPageContract>[0] & {
+    evaluateHandle: (fn: (argument: unknown) => unknown, argument: unknown) => Promise<unknown>;
+  };
+  async function fixture(
+    run: (port: {document: Document; page: PagePort; hydrate: () => void; close: () => void;
+      liveHandles: () => number}) => Promise<void>,
+    options: {url?: string; prepare?: (document: Document) => void; readError?: 'property' | 'json' | 'dispose' | 'json-dispose'} = {},
+  ) {
+    const parsed = parseHTML(html), document = parsed.document as unknown as Document, window = parsed.window;
+    Object.defineProperty(window.HTMLElement.prototype, 'getBoundingClientRect', {
+      configurable: true, value: () => ({width: 100, height: 20, left: 0, top: 0, right: 100, bottom: 20}),
+    });
+    const url = options.url ?? exactUrl;
+    options.prepare?.(document);
+    const {runInNewContext} = require('node:vm');
+    const handles = new Set<{value: unknown; disposed: boolean}>();
+    const injectedError = new Error(`controlled ${options.readError ?? 'context'} failure`);
+    const evaluate = (fn: (argument: unknown) => unknown, argument: unknown) => {
+      const input = {...argument as Record<string, unknown>};
+      if (input.navIdentity) {
+        const handle = input.navIdentity as {value: unknown; disposed: boolean};
+        if (handle.disposed) throw injectedError;
+        input.navIdentity = handle.value;
+      }
+      return runInNewContext(`(${fn.toString()})(argument)`, {
+        argument: input, window, document, location: {href: url}, Node: window.Node,
+        HTMLElement: window.HTMLElement, HTMLAnchorElement: window.HTMLAnchorElement,
+        getComputedStyle: () => ({display: 'block', visibility: 'visible'}),
+      }, {timeout: 1000});
+    };
+    const makeHandle = (value: unknown, child = false) => {
+      const state = {value, disposed: false};
+      handles.add(state);
+      return Object.assign(state, {
+        getProperty: async (name: string) => {
+          if (options.readError === 'property') throw injectedError;
+          return makeHandle((value as Record<string, unknown>)[name], true);
+        },
+        jsonValue: async () => {
+          if (options.readError === 'json' || options.readError === 'json-dispose') throw injectedError;
+          return JSON.parse(JSON.stringify(value));
+        },
+        dispose: async () => {
+          state.disposed = true;
+          if (child && options.readError === 'dispose') throw injectedError;
+          if (child && options.readError === 'json-dispose') throw new Error('controlled cleanup failure');
+        },
+      });
+    };
+    const page = {
+      url: () => url,
+      evaluate: async (fn: (argument: unknown) => unknown, argument: unknown) => evaluate(fn, argument),
+      evaluateHandle: async (fn: (argument: unknown) => unknown, argument: unknown) => makeHandle(evaluate(fn, argument)),
+    } as PagePort;
+    const hydrate = () => {
+      const outer = document.querySelector('#leftfourthtenthad [data-ez-name]')!;
+      const primary = outer.children[0];
+      primary.innerHTML = '<div id="native-primary-container"><iframe title="3rd party ad content" aria-label="Advertisement"></iframe></div>';
+      const high = document.createElement('span');
+      high.id = 'div-gpt-ad-Sidebar_1/observed-0-highvalue';
+      high.className = 'ezoic-ad';
+      high.innerHTML = '<div id="native-highvalue-container"></div>';
+      outer.insertBefore(high, outer.children[1]);
+    };
+    const close = () => handles.forEach(handle => {handle.disposed = true;});
+    try {await run({document, page, hydrate, close, liveHandles: () => [...handles].filter(handle => !handle.disposed).length});}
+    finally {close();}
+  }
+  const capture = (page: PagePort) => capturePageContract(page, [], ['#nav'], ['#nav a[href]'], [], []);
+  const assertNav = (page: PagePort, baseline: Awaited<ReturnType<typeof capture>>, url = exactUrl) =>
+    assertPageContract(page, baseline, [], url, 'native slot regression');
+
+  it('allows only the observed empty native renderer hydration and keeps the original baseline', async () => {
+    await fixture(async ({document, page, hydrate}) => {
+      const baseline = await capture(page), before = JSON.stringify(baseline);
+      expect(baseline.forbiddenState[0]).toMatchObject({dynamic: false, mutable: false, count: 1, ownedDescendants: 0});
+      const anchors = [...document.querySelectorAll('#nav a')];
+      hydrate();
+      const current = await assertNav(page, baseline) as {hostNativeDiagnostics: Array<{unprojectedStructure: string}>};
+      expect(baseline.forbiddenState[0].signatures[0]).toMatchObject({nativeSlotProjection: {
+        id: 'leftfourthtenthad', directElementChildIndex: 6, navIdentityValid: true,
+      }});
+      expect(document.querySelector('#leftfourthtenthad iframe')?.hasAttribute('src')).toBe(false);
+      expect(current.hostNativeDiagnostics[0].unprojectedStructure)
+        .not.toBe((baseline as unknown as typeof current).hostNativeDiagnostics[0].unprojectedStructure);
+      expect([...document.querySelectorAll('#nav a')]).toEqual(anchors);
+      expect(JSON.stringify(baseline)).toBe(before);
+      document.querySelector('#native-highvalue-container')!.append(document.createElement('iframe'));
+      await expect(assertNav(page, baseline)).resolves.toBeDefined();
+      expect(JSON.stringify(baseline)).toBe(before);
+    });
+  });
+
+  it.each(['wrong-host', 'wrong-url', 'non-direct', 'duplicate-slot'] as const)(
+    'keeps raw native topology strict for a nonqualifying %s baseline', async state => {
+      const url = state === 'wrong-host' ? 'https://example.test/Getting-started/Coordinate-Systems'
+        : state === 'wrong-url' ? exactUrl + '?different=1' : exactUrl;
+      await fixture(async ({page, hydrate}) => {
+        const baseline = await capture(page);
+        expect(baseline.forbiddenState[0].signatures[0]).not.toHaveProperty('nativeSlotProjection');
+        hydrate();
+        await expect(assertNav(page, baseline, url)).rejects.toThrow('forbidden DOM 被修改');
+      }, {url, prepare: document => {
+        if (state === 'non-direct') {
+          const slot = document.querySelector('#leftfourthtenthad')!, wrapper = document.createElement('div');
+          slot.replaceWith(wrapper); wrapper.append(slot);
+        }
+        if (state === 'duplicate-slot') {
+          const duplicate = document.createElement('div'); duplicate.id = 'leftfourthtenthad'; document.body.append(duplicate);
+        }
+      }});
+    },
+  );
+
+  it.each(['slot-text', 'slot-anchor', 'slot-missing', 'slot-moved', 'slot-tag', 'slot-id', 'slot-meta',
+    'nav-text', 'nav-topology', 'nav-meta', 'anchor-href', 'anchor-meta', 'anchor-replaced',
+    'anchor-reparented-lookalike', 'slot-replaced-lookalike'] as const)(
+    'rejects protected damage after capture (%s)', async state => {
+      await fixture(async ({document, page}) => {
+        const baseline = await capture(page), slot = document.querySelector('#leftfourthtenthad')!,
+          anchor = document.querySelector('#last-link')!;
+        if (state === 'slot-text') slot.append('Injected natural text');
+        if (state === 'slot-anchor') slot.append(document.createElement('a'));
+        if (state === 'slot-missing') slot.remove();
+        if (state === 'slot-moved') document.querySelector('#nav')!.append(slot);
+        if (state === 'slot-tag') {const replacement = document.createElement('section'); replacement.id = slot.id; replacement.innerHTML = slot.innerHTML; slot.replaceWith(replacement);}
+        if (state === 'slot-id') slot.id = 'different';
+        if (state === 'slot-meta') slot.setAttribute('data-protected-metadata', 'changed');
+        if (state === 'nav-text') anchor.textContent = 'Changed navigation';
+        if (state === 'nav-topology') anchor.append(document.createElement('em'));
+        if (state === 'nav-meta') document.querySelector('#menu_book')!.setAttribute('aria-label', 'changed');
+        if (state === 'anchor-href') anchor.setAttribute('href', '/different-camera');
+        if (state === 'anchor-meta') anchor.setAttribute('aria-label', 'changed');
+        if (state === 'anchor-replaced') anchor.replaceWith(anchor.cloneNode(true));
+        if (state === 'anchor-reparented-lookalike') {
+          const parent = anchor.parentElement!, replacement = parent.cloneNode(true) as Element;
+          parent.replaceWith(replacement); replacement.querySelector('a')!.replaceWith(anchor);
+        }
+        if (state === 'slot-replaced-lookalike') slot.replaceWith(slot.cloneNode(true));
+        await expect(assertNav(page, baseline)).rejects.toThrow('forbidden DOM 被修改');
+      });
+    },
+  );
+
+  it.each(['fluent-read-bilingual-content', 'fluent-read-loading', 'fluent-read-retry-wrapper', 'data-owned'])(
+    'checks the unprojected full nav for injected owned content (%s)', async owner => {
+      await fixture(async ({document, page, hydrate}) => {
+        const baseline = await capture(page); hydrate();
+        const injected = document.createElement('span');
+        if (owner === 'data-owned') injected.setAttribute('data-fr-translation-owned', 'true');
+        else injected.className = owner;
+        document.querySelector('#leftfourthtenthad')!.append(injected);
+        await expect(assertNav(page, baseline)).rejects.toThrow('forbidden DOM 出现译文');
+      });
+    },
+  );
+
+  it('refuses projection without a real private handle port', async () => {
+    await fixture(async ({page}) => {
+      const unsupported = {...page, evaluateHandle: undefined} as unknown as PagePort;
+      await expect(capture(unsupported)).rejects.toThrow('identity handle unavailable');
+    });
+  });
+
+  it('refuses copied and foreign-page baseline identity instead of granting projection credit', async () => {
+    await fixture(async ({page}) => {
+      const baseline = await capture(page);
+      await expect(assertNav(page, JSON.parse(JSON.stringify(baseline))))
+        .rejects.toThrow('baseline identity is unavailable');
+      await expect(assertNav({...page}, baseline)).rejects.toThrow('belongs to another page');
+    });
+  });
+
+  it.each(['property', 'json', 'dispose'] as const)('propagates the private handle %s error and releases failed acquisition', async readError => {
+    await fixture(async ({page, liveHandles}) => {
+      await expect(capture(page)).rejects.toThrow(`controlled ${readError} failure`);
+      expect(liveHandles()).toBe(0);
+    }, {readError});
+  });
+
+  it('retains the original read cause and secondary disposal error when both reject', async () => {
+    await fixture(async ({page, liveHandles}) => {
+      let failure: unknown;
+      try {await capture(page);} catch (error) {failure = error;}
+      expect(failure).toBeInstanceOf(AggregateError);
+      const aggregate = failure as AggregateError;
+      expect(aggregate.errors.map((error: Error) => error.message))
+        .toEqual(['controlled json-dispose failure', 'controlled cleanup failure']);
+      expect(aggregate.cause).toBe(aggregate.errors[0]);
+      expect(liveHandles()).toBe(0);
+    }, {readError: 'json-dispose'});
+  });
+
+  it('fails strictly when the original context destroys the identity handle', async () => {
+    await fixture(async ({page, close}) => {
+      const baseline = await capture(page); close();
+      await expect(assertNav(page, baseline)).rejects.toThrow('controlled context failure');
+    });
+  });
+});
