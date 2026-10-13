@@ -820,7 +820,7 @@ describe('document user actions: confirmation and task consumers', () => {
         await fire(translateButton(), 'click');
         expect(ports.batch).toHaveBeenCalledTimes(2);
         expect(ports.batch.mock.calls.map(call => call[0].length)).toEqual([16, 2]);
-        expect(labelled('文档翻译进度').props['aria-valuenow']).toBe(88);
+        expect(labelled('document.translationProgress.label').props['aria-valuenow']).toBe(88);
         await fire(button('暂停翻译'), 'click');
         const signal = ports.batch.mock.calls[1][2].signal;
         expect(signal.aborted).toBe(true);
@@ -831,7 +831,7 @@ describe('document user actions: confirmation and task consumers', () => {
         await fire(translateButton(), 'click');
         expect(ports.batch.mock.calls.at(-1)![0]).toEqual(['Paragraph 16', 'Paragraph 17']);
         expect(textarea(0).value).toBe('manual kept');
-        expect(labelled('文档翻译进度').props['aria-valuenow']).toBe(100);
+        expect(labelled('document.translationProgress.label').props['aria-valuenow']).toBe(100);
     });
 
     it('renders a retryable service failure and retries the actual missing document segment', async () => {
@@ -854,7 +854,7 @@ describe('document user actions: confirmation and task consumers', () => {
         await fire(translateButton(), 'click');
         // 没有点击任何按钮：页面仍在翻译，并说明正在等待重试及原因。
         await vi.waitFor(() => expect(textOf(taskbar())).toContain('429 rate limited'));
-        expect(textOf(taskbar())).toContain('翻译服务暂时没有响应，将自动重试'); expect(textOf(taskbar())).toContain('2s'); expect(textOf(taskbar())).toContain('正在翻译');
+        expect(textOf(taskbar())).toContain('翻译服务暂时没有响应，将自动重试'); expect(textOf(taskbar())).toContain('2s'); expect(textOf(taskbar())).toContain('document.translationProgress.waitingRetry');
         expect(waits).toEqual([2000]); expect(ports.batch).toHaveBeenCalledTimes(1);
         release!(); await vi.waitFor(() => expect(textOf(taskbar())).toContain('翻译完成'));
         expect(ports.batch).toHaveBeenCalledTimes(2); expect(textOf(taskbar())).not.toContain('429 rate limited');

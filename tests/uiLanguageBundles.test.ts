@@ -93,6 +93,22 @@ describe('界面语言注册表', () => {
         expect(files.filter(({relativeDest}) => relativeDest.startsWith('i18n/'))).toEqual([]);
     });
 
+    it('本地化 PDF 段落进度保留完成数、总量和百分比，七语恢复入口均有文案', () => {
+        bundles.registerAllUiLanguageBundles();
+        for (const language of ['zh-CN', ...Object.keys(bundles.UI_LANGUAGE_BUNDLES)] as const) {
+            const progress = i18n.translate('document.translationProgress.count', language as any, {completed: 35, total: 100, percent: 35});
+            expect(progress).toContain('35');
+            expect(progress).toContain('100');
+            expect(progress).toContain('%');
+            expect(progress).not.toMatch(/[{}]/u);
+            for (const key of ['document.translationProgress.waitingRetry', 'document.translationProgress.collectingAfterFailure', 'document.translationRecovery.retry', 'document.translationRecovery.switchService']) {
+                expect(i18n.translate(key, language as any)).not.toBe(key);
+            }
+        }
+        expect(i18n.translate('document.translationProgress.count', 'zh-CN', {completed: 35, total: 100, percent: 35}))
+            .toBe('已翻译 35/100 个文本段落（35%）');
+    });
+
     it('默认中文入口只消费 PDF 阅读和信息高亮的独立中文常量', () => {
         const source = readFileSync(resolve('src/core/i18n/messages/zh-CN.ts'), 'utf8');
         expect(source).toContain("import {pdfReadingChineseMessages} from './pdfReading'");

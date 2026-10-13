@@ -103,6 +103,68 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
+    it('exposes a service switch immediately after failure even while another request is pending', async () => {
+        const paragraphs = Array.from({length: 18}, (_, index) => `Paragraph ${index}`);
+        await state.loadFiles([file('failure.txt', paragraphs.join('\n\n'))]); await flush();
+        const late = deferred<string[]>();
+        ports.batch.mockReturnValueOnce(late.promise).mockRejectedValueOnce(Object.assign(new Error('invalid model'), {retryable: false}));
+        const running = state.startTranslation();
+        await vi.waitFor(() => expect(state.runState).toBe('failed')); await flush();
+        expect(state.translating).toBe(true);
+        expect(state.statusLabel).toBe('document.translationProgress.collectingAfterFailure');
+        expect(state.errorMessage).toContain('invalid model');
+        const alert = walkHost(root).find(entry => entry.props.role === 'alert' && hostText(entry).includes('invalid model'))!;
+        const actions = walkHost(alert).filter(entry => entry.type === 'button');
+        expect(hostText(actions[0])).toBe('document.translationRecovery.retry');
+        expect(actions[0].props.disabled).toBe(true);
+        expect(hostText(actions[1])).toBe('document.translationRecovery.switchService');
+        actions[1].props.onClick(); await flush();
+        expect(state.runState).toBe('paused');
+        expect(ports.batch.mock.calls[0][2].signal.aborted).toBe(true);
+        const settings = walkHost(root).find(entry => entry.type === 'dialog' && entry.props.class === 'document-dialog document-settings-dialog')!;
+        expect(settings.showModal).toHaveBeenCalledOnce();
+        state.config.documentService = 'google';
+        await state.startTranslation(); await flush();
+        expect(state.translationComplete).toBe(true);
+        late.resolve(paragraphs.slice(0, 16).map(source => `late ${source}`));
+        await running; await flush();
+        expect(state.translatedSegments).toEqual(paragraphs.map(source => `译 ${source}`));
+        expect(state.errorMessage).toBe('');
+    });
+
+    it('renders zero and completed progress, exposes failure recovery, and resumes with another service', async () => {
+        await state.loadFiles([file('progress.txt', 'First.\n\nSecond.')]); await flush();
+        const progress = () => walkHost(root).find(entry => entry.props['data-testid'] === 'document-translation-progress')!;
+        expect(progress().props['aria-valuenow']).toBe(0);
+        expect(progress().props['aria-valuetext']).toBe('document.translationProgress.count');
+        expect(ports.i18n).toHaveBeenCalledWith('document.translationProgress.count', {completed: 0, total: 2, percent: 0});
+        state.documentBatchTranslation = false;
+        const pending = deferred<string>();
+        ports.translate.mockImplementation((source: string) => source.startsWith('First') ? Promise.resolve('第一段') : pending.promise);
+        const running = state.startTranslation();
+        await vi.waitFor(() => expect(state.completedSegments).toBe(1)); await flush();
+        expect(progress().props['aria-valuenow']).toBe(50);
+        pending.reject(Object.assign(new Error('Model unavailable'), {retryable: false}));
+        await running; await flush();
+        expect(state.runState).toBe('failed');
+        const alert = walkHost(root).find(entry => entry.props.role === 'alert' && hostText(entry).includes('Model unavailable'))!;
+        const actions = walkHost(alert).filter(entry => entry.type === 'button');
+        expect(actions.map(hostText)).toEqual(['document.translationRecovery.retry', 'document.translationRecovery.switchService']);
+        const settings = walkHost(root).find(entry => entry.type === 'dialog' && entry.props.class === 'document-dialog document-settings-dialog')!;
+        actions[1].props.onClick();
+        expect(settings.showModal).toHaveBeenCalledOnce();
+        state.config.documentService = 'google';
+        expect(state.settingsChanged).toBe(false);
+        expect(state.progress).toBe(50);
+        ports.translate.mockResolvedValue('第二段');
+        actions[0].props.onClick();
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(ports.translate).toHaveBeenCalledTimes(3);
+        expect(ports.translate.mock.calls[2][0]).toBe('Second.');
+        expect(state.translatedSegments).toEqual(['第一段', '第二段']);
+        expect(progress().props['aria-valuenow']).toBe(100);
+    });
+
     it('keeps the exact original download copy localized and reacts to the shared language selection', async () => {
         for (const language of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES']) {
             const copy = getDocumentDownloadCopy(language);
@@ -935,6 +997,7 @@ it('glossary gate document settings buttons open the modal and translate back to
     expect(state.parsedDocument.segments[0].source).toBe('The agent uses FluentRead.');
     expect(state.pendingAction).toBeNull();
     const status = walk(root).find(entry => entry.props.class === 'document-status')!;
-    expect(text(status)).toMatch(/^翻译完成\s*·\s*1\s*\/\s*1$/);
-    expect(walk(root).find(entry => entry.props.role === 'progressbar' && entry.props['aria-label'] === '文档翻译进度')!.props['aria-valuenow']).toBe(100);
+    expect(text(status)).toContain('翻译完成');
+    expect(ports.i18n).toHaveBeenCalledWith('document.translationProgress.count', {completed: 1, total: 1, percent: 100});
+    expect(walk(root).find(entry => entry.props['data-testid'] === 'document-translation-progress')!.props['aria-valuenow']).toBe(100);
 });

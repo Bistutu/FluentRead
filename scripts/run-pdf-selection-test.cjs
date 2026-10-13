@@ -24,7 +24,7 @@ const LINES = [
   'Second ownership selection owns the final Chinese answer.',
 ];
 
-async function createPdf(pageCount, rotation = 0) {
+async function createPdf(pageCount, rotation = 0, uniqueParagraphs = false) {
   const {PDFDocument, StandardFonts, rgb, degrees} = createRequire(path.join(__dirname, '..', 'package.json'))('pdf-lib');
   const document = await PDFDocument.create();
   const font = await document.embedFont(StandardFonts.Helvetica);
@@ -32,9 +32,9 @@ async function createPdf(pageCount, rotation = 0) {
     const page = document.addPage([595, 842]);
     if (rotation) page.setRotation(degrees(rotation));
     page.drawText(`FluentRead PDF fixture page ${number}`, {font, x: 44, y: 792, size: 15});
-    LINES.forEach((line, index) => page.drawText(line, {font, x: 44, y: 748 - index * 28, size: 11}));
+    LINES.forEach((line, index) => page.drawText(uniqueParagraphs ? `${line} Page ${number}.` : line, {font, x: 44, y: 748 - index * 28, size: 11}));
     page.drawRectangle({x: 44, y: 420, width: 280, height: 100, color: rgb(0.86, 0.93, 0.88)});
-    page.drawText('Original figures, fonts and page geometry remain intact.', {font, x: 44, y: 390, size: 11});
+    page.drawText(`Original figures, fonts and page geometry remain intact.${uniqueParagraphs ? ` Page ${number}.` : ''}`, {font, x: 44, y: 390, size: 11});
   }
   return Buffer.from(await document.save());
 }
@@ -73,7 +73,7 @@ function paperFixtureTranslation(source, expansion = 1, includeTail = false) {
   return paragraph.repeat(Math.ceil(length / paragraph.length)).slice(0, length).replace(/[，、；：]$/u, '') + '。' + tail;
 }
 
-async function createFixture(files, {paperLayout = false, includePaperTail = false} = {}) {
+async function createFixture(files, {paperLayout = false, includePaperTail = false, taskInteraction = false} = {}) {
   const state = {requests: [], pdfRequests: [], completed: [], stalledRequests: 0, canceledDownloads: 0, paperExpansion: 1, translationDelayMs: 20};
   const server = http.createServer(async (request, response) => {
     response.setHeader('Access-Control-Allow-Origin', '*');
@@ -100,7 +100,11 @@ async function createFixture(files, {paperLayout = false, includePaperTail = fal
       const source = /SOURCE_BEGIN([\s\S]*?)SOURCE_END/u.exec(prompt)?.[1];
       assert.equal(typeof source, 'string', '翻译夹具需要明确的 SOURCE_BEGIN/SOURCE_END 原文边界');
       const translation = paperLayout ? paperFixtureTranslation(source, state.paperExpansion, includePaperTail) : `测试译文：${source}`;
-      const entry = {source, ...(paperLayout ? {translation, expansion: state.paperExpansion, evidence: 'manually generated Chinese layout fixture; not translation quality'} : {}), startedAt: Date.now()}; state.requests.push(entry);
+      const entry = {source, model: body.model, translation, ...(paperLayout ? {expansion: state.paperExpansion, evidence: 'manually generated Chinese layout fixture; not translation quality'} : {}), startedAt: Date.now()}; state.requests.push(entry);
+      if (taskInteraction && body.model === 'pdf-failing' && state.requests.filter(value => value.model === 'pdf-failing').length >= 3) {
+        entry.failed = true; response.writeHead(400, {'Content-Type': 'application/json'});
+        response.end(JSON.stringify({error: {message: 'Fixture model unavailable; choose another model to resume', type: 'invalid_request_error', code: 'model_not_found'}})); return;
+      }
       await wait(source.includes('First ownership') && !paperLayout ? 1600 : state.translationDelayMs);
       state.completed.push({...entry, completedAt: Date.now(), disconnected: response.destroyed});
       if (response.destroyed) return;
@@ -300,6 +304,7 @@ async function main() {
   const paperLayoutBaseline = process.argv.includes('--paper-layout-baseline');
   const paperLayoutFollowup = process.argv.includes('--paper-layout-followup');
   const paperLayoutCancelOnly = process.argv.includes('--paper-layout-cancel-only');
+  const taskInteraction = process.argv.includes('--interaction-recovery-only') || process.argv.includes('--selection-baseline-only');
   assert(packages, '需要 --playwright-root 或 PLAYWRIGHT_ROOT');
   assert(fs.existsSync(path.join(extensionDir, 'manifest.json')), '请先生成生产扩展产物');
   if (arxivPath) assert(fs.existsSync(arxivPath), '找不到 --arxiv-pdf 指定的论文');
@@ -319,10 +324,10 @@ async function main() {
   let fixture, launched, page, launchAttempted = false;
   const record = name => {report.cases.push(name); process.stdout.write(`PASS ${name}\n`);};
   try {
-    const smallPdf = await createPdf(3), longPdf = await createPdf(120);
+    const smallPdf = await createPdf(3, 0, taskInteraction), longPdf = await createPdf(120);
     fs.writeFileSync(path.join(artifactsDir, 'selection-fixture.pdf'), smallPdf);
     fs.writeFileSync(path.join(artifactsDir, 'long-120.pdf'), longPdf);
-    fixture = await createFixture({'/selection-fixture.pdf': smallPdf}, {paperLayout: paperLayoutOnly, includePaperTail: paperLayoutOnly && !paperLayoutBaseline});
+    fixture = await createFixture({'/selection-fixture.pdf': smallPdf}, {paperLayout: paperLayoutOnly, includePaperTail: paperLayoutOnly && !paperLayoutBaseline, taskInteraction});
     launchAttempted = true;
     launched = await helper.launchFocusSafePersistentContext({chromium, profileDir,
       browserPath: arg('browser-path', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'), background: true, headless: false,
@@ -355,13 +360,13 @@ async function main() {
     await configPage.goto(`${origin}/document.html`); await configPage.locator('.file-drop-zone').waitFor(); await checkFocus('initial document page');
     const current = await support.readStoredConfig(configPage), service = 'custom:pdf-fixture';
     await support.patchStoredConfig(configPage, {on: true, uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true, service, from: 'en', to: 'zh-Hans',
-      selectionTranslationService: service, documentService: service, model: {...current.model, [service]: 'pdf-fixture'},
-      documentModel: {...current.documentModel, [service]: 'pdf-fixture'}, user_role: {...current.user_role, [service]: 'SOURCE_BEGIN{{origin}}SOURCE_END'},
-      customOpenAIProviders: [{id: service, name: 'PDF 本机确定性测试', endpoint: `${fixture.base}/v1/chat/completions`, models: ['pdf-fixture']}],
-      requireApiKey: {[`v2:${JSON.stringify([service, 'pdf-fixture'])}`]: false}, token: {...current.token, [service]: 'fixture-token'},
+      selectionTranslationService: service, documentService: service, model: {...current.model, [service]: 'pdf-fixture', ...(taskInteraction ? {'custom:pdf-rescue': 'pdf-rescue'} : {})},
+      documentModel: {...current.documentModel, [service]: 'pdf-fixture', ...(taskInteraction ? {'custom:pdf-rescue': 'pdf-rescue'} : {})}, user_role: {...current.user_role, [service]: 'SOURCE_BEGIN{{origin}}SOURCE_END', ...(taskInteraction ? {'custom:pdf-rescue': 'SOURCE_BEGIN{{origin}}SOURCE_END'} : {})},
+      customOpenAIProviders: [{id: service, name: 'PDF 本机确定性测试', endpoint: `${fixture.base}/v1/chat/completions`, models: taskInteraction ? ['pdf-fixture', 'pdf-failing', 'pdf-rescue'] : ['pdf-fixture']}, ...(taskInteraction ? [{id: 'custom:pdf-rescue', name: 'PDF 备用测试服务', endpoint: `${fixture.base}/v1/chat/completions`, models: ['pdf-rescue']}] : [])],
+      requireApiKey: Object.fromEntries((taskInteraction ? [[service, 'pdf-fixture'], [service, 'pdf-failing'], [service, 'pdf-rescue'], ['custom:pdf-rescue', 'pdf-rescue']] : [[service, 'pdf-fixture']]).map(pair => [`v2:${JSON.stringify(pair)}`, false])), token: {...current.token, [service]: 'fixture-token', ...(taskInteraction ? {'custom:pdf-rescue': 'fixture-token'} : {})},
       selectionTranslatorMode: 'bilingual', selectionTranslatorTrigger: 'icon', selectionTranslatorDelay: 0, selectionTranslatorAutoDismiss: false,
       useCache: false, hotkey: 'none', floatingBallHotkey: 'none', enableAIContext: false, enableAIMultiSegment: false});
-    if (paperLayoutOnly) {
+    if (paperLayoutOnly || taskInteraction) {
       await support.patchStoredConfig(configPage, {translationRequestsPerSecond: 0, translationRequestsPerMinute: 0});
       report.fixtureRequestLimits = {perSecond: 0, perMinute: 0, scope: 'owned isolated profile and local fixture only; product default remains unchanged'};
     }
@@ -589,6 +594,15 @@ async function main() {
       assert((await uiText()).includes(`测试译文：${requestedSource}`)); report.crossPage = {nativeSelection: selected, requestedSource, input: 'mouse down; inner viewport scrollTop; mouse move and up'};
     };
 
+    if (taskInteraction) {
+      const {runPdfTaskInteractions} = require('./testing/pdf-task-interactions.cjs');
+      page = await openDocument(); await load('selection-fixture.pdf', smallPdf);
+      await runPdfTaskInteractions({page, fixture, report, shot, record, patch, service, until, wait, resourceState, uiNode, translateDrag,
+        baseline: process.argv.includes('--selection-baseline-only')});
+      await checkFocus('PDF interaction recovery complete');
+      assert.equal(report.consoleErrors.length, 0, `浏览器错误：${JSON.stringify(report.consoleErrors)}`);
+      report.ok = true; return;
+    }
     if (paperLayoutOnly) {
       if (!paperLayoutBaseline) {
         report.runScope = paperLayoutFollowup ? 'paper-readable-followup' : 'paper-readable'; report.selectionInput = 'Layout verification with a local Chinese fixture; selection probes recorded separately';

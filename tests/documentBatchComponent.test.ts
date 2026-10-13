@@ -83,6 +83,121 @@ afterEach(() => {
 });
 
 describe('document batch page lifecycle', () => {
+  it('reports a fatal failure immediately while still accepting successful results already requested', async () => {
+    await state.loadFiles([file('partial.txt', 'First.\n\nSecond.')]);
+    const pending = deferred<void>();
+    let options: any;
+    translate.mockImplementationOnce(async (_segments, controls) => {
+      options = controls;
+      await pending.promise;
+      throw new Error('第 2 段文档翻译失败：invalid model');
+    });
+    const work = state.startTranslation();
+    options.onFailure({id: 1, reason: '第 2 段文档翻译失败：invalid model'});
+    expect(state.runState).toBe('failed');
+    expect(state.translating).toBe(true);
+    expect(state.statusLabel).toBe('document.translationProgress.collectingAfterFailure');
+    expect(state.errorMessage).toContain('invalid model');
+    options.onSegment({id: 0, translation: '已发请求返回成功'});
+    expect(state.completedSegments).toBe(1);
+    expect(state.progress).toBe(50);
+    pending.resolve(); await work;
+    expect(state.translating).toBe(false);
+    expect(state.statusLabel).toBe('翻译中断');
+    expect(state.translatedSegments).toEqual(['已发请求返回成功']);
+  });
+
+  it('counts only committed passages, holds progress during retry, and waits for task settlement before 100%', async () => {
+    await state.loadFiles([file('progress.txt', 'First.\n\nSecond.\n\nThird.')]);
+    state.editSegment(0, '已完成的译文');
+    const pending = deferred<void>();
+    let options: any;
+    translate.mockImplementationOnce(async (_segments, controls) => {options = controls; await pending.promise;});
+    const work = state.startTranslation();
+    expect(state.progress).toBe(33);
+    options.onRetry({attempt: 1, delayMs: 2000, reason: '429 rate limit'});
+    options.onRetryStateChange({waiting: 2});
+    expect(state.statusLabel).toBe('document.translationProgress.waitingRetry');
+    expect(state.progress).toBe(33);
+    options.onSegment({id: 1, translation: '第二段'});
+    options.onSegment({id: 1, translation: '第二段更新'});
+    expect(state.completedSegments).toBe(2);
+    expect(state.progress).toBe(66);
+    expect(state.retryNotice).toContain('429 rate limit');
+    options.onRetryStateChange({waiting: 1});
+    expect(state.statusLabel).toBe('document.translationProgress.waitingRetry');
+    options.onRetryStateChange({waiting: 0});
+    expect(state.statusLabel).toBe('正在翻译');
+    expect(state.retryNotice).toBe('');
+    options.onSegment({id: 2, translation: '第三段'});
+    expect(state.completedSegments).toBe(3);
+    expect(state.progress).toBe(99);
+    expect(state.translationComplete).toBe(false);
+    expect(state.statusLabel).toBe('document.translationProgress.finishing');
+    pending.resolve();
+    await work;
+    expect(state.translationComplete).toBe(true);
+    expect(state.progress).toBe(100);
+    expect(state.statusLabel).toBe('翻译完成');
+  });
+
+  it('keeps progress and reviewed translations when recovering with another service or model', async () => {
+    state.config.documentService = 'openai';
+    state.config.documentModel.openai = 'gpt-4o-mini';
+    await state.loadFiles([file('paper.txt', 'First.\n\nSecond.\n\nThird.')]);
+    state.editSegment(0, '人工校订');
+    const fingerprint = state.taskFingerprint;
+    translate.mockImplementationOnce(async (_segments, options) => {
+      options.onSegment({id: 1, translation: '保留已成功段落'});
+      throw new Error('Model unavailable: 503');
+    });
+    await state.startTranslation();
+    expect(state.runState).toBe('failed');
+    expect(state.progress).toBe(66);
+    expect(state.errorMessage).toBe('Model unavailable: 503');
+    expect(state.translationActionLabel).toBe('document.translationRecovery.retry');
+    state.config.documentModel.openai = 'gpt-4o';
+    expect(state.currentFingerprint).not.toBe(fingerprint);
+    expect(state.settingsChanged).toBe(false);
+    expect(state.progress).toBe(66);
+    state.config.documentService = 'google';
+    expect(state.settingsChanged).toBe(false);
+    state.confirmDialog = {showModal: vi.fn()};
+    state.requestTranslation();
+    await vi.waitFor(() => expect(state.translationComplete).toBe(true));
+    expect(state.confirmDialog.showModal).not.toHaveBeenCalled();
+    expect(translate.mock.calls[1][1]).toEqual(expect.objectContaining({serviceOverride: 'google', initialTranslations: ['人工校订', '保留已成功段落']}));
+    expect(state.confirmedTranslationIds).toEqual([0]);
+    expect(state.translatedSegments.slice(0, 2)).toEqual(['人工校订', '保留已成功段落']);
+    expect(state.progress).toBe(100);
+  });
+
+  it('pauses retry waits to change service and ignores late retry and segment callbacks', async () => {
+    await state.loadFiles([file('paper.txt', 'First.\n\nSecond.')]);
+    const pending = deferred<void>();
+    let options: any;
+    translate.mockImplementationOnce(async (_segments, controls) => {options = controls; await pending.promise;});
+    state.documentSettingsDialog = {showModal: vi.fn(), close: vi.fn()};
+    const work = state.startTranslation();
+    options.onSegment({id: 0, translation: '已完成'});
+    options.onRetry({attempt: 1, delayMs: 2000, reason: 'timeout'});
+    options.onRetryStateChange({waiting: 1});
+    state.pauseAndChangeService();
+    expect(state.statusLabel).toBe('已暂停');
+    expect(state.progress).toBe(50);
+    expect(state.documentSettingsDialog.showModal).toHaveBeenCalledOnce();
+    options.onRetryStateChange({waiting: 3});
+    options.onRetry({attempt: 2, delayMs: 4000, reason: 'late retry'});
+    options.onFailure({id: 1, reason: 'late failure'});
+    options.onSegment({id: 1, translation: 'late result'});
+    pending.resolve(); await work;
+    expect(state.retryWaiting).toBe(0);
+    expect(state.retryNotice).toBe('');
+    expect(state.translatedSegments).toEqual(['已完成']);
+    await state.startTranslation();
+    expect(translate.mock.calls[1][1].initialTranslations).toEqual(['已完成']);
+  });
+
   it('keeps progress accurate across existing translations, duplicate updates and clearing a result', async () => {
     await state.loadFiles([file('a.txt', 'First.\n\nSecond.\n\nThird.')]);
     state.editSegment(0, '已校订');

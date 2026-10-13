@@ -1,7 +1,7 @@
 /**
  * @file src/app/document-translation/document-page.css
  * 文件职责：定义文档翻译独立页面的完整布局与主题表现，使导入区、阅读器、翻译进度、原文件保存、格式预览和导出操作在桌面与窄屏下保持可读。
- * 主要内容：声明页面级颜色变量与暗色覆盖，打开文档后的单行工具栏（内含翻译服务与目标语言选择）、可折叠的文件与目录侧栏和铺满窗口的阅读区，设置可收起的文件队列、本地范例、品牌头部、拖放卡片、工具栏、PDF 连续页及其不可见字体测量画布、EPUB/DOCX 分区、字幕与 JSON 行、设置摘要、下载预览和响应式断点。
+ * 主要内容：让数字进度完整可见，保留零进度和完成进度条，并样式化失败后的续译提示；声明页面级颜色变量与暗色覆盖，打开文档后的单行工具栏（内含翻译服务与目标语言选择）、可折叠的文件与目录侧栏和铺满窗口的阅读区，设置可收起的文件队列、本地范例、品牌头部、拖放卡片、工具栏、PDF 连续页及其不可见字体测量画布、EPUB/DOCX 分区、字幕与 JSON 行、设置摘要、下载预览和响应式断点。
  * 模块边界：样式仅服务 DocumentApp 的 class 结构，不解析文档、不控制翻译状态，也不覆盖 content 宿主页面；跨页面基础视觉 token 仍由 src/ui/styles/tokens.css 管理。
  */
 @import "../../ui/styles/feedback.css";
@@ -369,7 +369,7 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-settings-button small { color: var(--brand-strong); font-size: 11px; }
 .task-progress { grid-column: 1 / -1; height: 3px; overflow: hidden; border-radius: 10px; background: var(--line); }
 .task-progress i { display: block; height: 100%; background: var(--brand); transition: width .2s; }
-.task-progress.complete, .task-progress[aria-valuenow="0"] { display: none; }
+.task-progress.complete i { background: #279672; }
 .task-notice { grid-column: 1 / -1; margin: 0; }
 .document-batch { padding: 10px 16px; margin-bottom: 14px; border-radius: 14px; }
 .batch-files { grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); max-height: 150px; }
@@ -435,6 +435,11 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-taskbar .task-file-format { width: auto; height: 20px; padding: 0 6px; border-radius: 5px; font-size: 9px; letter-spacing: .04em; }
 .document-taskbar h1 { overflow: hidden; margin: 0; max-width: none; font-size: 13px; font-weight: 650; line-height: 1.3; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
 .document-taskbar .document-status { margin: 1px 0 0; font-size: 10.5px; line-height: 1.3; white-space: nowrap; }
+.document-taskbar .document-translation-count { display: block; font-variant-numeric: tabular-nums; white-space: normal; }
+.document-taskbar .recovery-hint { display: inline-block; margin-left: 8px; color: var(--muted); }
+.document-taskbar .task-notice button { display: inline-flex; align-items: center; margin: 4px 6px; padding: 3px 8px; border: 1px solid currentColor; border-radius: 6px; background: transparent; color: inherit; font: inherit; white-space: nowrap; cursor: pointer; }
+.document-taskbar .task-notice button:disabled { opacity: .5; cursor: default; }
+.document-taskbar .task-notice button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .document-taskbar .reader-toolbar { position: static; display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; margin: 0; padding: 0; border: 0; background: none; }
 .document-taskbar .mode-buttons { height: 32px; min-height: 32px; flex-wrap: nowrap; padding: 2px; border-radius: 9px; }
 .document-taskbar .mode-buttons button { min-width: 0; padding: 0 11px; border-radius: 7px; font-size: 12px; white-space: nowrap; }
@@ -453,7 +458,7 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-taskbar .download-button:enabled:hover { border-color: rgba(239, 71, 118, .42); color: var(--brand-strong); background: var(--brand-soft); }
 .document-taskbar .download-button:disabled { border-color: var(--line); color: var(--muted); background: transparent; cursor: not-allowed; opacity: .5; }
 .document-taskbar .add-file-button { border-color: transparent; color: var(--muted); background: transparent; font-weight: 600; }
-.document-taskbar .task-progress { position: absolute; inset: auto 0 -1px; height: 2px; border-radius: 0; background: transparent; }
+.document-taskbar .task-progress { position: absolute; inset: auto 0 -1px; height: 3px; border-radius: 0; background: var(--line); }
 .document-taskbar .task-notice, .document-taskbar .document-import-progress { flex-basis: 100%; margin: 0; padding: 2px 0 4px; font-size: 11.5px; }
 .is-workspace .document-reading-pane { border: 0; border-radius: 0; background: var(--reader-canvas); }
 .is-workspace .document-reading-pane .reading-content { padding: 16px max(16px, calc((100% - 1180px) / 2)); }
