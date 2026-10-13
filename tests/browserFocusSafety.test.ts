@@ -2546,8 +2546,8 @@ describe('macOS 前台 native CDP helper 的启动与窗口契约（受控端口
     const helper = module.exports as {
       launchFocusSafePersistentContext(options: unknown): Promise<{context: typeof context; launchMode: string;
         focusPolicy: string; windowPlacement: Record<string, unknown>; close: () => Promise<unknown>}>;
-      newPageWithoutForeground(context: typeof context): Promise<ReturnType<typeof fixturePage>>;
-      activateExtensionTabWithoutForeground(context: typeof context, page: ReturnType<typeof fixturePage>): Promise<void>;
+      newPageWithoutForeground(browserContext: typeof context): Promise<ReturnType<typeof fixturePage>>;
+      activateExtensionTabWithoutForeground(browserContext: typeof context, page: ReturnType<typeof fixturePage>): Promise<void>;
     };
     const launchOptions = {chromium, profileDir,
       ...options.omitBrowserPath ? {} : {browserPath: options.browserPath ?? `${appBundle}/Contents/MacOS/Microsoft Edge`},
