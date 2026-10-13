@@ -20,7 +20,7 @@ describe('卡片排版边界', () => {
         const result = await renderShareCard({original: 'A sentence worth keeping.', translation: '一句值得珍藏的话。', source: 'example.com'}, normalizeShareCardPreferences({theme}));
         expect(result.width).toBe(960); expect(result.height).toBeGreaterThanOrEqual(450);
         const text = painted.map(item => item.text).join(' ');
-        for (const expected of ['A sentence worth keeping.', '一句值得珍藏的话。', 'example.com', 'FluentRead']) expect(text).toContain(expected);
+        for (const expected of ['A sentence worth keeping.', '一句值得珍藏的话。', 'example.com', '流畅阅读']) expect(text).toContain(expected);
         expect(painted.every(item => item.y >= 0 && item.y < result.height / 1.5 - 24)).toBe(true);
     });
     it('没有 roundRect 的浏览器仍能生成月白图片', async () => {
@@ -48,7 +48,7 @@ describe('卡片排版边界', () => {
         expect(canvas.width).toBe(canvas.height);
         const texts = painted.map(item => item.text);
         expect(texts.indexOf('你好')).toBeLessThan(texts.indexOf('Hello'));
-        expect(texts).not.toContain('PRIVATE'); expect(texts).not.toContain('FluentRead');
+        expect(texts).not.toContain('PRIVATE'); expect(texts).not.toContain('流畅阅读'); expect(texts).not.toContain('FluentRead');
     });
     it('Canvas 不可用或 PNG 生成失败时返回错误', async () => {
         const value = {original: 'Hello', translation: '你好', source: ''};
@@ -56,6 +56,20 @@ describe('卡片排版边界', () => {
         await expect(renderShareCard(value, normalizeShareCardPreferences())).rejects.toMatchObject({reason: 'canvas'});
         canvas.getContext.mockReturnValue(null);
         await expect(renderShareCard(value, normalizeShareCardPreferences())).rejects.toMatchObject({reason: 'canvas'});
+    });
+    it('品牌默认中文与显式外语署名只改变页脚，尺寸和正文位置保持不变', async () => {
+        const excerpt = {original: 'Literal FluentRead original', translation: '用户译文 FluentRead', source: 'example.test'};
+        const preferences = normalizeShareCardPreferences();
+        const chinese = await renderShareCard(excerpt, preferences);
+        const first = [...painted]; painted = [];
+        const foreign = await renderShareCard(excerpt, preferences, undefined, 'FluentRead');
+        expect(painted.slice(0, -1)).toEqual(first.slice(0, -1));
+        expect(first.at(-1)!.text).toBe('流畅阅读'); expect(painted.at(-1)!.text).toBe('FluentRead');
+        expect(painted.at(-1)!.x).toBe(first.at(-1)!.x); expect(painted.at(-1)!.y).toBe(first.at(-1)!.y);
+        expect({width: foreign.width, height: foreign.height}).toEqual({width: chinese.width, height: chinese.height});
+        painted = [];
+        await renderShareCard(excerpt, normalizeShareCardPreferences({showBrand: false}), undefined, 'PRIVATE BRAND');
+        expect(painted.map(item => item.text)).not.toContain('PRIVATE BRAND');
     });
 });
 

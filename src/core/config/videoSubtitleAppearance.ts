@@ -1,7 +1,7 @@
 /**
  * @file src/core/config/videoSubtitleAppearance.ts
  * 文件职责：定义视频字幕外观 registry、默认值、配置归一化和播放器 CSS 变量契约。
- * 主要内容：提供可扩展字幕皮肤、字号/位置/背景/行距/宽度等有界参数，并把配置转换为隔离 UI 可消费的 CSS 变量。
+ * 主要内容：提供可扩展字幕皮肤、字号/位置/背景/行距/宽度等有界参数与默认关闭的逐字高亮开关，并把配置转换为隔离 UI 可消费的 CSS 变量。
  * 模块边界：只处理纯配置数据，不读取播放器、DOM 或浏览器存储；持久化由 Config/store 负责，实际挂载由 content UI 负责。
  */
 
@@ -30,7 +30,11 @@ export interface VideoSubtitleAppearance {
     lineSpacing: number;
     maxWidth: number;
     fontScale: number;
+    /** 逐字高亮：字幕随播放进度像 KTV 歌词一样逐字点亮，默认关闭。 */
+    karaoke: boolean;
 }
+
+export const VIDEO_SUBTITLE_FONT_SCALE_RANGE = {min: 80, max: 500, step: 1} as const;
 
 export const DEFAULT_VIDEO_SUBTITLE_APPEARANCE: VideoSubtitleAppearance = {
     skin: 'classic',
@@ -43,6 +47,7 @@ export const DEFAULT_VIDEO_SUBTITLE_APPEARANCE: VideoSubtitleAppearance = {
     lineSpacing: 1.28,
     maxWidth: 96,
     fontScale: 100,
+    karaoke: false,
 };
 
 function normalizeNumber(value: unknown, fallback: number, min: number, max: number, step: number): number {
@@ -83,7 +88,8 @@ export function normalizeVideoSubtitleAppearance(value: unknown): VideoSubtitleA
         backgroundOpacity: normalizeNumber(source.backgroundOpacity, skinPreset.backgroundOpacity, 0, 95, 1),
         lineSpacing: normalizeNumber(source.lineSpacing, DEFAULT_VIDEO_SUBTITLE_APPEARANCE.lineSpacing, 1, 2, 0.01),
         maxWidth: normalizeNumber(source.maxWidth, DEFAULT_VIDEO_SUBTITLE_APPEARANCE.maxWidth, 40, 100, 1),
-        fontScale: normalizeNumber(source.fontScale, DEFAULT_VIDEO_SUBTITLE_APPEARANCE.fontScale, 80, 160, 10),
+        fontScale: normalizeNumber(source.fontScale, DEFAULT_VIDEO_SUBTITLE_APPEARANCE.fontScale, VIDEO_SUBTITLE_FONT_SCALE_RANGE.min, VIDEO_SUBTITLE_FONT_SCALE_RANGE.max, VIDEO_SUBTITLE_FONT_SCALE_RANGE.step),
+        karaoke: source.karaoke === true,
     };
 }
 

@@ -20,7 +20,7 @@ vi.mock('element-plus/es/components/select/style/css', () => ({}));
 vi.mock('element-plus', async () => {
     const {defineComponent, h, provide} = await import('vue');
     // Only the third-party select port is controlled; real UiSelect and feature templates run.
-    return {ElSelect: defineComponent({props: ['modelValue', 'disabled'], emits: ['update:modelValue'], setup(p, {slots, emit}) {
+    return {ClickOutside: {}, ElSelect: defineComponent({props: ['modelValue', 'disabled'], emits: ['update:modelValue'], setup(p, {slots, emit}) {
         provide('audit-select-port', {value: () => p.modelValue, disabled: () => p.disabled, select: (value: unknown) => emit('update:modelValue', value)});
         return () => h('div', {'data-select': '', 'aria-disabled': p.disabled}, slots.default?.());
     }})};
@@ -64,11 +64,10 @@ const progressEvents = {
 };
 let failStateWrite = false;
 let onPut: ((key: string) => void | Promise<void>) | undefined;
-let preferenceMatch: (() => Promise<Response>) | undefined;
 let onMatch: ((key: string) => void | Promise<void>) | undefined;
 const keyOf = (key: RequestInfo | URL) => typeof key === 'string' ? key : key instanceof URL ? key.href : key.url;
 const cachePort = {
-    async match(input: RequestInfo | URL) {const key = keyOf(input); if (key.endsWith('/manga-model-source') && preferenceMatch) return preferenceMatch(); await onMatch?.(key); return entries.get(key)?.clone();},
+    async match(input: RequestInfo | URL) {const key = keyOf(input); await onMatch?.(key); return entries.get(key)?.clone();},
     async put(input: RequestInfo | URL, value: Response) {
         const key = keyOf(input);
         if (failStateWrite && key.endsWith('/local-translation-downloads-v2')) {failStateWrite = false; throw new Error('controlled state disk failure');}
@@ -95,7 +94,7 @@ function fileFor(body: Uint8Array): TranslationArtifact {return {repo: 'fixture/
 beforeEach(() => {
     progressListeners.clear(); progressEvents.addListener.mockClear(); progressEvents.removeListener.mockClear();
     vi.stubGlobal('browser', {storage: {onChanged: progressEvents}});
-    entries.clear(); preferenceMatch = undefined; onPut = undefined; onMatch = undefined; failStateWrite = false;
+    entries.clear(); onPut = undefined; onMatch = undefined; failStateWrite = false;
     ports.message.mockReset().mockImplementation(async ({type}) => type === 'fluentReadImageOcrStatus' ? {success: true, languages: [], states: {}} : {success: true, ready: false, bytes: 0, source: 'auto'});
     ports.stopWatch.mockReset(); ports.watch.mockReset().mockReturnValue(ports.stopWatch); ports.imageOcr = true;
     document.body.replaceChildren(); (document as any).visibilityState = 'visible';
@@ -257,22 +256,22 @@ describe('audit 49 E actual translation and cache entries', () => {
 });
 
 describe('audit 49 E real Vue client model settings', () => {
-    it('retains a user-selected model source when initial cache hydration resolves late', async () => {
-        vi.useFakeTimers(); const hydration = deferred<string>();
-        preferenceMatch = async () => ({text: () => hydration.promise} as Response);
+    it('shows real download progress while keeping source controls and resource links out of the menu', async () => {
+        vi.useFakeTimers(); entries.set('https://fluent-read.invalid/manga-model-source',new Response('mirror'));
+        ports.message.mockResolvedValue({success:true,ready:false,bytes:0,source:'mirror',download:{phase:'downloading',file:'model.onnx',loaded:1048576,total:2097152,source:'hf-mirror.com'}});
         const {container} = await mount(MangaModelSettings);
-        container.querySelector<HTMLButtonElement>('[aria-label="模型下载来源"] [data-option-value="mirror"]')!.click(); await settle();
-        expect(await entries.get('https://fluent-read.invalid/manga-model-source')!.text()).toBe('mirror');
-        hydration.resolve('auto'); await settle();
-        // Read the current modelValue delivered through real UiSelect after the late response.
-        expect(container.querySelector('[aria-label="模型下载来源"] [data-option-value="mirror"]')!.getAttribute('aria-pressed')).toBe('true');
+        expect(container.querySelector('.manga-model-progress')!.textContent).toContain('50% · 1 / 2 MB');
+        expect(container.querySelector('progress')!.getAttribute('value')).toBe('1048576');
+        expect(container.querySelector('[aria-label="模型下载来源"]')).toBeNull();expect(container.querySelector('a')).toBeNull();
+        expect(container.textContent).not.toMatch(/下载来源|hf-mirror|huggingface|ModelScope/u);
+        expect([...container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='导入已下载文件')!.disabled).toBe(true);
     });
-    it('hydrates model source from external status updates and cleans polling on repeated unmount', async () => {
+    it('ignores external legacy source status and cleans polling on repeated unmount', async () => {
         vi.useFakeTimers(); ports.message.mockResolvedValue({success: true, ready: true, bytes: 30, source: 'mirror'});
         for (let i = 0; i < 3; i++) {
             const {container, app} = await mount(MangaModelSettings, {showInpainting: false});
-            expect(container.querySelector('[aria-label="模型下载来源"] [data-option-value="mirror"]')!.getAttribute('aria-pressed')).toBe('true');
-            expect(container.textContent).not.toContain('背景文字清除'); expect(container.querySelectorAll('li')).toHaveLength(3);
+            expect(container.querySelector('[aria-label="模型下载来源"]')).toBeNull();
+            expect(container.textContent).not.toContain('背景文字清除'); expect(container.querySelectorAll('a')).toHaveLength(0);
             app.unmount(); apps.delete(app); await settle(); expect(vi.getTimerCount()).toBe(0);
         }
     });
@@ -284,13 +283,19 @@ describe('audit 49 E real Vue client model settings', () => {
         await vi.advanceTimersByTimeAsync(1500); await settle(); expect(container.querySelector('[role="alert"]')).toBeNull();
         const remove = [...container.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent === '清除已下载资源')!;
         remove.click(); await settle(); expect(ports.message).toHaveBeenCalledWith({type: 'fluentReadMangaModelRemove'});
+        ports.message.mockResolvedValueOnce({success:false,error:'Failed to load https://hf-mirror.com/controlled-model.onnx'});
+        remove.click();await settle();expect(container.querySelector('[role="alert"]')!.textContent).toBe('漫画识别模型清除失败');
+        expect(container.textContent).not.toContain('hf-mirror');
     });
-    it('prevents a stale status response from replacing a newly selected model source', async () => {
-        vi.useFakeTimers(); const pending = deferred<unknown>(); ports.message.mockReturnValueOnce(pending.promise);
+    it('keeps offline import usable and renders the actionable file validation failure', async () => {
+        vi.useFakeTimers();
         const {container} = await mount(MangaModelSettings);
-        container.querySelector<HTMLButtonElement>('[aria-label="模型下载来源"] [data-option-value="mirror"]')!.click(); await settle();
-        pending.resolve({success: true, ready: false, bytes: 0, source: 'auto'}); await settle();
-        expect(container.querySelector('[aria-label="模型下载来源"] [data-option-value="mirror"]')!.getAttribute('aria-pressed')).toBe('true');
+        const input=container.querySelector<HTMLInputElement>('input[type="file"]')!;
+        const click=vi.spyOn(input,'click');
+        [...container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='导入已下载文件')!.click();expect(click).toHaveBeenCalledOnce();
+        Object.defineProperty(input,'files',{configurable:true,value:[{name:'unexpected.onnx',size:1}]});input.dispatchEvent(new Event('change'));await settle();
+        expect(container.querySelector('[role="alert"]')!.textContent).toContain('请选择配套的漫画模型文件');
+        expect(ports.message).toHaveBeenCalledTimes(2);expect(input.value).toBe('');
     });
     it('does not subscribe or send OCR requests when the capability is unavailable', async () => {
         ports.imageOcr = false; const {container} = await mount(ImageOcrSettings);

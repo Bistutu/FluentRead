@@ -1,0 +1,1040 @@
+{
+  "success": false,
+  "evidence": "Production extension; real local MP4 clock; original timed-caption fixtures; deterministic translation; actual live probes reported separately",
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "scenario": "small-player-controls-bounds-probe",
+      "checks": [
+        {
+          "name": "Measured actual 390×260 control bounds and hit tests",
+          "pass": true,
+          "details": {
+            "width": 390,
+            "height": 260,
+            "player": {
+              "x": 24,
+              "y": 98.234375,
+              "width": 390,
+              "height": 260,
+              "top": 98.234375,
+              "right": 414,
+              "bottom": 358.234375,
+              "left": 24
+            },
+            "panel": {
+              "x": 46,
+              "y": 106.234375,
+              "width": 360,
+              "height": 196,
+              "top": 106.234375,
+              "right": 406,
+              "bottom": 302.234375,
+              "left": 46
+            },
+            "card": {
+              "x": 46,
+              "y": 106.234375,
+              "width": 360,
+              "height": 196,
+              "top": 106.234375,
+              "right": 406,
+              "bottom": 302.234375,
+              "left": 46
+            },
+            "header": {
+              "x": 47,
+              "y": 107.234375,
+              "width": 358,
+              "height": 41.1953125,
+              "top": 107.234375,
+              "right": 405,
+              "bottom": 148.4296875,
+              "left": 47
+            },
+            "body": {
+              "x": 47,
+              "y": 148.4296875,
+              "width": 358,
+              "height": 68.8046875,
+              "top": 148.4296875,
+              "right": 405,
+              "bottom": 217.234375,
+              "left": 47
+            },
+            "bodyScrollHeight": 240,
+            "bodyClientHeight": 69,
+            "bodyOverflow": "auto",
+            "navigation": {
+              "x": 47,
+              "y": 217.234375,
+              "width": 358,
+              "height": 40,
+              "top": 217.234375,
+              "right": 405,
+              "bottom": 257.234375,
+              "left": 47
+            },
+            "footer": {
+              "x": 47,
+              "y": 257.234375,
+              "width": 358,
+              "height": 44,
+              "top": 257.234375,
+              "right": 405,
+              "bottom": 301.234375,
+              "left": 47
+            },
+            "controls": [
+              {
+                "action": "help",
+                "bounds": {
+                  "x": 299,
+                  "y": 114.234375,
+                  "width": 24,
+                  "height": 26.1953125,
+                  "top": 114.234375,
+                  "right": 323,
+                  "bottom": 140.4296875,
+                  "left": 299
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "help"
+              },
+              {
+                "action": "appearance",
+                "bounds": {
+                  "x": 323,
+                  "y": 114.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 114.328125,
+                  "right": 347,
+                  "bottom": 140.328125,
+                  "left": 323
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "appearance"
+              },
+              {
+                "action": "collapse",
+                "bounds": {
+                  "x": 347,
+                  "y": 114.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 114.328125,
+                  "right": 371,
+                  "bottom": 140.328125,
+                  "left": 347
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "collapse"
+              },
+              {
+                "action": "close",
+                "bounds": {
+                  "x": 371,
+                  "y": 114.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 114.328125,
+                  "right": 395,
+                  "bottom": 140.328125,
+                  "left": 371
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "path",
+                "hitAction": "close"
+              },
+              {
+                "action": "previous",
+                "bounds": {
+                  "x": 57,
+                  "y": 225.234375,
+                  "width": 32,
+                  "height": 32,
+                  "top": 225.234375,
+                  "right": 89,
+                  "bottom": 257.234375,
+                  "left": 57
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "previous"
+              },
+              {
+                "action": "play",
+                "bounds": {
+                  "x": 95,
+                  "y": 225.234375,
+                  "width": 262,
+                  "height": 32,
+                  "top": 225.234375,
+                  "right": 357,
+                  "bottom": 257.234375,
+                  "left": 95
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "play"
+              },
+              {
+                "action": "next",
+                "bounds": {
+                  "x": 363,
+                  "y": 225.234375,
+                  "width": 32,
+                  "height": 32,
+                  "top": 225.234375,
+                  "right": 395,
+                  "bottom": 257.234375,
+                  "left": 363
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "next"
+              },
+              {
+                "action": "explain",
+                "bounds": {
+                  "x": 57,
+                  "y": 264.234375,
+                  "width": 166,
+                  "height": 30,
+                  "top": 264.234375,
+                  "right": 223,
+                  "bottom": 294.234375,
+                  "left": 57
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "explain"
+              },
+              {
+                "action": "save",
+                "bounds": {
+                  "x": 229,
+                  "y": 264.234375,
+                  "width": 166,
+                  "height": 30,
+                  "top": 264.234375,
+                  "right": 395,
+                  "bottom": 294.234375,
+                  "left": 229
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "save"
+              }
+            ],
+            "screenshot": "/private/tmp/fluentread-video-learning-reliability-small-player-probe/youtube-small-player-390x260.png",
+            "allControlsReachable": true
+          }
+        },
+        {
+          "name": "Measured actual 320×180 control bounds and hit tests",
+          "pass": true,
+          "details": {
+            "width": 320,
+            "height": 180,
+            "player": {
+              "x": 24,
+              "y": 98.234375,
+              "width": 320,
+              "height": 180,
+              "top": 98.234375,
+              "right": 344,
+              "bottom": 278.234375,
+              "left": 24
+            },
+            "panel": {
+              "x": 32,
+              "y": 106.234375,
+              "width": 304,
+              "height": 116,
+              "top": 106.234375,
+              "right": 336,
+              "bottom": 222.234375,
+              "left": 32
+            },
+            "card": {
+              "x": 32,
+              "y": 106.234375,
+              "width": 304,
+              "height": 116,
+              "top": 106.234375,
+              "right": 336,
+              "bottom": 222.234375,
+              "left": 32
+            },
+            "header": {
+              "x": 33,
+              "y": 107.234375,
+              "width": 302,
+              "height": 41.1953125,
+              "top": 107.234375,
+              "right": 335,
+              "bottom": 148.4296875,
+              "left": 33
+            },
+            "body": {
+              "x": 33,
+              "y": 148.4296875,
+              "width": 302,
+              "height": 18,
+              "top": 148.4296875,
+              "right": 335,
+              "bottom": 166.4296875,
+              "left": 33
+            },
+            "bodyScrollHeight": 240,
+            "bodyClientHeight": 18,
+            "bodyOverflow": "auto",
+            "navigation": {
+              "x": 33,
+              "y": 166.4296875,
+              "width": 302,
+              "height": 40,
+              "top": 166.4296875,
+              "right": 335,
+              "bottom": 206.4296875,
+              "left": 33
+            },
+            "footer": {
+              "x": 33,
+              "y": 206.4296875,
+              "width": 302,
+              "height": 44,
+              "top": 206.4296875,
+              "right": 335,
+              "bottom": 250.4296875,
+              "left": 33
+            },
+            "controls": [
+              {
+                "action": "help",
+                "bounds": {
+                  "x": 229,
+                  "y": 114.234375,
+                  "width": 24,
+                  "height": 26.1953125,
+                  "top": 114.234375,
+                  "right": 253,
+                  "bottom": 140.4296875,
+                  "left": 229
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "help"
+              },
+              {
+                "action": "appearance",
+                "bounds": {
+                  "x": 253,
+                  "y": 114.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 114.328125,
+                  "right": 277,
+                  "bottom": 140.328125,
+                  "left": 253
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "appearance"
+              },
+              {
+                "action": "collapse",
+                "bounds": {
+                  "x": 277,
+                  "y": 114.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 114.328125,
+                  "right": 301,
+                  "bottom": 140.328125,
+                  "left": 277
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "collapse"
+              },
+              {
+                "action": "close",
+                "bounds": {
+                  "x": 301,
+                  "y": 114.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 114.328125,
+                  "right": 325,
+                  "bottom": 140.328125,
+                  "left": 301
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "path",
+                "hitAction": "close"
+              },
+              {
+                "action": "previous",
+                "bounds": {
+                  "x": 43,
+                  "y": 174.4296875,
+                  "width": 32,
+                  "height": 32,
+                  "top": 174.4296875,
+                  "right": 75,
+                  "bottom": 206.4296875,
+                  "left": 43
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "previous"
+              },
+              {
+                "action": "play",
+                "bounds": {
+                  "x": 81,
+                  "y": 174.4296875,
+                  "width": 206,
+                  "height": 32,
+                  "top": 174.4296875,
+                  "right": 287,
+                  "bottom": 206.4296875,
+                  "left": 81
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "play"
+              },
+              {
+                "action": "next",
+                "bounds": {
+                  "x": 293,
+                  "y": 174.4296875,
+                  "width": 32,
+                  "height": 32,
+                  "top": 174.4296875,
+                  "right": 325,
+                  "bottom": 206.4296875,
+                  "left": 293
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "next"
+              },
+              {
+                "action": "explain",
+                "bounds": {
+                  "x": 43,
+                  "y": 213.4296875,
+                  "width": 138,
+                  "height": 30,
+                  "top": 213.4296875,
+                  "right": 181,
+                  "bottom": 243.4296875,
+                  "left": 43
+                },
+                "disabled": false,
+                "withinCard": false,
+                "hitTest": false,
+                "hitTag": "VIDEO"
+              },
+              {
+                "action": "save",
+                "bounds": {
+                  "x": 187,
+                  "y": 213.4296875,
+                  "width": 138,
+                  "height": 30,
+                  "top": 213.4296875,
+                  "right": 325,
+                  "bottom": 243.4296875,
+                  "left": 187
+                },
+                "disabled": false,
+                "withinCard": false,
+                "hitTest": false,
+                "hitTag": "VIDEO"
+              }
+            ],
+            "screenshot": "/private/tmp/fluentread-video-learning-reliability-small-player-probe/youtube-small-player-320x180.png",
+            "allControlsReachable": false
+          }
+        }
+      ],
+      "sizes": [
+        {
+          "width": 390,
+          "height": 260,
+          "player": {
+            "x": 24,
+            "y": 98.234375,
+            "width": 390,
+            "height": 260,
+            "top": 98.234375,
+            "right": 414,
+            "bottom": 358.234375,
+            "left": 24
+          },
+          "panel": {
+            "x": 46,
+            "y": 106.234375,
+            "width": 360,
+            "height": 196,
+            "top": 106.234375,
+            "right": 406,
+            "bottom": 302.234375,
+            "left": 46
+          },
+          "card": {
+            "x": 46,
+            "y": 106.234375,
+            "width": 360,
+            "height": 196,
+            "top": 106.234375,
+            "right": 406,
+            "bottom": 302.234375,
+            "left": 46
+          },
+          "header": {
+            "x": 47,
+            "y": 107.234375,
+            "width": 358,
+            "height": 41.1953125,
+            "top": 107.234375,
+            "right": 405,
+            "bottom": 148.4296875,
+            "left": 47
+          },
+          "body": {
+            "x": 47,
+            "y": 148.4296875,
+            "width": 358,
+            "height": 68.8046875,
+            "top": 148.4296875,
+            "right": 405,
+            "bottom": 217.234375,
+            "left": 47
+          },
+          "bodyScrollHeight": 240,
+          "bodyClientHeight": 69,
+          "bodyOverflow": "auto",
+          "navigation": {
+            "x": 47,
+            "y": 217.234375,
+            "width": 358,
+            "height": 40,
+            "top": 217.234375,
+            "right": 405,
+            "bottom": 257.234375,
+            "left": 47
+          },
+          "footer": {
+            "x": 47,
+            "y": 257.234375,
+            "width": 358,
+            "height": 44,
+            "top": 257.234375,
+            "right": 405,
+            "bottom": 301.234375,
+            "left": 47
+          },
+          "controls": [
+            {
+              "action": "help",
+              "bounds": {
+                "x": 299,
+                "y": 114.234375,
+                "width": 24,
+                "height": 26.1953125,
+                "top": 114.234375,
+                "right": 323,
+                "bottom": 140.4296875,
+                "left": 299
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "help"
+            },
+            {
+              "action": "appearance",
+              "bounds": {
+                "x": 323,
+                "y": 114.328125,
+                "width": 24,
+                "height": 26,
+                "top": 114.328125,
+                "right": 347,
+                "bottom": 140.328125,
+                "left": 323
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "appearance"
+            },
+            {
+              "action": "collapse",
+              "bounds": {
+                "x": 347,
+                "y": 114.328125,
+                "width": 24,
+                "height": 26,
+                "top": 114.328125,
+                "right": 371,
+                "bottom": 140.328125,
+                "left": 347
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "collapse"
+            },
+            {
+              "action": "close",
+              "bounds": {
+                "x": 371,
+                "y": 114.328125,
+                "width": 24,
+                "height": 26,
+                "top": 114.328125,
+                "right": 395,
+                "bottom": 140.328125,
+                "left": 371
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "path",
+              "hitAction": "close"
+            },
+            {
+              "action": "previous",
+              "bounds": {
+                "x": 57,
+                "y": 225.234375,
+                "width": 32,
+                "height": 32,
+                "top": 225.234375,
+                "right": 89,
+                "bottom": 257.234375,
+                "left": 57
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "previous"
+            },
+            {
+              "action": "play",
+              "bounds": {
+                "x": 95,
+                "y": 225.234375,
+                "width": 262,
+                "height": 32,
+                "top": 225.234375,
+                "right": 357,
+                "bottom": 257.234375,
+                "left": 95
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "play"
+            },
+            {
+              "action": "next",
+              "bounds": {
+                "x": 363,
+                "y": 225.234375,
+                "width": 32,
+                "height": 32,
+                "top": 225.234375,
+                "right": 395,
+                "bottom": 257.234375,
+                "left": 363
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "next"
+            },
+            {
+              "action": "explain",
+              "bounds": {
+                "x": 57,
+                "y": 264.234375,
+                "width": 166,
+                "height": 30,
+                "top": 264.234375,
+                "right": 223,
+                "bottom": 294.234375,
+                "left": 57
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "explain"
+            },
+            {
+              "action": "save",
+              "bounds": {
+                "x": 229,
+                "y": 264.234375,
+                "width": 166,
+                "height": 30,
+                "top": 264.234375,
+                "right": 395,
+                "bottom": 294.234375,
+                "left": 229
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "save"
+            }
+          ],
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-small-player-probe/youtube-small-player-390x260.png",
+          "allControlsReachable": true
+        },
+        {
+          "width": 320,
+          "height": 180,
+          "player": {
+            "x": 24,
+            "y": 98.234375,
+            "width": 320,
+            "height": 180,
+            "top": 98.234375,
+            "right": 344,
+            "bottom": 278.234375,
+            "left": 24
+          },
+          "panel": {
+            "x": 32,
+            "y": 106.234375,
+            "width": 304,
+            "height": 116,
+            "top": 106.234375,
+            "right": 336,
+            "bottom": 222.234375,
+            "left": 32
+          },
+          "card": {
+            "x": 32,
+            "y": 106.234375,
+            "width": 304,
+            "height": 116,
+            "top": 106.234375,
+            "right": 336,
+            "bottom": 222.234375,
+            "left": 32
+          },
+          "header": {
+            "x": 33,
+            "y": 107.234375,
+            "width": 302,
+            "height": 41.1953125,
+            "top": 107.234375,
+            "right": 335,
+            "bottom": 148.4296875,
+            "left": 33
+          },
+          "body": {
+            "x": 33,
+            "y": 148.4296875,
+            "width": 302,
+            "height": 18,
+            "top": 148.4296875,
+            "right": 335,
+            "bottom": 166.4296875,
+            "left": 33
+          },
+          "bodyScrollHeight": 240,
+          "bodyClientHeight": 18,
+          "bodyOverflow": "auto",
+          "navigation": {
+            "x": 33,
+            "y": 166.4296875,
+            "width": 302,
+            "height": 40,
+            "top": 166.4296875,
+            "right": 335,
+            "bottom": 206.4296875,
+            "left": 33
+          },
+          "footer": {
+            "x": 33,
+            "y": 206.4296875,
+            "width": 302,
+            "height": 44,
+            "top": 206.4296875,
+            "right": 335,
+            "bottom": 250.4296875,
+            "left": 33
+          },
+          "controls": [
+            {
+              "action": "help",
+              "bounds": {
+                "x": 229,
+                "y": 114.234375,
+                "width": 24,
+                "height": 26.1953125,
+                "top": 114.234375,
+                "right": 253,
+                "bottom": 140.4296875,
+                "left": 229
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "help"
+            },
+            {
+              "action": "appearance",
+              "bounds": {
+                "x": 253,
+                "y": 114.328125,
+                "width": 24,
+                "height": 26,
+                "top": 114.328125,
+                "right": 277,
+                "bottom": 140.328125,
+                "left": 253
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "appearance"
+            },
+            {
+              "action": "collapse",
+              "bounds": {
+                "x": 277,
+                "y": 114.328125,
+                "width": 24,
+                "height": 26,
+                "top": 114.328125,
+                "right": 301,
+                "bottom": 140.328125,
+                "left": 277
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "collapse"
+            },
+            {
+              "action": "close",
+              "bounds": {
+                "x": 301,
+                "y": 114.328125,
+                "width": 24,
+                "height": 26,
+                "top": 114.328125,
+                "right": 325,
+                "bottom": 140.328125,
+                "left": 301
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "path",
+              "hitAction": "close"
+            },
+            {
+              "action": "previous",
+              "bounds": {
+                "x": 43,
+                "y": 174.4296875,
+                "width": 32,
+                "height": 32,
+                "top": 174.4296875,
+                "right": 75,
+                "bottom": 206.4296875,
+                "left": 43
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "previous"
+            },
+            {
+              "action": "play",
+              "bounds": {
+                "x": 81,
+                "y": 174.4296875,
+                "width": 206,
+                "height": 32,
+                "top": 174.4296875,
+                "right": 287,
+                "bottom": 206.4296875,
+                "left": 81
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "play"
+            },
+            {
+              "action": "next",
+              "bounds": {
+                "x": 293,
+                "y": 174.4296875,
+                "width": 32,
+                "height": 32,
+                "top": 174.4296875,
+                "right": 325,
+                "bottom": 206.4296875,
+                "left": 293
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "next"
+            },
+            {
+              "action": "explain",
+              "bounds": {
+                "x": 43,
+                "y": 213.4296875,
+                "width": 138,
+                "height": 30,
+                "top": 213.4296875,
+                "right": 181,
+                "bottom": 243.4296875,
+                "left": 43
+              },
+              "disabled": false,
+              "withinCard": false,
+              "hitTest": false,
+              "hitTag": "VIDEO"
+            },
+            {
+              "action": "save",
+              "bounds": {
+                "x": 187,
+                "y": 213.4296875,
+                "width": 138,
+                "height": 30,
+                "top": 213.4296875,
+                "right": 325,
+                "bottom": 243.4296875,
+                "left": 187
+              },
+              "disabled": false,
+              "withinCard": false,
+              "hitTest": false,
+              "hitTag": "VIDEO"
+            }
+          ],
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-small-player-probe/youtube-small-player-320x180.png",
+          "allControlsReachable": false
+        }
+      ],
+      "success": false
+    }
+  ],
+  "liveCases": [],
+  "pageErrors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "artifact": {
+    "contentSha256": "744fc6bcbc9526ac23cee5dcc942c1ba12e14f53e5b3081d7718cb482662a2e0",
+    "version": "0.0.37"
+  },
+  "focusObserver": {
+    "monitorPid": 69041,
+    "time": 1791731018597.131,
+    "monotonicMs": 3156310439.1991253
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    },
+    "frontmostAfter": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    }
+  },
+  "fixturePageErrors": [],
+  "finalBrowserFrontmost": false,
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  }
+}

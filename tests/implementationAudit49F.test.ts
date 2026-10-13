@@ -65,6 +65,7 @@ vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({translateLegacy: (text: stri
 vi.mock('element-plus', async () => {
     const {defineComponent, h} = await import('vue');
     return {
+        ClickOutside: {},
         ElSelect: defineComponent({props: ['modelValue', 'disabled'], emits: ['update:modelValue', 'change'],
             setup: (props, {slots, attrs, emit}) => () => h('div', {...attrs, 'data-value': props.modelValue, 'aria-disabled': props.disabled,
                 onChange: (event: Event) => {const value = (event.target as HTMLSelectElement).value; emit('update:modelValue', value); emit('change', value);}}, slots.default?.())}),
@@ -1212,6 +1213,7 @@ describe('49F actual pinned-data virtual catalog consumer', () => {
         const realm = createContext({});
         runInContext(readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8'), realm, {timeout: 5_000});
         const original = realm.__FLUENTREAD_USERSCRIPT_DATA__.siteCatalogs;
+        const originalSnapshot = JSON.stringify(original);
         const catalogs: Record<string, any> = {};
         for (const name of ['established', 'websites', 'profiles']) {
             const resolver = typeof plugin.resolveId === 'function' ? plugin.resolveId : plugin.resolveId!.handler;
@@ -1220,34 +1222,37 @@ describe('49F actual pinned-data virtual catalog consumer', () => {
             const module = await Reflect.apply(loader, {}, [id]);
             const compiled = await transformWithEsbuild(module, `${name}.js`, {format: 'cjs', target: 'es2018'});
             realm.module = {exports: {}};
-            runInContext(compiled.code, realm, {timeout: 5_000});
+            runInContext(`(function(module, exports) {${compiled.code}\n})(module, module.exports);`, realm, {timeout: 5_000});
             catalogs[name] = realm.module.exports.default;
         }
-        return {catalogs, original};
+        return {catalogs, original, originalSnapshot};
     }
 
     afterEach(() => vi.unstubAllEnvs());
 
     it('reconciles all 19 authoritative established rules without mutating pinned data and reuses every unchanged rule', async () => {
-        const {catalogs, original} = await loadCatalogs();
+        const {catalogs, original, originalSnapshot} = await loadCatalogs();
         expect(original.established).toHaveLength(17);
         expect(catalogs.established).toHaveLength(19);
         for (const name of ['established', 'websites', 'profiles']) {
-            expect(catalogs[name]).toEqual(JSON.parse(readFileSync(resolve(process.cwd(), `src/core/site-adaptation/catalog/${name}.json`), 'utf8')));
-        }
-        const authoritative = JSON.parse(readFileSync(resolve(process.cwd(), 'src/core/site-adaptation/catalog/established.json'), 'utf8'));
-        for (const rule of original.established) {
-            const expected = authoritative.find((current: any) => current.id === rule.id);
-            const actual = catalogs.established.find((current: any) => current.id === rule.id);
-            if (JSON.stringify(expected) === JSON.stringify(rule)) expect(actual).toBe(rule);
-            else {expect(actual).not.toBe(rule);expect(actual).toEqual(expected);}
+            const authoritative = JSON.parse(readFileSync(resolve(process.cwd(), `src/core/site-adaptation/catalog/${name}.json`), 'utf8'));
+            expect(catalogs[name]).toEqual(authoritative);
+            // 完全未变的目录保留整体身份；更新目录仍复用每条未变的固定资源规则。
+            if (JSON.stringify(authoritative) === JSON.stringify(original[name])) expect(catalogs[name]).toBe(original[name]);
+            else expect(catalogs[name]).not.toBe(original[name]);
+            if (Array.isArray(authoritative)) for (const rule of original[name]) {
+                const expected = authoritative.find((current: any) => current.id === rule.id);
+                const actual = catalogs[name].find((current: any) => current.id === rule.id);
+                if (JSON.stringify(expected) === JSON.stringify(rule)) expect(actual).toBe(rule);
+                else {expect(actual).not.toBe(rule);expect(actual).toEqual(expected);}
+            }
         }
         const github = catalogs.established.find((rule: any) => rule.id === 'github');
         expect(github.content.flatMap((entry: any) => entry.css)).toContain('a[data-testid="issue-listitem-title-link"]');
         expect(github.protect).toContain('[data-testid="issues-list-surface"] [class*="Description-module__container"]');
         expect(original.established.find((rule: any) => rule.id === 'github').protect)
             .not.toContain('[data-testid="issues-list-surface"] [class*="Description-module__container"]');
-        expect(catalogs.websites).toBe(original.websites); expect(catalogs.profiles).toBe(original.profiles);
+        expect(JSON.stringify(original)).toBe(originalSnapshot);
         expect(original.established).toHaveLength(17);
     });
 
@@ -1386,5 +1391,200 @@ describe('49F actual userscript main module lifecycle ownership', () => {
             fixture.pagehide(false); fixture.assertBridgeDisposed();
             expect(fixture.cleanup).toHaveBeenCalledOnce(); expect(fixture.laterCleanup).toHaveBeenCalledTimes(2);
         } finally {fixture.disposeFixture();}
+    });
+});
+
+// 独立的 owned-root 准入夹具。实际 Vue 客户端模板、配置模型、i18n context 和扫描器保持真实；
+// 存储传输、MutationObserver delivery 及无关颜色控件是外部端口，不代替用户名称保存/选择算法。
+describe('49F owned settings i18n client admission', () => {
+    async function ownedStyleClient() {
+        vi.doUnmock('@/src/ui/i18n');
+        const bundleGates = new Map<string, ReturnType<typeof deferred<boolean>>>();
+        vi.doMock('@/src/platform/i18n/uiLanguageBundles', () => ({ensureUiLanguageBundle: (language: string) => bundleGates.get(language)?.promise ?? Promise.resolve(true)}));
+        const Vue = await import('vue');
+        const {parse, compileScript} = await import('vue/compiler-sfc');
+        const ts = await import('typescript');
+        const {Config} = await import('@/src/core/config/model');
+        const appearance = await import('@/src/core/config/translationAppearance');
+        const highlight = await import('@/src/core/config/sentenceHighlight');
+        const core = await import('@/src/core/i18n');
+        const {registerAllUiLanguageBundles} = await import('@/src/core/i18n/bundles');
+        registerAllUiLanguageBundles();
+        const i18n = await import('@/src/ui/i18n');
+        ports.config.uiLanguage = 'zh-CN';
+        const subscriptions = new Set<(config: any) => void>(), callbacks: Array<(config: any) => void> = [], stops: ReturnType<typeof vi.fn>[] = [];
+        ports.subscribe.mockImplementation(callback => {
+            subscriptions.add(callback);callbacks.push(callback);
+            const stop = vi.fn(() => subscriptions.delete(callback));stops.push(stop);return stop;
+        });
+        ports.patch.mockImplementation(async value => {
+            Object.assign(ports.config, value);
+            for (const callback of subscriptions) callback(ports.config);
+        });
+        const observers: Array<{callback: MutationCallback; root?: Node; active: boolean; observe: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn>}> = [];
+        vi.stubGlobal('MutationObserver', class {
+            root?: Node;active = false;
+            observe = vi.fn((root: Node) => {this.root = root;this.active = true;});
+            disconnect = vi.fn(() => {this.active = false;});
+            constructor(public callback: MutationCallback) {observers.push(this);}
+        });
+        const compiled = new Map<string, import('vue').Component>();
+        const colorPort = Vue.defineComponent({props: ['modelValue', 'fieldId', 'label'], setup: props => () => Vue.h('span', {'data-color-port': props.fieldId}, props.label)});
+        function client(relative: string): import('vue').Component {
+            const filename = resolve(relative);if (compiled.has(filename)) return compiled.get(filename)!;
+            const {descriptor, errors} = parse(readFileSync(filename, 'utf8'), {filename});expect(errors).toEqual([]);
+            const script = compileScript(descriptor, {id: `owned-style-${compiled.size}`, inlineTemplate: true});
+            const module = {exports: {} as {default: import('vue').Component}};
+            const code = ts.transpileModule(script.content, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
+            new Function('require', 'exports', 'module', code)((id: string) => {
+                if (id === 'vue') return Vue;
+                if (id === '@/src/ui/i18n') return i18n;
+                if (id === '@/src/core/config/translationAppearance') return appearance;
+                if (id === '@/src/core/config/sentenceHighlight') return highlight;
+                if (id.endsWith('/TranslationColorField.vue')) return {default: colorPort};
+                if (id.endsWith('.css')) return {};
+                if (id.endsWith('.vue')) return {default: client(resolve(filename, '..', id))};
+                throw new Error(`Unexpected owned style client dependency ${id}`);
+            }, module.exports, module);
+            compiled.set(filename, module.exports.default);return module.exports.default;
+        }
+        const Style = client('src/features/settings/ui/TranslationStyleSettings.vue'), config = Vue.reactive(new Config());
+        const beforeMetadata = {lang: document.documentElement.getAttribute('lang'), title: document.title};
+        document.documentElement.lang = 'fixture-host-language';document.title = 'Synthetic host title';
+        const outside = document.createElement('aside');outside.innerHTML = '<p title="设置" aria-label="设置">设置</p>';document.body.append(outside);
+        const shadowHost = document.createElement('div');document.body.append(shadowHost);
+        const shadow = shadowHost.attachShadow({mode: 'closed'}), root = document.createElement('main'), sibling = document.createElement('aside');
+        sibling.innerHTML = '<p title="设置">设置</p>';shadow.append(root, sibling);
+        const shown = Vue.ref(true), errors: unknown[] = [], Other = {render: () => null};
+        const renderer = Vue.createRenderer<Node, Element>({
+            createElement: tag => document.createElement(tag), createText: text => document.createTextNode(text), createComment: text => document.createComment(text),
+            insert: (node, parent, anchor) => parent.insertBefore(node, anchor ?? null), remove: node => node.parentNode?.removeChild(node),
+            setText: (node, value) => {node.nodeValue = value;}, setElementText: (element, value) => {element.textContent = value;},
+            parentNode: node => node.parentNode as Element | null, nextSibling: node => node.nextSibling,
+            querySelector: selector => document.querySelector(selector),
+            patchProp: (element, key, _before, value) => {
+                if (key.startsWith('onUpdate:')) return;
+                if (/^on[A-Z]/u.test(key)) {
+                    const target = element as Element & {__ownedEvents?: Map<string, EventListener>};target.__ownedEvents ??= new Map();
+                    const name = key.slice(2).toLowerCase(), previous = target.__ownedEvents.get(name);if (previous) element.removeEventListener(name, previous);
+                    if (value) {const listener: EventListener = event => {for (const handler of Array.isArray(value) ? value : [value]) handler(event);};target.__ownedEvents.set(name, listener);element.addEventListener(name, listener);}
+                } else if (key === 'value') (element as HTMLInputElement).value = value ?? '';
+                else if (key === 'style' && value && typeof value === 'object') Object.assign((element as HTMLElement).style, value);
+                else if (key.startsWith('aria-') && value != null) element.setAttribute(key, String(value));
+                else if (value == null || value === false) element.removeAttribute(key);
+                else element.setAttribute(key, value === true ? '' : String(value));
+            }, setScopeId: (element, id) => element.setAttribute(id, ''), insertStaticContent: (content, parent, anchor) => {
+                const fragment = document.createElement('div');fragment.innerHTML = content;
+                const first = fragment.firstChild!, last = fragment.lastChild!;
+                for (const child of [...fragment.childNodes]) parent.insertBefore(child, anchor);return [first, last];
+            },
+        });
+        const Parent = Vue.defineComponent({setup: () => () => [
+            Vue.h('p', {'data-owned-legacy': '', title: '设置', 'aria-label': '设置'}, '设置'),
+            Vue.h('pre', {title: '设置', 'data-user-pre': ''}, '设置'),
+            Vue.h('p', {'data-i18n-ignore': '', title: '设置', 'data-user-ignore': ''}, '设置'),
+            Vue.h(Vue.KeepAlive, null, {default: () => shown.value ? Vue.h(Style, {config}) : Vue.h(Other)}),
+            Vue.h(Vue.Teleport, {to: outside}, Vue.h('span', {'data-outside-teleport': '', title: '设置'}, '设置')),
+        ]});
+        vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+        const ownedApp = renderer.createApp(Parent);ownedApp.config.errorHandler = error => errors.push(error);ownedApp.config.warnHandler = () => undefined;
+        ownedApp.use(i18n.createUiI18nPlugin({documentRoot: null, uiRoot: root}));
+        const context = ownedApp.runWithContext(i18n.useUiI18n);
+        ownedApp.mount(root);
+        let mounted = true;
+        const settle = async () => {for (let index = 0; index < 4; index++) {await Vue.nextTick();await Promise.resolve();await vi.advanceTimersByTimeAsync(0);}};
+        const notify = () => {for (const observer of observers) observer.callback([{type: 'childList', target: root, addedNodes: []} as unknown as MutationRecord], observer as unknown as MutationObserver);};
+        const click = async (selector: string) => {const element = root.querySelector(selector);expect(element, selector).not.toBeNull();element!.dispatchEvent(Object.assign(new Event('click', {bubbles: true}), {_vts: Date.now() + 1}));await settle();};
+        const input = async (selector: string, value: string) => {const element = root.querySelector<HTMLInputElement>(selector);expect(element, selector).not.toBeNull();element!.value = value;element!.dispatchEvent(new Event('input', {bubbles: true}));await settle();};
+        const language = async (value: import('@/src/core/i18n').UiLanguage) => {expect(await context.setLanguage(value)).toBe(true);await settle();};
+        const unmount = () => {if (mounted) {ownedApp.unmount();mounted = false;}};
+        await settle();
+        return {root, config, context, core, preset: appearance.getTranslationStylePreset, bundleGates, callbacks, observers, subscriptions, stops, shown, outside, sibling, errors, settle, notify, click, input, language, unmount,
+            async saveName(name: string) {await click('.translation-appearance-disclosure');await input('#translation-profile-name', name);await click('.translation-profile-save');},
+            async close() {
+                unmount();for (const gate of bundleGates.values()) gate.resolve(true);await settle();shadowHost.remove();outside.remove();
+                if (beforeMetadata.lang == null) document.documentElement.removeAttribute('lang');else document.documentElement.setAttribute('lang', beforeMetadata.lang);
+                document.title = beforeMetadata.title;vi.useRealTimers();vi.doUnmock('@/src/platform/i18n/uiLanguageBundles');
+                vi.doMock('@/src/ui/i18n', () => ({useUiI18n: () => ({translateLegacy: (text: string) => text,t:(key:string)=>key}),createUiI18nPlugin:()=>({install(){}})}));
+            },
+        };
+    }
+
+    it.each(['设置', '设置 · 设置'])('keeps the actual saved user name %s in text, attributes and preview across seven UI languages', async name => {
+        const client = await ownedStyleClient();
+        try {
+            await client.saveName(name);
+            expect(client.config.translationStyleProfiles).toHaveLength(1);
+            const profile = client.config.translationStyleProfiles[0];expect(profile.name).toBe(name);
+            expect(client.core.translateLegacyText(name, 'en-US')).not.toBe(name);
+            await client.click('.translation-style-card');await client.click('.translation-style-saved-card');
+            const original = JSON.stringify(client.config);
+            for (const language of ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES', 'zh-CN'] as const) {
+                await client.language(language);
+                const card = client.root.querySelector('.translation-style-saved-card')!;
+                expect.soft(card.querySelector('strong')!.textContent).toBe(name);
+                expect.soft(card.getAttribute('title')).toBe(name);expect.soft(card.getAttribute('aria-label')).toBe(name);
+                expect.soft(client.root.querySelector('.translation-style-preview-caption strong')!.textContent)
+                    .toBe(client.core.translate('settings.translationStyle.currentPreset', language, {name}));
+                expect(client.root.querySelector('.settings-group-heading h2')!.textContent).toBe(client.core.translate('settings.translationStyle.title', language));
+                expect(card.querySelector('small')!.textContent).toBe(client.core.translate('settings.translationStyle.profileBase', language,
+                    {name: client.core.translateLegacyText(client.preset(profile.style)!.label, language)}));
+                expect(JSON.stringify(client.config)).toBe(original);
+            }
+            expect(client.errors).toEqual([]);expect(client.observers).toHaveLength(1);
+        } finally {await client.close();}
+    });
+
+    it('scans one owned root while preserving actual inputs, user prose, outside Teleport and host metadata', async () => {
+        const client = await ownedStyleClient();
+        try {
+            const walker = vi.spyOn(document, 'createTreeWalker');
+            client.notify();await client.settle();expect(walker).not.toHaveBeenCalled();
+            await client.click('.translation-appearance-disclosure');await client.input('#translation-profile-name', '设置');
+            const css = 'color: rebeccapurple; /* 设置 · 设置 */';await client.input('#translation-custom-css', css);
+            for (const language of ['en-US', 'ja-JP', 'fr-FR', 'zh-CN'] as const) {
+                await client.language(language);
+                expect(client.root.querySelector('[data-owned-legacy]')!.textContent).toBe(client.core.translateLegacyText('设置', language));
+                expect(client.root.querySelector('[data-owned-legacy]')!.getAttribute('aria-label')).toBe(client.core.translateLegacyText('设置', language));
+                expect((client.root.querySelector('#translation-profile-name') as HTMLInputElement).value).toBe('设置');
+                expect((client.root.querySelector('#translation-custom-css') as HTMLTextAreaElement).value).toBe(css);
+                expect(client.config.translationAppearance.customCss).toBe(css);
+                expect(client.root.querySelector('[data-user-pre]')!.textContent).toBe('设置');
+                expect(client.root.querySelector('[data-user-pre]')!.getAttribute('title')).toBe(client.core.translateLegacyText('设置', language));
+                expect(client.root.querySelector('[data-user-ignore]')!.getAttribute('title')).toBe('设置');
+                expect(client.outside.querySelector('p')!.outerHTML).toBe('<p title="设置" aria-label="设置">设置</p>');
+                expect(client.outside.querySelector('[data-outside-teleport]')!.textContent).toBe('设置');
+                expect(client.outside.querySelector('[data-outside-teleport]')!.getAttribute('title')).toBe('设置');
+                expect(client.sibling.innerHTML).toBe('<p title="设置">设置</p>');
+                expect(document.documentElement.lang).toBe('fixture-host-language');expect(document.title).toBe('Synthetic host title');
+            }
+            walker.mockClear();client.notify();await client.settle();expect(walker).not.toHaveBeenCalled();
+            expect(client.observers).toHaveLength(1);expect(client.observers[0].root).toBe(client.root);
+            expect(client.errors).toEqual([]);
+        } finally {await client.close();}
+    });
+
+    it('keeps one owned scanner through cached views and releases queued callbacks and subscriptions on unmount', async () => {
+        const client = await ownedStyleClient();
+        try {
+            await client.language('en-US');client.shown.value = false;await client.settle();
+            expect(client.observers).toHaveLength(1);expect(client.subscriptions.size).toBe(1);
+            client.shown.value = true;await client.settle();client.notify();await client.settle();
+            expect(client.observers).toHaveLength(1);
+            const held = deferred<boolean>();client.bundleGates.set('ja-JP', held);
+            const pending = client.context.setLanguage('ja-JP');await client.settle();
+            expect(client.context.language.value).toBe('en-US');
+            const patchCount = ports.patch.mock.calls.length;
+            client.notify();client.unmount();await client.settle();
+            const owned = client.root.innerHTML, outside = client.outside.innerHTML;
+            client.notify();for (const callback of client.callbacks) callback({...ports.config, uiLanguage: 'ja-JP'});
+            held.resolve(true);expect(await pending).toBe(false);
+            expect(await client.context.setLanguage('ja-JP')).toBe(false);await client.settle();
+            expect(ports.patch).toHaveBeenCalledTimes(patchCount);expect(client.context.language.value).toBe('en-US');
+            expect(client.root.innerHTML).toBe(owned);expect(client.outside.innerHTML).toBe(outside);
+            expect(client.subscriptions.size).toBe(0);expect(client.observers.every(observer => !observer.active)).toBe(true);
+            for (const stop of client.stops) expect(stop).toHaveBeenCalledOnce();expect(vi.getTimerCount()).toBe(0);
+            expect(client.errors).toEqual([]);
+        } finally {await client.close();}
     });
 });

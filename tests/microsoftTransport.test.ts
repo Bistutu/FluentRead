@@ -1,15 +1,109 @@
 import {describe, expect, it, vi} from 'vitest';
 import {translateMicrosoftTextsWithTransport} from '@/src/providers/translation/microsoftTransport';
+import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
 
 function response(value: unknown, status = 200): Response {
     return new Response(JSON.stringify(value), {status});
 }
 
+function deferred<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<T>((done, fail) => {resolve = done; reject = fail;});
+    return {promise, resolve, reject};
+}
+
+async function flushMicrotasks() {
+    for (let step = 0; step < 16; step++) await Promise.resolve();
+}
+
 describe('shared Microsoft translation transport', () => {
+    it.each([200, 500])('cancelled late HTTP %s headers keep the lease until the response body finishes', async status => {
+        const scheduler = createTranslationRequestScheduler(() => ({
+            maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0,
+        }));
+        const headers = deferred<Response>();
+        let body!: ReadableStreamDefaultController<Uint8Array>;
+        const late = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {status});
+        const transport = vi.fn().mockImplementationOnce(() => headers.promise)
+            .mockResolvedValue(response([{translations: [{text: '后续译文'}]}]));
+        const owner = new AbortController();
+        const first = scheduler.schedule(lease => translateMicrosoftTextsWithTransport(
+            transport, ['First readable paragraph'], 'en', 'zh-Hans', owner.signal, true, lease,
+        ), {signal: owner.signal}).catch(error => error);
+        expect(transport).toHaveBeenCalledOnce();
+        owner.abort(); await expect(first).resolves.toMatchObject({name: 'AbortError'});
+        const next = scheduler.schedule(lease => translateMicrosoftTextsWithTransport(
+            transport, ['Next readable paragraph'], 'en', 'zh-Hans', undefined, true, lease,
+        ));
+        headers.resolve(late);
+        try {
+            await flushMicrotasks();
+            expect(transport).toHaveBeenCalledOnce();
+        } finally {
+            body.enqueue(new TextEncoder().encode(JSON.stringify(status === 200
+                ? [{translations: [{text: '迟到译文'}]}] : {error: 'Late provider failure'})));
+            body.close();
+            await expect(next).resolves.toEqual(['后续译文']);
+        }
+        expect(transport).toHaveBeenCalledTimes(2);
+    });
+
+    it('holds an ordinary HTTP error body and preserves its status when that body fails', async () => {
+        const scheduler = createTranslationRequestScheduler(() => ({
+            maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0,
+        }));
+        let body!: ReadableStreamDefaultController<Uint8Array>;
+        const rejected = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {status: 401});
+        const transport = vi.fn().mockResolvedValueOnce(rejected)
+            .mockResolvedValue(response([{translations: [{text: '正常译文'}]}]));
+        const first = scheduler.schedule(lease => translateMicrosoftTextsWithTransport(
+            transport, ['Denied readable paragraph'], 'en', 'zh-Hans', undefined, true, lease,
+        )).catch(error => error);
+        const next = scheduler.schedule(lease => translateMicrosoftTextsWithTransport(
+            transport, ['Allowed readable paragraph'], 'en', 'zh-Hans', undefined, true, lease,
+        ));
+        try {
+            await flushMicrotasks();
+            expect(transport).toHaveBeenCalledOnce();
+        } finally {
+            body.error(new TypeError('Error body disconnected'));
+            await expect(first).resolves.toMatchObject({statusCode: 401});
+            await expect(next).resolves.toEqual(['正常译文']);
+        }
+        expect(transport).toHaveBeenCalledTimes(2);
+    });
+
+    it('without a lease, an unread error body does not add a drain to the shared Obsidian transport path', async () => {
+        let body!: ReadableStreamDefaultController<Uint8Array>;
+        const denied = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {status: 403});
+        const clone = vi.spyOn(denied, 'clone');
+        const transport = vi.fn().mockResolvedValue(denied);
+        try {
+            await expect(translateMicrosoftTextsWithTransport(transport, ['Paragraph'], 'en', 'zh-Hans'))
+                .rejects.toMatchObject({statusCode: 403});
+            expect(clone).not.toHaveBeenCalled();
+        } finally {body.close();}
+    });
+
     it('skips empty batches without a network request', async () => {
         const transport = vi.fn();
         await expect(translateMicrosoftTextsWithTransport(transport, [], 'auto', 'zh-CN')).resolves.toEqual([]);
         expect(transport).not.toHaveBeenCalled();
+    });
+
+    it('关闭合批后逐条 HTTP，最终空译文拒绝完整请求', async () => {
+        const transport = vi.fn(async (_url, init) => response(JSON.parse(String(init?.body))
+            .map((source: string) => ({translations: [{text: `译:${source}`}]}))));
+        await expect(translateMicrosoftTextsWithTransport(transport, ['first', '', 'second'], 'en', 'zh-Hans', undefined, false))
+            .resolves.toEqual(['译:first', '', '译:second']);
+        expect(transport.mock.calls.map(([, init]) => JSON.parse(String(init?.body)))).toEqual([['first'], ['second']]);
+        transport.mockClear();
+        transport.mockResolvedValueOnce(response([{translations: [{text: '有效译文'}]}]))
+            .mockResolvedValueOnce(response([{translations: [{text: ''}]}]));
+        await expect(translateMicrosoftTextsWithTransport(transport, ['first', 'second', 'third'], 'en', 'zh-Hans', undefined, false))
+            .rejects.toMatchObject({code: 'NATIVE_BATCH_RESPONSE_INVALID'});
+        expect(transport).toHaveBeenCalledTimes(2);
     });
 
     it('escapes plain text, forwards cancellation, and restores every HTML entity in the response', async () => {
@@ -37,9 +131,106 @@ describe('shared Microsoft translation transport', () => {
         await expect(translateMicrosoftTextsWithTransport(transport, ['one'], 'en', 'zh-CN')).rejects.toThrow();
         transport.mockImplementationOnce(async () => new Response('not-json'));
         await expect(translateMicrosoftTextsWithTransport(transport, ['one'], 'en', 'zh-CN')).rejects.toThrow();
-        for (const invalid of [null, {}, [], [null], [{translations: []}], [{translations: [{text: 4}]}]]) {
+        for (const invalid of [null, {}, [], [null], [{translations: []}], [{translations: [{text: 4}]}],
+            [{translations: {0: {text: '一'}}}], [{translations: [{text: '一'}, {text: '多余'}]}],
+            [{translations: [{text: ''}]}], [{translations: [{text: '\u200b'}]}]]) {
             transport.mockImplementationOnce(async () => response(invalid));
             await expect(translateMicrosoftTextsWithTransport(transport, ['one'], 'en', 'zh-CN')).rejects.toThrow();
         }
+    });
+
+    it('preserves blank sources and validates every nonempty slot before returning', async () => {
+        const transport = vi.fn(async () => response([{translations: [{text: '一'}]}, {translations: [{text: '二'}]}]));
+        await expect(translateMicrosoftTextsWithTransport(transport, ['one', '\n ', 'two'], 'en', 'zh-Hans'))
+            .resolves.toEqual(['一', '\n ', '二']);
+        expect(JSON.parse((transport.mock.calls[0] as unknown as [URL, RequestInit])[1].body as string))
+            .toEqual(['one', 'two']);
+        transport.mockImplementationOnce(async () => response([{translations: [{text: '一'}]}, {translations: [{text: ''}]}]));
+        await expect(translateMicrosoftTextsWithTransport(transport, ['one', 'two'], 'en', 'zh-Hans'))
+            .rejects.toMatchObject({kind: 'response', code: 'NATIVE_BATCH_RESPONSE_INVALID', retryable: false});
+        transport.mockImplementationOnce(async () => new Response('[{"translations":'));
+        await expect(translateMicrosoftTextsWithTransport(transport, ['one', 'two'], 'en', 'zh-Hans'))
+            .rejects.toMatchObject({code: 'NATIVE_BATCH_RESPONSE_INVALID'});
+    });
+
+    it('checks cancellation after transport and before returning any slot', async () => {
+        const cancelled = new AbortController();cancelled.abort();
+        const unopened = vi.fn();
+        await expect(translateMicrosoftTextsWithTransport(unopened, ['one'], 'en', 'zh-Hans', cancelled.signal))
+            .rejects.toMatchObject({name: 'AbortError'});
+        expect(unopened).not.toHaveBeenCalled();
+        const controller = new AbortController();
+        const transport = vi.fn(async () => {controller.abort(); return response([{translations: [{text: '一'}]}]);});
+        await expect(translateMicrosoftTextsWithTransport(transport, ['one'], 'en', 'zh-Hans', controller.signal))
+            .rejects.toMatchObject({name: 'AbortError'});
+        const reading = new AbortController();
+        const duringBody = vi.fn(async () => ({ok: true, json: async () => {
+            reading.abort();
+            return [{translations: [{text: '一'}]}];
+        }} as unknown as Response));
+        await expect(translateMicrosoftTextsWithTransport(duringBody, ['one'], 'en', 'zh-Hans', reading.signal))
+            .rejects.toMatchObject({name: 'AbortError'});
+    });
+
+    it('accepts unchanged named and numeric entity literals after one transport decoding pass', async () => {
+        const sources = ['Use <b>66</b> & &lt; in the manual.', 'Keep &amp; &AMP; &#60; &#x3c; &#X3C; &custom42; &a;.'];
+        const transport = vi.fn(async () => response([
+            {translations: [{text: '在手册中使用 &lt;b&gt;66&lt;/b&gt; &amp; &amp;lt;。'}]},
+            {translations: [{text: '保留 &amp;amp; &amp;AMP; &amp;#60; &amp;#x3c; &amp;#X3C; &amp;custom42; &amp;a;。'}]},
+        ]));
+        await expect(translateMicrosoftTextsWithTransport(transport, sources, 'en', 'zh-Hans'))
+            .resolves.toEqual(['在手册中使用 <b>66</b> & &lt;。', '保留 &amp; &AMP; &#60; &#x3c; &#X3C; &custom42; &a;。']);
+        expect(transport).toHaveBeenCalledOnce();
+        const [url, init] = transport.mock.calls[0] as unknown as [URL, RequestInit];
+        expect(url.searchParams.get('from')).toBe('en');
+        expect(JSON.parse(init.body as string)[0]).toBe('Use &lt;b&gt;66&lt;/b&gt; &amp; &amp;lt; in the manual.');
+    });
+
+    it.each([
+        {source: 'Use &lt; in the manual.', raw: '使用 &amp;;。', reason: '服务删除实体名'},
+        {source: 'Use &lt; in the manual.', raw: '使用 &lt;。', reason: '服务把字面实体解释为符号'},
+        {source: 'Use &lt; in the manual.', raw: '使用 &amp;LT;。', reason: '实体大小写被改写'},
+        {source: 'Use &#60; in the manual.', raw: '使用 &amp;#x3c;。', reason: '数字写法被改写'},
+        {source: 'Use &lt; in the manual.', raw: '使用 &amp;lt; 和 &amp;lt;。', reason: '实体重复'},
+        {source: 'Use &lt; &lt; in the manual.', raw: '使用 &amp;lt;。', reason: '重复来源只返回一次'},
+        {source: 'Use &lt; in the manual.', raw: '\u200b', reason: '实体槽为空译文'},
+        {source: 'Use &lt; in the manual.', raw: '使用 &amp;l\u200bt;。', reason: '实体名插入零宽字符'},
+    ])('rejects $reason without a provider retry', async ({source, raw}) => {
+        const transport = vi.fn(async () => response([{translations: [{text: raw}]}]));
+        await expect(translateMicrosoftTextsWithTransport(transport, [source], 'en', 'zh-Hans'))
+            .rejects.toMatchObject({kind: 'response', code: 'NATIVE_BATCH_RESPONSE_INVALID', retryable: false});
+        expect(transport).toHaveBeenCalledOnce();
+    });
+
+    it('checks literal counts independently for each slot and rejects the entire native response', async () => {
+        const valid = vi.fn(async () => response([
+            {translations: [{text: '两次 &amp;lt; &amp;lt;，另一次 &amp;amp;。'}]},
+            {translations: [{text: '另一个源槽 &amp;lt;。'}]},
+        ]));
+        await expect(translateMicrosoftTextsWithTransport(valid, ['Keep &lt; &lt; and &amp;.', 'Keep &lt;.'], 'en', 'zh-Hans'))
+            .resolves.toEqual(['两次 &lt; &lt;，另一次 &amp;。', '另一个源槽 &lt;。']);
+        const shifted = vi.fn(async () => response([
+            {translations: [{text: '第一条没有实体。'}]},
+            {translations: [{text: '第二条 &amp;lt; &amp;lt;。'}]},
+        ]));
+        await expect(translateMicrosoftTextsWithTransport(shifted, ['First &lt;.', 'Second &lt;.'], 'en', 'zh-Hans'))
+            .rejects.toMatchObject({code: 'NATIVE_BATCH_RESPONSE_INVALID'});
+        expect(shifted).toHaveBeenCalledOnce();
+        const laterBroken = vi.fn(async () => response([
+            {translations: [{text: '正常译文。'}]},
+            {translations: [{text: '使用 &amp;;。'}]},
+        ]));
+        await expect(translateMicrosoftTextsWithTransport(laterBroken, ['Ordinary text.', 'Use &lt;.'], 'en', 'zh-Hans'))
+            .rejects.toMatchObject({code: 'NATIVE_BATCH_RESPONSE_INVALID'});
+        expect(laterBroken).toHaveBeenCalledOnce();
+    });
+
+    it('does not upload blank or zero-width sources or interpret incomplete entities as protected tokens', async () => {
+        const transport = vi.fn(async () => response([{translations: [{text: '原样 &amp;lt;。'}]}, {translations: [{text: '普通译文。'}]}]));
+        await expect(translateMicrosoftTextsWithTransport(transport, ['\u200b', ' ', 'Keep &lt;.', 'Use & and &lt without semicolon.'], 'en', 'zh-Hans'))
+            .resolves.toEqual(['\u200b', ' ', '原样 &lt;。', '普通译文。']);
+        expect(JSON.parse((transport.mock.calls[0] as unknown as [URL, RequestInit])[1].body as string))
+            .toEqual(['Keep &amp;lt;.', 'Use &amp; and &amp;lt without semicolon.']);
+        expect(transport).toHaveBeenCalledOnce();
     });
 });

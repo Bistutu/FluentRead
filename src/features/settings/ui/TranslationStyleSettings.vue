@@ -1,7 +1,7 @@
 <!--
 @file src/features/settings/ui/TranslationStyleSettings.vue
 文件职责：作为“界面风格”页的第一个分组，集中设置网页双语译文的样式预设、文字与独立背景色、精确字号等外观微调，并提供与网页一致的实时预览。
-主要内容：左侧实时预览、右侧选择样式，窄屏下按相同顺序纵向排列；以紧凑可视卡片比较内置样式和已保存样式的独立外观快照，减少嵌套边框并突出当前选择；当前预览实时反映颜色、字体与安全的自定义 CSS 声明，并能保存、更新或删除多套样式。
+主要内容：左侧实时预览、右侧选择样式，窄屏下按相同顺序纵向排列；以紧凑可视卡片比较内置样式和已保存样式的独立外观快照，保留用户命名的卡片文字、可访问名称及预览说明，不交给旧文案扫描；当前预览实时反映颜色、字体与安全的自定义 CSS 声明，并能保存、更新或删除多套样式。
 模块边界：本组件只编辑父级传入的 Config 草稿（style、translationAppearance、translationStyleProfiles 等），不持久化配置、
 不向网页注入样式；预设元数据和外观声明来自 core/config/translationAppearance，网页应用由 content 层负责。
 -->
@@ -20,6 +20,7 @@
       <div class="translation-style-workbench">
         <div class="translation-style-stage">
           <TranslationStylePreview
+            data-i18n-ignore
             :style-class="selectedPreset.className"
             :appearance-style="appearanceStyle"
             :highlight-enabled="config.bilingualSentenceHighlightEnabled"
@@ -29,7 +30,7 @@
             :page-theme="pageTheme"
             :caption="t('settings.translationStyle.currentPreset', { name: activeProfile?.name ?? translateLegacy(selectedPreset.label) })"
             :customized="customized"
-            :hint="selectedPreset.className === 'fluent-display-blur-reveal' ? t('settings.translationStyle.blurRevealHint') : ''"
+            :hint="selectedPreset.revealOnHover ? t('settings.translationStyle.blurRevealHint') : ''"
             @update:page-theme="pageTheme = $event"
           />
         </div>
@@ -43,6 +44,7 @@
                 :key="profile.id"
                 type="button"
                 class="translation-style-saved-card"
+                data-i18n-ignore
                 :class="{ selected: config.activeTranslationStyleProfileId === profile.id }"
                 role="radio"
                 :aria-checked="config.activeTranslationStyleProfileId === profile.id"
@@ -479,7 +481,7 @@ function resetAppearance(): void {
   width: auto;
   min-width: min(100%, 260px);
   flex: 1 1 260px;
-  max-width: 340px;
+  max-width: 400px;
 }
 
 .translation-style-categories :deep(button) {
@@ -784,6 +786,6 @@ function resetAppearance(): void {
 .translation-style-card-name { padding-left: 0; font-size: 11px; font-weight: 500; color: var(--muted); }
 .translation-style-card.selected .translation-style-card-name { color: var(--brand-strong); font-weight: 650; }
 .translation-style-card-check { right: 9px; bottom: 9px; }
-.translation-style-categories.segmented-control { min-width: 220px; max-width: 290px; }
+.translation-style-categories.segmented-control { min-width: 220px; max-width: 290px; grid-auto-columns: auto; }
 @container (max-width: 480px) { .translation-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

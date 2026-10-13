@@ -1,17 +1,19 @@
 /**
  * @file tests/readingPanelStreamingResize.test.ts
  * 文件职责：执行阅读面板真实 Vue setup 与客户端模板，验证流式正文不重复要求父卡片测量。
- * 主要内容：逐次刷新回答与结构变化、同帧首次回答/完成/错误、用户阅读位置、晚到译文、隐藏/替换/卸载的迟到响应；统一导航下的唯一工具/追问、回答优先顺序和真实表单/按钮事件。
+ * 主要内容：逐次刷新回答与结构变化、同帧首次回答/完成/错误、用户阅读位置、晚到译文、隐藏/替换/卸载的迟到响应；统一导航顶栏的唯一传送工具、正文追问与回答优先顺序、菜单边界和监听清理，以及真实表单/按钮事件。
  * 模块边界：仅控制后台流端口、展示子组件与 DOM 几何；不复制阅读业务，不请求模型，不声称真实浏览器性能。
  */
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {parseHTML} from 'linkedom';
 import {compileScript, compileStyle, compileTemplate, parse} from 'vue/compiler-sfc';
+import {useRenderDateFormatter} from '@/src/ui/dateFormat';
 import ts from 'typescript';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {DEFAULT_HARNESS_PREFERENCES, HARNESS_ACTIONS} from '@/src/core/config/harness';
+import {DEFAULT_HARNESS_PREFERENCES, HARNESS_ACTIONS, isReadingActionSupported, isReadingFollowUpSupported} from '@/src/core/config/harness';
 import {hasDistinctTranslation} from '@/src/core/translation/result';
+import {buildReadingEvidence, readingEvidenceText} from '@/src/core/harness/evidence';
 import type {ReadingProgress, ReadingRequest, ReadingResponse} from '@/src/features/reading-assistant/types';
 
 const runtime=createRequire(import.meta.url)('vue') as typeof import('vue');
@@ -25,22 +27,28 @@ afterEach(async()=>{dispose?.();dispose=undefined;await tick();expect(frames.siz
 
 async function mountPanel(overrides:Record<string,unknown>={}) {
   const {document,window}=parseHTML('<html><body></body></html>');
+  const view={innerHeight:800,innerWidth:390,addEventListener:document.addEventListener.bind(document),removeEventListener:document.removeEventListener.bind(document),dispatchEvent:document.dispatchEvent.bind(document)};
+  Object.defineProperty(document,'defaultView',{configurable:true,value:view});
   vi.stubGlobal('document',document);
   vi.stubGlobal('requestAnimationFrame',(callback:FrameRequestCallback)=>{frames.set(++frameId,callback);return frameId;});
   vi.stubGlobal('cancelAnimationFrame',(id:number)=>frames.delete(id));
   const calls:StreamCall[]=[],resize=vi.fn(),errors=vi.fn();
   const sendMessage=vi.fn(async()=>({success:true})),writeClipboard=vi.fn(async(_text:string)=>undefined),playSource=vi.fn();
+  const saveLearningMemory=vi.fn(async(_memory: {kind: string; content: string})=>({}));
   const translateLegacy=vi.fn((text:string)=>text);
   vi.stubGlobal('navigator',{clipboard:{writeText:writeClipboard}});
   const modules:Record<string,unknown>={
     vue:runtime,
+    // 日期复用属于本组件的真实 Vue update 生命周期，不能以格式化 stub 绕过。
+    '@/src/ui/dateFormat':{useRenderDateFormatter},
     '@/src/core/translation/result':{hasDistinctTranslation},
+    '@/src/core/harness/evidence':{buildReadingEvidence, readingEvidenceText},
     '@/src/ui/i18n':{useUiI18n:()=>({t:(key:string)=>key,translateLegacy})},
     'webextension-polyfill':{default:{runtime:{sendMessage}}},
-    '@/src/core/config/harness':{HARNESS_ACTIONS},
+    '@/src/core/config/harness':{HARNESS_ACTIONS,isReadingActionSupported,isReadingFollowUpSupported},
     './ReadingAnswer.vue':{default:runtime.defineComponent({props:['text'],setup:props=>()=>runtime.h('div',{'data-reading-answer':''},props.text)})},
     '../client':{streamReading:(request:ReadingRequest,callbacks:StreamCall['callbacks'])=>{const call={request,callbacks,cancel:vi.fn()};calls.push(call);return {cancel:call.cancel};},
-      getHarnessSession:async()=>null,listHarnessSessions:async()=>({sessions:[],hasMore:false}),saveLearningMemory:async()=>({})},
+      getHarnessSession:async()=>null,listHarnessSessions:async()=>({sessions:[],hasMore:false}),saveLearningMemory},
     '@/src/features/vocabulary/public':{normalizeLearningSourceText:(text:string)=>text.trim()},
     '@/src/features/vocabulary/protocol':{VOCABULARY_BOOK_MESSAGE:'fixture-vocabulary'},
     '@/src/core/language/detect':{detectlang:()=> 'en'},
@@ -84,24 +92,73 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
       const nodes=[...holder.content.childNodes] as unknown as HostNode[];nodes.forEach(node=>insert(node,parent,anchor));return [nodes[0],nodes.at(-1)!];
     },
   });
-  const props=runtime.reactive({selection:{text:'Practice helps.',sentence:'Practice helps.',context:'Practice helps every day.'},
+  const host=document.createElement('div'), mountRoot=document.createElement('div'), toolsTarget=document.createElement('div');
+  toolsTarget.className='fr-study-reading-tools';host.append(toolsTarget,mountRoot);document.body.append(host);
+  const props=runtime.reactive({toolsTarget:runtime.markRaw(toolsTarget) as unknown as HTMLElement|null,selection:{text:'Practice helps.',sentence:'Practice helps.',context:'Practice helps every day.'},
     preferences:{...DEFAULT_HARNESS_PREFERENCES,enabled:true},active:true,targetLanguage:'zh-CN',sourceLanguage:'en',
-    vocabularyEnabled:true,privateContext:false,animations:false,externalNavigation:undefined as boolean|undefined,
+    vocabularyEnabled:true,privateContext:false,animations:false,historyOnly:false,externalNavigation:undefined as boolean|undefined,
     sourceTranslation:undefined as {source:string;text:string;pending?:boolean}|undefined,...overrides});
   let panel:any;
   const app=renderer.createApp({setup:()=>()=>runtime.h(exports.default,{...props,onResize:resize,onPlaySource:playSource,ref:(instance:any)=>{if(instance)panel=instance.$.setupState;}})});
   app.config.warnHandler=()=>undefined;app.config.errorHandler=errors;
-  const host=document.createElement('div');document.body.append(host);app.mount(host as unknown as HostNode);dispose=()=>app.unmount();await tick();
+  app.mount(mountRoot as unknown as HostNode);dispose=()=>app.unmount();await tick();
   expect(errors).not.toHaveBeenCalled();
   const viewport=host.querySelector('.fr-reading-result') as unknown as HTMLElement;
   if(viewport){Object.defineProperty(viewport,'scrollTop',{configurable:true,writable:true,value:0});Object.defineProperty(panel.answerBody,'offsetTop',{configurable:true,value:100});}
   const finish=(text:string,call=calls.at(-1)!)=>call.callbacks.result({success:true,text,service:'deepseek',model:'fixture-model'});
-  return {host,panel,props,calls,resize,viewport,finish,errors,window,sendMessage,writeClipboard,playSource,translateLegacy,styles:styles.code,unmount:()=>{dispose?.();dispose=undefined;}};
+  return {host,toolsTarget,panel,props,calls,resize,viewport,finish,errors,window,sendMessage,writeClipboard,playSource,translateLegacy,saveLearningMemory,styles:styles.code,unmount:()=>{dispose?.();dispose=undefined;}};
 }
 
+it('copies and saves readable source quotes without leaking model citation IDs or external markers', async () => {
+  const {panel,calls,finish,writeClipboard,saveLearningMemory}=await mountPanel();
+  const source=buildReadingEvidence(calls[0].request.selection.text,calls[0].request.selection.context)[0];
+  finish(`It helps. [[cite:${source.id}|Practice helps.]]\n\n[[external]] Background. [[cite:invented|Unverified text.]]`);
+  await tick();
+  await panel.copyAnswer();
+  const copied=writeClipboard.mock.calls[0][0];
+  expect(copied).toContain('【reading.evidence.label】 Practice helps.');
+  expect(copied).toContain('【reading.evidence.unverified】 Unverified text.');
+  expect(copied).toContain('【reading.evidence.external】 Background.');
+  expect(copied).not.toMatch(/\[\[cite:|\[\[external\]\]|fr-[a-z0-9]+-[sc]\d/u);
+  await panel.rememberLearning();
+  expect(saveLearningMemory).toHaveBeenCalledOnce();
+  const note=saveLearningMemory.mock.calls[0][0].content;
+  expect(note).toContain('【reading.evidence.label】 Practice helps.');
+  expect(note).not.toContain('[[cite:');
+});
+
 describe('reading panel streaming resize boundaries through actual setup and template',()=>{
-  it('keeps standalone fixed controls while external navigation puts unique tools and followup in the answer scroll flow',async()=>{
-    const {host,props,calls,viewport,finish,styles}=await mountPanel({externalNavigation:false});
+  it.each([false,true])('preserves scoped followup nodes, IME input and stopped keyboard propagation in both layouts (external=%s)',async externalNavigation=>{
+    const {host,panel,props,calls,window,finish,styles}=await mountPanel({externalNavigation});
+    vi.stubGlobal('Event',window.Event);
+    finish('Completed explanation');await tick();
+    panel.question='Draft';panel.feedback='Saved';panel.sessionWarning='Session warning';await tick();
+    const form=host.querySelector('.fr-reading-followup')!;
+    const input=form.querySelector('input') as unknown as HTMLInputElement;
+    const button=form.querySelector('button')!;
+    expect(form.parentNode).toBe(host.querySelector(externalNavigation?'.fr-reading-body':'[data-reading-panel]'));
+    expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
+    for(const element of [form,input,button,...host.querySelectorAll('.fr-reading-feedback')]) expect(element.hasAttribute('data-v-reading-stream-resize')).toBe(true);
+    for(const fragment of ['.fr-reading-followup input','.fr-reading-followup button','.fr-reading-feedback']){
+      const selector=[...styles.matchAll(/([^{}]+)\{([^{}]+)\}/gu)].find(([,rule])=>rule.trim().startsWith(fragment))![1].trim();
+      expect(host.querySelector(selector)).not.toBeNull();
+    }
+    const propagated=vi.fn();host.addEventListener('keydown',propagated);host.addEventListener('keyup',propagated);
+    for(const type of ['keydown','keyup']) input.dispatchEvent(new window.Event(type,{bubbles:true}));
+    expect(propagated).not.toHaveBeenCalled();
+    input.dispatchEvent(new window.Event('compositionstart'));input.value='输入中的问题';
+    input.dispatchEvent(new window.Event('input',{bubbles:true}));await tick();
+    expect(panel.question).toBe('Draft');expect(panel.feedback).toBe('');
+    input.dispatchEvent(new window.Event('compositionend'));await tick();expect(panel.question).toBe('输入中的问题');
+    const submitted=new window.Event('submit',{bubbles:true,cancelable:true});form.dispatchEvent(submitted);await tick();
+    expect(submitted.defaultPrevented).toBe(true);expect(calls).toHaveLength(2);expect(calls[1].request.question).toBe('输入中的问题');
+    expect(input.hasAttribute('disabled')).toBe(true);expect(button.hasAttribute('disabled')).toBe(true);
+    props.preferences.service='bilibili';await tick();expect(host.querySelector('.fr-reading-followup')).toBeNull();
+    props.preferences.service='deepseek';await tick();expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
+  });
+
+  it('keeps standalone controls while external navigation teleports unique tools to the fixed slot and leaves followup in the answer',async()=>{
+    const {host,toolsTarget,props,calls,viewport,finish,styles}=await mountPanel({externalNavigation:false});
     const root=host.querySelector('[data-reading-panel]')!;
     expect(host.querySelector('.fr-reading-toolbar')?.parentNode).toBe(root);
     expect(host.querySelector('.fr-reading-followup')?.parentNode).toBe(root);
@@ -113,17 +170,19 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     expect(host.querySelectorAll('.fr-reading-tools')).toHaveLength(1);
     expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
     expect(host.querySelectorAll('summary[aria-label="更多操作"]')).toHaveLength(1);
-    expect(viewport.contains(host.querySelector('.fr-reading-tools'))).toBe(true);
+    expect(toolsTarget.contains(host.querySelector('.fr-reading-tools'))).toBe(true);
+    expect(viewport.querySelector('.fr-reading-tools')).toBeNull();
+    expect(host.querySelector('.fr-reading-inline-controls')).toBeNull();
     expect(viewport.contains(host.querySelector('.fr-reading-followup'))).toBe(true);
     expect(host.querySelector('.fr-reading-status')).not.toBeNull();
     calls[0].callbacks.progress({kind:'text',text:'Heading\nFirst answer paragraph'});await tick();
     expect(host.querySelector('.fr-reading-body > .fr-reading-status')).toBeNull();
-    expect(host.querySelector('.fr-reading-inline-controls button[aria-label="停止"]')).not.toBeNull();
-    expect(host.querySelector('.fr-reading-inline-controls [role="status"]')).not.toBeNull();
+    expect(host.querySelector('.fr-reading-controls button[aria-label="停止"]')).not.toBeNull();
+    expect(host.querySelector('.fr-reading-controls [role="status"]')).not.toBeNull();
     const body=host.querySelector('.fr-reading-body')!;
     expect([...body.children].indexOf(host.querySelector('.fr-reading-followup')!)).toBeGreaterThan([...body.children].indexOf(host.querySelector('.fr-reading-answer')!));
     finish('Complete answer');await tick();
-    expect(host.querySelector('.fr-reading-inline-controls button[aria-label="停止"]')).toBeNull();
+    expect(host.querySelector('.fr-reading-controls button[aria-label="停止"]')).toBeNull();
     expect(host.querySelectorAll('.fr-reading-footer')).toHaveLength(1);
     expect(host.querySelectorAll('.fr-reading-tool-list button')).toHaveLength(5);
     props.externalNavigation=false;await tick();
@@ -132,6 +191,76 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     expect(host.querySelectorAll('.fr-reading-tools')).toHaveLength(1);
     expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
     expect(calls).toHaveLength(1);
+  });
+
+  it('bounds the teleported menu above or below its trigger and releases sizing listeners on close, view switches and unmount',async()=>{
+    const {host,panel,props,window,unmount}=await mountPanel({externalNavigation:true});
+    const details=host.querySelector('.fr-reading-tools') as unknown as HTMLDetailsElement;
+    const summary=details.querySelector('summary')!;
+    const menu=details.querySelector('.fr-reading-tool-list') as HTMLElement;
+    Object.defineProperty(summary,'offsetHeight',{configurable:true,value:32});
+    Object.defineProperty(menu,'scrollHeight',{configurable:true,value:320});
+    let rect={top:740,bottom:772,height:32};
+    summary.getBoundingClientRect=()=>rect as DOMRect;
+    const view=details.ownerDocument.defaultView!;
+    const add=vi.spyOn(view,'addEventListener'), remove=vi.spyOn(view,'removeEventListener');
+    const open=()=>{details.open=true;details.dispatchEvent(new window.Event('toggle'));};
+    open();
+    expect(menu.style.top).toBe('auto');expect(menu.style.bottom).toBe('36px');expect(menu.style.maxHeight).toBe('310px');
+    expect(add).toHaveBeenCalledWith('resize',panel.fitToolsMenu);
+    rect={top:20,bottom:52,height:32};view.dispatchEvent(new window.Event('resize'));
+    expect(menu.style.top).toBe('36px');expect(menu.style.bottom).toBe('auto');expect(menu.style.maxHeight).toBe('310px');
+    rect={top:620,bottom:684,height:64};view.dispatchEvent(new window.Event('resize'));
+    expect(menu.style.top).toBe('auto');expect(menu.style.maxHeight).toBe('302px');expect(menu.style.width).toBe('183px');
+    panel.dismissToolsOutside({target:menu.querySelector('button')});expect(details.open).toBe(true);
+    const focus=vi.fn();summary.focus=focus;
+    panel.dismissToolsOutside({target:host.querySelector('input')});
+    expect(details.open).toBe(false);expect(focus).not.toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledWith('resize',panel.fitToolsMenu);
+    open();props.active=false;await tick();
+    expect(details.open).toBe(false);expect(host.querySelector('.fr-reading-controls')).toBeNull();
+    props.active=true;await tick();
+    const current=host.querySelector('.fr-reading-tools') as unknown as HTMLDetailsElement;
+    current.open=true;current.dispatchEvent(new window.Event('toggle'));
+    props.historyOnly=true;await tick();
+    expect(current.open).toBe(false);expect(host.querySelector('.fr-reading-controls')).toBeNull();
+    props.historyOnly=false;await tick();
+    const final=host.querySelector('.fr-reading-tools') as unknown as HTMLDetailsElement;
+    final.open=true;final.dispatchEvent(new window.Event('toggle'));
+    remove.mockClear();unmount();await tick();
+    expect(remove).toHaveBeenCalledWith('resize',panel.fitToolsMenu);
+    expect(host.querySelector('.fr-reading-tools')).toBeNull();
+  });
+
+  it('enters records without restoring focus to the removed menu trigger and keeps source viewing focused on the answer',async()=>{
+    const {host,window,viewport,panel}=await mountPanel({externalNavigation:true});
+    const details=host.querySelector('.fr-reading-tools') as unknown as HTMLDetailsElement;
+    const summary=details.querySelector('summary')!;const focus=vi.fn();summary.focus=focus;
+    const button=(text:string)=>[...details.querySelectorAll('button')].find(element=>element.textContent===text)!;
+    const sourceFocus=vi.fn();viewport.focus=sourceFocus;
+    details.open=true;button('reading.viewSource').dispatchEvent(new window.Event('click',{bubbles:true}));await tick();
+    expect(details.open).toBe(false);expect(sourceFocus).toHaveBeenCalledWith({preventScroll:true});expect(focus).not.toHaveBeenCalled();
+    details.open=true;button('阅读记录').dispatchEvent(new window.Event('click',{bubbles:true}));await tick();
+    expect(panel.showRecords).toBe(true);expect(host.querySelector('.fr-reading-controls')).toBeNull();expect(focus).not.toHaveBeenCalled();
+    panel.closeRecords();await tick();
+    expect(host.querySelectorAll('.fr-reading-tools')).toHaveLength(1);
+  });
+
+  it('returns from records to the generating action without cancelling or duplicating its request',async()=>{
+    const {host,panel,props,calls,finish}=await mountPanel({externalNavigation:true});
+    calls[0].callbacks.progress({kind:'text',text:'Partial explanation'});await tick();
+    props.historyOnly=true;await tick();
+    expect(panel.showRecords).toBe(true);expect(host.querySelector('.fr-reading-controls')).toBeNull();
+    props.historyOnly=false;await tick();
+    expect(panel.showRecords).toBe(false);expect(panel.busy).toBe(true);
+    expect(host.querySelector('[data-reading-answer]')?.textContent).toBe('Partial explanation');
+    expect(host.querySelectorAll('.fr-reading-tools')).toHaveLength(1);
+    expect(calls).toHaveLength(1);expect(calls[0].cancel).not.toHaveBeenCalled();
+    calls[0].callbacks.progress({kind:'text',text:'Continued explanation'});await tick();
+    expect(host.querySelector('[data-reading-answer]')?.textContent).toBe('Continued explanation');
+    finish('Completed explanation');await tick();
+    expect(panel.busy).toBe(false);expect(host.querySelector('[data-reading-answer]')?.textContent).toBe('Completed explanation');
+    expect(calls).toHaveLength(1);expect(calls[0].cancel).not.toHaveBeenCalled();
   });
 
   it('runs external tools and followup through real DOM events while preserving manual scrolling and request ownership',async()=>{
@@ -143,10 +272,14 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     const toolsRenders=()=>translateLegacy.mock.calls.filter(([text])=>text==='更多操作').length;
     const beforeChunks=toolsRenders();
     viewport.scrollTop=7;viewport.dispatchEvent(new window.Event('wheel',{bubbles:true}));
-    for(let index=0;index<8;index++){calls[0].callbacks.progress({kind:'text',text:`Stream paragraph ${index}`});await tick();expect(viewport.scrollTop).toBe(7);}
+    const followUpUpdates=vi.spyOn(runtime.vModelText as {beforeUpdate:NonNullable<typeof runtime.vModelText.beforeUpdate>},'beforeUpdate');
+    try {
+      for(let index=0;index<8;index++){calls[0].callbacks.progress({kind:'text',text:`Stream paragraph ${index}`});await tick();expect(viewport.scrollTop).toBe(7);}
+      expect(followUpUpdates).not.toHaveBeenCalled();
+    } finally {followUpUpdates.mockRestore();}
     expect(resize).not.toHaveBeenCalled();
     expect(toolsRenders()).toBe(beforeChunks);
-    click(host.querySelector('.fr-reading-inline-controls button[aria-label="停止"]')!);await tick();
+    click(host.querySelector('.fr-reading-controls button[aria-label="停止"]')!);await tick();
     expect(calls[0].cancel).toHaveBeenCalledOnce();expect(panel.stopped).toBe(true);
     calls[0].callbacks.progress({kind:'text',text:'Late stopped result'});await tick();
     expect(host.querySelector('[data-reading-answer]')?.textContent).toBe('Stream paragraph 7');
@@ -329,6 +462,6 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     expect(host.querySelector('[data-reading-answer]')).toBeNull();expect(resize).not.toHaveBeenCalled();
     panel.startAction('meaning');await tick();const removed=calls.at(-1)!;unmount();resize.mockClear();
     removed.callbacks.progress({kind:'text',text:'After unmount'});removed.callbacks.error(new Error('After unmount'));await tick();
-    expect(removed.cancel).toHaveBeenCalledOnce();expect(resize).not.toHaveBeenCalled();expect(host.childNodes.length).toBe(0);
+    expect(removed.cancel).toHaveBeenCalledOnce();expect(resize).not.toHaveBeenCalled();expect(host.querySelector('[data-reading-panel]')).toBeNull();expect(host.querySelector('.fr-reading-controls')).toBeNull();
   });
 });

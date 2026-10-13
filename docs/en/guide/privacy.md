@@ -1,6 +1,6 @@
 # Privacy policy
 
-Updated: October 5, 2026.
+Updated: October 11, 2026.
 
 This policy describes how the FluentRead browser extension handles translation content, local records, service credentials, and optional Google Drive / WebDAV cloud configuration backups. FluentRead is a bilingual translation and reading-assistance tool maintained by its open-source project contributors. The website and this policy are publicly accessible without signing in. Translation does not require connecting a Google account.
 
@@ -29,6 +29,8 @@ Initial recognition-pack and local-model preparation requires network downloads.
 
 English word cards include a common-word dictionary. Looking up a word outside it may download and cache a fixed full-dictionary data file of about 3.9 MB from JSDMirror, GitHub Raw, or jsDelivr. That static asset request does not include the word being looked up. Online dictionary providers may still receive the word as described above.
 
+The first translated PDF export downloads a fixed font of about 5 MB from JSDMirror, an onmicrosoft mirror, jsDelivr, or GitHub Raw, verifies it, and caches it locally. If a source fails, the extension tries another. This request only retrieves the font file; it does not send your document, translation, API keys, or other service credentials.
+
 Sites configured for automatic translation can start requests automatically. Choosing a local translation model does not also make dictionaries, read-aloud, downloads, or other tools offline.
 
 ## What stays in the browser?
@@ -41,7 +43,9 @@ Translation cache defaults to at most 5 MiB or 2,000 entries, with a maximum ent
 
 The optional full English dictionary is held in the browser's CacheStorage. Clearing browser data or uninstalling the extension removes it.
 
-Document translation and edits stay in the current page. Download files before leaving.
+The PDF export font is stored in the browser's CacheStorage after integrity verification for later exports, including offline generation. Clearing browser data or uninstalling the extension may remove it, requiring another download on the next export. Font caches are excluded from configuration cloud backups.
+
+Recent documents are stored in this browser’s local IndexedDB, including original file bytes, parsed content, translations, edits, progress, and the translation-settings fingerprint. History keeps at most 20 documents and 80 MiB of original file bytes, evicting the least recently updated entries when a limit is exceeded. There is currently no time-based expiry. Delete individual entries or clear all history on the document home page. Document history is excluded from configuration cloud backups. Download files you need to retain; clearing browser data or uninstalling the extension may remove local records.
 
 ## Google Drive configuration sync
 

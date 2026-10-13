@@ -1,8 +1,8 @@
 <!--
  @file src/app/popup/PopupApp.vue
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页。
- 主要内容：在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型，保留版本、赞赏、网页翻译与恢复、局部选择及站点开关；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次语言引导独占内容；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效。
- 模块边界：组件编排 UI、浏览器导航事件与生命周期；页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/store 管理。
+ 主要内容：在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次语言引导独占内容；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈。
+ 模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/store 管理。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
 <template>
@@ -121,15 +121,13 @@
       <div class="translate-action">
         <button class="translate-button" :class="{ translated: pageTranslated }" type="button"
           data-testid="page-translation" :aria-pressed="pageTranslated" :aria-busy="translating"
-          :title="pageTranslationLabel"
-          :disabled="!config.on || currentSiteExtensionDisabled || translating" :onClick="pageButtons.toggle">
+          :aria-label="pageTranslationLabel" :title="pageTranslationTitle"
+          :disabled="!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule" :onClick="pageButtons.toggle">
           <span v-if="translating" class="spinner" aria-hidden="true" />
-          <span v-else class="translate-glyph" aria-hidden="true">A↔译</span>
-          <span class="translate-label">{{ pageTranslationLabel }}</span>
-          <kbd v-if="pageTranslationHotkey && !currentPdfSource" class="translate-hotkey">{{ pageTranslationHotkey }}</kbd>
+          <span class="translate-label">{{ pageTranslationButtonLabel }}</span>
         </button>
         <button v-if="!isThunderbird && !currentPdfSource" class="section-translate-button" type="button" data-testid="section-translation"
-          :disabled="!config.on || currentSiteExtensionDisabled || translating" :aria-label="sectionTranslationLabel" :title="sectionTranslationLabel"
+          :disabled="!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule" :aria-label="sectionTranslationLabel" :title="sectionTranslationLabel"
           :onClick="pageButtons.section">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15M10 10l7 2.6-3 1.1-1.1 3z" /></svg>
           <span>{{ t('popup.sectionTranslation') }}</span>
@@ -143,7 +141,7 @@
         :onSetExtensionDisabled="pageButtons.disabled"
       />
 
-      <p v-if="notice" class="notice" :class="noticeType">{{ notice }}</p>
+      <p v-if="notice" class="notice" :class="noticeType" :role="noticeType === 'error' ? 'alert' : 'status'" :aria-live="noticeType === 'error' ? 'assertive' : 'polite'">{{ notice }}</p>
     </section>
 
     <PopupSiteRule
@@ -383,7 +381,9 @@ import {
   type PopupQuickFeatureId,
 } from '@/src/core/config/interfaceAppearance';
 import { resolveAIContextPresentation } from '@/src/ui/view-model/aiContext';
-import {createPopupPageActions, type PopupPageState} from './pageActions';
+import {createPopupPageActions, type PopupPageState, type PopupSiteRulePatch} from './pageActions';
+import {createPopupTabSource} from './sourceTab';
+import {getEmbeddedPopupTabId, closePopupSurface} from './embedded';
 import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
 import {applyInterfaceFont, applyInterfaceSkin} from '@/src/ui/interfaceAppearance';
 import { requestTranslationCacheClear } from './cache';
@@ -417,7 +417,7 @@ import {featureServiceDefinitions, getFeatureService} from '@/src/core/config/fe
 const PopupServices = defineAsyncComponent(() => import('./PopupServices.vue'));
 const ElDrawer = defineAsyncComponent(() => import('./PopupDrawer'));
 const UiLanguageOnboarding = defineAsyncComponent(() => import('@/src/ui/components/UiLanguageOnboarding.vue'));
-const {t, translateLegacy} = useUiI18n();
+const {language, t, translateLegacy} = useUiI18n();
 const version = browser.runtime.getManifest().version;
 // composition root 已等待配置服务；首次渲染直接使用完整快照，不能先暴露默认布局。
 const config = ref(normalizeConfig(runtimeConfig));
@@ -425,7 +425,7 @@ const onboardingLanguage = ref<UiLanguage>('zh-CN');
 const drawerVisible = ref(false);
 const drawerMounted = ref(false);
 const activeDrawer = ref<DrawerName>('hover');
-const pageState = reactive<PopupPageState>({tabId: null, url: '', domain: '', translated: false, busy: false});
+const pageState = reactive<PopupPageState>({tabId: null, url: '', domain: '', translated: false, busy: false, savingRule: false});
 const {busy: translating, translated: pageTranslated, tabId: currentTabId, domain: currentSiteDomain} = toRefs(pageState);
 const currentPdfSource = computed(() => getPdfSourceUrl(pageState.url));
 const pageTranslationLabel = computed(() => t(currentPdfSource.value ? 'document.pdfReading.openReader' : pageTranslated.value ? 'popup.restoreCurrentPage' : 'popup.translateCurrentPage'));
@@ -530,10 +530,10 @@ const isThunderbird = browserCapabilities.browser === 'thunderbird';
 const currentSiteSupported = computed(() => !isThunderbird && currentTabId.value !== null && Boolean(currentSiteDomain.value));
 const currentSiteRuleEnabled = computed(() => currentSiteSupported.value
   && (config.value.alwaysTranslateDomains ?? []).includes(currentSiteDomain.value));
-const currentSiteAlwaysTranslated = computed(() => currentSiteSupported.value
-  && (config.value.autoTranslate || currentSiteRuleEnabled.value));
 const currentSiteExtensionDisabled = computed(() => currentSiteSupported.value
   && (config.value.disabledExtensionDomains ?? []).includes(currentSiteDomain.value));
+const currentSiteAlwaysTranslated = computed(() => currentSiteSupported.value && !currentSiteExtensionDisabled.value
+  && (config.value.autoTranslate || currentSiteRuleEnabled.value));
 const aiContextPresentation = computed(() => resolveAIContextPresentation({
   enabled: config.value.enableAIContext,
   supported: canUseAIContext.value,
@@ -546,8 +546,24 @@ const aiContextPresentation = computed(() => resolveAIContextPresentation({
 const isSiteModuleVisible = computed(() => config.value.interfaceVisibility.popupSiteRule && !isThunderbird);
 const pageTranslationHotkey = computed(() => {
   const shortcut = resolveConfiguredHotkey(config.value.floatingBallHotkey, config.value.customFloatingBallHotkey);
-  return shortcut && shortcut !== 'none' ? parseHotkey(shortcut).displayName : '';
+  if (!shortcut || shortcut === 'none') return '';
+  let displayName = parseHotkey(shortcut).displayName;
+  if (/Mac|iPod|iPhone|iPad/u.test(navigator.platform)) {
+    displayName = displayName.replace(/Control(?=\+)/gu, '⌃').replace(/Option(?=\+)/gu, '⌥')
+      .replace(/Shift(?=\+)/gu, '⇧').replace(/Cmd(?=\+)/gu, '⌘');
+  }
+  return displayName.replace(/Pageup$/u, 'PgUp').replace(/Pagedown$/u, 'PgDn');
 });
+const pageTranslationButtonLabel = computed(() => {
+  if (currentPdfSource.value) return pageTranslationLabel.value;
+  const action = t(pageTranslated.value ? 'popup.compact.restore' : 'popup.compact.translate');
+  // 超长组合完整保留在提示中；短组合直接并入标题，不另占按键胶囊或一行。
+  const shortcut = pageTranslationHotkey.value;
+  if (!shortcut || shortcut.length > 10) return action;
+  return language.value === 'zh-CN' ? `${action}（${shortcut}）` : `${action} (${shortcut})`;
+});
+const pageTranslationTitle = computed(() => currentPdfSource.value || !pageTranslationHotkey.value
+  ? pageTranslationLabel.value : `${pageTranslationLabel.value} · ${pageTranslationHotkey.value}`);
 const visiblePopupQuickFeatureIds = computed(() => config.value.popupQuickFeatureOrder.filter(
   (featureId) => config.value.popupQuickFeatureVisibility[featureId]
     && (!isThunderbird || ['hover', 'selection', 'appearance'].includes(featureId)),
@@ -573,7 +589,7 @@ const popupUsesContentHeight = computed(() => interfaceSkinUsesContentHeight(con
   || Object.values(config.value.popupQuickFeatureVisibility).some((visible) => !visible));
 const currentSiteSwitchLabel = computed(() => currentSiteSupported.value
   ? currentSiteExtensionDisabled.value
-    ? `${currentSiteDomain.value} 已禁用扩展，无法开启始终翻译`
+    ? `${currentSiteDomain.value} 已禁用扩展，无法开启始终翻译 · ${config.value.autoTranslate || currentSiteRuleEnabled.value ? '恢复扩展后继续自动翻译' : '请先恢复扩展'}`
     : config.value.autoTranslate
     ? `所有网站自动翻译已开启，${currentSiteDomain.value} 会自动翻译`
     : `始终翻译 ${currentSiteDomain.value}`
@@ -589,9 +605,11 @@ const siteRuleModuleProps = computed(() => ({
   domain: currentSiteDomain.value,
   supported: currentSiteSupported.value,
   alwaysTranslated: currentSiteAlwaysTranslated.value,
+  alwaysPaused: currentSiteExtensionDisabled.value && (config.value.autoTranslate || currentSiteRuleEnabled.value),
   extensionDisabled: currentSiteExtensionDisabled.value,
   autoTranslate: config.value.autoTranslate,
   translating: translating.value,
+  saving: pageState.savingRule,
   switchLabel: currentSiteSwitchLabel.value,
   extensionSwitchLabel: currentSiteExtensionSwitchLabel.value,
 }));
@@ -705,21 +723,25 @@ const pageContext = useSettingsActionContext(() => popupContext.active.value, ()
   config.value.from, config.value.to, config.value.display, config.value.model[config.value.service],
   config.value.customModel[config.value.service], config.value.disabledExtensionDomains.join(','), config.value.alwaysTranslateDomains.join(','), config.value.autoTranslate, credentialWarning.value]);
 const cacheContext = useSettingsActionContext(() => popupContext.active.value, () => []);
+const tabSource = createPopupTabSource(window.location?.search || '', {
+  get: id => browser.tabs.get(id), query: () => browser.tabs.query({active: true, currentWindow: true}),
+}, getEmbeddedPopupTabId());
 const pageActions = createPopupPageActions({state: pageState, config: () => config.value, active: () => pageContext.active.value,
-  warning: () => credentialWarning.value || '', getTab: async () => (await browser.tabs.query({active: true, currentWindow: true}))[0],
+  warning: () => credentialWarning.value || '', getTab: tabSource.getTab,
+  persistRule: persistSiteRulePatch,
   openPdf: source => browser.tabs.create({url: createPdfReaderUrl(browser.runtime.getURL('document.html'), source)}),
-  send: (id, message) => browser.tabs.sendMessage(id, message), notice: showNotice, close: () => window.close(), translate: t, thunderbird: isThunderbird});
+  send: (id, message) => browser.tabs.sendMessage(id, message), notice: showNotice, close: closePopupSurface, translate: t, thunderbird: isThunderbird});
 const {hydrate: hydrateCurrentSite, toggle: togglePageTranslation, section: startSectionTranslation,
   setAlways: setCurrentSiteAlwaysTranslated, setDisabled: setCurrentSiteExtensionDisabled} = pageActions;
 watch(pageContext.revision, () => {pageActions.invalidate();if (!config.value.on || currentSiteExtensionDisabled.value) pageTranslated.value = false}, {flush: 'sync'});
 const pageRenderRevision = ref(0);
-watch(() => [pageState.tabId, pageState.url, pageState.translated, pageState.busy], () => {pageRenderRevision.value += 1}, {flush: 'sync'});
+watch(() => [pageState.tabId, pageState.url, pageState.translated, pageState.busy, pageState.savingRule], () => {pageRenderRevision.value += 1}, {flush: 'sync'});
 const pageButtons = computed(() => {
   const current = pageContext.capture(), version = pageRenderRevision.value;
   const owns = () => current() && version === pageRenderRevision.value;
   return {toggle: () => {if (owns()) return togglePageTranslation()}, section: () => {if (owns()) return startSectionTranslation()},
     always: (value: boolean) => {if (owns()) return setCurrentSiteAlwaysTranslated(value)},
-    disabled: (value: boolean) => {if (owns()) setCurrentSiteExtensionDisabled(value)}};
+    disabled: (value: boolean) => {if (owns()) return setCurrentSiteExtensionDisabled(value)}};
 });
 const donationRevision = ref(0);
 watch(donationVisible, () => {donationRevision.value += 1}, {flush: 'sync'});
@@ -817,6 +839,13 @@ watch(() => JSON.stringify(config.value), async serialized => {
     console.warn('[FluentRead] 保存 popup 设置失败', error);
   }
 }, { flush: 'post' });
+
+// 站点操作等待后台确认；捕获完整当前草稿，让共享 store 同步归一化并计算字段差量，
+// 同 tick 尚未提交的其他用户修改也随补丁保留，避免窄补丁的乐观订阅覆盖草稿。
+// 配置订阅与 post watcher 继续使用原去重，关闭前继续交接待确认补丁。
+async function persistSiteRulePatch(patch: PopupSiteRulePatch): Promise<void> {
+  await persistConfigPatch({...config.value, ...patch});
+}
 watch(() => config.value.theme, theme => applyTheme(theme || 'auto'));
 watch(() => config.value.interfaceSkin, skin => applyInterfaceSkin(skin));
 watch(() => config.value.interfaceFont, font => applyInterfaceFont(font));
@@ -864,13 +893,14 @@ function toggleAIContext() {
 }
 function handleTabUpdated(tabId: number, change: Tabs.OnUpdatedChangeInfoType, tab: Tabs.Tab) {
   if (popupContext.active.value && (typeof change.url === 'string' || change.status === 'loading')
-    && (tabId === currentTabId.value || (tab.active && (pageState.windowId === undefined || tab.windowId === pageState.windowId)))) void hydrateCurrentSite();
+    && (tabSource.fixed ? tabId === tabSource.sourceTabId
+      : tabId === currentTabId.value || (tab.active && (pageState.windowId === undefined || tab.windowId === pageState.windowId)))) void hydrateCurrentSite();
 }
 function handleTabActivated(info: Tabs.OnActivatedActiveInfoType) {
-  if (popupContext.active.value && (pageState.windowId === undefined || info.windowId === pageState.windowId) && info.tabId !== currentTabId.value) void hydrateCurrentSite();
+  if (!tabSource.fixed && popupContext.active.value && (pageState.windowId === undefined || info.windowId === pageState.windowId) && info.tabId !== currentTabId.value) void hydrateCurrentSite();
 }
 function handleTabRemoved(tabId: number) {
-  if (popupContext.active.value && tabId === currentTabId.value) void hydrateCurrentSite();
+  if (popupContext.active.value && tabId === (tabSource.fixed ? tabSource.sourceTabId : currentTabId.value)) void hydrateCurrentSite();
 }
 onMounted(() => {
   document.addEventListener('keydown', handleDonationKeydown);
@@ -915,7 +945,7 @@ function showNotice(message: string, type: 'success' | 'error' = 'success') {
   notice.value = message;
   noticeType.value = type;
   if (noticeTimer) clearTimeout(noticeTimer);
-  noticeTimer = setTimeout(() => { notice.value = ''; }, 2200);
+  noticeTimer = setTimeout(() => { notice.value = ''; }, type === 'error' ? 5000 : 2800);
 }
 
 // 配置订阅是内容功能的唯一状态来源；避免无 revision 的广播晚到后覆盖新快照。
@@ -929,7 +959,7 @@ async function openOptions(section?: SettingsSection, target?: string) {
     } else {
       await browser.runtime.openOptionsPage();
     }
-    if (current()) window.close();
+    if (current()) closePopupSurface();
   } catch {
     if (current()) showNotice(translateLegacy('无法打开设置，请从扩展菜单打开设置后重试'), 'error');
   }
@@ -939,12 +969,12 @@ async function openDocumentTranslation() {
   if (!popupContext.active.value || !config.value.on) return;
   const current = popupContext.capture();
   try {
-    const tab = (await browser.tabs.query({active: true, currentWindow: true}))[0];
+    const tab = await tabSource.getTab();
     if (!current()) return;
     const source = getPdfSourceUrl(tab?.pendingUrl || tab?.url || '');
     const readerUrl = browser.runtime.getURL('document.html');
     await browser.tabs.create({ url: source ? createPdfReaderUrl(readerUrl, source) : readerUrl });
-    if (current()) window.close();
+    if (current()) closePopupSurface();
   } catch {if (current()) showNotice(t('translationCenter.requestError'), 'error');}
 }
 

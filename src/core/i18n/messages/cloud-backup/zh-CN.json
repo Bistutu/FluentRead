@@ -72,7 +72,7 @@
     "settings.webdav.error.decrypt": "备份无法解密或已损坏，本机配置未被修改。",
     "settings.webdav.error.failure": "操作未完成，请检查网络和本机存储后重试。",
     "settings.cloud.privacyEncryption": "配置在本机加密后上传，但应用口令是公开的；请依靠账号、目录权限和设备安全保护备份",
-    "settings.cloud.privacyWebDavStorage": "仅访问你指定服务器下的 FluentRead 备份文件",
+    "settings.cloud.privacyWebDavStorage": "仅访问你指定服务器下的流畅阅读备份文件",
     "settings.cloud.privacyWebDavConnection": "连接密码只保存在本机；只有主动操作时才访问服务器",
     "settings.cloud.currentAccount": "同步账号：{email}",
     "settings.cloud.changed.credentials": "API Key、OAuth Token 与鉴权信息",

@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="../assets/brand/icon-512.png" alt="FluentRead-流畅阅读" width="96" />
+<img src="../assets/brand/icon-512.png" alt="流畅阅读" width="96" />
 
-# FluentRead-流畅阅读
+# 流畅阅读
 
 **让语言更近，让世界更大。**
 
@@ -12,17 +12,19 @@
 
 </div>
 
-FluentRead 支持在原网页中对照阅读原文与译文，并提供划词翻译、AI 阅读辅助、图片翻译、文档翻译和视频双语字幕。翻译卡片接入了 **DeepSeek Harness 会话内核的浏览器适配**，支持结合上下文解释选中文字并连续追问。
+流畅阅读支持在原网页中对照阅读原文与译文，并提供划词翻译、AI 阅读辅助、图片翻译、文档翻译和视频双语字幕。翻译卡片接入了 **DeepSeek Harness 会话内核的浏览器适配**，支持结合上下文解释选中文字并连续追问。
 
 <div align="center">
 
 [![流畅阅读介绍视频](../docs/public/videos/fluentread-promo-zh-poster.webp)](https://read.thinkstu.com/videos/fluentread-promo-zh.mp4)
 
-[▶ 观看 56 秒介绍视频](https://read.thinkstu.com/videos/fluentread-promo-zh.mp4) · [English](https://read.thinkstu.com/videos/fluentread-promo-en.mp4)
+[▶ 观看 56 秒介绍视频](https://read.thinkstu.com/videos/fluentread-promo-zh.mp4)
+
+想进一步了解流畅阅读，可以[观看完整官方介绍片（4 分多钟 · B 站）](https://www.bilibili.com/video/BV1qhHJ6uEiF/)。
 
 </div>
 
-[![FluentRead 网页双语对照效果](../docs/public/screenshots/translation.webp)](../docs/public/screenshots/translation.webp)
+[![流畅阅读网页双语对照效果](../docs/public/screenshots/translation.webp)](../docs/public/screenshots/translation.webp)
 
 ## 主要功能
 
@@ -40,7 +42,7 @@ FluentRead 支持在原网页中对照阅读原文与译文，并提供划词翻
 
 ## DeepSeek Harness
 
-翻译卡片采用 DeepSeek Harness 会话内核中会话事件与消息组织部分的浏览器适配，由 FluentRead 连接网页选区、允许参考的段落、模型服务和本地阅读记录。支持选择不同 AI 服务与模型，并提供可选的学习记忆。
+翻译卡片采用 DeepSeek Harness 会话内核中会话事件与消息组织部分的浏览器适配，由流畅阅读连接网页选区、允许参考的段落、模型服务和本地阅读记录。支持选择不同 AI 服务与模型，并提供可选的学习记忆。
 
 该适配用于选区阅读辅助。全文、悬浮和普通划词翻译使用各自的翻译流程。接入范围和上游来源见[内核集成说明](../docs/reports/harness-embedding-map-20260905.md)，MIT 许可见[第三方声明](../public/third-party-notices/deepseek-harness-MIT.txt)。
 
@@ -51,7 +53,7 @@ FluentRead 支持在原网页中对照阅读原文与译文，并提供划词翻
 [Chrome](https://chromewebstore.google.com/detail/djnlaiohfaaifbibleebjggkghlmcpcj) · [Edge](https://microsoftedge.microsoft.com/addons/detail/kakgmllfpjldjhcnkghpplmlbnmcoflp) · [Firefox](https://addons.mozilla.org/zh-CN/firefox/addon/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/) · [油猴脚本](https://greasyfork.org/zh-CN/scripts/482986)
 
 1. 安装扩展并刷新需要翻译的网页。
-2. 打开 FluentRead，选择目标语言。源语言默认为自动检测，也可手动指定。
+2. 打开流畅阅读，选择目标语言。源语言默认为自动检测，也可手动指定。
 3. 点击“翻译页面”。划词翻译及其他功能可在设置中开启。
 
 各浏览器商店的版本更新可能存在时间差。油猴脚本提供核心网页翻译能力；完整支持范围见[安装指南](https://read.thinkstu.com/guide/getting-started)。
@@ -77,7 +79,7 @@ pnpm dev
 
 ## 支持项目
 
-FluentRead 是一个开源项目，其持续开发离不开社区的慷慨支持。可以通过微信赞赏或 Ko-fi 自愿赞赏。
+流畅阅读是一个开源项目，其持续开发离不开社区的慷慨支持。可以通过微信赞赏或 Ko-fi 自愿赞赏。
 
 <table>
 <tr><th>微信赞赏</th><th>Ko-fi · 国际支持</th></tr>
@@ -89,7 +91,7 @@ FluentRead 是一个开源项目，其持续开发离不开社区的慷慨支持
 
 ## 致谢
 
-FluentRead 的成长离不开开源社区。感谢以下项目及其贡献者的开放与分享：
+流畅阅读的成长离不开开源社区。感谢以下项目及其贡献者的开放与分享：
 
 - [陪读蛙](https://github.com/mengxi-ream/read-frog)
 - [简约翻译](https://github.com/fishjar/kiss-translator)
@@ -110,10 +112,10 @@ FluentRead 的成长离不开开源社区。感谢以下项目及其贡献者的
 </a>
 <!-- contributors:end -->
 
-感谢每一位为 FluentRead 做出贡献的朋友，包括许多未能在此一一列出的人；也感谢每一位用户包容这个仍不完美的产品。希望与你们一起，为这个世界带来更多美好。
+感谢每一位为流畅阅读做出贡献的朋友，包括许多未能在此一一列出的人；也感谢每一位用户包容这个仍不完美的产品。希望与你们一起，为这个世界带来更多美好。
 
 ## 许可证与隐私
 
-FluentRead 按 [GPL-3.0](../LICENSE) 开源发布，第三方组件的来源与许可见[第三方声明](../public/third-party-notices/)。
+流畅阅读按 [GPL-3.0](../LICENSE) 开源发布，第三方组件的来源与许可见[第三方声明](../public/third-party-notices/)。
 
 设置和学习记录默认保存在本机，云端翻译由所选服务处理。Google Drive 配置同步（Chrome 测试功能）可将完整配置（含服务凭据）备份到自己的云盘，不包含单词本、聊天记录和用量统计。权限、加密及删除方式见[隐私政策](https://read.thinkstu.com/guide/privacy)。

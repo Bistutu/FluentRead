@@ -1,13 +1,15 @@
 /**
  * @file src/features/full-page-translation/content/orphanArtifacts.ts
  * 文件职责：清理宿主 clone/remount 后失去状态所有权的 FluentRead 轻 DOM 产物，并保住仅译文模式中的宿主原文。
- * 主要内容：移除直属双语/loading/retry 孤儿，恢复全文时清理旧版标记并解包合成段落，解包 single-slot 的 light DOM 文本，排除译文产物判定同源重挂，并跳过仍由活动 WeakMap 状态管理的真实产物。
- * 模块边界：本文件只规范化明确带 FluentRead owned 标记的孤儿 DOM，不发现候选、不发请求，也不删除仅凭同名 class 无法证明所有权的宿主节点。
+ * 主要内容：移除直属双语/loading/retry 孤儿，恢复全文原文及篇章证据后清理旧版标记并解包合成段落，解包 single-slot 的 light DOM 文本，排除译文产物判定同源重挂，并跳过仍由活动 WeakMap 状态管理的真实产物。
+ * 模块边界：本文件处理原文恢复和明确带 FluentRead owned 标记的孤儿 DOM，不发现候选、不发请求，也不删除仅凭同名 class 无法证明所有权的宿主节点。
  */
 import {
     getTranslationOwnersForRemovedNode,
-    getTranslationState, unwrapUnownedSingleTextSlots,
+    getTranslationState, unwrapUnownedSingleTextSlots, restoreAllTranslations, resetAllBilingualArtifactHostWriteBudgets,
 } from '@/src/features/full-page-translation/content/state';
+import {getOpenShadowRoots} from '@/src/core/translation/public';
+import {resetPageDiscourseContext} from '@/src/services/translation/context/pageDiscourse';
 import {clearTranslationFailedHost} from '../core/hostMarkers';
 // 槽身份属于状态层；同一无损解包规则同时服务 discovery 和 restore/discard。
 export {unwrapUnownedSingleTextSlots as normalizeOrphanedSingleSlots}
@@ -124,4 +126,13 @@ export function clearOrphanedTranslationArtifacts(root: Node): void {
         if (!segment.parentNode || getTranslationState(asHTMLElement(segment) as HTMLElement)) return;
         segment.replaceWith(...Array.from(segment.childNodes));
     });
+}
+
+/** 恢复真实原文后兼容升级前遗留的 wrapper/属性，覆盖开放 Shadow DOM。 */
+export function restorePageTranslationContent(): void {
+    resetPageDiscourseContext();
+    resetAllBilingualArtifactHostWriteBudgets();
+    restoreAllTranslations();
+    const roots: Node[] = [document.documentElement, ...getOpenShadowRoots(document.documentElement)];
+    roots.forEach(clearOrphanedTranslationArtifacts);
 }

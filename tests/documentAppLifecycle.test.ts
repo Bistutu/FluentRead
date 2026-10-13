@@ -1,11 +1,32 @@
 import {afterEach, beforeEach, describe, expect, it, vi, type MockInstance} from 'vitest';
-import {createRenderer, h, nextTick, ref} from 'vue';
+import {readFileSync} from 'node:fs';
+import {createRenderer, h, markRaw, nextTick, ref} from 'vue';
+import {IDBFactory} from 'fake-indexeddb';
+import {parseHTML} from 'linkedom';
 import {Config} from '@/src/core/config/model';
-import {parseDocument} from '@/src/features/document-translation/core/document';
+import {getDocumentMimeType, parseDocument, type PdfDocumentPage} from '@/src/features/document-translation/core/document';
+import * as binaryService from '@/src/features/document-translation/services/binary';
+import {createDocumentHistory, documentHistoryId} from '@/src/features/document-translation/services/history';
+import {acquirePdfDocument} from '@/src/features/document-translation/ui/pdfPreview';
+import {createDocumentDownload as createRuntimeDownload} from '@/src/app/document-translation/runtime';
 import DocumentApp from '@/src/app/document-translation/DocumentApp.vue';
+import {getDocumentDownloadCopy} from '@/src/app/document-translation/downloadCopy';
 import DocumentSegmentEditor from '@/src/app/document-translation/DocumentSegmentEditor.vue';
 
-const ports = vi.hoisted(() => ({tasks: [] as any[], renderPending: undefined as any, pagePending: undefined as any, pageProvider: undefined as undefined | ((pageNumber: number, page: any) => Promise<any>), pageCount: 1, fetchPdf: vi.fn(), i18n: vi.fn(), sendMessage: vi.fn(), translate: vi.fn(), unsubscribe: vi.fn(), observer: undefined as any, config: undefined as any}));
+const ports = vi.hoisted(() => ({tasks: [] as any[], zoomBindings: [] as any[], renderPending: undefined as any, pagePending: undefined as any, pageProvider: undefined as undefined | ((pageNumber: number, page: any) => Promise<any>), pageCount: 1, fetchPdf: vi.fn(), i18n: vi.fn(), sendMessage: vi.fn(), translate: vi.fn(), batch: vi.fn(), recognize: vi.fn(), createRecognizer: vi.fn(), actualRecognize: undefined as any, actualCreateRecognizer: undefined as any, unsubscribe: vi.fn(), observer: undefined as any, config: undefined as any}));
+vi.mock('@/src/features/document-translation/services/pdfOcr', async () => {
+    const actual = await vi.importActual<typeof import('@/src/features/document-translation/services/pdfOcr')>('@/src/features/document-translation/services/pdfOcr');
+    ports.actualRecognize = actual.recognizePdfDocument;
+    return {...actual, recognizePdfDocument: ports.recognize};
+});
+vi.mock('@/src/app/document-translation/runtime', async () => {
+    const actual = await vi.importActual<typeof import('@/src/app/document-translation/runtime')>('@/src/app/document-translation/runtime');
+    ports.actualCreateRecognizer = actual.createPdfPageRecognizer;
+    return {...actual, createPdfPageRecognizer: ports.createRecognizer};
+});
+vi.mock('@/src/features/document-translation/ui/documentZoom', () => ({installDocumentZoomGestures: (target: HTMLElement, options: unknown) => {
+    const dispose = vi.fn(); ports.zoomBindings.push({target, options, dispose}); return dispose;
+}}));
 vi.mock('@/src/features/document-translation/services/pdfSource', async () => ({...await vi.importActual<typeof import('@/src/features/document-translation/services/pdfSource')>('@/src/features/document-translation/services/pdfSource'), fetchOnlinePdf: ports.fetchPdf}));
 vi.mock('@/src/features/document-translation/ui/PdfReader.vue', () => ({default: {props: ['document', 'translations', 'mode', 'sourceUrl'], setup: () => () => h('div', {'data-document-reader': 'pdf'})}}));
 vi.mock('@/src/app/document-translation/selectionRuntime', () => ({mountDocumentSelectionTranslation: () => ({dispose: () => {}})}));
@@ -15,7 +36,7 @@ vi.mock('@/src/services/config/store', async () => {
     const config = new Config(); ports.config = config;
     return {config, configReady: Promise.resolve(), subscribeConfig: (observer: any) => {ports.observer = observer; return ports.unsubscribe;}, requestConfigPatch: (patch: any, send: any) => send({patch})};
 });
-vi.mock('@/src/app/translation/client', () => ({translateText: ports.translate, translateTextBatch: vi.fn()}));
+vi.mock('@/src/app/translation/client', () => ({translateText: ports.translate, translateTextBatch: ports.batch}));
 vi.mock('@/src/ui/i18n', () => ({createUiI18nPlugin: (options: unknown) => options, useUiI18n: () => ({language: ref('zh-CN'), t: (key: string, values?: unknown) => {ports.i18n(key, values); return key;}, translateLegacy: (text: string) => text})}));
 vi.mock('@/src/ui/components/UiSelect.vue', () => ({default: {props: ['modelValue'], setup: (_props: any, {slots}: any) => () => h('select', slots.default?.())}}));
 vi.mock('@/src/ui/components/GlossaryLibrarySelect.vue', () => ({default: {setup: () => () => h('div')}}));
@@ -52,14 +73,21 @@ let canvasPort: any[];
 let createUrl: MockInstance<typeof URL.createObjectURL>;
 let revokeUrl: MockInstance<typeof URL.revokeObjectURL>;
 let win: any;
+let downloadAnchors: Array<{click: ReturnType<typeof vi.fn>; href?: string; download?: string}>;
+const walkHost = (entry: HostNode): HostNode[] => [entry, ...entry.children.flatMap(walkHost)];
+const hostText = (entry: HostNode): string => (entry.text || '') + entry.children.map(hostText).join('');
 const windowTimers = new Set<ReturnType<typeof setTimeout>>();
 
 beforeEach(async () => {
-    ports.tasks = []; ports.renderPending = undefined; ports.pagePending = undefined; ports.pageProvider = undefined; ports.pageCount = 1;
+    ports.tasks = []; ports.zoomBindings = []; ports.renderPending = undefined; ports.pagePending = undefined; ports.pageProvider = undefined; ports.pageCount = 1;
     ports.fetchPdf.mockReset().mockResolvedValue(file('online.pdf')); ports.i18n.mockClear();
     ports.sendMessage.mockReset().mockResolvedValue(undefined); ports.translate.mockReset().mockResolvedValue('translated'); ports.unsubscribe.mockReset();
+    ports.batch.mockReset().mockImplementation(async (sources: string[]) => sources.map(source => `译 ${source}`));
+    ports.recognize.mockReset().mockImplementation(ports.actualRecognize);
+    ports.createRecognizer.mockReset().mockImplementation(ports.actualCreateRecognizer);
     Object.assign(ports.config, new Config());
-    win = Object.assign(new EventTarget(), {matchMedia: () => Object.assign(new EventTarget(), {matches: false}), document: {createElement: () => ({click: vi.fn()})}, location: {origin: 'chrome-extension://fixture'}, setTimeout: (callback: () => void, delay: number) => {
+    downloadAnchors = [];
+    win = Object.assign(new EventTarget(), {matchMedia: () => Object.assign(new EventTarget(), {matches: false}), document: {createElement: () => {const anchor = {click: vi.fn()}; downloadAnchors.push(anchor); return anchor;}}, location: {origin: 'chrome-extension://fixture'}, setTimeout: (callback: () => void, delay: number) => {
         const timer = setTimeout(() => {windowTimers.delete(timer); callback();}, delay); windowTimers.add(timer); return timer;
     }, clearTimeout});
     vi.stubGlobal('window', win);
@@ -75,6 +103,583 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
+    it('keeps the exact original download copy localized and reacts to the shared language selection', async () => {
+        for (const language of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES']) {
+            const copy = getDocumentDownloadCopy(language);
+            expect(Object.keys(copy)).toEqual(Object.keys(getDocumentDownloadCopy('zh-CN')));
+            expect(Object.values(copy).every(value => value.trim())).toBe(true);
+        }
+        expect(getDocumentDownloadCopy('unsupported-language')).toBe(getDocumentDownloadCopy('zh-CN'));
+        expect(getDocumentDownloadCopy(undefined)).toBe(getDocumentDownloadCopy('zh-CN'));
+        await state.loadFiles([new File(['Original'], 'article.txt')]);
+        state.openDownload(); await flush();
+        expect(hostText(root)).toContain('下载原文');
+        state.language = 'en-US'; await flush();
+        expect(hostText(root)).toContain('Download original');
+        expect(hostText(root)).toContain('Keeps the original file without translation or edits.');
+    });
+    it.each(['pdf', 'epub', 'docx', 'html', 'md', 'txt', 'json', 'srt', 'vtt', 'ass', 'ssa', 'lrc'])('downloads the exact original %s file before translation without another read or export', async extension => {
+        const bytes = readFileSync(`examples/document-translation/sample.${extension}`);
+        const name = `sample.${extension}`;
+        const input = new File([bytes], name, {type: getDocumentMimeType(extension === 'md' ? 'markdown' : extension as any)});
+        const read = vi.spyOn(input, 'arrayBuffer');
+        const encode = vi.spyOn(binaryService, 'createDocumentDownload');
+        await state.loadFiles([input]); await flush();
+        const initialReads = read.mock.calls.length;
+        expect(state.hasTranslation).toBe(false);
+        expect(state.documentQueue[0].bytes).toBeUndefined();
+        expect(state.originalDownloadSource.blob).toBe(input);
+        const open = walkHost(root).find(entry => entry.props.class === 'download-button')!;
+        expect(open.props.disabled).toBe(false);
+        open.props.onClick(); await flush();
+        const dialog = walkHost(root).find(entry => entry.props['aria-labelledby'] === 'download-document-heading')!;
+        const original = walkHost(dialog).find(entry => entry.type === 'button' && hostText(entry) === '下载原文')!;
+        expect(dialog.showModal).toHaveBeenCalledOnce();
+        expect(original.props.disabled).toBe(false);
+        expect(walkHost(dialog).some(entry => entry.props.class === 'partial-export')).toBe(false);
+        original.props.onClick();
+        expect(createUrl).toHaveBeenCalledWith(input);
+        expect(read).toHaveBeenCalledTimes(initialReads);
+        expect(new Uint8Array(await (createUrl.mock.calls[0][0] as Blob).arrayBuffer())).toEqual(new Uint8Array(bytes));
+        expect(downloadAnchors[0].download).toBe(name);
+        expect(downloadAnchors[0].click).toHaveBeenCalledOnce();
+        expect(encode).not.toHaveBeenCalled();
+        expect(ports.translate).not.toHaveBeenCalled();
+        expect(ports.batch).not.toHaveBeenCalled();
+        expect(state.downloadedRevision).toBe(0);
+        expect(state.partialExportAcknowledged).toBe(false);
+    });
+
+    it('saves an online PDF from the loaded response without refetching its URL or changing edits', async () => {
+        const input = new File(['%PDF-exact-original\r\n'], '论文 原稿.pdf', {type: 'application/pdf'});
+        ports.fetchPdf.mockResolvedValueOnce(input);
+        const read = vi.spyOn(input, 'arrayBuffer');
+        state.onlinePdfUrl = 'https://example.org/original.pdf?download=1';
+        await state.openOnlinePdf();
+        state.editSegment(0, '保留校订');
+        state.partialExportAcknowledged = true;
+        const initialReads = read.mock.calls.length;
+        state.downloadOriginalDocument();
+        expect(ports.fetchPdf).toHaveBeenCalledOnce();
+        expect(read).toHaveBeenCalledTimes(initialReads);
+        expect(createUrl).toHaveBeenCalledWith(input);
+        expect(downloadAnchors[0].download).toBe('论文 原稿.pdf');
+        expect(state.translatedSegments).toEqual(['保留校订']);
+        expect(state.downloadedRevision).toBe(0);
+        expect(state.editRevision).toBe(1);
+        expect(state.partialExportAcknowledged).toBe(true);
+    });
+
+    it.each(['text/plain', ''])('downloads stored original bytes after reopening history with MIME %j', async mimeType => {
+        const bytes = new Uint8Array([0xef, 0xbb, 0xbf, ...new TextEncoder().encode('Original\r\n')]);
+        const parsed = parseDocument('history.txt', 'Original\n');
+        const id = await documentHistoryId(bytes);
+        const factory = new IDBFactory();
+        const history = createDocumentHistory(factory);
+        await history.save({id, name: 'history.txt', format: parsed.format, size: bytes.length, total: parsed.segments.length,
+            completed: 0, updatedAt: 1, bytes, mimeType, translations: [], fingerprint: '', parsed, parsedVersion: 15});
+        app.unmount();
+        vi.stubGlobal('indexedDB', factory);
+        root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
+        await flush(); await state.openHistory({id});
+        expect(state.documentQueue[0].originalFile).toBeUndefined();
+        state.downloadOriginalDocument();
+        const saved = createUrl.mock.calls[0][0] as Blob;
+        expect(new Uint8Array(await saved.arrayBuffer())).toEqual(bytes);
+        expect(saved.type).toBe(mimeType || 'text/plain;charset=utf-8');
+        expect(downloadAnchors[0].download).toBe('history.txt');
+        expect(state.downloadedRevision).toBe(0);
+    });
+
+    it('saves the original during translation and PDF export without interrupting either task', async () => {
+        const input = new File(['%PDF-original'], 'original.pdf', {type: 'application/pdf'});
+        await state.loadFiles([input]);
+        state.translating = true;
+        state.openDownload(); await flush();
+        expect(state.downloadOpen).toBe(true);
+        state.downloadOriginalDocument();
+        expect(state.translating).toBe(true);
+        state.translating = false;
+        state.editSegment(0, '译文校订');
+        state.downloadOpen = false;
+        state.partialExportAcknowledged = true;
+        const encoding = deferred<binaryService.DocumentDownload>();
+        const encode = vi.spyOn(binaryService, 'createDocumentDownload').mockReturnValueOnce(encoding.promise);
+        const exporting = state.downloadDocument(); await flush();
+        await vi.waitFor(() => expect(encode).toHaveBeenCalledOnce());
+        const options = encode.mock.calls[0][3]!;
+        options.onPdfProgress?.({phase: 'rendering', completedPages: 1, totalPages: 2});
+        const progress = state.downloadProgress;
+        state.previewMode = 'translated';
+        state.openDownload(); await flush();
+        state.downloadOriginalDocument();
+        expect(state.preparingDownload).toBe(true);
+        expect(options.signal?.aborted).toBe(false);
+        expect(state.outputMode).toBe('bilingual');
+        expect(state.partialExportAcknowledged).toBe(true);
+        expect(state.downloadProgress).toBe(progress);
+        expect(state.downloadPdfProgress).toEqual({phase: 'rendering', completedPages: 1, totalPages: 2});
+        expect(state.downloadedRevision).toBe(0);
+        expect(encode).toHaveBeenCalledOnce();
+        expect(downloadAnchors.map(anchor => anchor.download)).toEqual(['original.pdf', 'original.pdf']);
+        encoding.resolve({data: new Uint8Array([1]), fileName: 'original.bilingual.pdf', mimeType: 'application/pdf'});
+        await exporting;
+        expect(state.downloadedRevision).toBe(1);
+        expect(downloadAnchors.at(-1)?.download).toBe('original.bilingual.pdf');
+    });
+
+    it('keeps failed original downloads separate from translation export and releases their URLs on replacement', async () => {
+        state.downloadOriginalDocument();
+        expect(createUrl).not.toHaveBeenCalled();
+        const input = new File(['Original\r\n'], 'first.txt', {type: 'text/plain'});
+        await state.loadFiles([input]);
+        state.editSegment(0, '校订保留');
+        state.downloadError = 'translation export error';
+        win.document.createElement = () => ({click: () => {throw new Error('original save failed');}});
+        state.downloadOriginalDocument();
+        expect(state.originalDownloadError).toBe('original save failed');
+        expect(state.downloadError).toBe('translation export error');
+        expect(state.downloadedRevision).toBe(0);
+        expect(revokeUrl).toHaveBeenCalledWith('blob:fixture-1');
+        win.document.createElement = () => ({click: vi.fn()});
+        state.downloadOriginalDocument();
+        const url = createUrl.mock.results[1].value;
+        state.resetDocument();
+        expect(revokeUrl).toHaveBeenCalledWith(url);
+        expect(state.originalDownloadSource).toBeNull();
+        expect(state.originalDownloadError).toBe('');
+        expect(state.originalDownloadNotice).toBe('');
+        const replacement = new File(['Replacement'], 'second.txt');
+        await state.loadFiles([replacement]);
+        state.downloadOriginalDocument();
+        expect(createUrl).toHaveBeenLastCalledWith(replacement);
+    });
+
+    it.each(['scanned', 'mixed', 'mixed-removed-duplicate', 'mixed-formula-labels', 'mixed-diagram-labels'] as const)('preserves multi-page %s PDF OCR revisions across a parsing-version upgrade and subsequent reopening', async format => {
+        const base = await binaryService.parseDocumentFile(file('history.pdf'));
+        if (base.binary?.kind !== 'pdf') throw new Error('expected PDF');
+        const bytes = base.binary.bytes;
+        const makeDocument = (native: string[]) => {
+            const segments: Array<{id: number; source: string}> = [];
+            const pageSources: Array<string[] | null> = format !== 'scanned' ? [native, null, null] : [null, null];
+            const pages: PdfDocumentPage[] = pageSources.map((sources, index) => {
+                const blocks = (sources ?? []).map((source, position) => {
+                    const id = segments.length;
+                    segments.push({id, source});
+                    const run = {text: source, x: 5, y: 10 + position * 35, width: 90, height: 12};
+                    return {segmentIndex: id, x: run.x, y: run.y, width: run.width, height: run.height, fontSize: 11,
+                        lineHeight: 12, lineCount: 1, fontFamily: 'sans-serif', fontWeight: 400 as const, textAlign: 'left' as const,
+                        lines: [{...run, runs: [{...run}]}]};
+                });
+                return {pageNumber: index + 1, width: 100, height: 100, blocks, segmentIndexes: blocks.map(block => block.segmentIndex),
+                    ...(sources === null ? {scanned: true} : {layoutBoundaries: [{x: 5, y: 30, width: 90, height: 1}]}),
+                    ...(index === pageSources.length - 1 ? {rotation: 90 as const} : {})};
+            });
+            return {...base, segments, binary: {kind: 'pdf' as const, bytes, pages}};
+        };
+        const fresh = makeDocument(format === 'mixed' ? ['Stable native', 'New native title'] : ['New native title', 'Stable native']);
+        const oldNative = format === 'mixed-removed-duplicate' ? ['Old native title', 'Stable native', 'Repeated OCR']
+            : format === 'mixed-formula-labels' ? ['Old native title', 'trackΓ', 'Stable native']
+            : format === 'mixed-diagram-labels' ? ['Old native title', 'track', 'Stable native'] : ['Old native title', 'Stable native'];
+        const old = await ports.actualRecognize(makeDocument(oldNative), async ({pageNumber}: {pageNumber: number}) => [
+            {text: 'Repeated OCR', x: 5, y: 10, width: 90, height: 12},
+            {text: `Page ${pageNumber} paragraph`, x: 5, y: 55, width: 90, height: 12},
+        ], {startPage: 1});
+        if (format === 'mixed') {
+            // Version 12 native snapshots predate complete font descent bounds. They must be reparsed,
+            // while recognized scanned pages and exact-source revisions remain recoverable.
+            for (const block of old.binary.pages[0].blocks) {
+                block.lines = block.lines?.map((line: any) => ({...line, height: 1, runs: line.runs?.map((run: any) => ({...run, height: 1}))}));
+            }
+        }
+        let repeat = 0;
+        const edits = old.segments.map(({source, id}: {source: string; id: number}) => format === 'mixed-removed-duplicate' && id === 2 ? '文字页重复原文校订不能占用扫描校订'
+            : source === 'trackΓ' || source === 'track' ? '旧公式误译不能回填为正文'
+            : source === 'Repeated OCR' ? `第 ${++repeat} 次独立校订`
+            : source === 'Old native title' ? '旧标题校订不能乱填新标题' : source === 'Stable native' ? '未变文字页校订'
+                : source === `Page ${fresh.binary.pages.length} paragraph` ? '' : '扫描正文校订');
+        const id = await documentHistoryId(bytes);
+        const factory = new IDBFactory();
+        const history = createDocumentHistory(factory);
+        const oldVersion = format === 'scanned' ? 10 : format === 'mixed-removed-duplicate' ? 7 : format === 'mixed-formula-labels' ? 13 : format === 'mixed-diagram-labels' ? 14 : 12;
+        await history.save({id, name: 'history.pdf', format: 'pdf', size: bytes.length, total: old.segments.length,
+            completed: edits.filter((value: string) => value.trim()).length, updatedAt: 1, bytes, mimeType: 'application/pdf',
+            translations: edits, fingerprint: 'old-settings', parsed: old, parsedVersion: oldVersion});
+        app.unmount();
+        vi.stubGlobal('indexedDB', factory);
+        vi.stubGlobal('File', class extends Blob {name: string; constructor(parts: BlobPart[], name: string, options?: BlobPropertyBag) {super(parts, options); this.name = name;}});
+        root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
+        await flush();
+        const parsing = deferred<typeof fresh>();
+        const parse = vi.spyOn(binaryService, 'parseDocumentFile').mockReturnValueOnce(parsing.promise);
+        const opening = state.openHistory({id});
+        await vi.waitFor(() => expect(parse).toHaveBeenCalledOnce());
+        expect((await history.load(id))?.translations).toEqual(edits);
+        expect((await history.load(id))?.parsedVersion).toBe(oldVersion);
+        parsing.resolve(fresh); await opening; await flush();
+        const oldScannedOffset = format === 'scanned' ? 0 : oldNative.length;
+        const expectedSources = [...fresh.segments.map((segment: any) => segment.source),
+            ...old.segments.slice(oldScannedOffset).map((segment: any) => segment.source)];
+        const expectedTranslations = [...fresh.segments.map((segment: any) => segment.source === 'Stable native' ? '未变文字页校订' : ''),
+            ...edits.slice(oldScannedOffset)];
+        expect(state.parsedDocument.segments.map((segment: any) => segment.source)).toEqual(expectedSources);
+        expect(state.translatedSegments).toEqual(expectedTranslations);
+        expect(state.needsOcr).toBe(false);
+        expect(state.parsedDocument.binary.bytes).toBe(bytes);
+        expect(state.parsedDocument.binary.pages.map((page: any) => page.pageNumber)).toEqual(fresh.binary.pages.map(page => page.pageNumber));
+        expect(state.parsedDocument.binary.pages.at(-1)).toMatchObject({scanned: false, sourceRotation: 90});
+        if (format !== 'scanned') {
+            expect(state.parsedDocument.binary.pages[0].layoutBoundaries).toEqual(fresh.binary.pages[0].layoutBoundaries);
+            expect(state.parsedDocument.binary.pages[0].blocks.map((block: any) => block.lines)).toEqual(fresh.binary.pages[0].blocks.map(block => block.lines));
+        }
+        if (format === 'mixed') {
+            expect(state.parsedDocument.binary.pages[0].blocks[0].lines[0].runs[0].width).toBe(90);
+            expect(state.parsedDocument.binary.pages[0].blocks[0].lines[0].runs[0].height).toBeGreaterThan(1);
+            expect(old.binary.pages[0].blocks[0].lines[0].runs[0].height).toBe(1);
+        }
+        for (const page of state.parsedDocument.binary.pages) {
+            expect(page.blocks.filter((block: any) => block.segmentIndex >= 0).map((block: any) => block.segmentIndex)).toEqual(page.segmentIndexes);
+            expect(page.segmentIndexes.every((index: number) => state.parsedDocument.segments[index].id === index)).toBe(true);
+        }
+        await vi.waitFor(async () => {
+            const saved = await history.load(id);
+            expect(saved?.parsedVersion).toBe(15);
+            expect(saved?.translations).toEqual(expectedTranslations);
+            expect((saved?.parsed as any).segments.map((segment: any) => segment.source)).toEqual(expectedSources);
+            expect(saved?.parsed).not.toHaveProperty('segmentOrigins');
+        });
+        state.resetDocument(); await flush();
+        await state.openHistory({id}); await flush();
+        expect(state.translatedSegments).toEqual(expectedTranslations);
+        expect(state.needsOcr).toBe(false);
+        if (format !== 'scanned') expect(state.parsedDocument.binary.pages[0].blocks.map((block: any) => block.lines)).toEqual(fresh.binary.pages[0].blocks.map(block => block.lines));
+        expect(parse).toHaveBeenCalledOnce();
+        expect(ports.recognize).not.toHaveBeenCalled();
+        expect(ports.createRecognizer).not.toHaveBeenCalled();
+        expect(ports.translate).not.toHaveBeenCalled();
+        expect(ports.batch).not.toHaveBeenCalled();
+    });
+    it.each(['success', 'failure', 'cancel'] as const)('releases a background PDF export worker after %s through the actual App/runtime', async outcome => {
+        await state.loadFiles([file('export.pdf')]);
+        state.editSegment(0, '译文需要导出'); await flush();
+        const encoding = deferred<binaryService.DocumentDownload>();
+        let signal: AbortSignal | undefined;
+        vi.spyOn(binaryService, 'createDocumentDownload').mockImplementationOnce((_document, _translations, _mode, options) => {
+            signal = options?.signal;
+            signal?.addEventListener('abort', () => encoding.reject(signal!.reason), {once: true});
+            return encoding.promise;
+        });
+        const running = state.downloadDocument();
+        await vi.waitFor(() => expect(ports.tasks.filter(task => task.role === 'preview')).toHaveLength(1));
+        const worker = ports.tasks.find(task => task.role === 'preview')!;
+        expect(worker.destroy).not.toHaveBeenCalled();
+        if (outcome === 'success') encoding.resolve({data: new Uint8Array([1]), fileName: 'export.translated.pdf', mimeType: 'application/pdf'});
+        else if (outcome === 'failure') encoding.reject(new Error('encoding failed'));
+        else state.cancelDownload();
+        await running; await flush();
+        expect(worker.destroy).toHaveBeenCalledOnce();
+        expect(state.preparingDownload).toBe(false);
+        if (outcome === 'success') {
+            expect(createUrl).toHaveBeenCalledOnce();
+            expect(state.downloadedRevision).toBe(state.editRevision);
+        } else {
+            expect(createUrl).not.toHaveBeenCalled();
+            expect(state.downloadedRevision).toBe(0);
+            expect(outcome === 'cancel' ? state.downloadProgress : state.downloadError).toBe(outcome === 'cancel' ? 'document.export.canceled' : 'encoding failed');
+        }
+        expect(signal?.aborted).toBe(outcome === 'cancel');
+    });
+
+    it('keeps the PDF reader worker usable when its shared export finishes, then destroys it after the reader closes', async () => {
+        await state.loadFiles([file('shared.pdf')]);
+        state.editSegment(0, '共享译文'); await flush();
+        const reader = acquirePdfDocument(state.parsedDocument.binary.bytes);
+        try {
+            const pdf = await reader.promise;
+            const worker = ports.tasks.find(task => task.role === 'preview')!;
+            const encoding = deferred<binaryService.DocumentDownload>();
+            vi.spyOn(binaryService, 'createDocumentDownload').mockReturnValueOnce(encoding.promise);
+            const running = state.downloadDocument(); await flush();
+            expect(ports.tasks.filter(task => task.role === 'preview')).toHaveLength(1);
+            encoding.resolve({data: new Uint8Array([1]), fileName: 'shared.translated.pdf', mimeType: 'application/pdf'});
+            await running; await flush();
+            expect(worker.destroy).not.toHaveBeenCalled();
+            expect(reader.signal.aborted).toBe(false);
+            expect(await pdf.getPage(1)).toBe(worker.page);
+            reader.release();
+            expect(worker.destroy).toHaveBeenCalledOnce();
+            expect(reader.signal.aborted).toBe(true);
+        } finally {reader.release();}
+    });
+
+    it.each(['unchanged', 'custom-layout', 'custom-readable', 'custom-text-readable'] as const)('does not preload a browser PDF worker for %s output', async kind => {
+        await state.loadFiles([file('custom.pdf')]);
+        const document = state.parsedDocument;
+        const translations = kind === 'unchanged' ? document.segments.map((segment: any) => segment.source) : ['独立端口译文'];
+        const options: binaryService.CreateDocumentDownloadOptions = kind === 'custom-layout'
+            ? {pdfPresentation: 'layout', pdfPageRasterizer: async () => new Uint8Array([1])}
+            : kind === 'custom-readable' ? {pdfPresentation: 'readable', pdfReadingRasterizer: async function* () {yield {bytes: new Uint8Array([1]), width: 612, height: 792};}}
+                : kind === 'custom-text-readable' ? {pdfPresentation: 'readable', pdfReadingRenderer: async function* () {yield {items: [], width: 612, height: 792};}} : {};
+        const encoding = deferred<binaryService.DocumentDownload>();
+        vi.spyOn(binaryService, 'createDocumentDownload').mockReturnValueOnce(encoding.promise);
+        const running = createRuntimeDownload(document, translations, 'translated', options);
+        await flush();
+        const workerCount = ports.tasks.filter(task => task.role === 'preview').length;
+        encoding.resolve({data: new Uint8Array([1]), fileName: 'custom.translated.pdf', mimeType: 'application/pdf'});
+        await running; await flush();
+        expect(workerCount).toBe(0);
+        expect(ports.tasks.filter(task => task.role === 'preview')).toHaveLength(0);
+    });
+
+    it.each(['layout', 'readable'] as const)('downloads the selected %s PDF presentation with matching dialog guidance', async presentation => {
+        await state.loadFiles([file('presentation.pdf')]);
+        state.editSegment(0, '可复制的实际校订文字');
+        if (presentation === 'readable') state.pdfPresentation = presentation;
+        state.openDownload(); await flush();
+        const walk = (entry: HostNode): HostNode[] => [entry, ...entry.children.flatMap(walk)];
+        const text = (entry: HostNode): string => (entry.text || '') + entry.children.map(text).join('');
+        const dialog = walk(root).find(entry => entry.type === 'dialog' && entry.props['aria-labelledby'] === 'download-document-heading')!;
+        const summary = walk(dialog).find(entry => entry.props.class === 'pdf-export-summary')!;
+        expect(summary.props['data-pdf-export-presentation']).toBe(presentation);
+        expect(text(dialog)).toContain(presentation === 'readable' ? 'document.pdfReading.exportReadableHint' : 'document.pdfReading.exportHint');
+        if (presentation === 'readable') {
+            expect(text(dialog)).toContain('document.pdfReading.exportReadableBilingualHint');
+            expect(text(summary)).toContain('document.pdfReading.exportReadablePageHint');
+            expect(text(dialog)).not.toContain('document.pdfReading.exportPageCount');
+            expect(text(dialog)).not.toContain('document.pdfReading.exportHint');
+            expect(walk(summary).some(entry => String(entry.props.class).includes('pdf-export-page-pair'))).toBe(false);
+        } else expect(text(summary)).toContain('document.pdfReading.exportPageCount');
+        const download = vi.spyOn(binaryService, 'createDocumentDownload').mockResolvedValueOnce({data: new Uint8Array([1]), fileName: 'presentation.pdf', mimeType: 'application/pdf'});
+        await state.downloadDocument(); await flush();
+        expect(download).toHaveBeenCalledWith(state.parsedDocument, ['可复制的实际校订文字'], 'bilingual', expect.objectContaining({pdfPresentation: presentation}));
+    });
+
+    it('keeps batch PDF downloads in layout presentation after selecting readable for the current file', async () => {
+        await state.loadFiles([file('first.pdf'), file('second.pdf')]);
+        for (const item of [...state.documentQueue]) {state.selectDocument(item); state.editSegment(0, `译文 ${item.name}`);}
+        state.pdfPresentation = 'readable';
+        const download = vi.spyOn(binaryService, 'createDocumentDownload').mockResolvedValue({data: new Uint8Array([1]), fileName: 'paired.pdf', mimeType: 'application/pdf'});
+        await state.downloadBatch(); await flush();
+        expect(download).toHaveBeenCalledTimes(2);
+        expect(download.mock.calls.every(([, , , options]) => options?.pdfPresentation === 'layout')).toBe(true);
+    });
+
+    it.each(['pause', 'switch', 'reset'] as const)('clears an in-flight OCR status on %s and ignores progress from the abandoned request', async action => {
+        await state.loadFiles([file('scanned.pdf'), file('other.txt', 'Other document')]);
+        const original = state.parsedDocument;
+        const scanned = markRaw({...original, segments: [], binary: {...original.binary,
+            pages: original.binary.pages.map((page: any) => ({...page, scanned: true, segmentIndexes: [], blocks: []})),
+        }});
+        state.parsedDocument = scanned; state.documentQueue[0].document = scanned;
+        const recognizing = deferred<any>();
+        ports.recognize.mockReturnValue(recognizing.promise);
+        const running = state.startTranslation();
+        await vi.waitFor(() => expect(ports.recognize).toHaveBeenCalledOnce());
+        const options = ports.recognize.mock.calls[0][2];
+        options.onProgress({completed: 1, total: 3}); await flush();
+        expect(state.statusLabel).toBe('document.pdfReading.recognizing');
+        if (action === 'reset') {
+            state.resetDocument();
+            await state.loadFiles([file('replacement.txt', 'Replacement document')]);
+        } else {
+            state.pauseTranslation();
+            expect(state.statusLabel).toBe('已暂停');
+            if (action === 'switch') state.selectDocument(state.documentQueue[1]);
+        }
+        await flush();
+        const current = state.parsedDocument;
+        expect(state.recognitionProgress).toBe('');
+        expect(state.statusLabel).toBe(action === 'pause' ? '已暂停' : '准备就绪');
+        expect(options.signal.aborted).toBe(true);
+        options.onProgress({completed: 2, total: 3});
+        recognizing.resolve({...scanned, segments: [{id: 0, source: 'Late OCR result'}]});
+        await running; await flush();
+        expect(state.parsedDocument).toBe(current);
+        expect(state.recognitionProgress).toBe('');
+        expect(state.statusLabel).toBe(action === 'pause' ? '已暂停' : '准备就绪');
+        expect(ports.batch).not.toHaveBeenCalled(); expect(ports.translate).not.toHaveBeenCalled();
+    });
+
+    it('shows an OCR failure and a retry action instead of the static scanned-document status', async () => {
+        await state.loadFiles([file('scanned.pdf')]);
+        const original = state.parsedDocument;
+        const scanned = markRaw({...original, segments: [], binary: {...original.binary,
+            pages: original.binary.pages.map((page: any) => ({...page, scanned: true, segmentIndexes: [], blocks: []})),
+        }});
+        state.parsedDocument = scanned; state.documentQueue[0].document = scanned;
+        const recognizing = deferred<any>(); ports.recognize.mockReturnValue(recognizing.promise);
+        const running = state.startTranslation();
+        await vi.waitFor(() => expect(ports.recognize).toHaveBeenCalledOnce());
+        ports.recognize.mock.calls[0][2].onProgress({completed: 1, total: 3}); await flush();
+        recognizing.reject(new Error('OCR temporarily unavailable')); await running; await flush();
+        expect(state.statusLabel).toBe('翻译中断'); expect(state.recognitionProgress).toBe('');
+        expect(state.errorMessage).toBe('OCR temporarily unavailable'); expect(state.translationActionLabel).toBe('重试翻译');
+        expect(state.needsOcr).toBe(true);
+    });
+
+    it.each([false, true])('uses accurate import and change-file guidance with local history available=%s', async available => {
+        app.unmount(); vi.stubGlobal('indexedDB', available ? new IDBFactory() : undefined);
+        root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
+        await flush();
+        const walk = (entry: HostNode): HostNode[] => [entry, ...entry.children.flatMap(walk)];
+        expect(walk(root).find(entry => entry.props.class === 'local-processing-note')?.text).toBe('document.localProcessingNote');
+        await state.loadFiles([file('guide.txt', 'Source paragraph')]);
+        state.editSegment(0, '人工校订'); state.changeDocument(); await flush();
+        expect(state.pendingAction).toBe('reset');
+        expect(walk(root).some(entry => entry.text === `document.changeDocument.${available ? 'historyHint' : 'downloadHint'}`)).toBe(true);
+    });
+
+    it.each([false, true])('keeps the task language, service, model, document batch and AI context snapshot across delayed scanned-PDF OCR with context=%s', async enableAIContext => {
+        const initial = JSON.parse(JSON.stringify(ports.config));
+        Object.assign(initial, {from: 'en', to: 'zh-CN', documentService: 'openai', enableAIMultiSegment: false, enableAIContext});
+        initial.documentModel.openai = 'document-before';
+        initial.token.openai = 'fixture-only-token';
+        Object.assign(ports.config, initial);
+        ports.observer(initial); await flush();
+        await state.loadFiles([file('scanned.pdf')]);
+        const original = state.parsedDocument;
+        const scanned = markRaw({...original, segments: [], binary: {...original.binary,
+            pages: original.binary.pages.map((page: any) => ({...page, scanned: true, segmentIndexes: [], blocks: []})),
+        }});
+        state.parsedDocument = scanned; state.documentQueue[0].document = scanned; await flush();
+        expect(state.needsOcr).toBe(true);
+        expect(state.documentBatchTranslation).toBe(true);
+        expect(state.credentialWarning).toBeNull();
+        const recognizing = deferred<any>();
+        const recognizer = vi.fn();
+        ports.createRecognizer.mockReturnValue(recognizer);
+        ports.recognize.mockReturnValue(recognizing.promise);
+        ports.sendMessage.mockClear();
+        const running = state.startTranslation();
+        await vi.waitFor(() => expect(ports.recognize).toHaveBeenCalledOnce());
+        const fingerprint = state.taskFingerprint;
+        expect(ports.createRecognizer).toHaveBeenCalledWith('en');
+        expect(ports.recognize).toHaveBeenCalledWith(scanned, recognizer, expect.objectContaining({signal: expect.any(AbortSignal)}));
+        expect(ports.batch).not.toHaveBeenCalled();
+        expect(ports.translate).not.toHaveBeenCalled();
+
+        const external = JSON.parse(JSON.stringify(initial));
+        Object.assign(external, {from: 'fr', to: 'de', documentService: 'google', enableAIMultiSegment: true, enableAIContext: !enableAIContext});
+        external.documentModel.openai = 'document-after';
+        Object.assign(ports.config, external);
+        const sharedAfterUpdate = JSON.stringify(ports.config);
+        ports.observer(external); await flush();
+        expect(state.config.from).toBe('fr'); expect(state.config.documentService).toBe('google');
+        expect(state.translating).toBe(true);
+        expect(state.taskFingerprint).toBe(fingerprint);
+
+        const sources = ['Recognized first paragraph', 'Recognized second paragraph'];
+        ports.translate.mockImplementation(async (source: string) => `译 ${source}`);
+        const recognized = {...scanned, segments: sources.map((source, id) => ({id, source})), binary: {...scanned.binary,
+            pages: scanned.binary.pages.map((page: any) => ({...page, scanned: false, segmentIndexes: [0, 1]})),
+        }};
+        recognizing.resolve(recognized); await running; await flush();
+        const frozenSettings = {serviceOverride: 'openai', modelOverride: 'document-before', sourceLanguage: 'en', targetLanguage: 'zh-CN', enableAIContext};
+        if (enableAIContext) {
+            expect(ports.batch).not.toHaveBeenCalled();
+            expect(ports.translate).toHaveBeenCalledTimes(2);
+            for (const [source, context, options] of ports.translate.mock.calls) {
+                expect(sources).toContain(source);
+                expect(context).toBe('scanned.pdf');
+                expect(options).toEqual(expect.objectContaining({...frozenSettings, discourseContext: expect.any(String)}));
+            }
+        } else {
+            expect(ports.batch).toHaveBeenCalledOnce();
+            expect(ports.batch).toHaveBeenCalledWith(sources, 'scanned.pdf', expect.objectContaining({...frozenSettings, aiMultiSegment: true}));
+            expect(ports.translate).not.toHaveBeenCalled();
+        }
+        expect(state.translationComplete).toBe(true);
+        expect(state.translatedSegments).toEqual(sources.map(source => `译 ${source}`));
+        expect(state.taskFingerprint).toBe(fingerprint);
+        expect(state.settingsChanged).toBe(true);
+        expect(state.config.documentModel.openai).toBe('document-after');
+        expect(JSON.stringify(ports.config)).toBe(sharedAfterUpdate);
+        expect(ports.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('keeps rich-reader zoom through in-place translation updates and releases gestures on frame, tab and document changes', async () => {
+        await state.loadFiles([file('article.txt', 'Original paragraph')]); await flush();
+        const rich = parseHTML('<!doctype html><html><head></head><body><p>Original</p></body></html>').document;
+        const scroller = rich.documentElement;
+        Object.assign(scroller, {scrollTop: 400, scrollLeft: 0});
+        Object.defineProperties(scroller, {clientWidth: {value: 800}, clientHeight: {value: 600}});
+        Object.defineProperty(rich, 'scrollingElement', {value: scroller});
+        rich.body.getBoundingClientRect = () => ({left: -scroller.scrollLeft, top: -scroller.scrollTop,
+            width: 800 * Number(rich.body.style.getPropertyValue('zoom') || 1), height: 2000 * Number(rich.body.style.getPropertyValue('zoom') || 1)}) as DOMRect;
+        vi.stubGlobal('DOMParser', class {parseFromString(html: string) {return parseHTML(html).document;}});
+        state.richFrame.contentDocument = markRaw(rich); state.handleRichFrameLoad();
+        expect(ports.zoomBindings).toHaveLength(1);
+        const first = ports.zoomBindings[0];
+        expect(first.target).toBe(scroller); expect(first.options.minScale).toBe(.5); expect(first.options.maxScale).toBe(3);
+        first.options.setScale(2, {clientX: 100, clientY: 200}); await flush();
+        expect(state.readerScale).toBe(2); expect(rich.body.style.getPropertyValue('zoom')).toBe('2');
+        expect(scroller.scrollTop).toBeCloseTo(1000); expect(scroller.scrollLeft).toBeCloseTo(100);
+        state.translatedSegments = ['新的译文']; state.settledTranslations = ['新的译文']; await flush();
+        expect(rich.body.textContent).toContain('新的译文');
+        expect(rich.body.style.getPropertyValue('zoom')).toBe('2'); expect(ports.zoomBindings).toHaveLength(1);
+        state.handleRichFrameLoad();
+        expect(first.dispose).toHaveBeenCalledOnce(); expect(ports.zoomBindings).toHaveLength(2);
+        const second = ports.zoomBindings[1];
+        state.readerTab = 'edit'; await flush(); expect(second.dispose).toHaveBeenCalledOnce();
+        second.options.setScale(3); expect(state.readerScale).toBe(2);
+        state.readerTab = 'read'; await flush(); expect(ports.zoomBindings).toHaveLength(3);
+        const third = ports.zoomBindings[2];
+        third.options.setScale(1.5, {clientX: 100, clientY: 200});
+        const beforeResetScroll = scroller.scrollTop;
+        state.resetDocument(); await flush();
+        expect(third.dispose).toHaveBeenCalledOnce(); expect(state.readerScale).toBe(1);
+        expect(scroller.scrollTop).toBe(beforeResetScroll);
+    });
+
+    it('offers bounded non-PDF toolbar zoom while native reading and proofreading keep separate gesture ownership', async () => {
+        await state.loadFiles([file('captions.srt', '1\n00:00:01,000 --> 00:00:03,000\nOriginal caption\n')]); await flush();
+        const page = parseHTML('<html><body><div class="reading-content"><div class="subtitle-table-scroll"><table data-native-zoom-content><tr><td>Caption</td></tr></table></div></div></body></html>').document;
+        const domViewport = page.querySelector('.reading-content')!;
+        const viewport = state.readingContent;
+        Object.assign(viewport, {ownerDocument: markRaw(page), querySelector: domViewport.querySelector.bind(domViewport), contains: domViewport.contains.bind(domViewport),
+            getBoundingClientRect: () => ({left: 0, top: 0, width: 800, height: 600})});
+        state.bindReaderZoomGestures();
+        const binding = ports.zoomBindings.at(-1); expect(binding.target).toBe(viewport);
+        const walk = (entry: HostNode): HostNode[] => [entry, ...entry.children.flatMap(walk)];
+        const toolbar = walk(root).find(entry => String(entry.props.class).includes('document-zoom-control'))!;
+        const zoomOut = toolbar.children.find(entry => entry.props['aria-label'] === 'document.pdfReading.zoomOut')!;
+        const zoomIn = toolbar.children.find(entry => entry.props['aria-label'] === 'document.pdfReading.zoomIn')!;
+        const reset = toolbar.children.find(entry => entry.props['data-document-zoom'] !== undefined)!;
+        zoomIn.props.onClick(); await flush(); expect(state.readerScale).toBe(1.25);
+        expect(binding.dispose).toHaveBeenCalledOnce();
+        expect(state.readerZoomStyle).toEqual({zoom: '1.25'});
+        const beforeReset = ports.zoomBindings.at(-1);
+        reset.props.onClick(); await flush(); expect(state.readerScale).toBe(1);
+        expect(beforeReset.dispose).toHaveBeenCalledOnce();
+        for (let index = 0; index < 10; index += 1) zoomOut.props.onClick();
+        await flush(); expect(state.readerScale).toBe(.5); expect(zoomOut.props.disabled).toBe(true);
+        binding.options.setScale(999); await flush(); expect(state.readerScale).toBe(3); expect(zoomIn.props.disabled).toBe(true);
+        state.readerTab = 'edit'; await flush(); expect(binding.dispose).toHaveBeenCalledOnce();
+        binding.options.reset(); expect(state.readerScale).toBe(3);
+        state.readerTab = 'read'; await flush();
+        expect(ports.zoomBindings.at(-1).target).toBe(viewport);
+        app.unmount(); app = null; await flush(); expect(ports.zoomBindings.every(entry => entry.dispose.mock.calls.length === 1)).toBe(true);
+    });
+
+    it('keeps manually confirmed translations in the current file session and clears them on restart', async () => {
+        state.config.documentService = 'google';
+        await state.loadFiles([file('first.txt', 'First paragraph\n\nSecond paragraph')]); await flush();
+        state.editSegment(0, '人工确认译文');
+        expect(state.confirmedTranslationIds).toEqual([0]);
+        await state.loadFiles([file('second.txt', 'Another paragraph')]); await flush();
+        expect(state.confirmedTranslationIds).toEqual([]);
+        state.selectDocument(state.documentQueue[0]); await flush();
+        expect(state.confirmedTranslationIds).toEqual([0]);
+        state.editSegment(0, '  ');
+        expect(state.confirmedTranslationIds).toEqual([]);
+        state.editSegment(0, '再次确认');
+        await state.startTranslation(true); await flush();
+        expect(state.confirmedTranslationIds).toEqual([]);
+        state.editSegment(0, '确认后重置');
+        state.resetDocument(); await flush();
+        expect(state.confirmedTranslationIds).toEqual([]);
+    });
+
     it('opens a text-based formula-only PDF for source reading without provider requests or invalid progress', async () => {
         ports.pageProvider = async (_pageNumber, page) => ({...page, getTextContent: async () => ({items: [{str: 'f(x)=x', transform: [1, 0, 0, 12, 20, 50], width: 60, height: 12, fontName: 'body'}], styles: {}})});
         await state.loadFiles([file('formula-only.pdf')]); await flush();
@@ -300,7 +905,6 @@ it('documentbinaryAudit mounts the actual page assembly with its app, document t
     vi.doUnmock('vue');
 });
 
-// 私有候选：追加至 tests/documentAppLifecycle.test.ts；执行真实 SFC 模板事件，未在本任务运行。
 it('glossary gate document settings buttons open the modal and translate back to complete 1/1', async () => {
     state.config.on = true;
     state.config.documentService = 'google';
@@ -325,8 +929,9 @@ it('glossary gate document settings buttons open the modal and translate back to
     expect(settings.close).toHaveBeenCalledOnce();
     await vi.waitFor(() => expect(state.translationComplete).toBe(true));
     await flush();
-    expect(ports.translate).toHaveBeenCalledOnce();
-    expect(ports.translate.mock.calls[0][0]).toBe('The agent uses FluentRead.');
+    expect(ports.translate).not.toHaveBeenCalled();
+    expect(ports.batch).toHaveBeenCalledOnce();
+    expect(ports.batch.mock.calls[0][0]).toEqual(['The agent uses FluentRead.']);
     expect(state.parsedDocument.segments[0].source).toBe('The agent uses FluentRead.');
     expect(state.pendingAction).toBeNull();
     const status = walk(root).find(entry => entry.props.class === 'document-status')!;

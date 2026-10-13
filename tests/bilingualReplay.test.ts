@@ -156,6 +156,23 @@ function createCommittedReplayFixture(
     return {owner, state: attempt.state, wrapper, sources, translations};
 }
 
+it('个人来源标记随扩展骨架重放保留，油猴重放与直接渲染都不携带扩展校订标记', async () => {
+    const {document} = parseHTML('<html><head></head><body></body></html>');
+    try {
+        await withDocumentRealm(document, () => {
+            const fixture = createCommittedReplayFixture(document);
+            fixture.state.bilingualReplay!.personalCorrectionId = 'confirmed-record';
+            expect(refreshBilingualTranslationSkeleton(fixture.owner, fixture.state)).toBe(true);
+            expect(fixture.state.bilingualContent!.getAttribute('data-fr-personal-correction')).toBe('true');
+            vi.stubEnv('BROWSER', 'userscript');
+            expect(refreshBilingualTranslationSkeleton(fixture.owner, fixture.state)).toBe(true);
+            expect(fixture.state.bilingualContent!.hasAttribute('data-fr-personal-correction')).toBe(false);
+            const direct = document.createElement('p'); direct.textContent = 'Source';
+            expect(appendBilingualTranslation(direct, '译文', {personalCorrectionId: 'confirmed-record'}).hasAttribute('data-fr-personal-correction')).toBe(false);
+        });
+    } finally {vi.unstubAllEnvs();}
+});
+
 /**
  * 单槽候选：整段可见文本就是一个链接。多槽候选会把整段译文降级成纯文本，
  * 这里的骨架仍然携带复制来的内联节点，用于验证宿主改写这些节点属性时的行为。

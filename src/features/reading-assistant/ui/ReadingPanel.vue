@@ -1,10 +1,19 @@
 <!--
  * @file src/features/reading-assistant/ui/ReadingPanel.vue
- * 文件职责：在划词卡内以内容为主呈现学习回答，复用父卡片导航、提供紧凑操作栏、按需展开的原文译文对照与连续追问。
- * 主要内容：相同译文保留原文且不重复展示；按原文与配置复用各学习动作的已完成回答，显式重新生成；历史问答按轮次与问题摘要逐条展开，区分当前问答与旧回答，切换回答时收起历史；统一导航的学习卡默认收起原文与匹配译文，查看原文后可返回当前阅读，短回答不再保留一屏空白；独立面板仍在滚动区顶部展示对照内容，进入回答时滚过原文，译文晚到时保持回答位置，关闭局部浏览器滚动锚定以避免流式格式变化移动阅读位置；流式正文只更新内部滚动内容，回答出现或消失及状态变化才通知父卡片检查布局；重复点击当前动作保留位置和待发送追问；把原文朗读和 30 天问答记录收进次级操作，在回答下方区分原文收藏与学习笔记；原文收藏仅保存对应译文，笔记保存不依赖 AI 参考开关，让多语言动作标签按空间换行，统一呈现 Markdown，以局部主题变量保持正文、状态和操作文字的对比度，并以代次隔离过期请求。
- * 模块边界：不持有模型密钥、不扫描页面、不直接请求供应商；记录由后台会话仓库保存，父划词组件负责选区、位置和 Shadow UI 生命周期。
+ * 文件职责：在划词卡内以内容为主呈现学习回答，复用父卡片导航、把次级操作送入顶栏固定槽、按需展开的原文译文对照与连续追问。
+ * 主要内容：相同译文保留原文且不重复展示；按原文与配置复用各学习动作的已完成回答，显式重新生成；历史问答按轮次与问题摘要逐条展开，区分当前问答与旧回答，切换回答时收起历史；统一导航的学习卡默认收起原文与匹配译文，查看原文后可返回当前阅读，短回答不再保留一屏空白；独立面板仍在滚动区顶部展示对照内容，进入回答时滚过原文，译文晚到时保持回答位置，关闭局部浏览器滚动锚定以避免流式格式变化移动阅读位置；流式正文只更新内部滚动内容，回答出现或消失及状态变化才通知父卡片检查布局；重复点击当前动作保留位置和待发送追问；把原文朗读和 30 天问答记录收进次级操作，在回答下方区分原文收藏与学习笔记；原文收藏仅保存对应译文，笔记保存不依赖 AI 参考开关，让多语言动作标签按空间换行，统一呈现 Markdown，以局部主题变量保持正文、状态和操作文字的对比度，并以代次隔离过期请求；冻结每轮许可原文身份，显示就近引用和来源状态，历史恢复保留引文而不授予当前网页定位权限，回写前核查页面归属。
+ * 模块边界：不持有模型密钥、不扫描页面、不直接请求供应商；双布局复用追问节点而不加容器，保留父 scoped 样式、Vue 输入法指令及键盘边界；按有效服务限制B站为基础读懂/用法，隐藏且拒绝未验证的追问，临时默认动作不改保存偏好；历史回答保留原动作与追问，按当前服务限制重试/再生成，父导航回写不重新请求；记录由后台会话仓库保存，日期格式器只在本组件同步模板每轮渲染内复用并在下轮重解系统默认值，父划词组件负责选区、位置和 Shadow UI 生命周期。
  -->
 <template>
+  <Teleport v-if="externalNavigation && toolsTarget && active && !showRecords" :to="toolsTarget">
+    <div class="fr-reading-controls">
+      <template v-if="busy && answer">
+        <span class="fr-reading-accessible-status" role="status" data-i18n-ignore>{{ t("reading.generatingAction", {action: translateLegacy(actionLabel)}) }}</span>
+        <button type="button" class="fr-reading-inline-stop" :aria-label="translateLegacy('停止')" :title="translateLegacy('停止')" @click="stop">停止</button>
+      </template>
+      <ReadingTools />
+    </div>
+  </Teleport>
   <div class="fr-reading" data-reading-panel @pointerdown="dismissToolsOutside" @focusin="dismissToolsOutside">
     <div v-if="showRecords" class="fr-reading-navigation">
       <button type="button" aria-label="返回当前阅读" @click="closeRecords">‹ 返回当前阅读</button>
@@ -42,13 +51,6 @@
         </div>
       </section>
       <div ref="answerBody" class="fr-reading-body" :class="{'fr-reading-body-external': externalNavigation}">
-      <div v-if="externalNavigation" class="fr-reading-inline-controls">
-        <template v-if="busy && answer">
-          <span class="fr-reading-accessible-status" role="status" data-i18n-ignore>{{ t("reading.generatingAction", {action: translateLegacy(actionLabel)}) }}</span>
-          <button type="button" class="fr-reading-inline-stop" :aria-label="translateLegacy('停止')" :title="translateLegacy('停止')" @click="stop">停止</button>
-        </template>
-        <ReadingTools />
-      </div>
       <details v-if="priorAnswers.length" ref="historyDetails" class="fr-reading-session-detail">
         <summary data-i18n-ignore>{{ t("reading.priorTurns", {count: priorAnswers.length}) }}</summary>
         <div class="fr-reading-turn-list">
@@ -63,7 +65,7 @@
             </button>
             <div v-show="expandedTurnId === turn.id" :id="`fr-reading-turn-${turn.id}`" class="fr-reading-turn-answer">
               <span class="fr-reading-role" data-i18n-ignore>{{ t('reading.answerLabel') }}</span>
-              <ReadingAnswer v-if="expandedTurnId === turn.id && turn.answer" :text="turn.answer" :source-text="activeText" />
+              <ReadingAnswer v-if="expandedTurnId === turn.id && turn.answer" :text="turn.answer" :source-text="activeText" :evidence-sources="turn.evidenceSources || evidenceSources" :locate-evidence="evidenceLocator" :evidence-state="evidenceState" />
               <p v-else class="fr-reading-hint" data-i18n-ignore>{{ t('reading.emptyAnswer') }}</p>
             </div>
           </article>
@@ -77,11 +79,11 @@
       <p v-if="busy && (!externalNavigation || !answer)" class="fr-reading-status" role="status"><span class="fr-reading-pulse" :class="{'fr-reading-static': !animations}" aria-hidden="true" /><span data-i18n-ignore>{{ t("reading.generatingAction", {action: translateLegacy(actionLabel)}) }}</span><button type="button" @click="stop">停止</button></p>
       <div v-if="error" class="fr-reading-error" role="alert">
         <p>{{ error }}</p>
-        <div><button type="button" @click="retry">重试</button><button type="button" @click="openSettings('settings-services')">设置模型</button></div>
+        <div><button type="button" :disabled="!retrySupported" :title="retrySupported ? undefined : generationHint" @click="retry">重试</button><button type="button" @click="openSettings('settings-services')">设置模型</button></div>
       </div>
-      <p v-if="stopped && !busy" class="fr-reading-status" role="status">已停止<button type="button" @click="retry">继续生成</button></p>
+      <p v-if="stopped && !busy" class="fr-reading-status" role="status">已停止<button type="button" :disabled="!retrySupported" :title="retrySupported ? undefined : generationHint" @click="retry">继续生成</button></p>
       <div v-if="answer" class="fr-reading-answer" :aria-busy="busy">
-        <ReadingAnswer :text="answer" :source-text="activeText" />
+        <ReadingAnswer :text="answer" :source-text="activeText" :evidence-sources="evidenceSources" :locate-evidence="evidenceLocator" :evidence-state="evidenceState" />
       </div>
       <p v-if="!busy && !answer && !error && !stopped" class="fr-reading-hint">选一种方式，理解这段表达。</p>
     <footer v-if="answer && !busy" class="fr-reading-footer">
@@ -91,24 +93,11 @@
       <button v-if="!privateContext && !stopped && !error" type="button" data-i18n-ignore :disabled="remembering || remembered" :title="t('reading.saveNoteTitle')" @click="rememberLearning">{{ t(remembered ? 'reading.noteSavedButton' : 'reading.saveNote') }}</button>
       <button v-if="remembered" type="button" data-i18n-ignore @click="openLearningMemory">{{ t('reading.viewNotes') }}</button>
     </footer>
-      <template v-if="externalNavigation">
-        <form class="fr-reading-followup" @submit.prevent="ask">
-          <input v-model="question" :disabled="busy" maxlength="1000" aria-label="继续追问" :placeholder="intent === 'practice' ? '写下你的练习答案…' : '继续问这句话…'" @keydown.stop @keyup.stop @input="feedback = ''" />
-          <button type="submit" :disabled="busy || !question.trim()" aria-label="发送追问" title="发送追问">↑</button>
-        </form>
-        <p v-if="feedback" class="fr-reading-feedback" role="status">{{ feedback }}</p>
-        <p v-if="sessionWarning" class="fr-reading-feedback" role="status">{{ sessionWarning }}</p>
-      </template>
+      <ReadingFollowUp v-if="externalNavigation" />
       </div>
     </div>
-    <template v-if="!externalNavigation">
-    <form class="fr-reading-followup" @submit.prevent="ask">
-      <input v-model="question" :disabled="busy" maxlength="1000" aria-label="继续追问" :placeholder="intent === 'practice' ? '写下你的练习答案…' : '继续问这句话…'" @keydown.stop @keyup.stop @input="feedback = ''" />
-      <button type="submit" :disabled="busy || !question.trim()" aria-label="发送追问" title="发送追问">↑</button>
-    </form>
-    <p v-if="feedback" class="fr-reading-feedback" role="status">{{ feedback }}</p>
-    <p v-if="sessionWarning" class="fr-reading-feedback" role="status">{{ sessionWarning }}</p>
-    </template>
+    <ReadingFollowUp v-if="!externalNavigation" />
+    <p v-if="!followUpSupported || !actionSupported" class="fr-reading-feedback">{{ generationHint }}<button type="button" @click="openSettings()">{{ followUpSupported ? '设置' : '切换服务' }}</button></p>
     </template>
   </div>
 </template>
@@ -116,12 +105,15 @@
 <script setup lang="ts">
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import {useUiI18n} from "@/src/ui/i18n";
+import {useRenderDateFormatter} from '@/src/ui/dateFormat';
 const {t, translateLegacy} = useUiI18n();
-import {computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch, withKeys, withModifiers} from 'vue';
+import {computed, getCurrentInstance, h, nextTick, onBeforeUnmount, onMounted, ref, vModelText, watch, withCtx, withDirectives, withKeys, withModifiers, type VNodeChild} from 'vue';
 import browser from 'webextension-polyfill';
-import {HARNESS_ACTIONS, type HarnessActionId, type HarnessPreferences} from '@/src/core/config/harness';
+import {HARNESS_ACTIONS, isReadingActionSupported, isReadingFollowUpSupported, type HarnessActionId, type HarnessPreferences} from '@/src/core/config/harness';
 import ReadingAnswer from './ReadingAnswer.vue';
 import type {ReadingSelection, ReadingTurn} from '../types';
+import {buildReadingEvidence, readingEvidenceText, type ReadingEvidenceSource} from '@/src/core/harness/evidence';
+import type {ReadingEvidenceAnchor} from '../evidenceAnchor';
 import {getHarnessSession, listHarnessSessions, streamReading, saveLearningMemory} from '../client';
 import type {HarnessSession, HarnessSessionSummary, HarnessStoredTurnStatus} from '@/src/services/harness/sessionTypes';
 import {normalizeLearningSourceText} from '@/src/features/vocabulary/public';
@@ -131,10 +123,12 @@ import {detectlang} from '@/src/core/language/detect';
 const props = defineProps<{
   selection: ReadingSelection;
   preferences: HarnessPreferences;
+  service?: string;
   active: boolean;
   initialAction?: HarnessActionId;
   historyOnly?: boolean;
   externalNavigation?: boolean;
+  toolsTarget?: HTMLElement | null;
   targetLanguage: string;
   vocabularyEnabled: boolean;
   privateContext: boolean;
@@ -142,22 +136,46 @@ const props = defineProps<{
   playingSourceText?: string;
   sourceLanguage?: string;
   modelRevision?: number;
+  locateEvidence?: ReadingEvidenceAnchor['locate'];
+  clearEvidence?: () => void;
+  checkEvidence?: ReadingEvidenceAnchor['check'];
+  sourceRevision?: number;
   sourceTranslation?: {source: string; text: string; pending?: boolean; error?: string};
 }>();
 const emit = defineEmits<{resize: []; 'play-source': [text: string]; 'source-change': [text: string]; 'view-change': [view: {action: HarnessActionId; history: boolean}]}>();
-const intent = ref<HarnessActionId>(props.initialAction || props.preferences.defaultAction);
+const effectiveService = computed(() => props.service || props.preferences.service);
+const actions = computed(() => HARNESS_ACTIONS.filter(action => props.preferences.actions.includes(action.id) && isReadingActionSupported(effectiveService.value, action.id)));
+const effectiveDefaultAction = computed(() => actions.value.find(action => action.id === props.preferences.defaultAction)?.id
+  || actions.value.find(action => action.id === 'meaning')?.id || actions.value[0]?.id || 'meaning');
+const followUpSupported = computed(() => isReadingFollowUpSupported(effectiveService.value));
+const basicReadingHint = 'B站仅提供基础讲解，完整语法、练习和追问可切换 AI 服务';
+const availableInitialAction = (action?: HarnessActionId) => actions.value.some(item => item.id === action) ? action! : effectiveDefaultAction.value;
+const intent = ref<HarnessActionId>(availableInitialAction(props.initialAction));
+const actionSupported = computed(() => actions.value.some(action => action.id === intent.value));
+const generationHint = computed(() => !actionSupported.value && isReadingActionSupported(effectiveService.value, intent.value) ? '当前动作未启用，请在设置中开启。' : basicReadingHint);
 const wholeSentence = ref(false);
 const historicalText = ref('');
 const historicalContext = ref('');
 const sessionWarning = ref('');
 const activeText = computed(() => historicalText.value || (wholeSentence.value ? props.selection.sentence : props.selection.text));
+const requestEvidenceSources = computed(() => buildReadingEvidence(activeText.value, props.preferences.contextMode === 'paragraph'
+  ? (historicalContext.value || props.selection.context).trim().slice(0, Math.min(4000, Math.max(0, props.preferences.maxContextChars))) : ''));
+const evidenceSources = ref<readonly ReadingEvidenceSource[]>(requestEvidenceSources.value);
+// 已保存记录没有当前 DOM 所有权；展示引用文字，禁止从历史记录定位到当前页面的相似句子。
+const evidenceLocator = computed(() => historicalText.value || !props.active ? undefined : props.locateEvidence);
+const evidenceState = computed(() => {
+  void props.sourceRevision;
+  void props.selection;
+  return historicalText.value ? 'unavailable' : props.checkEvidence?.();
+});
+watch(() => props.sourceRevision, () => { props.clearEvidence?.(); if (busy.value) stop(); });
 const activeTranslation = computed(() => props.sourceTranslation
   && props.sourceTranslation.source.replace(/\s+/gu, ' ').trim() === activeText.value.replace(/\s+/gu, ' ').trim()
   ? props.sourceTranslation : undefined);
-const actions = computed(() => HARNESS_ACTIONS.filter(action => props.preferences.actions.includes(action.id)));
 const actionLabel = computed(() => HARNESS_ACTIONS.find(action => action.id === intent.value)?.label ?? '理解');
 const question = ref('');
 const currentQuestion = ref('');
+const retrySupported = computed(() => actionSupported.value && (!currentQuestion.value || followUpSupported.value));
 const answer = ref('');
 const busy = ref(false);
 const stopped = ref(false);
@@ -254,7 +272,38 @@ watch(activeTranslation, () => {
   });
 });
 const toolsMenu = ref<HTMLDetailsElement>();
+let toolsWindow: Window | undefined;
+// 菜单位于卡片滚动区外；按实际缩放和可见窗口限制高度，短卡也能读完整菜单。
+function fitToolsMenu(): void {
+  const details = toolsMenu.value;
+  if (!details?.open || !props.externalNavigation) return;
+  const summary = details.querySelector('summary');
+  const menu = details.querySelector<HTMLElement>('.fr-reading-tool-list');
+  const view = details.ownerDocument.defaultView;
+  if (!summary || !menu || !view) return;
+  const rect = summary.getBoundingClientRect();
+  const scale = rect.height > 0 ? rect.height / (summary.offsetHeight || rect.height) : 1;
+  const below = Math.max(0, view.innerHeight - rect.bottom - 8);
+  const above = Math.max(0, rect.top - 8);
+  const upward = below < Math.min(310, menu.scrollHeight) * scale && above > below;
+  menu.style.width = `${Math.min(204, Math.max(0, (view.innerWidth - 24) / scale))}px`;
+  menu.style.top = upward ? 'auto' : `${summary.offsetHeight + 4}px`;
+  menu.style.bottom = upward ? `${summary.offsetHeight + 4}px` : 'auto';
+  menu.style.maxHeight = `${Math.min(310, Math.max(0, (upward ? above : below) / scale - 4))}px`;
+}
+function stopToolsSizing(): void {
+  toolsWindow?.removeEventListener('resize', fitToolsMenu);
+  toolsWindow = undefined;
+}
+function toggleTools(): void {
+  stopToolsSizing();
+  if (!toolsMenu.value?.open || !props.externalNavigation) return;
+  toolsWindow = toolsMenu.value.ownerDocument.defaultView || undefined;
+  toolsWindow?.addEventListener('resize', fitToolsMenu);
+  fitToolsMenu();
+}
 function closeTools(restoreFocus = false): void {
+  stopToolsSizing();
   if (!toolsMenu.value) return;
   toolsMenu.value.open = false;
   if (restoreFocus) toolsMenu.value.querySelector('summary')?.focus({preventScroll: true});
@@ -264,23 +313,23 @@ function dismissTools(): boolean {
   closeTools(true);
   return true;
 }
-defineExpose({dismissTools});
+defineExpose({dismissTools, dismissToolsOutside, closeTools, stop});
 function dismissToolsOutside(event: Event): void {
   if (toolsMenu.value?.open && !toolsMenu.value.contains(event.target as Node)) closeTools();
 }
 function closeToolsAfterAction(event: MouseEvent): void {
-  if ((event.target as Element).closest('button')) closeTools(true);
+  if (toolsMenu.value?.open && (event.target as Element).closest('button')) closeTools(true);
 }
-// 两种布局共用同一组工具；统一导航将入口放在回答右侧，独立面板保留原有工具栏。
+// 两种布局共用同一组工具；统一导航将入口传送到父卡片顶栏固定槽，独立面板保留原有工具栏。
 const ReadingTools = () => {
   const button = (label: string, onClick: () => unknown, attrs: Record<string, unknown> = {}) => h('button', {type: 'button', onClick, ...attrs}, translateLegacy(label));
-  return h('details', {ref: toolsMenu, class: 'fr-reading-tools', onKeydown: withKeys(withModifiers(() => closeTools(true), ['stop', 'prevent']), ['esc'])}, [
+  return h('details', {ref: toolsMenu, class: 'fr-reading-tools', onToggle: toggleTools, onKeydown: withKeys(withModifiers(() => closeTools(true), ['stop', 'prevent']), ['esc'])}, [
     h('summary', {'aria-label': translateLegacy('更多操作'), title: translateLegacy('更多操作')}, [
       h('svg', {viewBox: '0 0 24 24', width: 18, height: 18, fill: 'currentColor', 'aria-hidden': 'true'}, [5, 12, 19].map(cx => h('circle', {cx, cy: 12, r: 1.7}))),
     ]),
     h('div', {class: 'fr-reading-tool-list', onClick: closeToolsAfterAction}, [
       button(t('reading.viewSource'), showSource, {'data-i18n-ignore': '', onClick: (event: MouseEvent) => { event.stopPropagation(); showSource(); }}),
-      button('重新生成', regenerate, {disabled: busy.value}),
+      button('重新生成', regenerate, {disabled: busy.value || !actionSupported.value, title: actionSupported.value ? undefined : generationHint.value}),
       button(props.playingSourceText === activeText.value ? '停止朗读' : '朗读原文', () => emit('play-source', activeText.value), {'aria-pressed': props.playingSourceText === activeText.value}),
       !historicalText.value && props.selection.sentence !== props.selection.text && !wholeSentence.value ? button('理解整句', expandSentence) : null,
       canSaveWord.value && (busy.value || !answer.value) ? button(saved.value ? '已收藏原文' : '收藏原文', saveWord, {disabled: saving.value || saved.value, title: t('reading.saveSourceTitle')}) : null,
@@ -292,7 +341,19 @@ const ReadingTools = () => {
     ]),
   ]);
 };
-const previousAnswers = ref<Array<ReadingTurn & {id: string; intent: HarnessActionId; status: HarnessStoredTurnStatus}>>([]);
+// 两种布局只挂载一组追问节点；沿用父渲染上下文，保留 Fragment 子节点的 scoped 样式与 v-model 输入法行为。
+const ReadingFollowUp = withCtx(() => {
+  const stopKey = (event: Event) => event.stopPropagation();
+  const feedbackLine = (text: string) => text ? h('p', {class: 'fr-reading-feedback', role: 'status'}, text) : null;
+  return [followUpSupported.value ? h('form', {class: 'fr-reading-followup', onSubmit: withModifiers(ask, ['prevent'])}, [
+    withDirectives(h('input', {
+      'onUpdate:modelValue': (value: string) => { question.value = value; }, disabled: busy.value || !actionSupported.value, maxlength: '1000', 'aria-label': '继续追问',
+      placeholder: intent.value === 'practice' ? '写下你的练习答案…' : '继续问这句话…', onKeydown: stopKey, onKeyup: stopKey, onInput: () => { feedback.value = ''; },
+    }), [[vModelText, question.value]]),
+    h('button', {type: 'submit', disabled: busy.value || !actionSupported.value || !question.value.trim(), 'aria-label': '发送追问', title: '发送追问'}, '↑'),
+  ]) : null, feedbackLine(feedback.value), feedbackLine(sessionWarning.value)];
+}, getCurrentInstance()) as () => VNodeChild;
+const previousAnswers = ref<Array<ReadingTurn & {id: string; intent: HarnessActionId; status: HarnessStoredTurnStatus; evidenceSources?: readonly ReadingEvidenceSource[]}>>([]);
 const currentTurnKey = ref('');
 const priorAnswers = computed(() => previousAnswers.value.filter(turn => turn.id !== currentTurnKey.value));
 const historyDetails = ref<HTMLDetailsElement>();
@@ -311,10 +372,11 @@ const actionLabels: Record<string, string> = {meaning: '读懂', grammar: '词�
 const statusLabels: Record<string, string> = {streaming: '进行中', completed: '已完成', stopped: '已停止', error: '失败'};
 const actionLabelFor = (value: string) => actionLabels[value] || '学习';
 const statusLabel = (value: string) => statusLabels[value] || '未知状态';
-const formatDate = (value: number) => new Intl.DateTimeFormat(undefined, {month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit'}).format(value);
+const formatDate = useRenderDateFormatter({month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit'});
 const history: ReadingTurn[] = [];
 const canSaveWord = computed(() => props.vocabularyEnabled && !props.privateContext && Boolean(normalizeLearningSourceText(activeText.value)));
 interface CachedAnswer {
+  evidenceSources: readonly ReadingEvidenceSource[];
   id: string;
   answer: string;
   question: string;
@@ -342,6 +404,7 @@ let restoreEpoch = 0;
 
 function cancelRequest(): void {
   cancelReadingPosition();
+  props.clearEvidence?.();
   generation += 1;
   streamHandle?.cancel();
   streamHandle = undefined;
@@ -350,18 +413,26 @@ function cancelRequest(): void {
   busy.value = false;
 }
 function stop(): void { cancelRequest(); stopped.value = true; }
+function sourceStillCurrent(): boolean {
+  if (historicalText.value) return true;
+  const status = props.checkEvidence?.();
+  if (status !== 'changed' && status !== 'navigated') return true;
+  stop();
+  return false;
+}
 function archiveAnswer(): void {
   if (!answer.value || !currentTurnKey.value) return;
-  const turn = {id: currentTurnKey.value, question: currentQuestion.value, answer: answer.value, intent: intent.value, status: (busy.value || stopped.value ? 'stopped' : error.value ? 'error' : 'completed') as HarnessStoredTurnStatus};
+  const turn = {evidenceSources: evidenceSources.value, id: currentTurnKey.value, question: currentQuestion.value, answer: answer.value, intent: intent.value, status: (busy.value || stopped.value ? 'stopped' : error.value ? 'error' : 'completed') as HarnessStoredTurnStatus};
   const existing = previousAnswers.value.findIndex(item => item.id === turn.id);
   if (existing >= 0) previousAnswers.value[existing] = turn;
   else previousAnswers.value.push(turn);
   if (previousAnswers.value.length > 60) previousAnswers.value.splice(0, previousAnswers.value.length - 60);
 }
 function rememberAnswer(): void {
-  actionCache.set(intent.value, {id: currentTurnKey.value, answer: answer.value, question: currentQuestion.value, model: model.value, history: copyTurns(history), lastHistory: copyTurns(lastHistory), memoryCount: memoryCount.value, anchorTurnId, lastAnchorTurnId});
+  actionCache.set(intent.value, {evidenceSources: evidenceSources.value, id: currentTurnKey.value, answer: answer.value, question: currentQuestion.value, model: model.value, history: copyTurns(history), lastHistory: copyTurns(lastHistory), memoryCount: memoryCount.value, anchorTurnId, lastAnchorTurnId});
 }
 function restoreAnswer(cached: CachedAnswer): void {
+  evidenceSources.value = cached.evidenceSources;
   currentTurnKey.value = cached.id;
   answer.value = cached.answer;
   currentQuestion.value = cached.question;
@@ -377,10 +448,12 @@ function restoreAnswer(cached: CachedAnswer): void {
   resetReadingPosition();
 }
 async function run(prompt: string, turns: ReadingTurn[], retrying = false): Promise<void> {
+  if (!actionSupported.value || (prompt && !followUpSupported.value)) { feedback.value = generationHint.value; return; }
   const requestAnchor = prompt ? (retrying ? lastAnchorTurnId : anchorTurnId) : '';
   if (!retrying) archiveAnswer();
   cancelRequest();
   const token = generation;
+  evidenceSources.value = requestEvidenceSources.value;
   const requestId = `reading-${crypto.randomUUID()}`;
   currentTurnKey.value = requestId;
   pendingId = requestId;
@@ -407,14 +480,14 @@ async function run(prompt: string, turns: ReadingTurn[], retrying = false): Prom
       ...(sessionId && requestAnchor ? {anchorTurnId: requestAnchor} : {}),
     }, {
       progress: progress => {
-        if (token !== generation) return;
+        if (token !== generation || !sourceStillCurrent()) return;
         if (progress.kind === 'model') model.value = progress.model;
         if (progress.kind === 'text') answer.value = progress.text;
         if (progress.kind === 'session') { sessionId = progress.persistent ? (progress.sessionId || '') : ''; anchorTurnId = progress.persistent ? (progress.turnId || '') : ''; if (progress.warning) sessionWarning.value = progress.warning; }
         if (progress.kind === 'memory') { memoryCount.value = progress.count; if (progress.warning) feedback.value = progress.warning; }
       },
       result: response => {
-        if (token !== generation) return;
+        if (token !== generation || !sourceStillCurrent()) return;
         busy.value = false;
         pendingId = '';
         streamHandle = undefined;
@@ -431,7 +504,7 @@ async function run(prompt: string, turns: ReadingTurn[], retrying = false): Prom
         rememberAnswer();
       },
       error: failure => {
-        if (token !== generation) return;
+        if (token !== generation || !sourceStillCurrent()) return;
         busy.value = false;
         pendingId = '';
         streamHandle = undefined;
@@ -447,12 +520,13 @@ function chooseAction(action: HarnessActionId): void {
   if (action !== intent.value || !currentTurnKey.value) startAction(action);
 }
 function startAction(action: HarnessActionId, preserveHistory = true): void {
-  if (!props.preferences.actions.includes(action)) return;
+  closeTools();
+  if (!actions.value.some(item => item.id === action)) return;
+  showRecords.value = false;
   if (preserveHistory && action === intent.value && busy.value) return;
   if (preserveHistory) archiveAnswer();
   cancelRequest();
   intent.value = action;
-  showRecords.value = false;
   question.value = '';
   const cached = preserveHistory ? actionCache.get(action) : undefined;
   if (cached) { restoreAnswer(cached); return; }
@@ -476,6 +550,7 @@ async function restoreSession(id: string): Promise<void> {
   previousAnswers.value = session.turns.slice(0, -1).map(turn => ({id: turn.id, question: turn.question, answer: turn.answer, intent: turn.intent, status: turn.status}));
   historicalText.value = session.text;
   historicalContext.value = session.context;
+  evidenceSources.value = buildReadingEvidence(session.text, session.context);
   sessionId = session.id;
   wholeSentence.value = false;
   const latest = session.turns.at(-1);
@@ -483,8 +558,7 @@ async function restoreSession(id: string): Promise<void> {
   // 仓库存的动作名称用于记录展示，不能在重试时变成用户的追问。
   currentQuestion.value = latest?.question === actionLabelFor(latest?.intent || session.intent) ? '' : latest?.question || '';
   answer.value = latest?.answer || '';
-  const restoredIntent = latest?.intent || session.intent;
-  intent.value = props.preferences.actions.includes(restoredIntent) ? restoredIntent : props.preferences.defaultAction;
+  intent.value = latest?.intent || session.intent;
   model.value = latest?.model || '';
   memoryCount.value = 0;
   remembered.value = false;
@@ -497,18 +571,19 @@ async function restoreSession(id: string): Promise<void> {
     const turn = session.turns[index];
     if (turn.status !== 'completed' || !turn.answer.trim()) continue;
     const before = session.turns.slice(0, index).filter(item => item.answer.trim()).slice(-4).map(item => ({question: item.question, answer: item.answer}));
-    actionCache.set(turn.intent, {id: turn.id, answer: turn.answer, question: turn.question === actionLabelFor(turn.intent) ? '' : turn.question, model: turn.model, history: [...before, {question: turn.question, answer: turn.answer}].slice(-4), lastHistory: before, memoryCount: 0, anchorTurnId: turn.id, lastAnchorTurnId: session.turns.slice(0, index).findLast(item => item.intent === turn.intent && item.answer.trim())?.id || ''});
+    actionCache.set(turn.intent, {evidenceSources: evidenceSources.value, id: turn.id, answer: turn.answer, question: turn.question === actionLabelFor(turn.intent) ? '' : turn.question, model: turn.model, history: [...before, {question: turn.question, answer: turn.answer}].slice(-4), lastHistory: before, memoryCount: 0, anchorTurnId: turn.id, lastAnchorTurnId: session.turns.slice(0, index).findLast(item => item.intent === turn.intent && item.answer.trim())?.id || ''});
   }
-  error.value = latest?.status === 'error' ? '上次生成失败，已保留收到的内容，可以重试。' : '';
+  error.value = latest?.status === 'error' ? '上次生成失败，已保留收到的内容' + (retrySupported.value ? '，可以重试。' : '。') : '';
   stopped.value = latest?.status === 'stopped' || latest?.status === 'streaming'; saved.value = false;
-  feedback.value = '已打开上次的问答，可以继续追问。';
+  feedback.value = followUpSupported.value && actionSupported.value ? '已打开上次的问答，可以继续追问。' : '已打开上次的问答。';
   recordsError.value = ''; showRecords.value = false;
   resetReadingPosition();
 }
 function expandSentence(): void { wholeSentence.value = true; sessionId = ''; historicalText.value = ''; saved.value = false; startAction(intent.value, false); }
 function ask(): void {
   const prompt = question.value.trim();
-  if (!prompt || busy.value) return;
+  if (!followUpSupported.value || !prompt || busy.value) return;
+  if (!actionSupported.value) { feedback.value = generationHint.value; return; }
   question.value = '';
   void run(prompt, history.map(turn => ({...turn})));
 }
@@ -519,10 +594,13 @@ async function openSettings(section = 'settings-selection'): Promise<void> {
     if (response?.success !== true) throw new Error('打开设置失败');
   } catch { feedback.value = section === 'settings-services' ? '打开设置失败，请从扩展菜单进入“翻译服务”。' : '打开设置失败，请从专项翻译进入“划词翻译”。'; }
 }
+function readableAnswer(): string {
+  return readingEvidenceText(answer.value, evidenceSources.value, {evidence: t('reading.evidence.label'), unverified: t('reading.evidence.unverified'), external: t('reading.evidence.external')});
+}
 async function copyAnswer(): Promise<void> {
   const owner = generation;
   try {
-    await navigator.clipboard.writeText(`${activeText.value}\n\n${answer.value}`);
+    await navigator.clipboard.writeText(`${activeText.value}\n\n${readableAnswer()}`);
     if (owner !== generation || !props.active) return;
     copied.value = true;
     clearTimeout(copyTimer);
@@ -546,7 +624,7 @@ async function rememberLearning(): Promise<void> {
   const owner = currentTurnKey.value;
   remembering.value = true;
   try {
-    await saveLearningMemory({kind: 'lesson', content: `原文：${activeText.value.slice(0, 350)}\n${currentQuestion.value ? `问题：${currentQuestion.value.slice(0, 200)}\n` : ''}学习要点：${answer.value.slice(0, 1400)}`});
+    await saveLearningMemory({kind: 'lesson', content: `原文：${activeText.value.slice(0, 350)}\n${currentQuestion.value ? `问题：${currentQuestion.value.slice(0, 200)}\n` : ''}学习要点：${readableAnswer().slice(0, 1400)}`});
     if (currentTurnKey.value === owner) { remembered.value = true; feedback.value = t('reading.noteSaved'); }
   } catch (failure) { if (currentTurnKey.value === owner) feedback.value = failure instanceof Error ? failure.message : t('reading.noteSaveFailed'); }
   finally { remembering.value = false; }
@@ -565,7 +643,7 @@ async function saveWord(): Promise<void> {
   } catch (failure) { if (activeText.value === savingText) feedback.value = failure instanceof Error ? failure.message : '收藏失败，请重试。'; }
   finally { saving.value = false; }
 }
-watch(() => JSON.stringify([props.preferences, props.targetLanguage, props.sourceLanguage, props.modelRevision]), () => { actionCache.clear(); cancelRequest(); stopped.value = true; feedback.value = '设置已更新，重新生成可使用新的设置。'; });
+watch(() => JSON.stringify([props.preferences, effectiveService.value, props.targetLanguage, props.sourceLanguage, props.modelRevision]), () => { actionCache.clear(); cancelRequest(); stopped.value = true; feedback.value = '设置已更新，重新生成可使用新的设置。'; });
 watch(() => JSON.stringify(props.selection), () => {
   actionCache.clear(); cancelRequest(); restoreEpoch += 1;
   sourceExpanded.value = false;
@@ -578,10 +656,12 @@ watch(() => JSON.stringify(props.selection), () => {
 });
 watch(activeText, text => { sourceExpanded.value = false; closeTools(); saved.value = false; emit('source-change', text); });
 watch(() => [props.initialAction, props.historyOnly, props.active] as const, ([action, only, active], [oldAction, oldOnly, oldActive]) => {
+  // 父导航回写当前视图只同步标签，不能把历史动作改为默认动作或重复生成。
+  if (active === oldActive && action === intent.value && Boolean(only) === showRecords.value) return;
   restoreEpoch += 1;
-  if (!active) { closeTools(); emit('source-change', ''); if (busy.value) stop(); return; }
+  if (!active) { props.clearEvidence?.(); closeTools(); emit('source-change', ''); if (busy.value) stop(); return; }
   if (only) openRecords();
-  else if (action !== oldAction || oldOnly || !oldActive) startAction(action || props.preferences.defaultAction);
+  else if (action !== oldAction || oldOnly || !oldActive) startAction(availableInitialAction(action));
 });
 // 面板和正文滚动区由父卡片约束高度；回答增长只改变 scrollHeight，
 // 首次出现、清空和生成状态仍通知父卡片，连续文本块不重复要求父卡片读取选区与卡片尺寸。
@@ -601,6 +681,8 @@ async function loadMoreSessions(): Promise<void> {
   finally { if (token === recordsGeneration) recordsLoading.value = false; }
 }
 function openRecords(): void {
+  closeTools();
+  props.clearEvidence?.();
   cancelReadingPosition();
   restoreEpoch += 1;
   showRecords.value = true;
@@ -609,17 +691,20 @@ function openRecords(): void {
   sessions.value = []; sessionOffset.value = 0; hasMoreSessions.value = false;
   void loadMoreSessions();
 }
-function closeRecords(): void { restoreEpoch += 1; showRecords.value = false; recordsError.value = ''; resetReadingPosition(); }
+function closeRecords(): void { restoreEpoch += 1; showRecords.value = false; recordsError.value = ''; if (!currentTurnKey.value && !answer.value && !busy.value && props.active) startAction(availableInitialAction(props.initialAction)); else resetReadingPosition(); }
 onMounted(() => {
   if (!props.active) return;
   if (props.historyOnly) openRecords();
   else startAction(intent.value);
 });
-onBeforeUnmount(() => { recordsGeneration += 1; restoreEpoch += 1; cancelRequest(); emit('source-change', ''); clearTimeout(copyTimer); history.splice(0); actionCache.clear(); });
+watch(() => [props.toolsTarget, props.externalNavigation], () => closeTools());
+onBeforeUnmount(() => { closeTools(); recordsGeneration += 1; restoreEpoch += 1; cancelRequest(); emit('source-change', ''); clearTimeout(copyTimer); history.splice(0); actionCache.clear(); });
 </script>
 
 <style scoped>
-.fr-reading { --fr-reading-line: #eee8ec; --fr-reading-muted: #756a74; --fr-reading-button: #826573; --fr-reading-soft: #faf7f9; display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; padding: 6px 14px 10px; overflow: hidden; color: #35333c; font: 13px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.fr-reading, .fr-reading-controls { --fr-reading-line: #eee8ec; --fr-reading-muted: #756a74; --fr-reading-button: #826573; --fr-reading-soft: #faf7f9; color: #35333c; font: 13px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.fr-reading { display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; padding: 6px 14px 10px; overflow: hidden; }
+.fr-reading-controls { display: flex; align-items: center; gap: 3px; }
 .fr-reading-navigation { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px; color: var(--fr-reading-muted); font-size: 11px; }
 .fr-reading-navigation button { color: #a64b6e; }
 .fr-reading-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 2px 5px 4px 0; }
@@ -648,31 +733,26 @@ onBeforeUnmount(() => { recordsGeneration += 1; restoreEpoch += 1; cancelRequest
 .fr-reading-turn-answer { padding: 10px; border-top: 1px solid var(--fr-reading-line); user-select: text; }
 .fr-reading-role { display: block; margin-bottom: 4px; color: var(--fr-reading-muted); font-size: 10px; }
 .fr-reading-current-label { margin: 0 0 8px; color: var(--fr-reading-muted); font-size: 11px; font-weight: 600; }
-.fr-reading button, .fr-reading input, .fr-reading-tools :deep(button) { font: inherit; }
-.fr-reading button, .fr-reading-tools :deep(button) { cursor: pointer; border: 0; background: none; color: var(--fr-reading-button); padding: 3px 6px; border-radius: 6px; }
-.fr-reading button:focus-visible, .fr-reading input:focus-visible, .fr-reading-tools :deep(button:focus-visible) { outline: 2px solid #cd527f; outline-offset: 2px; }
-.fr-reading button:disabled, .fr-reading-tools :deep(button:disabled) { opacity: .5; cursor: default; }
+.fr-reading button, .fr-reading input, .fr-reading-controls > button, .fr-reading-tools :deep(button) { font: inherit; }
+.fr-reading button, .fr-reading-controls > button, .fr-reading-tools :deep(button) { cursor: pointer; border: 0; background: none; color: var(--fr-reading-button); padding: 3px 6px; border-radius: 6px; }
+.fr-reading button:focus-visible, .fr-reading input:focus-visible, .fr-reading-controls > button:focus-visible, .fr-reading-tools :deep(button:focus-visible) { outline: 2px solid #cd527f; outline-offset: 2px; }
+.fr-reading button:disabled, .fr-reading-controls > button:disabled, .fr-reading-tools :deep(button:disabled) { opacity: .5; cursor: default; }
 .fr-reading-toolbar { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-bottom: 8px; }
 .fr-reading-actions { display: flex; flex-wrap: wrap; flex: 1; min-width: 0; gap: 4px; border-bottom: 1px solid var(--fr-reading-line); }
 .fr-reading-actions button { flex: 1 1 auto; min-width: 0; max-width: 100%; min-height: 32px; padding: 4px 6px; border-radius: 0; border-bottom: 2px solid transparent; color: var(--fr-reading-muted); font-size: 12px; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
 .fr-reading-actions button[aria-pressed='true'] { border-bottom-color: #b85579; color: #9d3e61; font-weight: 600; }
 .fr-reading-actions button:hover, .fr-reading-tools :deep(summary:hover) { background: var(--fr-reading-soft); }
 .fr-reading-tools { position: relative; flex: 0 0 auto; }
-.fr-reading-inline-controls { float: right; display: flex; align-items: start; gap: 4px; margin: 0 0 4px 8px; }
-.fr-reading .fr-reading-inline-stop { flex: 0 0 32px; width: 32px; height: 32px; padding: 0; font-size: 12px; }
+.fr-reading-controls > .fr-reading-inline-stop { flex: 0 0 32px; width: 32px; height: 32px; padding: 0; font-size: 12px; }
 .fr-reading-accessible-status { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.fr-reading-inline-controls:has(.fr-reading-tools[open]) { float: none; display: block; margin: 0 0 8px; }
-.fr-reading-inline-controls:has(.fr-reading-tools[open]) > .fr-reading-inline-stop { float: right; margin-inline-start: 4px; }
-.fr-reading-inline-controls .fr-reading-tools[open] :deep(> summary) { margin-inline-start: auto; }
 .fr-reading-tools :deep(summary) { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; list-style: none; cursor: pointer; color: var(--fr-reading-muted); }
 .fr-reading-tools :deep(summary::-webkit-details-marker) { display: none; }
 .fr-reading summary:focus-visible, .fr-reading-tools :deep(summary:focus-visible) { outline: 2px solid #cd527f; outline-offset: 2px; }
-.fr-reading-tools :deep(.fr-reading-tool-list) { position: absolute; z-index: 2; inset-inline-end: 0; top: 36px; width: 204px; max-height: min(310px, 55vh); overflow: auto; overscroll-behavior: contain; padding: 5px; background: var(--fr-reading-menu, #fff); border: 1px solid var(--fr-reading-line); border-radius: 9px; box-shadow: 0 5px 18px #0002; }
+.fr-reading-tools :deep(.fr-reading-tool-list) { position: absolute; z-index: 3; inset-inline-end: 0; top: 36px; width: min(204px, calc(100vw - 24px)); box-sizing: border-box; max-height: min(310px, 55vh); overflow: auto; overscroll-behavior: contain; padding: 5px; background: var(--fr-reading-menu, #fff); border: 1px solid var(--fr-reading-line); border-radius: 9px; box-shadow: 0 5px 18px #0002; }
 .fr-reading-tools :deep(.fr-reading-tool-list button) { display: block; width: 100%; min-height: 30px; text-align: start; font-size: 12px; padding: 4px 8px; color: inherit; }
 .fr-reading-tools :deep(.fr-reading-tool-list button:hover) { background: var(--fr-reading-soft); }
 .fr-reading-tools :deep(.fr-reading-tool-list p) { border-top: 1px solid var(--fr-reading-line); margin: 4px 0 0; padding: 6px 8px 3px; color: var(--fr-reading-muted); font-size: 10px; overflow-wrap: anywhere; }
 .fr-reading-tools :deep(.fr-reading-tool-list p span) { display: block; }
-.fr-reading-inline-controls .fr-reading-tools :deep(.fr-reading-tool-list) { position: static; width: auto; max-height: none; margin-top: 4px; }
 .fr-reading-source { margin: 0 0 10px; color: var(--fr-reading-muted); font-size: 12px; }
 .fr-reading .fr-reading-source-return { display: block; margin-bottom: 6px; padding-inline-start: 0; }
 .fr-reading-source > span { font-size: 11px; }
@@ -698,7 +778,7 @@ onBeforeUnmount(() => { recordsGeneration += 1; restoreEpoch += 1; cancelRequest
 .fr-reading-followup input { min-width: 0; flex: 1; width: 100%; border: 0; outline: none; color: inherit; background: transparent; font-size: 12px; user-select: text; }
 .fr-reading-followup input::placeholder { color: var(--fr-reading-muted); font-size: 11px; }
 .fr-reading-followup button { background: #b85579; color: white; width: 28px; height: 28px; line-height: 20px; }
-.fr-dark-theme .fr-reading { --fr-reading-line: #514651; --fr-reading-muted: #b6a9b5; --fr-reading-button: #e4a0bc; --fr-reading-soft: #352f38; --fr-reading-menu: #29242d; color: #e6e0e8; }
+.fr-dark-theme .fr-reading, .fr-dark-theme .fr-reading-controls { --fr-reading-line: #514651; --fr-reading-muted: #b6a9b5; --fr-reading-button: #e4a0bc; --fr-reading-soft: #352f38; --fr-reading-menu: #29242d; color: #e6e0e8; }
 .fr-dark-theme .fr-reading-actions button { color: #bdb0c1; }
 .fr-dark-theme .fr-reading-actions button[aria-pressed='true'] { border-bottom-color: #e4a0bc; color: #f1b6ce; }
 .fr-dark-theme .fr-reading-followup { border-color: #554651; }

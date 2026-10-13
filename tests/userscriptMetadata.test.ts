@@ -6,7 +6,13 @@ describe('userscript metadata', () => {
         const metadata = createUserscriptMetadata({version: '1.2.3'});
 
         expect(metadata.startsWith('// ==UserScript==\n')).toBe(true);
-        expect(metadata).toContain('// @name         FluentRead-流畅阅读');
+        expect(metadata).toContain('// @name         FluentRead-流畅阅读\n');
+        expect(metadata).toContain('// @name:zh-CN   流畅阅读\n');
+        expect(metadata).toContain('// @name:zh      流畅阅读\n');
+        expect(metadata).toContain('// @name:en      FluentRead\n');
+        for (const language of ['ja', 'ko', 'fr', 'ru', 'es']) {
+            expect(metadata).toContain(`// @name:${language}      FluentRead\n`);
+        }
         expect(metadata).toContain('// @namespace    https://fr.unmeta.cn/');
         expect(metadata).toContain('// @version      1.2.3');
         expect(metadata).toContain('// @grant        GM_xmlhttpRequest');

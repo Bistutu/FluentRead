@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/InterfaceSettings.vue
- * 文件职责：组织译文样式、界面风格、动画加载效果、菜单栏布局与界面字体及逐句高亮外观分组，其中网页译文样式排在第一位。
- * 主要内容：连续展示译文样式、与真实菜单栏同宽的皮肤预览、菜单栏布局、动画及紧凑字体卡片，风格卡片的缩略图用各皮肤登记的配色画出一个极简菜单栏，通过预览和显隐列表编排区域与快捷入口；字体下载、重试和逐项清除都在对应字体卡片内完成，清除按钮展示排除共享文件后的可释放容量；清除确认框绑定当前页面、配置及选中字体，隐藏、缓存停用或配置变更时关闭，迟到结果不写回新配置或显示旧反馈。
+ * 文件职责：组织译文样式、界面风格、动画加载效果、菜单栏布局与界面字体及逐句高亮、完整句学习外观分组，其中网页译文样式排在第一位，完整句学习外观紧随菜单栏布局。
+ * 主要内容：连续展示译文样式、与真实菜单栏同宽的皮肤预览、菜单栏布局、动画及紧凑字体卡片，风格卡片的缩略图用各皮肤登记的配色画出一个极简菜单栏，单选组只保留选中项的 Tab 入口并支持方向键及首尾定位，通过预览和显隐列表编排区域与快捷入口；字体标题、描述和样例使用包内字形子集，未下载和离线时也可预览真实样式；字体下载、重试和逐项清除都在对应字体卡片内完成，清除按钮展示排除共享文件后的可释放容量；清除确认框绑定当前页面、配置及选中字体，隐藏、缓存停用或配置变更时关闭，迟到结果不写回新配置或显示旧反馈。
  * 模块边界：本组件只负责界面配置的展示与双向绑定，不直接读写浏览器存储、不负责主题模式，也不关闭翻译功能本身；界面皮肤由 Options composition root 统一应用，译文样式的细节由 TranslationStyleSettings 负责。
 -->
 <template>
@@ -27,7 +27,7 @@
           :preview-label="`${translateLegacy('弹窗风格')}: ${translateLegacy(selectedSkinOption.label)}`"
         />
       </template>
-      <div class="interface-skin-picker" role="radiogroup" :aria-label="translateLegacy('弹窗风格')">
+      <div class="interface-skin-picker" role="radiogroup" :aria-label="translateLegacy('弹窗风格')" @keydown="handleSkinKeydown">
         <div
           v-for="group in groupedSkinOptions"
           :key="group.value"
@@ -48,9 +48,10 @@
               type="button"
               role="radio"
               :aria-checked="props.config.interfaceSkin === skin.value"
-              :aria-label="`${translateLegacy(skin.label)}: ${translateLegacy(skin.description)}`"
+              :tabindex="props.config.interfaceSkin === skin.value ? 0 : -1"
+              :aria-label="`${translateLegacy(skin.label)}: ${translateLegacy(skin.description).replace('FluentRead', t('common.brand'))}`"
               :data-skin="skin.value"
-              @click="props.config.interfaceSkin = skin.value"
+              @click="selectInterfaceSkin(skin.value)"
             >
               <span
                 class="interface-skin-preview"
@@ -72,7 +73,7 @@
               </span>
               <span class="interface-skin-copy">
                 <strong>{{ translateLegacy(skin.label) }}</strong>
-                <small>{{ translateLegacy(skin.description) }}</small>
+                <small>{{ translateLegacy(skin.description).replace('FluentRead', t('common.brand')) }}</small>
               </span>
               <span class="interface-skin-radio" aria-hidden="true"><i /></span>
             </button>
@@ -196,6 +197,10 @@
   />
 </SettingsPanel>
 
+  <SettingsPanel name="video-learning" :active="props.activePanel">
+    <VideoSentenceLearningAppearanceSettings :config="props.config" data-settings-anchor="video-learning" />
+  </SettingsPanel>
+
   <SettingsPanel name="font" :active="props.activePanel">
 <SettingsGroup
     class="interface-font-group"
@@ -220,9 +225,10 @@
             :value="font.value"
             :aria-label="t(font.labelKey)"
           />
-          <span class="interface-font-copy">
+          <span class="interface-font-copy" :style="{ fontFamily: font.fontFamily.replace(/FluentRead /g, 'FluentRead Preview ') }">
             <strong>{{ t(font.labelKey) }}</strong>
             <small>{{ t(font.descriptionKey) }}</small>
+            <span class="interface-font-sample" aria-hidden="true">Aa Bb Cc · 0123456789</span>
           </span>
           <div class="interface-font-action-area">
             <div v-if="font.value === interfaceFontLoadState.font && interfaceFontLoadState.status === 'loading'" class="interface-font-card-status" role="status" aria-live="polite" :data-status="interfaceFontLoadState.status">
@@ -260,7 +266,7 @@
             </button>
           </div>
         </label>
-        <div class="interface-font-preview" :style="{ fontFamily: selectedFontOption.fontFamily }">
+        <div class="interface-font-preview" :style="{ fontFamily: selectedFontOption.fontFamily.replace(/FluentRead /g, 'FluentRead Preview ') }">
           <span>{{ t('settings.interface.font.preview') }}</span>
           <small aria-hidden="true">Aa Bb Cc · 0123456789</small>
         </div>
@@ -279,7 +285,9 @@
 </template>
 
 <script lang="ts" setup>
+import './interface-font-previews.css'
 import SettingsPanel from './components/SettingsPanel.vue'
+import VideoSentenceLearningAppearanceSettings from './VideoSentenceLearningAppearanceSettings.vue'
 import {computed, onActivated, onBeforeUnmount, onDeactivated, ref, watch} from 'vue'
 import {ElMessage} from 'element-plus'
 import type {Config} from '@/src/core/config/model'
@@ -322,6 +330,25 @@ const viewActive = ref(true)
 const settingsActive = computed(() => viewActive.value && props.active)
 const fontEditorActive = computed(() => settingsActive.value && (!props.activePanel || props.activePanel === 'font'))
 const layoutEditorActive = computed(() => settingsActive.value && (!props.activePanel || props.activePanel === 'layout'))
+const skinEditorActive = computed(() => settingsActive.value && (!props.activePanel || props.activePanel === 'skin'))
+function selectInterfaceSkin(skin: string): void {
+  if (!skinEditorActive.value) return
+  const option = interfaceSkinOptions.find(item => item.value === skin)
+  if (option) props.config.interfaceSkin = option.value
+}
+function handleSkinKeydown(event: KeyboardEvent): void {
+  if (!skinEditorActive.value || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
+  const radios = Array.from((event.currentTarget as HTMLElement).querySelectorAll<HTMLButtonElement>('[role="radio"]'))
+  if (!radios.length) return
+  event.preventDefault()
+  const focusedIndex = radios.indexOf(event.target as HTMLButtonElement)
+  const selectedIndex = radios.findIndex(button => button.dataset.skin === props.config.interfaceSkin)
+  const current = Math.max(0, focusedIndex >= 0 ? focusedIndex : selectedIndex)
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? radios.length - 1
+    : (current + (event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1) + radios.length) % radios.length
+  selectInterfaceSkin(radios[next].dataset.skin || '')
+  radios[next].focus()
+}
 const activeLayoutPanel = ref<'popupModule' | 'quickFeature'>('popupModule')
 function handleLayoutTabKeydown(event: KeyboardEvent) {
   if (!layoutEditorActive.value) return
@@ -525,8 +552,9 @@ function setPopupQuickFeatureVisibility(featureId: string, visible: boolean) {
 .interface-font-card-status.is-error { color: var(--brand-strong); }
 .interface-font-card-status button { width: fit-content; border: 1px solid var(--line); border-radius: 7px; padding: 4px 8px; color: var(--brand-strong); background: var(--surface); cursor: pointer; font-size: 10.5px; }
 .interface-font-card-status button:hover { border-color: var(--brand); background: var(--brand-soft); }
-.interface-font-copy strong { overflow-wrap: anywhere; font-size: 12px; line-height: 1.35; }
-.interface-font-copy small { color: var(--muted); font-size: 10.5px; line-height: 1.4; }
+.interface-font-copy strong { overflow-wrap: anywhere; font-size: 12px; font-weight: 700; line-height: 1.35; }
+.interface-font-copy small { color: var(--muted); font-size: 10.5px; font-weight: 400; line-height: 1.4; }
+.interface-font-sample { margin-top: 2px; color: var(--ink); font-size: 12px; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
 
 .interface-font-preview {
   grid-column: 1 / -1;
@@ -541,6 +569,7 @@ function setPopupQuickFeatureVisibility(featureId: string, visible: boolean) {
   background: var(--surface-soft);
   overflow-wrap: anywhere;
   font-size: 17px;
+  font-weight: 400;
   line-height: 1.6;
 }
 

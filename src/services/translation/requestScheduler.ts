@@ -2,7 +2,7 @@
  * @file src/services/translation/requestScheduler.ts
  *
  * 文件职责：统一执行翻译任务的并发和请求启动速率限制，支持取消、截止时间、服务/模型 bucket 与真实 HTTP attempt。
- * 主要内容：旧配置继续使用 global bucket；启用服务或模型限制后按稳定请求身份切换 bucket，provider 的 attempt 只复用速率历史而不重复占用外层并发槽；单次 drain 内缓存 bucket key 与限额，并以累积等待 bucket 的一次线性前向扫描启动全部可启动任务。
+ * 主要内容：旧配置继续使用 global bucket；启用服务或模型限制后按稳定请求身份切换 bucket，每轮按当前配置重新计入仍在途的外层请求，直到真实 transport lease 结束；provider 的 attempt 只复用速率历史而不重复占用外层并发槽；单次 drain 内缓存 bucket key 与限额，并以累积等待 bucket 的一次线性前向扫描启动全部可启动任务。
  * 模块边界：本模块只管理调度时序，不选择服务、不实现重试、不读取或写入配置；配置由调用方通过 getConfig 提供。
  */
 
@@ -111,6 +111,7 @@ export function createTranslationRequestScheduler(
 ): TranslationRequestScheduler {
     const now = dependencies.now ?? (() => Date.now());
     const buckets = new Map<string, BucketState>();
+    const activeRequests = new Set<PendingRequest<unknown>>();
     let pending: Array<PendingRequest<unknown> | undefined> = [];
     let head = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -177,6 +178,16 @@ export function createTranslationRequestScheduler(
             buckets.set(key, state);
         }
         return state;
+    }
+
+    function refreshActiveBuckets(config: TranslationRequestSchedulerConfig): void {
+        // 用户可在请求仍运行时切换沿用/自定义。启动时的 bucket 已不是当前约束，
+        // 因此按稳定请求身份重新投影所有在途任务；starts 继续保留原速率历史。
+        // settled 仅表示调用方收到结果，holdUntil 未结束的 transport 仍在集合里。
+        for (const state of buckets.values()) state.active = 0;
+        for (const entry of activeRequests) {
+            for (const key of keysFor(entry.identity, config)) stateFor(key).active += 1;
+        }
     }
 
     function limitFor(key: string, config: TranslationRequestSchedulerConfig): BucketLimit {
@@ -280,7 +291,7 @@ export function createTranslationRequestScheduler(
         };
     }
 
-    async function execute(entry: PendingRequest<unknown>, keys: readonly string[]): Promise<void> {
+    async function execute(entry: PendingRequest<unknown>): Promise<void> {
         const leaseState = createLease();
         try {
             const result = await entry.task(leaseState.lease);
@@ -299,9 +310,7 @@ export function createTranslationRequestScheduler(
             // 调用方可以先收到取消/超时；真实传输结束后才归还并发槽。
             leaseState.close();
             await Promise.all(leaseState.waits);
-            if (!entry.attemptOnly) {
-                for (const key of keys) stateFor(key).active -= 1;
-            }
+            activeRequests.delete(entry);
             drain();
         }
     }
@@ -323,6 +332,7 @@ export function createTranslationRequestScheduler(
                 }
                 const config = currentConfig();
                 resetDrainMemo();
+                refreshActiveBuckets(config);
                 const current = readNow();
                 rejectInactive(current);
                 let earliest = Number.POSITIVE_INFINITY;
@@ -358,12 +368,13 @@ export function createTranslationRequestScheduler(
                         continue;
                     }
                     pending[index] = undefined;
+                    if (!entry.attemptOnly) activeRequests.add(entry);
                     for (const key of keys) {
                         const state = stateFor(key);
                         if (!entry.attemptOnly) state.active += 1;
                         if (entry.countRate) state.starts.push(current);
                     }
-                    void execute(entry, keys);
+                    void execute(entry);
                 }
                 compact();
                 let nextDeadline = Number.POSITIVE_INFINITY;

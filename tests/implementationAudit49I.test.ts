@@ -119,6 +119,22 @@ fs.rmSync = function (...args) {
   if (mode === 'remove-profile' && /(?:product-capture-|diagnostics-profile-)/.test(directory)) throw Error('CONTROLLED_REMOVE_FAILURE');
   return remove.apply(this, args);
 };
+// Only this exact foreground query is a controlled async port. Native ps keeps
+// observing the parent-owned actor's real PID/start/profile and joined exit.
+const nativeExecFile = cp.execFile, util = require('node:util');
+const nativeExecFilePromise = util.promisify(nativeExecFile);
+const isForegroundQuery = (command, args) => command === '/usr/bin/osascript'
+  && Array.isArray(args) && args.length === 4 && args[0] === '-l' && args[1] === 'JavaScript' && args[2] === '-e'
+  && args[3] === "ObjC.import('AppKit'); const a=$.NSWorkspace.sharedWorkspace.frontmostApplication; JSON.stringify({pid:Number(a.processIdentifier),name:ObjC.unwrap(a.localizedName)});";
+const foregroundResult = () => {log('native-async-focus-port'); return {stdout: JSON.stringify({pid:999999,name:'controlled foreground port'}), stderr:''};};
+cp.execFile = function (command, args, ...rest) {
+  if (!isForegroundQuery(command, args)) return nativeExecFile.call(this, command, args, ...rest);
+  const callback = rest.at(-1);
+  if (typeof callback === 'function') queueMicrotask(() => {const value = foregroundResult(); callback(null, value.stdout, value.stderr);});
+  return new (require('node:events').EventEmitter)();
+};
+cp.execFile[util.promisify.custom] = async (command, args, ...rest) => isForegroundQuery(command, args)
+  ? foregroundResult() : nativeExecFilePromise(command, args, ...rest);
 const exec = cp.execFileSync;
 const nativeSpawn = cp.spawnSync;
 cp.spawnSync = function (command, args, options) {
@@ -308,7 +324,7 @@ exports.launchFocusSafePersistentContext = async options => {
     if(owner){const receipt=await actorPort('acquired-owner-stop',options.profileDir);if(!receipt.waited)throw Error('CONTROLLED_OWNER_CLOSE_FAILURE');}
   };
   return {
-    context: {on() {}, async route() {}, async close() { log('raw-context-close'); }, browser: () => ({version: () => 'controlled-version', newBrowserCDPSession: async () => ({send: async (method) => {log('native-browser-cdp-port', {method}); return method==='SystemInfo.getProcessInfo'&&owner?{processInfo:[{type:'browser',id:owner.pid}]}:{id:'audit-fixture'};}, detach: async () => {log('native-browser-cdp-detach');}})}), serviceWorkers: () => [{on() {}, url: () => 'chrome-extension://audit-fixture/background.js', evaluate: async () => {if (process.env.AUDIT_WORKER_FAILURE === '1') {log('worker-port-entered'); throw Error('CONTROLLED_WORKER_FAILURE');} return undefined;}}]},
+    context: {on() {}, async route() {}, pages: () => [], async close() { log('raw-context-close'); }, browser: () => ({version: () => 'controlled-version', newBrowserCDPSession: async () => ({send: async (method) => {log('native-browser-cdp-port', {method}); return method==='SystemInfo.getProcessInfo'&&owner?{processInfo:[{type:'browser',id:owner.pid}]}:{id:'audit-fixture'};}, detach: async () => {log('native-browser-cdp-detach');}})}), serviceWorkers: () => [{on() {}, url: () => 'chrome-extension://audit-fixture/background.js', evaluate: async () => {if (process.env.AUDIT_WORKER_FAILURE === '1') {log('worker-port-entered'); throw Error('CONTROLLED_WORKER_FAILURE');} return undefined;}}]},
     launchMode: process.env.AUDIT_VALID_SESSION === '1' ? 'macos-background-cdp' : 'controlled-external-session-port',
     focusPolicy: process.env.AUDIT_VALID_SESSION === '1' ? 'launchservices-no-foreground' : 'no-browser-launched',
     windowPlacement: process.env.AUDIT_VALID_SESSION === '1' ? {mode: 'background-visible-no-focus', browserFrontmost: false} : 'none',
@@ -390,7 +406,15 @@ const makePage=()=>{
  }
 };};
 const popup=makePage(),content=makePage();
-exports.launchFocusSafePersistentContext=async options=>{const session=await base.launchFocusSafePersistentContext(options);return {...session,context};};
+exports.launchFocusSafePersistentContext=async options=>{
+ const session=await base.launchFocusSafePersistentContext(options);
+ // Keep density's real owner CDP and the same session object for guard routing;
+ // DOM commands below remain deterministic external protocol failure ports.
+ if(process.env.AUDIT_LIFECYCLE_FILE==='reading'&&process.env.AUDIT_ACQUIRED_OWNER==='1'){
+  context.browser=session.context.browser;session.context=context;return session;
+ }
+ return {...session,context};
+};
 exports.newPageWithoutForeground=async()=>makePage();
 exports.activateExtensionTabWithoutForeground=async(context,page)=>{if(process.env.AUDIT_LIFECYCLE_FILE==='manga'){log('manga-activation-port',{url:page.url()});page.visibilityReceipts();}};
 `;
@@ -516,7 +540,7 @@ async function invoke(file: string, fault: string, extra: string[] = []): Promis
     const languages = path.join(fixture, 'languages');
     const source = path.join(fixture, 'extension');
     const partialOwner = [capture, ocr, consistency].includes(file) && fault === 'launch';
-    const acquiredOwner = [documentTool, videoFixture, selectionTrigger].includes(file);
+    const acquiredOwner = [documentTool, videoFixture, selectionTrigger, density, 'scripts/run-x-home-audio-recovery-test.cjs'].includes(file);
     const foreign = path.join(fixture, 'temp/foreign-profile');
     for (const directory of [runtime + '/playwright', artifacts, languages, source, fixture + '/temp']) mkdirSync(directory, {recursive: true});
     if (partialOwner) {mkdirSync(foreign);writeFileSync(path.join(foreign, 'sentinel'), 'foreign-owned');}
@@ -526,6 +550,13 @@ async function invoke(file: string, fault: string, extra: string[] = []): Promis
     writeFileSync(source + '/manifest.json', JSON.stringify({name: 'controlled-copy-fixture', action: {default_popup: 'popup.html'}, options_ui: {page: 'options.html'}}));
     mkdirSync(source + '/content-scripts');
     writeFileSync(source + '/content-scripts/content.js', '// controlled artifact hash input; no production client behavior claim\n');
+    if (file === 'scripts/run-x-home-audio-recovery-test.cjs') {
+        // The public CLI hashes these files before launch; sentinel bytes satisfy
+        // that input contract without claiming a built extension or rendered UI.
+        for (const artifact of ['background.js', 'videoTranscriptionWorker.js', 'content-scripts/xVideoBridge.js']) {
+            writeFileSync(path.join(source, artifact), '// controlled artifact hash input; no production client behavior claim\n');
+        }
+    }
     const helper = path.join(fixture, 'helper.cjs');
     const lifecycleHelper = path.join(fixture, 'lifecycle-helper.cjs');
     const preload = path.join(fixture, 'preload.cjs');
@@ -628,7 +659,7 @@ async function invoke(file: string, fault: string, extra: string[] = []): Promis
             AUDIT_NATIVE_PORT: [...nativeTools,videoFixture].includes(file) ? '1' : '0',
             AUDIT_WORKER_FAILURE: [...cleanupTools,...nativeTools].includes(file) ? '1' : '0',
             AUDIT_CAPTURE_PROBES: file === capture ? '1' : '0', AUDIT_CENTER_PROBES: file === translationCenter && fault === 'http' ? '1' : '0',
-            AUDIT_VALID_SESSION: [requestLimits, translationCenter, freeSettings, writing, manga, videoFixture, ...cleanupTools,...nativeTools].includes(file) ? '1' : '0',
+            AUDIT_VALID_SESSION: [requestLimits, translationCenter, freeSettings, writing, manga, videoFixture, density, ...cleanupTools,...nativeTools].includes(file) ? '1' : '0',
             ...(file === group ? {PATH: commandPath} : {})},
     });
     let stdout = '', stderr = '', timedOut = false;

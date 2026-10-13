@@ -5,8 +5,12 @@ import {
     type TranslationBroker,
     type TranslationRequestMessage,
 } from '@/src/services/translation/broker';
-import type {TranslationModelUsageRecord} from '@/src/services/translation/types';
+import type {TranslationConfigSource, TranslationModelUsageRecord} from '@/src/services/translation/types';
+import {Config} from '@/src/core/config/model';
+import {createInputBoxTranslationHandler} from '@/src/features/input-translation/background/handler';
 import {resolveTranslationLanguages} from '@/src/core/translation/languages';
+import {NativeBatchResponseError} from '@/src/core/translation/nativeBatch';
+import {serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {currentModelIds, services, customModelString} from '@/src/core/config/catalog';
 import type {ServiceRequestLimits, ModelRequestLimits} from '@/src/core/config/requestLimits';
 import {
@@ -15,6 +19,7 @@ import {
 } from '@/src/services/translation/persistenceBarrier';
 import {
     attachTranslationRequestControl,
+    attachTranslationGlossaryContext,
     attachTranslationProviderConfig,
     createTranslationProviderConfigSnapshot,
     getTranslationProviderConfig,
@@ -65,6 +70,10 @@ const mocks = vi.hoisted(() => {
         custom: service,
         deeplx: service,
         deepL: service,
+        microsoft: service,
+        google: service,
+        azureTranslator: service,
+        googleCloudTranslation: service,
         minimax: service,
         mimo: service,
         mock: service,
@@ -80,6 +89,7 @@ const mocks = vi.hoisted(() => {
         to: 'zh-Hans',
         useCache: true,
         enableAIContext: false,
+        nativeBatchTranslationEnabled: {} as Record<string, boolean>,
         model: {
             mock: 'mock-model',
             ai: 'ai-model',
@@ -151,10 +161,11 @@ function installBroker(
     ready: Promise<unknown> = Promise.resolve(),
     includeModelUsageGeneration = true,
     persistenceGraceMs?: number,
+    current: TranslationConfigSource = mocks.config,
 ): void {
     const broker = createTranslationBroker({
         ready,
-        getConfig: () => mocks.config,
+        getConfig: () => current,
         providers: mocks.providers,
         cache: {
             get: mocks.cacheGet,
@@ -220,6 +231,19 @@ function deferred<T>() {
         reject = rejectPromise;
     });
     return {promise, reject, resolve};
+}
+
+// 可枚举 source getter 只统计实际生产 snapshot 的条目展开；不复制快照实现。
+function measuredProviderConfig(entryCount = 100) {
+    let entrySourceReads = 0;
+    const current = Object.assign(new Config(), {
+        service: 'mock', from: 'en', to: 'zh-Hans', useCache: false, enableAIContext: false, glossaryEnabled: false,
+        model: {mock: 'frozen-count-model'}, token: {mock: 'fixture-count-key'}, system_role: {mock: 'frozen-count-prompt'},
+        glossaryLibraries: [{id: 'count-library', name: 'Count', enabled: true, sourceLanguage: '', targetLanguage: '', domains: [],
+            entries: Array.from({length: entryCount}, (_, index) => ({id: `entry-${index}`, caseSensitive: false,
+                get source() {entrySourceReads += 1;return `term-${index}`;}, target: `术语${index}`}))}],
+    });
+    return {current, entryCount, reads: () => entrySourceReads, reset: () => {entrySourceReads = 0;}};
 }
 
 describe('translation broker', () => {
@@ -408,6 +432,7 @@ describe('translation broker', () => {
             to: 'zh-Hans',
             useCache: true,
             enableAIContext: false,
+            nativeBatchTranslationEnabled: {},
             maxConcurrentTranslations: 6,
             translationRequestsPerSecond: 0,
             translationRequestsPerMinute: 0,
@@ -487,6 +512,30 @@ describe('translation broker', () => {
         delete (policy as Partial<typeof policy>).freeTranslationOrder;
     });
 
+    it.each([false, true])('separates pre-validation document caches without clearing page caches, batch=%s', async batch => {
+        const source = 'Choose <g1>Document translation</g1> from the menu to open and read the file.';
+        const oldTranslation = '从菜单选择 <g1>Document translation</g1> 打开并阅读文件。';
+        const translation = '从菜单选择 <g1>文档翻译</g1> 打开并阅读文件。';
+        const request = (glossaryContext: 'page' | 'document'): TranslationRequestMessage => batch
+            ? {origin: [source], glossaryContext} : {origin: source, glossaryContext};
+        const previous = batch ? [oldTranslation] : oldTranslation;
+        const updated = batch ? [translation] : translation;
+        mocks.service.mockResolvedValueOnce(previous).mockResolvedValueOnce(updated);
+        // 旧文档契约没有内容政策字段；没有自动字面量的同源 page 请求复现该身份。
+        await expect(translateWithCache(request('page'))).resolves.toEqual(previous);
+        const oldIdentities = translationCacheIdentities().map(identity => ({...identity}));
+        expect(oldIdentities.every(identity => !('documentTranslationPolicy' in identity))).toBe(true);
+        const oldRecords = [...mocks.cacheStore.entries()];
+        await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        const newIdentities = translationCacheIdentities().slice(oldIdentities.length);
+        expect(newIdentities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":3}')).toBe(true);
+        await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
+        await expect(translateWithCache(request('page'))).resolves.toEqual(previous);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        for (const [key, value] of oldRecords) expect(mocks.cacheStore.get(key)).toBe(value);
+    });
+
     it.each([
         ['freeTranslation', false], ['freeTranslation', true],
         ['myMemory', false], ['myMemory', true],
@@ -530,6 +579,43 @@ describe('translation broker', () => {
         expect(await oldRequest).toBeInstanceOf(Error);
         expect(await newRequest).toBe('新策略译文');
         expect(mocks.service).toHaveBeenCalledTimes(2);
+    });
+
+    it('trusted document batch intent isolates pending execution while preserving reusable item caches', async () => {
+        Object.assign(mocks.config, {service: 'freeTranslation', useCache: false});
+        const grouped = deferred<string[]>(), scalar = deferred<string[]>();
+        mocks.service.mockImplementation(message => message.documentBatch === true ? grouped.promise : scalar.promise);
+        const documentRequest = (documentBatch: boolean) => attachTranslationGlossaryContext({
+            origin: ['First source', 'Second source'], glossaryContext: 'document' as const, documentBatch,
+        }, {context: 'document'});
+        const mutable = documentRequest(true);
+        const first = translateWithCache(mutable);
+        mutable.documentBatch = false;
+        const second = translateWithCache(documentRequest(false));
+        const third = translateWithCache(documentRequest(true));
+        await flushMicrotasks(80);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        expect(mocks.service.mock.calls.map(call => call[0].documentBatch)).toEqual([true, undefined]);
+        grouped.resolve(['分组一', '分组二']); scalar.resolve(['单段一', '单段二']);
+        await expect(first).resolves.toEqual(['分组一', '分组二']);
+        await expect(third).resolves.toEqual(['分组一', '分组二']);
+        await expect(second).resolves.toEqual(['单段一', '单段二']);
+        const identities = translationCacheIdentities();
+        expect(identities[0]).toEqual(identities[1]);
+        expect(identities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":3}')).toBe(true);
+        mocks.config.useCache = true;
+        mocks.service.mockImplementation(async message => message.origin.map((text: string) => `译:${text}`));
+        await translateWithCache(documentRequest(true));
+        const calls = mocks.service.mock.calls.length;
+        await translateWithCache(documentRequest(false));
+        expect(mocks.service).toHaveBeenCalledTimes(calls);
+    });
+
+    it.each(['page', 'document'] as const)('untrusted %s payload cannot enable document batch execution', async glossaryContext => {
+        mocks.config.service = 'freeTranslation';
+        mocks.service.mockResolvedValue(['合格译文']);
+        await translateWithCache({origin: ['Readable source'], glossaryContext, documentBatch: true});
+        expect(mocks.service.mock.calls[0]![0]).not.toHaveProperty('documentBatch');
     });
 
     it.each(['freeTranslation', 'myMemory'])('%s 在途去重归一默认值且忽略实际不用的 Key 与代理', async service => {
@@ -583,6 +669,95 @@ describe('translation broker', () => {
         expect(translationCacheIdentities().at(-1)?.service).toBe('mock');
     });
 
+    it('附着快照经过 ready 等待和配置变化仍使用原模型、凭据与嵌套规则，不复制丢弃的 fallback', async () => {
+        const measured = measuredProviderConfig();
+        const {current} = measured;
+        const snapshot = createTranslationProviderConfigSnapshot(current);
+        measured.reset();
+        const ready = deferred<void>();
+        installBroker(undefined, ready.promise, true, undefined, current);
+        mocks.service.mockResolvedValue('可信快照译文');
+        const result = translateWithCache(attachTranslationProviderConfig({origin: 'Frozen source', useCache: false}, snapshot));
+        await flushMicrotasks();
+        expect(measured.reads()).toBe(0);
+        expect(mocks.service).not.toHaveBeenCalled();
+        current.model.mock = 'live-model';current.token.mock = 'changed-key';current.system_role.mock = 'live-prompt';
+        current.glossaryLibraries[0].entries[0].target = '已修改';
+        ready.resolve();
+
+        await expect(result).resolves.toBe('可信快照译文');
+        expect(measured.reads()).toBe(0);
+        expect(mocks.service).toHaveBeenCalledOnce();
+        const used = getTranslationProviderConfig(mocks.service.mock.calls[0][0], current);
+        expect(used).toMatchObject({model: {mock: 'frozen-count-model'}, token: {mock: 'fixture-count-key'}, system_role: {mock: 'frozen-count-prompt'}});
+        expect(used.glossaryLibraries).toBe(snapshot.glossaryLibraries);
+        expect(used.glossaryLibraries![0].entries[0].target).toBe('术语0');
+        expect(Object.isFrozen(used.glossaryLibraries![0].entries[0])).toBe(true);
+        expect(translationCacheIdentities().at(-1)).toMatchObject({model: 'frozen-count-model', sourceText: 'Frozen source'});
+    });
+
+    it('无附着公开请求在 ready 后仅复制一次，每个新请求读取新配置且 provider 与缓存身份一致', async () => {
+        const measured = measuredProviderConfig();
+        const {current, entryCount} = measured;
+        const ready = deferred<void>();
+        installBroker(undefined, ready.promise, true, undefined, current);
+        mocks.service.mockResolvedValue('公开请求译文');
+        const result = translateWithCache({origin: 'Public source', useCache: false});
+        await flushMicrotasks();
+        expect(measured.reads()).toBe(0);
+        current.model.mock = 'ready-model';current.token.mock = 'ready-key';
+        ready.resolve();
+        await expect(result).resolves.toBe('公开请求译文');
+        expect(measured.reads()).toBe(entryCount);
+        let used = getTranslationProviderConfig(mocks.service.mock.calls[0][0], current);
+        expect(used.model.mock).toBe('ready-model');expect(used.token.mock).toBe('ready-key');
+        expect(translationCacheIdentities().at(-1)?.model).toBe('ready-model');
+
+        current.model.mock = 'next-model';current.glossaryLibraries[0].entries[0].target = '下一次';
+        await expect(translateWithCache({origin: 'Next source', useCache: false})).resolves.toBe('公开请求译文');
+        expect(measured.reads()).toBe(entryCount * 2);
+        used = getTranslationProviderConfig(mocks.service.mock.calls[1][0], current);
+        expect(used.model.mock).toBe('next-model');expect(used.glossaryLibraries![0].entries[0].target).toBe('下一次');
+        expect(translationCacheIdentities().at(-1)?.model).toBe('next-model');
+    });
+
+    it('真实输入框 handler → broker 仅保留入口必要的一次完整快照复制', async () => {
+        const measured = measuredProviderConfig();
+        const {current, entryCount} = measured;
+        installBroker(undefined, Promise.resolve(), true, undefined, current);
+        mocks.service.mockResolvedValue('输入框译文');
+        const handler = createInputBoxTranslationHandler({ready: Promise.resolve(), getConfig: () => current, translate: translateWithCache});
+        await expect(handler.handle({type: 'inputBoxTranslation', text: 'Input source', targetLang: 'zh-Hans'}))
+            .resolves.toEqual({success: true, translatedText: '输入框译文'});
+        console.info(JSON.stringify({lazyFallbackOperationEvidence: 'input-handler-to-broker', entries: entryCount,
+            entryCopies: measured.reads(), providerCalls: mocks.service.mock.calls.length}));
+        expect(measured.reads()).toBe(entryCount);
+        expect(mocks.service).toHaveBeenCalledOnce();
+        const used = getTranslationProviderConfig(mocks.service.mock.calls[0][0], current);
+        expect(used.model.mock).toBe('frozen-count-model');expect(used.token.mock).toBe('fixture-count-key');
+        expect(translationCacheIdentities().at(-1)).toMatchObject({model: used.model.mock, sourceText: 'Input source'});
+    });
+
+    it.each([false, true])('ready 等待中取消不会构造 fallback 或执行 provider，附着=%s', async attached => {
+        const measured = measuredProviderConfig();
+        const {current} = measured;
+        const snapshot = createTranslationProviderConfigSnapshot(current);
+        measured.reset();
+        const ready = deferred<void>();
+        const controller = new AbortController();
+        installBroker(undefined, ready.promise, true, undefined, current);
+        const message = attachTranslationRequestControl({origin: 'Cancelled ready source', useCache: false},
+            {signal: controller.signal, ownershipKey: 'count:ready-cancel'});
+        if (attached) attachTranslationProviderConfig(message, snapshot);
+        const result = translateWithCache(message);
+        const rejected = expect(result).rejects.toMatchObject({name: 'AbortError'});
+        await flushMicrotasks();controller.abort();await rejected;
+        ready.resolve();await flushMicrotasks();
+        expect(measured.reads()).toBe(0);
+        expect(mocks.service).not.toHaveBeenCalled();
+        expect(mocks.buildTranslationCacheKey).not.toHaveBeenCalled();
+    });
+
     it('reuses persisted single cache entries, including successful unchanged results', async () => {
         mocks.service.mockResolvedValueOnce('共享译文');
         await expect(translateWithCache({origin: 'Readable source'})).resolves.toBe('共享译文');
@@ -608,7 +783,7 @@ describe('translation broker', () => {
         await clearTranslationCache();
         vi.clearAllMocks();
         mocks.service.mockResolvedValueOnce('');
-        await expect(translateWithCache({origin: 'Empty'})).resolves.toBe('');
+        await expect(translateWithCache({origin: 'Empty'})).rejects.toMatchObject({code: 'TRANSLATION_SLOT_RESPONSE_INVALID'});
 
         expect(mocks.cacheSet).not.toHaveBeenCalled();
     });
@@ -1575,6 +1750,37 @@ describe('translation broker', () => {
         expect(mocks.config.enableAIContext).toBe(true);
     });
 
+    it('篇章证据变更复用一次页面摘要且进入缓存身份，总预算不增长', async () => {
+        mocks.config.service = 'ai'; mocks.config.enableAIContext = true;
+        mocks.service.mockImplementation((message: {summaryPrompt?: string; origin: string}) =>
+            Promise.resolve(message.summaryPrompt ? '短摘要' : `${message.origin}-译文`));
+        for (const evidence of ['chapter-a', 'chapter-b', 'chapter-b']) {
+            await translateWithCache({origin: 'AP controls timing.', pageContext: 'Article context',
+                discourseContext: evidence});
+        }
+        expect(mocks.service.mock.calls.filter(([message]) => message.summaryPrompt)).toHaveLength(1);
+        expect(mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt)).toHaveLength(2);
+        const identities = translationCacheIdentities();
+        expect(identities.map(identity => identity.pageContext).some(context => context?.includes('chapter-a'))).toBe(true);
+        expect(identities.map(identity => identity.pageContext).some(context => context?.includes('chapter-b'))).toBe(true);
+        await translateWithCache({origin: 'An independent source.', pageContext: 'a'.repeat(4000),
+            discourseContext: 'b'.repeat(10000)});
+        const last = mocks.service.mock.calls.at(-1)![0];
+        expect(last.pageContext.length).toBeLessThanOrEqual(4000);
+        expect(last).not.toHaveProperty('discourseContext');
+        expect(last.pageContext).toContain('</discourse_evidence>');
+    });
+
+    it('关闭上下文或机器服务不外传篇章原始数据', async () => {
+        for (const service of ['ai', 'mock']) {
+            mocks.config.service = service;
+            await translateWithCache({origin: 'Independent source', discourseContext: 'Private evidence',
+                enableAIContext: false, useCache: false});
+            expect(mocks.service.mock.calls.at(-1)![0]).not.toHaveProperty('discourseContext');
+            expect(mocks.service.mock.calls.at(-1)![0].pageContext).toBe('');
+        }
+    });
+
     it('请求级 AI 上下文策略覆盖实时配置，并同时约束摘要与正文 provider', async () => {
         mocks.config.service = 'ai';
         mocks.config.enableAIContext = false;
@@ -1960,21 +2166,16 @@ describe('translation broker', () => {
         expect(bodyCalls[0]?.[0]).toMatchObject({origin: ['Alpha'], context: '', pageContext: ''});
     });
 
-    it('AI 多段单元素请求复用单条恢复，并兼容运行时缺失的槽位值', async () => {
+    it('AI 多段运行时缺失的来源槽在本地保留为空，不发送无来源翻译', async () => {
         mocks.config.service = 'ai';
         mocks.config.enableAIContext = false;
-        mocks.service.mockImplementation((message: {origin: string | string[]}) => {
-            expect(Array.isArray(message.origin)).toBe(false);
-            expect(message.origin).toBe('');
-            return Promise.resolve('空槽译文');
-        });
 
         await expect(translateWithCache({
             origin: [undefined] as unknown as string[],
             aiMultiSegment: true,
             useCache: false,
-        })).resolves.toEqual(['空槽译文']);
-        expect(mocks.service).toHaveBeenCalledTimes(1);
+        })).resolves.toEqual(['']);
+        expect(mocks.service).not.toHaveBeenCalled();
     });
 
     it('AI 多段单元素的旧泄漏缓存直接走无上下文单条恢复', async () => {
@@ -2106,7 +2307,7 @@ describe('translation broker', () => {
         mocks.service.mockImplementation((message: {origin: string}) => Promise.resolve(message.origin));
 
         await expect(translateWithCache({
-            origin: ['Alpha', 'Beta'],
+            origin: ['This English sentence must be translated into Chinese.', 'Another English paragraph explains the language settings.'],
             aiMultiSegment: true,
             useCache: false,
         })).rejects.toMatchObject({
@@ -2237,16 +2438,16 @@ describe('translation broker', () => {
         expect(mocks.cacheSet).toHaveBeenCalledWith(expect.any(String), '新译文');
     });
 
-    it('批量缓存校验对运行时缺失的原文槽使用空串身份', async () => {
+    it('批量缓存不为运行时缺失的来源槽复用旧译文', async () => {
         mocks.cacheGet.mockResolvedValueOnce('无源缓存译文');
 
         await expect(translateWithCache({
             origin: [undefined] as unknown as string[],
-        })).resolves.toEqual(['无源缓存译文']);
+        })).resolves.toEqual(['']);
         expect(mocks.service).not.toHaveBeenCalled();
     });
 
-    it('普通 AI 批量对校验后缺失的原文与译文槽采用空串恢复', async () => {
+    it('普通 AI 批量在校验后译文槽消失时拒绝整批，不发布空串缓存', async () => {
         mocks.config.service = 'ai';
         mocks.config.enableAIContext = true;
         const softLeak = 'Atoll SoundSource StudioDisplay context material remains visible in a long but non-verbatim response for validation';
@@ -2296,14 +2497,14 @@ describe('translation broker', () => {
             await expect(translateWithCache({
                 origin: ['Alpha', 'Beta'],
                 pageContext: 'Page title: Atoll. Readable page content: SoundSource StudioDisplay reference.',
-            })).resolves.toEqual(['', '']);
+            })).rejects.toMatchObject({code: 'TRANSLATION_SLOT_RESPONSE_INVALID'});
             expect(adjusted).toBe(true);
         } finally {
             someSpy.mockRestore();
         }
     });
 
-    it('普通 AI 批量在结果数组复制后遇到缺失槽仍保持输出为字符串', async () => {
+    it('普通 AI 批量在结果数组复制后遇到缺失槽时拒绝伪成功空串', async () => {
         mocks.config.service = 'ai';
         mocks.config.enableAIContext = true;
         mocks.service.mockResolvedValue(['甲文', '乙文']);
@@ -2322,7 +2523,7 @@ describe('translation broker', () => {
             return result;
         }) as typeof Array.from);
         try {
-            await expect(translateWithCache({origin: ['Alpha', 'Beta'], useCache: false})).resolves.toEqual(['', '乙文']);
+            await expect(translateWithCache({origin: ['Alpha', 'Beta'], useCache: false})).rejects.toMatchObject({code: 'TRANSLATION_SLOT_RESPONSE_INVALID'});
             expect(adjusted).toBe(true);
         } finally {
             fromSpy.mockRestore();
@@ -2350,7 +2551,7 @@ describe('translation broker', () => {
         ));
 
         await expect(translateWithCache({
-            origin: ['First paragraph', 'Second paragraph'],
+            origin: ['The first paragraph explains the computer settings.', 'The second paragraph discusses translation results.'],
             aiMultiSegment: true,
             useCache: false,
         })).rejects.toMatchObject({
@@ -4191,6 +4392,271 @@ describe('translation broker', () => {
             expect.objectContaining({requestMode: 'page-summary', customHeaders: '{"x-session":"session-a"}'}),
             expect.objectContaining({requestMode: 'page-summary', customHeaders: '{"x-session":"session-b"}'}),
         ]));
+    });
+
+    it.each([services.microsoft, services.google, services.deepL, services.azureTranslator, services.googleCloudTranslation])(
+        '%s 关闭原生合批时显式数组逐条传输，成功前不写局部缓存', async service => {
+            mocks.config.service = service;
+            mocks.config.nativeBatchTranslationEnabled = {[service]: false};
+            const origins = ['First paragraph explains the settings.', 'Second paragraph describes the reader.'];
+            const last = deferred<string>();
+            mocks.service.mockResolvedValueOnce('第一段介绍设置。').mockImplementationOnce(() => last.promise);
+            const request = translateWithCache({origin: origins, aiMultiSegment: true});
+            await flushMicrotasks(80);
+            expect(mocks.service.mock.calls.map(([message]) => message.origin)).toEqual(origins);
+            expect(mocks.service.mock.calls.every(([message]) => message.enableNativeBatch === false)).toBe(true);
+            expect(mocks.cacheSet).not.toHaveBeenCalled();
+            last.resolve('第二段介绍阅读器。');
+            await expect(request).resolves.toEqual(['第一段介绍设置。', '第二段介绍阅读器。']);
+            expect(mocks.cacheSet).toHaveBeenCalledTimes(2);
+        },
+    );
+
+    it('服务独立开关与冻结消息覆盖保持在途策略，cache 和 pending 按开关隔离', async () => {
+        mocks.config.service = services.google;
+        mocks.config.nativeBatchTranslationEnabled = {[services.google]: false};
+        const origins = ['A frozen paragraph.', 'Another frozen paragraph.'];
+        const hold = deferred<string[]>();
+        mocks.service.mockImplementation(async message => Array.isArray(message.origin) ? hold.promise : '单项译文。');
+        const enabled = translateWithCache({origin: origins, enableNativeBatch: true});
+        await flushMicrotasks(80);
+        const disabled = translateWithCache({origin: origins});
+        await expect(disabled).resolves.toEqual(['单项译文。', '单项译文。']);
+        expect(mocks.service.mock.calls.map(([message]) => message.origin)).toEqual([origins, ...origins]);
+        hold.resolve(['整批第一译文。', '整批第二译文。']);
+        await expect(enabled).resolves.toEqual(['整批第一译文。', '整批第二译文。']);
+        expect(translationCacheIdentities().filter(identity => identity.service === services.google)
+            .map(identity => identity.enableNativeBatch)).toEqual(expect.arrayContaining([true, false]));
+        mocks.config.nativeBatchTranslationEnabled[services.google] = true;
+        await expect(translateWithCache({origin: origins, enableNativeBatch: false})).resolves.toEqual(['单项译文。', '单项译文。']);
+        mocks.config.service = services.microsoft;
+        mocks.service.mockResolvedValueOnce(['微软第一译文。', '微软第二译文。']);
+        await expect(translateWithCache({origin: origins})).resolves.toEqual(['微软第一译文。', '微软第二译文。']);
+        expect(mocks.service.mock.calls.at(-1)?.[0]).toMatchObject({origin: origins, enableNativeBatch: true});
+    });
+
+    it('关闭合批后的后续空结果拒绝整请求，无局部缓存且不启动余下槽', async () => {
+        mocks.config.service = services.google;
+        mocks.config.nativeBatchTranslationEnabled = {[services.google]: false};
+        mocks.service.mockResolvedValueOnce('第一段有效译文。').mockResolvedValueOnce('\u200b');
+        await expect(translateWithCache({origin: ['First paragraph.', 'Second paragraph.', 'Third paragraph.']}))
+            .rejects.toMatchObject({code: 'TRANSLATION_SLOT_RESPONSE_INVALID'});
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it('关闭合批的逐条链共享取消域，不缓存取消前的结果', async () => {
+        mocks.config.service = services.google;
+        mocks.config.nativeBatchTranslationEnabled = {[services.google]: false};
+        const controller = new AbortController();
+        mocks.service.mockImplementationOnce(async () => {controller.abort(); return '第一段有效译文。';});
+        const request = attachTranslationRequestControl({origin: ['First paragraph.', 'Second paragraph.']}, {
+            signal: controller.signal, ownershipKey: 'native-disabled',
+        });
+        await expect(translateWithCache(request)).rejects.toMatchObject({name: 'AbortError'});
+        expect(mocks.service).toHaveBeenCalledOnce();
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it.each([services.microsoft, services.google, services.deepL, services.azureTranslator, services.googleCloudTranslation])(
+        '%s 原生结构异常仅在相同 owner 内逐段恢复，整批成功才缓存', async service => {
+            mocks.config.service = service;
+            const origins = ['The first paragraph describes the reader settings.', 'The second paragraph explains the translation feature.'];
+            const last = deferred<string>();
+            mocks.service.mockRejectedValueOnce(new NativeBatchResponseError())
+                .mockResolvedValueOnce('第一段说明阅读器设置。')
+                .mockImplementationOnce(() => last.promise);
+            const request = translateWithCache({origin: origins, requestTimeoutMs: 2_000});
+            await flushMicrotasks(80);
+            expect(mocks.service.mock.calls.map(([message]) => message.origin)).toEqual([origins, ...origins]);
+            expect(mocks.cacheSet).not.toHaveBeenCalled();
+            expect(mocks.service.mock.calls.slice(1).every(([message]) => message.enableNativeBatch === false)).toBe(true);
+            last.resolve('第二段说明翻译功能。');
+            await expect(request).resolves.toEqual(['第一段说明阅读器设置。', '第二段说明翻译功能。']);
+            expect(mocks.cacheSet).toHaveBeenCalledTimes(2);
+            mocks.service.mockClear();
+            await expect(translateWithCache({origin: origins})).resolves.toEqual(['第一段说明阅读器设置。', '第二段说明翻译功能。']);
+            expect(mocks.service).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each([
+        {shape: 'not-array', response: '错误的标量'},
+        {shape: 'missing', response: ['部分译文']},
+        {shape: 'extra', response: ['甲', '乙', '多余译文']},
+        {shape: 'sparse', response: new Array(2)},
+        {shape: 'non-string', response: ['甲', null]},
+        {shape: 'empty', response: ['甲', ' \t']},
+        {shape: 'invisible', response: ['甲', '\u200b']},
+    ])('原生批次 $shape 响应完整废弃，全部来源以单条恢复', async ({response}) => {
+        mocks.config.service = services.deepL;
+        const origins = ['First source paragraph', 'Second source paragraph'];
+        mocks.service.mockResolvedValueOnce(response).mockResolvedValueOnce('第一段恢复译文').mockResolvedValueOnce('第二段恢复译文');
+        await expect(translateWithCache({origin: origins})).resolves.toEqual(['第一段恢复译文', '第二段恢复译文']);
+        expect(mocks.service.mock.calls.map(([message]) => message.origin)).toEqual([origins, ...origins]);
+        expect([...mocks.cacheStore.values()]).toEqual(['第一段恢复译文', '第二段恢复译文']);
+    });
+
+    it.each([401, 403, 429, 503, undefined])('原生批次 HTTP/network %s 失败不拆批放大请求', async statusCode => {
+        mocks.config.service = services.deepL;
+        const failure = Object.assign(new Error('provider unavailable'), {statusCode});
+        mocks.service.mockRejectedValue(failure);
+        await expect(translateWithCache({origin: ['First paragraph', 'Second paragraph']})).rejects.toBe(failure);
+        expect(mocks.service).toHaveBeenCalledOnce();
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it('原生恢复再次返回空正文时拒绝整批，已恢复的其他槽也不缓存', async () => {
+        mocks.config.service = services.deepL;
+        mocks.service.mockRejectedValueOnce(new NativeBatchResponseError())
+            .mockResolvedValueOnce('第一段正确译文').mockResolvedValueOnce('\u200b');
+        await expect(translateWithCache({origin: ['First source', 'Second source']})).rejects.toMatchObject({
+            kind: 'response', code: 'TRANSLATION_SLOT_RESPONSE_INVALID', retryable: false,
+        });
+        expect(mocks.service).toHaveBeenCalledTimes(3);
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it('关闭合批的逐条链共用绝对 deadline，末槽超时不发布前槽或缓存迟到译文', async () => {
+        vi.useFakeTimers();
+        mocks.config.service = services.google;
+        mocks.config.nativeBatchTranslationEnabled = {[services.google]: false};
+        const late = deferred<string>();
+        mocks.service.mockImplementationOnce(async () => {
+            await new Promise(resolve => setTimeout(resolve, 600));
+            return '第一段有效译文。';
+        }).mockImplementationOnce(() => late.promise);
+        const request = translateWithCache({origin: ['First source', 'Second source', 'Third source'], requestTimeoutMs: 1_000});
+        const rejection = expect(request).rejects.toThrow('翻译请求超时');
+        await flushMicrotasks();
+        await vi.advanceTimersByTimeAsync(600);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        expect(mocks.service.mock.calls[1]![0]).toMatchObject({origin: 'Second source', requestTimeoutMs: 400, enableNativeBatch: false});
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(400);
+        await rejection;
+        expect(mocks.service.mock.calls[1]![0].abortSignal.aborted).toBe(true);
+        late.resolve('迟到第二段译文。');
+        await flushMicrotasks();
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it('原生恢复共用原始绝对 deadline，首槽超时后不启动剩余槽或缓存迟到结果', async () => {
+        vi.useFakeTimers();
+        mocks.config.service = services.deepL;
+        const late = deferred<string>();
+        mocks.service.mockImplementationOnce(async () => {
+            await new Promise(resolve => setTimeout(resolve, 600));
+            throw new NativeBatchResponseError();
+        }).mockImplementationOnce(() => late.promise);
+        const request = translateWithCache({origin: ['First source', 'Second source'], requestTimeoutMs: 1_000});
+        const rejection = expect(request).rejects.toThrow('翻译请求超时');
+        await flushMicrotasks();
+        await vi.advanceTimersByTimeAsync(600);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        expect(mocks.service.mock.calls[1]![0].requestTimeoutMs).toBe(400);
+        await vi.advanceTimersByTimeAsync(400);
+        await rejection;
+        expect(mocks.service.mock.calls[1]![0].abortSignal.aborted).toBe(true);
+        late.resolve('迟到的第一槽译文');
+        await flushMicrotasks();
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it('原生逐段恢复沿用调用方取消域，不启动取消后的槽', async () => {
+        mocks.config.service = services.deepL;
+        const controller = new AbortController();
+        const late = deferred<string>();
+        mocks.service.mockRejectedValueOnce(new NativeBatchResponseError()).mockImplementationOnce(() => late.promise);
+        const request = translateWithCache(attachTranslationRequestControl({origin: ['First source', 'Second source']}, {
+            signal: controller.signal, ownershipKey: 'native-response-recovery',
+        }));
+        const rejection = expect(request).rejects.toMatchObject({name: 'AbortError'});
+        await flushMicrotasks(80);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        controller.abort();
+        await rejection;
+        expect(mocks.service.mock.calls[1]![0].abortSignal.aborted).toBe(true);
+        late.resolve('迟到结果');
+        await flushMicrotasks();
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it('原生批量的空来源本地保留，旧空译文缓存重译，重复来源按原序回填', async () => {
+        mocks.config.service = services.deepL;
+        const first = 'The document explains how the settings are stored.';
+        const second = 'The next paragraph discusses browser compatibility.';
+        mocks.cacheGet.mockResolvedValue(' \u200b');
+        mocks.service.mockResolvedValueOnce(['设置如何保存。', '浏览器兼容性。']);
+        await expect(translateWithCache({origin: ['', first, ' \n\t', second, first]})).resolves.toEqual([
+            '', '设置如何保存。', ' \n\t', '浏览器兼容性。', '设置如何保存。',
+        ]);
+        expect(mocks.service).toHaveBeenCalledOnce();
+        expect(mocks.service.mock.calls[0]![0].origin).toEqual([first, second]);
+        expect(mocks.cacheSet).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([services.deepL, 'ai'])('%s 多段允许目标语同文与专名，不因完整回显而误判失败', async service => {
+        mocks.config.service = service;
+        const origins = ['已经是中文的正文。', 'Ada Lovelace'];
+        mocks.service.mockImplementation(async message => message.origin);
+        await expect(translateWithCache({origin: origins, aiMultiSegment: service === 'ai'})).resolves.toEqual(origins);
+        expect(mocks.service).toHaveBeenCalledOnce();
+        expect(mocks.cacheSet).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(['', ' \t', '\u200b'])('非空单条返回不可见空译文 %j 时拒绝展示及成功缓存', async output => {
+        mocks.service.mockResolvedValue(output);
+        await expect(translateWithCache({origin: 'Nonempty paragraph'})).rejects.toMatchObject({
+            kind: 'response', code: 'TRANSLATION_SLOT_RESPONSE_INVALID', retryable: false,
+        });
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it.each(['missing', 'duplicate', 'reordered', 'outside', 'invisible'])('AI 多段 %s 协议不能发布部分缓存', async shape => {
+        mocks.config.service = 'ai';
+        const origins = ['The first paragraph must be translated into Chinese.', 'The second paragraph contains different source text.'];
+        const packet = serializeTranslationSlots(origins);
+        const translated = serializeTranslationSlots(['第一段译文。', '第二段译文。'], packet.starts[0]!.slice('___FLUENTREAD_'.length, -'_0_BEGIN___'.length)).payload;
+        const invalid = shape === 'missing' ? translated.replace(packet.ends[1]!, '')
+            : shape === 'duplicate' ? `${translated}\n${packet.starts[0]}重复${packet.ends[0]}`
+                : shape === 'reordered' ? translated.split('\n').reverse().join('\n')
+                    : shape === 'outside' ? `${translated}\n额外正文`
+                        : translated.replace('第一段译文。', '\u200b');
+        mocks.service.mockResolvedValue(invalid);
+        await expect(translateWithCache({origin: origins, aiMultiSegment: true})).rejects.toMatchObject({
+            kind: 'response', code: 'AI_MULTI_SEGMENT_RESPONSE_INVALID', retryable: false,
+        });
+        expect(mocks.service).toHaveBeenCalledOnce();
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it('整批空白或不可见来源在入口本地保留，不等待水合、读取缓存或请求页面摘要', async () => {
+        mocks.config.service = 'ai';
+        mocks.config.enableAIContext = true;
+        installBroker(undefined, new Promise(() => undefined));
+        const origins = ['', ' \n\t', '\u200b'];
+        await expect(translateWithCache({origin: origins, aiMultiSegment: true, pageContext: 'Some page context'}))
+            .resolves.toEqual(origins);
+        expect(mocks.service).not.toHaveBeenCalled();
+        expect(mocks.cacheGet).not.toHaveBeenCalled();
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it('原生错误的复制字段仍触发恢复，provider 改写自己的来源数组不影响恢复身份', async () => {
+        mocks.config.service = services.deepL;
+        const origins = ['Original first paragraph', 'Original second paragraph'];
+        mocks.service.mockImplementationOnce(async message => {
+            message.origin[0] = 'Provider mutation';
+            throw {kind: 'response', code: 'NATIVE_BATCH_RESPONSE_INVALID', retryable: false};
+        }).mockResolvedValueOnce('原始第一段译文').mockResolvedValueOnce('原始第二段译文');
+        await expect(translateWithCache({origin: origins})).resolves.toEqual(['原始第一段译文', '原始第二段译文']);
+        expect(mocks.service.mock.calls.slice(1).map(([message]) => message.origin)).toEqual(origins);
+        expect(origins).toEqual(['Original first paragraph', 'Original second paragraph']);
+        expect([...mocks.cacheStore.values()]).toEqual(['原始第一段译文', '原始第二段译文']);
     });
 
 });

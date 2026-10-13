@@ -26,6 +26,14 @@ function pattern(
 
 export const runtimeFeedbackPatterns: readonly LocalizedLegacyPattern[] = [
     // 翻译链路与服务商。
+    pattern("^豆包网页翻译访客初始化失败: (\\d+)$", [],
+        'Doubao Web Translation could not initialize an anonymous guest: {1}', 'Doubao ウェブ翻訳の匿名ゲストを初期化できませんでした：{1}', 'Doubao 웹 번역의 익명 방문자를 초기화하지 못했습니다: {1}', 'La traduction web Doubao n’a pas pu initialiser un visiteur anonyme : {1}', 'Веб-перевод Doubao не смог инициализировать анонимного гостя: {1}', 'La traducción web de Doubao no pudo inicializar un visitante anónimo: {1}'),
+    pattern("^豆包网页翻译请求失败: (\\d+)$", [],
+        'The Doubao Web Translation request failed: {1}', 'Doubao ウェブ翻訳のリクエストに失敗しました：{1}', 'Doubao 웹 번역 요청에 실패했습니다: {1}', 'La requête de traduction web Doubao a échoué : {1}', 'Запрос веб-перевода Doubao не выполнен: {1}', 'La solicitud de traducción web de Doubao falló: {1}'),
+    pattern("^豆包网页翻译访客初始化失败（错误码 (\\d+)）$", [],
+        'Doubao Web Translation could not initialize an anonymous guest (error code {1})', 'Doubao ウェブ翻訳の匿名ゲストを初期化できませんでした（エラーコード {1}）', 'Doubao 웹 번역의 익명 방문자를 초기화하지 못했습니다(오류 코드 {1})', 'La traduction web Doubao n’a pas pu initialiser un visiteur anonyme (code d’erreur {1})', 'Веб-перевод Doubao не смог инициализировать анонимного гостя (код ошибки {1})', 'La traducción web de Doubao no pudo inicializar un visitante anónimo (código de error {1})'),
+    pattern("^豆包网页翻译请求失败（错误码 (\\d+)）$", [],
+        'The Doubao Web Translation request failed (error code {1})', 'Doubao ウェブ翻訳のリクエストに失敗しました（エラーコード {1}）', 'Doubao 웹 번역 요청에 실패했습니다(오류 코드 {1})', 'La requête de traduction web Doubao a échoué (code d’erreur {1})', 'Запрос веб-перевода Doubao не выполнен (код ошибки {1})', 'La solicitud de traducción web de Doubao falló (código de error {1})'),
     pattern("^翻译失败[：:]\\s*(.+)$", [1],
         'Translation failed: {1}', '翻訳に失敗しました：{1}', '번역 실패: {1}', 'Échec de la traduction : {1}', 'Не удалось перевести: {1}', 'No se pudo traducir: {1}'),
     pattern("^Chrome Translation API 不可用：(.+)$", [1],

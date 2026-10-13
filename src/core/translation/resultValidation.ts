@@ -1,7 +1,7 @@
 /**
  * @file src/core/translation/resultValidation.ts
  * 文件职责：识别翻译服务误返原文或明显错语种的响应，避免将其当成成功译文。
- * 主要内容：复用语言识别副本排除纯符号、数字和技术标识，仅在既有外语证据下识别标点边界或 U+200B 包装的原文回显，保留字词、大小写和符号差异，补足中文目标下短标签列表、运算符标签丢词或大小写回显和整段日文结果的保守判定。
+ * 主要内容：复用语言识别副本排除纯符号、数字和技术标识，仅在既有外语证据下识别标点边界或 U+200B 包装的原文回显，保留字词、大小写和符号差异，补足中文目标下短标签列表、运算符标签丢词或大小写回显和整段日文结果的保守判定；文档行内正文可在完整原句的既有外语证据下识别普通多词标签原样返回，专名和单词仍保持保守。
  * 模块边界：仅做保守的纯文本判定；不读取配置或缓存、不请求服务，也不改写原文与译文。
  */
 import {getChineseScript} from '@/src/core/language/chinese';
@@ -85,6 +85,17 @@ export function isLikelyUntranslatedResponse(origin: string, result: string, tar
         isLatinKeywordList(origin) || isLatinShortHeading(origin) ||
         (createLanguageDetectionCopy(origin).text.match(/\b[a-z]{3,}\b/gu) ?? []).length >= 3
     );
+}
+
+/** 仅文档行内节点使用完整原句的真实外语证据，不改变其他入口的单段判定。 */
+export function isLikelyUntranslatedInlineResponse(origin: string, result: string, targetLanguage: string, sourceContext: string): boolean {
+    if (isLikelyUntranslatedResponse(origin, result, targetLanguage)) return true;
+    // 短英文节点缺乏独立语言证据；中文目标和完整外语原句均明确时才补足，英文目标不误拒已是英文的标签。
+    if (!getChineseScript(targetLanguage) || comparable(origin) !== comparable(result)
+        || !isLikelyUntranslatedResponse(sourceContext, sourceContext, targetLanguage)) return false;
+    const words = createLanguageDetectionCopy(origin).text.match(/\b[A-Za-z]{3,}\b/gu) ?? [];
+    return words.length >= 2 && words.some(word => /^[a-z]+$/u.test(word))
+        && words.slice(1).every(word => !/^[A-Z][a-z]/u.test(word));
 }
 
 /** 假名与汉字共同构成日文正文；少量日语名称、短引用和不确定的混合段落照常展示。 */

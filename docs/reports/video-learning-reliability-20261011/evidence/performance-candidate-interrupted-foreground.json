@@ -1,0 +1,381 @@
+{
+  "success": false,
+  "evidence": "Production extension; real local MP4 clock; original timed-caption fixtures; deterministic translation; actual live probes reported separately",
+  "fixtureCases": [],
+  "liveCases": [],
+  "pageErrors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "performanceCases": [
+    {
+      "platform": "youtube",
+      "scenario": "runtime-closed-static",
+      "trial": 1,
+      "checks": [
+        {
+          "name": "Natural 1x media advances without extension seeks, speed changes or same-sentence translation requests",
+          "pass": true,
+          "details": {
+            "wallSeconds": 6.006449999753386,
+            "taskMs": 30.753000000000004,
+            "scriptMs": 20.081000000000003,
+            "layoutMs": 0,
+            "recalcStyleMs": 0.07200000000000001,
+            "layouts": 0,
+            "recalcStyles": 1,
+            "nativeTimeupdateTicks": 23,
+            "pageDomMutations": 366,
+            "panelDomMutations": 0,
+            "translationRequests": 0,
+            "longTasks": [],
+            "media": {
+              "currentTime": 6.108815,
+              "playbackRate": 1,
+              "paused": false,
+              "elapsedMediaSeconds": 6.008815,
+              "elapsedWallMs": 6012.099999904633,
+              "events": [
+                {
+                  "type": "play",
+                  "time": 0.1,
+                  "rate": 1,
+                  "wallMs": 671.4000000953674
+                }
+              ],
+              "nativeDomChurns": 0
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "wallSeconds": 6.006449999753386,
+        "taskMs": 30.753000000000004,
+        "scriptMs": 20.081000000000003,
+        "layoutMs": 0,
+        "recalcStyleMs": 0.07200000000000001,
+        "layouts": 0,
+        "recalcStyles": 1,
+        "nativeTimeupdateTicks": 23,
+        "pageDomMutations": 366,
+        "panelDomMutations": 0,
+        "translationRequests": 0,
+        "longTasks": [],
+        "media": {
+          "currentTime": 6.108815,
+          "playbackRate": 1,
+          "paused": false,
+          "elapsedMediaSeconds": 6.008815,
+          "elapsedWallMs": 6012.099999904633,
+          "events": [
+            {
+              "type": "play",
+              "time": 0.1,
+              "rate": 1,
+              "wallMs": 671.4000000953674
+            }
+          ],
+          "nativeDomChurns": 0
+        }
+      },
+      "success": true
+    },
+    {
+      "platform": "youtube",
+      "scenario": "learning-open-static",
+      "trial": 1,
+      "checks": [
+        {
+          "name": "Natural 1x media advances without extension seeks, speed changes or same-sentence translation requests",
+          "pass": true,
+          "details": {
+            "wallSeconds": 6.011946999933571,
+            "taskMs": 36.64,
+            "scriptMs": 21.274,
+            "layoutMs": 0,
+            "recalcStyleMs": 0.192,
+            "layouts": 0,
+            "recalcStyles": 1,
+            "nativeTimeupdateTicks": 23,
+            "pageDomMutations": 363,
+            "panelDomMutations": 0,
+            "translationRequests": 0,
+            "longTasks": [],
+            "media": {
+              "currentTime": 6.112091,
+              "playbackRate": 1,
+              "paused": false,
+              "elapsedMediaSeconds": 6.012091000000001,
+              "elapsedWallMs": 6014.900000095367,
+              "events": [
+                {
+                  "type": "play",
+                  "time": 0.100911,
+                  "rate": 1,
+                  "wallMs": 894.7999997138977
+                }
+              ],
+              "nativeDomChurns": 0
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "wallSeconds": 6.011946999933571,
+        "taskMs": 36.64,
+        "scriptMs": 21.274,
+        "layoutMs": 0,
+        "recalcStyleMs": 0.192,
+        "layouts": 0,
+        "recalcStyles": 1,
+        "nativeTimeupdateTicks": 23,
+        "pageDomMutations": 363,
+        "panelDomMutations": 0,
+        "translationRequests": 0,
+        "longTasks": [],
+        "media": {
+          "currentTime": 6.112091,
+          "playbackRate": 1,
+          "paused": false,
+          "elapsedMediaSeconds": 6.012091000000001,
+          "elapsedWallMs": 6014.900000095367,
+          "events": [
+            {
+              "type": "play",
+              "time": 0.100911,
+              "rate": 1,
+              "wallMs": 894.7999997138977
+            }
+          ],
+          "nativeDomChurns": 0
+        }
+      },
+      "success": true
+    },
+    {
+      "platform": "youtube",
+      "scenario": "learning-open-native-caption-churn",
+      "trial": 1,
+      "checks": [
+        {
+          "name": "Natural 1x media advances without extension seeks, speed changes or same-sentence translation requests",
+          "pass": true,
+          "details": {
+            "wallSeconds": 6.016260000411421,
+            "taskMs": 216.50300000000001,
+            "scriptMs": 89.181,
+            "layoutMs": 30.585,
+            "recalcStyleMs": 13.045,
+            "layouts": 120,
+            "recalcStyles": 121,
+            "nativeTimeupdateTicks": 23,
+            "pageDomMutations": 843,
+            "panelDomMutations": 0,
+            "translationRequests": 0,
+            "longTasks": [],
+            "media": {
+              "currentTime": 6.118207,
+              "playbackRate": 1,
+              "paused": false,
+              "elapsedMediaSeconds": 6.018207,
+              "elapsedWallMs": 6020.300000190735,
+              "events": [
+                {
+                  "type": "play",
+                  "time": 0.100434,
+                  "rate": 1,
+                  "wallMs": 762.4000000953674
+                }
+              ],
+              "nativeDomChurns": 120
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "wallSeconds": 6.016260000411421,
+        "taskMs": 216.50300000000001,
+        "scriptMs": 89.181,
+        "layoutMs": 30.585,
+        "recalcStyleMs": 13.045,
+        "layouts": 120,
+        "recalcStyles": 121,
+        "nativeTimeupdateTicks": 23,
+        "pageDomMutations": 843,
+        "panelDomMutations": 0,
+        "translationRequests": 0,
+        "longTasks": [],
+        "media": {
+          "currentTime": 6.118207,
+          "playbackRate": 1,
+          "paused": false,
+          "elapsedMediaSeconds": 6.018207,
+          "elapsedWallMs": 6020.300000190735,
+          "events": [
+            {
+              "type": "play",
+              "time": 0.100434,
+              "rate": 1,
+              "wallMs": 762.4000000953674
+            }
+          ],
+          "nativeDomChurns": 120
+        }
+      },
+      "success": true
+    },
+    {
+      "platform": "youtube",
+      "scenario": "learning-open-native-control-churn",
+      "trial": 1,
+      "checks": [
+        {
+          "name": "Natural 1x media advances without extension seeks, speed changes or same-sentence translation requests",
+          "pass": true,
+          "details": {
+            "wallSeconds": 6.0044539999216795,
+            "taskMs": 186.565,
+            "scriptMs": 48.875,
+            "layoutMs": 43.117000000000004,
+            "recalcStyleMs": 12.066,
+            "layouts": 121,
+            "recalcStyles": 122,
+            "nativeTimeupdateTicks": 23,
+            "pageDomMutations": 495,
+            "panelDomMutations": 0,
+            "translationRequests": 0,
+            "longTasks": [],
+            "media": {
+              "currentTime": 6.104524,
+              "playbackRate": 1,
+              "paused": false,
+              "elapsedMediaSeconds": 6.004524,
+              "elapsedWallMs": 6007.400000095367,
+              "events": [
+                {
+                  "type": "play",
+                  "time": 0.1,
+                  "rate": 1,
+                  "wallMs": 750.5999999046326
+                }
+              ],
+              "nativeDomChurns": 120
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "wallSeconds": 6.0044539999216795,
+        "taskMs": 186.565,
+        "scriptMs": 48.875,
+        "layoutMs": 43.117000000000004,
+        "recalcStyleMs": 12.066,
+        "layouts": 121,
+        "recalcStyles": 122,
+        "nativeTimeupdateTicks": 23,
+        "pageDomMutations": 495,
+        "panelDomMutations": 0,
+        "translationRequests": 0,
+        "longTasks": [],
+        "media": {
+          "currentTime": 6.104524,
+          "playbackRate": 1,
+          "paused": false,
+          "elapsedMediaSeconds": 6.004524,
+          "elapsedWallMs": 6007.400000095367,
+          "events": [
+            {
+              "type": "play",
+              "time": 0.1,
+              "rate": 1,
+              "wallMs": 750.5999999046326
+            }
+          ],
+          "nativeDomChurns": 120
+        }
+      },
+      "success": true
+    },
+    {
+      "platform": "youtube",
+      "scenario": "runtime-closed-static",
+      "trial": 2,
+      "checks": [],
+      "measurements": {}
+    }
+  ],
+  "performance": {
+    "tag": "candidate-reliability-20261011",
+    "deterministicProviderDelayMs": 120,
+    "artifact": {
+      "version": "0.0.37",
+      "contentSha256": "ba52bd00d90ea5c405c40afd10365fa80b7b28a4d054fd669dfc96989ed884b2"
+    },
+    "scope": "Production UI; decoded MP4; synthetic timeupdate pressure reported separately from natural media clock; local deterministic transport, not provider latency or website acceptance",
+    "browserVersion": "131.0.2903.147",
+    "protocol": {
+      "durationMs": 6000,
+      "trials": 2,
+      "platform": "youtube",
+      "media": "18 s decoded local MP4, 20 fps; natural currentTime and native timeupdate, no dispatched media events",
+      "transport": "deterministic local Microsoft response; warm first sentence, original-only subtitle mode",
+      "cases": [
+        "runtime-closed-static",
+        "learning-open-static",
+        "learning-open-native-caption-churn",
+        "learning-open-native-control-churn"
+      ],
+      "churn": "20 Hz controlled replacement of one native caption span or native control icon; media clock remains natural",
+      "metrics": "Renderer CDP Performance counters, browser long-task entries, DOM mutation records, transport request count and media event log",
+      "limitation": "Controlled platform DOM tests the extension runtime. It does not measure YouTube network/provider latency or all-site CPU, and background scheduling can vary."
+    }
+  },
+  "artifact": {
+    "contentSha256": "ba52bd00d90ea5c405c40afd10365fa80b7b28a4d054fd669dfc96989ed884b2",
+    "version": "0.0.37"
+  },
+  "focusObserver": {
+    "monitorPid": 50770,
+    "time": 1791728557170.681,
+    "monotonicMs": 3153849070.918167
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    },
+    "frontmostAfter": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    }
+  },
+  "browserDisconnected": {
+    "unexpected": true,
+    "phase": "youtube: performance runtime-closed-static",
+    "time": "2026-10-11T14:23:07.941Z"
+  },
+  "failure": "Error: The isolated browser became foreground; stop the test\n    at onEvent (/Users/thinkstu/Desktop/copy/FluentRead-video-learning-reliability-20261011/scripts/run-video-sentence-learning-test.cjs:1357:48)\n    at record (/Users/thinkstu/Desktop/copy/FluentRead-video-learning-reliability-20261011/scripts/testing/mac-focus-event-monitor.cjs:48:12)\n    at Socket.data (/Users/thinkstu/Desktop/copy/FluentRead-video-learning-reliability-20261011/scripts/testing/mac-focus-event-monitor.cjs:55:142)\n    at Socket.emit (node:events:518:28)\n    at addChunk (node:internal/streams/readable:559:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)\n    at Readable.push (node:internal/streams/readable:390:5)\n    at Pipe.onStreamRead (node:internal/stream_base_commons:190:23)\n    at Pipe.callbackTrampoline (node:internal/async_hooks:130:17)",
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 1,
+    "observerClosed": true
+  }
+}

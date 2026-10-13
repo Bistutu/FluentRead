@@ -87,7 +87,8 @@ function deferred<T>() {
 
 async function mountBook(confirm: (...args: unknown[]) => Promise<unknown> = async () => undefined,
   response?: (message: Record<string, unknown>) => Promise<unknown>,
-  configPatch: () => Promise<void> = async () => undefined) {
+  configPatch: () => Promise<void> = async () => undefined,
+  options: {keepAlive?: boolean; ready?: Promise<void>} = {}) {
   const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
   const entry = {id:'saved-a', term:'art', normalizedTerm:'art', identityKey:'en:art', sourceLanguage:'en', kind:'expression',
     translations:{'zh-cn':{text:'艺术',updatedAt:1}}, contexts:[{text:'We study art.',sourceUrl:'https://example.test/private-reading',capturedAt:1}], note:'A saved explanation.', phonetic:'',partOfSpeech:'',
@@ -107,7 +108,7 @@ async function mountBook(confirm: (...args: unknown[]) => Promise<unknown> = asy
   });
   setComponentTestState({browser:{runtime:{sendMessage,onMessage:{addListener:()=>undefined,removeListener:()=>undefined}}},
     config:{on:true,theme:'light',uiLanguage:'zh-CN',vocabularyBookEnabled:true,selectionTranslatorMode:'disabled',to:'zh-CN'},
-    configReady:Promise.resolve(),requestConfigPatch:configPatch,subscribeConfig:()=>()=>undefined,confirm});
+    configReady:options.ready ?? Promise.resolve(),requestConfigPatch:configPatch,subscribeConfig:()=>()=>undefined,confirm});
   const {window} = parseHTML('<html><head></head><body></body></html>');
   Object.defineProperty(window.document,'visibilityState',{configurable:true,value:'visible'});
   window.matchMedia = (() => ({matches:false,addEventListener:()=>undefined,removeEventListener:()=>undefined})) as never;
@@ -116,6 +117,11 @@ async function mountBook(confirm: (...args: unknown[]) => Promise<unknown> = asy
   const download = vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:synthetic-download');
   vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>undefined);
   const clicks = vi.spyOn(window.HTMLElement.prototype,'click');
+  // LinkeDOM exposes these through Proxy getters/setters rather than ordinary own properties.
+  const windowAdd = options.keepAlive ? vi.fn(window.addEventListener) : undefined;
+  const windowRemove = options.keepAlive ? vi.fn(window.removeEventListener) : undefined;
+  if (windowAdd) window.addEventListener = windowAdd;
+  if (windowRemove) window.removeEventListener = windowRemove;
   const server = await createServer({appType:'custom',configFile:false,logLevel:'silent',plugins:[componentMocks(),vue()],
     resolve:{alias:{'@':resolve(process.cwd())}},root:process.cwd(),server:{hmr:false,middlewareMode:true},ssr:{noExternal:['webextension-polyfill','element-plus']}});
   mountedBooks.push(()=>server.close());
@@ -125,34 +131,78 @@ async function mountBook(confirm: (...args: unknown[]) => Promise<unknown> = asy
     patchProp:()=>undefined,insert:()=>undefined,remove:()=>undefined,createElement:()=>({}),createText:()=>({}),createComment:()=>({}),
     setText:()=>undefined,setElementText:()=>undefined,parentNode:()=>null,nextSibling:()=>null,querySelector:()=>null,setScopeId:()=>undefined,cloneNode:()=>({}),insertStaticContent:()=>[{},{}],
   });
-  let panel: any; const app = renderer.createApp({setup:()=>()=>runtime.h(component,{ref:(instance:any)=>{if(instance)panel=instance.$.setupState;}})});
+  const shown = runtime.ref(true);
+  const otherPage = {render: () => null};
+  let panel: any;
+  const bookNode = () => runtime.h(component,{ref:(instance:any)=>{if(instance)panel=instance.$.setupState;}});
+  const app = renderer.createApp({setup:()=>()=>options.keepAlive
+    ? runtime.h(runtime.KeepAlive, null, {default: () => shown.value ? bookNode() : runtime.h(otherPage, {key: 'other-page'})})
+    : bookNode()});
   app.provide(runtime.ssrContextKey,{modules:new Set<string>()});app.config.warnHandler=()=>undefined;
   app.mount({}); let mounted = true; const unmount = () => {if(mounted){mounted=false;app.unmount();}};
   mountedBooks.push(unmount);
   const flush = async () => {for(let i=0;i<12;i++){await Promise.resolve();await runtime.nextTick();}};
-  await flush(); expect(panel.entries).toHaveLength(1);
-  return {panel,entry,messages,exported,download,clicks,unmount,flush,stored:()=>stored};
+  await flush(); if (!options.ready) expect(panel.entries).toHaveLength(1);
+  return {panel,entry,messages,exported,download,clicks,unmount,flush,shown,window,windowAdd,windowRemove,stored:()=>stored};
 }
 
 describe('VocabularyBook asynchronous action ownership', () => {
   it('opens the explicitly chosen entry from a full book and closes it without replacing the collection', async () => {
     const book = await mountBook();
-    const entries = Array.from({length:5000},(_,i)=>Object.freeze({...book.entry,id:`saved-${i}`,term:`word ${i}`,identityKey:`en:word ${i}`,normalizedTerm:`word ${i}`,lastSeenAt:i+1}));
+    const originalEntries = Array.from({length:5000},(_,i)=>Object.freeze({...book.entry,id:`saved-${i}`,term:`word ${i}`,identityKey:`en:word ${i}`,normalizedTerm:`word ${i}`,lastSeenAt:i+1}));
+    let idReads = 0;
+    // 只计数对原冻结记录 ID 的读取，不替换生产 computed 或 Array.find。
+    const entries = originalEntries.map(backing => Object.freeze(Object.defineProperty({...backing}, 'id', {
+      enumerable: true,
+      get() {idReads += 1;return Reflect.get(backing, 'id');},
+    }))) as VocabularyEntry[];
     const collection = Object.freeze(entries);
     book.panel.entries = collection;
+    idReads = 0;
     expect(book.panel.studyEntry).toBeUndefined();
+    const initialIdReads = idReads;
     book.panel.startReview();
     expect(book.panel.reviewStarted).toBe(true);
     book.panel.openStudy(entries[17]);
     expect(book.panel.reviewStarted).toBe(false);
+    const readsBefore17 = idReads;
     expect(book.panel.studyEntry).toBe(entries[17]);
+    const selected17IdReads = idReads - readsBefore17;
     expect(book.panel.studyEntry.id).not.toBe(entries[4999].id);
     book.panel.openStudy(entries[4321]);
+    const readsBefore4321 = idReads;
     expect(book.panel.studyEntry).toBe(entries[4321]);
+    const selected4321IdReads = idReads - readsBefore4321;
+    book.panel.selectedEntryId = '';
+    idReads = 0;
+    expect(book.panel.studyEntry).toBeUndefined();
+    const closeIdReads = idReads;
+    expect(book.panel.entries).toBe(collection);
+    expect(book.panel.entries.map((item:VocabularyEntry)=>item.id)).toEqual(entries.map(item=>item.id));
+    // 所有原业务、实例身份与集合断言先完成，再核对受控读取数。
+    expect(initialIdReads).toBe(0);expect(selected17IdReads).toBe(18);
+    expect(selected4321IdReads).toBe(4322);expect(closeIdReads).toBe(0);
+  });
+  it('keeps an empty-ID raw row in the collection without selecting it automatically', async () => {
+    const book = await mountBook();
+    // 空选择是 UI 的未选中状态；异常原始行保留原样，不在这里迁移、清洗或删除记录。
+    const emptyIdRow = Object.freeze({...book.entry, id:'', term:'Raw empty row', normalizedTerm:'raw empty row', identityKey:'en\u0000raw empty row'});
+    const validRow = Object.freeze({...book.entry, id:'00000000-0000-4000-8000-000000000001', term:'Selected valid row', normalizedTerm:'selected valid row', identityKey:'en\u0000selected valid row'});
+    const collection = Object.freeze([emptyIdRow, validRow]);
+    book.panel.entries = collection;
+    expect(book.panel.selectedEntryId).toBe('');
+    expect(book.panel.studyEntry).toBeUndefined();
+    expect(book.panel.entries).toBe(collection);
+    expect(book.panel.entries[0]).toBe(emptyIdRow);
+    expect(book.panel.entries.map((item: VocabularyEntry) => item.id)).toEqual(['', validRow.id]);
+    book.panel.openStudy(validRow);
+    expect(book.panel.studyEntry).toBe(validRow);
+    expect(book.panel.selectedEntryId).toBe(validRow.id);
     book.panel.selectedEntryId = '';
     expect(book.panel.studyEntry).toBeUndefined();
     expect(book.panel.entries).toBe(collection);
-    expect(book.panel.entries.map((item:VocabularyEntry)=>item.id)).toEqual(entries.map(item=>item.id));
+    expect(book.panel.entries[0]).toBe(emptyIdRow);
+    expect(book.messages.filter(message => message.action && message.action !== 'list')).toEqual([]);
   });
   it.each(['clearVocabulary','exportAnki','removeEntry'])('does not start %s after its confirmation outlives the book', async action => {
     const confirmation = deferred<unknown>(); const book = await mountBook(()=>confirmation.promise);
@@ -397,5 +447,88 @@ describe('VocabularyBook mounted lifecycle', () => {
     } finally {
       await server.close();
     }
+  });
+});
+
+describe('VocabularyBook cached review keyboard ownership', () => {
+  type Book = Awaited<ReturnType<typeof mountBook>>;
+  function dispatchKey(book: Book, key: string): Event {
+    const event = new book.window.Event('keydown', {bubbles: true, cancelable: true});
+    Object.assign(event, {key: key === 'Space' ? ' ' : key, code: key === 'Space' ? 'Space' : key});
+    // The window listener receives a body-bubbled keyboard target; LinkeDOM's direct window dispatch otherwise uses document as target.
+    Object.defineProperty(event, 'target', {configurable: true, get: () => book.window.document.body, set: () => undefined});
+    book.window.dispatchEvent(event);
+    return event;
+  }
+  function reviewSnapshot(book: Book) {
+    return {started: book.panel.reviewStarted, answer: book.panel.reviewAnswerVisible, index: book.panel.reviewIndex,
+      draft: book.panel.recallDraft, queue: book.panel.reviewQueue.map((entry: VocabularyEntry) => entry.id),
+      stats: {...book.panel.reviewStats}};
+  }
+  const reviewMessages = (book: Book) => book.messages.filter(message => message.action === 'review');
+  const listenerCalls = (spy: NonNullable<Book['windowAdd']>) => spy.mock.calls.filter(([type]) => type === 'keydown');
+
+  it.each(['Space', '1', '2', 'Escape'])('ignores hidden %s and resumes the same review on return without duplicate listeners', async key => {
+    const book = await mountBook(undefined, undefined, undefined, {keepAlive: true});
+    book.panel.startReview();await book.flush();
+    book.panel.reviewAnswerVisible = key !== 'Space';book.panel.recallDraft = 'Retained recall draft';await book.flush();
+    const before = reviewSnapshot(book);
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      book.shown.value = false;await book.flush();
+      const hidden = dispatchKey(book, key);await book.flush();
+      expect(reviewSnapshot(book)).toEqual(before);expect(reviewMessages(book)).toEqual([]);
+      expect(hidden.defaultPrevented).toBe(false);
+      book.shown.value = true;await book.flush();
+      expect(reviewSnapshot(book)).toEqual(before);expect(listenerCalls(book.windowAdd!)).toHaveLength(1);
+    }
+    const visible = dispatchKey(book, key);await book.flush();expect(visible.defaultPrevented).toBe(true);
+    if (key === 'Space') {expect(book.panel.reviewAnswerVisible).toBe(true);expect(reviewMessages(book)).toEqual([]);}
+    else if (key === 'Escape') {expect(book.panel.reviewStarted).toBe(false);expect(reviewMessages(book)).toEqual([]);}
+    else {expect(reviewMessages(book)).toHaveLength(1);expect(reviewMessages(book)[0]).toMatchObject({entryId: book.entry.id, rating: key === '1' ? 'again' : 'good'});}
+    book.unmount();expect(listenerCalls(book.windowRemove!)).toHaveLength(1);
+    expect(listenerCalls(book.windowRemove!)[0][1]).toBe(listenerCalls(book.windowAdd!)[0][1]);
+  });
+
+  it('keeps keyboard inactive when configReady completes after caching and restores it only on return', async () => {
+    const ready = deferred<void>();
+    const book = await mountBook(undefined, undefined, undefined, {keepAlive: true, ready: ready.promise});
+    try {
+      expect(listenerCalls(book.windowAdd!)).toHaveLength(0);expect(book.messages).toEqual([]);
+      book.shown.value = false;await book.flush();ready.resolve();await book.flush();
+      expect(book.panel.entries).toHaveLength(1);book.panel.startReview();await book.flush();
+      book.panel.recallDraft = 'Ready while cached';const before = reviewSnapshot(book);
+      const hidden = dispatchKey(book, 'Space');await book.flush();
+      expect(reviewSnapshot(book)).toEqual(before);expect(reviewMessages(book)).toEqual([]);expect(hidden.defaultPrevented).toBe(false);
+      book.shown.value = true;await book.flush();expect(reviewSnapshot(book)).toEqual(before);
+      const visible = dispatchKey(book, 'Space');await book.flush();expect(visible.defaultPrevented).toBe(true);
+      expect(book.panel.reviewAnswerVisible).toBe(true);expect(listenerCalls(book.windowAdd!)).toHaveLength(1);
+    } finally {ready.resolve();book.unmount();await book.flush();}
+  });
+
+  it('removes its one keyboard listener on unmount and leaves the retained review unchanged for late keys', async () => {
+    const book = await mountBook(undefined, undefined, undefined, {keepAlive: true});
+    book.panel.startReview();await book.flush();book.panel.recallDraft = 'Unmounted draft';const before = reviewSnapshot(book);
+    book.unmount();expect(listenerCalls(book.windowAdd!)).toHaveLength(1);expect(listenerCalls(book.windowRemove!)).toHaveLength(1);
+    expect(listenerCalls(book.windowRemove!)[0][1]).toBe(listenerCalls(book.windowAdd!)[0][1]);
+    for (const key of ['Space', '1', '2', 'Escape']) expect(dispatchKey(book, key).defaultPrevented).toBe(false);
+    await book.flush();expect(reviewSnapshot(book)).toEqual(before);expect(reviewMessages(book)).toEqual([]);
+  });
+
+  it('continues a visibly accepted review write while cached and settles the existing session once', async () => {
+    const result = deferred<unknown>();
+    const book = await mountBook(undefined, () => result.promise, undefined, {keepAlive: true});
+    const saved = {...book.entry, status: 'learning' as const, reviewCount: 1, lastReviewedAt: Date.now(), nextReviewAt: Date.now() + 86400000};
+    try {
+      book.panel.startReview();await book.flush();book.panel.reviewAnswerVisible = true;
+      expect(dispatchKey(book, '2').defaultPrevented).toBe(true);await book.flush();
+      expect(reviewMessages(book)).toHaveLength(1);expect(book.panel.actionBusy).toBe(true);
+      book.shown.value = false;await book.flush();book.stored().splice(0, 1, saved);
+      result.resolve({success: true, data: {entry: saved, log: {}}});await book.flush();
+      expect(book.stored()[0]).toEqual(saved);expect(book.panel.entries[0]).toEqual(saved);
+      expect(book.panel.reviewStats).toEqual({reviewed: 1, good: 1, again: 0});expect(book.panel.reviewIndex).toBe(1);
+      expect(book.panel.actionBusy).toBe(false);expect(reviewMessages(book)).toHaveLength(1);
+      book.shown.value = true;await book.flush();expect(book.panel.reviewStats.reviewed).toBe(1);
+      expect(listenerCalls(book.windowAdd!)).toHaveLength(1);
+    } finally {result.resolve({success: true, data: {entry: saved, log: {}}});await book.flush();book.unmount();}
   });
 });

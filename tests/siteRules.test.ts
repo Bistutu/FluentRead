@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {listSitePreferences, previewSitePreferences, updateSitePreference} from '@/src/features/settings/model/sitePreferences';
 import {createSiteRuleText, getSiteRuleTextSources} from '@/src/core/i18n/messages/siteRules';
 
 import {
     getSiteBaseDomain,
+    createSiteRuleMatcher,
     isAlwaysTranslateSite,
     isExtensionDisabledOnSite,
     isFloatingBallDisabledOnSite,
@@ -12,6 +13,113 @@ import {
     normalizeFloatingBallDisabledDomains,
     shouldAutoTranslatePage,
 } from '@/src/features/site-rules/domain';
+
+const parserCalls = vi.hoisted(() => ({domain: 0, parse: 0}));
+vi.mock('tldts', async importOriginal => {
+    const actual = await importOriginal<typeof import('tldts')>();
+    return {...actual,
+        getDomain: (...args: Parameters<typeof actual.getDomain>) => {parserCalls.domain += 1; return actual.getDomain(...args);},
+        parse: (...args: Parameters<typeof actual.parse>) => {parserCalls.parse += 1; return actual.parse(...args);},
+    };
+});
+
+describe('页面私有网站规则索引', () => {
+    const configuration = () => ({on: true, autoTranslate: false,
+        alwaysTranslateDomains: ['https://docs.example.com/a', 'team.github.io', 'localhost:5173'],
+        disabledExtensionDomains: ['blocked.com', '192.168.1.10']});
+
+    it('与原规则保持一致，包括私有后缀、非法输入、禁用优先级和全局非网页语义', () => {
+        for (const on of [true, false]) for (const autoTranslate of [true, false]) {
+            const config = {...configuration(), on, autoTranslate};
+            const matcher = createSiteRuleMatcher(config);
+            for (const input of ['https://news.example.com/a', 'https://blocked.com/a', 'https://docs.team.github.io/a',
+                'https://notexample.com/', 'http://localhost:5173/', 'http://192.168.1.10/', 'file:///tmp/a',
+                'https://co.uk/', 'invalid host', new URL('https://mail.example.com/'), 42 as never]) {
+                expect(matcher.isExtensionDisabled(input)).toBe(isExtensionDisabledOnSite(input, config.disabledExtensionDomains));
+                expect(matcher.shouldAutoTranslate(input)).toBe(shouldAutoTranslatePage(input, config));
+            }
+        }
+    });
+
+    it('原地改写、追加、删除和同值新数组都按实际内容更新，不复用过期偏好', () => {
+        const config = configuration(), matcher = createSiteRuleMatcher(config);
+        expect(matcher.shouldAutoTranslate('https://example.com/')).toBe(true);
+        config.alwaysTranslateDomains[0] = 'other.com';
+        config.disabledExtensionDomains[0] = 'other.com';
+        matcher.update(config);
+        expect(matcher.shouldAutoTranslate('https://example.com/')).toBe(false);
+        expect(matcher.shouldAutoTranslate('https://other.com/')).toBe(false);
+        config.disabledExtensionDomains.splice(0, 1);
+        matcher.update(config);
+        expect(matcher.shouldAutoTranslate('https://other.com/')).toBe(true);
+        config.disabledExtensionDomains.push('other.com');
+        matcher.update(config);
+        expect(matcher.isExtensionDisabled('https://other.com/')).toBe(true);
+        matcher.update({...config, disabledExtensionDomains: [...config.disabledExtensionDomains]});
+        expect(matcher.isExtensionDisabled('https://other.com/')).toBe(true);
+        delete config.disabledExtensionDomains[1];
+        matcher.update(config);
+        expect(matcher.isExtensionDisabled('https://other.com/')).toBe(false);
+        expect(matcher.shouldAutoTranslate('https://other.com/')).toBe(true);
+        delete config.alwaysTranslateDomains[0];
+        matcher.update(config);
+        expect(matcher.shouldAutoTranslate('https://other.com/')).toBe(false);
+        expect(matcher.shouldAutoTranslate('https://docs.team.github.io/')).toBe(true);
+        config.alwaysTranslateDomains[0] = 'restored.com';
+        matcher.update(config);
+        expect(matcher.shouldAutoTranslate('https://restored.com/')).toBe(true);
+    });
+
+    it('配置快照不会被外部数组修改暗中改变，URL 对象变更则按最新 href 重新判定', () => {
+        const config = configuration(), matcher = createSiteRuleMatcher(config);
+        config.disabledExtensionDomains.push('example.com');
+        expect(matcher.shouldAutoTranslate('https://example.com/')).toBe(true);
+        matcher.update(config);
+        expect(matcher.shouldAutoTranslate('https://example.com/')).toBe(false);
+        const url = new URL('https://blocked.com/a');
+        expect(matcher.isExtensionDisabled(url)).toBe(true);
+        url.hostname = 'unlisted.com';
+        expect(matcher.isExtensionDisabled(url)).toBe(false);
+    });
+
+    it('空或非法名单不建立可命中条目，开关更新不会遗留旧的全局状态', () => {
+        const matcher = createSiteRuleMatcher({on: true, autoTranslate: false, alwaysTranslateDomains: []});
+        expect(matcher.shouldAutoTranslate('https://example.com/')).toBe(false);
+        expect(matcher.isExtensionDisabled('https://example.com/')).toBe(false);
+        matcher.update({on: true, autoTranslate: true, alwaysTranslateDomains: undefined as never, disabledExtensionDomains: null as never});
+        expect(matcher.shouldAutoTranslate('file:///tmp/a')).toBe(true);
+        matcher.update({on: false, autoTranslate: true, alwaysTranslateDomains: ['com'], disabledExtensionDomains: ['*.example.com']});
+        expect(matcher.shouldAutoTranslate('https://example.com/')).toBe(false);
+        matcher.update({on: true, autoTranslate: false, alwaysTranslateDomains: ['com'], disabledExtensionDomains: []});
+        expect(matcher.shouldAutoTranslate('https://example.com/')).toBe(false);
+    });
+
+    it('千条名单上的重复判定不重新解析名单，同值通知复用索引，新路由只解析当前域名', () => {
+        const config = {on: true, autoTranslate: false,
+            alwaysTranslateDomains: Array.from({length: 500}, (_, index) => `always-${index}.com`),
+            disabledExtensionDomains: Array.from({length: 500}, (_, index) => `blocked-${index}.com`)};
+        const matcher = createSiteRuleMatcher(config);
+        parserCalls.domain = 0; parserCalls.parse = 0;
+        for (let index = 0; index < 100; index += 1) {
+            matcher.update({...config, alwaysTranslateDomains: [...config.alwaysTranslateDomains], disabledExtensionDomains: [...config.disabledExtensionDomains]});
+            expect(matcher.isExtensionDisabled('https://always-499.com/a')).toBe(false);
+            expect(matcher.shouldAutoTranslate('https://always-499.com/a')).toBe(true);
+        }
+        expect(parserCalls.domain).toBe(1);
+        expect(parserCalls.parse).toBe(0);
+        parserCalls.domain = 0;
+        for (let index = 0; index < 100; index += 1) {
+            const href = `https://always-499.com/article/${index}`;
+            expect(matcher.isExtensionDisabled(href)).toBe(false);
+            expect(matcher.shouldAutoTranslate(href)).toBe(true);
+        }
+        expect(parserCalls.domain).toBe(100);
+        config.alwaysTranslateDomains[499] = 'replacement.com';
+        matcher.update(config);
+        expect(matcher.shouldAutoTranslate('https://always-499.com/article/99')).toBe(false);
+        expect(matcher.shouldAutoTranslate('https://replacement.com/article/99')).toBe(true);
+    });
+});
 
 describe('网站规则工作区文案', () => {
     it('为全部六种非中文界面提供独立、无重复且非空的完整文案', () => {

@@ -44,6 +44,10 @@ export function mountSelectionTranslator(ctx?: ContentScriptContext) {
         if (requestId !== mountRequestId) return;
         modalDialogHost?.placeForRange(range);
       },
+      onFocusedCardDismiss: () => {
+        if (requestId !== mountRequestId) return;
+        modalDialogHost?.restoreFromFocusedCard();
+      },
     },
   }).then((ui) => {
     // 异步创建结束后复核代次和开关，旧请求不得覆盖较新的挂载状态。

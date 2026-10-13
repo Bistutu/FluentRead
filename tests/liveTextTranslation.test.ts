@@ -31,7 +31,7 @@ import {createTranslationRequest, translateControlValue, translateLiveText} from
 import {collectLiveTranslationTextSlots as collectRealSlots} from '@/src/core/translation/serialization';
 
 const snapshot = {service: 'microsoft', model: 'default', thinking: false, sourceLanguage: 'en', targetLanguage: 'zh',
-    useCache: true, enableAIContext: false, enableAIMultiSegment: false, displayMode: 'single' as const, style: 0};
+    useCache: true, enableAIContext: false, enableAIMultiSegment: false, enableNativeBatch: true, displayMode: 'single' as const, style: 0};
 
 describe('实时文本翻译快照', () => {
     beforeEach(() => {
@@ -150,6 +150,29 @@ describe('双语正文整块翻译', () => {
     };
     const paragraph = () => owner('<p id="t">Read <a href="/g">the guide</a>.</p>');
 
+    it('AI 上下文或已启用的多段会话向四种请求形态传递当前单元', async () => {
+        const session = {} as import('@/src/features/full-page-translation/content/translationRequest').FullPageTranslationSessionCache;
+        const settings = [
+            {enableAIContext: false, enableAIMultiSegment: false, requestSession: session, carriesNode: false},
+            {enableAIContext: false, enableAIMultiSegment: true, requestSession: session, carriesNode: true},
+            {enableAIContext: true, enableAIMultiSegment: false, requestSession: undefined, carriesNode: true},
+            {enableAIContext: false, enableAIMultiSegment: true, requestSession: undefined, carriesNode: false},
+            {enableAIContext: true, enableAIMultiSegment: true, requestSession: session, carriesNode: true},
+        ];
+        for (const {enableAIContext, enableAIMultiSegment, requestSession, carriesNode} of settings) {
+            const active = {...bilingual, enableAIContext, enableAIMultiSegment};
+            const targets = [paragraph(), owner('<p>Read the guide.</p>'), owner('<input type="button" value="Read the guide.">'), owner('<button>Read the guide.</button>')];
+            for (let index = 0; index < targets.length; index++) {
+                const target = targets[index]!; runtime.slots = collectRealSlots(target); runtime.translations = ['读完这份指南。'];
+                runtime.translateTextSlots.mockClear();
+                await createTranslationRequest(target, index === 3 ? 'control' : 'content', 'bilingual', active, undefined, undefined, requestSession);
+                expect(runtime.translateTextSlots).toHaveBeenCalledOnce();
+                expect(runtime.translateTextSlots.mock.calls[0]).toHaveLength(carriesNode ? 7 : 6);
+                if (carriesNode) expect(runtime.translateTextSlots.mock.calls[0]![6]).toBe(target);
+            }
+        }
+    });
+
     it('多槽候选整块请求，整段译文只回填首个槽位', async () => {
         const target = paragraph();
         runtime.translateTextSlots.mockImplementation(async () => ['读完这份指南。']);
@@ -265,5 +288,21 @@ describe('双语正文整块翻译', () => {
         expect(await request(() => {
             throw new Error('detached');
         })).toEqual(['one two']);
+    });
+});
+
+
+describe('目标语言排版回显保持网页原文', () => {
+    it.each(['single', 'bilingual'] as const)('%s 模式不把仅改变句尾标点的同语言结果显示为翻译', async mode => {
+        const {document} = parseHTML('<html><body><p>我们已经完成文档翻译。</p></body></html>');
+        const owner = document.querySelector('p')!;
+        const source = owner.textContent!;
+        runtime.slots = [{node: owner.firstChild as Text, prefix: '', source, suffix: ''}];
+        runtime.translations = ['我们已经完成文档翻译'];
+        runtime.translateTextSlots.mockImplementation(async () => runtime.translations);
+        const active = {...snapshot, sourceLanguage: 'auto', targetLanguage: 'zh-Hans', displayMode: mode};
+        const result = await createTranslationRequest(owner, 'content', mode, active);
+        if (result.kind === 'live-text') expect(result.changed).toBe(false);
+        expect(owner.textContent).toBe(source);
     });
 });

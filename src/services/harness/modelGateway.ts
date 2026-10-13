@@ -2,7 +2,7 @@
  * @file src/services/harness/modelGateway.ts
  * 文件职责：把已配置的 FluentRead AI 服务适配为 Harness 可消费的 LanguageModel。
  * 主要内容：解析 OpenAI 兼容端点、注入凭据与供应商头、保留 tools/messages/system
- * 语义，并对 DeepSeek Responses 配置和机器翻译服务给出明确错误。
+ * 语义，单独适配固定端点与模型的 B站匿名讲解，并对 DeepSeek Responses 配置和其他机器翻译服务给出明确错误。
  * 模块边界：本文件只负责模型 transport，不管理会话、UI、提示词、缓存或配置持久化；
  * 请求由 AI SDK 执行，网络统一经过 runtimeFetch。
  */
@@ -23,6 +23,7 @@ import {
   type ResolvedOpenAICompatibleEndpoint,
 } from '@/src/providers/translation/ai-sdk/endpoints';
 import {isHarnessService} from '@/src/core/config/harness';
+import {BILIBILI_FREE_TRANSLATION_DOMAIN, BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation';
 import {runtimeFetch} from '@/src/platform/http/runtime';
 import {isCustomOpenAIProviderId} from '@/src/core/config/customOpenAI';
 import {parseCustomHeaders, mergeCustomHeaders} from '@/src/core/config/customHeaders';
@@ -106,6 +107,23 @@ export function normalizeHarnessModelError(error: unknown, service: string, apiK
 type ConcreteLanguageModel = Extract<LanguageModel, {specificationVersion: 'v3'}>;
 
 function createSingleHarnessLanguageModel(config: Config, service: string, model: string): ConcreteLanguageModel {
+  if (service === services.bilibili) {
+    // 免费入口只使用已验证的官方模型；残留凭据、代理、多 Key 和自定义模型均不参与请求。
+    const provider = createOpenAICompatible({
+      name: 'fluentread-harness-bilibili',
+      baseURL: `https://${BILIBILI_FREE_TRANSLATION_DOMAIN}/v1`,
+      transformRequestBody: body => ({
+        model: BILIBILI_FREE_TRANSLATION_MODEL,
+        messages: body.messages,
+        stream: body.stream,
+        max_tokens: body.max_tokens,
+        temperature: 0,
+        chat_template_kwargs: {enable_thinking: false},
+      }),
+      fetch: (input, init) => runtimeFetch(input, {...init, credentials: 'omit', redirect: 'error'}),
+    });
+    return provider(BILIBILI_FREE_TRANSLATION_MODEL);
+  }
   const requestedModel = model.trim();
   if (!requestedModel) throw new Error('请先为阅读助手选择一个模型');
   if (!isHarnessService(service, config.customOpenAIProviders)) throw new Error(`阅读助手尚未适配这个服务: ${service}`);
@@ -155,6 +173,7 @@ function snapshotHarnessConfig(config: Config): Config {
 
 /** 后台取消只比较 gateway 的生效输入；摘要不包含可展示或发送的凭据。 */
 export function getHarnessModelInputKey(config: Config, service: string, model: string): string {
+  if (service === services.bilibili) return sha256Hex(JSON.stringify([service, BILIBILI_FREE_TRANSLATION_MODEL, BILIBILI_FREE_TRANSLATION_DOMAIN]));
   const requestedModel = model.trim();
   const keys = getServiceApiKeys(config, service);
   const rotating = keys.length > 1 && config.apiKeyRotationEnabled[service] !== false;
@@ -177,6 +196,7 @@ export function getHarnessModelInputKey(config: Config, service: string, model: 
  * 重新创建底层 provider，避免某次调用中途读取到 UI 正在编辑的凭据。
  */
 export function createHarnessLanguageModel(config: Config, service: string, model: string): LanguageModel {
+  if (service === services.bilibili) return createSingleHarnessLanguageModel(config, service, model);
   const keys = getServiceApiKeys(config, service);
   if (keys.length < 2) return createSingleHarnessLanguageModel(withServiceApiKey(config, service, keys[0] ?? ''), service, model);
 

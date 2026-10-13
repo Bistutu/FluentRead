@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {createFreeFallbackRunner, type FreeFallbackAttempt, type FreeFallbackCandidate} from '@/src/services/translation/freeFallback';
+import {createFreeFallbackRunner, type FreeFallbackAttempt, type FreeFallbackCandidate, type FreeFallbackLease} from '@/src/services/translation/freeFallback';
 
 const options = {timeoutMs: 100, cooldownMs: 1_000};
 const failure = (statusCode: number) => Object.assign(new Error('secret text https://secret.example/?key=hidden'), {statusCode});
@@ -335,6 +335,240 @@ describe('free provider fallback coordinator', () => {
         await expect(run([unknown, known], options)).rejects.toThrow('网络服务: 请求失败；限流服务: HTTP 429');
         await expect(run([candidate('other', vi.fn().mockRejectedValue(new Error('key=secret')))], options))
             .rejects.not.toThrow('secret');
+    });
+});
+
+describe('free fallback retains actual transport capacity after public cancellation', () => {
+    const lifetimeOptions = {mode: 'sequential' as const, timeoutMs: 1_000, cooldownMs: 1_000};
+
+    it.each(['cancel', 'deadline'] as const)('rechecks %s after candidate capacity inspection before reserving total capacity', async stop => {
+        const run = createFreeFallbackRunner(1);
+        const owner = new AbortController();
+        const deadline = Date.now() + 100;
+        const source = {
+            ...candidate('pre-admission'),
+            get maxConcurrency() {
+                if (stop === 'cancel') owner.abort();
+                else vi.setSystemTime(deadline);
+                return 1;
+            },
+        };
+        const request = run([source], {...lifetimeOptions, deadline, signal: owner.signal});
+        await expect(request).rejects.toMatchObject(stop === 'cancel' ? {name: 'AbortError'} : {kind: 'timeout'});
+        expect(source.translate).not.toHaveBeenCalled();
+        await expect(run([candidate('after-admission-stop')], lifetimeOptions)).resolves.toBe('译:after-admission-stop');
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('cancellation during attempt preparation stops the raw callback and returns its reserved capacity', async () => {
+        const run = createFreeFallbackRunner(1);
+        const owner = new AbortController();
+        const source = {
+            ...candidate('pre-execution'),
+            get minIntervalMs() { owner.abort(); return 0; },
+        };
+        await expect(run([source], {...lifetimeOptions, signal: owner.signal})).rejects.toMatchObject({name: 'AbortError'});
+        expect(source.translate).not.toHaveBeenCalled();
+        await expect(run([candidate('after-pre-execution')], lifetimeOptions)).resolves.toBe('译:after-pre-execution');
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each(['primary', 'hedge'] as const)('a closed outer lease rejects the %s before raw execution without leaking capacity or owner listeners', async refused => {
+        const run = createFreeFallbackRunner(2, {random: () => 0});
+        const owner = new AbortController();
+        const remove = vi.spyOn(owner.signal, 'removeEventListener');
+        const raw = deferred();
+        const primary = candidate('lease-primary', vi.fn(() => raw.promise));
+        const backup = candidate('lease-backup');
+        const refusedLease = new Error('outer request lease is closed');
+        let registrations = 0;
+        const held: PromiseLike<unknown>[] = [];
+        const request = run([primary, backup], {
+            ...lifetimeOptions, timeoutMs: 5_000, mode: 'balanced', signal: owner.signal,
+            lease: {holdUntil(settlement) {
+                registrations += 1;
+                if (registrations === (refused === 'primary' ? 1 : 2)) throw refusedLease;
+                held.push(settlement);
+            }},
+        }).catch(error => error);
+        await vi.advanceTimersByTimeAsync(refused === 'primary' ? 0 : 1_500);
+        await expect(request).resolves.toBe(refusedLease);
+        expect(primary.translate).toHaveBeenCalledTimes(refused === 'primary' ? 0 : 1);
+        expect(backup.translate).not.toHaveBeenCalled();
+        expect(remove).toHaveBeenCalledWith('abort', expect.any(Function));
+        expect(await run.getHealthSnapshot()).toEqual([]);
+
+        raw.resolve('ignored cancelled primary');
+        await Promise.all(held);
+        const occupiedOne = deferred();
+        const occupiedTwo = deferred();
+        const first = run([candidate('after-refusal-one', vi.fn(() => occupiedOne.promise))], lifetimeOptions);
+        const second = run([candidate('after-refusal-two', vi.fn(() => occupiedTwo.promise))], lifetimeOptions);
+        const third = candidate('after-refusal-three');
+        const queued = run([third], lifetimeOptions);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(third.translate).not.toHaveBeenCalled();
+        occupiedOne.resolve('one');
+        occupiedTwo.resolve('two');
+        await expect(first).resolves.toBe('one');
+        await expect(second).resolves.toBe('two');
+        await expect(queued).resolves.toBe('译:after-refusal-three');
+        expect(vi.getTimerCount()).toBe(0);
+        remove.mockRestore();
+    });
+
+    it.each(['resolve', 'reject'] as const)('keeps the total permit until a cancelled transport really %s', async end => {
+        const run = createFreeFallbackRunner(1);
+        const transport = deferred();
+        const controller = new AbortController();
+        const held: Promise<void>[] = [];
+        let heldSettled = false;
+        const first = run([candidate('cancelled-physical', vi.fn(() => transport.promise))], {
+            ...lifetimeOptions, signal: controller.signal,
+            lease: {holdUntil: settlement => {held.push(Promise.resolve(settlement).then(() => {heldSettled = true;}));}},
+        }).catch(error => error);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(held).toHaveLength(1);
+        controller.abort();
+        await expect(first).resolves.toMatchObject({name: 'AbortError'});
+        const next = candidate('another-physical');
+        const waiting = run([next], lifetimeOptions);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(next.translate).not.toHaveBeenCalled();
+        expect(heldSettled).toBe(false);
+        if (end === 'resolve') transport.resolve('ignored late translation');
+        else transport.reject(new TypeError('late physical failure'));
+        await expect(waiting).resolves.toBe('译:another-physical');
+        await Promise.all(held);
+        expect(heldSettled).toBe(true);
+        expect(await run.getHealthSnapshot()).toEqual([
+            expect.objectContaining({identity: 'another-physical', failures: 0}),
+        ]);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps the cancelled candidate full while independent candidates still use spare capacity', async () => {
+        const run = createFreeFallbackRunner(2);
+        const transport = deferred();
+        const controller = new AbortController();
+        const limited = {...candidate('limited-late', vi.fn().mockImplementationOnce(() => transport.promise).mockResolvedValue('resumed')), maxConcurrency: 1};
+        const first = run([limited], {...lifetimeOptions, signal: controller.signal}).catch(error => error);
+        await vi.advanceTimersByTimeAsync(0);
+        controller.abort();
+        await expect(first).resolves.toMatchObject({name: 'AbortError'});
+        const waiting = run([limited], lifetimeOptions);
+        const alternate = candidate('independent');
+        await expect(run([alternate], lifetimeOptions)).resolves.toBe('译:independent');
+        expect(limited.translate).toHaveBeenCalledOnce();
+        transport.resolve('ignored cancelled result');
+        await expect(waiting).resolves.toBe('resumed');
+        expect(limited.translate).toHaveBeenCalledTimes(2);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('a timed-out primary keeps its permit while the fallback uses a separate available permit', async () => {
+        const run = createFreeFallbackRunner(2);
+        const slow = deferred();
+        const backup = deferred();
+        const held: PromiseLike<unknown>[] = [];
+        const request = run([
+            candidate('late-timeout', vi.fn(() => slow.promise)),
+            candidate('backup-live', vi.fn(() => backup.promise)),
+        ], {...lifetimeOptions, timeoutMs: 100, lease: {holdUntil: promise => {held.push(promise);}}});
+        await vi.advanceTimersByTimeAsync(100);
+        const third = candidate('third-live');
+        const waiting = run([third], lifetimeOptions);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(third.translate).not.toHaveBeenCalled();
+        expect(held).toHaveLength(2);
+        backup.resolve('backup success');
+        await expect(request).resolves.toBe('backup success');
+        await expect(waiting).resolves.toBe('译:third-live');
+        const healthBeforeLate = await run.getHealthSnapshot();
+        expect(healthBeforeLate.find(item => item.identity === 'late-timeout')).toMatchObject({failures: 1});
+        slow.resolve('a late result must not clear the timeout cooldown');
+        await Promise.all(held);
+        expect(await run.getHealthSnapshot()).toEqual(healthBeforeLate);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('a saturated fallback exits at the original deadline without freeing the old transport', async () => {
+        const run = createFreeFallbackRunner(1);
+        const slow = deferred();
+        const backup = candidate('blocked-backup');
+        const request = run([candidate('still-live', vi.fn(() => slow.promise)), backup], {
+            ...lifetimeOptions, timeoutMs: 100, deadline: Date.now() + 300,
+        }).catch(error => error);
+        await vi.advanceTimersByTimeAsync(300);
+        await expect(request).resolves.toMatchObject({kind: 'timeout'});
+        expect(backup.translate).not.toHaveBeenCalled();
+        expect(vi.getTimerCount()).toBe(0);
+        slow.resolve('late settlement');
+        await vi.advanceTimersByTimeAsync(0);
+        await expect(run([backup], lifetimeOptions)).resolves.toBe('译:blocked-backup');
+    });
+
+    it('nested transport holds survive an early candidate rejection and release on physical settlement', async () => {
+        const run = createFreeFallbackRunner(1);
+        const raw = deferred();
+        const controller = new AbortController();
+        let candidateLease!: FreeFallbackLease;
+        const source = candidate('nested-transport', vi.fn((signal: AbortSignal, lease: FreeFallbackLease) => {
+            candidateLease = lease;
+            lease.holdUntil(raw.promise);
+            return new Promise<string>((_resolve, reject) => {
+                signal.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError')), {once: true});
+            });
+        }));
+        const cancelled = run([source], {...lifetimeOptions, signal: controller.signal}).catch(error => error);
+        await vi.advanceTimersByTimeAsync(0);
+        controller.abort();
+        await expect(cancelled).resolves.toMatchObject({name: 'AbortError'});
+        const next = candidate('after-nested');
+        const waiting = run([next], lifetimeOptions);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(next.translate).not.toHaveBeenCalled();
+        expect(() => candidateLease.holdUntil(Promise.resolve())).toThrow('线路已结束');
+        raw.reject(new TypeError('physical request finally stopped'));
+        await expect(waiting).resolves.toBe('译:after-nested');
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('never adds a hedge beyond the total transport capacity', async () => {
+        const run = createFreeFallbackRunner(1, {random: () => 0});
+        const primary = deferred();
+        const backup = candidate('spare-without-capacity');
+        const request = run([candidate('only-slot', vi.fn(() => primary.promise)), backup], {
+            ...lifetimeOptions, mode: 'balanced', timeoutMs: 5_000,
+        });
+        await vi.advanceTimersByTimeAsync(1_500);
+        expect(backup.translate).not.toHaveBeenCalled();
+        primary.resolve('primary result');
+        await expect(request).resolves.toBe('primary result');
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('holds hedge ownership until the ignored loser settles even after credit is refilled', async () => {
+        const run = createFreeFallbackRunner(3, {random: () => 0});
+        const loser = deferred();
+        const first = run([candidate('hedge-loser', vi.fn(() => loser.promise)), candidate('hedge-winner')], {
+            ...lifetimeOptions, mode: 'balanced', timeoutMs: 5_000,
+        });
+        await vi.advanceTimersByTimeAsync(1_500);
+        await expect(first).resolves.toBe('译:hedge-winner');
+        for (let index = 0; index < 4; index += 1) await run([candidate(`refill-${index}`)], lifetimeOptions);
+        const primary = deferred();
+        const backup = candidate('second-hedge');
+        const next = run([candidate('next-primary', vi.fn(() => primary.promise)), backup], {
+            ...lifetimeOptions, mode: 'balanced', timeoutMs: 5_000,
+        });
+        await vi.advanceTimersByTimeAsync(1_500);
+        expect(backup.translate).not.toHaveBeenCalled();
+        primary.resolve('next primary');
+        await expect(next).resolves.toBe('next primary');
+        loser.resolve('ignored loser');
+        await vi.advanceTimersByTimeAsync(0);
+        expect(vi.getTimerCount()).toBe(0);
     });
 });
 

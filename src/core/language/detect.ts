@@ -2,8 +2,8 @@
  * @file src/core/language/detect.ts
  *
  * 文件职责：提供各翻译入口共用的语言判断公开 API，把与目标无关的文本识别结论和配置中的目标语言、排除语言按同一规则比较。
- * 主要内容：detectlang 返回规范语言代码，可信识别优先、否则给出统计最佳猜测或混合正文的 franc-min 整体排序，普通话无法确定简繁时返回 cmn、没有正文证据时返回 und；shouldSkipTranslationForTarget 只在文本无字母或整段被可信识别为目标语言/任一排除语言时跳过，未知、混合与夹带外语句子一律保留翻译；detectChineseScript 报告可信的单一中文书写体系；划词与翻译卡片额外按纯 Han 选区跳过中文目标；共享 Chrome 现代语言检测的最低置信度边界。可核对的公开符号包括 detectlang、shouldSkipTranslationForTarget、isTextInLanguage、detectChineseScript、shouldSkipChineseSelection、MIN_CHROME_LANGUAGE_CONFIDENCE。
- * 模块边界：本文件属于 core 领域层，只组合 identify.ts 与 codes.ts 的纯规则；不读取浏览器存储、页面 lang 或配置，不发起网络请求，也不挂载 Vue/WXT 入口，是否强制翻译等交互语义由调用方决定。
+ * 主要内容：detectlang 返回规范语言代码，可信识别优先、否则给出统计最佳猜测或混合正文的 franc-min 整体排序，普通话无法确定简繁时返回 cmn、没有正文证据时返回 und；shouldSkipTranslationForTarget 只在文本无字母或整段被可信识别为目标语言/任一排除语言时跳过，未知、混合与夹带外语句子一律保留翻译；detectChineseScript 报告可信的单一中文书写体系；划词与翻译卡片额外按纯 Han 选区跳过中文目标；从 confidence.ts 转出 Chrome 现代语言检测的最低置信度边界。可核对的公开符号包括 detectlang、shouldSkipTranslationForTarget、isTextInLanguage、detectChineseScript、shouldSkipChineseSelection、MIN_CHROME_LANGUAGE_CONFIDENCE。
+ * 模块边界：本文件属于 core 领域层，只组合 identify.ts 与 codes.ts 的纯规则，并保留 confidence.ts 的同名阈值出口；不读取浏览器存储、页面 lang 或配置，不发起网络请求，也不挂载 Vue/WXT 入口，是否强制翻译等交互语义由调用方决定。
  */
 
 import {franc} from 'franc-min';
@@ -11,8 +11,7 @@ import {getChineseScript, type ChineseScript} from './chinese';
 import {isLanguageCodeMatch, normalizeDetectedLanguageCode} from './codes';
 import {identifyTextLanguage} from './identify';
 
-/** Chrome LanguageDetector 结果低于此边界时按未知语言处理。 */
-export const MIN_CHROME_LANGUAGE_CONFIDENCE = 0.4;
+export {MIN_CHROME_LANGUAGE_CONFIDENCE} from './confidence';
 
 /**
  * 返回文本的规范语言代码。可信识别结果优先；否则使用统计最佳猜测，供朗读音色、本地模型源语言等

@@ -4,9 +4,11 @@ import vue from '@vitejs/plugin-vue';
 import {createServer, type Plugin, type ViteDevServer} from 'vite';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-// 编译两个实际统计 SFC，验证迟到消息与卸载；原生模板、焦点和布局由生产浏览器专项验证。
+// 编译两个实际统计 SFC，验证迟到消息与卸载，并直接执行 Model setup 的数字规则、语言切换和失败重试。
+// 本文件不复制业务格式算法；完整模板文本与构造次数另由受控实际 SFC 探针覆盖，焦点/布局由生产浏览器专项验证。
 const key = '__fluentReadUsageDashboardLifecycle';
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
+const NativeNumberFormat = Intl.NumberFormat;
 let server: ViteDevServer;
 let app: import('vue').App | undefined;
 let state: Record<string, any>;
@@ -81,6 +83,83 @@ afterEach(async () => {
     await server?.close();
     delete (globalThis as any)[key];
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+});
+
+describe('Model 用量真实 setup 的固定数字规则', () => {
+    it('100 次速度与秒/分钟展示只构造三套规则，格式值仍逐次更新', async () => {
+        await mount('model', false);
+        const constructors = vi.spyOn(Intl, 'NumberFormat');
+        const speed = new NativeNumberFormat('zh-CN', {maximumFractionDigits: 2});
+        const second = new NativeNumberFormat('zh-CN', {style: 'unit', unit: 'second', unitDisplay: 'short', maximumFractionDigits: 2});
+        const minute = new NativeNumberFormat('zh-CN', {style: 'unit', unit: 'minute', unitDisplay: 'short', maximumFractionDigits: 2});
+        for (let index = 0; index < 100; index += 1) {
+            expect(state.formatSpeed(index + .125)).toBe(speed.format(index + .125));
+            expect(state.formatDuration(1_000 + index)).toBe(second.format(1 + index / 1_000));
+            expect(state.formatDuration(60_000)).toBe(`${minute.format(1)} ${second.format(0)}`);
+        }
+        expect(constructors).toHaveBeenCalledTimes(3);
+        expect(messages).toEqual([]);
+    });
+
+    it('七种界面语言切换与返回保留异常值、负零和单位阈值，规则按语言复用', async () => {
+        await mount('model', false);
+        const constructors = vi.spyOn(Intl, 'NumberFormat');
+        const locales = ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'];
+        for (const locale of locales) {
+            state.language = locale;
+            const speed = new NativeNumberFormat(locale, {maximumFractionDigits: 2});
+            const second = new NativeNumberFormat(locale, {style: 'unit', unit: 'second', unitDisplay: 'short', maximumFractionDigits: 2});
+            const minute = new NativeNumberFormat(locale, {style: 'unit', unit: 'minute', unitDisplay: 'short', maximumFractionDigits: 2});
+            for (const value of [null, undefined, NaN, Infinity, -Infinity]) expect(state.formatSpeed(value)).toBe('—');
+            for (const value of [-123.45, -0, 0, 1.005, 1e12]) expect(state.formatSpeed(value)).toBe(speed.format(value));
+            for (const value of [null, undefined, NaN, Infinity, -Infinity, -1]) expect(state.formatDuration(value)).toBe('—');
+            expect(state.formatDuration(-0)).toBe('0 ms');
+            expect(state.formatDuration(0)).toBe('0 ms');
+            expect(state.formatDuration(999)).toBe('999 ms');
+            expect(state.formatDuration(1_000)).toBe(second.format(1));
+            // 原规则按毫秒阈值选单位：59,999.5 ms 显示舍入后的 60 秒，尚不进入分钟。
+            expect(state.formatDuration(59_999.5)).toBe(second.format(59.9995));
+            expect(state.formatDuration(60_000)).toBe(`${minute.format(1)} ${second.format(0)}`);
+            expect(state.formatDuration(123_456_789)).toBe(`${minute.format(2057)} ${second.format(37)}`);
+        }
+        expect(constructors).toHaveBeenCalledTimes(21);
+        constructors.mockClear();state.language = 'zh-CN';
+        state.formatSpeed(12.34);state.formatDuration(1_000);state.formatDuration(60_000);
+        expect(constructors).not.toHaveBeenCalled();
+    });
+
+    it('新组件实例保持懒构造且不会复用前一个实例的格式器', async () => {
+        await mount('model', false);
+        const constructors = vi.spyOn(Intl, 'NumberFormat');
+        state.formatSpeed(12.34);state.formatDuration(1_000);state.formatDuration(60_000);
+        expect(constructors).toHaveBeenCalledTimes(3);
+        app!.unmount();app = undefined;constructors.mockClear();
+        await mount('model', false);
+        expect(constructors).not.toHaveBeenCalled();
+        state.formatSpeed(12.34);state.formatDuration(1_000);state.formatDuration(60_000);
+        expect(constructors).toHaveBeenCalledTimes(3);
+    });
+
+    it.each(['speed', 'second', 'minute'] as const)('%s 原生构造失败不污染缓存，下一调用重试后可复用', async (rule) => {
+        await mount('model', false);state.language = 'en-US';
+        const constructors = vi.spyOn(Intl, 'NumberFormat').mockImplementationOnce(() => {throw new RangeError('controlled native constructor failure');});
+        const format = rule === 'speed' ? state.formatSpeed : state.formatDuration;
+        const value = rule === 'speed' ? 12.34 : rule === 'second' ? 1_000 : 60_000;
+        expect(() => format(value)).toThrow('controlled native constructor failure');
+        constructors.mockClear();
+        const first = format(value), next = format(value * 2);
+        const expected = new NativeNumberFormat('en-US', rule === 'speed' ? {maximumFractionDigits: 2}
+            : {style: 'unit', unit: rule, unitDisplay: 'short', maximumFractionDigits: 2});
+        if (rule === 'speed') {expect(first).toBe(expected.format(12.34));expect(next).toBe(expected.format(24.68));}
+        else if (rule === 'second') {expect(first).toBe(expected.format(1));expect(next).toBe(expected.format(2));}
+        else {
+            const second = new NativeNumberFormat('en-US', {style: 'unit', unit: 'second', unitDisplay: 'short', maximumFractionDigits: 2});
+            expect(first).toBe(`${expected.format(1)} ${second.format(0)}`);expect(next).toBe(`${expected.format(2)} ${second.format(0)}`);
+        }
+        const targetCalls = constructors.mock.calls.filter(([, options]) => rule === 'speed' ? !options?.unit : options?.unit === rule);
+        expect(targetCalls).toHaveLength(1);
+    });
 });
 
 describe.each(['model', 'stats'] as const)('%s 统计面板真实组件生命周期', (kind) => {

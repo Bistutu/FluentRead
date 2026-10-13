@@ -1,13 +1,10 @@
 /**
  * @file src/core/config/localTranslation.ts
  *
- * 文件职责：定义浏览器本地翻译模型目录、下载状态键和产品语言到模型语言码的映射。
- * 主要内容：提供中英/日英轻量语言包、混元翻译和旧模型兼容目录，定义持久下载任务与语言转换契约。
- * 模块边界：只处理纯配置与语言转换，不访问浏览器存储、模型缓存或推理运行时。
+ * 文件职责：定义浏览器本地翻译静态模型目录、下载状态键与无需文本识别的模型配置规则。
+ * 主要内容：提供中英/日英轻量语言包、混元翻译和旧模型兼容目录，定义持久下载任务、模型语言名称与 OPUS 仓库映射。
+ * 模块边界：只处理静态配置、下载状态与模型元数据，不导入文本检测或读取浏览器存储；指定和自动语言解析由 core/language/localTranslation.ts 消费本目录。
  */
-import {detectlang} from '@/src/core/language/detect';
-import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
-import {normalizeDetectedLanguageCode} from '@/src/core/language/codes';
 
 export const LOCAL_TRANSLATION_SERVICE_ID = 'localTranslation' as const;
 export const LOCAL_TRANSLATION_MODEL_STATE_KEY = 'fluentReadLocalTranslationModels' as const;
@@ -141,83 +138,6 @@ export function normalizeLocalTranslationDownloadSnapshot(value: unknown): Local
         });
     }
     return {version: 2, tasks};
-}
-
-// 本地模型词表沿用 ISO 639-1 旧写法：挪威语为 no，他加禄语/菲律宾语为 tl。
-const LOCAL_MODEL_BASE_ALIASES: Readonly<Record<string, string>> = {nb: 'no', fil: 'tl'};
-
-const M2M100_LANGUAGE_CODES: Readonly<Record<string, string>> = {
-    af: 'af', ar: 'ar', bg: 'bg', bn: 'bn', cs: 'cs', da: 'da', de: 'de', el: 'el',
-    en: 'en', es: 'es', et: 'et', fa: 'fa', fi: 'fi', fr: 'fr', he: 'he', hi: 'hi',
-    hr: 'hr', hu: 'hu', id: 'id', it: 'it', ja: 'ja', ko: 'ko', kn: 'kn', lt: 'lt',
-    lv: 'lv', ml: 'ml', mr: 'mr', ms: 'ms', nl: 'nl', no: 'no', pa: 'pa', pl: 'pl',
-    pt: 'pt', ro: 'ro', ru: 'ru', si: 'si', sk: 'sk', sl: 'sl', sr: 'sr', sv: 'sv',
-    sw: 'sw', ta: 'ta', te: 'te', th: 'th', tr: 'tr', uk: 'uk', ur: 'ur', vi: 'vi',
-    zh: 'zh',
-};
-
-const NLLB_LANGUAGE_CODES: Readonly<Record<string, string>> = {
-    af: 'afr_Latn', ar: 'arb_Arab', bg: 'bul_Cyrl', bn: 'ben_Beng', cs: 'ces_Latn',
-    da: 'dan_Latn', de: 'deu_Latn', el: 'ell_Grek', en: 'eng_Latn', es: 'spa_Latn',
-    et: 'est_Latn', fa: 'pes_Arab', fi: 'fin_Latn', fr: 'fra_Latn', he: 'heb_Hebr',
-    hi: 'hin_Deva', hr: 'hrv_Latn', hu: 'hun_Latn', id: 'ind_Latn', it: 'ita_Latn',
-    ja: 'jpn_Jpan', kn: 'kan_Knda', ko: 'kor_Hang', lt: 'lit_Latn', lv: 'lvs_Latn',
-    ml: 'mal_Mlym', mr: 'mar_Deva', ms: 'zsm_Latn', nl: 'nld_Latn', no: 'nno_Latn',
-    pa: 'pan_Guru', pl: 'pol_Latn', pt: 'por_Latn', ro: 'ron_Latn', ru: 'rus_Cyrl',
-    si: 'sin_Sinh', sk: 'slk_Latn', sl: 'slv_Latn', sr: 'srp_Cyrl', sv: 'swe_Latn',
-    sw: 'swh_Latn', ta: 'tam_Taml', te: 'tel_Telu', th: 'tha_Thai', tr: 'tur_Latn',
-    uk: 'ukr_Cyrl', ur: 'urd_Arab', vi: 'vie_Latn',
-    'zh-Hans': 'zho_Hans', 'zh-Hant': 'zho_Hant', zh: 'zho_Hans',
-};
-
-function languageBase(value: string): string {
-    const canonical = normalizeDetectedLanguageCode(value) || value.trim().toLowerCase();
-    const base = canonical.split('-')[0]!;
-    return LOCAL_MODEL_BASE_ALIASES[base] ?? base;
-}
-
-function modelFamily(model: LocalTranslationModelId): 'm2m100' | 'nllb' {
-    return model === LOCAL_TRANSLATION_MODEL_IDS.nllb ? 'nllb' : 'm2m100';
-}
-
-/** 把 FluentRead 的语言码转换为所选模型 tokenizer 接受的语言码。 */
-export function resolveLocalTranslationLanguageCode(
-    modelValue: unknown,
-    languageValue: unknown,
-    textForAutoDetection = '',
-): string {
-    const model = normalizeLocalTranslationModel(modelValue);
-    const raw = typeof languageValue === 'string' ? languageValue.trim() : '';
-    let normalized = raw && raw.toLowerCase() !== 'auto'
-        ? normalizeChineseLanguageCode(raw)
-        : '';
-    if (!normalized) {
-        if (!textForAutoDetection.trim()) throw new Error('本地模型无法自动识别空文本，请指定源语言');
-        normalized = detectlang(textForAutoDetection);
-    }
-
-    const base = languageBase(normalized);
-    const engine = getLocalTranslationModel(model).engine;
-    if (engine === 'opus') {
-        const allowed = model === LOCAL_TRANSLATION_MODEL_IDS.opusZhEn ? ['zh', 'en'] : ['ja', 'en'];
-        if (allowed.includes(base)) return base;
-        throw new Error('LOCAL_TRANSLATION_LANGUAGE_UNSUPPORTED');
-    }
-    if (engine === 'hunyuan') {
-        if (normalized === 'zh-Hant') return 'zh-Hant';
-        if (HUNYUAN_LANGUAGE_NAMES[base]) return base;
-        throw new Error('LOCAL_TRANSLATION_LANGUAGE_UNSUPPORTED');
-    }
-    if (modelFamily(model) === 'nllb') {
-        const nllbKey = normalized === 'zh-Hans' || normalized === 'zh-Hant' ? normalized : base;
-        const code = NLLB_LANGUAGE_CODES[nllbKey];
-        if (code) return code;
-    } else {
-        const code = M2M100_LANGUAGE_CODES[base];
-        if (code) return code;
-    }
-
-    throw new Error(`本地模型暂不支持语言：${raw || normalized}`);
 }
 
 export const HUNYUAN_LANGUAGE_NAMES: Readonly<Record<string, string>> = {

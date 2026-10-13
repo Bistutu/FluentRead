@@ -30,18 +30,23 @@ const EXPECTED_PROVIDER_FILES = [
     'deepseek.ts',
     'doubao.ts',
     'doubao-seed-translation.ts',
+    'doubao-web.ts',
+    'documentFreeBatch.ts',
     'free-translation.ts',
     'free-web.ts',
     'free-chinese-web.ts',
     'free-extra-web.ts',
     'free-official-web.ts',
+    'freeTextChunks.ts',
     'bilibili-free.ts',
     'gemini.ts',
     'google.ts',
+    'googleRequestGate.ts',
     'hunyuan-translation.ts',
     'local-translation.ts',
     'microsoft.ts',
     'microsoftTransport.ts',
+    'native-batch.ts',
     'responses-api.ts',
     'tencent.ts',
     'tongyi.ts',
@@ -183,7 +188,7 @@ describe('translation provider architecture', () => {
 
         expect(violations).toEqual([]);
         const microsoftAdapter = readProjectFile('src/providers/translation/microsoft.ts');
-        expect(microsoftAdapter).toContain('translateMicrosoftTextsWithTransport(runtimeFetch, texts, fromLang, toLang, abortSignal)');
+        expect(microsoftAdapter).toContain('translateMicrosoftTextsWithTransport(runtimeFetch, texts, fromLang, toLang, abortSignal, enableNativeBatch)');
         const microsoftTransportCalls = runtimeFetchCalls('microsoftTransport.ts', 'transport');
         expect(microsoftTransportCalls).toHaveLength(1);
         expect(microsoftTransportCalls.every((call) => objectLiteralHasSignal(call.arguments[1]))).toBe(true);

@@ -200,9 +200,12 @@ for (const prefix of ['', '/en']) {
     'Feature workflows need three stages and one current stage'
   )
   const docsBrand = docs.get(resolve(prefix + '/docs/')).querySelector('.VPNavBarTitle .title')
-  assert(
-    docsBrand?.textContent.includes('流畅阅读') && docsBrand.textContent.includes('FluentRead')
-  )
+  const productName = prefix ? 'FluentRead' : '流畅阅读'
+  assert.equal(docsBrand?.querySelector('strong')?.textContent.trim(), productName)
+  for (const page of [home, docs.get(resolve(prefix + '/docs/'))]) {
+    assert.equal(page.querySelector('meta[property="og:site_name"]')?.getAttribute('content'), productName)
+    assert(page.querySelector('title')?.textContent.includes(productName), 'Page title needs its locale product name')
+  }
   assert.equal(
     home.querySelectorAll('.bv-browser-options a').length,
     3,
@@ -308,12 +311,11 @@ for (const prefix of ['', '/en']) {
       `Missing introduction video asset ${src}`
     )
   assert(!home.querySelector('.bv-promo iframe'), 'Bilibili must only load after the original fails')
-  if (!prefix) {
-    const fallback = home.querySelector('.bv-promo-link')
-    assert.equal(fallback?.getAttribute('href'), 'https://www.bilibili.com/video/BV1VLHE6hEnB/')
-    assert.equal(fallback?.getAttribute('target'), '_blank')
-    assert(fallback?.getAttribute('rel')?.includes('noopener'))
-  }
+  assert(!home.querySelector('.bv-promo-link'), 'Homepage should not repeat the short-video link')
+  const officialIntroduction = home.querySelector('.bv-promo-more a')
+  assert.equal(officialIntroduction?.getAttribute('href'), 'https://www.bilibili.com/video/BV1qhHJ6uEiF/')
+  assert.equal(officialIntroduction?.getAttribute('target'), '_blank')
+  assert(officialIntroduction?.getAttribute('rel')?.includes('noopener'))
   assert(
     !home.querySelector('.bv-pointer,.bv-end'),
     'Confusing cursor paths and repeated installation section must be removed'

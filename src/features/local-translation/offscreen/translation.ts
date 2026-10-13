@@ -2,16 +2,17 @@
  * @file src/features/local-translation/offscreen/translation.ts
  *
  * 文件职责：在 Offscreen Document 中管理本地翻译 Worker、模型缓存和请求取消。
- * 主要内容：串行复用模型 Worker，按模型切换时终止旧实例，隔离旧实例的迟到错误，并向后台提供下载、状态、清除和文本翻译能力。
- * 模块边界：不读取配置、不访问宿主网页 DOM；语言码解析由 core 配置模块负责。
+ * 主要内容：串行复用模型 Worker，按设备内存保温并保护排队请求，显式释放使旧队列失效；按模型切换时终止旧实例，隔离旧实例的迟到错误，并提供下载、状态、清除和文本翻译能力。
+ * 模块边界：不读取配置、不访问宿主网页 DOM；模型目录由 core 配置模块维护，指定与自动语言码解析由 core 语言模块负责。
  */
 import {withLocalInferenceBudget} from '@/src/shared/onnx/resources';
+import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
 import {
     LOCAL_TRANSLATION_MODELS,
     normalizeLocalTranslationModel,
-    resolveLocalTranslationLanguageCode,
     type LocalTranslationModelId,
 } from '@/src/core/config/localTranslation';
+import {resolveLocalTranslationLanguageCode} from '@/src/core/language/localTranslation';
 import {createLocalTranslationDownloadManager} from './downloads';
 import type {LocalTranslationDownloadSnapshot} from '@/src/core/config/localTranslation';
 
@@ -52,7 +53,6 @@ export interface LocalTranslationRequest {
 }
 
 const TRANSLATION_TIMEOUT_MS = 120_000;
-const MODEL_IDLE_DISPOSE_MS = 30_000;
 
 let translationWorker: Worker | null = null;
 let workerGeneration = 0;
@@ -60,6 +60,8 @@ let translationWorkerModel: LocalTranslationModelId | '' = '';
 let workerRequestId = 0;
 const pendingWorkerRequests = new Map<number, PendingWorkerRequest>();
 let translationTaskQueue: Promise<void> = Promise.resolve();
+let cancellationGeneration = 0;
+let activeTranslations = 0;
 let idleDisposeTimer: number | undefined;
 let notifyDownloads: ((state: LocalTranslationDownloadSnapshot) => Promise<void>) | undefined;
 const downloads = createLocalTranslationDownloadManager({
@@ -104,6 +106,7 @@ function rejectPending(error: Error): void {
 
 function terminateWorker(error?: Error): void {
     workerGeneration++;
+    clearIdleDispose();
     const current = translationWorker;
     translationWorker = null;
     translationWorkerModel = '';
@@ -113,10 +116,11 @@ function terminateWorker(error?: Error): void {
 
 function scheduleIdleDispose(): void {
     clearIdleDispose();
+    if (!translationWorker || activeTranslations > 0) return;
     idleDisposeTimer = window.setTimeout(() => {
         idleDisposeTimer = undefined;
-        if (pendingWorkerRequests.size === 0) terminateWorker();
-    }, MODEL_IDLE_DISPOSE_MS);
+        if (pendingWorkerRequests.size === 0 && activeTranslations === 0) terminateWorker();
+    }, localModelIdleMs());
 }
 
 function getWorker(): Worker {
@@ -148,10 +152,12 @@ function getWorker(): Worker {
 function requestWorker(message: Omit<WorkerRequest, 'requestId'>, timeoutMs: number, signal?: AbortSignal): Promise<WorkerResponse> {
     clearIdleDispose();
     const generation = workerGeneration;
+    const cancellation = cancellationGeneration;
     return withLocalInferenceBudget(async () => {
         if (generation !== workerGeneration) throw createAbortError();
         const deadline=Date.now()+timeoutMs;
         const response=await requestWorkerNow(message,timeoutMs,signal);
+        if (cancellation !== cancellationGeneration || signal?.aborted) throw createAbortError();
         if (!response.retrySingleThread || message.singleThread || signal?.aborted) return response;
         terminateWorker();
         return requestWorkerNow({...message,singleThread:true},Math.max(1,deadline-Date.now()),signal);
@@ -212,7 +218,12 @@ export async function translateLocalText(
     request: LocalTranslationRequest,
     signal?: AbortSignal,
 ): Promise<string> {
+    if (signal?.aborted) throw createAbortError();
+    const generation = cancellationGeneration;
+    activeTranslations++;
+    clearIdleDispose();
     const run = async (): Promise<string> => {
+        if (generation !== cancellationGeneration || signal?.aborted) throw createAbortError();
         if (typeof request.text !== 'string' || !request.text.trim()) return request.text || '';
         if (signal?.aborted) throw createAbortError();
         const model = normalizeLocalTranslationModel(request.model);
@@ -222,22 +233,21 @@ export async function translateLocalText(
         const targetLanguage = resolveLocalTranslationLanguageCode(model, request.targetLanguage);
         if (sourceLanguage === targetLanguage) return request.text;
         const state = await downloads.status();
+        if (generation !== cancellationGeneration || signal?.aborted) throw createAbortError();
         if (state.tasks.find((task) => task.model === model)?.phase !== 'ready') {
             throw new Error('LOCAL_TRANSLATION_NOT_DOWNLOADED');
         }
 
-        try {
-            const response = await requestWorker({
-                type: 'translate', model, text: request.text, sourceLanguage, targetLanguage,
-            }, TRANSLATION_TIMEOUT_MS, signal);
-            return modelResult(response, '本地翻译未返回有效译文');
-        } finally {
-            scheduleIdleDispose();
-        }
+        const response = await requestWorker({
+            type: 'translate', model, text: request.text, sourceLanguage, targetLanguage,
+        }, TRANSLATION_TIMEOUT_MS, signal);
+        if (generation !== cancellationGeneration || signal?.aborted) throw createAbortError();
+        return modelResult(response, '本地翻译未返回有效译文');
     };
     const task = translationTaskQueue.then(run, run);
     translationTaskQueue = task.then(() => undefined, () => undefined);
-    return task;
+    try { return await task; }
+    finally { activeTranslations--; scheduleIdleDispose(); }
 }
 
 export async function prepareLocalTranslationModel(modelValue: unknown): Promise<LocalTranslationDownloadSnapshot> {
@@ -267,6 +277,7 @@ export async function pauseLocalTranslationModelDownload(modelValue: unknown): P
 }
 
 export function disposeLocalTranslationWorker(): void {
+    cancellationGeneration++;
     clearIdleDispose();
     terminateWorker(createAbortError());
 }

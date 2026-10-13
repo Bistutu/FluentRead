@@ -96,6 +96,16 @@ describe('background translation fallback handler', () => {
         expect(parsed).toEqual({origin: 'hello'});
     });
 
+    it('原生合批只接受并透传显式布尔值，旧消息缺省仍由 broker 配置决定', () => {
+        expect(parseTranslationRequest({origin: ['a', 'b'], enableNativeBatch: false}))
+            .toEqual({origin: ['a', 'b'], enableNativeBatch: false});
+        expect(parseTranslationRequest({origin: 'a', enableNativeBatch: true}))
+            .toEqual({origin: 'a', enableNativeBatch: true});
+        for (const value of ['false', null, 0, {}]) {
+            expect(() => parseTranslationRequest({origin: 'a', enableNativeBatch: value})).toThrow('enableNativeBatch');
+        }
+    });
+
     it('保留字符串数组并忽略未提供的可选字段', () => {
         expect(parseTranslationRequest({origin: ['a', 'b']})).toEqual({origin: ['a', 'b']});
         expect(parseTranslationRequest({origin: '', context: undefined})).toEqual({origin: ''});
@@ -139,6 +149,28 @@ describe('background translation fallback handler', () => {
         await fallback.handle({origin: 'agent', glossaryContext, pageUrl: 'https://forged.example'}, {sender: {url}});
         expect(getTranslationGlossaryContext(translate.mock.calls[0][0])).toEqual(expected);
         expect(JSON.stringify(translate.mock.calls[0][0])).not.toContain('forged');
+    });
+
+    it.each([
+        ['chrome-extension://id/document.html#file', ['First source', 'Second source'], 'document', true],
+        ['moz-extension://id/document.html?file=1', ['First source', 'Second source'], 'document', true],
+        ['chrome-extension://id/document.html', 'Single source', 'document', false],
+        ['chrome-extension://id/options.html', ['First source', 'Second source'], 'document', false],
+        ['https://fake.example/document.html', ['First source', 'Second source'], 'document', false],
+        ['chrome-extension://id/document.html', ['First source', 'Second source'], 'page', false],
+    ])('document batching requires the real document sender and an array: %s / %s / %s', async (url, origin, glossaryContext, enabled) => {
+        const translate = vi.fn().mockResolvedValue(['译文']);
+        const fallback = createTranslationRequestFallback<TranslationRequestContext>({translate, serializeError: vi.fn()});
+        await fallback.handle({origin, glossaryContext, documentBatch: true}, {sender: {url: url as string}});
+        expect(translate).toHaveBeenCalledOnce();
+        expect(translate.mock.calls[0]![0].documentBatch).toBe(enabled ? true : undefined);
+    });
+
+    it('document batching only accepts an explicit boolean protocol value', () => {
+        for (const documentBatch of ['true', 1, null, [], {}]) {
+            expect(() => parseTranslationRequest({origin: ['source'], documentBatch})).toThrow('documentBatch 必须是布尔值');
+        }
+        expect(parseTranslationRequest({origin: ['source'], documentBatch: false})).not.toHaveProperty('documentBatch');
     });
 
     it('无 clientRequestId 的兼容请求不附加取消所有权，保留 broker pending 去重', async () => {

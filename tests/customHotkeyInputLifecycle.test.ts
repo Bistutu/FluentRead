@@ -165,3 +165,110 @@ it('解析与冲突策略返回缺省说明时仍展示可理解的错误和警�
     vi.spyOn(hotkeyModule, 'validateHotkeyConflicts').mockReturnValueOnce({hasConflict: true});
     state.validateCurrentHotkey('F10'); expect(state.conflictWarning).toBe('可能存在冲突');
 });
+
+
+describe('仅修饰键不是一次完成的快捷键录制', () => {
+    it.each([
+        ['Control', {ctrlKey: true}],
+        ['Alt', {altKey: true}],
+        ['Shift', {shiftKey: true}],
+        ['Meta', {metaKey: true}],
+    ] as const)('仅按下并释放 %s 时继续录制，不确认旧值或遗留修饰键', async (modifier, flags) => {
+        await mount('F10'); click('.hotkey-input-field'); await settle();
+        const input = doc.querySelector('.hotkey-input-field')!;
+        const down = key(modifier, flags), up = key(modifier);
+        handlers.get(input)!.onKeydown(down); handlers.get(input)!.onKeyup(up);
+        expect(down.preventDefault).toHaveBeenCalledOnce(); expect(up.preventDefault).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(1); vi.advanceTimersByTime(100); await settle();
+        expect(state.isRecording).toBe(true); expect(state.currentHotkey).toBe('F10');
+        expect(state.pressedKeys.size).toBe(0); expect(state.canConfirm).toBe(false); expect(vi.getTimerCount()).toBe(0);
+        expect(doc.querySelector('.recording-text')).not.toBeNull(); expect(doc.querySelector('.hotkey-display')).toBeNull();
+        expect(doc.querySelector('.hotkey-status')).toBeNull(); expect(doc.querySelector('.primary-button')!.hasAttribute('disabled')).toBe(true);
+        state.handleConfirm(); expect(emitted).not.toHaveBeenCalled();
+
+        // 随后的裸功能键通过同一真实模板事件入口录入，不继承已释放的 Ctrl/Alt/Shift/Meta。
+        handlers.get(input)!.onKeydown(key('F9')); handlers.get(input)!.onKeyup(key('F9'));
+        vi.advanceTimersByTime(100); await settle();
+        expect(state.isRecording).toBe(false); expect(state.currentHotkey).toBe('F9'); expect(state.canConfirm).toBe(true);
+        expect(doc.querySelector('.hotkey-display')?.textContent).toBe('F9'); expect(vi.getTimerCount()).toBe(0);
+        click('.primary-button'); expect(emitted).toHaveBeenCalledOnce(); expect(emitted).toHaveBeenCalledWith('confirm', 'F9');
+    });
+    it.each(['', 'none'])('旧草稿为 %s 时，修饰键释放不自动清除、确认或结束录制', async saved => {
+        await mount(saved); click('.hotkey-input-field'); await settle();
+        const input = doc.querySelector('.hotkey-input-field')!;
+        handlers.get(input)!.onKeydown(key('Control', {ctrlKey: true})); handlers.get(input)!.onKeyup(key('Control'));
+        vi.advanceTimersByTime(100); await settle();
+        expect(state.isRecording).toBe(true); expect(state.currentHotkey).toBe(saved); expect(state.canConfirm).toBe(false);
+        expect(doc.querySelector('.primary-button')!.hasAttribute('disabled')).toBe(true); state.handleConfirm();
+        expect(emitted).not.toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0);
+        click('.secondary-button'); await settle();
+        expect(props.modelValue).toBe(false); expect(props.currentValue).toBe(saved); expect(state.currentHotkey).toBe(saved);
+        expect(emitted).toHaveBeenCalledWith('cancel'); expect(emitted).toHaveBeenCalledWith('visible', false);
+        expect(emitted.mock.calls.some(([kind]) => kind === 'confirm')).toBe(false);
+    });
+    it('仅修饰键尚未完成时，显式预设和清除仍结束录制并取消旧计时器', async () => {
+        await mount('F10'); click('.hotkey-input-field'); await settle();
+        let input = doc.querySelector('.hotkey-input-field')!;
+        handlers.get(input)!.onKeydown(key('Control', {ctrlKey: true})); handlers.get(input)!.onKeyup(key('Control'));
+        vi.advanceTimersByTime(100); await settle(); expect(state.isRecording).toBe(true);
+        click('[aria-label="F9"]'); await settle();
+        expect(state.currentHotkey).toBe('F9'); expect(state.isRecording).toBe(false); expect(state.canConfirm).toBe(true);
+        expect(emitted).not.toHaveBeenCalled();
+        click('.hotkey-input-field'); await settle(); input = doc.querySelector('.hotkey-input-field')!;
+        handlers.get(input)!.onKeydown(key('Shift', {shiftKey: true})); handlers.get(input)!.onKeyup(key('Shift'));
+        expect(vi.getTimerCount()).toBe(1); click('.clear-button'); await settle();
+        expect(state.currentHotkey).toBe('none'); expect(state.isRecording).toBe(false); expect(vi.getTimerCount()).toBe(0);
+        vi.advanceTimersByTime(100); await settle(); expect(state.currentHotkey).toBe('none');
+        click('.primary-button'); expect(emitted).toHaveBeenCalledOnce(); expect(emitted).toHaveBeenCalledWith('confirm', 'none');
+    });
+});
+
+
+describe('修饰键释放后的计时窗口与组合释放顺序', () => {
+    it('松开 Ctrl 后 100ms 内按裸 F9，不继承已释放的 Ctrl 或确认旧 F10', async () => {
+        await mount('F10'); click('.hotkey-input-field'); await settle();
+        const input = doc.querySelector('.hotkey-input-field')!;
+        handlers.get(input)!.onKeydown(key('Control', {ctrlKey: true})); handlers.get(input)!.onKeyup(key('Control'));
+        expect(state.pressedKeys.size).toBe(0); expect(vi.getTimerCount()).toBe(1);
+        vi.advanceTimersByTime(50); await settle();
+        expect(state.currentHotkey).toBe('F10'); expect(state.isRecording).toBe(true); expect(state.canConfirm).toBe(false);
+        expect(doc.querySelector('.hotkey-status')).toBeNull(); expect(doc.querySelector('.primary-button')!.hasAttribute('disabled')).toBe(true);
+        state.handleConfirm(); expect(emitted).not.toHaveBeenCalled();
+        handlers.get(input)!.onKeydown(key('F9')); handlers.get(input)!.onKeyup(key('F9'));
+        expect([...state.pressedKeys]).toEqual(['f9']); expect(vi.getTimerCount()).toBe(1);
+        vi.advanceTimersByTime(100); await settle();
+        expect(state.currentHotkey).toBe('F9'); expect(state.isRecording).toBe(false); expect(state.canConfirm).toBe(true);
+        expect(doc.querySelector('.hotkey-display')?.textContent).toBe('F9'); expect(vi.getTimerCount()).toBe(0);
+        click('.primary-button'); expect(emitted).toHaveBeenCalledOnce(); expect(emitted).toHaveBeenCalledWith('confirm', 'F9');
+    });
+    it.each(['modifier-first', 'regular-first'] as const)('已有普通键时 %s 释放，完整保留真实录下的 Ctrl+F9', async order => {
+        await mount('F10'); click('.hotkey-input-field'); await settle();
+        const input = doc.querySelector('.hotkey-input-field')!;
+        handlers.get(input)!.onKeydown(key('Control', {ctrlKey: true})); handlers.get(input)!.onKeydown(key('F9', {ctrlKey: true}));
+        const first = order === 'modifier-first' ? key('Control') : key('F9', {ctrlKey: true});
+        const last = order === 'modifier-first' ? key('F9') : key('Control');
+        handlers.get(input)!.onKeyup(first);
+        expect([...state.pressedKeys]).toEqual(['ctrl', 'f9']); expect(vi.getTimerCount()).toBe(1);
+        vi.advanceTimersByTime(50); await settle();
+        expect(state.isRecording).toBe(true); expect(state.canConfirm).toBe(false); expect(state.currentHotkey).toBe('F10');
+        handlers.get(input)!.onKeyup(last); expect([...state.pressedKeys]).toEqual(['ctrl', 'f9']); expect(vi.getTimerCount()).toBe(1);
+        vi.advanceTimersByTime(100); await settle();
+        expect(state.currentHotkey).toBe('Ctrl+F9'); expect(state.isRecording).toBe(false); expect(state.canConfirm).toBe(true);
+        expect(doc.querySelector('.hotkey-display')?.textContent).toBe(state.displayHotkey); expect(vi.getTimerCount()).toBe(0);
+        click('.primary-button'); expect(emitted).toHaveBeenCalledOnce(); expect(emitted).toHaveBeenCalledWith('confirm', 'Ctrl+F9');
+    });
+    it('旧释放计时器遇到新按住的修饰键仍继续录制，后续普通键使用实时修饰键状态', async () => {
+        await mount('F10'); click('.hotkey-input-field'); await settle();
+        const input = doc.querySelector('.hotkey-input-field')!;
+        handlers.get(input)!.onKeydown(key('Control', {ctrlKey: true})); handlers.get(input)!.onKeyup(key('Control'));
+        vi.advanceTimersByTime(50); handlers.get(input)!.onKeydown(key('Alt', {altKey: true}));
+        expect([...state.pressedKeys]).toEqual(['alt']); vi.advanceTimersByTime(50); await settle();
+        expect(state.isRecording).toBe(true); expect(state.currentHotkey).toBe('F10'); expect(state.canConfirm).toBe(false);
+        expect(state.pressedKeys.size).toBe(0); expect(vi.getTimerCount()).toBe(0); expect(emitted).not.toHaveBeenCalled();
+        handlers.get(input)!.onKeydown(key('F9', {altKey: true})); handlers.get(input)!.onKeyup(key('F9', {altKey: true}));
+        vi.advanceTimersByTime(100); await settle();
+        expect(state.currentHotkey).toBe('Alt+F9'); expect(state.isRecording).toBe(false); expect(state.canConfirm).toBe(true);
+        expect(vi.getTimerCount()).toBe(0); click('.primary-button');
+        expect(emitted).toHaveBeenCalledOnce(); expect(emitted).toHaveBeenCalledWith('confirm', 'Alt+F9');
+    });
+});

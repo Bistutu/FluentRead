@@ -6,7 +6,7 @@ import fs from 'fs';
 import {resolveBrowserCapabilities} from './src/platform/browser/capabilities';
 import {checkExtensionSize} from './scripts/testing/extension-size-budget';
 import {wllamaExtensionWorker} from './scripts/testing/wllama-extension-build';
-import {createUiLanguageBundleFiles} from './src/core/i18n/bundles';
+import {createExtensionNameLocaleFiles, createUiLanguageBundleFiles} from './src/core/i18n/bundles';
 import {UI_LANGUAGE_BUNDLE_DIRECTORY} from './src/core/i18n/language';
 import {packageWasmDiagnostics, packageTesseractWasm, packageTesseractWorker} from './scripts/wasm/package-diagnostics';
 import {tesseractSdkBuildPlugin} from './scripts/wasm/tesseract-sdk-build';
@@ -109,6 +109,8 @@ export function createExtensionManifest(
         },
     } : {};
     return {
+        name: '__MSG_extensionName__',
+        default_locale: 'en',
         permissions: [
             'storage',
             'unlimitedStorage',
@@ -139,6 +141,11 @@ export function createExtensionManifest(
             'https://*/*',
         ],
         web_accessible_resources: [
+            {
+                // 页内快捷面板只暴露 HTML；任何 iframe 都须先兑换内容脚本持有的一次性凭据，才可加载界面和配置。
+                resources: ['popup.html'],
+                matches: ['<all_urls>'],
+            },
             {
                 // 界面语言资源包由内容脚本按需 fetch；use_dynamic_url 避免网页用固定地址探测扩展。
                 // 不要把需要 import() 执行的脚本放进这里：动态 ID 地址不满足内容脚本隔离环境的 script-src 'self'。
@@ -221,6 +228,8 @@ export default defineConfig({
     hooks: {
         'build:done': async (wxt) => {
             const dev = wxt.config.command === 'serve';
+            // PDF 字体首次导出时下载并缓存，不进入安装包；fontkit 仍使用包内静态代码。
+            // 恢复字体加入前的生产体积预算，防止完整字体再次随 public/ 打包。
             const budget = dev ? (process.env.FLUENTREAD_DEV_SOURCEMAPS === '1' ? 170_000_000 : 70_000_000) : 65_000_000;
             await checkExtensionSize(wxt.config.outDir, budget);
         },
@@ -237,6 +246,8 @@ export default defineConfig({
         'build:publicAssets': (_wxt, files) => {
             // 非中文界面文案只生成一份 JSON，由各运行上下文按当前语言加载，不再内联进每个 bundle。
             files.push(...createUiLanguageBundleFiles());
+            // 安装名称由浏览器原生 locale 解析，复用七语品牌，不复制完整界面目录。
+            files.push(...createExtensionNameLocaleFiles());
             files.push({absoluteSrc: resolve(__dirname, 'node_modules/@wllama/wllama/LICENCE'), relativeDest: 'third-party-notices/wllama-MIT.txt'});
             files.push({absoluteSrc: resolve(__dirname, 'node_modules/@noble/hashes/LICENSE'), relativeDest: 'third-party-notices/noble-hashes-MIT.txt'});
             files.push({absoluteSrc: resolve(__dirname, 'node_modules/ppu-paddle-ocr/LICENSE'), relativeDest: 'third-party-notices/ppu-paddle-ocr-MIT.txt'});

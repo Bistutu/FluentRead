@@ -1,10 +1,12 @@
 import {afterEach, describe, expect, it} from 'vitest';
 import {userscriptFetch} from '@/userscript/http';
+import {DOUBAO_GUEST_HEADER} from '@/src/platform/http/doubaoGuest';
 
 describe('userscript HTTP transport', () => {
     afterEach(() => {
         globalThis.GM_xmlhttpRequest = undefined;
         globalThis.GM = undefined;
+        globalThis.GM_info = undefined;
     });
 
     it('uses Safari Userscripts promise-only GM.xmlHttpRequest without falling back to page fetch', async () => {
@@ -141,5 +143,47 @@ describe('userscript HTTP transport', () => {
 
         await expect(pending).rejects.toMatchObject({name: 'AbortError'});
         expect(aborted).toBe(true);
+    });
+
+    it('isolates Doubao anonymous requests and consumes the internal guest header', async () => {
+        globalThis.GM_info = {scriptHandler: 'Tampermonkey', version: '5.6.6239', platform: {browserName: 'chrome', os: 'mac'}};
+        const captured: UserscriptXmlHttpRequestDetails[] = [];
+        globalThis.GM_xmlhttpRequest = details => {
+            captured.push(details);
+            queueMicrotask(() => details.onload?.({status: 200, responseText: 'ok'}));
+            return {abort() {}};
+        };
+        await userscriptFetch('https://www.doubao.com/');
+        await userscriptFetch('https://ttwid.bytedance.com/ttwid/union/register/', {method: 'POST'});
+        await userscriptFetch('https://www.doubao.com/samantha/plugin/stream_article_translate?tea_uuid=123456789012345678', {
+            method: 'POST', headers: {[DOUBAO_GUEST_HEADER]: 'anonymous-test-token', Cookie: 'personal=secret'},
+        });
+        expect(captured.every(request => request.anonymous === true)).toBe(true);
+        expect(captured[2].headers).toMatchObject({cookie: 'ttwid=anonymous-test-token', origin: 'https://www.doubao.com', referer: 'https://www.doubao.com/'});
+        expect(captured[2].redirect).toBe('error');
+        expect(captured[2].headers).not.toHaveProperty(DOUBAO_GUEST_HEADER.toLowerCase());
+    });
+
+    it('rejects guest requests without a privileged manager or to another endpoint', async () => {
+        await expect(userscriptFetch('https://www.doubao.com/samantha/plugin/stream_article_translate', {
+            method: 'POST', headers: {[DOUBAO_GUEST_HEADER]: 'anonymous-test-token'},
+        })).rejects.toThrow('需要脚本管理器');
+        await expect(userscriptFetch('https://other.test/', {
+            method: 'POST', headers: {[DOUBAO_GUEST_HEADER]: 'anonymous-test-token'},
+        })).rejects.toThrow('无法发送豆包匿名');
+    });
+
+    it('refuses Doubao bootstrap before managers with unknown or unsupported anonymity can send cookies', async () => {
+        let calls = 0;
+        globalThis.GM_xmlhttpRequest = () => {calls++; return {abort() {}};};
+        for (const info of [undefined,
+            {scriptHandler: 'Userscripts', version: '6.0', platform: {browserName: 'safari', os: 'mac'}},
+            {scriptHandler: 'Tampermonkey', version: '5.4.0', platform: {browserName: 'chrome', os: 'mac'}},
+            {scriptHandler: 'Tampermonkey', version: '5.6.6239', platform: {browserName: 'chrome', os: 'android'}},
+        ]) {
+            globalThis.GM_info = info;
+            await expect(userscriptFetch('https://www.doubao.com/', {credentials: 'omit'})).rejects.toThrow('无法发送豆包匿名');
+        }
+        expect(calls).toBe(0);
     });
 });

@@ -121,4 +121,52 @@ describe('音频停顿与完整字幕对齐', () => {
     expect(findVideoAiPauseBoundary(new Float32Array(10000 * 16).fill(1 / 32768))).toBe(0);
   });
 
+  it('重叠窗口开头残留的前句词尾不算本句起声，从其后的长停顿之后对齐', () => {
+    // 窗口从上一句结束前 190 ms 开始，模型把下一句从窗口起点计时。
+    const audio = pcm(4940, [[0, 190], [1610, 4900]]);
+    const segments = [{startMs: 0, endMs: 4940, text: 'The speaker reviewed the numbers.'}];
+    expect(alignVideoAiSegmentsToSpeech(audio, segments)).toEqual(segments);
+    expect(alignVideoAiSegmentsToSpeech(audio, segments, 280))
+      .toEqual([{startMs: 1560, endMs: 4940, text: 'The speaker reviewed the numbers.'}]);
+    // 已归属终点仍在连续语音内、之后只有短停顿、或落在句子之外时保持模型边界。
+    expect(alignVideoAiSegmentsToSpeech(audio, segments, 100)).toEqual(segments);
+    expect(alignVideoAiSegmentsToSpeech(pcm(4940, [[0, 190], [500, 4900]]), segments, 280)).toEqual(segments);
+    expect(alignVideoAiSegmentsToSpeech(audio, segments, 6000)).toEqual(segments);
+    expect(alignVideoAiSegmentsToSpeech(audio, segments, -8800)).toEqual(segments);
+    expect(alignVideoAiSegmentsToSpeech(audio, segments, NaN)).toEqual(segments);
+    // 停顿从句首就开始时沿用原有的句首静音修剪；之后没有语音则不改时间戳。
+    expect(alignVideoAiSegmentsToSpeech(pcm(4940, [[1610, 4900]]), segments, 280)[0].startMs).toBe(1560);
+    expect(alignVideoAiSegmentsToSpeech(pcm(4940, [[0, 190]]), segments, 280)).toEqual(segments);
+    // 只调整跨过已归属终点的句子，后续句子不受影响。
+    expect(alignVideoAiSegmentsToSpeech(pcm(6000, [[0, 190], [1610, 3000], [4000, 5900]]), [
+      {startMs: 0, endMs: 3400, text: 'Second.'},
+      {startMs: 3400, endMs: 6000, text: 'Third.'},
+    ], 280)).toEqual([
+      {startMs: 1560, endMs: 3040, text: 'Second.'},
+      {startMs: 3960, endMs: 6000, text: 'Third.'},
+    ]);
+  });
+
+  it('编码后缓慢漂移的极低底噪仍按停顿处理，语音与底噪差距不足时不放宽', () => {
+    // 取自 X 夹具第二个识别窗口的形态：停顿内 RMS 在 54e-6 到 114e-6 间漂移，
+    // 10%/20% 分位之比超过 1.5，旧规则会退回峰值判定并把整段停顿当成语音。
+    const drifting = (scale: number) => {
+      const audio = new Float32Array(4940 * 16);
+      for (let frame = 0; frame * 320 < audio.length; frame += 1) {
+        audio.fill(scale * (frame < 30 || frame > 55 ? 0.000055 : 0.00011), frame * 320, (frame + 1) * 320);
+      }
+      audio.fill(0.2, 0, 200 * 16);
+      audio.fill(0.2, 1620 * 16, 4900 * 16);
+      return audio;
+    };
+    const segments = [{startMs: 0, endMs: 4940, text: 'The speaker reviewed the numbers.'}];
+    expect(alignVideoAiSegmentsToSpeech(drifting(1), segments, 280))
+      .toEqual([{startMs: 1580, endMs: 4940, text: 'The speaker reviewed the numbers.'}]);
+    expect(alignVideoAiSegmentsToSpeech(drifting(1), [{startMs: 200, endMs: 4940}])[0].startMs).toBe(1580);
+    // 低能量帧只比语音低约 26 dB 时可能是配乐或环境声，保持模型边界。
+    expect(alignVideoAiSegmentsToSpeech(drifting(100), segments, 280)).toEqual(segments);
+    // 分窗边界仍只接受几乎恒定的底噪，漂移底噪不触发自适应切窗。
+    expect(findVideoAiPauseBoundary(drifting(1))).toBe(0);
+  });
+
 });

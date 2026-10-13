@@ -22,6 +22,7 @@ import {
 import {createSelectionTtsSynthesizer} from '@/src/features/selection-translation/background/selectionTtsSynthesis';
 import type {SelectionTtsAudio} from '@/src/features/selection-translation/background/ttsHandler';
 import type {LocalTtsAudio} from '@/src/features/local-tts/protocol';
+import {createLocalInferenceBudget} from '@/src/shared/onnx/resources';
 
 function onlineAudio(): SelectionTtsAudio {
     return {audio: new Uint8Array([1]).buffer, contentType: 'audio/mpeg', voice: 'edge-voice'};
@@ -246,13 +247,19 @@ async function ownerWorkerAt(index: number): Promise<LocalTtsOwnerFakeWorker> {
 }
 
 async function loadLocalTtsOwner(overrides: Partial<Pick<typeof import('@/src/features/local-tts/offscreen/modelCache'),
-    'cacheLocalTtsModelFiles' | 'isLocalTtsModelCached' | 'removeLocalTtsModelFiles'>> = {}): Promise<typeof import('@/src/features/local-tts/offscreen/tts')> {
+    'cacheLocalTtsModelFiles' | 'isLocalTtsModelCached' | 'removeLocalTtsModelFiles'>> = {},
+    budget?: typeof import('@/src/shared/onnx/resources')['withLocalInferenceBudget'],
+): Promise<typeof import('@/src/features/local-tts/offscreen/tts')> {
     vi.resetModules();
     vi.doMock('@/src/features/local-tts/offscreen/modelCache', () => ({
         cacheLocalTtsModelFiles: vi.fn(async () => undefined),
         isLocalTtsModelCached: vi.fn(async () => true),
         removeLocalTtsModelFiles: vi.fn(async () => undefined),
         ...overrides,
+    }));
+    if (budget) vi.doMock('@/src/shared/onnx/resources', async original => ({
+        ...await original<typeof import('@/src/shared/onnx/resources')>(),
+        withLocalInferenceBudget: budget,
     }));
     vi.stubGlobal('Worker', LocalTtsOwnerFakeWorker);
     vi.stubGlobal('window', {location: {href: 'chrome-extension://test/offscreen.html'}, setTimeout, clearTimeout});
@@ -269,7 +276,86 @@ describe('local TTS offscreen worker owner', () => {
         vi.clearAllTimers();
         vi.useRealTimers();
         vi.doUnmock('@/src/features/local-tts/offscreen/modelCache');
+        vi.doUnmock('@/src/shared/onnx/resources');
         LocalTtsOwnerFakeWorker.instances = [];
+    });
+
+    it.each([
+        [4, 60_000], [8, 180_000], [undefined, 120_000],
+    ])('设备内存%s时跨越30秒仍复用Worker，并在%s毫秒连续空闲后释放', async (memory, idleMs) => {
+        vi.useFakeTimers();
+        vi.stubGlobal('navigator', {deviceMemory: memory});
+        const owner = await loadLocalTtsOwner();
+        const first = owner.synthesizeLocalTts('first', 'en-US', 'auto');
+        const worker = await ownerWorkerAt(0);
+        worker.reply({requestId: worker.lastMessage.requestId, success: true, audio: new ArrayBuffer(4)});
+        await first;
+        await vi.advanceTimersByTimeAsync(40_000);
+        expect(worker.terminated).toBe(false);
+        const firstId = worker.lastMessage.requestId;
+        const next = owner.synthesizeLocalTts('next', 'en-US', 'auto');
+        await vi.waitFor(() => expect(worker.lastMessage.requestId).toBeGreaterThan(firstId));
+        expect(LocalTtsOwnerFakeWorker.instances).toHaveLength(1);
+        worker.reply({requestId: worker.lastMessage.requestId, success: true, audio: new ArrayBuffer(4)});
+        await next;
+        await vi.advanceTimersByTimeAsync(idleMs - 1);
+        expect(worker.terminated).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(worker.terminated).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('新请求开始校验缓存时撤销旧回收计时，迟到的校验继续使用暖Worker', async () => {
+        vi.useFakeTimers();
+        vi.stubGlobal('navigator', {});
+        let checked!: (value: boolean) => void;
+        const deferredCheck = new Promise<boolean>(resolve => {checked = resolve;});
+        const cacheCheck = vi.fn(async () => true).mockImplementationOnce(async () => true)
+            .mockImplementationOnce(() => deferredCheck);
+        const owner = await loadLocalTtsOwner({isLocalTtsModelCached: cacheCheck});
+        const first = owner.synthesizeLocalTts('first', 'en-US', 'auto');
+        const worker = await ownerWorkerAt(0);
+        worker.reply({requestId: worker.lastMessage.requestId, success: true, audio: new ArrayBuffer(4)});
+        await first;
+        const firstId = worker.lastMessage.requestId;
+        await vi.advanceTimersByTimeAsync(119_999);
+        const next = owner.synthesizeLocalTts('next', 'en-US', 'auto');
+        expect(vi.getTimerCount()).toBe(0);
+        await vi.advanceTimersByTimeAsync(120_001);
+        expect(worker.terminated).toBe(false);
+        checked(true);
+        await vi.waitFor(() => expect(worker.lastMessage.requestId).toBeGreaterThan(firstId));
+        expect(LocalTtsOwnerFakeWorker.instances).toHaveLength(1);
+        worker.reply({requestId: worker.lastMessage.requestId, success: true, audio: new ArrayBuffer(4)});
+        await next;
+        await vi.advanceTimersByTimeAsync(120_000);
+        expect(worker.terminated).toBe(true);
+    });
+
+    it('共享计算预算排队超过保温时间时保留暖Worker，获准后续用并重新计时', async () => {
+        vi.useFakeTimers();
+        vi.stubGlobal('navigator', {});
+        const budget = createLocalInferenceBudget(1);
+        const owner = await loadLocalTtsOwner({}, budget);
+        const first = owner.synthesizeLocalTts('first', 'en-US', 'auto');
+        const worker = await ownerWorkerAt(0);
+        worker.reply({requestId: worker.lastMessage.requestId, success: true, audio: new ArrayBuffer(4)});
+        await first;
+        const firstId = worker.lastMessage.requestId;
+        let release!: () => void;
+        const occupying = budget(() => new Promise<void>(resolve => {release = resolve;}));
+        const next = owner.synthesizeLocalTts('next', 'en-US', 'auto');
+        await vi.advanceTimersByTimeAsync(180_000);
+        expect(vi.getTimerCount()).toBe(0);
+        expect(worker.terminated).toBe(false);
+        expect(worker.lastMessage.requestId).toBe(firstId);
+        release();await occupying;
+        await vi.waitFor(() => expect(worker.lastMessage.requestId).toBeGreaterThan(firstId));
+        expect(LocalTtsOwnerFakeWorker.instances).toHaveLength(1);
+        worker.reply({requestId: worker.lastMessage.requestId, success: true, audio: new ArrayBuffer(4)});
+        await next;
+        await vi.advanceTimersByTimeAsync(120_000);
+        expect(worker.terminated).toBe(true);
     });
 
     it('rebuilds one fresh WASM worker after GPU failure and ignores an old worker error', async () => {
@@ -297,6 +383,20 @@ describe('local TTS offscreen worker owner', () => {
         await expect(pending).rejects.toMatchObject({name: 'AbortError'});
         expect(LocalTtsOwnerFakeWorker.instances).toHaveLength(1);
         owner.disposeLocalTtsWorker();
+    });
+
+    it('共享预算交接时取消请求不会创建Worker或留下超时计时器', async () => {
+        vi.useFakeTimers();
+        const controller = new AbortController();
+        const owner = await loadLocalTtsOwner({}, async operation => {
+            // 外部资源调度在交接处触发取消，owner 必须在实际创建 Worker 前再核对。
+            controller.abort();
+            return operation();
+        });
+        await expect(owner.synthesizeLocalTts('hello', 'en-US', 'auto', controller.signal))
+            .rejects.toMatchObject({name: 'AbortError'});
+        expect(LocalTtsOwnerFakeWorker.instances).toHaveLength(0);
+        expect(vi.getTimerCount()).toBe(0);
     });
 
     it('retries once on a structured GPU failure hint and sends the retry to a fresh CPU worker', async () => {

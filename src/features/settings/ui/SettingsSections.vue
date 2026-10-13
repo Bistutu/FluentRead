@@ -1,9 +1,9 @@
 <!--
  * @file src/features/settings/ui/SettingsSections.vue
  * 文件职责：承载 FluentRead Options 页面各业务设置分区，连接运行时配置、服务选择、快捷键、站点规则、翻译中心、OCR、词书以及导入导出和历史恢复。
- * 主要内容：userscript既有不可达分区的异步组件在构建期排除，保留划词本地朗读和Chrome/Firefox原组件；扩展设置入口可通过已校验的 service 查询参数选择服务编辑区，目录浏览不改写默认翻译服务，详情标题栏显式设为默认后复用现有配置补丁持久化并同步其他页面；图片设置优先展示语言、服务与识别选择，资源与入口按需展开；翻译设置首先展示带交互示例的阅读辅助，普通页面与网站规则连续展示任务分组并标记顶部导航的滚动定位目标，统计保留按任务切换的视图，集中分配功能服务并将模型用量合并到翻译统计，保留已访问表单实例，自定义快捷键弹窗按显示状态挂载并在离开所属分区时取消草稿；包含正文/全部节点识别范围；模板按 activeSection 展示业务分区，通用设置首先展示全局翻译开关，再按基础配置、网页辅助、基本偏好组织控件，软件语言控件随分区及缓存活跃状态启停，并保留固定英文标题与说明以便选错语言后恢复，提供当前默认服务的配置入口并保留译文样式跨页入口；图片与圈选合并在同页，共享仅在当前分区挂载的 OCR 管理组件；服务连接在主页面的服务目录内编辑，在界面风格页组织译文样式、风格与菜单栏布局，仅在高级选项激活时挂载缓存管理；脚本以独立配置副本隔离编辑与全局差分基线，协调网站入口、配置及凭据保存、历史恢复、能力过滤和离页补丁交接。
- * 锚点编排：翻译设置保留连续表单，双语逐句阅读辅助与智能高亮各有独立锚点；智能高亮仅在翻译设置分区激活时挂载，定位不隐藏其他分组，既有表单配置保持原归属。
- * 模块边界：该组件负责设置 UI 编排但不实现 provider 网络、配置仓库或 feature 运行时；校验与迁移来自 core/config，持久化经 services/config，复杂子界面保持在各自 feature/组件内。
+ * 主要内容：扩展设置入口可通过已校验的 service 查询参数选择服务编辑区，目录浏览不改写默认翻译服务，详情标题栏显式设为默认后复用现有配置补丁持久化并同步其他页面；图片设置优先展示语言、服务与识别选择，资源与入口按需展开；翻译设置首先展示带交互示例的阅读辅助，普通页面与网站规则连续展示任务分组并标记顶部导航的滚动定位目标，统计保留按任务切换的视图，集中分配功能服务并将模型用量合并到翻译统计，保留已访问表单实例，自定义快捷键弹窗按显示状态挂载并在离开所属分区时取消草稿；包含正文/全部节点识别范围；模板按 activeSection 展示业务分区，通用设置首先展示全局翻译开关，再按基础配置、网页辅助、基本偏好组织控件，软件语言控件随分区及缓存活跃状态启停，并保留固定英文标题与说明以便选错语言后恢复，提供当前默认服务的配置入口并保留译文样式跨页入口；图片与圈选合并在同页，共享仅在当前分区挂载的 OCR 管理组件；服务连接在主页面的服务目录内编辑，在界面风格页组织译文样式、风格与菜单栏布局，仅在高级选项激活时挂载缓存管理；脚本以独立配置副本隔离编辑与全局差分基线，批量水合时暂停完整草稿扫描，保留用户编辑的同步保存和离页补丁交接，协调网站入口、配置及凭据保存、历史恢复和能力过滤。
+ * 锚点编排：翻译设置保留连续表单，双语逐句阅读辅助与智能高亮各有独立锚点；智能高亮仅在翻译设置分区激活时挂载，定位不隐藏其他分组，既有表单配置保持原归属。新建兼容服务对话框只在首次请求打开时挂载，此后保留实例与关闭动画；加载中或失败时在添加入口旁显示可关闭提示，并停用入口说明气泡以免遮挡反馈，离开后不复活旧提示，草稿仍由原有活跃上下文和关闭流程管理。
+ * 模块边界：该组件负责设置 UI 编排但不实现 provider 网络、配置仓库或 feature 运行时；校验与迁移来自 core/config，持久化经 services/config，复杂子界面保持在各自 feature/组件内；脚本入口已拦截的扩展专属分区在构建期不引入其子 UI，原入口提示与数据接口保持。
  -->
 <template>
   <section v-if="hasVisitedSection('settings-general')" v-show="props.activeSection === 'settings-general'" id="settings-general" class="settings-section general-settings-section">
@@ -155,6 +155,7 @@
     <section v-if="hasVisitedSection('settings-services')" v-show="props.activeSection === 'settings-services'" id="settings-services" class="settings-section">
       <SettingsPanel name="connections" :active="props.activePanel">
       <ServiceCatalog :active="viewActive && props.activeSection === 'settings-services'" :context="config"
+        :add-service-feedback-visible="customProviderFeedbackVisible"
         :service="selectedConfigurationService"
         :default-service="config.service"
         :website="selectedConfigurationWebsite"
@@ -176,6 +177,13 @@
         @add:model="addConfigurationModel"
         @remove:model="removeConfigurationModel"
       >
+        <template #add-service-status>
+          <div v-if="customProviderFeedbackVisible" class="custom-provider-load-feedback">
+            <p v-if="customProviderLoadState === 'error'" data-testid="custom-service-load-error" role="alert">{{ t('learning.panelLoadError') }}</p>
+            <p v-else data-testid="custom-service-load-status" role="status">{{ t('common.loading') }}</p>
+            <button type="button" data-testid="custom-service-load-close" :onClick="customProviderFeedbackActions.close">{{ t('common.close') }}</button>
+          </div>
+        </template>
         <template #configuration="{ connectionActionTarget }">
           <ServiceConfiguration
             :active="viewActive && props.activeSection === 'settings-services'"
@@ -254,8 +262,8 @@
 <VideoSubtitleAppearanceSettings :config="config" />
 </SettingsPanel>
       <SettingsPanel name="local" :active="props.activePanel">
-<SettingsGroup title="X 本地 AI 字幕" description="仅 X 无原生字幕时使用；模型和音频留在当前浏览器，下载后可离线识别">
-        <SettingsItem label="视频原语言" description="仅用于 X 没有原生字幕时的本地识别；自动检测适合大多数视频" :disabled="!config.videoTranslationEnabled || !browserCapabilities.extensionDom">
+<SettingsGroup title="X 本地 AI 字幕" :description="translateLegacy('为没有原生字幕的 X 视频生成字幕')">
+        <SettingsItem label="视频原语言" :description="translateLegacy('自动检测适合大多数视频')" :help="translateLegacy('仅用于 X 没有原生字幕时的本地识别；模型和音频留在当前浏览器，下载后可离线识别')" :disabled="!config.videoTranslationEnabled || !browserCapabilities.extensionDom">
           <el-select v-model="config.videoSourceLanguage" aria-label="视频原语言" :disabled="!config.videoTranslationEnabled || !browserCapabilities.extensionDom" placeholder="请选择视频原语言">
             <el-option v-for="item in VIDEO_SOURCE_LANGUAGE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
@@ -452,7 +460,7 @@
       <SettingsPanel name="requests" :active="props.activePanel">
 <SettingsGroup :title="t('settings.requestLimits.globalTitle')" :description="t('settings.requestLimits.globalHelp')">
         <div data-testid="translation-scheduler-settings">
-          <RequestLimitFields :active="viewActive && props.activeSection === 'settings-translation'" :model-value="config" @update:model-value="Object.assign(config, $event)" />
+          <RequestLimitFields :active="viewActive && props.activeSection === 'settings-advanced'" :model-value="config" @update:model-value="Object.assign(config, $event)" />
           <SettingsItem label="失败后最多重试">
             <SettingsNumberInput :model-value="config.translationMaxRetries" aria-label="失败后最多重试" :min="0" :max="10" @change="handleTranslationMaxRetriesChange" />
           </SettingsItem>
@@ -524,7 +532,7 @@
       @confirm="handleCustomSelectionHotkeyConfirm"
       @cancel="handleCustomSelectionHotkeyCancel"
     />
-  <CustomOpenAIProviderDialog :active="viewActive && props.activeSection === 'settings-services'" :context="config" v-model="customProviderDialogOpen" @submit="createCustomProvider" />
+  <CustomOpenAIProviderDialog v-if="customProviderDialogRequested" :active="viewActive && props.activeSection === 'settings-services'" :context="config" v-model="customProviderDialogOpen" @submit="createCustomProvider" />
 </template>
 
 <script lang="ts" setup>
@@ -593,11 +601,23 @@ import { hasSavedServiceConfiguration } from '@/src/ui/view-model/serviceLibrary
 import {getServiceCredentialGuide, getServiceWebsite} from '@/src/ui/view-model/serviceCatalog';
 const ServiceCatalog = defineAsyncComponent(() => import('./services/ServiceCatalog.vue'));
 const ServiceConfiguration = defineAsyncComponent(() => import('./services/ServiceConfiguration.vue'));
-const CustomOpenAIProviderDialog = defineAsyncComponent(() => import('./services/CustomOpenAIProviderDialog.vue'));
+const customProviderLoadState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
+const CustomOpenAIProviderDialog = defineAsyncComponent(async () => {
+  customProviderLoadState.value = 'loading';
+  try {
+    const component = await import('./services/CustomOpenAIProviderDialog.vue');
+    if (!disposed) customProviderLoadState.value = 'ready';
+    return component.default;
+  } catch {
+    // 失败由添加入口旁的明确提示呈现；保留本次组件缓存，不能假装重复点击能重新下载失败的 ESM。
+    if (!disposed) customProviderLoadState.value = 'error';
+    return {name: 'CustomProviderLoadFailure', inheritAttrs: false, render: () => null};
+  }
+});
 const TranslationCenter = defineAsyncComponent(() => import('@/src/features/translation-center/public').then(module => module.TranslationCenter));
 const openInputServiceSettings = (service: string) => { setConfigurationService(service); openSettingsSection('settings-services', 'connections'); };
 const openWritingServiceSettings = () => openInputServiceSettings(config.value.writing.service || config.value.service);
-const WritingSettings = import.meta.env.BROWSER === 'userscript' ? undefined : defineAsyncComponent(() => import('./WritingSettings.vue'));
+const WritingSettings = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('./WritingSettings.vue'));
 // 单文件 userscript 没有扩展模型端口，构建期移除不可用组件与下载 UI。
 const InformationHighlightSettings = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('./InformationHighlightSettings.vue'));
 const SelectionSettings = defineAsyncComponent(() => import('./SelectionSettings.vue'));
@@ -625,15 +645,15 @@ import {
   getMissingCredentialMessage,
   isApiKeyRequired,
 } from '@/src/core/config/validation';
-const ImageOcrSettings = import.meta.env.BROWSER === 'userscript' ? undefined : defineAsyncComponent(() => import('@/src/features/image-translation/public').then(module => module.ImageOcrSettings));
-const MangaSettings = import.meta.env.BROWSER === 'userscript' ? undefined : defineAsyncComponent(() => import('@/src/features/image-translation/public').then(module => module.MangaSettings));
-const VideoLocalModelSettings = import.meta.env.BROWSER === 'userscript' ? undefined : defineAsyncComponent(() => import('./VideoLocalModelSettings.vue'));
+const ImageOcrSettings = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('@/src/features/image-translation/ui/public').then(module => module.ImageOcrSettings));
+const MangaSettings = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('@/src/features/image-translation/ui/public').then(module => module.MangaSettings));
+const VideoLocalModelSettings = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('./VideoLocalModelSettings.vue'));
 const LocalTtsSettings = defineAsyncComponent(() => import('./LocalTtsSettings.vue'));
-const VideoSubtitleAppearanceSettings = import.meta.env.BROWSER === 'userscript' ? undefined : defineAsyncComponent(() => import('./VideoSubtitleAppearanceSettings.vue'));
-const ModelUsageDashboard = import.meta.env.BROWSER === 'userscript' ? undefined : defineAsyncComponent(() => import('@/src/features/model-usage/public').then(module => module.ModelUsageDashboard));
-const TranslationStatsDashboard = import.meta.env.BROWSER === 'userscript' ? undefined : defineAsyncComponent(() => import('@/src/features/translation-stats/public').then(module => module.TranslationStatsDashboard));
+const VideoSubtitleAppearanceSettings = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('./VideoSubtitleAppearanceSettings.vue'));
+const ModelUsageDashboard = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('@/src/features/model-usage/public').then(module => module.ModelUsageDashboard));
+const TranslationStatsDashboard = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('@/src/features/translation-stats/public').then(module => module.TranslationStatsDashboard));
 const InterfaceSettings = defineAsyncComponent(() => import('./InterfaceSettings.vue'));
-const AreaTranslationSettings = import.meta.env.BROWSER === 'userscript' ? undefined : defineAsyncComponent(() => import('./AreaTranslationSettings.vue'));
+const AreaTranslationSettings = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('./AreaTranslationSettings.vue'));
 const InputTranslationSettings = defineAsyncComponent(() => import('./InputTranslationSettings.vue'));
 import {browserCapabilities} from '@/src/platform/browser/capabilities';
 const ParagraphCopySettings = defineAsyncComponent(() => import('./ParagraphCopySettings.vue'));
@@ -651,8 +671,9 @@ import {localizeServiceOptions, useUiI18n} from '@/src/ui/i18n';
 import {applyInterfaceTheme} from '@/src/ui/interfaceAppearance';
 const ConfigManagement = defineAsyncComponent(() => import('./ConfigManagement.vue'));
 const QuickTranslationProfiles = defineAsyncComponent(() => import('./QuickTranslationProfiles.vue'));
-const ContextMenuSettings = import.meta.env.BROWSER === 'userscript' ? undefined : defineAsyncComponent(() => import('./ContextMenuSettings.vue'));
+const ContextMenuSettings = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('./ContextMenuSettings.vue'));
 import {useTranslationShortcutSettings} from './useTranslationShortcutSettings';
+import {useSettingsActionContext} from '../model/useSettingsActionContext';
 import {
   config as runtimeConfig,
   configReady,
@@ -785,6 +806,17 @@ const {
   kind => viewActive.value && props.activeSection === (kind === 'selection' ? 'settings-selection' : 'settings-translation'),
   () => applyingExternalConfig);
 const customProviderDialogOpen = ref(false);
+const customProviderDialogRequested = ref(false);
+const customProviderFeedbackContext = useSettingsActionContext(
+  () => !disposed && viewActive.value && props.activeSection === 'settings-services'
+    && customProviderDialogOpen.value && (customProviderLoadState.value === 'loading' || customProviderLoadState.value === 'error'),
+  () => [config.value],
+);
+const customProviderFeedbackVisible = computed(() => customProviderFeedbackContext.active.value);
+const customProviderFeedbackActions = computed(() => {
+  const owns = customProviderFeedbackContext.capture();
+  return {close: () => {if (owns()) customProviderDialogOpen.value = false;}};
+});
 const sendConfigMessage = browser.runtime.sendMessage.bind(browser.runtime);
 const persistConfigPatch = (value: unknown) => requestConfigPatch(value, sendConfigMessage);
 // 适配器有显式 JSON 保存动作，等待后台提交后才确认；订阅会同步权威状态，避免触发另一份全量快照保存。
@@ -793,30 +825,7 @@ const saveSiteAdaptationSettings = (value: SiteAdaptationConfig): Promise<void> 
 let lastSerialized = '';
 let hydrated = false;
 let pageExitSaveStarted = false;
-const unsubscribeConfig = subscribeConfig((nextConfig) => {
-  if (disposed) return;
-  const serialized = JSON.stringify(nextConfig);
-  if (serialized === lastSerialized) return;
-  lastSerialized = serialized;
-  applyingExternalConfig = true;
-  try {
-    Object.assign(config.value, normalizeConfig(nextConfig));
-  } finally {
-    applyingExternalConfig = false;
-  }
-});
-void configReady
-  .then(() => {
-    if (disposed) return;
-    // 编辑副本不能共享嵌套对象，否则修改 Harness 等字段会先污染 patch 的比较基线。
-    Object.assign(config.value, normalizeConfig(runtimeConfig));
-    lastSerialized = JSON.stringify(config.value);
-    hydrated = true;
-    updateTheme(config.value.theme || 'auto');
-  })
-  .catch((error) => console.warn('[FluentRead] 无法读取本地配置', error));
-
-watch(() => JSON.stringify(config.value), (serialized) => {
+const autosaveWatcher = watch(() => JSON.stringify(config.value), (serialized) => {
   if (disposed || !hydrated || applyingExternalConfig) return;
   if (serialized === lastSerialized) return;
   // 若关闭被外部原因取消，后续真实编辑应能再次交接；外部水合不会重置退出去重。
@@ -829,6 +838,34 @@ watch(() => JSON.stringify(config.value), (serialized) => {
     console.warn('[FluentRead] 保存设置失败', error);
   });
 }, { flush: 'sync' });
+
+function hydrateConfigDraft(value: unknown): void {
+  // 同步 watcher 的回调 guard 不能阻止 getter；暂停一批赋值，结束后只重建一次依赖。
+  // 编辑副本仍须独立归一化，避免嵌套修改污染运行时 patch 的比较基线。
+  applyingExternalConfig = true;
+  autosaveWatcher.pause();
+  try {
+    Object.assign(config.value, normalizeConfig(value));
+    lastSerialized = JSON.stringify(config.value);
+  } finally {
+    // resume 会同步执行 getter，必须仍在外部水合 guard 内，不能保存权威快照。
+    autosaveWatcher.resume();
+    applyingExternalConfig = false;
+  }
+}
+// store 可能立即调用订阅者；先建立 watcher，避免同步水合访问未初始化句柄。
+const unsubscribeConfig = subscribeConfig((nextConfig) => {
+  if (disposed || JSON.stringify(nextConfig) === lastSerialized) return;
+  hydrateConfigDraft(nextConfig);
+});
+void configReady
+  .then(() => {
+    if (disposed) return;
+    hydrateConfigDraft(runtimeConfig);
+    hydrated = true;
+    updateTheme(config.value.theme || 'auto');
+  })
+  .catch((error) => console.warn('[FluentRead] 无法读取本地配置', error));
 
 // 设置页关闭前同步交接尚未确认的字段补丁链，后台继续按 sequence 去重和字段 CAS 保存。
 // beforeunload 在扩展消息通道仍可用时先交接，pagehide/unmounted 回退且只交接一次。
@@ -973,6 +1010,7 @@ const {
 
 function openCustomProviderDialog(): void {
   if (disposed || !viewActive.value || props.activeSection !== 'settings-services') return;
+  customProviderDialogRequested.value = true;
   customProviderDialogOpen.value = true;
 }
 

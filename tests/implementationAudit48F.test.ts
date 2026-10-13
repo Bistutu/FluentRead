@@ -33,7 +33,7 @@ import doubaoSeedTranslation from '@/src/providers/translation/doubao-seed-trans
 import {translateMicrosoftTextsWithTransport} from '@/src/providers/translation/microsoftTransport';
 import {createOffscreenClient} from '@/src/platform/offscreen/client';
 import {createOffscreenMessageListener} from '@/src/app/offscreen/messageRouter';
-import {translateWithChromeApi} from '@/src/app/offscreen/translation';
+import {translateWithChromeApi, disposeChromeTranslationModels} from '@/src/app/offscreen/translation';
 import {runTranslationServiceConnectionTest} from '@/src/providers/translation/connectionTest';
 import {getTranslationLanguages} from '@/src/services/translation/languages';
 import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
@@ -230,7 +230,8 @@ describe('audit48F: cancellation at controlled external boundaries', () => {
             target: 'offscreen', data: {text: '简体中文', from: 'zh-Hans', to: 'zh-Hant'},
         });
         expect(create).toHaveBeenCalledWith(expect.objectContaining({sourceLanguage: 'zh', targetLanguage: 'zh-Hant'}));
-        expect(translate).toHaveBeenCalledOnce(); expect(destroy).toHaveBeenCalledOnce();
+        expect(translate).toHaveBeenCalledOnce(); expect(destroy).not.toHaveBeenCalled();
+        disposeChromeTranslationModels(environment); expect(destroy).toHaveBeenCalledOnce();
         if (process.env.AUDIT_F_CHROME_CONTRACT) writeFileSync(process.env.AUDIT_F_CHROME_CONTRACT,
             JSON.stringify({runtimeMessages: sent, apiOptions: create.mock.calls[0]?.[0], translateCalls: translate.mock.calls.length, destroyCalls: destroy.mock.calls.length}, null, 2));
     });

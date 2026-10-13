@@ -382,11 +382,21 @@
       },
       {
         "css": [
-          "span.commtext",
+          ".commtext p",
+          ".toptext p"
+        ],
+        "key": "hacker-news-discussion-paragraph",
+        "resolve": "closest",
+        "atomic": true
+      },
+      {
+        "css": [
+          ".commtext",
           ".toptext"
         ],
         "key": "hacker-news-comment-prose",
-        "resolve": "closest"
+        "resolve": "self",
+        "atomic": false
       }
     ],
     "protect": [
@@ -398,9 +408,31 @@
       ".subtext",
       ".pagetop"
     ],
+    "exclude": [
+      ".rank",
+      ".votelinks",
+      ".comhead",
+      ".subtext",
+      ".pagetop",
+      ".reply",
+      ".morelink",
+      ".yclinks",
+      "form"
+    ],
     "watchIgnore": [
+      ".rank",
+      ".votelinks",
+      ".comhead",
+      ".subtext",
+      ".pagetop",
+      ".reply",
+      ".morelink",
+      ".yclinks",
+      "form",
       ".age",
-      ".score"
+      ".score",
+      ".hnuser",
+      ".sitestr"
     ]
   },
   {

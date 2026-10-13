@@ -1,6 +1,7 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {Config} from '@/src/core/config/model';
-import {createVisionProbeHandlers, VISION_PROBE_MESSAGE, VISION_PROBE_CANCEL_MESSAGE} from '@/src/app/background/handlers/visionProbe';
+import {createVisionProbeHandlers} from '@/src/app/background/handlers/visionProbe';
+import {VISION_PROBE_MESSAGE, VISION_PROBE_CANCEL_MESSAGE} from '@/src/services/translation/types';
 import {createVisionProbeIdentity} from '@/src/core/config/visionProbe';
 import {prepareModelVisionRoute, freezeVisionProbeConfig} from '@/src/services/translation/visionProbe';
 import {createAreaTranslationBackgroundHandlers, AREA_TRANSLATE_CAPTURE_MESSAGE_TYPE} from '@/src/features/area-translation/background';

@@ -1,5 +1,17 @@
 # Webpage translation
 
+## Personal corrections
+
+Personal corrections are off by default. Enable **个人校订** (Personal corrections) under **Settings → Translation → Reading assistance** when you need them. Hover a bilingual translated paragraph and select **校订译文** (Edit translation), or press **Alt + Shift + E**. Edit the draft, preview the affected exact sentences, and confirm the scope before saving. The default scope is **仅当前网页** (Only this webpage); different addresses, including query parameters and fragments, have separate records. A project is a group of related webpages and applies only to webpages you explicitly join to it.
+
+The language pair sits at the far right of the editor tabs. A compact scope selector and project creation entry sit in the bottom action bar, leaving the main area for the original and translation. Project creation expands only when needed. Hover or focus the information icon beside the scope selector to read the scope and reuse rules. Press **Escape** to dismiss the tooltip while keeping the editor open. Successful saves show **已保存** (Saved).
+
+Exact reuse requires the same original text, source/target languages, and nearest heading context, including exact case, numbers, punctuation and whitespace. Automatic source detection is separate from an explicitly selected language. Similar sentences show the saved and current originals for review; choosing a suggestion only changes the draft and still requires preview and confirmation. Conflicting confirmed translations prevent automatic reuse until you edit or remove the conflicting records. Personal output carries a small **个人校订** (Personal correction) source label without a border or background, stays out of copied text, and bypasses the provider cache.
+
+Manage, edit, delete, and undo saved corrections from the editor. Undo refuses to overwrite a later change. Removing a correction restores the previous provider output when available; a paragraph generated directly from memory returns to its original until translated again. Records remain local, outside glossary, document history, cloud sync and configuration backups. This release supports safely flattened bilingual webpage paragraphs; protected code/formula units, translation-only display, PDF, subtitles and userscripts retain their existing behavior.
+
+Turning personal corrections off closes the editor and restores the provider output or original text while preserving saved records. Turning them back on makes those records available for later translations; it does not automatically replace existing page translations. Heading changes or a changed webpage address invalidate an already displayed personal result.
+
 Translate an article or a selected section, compare both languages, and return to the original.
 
 When a translation matches the source, FluentRead keeps the source without displaying a duplicate translation. The comparison ignores surrounding whitespace, line breaks, repeated spaces, and equivalent Unicode composition, while preserving differences in words, case, punctuation, and Chinese variants. This also applies to selection, input, area, image, subtitle, and document results, including bilingual copying and exports. Translation Center retains and displays each service's output for comparison, even when it matches the source, and keeps its copy actions available.
@@ -36,13 +48,15 @@ Enable **Full-page translation ball** under **Settings → General → Page help
 
 You can also search settings for “Full-page translation floating ball” to jump to the switch, or search for “Floating ball advanced settings” to jump to its display, position, and site options.
 
+Click the floating ball's gear button to show the same quick panel as the browser toolbar icon, next to the button. The panel controls the current webpage. It sits slightly above the button by default and adjusts near screen edges and in narrow windows. It appears once its content and size are ready, avoiding an empty loading panel and height changes during startup. Click the gear again, click a blank area of the page, or press Esc to close it. Use the panel's settings entry to open full settings. The userscript keeps its existing settings entry.
+
 **Floating ball advanced settings** tunes the rest:
 
 - **Button display**: show the translate and settings buttons on hover, always, or hide them and keep the ball alone.
 - **Expand delay**: how long the pointer has to rest before the buttons expand. It is immediate by default; a longer delay avoids accidental expansion when the pointer crosses the edge of the page. Keyboard focus always expands immediately.
-- **Click action**: clicking the ball itself can toggle translation, open the settings page, or do nothing. Holding it always drags.
+- **Click action**: clicking the ball itself can toggle translation, show the quick panel beside it, or do nothing. Holding it always drags.
 - **Smaller ball**: use a reduced size so the ball covers less of the page.
-- **Settings entry**: hide the button that opens the settings page from the ball.
+- **Settings entry**: hide the gear button that shows the quick panel.
 - **Collapsed opacity**: lower values are more transparent. Hovering, expanding, and dragging always render the ball fully.
 - **Sites without the ball**: add a registrable domain to hide the ball on that site and its subdomains. Shortcuts, the context menu, and every other feature keep working.
 
@@ -55,11 +69,13 @@ When you only want to read part of a page, such as a GitHub README, an article b
 - Move the pointer to preview a section. An outline marks the current range, and the label shows its type, such as paragraph, list, table, article or region, along with its translation status.
 - Clicking a section only locks the selection; it does not start translation. Once locked, the toolbar offers **Expand selection**, **Shrink selection**, **Reselect**, **Translate selected section** (or **Restore original** for a translated section), and a close button. Choose **Reselect** to return to the hover preview.
 - Press **↑** to expand the selection to its outer container and **↓** to shrink it again. You can also use the toolbar to adjust a locked selection. Arrow keys work while the toolbar or one of its buttons has focus. Use **Tab** to focus a button, then **Enter** to activate it.
-- Click **Translate selected section**, or press **Enter** to confirm, to translate the current section. **Enter** works both during the preview and after locking the selection. Paragraphs on screen are translated first and the rest follow. Display mode, service and target language are the same as for page translation.
-- Select a translated section again, then click **Restore original** or press **Enter** to confirm restoration. If some paragraphs failed, confirming translation retries them.
+- Click **Translate selected section**, or press **Enter** to confirm, to translate the current section. **Enter** works both during the preview and after locking the selection. Large sections are processed in batches, with paragraphs on screen translated first. Display mode, service and target language are the same as for page translation.
+- Select the same section again while translation is running or after it finishes, then click **Restore original** or press **Enter** to stop remaining work and restore the section. If some paragraphs failed, confirming translation retries them.
 - Press **Esc**, right-click, or click the toolbar’s close button to exit. While picking, clicks on the page don’t open links or press buttons.
 
 If you use it often, turn on its shortcut in **Settings → Translation → Section translation** (default **Alt+R**, Option+R on a Mac); press it again while picking to exit. Headers, navigation and sidebars usually stay in the original language during page translation, but if you pick one of them yourself, its text is translated too and, like other interface text, replaces the original in place so the layout stays intact. Restoring page translation also restores any translated sections.
+
+The hover preview follows changes in page content, layout and scrolling. Locking keeps your chosen section while you scroll to check it. Pausing the extension or leaving the page stops unfinished section tasks, and late results cannot reinsert translations after you restore the original.
 
 <details class="guide-details">
 <summary>Automatic translation and site rules</summary>
@@ -88,6 +104,8 @@ Open FluentRead and choose the page translation button. In bilingual mode, each 
 When you open a raw XML, RSS, or SVG file directly, FluentRead leaves the document untouched so the browser can display it normally. HTML and XHTML pages remain translatable.
 
 By default, translation follows your reading position. Choose whole-page processing in settings if you want the entire page translated at once. Restore the original whenever you like, then translate again with another language or service.
+
+During continuous scrolling, paragraphs on the current screen can still start translating at a limited pace, and completed translations appear as they arrive. Nearby prefetch resumes after a brief pause. Pending paragraphs that you quickly scroll past wait until you read them again; requests already sent can finish.
 
 Fixed-height cards and line-clamped summaries expand while bilingual text is shown, so the translation stays visible without overlapping the next card. Restoring the original also restores the page's height and truncation styles; independent scroll areas keep their original behavior.
 

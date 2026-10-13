@@ -5,7 +5,7 @@ vi.mock('@/src/services/config/store', () => ({config: {uiLanguage: 'zh-CN'}}));
 import {XCaptionSource} from '@/src/features/video-subtitle/content/xCaptionSource';
 import {getXSubtitleBottomInset, VIDEO_AI_CAPTION_CONTAINER_ID} from '@/src/features/video-subtitle/content/ui';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {vi.restoreAllMocks();vi.unstubAllGlobals();});
 function fixture() {
   const {document, window} = parseHTML('<!doctype html><html><body><article><div data-testid="videoPlayer"><video></video></div><div id="fullscreen"><video></video></div></article></body></html>');
   vi.stubGlobal('document', document);
@@ -20,6 +20,15 @@ function fixture() {
   const state = {video, player: video.parentElement!, enabled: true, aiActive: false, aiCues: [] as VideoSubtitleCue[], sidecarCues: [] as VideoSubtitleCue[], language: 'auto'};
   const source = new XCaptionSource(() => state);
   return {source, state, document, korean, english};
+}
+
+// 统计真实选轨方法和浏览器 live 列表读取，保留生产选择/排序算法。
+function measuredNativeSelection(f: ReturnType<typeof fixture>) {
+  const tracks = [f.english, f.korean];
+  let trackListReads = 0;
+  Object.defineProperty(f.state.video, 'textTracks', {configurable: true, get() {trackListReads += 1;return tracks;}});
+  const selection = vi.spyOn(f.source as unknown as {selectedNativeTracks(): TextTrack[]}, 'selectedNativeTracks');
+  return {tracks, selection, reads: () => trackListReads};
 }
 
 describe('X 原生字幕来源', () => {
@@ -107,5 +116,130 @@ describe('X 原生字幕来源', () => {
     expect(container.parentElement).toBe(state.player);
     expect(original.querySelector(`#${VIDEO_AI_CAPTION_CONTAINER_ID}`)).toBeNull();
     expect(document.querySelectorAll(`#${VIDEO_AI_CAPTION_CONTAINER_ID}`)).toHaveLength(1);
+  });
+
+  it('100 次原生 sync 每轮仅选轨一次，完整导出仍独立读取当前轨道', () => {
+    const f = fixture();
+    const measured = measuredNativeSelection(f);
+    for (let index = 0; index < 100; index += 1) {
+      const container = f.source.sync()!;
+      expect(container.textContent).toBe('오늘은 좋은 날입니다.');
+      expect(container.dataset.fluentReadCaptionSource).toBe('native');
+    }
+    console.info(JSON.stringify({xNativeSelectionEvidence: 'native', syncCalls: 100,
+      selectionCalls: measured.selection.mock.calls.length, trackListReads: measured.reads()}));
+    expect(measured.selection).toHaveBeenCalledTimes(100);
+    expect(measured.reads()).toBe(200);
+    expect(measured.selection.mock.results[0].value).toEqual([f.korean]);
+    f.korean.cues[0].text = '更新后的完整轨道';
+    expect(f.source.readNativeTrack()).toEqual({languageCode: 'ko', cues: [{startMs: 0, durationMs: 2000, text: '更新后的完整轨道'}]});
+    expect(measured.selection).toHaveBeenCalledTimes(101);
+    expect(measured.reads()).toBe(201);
+  });
+
+  it('隐藏模式写完后才选择 live 轨道和语言，不沿用隐藏前列表', () => {
+    const f = fixture();
+    const measured = measuredNativeSelection(f);
+    const cue = {startTime: 0, endTime: 2, text: 'Nouvelle piste française.'};
+    const french = {kind: 'subtitles', mode: 'showing', language: 'fr', activeCues: [cue], cues: [cue]};
+    let englishMode = f.english.mode;
+    Object.defineProperty(f.english, 'mode', {configurable: true, get: () => englishMode, set(value: string) {
+      englishMode = value;
+      if (value === 'hidden' && !measured.tracks.includes(french)) {
+        measured.tracks.push(french);
+        f.state.language = 'fr';
+      }
+    }});
+    const container = f.source.sync()!;
+    expect(f.korean.mode).toBe('hidden');
+    expect(f.english.mode).toBe('hidden');
+    expect(container.textContent).toBe('Nouvelle piste française.');
+    expect(container.dataset.fluentReadCaptionSource).toBe('native');
+    expect(measured.selection.mock.results[0].value).toEqual([french]);
+    expect(measured.selection).toHaveBeenCalledOnce();
+    expect(measured.reads()).toBe(2);
+    f.state.enabled = false;
+    f.source.sync();
+    expect(f.english.mode).toBe('disabled');
+    expect(f.korean.mode).toBe('showing');
+    expect(french.mode).toBe('showing');
+  });
+
+  it('下一 sync 重新读取语言、动态轨道、宿主 mode 与 seek 后的可变 cue', () => {
+    const f = fixture();
+    const measured = measuredNativeSelection(f);
+    let syncCalls = 0;
+    const display = (text: string) => {syncCalls += 1;expect(f.source.sync()!.textContent).toBe(text);};
+    display('오늘은 좋은 날입니다.');
+    f.state.language = 'en';
+    display('This is a good day.');
+    f.english.activeCues[0].text = 'Updated English cue.';
+    display('Updated English cue.');
+    f.state.language = 'auto';f.english.mode = 'showing';f.korean.mode = 'disabled';
+    display('Updated English cue.');
+    const cue = {startTime: 0, endTime: 2, text: 'La piste ajoutée.'};
+    const french = {kind: 'subtitles', mode: 'showing', language: 'fr', activeCues: [cue], cues: [cue]};
+    measured.tracks.splice(0, measured.tracks.length, french);
+    display('La piste ajoutée.');
+    measured.tracks.splice(0);
+    display('');
+    measured.tracks.push(french);f.state.language = 'fr';
+    display('La piste ajoutée.');
+    f.state.video.currentTime = 4;french.activeCues.splice(0);
+    display('');
+    Object.assign(cue, {startTime: 3, endTime: 5, text: 'Après la recherche.'});
+    french.activeCues.push(cue);
+    display('Après la recherche.');
+    expect(measured.selection).toHaveBeenCalledTimes(syncCalls);
+    expect(measured.reads()).toBe(syncCalls * 2);
+    expect(f.source.readNativeTrack()).toEqual({languageCode: 'fr', cues: [{startMs: 3000, durationMs: 2000, text: 'Après la recherche.'}]});
+    f.source.restoreTracks();
+    expect(f.english.mode).toBe('showing');expect(f.korean.mode).toBe('disabled');expect(french.mode).toBe('showing');
+  });
+
+  it('原生空档及 cues 增删每轮重新判定 timeline，保留 sidecar 和 AI 回退顺序', () => {
+    const f = fixture();
+    const measured = measuredNativeSelection(f);
+    f.korean.activeCues.splice(0);
+    f.state.aiCues = [{startMs: 0, durationMs: 5000, text: 'AI fallback'}];
+    f.state.sidecarCues = [{startMs: 0, durationMs: 5000, text: 'Sidecar fallback'}];
+    let container = f.source.sync()!;
+    expect(container.textContent).toBe('');expect(container.dataset.fluentReadCaptionSource).toBe('none');
+    f.korean.cues.splice(0);
+    container = f.source.sync()!;
+    expect(container.textContent).toBe('Sidecar fallback');expect(container.dataset.fluentReadCaptionSource).toBe('sidecar');
+    f.state.sidecarCues.splice(0);
+    container = f.source.sync()!;
+    expect(container.textContent).toBe('AI fallback');expect(container.dataset.fluentReadCaptionSource).toBe('ai');
+    f.state.video.currentTime = 6;
+    expect(f.source.sync()!.textContent).toBe('');
+    const cue = {startTime: 5, endTime: 7, text: '새로운 원어 자막'};
+    f.korean.cues.push(cue);f.korean.activeCues.push(cue);
+    container = f.source.sync()!;
+    expect(container.textContent).toBe('새로운 원어 자막');expect(container.dataset.fluentReadCaptionSource).toBe('native');
+    expect(measured.selection).toHaveBeenCalledTimes(5);
+    expect(measured.reads()).toBe(10);
+  });
+
+  it('AI 接管期间仍每轮选择一次，等待时不回退，关闭不读取轨道并恢复模式', () => {
+    const f = fixture();
+    const measured = measuredNativeSelection(f);
+    f.state.aiActive = true;
+    f.state.sidecarCues = [{startMs: 0, durationMs: 5000, text: 'Ignored sidecar'}];
+    expect(f.source.sync()!.textContent).toBe('');
+    f.state.aiCues.push(Object.assign({startMs: 0, durationMs: 5000, text: 'Active AI caption'}, {cueId: 'active-ai'}));
+    for (let index = 0; index < 100; index += 1) {
+      const container = f.source.sync()!;
+      expect(container.textContent).toBe('Active AI caption');
+      expect(container.dataset.fluentReadCaptionSource).toBe('ai');
+      expect(container.dataset.fluentReadCueId).toBe('active-ai');
+    }
+    expect(measured.selection).toHaveBeenCalledTimes(101);
+    expect(measured.reads()).toBe(202);
+    f.state.enabled = false;
+    const container = f.source.sync()!;
+    expect(container.textContent).toBe('');expect(container.dataset.fluentReadCaptionSource).toBe('none');
+    expect(measured.selection).toHaveBeenCalledTimes(101);expect(measured.reads()).toBe(202);
+    expect(f.korean.mode).toBe('showing');expect(f.english.mode).toBe('disabled');
   });
 });

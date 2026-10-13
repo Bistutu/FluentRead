@@ -104,7 +104,8 @@ const silenceEnds=[...silenceScan.stderr.matchAll(/silence_end: ([\d.]+)/g)].map
 const master = '#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",DEFAULT=YES,URI="audio.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=300000,AUDIO="audio"\nvideo.m3u8\n';
 const base = 'https://video.twimg.com/ext_tw_video/424242/pu/';
 const videoMarkup='<video style="width:100%;height:100%" controls></video>';
-const lifecycleControls = lifecycle ? `<div class="fixture-controls" style="position:absolute;bottom:0;left:0;right:0;display:flex;gap:12px;align-items:center;height:44px;background:#111"><button aria-label="Play" onclick="this.closest('[data-testid=videoPlayer]').querySelector('video').play()">Play</button><button aria-label="Settings">Settings</button><button id="fixture-fullscreen" onclick="this.closest('[data-testid=videoPlayer]').requestFullscreen()">Fullscreen</button></div>` : '';
+// X 的入口只挂到真实控制栏上；所有模式都提供与 X 相同结构的控制栏。
+const lifecycleControls = `<div class="fixture-controls" style="position:absolute;bottom:0;left:0;right:0;display:flex;gap:12px;align-items:center;height:44px;background:#111"><button aria-label="Play" onclick="this.closest('[data-testid=videoPlayer]').querySelector('video').play()">Play</button><button aria-label="Settings">Settings</button><button id="fixture-fullscreen" onclick="this.closest('[data-testid=videoPlayer]').requestFullscreen()">Fullscreen</button></div>`;
 const playerMarkup=hostOverlay?`<div style="position:relative;width:960px;height:540px"><div style="position:relative;isolation:isolate;z-index:0;width:100%;height:100%;background:#10283f">${videoMarkup}</div><a id="fixture-media-link" aria-label="View media" href="/cerebras/status/2089870131291943228/video/1" style="position:absolute;inset:0;z-index:10" onclick="event.preventDefault();window.proofHostLinkClicks=(window.proofHostLinkClicks||0)+1"></a></div>`:`<div data-testid="videoPlayer" style="position:relative;width:960px;height:540px;background:#10283f">${videoMarkup}${lifecycleControls}</div>`;
 const profile = fs.mkdtempSync(path.join(os.tmpdir(),'fluentread-x-sync-profile-'));
 let launchAttempted = false;
@@ -144,14 +145,20 @@ async function captureVideoMenuSnapshot(page, artifacts, report, phase) {
  assert.equal(snapshot.visible, true, `${phase} video menu is not visible`);
  assert.equal(snapshot.contentOverflow, false, `${phase} video menu overflows its content box`);
  assert.equal(snapshot.downloadButtonsSameRow, true, `${phase} download buttons are not on one row`);
- assert.ok(snapshot.aiGroup && Number.parseFloat(snapshot.aiGroup.marginTop) >= 8
-   && Number.parseFloat(snapshot.aiGroup.paddingTop) >= 8
-   && Number.parseFloat(snapshot.aiGroup.borderTopWidth) >= 1
-   && snapshot.aiGroup.gap >= 8, `${phase} AI menu group spacing is insufficient: ${JSON.stringify(snapshot.aiGroup)}`);
+ // 紧凑菜单按播放器高度在单列与单行布局之间切换，各组不再靠分隔线和内边距分隔；这里只要求 AI 组存在，间距记录在报告里。
+ assert.ok(snapshot.aiGroup, `${phase} AI menu group is missing`);
  report.menuSnapshots.push(snapshot);
  await page.screenshot({path: path.join(artifacts, `video-menu-${phase}.png`)});
 }
 
+// 字幕就绪后“关闭 AI 字幕”收在“字幕选项”里，观看首页不再重复这个入口。
+async function disableReadyAiSubtitles(target) {
+  const toggle = target.locator('[data-action="toggle-ai-subtitle"]');
+  assert.equal(await toggle.getAttribute('aria-checked'), 'true', 'AI subtitles are ready before they are turned off');
+  assert.equal(await toggle.isVisible(), false, 'the ready watch view keeps the AI switch inside subtitle options');
+  await target.locator('[data-action="open-subtitle-tools"]').click();
+  await toggle.click();
+}
 async function readLocalVideoModelState(control, model) {
  const state = await control.evaluate(() => chrome.runtime.sendMessage({type: 'fluentReadGetLocalVideoModelState'}));
  assert.equal(state?.success, true, `background model state query failed: ${JSON.stringify(state)}`);
@@ -354,6 +361,11 @@ async function main() {
  if(startPlaying) await page.evaluate(()=>document.querySelector('video').play());
  const began=Date.now();
  const optionsPagesBeforeReady = context.pages().filter(candidate => candidate.url().includes('/options.html')).length;
+ // 已有原生字幕时，“生成 AI 字幕”同样收在“字幕选项”里。
+ if(nativeTrack){
+   assert.equal(await page.locator('[data-action="toggle-ai-subtitle"]').isVisible(),false,'native captions keep AI generation inside subtitle options');
+   await page.locator('[data-action="open-subtitle-tools"]').click();
+ }
  await page.locator('[data-action="toggle-ai-subtitle"]').click();
  await page.waitForTimeout(250);
  await captureVideoMenuSnapshot(page, artifacts, report, 'generating');
@@ -376,7 +388,7 @@ async function main() {
    report.generatedInInactiveTab=await control.evaluate(async()=>!(await chrome.tabs.query({url:'https://x.com/cerebras/status/2089870131291943228'}))[0].active);
    assert.equal(report.generatedInInactiveTab,true);
  }
- await page.waitForFunction(()=>{const action=document.querySelector('[data-action="toggle-ai-subtitle"]');const text=action?.querySelector('[data-state]')?.textContent||'';if(action?.title)throw new Error(action.title);return text.includes('已就绪');},{},{timeout:120000});
+ await page.waitForFunction(()=>{const action=document.querySelector('[data-action="toggle-ai-subtitle"]');const text=action?.querySelector('[data-state]')?.textContent||'';if(action?.dataset.error==='true')throw new Error(action.title);return text.includes('已就绪');},{},{timeout:120000});
  report.generationMs=Date.now()-began;
  report.optionsPagesBeforeReady = optionsPagesBeforeReady;
  report.optionsPagesAfterReady = context.pages().filter(candidate => candidate.url().includes('/options.html')).length;
@@ -388,6 +400,49 @@ async function main() {
  if(startPlaying){assert.equal(report.after.paused,false);assert.ok(report.after.time>before.time);assert.equal(report.after.rate,before.rate);assert.equal(report.after.volume,before.volume);assert.equal(report.after.muted,before.muted);}
  else assert.deepEqual(report.after,before,'generation preserves user playback state');
  await page.screenshot({path:path.join(artifacts,'ready.png')});
+ // 逐字高亮默认关闭；开启后 X 上已显示的字幕立即拆成单元并按当前句时间点亮，拖动后跟随，关闭即还原。
+ const readKaraoke=()=>page.evaluate(()=>{
+   const lines=['fluent-read-video-subtitle-original','fluent-read-video-subtitle'].map(id=>document.getElementById(id)).filter(line=>line?.textContent);
+   return lines.map(line=>{const units=[...line.querySelectorAll('.fluent-read-video-karaoke-unit')];const active=units.find(unit=>unit.getAttribute('data-fluent-read-karaoke-state')==='active');
+     return {text:line.textContent,units:units.length,sung:units.filter(unit=>unit.getAttribute('data-fluent-read-karaoke-state')==='sung').length,activeIndex:active?units.indexOf(active):-1,fill:active?Number.parseFloat(active.style.getPropertyValue('--fluent-read-video-karaoke-fill')):null,time:document.querySelector('video').currentTime};});
+ });
+ const setKaraoke=async(enabled,sequence)=>{
+   const result=await control.evaluate(async({enabled,sequence})=>{
+     const r=await chrome.runtime.sendMessage({type:'configStorageRead',key:'local:config'});
+     const current=typeof r.value==='string'?JSON.parse(r.value):r.value||{};
+     return chrome.runtime.sendMessage({type:'persistConfig',clientId:'x-sync-browser-proof-karaoke',sequence,config:{...current,videoSubtitleAppearance:{...current.videoSubtitleAppearance,karaoke:enabled}}});
+   },{enabled,sequence});
+   assert.equal(result?.success,true,'karaoke setting persisted through real background');
+ };
+ const karaoke={default:await readKaraoke()};
+ assert.ok(karaoke.default.length>0&&karaoke.default.every(line=>line.units===0),`word-by-word highlight must be off by default: ${JSON.stringify(karaoke.default)}`);
+ await setKaraoke(true,1);
+ await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-layer [data-fluent-read-karaoke-state]'),null,{timeout:10000});
+ karaoke.enabled=await readKaraoke();
+ await page.screenshot({path:path.join(artifacts,'karaoke.png')});
+ const karaokeTime=karaoke.enabled[0].time;
+ await page.evaluate(time=>{document.querySelector('video').currentTime=time;},karaokeTime+.8);
+ await page.waitForFunction(previous=>{
+   const line=[...document.querySelectorAll('#fluent-read-video-subtitle-original, #fluent-read-video-subtitle')].find(node=>node.textContent);
+   const units=[...(line?.querySelectorAll('.fluent-read-video-karaoke-unit')||[])];
+   const sung=units.filter(unit=>unit.getAttribute('data-fluent-read-karaoke-state')==='sung').length;
+   const active=units.find(unit=>unit.getAttribute('data-fluent-read-karaoke-state')==='active');
+   return line.textContent!==previous.text||sung>previous.sung||(active&&Number.parseFloat(active.style.getPropertyValue('--fluent-read-video-karaoke-fill'))>previous.fill);
+ },karaoke.enabled[0],{timeout:10000});
+ karaoke.seeked=await readKaraoke();
+ await page.evaluate(time=>{document.querySelector('video').currentTime=time;},karaokeTime);
+ await page.waitForFunction(time=>!document.querySelector('video').seeking&&Math.abs(document.querySelector('video').currentTime-time)<.05,karaokeTime);
+ await setKaraoke(false,2);
+ await page.waitForFunction(()=>!document.querySelector('#fluent-read-video-subtitle-layer .fluent-read-video-karaoke-unit'),null,{timeout:10000});
+ karaoke.off=await readKaraoke();
+ report.karaoke=karaoke;
+ for(const [index,line] of karaoke.enabled.entries()){
+   assert.equal(line.text,karaoke.default[index].text,'highlight keeps the caption text');
+   assert.ok(line.units>=2&&(line.activeIndex>=0||line.sung===line.units)&&line.sung===Math.max(0,line.activeIndex<0?line.units:line.activeIndex),`highlight state is inconsistent: ${JSON.stringify(karaoke)}`);
+ }
+ assert.ok(karaoke.off.every((line,index)=>line.units===0&&line.text===karaoke.default[index].text),`turning the highlight off must restore plain captions: ${JSON.stringify(karaoke)}`);
+ // 下载入口收在“字幕选项”里。
+ if(!await page.locator('[data-action="download-subtitles"]').isVisible()) await page.locator('[data-action="open-subtitle-tools"]').click();
  const downloadPromise=page.waitForEvent('download');
  await page.locator('[data-action="download-subtitles"]').click();
  const download=await downloadPromise;
@@ -412,15 +467,17 @@ async function main() {
    },base);
    await secondPage.waitForFunction(()=>document.querySelector('video').readyState>=2,{},{timeout:15000});
    await secondPage.waitForSelector('#fluent-read-video-subtitle-button',{timeout:15000});
+   // 夹具控件只在悬停播放器时接收点击，与首个标签页一致。
+   await secondPage.locator('video').hover();
    await secondPage.locator('#fluent-read-video-subtitle-button').click();
-   await secondPage.locator('[data-action="toggle-ai-subtitle"]').click();
-   await secondPage.waitForFunction(()=>{const action=document.querySelector('[data-action="toggle-ai-subtitle"]');const text=action?.querySelector('[data-state]')?.textContent||'';if(action?.title)throw new Error(action.title);return text.includes('已就绪');},{},{timeout:120000});
+   // 同一媒体的已完成字幕会在新标签页自动恢复，不需要再点一次生成。
+   await secondPage.waitForFunction(()=>{const action=document.querySelector('[data-action="toggle-ai-subtitle"]');const text=action?.querySelector('[data-state]')?.textContent||'';if(action?.dataset.error==='true')throw new Error(action.title);return text.includes('已就绪');},{},{timeout:120000});
    const secondReady=await secondPage.evaluate(()=>({
      state:document.querySelector('[data-action="toggle-ai-subtitle"] [data-state]')?.textContent||'',
      text:document.getElementById('fluent-read-video-subtitle-original')?.textContent||'',
    }));
    assert.match(secondReady.state,/已就绪/,'another tab can prepare through the real extension UI after completed subtitles');
-   await secondPage.locator('[data-action="toggle-ai-subtitle"]').click();
+   await disableReadyAiSubtitles(secondPage);
    await secondPage.waitForTimeout(400);
    const secondStopped=await secondPage.evaluate(()=>({
      state:document.querySelector('[data-action="toggle-ai-subtitle"] [data-state]')?.textContent||'',
@@ -465,7 +522,7 @@ async function main() {
  if (speechLanguage === 'ko') assert.ok(report.texts.every(text => /[가-힣]/u.test(text) && !/[a-z]{3}/iu.test(text)), 'Korean source stays Korean with webpage source set to English');
  await page.screenshot({path:path.join(artifacts,'seek.png')});
  await page.locator('#fluent-read-video-subtitle-button').click();
- await page.locator('[data-action="toggle-ai-subtitle"]').click();
+ await disableReadyAiSubtitles(page);
  await page.waitForTimeout(400);
  report.afterStop=await page.evaluate(()=>({text:document.getElementById('fluent-read-video-subtitle-original')?.textContent||'',videos:document.querySelectorAll('video').length}));
  if(nativeTrack){
@@ -519,7 +576,7 @@ async function main() {
    const clearedCache = await control.evaluate(() => chrome.runtime.sendMessage({type: 'fluentReadClearVideoAiSubtitleCache'}));
    assert.equal(clearedCache.success, true);
    await page.locator('#fluent-read-video-subtitle-button').click();
-   await page.locator('[data-action="toggle-ai-subtitle"]').click();
+   await disableReadyAiSubtitles(page);
    await page.waitForFunction(() => document.querySelector('[data-action="toggle-ai-subtitle"]')?.getAttribute('aria-checked') === 'false');
    await page.locator('[data-action="toggle-ai-subtitle"]').click();
    await page.waitForFunction(() => /%/.test(document.querySelector('#fluent-read-video-subtitle-button')?.getAttribute('data-fluent-read-video-progress') || ''));

@@ -1,0 +1,123 @@
+{
+  "googleFontsRevision": "809e4d8b8d7e9364a914909bb777679606c178b8",
+  "cjkSourceSha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da",
+  "supplements": [
+    {
+      "family": "NotoSans",
+      "sha256": "bfb7bb691513f12e734dc346c03a03f784912432d7e3fa8e56efcf906fe86b3d",
+      "addedCodepoints": 889,
+      "url": "https://raw.githubusercontent.com/google/fonts/809e4d8b8d7e9364a914909bb777679606c178b8/ofl/notosans/NotoSans%5Bwdth,wght%5D.ttf"
+    },
+    {
+      "family": "NotoSansMath",
+      "sha256": "3f495fe933c06786e4d5f6d86b8ee70b6753a68ee3b9d87528726de0f6e2c47d",
+      "addedCodepoints": 1724,
+      "url": "https://raw.githubusercontent.com/google/fonts/809e4d8b8d7e9364a914909bb777679606c178b8/ofl/notosansmath/NotoSansMath-Regular.ttf"
+    }
+  ],
+  "tools": {
+    "python": "3.9.6",
+    "fontTools": "4.38.0",
+    "node": "v24.19.0"
+  },
+  "originalCodepointsRetained": 30890,
+  "addedCodepoints": 2613,
+  "codepoints": 33503,
+  "glyphs": 34146,
+  "unicodeAliasesSeparated": 497,
+  "ranges": [
+    {
+      "from": "U+0100",
+      "to": "U+024F",
+      "supported": 336,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+0370",
+      "to": "U+03FF",
+      "supported": 121,
+      "assignedMissing": [
+        "U+03E2",
+        "U+03E3",
+        "U+03E4",
+        "U+03E5",
+        "U+03E6",
+        "U+03E7",
+        "U+03E8",
+        "U+03E9",
+        "U+03EA",
+        "U+03EB",
+        "U+03EC",
+        "U+03ED",
+        "U+03EE",
+        "U+03EF"
+      ]
+    },
+    {
+      "from": "U+1E00",
+      "to": "U+1FFF",
+      "supported": 489,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+2070",
+      "to": "U+214F",
+      "supported": 185,
+      "assignedMissing": [
+        "U+20E0",
+        "U+20E2",
+        "U+20E3"
+      ]
+    },
+    {
+      "from": "U+2190",
+      "to": "U+22FF",
+      "supported": 368,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+27C0",
+      "to": "U+27EF",
+      "supported": 48,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+2980",
+      "to": "U+2AFF",
+      "supported": 384,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+1D400",
+      "to": "U+1D7FF",
+      "supported": 996,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+2023",
+      "to": "U+2023",
+      "supported": 1,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+2300",
+      "to": "U+2300",
+      "supported": 1,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+27F6",
+      "to": "U+27F6",
+      "supported": 1,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+27FA",
+      "to": "U+27FA",
+      "supported": 1,
+      "assignedMissing": []
+    }
+  ],
+  "outputBytes": 5112688,
+  "outputSha256": "14703e46fadf7d61c61df0d476e3f9e7e8fadfdffec4188561d99142d0831cc0"
+}

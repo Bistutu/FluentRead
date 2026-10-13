@@ -1,5 +1,5 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
-import {createOffscreenMessageListener} from '@/src/app/offscreen/messageRouter';
+import {createOffscreenMessageListener, type OffscreenMessageDependencies} from '@/src/app/offscreen/messageRouter';
 import {LOCAL_TRANSLATION_MODEL_IDS} from '@/src/core/config/localTranslation';
 import {OFFSCREEN_CANCEL_LOCAL_TRANSLATION_MESSAGE_TYPE, OFFSCREEN_CANCEL_LOCAL_TTS_MESSAGE_TYPE} from '@/src/platform/offscreen/client';
 import {createChromePreparationRequiredError} from '@/src/app/offscreen/translation';
@@ -802,5 +802,144 @@ describe('Offscreen 本地模型可取消请求', () => {
         localTranslation.translate.mockRejectedValueOnce('worker gone');
         await expect(dispatch({...request, requestId: 'lt-3'}, handler))
             .resolves.toEqual({handled: true, response: {success: false, error: 'worker gone', requestId: 'lt-3'}});
+    });
+});
+
+describe('Offscreen 信息高亮模型的可信路由与请求所有权', () => {
+    function fixture(available = true) {
+        const result = {tokens: [{text: 'reading', score: 0.25}]};
+        const feature = {
+            status: vi.fn(async (_modelId?: string) => ({phase: 'idle'})),
+            prepare: vi.fn(async (_modelId?: string) => ({phase: 'ready'})),
+            pause: vi.fn(async (_modelId?: string) => ({phase: 'paused'})),
+            remove: vi.fn(async (_modelId?: string) => ({phase: 'missing'})),
+            score: vi.fn(async (_text: string, _signal: AbortSignal, _modelId?: string): Promise<unknown> => result),
+        } satisfies NonNullable<OffscreenMessageDependencies['informationHighlight']>;
+        const handler = createOffscreenMessageListener({...mocks,
+            ttsPlayer: {play: mocks.play, stop: mocks.stop, seek: mocks.seek},
+            runtimeId: 'highlight-owner', informationHighlight: available ? feature : undefined,
+        });
+        const post = (message: Record<string, unknown>, sender: unknown = {id: 'highlight-owner'}) => {
+            let resolve!: (value: unknown) => void;
+            const done = new Promise<unknown>(complete => {resolve = complete;});
+            const response = vi.fn((value: unknown) => resolve(value));
+            expect(handler({target: 'offscreen', ...message}, sender, response)).toBe(true);
+            return {done, response};
+        };
+        return {feature, result, post};
+    }
+
+    it.each([
+        [true, null], [true, {id: 'foreign'}], [true, {id: 'highlight-owner', tab: {id: 7}}],
+        [false, {id: 'highlight-owner'}],
+    ] as const)('拒绝未获信任或未装配的入口 %s %j，不触发模型工作', async (available, sender) => {
+        const {feature, post} = fixture(available);
+        expect(await post({type: 'INFORMATION_HIGHLIGHT_PREPARE_OFFSCREEN'}, sender).done)
+            .toEqual({success: false, error: 'INFORMATION_HIGHLIGHT_UNTRUSTED_SENDER'});
+        for (const method of Object.values(feature)) expect(method).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['INFORMATION_HIGHLIGHT_STATUS_OFFSCREEN', 'status', undefined, 'qwen2.5-0.5b', 'idle'],
+        ['INFORMATION_HIGHLIGHT_PREPARE_OFFSCREEN', 'prepare', 'qwen3-0.6b', 'qwen3-0.6b', 'ready'],
+        ['INFORMATION_HIGHLIGHT_PAUSE_OFFSCREEN', 'pause', 'qwen2.5-0.5b', 'qwen2.5-0.5b', 'paused'],
+        ['INFORMATION_HIGHLIGHT_REMOVE_OFFSCREEN', 'remove', undefined, 'qwen2.5-0.5b', 'missing'],
+    ] as const)('将 %s 分派到所选本地模型并保留状态', async (type, method, modelId, expectedModel, phase) => {
+        const {feature, post} = fixture();
+        const request = post({type, ...(modelId === undefined ? {} : {modelId})});
+        expect(await request.done).toEqual({success: true, status: {phase}});
+        expect(feature[method]).toHaveBeenCalledOnce();
+        expect(feature[method]).toHaveBeenCalledWith(expectedModel);
+        expect(request.response).toHaveBeenCalledOnce();
+        expect(feature.score).not.toHaveBeenCalled();
+    });
+
+    it.each(['status', 'prepare', 'pause', 'remove'] as const)('模型 %s 失败只通过同一消息回调回复', async method => {
+        const {feature, post} = fixture();
+        feature[method].mockRejectedValueOnce(new Error('controlled model failure'));
+        const request = post({type: `INFORMATION_HIGHLIGHT_${method.toUpperCase()}_OFFSCREEN`});
+        expect(await request.done).toEqual({success: false, error: 'controlled model failure'});
+        expect(request.response).toHaveBeenCalledOnce();
+    });
+
+    it.each(['remote-model', '', null, {}])('拒绝非法模型 %j，不启动模型管理或推理', async modelId => {
+        const {feature, post} = fixture();
+        expect(await post({type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', requestId: 'invalid-model', text: 'reading', modelId}).done)
+            .toEqual({success: false, error: 'INFORMATION_HIGHLIGHT_INVALID_MODEL'});
+        for (const method of Object.values(feature)) expect(method).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', undefined, 'Offscreen requestId 必须是非空字符串'],
+        ['INFORMATION_HIGHLIGHT_CANCEL_OFFSCREEN', 'bad id', 'Offscreen requestId 格式无效'],
+        ['INFORMATION_HIGHLIGHT_FUTURE_OFFSCREEN', '', 'Offscreen requestId 必须是非空字符串'],
+    ])('先校验 %s 的请求身份再进行工作', async (type, requestId, error) => {
+        const {feature, post} = fixture();
+        expect(await post({type, requestId, text: 'reading'}).done).toEqual({success: false, error});
+        expect(feature.score).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['unknown-command', {type: 'INFORMATION_HIGHLIGHT_FUTURE_OFFSCREEN', text: 'reading'}],
+        ['non-string', {type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', text: 42}],
+        ['empty', {type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', text: ''}],
+        ['too-long', {type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', text: 'a'.repeat(12_001)}],
+    ] as const)('拒绝未知命令或非法正文 %s，不启动推理', async (_label, invalid) => {
+        const {feature, post} = fixture();
+        expect(await post({...invalid, requestId: 'invalid-request'}).done)
+            .toEqual({success: false, error: 'INFORMATION_HIGHLIGHT_INVALID_REQUEST'});
+        expect(feature.score).not.toHaveBeenCalled();
+    });
+
+    it('保留正文上限和推理结果，失败结束后相同身份可再次请求', async () => {
+        const {feature, result, post} = fixture();
+        const message = {type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', requestId: 'score-boundary', text: 'a'.repeat(12_000), modelId: 'qwen3-0.6b'};
+        const first = post(message);
+        expect(await first.done).toEqual({success: true, result});
+        expect(feature.score).toHaveBeenCalledWith(message.text, expect.any(AbortSignal), 'qwen3-0.6b');
+        expect(feature.score.mock.calls[0][1].aborted).toBe(false);
+        expect(first.response).toHaveBeenCalledOnce();
+        feature.score.mockRejectedValueOnce(new Error('controlled inference failure'));
+        expect(await post(message).done).toEqual({success: false, error: 'controlled inference failure'});
+        expect(await post(message).done).toEqual({success: true, result});
+        expect(feature.score).toHaveBeenCalledTimes(3);
+    });
+
+    it('先取消只消费下一次同身份请求，超过512项时仅最早的取消失效', async () => {
+        const {feature, result, post} = fixture();
+        for (let index = 0; index <= 512; index++) {
+            const requestId = `early-${index}`;
+            expect(await post({type: 'INFORMATION_HIGHLIGHT_CANCEL_OFFSCREEN', requestId}).done)
+                .toEqual({success: true, cancelled: false, requestId});
+        }
+        const score = (requestId: string) => post({type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', requestId, text: 'reading'}).done;
+        expect(await score('early-0')).toEqual({success: true, result});
+        expect(await score('early-1')).toEqual({success: false, error: '信息高亮已取消'});
+        expect(await score('early-512')).toEqual({success: false, error: '信息高亮已取消'});
+        expect(await score('early-1')).toEqual({success: true, result});
+        expect(feature.score).toHaveBeenCalledTimes(2);
+    });
+
+    it('拒绝并发重复身份，取消中止信号并释放身份，迟到失败不会影响重试或再次回复', async () => {
+        const {feature, result, post} = fixture();
+        let reject!: (reason: unknown) => void;
+        const pending = new Promise<unknown>((_resolve, fail) => {reject = fail;});
+        feature.score.mockReturnValueOnce(pending);
+        const message = {type: 'INFORMATION_HIGHLIGHT_SCORE_OFFSCREEN', requestId: 'active-score', text: 'reading'};
+        const first = post(message);
+        try {
+            await vi.waitFor(() => expect(feature.score).toHaveBeenCalledOnce());
+            expect(await post(message).done).toEqual({success: false, error: 'INFORMATION_HIGHLIGHT_INVALID_REQUEST'});
+            expect(await post({type: 'INFORMATION_HIGHLIGHT_CANCEL_OFFSCREEN', requestId: message.requestId}).done)
+                .toEqual({success: true, cancelled: true, requestId: message.requestId});
+            expect(feature.score.mock.calls[0][1].aborted).toBe(true);
+            expect(await first.done).toEqual({success: false, cancelled: true, requestId: message.requestId, error: '信息高亮已取消'});
+            expect(await post(message).done).toEqual({success: true, result});
+        } finally {
+            reject(new Error('late cancelled inference failure'));
+            for (let index = 0; index < 8; index++) await Promise.resolve();
+        }
+        expect(first.response).toHaveBeenCalledOnce();
+        expect(feature.score).toHaveBeenCalledTimes(2);
     });
 });
