@@ -202,7 +202,7 @@ async function terminateOwned(owner) {
  * Wrap a launched plain session synchronously; invoke immediately after launch.
  * Only fulfilled guarded close is a browser-PID receipt. It never removes files.
  * Caller must retain profile and fixtures on rejection, including native errors.
- * macOS background helpers provide transport-only close and guarded signal routing.
+ * macOS native CDP helpers provide transport-only close and guarded signal routing.
  * ps+kill cannot atomically exclude PID reuse between observation and signal.
  */
 function guardBrowserClose(session, profile) {
@@ -211,13 +211,14 @@ function guardBrowserClose(session, profile) {
         if (existing.profile !== profile) throw failure('PROFILE_CHANGED', 'Session already belongs to another temporary profile');
         return session;
     }
+    const nativeCdpMode = session.launchMode === 'macos-background-cdp' || session.launchMode === 'macos-foreground-cdp';
     const nativeClose = typeof session.closeBrowserConnection === 'function'
         ? session.closeBrowserConnection
-        : session.launchMode === 'macos-background-cdp' ? undefined : session.close;
+        : nativeCdpMode ? undefined : session.close;
     const routeSignals = session.useGuardedClose;
-    const portFailure = session.launchMode === 'macos-background-cdp'
+    const portFailure = nativeCdpMode
         && (typeof nativeClose !== 'function' || typeof routeSignals !== 'function')
-        ? failure('HELPER_UNSUPPORTED', 'Background helper requires transport-only close and guarded signal routing')
+        ? failure('HELPER_UNSUPPORTED', 'Native CDP helper requires transport-only close and guarded signal routing')
         : undefined;
     const capture = captureOwnership(session, profile);
     let closing, routingError;

@@ -1276,9 +1276,19 @@ function quadBounds(quad) {
   };
 }
 
+const staleFloatingCdpNode = Symbol('stale-floating-cdp-node');
+
 async function computedStyleValues(session, node, names) {
   if (!node) return {};
-  const { computedStyle } = await session.send('CSS.getComputedStyleForNode', { nodeId: node.nodeId });
+  let computedStyle;
+  try {
+    ({ computedStyle } = await session.send('CSS.getComputedStyleForNode', { nodeId: node.nodeId }));
+  } catch (error) {
+    // Vue can remove the check between the document snapshot and style reads.
+    // Keep other parallel CSS failures fatal instead of returning partial styles.
+    if (!/^(?:cdpSession\.send: )?Protocol error \(CSS\.getComputedStyleForNode\): Could not find node with given id$/u.test(error?.message || '')) throw error;
+    return {[staleFloatingCdpNode]: error};
+  }
   return Object.fromEntries(computedStyle
     .filter((entry) => names.includes(entry.name))
     .map((entry) => [entry.name, entry.value]));
@@ -1294,7 +1304,7 @@ async function nodeBounds(session, node) {
   }
 }
 
-async function readFloatingUiState(page) {
+async function readFloatingUiState(page, allowPending = false) {
   const session = await page.context().newCDPSession(page);
   try {
     await session.send('DOM.enable');
@@ -1320,6 +1330,11 @@ async function readFloatingUiState(page) {
       nodeBounds(session, translateTool),
       nodeBounds(session, toolCheck),
     ]);
+    const staleStyle = [mainStyle, toolStyle, checkStyle].find(style => style[staleFloatingCdpNode]);
+    if (staleStyle) {
+      if (allowPending) return null; // Discard the whole sample; the existing waiter refreshes it.
+      throw staleStyle[staleFloatingCdpNode]; // Direct assertions remain strict.
+    }
     const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
     const checkVisible = Boolean(toolCheck && Number(toolStyle.opacity) > 0 &&
       toolStyle.visibility === 'visible' && toolStyle.display !== 'none' &&
@@ -1369,8 +1384,8 @@ async function waitForFloatingUiState(page, predicate, timeout, description) {
   const deadline = Date.now() + timeout;
   let state;
   while (Date.now() < deadline) {
-    state = await readFloatingUiState(page);
-    if (predicate(state)) return state;
+    state = await readFloatingUiState(page, true);
+    if (state && predicate(state)) return state;
     await page.waitForTimeout(50);
   }
   throw new Error(`${description}：${JSON.stringify(state)}`);

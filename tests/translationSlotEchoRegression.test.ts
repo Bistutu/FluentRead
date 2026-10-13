@@ -8,9 +8,10 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {resolveTranslationLanguages} from '@/src/core/translation/languages';
 import {parseTranslationSlots, serializeTranslationSlots,
     type SerializedTranslationSlots} from '@/src/core/translation/slotProtocol';
+import {NativeBatchResponseError} from '@/src/core/translation/nativeBatch';
 import {createTranslationBroker} from '@/src/services/translation/broker';
 import {buildChromeOffscreenTranslationData} from '@/src/providers/translation/chromeTranslatorRequest';
-import {translateWithChromeApi, type ChromeTranslationEnvironment} from '@/src/app/offscreen/translation';
+import {disposeChromeTranslationModels, translateWithChromeApi, type ChromeTranslationEnvironment} from '@/src/app/offscreen/translation';
 import {attachTranslationRequestControl} from '@/src/services/translation/requestSnapshot';
 import type {TranslationConfigSource, TranslationProvider} from '@/src/services/translation/types';
 import type {TranslateOptions} from '@/src/app/translation/client';
@@ -18,6 +19,7 @@ import {translateTextSlots, type FullPageTranslationConfigSnapshot,
     type FullPageTranslationSessionCache} from '@/src/features/full-page-translation/content/translationRequest';
 
 const ports = vi.hoisted(() => ({single: vi.fn(), batch: vi.fn()}));
+const ownedChromeEnvironments = new Set<ChromeTranslationEnvironment>();
 vi.mock('@/src/app/translation/client', () => ({translateText: ports.single, translateTextBatch: ports.batch}));
 vi.mock('@/src/services/config/store', () => ({config: {maxConcurrentTranslations: 2}}));
 vi.mock('@/src/core/translation/public', () => import('@/src/core/translation/slotProtocol'));
@@ -36,7 +38,7 @@ function renderPacket(packet: SerializedTranslationSlots, outputs: readonly stri
 function slotRequest(sources: readonly string[]) {
     return {origin: serializeTranslationSlots(sources).payload, validateTranslationSlots: true as const};
 }
-function createHarness(options: {service?: string; now?: () => number} = {}) {
+function createHarness(options: {service?: string; now?: () => number; nativeContext?: boolean} = {}) {
     const service = options.service ?? 'openai';
     const config: TranslationConfigSource = {
         service, from: 'auto', to: 'zh-Hans', useCache: true, enableAIContext: false,
@@ -54,7 +56,7 @@ function createHarness(options: {service?: string; now?: () => number} = {}) {
         ready: Promise.resolve(), getConfig: () => config, providers: {[service]: provider},
         cache: {get: cacheGet, set: cacheSet, clear: async () => {store.clear();}, cleanup: async () => undefined},
         serviceTypes: {machine: new Set(['chromeTranslator', 'deepL']), isAI: selected => selected === 'openai',
-            isAiSdk: () => false, isUseAIContext: selected => selected === 'openai'},
+            isAiSdk: () => false, isUseAIContext: selected => selected === 'openai' || (options.nativeContext === true && selected === service)},
         endpointResolver: {resolveOpenAICompatibleEndpoint: () => ({endpoint: 'https://fixture.invalid/v1'}), aiSdkTransportProfile: 'fixture'},
         promptBuilder: {buildPageSummaryPrompt: text => text, buildPageSummarySystemPrompt: () => ''},
         getMissingCredentialMessage: () => null,
@@ -89,7 +91,11 @@ beforeEach(() => {
     vi.stubGlobal('document', {title: 'Slot protocol fixture'});
     ports.single.mockReset(); ports.batch.mockReset();
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+    for (const environment of ownedChromeEnvironments) disposeChromeTranslationModels(environment);
+    ownedChromeEnvironments.clear();
+    vi.unstubAllGlobals();
+});
 
 describe('真实 broker 的全文单条槽协议', () => {
     it('首槽以异命名空间字面标记开头时仍修复其回显并复用完整缓存', async () => {
@@ -300,6 +306,68 @@ describe('真实 broker 的全文单条槽协议', () => {
         expect(h.store.size).toBe(0);
     });
 
+    it.each(['', '\u200b', ' \t'])('来源空槽 %j 保留原始字节，忽略服务伪造内容且不伪装可缓存正文', async empty => {
+        const h = createHarness();
+        const sources = [first, empty, second];
+        const packet = serializeTranslationSlots(sources);
+        const complete = renderPacket(packet, [translated[0]!, empty, translated[1]!]);
+        h.provider.mockResolvedValue(renderPacket(packet, [translated[0]!, '不应展示的服务内容', translated[1]!]));
+        await expect(h.broker.translateWithCache(slotRequest(sources))).resolves.toBe(complete);
+        expect(parseTranslationSlots(packet, complete)).toEqual([translated[0]!, empty, translated[1]!]);
+        expect(h.provider.mock.calls.map(([message]) => message.origin)).toEqual([packet.payload]);
+        expect(h.cacheSet).not.toHaveBeenCalled();
+        expect(h.store.size).toBe(0);
+        await expect(h.broker.translateWithCache(slotRequest(sources))).resolves.toBe(complete);
+        expect(h.provider).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(['', ' \t', '\u200b'])('单条回显后重试空译文 %j 明确失败，不能缓存或第三次请求', async empty => {
+        const h = createHarness({service: 'deepL'});
+        h.provider.mockResolvedValueOnce(first).mockResolvedValueOnce(empty);
+        await expect(h.broker.translateWithCache({origin: first})).rejects.toMatchObject({
+            kind: 'response', code: 'TRANSLATION_SLOT_RESPONSE_INVALID', retryable: false,
+        });
+        expect(h.provider.mock.calls.map(([message]) => message.origin)).toEqual([first, first]);
+        expect(h.cacheSet).not.toHaveBeenCalled();
+        expect(h.store.size).toBe(0);
+    });
+
+    it('无缓存原生批量保留混合空白和运行时缺失槽，不将这些槽发送给服务', async () => {
+        const h = createHarness({service: 'deepL'});
+        const sources = [first, undefined, ' \t', second] as unknown as string[];
+        h.provider.mockResolvedValueOnce(translated.slice(0, 2));
+        await expect(h.broker.translateWithCache({origin: sources, useCache: false}))
+            .resolves.toEqual([translated[0], '', ' \t', translated[1]]);
+        expect(h.provider.mock.calls.map(([message]) => message.origin)).toEqual([[first, second]]);
+        expect(sources).toEqual([first, undefined, ' \t', second]);
+        expect(h.cacheGet).not.toHaveBeenCalled();
+        expect(h.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it.each(['disabled', 'damaged'] as const)('具有上下文能力的原生服务 %s 合批时，泄漏缓存恢复全程不再携带上下文', async strategy => {
+        // 验证 broker 的公开能力端口组合；当前原生服务目录本身尚未声明 AI 上下文。
+        const h = createHarness({service: 'deepL', nativeContext: true});
+        h.config.enableAIContext = true;
+        h.cacheGet.mockImplementation(async key => h.store.get(key) ?? (
+            JSON.parse(key).requestMode === 'page-summary' ? '安全的页面摘要'
+                : '已有译文 <webpage_context>不属于原文的上下文</webpage_context>'));
+        h.provider.mockImplementation(async message => {
+            if (Array.isArray(message.origin)) throw new NativeBatchResponseError();
+            return message.origin === first ? translated[0]! : translated[1]!;
+        });
+        const request = {origin: [first, second], context: 'Document title', pageContext: 'Private page reference',
+            enableNativeBatch: strategy === 'damaged'};
+        await expect(h.broker.translateWithCache(request)).resolves.toEqual(translated.slice(0, 2));
+        const calls = h.provider.mock.calls.map(([message]) => message);
+        expect(calls.map(message => message.origin)).toEqual(strategy === 'damaged' ? [[first, second], first, second] : [first, second]);
+        expect(calls.every(message => message.context === '' && message.pageContext === '')).toBe(true);
+        expect(calls.filter(message => typeof message.origin === 'string').every(message => message.enableNativeBatch === false)).toBe(true);
+        expect(h.cacheSet).toHaveBeenCalledTimes(2);
+        expect([...h.store.values()]).toEqual(translated.slice(0, 2));
+        await expect(h.broker.translateWithCache(request)).resolves.toEqual(translated.slice(0, 2));
+        expect(h.provider).toHaveBeenCalledTimes(strategy === 'damaged' ? 3 : 2);
+    });
+
     it.each([' \t', '\u200b', ' \u200b\t\u200b'])('不可见空槽 %j 仅恢复该槽，保留良槽并缓存修复整包', async empty => {
         const h = createHarness();
         const packet = serializeTranslationSlots([first, second]);
@@ -409,7 +477,8 @@ describe('真实 broker 的全文单条槽协议', () => {
             if (text === heading) return headingTranslation;
             throw new Error('good slot must not be translated again');
         });
-        const translatorCreate = vi.fn<NonNullable<ChromeTranslationEnvironment['Translator']>['create']>(async () => ({translate}));
+        const translatorDestroy = vi.fn();
+        const translatorCreate = vi.fn<NonNullable<ChromeTranslationEnvironment['Translator']>['create']>(async () => ({translate, destroy: translatorDestroy}));
         const environment: ChromeTranslationEnvironment = {
             LanguageDetector: {
                 availability: vi.fn(async () => 'available'),
@@ -417,6 +486,7 @@ describe('真实 broker 的全文单条槽协议', () => {
             },
             Translator: {availability: vi.fn(async () => 'available'), create: translatorCreate},
         };
+        ownedChromeEnvironments.add(environment);
         const languageDefaults = {sourceLanguage: 'auto', targetLanguage: 'zh-Hans'};
 
         // 旧候选把检测样本缩成短槽：真实 request builder/offscreen 校验在创建 translator 前失败。
@@ -437,8 +507,11 @@ describe('真实 broker 的全文单条槽协议', () => {
             origin: heading, sourceLanguageDetectionText: detectionSample, validateTranslationSlots: false,
         });
         expect(detect.mock.calls.map(([text]) => text)).toEqual([heading, detectionSample, detectionSample]);
-        expect(detectorDestroy).toHaveBeenCalledTimes(3);
-        expect(translatorCreate).toHaveBeenCalledTimes(2);
+        // 现代 API 在同一 offscreen 环境复用模型；每次操作完成只归还租约。
+        expect(detectorDestroy).not.toHaveBeenCalled();
+        expect(translatorDestroy).not.toHaveBeenCalled();
+        expect(environment.LanguageDetector!.create).toHaveBeenCalledOnce();
+        expect(translatorCreate).toHaveBeenCalledOnce();
         for (const [options] of translatorCreate.mock.calls) {
             expect(options).toMatchObject({sourceLanguage: 'en', targetLanguage: 'zh'});
         }
@@ -447,6 +520,9 @@ describe('真实 broker 的全文单条槽协议', () => {
         await expect(h.broker.translateWithCache(request)).resolves.toBe(complete);
         expect(h.provider).toHaveBeenCalledTimes(2);
         expect(detect).toHaveBeenCalledTimes(3);
+        disposeChromeTranslationModels(environment);
+        expect(detectorDestroy).toHaveBeenCalledOnce();
+        expect(translatorDestroy).toHaveBeenCalledOnce();
     });
 
     it('单槽强 marker 上下文泄漏只重试坏槽，正常摘要和两侧良槽均不重复请求', async () => {
@@ -552,14 +628,18 @@ describe('frontend 区分原生数组、机器逐槽与 AI 槽协议的会话边
             }
             throw new Error('unexpected source or marker packet');
         });
-        const translatorCreate = vi.fn<NonNullable<ChromeTranslationEnvironment['Translator']>['create']>(async () => ({translate}));
-        const environment: ChromeTranslationEnvironment = {
+        const translatorDestroy = vi.fn();
+        const translatorCreate = vi.fn<NonNullable<ChromeTranslationEnvironment['Translator']>['create']>(async () => ({translate, destroy: translatorDestroy}));
+        // 同一现代语言对按租约串行运行。两个独立 offscreen 环境才能真正产生并发乱序，
+        // frontend 仍通过真实 request builder、语言检测和 translator 操作验证来源快照。
+        const environments = sources.map((): ChromeTranslationEnvironment => ({
             LanguageDetector: {availability: vi.fn(async () => 'available'), create: vi.fn(async () => ({detect, destroy}))},
             Translator: {availability: vi.fn(async () => 'available'), create: translatorCreate},
-        };
+        }));
+        for (const environment of environments) ownedChromeEnvironments.add(environment);
         h.provider.mockImplementation(message => translateWithChromeApi(
             buildChromeOffscreenTranslationData(message, {sourceLanguage: 'auto', targetLanguage: 'zh-Hans'}),
-            environment, message.abortSignal as AbortSignal | undefined,
+            environments[message.origin === heading ? 0 : 1]!, message.abortSignal as AbortSignal | undefined,
         ));
         const invocation = {...snapshot, service: 'chromeTranslator', useCache: false};
         const controller = new AbortController();
@@ -581,8 +661,10 @@ describe('frontend 区分原生数组、机器逐槽与 AI 槽协议的会话边
         }
         expect(h.provider.mock.calls.map(([message]) => message.origin)).toEqual([heading, second]);
         expect(detect.mock.calls.map(([text]) => text)).toEqual([detectionSample, detectionSample]);
-        expect(destroy).toHaveBeenCalledTimes(2);
+        expect(destroy).not.toHaveBeenCalled();
+        expect(translatorDestroy).not.toHaveBeenCalled();
         expect(translatorCreate).toHaveBeenCalledTimes(2);
+        for (const environment of environments) expect(environment.LanguageDetector!.create).toHaveBeenCalledOnce();
         for (const [options] of translatorCreate.mock.calls) {
             expect(options).toMatchObject({sourceLanguage: 'en', targetLanguage: 'zh'});
         }
@@ -596,6 +678,9 @@ describe('frontend 区分原生数组、机器逐槽与 AI 槽协议的会话边
         }
         expect(ports.batch).not.toHaveBeenCalled();
         expect(h.cacheSet).not.toHaveBeenCalled();
+        for (const environment of environments) disposeChromeTranslationModels(environment);
+        expect(destroy).toHaveBeenCalledTimes(2);
+        expect(translatorDestroy).toHaveBeenCalledTimes(2);
     });
 
     it.each([

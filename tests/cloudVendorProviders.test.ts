@@ -270,6 +270,28 @@ describe.each(nativeCloudProviders)('$label 原生数组完整性', ({translate,
         expect(fetchMock).toHaveBeenCalledOnce();
     });
 
+    it('成功 JSON 读取期间取消保留原因且不回填半批或发送后包', async () => {
+        const active = new AbortController();
+        const reason = new DOMException('Cancelled while the response JSON was pending', 'AbortError');
+        let finishJson!: (value: unknown) => void;
+        let markJsonReading!: () => void;
+        const body = new Promise<unknown>(resolve => {finishJson = resolve;});
+        const reading = new Promise<void>(resolve => {markJsonReading = resolve;});
+        const readJson = vi.fn(() => {markJsonReading(); return body;});
+        fetchMock.mockResolvedValue({ok: true, headers: new Headers({'Content-Type': 'application/json'}), json: readJson} as unknown as Response);
+        const pending = translate({origin: Array.from({length: 33}, (_, index) => `source ${index}`), abortSignal: active.signal});
+        const rejected = expect(pending).rejects.toBe(reason);
+        await reading;
+        expect(active.signal.aborted).toBe(false);
+        active.abort(reason);
+        finishJson(success(Array.from({length: 32}, () => '译文')));
+        await rejected;
+        expect(readJson).toHaveBeenCalledOnce();
+        expect(fetchMock).toHaveBeenCalledOnce();
+        expect(lastCall().init.signal).toBe(active.signal);
+        expect(bodySources(JSON.parse(lastCall().body))).toHaveLength(32);
+    });
+
     it('HTTP200读取中断不会被归为可拆批的结构错误', async () => {
         fetchMock.mockResolvedValue({ok: true, json: async () => {throw new TypeError('private response');}} as unknown as Response);
         await expect(translate({origin: ['first', 'second']})).rejects.toMatchObject({message: '翻译响应读取失败'});

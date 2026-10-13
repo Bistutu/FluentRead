@@ -133,9 +133,10 @@ function resolveSolidBackground(layers) {
 }
 const expectedGeneralGroups = ['基础配置', '翻译服务选择', '网页辅助', '基本偏好'];
 const expectedGeneralSubgroups = [];
-const expectedInterfaceGroups = ['译文样式', '逐句高亮样式', '界面与弹窗', '动画与加载效果', '菜单栏布局', '界面字体'];
+const expectedInterfacePanelOrder = ['translation', 'skin', 'motion', 'layout', 'video-learning', 'font'];
+const expectedInterfaceGroups = ['译文样式', '逐句高亮样式', '界面与弹窗', '翻译加载样式', '菜单栏布局', '完整句学习外观', '界面字体'];
 // 划词触发、翻译卡片与朗读均在划词页；阅读辅助保留在翻译设置首项。
-const expectedTranslationGroups = ['阅读辅助', '鼠标悬浮翻译', '输入框翻译', '全文翻译', '右键菜单', '悬浮球进阶设置', '段落复制', '局部翻译', '不翻译的语言'];
+const expectedTranslationGroups = ['阅读辅助', '智能高亮', '鼠标悬浮翻译', '输入框翻译', '全文翻译', '右键菜单', '悬浮球进阶设置', '段落复制', '局部翻译', '不翻译的语言'];
 const expectedLoadingStyles = [
   ['ring', '柔和圆环'],
   ['minimal', '简洁'],
@@ -152,7 +153,9 @@ const expectedLoadingStyles = [
   ['typing', '打字光标'],
   ['scan', '扫描线'],
   ['signal', '信号柱'],
+  ['none', '无'],
 ];
+const expectedAnimatedLoadingStyles = expectedLoadingStyles.filter(([value]) => value !== 'none');
 const configDatabaseName = 'FluentReadConfiguration';
 const expectedEncryptedRecordKeys = [
   'local:config',
@@ -253,7 +256,16 @@ async function selectSettingsSection(page, sectionId, panelId) {
   }
   await page.locator(`${settingsNavigationSelector}[data-section="${sectionId}"][aria-current="page"]`)
     .waitFor({state: 'attached', timeout});
-  if (panelId) await page.locator(`.settings-page-tabs button[data-settings-category="${panelId}"]`).click();
+  if (panelId) {
+    // 用量页仍是互斥分类；连续表单用真实锚点定位，不能假定 SettingsPanel 会隐藏其他分组。
+    const panelButton = page.locator(`.settings-page-tabs button[data-settings-category="${panelId}"], .settings-page-tabs button[data-settings-anchor-link="${panelId}"]`);
+    await panelButton.click();
+    await page.waitForFunction(id => {
+      const category = document.querySelector(`.settings-page-tabs button[data-settings-category="${id}"]`);
+      const anchor = document.querySelector(`.settings-page-tabs button[data-settings-anchor-link="${id}"]`);
+      return category?.getAttribute('aria-current') === 'true' || anchor?.getAttribute('aria-current') === 'location';
+    }, panelId, {timeout});
+  }
 }
 
 function inspectSettingsNavigationVisibility() {
@@ -600,32 +612,85 @@ async function verifyInterfaceDesignMatrix(page, skin, report) {
 }
 
 async function verifyBilingualHighlightPreview(page) {
-  // 阅读辅助拥有开关与交互预览；样式页保留独立外观预览。
+  // 阅读辅助显示当前样式并直达样式页；“无”和原样式共同控制高亮，不再有独立开关。
   await selectSettingsSection(page, 'settings-translation');
   const reading = page.locator('#settings-translation .reading-assistance-settings');
   const preview = reading.getByTestId('bilingual-highlight-preview');
   const source = preview.getByTestId('bilingual-highlight-preview-source');
   const translation = preview.getByTestId('bilingual-highlight-preview-translation');
-  const toggle = reading.getByRole('switch', {name: '双语逐句高亮', exact: true});
+  const styleLink = reading.getByTestId('open-sentence-highlight-styles');
+  const currentStyleLabel = reading.getByTestId('current-sentence-highlight-style');
   await preview.waitFor({state: 'visible', timeout});
-  if (await source.count() !== 1 || await translation.count() !== 1 || await toggle.count() !== 1) {
-    throw new Error('双语逐句高亮预览缺少唯一的原文、译文或开关');
+  if (await source.count() !== 1 || await translation.count() !== 1 || await styleLink.count() !== 1
+    || await currentStyleLabel.count() !== 1 || await reading.getByRole('switch', {name: '双语逐句高亮', exact: true}).count() !== 0) {
+    throw new Error('双语逐句高亮预览缺少唯一的原文、译文、当前样式入口，或保留了旧开关');
   }
   const firstGroup = (await page.locator('#settings-translation .settings-group-heading h2').first().innerText()).trim();
   if (firstGroup !== '阅读辅助') throw new Error(`翻译设置第一组不是阅读辅助：${firstGroup}`);
-
+  const readHighlightSettings = () => page.evaluate(async () => {
+    const response = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
+    if (response?.success !== true) throw new Error(response?.error || '无法读取逐句高亮配置');
+    const config = typeof response.value === 'string' ? JSON.parse(response.value) : response.value;
+    return {
+      enabled: config.bilingualSentenceHighlightEnabled,
+      style: config.bilingualSentenceHighlightStyle,
+      profile: config.activeSentenceHighlightProfileId,
+      appearance: config.bilingualSentenceHighlightAppearance,
+    };
+  });
+  const initialSettings = await readHighlightSettings();
+  const initialEnabled = initialSettings.enabled;
+  if (typeof initialEnabled !== 'boolean'
+    || await preview.getAttribute('data-bilingual-highlight-enabled') !== String(initialEnabled)) {
+    throw new Error(`逐句高亮预览与已保存配置不一致：${JSON.stringify(initialSettings)}`);
+  }
+  const styleNavigation = [];
   const setEnabled = async (enabled) => {
-    if ((await toggle.getAttribute('aria-checked') === 'true') === enabled) return;
-    await toggle.locator('..').click();
+    if (await preview.getAttribute('data-bilingual-highlight-enabled') === String(enabled)) return;
+    await styleLink.click();
+    const styles = page.locator('#translation-sentence-highlight-style');
+    await styles.waitFor({state: 'visible', timeout});
+    if (await page.locator(`${settingsNavigationSelector}[data-section="settings-interface"]`).getAttribute('aria-current') !== 'page'
+      || await styles.locator('.sentence-highlight-options[role="radiogroup"] [role="radio"]').count() !== 9) {
+      throw new Error('阅读辅助的样式入口没有导航到包含八种预设和“无”的逐句高亮选择器');
+    }
+    const selection = enabled
+      ? initialSettings.profile
+        ? styles.locator(`.sentence-highlight-saved-card[data-profile-id="${initialSettings.profile}"]`)
+        : styles.locator(`.sentence-highlight-options [data-highlight-style="${initialSettings.style}"]`)
+      : styles.locator('.sentence-highlight-options [data-highlight-style="none"]');
+    const selectedLabel = (await selection.locator('strong').innerText()).trim();
+    await selection.click();
+    await page.waitForFunction(({enabled, style, profile}) => {
+      const selected = enabled
+        ? profile
+          ? document.querySelector(`#translation-sentence-highlight-style .sentence-highlight-saved-card[data-profile-id="${profile}"]`)
+          : document.querySelector(`#translation-sentence-highlight-style .sentence-highlight-options [data-highlight-style="${style}"]`)
+        : document.querySelector('#translation-sentence-highlight-style [data-highlight-style="none"]');
+      return selected?.getAttribute('aria-checked') === 'true';
+    }, {enabled, style: initialSettings.style, profile: initialSettings.profile}, {timeout});
+    await waitForAsyncCondition(async () => {
+      const stored = await readHighlightSettings();
+      return stored.enabled === enabled && stored.style === initialSettings.style && stored.profile === initialSettings.profile
+        && JSON.stringify(stored.appearance) === JSON.stringify(initialSettings.appearance);
+    }, {timeoutMs: timeout, pollingMs: 100, message: '关闭或恢复逐句高亮没有持久化，或覆盖了关闭前的样式与外观'});
+    await selectSettingsSection(page, 'settings-translation', 'reading');
+    await preview.waitFor({state: 'visible', timeout});
     await page.waitForFunction(expected => document.querySelector('#settings-translation .reading-assistance-settings [data-testid="bilingual-highlight-preview"]')
       ?.getAttribute('data-bilingual-highlight-enabled') === expected, String(enabled), {timeout});
+    if ((await currentStyleLabel.innerText()).trim() !== selectedLabel
+      || await currentStyleLabel.getAttribute('title') !== selectedLabel
+      || !(await styleLink.getAttribute('aria-label'))?.endsWith(`: ${selectedLabel}`)) {
+      throw new Error(`阅读辅助没有准确显示当前高亮样式：${JSON.stringify({enabled, selectedLabel})}`);
+    }
+    await preview.scrollIntoViewIfNeeded();
+    styleNavigation.push({enabled, selectedLabel, rememberedStyle: initialSettings.style, rememberedProfile: initialSettings.profile, saved: true});
   };
   const readState = () => preview.evaluate(element => ({
     highlighted: [...element.querySelectorAll('.is-sentence-highlighted')].map(node => node.textContent.trim()),
     rect: (({x, y, width, height}) => ({x, y, width, height}))(element.getBoundingClientRect()),
   }));
   await preview.scrollIntoViewIfNeeded();
-  const initialEnabled = await toggle.getAttribute('aria-checked') === 'true';
   await setEnabled(false);
   await page.mouse.move(0, 0);
   const before = await readState();
@@ -669,6 +734,8 @@ async function verifyBilingualHighlightPreview(page) {
 
   return {
     initialEnabled,
+    initialSettings,
+    styleNavigation,
     disabledHover,
     sourceHover,
     translationHover,
@@ -1622,7 +1689,7 @@ async function main() {
           throw new Error('关于页仍显示多余的原图文字链接');
         }
         const supportCopy = await supportPanel.innerText();
-        if (!supportCopy.includes('FluentRead的发展离不开社区的慷慨支持，你可以通过微信赞赏或Ko-fi支持我们。')) {
+        if (!supportCopy.includes('流畅阅读的发展离不开社区的慷慨支持，你可以通过微信赞赏或Ko-fi支持我们。')) {
           throw new Error('关于页赞赏说明没有使用当前中文 i18n 文案');
         }
         if (await anchor.locator('.about-feature-list').count() !== 0) {
@@ -1687,83 +1754,181 @@ async function main() {
     report.informationArchitecture.legacyNavigationCases = legacyNavigationCases;
     report.assertions.interfaceSearchAndLegacyNavigation = true;
 
-    // 界面布局中的段落加载样式必须用真实运行时指示器预览，并经统一配置链路持久化。
-    await selectSettingsSection(page, 'settings-interface');
-    const loadingStyleGroup = page.locator('.settings-section:visible .settings-group').filter({hasText: '动画与加载效果'});
-    await loadingStyleGroup.waitFor({state: 'visible', timeout});
-    const loadingStyleCards = loadingStyleGroup.locator('.loading-style-option');
-    const loadingStyleContract = await loadingStyleCards.evaluateAll(cards => cards.map(card => ({
-      value: card.querySelector('input[type="radio"]')?.value,
-      label: card.querySelector('.loading-style-copy strong')?.textContent?.trim(),
-      description: card.querySelector('.loading-style-copy small')?.textContent?.trim(),
-      previewStyle: card.querySelector('.fluent-read-loading')?.getAttribute('data-fr-loading-style'),
+    // 界面风格是连续表单；动画锚点只定位当前面板，单层选择器同时承担动画开关。
+    await selectSettingsSection(page, 'settings-interface', 'motion');
+    const loadingStylePanel = page.locator('#settings-interface [data-settings-panel="motion"]');
+    await loadingStylePanel.waitFor({state: 'visible', timeout});
+    const interfacePanelContract = await page.locator('#settings-interface > [data-settings-panel]').evaluateAll(panels => panels.map(panel => ({
+      name: panel.getAttribute('data-settings-panel'),
+      visible: panel.getClientRects().length > 0,
     })));
-    if (JSON.stringify(loadingStyleContract.map(item => [item.value, item.label])) !== JSON.stringify(expectedLoadingStyles)
-      || loadingStyleContract.some(item => item.previewStyle !== item.value || !item.description)) {
-      throw new Error(`段落加载样式或真实预览契约异常：${JSON.stringify(loadingStyleContract)}`);
+    if (JSON.stringify(interfacePanelContract.map(panel => panel.name)) !== JSON.stringify(expectedInterfacePanelOrder)
+      || interfacePanelContract.some(panel => !panel.visible)) {
+      throw new Error(`界面风格的连续 SettingsPanel 契约异常：${JSON.stringify(interfacePanelContract)}`);
     }
-    const loadingPreviewMetrics = await loadingStyleGroup.locator('.fluent-read-loading').evaluateAll(indicators => indicators.map(indicator => {
-      const rect = indicator.getBoundingClientRect();
-      const style = indicator.style;
+    const loadingStyleGroup = loadingStylePanel.locator(':scope > .settings-group');
+    await loadingStyleGroup.waitFor({state: 'visible', timeout});
+    if (await loadingStylePanel.locator('.settings-group').count() !== 1
+      || await loadingStylePanel.locator('h2, h3').count() !== 1
+      || await loadingStyleGroup.getByRole('heading', {name: '翻译加载样式', exact: true}).count() !== 1
+      || await loadingStyleGroup.locator('.settings-group-heading > p').textContent() !== '选择样式即可预览；选“无”关闭界面动画并保留静态反馈。'
+      || await loadingStylePanel.locator('.el-switch, [role="switch"]').count() !== 0) {
+      throw new Error('动画选择器应只有一个标题和说明，不能保留嵌套分组或独立动画开关');
+    }
+    const loadingStylePicker = loadingStyleGroup.getByRole('radiogroup', {name: '翻译加载动画样式', exact: true});
+    if (await loadingStylePicker.count() !== 1) throw new Error('动画样式缺少唯一的原生单选组');
+    const loadingStyleCards = loadingStyleGroup.locator('.loading-style-option');
+    const loadingStyleContract = await loadingStyleCards.evaluateAll(cards => cards.map(card => {
+      const radio = card.querySelector('input');
+      const label = card.querySelector('.loading-style-copy strong');
+      const previews = [...card.querySelectorAll('.fluent-read-loading')];
       return {
-        loadingStyle: indicator.getAttribute('data-fr-loading-style'),
-        motion: indicator.getAttribute('data-fr-motion'),
-        width: rect.width,
-        height: rect.height,
-        closedShadowRoot: indicator.shadowRoot === null,
-        widthPriority: style.getPropertyPriority('width'),
-        animationPriority: style.getPropertyPriority('animation'),
+        value: radio?.value,
+        choice: card.getAttribute('data-loading-style-choice'),
+        nativeRadio: radio instanceof HTMLInputElement && radio.type === 'radio' && radio.name === 'translation-loading-style',
+        ariaLabel: radio?.getAttribute('aria-label'),
+        disabled: radio?.disabled,
+        checked: radio?.checked,
+        selected: card.classList.contains('selected'),
+        label: [...(label?.childNodes || [])].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join('').trim(),
+        description: card.querySelector('.loading-style-copy small')?.textContent?.trim(),
+        staticBadge: card.querySelector('.loading-style-static-badge')?.textContent?.trim() || null,
+        previewCount: previews.length,
+        previewStyle: previews[0]?.getAttribute('data-fr-loading-style') || null,
+        previewLine: card.querySelectorAll('.loading-style-preview-line').length,
       };
     }));
-    if (loadingPreviewMetrics.some(item => item.motion !== 'animated'
-      || item.width !== 16
-      || item.height !== 16
-      || !item.closedShadowRoot
-      || item.widthPriority !== 'important'
-      || item.animationPriority !== 'important')) {
-      throw new Error(`段落加载预览没有保持隔离尺寸或动画状态：${JSON.stringify(loadingPreviewMetrics)}`);
+    if (JSON.stringify(loadingStyleContract.map(item => [item.value, item.label])) !== JSON.stringify(expectedLoadingStyles)
+      || loadingStyleContract.filter(item => item.checked).length !== 1
+      || loadingStyleContract.some(item => !item.nativeRadio || item.disabled || item.checked !== item.selected
+        || item.choice !== item.value || !item.description || item.ariaLabel !== `${item.label}：${item.description}`
+        || item.previewLine !== 1
+        || (item.value === 'none'
+          ? item.previewCount !== 0 || item.previewStyle !== null || item.staticBadge !== '静态反馈'
+          : item.previewCount !== 1 || item.previewStyle !== item.value || item.staticBadge !== null))) {
+      throw new Error(`16 项动画样式、原生单选或真实预览契约异常：${JSON.stringify(loadingStyleContract)}`);
     }
-    for (const [value] of expectedLoadingStyles) {
-      const optionCard = loadingStyleCards.filter({has: page.locator(`input[value="${value}"]`)});
-      await optionCard.click();
-      await page.waitForFunction(selected => (
-        document.querySelector(`.loading-style-option input[value="${selected}"]`)?.checked === true
-      ), value, {timeout});
-    }
-    await page.waitForTimeout(500);
-    const storedLoadingStyle = await page.evaluate(async () => {
+    const readLoadingStyleConfig = () => page.evaluate(async () => {
       const response = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
-      return response?.value?.translationLoadingStyle;
+      if (response?.success !== true) throw new Error(response?.error || '无法读取动画配置');
+      const config = typeof response.value === 'string' ? JSON.parse(response.value) : response.value;
+      return {animations: config?.animations, translationLoadingStyle: config?.translationLoadingStyle};
     });
-    if (storedLoadingStyle !== 'signal') {
-      throw new Error(`段落加载样式没有持久化最终选择：${String(storedLoadingStyle)}`);
+    const waitForLoadingStyleConfig = async (animations, translationLoadingStyle) => {
+      await waitForAsyncCondition(async () => {
+        const stored = await readLoadingStyleConfig();
+        return stored.animations === animations && stored.translationLoadingStyle === translationLoadingStyle;
+      }, {timeoutMs: timeout, pollingMs: 100, message: `动画配置没有持久化：${JSON.stringify({animations, translationLoadingStyle})}`});
+      return readLoadingStyleConfig();
+    };
+    const waitForLoadingStyleUi = value => page.waitForFunction(({value, options, animatedCount}) => {
+      const picker = document.querySelector('#settings-interface [data-settings-panel="motion"] .loading-style-picker');
+      const cards = [...(picker?.querySelectorAll('.loading-style-option') || [])];
+      const radios = cards.map(card => card.querySelector('input[type="radio"]'));
+      const checked = radios.filter(radio => radio?.checked);
+      const indicators = [...(picker?.querySelectorAll('.fluent-read-loading') || [])];
+      return cards.length === options && radios.every(radio => radio && !radio.disabled)
+        && checked.length === 1 && checked[0].value === value
+        && cards.every((card, index) => card.classList.contains('selected') === radios[index].checked)
+        && picker?.getAttribute('aria-disabled') !== 'true'
+        && indicators.length === animatedCount
+        && indicators.every(indicator => indicator.getAttribute('data-fr-motion') === (value === 'none' ? 'static' : 'animated'))
+        && picker.querySelector('[data-loading-style-choice="none"] .fluent-read-loading') === null;
+    }, {value, options: expectedLoadingStyles.length, animatedCount: expectedAnimatedLoadingStyles.length}, {timeout});
+    const chooseLoadingStyle = async value => {
+      await loadingStyleCards.filter({has: page.locator(`input[value="${value}"]`)}).click();
+      await waitForLoadingStyleUi(value);
+    };
+    const readLoadingPreviewMetrics = async motion => {
+      // 注入会污染普通 light DOM 指示器的宿主样式，确认运行时预览仍保持固定尺寸与 closed root。
+      const hostCss = await page.addStyleTag({content: '#settings-interface .fluent-read-loading { width: 128px !important; height: 96px !important; animation: fluent-read-loading-spin 1ms linear infinite !important; transform: scale(8) !important; } @keyframes fluent-read-loading-spin { to { transform: scale(30); } }'});
+      try {
+        const metrics = await loadingStyleGroup.locator('.fluent-read-loading').evaluateAll(indicators => indicators.map(indicator => {
+          const rect = indicator.getBoundingClientRect();
+          const computed = getComputedStyle(indicator);
+          return {
+            loadingStyle: indicator.getAttribute('data-fr-loading-style'),
+            motion: indicator.getAttribute('data-fr-motion'),
+            width: rect.width,
+            height: rect.height,
+            closedShadowRoot: indicator.shadowRoot === null,
+            widthPriority: indicator.style.getPropertyPriority('width'),
+            heightPriority: indicator.style.getPropertyPriority('height'),
+            animationPriority: indicator.style.getPropertyPriority('animation'),
+            hostAnimation: computed.animationName,
+            hostTransform: computed.transform,
+          };
+        }));
+        if (JSON.stringify(metrics.map(item => item.loadingStyle)) !== JSON.stringify(expectedAnimatedLoadingStyles.map(([value]) => value))
+          || metrics.some(item => item.motion !== motion || item.width !== 16 || item.height !== 16 || !item.closedShadowRoot
+            || item.widthPriority !== 'important' || item.heightPriority !== 'important' || item.animationPriority !== 'important'
+            || item.hostAnimation !== 'none' || item.hostTransform !== 'none')) {
+          throw new Error(`15 个段落加载预览未保持宿主 CSS 隔离或 ${motion} 状态：${JSON.stringify(metrics)}`);
+        }
+        return metrics;
+      } finally {
+        await hostCss.evaluate(style => style.remove());
+      }
+    };
+    const initialLoadingStyleConfig = await readLoadingStyleConfig();
+    if (typeof initialLoadingStyleConfig.animations !== 'boolean'
+      || !expectedAnimatedLoadingStyles.some(([value]) => value === initialLoadingStyleConfig.translationLoadingStyle)) {
+      throw new Error(`动画选择器读取到无效配置：${JSON.stringify(initialLoadingStyleConfig)}`);
     }
+    await waitForLoadingStyleUi(initialLoadingStyleConfig.animations ? initialLoadingStyleConfig.translationLoadingStyle : 'none');
+    await chooseLoadingStyle('ring');
+    const ringRadio = loadingStyleCards.locator('input[value="ring"]');
+    await ringRadio.focus();
+    await ringRadio.press('ArrowRight');
+    await waitForLoadingStyleUi('minimal');
+    if (!await loadingStyleCards.locator('input[value="minimal"]').evaluate(radio => radio === document.activeElement)) {
+      throw new Error('原生动画单选方向键没有同步选择和焦点');
+    }
+    await loadingStyleCards.locator('input[value="minimal"]').press('ArrowLeft');
+    await waitForLoadingStyleUi('ring');
+    if (!await ringRadio.evaluate(radio => radio === document.activeElement)) throw new Error('原生动画单选方向键没有恢复圆环焦点');
+    for (const [value] of expectedAnimatedLoadingStyles) await chooseLoadingStyle(value);
+    const storedLoadingStyle = await waitForLoadingStyleConfig(true, 'signal');
+    const loadingPreviewMetrics = await readLoadingPreviewMetrics('animated');
     report.screenshots.push(await screenshot(page, 'settings-interface-loading-styles-animated.png'));
 
-    const animationSwitch = loadingStyleGroup.locator('.settings-item').filter({hasText: '动画效果'}).locator('.el-switch');
-    await animationSwitch.click();
-    await page.waitForFunction(() => (
-      document.querySelector('.loading-style-picker')?.getAttribute('aria-disabled') === 'true'
-      && [...document.querySelectorAll('.loading-style-picker .fluent-read-loading')]
-        .every(indicator => indicator.getAttribute('data-fr-motion') === 'static')
-    ), undefined, {timeout});
+    await chooseLoadingStyle('none');
+    const disabledLoadingStyle = await waitForLoadingStyleConfig(false, 'signal');
+    const staticLoadingPreviewMetrics = await readLoadingPreviewMetrics('static');
     report.screenshots.push(await screenshot(page, 'settings-interface-loading-styles-static.png'));
-    await animationSwitch.click();
-    await loadingStyleCards.filter({has: page.locator('input[value="ring"]')}).click();
-    await page.waitForTimeout(500);
-    const restoredLoadingStyle = await page.evaluate(async () => {
-      const response = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
-      return response?.value?.translationLoadingStyle;
-    });
-    if (restoredLoadingStyle !== 'ring') {
-      throw new Error(`段落加载样式没有持久化恢复值：${String(restoredLoadingStyle)}`);
+    await page.reload({waitUntil: 'domcontentloaded', timeout});
+    await selectSettingsSection(page, 'settings-interface', 'motion');
+    await waitForLoadingStyleUi('none');
+    const reloadedDisabledLoadingStyle = await waitForLoadingStyleConfig(false, 'signal');
+    const restoredStyleCases = [];
+    for (const [value] of expectedAnimatedLoadingStyles) {
+      await chooseLoadingStyle('none');
+      await chooseLoadingStyle(value);
+      restoredStyleCases.push({value, previews: expectedAnimatedLoadingStyles.length, motion: 'animated'});
     }
+    await chooseLoadingStyle('ring');
+    const restoredLoadingStyle = await waitForLoadingStyleConfig(true, 'ring');
+    await page.reload({waitUntil: 'domcontentloaded', timeout});
+    await selectSettingsSection(page, 'settings-interface', 'motion');
+    await waitForLoadingStyleUi('ring');
+    const reloadedRestoredLoadingStyle = await waitForLoadingStyleConfig(true, 'ring');
     report.translationLoadingStyles = {
       options: loadingStyleContract,
+      panels: interfacePanelContract,
+      singleGroupTitle: '翻译加载样式',
+      initialConfig: initialLoadingStyleConfig,
       previewMetrics: loadingPreviewMetrics,
-      persistedSelection: storedLoadingStyle,
+      staticPreviewMetrics: staticLoadingPreviewMetrics,
+      nativeRadioKeyboard: {forward: 'minimal', backward: 'ring', focusMoved: true},
+      persistedSelection: storedLoadingStyle.translationLoadingStyle,
+      persistedConfig: storedLoadingStyle,
+      disabledConfig: disabledLoadingStyle,
+      reloadedDisabledConfig: reloadedDisabledLoadingStyle,
       staticFallback: true,
-      restoredSelection: restoredLoadingStyle,
+      restoredStyleCases,
+      restoredSelection: restoredLoadingStyle.translationLoadingStyle,
+      restoredConfig: restoredLoadingStyle,
+      reloadedRestoredConfig: reloadedRestoredLoadingStyle,
     };
     report.assertions.translationLoadingStyles = true;
 
@@ -1777,7 +1942,7 @@ async function main() {
     const interfaceGroups = (await interfaceSection.locator('.settings-group-heading h2').allTextContents()).map(value => value.trim());
     if (await interfaceSettingsGroup.count() !== 1 || await menuLayoutSettingsGroup.count() !== 1
       || JSON.stringify(interfaceGroups) !== JSON.stringify(expectedInterfaceGroups)) {
-      throw new Error(`界面风格没有按顺序提供译文样式、界面与弹窗、动画、菜单栏布局和字体分组：${JSON.stringify(interfaceGroups)}`);
+      throw new Error(`界面风格没有按顺序提供译文、逐句高亮、界面与弹窗、加载样式、菜单栏布局、完整句学习和字体分组：${JSON.stringify(interfaceGroups)}`);
     }
     if (/Popup\s*布局/iu.test(await interfaceSection.innerText())) {
       throw new Error('界面布局仍向用户显示 Popup 布局旧名称');
@@ -2328,8 +2493,10 @@ async function main() {
       report.screenshots.push(await screenshotElement(skinPopup.locator('.popup-shell'), `popup-interface-${skin.value}-dark.png`));
       await skinPopup.evaluate(() => document.documentElement.classList.remove('dark'));
 
-      // 用明显长于中文的德文式文案逐套验证关键操作可换行且不会造成横向溢出。
-      await skinPopup.evaluate(() => {
+      // 合成德文长文案需配套非中文语言上下文，以触发实际的换行规则。
+      // 德文不属于当前界面语言选项；这里只验证原有窄版尺寸中的长文案布局。
+      const longCopyFixture = await skinPopup.evaluate(() => {
+        const originalLanguage = document.documentElement.lang;
         const longCopy = new Map([
           ['.translate-label', 'Diese gesamte Webseite jetzt in die ausgewählte Sprache übersetzen'],
           ['.feature-card:nth-child(1) strong', 'Übersetzung beim Bewegen des Mauszeigers'],
@@ -2338,14 +2505,21 @@ async function main() {
         ]);
         for (const [selector, value] of longCopy) {
           const element = document.querySelector(selector);
-          if (element) element.textContent = value;
+          if (!element) throw new Error(`长文案 fixture 缺少 ${selector}`);
+          element.textContent = value;
         }
+        document.documentElement.lang = 'de';
+        return {originalLanguage, fixtureLanguage: 'de', texts: [...longCopy]};
       });
-      const multilingualMetrics = await skinPopup.evaluate(() => {
+      const multilingualMetrics = await skinPopup.evaluate(fixture => {
         const selectors = ['.translate-button', '.feature-card:nth-child(1)', '.feature-card:nth-child(3)', '[data-popup-quick-feature="document"]'];
         return {
+          fixture,
+          language: document.documentElement.lang,
+          shellWidth: document.querySelector('.popup-shell')?.getBoundingClientRect().width || 0,
           horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
           shellHeight: document.querySelector('.popup-shell')?.getBoundingClientRect().height || 0,
+          completeTexts: fixture.texts.every(([selector, value]) => document.querySelector(selector)?.textContent === value),
           items: selectors.map(selector => {
             const element = document.querySelector(selector);
             return {
@@ -2355,13 +2529,18 @@ async function main() {
             };
           }),
         };
-      });
+      }, longCopyFixture);
       multilingualMetrics.contentHeight = await inspectPopupContentHeight(skinPopup, `${skin.label}长文案`);
-      if (multilingualMetrics.horizontalOverflow
-        || multilingualMetrics.items.some(item => item.scrollWidth > item.clientWidth + 1)) {
+      if (longCopyFixture.originalLanguage !== 'zh-CN'
+        || multilingualMetrics.language !== longCopyFixture.fixtureLanguage
+        || !multilingualMetrics.completeTexts
+        || Math.abs(multilingualMetrics.shellWidth - skin.popupWidth) > 1
+        || multilingualMetrics.horizontalOverflow
+        || multilingualMetrics.items.some(item => item.clientWidth <= 0 || item.scrollWidth > item.clientWidth + 1)) {
         throw new Error(`${skin.label}无法容纳长文案：${JSON.stringify(multilingualMetrics)}`);
       }
       report.screenshots.push(await screenshotElement(skinPopup.locator('.popup-shell'), `popup-interface-${skin.value}-long-copy.png`));
+      await skinPopup.evaluate(language => { document.documentElement.lang = language; }, longCopyFixture.originalLanguage);
       skinCases.push({
         ...skin,
         designMatrix,
@@ -2815,7 +2994,7 @@ async function main() {
     await page.getByRole('button', {name: '清除统计', exact: true}).click();
     const resetDialog = page.getByRole('alertdialog', {name: '清除本机模型用量？'});
     await resetDialog.waitFor({state: 'visible', timeout});
-    if (!await resetDialog.getByText(/不会删除 API Key、翻译设置、FluentRead 译文缓存或配置历史/).isVisible()) {
+    if (!await resetDialog.getByText(/不会删除 API Key、翻译设置、流畅阅读 译文缓存或配置历史/).isVisible()) {
       throw new Error('模型用量重置没有明确隔离其他本地数据');
     }
     const resetCancelButton = resetDialog.getByRole('button', {name: '取消', exact: true});
@@ -2974,21 +3153,24 @@ async function main() {
     }
     await selectSettingsSection(page, 'settings-translation');
     report.screenshots.push(await screenshot(page, 'settings-dark-translation.png'));
-    await selectSettingsSection(page, 'settings-interface');
-    await page.locator('#settings-interface .loading-style-option').first().waitFor({state: 'visible', timeout});
-    const darkLoadingStyleSurfaces = await page.locator('.loading-style-option').evaluateAll(cards => (
+    await selectSettingsSection(page, 'settings-interface', 'motion');
+    await loadingStyleCards.first().waitFor({state: 'visible', timeout});
+    const darkLoadingStyleSurfaces = await loadingStyleCards.evaluateAll(cards => (
       cards.map(card => ({
+        value: card.getAttribute('data-loading-style-choice'),
         selected: card.classList.contains('selected'),
         backgroundColor: getComputedStyle(card).backgroundColor,
       }))
     ));
     const selectedDarkLoadingStyle = darkLoadingStyleSurfaces.find(item => item.selected);
-    if (darkLoadingStyleSurfaces.length !== expectedLoadingStyles.length
+    if (JSON.stringify(darkLoadingStyleSurfaces.map(item => item.value)) !== JSON.stringify(expectedLoadingStyles.map(([value]) => value))
+      || darkLoadingStyleSurfaces.filter(item => item.selected).length !== 1
       || darkLoadingStyleSurfaces.filter(item => !item.selected).some(item => !isDarkColor(item.backgroundColor))
       || !selectedDarkLoadingStyle
       || !selectedDarkLoadingStyle.backgroundColor.startsWith('rgba(')) {
       throw new Error(`段落加载样式暗色卡片仍为亮色：${JSON.stringify(darkLoadingStyleSurfaces)}`);
     }
+    report.translationLoadingStyles.darkSurfaces = darkLoadingStyleSurfaces;
     report.screenshots.push(await screenshot(page, 'settings-dark-loading-styles.png'));
     await selectSettingsSection(page, 'settings-translation-stats', 'usage');
     const usageDarkSurface = await page.locator('#settings-model-usage .usage-card').first().evaluate(card => getComputedStyle(card).backgroundColor);
@@ -3538,7 +3720,7 @@ async function main() {
     });
     const localDataImportDialog = page.getByTestId('local-data-import-dialog');
     await localDataImportDialog.waitFor({state: 'visible', timeout});
-    await localDataImportDialog.getByText('FluentRead 备份', {exact: true}).waitFor({state: 'visible', timeout});
+    await localDataImportDialog.getByText('流畅阅读 备份', {exact: true}).waitFor({state: 'visible', timeout});
     await localDataImportDialog.getByText(importFileName, {exact: true}).waitFor({state: 'visible', timeout});
     for (const sectionLabel of ['设置与凭据', '单词本', '模型用量']) {
       await localDataImportDialog.getByText(sectionLabel, {exact: true}).first().waitFor({state: 'visible', timeout});
@@ -3725,22 +3907,27 @@ async function main() {
       report.screenshots.push(await screenshot(page, translationFile));
       report.responsive.push({page: 'settings-translation', ...viewport, ...translationMetrics});
 
-      await selectSettingsSection(page, 'settings-interface');
+      await selectSettingsSection(page, 'settings-interface', 'motion');
       await page.waitForTimeout(150);
       const loadingStyleMetrics = await page.evaluate(() => {
-        const picker = document.querySelector('.loading-style-picker');
+        const picker = document.querySelector('#settings-interface [data-settings-panel="motion"] .loading-style-picker');
         const pickerRect = picker?.getBoundingClientRect();
         const cards = [...(picker?.querySelectorAll('.loading-style-option') || [])];
         const cardRects = cards.map(card => card.getBoundingClientRect());
         return {
           horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
           pickerWithinViewport: Boolean(pickerRect
+            && pickerRect.width > 0 && pickerRect.height > 0
             && pickerRect.left >= -1
             && pickerRect.right <= window.innerWidth + 1),
           cardsWithinPicker: Boolean(pickerRect && cardRects.every(rect => (
-            rect.left >= pickerRect.left - 1 && rect.right <= pickerRect.right + 1
+            rect.width > 0 && rect.height > 0
+            && rect.left >= pickerRect.left - 1 && rect.right <= pickerRect.right + 1
           ))),
           optionCount: cards.length,
+          optionOrder: cards.map(card => card.getAttribute('data-loading-style-choice')),
+          nativeRadioCount: picker?.querySelectorAll('input[type="radio"][name="translation-loading-style"]:not(:disabled)').length || 0,
+          previewCount: picker?.querySelectorAll('.fluent-read-loading').length || 0,
           columnCount: new Set(cardRects.map(rect => Math.round(rect.left))).size,
           activeNavigationVisible: false,
         };
@@ -3750,7 +3937,11 @@ async function main() {
         || !loadingStyleMetrics.pickerWithinViewport
         || !loadingStyleMetrics.cardsWithinPicker
         || !loadingStyleMetrics.activeNavigationVisible
-        || loadingStyleMetrics.optionCount !== 15
+        || loadingStyleMetrics.optionCount !== expectedLoadingStyles.length
+        || JSON.stringify(loadingStyleMetrics.optionOrder) !== JSON.stringify(expectedLoadingStyles.map(([value]) => value))
+        || loadingStyleMetrics.nativeRadioCount !== expectedLoadingStyles.length
+        || loadingStyleMetrics.previewCount !== expectedAnimatedLoadingStyles.length
+        || loadingStyleMetrics.columnCount < 1
         || (viewport.width <= 480 && loadingStyleMetrics.columnCount > 2)) {
         throw new Error(`${viewport.width}px 段落加载样式响应式异常：${JSON.stringify(loadingStyleMetrics)}`);
       }

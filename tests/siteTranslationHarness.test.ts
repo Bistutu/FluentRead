@@ -2601,6 +2601,53 @@ describe('real-site translation matrix gates', () => {
     ]);
   });
 
+  it.each([
+    ['legacy', 'ReposListItem-module__TopicsList__fixture', 'ReposListItem-module__LabelsContainer__fixture'],
+    ['current-small', 'TopicsList__XBoKUv SmallScreenOnly__KktHod', 'LabelsContainer__Bi_rOW'],
+    ['current-large', 'TopicsList__XBoKUv HideOnSmallScreen__zMyWHa', 'LabelsContainer__Bi_rOW'],
+  ])('keeps GitHub %s repository topics and metadata mandatory while preserving description coverage', (_variant, topicsClass, labelsClass) => {
+    const {document} = parseHTML(`<main><ul data-listview-component="items-list"><li>
+      <a href="/microsoft/TypeScript">TypeScript</a><svg class="octicon"></svg>
+      <span id="visibility" data-listview-item-visibility-label="true">Public</span>
+      <div id="description" class="repos-list-description">TypeScript adds types to JavaScript.</div>
+      <div id="topics" class="${topicsClass}"><span>arbitrary-runtime-label</span></div>
+      <div id="metadata" class="${labelsClass}"><span>TypeScript</span><span>MIT License</span><span>42 forks</span></div>
+    </li></ul><p class="TopicsList__XBoKUv" id="outside-topics">A readable topic explanation.</p>
+      <p class="LabelsContainer__Bi_rOW" id="outside-labels">A readable label explanation.</p></main>`);
+    const config = cases['github-microsoft-repositories'];
+    const mandatory = resolveForbiddenMustExistSelectors(config.tier, config.forbiddenSelectors, [], []);
+    expect(mandatory).toEqual(config.forbiddenSelectors);
+    expect(mandatory).toHaveLength(4);
+    expect(mandatory.every(selector => document.querySelectorAll(selector).length > 0)).toBe(true);
+    expect([...document.querySelectorAll(config.forbiddenSelectors[1]!)].map(node => node.id)).toEqual(['topics']);
+    expect([...document.querySelectorAll(config.forbiddenSelectors[2]!)].map(node => node.id)).toEqual(['metadata']);
+    expect([...document.querySelectorAll(config.requiredSelectors[0]!)].map(node => node.id)).toEqual(['description']);
+    expect(config.coverageRules[0]!.sourceIncludes).toEqual(['TypeScript']);
+    expect(config.modes).toEqual(['hover', 'full']);
+    expect(config.url).toBe('https://github.com/orgs/microsoft/repositories?q=TypeScript&type=all&language=&sort=');
+  });
+
+  it.each(['Description-module__container__fixture', 'container__W45oI6'])('keeps GitHub issue metadata mandatory for %s without selecting the title or ordinary prose', metadataClass => {
+    const {document} = parseHTML(`<main><div data-testid="issues-list-surface"><ul><li>
+      <a id="title" data-testid="issue-10084-title-link" href="/Eugeny/tabby/issues/10084">right click not working</a>
+      <span id="label" class="prc-Token-IssueLabel-2IazM">T: Bug</span>
+      <div id="metadata" class="${metadataClass}"><span>Eugeny/tabby#10084</span><span>
+        <button data-testid="author-filter-link">Fixture Author</button> opened
+        <relative-time id="timestamp" data-testid="issue-activity-timestamp">yesterday</relative-time></span></div>
+      <div class="container__W45oI6" id="ordinary"><p>Ordinary description remains readable.</p></div>
+    </li></ul></div></main>`);
+    const config = cases['github-eugeny-issue-list'];
+    const mandatory = resolveForbiddenMustExistSelectors(config.tier, config.forbiddenSelectors, config.forbiddenMustExistSelectors, []);
+    expect(mandatory).toEqual(config.forbiddenSelectors);
+    expect(mandatory).toHaveLength(3);
+    expect(mandatory.every(selector => document.querySelectorAll(selector).length > 0)).toBe(true);
+    expect([...document.querySelectorAll(config.forbiddenSelectors[1]!)].map(node => node.id)).toEqual(['metadata']);
+    expect([...document.querySelectorAll(config.requiredSelectors[0]!)].map(node => node.id)).toEqual(['title']);
+    expect(config.dynamicForbiddenSelectors).toEqual(["span[class*='IssueLabel']"]);
+    expect(config.modes).toEqual(['hover', 'full']);
+    expect(config.url).toBe('https://github.com/Eugeny/tabby/issues?q=is%3Aissue%20state%3Aopen%20in%3Atitle%20%22right%20click%20not%20working%22');
+  });
+
   it('keeps modern manpage prose separate from mandatory command syntax and command labels', () => {
     const {document} = parseHTML('<main><div id="manpage-content"><h2 id="synopsis" class="Sh">SYNOPSIS</h2><section><p class="Pp HP"><b>apt</b> [<b>--help</b>]</p></section><h2 id="description" class="Sh">DESCRIPTION</h2><section><p class="Pp">The command provides a package management interface.</p><p class="Pp">Its manual explains the most common options.</p><p class="Pp"><b>update</b></p><div class="Bd-indent">Download package information from configured sources.</div></section></div></main>');
     const config = cases['ubuntu-apt-manpage'];
@@ -2833,6 +2880,8 @@ async function withCompletionFixture(
     trustedReader: (reply: CompletionReply) => Promise<(queries: CompletionQuery[], remainingMs?: number) => Promise<unknown>>;
     mutate: (records: unknown[]) => void; observerOptions: () => MutationObserverInit}) => Promise<void>,
   html = '<main><h2>Cookies</h2><h2>Cookies</h2><p>A full paragraph stays eligible.</p></main>',
+  additionalRules: unknown[] = [],
+  styleReader: (element: Element) => {display: string; visibility: string} = () => ({display: 'block', visibility: 'visible'}),
 ) {
   const {document, window} = parseHTML(`<html><body>${html}</body></html>`);
   Object.defineProperty(window.HTMLElement.prototype, 'getBoundingClientRect', {configurable: true,
@@ -2864,7 +2913,7 @@ async function withCompletionFixture(
   }};
   const globals = {window, document, Node: window.Node, HTMLElement: window.HTMLElement,
     HTMLAnchorElement: window.HTMLAnchorElement, MutationObserver: Observer, chrome,
-    getComputedStyle: () => ({display: 'block', visibility: 'visible'})};
+    getComputedStyle: styleReader};
   const previous = new Map<string, PropertyDescriptor | undefined>();
   for (const [name, value] of Object.entries(globals)) {
     previous.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
@@ -2884,6 +2933,7 @@ async function withCompletionFixture(
     {name: 'headings', selector: 'main h2', kind: 'heading', minInitial: 2, trackDynamic: true, sourceIncludes: ['Cookies']},
     {name: 'paragraphs', selector: 'main p', kind: 'content', minInitial: 1, trackDynamic: true,
       sourceIncludes: ['A full paragraph']},
+    ...additionalRules,
   ]);
   let tracker: CompletionTracker | undefined;
   try {
@@ -3731,5 +3781,590 @@ describe('Factorio multilingual live-source catalog', () => {
         else Reflect.deleteProperty(globalThis, name);
       }
     }
+  });
+});
+
+
+describe('structured site failure diagnostic codes', () => {
+  const assert = require('node:assert/strict');
+  const {collectErrorCodes, reportErrorCodes} = require('../scripts/testing/site-error-diagnostics.cjs');
+  const coded = (code: string): Error & {code: string; cause?: unknown} =>
+    Object.assign(new Error('Browser close operation timed out'), {code});
+
+  it('keeps distinct timeout stage codes and shared primary cause references', () => {
+    const primary = coded('CDP_QUERY_TIMEOUT');
+    const error = new AggregateError([primary, coded('DETACH_TIMEOUT'), coded('NATIVE_CLOSE_TIMEOUT')],
+      'Browser close failed', {cause: primary});
+    assert.deepEqual(collectErrorCodes(error), {
+      id: 1, codeStatus: 'absent',
+      cause: {id: 2, codeStatus: 'reported', code: 'CDP_QUERY_TIMEOUT'},
+      errors: [{reference: 2}, {id: 3, codeStatus: 'reported', code: 'DETACH_TIMEOUT'},
+        {id: 4, codeStatus: 'reported', code: 'NATIVE_CLOSE_TIMEOUT'}],
+    });
+  });
+
+  it('does not infer a timeout stage from text or stack', () => {
+    const error = new Error('NATIVE_CLOSE_TIMEOUT Browser close operation timed out');
+    assert.deepEqual(collectErrorCodes(error), {id: 1, codeStatus: 'absent'});
+  });
+
+  it('reports the existing local public code vocabulary', () => {
+    for (const code of ['CDP_CONNECT_TIMEOUT', 'CDP_QUERY_TIMEOUT', 'DETACH_TIMEOUT',
+      'NATIVE_CLOSE_TIMEOUT', 'CONTEXT_CLOSE_TIMEOUT', 'PS_TIMEOUT', 'PROFILE_INVALID', 'PS_INVALID',
+      'PLATFORM_UNSUPPORTED', 'OWNERSHIP_UNKNOWN', 'IDENTITY_CHANGED', 'TERMINATION_TIMEOUT',
+      'PROFILE_CHANGED', 'HELPER_UNSUPPORTED', 'SESSION_UNGUARDED']) {
+      assert.equal(collectErrorCodes(coded(code)).code, code);
+    }
+  });
+
+  it('omits arbitrary code values and all sensitive error fields', () => {
+    const secret = 'api-token-should-not-be-persisted';
+    const error = Object.assign(new Error(secret), {
+      code: secret, name: secret, stack: secret, url: secret, token: secret, argv: [secret],
+    });
+    const encoded = JSON.stringify(collectErrorCodes(error));
+    assert.equal(encoded.includes(secret), false);
+    assert.deepEqual(JSON.parse(encoded), {id: 1, codeStatus: 'omitted'});
+    assert.equal(collectErrorCodes({code: 1}).codeStatus, 'omitted');
+    assert.equal(collectErrorCodes({code: 'UNKNOWN_BUT_UPPERCASE_TOKEN'}).codeStatus, 'omitted');
+  });
+
+  it('marks circular causes without revisiting or mutating errors', () => {
+    const first = coded('NATIVE_CLOSE_TIMEOUT'), second = coded('PS_TIMEOUT');
+    first.cause = second;
+    second.cause = first;
+    Object.freeze(first);
+    Object.freeze(second);
+    assert.deepEqual(collectErrorCodes(first), {
+      id: 1, codeStatus: 'reported', code: 'NATIVE_CLOSE_TIMEOUT',
+      cause: {id: 2, codeStatus: 'reported', code: 'PS_TIMEOUT', cause: {reference: 1}},
+    });
+    assert.equal(first.cause, second);
+    assert.equal(second.cause, first);
+  });
+
+  it('does not invoke code, cause, errors or array child getters', () => {
+    let reads = 0;
+    const getter = () => {reads += 1; throw new Error('Unexpected getter');};
+    const accessorError = Object.defineProperties({}, {
+      code: {get: getter}, cause: {get: getter}, errors: {get: getter},
+    });
+    assert.deepEqual(collectErrorCodes(accessorError), {
+      id: 1, codeStatus: 'unreadable', causeStatus: 'unreadable', errorsStatus: 'unreadable',
+    });
+    const children = [null];
+    Object.defineProperty(children, '0', {get: getter});
+    assert.deepEqual(collectErrorCodes({errors: children}), {
+      id: 1, codeStatus: 'absent', errors: [{codeStatus: 'unreadable'}],
+    });
+    assert.equal(reads, 0);
+  });
+
+  it('tolerates throwing property descriptors without replacing the original failure', () => {
+    const error = new Proxy({}, {getOwnPropertyDescriptor() {throw new Error('Descriptor unavailable');}});
+    assert.deepEqual(collectErrorCodes(error), {
+      id: 1, codeStatus: 'unreadable', causeStatus: 'unreadable', errorsStatus: 'unreadable',
+    });
+  });
+
+  it('does not inherit arbitrary codes or invoke primitive conversion', () => {
+    const inherited = Object.create({code: 'NATIVE_CLOSE_TIMEOUT'});
+    inherited.toString = () => {throw new Error('Conversion must not happen');};
+    assert.deepEqual(collectErrorCodes(inherited), {id: 1, codeStatus: 'absent'});
+    for (const value of [undefined, null, 'secret', 1, Symbol('secret'), 2n]) {
+      assert.deepEqual(collectErrorCodes(value), {codeStatus: 'non-object'});
+    }
+  });
+
+  it('retains available cause codes alongside malformed aggregate children', () => {
+    const error = {cause: coded('OWNERSHIP_UNKNOWN'), errors: new Set(['secret'])};
+    assert.deepEqual(collectErrorCodes(error), {
+      id: 1, codeStatus: 'absent', cause: {id: 2, codeStatus: 'reported', code: 'OWNERSHIP_UNKNOWN'},
+      errorsStatus: 'non-array',
+    });
+  });
+
+  it('bounds deep cause chains without recursive overflow', () => {
+    let error: unknown = coded('NATIVE_CLOSE_TIMEOUT');
+    for (let index = 0; index < 2000; index += 1) error = {cause: error};
+    const encoded = JSON.stringify(collectErrorCodes(error));
+    assert.ok(encoded.length < 5000);
+    assert.ok(encoded.includes('"truncated":true'));
+    assert.equal(encoded.includes('NATIVE_CLOSE_TIMEOUT'), false);
+  });
+
+  it('bounds huge aggregate children while preserving the first available phase code', () => {
+    const children = new Array(1_000_000).fill(coded('DETACH_TIMEOUT'));
+    children[0] = coded('CDP_CONNECT_TIMEOUT');
+    const result = collectErrorCodes({errors: children});
+    assert.equal(result.errors[0].code, 'CDP_CONNECT_TIMEOUT');
+    assert.equal(result.truncatedErrors, true);
+    assert.ok(result.errors.length <= 128);
+    assert.ok(JSON.stringify(result).length < 5000);
+  });
+
+  it('bounds many distinct nodes including nested branches', () => {
+    const children = Array.from({length: 200}, () => ({cause: coded('PS_TIMEOUT')}));
+    const result = collectErrorCodes({errors: children});
+    assert.equal(result.truncatedErrors, true);
+    assert.ok(JSON.stringify(result).length < 15000);
+  });
+
+  it('does not modify frozen error descriptors or exception identity', () => {
+    const error = Object.freeze(coded('IDENTITY_CHANGED'));
+    const before = Object.getOwnPropertyDescriptors(error);
+    let observed;
+    try {throw error;} catch (caught) {
+      reportErrorCodes(caught, 'terminal', () => {});
+      observed = caught;
+    }
+    assert.equal(observed, error);
+    assert.deepEqual(Object.getOwnPropertyDescriptors(error), before);
+  });
+
+  it('emits one parseable record with only the allowed terminal or cleanup phase', () => {
+    const lines: string[] = [];
+    for (const phase of ['terminal', 'cleanup', 'arbitrary-secret-phase']) {
+      reportErrorCodes(coded('NATIVE_CLOSE_TIMEOUT'), phase, (line: string) => lines.push(line));
+    }
+    assert.equal(lines.length, 2);
+    assert.equal(lines[0].endsWith('\n'), true);
+    const records = lines.map(line => JSON.parse(line.slice('[site-error-codes] '.length)));
+    assert.deepEqual(records.map(record => record.phase), ['terminal', 'cleanup']);
+    assert.ok(records.every(record => record.pid === process.pid));
+    assert.ok(records.every(record => record.error.code === 'NATIVE_CLOSE_TIMEOUT'));
+  });
+
+  it('suppresses diagnostic write failures while preserving CLI exit status', () => {
+    const before = process.exitCode;
+    assert.doesNotThrow(() => reportErrorCodes(coded('PS_TIMEOUT'), 'cleanup', () => {
+      throw new Error('stderr unavailable');
+    }));
+    assert.equal(process.exitCode, before);
+  });
+});
+
+describe('pubdev mandatory caption unchanged-query diagnostic', () => {
+  const background = '<h2>Cookies</h2><h2>Cookies</h2><p>A full paragraph stays eligible.</p>';
+  const clean = 'provider 6.1.5+1';
+  const copy = '<span class="pkg-page-title-copy"><img data-copy-content="provider: ^6.1.5+1" tabindex="0">' +
+    '<div class="pkg-page-title-copy-feedback" style="display:none"><span class="code">provider: ^6.1.5+1</span> copied to clipboard</div></span>';
+  const styles = (element: Element) => ({display: element.matches('.pkg-page-title-copy-feedback') ? 'none' : 'block', visibility: 'visible'});
+  it('keeps the clean caption mandatory and accepts only its exact identical-result receipt without DOM wrappers', async () => {
+    expect(isNaturalLanguageText(clean)).toBe(true);
+    await withCompletionFixture(async ({page, document, rules, trustedReader}) => {
+      const read = await trustedReader(queries => currentCompletionResponse(queries));
+      const identity = await beginCoverageCompletionPass(page, read);
+      await verifyCoverageUnchanged(page, read, identity, 1000);
+      const report = await readCoverageReport(page);
+      expect((report as Array<{name: string}>).find(state => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 1, completedCount: 1});
+      expect(() => assertCoverageReport(rules, report, 'exact clean caption')).not.toThrow();
+      expect(document.querySelectorAll('[data-fr-translation-owned="true"]')).toHaveLength(0);
+    }, '<main>' + background + '<h1>' + clean + '</h1></main>', withMandatoryHeadingCoverage([]), styles);
+  });
+  it('uses live visibility for the exact unchanged query while retaining hidden host structure in restoration', async () => {
+    await withCompletionFixture(async ({page, document, tracker, rules, trustedReader}) => {
+      const queriesSeen: CompletionQuery[] = [];
+      const read = await trustedReader(queries => {
+        queriesSeen.push(...queries);
+        return {status: 'success', sessionId: 10, outcomes: queries.map(query =>
+          query.selector === 'h1' && query.source !== clean
+            ? {status: 'unavailable', reason: 'no-current-accepted-completion'}
+            : acceptedCompletion(query))};
+      });
+      const identity = await beginCoverageCompletionPass(page, read);
+      await verifyCoverageUnchanged(page, read, identity, 1000);
+      const heading = document.querySelector('h1')!;
+      expect(heading.cloneNode(true).textContent?.replace(/\s+/gu, ' ').trim())
+        .toBe('provider 6.1.5+1 provider: ^6.1.5+1 copied to clipboard');
+      expect(queriesSeen.find(query => query.selector === 'h1')?.source).toBe(clean);
+      expect(isNaturalLanguageText(clean)).toBe(true);
+      const report = await readCoverageReport(page);
+      expect((report as Array<{name: string}>).find(state => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 1, completedCount: 1});
+      expect(() => assertCoverageReport(rules, report, 'exact visible caption')).not.toThrow();
+      expect(document.querySelectorAll('[data-fr-translation-owned="true"]')).toHaveLength(0);
+      expect(tracker.restorationReport()).toEqual(expect.arrayContaining([
+        expect.objectContaining({name: 'mandatory-visible-latin-h1', changedCount: 0})]));
+      const hiddenCode = document.querySelector('.pkg-page-title-copy-feedback .code')!;
+      const originalText = hiddenCode.textContent;
+      hiddenCode.textContent = 'provider: ^99.0.0';
+      expect(tracker.restorationReport()).toEqual(expect.arrayContaining([
+        expect.objectContaining({name: 'mandatory-visible-latin-h1', changedCount: 1})]));
+      expect((await readCoverageReport(page)).find((state: {name: string}) => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({verifiedUnchangedCount: 0, completedCount: 0});
+      hiddenCode.textContent = originalText;
+      expect(tracker.restorationReport()).toEqual(expect.arrayContaining([
+        expect.objectContaining({name: 'mandatory-visible-latin-h1', changedCount: 0})]));
+      const replacement = document.createElement('strong');
+      replacement.textContent = hiddenCode.textContent;
+      hiddenCode.replaceWith(replacement);
+      expect(tracker.restorationReport()).toEqual(expect.arrayContaining([
+        expect.objectContaining({name: 'mandatory-visible-latin-h1', changedCount: 1})]));
+    }, '<main>' + background + '<h1>' + clean + ' ' + copy + '</h1></main>', withMandatoryHeadingCoverage([]), styles);
+  });
+  it('does not give an eligible clean caption credit when accepted completion is absent', async () => {
+    await withCompletionFixture(async ({page, document, tracker, rules, trustedReader}) => {
+      const read = await trustedReader(queries => ({status: 'success', sessionId: 10,
+        outcomes: queries.map(() => ({status: 'unavailable', reason: 'no-current-accepted-completion'}))}));
+      const identity = await beginCoverageCompletionPass(page, read);
+      await verifyCoverageUnchanged(page, read, identity, 1000);
+      const report = await readCoverageReport(page);
+      expect((report as Array<{name: string}>).find(state => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 0, completedCount: 0});
+      expect(() => assertCoverageReport(rules, report, 'no completion')).toThrow('mandatory-visible-latin-h1');
+      expect(() => validateCoverageRevealStatuses(tracker.missingStatuses(tracker.snapshotMissing().map(item => item.token)), 'no completion'))
+        .toThrow('missing-wrapper');
+      expect(document.querySelectorAll('[data-fr-translation-owned="true"]')).toHaveLength(0);
+    }, '<main>' + background + '<h1>' + clean + ' ' + copy + '</h1></main>', withMandatoryHeadingCoverage([]), styles);
+  });
+  it('retains visible feedback text and rejects a receipt for only the caption', async () => {
+    await withCompletionFixture(async ({page, rules, trustedReader}) => {
+      const queriesSeen: CompletionQuery[] = [];
+      const read = await trustedReader(queries => {
+        queriesSeen.push(...queries);
+        return {status: 'success', sessionId: 10, outcomes: queries.map(query =>
+          query.selector === 'h1' && query.source !== clean
+            ? {status: 'unavailable', reason: 'no-current-accepted-completion'}
+            : acceptedCompletion(query))};
+      });
+      const identity = await beginCoverageCompletionPass(page, read);
+      await verifyCoverageUnchanged(page, read, identity, 1000);
+      expect(queriesSeen.find(query => query.selector === 'h1')?.source)
+        .toBe('provider 6.1.5+1 provider: ^6.1.5+1 copied to clipboard');
+      const report = await readCoverageReport(page);
+      expect((report as Array<{name: string}>).find(state => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 0, completedCount: 0});
+      expect(() => assertCoverageReport(rules, report, 'visible feedback')).toThrow('mandatory-visible-latin-h1');
+    }, '<main>' + background + '<h1>' + clean + ' ' + copy + '</h1></main>', withMandatoryHeadingCoverage([]),
+      () => ({display: 'block', visibility: 'visible'}));
+  });
+
+  it.each([
+    {display: 'none', visibility: 'visible'},
+    {display: 'block', visibility: 'hidden'},
+    {display: 'block', visibility: 'collapse'},
+  ])('requires the same live presentation when verifying a query: $display/$visibility', async (hiddenStyle) => {
+    let presentation = hiddenStyle;
+    await withCompletionFixture(async ({page, document, rules, trustedReader}) => {
+      const read = await trustedReader(queries => ({status: 'success', sessionId: 10,
+        outcomes: queries.map(query => query.selector === 'h1' && query.source !== clean
+          ? {status: 'unavailable', reason: 'no-current-accepted-completion'} : acceptedCompletion(query))}));
+      const identity = await beginCoverageCompletionPass(page, read);
+      await verifyCoverageUnchanged(page, read, identity, 1000);
+      expect((await readCoverageReport(page)).find((state: {name: string}) => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 1, completedCount: 1});
+      const htmlBefore = document.querySelector('h1')!.outerHTML;
+      // A stylesheet/media-query change can alter computed visibility without
+      // delivering a host DOM mutation or changing any captured node/attribute.
+      presentation = {display: 'block', visibility: 'visible'};
+      expect(document.querySelector('h1')!.outerHTML).toBe(htmlBefore);
+      const report = await readCoverageReport(page);
+      expect((report as Array<{name: string}>).find(state => state.name === 'mandatory-visible-latin-h1'))
+        .toMatchObject({seenCount: 1, translatedCount: 0, verifiedUnchangedCount: 0, completedCount: 0});
+      expect(() => assertCoverageReport(rules, report, 'presentation changed')).toThrow('mandatory-visible-latin-h1');
+    }, '<main>' + background + '<h1>' + clean + ' ' + copy + '</h1></main>', withMandatoryHeadingCoverage([]),
+      element => element.matches('.pkg-page-title-copy-feedback') ? presentation : {display: 'block', visibility: 'visible'});
+  });
+});
+
+describe('LearnOpenGL protected native slot contract', () => {
+  const exactUrl = 'https://learnopengl.com/Getting-started/Coordinate-Systems';
+  const html = `<html><body><div id="nav">
+    <div id="social"><a href="/social">Social</a></div><img src="nav-arrow.png">
+    <ol><li><a id="first-link" href="/Introduction">Introduction</a></li>
+      <li><a id="last-link" href="/Getting-started/Camera">Camera</a></li></ol>
+    <div id="menu_book"></div><div id="donate"></div><div id="lefttwotenthad"></div>
+    <div id="leftfourthtenthad"><div id="ezoic-pub-ad-placeholder-111"><div>
+      <span class="ezoic-ad" data-ez-name="Sidebar_1/observed">
+        <span class="ezoic-ad" id="div-gpt-ad-Sidebar_1/observed-0"></span>
+        <span class="reportline"><span><img alt="Ezoic" src="ezoic.png"></span></span>
+      </span></div></div></div>
+    <div id="leftsixthtenthad"><div></div></div><div id="lefteighttenthad"><div></div></div>
+    <div id="lefttenthtenthad"></div></div></body></html>`;
+  type PagePort = Parameters<typeof assertPageContract>[0] & {
+    evaluateHandle: (fn: (argument: unknown) => unknown, argument: unknown) => Promise<unknown>;
+  };
+  async function fixture(
+    run: (port: {document: Document; page: PagePort; hydrate: () => void; close: () => void;
+      liveHandles: () => number}) => Promise<void>,
+    options: {url?: string; prepare?: (document: Document) => void; readError?: 'property' | 'json' | 'dispose' | 'json-dispose'} = {},
+  ) {
+    const parsed = parseHTML(html), document = parsed.document as unknown as Document, window = parsed.window;
+    Object.defineProperty(window.HTMLElement.prototype, 'getBoundingClientRect', {
+      configurable: true, value: () => ({width: 100, height: 20, left: 0, top: 0, right: 100, bottom: 20}),
+    });
+    const url = options.url ?? exactUrl;
+    options.prepare?.(document);
+    const {runInNewContext} = require('node:vm');
+    const handles = new Set<{value: unknown; disposed: boolean}>();
+    const injectedError = new Error(`controlled ${options.readError ?? 'context'} failure`);
+    const evaluate = (fn: (argument: unknown) => unknown, argument: unknown) => {
+      const input = {...argument as Record<string, unknown>};
+      if (input.navIdentity) {
+        const handle = input.navIdentity as {value: unknown; disposed: boolean};
+        if (handle.disposed) throw injectedError;
+        input.navIdentity = handle.value;
+      }
+      return runInNewContext(`(${fn.toString()})(argument)`, {
+        argument: input, window, document, location: {href: url}, Node: window.Node,
+        HTMLElement: window.HTMLElement, HTMLAnchorElement: window.HTMLAnchorElement,
+        getComputedStyle: () => ({display: 'block', visibility: 'visible'}),
+      }, {timeout: 1000});
+    };
+    const makeHandle = (value: unknown, child = false) => {
+      const state = {value, disposed: false};
+      handles.add(state);
+      return Object.assign(state, {
+        getProperty: async (name: string) => {
+          if (options.readError === 'property') throw injectedError;
+          return makeHandle((value as Record<string, unknown>)[name], true);
+        },
+        jsonValue: async () => {
+          if (options.readError === 'json' || options.readError === 'json-dispose') throw injectedError;
+          return JSON.parse(JSON.stringify(value));
+        },
+        dispose: async () => {
+          state.disposed = true;
+          if (child && options.readError === 'dispose') throw injectedError;
+          if (child && options.readError === 'json-dispose') throw new Error('controlled cleanup failure');
+        },
+      });
+    };
+    const page = {
+      url: () => url,
+      evaluate: async (fn: (argument: unknown) => unknown, argument: unknown) => evaluate(fn, argument),
+      evaluateHandle: async (fn: (argument: unknown) => unknown, argument: unknown) => makeHandle(evaluate(fn, argument)),
+    } as PagePort;
+    const hydrate = () => {
+      const outer = document.querySelector('#leftfourthtenthad [data-ez-name]')!;
+      const primary = outer.children[0];
+      primary.innerHTML = '<div id="native-primary-container"><iframe title="3rd party ad content" aria-label="Advertisement"></iframe></div>';
+      const high = document.createElement('span');
+      high.id = 'div-gpt-ad-Sidebar_1/observed-0-highvalue';
+      high.className = 'ezoic-ad';
+      high.innerHTML = '<div id="native-highvalue-container"></div>';
+      outer.insertBefore(high, outer.children[1]);
+    };
+    const close = () => handles.forEach(handle => {handle.disposed = true;});
+    try {await run({document, page, hydrate, close, liveHandles: () => [...handles].filter(handle => !handle.disposed).length});}
+    finally {close();}
+  }
+  const capture = (page: PagePort) => capturePageContract(page, [], ['#nav'], ['#nav a[href]'], [], []);
+  const assertNav = (page: PagePort, baseline: Awaited<ReturnType<typeof capture>>, url = exactUrl) =>
+    assertPageContract(page, baseline, [], url, 'native slot regression');
+
+  it('allows only the observed empty native renderer hydration and keeps the original baseline', async () => {
+    await fixture(async ({document, page, hydrate}) => {
+      const baseline = await capture(page), before = JSON.stringify(baseline);
+      expect(baseline.forbiddenState[0]).toMatchObject({dynamic: false, mutable: false, count: 1, ownedDescendants: 0});
+      const anchors = [...document.querySelectorAll('#nav a')];
+      hydrate();
+      const current = await assertNav(page, baseline) as {hostNativeDiagnostics: Array<{unprojectedStructure: string}>};
+      expect(baseline.forbiddenState[0].signatures[0]).toMatchObject({nativeSlotProjection: {
+        id: 'leftfourthtenthad', directElementChildIndex: 6, navIdentityValid: true,
+      }});
+      expect(document.querySelector('#leftfourthtenthad iframe')?.hasAttribute('src')).toBe(false);
+      expect(current.hostNativeDiagnostics[0].unprojectedStructure)
+        .not.toBe((baseline as unknown as typeof current).hostNativeDiagnostics[0].unprojectedStructure);
+      expect([...document.querySelectorAll('#nav a')]).toEqual(anchors);
+      expect(JSON.stringify(baseline)).toBe(before);
+      document.querySelector('#native-highvalue-container')!.append(document.createElement('iframe'));
+      await expect(assertNav(page, baseline)).resolves.toBeDefined();
+      expect(JSON.stringify(baseline)).toBe(before);
+    });
+  });
+
+  it.each(['wrong-host', 'wrong-url', 'non-direct', 'duplicate-slot'] as const)(
+    'keeps raw native topology strict for a nonqualifying %s baseline', async state => {
+      const url = state === 'wrong-host' ? 'https://example.test/Getting-started/Coordinate-Systems'
+        : state === 'wrong-url' ? exactUrl + '?different=1' : exactUrl;
+      await fixture(async ({page, hydrate}) => {
+        const baseline = await capture(page);
+        expect(baseline.forbiddenState[0].signatures[0]).not.toHaveProperty('nativeSlotProjection');
+        hydrate();
+        await expect(assertNav(page, baseline, url)).rejects.toThrow('forbidden DOM 被修改');
+      }, {url, prepare: document => {
+        if (state === 'non-direct') {
+          const slot = document.querySelector('#leftfourthtenthad')!, wrapper = document.createElement('div');
+          slot.replaceWith(wrapper); wrapper.append(slot);
+        }
+        if (state === 'duplicate-slot') {
+          const duplicate = document.createElement('div'); duplicate.id = 'leftfourthtenthad'; document.body.append(duplicate);
+        }
+      }});
+    },
+  );
+
+  it.each(['slot-text', 'slot-anchor', 'slot-missing', 'slot-moved', 'slot-tag', 'slot-id', 'slot-meta',
+    'nav-text', 'nav-topology', 'nav-meta', 'anchor-href', 'anchor-meta', 'anchor-replaced',
+    'anchor-reparented-lookalike', 'slot-replaced-lookalike'] as const)(
+    'rejects protected damage after capture (%s)', async state => {
+      await fixture(async ({document, page}) => {
+        const baseline = await capture(page), slot = document.querySelector('#leftfourthtenthad')!,
+          anchor = document.querySelector('#last-link')!;
+        if (state === 'slot-text') slot.append('Injected natural text');
+        if (state === 'slot-anchor') slot.append(document.createElement('a'));
+        if (state === 'slot-missing') slot.remove();
+        if (state === 'slot-moved') document.querySelector('#nav')!.append(slot);
+        if (state === 'slot-tag') {const replacement = document.createElement('section'); replacement.id = slot.id; replacement.innerHTML = slot.innerHTML; slot.replaceWith(replacement);}
+        if (state === 'slot-id') slot.id = 'different';
+        if (state === 'slot-meta') slot.setAttribute('data-protected-metadata', 'changed');
+        if (state === 'nav-text') anchor.textContent = 'Changed navigation';
+        if (state === 'nav-topology') anchor.append(document.createElement('em'));
+        if (state === 'nav-meta') document.querySelector('#menu_book')!.setAttribute('aria-label', 'changed');
+        if (state === 'anchor-href') anchor.setAttribute('href', '/different-camera');
+        if (state === 'anchor-meta') anchor.setAttribute('aria-label', 'changed');
+        if (state === 'anchor-replaced') anchor.replaceWith(anchor.cloneNode(true));
+        if (state === 'anchor-reparented-lookalike') {
+          const parent = anchor.parentElement!, replacement = parent.cloneNode(true) as Element;
+          parent.replaceWith(replacement); replacement.querySelector('a')!.replaceWith(anchor);
+        }
+        if (state === 'slot-replaced-lookalike') slot.replaceWith(slot.cloneNode(true));
+        await expect(assertNav(page, baseline)).rejects.toThrow('forbidden DOM 被修改');
+      });
+    },
+  );
+
+  it.each(['fluent-read-bilingual-content', 'fluent-read-loading', 'fluent-read-retry-wrapper', 'data-owned'])(
+    'checks the unprojected full nav for injected owned content (%s)', async owner => {
+      await fixture(async ({document, page, hydrate}) => {
+        const baseline = await capture(page); hydrate();
+        const injected = document.createElement('span');
+        if (owner === 'data-owned') injected.setAttribute('data-fr-translation-owned', 'true');
+        else injected.className = owner;
+        document.querySelector('#leftfourthtenthad')!.append(injected);
+        await expect(assertNav(page, baseline)).rejects.toThrow('forbidden DOM 出现译文');
+      });
+    },
+  );
+
+  it('refuses projection without a real private handle port', async () => {
+    await fixture(async ({page}) => {
+      const unsupported = {...page, evaluateHandle: undefined} as unknown as PagePort;
+      await expect(capture(unsupported)).rejects.toThrow('identity handle unavailable');
+    });
+  });
+
+  it('refuses copied and foreign-page baseline identity instead of granting projection credit', async () => {
+    await fixture(async ({page}) => {
+      const baseline = await capture(page);
+      await expect(assertNav(page, JSON.parse(JSON.stringify(baseline))))
+        .rejects.toThrow('baseline identity is unavailable');
+      await expect(assertNav({...page}, baseline)).rejects.toThrow('belongs to another page');
+    });
+  });
+
+  it.each(['property', 'json', 'dispose'] as const)('propagates the private handle %s error and releases failed acquisition', async readError => {
+    await fixture(async ({page, liveHandles}) => {
+      await expect(capture(page)).rejects.toThrow(`controlled ${readError} failure`);
+      expect(liveHandles()).toBe(0);
+    }, {readError});
+  });
+
+  it('retains the original read cause and secondary disposal error when both reject', async () => {
+    await fixture(async ({page, liveHandles}) => {
+      let failure: unknown;
+      try {await capture(page);} catch (error) {failure = error;}
+      expect(failure).toBeInstanceOf(AggregateError);
+      const aggregate = failure as AggregateError;
+      expect(aggregate.errors.map((error: Error) => error.message))
+        .toEqual(['controlled json-dispose failure', 'controlled cleanup failure']);
+      expect(aggregate.cause).toBe(aggregate.errors[0]);
+      expect(liveHandles()).toBe(0);
+    }, {readError: 'json-dispose'});
+  });
+
+  it('fails strictly when the original context destroys the identity handle', async () => {
+    await fixture(async ({page, close}) => {
+      const baseline = await capture(page); close();
+      await expect(assertNav(page, baseline)).rejects.toThrow('controlled context failure');
+    });
+  });
+});
+
+
+// Hover positive cases require an unambiguous source for their Chinese-output assertion.
+// Full coverage keeps every original natural-language candidate and its owner obligations.
+describe('hover source choice for the original Chinese-output flow', () => {
+  const mixedTitle = 'fix(translation): 修复 flex/grid 标签在仅译文模式下反复重译';
+  const selector = '[data-testid="listitem-title-link"]';
+
+  function hoverPage(page: Parameters<Parameters<typeof withCompletionFixture>[0]>[0]['page']) {
+    const waitForFunction = vi.fn(async (
+      fn: (argument: unknown) => unknown,
+      argument: unknown,
+      _options: {timeout: number},
+    ) => {
+      if (!fn(argument)) throw new Error('controlled hover target timeout');
+    });
+    return {...page, waitForFunction};
+  }
+
+  it('chooses the next source title without reducing original full-owner coverage', async () => {
+    const titleA = 'Fix repeated translation in flexible labels';
+    const titleB = 'Preserve ownership when a pull request title changes';
+    const html = '<main><h2>Cookies</h2><h2>Cookies</h2><p>A full paragraph stays eligible.</p>' +
+      [mixedTitle, titleA, titleB].map(text => `<a data-testid="listitem-title-link">${text}</a>`).join('') + '</main>';
+    await withCompletionFixture(async ({document, page, tracker}) => {
+      const actualPage = hoverPage(page);
+      const config = cases['github-project-pulls'];
+      const rule = normalizeCoverageRules(config.coverageRules)[0];
+      expect(rule).toMatchObject({selector, minInitial: 2, minSeen: 2, trackDynamic: true});
+      expect(isNaturalLanguageText(mixedTitle)).toBe(true);
+      expect(tracker.report().find(item => item.name === rule.name)).toMatchObject({seenCount: 3});
+      await expect(resolveHoverTarget(actualPage, {name: 'primary', selector, index: 0, sourceIncludes: []}, 100))
+        .resolves.toMatchObject({rawIndex: 1, sourceText: titleA});
+      await expect(resolveHoverTarget(actualPage, {name: 'second', selector, index: 1, sourceIncludes: []}, 100))
+        .resolves.toMatchObject({rawIndex: 2, sourceText: titleB});
+      expect(actualPage.waitForFunction).toHaveBeenCalledWith(expect.any(Function), expect.any(Object), {timeout: 100});
+      expect([...document.querySelectorAll(selector)].map(node => node.textContent)).toEqual([mixedTitle, titleA, titleB]);
+      expect(() => assertCoverageReport([rule], tracker.report(), 'untranslated original owners')).toThrow();
+    }, html, cases['github-project-pulls'].coverageRules);
+  });
+
+  it.each(['h1', 'h2', 'p', 'li'] as const)('retains the original %s semantic selector and source anchor', async tag => {
+    const scopedSelector = `.hover ${tag}`;
+    const first = 'Read the anchored source paragraph';
+    const second = 'Read another anchored source paragraph';
+    const html = `<main><div class="hover"><${tag}>${mixedTitle}</${tag}>` +
+      `<${tag}>A different visible paragraph</${tag}><${tag}>${first}</${tag}><${tag}>${second}</${tag}></div></main>`;
+    await withCompletionFixture(async ({page}) => {
+      const actualPage = hoverPage(page);
+      await expect(resolveHoverTarget(actualPage, {
+        name: tag, selector: scopedSelector, index: 1, sourceIncludes: ['anchored source'],
+      }, 100)).resolves.toMatchObject({rawIndex: 3, sourceText: second});
+      expect(actualPage.waitForFunction).toHaveBeenCalledWith(expect.any(Function), expect.objectContaining({
+        selector: scopedSelector, eligibleIndex: 1, sourceIncludes: ['anchored source'],
+      }), {timeout: 100});
+    }, html);
+  });
+
+  it('does not borrow Han from owned or protected descendants or select hidden or technical nodes', async () => {
+    const html = '<main><div class="hover"><p>HTTPS</p><p class="sr-only">Read the hidden paragraph</p>' +
+      '<p hidden>Read another hidden paragraph</p>' +
+      '<p>Read the visible source paragraph<span class="fluent-read-bilingual-content">已有译文</span><script>中文</script></p>' +
+      '</div></main>';
+    await withCompletionFixture(async ({document, page}) => {
+      await expect(resolveHoverTarget(hoverPage(page), {
+        name: 'paragraph', selector: '.hover p', index: 0, sourceIncludes: ['visible source'],
+      }, 100)).resolves.toMatchObject({rawIndex: 3, sourceText: 'Read the visible source paragraph'});
+      expect(document.querySelector('.fluent-read-bilingual-content')?.textContent).toBe('已有译文');
+      expect(document.querySelector('script')?.textContent).toBe('中文');
+    }, html, [], element => ({display: element.hasAttribute('hidden') ? 'none' : 'block', visibility: 'visible'}));
+  });
+
+  it('keeps a list with only Chinese or mixed titles failing within the original timeout', async () => {
+    const html = '<main><a data-testid="listitem-title-link">' + mixedTitle + '</a>' +
+      '<a data-testid="listitem-title-link">Fix API 配置与 UI 标签</a></main>';
+    await withCompletionFixture(async ({document, page}) => {
+      const actualPage = hoverPage(page);
+      await expect(resolveHoverTarget(actualPage, {name: 'primary', selector, index: 0, sourceIncludes: []}, 100))
+        .rejects.toThrow('controlled hover target timeout');
+      expect(actualPage.waitForFunction).toHaveBeenCalledTimes(1);
+      expect(actualPage.waitForFunction).toHaveBeenCalledWith(expect.any(Function), expect.any(Object), {timeout: 100});
+      expect(document.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(0);
+    }, html);
   });
 });

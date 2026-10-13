@@ -4,7 +4,7 @@
  * @file scripts/testing/focus-safe-browser.cjs
  * Helpers for isolated browser regression tests: keep visible macOS background
  * windows on the requested display without taking foreground focus, create and
- * activate test pages, and route background CDP session cleanup through guarded close.
+ * activate test pages, and route native macOS CDP session cleanup through guarded close.
  */
 
 const fs = require('node:fs');
@@ -16,6 +16,7 @@ const { guardBrowserClose, getGuardedBrowserPid } = require('./owned-browser-clo
 
 const execFileAsync = promisify(execFile);
 const backgroundContexts = new WeakMap();
+const foregroundNativeContexts = new WeakMap();
 const macScreenQueryScript = [
   "ObjC.import('AppKit');",
   'const screens = $.NSScreen.screens;',
@@ -223,7 +224,7 @@ async function placeBackgroundWindowOnDisplay(session, targetId, viewport, displ
   };
 }
 
-async function centerVisibleWindow(context, { viewport, displayTarget = 'secondary' } = {}) {
+async function centerVisibleWindow(context, { viewport, displayTarget = 'secondary', verifyPlacement = false } = {}) {
   const normalizedTarget = normalizeDisplayTarget(displayTarget);
   const page = context.pages()[0] || await context.newPage();
   let pageSession;
@@ -241,6 +242,10 @@ async function centerVisibleWindow(context, { viewport, displayTarget = 'seconda
     }));
     const layout = await queryMacScreenLayout();
     const display = resolveVisibleDisplayBounds(layout, normalizedTarget, current.screen);
+    if (verifyPlacement && normalizedTarget === 'secondary'
+        && (display.source !== 'macos-nsscreen' || selectMacDisplay(layout, normalizedTarget)?.isMain !== false)) {
+      throw new Error('无法确认第二块显示器的可用区域，停止前台隔离窗口定位');
+    }
     const windowSize = fitWindowToDisplay(
       viewport?.width || current.outerWidth || 1280,
       viewport?.height || current.outerHeight || 900,
@@ -261,6 +266,13 @@ async function centerVisibleWindow(context, { viewport, displayTarget = 'seconda
       windowId,
       bounds: { left, top, width: windowSize.width, height: windowSize.height, windowState: 'normal' },
     });
+    let observedBounds;
+    if (verifyPlacement) {
+      ({ bounds: observedBounds } = await browserSession.send('Browser.getWindowBounds', { windowId }));
+      if (observedBounds?.windowState !== 'normal' || !isWindowFullyContained(observedBounds, display)) {
+        throw new Error(`前台隔离 Edge 窗口未完全位于目标显示器可用区域：${JSON.stringify({ bounds: observedBounds, display })}`);
+      }
+    }
 
     return {
       mode: 'headed-centered',
@@ -268,7 +280,9 @@ async function centerVisibleWindow(context, { viewport, displayTarget = 'seconda
       displayTarget: normalizedTarget,
       source: display.source,
       screenIndex: display.screenIndex,
-      bounds: { left, top, width: windowSize.width, height: windowSize.height },
+      bounds: observedBounds ? {
+        left: observedBounds.left, top: observedBounds.top, width: observedBounds.width, height: observedBounds.height,
+      } : { left, top, width: windowSize.width, height: windowSize.height },
     };
   } finally {
     await browserSession?.detach().catch(() => {});
@@ -333,44 +347,62 @@ async function closeUnacquiredBrowserConnection(browser) {
   }
 }
 
-function createMacBackgroundSession(browser, context, windowPlacement) {
+function createMacBackgroundSession(browser, context, windowPlacement, { foreground = false } = {}) {
   let connectionClosing;
+  let guardedClose;
+  let guardedClosing;
+  let signalHandling;
   let signalsRouted = false;
   const session = {
     context,
-    launchMode: 'macos-background-cdp',
-    focusPolicy: 'launchservices-no-foreground',
+    launchMode: foreground ? 'macos-foreground-cdp' : 'macos-background-cdp',
+    focusPolicy: foreground ? 'foreground-authorized' : 'launchservices-no-foreground',
     windowPlacement,
     close: closeBrowserConnection,
     closeBrowserConnection,
     useGuardedClose,
   };
-  async function closeBrowserConnection() {
-    process.off('SIGINT', handleSigint);
-    process.off('SIGTERM', handleSigterm);
+  function closeBrowserConnection() {
     connectionClosing ||= (async () => {
       await browser.close();
     })();
-    await connectionClosing;
+    return connectionClosing;
+  }
+  function releaseSignalHandlers() {
+    process.off('SIGINT', handleSigint);
+    process.off('SIGTERM', handleSigterm);
+    signalsRouted = false;
+  }
+  function closeGuardedBrowser() {
+    if (!guardedClosing) {
+      const handler = guardedClose;
+      guardedClosing = Promise.resolve().then(() => handler.call(session)).finally(releaseSignalHandlers);
+    }
+    return guardedClosing;
   }
   function useGuardedClose(handler) {
     if (typeof handler !== 'function') throw new TypeError('Guarded close must be a function');
-    session.close = handler;
-    if (!signalsRouted) {
+    // Re-registering our wrapper must not turn its delegate into itself.
+    if (handler !== closeGuardedBrowser) guardedClose = handler;
+    session.close = closeGuardedBrowser;
+    if (!signalsRouted && !guardedClosing) {
       signalsRouted = true;
-      process.once('SIGINT', handleSigint);
-      process.once('SIGTERM', handleSigterm);
+      process.on('SIGINT', handleSigint);
+      process.on('SIGTERM', handleSigterm);
     }
   }
-  async function handleSignal(exitCode) {
-    try {
-      // Resolve the delegate at signal time; never retain the original close.
-      await session.close();
-    } catch (error) {
-      console.error('Guarded browser close failed; retain the profile:', error);
-    } finally {
-      process.exit(exitCode);
-    }
+  function handleSignal(exitCode) {
+    signalHandling ||= (async () => {
+      try {
+        // Resolve the delegate at signal time; never retain the original close.
+        await session.close();
+      } catch (error) {
+        console.error('Guarded browser close failed; retain the profile:', error);
+      } finally {
+        process.exit(exitCode);
+      }
+    })();
+    return signalHandling;
   }
   function handleSigint() { void handleSignal(130); }
   function handleSigterm() { void handleSignal(143); }
@@ -391,7 +423,11 @@ async function launchFocusSafePersistentContext({
   if (background && !headless && process.platform !== 'darwin') {
     throw new Error('不抢焦点的可见后台窗口目前只支持 macOS；请显式使用 --headed 或 --headless');
   }
-  if (!(process.platform === 'darwin' && background && !headless)) {
+  const nativeAppBundle = process.platform === 'darwin' && !headless && typeof browserPath === 'string'
+    ? findMacAppBundle(browserPath) : null;
+  // Keep the ordinary SDK contract for headless, other platforms and non-app
+  // executables. A visible macOS .app uses native launch; failures never fallback.
+  if (!(process.platform === 'darwin' && !headless && (background || nativeAppBundle))) {
     const context = await chromium.launchPersistentContext(profileDir, {
       executablePath: browserPath,
       headless,
@@ -432,7 +468,7 @@ async function launchFocusSafePersistentContext({
     };
   }
 
-  const appBundle = findMacAppBundle(browserPath);
+  const appBundle = nativeAppBundle;
   if (!appBundle || !fs.existsSync(appBundle)) {
     throw new Error(`无法从浏览器路径定位 macOS .app：${browserPath}；为避免抢占前台焦点，后台测试已停止`);
   }
@@ -466,29 +502,35 @@ async function launchFocusSafePersistentContext({
   let guardedSession;
   let browserPid;
   try {
-    const frontmostBefore = await queryMacFrontmostApplication();
-    await execFileAsync('/usr/bin/open', ['-g', '-n', '-a', appBundle, '--args', ...macBackgroundArgs]);
+    const frontmostBefore = background ? await queryMacFrontmostApplication() : null;
+    await execFileAsync('/usr/bin/open', [...(background ? ['-g'] : []), '-n', '-a', appBundle, '--args', ...macBackgroundArgs]);
     const port = await waitForDevToolsPort(profileDir, timeout);
     browser = await connectWithRetry(chromium, `http://127.0.0.1:${port}`, timeout);
     const context = browser.contexts()[0];
     if (!context) throw new Error('后台 Edge 没有可用的持久化浏览器上下文');
     const windowPlacement = {
-      mode: 'background-visible-no-focus',
+      mode: background ? 'background-visible-no-focus' : 'headed-native-cdp',
       visible: true,
       hidden: false,
       centered: false,
       windowState: 'normal',
       bounds: null,
     };
-    guardedSession = createMacBackgroundSession(browser, context, windowPlacement);
+    guardedSession = createMacBackgroundSession(browser, context, windowPlacement, { foreground: !background });
     guardBrowserClose(guardedSession, profileDir);
     // Reuse the guard's CDP+OS-verified PID for focus metadata. Await its
     // complete capture: any ownership or detach error must fail launch, while
     // guarded close retains every error and the duty to terminate a known owner.
     browserPid = await getGuardedBrowserPid(guardedSession);
     if (!browserPid) throw new Error('无法确认后台 Edge 的精确进程 ID；为避免误清理其他浏览器，测试已停止');
-    backgroundContexts.set(context, { viewport, displayTarget, browserPid, frontmostBefore, windowPlacement });
-    await newPageWithoutForeground(context, timeout);
+    if (background) {
+      backgroundContexts.set(context, { viewport, displayTarget, browserPid, frontmostBefore, windowPlacement });
+      await newPageWithoutForeground(context, timeout);
+    } else {
+      foregroundNativeContexts.set(context, { viewport: viewport ? { ...viewport } : undefined });
+      await newPageWithoutForeground(context, timeout);
+      Object.assign(windowPlacement, await centerVisibleWindow(context, { viewport, displayTarget, verifyPlacement: true }));
+    }
 
     return guardedSession;
   } catch (error) {
@@ -525,7 +567,12 @@ async function launchFocusSafePersistentContext({
 }
 
 async function newPageWithoutForeground(context, timeout = 10000) {
-  if (!backgroundContexts.has(context)) return context.newPage();
+  if (!backgroundContexts.has(context)) {
+    const page = await context.newPage();
+    const foreground = foregroundNativeContexts.get(context);
+    if (foreground?.viewport) await page.setViewportSize(foreground.viewport);
+    return page;
+  }
 
   const browser = context.browser();
   if (!browser) throw new Error('无法获取隔离浏览器实例；为避免抢占前台焦点，已停止创建页面');

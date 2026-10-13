@@ -134,6 +134,16 @@ describe('PDF layout overlay text fitting', () => {
         const narrow = fitPdfBlockText({text: '字', width: 2, height: 200, fontSize: 12, lineHeight: 12, minFontSize: 6, weight: 400}, monospace);
         expect(narrow.fontSize).toBe(6); expect(narrow.overflow).toBe(true);
     });
+    it.each([NaN, Infinity])('retains the complete text and reports overflow when glyph measurement is nonfinite: %s', measured => {
+        let calls = 0;
+        const measure = () => {calls += 1; return measured;};
+        const fit = fitPdfBlockText({text: '尾文', width: 100, height: 100, fontSize: 12, lineHeight: 16, minFontSize: 6, weight: 400}, measure);
+        expect(fit.fontSize).toBe(6);
+        expect(fit.overflow).toBe(true);
+        expect(fit.lines.join('')).toBe('尾文');
+        expect(calls).toBeGreaterThan(0);
+        expect(calls).toBeLessThan(100);
+    });
     it('tightens the leading once the text has shrunk, so a doubled translation fits two small lines into a one-line box', () => {
         const measure = (text: string, size: number) => text.length * size * 0.5;
         // 原文一行（高 20、字号 20、宽 200），译文六十多个字符：缩到一半字号后仍需两行，收紧行距后两行小字恰好排进原来的一行高。

@@ -424,6 +424,11 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         return result;
     }
 
+    /** 单条响应和逐槽恢复共用内容防御；恢复后的最后检查仍必须拒绝空译文。 */
+    function requireTranslationContent(value: string): void {
+        if (!hasTranslationContent(value)) throw new TranslationSlotResponseError();
+    }
+
     function requireBatchResult(result: unknown, expectedLength: number): string[] {
         if (!Array.isArray(result)) throw new Error('批量翻译返回格式异常');
         if (result.length !== expectedLength) throw new Error('批量翻译返回数量异常');
@@ -823,13 +828,13 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 )
                     ? await callSingleProviderWithoutPageContext(execution, slotMessage, requestDeadline, validationPageContext)
                     : await recoverInvalidResult(execution, slotMessage, translation, requestDeadline, context, validationPageContext);
-                if (!hasTranslationContent(parsed[index]!)) throw new TranslationSlotResponseError();
+                requireTranslationContent(parsed[index]!);
             }
             return parsed.map((translation, index) =>
                 `${protocol.packet.starts[index]}${translation}${protocol.packet.ends[index]}`).join('\n');
         }
         if (!hasTranslationContent(message.origin) && !getTranslationImageInput(message)) return message.origin;
-        if (!hasTranslationContent(result)) throw new TranslationSlotResponseError();
+        requireTranslationContent(result);
         if (isGlossaryOnlyResult(execution.config, message.origin, result)) return result;
         if (!isLikelyUntranslatedResponse(message.origin, result, execution.targetLanguage)
             && !isClearlyWrongLanguageResponse(message.origin, result, execution.targetLanguage)) return result;
@@ -906,7 +911,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         startWithoutPageContext: boolean,
     ): Promise<string[]> {
         if (message.origin.length === 1) {
-            const singleMessage = {...message, origin: message.origin[0] ?? ''};
+            const singleMessage = {...message, origin: message.origin[0]!};
             return [startWithoutPageContext
                 ? await callSingleProviderWithoutPageContext(
                     execution,
@@ -1471,10 +1476,10 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             const leakedCachedIndexes = new Set<number>();
             const validatedCached = cached.map((value, index) => {
                 if (!hasTranslationContent(message.origin[index] ?? '')) return message.origin[index] ?? '';
-                if (value === null || !isCacheableResult(message.origin[index] ?? '', value, execution.targetLanguage, execution.config)) return null;
+                if (value === null || !isCacheableResult(message.origin[index]!, value, execution.targetLanguage, execution.config)) return null;
                 if (!isDefiniteRecoveryPageContextLeak(
                     execution,
-                    message.origin[index] ?? '',
+                    message.origin[index]!,
                     value,
                     pageContext,
                     message.modelOverride,

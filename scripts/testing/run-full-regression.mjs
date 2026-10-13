@@ -314,9 +314,12 @@ function deterministicSteps() {
         step({
             id: 'focus-safe-browser-lifecycle',
             phase: 'local',
-            label: 'focus-safe browser ordinary context lifecycle',
+            label: 'focus-safe browser ordinary and background context lifecycle',
             command: 'node',
-            args: ['--test', 'tests/focusSafeBrowserOrdinaryLifecycle.test.mjs'],
+            args: ['--test', '--test-concurrency=1',
+                'tests/focusSafeBrowserOrdinaryLifecycle.test.mjs',
+                'tests/focusSafeBrowserBackgroundSignal.test.mjs',
+                'tests/focusSafeBrowserBackgroundLifecycle.test.mjs'],
         }),
         step({
             id: 'document-live-http-evidence',

@@ -11,6 +11,9 @@ describe('QQ mail frame session snapshots', () => {
         expect(isFrameTranslationState(state())).toBe(true);
         expect(isFrameTranslationState(state({scope: 'content'}))).toBe(true);
         expect(isFrameTranslationState(state({scope: 'all'}))).toBe(true);
+        for (const enableNativeBatch of [true, false]) {
+            expect(isFrameTranslationState(state({translationConfig: {...config, enableNativeBatch}}))).toBe(true);
+        }
         expect(isFrameTranslationState(state({translationConfig: {...config, displayMode: 'single', profileId: undefined, requestOverridesApplied: undefined}, fullPageMode: 'viewport'}))).toBe(true);
     });
 
@@ -42,6 +45,7 @@ describe('QQ mail frame session snapshots', () => {
         {...state(), translationConfig: {...config, thinking: 'false'}}, {...state(), translationConfig: {...config, displayMode: 'bad'}},
         {...state(), translationConfig: {...config, style: Infinity}}, {...state(), translationConfig: {...config, profileId: 4}},
         {...state(), translationConfig: {...config, requestOverridesApplied: false}},
+        {...state(), translationConfig: {...config, enableNativeBatch: 'false'}},
     ])('rejects malformed snapshot %#', value => expect(isFrameTranslationState(value)).toBe(false));
 
     it('starts once, marks availability, and ignores repeated state', async () => {

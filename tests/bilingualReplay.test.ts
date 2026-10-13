@@ -26,6 +26,7 @@ import {
     beginTranslation,
     ensureTranslationTruncationLayout,
     hasBilingualArtifactHostWriteBudget,
+    getTranslationState,
     isBilingualArtifactDriftOnly,
     isBilingualArtifactHostWriteBudgetCapitulated,
     markTranslationComplete,
@@ -42,6 +43,7 @@ import {isTranslationArtifactCurrent} from
 async function withDocumentRealm<T>(
     document: Document,
     callback: () => T | Promise<T>,
+    readInlineStyles = false,
 ): Promise<T> {
     const realm = document.defaultView as unknown as Record<string, unknown>;
     const globalRecord = globalThis as unknown as Record<string, unknown>;
@@ -58,6 +60,13 @@ async function withDocumentRealm<T>(
         MutationObserver: realm.MutationObserver,
         Node: realm.Node,
         ShadowRoot: realm.ShadowRoot,
+        // linkedom 不计算 CSS；新保护用例依据真实 inline style 提供所需读数。
+        ...(readInlineStyles ? {getComputedStyle: (element: HTMLElement) => ({
+            display: element.style.display || 'block', visibility: element.style.visibility || 'visible',
+            position: 'static', overflow: 'visible', overflowY: 'visible', height: 'auto',
+            maxHeight: 'none', webkitLineClamp: 'none',
+            getPropertyValue: (name: string) => element.style.getPropertyValue(name) || '',
+        })} : {}),
     };
     const previousDescriptors = new Map<string, PropertyDescriptor | undefined>();
 
@@ -208,6 +217,36 @@ function createCommittedSingleSlotFixture(
     return {owner, state: attempt.state, wrapper, sources, translations};
 }
 
+function createCommittedMixedSourceFixture(document: Document, markup: string): CommittedReplayFixture {
+    document.body.innerHTML = `<section><h3 id="owner">${markup}</h3></section>`;
+    const owner = document.querySelector<HTMLElement>('#owner')!;
+    const core = getCurrentTranslationCore();
+    const options = {protectedElement: owner};
+    const snapshot = createTranslationSourceSnapshot(owner, core.shouldStayOriginal, undefined, options);
+    const liveSlots = collectLiveTranslationTextSlots(owner, core.shouldStayOriginal, undefined, options);
+    const sources = snapshot.slots.map(slot => slot.source);
+    const translations = sources.map((_, index) => `译文${index + 1}`);
+    const attempt = beginTranslation(owner, 'bilingual', 'content', false, sources.join(' '),
+        liveSlots.map(slot => slot.node))!;
+    expect(markTranslationComplete(owner, attempt.state, attempt.generation, false)).toBe(true);
+    const html = applyTranslationsToSnapshot(snapshot, translations);
+    const wrapper = appendBilingualTranslation(owner, html, {
+        sourceSkeleton: snapshot.clone, targetLanguage: 'zh-Hans', style: 1, longParagraphLineBreak: false,
+    });
+    setBilingualContent(owner, wrapper, {sources, translations, targetLanguage: 'zh-Hans', style: 1, longParagraphLineBreak: false});
+    setRenderedStyleAttribute(owner);
+    return {owner, state: attempt.state, wrapper, sources, translations};
+}
+
+/** 回归失败时最多重放四次，然后沿生产恢复路径退出；真实 MO 不会拖死测试进程。 */
+function boundedReplayHook() {
+    let calls = 0;
+    const hook = vi.fn((owner: HTMLElement, state: TranslationState) =>
+        ++calls <= 4 && refreshBilingualTranslationSkeleton(owner, state));
+    setBilingualSkeletonRefreshHandler(hook);
+    return hook;
+}
+
 /**
  * 布局观察器使用 realm 自身的 MutationObserver，linkedom 会异步投递记录，
  * 因此宿主 mutation 之后需要让出几个宏任务，等观察器与状态机的微任务都执行完。
@@ -219,6 +258,136 @@ async function flushLayoutRefresh(): Promise<void> {
 }
 
 describe('双语译文骨架重放', () => {
+    it.each([
+        ['Brown 数字 H3', '1<tt>&nbsp;</tt><a id="source-meta" name="(part._.Introduction)"></a>Introduction'],
+        ['数字 badge', '<span id="source-meta">23</span>Introduction'],
+        ['域名链接', 'Read <a id="source-meta" href="https://thenewstack.io/">TheNewStack.io</a>'],
+        ['Python 数字脚注', 'Read text<a id="source-meta" href="#note">[<span>2</span>]</a>'],
+    ])('%s 在真实 MO 中提交与宿主属性重放均有界收敛', async (_name, markup) => {
+        const {document} = parseHTML('<html><head></head><body></body></html>');
+        await withDocumentRealm(document, async () => {
+            const observe = vi.spyOn(document.defaultView!.MutationObserver.prototype, 'observe');
+            const hook = boundedReplayHook();
+            try {
+                const fixture = createCommittedMixedSourceFixture(document, markup);
+                const sourceNodes = [...fixture.state.sourceTextNodes!];
+                const sourceClone = fixture.owner.cloneNode(true) as HTMLElement;
+                sourceClone.querySelector('[data-fr-translation-owned="true"]')!.remove();
+                const sourceHTML = sourceClone.innerHTML;
+                await flushLayoutRefresh();
+                expect(observe).toHaveBeenCalled();
+                expect(hook).not.toHaveBeenCalled();
+                expect(getTranslationState(fixture.owner)).toBe(fixture.state);
+                expect(tryRepairBilingualTranslationArtifact(fixture.owner, fixture.state)).toBe('repaired');
+
+                fixture.owner.querySelector('#source-meta')!.setAttribute('title', 'Host tooltip');
+                await flushLayoutRefresh();
+                expect(hook).toHaveBeenCalledTimes(1);
+                await flushLayoutRefresh();
+                expect(hook).toHaveBeenCalledTimes(1);
+                expect(getTranslationState(fixture.owner)).toBe(fixture.state);
+                expect(fixture.state.controller.signal.aborted).toBe(false);
+                expect(fixture.state.sourceTextNodes).toEqual(sourceNodes);
+                expect(fixture.state.bilingualContent).toBe(fixture.wrapper);
+                expect(fixture.wrapper.parentNode).toBe(fixture.owner);
+                expect(fixture.state.bilingualReplay?.sources).toEqual(fixture.sources);
+                expect(fixture.state.bilingualReplay?.translations).toEqual(fixture.translations);
+                const meta = fixture.owner.querySelector('#source-meta')!;
+                expect(meta.getAttribute('title')).toBe('Host tooltip');
+                if (meta.localName === 'a') {
+                    expect(fixture.wrapper.querySelector('[title="Host tooltip"]')).not.toBeNull();
+                }
+                expect(isTranslationArtifactCurrent(fixture.owner, fixture.state)).toBe(true);
+
+                restoreAllTranslations();
+                expect(getTranslationState(fixture.owner)).toBeUndefined();
+                expect(fixture.wrapper.parentNode).toBeNull();
+                fixture.owner.querySelector('#source-meta')!.removeAttribute('title');
+                expect(fixture.owner.innerHTML).toBe(sourceHTML);
+            } finally {setBilingualSkeletonRefreshHandler(undefined); observe.mockRestore();}
+        });
+    });
+
+    it('受保护数字 badge 更新重放骨架并保留原文，再次观察不重复重放', async () => {
+        const {document} = parseHTML('<html><head></head><body></body></html>');
+        await withDocumentRealm(document, async () => {
+            const hook = boundedReplayHook();
+            try {
+                const fixture = createCommittedMixedSourceFixture(document, '<span id="badge">23</span>Introduction');
+                await flushLayoutRefresh();
+                expect(hook).not.toHaveBeenCalled();
+                fixture.owner.querySelector('#badge')!.textContent = '24';
+                // linkedom 的 childList.target 是观察根且不投递 characterData；
+                // 宿主同步的 title 写入通过真实 MO 唤醒同一来源检查。
+                fixture.owner.querySelector('#badge')!.setAttribute('title', '24');
+                const hostSource = fixture.owner.cloneNode(true) as HTMLElement;
+                hostSource.querySelector('[data-fr-translation-owned="true"]')!.remove();
+                await flushLayoutRefresh();
+                expect(hook).toHaveBeenCalledTimes(1);
+                await flushLayoutRefresh();
+                expect(hook).toHaveBeenCalledTimes(1);
+                expect(getTranslationState(fixture.owner)).toBe(fixture.state);
+                expect(fixture.wrapper.textContent).toContain('24');
+                expect(fixture.wrapper.textContent).toContain('译文1');
+                restoreAllTranslations();
+                expect(fixture.owner.innerHTML).toBe(hostSource.innerHTML);
+            } finally {setBilingualSkeletonRefreshHandler(undefined);}
+        });
+    });
+
+    it('同原文 Text 重绘只重绑定一次，新正文变更仍撤下旧译文', async () => {
+        const {document} = parseHTML('<html><head></head><body></body></html>');
+        await withDocumentRealm(document, async () => {
+            const hook = boundedReplayHook();
+            try {
+                const fixture = createCommittedMixedSourceFixture(document, '<span>23</span>Introduction');
+                await flushLayoutRefresh();
+                const oldSource = fixture.state.sourceTextNodes![0]!;
+                const replacement = document.createTextNode('Introduction');
+                oldSource.parentNode!.replaceChild(replacement, oldSource);
+                fixture.owner.setAttribute('title', 'Host repaint');
+                await flushLayoutRefresh();
+                expect(getTranslationState(fixture.owner)).toBe(fixture.state);
+                expect(fixture.wrapper.parentNode).toBe(fixture.owner);
+                // 真实属性 record 唤醒，等价 Text 重绘仍复用译文并重绑槽身份。
+                expect(hook).toHaveBeenCalledTimes(1);
+                expect(fixture.state.sourceTextNodes).toEqual([replacement]);
+                replacement.data = 'Changed source';
+                fixture.owner.setAttribute('title', 'Changed source');
+                await flushLayoutRefresh();
+                expect(getTranslationState(fixture.owner)).toBeUndefined();
+                expect(fixture.state.controller.signal.aborted).toBe(true);
+                expect(fixture.wrapper.parentNode).toBeNull();
+                expect(fixture.owner.textContent).toBe('23Changed source');
+            } finally {setBilingualSkeletonRefreshHandler(undefined);}
+        });
+    });
+
+    it.each([
+        ['translate', (node: HTMLElement) => node.setAttribute('translate', 'no')],
+        ['hidden', (node: HTMLElement) => node.setAttribute('hidden', '')],
+        ['display', (node: HTMLElement) => {node.style.display = 'none';}],
+        ['visibility', (node: HTMLElement) => {node.style.visibility = 'hidden';}],
+    ] as const)('%s 来源保护变化仍恢复，保留宿主保护写入', async (_name, protect) => {
+        const {document} = parseHTML('<html><head></head><body></body></html>');
+        await withDocumentRealm(document, async () => {
+            const hook = boundedReplayHook();
+            try {
+                const fixture = createCommittedMixedSourceFixture(document, '<span id="source">Introduction</span>');
+                await flushLayoutRefresh();
+                protect(fixture.owner.querySelector<HTMLElement>('#source')!);
+                const hostHTML = fixture.owner.cloneNode(true) as HTMLElement;
+                hostHTML.querySelector('[data-fr-translation-owned="true"]')!.remove();
+                await flushLayoutRefresh();
+                expect(getTranslationState(fixture.owner)).toBeUndefined();
+                expect(fixture.state.controller.signal.aborted).toBe(true);
+                expect(fixture.wrapper.parentNode).toBeNull();
+                expect(fixture.owner.innerHTML).toBe(hostHTML.innerHTML);
+                expect(hook.mock.calls.length).toBeLessThanOrEqual(1);
+            } finally {setBilingualSkeletonRefreshHandler(undefined);}
+        }, true);
+    });
+
     it.each([true, false])('宿主刷新骨架时保持已提交的长段落换行 %s', async (frozen) => {
         const {document} = parseHTML('<html><body></body></html>');
         await withDocumentRealm(document, () => {

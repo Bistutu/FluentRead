@@ -705,6 +705,20 @@ describe('shared UI actual client SFC lifecycle', () => {
     expect(icon.getAttribute('title')).toBe('unknown');
     expect(icon.getAttribute('aria-hidden')).toBe('true');
   });
+  it('shares Doubao brand geometry with its free web service in the actual reactive client', async () => {
+    const mounted = await mount(ServiceIcon, {service: 'doubao', label: 'Doubao'});
+    const paths = [...mounted.root.querySelectorAll('svg path')].map(path => path.outerHTML);
+    expect(paths).toHaveLength(brandPaths.doubao.length);
+    mounted.props.service = 'doubaoWeb'; mounted.props.label = 'Free Doubao'; await settle();
+    expect([...mounted.root.querySelectorAll('svg path')].map(path => path.outerHTML)).toEqual(paths);
+    expect(mounted.root.querySelector('[data-brand-icon]')).not.toBeNull();
+    expect(mounted.root.querySelector('[data-service-icon-fallback]')).toBeNull();
+    expect(mounted.root.querySelector('.service-brand-icon')!.getAttribute('data-service')).toBe('doubaoWeb');
+    expect(mounted.root.querySelector('.service-brand-icon')!.getAttribute('title')).toBe('Free Doubao');
+    mounted.props.service = 'unknown'; await settle();
+    expect(mounted.root.querySelector('[data-brand-icon]')).toBeNull();
+    expect(mounted.root.querySelector('[data-service-icon-fallback]')).not.toBeNull();
+  });
   it('falls back to info for all unknown icon names including inherited object keys', async () => {
     const mounted = await mount(UiIcon, {name: 'info'});const path = mounted.root.querySelector('path')!.getAttribute('d');
     for (const name of ['unknown', 'constructor', '__proto__', 'toString']) {mounted.props.name = name;await settle();expect(mounted.root.querySelector('path')!.getAttribute('d')).toBe(path);}

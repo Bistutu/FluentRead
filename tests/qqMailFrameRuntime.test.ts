@@ -130,13 +130,26 @@ describe('NetEase mail frame lifecycle', () => {
     it('never mounts on top-level pages or editable compose frames', async () => {
         const top = installGlobals(readTop);
         const {startNeteaseMailFrameApp} = await load();
-        await startNeteaseMailFrameApp({isInvalid: false, onInvalidated: vi.fn()} as never);
-        expect(mocks.sendMessage).not.toHaveBeenCalled();
-        top.window.location.href = 'about:blank';
-        top.window.top = {location: {href: readTop}};
-        (top.window as typeof top.window & {frameElement: {className: string}}).frameElement = {className: 'APP-editor-iframe'};
-        await startNeteaseMailFrameApp({isInvalid: false, onInvalidated: vi.fn()} as never);
-        expect(mocks.mountSelection).not.toHaveBeenCalled();
+        let invalidate: (() => void) | undefined;
+        const context = {isInvalid: false, onInvalidated: (callback: () => void) => { invalidate = callback; }};
+        try {
+            await startNeteaseMailFrameApp(context as never);
+            expect(mocks.sendMessage).not.toHaveBeenCalled();
+            expect(invalidate).toBeUndefined();
+            top.window.location.href = 'about:blank';
+            top.window.top = {location: {href: readTop}};
+            (top.window as typeof top.window & {frameElement: {className: string}}).frameElement = {className: 'APP-editor-iframe'};
+            await startNeteaseMailFrameApp(context as never);
+            expect(mocks.sendMessage).not.toHaveBeenCalled();
+            expect(mocks.mountSelection).not.toHaveBeenCalled();
+            expect(mocks.installStyles).not.toHaveBeenCalled();
+            // 匹配邮箱的 compose child 保留路由生命周期；不挂载 UI 并不
+            // 等于未建立 frame。fixture 结束仍须销毁自己创建的上下文。
+            expect(invalidate).toBeTypeOf('function');
+        } finally { invalidate?.(); }
+        expect(mocks.removeRuntimeListener).toHaveBeenCalledOnce();
+        expect(mocks.subscribeConfig.mock.results[0].value).toHaveBeenCalledOnce();
+        expect([...top.listeners.values()].every(set => set.size === 0)).toBe(true);
     });
 
     it('tracks selection setting changes while the reading frame stays open', async () => {

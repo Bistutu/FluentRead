@@ -17,6 +17,10 @@ export function createVirtualModelResponsePort(NativeResponse: typeof Response):
     return class extends NativeResponse {
         constructor(body?: BodyInit | null, init?: ResponseInit) {
             const virtual = body instanceof ArrayBuffer && virtualBuffers.has(body) ? body : undefined;
+            // 原生 Response 在不同 Node 版本对覆写的 byteLength 处理不同；未由本工厂标记的伪容量始终拒绝。
+            if (body instanceof ArrayBuffer && !virtual && body.byteLength !== new Uint8Array(body).byteLength) {
+                throw new RangeError('Unmarked virtual model buffer');
+            }
             super(virtual ? null : body, init);
             if (virtual) Object.defineProperty(this, 'arrayBuffer', {value: async () => virtual});
         }

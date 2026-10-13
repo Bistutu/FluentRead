@@ -1,3 +1,9 @@
+/**
+ * @file tests/free-translation.test.ts
+ * 文件职责：验证真实免费池编排的匿名配置、降级、共享预算、原生分组和取消持槽边界。
+ * 主要内容：仅替换各线路 transport 和配置存储；以真实结果校验验证原文回显、整段错语种、单服务检查及线路健康；新增波兰语损坏结果的标量/原生降级，保留截止时间与迟到传输容量。
+ * 模块边界：不运行浏览器或实际免费服务，不替换语言识别、结果校验、免费池或调度器。
+ */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const {mockConfig, storedHealth, microsoftMock, officialMock, bilibiliMock, doubaoMock, googleMock, googleOwnerMock, myMemoryMock, webMock, chineseMock, extraMock, unsupportedApertiumMock} = vi.hoisted(() => ({
@@ -1782,5 +1788,122 @@ describe('document-only mixed free-pool batching', () => {
         await flush();
         expect(microsoftMock).toHaveBeenCalledOnce();
         expect(vi.getTimerCount()).toBe(0);
+    });
+});
+
+
+describe('中文目标下明确 Latin 错语种结果', () => {
+    const polishSource = 'Osobne działko laserowe o ogromnej mocy: zabija jednym strzałem, strzela co 1,5 s, zasięg 34, niebieski promień, bardzo duży pobór prądu.';
+    const corruptPolishResult = 'Osobne dzia😍ko laserowe o ogromnej mocy：zabija jednym strza😍em，strzela co 1,5 s，zasig 34，niebieski promie😍，bardzo du😍y pobór pr😍du。';
+    beforeEach(() => { mockConfig.freeTranslationOrder = ['microsoft', 'google']; });
+    const chinese = '独立的高功率激光炮，每隔一点五秒发射一次，射程三十四，蓝色光束，耗电量非常大。';
+    it('actual scalar free pool rejects the corrupt result, uses the configured fallback and leaves the route ready', async () => {
+        const { attachTranslationRouteObserver } = await import('@/src/services/translation/requestSnapshot');
+        const observations: Array<{
+            route: string;
+            outcome: string;
+            chars: number;
+        }> = [];
+        microsoftMock.mockResolvedValueOnce([corruptPolishResult]).mockResolvedValue([chinese]);
+        googleMock.mockResolvedValue(chinese);
+        const request = attachTranslationRouteObserver({ origin: polishSource, targetLanguage: 'zh-Hans' }, event => observations.push(event));
+        await expect(settle(freeTranslation(request))).resolves.toBe(chinese);
+        expect(microsoftMock).toHaveBeenCalledOnce();
+        expect(googleMock).toHaveBeenCalledOnce();
+        expect(observations.map(({ route, outcome, chars }) => ({ route, outcome, chars }))).toEqual([
+            { route: 'microsoft', outcome: 'error', chars: polishSource.length },
+            { route: 'google', outcome: 'success', chars: polishSource.length },
+        ]);
+        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        await expect(settle(freeTranslation({ origin: polishSource + ' Another paragraph.' }))).resolves.toBe(chinese);
+        expect(microsoftMock).toHaveBeenCalledTimes(2);
+        expect(googleMock).toHaveBeenCalledOnce();
+        expect(mockConfig.freeTranslationOrder).toEqual(['microsoft', 'google']);
+    });
+    it('one corrupt native slot rejects the entire candidate and preserves original indexes/empty slots under fallback', async () => {
+        const sources = Array.from({ length: 8 }, (_, index) => index === 6 ? polishSource
+            : `The software translates every complete paragraph and retains all reader settings after restart ${index}.`);
+        const original = [...sources, ''];
+        microsoftMock.mockImplementation(async (texts: string[]) => texts.map((_, index) => index === 6 ? corruptPolishResult : `首选中文译文${index}`));
+        googleOwnerMock.mockImplementation(async (texts: string[]) => texts.map((_, index) => `后备中文译文${index}`));
+        await expect(settle(freeTranslation({ origin: original }))).resolves.toEqual([...sources.map((_, index) => `后备中文译文${index}`), '']);
+        expect(microsoftMock).toHaveBeenCalledOnce();
+        expect(googleOwnerMock).toHaveBeenCalledOnce();
+        expect(microsoftMock.mock.calls[0][0]).toEqual(sources);
+        expect(googleOwnerMock.mock.calls[0][0]).toEqual(sources);
+        expect(googleMock).not.toHaveBeenCalled();
+        expect(original).toEqual([...sources, '']);
+        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+    });
+    it('single-provider check rejects wrong language and never silently changes provider', async () => {
+        microsoftMock.mockResolvedValue([corruptPolishResult]);
+        googleMock.mockResolvedValue(chinese);
+        await expect(translateFreeTranslationProvider('microsoft', { origin: polishSource, targetLanguage: 'zh-Hans' }))
+            .rejects.toMatchObject({ freeFailure: 'request', message: '返回的译文语言与目标语言不符' });
+        expect(microsoftMock).toHaveBeenCalledOnce();
+        expect(googleMock).not.toHaveBeenCalled();
+        expect(googleOwnerMock).not.toHaveBeenCalled();
+        expect(officialMock).not.toHaveBeenCalled();
+    });
+    it('all invalid providers stay failed with one attempt per configured candidate', async () => {
+        microsoftMock.mockResolvedValue([corruptPolishResult]);
+        googleMock.mockResolvedValue(corruptPolishResult);
+        await expect(settle(freeTranslation({ origin: polishSource }))).rejects.toThrow('语言与目标语言不符');
+        expect(microsoftMock).toHaveBeenCalledOnce();
+        expect(googleMock).toHaveBeenCalledOnce();
+    });
+    it('fallback consumes the existing shared deadline rather than restarting the request budget', async () => {
+        const started = Date.now();
+        let release!: () => void;
+        microsoftMock.mockImplementation(() => new Promise(resolve => { release = () => resolve([corruptPolishResult]); }));
+        let googleSignal: AbortSignal | undefined;
+        googleMock.mockImplementation((_text, _from, _to, signal: AbortSignal) => {
+            googleSignal = signal;
+            return new Promise(() => { });
+        });
+        const request = freeTranslation({ origin: polishSource, requestTimeoutMs: 50 }).catch(error => error);
+        await vi.advanceTimersByTimeAsync(30);
+        release();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(googleMock).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(20);
+        const error = await request;
+        expect(error).toBeInstanceOf(Error);
+        expect(Date.now() - started).toBe(50);
+        expect(googleSignal?.aborted).toBe(true);
+        expect(microsoftMock).toHaveBeenCalledOnce();
+        expect(googleMock).toHaveBeenCalledOnce();
+    });
+    it('cancelled noncooperative transport retains exact reasons and original per-provider capacity until settlement', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        const release: Array<() => void> = [];
+        microsoftMock.mockImplementation((texts: string[], _from, _to, _signal, _batch, lease: FreeFallbackLease) => {
+            if (texts[0] === 'The software translates this recovery paragraph and keeps all user settings available after restart.')
+                return Promise.resolve([chinese]);
+            const raw = new Promise<void>(resolve => { release.push(resolve); });
+            lease.holdUntil(raw);
+            return raw.then(() => [corruptPolishResult]);
+        });
+        const first = new AbortController(), second = new AbortController();
+        const reason1 = new Error('first owner cancelled'), reason2 = new Error('second owner cancelled');
+        const one = freeTranslation({ origin: polishSource, abortSignal: first.signal }).catch(error => error);
+        await vi.advanceTimersByTimeAsync(100);
+        const two = freeTranslation({ origin: polishSource, abortSignal: second.signal }).catch(error => error);
+        await vi.advanceTimersByTimeAsync(100);
+        expect(microsoftMock).toHaveBeenCalledTimes(2);
+        first.abort(reason1);
+        second.abort(reason2);
+        expect(await one).toBe(reason1);
+        expect(await two).toBe(reason2);
+        const recovery = freeTranslation({ origin: 'The software translates this recovery paragraph and keeps all user settings available after restart.' });
+        await vi.advanceTimersByTimeAsync(100);
+        expect(microsoftMock).toHaveBeenCalledTimes(2);
+        release[0]();
+        await vi.advanceTimersByTimeAsync(0);
+        await expect(settle(recovery)).resolves.toBe(chinese);
+        expect(microsoftMock).toHaveBeenCalledTimes(3);
+        release[1]();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(googleMock).not.toHaveBeenCalled();
     });
 });

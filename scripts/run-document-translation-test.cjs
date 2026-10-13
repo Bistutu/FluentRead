@@ -9,11 +9,32 @@ const fs = require('node:fs');
 const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
+const {createHash} = require('node:crypto');
 const {createRequire} = require('node:module');
 const arg = (name, fallback) => { const i = process.argv.indexOf(`--${name}`); return i < 0 ? fallback : process.argv[i + 1]; };
 
+// 独立检查实际请求的 slot 身份、顺序与边界；不能只抽取“看起来有效”的子串后忽略其余载荷。
+function requestSources(source) {
+  const slots = [...source.matchAll(/___FLUENTREAD_([a-z0-9_-]+)_(\d+)_BEGIN___([\s\S]*?)___FLUENTREAD_\1_\2_END___/gu)];
+  if (!slots.length) {
+    assert(!source.includes('___FLUENTREAD_'), '请求中的 slot 标记必须完整配对');
+    return [source.trim()];
+  }
+  let end = 0;
+  const nonce = slots[0][1];
+  slots.forEach((slot, index) => {
+    assert.equal(slot[1], nonce, '同一请求的 slot 必须使用相同 nonce');
+    assert.equal(slot[2], String(index), 'slot 索引必须从 0 连续递增且不得重复');
+    assert.equal(source.slice(end, slot.index).trim(), '', 'slot 之间不能出现协议外正文');
+    assert(!slot[3].includes('___FLUENTREAD_'), 'slot 正文不能吞入未配对或嵌套标记');
+    end = slot.index + slot[0].length;
+  });
+  assert.equal(source.slice(end).trim(), '', '最后一个 slot 之后不能出现协议外正文');
+  return slots.map(slot => slot[3].trim());
+}
+
 async function fixtureServer() {
-  const state = {requests: [], delay: 5, fail: false};
+  const state = {requests: [], delay: 5, fail: false, holdSource: null, held: new Set()};
   const server = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', '*');
@@ -26,8 +47,18 @@ async function fixtureServer() {
       assert.equal(typeof source, 'string');
       state.requests.push(source);
       const protocol = /(___FLUENTREAD_([a-z0-9_-]+)_(\d+)_BEGIN___)([\s\S]*?)(___FLUENTREAD_\2_\3_END___)/giu;
-      const translation = protocol.test(source) ? source.replace(protocol, (_match, begin, _nonce, _index, text, end) => `${begin}测试译文：${text}${end}`) : `测试译文：${source}`;
+      // 富文本的每段行内正文也必须实际改变；仅在整段前添加前缀会触发生产端未翻译正文保护。
+      const translate = text => `测试译文：${text.replace(/<(g\d+)>([\s\S]*?)<\/\1>/gu, (_match, tag, inner) => `<${tag}>测试译文：${inner}</${tag}>`)}`;
+      const translation = protocol.test(source) ? source.replace(protocol, (_match, begin, _nonce, _index, text, end) => `${begin}${translate(text)}${end}`) : translate(source);
       await new Promise(resolve => setTimeout(resolve, state.delay));
+      if (state.holdSource?.test(source)) {
+        await new Promise(resolve => {
+          const release = () => {state.held.delete(release); res.off('close', release); resolve();};
+          state.held.add(release); res.once('close', release);
+          if (res.destroyed) release();
+        });
+        if (res.destroyed) return;
+      }
       if (state.fail && source.includes('Failure target')) { res.writeHead(503); res.end(JSON.stringify({error: {message: 'Fixture intentional temporary failure'}})); return; }
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({id: 'document-fixture', object: 'chat.completion', created: 1, model: 'document-fixture',
@@ -36,7 +67,7 @@ async function fixtureServer() {
     } catch (error) { res.writeHead(400); res.end(JSON.stringify({error: {message: error.message}})); }
   });
   await new Promise((resolve, reject) => {const onError = error => {server.close(() => reject(error)); server.closeAllConnections();}; server.once('error', onError); server.listen(0, '127.0.0.1', () => {server.off('error', onError); resolve();});});
-  return {...state, state, url: `http://127.0.0.1:${server.address().port}/v1/chat/completions`, close: () => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); }};
+  return {...state, state, releaseHeld: () => {state.holdSource = null; for (const release of [...state.held]) release();}, url: `http://127.0.0.1:${server.address().port}/v1/chat/completions`, close: () => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); }};
 }
 
 async function pdfPageTexts(bytes) {
@@ -128,10 +159,10 @@ async function main() {
       await page.locator('aside.document-sidebar').getByRole('button', {name: '调整文档翻译设置', exact: true}).click();
       await page.locator('.document-settings-dialog[open]').waitFor();
     };
-    // PDF 缩放是自定义菜单：点开 .pdf-menu-button，再点 li[role=option][data-value]。
+    // PDF 菜单用可聚焦按钮承载选项：点开后操作真实 role=option 按钮。
     const pdfMenu = async (root, value) => {
       const menu = page.locator(root);
-      await menu.locator('.pdf-menu-button').click(); await menu.locator(`li[role="option"][data-value="${value}"]`).click();
+      await menu.locator('.pdf-menu-button').click(); await menu.locator(`button[role="option"][data-value="${value}"]`).click();
       await menu.locator('.pdf-menu-list').waitFor({state: 'detached'});
     };
     const pdfZoom = value => pdfMenu('.pdf-zoom-control .pdf-menu', value);
@@ -164,7 +195,8 @@ async function main() {
     };
     const download = async (mode = 'bilingual', partial = false) => {
       await page.getByRole('button', {name: '下载文件 ↓', exact: true}).click();
-      const dialog = page.locator('dialog[open]').filter({hasText: '下载翻译结果'});
+      const dialog = page.locator('.download-dialog[open][aria-labelledby="download-document-heading"]');
+      await dialog.getByRole('heading', {name: '下载文件', exact: true}).waitFor();
       await dialog.locator('.export-options button').nth(mode === 'bilingual' ? 0 : 1).click();
       if (partial) {
         assert.equal(await dialog.getByRole('button', {name: mode === 'bilingual' ? '下载双语文件' : '下载译文文件', exact: true}).isDisabled(), true);
@@ -497,8 +529,28 @@ async function main() {
       assert.match(await page.locator('textarea.document-translation').first().inputValue(), /测试译文/);
       const editedSegment = await page.locator('.segment-edit-row').first().getAttribute('data-segment-id');
       await page.locator('textarea.document-translation').first().fill(`人工校订：${name}`);
+      const corrections = new Map([[editedSegment, `人工校订：${name}`]]);
+      let forcedPdfOverflow = [];
+      if (name === 'sample.pdf') {
+        // 三个相同原文的独立单元格均校订成长 Unicode 文本，确保导出的局部表格框必定放不下。
+        // sample.pdf 的这些单元格只有 105×25 pt；不用生产 fit helper 推断是否需要全文批注。
+        await page.getByRole('searchbox', {name: '搜索原文、译文或位置'}).fill('Preserved');
+        const rows = page.locator('.segment-edit-row').filter({has: page.locator('.document-source').filter({hasText: /^Preserved$/u})});
+        assert.equal(await rows.count(), 3, '范例必须保留三个原文相同但身份不同的表格单元格');
+        const text = '受限表格完整人工校订：中文 α e\u0301 👩‍💻，逐字保留。'.repeat(48);
+        for (let index = 0; index < 3; index++) {
+          const row = rows.nth(index), segment = await row.getAttribute('data-segment-id');
+          assert(!corrections.has(segment), '同文表格单元格必须具有独立段落身份');
+          await row.locator('textarea.document-translation').fill(text);
+          assert.equal(await row.locator('textarea.document-translation').inputValue(), text);
+          corrections.set(segment, text);
+          forcedPdfOverflow.push({page: '2', segment, text});
+        }
+        await page.getByRole('searchbox', {name: '搜索原文、译文或位置'}).fill('');
+      }
       await page.getByRole('button', {name: '阅读', exact: true}).click();
       await noOverflow();
+      let expectedPdfTranslations = [];
       if (name === 'sample.pdf') {
         // 译文不再画进图片：译页是原页画布副本，上面叠着每段一个 HTML 译文块；校订只改文字，不重新渲染页面。
         await page.locator('.pdf-page-column.translated .pdf-translation-block').first().waitFor();
@@ -511,28 +563,55 @@ async function main() {
             blocks: [...frame.querySelectorAll('.pdf-translation-layer[data-fluentread-pdf-translation] .pdf-translation-block')].map(block => {const rect = block.getBoundingClientRect(); return {segment: block.dataset.pdfSegmentIndex, id: block.dataset.pdfSourceId, source: block.dataset.pdfSourceText, role: block.dataset.pdfRole,
               text: [...block.querySelectorAll('.pdf-translation-text span')].map(line => line.textContent).join(''), left: rect.left - bounds.left, top: rect.top - bounds.top, right: rect.right - bounds.left, bottom: rect.bottom - bounds.top};})};
         }));
-        const pdfSources = new Set(fixture.state.requests.slice(requestsBeforeLoad));
+        // 请求可使用现有多片段协议；逐一核对实际请求载荷中的原文，仍保留物理请求计数。
+        const pdfSources = new Set(fixture.state.requests.slice(requestsBeforeLoad).flatMap(source => {
+          // 范例中唯一的自动保护名称是 FluentRead；用独立摘要验证实际 token 身份后还原来源。
+          const brandTokens = [...source.matchAll(/__FRTERM_([a-f0-9]{12})_(\d+)__/gu)];
+          const original = source.replace(/__FRTERM_[a-f0-9]{12}_\d+__/gu, 'FluentRead');
+          const prefix = createHash('sha256').update(`0\0${original}`).digest('hex').slice(0, 12);
+          brandTokens.forEach((match, index) => {
+            assert.equal(match[1], prefix, 'PDF 范例的保护名称必须对应实际完整请求原文');
+            assert.equal(match[2], String(index), 'PDF 范例的保护名称不能遗漏、重复或调换');
+          });
+          assert(!original.includes('__FRTERM_'), 'PDF 请求中不能残留未验证的名称占位符');
+          return requestSources(original);
+        }));
         for (const entry of pdfPages) {
           assert(entry.sourceText && entry.canvases && entry.canvases.source.join() === entry.canvases.copy.join(), `第 ${entry.page} 页应为原文画布+文字层与同尺寸的译页画布副本：${JSON.stringify(entry)}`);
           assert.equal(entry.spinners, 0, '翻译完成后不能残留等待动画'); assert.equal(entry.sheets, 0, '原版排版下不应出现重排续页'); assert(entry.blocks.length > 0, `第 ${entry.page} 页应有译文块`);
           for (const block of entry.blocks) {
-            assert(pdfSources.has(block.source), `译文块的原文必须真实送往翻译服务：${block.source}`);
-            assert.equal(compact(block.text), compact(block.segment === editedSegment ? `人工校订：${name}` : `测试译文：${block.source}`), `第 ${entry.page} 页片段 ${block.segment} 的译文块必须完整等于译文`);
+            assert(pdfSources.has(block.source), `译文块的原文必须真实送往翻译服务：${JSON.stringify({source: block.source, requested: [...pdfSources]})}`);
+            assert.equal(compact(block.text), compact(corrections.get(block.segment) ?? `测试译文：${block.source}`), `第 ${entry.page} 页片段 ${block.segment} 的译文块必须完整等于译文`);
             assert(block.left >= -2 && block.top >= -2 && block.right <= entry.frame.width + 2 && block.bottom <= entry.frame.height + 2, `译文块不能超出页面：${JSON.stringify({block, frame: entry.frame})}`);
           }
         }
         assert(pdfPages.flatMap(entry => entry.blocks).some(block => block.segment === editedSegment), '人工校订的片段应显示在译文块里');
-        const blockSources = new Set(pdfPages.flatMap(entry => entry.blocks.map(block => block.source)));
+        for (const correction of forcedPdfOverflow) {
+          const entry = pdfPages.find(entry => entry.page === correction.page), block = entry.blocks.find(block => block.segment === correction.segment);
+          assert(block && block.source === 'Preserved' && block.role === 'table', '强制溢出校订必须对应第 2 页的独立表格单元格');
+          const width = (block.right - block.left) * 612 / entry.frame.width, height = (block.bottom - block.top) * 792 / entry.frame.height;
+          assert(width > 0 && width <= 105.5 && height > 0 && height <= 25.5, `范例受限单元格的实际局部几何不能扩张：${JSON.stringify({width, height, segment: block.segment})}`);
+          correction.localBox = {width, height};
+        }
         // “重排阅读”仍以 HTML 段落列出同一页的全部片段并标明角色；页眉页脚与元数据（footer/metadata）在阅读器里保留原文，因此在原版排版里没有译文块。
         await pdfPresentation('readable');
         await page.locator('.pdf-page-row[data-page-number="1"] .pdf-reading-sheet .pdf-reading-paragraph').first().waitFor(); await page.locator('.pdf-page-row[data-page-number="2"] .pdf-reading-sheet .pdf-reading-paragraph').first().waitFor();
-        const readable = await page.locator('.pdf-reading-sheet .pdf-reading-paragraph').evaluateAll(elements => elements.map(element => ({segment: element.dataset.pdfSegmentIndex, source: element.dataset.pdfSourceText, role: element.dataset.pdfRole, text: element.textContent})));
+        const readable = await page.locator('.pdf-reading-sheet .pdf-reading-paragraph').evaluateAll(elements => elements.map(element => ({page: element.closest('[data-pdf-reading-page]').dataset.pdfReadingPage, segment: element.dataset.pdfSegmentIndex, id: element.dataset.pdfSourceId, source: element.dataset.pdfSourceText, role: element.dataset.pdfRole, text: element.textContent})));
+        const isKeptSource = entry => ['footer', 'metadata'].includes(entry.role);
+        expectedPdfTranslations = readable.filter(entry => !isKeptSource(entry));
         assert.equal(await page.locator('.pdf-translation-layer').count(), 0, '重排阅读不显示原版排版的译文层');
-        const keptAsSource = new Set(readable.filter(entry => ['footer', 'metadata'].includes(entry.role)).map(entry => entry.source));
-        for (const entry of readable) assert.equal(entry.text, keptAsSource.has(entry.source) ? entry.source : entry.segment === editedSegment ? `人工校订：${name}` : `测试译文：${entry.source}`, `重排阅读片段 ${entry.segment}（${entry.role}）内容不符`);
-        for (const source of pdfSources) assert(blockSources.has(source) !== keptAsSource.has(source), `每个已翻译的正文段落都必须恰好有译文块，保留原文的页眉页脚不能有：${source}`);
-        assert.deepEqual([...blockSources].sort(), readable.filter(entry => !keptAsSource.has(entry.source)).map(entry => entry.source).sort(), '原版排版的译文块应覆盖重排阅读里全部非页眉页脚片段');
-        report.pdfKeptAsSource = [...keptAsSource];
+        for (const entry of readable) {
+          assert.match(entry.segment, /^\d+$/u);
+          assert.equal(entry.id, `pdf-${entry.page}-segment-${entry.segment}`, '重排阅读的段落身份必须准确对应来源页与片段');
+          assert.equal(entry.text, isKeptSource(entry) ? entry.source : corrections.get(entry.segment) ?? `测试译文：${entry.source}`, `重排阅读片段 ${entry.segment}（${entry.role}）内容不符`);
+        }
+        assert.equal(new Set(readable.map(entry => entry.segment)).size, readable.length, '重排阅读不能遗漏片段后重复另一个同文片段');
+        const readableSources = new Set(readable.map(entry => entry.source));
+        for (const source of pdfSources) assert(readableSources.has(source), `每个实际请求原文都必须出现在对应的文档片段里：${source}`);
+        const identity = ({page, segment, id, source, role}) => JSON.stringify([page, segment, id, source, role]);
+        assert.deepEqual(pdfPages.flatMap(entry => entry.blocks.map(block => identity({page: entry.page, ...block}))).sort(), readable.filter(entry => !isKeptSource(entry)).map(identity).sort(), '原版排版与重排阅读须按页、片段身份、来源及角色逐段精确对应，包括同文表格单元格');
+        report.pdfKeptAsSource = readable.filter(isKeptSource).map(({page, segment, source, role}) => ({page, segment, source, role}));
+        report.pdfForcedOverflow = forcedPdfOverflow;
         await pdfPresentation('layout'); await page.locator('.pdf-page-column.translated .pdf-translation-block').first().waitFor();
         assert.equal(await page.locator('.pdf-reading-sheet').count(), 0);
         report.pdfLayout = pdfPages.map(entry => ({page: entry.page, canvases: entry.canvases, blocks: entry.blocks.map(({segment, role, source}) => ({segment, role, source}))}));
@@ -548,19 +627,32 @@ async function main() {
       const bytes = fs.readFileSync(dest);
       assert(bytes.length > 0);
       if (name === 'sample.pdf') {
-        // 原版排版的双语下载：每个原页保留矢量内容，其后是同尺寸的原版面译文预览页，再接完整译文续页（不再是左右拼接的横向页）。
-        const {PDFDocument} = require('pdf-lib'); const pdf = await PDFDocument.load(bytes);
+        // 原版排版导出与阅读器一致：每个原页对应一张左右对照页；原文仍可选择，较长译文全文存入 PDF 批注。
+        const {PDFDocument, PDFDict, PDFName, PDFHexString, PDFArray} = require('pdf-lib'); const pdf = await PDFDocument.load(bytes);
         const sourceTexts = await pdfPageTexts(fs.readFileSync(path.join(exampleDir, name))), outputTexts = await pdfPageTexts(bytes);
-        const originals = outputTexts.map((text, index) => ({index, text})).filter(entry => entry.text.trim());
-        assert.deepEqual(originals.map(entry => entry.text), sourceTexts, '双语下载必须按顺序保留每个原页的可选文字');
-        assert.equal(originals[0].index, 0, '下载文件应从原文第一页开始');
-        for (const [order, original] of originals.entries()) {
-          const next = originals[order + 1]?.index ?? pdf.getPageCount(), size = pdf.getPage(original.index).getSize();
-          assert.deepEqual(size, {width: 612, height: 792}, '原页尺寸必须保持');
-          assert(next - original.index >= 3, `每个原页后应有原版面译文页和至少一页完整译文续页：${JSON.stringify(originals.map(entry => entry.index))} / ${pdf.getPageCount()}`);
-          assert.deepEqual(pdf.getPage(original.index + 1).getSize(), size, '原版面译文页与原页同尺寸');
+        assert.equal(pdf.getPageCount(), sourceTexts.length, '原版排版下载必须逐页对应全部原页');
+        assert.deepEqual(outputTexts, sourceTexts, '双语下载每页必须按顺序保留原页全部可选文字');
+        const notes = [];
+        for (const [pageIndex, sheet] of pdf.getPages().entries()) {
+          const pageNumber = String(pageIndex + 1), gap = Math.max(8, Math.min(24, 612 * 0.025));
+          const remaining = expectedPdfTranslations.filter(entry => entry.page === pageNumber).map(entry => entry.text), pageNotes = [];
+          assert.deepEqual(sheet.getSize(), {width: 612 * 2 + gap, height: 792}, '同页双语须保留左右原页尺寸');
+          const annots = sheet.node.Annots();
+          for (let index = 0; index < (annots?.size() ?? 0); index++) {
+            const note = annots.lookup(index, PDFDict);
+            assert.equal(note.lookup(PDFName.of('Subtype'), PDFName).asString(), '/Text');
+            const text = note.lookup(PDFName.of('Contents'), PDFHexString).decodeText();
+            const expectedIndex = remaining.indexOf(text);
+            assert(expectedIndex >= 0, `第 ${pageNumber} 页批注必须对应本页某个独立片段的完整 Unicode 译文，不能重复或跨页：${text}`);
+            remaining.splice(expectedIndex, 1);
+            const rect = note.lookup(PDFName.of('Rect'), PDFArray).asArray().map(value => Number(value.toString()));
+            assert(rect.length === 4 && rect.every(Number.isFinite) && rect[0] >= 612 && rect[2] <= sheet.getWidth() && rect[1] >= 0 && rect[3] <= sheet.getHeight() && rect[0] < rect[2] && rect[1] < rect[3], '批注入口应在译页或中间留白且具有位于页面内的有效几何');
+            pageNotes.push(text); notes.push({page: pageNumber, text});
+          }
+          const required = forcedPdfOverflow.filter(entry => entry.page === pageNumber).map(entry => entry.text);
+          for (const text of new Set(required)) assert.equal(pageNotes.filter(note => note === text).length, required.filter(note => note === text).length, `第 ${pageNumber} 页每个受限同文单元格都须保留独立的完整校订批注`);
         }
-        report.pdfExport = {pages: pdf.getPageCount(), originalPageIndexes: originals.map(entry => entry.index), sizes: pdf.getPages().map(sheet => sheet.getSize())};
+        report.pdfExport = {pages: pdf.getPageCount(), originalPageIndexes: outputTexts.map((_text, index) => index), sizes: pdf.getPages().map(sheet => sheet.getSize()), fullTranslationNotes: notes};
       } else if (name.endsWith('.epub') || name.endsWith('.docx')) {
         const zip = await require('jszip').loadAsync(bytes);
         assert(zip.file(name.endsWith('.epub') ? 'OEBPS/chapter-1.xhtml' : 'word/document.xml'));
@@ -662,6 +754,10 @@ async function main() {
     await page.waitForFunction(() => Number(document.querySelector('[role=progressbar]').getAttribute('aria-valuenow')) > 0);
     await page.getByRole('button', {name: '暂停翻译', exact: true}).click();
     await status('已暂停');
+    const segment91Source = longText.split('\n\n')[90];
+    const segment91Requests = () => fixture.state.requests.flatMap(requestSources).filter(source => source === segment91Source).length;
+    const segment91RequestsAtPause = segment91Requests();
+    report.proofreadingResume = {segment: 90, source: segment91Source, requestsAtPause: segment91RequestsAtPause};
     const pausedProgress = await page.getByRole('progressbar').getAttribute('aria-valuenow');
     await page.getByRole('button', {name: '校订译文', exact: true}).click();
     await select('校订页码', '3 / 3');
@@ -669,6 +765,8 @@ async function main() {
     await page.getByRole('searchbox', {name: '搜索原文、译文或位置'}).fill('paragraph 91.');
     assert.equal(await page.locator('.segment-edit-row').count(), 1);
     await page.getByRole('checkbox', {name: '只看未翻译'}).check();
+    const segment91RequestsBeforeCorrection = segment91Requests();
+    report.proofreadingResume.requestsBeforeCorrection = segment91RequestsBeforeCorrection;
     await page.getByRole('textbox', {name: '第 91 段译文', exact: true}).fill('第 91 段人工校订结果');
     assert.equal(await page.getByRole('textbox', {name: '第 91 段译文', exact: true}).count(), 1, '输入中不得因为未翻译筛选而卸载编辑框');
     await page.getByRole('checkbox', {name: '只看未翻译'}).uncheck();
@@ -684,7 +782,9 @@ async function main() {
     await status('翻译完成');
     await page.getByRole('searchbox').fill('第 91 段人工校订结果');
     assert.equal(await page.getByRole('textbox', {name: '第 91 段译文', exact: true}).inputValue(), '第 91 段人工校订结果');
-    assert(!fixture.state.requests.some(source => source.startsWith('Long document paragraph 91.')));
+    const segment91RequestsAfterResume = segment91Requests();
+    Object.assign(report.proofreadingResume, {requestsAfterResume: segment91RequestsAfterResume, manualTranslation: await page.getByRole('textbox', {name: '第 91 段译文', exact: true}).inputValue()});
+    assert.equal(segment91RequestsAfterResume, segment91RequestsBeforeCorrection, '校订后续译不能再发送第 91 段的单段或批量 slot；暂停前已发出的请求不计为续译回归');
     report.cases.push('resume does not translate or overwrite manual completed segments');
     const reloadAttempt = page.reload({timeout: 5000}).catch(() => undefined);
     const unloadDialog = await page.waitForEvent('dialog');
@@ -782,6 +882,8 @@ async function main() {
     report.cases.push('reload restores the open document and its translations from local history without re-translating; landing page lists it under recent documents');
     fixture.state.delay = 1000;
     fixture.state.fail = true;
+    // 两批并发请求可能同一帧完成；固定挂起第二批，确保暂停检查面对真实未完成请求。
+    fixture.state.holdSource = /Batch alpha paragraph 17\./u;
     const batchFiles = [
       {name: 'same.txt', text: ['Batch alpha first paragraph.', ...Array.from({length: 20}, (_, i) => `Batch alpha paragraph ${i + 2}.`)].join('\n\n')},
       {name: 'broken.json', text: '{not valid json'},
@@ -794,10 +896,12 @@ async function main() {
     assert.match(await entries.nth(1).innerText(), /导入失败/);
     await page.getByRole('button', {name: '翻译剩余文件', exact: true}).click();
     await status('正在翻译');
-    await page.waitForFunction(() => Number(document.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')) > 0);
+    await page.waitForFunction(() => {const progress = Number(document.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')); return progress > 0 && progress < 100;});
+    assert.equal(fixture.state.held.size, 1, '暂停前必须有一批真实未完成的请求');
     await page.getByRole('button', {name: '暂停全部', exact: true}).click();
     await status('已暂停');
     assert.match(await entries.nth(3).innerText(), /等待翻译/);
+    fixture.releaseHeld();
     fixture.state.delay = 5;
     const firstRequests = fixture.state.requests.filter(text => text.includes('Batch alpha first paragraph')).length;
     await page.getByRole('button', {name: '翻译剩余文件', exact: true}).click();
@@ -886,6 +990,7 @@ async function main() {
     if (page) await page.screenshot({path: path.join(artifactsDir, 'failure.png')}).catch(() => {});
     throw error;
   } finally {
+    report.providerRequests = [...(fixture?.state.requests ?? [])];
     report.cleanupErrors = [];
     let closed = false;
     if (launched) {

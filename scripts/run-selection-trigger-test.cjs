@@ -1905,8 +1905,9 @@ async function main() {
       await waitForSelectionUi(page, {tooltip:true,translation:true,resultPrefix:'测试译文：'}, '中文反向翻译卡片');
       const chineseUi = await readSelectionUi(page);
       assert(chineseUi.navigation.present && chineseUi.navigation.close
-        && !chineseUi.navigation.standaloneHeader && !chineseUi.navigation.targetLanguageControl && !chineseUi.brandIcon.present,
-        `顶部多余区域仍然存在或关闭入口丢失：${JSON.stringify(chineseUi.navigation)}`);
+        && !chineseUi.navigation.standaloneHeader && !chineseUi.navigation.targetLanguageControl
+        && chineseUi.brandIcon.present && /^chrome-extension:\/\/[^/]+\/icon\/128\.png$/u.test(chineseUi.brandIcon.src),
+        `卡片品牌图标、紧凑导航或关闭入口异常：${JSON.stringify(chineseUi)}`);
       assert(chineseUi.resultText.endsWith('[to=en]'), `中文反向请求没有译为英文：${chineseUi.resultText}`);
       assert(chineseUi.originalText === '你好，世界！', '反向翻译改写了选区原文');
       result.cases.push({id:'direction.chinese-to-english',status:'passed',ui:chineseUi});
@@ -2601,12 +2602,12 @@ async function main() {
     const directUi = await readSelectionUi(page);
     assert(directUi.selectionText === directSelection.text && !directUi.indicator && directUi.targetText === TARGET_TEXT, '直接弹出改变了入口或页面正文');
     assert(!directUi.tooltipText.includes('FluentRead')
-      && !directUi.brandIcon.present
+      && directUi.brandIcon.present && /^chrome-extension:\/\/[^/]+\/icon\/128\.png$/u.test(directUi.brandIcon.src)
       && !directUi.navigation.standaloneHeader && !directUi.navigation.targetLanguageControl
       && directUi.navigation.present && directUi.navigation.close && directUi.navigation.share
       && directUi.copyButtons.source
       && directUi.copyButtons.translation,
-    `翻译卡没有移除多余头部或保留导航操作及独立复制入口：${JSON.stringify(directUi)}`);
+    `翻译卡品牌图标、紧凑导航操作或独立复制入口异常：${JSON.stringify(directUi)}`);
     const directScreenshot = path.join(args.artifactsDir, 'selection-direct.png');
     await page.screenshot({ path: directScreenshot });
     result.screenshots.push(directScreenshot);
