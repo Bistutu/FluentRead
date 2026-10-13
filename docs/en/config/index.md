@@ -86,6 +86,7 @@ Concurrency counts translation tasks. A task that combines multiple texts still 
 | Concurrent translation requests | 10 |
 | Requests per second | 10 |
 | Requests per minute | 250 |
+| AI translation request timeout | 120 seconds |
 
 Set a per-second or per-minute limit to **0** to remove that limit. Requests wait in a queue when a limit is reached. Existing custom values are preserved.
 
@@ -94,6 +95,8 @@ Set a per-second or per-minute limit to **0** to remove that limit. Requests wai
 - **Restore inheritance**: switch **Limits** back to **Use global settings** or **Use service settings**. Previously entered values stay available for later use.
 
 Retry count and intervals are configured globally in advanced settings.
+
+Set **AI translation request timeout** to **10–600 seconds**. This global setting applies to AI text, batch, input box, video subtitle, and Translation Center requests. Increase it for slower models or longer texts, or lower it to detect unresponsive requests sooner. Changes apply to new requests; active requests keep the value captured when they started and can still be cancelled. Tasks such as image recognition and area translation remain subject to their own total deadlines. Connection checks also keep a shorter dedicated timeout.
 
 Free translation fallback routes and Google batches also retain slots while requests are still finishing. Free translation can try another route when capacity is available. When capacity is full, it waits for existing requests to finish within the translation's total timeout budget.
 

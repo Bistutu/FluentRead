@@ -2,6 +2,7 @@
  * @file src/features/settings/model/navigation.ts
  * 文件职责：定义设置中心侧边栏的导航信息模型，并提供默认分区、哈希解析与搜索过滤等不依赖 Vue 或浏览器 API 的纯规则。
  * 主要内容：完整句学习外观拥有界面风格独立分类与可直达锚点；包含按功能分组的标题、副标题、图标、关键词和 section ID，以及翻译设置内区分双语逐句阅读与智能高亮的独立锚点、同页分组、服务分配与模型用量深链接；旧圈选地址解析为图片页；通用页文案对应日常翻译、网页辅助与基本偏好的阅读顺序，从同一注册表派生导航列表与后台合法分区 ID，导出 resolveNavigationItem、resolveRequestedSection 与 filterNavigationItems。
+ * 请求配置搜索：将 AI 翻译超时、timeout 与慢模型等待关键词归入高级请求限制。
  * 模块边界：该模块只描述导航元数据，不切换 DOM、不写 location.hash 也不保存配置；Options 页面负责路由同步，SettingsSections.vue 负责各分区实际内容。
  */
 import brandTaglines from '@/src/core/i18n/messages/brand-taglines.json';
@@ -294,7 +295,7 @@ export const settingsPagePanels: Readonly<Record<string, readonly SettingsPagePa
   ],
   'settings-advanced': [
     {"id": "recognition", "labelKey": "options.panel.recognition", "searchTerms": "页面识别 节点 段落 标题 侧栏", "targetIds": []},
-    {"id": "requests", "labelKey": "options.panel.requests", "searchTerms": "并发 限流 重试 性能 密钥 恢复 退避", "targetIds": []},
+    {"id": "requests", "labelKey": "options.panel.requests", "searchTerms": "并发 限流 重试 性能 密钥 恢复 退避 AI 请求 超时 timeout 等待 慢模型", "targetIds": []},
     {"id": "cache", "labelKey": "options.panel.cache", "searchTerms": "缓存 容量 条数 存储 清除", "targetIds": []},
   ],
   'settings-data': [

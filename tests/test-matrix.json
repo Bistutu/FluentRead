@@ -72,6 +72,7 @@
       "tests/configAutoBackupDomain.test.ts",
       "tests/configCount.test.ts",
       "tests/configDiff.test.ts",
+      "tests/aiRequestTimeout.test.ts",
       "tests/glossary.test.ts",
       "tests/glossaryRevisionMemo.test.ts",
       "tests/builtinGlossaries.test.ts",

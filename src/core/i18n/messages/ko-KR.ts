@@ -6,6 +6,7 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/ko-KR.json';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/ko-KR.json';
@@ -531,6 +532,7 @@ export const koKRMessages = {
     "settings.requestLimits.modelTitle": "모델 요청 제한",
     "settings.requestLimits.globalTitle": "요청 제한",
     "settings.requestLimits.globalHelp": "개별 설정이 없는 서비스와 모델은 이 제한을 공유합니다.",
+    ...aiRequestTimeoutMessages["ko-KR"],
     "settings.requestLimits.retryIntervals": "재시도 간격",
     "settings.requestLimits.apiKeyRecovery": "실패한 Key 쿨다운",
     "settings.requestLimits.apiKeyRecoveryHelp": "인증, 할당량 또는 속도 제한 오류가 난 Key는 잠시 건너뜁니다. 서비스가 Retry-After를 보내면 해당 대기 시간을 우선합니다.",
