@@ -1,8 +1,8 @@
 <!--
  * @file src/features/settings/ui/LearningMemoryManager.vue
  * 文件职责：让用户查看和维护主动保存的本机学习笔记，区分保存笔记与允许 AI 参考的开关。
- * 主要内容：提供本地搜索、类型选择、单条添加编辑、删除和清空；按 200 条与每条 2000 字限制提示容量，并隔离迟到读取。
- * 模块边界：只通过 reading-assistant 公共客户端管理记忆，不检索模型、不直接访问数据库、不自动收集网页或学习信息。
+ * 主要内容：提供本地搜索、类型选择、单条添加编辑、删除和清空；按 200 条与每条 2000 字限制提示容量，并隔离迟到读取；日期格式器在本组件每轮同步模板渲染内复用，下轮重新读取系统默认语言与时区。
+ * 模块边界：只通过 reading-assistant 无 UI 的公共客户端管理记忆，不加载阅读卡、不检索模型、不直接访问数据库、不自动收集网页或学习信息。
  -->
 <template>
   <section class="fr-learning-memory" :aria-label="t('learning.memory')">
@@ -61,6 +61,7 @@ const {translateLegacy: translateControlLabel} = useControlI18n();
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 import {clearLearningMemories, deleteLearningMemory, listLearningMemories, saveLearningMemory, type LearningMemory} from '@/src/features/reading-assistant/public'
 import {useUiI18n} from '@/src/ui/i18n'
+import {useRenderDateFormatter} from '@/src/ui/dateFormat'
 
 defineProps<{enabled: boolean}>()
 const emit = defineEmits<{navigate: [section: string]}>()
@@ -82,7 +83,7 @@ const filteredMemories = computed(() => {
   return memories.value.filter(memory => !term || memory.content.toLocaleLowerCase().includes(term) || kindLabel(memory.kind).toLocaleLowerCase().includes(term))
 })
 const kindLabel = (kind: LearningMemory['kind']) => kinds.value.find(item => item.value === kind)?.label || t('learning.memoryNote')
-const formatDate = (value: number) => new Intl.DateTimeFormat(undefined, {month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit'}).format(value)
+const formatDate = useRenderDateFormatter({month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit'})
 let generation = 0
 let active = true
 const errorText = (failure: unknown) => failure instanceof Error ? failure.message : t('learning.memoryError')

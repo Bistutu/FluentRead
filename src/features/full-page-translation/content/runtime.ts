@@ -1,11 +1,12 @@
 /**
  * @file src/features/full-page-translation/content/runtime.ts
  * 文件职责：实现全文翻译的页面级会话引擎，负责候选发现、可见性调度、批量请求、动态 DOM 重扫、失败重试、缓存复用和恢复原文。
- * 主要内容：相同译文保留原文且不重复展示；维护 FullPageSession、AbortController、Intersection/Mutation 观察器、弹窗优先调度、精确属性写入过滤、候选所有权和生命周期重试；对变化来源等待安静窗口、跳过持续变化的计数，并清理延迟重扫，只有真实宿主删除启动候选回收，同批重复属性变化只处理一次；按时间片派发并在全文结果提交前让出主线程，合并同段 DOM 写入并在重挂时复用同批布局读数与单文本来源快照；已拥有状态的发现候选直接登记复验，取消记录命中后才提取原文，避免整批重扫重复计算熔断签名；按阅读进度撤回离开预取区的待派发候选，冻结请求/展示配置与识别范围，在弹窗关闭后继续正文，按实际节点阶段发布进度及工具栏结果；悬浮调用冻结独立服务且保留快捷方案覆盖优先级；向局部翻译开放单候选 translateTarget 与单个译文所有者的恢复入口。
+ * 主要内容：精确相同译文和有同目标语言证据的排版回显保留原文且不重复展示；以增量计数发布完成与失败摘要，仅对本会话失败目标重试和定位；维护 FullPageSession、AbortController、Intersection/Mutation 观察器、弹窗优先调度、精确属性写入过滤、候选所有权和生命周期重试；对变化来源等待安静窗口、跳过持续变化的计数，并清理延迟重扫，只有真实宿主删除启动候选回收，同批重复属性变化只处理一次；按时间片派发并在全文结果提交前让出主线程，合并同段 DOM 写入并在重挂时复用同批布局读数与单文本来源快照；合成行内段在延迟 loading 前后都按精确来源节点、HTML 和 Text 槽识别自身迁移；已拥有状态的发现候选直接登记复验，取消记录命中后才提取原文，避免整批重扫重复计算熔断签名；连续滚动时限频派发当前可见候选，空闲后恢复预取，按阅读进度撤回离开预取区的待派发候选，冻结请求/展示配置与识别范围，在弹窗关闭后继续正文，按实际节点阶段发布进度及工具栏结果；悬浮按候选停留而非每次移动计时，同段复用冻结的独立服务与快捷方案配置，到期复验最新命中并在路由切换取消；同目标预检单独读取受保护规则约束的行内代码语言上下文，发送与渲染仍只使用可翻译文本槽；恢复单个所有者或全文时重置篇章证据，统一恢复原文并清理重挂预算及孤儿产物；向局部翻译开放单候选 translateTarget 与单个译文所有者的恢复入口。
  * 模块边界：这是 content 侧编排层，不实现 provider 协议、纯候选算法或底层状态存储；翻译调用经 app client，发现规则来自 core/translation，渲染与状态分别交给 renderer、liveTextRender 和 state。
  */
+import {resetPageDiscourseContext} from '@/src/services/translation/context/pageDiscourse';
 import {resolveTranslationToolbarStatus, countFullPageTranslationWork} from '../toolbarStatus';
-import {hasDistinctTranslation} from '@/src/core/translation/result';
+import {hasDistinctTargetTranslation as hasDistinctTranslation} from '@/src/core/translation/targetResult';
 import {getFullPageTranslationStateRevision, notifyFullPageTranslationState, notifyTranslationToolbarStatus} from './stateNotification';
 import type {FrameTranslationState} from './frameSession';
 import { checkConfig } from "@/src/app/translation/check";
@@ -42,6 +43,8 @@ import {
     startFullPageTranslationProgress,
     updateFullPageTranslationProgress,
 } from '@/src/features/full-page-translation/progress';
+import {createFullPageOutcomeRegistry} from '../core/outcomes';
+import {bindFullPageOutcomeRecovery, getFullPageOutcomeSummary, getFullPageModalOutcomePhases, registerFullPageOutcomeTarget} from './outcomeSession';
 import {
     appendBilingualTranslation,
     materializeCandidate,
@@ -68,8 +71,8 @@ import {
     markTranslationError,
     resetAllBilingualArtifactHostWriteBudgets,
     resetBilingualArtifactHostWriteBudget,
-    restoreAllTranslations,
     restoreTranslation,
+    createBilingualTranslationReplay,
     setBilingualContent,
     setBilingualArtifactCapitulationHandler,
     setBilingualLifecycleExternalManager,
@@ -96,7 +99,7 @@ import {
     withFullPageViewportAnchor,
     type FullPageScrollController,
 } from '@/src/features/full-page-translation/content/viewportStability';
-import {clearFullPageQueueState, createFullPageQueueState, noteFullPageScroll, queueFullPageCandidate, removeFullPagePending, createFullPageDispatchPlan, type FullPageQueueState, type FullPageDispatchPlan} from '@/src/features/full-page-translation/content/fullPageQueue';
+import {clearFullPageQueueState, createFullPageQueueState, noteFullPageScroll, queueFullPageCandidate, queueFullPageFailedCandidate, removeFullPagePending, createFullPageDispatchPlan, type FullPageQueueState, type FullPageDispatchPlan} from '@/src/features/full-page-translation/content/fullPageQueue';
 import {FULL_PAGE_PREFETCH_MARGIN_PX} from '@/src/features/full-page-translation/content/fullPagePriority';
 import {
     createLifecycleRetry, sameLifecycleRetry, createAcceptedUnchangedCompletion, readAcceptedUnchangedCompletion,
@@ -122,13 +125,17 @@ import {
     createTranslationRequest,
     type TranslationResult,
 } from '@/src/features/full-page-translation/content/liveTextTranslation';
-import {clearOrphanedTranslationArtifacts, consumeOrphanedOwnerClassMutation, isTextEquivalentHostReplacement, normalizeOrphanedSingleSlots, normalizeOrphanedTranslationArtifacts, normalizeOrphanedTranslationOwner}
+import {restorePageTranslationContent, consumeOrphanedOwnerClassMutation, isTextEquivalentHostReplacement, normalizeOrphanedSingleSlots, normalizeOrphanedTranslationArtifacts, normalizeOrphanedTranslationOwner}
     from '@/src/features/full-page-translation/content/orphanArtifacts';
-import {createFullPageRequestSessionState, disposeFullPageRequestSession, getHoverTranslationRequestSession, invalidateContextSensitiveRequestCache, invalidateFullPageRequestSessionCache, invalidateFullPageRequestSessionForRoute, invalidateHoverTranslationRequestSession, resetHoverTranslationRequestSession, type FullPageRequestSessionState} from '@/src/features/full-page-translation/content/requestSession';
+import {bindFullPageRequestSessionAttempt, createFullPageRequestSessionState, disposeFullPageRequestSession, getHoverTranslationRequestSession, invalidateContextSensitiveRequestCache, invalidateFullPageRequestSessionCache, invalidateHoverTranslationRequestSession, resetHoverTranslationRequestSession, type FullPageRequestSessionState} from '@/src/features/full-page-translation/content/requestSession';
+import {resetFullPageRouteSession} from './routeLifecycle';
+import {HoverTranslationScheduler, type HoverTranslationInvocation} from './hoverScheduler';
+import {personalCorrectionIsCurrent, registerPersonalCorrectionResult} from './personalCorrections';
 import {getSiteAdapterAttributeFilter} from '@/src/core/site-adaptation/compiler';
 import {isElementNode, asHTMLElement, mutationTargetElement, allMutationNodesMatch, createTranslationAttributeMutationFilter, createTranslationMutationObserverOptions, isOwnSyntheticSegmentMarkerMutation, mutationRootContains as nodeContains, collapseMutationRescanRoot as broadRescanRoot} from './mutationObservation';
 import {isWithinTranslationModal, mayChangeTranslationModal} from './modalPriority';
 import {refreshModalSession, type ModalPrioritySession} from './modalSession';
+import {createAttributeMutationBatch} from './attributeMutationBatch';
 const translationSourceStability = new TranslationSourceStabilityGate<FullPageSession>({
     isCurrent: session => session.active && fullPageSession === session,
     resolve: resolveFullPageRetryCandidate, discover: scheduleDiscoveredCandidate, source: candidateLifecycleSource,
@@ -150,6 +157,8 @@ interface FullPageSession extends FullPageRequestSessionState, ModalPrioritySess
     translationConfig: FullPageTranslationConfigSnapshot;
     progressSessionId: number;
     progressPublishScheduled: boolean;
+    outcomes: ReturnType<typeof createFullPageOutcomeRegistry<HTMLElement>>;
+    unsubscribeOutcomeChanges: () => void;
     observer: IntersectionObserver;
     mutationObserver: MutationObserver;
     shadowEventController: AbortController;
@@ -170,8 +179,9 @@ interface FullPageSession extends FullPageRequestSessionState, ModalPrioritySess
     /**
      * 用户在本次全文会话中显式恢复的候选标识。来源快照允许真实宿主编辑
      * 清除取消墓碑，同时让扩展自身产生的恢复 mutation 继续排除该片段。
+     * 按节点弱关联，不因保留取消记录而延长已被宿主删除节点的生命周期。
      */
-    userCancelledCandidates: Map<Node, string>;
+    userCancelledCandidates: WeakMap<Node, string>;
     /** 用户滚动期间暂停新增翻译/重排，等待虚拟列表稳定后再继续。 */
     scrollController: FullPageScrollController;
     /** 宿主连续拒绝 wrapper 后，对稳定边界内的同源候选停止写 DOM。 */
@@ -199,7 +209,18 @@ const CANDIDATE_PRUNE_BUDGET_MS = 4;
 const STATEFUL_ATTRIBUTE_DEBOUNCE_MS = 500;
 const FULL_PAGE_LIFECYCLE_RETRY_LIMIT = 2;
 
-let hoverTimer: ReturnType<typeof setTimeout> | undefined;
+const hoverTranslationScheduler = new HoverTranslationScheduler({
+    isAvailable: () => document.visibilityState !== 'hidden' && config.on !== false,
+    captureCommitGuard: () => { const session = getHoverTranslationRequestSession(), generation = session.renderCommitGeneration; return () => getHoverTranslationRequestSession() === session && session.renderCommitGeneration === generation; },
+    currentScope: () => config.translationScope,
+    resolveCandidate: (x, y, scope) => getOwnedTranslationCandidateAtPoint(document, x, y)
+        ?? resolveTranslationCandidateAtPoint(x, y, scope),
+    captureConfig: overrides => captureFullPageTranslationConfig({...overrides,
+        service: overrides.service?.trim() || config.hoverTranslationService || config.service}),
+    checkConfig,
+    noteGesture: beginBilingualArtifactHostWriteGesture,
+    translate: (candidate, snapshot, continuous) => { void translateTarget(candidate, snapshot.displayMode, continuous, undefined, snapshot); },
+});
 let fullPageSession: FullPageSession | null = null;
 let hoverBilingualRemountCapitulations = createBilingualRemountCapitulationRegistry();
 setBilingualLifecycleExternalManager(() => fullPageSession?.active === true);
@@ -236,18 +257,15 @@ function scheduleFullPageProgressPublish(session: FullPageSession): void {
         }
         const work = countFullPageTranslationWork(session.inFlightCandidates, scheduled, pending);
         const deferred = session.scheduled.size - scheduled.size;
+        const outcomes = getFullPageOutcomeSummary(session);
         const busy = work.running > 0 || work.queued > 0;
-        // 惰性产出阶段：整页译文可达数千个，而 busy 或首个 loading 都会让
-        // resolveTranslationToolbarStatus 立即短路，不应为此预先分配整张数组。
-        const status = resolveTranslationToolbarStatus(busy, (function* () {
-            for (const target of session.statefulTargetsByAncestor.get(document.documentElement) ?? []) {
-                yield target.isConnected && eligible(target) ? getTranslationState(target)?.phase ?? '' : '';
-            }
-        })());
+        // 普通页面直接用增量摘要；弹窗仅惰性检查其内部目标，不预先分配整页数组。
+        const status = resolveTranslationToolbarStatus(busy, !modal ? outcomes.phases : getFullPageModalOutcomePhases(
+            session, session.statefulTargetsByAncestor.get(document.documentElement) ?? [], getTranslationInvocationIdentity(session.translationConfig)));
         notifyTranslationToolbarStatus(session.modal && status === 'translated' ? 'idle' : status);
         const modalPhase = session.modal ? busy ? 'translating' : 'waiting' : 'none';
         syncModalTranslationHint(session.modal, modalPhase, config.translationProgressPanelEnabled === true);
-        updateFullPageTranslationProgress(session.progressSessionId, {...work, deferred, modalPhase});
+        updateFullPageTranslationProgress(session.progressSessionId, {...work, deferred, modalPhase, completed: outcomes.completed, failed: outcomes.failed, retryable: outcomes.retryable});
     });
 }
 
@@ -364,20 +382,26 @@ function markFailedTranslation(
             attemptNode: node,
         };
     }
+    const retryIsCurrent = () => node.isConnected && getTranslationState(node) === attempt.state && attempt.state.phase === 'error'
+        && (!owner || owner.active && fullPageSession === owner);
+    const retry = (): boolean => {
+        if (!retryIsCurrent()) return false;
+        if (owner) return queueFullPageFailedCandidate(owner, candidate, attempt.state.sourceText,
+            () => { scheduleFullPageProgressPublish(owner); scheduleFullPageDrain(owner); }, retryIsCurrent);
+        const retrySnapshot = snapshot?.requestOverridesApplied ? snapshot : undefined;
+        void translateTarget(candidate,
+            retrySnapshot?.displayMode ?? (config.display === styles.bilingualTranslation ? "bilingual" : "single"),
+            false, undefined, retrySnapshot, true);
+        return true;
+    };
     const retryWrapper = withFullPageViewportAnchor(() => {
         spinner?.remove();
-        return insertFailedTip(
-            node,
-            error instanceof Error ? error.message : String(error || "翻译失败"),
-            () => {
-                const retryOwner = owner?.active ? owner : undefined;
-                const retrySnapshot = snapshot?.requestOverridesApplied ? snapshot : undefined;
-                void translateTarget(candidate,
-                    retryOwner?.translationConfig.displayMode ?? retrySnapshot?.displayMode ?? (config.display === styles.bilingualTranslation ? "bilingual" : "single"),
-                    false, retryOwner, retrySnapshot, true);
-            },
-        );
+        return insertFailedTip(node, error instanceof Error ? error.message : String(error || "翻译失败"), retry);
     }, [node]);
+    if (owner?.active) {
+        owner.outcomes.setRetry(node, retry);
+        scheduleFullPageProgressPublish(owner);
+    }
     setRetryWrapper(node, retryWrapper);
     setRenderedStyleAttribute(node);
     return {status: "failed"};
@@ -405,6 +429,7 @@ async function renderTranslation(
         // 缓存命中/批量响应会在同一个微任务检查点完成很多段。给每个全文提交独立的
         // 浏览器任务，让输入与绘制能够穿插；让出后仍须复验取消、generation 和宿主节点。
         if (owner) await new Promise<void>(resolve => window.setTimeout(resolve, 0));
+        if (import.meta.env.BROWSER !== 'userscript' && !await personalCorrectionIsCurrent(result.personalCorrection, node)) return staleOutcome();
         if (state.controller.signal.aborted || getTranslationState(node) !== state || (owner && !owner.active)) return staleOutcome();
         if ((requestSession.renderCommitGeneration ?? 0) !== requestCommitGeneration) return staleOutcome();
         const spinner = state.spinner;
@@ -430,7 +455,7 @@ async function renderTranslation(
             return {status: "empty", retryRoot: node.isConnected ? node : undefined, attemptNode: node};
         }
         if (!result.translations.some((translation, index) =>
-            hasDistinctTranslation(result.sources[index] ?? '', translation))) {
+            hasDistinctTranslation(result.sources[index] ?? '', translation, snapshot.targetLanguage))) {
             const completion = owner && fullPageSession === owner && owner.scheduled.get(getTranslationCandidateKey(candidate)) === candidate
                 ? createAcceptedUnchangedCompletion(node, candidate, state, generation, result.sources, result.translations,
                     {...snapshot, sessionId: owner.progressSessionId, renderCommitGeneration: requestCommitGeneration,
@@ -473,10 +498,9 @@ async function renderTranslation(
                 longParagraphLineBreak: snapshot.longParagraphLineBreak, translationBeforeOriginal: snapshot.translationBeforeOriginal,
             });
         }, [node]);
-        setBilingualContent(node, content, {sources: result.sources, translations: result.translations,
-            targetLanguage: snapshot.targetLanguage, style: snapshot.style,
-            longParagraphLineBreak: snapshot.longParagraphLineBreak});
+        setBilingualContent(node, content, createBilingualTranslationReplay(result.sources, result.translations, snapshot));
         setRenderedStyleAttribute(node);
+        if (import.meta.env.BROWSER !== 'userscript') registerPersonalCorrectionResult(node, state, result.personalCorrection);
         return {status: "committed"};
     } catch (error) {
         if (state.controller.signal.aborted || getTranslationState(node) !== state || (owner && !owner.active)) return staleOutcome();
@@ -558,8 +582,9 @@ function removeCandidateOwnerKey(session: FullPageSession, owner: HTMLElement, k
     if (keys?.size === 0) session.candidateOwnerKeys.delete(owner);
 }
 
-function unregisterSessionStatefulTarget(session: FullPageSession | undefined, target: HTMLElement): void {
+function unregisterSessionStatefulTarget(session: FullPageSession | undefined, target: HTMLElement, preserveOutcome = false): void {
     if (!session) return;
+    if (!preserveOutcome) session.outcomes.update(target);
     const ancestors = session.statefulAncestorsByTarget.get(target);
     if (!ancestors) return;
     scheduleFullPageProgressPublish(session);
@@ -621,7 +646,7 @@ function registerSessionStatefulTarget(
     target: HTMLElement,
 ): void {
     if (!session?.active) return;
-    unregisterSessionStatefulTarget(session, target);
+    unregisterSessionStatefulTarget(session, target, true);
     const ancestors: Element[] = [];
     let current: Element | null = candidateOwner;
     let depth = 0;
@@ -637,6 +662,7 @@ function registerSessionStatefulTarget(
         current = getComposedParent(current);
     }
     session.statefulAncestorsByTarget.set(target, ancestors);
+    registerFullPageOutcomeTarget(session, target, getTranslationInvocationIdentity(session.translationConfig));
     scheduleFullPageProgressPublish(session);
 }
 
@@ -761,6 +787,7 @@ export async function translateTarget(candidate: TranslationCandidate, displayMo
             rememberUserCancelledCandidate(statefulSession, candidate, existingNode, current);
         }
         unregisterSessionStatefulTarget(statefulSession, existingNode);
+        resetPageDiscourseContext();
         withFullPageViewportAnchor(() => restoreTranslation(existingNode), [existingNode]);
         if (shouldSwitchProfile && retryAnchor.isConnected) {
             const refreshedCandidate = getCurrentTranslationCore(candidate.scope).resolve(retryAnchor);
@@ -807,7 +834,8 @@ export async function translateTarget(candidate: TranslationCandidate, displayMo
             retryRoot: candidate.element.isConnected ? candidate.element : undefined,
         };
     }
-    if (translationSourceStability.blocks(candidate, sourceText, statefulSession)) return {status: 'unchanged', source: sourceText};
+    // 安静窗口由自动全文 owner 负责重新派发；手动悬浮没有该队列，不能静默吞掉已明确请求的新来源。
+    if (owner?.active && translationSourceStability.blocks(candidate, sourceText, owner)) return {status: 'unchanged', source: sourceText};
     if (slide && displayMode === 'bilingual' && blocksBilingualRemountCandidate(remountCapitulations, candidate.element, sourceText,
         candidate.allowTopLevelApplicationShell === true,
         getTranslationInvocationIdentity(translationConfig), candidate.nodes, candidate.scope)) return {status: 'owned'};
@@ -820,7 +848,9 @@ export async function translateTarget(candidate: TranslationCandidate, displayMo
 
     // 同语言检测只是节流优化；不确定、短 Latin 与纯 Han 必须 fail-open，
     // 否则日中混合标题或法德短文会在 provider 之前静默漏译。
-    if (shouldSkipTranslationForTarget(sourceText, translationConfig.targetLanguage, translationConfig.excludedLanguages)) {
+    if (shouldSkipTranslationForTarget(
+            candidateSourceText(candidate, core, {...candidateProtectionOptions, includeInlineCodeForLanguage: true}),
+            translationConfig.targetLanguage, translationConfig.excludedLanguages)) {
         return {status: "unchanged", source: sourceText};
     }
 
@@ -879,8 +909,10 @@ export async function translateTarget(candidate: TranslationCandidate, displayMo
     }
     // 请求必须在 spinner 插入前创建；微软 HTML 克隆和文本节点快照不能把
     // 插件自己的 loading 元素送到服务端。
+    const requestProtectionOptions = getTranslationTextProtectionOptions(candidate.allowTopLevelApplicationShell, node);
     const queueSession = createTranslationQueueSession();
     const signal = attempt.state.controller.signal;
+    const releaseRequestSession = bindFullPageRequestSessionAttempt(requestSession, attempt.state.controller);
     const cancelQueuedRequest = () => cancelTranslationQueueSession(queueSession, createAbortError());
     signal.addEventListener('abort', cancelQueuedRequest, {once: true});
     const request = createTranslationRequest(
@@ -891,11 +923,11 @@ export async function translateTarget(candidate: TranslationCandidate, displayMo
         signal,
         queueSession,
         requestSession,
-        getTranslationTextProtectionOptions(candidate.allowTopLevelApplicationShell, node),
+        requestProtectionOptions,
         forceFailedRequest,
         candidate.scope,
     )
-        .finally(() => signal.removeEventListener('abort', cancelQueuedRequest));
+        .finally(() => { signal.removeEventListener('abort', cancelQueuedRequest); releaseRequestSession(); });
     if (synthetic) node.setAttribute('data-fr-translation-segment', 'true');
     const cancelLoading = scheduleTranslationLoadingIndicator(node, attempt.state, Boolean(owner));
     registerSessionStatefulTarget(statefulSession, candidate.element, node);
@@ -1034,11 +1066,11 @@ function finalizeFullPageCandidate(
 }
 
 function scheduleFullPageDrain(session: FullPageSession): void {
-    if (!session.active || session.scrollController.isScrolling || session.flushTimer !== null) return;
+    if (!session.active || session.flushTimer !== null) return;
     session.flushTimer = window.setTimeout(() => {
         session.flushTimer = null;
         drainFullPage(session);
-    }, 0);
+    }, session.scrollController.isScrolling ? 120 : 0);
 }
 
 function refreshFullPageModal(session: FullPageSession): void {
@@ -1054,27 +1086,34 @@ function refreshFullPageModal(session: FullPageSession): void {
 }
 
 function drainFullPage(session: FullPageSession): void {
-    if (!session.active || session.scrollController.isScrolling || session.draining) return;
+    if (!session.active || session.draining) return;
+    const scrolling = session.scrollController.isScrolling;
     refreshFullPageModal(session);
     session.draining = true;
     const maxConcurrent = normalizeMaxConcurrentTranslations(config.maxConcurrentTranslations);
     const startedAt = performance.now();
+    let scrollingDispatches = 0;
     let needsAnotherSlice = false;
 
     // 有空闲槽时才集中测量锚点；一轮派发内复用，避免 loading 写入后重复读取布局。
     let plan: FullPageDispatchPlan | undefined;
     while (session.active && session.inFlightCandidates.size < maxConcurrent && session.pending.size > 0) {
-        plan ??= createFullPageDispatchPlan(session, {now: Date.now(), viewportHeight: window.innerHeight,
+        plan ??= createFullPageDispatchPlan(session, {now: Date.now(), viewportHeight: window.innerHeight, visibleOnly: scrolling,
             isEligible: candidate => !session.modal || isWithinTranslationModal(session.modal, candidate.element),
             resolveSource: candidateLifecycleSource});
         const selection = plan.next();
         if (!selection) break;
         const {key, candidate, priority} = selection;
+        if (session.pendingMetadata.get(key)?.retryIsCurrent?.() === false) {
+            forgetCandidate(session, candidate);
+            continue;
+        }
+        const forceFailedRequest = session.pendingMetadata.get(key)?.forceFailedRequest === true;
         removeFullPagePending(session, key, candidate);
         session.inFlightCandidates.set(key, candidate);
         if (priority.band === 'background') session.foregroundDispatchesSinceBackground = 0;
         else session.foregroundDispatchesSinceBackground += 1;
-        void translateTarget(candidate, session.translationConfig.displayMode, true, session)
+        void translateTarget(candidate, session.translationConfig.displayMode, !forceFailedRequest, session, undefined, forceFailedRequest)
             .then(
                 (outcome) => finalizeFullPageCandidate(session, candidate, outcome),
                 () => {
@@ -1092,7 +1131,8 @@ function drainFullPage(session: FullPageSession): void {
                     scheduleFullPageDrain(session);
                 }
             });
-        if (performance.now() - startedAt >= 8) {
+        // 每个 120ms 滚动批次最多三个可见候选，保留原生合批，仍受原并发上限与 8ms 切片约束。
+        if ((scrolling && ++scrollingDispatches >= 3) || performance.now() - startedAt >= 8) {
             needsAnotherSlice = session.inFlightCandidates.size < maxConcurrent && session.pending.size > 0;
             break;
         }
@@ -1340,7 +1380,7 @@ function resolveStatefulMutationTarget(element: Element): HTMLElement | false {
 }
 
 /**
- * materialize 行内段会把来源节点移入合成 span，再追加一个 loading spinner。
+ * materialize 的 childList 可在延迟 spinner 创建前送达；尚未创建允许零产物，已登记则必须保持唯一归属。
  * 这些真实 childList 记录会在 beginTranslation 之后、异步 provider 仍待完成时送达。
  * 只有本 generation 捕获的精确来源所有权、HTML 和 Text 槽身份都保持完整时才接受；
  * 任何宿主插入（包括伪装成 FluentRead 产物的节点）都必然无法通过至少一项检查，
@@ -1352,9 +1392,7 @@ function isIntactLoadingSyntheticChildList(
 ): boolean {
     if (!state.syntheticSegment || !target.matches('[data-fr-translation-segment="true"]')) return false;
     const spinner = state.spinner;
-    if (!spinner || spinner.parentNode !== target || !spinner.matches('[data-fr-translation-owned="true"]')) {
-        return false;
-    }
+    if (spinner !== undefined && (spinner.parentNode !== target || !spinner.matches('[data-fr-translation-owned="true"]'))) return false;
 
     const expectedSourceNodes = state.syntheticSourceNodes;
     if (!expectedSourceNodes) return false;
@@ -1363,7 +1401,7 @@ function isIntactLoadingSyntheticChildList(
         currentSourceNodes.some((node, index) => node !== expectedSourceNodes[index])) return false;
 
     const artifacts = Array.from(target.querySelectorAll(TRANSLATION_ARTIFACT_SELECTOR));
-    if (artifacts.length !== 1 || artifacts[0] !== spinner) return false;
+    if (artifacts.length !== (spinner === undefined ? 0 : 1) || (spinner !== undefined && artifacts[0] !== spinner)) return false;
 
     const sourceClone = target.cloneNode(false) as HTMLElement;
     currentSourceNodes.forEach((node) => sourceClone.appendChild(node.cloneNode(true)));
@@ -1774,7 +1812,31 @@ function createFullPageMutationObserver(
         // Preview <-> staging-span 记录反复遍历很长的 P。
         const shouldCheckAttribute = createTranslationAttributeMutationFilter();
         const resolveRemovedOwners = transferEquivalentBilingualOwners(session, mutations);
-        const reads = createTranslationMutationStabilityChecks();
+        const stabilityReads = createTranslationMutationStabilityChecks();
+        const attributeBatch = createAttributeMutationBatch({
+            resolveTargets: root => resolveStatefulMutationTargets(session, root),
+            readState: getTranslationState,
+            restoreOutsideScope: target => restoreStatefulTargetOutsideScope(session, target, reads),
+            sourceIsCurrent: (target, state) => reads.sourceIsCurrent(target, state),
+            isArtifact: isTranslationArtifact,
+            refreshSkeleton: (target, state) => withFullPageViewportAnchor(() =>
+                (reads.invalidate(), refreshBilingualTranslationSkeleton(target, state)), [target]),
+            restart: target => {
+                reads.invalidate();
+                restartStatefulTarget(session, target);
+            },
+            rescan: root => enqueueFullPageRescan(session, root),
+            schedule: (target, boundary) => scheduleStatefulAttributeReevaluation(session, target, boundary),
+            isActive: () => session.active && fullPageSession === session,
+            hasTargetsOnlyAdapter: core.adapters.some(adapter => adapter.genericCandidatePolicy === 'targets-only'),
+        });
+        const reads = {
+            ...stabilityReads,
+            invalidate: () => {
+                stabilityReads.invalidate();
+                attributeBatch.invalidate();
+            },
+        };
         for (const mutation of mutations) {
             if (isOwnMutation(mutation, loadingSyntheticChecks)) continue;
             const mutationElement = mutationTargetElement(mutation.target);
@@ -1871,42 +1933,11 @@ function createFullPageMutationObserver(
                 const affectedRoot = siteAttributeMutation
                     ? siteAttributes === null ? document.documentElement : getComposedParent(mutationElement) ?? mutationElement
                     : mutationElement;
-                const targets = resolveStatefulMutationTargets(session, affectedRoot);
-                const directTargets = siteAttributeMutation
-                    ? new Set(resolveStatefulMutationTargets(session, mutationElement))
-                    : null;
-                if (targets.length > 0) {
-                    for (const target of targets) {
-                        const targetState = getTranslationState(target);
-                        const deferBoundary = (mutation.attributeName === "class" || mutation.attributeName === "style") &&
-                            Boolean(targetState && !targetState.syntheticSegment && targetState.allowTopLevelApplicationShell !== true);
-                        if (siteAttributeMutation && !deferBoundary && restoreStatefulTargetOutsideScope(session, target, reads)) continue;
-                        if (mutation.attributeName === "class" || mutation.attributeName === "style") {
-                            scheduleStatefulAttributeReevaluation(session, target, siteAttributeMutation && deferBoundary);
-                        } else {
-                            const state = getTranslationState(target);
-                            // 关系选择器需要广域复验，但不相关节点的属性写入不应取消有效请求。
-                            // 普通 owner 已在上面通过候选边界复验；focus 的合成段保持保守重扫，
-                            // 因其来源已物化，不能只用原文相同推断仍命中显式正文 selector。
-                            if (state && directTargets && !directTargets.has(target) &&
-                                (!state.syntheticSegment || !core.adapters.some(adapter => adapter.genericCandidatePolicy === 'targets-only')) &&
-                                reads.sourceIsCurrent(target, state)) continue;
-                            if (state && !isTranslationArtifact(mutation.target) &&
-                                !reads.sourceIsCurrent(target, state) &&
-                                withFullPageViewportAnchor(() =>
-                                    (reads.invalidate(), refreshBilingualTranslationSkeleton(target, state)), [target])) continue;
-                            reads.invalidate();
-                            restartStatefulTarget(session, target);
-                        }
-                    }
-                } else {
-                    // hidden/aria-hidden/style/class 变化可能让原先被屏蔽的子树重新可见。
-                    enqueueFullPageRescan(session, mutationElement);
-                }
-                if (siteAttributeMutation) enqueueFullPageRescan(session, affectedRoot);
+                attributeBatch.process(affectedRoot, mutationElement, mutation.target, mutation.attributeName, siteAttributeMutation);
             }
         }
         refreshFullPageModal(session);
+        attributeBatch.flush();
     });
 }
 
@@ -1967,6 +1998,8 @@ function createFullPageSession(
         translationConfig: inheritedConfig ? {...inheritedConfig} : captureFullPageTranslationConfig(invocation),
         progressSessionId: startFullPageTranslationProgress(),
         progressPublishScheduled: false,
+        outcomes: createFullPageOutcomeRegistry<HTMLElement>(),
+        unsubscribeOutcomeChanges: () => {},
         observer,
         mutationObserver,
         shadowEventController: new AbortController(),
@@ -1980,7 +2013,7 @@ function createFullPageSession(
         statefulAncestorsByTarget: new WeakMap(),
         lifecycleRetries: new WeakMap(),
         unchangedCandidates: new WeakMap(),
-        userCancelledCandidates: new Map(),
+        userCancelledCandidates: new WeakMap(),
         inFlightCandidates: new Map(),
         scrollController,
         bilingualRemountCapitulations: createBilingualRemountCapitulationRegistry(),
@@ -2000,11 +2033,15 @@ function createFullPageSession(
         statefulAttributeTimers: new Map(),
         statefulAttributeRescanTargets: new WeakSet(),
     };
+    session.unsubscribeOutcomeChanges = bindFullPageOutcomeRecovery(session,
+        () => fullPageSession === session, () => scheduleFullPageProgressPublish(session));
     return session;
 }
 
 function disposeFullPageSession(session: FullPageSession): void {
     session.active = false;
+    session.unsubscribeOutcomeChanges();
+    session.outcomes.clear();
     syncModalTranslationHint(null, 'none', false);
     session.modal = null;
     session.modalDirty = false;
@@ -2030,7 +2067,7 @@ function disposeFullPageSession(session: FullPageSession): void {
     session.statefulTargetsByAncestor.clear();
     session.statefulAncestorsByTarget = new WeakMap();
     session.inFlightCandidates.clear();
-    session.userCancelledCandidates.clear();
+    session.userCancelledCandidates = new WeakMap();
     session.translationSlotCache.clear();
     session.dirtyRoots.clear();
     session.dirtyRootsBroadMode = false;
@@ -2049,7 +2086,18 @@ function stopFullPageSession(): void {
     disposeFullPageSession(session);
 }
 export function invalidateFullPageTranslationSessionCache(): void { if (fullPageSession?.active) invalidateFullPageRequestSessionCache(fullPageSession); }
-export function resetFullPageTranslationRouteState(): void { translationSourceStability.reset(); hoverBilingualRemountCapitulations = createBilingualRemountCapitulationRegistry(); invalidateHoverTranslationRequestSession(); if (fullPageSession?.active) { fullPageSession.bilingualRemountCapitulations = createBilingualRemountCapitulationRegistry(); invalidateFullPageRequestSessionForRoute(fullPageSession); } resetAllBilingualArtifactHostWriteBudgets(); }
+/** 新路由取消旧请求并重扫当前 DOM；旧页面的熔断和无需变更判定不能压住新页面。 */
+export function resetFullPageTranslationRouteState(): void {
+    cancelPendingHoverTranslation();
+    translationSourceStability.reset();
+    hoverBilingualRemountCapitulations = createBilingualRemountCapitulationRegistry();
+    invalidateHoverTranslationRequestSession();
+    resetFullPageRouteSession(fullPageSession, document.documentElement, {
+        observe: observeFullPageRoot,
+        rescan: enqueueFullPageRescan,
+    });
+    resetAllBilingualArtifactHostWriteBudgets();
+}
 
 /**
  * 恢复全文翻译。全文和悬浮翻译共享同一份节点状态，因此这里无需再用
@@ -2060,13 +2108,7 @@ export function restoreOriginalContent(): void {
     stopFullPageTitleTranslation();
     stopFullPageSession(); resetHoverTranslationRequestSession(createAbortError());
     hoverBilingualRemountCapitulations = createBilingualRemountCapitulationRegistry();
-    resetAllBilingualArtifactHostWriteBudgets();
-    restoreAllTranslations();
-
-    // 兼容升级前遗留的 wrapper/属性；新状态机不会依赖这些标记，但旧页面
-    // 不应在扩展热更新后留下半截译文。
-    const roots: Node[] = [document.documentElement, ...getOpenShadowRoots(document.documentElement)];
-    roots.forEach(clearOrphanedTranslationArtifacts);
+    restorePageTranslationContent();
     notifyFullPageTranslationState(false);
 }
 
@@ -2094,7 +2136,8 @@ export function autoTranslateEnglishPage(invocation: PageTranslationInvocation =
         enqueueFullPageRescan(session, shadowRoot);
         refreshFullPageModal(session);
     }, {capture: true, signal: session.shadowEventController.signal});
-    document.addEventListener('scroll', () => noteFullPageScroll(session, () => session.active && fullPageSession === session, session.scrollController.note), {
+    document.addEventListener('scroll', () => noteFullPageScroll(session, () => session.active && fullPageSession === session,
+        () => {session.scrollController.note(); scheduleFullPageDrain(session);}), {
         capture: true,
         passive: true,
         signal: session.shadowEventController.signal,
@@ -2136,12 +2179,11 @@ export function isFullPageTranslationActive(): boolean {
 }
 /** 局部恢复单个译文所有者；全文会话仍在时记为用户取消，避免滚动或 DOM 变化后被自动重译。 */
 export function restoreTranslationOwner(owner: HTMLElement): boolean { const state = getTranslationState(owner), session = fullPageSession?.active ? fullPageSession : undefined; if (!state) return false;
+    resetPageDiscourseContext();
     if (session) rememberUserCancelledCandidate(session, {element: owner, kind: state.kind, reason: 'section-restore', ...(state.syntheticSegment && state.sourceTextNodes?.length ? {nodes: state.sourceTextNodes} : {})}, owner, state);
     unregisterSessionStatefulTarget(session, owner); return withFullPageViewportAnchor(() => restoreTranslation(owner), [owner]); }
 export function cancelPendingHoverTranslation(): void {
-    if (hoverTimer === undefined) return;
-    clearTimeout(hoverTimer);
-    hoverTimer = undefined;
+    hoverTranslationScheduler.cancel();
 }
 /**
  * 处理鼠标悬浮/快捷键翻译。坐标只负责找到内容块，真正的翻译调用与全文
@@ -2150,27 +2192,9 @@ export function cancelPendingHoverTranslation(): void {
 export function handleTranslation(
     mouseX: number,
     mouseY: number,
-    invocation: PageTranslationConfigOverrides & {scope?: TranslationScope; delayMs?: number; continuous?: boolean} = {},
+    invocation: HoverTranslationInvocation = {},
 ): void {
-    const {delayMs = 0, continuous = false, scope = config.translationScope, ...translationOverrides} = invocation;
-    if (continuous) beginBilingualArtifactHostWriteGesture();
-    const translationConfig = captureFullPageTranslationConfig({
-        ...translationOverrides,
-        service: translationOverrides.service?.trim() || config.hoverTranslationService || config.service,
-    }); if (!checkConfig(translationConfig)) return;
-    cancelPendingHoverTranslation();
-    hoverTimer = setTimeout(() => {
-        hoverTimer = undefined;
-        const candidate = getOwnedTranslationCandidateAtPoint(document, mouseX, mouseY) ?? resolveTranslationCandidateAtPoint(mouseX, mouseY, scope);
-        if (!candidate) return;
-        void translateTarget(
-            candidate,
-            translationConfig.displayMode,
-            continuous,
-            undefined,
-            translationConfig.requestOverridesApplied ? translationConfig : undefined,
-        );
-    }, delayMs);
+    hoverTranslationScheduler.handle(mouseX, mouseY, invocation);
 }
 
 export function handleBilingualTranslation(node: unknown, slide: boolean): void {

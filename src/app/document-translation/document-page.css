@@ -1,7 +1,7 @@
 /**
  * @file src/app/document-translation/document-page.css
- * 文件职责：定义文档翻译独立页面的完整布局与主题表现，使导入区、阅读器、翻译进度、格式预览和导出操作在桌面与窄屏下保持可读。
- * 主要内容：声明页面级颜色变量与暗色覆盖，设置可收起的文件队列、本地范例、品牌头部、拖放卡片、工具栏、PDF 连续页、EPUB/DOCX 分区、字幕与 JSON 行、设置摘要、下载预览和响应式断点。
+ * 文件职责：定义文档翻译独立页面的完整布局与主题表现，使导入区、阅读器、翻译进度、原文件保存、格式预览和导出操作在桌面与窄屏下保持可读。
+ * 主要内容：声明页面级颜色变量与暗色覆盖，打开文档后的单行工具栏（内含翻译服务与目标语言选择）、可折叠的文件与目录侧栏和铺满窗口的阅读区，设置可收起的文件队列、本地范例、品牌头部、拖放卡片、工具栏、PDF 连续页及其不可见字体测量画布、EPUB/DOCX 分区、字幕与 JSON 行、设置摘要、下载预览和响应式断点。
  * 模块边界：样式仅服务 DocumentApp 的 class 结构，不解析文档、不控制翻译状态，也不覆盖 content 宿主页面；跨页面基础视觉 token 仍由 src/ui/styles/tokens.css 管理。
  */
 @import "../../ui/styles/feedback.css";
@@ -18,6 +18,8 @@
 * { box-sizing: border-box; }
 html, body, #app { min-height: 100%; margin: 0; }
 body { min-width: 320px; background: #f7f9ff; }
+/* PDF.js 将字体测量画布放在 body 中；只在本文档组合根存在时隐藏，避免额外画布撑高页面。 */
+body:has(.document-app) > canvas.hiddenCanvasElement { position: absolute; top: 0; left: 0; width: 0; height: 0; display: none; }
 button, select, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, select:focus-visible, textarea:focus-visible, [role="button"]:focus-visible { outline: 3px solid rgba(239, 71, 118, .22); outline-offset: 3px; }
@@ -128,34 +130,6 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, [role="butto
 .notice button { padding: 0; border: 0; color: inherit; background: transparent; font-weight: 800; text-decoration: underline; cursor: pointer; }
 .preview-more { max-width: 55%; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .preview-more { margin: 13px 2px; text-align: center; }
-.pdf-layout-viewer { overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 15px 34px rgba(46, 63, 106, .06); }
-.pdf-viewer-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 54px; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
-.pdf-page-summary { display: inline-flex; align-items: baseline; gap: 10px; color: var(--muted); font-size: 11px; }
-.pdf-page-summary strong { color: var(--ink); font-size: 13px; }
-.pdf-zoom-control { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; font-weight: 700; }
-.pdf-zoom-control select { height: 31px; padding: 0 26px 0 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface-soft); }
-.pdf-page-scroll { overflow-x: auto; background: #e9eef6; }
-.dark .pdf-page-scroll { background: #151a23; }
-.pdf-page-row { padding: 18px 20px 22px; border-top: 1px solid rgba(118, 132, 162, .2); }
-.pdf-page-row:first-child { border-top: 0; }
-.pdf-page-row-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px; margin: 0 3px 6px; color: #596277; font-size: 10px; }
-.pdf-page-row-heading strong { color: var(--ink); font-size: 12px; }
-.dark .pdf-page-row-heading { color: #aab2c3; }
-.pdf-page-stage { width: calc(100% * var(--pdf-zoom)); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 0; background: transparent; }
-.dark .pdf-page-stage { background: transparent; }
-.pdf-page-stage.single { width: calc(100% * var(--pdf-zoom)); grid-template-columns: minmax(0, var(--pdf-page-max-width)); justify-content: center; }
-.pdf-page-column { min-width: 0; margin: 0; }
-.pdf-page-column figcaption { display: flex; align-items: center; justify-content: space-between; min-height: 31px; padding: 0 3px; color: #596277; font-size: 10px; }
-.dark .pdf-page-column figcaption { color: #aab2c3; }
-.pdf-page-column figcaption span { padding: 3px 7px; border-radius: 999px; color: var(--brand-strong); background: var(--brand-soft); font-weight: 800; }
-.pdf-page-column figcaption strong { font-weight: 700; }
-.pdf-page-frame { position: relative; width: 100%; overflow: hidden; border-radius: 2px; background: #fff; box-shadow: 0 7px 22px rgba(33, 43, 68, .16); }
-.pdf-page-frame img { display: block; width: 100%; height: 100%; object-fit: contain; background: #fff; }
-.pdf-page-loading, .pdf-page-pending { position: absolute; inset: 0; display: grid; place-content: center; place-items: center; gap: 9px; padding: 28px; color: #8a93a7; text-align: center; }
-.pdf-page-pending { background: linear-gradient(135deg, #fff 0%, #fafbfe 100%); }
-.pdf-page-pending strong { color: #515a6f; font-size: 14px; }
-.pdf-page-pending small { max-width: 260px; font-size: 10px; line-height: 1.6; }
-.pdf-page-empty { display: grid; min-height: 240px; place-content: center; place-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
 .dark-spinner { border-color: rgba(237, 71, 117, .25); border-top-color: var(--brand); }
 .rich-document-reader, .docx-document-reader, .subtitle-document-reader, .json-document-reader { overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 15px 34px rgba(46, 63, 106, .06); }
 .reader-native-toolbar { display: flex; align-items: center; gap: 8px; min-height: 54px; padding: 9px 14px; overflow-x: auto; border-bottom: 1px solid var(--line); background: var(--surface); scrollbar-width: thin; }
@@ -163,11 +137,23 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, [role="butto
 .reader-native-toolbar button span { display: grid; width: 19px; height: 19px; place-items: center; border-radius: 6px; color: var(--brand-strong); background: var(--brand-soft); font-size: 9px; }
 .reader-native-toolbar button.selected { border-color: rgba(239, 71, 118, .38); color: var(--brand-strong); background: var(--brand-soft); }
 .rich-preview-frame { display: block; width: 100%; height: min(760px, 72vh); border: 0; background: #fff; }
+.document-zoom-control { display: flex; align-items: center; gap: 4px; flex: none; }
+.document-zoom-control button { min-width: 28px; height: 30px; padding: 0 7px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--surface); font-size: 14px; cursor: pointer; }
+.document-zoom-control .document-zoom-reset { min-width: 55px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.document-zoom-control button:hover:enabled { color: var(--brand); border-color: var(--brand); }
+.document-zoom-control button:disabled { opacity: .4; cursor: default; }
+.document-reading-pane .reading-content:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.json-document-reader { overflow: visible; }
 .docx-page-stage { padding: 34px 24px 48px; overflow: auto; background: #e8edf5; }
 .dark .docx-page-stage { background: #151a23; }
 .docx-page { overflow-wrap: anywhere; position: relative; width: min(794px, 100%); min-height: 980px; margin: 0 auto; padding: 78px 82px 92px; color: #20242d; background: #fff; box-shadow: 0 9px 28px rgba(28, 38, 61, .18); }
 .docx-page-label { position: absolute; top: 28px; right: 34px; padding: 4px 8px; border-radius: 999px; color: #7b8393; background: #f2f4f8; font-size: 9px; font-weight: 800; }
 .docx-paragraph { margin: 0 0 15px; }
+.docx-table { width: 100%; margin: 4px 0 20px; border-collapse: collapse; table-layout: fixed; }
+.docx-table td { padding: 9px 12px; border: 1px solid var(--line); vertical-align: top; }
+.docx-table .docx-paragraph { margin: 0; }
+.docx-table .docx-paragraph + .docx-paragraph { margin-top: 8px; }
+.docx-table .docx-translation { margin-top: 3px; }
 .docx-source { margin: 0 0 5px; font-family: Calibri, "PingFang SC", sans-serif; font-size: 15px; line-height: 1.55; white-space: pre-wrap; }
 .docx-translation { margin: 4px 0 0; white-space: pre-wrap; display: block; width: 100%; min-height: 28px; padding: 0; resize: vertical; border: 0; color: #20242d; background: transparent; font-family: Calibri, "PingFang SC", sans-serif; font-size: 15px; font-weight: 650; line-height: 1.55; outline: 0; }
 .docx-translation:not(:disabled):focus { padding: 7px 9px; border-radius: 8px; background: #fff0f4; }
@@ -230,6 +216,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, [role="butto
 .editor-note { margin: 0; padding: 6px 22px 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }.editor-empty { padding: 65px 22px; text-align: center; color: var(--muted); font-size: 14px; }
 .segment-edit-row { padding: 19px 22px 22px; border-top: 1px solid var(--line); }.segment-position { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 11px; }.segment-position strong { color: var(--brand-strong); }.segment-position > span { overflow-wrap: anywhere; }.segment-position small { margin-left: auto; flex: none; color: #279672; }.segment-position small.pending { color: var(--muted); }
 .segment-edit-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; margin-top: 15px; }.segment-column-label { color: var(--muted); font-size: 10px; }.segment-edit-columns p { margin: 9px 0 0; color: var(--ink); font-size: 14px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
+.segment-placeholder-hint { display: block; margin-top: 6px; color: var(--muted); font-size: 11.5px; line-height: 1.5; }
 .segment-edit-columns textarea { display: block; width: 100%; min-height: 96px; margin-top: 7px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); color: var(--ink); resize: vertical; font-size: 14px; line-height: 1.85; }.segment-edit-columns textarea:disabled { opacity: .75; }
 .reader-pagination { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 18px; color: var(--muted); font-size: 12px; }.reader-pagination button, .reader-pagination select { padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); cursor: pointer; }.reader-pagination button:disabled { cursor: not-allowed; opacity: .4; }
 .document-dialog { width: min(460px, calc(100% - 32px)); padding: 28px; border: 1px solid var(--line); border-radius: 20px; color: var(--ink); background: var(--surface); box-shadow: 0 24px 90px #10182833; }.document-dialog::backdrop { background: #10182866; backdrop-filter: blur(3px); }.document-dialog h2 { margin: 0 0 12px; font-size: 21px; }.document-dialog > p { color: var(--muted); font-size: 13px; line-height: 1.8; }.dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 25px; }
@@ -244,10 +231,10 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
   .document-app.is-workspace { height: auto; min-height: 100dvh; overflow: visible; }.is-workspace .document-header { width: calc(100% - 28px); padding: 15px 0; }.is-workspace .document-main { display: block; width: calc(100% - 28px); padding: 0 0 16px; }.is-workspace .workspace-section { display: flex; flex-direction: column; gap: 15px; }.document-reading-pane { overflow: hidden; }.document-reading-pane .reader-toolbar { flex-wrap: wrap; gap: 8px; padding: 11px; }.document-reading-pane .reading-content { min-height: 400px; overflow: auto; padding: 0 11px 12px; }.document-reading-pane .rich-preview-frame { height: 65vh; }.document-reading-pane .segment-editor { overflow: visible; }.document-reading-pane .reader-toolbar .mode-buttons button { min-width: 40px; padding: 0 6px; }.document-reading-pane .reader-toolbar .download-button { min-width: 86px; padding: 0 8px; }
 }
 @media (max-width: 1000px) {
-  .privacy-note { display: none; }.progress-description { display: block; margin: 5px 0 0; }.service-control, .model-control { min-width: 180px; }.pdf-page-stage { width: calc(100% * var(--pdf-zoom)); grid-template-columns: 1fr; }.json-document-reader { overflow-x: auto; }.json-table-header, .json-table-row { min-width: 680px; }.json-table-header.single, .json-table-row.single { min-width: 440px; }
+  .privacy-note { display: none; }.progress-description { display: block; margin: 5px 0 0; }.service-control, .model-control { min-width: 180px; }.json-document-reader { overflow-x: auto; }.json-table-header, .json-table-row { min-width: 680px; }.json-table-header.single, .json-table-row.single { min-width: 440px; }
 }
 @media (max-width: 640px) {
-  .document-header, .document-main, .document-footer { width: calc(100% - 28px); }.document-header { gap: 12px; flex-wrap: wrap; padding: 18px 0; }.document-brand img { width: 34px; height: 34px; }.document-brand strong { font-size: 14px; }.document-brand small { font-size: 9px; }.header-actions { gap: 8px; margin-left: auto; }.header-actions .ui-language-selector { width: 155px; }.header-settings { padding: 0 7px; }.header-settings span { display: none; }.header-actions > .ghost-button { font-size: 11px; padding: 7px; }.document-status { order: 3; font-size: 11px; margin: 0; }.document-main { padding-top: 12px; }.landing-copy { margin-bottom: 23px; }.landing-copy p { font-size: 12px; }.file-drop-zone { min-height: 295px; padding: 24px 18px; }.format-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 10px; }.local-processing-note { text-align: left; }.workspace-heading { flex-wrap: wrap; gap: 12px; }.workspace-heading h1 { max-width: 245px; font-size: 17px; }.translation-setup { padding: 18px; }.setup-heading { flex-direction: column; gap: 8px; }.control-panel { gap: 12px; }.language-control { min-width: calc(50% - 6px); }.language-arrow { display: none; }.service-control, .model-control { min-width: 100%; }.translation-actions { width: 100%; }.translation-actions button { width: 100%; }.reader-toolbar { gap: 8px; }.reader-toolbar .mode-buttons button { min-width: 45px; padding: 0 7px; font-size: 11px; }.reader-toolbar .download-button { font-size: 11px; min-width: 95px; padding: 0 9px; }.pdf-viewer-toolbar { align-items: start; flex-direction: column; gap: 8px; }.pdf-page-summary { flex-wrap: wrap; }.pdf-page-row { padding: 12px; }.pdf-page-stage { width: calc(100% * var(--pdf-zoom)); }.rich-preview-frame { height: 68vh; }.docx-page-stage { padding: 14px 10px 24px; }.docx-page { min-height: 700px; padding: 58px 22px; }.docx-role-title .docx-source, .docx-role-title .docx-translation { font-size: 23px; }.segment-edit-columns { grid-template-columns: 1fr; gap: 16px; }.segment-edit-row { padding: 18px; }.editor-toolbar { padding: 16px 18px 8px; gap: 12px; }.editor-search { flex-basis: 100%; }.editor-note { padding: 7px 18px 15px; }.document-dialog { padding: 24px; }.document-footer { flex-direction: column; align-items: start; gap: 8px; }.reader-block { padding: 20px; }
+  .document-header, .document-main, .document-footer { width: calc(100% - 28px); }.document-header { gap: 12px; flex-wrap: wrap; padding: 18px 0; }.document-brand img { width: 34px; height: 34px; }.document-brand strong { font-size: 14px; }.document-brand small { font-size: 9px; }.header-actions { gap: 8px; margin-left: auto; }.header-actions .ui-language-selector { width: 155px; }.header-settings { padding: 0 7px; }.header-settings span { display: none; }.header-actions > .ghost-button { font-size: 11px; padding: 7px; }.document-status { order: 3; font-size: 11px; margin: 0; }.document-main { padding-top: 12px; }.landing-copy { margin-bottom: 23px; }.landing-copy p { font-size: 12px; }.file-drop-zone { min-height: 295px; padding: 24px 18px; }.format-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 10px; }.local-processing-note { text-align: left; }.workspace-heading { flex-wrap: wrap; gap: 12px; }.workspace-heading h1 { max-width: 245px; font-size: 17px; }.translation-setup { padding: 18px; }.setup-heading { flex-direction: column; gap: 8px; }.control-panel { gap: 12px; }.language-control { min-width: calc(50% - 6px); }.language-arrow { display: none; }.service-control, .model-control { min-width: 100%; }.translation-actions { width: 100%; }.translation-actions button { width: 100%; }.reader-toolbar { gap: 8px; }.reader-toolbar .mode-buttons button { min-width: 45px; padding: 0 7px; font-size: 11px; }.reader-toolbar .download-button { font-size: 11px; min-width: 95px; padding: 0 9px; }.rich-preview-frame { height: 68vh; }.docx-page-stage { padding: 14px 10px 24px; }.docx-page { min-height: 700px; padding: 58px 22px; }.docx-role-title .docx-source, .docx-role-title .docx-translation { font-size: 23px; }.segment-edit-columns { grid-template-columns: 1fr; gap: 16px; }.segment-edit-row { padding: 18px; }.editor-toolbar { padding: 16px 18px 8px; gap: 12px; }.editor-search { flex-basis: 100%; }.editor-note { padding: 7px 18px 15px; }.document-dialog { padding: 24px; }.document-footer { flex-direction: column; align-items: start; gap: 8px; }.reader-block { padding: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
@@ -258,8 +245,17 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-select .el-select__wrapper.is-focused { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
 .document-select .el-select__wrapper.is-disabled { opacity: .6; background: var(--surface-soft); }
 .document-select .el-select__selected-item { color: var(--ink); font-size: 12px; }
-.pdf-zoom-control .document-select { width: 120px; }
-.pdf-zoom-control .el-select__wrapper { min-height: 31px; }
+.online-pdf-form { display: grid; gap: 8px; max-width: 740px; margin: 20px auto; text-align: left; }
+.online-pdf-form label { font-size: 13px; font-weight: 600; }
+.online-pdf-form > div { display: flex; gap: 10px; }
+.online-pdf-form input { min-width: 0; flex: 1; padding: 11px 12px; color: var(--text); border: 1px solid var(--line); border-radius: 9px; background: var(--surface); font: inherit; font-size: 12px; }
+.online-pdf-form input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.online-pdf-form small { color: var(--muted); font-size: 11px; line-height: 1.6; }
+.document-import-progress { flex-basis: 100%; color: var(--muted); font-size: 12px; }
+.document-reading-pane .reading-content.reading-pdf { display: flex; flex-direction: column; min-height: 0; padding: 0; overflow: hidden; }
+.document-reading-pane .reading-content.reading-pdf > .reader-empty { flex: none; }
+@media (max-width: 760px) { .document-reading-pane .reading-content.reading-pdf { height: 72dvh; min-height: 320px; flex: none; } }
+@media (max-width: 520px) { .online-pdf-form > div { flex-wrap: wrap; }.online-pdf-form input { flex-basis: 100%; } }
 .editor-page-select .document-select { width: 95px; }
 
 /* 批量文件列表拥有独立滚动区域，避免大量文件挤走阅读区。 */
@@ -314,10 +310,34 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .batch-toolbar .batch-toggle { display: inline-flex; align-items: center; justify-content: space-between; gap: 14px; border-color: transparent; background: transparent; cursor: pointer; }
 .batch-toggle span { color: var(--brand); font-size: 18px; }
 .download-dialog { width: min(620px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
+.original-download { display: flex; align-items: center; gap: 16px; margin-top: 22px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+.original-download > div { flex: 1; min-width: 0; }
+.original-download strong { display: block; overflow-wrap: anywhere; font-size: 13px; }
+.document-dialog .original-download p { margin: 6px 0 0; font-size: 11px; }
+.original-download button { flex: none; white-space: nowrap; }
 .export-file-name { padding: 10px 12px; border-radius: 9px; background: var(--surface-soft); overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .export-preview { margin-top: 16px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .export-preview > strong { display: block; padding: 10px 14px; color: var(--muted); background: var(--surface-soft); font-size: 11px; font-weight: 600; }
 .export-preview pre { max-height: 180px; overflow-y: auto; margin: 0; padding: 14px; color: var(--ink); font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.document-batch-translation { display: flex; align-items: flex-start; gap: 9px; margin-top: 18px; font-size: 12px; cursor: pointer; }
+.document-batch-translation input { flex: none; margin-top: 3px; }
+.document-batch-translation strong, .document-batch-translation small { display: block; }
+.document-batch-translation small { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.pdf-export-summary { display: flex; align-items: center; gap: 20px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); }
+.pdf-export-summary strong { font-size: 13px; }
+.document-dialog .pdf-export-summary p { margin: 6px 0 0; font-size: 11px; }
+.pdf-export-page-pair { display: flex; flex: none; gap: 6px; }
+.pdf-export-page { width: 64px; height: 82px; padding: 8px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); box-shadow: 0 2px 5px #10182808; }
+.pdf-export-page span { display: block; margin-bottom: 10px; font-size: 9px; color: var(--muted); }
+.pdf-export-page i { display: block; height: 3px; margin-top: 5px; border-radius: 2px; background: var(--line); }
+.pdf-export-page i:last-child { width: 65%; }
+.pdf-export-page.translated { border-color: var(--brand); }
+.pdf-export-page.translated span { color: var(--brand); }
+.pdf-export-page.translated i { background: var(--brand-soft); }
+.export-progress progress { display: block; width: 100%; height: 6px; margin: 10px 0 0; border: 0; border-radius: 3px; overflow: hidden; accent-color: var(--brand); }
+.export-progress progress::-webkit-progress-bar { border-radius: 3px; background: var(--line); }
+.export-progress progress::-webkit-progress-value { border-radius: 3px; background: var(--brand); }
+.export-progress progress::-moz-progress-bar { border-radius: 3px; background: var(--brand); }
 .export-options button:disabled { opacity: .55; cursor: wait; }
 @media (max-width: 760px) {
   .document-samples { grid-template-columns: 1fr; gap: 16px; padding: 18px; }
@@ -329,6 +349,7 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
   .batch-toolbar label { flex: 1; }
   .batch-files { max-height: 170px; }
   .download-dialog { padding: 20px; }
+  .original-download { align-items: stretch; flex-direction: column; gap: 12px; padding: 12px; }
   .export-options { gap: 8px; }
   .export-preview pre { max-height: 140px; }
 }
@@ -399,4 +420,332 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
   .subtitle-document-reader th:nth-child(2), .subtitle-document-reader td:nth-child(2) { width: 112px; }
   .subtitle-timing time, .subtitle-timing > span { display: block; }
   .subtitle-document-reader th, .subtitle-document-reader td { padding: 12px 8px; }
+}
+
+/* 工作区：一行工具栏承载文件、阅读方式、页面控件、翻译与下载，其余空间全部留给正文。 */
+.document-app.is-workspace { --reader-canvas: #eceff5; background: var(--reader-canvas); }
+.document-app.is-workspace.dark { --reader-canvas: #12161d; }
+.is-workspace .document-main { width: 100%; max-width: none; padding: 0; }
+.is-workspace .workspace-section { gap: 0; }
+.is-workspace .document-batch { margin: 8px 12px 0; }
+.document-taskbar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; min-height: 48px; padding: 6px 12px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: var(--surface); }
+.document-taskbar .workspace-heading { display: flex; align-items: center; justify-content: flex-start; flex: 0 1 auto; gap: 10px; min-width: 0; max-width: min(30vw, 420px); }
+.taskbar-logo { flex: none; width: 26px; height: 26px; border-radius: 8px; }
+.document-taskbar .file-heading { gap: 8px; min-width: 0; }
+.document-taskbar .task-file-format { width: auto; height: 20px; padding: 0 6px; border-radius: 5px; font-size: 9px; letter-spacing: .04em; }
+.document-taskbar h1 { overflow: hidden; margin: 0; max-width: none; font-size: 13px; font-weight: 650; line-height: 1.3; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
+.document-taskbar .document-status { margin: 1px 0 0; font-size: 10.5px; line-height: 1.3; white-space: nowrap; }
+.document-taskbar .reader-toolbar { position: static; display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; margin: 0; padding: 0; border: 0; background: none; }
+.document-taskbar .mode-buttons { height: 32px; min-height: 32px; flex-wrap: nowrap; padding: 2px; border-radius: 9px; }
+.document-taskbar .mode-buttons button { min-width: 0; padding: 0 11px; border-radius: 7px; font-size: 12px; white-space: nowrap; }
+.reader-controls-slot { display: flex; align-items: center; min-width: 0; }
+.reader-controls-slot:empty { display: none; }
+.document-taskbar .taskbar-actions { flex: 0 0 auto; gap: 8px; margin-left: auto; }
+.document-taskbar .document-settings-button { display: inline-flex; align-items: center; max-width: 260px; height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font-size: 11.5px; line-height: 1.2; text-align: left; }
+.document-taskbar .document-settings-button:hover { border-color: rgba(239, 71, 118, .42); color: var(--ink); }
+.document-taskbar .document-settings-button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+.document-taskbar .document-settings-button small { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.document-app .document-taskbar :is(.ghost-button, .translate-document-button, .download-button) { min-width: 0; min-height: 32px; height: 32px; padding: 0 12px; border-radius: 9px; font-size: 12px; white-space: nowrap; }
+.document-taskbar .translation-actions { margin: 0; }
+.document-taskbar .translation-actions button { min-height: 32px; }
+.document-taskbar .pause-button .spinner { width: 11px; height: 11px; margin-right: 6px; border-width: 1.5px; vertical-align: -1px; }
+.document-taskbar .download-button:enabled { border-color: var(--line); color: var(--ink); background: var(--surface); font-weight: 700; }
+.document-taskbar .download-button:enabled:hover { border-color: rgba(239, 71, 118, .42); color: var(--brand-strong); background: var(--brand-soft); }
+.document-taskbar .download-button:disabled { border-color: var(--line); color: var(--muted); background: transparent; cursor: not-allowed; opacity: .5; }
+.document-taskbar .add-file-button { border-color: transparent; color: var(--muted); background: transparent; font-weight: 600; }
+.document-taskbar .task-progress { position: absolute; inset: auto 0 -1px; height: 2px; border-radius: 0; background: transparent; }
+.document-taskbar .task-notice, .document-taskbar .document-import-progress { flex-basis: 100%; margin: 0; padding: 2px 0 4px; font-size: 11.5px; }
+.is-workspace .document-reading-pane { border: 0; border-radius: 0; background: var(--reader-canvas); }
+.is-workspace .document-reading-pane .reading-content { padding: 16px max(16px, calc((100% - 1180px) / 2)); }
+.is-workspace .document-reading-pane .reading-content.reading-pdf { padding: 0; }
+.is-workspace .document-reading-pane .segment-editor { width: min(1180px, 100%); margin: 0 auto; background: var(--surface); }
+.is-workspace .document-reading-pane .rich-preview-frame { height: calc(100dvh - 130px); }
+@media (max-width: 1100px) {
+  .document-taskbar .workspace-heading { max-width: 100%; flex: 1 1 100%; }
+  .document-taskbar .taskbar-actions { margin-left: 0; flex-wrap: wrap; }
+}
+@media (max-width: 760px) {
+  .document-taskbar { display: flex; padding: 8px 10px; gap: 8px; }
+  .document-taskbar .document-settings-button { max-width: 100%; flex: 1 1 auto; }
+  .document-reading-pane .reader-toolbar > .mode-buttons { flex: 0 1 auto; }
+  .document-reading-pane .reading-content.reading-pdf { height: auto; flex: 1; min-height: 60dvh; }
+  .document-app.is-workspace { height: 100dvh; overflow: hidden; }
+  .is-workspace .document-main { display: flex; width: 100%; padding: 0; }
+}
+
+.document-app.is-workspace { position: relative; }
+
+/* 左侧栏：文件与目录两个页签；收起时不占宽度，正文铺满窗口。 */
+.document-layout { min-width: 0; }
+.is-workspace .document-layout { display: grid; flex: 1; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+.is-workspace .document-content, .is-workspace .workspace-section { display: contents; }
+.is-workspace .document-taskbar { grid-column: 1 / -1; grid-row: 1; }
+.is-workspace .document-reading-pane { grid-column: 2; grid-row: 2; }
+.is-workspace .document-sidebar { display: flex; grid-column: 1; grid-row: 2; flex-direction: column; width: 272px; min-height: 0; overflow-y: auto; padding: 10px; border-right: 1px solid var(--line); background: var(--surface); scrollbar-width: thin; }
+.sidebar-tabs { display: flex; flex: none; margin-bottom: 10px; padding: 3px; border-radius: 10px; background: var(--surface-soft); }
+.sidebar-tabs button { display: inline-flex; flex: 1; align-items: center; justify-content: center; gap: 6px; height: 30px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: 12.5px; cursor: pointer; }
+.sidebar-tabs button.selected { color: var(--brand-strong); background: var(--surface); box-shadow: 0 2px 6px rgba(35, 47, 82, .1); font-weight: 700; }
+.sidebar-tabs small, .sidebar-toggle small { min-width: 16px; padding: 0 4px; border-radius: 8px; color: #fff; background: var(--brand); font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
+.sidebar-toggle { position: relative; display: inline-grid; flex: none; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; color: var(--muted); background: transparent; cursor: pointer; }
+.sidebar-toggle svg { width: 18px; height: 18px; }
+.sidebar-toggle:hover { color: var(--ink); background: var(--surface-soft); }
+.sidebar-toggle.active { color: var(--brand-strong); background: var(--brand-soft); }
+.sidebar-toggle small { position: absolute; top: -3px; right: -5px; }
+.is-workspace .document-sidebar .document-batch { position: static; width: auto; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; }
+.is-workspace .document-sidebar .batch-toggle { display: none; }
+.is-workspace .document-sidebar .batch-toolbar { gap: 6px; padding: 0 2px 8px; }
+.is-workspace .document-sidebar .batch-toolbar:not(:has(> button:not(.batch-toggle), > label)) > span[role="status"] { display: none; }
+.is-workspace .document-sidebar .batch-toolbar > span { flex-basis: 100%; }
+.is-workspace .document-sidebar .batch-toolbar button { padding: 6px 10px; font-size: 11.5px; cursor: pointer; }
+.is-workspace .document-sidebar .batch-files { display: grid !important; grid-template-columns: 1fr; gap: 4px; max-height: none; margin: 0; overflow: visible; }
+.is-workspace .document-sidebar .batch-files li { padding: 8px 6px 8px 10px; border-color: transparent; border-radius: 9px; }
+.is-workspace .document-sidebar .batch-files li:hover { background: var(--surface-soft); }
+.is-workspace .document-sidebar .batch-files li.selected { border-color: transparent; background: var(--brand-soft); }
+.is-workspace .document-sidebar .batch-files li.selected .batch-file > span { color: var(--brand-strong); }
+.is-workspace .document-sidebar .batch-files li > button:not(.batch-file) { padding: 4px 6px; border-color: transparent; color: var(--muted); background: transparent; font-size: 11px; cursor: pointer; }
+.is-workspace .document-sidebar .batch-file { cursor: pointer; }
+.is-workspace .document-sidebar .batch-file > span { font-size: 12.5px; font-weight: 600; }
+.document-app .sidebar-add-file { width: 100%; min-height: 34px; margin-top: 10px; border-style: dashed; color: var(--muted); font-size: 12px; font-weight: 600; }
+.sidebar-outline { min-height: 0; }
+/* 工具栏内直接选择翻译服务与目标语言。 */
+.document-taskbar .toolbar-select { flex: none; width: 150px; }
+.document-taskbar .toolbar-language { width: 128px; }
+.document-taskbar .toolbar-select .el-select__wrapper { min-height: 32px; padding: 0 8px 0 10px; border-radius: 9px; background: var(--surface); }
+.document-taskbar .document-settings-button { display: inline-grid; flex: none; place-items: center; width: 32px; max-width: none; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); }
+.document-taskbar .document-settings-button svg { width: 17px; height: 17px; }
+.document-taskbar .document-settings-button > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.document-taskbar .download-button:enabled { border-color: var(--brand); color: #fff; background: var(--brand); font-weight: 700; }
+.document-taskbar .download-button:enabled:hover { border-color: var(--brand-strong); color: #fff; background: var(--brand-strong); }
+.document-taskbar .workspace-heading { max-width: min(26vw, 360px); }
+@media (max-width: 760px) {
+  .is-workspace .document-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
+  .is-workspace .document-sidebar { grid-column: 1; grid-row: 2; width: auto; max-height: 40dvh; border-right: 0; border-bottom: 1px solid var(--line); }
+  .is-workspace .document-reading-pane { grid-column: 1; grid-row: 3; }
+  .document-taskbar .toolbar-select { flex: 1 1 120px; width: auto; }
+}
+
+.document-taskbar .toolbar-select, .document-taskbar .toolbar-language { width: auto; min-width: 104px; max-width: 190px; }
+.document-taskbar .toolbar-select .el-select__selected-item { overflow: visible; text-overflow: clip; }
+
+/* 工具栏分三组：文件 · 阅读控件 · 翻译与下载；组间用细线分隔，控件统一 30px 高。 */
+.document-taskbar { gap: 6px 12px; padding: 7px 14px; }
+.document-taskbar .reader-toolbar { gap: 6px 10px; padding-left: 12px; border-left: 1px solid var(--line); }
+.document-taskbar .reader-controls-slot { padding-left: 10px; border-left: 1px solid var(--line); }
+.document-taskbar .mode-buttons { height: 30px; min-height: 30px; }
+.document-taskbar .reader-tabs { background: var(--surface-soft); }
+.document-app .document-taskbar :is(.ghost-button, .translate-document-button, .download-button) { min-height: 30px; height: 30px; }
+.document-taskbar .taskbar-actions { gap: 8px; }
+.document-taskbar .toolbar-select { width: 138px; min-width: 0; max-width: none; }
+.document-taskbar .toolbar-language { width: 112px; min-width: 0; }
+.document-taskbar .toolbar-model { width: 132px; }
+.document-taskbar .toolbar-select .el-select__wrapper { min-height: 30px; }
+.document-taskbar .toolbar-select .el-select__wrapper.is-disabled { opacity: 1; background: var(--surface-soft); }
+.document-taskbar .toolbar-select .el-select__wrapper.is-disabled .el-select__selected-item { color: var(--muted); }
+.document-taskbar .toolbar-select .el-select__selected-item { overflow: hidden; text-overflow: ellipsis; }
+.sidebar-toggle { width: 32px; height: 32px; border: 1px solid var(--line); color: var(--ink); background: var(--surface); box-shadow: 0 1px 2px #1018280f; }
+.sidebar-toggle:hover { border-color: rgba(239, 71, 118, .5); color: var(--brand-strong); background: var(--brand-soft); }
+.sidebar-toggle.active { border-color: rgba(239, 71, 118, .45); }
+.is-workspace .document-sidebar { width: 264px; padding: 12px 10px; }
+.document-sidebar .document-settings-button { display: flex; flex: none; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%; max-width: none; margin-top: auto; padding: 10px 10px 2px; border: 0; border-top: 1px solid var(--line); color: var(--muted); background: none; font-size: 11px; line-height: 1.5; text-align: left; cursor: pointer; }
+.document-sidebar .document-settings-button > span { overflow-wrap: anywhere; }
+.document-sidebar .document-settings-button small { color: var(--brand-strong); font-size: 11px; }
+.document-sidebar .sidebar-outline { margin-bottom: 10px; }
+.document-sidebar .document-batch { margin-bottom: 10px; }
+
+/* 文件页：每份文件一行（名称、状态、进度条），批量操作收在列表下方。 */
+.is-workspace .document-sidebar .document-batch { display: flex; flex-direction: column; }
+.is-workspace .document-sidebar .batch-toolbar { order: 3; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 10px; padding: 10px 0 0; border-top: 1px solid var(--line); }
+.is-workspace .document-sidebar .batch-toolbar:not(:has(> button:not(.batch-toggle), > label, > .batch-status:not(.idle), > .queue-error)) { display: none; }
+.is-workspace .document-sidebar .batch-status.idle { display: none; }
+.is-workspace .document-sidebar .batch-toolbar > button { width: 100%; min-height: 32px; border-radius: 9px; font-weight: 650; }
+.is-workspace .document-sidebar .batch-toolbar > .batch-start { border-color: var(--brand); color: #fff; background: var(--brand); }
+.is-workspace .document-sidebar .batch-toolbar > label { justify-content: space-between; color: var(--muted); }
+.is-workspace .document-sidebar .batch-files { order: 1; }
+.is-workspace .document-sidebar .sidebar-add-file { order: 2; }
+.is-workspace .document-sidebar .document-batch > .notice { order: 4; }
+.batch-file .batch-progress { display: block; height: 3px; margin-top: 2px; overflow: hidden; border-radius: 3px; background: var(--line); }
+.batch-file .batch-progress b { display: block; height: 100%; border-radius: 3px; background: var(--brand); transition: width .2s; }
+.is-workspace .document-sidebar .batch-remove { visibility: hidden; }
+.is-workspace .document-sidebar .batch-files li:is(:hover, :focus-within) .batch-remove { visibility: visible; }
+.is-workspace .document-sidebar .batch-remove:hover:not(:disabled) { color: #ce365e; }
+/* 首页的最近翻译：点一下恢复原文与已有译文。 */
+.document-history { max-width: 780px; margin: 28px auto 0; }
+.document-history header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.document-history h2 { margin: 0; font-size: 14px; }
+.document-history header button { padding: 0; border: 0; color: var(--muted); background: none; font-size: 11px; cursor: pointer; }
+.document-history header button:hover { color: var(--brand-strong); }
+.document-history ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.document-history li { position: relative; min-width: 0; }
+.history-open { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 34px 12px 12px; border: 1px solid var(--line); border-radius: 13px; color: var(--ink); background: var(--surface); text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.history-open:hover:not(:disabled) { border-color: rgba(239, 71, 118, .45); box-shadow: 0 6px 18px rgba(239, 71, 118, .1); }
+.history-open:disabled { cursor: wait; opacity: .6; }
+.history-open b { display: grid; flex: none; place-items: center; width: 40px; height: 28px; border-radius: 7px; color: var(--brand-strong); background: var(--brand-soft); font-size: 9.5px; letter-spacing: .04em; }
+.history-open span { display: grid; gap: 4px; min-width: 0; }
+.history-open strong { overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.history-open small { color: var(--muted); font-size: 11px; }
+.history-remove { position: absolute; top: 50%; right: 8px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; color: var(--muted); background: transparent; font-size: 15px; line-height: 1; transform: translateY(-50%); cursor: pointer; visibility: hidden; }
+.document-history li:is(:hover, :focus-within) .history-remove { visibility: visible; }
+.history-remove:hover { color: #ce365e; background: var(--surface-soft); }
+
+/* 选择器前写明它是什么：翻译服务 / 模型 / 目标语言。 */
+.toolbar-field { display: inline-flex; flex: none; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.document-taskbar .toolbar-service { width: 168px; }
+/* 侧栏只有中间的列表滚动；页签在上、设置入口在下，各自固定，互不遮挡。 */
+.is-workspace .document-sidebar { overflow: hidden; }
+.is-workspace .document-sidebar .document-batch, .is-workspace .document-sidebar .sidebar-outline { flex: 1 1 0; min-height: 0; margin-bottom: 0; overflow-y: auto; scrollbar-width: thin; }
+.document-sidebar .document-settings-button { margin-top: 10px; background: var(--surface); }
+/* 专注阅读：只留文档；退出按钮平时隐去，指针移到顶部才出现。 */
+.focus-toggle { display: inline-grid; flex: none; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; color: var(--muted); background: transparent; cursor: pointer; }
+.focus-toggle svg { width: 17px; height: 17px; }
+.focus-toggle:hover { color: var(--brand-strong); background: var(--brand-soft); }
+.is-focus .document-taskbar, .is-focus .document-sidebar { display: none !important; }
+.is-focus .document-reading-pane { grid-column: 1 / -1; grid-row: 1 / -1; }
+.focus-exit { position: fixed; top: 0; left: 50%; z-index: 40; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 12px 12px; color: var(--ink); background: var(--surface); box-shadow: 0 8px 24px #10182826; font-size: 12px; transform: translate(-50%, -100%); opacity: 0; transition: transform .18s, opacity .18s; cursor: pointer; }
+.focus-exit::before { content: ""; position: absolute; inset: 100% -200px -18px; }
+.focus-exit:hover, .focus-exit:focus-visible { transform: translate(-50%, 0); opacity: 1; }
+.focus-exit kbd { padding: 1px 6px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
+/* 侧栏底部只留一行“源语言与术语库”入口；工具栏已能直接选服务与目标语言。 */
+.document-sidebar .document-settings-button { flex-direction: row; align-items: center; gap: 8px; height: 36px; margin-top: 8px; padding: 0 10px; border: 0; border-radius: 9px; color: var(--muted); font-size: 12px; }
+.document-sidebar .document-settings-button:hover { color: var(--brand-strong); background: var(--brand-soft); }
+.document-sidebar .document-settings-button svg { flex: none; width: 16px; height: 16px; }
+.document-sidebar .document-settings-button strong { font-weight: 500; }
+.document-sidebar .document-settings-button > span, .document-sidebar .document-settings-button small { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.is-workspace .document-sidebar { position: relative; }
+/* 刷新恢复期间保持阅读区底色；瞬时提示以浮层出现，不推动版面。 */
+.document-app.is-restoring { background: #eceff5; }
+.document-app.is-restoring.dark { background: #12161d; }
+.restoring-section { display: grid; place-items: center; min-height: 100dvh; }
+.restoring-section .spinner { width: 22px; height: 22px; margin: 0; }
+.is-restoring .document-main { width: 100%; padding: 0; }
+.taskbar-toast { position: absolute; top: calc(100% + 10px); left: 50%; z-index: 25; margin: 0; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--surface); box-shadow: 0 10px 28px #10182826; font-size: 12px; white-space: nowrap; transform: translateX(-50%); pointer-events: none; }
+.taskbar-toast { animation: taskbar-toast-in .2s ease-out; }
+@keyframes taskbar-toast-in { from { opacity: 0; transform: translate(-50%, -6px); } }
+/* 导入中：进度条 + 次要的取消链接。 */
+.import-progress { width: min(320px, 80%); height: 6px; margin-top: 4px; overflow: hidden; border-radius: 6px; background: var(--brand-soft); }
+.import-progress i { display: block; height: 100%; border-radius: 6px; background: var(--brand); transition: width .2s; }
+.import-progress.indeterminate i { width: 35% !important; animation: import-slide 1.2s ease-in-out infinite alternate; }
+@keyframes import-slide { from { transform: translateX(-20%); } to { transform: translateX(210%); } }
+.import-cancel { margin-top: 12px; padding: 0; border: 0; color: var(--muted); background: none; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.import-cancel:hover { color: var(--brand-strong); }
+/* 工具栏提示：浮在工具栏下方的提示条，不占行、不推动正文。 */
+.taskbar-notices { position: absolute; top: calc(100% + 10px); left: 50%; z-index: 25; display: flex; flex-direction: column; align-items: center; gap: 8px; width: max-content; max-width: min(720px, calc(100% - 32px)); transform: translateX(-50%); pointer-events: none; }
+.taskbar-notices:empty { display: none; }
+.document-taskbar .taskbar-notices > * { position: static; flex: none; margin: 0; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 10px 28px #10182826; font-size: 12px; line-height: 1.5; white-space: normal; transform: none; pointer-events: auto; animation: taskbar-notice-in .2s ease-out; }
+.document-taskbar .taskbar-notices > .notice.warning { border-color: #f1dfb4; background: #fffaf0; }
+.document-taskbar .taskbar-notices > .notice.error { border-color: #f3c8d2; background: #fff5f7; }
+.dark .document-taskbar .taskbar-notices > .notice.warning, .dark .document-taskbar .taskbar-notices > .notice.error { background: var(--surface); }
+@keyframes taskbar-notice-in { from { opacity: 0; transform: translateY(-6px); } }
+/* 工具栏按完整功能组排布；宽度不足时明确分行，阅读和任务入口始终可达。 */
+.document-taskbar { display: grid; grid-template-columns: minmax(100px, 170px) minmax(0, 1fr) auto; gap: 8px 10px; overflow: visible; }
+.document-taskbar .workspace-heading { grid-column: 1; grid-row: 1; width: 100%; max-width: none; min-width: 0; flex-wrap: nowrap; gap: 8px; }
+.document-taskbar .file-heading, .document-taskbar .file-heading > div { min-width: 0; }
+.document-taskbar .document-status { overflow: hidden; text-overflow: ellipsis; }
+.document-taskbar .reader-toolbar { grid-column: 2; grid-row: 1; flex-wrap: nowrap; gap: 8px; min-width: 0; padding-left: 10px; }
+.document-taskbar .reader-tabs { flex: none; }
+.document-taskbar .reader-reading-controls { display: flex; flex: 1 1 auto; align-items: center; gap: 8px; min-width: 0; }
+.document-taskbar .reader-reading-controls > .mode-buttons, .document-taskbar .focus-toggle { flex: none; }
+.document-taskbar .reader-controls-slot { flex: 0 1 auto; min-width: 0; padding-left: 8px; overflow: visible; }
+.document-taskbar .reader-controls-slot .pdf-viewer-toolbar { gap: 8px; flex-wrap: nowrap; }
+.document-taskbar .taskbar-actions { display: flex; grid-column: 3; grid-row: 1; align-items: center; min-width: 0; margin-left: 0; gap: 10px; flex-wrap: nowrap; }
+.toolbar-translation-settings, .toolbar-primary-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.toolbar-primary-actions { flex: none; }
+.document-taskbar .toolbar-settings-toggle { display: none; }
+.document-taskbar .toolbar-field { min-width: 0; }
+.document-taskbar .toolbar-field > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.document-taskbar .toolbar-service { width: 150px; }
+.document-taskbar .toolbar-language { width: 110px; }
+.document-taskbar .toolbar-model { width: 130px; }
+.document-taskbar .translation-actions { flex: none; width: auto; }
+.document-taskbar .translation-actions button { width: auto; }
+@media (min-width: 1000px) and (max-width: 1759px) {
+  .document-taskbar { grid-template-columns: minmax(120px, 1fr) auto auto auto auto; gap: 8px 12px; }
+  .document-taskbar .taskbar-logo { display: none; }
+  .document-taskbar .reader-toolbar, .document-taskbar .reader-reading-controls { display: contents; }
+  .document-taskbar .reader-tabs { grid-column: 2; grid-row: 1; }
+  .document-taskbar .reader-reading-controls > .mode-buttons { grid-column: 3; grid-row: 1; }
+  .document-taskbar .document-zoom-control { grid-column: 4; grid-row: 1; }
+  .document-taskbar .focus-toggle { grid-column: 5; grid-row: 1; }
+  .document-taskbar .reader-controls-slot { grid-column: 1 / -1; grid-row: 2; padding: 8px 0 0; border: 0; border-top: 1px solid var(--line); }
+  .document-taskbar .taskbar-actions { display: grid; grid-column: 1 / -1; grid-row: 2; grid-template-columns: minmax(0, 1fr) auto; padding-top: 7px; border-top: 1px solid var(--line); }
+  .document-taskbar.has-pdf-controls .taskbar-actions { grid-row: 3; }
+  .toolbar-translation-settings { gap: 12px; }
+  .document-taskbar .toolbar-field > span { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  .document-taskbar .toolbar-service { width: 168px; }
+  .document-taskbar .toolbar-language { width: 120px; }
+  .document-taskbar .toolbar-model { width: 150px; }
+}
+@media (max-width: 999px) {
+  .document-taskbar { grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; padding: 8px 10px; }
+  .document-taskbar .workspace-heading { grid-column: 1; grid-row: 1; }
+  .document-taskbar .taskbar-logo { display: none; }
+  .document-taskbar .reader-toolbar, .document-taskbar .reader-reading-controls { display: contents; }
+  .document-taskbar .reader-tabs { grid-column: 2 / -1; grid-row: 1; justify-self: end; }
+  .document-taskbar .reader-reading-controls > .mode-buttons { grid-column: 1; grid-row: 2; justify-self: start; }
+  .document-taskbar .document-zoom-control { grid-column: 2; grid-row: 2; }
+  .document-taskbar .reader-controls-slot { grid-column: 1 / -1; grid-row: 3; padding: 7px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+  .document-taskbar .reader-controls-slot .pdf-viewer-toolbar { gap: 7px; }
+  .document-taskbar .focus-toggle { grid-column: 3; grid-row: 2; justify-self: end; margin-left: 0; }
+  .document-taskbar .taskbar-actions { display: block; grid-column: 1 / -1; grid-row: 3; padding-top: 7px; border-top: 1px solid var(--line); }
+  .document-taskbar.has-pdf-controls .taskbar-actions { grid-row: 4; }
+  .document-taskbar .toolbar-translation-settings { display: none; }
+  .toolbar-primary-actions { width: 100%; }
+  .document-taskbar .toolbar-settings-toggle { display: inline-flex; align-items: center; justify-content: center; margin-right: auto; }
+  .document-taskbar .toolbar-primary-actions .translation-actions { flex: 0 1 auto; min-width: 0; }
+  .document-taskbar .toolbar-primary-actions button { overflow: hidden; text-overflow: ellipsis; }
+  .document-taskbar .toolbar-primary-actions .translation-actions button { max-width: 100%; }
+  .document-taskbar .mode-buttons button { padding: 0 8px; }
+  .is-workspace .document-reading-pane .reading-content, .document-reading-pane .reading-content.reading-pdf { min-height: 0; }
+}
+@media (max-width: 599px) {
+  .document-taskbar .reader-controls-slot .pdf-viewer-toolbar { display: grid; width: 100%; grid-template-columns: auto auto auto minmax(0, 1fr); gap: 7px; }
+  .reader-controls-slot .pdf-page-navigation { grid-column: 1 / 3; grid-row: 1; justify-self: start; }
+  .reader-controls-slot .pdf-zoom-control { grid-column: 3 / -1; grid-row: 1; justify-self: start; }
+  .reader-controls-slot .pdf-presentation-control { grid-column: 1; grid-row: 2; justify-self: start; }
+  .reader-controls-slot .pdf-search { grid-column: 2; grid-row: 2; }
+  .reader-controls-slot .pdf-style { grid-column: 3; grid-row: 2; }
+  .reader-controls-slot .pdf-information-highlight { grid-column: 4; grid-row: 2; justify-self: start; }
+  .reader-controls-slot .pdf-information-status { grid-column: 1 / -1; grid-row: 3; }
+}
+@media (max-width: 760px) {
+  .is-workspace .document-sidebar { width: auto; max-height: min(28dvh, 200px); }
+}
+@media (max-width: 420px) {
+  .document-taskbar { padding-inline: 8px; }
+  .document-taskbar .mode-buttons button { padding: 0 7px; font-size: 11px; }
+  .document-app .document-taskbar :is(.ghost-button, .translate-document-button, .download-button) { padding-inline: 9px; font-size: 11px; }
+  .toolbar-primary-actions { gap: 6px; }
+}
+@media (max-width: 760px) and (max-height: 520px) {
+  .is-workspace .document-layout { position: relative; grid-template-rows: auto minmax(0, 1fr); }
+  .is-workspace .document-reading-pane { grid-row: 2; }
+  .is-workspace .document-sidebar { position: absolute; grid-column: 1; grid-row: 2; inset: 0 auto 0 0; z-index: 8; width: min(264px, 100%); max-height: none; border-right: 1px solid var(--line); border-bottom: 0; box-shadow: 8px 0 24px #10182820; }
+}
+
+/* 非 PDF 文档的目录：与 PDF 目录同样的密度和选中样式。 */
+.document-outline { padding: 2px 6px 8px; }
+.document-outline-language { display: flex; margin: 0 4px 8px; padding: 2px; border-radius: 8px; background: var(--surface-soft); }
+.document-outline-language button { flex: 1; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+.document-outline-language button.selected { color: var(--brand-strong); background: var(--surface); box-shadow: 0 1px 4px rgba(35, 47, 82, .1); font-weight: 700; }
+.document-outline-item { display: block; width: 100%; padding: 6px 10px 6px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--ink); font: inherit; font-size: 12.5px; line-height: 1.45; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.document-outline-item:hover { background: var(--surface-soft); }
+.document-outline-item.chapter { font-weight: 600; }
+.document-outline-item.current { color: var(--brand-strong); background: var(--brand-soft); }
+
+/* HTML、Markdown、纯文本与 ePub 的预览占满阅读区：不留卡片外边距，把空间交给正文。 */
+.is-workspace .document-reading-pane .reading-content:has(> .rich-document-reader) { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.is-workspace .document-reading-pane .rich-document-reader { display: flex; flex: 1; flex-direction: column; min-height: 0; border: 0; border-radius: 0; }
+.is-workspace .document-reading-pane .rich-document-reader .rich-preview-frame { flex: 1; height: auto; min-height: 0; }
+.is-workspace .document-reading-pane .reading-content:has(> .rich-document-reader) > .reader-empty { flex: none; margin: 0; padding: 8px 20px; }
+
+/* Word 文档：阅读区铺满，双语在宽窗口按段落左右对照。 */
+.is-workspace .document-reading-pane .reading-content:has(> .docx-document-reader) { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.is-workspace .document-reading-pane .docx-document-reader { display: flex; flex: 1; flex-direction: column; min-height: 0; border: 0; border-radius: 0; }
+.is-workspace .document-reading-pane .docx-document-reader .docx-page-stage { flex: 1; min-height: 0; padding: 20px 20px 32px; }
+.is-workspace .document-reading-pane .reading-content:has(> .docx-document-reader) > .reader-empty, .is-workspace .document-reading-pane .reading-content:has(> .docx-document-reader) > .reader-pagination { flex: none; margin: 0; padding: 8px 20px; }
+@media (min-width: 1100px) {
+  .docx-document-reader.bilingual .docx-page { width: min(1360px, 100%); padding: 56px 60px 72px; }
+  .docx-document-reader.bilingual .docx-paragraph { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 44px; align-items: start; }
+  .docx-document-reader.bilingual .docx-table .docx-paragraph { display: block; }
+  .docx-document-reader.bilingual .docx-source, .docx-document-reader.bilingual .docx-translation { margin: 0; }
+  .docx-document-reader.bilingual .docx-role-paragraph .docx-translation, .docx-document-reader.bilingual .docx-role-list-item .docx-translation { font-weight: 500; }
 }

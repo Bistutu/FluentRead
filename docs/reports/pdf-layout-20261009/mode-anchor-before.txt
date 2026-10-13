@@ -1,0 +1,19 @@
+Focused failing-case excerpt from the pre-fix run.
+Complete private log: /private/tmp/pdf-readable-mode-anchor-before.txt
+
+ FAIL  tests/pdfReaderLifecycle.test.ts > PDF reader actual Vue component reading interaction > preserves page 120 through narrow 120-page reading mode switches before the browser clamps a shorter document
+AssertionError: expected 67 to be 120 // Object.is equality
+
+- Expected
++ Received
+
+- 120
++ 67
+
+ ❯ tests/pdfReaderLifecycle.test.ts:378:35
+    376|         currentMode.value = 'translated'; await componentFlush(); flus…
+    377|         expect(extent()).toBeLessThan(before);
+    378|         expect(state.currentPage).toBe(pageNumber);
+       |                                   ^
+    379|         expect(root.querySelector(`.pdf-page-row[data-page-number="${p…
+    380|         for (const mode of ['bilingual', 'source', 'translated', 'sour…

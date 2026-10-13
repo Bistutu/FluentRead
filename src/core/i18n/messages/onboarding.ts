@@ -1,9 +1,22 @@
 /**
  * @file src/core/i18n/messages/onboarding.ts
  * 文件职责：提供首启引导直接使用的最小中英文文案，避免欢迎页等待完整英文资源包。
- * 主要内容：集中维护欢迎、选择、确认、保存和菜单加载反馈；完整中文与英文目录复用同一份文案。
+ * 主要内容：集中维护欢迎、选择、确认、保存和菜单加载反馈；完整中文与英文目录复用同一份文案，独立轻量品牌映射按预览语言展示各语言现有产品名称。
  * 模块边界：本文件只有静态界面资源，不加载语言包、不访问配置或浏览器，也不注册部分语言包。
  */
+import type {UiLanguage} from '../types';
+
+/** 首启不等待完整资源包；独立维护现有品牌名，避免改变原中英文目录的展开顺序。 */
+export const onboardingProductNames = {
+    'zh-CN': '流畅阅读',
+    'en-US': 'FluentRead',
+    'ja-JP': 'FluentRead',
+    'ko-KR': 'FluentRead',
+    'fr-FR': 'FluentRead',
+    'ru-RU': 'FluentRead',
+    'es-ES': 'FluentRead',
+} as const satisfies Readonly<Record<UiLanguage, string>>;
+
 export const onboardingChineseMessages = {
     'language.saveFailed': '界面语言保存失败，请重新打开设置页后重试。',
     'language.onboardingWelcomeEyebrow': '欢迎使用',

@@ -1,0 +1,39 @@
+{
+  "integratedMain": "af81332fb598f78b1199d103e0943e4e521a7f96",
+  "pdfBrowserEvidenceSource": "2ec514f5ca6fc860b60e9bd2befc03922e449e72",
+  "matchingFrozenPdfSrcFiles": [
+    "src/app/document-translation/DocumentApp.vue",
+    "src/app/document-translation/runtime.ts",
+    "src/core/i18n/messages/pdfReading.ts",
+    "src/features/document-translation/core/document.ts",
+    "src/features/document-translation/core/pdfLayoutAnalysis.ts",
+    "src/features/document-translation/core/pdfReadingPlan.ts",
+    "src/features/document-translation/core/pdfTextLayout.ts",
+    "src/features/document-translation/public.ts",
+    "src/features/document-translation/services/binary.ts",
+    "src/features/document-translation/ui/PdfReader.vue",
+    "src/features/document-translation/ui/pdfPreview.ts",
+    "src/features/document-translation/ui/pdfReader.ts",
+    "src/features/document-translation/ui/presentation.ts"
+  ],
+  "matchingFrozenPdfSrcCount": 13,
+  "languageResourceSnapshot": "0062dddb85ca6d14fd251372251224988df53fe8",
+  "userscriptConfigSha256": "5de4eb25ebb439c32626bb1ad8d32e5e7ddf8292c156b0b592965bb439e9d2d7",
+  "userscriptFinalSha256": "22b0cff7d8c0056fc59fc80af18ebdb4ffbcc2a5bac5a296be199a9d6f8ee85c",
+  "userscriptFinalBytes": 1959450,
+  "userscriptCapBytes": 1960000,
+  "scopedSuites": 26,
+  "scopedPassedCases": 1419,
+  "userscriptSuites": 3,
+  "userscriptPassedCases": 25,
+  "checks": {
+    "compile": 0,
+    "chromeBuild": 0,
+    "firefoxBuild": 0,
+    "docsBuild": 0,
+    "testAudit": 0,
+    "userscriptBuild": 0,
+    "userscriptVerifier": 0
+  },
+  "scope": "Local integration checks; browser evidence reused only for unchanged PDF production modules. No full regression or Firefox runtime claimed."
+}

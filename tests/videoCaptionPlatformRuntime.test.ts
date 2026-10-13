@@ -252,3 +252,161 @@ describe('Udemy 与 Disney+ 原生人工字幕', () => {
         expect(native.target.mode).toBe('showing'); expect(native.source.mode).toBe('showing');
     });
 });
+
+describe('平台字幕布局操作预算与失效边界', () => {
+    it('64 个视频每轮各测量一次，优先播放中视频且复用所选尺寸定位字幕', async () => {
+        const f = videoFixture('https://www.udemy.com/course/demo/learn/');
+        Object.defineProperty(f.video, 'textTracks', {value: []});
+        const measurements = [vi.fn(() => ({left: 50, top: 50, width: 2000, height: 1200}) as DOMRect)];
+        f.video.getBoundingClientRect = measurements[0];
+        for (let index = 1; index < 64; index += 1) {
+            const player = f.document.createElement('div'); player.className = 'video-player';
+            player.innerHTML = `<video src="${index}.mp4"></video><span data-purpose="captions-cue-text">Caption from player ${index}.</span>`;
+            const video = player.querySelector('video')! as unknown as HTMLVideoElement;
+            Object.assign(video, {paused: index !== 11 && index !== 23, ended: false, seeking: false, currentTime: 1});
+            const measure = vi.fn(() => ({left: index, top: 20, width: 100 + index, height: 100}) as DOMRect);
+            video.getBoundingClientRect = measure; measurements.push(measure);
+            f.document.body.appendChild(player);
+        }
+        f.start();
+        expect(measurements.map(measure => measure.mock.calls.length)).toEqual(Array(64).fill(1));
+        expect(f.shadow()?.querySelector('.source')?.textContent).toBe('Caption from player 23.');
+        expect(f.document.getElementById('fluent-read-platform-captions')?.style.width).toBe('118.08px');
+        await vi.advanceTimersByTimeAsync(100);
+        measurements.forEach(measure => measure.mockClear());
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(measurements.map(measure => measure.mock.calls.length)).toEqual(Array(64).fill(4));
+    });
+
+    it('尺寸相同时保持 DOM 顺序，隐藏祖先与零尺寸视频不参与选择', () => {
+        const f = videoFixture('https://www.udemy.com/course/demo/learn/');
+        Object.defineProperty(f.video, 'textTracks', {value: []});
+        for (const [attribute, width] of [['', 800], ['hidden', 2000], ['aria-hidden="true"', 2000], ['', 0]] as const) {
+            const player = f.document.createElement('div'); player.className = 'video-player';
+            player.innerHTML = `<video></video><span data-purpose="captions-cue-text">Other caption.</span>`;
+            if (attribute === 'hidden') player.hidden = true;
+            if (attribute.startsWith('aria')) player.setAttribute('aria-hidden', 'true');
+            const video = player.querySelector('video')! as unknown as HTMLVideoElement;
+            Object.assign(video, {paused: attribute === '' && width > 0, ended: false, seeking: false});
+            video.getBoundingClientRect = () => ({width, height: 450}) as DOMRect;
+            f.document.body.appendChild(player);
+        }
+        f.start();
+        expect(f.shadow()?.querySelector('.source')?.textContent).toBe(sentence);
+    });
+
+    it('稳定长字幕每秒保留四次位置读取，但不写样式、替换文本或重复测量高度', async () => {
+        const f = videoFixture('https://www.udemy.com/course/demo/learn/');
+        const measureVideo = vi.fn(f.video.getBoundingClientRect);
+        f.video.getBoundingClientRect = measureVideo;
+        f.start(); await vi.advanceTimersByTimeAsync(100);
+        const host = f.document.getElementById('fluent-read-platform-captions')!;
+        const panel = f.shadow()!.querySelector<HTMLElement>('.panel')!;
+        const source = f.shadow()!.querySelector('.source')!;
+        const measureHeight = vi.fn(() => Number.parseFloat(panel.style.fontSize) * 5 + 16);
+        Object.defineProperty(panel, 'scrollHeight', {get: measureHeight});
+        const panelWrite = vi.spyOn(panel.style, 'setProperty');
+        f.config.videoSubtitleAppearance.fontScale = 500; f.change();
+        expect(measureHeight).toHaveBeenCalledTimes(10);
+        expect(panelWrite.mock.calls.filter(([property]) => property === 'font-size')).toHaveLength(11);
+        expect(measureHeight()).toBeLessThanOrEqual(378);
+        const requestedFontScale = f.config.videoSubtitleAppearance.fontScale;
+        const sourceNode = source.firstChild;
+        const hostWrite = vi.spyOn(host.style, 'setProperty');
+        const nativeWrite = vi.spyOn(f.document.querySelector('span')!.style, 'setProperty');
+        measureHeight.mockClear(); panelWrite.mockClear(); measureVideo.mockClear();
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(measureVideo).toHaveBeenCalledTimes(4);
+        expect(measureHeight).not.toHaveBeenCalled();
+        expect(panelWrite).not.toHaveBeenCalled(); expect(hostWrite).not.toHaveBeenCalled(); expect(nativeWrite).not.toHaveBeenCalled();
+        expect(source.firstChild).toBe(sourceNode);
+        expect(f.config.videoSubtitleAppearance.fontScale).toBe(requestedFontScale);
+    });
+
+    it('播放器移动更新坐标，宽高、外观、全屏和字体加载分别重新适配并清理监听', async () => {
+        const f = videoFixture('https://www.udemy.com/course/demo/learn/');
+        let bounds = {left: 50, top: 50, width: 800, height: 450};
+        f.video.getBoundingClientRect = () => bounds as DOMRect;
+        const fonts = new f.window.EventTarget();
+        Object.defineProperty(f.document, 'fonts', {value: fonts});
+        const removeFontListener = vi.spyOn(fonts, 'removeEventListener');
+        const dispose = f.start(); await vi.advanceTimersByTimeAsync(100);
+        const host = f.document.getElementById('fluent-read-platform-captions')!;
+        const panel = f.shadow()!.querySelector<HTMLElement>('.panel')!;
+        const measureHeight = vi.fn(() => Number.parseFloat(panel.style.fontSize) * 5 + 16);
+        Object.defineProperty(panel, 'scrollHeight', {get: measureHeight});
+        f.config.videoSubtitleAppearance.fontScale = 500; f.change(); measureHeight.mockClear();
+        bounds = {...bounds, left: 90, top: 70}; await vi.advanceTimersByTimeAsync(250);
+        expect(host.style.left).toBe('106px'); expect(host.style.top).toBe('475px');
+        expect(measureHeight).not.toHaveBeenCalled();
+        bounds = {...bounds, width: 600}; await vi.advanceTimersByTimeAsync(250);
+        expect(host.style.width).toBe('576px'); expect(measureHeight).toHaveBeenCalledTimes(10); measureHeight.mockClear();
+        bounds = {...bounds, height: 700}; await vi.advanceTimersByTimeAsync(250);
+        expect(panel.style.maxHeight).toBe('588px'); expect(panel.style.fontSize).toBe('100px');
+        expect(measureHeight).toHaveBeenCalledTimes(1); measureHeight.mockClear();
+        for (const change of [() => { f.config.videoSubtitleAppearance.skin = 'paper'; },
+            () => { f.config.videoSubtitleAppearance.lineSpacing = 1.6; },
+            () => { f.config.videoSubtitleAppearance.fontScale = 450; },
+            () => { f.config.videoSubtitleDisplayMode = 'translation-only'; }]) {
+            change(); f.change(); expect(measureHeight).toHaveBeenCalledTimes(1); measureHeight.mockClear();
+        }
+        expect(host.style.getPropertyValue('--fluent-read-video-subtitle-font-family')).toBe('Georgia, serif');
+        const fullscreen = f.document.createElement('div'); f.document.body.appendChild(fullscreen);
+        Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: fullscreen});
+        f.document.dispatchEvent(new f.window.Event('fullscreenchange')); await vi.advanceTimersByTimeAsync(100);
+        expect(host.parentElement).toBe(fullscreen); expect(measureHeight).toHaveBeenCalledTimes(1); measureHeight.mockClear();
+        fonts.dispatchEvent(new f.window.Event('loadingdone')); await vi.advanceTimersByTimeAsync(100);
+        expect(measureHeight).toHaveBeenCalledTimes(1); measureHeight.mockClear();
+        dispose(); expect(removeFontListener).toHaveBeenCalledWith('loadingdone', expect.any(Function));
+        fonts.dispatchEvent(new f.window.Event('loadingdone')); await vi.advanceTimersByTimeAsync(1000);
+        expect(measureHeight).not.toHaveBeenCalled(); expect(f.document.getElementById(host.id)).toBeNull();
+    });
+
+    it('清空后相同字幕再次出现重新适配，异步译文使用到达时的最新高度', async () => {
+        let finish!: (text: string) => void;
+        const translate = vi.fn(() => new Promise<string>(resolve => { finish = resolve; }));
+        const f = videoFixture('https://www.udemy.com/course/demo/learn/', translate);
+        f.config.videoPreferHumanSubtitles = false;
+        let bounds = {left: 50, top: 50, width: 800, height: 450};
+        f.video.getBoundingClientRect = () => bounds as DOMRect;
+        f.start(); await vi.advanceTimersByTimeAsync(100);
+        const panel = f.shadow()!.querySelector<HTMLElement>('.panel')!;
+        const measureHeight = vi.fn(() => Number.parseFloat(panel.style.fontSize) * (f.shadow()!.querySelector('.translation')!.textContent ? 8 : 3) + 16);
+        Object.defineProperty(panel, 'scrollHeight', {get: measureHeight});
+        f.config.videoSubtitleAppearance.fontScale = 500; f.change(); measureHeight.mockClear();
+        bounds = {...bounds, height: 700}; await vi.advanceTimersByTimeAsync(250); measureHeight.mockClear();
+        finish('到达时需要两行的大字号译文'); await vi.advanceTimersByTimeAsync(0);
+        expect(measureHeight).toHaveBeenCalledTimes(10); expect(measureHeight()).toBeLessThanOrEqual(588);
+        expect(Number.parseFloat(panel.style.fontSize)).toBeGreaterThan(60);
+        measureHeight.mockClear(); f.video.currentTime = 3; await vi.advanceTimersByTimeAsync(250);
+        expect(f.document.getElementById('fluent-read-platform-captions')?.hidden).toBe(true);
+        f.video.currentTime = 1; await vi.advanceTimersByTimeAsync(250);
+        expect(f.shadow()?.querySelector('.translation')?.textContent).toBe('到达时需要两行的大字号译文');
+        expect(measureHeight).toHaveBeenCalledTimes(11);
+        measureHeight.mockClear(); await vi.advanceTimersByTimeAsync(1000); expect(measureHeight).not.toHaveBeenCalled();
+    });
+
+    it('失败文字和重试工具到达后重新适配，重试成功收起工具并稳定复用布局', async () => {
+        let fail!: (reason: Error) => void, finish!: (text: string) => void;
+        const translate = vi.fn().mockImplementationOnce(() => new Promise<string>((_, reject) => { fail = reject; }))
+            .mockImplementationOnce(() => new Promise<string>(resolve => { finish = resolve; }));
+        const f = videoFixture('https://www.udemy.com/course/demo/learn/', translate);
+        f.config.videoPreferHumanSubtitles = false;
+        f.start(); await vi.advanceTimersByTimeAsync(100);
+        const panel = f.shadow()!.querySelector<HTMLElement>('.panel')!;
+        const retry = f.shadow()!.querySelector('button')!;
+        const measureHeight = vi.fn(() => Number.parseFloat(panel.style.fontSize) * (retry.hidden ? 3 : 6) + 16);
+        Object.defineProperty(panel, 'scrollHeight', {get: measureHeight});
+        f.config.videoSubtitleAppearance.fontScale = 500; f.change(); measureHeight.mockClear();
+        fail(new Error('offline')); await vi.advanceTimersByTimeAsync(0);
+        expect(retry.hidden).toBe(false); expect(f.shadow()?.querySelector('.translation')?.textContent).toBe('这句翻译失败');
+        expect(measureHeight).toHaveBeenCalledTimes(10); expect(measureHeight()).toBeLessThanOrEqual(378); measureHeight.mockClear();
+        await vi.advanceTimersByTimeAsync(1000); expect(measureHeight).not.toHaveBeenCalled();
+        retry.click(); await vi.advanceTimersByTimeAsync(100);
+        expect(retry.hidden).toBe(true); expect(measureHeight).toHaveBeenCalledTimes(1); measureHeight.mockClear();
+        finish('重试成功'); await vi.advanceTimersByTimeAsync(0);
+        expect(f.shadow()?.querySelector('.translation')?.textContent).toBe('重试成功');
+        expect(panel.style.fontSize).toBe('100px'); expect(measureHeight).toHaveBeenCalledTimes(1); measureHeight.mockClear();
+        await vi.advanceTimersByTimeAsync(1000); expect(measureHeight).not.toHaveBeenCalled();
+    });
+});

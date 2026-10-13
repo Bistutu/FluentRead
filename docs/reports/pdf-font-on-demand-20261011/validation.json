@@ -1,0 +1,51 @@
+{
+  "checkedAt": "2026-10-11",
+  "baseCommit": "e047f8bd05ad8439e8bd8e2bdb094b55e3056fec",
+  "font": {
+    "bytes": 4977684,
+    "sha256": "ea983e51e010c28a6a03839cffea942243e49342be7307be4f2f283e73ab8127",
+    "revision": "55d1219bd62e059f921b639b658a2a0a8e36d53d",
+    "inExtensionPackage": false,
+    "sourceFixturePath": "assets/pdf-fonts/FluentReadNotoSansSC-Regular.woff2"
+  },
+  "behavior": {
+    "onFirstTextPdfExport": true,
+    "persistentCacheStorage": true,
+    "fixedLengthAndSha256": true,
+    "sourceFallback": true,
+    "sourceDeadlineMs": 25000,
+    "cancellation": true,
+    "concurrentExportDeduplication": true,
+    "runtimeCodeBundled": true,
+    "productionRawByteBudget": 65000000
+  },
+  "tests": {
+    "focusedPdfFontAndPdfExport": {
+      "passed": 51,
+      "failed": 0
+    },
+    "relatedPdfLayoutManifestAndArchitecture": {
+      "passed": 989,
+      "failed": 0
+    },
+    "fontLoaderCoverage": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "testAudit": "passed",
+    "docsBuild": "passed",
+    "compile": "passed",
+    "productionModuleBrowser": "passed"
+  },
+  "scopeLimits": [
+    "Source probes use one local network; country-by-country reachability was not tested.",
+    "Browser verification covers production module download/cache/PDF text, not the full document translation UI, Firefox runtime, or low-end devices.",
+    "No whole-repository regression run."
+  ],
+  "builds": {
+    "chromeZip": "passed",
+    "firefox": "passed"
+  }
+}

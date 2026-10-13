@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
+import {createRequire} from 'node:module';
 import {basename, dirname, resolve} from 'node:path';
 import {gzipSync} from 'node:zlib';
 import {runInNewContext} from 'node:vm';
@@ -8,8 +9,12 @@ import ts from 'typescript';
 import {defineConfig, normalizePath, transformWithEsbuild, type Plugin} from 'vite';
 import {createUserscriptMetadata} from './metadata';
 import {createUserscriptCharacterDataCompressionPlugin} from './characterDataPlugin';
-import {UI_LANGUAGE_BUNDLES} from '../src/core/i18n/bundles';
-import {zhCNMessages} from '../src/core/i18n/messages/zh-CN';
+import {createUserscriptFrancDataCompressionPlugin} from './francDataPlugin';
+import {createUserscriptTldtsDataCompressionPlugin} from './tldtsDataPlugin';
+import {createUserscriptInlineCssCompressionPlugin} from './inlineCssPlugin';
+import {createUserscriptAboutImagesCompressionPlugin} from './aboutImagesPlugin';
+import {createUserscriptServiceBrandIconsCompressionPlugin} from './serviceBrandIconsPlugin';
+import {UI_LANGUAGE_BUNDLES, zhCNMessages} from './languageBundles';
 
 const root = resolve(__dirname, '..');
 const packageJson = JSON.parse(fs.readFileSync(resolve(root, 'package.json'), 'utf8')) as {
@@ -17,7 +22,6 @@ const packageJson = JSON.parse(fs.readFileSync(resolve(root, 'package.json'), 'u
     userscriptVersion: string;
 };
 const iconDataUrl = `data:image/png;base64,${fs.readFileSync(resolve(root, 'public/icon/64.png')).toString('base64')}`;
-const approveDataUrl = `data:image/jpeg;base64,${fs.readFileSync(resolve(root, 'public/misc/approve.jpg')).toString('base64')}`;
 const bundleLibraries = process.env.FLUENTREAD_USERSCRIPT_STANDALONE === '1';
 const greasyForkSource = process.env.FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE === '1';
 const vendorUrl = process.env.FLUENTREAD_USERSCRIPT_VENDOR_URL;
@@ -48,10 +52,9 @@ function installedVersion(name: string): string {
 // 脚本管理器在安装时缓存固定版本的通用库；仓库资源固定到已发布提交，更新资源时同步换提交。
 const userscriptResourceCommit = '184a3d74f61b9d2a8d47080787f7e0180b98414d';
 // 语言文件的内容哈希来自合并后的消息目录，固定到首次包含这些文件的提交。
-const userscriptLanguageResourceCommit = '5bcae50072cfa779957d2f50431a90e23bfa48eb';
-const iconMetaUrl = greasyForkSource
-    ? `https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@${userscriptResourceCommit}/public/icon/64.png`
-    : iconDataUrl;
+const userscriptLanguageResourceCommit = '240cbc42de9d1141c679fb595afea055397ac656';
+const pinnedIconUrl = `https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@${userscriptResourceCommit}/public/icon/64.png`;
+const iconMetaUrl = greasyForkSource ? pinnedIconUrl : iconDataUrl;
 const uiRequires = [
     `https://cdn.jsdelivr.net/npm/vue@${installedVersion('vue')}/dist/vue.global.prod.js`,
     `https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@${userscriptResourceCommit}/userscript/vueElementPlusBridge.v1.js`,
@@ -63,17 +66,29 @@ const userscriptRequires = bundleLibraries
     ? []
     : [...uiRequires, 'https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako_inflate.min.js',
         ...(greasyForkSource ? [vendorUrl!, dataUrl!] : [])];
-const metadata = createUserscriptMetadata({version: packageJson.userscriptVersion, iconDataUrl: iconMetaUrl, requires: userscriptRequires});
+// 标准版安装时已缓存同源固定依赖，管理器列表图标复用同一提交的图片，避免重复嵌入 PNG。
+// 页面工具仍由 bootstrap 内嵌图片；无远程依赖的 standalone 连元数据图标也保持内嵌。
+const metadata = createUserscriptMetadata({version: packageJson.userscriptVersion,
+    iconDataUrl: bundleLibraries ? iconDataUrl : pinnedIconUrl, requires: userscriptRequires});
 // 界面词典只按 key 查询，稳定排序把相似 key 聚在一起，提高静态 JSON 压缩率；数组顺序保持原样。
 function serializeUiMessages(value: unknown): string {
     return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
         ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
 }
+// 文档翻译页面（含 PDF 阅读器）只存在于扩展里；中英内嵌词典使用同一页面能力裁剪。
+function userscriptPageMessages<T extends Record<string, string>>(messages: T): T {
+    return Object.fromEntries(Object.entries(messages).filter(([key]) => !key.startsWith('document.'))) as T;
+}
+// 构建期复用已有 pako 编码中英界面词典，减少标准 gzip 数据；解压格式与运行时端口不变。
+const gzipUiMessages = createRequire(import.meta.url)('pako').gzip as
+    (data: Uint8Array, options: {level: number}) => Uint8Array;
+// 与中文内嵌目录一致，仅投影扩展文档页专用 key；固定远程与外部资源继续使用原 bundle。
 const compressedUiLanguageBundles = greasyForkSource ? {} : Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language === 'en-US')
     .map(([language, bundle]) => [
     language,
-    gzipSync(Buffer.from(serializeUiMessages(bundle)), {level: 9}).toString('base64'),
+    Buffer.from(gzipUiMessages(Buffer.from(serializeUiMessages({...bundle,
+        messages: userscriptPageMessages(bundle.messages)})), {level: 9})).toString('base64'),
 ]));
 const remoteUiLanguageBundles = Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language !== 'en-US')
@@ -120,8 +135,8 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
         load(id) {
             if (id === externalChineseMessagesId) {
                 if (greasyForkSource) return 'export const zhCNMessages = globalThis.__FLUENTREAD_USERSCRIPT_DATA__.zhCNMessages;';
-                const contents = serializeUiMessages(zhCNMessages);
-                const compressed = gzipSync(Buffer.from(contents), {level: 9}).toString('base64');
+                const contents = serializeUiMessages(userscriptPageMessages(zhCNMessages));
+                const compressed = Buffer.from(gzipUiMessages(Buffer.from(contents), {level: 9})).toString('base64');
                 return [
                     `/* Non-code Chinese UI messages; sha256 ${createHash('sha256').update(contents).digest('hex')}. */`,
                     "import {inflateWithPako} from '@/userscript/pakoRuntime';",
@@ -374,9 +389,28 @@ function bundleUserscriptCss(): Plugin {
     return {
         name: 'bundle-userscript-css',
         enforce: 'post',
+        transform: {
+            order: 'pre',
+            handler(code, id) {
+                // page.css 使用 ?inline 进入 JS，必须在 Vite CSS 转换前排除不可达的扩展来源提示。
+                if (normalizePath(id.split('?', 1)[0]) !== normalizePath(resolve(root, 'src/app/content/page.css'))) return null;
+                const withoutCorrectionBadge = code.replace(/\.fluent-read-bilingual-content\[data-fr-personal-correction="true"\]::after\s*\{[^}]*\}/gu, '');
+                return withoutCorrectionBadge === code ? null : {code: withoutCorrectionBadge, map: null};
+            },
+        },
         generateBundle: {
           order: 'post',
           async handler(_options, bundle) {
+            // 个人校订需要扩展后台作为唯一写入者；public 别名之外的直接导入也必须在构建期阻止。
+            const correctionFeatureRoot = `${resolve(root, 'src/features/personal-corrections')}/`;
+            const leakedCorrectionModule = Object.values(bundle)
+                .filter((item) => item.type === 'chunk')
+                .flatMap((item) => item.moduleIds)
+                .find((id) => id.startsWith(correctionFeatureRoot));
+            if (leakedCorrectionModule) {
+                throw new Error(`Userscript bundle contains unsupported personal correction feature: ${leakedCorrectionModule}`);
+            }
+
             const cssEntries = Object.entries(bundle).filter(([, item]) => item.type === 'asset' && item.fileName.endsWith('.css'));
             const css = cssEntries.map(([, item]) => String(item.type === 'asset' ? item.source : '')).join('\n');
             const compressedCss = greasyForkSource ? '' : gzipSync(Buffer.from(css, 'utf8'), {level: 9}).toString('base64');
@@ -411,7 +445,6 @@ function bundleUserscriptCss(): Plugin {
             const bootstrap = [
                 `${compatibilityPreludeStart}\n${preludeCode}\n${compatibilityPreludeEnd}`,
                 `globalThis.__FLUENTREAD_ICON_DATA__=${JSON.stringify(iconMetaUrl)};`,
-                ...(bundleLibraries ? [`globalThis.__FLUENTREAD_APPROVE_DATA__=${JSON.stringify(approveDataUrl)};`] : []),
                 ...(greasyForkSource
                     ? ['globalThis.__fluentReadUserscriptCss=globalThis.__FLUENTREAD_USERSCRIPT_DATA__.css;']
                     : [`globalThis.__fluentReadUserscriptCssCompressed=${JSON.stringify(compressedCss)};`]),
@@ -483,10 +516,12 @@ export const userscriptAliases = [
     {find: /^@\/src\/services\/translation\/context\/browser$/u, replacement: resolve(root, 'userscript/pageContext.ts')},
     {find: /^@\/src\/services\/translation\/context$/u, replacement: resolve(root, 'userscript/pageTranslationContext.ts')},
     // app/content 只依赖 feature 公开契约；在此边界替换，才能保证扩展专属 runtime 不进入产物。
+    {find: '@/src/features/information-highlight/public', replacement: resolve(root, 'userscript/informationHighlight.ts')},
     {find: '@/src/features/area-translation/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/image-translation/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/video-subtitle/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/vocabulary/content/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
+    {find: '@/src/features/personal-corrections/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/writing-assistant/public', replacement: resolve(root, 'userscript/writingAssistant.ts')},
     {find: /^\.\/chrome-translator$/u, replacement: resolve(root, 'userscript/chromeTranslator.ts')},
     {find: '@wxt-dev/storage', replacement: resolve(root, 'userscript/storage.ts')},
@@ -498,7 +533,7 @@ export const userscriptAliases = [
 export default defineConfig({
     root,
     publicDir: false,
-    plugins: [unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss()],
+    plugins: [unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), createUserscriptFrancDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptTldtsDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptAboutImagesCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptServiceBrandIconsCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss(), createUserscriptInlineCssCompressionPlugin(root, !greasyForkSource)],
     resolve: {
         alias: userscriptAliases,
     },
@@ -519,6 +554,9 @@ export default defineConfig({
         emptyOutDir: true,
         target: 'es2018',
         minify: greasyForkSource ? false : 'esbuild',
+        // 锁定的 CommonJS 26 默认 auto 会因条件 require 的分析时机改变 MD5 初始化包装。
+        // 保留首次 require 的初始化顺序与循环依赖语义，使同源构建能稳定比较；不改库实现。
+        commonjsOptions: {strictRequires: true},
         sourcemap: false,
         cssCodeSplit: false,
         assetsInlineLimit: Number.MAX_SAFE_INTEGER,

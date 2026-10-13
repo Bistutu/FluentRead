@@ -1,0 +1,216 @@
+/**
+ * @file tests/pdfPaperLayouts.test.ts
+ * 文件职责：用现场生成的典型论文版式 PDF 回归“真实解析 + 版面分析”的整条链路，防止后续调整分段规则时把常见论文格式改坏。
+ * 主要内容：以 pdf-lib 按真实字体度量排出单栏 LaTeX 文章、双栏会议论文（罗马数字章节、图与图注、表与表题、脚注、页眉页码）、双倍行距投稿稿件和悬挂缩进的参考文献页，经 PDF.js 解析后逐项断言送翻片段的文字与顺序、标题与题注的归类、公式和页眉页脚保持原样、双栏先左后右的阅读顺序；另提供按环境变量启用的本地论文目录检查，只核对与内容无关的结构不变量。
+ * 模块边界：夹具文字均为测试自拟，不含任何真实论文内容；不启动浏览器、不调用翻译服务，译文叠放与选区由真实浏览器脚本覆盖。
+ */
+import {readdirSync, readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage} from 'pdf-lib';
+import {describe, expect, it} from 'vitest';
+import type {ParsedDocument, PdfDocumentBlock} from '@/src/features/document-translation/core/document';
+import {parseBinaryDocument} from '@/src/features/document-translation/services/binary';
+
+interface Fonts {serif: PDFFont; bold: PDFFont; italic: PDFFont; sans: PDFFont}
+interface Sheet {page: PDFPage; fonts: Fonts; height: number}
+
+/** 按字体度量贪心分行。 */
+function wrap(text: string, font: PDFFont, size: number, width: number): string[] {
+    const lines: string[] = [];
+    let line = '';
+    for (const word of text.split(' ')) {
+        const next = line ? `${line} ${word}` : word;
+        if (line && font.widthOfTextAtSize(next, size) > width) {lines.push(line); line = word;} else line = next;
+    }
+    lines.push(line);
+    return lines;
+}
+
+/**
+ * 画一个两端对齐的段落：除末行外每行都用词间距撑满栏宽，与 LaTeX、Word 的正文排版一致。
+ * baseline 以页面顶部为原点；返回下一行的基线位置。
+ */
+function paragraph(sheet: Sheet, text: string, x: number, baseline: number, width: number, options: {size?: number; leading?: number; font?: PDFFont; indent?: number; hang?: number} = {}): number {
+    const size = options.size ?? 10, leading = options.leading ?? size * 1.2, font = options.font ?? sheet.fonts.serif;
+    const indent = options.indent ?? 0, hang = options.hang ?? 0;
+    const first = wrap(text, font, size, width - indent)[0];
+    const rest = text.slice(first.length).trim();
+    const lines = [first, ...(rest ? wrap(rest, font, size, width - hang) : [])];
+    lines.forEach((line, index) => {
+        const offset = index === 0 ? indent : hang;
+        const gaps = line.split(' ').length - 1;
+        const slack = width - offset - font.widthOfTextAtSize(line, size);
+        sheet.page.drawText(line, {x: x + offset, y: sheet.height - baseline - index * leading, size, font,
+            ...(index < lines.length - 1 && gaps ? {wordSpacing: slack / gaps} : {})});
+    });
+    return baseline + lines.length * leading;
+}
+
+function centered(sheet: Sheet, text: string, baseline: number, size: number, font: PDFFont, left = 0, width = sheet.page.getWidth()): void {
+    sheet.page.drawText(text, {x: left + (width - font.widthOfTextAtSize(text, size)) / 2, y: sheet.height - baseline, size, font});
+}
+
+async function build(draw: (sheet: Sheet, addPage: () => Sheet) => void, size: [number, number] = [612, 792]): Promise<ParsedDocument> {
+    const pdf = await PDFDocument.create();
+    const fonts: Fonts = {serif: await pdf.embedFont(StandardFonts.TimesRoman), bold: await pdf.embedFont(StandardFonts.TimesRomanBold),
+        italic: await pdf.embedFont(StandardFonts.TimesRomanItalic), sans: await pdf.embedFont(StandardFonts.Helvetica)};
+    const addPage = (): Sheet => ({page: pdf.addPage(size), fonts, height: size[1]});
+    draw(addPage(), addPage);
+    return parseBinaryDocument('paper.pdf', await pdf.save());
+}
+
+const sentence = (topic: string, count: number) => Array.from({length: count}, (_, index) =>
+    `The ${topic} study reports result number ${index + 1} with enough ordinary words to fill a justified line of body text.`).join(' ');
+const pages = (document: ParsedDocument) => document.binary?.kind === 'pdf' ? document.binary.pages : [];
+const sources = (document: ParsedDocument) => document.segments.map(segment => segment.source);
+const blockOf = (document: ParsedDocument, start: string, page = 0): PdfDocumentBlock & {source?: string} => {
+    const found = pages(document)[page].blocks.find(block => (block.segmentIndex >= 0 ? document.segments[block.segmentIndex].source : (block as {source?: string}).source ?? '').startsWith(start));
+    if (!found) throw new Error(`没有以“${start}”开头的版面块`);
+    return found;
+};
+/** 与内容无关的结构不变量：可翻译块互不重叠、没有被拆散的碎片、片段文字非空且不重复出现在两个块里。 */
+function expectSoundStructure(document: ParsedDocument): void {
+    for (const page of pages(document)) {
+        const translatable = page.blocks.filter(block => block.segmentIndex >= 0);
+        translatable.forEach((block, index) => translatable.slice(index + 1).forEach(other => {
+            const width = Math.min(block.x + block.width, other.x + other.width) - Math.max(block.x, other.x);
+            const height = Math.min(block.y + block.height, other.y + other.height) - Math.max(block.y, other.y);
+            const overlapping = width > 2 && height > 2 && width * height > 0.2 * Math.min(block.width * block.height, other.width * other.height);
+            expect(overlapping, `第 ${page.pageNumber} 页有两个可翻译块互相重叠：${document.segments[block.segmentIndex].source.slice(0, 40)} / ${document.segments[other.segmentIndex].source.slice(0, 40)}`).toBe(false);
+        }));
+        expect(new Set(page.segmentIndexes).size).toBe(page.segmentIndexes.length);
+    }
+    for (const source of sources(document)) expect(source.trim().length).toBeGreaterThan(0);
+}
+
+describe('common paper layouts survive real PDF parsing', () => {
+    it('single-column LaTeX article: title, byline, abstract, numbered sections, display equation, footnote and page number', async () => {
+        const abstract = sentence('abstract', 4), first = sentence('opening', 5), second = sentence('follow-up', 4);
+        const document = await build(sheet => {
+            const {fonts} = sheet;
+            centered(sheet, 'A Careful Study of Layout Preserving Translation', 110, 17, fonts.serif);
+            centered(sheet, 'Ada Example, Bo Sample, Cy Placeholder', 138, 12, fonts.serif);
+            centered(sheet, 'Abstract', 180, 10, fonts.bold);
+            paragraph(sheet, abstract, 126, 196, 360, {size: 9, leading: 11});
+            sheet.page.drawText('1  Introduction', {x: 90, y: sheet.height - 290, size: 14, font: fonts.bold});
+            let y = paragraph(sheet, first, 90, 312, 432);
+            y = paragraph(sheet, second, 90, y, 432, {indent: 15});
+            centered(sheet, 'E = mc2', y + 14, 10, fonts.italic);
+            sheet.page.drawText('(1)', {x: 508, y: sheet.height - y - 14, size: 10, font: fonts.serif});
+            sheet.page.drawText('2  Method', {x: 90, y: sheet.height - y - 50, size: 14, font: fonts.bold});
+            paragraph(sheet, sentence('method', 3), 90, y + 72, 432);
+            paragraph(sheet, 'This footnote explains a detail of the experimental protocol in small type.', 90, 700, 432, {size: 8, leading: 9.5});
+            centered(sheet, '1', 752, 10, fonts.serif);
+        });
+        expect(sources(document)).toEqual(['A Careful Study of Layout Preserving Translation', 'Abstract', abstract, '1 Introduction', first, second, '2 Method', sentence('method', 3),
+            'This footnote explains a detail of the experimental protocol in small type.']);
+        expect(blockOf(document, 'A Careful Study').kind).toBe('heading');
+        expect(blockOf(document, '1 Introduction').kind).toBe('heading');
+        expect(blockOf(document, '2 Method').kind).toBe('heading');
+        // 作者署名、独立公式和页码保持原样，不占用翻译请求。
+        expect(blockOf(document, 'Ada Example')).toMatchObject({kind: 'metadata', segmentIndex: -1});
+        expect(pages(document)[0].blocks.some(block => block.kind === 'formula' && block.segmentIndex === -1)).toBe(true);
+        expect(pages(document)[0].blocks.filter(block => block.kind === 'footer')).toHaveLength(1);
+        expect(document.segments.filter(segment => segment.role === 'heading').map(segment => segment.source)).toEqual(['A Careful Study of Layout Preserving Translation', 'Abstract', '1 Introduction', '2 Method']);
+        expectSoundStructure(document);
+    });
+
+    it('two-column conference paper: Roman-numeral sections, figure and table captions, reading order, footnote, running header', async () => {
+        const left = 54, right = 318, column = 240;
+        const abstract = `Abstract-${sentence('summary', 3)}`, intro = sentence('introduction', 6), related = sentence('related', 4), method = sentence('approach', 5), results = sentence('evaluation', 4);
+        const document = await build(sheet => {
+            const {fonts, page, height} = sheet;
+            centered(sheet, 'Proceedings of the Example Workshop on Documents', 30, 8, fonts.serif);
+            centered(sheet, 'Reading Order Recovery for Two-Column Papers', 84, 20, fonts.serif);
+            let y = paragraph(sheet, abstract, left, 150, column, {size: 9, leading: 10.5, font: fonts.bold});
+            centered(sheet, 'I. INTRODUCTION', y + 14, 10, fonts.serif, left, column);
+            y = paragraph(sheet, intro, left, y + 30, column, {indent: 10});
+            centered(sheet, 'II. RELATED WORK', y + 12, 10, fonts.serif, left, column);
+            y = paragraph(sheet, related, left, y + 28, column, {indent: 10});
+            page.drawLine({start: {x: left, y: height - 716}, end: {x: left + 80, y: height - 716}, thickness: 0.5});
+            paragraph(sheet, 'Manuscript received on a test date; this note carries the funding statement.', left, 728, column, {size: 8, leading: 9});
+            // 右栏：插图（外框、坐标轴与小字标注）及图注，接着是正文、表题和三线表。
+            page.drawRectangle({x: right, y: height - 300, width: column, height: 150, borderColor: rgb(0, 0, 0), borderWidth: 1});
+            page.drawLine({start: {x: right + 30, y: height - 280}, end: {x: right + 220, y: height - 280}, thickness: 1});
+            page.drawLine({start: {x: right + 30, y: height - 280}, end: {x: right + 30, y: height - 170}, thickness: 1});
+            page.drawText('Latency', {x: right + 36, y: height - 176, size: 6, font: fonts.sans});
+            page.drawText('Batch size', {x: right + 110, y: height - 292, size: 6, font: fonts.sans});
+            let ry = paragraph(sheet, 'Fig. 1. Latency grows slowly with the batch size in every tested configuration.', right, 316, column, {size: 8, leading: 9.5});
+            centered(sheet, 'III. METHOD', ry + 12, 10, fonts.serif, right, column);
+            ry = paragraph(sheet, method, right, ry + 28, column, {indent: 10});
+            centered(sheet, 'TABLE I', ry + 14, 8, fonts.serif, right, column);
+            centered(sheet, 'SUMMARY OF THE MEASURED SETTINGS', ry + 24, 8, fonts.serif, right, column);
+            for (const offset of [32, 46, 76]) page.drawLine({start: {x: right, y: height - ry - offset}, end: {x: right + column, y: height - ry - offset}, thickness: 0.6});
+            page.drawText('Setting', {x: right + 6, y: height - ry - 42, size: 8, font: fonts.serif});
+            page.drawText('Score', {x: right + 150, y: height - ry - 42, size: 8, font: fonts.serif});
+            page.drawText('Baseline system', {x: right + 6, y: height - ry - 58, size: 8, font: fonts.serif});
+            page.drawText('71.4', {x: right + 150, y: height - ry - 58, size: 8, font: fonts.serif});
+            page.drawText('Proposed system', {x: right + 6, y: height - ry - 70, size: 8, font: fonts.serif});
+            page.drawText('88.2', {x: right + 150, y: height - ry - 70, size: 8, font: fonts.serif});
+            paragraph(sheet, results, right, ry + 96, column, {indent: 10});
+            centered(sheet, '2', 760, 9, fonts.serif);
+        });
+        const order = sources(document);
+        // 左栏整栏在右栏之前：摘要 → 引言 → 相关工作 → 脚注，然后才是图注、方法、表和结果。
+        const position = (start: string) => order.findIndex(source => source.startsWith(start));
+        const sequence = ['Reading Order Recovery', 'Abstract-', 'I. INTRODUCTION', intro.slice(0, 30), 'II. RELATED WORK', related.slice(0, 30), 'Fig. 1.', 'III. METHOD', method.slice(0, 30), 'TABLE I', results.slice(0, 30)].map(position);
+        expect(sequence.every(index => index >= 0), `缺少片段：${JSON.stringify(sequence)} ${JSON.stringify(order.map(source => source.slice(0, 24)))}`).toBe(true);
+        expect(sequence).toEqual([...sequence].sort((a, b) => a - b));
+        // 每个正文段落是完整的一个片段，栏与栏之间没有串行。
+        for (const body of [abstract, intro, related, method, results]) expect(order).toContain(body);
+        for (const heading of ['I. INTRODUCTION', 'II. RELATED WORK', 'III. METHOD']) expect(blockOf(document, heading).kind, heading).toBe('heading');
+        expect(blockOf(document, 'Fig. 1.')).toMatchObject({kind: 'caption'});
+        expect(order).toContain('Fig. 1. Latency grows slowly with the batch size in every tested configuration.');
+        expect(blockOf(document, 'TABLE I').kind).toBe('caption');
+        // 图内的小字坐标标注保留原样；表格里的文字单元格翻译、数字单元格保留。
+        expect(order).not.toContain('Latency');
+        expect(order).toEqual(expect.arrayContaining(['Baseline system', 'Proposed system', 'Setting']));
+        expect(order).not.toContain('71.4');
+        // 页眉与页码不送翻。
+        expect(order.some(source => source.startsWith('Proceedings of the Example'))).toBe(false);
+        expect(pages(document)[0].blocks.filter(block => block.kind === 'footer').length).toBeGreaterThanOrEqual(2);
+        expect(order).toContain('Manuscript received on a test date; this note carries the funding statement.');
+        expectSoundStructure(document);
+    });
+
+    it('double-spaced submission manuscript: every paragraph stays whole and headings stay separate', async () => {
+        const first = sentence('manuscript', 4), second = sentence('revision', 4);
+        const document = await build(sheet => {
+            const {fonts} = sheet;
+            centered(sheet, 'Double Spaced Manuscript Title', 100, 14, fonts.bold);
+            sheet.page.drawText('Introduction', {x: 72, y: sheet.height - 150, size: 12, font: fonts.bold});
+            let y = paragraph(sheet, first, 72, 178, 468, {size: 12, leading: 27.6, indent: 36});
+            y = paragraph(sheet, second, 72, y, 468, {size: 12, leading: 27.6, indent: 36});
+            centered(sheet, '3', 750, 12, fonts.serif);
+        });
+        expect(sources(document)).toEqual(['Double Spaced Manuscript Title', 'Introduction', first, second]);
+        expectSoundStructure(document);
+    });
+
+    it('reference list with hanging indents: one block per entry, across two columns', async () => {
+        const entry = (number: number) => `[${number}] A. Author and B. Writer, An invented reference title number ${number} about document layout, Journal of Test Fixtures, vol. ${number}, pp. 1-9, 2020.`;
+        const document = await build(sheet => {
+            sheet.page.drawText('REFERENCES', {x: 54, y: sheet.height - 80, size: 10, font: sheet.fonts.bold});
+            let y = 98;
+            for (let number = 1; number <= 5; number += 1) y = paragraph(sheet, entry(number), 54, y, 240, {size: 8, leading: 9.5, hang: 14});
+            let ry = 80;
+            for (let number = 6; number <= 10; number += 1) ry = paragraph(sheet, entry(number), 318, ry, 240, {size: 8, leading: 9.5, hang: 14});
+        });
+        expect(sources(document)).toEqual(['REFERENCES', ...Array.from({length: 10}, (_, index) => entry(index + 1))]);
+        expect(blockOf(document, 'REFERENCES').kind).toBe('heading');
+        expectSoundStructure(document);
+    });
+
+    // 本地真实论文的结构检查：把 FLUENTREAD_PDF_CORPUS 指向一个放有 PDF 的目录即可启用；论文本身不进入仓库。
+    it.runIf(Boolean(process.env.FLUENTREAD_PDF_CORPUS))('local paper corpus keeps the structural invariants', async () => {
+        const directory = process.env.FLUENTREAD_PDF_CORPUS!;
+        for (const name of readdirSync(directory).filter(file => file.toLowerCase().endsWith('.pdf'))) {
+            const document = await parseBinaryDocument(name, new Uint8Array(readFileSync(join(directory, name))));
+            expectSoundStructure(document);
+            // 被拆散的正文表现为大量一两个词的“正文段落”；正常论文里这种碎片远少于十分之一。
+            const body = pages(document).flatMap(page => page.blocks).filter(block => block.segmentIndex >= 0 && (block.kind ?? 'text') === 'text').map(block => document.segments[block.segmentIndex].source);
+            const fragments = body.filter(source => source.trim().split(/\s+/u).length <= 2 && source.trim().length <= 12);
+            expect(fragments.length, `${name} 的碎片段落：${JSON.stringify(fragments.slice(0, 12))}`).toBeLessThanOrEqual(Math.max(3, body.length * 0.1));
+        }
+    }, 600_000);
+});

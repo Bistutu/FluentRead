@@ -73,7 +73,169 @@ async function waitForWorkerMessages(scope: Record<string, any>, count: number):
     }
 }
 
+async function loadProtocolWorker(transcriber: any, backend: 'webgpu' | 'wasm' = 'wasm') {
+    vi.resetModules();
+    const scope = createWorkerScope();
+    vi.stubGlobal('self', scope);
+    vi.stubGlobal('navigator', {hardwareConcurrency: 1});
+    webGpuMocks.probeWebGpu.mockReset().mockResolvedValue({available: backend === 'webgpu', info: 'native GPU'});
+    workerMocks.pipeline.mockReset().mockResolvedValue(transcriber);
+    (await import('@/src/features/video-subtitle/offscreen/transcription.worker')).startVideoTranscriptionWorker();
+    return scope;
+}
+
 describe('视频 AI Worker timestamp parser', () => {
+    it('忽略不属于识别协议的消息，未加载模型也能dispose，缺少音频返回数字静音', async () => {
+        const scope = await loadProtocolWorker(vi.fn());
+        try {
+            scope.onmessage({data: null});
+            scope.onmessage({data: {requestId: 'foreign'}});
+            const listener = scope.addEventListener.mock.calls[0][1];
+            listener({});
+            listener({data: {type: 'other'}});
+            listener({data: {type: 'dispose'}});
+            scope.onmessage({data: {requestId: 1, type: 'transcribe'}});
+            await waitForWorkerMessages(scope, 1);
+            expect(workerMocks.pipeline).not.toHaveBeenCalled();
+            expect(scope.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({success: true, text: '', segments: [], inferenceMs: 0, audioDurationMs: 0}));
+            expect(scope.postMessage.mock.calls[0][0].backend).toBeUndefined();
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it('超过30秒的输入只进入一个受限窗，清理静音标记和非字符串输出', async () => {
+        const transcriber = vi.fn(async (_audio: Float32Array) => ({text: 42, chunks: [{text: '[blank_audio]', timestamp: [0, 1]}]}));
+        const scope = await loadProtocolWorker(transcriber);
+        try {
+            scope.onmessage({data: {requestId: 1, type: 'transcribe', model: 'base', sourceLanguage: 'en', audio: new Float32Array(500_000).fill(.04)}});
+            await waitForWorkerMessages(scope, 1);
+            expect(transcriber.mock.calls[0][0]).toHaveLength(480_000);
+            expect(scope.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({success: true, text: '', segments: [], audioDurationMs: 30_000}));
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it.each([undefined, null, {text: 'A complete original phrase.'}])('流水线无时间戳或空结果时保持明确空片段输出：%s', async output => {
+        const scope = await loadProtocolWorker(vi.fn(async () => output));
+        try {
+            scope.onmessage({data: {requestId: 1, type: 'transcribe', sourceLanguage: 'en', audio: new Float32Array(16_000).fill(.04)}});
+            await waitForWorkerMessages(scope, 1);
+            expect(scope.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({success: true, text: output?.text || '', segments: []}));
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it.each(['no-processor', 'nonmultilingual', 'unsafe-start', 'no-logits'])('auto模型缺少检测能力时明确失败、不生成错误语言字幕：%s', async failure => {
+        const feature = new workerMocks.Tensor('float32', new Float32Array([.1]), [1]);
+        const transcriber: any = vi.fn();
+        transcriber.processor = vi.fn(async () => ({input_features: feature}));
+        transcriber.model = vi.fn(async () => ({}));
+        transcriber.model.config = {is_multilingual: true, decoder_start_token_id: failure === 'unsafe-start' ? .5 : 0};
+        transcriber.model.generation_config = {lang_to_id: {'<|en|>': 1}};
+        if (failure === 'no-processor') delete transcriber.processor;
+        if (failure === 'nonmultilingual') transcriber.model.config.is_multilingual = false;
+        const scope = await loadProtocolWorker(transcriber);
+        try {
+            scope.onmessage({data: {requestId: 1, type: 'transcribe', sourceLanguage: 'auto', audio: new Float32Array(16_000).fill(.04)}});
+            await waitForWorkerMessages(scope, 1);
+            expect(transcriber).not.toHaveBeenCalled();
+            expect(scope.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({success: false, error: failure === 'no-logits' ? 'Whisper 首步没有可用的语言 token logits' : expect.stringContaining('无法自动检测')}));
+            expect(feature.disposed).toBe(failure === 'no-logits');
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it.each(['webgpu', 'wasm'] as const)('没有WASM配置时仍执行当前后端，Chrome URL与本地URL分别正确：%s', async backend => {
+        const previous = workerMocks.env.backends.onnx.wasm;
+        workerMocks.env.backends.onnx.wasm = undefined as any;
+        const getURL = vi.fn((value: string) => `chrome-extension://owned/${value}`);
+        vi.stubGlobal('chrome', {runtime: {getURL}});
+        const scope = await loadProtocolWorker(vi.fn(async () => ({text: '[silence]'})), backend);
+        try {
+            scope.onmessage({data: {requestId: 1, type: 'prepare', model: 'base'}});
+            await waitForWorkerMessages(scope, 1);
+            scope.onmessage({data: {requestId: 2, type: 'prepare', model: 'base', device: backend === 'wasm' ? 'wasm' : undefined}});
+            await waitForWorkerMessages(scope, 2);
+            expect(workerMocks.pipeline).toHaveBeenCalledOnce();
+            expect(scope.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({success: true, backend}));
+        } finally {workerMocks.env.backends.onnx.wasm = previous;vi.unstubAllGlobals();}
+    });
+
+    it('Chrome资产URL不依赖Worker location，模型切换清理失败仍能加载下一模型', async () => {
+        const base: any = vi.fn(async () => ({text: 'One original sentence.'}));
+        base.dispose = vi.fn(async () => {throw new Error('old session cleanup failed');});
+        const scope = await loadProtocolWorker(base);
+        vi.stubGlobal('chrome', {runtime: {getURL: vi.fn(path => 'chrome-extension://owned/' + path)}});
+        try {
+            scope.onmessage({data: {requestId: 1, type: 'prepare', model: 'base'}});
+            await waitForWorkerMessages(scope, 1);
+            workerMocks.pipeline.mockResolvedValue(vi.fn(async () => ({text: 'Another original sentence.'})));
+            scope.onmessage({data: {requestId: 2, type: 'prepare', model: 'tiny', device: 'wasm'}});
+            await waitForWorkerMessages(scope, 2);
+            scope.onmessage({data: {requestId: 3, type: 'prepare', model: 'tiny', device: 'wasm'}});
+            await waitForWorkerMessages(scope, 3);
+            expect(base.dispose).toHaveBeenCalledOnce();
+            expect(workerMocks.pipeline).toHaveBeenCalledTimes(2);
+            expect(scope.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({success: true, model: 'tiny'}));
+            expect((globalThis as any).chrome.runtime.getURL).toHaveBeenCalledWith(expect.stringContaining('ort-wasm'));
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it('dispose清理失败保留错误诊断，后续消息仍能初始化新的模型', async () => {
+        const transcriber: any = vi.fn();
+        transcriber.dispose = vi.fn(async () => {throw new Error('dispose rejected');});
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const scope = await loadProtocolWorker(transcriber);
+        try {
+            scope.onmessage({data: {requestId: 1, type: 'prepare'}});
+            await waitForWorkerMessages(scope, 1);
+            scope.addEventListener.mock.calls[0][1]({data: {type: 'dispose'}});
+            scope.onmessage({data: {requestId: 2, type: 'prepare'}});
+            await waitForWorkerMessages(scope, 2);
+            expect(transcriber.dispose).toHaveBeenCalledOnce();
+            expect(warn).toHaveBeenCalledWith('[FluentRead] Worker 释放本地视频模型失败', expect.objectContaining({message: 'dispose rejected'}));
+            expect(workerMocks.pipeline).toHaveBeenCalledTimes(2);
+            expect(scope.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({success: true}));
+        } finally {warn.mockRestore();vi.unstubAllGlobals();}
+    });
+
+    it('CPU初始化抛出非Error也保留明确消息，隔离多线程失败提示fresh单线程恢复', async () => {
+        const scope = await loadProtocolWorker(vi.fn());
+        vi.stubGlobal('navigator', {hardwareConcurrency: 4});
+        vi.stubGlobal('crossOriginIsolated', true);
+        workerMocks.pipeline.mockRejectedValue('CPU initialization failed');
+        try {
+            scope.onmessage({data: {requestId: 1, type: 'prepare'}});
+            await waitForWorkerMessages(scope, 1);
+            expect(scope.postMessage).toHaveBeenLastCalledWith({requestId: 1, success: false, error: 'CPU initialization failed', retryWithCpu: true});
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it.each(['absent', 'success', 'failure'])('GPU初始化诊断抛错时恢复owner边界，清理行为明确：%s', async cleanup => {
+        const transcriber: any = vi.fn();
+        if (cleanup !== 'absent') transcriber.dispose = vi.fn(async () => {
+            if (cleanup === 'failure') throw new Error('GPU cleanup failed');
+        });
+        const info = vi.spyOn(console, 'info').mockImplementationOnce(() => {throw 'GPU diagnostic failed';});
+        const scope = await loadProtocolWorker(transcriber, 'webgpu');
+        try {
+            scope.onmessage({data: {requestId: 1, type: 'prepare'}});
+            await waitForWorkerMessages(scope, 1);
+            if (cleanup !== 'absent') expect(transcriber.dispose).toHaveBeenCalledOnce();
+            expect(scope.postMessage).toHaveBeenLastCalledWith({requestId: 1, success: false, error: 'GPU diagnostic failed', retryWithCpu: true});
+        } finally {info.mockRestore();vi.unstubAllGlobals();}
+    });
+
+    it('GPU生成超时拒绝部分结果并释放模型，给freshCPU恢复而非提交字幕', async () => {
+        vi.useFakeTimers();
+        const transcriber = vi.fn(async () => {
+            await new Promise(resolve => setTimeout(resolve, 5));
+            return {text: 'Incomplete phrase.', chunks: []};
+        });
+        const scope = await loadProtocolWorker(transcriber, 'webgpu');
+        scope.setTimeout = (fn: () => void) => setTimeout(fn, 1);
+        try {
+            scope.onmessage({data: {requestId: 1, type: 'transcribe', model: 'tiny', sourceLanguage: 'en', audio: new Float32Array(16_000).fill(.04)}});
+            await vi.advanceTimersByTimeAsync(10);
+            expect(scope.postMessage).toHaveBeenLastCalledWith({requestId: 1, success: false, error: '本地视频 AI 推理超过 15 秒', retryWithCpu: true});
+        } finally {vi.useRealTimers();vi.unstubAllGlobals();}
+    });
     it.each(['webgpu', 'wasm'])('Small 使用独立真实模型 ID 和固定混合精度，暖调用及模型切换诊断准确：%s', async backend => {
         vi.resetModules();
         const scope = createWorkerScope();
@@ -227,7 +389,7 @@ describe('视频 AI Worker timestamp parser', () => {
             }
             workerMocks.pipeline.mockReset().mockResolvedValue(transcriber);
             (await import('@/src/features/video-subtitle/offscreen/transcription.worker')).startVideoTranscriptionWorker();
-            scope.onmessage({data: {requestId: 1, type: 'transcribe', sourceLanguage: mode === 'explicit' ? 'en' : 'auto', audio: new Float32Array(48_000).fill(.04)}});
+            scope.onmessage({data: {requestId: 1, type: 'transcribe', model: 'tiny', sourceLanguage: mode === 'explicit' ? 'en' : 'auto', audio: new Float32Array(48_000).fill(.04)}});
             await vi.advanceTimersByTimeAsync(30);
             expect(iterations).toBeGreaterThan(0);
             expect(iterations).toBeLessThan(440);
@@ -267,7 +429,7 @@ describe('视频 AI Worker timestamp parser', () => {
         (await import('@/src/features/video-subtitle/offscreen/transcription.worker')).startVideoTranscriptionWorker();
         const audio = new Float32Array(5 * 16_000);
         audio.fill(.04, 2 * 16_000, 3 * 16_000);
-        scope.onmessage({data: {requestId: 1, type: 'transcribe', sourceLanguage: 'en', audio}});
+        scope.onmessage({data: {requestId: 1, type: 'transcribe', model: 'tiny', sourceLanguage: 'en', audio}});
         await waitForWorkerMessages(scope, 1);
         expect(transcriber.mock.calls[0][0].length).toBe(1320 * 16);
         expect(transcriber.mock.calls[0][1]).toMatchObject({max_new_tokens: 30, language: 'en'});
@@ -383,7 +545,7 @@ describe('视频 AI Worker timestamp parser', () => {
         vi.unstubAllGlobals();
     });
 
-    it.each(['success', 'decoder-failure', 'detection-failure'])('3.8.1 共享编码只属于当前请求，恢复生成白名单并释放张量（%s）', async outcome => {
+    it.each(['success', 'success-fallback', 'decoder-failure', 'detection-failure', 'detection-cleanup-failure', 'output-cleanup-failure', 'generation-cleanup-failure', 'feature-cleanup-failure'])('3.8.1 特征与编码只属于当前请求，恢复实例属性并释放张量（%s）', async outcome => {
         vi.resetModules();
         const scope = createWorkerScope();
         vi.stubGlobal('self', scope);
@@ -392,11 +554,19 @@ describe('视频 AI Worker timestamp parser', () => {
         workerMocks.env.version = '3.8.1';
         const tensors: any[] = [];
         const shared = new workerMocks.Tensor('float32', new Float32Array([.1]), [1, 1500, 384]);
+        if (outcome === 'detection-cleanup-failure' || outcome === 'generation-cleanup-failure') vi.spyOn(shared, 'dispose').mockImplementation(() => {
+            shared.disposed = true;
+            throw new Error('encoder cleanup failure');
+        });
+        let decoderInput: any;
         const forwardParams = ['input_features', 'decoder_input_ids'];
         const transcriber: any = vi.fn(async (_audio, options) => {
             expect(options.encoder_outputs).toBe(shared);
             expect(transcriber.model.forward_params).toEqual([...forwardParams, 'encoder_outputs']);
             expect(shared.disposed).toBe(false);
+            expect(tensors[0].disposed).toBe(outcome === 'success-fallback');
+            const processed = await transcriber.processor(_audio);
+            expect(processed.input_features.disposed).toBe(false);
             if (outcome === 'decoder-failure') throw new Error('decoder failure');
             await new Promise(resolve => setTimeout(resolve, 3));
             return {text: 'A new sentence.', chunks: [{timestamp: [0, 1], text: 'A new sentence.'}]};
@@ -404,14 +574,27 @@ describe('视频 AI Worker timestamp parser', () => {
         transcriber.processor = vi.fn(async () => {
             await new Promise(resolve => setTimeout(resolve, 3));
             const feature = new workerMocks.Tensor('float32', new Float32Array([0]), [1, 80, 3000]);
+            const disposal = vi.spyOn(feature, 'dispose');
+            if (outcome === 'feature-cleanup-failure') disposal.mockImplementation(() => {
+                feature.disposed = true;
+                throw new Error('feature cleanup failure');
+            });
             tensors.push(feature);
             return {input_features: feature};
         });
+        const originalProcessor = transcriber.processor;
+        if (outcome !== 'success-fallback' && outcome !== 'feature-cleanup-failure') transcriber.processor.feature_extractor = {config: {sampling_rate: 16_000, chunk_length: 30, hop_length: 160}};
         transcriber.model = vi.fn(async inputs => {
+            decoderInput = inputs.decoder_input_ids;
+            vi.spyOn(decoderInput, 'dispose');
             expect(inputs.encoder_outputs).toBe(shared);
             expect(shared.disposed).toBe(false);
-            if (outcome === 'detection-failure') throw new Error('detection failure');
+            if (outcome.startsWith('detection-')) throw new Error('detection failure');
             const logits = new workerMocks.Tensor('float32', new Float32Array([0, 9, 0]), [1, 1, 3]);
+            if (outcome === 'output-cleanup-failure') vi.spyOn(logits, 'dispose').mockImplementation(() => {
+                logits.disposed = true;
+                throw new Error('logits cleanup failure');
+            });
             tensors.push(logits);
             return {logits};
         });
@@ -428,17 +611,80 @@ describe('视频 AI Worker timestamp parser', () => {
             expect(transcriber.model._prepare_encoder_decoder_kwargs_for_generation).toHaveBeenCalledTimes(1);
             expect(transcriber.model.forward_params).toBe(forwardParams);
             expect(shared.disposed).toBe(true);
-            expect(tensors.every(tensor => tensor.disposed)).toBe(true);
-            if (outcome === 'success') {
+            // The incompatible pipeline retains its original second feature ownership.
+            expect(tensors.slice(0, 2).every(tensor => tensor.disposed)).toBe(true);
+            if (outcome === 'success-fallback') expect(tensors[2].disposed).toBe(false);
+            expect(originalProcessor).toHaveBeenCalledTimes(outcome === 'success-fallback' ? 2 : 1);
+            expect(transcriber.processor).toBe(originalProcessor);
+            expect(tensors[0].dispose).toHaveBeenCalledOnce();
+            expect(decoderInput.disposed).toBe(true);
+            expect(decoderInput.dispose).toHaveBeenCalledOnce();
+            if (outcome.startsWith('success')) {
                 const response = scope.postMessage.mock.calls[0][0];
                 expect(response).toMatchObject({success: true, detectedLanguage: 'en', languageConfidence: expect.any(Number), encoderReuse: true});
                 expect(response.languageDetectionMs).toBeGreaterThanOrEqual(3);
                 expect(response.inferenceMs).toBeGreaterThan(response.languageDetectionMs);
-            } else expect(scope.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({success: false, error: outcome === 'decoder-failure' ? 'decoder failure' : 'detection failure'}));
+            } else {
+                const error = outcome === 'decoder-failure' ? 'decoder failure'
+                    : outcome.endsWith('cleanup-failure') ? (outcome === 'output-cleanup-failure' ? 'logits cleanup failure' : outcome === 'feature-cleanup-failure' ? 'feature cleanup failure' : 'encoder cleanup failure')
+                    : 'detection failure';
+                expect(scope.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({success: false, error}));
+            }
         } finally {
             workerMocks.env.version = '3.8.1';
             vi.unstubAllGlobals();
         }
+    });
+
+    it('auto 异常重复重试建立新的特征租约，首窗张量已释放且第二窗不跨用', async () => {
+        vi.resetModules();
+        const scope = createWorkerScope();
+        vi.stubGlobal('self', scope);
+        vi.stubGlobal('navigator', {hardwareConcurrency: 1});
+        webGpuMocks.probeWebGpu.mockResolvedValue({available: false, info: ''});
+        const features: any[] = [], encoders: any[] = [];
+        const transcriber: any = vi.fn(async (audio, options) => {
+            const processed = await transcriber.processor(audio);
+            expect(processed.input_features).toBe(features.at(-1));
+            expect(processed.input_features.disposed).toBe(false);
+            expect(options.encoder_outputs).toBe(encoders.at(-1));
+            if (features.length === 1) return {text: 'Repeated phrase. '.repeat(10), chunks: []};
+            expect(features[0].disposed).toBe(true);
+            expect(encoders[0].disposed).toBe(true);
+            return {text: 'A recovered original sentence.', chunks: []};
+        });
+        transcriber.processor = vi.fn(async () => {
+            const feature = new workerMocks.Tensor('float32', new Float32Array([.1]), [1, 80, 3000]);
+            vi.spyOn(feature, 'dispose');
+            features.push(feature);
+            return {input_features: feature, duplicateReference: feature};
+        });
+        transcriber.processor.feature_extractor = {config: {sampling_rate: 16_000, chunk_length: 30, hop_length: 160}};
+        transcriber.model = vi.fn(async () => ({logits: new workerMocks.Tensor('float32', new Float32Array([0, 9, 0]), [1, 1, 3])}));
+        Object.assign(transcriber.model, {
+            config: {model_type: 'whisper', is_encoder_decoder: true, is_multilingual: true, decoder_start_token_id: 0},
+            main_input_name: 'input_features', forward_params: ['input_features', 'decoder_input_ids'],
+            generation_config: {lang_to_id: {'<|en|>': 1, '<|ja|>': 2}},
+            _prepare_encoder_decoder_kwargs_for_generation: vi.fn(async () => {
+                const encoder = new workerMocks.Tensor('float32', new Float32Array([.1]), [1, 1500, 384]);
+                encoders.push(encoder);
+                return {encoder_outputs: encoder};
+            }),
+        });
+        const originalProcessor = transcriber.processor;
+        workerMocks.pipeline.mockReset().mockResolvedValue(transcriber);
+        try {
+            (await import('@/src/features/video-subtitle/offscreen/transcription.worker')).startVideoTranscriptionWorker();
+            scope.onmessage({data: {requestId: 1, type: 'transcribe', model: 'base', sourceLanguage: 'auto', audio: new Float32Array(16_000).fill(.04)}});
+            await waitForWorkerMessages(scope, 1);
+            expect(scope.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({success: true, text: 'A recovered original sentence.'}));
+            expect(originalProcessor).toHaveBeenCalledTimes(2);
+            expect(transcriber).toHaveBeenCalledTimes(2);
+            expect(transcriber.processor).toBe(originalProcessor);
+            expect(features).toHaveLength(2);
+            expect(features.every(tensor => tensor.disposed && tensor.dispose.mock.calls.length === 1)).toBe(true);
+            expect(encoders.every(tensor => tensor.disposed)).toBe(true);
+        } finally {vi.unstubAllGlobals();}
     });
 
     it.each([false, true])('长串中文重复只重试一次，失败给出恢复提示而不提交错误字幕（继续重复：%s）', async stillRepeated => {
@@ -773,7 +1019,7 @@ describe('视频 AI Worker timestamp parser', () => {
             expect(buildWhisperTranscriptionGenerationOptions('tiny', language, 10, null).max_new_tokens).toBe(100);
             expect(buildWhisperTranscriptionGenerationOptions('tiny', language, 30, null).max_new_tokens).toBe(128);
         }
-        expect(buildWhisperTranscriptionGenerationOptions('unknown', 'hi', 9.12, null).max_new_tokens).toBe(55);
+        expect(buildWhisperTranscriptionGenerationOptions('unknown', 'hi', 9.12, null).max_new_tokens).toBe(440);
         for (const seconds of [NaN, Infinity, -1]) {
             expect(buildWhisperTranscriptionGenerationOptions('tiny', 'en', seconds, null).max_new_tokens).toBe(24);
         }

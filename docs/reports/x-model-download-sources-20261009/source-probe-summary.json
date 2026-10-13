@@ -1,0 +1,458 @@
+{
+  "timestampUtc": "2026-10-09T14:42:37Z",
+  "scope": "Bounded public HTTP probes from one local network; not full remote weight hashing, throughput, or regional guarantee. Two weights verified using server x-linked-etag and Range total size against freshly SHA256-verified fixed-revision local cache.",
+  "actualModelId": "onnx-community/whisper-small",
+  "fixedRevision": "36050c46d777d46dc4b5f43f6d90574fc38f8732",
+  "precision": {
+    "encoder_model": "fp32",
+    "decoder_model_merged": "q4"
+  },
+  "totalCachedBytes": 588744805,
+  "localFiles": [
+    {
+      "file": "config.json",
+      "bytes": 2227,
+      "sha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18",
+      "cacheExpectedSha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18",
+      "matchesCacheManifest": true
+    },
+    {
+      "file": "generation_config.json",
+      "bytes": 3893,
+      "sha256": "f538b28220c6a6d6f1af1458d4141cacb4ef4963df3de98a19490440c412ddf0",
+      "cacheExpectedSha256": "f538b28220c6a6d6f1af1458d4141cacb4ef4963df3de98a19490440c412ddf0",
+      "matchesCacheManifest": true
+    },
+    {
+      "file": "preprocessor_config.json",
+      "bytes": 339,
+      "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d",
+      "cacheExpectedSha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d",
+      "matchesCacheManifest": true
+    },
+    {
+      "file": "tokenizer.json",
+      "bytes": 2480466,
+      "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566",
+      "cacheExpectedSha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566",
+      "matchesCacheManifest": true
+    },
+    {
+      "file": "tokenizer_config.json",
+      "bytes": 282683,
+      "sha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce",
+      "cacheExpectedSha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce",
+      "matchesCacheManifest": true
+    },
+    {
+      "file": "onnx/decoder_model_merged_q4.onnx",
+      "bytes": 233149327,
+      "sha256": "795c61b344576719c2b249cc9911c78b4cc552c8c6a5407be21a3380a0791b13",
+      "cacheExpectedSha256": "795c61b344576719c2b249cc9911c78b4cc552c8c6a5407be21a3380a0791b13",
+      "matchesCacheManifest": true
+    },
+    {
+      "file": "onnx/encoder_model.onnx",
+      "bytes": 352825870,
+      "sha256": "b37cd6625dc36f9178ec7539a1876b9680ea26a910097e092be39dc766320c7b",
+      "cacheExpectedSha256": "b37cd6625dc36f9178ec7539a1876b9680ea26a910097e092be39dc766320c7b",
+      "matchesCacheManifest": true
+    }
+  ],
+  "sources": [
+    {
+      "source": "modelscope",
+      "entries": [
+        {
+          "file": "config.json",
+          "getStatus": 200,
+          "readBytes": 2227,
+          "elapsedMs": 1078.9,
+          "finalHost": "modelscope.cn",
+          "redirects": [],
+          "sha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "generation_config.json",
+          "getStatus": 200,
+          "readBytes": 3893,
+          "elapsedMs": 1306.1,
+          "finalHost": "modelscope.cn",
+          "redirects": [],
+          "sha256": "f538b28220c6a6d6f1af1458d4141cacb4ef4963df3de98a19490440c412ddf0",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "preprocessor_config.json",
+          "getStatus": 200,
+          "readBytes": 339,
+          "elapsedMs": 1982.5,
+          "finalHost": "modelscope.cn",
+          "redirects": [],
+          "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "tokenizer.json",
+          "getStatus": 200,
+          "readBytes": 2480466,
+          "elapsedMs": 1578.4,
+          "finalHost": "modelscope.cn",
+          "redirects": [],
+          "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "tokenizer_config.json",
+          "getStatus": 200,
+          "readBytes": 282683,
+          "elapsedMs": 1298.8,
+          "finalHost": "modelscope.cn",
+          "redirects": [],
+          "sha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "onnx/decoder_model_merged_q4.onnx",
+          "getStatus": 206,
+          "readBytes": 1024,
+          "elapsedMs": 516.3,
+          "finalHost": "cdn-lfs-cn-1.modelscope.cn",
+          "redirects": [
+            {
+              "status": 302,
+              "fromHost": "modelscope.cn",
+              "toHost": "cdn-lfs-cn-1.modelscope.cn"
+            }
+          ],
+          "headStatus": 200,
+          "headElapsedMs": 352.5,
+          "contentRange": "bytes 0-1023/233149327",
+          "serverLinkedSha256": "795c61b344576719c2b249cc9911c78b4cc552c8c6a5407be21a3380a0791b13",
+          "serverLinkedShaMatchesCache": true,
+          "repositoryCommit": null
+        },
+        {
+          "file": "onnx/encoder_model.onnx",
+          "getStatus": 206,
+          "readBytes": 1024,
+          "elapsedMs": 550.9,
+          "finalHost": "cdn-lfs-cn-1.modelscope.cn",
+          "redirects": [
+            {
+              "status": 302,
+              "fromHost": "modelscope.cn",
+              "toHost": "cdn-lfs-cn-1.modelscope.cn"
+            }
+          ],
+          "headStatus": 200,
+          "headElapsedMs": 434.5,
+          "contentRange": "bytes 0-1023/352825870",
+          "serverLinkedSha256": "b37cd6625dc36f9178ec7539a1876b9680ea26a910097e092be39dc766320c7b",
+          "serverLinkedShaMatchesCache": true,
+          "repositoryCommit": null
+        }
+      ],
+      "allSevenMetadataMatchCache": true
+    },
+    {
+      "source": "huggingface",
+      "entries": [
+        {
+          "file": "config.json",
+          "getStatus": 200,
+          "readBytes": 2227,
+          "elapsedMs": 1530.2,
+          "finalHost": "huggingface.co",
+          "redirects": [
+            {
+              "status": 307,
+              "fromHost": "huggingface.co",
+              "toHost": "huggingface.co"
+            }
+          ],
+          "sha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "generation_config.json",
+          "getStatus": 200,
+          "readBytes": 3893,
+          "elapsedMs": 1482.6,
+          "finalHost": "huggingface.co",
+          "redirects": [
+            {
+              "status": 307,
+              "fromHost": "huggingface.co",
+              "toHost": "huggingface.co"
+            }
+          ],
+          "sha256": "f538b28220c6a6d6f1af1458d4141cacb4ef4963df3de98a19490440c412ddf0",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "preprocessor_config.json",
+          "getStatus": 200,
+          "readBytes": 339,
+          "elapsedMs": 1129.9,
+          "finalHost": "huggingface.co",
+          "redirects": [
+            {
+              "status": 307,
+              "fromHost": "huggingface.co",
+              "toHost": "huggingface.co"
+            }
+          ],
+          "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "tokenizer.json",
+          "getStatus": 200,
+          "readBytes": 2480466,
+          "elapsedMs": 1723.9,
+          "finalHost": "huggingface.co",
+          "redirects": [
+            {
+              "status": 307,
+              "fromHost": "huggingface.co",
+              "toHost": "huggingface.co"
+            }
+          ],
+          "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "tokenizer_config.json",
+          "getStatus": 200,
+          "readBytes": 282683,
+          "elapsedMs": 3632.0,
+          "finalHost": "huggingface.co",
+          "redirects": [
+            {
+              "status": 307,
+              "fromHost": "huggingface.co",
+              "toHost": "huggingface.co"
+            }
+          ],
+          "sha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "onnx/decoder_model_merged_q4.onnx",
+          "getStatus": 206,
+          "readBytes": 1024,
+          "elapsedMs": 2361.0,
+          "finalHost": "us.aws.cdn.hf.co",
+          "redirects": [
+            {
+              "status": 302,
+              "fromHost": "huggingface.co",
+              "toHost": "us.aws.cdn.hf.co"
+            }
+          ],
+          "headStatus": 200,
+          "headElapsedMs": 2968.5,
+          "contentRange": "bytes 0-1023/233149327",
+          "serverLinkedSha256": "795c61b344576719c2b249cc9911c78b4cc552c8c6a5407be21a3380a0791b13",
+          "serverLinkedShaMatchesCache": true,
+          "repositoryCommit": "36050c46d777d46dc4b5f43f6d90574fc38f8732"
+        },
+        {
+          "file": "onnx/encoder_model.onnx",
+          "getStatus": 206,
+          "readBytes": 1024,
+          "elapsedMs": 3034.6,
+          "finalHost": "us.aws.cdn.hf.co",
+          "redirects": [
+            {
+              "status": 302,
+              "fromHost": "huggingface.co",
+              "toHost": "us.aws.cdn.hf.co"
+            }
+          ],
+          "headStatus": 200,
+          "headElapsedMs": 2329.9,
+          "contentRange": "bytes 0-1023/352825870",
+          "serverLinkedSha256": "b37cd6625dc36f9178ec7539a1876b9680ea26a910097e092be39dc766320c7b",
+          "serverLinkedShaMatchesCache": true,
+          "repositoryCommit": "36050c46d777d46dc4b5f43f6d90574fc38f8732"
+        }
+      ],
+      "allSevenMetadataMatchCache": true
+    },
+    {
+      "source": "hf-mirror.com",
+      "entries": [
+        {
+          "file": "config.json",
+          "getStatus": 200,
+          "readBytes": 2227,
+          "elapsedMs": 2935.7,
+          "finalHost": "huggingface.co",
+          "redirects": [
+            {
+              "status": 308,
+              "fromHost": "hf-mirror.com",
+              "toHost": "huggingface.co"
+            },
+            {
+              "status": 307,
+              "fromHost": "huggingface.co",
+              "toHost": "huggingface.co"
+            }
+          ],
+          "sha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "generation_config.json",
+          "getStatus": 200,
+          "readBytes": 3893,
+          "elapsedMs": 3042.8,
+          "finalHost": "huggingface.co",
+          "redirects": [
+            {
+              "status": 308,
+              "fromHost": "hf-mirror.com",
+              "toHost": "huggingface.co"
+            },
+            {
+              "status": 307,
+              "fromHost": "huggingface.co",
+              "toHost": "huggingface.co"
+            }
+          ],
+          "sha256": "f538b28220c6a6d6f1af1458d4141cacb4ef4963df3de98a19490440c412ddf0",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "preprocessor_config.json",
+          "getStatus": 200,
+          "readBytes": 339,
+          "elapsedMs": 2783.2,
+          "finalHost": "huggingface.co",
+          "redirects": [
+            {
+              "status": 308,
+              "fromHost": "hf-mirror.com",
+              "toHost": "huggingface.co"
+            },
+            {
+              "status": 307,
+              "fromHost": "huggingface.co",
+              "toHost": "huggingface.co"
+            }
+          ],
+          "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "tokenizer.json",
+          "getStatus": 200,
+          "readBytes": 2480466,
+          "elapsedMs": 6391.0,
+          "finalHost": "huggingface.co",
+          "redirects": [
+            {
+              "status": 308,
+              "fromHost": "hf-mirror.com",
+              "toHost": "huggingface.co"
+            },
+            {
+              "status": 307,
+              "fromHost": "huggingface.co",
+              "toHost": "huggingface.co"
+            }
+          ],
+          "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "tokenizer_config.json",
+          "getStatus": 200,
+          "readBytes": 282683,
+          "elapsedMs": 2127.8,
+          "finalHost": "huggingface.co",
+          "redirects": [
+            {
+              "status": 308,
+              "fromHost": "hf-mirror.com",
+              "toHost": "huggingface.co"
+            },
+            {
+              "status": 307,
+              "fromHost": "huggingface.co",
+              "toHost": "huggingface.co"
+            }
+          ],
+          "sha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce",
+          "fullJsonShaMatchesCache": true
+        },
+        {
+          "file": "onnx/decoder_model_merged_q4.onnx",
+          "getStatus": 206,
+          "readBytes": 1024,
+          "elapsedMs": 11536.9,
+          "finalHost": "us.aws.cdn.hf.co",
+          "redirects": [
+            {
+              "status": 308,
+              "fromHost": "hf-mirror.com",
+              "toHost": "huggingface.co"
+            },
+            {
+              "status": 302,
+              "fromHost": "huggingface.co",
+              "toHost": "us.aws.cdn.hf.co"
+            }
+          ],
+          "headStatus": 200,
+          "headElapsedMs": 12002.4,
+          "contentRange": "bytes 0-1023/233149327",
+          "serverLinkedSha256": "795c61b344576719c2b249cc9911c78b4cc552c8c6a5407be21a3380a0791b13",
+          "serverLinkedShaMatchesCache": true,
+          "repositoryCommit": "36050c46d777d46dc4b5f43f6d90574fc38f8732"
+        },
+        {
+          "file": "onnx/encoder_model.onnx",
+          "getStatus": 206,
+          "readBytes": 1024,
+          "elapsedMs": 12513.4,
+          "finalHost": "us.aws.cdn.hf.co",
+          "redirects": [
+            {
+              "status": 308,
+              "fromHost": "hf-mirror.com",
+              "toHost": "huggingface.co"
+            },
+            {
+              "status": 302,
+              "fromHost": "huggingface.co",
+              "toHost": "us.aws.cdn.hf.co"
+            }
+          ],
+          "headStatus": 200,
+          "headElapsedMs": 8579.3,
+          "contentRange": "bytes 0-1023/352825870",
+          "serverLinkedSha256": "b37cd6625dc36f9178ec7539a1876b9680ea26a910097e092be39dc766320c7b",
+          "serverLinkedShaMatchesCache": true,
+          "repositoryCommit": "36050c46d777d46dc4b5f43f6d90574fc38f8732"
+        }
+      ],
+      "allSevenMetadataMatchCache": true
+    }
+  ],
+  "rawReportSha256": "4e5ed4ec83e78a4811fb6c8f82f443712b801764a317f5230ca6c47d88d6f65c",
+  "rawReportPath": "/private/tmp/fluentread-model-source-probes-20261009/seven-file-report.json",
+  "driverSha256": "661f8db60b1ab5775fdfefb7075682554f29dd296d24e8fbf031fdad82e4d014",
+  "notes": [
+    "Initial default-sandbox DNS failures are not remote availability evidence.",
+    "Initial Python urllib 308 non-following result is driver behavior; second report follows 308.",
+    "hf-mirror.com redirects every tested file to Hugging Face on this network; it is not an independent transport fallback here.",
+    "hf-mirror.net was not validated as the same operator/domain and is not included in the probes.",
+    "No model inference, browser, private input, or whole weight download.",
+    "Probe timeout is a 10s per socket operation, with bounded body reads; elapsedMs includes redirects and is not a connect-only or hard end-to-end deadline."
+  ]
+}

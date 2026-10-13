@@ -61,7 +61,7 @@ onBeforeUnmount(() => {
   <DefaultTheme.Layout v-else>
     <template #nav-bar-title-after>
       <span class="bv-home-brand-text">
-        <strong lang="zh-CN">流畅阅读</strong><small lang="en">FluentRead</small>
+        <strong :lang="english ? 'en' : 'zh-CN'">{{ english ? 'FluentRead' : '流畅阅读' }}</strong>
       </span>
     </template>
     <template #nav-bar-content-after>

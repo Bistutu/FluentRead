@@ -1,0 +1,92 @@
+{
+  "capturedAt": "2026-10-09T09:23:59.008775+00:00",
+  "baseCommit": "193c973352b851cd148d7b66f7ef773215b94143",
+  "environment": {
+    "node": "v20.11.1",
+    "pnpm": "9.12.1"
+  },
+  "hashAlgorithm": "SHA-256; UTF-8 manifest of sorted SHA256hex, two spaces, relative path, LF",
+  "sourceChanges": {
+    "scope": "Changed/new src files against baseCommit plus userscript/vite.config.ts; excludes tests/docs/generated assets",
+    "fileCount": 14,
+    "manifest": "source-production-sha256.txt",
+    "treeSha256": "49f4ee30e271d562533535acd634753a42d0e2594d688cca9828e6d03ed910ad",
+    "status": "final3 mode-anchor source frozen",
+    "independentManifestVerification": {
+      "exitCode": 0,
+      "matchedFiles": 14,
+      "workingDirectory": "repository root",
+      "command": "shasum -a 256 -c docs/reports/pdf-layout-20261009/source-production-sha256.txt"
+    }
+  },
+  "chromeBuild": {
+    "directory": ".output/chrome-mv3",
+    "fileCount": 412,
+    "manifest": "chrome-output-sha256.txt",
+    "treeSha256": "10051ad66a409e806eaef34e09137965e86453f58ec9a87d9b49e3c8b3ae6915",
+    "buildEvidence": "final3-build-chrome.txt",
+    "status": "final3 frozen build",
+    "independentManifestVerification": {
+      "exitCode": 0,
+      "matchedFiles": 412,
+      "workingDirectory": ".output/chrome-mv3",
+      "command": "shasum -a 256 -c ../../docs/reports/pdf-layout-20261009/chrome-output-sha256.txt"
+    }
+  },
+  "sourcePaper": {
+    "title": "Attention Is All You Need",
+    "reference": "https://arxiv.org/abs/1706.03762",
+    "pages": 15,
+    "sha256": "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697",
+    "bytes": 2215244,
+    "retainedInRepository": false,
+    "authors": "Vaswani et al.",
+    "inputUrl": "https://arxiv.org/pdf/1706.03762",
+    "localVersion": "v7",
+    "pageVersionDate": "2023-08-02"
+  },
+  "userscriptLanguageResources": {
+    "commit": "193c973352b851cd148d7b66f7ef773215b94143",
+    "localOnly": true,
+    "cdnAvailabilityVerified": false,
+    "mainScriptBytes": 1959999,
+    "buildEvidence": "final3-build-userscript.txt",
+    "verificationEvidence": "final3-verify-userscript.txt",
+    "mainScriptSha256": "7a0c25efa89f79faaa8195e01465e9507bbd9d9b3c33c0bef3a437b5e4c1455e"
+  },
+  "browserAndExportHashes": {
+    "summary": "browser/verification-summary.json",
+    "cropboxCheck": "browser/cropbox-independent-check.json",
+    "privacy": "Only file names, hashes, counts and bounded assertions retained; no PDF binaries, full paper text, full translations, request payloads or clipboard content.",
+    "finalBuildVerified": true,
+    "final3ActualExports": [
+      {
+        "filename": "1x-attention-is-all-you-need.translated.pdf",
+        "sha256": "b7b7f7df4d7d505664a85372d365646d52671229780d17ee8e7d4843f0778a54",
+        "bytes": 8667315,
+        "pages": 31,
+        "mode": "translated"
+      },
+      {
+        "filename": "1x-attention-is-all-you-need.bilingual.pdf",
+        "sha256": "764247e6cc0e76f52f33f400284bea302193522bcffbc93f815401b1c4e92306",
+        "bytes": 10533630,
+        "pages": 46,
+        "mode": "bilingual"
+      }
+    ],
+    "sourceCropboxSha256": "bfe613e234edeef64c0e80672678aa9d244f756f8dd390b66675d66a95b56704",
+    "downloadCropboxSha256": "43f4cb137df81878eaeaf27457d3c957d38dc8e190de0af1ef7c13ebfac0cdd4",
+    "runner": {
+      "path": "scripts/run-pdf-selection-test.cjs",
+      "sha256": "7f1acd3507bc135af8fe5cf83cac67de9d5b56682a523328a94652a0ad72226f",
+      "boundedCropGuardIncluded": true,
+      "runtimeDependencies": [
+        "repository dependencies",
+        "Playwright installation",
+        "Microsoft Edge",
+        "Poppler pdftoppm"
+      ]
+    }
+  }
+}

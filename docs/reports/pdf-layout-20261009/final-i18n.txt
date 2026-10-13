@@ -1,0 +1,12 @@
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-pdf-selection-reader-20261009
+
+ ✓ tests/i18n.test.ts (57 tests) 2990ms
+   ✓ i18n 全量界面扫描 > Vue 文案和展示注册表在非中文界面有本地化结果 1026ms
+   ✓ 运行期反馈文案资源 > 每条精确反馈都来自真实源码，不重复，并在每种界面语言中完整本地化 865ms
+   ✓ 旧界面译文人工校正 > 校正原文仍在界面源码中使用，不重复，并覆盖此前的译文 752ms
+
+ Test Files  1 passed (1)
+      Tests  57 passed (57)
+   Start at  16:55:39
+   Duration  5.00s (transform 1.27s, setup 0ms, collect 1.72s, tests 2.99s, environment 0ms, prepare 44ms)

@@ -1,0 +1,9 @@
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-pdf-selection-reader-20261009
+
+ ✓ tests/documentAppLifecycle.test.ts (16 tests) 540ms
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  16:54:53
+   Duration  1.64s (transform 738ms, setup 0ms, collect 923ms, tests 540ms, environment 0ms, prepare 33ms)

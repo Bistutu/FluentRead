@@ -2,8 +2,8 @@
  * @file src/services/translation/types.ts
  *
  * 文件职责：定义翻译 broker、缓存和 provider 之间的端口与消息契约，约束单条、批量、语言和配置快照的数据形状。
- * 主要内容：包含 TranslationRequestMessage、runtime 请求/取消协议、ProviderRegistry、CachePort、ConfigSnapshot、ProviderConfigFields 及含模型用量与翻译统计端口的 BrokerDependencies/Broker 等接口，并允许 Chrome 内置翻译携带不含结构哨兵的源语言检测样本，为依赖注入和测试替身提供稳定边界。 可核对的公开符号包括 TranslationRequestMessageBase、TranslationRuntimeRequestMessage、TranslationCancelMessage、TranslationProvider、TranslationProviderRegistry、TranslationLanguageOverride、TranslationLanguages。
- * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
+ * 主要内容：包含 TranslationRequestMessage、runtime 请求/取消协议、识图探测与取消的唯一消息名称、ProviderRegistry、CachePort、ConfigSnapshot、ProviderConfigFields 及含模型用量与翻译统计端口的 BrokerDependencies/Broker 等接口，并允许 Chrome 内置翻译携带不含结构哨兵的源语言检测样本，为依赖注入和测试替身提供稳定边界。 可核对的公开符号包括 TranslationRequestMessageBase、TranslationRuntimeRequestMessage、TranslationCancelMessage、VISION_PROBE_MESSAGE、VISION_PROBE_CANCEL_MESSAGE、TranslationProvider、TranslationProviderRegistry、TranslationLanguageOverride、TranslationLanguages。
+ * 模块边界：本文件位于翻译 application service 层，只提供纯类型与消息字面量；所有依赖均为 type-only，导入契约不初始化探测实现、正文候选或供应商；不挂载页面 UI，具体 HTTP 协议由 providers/platform 实现。
  */
 
 import type {CustomOpenAIProvider} from '@/src/core/config/customOpenAI';
@@ -27,11 +27,17 @@ export interface TranslationRequestMessageBase {
     glossaryContext?: TranslationGlossaryContext;
     context?: string;
     pageContext?: string;
+    /** 有界单篇原文/既有译文证据；与页面摘要分开，避免每段额外摘要调用。 */
+    discourseContext?: string;
     /** 当前请求是否允许 AI 网页上下文；全文翻译会显式携带会话启动时的冻结值。 */
     enableAIContext?: boolean;
+    /** 请求入口冻结的原生合批偏好；缺省由后台当前服务配置解析。 */
+    enableNativeBatch?: boolean;
     useCache?: boolean;
     /** 全文翻译内部标记；仅允许通用提示词型 AI 把数组合并为一次上游请求。 */
     aiMultiSegment?: boolean;
+    /** 文档数组请求的合批意图；后台必须根据真实文档入口验证，不能从网页或单条请求启用。 */
+    documentBatch?: boolean;
     /** 全文内部的单条槽协议；broker 按冻结术语配置逐槽校验，沿用本次请求的截止时间。 */
     validateTranslationSlots?: boolean;
     /** 视频字幕、文档等独立入口使用的翻译服务；普通网页请求不设置。 */
@@ -57,6 +63,9 @@ export type TranslationRequestMessage = TranslationSingleRequestMessage | Transl
 export type TranslationRuntimeRequestMessage = TranslationRequestMessage & {clientRequestId: string};
 
 export const TRANSLATION_CANCEL_MESSAGE_TYPE = 'fluentReadTranslationCancel' as const;
+/** 设置页与后台共用纯消息契约，读取名称不加载探测实现。 */
+export const VISION_PROBE_MESSAGE = 'fluentReadModelVisionProbe';
+export const VISION_PROBE_CANCEL_MESSAGE = 'fluentReadModelVisionProbeCancel';
 export interface TranslationCancelMessage {
     readonly type: typeof TRANSLATION_CANCEL_MESSAGE_TYPE;
     readonly clientRequestId?: unknown;
@@ -128,6 +137,8 @@ export interface TranslationConfigSnapshot {
     glossaryProtectedTokens?: readonly string[];
     /** 与冻结词库配合，为批量 provider 的每次实际上游调用重新筛选命中词。 */
     glossaryMatchContext?: Readonly<{
+        /** broker 根据当前入口派生；文档正文的地址与代码名称使用同一严格保护链。 */
+        context?: TranslationGlossaryContext;
         sourceLanguage: string;
         targetLanguage: string;
         pageUrl?: string;
@@ -138,6 +149,7 @@ export interface TranslationConfigSnapshot {
     to: string;
     useCache: boolean;
     enableAIContext: boolean;
+    nativeBatchTranslationEnabled?: Readonly<Record<string, boolean>>;
     model: Record<string, string>;
     customModel: Record<string, string>;
     modelThinking?: ModelThinkingMapping;

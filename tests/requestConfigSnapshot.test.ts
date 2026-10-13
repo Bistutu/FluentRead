@@ -3,6 +3,7 @@ import {
     TRANSLATION_MODEL_USAGE_OBSERVER,
     TRANSLATION_PROVIDER_CONFIG,
     TRANSLATION_REQUEST_CONTROL,
+    TRANSLATION_REQUEST_SCHEDULER,
     attachTranslationModelUsageObserver,
     attachTranslationProviderConfig,
     attachTranslationRequestControl,
@@ -19,6 +20,7 @@ import {
     TRANSLATION_ROUTE_OBSERVER,
     getTranslationGlossaryTerms,
     getTranslationGlossarySourceText,
+    getTranslationGlossarySourceSlots,
 } from '@/src/services/translation/requestSnapshot';
 import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/public';
@@ -61,6 +63,39 @@ function configSource(overrides: Partial<TranslationConfigSource> = {}): Transla
 }
 
 describe('translation provider request config snapshot', () => {
+    it.each(['chrome', 'userscript'])('保留 %s 的用户术语和严格槽原文，自动文档字面值仅用于扩展构建', browser => {
+        vi.stubEnv('BROWSER', browser);
+        try {
+            const snapshot = createTranslationProviderConfigSnapshot(configSource({glossaryEnabled: true,
+                glossaryLibraries: [{id: 'one', name: 'One', enabled: true, sourceLanguage: '', targetLanguage: '', domains: [],
+                    entries: [{id: 'agent', source: 'agent', target: '智能体', caseSensitive: false}]}],
+                glossaryTerms: [{source: 'agent', target: '智能体'}],
+                glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-Hans', glossaryIds: ['one']},
+            }));
+            const origins = ['Use agent with 𝑛 ∈ ℎ.'];
+            const slots = serializeTranslationSlots(origins, 'build_boundary');
+            expect(getTranslationGlossarySourceText(slots.payload)).toEqual(origins);
+            for (const source of [origins, slots.payload]) {
+                expect(getTranslationGlossaryTerms(snapshot, source)).toEqual(browser === 'userscript'
+                    ? [{source: 'agent', target: '智能体'}]
+                    : [{source: 'agent', target: '智能体'}, {source: '𝑛', target: '𝑛'}, {source: '∈', target: '∈'}, {source: 'ℎ', target: 'ℎ'}]);
+            }
+            expect(getTranslationGlossaryTerms({...snapshot, glossaryMatchContext: {...snapshot.glossaryMatchContext!, context: 'page'}}, origins))
+                .toEqual([{source: 'agent', target: '智能体'}]);
+        } finally {vi.unstubAllEnvs();}
+    });
+
+    it('原生合批偏好在 provider 配置快照中默认开启并隔离后续编辑', () => {
+        const preferences = {google: false, microsoft: true};
+        const snapshot = createTranslationProviderConfigSnapshot(configSource({nativeBatchTranslationEnabled: preferences}));
+        preferences.google = true;
+        preferences.microsoft = false;
+        expect(snapshot.nativeBatchTranslationEnabled).toMatchObject({google: false, microsoft: true, deepL: true});
+        expect(Object.isFrozen(snapshot.nativeBatchTranslationEnabled)).toBe(true);
+        expect(createTranslationProviderConfigSnapshot(configSource()).nativeBatchTranslationEnabled)
+            .toMatchObject({google: true, microsoft: true, deepL: true, azureTranslator: true, googleCloudTranslation: true});
+    });
+
     it('占位符约束按当前单条或批量片段筛选，不外发其他片段的标记', () => {
         const snapshot = {...createTranslationProviderConfigSnapshot(configSource()),
             glossaryProtectedTokens: ['__FRTERM_first__', '__FRTERM_second__']};
@@ -130,13 +165,20 @@ describe('translation provider request config snapshot', () => {
     it('keeps the scheduler and immutable request identity inside trusted process-local context', () => {
         const scheduler = createTranslationRequestScheduler(() => ({}));
         const identity = {service: 'aiSdk', model: 'model-a'};
-        const request = attachTranslationRequestScheduler({origin: 'hello'}, scheduler, identity);
+        const lease = {holdUntil: vi.fn()};
+        const request = attachTranslationRequestScheduler({origin: 'hello'}, scheduler, identity, lease);
         identity.model = 'model-b';
         const context = getTranslationRequestScheduler(request)!;
         expect(context.scheduler).toBe(scheduler);
+        expect(context.lease).toBe(lease);
         expect(context.identity).toEqual({service: 'aiSdk', model: 'model-a'});
         expect(Object.isFrozen(context)).toBe(true);
         expect(Object.isFrozen(context.identity)).toBe(true);
+        expect(Object.getOwnPropertyDescriptor(request, TRANSLATION_REQUEST_SCHEDULER)?.enumerable).toBe(true);
+        for (const copy of [createTranslationRequestSnapshot(request), {...request}]) {
+            expect(getTranslationRequestScheduler(copy)).toBe(context);
+            expect(getTranslationRequestScheduler(copy)!.lease).toBe(lease);
+        }
         expect(JSON.stringify(request)).toBe('{"origin":"hello"}');
         expect(getTranslationRequestScheduler(attachTranslationRequestScheduler({}, scheduler))!.identity).toBeUndefined();
         for (const untrusted of [null, 'invalid', {}, {scheduler, identity}, JSON.parse(JSON.stringify(request))]) {
@@ -166,10 +208,12 @@ describe('translation provider request config snapshot', () => {
 
     it('matches pure source slots without protocol boundaries and leaves malformed or literal markers intact', () => {
         const packet = serializeTranslationSlots(['agent', 'An agent works.'], 'Case_1-x');
+        expect(getTranslationGlossarySourceSlots(packet.payload)).toEqual({packet, texts: ['agent', 'An agent works.']});
         expect(getTranslationGlossarySourceText(packet.payload)).toEqual(['agent', 'An agent works.']);
         expect(getTranslationGlossarySourceText(['plain', packet.payload])).toEqual(['plain', 'agent', 'An agent works.']);
         for (const text of [packet.payload.replace(packet.ends[0], ''), `${packet.payload} outside`,
             `literal ${packet.payload}`, '___FLUENTREAD_partial_0_BEGIN___agent']) {
+            expect(getTranslationGlossarySourceSlots(text)).toBeUndefined();
             expect(getTranslationGlossarySourceText(text)).toBe(text);
         }
     });
@@ -372,6 +416,41 @@ describe('translation provider request config snapshot', () => {
         expect(Object.isFrozen(withoutThinking.modelThinking)).toBe(true);
         expect(Object.getOwnPropertySymbols(attached)).toEqual([TRANSLATION_PROVIDER_CONFIG]);
         expect(JSON.stringify(attached)).toBe('{"origin":"hello"}');
+    });
+
+    it('沿用附着对象身份而不执行 lazy fallback，消息复制仍保留可信 symbol', () => {
+        const snapshot = createTranslationProviderConfigSnapshot(configSource());
+        const fallback = vi.fn(() => {throw new Error('unused fallback');});
+        const message = attachTranslationProviderConfig({origin: 'hello'}, snapshot);
+
+        expect(getTranslationProviderConfig(message, fallback)).toBe(snapshot);
+        expect(getTranslationProviderConfig(createTranslationRequestSnapshot(message), fallback)).toBe(snapshot);
+        expect(fallback).not.toHaveBeenCalled();
+        expect(JSON.stringify(message)).toBe('{"origin":"hello"}');
+    });
+
+    it('仅在缺失可信 symbol 时同步调用一次 factory，不接受同名 JSON 字段或跨调用保存结果', () => {
+        const snapshot = createTranslationProviderConfigSnapshot(configSource());
+        for (const message of [undefined, null, 'not-an-object', {}, {TRANSLATION_PROVIDER_CONFIG: snapshot}]) {
+            const fallback = vi.fn(() => snapshot);
+            const result = getTranslationProviderConfig(message, fallback);
+            expect(fallback).toHaveBeenCalledOnce();
+            expect(result).toBe(snapshot);
+        }
+        const next = createTranslationProviderConfigSnapshot(configSource({service: 'next'}));
+        const changingFallback = vi.fn().mockReturnValueOnce(snapshot).mockReturnValueOnce(next);
+        expect(getTranslationProviderConfig({}, changingFallback)).toBe(snapshot);
+        expect(getTranslationProviderConfig({}, changingFallback)).toBe(next);
+        expect(changingFallback).toHaveBeenCalledTimes(2);
+    });
+
+    it('同步原样抛出 miss factory 的异常而不替换或重复调用', () => {
+        const failure = new Error('snapshot unavailable');
+        const fallback = vi.fn(() => {throw failure;});
+        let thrown: unknown;
+        try {getTranslationProviderConfig({}, fallback);} catch (error) {thrown = error;}
+        expect(thrown).toBe(failure);
+        expect(fallback).toHaveBeenCalledOnce();
     });
 
     it('keeps abort ownership process-local and out of runtime JSON', () => {

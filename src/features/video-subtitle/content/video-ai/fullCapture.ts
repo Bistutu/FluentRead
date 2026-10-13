@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/video-ai/fullCapture.ts
  * 文件职责：执行完整视频 AI 字幕的独立音频读取、分窗识别和最终 cue 整理。
- * 主要内容：支持 HLS PCM 注入、限额流式媒体读取与可取消的 16 kHz 原生解码、隐藏扫描副本、有界串行 Whisper 窗口、完整模式字幕整理和取消清理。
+ * 主要内容：支持 HLS PCM 注入、限额流式媒体读取与可取消的 16 kHz 原生解码、可取消元数据等待的隐藏扫描副本、有界串行 Whisper 窗口、完整模式字幕整理和取消清理。
  * 模块边界：不得接管用户可见 video 的播放状态；页面源隔离由调用方通过选项注入。
  */
 import {
@@ -207,6 +207,7 @@ export class VideoAiFullCaptureController {
   private fullCaptureFinished = false;
   private fullNextWindowStartMs = 0;
   private fullNextWindowOverlapMs = 0;
+  private fullAttributedSpeechEndMs = 0;
   private fullWindowLengthMs = 0;
   private fullWindowStepMs = 0;
   private fullWindowSequence = 0;
@@ -430,8 +431,8 @@ export class VideoAiFullCaptureController {
       let audioVideo: HTMLVideoElement;
       try {
         audioVideo = this.options.getIsolatedVideo
-          ? await this.options.getIsolatedVideo(video, session) || await this.createScanVideo(video, session)
-          : await this.createScanVideo(video, session);
+          ? await this.options.getIsolatedVideo(video, session) || await this.createScanVideo(video, session, signal)
+          : await this.createScanVideo(video, session, signal);
         scanVideo = audioVideo;
         if (!this.isCurrentSession(session) || signal.aborted) throw new Error(FULL_CANCELLED_ERROR);
         this.scanVideo = audioVideo;
@@ -658,7 +659,8 @@ export class VideoAiFullCaptureController {
     return null;
   }
 
-  private async createScanVideo(sourceVideo: HTMLVideoElement, session: number): Promise<HTMLVideoElement> {
+  private async createScanVideo(sourceVideo: HTMLVideoElement, session: number, signal: AbortSignal): Promise<HTMLVideoElement> {
+    if (signal.aborted) throw new Error(FULL_CANCELLED_ERROR);
     const scanVideo = document.createElement('video');
     try {
       scanVideo.preload = 'auto';
@@ -680,6 +682,7 @@ export class VideoAiFullCaptureController {
       }
       document.documentElement.appendChild(scanVideo);
       scanVideo.load();
+      if (signal.aborted) throw new Error(FULL_CANCELLED_ERROR);
       if (scanVideo.readyState < 1) {
         await new Promise<void>((resolve, reject) => {
           let timeout: number | undefined;
@@ -687,13 +690,16 @@ export class VideoAiFullCaptureController {
             scanVideo.removeEventListener('loadedmetadata', onReady);
             scanVideo.removeEventListener('canplay', onReady);
             scanVideo.removeEventListener('error', onError);
+            signal.removeEventListener('abort', onAbort);
             if (timeout !== undefined) window.clearTimeout(timeout);
           };
           const onReady = () => { cleanup(); resolve(); };
           const onError = () => { cleanup(); reject(new Error('扫描副本无法加载 X 视频音频')); };
+          const onAbort = () => { cleanup(); reject(new Error(FULL_CANCELLED_ERROR)); };
           scanVideo.addEventListener('loadedmetadata', onReady, { once: true });
           scanVideo.addEventListener('canplay', onReady, { once: true });
           scanVideo.addEventListener('error', onError, { once: true });
+          signal.addEventListener('abort', onAbort, {once: true});
           timeout = window.setTimeout(() => {
             cleanup();
             reject(new Error('扫描副本加载 X 视频音频超时'));
@@ -990,13 +996,19 @@ export class VideoAiFullCaptureController {
         if (result.skipped) throw new Error('本地视频 AI 完整识别请求被跳过，请重试');
       }
       if (!this.isCurrentSession(session)) throw new Error(FULL_CANCELLED_ERROR);
+      // 重叠窗口开头会重新带上前一窗已经归属的词尾；把该终点交给对齐器，
+      // 让下一句从其后的停顿之后起声，而不是贴在上一句的结尾。
+      const segments = alignVideoAiSegmentsToSpeech(window.pcm, result.segments?.length
+        ? result.segments : [{startMs: 0, endMs: chunk.durationMs, text: result.text}],
+      this.fullAttributedSpeechEndMs - window.startMs);
+      this.fullAttributedSpeechEndMs = window.startMs
+        + Math.max(0, ...segments.map(segment => segment.endMs!));
       const cues = this.fullTranscriptionStabilizer.ingest({
         startMs: window.startMs,
         durationMs: chunk.durationMs,
         availableAtMs: 0,
         text: result.text,
-        segments: alignVideoAiSegmentsToSpeech(window.pcm, result.segments?.length
-          ? result.segments : [{startMs: 0, endMs: chunk.durationMs, text: result.text}]),
+        segments,
       });
       this.fullFallbackCues = this.absorbCues(cues, this.fullCuesById, this.fullFallbackCues);
       if (this.options.onCuesProgress) {
@@ -1034,6 +1046,7 @@ export class VideoAiFullCaptureController {
     this.fullCaptureFinished = false;
     this.fullNextWindowStartMs = 0;
     this.fullNextWindowOverlapMs = 0;
+    this.fullAttributedSpeechEndMs = 0;
     this.fullWindowLengthMs = 0;
     this.fullWindowStepMs = 0;
     this.fullWindowSequence = 0;

@@ -1,0 +1,65 @@
+{
+  "baseCommit": "b077d878f2e0970b71b4c775d41c4681dfd6c911",
+  "targetedTests": {
+    "files": 16,
+    "passed": 1739,
+    "failed": 0
+  },
+  "coverageTests": {
+    "files": 16,
+    "passed": 1442,
+    "failed": 0
+  },
+  "coreCoverage": {
+    "chinese.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "functionWordData.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "identify.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "lexicon.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "dom.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    }
+  },
+  "builds": {
+    "types": "passed",
+    "chromeMv3": "passed",
+    "firefoxMv2": "passed",
+    "userscript": "passed",
+    "userscriptVerifier": "passed",
+    "docs": "passed"
+  },
+  "userscript": {
+    "bytes": 1963619,
+    "inheritedBudgetBytes": 1964000,
+    "sha256": "c861cd2652f3c3db1c8d2dcb6257ab5f6b9b968a63b630d39657bd26bddb3e48"
+  },
+  "testAudit": {
+    "status": "ok",
+    "files": 612,
+    "cases": 9833
+  },
+  "knownBaselineFailure": "verificationOwnership: transcription.worker.ts is both composition-exempt and in strict coverage; reproduced from unmodified 51b0f87 archive",
+  "evidenceBoundary": "Targeted tests and loopback-provider Edge fixtures; no full-repository regression, online-provider quality or Firefox interaction claim"
+}

@@ -78,7 +78,7 @@ describe('本地 AI 字幕音频窗口', () => {
     expect(base.initialWindowMs).toBeGreaterThanOrEqual(tiny.initialWindowMs);
     expect(base.targetWindowMs).toBeGreaterThan(tiny.targetWindowMs);
     expect(base.submitStepMs).toBeGreaterThan(tiny.submitStepMs);
-    expect(getVideoAiStreamProfile('unsupported')).toEqual(tiny);
+    expect(getVideoAiStreamProfile('unsupported')).toEqual(getVideoAiStreamProfile('small'));
   });
 
   it('设备推理变慢时自适应降频，同时保留至少 800ms 重叠', () => {

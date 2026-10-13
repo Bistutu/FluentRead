@@ -1,0 +1,6 @@
+[
+  "同一共享池中，cap=1的连接probe外层持槽、首次429后SDK等待2秒；broker counted attempt先排队后，旧waitingAttemptKeys又挡住probe自己的uncounted retry，形成互锁直到deadline。本次仅让attemptOnly && !countConcurrency进入旧重试阻塞集合，保留counted FIFO。真实connectionTest→SDK与broker在global、service、model+service同桶的9项完成/取消/deadline用例均通过，实际inflight峰值1；旧实现有效红例6失败、取消对照3通过。",
+  "后台自身inIncognitoContext不能代表无tab popup/扩展页面的发送者。本次真实messageRuntime只传sender，可信tab布尔元数据决定普通/私密，无tab或无明确元数据保持unknown，不信payload、不新增查询框架。真实安装listener→router→typed input/fallback的8项回归通过，旧实现4项无tab反例失败。",
+  "共享冷却仍由真实429/有效503响应反馈，SDK保留重试所有权和次数；外层SDK任务不计并发/速率，真实attempt在既有池各计一次并等待原始runtimeFetch settle。三个pending入口保留隐私、有效Key集合、轮换/恢复配置摘要，transport按实际选择Key，成功缓存规则不变。",
+  "全仓调用点核实后删除无消费者的跨provider context lease字段/第四参数/adapter空分支，保留scheduler、broker、probe与client自身lease及raw transport持槽。复用三次isAiSdk检查，组合实测标准包节省187字节。SVG专项实现和测试已从当前PR diff撤出为独立CW本地候选，没有新建公开PR；原图标/许可未改，历史standalone收益17468字节不作为标准方案。"
+]

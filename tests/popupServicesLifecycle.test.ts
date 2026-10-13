@@ -1,7 +1,7 @@
 /**
  * @file tests/popupServicesLifecycle.test.ts
  * 文件职责：验证实际 Popup 服务选择模板的事件归属、面板焦点、独立模型与凭据读取范围。
- * 主要内容：执行真实缓存客户端模板，覆盖隐藏、缓存、配置替换、选择会话切换、查询、目录权限、九种功能模型和默认继承。
+ * 主要内容：执行真实缓存客户端模板，覆盖隐藏、缓存、配置替换、选择会话切换、查询、目录权限、九种功能模型和默认继承；验证B站免费阅读选项、固定模型与写作拒绝边界。
  * 模块边界：Linkedom 保留实际节点树，展示控件与焦点为受控端口；不调用翻译或验证系统输入法。
  */
 import {createRequire} from 'node:module'
@@ -15,6 +15,7 @@ import ts from 'typescript'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {createApiKeyRequirementKey} from '@/src/core/config/validation'
+import {BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation'
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
 let server: ViteDevServer, app: import('vue').App, document: Document, win: any, focused: Element | null
@@ -85,12 +86,36 @@ function row(id: string) {return document.querySelector(`[data-feature-service="
 function option(id: string) {return document.querySelector(`[data-service-choice="${id}"]`)!}
 function invalidate(reason: string) {if (reason === 'hidden') props.active = false;if (reason === 'cached') shown.value = false;if (reason === 'unmount') app.unmount();if (reason === 'config') props.config = runtime.reactive(new Config())}
 function snapshot(config: Config) {return {service: config.service, hover: config.hoverTranslationService, selection: config.selectionTranslationService, input: config.inputBoxTranslationService, inputModel: config.inputBoxTranslationModel, reading: {...config.harness}, writing: {...config.writing}}}
-async function mountPopup(config = runtime.reactive(new Config()), values: Record<string, unknown> = {}) {config.service = 'openai';await mount(popupPath, {config, serviceOptions: services, ...values}, {onClose: updates})}
+// 待配置的服务收在折叠的更多区；夹具默认填好凭据，让 OpenAI 与 DeepSeek 留在常用区供事件归属用例直接点击。
+async function mountPopup(config = runtime.reactive(new Config()), values: Record<string, unknown> = {}, credentials = true) {config.service = 'openai';if (credentials) for (const id of ['openai', 'deepseek']) config.token[id] ||= 'test-only-key';await mount(popupPath, {config, serviceOptions: services, ...values}, {onClose: updates})}
 async function open(id: string) {const el = row(id) as HTMLElement;el.focus();eventOf(el)();await settle();expect(document.querySelector('[data-service-picker]')?.getAttribute('data-service-picker')).toBe(id)}
 async function search(keyword: string) {const input = document.querySelector('input[type="search"]') as HTMLInputElement;input.value = keyword;eventOf(input, 'onInput')({target: input});await settle()}
 function pickerBack() {return eventOf(document.querySelector('.service-picker-back')!)}
 
 describe('Popup 服务选择实际缓存模板', () => {
+  it('阅读选择面板允许免密钥B站并显示固定模型，写作面板不提供该服务', async () => {
+    const config = runtime.reactive(new Config()); config.harness.model = 'unused-reader'; config.model.bilibili = 'unused-default'
+    await mountPopup(config, {serviceOptions: [...services, {value: 'bilibili', label: 'B站翻译'}]}, false)
+    await open('reading'); expect(option('bilibili')).not.toBeNull(); expect(option('bilibili').hasAttribute('disabled')).toBe(false)
+    expect(option('bilibili').querySelector('.service-choice-setup')).toBeNull()
+    eventOf(option('bilibili'))(); await settle(); expect(config.harness.service).toBe('bilibili')
+    expect(row('reading').textContent).toContain(BILIBILI_FREE_TRANSLATION_MODEL)
+    expect(row('reading').querySelector('.assignment-warning')).toBeNull()
+    await open('reading'); expect(document.querySelector('.service-picker-warning')).toBeNull(); pickerBack()(); await settle()
+    await open('writing'); expect(document.querySelector('[data-service-choice="bilibili"]')).toBeNull()
+  })
+  it('默认B站阅读继承无警告，写作继承及残留独立选择保留禁用状态并可恢复AI', async () => {
+    const config = runtime.reactive(new Config())
+    await mountPopup(config, {serviceOptions: [...services, {value: 'bilibili', label: 'B站翻译'}]}); config.service = 'bilibili'; await settle()
+    expect(row('reading').querySelector('.assignment-warning')).toBeNull(); expect(row('reading').textContent).toContain(BILIBILI_FREE_TRANSLATION_MODEL)
+    expect(row('writing').querySelector('.assignment-warning')?.getAttribute('aria-label')).toBe('featureServices.writing · featureServices.aiOnly')
+    config.writing.service = 'bilibili'; await settle(); await open('writing')
+    expect(option('bilibili').hasAttribute('disabled')).toBe(true)
+    const unchanged = config.writing.service; eventOf(option('bilibili'))(); expect(config.writing.service).toBe(unchanged)
+    expect(document.querySelector('.service-picker-warning')?.textContent).toBe('featureServices.writing · featureServices.aiOnly')
+    eventOf(option('openai'))(); await settle(); expect(config.writing.service).toBe('openai')
+    expect(row('writing').querySelector('.assignment-warning')).toBeNull()
+  })
   it.each(['hidden', 'cached', 'unmount', 'config'])('%s 后旧选项、返回、输入与关闭事件全部失效', async reason => {
     await mountPopup();await open('input');const choose = eventOf(option('deepseek')), close = eventOf(document.querySelector('.service-panel-close')!), back = pickerBack(), input = document.querySelector('input')!, type = eventOf(input,'onInput');invalidate(reason);await settle();const before = snapshot(props.config)
     choose();back();type({target:input});close();expect(snapshot(props.config)).toEqual(before);expect(updates).not.toHaveBeenCalled()
@@ -128,16 +153,16 @@ describe('Popup 服务选择实际缓存模板', () => {
     const config=runtime.reactive(new Config());config.model.openai='main';config.inputBoxTranslationModel='input';config.requireApiKey[createApiKeyRequirementKey('openai','input')]=false;let fields=0,models=0
     for(let i=0;i<1000;i++) Object.defineProperty(config,`unrelated${i}`,{enumerable:true,configurable:true,get:()=>{fields++;return ''}})
     for(let i=0;i<500;i++) Object.defineProperty(config.model,`unrelated${i}`,{enumerable:true,configurable:true,get:()=>{models++;return ''}})
-    await mountPopup(config);expect(row('input').querySelector('.assignment-warning')).toBeNull();expect(row('hover').querySelector('.assignment-warning')).not.toBeNull();expect({fields,models}).toEqual({fields:0,models:0});config.requireApiKey[createApiKeyRequirementKey('openai','input')]=true;await settle();expect(row('input').querySelector('.assignment-warning')).not.toBeNull();expect({fields,models}).toEqual({fields:0,models:0})
+    await mountPopup(config, {}, false);expect(row('input').querySelector('.assignment-warning')).toBeNull();expect(row('hover').querySelector('.assignment-warning')).not.toBeNull();expect({fields,models}).toEqual({fields:0,models:0});config.requireApiKey[createApiKeyRequirementKey('openai','input')]=true;await settle();expect(row('input').querySelector('.assignment-warning')).not.toBeNull();expect({fields,models}).toEqual({fields:0,models:0})
   })
   it('搜索支持配置模型、自定义模型和服务名，AI 面板排除机器服务', async () => {
     const config=runtime.reactive(new Config());config.customModels.deepseek=['unique-needle'];await mountPopup(config);await open('input');await search('unique needle');expect(option('deepseek').textContent).toContain('unique-needle');await search('Microsoft');expect(option('microsoft')).not.toBeNull();pickerBack()();await settle();await open('reading');await search('Microsoft');expect(document.querySelector('[data-service-choice="microsoft"]')).toBeNull()
   })
-  it('当前查询输入、清空与更多服务展开正常，旧控制不能改新面板', async () => {
-    await mountPopup(undefined,{serviceOptions:[...services,{value:'ollama',label:'Ollama'}]});await open('input');const oldMore=eventOf(document.querySelector('.service-picker-more')!), oldType=eventOf(document.querySelector('input')!,'onInput');oldMore();await settle();expect(option('ollama')).not.toBeNull();await search('OpenAI');const clear=eventOf(document.querySelector('.service-picker-search button')!);clear();await settle();expect((document.querySelector('input') as HTMLInputElement).value).toBe('');pickerBack()();await settle();await open('reading');oldMore();oldType({target:document.querySelector('input')});await settle();expect(document.querySelector('[data-service-picker]')?.getAttribute('data-service-picker')).toBe('reading');expect((document.querySelector('input') as HTMLInputElement).value).toBe('')
+  it('当前查询输入、清空与更多服务收起正常，旧控制不能改新面板', async () => {
+    await mountPopup(undefined,{serviceOptions:[...services,{value:'ollama',label:'Ollama'}]});await open('input');const oldMore=eventOf(document.querySelector('.service-picker-more')!), oldType=eventOf(document.querySelector('input')!,'onInput');expect(option('ollama')).not.toBeNull();oldMore();await settle();expect(option('ollama')).toBeNull();await search('OpenAI');const clear=eventOf(document.querySelector('.service-picker-search button')!);clear();await settle();expect((document.querySelector('input') as HTMLInputElement).value).toBe('');pickerBack()();await settle();await open('reading');oldMore();oldType({target:document.querySelector('input')});await settle();expect(document.querySelector('[data-service-picker]')?.getAttribute('data-service-picker')).toBe('reading');expect((document.querySelector('input') as HTMLInputElement).value).toBe('');expect(option('ollama')).not.toBeNull()
   })
   it('当前 ArrowDown 和列表方向键导航只访问可用条目，Escape 返回概览', async () => {
-    await mountPopup();await open('input');const prevent=vi.fn(), stop=vi.fn(), input=document.querySelector('input')!;eventOf(input,'onKeydown')({key:'ArrowDown',preventDefault:prevent});expect(focused).toBe(option(''));const list=document.querySelector('[role="listbox"]')!, nav=eventOf(list,'onKeydown');nav({key:'End',target:option(''),preventDefault:prevent});expect(focused).toBe(option('deepseek'));nav({key:'ArrowDown',target:option('deepseek'),preventDefault:prevent});expect(focused).toBe(option(''));nav({key:'Home',target:option('deepseek'),preventDefault:prevent});expect(focused).toBe(option(''));nav({key:'ArrowUp',target:option(''),preventDefault:prevent});expect(focused).toBe(option('deepseek'));nav({key:'x',target:option(''),preventDefault:prevent});expect(prevent).toHaveBeenCalledTimes(5);eventOf(document.querySelector('.popup-service-panel')!,'onKeydown')({key:'Escape',stopPropagation:stop});await settle();expect(stop).toHaveBeenCalledOnce();expect(document.querySelector('[data-service-picker]')).toBeNull()
+    await mountPopup();await open('input');const prevent=vi.fn(), stop=vi.fn(), input=document.querySelector('input')!;eventOf(input,'onKeydown')({key:'ArrowDown',preventDefault:prevent});expect(focused).toBe(option(''));const list=document.querySelector('[role="listbox"]')!, nav=eventOf(list,'onKeydown');nav({key:'End',target:option(''),preventDefault:prevent});expect(focused).toBe(option('microsoft'));nav({key:'ArrowDown',target:option('microsoft'),preventDefault:prevent});expect(focused).toBe(option(''));nav({key:'Home',target:option('microsoft'),preventDefault:prevent});expect(focused).toBe(option(''));nav({key:'ArrowUp',target:option(''),preventDefault:prevent});expect(focused).toBe(option('microsoft'));nav({key:'x',target:option(''),preventDefault:prevent});expect(prevent).toHaveBeenCalledTimes(5);eventOf(document.querySelector('.popup-service-panel')!,'onKeydown')({key:'Escape',stopPropagation:stop});await settle();expect(stop).toHaveBeenCalledOnce();expect(document.querySelector('[data-service-picker]')).toBeNull()
   })
   it('返回后只恢复所属行，用户主动移走焦点或重开面板时旧任务不抢焦点', async () => {
     await mountPopup();await open('input');expect(focused).toBe(document.querySelector('input'));pickerBack()();await settle();expect(focused).toBe(row('input'));eventOf(row('input'))();const outside=document.createElement('button');document.body.append(outside);focused=outside;focus.mockClear();await settle();expect(focus).not.toHaveBeenCalled();expect(focused).toBe(outside);pickerBack()();await settle();expect(focused).toBe(outside)
@@ -152,7 +177,7 @@ describe('Popup 服务选择实际缓存模板', () => {
     await mountPopup();const el=row('input') as HTMLElement;el.focus();eventOf(el)();invalidate(reason);focus.mockClear();await settle();expect(focus).not.toHaveBeenCalled()
   })
   it('文档独立模型凭据与网页默认分离，父级模型更新使提示重新计算', async () => {
-    const config=runtime.reactive(new Config());config.documentService='openai';config.documentModel.openai='document-model';config.model.openai='default-model';config.requireApiKey[createApiKeyRequirementKey('openai','document-model')]=false;await mountPopup(config);expect(row('document').querySelector('.assignment-warning')).toBeNull();expect(row('document').textContent).toContain('document-model');expect(row('default').querySelector('.assignment-warning')).not.toBeNull();config.documentModel.openai='other-model';await settle();expect(row('document').querySelector('.assignment-warning')).not.toBeNull()
+    const config=runtime.reactive(new Config());config.documentService='openai';config.documentModel.openai='document-model';config.model.openai='default-model';config.requireApiKey[createApiKeyRequirementKey('openai','document-model')]=false;await mountPopup(config, {}, false);expect(row('document').querySelector('.assignment-warning')).toBeNull();expect(row('document').textContent).toContain('document-model');expect(row('default').querySelector('.assignment-warning')).not.toBeNull();config.documentModel.openai='other-model';await settle();expect(row('document').querySelector('.assignment-warning')).not.toBeNull()
   })
   it('AI 能力提示属于对应功能，不把写作助手称作默认 AI 讲解', async () => {
     await mountPopup();props.config.service='microsoft';await settle();expect(row('writing').querySelector('.assignment-warning')?.getAttribute('aria-label')).toBe('featureServices.writing · featureServices.aiOnly');expect(row('reading').querySelector('.assignment-warning')?.getAttribute('aria-label')).toBe('featureServices.reading · featureServices.aiOnly');await open('writing');expect(document.querySelector('.service-picker-warning')?.textContent).toBe('featureServices.writing · featureServices.aiOnly')

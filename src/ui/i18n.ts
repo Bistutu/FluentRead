@@ -5,7 +5,7 @@
  * 订阅共享配置、即时切换语言和安全迁移尚未 key 化的旧文案。
  * 主要内容：提供 createUiI18nPlugin、useUiI18n 和 v-ui-i18n 指令；语言切换时按需加载资源包，
  * 选择以调用身份串行提交字段补丁，旧资源、旧失败和已销毁 runtime 不得回写新选择；资源到达后通过 bundleRevision 刷新渲染与旧文案扫描；源语言界面跳过无效全树扫描，切回源语言时仍恢复旧文案。指令只扫描
- * 显式标记的扩展 UI 根节点，插件在正常卸载或构建失败时释放订阅、watch、observer 和延迟扫描；跳过代码、文本编辑器和用户内容，避免把网页正文
+ * 显式标记或传入的自有 UI 根节点，扫描容器与扩展 document 元信息权限分离；插件在正常卸载或构建失败时释放订阅、watch、observer 和延迟扫描；跳过代码、文本编辑器和用户内容及其后代文本，避免把网页正文
  * 或翻译结果误当成扩展文案。
  * 模块边界：这里负责 Vue 响应式和配置 patch，不定义语言文案；文案资源与纯
  * fallback 规则在 src/core/i18n，配置持久化仍由 services/config/store 负责。
@@ -250,7 +250,7 @@ interface UiI18nDirectiveState {
 }
 
 const TRANSLATABLE_ATTRIBUTES = ['aria-label', 'aria-description', 'placeholder', 'title', 'alt'] as const;
-const NON_UI_TEXT_TAGS = new Set(['CODE', 'PRE', 'SCRIPT', 'STYLE', 'TEXTAREA']);
+const NON_UI_TEXT_SELECTOR = '[data-i18n-ignore], code, pre, script, style, textarea';
 const NON_UI_ELEMENT_TAGS = new Set(['SCRIPT', 'STYLE']);
 
 function isIgnoredElement(element: Element | null): boolean {
@@ -259,8 +259,8 @@ function isIgnoredElement(element: Element | null): boolean {
 }
 
 function isIgnoredTextElement(element: Element | null): boolean {
-    return Boolean(element?.closest('[data-i18n-ignore]'))
-        || (element ? NON_UI_TEXT_TAGS.has(element.tagName) : true);
+    // 跟读等正文组件会嵌套 span；内容祖先的排除规则必须继续保护这些后代文本。
+    return !element || Boolean(element.closest(NON_UI_TEXT_SELECTOR));
 }
 
 const UI_MUTATION_OBSERVER_OPTIONS: MutationObserverInit = {
@@ -439,7 +439,7 @@ function createUiI18nDirective(context: UiI18nContext): Directive<HTMLElement> &
     };
 }
 
-/** 为 options/popup/document 这类扩展专属页面观察 body，覆盖 Element Plus Teleport 内容。 */
+/** 只观察明确传入的 UI 根；扩展 body 可覆盖页面 Teleport，自有 Shadow 子树不扩大到宿主。 */
 function observeUiDocument(root: HTMLElement, context: UiI18nContext): () => void {
     const state = {} as UiI18nDirectiveState;
     state.context = context;
@@ -477,6 +477,8 @@ export function useUiI18n(): UiI18nContext {
 export interface UiI18nPluginOptions {
     /** 仅用于扩展专属 document 页面；不要传入宿主网页的 body。 */
     documentRoot?: HTMLElement | null;
+    /** 仅扫描调用方拥有的 UI 子树；undefined 沿用 documentRoot，null 禁止自动扫描。 */
+    uiRoot?: HTMLElement | null;
     /** 扩展专属页面的标题资源 key；不传则只同步 html[lang]。 */
     documentTitleKey?: string;
 }
@@ -517,7 +519,8 @@ export function createUiI18nPlugin(options: UiI18nPluginOptions = {}): Plugin {
                 }
             };
             try {
-                if (options.documentRoot) cleanup.push(observeUiDocument(options.documentRoot, context));
+                const uiRoot = options.uiRoot === undefined ? options.documentRoot : options.uiRoot;
+                if (uiRoot) cleanup.push(observeUiDocument(uiRoot, context));
                 updateDocumentMetadata();
                 cleanup.push(watch([context.language, context.bundleRevision], updateDocumentMetadata, {flush: 'post'}));
                 app.provide(UI_I18N_KEY, context);

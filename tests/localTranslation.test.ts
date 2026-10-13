@@ -1,10 +1,11 @@
+import {resolveLocalTranslationLanguageCode} from '@/src/core/language/localTranslation';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import * as detection from '@/src/core/language/detect';
 import {
   DEFAULT_LOCAL_TRANSLATION_MODEL,
   LOCAL_TRANSLATION_MODEL_IDS,
   LOCAL_TRANSLATION_MODELS,
   normalizeLocalTranslationModel,
-  resolveLocalTranslationLanguageCode,
 } from '@/src/core/config/localTranslation';
 import {
   LOCAL_TRANSLATION_MODEL_FILES,
@@ -16,6 +17,8 @@ import {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  vi.restoreAllMocks();
+  vi.doUnmock('@/src/core/language/detect');
 });
 
 describe('local translation model catalog', () => {
@@ -33,6 +36,38 @@ describe('local translation model catalog', () => {
     expect(resolveLocalTranslationLanguageCode(LOCAL_TRANSLATION_MODEL_IDS.m2m100, 'auto', 'This is a long enough English sentence for local language detection.')).toBe('en');
     expect(() => resolveLocalTranslationLanguageCode(LOCAL_TRANSLATION_MODEL_IDS.m2m100, 'auto')).toThrow('空文本');
     expect(() => resolveLocalTranslationLanguageCode(LOCAL_TRANSLATION_MODEL_IDS.nllb, 'xx')).toThrow('暂不支持');
+  });
+
+  it('loads model metadata without evaluating the text detector', async () => {
+    vi.resetModules();
+    const evaluateDetector = vi.fn(() => { throw new Error('model metadata must not initialize text detection'); });
+    vi.doMock('@/src/core/language/detect', evaluateDetector);
+    const metadata = await import('@/src/core/config/localTranslation');
+    expect(metadata.getLocalTranslationModel(undefined).value).toBe(DEFAULT_LOCAL_TRANSLATION_MODEL);
+    expect(metadata.normalizeLocalTranslationModel(LOCAL_TRANSLATION_MODEL_IDS.hunyuan)).toBe(LOCAL_TRANSLATION_MODEL_IDS.hunyuan);
+    expect(evaluateDetector).not.toHaveBeenCalled();
+  });
+
+  it('keeps specified model languages independent of detection text and preserves model aliases', () => {
+    const detect = vi.spyOn(detection, 'detectlang');
+    for (const [model, language, expected] of [
+      [LOCAL_TRANSLATION_MODEL_IDS.opusZhEn, 'zh-TW', 'zh'],
+      [LOCAL_TRANSLATION_MODEL_IDS.opusJaEn, 'ja-JP', 'ja'],
+      [LOCAL_TRANSLATION_MODEL_IDS.hunyuan, 'fil', 'tl'],
+      [LOCAL_TRANSLATION_MODEL_IDS.hunyuan, 'zh-TW', 'zh-Hant'],
+      [LOCAL_TRANSLATION_MODEL_IDS.m2m100, ' nb-NO ', 'no'],
+      [LOCAL_TRANSLATION_MODEL_IDS.nllb, 'nb-NO', 'nno_Latn'],
+      [LOCAL_TRANSLATION_MODEL_IDS.nllb, 'zh-Hans', 'zho_Hans'],
+      [LOCAL_TRANSLATION_MODEL_IDS.nllb, 'zh-Hant', 'zho_Hant'],
+      ['retired-model', 'en-US', 'en'],
+    ]) expect(resolveLocalTranslationLanguageCode(model, language, '😀')).toBe(expected);
+    expect(detect).not.toHaveBeenCalled();
+  });
+
+  it.each([' AUTO ', '', undefined, null, 42])('keeps automatic source detection and blank input rejection for %s', (language) => {
+    const text = 'This is a long enough English sentence for local language detection.';
+    expect(resolveLocalTranslationLanguageCode(LOCAL_TRANSLATION_MODEL_IDS.m2m100, language, text)).toBe('en');
+    expect(() => resolveLocalTranslationLanguageCode(LOCAL_TRANSLATION_MODEL_IDS.nllb, language, ' \n\t ')).toThrow('本地模型无法自动识别空文本，请指定源语言');
   });
 });
 

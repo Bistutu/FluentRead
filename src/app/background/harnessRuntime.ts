@@ -1,7 +1,7 @@
 /**
  * @file src/app/background/harnessRuntime.ts
  * 文件职责：把阅读卡后台处理器组装到扩展配置、Harness 服务和浏览器标签页生命周期。
- * 主要内容：绑定流式端口、本机三十天会话、长期记忆管理与清理闹钟；配置停用、记忆变更、网站禁用及标签导航时取消请求，记忆管理同时使在途写作失效。
+ * 主要内容：绑定流式端口、本机三十天会话、长期记忆管理与清理闹钟；使用统一有效模型身份识别配置变化，包含B站匿名服务固定模型；配置停用、记忆变更、网站禁用及标签导航时取消请求，记忆管理同时使在途写作失效。
  * 模块边界：这是应用组合根，不实现选区、消息校验、会话或模型协议；对应规则和异步所有权由 reading-assistant/background 及 services/harness 验证。
  */
 import browser from 'webextension-polyfill';
@@ -20,7 +20,7 @@ import {isExtensionDisabledOnSite} from '@/src/core/site-rules/domain';
 import type {BackgroundMessageHandler} from './messageRouter';
 import type {ReadingSender} from '@/src/features/reading-assistant/background';
 import type {Config} from '@/src/core/config/model';
-import {resolveConfiguredModel} from '@/src/core/config/catalog';
+import {resolveHarnessModel} from '@/src/core/config/harness';
 import {getHarnessModelInputKey} from '@/src/services/harness/modelGateway';
 
 export function installHarnessBackgroundRuntime(cancelWriting?: () => void): BackgroundMessageHandler<{sender?: ReadingSender}> {
@@ -61,8 +61,7 @@ export function installHarnessBackgroundRuntime(cancelWriting?: () => void): Bac
     browser.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'fluentReadHarnessSessionCleanup') prune(); });
     void Promise.resolve(browser.alarms.create('fluentReadHarnessSessionCleanup', {periodInMinutes: 60})).catch(() => undefined);
     const configurationKey = (next: Config) => {
-        const service = next.harness.service || next.service;
-        const model = next.harness.model || resolveConfiguredModel(next.model[service], next.customModel[service]);
+        const {service, model} = resolveHarnessModel(next);
         return JSON.stringify([next.on, next.to, next.uiLanguage,
             {...next.harness, service: undefined, model: undefined, trigger: undefined, customHotkey: undefined, hoverDelay: undefined, defaultAction: undefined},
             getHarnessModelInputKey(next, service, model)]);

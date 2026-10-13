@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 const viteRequire = createRequire(require.resolve('vite'));
 const {build} = viteRequire('esbuild');
 const result = await build({
-  entryPoints: [path.join(root, 'src/core/i18n/bundles.ts')],
+  entryPoints: [path.join(root, 'userscript/languageBundles.ts')],
   bundle: true,
   platform: 'node',
   format: 'esm',

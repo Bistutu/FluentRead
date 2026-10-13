@@ -1,0 +1,44 @@
+{
+  "scope": "Merged-main HTTP/cache/progress audit and explicit offscreen download cleanup budget",
+  "reviewedHead": "dd02a318b6392e2d6bbfba55d7ea87a141db1a91",
+  "integratedMain": "64c6b8e67316f7757d31469800219b034d3d690f",
+  "blockingFinding": "The new non-warm download request asked for 630000ms, but the real offscreen client clamped explicit deadlines to 600000ms. The ten-minute downloader and RPC raced without the documented thirty-second response cleanup margin.",
+  "baseline": {
+    "scope": "Two fake-clock tests with real createOffscreenClient callback ports, no browser/network/model inference",
+    "executedBeforeSourceFix": true,
+    "failures": 2,
+    "reason": "Both requests settled before their expected explicit 630000ms boundary."
+  },
+  "fix": {
+    "explicitMaximumMs": 630000,
+    "defaultPreparationMs": 10000,
+    "existing600000RequestUnchanged": true,
+    "unspecifiedBusinessDeadlineUnchanged": true,
+    "callerBudgetsUnchanged": true,
+    "productionEdits": ["src/platform/offscreen/client.ts"],
+    "testEdits": ["tests/offscreenClient.test.ts"]
+  },
+  "finalSourceSha256": {
+    "src/platform/offscreen/client.ts": "b31c8f304e99c5658744684560df384f78dbe1e95c0ca942fdd089dd897da7e9",
+    "src/platform/http/modelDownloads.ts": "4cc399c4f007eb71a920f52dfe00b6d32a89b6b5950e6196ea15dbd1b5b36ef5",
+    "src/features/video-subtitle/offscreen/modelCache.ts": "0d37c571ef88e69307e185ab97a2a1565fb6faefbc0bb2dc24dac4e36097de32",
+    "src/features/local-tts/offscreen/modelCache.ts": "51f6979208abda27f39994ec232091ceac8b67186b183d0980265b137f8dabec",
+    "src/features/local-tts/offscreen/tts.worker.ts": "29b34886da00a4934c5d4d3fb9d366bbf55e1a833e9e9faec5380414748aa1c0"
+  },
+  "finalTestSha256": {
+    "tests/offscreenClient.test.ts": "60a9fcb326aecb7ef894df970d7a46d423cadd93189a30b942effad52318d1f9"
+  },
+  "verification": {
+    "clientFullSuitePassed": 29,
+    "strictSelectedPassed": 33,
+    "strictUnselectedExistingTests": 81,
+    "strictScope": "Full client suite plus two existing audit48D late native mutation cases and two existing audit48N Chrome/Firefox factory cases",
+    "strictConfig": "/private/tmp/fluentread-offscreen-download-budget-coverage-config-20261009.ts",
+    "coverageSummary": "/private/tmp/fluentread-offscreen-download-budget-coverage-20261009/coverage-summary.json",
+    "coverage": {"statements": 100, "branches": 100, "functions": 100, "lines": 100},
+    "otherOwnedSourceHashesUnchanged": true,
+    "diffCheck": "pass",
+    "remainingEvidenceBoundaries": "No additional browser, public model throughput, inference, compile or build claim in this scoped check; root performs final integrated builds."
+  },
+  "readOnlyReviewConclusion": "No further evidence-backed P1/P2 in final HTTP source failover, canonical video cache manifests, exact legacy TTS provenance or source progress wiring after this explicit deadline repair. Existing mutable master/main source branches and warm prepare behavior remain unchanged."
+}

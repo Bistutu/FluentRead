@@ -20,6 +20,7 @@ import {options} from '@/src/core/config/catalog';
 import {
     acquireTranslationLayoutOverride,
     beginTranslation,
+    consumeBilingualArtifactHostWriteBudget,
     getTranslationState,
     hasTranslationLayoutOverride,
     hasBilingualArtifactHostWriteBudget,
@@ -45,8 +46,10 @@ import {
     consumeOrphanedOwnerClassMutation,
     isTextEquivalentHostReplacement,
     normalizeOrphanedTranslationArtifacts,
+    restorePageTranslationContent,
 } from
     '@/src/features/full-page-translation/content/orphanArtifacts';
+import {preparePageDiscourseContext} from '@/src/services/translation/context/pageDiscourse';
 import {
     hasTranslationHeightOverflow,
     isTranslationHeightBoundary,
@@ -476,6 +479,48 @@ describe('translation truncation layout', () => {
         expect(fragment.childNodes.length).toBe(0);
     });
 
+    it('恢复全文保留真实来源节点，清空写回预算和篇章依据，并解包开放ShadowRoot遗留原文', async () => {
+        const {document} = parseHTML('<html><body><p id="active">Original host source.</p><article><p id="definition">AP means access point.</p><p id="later">AP connects devices.</p></article><div id="shadow-host"></div></body></html>');
+        await withDocumentRealm(document, async () => {
+            const owner = document.querySelector<HTMLElement>('#active')!;
+            const source = owner.firstChild as Text;
+            const attempt = beginTranslation(owner, 'bilingual', 'content', false, source.data, [source])!;
+            expect(markTranslationComplete(owner, attempt.state, attempt.generation)).toBe(true);
+            const wrapper = appendBilingualTranslation(owner, '翻译后的宿主内容。');
+            setBilingualContent(owner, wrapper);
+            expect(consumeBilingualArtifactHostWriteBudget(owner, attempt.state)).toBe(true);
+            expect(hasBilingualArtifactHostWriteBudget(owner)).toBe(true);
+
+            const shadow = document.querySelector('#shadow-host')!.attachShadow({mode: 'open'});
+            shadow.innerHTML = '<p id="legacy"><span data-fr-translation-segment="true"><span class="fluent-read-single-slot" data-fr-translation-owned="true">Shadow original.</span><span data-fr-translation-owned="true">旧扩展译文</span></span><span id="host-label" class="fluent-read-bilingual-content">Host label.</span></p>';
+            const legacy = shadow.querySelector('#legacy')!;
+            const legacySource = legacy.querySelector('.fluent-read-single-slot')!.firstChild!;
+            const hostLabel = shadow.querySelector('#host-label')!;
+
+            const definition = document.querySelector('#definition')!;
+            const later = document.querySelector('#later')!;
+            preparePageDiscourseContext(definition, [definition.textContent!], 'en:zh').commit(['AP 代表接入点。']);
+            expect(preparePageDiscourseContext(later, [later.textContent!], 'en:zh').context).toContain('AP 代表接入点。');
+
+            restorePageTranslationContent();
+
+            expect(owner.firstChild).toBe(source);
+            expect(owner.textContent).toBe('Original host source.');
+            expect(getTranslationState(owner)).toBeUndefined();
+            expect(attempt.state.controller.signal.aborted).toBe(true);
+            expect(hasBilingualArtifactHostWriteBudget(owner)).toBe(false);
+            expect(wrapper.isConnected).toBe(false);
+            expect(legacy.firstChild).toBe(legacySource);
+            expect(legacy.textContent).toBe('Shadow original.Host label.');
+            expect(legacy.querySelector('[data-fr-translation-owned="true"],[data-fr-translation-segment="true"]')).toBeNull();
+            expect(hostLabel.parentNode).toBe(legacy);
+            expect(preparePageDiscourseContext(later, [later.textContent!], 'en:zh').context).not.toContain('AP 代表接入点。');
+            restorePageTranslationContent();
+            expect(owner.firstChild).toBe(source);
+            expect(legacy.firstChild).toBe(legacySource);
+        });
+    });
+
     it('只把同文本 childList 替换识别为页面上下文不变的框架重挂', () => {
         const {document} = parseHTML('<html><body></body></html>');
         const source = document.createElement('p');
@@ -551,11 +596,11 @@ describe('translation truncation layout', () => {
     });
 
     it('逐行标记保留内联译文骨架，恢复时不改变原文节点', async () => {
-        for (const [style, className] of [[10, 'fluent-display-learning-mode'], [11, 'fluent-display-marker']] as const) {
+        for (const [style, className] of [[10, 'fluent-display-learning-mode'], [11, 'fluent-display-marker'], [48, 'fluent-display-spoiler']] as const) {
             const {document, first} = openRouterFixture();
             const originalText = first.firstChild;
             const originalHTML = first.innerHTML;
-            options.styles.push({value: style, label: '', class: className} as never);
+            options.styles.push({value: style, label: '', class: className, inlineText: true} as never);
             try {
                 await withDocumentRealm(document, async () => {
                     beginTranslation(first, 'bilingual');

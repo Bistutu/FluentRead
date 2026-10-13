@@ -245,12 +245,17 @@ describe('PDF paragraph geometry worst cases through actual public functions', (
         const bytes = new TextEncoder().encode('%PDF-controlled-text-layer');
         const signal = new AbortController().signal;
         const document = await parseDocumentFile({name: 'layout.pdf', size: bytes.length, arrayBuffer: async () => bytes.slice().buffer, text: vi.fn()}, {signal});
-        const expected = pdfTextBlocks(pdfTextLines(pdfTextAtoms(items, {body: {ascent: 0.8, fontFamily: 'sans-serif'}}, viewport), 500), 500);
-        expect(document.segments.map(segment => segment.source)).toEqual(['Heading', 'Left Next', 'Right 续文', 'Distant']);
+        expect(document.segments.map(segment => segment.source)).toEqual(['Heading', 'Left Next', 'Distant', 'Right 续文']);
         expect(document.segments.map(segment => segment.role)).toEqual(['heading', 'paragraph', 'paragraph', 'paragraph']);
         expect(document.binary?.kind).toBe('pdf');
         if (document.binary?.kind !== 'pdf') throw new Error('Expected PDF');
-        expect(document.binary.pages[0].blocks).toEqual(expected.map((block, segmentIndex) => ({...block, segmentIndex})));
+        expect(document.binary.pages[0].blocks).toMatchObject([
+            {segmentIndex: 0, source: 'Heading', kind: 'heading', x: 190, y: 0, width: 120, height: 24, fontSize: 24, lineCount: 1, textAlign: 'center', readingOrder: 0, column: 0},
+            {segmentIndex: 1, source: 'Left Next', kind: 'text', x: 20, y: 50, width: 80, height: 26, fontSize: 12, lineCount: 2, textAlign: 'left', readingOrder: 1, column: 0},
+            {segmentIndex: 2, source: 'Distant', kind: 'text', x: 20, y: 300, width: 80, height: 12, fontSize: 12, lineCount: 1, textAlign: 'left', readingOrder: 2, column: 0},
+            {segmentIndex: 3, source: 'Right 续文', kind: 'text', x: 300, y: 50, width: 80, height: 26, fontSize: 12, lineCount: 2, textAlign: 'left', readingOrder: 3, column: 1},
+        ]);
+        expect(document.binary.pages[0].blocks[1].lineHeight).toBeCloseTo(14);
         expect(document.binary.pages[0].segmentIndexes).toEqual([0, 1, 2, 3]);
         expect(document.segments[0].contextLabel).toBe('第 1 页');
         expect(cleanup).toHaveBeenCalledOnce();

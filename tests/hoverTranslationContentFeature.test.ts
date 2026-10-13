@@ -1,4 +1,5 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
+import {setMaxListeners} from 'node:events';
 import {matchesConfiguredHotkey} from '@/src/core/hotkey';
 import {
     matchesPressedHotkeyParts,
@@ -11,12 +12,33 @@ type Listener = (event: any) => unknown;
 
 class FakeTarget {
     listeners = new Map<string, Listener[]>();
+    animationFrames = new Map<number, FrameRequestCallback>();
+    nextFrame = 1;
+    hidden = false;
+    location = {href: 'https://fixture.test/article'};
 
     addEventListener(type: string, listener: Listener, options?: AddEventListenerOptions): void {
         const listeners = this.listeners.get(type) || [];
         listeners.push(listener);
         this.listeners.set(type, listeners);
         expect(options).toBeTruthy();
+        options?.signal?.addEventListener('abort', () => {
+            this.listeners.set(type, (this.listeners.get(type) || []).filter(current => current !== listener));
+        }, {once: true});
+    }
+
+    requestAnimationFrame(callback: FrameRequestCallback): number {
+        const id = this.nextFrame++;
+        this.animationFrames.set(id, callback);
+        return id;
+    }
+
+    cancelAnimationFrame(id: number): void { this.animationFrames.delete(id); }
+
+    flushAnimationFrame(): void {
+        const callbacks = [...this.animationFrames.values()];
+        this.animationFrames.clear();
+        callbacks.forEach(callback => callback(0));
     }
 
     emit(type: string, event: Record<string, unknown> = {}): void {
@@ -41,7 +63,7 @@ function trustedEvent(event: Record<string, unknown> = {}): any {
     };
 }
 
-function mountHarness(overrides: Partial<HoverTranslationContentDependencies> = {}) {
+function mountHarness(overrides: Partial<HoverTranslationContentDependencies> = {}, pointerKnown = true) {
     const documentTarget = new FakeTarget();
     const windowTarget = new FakeTarget();
     const config = {
@@ -78,8 +100,14 @@ function mountHarness(overrides: Partial<HoverTranslationContentDependencies> = 
         ...overrides,
     };
     const controller = new AbortController();
+    // 浏览器会为 signal 自动移除监听器；本机夹具通过 Node AbortSignal 模拟完整事件数量。
+    setMaxListeners(50, controller.signal);
 
     const resetKeyboardGesture = mountHoverTranslationContentFeature(deps, controller.signal);
+    if (pointerKnown) {
+        documentTarget.emit('mousemove', trustedEvent({clientX: 0, clientY: 0}));
+        if (vi.isMockFunction(deps.noteBilingualHostGesture)) deps.noteBilingualHostGesture.mockClear();
+    }
 
     return {deps, documentTarget, windowTarget, controller, resetKeyboardGesture};
 }
@@ -89,7 +117,346 @@ afterEach(() => {
 });
 
 describe('hover translation content feature', () => {
-    it.each(['reset', 'blur', 'selection-reserved', 'abort'])(
+    it('空闲可信移动只记录坐标与宿主交互，不读取availability，后续快捷键使用最新位置', () => {
+        const isSiteDisabled = vi.fn(() => false);
+        const {deps, documentTarget, windowTarget} = mountHarness({isSiteDisabled}, false);
+        const hidden = vi.fn(() => false);
+        Object.defineProperty(documentTarget, 'hidden', {get: hidden});
+        isSiteDisabled.mockClear();
+
+        for (let index = 0; index < 200; index++) {
+            documentTarget.emit('mousemove', trustedEvent({clientX: index, clientY: index + 10}));
+        }
+        expect(hidden).not.toHaveBeenCalled();
+        expect(isSiteDisabled).not.toHaveBeenCalled();
+        expect(deps.noteBilingualHostGesture).toHaveBeenCalledTimes(200);
+        expect(deps.handleTranslation).not.toHaveBeenCalled();
+        expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+        expect(windowTarget.animationFrames.size).toBe(0);
+
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(hidden).toHaveBeenCalled();
+        expect(isSiteDisabled).toHaveBeenCalled();
+        expect(deps.handleTranslation).toHaveBeenCalledWith(199, 209);
+    });
+
+    it.each(['disabled', 'hidden', 'site-disabled'])('释放按键后仍有悬浮工作时，%s 的mousemove完整取消并记录最新坐标', reason => {
+        let siteDisabled = false;
+        const {deps, documentTarget, windowTarget} = mountHarness({isSiteDisabled: () => siteDisabled});
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 11, clientY: 22}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).toHaveBeenCalledOnce();
+        expect(windowTarget.animationFrames.size).toBe(0);
+        if (reason === 'disabled') deps.config.on = false;
+        if (reason === 'hidden') documentTarget.hidden = true;
+        if (reason === 'site-disabled') siteDisabled = true;
+
+        documentTarget.emit('mousemove', trustedEvent({clientX: 33, clientY: 44}));
+        expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+        expect(deps.handleTranslation).toHaveBeenCalledOnce();
+        deps.config.on = true;
+        documentTarget.hidden = false;
+        siteDisabled = false;
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).toHaveBeenLastCalledWith(33, 44);
+    });
+
+    it('未收到可信指针坐标前不把默认左上角当成悬浮目标', () => {
+        const {deps, documentTarget, windowTarget} = mountHarness({}, false);
+        documentTarget.emit('mousemove', trustedEvent({isTrusted: false, clientX: 11, clientY: 22}));
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).not.toHaveBeenCalled();
+        documentTarget.emit('mousemove', trustedEvent({clientX: 11, clientY: 22}));
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).toHaveBeenCalledWith(11, 22);
+    });
+
+    it('挂载后没有mousemove时，真实鼠标pointerdown提供位置并允许单次Control翻译', () => {
+        const {deps, documentTarget, windowTarget} = mountHarness({}, false);
+        documentTarget.emit('pointerdown', trustedEvent({pointerType: 'mouse', clientX: 31, clientY: 47}));
+        expect(deps.handleTranslation).not.toHaveBeenCalled();
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[31, 47]]);
+    });
+
+    it.each([[31, 47], [0, 0]])('可信mouseover在未移动时提供坐标(%s,%s)，合成事件不能替换它', (x, y) => {
+        const {deps, documentTarget, windowTarget} = mountHarness({}, false);
+        documentTarget.emit('mouseover', trustedEvent({isTrusted: false, clientX: 11, clientY: 22}));
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).not.toHaveBeenCalled();
+        documentTarget.emit('mouseover', trustedEvent({clientX: x, clientY: y}));
+        documentTarget.emit('mouseover', trustedEvent({isTrusted: false, clientX: 53, clientY: 71}));
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[x, y]]);
+    });
+
+    it('卸载后迟到的mouseover不读取位置，不启动新工作', () => {
+        const {deps, documentTarget, windowTarget, controller} = mountHarness({}, false);
+        const listener = documentTarget.listeners.get('mouseover')![0];
+        controller.abort();
+        const clientX = vi.fn(() => 31);
+        listener({...trustedEvent(), get clientX() { return clientX(); }, clientY: 47});
+        expect(clientX).not.toHaveBeenCalled();
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).not.toHaveBeenCalled();
+    });
+
+    it.each(['touch', 'pen', 'untrusted-mouse'])('%s 输入不会伪装成已知鼠标位置或使Control复活', pointer => {
+        const {deps, documentTarget, windowTarget} = mountHarness({}, false);
+        documentTarget.emit('pointerdown', trustedEvent({pointerType: pointer === 'untrusted-mouse' ? 'mouse' : pointer,
+            isTrusted: pointer !== 'untrusted-mouse', clientX: 31, clientY: 47}));
+        // 触摸后浏览器可能发送兼容 mousedown；该事件不应把触摸坐标提升为鼠标手势。
+        documentTarget.emit('mousedown', trustedEvent({clientX: 31, clientY: 47}));
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).not.toHaveBeenCalled();
+    });
+
+    it.each(['disabled', 'hidden', 'site-disabled'])('%s 时鼠标点击不排任务，也不为重新启用保留位置', reason => {
+        let disabled = reason === 'site-disabled';
+        const {deps, documentTarget, windowTarget} = mountHarness({isSiteDisabled: () => disabled}, false);
+        if (reason === 'disabled') deps.config.on = false;
+        if (reason === 'hidden') documentTarget.hidden = true;
+        documentTarget.emit('pointerdown', trustedEvent({pointerType: 'mouse', clientX: 31, clientY: 47}));
+        documentTarget.emit('mousedown', trustedEvent({clientX: 31, clientY: 47}));
+        expect(deps.handleTranslation).not.toHaveBeenCalled();
+        deps.config.on = true;
+        disabled = false;
+        documentTarget.hidden = false;
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).not.toHaveBeenCalled();
+        documentTarget.emit('pointerdown', trustedEvent({pointerType: 'mouse', clientX: 53, clientY: 71}));
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[53, 71]]);
+    });
+
+    it('首点立即响应，同帧鼠标洪峰只在下一帧提交最后位置，稳定坐标不重置延迟', () => {
+        const {deps, documentTarget, windowTarget} = mountHarness();
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        for (let index = 0; index < 500; index++) {
+            documentTarget.emit('mousemove', trustedEvent({clientX: index, clientY: 20}));
+        }
+        expect(deps.handleTranslation).toHaveBeenCalledTimes(1);
+        expect(deps.handleTranslation).toHaveBeenLastCalledWith(0, 20, {delayMs: 120, continuous: true});
+        windowTarget.flushAnimationFrame();
+        expect(deps.handleTranslation).toHaveBeenCalledTimes(2);
+        expect(deps.handleTranslation).toHaveBeenLastCalledWith(499, 20, {delayMs: 120, continuous: true});
+        for (let index = 0; index < 100; index++) documentTarget.emit('mousemove', trustedEvent({clientX: 499, clientY: 20}));
+        windowTarget.flushAnimationFrame();
+        expect(deps.handleTranslation).toHaveBeenCalledTimes(2);
+        expect(windowTarget.animationFrames.size).toBe(0);
+    });
+
+    it('快捷键释放提交尚未绘制的最新位置，保留原停留延迟且不让旧帧重复触发', () => {
+        const {deps, documentTarget, windowTarget} = mountHarness();
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 10, clientY: 20}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 30, clientY: 40}));
+        const obsoleteFrame = [...windowTarget.animationFrames.values()][0];
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).toHaveBeenCalledTimes(2);
+        expect(deps.handleTranslation).toHaveBeenLastCalledWith(30, 40, {delayMs: 120, continuous: true});
+        expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+        expect(windowTarget.animationFrames.size).toBe(0);
+        obsoleteFrame(0);
+        expect(deps.handleTranslation).toHaveBeenCalledTimes(2);
+    });
+
+    it('翻译入口同步重置手势时不再排入绘制帧，卸载后迟到监听器也不会启动工作', () => {
+        let reset = () => {};
+        const {deps, documentTarget, windowTarget, resetKeyboardGesture, controller} = mountHarness({
+            handleTranslation: vi.fn(() => reset()),
+        });
+        reset = resetKeyboardGesture;
+        const obsoleteMouseListener = documentTarget.listeners.get('mousemove')?.at(-1);
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 10, clientY: 20}));
+        expect(deps.handleTranslation).toHaveBeenCalledOnce();
+        expect(windowTarget.animationFrames.size).toBe(0);
+        expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+        controller.abort();
+        vi.mocked(deps.noteBilingualHostGesture).mockClear();
+        obsoleteMouseListener?.(trustedEvent({clientX: 30, clientY: 40}));
+        expect(deps.noteBilingualHostGesture).not.toHaveBeenCalled();
+        expect(deps.handleTranslation).toHaveBeenCalledOnce();
+    });
+
+    it('同帧移回已经提交的位置不会在释放时重启相同目标', () => {
+        const {deps, documentTarget, windowTarget} = mountHarness();
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 10, clientY: 20}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 30, clientY: 40}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 10, clientY: 20}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).toHaveBeenCalledOnce();
+    });
+
+    it.each(['blur', 'hidden', 'pagehide', 'mouseleave', 'mouseout', 'popstate', 'hashchange', 'route-change', 'pointercancel', 'touchcancel'])(
+        '%s 取消帧和待执行翻译、废弃坐标，下一轮须取得新的可信指针', reason => {
+            const {deps, documentTarget, windowTarget} = mountHarness();
+            windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+            documentTarget.emit('mousemove', trustedEvent({clientX: 10, clientY: 20}));
+            documentTarget.emit('mousemove', trustedEvent({clientX: 30, clientY: 40}));
+            const obsoleteFrame = [...windowTarget.animationFrames.values()][0];
+            if (reason === 'hidden') {
+                documentTarget.hidden = true;
+                documentTarget.emit('visibilitychange');
+            } else if (reason === 'popstate' || reason === 'hashchange' || reason === 'route-change') {
+                windowTarget.location.href = 'https://fixture.test/other';
+                if (reason === 'route-change') documentTarget.emit('fluentread-route-change');
+                else windowTarget.emit(reason);
+            } else if (reason === 'mouseleave' || reason === 'pointercancel' || reason === 'touchcancel') {
+                documentTarget.emit(reason, trustedEvent());
+            } else if (reason === 'mouseout') {
+                documentTarget.emit(reason, trustedEvent({relatedTarget: null}));
+            } else windowTarget.emit(reason);
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+            expect(windowTarget.animationFrames.size).toBe(0);
+            windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+            windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+            obsoleteFrame(0);
+            windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+            expect(deps.handleTranslation).toHaveBeenCalledOnce();
+            documentTarget.hidden = false;
+            documentTarget.emit('mousemove', trustedEvent({clientX: 50, clientY: 60}));
+            windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+            windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+            expect(deps.handleTranslation).toHaveBeenLastCalledWith(50, 60);
+        },
+    );
+
+    it('页面仍可见、路由地址未变及不可信离开事件不作废有效手势', () => {
+        const {deps, documentTarget, windowTarget} = mountHarness();
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        documentTarget.emit('visibilitychange');
+        documentTarget.emit('fluentread-route-change');
+        windowTarget.emit('popstate');
+        documentTarget.emit('mouseleave', trustedEvent({isTrusted: false}));
+        documentTarget.emit('mouseout', trustedEvent({isTrusted: false, relatedTarget: null}));
+        documentTarget.emit('mouseout', trustedEvent({relatedTarget: {}}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).toHaveBeenCalledWith(0, 0);
+        expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+    });
+
+    it('滚动取消旧坐标的等待和帧，保留已按住的热键并在新移动重新识别', () => {
+        const {deps, documentTarget, windowTarget} = mountHarness();
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 10, clientY: 20}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 30, clientY: 40}));
+        documentTarget.emit('scroll', trustedEvent({isTrusted: false}));
+        expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+        documentTarget.emit('scroll', trustedEvent());
+        expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+        expect(windowTarget.animationFrames.size).toBe(0);
+        windowTarget.flushAnimationFrame();
+        documentTarget.emit('mousemove', trustedEvent({clientX: 30, clientY: 40}));
+        expect(deps.handleTranslation).toHaveBeenCalledTimes(2);
+        expect(deps.handleTranslation).toHaveBeenLastCalledWith(30, 40, {delayMs: 120, continuous: true});
+    });
+
+    it('长按遇到滚动会立即清除计时器，关闭功能时不再创建长按工作', () => {
+        vi.useFakeTimers();
+        const {deps, documentTarget} = mountHarness();
+        deps.config.hotkey = deps.constants.LongPress;
+        documentTarget.emit('mousedown', trustedEvent({clientX: 10, clientY: 20}));
+        documentTarget.emit('scroll', trustedEvent());
+        expect(vi.getTimerCount()).toBe(0);
+        deps.config.on = false;
+        documentTarget.emit('mousedown', trustedEvent({clientX: 10, clientY: 20}));
+        expect(vi.getTimerCount()).toBe(0);
+        deps.config.on = true;
+        vi.advanceTimersByTime(500);
+        expect(deps.handleTranslation).not.toHaveBeenCalled();
+    });
+
+    it('功能关闭时按住的快捷键不会在重新启用后复活', () => {
+        const {deps, documentTarget, windowTarget} = mountHarness();
+        deps.config.on = false;
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        deps.config.on = true;
+        documentTarget.emit('mousemove', trustedEvent({clientX: 10, clientY: 20}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).not.toHaveBeenCalled();
+    });
+
+    it.each(['on', 'hotkey', 'customHotkey', 'mouseHoverTranslationDelay', 'site-disabled'])(
+        '订阅发现 %s 改变会立即取消工作且reset幂等', property => {
+            let listener: (() => void) | undefined;
+            let disabled = false;
+            const unsubscribe = vi.fn();
+            const {deps, documentTarget, windowTarget, resetKeyboardGesture, controller} = mountHarness({
+                subscribeConfig: vi.fn(callback => { listener = callback; return unsubscribe; }),
+                isSiteDisabled: () => disabled,
+            });
+            windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+            documentTarget.emit('mousemove', trustedEvent({clientX: 10, clientY: 20}));
+            documentTarget.emit('mousemove', trustedEvent({clientX: 30, clientY: 40}));
+            listener?.();
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            if (property === 'on') deps.config.on = false;
+            if (property === 'hotkey') deps.config.hotkey = 'Alt';
+            if (property === 'customHotkey') deps.config.customHotkey = 'Alt';
+            if (property === 'mouseHoverTranslationDelay') deps.config.mouseHoverTranslationDelay = 300;
+            if (property === 'site-disabled') disabled = true;
+            listener?.();
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+            expect(windowTarget.animationFrames.size).toBe(0);
+            listener?.();
+            resetKeyboardGesture();
+            controller.abort();
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+            expect(unsubscribe).toHaveBeenCalledOnce();
+        },
+    );
+
+    it('连续采样复用划词快捷键解析，配置更新后仍可交给新的共享划词手势', () => {
+        let selectionHotkey = 'Control+Alt';
+        const {deps, documentTarget, windowTarget} = mountHarness({
+            getConfiguredSelectionHotkey: () => 'custom',
+            getCustomSelectionHotkey: () => selectionHotkey,
+            hasActiveSelectionTranslationCandidate: () => true,
+        });
+        const split = vi.spyOn(String.prototype, 'split');
+        try {
+            windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+            for (let index = 0; index < 100; index++) {
+                documentTarget.emit('mousemove', trustedEvent({clientX: index, clientY: 20}));
+                windowTarget.flushAnimationFrame();
+            }
+            expect(split.mock.contexts.filter(context => String(context) === 'Control+Alt')).toHaveLength(1);
+            selectionHotkey = 'Control';
+            documentTarget.emit('mousemove', trustedEvent({clientX: 101, clientY: 20}));
+            windowTarget.flushAnimationFrame();
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+            expect(deps.handleTranslation).toHaveBeenCalledTimes(100);
+        } finally { split.mockRestore(); }
+    });
+
+    it('初始已中止时不挂监听器或配置订阅', () => {
+        const {deps, controller, windowTarget, documentTarget} = mountHarness();
+        controller.abort();
+        const subscribeConfig = vi.fn();
+        const ended = new AbortController();
+        ended.abort();
+        mountHoverTranslationContentFeature({...deps, subscribeConfig}, ended.signal)();
+        expect(subscribeConfig).not.toHaveBeenCalled();
+        expect([...windowTarget.listeners.values()].every(listeners => listeners.length === 0)).toBe(true);
+        expect([...documentTarget.listeners.values()].every(listeners => listeners.length === 0)).toBe(true);
+    });
+
+    it.each(['reset', 'blur', 'selection-reserved', 'abort', 'route-change', 'hidden', 'mouseout'])(
         '长按在 %s 仲裁后不会发出迟到翻译', reason => {
             vi.useFakeTimers();
             const {deps, documentTarget, windowTarget, controller, resetKeyboardGesture} = mountHarness();
@@ -98,6 +465,15 @@ describe('hover translation content feature', () => {
             if (reason === 'reset') resetKeyboardGesture();
             if (reason === 'blur') windowTarget.emit('blur');
             if (reason === 'abort') controller.abort();
+            if (reason === 'route-change') {
+                windowTarget.location.href = 'https://fixture.test/other';
+                documentTarget.emit('fluentread-route-change');
+            }
+            if (reason === 'hidden') {
+                documentTarget.hidden = true;
+                documentTarget.emit('visibilitychange');
+            }
+            if (reason === 'mouseout') documentTarget.emit('mouseout', trustedEvent({relatedTarget: null}));
             if (reason === 'selection-reserved') {
                 vi.mocked(deps.shouldReserveSelectionShortcut).mockReturnValue(true);
                 windowTarget.emit('keydown', trustedEvent({key: 'Control', ctrlKey: true}));
@@ -108,7 +484,7 @@ describe('hover translation content feature', () => {
         },
     );
 
-    it.each(['reset', 'blur', 'selection-reserved'])(
+    it.each(['reset', 'blur', 'selection-reserved', 'route-change', 'hidden', 'mouseout'])(
         '触摸连击在 %s 后重新计数，不借用取消前的触摸', reason => {
             vi.useFakeTimers();
             const {deps, documentTarget, windowTarget, resetKeyboardGesture} = mountHarness();
@@ -117,6 +493,16 @@ describe('hover translation content feature', () => {
             tap();
             if (reason === 'reset') resetKeyboardGesture();
             if (reason === 'blur') windowTarget.emit('blur');
+            if (reason === 'route-change') {
+                windowTarget.location.href = 'https://fixture.test/other';
+                documentTarget.emit('fluentread-route-change');
+            }
+            if (reason === 'hidden') {
+                documentTarget.hidden = true;
+                documentTarget.emit('visibilitychange');
+                documentTarget.hidden = false;
+            }
+            if (reason === 'mouseout') documentTarget.emit('mouseout', trustedEvent({relatedTarget: null}));
             if (reason === 'selection-reserved') {
                 vi.mocked(deps.shouldReserveSelectionShortcut).mockReturnValue(true);
                 windowTarget.emit('keydown', trustedEvent({key: 'Control', ctrlKey: true}));
@@ -199,10 +585,13 @@ describe('hover translation content feature', () => {
             }
             const mouseShortcutSplits = split.mock.contexts.filter(context => String(context) === 'Control+Shift').length;
             expect(mouseShortcutSplits).toBeLessThanOrEqual(2);
-            expect(deps.handleTranslation).toHaveBeenCalledTimes(200);
+            expect(deps.handleTranslation).toHaveBeenCalledOnce();
+            windowTarget.flushAnimationFrame();
+            expect(deps.handleTranslation).toHaveBeenCalledTimes(2);
+            expect(deps.handleTranslation).toHaveBeenLastCalledWith(199, 20, {delayMs: 120, continuous: true});
             deps.config.customHotkey = 'Control+Alt';
             documentTarget.emit('mousemove', trustedEvent({clientX: 201, clientY: 20}));
-            expect(deps.handleTranslation).toHaveBeenCalledTimes(200);
+            expect(deps.handleTranslation).toHaveBeenCalledTimes(2);
             expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
         } finally { split.mockRestore(); }
     });
@@ -249,9 +638,44 @@ describe('hover translation content feature', () => {
         expect(normalizeHoverHotkeyParts(undefined)).toEqual([]);
         expect(normalizeHoverHotkeyParts('none')).toEqual([]);
         expect(normalizeHoverHotkeyParts(' Ctrl + Option + A ')).toEqual(['control', 'alt', 'a']);
+        expect(normalizeHoverHotkeyParts(' Ctrl + Option ')).toEqual(['control', 'alt']);
+        expect(normalizeHoverHotkeyParts('Control+Shift++')).toEqual(['control', 'shift', '+']);
         expect(matchesPressedHotkeyParts([], new Set())).toBe(false);
         expect(matchesPressedHotkeyParts(['control'], new Set(['control']))).toBe(true);
         expect(matchesPressedHotkeyParts(['control'], new Set(['control', 'c']))).toBe(false);
+    });
+
+    it('录制器合法的字面量加号快捷键保留普通键，不会误触发仅修饰键组合', () => {
+        const {deps, documentTarget, windowTarget} = mountHarness();
+        Object.assign(deps.config, {hotkey: 'custom', customHotkey: 'Control+Shift++'});
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        windowTarget.emit('keydown', trustedEvent({key: 'Shift', code: 'ShiftLeft', ctrlKey: true, shiftKey: true}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 10, clientY: 20}));
+        expect(deps.handleTranslation).not.toHaveBeenCalled();
+        windowTarget.emit('keydown', trustedEvent({key: '+', code: 'Equal', ctrlKey: true, shiftKey: true}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 30, clientY: 40}));
+        windowTarget.emit('keyup', trustedEvent({key: '+', code: 'Equal', ctrlKey: true, shiftKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Shift', code: 'ShiftLeft', ctrlKey: true}));
+        windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+        expect(deps.handleTranslation).toHaveBeenCalledOnce();
+        expect(deps.handleTranslation).toHaveBeenCalledWith(30, 40, {delayMs: 120, continuous: true});
+    });
+
+    it.each([
+        {platform: 'MacIntel', shortcut: 'Ctrl+Option+/',
+            down: {key: '÷', code: 'Slash', ctrlKey: true, altKey: true},
+            releases: [{key: '/', code: 'Slash', ctrlKey: true, altKey: true},
+                {key: 'Alt', code: 'AltLeft', ctrlKey: true}, {key: 'Control', code: 'ControlLeft'}]},
+        {platform: 'Win32', shortcut: 'Ctrl+Shift++',
+            down: {key: '+', code: 'Equal', metaKey: true, shiftKey: true},
+            releases: [{key: '=', code: 'Equal', metaKey: true, shiftKey: true},
+                {key: 'Shift', code: 'ShiftLeft', metaKey: true}, {key: 'Meta', code: 'MetaLeft'}]},
+    ])('$platform 的修饰键别名与字形回退在完整释放后执行一次 $shortcut', ({platform, shortcut, down, releases}) => {
+        const {deps, windowTarget} = mountHarness({navigator: {platform} as Navigator});
+        Object.assign(deps.config, {hotkey: 'custom', customHotkey: shortcut});
+        windowTarget.emit('keydown', trustedEvent(down));
+        releases.forEach(release => windowTarget.emit('keyup', trustedEvent(release)));
+        expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[0, 0]]);
     });
 
     it.each([
@@ -710,7 +1134,7 @@ describe('hover translation content feature', () => {
         expect(deps.handleTranslation).not.toHaveBeenCalled();
     });
 
-    it('配置关闭时仍记录状态但不拦截事件、不触发翻译', () => {
+    it('配置关闭时不保留按键状态、不拦截事件、不触发翻译', () => {
         const {deps, windowTarget} = mountHarness();
         deps.config.on = false;
         const keydown = trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true});
@@ -857,7 +1281,6 @@ describe('shared hover shortcut release ownership', () => {
         expect(keyup.preventDefault).not.toHaveBeenCalled();
         expect(keyup.stopPropagation).not.toHaveBeenCalled();
         expect(documentKeyup).toHaveBeenLastCalledWith(keyup);
-        // FakeTarget 不模拟 signal 移除监听器；abort 这里只核对真实控制器的状态清理。
         if (reason === 'abort') return;
 
         Object.assign(deps.config, {on: true, customHotkey: 'F9'});
@@ -865,6 +1288,7 @@ describe('shared hover shortcut release ownership', () => {
         selectionShortcut.value = 'F10';
         vi.mocked(deps.shouldReserveSelectionShortcut).mockReturnValue(false);
         vi.mocked(deps.hasActiveSelectionTranslationCandidate).mockReturnValue(false);
+        documentTarget.emit('mousemove', trustedEvent({clientX: 0, clientY: 0}));
         documentKeyup.mockClear();
         dispatch('keydown', trustedEvent({key: 'F9', code: 'F9'}));
         const ordinaryUp = trustedEvent({key: 'F9', code: 'F9'});
@@ -872,5 +1296,281 @@ describe('shared hover shortcut release ownership', () => {
         expect(ordinaryUp.stopPropagation).toHaveBeenCalledOnce();
         expect(documentKeyup).not.toHaveBeenCalled();
         expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[0, 0]]);
+    });
+});
+
+describe('selection shortcut parsing in hover arbitration', () => {
+    it.each([
+        {label: 'direct mismatch', configured: 'Alt', custom: ' Ctrl ', raw: 'Alt', customReads: 0, candidateReads: 0},
+        {label: 'custom match', configured: 'custom', custom: ' Ctrl ', raw: ' Ctrl ', customReads: 200, candidateReads: 200},
+        {label: 'custom mismatch', configured: 'custom', custom: ' Alt ', raw: ' Alt ', customReads: 200, candidateReads: 0},
+    ])('$label 持续移动只复用解析，逐次配置与仲裁读取保持', ({configured, custom, raw, customReads, candidateReads}) => {
+        const getConfigured = vi.fn(() => configured);
+        const getCustom = vi.fn(() => custom);
+        const {deps, documentTarget, windowTarget} = mountHarness({
+            getConfiguredSelectionHotkey: getConfigured,
+            getCustomSelectionHotkey: getCustom,
+        });
+        const keydown = trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true});
+        windowTarget.emit('keydown', keydown);
+        const split = vi.spyOn(String.prototype, 'split');
+        try {
+            const moves = Array.from({length: 200}, (_unused, index) => trustedEvent({clientX: index, clientY: 20}));
+            // 首点同步响应；其余输入分别推进一个真实处理帧，不把同帧洪峰当作 200 次候选识别。
+            for (const [index, move] of moves.entries()) {
+                documentTarget.emit('mousemove', move);
+                if (index > 0) windowTarget.flushAnimationFrame();
+            }
+            const translated = Array.from({length: 200}, (_unused, index) => [index, 20, {delayMs: 120, continuous: true}]);
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual(translated);
+            expect(getConfigured).toHaveBeenCalledTimes(200);
+            expect(getCustom).toHaveBeenCalledTimes(customReads);
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(candidateReads);
+            const keyup = trustedEvent({key: 'Control', code: 'ControlLeft'});
+            windowTarget.emit('keyup', keyup);
+
+            // 主线释放入口先按当前配置再仲裁选区；暖缓存只省解析，不省这一次 getter/候选检查。
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual(translated);
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            expect(getConfigured).toHaveBeenCalledTimes(201);
+            expect(getCustom).toHaveBeenCalledTimes(customReads + (configured === 'custom' ? 1 : 0));
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(candidateReads + (candidateReads > 0 ? 1 : 0));
+            expect(deps.noteBilingualHostGesture).toHaveBeenCalledTimes(200);
+            expect(keydown.preventDefault).toHaveBeenCalledOnce();
+            expect(keydown.stopPropagation).toHaveBeenCalledOnce();
+            expect(keyup.preventDefault).not.toHaveBeenCalled();
+            expect(keyup.stopPropagation).not.toHaveBeenCalled();
+            for (const move of moves) {
+                expect(move.preventDefault).not.toHaveBeenCalled();
+                expect(move.stopPropagation).not.toHaveBeenCalled();
+            }
+            const selectionSplits = split.mock.contexts.filter(
+                (context, index) => String(context) === raw && (split.mock.calls[index][0] as unknown) === '+',
+            ).length;
+            expect(selectionSplits).toBe(1);
+        } finally { split.mockRestore(); }
+    });
+
+    it('逐次配置、空值和别名改变均按当前 raw 判定，custom getter 只在 custom 时读取', () => {
+        const settings = {configured: 'custom', custom: undefined as string | undefined};
+        const getConfigured = vi.fn(() => settings.configured);
+        const getCustom = vi.fn(() => settings.custom);
+        const {deps, documentTarget, windowTarget} = mountHarness({
+            getConfiguredSelectionHotkey: getConfigured,
+            getCustomSelectionHotkey: getCustom,
+        });
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        const split = vi.spyOn(String.prototype, 'split');
+        try {
+            let x = 0;
+            for (const step of [
+                {configured: 'custom', custom: undefined},
+                {configured: 'custom', custom: ''},
+                {configured: 'none', custom: ' Ctrl '},
+                {configured: 'Alt', custom: ' Ctrl '},
+                {configured: 'custom', custom: ' Alt '},
+                {configured: 'custom', custom: ' Option '},
+                {configured: 'custom', custom: ' Alt '},
+            ]) {
+                Object.assign(settings, step);
+                for (let frame = 0; frame < 2; frame++) {
+                    documentTarget.emit('mousemove', trustedEvent({clientX: x++, clientY: 20}));
+                    // 第一条已同步处理；之后每条输入由上一轮排入的帧读取当下 raw。
+                    if (x > 1) windowTarget.flushAnimationFrame();
+                }
+            }
+            vi.mocked(deps.hasActiveSelectionTranslationCandidate).mockReturnValue(true);
+            documentTarget.emit('mousemove', trustedEvent({clientX: x++, clientY: 20}));
+            windowTarget.flushAnimationFrame();
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            settings.custom = ' Ctrl ';
+            documentTarget.emit('mousemove', trustedEvent({clientX: x, clientY: 20}));
+            windowTarget.flushAnimationFrame();
+
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual(
+                Array.from({length: 15}, (_unused, index) => [index, 20, {delayMs: 120, continuous: true}]),
+            );
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledOnce();
+            expect(getConfigured).toHaveBeenCalledTimes(16);
+            expect(getCustom).toHaveBeenCalledTimes(12);
+            const parsed = (raw: string) => split.mock.contexts.filter(
+                (context, index) => String(context) === raw && (split.mock.calls[index][0] as unknown) === '+',
+            ).length;
+            expect(parsed('Alt')).toBe(1);
+            expect(parsed(' Alt ')).toBe(2);
+            expect(parsed(' Option ')).toBe(1);
+            expect(parsed(' Ctrl ')).toBe(1);
+        } finally { split.mockRestore(); }
+    });
+
+    it.each(['configured', 'custom'] as const)('%s getter 在缓存命中时仍逐次执行，异常原样传播后可继续仲裁', kind => {
+        const cause = new Error('selection shortcut getter failed');
+        let fail = false;
+        let raw = ' Alt ';
+        const getConfigured = vi.fn(() => {
+            if (kind === 'configured' && fail) throw cause;
+            return 'custom';
+        });
+        const getCustom = vi.fn(() => {
+            if (kind === 'custom' && fail) throw cause;
+            return raw;
+        });
+        const {deps, documentTarget, windowTarget} = mountHarness({
+            getConfiguredSelectionHotkey: getConfigured,
+            getCustomSelectionHotkey: getCustom,
+            hasActiveSelectionTranslationCandidate: vi.fn(() => true),
+        });
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        documentTarget.emit('mousemove', trustedEvent({clientX: 1, clientY: 20}));
+        fail = true;
+        documentTarget.emit('mousemove', trustedEvent({clientX: 2, clientY: 20}));
+        expect(getConfigured).toHaveBeenCalledOnce();
+        expect(getCustom).toHaveBeenCalledOnce();
+        expect(windowTarget.animationFrames.size).toBe(1);
+        expect(() => windowTarget.flushAnimationFrame()).toThrow(cause);
+        expect(windowTarget.animationFrames.size).toBe(0);
+        expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[1, 20, {delayMs: 120, continuous: true}]]);
+        expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+        expect(deps.hasActiveSelectionTranslationCandidate).not.toHaveBeenCalled();
+        fail = false;
+        raw = ' Ctrl ';
+        documentTarget.emit('mousemove', trustedEvent({clientX: 3, clientY: 20}));
+        expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+        expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledOnce();
+        expect(getConfigured).toHaveBeenCalledTimes(3);
+        expect(getCustom).toHaveBeenCalledTimes(kind === 'configured' ? 2 : 3);
+        expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[1, 20, {delayMs: 120, continuous: true}]]);
+    });
+
+    it('新 raw 解析异常不发布缓存，旧 raw 仍可复用且相同失败值重试后恢复取消', () => {
+        const cause = new Error('selection shortcut split failed');
+        let raw = ' Alt ';
+        let fail = false;
+        const getConfigured = vi.fn(() => 'custom');
+        const getCustom = vi.fn(() => raw);
+        const {deps, documentTarget, windowTarget} = mountHarness({
+            getConfiguredSelectionHotkey: getConfigured,
+            getCustomSelectionHotkey: getCustom,
+            hasActiveSelectionTranslationCandidate: vi.fn(() => true),
+        });
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        const nativeSplit = String.prototype.split;
+        const split = vi.spyOn(String.prototype, 'split').mockImplementation(function (this: string, ...args: Parameters<typeof nativeSplit>) {
+            if (String(this) === ' Ctrl ' && (args[0] as unknown) === '+' && fail) throw cause;
+            return Reflect.apply(nativeSplit, this, args) as string[];
+        });
+        try {
+            documentTarget.emit('mousemove', trustedEvent({clientX: 1, clientY: 20}));
+            raw = ' Ctrl ';
+            fail = true;
+            documentTarget.emit('mousemove', trustedEvent({clientX: 2, clientY: 20}));
+            expect(getConfigured).toHaveBeenCalledOnce();
+            expect(getCustom).toHaveBeenCalledOnce();
+            expect(windowTarget.animationFrames.size).toBe(1);
+            expect(() => windowTarget.flushAnimationFrame()).toThrow(cause);
+            expect(windowTarget.animationFrames.size).toBe(0);
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            expect(deps.hasActiveSelectionTranslationCandidate).not.toHaveBeenCalled();
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[1, 20, {delayMs: 120, continuous: true}]]);
+            fail = false;
+            raw = ' Alt ';
+            documentTarget.emit('mousemove', trustedEvent({clientX: 3, clientY: 20}));
+            raw = ' Ctrl ';
+            documentTarget.emit('mousemove', trustedEvent({clientX: 4, clientY: 20}));
+            windowTarget.flushAnimationFrame();
+
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([
+                [1, 20, {delayMs: 120, continuous: true}],
+                [3, 20, {delayMs: 120, continuous: true}],
+            ]);
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledOnce();
+            expect(getConfigured).toHaveBeenCalledTimes(4);
+            expect(getCustom).toHaveBeenCalledTimes(4);
+            const parsed = (value: string) => split.mock.contexts.filter(
+                (context, index) => String(context) === value && (split.mock.calls[index][0] as unknown) === '+',
+            ).length;
+            expect(parsed(' Alt ')).toBe(1);
+            expect(parsed(' Ctrl ')).toBe(2);
+        } finally { split.mockRestore(); }
+    });
+
+    it.each(['mousemove', 'selectionchange', 'pointerdown'] as const)('%s 使用暖解析缓存时仍按当前选区与原取消入口处理', consumer => {
+        const getConfigured = vi.fn(() => 'custom');
+        const getCustom = vi.fn(() => ' Ctrl ');
+        const hasSelection = vi.fn(() => false);
+        const {deps, documentTarget, windowTarget} = mountHarness({
+            getConfiguredSelectionHotkey: getConfigured,
+            getCustomSelectionHotkey: getCustom,
+            hasActiveSelectionTranslationCandidate: hasSelection,
+        });
+        windowTarget.emit('keydown', trustedEvent({key: 'Control', code: 'ControlLeft', ctrlKey: true}));
+        const split = vi.spyOn(String.prototype, 'split');
+        try {
+            documentTarget.emit('mousemove', trustedEvent({clientX: 1, clientY: 20}));
+            hasSelection.mockReturnValue(true);
+            documentTarget.emit(consumer, trustedEvent({clientX: 2, clientY: 20}));
+            documentTarget.emit('mousemove', trustedEvent({clientX: 3, clientY: 20}));
+            documentTarget.emit('selectionchange', trustedEvent());
+            documentTarget.emit('pointerdown', trustedEvent());
+            windowTarget.emit('keyup', trustedEvent({key: 'Control', code: 'ControlLeft'}));
+
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[1, 20, {delayMs: 120, continuous: true}]]);
+            expect(deps.cancelPendingHoverTranslation).toHaveBeenCalledOnce();
+            expect(hasSelection).toHaveBeenCalledTimes(consumer === 'pointerdown' ? 1 : 2);
+            expect(getConfigured).toHaveBeenCalledTimes(2);
+            expect(getCustom).toHaveBeenCalledTimes(2);
+            const selectionSplits = split.mock.contexts.filter(
+                (context, index) => String(context) === ' Ctrl ' && (split.mock.calls[index][0] as unknown) === '+',
+            ).length;
+            expect(selectionSplits).toBe(1);
+        } finally { split.mockRestore(); }
+    });
+
+    it.each([true, false])('暖划词解析后配置改变仍保留开始时共享释放归属 sharedAtStart=%s', sharedAtStart => {
+        const {deps, selectionShortcut, documentTarget, documentKeyup, dispatch} = mountSharedHoverShortcutHarness();
+        const getConfigured = vi.spyOn(deps, 'getConfiguredSelectionHotkey');
+        const getCustom = vi.spyOn(deps, 'getCustomSelectionHotkey');
+        selectionShortcut.value = sharedAtStart ? 'F9' : 'F10';
+        dispatch('keydown', trustedEvent({key: 'F9', code: 'F9'}));
+        expect(getConfigured).not.toHaveBeenCalled();
+        expect(getCustom).not.toHaveBeenCalled();
+        const split = vi.spyOn(String.prototype, 'split');
+        try {
+            documentTarget.emit('selectionchange', trustedEvent());
+            expect(getConfigured).toHaveBeenCalledOnce();
+            expect(getCustom).toHaveBeenCalledOnce();
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(sharedAtStart ? 1 : 0);
+            selectionShortcut.value = sharedAtStart ? 'F10' : 'F9';
+            documentTarget.emit('selectionchange', trustedEvent());
+            expect(getConfigured).toHaveBeenCalledTimes(2);
+            expect(getCustom).toHaveBeenCalledTimes(2);
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledOnce();
+            expect(deps.handleTranslation).not.toHaveBeenCalled();
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            const keyup = trustedEvent({key: 'F9', code: 'F9'});
+            dispatch('keyup', keyup);
+
+            // 释放前仲裁使用已经变更的划词配置，事件交接仍服从 keydown 时的共享归属。
+            expect(vi.mocked(deps.handleTranslation).mock.calls).toEqual([[0, 0]]);
+            expect(deps.cancelPendingHoverTranslation).not.toHaveBeenCalled();
+            expect(deps.hasActiveSelectionTranslationCandidate).toHaveBeenCalledTimes(sharedAtStart ? 1 : 2);
+            expect(getConfigured).toHaveBeenCalledTimes(3);
+            expect(getCustom).toHaveBeenCalledTimes(3);
+            expect(deps.matchesSelectionTranslatorShortcut).toHaveBeenCalledOnce();
+            const parsed = (raw: string) => split.mock.contexts.filter(
+                (context, index) => String(context) === raw && (split.mock.calls[index][0] as unknown) === '+',
+            ).length;
+            expect(parsed('f9')).toBe(1);
+            expect(parsed('f10')).toBe(1);
+            if (sharedAtStart) {
+                expect(keyup.stopPropagation).not.toHaveBeenCalled();
+                expect(documentKeyup.mock.calls).toEqual([[keyup]]);
+            } else {
+                expect(keyup.stopPropagation).toHaveBeenCalledOnce();
+                expect(documentKeyup).not.toHaveBeenCalled();
+            }
+        } finally { split.mockRestore(); }
     });
 });

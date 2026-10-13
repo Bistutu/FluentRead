@@ -1,29 +1,155 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {huggingFaceDownloadOrigins, modelDownloadSources, withModelDownload} from '@/src/platform/http/modelDownloads';
+import {huggingFaceDownloadOrigins, isModelCacheSource, modelDownloadSources, withModelDownload} from '@/src/platform/http/modelDownloads';
+import type {ModelDownloadStatus} from '@/src/core/download/progress';
 
 const url = 'https://huggingface.co/test/model/resolve/pinned/weights.onnx';
 afterEach(() => {vi.unstubAllGlobals(); vi.useRealTimers();});
 
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>(yes => {resolve = yes;});
+    return {promise, resolve};
+}
+
 describe('model download source and stream boundaries', () => {
-    it('uses language only as an ordering hint, retains both mirrors and honors explicit preference', () => {
+    it('retains exact historical cached provenance while never downloading from its retired origin', () => {
+        const pinned = `${url}?download=true`, legacy = pinned.replace('huggingface.co', 'hf-mirror.net');
+        expect(isModelCacheSource(pinned, pinned)).toBe(true);
+        expect(isModelCacheSource(pinned, pinned.replace('huggingface.co', 'hf-mirror.com'))).toBe(true);
+        expect(isModelCacheSource(pinned, legacy)).toBe(true);
+        expect(modelDownloadSources(pinned)).not.toContain(legacy);
+        for (const source of [undefined, {}, legacy.replace('/pinned/', '/main/'), legacy.replace('weights.onnx', 'config.json'), legacy.replace('?download=true', ''), legacy.replace('hf-mirror.net', 'hf-mirror.net.example.com')]) expect(isModelCacheSource(pinned, source)).toBe(false);
+        expect(isModelCacheSource('https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/config.json', 'https://hf-mirror.net/onnx-community/whisper-small/resolve/main/config.json')).toBe(false);
+    });
+    it('separates the ten-second default header deadline from the twenty-second first-byte wait and reports each safe source attempt', async () => {
+        vi.useFakeTimers(); vi.stubGlobal('navigator', {language: 'zh-CN'});
+        const late = deferred<Response>(), body = new ReadableStream<Uint8Array>({
+            start(stream) {setTimeout(() => {stream.enqueue(new Uint8Array([1, 2])); stream.enqueue(new Uint8Array([3])); stream.close();}, 15_000);},
+        });
+        const fetcher = vi.fn().mockImplementationOnce(() => late.promise).mockResolvedValueOnce(new Response(body));
+        vi.stubGlobal('fetch', fetcher);
+        const status: ModelDownloadStatus[] = [], progress: number[] = [];
+        const pending = withModelDownload('https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/onnx/encoder_model.onnx', response => response.arrayBuffer(), {
+            onSourceStatus: next => status.push(next), onProgress: loaded => progress.push(loaded),
+        });
+        await vi.advanceTimersByTimeAsync(9999);
+        expect(fetcher).toHaveBeenCalledOnce(); expect(progress).toEqual([]);
+        expect(status).toEqual([{source: 'modelscope', attempt: 1, attempts: 3, state: 'connecting'}]);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(fetcher).toHaveBeenCalledTimes(2);
+        expect(status.at(-1)).toEqual({source: 'hf-mirror', attempt: 2, attempts: 3, state: 'connecting'});
+        await vi.advanceTimersByTimeAsync(5000);
+        expect((await pending).byteLength).toBe(3);
+        expect(status).toEqual([{source: 'modelscope', attempt: 1, attempts: 3, state: 'connecting'}, {source: 'hf-mirror', attempt: 2, attempts: 3, state: 'connecting'}, {source: 'hf-mirror', attempt: 2, attempts: 3, state: 'receiving'}]);
+        expect(progress).toEqual([0, 2, 3]);
+        late.resolve(new Response(null)); await Promise.resolve(); expect(vi.getTimerCount()).toBe(0);
+    });
+    it('keeps status callback failures outside the download and stops a user cancel from the connecting callback before fetching', async () => {
+        const fetcher = vi.fn(async () => new Response('valid')), status = vi.fn(() => {throw new Error('view unavailable');});
+        vi.stubGlobal('fetch', fetcher);
+        expect(await withModelDownload('https://example.com/model', response => response.text(), {onSourceStatus: status})).toBe('valid');
+        expect(status.mock.calls).toHaveLength(2); fetcher.mockClear();
+        const controller = new AbortController();
+        await expect(withModelDownload(url, response => response.text(), {signal: controller.signal, onSourceStatus: () => controller.abort()})).rejects.toMatchObject({name: 'AbortError'});
+        expect(fetcher).not.toHaveBeenCalled();
+    });
+    it('cancels early rejected bodies and treats cleanup throws and rejections as best-effort cleanup', async () => {
+        const cancel = vi.fn(async () => {throw new Error('late underlying cancellation');});
+        const response = new Response(new ReadableStream({cancel}), {headers: {'Content-Type': 'text/html'}});
+        const fetcher = vi.fn().mockResolvedValueOnce(response).mockResolvedValueOnce(new Response('valid'));
+        vi.stubGlobal('fetch', fetcher);
+        expect(await withModelDownload(url, item => item.text())).toBe('valid'); expect(cancel).toHaveBeenCalledOnce();
+        fetcher.mockResolvedValueOnce({ok: false, status: 503, body: {cancel: () => {throw new Error('body released');}}}).mockResolvedValueOnce(new Response('valid'));
+        expect(await withModelDownload(url, item => item.text())).toBe('valid');
+        const reader = {read: vi.fn().mockResolvedValueOnce({done: false, value: new Uint8Array([1])}).mockResolvedValueOnce({done: true}),
+            cancel: () => {throw new Error('reader unavailable');}, releaseLock: () => {throw new Error('lock released');}};
+        fetcher.mockResolvedValueOnce({ok: true, status: 200, statusText: 'OK', headers: new Headers(), body: {getReader: () => reader}});
+        expect((await withModelDownload('https://example.com/model', item => item.arrayBuffer())).byteLength).toBe(1);
+    });
+    it('rejects a total deadline that arrives between consumer resolution and the owner continuation', async () => {
+        vi.useFakeTimers();
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('valid')));
+        let calls = 0;
+        const pending = withModelDownload(url, async response => {
+            const value = await response.text();
+            if (++calls > 1) return value;
+            return new Promise<string>(resolve => {
+                setTimeout(() => {resolve(value); queueMicrotask(() => {vi.advanceTimersByTime(10);});}, 0);
+            });
+        }, {timeoutMs: 10});
+        await vi.advanceTimersByTimeAsync(1);
+        expect(await pending).toBe('valid'); expect(calls).toBe(2); expect(vi.getTimerCount()).toBe(0);
+    });
+    it('moves to the next source even if a timed out fetch ignores AbortSignal, and cancels its late body', async () => {
+        vi.useFakeTimers();
+        const gate = deferred<Response>(), cancel = vi.fn();
+        const fetched = vi.fn().mockImplementationOnce(() => gate.promise).mockResolvedValueOnce(new Response('good'));
+        vi.stubGlobal('fetch', fetched);
+        const pending = withModelDownload(url, response => response.text(), {timeoutMs: 10});
+        const settled = pending.catch(error => error);
+        try {
+            await vi.advanceTimersByTimeAsync(11);
+            expect(fetched).toHaveBeenCalledTimes(2);
+        } finally {
+            gate.resolve(new Response(new ReadableStream<Uint8Array>({start(stream) {stream.enqueue(new Uint8Array([1]));}, cancel})));
+            await settled;
+        }
+        await expect(pending).resolves.toBe('good'); expect(cancel).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+    it('bounds a stalled reader and cleanup even when neither read nor cancel honors abortion', async () => {
+        vi.useFakeTimers();
+        const reading = deferred<ReadableStreamReadResult<Uint8Array>>(), cleanup = deferred<void>();
+        const reader = {read: vi.fn(() => reading.promise), cancel: vi.fn(() => cleanup.promise), releaseLock: vi.fn()};
+        const fetched = vi.fn().mockResolvedValueOnce({ok: true, status: 200, statusText: 'OK', headers: new Headers(), body: {getReader: () => reader}})
+            .mockResolvedValueOnce(new Response('good'));
+        vi.stubGlobal('fetch', fetched);
+        const pending = withModelDownload(url, response => response.text(), {idleTimeoutMs: 10});
+        const settled = pending.catch(error => error);
+        try {
+            await vi.advanceTimersByTimeAsync(11);
+            expect(fetched).toHaveBeenCalledTimes(2);
+        } finally {
+            reading.resolve({done: true, value: undefined}); cleanup.resolve(); await settled;
+        }
+        await expect(pending).resolves.toBe('good'); expect(reader.releaseLock).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+    it('bounds a consumer that remains pending after the complete body and ignores its late completion', async () => {
+        vi.useFakeTimers();
+        const gate = deferred<void>(), fetched = vi.fn(async () => new Response('good'));
+        vi.stubGlobal('fetch', fetched);
+        let attempts = 0;
+        const pending = withModelDownload(url, async response => {const text = await response.text(); if (++attempts === 1) await gate.promise; return text;}, {timeoutMs: 10});
+        const settled = pending.catch(error => error);
+        try {
+            await vi.advanceTimersByTimeAsync(11); expect(fetched).toHaveBeenCalledTimes(2);
+        } finally {gate.resolve(); await settled;}
+        await expect(pending).resolves.toBe('good'); expect(vi.getTimerCount()).toBe(0);
+    });
+    it('uses language only as an ordering hint, excludes unverified mirrors and honors explicit preference', () => {
         vi.stubGlobal('navigator', undefined);
         expect(huggingFaceDownloadOrigins()[0]).toBe('https://huggingface.co');
         vi.stubGlobal('navigator', {language: 'zh-CN'});
-        expect(huggingFaceDownloadOrigins()).toEqual(['https://hf-mirror.com','https://hf-mirror.net','https://huggingface.co']);
+        expect(huggingFaceDownloadOrigins()).toEqual(['https://hf-mirror.com','https://huggingface.co']);
         expect(huggingFaceDownloadOrigins('official')[0]).toContain('huggingface.co');
         vi.stubGlobal('navigator', {language: 'zh-TW'});
         expect(huggingFaceDownloadOrigins()[0]).toContain('huggingface.co');
         expect(huggingFaceDownloadOrigins('mirror')[0]).toContain('hf-mirror.com');
         expect(modelDownloadSources(url + '?download=true', 'official')).toEqual([
-            url + '?download=true', url.replace('huggingface.co', 'hf-mirror.com') + '?download=true', url.replace('huggingface.co', 'hf-mirror.net') + '?download=true',
+            url + '?download=true', url.replace('huggingface.co', 'hf-mirror.com') + '?download=true',
         ]);
         const whisper = 'https://modelscope.cn/models/onnx-community/whisper-tiny/resolve/master/config.json';
-        expect(modelDownloadSources(whisper)).toEqual([whisper,
+        expect(modelDownloadSources(whisper)).toEqual([
             'https://huggingface.co/onnx-community/whisper-tiny/resolve/main/config.json',
             'https://hf-mirror.com/onnx-community/whisper-tiny/resolve/main/config.json',
-            'https://hf-mirror.net/onnx-community/whisper-tiny/resolve/main/config.json']);
+            whisper]);
+        vi.stubGlobal('navigator', {language: 'zh-CN'});
+        expect(modelDownloadSources(whisper)).toEqual([whisper, 'https://hf-mirror.com/onnx-community/whisper-tiny/resolve/main/config.json', 'https://huggingface.co/onnx-community/whisper-tiny/resolve/main/config.json']);
+        expect(modelDownloadSources(whisper, 'official')).toEqual(['https://huggingface.co/onnx-community/whisper-tiny/resolve/main/config.json', 'https://hf-mirror.com/onnx-community/whisper-tiny/resolve/main/config.json', whisper]);
+        expect(modelDownloadSources(whisper, 'mirror')).toEqual([whisper, 'https://hf-mirror.com/onnx-community/whisper-tiny/resolve/main/config.json', 'https://huggingface.co/onnx-community/whisper-tiny/resolve/main/config.json']);
         const small = 'https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/onnx/encoder_model.onnx';
-        expect(modelDownloadSources(small)[1]).toBe('https://huggingface.co/onnx-community/whisper-small/resolve/main/onnx/encoder_model.onnx');
+        expect(modelDownloadSources(small, 'official')[0]).toBe('https://huggingface.co/onnx-community/whisper-small/resolve/main/onnx/encoder_model.onnx');
         for (const other of ['https://example.com/model', 'https://modelscope.cn/models/other/model/resolve/master/config.json', 'https://modelscope.cn/other']) {
             expect(modelDownloadSources(other)).toEqual([other]);
         }
@@ -98,15 +224,17 @@ describe('model download source and stream boundaries', () => {
         }
         const fetcher = vi.fn(async () => new Response('valid'));
         vi.stubGlobal('fetch', fetcher);
-        const consume = vi.fn(async (response: Response) => {const text=await response.text();if(consume.mock.calls.length<3)throw new Error('bad hash');return text;});
+        const consume = vi.fn(async (response: Response) => {const text=await response.text();if(consume.mock.calls.length<2)throw new Error('bad hash');return text;});
         expect(await withModelDownload(url, consume)).toBe('valid');
-        expect(fetcher).toHaveBeenCalledTimes(3);
+        expect(fetcher).toHaveBeenCalledTimes(2);
     });
     it('falls back when a stream breaks or a fetch rejects and exposes the final failure', async () => {
         const body = new ReadableStream<Uint8Array>({start(controller){controller.error(new Error('broken body'));}});
-        const fetcher=vi.fn().mockResolvedValueOnce(new Response(body)).mockRejectedValueOnce('network').mockResolvedValueOnce(new Response('good'));
+        const fetcher=vi.fn().mockResolvedValueOnce(new Response(body)).mockResolvedValueOnce(new Response('good'));
         vi.stubGlobal('fetch', fetcher);
         expect(await withModelDownload(url, response => response.text())).toBe('good');
+        fetcher.mockRejectedValueOnce('network').mockResolvedValueOnce(new Response('recovered'));
+        expect(await withModelDownload(url, response => response.text())).toBe('recovered');
         vi.stubGlobal('fetch', vi.fn(async()=>{throw new Error('offline');}));
         await expect(withModelDownload(url, response=>response.text())).rejects.toThrow('offline');
     });
@@ -131,9 +259,9 @@ describe('model download source and stream boundaries', () => {
             options.signal!.addEventListener('abort',()=>reject(new DOMException('timeout','AbortError')),{once:true});
         }));
         vi.stubGlobal('fetch',fetcher);
-        const pending=withModelDownload(url,response=>response.text(),{idleTimeoutMs:10,timeoutMs:100});
+        const pending=withModelDownload(url,response=>response.text(),{connectTimeoutMs:10,idleTimeoutMs:10,timeoutMs:100});
         const checked=expect(pending).rejects.toThrow('超过');
-        await vi.advanceTimersByTimeAsync(31);await checked;expect(fetcher).toHaveBeenCalledTimes(3);
+        await vi.advanceTimersByTimeAsync(21);await checked;expect(fetcher).toHaveBeenCalledTimes(2);
         const controller=new AbortController();
         const cancelled=withModelDownload(url,response=>response.text(),{signal:controller.signal});
         const cancellation=expect(cancelled).rejects.toMatchObject({name:'AbortError'});

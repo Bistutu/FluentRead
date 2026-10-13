@@ -1,10 +1,11 @@
 /**
  * @file src/features/video-subtitle/offscreen/transcription.ts
  * 文件职责：在 Offscreen Document 中串行调度视频 Whisper Worker、PCM 解码和模型预热。
- * 主要内容：复用共享并行预算及排队任务代次保护，管理单待处理转写、prepare 去重、模型切换、GPU 生命周期失败后的单次 CPU 重建、超时终止、首窗等待的有界预热租期、取消清理与空闲释放；透传实际语言检测诊断，预下载时把模型文件的字节进度交给调用方。
+ * 主要内容：复用共享并行预算及排队任务代次保护，管理单待处理转写、prepare 去重、模型切换、GPU 生命周期失败后的单次 CPU 重建、超时终止、首窗等待的有界预热租期、取消清理与按设备内存安排的空闲释放；透传实际语言检测诊断，预下载时校验本次来源偏好，并把字节及连接状态交给调用方。
  * 模块边界：只编排 Offscreen/Worker 资源，不解析字幕时间轴，也不管理后台 tab owner。
  */
 import {withLocalInferenceBudget} from '@/src/shared/onnx/resources';
+import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
 import {
   normalizeVideoLocalTranscriptionModel,
   getVideoLocalTranscriptionWorkerTimeoutMs,
@@ -15,6 +16,7 @@ import {
 } from '@/src/features/video-subtitle/transcription';
 import { cacheVideoAiQ4ModelFiles, removeVideoAiModelFiles } from './modelCache';
 import type {DownloadProgress} from '@/src/core/download/progress';
+import type {ModelSourcePreference} from '@/src/platform/http/modelDownloads';
 
 type LocalTranscriptionBackend = 'webgpu' | 'wasm';
 
@@ -90,13 +92,13 @@ interface PendingPrepareJob {
   keepWarm: boolean;
   streamId: string;
   onProgress?: (progress: DownloadProgress) => void;
+  preference: ModelSourcePreference;
   resolve: (result: LocalVideoTranscriptionPreparation) => void;
   reject: (error: unknown) => void;
 }
 
 type WorkerLifecycleError = Error & {retryableWorkerFailure?: true};
 
-const MODEL_IDLE_DISPOSE_MS = 30_000;
 // 覆盖 X 的 5 秒媒体发现、60 秒独立读取和 8 秒解码，首窗提交即消费。
 const MODEL_FIRST_AUDIO_WARM_LEASE_MS = 90_000;
 const MAX_WHISPER_AUDIO_SECONDS = 30;
@@ -336,7 +338,7 @@ function scheduleIdleDisposal(): void {
     void disposeLoadedTranscriber();
   }, firstAudioWarmLease?.streamId === activeStreamId && firstAudioWarmLease.deadlineAt > Date.now()
     ? firstAudioWarmLease.deadlineAt - Date.now()
-    : MODEL_IDLE_DISPOSE_MS);
+    : localModelIdleMs());
 }
 
 function clearIdleDisposal(): void {
@@ -417,9 +419,10 @@ async function prepareLocalVideoTranscriptionModelNow(
   keepWarm: boolean,
   streamId = '',
   onProgress?: (progress: DownloadProgress) => void,
+  preference: ModelSourcePreference = 'auto',
 ): Promise<LocalVideoTranscriptionPreparation> {
   if (!keepWarm) {
-    await cacheVideoAiQ4ModelFiles(model, onProgress);
+    await cacheVideoAiQ4ModelFiles(model, onProgress, {preference});
     return { model, dtype: 'q4' };
   }
   const response = await requestWorkerWithCpuFallback({ type: 'prepare', model }, { type: 'prepare', model }, [], [], model === 'small' ? 600_000 : MODEL_PREPARE_TIMEOUT_MS, streamId);
@@ -462,7 +465,7 @@ function drainQueue(): void {
           activeStreamId = prepareJob.streamId;
           currentTranscriptionStreamId = prepareJob.streamId;
         }
-        const prepared = await prepareLocalVideoTranscriptionModelNow(prepareJob.model, prepareJob.keepWarm, prepareJob.streamId, prepareJob.onProgress);
+        const prepared = await prepareLocalVideoTranscriptionModelNow(prepareJob.model, prepareJob.keepWarm, prepareJob.streamId, prepareJob.onProgress, prepareJob.preference);
         if (prepareJob.keepWarm && prepareJob.streamId && activeStreamId === prepareJob.streamId
           && pendingTranscription?.request.streamId !== prepareJob.streamId && !firstAudioWarmLease) {
           firstAudioWarmLease = {streamId: prepareJob.streamId, deadlineAt: Date.now() + MODEL_FIRST_AUDIO_WARM_LEASE_MS};
@@ -490,10 +493,13 @@ export function prepareLocalVideoTranscriptionModel(model?: unknown, options?: {
   streamId?: unknown;
   /** 仅预下载（keepWarm 为 false）时回报模型文件的真实字节进度；并发的相同请求共用首个调用者的回调。 */
   onProgress?: (progress: DownloadProgress) => void;
+  /** 只影响这次预下载；任意外部值回退到自动选择，不接收自定义 URL。 */
+  preference?: unknown;
 }): Promise<LocalVideoTranscriptionPreparation> {
   if (removingModel) return Promise.reject(new Error('正在清除模型，请稍后重试'));
   const normalizedModel = normalizeVideoLocalTranscriptionModel(model);
   const keepWarm = options?.keepWarm === true;
+  const preference = options?.preference === 'official' || options?.preference === 'mirror' ? options.preference : 'auto';
   const streamId = keepWarm && typeof options?.streamId === 'string' ? options.streamId.trim() : '';
   const requestKey = `${normalizedModel}:${keepWarm ? 'warm' : 'cache'}:${streamId}`;
   const existing = pendingPreparePromises.get(requestKey);
@@ -505,7 +511,7 @@ export function prepareLocalVideoTranscriptionModel(model?: unknown, options?: {
       return;
     }
     clearIdleDisposal();
-    pendingPrepare.push({ model: normalizedModel, keepWarm, streamId, onProgress: options?.onProgress, resolve, reject });
+    pendingPrepare.push({ model: normalizedModel, keepWarm, streamId, onProgress: options?.onProgress, preference, resolve, reject });
     drainQueue();
   });
   pendingPreparePromises.set(requestKey, request);

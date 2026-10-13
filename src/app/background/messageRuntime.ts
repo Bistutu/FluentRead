@@ -1,10 +1,11 @@
 /**
  * @file src/app/background/messageRuntime.ts
- * 文件职责：构建并安装后台消息总运行时，把配置、翻译、OCR、TTS、生词本和标签页状态等公开 handler 连接到 browser.runtime。
+ * 文件职责：构建并安装后台消息总运行时，把配置、翻译、OCR、TTS、生词本、扩展面板导航和标签页状态等公开 handler 连接到 browser.runtime。
  * 主要内容：向图片处理注入已保存的单图识别方式；创建图片 OCR 语言仓库和能力门控传输，绑定图片与圈选事务的真实页面及术语版本；为图片和划词释义注入独立服务选择，注入配置、翻译、本机统计、划词卡片页面缩放和词典依赖，为 TTS 状态注入离屏发送方校验与 frame 投递端口，接入离屏下载进度转存，注册类型化 router 并管理响应与错误。
  * 模块边界：本文件是 composition root，只决定依赖装配和监听生命周期，不实现各 feature 的业务算法、provider 协议或存储事务；具体实现均来自 features、services、providers 与 platform。
  */
 import {getFreeTranslationWeightSnapshot, createProviderTestRuntimeHandlers} from './providerRuntime';
+import {createPersonalCorrectionRuntimeHandlers} from './personalCorrectionRuntime';
 import {config, configReady} from '@/src/services/config/store';
 import {lookupWord} from '@/src/features/selection-translation/services/wordDictionary';
 import {createSelectionPageZoomBrowserPort, createSelectionPageZoomHandler} from '@/src/features/selection-translation/background/pageZoomHandler';
@@ -26,8 +27,8 @@ import {createImageOcrLanguageRepository, createImageTranslationBackgroundHandle
 import {createInputBoxTranslationHandler} from './handlers/inputTranslation';
 import {createLocalInsightsHandlers} from './localInsightsHandlers';
 import {createFreeTranslationWeightsHandler} from './handlers/freeTranslationWeights';
-import {createOpenOptionsPageHandler} from './handlers/openOptions';
-import {createDownloadProgressHandler} from './handlers/downloadProgress';
+import {createPopupNavigationHandlers, type PopupContext} from './popupNavigation';
+import {createDownloadProgressHandler, createDownloadProgressQueryHandler} from './handlers/downloadProgress';
 import {createTranslationCancelHandler, createTranslationRequestFallback, createTranslationRequestRegistry} from './handlers/translation';
 import {createSelectionTtsBackgroundHandlers, type SelectionTtsContext} from './handlers/selectionTts';
 import {createSelectionWordLookupHandler} from './handlers/selectionWordLookup';
@@ -42,8 +43,7 @@ import {createConfigBackgroundHandlers} from './configMessageHandlers';
 import {createConfigImageOcrLanguageStorage, installBrowserConfigStorageBroadcast} from './configStorageRuntime';
 import {releaseVideoSubtitleOwnerForTab} from '@/src/features/video-subtitle/background/handlers';
 import {createVideoSubtitleBackgroundRuntime} from '@/src/features/video-subtitle/background/runtime';
-import {createLocalTranslationBackgroundRuntime} from '@/src/features/local-translation/background/runtime';
-import {createLocalTtsBackgroundRuntime} from '@/src/features/local-tts/background/runtime';
+import {createLocalModelMessageHandlers} from './localModelMessageRuntime';
 import {localTtsOffscreenAdapter} from '@/src/features/local-tts/background/offscreenAdapter';
 import {createSelectionTtsSynthesizer} from '@/src/features/selection-translation/background/selectionTtsSynthesis';
 import {installWritingBackgroundRuntime} from './writingRuntime';
@@ -53,7 +53,7 @@ import {createEmbeddedFrameBackgroundHandlers, type EmbeddedFrameBackgroundConte
 import {buildGlossaryRevision} from '@/src/core/glossary';
 type BackgroundRuntimeContext = QQMailFrameBackgroundContext & NeteaseMailFrameBackgroundContext
     & EmbeddedFrameBackgroundContext & ConfigPersistenceContext & VocabularyBackgroundContext & SelectionTtsContext
-    & FullPageBackgroundContext & AreaTranslationBackgroundContext;
+    & FullPageBackgroundContext & AreaTranslationBackgroundContext & PopupContext;
 export interface BackgroundMessageRuntimeOptions {
     tabTranslationStates: TabTranslationStateStore;
     onFullPageStateChanged(tabId: number): void;
@@ -81,6 +81,7 @@ export function installBackgroundMessageRuntime(options: BackgroundMessageRuntim
         getGlossaryRevision: () => buildGlossaryRevision(config.glossaryLibraries, config.glossaryEnabled),
     });
     const handlers: Array<BackgroundMessageHandler<BackgroundRuntimeContext>> = [
+        ...createPersonalCorrectionRuntimeHandlers<BackgroundRuntimeContext>(),
         createTranslationCancelHandler(translationRequestRegistry),
         installHarnessBackgroundRuntime(cancelWriting),
         ...createQqMailFrameBackgroundHandlers({sendTabMessage: (tabId, message, options) => browser.tabs.sendMessage(tabId, message, options)}),
@@ -103,14 +104,9 @@ export function installBackgroundMessageRuntime(options: BackgroundMessageRuntim
             ready: configReady,
             getConfig: () => config,
             translate: translateWithCache,
+            requestRegistry: translationRequestRegistry,
         }),
-        createOpenOptionsPageHandler({
-            openDefaultPage: () => browser.runtime.openOptionsPage(),
-            openSection: async (section, destination) => {
-                const query = destination ? `?${section === 'settings-vocabulary' ? 'learningTab' : 'service'}=${encodeURIComponent(destination)}` : '';
-                await browser.tabs.create({url: `${browser.runtime.getURL('/options.html')}${query}#${section}`});
-            },
-        }),
+        ...createPopupNavigationHandlers(),
         ...createFullPageTranslationStateHandlers({
             stateStore: options.tabTranslationStates,
             isTabId: isBrowserTabId,
@@ -160,9 +156,8 @@ export function installBackgroundMessageRuntime(options: BackgroundMessageRuntim
             logOperationFailure: (error) => console.error('[FluentRead] vocabulary book operation failed:', error),
         }),
         ...createVideoSubtitleBackgroundRuntime(),
-        ...createLocalTranslationBackgroundRuntime(),
-        ...createLocalTtsBackgroundRuntime(),
-        createDownloadProgressHandler({runtimeId: browser.runtime.id, offscreenUrl: browser.runtime.getURL('/offscreen.html'), storage: browser.storage.local}),
+        ...createLocalModelMessageHandlers<BackgroundRuntimeContext>(),
+        createDownloadProgressHandler({runtimeId: browser.runtime.id, offscreenUrl: browser.runtime.getURL('/offscreen.html'), storage: browser.storage.local}), createDownloadProgressQueryHandler({runtimeId: browser.runtime.id, storage: browser.storage.local}),
     ];
     const router = createBackgroundMessageRouter(
         handlers,

@@ -4,6 +4,8 @@
  * 单一语言文字与反证、多语言统计与逐句混合检测；detectlang 的规范返回契约；目标语言与排除语言等价；
  * 目标、排除列表或文本变化后重新比较且缓存只以文本为键；用户反馈原文与既有中日韩反例。
  */
+import {spawnSync} from 'node:child_process';
+import {resolve} from 'node:path';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import modelPost from './fixtures/chinese-language-model-post.json';
 import {
@@ -188,6 +190,89 @@ describe('用户反馈原文', () => {
         expect(shouldSkipTranslationForTarget(text, `${language}-ZZ`)).toBe(true);
         expect(shouldSkipTranslationForTarget(text, language === 'en' ? 'fr' : 'en')).toBe(false);
     });
+});
+
+describe('中文技术语境中的短术语边界', () => {
+    it.each([
+        '当前 SDK 的并发队列由 arbiter token gate 负责入场，每个实际请求完成后释放槽位。',
+        '后台 messageRouter 只从 origin 接收可信元数据，并让 session 状态保持独立。',
+        '当前 SDK 的处理链是 intake→routing→normalized output/fallback，每个处理节点都会保留原始内容。',
+        '当前 SDK 的共享调度使用 global/local 池，结束时由 requestHandler settle 释放占位。',
+        '这个 SDK 的连接检查保留 scheduled FIFO，完成后统一清理缓存。',
+        '三个 pending 入口保留隐私、有效 Key 集合、轮换/恢复配置摘要，transport 按实际选择 Key，成功缓存规则不变。',
+    ])('同句代码或缩写锚点与中文技术动作支撑短术语：%s', text => {
+        expect(identifyTextLanguage(text)).toMatchObject({status: 'identified', languages: ['zh-Hans']});
+        expect(shouldSkipTranslationForTarget(text, 'zh-Hans')).toBe(true);
+        expect(shouldSkipTranslationForTarget(text, 'en', ['zh-Hans'])).toBe(true);
+        expect(shouldSkipTranslationForTarget(text, 'en')).toBe(false);
+        expect(shouldSkipTranslationForTarget(text, 'zh-Hant')).toBe(false);
+    });
+
+    it.each([
+        'The SDK arbiter should retry the request after the current connection has finished.',
+        '这个 SDK 的缓存配置已修复。The arbiter should retry the request.',
+        '这个 SDK 的缓存配置已修复。unknown 状态保持独立。',
+        '这个 SDK 的缓存配置已修复，but the retry is still broken.',
+        '这个 SDK 的缓存配置已修复，请翻译 unknown。',
+        '这个 SDK 的缓存配置已修复，请解释 arbiter。',
+        '这个 SDK 的缓存配置已修复，显示“unknown”。',
+        '这个 SDK 的缓存配置已修复，显示“server busy”。',
+        '这个 SDK 的缓存配置已修复，同时需要翻译 café。',
+        '这个 SDK 的缓存配置已修复，并保留 naïve 状态。',
+        '这段中文说明讨论 coffee 的含义，并保持原来的句子。',
+        '这段中文说明把 apple orange banana 放在正文里供大家阅读。',
+        '这个 SDK 的展示内容包含 apple orange banana，其中还有一些中文说明文字。',
+        '这里的缓存内容需要检查 Public Topic，其中包括英文标题。',
+        '我们选择 apple/orange 作为水果名称，并保留原始说明。',
+        '我们选择 apple、orange 作为水果名称，并保留原始说明。',
+        '当前 SDK 的连接配置已修复，network connection failed后检查状态。',
+        '当前 SDK 的连接配置已修复，server crashed后检查状态。',
+        '这里提供中文说明文本 SDK arbiter token gate intake→routing→normalized output/fallback global/local。',
+        '中文 SDK arbiter',
+        '这个 SDK 的缓存配置已修复，请点击 Open Settings 按钮继续阅读说明。',
+        '这个 SDK 的缓存配置已修复，请执行 Restart Connection 之后继续阅读说明。',
+        'これは SDK の arbiter を使う説明です。',
+        '이 SDK의 arbiter 설정을 설명합니다.',
+    ])('技术锚点不能吞掉外语正文、歧义词或跨句证据：%s', text => {
+        expect(shouldSkipTranslationForTarget(text, 'zh-Hans')).toBe(false);
+    });
+
+    it('64k 无操作符 Latin 长词在独立进程中有界完成，不阻塞中文技术预检', () => {
+        const sourcePath = resolve(process.env.LANGUAGECORE_AUDIT_SOURCE_ROOT ?? process.cwd(), 'src/core/language/identify.ts');
+        // 只转译并加载真实模块，进程硬超时捕获长词回溯；不复制识别规则或生成临时业务文件。
+        const loader = `
+            import fs from 'node:fs';
+            import path from 'node:path';
+            import {createRequire} from 'node:module';
+            import {pathToFileURL} from 'node:url';
+            const require = createRequire(process.cwd() + '/package.json');
+            const ts = require('typescript');
+            const urls = new Map();
+            function load(file) {
+                if (urls.has(file)) return urls.get(file);
+                let output = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
+                    compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext}, fileName: file,
+                }).outputText;
+                output = output.replace(/(from\\s+['"])([^'"]+)(['"])/g, (_, before, specifier, after) => {
+                    const url = specifier.startsWith('.')
+                        ? load(path.resolve(path.dirname(file), specifier + '.ts'))
+                        : pathToFileURL(require.resolve(specifier)).href;
+                    return before + url + after;
+                });
+                const url = 'data:text/javascript;base64,' + Buffer.from(output).toString('base64');
+                urls.set(file, url);
+                return url;
+            }
+            const {identifyTextLanguage} = await import(load(process.argv[1]));
+            console.log(JSON.stringify(identifyTextLanguage('这里的中文说明保持原始内容 ' + 'a'.repeat(64_000) + '.')));
+        `;
+        const child = spawnSync(process.execPath, ['--input-type=module', '-e', loader, sourcePath], {
+            encoding: 'utf8', timeout: 4000, maxBuffer: 1024 * 1024,
+        });
+        expect(child.error, child.stderr).toBeUndefined();
+        expect(child.status, child.stderr).toBe(0);
+        expect(JSON.parse(child.stdout)).toMatchObject({status: 'mixed', languages: []});
+    }, 10_000);
 });
 
 describe('多语言统计与混合', () => {

@@ -10,6 +10,8 @@ Open **Settings → Selection translation** and enable the feature. Every select
 
 English dictionary lookup does not require AI. Dictionary meanings are grouped by word class; these describe possible uses, not necessarily the word’s role in the current sentence. If lookup fails, the translation remains available.
 
+If translation shows “Invalid key or permission”, choose **Configure service**. In General settings, find the **Selection translation** row under service assignments and choose **Configure connection** to check the selected service’s key and permissions. Retry the translation manually after making changes. Opening settings preserves the default page translation service and does not retry automatically.
+
 <details class="guide-details">
 <summary>Activation and display</summary>
 
@@ -34,13 +36,13 @@ The card includes 3,000 common English dictionary entries that work without a se
 
 The card keeps its position when switching learning tabs, streaming answers, or starting and stopping speech. Long content scrolls within the available space. Drag the card by its top or surrounding blank space to move it. Drag an edge or corner to resize it; long text scrolls inside. The next selection opens a new card at its default size near the selected text.
 
-When the target is Chinese or English, the card's language button can change the direction for this result without changing page translation settings. Selection behavior and language preferences are configured under **Selection translation**.
+The card starts with the FluentRead icon and Translate tab, with share, save and close controls on the right. Translation follows your language settings. For a Chinese or English target, enable bidirectional selection translation under **Selection translation** to reverse the direction based on the selected language. Activation preferences are configured there too.
 
 </details>
 
 ## Optional AI explanations
 
-Enable **AI explanations** and select a configured AI service and model on the right. Switch between learning actions in the preview on the left. Both columns have equal width and height on desktop; narrow screens show the preview above the settings. Opening a card does not call AI. Choose an action to request an explanation:
+Enable **AI explanations** and select a service and model. **Bilibili translation · Free** uses the official `Index-Translate-35B-A3B` model without an API key for basic **Understand** and **Usage** explanations. Full syntax analysis, practice and follow-ups require a general AI service. Other services keep their configured connection details. Opening a card does not call AI. Trigger an action to request an explanation:
 
 - **Understand** explains meaning, tone and references.
 - **Parts of speech & syntax** explains the sentence structure and labels source fragments.
@@ -51,12 +53,14 @@ Enable **AI explanations** and select a configured AI service and model on the r
 
 Choose a phrase to read its explanation, or ask a follow-up below the answer. Opening the card itself does not call AI.
 
+If no explanation service or model has been selected, and the default service is Bilibili or a translation service without explanation support, the card offers **Free AI explanations**. Click to enable Bilibili for the current selection. Existing preferences for other AI services are preserved; you can change services in settings. Bilibili currently excludes syntax analysis, practice and multi-turn follow-ups. Your saved actions and default action become available again when you switch to a general AI service. Explanations remain off by default. If the free endpoint is temporarily unavailable, retry later. This translation model can help explain meaning and usage, but reference resolution and source citation formatting can be inconsistent. Explanations do not establish that an answer is correct.
+
 <details class="guide-details">
 <summary>Explanation controls and answer reuse</summary>
 
-Meaning, Grammar, Usage and Practice keep the complete source and its matching ordinary translation at the top of the scroll area. Each view starts at the explanation. Scroll up to compare them, or choose View original in More actions. Entering learning lets ordinary translation finish; late translations and streaming updates preserve your reading position. Clicking the current tab preserves your position and unsent follow-up. Changing the source or expanding a sentence never attaches an old selection’s translation to different text.
+Meaning, Grammar, Usage and Practice start at the explanation. Short answers fit their content; long answers scroll inside the card. Manually resized cards keep the chosen size. Choose View original in More actions to expand the complete source and its matching ordinary translation, then Back to current reading to close the comparison. Entering learning lets ordinary translation finish; late translations and streaming updates preserve your reading position. Clicking the current tab preserves your position and unsent follow-up. Changing the source or expanding a sentence never attaches an old selection’s translation to different text.
 
-The compact Grammar tab opens parts-of-speech and syntax analysis. Source fragments appear in order as compact two-line annotations: the original above, with the syntactic role and word class always visible below. This gives an overview without clicking every word. Common role names and word classes use the interface language. Units retain meaningful phrases, such as “subject · noun phrase”; unknown or unclear roles remain available in the details without inventing a classification. Click a fragment or use the left/right arrow keys for its meaning and complete role explanation. General word-class explanations expand on demand. A noun may be a subject in one sentence and an object in another. The default grammar prompt requests a compact table that the interface matches to the source in order. Unmatched or incomplete output, and custom formats, remain readable as ordinary text. AI analysis may be wrong; check the original when in doubt.
+The compact Grammar tab opens parts-of-speech and syntax analysis. Grounded sentence structure appears at the top of the answer, even when the AI places its analysis table after a long explanation. Source fragments appear in order as compact two-line annotations: the original above, with the syntactic role and word class always visible below. Punctuation stays with the preceding fragment. This gives an overview without clicking every word. Common role names and word classes use the interface language. Units retain meaningful phrases, such as “subject · noun phrase”; unrecognized names retain the AI’s existing summary, while duplicate or unknown labels are reduced without inventing a classification. Click a fragment or use the left/right arrow keys for its meaning and complete role explanation. General word-class explanations expand on demand. A noun may be a subject in one sentence and an object in another. The default grammar prompt requests a compact table that the interface matches to the source in order. Unmatched or incomplete output, and custom formats, remain readable as ordinary text. AI analysis may be wrong; check the original when in doubt.
 
 Completed answers are reused when switching learning actions within the current card. Choose Regenerate in More actions for a new answer, return to the translation, or ask a follow-up. More actions also contains source speech, sentence expansion, saving, reading history and settings. Changing the source, model, language or learning preferences invalidates related cached answers.
 

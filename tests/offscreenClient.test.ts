@@ -747,7 +747,7 @@ describe('Offscreen platform client', () => {
         await expect(compatible).resolves.toEqual({success: true, value: '完成'});
     });
 
-    it('显式大模型预算能跨过五分钟并在十分钟内完成，过大预算仍有硬上限', async () => {
+    it('既有十分钟预算保持原边界，过大显式预算在十分钟加三十秒处截止', async () => {
         vi.useFakeTimers();
         let callback: ((response: unknown) => void) | undefined;
         const runtime: OffscreenRuntimeApi = {
@@ -767,8 +767,36 @@ describe('Offscreen platform client', () => {
         await expect(first).resolves.toEqual({success: true});
         const bounded = client.send({type: 'LARGE_MODEL_DOWNLOAD'}, {timeoutMs: Number.MAX_SAFE_INTEGER})
             .then(() => null, error => error);
-        await vi.advanceTimersByTimeAsync(600_000);
+        let boundedSettled = false;
+        void bounded.then(() => { boundedSettled = true; });
+        await vi.advanceTimersByTimeAsync(629_999);
+        expect(boundedSettled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
         await expect(bounded).resolves.toMatchObject({message: 'Offscreen 消息响应超时'});
+    });
+
+    it('十分钟模型下载结束后的错误回包仍能在显式三十秒收尾预算内返回', async () => {
+        vi.useFakeTimers();
+        let callback: ((response: unknown) => void) | undefined;
+        const runtime: OffscreenRuntimeApi = {
+            getContexts: vi.fn(async () => [{}]),
+            sendMessage: vi.fn((message: unknown, respond: (response: unknown) => void) => {
+                if ((message as {type: string}).type === OFFSCREEN_READY_MESSAGE_TYPE) respond({success: true, ready: true});
+                else callback = respond;
+            }),
+        };
+        const createDocument = vi.fn(async () => undefined);
+        const client = createOffscreenClient({getRuntime: () => runtime, getOffscreen: () => ({createDocument})});
+        let settled = false;
+        const request = client.send({type: 'VIDEO_AI_PREPARE', model: 'small', keepWarm: false}, {timeoutMs: 630_000})
+            .then(value => { settled = true; return value; }, error => { settled = true; return error; });
+        await vi.advanceTimersByTimeAsync(600_000);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(10_000);
+        callback?.({success: false, error: '模型下载超过总等待时限'});
+        await expect(request).resolves.toEqual({success: false, error: '模型下载超过总等待时限'});
+        expect(createDocument).not.toHaveBeenCalled();
+        expect(vi.getTimerCount()).toBe(0);
     });
 
     it('短预算 Chrome caller 不会缩短共享 prepare，后加入的长预算调用仍可成功', async () => {

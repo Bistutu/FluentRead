@@ -83,12 +83,11 @@ export function normalizeVideoLocalTranscriptionModels(value: unknown): VideoLoc
 export function normalizeVideoLocalTranscriptionModel(value: unknown): VideoLocalTranscriptionModel {
   return VIDEO_LOCAL_TRANSCRIPTION_MODELS.some((item) => item.value === value)
     ? value as VideoLocalTranscriptionModel
-    : 'tiny';
+    : 'small';
 }
 
 /**
- * 首次生成 AI 字幕推荐多语种质量更好的 Small；用户已选的有效模型继续保留。
- * 非法配置仍由 normalizer 回退到 Tiny，与首次推荐分开，避免隐式迁移。
+ * 缺失或非法配置默认使用多语种质量更好的 Small；用户已选的有效模型继续保留。
  */
 export const VIDEO_LOCAL_TRANSCRIPTION_RECOMMENDED_MODEL: VideoLocalTranscriptionModel = 'small';
 

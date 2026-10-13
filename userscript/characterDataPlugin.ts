@@ -1,7 +1,7 @@
 /**
  * @file userscript/characterDataPlugin.ts
- * 文件职责：在 userscript 构建期无损压缩生成的 Unicode 字符数据，保留共享 core 的原始导出契约。
- * 主要内容：只接受导出的 const 字符串，以相邻码点差值缩小 gzip 数据；生成同步还原的普通模块。
+ * 文件职责：在 userscript 构建期无损压缩语言识别的静态字符串数据，保留共享 core 的原始导出契约。
+ * 主要内容：仅接受两份明确数据表中的导出 const 字符串；Unicode 字表沿用相邻码点差值，功能词列表直接 gzip，生成同步还原的普通模块。
  * 模块边界：不压缩可执行源码，不修改生成文件；Greasy Fork 保留可读数据，扩展不使用本插件。
  */
 import {createHash} from 'node:crypto';
@@ -10,18 +10,23 @@ import {gzipSync} from 'node:zlib';
 import ts from 'typescript';
 import {normalizePath, type Plugin} from 'vite';
 
-/** 只处理权威字符表；数据文件出现逻辑时拒绝构建，避免把代码当成压缩资源。 */
+/** 只处理两份权威纯数据表；数据文件出现逻辑时拒绝构建，避免把代码当成压缩资源。 */
 export function createUserscriptCharacterDataCompressionPlugin(root: string, enabled = true): Plugin {
-    const sourcePath = normalizePath(resolve(root, 'src/core/language/chineseVariants.ts'));
+    const sourceModes = new Map([
+        [normalizePath(resolve(root, 'src/core/language/chineseVariants.ts')), 'delta'],
+        [normalizePath(resolve(root, 'src/core/language/functionWordData.ts')), 'strings'],
+    ]);
     return {
         name: 'compress-userscript-character-data',
         enforce: 'pre',
         transform(code, id) {
-            if (!enabled || normalizePath(id.split('?')[0]) !== sourcePath) return null;
+            const sourcePath = normalizePath(id.split('?')[0]);
+            const mode = sourceModes.get(sourcePath);
+            if (!enabled || !mode) return null;
             const source = ts.createSourceFile(sourcePath, code, ts.ScriptTarget.Latest, true);
             const names: string[] = [];
-            const tables: number[][] = [];
-            const unsupported = () => new Error('Userscript character data must contain only exported const strings');
+            const tables: Array<number[] | string> = [];
+            const unsupported = () => new Error('Userscript language data must contain only exported const strings');
             for (const statement of source.statements) {
                 if (!ts.isVariableStatement(statement)
                     || !statement.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)
@@ -31,6 +36,10 @@ export function createUserscriptCharacterDataCompressionPlugin(root: string, ena
                         || !(ts.isStringLiteral(declaration.initializer) || ts.isNoSubstitutionTemplateLiteral(declaration.initializer))
                         || names.includes(declaration.name.text)) throw unsupported();
                     names.push(declaration.name.text);
+                    if (mode === 'strings') {
+                        tables.push(declaration.initializer.text);
+                        continue;
+                    }
                     let previous = 0;
                     tables.push(Array.from(declaration.initializer.text, (character) => {
                         const point = character.codePointAt(0)!;
@@ -46,19 +55,21 @@ export function createUserscriptCharacterDataCompressionPlugin(root: string, ena
             return {
                 code: [
                     code.slice(0, source.statements[0].getStart(source)),
-                    '/* Non-code Unicode character data; source sha256 ' + digest + '. */',
+                    '/* Non-code language data; source sha256 ' + digest + '. */',
                     "import {inflateWithPako} from '@/userscript/pakoRuntime';",
                     'const bytes = Uint8Array.from(atob(' + JSON.stringify(compressed) + '), (character) => character.charCodeAt(0));',
-                    'const characterTables = JSON.parse(inflateWithPako(bytes)).map((deltas) => {',
-                    '    let point = 0;',
-                    '    return deltas.map((delta) => {',
-                    '        point += delta;',
-                    // fromCharCode 避免给旧内核新增 String.fromCodePoint 依赖；完整保留补充平面字符。
-                    '        return point > 0xFFFF',
-                    '            ? String.fromCharCode(0xD800 + ((point - 0x10000) >> 10), 0xDC00 + ((point - 0x10000) & 0x3FF))',
-                    '            : String.fromCharCode(point);',
-                    "    }).join('');",
-                    '});',
+                    ...(mode === 'strings' ? ['const characterTables = JSON.parse(inflateWithPako(bytes));'] : [
+                        'const characterTables = JSON.parse(inflateWithPako(bytes)).map((deltas) => {',
+                        '    let point = 0;',
+                        '    return deltas.map((delta) => {',
+                        '        point += delta;',
+                        // fromCharCode 避免给旧内核新增 String.fromCodePoint 依赖；完整保留补充平面字符。
+                        '        return point > 0xFFFF',
+                        '            ? String.fromCharCode(0xD800 + ((point - 0x10000) >> 10), 0xDC00 + ((point - 0x10000) & 0x3FF))',
+                        '            : String.fromCharCode(point);',
+                        "    }).join('');",
+                        '});',
+                    ]),
                     ...names.map((name, index) => 'export const ' + name + ' = characterTables[' + index + '];'),
                 ].join('\n'),
                 map: null,

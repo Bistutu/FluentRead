@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/services/ServiceCatalogItem.vue
  * 文件职责：为完整服务目录渲染紧凑的服务选择行。
- * 主要内容：本地图标、可换行的完整服务名称及提示、接口性质徽章、默认标记、可访问的选中状态。
+ * 主要内容：本地图标、可换行的完整服务名称及提示、接口性质徽章、默认标记、可访问的选中状态；目录短名称行保留 44px 命中高度，长名称自然增高，不用截断正文换取密度。
  * 模块边界：只发出选择事件，不修改配置、不测试连接、不发起翻译。
  -->
 <template>
@@ -43,8 +43,9 @@ const { t } = useUiI18n()
 .library-configured { color: var(--muted, #737c8f); }
 .library-common { color: #a76b1b; }
 .compact { border-color: transparent; background: transparent; }
-.compact .library-select { min-height: 60px; padding: 9px 8px; gap: 10px; }
+.compact .library-select { min-height: 44px; padding: 6px 8px; gap: 8px; }
+.compact :deep(.service-brand-icon) { width: 28px; height: 28px; border-radius: 8px; }
 button:focus-visible { outline: 2px solid var(--brand-strong, #bd2853); outline-offset: 2px; }
 
-@media (max-width: 700px) { .compact .library-select { min-height: 52px; padding: 7px 6px; gap: 7px; } .library-statuses { display: none; } }
+@media (max-width: 700px) { .compact .library-select { padding: 6px; gap: 7px; } .library-statuses { display: none; } }
 </style>

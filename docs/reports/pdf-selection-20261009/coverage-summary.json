@@ -1,0 +1,190 @@
+{
+  "total": {
+    "lines": {
+      "total": 802,
+      "covered": 802,
+      "skipped": 0,
+      "pct": 100
+    },
+    "statements": {
+      "total": 802,
+      "covered": 802,
+      "skipped": 0,
+      "pct": 100
+    },
+    "functions": {
+      "total": 63,
+      "covered": 63,
+      "skipped": 0,
+      "pct": 100
+    },
+    "branches": {
+      "total": 422,
+      "covered": 422,
+      "skipped": 0,
+      "pct": 100
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "src/app/document-translation/selectionRuntime.ts": {
+    "lines": {
+      "total": 288,
+      "covered": 288,
+      "skipped": 0,
+      "pct": 100
+    },
+    "functions": {
+      "total": 35,
+      "covered": 35,
+      "skipped": 0,
+      "pct": 100
+    },
+    "statements": {
+      "total": 288,
+      "covered": 288,
+      "skipped": 0,
+      "pct": 100
+    },
+    "branches": {
+      "total": 208,
+      "covered": 208,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "src/core/i18n/messages/pdfReading.ts": {
+    "lines": {
+      "total": 205,
+      "covered": 205,
+      "skipped": 0,
+      "pct": 100
+    },
+    "functions": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    },
+    "statements": {
+      "total": 205,
+      "covered": 205,
+      "skipped": 0,
+      "pct": 100
+    },
+    "branches": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "src/features/document-translation/public.ts": {
+    "lines": {
+      "total": 2,
+      "covered": 2,
+      "skipped": 0,
+      "pct": 100
+    },
+    "functions": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    },
+    "statements": {
+      "total": 2,
+      "covered": 2,
+      "skipped": 0,
+      "pct": 100
+    },
+    "branches": {
+      "total": 2,
+      "covered": 2,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "src/features/document-translation/core/pdfSource.ts": {
+    "lines": {
+      "total": 25,
+      "covered": 25,
+      "skipped": 0,
+      "pct": 100
+    },
+    "functions": {
+      "total": 4,
+      "covered": 4,
+      "skipped": 0,
+      "pct": 100
+    },
+    "statements": {
+      "total": 25,
+      "covered": 25,
+      "skipped": 0,
+      "pct": 100
+    },
+    "branches": {
+      "total": 20,
+      "covered": 20,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "src/features/document-translation/services/pdfSource.ts": {
+    "lines": {
+      "total": 55,
+      "covered": 55,
+      "skipped": 0,
+      "pct": 100
+    },
+    "functions": {
+      "total": 4,
+      "covered": 4,
+      "skipped": 0,
+      "pct": 100
+    },
+    "statements": {
+      "total": 55,
+      "covered": 55,
+      "skipped": 0,
+      "pct": 100
+    },
+    "branches": {
+      "total": 50,
+      "covered": 50,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "src/features/document-translation/ui/pdfReader.ts": {
+    "lines": {
+      "total": 227,
+      "covered": 227,
+      "skipped": 0,
+      "pct": 100
+    },
+    "functions": {
+      "total": 20,
+      "covered": 20,
+      "skipped": 0,
+      "pct": 100
+    },
+    "statements": {
+      "total": 227,
+      "covered": 227,
+      "skipped": 0,
+      "pct": 100
+    },
+    "branches": {
+      "total": 142,
+      "covered": 142,
+      "skipped": 0,
+      "pct": 100
+    }
+  }
+}

@@ -3,10 +3,12 @@
  * 同目标语言重复翻译的历史缺陷最小复现，只使用长期公开的 detect 与全文槽请求 API。
  * 旧实现失败条件：ISO 639-3 结果未统一导致德/葡/意同目标不跳过；排除语言与目标语言结论不一致；
  * 少于 50 个字母的明确短句一律放行；日/韩正文中的 GPT-6 Sol 被当成外语；未配置排除语言时
- * 富文本槽只做字符集快判，同目标德语槽仍被提交。检测均调用真实 franc-min，不 mock 识别结果。
+ * 富文本槽只做字符集快判，同目标德语槽仍被提交；PR #906 中文段落内密集技术名词误触发翻译。
+ * 检测均调用真实 franc-min，不 mock 识别结果；PR 正文夹带完整英文句子仍须翻译。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import modelPost from './fixtures/chinese-language-model-post.json';
+import pr906Paragraphs from './fixtures/chinese-technical-pr-906.json';
 
 const runtime = vi.hoisted(() => ({
     requests: [] as string[][],
@@ -48,6 +50,7 @@ const longGerman = 'Dieser deutsche Absatz beschreibt die verschiedenen Einstell
 const longPortuguese = 'Este é um parágrafo em português que descreve as configurações do aplicativo e a tradução automática.';
 const longItalian = 'Questo paragrafo italiano descrive le impostazioni dell\'applicazione e la traduzione automatica.';
 const releaseNote = '云端模型清单允许清空，且不再连带拒掉无关偏好的保存 (84522b3)';
+const adjacentEnglish = 'This English sentence still needs a Chinese translation for the reader.';
 
 describe('同目标语言跳过：历史失败条件', () => {
     beforeEach(() => {
@@ -106,6 +109,36 @@ describe('同目标语言跳过：历史失败条件', () => {
         expect(shouldSkipTranslationForTarget(text, 'zh-Hans')).toBe(true);
         expect(shouldSkipTranslationForTarget(text, 'zh-Hant')).toBe(false);
         expect(shouldSkipTranslationForTarget(text, 'en')).toBe(false);
+    });
+
+    // 原文逐字来自 https://github.com/FluentRead/FluentRead/pull/906 正文前四段。
+    it.each([...pr906Paragraphs, pr906Paragraphs.join('\n\n')])('PR #906 含大量技术名称的中文仍识别简体中文，英文目标保留翻译 %#', text => {
+        expect(detectlang(text)).toBe('zh-Hans');
+        expect(shouldSkipTranslationForTarget(text, 'zh-Hans')).toBe(true);
+        expect(shouldSkipTranslationForTarget(text, 'zh-Hant')).toBe(false);
+        expect(shouldSkipTranslationForTarget(text, 'en')).toBe(false);
+        expect(shouldSkipTranslationForTarget(`${text} ${adjacentEnglish}`, 'zh-Hans')).toBe(false);
+    });
+
+    it('PR #906 四个中文技术槽在简体目标下零请求，保持逐字原文', async () => {
+        runtime.config.to = 'zh-Hans';
+        await expect(translateTextSlots(pr906Paragraphs, captureFullPageTranslationConfig())).resolves.toEqual(pr906Paragraphs);
+        expect(runtime.requests).toEqual([]);
+    });
+
+    it('PR #906 中文技术槽旁边的真实英文句子仍翻译并保持原索引', async () => {
+        runtime.config.to = 'zh-Hans';
+        const slots = [pr906Paragraphs[0]!, adjacentEnglish, ...pr906Paragraphs.slice(1)];
+        await expect(translateTextSlots(slots, captureFullPageTranslationConfig()))
+            .resolves.toEqual([pr906Paragraphs[0], `T(${adjacentEnglish})`, ...pr906Paragraphs.slice(1)]);
+        expect(runtime.requests).toEqual([[adjacentEnglish]]);
+    });
+
+    it('PR #906 中文技术槽切到英文目标时四段仍请求', async () => {
+        runtime.config.to = 'en';
+        await expect(translateTextSlots(pr906Paragraphs, captureFullPageTranslationConfig()))
+            .resolves.toEqual(pr906Paragraphs.map(text => `T(${text})`));
+        expect(runtime.requests).toEqual([pr906Paragraphs]);
     });
 
     it('未配置排除语言时富文本槽也执行完整同目标判断，只提交相邻外语槽', async () => {

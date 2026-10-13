@@ -1,7 +1,7 @@
 /**
  * @file src/services/translation/cache.ts
  *
- * 文件职责：实现扩展自有的翻译结果缓存，统一键规范化、TTL、可配置双容量限制、内存热层和 Dexie 持久层。
+ * 文件职责：实现扩展自有的翻译结果缓存，统一键规范化、确定超限写入的早拒绝、TTL、可配置双容量限制、内存热层和 Dexie 持久层。
  * 主要内容：定义缓存 identity/record、canonicalize 与 buildTranslationCacheKey，维护 FluentReadCacheDatabase 与事务内增量用量汇总，并通过 translationCache 提供读取、写入、按短窗口合批写回的持久化 LRU、过期清理、阈值设置和用量统计；缓存读写故障降级，管理故障向 UI 如实报告。 可核对的公开符号包括 TRANSLATION_CACHE_VERSION、TRANSLATION_CACHE_TTL_MS、TRANSLATION_CACHE_MAX_ENTRY_BYTES、TRANSLATION_CACHE_MEMORY_ENTRIES、TranslationCacheIdentity、TranslationCacheRecord。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
@@ -281,6 +281,9 @@ class TranslationCache {
   }
 
   async set(key: string, translation: string, now = Date.now()): Promise<boolean> {
+    // UTF-16 单元数只是字节下界：仅提前拒绝确定超限的字符串，其余仍按原计费。
+    if (typeof key === 'string' && typeof translation === 'string'
+      && key.length + translation.length > TRANSLATION_CACHE_MAX_ENTRY_BYTES) return false;
     const byteSize = getByteSize(key) + getByteSize(translation);
     if (!translation || byteSize > TRANSLATION_CACHE_MAX_ENTRY_BYTES) return false;
     const record: TranslationCacheRecord = {

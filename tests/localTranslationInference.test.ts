@@ -1,10 +1,11 @@
+import {resolveLocalTranslationLanguageCode} from '@/src/core/language/localTranslation';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {supportsHunyuanTranslation} from '@/src/platform/browser/localTranslationSupport';
 import {readFileSync} from 'node:fs';
 import {prepareWllamaExtensionModule} from '../scripts/testing/wllama-extension-build';
 import * as messages from '@/src/core/i18n/messages/localTranslation';
 import {assertLocalTranslationOutput, hunyuanTranslationPrompt, splitLocalTranslationText} from '@/src/core/translation/localInference';
-import {LOCAL_TRANSLATION_MODEL_IDS as ids, resolveLocalTranslationLanguageCode, resolveOpusTranslationRepository} from '@/src/core/config/localTranslation';
+import {LOCAL_TRANSLATION_MODEL_IDS as ids, resolveOpusTranslationRepository} from '@/src/core/config/localTranslation';
 
 describe('local model language routes and bounded generation', () => {
   it('packages the pinned Hunyuan worker without a blob Worker or runtime evaluation', () => {

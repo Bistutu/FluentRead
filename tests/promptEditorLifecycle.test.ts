@@ -1,7 +1,7 @@
 /**
  * @file tests/promptEditorLifecycle.test.ts
  * 文件职责：验证实际提示词与输入框配置组件的组合输入、变量插入、配置归属和焦点生命周期。
- * 主要内容：执行真实缓存客户端模板与 DOM 事件，覆盖旧回调、字符容量、连续插入、有效配置选择和凭据读取范围。
+ * 主要内容：执行真实缓存客户端模板与 DOM 事件，覆盖旧回调、字符容量、连续插入、有效配置选择和凭据读取范围；验证B站固定模型、免密钥提示、基础动作预览与默认动作临时回退、禁用动作偏好保留和完整AI切回恢复。
  * 模块边界：Linkedom 保留实际节点树，展示控件与焦点为受控端口；不调用翻译或验证系统输入法。
  */
 import {createRequire} from 'node:module'
@@ -15,6 +15,7 @@ import ts from 'typescript'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {createApiKeyRequirementKey} from '@/src/core/config/validation'
+import {BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation'
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
 let server: ViteDevServer, app: import('vue').App, document: Document, win: any, focused: Element | null
@@ -22,6 +23,7 @@ let state: Record<string, any>, props: Record<string, any>, shown: import('vue')
 let events: Map<Element, Record<string, any>>
 const updates = vi.fn(), focus = vi.fn(), selectionRange = vi.fn()
 const promptPath = 'src/features/settings/ui/services/PromptTemplateEditor.vue', inputPath = 'src/features/settings/ui/InputTranslationSettings.vue'
+const harnessPath = 'src/features/settings/ui/HarnessSettings.vue'
 async function settle() {await runtime.nextTick();await Promise.resolve();await runtime.nextTick()}
 beforeEach(async () => {
   vi.clearAllMocks();events = new Map();const parsed = parseHTML('<html><body><div id="app"></div></body></html>');win = parsed.window;document = win.document;focused = document.body
@@ -30,12 +32,14 @@ beforeEach(async () => {
   server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent', resolve: {alias: {'@': process.cwd()}}, server: {hmr: false, middlewareMode: true},
     ssr: {noExternal: ['element-plus', '@element-plus/icons-vue']}, plugins: [{name: 'prompt-profile-controlled-ports', enforce: 'pre', resolveId(id) {
       if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0prompt-i18n'
+      if (/\/src\/features\/reading-assistant\/public(?:\.ts)?$/u.test(id)) return '\0harness-reading-display'
       if (id === 'element-plus') return '\0prompt-element'
       if (id === '@element-plus/icons-vue') return '\0prompt-icons'
-      if (id.endsWith('.vue') && !/\/(?:PromptTemplateEditor|InputTranslationSettings)\.vue$/u.test(id)) return '\0prompt-display'
+      if (id.endsWith('.vue') && !/\/(?:PromptTemplateEditor|InputTranslationSettings|HarnessSettings)\.vue$/u.test(id)) return '\0prompt-display'
       return null
     }, load(id) {
       if (id === '\0prompt-i18n') return "import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: key => key, translateLegacy: text => text})"
+      if (id === '\0harness-reading-display') return "import {h} from 'vue';export const ReadingAnswer = {setup() {return () => h('div')}}"
       if (id === '\0prompt-element') return "import {h, getCurrentInstance} from 'vue';export const ElPopover = {setup(_, {attrs, slots}) {const instance = getCurrentInstance();return () => h('div', {...attrs, 'data-timing-port-key': instance.vnode.key}, [slots.reference?.(), slots.default?.()])}}"
       if (id === '\0prompt-icons') return 'export const ArrowDown = {}, WarningFilled = {}'
       if (id === '\0prompt-display') return "import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, [slots.copy?.(), slots.default?.()])}}"
@@ -93,6 +97,59 @@ function invalidate(reason: string) {
 function profile() {const config = runtime.reactive(new Config());config.service = 'openai';config.inputBoxTranslationService = 'openai';config.model.openai = 'model-a';config.customModels.openai = ['model-a', 'model-b'];config.inputBoxTranslationTrigger = 'triple_space';return config}
 const services = [{value: 'openai', label: 'OpenAI'}, {value: 'microsoft', label: 'Microsoft'}, {value: 'custom:input', label: 'Custom'}, {value: 'blocked', label: 'Blocked', disabled: true}]
 async function mountInput(config = profile(), values: Record<string, unknown> = {}) {await mount(inputPath, {config, serviceOptions: services, ...values}, {'onTrigger-change': updates})}
+
+describe('学习讲解服务设置的实际组件切换', () => {
+  it('选择免费B站后显示固定模型与免密钥说明，保留默认关闭并可切回普通模型编辑', async () => {
+    const config = runtime.reactive(new Config()); config.service = 'openai'; config.model.openai = 'reader'
+    await mount(harnessPath, {config})
+    expect(document.querySelector('.harness-fixed-model')).toBeNull()
+    const selector = document.querySelector('[aria-label="学习讲解服务"]')!
+    eventOf(selector, 'onUpdate:modelValue')('bilibili'); eventOf(selector, 'onChange')(); await settle()
+    expect(config.harness.enabled).toBe(false); expect(config.harness.service).toBe('bilibili')
+    expect(document.querySelector('.harness-fixed-model')?.textContent).toBe(BILIBILI_FREE_TRANSLATION_MODEL)
+    expect(document.querySelector('.harness-free-hint')?.textContent).toContain('无需 API Key')
+    expect(document.querySelector('[aria-label="学习讲解模型"]')?.tagName).toBe('DIV')
+    expect(state.serviceOptions.find((item: any) => item.value === 'bilibili').label).toContain('免费')
+    eventOf(selector, 'onUpdate:modelValue')('openai'); eventOf(selector, 'onChange')(); await settle()
+    expect(document.querySelector('.harness-fixed-model')).toBeNull(); expect(document.querySelector('.harness-free-hint')).toBeNull()
+    eventOf(document.querySelector('[aria-label="学习讲解模型"]')!, 'onUpdate:modelValue')('custom-reader')
+    expect(config.harness.model).toBe('custom-reader')
+  })
+  it('跟随默认B站时同样显示固定模型，切换为不支持的机器服务后提示配置', async () => {
+    const config = runtime.reactive(new Config()); config.service = 'bilibili'; config.harness.model = 'unused'
+    await mount(harnessPath, {config})
+    expect(document.querySelector('.harness-fixed-model')?.textContent).toBe(BILIBILI_FREE_TRANSLATION_MODEL)
+    expect(document.querySelector('#harness-service-hint')).toBeNull()
+    config.service = 'microsoft'; await settle()
+    expect(document.querySelector('.harness-fixed-model')).toBeNull()
+    expect(document.querySelector('#harness-service-hint')?.textContent).toContain('不能回答学习问题')
+  })
+  it('B站只预览基础动作并临时显示默认回退，禁用动作保留偏好且切回AI恢复', async () => {
+    const config = runtime.reactive(new Config()); config.service = 'openai'; config.harness.defaultAction = 'grammar'
+    const storedActions = [...config.harness.actions]
+    await mount(harnessPath, {config})
+    expect(state.previewAction).toBe('grammar')
+    const selector = document.querySelector('[aria-label="学习讲解服务"]')!
+    eventOf(selector, 'onUpdate:modelValue')('bilibili'); eventOf(selector, 'onChange')(); await settle()
+    expect(state.visibleActions.map((action: any) => action.id)).toEqual(['meaning', 'usage'])
+    expect(state.previewAction).toBe('meaning')
+    expect((document.querySelector('[aria-label="默认动作"]') as HTMLInputElement).value).toBe('meaning')
+    expect(document.querySelector('.harness-default-hint')?.textContent).toContain('恢复原默认动作')
+    const inputs = [...document.querySelectorAll('.harness-actions input')]
+    expect(inputs[1].hasAttribute('disabled')).toBe(true); expect(inputs[3].hasAttribute('disabled')).toBe(true)
+    eventOf(inputs[1], 'onChange')(); state.toggleAction('practice')
+    eventOf(document.querySelector('[aria-label="默认动作"]')!, 'onUpdate:modelValue')('grammar')
+    expect(config.harness.actions).toEqual(storedActions); expect(config.harness.defaultAction).toBe('grammar')
+    expect(document.querySelector('.harness-free-hint')?.textContent).toContain('完整语法、练习和追问可切换 AI 服务')
+    eventOf(selector, 'onUpdate:modelValue')('openai'); eventOf(selector, 'onChange')(); await settle()
+    expect(state.visibleActions.map((action: any) => action.id)).toEqual(['meaning', 'grammar', 'usage', 'practice'])
+    expect(state.previewAction).toBe('grammar')
+    expect((document.querySelector('[aria-label="默认动作"]') as HTMLInputElement).value).toBe('grammar')
+    expect(document.querySelector('.harness-default-hint')).toBeNull()
+    expect(document.querySelectorAll('.harness-actions input')[1].hasAttribute('disabled')).toBe(false)
+    expect(config.harness.actions).toEqual(storedActions); expect(config.harness.defaultAction).toBe('grammar')
+  })
+})
 
 describe('提示词实际 DOM 的输入与焦点归属', () => {
   it.each(['hidden', 'cached', 'unmount', 'context', 'role'])('%s之后旧组合结束与 input 不再提交', async reason => {

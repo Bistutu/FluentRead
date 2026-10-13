@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/playerMenu.ts
- * 文件职责：组装播放器字幕菜单，以紧凑行呈现显示方式、字幕时间、本地 AI 字幕与下载操作，并在同一弹层内提供模型下载确认。
- * 主要内容：X 首层聚焦显示方式和当前需要的操作，校时、导出和重新识别放在可返回的选项页；复用稳定节点呈现字幕来源、故障恢复、实际音频读取及并行识别进度、模型下载进度和模型确认。
+ * 文件职责：组装播放器字幕菜单，以紧凑行呈现显示方式、字幕时间、本地 AI 字幕与下载与完整句学习入口，并在同一弹层内提供模型下载确认。
+ * 主要内容：X 首层聚焦显示方式和当前需要的操作，模型选择、校时、导出和重新识别放在可返回的选项页；复用稳定节点呈现字幕来源、故障恢复、实际音频读取及并行识别进度、模型下载进度和模型确认，生成预览期间不开放完整字幕导出。
  * 模块边界：只操作 FluentRead 自己的菜单节点，不读取存储、不发起识别或绑定全局事件；运行时负责配置、请求与清理。
  */
 import type {VideoSubtitleDisplayMode} from '@/src/core/config/model';
@@ -31,7 +31,7 @@ const WIDE_LAYOUT_MIN_PLAYER_WIDTH_PX = 300;
 /** 单列菜单高度超过播放器可用高度的这一比例时，改用更矮的双列，留出画面上半部分。 */
 const STACK_LAYOUT_MAX_HEIGHT_RATIO = .8;
 
-type IconName = 'settings' | 'minus' | 'plus' | 'reset' | 'sparkle' | 'download' | 'close' | 'back' | 'next';
+type IconName = 'settings' | 'minus' | 'plus' | 'reset' | 'sparkle' | 'download' | 'close' | 'back' | 'next' | 'learning';
 const ICON_PATHS: Record<IconName, string[]> = {
     settings: ['M4 7h9', 'M17 7h3', 'M4 17h3', 'M11 17h9', 'M15 5v4', 'M9 15v4'],
     minus: ['M6 12h12'],
@@ -42,6 +42,7 @@ const ICON_PATHS: Record<IconName, string[]> = {
     close: ['M7 7l10 10', 'M17 7 7 17'],
     back: ['M14 6l-6 6 6 6'],
     next: ['M10 6l6 6-6 6'],
+    learning: ['M5 4h14v16H5z', 'M8 8h8', 'M8 12h5'],
 };
 
 // YouTube 启用 Trusted Types，图标只能逐个创建节点，不能写入 innerHTML。
@@ -190,6 +191,17 @@ function createDownloadStatus(): HTMLElement {
     return status;
 }
 
+function createAiModelSelection(): HTMLButtonElement {
+    const button = createButton('fluent-read-video-menu-item fluent-read-video-menu-model', {
+        'data-action': 'select-ai-model', role: 'menuitem',
+        'aria-controls': 'fluent-read-video-model-prompt', 'aria-expanded': 'false',
+    });
+    // 运行时确认 X 本地能力和配置状态后才显示，其他平台不引入空入口。
+    button.hidden = true;
+    button.append(createTextElement('span', 'fluent-read-video-menu-label', ''), createIcon('next'));
+    return button;
+}
+
 /** 菜单始终由同一组节点更新，避免进度变化时丢失焦点与键盘状态。 */
 export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration: boolean): HTMLElement {
     const menu = document.createElement('div');
@@ -206,6 +218,9 @@ export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration:
 
     const main = createTextElement('div', 'fluent-read-video-menu-main', '');
     main.appendChild(createHeader(language, withLocalGeneration));
+    const learning = createButton('fluent-read-video-menu-item fluent-read-video-menu-learning', {'data-action': 'open-sentence-learning', role: 'menuitem'});
+    learning.append(createIcon('learning'), keyedText('span', 'fluent-read-video-menu-learning-label', 'video.learning.start', language), createIcon('next'));
+    main.appendChild(learning);
     if (withLocalGeneration) {
         const watch = createTextElement('div', 'fluent-read-video-menu-watch', '');
         const primary = createTextElement('div', 'fluent-read-video-menu-primary-ai', '');
@@ -233,7 +248,7 @@ export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration:
         regenerate.dataset.action = 'regenerate-ai-subtitle';
         regenerate.setAttribute('role', 'menuitem');
         regenerate.hidden = true;
-        tools.append(createTimingRow(language), downloads, secondary, regenerate);
+        tools.append(createAiModelSelection(), createTimingRow(language), downloads, secondary, regenerate);
         main.append(watch, tools);
         menu.append(main, createModelPrompt(language));
         return menu;
@@ -294,6 +309,8 @@ export interface VideoSourceStatus {
     generating: boolean;
     translationFailed: boolean;
     canRegenerate: boolean;
+    /** 本地模型选择不依赖字幕来源，尚无字幕时也可打开工具页。 */
+    canChooseModel?: boolean;
 }
 
 const renderingSourceMenus = new WeakSet<HTMLElement>();
@@ -351,11 +368,11 @@ function renderSourceStatus(menu: HTMLElement, state: VideoSourceStatus, languag
     group.querySelector<HTMLElement>('.fluent-read-video-menu-source-actions')!.hidden = !state.enabled || !state.translationFailed;
     menu.querySelector<HTMLButtonElement>('[data-action="regenerate-ai-subtitle"]')!.hidden = !state.canRegenerate;
     const canResetTiming = menu.querySelector<HTMLElement>('[data-timing-row]')?.hidden === false;
-    menu.querySelector<HTMLElement>('[data-action="open-subtitle-tools"]')!.hidden = !state.enabled || (state.source === 'none' && !canResetTiming);
+    menu.querySelector<HTMLElement>('[data-action="open-subtitle-tools"]')!.hidden = !state.enabled || (state.source === 'none' && !canResetTiming && !state.canChooseModel);
     for (const button of menu.querySelectorAll<HTMLButtonElement>('.fluent-read-video-menu-download')) {
         // 导出中由原操作释放按钮；来源刷新不能提前解除 busy 状态。
         if (button.getAttribute('aria-busy') === 'true') continue;
-        button.disabled = !state.enabled || state.cueCount === 0;
+        button.disabled = !state.enabled || state.cueCount === 0 || (state.source === 'ai' && state.generating);
     }
 }
 
@@ -507,6 +524,14 @@ export interface VideoModelPromptState {
     readonly downloaded: readonly VideoLocalTranscriptionModel[];
     readonly recommended: VideoLocalTranscriptionModel;
     readonly selected: VideoLocalTranscriptionModel;
+    /** 同一菜单视图可用于首次下载或用户主动更换当前识别模型。 */
+    readonly purpose?: 'setup' | 'selection';
+}
+
+export interface VideoAiModelSelectionState {
+    readonly model: VideoLocalTranscriptionModel;
+    readonly available: boolean;
+    readonly disabled: boolean;
 }
 
 const MODEL_NAME_KEYS: Record<VideoLocalTranscriptionModel, [name: string, hint: string]> = {
@@ -515,8 +540,28 @@ const MODEL_NAME_KEYS: Record<VideoLocalTranscriptionModel, [name: string, hint:
     small: ['video.modelSmallName', 'video.modelSmallHint'],
 };
 
+/** 只呈现当前配置与是否可操作，不替用户选择模型或中断现有字幕。 */
+export function renderVideoAiModelSelection(menu: HTMLElement, state: VideoAiModelSelectionState, language: UiLanguage): void {
+    const button = menu.querySelector<HTMLButtonElement>('[data-action="select-ai-model"]');
+    if (!button) return;
+    const params = {model: translateVideoUi(MODEL_NAME_KEYS[state.model][0], language)};
+    button.hidden = !state.available;
+    button.disabled = !state.available || state.disabled;
+    button.dataset.model = state.model;
+    button.dataset.i18nAriaKey = 'video.modelSelectionAria';
+    button.dataset.i18nParams = JSON.stringify(params);
+    setAccessibleName(button, translateVideoUi('video.modelSelectionAria', language, params));
+    button.setAttribute('aria-expanded', String(menu.dataset.view === 'model-prompt'
+        && menu.querySelector<HTMLElement>('[data-model-prompt]')?.dataset.purpose === 'selection'));
+    const label = button.querySelector<HTMLElement>('.fluent-read-video-menu-label')!;
+    label.dataset.i18nKey = 'video.modelSelection';
+    label.dataset.i18nParams = JSON.stringify(params);
+    label.textContent = translateVideoUi('video.modelSelection', language, params);
+}
+
 function createModelPrompt(language: UiLanguage): HTMLElement {
     const prompt = createTextElement('section', 'fluent-read-video-model-prompt', '');
+    prompt.id = 'fluent-read-video-model-prompt';
     prompt.dataset.modelPrompt = 'true';
     prompt.hidden = true;
     prompt.setAttribute('role', 'group');
@@ -571,13 +616,23 @@ function renderModelOption(option: VideoModelPromptOption, state: VideoModelProm
 export function renderVideoModelPrompt(menu: HTMLElement, state: VideoModelPromptState | null, language: UiLanguage): void {
     const prompt = menu.querySelector<HTMLElement>('[data-model-prompt]');
     if (!prompt) return;
+    if (menu.dataset.view === 'export-prompt' && !state) return;
     const main = menu.querySelector<HTMLElement>('.fluent-read-video-menu-main')!;
+    menu.querySelector<HTMLElement>('[data-action="select-ai-model"]')?.setAttribute('aria-expanded', String(state?.purpose === 'selection'));
     if (!state) {
         prompt.hidden = true;
         main.hidden = false;
         menu.dataset.view = 'main';
         return;
     }
+    const selection = state.purpose === 'selection';
+    prompt.dataset.purpose = selection ? 'selection' : 'setup';
+    const title = prompt.querySelector<HTMLElement>('.fluent-read-video-model-prompt-title')!;
+    title.dataset.i18nKey = selection ? 'video.modelSelectionTitle' : 'video.modelPromptTitle';
+    title.textContent = translateVideoUi(title.dataset.i18nKey, language);
+    const description = prompt.querySelector<HTMLElement>('.fluent-read-video-model-prompt-description')!;
+    description.dataset.i18nKey = selection ? 'video.modelSelectionDescription' : 'video.modelPromptDescription';
+    description.textContent = translateVideoUi(description.dataset.i18nKey, language);
     // 菜单状态每秒都会刷新；选项只在内容变化时重建，切换选择时原地更新，避免移除正在聚焦的按钮。
     const options = prompt.querySelector<HTMLElement>('[data-model-options]')!;
     const optionsKey = JSON.stringify([language, state.recommended, state.downloaded, state.options]);
@@ -602,6 +657,22 @@ export function isVideoModelPromptOpen(menu: HTMLElement): boolean {
     return menu.dataset.view === 'model-prompt';
 }
 
+/** 退出原位模型视图后只恢复可见操作的焦点，不切换工具页或播放器。 */
+export function focusVideoModelPromptReturn(menu: HTMLElement, purpose?: 'selection'): void {
+    const selectors = [
+        ...(purpose === 'selection' ? ['[data-action="select-ai-model"]'] : []),
+        '[data-action="toggle-ai-subtitle"]',
+        '[data-action="close-subtitle-tools"]',
+        '[data-mode][aria-checked="true"]',
+    ];
+    for (const selector of selectors) {
+        const button = menu.querySelector<HTMLButtonElement>(selector);
+        if (!button || button.disabled || button.closest('[hidden]')) continue;
+        button.focus();
+        return;
+    }
+}
+
 /**
  * 菜单挂在播放器内，只能按播放器实际尺寸选择布局。矮而宽的播放器（手机横屏视频、
  * 小窗口）改为双列，避免单列菜单遮住整个画面还需要滚动；其余情况保持单列。
@@ -614,7 +685,7 @@ export function syncVideoPlayerMenuLayout(menu: HTMLElement): void {
     const height = player.clientHeight;
     if (!width || !height) return;
     // X 观看首页已精简，不再因为少量说明把菜单拉成 440px 的横向面板。
-    if (menu.dataset.compact === 'true' && menu.dataset.panel === 'watch' && menu.dataset.view !== 'model-prompt') {
+    if (menu.dataset.compact === 'true' && menu.dataset.panel === 'watch' && menu.dataset.view === 'main') {
         menu.dataset.layout = 'stack';
         return;
     }

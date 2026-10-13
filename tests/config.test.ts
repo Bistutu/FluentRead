@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import * as ts from 'typescript';
 import { Config, normalizeConfig } from '@/src/core/config/model';
+import {GLOSSARY_LIMITS} from '@/src/core/glossary';
 describe('单图本地识别方式配置', () => {
     it('新配置、缺失和非法值默认 PaddleOCR，显式引擎选择可往返且不改变漫画开关', () => {
         expect(new Config().imageTranslationOcrEngine).toBe('paddle');
@@ -18,13 +19,13 @@ describe('单图本地识别方式配置', () => {
     });
 });
 describe('多语种视频模型配置兼容', () => {
-    it('新配置推荐 Small，已有缺失或非法选择保留过去的 Tiny 默认', () => {
+    it('新配置、已有缺失字段和非法选择统一使用 Small 默认', () => {
         expect(new Config().videoLocalModel).toBe('small');
         expect(normalizeConfig(undefined).videoLocalModel).toBe('small');
         expect(normalizeConfig({}).videoLocalModel).toBe('small');
-        expect(normalizeConfig({on: true}).videoLocalModel).toBe('tiny');
-        for (const videoLocalModel of [undefined, null, 'large', {}, true]) {
-            expect(normalizeConfig({videoLocalModel}).videoLocalModel).toBe('tiny');
+        expect(normalizeConfig({on: true}).videoLocalModel).toBe('small');
+        for (const videoLocalModel of [undefined, null, '', 'large', {}, [], true, 1]) {
+            expect(normalizeConfig({videoLocalModel}).videoLocalModel).toBe('small');
         }
     });
     it('保留三种用户选择及导入导出，不把已下载的轻量偏好迁移到质量模型', () => {
@@ -148,6 +149,23 @@ async function loadConfigModule(value: unknown = null, options: LoadConfigOption
         return () => storageWatchers.delete(key);
     });
     return import('@/src/services/config/store');
+}
+
+function createMaximumGlossaryLibraries() {
+    return Array.from({length: GLOSSARY_LIMITS.totalEntries / GLOSSARY_LIMITS.entriesPerLibrary}, (_, library) => ({
+        id: `patch-library-${library}`,
+        name: `Patch library ${library}`,
+        enabled: true,
+        sourceLanguage: 'en',
+        targetLanguage: 'zh-Hans',
+        domains: ['example.com'],
+        entries: Array.from({length: GLOSSARY_LIMITS.entriesPerLibrary}, (_, entry) => ({
+            id: `entry-${entry}`,
+            source: `source-${library}-${entry}`,
+            target: `target-${library}-${entry}`,
+            caseSensitive: false,
+        })),
+    }));
 }
 
 describe('统一配置存储', () => {
@@ -556,7 +574,7 @@ describe('统一配置存储', () => {
         expect(configStore.config.selectionAreaEnabled).toBe(true);
         expect(configStore.config.disableImageTranslator).toBe(true);
         expect(configStore.config.videoService).toBe('');
-        expect(configStore.config.videoLocalModel).toBe('tiny');
+        expect(configStore.config.videoLocalModel).toBe('small');
         expect(configStore.config.videoSubtitleVisible).toBe(true);
         expect(configStore.config.videoSubtitleDisplayMode).toBe('bilingual');
         expect(configStore.config.videoSubtitleFontSize).toBe(100);
@@ -635,12 +653,12 @@ describe('统一配置存储', () => {
         expect(configStore.config.videoSubtitleFontSize).toBe(100);
     });
 
-    it('非法的本地视频 Whisper 模型回退到 Tiny', async () => {
+    it('非法的本地视频 Whisper 模型回退到 Small', async () => {
         const configStore = await loadConfigModule({ ...storedConfig, videoLocalModel: 'large' });
 
         await configStore.configReady;
 
-        expect(configStore.config.videoLocalModel).toBe('tiny');
+        expect(configStore.config.videoLocalModel).toBe('small');
     });
 
     it('存储内容损坏时回退到默认配置，并保持初始化 Promise 可用', async () => {
@@ -1815,6 +1833,85 @@ describe('统一配置存储', () => {
         expect(extensionPrepared.videoServiceDefaultMigrated).toBe(true);
     });
 
+    it('公共单字段补丁复用大型术语基线，保留公共归一化与结果嵌套隔离', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await configStore.configReady;
+        const model = await import('@/src/core/config/model');
+        const current = model.normalizeConfig({glossaryLibraries: createMaximumGlossaryLibraries()});
+        const normalize = vi.spyOn(model, 'normalizeConfig');
+        try {
+            const trusted = configStore.prepareConfigPatchRequest({theme: 'dark'}, {theme: current.theme}, current, true);
+            // current、候选 patch、目的地绑定及最终独立副本各扫描一次，普通 patch 不重复生成 token 候选。
+            expect(normalize).toHaveBeenCalledTimes(4);
+            normalize.mockClear();
+            const untrusted = configStore.prepareConfigPatchRequest({theme: 'dark'}, {theme: current.theme}, current, false);
+            expect(normalize).toHaveBeenCalledTimes(3);
+            expect(trusted.glossaryLibraries.reduce((count, library) => count + library.entries.length, 0)).toBe(GLOSSARY_LIMITS.totalEntries);
+            expect(trusted.glossaryLibraries).toEqual(current.glossaryLibraries);
+            expect(untrusted.glossaryLibraries).toEqual(current.glossaryLibraries);
+            trusted.glossaryLibraries[0].entries[0].target = 'edited-result';
+            trusted.glossaryLibraries[0].domains.push('result.example');
+            expect(current.glossaryLibraries[0].entries[0].target).toBe('target-0-0');
+            expect(current.glossaryLibraries[0].domains).toEqual(['example.com']);
+            expect(untrusted.glossaryLibraries[0].entries[0].target).toBe('target-0-0');
+            current.glossaryLibraries[1].entries[0].target = 'edited-source';
+            expect(trusted.glossaryLibraries[1].entries[0].target).toBe('target-1-0');
+            const malformedCurrent = {...current, videoSubtitleVisible: 'invalid-boolean'};
+            const normalizedPublicInput = configStore.prepareConfigPatchRequest({videoSubtitleVisible: false}, {videoSubtitleVisible: true}, malformedCurrent, false);
+            expect(normalizedPublicInput.videoSubtitleVisible).toBe(false);
+            expect(malformedCurrent.videoSubtitleVisible).toBe('invalid-boolean');
+        } finally {
+            normalize.mockRestore();
+        }
+    });
+
+    it('客户端单字段补丁同步阶段只扫描七次大型术语配置，仍先乐观更新并在失败后回滚', async () => {
+        const canonical = sanitizeConfigCredentials(normalizeConfig({
+            ...storedConfig,
+            glossaryLibraries: createMaximumGlossaryLibraries(),
+        }));
+        const configStore = await loadConfigModule({...canonical, __fluentConfigRevision: 4}, {writeOwner: false});
+        await configStore.configReady;
+        const model = await import('@/src/core/config/model');
+        const normalize = vi.spyOn(model, 'normalizeConfig');
+        let request!: Promise<void>;
+        try {
+            request = configStore.requestConfigPatch({theme: 'dark'}, async () => ({success: false, error: 'fixture-patch-rejected'}));
+            expect(normalize).toHaveBeenCalledTimes(7);
+            expect(configStore.config.theme).toBe('dark');
+            expect(configStore.config.glossaryLibraries.reduce((count, library) => count + library.entries.length, 0)).toBe(GLOSSARY_LIMITS.totalEntries);
+            (canonical.glossaryLibraries as Config['glossaryLibraries'])[0].entries[0].target = 'edited-storage-input';
+            expect(configStore.config.glossaryLibraries[0].entries[0].target).toBe('target-0-0');
+        } finally {
+            normalize.mockRestore();
+            await expect(request).rejects.toThrow('fixture-patch-rejected');
+        }
+        expect(configStore.config.theme).toBe('auto');
+        expect(configStore.getConfigRevision()).toBe(4);
+    });
+
+    it('旧 token 候选复用只跳过未派生变更，轮换清空和多 Key 仍遵循显式字段 CAS', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await configStore.configReady;
+        const current = normalizeConfig({apiKeys: {openai: ['fixture-first', 'fixture-second']}});
+        const rotated = configStore.prepareConfigPatchRequest(
+            {token: {openai: 'fixture-rotated'}},
+            {token: current.token},
+            current,
+            true,
+        );
+        expect(rotated).toMatchObject({token: {openai: 'fixture-rotated'}, apiKeys: {openai: ['fixture-rotated']}});
+        const cleared = configStore.prepareConfigPatchRequest({token: {}}, {token: current.token}, current, true);
+        expect(cleared).toMatchObject({token: {}, apiKeys: {}});
+        const explicitMultiKey = {token: {...current.token}, apiKeys: {openai: ['fixture-first', 'fixture-second']}};
+        const retained = configStore.prepareConfigPatchRequest(explicitMultiKey, {token: current.token, apiKeys: current.apiKeys}, current, true);
+        expect(retained.apiKeys.openai).toEqual(['fixture-first', 'fixture-second']);
+        expect(retained.apiKeys).not.toBe(explicitMultiKey.apiKeys);
+        expect(() => configStore.prepareConfigPatchRequest({token: {}}, {token: {}}, current, true)).toThrow('token');
+        expect(() => configStore.prepareConfigPatchRequest(explicitMultiKey, {token: current.token}, current, true)).toThrow('apiKeys');
+        expect(current.apiKeys.openai).toEqual(['fixture-first', 'fixture-second']);
+    });
+
     it('字段补丁只接受已知目标字段，并保留最新配置、统计、迁移状态与 content 凭据边界', async () => {
         const configStore = await loadConfigModule(storedConfig);
         await configStore.configReady;
@@ -2648,10 +2745,10 @@ describe('统一配置存储', () => {
         const exit = parsed.statements.find(statement => ts.isFunctionDeclaration(statement) && statement.name?.text === 'persistOnPageExit');
         expect(exit).toBeDefined();
         const exitBody = ts.transpileModule(exit!.getText(parsed), {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText;
-        const autosave = parsed.statements.find(statement => ts.isExpressionStatement(statement)
-            && ts.isCallExpression(statement.expression) && statement.expression.expression.getText(parsed) === 'watch'
-            && statement.expression.arguments[0].getText(parsed).includes('JSON.stringify(config.value)')) as ts.ExpressionStatement;
-        const callback = (autosave.expression as ts.CallExpression).arguments[1].getText(parsed);
+        const autosave = parsed.statements.flatMap(statement => ts.isVariableStatement(statement)
+            ? statement.declarationList.declarations : []).find(declaration => declaration.name.getText(parsed) === 'autosaveWatcher');
+        expect(autosave?.initializer && ts.isCallExpression(autosave.initializer)).toBe(true);
+        const callback = (autosave!.initializer as ts.CallExpression).arguments[1].getText(parsed);
         const autosaveBody = ts.transpileModule(`const onDraftChange = ${callback};`, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText;
         const warnings = {warn: vi.fn()};
         const createExit = (hydrated: boolean) => new Function(
@@ -3563,5 +3660,131 @@ describe('排除语言持久化配置', () => {
         expect(normalized.excludedLanguages).toEqual(['zh-Hant', 'en']);
         expect(normalizeConfig(JSON.parse(JSON.stringify(normalized))).excludedLanguages).toEqual(['zh-Hant', 'en']);
         expect(input.excludedLanguages).toEqual(['zh_TW', 'en', 'en', 'auto']);
+    });
+});
+
+
+/** 只记录 store 直接 new 的真实 Config；归一化及其词典/迁移规则继续 call-through。 */
+async function loadConfigSingletonOwner(synchronousWatch?: Record<string, unknown>) {
+    const directConstructions: Config[] = [];
+    let actualModel!: typeof import('@/src/core/config/model');
+    let store: typeof import('@/src/services/config/store') | undefined;
+    let restoreWatch: ((key: string, callback: (value: unknown) => void) => () => void) | undefined;
+    const previousLocation = Object.getOwnPropertyDescriptor(globalThis, 'location');
+    let release!: () => void;
+    const configReadBarrier = new Promise<void>(resolve => { release = resolve; });
+    const close = async () => {
+        release();
+        try {
+            if (store) {
+                await store.configReady;
+                await store.waitForConfigPersistenceQueue();
+            }
+        } finally {
+            if (restoreWatch) storageMock.watch.mockImplementation(restoreWatch);
+            storageWatchers.clear();
+            vi.doUnmock('@/src/core/config/model');
+            vi.resetModules();
+            if (previousLocation) Object.defineProperty(globalThis, 'location', previousLocation);
+            else Reflect.deleteProperty(globalThis, 'location');
+        }
+    };
+    vi.doMock('@/src/core/config/model', async () => {
+        actualModel = await vi.importActual<typeof import('@/src/core/config/model')>('@/src/core/config/model');
+        // 复用 loadConfigModule 安装的外部 watch 端口，只让注册本身同步发出一条实际数据。
+        if (synchronousWatch) {
+            const register = storageMock.watch.getMockImplementation()!;
+            restoreWatch = register;
+            storageMock.watch.mockImplementation((key: string, callback: (value: unknown) => void) => {
+                const dispose = register(key, callback);
+                if (key === 'local:config') callback(synchronousWatch);
+                return dispose;
+            });
+        }
+        return {...actualModel, Config: new Proxy(actualModel.Config, {
+            construct(target, argumentsList, newTarget) {
+                const instance = Reflect.construct(target, argumentsList, newTarget) as Config;
+                directConstructions.push(instance);
+                return instance;
+            },
+        })};
+    });
+    try {
+        store = await loadConfigModule(storedConfig, {trusted: false, writeOwner: false, configReadBarrier});
+        return {store, directConstructions, actualModel, release, close};
+    } catch (error) {
+        await close();
+        throw error;
+    }
+}
+
+describe('配置 store 默认字段快照复用', () => {
+    it('水合阻塞时仅构造一个真实 Config，并始终保留共享实例身份', async () => {
+        const fixture = await loadConfigSingletonOwner();
+        try {
+            expect(storageOperations).toEqual(['get:local:config']);
+            expect(fixture.directConstructions).toHaveLength(1);
+            const shared = fixture.directConstructions[0];
+            expect(fixture.store.config).toBe(shared);
+            expect(shared).toBeInstanceOf(fixture.actualModel.Config);
+            expect(shared.token).toEqual({});
+            expect(shared.secret).toEqual({});
+            fixture.release();
+            await fixture.store.configReady;
+            expect(fixture.store.config).toBe(shared);
+            expect(fixture.store.config).toMatchObject(storedConfig);
+            expect(storageOperations).toEqual(['get:local:config']);
+            expect(storageMock.setItem).not.toHaveBeenCalled();
+        } finally {
+            await fixture.close();
+        }
+    });
+
+    it('注册 watch 同步加入兼容字段时，字段快照已固定且不扩大补丁权限', async () => {
+        const synchronousWatch = {...storedConfig, theme: 'dark', synchronousFutureField: 'watch-original', __fluentConfigRevision: 7};
+        const fixture = await loadConfigSingletonOwner(synchronousWatch);
+        try {
+            expect(fixture.store.config).toMatchObject({theme: 'dark', synchronousFutureField: 'watch-original'});
+            expect(storageOperations).toEqual(['get:local:config']);
+            const shared = fixture.store.config;
+            const prepared = fixture.store.prepareConfigPatchRequest({
+                theme: 'light', synchronousFutureField: 'patch-value', count: 99,
+                token: {openai: 'content-credential'}, secret: {aliyunTranslation: 'content-secret'},
+            }, {theme: 'dark'}, shared, false);
+            expect(prepared).toMatchObject({theme: 'light', synchronousFutureField: 'watch-original', count: 0});
+            expect(prepared.token).toEqual({});
+            expect(prepared.secret).toEqual({});
+            expect(shared).toMatchObject({theme: 'dark', synchronousFutureField: 'watch-original'});
+            fixture.release();
+            await fixture.store.configReady;
+            expect(fixture.store.config).toBe(shared);
+            expect(fixture.store.config).toMatchObject({theme: 'dark', synchronousFutureField: 'watch-original'});
+            expect(fixture.store.getConfigRevision()).toBe(7);
+        } finally {
+            await fixture.close();
+        }
+    });
+
+    it('后续广播与共享对象新增兼容字段不会变成可写字段，既有字段仍受 CAS 校验', async () => {
+        const fixture = await loadConfigSingletonOwner();
+        try {
+            fixture.release();
+            await fixture.store.configReady;
+            const shared = fixture.store.config;
+            const external = {...shared, theme: 'dark', lateStoredField: 'stored-original', __fluentConfigRevision: 9};
+            storageState.set('local:config', external);
+            storageWatchers.get('local:config')!(external);
+            Object.assign(shared, {lateLocalField: 'local-original'});
+            const prepared = fixture.store.prepareConfigPatchRequest({
+                theme: 'light', lateStoredField: 'changed', lateLocalField: 'changed', newlyRequestedField: true,
+            }, {theme: 'dark'}, shared, true);
+            expect(prepared).toMatchObject({theme: 'light', lateStoredField: 'stored-original', lateLocalField: 'local-original'});
+            expect(prepared).not.toHaveProperty('newlyRequestedField');
+            expect(fixture.store.config).toBe(shared);
+            expect(shared).toMatchObject({theme: 'dark', lateStoredField: 'stored-original', lateLocalField: 'local-original'});
+            expect(() => fixture.store.prepareConfigPatchRequest({theme: 'light'}, {theme: 'auto'}, shared, true)).toThrow('theme');
+        } finally {
+            await fixture.close();
+        }
     });
 });

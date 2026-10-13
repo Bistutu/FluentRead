@@ -1,0 +1,296 @@
+{
+  "success": true,
+  "scope": "Exact download-progress storage key/channel diagnostic on an owned production extension, no ASR or model downloads",
+  "artifact": "/Users/thinkstu/Desktop/copy/FluentRead-builds/x-ai-subtitle-performance-ux-20261009-final-v4/chrome-mv3",
+  "key": "fluentReadDownloadProgress:video-model:small",
+  "checks": [
+    {
+      "name": "Trusted background/control observe exact 147000000 byte progress",
+      "pass": true,
+      "detail": {
+        "write": {
+          "loaded": 147000000,
+          "total": 588000000
+        },
+        "trustedRead": {
+          "loaded": 147000000,
+          "total": 588000000
+        },
+        "background": [
+          {
+            "area": "local",
+            "change": {
+              "newValue": {
+                "loaded": 147000000,
+                "total": 588000000
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Trusted background/control observe exact 441000000 byte progress",
+      "pass": true,
+      "detail": {
+        "write": {
+          "loaded": 441000000,
+          "total": 588000000
+        },
+        "trustedRead": {
+          "loaded": 441000000,
+          "total": 588000000
+        },
+        "background": [
+          {
+            "area": "local",
+            "change": {
+              "newValue": {
+                "loaded": 147000000,
+                "total": 588000000
+              }
+            }
+          },
+          {
+            "area": "local",
+            "change": {
+              "newValue": {
+                "loaded": 441000000,
+                "total": 588000000
+              },
+              "oldValue": {
+                "loaded": 147000000,
+                "total": 588000000
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Trusted progress changes do not reach restricted content storage events",
+      "pass": true,
+      "detail": {
+        "background": [
+          {
+            "area": "local",
+            "change": {
+              "newValue": {
+                "loaded": 147000000,
+                "total": 588000000
+              }
+            }
+          },
+          {
+            "area": "local",
+            "change": {
+              "newValue": {
+                "loaded": 441000000,
+                "total": 588000000
+              },
+              "oldValue": {
+                "loaded": 147000000,
+                "total": 588000000
+              }
+            }
+          },
+          {
+            "area": "local",
+            "change": {
+              "oldValue": {
+                "loaded": 441000000,
+                "total": 588000000
+              }
+            }
+          }
+        ],
+        "content": []
+      }
+    },
+    {
+      "name": "No model Worker or offscreen inference was created",
+      "pass": true,
+      "detail": [
+        {
+          "type": "service_worker",
+          "path": "/background.js"
+        },
+        {
+          "type": "page",
+          "path": "/popup.html"
+        }
+      ]
+    }
+  ],
+  "phases": [
+    {
+      "name": "launch",
+      "at": 1791551290810
+    },
+    {
+      "name": "background-trusted-progress-write",
+      "at": 1791551293092
+    },
+    {
+      "name": "diagnosis-complete",
+      "at": 1791551294945
+    }
+  ],
+  "startedAt": "2026-10-09T13:08:10.809Z",
+  "driverSha256": "6991a795abfd6d0e17f798c0eda840f212adf6ac0dacebc813d81cc12d357918",
+  "profile": "/var/folders/2v/qd62bpkx51scgbvv2nrclsxm0000gn/T/fluentread-progress-storage-proof-h6B2pU",
+  "phase": "diagnosis-complete",
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 31005,
+      "name": "问题报告程序"
+    },
+    "frontmostAfter": {
+      "pid": 31005,
+      "name": "问题报告程序"
+    }
+  },
+  "extensionId": "djnlaiohfaaifbibleebjggkghlmcpcj",
+  "contentListenerSetup": {
+    "installed": true,
+    "localSpecificEvent": "function"
+  },
+  "writes": [
+    {
+      "write": {
+        "loaded": 147000000,
+        "total": 588000000
+      },
+      "trustedRead": {
+        "loaded": 147000000,
+        "total": 588000000
+      },
+      "content": {
+        "read": {
+          "success": false,
+          "error": "Access to storage is not allowed from this context."
+        },
+        "events": []
+      },
+      "background": [
+        {
+          "area": "local",
+          "change": {
+            "newValue": {
+              "loaded": 147000000,
+              "total": 588000000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "write": {
+        "loaded": 441000000,
+        "total": 588000000
+      },
+      "trustedRead": {
+        "loaded": 441000000,
+        "total": 588000000
+      },
+      "content": {
+        "read": {
+          "success": false,
+          "error": "Access to storage is not allowed from this context."
+        },
+        "events": []
+      },
+      "background": [
+        {
+          "area": "local",
+          "change": {
+            "newValue": {
+              "loaded": 147000000,
+              "total": 588000000
+            }
+          }
+        },
+        {
+          "area": "local",
+          "change": {
+            "newValue": {
+              "loaded": 441000000,
+              "total": 588000000
+            },
+            "oldValue": {
+              "loaded": 147000000,
+              "total": 588000000
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "final": {
+    "background": [
+      {
+        "area": "local",
+        "change": {
+          "newValue": {
+            "loaded": 147000000,
+            "total": 588000000
+          }
+        }
+      },
+      {
+        "area": "local",
+        "change": {
+          "newValue": {
+            "loaded": 441000000,
+            "total": 588000000
+          },
+          "oldValue": {
+            "loaded": 147000000,
+            "total": 588000000
+          }
+        }
+      },
+      {
+        "area": "local",
+        "change": {
+          "oldValue": {
+            "loaded": 441000000,
+            "total": 588000000
+          }
+        }
+      }
+    ],
+    "content": []
+  },
+  "permissionChannelFailure": true,
+  "targets": [
+    {
+      "type": "service_worker",
+      "path": "/background.js"
+    },
+    {
+      "type": "page",
+      "path": "/popup.html"
+    }
+  ],
+  "guardedCloseSucceeded": true,
+  "ownedTemporaryProfileRemoved": true,
+  "finishedAt": "2026-10-09T13:08:15.314Z"
+}

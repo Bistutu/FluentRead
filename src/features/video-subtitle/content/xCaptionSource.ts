@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/xCaptionSource.ts
  * 文件职责：把 X 播放器中的原生轨道、sidecar 与本地识别时间轴映射到唯一合成字幕容器。
- * 主要内容：清理原生 cue 的时间标记后按播放时间选择正文，仅在内容变化时写入 DOM，保留原生 TextTrack 模式并在媒体离开时恢复。
+ * 主要内容：清理原生 cue 的时间标记后按播放时间选择正文；每次 sync 在隐藏模式写完后选择一次 live 轨道，供时间轴判定与当前正文读取共用，不跨轮缓存轨道或 cue；仅在内容变化时写入 DOM，保留原生 TextTrack 模式并在媒体离开时恢复。
  * 模块边界：不读取配置存储、不识别或翻译音频，也不发起网络请求；运行时注入当前媒体及字幕状态，负责挂载和卸载时序。
  */
 import {VIDEO_AI_CAPTION_CONTAINER_ID, VIDEO_CAPTION_SEGMENT_SELECTOR, VIDEO_PLAYER_SELECTOR, findVideoPlayer, isXVideoPage} from './ui';
@@ -93,7 +93,9 @@ export class XCaptionSource {
     }
 
     const currentMs = video && Number.isFinite(video.currentTime) ? video.currentTime * 1000 : Number.NaN;
-    const hasNativeTimeline = this.selectedNativeTracks().some(track => (track.cues?.length || 0) > 0);
+    // 隐藏写入可能改变 live 轨道；仅在本次同步内复用此后的选轨结果，cue 仍直接读取。
+    const selectedTracks = this.selectedNativeTracks();
+    const hasNativeTimeline = selectedTracks.some(track => (track.cues?.length || 0) > 0);
     let text = '';
     let sourceKind = 'none';
     let cueId = '';
@@ -109,7 +111,7 @@ export class XCaptionSource {
       }
     } else if (video) {
       // auto 尊重宿主选中的轨道；显式语言使用标签匹配，不能把 French 中的 en 当成英语。
-      for (const track of this.selectedNativeTracks()) {
+      for (const track of selectedTracks) {
         const activeText = Array.from(track.activeCues || [])
           .map((cue) => cleanSubtitleText(String((cue as TextTrackCue & { text?: string }).text || '')))
           .filter(Boolean)

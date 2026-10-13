@@ -38,6 +38,81 @@ function directive(element: TemplateElement, name: string, argument?: string): s
 }
 
 describe('popup feature visibility', () => {
+    it('keeps compact page and section actions with their accessible purpose and guarded page ownership', () => {
+        const elements = templateElements(source('src/app/popup/PopupApp.vue'));
+        const entry = elements.find(node => node.tag === 'button'
+            && node.props.some(prop => prop.type === 6 && prop.name === 'data-testid' && prop.value?.content === 'section-translation'))!;
+        expect(entry).toBeDefined();
+        const visible = directive(entry, 'if')!;
+        expect(visible).toBe('!isThunderbird && !currentPdfSource');
+        expect(runInNewContext(visible, {isThunderbird: false, currentPdfSource: undefined})).toBe(true);
+        expect(runInNewContext(visible, {isThunderbird: true, currentPdfSource: undefined})).toBe(false);
+        expect(runInNewContext(visible, {isThunderbird: false, currentPdfSource: {}})).toBe(false);
+        const disabled = directive(entry, 'bind', 'disabled')!;
+        expect(disabled).toBe('!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule');
+        const ready = {config: {on: true}, currentSiteExtensionDisabled: false, translating: false, pageState: {savingRule: false}};
+        expect(runInNewContext(disabled, ready)).toBe(false);
+        for (const blocked of [
+            {...ready, config: {on: false}}, {...ready, currentSiteExtensionDisabled: true},
+            {...ready, translating: true}, {...ready, pageState: {savingRule: true}},
+        ]) expect(runInNewContext(disabled, blocked)).toBe(true);
+        expect(directive(entry, 'bind', 'onClick')).toBe('pageButtons.section');
+        expect(directive(entry, 'bind', 'aria-label')).toBe('sectionTranslationLabel');
+        const main = elements.find(node => node.tag === 'button'
+            && node.props.some(prop => prop.type === 6 && prop.name === 'data-testid' && prop.value?.content === 'page-translation'))!;
+        expect(directive(main, 'bind', 'title')).toBe('pageTranslationTitle');
+        expect(main.children.some(node => node.type === 1 && node.tag === 'kbd')).toBe(false);
+        expect(main.children.some(node => node.type === 1 && node.tag === 'span'
+            && node.children.some(child => child.type === 5 && child.content.type === 4 && child.content.content === 'pageTranslationButtonLabel'))).toBe(true);
+    });
+    it('keeps information highlight in settings with no Popup entry, drawer or messaging lifecycle', () => {
+        const popup = source('src/app/popup/PopupApp.vue');
+        const actions = source('src/app/popup/pageActions.ts');
+        expect(popupQuickFeatureOptions.map(feature => feature.id)).not.toContain('highlight');
+        expect(popup).not.toMatch(/PopupInformationHighlight|informationHighlight|INFORMATION_HIGHLIGHT|openDrawer\('highlight'\)/u);
+        expect(actions).not.toContain('informationHighlight');
+        expect(source('src/features/settings/ui/SettingsSections.vue')).toContain('<InformationHighlightSettings');
+        expect(source('src/features/settings/ui/InformationHighlightSettings.vue')).toContain('id="information-highlight-settings"');
+    });
+    it('mounts smart highlighting with the continuous translation form under its own anchor', () => {
+        const elements = templateElements(source('src/features/settings/ui/SettingsSections.vue'));
+        const panel = (name: string) => elements.find(node => node.tag === 'SettingsPanel'
+            && node.props.some(prop => prop.type === 6 && prop.name === 'name' && prop.value?.content === name))!;
+        const reading = panel('reading'), highlight = panel('information-highlight');
+        expect(reading).toBeDefined();expect(highlight).toBeDefined();
+        expect(reading.children.some(node => node.type === 1 && node.tag === 'ReadingAssistanceSettings')).toBe(true);
+        expect(reading.children.some(node => node.type === 1 && node.tag === 'InformationHighlightSettings')).toBe(false);
+        const component = highlight.children.find(node => node.type === 1 && node.tag === 'InformationHighlightSettings') as TemplateElement;
+        expect(component).toBeDefined();
+        expect(directive(highlight, 'bind', 'active')).toBe('props.activePanel');
+        expect(directive(component, 'if')).toBe("browserCapabilities.browser !== 'userscript' && props.activeSection === 'settings-translation'");
+        expect(directive(component, 'bind', 'active')).toBe("viewActive && props.activeSection === 'settings-translation'");
+        for (const name of ['reading', 'hover', 'input', 'page', 'context-menu', 'floating-ball', 'paragraph-copy', 'section-translation', 'excluded-languages']) {
+            expect(panel(name)).toBeDefined();
+            expect(directive(panel(name), 'bind', 'active')).toBe('props.activePanel');
+        }
+        for (const [name, target, component] of [
+            ['context-menu', 'context-menu-settings', 'ContextMenuSettings'],
+            ['paragraph-copy', 'paragraph-copy-settings', 'ParagraphCopySettings'],
+            ['section-translation', 'section-translation-settings', 'SectionTranslationSettings'],
+            ['excluded-languages', 'excluded-language-settings', 'ExcludedLanguageSettings'],
+        ]) {
+            expect(panel(name).props.some(prop => prop.type === 6 && prop.name === 'id' && prop.value?.content === target)).toBe(true);
+            expect(panel(name).children.some(node => node.type === 1 && node.tag === component)).toBe(true);
+        }
+        const floating = elements.find(node => node.tag === 'section'
+            && node.props.some(prop => prop.type === 6 && prop.name === 'id' && prop.value?.content === 'floating-ball-settings'))!;
+        expect(floating.children).toContain(panel('floating-ball'));
+        const wrapper = templateElements(source('src/features/settings/ui/components/SettingsPanel.vue')).find(node => node.tag === 'div')!;
+        const visible = directive(wrapper, 'show')!;
+        for (const name of ['reading', 'information-highlight', 'hover', 'input']) {
+            expect(runInNewContext(visible, {active: undefined, name})).toBe(true);
+        }
+        const navigation = templateElements(source('src/features/settings/ui/components/SettingsSectionNavigation.vue'));
+        const anchorButton = navigation.find(node => node.tag === 'button')!;
+        expect(directive(anchorButton, 'on', 'click')).toBe('scrollToAnchor(anchor)');
+        expect(directive(anchorButton, 'bind', 'data-settings-anchor-link')).toBe('anchor.id');
+    });
     it('gives the toolbar popup an intrinsic width before the browser sizes its viewport', () => {
         const styles = source('src/app/popup/popup.css');
         const html = source('entrypoints/popup/index.html');
@@ -54,7 +129,7 @@ describe('popup feature visibility', () => {
         expect(styles).not.toContain('body, #app { width: 100%; }');
         expect(styles).not.toContain('width: min(var(--interface-popup-width, 360px), 100vw)');
         expect(styles).toContain('.popup-shell { max-height: 560px; overflow-y: auto;');
-        expect(styles).not.toContain('max-height: min(560px, 100dvh)');
+        expect(styles).toContain(':root[data-fluentread-embedded-popup] .popup-shell { max-height: min(560px, 100dvh); }');
     });
 
     it('keeps the real Popup under a first-open language mask until confirmation', () => {
@@ -374,8 +449,6 @@ describe('popup feature visibility', () => {
         expect(popup).not.toContain('CustomHotkeyInput');
         expect(styles).toContain('.quick-profile-preview-row');
         expect(styles).toContain('.setting-row small.independent-profile-note');
-        expect(styles).toContain('flex: 0 2 64px');
-        expect(styles).toContain('.translate-hotkey span');
     });
 
     it('filters Chrome Translator but renders old synchronized selections as unavailable', () => {

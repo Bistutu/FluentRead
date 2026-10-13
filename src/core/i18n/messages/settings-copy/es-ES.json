@@ -98,7 +98,19 @@
     "settings.fullPage.multiSegmentHelp": "Solo se aplica a los servicios de IA compatibles con prompts genéricos. No afecta a la traducción automática, al pasar el ratón, de la selección ni de campos de texto.",
     "glossary.builtin.helpDisabled": "El glosario está desactivado. Activa el interruptor de arriba para que los glosarios añadidos se apliquen.",
     "image.settings.languageServiceTitle": "Idiomas y servicio",
-    "settings.floatingBall.disabledNote": "El botón flotante está desactivado. Estas preferencias se conservan y se aplicarán al volver a activarlo."
+    "settings.floatingBall.disabledNote": "El botón flotante está desactivado. Estas preferencias se conservan y se aplicarán al volver a activarlo.",
+    "video.downloadSourceLabel": "Fuente de descarga",
+    "video.downloadSourceAuto": "Automática",
+    "video.downloadSourceMirror": "Priorizar espejos de China",
+    "video.downloadSourceOfficial": "Priorizar fuente oficial",
+    "video.downloadSourceHint": "Se aplica a futuras descargas. Si falla la conexión, se intenta otra fuente.",
+    "video.downloadSourcePages": "Páginas de origen del modelo:",
+    "video.downloadSourceOther": "fuente alternativa",
+    "video.downloadWaiting": "Conectando a una fuente…",
+    "video.downloadConnecting": "Conectando a {source} · {attempt}/{attempts}",
+    "video.downloadSwitching": "Cambiando a {source} · {attempt}/{attempts}",
+    "video.downloadReceiving": "Descargando desde {source}",
+    "video.downloadRetry": "Reintentar descarga"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "La conexión ha cambiado. Genera una nueva vista previa.",

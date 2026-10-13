@@ -1,0 +1,1052 @@
+/**
+ * @file tests/pdfLayoutAnalysis.test.ts
+ * 文件职责：验证 PDF 阅读分析不会把分栏、表格、公式、上下标或插图误当作一个可覆盖的正文框。
+ * 主要内容：使用真实绘图操作语义和可复现字形几何验证矩阵、裁剪、行关联、已关联根号的下伸擦除范围、语义边界与阅读顺序；回放实际论文第10、11页的字形/细箭头，确保类型签名名称和交换图标签不进入翻译而邻近正文仍进入，反例约束普通短标题、自然语言解释、页眉页脚、缺失数学端点和粗长短线；回放参考文献的折行 URL 并验证完整地址进入既有字面保护，覆盖普通词、独立地址、段落/分栏不误拼接和长文的几何读取上限。
+ * 模块边界：测试纯分析模块；真实 PDF 提取和来源字节不变由 PDF 解析集成测试补充。
+ */
+import {describe, expect, it} from 'vitest';
+import {analyzePdfPageLayout, extractPdfGraphicsShapes, pdfLayoutLines, type PdfLayoutAtom} from '@/src/features/document-translation/core/pdfLayoutAnalysis';
+import {findDocumentLiteralTerms} from '@/src/core/translation/documentLiterals';
+import {protectGlossaryText} from '@/src/core/glossary';
+
+const atom = (text: string, x: number, baseline: number, width = text.length * 5, fontSize = 10): PdfLayoutAtom => ({text, x, y: baseline - fontSize * .8, width, height: fontSize, baseline, fontSize, fontFamily: 'sans-serif'});
+const analyze = (atoms: PdfLayoutAtom[], graphics: Parameters<typeof analyzePdfPageLayout>[0]['graphics'] = [], width = 612, height = 792) => analyzePdfPageLayout({atoms, graphics, width, height});
+const ops = Object.fromEntries(['save', 'restore', 'transform', 'paintFormXObjectBegin', 'paintFormXObjectEnd', 'paintImageXObject', 'paintInlineImageXObject', 'paintImageMaskXObject', 'constructPath', 'stroke', 'closeStroke', 'fill', 'eoFill', 'fillStroke', 'eoFillStroke', 'closeFillStroke', 'closeEOFillStroke', 'endPath'].map((name, index) => [name, index + 1]));
+
+// 本机公开 PDF 2608.25512v1 第10页，source SHA256 390775dbc9debdcf2ed1b076eed013387ca057630be3cb594617b2b742e48cf0；由实际 PDF.js/pdfTextAtoms 提取，未包含任何机器翻译结果。
+const pageTenMathGeometry = {
+    width: 595.2756, height: 841.8898,
+    atoms: ([
+        ["Definition",70.86614,304.81940000000003,51.93099999999999,11,312.73940000000005,11,"sans-serif"],
+        ["3",125.54714,304.81940000000003,5.5,11,312.73940000000005,11,"sans-serif"],
+        [".",131.04713,304.81940000000003,2.75,11,312.73940000000005,11,"sans-serif"],
+        ["Define the transformation",136.54713,304.75340000000006,125.68599999999998,11.077000000000002,312.73940000000005,11,"sans-serif"],
+        ["track",264.98315,303.87340000000006,24.782999999999998,11,312.73940000000005,11,"sans-serif"],
+        ["Γ",289.76614,309.2502,5.4362,7.7,315.45640000000003,7.7,"sans-serif"],
+        ["on pairs of context functions:",298.56833,304.75340000000006,140.90999999999997,11.077000000000002,312.73940000000005,11,"sans-serif"],
+        ["track",154.18387,324.23640000000006,24.782999999999998,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",178.96686,329.6132,5.4362,7.7,335.81940000000003,7.7,"sans-serif"],
+        [":",196.01906,324.23640000000006,3.058,11,333.10240000000005,11,"sans-serif"],
+        ["(",210.07706,324.23640000000006,4.279,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",214.35606,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        ["→",224.28662,324.23640000000006,11,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",238.34218,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        [")",245.21718,324.23640000000006,4.279,11,333.10240000000005,11,"sans-serif"],
+        ["×",251.94061,324.23640000000006,8.558,11,333.10240000000005,11,"sans-serif"],
+        ["(",262.94305,324.23640000000006,4.279,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",267.22208,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        ["→",277.15262,324.23640000000006,11,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",291.20816,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        [")",298.08316,324.23640000000006,4.279,11,333.10240000000005,11,"sans-serif"],
+        ["→",310.61218,324.23640000000006,11,11,333.10240000000005,11,"sans-serif"],
+        ["𝜕",336.61984,324.23640000000006,5.840999999999999,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",343.15384,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        ["→",365.0365,324.23640000000006,11,11,333.10240000000005,11,"sans-serif"],
+        ["𝜕",405.98462,324.23640000000006,5.840999999999999,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",412.51862,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        ["track",154.18387,342.74940000000004,24.782999999999998,11,351.6154,11,"sans-serif"],
+        ["Γ",178.96686,348.12620000000004,5.4362,7.7,354.33240000000006,7.7,"sans-serif"],
+        ["=",193.26906,342.74940000000004,8.558,11,351.6154,11,"sans-serif"],
+        ["(",243.54395,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["𝑓",247.82295,342.74940000000004,5.39,11,351.6154,11,"sans-serif"],
+        [",",254.20296,342.74940000000004,3.058,11,351.6154,11,"sans-serif"],
+        ["𝑔",259.0943,342.74940000000004,5.247,11,351.6154,11,"sans-serif"],
+        [")",264.61627,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["↦",310.73868,342.74940000000004,10.747,11,351.6154,11,"sans-serif"],
+        ["(",329.86218,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["𝛾",334.14117,342.74940000000004,5.6979999999999995,11,351.6154,11,"sans-serif"],
+        [",",340.42218,342.74940000000004,3.058,11,351.6154,11,"sans-serif"],
+        ["𝜑",345.3135,342.74940000000004,7.194,11,351.6154,11,"sans-serif"],
+        [")",352.5075,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["↦",365.163,342.74940000000004,10.747,11,351.6154,11,"sans-serif"],
+        ["(",384.2865,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["𝑓",388.56552,342.74940000000004,5.39,11,351.6154,11,"sans-serif"],
+        ["(",394.9455,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["𝛾",399.22452,342.74940000000004,5.6979999999999995,11,351.6154,11,"sans-serif"],
+        [")",405.5055,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        [",",409.78452,342.74940000000004,3.058,11,351.6154,11,"sans-serif"],
+        ["𝜑",414.67584,342.74940000000004,7.194,11,351.6154,11,"sans-serif"],
+        ["∘",424.31427,342.74940000000004,4.532,11,351.6154,11,"sans-serif"],
+        ["𝑔",431.29074,342.74940000000004,5.247,11,351.6154,11,"sans-serif"],
+        [")",436.8127,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["(6)",510.35144,332.48640000000006,14.058,11,341.35240000000005,11,"sans-serif"],
+        ["This transformation converts a forward function",87.36614,368.0914,233.46488706970007,11.077000000000002,376.0774,11,"sans-serif"],
+        ["𝑓",323.5812,367.2114,5.39,11,376.0774,11,"sans-serif"],
+        ["together with a candidate inverse",332.71137741394,368.0914,161.6347096557601,11.077000000000002,376.0774,11,"sans-serif"],
+        ["𝑔",497.09628,367.2114,5.247,11,376.0774,11,"sans-serif"],
+        ["into",505.36847741393996,368.0914,19.040999999999986,11.077000000000002,376.0774,11,"sans-serif"],
+        ["a transformation of the effect context",70.86614,381.75340000000006,181.26222950000002,11.077000000000002,389.73940000000005,11,"sans-serif"],
+        ["𝜕",255.47762,380.87340000000006,5.840999999999999,11,389.73940000000005,11,"sans-serif"],
+        ["Γ",262.01163,380.87340000000006,6.875,11,389.73940000000005,11,"sans-serif"],
+        [". Applying",268.88663,381.75340000000006,52.59624589999994,11.077000000000002,389.73940000000005,11,"sans-serif"],
+        ["track",324.83212,380.87340000000006,24.782999999999998,11,389.73940000000005,11,"sans-serif"],
+        ["Γ",349.6151,386.2502,5.4362,7.7,392.45640000000003,7.7,"sans-serif"],
+        ["(",355.6673,380.87340000000006,4.279,11,389.73940000000005,11,"sans-serif"],
+        ["𝑓",359.94632,380.87340000000006,5.39,11,389.73940000000005,11,"sans-serif"],
+        [",",366.3263,380.87340000000006,3.058,11,389.73940000000005,11,"sans-serif"],
+        ["𝑔",371.21765,380.87340000000006,5.247,11,389.73940000000005,11,"sans-serif"],
+        [")",376.73965,380.87340000000006,4.279,11,389.73940000000005,11,"sans-serif"],
+        ["to a state",384.3678959,381.75340000000006,44.120491800000075,11.077000000000002,389.73940000000005,11,"sans-serif"],
+        ["(",431.83762,380.87340000000006,4.279,11,389.73940000000005,11,"sans-serif"],
+        ["𝛾",436.11664,380.87340000000006,5.6979999999999995,11,389.73940000000005,11,"sans-serif"],
+        [",",442.3976,380.87340000000006,3.058,11,389.73940000000005,11,"sans-serif"],
+        ["𝜑",447.28897,380.87340000000006,7.194,11,389.73940000000005,11,"sans-serif"],
+        [")",454.48297,380.87340000000006,4.279,11,389.73940000000005,11,"sans-serif"],
+        ["transforms",462.1112059,381.75340000000006,52.66800000000003,11.077000000000002,389.73940000000005,11,"sans-serif"],
+        ["𝛾",518.1285,380.87340000000006,5.6979999999999995,11,389.73940000000005,11,"sans-serif"],
+        ["by",70.86614,395.41540000000003,11.869,11.077000000000002,403.4014,11,"sans-serif"],
+        ["𝑓",85.48514,394.53540000000004,5.39,11,403.4014,11,"sans-serif"],
+        ["and composes the inverse",94.61514,395.41540000000003,124.38800000000002,11.077000000000002,403.4014,11,"sans-serif"],
+        ["𝑔",221.75314,394.53540000000004,5.247,11,403.4014,11,"sans-serif"],
+        ["onto",230.02515,395.41540000000003,21.89000000000001,11.077000000000002,403.4014,11,"sans-serif"],
+        ["𝜑",254.66515,394.53540000000004,7.194,11,403.4014,11,"sans-serif"],
+        [", thereby tracking the effect of",261.85913,395.41540000000003,144.298,11.077000000000002,403.4014,11,"sans-serif"],
+        ["𝑓",408.90714,394.53540000000004,5.39,11,403.4014,11,"sans-serif"],
+        ["in the context.",418.03714,395.41540000000003,68.64000000000001,11.077000000000002,403.4014,11,"sans-serif"],
+        ["Theorem",70.86614,419.9434,45.232,11,427.8634,11,"sans-serif"],
+        ["4",119.29805,419.9434,5.5,11,427.8634,11,"sans-serif"],
+        [".",124.79805,419.9434,2.75,11,427.8634,11,"sans-serif"],
+        ["For every",130.747962023,419.8774,46.220912023000025,11.077000000000002,427.8634,11,"sans-serif"],
+        ["(",180.1688,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["𝑓",184.44778,418.9974,5.39,11,427.8634,11,"sans-serif"],
+        [",",190.82779,418.9974,3.058,11,427.8634,11,"sans-serif"],
+        ["𝑔",195.71912,418.9974,5.247,11,427.8634,11,"sans-serif"],
+        [")",201.24112,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["∈",208.57568,418.9974,7.337,11,427.8634,11,"sans-serif"],
+        ["(",218.96823,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["Γ",223.24724,418.9974,6.875,11,427.8634,11,"sans-serif"],
+        ["→",233.1778,418.9974,11,11,427.8634,11,"sans-serif"],
+        ["Γ",247.23334,418.9974,6.875,11,427.8634,11,"sans-serif"],
+        [")",254.10834,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["×",260.8318,418.9974,8.558,11,427.8634,11,"sans-serif"],
+        ["(",271.83423,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["Γ",276.11322,418.9974,6.875,11,427.8634,11,"sans-serif"],
+        ["→",286.0438,418.9974,11,11,427.8634,11,"sans-serif"],
+        ["Γ",300.09933,418.9974,6.875,11,427.8634,11,"sans-serif"],
+        [")",306.97433,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        [", write",311.25336,419.8774,31.480912023000023,11.077000000000002,427.8634,11,"sans-serif"],
+        ["𝑓",345.93417,418.9974,5.39,11,427.8634,11,"sans-serif"],
+        ["′",352.31418,417.6642,3.1339,7.7,423.8704,7.7,"sans-serif"],
+        ["≔",359.11963,418.9974,9.966,11,427.8634,11,"sans-serif"],
+        ["track",372.14117,418.9974,24.782999999999998,11,427.8634,11,"sans-serif"],
+        ["Γ",396.9242,424.37420000000003,5.4362,7.7,430.58040000000005,7.7,"sans-serif"],
+        ["(",402.97638,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["𝑓",407.25537,418.9974,5.39,11,427.8634,11,"sans-serif"],
+        [",",413.63538,418.9974,3.058,11,427.8634,11,"sans-serif"],
+        ["𝑔",418.5267,418.9974,5.247,11,427.8634,11,"sans-serif"],
+        [")",424.0487,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["; then the following",428.32773,419.8774,96.081736069,11.077000000000002,427.8634,11,"sans-serif"],
+        ["diagram commutes, that is,",70.86614,433.53940000000006,132.32999999999998,11.077000000000002,441.52540000000005,11,"sans-serif"],
+        ["pr",257.2021,453.72970000000004,10.427999999999999,11,462.5957,11,"sans-serif"],
+        ["1",267.6301,459.10650000000004,4.3813,7.7,465.31270000000006,7.7,"sans-serif"],
+        ["∘",275.07184,453.72970000000004,4.532,11,462.5957,11,"sans-serif"],
+        ["𝑓",282.04828,453.72970000000004,5.39,11,462.5957,11,"sans-serif"],
+        ["′",288.42828,452.3965,3.1339,7.7,458.6027,7.7,"sans-serif"],
+        ["=",295.23373,453.72970000000004,8.558,11,462.5957,11,"sans-serif"],
+        ["𝑓",306.8473,453.72970000000004,5.39,11,462.5957,11,"sans-serif"],
+        ["∘",315.67175,453.72970000000004,4.532,11,462.5957,11,"sans-serif"],
+        ["pr",322.6482,453.72970000000004,10.427999999999999,11,462.5957,11,"sans-serif"],
+        ["1",333.0762,459.10650000000004,4.3813,7.7,465.31270000000006,7.7,"sans-serif"],
+        ["(7)",510.35144,453.72970000000004,14.058,11,462.5957,11,"sans-serif"],
+        ["𝑓",294.7378,478.9327,4.9,10,486.9927,10,"sans-serif"],
+        ["𝑓",293.0333,550.8127000000001,4.9,10,558.8727,10,"sans-serif"],
+        ["′",298.83328,549.6007,2.849,7,555.2427,7,"sans-serif"],
+        ["pr",247.51979,515.2696800000001,9.48,10,523.32968,10,"sans-serif"],
+        ["1",256.9998,520.1577,3.983,7,525.7997,7,"sans-serif"],
+        ["pr",333.7328,515.2696800000001,9.48,10,523.32968,10,"sans-serif"],
+        ["1",343.2128,520.1577,3.983,7,525.7997,7,"sans-serif"],
+        ["track",301.6378,515.8426800000001,22.53,10,523.90268,10,"sans-serif"],
+        ["Γ",262.4178,488.39770000000004,6.25,10,496.45770000000005,10,"sans-serif"],
+        ["Γ",326.6078,488.39770000000004,6.25,10,496.45770000000005,10,"sans-serif"],
+        ["𝜕",259.44778,543.3976700000001,5.3100000000000005,10,551.45767,10,"sans-serif"],
+        ["Γ",265.3878,543.3976700000001,6.25,10,551.45767,10,"sans-serif"],
+        ["𝜕",323.6378,543.3976700000001,5.3100000000000005,10,551.45767,10,"sans-serif"],
+        ["Γ",329.5778,543.3976700000001,6.25,10,551.45767,10,"sans-serif"],
+    ] as Array<[string, number, number, number, number, number, number, string]>).map(([text, x, y, width, height, baseline, fontSize, fontFamily]) => ({text, x, y, width, height, baseline, fontSize, fontFamily})),
+    graphics: [{"x":276.1718,"y":493.0427,"width":42.691956000000005,"height":0,"kind":"path"},{"x":277.6378,"y":548.0427,"width":39.75999999999999,"height":0,"kind":"path"},{"x":265.5428,"y":503.91170000000005,"width":0,"height":34.71597700000001,"kind":"path"},{"x":329.7328,"y":503.91170000000005,"width":0,"height":34.71597700000001,"kind":"path"},{"x":296.6778,"y":498.5427,"width":0,"height":42.113099999999974,"kind":"path"},{"x":298.5978,"y":498.5427,"width":0,"height":42.113099999999974,"kind":"path"}] as Parameters<typeof analyzePdfPageLayout>[0]['graphics'],
+};
+
+// 同一公开 PDF 第11页，source SHA256 390775dbc9debdcf2ed1b076eed013387ca057630be3cb594617b2b742e48cf0；实际字形、箭头路径与上下正文，不含译文。
+const pageElevenMathGeometry = {
+    width: 595.2756, height: 841.8898,
+    atoms: ([
+        ["Definition",70.86614,242.62140000000008,51.93099999999999,11,250.54140000000007,11,"sans-serif"],
+        ["6",125.54714,242.62140000000008,5.5,11,250.54140000000007,11,"sans-serif"],
+        [".",131.04713,242.62140000000008,2.75,11,250.54140000000007,11,"sans-serif"],
+        ["Define the transformation",136.54713,242.55540000000008,125.68599999999998,11.077000000000002,250.54140000000007,11,"sans-serif"],
+        ["recover",264.98315,241.67540000000008,34.583999999999996,11,250.54140000000007,11,"sans-serif"],
+        ["Γ",299.56714,247.05220000000006,5.4362,7.7,253.25840000000005,7.7,"sans-serif"],
+        ["on",308.36935,242.55540000000008,12.407999999999998,11.077000000000002,250.54140000000007,11,"sans-serif"],
+        ["𝜕",323.52734,241.67540000000008,5.840999999999999,11,250.54140000000007,11,"sans-serif"],
+        ["Γ",330.06134,241.67540000000008,6.875,11,250.54140000000007,11,"sans-serif"],
+        [":",336.93634,242.55540000000008,2.75,11.077000000000002,250.54140000000007,11,"sans-serif"],
+        ["recover",212.22426,262.0384,34.583999999999996,11,270.9044,11,"sans-serif"],
+        ["Γ",246.80826,267.41517000000005,5.4362,7.7,273.62137000000007,7.7,"sans-serif"],
+        [":",263.86047,262.0384,3.058,11,270.9044,11,"sans-serif"],
+        ["𝜕",284.67612,262.0384,5.840999999999999,11,270.9044,11,"sans-serif"],
+        ["Γ",291.2101,262.0384,6.875,11,270.9044,11,"sans-serif"],
+        ["→",313.0928,262.0384,11,11,270.9044,11,"sans-serif"],
+        ["𝜕",350.99255,262.0384,5.840999999999999,11,270.9044,11,"sans-serif"],
+        ["Γ",357.52655,262.0384,6.875,11,270.9044,11,"sans-serif"],
+        ["recover",212.22426,280.55140000000006,34.583999999999996,11,289.41740000000004,11,"sans-serif"],
+        ["Γ",246.80826,285.9282,5.4362,7.7,292.1344,7.7,"sans-serif"],
+        ["=",261.11047,280.55140000000006,8.558,11,289.41740000000004,11,"sans-serif"],
+        ["(",277.91846,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        ["𝛾",282.19745,280.55140000000006,5.6979999999999995,11,289.41740000000004,11,"sans-serif"],
+        [",",288.47845,280.55140000000006,3.058,11,289.41740000000004,11,"sans-serif"],
+        ["𝜑",293.36978,280.55140000000006,7.194,11,289.41740000000004,11,"sans-serif"],
+        [")",300.56378,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        ["↦",313.2193,280.55140000000006,10.747,11,289.41740000000004,11,"sans-serif"],
+        ["(",332.3428,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        ["𝜑",336.6218,280.55140000000006,7.194,11,289.41740000000004,11,"sans-serif"],
+        ["(",343.8158,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        ["𝛾",348.0948,280.55140000000006,5.6979999999999995,11,289.41740000000004,11,"sans-serif"],
+        [")",354.3758,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        [",",358.6548,280.55140000000006,3.058,11,289.41740000000004,11,"sans-serif"],
+        ["id",363.54614,280.55140000000006,9.174,11,289.41740000000004,11,"sans-serif"],
+        ["Γ",372.72012,285.9282,5.4362,7.7,292.1344,7.7,"sans-serif"],
+        [")",378.77234,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        ["(9)",510.35144,270.2884,14.058,11,279.1544,11,"sans-serif"],
+        ["This transformation applies the recovery function",87.36614,305.89340000000004,237.79872088499997,11.077000000000002,313.87940000000003,11,"sans-serif"],
+        ["𝜑",327.387,305.01340000000005,7.194,11,313.87940000000003,11,"sans-serif"],
+        ["to the current state",336.80314417700004,305.89340000000004,89.47443253100005,11.077000000000002,313.87940000000003,11,"sans-serif"],
+        ["𝛾",428.49973,305.01340000000005,5.6979999999999995,11,313.87940000000003,11,"sans-serif"],
+        ["and resets",437.002874177,305.89340000000004,48.64214417700001,11.077000000000002,313.87940000000003,11,"sans-serif"],
+        ["𝜑",487.86716,305.01340000000005,7.194,11,313.87940000000003,11,"sans-serif"],
+        ["to the",497.283304177,305.89340000000004,27.126144177000022,11.077000000000002,313.87940000000003,11,"sans-serif"],
+        ["identity. The following diagram illustrates how",70.86614,319.5554000000001,230.59219535000005,11.077000000000002,327.54140000000007,11,"sans-serif"],
+        ["recover",304.679,318.6754000000001,34.583999999999996,11,327.54140000000007,11,"sans-serif"],
+        ["recovers the context to its initial state",342.48360907,319.5554000000001,181.92583442,11.077000000000002,327.54140000000007,11,"sans-serif"],
+        ["after a sequence of effects",70.86614,333.21740000000005,123.717,11.077000000000002,341.20340000000004,11,"sans-serif"],
+        ["𝑓",197.33315,332.33740000000006,5.39,11,341.20340000000004,11,"sans-serif"],
+        ["′",203.71313,331.0042,3.1339,7.7,337.21040000000005,7.7,"sans-serif"],
+        ["𝑖",202.72314,337.7142,3.1108000000000002,7.7,343.92040000000003,7.7,"sans-serif"],
+        ["≔",210.5186,332.33740000000006,9.966,11,341.20340000000004,11,"sans-serif"],
+        ["track",223.54015,332.33740000000006,24.782999999999998,11,341.20340000000004,11,"sans-serif"],
+        ["Γ",248.32315,337.7142,5.4362,7.7,343.92040000000003,7.7,"sans-serif"],
+        ["(",254.37535,332.33740000000006,4.279,11,341.20340000000004,11,"sans-serif"],
+        ["𝑓",258.65436,332.33740000000006,5.39,11,341.20340000000004,11,"sans-serif"],
+        ["𝑖",264.04434,337.7142,3.1108000000000002,7.7,343.92040000000003,7.7,"sans-serif"],
+        [",",267.77115,332.33740000000006,3.058,11,341.20340000000004,11,"sans-serif"],
+        ["𝑔",272.66248,332.33740000000006,5.247,11,341.20340000000004,11,"sans-serif"],
+        ["𝑖",277.9095,337.7142,3.1108000000000002,7.7,343.92040000000003,7.7,"sans-serif"],
+        [")",281.6363,332.33740000000006,4.279,11,341.20340000000004,11,"sans-serif"],
+        [",",285.91528,333.21740000000005,2.75,11.077000000000002,341.20340000000004,11,"sans-serif"],
+        ["𝑖",291.41528,332.33740000000006,3.795,11,341.20340000000004,11,"sans-serif"],
+        ["=",298.26584,332.33740000000006,8.558,11,341.20340000000004,11,"sans-serif"],
+        ["1",309.8794,332.33740000000006,5.5,11,341.20340000000004,11,"sans-serif"],
+        [",",315.3794,332.33740000000006,3.058,11,341.20340000000004,11,"sans-serif"],
+        ["⋯",320.27072,332.33740000000006,8.536,11,341.20340000000004,11,"sans-serif"],
+        [",",328.80673,332.33740000000006,3.058,11,341.20340000000004,11,"sans-serif"],
+        ["𝑛",333.69806,332.33740000000006,6.6,11,341.20340000000004,11,"sans-serif"],
+        [", has been applied to",340.29807,333.21740000000005,99.89099999999998,11.077000000000002,341.20340000000004,11,"sans-serif"],
+        ["𝜕",442.93906,332.33740000000006,5.840999999999999,11,341.20340000000004,11,"sans-serif"],
+        ["Γ",449.47305,332.33740000000006,6.875,11,341.20340000000004,11,"sans-serif"],
+        [":",456.34805,333.21740000000005,2.75,11.077000000000002,341.20340000000004,11,"sans-serif"],
+        ["𝑓",228.72629,354.89340000000004,4.9,10,362.95340000000004,10,"sans-serif"],
+        ["1",233.6263,359.7814,3.983,7,365.4234,7,"sans-serif"],
+        ["𝑓",356.6268,354.82340000000005,4.9,10,362.88340000000005,10,"sans-serif"],
+        ["𝑛",361.5268,359.7114,4.942,7,365.3534,7,"sans-serif"],
+        ["𝑓",228.72629,422.19340000000005,4.9,10,430.25340000000006,10,"sans-serif"],
+        ["′",234.52629,420.98140000000006,2.849,7,426.62340000000006,7,"sans-serif"],
+        ["1",233.6263,427.08140000000003,3.983,7,432.7234,7,"sans-serif"],
+        ["𝑓",356.6268,422.19340000000005,4.9,10,430.25340000000006,10,"sans-serif"],
+        ["′",362.4268,420.98140000000006,2.849,7,426.62340000000006,7,"sans-serif"],
+        ["𝑛",361.5268,427.08140000000003,4.942,7,432.7234,7,"sans-serif"],
+        ["track",237.4478,389.7234,22.53,10,397.78340000000003,10,"sans-serif"],
+        ["track",301.6378,389.7234,22.53,10,397.78340000000003,10,"sans-serif"],
+        ["track",365.8278,389.7234,22.53,10,397.78340000000003,10,"sans-serif"],
+        ["recover",281.9178,442.25340000000006,31.440000000000005,10,450.31340000000006,10,"sans-serif"],
+        ["Γ",198.2278,364.77840000000003,6.25,10,372.83840000000004,10,"sans-serif"],
+        ["Γ",262.4178,364.77840000000003,6.25,10,372.83840000000004,10,"sans-serif"],
+        ["Γ",326.6078,364.77840000000003,6.25,10,372.83840000000004,10,"sans-serif"],
+        ["Γ",390.7978,364.77840000000003,6.25,10,372.83840000000004,10,"sans-serif"],
+        ["𝜕",195.2578,414.77840000000003,5.3100000000000005,10,422.83840000000004,10,"sans-serif"],
+        ["Γ",201.1978,414.77840000000003,6.25,10,422.83840000000004,10,"sans-serif"],
+        ["𝜕",259.44778,414.77840000000003,5.3100000000000005,10,422.83840000000004,10,"sans-serif"],
+        ["Γ",265.3878,414.77840000000003,6.25,10,422.83840000000004,10,"sans-serif"],
+        ["𝜕",323.6378,414.77840000000003,5.3100000000000005,10,422.83840000000004,10,"sans-serif"],
+        ["Γ",329.5778,414.77840000000003,6.25,10,422.83840000000004,10,"sans-serif"],
+        ["𝜕",387.8278,414.77840000000003,5.3100000000000005,10,422.83840000000004,10,"sans-serif"],
+        ["Γ",393.7678,414.77840000000003,6.25,10,422.83840000000004,10,"sans-serif"],
+        ["The diagram shows that the tracked effects followed by",87.36614,466.89940000000007,260.78617488000003,11.077000000000002,474.88540000000006,11,"sans-serif"],
+        ["recover",350.06332,466.0194000000001,34.583999999999996,11,474.88540000000006,11,"sans-serif"],
+        ["carry the initial effect context",386.55836186,466.89940000000007,137.85108743999993,11.077000000000002,474.88540000000006,11,"sans-serif"],
+        ["back to itself. Each tracking step in fact preserves the result of recovery itself, from whatever",70.86614,480.56140000000005,453.5433062050001,11.077000000000002,488.54740000000004,11,"sans-serif"],
+        ["state it is taken:",70.86614,494.2234,74.76699999999998,11.077000000000002,502.2094,11,"sans-serif"],
+    ] as Array<[string, number, number, number, number, number, number, string]>).map(([text, x, y, width, height, baseline, fontSize, fontFamily]) => ({text, x, y, width, height, baseline, fontSize, fontFamily})),
+    graphics: [{"x":211.98181,"y":369.4234,"width":42.691956000000005,"height":0,"kind":"path"},{"x":276.1718,"y":369.4234,"width":42.691956000000005,"height":0,"kind":"path"},{"x":340.36182,"y":369.4234,"width":42.691956000000005,"height":0,"kind":"path"},{"x":213.4478,"y":419.4234,"width":39.75999999999999,"height":0,"kind":"path"},{"x":277.6378,"y":419.4234,"width":39.75999999999999,"height":0,"kind":"path"},{"x":341.8278,"y":419.4234,"width":39.75999999999999,"height":0,"kind":"path"},{"x":232.4878,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":234.40779,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":296.6778,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":298.5978,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":360.8678,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":362.78778,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":393.9228,"y":428.83840000000004,"width":0,"height":23.085000999999977,"kind":"path"},{"x":203.8528,"y":454.4234,"width":187.57,"height":0,"kind":"path"},{"x":201.3528,"y":429.07840000000004,"width":0,"height":22.84499999999997,"kind":"path"}] as Parameters<typeof analyzePdfPageLayout>[0]['graphics'],
+};
+
+describe('isolated mathematical labels with local PDF geometry', () => {
+    it('replays actual page-eleven type, three arrow labels and U return without protecting either surrounding paragraph', async () => {
+        const before = JSON.stringify(pageElevenMathGeometry), result = analyzePdfPageLayout(pageElevenMathGeometry);
+        const {pdfPageSegments} = await import('@/src/features/document-translation/services/binary');
+        const segments: Array<import('@/src/features/document-translation/core/document').DocumentSegment> = [];
+        const registered = pdfPageSegments(result.blocks, 11, segments);
+        const protectedIndexes = result.blocks.flatMap((block, index) => block.source === 'track' || block.source === 'recover' || block.source === 'recoverΓ: 𝜕Γ → 𝜕Γ' ? [index] : []);
+        expect(protectedIndexes).toHaveLength(5);
+        for (const index of protectedIndexes) expect(registered.blocks[index]).toMatchObject({kind: 'formula', preserveSource: true, segmentIndex: -1});
+        expect(segments.some(segment => ['track', 'recover', 'recoverΓ: 𝜕Γ → 𝜕Γ'].includes(segment.source))).toBe(false);
+        for (const prefix of ['Definition 6.', 'This transformation applies', 'The diagram shows']) {
+            expect(result.blocks.find(block => block.source.startsWith(prefix))).toMatchObject({kind: 'text', preserveSource: false});
+            expect(segments.some(segment => segment.source.startsWith(prefix))).toBe(true);
+        }
+        expect(JSON.stringify(pageElevenMathGeometry)).toBe(before);
+    });
+    it('replays actual page-ten glyphs and excludes both mathematical labels from provider segments while retaining definition and theorem prose', async () => {
+        const before = JSON.stringify(pageTenMathGeometry);
+        const result = analyzePdfPageLayout(pageTenMathGeometry);
+        const {pdfPageSegments} = await import('@/src/features/document-translation/services/binary');
+        const segments: Array<import('@/src/features/document-translation/core/document').DocumentSegment> = [];
+        const registered = pdfPageSegments(result.blocks, 10, segments);
+        for (const label of ['trackΓ', 'track']) {
+            const index = result.blocks.findIndex(block => block.source === label);
+            expect(index).toBeGreaterThanOrEqual(0);
+            expect(registered.blocks[index]).toMatchObject({kind: 'formula', preserveSource: true, segmentIndex: -1});
+            expect(segments.some(segment => segment.source === label)).toBe(false);
+        }
+        for (const prefix of ['Definition 3.', 'This transformation', 'Theorem 4.']) {
+            expect(result.blocks.find(block => block.source.startsWith(prefix))).toMatchObject({kind: 'text', preserveSource: false});
+            expect(segments.some(segment => segment.source.startsWith(prefix))).toBe(true);
+        }
+        expect(result.preservedRegions.some(region => region.kind === 'formula' && region.source?.includes('trackΓ ='))).toBe(true);
+        expect(JSON.stringify(pageTenMathGeometry)).toBe(before);
+    });
+    it.each(['compose: A → B', 'rename: (Γ → Γ) ↦ Δ', 'a: 0 → 1'])('preserves the pure display type signature %s without a vocabulary whitelist', signature => {
+        const result = analyze([atom(signature, 210, 100, 110), atom('Ordinary sentences anchor the body font.', 70, 220, 400)]);
+        expect(result.blocks.find(block => block.source === signature)).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source.startsWith('Ordinary'))).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each([
+        {name: 'type in another column', nameX: 195, nameBaseline: 100, typeX: 400, typeBaseline: 100, type: 'A → B'},
+        {name: 'type on another line', nameX: 195, nameBaseline: 100, typeX: 257, typeBaseline: 140, type: 'A → B'},
+        {name: 'name in another column', nameX: 100, nameBaseline: 100, typeX: 257, typeBaseline: 100, type: 'A → B'},
+        {name: 'name on another line', nameX: 195, nameBaseline: 60, typeX: 257, typeBaseline: 100, type: 'A → B'},
+        {name: 'missing type arrow', nameX: 195, nameBaseline: 100, typeX: 257, typeBaseline: 100, type: 'A × B'},
+        {name: 'arrow without domain or codomain', nameX: 195, nameBaseline: 100, typeX: 257, typeBaseline: 100, type: '→'},
+    ])('does not join a split name/colon/type with $name', ({nameX, nameBaseline, typeX, typeBaseline, type}) => {
+        const result = analyze([atom('compose', nameX, nameBaseline, 30), atom(':', 240, 100, 3), atom(type, typeX, typeBaseline, 50),
+            atom('Ordinary sentences anchor the body font.', 70, 300, 400)],
+        [230, 250].map(x => ({kind: 'path' as const, x, y: 90, width: 0, height: 30})));
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('leaves ordinary short words, headings, sentence arrows and natural-language type explanations translatable', () => {
+        const result = analyze([atom('Track', 210, 100, 50, 14), atom('track', 210, 160, 25), atom('Name: English → Chinese', 210, 210, 110),
+            atom('We use track: A → B in the proof.', 70, 250, 400), atom('compose: A → B is C', 210, 290, 110), atom('compose: Γ → Γ σε Δ', 210, 330, 110),
+            atom('compose: A × B', 210, 370, 100), atom('Ordinary sentences anchor the body font.', 70, 450, 400)]);
+        expect(result.blocks.find(block => block.source === 'Track')).toMatchObject({kind: 'heading', preserveSource: false});
+        expect(result.blocks.filter(block => block.source !== 'Track').every(block => block.kind === 'text' && !block.preserveSource)).toBe(true);
+    });
+    it.each(['vertical', 'horizontal'] as const)('retains a generic %s arrow label only between two distinct mathematical endpoints', orientation => {
+        const vertical = orientation === 'vertical';
+        const nodes = vertical ? [atom('Γ', 197, 100, 5), atom('Δ', 197, 170, 5)] : [atom('A', 180, 104, 5), atom('B', 250, 104, 5)];
+        const label = vertical ? atom('compose', 206, 138, 35) : atom('compose', 203, 94, 35);
+        const stroke = {kind: 'path' as const, x: vertical ? 200 : 190, y: vertical ? 110 : 100, width: vertical ? 0 : 50, height: vertical ? 50 : 0};
+        const result = analyze([...nodes, label, atom('Ordinary sentences anchor the body font.', 70, 300, 400)], [stroke]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'formula', preserveSource: true});
+    });
+    it.each([
+        {name: 'no mathematical nodes', nodes: [], width: 0, height: 50},
+        {name: 'only the first endpoint', nodes: [atom('Γ', 197, 100, 5)], width: 0, height: 50},
+        {name: 'only the last endpoint', nodes: [atom('Δ', 197, 170, 5)], width: 0, height: 50},
+        {name: 'ordinary word endpoints', nodes: [atom('Start', 180, 100, 25), atom('Finish', 180, 170, 30)], width: 0, height: 50},
+        {name: 'ordinary two-letter country labels', nodes: [atom('UK', 190, 100, 10), atom('US', 190, 170, 10)], width: 0, height: 50},
+        {name: 'a thick rule', nodes: [atom('Γ', 197, 100, 5), atom('Δ', 197, 170, 5)], width: 4, height: 50},
+        {name: 'a short tick', nodes: [atom('Γ', 197, 100, 5), atom('Δ', 197, 150, 5)], width: 0, height: 19},
+        {name: 'a tall page divider', nodes: [atom('Γ', 197, 100, 5), atom('Δ', 197, 275, 5)], width: 0, height: 150},
+    ])('does not protect a word next to $name', ({nodes, width, height}) => {
+        const result = analyze([...nodes, atom('compose', 206, 138, 35), atom('Ordinary sentences anchor the body font.', 70, 400, 400)], [{kind: 'path', x: 200, y: 110, width, height}]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('cannot reuse a single central mathematical node as both arrow endpoints', () => {
+        const result = analyze([atom('Γ', 194, 114, 5), atom('compose', 205, 114, 35), atom('Ordinary sentences anchor the body font.', 70, 300, 400)],
+            [{kind: 'path', x: 200, y: 100, width: 0, height: 22}]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('keeps header and footer type-like text classified as page furniture, and rejects large diagram headings or remote labels', () => {
+        const result = analyze([atom('rename: A → B', 210, 20, 110), atom('rename: A → B', 210, 780, 110),
+            atom('Γ', 197, 100, 5), atom('Δ', 197, 170, 5), atom('Heading', 206, 138, 60, 14), atom('remote', 320, 138, 30),
+            atom('Ordinary sentences anchor the body font.', 70, 400, 400)], [{kind: 'path', x: 200, y: 110, width: 0, height: 50}]);
+        expect(result.blocks.filter(block => block.source === 'rename: A → B').map(block => block.kind)).toEqual(['footer', 'footer']);
+        expect(result.blocks.find(block => block.source === 'Heading')).toMatchObject({kind: 'heading', preserveSource: false});
+        expect(result.blocks.find(block => block.source === 'remote')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each(['vertical', 'horizontal'] as const)('recognizes a %s connector joining interiors of two independently math-supported edges', orientation => {
+        const vertical = orientation === 'vertical';
+        const nodes = vertical ? [atom('Γ', 160, 104, 5), atom('Δ', 235, 104, 5), atom('Θ', 160, 174, 5), atom('Λ', 235, 174, 5)]
+            : [atom('Γ', 187, 89, 5), atom('Δ', 187, 169, 5), atom('Θ', 257, 89, 5), atom('Λ', 257, 169, 5)];
+        const label = vertical ? atom('compose', 206, 140, 35) : atom('compose', 211, 118, 35);
+        const edges = vertical ? [100, 170].map(y => ({kind: 'path' as const, x: 175, y, width: 50, height: 0}))
+            : [190, 260].map(x => ({kind: 'path' as const, x, y: 100, width: 0, height: 50}));
+        const connector = {kind: 'path' as const, x: 200, y: vertical ? 110 : 125, width: vertical ? 0 : 50, height: vertical ? 50 : 0};
+        const result = analyze([...nodes, label, atom('Ordinary prose still translates.', 70, 400, 400)], [...edges, connector]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source.startsWith('Ordinary'))).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('allows a direct mathematical node at one connector end and an independently supported edge at the other', () => {
+        const result = analyze([atom('Γ', 197, 104, 5), atom('Θ', 160, 174, 5), atom('Λ', 235, 174, 5), atom('compose', 206, 140, 35), atom('Ordinary prose still translates.', 70, 400, 400)],
+            [{kind: 'path', x: 175, y: 170, width: 50, height: 0}, {kind: 'path', x: 200, y: 110, width: 0, height: 50}]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'formula', preserveSource: true});
+    });
+    it.each([
+        {name: 'no supporting edges', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: []},
+        {name: 'only one supporting edge', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100]},
+        {name: 'one mathematical endpoint per supporting edge', nodes: ['Γ', '', 'Θ', ''], edges: [100, 170]},
+        {name: 'ordinary word endpoints', nodes: ['Start', 'Finish', 'Start', 'Finish'], edges: [100, 170]},
+        {name: 'ordinary country endpoints', nodes: ['UK', 'US', 'UK', 'US'], edges: [100, 170]},
+        {name: 'parallel supporting edges', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100, 170], parallel: true},
+        {name: 'connector outside supporting edges', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100, 170], connectorX: 270},
+        {name: 'connector close to a supporting edge end', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100, 170], connectorX: 180},
+        {name: 'connector far from both supporting edges', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100, 170], connectorY: 117, connectorHeight: 36},
+        {name: 'thick supporting edges', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100, 170], thickness: 2},
+    ])('leaves an ordinary name translatable with $name', ({nodes, edges, parallel, connectorX = 200, connectorY = 110, connectorHeight = 50, thickness = 0}) => {
+        const points = parallel ? [[130, 104], [260, 104], [130, 174], [260, 174]] : [[160, 104], [235, 104], [160, 174], [235, 174]];
+        const glyphs = nodes.flatMap((text, index) => text ? [atom(text, points[index][0], points[index][1], text.length * 5)] : []);
+        const paths = parallel ? [135, 265].map(x => ({kind: 'path' as const, x, y: 110, width: 0, height: 50}))
+            : edges.map(y => ({kind: 'path' as const, x: 175, y, width: 50, height: thickness}));
+        const result = analyze([...glyphs, atom('compose', connectorX + 6, 140, 35), atom('Ordinary prose still translates.', 70, 400, 400)],
+            [...paths, {kind: 'path', x: connectorX, y: connectorY, width: 0, height: connectorHeight}]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each([
+        {name: 'the same math edge', nodeBaseline: 110, edges: [120], glyph: 'Γ', glyphX: 160, glyphWidth: 5},
+        {name: 'two math edges sharing both support nodes', nodeBaseline: 114, edges: [110, 130], glyph: 'Γ', glyphX: 160, glyphWidth: 5},
+        {name: 'a direct glyph reused as edge support', nodeBaseline: 114, edges: [130], glyph: 'Γ + Δ', glyphX: 185, glyphWidth: 20},
+    ])('cannot reuse $name as evidence for both connector ends', ({nodeBaseline, edges, glyph, glyphX, glyphWidth}) => {
+        const result = analyze([atom(glyph, glyphX, nodeBaseline, glyphWidth), atom('Θ', 235, nodeBaseline, 5), atom('compose', 206, 123, 35), atom('Ordinary prose still translates.', 70, 400, 400)],
+            [...edges.map(y => ({kind: 'path' as const, x: 175, y, width: 50, height: 0})), {kind: 'path', x: 200, y: 110, width: 0, height: 20}]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+
+    const returnArrow = (options: {signature?: string | false; typeAtoms?: PdfLayoutAtom[]; nodes?: PdfLayoutAtom[]; baseX?: number; baseWidth?: number; pageWidth?: number;
+        baseKind?: 'path' | 'image'; baseThickness?: number; left?: boolean; right?: boolean; cornerShift?: number; legWidth?: number; legHeight?: number; gap?: number; labelHeight?: number} = {}) => {
+        const {signature = 'recover: A → B', typeAtoms, baseX = 202, baseWidth = 136, pageWidth = 612, baseKind = 'path', baseThickness = 0,
+            left = true, right: hasRight = true, cornerShift = 0, legWidth = 0, legHeight = 30, gap = 1, labelHeight = 10} = options;
+        const baseY = 112 + legHeight;
+        const nodes = options.nodes ?? [atom('Γ', baseX - 5, 104, 5), atom('Δ', baseX + baseWidth - 1, 104, 5)];
+        const label = {...atom('recover', baseX + baseWidth / 2 - 17.5, baseY - gap - (labelHeight - 8), 35), height: labelHeight};
+        const graphics: Parameters<typeof analyzePdfPageLayout>[0]['graphics'] = [
+            {kind: baseKind, x: baseX, y: baseY, width: baseWidth, height: baseThickness},
+            ...(left ? [{kind: 'path' as const, x: baseX - 2 + cornerShift, y: 110, width: legWidth, height: legHeight}] : []),
+            ...(hasRight ? [{kind: 'path' as const, x: baseX + baseWidth + 2, y: 110, width: legWidth, height: legHeight}] : []),
+        ];
+        return analyze([...(typeAtoms ?? (signature ? [atom(signature, 100, 70, 110)] : [])), ...nodes, label, atom('Ordinary prose still translates.', 30, 400, 300)], graphics, pageWidth);
+    };
+    it('recognizes a finite U return only for a same-page confirmed type function with independent mathematical endpoints', () => {
+        const result = returnArrow();
+        expect(result.blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source.startsWith('Ordinary'))).toMatchObject({kind: 'text', preserveSource: false});
+        expect(returnArrow({signature: false}).blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each(['no same-name label', 'a same-name label far from every base'])('does not rescan dense unrelated paths with %s', scenario => {
+        let geometryReads = 0;
+        const graphics = Array.from({length: 900}, (_, index) => {
+            const horizontal = index < 300;
+            return {kind: 'path' as const, x: 10, y: 600, width: horizontal ? 100 : 0,
+                get height() {geometryReads += 1; return horizontal ? 0 : 30;}};
+        });
+        const name = scenario === 'no same-name label' ? 'ordinary' : 'recover';
+        const result = analyze([atom('recover: A → B', 100, 70, 110), atom(name, 265, 240, 35), atom('Ordinary prose still translates.', 30, 400, 300)], graphics);
+        expect(result.blocks.find(block => block.source === name)).toMatchObject({kind: 'text', preserveSource: false});
+        expect(geometryReads).toBeLessThan(graphics.length * 80);
+    });
+    it('derives a typed base name from the complete fragmented prefix followed by an actual lowered smaller subscript', () => {
+        const typeAtoms = [atom('re', 100, 70, 10), atom('cover', 110, 70, 25), atom('Γ', 135, 72.5, 4, 7), atom(':', 150, 70, 3), atom('A → B', 163, 70, 45)];
+        const result = returnArrow({typeAtoms});
+        expect(result.blocks.find(block => block.source === 'recoverΓ: A → B')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.some(block => block.source === 're')).toBe(false);
+    });
+    it.each([
+        {name: 'same-size Greek suffix', font: 10, baseline: 70},
+        {name: 'small Greek suffix without a lowered baseline', font: 7, baseline: 70},
+        {name: 'a raised superscript', font: 7, baseline: 67.5},
+        {name: 'a large suffix with a lowered baseline', font: 9, baseline: 72.5},
+        {name: 'a distant lowered suffix', font: 7, baseline: 80, tallArrow: true},
+    ])('does not strip $name from a confirmed type name', ({font, baseline, tallArrow}) => {
+        const rhs = tallArrow ? [atom('A', 163, 70, 5), atom('→', 174, 70, 5, 20), atom('B', 184, 70, 5)] : [atom('A → B', 163, 70, 45)];
+        const result = returnArrow({typeAtoms: [atom('recover', 100, 70, 35), atom('Γ', 135, baseline, 4, font), atom(':', 150, 70, 3), ...rhs]});
+        expect(result.blocks.find(block => block.source === 'recoverΓ: A → B')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('does not remove a lowered small letter in the middle of a typed identifier', () => {
+        const result = returnArrow({typeAtoms: [atom('re', 100, 70, 10), atom('Γ', 110, 72.5, 4, 7), atom('cover', 114, 70, 25), atom(':', 150, 70, 3), atom('A → B', 163, 70, 45)]});
+        expect(result.blocks.find(block => block.source === 'reΓcover: A → B')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each([
+        {name: 'a frame without any confirmed type', signature: false as const},
+        {name: 'only a same-name prose mention', signature: 'We use recover when needed.'},
+        {name: 'a natural-language arrow explanation', signature: 'recover: English → Chinese'},
+        {name: 'an unrelated typed function', signature: 'compose: A → B'},
+        {name: 'a header-only type', typeAtoms: [atom('recover: A → B', 100, 20, 110)]},
+        {name: 'ordinary mathematical-looking country nodes', nodes: [atom('UK', 197, 104, 10), atom('US', 337, 104, 10)]},
+        {name: 'ordinary word endpoints', nodes: [atom('Start', 197, 104, 25), atom('Finish', 337, 104, 30)]},
+        {name: 'only one mathematical node', nodes: [atom('Γ', 197, 104, 5)]},
+        {name: 'one shared mathematical node', baseWidth: 20, nodes: [atom('Γ + Δ', 203, 104, 20)]},
+        {name: 'no left leg', left: false},
+        {name: 'no right leg', right: false},
+        {name: 'a disconnected corner', cornerShift: 8},
+        {name: 'a thick nonorthogonal leg', legWidth: 2},
+        {name: 'an excessive leg length', legHeight: 130},
+        {name: 'a bitmap base', baseKind: 'image' as const},
+        {name: 'a thick base', baseThickness: 2},
+        {name: 'a base exceeding the font limit', baseWidth: 250},
+        {name: 'a base exceeding half the page', baseX: 80, baseWidth: 200, pageWidth: 380},
+        {name: 'a distant label', legHeight: 68, gap: 18},
+        {name: 'a label below the base', gap: -2},
+        {name: 'a label too close to the upper mathematical nodes', legHeight: 20, labelHeight: 14},
+    ])('does not preserve an ordinary U-frame word with $name', ({name: _name, ...options}) => {
+        expect(returnArrow(options).blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+});
+
+describe('PDF visible graphics geometry', () => {
+    it('tracks saves, nested form matrices, image unit squares, visible paths and viewport orientation', () => {
+        const functions = ['restore', 'save', 'transform', 'paintImageXObject', 'paintFormXObjectBegin', 'paintInlineImageXObject', 'paintFormXObjectEnd', 'paintImageMaskXObject', 'restore', 'constructPath', 'constructPath', 'stroke', 'constructPath', 'endPath', 'fill', 'paintFormXObjectBegin', 'paintFormXObjectEnd'];
+        const args = [null, null, [100, 0, 0, 80, 10, 20], ['image', 200, 300], [[1, 0, 0, 1, .1, .1], [0, 0, .5, .5]], [{}], null, [{}], null, [[], [], [20, 30, 40, 50]], [[], [], [10, 20, 25, 35]], null, [[], [], [10, 10, 20, 20]], null, null, [null, null], null];
+        const shapes = extractPdfGraphicsShapes({fnArray: functions.map(name => ops[name]), argsArray: args}, ops, {width: 300, height: 300, transform: [1, 0, 0, -1, 0, 300]});
+        expect(shapes).toEqual([
+            {kind: 'image', x: 10, y: 200, width: 100, height: 80},
+            {kind: 'form', x: 20, y: 232, width: 50, height: 40},
+            {kind: 'image', x: 20, y: 192, width: 100, height: 80},
+            {kind: 'image', x: 10, y: 200, width: 100, height: 80},
+            {kind: 'path', x: 10, y: 250, width: 30, height: 30},
+        ]);
+    });
+    it('clips page edges, rejects invalid/outside/empty drawings, and handles absent operands', () => {
+        const list = {fnArray: [ops.transform, ops.paintImageXObject, ops.restore, ops.transform, ops.paintImageXObject, ops.restore, ops.constructPath, ops.fill, ops.constructPath, ops.stroke, ops.transform, ops.paintFormXObjectBegin, 999], argsArray: [[20, 0, 0, 20, -10, -10], [], null, [1, 0, 0, 1, 400, 400], [], null, [[], [], [NaN, 0, 1, 1]], null, [[], [], [1, 1, 1, 1]], null, null, null, null]};
+        expect(extractPdfGraphicsShapes(list, ops, {width: 100, height: 100, transform: [1, 0, 0, 1, 0, 0]})).toEqual([{kind: 'image', x: 0, y: 0, width: 10, height: 10}]);
+    });
+});
+
+describe('PDF baseline and structural reading analysis', () => {
+    it('keeps superscripts with their baseline and rejoins numbered section headings', () => {
+        const lines = pdfLayoutLines([atom('h', 50, 50, 5), atom('t', 55, 53, 3, 7), atom('=', 62, 50, 5), atom('value', 70, 50, 25), atom('1', 50, 80, 5, 12), atom('Introduction', 69, 80, 90, 12)]);
+        expect(lines).toHaveLength(2); expect(lines[0].text).toBe('ht = value'); expect(lines[0].fontSize).toBe(10); expect(lines[0].runs).toHaveLength(4);
+        expect(lines[1].text).toBe('1 Introduction');
+        const result = analyze([atom('1 Introduction', 50, 50, 120, 12), atom('Body sentence continues', 50, 75, 400), atom('on the next source line.', 50, 86, 400)]);
+        expect(result.blocks.map(block => block.kind)).toEqual(['heading', 'text']);
+        expect(result.blocks[1]).toMatchObject({textAlign: 'left', lineHeight: 11, fontSize: 10, lineCount: 2, preserveSource: false});
+    });
+    it('preserves display equations and their scripts/numbers while translating surrounding and inline prose', () => {
+        const result = analyze([atom('We use Q = K and compare the values.', 108, 100, 396), atom('Attention(Q,K,V) = softmax(', 200, 140, 170), atom('QK', 340, 133, 15), atom('T', 355, 130, 4, 7), atom('dk', 353, 151, 8, 7), atom('(1)', 493, 140, 11), atom('The following paragraph is ordinary prose.', 108, 180, 396)]);
+        expect(result.preservedRegions).toHaveLength(1); expect(result.preservedRegions[0]).toMatchObject({kind: 'formula'});
+        expect(result.preservedRegions[0].source).toContain('Attention'); expect(result.preservedRegions[0].source).toContain('(1)');
+        expect(result.blocks.filter(block => block.kind === 'text').map(block => block.source)).toEqual(['We use Q = K and compare the values.', 'The following paragraph is ordinary prose.']);
+        expect(result.blocks.filter(block => block.kind === 'formula').every(block => block.preserveSource)).toBe(true);
+    });
+    it('preserves table cells and image/vector regions but keeps captions and adjacent prose editable', () => {
+        const atoms = [atom('Table 1: measured results', 108, 80, 300), atom('Model', 110, 110, 45), atom('Score', 320, 110, 45), atom('Baseline', 110, 125, 60), atom('24.9', 320, 125, 25), atom('A paragraph after the table.', 108, 170, 396), atom('Image label', 180, 230, 80), atom('Figure 1: original graphic', 108, 290, 300)];
+        const graphics = [{kind: 'path' as const, x: 108, y: 96, width: 396, height: 0}, {kind: 'path' as const, x: 108, y: 138, width: 396, height: 0}, {kind: 'image' as const, x: 170, y: 200, width: 150, height: 60}, {kind: 'form' as const, x: 180, y: 205, width: 160, height: 60}, {kind: 'path' as const, x: 170, y: 220, width: 100, height: 40}, {kind: 'image' as const, x: 0, y: 0, width: 612, height: 792}];
+        const result = analyze(atoms, graphics);
+        expect(result.preservedRegions.map(region => region.kind)).toEqual(['table', 'figure']);
+        expect(result.preservedRegions[1]).toMatchObject({x: 170, y: 200, width: 170, height: 65});
+        // 含词语的单元格各自成段并可翻译；纯数字单元格保留原样。
+        expect(result.blocks.filter(block => block.kind === 'table').map(block => [block.source, block.preserveSource])).toEqual([['Model', false], ['Baseline', false], ['Score', false], ['24.9', true]]);
+        expect(result.blocks.find(block => block.source === 'Image label')?.kind).toBe('figure-label');
+        expect(result.blocks.filter(block => block.kind === 'caption').every(block => !block.preserveSource)).toBe(true);
+        expect(result.blocks.find(block => block.source === 'A paragraph after the table.')?.textAlign).toBe('left');
+    });
+    it('uses actual table dividers to separate tight cells and prevents lowercase records from wrapping across rows', () => {
+        const graphics = [94, 105, 149].map(y => ({kind: 'path' as const, x: 145, y, width: 322, height: 0}));
+        for (const x of [296.58, 408.5]) for (const y of [94, 105, 116, 127, 138]) graphics.push({kind: 'path', x, y, width: 0, height: 11});
+        const atoms = [atom('Parser', 206, 102, 28), atom('Training', 334, 102, 37), atom('Score', 429, 102, 20),
+            atom('A. Model et al. (2014) [37]', 151, 113, 140), atom('WSJ only, discriminative', 302.5, 113, 100), atom('good', 429, 113, 20),
+            atom('Second Model', 172, 124, 96), atom('semi-supervised', 320, 124, 65), atom('good', 429, 124, 20),
+            atom('Third Model', 177, 135, 87), atom('multi-task', 332, 135, 40), atom('good', 429, 135, 20),
+            atom('Final Model', 178, 146, 86), atom('generative', 332, 146, 41), atom('good', 429, 146, 20)];
+        const before = structuredClone(atoms);
+        const cells = analyze(atoms, graphics).blocks;
+        expect(cells).toHaveLength(15);
+        expect(cells.every(cell => cell.kind === 'table' && cell.lineCount === 1 && !cell.preserveSource)).toBe(true);
+        expect(cells.some(cell => cell.source.includes('[37] WSJ'))).toBe(false);
+        expect(cells.filter(cell => cell.x >= 296.58 && cell.x < 408.5).map(cell => cell.source)).toEqual(['Training', 'WSJ only, discriminative', 'semi-supervised', 'multi-task', 'generative']);
+        expect(cells.filter(cell => cell.x < 296.58).every(cell => cell.cellBounds && cell.cellBounds.x + cell.cellBounds.width === 296.58)).toBe(true);
+        expect(cells.filter(cell => cell.source === 'good').every(cell => cell.cellBounds!.height <= 11)).toBe(true);
+        expect(atoms).toEqual(before);
+    });
+    it('recognizes shaded table rows and a shallow abstract box without treating real diagram labels as body text', () => {
+        const graphics = [100, 125, 150, 175].map(y => ({kind: 'path' as const, x: 0, y, width: 508, height: 25}));
+        const atoms = [100, 125, 150, 175].flatMap((y, row) => [atom(row ? 'Page dimensions' : 'Capability', 8, y + 16, 70, 8),
+            atom(row ? 'Preserved' : 'Expected', 163, y + 16, 40, 8), atom(row ? 'Non-text graphics stay in place' : 'Evidence', 268, y + 16, 160, 8)]);
+        const table = analyze(atoms, graphics);
+        expect(table.preservedRegions).toMatchObject([{kind: 'table', x: 0, y: 100, width: 508, height: 100}]);
+        expect(table.blocks).toHaveLength(12); expect(table.blocks.every(cell => cell.kind === 'table' && !cell.preserveSource)).toBe(true);
+        expect(table.blocks.find(cell => cell.source === 'Capability')!.cellBounds).toEqual({x: 0, y: 100, width: 155, height: 25});
+        const summary = analyze([atom('ABSTRACT', 60, 105, 46, 8.5), atom('A document translator should preserve columns and ordinary words while retaining source graphics.', 60, 119, 480, 9),
+            atom('Parse', 340, 220, 22, 8), atom('Translate', 417, 220, 36, 8)],
+        [{kind: 'path', x: 48, y: 89, width: 516, height: 51}, {kind: 'path', x: 318, y: 201, width: 66, height: 38}, {kind: 'path', x: 402, y: 201, width: 66, height: 38}]);
+        expect(summary.blocks.find(block => block.source === 'ABSTRACT')).toMatchObject({kind: 'heading', preserveSource: false});
+        expect(summary.blocks.filter(block => block.kind === 'figure-label').map(block => block.source)).toEqual(['Parse', 'Translate']);
+    });
+    it('associates the raised radical with its adjacent radicand instead of the preceding prose line', () => {
+        const items = [atom('the two embedding layers and the pre-softmax', 108, 709.091, 396, 9.9626),
+            atom('linear transformation; we multiply those weights by', 108, 720, 361.5, 9.9626),
+            {...atom('√', 471.882, 712.292, 8.30183458, 9.9626), y: 704.82005},
+            {...atom('d', 480.185, 720, 5.1855333, 9.9626), y: 713.0859556},
+            {...atom('model', 485.37, 721.494, 17.4345, 6.9738), y: 716.7657636}, atom('.', 503.303, 720, 2.44, 9.9626)];
+        const before = structuredClone(items), result = analyze(items);
+        expect(result.blocks).toHaveLength(1);
+        expect(result.blocks[0].source).toBe('the two embedding layers and the pre-softmax linear transformation; we multiply those weights by √dmodel.');
+        expect(result.blocks[0]).toMatchObject({kind: 'text', preserveSource: false, lineCount: 2});
+        const radical = result.blocks[0].lines![1].runs!.find(run => run.text === '√')!;
+        expect(radical).toMatchObject({x: 471.882, y: 704.82005, width: 8.30183458, baseline: 720});
+        expect(radical.y + radical.height).toBeCloseTo(723.0485556, 7);
+        // 原件 Page5 的 PDF.js 字形路径最低点为 -0.96 em，真实笔画到达 y721.856096。
+        expect(radical.y + radical.height).toBeGreaterThan(712.292 + 9.9626 * .96);
+        const equation = analyze([atom('f(x) =', 200, 120, 40), atom('√', 243, 120, 8), atom('x', 251, 120, 5)]);
+        expect(equation.blocks[0]).toMatchObject({source: 'f(x) = √x', kind: 'formula', preserveSource: true});
+        expect(items).toEqual(before);
+    });
+    it('does not shrink an associated radical or expand an unassociated radical across a gap', () => {
+        const tall = {...atom('√', 471.882, 712.292, 8.30183458, 9.9626), y: 704.82005, height: 30};
+        const radicand = {...atom('d', 480.185, 720, 5.1855333, 9.9626), y: 713.0859556};
+        const linked = pdfLayoutLines([tall, radicand]).flatMap(line => line.runs).find(run => run.text === '√')!;
+        expect(linked).toMatchObject({...tall, baseline: radicand.baseline});
+        const separate = {...tall, height: 9.9626};
+        const distant = {...radicand, x: 500};
+        const unlinked = pdfLayoutLines([separate, distant]).flatMap(line => line.runs).find(run => run.text === '√');
+        expect(unlinked).toEqual(separate);
+        const equationAtoms = [atom('f(x) =', 200, 120, 40), atom('√', 243, 120, 8), atom('x', 251, 120, 5)];
+        const equation = analyze(equationAtoms);
+        expect(equation.blocks[0]).toMatchObject({source: 'f(x) = √x', kind: 'formula', preserveSource: true});
+        expect(equation.blocks[0].lines![0].runs!.find(run => run.text === '√')).toEqual(equationAtoms[1]);
+    });
+    it('keeps author/email columns independent and reads regular column bands left to right', () => {
+        const authors = [atom('Alice', 60, 100, 40), atom('Bob', 230, 100, 30), atom('Carol', 400, 100, 40), atom('alice@example.org', 50, 112, 110), atom('bob@example.org', 210, 112, 100), atom('carol@example.org', 380, 112, 110)];
+        const result = analyze(authors);
+        expect(result.blocks).toHaveLength(3); expect(result.blocks.every(block => block.kind === 'metadata' && block.preserveSource)).toBe(true);
+        expect(result.blocks.map(block => block.source)).toEqual(['Alice alice@example.org', 'Bob bob@example.org', 'Carol carol@example.org']);
+        const columns = analyze([atom('1 Heading', 40, 50, 150, 14), atom('Left first line', 40, 100, 220), atom('Right first line', 330, 100, 220), atom('Left continuation.', 40, 111, 220), atom('Right continuation.', 330, 111, 220), atom('Left second paragraph.', 40, 145, 220), atom('Right second paragraph.', 330, 145, 220), atom('2', 300, 750, 5)]);
+        expect(columns.blocks.map(block => block.source)).toEqual(['1 Heading', 'Left first line Left continuation.', 'Left second paragraph.', 'Right first line Right continuation.', 'Right second paragraph.', '2']);
+        expect(columns.blocks.map(block => block.readingOrder)).toEqual([0, 1, 2, 3, 4, 5]);
+        expect(columns.blocks.at(-1)).toMatchObject({kind: 'footer', preserveSource: true});
+    });
+    it('retains explicit hyphens, paragraph boundaries, varied leading and empty pages', () => {
+        expect(analyze([])).toEqual({blocks: [], preservedRegions: []});
+        const result = analyze([atom('An unfinished trans-', 50, 50, 400), atom('lation line.', 50, 62, 400), atom('Indented paragraph starts.', 65, 78, 385), atom('Second continuation', 65, 90, 300), atom('not attached across columns', 400, 92, 150), atom('Prose ends before caption.', 50, 118, 350), atom('Figure 2: caption begins', 50, 130, 350), atom('and ends here.', 50, 141, 350), atom('Abstract', 280, 180, 50, 12)]);
+        expect(result.blocks[0].source).toBe('An unfinished translation line.');
+        expect(result.blocks.some(block => block.source === 'Indented paragraph starts. Second continuation')).toBe(true);
+        expect(result.blocks.find(block => block.kind === 'caption')?.source).toBe('Figure 2: caption begins and ends here.');
+        expect(result.blocks.find(block => block.source === 'Prose ends before caption.')?.kind).toBe('text');
+        expect(result.blocks.find(block => block.source === 'Abstract')?.textAlign).toBe('center');
+    });
+    it('rejoins the actual reference 125 wrapped URL and protects the complete address before translation', () => {
+        const lines = [
+            '[125] I. Maier and M. Odersky, “Deprecating the Observer Pattern with Scala.React,”',
+            'technical report EPFL-REPORT-176887, 2012. [Online]. Available: https://infoscience.epfl.ch/',
+            'record/176887',
+        ];
+        const result = analyze(lines.map((text, index) => atom(text, 50, 100 + index * 12, index === 2 ? 80 : 500)));
+        expect(result.blocks).toHaveLength(1);
+        const source = `${lines[0]} ${lines[1]}${lines[2]}`;
+        expect(result.blocks[0].source).toBe(source);
+        expect(result.blocks[0].lines!.map(line => line.text)).toEqual(lines);
+        const literals = findDocumentLiteralTerms(source);
+        expect(literals.filter(term => term.source.startsWith('https://'))).toEqual([
+            {source: 'https://infoscience.epfl.ch/record/176887', target: 'https://infoscience.epfl.ch/record/176887', caseSensitive: true},
+        ]);
+        const packet = protectGlossaryText(source, literals);
+        expect(packet.text).not.toContain('record/176887');
+        expect(packet.restore(packet.text.replace('Available:', '可用：'))).toBe(source.replace('Available:', '可用：'));
+    });
+    it('connects only the continued path token while retaining earlier URLs and the following prose', () => {
+        const first = 'Sources https://first.test/1 and https://second.test/';
+        const next = 'record/12 More prose follows here.';
+        const source = first + next;
+        expect(analyze([atom(first, 50, 100, 400), atom(next, 50, 112, 400)]).blocks.map(block => block.source)).toEqual([source]);
+        expect(findDocumentLiteralTerms(source).filter(term => term.source.startsWith('https://')).map(term => term.source))
+            .toEqual(['https://first.test/1', 'https://second.test/record/12']);
+        const singleLine = 'Sources https://first.test/1 and https://second.test/record/12 More prose follows here.';
+        expect(analyze([atom(singleLine, 50, 100, 500)]).blocks.map(block => block.source)).toEqual([singleLine]);
+    });
+    it.each(['read this chapter', 'summary/results', 'record/one', 'record 176887', 'https://second.test/record/12'])
+    ('retains the paragraph separator when the next line is not a confirmed URL path: %s', next => {
+        const first = 'Find more details at https://example.test/';
+        expect(analyze([atom(first, 50, 100, 400), atom(next, 50, 112, 400)]).blocks.map(block => block.source))
+            .toEqual([`${first} ${next}`]);
+    });
+    it('does not attach a URL path across separated paragraphs or columns', () => {
+        const first = 'Find more details at https://example.test/';
+        const next = 'record/12 More details follow here.';
+        expect(analyze([atom(first, 50, 100, 400), atom(next, 50, 145, 400)]).blocks.map(block => block.source)).toEqual([first, next]);
+        expect(analyze([atom(first, 40, 100, 220), atom(next, 330, 112, 220)]).blocks.map(block => block.source)).toEqual([first, next]);
+    });
+    it('keeps narrow column headings within their column while a centered page title separates bands', () => {
+        const result = analyze([atom('Page title', 260, 40, 92, 20), atom('2 Left section', 40, 80, 140, 14), atom('4 Right section', 330, 80, 150, 14), atom('Left ordinary paragraph.', 40, 110, 220), atom('Right ordinary paragraph.', 330, 110, 220), atom('3 Left next section', 40, 160, 160, 14), atom('Left final paragraph.', 40, 190, 220), atom('Right final paragraph.', 330, 150, 220)]);
+        expect(result.blocks.map(block => block.source)).toEqual(['Page title', '2 Left section', 'Left ordinary paragraph.', '3 Left next section', 'Left final paragraph.', '4 Right section', 'Right ordinary paragraph.', 'Right final paragraph.']);
+        expect(result.blocks.slice(1, 5).every(block => block.column === 0)).toBe(true);
+        expect(result.blocks.slice(5).every(block => block.column === 1)).toBe(true);
+    });
+    it('processes a fragmented long row without repeated geometry scans or argument-list overflow', () => {
+        let reads = 0;
+        const count = 20000;
+        const atoms = Array.from({length: count}, (_, index) => new Proxy(atom('a', index, 20, 1), {get(target, key, receiver) {if (key === 'baseline' || key === 'fontSize') reads += 1; return Reflect.get(target, key, receiver);}}));
+        const lines = pdfLayoutLines(atoms);
+        expect(lines).toHaveLength(1); expect(lines[0].text).toHaveLength(count); expect(reads).toBeLessThan(count * 30);
+        let geometryReads = 0;
+        const paragraphs = Array.from({length: 3000}, (_, index) => new Proxy(atom('Independent paragraph.', 50, 50 + index * 30, 400), {get(target, key, receiver) {if (key === 'x' || key === 'baseline') geometryReads += 1; return Reflect.get(target, key, receiver);}}));
+        expect(analyze(paragraphs, [], 612, 100000).blocks).toHaveLength(paragraphs.length);
+        expect(geometryReads).toBeLessThan(paragraphs.length * 40);
+    });
+    it('recognizes side equations and large headings, merges related equations, and orders separate drawings', () => {
+        const result = analyze([atom('Large title', 240, 50, 130, 18), atom('A regular sentence is not an equation.', 50, 80, 400), atom('F(x) = 1', 10, 120, 50), atom('G(x) = 2', 10, 133, 50), atom('∑x', 10, 190, 30), atom('Figure 3: x = y', 250, 230, 100)], [{kind: 'image', x: 300, y: 300, width: 50, height: 50}, {kind: 'form', x: 100, y: 300, width: 50, height: 50}]);
+        expect(result.blocks[0].kind).toBe('heading');
+        expect(result.preservedRegions.filter(region => region.kind === 'formula')).toHaveLength(1);
+        expect(result.blocks.find(block => block.source === '∑x')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source === 'Figure 3: x = y')?.kind).toBe('caption');
+        expect(result.preservedRegions.filter(region => region.kind === 'figure').map(region => region.x)).toEqual([100, 300]);
+    });
+    it('chooses the most recent eligible baseline when small source labels visually overlap larger lines', () => {
+        const result = analyze([atom('Earlier small label', 50, 100, 150, 5), atom('Current larger row.', 50, 112, 350, 21), atom('Next line continues', 60, 124, 350, 20), atom('Body reference', 50, 200, 400, 20), atom('Another body reference', 50, 225, 400, 20)]);
+        const block = result.blocks.find(block => block.source.includes('Next line continues'))!;
+        expect(block.source).toBe('Current larger row. Next line continues');
+        expect(block.lines).toHaveLength(2);
+    });
+    it('reads offset side-by-side graphics left to right without combining distinct vertical figure bands', () => {
+        const graphics = [
+            {kind: 'image' as const, x: 300, y: 84, width: 120, height: 185},
+            {kind: 'image' as const, x: 100, y: 96, width: 64, height: 127},
+            {kind: 'image' as const, x: 300, y: 350, width: 60, height: 100},
+            {kind: 'image' as const, x: 100, y: 410, width: 60, height: 100},
+        ];
+        const result = analyze([], graphics);
+        expect(result.preservedRegions.map(region => [region.x, region.y])).toEqual([[100, 96], [300, 84], [300, 350], [100, 410]]);
+    });
+    it('keeps nearby centered diagram titles inside the source crop without absorbing captions or ordinary prose', () => {
+        const result = analyze([atom('Diagram title', 110, 70, 80), atom('Figure 1: caption', 100, 60, 100), atom('Ordinary prose.', 300, 70, 100), atom('Full width body continues', 108, 242, 396)], [
+            {kind: 'image', x: 100, y: 84, width: 100, height: 100},
+            {kind: 'image', x: 300, y: 84, width: 100, height: 100},
+            {kind: 'image', x: 108, y: 250, width: 396, height: 70},
+        ]);
+        const left = result.preservedRegions.find(region => region.kind === 'figure' && region.x === 100)!;
+        expect(left).toMatchObject({y: 62, height: 122}); expect(left.source).toBe('Diagram title');
+        expect(result.blocks.find(block => block.source === 'Diagram title')?.kind).toBe('figure-label');
+        expect(result.blocks.find(block => block.source === 'Figure 1: caption')?.kind).toBe('caption');
+        expect(result.blocks.find(block => block.source === 'Ordinary prose.')?.preserveSource).toBe(false);
+        expect(result.blocks.find(block => block.source === 'Full width body continues')?.preserveSource).toBe(false);
+        const math = analyze([atom('F(x) = QK', 310, 70, 80)], [{kind: 'image', x: 300, y: 84, width: 100, height: 100}]);
+        expect(math.preservedRegions.find(region => region.kind === 'figure')?.y).toBe(84);
+    });
+    it('keeps the two clipped embedded titles in Attention page fifteen inside its preserved diagram', () => {
+        // 实际源图的两个 Form 上下接在一起；文字层含大字号 Input-Input 标题，但它们被图形裁掉，不能重新印到图内竖排标签上。
+        const first = {...atom('Input-Input Layer5', 106.973484208, 127.7375646, 171.135371154, 19.618866348), y: 112.042471529};
+        const second = {...atom('Input-Input Layer5', 106.765759931, 345.994745345, 171.219290714, 19.628486841), y: 330.291955873};
+        const result = analyze([first, second,
+            atom('Figure 5: Many of the attention heads exhibit behaviour that seems related to the structure of the sentence.', 108, 611.169, 396, 9.9626),
+            atom('We give two such examples above, from two different heads from the encoder self-attention', 108, 622.079, 396, 9.9626),
+            atom('at layer 5 of 6. The heads clearly learned to perform different tasks.', 108, 632.989, 396, 9.9626),
+        ], [{kind: 'form', x: 108, y: 158.07028396, width: 396.0208858, height: 218.93571604},
+            {kind: 'form', x: 108, y: 377.006, width: 396.0208858, height: 218.93571604}]);
+        expect(result.blocks.filter(block => block.source === 'Input-Input Layer5')).toHaveLength(2);
+        expect(result.blocks.filter(block => block.source === 'Input-Input Layer5').every(block => block.kind === 'figure-label' && block.preserveSource)).toBe(true);
+        expect(result.blocks.find(block => block.source.startsWith('Figure 5:'))).toMatchObject({kind: 'caption', preserveSource: false});
+        const section = analyze([atom('2 Results', 108, 90, 80), atom('Ordinary text anchors the body font.', 108, 400, 396)],
+            [{kind: 'image', x: 108, y: 104, width: 396, height: 150}]);
+        expect(section.blocks.find(block => block.source === '2 Results')).toMatchObject({kind: 'heading', preserveSource: false});
+    });
+    it('preserves the equivalence display equation from the actual ninety-two-page paper', () => {
+        const result = analyze([atom('The theorem establishes the following recovery equation.', 70.86614, 100, 453.5433, 11),
+            atom('𝑔𝑢(𝛾𝑢) ≃ (Ψ𝑡𝑙 ∘ ⋯ ∘ Ψ𝑡1)(𝛾𝑏) (55)', 225.24985, 127.10103, 299.15959, 11),
+            atom('That is, applying the accumulator leaves every table where those same steps would have left it.', 70.86614, 151.37996, 453.5433, 11)]);
+        expect(result.blocks.find(block => block.source.includes('(55)'))).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.filter(block => block.kind === 'text')).toHaveLength(2);
+    });
+    it('keeps raised and lowered scripts with the real page-forty-six body line instead of manufacturing overlapping tail blocks', () => {
+        const real = (text: string, x: number, y: number, width: number, fontSize: number, baseline: number) => ({...atom(text, x, baseline, width, fontSize), y});
+        const atoms = [
+            real('outside the two declarations, and the instantiating iteration is the case where the two states', 70.86614, 454.3126, 453.543307536, 11, 462.2986),
+            real('differ in an entry with an empty table that', 70.86614, 467.9746, 207.699113072, 11, 475.9606),
+            real('≃', 281.80164, 467.0946, 8.558, 11, 475.9606),
+            real('𝐾', 290.35965, 472.4714, 7.392, 7.7, 478.6776),
+            real('does not compare. Since', 301.965939134, 467.9746, 118.543167402, 11, 475.9606),
+            real('𝑔', 423.74548, 467.0946, 5.247, 11, 475.9606),
+            real('𝑢', 429.2675, 465.7614, 5.1975, 7.7, 471.9676),
+            real('𝑛', 428.9925, 472.4714, 5.4362, 7.7, 478.6776),
+            real('carries', 438.317389134, 467.9746, 32.164, 11, 475.9606),
+            real('≃', 473.71777, 467.0946, 8.558, 11, 475.9606),
+            real('𝐾', 482.27576, 472.4714, 7.392, 7.7, 478.6776),
+            real('by the', 493.882049134, 467.9746, 30.527389134, 11, 475.9606),
+            real('paragraph above,', 70.86614, 481.6366, 84.623, 11, 489.6226),
+        ];
+        const lines = pdfLayoutLines(atoms);
+        expect(lines).toHaveLength(3);
+        expect(lines[1].text).toContain('does not compare. Since');
+        expect(lines[1].text).toContain('carries ≃𝐾 by the');
+        expect(lines[1].runs).toHaveLength(11);
+        const result = analyze(atoms, [], 595.2756, 841.8898);
+        expect(result.blocks).toHaveLength(1);
+        expect(result.blocks[0]).toMatchObject({kind: 'text', lineCount: 3, preserveSource: false});
+        expect(result.blocks[0].source).toContain('does not compare. Since');
+    });
+});
+
+describe('PDF layout analysis on real paper typography', () => {
+    const words = (text: string, x: number, baseline: number, gap: number, fontSize = 10) => {let at = x; return text.split(' ').map(word => {const item = atom(word, at, baseline, word.length * 5, fontSize); at += word.length * 5 + gap; return item;});};
+    it('keeps a loosely justified line whole between dense neighbours while still splitting real column gutters', () => {
+        const dense = (baseline: number) => atom('dense line of ordinary body text that fills the entire column', 50, baseline, 240);
+        const lines = pdfLayoutLines([dense(100), ...words('only reading times but also neural responses', 50, 112, 11), dense(124)]);
+        expect(lines.map(line => line.text)).toEqual(['dense line of ordinary body text that fills the entire column', 'only reading times but also neural responses', 'dense line of ordinary body text that fills the entire column']);
+        // 左栏松散、右栏正常：只有被上下行共同让出的栏间距才断开。
+        const columns = pdfLayoutLines([dense(100), atom('right column line one', 330, 100, 220), ...words('only reading times but also neural', 50, 112, 11), ...words('right column line two has many small gaps', 330, 112, 3), dense(124), atom('right column line three', 330, 124, 220)]);
+        expect(columns.filter(line => line.baseline === 112).map(line => line.text)).toEqual(['only reading times but also neural', 'right column line two has many small gaps']);
+    });
+    it('does not split an isolated numbered example at a small gap but splits isolated rows at wide gaps', () => {
+        const lines = pdfLayoutLines([atom('(2)', 45, 60, 11), atom('The children went outside to. . .', 65, 60, 120), atom('Running header', 200, 30, 140, 6), atom('303', 500, 30, 12, 6)]);
+        expect(lines.map(line => line.text)).toEqual(['Running header', '303', '(2) The children went outside to. . .']);
+        // 一侧被上方通栏内容占用、另一侧没有邻行：宽间距仍按栏间距处理，窄间距不拆。
+        const band = pdfLayoutLines([atom('A full width paragraph line that crosses the gutter completely here', 50, 100, 500), atom('Left start', 50, 112, 200), atom('Right start', 330, 112, 200)]);
+        expect(band.map(line => line.text)).toEqual(['A full width paragraph line that crosses the gutter completely here', 'Left start', 'Right start']);
+        const narrow = pdfLayoutLines([atom('A full width paragraph line that crosses the gutter completely here', 50, 100, 500), atom('word', 50, 112, 20), atom('next', 82, 112, 20)]);
+        expect(narrow.at(-1)!.text).toBe('word next');
+    });
+    it('classifies running headers and footers only when they are detached from the text block', () => {
+        const page = analyze([atom('N.J. Smith / Cognition 128 (2013)', 200, 36, 150, 6.4), atom('303', 500, 36, 12, 6.4), atom('Body paragraph starts well below the running header.', 40, 70, 400), atom('It continues on the next line of the same paragraph.', 40, 82, 400), atom('Downloaded from example.org', 40, 780, 150, 6.4)]);
+        expect(page.blocks.filter(block => block.kind === 'footer').map(block => block.source)).toEqual(['N.J. Smith / Cognition 128 (2013)', '303', 'Downloaded from example.org']);
+        expect(page.blocks.find(block => block.source.startsWith('Body'))).toMatchObject({kind: 'text', readingOrder: 2});
+        // 贴近页顶的正文首行、以及页顶的大号幻灯片标题都不是页眉。
+        const attached = analyze([atom('First body line sits near the top edge', 40, 40, 300), atom('and continues right below it.', 40, 52, 300)]);
+        expect(attached.blocks.map(block => block.kind)).toEqual(['text']);
+        const slide = analyze([atom('Slide title', 40, 40, 200, 24), atom('Body copy of the slide is much smaller than its title text.', 40, 200, 400), atom('Second line of body copy keeps the body font dominant.', 40, 212, 400)]);
+        expect(slide.blocks[0]).toMatchObject({kind: 'heading', source: 'Slide title'});
+    });
+    it('recognises dotted section numbers, appendix and acknowledgement headings, and rejects numbered list items and mid-paragraph numbers', () => {
+        const body = (text: string, baseline: number, x = 40, width = 240) => atom(text, x, baseline, width);
+        const result = analyze([atom('1. Introduction', 40, 100, 70), body('Making predictions about the future is a necessary part.', 121), body('It continues for another complete line of running text here', 133),
+            atom('2. Theories relating word predictability and reading', 40, 170, 230), atom('time', 40, 182, 20), body('The simplest curve relates the two quantities directly today.', 203),
+            atom('Acknowledgments', 40, 240, 80), body('This work was supported by a grant from a public agency.', 261),
+            atom('Appendix A. Supplementary material', 40, 300, 160), body('Supplementary data are available online for this article now.', 321),
+            atom('1. Omitting them could induce overconfidence in the', 44, 360, 236), atom('parametric form of the model.', 54, 372, 150),
+            body('We retrieved the trace and compared the durations of the', 420), atom('4 PP stages within the same group of ranks across', 40, 432, 236), body('PP group, as shown in the figure. The timeline exhibits', 444),
+            atom('1 Note that the term refers to something specific here', 40, 500, 200, 6.4), atom('10 MB to 2.7 KB per rank per step. Its progressive diagno-', 300, 100, 240), atom('sis framework isolates anomalous windows automatically.', 300, 112, 240)]);
+        const headings = result.blocks.filter(block => block.kind === 'heading').map(block => block.source);
+        expect(headings).toEqual(['1. Introduction', '2. Theories relating word predictability and reading time', 'Acknowledgments', 'Appendix A. Supplementary material']);
+        expect(result.blocks.find(block => block.source.startsWith('1. Omitting'))).toMatchObject({kind: 'text', lineCount: 2});
+        expect(result.blocks.find(block => block.source.includes('4 PP stages'))).toMatchObject({kind: 'text', lineCount: 3});
+        expect(result.blocks.find(block => block.source.startsWith('1 Note'))?.kind).toBe('text');
+        expect(result.blocks.find(block => block.source.startsWith('10 MB'))).toMatchObject({kind: 'text', lineCount: 2});
+    });
+    it('joins wrapped titles, including centred ones, without absorbing the next numbered heading or a full first body line', () => {
+        const left = analyze([atom('The effect of word predictability on reading time', 40, 100, 300, 14), atom('is logarithmic', 40, 117, 90, 14), atom('Nathaniel Smith, Roger Levy', 40, 140, 170, 10.6), atom('Department of Cognitive Science, University of California', 40, 156, 250, 6.4), atom('Department of Linguistics, University of California too', 40, 164, 250, 6.4),
+            ...Array.from({length: 6}, (_, index) => atom('Ordinary body text keeps the dominant font size of the page.', 40, 300 + index * 12, 300, 8))]);
+        expect(left.blocks[0]).toMatchObject({kind: 'heading', source: 'The effect of word predictability on reading time is logarithmic', lineCount: 2});
+        expect(left.blocks[1]).toMatchObject({source: 'Nathaniel Smith, Roger Levy', lineCount: 1});
+        expect(left.blocks[2]).toMatchObject({kind: 'text', lineCount: 2, fontSize: 6.4});
+        const centred = analyze([atom('ARGUS: Production-Scale Tracing and Performance', 150, 100, 312, 14), atom('Diagnosis for over 10,000-GPU Clusters', 186, 117, 240, 14), atom('2 Motivation and Design Space', 40, 200, 180, 12), atom('2.1 Motivation', 40, 216, 80, 12),
+            ...Array.from({length: 6}, (_, index) => atom('Ordinary body text keeps the dominant font size of the page.', 40, 300 + index * 12, 300, 8))]);
+        expect(centred.blocks.filter(block => block.kind === 'heading').map(block => block.source)).toEqual(['ARGUS: Production-Scale Tracing and Performance Diagnosis for over 10,000-GPU Clusters', '2 Motivation and Design Space', '2.1 Motivation']);
+    });
+    it('separates numbered examples and hanging-indent entries while keeping their continuation lines', () => {
+        const result = analyze([atom('(3) After the show, a performer who had really', 45, 100, 200), atom('impressed the audience bowed.', 65, 112, 130), atom('(4) After the show, a performer bowed who had', 45, 124, 200), atom('really impressed the audience.', 65, 136, 130),
+            atom('Frost, R. (1998). Toward a strong phonological theory of words.', 300, 100, 240), atom('Psychological Bulletin, 123(1), 71-99.', 312, 112, 160), atom('Genzel, D., and Charniak, E. (2002). Entropy rate constancy.', 300, 124, 240), atom('In Proceedings of the annual meeting of the association.', 312, 136, 228), atom('Hale, J. (2001). A probabilistic Earley parser as a model.', 300, 148, 240)]);
+        expect(result.blocks.map(block => block.source)).toEqual(['(3) After the show, a performer who had really impressed the audience bowed.', '(4) After the show, a performer bowed who had really impressed the audience.',
+            'Frost, R. (1998). Toward a strong phonological theory of words. Psychological Bulletin, 123(1), 71-99.', 'Genzel, D., and Charniak, E. (2002). Entropy rate constancy. In Proceedings of the annual meeting of the association.', 'Hale, J. (2001). A probabilistic Earley parser as a model.']);
+    });
+    it('preserves symbol-font equations and wordless fragments but keeps justified prose containing an equals sign', () => {
+        const prose = (text: string, baseline: number) => atom(text, 40, baseline, 240);
+        const result = analyze([prose('conditional probability then let us decompose the lexical', 100), atom('PðwhojCÞ ¼ Pðrel: clausejCÞ', 40, 124, 190), prose('The first term measures the syntactic predictability here', 148),
+            prose('processed as /kan-/, /-di/ then k = 2; processing it as /k-/,', 160), prose('uously gives k = 1.) And, let f(x) be the function that gives', 172), atom('lim', 300, 200, 14), atom('k!1', 300, 208, 14, 6), atom('Xk', 330, 200, 12), atom('续文', 300, 260, 24)]);
+        expect(result.preservedRegions.filter(region => region.kind === 'formula').map(region => region.source)).toEqual(['PðwhojCÞ ¼ Pðrel: clausejCÞ']);
+        expect(result.blocks.find(block => block.source.includes('processed as'))).toMatchObject({kind: 'text', preserveSource: false});
+        expect(result.blocks.filter(block => ['lim', 'k!1', 'Xk'].includes(block.source)).every(block => block.kind === 'formula' && block.preserveSource)).toBe(true);
+        expect(result.blocks.find(block => block.source === '续文')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('cuts figures at their captions, keeps the picture below as its own figure and treats sentences inside a figure box as prose', () => {
+        const atoms = [atom('axis label', 120, 140, 50, 6), atom('Figure 12. Case 2: trace of communication kernels. Rank 7', 100, 212, 300, 9), atom('shows longer operations in its own group.', 100, 223, 220, 9), atom('PP Stage 0', 110, 300, 50, 6),
+            atom('Figure 13. Case 3: a short caption.', 100, 362, 180, 9), atom('We further verified this through the trace, as shown in the figure above and', 100, 390, 300), atom('It reveals a gap.', 100, 402, 80)];
+        const result = analyze(atoms, [{kind: 'image', x: 100, y: 100, width: 300, height: 310}]);
+        expect(result.preservedRegions.map(region => [region.kind, Math.round(region.y), Math.round(region.height)])).toEqual([['figure', 100, 103], ['figure', 227, 126], ['figure', 366, 44]]);
+        expect(result.blocks.filter(block => block.kind === 'caption').map(block => block.source)).toEqual(['Figure 12. Case 2: trace of communication kernels. Rank 7 shows longer operations in its own group.', 'Figure 13. Case 3: a short caption.']);
+        expect(result.blocks.filter(block => block.kind === 'figure-label').map(block => block.source).sort()).toEqual(['PP Stage 0', 'axis label']);
+        expect(result.blocks.find(block => block.source.startsWith('We further verified'))).toMatchObject({kind: 'text', preserveSource: false, lineCount: 2});
+        // 题注下方不足一行高的残余不是另一张图。
+        const tail = analyze([atom('Figure 2. The caption sits at the very bottom of the box.', 100, 190, 280, 9)], [{kind: 'image', x: 100, y: 100, width: 300, height: 100}]);
+        expect(tail.preservedRegions).toHaveLength(1);
+    });
+    it('turns worded table cells into separate translatable cells and joins only hyphenated or lower-case continuations', () => {
+        const rules = [80, 100, 190].map(y => ({kind: 'path' as const, x: 40, y, width: 500, height: 0}));
+        const result = analyze([atom('Category', 50, 94, 50), atom('Symptom', 300, 94, 50), atom('PCIe bandwidth degrada-', 50, 114, 120), atom('tion', 50, 126, 20), atom('Hidden size', 50, 138, 60), atom('Sequence length', 50, 150, 80),
+            atom('Straggler rank identified', 300, 114, 130), atom('(via compute kernels)', 300, 126, 110), atom('2048', 300, 138, 20), atom('4096', 300, 150, 20)], rules);
+        expect(result.blocks.filter(block => block.kind === 'table').map(block => [block.source, block.preserveSource])).toEqual([['Category', false], ['PCIe bandwidth degradation', false], ['Hidden size', false], ['Sequence length', false], ['Symptom', false], ['Straggler rank identified (via compute kernels)', false], ['2048', true], ['4096', true]]);
+    });
+    it('splits a narrow but consistent gutter, rejoins a section number with its title and tolerates zero-size glyphs', () => {
+        // 栏间距只有 1.4 个字宽，但明显大于词距且上下行都让出这条竖带。
+        const row = (baseline: number) => [...words('left column words here', 50, baseline, 3), ...words('right column words here', 168, baseline, 3)];
+        const narrow = pdfLayoutLines([...row(100), ...row(112), ...row(124)]);
+        expect(narrow.filter(line => line.baseline === 112).map(line => line.text)).toEqual(['left column words here', 'right column words here']);
+        // 相邻两行的编号与标题之间都留白：先按竖带断开，再把编号并回标题。
+        const numbered = pdfLayoutLines([atom('1', 50, 80, 5, 12), atom('Introduction', 69, 80, 90, 12), atom('2', 50, 100, 5, 12), atom('Methods', 69, 100, 60, 12)]);
+        expect(numbered.map(line => line.text)).toEqual(['1 Introduction', '2 Methods']);
+        expect(pdfLayoutLines([atom('x', 0, 0, 5, 0)])).toHaveLength(1);
+    });
+    it('attaches a line to the most recent of two eligible paragraphs and rejects a long numbered line that continues below', () => {
+        const result = analyze([atom('First paragraph ends here.', 50, 100, 200), atom('indented note keeps going', 60, 106, 200), atom('and this line continues the note', 50, 112, 200)]);
+        expect(result.blocks.map(block => block.source)).toEqual(['First paragraph ends here.', 'indented note keeps going and this line continues the note']);
+        const footnote = analyze([atom('1 Note that the term frequency refers to something specific', 40, 100, 260), atom('and it continues on a second full line of the same footnote.', 40, 112, 260)]);
+        expect(footnote.blocks).toHaveLength(1); expect(footnote.blocks[0]).toMatchObject({kind: 'text', lineCount: 2});
+    });
+    it('does not chain two lines of one column into a row through a line of the other column with a different leading', () => {
+        // 右栏 6.4 号字、行距 8；左栏 8 号字的一行基线落在右栏两行之间。
+        const lines = pdfLayoutLines([atom('Learning and Verbal Behavior, 12, 335-359.', 294, 370.2, 130, 6.4), atom('left column line in a larger size', 41, 374.4, 220, 8), atom('Dahan, D., and Tanenhaus, M. K. (2004). Continuous mapping', 282, 378.2, 221, 6.4)]);
+        expect(lines.map(line => line.text)).toEqual(['Learning and Verbal Behavior, 12, 335-359.', 'left column line in a larger size', 'Dahan, D., and Tanenhaus, M. K. (2004). Continuous mapping']);
+    });
+    it('treats slide frames, title bands and filled text boxes as containers while real figures keep their small labels', () => {
+        // 幻灯片：占页面大半的内容框里是大字号的短要点，全部是正文。
+        const slide = analyze([atom('可靠性', 60, 120, 78, 26), atom('性能', 60, 170, 52, 26), atom('成本', 60, 220, 52, 26)], [{kind: 'image', x: 30, y: 60, width: 660, height: 440}], 720, 540);
+        expect(slide.preservedRegions).toEqual([]);
+        expect(slide.blocks.every(block => !block.preserveSource && block.kind !== 'figure-label')).toBe(true);
+        // 标题色带：一行成句的标题几乎填满色带。
+        const band = analyze([atom('嵌入式软件的应用与特点', 43, 60, 430, 39), atom('Body sentence under the title band.', 43, 140, 300, 20)], [{kind: 'path', x: 29, y: 17, width: 649, height: 49}], 720, 540);
+        expect(band.preservedRegions).toEqual([]);
+        expect(band.blocks.find(block => block.source.startsWith('嵌入式'))?.preserveSource).toBe(false);
+        // 带边框的报告页：框内多半是成句的正文行，短行不是小字号标注。
+        const framed = analyze([atom('Section', 60, 100, 40), atom('This framed report page keeps ordinary body sentences inside a border.', 60, 130, 420), atom('Another complete sentence continues the framed report body text here.', 60, 160, 420)], [{kind: 'path', x: 40, y: 60, width: 520, height: 600}]);
+        expect(framed.preservedRegions).toEqual([]);
+        // 许多相接的小底框并成一个大区域时，合并之后同样按容器处理。
+        const chained = analyze([atom('第一段说明文字写在底框里面', 50, 80, 300, 14), atom('第二段说明文字也写在底框里面', 50, 330, 300, 14)], [{kind: 'path', x: 40, y: 40, width: 500, height: 262}, {kind: 'path', x: 40, y: 300, width: 500, height: 300}]);
+        expect(chained.preservedRegions).toEqual([]);
+        // 真正的插图：包围盒圈入了正文，但图内成批的小字短标注说明它仍是插图。
+        const labels = ['Kernel', 'Vector', 'Grafana', 'Perfetto', 'Storage'].map((text, index) => atom(text, 60 + index * 90, 100, 30, 6));
+        const figure = analyze([...labels, atom('A body sentence that the figure bounding box happens to swallow completely.', 60, 250, 420), atom('It continues with another full sentence of ordinary body text right here.', 60, 262, 420)], [{kind: 'form', x: 0, y: 40, width: 600, height: 400}]);
+        expect(figure.preservedRegions.some(region => region.kind === 'figure')).toBe(true);
+        expect(figure.blocks.filter(block => block.kind === 'figure-label')).toHaveLength(5);
+        // 小插图里只有零星短标注：不够容器的任何一条。
+        const small = analyze([atom('Axis', 120, 150, 20, 7), atom('Body text outside the figure stays body text for this page.', 60, 400, 400)], [{kind: 'image', x: 100, y: 100, width: 200, height: 150}]);
+        expect(small.preservedRegions.some(region => region.kind === 'figure')).toBe(true);
+    });
+    it('reads text that is painted twice in place once, and counts CJK sentences inside figures as prose', () => {
+        const doubled = pdfLayoutLines([atom('关系数据库标准语言', 190, 280, 252, 28), atom('SQL', 442, 280, 53, 28), atom('关系数据库标准语言', 190.1, 280, 252, 28), atom('SQL', 442.1, 280, 53, 28), atom('  ', 500, 280, 4, 28), atom('SQL', 600, 280, 53, 28)]);
+        expect(doubled.map(line => line.text).join(' ')).toBe('关系数据库标准语言SQL SQL');
+        // 同一位置但字号不同的同一个字不是重复描字（例如上标与正文字符重叠的排版）。
+        expect(pdfLayoutLines([atom('x', 0, 0, 5, 10), atom('x', 0, 0, 5, 10.6)]).map(line => line.text).join('')).toBe('xx');
+        const prose = analyze([atom('这是一句写在插图范围里面的完整中文说明', 60, 120, 200, 8), atom('A', 70, 200, 5, 5), atom('B', 140, 200, 5, 5), atom('C', 210, 200, 5, 5), atom('D', 280, 200, 5, 5), atom('Body text below the figure is long enough to set the page body size here.', 60, 500, 420), atom('More body text follows so that the median body font stays at ten points.', 60, 512, 420)], [{kind: 'image', x: 40, y: 100, width: 300, height: 200}]);
+        expect(prose.blocks.find(block => block.source.startsWith('这是一句'))).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('keeps loosely spaced word-processor paragraphs together and ends a paragraph at a line that does not reach the column edge', () => {
+        const wide = '本课程是计算机大类基础课其作用是将大一新生对计算机已有的感性认识提升';
+        const body = (text: string, x: number, baseline: number, width: number) => atom(text, x, baseline, width, 10.5);
+        const result = analyze([
+            body('1）成绩评定总则', 111, 100, 79),
+            body(wide, 111, 119.5, 394), body(wide, 90, 139, 415), body('以闭卷笔试为主。总成绩按以下公式计算：', 90, 158.5, 199),
+            body('总成绩＝平时成绩×20%＋实验成绩×20%＋期末成绩×60%', 111, 178, 265),
+            body('2）平时成绩评定', 111, 197.5, 79),
+            body('This course is a basic course of the computer major and its function', 90, 300, 415), body('is to lift perceptual knowledge into rational knowledge.', 90, 319.5, 300),
+            body('A second English paragraph starts right below the short closing line', 90, 339, 415), body('and it continues on a second full line of the very same paragraph here', 90, 358.5, 415),
+        ]);
+        expect(result.blocks.map(block => block.lineCount)).toEqual([1, 3, 1, 1, 2, 2]);
+        // 中文折行处不补空格。
+        expect(result.blocks[1].source).toBe(`${wide}${wide}以闭卷笔试为主。总成绩按以下公式计算：`);
+        expect(result.blocks[4].source).toContain('function is to lift');
+        // 悬挂缩进的条目：首行排满，缩进的续行即使更短也仍属于同一条目。
+        const hanging = analyze([atom('[1] A reference entry whose first line fills the whole column width.', 60, 100, 420), atom('Its continuation is indented.', 75, 112, 150), atom('[2] The next reference entry starts back at the left margin again.', 60, 124, 420)]);
+        expect(hanging.blocks.map(block => block.lineCount)).toEqual([2, 1]);
+    });
+    it('removes the spaces of letter-spaced CJK lines but keeps ordinary spacing', () => {
+        const spaced = analyze([atom('院 级 党 课 结 业 心 得', 200, 100, 200, 16), atom('学 院： 计 算 机 学 院', 200, 200, 200, 16)]);
+        expect(spaced.blocks.map(block => block.source)).toEqual(['院级党课结业心得', '学院：计算机学院']);
+        expect(analyze([atom('建议教材 吕云翔 傅尔也 译', 60, 100, 200)]).blocks[0].source).toBe('建议教材 吕云翔 傅尔也 译');
+        expect(analyze([atom('第 4 页', 60, 100, 60)]).blocks[0].source).toBe('第 4 页');
+    });
+    it('keeps an author byline out of the headings and drops a raised footnote mark from the end of a title', () => {
+        const mark = {...atom('q', 130, 94, 8, 9), baseline: 94};
+        const page = [atom('The effect of word predictability is logarithmic', 41, 100, 88, 13.4), mark, atom('Nathaniel J. Smith a,⇑, Roger Levy b', 41, 130, 168, 10.6),
+            atom('Body text sets the page size and is long enough to be a real sentence here.', 41, 300, 420, 8), atom('More body text follows on the next line of the very same body paragraph.', 41, 310, 420, 8), atom('Kernel Activity and Trace Analysis', 41, 200, 200, 10.6)];
+        const result = analyze(page, [], 544, 742);
+        expect(result.blocks.find(block => block.source.startsWith('The effect'))).toMatchObject({kind: 'heading', source: 'The effect of word predictability is logarithmic'});
+        expect(result.blocks.find(block => block.source.startsWith('Nathaniel'))).toMatchObject({kind: 'metadata', preserveSource: true});
+        // 只用 and 连接的标题仍是标题；页面下半部分或上方没有更大标题时，逗号分隔的词组也不算署名。
+        expect(result.blocks.find(block => block.source.startsWith('Kernel'))?.kind).toBe('heading');
+        expect(analyze([atom('Ashish Vaswani, Noam Shazeer, Niki Parmar', 41, 130, 300, 14), atom('Body text sets the page size and is long enough to be a real sentence here.', 41, 300, 420, 8), atom('More body text follows on the next line of the very same body paragraph.', 41, 310, 420, 8)]).blocks[0].kind).toBe('heading');
+        // 标题末尾同一基线上的普通字母不是脚注标记。
+        expect(analyze([atom('Appendix', 41, 100, 60, 14), atom('B', 105, 100, 8, 9), atom('Body text sets the page size and is long enough to be a real sentence here.', 41, 300, 420, 8), atom('More body text follows on the next line of the very same body paragraph.', 41, 310, 420, 8)]).blocks[0].source).toBe('Appendix B');
+    });
+    it('leaves bullet glyphs on the page, starts a block at every bullet and translates large text inside slide diagrams', () => {
+        const slide = analyze([
+            atom('u', 60, 100, 10, 22), atom('Compiler and linker', 75, 100, 200, 22), atom('u', 60, 130, 10, 22), atom('Debugger', 75, 130, 100, 22),
+            atom('n', 40, 200, 10, 26), atom('典型的开发环境', 60, 200, 180, 26), atom('•', 60, 260, 6, 22), atom('real-time kernel', 75, 260, 160, 22),
+            atom('源程序', 494, 400, 54, 18), atom('n', 60, 320, 10, 22), atom('is the number of tasks', 75, 320, 220, 22),
+        ], [{kind: 'path', x: 480, y: 380, width: 87, height: 60}, {kind: 'path', x: 560, y: 380, width: 87, height: 60}], 720, 540);
+        expect(slide.blocks.map(block => block.source)).toEqual(['Compiler and linker', 'Debugger', '典型的开发环境', 'real-time kernel', 'n is the number of tasks', '源程序']);
+        expect(slide.blocks.find(block => block.source === 'Compiler and linker')).toMatchObject({x: 75, width: 200});
+        expect(slide.blocks.find(block => block.source === '源程序')).toMatchObject({kind: 'text', preserveSource: false});
+        // 只出现一次、后面跟小写英文的单个字母是变量而不是项目符号；两行都以它开头时才是。
+        const twice = analyze([atom('n', 60, 100, 6), atom('First point', 75, 100, 100), atom('n', 60, 112, 6), atom('Second point', 75, 112, 100)]);
+        expect(twice.blocks.map(block => block.source)).toEqual(['First point', 'Second point']);
+    });
+    it('orders two columns by their body paragraphs: narrow labels join the column that covers them and a straddling block does not merge the columns', () => {
+        const body = (tag: string, x: number, top: number) => [0, 1, 2].map(row => atom(`${tag} body line ${row} is a full justified line of ordinary column text`, x, top + row * 12, 240));
+        const label = (tag: string, x: number) => [atom(`${tag} upper`, x, 70, 40, 8), atom(`${tag} lower`, x, 79, 40, 8)];
+        // 右栏顶部并排的两个两行小标注都被下方的正文段落盖住：它们属于右栏，按上下顺序排在段落之前。
+        const absorbed = analyze([...body('Left', 54, 100), ...label('Alpha', 330), ...label('Beta', 420), ...body('Right', 318, 110)]);
+        expect(absorbed.blocks.map(block => block.source.split(' ').slice(0, 2).join(' '))).toEqual(['Left body', 'Alpha upper', 'Beta upper', 'Right body']);
+        // 横跨两栏的两行说明只碰到两栏各一部分：归入左栏，两栏仍然先左后右。
+        const straddling = analyze([atom('A two line note that straddles the gutter between both of the columns', 150, 60, 310), atom('and continues on a second line of exactly the same width as before', 150, 72, 310), ...body('Left', 54, 100), ...body('Right', 318, 100), ...body('Left again', 54, 160), ...body('Right again', 318, 160)]);
+        expect(straddling.blocks.map(block => block.source.split(' ').slice(0, 2).join(' '))).toEqual(['A two', 'Left body', 'Left again', 'Right body', 'Right again']);
+    });
+    it('preserves detached small words inside captions but leaves words overlapping a wrapped heading translatable', () => {
+        const body = [atom('Body text sets the page size and is long enough to be a real sentence here.', 60, 300, 420), atom('More body text follows on the next line of the same body paragraph.', 60, 312, 420)];
+        const caption = analyze([atom('Figure 1. Observations collected from the experiment', 60, 100, 420), atom('and shown with their corresponding measurements.', 60, 112, 420), atom('word', 300, 106, 14, 6), ...body]);
+        expect(caption.blocks.find(block => block.kind === 'caption')).toMatchObject({lineCount: 2});
+        expect(caption.blocks.find(block => block.source === 'word')).toMatchObject({kind: 'formula', preserveSource: true});
+        const heading = analyze([atom('1. Main Results', 60, 100, 300), atom('and discussion', 60, 112, 110), atom('word', 300, 106, 14, 6), ...body]);
+        expect(heading.blocks.find(block => block.kind === 'heading')).toMatchObject({source: '1. Main Results and discussion', lineCount: 2});
+        expect(heading.blocks.find(block => block.source === 'word')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('keeps radical-bar ligature runs as formula fragments and splits merged table cells that collide with a neighbour', () => {
+        const radical = analyze([atom('pkffiffiffiffiffiffiffiffi', 60, 100, 60), atom('Body text sets the page size and is long enough to be a real sentence here.', 60, 300, 420), atom('More body text follows on the next line of the very same body paragraph.', 60, 312, 420)]);
+        expect(radical.blocks.find(block => block.source.startsWith('pkffi'))).toMatchObject({kind: 'formula', preserveSource: true});
+        // 散落的上下标同样不是句子；带空格的中文单字和普通短语不受影响。
+        expect(analyze([atom('i k k 1 k word', 60, 100, 60)]).blocks[0]).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(analyze([atom('a b', 60, 100, 20), atom('Plan B is ready', 60, 200, 80)]).blocks.map(block => block.kind)).toEqual(['formula', 'text']);
+        // 落在段落矩形里的小字号孤立短词是没有并回行内的下标；段落外的同样短词仍是正文。
+        const stray = analyze([atom('It will be easier to work with this after taking the logarithm of both', 60, 100, 420), atom('sides of the equation and moving the constant term over to the left', 60, 112, 420), atom('so that every remaining term of the model is a simple linear function.', 60, 124, 420), atom('word', 300, 106, 14, 6), atom('word', 300, 400, 14, 6)]);
+        expect(stray.blocks.filter(block => block.source === 'word').map(block => block.kind).sort()).toEqual(['formula', 'text']);
+        // 表头第一行“Diagnostic”与下一行以小写开头的“analysis”会并成一个两行单元格，它的矩形压到了旁边的“Always”，于是退回一行一个单元格。
+        const rules = [{kind: 'path' as const, x: 50, y: 90, width: 400, height: 0}, {kind: 'path' as const, x: 50, y: 150, width: 400, height: 0}];
+        const table = analyze([atom('Diagnostic', 200, 106, 60, 6), atom('analysis', 205, 115, 40, 6), atom('Always', 230, 111, 50, 6), atom('Body text sets the page size and is long enough to be a real sentence here.', 50, 300, 420), atom('More body text follows on the next line of the very same body paragraph.', 50, 312, 420)], rules);
+        expect(table.blocks.filter(block => block.kind === 'table').map(block => block.source).sort()).toEqual(['Always', 'Diagnostic', 'analysis']);
+        // 没有压到别的块时，续行仍并入同一个单元格。
+        const kept = analyze([atom('Diagnostic', 200, 106, 60, 6), atom('analysis', 205, 115, 40, 6), atom('Body text sets the page size and is long enough to be a real sentence here.', 50, 300, 420), atom('More body text follows on the next line of the very same body paragraph.', 50, 312, 420)], rules);
+        expect(kept.blocks.filter(block => block.kind === 'table').map(block => block.source)).toEqual(['Diagnostic analysis']);
+    });
+    it('keeps an author grid without e-mail addresses as source when names and affiliations sit in columns under the title', () => {
+        const row = (texts: string[], baseline: number, size: number) => texts.map((text, index) => atom(text, 150 + index * 130, baseline, 70, size));
+        const body = [atom('Abstract', 100, 300, 50, 12), atom('Large scale training needs always-on observability for effective diagnosis of slow jobs.', 100, 320, 240), atom('Coarse monitors cannot localise root causes and fine profilers cost far too much to keep.', 100, 332, 240)];
+        const grid = analyze([atom('A Production Scale Tracing System', 150, 100, 320, 20), ...row(['Jia Zhou', 'Long Zeng', 'Clavis Chen'], 140, 12), ...row(['Tencent', 'Tencent', 'Tencent'], 154, 10), atom('Ray Ying', 215, 180, 70, 12), atom('Key Zhang', 345, 180, 70, 12), ...body]);
+        // 姓名与紧贴其下的单位并成一个作者块；整块保留原样，网格下方落单的两位作者同样属于作者区。
+        expect(grid.blocks.filter(block => block.kind === 'metadata').map(block => block.source).sort()).toEqual(['Clavis Chen Tencent', 'Jia Zhou Tencent', 'Key Zhang', 'Long Zeng Tencent', 'Ray Ying']);
+        expect(grid.blocks.filter(block => block.kind === 'metadata').every(block => block.preserveSource)).toBe(true);
+        expect(grid.blocks.find(block => block.source === 'Abstract')?.preserveSource).toBe(false);
+        // 只有一行三列的短词，或者上方没有更大的标题，都不是作者区。
+        const single = analyze([atom('A Production Scale Tracing System', 150, 100, 320, 20), ...row(['Reliability', 'Performance', 'Cost'], 140, 12), ...body]);
+        expect(single.blocks.some(block => block.kind === 'metadata')).toBe(false);
+        const untitled = analyze([...row(['Jia Zhou', 'Long Zeng', 'Clavis Chen'], 140, 12), ...row(['Tencent', 'Tencent', 'Tencent'], 154, 12), ...body.map(entry => ({...entry, fontSize: 12}))]);
+        expect(untitled.blocks.some(block => block.kind === 'metadata')).toBe(false);
+    });
+    it('keeps table-of-contents leaders and page numbers on the page and translates only the entry title', () => {
+        const dots = '.'.repeat(40);
+        // 标题与引导点在同一个字形片段里：行宽收到标题文字为止；页码是单独的片段，不再进入任何版面块。
+        const single = analyze([atom(`《计算机导论》${dots}`, 100, 100, 400, 10.5), atom('12', 505, 100, 10, 10.5), atom(`Chapter 2 Data Structures ${dots}`, 100, 120, 400, 10.5), atom('34', 505, 120, 10, 10.5)]);
+        expect(single.blocks.map(block => block.source)).toEqual(['《计算机导论》', 'Chapter 2 Data Structures']);
+        expect(single.blocks[0].width).toBeGreaterThan(60); expect(single.blocks[0].width).toBeLessThan(200);
+        expect(single.blocks[1].width).toBeGreaterThan(90); expect(single.blocks[1].width).toBeLessThan(260);
+        // 标题、引导点分属不同片段：整段标题片段保留，引导点片段丢弃。
+        const split = analyze([atom('Introduction', 100, 100, 60), atom(dots, 162, 100, 300), atom('7', 465, 100, 5)]);
+        expect(split.blocks).toHaveLength(1);
+        expect(split.blocks[0]).toMatchObject({source: 'Introduction', x: 100, width: 60});
+        // 行距宽松的目录里，相邻条目各自成段；带项目符号的条目同样如此，条目后面的普通行也不并入条目。
+        const listed = analyze([atom('•', 88, 100, 6, 10.5), ...[0, 1, 2, 3].map(row => atom(`《课程名称之${row}》${dots}`, 100, 100 + row * 18, 400, 10.5)), atom('附注说明', 100, 172, 42, 10.5)]);
+        expect(listed.blocks.map(block => block.source)).toEqual(['《课程名称之0》', '《课程名称之1》', '《课程名称之2》', '《课程名称之3》', '附注说明']);
+        // 句末的省略号和少量的点不是引导点。
+        expect(analyze([atom('He paused for a while...', 100, 100, 120)]).blocks[0].source).toBe('He paused for a while...');
+    });
+    it('keeps a large journal name inside a paper header figure as part of the figure', () => {
+        const paper = analyze([atom('Cognition', 243, 95, 65, 13.9), atom('Body text sets the page size and is long enough to be a real sentence here.', 41, 300, 420, 8), atom('More body text follows on the next line of the very same body paragraph.', 41, 310, 420, 8)], [{kind: 'image', x: 41, y: 35, width: 466, height: 100}]);
+        expect(paper.blocks.find(block => block.source === 'Cognition')).toMatchObject({kind: 'figure-label', preserveSource: true});
+    });
+    it('falls back to a default body size when a page only has tiny glyphs', () => {
+        expect(analyze([atom('tiny', 40, 100, 20, 4)]).blocks).toHaveLength(1);
+    });
+});

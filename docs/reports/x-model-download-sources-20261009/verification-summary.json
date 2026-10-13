@@ -1,0 +1,192 @@
+{
+  "scope": "Targeted affected boundaries, not full regression",
+  "strictModuleCount": 14,
+  "coverage": {
+    "src/core/config/model.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/features/video-subtitle/transcription.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/features/video-subtitle/offscreen/transcription.worker.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/app/background/handlers/downloadProgress.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/core/download/progress.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/features/video-subtitle/background/handlers.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/features/video-subtitle/offscreen/transcription.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/platform/storage/downloadProgress.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/features/local-tts/offscreen/modelCache.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/features/local-tts/offscreen/tts.worker.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/features/video-subtitle/offscreen/modelCache.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/platform/http/modelDownloads.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/features/settings/ui/VideoLocalModelSettings.vue": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/platform/offscreen/client.ts": {
+      "lines": 100,
+      "functions": 100,
+      "statements": 100,
+      "branches": 100
+    }
+  },
+  "sourceProbe": "source-probe-summary.json",
+  "typescript": "vue-tsc --noEmit passed",
+  "audit": {
+    "files": 612,
+    "cases": 9860
+  },
+  "architecture": {
+    "totalCases": 881,
+    "baselineConflict": "Worker was both strict and exempt; actual four-dimension 100 percent validated before removing exemption",
+    "correctedVerificationOwnershipCases": 16
+  },
+  "targetedTests": {
+    "files": 37,
+    "cases": 1558,
+    "perFile": {
+      "tests/config.test.ts": 131,
+      "tests/model.test.ts": 113,
+      "tests/videoAiWorker.test.ts": 62,
+      "tests/videoAiStreaming.test.ts": 64,
+      "tests/configModelAuditBoundaries.test.ts": 41,
+      "tests/videoAiBackendCoverage.test.ts": 24,
+      "tests/configDomainBoundaries.test.ts": 23,
+      "tests/videoAiBackground.test.ts": 27,
+      "tests/configHarness.test.ts": 25,
+      "tests/videoAiAlgorithmsCoverage.test.ts": 8,
+      "tests/videoTranscription.test.ts": 19,
+      "tests/freeTranslationConfig.test.ts": 8,
+      "tests/popupActions.test.ts": 5,
+      "tests/modelOptions.test.ts": 3,
+      "tests/implementationAudit49C.test.ts": 95,
+      "tests/videoAiOffscreen.test.ts": 38,
+      "tests/implementationAudit49D.test.ts": 47,
+      "tests/downloadProgressTransport.test.ts": 17,
+      "tests/downloadProgress.test.ts": 14,
+      "tests/modelCacheRemoval.test.ts": 6,
+      "tests/modelDownloads.test.ts": 18,
+      "tests/videoAiModelCache.test.ts": 48,
+      "tests/localTtsModelCache.test.ts": 8,
+      "tests/localTtsWorker.test.ts": 23,
+      "tests/mangaOcrAssets.test.ts": 13,
+      "tests/ocrModelDownload.test.ts": 5,
+      "tests/localTranslationArtifacts.test.ts": 15,
+      "tests/implementationAudit48D.test.ts": 69,
+      "tests/implementationAudit49E2.test.ts": 26,
+      "tests/localModelSettingsLifecycle.test.ts": 24,
+      "tests/userscriptViteConfig.test.ts": 22,
+      "tests/fullPageVisibilityScheduling.test.ts": 252,
+      "tests/languageIdentification.test.ts": 125,
+      "tests/sameTargetLanguageClient.test.ts": 74,
+      "tests/sameTargetLanguageRegression.test.ts": 35,
+      "tests/offscreenClient.test.ts": 29,
+      "tests/implementationAudit48N.test.ts": 2
+    },
+    "partiallySelectedFiles": {
+      "tests/implementationAudit48N.test.ts": "Only two existing Chrome/Firefox platform factory cases selected for offscreen client coverage; remaining cases not selected."
+    }
+  },
+  "sourceCommit": "f4db4efad0524b36bbeb2b655a7958f44e1a35f1",
+  "integratedMain": "64c6b8e67316f7757d31469800219b034d3d690f",
+  "extensionVersion": "0.0.37",
+  "sourceHashes": {
+    "src/app/offscreen/runtime.ts": "147be423734db3455d7dac44e8cbc82971cc934e6f87574a834039793fde1dba",
+    "src/core/config/model.ts": "a56854edf96ecd6a13c39ae732c64997d9cfb7a544aefd527895c6a5011eb540",
+    "src/core/download/progress.ts": "b0664c2ff13dea95f25ff4f1bf4dd77d04721e68487a168b0043cda8945f7c79",
+    "src/core/i18n/messages/settings-copy/en-US.json": "3c1b8042a60ea0765fb8c1c2f3ad779a8c2b1a5d822788606a543957cb224f9c",
+    "src/core/i18n/messages/settings-copy/es-ES.json": "fcf6be5a3d90ef2a48695b041f9239382fc84409e92e83d00d2cd34d14889e56",
+    "src/core/i18n/messages/settings-copy/fr-FR.json": "abc9c46ed9d5384d2cb9e13ef7f2290028e5e3eb5eea03b87912f9dc20579da3",
+    "src/core/i18n/messages/settings-copy/ja-JP.json": "898d3474e93f3051950ada9903ce487e68fcf2f12f52dfa3ff37f8ab20fdaedd",
+    "src/core/i18n/messages/settings-copy/ko-KR.json": "faeb1c57f30a299ccb226294f15ad108cb1004c4e1cef3616d4748415e144f19",
+    "src/core/i18n/messages/settings-copy/ru-RU.json": "b6be645494aceb12c8cb8bfb379008fae38aadc7521e26450188bcefb1b87813",
+    "src/core/i18n/messages/settings-copy/zh-CN.json": "0150574333868305be4e8136ab81274595f44ef9358a797a0883ef4dd0ae17c1",
+    "src/features/local-tts/offscreen/modelCache.ts": "51f6979208abda27f39994ec232091ceac8b67186b183d0980265b137f8dabec",
+    "src/features/local-tts/offscreen/tts.worker.ts": "29b34886da00a4934c5d4d3fb9d366bbf55e1a833e9e9faec5380414748aa1c0",
+    "src/features/settings/ui/VideoLocalModelSettings.vue": "9dcc7da7af6d693ea756618caea9e4eda477a2701be7162a445de0463eda7ff4",
+    "src/features/video-subtitle/background/handlers.ts": "90dab592fb08e1b7598b482ec3272dba6f952a50f02bfcce14644dc7a9fc55a1",
+    "src/features/video-subtitle/offscreen/modelCache.ts": "0d37c571ef88e69307e185ab97a2a1565fb6faefbc0bb2dc24dac4e36097de32",
+    "src/features/video-subtitle/offscreen/transcription.ts": "cd918b381791221612c7bf2b42161db2b900d7a47442ca3ad603d6ff0522f545",
+    "src/features/video-subtitle/transcription.ts": "b35245a0f5c5235cc273b634e1c1b2b8656db042888cf45ccc7a90ba63e74dc8",
+    "src/platform/http/modelDownloads.ts": "4cc399c4f007eb71a920f52dfe00b6d32a89b6b5950e6196ea15dbd1b5b36ef5",
+    "src/platform/offscreen/client.ts": "b31c8f304e99c5658744684560df384f78dbe1e95c0ca942fdd089dd897da7e9"
+  },
+  "userscript": {
+    "bytes": 1963967,
+    "budgetBytes": 1964000,
+    "verifier": "passed",
+    "budgetChanged": false,
+    "languageResourceCommit": "6ba16c9716814b317ee9b06ab335d9906a1f566b",
+    "deduplication": "Known-size checks reuse the existing finite non-negative byte guard, then require >0. Equivalent behavior; progress four-dimension coverage reverified."
+  },
+  "offscreenBudget": "offscreen-budget-verification.json",
+  "builds": {
+    "chrome": "passed",
+    "firefox": "passed",
+    "extensionManifests": "passed",
+    "userscriptVerifier": "passed",
+    "typescript": "passed",
+    "vitepressDocs": "passed",
+    "fullDocsSiteLocalCheck": {
+      "status": "environment-incomplete",
+      "reason": "Shared local dependencies have no Storybook CLI; storybook:build spawn ENOENT. docs:check needs generated Storybook artifact."
+    }
+  }
+}

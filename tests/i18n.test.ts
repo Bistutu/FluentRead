@@ -5,6 +5,7 @@ import {createLegacyPatternSet, localizedLegacyPatterns} from '@/src/core/i18n/m
 import {createRuntimeFeedbackLegacyText, getRuntimeFeedbackSources} from '@/src/core/i18n/messages/runtime-feedback';
 import {createLegacyCorrectionText, getLegacyCorrectionSources} from '@/src/core/i18n/messages/legacy-corrections';
 import {runtimeFeedbackPatterns} from '@/src/core/i18n/messages/runtime-feedback-patterns';
+import * as onboardingMessages from '@/src/core/i18n/messages/onboarding';
 
 import {
   DEFAULT_UI_LANGUAGE,
@@ -43,6 +44,16 @@ import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
 registerAllUiLanguageBundles();
 
 describe('界面 i18n 契约', () => {
+  it('Popup 站点规则的保存、暂停与网站范围反馈覆盖六种语言并保留用户域名', () => {
+    for (const language of ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const) {
+      for (const text of ['自动翻译已暂停', '应用于此网站及其子域名，跳转后按新网站规则执行', '禁用会停止此网站的翻译，保留始终翻译偏好', '禁用优先于自动翻译', '恢复扩展后继续自动翻译', '请先恢复扩展', '无法读取当前网站，请重试']) {
+        const translated = translateLegacyText(text, language);expect(translated).not.toBe(text);if (language !== 'ja-JP') expect(translated).not.toMatch(/[\u3400-\u9fff]/u)
+      }
+      for (const text of ['未能保存 example.com 的网站设置，请重试', '已保存 example.com，恢复扩展后生效', 'example.com 已禁用扩展，无法开启始终翻译 · 恢复扩展后继续自动翻译']) {
+        const translated = translateLegacyText(text, language);expect(translated).toContain('example.com');expect(translated).not.toBe(text);if (language !== 'ja-JP') expect(translated).not.toMatch(/[\u3400-\u9fff]/u)
+      }
+    }
+  });
   it('配置云备份和 WebDAV 七种语言的键与插值一致，供应商可互换', () => {
     const languages = ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const;
     const catalogs = languages.map(language => JSON.parse(readFileSync(join(process.cwd(), 'src/core/i18n/messages/cloud-backup', language + '.json'), 'utf8')).messages as Record<string, string>);
@@ -959,8 +970,12 @@ describe('i18n 全量界面扫描', () => {
     const frenchCognates = new Set(['learning.memoryNote', 'document.progressSegments', 'document.pageCount', 'document.pageNumber', 'options.aboutDocs', 'settings.advanced.animations', 'settings.advanced.translationLoadingStyle.minimal.label',
       // Style、Format、Original 同样是自然的法语短标签。
       'shareCard.style', 'shareCard.format', 'shareCard.original',
+      // Page、Zoom 与 Original 也是 PDF 阅读器中自然的法语短标签。
+      'document.pdfReading.pageLabel', 'document.pdfReading.pageNumber', 'document.pdfReading.zoom', 'document.pdfReading.original',
       'translationStats.filter.service', 'translationStats.source.network', 'translationStats.log.image', 'translationStats.routes.column.route', ...videoOriginalLabels]);
-    const spanishCognates = new Set([...videoOriginalLabels, 'shareCard.original', 'shareCard.theme.coral']);
+    const spanishCognates = new Set([...videoOriginalLabels, 'shareCard.original', 'shareCard.theme.coral', 'document.pdfReading.zoom', 'document.pdfReading.original',
+      // Color 是自然的西班牙语短标签，与英文同形。
+      'informationHighlight.color']);
     for (const [locale, catalog] of Object.entries({'ja-JP': jaJPMessages, 'ko-KR': koKRMessages, 'fr-FR': frFRMessages, 'ru-RU': ruRUMessages, 'es-ES': esESMessages})) {
       const untranslated = Object.entries(enUSMessages).filter(([key, source]) => (
         !key.startsWith('language.') && !common.has(key) && !(locale === 'fr-FR' && frenchCognates.has(key))
@@ -1054,7 +1069,8 @@ describe('运行期反馈文案资源', () => {
   const han = /[㐀-鿿]/u;
 
   it('每条精确反馈都来自真实源码，不重复，并在每种界面语言中完整本地化', () => {
-    const sourceText = collectSourceText('src', (path) => !path.includes('/i18n/messages/'));
+    const sourceText = collectSourceText('src', (path) => !path.includes('/i18n/messages/'))
+      + collectSourceText('userscript', () => true);
     const sources = getRuntimeFeedbackSources();
     expect(new Set(sources).size).toBe(sources.length);
     expect(sources.filter((source) => !sourceText.includes(source))).toEqual([]);
@@ -1138,4 +1154,115 @@ it('localizes word-class labels and learning explanations from the shared regist
             expect(translateLegacyText(part.description, language)).not.toBe(part.description);
         }
     }
+});
+
+it('中文展示使用流畅阅读，首启七语品牌与正式目录一致并保留外部身份和技术路径', () => {
+    const localizedKeys = [
+        'settings.backup.restoreHint', 'options.userscriptUnavailableDescription', 'glossary.builtin.source',
+        'language.settingsDescription', 'language.onboardingWelcomeTitle', 'language.onboardingDescription',
+        'language.onboardingSuccessDescription', 'video.panelAriaLabel', 'video.translationOverlayAriaLabel',
+        'video.buttonAriaLabel', 'video.globalDisabled', 'metadata.optionsTitle', 'metadata.popupTitle',
+        'metadata.documentTitle', 'document.fileLimitNote', 'options.aboutThanks', 'popup.donationTitle',
+        'shareCard.showBrand', 'learning.collection.fileReadFailed', 'settings.cloud.privacyWebDavStorage',
+    ];
+    for (const key of localizedKeys) {
+        expect(translate(key, 'zh-CN'), key).toContain('流畅阅读');
+        expect(translate(key, 'zh-CN'), key).not.toContain('FluentRead');
+    }
+    expect(translate('options.userscriptUnavailableDescription', 'zh-CN')).toBe('此功能需要浏览器扩展的运行环境。请安装流畅阅读浏览器扩展后使用。');
+    expect(translate('metadata.optionsTitle', 'zh-CN')).toBe('流畅阅读 · 设置');
+    expect(translate('metadata.popupTitle', 'zh-CN')).toBe('流畅阅读');
+    expect(translate('metadata.documentTitle', 'zh-CN')).toBe('流畅阅读 · 文档翻译');
+    expect(translate('settings.cloud.deleteManualDrive', 'zh-CN')).toBe('请前往 Google Drive 设置 → 管理应用 → FluentRead，清理该应用的数据。');
+    expect(translate('settings.cloud.deleteManualWebDav', 'zh-CN')).toBe('请在 WebDAV 服务商页面手动删除 FluentRead/fluentread-config.encrypted.json，保留目录内其他文件。');
+    for (const {value} of UI_LANGUAGE_OPTIONS) {
+        expect(onboardingMessages.onboardingProductNames[value], value).toBe(translate('common.brand', value));
+        expect(translate('common.brand', value)).toBe(value === 'zh-CN' ? '流畅阅读' : 'FluentRead');
+        expect(translateLegacyText(translate('video.panelAriaLabel', 'zh-CN'), value), value).toBe(translate('video.panelAriaLabel', value));
+    }
+    expect(translateLegacyText('用户输入 FluentRead', 'zh-CN')).toBe('用户输入 FluentRead');
+});
+
+
+// 保留上方全部 i18n owner；仅补充源码审计对显式只读 locale 字面量表的边界。
+describe('源码审计的只读本地语言表', () => {
+  const locales = ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'];
+  const importType = "import type {UiLanguage} from '@/src/core/i18n/language';";
+  const entries = "'zh-CN': '清空', 'en-US': 'Clear', 'ja-JP': 'クリア', 'ko-KR': '초기화', 'fr-FR': 'Effacer', 'ru-RU': 'Очистить', 'es-ES': 'Despejar'";
+  const table = `{${entries}}`;
+  const readonlyType = 'Readonly<Record<UiLanguage, string>>';
+  const standard = `const labels = ${table} as const satisfies ${readonlyType};`;
+  async function auditFixture(script: string, template = '<div title="模板提示">模板正文</div>') {
+    const {mkdtempSync, mkdirSync, writeFileSync, rmSync} = await import('node:fs');
+    const {tmpdir} = await import('node:os');
+    const {dirname} = await import('node:path');
+    const {collectUiSourceCopy} = await import('../scripts/testing/i18n-source-audit.mjs');
+    const fixtureRoot = mkdtempSync(join(tmpdir(), 'fluentread-localized-source-audit-'));
+    try {
+      mkdirSync(join(fixtureRoot, 'src'), {recursive: true});
+      writeFileSync(join(fixtureRoot, 'src/Fixture.vue'), `<template>${template}</template><script setup lang="ts">${script}</script>`);
+      for (const relative of [
+        'src/features/settings/model/navigation.ts', 'src/features/document-translation/ui/presentation.ts',
+        'src/core/config/interfaceAppearance.ts', 'src/core/config/translationLoadingStyle.ts',
+        'src/core/config/translationAppearance.ts', 'src/core/config/writingPreview.ts',
+        'src/core/config/videoSubtitleAppearance.ts', 'src/core/config/harness.ts', 'src/core/config/diff.ts',
+        'src/features/image-translation/content/controls.ts', 'src/features/video-subtitle/transcription.ts',
+      ]) {
+        const file = join(fixtureRoot, relative); mkdirSync(dirname(file), {recursive: true}); writeFileSync(file, '');
+      }
+      return collectUiSourceCopy(fixtureRoot);
+    } finally {rmSync(fixtureRoot, {recursive: true, force: true});}
+  }
+  const accepted = [
+    ['as const satisfies Readonly', `${importType}${standard}`],
+    ['as const satisfies Record', `${importType}const labels = ${table} as const satisfies Record<UiLanguage, string>;`],
+    ['Readonly variable annotation', `${importType}const labels: ${readonlyType} = ${table};`],
+    ['canonical aliased types import', `import type {UiLanguage as DisplayLanguage} from '@/src/core/i18n/types';const labels = ${table} as const satisfies Record<DisplayLanguage, string>;`],
+    ['canonical root import', `import type {UiLanguage} from '@/src/core/i18n';${standard}`],
+    ['relative canonical import and Japanese kanji', `import type {UiLanguage} from './core/i18n/language';${standard.replace("'クリア'", "'消去'")}`],
+  ];
+  it.each(accepted)('%s 直接核完整七语且保留其他脚本与模板文案', async (_name, source) => {
+    expect(UI_LANGUAGE_OPTIONS.map(option => option.value)).toEqual(locales);
+    const audit = await auditFixture(`${source}const unrelated = '普通文案';`);
+    expect(audit.sources.map(item => item.source).sort()).toEqual(['普通文案', '模板正文', '模板提示'].sort());
+    expect(audit.files).toContain('src/Fixture.vue');
+  });
+  const rejected = [
+    ['missing locale', standard.replace("'en-US': 'Clear', ", '')],
+    ['duplicate locale', standard.replace("'es-ES': 'Despejar'", "'en-US': 'Another clear'")],
+    ['extra locale', standard.replace(table, `{${entries}, 'de-DE': 'Leeren'}`)],
+    ['spread', standard.replace(table, `{...otherLabels, ${entries}}`)],
+    ['dynamic value', standard.replace("'en-US': 'Clear'", "'en-US': currentEnglish")],
+    ['blank value', standard.replace("'en-US': 'Clear'", "'en-US': '   '")],
+    ['foreign Chinese', standard.replace("'en-US': 'Clear'", "'en-US': '清空'")],
+    ['computed locale key', standard.replace("'en-US':", "['en-US']:")],
+    ['untyped map', `const labels = ${table};`],
+    ['satisfies without as const', standard.replace(' as const', '')],
+    ['mutable Record annotation', `const labels: Record<UiLanguage, string> = ${table};`],
+    ['mutable annotation despite as const', `const labels: Record<UiLanguage, string> = ${table} as const satisfies ${readonlyType};`],
+    ['let despite Readonly annotation', `let labels: ${readonlyType} = ${table};`],
+    ['await using is not const', `await using labels: ${readonlyType} = ${table};`],
+    ['Readonly assertion instead of const', `const labels = ${table} as ${readonlyType};`],
+    ['nested same-name type shadow', `function nested() {type UiLanguage = string;${standard}}`],
+    ['top-level same-name type shadow', `type UiLanguage = string;${standard}`],
+    ['Readonly utility shadow', `type Readonly<T> = T;${standard}`],
+  ];
+  it.each(rejected)('%s 保守保留中文来源供原有本地化审计', async (_name, source) => {
+    const audit = await auditFixture(`${importType}${source}`);
+    expect(audit.sources.map(item => item.source)).toContain('清空');
+  });
+  it.each([
+    ['fake local UiLanguage', `type UiLanguage = string;${standard}`],
+    ['foreign module UiLanguage', `import type {UiLanguage} from './fake-language';${standard}`],
+    ['wrong canonical export alias', `import type {OtherLanguage as UiLanguage} from '@/src/core/i18n/types';${standard}`],
+    ['canonical import shadows Record', `import type {UiLanguage as Record} from '@/src/core/i18n/language';const labels = ${table} as const satisfies Record<Record, string>;`],
+    ['canonical import shadows Readonly', `import type {UiLanguage as Readonly} from '@/src/core/i18n/language';const labels = ${table} as const satisfies Readonly<Record<Readonly, string>>;`],
+  ])('%s 不靠同名类型豁免原有中文', async (_name, source) => {
+    const audit = await auditFixture(source);
+    expect(audit.sources.map(item => item.source)).toContain('清空');
+  });
+  it('完整表之外同字脚本与模板仍收集，不按字串或文件豁免', async () => {
+    const audit = await auditFixture(`${importType}${standard}const rawLabel = '清空';`, '<button title="清空">清空</button>');
+    expect(audit.sources.find(item => item.source === '清空')?.files).toEqual(['src/Fixture.vue']);
+  });
 });

@@ -8,6 +8,7 @@ import type {MangaInferenceMessage, MangaInferenceResponse} from '@/src/features
 import * as ort from 'onnxruntime-web/webgpu';
 import {mkdirSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
+import {createVirtualModelResponsePort, virtualModelBuffer} from './helpers/virtualModelResponse';
 
 const sdk = vi.hoisted(() => ({sessions: [] as any[], detectionSession: undefined as any, create: vi.fn(), initialize: vi.fn(), recognize: vi.fn(), destroy: vi.fn()}));
 vi.mock('onnxruntime-web/webgpu', () => ({env: {wasm: {}}, InferenceSession: {create: sdk.create}, Tensor: class {
@@ -24,9 +25,11 @@ vi.mock('ppu-paddle-ocr/web', () => ({PaddleOcrService: class {
 type Asset = {bytes: number; sha256: string};
 const rootUrl = 'https://huggingface.co/snowfluke/ppu-paddle-ocr-models/resolve/bf1d5edb0335d3262be7caf13f766ba274b4cadd/';
 const allAssets = [...MANGA_OCR_ASSETS, MANGA_INPAINT_ASSET];
-// Controlled metadata/crypto ports represent model capacities with one real byte;
-// these lifecycle tests do not claim real model hash/content verification.
-function bytesFor(asset: Asset): ArrayBuffer {const buffer = new ArrayBuffer(1); Object.defineProperty(buffer, 'byteLength', {value: asset.bytes}); return buffer;}
+const NativeResponse = globalThis.Response;
+// Explicitly tagged metadata/crypto/Response ports represent model capacities with one real byte.
+// These lifecycle tests prove capacity, verification state and cache ownership, not real model hash/content,
+// native large-body copying, or clone/bodyUsed semantics of virtual responses. Ordinary bodies remain native.
+function bytesFor(asset: Asset): ArrayBuffer {return virtualModelBuffer(asset.bytes);}
 function responseFor(asset: Asset): Response {return {ok: true, arrayBuffer: async () => bytesFor(asset)} as Response;}
 function assetFor(url: string): Asset {return allAssets.find(a => url.endsWith('path' in a ? a.path : 'lama-manga-dynamic.onnx'))!;}
 const stores = new Map<string, Map<string, Response>>();
@@ -95,6 +98,7 @@ function deferred<T>() {
     return {promise, resolve, reject};
 }
 beforeEach(async () => {
+    vi.stubGlobal('Response', createVirtualModelResponsePort(NativeResponse));
     vi.useFakeTimers({toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout']}); stores.clear(); onDelete = undefined; onPut = undefined; workers.length = 0;
     sdk.sessions.length = 0; sdk.detectionSession = undefined; sdk.create.mockReset(); sdk.initialize.mockReset().mockResolvedValue(undefined);
     sdk.destroy.mockReset().mockResolvedValue(undefined); sdk.recognize.mockReset().mockResolvedValue({results: [{text: 'Hello world', confidence: 1, box: {x: 8, y: 8, width: 16, height: 16}}]});
@@ -129,15 +133,14 @@ describe('E2 public manga resource ownership', () => {
     it('preserves the feature error when cache removal clears the last pending download snapshot', async () => {
         const entered = deferred<void>(), finalFetch = deferred<Response>();
         modelFetch.mockRejectedValueOnce(new Error('first controlled fetch failure'))
-            .mockRejectedValueOnce(new Error('second controlled fetch failure'))
             .mockImplementationOnce(() => {entered.resolve(); return finalFetch.promise;});
         const result = loadMangaInpaintAsset().then(() => undefined, error => error);
         await entered.promise;
         try {
-            // .net is now the final registered mirror, after the new .com mirror.
-            expect(modelFetch.mock.calls.map(([url]) => new URL(String(url)).host)).toEqual(['huggingface.co', 'hf-mirror.com', 'hf-mirror.net']);
+            // 仅当前注册来源进入网络；旧 .net 只保留已缓存文件的资格。
+            expect(modelFetch.mock.calls.map(([url]) => new URL(String(url)).host)).toEqual(['huggingface.co', 'hf-mirror.com']);
             expect(modelFetch.mock.calls.every(([url]) => new URL(String(url)).pathname === new URL(MANGA_INPAINT_ASSET.url).pathname)).toBe(true);
-            expect((await mangaOcrModelStatus()).download?.source).toBe('hf-mirror.net');
+            expect((await mangaOcrModelStatus()).download?.source).toBe('hf-mirror.com');
             await removeMangaOcrAssets();
             expect(caches.delete).toHaveBeenCalledWith(MANGA_OCR_CACHE);
         } finally {
@@ -148,13 +151,13 @@ describe('E2 public manga resource ownership', () => {
         const error = await result;
         evidence('last-fetch-removal', {errorName: error?.name, errorMessage: error?.message, cause: error?.cause?.message, fetchAttempts: modelFetch.mock.calls.length});
         expect(error).not.toBeInstanceOf(TypeError);
-        expect(error).toMatchObject({message: '漫画模型下载未完成，请切换下载来源或导入模型后重试', cause: {message: 'last controlled fetch failure'}});
+        expect(error).toMatchObject({message: '漫画模型下载未完成，请重试或导入已下载文件', cause: {message: 'last controlled fetch failure'}});
         expect((await mangaOcrModelStatus()).download).toBeUndefined();
     });
 
     it('does not let older failed attempts mark a newer download as failed', async () => {
         const lastA = deferred<Response>(), enteredA = deferred<void>(), pendingB = deferred<Response>(), enteredB = deferred<void>(), abortB = new AbortController();
-        modelFetch.mockRejectedValueOnce(new Error('A first')).mockRejectedValueOnce(new Error('A second')).mockImplementationOnce(() => {enteredA.resolve(); return lastA.promise;})
+        modelFetch.mockRejectedValueOnce(new Error('A first')).mockImplementationOnce(() => {enteredA.resolve(); return lastA.promise;})
             .mockImplementationOnce((_url, options) => {enteredB.resolve(); options!.signal!.addEventListener('abort', () => pendingB.reject(new Error('B abort')), {once: true}); return pendingB.promise;});
         const a = capture(loadMangaInpaintAsset()); await enteredA.promise;
         const b = capture(loadMangaInpaintAsset(abortB.signal)); await enteredB.promise;
@@ -178,7 +181,7 @@ describe('E2 public manga resource ownership', () => {
     it('keeps newer ownership when an older request switches to its fallback source', async () => {
         const firstA = deferred<Response>(), enteredA = deferred<void>(), pendingB = deferred<Response>(), enteredB = deferred<void>(), fallbackA = deferred<Response>(), enteredFallback = deferred<void>(), abortB = new AbortController();
         modelFetch.mockImplementationOnce(() => {enteredA.resolve(); return firstA.promise;}).mockImplementationOnce((_url, options) => {enteredB.resolve(); options!.signal!.addEventListener('abort', () => pendingB.reject(new Error('B abort')), {once: true}); return pendingB.promise;})
-            .mockImplementationOnce(() => {enteredFallback.resolve(); return fallbackA.promise;}).mockRejectedValueOnce(new Error('A final mirror failure'));
+            .mockImplementationOnce(() => {enteredFallback.resolve(); return fallbackA.promise;});
         const a = capture(loadMangaInpaintAsset()); await enteredA.promise;
         const b = capture(loadMangaInpaintAsset(abortB.signal)); await enteredB.promise;
         firstA.reject(new Error('A first')); await enteredFallback.promise;
@@ -201,8 +204,7 @@ describe('E2 public manga resource ownership', () => {
         const detection = deferred<Response>(), detectionEntered = deferred<void>(), inpaintEntered = deferred<void>(), recognitionEntered = deferred<void>(), recognition = deferred<Response>(), abort = new AbortController();
         modelFetch.mockImplementationOnce(() => {detectionEntered.resolve(); return detection.promise;})
             .mockImplementationOnce((_url, options) => {inpaintEntered.resolve(); return new Promise((_resolve, reject) => options!.signal!.addEventListener('abort', () => reject(new Error('inpaint abort')), {once: true}));})
-            .mockImplementationOnce(() => {recognitionEntered.resolve(); return recognition.promise;}).mockRejectedValueOnce(new Error('recognition fallback failure'))
-            .mockRejectedValueOnce(new Error('recognition final mirror failure'));
+            .mockImplementationOnce(() => {recognitionEntered.resolve(); return recognition.promise;}).mockRejectedValueOnce(new Error('recognition fallback failure'));
         const ocr = capture(loadMangaOcrAssets()); await detectionEntered.promise;
         const inpaint = capture(loadMangaInpaintAsset(abort.signal)); await inpaintEntered.promise;
         detection.resolve(responseFor(MANGA_OCR_ASSETS[0])); await recognitionEntered.promise;

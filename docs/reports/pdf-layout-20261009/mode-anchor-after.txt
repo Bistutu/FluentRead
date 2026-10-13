@@ -1,0 +1,11 @@
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-pdf-selection-reader-20261009
+      Coverage enabled with v8
+
+ ✓ tests/pdfReaderLifecycle.test.ts (34 tests) 985ms
+ ✓ tests/pdfReadingPlan.test.ts (6 tests) 5ms
+
+ Test Files  2 passed (2)
+      Tests  40 passed (40)
+   Start at  17:19:07
+   Duration  2.03s (transform 372ms, setup 0ms, collect 455ms, tests 989ms, environment 0ms, prepare 75ms)

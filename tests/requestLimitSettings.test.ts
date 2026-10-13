@@ -8,7 +8,9 @@ import {ShadowRoot} from 'linkedom';
 import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
 import ts from 'typescript';
 import {Config} from '@/src/core/config/model';
-import {normalizeTranslationRequestLimits, withServiceRequestLimit} from '@/src/core/config/requestLimits';
+import {normalizeTranslationRequestLimits, withModelRequestLimit, withServiceRequestLimit} from '@/src/core/config/requestLimits';
+import {resolveTranslationRequestModel} from '@/src/core/config/requestModel';
+import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 type Node = {tag: string; props: Record<string, any>; text?: string};
@@ -57,6 +59,45 @@ async function mount(name: string, props: Record<string, unknown>) {
 }
 
 describe('request limit settings interaction', () => {
+  it('labels and saves limits for the request-body model, preserves selector drafts, and serializes that model', async () => {
+    const serviceSource = readFileSync(resolve('src/features/settings/ui/services/ServiceConfiguration.vue'), 'utf8');
+    expect(serviceSource).toContain('const requestLimitModel = computed(() => resolveTranslationRequestModel(config.value, service.value))');
+    expect(serviceSource).toContain(':model="compute.showModel ? requestLimitModel : undefined"');
+    const config = runtime.reactive(new Config());
+    config.model.ollama = 'gemma3:4b';
+    config.customBody.ollama = '{"model":" qwen3:8b "}';
+    config.translationRequestsPerSecond = 0; config.translationRequestsPerMinute = 0;
+    const limits = normalizeTranslationRequestLimits(config);
+    config.modelRequestLimits = withModelRequestLimit({}, 'ollama', 'gemma3:4b', {enabled: true, limits: {...limits, maxConcurrentTranslations: 4}});
+    config.modelRequestLimits = withModelRequestLimit(config.modelRequestLimits, 'ollama', 'qwen3:8b', {enabled: false, limits: {...limits, maxConcurrentTranslations: 2}});
+    const {state, nodes, props} = await mount('RequestLimitSettings', {config, service: 'ollama', model: resolveTranslationRequestModel(config, 'ollama')});
+    expect(nodes.find(node => node.props['data-testid'] === 'request-limit-settings')?.props['data-model']).toBe('qwen3:8b');
+    state.setFollowing(false);
+    expect(state.preference.limits.maxConcurrentTranslations).toBe(2);
+    state.setLimits({...state.preference.limits, maxConcurrentTranslations: 1});
+    expect(config.modelRequestLimits.ollama['gemma3:4b'].limits.maxConcurrentTranslations).toBe(4);
+    expect(config.modelRequestLimits.ollama['qwen3:8b'].limits.maxConcurrentTranslations).toBe(1);
+
+    const scheduler = createTranslationRequestScheduler(() => config);
+    const started: number[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>(done => {release = done;});
+    const jobs = [0, 1].map(index => scheduler.schedule(async () => {started.push(index); await gate;}, {
+      identity: {service: 'ollama', model: resolveTranslationRequestModel(config, 'ollama')},
+    }));
+    try {expect(started).toEqual([0]);} finally {release(); await Promise.all(jobs);}
+    expect(started).toEqual([0, 1]);
+
+    config.customBody.ollama = '';
+    props.model = resolveTranslationRequestModel(config, 'ollama');
+    await runtime.nextTick();
+    expect(state.preference.limits.maxConcurrentTranslations).toBe(4);
+    config.customBody.ollama = '{"model":"qwen3:8b"}';
+    props.model = resolveTranslationRequestModel(config, 'ollama');
+    await runtime.nextTick();
+    expect(state.preference.limits.maxConcurrentTranslations).toBe(1);
+  });
+
   it('inherits existing global values and retains disabled model settings across toggles', async () => {
     const config = runtime.reactive(new Config());
     config.translationRequestsPerMinute = 87;

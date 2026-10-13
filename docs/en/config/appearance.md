@@ -2,6 +2,8 @@
 
 Make translations easy to distinguish from the original and comfortable to read.
 
+Under **Settings → Interface style**, **Sentence learning appearance** follows **Menu bar layout** and precedes **Interface font**.
+
 <GuideVisual kind="appearance" en />
 
 ## Adjust the translation style
@@ -64,5 +66,6 @@ This works in bilingual mode. Restoring the original, disabling the option, leav
 
 ## Related guides
 
+- [Smart Highlighting: keywords and local surprisal](/en/guide/information-highlight)
 - [Settings overview](/en/config/)
 - [Page translation](/en/guide/webpage-translation)

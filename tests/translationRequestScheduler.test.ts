@@ -2,6 +2,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {
     createTranslationRequestScheduler,
     TranslationRequestSchedulerDeadlineError,
+    type TranslationRequestSchedulerConfig,
 } from '@/src/services/translation/requestScheduler';
 
 function deferred<T>() {
@@ -83,6 +84,134 @@ describe('translation request scheduler', () => {
         expect(started).toHaveLength(4);
         expect(started[3]).toBe(60_000);
         await expect(Promise.all(jobs)).resolves.toEqual([0, 1, 2, 3]);
+    });
+
+    it.each([
+        ['global', 'service'], ['service', 'global'],
+        ['global', 'model'], ['model', 'global'],
+        ['service', 'model'], ['model', 'service'],
+    ])('在途请求从 %s 切换到 %s 限制后仍计入并发上限', async (before, after) => {
+        const limits = {maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0};
+        const config: TranslationRequestSchedulerConfig = {...limits};
+        const selectScope = (scope: string) => {
+            config.serviceRequestLimits = {ollama: {enabled: scope === 'service', limits}};
+            config.modelRequestLimits = {ollama: {'qwen3:8b': {enabled: scope === 'model', limits}}};
+        };
+        selectScope(before);
+        const scheduler = createTranslationRequestScheduler(() => config);
+        const identity = {service: 'ollama', model: 'qwen3:8b'};
+        const blocker = deferred<void>();
+        const started: string[] = [];
+        const first = scheduler.schedule(async () => {started.push('first'); await blocker.promise;}, {identity});
+        selectScope(after);
+        const second = scheduler.schedule(async () => {started.push('second');}, {identity});
+        try {
+            await flushMicrotasks();
+            expect(started).toEqual(['first']);
+        } finally {
+            blocker.resolve();
+            await Promise.all([first, second]);
+        }
+        expect(started).toEqual(['first', 'second']);
+    });
+
+    it('降低并发上限后等待已有请求结束到上限以下，保留所有在途任务', async () => {
+        const config = {maxConcurrentTranslations: 3, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0};
+        const scheduler = createTranslationRequestScheduler(() => config);
+        const gates = Array.from({length: 3}, () => deferred<void>());
+        const started: number[] = [];
+        const jobs = gates.map((gate, index) => scheduler.schedule(async () => {started.push(index); await gate.promise;}));
+        config.maxConcurrentTranslations = 1;
+        jobs.push(scheduler.schedule(async () => {started.push(3);}));
+        try {
+            gates[0]!.resolve(); gates[1]!.resolve();
+            await flushMicrotasks();
+            expect(started).toEqual([0, 1, 2]);
+        } finally {
+            gates.forEach(gate => gate.resolve());
+            await Promise.all(jobs);
+        }
+        expect(started).toEqual([0, 1, 2, 3]);
+    });
+
+    it('新启用服务总限制时合计不同模型的在途请求，并允许其他服务独立启动', async () => {
+        const limits = {maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0};
+        const config: TranslationRequestSchedulerConfig = {
+            ...limits,
+            modelRequestLimits: {ollama: {a: {enabled: true, limits}, b: {enabled: true, limits}}},
+        };
+        const scheduler = createTranslationRequestScheduler(() => config);
+        const gates = [deferred<void>(), deferred<void>()];
+        const started: string[] = [];
+        const jobs = ['a', 'b'].map((model, index) => scheduler.schedule(async () => {
+            started.push(model); await gates[index]!.promise;
+        }, {identity: {service: 'ollama', model}}));
+        config.serviceRequestLimits = {ollama: {enabled: true, limits}};
+        jobs.push(scheduler.schedule(async () => {started.push('c');}, {identity: {service: 'ollama', model: 'c'}}));
+        jobs.push(scheduler.schedule(async () => {started.push('other');}, {identity: {service: 'other'}}));
+        try {
+            await flushMicrotasks();
+            expect(started).toEqual(['a', 'b', 'other']);
+            gates[0]!.resolve();
+            await flushMicrotasks();
+            expect(started).toEqual(['a', 'b', 'other']);
+        } finally {
+            gates.forEach(gate => gate.resolve());
+            await Promise.all(jobs);
+        }
+        expect(started).toEqual(['a', 'b', 'other', 'c']);
+    });
+
+    it('切换限制后已返回结果的 transport lease 仍占并发槽，attempt 不额外占槽', async () => {
+        const limits = {maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0};
+        const config: TranslationRequestSchedulerConfig = {...limits};
+        const scheduler = createTranslationRequestScheduler(() => config);
+        const identity = {service: 'ollama', model: 'qwen3:8b'};
+        const transport = deferred<void>();
+        const started: string[] = [];
+        const first = scheduler.schedule(async (lease) => {
+            lease.holdUntil(transport.promise);
+            started.push('first');
+            return 'caller-result';
+        }, {identity, countRate: false});
+        await expect(first).resolves.toBe('caller-result');
+        config.modelRequestLimits = {ollama: {'qwen3:8b': {enabled: true, limits}}};
+        const second = scheduler.schedule(async () => {started.push('second');}, {identity});
+        try {
+            await expect(scheduler.scheduleAttempt(async () => {started.push('attempt'); return 'attempt-result';}, {identity}))
+                .resolves.toBe('attempt-result');
+            expect(started).toEqual(['first', 'attempt']);
+        } finally {
+            transport.resolve();
+            await second;
+        }
+        expect(started).toEqual(['first', 'attempt', 'second']);
+    });
+
+    it('取消调用方后切换限制仍等待旧传输结束才启动下一请求', async () => {
+        const limits = {maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0};
+        const config: TranslationRequestSchedulerConfig = {...limits};
+        const scheduler = createTranslationRequestScheduler(() => config);
+        const identity = {service: 'ollama', model: 'qwen3:8b'};
+        const controller = new AbortController();
+        const transport = deferred<void>();
+        const started: string[] = [];
+        const first = scheduler.schedule(async () => {started.push('first'); await transport.promise;}, {
+            identity, signal: controller.signal,
+        });
+        const outcome = first.catch(error => error);
+        controller.abort();
+        await expect(outcome).resolves.toMatchObject({name: 'AbortError'});
+        config.serviceRequestLimits = {ollama: {enabled: true, limits}};
+        const second = scheduler.schedule(async () => {started.push('second');}, {identity});
+        try {
+            await flushMicrotasks();
+            expect(started).toEqual(['first']);
+        } finally {
+            transport.resolve();
+            await second;
+        }
+        expect(started).toEqual(['first', 'second']);
     });
 
     it('排队中的请求可取消，并在达到 provider 预算前拒绝过期任务', async () => {

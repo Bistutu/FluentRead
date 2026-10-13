@@ -104,7 +104,8 @@ async function selectOptionsVideo(page) {
 }
 
 async function setRange(page, label, value) {
-  const input = page.locator(`input[aria-label="${label}"]`);
+  // 字号同时有滑块和数字输入框，两者共用可访问名称；这里操作滑块。
+  const input = page.locator(`input[type="range"][aria-label="${label}"]`);
   const aligned = await input.evaluate((element, requested) => {
     const min = Number(element.getAttribute('min') || requested);
     const max = Number(element.getAttribute('max') || requested);
@@ -213,8 +214,14 @@ async function main() {
     if (await reloadedTranslationToggle.getAttribute('aria-checked') !== 'true') {
       await reloadedTranslationToggle.locator('xpath=ancestor::*[contains(@class, "el-switch")]').click({force: true});
     }
-    await optionsPage.waitForFunction(() => document.querySelector('.video-model-status')?.textContent.includes('当前模型已下载'));
-    result.modelState = {fixtureMetadata:true,downloaded:['tiny','base'],managementCollapsed:false};
+    // 模型状态由后台核对真实缓存文件；只有元数据而没有模型文件时不能显示为已下载。
+    await optionsPage.waitForFunction(() => {
+      const status = document.querySelector('.video-model-status')?.textContent || '';
+      return Boolean(status.trim()) && !status.includes('正在读取模型状态');
+    }, null, {timeout: 30000});
+    const modelStatus = (await optionsPage.locator('.video-model-status').textContent() || '').trim();
+    if (modelStatus.includes('当前模型已下载')) fail(`仅有元数据时不应显示模型已下载：${modelStatus}`);
+    result.modelState = {fixtureMetadata:true,status:modelStatus,managementCollapsed:false};
     await screenshot(optionsPage, path.join(options.artifactsDir, 'options-model-downloaded.png'));
     result.screenshots.push(path.join(options.artifactsDir, 'options-model-downloaded.png'));
 
@@ -240,16 +247,38 @@ async function main() {
     await setRange(optionsPage, '字幕背景透明度', 44);
     await setRange(optionsPage, '字幕行距', 1.45);
     await setRange(optionsPage, '字幕最大宽度', 78);
-    await optionsPage.locator('[data-video-subtitle-appearance] select[aria-label="字幕位置"]').selectOption('top');
+    // 位置已改用项目下拉组件，不再是原生 select。
+    await optionsPage.locator('[data-video-subtitle-appearance]').getByRole('combobox', {name: '字幕位置'}).click({force: true});
+    await optionsPage.locator('[role="option"]:visible').filter({hasText: '顶部'}).first().click();
+    if (await optionsPage.locator('[data-video-subtitle-preview-scene]').getAttribute('data-position') !== 'top') fail('字幕位置未切换到顶部');
     const reset = optionsPage.getByRole('button', {name: '恢复默认'});
     await reset.click();
     if (!(await optionsPage.getByRole('checkbox', {name: 'X 字幕自动贴底'}).isChecked())) fail('恢复默认应启用 X 自动贴底');
     const resetState = await optionsPage.locator('[data-video-subtitle-appearance]').evaluate(element => ({
       skin: element.querySelector('[data-skin].selected')?.getAttribute('data-skin'),
       fontScale: element.querySelector('input[aria-label="字幕字号"]')?.value,
-      position: element.querySelector('select[aria-label="字幕位置"]')?.value,
+      position: element.querySelector('[data-video-subtitle-preview-scene]')?.getAttribute('data-position'),
     }));
     if (resetState.skin !== 'classic' || resetState.fontScale !== '100' || resetState.position !== 'bottom') fail(`恢复默认状态不正确：${JSON.stringify(resetState)}`);
+
+
+    // 逐字高亮默认关闭；打开后预览立即出现循环扫光，恢复默认会一并关闭。
+    const karaokeSwitch = optionsPage.getByRole('switch', {name: '视频字幕逐字高亮'});
+    const readKaraokePreview = () => optionsPage.locator('[data-video-subtitle-preview]').evaluate(element => Array.from(element.children).map(line => ({
+      animated: getComputedStyle(line, '::after').animationName !== 'none' && getComputedStyle(line, '::after').content !== 'none',
+      dimmed: getComputedStyle(line).color.includes('/') || /rgba\(/.test(getComputedStyle(line).color),
+    })));
+    result.karaoke = {default: await karaokeSwitch.getAttribute('aria-checked'), defaultPreview: await readKaraokePreview()};
+    if (result.karaoke.default !== 'false' || result.karaoke.defaultPreview.some(line => line.animated)) fail(`逐字高亮应默认关闭：${JSON.stringify(result.karaoke)}`);
+    await optionsPage.locator('[data-video-subtitle-karaoke]').click();
+    result.karaoke.enabledPreview = await readKaraokePreview();
+    if (result.karaoke.enabledPreview.length !== 2 || result.karaoke.enabledPreview.some(line => !line.animated || !line.dimmed)) fail(`开启逐字高亮后预览没有扫光：${JSON.stringify(result.karaoke)}`);
+    await optionsPage.locator('[data-video-subtitle-karaoke]').scrollIntoViewIfNeeded();
+    await optionsPage.waitForTimeout(1300);
+    await screenshot(optionsPage, path.join(options.artifactsDir, 'options-video-karaoke.png'));
+    result.screenshots.push(path.join(options.artifactsDir, 'options-video-karaoke.png'));
+    await reset.click();
+    if (await karaokeSwitch.getAttribute('aria-checked') !== 'false') fail('恢复默认应关闭逐字高亮');
 
     await optionsPage.locator('[data-video-subtitle-appearance] button[data-skin="terminal"]').click();
     await setRange(optionsPage, '字幕字号', 130);
@@ -308,16 +337,11 @@ async function main() {
       await onboarding.locator('.onboarding-confirm').click();
       await onboarding.waitFor({state: 'hidden', timeout: 30000});
     }
-    await popup.locator('[data-popup-quick-feature="video"]').click();
-    await popup.locator('.drawer-content').waitFor({state: 'visible', timeout: 30000});
-    const xGroup = popup.locator('.x-video-ai-group');
+    // Popup 的快捷功能里已没有视频字幕抽屉；视频设置集中在设置页，这里只记录入口列表。
     result.popup = {
-      xGroup: await xGroup.count(),
-      sourceLanguage: await popup.locator('[aria-label="视频原语言"]').count(),
-      links: await popup.locator('.video-model-settings-link').count(),
-      fontScale: await popup.locator('select[aria-label="视频字幕字号"]').inputValue(),
+      quickFeatures: await popup.locator('[data-popup-quick-feature]').evaluateAll(items => items.map(item => item.getAttribute('data-popup-quick-feature'))),
     };
-    if (result.popup.xGroup !== 1 || result.popup.sourceLanguage !== 1 || result.popup.links < 2 || result.popup.fontScale !== '130') fail(`Popup X 设置未保持：${JSON.stringify(result.popup)}`);
+    if (result.popup.quickFeatures.includes('video')) fail(`Popup 出现了未覆盖的视频入口：${JSON.stringify(result.popup)}`);
     await screenshot(popup, path.join(options.artifactsDir, 'popup-video-settings.png'));
     result.screenshots.push(path.join(options.artifactsDir, 'popup-video-settings.png'));
     await popup.close();

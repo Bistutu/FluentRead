@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     removeRuntimeListener: vi.fn(),
     autoTranslateEnglishPage: vi.fn(),
     restoreOriginalContent: vi.fn(),
+    resetRouteState: vi.fn(), resetContext: vi.fn(), routeChanged: vi.fn(),
     getState: vi.fn(),
     isDisabled: vi.fn(() => false),
     subscribeConfig: vi.fn(), installStyles: vi.fn(), removeStyles: vi.fn(), syncHighlight: vi.fn(),
@@ -29,9 +30,11 @@ vi.mock('@/src/features/full-page-translation/public', () => ({
     getFullPageTranslationFrameState: mocks.getState,
     invalidateFullPageTranslationSessionCache: vi.fn(),
     restoreOriginalContent: mocks.restoreOriginalContent,
+    resetFullPageTranslationRouteState: mocks.resetRouteState,
     cancelPendingHoverTranslation: vi.fn(), handleTranslation: vi.fn(), noteBilingualHostGesture: vi.fn(),
 }));
 vi.mock('@/src/app/translation/client', () => ({cancelAllTranslations: vi.fn()}));
+vi.mock('@/src/services/translation/context', () => ({resetPageTranslationContextCache: mocks.resetContext}));
 vi.mock('@/src/shared/geometry/touch', () => ({getCenterPoint: vi.fn()}));
 vi.mock('@/src/features/hover-translation/public', () => ({mountHoverTranslationContentFeature: () => vi.fn()}));
 vi.mock('@/src/features/selection-translation/public', () => ({
@@ -44,7 +47,7 @@ vi.mock('@/src/app/content/quickTranslationRuntime', () => ({mountConfiguredQuic
 vi.mock('@/src/app/content/pageStyles', () => ({installPageStyles: mocks.installStyles}));
 vi.mock('@/src/app/content/bilingualSentenceHighlight', () => ({syncBilingualSentenceHighlight: mocks.syncHighlight}));
 vi.mock('@/src/app/content/siteAdaptationRuntime', () => ({
-    createContentSiteAdaptationRuntime: () => ({routeChanged: vi.fn(), update: vi.fn()}),
+    createContentSiteAdaptationRuntime: () => ({routeChanged: mocks.routeChanged, update: vi.fn()}),
     applyCoreTranslationPreferences: vi.fn(() => false),
 }));
 
@@ -84,6 +87,9 @@ beforeEach(() => {
     mocks.removeRuntimeListener.mockReset();
     mocks.autoTranslateEnglishPage.mockReset();
     mocks.restoreOriginalContent.mockReset();
+    mocks.resetRouteState.mockReset();
+    mocks.resetContext.mockReset();
+    mocks.routeChanged.mockReset().mockReturnValue(false);
     mocks.getState.mockReset().mockReturnValue({sessionId: null, translationConfig: undefined, fullPageMode: 'all'});
     mocks.config.on = true;
     mocks.configReady = Promise.resolve();
@@ -144,11 +150,11 @@ describe('NetEase mail frame lifecycle', () => {
         expect(mocks.mountSelection).toHaveBeenCalledOnce();
         mocks.config.selectionTranslatorMode = 'disabled';
         mocks.config.disableSelectionTranslator = true;
-        mocks.subscribeConfig.mock.calls[0][0]();
+        mocks.subscribeConfig.mock.calls[0][0](mocks.config);
         await vi.waitFor(() => expect(mocks.unmountSelection).toHaveBeenCalledOnce());
         mocks.config.selectionTranslatorMode = 'bilingual';
         mocks.config.disableSelectionTranslator = false;
-        mocks.subscribeConfig.mock.calls[0][0]();
+        mocks.subscribeConfig.mock.calls[0][0](mocks.config);
         await vi.waitFor(() => expect(mocks.mountSelection).toHaveBeenCalledTimes(2));
         invalidate();
     });
@@ -172,10 +178,10 @@ describe('NetEase mail frame lifecycle', () => {
         expect(mocks.mountSelection).toHaveBeenCalledOnce();
 
         mocks.config.disableSelectionTranslator = true;
-        mocks.subscribeConfig.mock.calls[0][0]();
+        mocks.subscribeConfig.mock.calls[0][0](mocks.config);
         await vi.waitFor(() => expect(mocks.unmountSelection).toHaveBeenCalledOnce());
         mocks.config.disableSelectionTranslator = false;
-        mocks.subscribeConfig.mock.calls[0][0]();
+        mocks.subscribeConfig.mock.calls[0][0](mocks.config);
         await vi.waitFor(() => expect(mocks.mountSelection).toHaveBeenCalledTimes(2));
 
         resolveOldMount(null);
@@ -252,7 +258,7 @@ describe('QQ legacy frame startup 生命周期', () => {
         expect(mocks.sendMessage).toHaveBeenCalledWith({type: 'qqMailFrameRequest', action: 'state'});
         transition('pagehide', true);
         mocks.config.bilingualSentenceHighlightEnabled = true;
-        mocks.subscribeConfig.mock.calls[0][0]();
+        mocks.subscribeConfig.mock.calls[0][0](mocks.config);
         const listener = mocks.addRuntimeListener.mock.calls[0][0];
         listener({type: 'qqMailFrameRefresh'}, {id: 'extension-id'});
         expect(mocks.sendMessage).toHaveBeenCalledOnce();
@@ -299,6 +305,183 @@ describe('QQ legacy frame startup 生命周期', () => {
 });
 
 describe('frame bridge cleanup after extension reload', () => {
+    async function readingFrame(kind: 'qq' | 'netease' | 'embedded') {
+        const href = kind === 'qq' ? 'https://mail.qq.com/cgi-bin/readmail?mailid=x'
+            : kind === 'netease' ? 'about:blank'
+                : 'https://www.kaggleusercontent.com/kf/126670518/signed-token/__results__.html';
+        const globals = installGlobals(href);
+        globals.window.top = kind === 'netease'
+            ? {location: {href: 'https://mail.163.com/js6/main.jsp?sid=redacted#module=read.ReadModule%7C%7B%7D'}} : {};
+        vi.stubGlobal('navigator', {});
+        const mail = await load();
+        const {startEmbeddedFrameApp} = await import('@/src/app/content/embeddedFrameRuntime');
+        const start = kind === 'qq' ? mail.startQqMailFrameApp
+            : kind === 'netease' ? mail.startNeteaseMailFrameApp : startEmbeddedFrameApp;
+        return {...globals, start};
+    }
+
+    it.each(['qq', 'netease', 'embedded'] as const)(
+        '%s 同规则真实路由变化失效旧请求，同地址通知和卸载后事件不重复失效', async kind => {
+            const {listeners, window, start} = await readingFrame(kind);
+            mocks.sendMessage.mockResolvedValue({enabled: true, revision: 0, sessionId: null});
+            let invalidate!: () => void;
+            await start({isInvalid: false, onInvalidated: (callback: () => void) => { invalidate = callback; }} as never);
+            const emitRoute = () => [...(listeners.get('fluentread-route-change') ?? [])]
+                .forEach(callback => callback(new Event('fluentread-route-change')));
+            const location = kind === 'netease'
+                ? (window.top as {location: {href: string}}).location : window.location;
+            emitRoute();
+            expect(mocks.resetContext).not.toHaveBeenCalled();
+            expect(mocks.resetRouteState).not.toHaveBeenCalled();
+            expect(mocks.routeChanged).not.toHaveBeenCalled();
+
+            location.href += '#next-reading-route';
+            emitRoute();
+            expect(mocks.resetContext).toHaveBeenCalledOnce();
+            expect(mocks.resetRouteState).toHaveBeenCalledOnce();
+            expect(mocks.routeChanged).toHaveBeenCalledWith(new URL(location.href));
+            // 适配规则未变化时只失效共享上下文与提交代次，不改变原有 refresh 门禁。
+            expect(mocks.sendMessage).toHaveBeenCalledOnce();
+            expect(mocks.resetRouteState.mock.invocationCallOrder[0])
+                .toBeLessThan(mocks.routeChanged.mock.invocationCallOrder[0]);
+            emitRoute();
+            expect(mocks.resetRouteState).toHaveBeenCalledOnce();
+
+            location.href += '-again';
+            emitRoute();
+            expect(mocks.resetRouteState).toHaveBeenCalledTimes(2);
+            expect(mocks.resetContext).toHaveBeenCalledTimes(2);
+            invalidate();
+            location.href += '-after-dispose';
+            emitRoute();
+            expect(mocks.resetRouteState).toHaveBeenCalledTimes(2);
+        },
+    );
+
+    it.each(['qq', 'netease', 'embedded'] as const)(
+        '%s 真实路由变化保留适配刷新资格，关闭时仍失效旧请求', async kind => {
+            const {listeners, window, start} = await readingFrame(kind);
+            mocks.sendMessage.mockResolvedValue({enabled: true, revision: 0, sessionId: null});
+            let invalidate!: () => void;
+            await start({isInvalid: false, onInvalidated: (callback: () => void) => { invalidate = callback; }} as never);
+            mocks.routeChanged.mockReturnValue(true);
+            const location = kind === 'netease'
+                ? (window.top as {location: {href: string}}).location : window.location;
+            const emitRoute = () => [...(listeners.get('fluentread-route-change') ?? [])]
+                .forEach(callback => callback(new Event('fluentread-route-change')));
+            // 用 query 变化保持网易 reading route 的片段资格。
+            const next = new URL(location.href);
+            next.searchParams.set('route', 'next');
+            location.href = next.href;
+            emitRoute();
+            await vi.waitFor(() => expect(mocks.sendMessage).toHaveBeenCalledTimes(2));
+            expect(mocks.resetRouteState).toHaveBeenCalledOnce();
+            mocks.config.on = false;
+            next.searchParams.set('route', 'disabled');
+            location.href = next.href;
+            emitRoute();
+            expect(mocks.resetRouteState).toHaveBeenCalledTimes(2);
+            expect(mocks.resetContext).toHaveBeenCalledTimes(2);
+            expect(mocks.routeChanged).toHaveBeenCalledTimes(2);
+            expect(mocks.sendMessage).toHaveBeenCalledTimes(2);
+            invalidate();
+        },
+    );
+
+    it('网易顶层阅读地址不变而子文档路由变化时仍失效请求，站点适配继续使用顶层身份', async () => {
+        const {listeners, window, start} = await readingFrame('netease');
+        mocks.sendMessage.mockResolvedValue({enabled: true, revision: 0, sessionId: null});
+        let invalidate!: () => void;
+        await start({isInvalid: false, onInvalidated: (callback: () => void) => { invalidate = callback; }} as never);
+        window.location.href = 'about:blank#next-frame-content';
+        const emitRoute = () => [...(listeners.get('fluentread-route-change') ?? [])]
+            .forEach(callback => callback(new Event('fluentread-route-change')));
+        emitRoute();
+        expect(mocks.resetRouteState).toHaveBeenCalledOnce();
+        expect(mocks.resetContext).toHaveBeenCalledOnce();
+        expect(mocks.routeChanged).toHaveBeenCalledWith(new URL((window.top as {location: {href: string}}).location.href));
+        emitRoute();
+        expect(mocks.resetRouteState).toHaveBeenCalledOnce();
+        expect(mocks.sendMessage).toHaveBeenCalledOnce();
+        invalidate();
+    });
+
+    it.each(['qq', 'netease', 'embedded'] as const)(
+        'detects passive WXT invalidation and releases an idle %s frame without another gesture', async kind => {
+            vi.useFakeTimers();
+            try {
+                const {start, listeners, document, window} = await readingFrame(kind);
+                const removeWindowListener = vi.spyOn(window, 'removeEventListener');
+                mocks.sendMessage.mockResolvedValue({enabled: true, revision: 0, sessionId: null});
+                let invalid = false;
+                const releaseContextListener = vi.fn();
+                await start({get isInvalid() { return invalid; }, onInvalidated: () => releaseContextListener} as never);
+                const unsubscribe = mocks.subscribeConfig.mock.results[0].value;
+                expect(mocks.installStyles).toHaveBeenCalledOnce();
+                invalid = true;
+                Reflect.deleteProperty(browser, 'runtime');
+                vi.advanceTimersByTime(1000);
+                expect(mocks.removeStyles).toHaveBeenCalledOnce();
+                expect(mocks.removeRuntimeListener).toHaveBeenCalledOnce();
+                expect(unsubscribe).toHaveBeenCalledOnce();
+                expect(releaseContextListener).toHaveBeenCalledOnce();
+                expect(mocks.syncHighlight).toHaveBeenLastCalledWith(document, false);
+                expect([...listeners.values()].every(set => set.size === 0)).toBe(true);
+                expect(removeWindowListener.mock.calls.map(([name]) => name)).toEqual(expect.arrayContaining(['pagehide', 'pageshow']));
+                expect(vi.getTimerCount()).toBe(0);
+            } finally { vi.useRealTimers(); }
+        },
+    );
+
+    it.each(['qq', 'netease', 'embedded'] as const)(
+        'does not revive the %s frame when authorization returns after context disposal', async kind => {
+            vi.useFakeTimers();
+            try {
+                const {start, listeners} = await readingFrame(kind);
+                let resolve!: (value: unknown) => void;
+                mocks.sendMessage.mockReturnValue(new Promise(value => { resolve = value; }));
+                let invalid = false;
+                const releaseContextListener = vi.fn();
+                const starting = start({get isInvalid() { return invalid; }, onInvalidated: () => releaseContextListener} as never);
+                for (let tick = 0; tick < 12; tick += 1) await Promise.resolve();
+                expect(mocks.sendMessage).toHaveBeenCalledOnce();
+                invalid = true;
+                vi.advanceTimersByTime(1000);
+                resolve({enabled: true, revision: 1, sessionId: 1, fullPageMode: 'all', translationConfig: {
+                    service: 'freeTranslation', model: '', sourceLanguage: 'en', targetLanguage: 'zh-CN',
+                    thinking: false, useCache: true, enableAIContext: false, enableAIMultiSegment: false,
+                    displayMode: 'bilingual', style: 0,
+                }});
+                await starting;
+                expect(mocks.autoTranslateEnglishPage).not.toHaveBeenCalled();
+                expect(mocks.installStyles).not.toHaveBeenCalled();
+                expect(mocks.removeRuntimeListener).toHaveBeenCalledOnce();
+                expect(mocks.subscribeConfig.mock.results[0].value).toHaveBeenCalledOnce();
+                expect(releaseContextListener).toHaveBeenCalledOnce();
+                expect([...listeners.values()].every(set => set.size === 0)).toBe(true);
+                expect(vi.getTimerCount()).toBe(0);
+            } finally { vi.useRealTimers(); }
+        },
+    );
+
+    it('repeated short-lived embedded frames leave no polling or document listeners', async () => {
+        vi.useFakeTimers();
+        try {
+            for (let index = 0; index < 24; index += 1) {
+                const {start, listeners} = await readingFrame('embedded');
+                mocks.sendMessage.mockResolvedValue({enabled: true, revision: 0, sessionId: null});
+                let invalid = false;
+                await start({get isInvalid() { return invalid; }, onInvalidated: vi.fn()} as never);
+                invalid = true;
+                vi.advanceTimersByTime(1000);
+                expect(vi.getTimerCount()).toBe(0);
+                expect([...listeners.values()].every(set => set.size === 0)).toBe(true);
+            }
+            expect(mocks.removeStyles).toHaveBeenCalledTimes(24);
+            expect(mocks.removeRuntimeListener).toHaveBeenCalledTimes(24);
+        } finally { vi.useRealTimers(); }
+    });
+
     it.each(['qq', 'netease', 'embedded'] as const)(
         'releases the %s top bridge when runtime is removed or listener removal fails', async kind => {
             const href = kind === 'qq' ? topUrl : kind === 'netease'

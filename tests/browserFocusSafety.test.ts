@@ -1,5 +1,6 @@
 import {existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
+import {EventEmitter} from 'node:events';
 import {tmpdir} from 'node:os';
 import {createRequire} from 'node:module';
 import {dirname, resolve} from 'node:path';
@@ -10,6 +11,86 @@ import {resolveNavigationItem, resolveRequestedSection} from '@/src/features/set
 
 const PROJECT_ROOT = resolve(__dirname, '..');
 const require = createRequire(import.meta.url);
+
+describe('原生焦点事件观察器诊断端口（不启动浏览器）', () => {
+    const {createFocusEventMonitor} = require(resolve(PROJECT_ROOT, 'scripts/testing/mac-focus-event-monitor.cjs'));
+    const readyRecord = {kind: 'ready', pid: 72817, time: 1000, monotonicMs: 10};
+    function monitorFixture(options: Record<string, unknown> = {}) {
+        const child = Object.assign(new EventEmitter(), {pid: 72817, stdout: new EventEmitter(), stderr: new EventEmitter(),
+            stdin: Object.assign(new EventEmitter(), {end: vi.fn(() => {queueMicrotask(() => child.emit('close', 0, null));})}),
+            kill: vi.fn((_signal: string) => {queueMicrotask(() => child.emit('close', null, _signal)); return true;})});
+        const ports = {compile: vi.fn(async () => '/owned-temporary/observer'), spawn: vi.fn(() => child), cleanup: vi.fn(async () => {})};
+        const monitor = createFocusEventMonitor(options, ports);
+        const write = (record: unknown) => child.stdout.emit('data', Buffer.from(JSON.stringify(record) + '\n'));
+        return {child, ports, monitor, write};
+    }
+    async function drainMonitor() {for (let index = 0; index < 8; index++) await Promise.resolve();}
+    it('必须收到已注册监听的准确进程 ready 才就绪，UTF-8 分块事件保留应用名称与两个时间', async () => {
+        const event = vi.fn(), f = monitorFixture({onEvent: event}); await drainMonitor();
+        let ready = false; void f.monitor.ready.then(() => {ready = true;}); expect(ready).toBe(false);
+        f.write(readyRecord); await expect(f.monitor.ready).resolves.toEqual({monitorPid: 72817, time: 1000, monotonicMs: 10});
+        const activation = {kind: 'activation', pid: 3456, name: '卡皮巴拉', time: 1100, monotonicMs: 20};
+        const data = Buffer.from(JSON.stringify(activation) + '\n'); const offset = data.indexOf(Buffer.from('卡')) + 1;
+        f.child.stdout.emit('data', data.subarray(0, offset)); expect(event).not.toHaveBeenCalled(); f.child.stdout.emit('data', data.subarray(offset));
+        expect(event).toHaveBeenCalledWith(activation); expect(f.monitor.events).toEqual([activation]); expect(Object.isFrozen(f.monitor.events[0])).toBe(true);
+        const stop = f.monitor.stop(); expect(f.monitor.stop()).toBe(stop); await stop; expect(f.child.stdin.end).toHaveBeenCalledWith('stop\n'); expect(f.child.kill).not.toHaveBeenCalled(); expect(f.ports.cleanup).toHaveBeenCalledOnce();
+    });
+    it('调用者识别自有 Edge 的短暂激活后永久失败，后续非 Edge 事件不能覆盖诊断', async () => {
+        const unsafe = new Error('Owned Edge activated');
+        const f = monitorFixture({onEvent: (event: {pid: number}) => {if (event.pid === 18812) throw unsafe;}}); await drainMonitor(); f.write(readyRecord); await f.monitor.ready;
+        f.write({kind: 'activation', pid: 18812, name: 'Microsoft Edge', time: 1100, monotonicMs: 20});
+        f.write({kind: 'activation', pid: 44386, name: 'Google Chrome', time: 1200, monotonicMs: 30});
+        expect(f.monitor.error).toBe(unsafe); expect(f.monitor.events.map((event: {pid: number}) => event.pid)).toEqual([18812, 44386]); await f.monitor.stop();
+    });
+    it.each([{kind: 'ready', pid: 999, time: 1000, monotonicMs: 10}, {kind: 'activation', pid: -1, name: 'bad', time: 1000, monotonicMs: 10}, {kind: 'activation', pid: 7, name: null, time: 1000, monotonicMs: 10}, {kind: 'activation', pid: 7, name: 'bad', time: -1, monotonicMs: 10}, {kind: 'activation', pid: 7, name: 'bad', time: 1000, monotonicMs: -.5}, {kind: 'unknown', pid: 7, time: 1000, monotonicMs: 10}])('未就绪时拒绝不合法原生记录 %j', async record => {
+        const f = monitorFixture(); await drainMonitor(); f.write(record); await expect(f.monitor.ready).rejects.toThrow(); expect(f.monitor.error).toBeTruthy(); await f.monitor.stop();
+    });
+    it('损坏 JSON、重复 ready 和单调时间倒退均永久失败，异常回调不掩盖首个原因', async () => {
+        for (const invalid of ['json', 'duplicate', 'time']) {
+            const f = monitorFixture({onError: () => {throw new Error('secondary');}}); await drainMonitor(); f.write(readyRecord); await f.monitor.ready;
+            if (invalid === 'json') f.child.stdout.emit('data', Buffer.from('broken\n'));
+            else if (invalid === 'duplicate') f.write(readyRecord);
+            else f.write({kind: 'activation', pid: 7, name: 'browser', time: 1200, monotonicMs: 9});
+            const error = f.monitor.error; expect(error).toBeTruthy(); f.child.stderr.emit('data', Buffer.from('later diagnostic')); expect(f.monitor.error).toBe(error); await f.monitor.stop();
+        }
+    });
+    it('超长未完成记录、进程错误和意外退出不会把观察链缺失称为焦点安全', async () => {
+        for (const kind of ['buffer', 'error', 'exit']) {
+            const f = monitorFixture(); await drainMonitor();
+            if (kind === 'buffer') f.child.stdout.emit('data', Buffer.from('x'.repeat(65537)));
+            else if (kind === 'error') f.child.emit('error', Error('spawn')); else f.child.emit('close', 0, null);
+            await expect(f.monitor.ready).rejects.toThrow(); expect(f.monitor.error).toBeTruthy(); await f.monitor.stop();
+        }
+    });
+    it('编译失败或编译期间停止不创建观察进程，清理只涉及编译器自己的临时输出', async () => {
+        const failed = {compile: vi.fn(async () => {throw Error('compile failed');}), spawn: vi.fn(), cleanup: vi.fn(async () => {})};
+        const first = createFocusEventMonitor({}, failed); await expect(first.ready).rejects.toThrow('compile failed'); await first.stop(); expect(failed.spawn).not.toHaveBeenCalled(); expect(failed.cleanup).toHaveBeenCalledOnce();
+        let finish!: (value: string) => void;
+        const ports = {compile: vi.fn(() => new Promise<string>(resolve => {finish = resolve;})), spawn: vi.fn(), cleanup: vi.fn(async () => {})};
+        const second = createFocusEventMonitor({}, ports); await drainMonitor(); const stop = second.stop(); finish('/owned-observer'); await stop; await expect(second.ready).rejects.toThrow('stopped before ready'); expect(ports.spawn).not.toHaveBeenCalled(); expect(ports.cleanup).toHaveBeenCalledOnce();
+    });
+    it('ready 超时只终止已 spawn 的观察子进程，不运行应用激活命令', async () => {
+        vi.useFakeTimers();
+        try {
+            const f = monitorFixture({readinessTimeoutMs: 20}); await drainMonitor(); await vi.advanceTimersByTimeAsync(20); await expect(f.monitor.ready).rejects.toThrow('did not become ready'); await f.monitor.stop(); expect(f.child.stdin.end).toHaveBeenCalledOnce(); expect(f.ports.cleanup).toHaveBeenCalledOnce();
+        } finally {vi.useRealTimers();}
+    });
+    it('优雅停止失败仅对拥有的子进程逐步终止，缺少关闭回执保留输出并报告', async () => {
+        vi.useFakeTimers();
+        try {
+            const f = monitorFixture(); await drainMonitor(); f.write(readyRecord); await f.monitor.ready; f.child.stdin.end.mockImplementation(() => {}); f.child.kill.mockImplementation(() => true);
+            const stop = f.monitor.stop(); const rejected = expect(stop).rejects.toThrow('Owned observer did not close'); await vi.advanceTimersByTimeAsync(3500); await rejected;
+            expect(f.child.kill.mock.calls.map(call => call[0])).toEqual(['SIGTERM', 'SIGKILL']); expect(f.ports.cleanup).not.toHaveBeenCalled();
+        } finally {vi.useRealTimers();}
+    });
+    it('Swift 只读取 NSWorkspace 通知，不启动、激活或关闭用户应用；helper 不改变现有启动路径', () => {
+        const swift = readFileSync(resolve(PROJECT_ROOT, 'scripts/testing/mac-focus-event-observer.swift'), 'utf8');
+        expect(swift).toContain('NSWorkspace.didActivateApplicationNotification'); expect(swift.indexOf('center.addObserver')).toBeLessThan(swift.indexOf('emit(ready)'));
+        expect(swift).not.toMatch(/activateIgnoringOtherApps|launchApplication|openApplication|\.terminate\(/u);
+        const helper = readFileSync(resolve(PROJECT_ROOT, 'scripts/testing/focus-safe-browser.cjs'), 'utf8'); expect(helper).toContain('startFocusEventMonitor,');
+        expect(helper).toContain("Target.createTarget', { url: markerUrl, background: true }");
+    });
+});
 
 describe('后台翻译夹具资源隔离', () => {
     it('保留扩展相对资源，仅把翻译与外部网络交给本地夹具', async () => {

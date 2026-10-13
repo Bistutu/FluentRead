@@ -1,13 +1,14 @@
 <!--
 @file src/features/settings/ui/components/SettingsGroup.vue
 文件职责：建立设置页面的二级分组容器，用清晰的标题、说明和单层细边框区分相关配置而不重复页面级介绍。
-主要内容：将可选标题、说明与设置项包入无阴影的统一圆角边框，用带品牌标记的浅底标题栏区分分组，较大的标题与小字说明横向排列并自然换行；统一处理组内设置行的分隔，并适配主题与窄屏。
+主要内容：将可选标题、说明与设置项包入无阴影的统一圆角边框，用带品牌标记的浅底标题栏区分分组，较大的标题、可选辅助插槽与小字说明横向排列并自然换行；统一处理组内设置行的分隔，并适配主题与窄屏。
 模块边界：本组件是无业务状态的布局壳，不解释配置、不读写 store，也不决定导航分类；具体字段及控件由调用页面和 SettingsItem 提供。
 -->
 <template>
   <section class="settings-group">
     <header v-if="title || description" class="settings-group-heading settings-card-heading">
       <h2 v-if="title">{{ title }}</h2>
+      <slot name="heading-extra" />
       <p v-if="description">{{ description }}</p>
     </header>
     <div class="settings-group-body">

@@ -1,7 +1,6 @@
-import {describe, expect, it, vi} from 'vitest';
-// Vitest 的 Node 配置不编译 Vue 组件；这里仅检验无浏览器 API 的运行时空适配器。
-vi.mock('@/src/features/image-translation/ui/ImageOcrSettings.vue', () => ({default: {}}));
-vi.mock('@/src/features/image-translation/ui/MangaSettings.vue', () => ({default: {}}));
+import {describe, expect, it} from 'vitest';
+// Node 配置不编译 Vue 组件；空运行契约应能独立加载，不需要 mock 设置 UI。
+import {VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE as extensionTranscriptionStateMessage} from '@/src/features/video-subtitle/transcription';
 import {
     toggleMangaTranslation,
     openMangaEntry,
@@ -17,9 +16,20 @@ import {
     mountVideoSubtitleTranslation,
     unmountAreaTranslator,
     unmountImageTranslator,
+    mountVocabularyReencounter,
+    unmountVocabularyReencounter,
+    mountPersonalCorrections,
+    unmountPersonalCorrections,
+    VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE,
 } from '@/userscript/unsupportedCapabilities';
 
 describe('userscript extension-only capability stubs', () => {
+    it('完整设置页复用同源字幕状态消息契约，同时保留字幕能力关闭状态', () => {
+        expect(VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE).toBe(extensionTranscriptionStateMessage);
+        expect(isSupportedVideoPage()).toBe(false);
+        expect(mountVideoSubtitleTranslation()()).toBeUndefined();
+    });
+
     it('never mounts area, image, or video runtimes', () => {
         expect(isAreaTranslatorMounted()).toBe(false);
         expect(mountAreaTranslator()).toBeUndefined();
@@ -28,6 +38,13 @@ describe('userscript extension-only capability stubs', () => {
         expect(unmountImageTranslator()).toBeUndefined();
         expect(mountVideoSubtitleTranslation()()).toBeUndefined();
         expect(isSupportedVideoPage()).toBe(false);
+    });
+
+    it('个人校订复用空适配器，不挂载面板或后台客户端', () => {
+        expect(mountPersonalCorrections).toBe(mountVocabularyReencounter);
+        expect(unmountPersonalCorrections).toBe(unmountVocabularyReencounter);
+        expect(mountPersonalCorrections()).toBeUndefined();
+        expect(unmountPersonalCorrections()).toBeUndefined();
     });
 });
 

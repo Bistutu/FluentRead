@@ -1,0 +1,5 @@
+
+> FluentRead-流畅阅读@0.0.36 compile <task-worktree>
+> node scripts/testing/run-resource-safe.mjs -- vue-tsc --noEmit
+
+[resource-safe] CPU target 60%, maxWorkers 2, concurrency 5, command: vue-tsc --noEmit

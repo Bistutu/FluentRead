@@ -9,6 +9,9 @@ import {Config} from '@/src/core/config/model';
 import * as catalog from '@/src/core/config/catalog';
 import * as documentCore from '@/src/features/document-translation/core/document';
 import * as presentation from '@/src/features/document-translation/ui/presentation';
+import * as preview from '@/src/features/document-translation/core/preview';
+import * as richPreviewSync from '@/src/features/document-translation/ui/richPreviewSync';
+import * as pdfOcr from '@/src/features/document-translation/services/pdfOcr';
 import {createDocumentFileLoadGuard} from '@/src/features/document-translation/services/translation';
 import {generateDocumentArchive} from '@/src/features/document-translation/services/archive';
 import {TranslationRequestError} from '@/src/services/translation/errors';
@@ -47,7 +50,9 @@ beforeEach(async () => {
   download = vi.fn(async (document, translations, mode) => ({data: documentCore.renderDocument(document, translations, mode),
     fileName: documentCore.createDocumentDownloadName(document.fileName, mode), mimeType: 'text/plain'}));
   persist = vi.fn().mockResolvedValue(undefined);
-  const api = {...catalog, ...documentCore, ...presentation, hasDistinctTranslation, Config, TranslationRequestError, createDocumentFileLoadGuard,
+  const api = {...catalog, ...documentCore, ...presentation, ...preview, ...richPreviewSync, ...pdfOcr, createPdfPageRecognizer: () => async () => [], hasDistinctTranslation, Config, TranslationRequestError, createDocumentFileLoadGuard,
+    documentRetryBackoff: {maxWaitMs: 0},
+    createDocumentHistory: () => ({list: async () => [], load: async () => null, save: async () => false, remove: async () => {}, clear: async () => {}}), documentHistoryId: async () => '',
     parseDocumentFile: parseFile, translateDocumentSegments: translate, createDocumentDownload: download, generateDocumentArchive,
     buildGlossaryRevision: () => '', runtimeConfig: new Config(), configReady: Promise.resolve(),
     subscribeConfig: () => () => {}, requestConfigPatch: persist,
@@ -201,7 +206,7 @@ describe('document batch page lifecycle', () => {
     expect(state.downloadPreview).not.toContain('Hello there.');
     await state.downloadDocument();
     expect(download).toHaveBeenCalledWith(state.parsedDocument, ['校订后的字幕'], 'translated', {
-      signal: expect.any(AbortSignal), onPdfProgress: expect.any(Function), onArchiveProgress: expect.any(Function),
+      pdfPresentation: 'layout', signal: expect.any(AbortSignal), onPdfProgress: expect.any(Function), onArchiveProgress: expect.any(Function),
     });
     expect((await download.mock.results[0].value).data).toContain('00:00:01,000 --> 00:00:03,000\n校订后的字幕');
     expect(state.downloadedRevision).toBe(state.editRevision);
@@ -258,8 +263,9 @@ describe('document batch page lifecycle', () => {
     expect(state.documentSettingsDialog.showModal).toHaveBeenCalledOnce();
     state.editSegment(0, '第一份校订');
     await state.loadFiles([file('b.txt')]);
-    expect(state.parsedDocument.fileName).toBe('a.txt');
-    state.selectDocument(state.documentQueue[1]);
+    // 新添加的文件成为当前文档，并展开侧栏的文件页；切回第一份时校订仍在。
+    expect(state.parsedDocument.fileName).toBe('b.txt');
+    expect(state.sidebarOpen).toBe(true); expect(state.sidebarTab).toBe('files');
     state.selectDocument(state.documentQueue[0]);
     expect(state.translatedSegments).toEqual(['第一份校订']);
     expect(state.downloadPreview).toBe('');

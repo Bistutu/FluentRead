@@ -1,0 +1,361 @@
+{
+  "ok": true,
+  "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/.output/chrome-mv3",
+  "artifactsDir": "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser",
+  "profileDir": "/var/folders/2v/qd62bpkx51scgbvv2nrclsxm0000gn/T/fluentread-chinese-edge-GsRmbk",
+  "scope": "PR #906 four technical Chinese paragraphs: plain and code/strong inline DOM, Simplified Chinese hover/full zero requests and zero wrappers, English neighbor restore/retranslate, dynamic Chinese-to-English mutation, target switch to English",
+  "evidenceBoundary": "The local HTML and loopback OpenAI-compatible server are deterministic fixtures. Their success does not prove any external service translation quality or availability.",
+  "fixture": {
+    "ok": true,
+    "cases": [
+      {
+        "markup": "plain",
+        "status": "passed",
+        "sameTargetHoverRequests": 0,
+        "sameTargetWrappers": 0,
+        "foreignHoverCounts": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "foreignFullPageCounts": [
+          1,
+          0,
+          1
+        ],
+        "sameTargetFullRequests": 0,
+        "dynamicRedetection": true,
+        "sameTargetRequestSources": [
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "The second paragraph explains the settings for the computer network."
+        ],
+        "restored": true,
+        "targetSwitch": {
+          "from": "zh-Hans",
+          "to": "en",
+          "translatedChineseParagraphs": 4,
+          "requestCount": 4
+        },
+        "targetSwitchRestored": true,
+        "urlStable": true,
+        "originalInlineDomPreserved": true
+      },
+      {
+        "markup": "split",
+        "status": "passed",
+        "sameTargetHoverRequests": 0,
+        "sameTargetWrappers": 0,
+        "foreignHoverCounts": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "foreignFullPageCounts": [
+          1,
+          0,
+          1
+        ],
+        "sameTargetFullRequests": 0,
+        "dynamicRedetection": true,
+        "sameTargetRequestSources": [
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "The second paragraph explains the settings for the computer network."
+        ],
+        "restored": true,
+        "targetSwitch": {
+          "from": "zh-Hans",
+          "to": "en",
+          "translatedChineseParagraphs": 4,
+          "requestCount": 4
+        },
+        "targetSwitchRestored": true,
+        "urlStable": true,
+        "originalInlineDomPreserved": true
+      }
+    ],
+    "requests": [
+      {
+        "source": "This software reads the document and translates the language on this page.",
+        "target": "zh-Hans",
+        "targetName": "Simplified Chinese (zh-Hans)",
+        "prompt": "TARGET_BEGINSimplified Chinese (zh-Hans)TARGET_END\nSOURCE_BEGINThis software reads the document and translates the language on this page.SOURCE_END",
+        "translated": "这个软件读取文档并翻译这个页面上的语言。"
+      },
+      {
+        "source": "This software reads the document and translates the language on this page.",
+        "target": "zh-Hans",
+        "targetName": "Simplified Chinese (zh-Hans)",
+        "prompt": "TARGET_BEGINSimplified Chinese (zh-Hans)TARGET_END\nSOURCE_BEGINThis software reads the document and translates the language on this page.SOURCE_END",
+        "translated": "这个软件读取文档并翻译这个页面上的语言。"
+      },
+      {
+        "source": "This software reads the document and translates the language on this page.",
+        "target": "zh-Hans",
+        "targetName": "Simplified Chinese (zh-Hans)",
+        "prompt": "TARGET_BEGINSimplified Chinese (zh-Hans)TARGET_END\nSOURCE_BEGINThis software reads the document and translates the language on this page.SOURCE_END",
+        "translated": "这个软件读取文档并翻译这个页面上的语言。"
+      },
+      {
+        "source": "The second paragraph explains the settings for the computer network.",
+        "target": "zh-Hans",
+        "targetName": "Simplified Chinese (zh-Hans)",
+        "prompt": "TARGET_BEGINSimplified Chinese (zh-Hans)TARGET_END\nSOURCE_BEGINThe second paragraph explains the settings for the computer network.SOURCE_END",
+        "translated": "第二个段落说明计算机网络的设置。"
+      },
+      {
+        "source": "同一共享池中，cap=1的连接probe外层持槽、首次429后SDK等待2秒；broker counted attempt先排队后，旧waitingAttemptKeys又挡住probe自己的uncounted retry，形成互锁直到deadline。本次仅让attemptOnly && !countConcurrency进入旧重试阻塞集合，保留counted FIFO。真实connectionTest→SDK与broker在global、service、model+service同桶的9项完成/取消/deadline用例均通过，实际inflight峰值1；旧实现有效红例6失败、取消对照3通过。",
+        "target": "en",
+        "targetName": "en",
+        "prompt": "TARGET_BEGINenTARGET_END\nSOURCE_BEGIN同一共享池中，cap=1的连接probe外层持槽、首次429后SDK等待2秒；broker counted attempt先排队后，旧waitingAttemptKeys又挡住probe自己的uncounted retry，形成互锁直到deadline。本次仅让attemptOnly && !countConcurrency进入旧重试阻塞集合，保留counted FIFO。真实connectionTest→SDK与broker在global、service、model+service同桶的9项完成/取消/deadline用例均通过，实际inflight峰值1；旧实现有效红例6失败、取消对照3通过。SOURCE_END",
+        "translated": "The production test validates the translation controls for the current paragraph."
+      },
+      {
+        "source": "后台自身inIncognitoContext不能代表无tab popup/扩展页面的发送者。本次真实messageRuntime只传sender，可信tab布尔元数据决定普通/私密，无tab或无明确元数据保持unknown，不信payload、不新增查询框架。真实安装listener→router→typed input/fallback的8项回归通过，旧实现4项无tab反例失败。",
+        "target": "en",
+        "targetName": "en",
+        "prompt": "TARGET_BEGINenTARGET_END\nSOURCE_BEGIN后台自身inIncognitoContext不能代表无tab popup/扩展页面的发送者。本次真实messageRuntime只传sender，可信tab布尔元数据决定普通/私密，无tab或无明确元数据保持unknown，不信payload、不新增查询框架。真实安装listener→router→typed input/fallback的8项回归通过，旧实现4项无tab反例失败。SOURCE_END",
+        "translated": "The production test validates the translation controls for the current paragraph."
+      },
+      {
+        "source": "共享冷却仍由真实429/有效503响应反馈，SDK保留重试所有权和次数；外层SDK任务不计并发/速率，真实attempt在既有池各计一次并等待原始runtimeFetch settle。三个pending入口保留隐私、有效Key集合、轮换/恢复配置摘要，transport按实际选择Key，成功缓存规则不变。",
+        "target": "en",
+        "targetName": "en",
+        "prompt": "TARGET_BEGINenTARGET_END\nSOURCE_BEGIN共享冷却仍由真实429/有效503响应反馈，SDK保留重试所有权和次数；外层SDK任务不计并发/速率，真实attempt在既有池各计一次并等待原始runtimeFetch settle。三个pending入口保留隐私、有效Key集合、轮换/恢复配置摘要，transport按实际选择Key，成功缓存规则不变。SOURCE_END",
+        "translated": "The production test validates the translation controls for the current paragraph."
+      },
+      {
+        "source": "全仓调用点核实后删除无消费者的跨provider context lease字段/第四参数/adapter空分支，保留scheduler、broker、probe与client自身lease及raw transport持槽。复用三次isAiSdk检查，组合实测标准包节省187字节。SVG专项实现和测试已从当前PR diff撤出为独立CW本地候选，没有新建公开PR；原图标/许可未改，历史standalone收益17468字节不作为标准方案。",
+        "target": "en",
+        "targetName": "en",
+        "prompt": "TARGET_BEGINenTARGET_END\nSOURCE_BEGIN全仓调用点核实后删除无消费者的跨provider context lease字段/第四参数/adapter空分支，保留scheduler、broker、probe与client自身lease及raw transport持槽。复用三次isAiSdk检查，组合实测标准包节省187字节。SVG专项实现和测试已从当前PR diff撤出为独立CW本地候选，没有新建公开PR；原图标/许可未改，历史standalone收益17468字节不作为标准方案。SOURCE_END",
+        "translated": "The production test validates the translation controls for the current paragraph."
+      },
+      {
+        "source": "This software reads the document and translates the language on this page.",
+        "target": "zh-Hans",
+        "targetName": "Simplified Chinese (zh-Hans)",
+        "prompt": "TARGET_BEGINSimplified Chinese (zh-Hans)TARGET_END\nSOURCE_BEGINThis software reads the document and translates the language on this page.SOURCE_END",
+        "translated": "这个软件读取文档并翻译这个页面上的语言。"
+      },
+      {
+        "source": "This software reads the document and translates the language on this page.",
+        "target": "zh-Hans",
+        "targetName": "Simplified Chinese (zh-Hans)",
+        "prompt": "TARGET_BEGINSimplified Chinese (zh-Hans)TARGET_END\nSOURCE_BEGINThis software reads the document and translates the language on this page.SOURCE_END",
+        "translated": "这个软件读取文档并翻译这个页面上的语言。"
+      },
+      {
+        "source": "This software reads the document and translates the language on this page.",
+        "target": "zh-Hans",
+        "targetName": "Simplified Chinese (zh-Hans)",
+        "prompt": "TARGET_BEGINSimplified Chinese (zh-Hans)TARGET_END\nSOURCE_BEGINThis software reads the document and translates the language on this page.SOURCE_END",
+        "translated": "这个软件读取文档并翻译这个页面上的语言。"
+      },
+      {
+        "source": "The second paragraph explains the settings for the computer network.",
+        "target": "zh-Hans",
+        "targetName": "Simplified Chinese (zh-Hans)",
+        "prompt": "TARGET_BEGINSimplified Chinese (zh-Hans)TARGET_END\nSOURCE_BEGINThe second paragraph explains the settings for the computer network.SOURCE_END",
+        "translated": "第二个段落说明计算机网络的设置。"
+      },
+      {
+        "source": "___FLUENTREAD_1lv3zwb_0_BEGIN___同一共享池中，___FLUENTREAD_1lv3zwb_0_END___\n___FLUENTREAD_1lv3zwb_1_BEGIN___=1的连接___FLUENTREAD_1lv3zwb_1_END___\n___FLUENTREAD_1lv3zwb_2_BEGIN___probe___FLUENTREAD_1lv3zwb_2_END___\n___FLUENTREAD_1lv3zwb_3_BEGIN___外层持槽、首次429后___FLUENTREAD_1lv3zwb_3_END___\n___FLUENTREAD_1lv3zwb_4_BEGIN___等待2秒；___FLUENTREAD_1lv3zwb_4_END___\n___FLUENTREAD_1lv3zwb_5_BEGIN___broker counted attempt___FLUENTREAD_1lv3zwb_5_END___\n___FLUENTREAD_1lv3zwb_6_BEGIN___先排队后，旧___FLUENTREAD_1lv3zwb_6_END___\n___FLUENTREAD_1lv3zwb_7_BEGIN___又挡住___FLUENTREAD_1lv3zwb_7_END___\n___FLUENTREAD_1lv3zwb_8_BEGIN___probe___FLUENTREAD_1lv3zwb_8_END___\n___FLUENTREAD_1lv3zwb_9_BEGIN___自己的___FLUENTREAD_1lv3zwb_9_END___\n___FLUENTREAD_1lv3zwb_10_BEGIN___，形成互锁直到___FLUENTREAD_1lv3zwb_10_END___\n___FLUENTREAD_1lv3zwb_11_BEGIN___deadline___FLUENTREAD_1lv3zwb_11_END___\n___FLUENTREAD_1lv3zwb_12_BEGIN___。本次仅让___FLUENTREAD_1lv3zwb_12_END___\n___FLUENTREAD_1lv3zwb_13_BEGIN___countConcurrency___FLUENTREAD_1lv3zwb_13_END___\n___FLUENTREAD_1lv3zwb_14_BEGIN___进入旧重试阻塞集合，保留___FLUENTREAD_1lv3zwb_14_END___\n___FLUENTREAD_1lv3zwb_15_BEGIN___。真实___FLUENTREAD_1lv3zwb_15_END___\n___FLUENTREAD_1lv3zwb_16_BEGIN___connectionTest→SDK___FLUENTREAD_1lv3zwb_16_END___\n___FLUENTREAD_1lv3zwb_17_BEGIN___与___FLUENTREAD_1lv3zwb_17_END___\n___FLUENTREAD_1lv3zwb_18_BEGIN___在___FLUENTREAD_1lv3zwb_18_END___\n___FLUENTREAD_1lv3zwb_19_BEGIN___global___FLUENTREAD_1lv3zwb_19_END___\n___FLUENTREAD_1lv3zwb_20_BEGIN___model+service___FLUENTREAD_1lv3zwb_20_END___\n___FLUENTREAD_1lv3zwb_21_BEGIN___同桶的9项完成/取消/___FLUENTREAD_1lv3zwb_21_END___\n___FLUENTREAD_1lv3zwb_22_BEGIN___用例均通过，实际___FLUENTREAD_1lv3zwb_22_END___\n___FLUENTREAD_1lv3zwb_23_BEGIN___inflight___FLUENTREAD_1lv3zwb_23_END___\n___FLUENTREAD_1lv3zwb_24_BEGIN___峰值1；旧实现有效红例6失败、取消对照3通过。___FLUENTREAD_1lv3zwb_24_END___",
+        "target": "en",
+        "targetName": "en",
+        "prompt": "TARGET_BEGINenTARGET_END\nSOURCE_BEGIN___FLUENTREAD_1lv3zwb_0_BEGIN___同一共享池中，___FLUENTREAD_1lv3zwb_0_END___\n___FLUENTREAD_1lv3zwb_1_BEGIN___=1的连接___FLUENTREAD_1lv3zwb_1_END___\n___FLUENTREAD_1lv3zwb_2_BEGIN___probe___FLUENTREAD_1lv3zwb_2_END___\n___FLUENTREAD_1lv3zwb_3_BEGIN___外层持槽、首次429后___FLUENTREAD_1lv3zwb_3_END___\n___FLUENTREAD_1lv3zwb_4_BEGIN___等待2秒；___FLUENTREAD_1lv3zwb_4_END___\n___FLUENTREAD_1lv3zwb_5_BEGIN___broker counted attempt___FLUENTREAD_1lv3zwb_5_END___\n___FLUENTREAD_1lv3zwb_6_BEGIN___先排队后，旧___FLUENTREAD_1lv3zwb_6_END___\n___FLUENTREAD_1lv3zwb_7_BEGIN___又挡住___FLUENTREAD_1lv3zwb_7_END___\n___FLUENTREAD_1lv3zwb_8_BEGIN___probe___FLUENTREAD_1lv3zwb_8_END___\n___FLUENTREAD_1lv3zwb_9_BEGIN___自己的___FLUENTREAD_1lv3zwb_9_END___\n___FLUENTREAD_1lv3zwb_10_BEGIN___，形成互锁直到___FLUENTREAD_1lv3zwb_10_END___\n___FLUENTREAD_1lv3zwb_11_BEGIN___deadline___FLUENTREAD_1lv3zwb_11_END___\n___FLUENTREAD_1lv3zwb_12_BEGIN___。本次仅让___FLUENTREAD_1lv3zwb_12_END___\n___FLUENTREAD_1lv3zwb_13_BEGIN___countConcurrency___FLUENTREAD_1lv3zwb_13_END___\n___FLUENTREAD_1lv3zwb_14_BEGIN___进入旧重试阻塞集合，保留___FLUENTREAD_1lv3zwb_14_END___\n___FLUENTREAD_1lv3zwb_15_BEGIN___。真实___FLUENTREAD_1lv3zwb_15_END___\n___FLUENTREAD_1lv3zwb_16_BEGIN___connectionTest→SDK___FLUENTREAD_1lv3zwb_16_END___\n___FLUENTREAD_1lv3zwb_17_BEGIN___与___FLUENTREAD_1lv3zwb_17_END___\n___FLUENTREAD_1lv3zwb_18_BEGIN___在___FLUENTREAD_1lv3zwb_18_END___\n___FLUENTREAD_1lv3zwb_19_BEGIN___global___FLUENTREAD_1lv3zwb_19_END___\n___FLUENTREAD_1lv3zwb_20_BEGIN___model+service___FLUENTREAD_1lv3zwb_20_END___\n___FLUENTREAD_1lv3zwb_21_BEGIN___同桶的9项完成/取消/___FLUENTREAD_1lv3zwb_21_END___\n___FLUENTREAD_1lv3zwb_22_BEGIN___用例均通过，实际___FLUENTREAD_1lv3zwb_22_END___\n___FLUENTREAD_1lv3zwb_23_BEGIN___inflight___FLUENTREAD_1lv3zwb_23_END___\n___FLUENTREAD_1lv3zwb_24_BEGIN___峰值1；旧实现有效红例6失败、取消对照3通过。___FLUENTREAD_1lv3zwb_24_END___SOURCE_END\n\nThe source contains FluentRead BEGIN and END markers. Preserve every marker exactly once and in the original order. Translate only the text between matching markers, and output nothing outside those markers.",
+        "translated": "___FLUENTREAD_1lv3zwb_0_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_0_END___\n___FLUENTREAD_1lv3zwb_1_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_1_END___\n___FLUENTREAD_1lv3zwb_2_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_2_END___\n___FLUENTREAD_1lv3zwb_3_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_3_END___\n___FLUENTREAD_1lv3zwb_4_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_4_END___\n___FLUENTREAD_1lv3zwb_5_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_5_END___\n___FLUENTREAD_1lv3zwb_6_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_6_END___\n___FLUENTREAD_1lv3zwb_7_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_7_END___\n___FLUENTREAD_1lv3zwb_8_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_8_END___\n___FLUENTREAD_1lv3zwb_9_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_9_END___\n___FLUENTREAD_1lv3zwb_10_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_10_END___\n___FLUENTREAD_1lv3zwb_11_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_11_END___\n___FLUENTREAD_1lv3zwb_12_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_12_END___\n___FLUENTREAD_1lv3zwb_13_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_13_END___\n___FLUENTREAD_1lv3zwb_14_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_14_END___\n___FLUENTREAD_1lv3zwb_15_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_15_END___\n___FLUENTREAD_1lv3zwb_16_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_16_END___\n___FLUENTREAD_1lv3zwb_17_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_17_END___\n___FLUENTREAD_1lv3zwb_18_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_18_END___\n___FLUENTREAD_1lv3zwb_19_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_19_END___\n___FLUENTREAD_1lv3zwb_20_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_20_END___\n___FLUENTREAD_1lv3zwb_21_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_21_END___\n___FLUENTREAD_1lv3zwb_22_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_22_END___\n___FLUENTREAD_1lv3zwb_23_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_23_END___\n___FLUENTREAD_1lv3zwb_24_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1lv3zwb_24_END___"
+      },
+      {
+        "source": "___FLUENTREAD_bb8mnh_0_BEGIN___后台自身___FLUENTREAD_bb8mnh_0_END___\n___FLUENTREAD_bb8mnh_1_BEGIN___不能代表无___FLUENTREAD_bb8mnh_1_END___\n___FLUENTREAD_bb8mnh_2_BEGIN___tab popup___FLUENTREAD_bb8mnh_2_END___\n___FLUENTREAD_bb8mnh_3_BEGIN___/扩展页面的发送者。本次真实___FLUENTREAD_bb8mnh_3_END___\n___FLUENTREAD_bb8mnh_4_BEGIN___只传___FLUENTREAD_bb8mnh_4_END___\n___FLUENTREAD_bb8mnh_5_BEGIN___sender___FLUENTREAD_bb8mnh_5_END___\n___FLUENTREAD_bb8mnh_6_BEGIN___，可信___FLUENTREAD_bb8mnh_6_END___\n___FLUENTREAD_bb8mnh_7_BEGIN___布尔元数据决定普通/私密，无___FLUENTREAD_bb8mnh_7_END___\n___FLUENTREAD_bb8mnh_8_BEGIN___tab___FLUENTREAD_bb8mnh_8_END___\n___FLUENTREAD_bb8mnh_9_BEGIN___或无明确元数据保持___FLUENTREAD_bb8mnh_9_END___\n___FLUENTREAD_bb8mnh_10_BEGIN___，不信___FLUENTREAD_bb8mnh_10_END___\n___FLUENTREAD_bb8mnh_11_BEGIN___payload___FLUENTREAD_bb8mnh_11_END___\n___FLUENTREAD_bb8mnh_12_BEGIN___、不新增查询框架。真实安装___FLUENTREAD_bb8mnh_12_END___\n___FLUENTREAD_bb8mnh_13_BEGIN___fallback___FLUENTREAD_bb8mnh_13_END___\n___FLUENTREAD_bb8mnh_14_BEGIN___的8项回归通过，旧实现4项无___FLUENTREAD_bb8mnh_14_END___\n___FLUENTREAD_bb8mnh_15_BEGIN___反例失败。___FLUENTREAD_bb8mnh_15_END___",
+        "target": "en",
+        "targetName": "en",
+        "prompt": "TARGET_BEGINenTARGET_END\nSOURCE_BEGIN___FLUENTREAD_bb8mnh_0_BEGIN___后台自身___FLUENTREAD_bb8mnh_0_END___\n___FLUENTREAD_bb8mnh_1_BEGIN___不能代表无___FLUENTREAD_bb8mnh_1_END___\n___FLUENTREAD_bb8mnh_2_BEGIN___tab popup___FLUENTREAD_bb8mnh_2_END___\n___FLUENTREAD_bb8mnh_3_BEGIN___/扩展页面的发送者。本次真实___FLUENTREAD_bb8mnh_3_END___\n___FLUENTREAD_bb8mnh_4_BEGIN___只传___FLUENTREAD_bb8mnh_4_END___\n___FLUENTREAD_bb8mnh_5_BEGIN___sender___FLUENTREAD_bb8mnh_5_END___\n___FLUENTREAD_bb8mnh_6_BEGIN___，可信___FLUENTREAD_bb8mnh_6_END___\n___FLUENTREAD_bb8mnh_7_BEGIN___布尔元数据决定普通/私密，无___FLUENTREAD_bb8mnh_7_END___\n___FLUENTREAD_bb8mnh_8_BEGIN___tab___FLUENTREAD_bb8mnh_8_END___\n___FLUENTREAD_bb8mnh_9_BEGIN___或无明确元数据保持___FLUENTREAD_bb8mnh_9_END___\n___FLUENTREAD_bb8mnh_10_BEGIN___，不信___FLUENTREAD_bb8mnh_10_END___\n___FLUENTREAD_bb8mnh_11_BEGIN___payload___FLUENTREAD_bb8mnh_11_END___\n___FLUENTREAD_bb8mnh_12_BEGIN___、不新增查询框架。真实安装___FLUENTREAD_bb8mnh_12_END___\n___FLUENTREAD_bb8mnh_13_BEGIN___fallback___FLUENTREAD_bb8mnh_13_END___\n___FLUENTREAD_bb8mnh_14_BEGIN___的8项回归通过，旧实现4项无___FLUENTREAD_bb8mnh_14_END___\n___FLUENTREAD_bb8mnh_15_BEGIN___反例失败。___FLUENTREAD_bb8mnh_15_END___SOURCE_END\n\nThe source contains FluentRead BEGIN and END markers. Preserve every marker exactly once and in the original order. Translate only the text between matching markers, and output nothing outside those markers.",
+        "translated": "___FLUENTREAD_bb8mnh_0_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_0_END___\n___FLUENTREAD_bb8mnh_1_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_1_END___\n___FLUENTREAD_bb8mnh_2_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_2_END___\n___FLUENTREAD_bb8mnh_3_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_3_END___\n___FLUENTREAD_bb8mnh_4_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_4_END___\n___FLUENTREAD_bb8mnh_5_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_5_END___\n___FLUENTREAD_bb8mnh_6_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_6_END___\n___FLUENTREAD_bb8mnh_7_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_7_END___\n___FLUENTREAD_bb8mnh_8_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_8_END___\n___FLUENTREAD_bb8mnh_9_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_9_END___\n___FLUENTREAD_bb8mnh_10_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_10_END___\n___FLUENTREAD_bb8mnh_11_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_11_END___\n___FLUENTREAD_bb8mnh_12_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_12_END___\n___FLUENTREAD_bb8mnh_13_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_13_END___\n___FLUENTREAD_bb8mnh_14_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_14_END___\n___FLUENTREAD_bb8mnh_15_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_bb8mnh_15_END___"
+      },
+      {
+        "source": "___FLUENTREAD_vn3tmh_0_BEGIN___共享冷却仍由真实429/有效503响应反馈，___FLUENTREAD_vn3tmh_0_END___\n___FLUENTREAD_vn3tmh_1_BEGIN___保留重试所有权和次数；外层___FLUENTREAD_vn3tmh_1_END___\n___FLUENTREAD_vn3tmh_2_BEGIN___SDK___FLUENTREAD_vn3tmh_2_END___\n___FLUENTREAD_vn3tmh_3_BEGIN___任务不计并发/速率，真实___FLUENTREAD_vn3tmh_3_END___\n___FLUENTREAD_vn3tmh_4_BEGIN___在既有池各计一次并等待原始___FLUENTREAD_vn3tmh_4_END___\n___FLUENTREAD_vn3tmh_5_BEGIN___runtimeFetch settle___FLUENTREAD_vn3tmh_5_END___\n___FLUENTREAD_vn3tmh_6_BEGIN___。三个___FLUENTREAD_vn3tmh_6_END___\n___FLUENTREAD_vn3tmh_7_BEGIN___入口保留隐私、有效___FLUENTREAD_vn3tmh_7_END___\n___FLUENTREAD_vn3tmh_8_BEGIN___Key___FLUENTREAD_vn3tmh_8_END___\n___FLUENTREAD_vn3tmh_9_BEGIN___集合、轮换/恢复配置摘要，___FLUENTREAD_vn3tmh_9_END___\n___FLUENTREAD_vn3tmh_10_BEGIN___按实际选择___FLUENTREAD_vn3tmh_10_END___\n___FLUENTREAD_vn3tmh_11_BEGIN___Key___FLUENTREAD_vn3tmh_11_END___\n___FLUENTREAD_vn3tmh_12_BEGIN___，成功缓存规则不变。___FLUENTREAD_vn3tmh_12_END___",
+        "target": "en",
+        "targetName": "en",
+        "prompt": "TARGET_BEGINenTARGET_END\nSOURCE_BEGIN___FLUENTREAD_vn3tmh_0_BEGIN___共享冷却仍由真实429/有效503响应反馈，___FLUENTREAD_vn3tmh_0_END___\n___FLUENTREAD_vn3tmh_1_BEGIN___保留重试所有权和次数；外层___FLUENTREAD_vn3tmh_1_END___\n___FLUENTREAD_vn3tmh_2_BEGIN___SDK___FLUENTREAD_vn3tmh_2_END___\n___FLUENTREAD_vn3tmh_3_BEGIN___任务不计并发/速率，真实___FLUENTREAD_vn3tmh_3_END___\n___FLUENTREAD_vn3tmh_4_BEGIN___在既有池各计一次并等待原始___FLUENTREAD_vn3tmh_4_END___\n___FLUENTREAD_vn3tmh_5_BEGIN___runtimeFetch settle___FLUENTREAD_vn3tmh_5_END___\n___FLUENTREAD_vn3tmh_6_BEGIN___。三个___FLUENTREAD_vn3tmh_6_END___\n___FLUENTREAD_vn3tmh_7_BEGIN___入口保留隐私、有效___FLUENTREAD_vn3tmh_7_END___\n___FLUENTREAD_vn3tmh_8_BEGIN___Key___FLUENTREAD_vn3tmh_8_END___\n___FLUENTREAD_vn3tmh_9_BEGIN___集合、轮换/恢复配置摘要，___FLUENTREAD_vn3tmh_9_END___\n___FLUENTREAD_vn3tmh_10_BEGIN___按实际选择___FLUENTREAD_vn3tmh_10_END___\n___FLUENTREAD_vn3tmh_11_BEGIN___Key___FLUENTREAD_vn3tmh_11_END___\n___FLUENTREAD_vn3tmh_12_BEGIN___，成功缓存规则不变。___FLUENTREAD_vn3tmh_12_END___SOURCE_END\n\nThe source contains FluentRead BEGIN and END markers. Preserve every marker exactly once and in the original order. Translate only the text between matching markers, and output nothing outside those markers.",
+        "translated": "___FLUENTREAD_vn3tmh_0_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_0_END___\n___FLUENTREAD_vn3tmh_1_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_1_END___\n___FLUENTREAD_vn3tmh_2_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_2_END___\n___FLUENTREAD_vn3tmh_3_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_3_END___\n___FLUENTREAD_vn3tmh_4_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_4_END___\n___FLUENTREAD_vn3tmh_5_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_5_END___\n___FLUENTREAD_vn3tmh_6_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_6_END___\n___FLUENTREAD_vn3tmh_7_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_7_END___\n___FLUENTREAD_vn3tmh_8_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_8_END___\n___FLUENTREAD_vn3tmh_9_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_9_END___\n___FLUENTREAD_vn3tmh_10_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_10_END___\n___FLUENTREAD_vn3tmh_11_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_11_END___\n___FLUENTREAD_vn3tmh_12_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_vn3tmh_12_END___"
+      },
+      {
+        "source": "___FLUENTREAD_1hxbaqc_0_BEGIN___全仓调用点核实后删除无消费者的跨___FLUENTREAD_1hxbaqc_0_END___\n___FLUENTREAD_1hxbaqc_1_BEGIN___字段/第四参数/___FLUENTREAD_1hxbaqc_1_END___\n___FLUENTREAD_1hxbaqc_2_BEGIN___adapter___FLUENTREAD_1hxbaqc_2_END___\n___FLUENTREAD_1hxbaqc_3_BEGIN___空分支，保留___FLUENTREAD_1hxbaqc_3_END___\n___FLUENTREAD_1hxbaqc_4_BEGIN___broker___FLUENTREAD_1hxbaqc_4_END___\n___FLUENTREAD_1hxbaqc_5_BEGIN___与___FLUENTREAD_1hxbaqc_5_END___\n___FLUENTREAD_1hxbaqc_6_BEGIN___client___FLUENTREAD_1hxbaqc_6_END___\n___FLUENTREAD_1hxbaqc_7_BEGIN___自身___FLUENTREAD_1hxbaqc_7_END___\n___FLUENTREAD_1hxbaqc_8_BEGIN___及___FLUENTREAD_1hxbaqc_8_END___\n___FLUENTREAD_1hxbaqc_9_BEGIN___raw transport___FLUENTREAD_1hxbaqc_9_END___\n___FLUENTREAD_1hxbaqc_10_BEGIN___持槽。复用三次___FLUENTREAD_1hxbaqc_10_END___\n___FLUENTREAD_1hxbaqc_11_BEGIN___检查，组合实测标准包节省187字节。___FLUENTREAD_1hxbaqc_11_END___\n___FLUENTREAD_1hxbaqc_12_BEGIN___SVG___FLUENTREAD_1hxbaqc_12_END___\n___FLUENTREAD_1hxbaqc_13_BEGIN___专项实现和测试已从当前___FLUENTREAD_1hxbaqc_13_END___\n___FLUENTREAD_1hxbaqc_14_BEGIN___撤出为独立___FLUENTREAD_1hxbaqc_14_END___\n___FLUENTREAD_1hxbaqc_15_BEGIN___CW___FLUENTREAD_1hxbaqc_15_END___\n___FLUENTREAD_1hxbaqc_16_BEGIN___本地候选，没有新建公开___FLUENTREAD_1hxbaqc_16_END___\n___FLUENTREAD_1hxbaqc_17_BEGIN___；原图标/许可未改，历史___FLUENTREAD_1hxbaqc_17_END___\n___FLUENTREAD_1hxbaqc_18_BEGIN___standalone___FLUENTREAD_1hxbaqc_18_END___\n___FLUENTREAD_1hxbaqc_19_BEGIN___收益17468字节不作为标准方案。___FLUENTREAD_1hxbaqc_19_END___",
+        "target": "en",
+        "targetName": "en",
+        "prompt": "TARGET_BEGINenTARGET_END\nSOURCE_BEGIN___FLUENTREAD_1hxbaqc_0_BEGIN___全仓调用点核实后删除无消费者的跨___FLUENTREAD_1hxbaqc_0_END___\n___FLUENTREAD_1hxbaqc_1_BEGIN___字段/第四参数/___FLUENTREAD_1hxbaqc_1_END___\n___FLUENTREAD_1hxbaqc_2_BEGIN___adapter___FLUENTREAD_1hxbaqc_2_END___\n___FLUENTREAD_1hxbaqc_3_BEGIN___空分支，保留___FLUENTREAD_1hxbaqc_3_END___\n___FLUENTREAD_1hxbaqc_4_BEGIN___broker___FLUENTREAD_1hxbaqc_4_END___\n___FLUENTREAD_1hxbaqc_5_BEGIN___与___FLUENTREAD_1hxbaqc_5_END___\n___FLUENTREAD_1hxbaqc_6_BEGIN___client___FLUENTREAD_1hxbaqc_6_END___\n___FLUENTREAD_1hxbaqc_7_BEGIN___自身___FLUENTREAD_1hxbaqc_7_END___\n___FLUENTREAD_1hxbaqc_8_BEGIN___及___FLUENTREAD_1hxbaqc_8_END___\n___FLUENTREAD_1hxbaqc_9_BEGIN___raw transport___FLUENTREAD_1hxbaqc_9_END___\n___FLUENTREAD_1hxbaqc_10_BEGIN___持槽。复用三次___FLUENTREAD_1hxbaqc_10_END___\n___FLUENTREAD_1hxbaqc_11_BEGIN___检查，组合实测标准包节省187字节。___FLUENTREAD_1hxbaqc_11_END___\n___FLUENTREAD_1hxbaqc_12_BEGIN___SVG___FLUENTREAD_1hxbaqc_12_END___\n___FLUENTREAD_1hxbaqc_13_BEGIN___专项实现和测试已从当前___FLUENTREAD_1hxbaqc_13_END___\n___FLUENTREAD_1hxbaqc_14_BEGIN___撤出为独立___FLUENTREAD_1hxbaqc_14_END___\n___FLUENTREAD_1hxbaqc_15_BEGIN___CW___FLUENTREAD_1hxbaqc_15_END___\n___FLUENTREAD_1hxbaqc_16_BEGIN___本地候选，没有新建公开___FLUENTREAD_1hxbaqc_16_END___\n___FLUENTREAD_1hxbaqc_17_BEGIN___；原图标/许可未改，历史___FLUENTREAD_1hxbaqc_17_END___\n___FLUENTREAD_1hxbaqc_18_BEGIN___standalone___FLUENTREAD_1hxbaqc_18_END___\n___FLUENTREAD_1hxbaqc_19_BEGIN___收益17468字节不作为标准方案。___FLUENTREAD_1hxbaqc_19_END___SOURCE_END\n\nThe source contains FluentRead BEGIN and END markers. Preserve every marker exactly once and in the original order. Translate only the text between matching markers, and output nothing outside those markers.",
+        "translated": "___FLUENTREAD_1hxbaqc_0_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_0_END___\n___FLUENTREAD_1hxbaqc_1_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_1_END___\n___FLUENTREAD_1hxbaqc_2_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_2_END___\n___FLUENTREAD_1hxbaqc_3_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_3_END___\n___FLUENTREAD_1hxbaqc_4_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_4_END___\n___FLUENTREAD_1hxbaqc_5_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_5_END___\n___FLUENTREAD_1hxbaqc_6_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_6_END___\n___FLUENTREAD_1hxbaqc_7_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_7_END___\n___FLUENTREAD_1hxbaqc_8_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_8_END___\n___FLUENTREAD_1hxbaqc_9_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_9_END___\n___FLUENTREAD_1hxbaqc_10_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_10_END___\n___FLUENTREAD_1hxbaqc_11_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_11_END___\n___FLUENTREAD_1hxbaqc_12_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_12_END___\n___FLUENTREAD_1hxbaqc_13_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_13_END___\n___FLUENTREAD_1hxbaqc_14_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_14_END___\n___FLUENTREAD_1hxbaqc_15_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_15_END___\n___FLUENTREAD_1hxbaqc_16_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_16_END___\n___FLUENTREAD_1hxbaqc_17_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_17_END___\n___FLUENTREAD_1hxbaqc_18_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_18_END___\n___FLUENTREAD_1hxbaqc_19_BEGIN___The production test validates the translation controls for the current paragraph.___FLUENTREAD_1hxbaqc_19_END___"
+      }
+    ]
+  },
+  "liveGoogle": {
+    "requested": false,
+    "cases": []
+  },
+  "screenshots": [
+    "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser/technical-pr-906-plain-retained.png",
+    "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser/technical-pr-906-plain-english-target.png",
+    "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser/technical-pr-906-split-retained.png",
+    "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser/technical-pr-906-split-english-target.png"
+  ],
+  "consoleErrors": [],
+  "ui": {
+    "configuration": {
+      "on": true,
+      "from": "auto",
+      "to": "zh-Hans",
+      "display": 1,
+      "service": "custom:chinese-script-fixture",
+      "hotkey": "Control",
+      "floatingBallHotkey": "Alt+T",
+      "useCache": false,
+      "fullPageTranslationMode": "all"
+    }
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 132,
+      "top": -1020,
+      "width": 1440,
+      "height": 960
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 44386,
+      "name": "Google Chrome"
+    },
+    "frontmostAfter": {
+      "pid": 44386,
+      "name": "Google Chrome"
+    }
+  },
+  "technicalPr906": {
+    "source": "https://github.com/FluentRead/FluentRead/pull/906",
+    "paragraphs": 4,
+    "cases": [
+      {
+        "markup": "plain",
+        "status": "passed",
+        "sameTargetHoverRequests": 0,
+        "sameTargetWrappers": 0,
+        "foreignHoverCounts": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "foreignFullPageCounts": [
+          1,
+          0,
+          1
+        ],
+        "sameTargetFullRequests": 0,
+        "dynamicRedetection": true,
+        "sameTargetRequestSources": [
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "The second paragraph explains the settings for the computer network."
+        ],
+        "restored": true,
+        "targetSwitch": {
+          "from": "zh-Hans",
+          "to": "en",
+          "translatedChineseParagraphs": 4,
+          "requestCount": 4
+        },
+        "targetSwitchRestored": true,
+        "urlStable": true,
+        "originalInlineDomPreserved": true
+      },
+      {
+        "markup": "split",
+        "status": "passed",
+        "sameTargetHoverRequests": 0,
+        "sameTargetWrappers": 0,
+        "foreignHoverCounts": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "foreignFullPageCounts": [
+          1,
+          0,
+          1
+        ],
+        "sameTargetFullRequests": 0,
+        "dynamicRedetection": true,
+        "sameTargetRequestSources": [
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "The second paragraph explains the settings for the computer network."
+        ],
+        "restored": true,
+        "targetSwitch": {
+          "from": "zh-Hans",
+          "to": "en",
+          "translatedChineseParagraphs": 4,
+          "requestCount": 4
+        },
+        "targetSwitchRestored": true,
+        "urlStable": true,
+        "originalInlineDomPreserved": true
+      }
+    ]
+  },
+  "productionFingerprint": {
+    "recordedAt": "2026-10-09T14:24:44.735Z",
+    "worktree": "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009",
+    "fingerprints": {
+      "src/core/language/identify.ts": {
+        "sha256": "7dc33a4928555f24cbac06472123d4e86eb5d9b67c5c0423ffc8b572558ac4b5",
+        "bytes": 23136
+      },
+      "src/core/language/lexicon.ts": {
+        "sha256": "2d54b75db24622e9df648526306e1879f8539e75c36c16a25f58789269a405bd",
+        "bytes": 7066
+      },
+      "src/core/language/functionWordData.ts": {
+        "sha256": "d568bcd08ee922c9eb90e3d92fe6014cdadb160efa4d477005850a3c6bdd4a5f",
+        "bytes": 11350
+      },
+      "src/core/translation/dom.ts": {
+        "sha256": "965bbea12ee7e7cd60030a2fec59080248e07f76fe1720c85dab5dc3853f14f8",
+        "bytes": 21405
+      },
+      "src/core/translation/text.ts": {
+        "sha256": "a2ae6662ff5078e9d9000f4a4a01135a243d0bd9fb09b0dbf4f52ca4c02650ba",
+        "bytes": 12825
+      },
+      ".output/chrome-mv3/manifest.json": {
+        "sha256": "cc92950ad08ed2e2f02bd55a0756048e6569ec51c9341d9e678b65fb3d8d03f7",
+        "bytes": 3178
+      },
+      ".output/chrome-mv3/content-scripts/content.js": {
+        "sha256": "8fbc65a8fc7191c1f40766b8c2d98229d4b7380fcb814e512eee67c101ddc0cf",
+        "bytes": 2587601
+      }
+    },
+    "sourceUnchangedSincePreviousVerification": true,
+    "verifiedAfter": "2026-10-09T14:25:33.662Z",
+    "unchangedDuringRun": true
+  }
+}

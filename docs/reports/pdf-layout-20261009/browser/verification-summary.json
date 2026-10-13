@@ -1,0 +1,450 @@
+{
+  "status": "complete required production matrix; historical failures and raster-identity limit preserved",
+  "evidenceBoundary": "Production PDF.js/Edge with the real locally downloaded paper; representative Chinese supplied by a deterministic loopback fixture. Formatting, lifecycle and export proof only, not translation quality or a live provider claim.",
+  "privacy": "Full source text, translations, request payloads and copied clipboard text omitted. Temporary isolated browser profiles only; no daily browser profile read or user clipboard write.",
+  "environment": {
+    "browser": "Microsoft Edge",
+    "mode": "macos-background-cdp",
+    "profile": "new temporary profile",
+    "headless": false,
+    "viewport": {
+      "width": 1440,
+      "height": 960
+    },
+    "narrowWidth": 390,
+    "display": "secondary visible background window without foreground focus",
+    "browserVersion": "not captured in report",
+    "node": "v20.11.1",
+    "pnpm": "9.12.1"
+  },
+  "build": {
+    "baseCommit": "193c973352b851cd148d7b66f7ef773215b94143",
+    "sourceChangesTreeSha256": "49f4ee30e271d562533535acd634753a42d0e2594d688cca9828e6d03ed910ad",
+    "chromeOutputTreeSha256": "10051ad66a409e806eaef34e09137965e86453f58ec9a87d9b49e3c8b3ae6915",
+    "provenance": "../provenance.json"
+  },
+  "sourcePaper": {
+    "title": "Attention Is All You Need",
+    "authors": "Vaswani et al.",
+    "reference": "https://arxiv.org/abs/1706.03762",
+    "localVersion": "v7",
+    "pageVersionDate": "2023-08-02",
+    "pages": 15,
+    "bytes": 2215244,
+    "sha256": "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697",
+    "retainedInRepository": false
+  },
+  "legacyBaseline": {
+    "status": "captured; readability was intentionally not asserted",
+    "wholePaperSegments": 214,
+    "bodyCssFontAt100": "6.69–7.63px in measured long-body blocks; p3 7.22px",
+    "bodyCssFontAt390": "p3 3.54px",
+    "fixtureTimingIsNotProductionBenchmark": true
+  },
+  "expandedPaper": {
+    "privateRun": "readable-final",
+    "privateReportSha256": "af1b97068d31934593f44fcda5241b61d02a11ee428ec3e7f2f425f284f6cbdf",
+    "originalOverallOk": false,
+    "preservedFailure": "120-page phase timed out at506/720 because default request throttling remained enabled; narrow screenshots were light and do not prove dark theme.",
+    "passedCases": [
+      "all 15 paper pages and both downloaded exports preserve complete Chinese fixture text and protected source regions",
+      "native mouse selection and trusted copy isolate complete translated HTML from source selection translation",
+      "manual corrections update complete HTML without source repaint and optional original-layout keeps a full readable continuation",
+      "2x long Chinese paragraphs preserve every independent segment and tail in readable HTML and downloaded PDF",
+      "4x long Chinese paragraphs preserve every independent segment and tail in readable HTML and downloaded PDF"
+    ],
+    "independentManifestSegments": 190,
+    "completePagesPerExpansion": {
+      "1": 15,
+      "2": 15,
+      "4": 15
+    },
+    "nativeTranslatedMouseCopy": {
+      "trusted": true,
+      "clipboardWrite": false
+    },
+    "manualEdit": {
+      "segment": "0",
+      "sourceRetained": true,
+      "textNodeRetained": true
+    },
+    "sourceUnchangedDuringStreaming": true,
+    "pauseResume": {
+      "pausedAt": 10,
+      "totalSegments": 190,
+      "lateProgressRejected": true
+    },
+    "zoomAnchor": {
+      "sameParagraphRetained": true,
+      "sourcePage": 3
+    },
+    "exports": [
+      {
+        "mode": "translated",
+        "expansion": 1,
+        "pages": 31,
+        "readableRasterPages": 31,
+        "completeChineseSegments": 168,
+        "protectedImageDraws": 22,
+        "downloadedRasterPixelsMatched": true,
+        "elapsedMs": 10854,
+        "chinesePdfSelectable": false,
+        "privateRun": "readable-final",
+        "filename": "1x-attention-is-all-you-need.translated.pdf",
+        "sha256": "ed9f75a005c4aa89084ee4eff48e0e3164428f0e67c528008885a6bbd46aaed3",
+        "bytes": 8667315,
+        "retainedInRepository": false
+      },
+      {
+        "mode": "bilingual",
+        "expansion": 1,
+        "pages": 46,
+        "readableRasterPages": 31,
+        "completeChineseSegments": 168,
+        "protectedImageDraws": 22,
+        "downloadedRasterPixelsMatched": true,
+        "elapsedMs": 13185,
+        "chinesePdfSelectable": false,
+        "privateRun": "readable-final",
+        "filename": "1x-attention-is-all-you-need.bilingual.pdf",
+        "sha256": "33ee86f696c6cf7a89f939950706ee2ebf9d212b4c60bc8c4e23d1d9a410ffe5",
+        "bytes": 10533630,
+        "retainedInRepository": false
+      },
+      {
+        "mode": "translated",
+        "expansion": 2,
+        "pages": 43,
+        "readableRasterPages": 43,
+        "completeChineseSegments": 168,
+        "protectedImageDraws": 22,
+        "downloadedRasterPixelsMatched": true,
+        "elapsedMs": 14004,
+        "chinesePdfSelectable": false,
+        "privateRun": "readable-final",
+        "filename": "2x-attention-is-all-you-need.translated.pdf",
+        "sha256": "a154dcd7e034e986910e819829d4d37e80b74ea1687b60b03c60ff1f8c855a7f",
+        "bytes": 14080164,
+        "retainedInRepository": false
+      },
+      {
+        "mode": "translated",
+        "expansion": 4,
+        "pages": 66,
+        "readableRasterPages": 66,
+        "completeChineseSegments": 168,
+        "protectedImageDraws": 22,
+        "downloadedRasterPixelsMatched": true,
+        "elapsedMs": 21960,
+        "chinesePdfSelectable": false,
+        "privateRun": "readable-final",
+        "filename": "4x-attention-is-all-you-need.translated.pdf",
+        "sha256": "f90c64c00567c1edf3734cd76f46db7561937646e5df5b5c6a168d4d64ed6243",
+        "bytes": 24889472,
+        "retainedInRepository": false
+      }
+    ],
+    "resourcePeak": {
+      "shells": 5,
+      "sourceCanvases": 5,
+      "canvases": 19,
+      "textLayers": 5,
+      "pixels": 12487110
+    }
+  },
+  "final2Followup": {
+    "privateRun": "readable-followup",
+    "privateReportSha256": "d9608f51918465b1a64833ad337890e0dbc5159d0a3dfa30d6a6936ad5713738",
+    "originalOverallOk": false,
+    "preservedFailure": "Confirmed product mode-anchor regression after bilingual→translated on narrow page120; view landed at71. CropBox phase was not reached.",
+    "readingRegionCropPixels": {
+      "pages": 15,
+      "regions": 21,
+      "allPixelsEqual": true
+    },
+    "longDocumentTranslationCompleted": 720,
+    "jumpAndZoomTargets": [
+      120,
+      1,
+      60,
+      119,
+      2,
+      100,
+      25,
+      120
+    ],
+    "measuredViews": 10
+  },
+  "exportCancellation": {
+    "privateRun": "readable-export-cancel",
+    "privateReportSha256": "0ce4bb1c689fe6ebe4e0ef8778719aab788a14169b83a3c83c973c2c6c3e3abc",
+    "originalOverallOk": true,
+    "cancel": {
+      "sourceProgressBeforeCancel": {
+        "completed": 0,
+        "total": 15
+      },
+      "downloadCountAfterCancel": 0,
+      "lateUiWriteRejected": true
+    },
+    "retryExports": [
+      {
+        "mode": "translated",
+        "expansion": 1,
+        "pages": 31,
+        "readableRasterPages": 31,
+        "completeChineseSegments": 168,
+        "protectedImageDraws": 22,
+        "downloadedRasterPixelsMatched": true,
+        "elapsedMs": 10485,
+        "chinesePdfSelectable": false,
+        "privateRun": "readable-export-cancel",
+        "filename": "1x-attention-is-all-you-need.translated.pdf",
+        "sha256": "c7f984c693be4a7552f4149dca746ec35a3a7513366e56903705b1a628cc2e26",
+        "bytes": 8667315,
+        "retainedInRepository": false
+      }
+    ],
+    "resourcePeak": {
+      "shells": 5,
+      "sourceCanvases": 5,
+      "canvases": 19,
+      "textLayers": 5,
+      "pixels": 12487110
+    }
+  },
+  "final3Production": {
+    "privateRun": "readable-final3",
+    "privateReportSha256": "055ea746b353a698765d3cbd354e0ad53c591417602e0b87c658092e0d4393ac",
+    "originalOverallOk": false,
+    "strictFailureLimit": "All paper/120-page assertions passed; only PNG byte identity failed. Bounded independent check of the actual download passed separately. Original failed report is retained unchanged.",
+    "allPaperAndLongDocumentAssertionsPassed": true,
+    "independentManifestSegments": 190,
+    "completePaperPages": 15,
+    "exports": [
+      {
+        "mode": "translated",
+        "expansion": 1,
+        "pages": 31,
+        "readableRasterPages": 31,
+        "completeChineseSegments": 168,
+        "protectedImageDraws": 22,
+        "downloadedRasterPixelsMatched": true,
+        "elapsedMs": 10746,
+        "chinesePdfSelectable": false,
+        "privateRun": "readable-final3",
+        "filename": "1x-attention-is-all-you-need.translated.pdf",
+        "sha256": "b7b7f7df4d7d505664a85372d365646d52671229780d17ee8e7d4843f0778a54",
+        "bytes": 8667315,
+        "retainedInRepository": false
+      },
+      {
+        "mode": "bilingual",
+        "expansion": 1,
+        "pages": 46,
+        "readableRasterPages": 31,
+        "completeChineseSegments": 168,
+        "protectedImageDraws": 22,
+        "downloadedRasterPixelsMatched": true,
+        "elapsedMs": 13198,
+        "chinesePdfSelectable": false,
+        "privateRun": "readable-final3",
+        "filename": "1x-attention-is-all-you-need.bilingual.pdf",
+        "sha256": "764247e6cc0e76f52f33f400284bea302193522bcffbc93f815401b1c4e92306",
+        "bytes": 10533630,
+        "retainedInRepository": false
+      }
+    ],
+    "actualDarkViews": [
+      {
+        "page": 10,
+        "expansion": 1,
+        "background": "rgb(32, 38, 50)",
+        "color": "rgb(243, 245, 250)",
+        "font": 16,
+        "lineHeight": 27.2,
+        "sheetWidth": 320,
+        "documentDark": true
+      },
+      {
+        "page": 120,
+        "expansion": 4,
+        "background": "rgb(32, 38, 50)",
+        "color": "rgb(243, 245, 250)",
+        "font": 16,
+        "lineHeight": 27.2,
+        "sheetWidth": 320,
+        "documentDark": true
+      }
+    ],
+    "modeSwitches": [
+      {
+        "target": 10,
+        "stages": [
+          {
+            "stage": "before",
+            "page": 10
+          },
+          {
+            "stage": "translated",
+            "page": 10
+          },
+          {
+            "stage": "bilingual",
+            "page": 10
+          }
+        ]
+      },
+      {
+        "target": 120,
+        "stages": [
+          {
+            "stage": "before",
+            "page": 120
+          },
+          {
+            "stage": "translated",
+            "page": 120
+          },
+          {
+            "stage": "bilingual",
+            "page": 120
+          }
+        ]
+      }
+    ],
+    "longModeBoundaries": [
+      {
+        "mode": "原文",
+        "currentPage": "120"
+      },
+      {
+        "mode": "双语",
+        "currentPage": "120"
+      },
+      {
+        "presentation": "layout",
+        "currentPage": "120"
+      },
+      {
+        "presentation": "readable",
+        "currentPage": "120"
+      }
+    ],
+    "longDocumentTranslationCompleted": 720,
+    "longDocumentMeasuredViews": 10,
+    "resourcePeak": {
+      "shells": 5,
+      "sourceCanvases": 5,
+      "canvases": 19,
+      "textLayers": 5,
+      "pixels": 12487110
+    },
+    "firstSelectablePageTimingsMs": [
+      {
+        "name": "attention-is-all-you-need.pdf",
+        "firstSelectablePageMs": 1017
+      },
+      {
+        "name": "long-120.pdf",
+        "firstSelectablePageMs": 360
+      },
+      {
+        "name": "rotated-cropbox.pdf",
+        "firstSelectablePageMs": 220
+      }
+    ],
+    "timingLimit": "Single local fixture runs; not a benchmark, CPU/FPS ranking or process memory measurement.",
+    "cropboxIndependentCheck": "cropbox-independent-check.json",
+    "ownedBrowserClosed": true,
+    "focusViolations": 0,
+    "consoleErrors": 0
+  },
+  "exportSourceFingerprintsStillMatchFinal3": {
+    "src/features/document-translation/services/binary.ts": true,
+    "src/features/document-translation/ui/pdfPreview.ts": true,
+    "src/features/document-translation/core/pdfReadingPlan.ts": true,
+    "src/features/document-translation/core/pdfTextLayout.ts": true
+  },
+  "browserSafety": {
+    "allOwnedBrowsersClosed": true,
+    "focusViolations": 0,
+    "consoleErrors": 0,
+    "caretBrowsing": "Enabled only in temporary profiles; no paper-title/rotated-pointer claims"
+  },
+  "runner": {
+    "path": "scripts/run-pdf-selection-test.cjs",
+    "sha256": "7f1acd3507bc135af8fe5cf83cac67de9d5b56682a523328a94652a0ad72226f",
+    "boundedCropGuardIncluded": true,
+    "runtimeDependencies": [
+      "repository dependencies",
+      "Playwright installation",
+      "Microsoft Edge",
+      "Poppler pdftoppm"
+    ]
+  },
+  "screenshots": [
+    {
+      "file": "../images/legacy-p07.png",
+      "sha256": "8189bd38fe50c027c669d9bf1735d8d315e97521233923802fddec489d9784a8",
+      "bytes": 1312812,
+      "caption": "旧版第7页正文，100%双语",
+      "privateRun": "baseline"
+    },
+    {
+      "file": "../images/readable-p07.png",
+      "sha256": "9577b4e4efbdee3509187e09f97f77878ac419be7c13cf76f0641741b0b4df91",
+      "bytes": 783241,
+      "caption": "最终第7页正文，100%双语清晰阅读",
+      "privateRun": "readable-final3"
+    },
+    {
+      "file": "../images/paper-p10-390-dark.png",
+      "sha256": "d2aab7131260e359d839a99cbd12e2835b6238908a624472c933af055236e4bf",
+      "bytes": 117069,
+      "caption": "最终第10页，390px暗色译文",
+      "privateRun": "readable-final3"
+    },
+    {
+      "file": "../images/long-120-390-dark.png",
+      "sha256": "ba436936460b894ef4448ac9b647549e1765262a088cab569de80e5162631fd3",
+      "bytes": 109143,
+      "caption": "最终120页夹具末页，390px暗色译文",
+      "privateRun": "readable-final3"
+    },
+    {
+      "file": "../images/export-4x-long-body.png",
+      "sha256": "1061c6230a28145868450f8a3a9f067bb5f3ddbdcfac4a39d922faa7f586844e",
+      "bytes": 672150,
+      "caption": "4倍长正文译文PDF，独立渲染第2页；相同导出核心",
+      "privateRun": "readable-final"
+    },
+    {
+      "file": "../images/export-1x-diagram.png",
+      "sha256": "d46cc80cb12728f48feeacb20ca9493f5744b09f3202f5b725fc68b0a2b20d7e",
+      "bytes": 261070,
+      "caption": "1倍图文译文PDF，独立渲染第5页；相同导出核心",
+      "privateRun": "readable-followup"
+    },
+    {
+      "file": "../images/cropbox-source-poppler.png",
+      "sha256": "2185597624e10f79f1f0187845efb41f610861aea3be0f5c536d3212ab8952fc",
+      "bytes": 24076,
+      "caption": "旋转CropBox原文件，Poppler144dpi",
+      "privateRun": "readable-final3"
+    },
+    {
+      "file": "../images/cropbox-bilingual-source-poppler.png",
+      "sha256": "b03ac02cb866580753a7d622de8ff4796b7269d7e2a1962266d4d515879a0f87",
+      "bytes": 24123,
+      "caption": "实际双语下载原页，Poppler144dpi",
+      "privateRun": "readable-final3"
+    }
+  ],
+  "regionCountBasis": {
+    "parserPreservedRegions": 20,
+    "readingPlanCropEntries": 21,
+    "exportRegionDraws": 22,
+    "limit": "Different pipeline stages; export draw count includes page continuations. The 21 reading crops were independently pixel-checked in final2; the shared plan and export code fingerprints match final3."
+  }
+}

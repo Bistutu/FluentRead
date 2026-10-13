@@ -1,0 +1,150 @@
+/**
+ * @file src/features/settings/ui/interface-font-previews.css
+ * 文件职责：为设置页字体卡片提供随包分发的真实字形预览。
+ * 主要内容：登记仅含字体标题、描述与样例字符的 400/700 字形子集，与完整界面字体使用独立名称。
+ * 模块边界：只由字体设置组件引用；不访问远程字体、不参与完整字体缓存或改变网页字体。
+ */
+
+@font-face {
+  font-family: 'FluentRead Preview Inter';
+  src: url('../../../../assets/interface-font-previews/Inter-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Inter';
+  src: url('../../../../assets/interface-font-previews/Inter-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Noto Sans SC';
+  src: url('../../../../assets/interface-font-previews/NotoSansSC-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Noto Sans SC';
+  src: url('../../../../assets/interface-font-previews/NotoSansSC-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Roboto';
+  src: url('../../../../assets/interface-font-previews/Roboto-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Roboto';
+  src: url('../../../../assets/interface-font-previews/Roboto-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Source Sans 3';
+  src: url('../../../../assets/interface-font-previews/SourceSans3-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Source Sans 3';
+  src: url('../../../../assets/interface-font-previews/SourceSans3-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview IBM Plex Sans';
+  src: url('../../../../assets/interface-font-previews/IBMPlexSans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview IBM Plex Sans';
+  src: url('../../../../assets/interface-font-previews/IBMPlexSans-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Manrope';
+  src: url('../../../../assets/interface-font-previews/Manrope-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Manrope';
+  src: url('../../../../assets/interface-font-previews/Manrope-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Nunito Sans';
+  src: url('../../../../assets/interface-font-previews/NunitoSans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Nunito Sans';
+  src: url('../../../../assets/interface-font-previews/NunitoSans-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview LXGW WenKai';
+  src: url('../../../../assets/interface-font-previews/LXGWWenKaiTC-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview LXGW WenKai';
+  src: url('../../../../assets/interface-font-previews/LXGWWenKaiTC-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Noto Serif SC';
+  src: url('../../../../assets/interface-font-previews/NotoSerifSC-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FluentRead Preview Noto Serif SC';
+  src: url('../../../../assets/interface-font-previews/NotoSerifSC-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

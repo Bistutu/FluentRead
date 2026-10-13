@@ -1,3 +1,4 @@
+import {resolveLocalTranslationLanguageCode} from '@/src/core/language/localTranslation';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 // 实际客户端 runtime-dom 与 SFC template；仅 DOM、Element Plus 控件、翻译文案和外部消息端口受控。
@@ -52,7 +53,7 @@ import {getHarnessModelCacheKey} from '@/src/core/config/harness';
 import * as limits from '@/src/core/config/requestLimits';
 import {driveSyncPayload, parseDriveSyncSnapshot, projectDriveSyncConfig, restoreDriveSyncSettings, buildDriveSyncDiff, resolveDriveSyncDiff} from '@/src/core/config/driveSync';
 import {buildConfigDiff} from '@/src/core/config/diff';
-import {LOCAL_TRANSLATION_MODEL_IDS, getLocalTranslationModel, normalizeLocalTranslationDownloadSnapshot, resolveLocalTranslationLanguageCode, resolveOpusTranslationRepository, localTranslationErrorKey} from '@/src/core/config/localTranslation';
+import {LOCAL_TRANSLATION_MODEL_IDS, getLocalTranslationModel, normalizeLocalTranslationDownloadSnapshot, resolveOpusTranslationRepository, localTranslationErrorKey} from '@/src/core/config/localTranslation';
 import {normalizeShareCardPreferences} from '@/src/core/config/shareCard';
 import {strongCloudEtag} from '@/src/core/config/cloudSync';
 import {normalizeRequestHeaderDomain, normalizeRequestHeaderRules} from '@/src/core/config/requestHeaders';

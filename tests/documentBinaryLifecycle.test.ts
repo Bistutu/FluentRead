@@ -6,7 +6,7 @@ import JSZip from 'jszip';
 import {PDFDocument} from 'pdf-lib';
 import {createServer} from 'vite';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {DOCUMENT_MAX_BYTES, parseDocument, type ParsedDocument, type PdfDocumentBlock} from '@/src/features/document-translation/core/document';
+import {DOCUMENT_MAX_BYTES, PDF_MAX_BYTES, parseDocument, type ParsedDocument, type PdfDocumentBlock} from '@/src/features/document-translation/core/document';
 import {assertArchiveSafety, createDocumentDownload, parseBinaryDocument, parseDocumentFile, pdfTextBlocks, pdfTextLines} from '@/src/features/document-translation/services/binary';
 import {generateDocumentArchive} from '@/src/features/document-translation/services/archive';
 import {createPdfPagePreview, rasterizePdfTranslationPage, releasePdfDocument} from '@/src/features/document-translation/ui/pdfPreview';
@@ -61,7 +61,9 @@ describe('documentbinaryAudit actual import and package boundaries', () => {
         const read = vi.fn(async () => new ArrayBuffer(DOCUMENT_MAX_BYTES + 1));
         await expect(parseDocumentFile({name: 'fake.docx', size: 1, arrayBuffer: read, text: async () => ''})).rejects.toThrow('文件大小超过');
         await expect(parseDocumentFile({name: 'big.txt', size: DOCUMENT_MAX_BYTES + 1, text: vi.fn(), arrayBuffer: vi.fn()})).rejects.toThrow('文件大小超过');
-        await expect(parseBinaryDocument('big.pdf', new Uint8Array(DOCUMENT_MAX_BYTES + 1))).rejects.toThrow('文件大小超过');
+        // PDF 使用更宽的上限：超过通用上限的文件照常进入解析，超过 PDF 上限才按大小拒绝。
+        await expect(parseBinaryDocument('big.pdf', new Uint8Array(DOCUMENT_MAX_BYTES + 1))).rejects.toThrow('PDF 文件签名无效');
+        await expect(parseBinaryDocument('big.pdf', new Uint8Array(PDF_MAX_BYTES + 1))).rejects.toThrow('文件大小超过 50 MB');
         await expect(parseDocumentFile({name: 'utf8.txt', text: async () => '汉'.repeat(Math.ceil(DOCUMENT_MAX_BYTES / 3)), arrayBuffer: vi.fn()})).rejects.toThrow('文件大小超过');
         await expect(parseDocumentFile({name: 'invalid.txt', size: NaN, text: vi.fn(), arrayBuffer: vi.fn()})).rejects.toThrow('大小无效');
     });
@@ -245,6 +247,7 @@ describe('documentbinaryAudit PDF resource consumers', () => {
         const before = JSON.stringify(blocks);
         await rasterizePdfTranslationPage({...input(bytes, blocks), translations: ['First paragraph\r\n\nsecond paragraph', 'center', 'LongUnbrokenWord'.repeat(10), '  ']});
         expect(context.fillText).toHaveBeenCalled();
+        // 普通正文不会因原框较小而回退原文：借用空白后绘制；不足时显示省略号并把全文交给批注。
         expect(context.rect).toHaveBeenCalledTimes(3);
         expect(context.save).toHaveBeenCalledTimes(3);
         expect(context.restore).toHaveBeenCalledTimes(3);
@@ -457,6 +460,71 @@ it.each(['epub', 'docx'] as const)('documentbinaryAudit preserves cancellation r
     pending.resolve(new JSZip());
 });
 
+async function archiveExportDocument(extension: 'epub' | 'docx'): Promise<ParsedDocument> {
+    if (extension === 'epub') return parseBinaryDocument('reviewed.epub', await epub());
+    const zip = new JSZip().file('[Content_Types].xml', '<Types/>').file('word/document.xml',
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Original text</w:t></w:r></w:p></w:body></w:document>');
+    return parseBinaryDocument('reviewed.docx', await generateDocumentArchive(zip));
+}
+
+it.each(['epub', 'docx'] as const)('documentbinaryAudit stops a pending %s export ZIP load before late completion and permits a real retry', async extension => {
+    const document = await archiveExportDocument(extension);
+    const bytes = document.binary!.bytes;
+    const lateZip = await JSZip.loadAsync(bytes);
+    const encodeArchive = vi.spyOn(lateZip, 'generateInternalStream');
+    const pending = deferred<JSZip>();
+    const load = vi.spyOn(JSZip, 'loadAsync').mockReturnValueOnce(pending.promise);
+    const controller = new AbortController(), reason = new Error('export ZIP load stopped');
+    const progress = vi.fn(), settled = vi.fn();
+    const translations = document.segments.map(() => '取消后保留的校订译文');
+    const work = createDocumentDownload(document, translations, 'bilingual', {signal: controller.signal, onArchiveProgress: progress});
+    const observed = work.then(value => settled('download', value), error => settled('canceled', error));
+    await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
+    controller.abort(reason);
+    // The export must settle from abort alone, while the underlying ZIP Promise is still unresolved.
+    for (let turn = 0; turn < 6; turn += 1) await Promise.resolve();
+    expect(settled).toHaveBeenCalledOnce();
+    expect(settled).toHaveBeenCalledWith('canceled', reason);
+    pending.resolve(lateZip);
+    await observed;
+    await new Promise<void>(resolve => setImmediate(resolve));
+    expect(settled).toHaveBeenCalledOnce();
+    expect(encodeArchive).not.toHaveBeenCalled();
+    expect(progress).not.toHaveBeenCalled();
+    load.mockRestore();
+    const retry = await createDocumentDownload(document, translations, 'bilingual');
+    const reopened = await JSZip.loadAsync(retry.data as Uint8Array);
+    const path = extension === 'epub' ? 'OPS/ch.xhtml' : 'word/document.xml';
+    expect(await reopened.file(path)!.async('string')).toContain('取消后保留的校订译文');
+    expect(document.binary!.bytes).toBe(bytes);
+});
+
+it.each(['epub', 'docx'] as const)('documentbinaryAudit consumes a late %s export ZIP rejection after cancellation', async extension => {
+    const document = await archiveExportDocument(extension);
+    const pending = deferred<JSZip>();
+    const load = vi.spyOn(JSZip, 'loadAsync').mockReturnValueOnce(pending.promise);
+    const controller = new AbortController(), reason = new Error('cancel before ZIP rejection');
+    const progress = vi.fn(), settled = vi.fn(), unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+        const work = createDocumentDownload(document, ['保留译文'], 'translated', {signal: controller.signal, onArchiveProgress: progress});
+        const observed = work.then(value => settled('download', value), error => settled('canceled', error));
+        await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
+        controller.abort(reason);
+        for (let turn = 0; turn < 6; turn += 1) await Promise.resolve();
+        expect(settled).toHaveBeenCalledOnce();
+        expect(settled).toHaveBeenCalledWith('canceled', reason);
+        pending.reject(new Error('late ZIP decoding failure'));
+        await observed;
+        await new Promise<void>(resolve => setImmediate(resolve));
+        expect(settled).toHaveBeenCalledOnce();
+        expect(progress).not.toHaveBeenCalled();
+        expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+        process.removeListener('unhandledRejection', unhandled);
+    }
+});
+
 it('documentbinaryAudit rejects synchronously canceled File reads before interpreting their returned text', async () => {
     const controller = new AbortController();
     const file = {name: 'sync.txt', text: () => {controller.abort('sync stop'); return Promise.resolve('not committed');}, arrayBuffer: vi.fn()};
@@ -474,7 +542,7 @@ it('documentbinaryAudit rejects a canceled archive between the ZIP lookup and st
 
 it('documentbinaryAudit wraps words across lines and handles whitespace-only translations without unnecessary draw calls', async () => {
     const bytes = sourceBytes(); resourceBytes.push(bytes);
-    await rasterizePdfTranslationPage({...input(bytes, [block({width: 20, height: 90})]), translations: ['aa bb cc dd']});
+    await rasterizePdfTranslationPage({...input(bytes, [block({width: 20, height: 90, lineCount: 2})]), translations: ['aa bb cc dd']});
     expect(context.fillText.mock.calls.length).toBeGreaterThan(1);
     context.fillText.mockClear();
     await rasterizePdfTranslationPage({...input(bytes, [block()]), translations: ['  ']});

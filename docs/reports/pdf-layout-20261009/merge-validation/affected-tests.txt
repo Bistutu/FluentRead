@@ -1,0 +1,398 @@
+[resource-safe] CPU target 60%, maxWorkers 2, concurrency 5, command: pnpm exec vitest run tests/documentAppLifecycle.test.ts tests/documentUserActions.test.ts tests/documentTranslationBinary.test.ts tests/documentTranslationBinaryEdge.test.ts tests/documentTranslationPresentation.test.ts tests/documentTranslationRegression.test.ts tests/documentPdfRotation.test.ts tests/documentPdfRasterizer.test.ts tests/documentPdfLayoutParsing.test.ts tests/documentPdfGeometryWorstCase.test.ts tests/documentSelectionRuntime.test.ts tests/pdfReaderLifecycle.test.ts tests/pdfLayoutAnalysis.test.ts tests/pdfReadingPlan.test.ts tests/pdfTextLayout.test.ts tests/pdfSource.test.ts tests/contextMenu.test.ts tests/contextMenuRuntimeOwnership.test.ts tests/popupPageActionsOwnership.test.ts tests/selectionTranslatorLifecycle.test.ts tests/i18n.test.ts tests/extensionManifestContract.test.ts tests/architecture
+
+ RUN  v2.1.9 <task-worktree>
+
+ ✓ tests/i18n.test.ts (57 tests) 3010ms
+   ✓ i18n 全量界面扫描 > Vue 文案和展示注册表在非中文界面有本地化结果 1062ms
+   ✓ 运行期反馈文案资源 > 每条精确反馈都来自真实源码，不重复，并在每种界面语言中完整本地化 858ms
+   ✓ 旧界面译文人工校正 > 校正原文仍在界面源码中使用，不重复，并覆盖此前的译文 732ms
+stderr | tests/selectionTranslatorLifecycle.test.ts > SelectionTranslator lifecycle after extension reload > ends an unresponsive message after 3.5 seconds while keeping the ordinary translation
+Selection word lookup unavailable: Error: Dictionary lookup timed out
+    at eval (eval at mountSelection (<task-worktree>/tests/selectionTranslatorLifecycle.test.ts:105:5), <anonymous>:963:49)
+    at callTimer (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2300:25)
+    at doTickInner (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2886:30)
+    at doTick (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2967:21)
+    at Immediate.<anonymous> (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2987:30)
+    at processImmediate (node:internal/timers:478:21)
+
+ ✓ tests/selectionTranslatorLifecycle.test.ts (55 tests) 159ms
+ ✓ tests/pdfReaderLifecycle.test.ts (34 tests) 989ms
+ ✓ tests/documentUserActions.test.ts (35 tests) 1778ms
+ ✓ tests/documentSelectionRuntime.test.ts (27 tests) 102ms
+ ✓ tests/contextMenu.test.ts (38 tests) 46ms
+ ✓ tests/documentAppLifecycle.test.ts (16 tests) 565ms
+stdout | tests/documentTranslationBinary.test.ts > reports PDF import page progress, yields to input, and supports page-boundary cancellation
+Warning: Cannot access the `require` function: "TypeError: process.getBuiltinModule is not a function".
+Warning: Cannot polyfill `DOMMatrix`, rendering may be broken.
+Warning: Cannot polyfill `ImageData`, rendering may be broken.
+Warning: Cannot polyfill `Path2D`, rendering may be broken.
+
+stdout | tests/documentTranslationBinary.test.ts > reports PDF import page progress, yields to input, and supports page-boundary cancellation
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > reports PDF import page progress, yields to input, and supports page-boundary cancellation
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > reports PDF import page progress, yields to input, and supports page-boundary cancellation
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > streams complete reading continuation pages in bilingual output
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > streams complete reading continuation pages in translated output
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > keeps layout preview plus full reading pages and closes an active iterator on cancellation
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > preserves blank pages in a bilingual PDF without failing to embed them
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > exports 40 PDF pages in bilingual mode with ordered progress
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > exports 40 PDF pages in bilingual mode with ordered progress
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > exports 40 PDF pages in bilingual mode with ordered progress
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > exports 40 PDF pages in bilingual mode with ordered progress
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > exports 40 PDF pages in bilingual mode with ordered progress
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > exports 40 PDF pages in translated mode with ordered progress
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > exports 40 PDF pages in translated mode with ordered progress
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > exports 40 PDF pages in translated mode with ordered progress
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > exports 40 PDF pages in translated mode with ordered progress
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > exports 40 PDF pages in translated mode with ordered progress
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > cancels between PDF pages and retries without changing translations
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > releases decoded PNG pixels before rendering the next PDF page
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > 按 PDF 页解析版面文本块、坐标和页码上下文
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > PDF partial export uses source for an empty reviewed block
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > binary document translation formats > PDF 双语导出将每张原页和保留版式的译页并排放在同一页
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentTranslationBinary.test.ts > 全页译文相同的双语 PDF 保留一张原页并跳过光栅重绘
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+ ✓ tests/documentTranslationBinary.test.ts (27 tests) 1311ms
+   ✓ binary document translation formats > 拒绝解压后单项过大的 ePub/DOCX 压缩包 437ms
+ ✓ tests/architecture/verificationOwnership.test.ts (16 tests) 5654ms
+   ✓ repository verification ownership > src 中每个可执行非组装模块都进入四维 100% 覆盖率边界 3356ms
+   ✓ repository verification ownership > 覆盖率清单不能引用不存在的源码或把组装根伪装成业务覆盖 2107ms
+stdout | tests/documentPdfGeometryWorstCase.test.ts > PDF paragraph geometry worst cases through actual public functions > retains every separated paragraph with bounded per-property reads at 500 lines
+pdfGeometry-separated:{"count":500,"inputHash":"4e7cbbc94d6d43a64068126afd259604ccb1b731085fb0152ef6295e256b735a","outputHash":"26c75dfca213f4fe146747c65c371c27851858a85a9c1f28cb7e59acd1305164","reads":{"x":500,"y":500,"width":500,"height":2000},"indexReads":9500,"indexReadLimit":20000,"limit":30000}
+
+stdout | tests/documentPdfGeometryWorstCase.test.ts > PDF paragraph geometry worst cases through actual public functions > retains every separated paragraph with bounded per-property reads at 1000 lines
+pdfGeometry-separated:{"count":1000,"inputHash":"6264fb6102658628ed360a915f1d3680dfaab17df4c0a359768ddaa810a53e18","outputHash":"f1cf8e8a9f60d5d4803fd95ce0bbcbd5df071c443b9f4bb01d6771f743fd3082","reads":{"x":1000,"y":1000,"width":1000,"height":4000},"indexReads":21000,"indexReadLimit":44000,"limit":60000}
+
+stdout | tests/documentPdfGeometryWorstCase.test.ts > PDF paragraph geometry worst cases through actual public functions > retains every separated paragraph with bounded per-property reads at 2000 lines
+pdfGeometry-separated:{"count":2000,"inputHash":"3baf0db123294dd70aade6a63be1e3f31906968738ba49783353fff481a55af9","outputHash":"232e17bcfe961fd319df2287e845c972a25d39a33d8be1d714b7397a55544011","reads":{"x":2000,"y":2000,"width":2000,"height":8000},"indexReads":46000,"indexReadLimit":96000,"limit":120000}
+
+stdout | tests/documentPdfGeometryWorstCase.test.ts > PDF paragraph geometry worst cases through actual public functions > finishes large separated layouts in a loaded-before-call, timeout-bounded isolated process
+pdfGeometry-child:{"kind":"separated","status":0,"signal":null,"stdout":"loaded-before-call:{\"sha256\":\"d739f229659ff94690585b87854d75f68aeda2aed3a2ea278257a0fc6b719b5c\",\"publicFunctions\":[[\"pdfTextBlocks\",\"function\"],[\"pdfTextLines\",\"function\"],[\"pdfTextAtoms\",\"function\"]]}\nresult:{\"kind\":\"separated\",\"count\":20000,\"inputHash\":\"dba1ad8a2091e29445245a6d2e46aa87fd6b7c71828471d06c03e1fda6b5625e\",\"outputHash\":\"4ed178c7eb6e052cbdc4f543ac889bc75ed055fac6ce3e4d08800c01c23c72d8\",\"nativeOutputHash\":\"4ed178c7eb6e052cbdc4f543ac889bc75ed055fac6ce3e4d08800c01c23c72d8\",\"blocks\":20000,\"first\":\"段落 0\",\"last\":\"段落 19999\",\"textLength\":4,\"reads\":{\"x\":20000,\"y\":20000,\"width\":20000,\"height\":80000},\"limit\":1200000,\"getterHostMs\":48.81058300000001,\"nativeHostMs\":56.205375000000004}\n","stderr":""}
+
+stdout | tests/documentPdfGeometryWorstCase.test.ts > PDF paragraph geometry worst cases through actual public functions > finishes large same-y layouts in a loaded-before-call, timeout-bounded isolated process
+pdfGeometry-child:{"kind":"same-y","status":0,"signal":null,"stdout":"loaded-before-call:{\"sha256\":\"d739f229659ff94690585b87854d75f68aeda2aed3a2ea278257a0fc6b719b5c\",\"publicFunctions\":[[\"pdfTextBlocks\",\"function\"],[\"pdfTextLines\",\"function\"],[\"pdfTextAtoms\",\"function\"]]}\nresult:{\"kind\":\"same-y\",\"count\":20000,\"inputHash\":\"96aeca9dfab02c98902b83b79c2066a42063dd0f3e6622459ce21a6f0930c923\",\"outputHash\":\"7d15bc4855ee826ef128fe1ec86bebf5e381f6d67065a6531a7d63e5e0a8b1d8\",\"nativeOutputHash\":\"7d15bc4855ee826ef128fe1ec86bebf5e381f6d67065a6531a7d63e5e0a8b1d8\",\"blocks\":20000,\"first\":\"段落 0\",\"last\":\"段落 19999\",\"textLength\":4,\"reads\":{\"x\":20000,\"y\":20000,\"width\":20000,\"height\":80000},\"limit\":1200000,\"getterHostMs\":61.89545800000002,\"nativeHostMs\":69.84449999999998}\n","stderr":""}
+
+stdout | tests/documentPdfGeometryWorstCase.test.ts > PDF paragraph geometry worst cases through actual public functions > finishes large same-y-small-font layouts in a loaded-before-call, timeout-bounded isolated process
+pdfGeometry-child:{"kind":"same-y-small-font","status":0,"signal":null,"stdout":"loaded-before-call:{\"sha256\":\"d739f229659ff94690585b87854d75f68aeda2aed3a2ea278257a0fc6b719b5c\",\"publicFunctions\":[[\"pdfTextBlocks\",\"function\"],[\"pdfTextLines\",\"function\"],[\"pdfTextAtoms\",\"function\"]]}\nresult:{\"kind\":\"same-y-small-font\",\"count\":20000,\"inputHash\":\"eafcd091d7879d673ec9396b56977df2020c2159854fec73150fca479726282c\",\"outputHash\":\"023da08f7e24c1305d9746808b0b9983e16ae6257e50d3d86948b997e2332217\",\"nativeOutputHash\":\"023da08f7e24c1305d9746808b0b9983e16ae6257e50d3d86948b997e2332217\",\"blocks\":20000,\"first\":\"段落 0\",\"last\":\"段落 19999\",\"textLength\":4,\"reads\":{\"x\":20000,\"y\":20000,\"width\":20000,\"height\":80000},\"limit\":1200000,\"getterHostMs\":50.690124999999966,\"nativeHostMs\":77.58183400000001}\n","stderr":""}
+
+stdout | tests/documentPdfGeometryWorstCase.test.ts > PDF paragraph geometry worst cases through actual public functions > retains all 160000 fragments in huge-row without exceeding function arity
+pdfGeometry-child:{"kind":"huge-row","status":0,"signal":null,"stdout":"loaded-before-call:{\"sha256\":\"d739f229659ff94690585b87854d75f68aeda2aed3a2ea278257a0fc6b719b5c\",\"publicFunctions\":[[\"pdfTextBlocks\",\"function\"],[\"pdfTextLines\",\"function\"],[\"pdfTextAtoms\",\"function\"]]}\nresult:{\"kind\":\"huge-row\",\"count\":160000,\"inputHash\":\"7471593aa191972642b64b0610976132327e179e5247314e3268f033482888df\",\"outputHash\":\"3b60c45ea6bf44ed49b346e77d962eacc2d21d2c4dded09806a6cdc33e76c9c9\",\"nativeOutputHash\":\"3b60c45ea6bf44ed49b346e77d962eacc2d21d2c4dded09806a6cdc33e76c9c9\",\"blocks\":1,\"textLength\":160000,\"fullText\":true,\"reads\":{\"x\":1919994,\"y\":1039995,\"width\":799998,\"height\":799998},\"limit\":9600000,\"getterHostMs\":286.371791,\"nativeHostMs\":114.3175829999999}\n","stderr":""}
+
+stdout | tests/documentPdfGeometryWorstCase.test.ts > PDF paragraph geometry worst cases through actual public functions > retains all 160000 fragments in huge-block without exceeding function arity
+pdfGeometry-child:{"kind":"huge-block","status":0,"signal":null,"stdout":"loaded-before-call:{\"sha256\":\"d739f229659ff94690585b87854d75f68aeda2aed3a2ea278257a0fc6b719b5c\",\"publicFunctions\":[[\"pdfTextBlocks\",\"function\"],[\"pdfTextLines\",\"function\"],[\"pdfTextAtoms\",\"function\"]]}\nresult:{\"kind\":\"huge-block\",\"count\":160000,\"inputHash\":\"8bcd1089acbe2456af7eff8990d2a2518aa39894cb4a383941570f9f6748fba0\",\"outputHash\":\"77c082ba0cc8ba7b150a5a2a959a34a7a675b4322237886b07364895533b0ec6\",\"nativeOutputHash\":\"77c082ba0cc8ba7b150a5a2a959a34a7a675b4322237886b07364895533b0ec6\",\"blocks\":1,\"textLength\":319999,\"lineCount\":160000,\"fullText\":true,\"reads\":{\"x\":160000,\"y\":160000,\"width\":160000,\"height\":480001},\"limit\":9600000,\"getterHostMs\":4475.347917,\"nativeHostMs\":3946.5667089999997}\n","stderr":""}
+
+ ✓ tests/documentPdfGeometryWorstCase.test.ts (31 tests) 10873ms
+   ✓ PDF paragraph geometry worst cases through actual public functions > finishes large separated layouts in a loaded-before-call, timeout-bounded isolated process 380ms
+   ✓ PDF paragraph geometry worst cases through actual public functions > finishes large same-y layouts in a loaded-before-call, timeout-bounded isolated process 455ms
+   ✓ PDF paragraph geometry worst cases through actual public functions > finishes large same-y-small-font layouts in a loaded-before-call, timeout-bounded isolated process 418ms
+   ✓ PDF paragraph geometry worst cases through actual public functions > retains all 160000 fragments in huge-row without exceeding function arity 750ms
+   ✓ PDF paragraph geometry worst cases through actual public functions > retains all 160000 fragments in huge-block without exceeding function arity 8731ms
+ ✓ tests/contextMenuRuntimeOwnership.test.ts (33 tests) 346ms
+ ✓ tests/architecture/moduleBoundaries.test.ts (13 tests) 3278ms
+   ✓ architecture module boundaries > src 的静态依赖图不存在跨文件循环 1213ms
+   ✓ architecture module boundaries > src 只能通过精确登记的 composition/browser/provider 迁移边界读取 entrypoints 878ms
+   ✓ architecture module boundaries > feature 不能跨目录读取另一个 feature 的内部实现 493ms
+   ✓ architecture module boundaries > 按需加载的大体积资源不得被扩展运行时代码静态引入 430ms
+ ✓ tests/popupPageActionsOwnership.test.ts (44 tests) 22ms
+ ✓ tests/extensionManifestContract.test.ts (20 tests) 62ms
+stdout | tests/documentTranslationBinaryEdge.test.ts > binary document low-level contracts > 公共入口拒绝错误格式，并覆盖文本下载与二进制状态不变量
+Warning: Cannot access the `require` function: "TypeError: process.getBuiltinModule is not a function".
+Warning: Cannot polyfill `DOMMatrix`, rendering may be broken.
+Warning: Cannot polyfill `ImageData`, rendering may be broken.
+Warning: Cannot polyfill `Path2D`, rendering may be broken.
+
+ ✓ tests/documentTranslationBinaryEdge.test.ts (12 tests) 124ms
+ ✓ tests/pdfLayoutAnalysis.test.ts (13 tests) 137ms
+ ✓ tests/documentPdfRasterizer.test.ts (25 tests) 101ms
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > extracts every page rotation with unchanged content coordinates and rotated display dimensions
+Warning: Cannot access the `require` function: "TypeError: process.getBuiltinModule is not a function".
+Warning: Cannot polyfill `DOMMatrix`, rendering may be broken.
+Warning: Cannot polyfill `ImageData`, rendering may be broken.
+Warning: Cannot polyfill `Path2D`, rendering may be broken.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > extracts every page rotation with unchanged content coordinates and rotated display dimensions
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > passes native rotation to the rasterizer and preserves the displayed page shape in bilingual downloads
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > passes native rotation to the rasterizer and preserves the displayed page shape in bilingual downloads
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > passes native rotation to the rasterizer and preserves the displayed page shape in translated downloads
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > keeps unchanged rotated bilingual pages as correctly oriented originals without rasterizing
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > keeps unchanged rotated bilingual pages as correctly oriented originals without rasterizing
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective inside crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective inside crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective intersection crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective intersection crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective intersection crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective empty crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective empty crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective empty crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+ ✓ tests/documentPdfRotation.test.ts (7 tests) 504ms
+ ✓ tests/pdfSource.test.ts (33 tests) 26ms
+ ✓ tests/architecture/providerBoundaries.test.ts (6 tests) 110ms
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > retains source bytes, correct column reading order, headings and baseline superscripts
+Warning: Cannot access the `require` function: "TypeError: process.getBuiltinModule is not a function".
+Warning: Cannot polyfill `DOMMatrix`, rendering may be broken.
+Warning: Cannot polyfill `ImageData`, rendering may be broken.
+Warning: Cannot polyfill `Path2D`, rendering may be broken.
+
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > retains source bytes, correct column reading order, headings and baseline superscripts
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > uses actual graphics bounds for protected tables/images/formulas while retaining captions and prose
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > opens a valid math-only text layer for source reading without creating provider segments, while rejecting graphic-only scans
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+ ✓ tests/documentPdfLayoutParsing.test.ts (3 tests) 255ms
+ ✓ tests/pdfReadingPlan.test.ts (6 tests) 5ms
+ ✓ tests/architecture/sourceFileHeaders.test.ts (845 tests) 232ms
+ ✓ tests/documentTranslationPresentation.test.ts (7 tests) 8ms
+ ✓ tests/pdfTextLayout.test.ts (6 tests) 30ms
+ ✓ tests/documentTranslationRegression.test.ts (10 tests) 9ms
+
+ Test Files  26 passed (26)
+      Tests  1419 passed (1419)
+   Start at  18:06:30
+   Duration  39.33s (transform 2.50s, setup 0ms, collect 6.10s, tests 29.74s, environment 3ms, prepare 916ms)

@@ -215,6 +215,25 @@ describe('settings control search', () => {
       'floating-ball-toggle', 'floating-ball-settings',
     ])
   })
+
+  it('routes smart highlighting searches to its own continuous-form anchor without mixing bilingual controls', () => {
+    expect(SETTINGS_TABBED_SECTION_IDS.has('settings-translation')).toBe(false)
+    const panels = settingsPagePanels['settings-translation']
+    expect(panels.find(panel => panel.id === 'reading')).toMatchObject({targetIds: ['translation-sentence-highlight', 'personal-corrections-settings']})
+    expect(resolveSettingsPanel('settings-translation', 'personal-corrections-settings')).toBe('reading')
+    expect(panels.find(panel => panel.id === 'reading')?.searchTerms).not.toMatch(/智能高亮|信息高亮|意外度|surprisal|关键词|本地模型/u)
+    expect(panels.find(panel => panel.id === 'information-highlight')).toMatchObject({
+      labelKey: 'informationHighlight.title', targetIds: ['information-highlight-settings'],
+    })
+    for (const keyword of ['智能高亮', '意外度', 'surprisal', '关键词']) {
+      const matches = filterSettingsSearchTargets(keyword)
+      expect(matches).toEqual([expect.objectContaining({id: 'information-highlight', label: '智能高亮'})])
+      expect(resolveSettingsPanel(matches[0].sectionId, matches[0].targetId)).toBe('information-highlight')
+      expect(panels.filter(panel => panel.searchTerms.includes(keyword)).map(panel => panel.id)).toEqual(['information-highlight'])
+    }
+    expect(resolveSettingsPanel('settings-translation', 'information-highlight')).toBe('information-highlight')
+    expect(resolveSettingsPanel('settings-translation', 'translation-sentence-highlight')).toBe('reading')
+  })
 })
 
  describe('interface language recovery search', () => {

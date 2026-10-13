@@ -30,7 +30,8 @@
 
 <script setup lang="ts">
 import {computed, nextTick, ref} from 'vue';
-import {getDefaultHarnessPrompt, resolveHarnessPrompt, type HarnessPromptKind, HARNESS_ACTIONS, HARNESS_PROMPT_MAX_LENGTH, HARNESS_PROMPT_VARIABLES, type HarnessActionId, type HarnessPreferences} from '@/src/core/config/harness';
+import {getDefaultHarnessPrompt, resolveHarnessPrompt} from '@/src/core/harness/prompts';
+import {HARNESS_ACTIONS, HARNESS_PROMPT_MAX_LENGTH, HARNESS_PROMPT_VARIABLES, type HarnessPromptKind, type HarnessActionId, type HarnessPreferences} from '@/src/core/config/harness';
 import {useUiI18n} from '@/src/ui/i18n';
 import SettingsGroup from './components/SettingsGroup.vue';
 import SegmentedControl from './components/SegmentedControl.vue';

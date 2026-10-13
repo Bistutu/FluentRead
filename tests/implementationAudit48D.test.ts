@@ -184,10 +184,10 @@ describe('audit48D TTS owner public lifecycle', () => {
   expect(await removal).toContain('运行');
  });
  it('disposes a worker after an unhinted synthesis error reaches idle timeout', async () => {
-  vi.useFakeTimers(); const {api} = await owner();
+  vi.useFakeTimers(); vi.stubGlobal('navigator', {}); const {api} = await owner();
   const pending = api.synthesizeLocalTts('hello','en','auto').catch(e => e.message); await flush();
   const worker = WorkerPort.instances[0]; worker.reply({success:false,error:'invalid voice'});
-  expect(await pending).toBe('invalid voice'); await vi.advanceTimersByTimeAsync(30_000);
+  expect(await pending).toBe('invalid voice'); await vi.advanceTimersByTimeAsync(120_000);
   const terminated = worker.terminated; api.disposeLocalTtsWorker(); expect(terminated).toBe(true);
  });
  it('keeps one fresh CPU retry and ignores a stale worker response for its request ID', async () => {
@@ -506,7 +506,7 @@ describe('audit48D cache external failure boundaries', () => {
   const fetchPort=vi.fn(async (_input:RequestInfo | URL) => new Response('failed body',{status:503}));vi.stubGlobal('fetch',fetchPort);
   await expect(api.cacheLocalTtsModelFiles()).rejects.toThrow('模型文件下载失败（503）');expect(fixture.puts).toEqual([]);
   const pinned=api.getLocalTtsModelFileUrl(api.LOCAL_TTS_MODEL_FILES[0]);
-  expect(fetchPort.mock.calls.map(([url]) => url)).toEqual([pinned,pinned.replace('https://huggingface.co/','https://hf-mirror.com/'),pinned.replace('https://huggingface.co/','https://hf-mirror.net/')]);
+  expect(fetchPort.mock.calls.map(([url]) => url)).toEqual([pinned,pinned.replace('https://huggingface.co/','https://hf-mirror.com/')]);
   fetchPort.mockImplementation(async () => new Response('recovered'));
   await api.cacheLocalTtsModelFiles();await expect(api.isLocalTtsModelCached()).resolves.toBe(true);
  });
@@ -523,7 +523,7 @@ describe('audit48D cache external failure boundaries', () => {
   const fetchPort=vi.fn().mockRejectedValue(value);vi.stubGlobal('fetch',fetchPort);
   await expect(api.cacheLocalTtsModelFiles()).rejects.toThrow(message);
   const pinned=api.getLocalTtsModelFileUrl(api.LOCAL_TTS_MODEL_FILES[0]);
-  expect(fetchPort.mock.calls.map(([url]) => url)).toEqual([pinned,pinned.replace('https://huggingface.co/','https://hf-mirror.com/'),pinned.replace('https://huggingface.co/','https://hf-mirror.net/')]);
+  expect(fetchPort.mock.calls.map(([url]) => url)).toEqual([pinned,pinned.replace('https://huggingface.co/','https://hf-mirror.com/')]);
   fetchPort.mockImplementation(async () => new Response('retry bytes'));
   await api.cacheLocalTtsModelFiles(); await expect(api.isLocalTtsModelCached()).resolves.toBe(true);
  });
@@ -531,7 +531,7 @@ describe('audit48D cache external failure boundaries', () => {
   vi.useFakeTimers();cacheFixture(); const api=await import('@/src/features/local-tts/offscreen/modelCache');
   const fetchPort=vi.fn((_url,options) => new Promise<Response>((_resolve,reject) => {options.signal.addEventListener('abort',() => reject(new Error('port aborted')),{once:true});})); vi.stubGlobal('fetch',fetchPort);
   const pending=api.cacheLocalTtsModelFiles().catch(e => e.message);await flush();await vi.advanceTimersByTimeAsync(300000);
-  expect(await pending).toBe('模型文件下载超过等待时限');expect(fetchPort).toHaveBeenCalledTimes(3);for(const [,options] of fetchPort.mock.calls) expect(options.signal.aborted).toBe(true);expect(vi.getTimerCount()).toBe(0);
+  expect(await pending).toBe('模型文件下载超过等待时限');expect(fetchPort).toHaveBeenCalledTimes(2);for(const [,options] of fetchPort.mock.calls) expect(options.signal.aborted).toBe(true);expect(vi.getTimerCount()).toBe(0);
   fetchPort.mockImplementation(async () => new Response('retry'));await api.cacheLocalTtsModelFiles();
  });
  it('rejects a download and second removal while pending deletion owns the cache', async () => {

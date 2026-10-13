@@ -7,6 +7,7 @@ import {parseDocument, type ParsedDocument} from '@/src/features/document-transl
 import type {CreateDocumentDownloadOptions, DocumentDownload} from '@/src/features/document-translation/services/binary';
 import {TranslationRequestError, serializeTranslationError} from '@/src/services/translation/errors';
 import DocumentApp from '@/src/app/document-translation/DocumentApp.vue';
+import {documentRetryBackoff} from '@/src/app/document-translation/runtime';
 import DocumentSegmentEditor from '@/src/app/document-translation/DocumentSegmentEditor.vue';
 
 // Only external ports are controlled. Both original client SFC templates, the app adapter,
@@ -18,6 +19,7 @@ const ports = vi.hoisted(() => ({
     unsubscribe: vi.fn(), send: vi.fn(), tabs: vi.fn(), single: vi.fn(), batch: vi.fn(),
     download: vi.fn(), archive: vi.fn(),
 }));
+vi.mock('@/src/features/document-translation/ui/PdfReader.vue', () => ({default: {setup: () => () => h('div')}}));
 vi.mock('webextension-polyfill', () => ({default: {
     runtime: {sendMessage: ports.send, getURL: (path: string) => `chrome-extension://document-actions/${path}`},
     tabs: {create: ports.tabs},
@@ -183,6 +185,8 @@ async function downloadReady() {
 }
 beforeEach(async () => {
     cleanups = []; actions = []; apps = []; anchors = []; blobs = []; revoked = []; browserTimers = new Set();
+    // 既有用例验证“失败即停止并可手动重试”；自动退避由专门的用例打开。
+    Object.assign(documentRetryBackoff, {maxWaitMs: 0, sleep: undefined});
     Object.assign(ports.config, new Config(), {service: 'microsoft'});
     ports.ready = Promise.resolve(); ports.observer = undefined;
     ports.send.mockReset().mockResolvedValue(undefined); ports.unsubscribe.mockReset(); ports.tabs.mockReset().mockResolvedValue(undefined);
@@ -218,6 +222,28 @@ afterEach(async () => {
 });
 
 describe('document user actions: configuration consumers', () => {
+    it('defaults to batching for each document and retains a local opt-out without saving global settings', async () => {
+        const globalBatching = ports.config.enableAIMultiSegment;
+        await importFiles(file('batch-first.txt', 'First passage.\n\nSecond passage.'), file('batch-second.txt', 'Third passage.\n\nFourth passage.'));
+        const localToggle = () => find(node => node.tag === 'input' && node.type === 'checkbox', find(node => String(node.props.class).includes('document-batch-translation')));
+        expect(localToggle().checked).toBe(true);
+        await fire(localToggle(), 'change', {checked: false});
+        await fire(translateButton(), 'click');
+        await vi.waitFor(() => expect(ports.single).toHaveBeenCalledTimes(2));
+        expect(ports.batch).not.toHaveBeenCalled();
+        await vi.waitFor(() => expect(button('下载文件 ↓', taskbar()).props.disabled).toBe(false));
+        await selectFile('batch-second.txt');
+        expect(localToggle().checked).toBe(true);
+        await fire(translateButton(), 'click');
+        await vi.waitFor(() => expect(ports.batch).toHaveBeenCalledOnce());
+        expect(ports.batch.mock.calls[0][0]).toEqual(['Third passage.', 'Fourth passage.']);
+        await flush();
+        await selectFile('batch-first.txt');
+        expect(localToggle().checked).toBe(false);
+        expect(ports.config.enableAIMultiSegment).toBe(globalBatching);
+        expect(ports.send).not.toHaveBeenCalled();
+    });
+
     it('retains the latest successful language after an older failed save and its authoritative current-state rollback broadcast', async () => {
         await importFiles(file('late-save.txt'));
         const old = deferred<unknown>(undefined); ports.send.mockReturnValueOnce(old.promise);
@@ -236,13 +262,14 @@ describe('document user actions: configuration consumers', () => {
     it('saves document service, language and explicit empty glossary selection through the rendered form and uses them in translation', async () => {
         broadcast({glossaryEnabled: true}); await flush();
         await importFiles(file('form.txt'));
+        await fire(button('翻译设置', taskbar()), 'click');
+        expect(dialog('document-settings-heading').open).toBe(true);
         await fire(labelled('文档翻译服务'), 'change', {value: 'freeTranslation'});
         await fire(labelled('文档源语言'), 'change', {value: 'en'});
         await fire(labelled('document glossary port'), 'click');
         expect(ports.send.mock.calls.map(([message]) => message.patch)).toEqual([
             {documentService: 'freeTranslation'}, {from: 'en'}, {documentGlossaryIds: []},
         ]);
-        await fire(labelled('调整文档翻译设置'), 'click');
         await fire(button('开始翻译', dialog('document-settings-heading')), 'click');
         expect(dialog('document-settings-heading').open).toBe(false);
         expect(ports.batch).toHaveBeenCalledWith(['Original text.'], 'form.txt', expect.objectContaining({
@@ -314,7 +341,7 @@ describe('document user actions: configuration consumers', () => {
         await fire(labelled('文档翻译模型'), 'change', {value: models.get('openai')![0]});
         expect(ports.send.mock.calls.at(-1)![0].patch.documentModel.openai).toBe(models.get('openai')![0]);
         await fire(translateButton(), 'click');
-        expect(ports.single).toHaveBeenCalledWith('Original text.', 'model.txt', expect.objectContaining({modelOverride: models.get('openai')![0]}));
+        expect(ports.batch).toHaveBeenCalledWith(['Original text.'], 'model.txt', expect.objectContaining({modelOverride: models.get('openai')![0], aiMultiSegment: true}));
     });
 });
 
@@ -611,6 +638,38 @@ describe('document user actions: real editor events and parent consumers', () =>
         expect(walk(editor()).find(node => node.props['data-segment-id'] === 1)).toBeUndefined();
     });
 
+    it('shows the original wording for whole-sentence segments and explains the markers only where a translation carries them', async () => {
+        apps.pop()!.unmount();
+        const current = parseDocument('note.md', 'Read the [setup guide](https://example.com/setup) first.\n\nPlain sentence.', {markdownSentences: true});
+        expect(current.segments[0].source).toBe('Read the <g1>setup guide</g1> first.');
+        mount({setup: () => () => h(DocumentSegmentEditor, {document: current, translations: ['先读<g1>安装指南</g1>。', '普通句子。'], disabled: false})});
+        const nodes = () => walk(editor());
+        const sourceTexts = nodes().filter(node => node.props.class === 'document-source').map(node => walk(node).map(child => child.text ?? '').join(''));
+        expect(sourceTexts).toEqual(['Read the setup guide first.', 'Plain sentence.']);
+        expect(textarea(0).value).toBe('先读<g1>安装指南</g1>。');
+        expect(nodes().filter(node => node.props.class === 'segment-placeholder-hint')).toHaveLength(1);
+    });
+
+    it('says so when the finished translation is the same as the original, but not for short files or real translations', async () => {
+        const lines = ['第一行已经是中文。', '第二行也是中文。', '第三行还是中文。', '第四行同样是中文。', '第五行仍然是中文。', '第六行是中文。'];
+        // 服务把每一段都原样返回：文档多半已经是目标语言。
+        ports.batch.mockImplementation(async (sources: string[]) => sources);
+        await importFiles(file('same.txt', lines.join('\n\n')));
+        await fire(translateButton(), 'click');
+        await vi.waitFor(() => expect(textOf(taskbar())).toContain('译文与原文相同，可换目标语言'));
+        // 片段很少时不下这个判断。
+        await importFiles(file('short.txt', lines.slice(0, 2).join('\n\n')));
+        await fire(translateButton(), 'click');
+        await vi.waitFor(() => expect(textOf(taskbar())).toContain('翻译完成'));
+        expect(textOf(taskbar())).not.toContain('译文与原文相同');
+        // 大部分片段有了不同的译文时照常显示完成。
+        ports.batch.mockImplementation(async (sources: string[]) => sources.map(source => `T:${source}`));
+        await importFiles(file('real.txt', lines.join('\n\n')));
+        await fire(translateButton(), 'click');
+        await vi.waitFor(() => expect(textOf(taskbar())).toContain('翻译完成'));
+        expect(textOf(taskbar())).not.toContain('译文与原文相同');
+    });
+
     it('disables editing while translating and enables it after an external global pause with no late result commit', async () => {
         await importFiles(file('editor-busy.txt'));
         const late = deferred<string[]>(['late']); ports.batch.mockReturnValueOnce(late.promise);
@@ -652,9 +711,11 @@ describe('document user actions: confirmation and task consumers', () => {
         await fire(input, 'change', {files: [file('picked-second.txt')], value: 'fake-path'});
         expect(input.value).toBe('');
         await vi.waitFor(() => expect(textOf(root)).toContain('picked-second.txt'));
-        expect(textOf(taskbar())).toContain('picked-first.txt');
-        await selectFile('picked-second.txt');
+        // 新添加的文件立即成为当前文档；先前的文件留在侧栏文件列表里，可以随时切回。
         expect(textOf(taskbar())).toContain('picked-second.txt');
+        expect(textOf(taskbar())).not.toContain('picked-first.txt');
+        await selectFile('picked-first.txt');
+        expect(textOf(taskbar())).toContain('picked-first.txt');
     });
 
     it('continues the queue after a file fails and retries only that file through the batch action', async () => {
@@ -754,9 +815,11 @@ describe('document user actions: confirmation and task consumers', () => {
         const content = Array.from({length: 18}, (_, i) => `Paragraph ${i}`).join('\n\n');
         await importFiles(file('resume.txt', content));
         const late = deferred<string[]>(['late 16', 'late 17']);
+        // 一批 16 段完成并保留，余下两段在暂停之后才返回。
         ports.batch.mockResolvedValueOnce(Array.from({length: 16}, (_, i) => `kept ${i}`)).mockReturnValueOnce(late.promise);
         await fire(translateButton(), 'click');
         expect(ports.batch).toHaveBeenCalledTimes(2);
+        expect(ports.batch.mock.calls.map(call => call[0].length)).toEqual([16, 2]);
         expect(labelled('文档翻译进度').props['aria-valuenow']).toBe(88);
         await fire(button('暂停翻译'), 'click');
         const signal = ports.batch.mock.calls[1][2].signal;
@@ -781,6 +844,27 @@ describe('document user actions: confirmation and task consumers', () => {
         expect(textOf(taskbar())).toContain('翻译完成');
         expect(textOf(taskbar())).not.toContain('provider offline');
         expect(ports.batch).toHaveBeenCalledTimes(2);
+    });
+
+    it('waits and retries by itself when the service is briefly unavailable, showing why, and only stops with the reason once the budget is spent', async () => {
+        let release: (() => void) | undefined; const waits: number[] = [];
+        Object.assign(documentRetryBackoff, {maxWaitMs: 120_000, sleep: (milliseconds: number) => new Promise<void>(resolve => {waits.push(milliseconds); release = resolve;})});
+        await importFiles(file('busy.txt'));
+        ports.batch.mockRejectedValueOnce(new Error('429 rate limited'));
+        await fire(translateButton(), 'click');
+        // 没有点击任何按钮：页面仍在翻译，并说明正在等待重试及原因。
+        await vi.waitFor(() => expect(textOf(taskbar())).toContain('429 rate limited'));
+        expect(textOf(taskbar())).toContain('翻译服务暂时没有响应，将自动重试'); expect(textOf(taskbar())).toContain('2s'); expect(textOf(taskbar())).toContain('正在翻译');
+        expect(waits).toEqual([2000]); expect(ports.batch).toHaveBeenCalledTimes(1);
+        release!(); await vi.waitFor(() => expect(textOf(taskbar())).toContain('翻译完成'));
+        expect(ports.batch).toHaveBeenCalledTimes(2); expect(textOf(taskbar())).not.toContain('429 rate limited');
+        // 预算用尽后停下，并给出最后一次失败的原因。
+        Object.assign(documentRetryBackoff, {maxWaitMs: 6000, sleep: async (milliseconds: number) => {waits.push(milliseconds);}});
+        await importFiles(file('down.txt'));
+        ports.batch.mockReset().mockRejectedValue(new Error('service unavailable'));
+        await fire(translateButton(), 'click');
+        await vi.waitFor(() => expect(textOf(taskbar())).toContain('第 1 段文档翻译失败：service unavailable'));
+        expect(waits.slice(1)).toEqual([2000, 4000]); expect(textOf(taskbar())).toContain('翻译中断'); expect(textOf(taskbar())).not.toContain('将自动重试');
     });
 
     it('turns a typed disabled-service result into pause before the configuration broadcast arrives', async () => {

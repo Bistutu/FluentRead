@@ -98,7 +98,19 @@
     "settings.fullPage.multiSegmentHelp": "Действует только для ИИ-сервисов с поддержкой общих промптов. Машинный перевод, перевод при наведении, выделенного текста и в полях ввода не затрагиваются.",
     "glossary.builtin.helpDisabled": "Глоссарий выключен. Включите переключатель выше, чтобы добавленные глоссарии начали применяться.",
     "image.settings.languageServiceTitle": "Языки и сервис",
-    "settings.floatingBall.disabledNote": "Плавающая кнопка выключена. Эти настройки сохранятся и начнут действовать после её включения."
+    "settings.floatingBall.disabledNote": "Плавающая кнопка выключена. Эти настройки сохранятся и начнут действовать после её включения.",
+    "video.downloadSourceLabel": "Источник загрузки",
+    "video.downloadSourceAuto": "Автоматически",
+    "video.downloadSourceMirror": "Сначала зеркала в Китае",
+    "video.downloadSourceOfficial": "Сначала официальный",
+    "video.downloadSourceHint": "Применяется к следующим загрузкам. При сбое подключения используется другой источник.",
+    "video.downloadSourcePages": "Страницы источников модели:",
+    "video.downloadSourceOther": "резервный источник",
+    "video.downloadWaiting": "Подключение к источнику…",
+    "video.downloadConnecting": "Подключение к {source} · {attempt}/{attempts}",
+    "video.downloadSwitching": "Переключение на {source} · {attempt}/{attempts}",
+    "video.downloadReceiving": "Загрузка из {source}",
+    "video.downloadRetry": "Повторить загрузку"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "Подключение изменилось. Создайте новый предварительный просмотр.",

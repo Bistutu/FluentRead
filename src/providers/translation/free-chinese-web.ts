@@ -1,10 +1,11 @@
 /**
  * @file src/providers/translation/free-chinese-web.ts
  * 文件职责：适配有道网页普通翻译和金山词霸匿名网页翻译接口。
- * 主要内容：生成公开网页协议所需签名，解密词霸响应，限制支持的中英方向，并保留文本槽、换行、边缘空白、取消和结构化失败分类。
+ * 主要内容：按码点预算且不切术语标记，生成公开网页协议所需签名，解密词霸响应，限制支持的中英方向；有道按安全长度分块，避免匿名接口静默截去长段落末尾，同时保留文本槽、换行、边缘空白、取消和结构化失败分类；取消或 HTTP 失败后等待未读正文结算再归还免费池容量。
  * 模块边界：本文件只负责固定匿名 HTTP provider；不读取账号、Cookie、用户密钥、代理或存储，不负责免费服务编排、重试和并发。
  */
 import AES from 'crypto-js/aes';
+import {translateFreeTextChunks} from './freeTextChunks';
 import encUtf8 from 'crypto-js/enc-utf8';
 import MD5 from 'crypto-js/md5';
 import modeECB from 'crypto-js/mode-ecb';
@@ -31,7 +32,9 @@ const ICIBA_AUTH_USER = 'key_web_new_fanyi';
 const ICIBA_SIGN_PREFIX = '6key_web_new_fanyi6dVjYLFyzfkFkk';
 const ICIBA_SIGN_KEY = 'L4fBtD5fLC9FQw22';
 const ICIBA_RESPONSE_KEY = 'aahc3TfyfCEmER33';
-const MAX_CHUNK_CODEPOINTS = 1000;
+// 有道匿名接口会静默截断约 600 字符后的内容；低于该边界分块以保留长段落末尾。
+const YOUDAO_MAX_CHUNK_CODEPOINTS = 500;
+const ICIBA_MAX_CHUNK_CODEPOINTS = 1000;
 
 function failure(message: string, freeFailure: FreeFailure, statusCode?: number): FreeError {
     return Object.assign(new Error(message), {freeFailure, ...(statusCode === undefined ? {} : {statusCode})});
@@ -113,45 +116,40 @@ async function fetchJson(provider: FreeChineseWebProvider, query: string, from: 
         if (signal?.aborted) throw abortErrorFromSignal(signal);
         throw failure('免费网页翻译请求失败', 'unavailable');
     }
-    if (signal?.aborted) throw abortErrorFromSignal(signal);
-    if (!response.ok) {
-        const statusError = createHttpStatusError(response, '免费网页翻译请求失败');
-        throw Object.assign(statusError, {freeFailure: classifyStatus(response.status)});
-    }
-    if (provider === 'youdaoFree') {
-        const result = await readJsonResponse<{fanyi?: {tran?: unknown}} | null>(response, '有道返回的不是有效 JSON');
+    try {
         if (signal?.aborted) throw abortErrorFromSignal(signal);
-        const translated = result?.fanyi?.tran;
-        if (typeof translated !== 'string' || !translated.trim()) throw failure('有道返回内容无效', 'unavailable');
-        return translated;
+        if (!response.ok) {
+            const statusError = createHttpStatusError(response, '免费网页翻译请求失败');
+            throw Object.assign(statusError, {freeFailure: classifyStatus(response.status)});
+        }
+        if (provider === 'youdaoFree') {
+            const result = await readJsonResponse<{fanyi?: {tran?: unknown}} | null>(response, '有道返回的不是有效 JSON');
+            if (signal?.aborted) throw abortErrorFromSignal(signal);
+            const translated = result?.fanyi?.tran;
+            if (typeof translated !== 'string' || !translated.trim()) throw failure('有道返回内容无效', 'unavailable');
+            return translated;
+        }
+        const envelope = await readJsonResponse<{content?: unknown} | null>(response, '词霸返回的不是有效 JSON');
+        if (signal?.aborted) throw abortErrorFromSignal(signal);
+        const result = decryptIciba(envelope?.content);
+        if (result.err_no !== 0) {
+            const code = Number(result.err_no);
+            const kind: FreeFailure = code === 429 ? 'rate-limit' : code === 403 ? 'blocked' : code === 402 ? 'quota' : 'request';
+            throw failure('词霸翻译业务请求失败', kind, Number.isInteger(code) ? code : undefined);
+        }
+        if (typeof result.out !== 'string' || !result.out.trim()) throw failure('词霸返回内容无效', 'unavailable');
+        return result.out;
+    } finally {
+        // 取消或 HTTP 错误也须等未消费的正文结算，免费池才能归还真实在途容量。
+        if (response.bodyUsed === false) {
+            try { await response.clone().arrayBuffer(); } catch { /* 正文排空失败保留原来的 HTTP、取消或解析分类。 */ }
+        }
     }
-    const envelope = await readJsonResponse<{content?: unknown} | null>(response, '词霸返回的不是有效 JSON');
-    if (signal?.aborted) throw abortErrorFromSignal(signal);
-    const result = decryptIciba(envelope?.content);
-    if (result.err_no !== 0) {
-        const code = Number(result.err_no);
-        const kind: FreeFailure = code === 429 ? 'rate-limit' : code === 403 ? 'blocked' : code === 402 ? 'quota' : 'request';
-        throw failure('词霸翻译业务请求失败', kind, Number.isInteger(code) ? code : undefined);
-    }
-    if (typeof result.out !== 'string' || !result.out.trim()) throw failure('词霸返回内容无效', 'unavailable');
-    return result.out;
 }
 
 async function translatePlain(provider: FreeChineseWebProvider, text: string, from: string, to: string, signal?: AbortSignal): Promise<string> {
-    let output = '';
-    for (const line of text.split(/([\r\n]+)/u)) {
-        const points = Array.from(line);
-        for (let start = 0; start < points.length; start += MAX_CHUNK_CODEPOINTS) {
-            if (signal?.aborted) throw abortErrorFromSignal(signal);
-            const chunk = points.slice(start, start + MAX_CHUNK_CODEPOINTS).join('');
-            const content = chunk.trim();
-            if (!content) { output += chunk; continue; }
-            const prefix = chunk.slice(0, chunk.indexOf(content));
-            const suffix = chunk.slice(prefix.length + content.length);
-            output += prefix + await fetchJson(provider, content, from, to, signal) + suffix;
-        }
-    }
-    return output;
+    const limit = provider === 'youdaoFree' ? YOUDAO_MAX_CHUNK_CODEPOINTS : ICIBA_MAX_CHUNK_CODEPOINTS;
+    return translateFreeTextChunks(text, limit, chunk => fetchJson(provider, chunk, from, to, signal), signal, provider === 'youdaoFree');
 }
 
 export async function translateFreeChineseWebText(provider: FreeChineseWebProvider, text: string, source: string, target: string, signal?: AbortSignal): Promise<string> {

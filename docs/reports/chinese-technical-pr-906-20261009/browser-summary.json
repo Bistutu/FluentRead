@@ -1,0 +1,183 @@
+{
+  "ok": true,
+  "scope": "PR #906 four technical Chinese paragraphs: plain and code/strong inline DOM, Simplified Chinese hover/full zero requests and zero wrappers, English neighbor restore/retranslate, dynamic Chinese-to-English mutation, target switch to English",
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 132,
+      "top": -1020,
+      "width": 1440,
+      "height": 960
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 44386,
+      "name": "Google Chrome"
+    },
+    "frontmostAfter": {
+      "pid": 44386,
+      "name": "Google Chrome"
+    }
+  },
+  "configuration": {
+    "on": true,
+    "from": "auto",
+    "to": "zh-Hans",
+    "display": 1,
+    "service": "custom:chinese-script-fixture",
+    "hotkey": "Control",
+    "floatingBallHotkey": "Alt+T",
+    "useCache": false,
+    "fullPageTranslationMode": "all"
+  },
+  "technicalPr906": {
+    "source": "https://github.com/FluentRead/FluentRead/pull/906",
+    "paragraphs": 4,
+    "cases": [
+      {
+        "markup": "plain",
+        "status": "passed",
+        "sameTargetHoverRequests": 0,
+        "sameTargetWrappers": 0,
+        "foreignHoverCounts": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "foreignFullPageCounts": [
+          1,
+          0,
+          1
+        ],
+        "sameTargetFullRequests": 0,
+        "dynamicRedetection": true,
+        "sameTargetRequestSources": [
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "The second paragraph explains the settings for the computer network."
+        ],
+        "restored": true,
+        "targetSwitch": {
+          "from": "zh-Hans",
+          "to": "en",
+          "translatedChineseParagraphs": 4,
+          "requestCount": 4
+        },
+        "targetSwitchRestored": true,
+        "urlStable": true,
+        "originalInlineDomPreserved": true
+      },
+      {
+        "markup": "split",
+        "status": "passed",
+        "sameTargetHoverRequests": 0,
+        "sameTargetWrappers": 0,
+        "foreignHoverCounts": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "foreignFullPageCounts": [
+          1,
+          0,
+          1
+        ],
+        "sameTargetFullRequests": 0,
+        "dynamicRedetection": true,
+        "sameTargetRequestSources": [
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "This software reads the document and translates the language on this page.",
+          "The second paragraph explains the settings for the computer network."
+        ],
+        "restored": true,
+        "targetSwitch": {
+          "from": "zh-Hans",
+          "to": "en",
+          "translatedChineseParagraphs": 4,
+          "requestCount": 4
+        },
+        "targetSwitchRestored": true,
+        "urlStable": true,
+        "originalInlineDomPreserved": true
+      }
+    ]
+  },
+  "fixtureRequests": 16,
+  "consoleErrors": [],
+  "screenshots": [
+    "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser/technical-pr-906-plain-retained.png",
+    "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser/technical-pr-906-plain-english-target.png",
+    "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser/technical-pr-906-split-retained.png",
+    "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser/technical-pr-906-split-english-target.png"
+  ],
+  "evidenceBoundary": "The local HTML and loopback OpenAI-compatible server are deterministic fixtures. Their success does not prove any external service translation quality or availability.",
+  "profileMode": "fresh automatically created temporary Edge profile, closed and deleted by the runner",
+  "runtimeBoundary": "Chrome MV3 production extension in Microsoft Edge; not Firefox runtime or live provider acceptance",
+  "fullReport": "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser/report.json",
+  "initialSplitFailure": "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser-initial-split-failure/report.json",
+  "secondSplitFailure": "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009/docs/reports/chinese-technical-pr-906-20261009/browser-second-split-failure/report.json",
+  "cleanup": {
+    "temporaryProfileRemoved": true,
+    "browserRunnerExitCode": 0
+  },
+  "productionFingerprint": {
+    "recordedAt": "2026-10-09T14:24:44.735Z",
+    "worktree": "/Users/thinkstu/Desktop/copy/FluentRead-chinese-technical-language-20261009",
+    "fingerprints": {
+      "src/core/language/identify.ts": {
+        "sha256": "7dc33a4928555f24cbac06472123d4e86eb5d9b67c5c0423ffc8b572558ac4b5",
+        "bytes": 23136
+      },
+      "src/core/language/lexicon.ts": {
+        "sha256": "2d54b75db24622e9df648526306e1879f8539e75c36c16a25f58789269a405bd",
+        "bytes": 7066
+      },
+      "src/core/language/functionWordData.ts": {
+        "sha256": "d568bcd08ee922c9eb90e3d92fe6014cdadb160efa4d477005850a3c6bdd4a5f",
+        "bytes": 11350
+      },
+      "src/core/translation/dom.ts": {
+        "sha256": "965bbea12ee7e7cd60030a2fec59080248e07f76fe1720c85dab5dc3853f14f8",
+        "bytes": 21405
+      },
+      "src/core/translation/text.ts": {
+        "sha256": "a2ae6662ff5078e9d9000f4a4a01135a243d0bd9fb09b0dbf4f52ca4c02650ba",
+        "bytes": 12825
+      },
+      ".output/chrome-mv3/manifest.json": {
+        "sha256": "cc92950ad08ed2e2f02bd55a0756048e6569ec51c9341d9e678b65fb3d8d03f7",
+        "bytes": 3178
+      },
+      ".output/chrome-mv3/content-scripts/content.js": {
+        "sha256": "8fbc65a8fc7191c1f40766b8c2d98229d4b7380fcb814e512eee67c101ddc0cf",
+        "bytes": 2587601
+      }
+    },
+    "sourceUnchangedSincePreviousVerification": true,
+    "verifiedAfter": "2026-10-09T14:25:33.662Z",
+    "unchangedDuringRun": true
+  },
+  "visualInspection": {
+    "screenshotsReviewed": [
+      "browser/technical-pr-906-split-retained.png",
+      "browser/technical-pr-906-split-english-target.png"
+    ],
+    "sameTargetChineseUnchanged": true,
+    "onlyForeignControlsTranslatedToChinese": true,
+    "fourChineseParagraphsTranslatedAfterEnglishTarget": true,
+    "note": "English target screenshot contains deterministic fixture responses repeated per serialized source slot; it proves target switching and DOM mounting, not translation quality."
+  }
+}

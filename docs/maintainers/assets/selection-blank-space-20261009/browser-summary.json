@@ -1,0 +1,4421 @@
+{
+  "baseline": {
+    "ok": true,
+    "providerEvidence": "Production extension, controlled local translation and AI fixtures; no live provider, audio-quality, or account proof.",
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 132,
+        "top": -1020,
+        "width": 1440,
+        "height": 960
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false,
+      "frontmostBefore": {
+        "pid": 44386,
+        "name": "Google Chrome"
+      },
+      "frontmostAfter": {
+        "pid": 44386,
+        "name": "Google Chrome"
+      }
+    },
+    "ownedBrowserClosed": true,
+    "profileRemoved": true,
+    "cleanupErrors": [],
+    "consoleErrors": [],
+    "blockedExternalRequests": [],
+    "actualExternalResponses": [],
+    "audio": {
+      "fixtureRequests": 4,
+      "muted": true,
+      "listeningVerified": false
+    },
+    "checks": 324,
+    "layouts": 28,
+    "additionalAutoLongCase": true,
+    "screenshots": 62,
+    "focusSamples": 125,
+    "foregroundApplications": [
+      "Google Chrome"
+    ],
+    "manualLearningViewport": 77,
+    "shortCards": [
+      {
+        "name": "short-zh-CN-light-auto",
+        "ordinary": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 273.59375,
+            "width": 388,
+            "height": 225.59375
+          },
+          "content": {
+            "left": 21,
+            "top": 120,
+            "right": 407,
+            "bottom": 236.59375,
+            "width": 386,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 21,
+            "top": 236.59375,
+            "right": 407,
+            "bottom": 272.59375,
+            "width": 386,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 568,
+            "width": 388,
+            "height": 520
+          },
+          "content": {
+            "left": 21,
+            "top": 120,
+            "right": 407,
+            "bottom": 531,
+            "width": 386,
+            "height": 411
+          },
+          "status": {
+            "left": 21,
+            "top": 531,
+            "right": 407,
+            "bottom": 567,
+            "width": 386,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 278.71875,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 35,
+            "top": 126,
+            "right": 393,
+            "bottom": 521,
+            "width": 358,
+            "height": 395
+          },
+          "resultClientHeight": 395,
+          "resultScrollHeight": 525,
+          "hasReturn": false,
+          "scrollTop": 130
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 294.40625
+        },
+        "audioEvidence": [
+          {
+            "kind": "source",
+            "before": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 273.59375,
+                "width": 388,
+                "height": 225.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 236.59375,
+                "right": 407,
+                "bottom": 272.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "preparing": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 273.59375,
+                "width": 388,
+                "height": 225.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 236.59375,
+                "right": 407,
+                "bottom": 272.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在生成语音…停止",
+              "preparing": true,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "playing": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 273.59375,
+                "width": 388,
+                "height": 225.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 236.59375,
+                "right": 407,
+                "bottom": 272.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在播放原文0:00 / 0:1055停止",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "stopped": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 273.59375,
+                "width": 388,
+                "height": 225.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 236.59375,
+                "right": 407,
+                "bottom": 272.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "frameCount": 76,
+            "maxDelta": {
+              "left": 0,
+              "top": 0,
+              "width": 0,
+              "height": 0
+            }
+          },
+          {
+            "kind": "translation",
+            "before": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 273.59375,
+                "width": 388,
+                "height": 225.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 236.59375,
+                "right": 407,
+                "bottom": 272.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "preparing": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 273.59375,
+                "width": 388,
+                "height": 225.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 236.59375,
+                "right": 407,
+                "bottom": 272.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在生成语音…停止",
+              "preparing": true,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "playing": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 273.59375,
+                "width": 388,
+                "height": 225.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 236.59375,
+                "right": 407,
+                "bottom": 272.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在播放译文0:00 / 0:1055停止",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "stopped": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 273.59375,
+                "width": 388,
+                "height": 225.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 236.59375,
+                "right": 407,
+                "bottom": 272.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "frameCount": 59,
+            "maxDelta": {
+              "left": 0,
+              "top": 0,
+              "width": 0,
+              "height": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "short-zh-CN-light-narrow-auto",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 273.59375,
+            "width": 366,
+            "height": 225.59375
+          },
+          "content": {
+            "left": 13,
+            "top": 120,
+            "right": 377,
+            "bottom": 236.59375,
+            "width": 364,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 13,
+            "top": 236.59375,
+            "right": 377,
+            "bottom": 272.59375,
+            "width": 364,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 568,
+            "width": 366,
+            "height": 520
+          },
+          "content": {
+            "left": 13,
+            "top": 120,
+            "right": 377,
+            "bottom": 531,
+            "width": 364,
+            "height": 411
+          },
+          "status": {
+            "left": 13,
+            "top": 531,
+            "right": 377,
+            "bottom": 567,
+            "width": 364,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 278.71875,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 126,
+            "right": 363,
+            "bottom": 521,
+            "width": 336,
+            "height": 395
+          },
+          "resultClientHeight": 395,
+          "resultScrollHeight": 525,
+          "hasReturn": false,
+          "scrollTop": 130
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 294.40625
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-zh-CN-light-manual-280",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 291,
+            "bottom": 167,
+            "width": 278,
+            "height": 71
+          },
+          "status": {
+            "left": 13,
+            "top": 167,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 291,
+            "bottom": 167,
+            "width": 278,
+            "height": 71
+          },
+          "status": {
+            "left": 13,
+            "top": 167,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 0,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 102,
+            "right": 277,
+            "bottom": 157,
+            "width": 250,
+            "height": 55
+          },
+          "resultClientHeight": 55,
+          "resultScrollHeight": 260,
+          "hasReturn": false,
+          "scrollTop": 132
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-zh-CN-light-manual-360",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 371,
+            "bottom": 187,
+            "width": 358,
+            "height": 91
+          },
+          "status": {
+            "left": 13,
+            "top": 187,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 371,
+            "bottom": 187,
+            "width": 358,
+            "height": 91
+          },
+          "status": {
+            "left": 13,
+            "top": 187,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 0,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 102,
+            "right": 357,
+            "bottom": 177,
+            "width": 330,
+            "height": 75
+          },
+          "resultClientHeight": 75,
+          "resultScrollHeight": 260,
+          "hasReturn": false,
+          "scrollTop": 132
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": [
+          {
+            "kind": "source",
+            "before": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "preparing": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在生成语音…停止",
+              "preparing": true,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "playing": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在播放原文0:00 / 0:1055停止",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "stopped": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "frameCount": 61,
+            "maxDelta": {
+              "left": 0,
+              "top": 0,
+              "width": 0,
+              "height": 0
+            }
+          },
+          {
+            "kind": "translation",
+            "before": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "preparing": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在生成语音…停止",
+              "preparing": true,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "playing": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在播放译文0:00 / 0:1055停止",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "stopped": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "frameCount": 61,
+            "maxDelta": {
+              "left": 0,
+              "top": 0,
+              "width": 0,
+              "height": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "short-zh-CN-dark-auto",
+        "ordinary": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 273.59375,
+            "width": 388,
+            "height": 225.59375
+          },
+          "content": {
+            "left": 21,
+            "top": 120,
+            "right": 407,
+            "bottom": 236.59375,
+            "width": 386,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 21,
+            "top": 236.59375,
+            "right": 407,
+            "bottom": 272.59375,
+            "width": 386,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 568,
+            "width": 388,
+            "height": 520
+          },
+          "content": {
+            "left": 21,
+            "top": 120,
+            "right": 407,
+            "bottom": 531,
+            "width": 386,
+            "height": 411
+          },
+          "status": {
+            "left": 21,
+            "top": 531,
+            "right": 407,
+            "bottom": 567,
+            "width": 386,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 278.71875,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 35,
+            "top": 126,
+            "right": 393,
+            "bottom": 521,
+            "width": 358,
+            "height": 395
+          },
+          "resultClientHeight": 395,
+          "resultScrollHeight": 525,
+          "hasReturn": false,
+          "scrollTop": 130
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 294.40625
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-zh-CN-dark-narrow-auto",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 273.59375,
+            "width": 366,
+            "height": 225.59375
+          },
+          "content": {
+            "left": 13,
+            "top": 120,
+            "right": 377,
+            "bottom": 236.59375,
+            "width": 364,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 13,
+            "top": 236.59375,
+            "right": 377,
+            "bottom": 272.59375,
+            "width": 364,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 568,
+            "width": 366,
+            "height": 520
+          },
+          "content": {
+            "left": 13,
+            "top": 120,
+            "right": 377,
+            "bottom": 531,
+            "width": 364,
+            "height": 411
+          },
+          "status": {
+            "left": 13,
+            "top": 531,
+            "right": 377,
+            "bottom": 567,
+            "width": 364,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 278.71875,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 126,
+            "right": 363,
+            "bottom": 521,
+            "width": 336,
+            "height": 395
+          },
+          "resultClientHeight": 395,
+          "resultScrollHeight": 525,
+          "hasReturn": false,
+          "scrollTop": 130
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 294.40625
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-zh-CN-dark-manual-280",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 291,
+            "bottom": 167,
+            "width": 278,
+            "height": 71
+          },
+          "status": {
+            "left": 13,
+            "top": 167,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 291,
+            "bottom": 167,
+            "width": 278,
+            "height": 71
+          },
+          "status": {
+            "left": 13,
+            "top": 167,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 0,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 102,
+            "right": 277,
+            "bottom": 157,
+            "width": 250,
+            "height": 55
+          },
+          "resultClientHeight": 55,
+          "resultScrollHeight": 260,
+          "hasReturn": false,
+          "scrollTop": 132
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-zh-CN-dark-manual-360",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 371,
+            "bottom": 187,
+            "width": 358,
+            "height": 91
+          },
+          "status": {
+            "left": 13,
+            "top": 187,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 371,
+            "bottom": 187,
+            "width": 358,
+            "height": 91
+          },
+          "status": {
+            "left": 13,
+            "top": 187,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 0,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 102,
+            "right": 357,
+            "bottom": 177,
+            "width": 330,
+            "height": 75
+          },
+          "resultClientHeight": 75,
+          "resultScrollHeight": 260,
+          "hasReturn": false,
+          "scrollTop": 132
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-light-auto",
+        "ordinary": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 271.59375,
+            "width": 388,
+            "height": 223.59375
+          },
+          "content": {
+            "left": 21,
+            "top": 118,
+            "right": 407,
+            "bottom": 234.59375,
+            "width": 386,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 21,
+            "top": 234.59375,
+            "right": 407,
+            "bottom": 270.59375,
+            "width": 386,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 568,
+            "width": 388,
+            "height": 520
+          },
+          "content": {
+            "left": 21,
+            "top": 118,
+            "right": 407,
+            "bottom": 531,
+            "width": 386,
+            "height": 413
+          },
+          "status": {
+            "left": 21,
+            "top": 531,
+            "right": 407,
+            "bottom": 567,
+            "width": 386,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 280.71875,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 35,
+            "top": 124,
+            "right": 393,
+            "bottom": 521,
+            "width": 358,
+            "height": 397
+          },
+          "resultClientHeight": 397,
+          "resultScrollHeight": 527,
+          "hasReturn": false,
+          "scrollTop": 130
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 296.40625
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-light-narrow-auto",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 271.59375,
+            "width": 366,
+            "height": 223.59375
+          },
+          "content": {
+            "left": 13,
+            "top": 118,
+            "right": 377,
+            "bottom": 234.59375,
+            "width": 364,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 13,
+            "top": 234.59375,
+            "right": 377,
+            "bottom": 270.59375,
+            "width": 364,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 568,
+            "width": 366,
+            "height": 520
+          },
+          "content": {
+            "left": 13,
+            "top": 118,
+            "right": 377,
+            "bottom": 531,
+            "width": 364,
+            "height": 413
+          },
+          "status": {
+            "left": 13,
+            "top": 531,
+            "right": 377,
+            "bottom": 567,
+            "width": 364,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 280.71875,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 124,
+            "right": 363,
+            "bottom": 521,
+            "width": 336,
+            "height": 397
+          },
+          "resultClientHeight": 397,
+          "resultScrollHeight": 527,
+          "hasReturn": false,
+          "scrollTop": 130
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 296.40625
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-light-manual-280",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 291,
+            "bottom": 167,
+            "width": 278,
+            "height": 73
+          },
+          "status": {
+            "left": 13,
+            "top": 167,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 291,
+            "bottom": 167,
+            "width": 278,
+            "height": 73
+          },
+          "status": {
+            "left": 13,
+            "top": 167,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 0,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 100,
+            "right": 277,
+            "bottom": 157,
+            "width": 250,
+            "height": 57
+          },
+          "resultClientHeight": 57,
+          "resultScrollHeight": 260,
+          "hasReturn": false,
+          "scrollTop": 132
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-light-manual-360",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 371,
+            "bottom": 187,
+            "width": 358,
+            "height": 93
+          },
+          "status": {
+            "left": 13,
+            "top": 187,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 371,
+            "bottom": 187,
+            "width": 358,
+            "height": 93
+          },
+          "status": {
+            "left": 13,
+            "top": 187,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 0,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 100,
+            "right": 357,
+            "bottom": 177,
+            "width": 330,
+            "height": 77
+          },
+          "resultClientHeight": 77,
+          "resultScrollHeight": 260,
+          "hasReturn": false,
+          "scrollTop": 132
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-dark-auto",
+        "ordinary": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 271.59375,
+            "width": 388,
+            "height": 223.59375
+          },
+          "content": {
+            "left": 21,
+            "top": 118,
+            "right": 407,
+            "bottom": 234.59375,
+            "width": 386,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 21,
+            "top": 234.59375,
+            "right": 407,
+            "bottom": 270.59375,
+            "width": 386,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 568,
+            "width": 388,
+            "height": 520
+          },
+          "content": {
+            "left": 21,
+            "top": 118,
+            "right": 407,
+            "bottom": 531,
+            "width": 386,
+            "height": 413
+          },
+          "status": {
+            "left": 21,
+            "top": 531,
+            "right": 407,
+            "bottom": 567,
+            "width": 386,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 280.71875,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 35,
+            "top": 124,
+            "right": 393,
+            "bottom": 521,
+            "width": 358,
+            "height": 397
+          },
+          "resultClientHeight": 397,
+          "resultScrollHeight": 527,
+          "hasReturn": false,
+          "scrollTop": 130
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 296.40625
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-dark-narrow-auto",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 271.59375,
+            "width": 366,
+            "height": 223.59375
+          },
+          "content": {
+            "left": 13,
+            "top": 118,
+            "right": 377,
+            "bottom": 234.59375,
+            "width": 364,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 13,
+            "top": 234.59375,
+            "right": 377,
+            "bottom": 270.59375,
+            "width": 364,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 568,
+            "width": 366,
+            "height": 520
+          },
+          "content": {
+            "left": 13,
+            "top": 118,
+            "right": 377,
+            "bottom": 531,
+            "width": 364,
+            "height": 413
+          },
+          "status": {
+            "left": 13,
+            "top": 531,
+            "right": 377,
+            "bottom": 567,
+            "width": 364,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 280.71875,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 124,
+            "right": 363,
+            "bottom": 521,
+            "width": 336,
+            "height": 397
+          },
+          "resultClientHeight": 397,
+          "resultScrollHeight": 527,
+          "hasReturn": false,
+          "scrollTop": 130
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 296.40625
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-dark-manual-280",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 291,
+            "bottom": 167,
+            "width": 278,
+            "height": 73
+          },
+          "status": {
+            "left": 13,
+            "top": 167,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 291,
+            "bottom": 167,
+            "width": 278,
+            "height": 73
+          },
+          "status": {
+            "left": 13,
+            "top": 167,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 0,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 100,
+            "right": 277,
+            "bottom": 157,
+            "width": 250,
+            "height": 57
+          },
+          "resultClientHeight": 57,
+          "resultScrollHeight": 260,
+          "hasReturn": false,
+          "scrollTop": 132
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-dark-manual-360",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 371,
+            "bottom": 187,
+            "width": 358,
+            "height": 93
+          },
+          "status": {
+            "left": 13,
+            "top": 187,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 371,
+            "bottom": 187,
+            "width": 358,
+            "height": 93
+          },
+          "status": {
+            "left": 13,
+            "top": 187,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 36
+          },
+          "statusDisplay": "flex",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 36,
+          "spareAfterFollowup": 0,
+          "sourceVisible": true,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 100,
+            "right": 357,
+            "bottom": 177,
+            "width": 330,
+            "height": 77
+          },
+          "resultClientHeight": 77,
+          "resultScrollHeight": 260,
+          "hasReturn": false,
+          "scrollTop": 132
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      }
+    ],
+    "requiredFailures": [],
+    "observedBaselineFailures": [
+      "short-zh-CN-light-auto: idle audio leaves no bottom strip",
+      "short-zh-CN-light-auto: source stop returns full content height",
+      "short-zh-CN-light-auto: translation stop returns full content height",
+      "short-zh-CN-light-auto: learning has no idle bottom strip",
+      "short-zh-CN-light-auto: source is collapsed by default",
+      "short-zh-CN-light-auto: short answer fits naturally without a vacant screen",
+      "short-zh-CN-light-narrow-auto: idle audio leaves no bottom strip",
+      "short-zh-CN-light-narrow-auto: learning has no idle bottom strip",
+      "short-zh-CN-light-narrow-auto: source is collapsed by default",
+      "short-zh-CN-light-narrow-auto: short answer fits naturally without a vacant screen",
+      "short-zh-CN-light-manual-280: idle audio leaves no bottom strip",
+      "short-zh-CN-light-manual-280: learning has no idle bottom strip",
+      "short-zh-CN-light-manual-280: source is collapsed by default",
+      "short-zh-CN-light-manual-360: idle audio leaves no bottom strip",
+      "short-zh-CN-light-manual-360: source stop returns full content height",
+      "short-zh-CN-light-manual-360: translation stop returns full content height",
+      "short-zh-CN-light-manual-360: learning has no idle bottom strip",
+      "short-zh-CN-light-manual-360: source is collapsed by default",
+      "short-zh-CN-dark-auto: idle audio leaves no bottom strip",
+      "short-zh-CN-dark-auto: learning has no idle bottom strip",
+      "short-zh-CN-dark-auto: source is collapsed by default",
+      "short-zh-CN-dark-auto: short answer fits naturally without a vacant screen",
+      "short-zh-CN-dark-narrow-auto: idle audio leaves no bottom strip",
+      "short-zh-CN-dark-narrow-auto: learning has no idle bottom strip",
+      "short-zh-CN-dark-narrow-auto: source is collapsed by default",
+      "short-zh-CN-dark-narrow-auto: short answer fits naturally without a vacant screen",
+      "short-zh-CN-dark-manual-280: idle audio leaves no bottom strip",
+      "short-zh-CN-dark-manual-280: learning has no idle bottom strip",
+      "short-zh-CN-dark-manual-280: source is collapsed by default",
+      "short-zh-CN-dark-manual-360: idle audio leaves no bottom strip",
+      "short-zh-CN-dark-manual-360: learning has no idle bottom strip",
+      "short-zh-CN-dark-manual-360: source is collapsed by default",
+      "short-en-US-light-auto: idle audio leaves no bottom strip",
+      "short-en-US-light-auto: learning has no idle bottom strip",
+      "short-en-US-light-auto: source is collapsed by default",
+      "short-en-US-light-auto: short answer fits naturally without a vacant screen",
+      "short-en-US-light-narrow-auto: idle audio leaves no bottom strip",
+      "short-en-US-light-narrow-auto: learning has no idle bottom strip",
+      "short-en-US-light-narrow-auto: source is collapsed by default",
+      "short-en-US-light-narrow-auto: short answer fits naturally without a vacant screen",
+      "short-en-US-light-manual-280: idle audio leaves no bottom strip",
+      "short-en-US-light-manual-280: learning has no idle bottom strip",
+      "short-en-US-light-manual-280: source is collapsed by default",
+      "short-en-US-light-manual-360: idle audio leaves no bottom strip",
+      "short-en-US-light-manual-360: learning has no idle bottom strip",
+      "short-en-US-light-manual-360: source is collapsed by default",
+      "short-en-US-dark-auto: idle audio leaves no bottom strip",
+      "short-en-US-dark-auto: learning has no idle bottom strip",
+      "short-en-US-dark-auto: source is collapsed by default",
+      "short-en-US-dark-auto: short answer fits naturally without a vacant screen",
+      "short-en-US-dark-narrow-auto: idle audio leaves no bottom strip",
+      "short-en-US-dark-narrow-auto: learning has no idle bottom strip",
+      "short-en-US-dark-narrow-auto: source is collapsed by default",
+      "short-en-US-dark-narrow-auto: short answer fits naturally without a vacant screen",
+      "short-en-US-dark-manual-280: idle audio leaves no bottom strip",
+      "short-en-US-dark-manual-280: learning has no idle bottom strip",
+      "short-en-US-dark-manual-280: source is collapsed by default",
+      "short-en-US-dark-manual-360: idle audio leaves no bottom strip",
+      "short-en-US-dark-manual-360: learning has no idle bottom strip",
+      "short-en-US-dark-manual-360: source is collapsed by default"
+    ]
+  },
+  "optimized": {
+    "ok": true,
+    "providerEvidence": "Production extension, controlled local translation and AI fixtures; no live provider, audio-quality, or account proof.",
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 132,
+        "top": -1020,
+        "width": 1440,
+        "height": 960
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false,
+      "frontmostBefore": {
+        "pid": 44386,
+        "name": "Google Chrome"
+      },
+      "frontmostAfter": {
+        "pid": 44386,
+        "name": "Google Chrome"
+      }
+    },
+    "ownedBrowserClosed": true,
+    "profileRemoved": true,
+    "cleanupErrors": [],
+    "consoleErrors": [],
+    "blockedExternalRequests": [],
+    "actualExternalResponses": [],
+    "audio": {
+      "fixtureRequests": 4,
+      "muted": true,
+      "listeningVerified": false
+    },
+    "checks": 326,
+    "layouts": 28,
+    "additionalAutoLongCase": true,
+    "screenshots": 63,
+    "focusSamples": 127,
+    "foregroundApplications": [
+      "Google Chrome"
+    ],
+    "manualLearningViewport": 113,
+    "shortCards": [
+      {
+        "name": "short-zh-CN-light-auto",
+        "ordinary": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 237.59375,
+            "width": 388,
+            "height": 189.59375
+          },
+          "content": {
+            "left": 21,
+            "top": 120,
+            "right": 407,
+            "bottom": 236.59375,
+            "width": 386,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 267.2890625,
+            "width": 388,
+            "height": 219.2890625
+          },
+          "content": {
+            "left": 21,
+            "top": 120,
+            "right": 407,
+            "bottom": 266.2890625,
+            "width": 386,
+            "height": 146.2890625
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 14,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 35,
+            "top": 126,
+            "right": 393,
+            "bottom": 256.2890625,
+            "width": 358,
+            "height": 130.2890625
+          },
+          "resultClientHeight": 130,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 29.6953125
+        },
+        "audioEvidence": [
+          {
+            "kind": "source",
+            "before": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 237.59375,
+                "width": 388,
+                "height": 189.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "width": 0,
+                "height": 0
+              },
+              "statusDisplay": "none",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 0,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "preparing": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 237.59375,
+                "width": 388,
+                "height": 189.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 200.59375,
+                "width": 386,
+                "height": 80.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 200.59375,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在生成语音…停止",
+              "preparing": true,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "playing": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 237.59375,
+                "width": 388,
+                "height": 189.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 200.59375,
+                "width": 386,
+                "height": 80.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 200.59375,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在播放原文0:00 / 0:1055停止",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "stopped": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 237.59375,
+                "width": 388,
+                "height": 189.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "width": 0,
+                "height": 0
+              },
+              "statusDisplay": "none",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 0,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "frameCount": 81,
+            "maxDelta": {
+              "left": 0,
+              "top": 0,
+              "width": 0,
+              "height": 0
+            }
+          },
+          {
+            "kind": "translation",
+            "before": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 237.59375,
+                "width": 388,
+                "height": 189.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "width": 0,
+                "height": 0
+              },
+              "statusDisplay": "none",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 0,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "preparing": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 237.59375,
+                "width": 388,
+                "height": 189.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 200.59375,
+                "width": 386,
+                "height": 80.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 200.59375,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在生成语音…停止",
+              "preparing": true,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "playing": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 237.59375,
+                "width": 388,
+                "height": 189.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 200.59375,
+                "width": 386,
+                "height": 80.59375
+              },
+              "status": {
+                "left": 21,
+                "top": 200.59375,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在播放译文0:00 / 0:1055停止",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "stopped": {
+              "card": {
+                "left": 20,
+                "top": 48,
+                "right": 408,
+                "bottom": 237.59375,
+                "width": 388,
+                "height": 189.59375
+              },
+              "content": {
+                "left": 21,
+                "top": 120,
+                "right": 407,
+                "bottom": 236.59375,
+                "width": 386,
+                "height": 116.59375
+              },
+              "status": {
+                "left": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "width": 0,
+                "height": 0
+              },
+              "statusDisplay": "none",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 0,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "frameCount": 60,
+            "maxDelta": {
+              "left": 0,
+              "top": 0,
+              "width": 0,
+              "height": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "short-zh-CN-light-narrow-auto",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 237.59375,
+            "width": 366,
+            "height": 189.59375
+          },
+          "content": {
+            "left": 13,
+            "top": 120,
+            "right": 377,
+            "bottom": 236.59375,
+            "width": 364,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 267.2890625,
+            "width": 366,
+            "height": 219.2890625
+          },
+          "content": {
+            "left": 13,
+            "top": 120,
+            "right": 377,
+            "bottom": 266.2890625,
+            "width": 364,
+            "height": 146.2890625
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 14,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 126,
+            "right": 363,
+            "bottom": 256.2890625,
+            "width": 336,
+            "height": 130.2890625
+          },
+          "resultClientHeight": 130,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 29.6953125
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-zh-CN-light-manual-280",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 107
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 107
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 0,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 102,
+            "right": 277,
+            "bottom": 193,
+            "width": 250,
+            "height": 91
+          },
+          "resultClientHeight": 91,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-zh-CN-light-manual-360",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 127
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 127
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 0,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 102,
+            "right": 357,
+            "bottom": 213,
+            "width": 330,
+            "height": 111
+          },
+          "resultClientHeight": 111,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": [
+          {
+            "kind": "source",
+            "before": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 127
+              },
+              "status": {
+                "left": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "width": 0,
+                "height": 0
+              },
+              "statusDisplay": "none",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 0,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "preparing": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在生成语音…停止",
+              "preparing": true,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "playing": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在播放原文0:00 / 0:1055停止",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "stopped": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 127
+              },
+              "status": {
+                "left": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "width": 0,
+                "height": 0
+              },
+              "statusDisplay": "none",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 0,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "frameCount": 57,
+            "maxDelta": {
+              "left": 0,
+              "top": 0,
+              "width": 0,
+              "height": 0
+            }
+          },
+          {
+            "kind": "translation",
+            "before": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 127
+              },
+              "status": {
+                "left": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "width": 0,
+                "height": 0
+              },
+              "statusDisplay": "none",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 0,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "preparing": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在生成语音…停止",
+              "preparing": true,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "playing": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 187,
+                "width": 358,
+                "height": 91
+              },
+              "status": {
+                "left": 13,
+                "top": 187,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 36
+              },
+              "statusDisplay": "flex",
+              "statusText": "正在播放译文0:00 / 0:1055停止",
+              "preparing": false,
+              "idleBottomSpace": 36,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "stopped": {
+              "card": {
+                "left": 12,
+                "top": 24,
+                "right": 372,
+                "bottom": 224,
+                "width": 360,
+                "height": 200
+              },
+              "content": {
+                "left": 13,
+                "top": 96,
+                "right": 371,
+                "bottom": 223,
+                "width": 358,
+                "height": 127
+              },
+              "status": {
+                "left": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "width": 0,
+                "height": 0
+              },
+              "statusDisplay": "none",
+              "statusText": "",
+              "preparing": false,
+              "idleBottomSpace": 0,
+              "spareAfterFollowup": null,
+              "sourceVisible": false,
+              "sourceText": "",
+              "result": null,
+              "hasReturn": false
+            },
+            "frameCount": 59,
+            "maxDelta": {
+              "left": 0,
+              "top": 0,
+              "width": 0,
+              "height": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "short-zh-CN-dark-auto",
+        "ordinary": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 237.59375,
+            "width": 388,
+            "height": 189.59375
+          },
+          "content": {
+            "left": 21,
+            "top": 120,
+            "right": 407,
+            "bottom": 236.59375,
+            "width": 386,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 267.2890625,
+            "width": 388,
+            "height": 219.2890625
+          },
+          "content": {
+            "left": 21,
+            "top": 120,
+            "right": 407,
+            "bottom": 266.2890625,
+            "width": 386,
+            "height": 146.2890625
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 14,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 35,
+            "top": 126,
+            "right": 393,
+            "bottom": 256.2890625,
+            "width": 358,
+            "height": 130.2890625
+          },
+          "resultClientHeight": 130,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 29.6953125
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-zh-CN-dark-narrow-auto",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 237.59375,
+            "width": 366,
+            "height": 189.59375
+          },
+          "content": {
+            "left": 13,
+            "top": 120,
+            "right": 377,
+            "bottom": 236.59375,
+            "width": 364,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 267.2890625,
+            "width": 366,
+            "height": 219.2890625
+          },
+          "content": {
+            "left": 13,
+            "top": 120,
+            "right": 377,
+            "bottom": 266.2890625,
+            "width": 364,
+            "height": 146.2890625
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 14,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 126,
+            "right": 363,
+            "bottom": 256.2890625,
+            "width": 336,
+            "height": 130.2890625
+          },
+          "resultClientHeight": 130,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 29.6953125
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-zh-CN-dark-manual-280",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 107
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 107
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 0,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 102,
+            "right": 277,
+            "bottom": 193,
+            "width": 250,
+            "height": 91
+          },
+          "resultClientHeight": 91,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-zh-CN-dark-manual-360",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 127
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 96,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 127
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 0,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 102,
+            "right": 357,
+            "bottom": 213,
+            "width": 330,
+            "height": 111
+          },
+          "resultClientHeight": 111,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-light-auto",
+        "ordinary": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 235.59375,
+            "width": 388,
+            "height": 187.59375
+          },
+          "content": {
+            "left": 21,
+            "top": 118,
+            "right": 407,
+            "bottom": 234.59375,
+            "width": 386,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 265.2890625,
+            "width": 388,
+            "height": 217.2890625
+          },
+          "content": {
+            "left": 21,
+            "top": 118,
+            "right": 407,
+            "bottom": 264.2890625,
+            "width": 386,
+            "height": 146.2890625
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 14,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 35,
+            "top": 124,
+            "right": 393,
+            "bottom": 254.2890625,
+            "width": 358,
+            "height": 130.2890625
+          },
+          "resultClientHeight": 130,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 29.6953125
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-light-narrow-auto",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 235.59375,
+            "width": 366,
+            "height": 187.59375
+          },
+          "content": {
+            "left": 13,
+            "top": 118,
+            "right": 377,
+            "bottom": 234.59375,
+            "width": 364,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 265.2890625,
+            "width": 366,
+            "height": 217.2890625
+          },
+          "content": {
+            "left": 13,
+            "top": 118,
+            "right": 377,
+            "bottom": 264.2890625,
+            "width": 364,
+            "height": 146.2890625
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 14,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 124,
+            "right": 363,
+            "bottom": 254.2890625,
+            "width": 336,
+            "height": 130.2890625
+          },
+          "resultClientHeight": 130,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 29.6953125
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-light-manual-280",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 109
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 109
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 0,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 100,
+            "right": 277,
+            "bottom": 193,
+            "width": 250,
+            "height": 93
+          },
+          "resultClientHeight": 93,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-light-manual-360",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 129
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 129
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 0,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 100,
+            "right": 357,
+            "bottom": 213,
+            "width": 330,
+            "height": 113
+          },
+          "resultClientHeight": 113,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-dark-auto",
+        "ordinary": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 235.59375,
+            "width": 388,
+            "height": 187.59375
+          },
+          "content": {
+            "left": 21,
+            "top": 118,
+            "right": 407,
+            "bottom": 234.59375,
+            "width": 386,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 20,
+            "top": 48,
+            "right": 408,
+            "bottom": 265.2890625,
+            "width": 388,
+            "height": 217.2890625
+          },
+          "content": {
+            "left": 21,
+            "top": 118,
+            "right": 407,
+            "bottom": 264.2890625,
+            "width": 386,
+            "height": 146.2890625
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 14,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 35,
+            "top": 124,
+            "right": 393,
+            "bottom": 254.2890625,
+            "width": 358,
+            "height": 130.2890625
+          },
+          "resultClientHeight": 130,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 29.6953125
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-dark-narrow-auto",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 235.59375,
+            "width": 366,
+            "height": 187.59375
+          },
+          "content": {
+            "left": 13,
+            "top": 118,
+            "right": 377,
+            "bottom": 234.59375,
+            "width": 364,
+            "height": 116.59375
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 48,
+            "right": 378,
+            "bottom": 265.2890625,
+            "width": 366,
+            "height": 217.2890625
+          },
+          "content": {
+            "left": 13,
+            "top": 118,
+            "right": 377,
+            "bottom": 264.2890625,
+            "width": 364,
+            "height": 146.2890625
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 14,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 124,
+            "right": 363,
+            "bottom": 254.2890625,
+            "width": 336,
+            "height": 130.2890625
+          },
+          "resultClientHeight": 130,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 29.6953125
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-dark-manual-280",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 109
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 291,
+            "bottom": 203,
+            "width": 278,
+            "height": 109
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 0,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 100,
+            "right": 277,
+            "bottom": 193,
+            "width": 250,
+            "height": 93
+          },
+          "resultClientHeight": 93,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      },
+      {
+        "name": "short-en-US-dark-manual-360",
+        "ordinary": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 129
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": null,
+          "sourceVisible": false,
+          "sourceText": "",
+          "result": null,
+          "hasReturn": false
+        },
+        "reading": {
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "content": {
+            "left": 13,
+            "top": 94,
+            "right": 371,
+            "bottom": 223,
+            "width": 358,
+            "height": 129
+          },
+          "status": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "width": 0,
+            "height": 0
+          },
+          "statusDisplay": "none",
+          "statusText": "",
+          "preparing": false,
+          "idleBottomSpace": 0,
+          "spareAfterFollowup": 0,
+          "sourceVisible": false,
+          "sourceText": "A curious reader explores new ideas.",
+          "result": {
+            "left": 27,
+            "top": 100,
+            "right": 357,
+            "bottom": 213,
+            "width": 330,
+            "height": 113
+          },
+          "resultClientHeight": 113,
+          "resultScrollHeight": 130,
+          "hasReturn": false,
+          "scrollTop": 0
+        },
+        "geometryDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        },
+        "audioEvidence": []
+      }
+    ],
+    "requiredFailures": [],
+    "observedBaselineFailures": []
+  },
+  "sourceComparison": {
+    "ok": true,
+    "cases": [
+      "读懂: defaults to the answer; full source and translation expand and return without a request",
+      "词性与句法: defaults to the answer; full source and translation expand and return without a request",
+      "用法: defaults to the answer; full source and translation expand and return without a request",
+      "练习: defaults to the answer; full source and translation expand and return without a request",
+      "cached actions reopen folded; repeating the current action preserves comparison position and unsent follow-up",
+      "user upward comparison scrolling stays put through streamed updates and completion",
+      "a short follow-up sends once, returns to the answer, and keeps the full comparison available",
+      "record round trip and saved conversation restore default to the answer and retain the original comparison without a model request",
+      "390px light: complete comparison and return control remain readable without host scrolling",
+      "390px dark: complete comparison and return control remain readable without host scrolling",
+      "1440px light: complete comparison and return control remain readable without host scrolling",
+      "a long original stays complete; late ordinary translation and AI streaming do not move an upward comparison view",
+      "280×180 manual card supports keyboard tools, Escape, comparison return and follow-up without changing its chosen geometry"
+    ],
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 132,
+        "top": -1020,
+        "width": 1440,
+        "height": 960
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false,
+      "frontmostBefore": {
+        "pid": 44386,
+        "name": "Google Chrome"
+      },
+      "frontmostAfter": {
+        "pid": 44386,
+        "name": "Google Chrome"
+      }
+    },
+    "ownedBrowserClosed": true,
+    "profileRemoved": true,
+    "cleanupErrors": [],
+    "consoleErrors": [],
+    "sourcePositions": [
+      {
+        "action": "meaning",
+        "text": "Different printing sequences have different filament switching sequences",
+        "translation": "不同的打印顺序会带来不同的耗材切换顺序。",
+        "translationPending": false,
+        "sourceTag": "SECTION",
+        "sourceFirst": true,
+        "sourceVisible": false,
+        "returnVisible": false,
+        "scrollTop": 0,
+        "scrollHeight": 209,
+        "clientHeight": 209,
+        "sourceTop": -167.5,
+        "sourceBottom": -167.5,
+        "bodyTop": 2,
+        "bodyMinHeight": "0px",
+        "contentPadding": 2,
+        "overflow": false,
+        "hostScroll": 0,
+        "focusInResult": false,
+        "card": {
+          "left": 50,
+          "top": 89.5,
+          "width": 388,
+          "height": 297.6796875
+        }
+      },
+      {
+        "action": "grammar",
+        "text": "Different printing sequences have different filament switching sequences",
+        "translation": "不同的打印顺序会带来不同的耗材切换顺序。",
+        "translationPending": false,
+        "sourceTag": "SECTION",
+        "sourceFirst": true,
+        "sourceVisible": false,
+        "returnVisible": false,
+        "scrollTop": 0,
+        "scrollHeight": 540,
+        "clientHeight": 431,
+        "sourceTop": -167.5,
+        "sourceBottom": -167.5,
+        "bodyTop": 2,
+        "bodyMinHeight": "0px",
+        "contentPadding": 2,
+        "overflow": false,
+        "hostScroll": 0,
+        "focusInResult": false,
+        "card": {
+          "left": 50,
+          "top": 89.5,
+          "width": 388,
+          "height": 520
+        }
+      },
+      {
+        "action": "usage",
+        "text": "Different printing sequences have different filament switching sequences",
+        "translation": "不同的打印顺序会带来不同的耗材切换顺序。",
+        "translationPending": false,
+        "sourceTag": "SECTION",
+        "sourceFirst": true,
+        "sourceVisible": false,
+        "returnVisible": false,
+        "scrollTop": 0,
+        "scrollHeight": 209,
+        "clientHeight": 209,
+        "sourceTop": -167.5,
+        "sourceBottom": -167.5,
+        "bodyTop": 2,
+        "bodyMinHeight": "0px",
+        "contentPadding": 2,
+        "overflow": false,
+        "hostScroll": 0,
+        "focusInResult": false,
+        "card": {
+          "left": 50,
+          "top": 89.5,
+          "width": 388,
+          "height": 297.6796875
+        }
+      },
+      {
+        "action": "practice",
+        "text": "Different printing sequences have different filament switching sequences",
+        "translation": "不同的打印顺序会带来不同的耗材切换顺序。",
+        "translationPending": false,
+        "sourceTag": "SECTION",
+        "sourceFirst": true,
+        "sourceVisible": false,
+        "returnVisible": false,
+        "scrollTop": 0,
+        "scrollHeight": 209,
+        "clientHeight": 209,
+        "sourceTop": -167.5,
+        "sourceBottom": -167.5,
+        "bodyTop": 2,
+        "bodyMinHeight": "0px",
+        "contentPadding": 2,
+        "overflow": false,
+        "hostScroll": 0,
+        "focusInResult": false,
+        "card": {
+          "left": 50,
+          "top": 89.5,
+          "width": 388,
+          "height": 297.6796875
+        }
+      }
+    ],
+    "screenshots": 13,
+    "focusSamples": 32,
+    "foregroundApplications": [
+      "Google Chrome"
+    ]
+  }
+}

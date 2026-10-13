@@ -1,12 +1,13 @@
 /**
  * @file src/app/offscreen/runtime.ts
  * 文件职责：作为 Chrome Offscreen 与 Firefox 后台 iframe 共用 DOM 页面的组合根，创建独占 TTS 播放器并安装一次 runtime 消息监听，把浏览器资源适配给各离屏用例。
- * 主要内容：将 base64 音频解码为 Uint8Array，注入 Audio、Blob URL 创建/释放和带 frame/page 路由的状态回传，向播放控制入口注入扩展 ID 校验，组合 Chrome Translation、OCR、图片/区域翻译与语言包下载依赖，把朗读模型、字幕模型和语言包的下载进度发布给后台，注册 message listener。
+ * 主要内容：智能高亮消息携带所选模型，模型下载与状态互相独立、推理共用单 Worker 预算；将 base64 音频解码为 Uint8Array，注入 Audio、Blob URL 创建/释放和带 frame/page 路由的状态回传，向播放控制入口注入扩展 ID 校验，组合 Chrome Translation、OCR、图片/区域翻译与语言包下载依赖，把朗读模型、字幕模型和语言包的下载进度发布给后台，注册 message listener。
  * 模块边界：本文件只负责 Web API 资源与用例装配，不解析业务消息、不实现 OCR/翻译，也不创建 Offscreen document；两种浏览器容器的文档生命周期均由 platform/offscreen client 和 WXT 入口管理。
  */
 import {
     downloadImageOcrLanguages,
     removeImageOcrLanguages,
+    disposeImageOcrWorker,
     fetchImageInOffscreen,
     translateAreaInOffscreen,
     cropAreaInOffscreen,
@@ -16,11 +17,15 @@ import {
     disposeMangaModels,
 } from './imageTranslation';
 import {createOffscreenMessageListener} from './messageRouter';
+import {createInformationHighlightModelsRuntime, probeInformationHighlightWebGpu} from '@/src/features/information-highlight/offscreen/runtime';
+import {DEFAULT_INFORMATION_HIGHLIGHT_MODEL_ID} from '@/src/core/config/informationHighlightModel';
+import {INFORMATION_HIGHLIGHT_DOWNLOAD_ID} from '@/src/features/information-highlight/protocol';
+import {withLocalInferenceBudget} from '@/src/shared/onnx/resources';
 import {parseSelectionTtsRoute} from '@/src/features/selection-translation/protocol';
 import {createDownloadProgressPublisher, LOCAL_TTS_DOWNLOAD_ID, ocrLanguageDownloadId, videoModelDownloadId} from '@/src/core/download/progress';
 import {normalizeVideoLocalTranscriptionModel} from '@/src/features/video-subtitle/transcription';
 import {createSelectionTtsPlayer} from './ttsPlayback';
-import {translateWithChromeApi, type ChromeTranslationEnvironment} from './translation';
+import {disposeChromeTranslationModels, translateWithChromeApi, type ChromeTranslationEnvironment} from './translation';
 import {removeLocalVideoTranscriptionModel, cancelLocalVideoTranscription, prepareLocalVideoTranscriptionModel, transcribeLocalVideoAudio} from '@/src/features/video-subtitle/offscreen/transcription';
 import {
     disposeLocalTtsWorker,
@@ -58,6 +63,15 @@ export function startOffscreenApp(): void {
     const downloads = createDownloadProgressPublisher((message) => {
         chrome.runtime.sendMessage(message, () => void chrome.runtime.lastError);
     });
+    const informationHighlight = createInformationHighlightModelsRuntime({
+        createWorker: () => new Worker(chrome.runtime.getURL('informationHighlightWorker.js'), {type: 'module'}),
+        probe: probeInformationHighlightWebGpu,
+        budget: withLocalInferenceBudget,
+        notify: (progress, modelId) => {
+            const id = modelId === DEFAULT_INFORMATION_HIGHLIGHT_MODEL_ID ? INFORMATION_HIGHLIGHT_DOWNLOAD_ID : `${INFORMATION_HIGHLIGHT_DOWNLOAD_ID}:${modelId}`;
+            if (progress) downloads.report(id, progress); else downloads.finish(id);
+        },
+    });
     const ttsPlayer = createSelectionTtsPlayer({
         createAudio: () => new Audio(),
         decodeBase64: decodeAudioBase64,
@@ -80,6 +94,7 @@ export function startOffscreenApp(): void {
     });
     const listener = createOffscreenMessageListener({
         runtimeId: chrome.runtime.id,
+        informationHighlight,
         translate: (data, signal) => translateWithChromeApi(data, self as ChromeTranslationEnvironment, signal),
         ttsPlayer,
         translateImage: translateImageInOffscreen,
@@ -101,7 +116,7 @@ export function startOffscreenApp(): void {
                 ? prepareLocalVideoTranscriptionModel(request.model, {keepWarm: true, streamId: request.streamId})
                 : downloads.track(
                     videoModelDownloadId(normalizeVideoLocalTranscriptionModel(request.model)),
-                    onProgress => prepareLocalVideoTranscriptionModel(request.model, {keepWarm: false, onProgress}),
+                    onProgress => prepareLocalVideoTranscriptionModel(request.model, {keepWarm: false, onProgress, preference: request.preference}),
                 ),
             cancel: cancelLocalVideoTranscription,
             removeModel: request => removeLocalVideoTranscriptionModel(request.model),
@@ -131,8 +146,11 @@ export function startOffscreenApp(): void {
     chrome.runtime.onMessage.addListener(listener);
     window.addEventListener('pagehide', () => {
         ttsPlayer.dispose();
+        disposeChromeTranslationModels(self as ChromeTranslationEnvironment);
+        disposeImageOcrWorker();
         disposeLocalTranslationWorker();
         disposeLocalTtsWorker();
         disposeMangaModels();
+        informationHighlight.dispose();
     }, {once: true});
 }

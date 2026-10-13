@@ -389,7 +389,7 @@ describe('configmodelAudit 配置、目录和真实消费者边界', () => {
         expect(normalized).not.toHaveProperty('futureApiKey');
         expect(normalized).toMatchObject({hoverTranslationService: 'google', selectionTranslationService: 'deepL', imageTranslationService: 'microsoft',
             areaTranslationMode: 'ai', areaTranslationService: 'openai', areaRecognitionMode: 'ocr', selectionAreaEnabled: false,
-            videoLocalModel: 'tiny', videoSourceLanguage: 'auto', videoSubtitleVisible: true, videoSubtitleDisplayMode: 'bilingual', videoService: 'deeplx',
+            videoLocalModel: 'small', videoSourceLanguage: 'auto', videoSubtitleVisible: true, videoSubtitleDisplayMode: 'bilingual', videoService: 'deeplx',
             vocabularyReencounterEnabled: false, imageTranslationMangaEnabled: true, imageTranslationMangaPromptEnabled: true,
             imageTranslationOcrEngine: 'tesseract', hoverShortcutBeforeDisable: 'Alt'});
         expect(model.normalizeConfig(normalized)).toEqual(normalized);

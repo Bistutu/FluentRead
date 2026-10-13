@@ -1,0 +1,36 @@
+{
+  "baseCommit": "c053cda73ae84d226701077d20d64a63bdbc20e6",
+  "worktree": "/Users/thinkstu/Desktop/copy/FluentRead-service-workspace-density-20261009",
+  "sourceSha256": {
+    "src/features/selection-translation/ui/SelectionTranslator.vue": "872c3de4393b3556374badae56429c41480706ffd1aea9129d442af26203f6e0",
+    "src/features/reading-assistant/ui/ReadingPanel.vue": "1457f963d815a717107ed556ae13970e199d6b12ec745ddd9c433467c3aefef2",
+    "scripts/testing/run-selection-key-information-test.cjs": "96c7db8523769efd23e9bc3291883721ab04b2dc67e7b31f1f92ca5eee892258",
+    "tests/selectionTranslatorLifecycle.test.ts": "0513d52aeb22d4e51319233dc9eebf19c12641c6d1ad4de35097322fe25ac5e5",
+    "tests/readingPanelStreamingResize.test.ts": "caccaf4cb2e9686bc303d660dfc1007a17952ffd423221e5984bc7911591dc63",
+    "scripts/run-reading-density-test.cjs": "9988fcb0bc459c308dfd4b86dc7df3138c07219728ed90dc68cc388d7ef7d330",
+    "scripts/verify-userscript-build.mjs": "89ca0b3a6dc4802905e8b96309c7af0f63e188b941502f5bd3dc041adab65467"
+  },
+  "packages": {
+    "baselineChrome": {
+      "files": 402,
+      "treeSha256": "c1cf03d91b3cefb087813c68ae3ff89571a513648dbd3648ca1c0bc875b03f3a",
+      "manifestSha256": "cc92950ad08ed2e2f02bd55a0756048e6569ec51c9341d9e678b65fb3d8d03f7"
+    },
+    "chrome": {
+      "files": 402,
+      "treeSha256": "c1e7c57bccd767f3826347466fad371c77f38c66821a8a7c875474d06302b8fc",
+      "manifestSha256": "cc92950ad08ed2e2f02bd55a0756048e6569ec51c9341d9e678b65fb3d8d03f7"
+    },
+    "firefox": {
+      "files": 402,
+      "treeSha256": "6aa3fda9769b59a1e20b59e2cb9f8009140fd022b43202e69aee4b5302cdffeb",
+      "manifestSha256": "37334569ee177d6a4046d3187d9588f230cbd1883cd0aa312eccec4fb7e4099c"
+    }
+  },
+  "userscript": {
+    "bytes": 1961367,
+    "sha256": "62d43fdf2c54c61808f58c08fdacadf7ce05f9279f744a54a7a28ec2840219e4",
+    "budgetBytes": 1962500
+  },
+  "limits": "Recorded after final Chrome UI run. Test fixtures are local; hashes are artifact identities, not live provider or Firefox runtime proof."
+}

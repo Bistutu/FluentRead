@@ -1,0 +1,421 @@
+{
+  "success": true,
+  "scope": "Actual extension CacheStorage/background state/settings UI, followed by real cache-only prepare to replace one registered missing tokenizer using exact local file bytes; no ONNX/transcribe/captions",
+  "artifact": "/Users/thinkstu/Desktop/copy/FluentRead-builds/x-ai-subtitle-performance-ux-20261009-final-v3/chrome-mv3",
+  "driverSha256": "aa18f63c089e9bae44b9cb520aa04faeb5804425c65d15ebde0b0d66230942a4",
+  "manifestSha256": "baa8563ad1ef4ff999f613c16684afe2e709a9622b37baf5eb111e75e12ea471",
+  "artifactSha256": {
+    "manifest.json": "cc92950ad08ed2e2f02bd55a0756048e6569ec51c9341d9e678b65fb3d8d03f7",
+    "background.js": "4d6379cde72e5c0a125da5b00781e2836285c2d80f51c2efaca3f67578b94b3d",
+    "videoTranscriptionWorker.js": "973b9063afae257e692034a836a4bd4d8ded5cafbf8db067b053b5ca5cc9f1c7"
+  },
+  "provenanceSha256": "0dfe01b00fa78070327f5eca8b11fcd7557b4e0bc0237d0a1dfae5c2cbbea67c",
+  "suppliedHandlerSha256": "54858f0e8300ed977a088b7ad2873d5880d915e2cedb0372d7ff56752b23921f",
+  "startedAt": "2026-10-09T12:55:19.662Z",
+  "finishedAt": "2026-10-09T12:55:26.673Z",
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 31005,
+      "name": "问题报告程序"
+    },
+    "frontmostAfter": {
+      "pid": 31005,
+      "name": "问题报告程序"
+    }
+  },
+  "browserVersion": "154.0.8037.99",
+  "focusChecks": 4,
+  "guardedCloseSucceeded": true,
+  "ownedTemporaryProfileRemoved": true,
+  "snapshotSourceSha256": {
+    "src/features/settings/ui/VideoLocalModelSettings.vue": "3fb7db84dcb02cdca69425bea0ee769c293c9d97dc233a757e42d4d97767ff34",
+    "src/features/video-subtitle/background/handlers.ts": "54858f0e8300ed977a088b7ad2873d5880d915e2cedb0372d7ff56752b23921f",
+    "src/features/video-subtitle/offscreen/modelCache.ts": "32a49513be47824c804149d5fa8bf2cefac2bae0b9ec0022543f9e14b3525556"
+  },
+  "checks": [
+    {
+      "name": "All seven real Small files pass exact SHA and bytes",
+      "pass": true
+    },
+    {
+      "name": "Immutable background source matches the supplied source checkout",
+      "pass": true
+    },
+    {
+      "name": "Complete CacheStorage contains all seven exact canonical keys",
+      "pass": true
+    },
+    {
+      "name": "Real background reports complete Small downloaded",
+      "pass": true
+    },
+    {
+      "name": "Real settings shows Small offline and selected",
+      "pass": true
+    },
+    {
+      "name": "Only the required tokenizer file was deleted",
+      "pass": true
+    },
+    {
+      "name": "Missing-file status matches requested baseline/fixed expectation",
+      "pass": true
+    },
+    {
+      "name": "No model Worker was created",
+      "pass": true
+    },
+    {
+      "name": "No remote requests were observed",
+      "pass": true
+    },
+    {
+      "name": "Repair requests only the registered local tokenizer once",
+      "pass": true
+    },
+    {
+      "name": "Cache-only repair restores all seven actual files and real availability",
+      "pass": true
+    },
+    {
+      "name": "Cache-only repair does not initialize the model Worker",
+      "pass": true
+    }
+  ],
+  "fileManifest": [
+    {
+      "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/config.json",
+      "bytes": 2227,
+      "sha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18"
+    },
+    {
+      "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/generation_config.json",
+      "bytes": 3893,
+      "sha256": "f538b28220c6a6d6f1af1458d4141cacb4ef4963df3de98a19490440c412ddf0"
+    },
+    {
+      "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/preprocessor_config.json",
+      "bytes": 339,
+      "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d"
+    },
+    {
+      "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/tokenizer.json",
+      "bytes": 2480466,
+      "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566"
+    },
+    {
+      "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/tokenizer_config.json",
+      "bytes": 282683,
+      "sha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce"
+    },
+    {
+      "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/onnx/decoder_model_merged_q4.onnx",
+      "bytes": 233149327,
+      "sha256": "795c61b344576719c2b249cc9911c78b4cc552c8c6a5407be21a3380a0791b13"
+    },
+    {
+      "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/onnx/encoder_model.onnx",
+      "bytes": 352825870,
+      "sha256": "b37cd6625dc36f9178ec7539a1876b9680ea26a910097e092be39dc766320c7b"
+    }
+  ],
+  "comparison": {
+    "baseline": {
+      "success": true,
+      "snapshot": "/Users/thinkstu/Desktop/copy/FluentRead-builds/x-ai-subtitle-language-quality-20261009-final-small/chrome-mv3",
+      "background": {
+        "success": true,
+        "models": [
+          "small"
+        ],
+        "available": {
+          "tiny": false,
+          "base": false,
+          "small": true
+        }
+      },
+      "ui": {
+        "status": "当前模型已下载，可直接生成",
+        "cards": [
+          {
+            "model": "tiny",
+            "selected": false,
+            "availability": "尚未下载",
+            "button": "下载模型",
+            "buttonDisabled": false
+          },
+          {
+            "model": "base",
+            "selected": false,
+            "availability": "尚未下载",
+            "button": "下载模型",
+            "buttonDisabled": false
+          },
+          {
+            "model": "small",
+            "selected": true,
+            "availability": "可离线使用",
+            "button": "清除模型",
+            "buttonDisabled": false
+          }
+        ]
+      },
+      "cacheFileCount": 6,
+      "guardedCloseSucceeded": true,
+      "uiScreenshotLimit": "Old screenshots captured navigation scroll, so baseline claim relies on actual model-card DOM, not screenshots."
+    },
+    "candidate": {
+      "complete": {
+        "background": {
+          "success": true,
+          "models": [
+            "small"
+          ],
+          "available": {
+            "tiny": false,
+            "base": false,
+            "small": true
+          }
+        },
+        "receipt": [
+          "small"
+        ],
+        "cacheFileCount": 7,
+        "ui": {
+          "status": "当前模型已下载，可直接生成",
+          "cards": [
+            {
+              "model": "tiny",
+              "selected": false,
+              "availability": "尚未下载",
+              "button": "下载模型",
+              "buttonDisabled": false
+            },
+            {
+              "model": "base",
+              "selected": false,
+              "availability": "尚未下载",
+              "button": "下载模型",
+              "buttonDisabled": false
+            },
+            {
+              "model": "small",
+              "selected": true,
+              "availability": "可离线使用",
+              "button": "清除模型",
+              "buttonDisabled": false
+            }
+          ]
+        }
+      },
+      "partial": {
+        "background": {
+          "success": true,
+          "models": [],
+          "available": {
+            "tiny": false,
+            "base": false,
+            "small": false
+          }
+        },
+        "receipt": [
+          "small"
+        ],
+        "cacheFileCount": 6,
+        "ui": {
+          "status": "多语种推荐 Small；轻量设备可选 Tiny 或 Base",
+          "cards": [
+            {
+              "model": "tiny",
+              "selected": false,
+              "availability": "尚未下载",
+              "button": "下载模型",
+              "buttonDisabled": false
+            },
+            {
+              "model": "base",
+              "selected": false,
+              "availability": "尚未下载",
+              "button": "下载模型",
+              "buttonDisabled": false
+            },
+            {
+              "model": "small",
+              "selected": true,
+              "availability": "尚未下载",
+              "button": "下载模型",
+              "buttonDisabled": false
+            }
+          ]
+        }
+      },
+      "repaired": {
+        "background": {
+          "success": true,
+          "models": [
+            "small"
+          ],
+          "available": {
+            "tiny": false,
+            "base": false,
+            "small": true
+          }
+        },
+        "receipt": [
+          "small"
+        ],
+        "cacheFileCount": 7,
+        "ui": {
+          "status": "当前模型已下载，可直接生成",
+          "cards": [
+            {
+              "model": "tiny",
+              "selected": false,
+              "availability": "尚未下载",
+              "button": "下载模型",
+              "buttonDisabled": false
+            },
+            {
+              "model": "base",
+              "selected": false,
+              "availability": "尚未下载",
+              "button": "下载模型",
+              "buttonDisabled": false
+            },
+            {
+              "model": "small",
+              "selected": true,
+              "availability": "可离线使用",
+              "button": "清除模型",
+              "buttonDisabled": false
+            }
+          ]
+        }
+      }
+    }
+  },
+  "repair": {
+    "tokenizer": {
+      "bytes": 2480466,
+      "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566"
+    },
+    "transfers": [
+      {
+        "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/tokenizer.json",
+        "bytes": 2480466,
+        "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566",
+        "wallMs": 5,
+        "transport": "owned-offscreen-fetch-to-registered-loopback"
+      }
+    ],
+    "allHttpsBlockedInOwnedOffscreen": true,
+    "originalFetchLedger": [
+      {
+        "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/tokenizer.json",
+        "transport": "registered-loopback"
+      }
+    ],
+    "loopbackGetRequests": 1,
+    "observedOffscreenPublicHttpRequests": 0,
+    "modelWorkerCount": 0,
+    "offscreenCreatedForControlledTransport": true
+  },
+  "settingsDocumentLoads": [
+    {
+      "phase": "write-isolated-complete-receipt",
+      "timeOrigin": 1791550523286.6,
+      "url": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/options.html#settings-video"
+    },
+    {
+      "phase": "delete-one-required-tokenizer",
+      "timeOrigin": 1791550524648.8,
+      "url": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/options.html#settings-video"
+    }
+  ],
+  "phases": [
+    {
+      "name": "preflight",
+      "at": 1791550519662
+    },
+    {
+      "name": "launch",
+      "at": 1791550520118
+    },
+    {
+      "name": "streaming-seven-model-files",
+      "at": 1791550521493
+    },
+    {
+      "name": "write-isolated-complete-receipt",
+      "at": 1791550522870
+    },
+    {
+      "name": "delete-one-required-tokenizer",
+      "at": 1791550524634
+    },
+    {
+      "name": "repair-only-required-tokenizer",
+      "at": 1791550526090
+    },
+    {
+      "name": "proof-complete",
+      "at": 1791550526295,
+      "falseDownloadedReproduced": false
+    },
+    {
+      "name": "owned-browser-closed",
+      "at": 1791550526672
+    }
+  ],
+  "incompleteAttempts": [
+    {
+      "directory": "baseline",
+      "success": false,
+      "phase": "write-isolated-complete-receipt",
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-settings-category=\"local\"]')\u001b[22m\n",
+      "classification": "Old-artifact settings selector mismatch before tokenizer deletion",
+      "guardedCloseSucceeded": true
+    },
+    {
+      "directory": "candidate-final",
+      "success": false,
+      "phase": "delete-one-required-tokenizer",
+      "error": "Missing-file status matches requested baseline/fixed expectation",
+      "classification": "Same-document settings navigation read old DOM before reload; background missing-file result correctly false",
+      "guardedCloseSucceeded": true
+    },
+    {
+      "directory": "candidate-final-v3",
+      "success": false,
+      "phase": "repair-only-required-tokenizer",
+      "error": "Repair requests only the registered local tokenizer once",
+      "classification": "Offscreen transport bypassed Playwright context.route; repair succeeded, but locality/zero remote were unproven",
+      "guardedCloseSucceeded": true
+    }
+  ],
+  "finalArtifactMapping": {
+    "artifact": "/Users/thinkstu/Desktop/copy/FluentRead-builds/x-ai-subtitle-performance-ux-20261009-final-v6",
+    "unchangedCacheReadinessSourceSha256": {
+      "src/features/settings/ui/VideoLocalModelSettings.vue": "3fb7db84dcb02cdca69425bea0ee769c293c9d97dc233a757e42d4d97767ff34",
+      "src/features/video-subtitle/background/handlers.ts": "54858f0e8300ed977a088b7ad2873d5880d915e2cedb0372d7ff56752b23921f",
+      "src/features/video-subtitle/offscreen/modelCache.ts": "32a49513be47824c804149d5fa8bf2cefac2bae0b9ec0022543f9e14b3525556"
+    }
+  }
+}

@@ -1,12 +1,12 @@
 /**
  * @file src/features/local-tts/offscreen/tts.worker.ts
  * 文件职责：在独立 Worker 中加载并运行 Kokoro v1.1 中文 TTS，避免推理阻塞 Offscreen DOM。
- * 主要内容：验证固定版本缓存及合法镜像来源，沿用 Kokoro/Transformers 与音色命名空间；处理 WebGPU/WASM 回退、有界线程和推理节流，串行句段合成、采样率及 PCM16 静音校验，保留真实句段时间并按块编码 WAV。
+ * 主要内容：验证固定版本缓存及精确匹配的当前或历史镜像来源，保持已下载音色离线可用；处理 WebGPU/WASM 回退、有界线程和推理节流，串行合成与 PCM16 校验，保留真实句段时间并按块编码 WAV。
  * 模块边界：只运行本地模型，不访问配置、网页、标签页或直接播放 Audio。
  */
 
 import type {SpeechCue} from '@/src/core/tts/speechProgress';
-import {modelDownloadSources} from '@/src/platform/http/modelDownloads';
+import {isModelCacheSource} from '@/src/platform/http/modelDownloads';
 import {forceSingleThreadInference, localWasmThreads, paceLocalInference, paceLocalInitialization} from '@/src/shared/onnx/resources';
 import {KokoroTTS, env as kokoroEnv} from '@uzen/kokoro-js';
 import {env as kokoroTransformersEnv} from '@huggingface/transformers-kokoro';
@@ -105,7 +105,7 @@ async function localCacheFetch(
         const cached = await cache.match(cacheUrl);
         if (cached?.ok) {
             const source = cached.headers.get('X-FluentRead-Model-Source');
-            if ((source !== null && modelDownloadSources(pinnedUrl).includes(source))
+            if ((source !== null && isModelCacheSource(pinnedUrl, source))
                 || (cacheUrl === pinnedUrl && source === null)) return cached;
         }
     }

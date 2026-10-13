@@ -72,22 +72,23 @@ describe('视频 AI 字幕转写配置', () => {
     }
   });
 
-  it('使用扩展内本地 Whisper 模型，并对非法选择回退到 Tiny', () => {
+  it('使用扩展内本地 Whisper 模型，并对非法选择回退到 Small', () => {
     expect(normalizeVideoLocalTranscriptionModel('tiny')).toBe('tiny');
     expect(normalizeVideoLocalTranscriptionModel('base')).toBe('base');
     expect(normalizeVideoLocalTranscriptionModel('small')).toBe('small');
-    expect(normalizeVideoLocalTranscriptionModel('unknown')).toBe('tiny');
+    expect(normalizeVideoLocalTranscriptionModel('unknown')).toBe('small');
+    expect(getVideoLocalTranscriptionModelId('unknown')).toBe('onnx-community/whisper-small');
     expect(getVideoLocalTranscriptionModelId('base')).toBe('onnx-community/whisper-base');
     expect(getVideoLocalTranscriptionDownloadBytes('base')).toBe(150_000_000);
-    expect(getVideoLocalTranscriptionDownloadBytes('unknown')).toBe(100_000_000);
+    expect(getVideoLocalTranscriptionDownloadBytes('unknown')).toBe(590_000_000);
     expect(getVideoLocalTranscriptionModelId('small')).toBe('onnx-community/whisper-small');
     expect(getVideoLocalTranscriptionDownloadBytes('small')).toBe(590_000_000);
     expect(normalizeVideoLocalTranscriptionModels(['tiny', 'base', 'small', 'unknown', 'tiny', 'small'])).toEqual(['tiny', 'base', 'small']);
   });
 
-  it('首次推荐 Small，已有选择与非法配置回退独立，不迁移 Tiny/Base', () => {
+  it('默认及推荐 Small，保留已有 Tiny/Base 选择', () => {
     expect(VIDEO_LOCAL_TRANSCRIPTION_RECOMMENDED_MODEL).toBe('small');
-    expect(normalizeVideoLocalTranscriptionModel(undefined)).toBe('tiny');
+    expect(normalizeVideoLocalTranscriptionModel(undefined)).toBe('small');
     expect(normalizeVideoLocalTranscriptionModel('tiny')).toBe('tiny');
     expect(normalizeVideoLocalTranscriptionModel('base')).toBe('base');
   });
@@ -107,11 +108,13 @@ describe('视频 AI 字幕转写配置', () => {
     expect(normalizeVideoAiRecognitionMetadata({decoderDtype: 'q8'})).toEqual({decoderDtype: 'q8'});
   });
 
-  it('Small 三层预算覆盖实测慢 CPU，旧模型与无效配置继续保留原上限', () => {
-    expect(getVideoLocalTranscriptionInferenceTimeoutMs('small')).toBe(60_000);
-    expect(getVideoLocalTranscriptionWorkerTimeoutMs('small')).toBe(180_000);
-    expect(getVideoLocalTranscriptionRequestTimeoutMs('small')).toBe(200_000);
-    for (const model of ['tiny', 'base', 'unknown', null, undefined, 3]) {
+  it('默认 Small 使用慢 CPU 预算，明确选择 Tiny/Base 继续保留原上限', () => {
+    for (const model of ['small', 'unknown', null, undefined, 3]) {
+      expect(getVideoLocalTranscriptionInferenceTimeoutMs(model)).toBe(60_000);
+      expect(getVideoLocalTranscriptionWorkerTimeoutMs(model)).toBe(180_000);
+      expect(getVideoLocalTranscriptionRequestTimeoutMs(model)).toBe(200_000);
+    }
+    for (const model of ['tiny', 'base']) {
       expect(getVideoLocalTranscriptionInferenceTimeoutMs(model)).toBe(15_000);
       expect(getVideoLocalTranscriptionWorkerTimeoutMs(model)).toBe(32_000);
       expect(getVideoLocalTranscriptionRequestTimeoutMs(model)).toBe(40_000);

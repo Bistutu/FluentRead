@@ -1,7 +1,7 @@
 <!--
 @file src/features/settings/ui/components/PopupPreview.vue
 文件职责：用真实 DOM 按菜单栏的实际结构、尺寸和皮肤变量还原一份 Popup，供风格预览和菜单栏布局预览共用，保证两处看到的是同一个界面。
-主要内容：依次绘制品牌与版本、赞赏与设置、语言与服务、网页及局部翻译、站点开关、快捷入口卡片和底部信息栏；区域与快捷入口按传入顺序渲染，传入编辑层级和排序控制器时在同一界面上叠加拖动手柄与插入提示。
+主要内容：优先复用脚本构建注入的品牌图标并保留扩展资源回退，依次绘制品牌与版本、赞赏与设置、语言与服务、网页及局部翻译、站点开关、快捷入口卡片和底部信息栏；按构建与实际平台能力过滤专属入口，区域与快捷入口按传入顺序渲染，传入编辑层级和排序控制器时叠加拖动手柄与插入提示。
 模块边界：只负责展示与把排序手势交给外部控制器，不读取用户配置、不连接浏览器状态，也不执行菜单栏业务；范例里的服务、快捷键和开关状态是固定示意，不代表用户当前设置。
 -->
 <template>
@@ -14,7 +14,7 @@
   >
     <header class="preview-header" aria-hidden="true">
       <span class="preview-brand">
-        <img class="preview-logo" :src="'/icon/128.png'" alt="" width="32" height="32" />
+        <img class="preview-logo" :src="iconUrl" alt="" width="32" height="32" />
         <span><strong>{{ t('common.brand') }}</strong><small>v{{ version }}</small></span>
       </span>
       <span class="preview-header-actions">
@@ -150,6 +150,7 @@ import {Coffee, Setting} from '@element-plus/icons-vue'
 import {version} from '@/package.json'
 import ServiceIcon from '@/src/ui/components/ServiceIcon.vue'
 import {
+  POPUP_QUICK_FEATURE_IDS,
   popupModuleOptions,
   popupQuickFeatureOptions,
   type InterfaceSkinOption,
@@ -169,7 +170,7 @@ const props = defineProps<{
   skin: InterfaceSkinOption
   /** 按显示顺序排列、且已排除隐藏项的区域；不传时展示完整的默认菜单栏。 */
   modules?: readonly PreviewLayoutItem[]
-  /** 按显示顺序排列、且已排除隐藏项的快捷入口；不传时展示固定的四个范例入口。 */
+  /** 按显示顺序排列、且已排除隐藏项的快捷入口；不传时展示当前平台可用的范例入口。 */
   quickFeatures?: readonly PreviewLayoutItem[]
   editScope?: 'popupModule' | 'quickFeature'
   moduleDrag?: ReturnType<typeof usePopupLayoutReorder>
@@ -177,6 +178,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{'edit:scope': [scope: 'popupModule' | 'quickFeature']}>()
 const {t, translateLegacy} = useUiI18n()
+const iconUrl = globalThis.__FLUENTREAD_ICON_DATA__ || '/icon/128.png'
 
 // 固定范例用于比较外观，不表示这些服务、快捷键或开关已在用户配置中启用。
 const previewProviders = ['localTranslation', 'freeTranslation', 'microsoft', 'deepseek']
@@ -192,11 +194,12 @@ const sampleStatus: Partial<Record<PopupQuickFeatureId, 'on' | 'off'>> = {hover:
 
 const orderedModules = computed<readonly PreviewLayoutItem[]>(() => props.modules
   ?? popupModuleOptions.map((module) => ({id: module.id, label: t(module.labelKey)})))
-const orderedQuickFeatures = computed<readonly PreviewLayoutItem[]>(() => props.quickFeatures
+// 只预览当前菜单的合法快捷入口，不把备份中的旧项投影回界面。
+const orderedQuickFeatures = computed<readonly PreviewLayoutItem[]>(() => (props.quickFeatures
   ?? sampleQuickFeatureIds.map((id) => {
     const feature = popupQuickFeatureOptions.find((item) => item.id === id)!
     return {id, label: t(feature.labelKey)}
-  }))
+  })).filter(item => POPUP_QUICK_FEATURE_IDS.includes(item.id as PopupQuickFeatureId)))
 const siteModule = computed(() => orderedModules.value.find((item) => item.id === 'siteRule'))
 // 与真实菜单栏一致：站点开关紧跟翻译控制时并入同一张卡片，否则作为独立一行。
 const siteModuleNestedInTranslation = computed(() => {

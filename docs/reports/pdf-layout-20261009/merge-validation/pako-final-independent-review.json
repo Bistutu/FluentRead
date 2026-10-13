@@ -1,0 +1,95 @@
+{
+  "ok": true,
+  "reviewScope": "two UI dictionary build-only encoder replacements and existing output decode equality",
+  "beforeBytes": 1960890,
+  "afterBytes": 1959450,
+  "savedBytes": 1440,
+  "capBytes": 1960000,
+  "headroomBytes": 550,
+  "beforeSha256": "352aa1953c8d3e1e3de2d772bae69a7ca7cb63d4eb941b98261bcb98a86cbd37",
+  "afterSha256": "22b0cff7d8c0056fc59fc80af18ebdb4ffbcc2a5bac5a296be199a9d6f8ee85c",
+  "allSevenRawStreamsEqual": true,
+  "changedEncodedStreams": [
+    "zh-CN-ui",
+    "en-US-ui"
+  ],
+  "nonGzipArtifactByteEquality": {
+    "equal": false,
+    "beforeLength": 1593946,
+    "afterLength": 1593946,
+    "firstDifference": 24840,
+    "note": "First observed difference is minifier identifier vke versus wke; exact emitted JavaScript byte equality is not claimed. Config diff is restricted to build-only encoding and existing language resource pin."
+  },
+  "streams": [
+    {
+      "label": "css",
+      "rawBytes": 165138,
+      "rawSha256": "8cdae65741aaa898ae77131788fb1dfca7406ad8814e77ba46a3b916c41e1f20",
+      "beforeBase64Bytes": 36900,
+      "afterBase64Bytes": 36900,
+      "encodedChanged": false,
+      "nodeGunzipEqual": true,
+      "pakoUngzipEqual": true
+    },
+    {
+      "label": "unicode-delta-data",
+      "rawBytes": 32514,
+      "rawSha256": "609e41eb261020d108080238962e6fdd28ffe4a3f6ec879389ad44c2e0d396b6",
+      "beforeBase64Bytes": 10432,
+      "afterBase64Bytes": 10432,
+      "encodedChanged": false,
+      "nodeGunzipEqual": true,
+      "pakoUngzipEqual": true
+    },
+    {
+      "label": "established-sites",
+      "rawBytes": 13378,
+      "rawSha256": "a8350a4b3dd632e37a4ed668e1e6787f2016af858f27db3570f0556d451c99cf",
+      "beforeBase64Bytes": 4332,
+      "afterBase64Bytes": 4332,
+      "encodedChanged": false,
+      "nodeGunzipEqual": true,
+      "pakoUngzipEqual": true
+    },
+    {
+      "label": "websites",
+      "rawBytes": 68705,
+      "rawSha256": "f0580b893705463eeae33a044fd28efa9f9017b127b55fe5e76393da9e4a5909",
+      "beforeBase64Bytes": 9624,
+      "afterBase64Bytes": 9624,
+      "encodedChanged": false,
+      "nodeGunzipEqual": true,
+      "pakoUngzipEqual": true
+    },
+    {
+      "label": "profiles",
+      "rawBytes": 17244,
+      "rawSha256": "76599767b169bf2efc629e97e3ffba8cce7d4e74dfa143a6df3d7f777b5d9590",
+      "beforeBase64Bytes": 2008,
+      "afterBase64Bytes": 2008,
+      "encodedChanged": false,
+      "nodeGunzipEqual": true,
+      "pakoUngzipEqual": true
+    },
+    {
+      "label": "zh-CN-ui",
+      "rawBytes": 161625,
+      "rawSha256": "9aca032ad9f66def8e0756199a66ac782131867a05b3b282eba5fc4f6f0fdd85",
+      "beforeBase64Bytes": 62376,
+      "afterBase64Bytes": 61852,
+      "encodedChanged": true,
+      "nodeGunzipEqual": true,
+      "pakoUngzipEqual": true
+    },
+    {
+      "label": "en-US-ui",
+      "rawBytes": 455855,
+      "rawSha256": "afef0ed242813e5b352000a5da2aa9f866e2947d2712e88a60ea7deab6f23889",
+      "beforeBase64Bytes": 186448,
+      "afterBase64Bytes": 185532,
+      "encodedChanged": true,
+      "nodeGunzipEqual": true,
+      "pakoUngzipEqual": true
+    }
+  ]
+}

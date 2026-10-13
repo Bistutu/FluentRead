@@ -1,0 +1,80 @@
+{
+  "ok": true,
+  "scope": "Independent read-only verification of the actual final3 production browser download",
+  "source": "rotated-cropbox.pdf",
+  "download": "rotated-cropbox.bilingual.pdf",
+  "sourceSha256": "bfe613e234edeef64c0e80672678aa9d244f756f8dd390b66675d66a95b56704",
+  "downloadSha256": "43f4cb137df81878eaeaf27457d3c957d38dc8e190de0af1ef7c13ebfac0cdd4",
+  "visibleSize": {
+    "width": 160,
+    "height": 300
+  },
+  "visibleTextItems": 5,
+  "visibleTextContentMatched": true,
+  "outsideCropTextAbsent": true,
+  "maximumMatrixError": 9.184850993605152e-16,
+  "pixelComparison": {
+    "width": 320,
+    "height": 600,
+    "totalPixels": 192000,
+    "changedPixels": 555,
+    "changedFraction": 0.002890625,
+    "meanAbsoluteChannelError": 0.22564756944444445,
+    "outsideEdgeBand": 0,
+    "sourceCorners": [
+      {
+        "color": "red",
+        "count": 2500,
+        "left": 30,
+        "right": 79,
+        "top": 30,
+        "bottom": 79
+      },
+      {
+        "color": "green",
+        "count": 2500,
+        "left": 240,
+        "right": 289,
+        "top": 510,
+        "bottom": 559
+      }
+    ],
+    "outputCorners": [
+      {
+        "color": "red",
+        "count": 2500,
+        "left": 30,
+        "right": 79,
+        "top": 30,
+        "bottom": 79
+      },
+      {
+        "color": "green",
+        "count": 2500,
+        "left": 240,
+        "right": 289,
+        "top": 510,
+        "bottom": 559
+      }
+    ]
+  },
+  "exactRasterIdentity": false,
+  "appearancePreserved": true,
+  "inference": "Edge-only differences are consistent with native Rotate versus embedded-vector renderer antialiasing; exact cause is inferred, not established.",
+  "productionBrowser": {
+    "ownedBrowserClosed": true,
+    "focusViolations": 0,
+    "consoleErrors": 0,
+    "privateRun": "readable-final3"
+  },
+  "preservedStrictFailure": "Original report remains unchanged: PNG byte identity assertion was too strong. This independent guard compares decoded pixels, every changed pixel edge band, corner geometry, visible text and display matrices.",
+  "guardContract": {
+    "maximumChangedFraction": 0.005,
+    "maximumMeanAbsoluteChannelError": 0.5,
+    "maximumDisplayMatrixError": 1e-06,
+    "allDifferencesInOnePixelInkEdgeBand": true,
+    "cornerGeometryTolerancePx": 1,
+    "observedCornerCountsAndBoundsExact": true,
+    "rendering": "independent Poppler at 144dpi"
+  }
+}

@@ -1,0 +1,4462 @@
+{
+  "artifactRoot": "/Users/thinkstu/Desktop/copy/artifacts/key-information-space-20261009",
+  "baselineKnownFailuresAreObservations": true,
+  "providerBoundary": "Local deterministic selection/learning fixtures and synthetic Popup configuration; no live-provider quality, FPS, native toolbar or Firefox runtime claim.",
+  "provenance": "production-provenance.json",
+  "selection": {
+    "baseline": {
+      "ok": true,
+      "cases": 12,
+      "checks": 180,
+      "screenshots": 21,
+      "consoleErrors": [],
+      "focusSamples": 43,
+      "frontmostApps": [
+        "Google Chrome"
+      ],
+      "ownedBrowserClosed": true,
+      "profileRemoved": true,
+      "layouts": [
+        {
+          "name": "normal-long-original",
+          "locale": "zh-CN",
+          "theme": "light",
+          "card": {
+            "left": 20,
+            "top": 133.78125,
+            "right": 408,
+            "bottom": 653.78125,
+            "width": 388,
+            "height": 520
+          },
+          "toolbarHeight": 34,
+          "toolbarRows": 1,
+          "contentHeight": 411,
+          "firstLine": {
+            "left": 35,
+            "top": 570.28125,
+            "right": 329,
+            "bottom": 586.78125,
+            "width": 294,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 294,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "zh-light-280x180",
+          "locale": "zh-CN",
+          "theme": "light",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "toolbarHeight": 62,
+          "toolbarRows": 2,
+          "contentHeight": 43,
+          "firstLine": {
+            "left": 27,
+            "top": 632.875,
+            "right": 209,
+            "bottom": 649.375,
+            "width": 182,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 0,
+          "keyVisibleWidth": 182,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "zh-light-360x200",
+          "locale": "zh-CN",
+          "theme": "light",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "toolbarHeight": 34,
+          "toolbarRows": 1,
+          "contentHeight": 91,
+          "firstLine": {
+            "left": 27,
+            "top": 481.125,
+            "right": 293,
+            "bottom": 497.625,
+            "width": 266,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 0,
+          "keyVisibleWidth": 266,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "zh-dark-normal",
+          "locale": "zh-CN",
+          "theme": "dark",
+          "card": {
+            "left": 20,
+            "top": 133.78125,
+            "right": 408,
+            "bottom": 653.78125,
+            "width": 388,
+            "height": 520
+          },
+          "toolbarHeight": 34,
+          "toolbarRows": 1,
+          "contentHeight": 411,
+          "firstLine": {
+            "left": 35,
+            "top": 570.28125,
+            "right": 329,
+            "bottom": 586.78125,
+            "width": 294,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 294,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "zh-dark-280x180",
+          "locale": "zh-CN",
+          "theme": "dark",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "toolbarHeight": 62,
+          "toolbarRows": 2,
+          "contentHeight": 43,
+          "firstLine": {
+            "left": 27,
+            "top": 632.875,
+            "right": 209,
+            "bottom": 649.375,
+            "width": 182,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 0,
+          "keyVisibleWidth": 182,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "zh-dark-360x200",
+          "locale": "zh-CN",
+          "theme": "dark",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "toolbarHeight": 34,
+          "toolbarRows": 1,
+          "contentHeight": 91,
+          "firstLine": {
+            "left": 27,
+            "top": 481.125,
+            "right": 293,
+            "bottom": 497.625,
+            "width": 266,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 0,
+          "keyVisibleWidth": 266,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-light-normal",
+          "locale": "en-US",
+          "theme": "light",
+          "card": {
+            "left": 20,
+            "top": 133.78125,
+            "right": 408,
+            "bottom": 653.78125,
+            "width": 388,
+            "height": 520
+          },
+          "toolbarHeight": 58,
+          "toolbarRows": 2,
+          "contentHeight": 387,
+          "firstLine": {
+            "left": 35,
+            "top": 594.28125,
+            "right": 329,
+            "bottom": 610.78125,
+            "width": 294,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 294,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-light-280x180",
+          "locale": "en-US",
+          "theme": "light",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "toolbarHeight": 84,
+          "toolbarRows": 3,
+          "contentHeight": 24,
+          "firstLine": {
+            "left": 27,
+            "top": 654.875,
+            "right": 209,
+            "bottom": 671.375,
+            "width": 182,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 0,
+          "keyVisibleWidth": 182,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-light-360x200",
+          "locale": "en-US",
+          "theme": "light",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "toolbarHeight": 58,
+          "toolbarRows": 2,
+          "contentHeight": 67,
+          "firstLine": {
+            "left": 27,
+            "top": 505.125,
+            "right": 293,
+            "bottom": 521.625,
+            "width": 266,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 0,
+          "keyVisibleWidth": 266,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-dark-normal",
+          "locale": "en-US",
+          "theme": "dark",
+          "card": {
+            "left": 20,
+            "top": 133.78125,
+            "right": 408,
+            "bottom": 653.78125,
+            "width": 388,
+            "height": 520
+          },
+          "toolbarHeight": 58,
+          "toolbarRows": 2,
+          "contentHeight": 387,
+          "firstLine": {
+            "left": 35,
+            "top": 594.28125,
+            "right": 329,
+            "bottom": 610.78125,
+            "width": 294,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 294,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-dark-280x180",
+          "locale": "en-US",
+          "theme": "dark",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "toolbarHeight": 84,
+          "toolbarRows": 3,
+          "contentHeight": 24,
+          "firstLine": {
+            "left": 27,
+            "top": 654.875,
+            "right": 209,
+            "bottom": 671.375,
+            "width": 182,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 0,
+          "keyVisibleWidth": 182,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-dark-360x200",
+          "locale": "en-US",
+          "theme": "dark",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "toolbarHeight": 58,
+          "toolbarRows": 2,
+          "contentHeight": 67,
+          "firstLine": {
+            "left": 27,
+            "top": 505.125,
+            "right": 293,
+            "bottom": 521.625,
+            "width": 266,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 0,
+          "keyVisibleWidth": 266,
+          "originalCopies": 1,
+          "exactOriginal": true
+        }
+      ],
+      "drag": {
+        "requestedMoves": 60,
+        "start": {
+          "x": 40,
+          "y": 43
+        },
+        "end": {
+          "x": 76,
+          "y": 63
+        },
+        "probe": {
+          "available": true,
+          "context": {
+            "id": 3,
+            "name": "FluentRead-流畅阅读",
+            "origin": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj",
+            "auxData": {
+              "isDefault": false,
+              "type": "isolated",
+              "frameId": "386DDA3D1BEA16564A15AB2F373BFB95"
+            }
+          }
+        },
+        "counts": {
+          "cardReads": 41,
+          "rangeReads": 0,
+          "synchronousMoveReads": 40,
+          "deliveredMoves": 20,
+          "frames": 4,
+          "styleMutationsByFrame": {
+            "2": 40
+          }
+        },
+        "delta": {
+          "left": 36,
+          "top": 20,
+          "width": 0,
+          "height": 0
+        }
+      },
+      "learningStream": {
+        "aiRequests": 1,
+        "sampleCount": 51,
+        "maxDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        }
+      },
+      "learningBody": [
+        {
+          "stage": "streaming-first-paragraph",
+          "metrics": {
+            "card": {
+              "left": 12,
+              "top": 24,
+              "right": 372,
+              "bottom": 224,
+              "width": 360,
+              "height": 200
+            },
+            "resultRect": {
+              "left": 27,
+              "top": 166,
+              "right": 357,
+              "bottom": 172,
+              "width": 330,
+              "height": 6
+            },
+            "resultViewport": {
+              "left": 27,
+              "top": 166,
+              "right": 357,
+              "bottom": 172,
+              "width": 330,
+              "height": 6
+            },
+            "firstBodyLine": {
+              "left": 27,
+              "top": 247.109375,
+              "right": 352,
+              "bottom": 262.109375,
+              "width": 325,
+              "height": 15
+            },
+            "visibleBodyWidth": 325,
+            "visibleBodyHeight": 0,
+            "paragraphTag": "P",
+            "firstParagraphText": "打印顺序会影响耗材切换。关键设置和译文应先显示，完整原文仍可随时查看。",
+            "headings": [
+              "读懂"
+            ],
+            "busy": "true",
+            "resultScrollTop": 458,
+            "resultClientHeight": 6,
+            "resultScrollHeight": 618,
+            "status": "Understand…Stop"
+          }
+        },
+        {
+          "stage": "completed",
+          "metrics": {
+            "card": {
+              "left": 12,
+              "top": 24,
+              "right": 372,
+              "bottom": 224,
+              "width": 360,
+              "height": 200
+            },
+            "resultRect": {
+              "left": 27,
+              "top": 166,
+              "right": 357,
+              "bottom": 172,
+              "width": 330,
+              "height": 6
+            },
+            "resultViewport": {
+              "left": 27,
+              "top": 166,
+              "right": 357,
+              "bottom": 172,
+              "width": 330,
+              "height": 6
+            },
+            "firstBodyLine": {
+              "left": 27,
+              "top": 196.7109375,
+              "right": 352,
+              "bottom": 211.7109375,
+              "width": 325,
+              "height": 15
+            },
+            "visibleBodyWidth": 325,
+            "visibleBodyHeight": 0,
+            "paragraphTag": "P",
+            "firstParagraphText": "打印顺序会影响耗材切换。关键设置和译文应先显示，完整原文仍可随时查看。",
+            "headings": [
+              "读懂"
+            ],
+            "busy": "false",
+            "resultScrollTop": 458,
+            "resultClientHeight": 6,
+            "resultScrollHeight": 987,
+            "status": ""
+          }
+        }
+      ],
+      "externalAttempts": 0,
+      "actualExternalResponses": 0,
+      "knownBaselineFailures": [
+        {
+          "name": "buffered moves do not read card geometry synchronously",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "viewport resize cancels stale captured drag geometry",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "zh-light-280x180: complete first translated line visible without scrolling",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "zh-light-280x180: toolbar one row without clipped labels",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "zh-light-360x200: complete first translated line visible without scrolling",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "zh-dark-280x180: complete first translated line visible without scrolling",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "zh-dark-280x180: toolbar one row without clipped labels",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "zh-dark-360x200: complete first translated line visible without scrolling",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "ordinary translation 7 exactly preserves the provider fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-light-normal: ordinary translation exactly matches the fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-light-normal: toolbar one row without clipped labels",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "ordinary translation 8 exactly preserves the provider fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-light-280x180: ordinary translation exactly matches the fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-light-280x180: complete first translated line visible without scrolling",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-light-280x180: toolbar one row without clipped labels",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "ordinary translation 9 exactly preserves the provider fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-light-360x200: ordinary translation exactly matches the fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-light-360x200: complete first translated line visible without scrolling",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-light-360x200: toolbar one row without clipped labels",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "ordinary translation 10 exactly preserves the provider fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-dark-normal: ordinary translation exactly matches the fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-dark-normal: toolbar one row without clipped labels",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "ordinary translation 11 exactly preserves the provider fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-dark-280x180: ordinary translation exactly matches the fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-dark-280x180: complete first translated line visible without scrolling",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-dark-280x180: toolbar one row without clipped labels",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "ordinary translation 12 exactly preserves the provider fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-dark-360x200: ordinary translation exactly matches the fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-dark-360x200: complete first translated line visible without scrolling",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "en-dark-360x200: toolbar one row without clipped labels",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "streamed learning answer has at least 48px of visible reading viewport",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "streamed learning answer shows the complete first body paragraph line",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "completed learning answer has at least 48px of visible reading viewport",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "completed learning answer shows the complete first body paragraph line",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "expanded learning tools stay in the reading scroll flow",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "native Tab reaches every enabled learning tool fully within clipping ancestors",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "returned ordinary translation exactly matches the fixture",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "diagonal toolbar wheel uses a genuinely overflowing strip",
+          "pass": false,
+          "required": false
+        },
+        {
+          "name": "diagonal toolbar wheel moves its own horizontal scroll",
+          "pass": false,
+          "required": false
+        }
+      ]
+    },
+    "optimized": {
+      "ok": true,
+      "cases": 12,
+      "checks": 180,
+      "screenshots": 21,
+      "consoleErrors": [],
+      "focusSamples": 43,
+      "frontmostApps": [
+        "Google Chrome"
+      ],
+      "ownedBrowserClosed": true,
+      "profileRemoved": true,
+      "layouts": [
+        {
+          "name": "normal-long-original",
+          "locale": "zh-CN",
+          "theme": "light",
+          "card": {
+            "left": 20,
+            "top": 133.78125,
+            "right": 408,
+            "bottom": 653.78125,
+            "width": 388,
+            "height": 520
+          },
+          "toolbarHeight": 34,
+          "toolbarRows": 1,
+          "contentHeight": 411,
+          "firstLine": {
+            "left": 35,
+            "top": 221.28125,
+            "right": 329,
+            "bottom": 237.78125,
+            "width": 294,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 294,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "zh-light-280x180",
+          "locale": "zh-CN",
+          "theme": "light",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "toolbarHeight": 34,
+          "toolbarRows": 1,
+          "contentHeight": 71,
+          "firstLine": {
+            "left": 27,
+            "top": 111.5,
+            "right": 209,
+            "bottom": 128,
+            "width": 182,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 182,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "zh-light-360x200",
+          "locale": "zh-CN",
+          "theme": "light",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "toolbarHeight": 34,
+          "toolbarRows": 1,
+          "contentHeight": 91,
+          "firstLine": {
+            "left": 27,
+            "top": 111.5,
+            "right": 293,
+            "bottom": 128,
+            "width": 266,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 266,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "zh-dark-normal",
+          "locale": "zh-CN",
+          "theme": "dark",
+          "card": {
+            "left": 20,
+            "top": 133.78125,
+            "right": 408,
+            "bottom": 653.78125,
+            "width": 388,
+            "height": 520
+          },
+          "toolbarHeight": 34,
+          "toolbarRows": 1,
+          "contentHeight": 411,
+          "firstLine": {
+            "left": 35,
+            "top": 221.28125,
+            "right": 329,
+            "bottom": 237.78125,
+            "width": 294,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 294,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "zh-dark-280x180",
+          "locale": "zh-CN",
+          "theme": "dark",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "toolbarHeight": 34,
+          "toolbarRows": 1,
+          "contentHeight": 71,
+          "firstLine": {
+            "left": 27,
+            "top": 111.5,
+            "right": 209,
+            "bottom": 128,
+            "width": 182,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 182,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "zh-dark-360x200",
+          "locale": "zh-CN",
+          "theme": "dark",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "toolbarHeight": 34,
+          "toolbarRows": 1,
+          "contentHeight": 91,
+          "firstLine": {
+            "left": 27,
+            "top": 111.5,
+            "right": 293,
+            "bottom": 128,
+            "width": 266,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 266,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-light-normal",
+          "locale": "en-US",
+          "theme": "light",
+          "card": {
+            "left": 20,
+            "top": 133.78125,
+            "right": 408,
+            "bottom": 653.78125,
+            "width": 388,
+            "height": 520
+          },
+          "toolbarHeight": 32,
+          "toolbarRows": 1,
+          "contentHeight": 413,
+          "firstLine": {
+            "left": 35,
+            "top": 219.28125,
+            "right": 329,
+            "bottom": 235.78125,
+            "width": 294,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 294,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-light-280x180",
+          "locale": "en-US",
+          "theme": "light",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "toolbarHeight": 32,
+          "toolbarRows": 1,
+          "contentHeight": 73,
+          "firstLine": {
+            "left": 27,
+            "top": 109.5,
+            "right": 209,
+            "bottom": 126,
+            "width": 182,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 182,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-light-360x200",
+          "locale": "en-US",
+          "theme": "light",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "toolbarHeight": 32,
+          "toolbarRows": 1,
+          "contentHeight": 93,
+          "firstLine": {
+            "left": 27,
+            "top": 109.5,
+            "right": 293,
+            "bottom": 126,
+            "width": 266,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 266,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-dark-normal",
+          "locale": "en-US",
+          "theme": "dark",
+          "card": {
+            "left": 20,
+            "top": 133.78125,
+            "right": 408,
+            "bottom": 653.78125,
+            "width": 388,
+            "height": 520
+          },
+          "toolbarHeight": 32,
+          "toolbarRows": 1,
+          "contentHeight": 413,
+          "firstLine": {
+            "left": 35,
+            "top": 219.28125,
+            "right": 329,
+            "bottom": 235.78125,
+            "width": 294,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 294,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-dark-280x180",
+          "locale": "en-US",
+          "theme": "dark",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 292,
+            "bottom": 204,
+            "width": 280,
+            "height": 180
+          },
+          "toolbarHeight": 32,
+          "toolbarRows": 1,
+          "contentHeight": 73,
+          "firstLine": {
+            "left": 27,
+            "top": 109.5,
+            "right": 209,
+            "bottom": 126,
+            "width": 182,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 182,
+          "originalCopies": 1,
+          "exactOriginal": true
+        },
+        {
+          "name": "en-dark-360x200",
+          "locale": "en-US",
+          "theme": "dark",
+          "card": {
+            "left": 12,
+            "top": 24,
+            "right": 372,
+            "bottom": 224,
+            "width": 360,
+            "height": 200
+          },
+          "toolbarHeight": 32,
+          "toolbarRows": 1,
+          "contentHeight": 93,
+          "firstLine": {
+            "left": 27,
+            "top": 109.5,
+            "right": 293,
+            "bottom": 126,
+            "width": 266,
+            "height": 16.5
+          },
+          "keyVisibleHeight": 16.5,
+          "keyVisibleWidth": 266,
+          "originalCopies": 1,
+          "exactOriginal": true
+        }
+      ],
+      "drag": {
+        "requestedMoves": 60,
+        "start": {
+          "x": 40,
+          "y": 43
+        },
+        "end": {
+          "x": 76,
+          "y": 63
+        },
+        "probe": {
+          "available": true,
+          "context": {
+            "id": 3,
+            "name": "FluentRead-流畅阅读",
+            "origin": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj",
+            "auxData": {
+              "isDefault": false,
+              "type": "isolated",
+              "frameId": "3EC73CF8CC0C1B1B1A59AAB576CFC89C"
+            }
+          }
+        },
+        "counts": {
+          "cardReads": 1,
+          "rangeReads": 0,
+          "synchronousMoveReads": 0,
+          "deliveredMoves": 27,
+          "frames": 5,
+          "styleMutationsByFrame": {
+            "3": 2
+          }
+        },
+        "delta": {
+          "left": 36,
+          "top": 20,
+          "width": 0,
+          "height": 0
+        }
+      },
+      "learningStream": {
+        "aiRequests": 1,
+        "sampleCount": 52,
+        "maxDelta": {
+          "left": 0,
+          "top": 0,
+          "width": 0,
+          "height": 0
+        }
+      },
+      "learningBody": [
+        {
+          "stage": "streaming-first-paragraph",
+          "metrics": {
+            "card": {
+              "left": 12,
+              "top": 24,
+              "right": 372,
+              "bottom": 224,
+              "width": 360,
+              "height": 200
+            },
+            "resultRect": {
+              "left": 27,
+              "top": 100,
+              "right": 357,
+              "bottom": 177,
+              "width": 330,
+              "height": 77
+            },
+            "resultViewport": {
+              "left": 27,
+              "top": 100,
+              "right": 357,
+              "bottom": 177,
+              "width": 330,
+              "height": 77
+            },
+            "firstBodyLine": {
+              "left": 27,
+              "top": 130.109375,
+              "right": 261,
+              "bottom": 145.109375,
+              "width": 234,
+              "height": 15
+            },
+            "visibleBodyWidth": 234,
+            "visibleBodyHeight": 15,
+            "paragraphTag": "P",
+            "firstParagraphText": "打印顺序会影响耗材切换。关键设置和译文应",
+            "headings": [
+              "读懂"
+            ],
+            "busy": "true",
+            "resultScrollTop": 479,
+            "resultClientHeight": 77,
+            "resultScrollHeight": 597,
+            "status": ""
+          }
+        },
+        {
+          "stage": "completed",
+          "metrics": {
+            "card": {
+              "left": 12,
+              "top": 24,
+              "right": 372,
+              "bottom": 224,
+              "width": 360,
+              "height": 200
+            },
+            "resultRect": {
+              "left": 27,
+              "top": 100,
+              "right": 357,
+              "bottom": 177,
+              "width": 330,
+              "height": 77
+            },
+            "resultViewport": {
+              "left": 27,
+              "top": 100,
+              "right": 357,
+              "bottom": 177,
+              "width": 330,
+              "height": 77
+            },
+            "firstBodyLine": {
+              "left": 27,
+              "top": 130.109375,
+              "right": 287,
+              "bottom": 145.109375,
+              "width": 260,
+              "height": 15
+            },
+            "visibleBodyWidth": 260,
+            "visibleBodyHeight": 15,
+            "paragraphTag": "P",
+            "firstParagraphText": "打印顺序会影响耗材切换。关键设置和译文应先显示，完整原文仍可随时查看。",
+            "headings": [
+              "读懂"
+            ],
+            "busy": "false",
+            "resultScrollTop": 479,
+            "resultClientHeight": 77,
+            "resultScrollHeight": 1095,
+            "status": ""
+          }
+        }
+      ],
+      "externalAttempts": 0,
+      "actualExternalResponses": 0,
+      "knownBaselineFailures": [],
+      "learningKeyboard": {
+        "trustedKeys": true,
+        "menuButtons": [
+          {
+            "label": "View original",
+            "fullyVisibleAndFiveHits": true
+          },
+          {
+            "label": "Regenerate",
+            "fullyVisibleAndFiveHits": true
+          },
+          {
+            "label": "Read original aloud",
+            "fullyVisibleAndFiveHits": true
+          },
+          {
+            "label": "Reading history",
+            "fullyVisibleAndFiveHits": true
+          },
+          {
+            "label": "Open selection translation settings",
+            "fullyVisibleAndFiveHits": true
+          }
+        ],
+        "followupVisible": true,
+        "typed": true,
+        "cleared": true,
+        "returnedToTranslation": true
+      }
+    }
+  },
+  "popup": {
+    "baseline": {
+      "ok": true,
+      "cases": 29,
+      "checks": 0,
+      "screenshots": 25,
+      "consoleErrors": [],
+      "focusSamples": 55,
+      "frontmostApps": [
+        "Google Chrome"
+      ],
+      "ownedBrowserClosed": true,
+      "profileRemoved": true,
+      "layouts": [
+        {
+          "caseName": "zh-CN-light-default",
+          "width": 320,
+          "height": 437,
+          "viewport": {
+            "width": 320,
+            "height": 437
+          },
+          "scrollHeight": 437,
+          "clientHeight": 437,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 127,
+            "right": 291,
+            "bottom": 170,
+            "width": 262,
+            "height": 43
+          },
+          "summaryLabel": "按功能选择服务",
+          "summaryTitle": "统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 178,
+            "right": 234,
+            "bottom": 218,
+            "width": 205,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "default"
+        },
+        {
+          "caseName": "zh-CN-light-minimal",
+          "width": 310,
+          "height": 428,
+          "viewport": {
+            "width": 310,
+            "height": 428
+          },
+          "scrollHeight": 428,
+          "clientHeight": 428,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 12,
+            "top": 130,
+            "right": 298,
+            "bottom": 173,
+            "width": 286,
+            "height": 43
+          },
+          "summaryLabel": "按功能选择服务",
+          "summaryTitle": "统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 12,
+            "top": 185,
+            "right": 240,
+            "bottom": 231,
+            "width": 228,
+            "height": 46
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "minimal"
+        },
+        {
+          "caseName": "zh-CN-light-compact",
+          "width": 300,
+          "height": 374,
+          "viewport": {
+            "width": 300,
+            "height": 374
+          },
+          "scrollHeight": 374,
+          "clientHeight": 374,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 151,
+            "width": 256,
+            "height": 34
+          },
+          "summaryLabel": "按功能选择服务",
+          "summaryTitle": "统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 221,
+            "bottom": 196,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-default",
+          "width": 320,
+          "height": 437,
+          "viewport": {
+            "width": 320,
+            "height": 437
+          },
+          "scrollHeight": 437,
+          "clientHeight": 437,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 127,
+            "right": 291,
+            "bottom": 170,
+            "width": 262,
+            "height": 43
+          },
+          "summaryLabel": "按功能选择服务",
+          "summaryTitle": "统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 178,
+            "right": 234,
+            "bottom": 218,
+            "width": 205,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "default"
+        },
+        {
+          "caseName": "zh-CN-dark-minimal",
+          "width": 310,
+          "height": 428,
+          "viewport": {
+            "width": 310,
+            "height": 428
+          },
+          "scrollHeight": 428,
+          "clientHeight": 428,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 12,
+            "top": 130,
+            "right": 298,
+            "bottom": 173,
+            "width": 286,
+            "height": 43
+          },
+          "summaryLabel": "按功能选择服务",
+          "summaryTitle": "统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 12,
+            "top": 185,
+            "right": 240,
+            "bottom": 231,
+            "width": 228,
+            "height": 46
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "minimal"
+        },
+        {
+          "caseName": "zh-CN-dark-compact",
+          "width": 300,
+          "height": 374,
+          "viewport": {
+            "width": 300,
+            "height": 374
+          },
+          "scrollHeight": 374,
+          "clientHeight": 374,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 151,
+            "width": 256,
+            "height": 34
+          },
+          "summaryLabel": "按功能选择服务",
+          "summaryTitle": "统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 221,
+            "bottom": 196,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-light-default",
+          "width": 380,
+          "height": 491.875,
+          "viewport": {
+            "width": 380,
+            "height": 492
+          },
+          "scrollHeight": 492,
+          "clientHeight": 492,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 124.5,
+            "right": 351,
+            "bottom": 167.5,
+            "width": 322,
+            "height": 43
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 175.5,
+            "right": 286.609375,
+            "bottom": 215.5,
+            "width": 257.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "default"
+        },
+        {
+          "caseName": "en-US-light-minimal",
+          "width": 380,
+          "height": 447,
+          "viewport": {
+            "width": 380,
+            "height": 447
+          },
+          "scrollHeight": 447,
+          "clientHeight": 447,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 12,
+            "top": 128,
+            "right": 368,
+            "bottom": 171,
+            "width": 356,
+            "height": 43
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 12,
+            "top": 183,
+            "right": 302.609375,
+            "bottom": 223,
+            "width": 290.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "minimal"
+        },
+        {
+          "caseName": "en-US-light-compact",
+          "width": 380,
+          "height": 403,
+          "viewport": {
+            "width": 380,
+            "height": 403
+          },
+          "scrollHeight": 403,
+          "clientHeight": 403,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 151,
+            "width": 336,
+            "height": 34
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 293.609375,
+            "bottom": 198,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-default",
+          "width": 380,
+          "height": 491.875,
+          "viewport": {
+            "width": 380,
+            "height": 492
+          },
+          "scrollHeight": 492,
+          "clientHeight": 492,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 124.5,
+            "right": 351,
+            "bottom": 167.5,
+            "width": 322,
+            "height": 43
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 175.5,
+            "right": 286.609375,
+            "bottom": 215.5,
+            "width": 257.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "default"
+        },
+        {
+          "caseName": "en-US-dark-minimal",
+          "width": 380,
+          "height": 447,
+          "viewport": {
+            "width": 380,
+            "height": 447
+          },
+          "scrollHeight": 447,
+          "clientHeight": 447,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 12,
+            "top": 128,
+            "right": 368,
+            "bottom": 171,
+            "width": 356,
+            "height": 43
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 12,
+            "top": 183,
+            "right": 302.609375,
+            "bottom": 223,
+            "width": 290.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "minimal"
+        },
+        {
+          "caseName": "en-US-dark-compact",
+          "width": 380,
+          "height": 403,
+          "viewport": {
+            "width": 380,
+            "height": 403
+          },
+          "scrollHeight": 403,
+          "clientHeight": 403,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 151,
+            "width": 336,
+            "height": 34
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 293.609375,
+            "bottom": 198,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-long-custom",
+          "width": 300,
+          "height": 374,
+          "viewport": {
+            "width": 300,
+            "height": 374
+          },
+          "scrollHeight": 374,
+          "clientHeight": 374,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 151,
+            "width": 256,
+            "height": 34
+          },
+          "summaryLabel": "按功能选择服务",
+          "summaryTitle": "统一管理悬浮、划词、输入框、字幕等功能使用的服务\nPrivate endpoint with a deliberately long descriptive name",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 221,
+            "bottom": 196,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-non-model",
+          "width": 300,
+          "height": 374,
+          "viewport": {
+            "width": 300,
+            "height": 374
+          },
+          "scrollHeight": 374,
+          "clientHeight": 374,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 151,
+            "width": 256,
+            "height": 34
+          },
+          "summaryLabel": "按功能选择服务",
+          "summaryTitle": "统一管理悬浮、划词、输入框、字幕等功能使用的服务\n谷歌翻译",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 221,
+            "bottom": 196,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-local-model",
+          "width": 300,
+          "height": 374,
+          "viewport": {
+            "width": 300,
+            "height": 374
+          },
+          "scrollHeight": 374,
+          "clientHeight": 374,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 151,
+            "width": 256,
+            "height": 34
+          },
+          "summaryLabel": "按功能选择服务",
+          "summaryTitle": "统一管理悬浮、划词、输入框、字幕等功能使用的服务\n本地模型翻译",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 221,
+            "bottom": 196,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-assigned",
+          "width": 300,
+          "height": 374,
+          "viewport": {
+            "width": 300,
+            "height": 374
+          },
+          "scrollHeight": 374,
+          "clientHeight": 374,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 151,
+            "width": 256,
+            "height": 34
+          },
+          "summaryLabel": "按功能选择服务",
+          "summaryTitle": "统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI · DeepSeek · 谷歌翻译",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 3,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 221,
+            "bottom": 196,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-reminder",
+          "width": 300,
+          "height": 446.5,
+          "viewport": {
+            "width": 300,
+            "height": 447
+          },
+          "scrollHeight": 447,
+          "clientHeight": 447,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 151,
+            "width": 256,
+            "height": 34
+          },
+          "summaryLabel": "按功能选择服务",
+          "summaryTitle": "统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 230.5,
+            "right": 221,
+            "bottom": 268.5,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": {
+            "rect": {
+              "left": 22,
+              "top": 160,
+              "right": 278,
+              "bottom": 223.5,
+              "width": 256,
+              "height": 63.5
+            },
+            "text": "配置提醒OpenAI 需要 API Key（访问令牌），当前尚未配置；请先在设置中填写，再开始翻译。去设置",
+            "role": "alert",
+            "animationName": "credential-warning-breathe",
+            "animationDuration": "2.8s",
+            "boxShadow": "rgba(243, 209, 158, 0) 0px 0px 0px 0.00979578px",
+            "settingsButtons": 1
+          },
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-long-custom",
+          "width": 380,
+          "height": 403,
+          "viewport": {
+            "width": 380,
+            "height": 403
+          },
+          "scrollHeight": 403,
+          "clientHeight": 403,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 151,
+            "width": 336,
+            "height": 34
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nPrivate endpoint with a deliberately long descriptive name",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 293.609375,
+            "bottom": 198,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-non-model",
+          "width": 380,
+          "height": 403,
+          "viewport": {
+            "width": 380,
+            "height": 403
+          },
+          "scrollHeight": 403,
+          "clientHeight": 403,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 151,
+            "width": 336,
+            "height": 34
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nGoogle Translate",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 293.609375,
+            "bottom": 198,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-local-model",
+          "width": 380,
+          "height": 403,
+          "viewport": {
+            "width": 380,
+            "height": 403
+          },
+          "scrollHeight": 403,
+          "clientHeight": 403,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 151,
+            "width": 336,
+            "height": 34
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nLocal model translation",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 293.609375,
+            "bottom": 198,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-assigned",
+          "width": 380,
+          "height": 403,
+          "viewport": {
+            "width": 380,
+            "height": 403
+          },
+          "scrollHeight": 403,
+          "clientHeight": 403,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 151,
+            "width": 336,
+            "height": 34
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nOpenAI · DeepSeek · Google Translate",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 3,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 293.609375,
+            "bottom": 198,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-reminder",
+          "width": 380,
+          "height": 490,
+          "viewport": {
+            "width": 380,
+            "height": 490
+          },
+          "scrollHeight": 490,
+          "clientHeight": 490,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 151,
+            "width": 336,
+            "height": 34
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 245,
+            "right": 293.609375,
+            "bottom": 285,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": {
+            "rect": {
+              "left": 22,
+              "top": 160,
+              "right": 358,
+              "bottom": 238,
+              "width": 336,
+              "height": 78
+            },
+            "text": "Configuration reminderOpenAI requires an API key (access token), which is not configured. Add it in settings before translating.Go to settings",
+            "role": "alert",
+            "animationName": "credential-warning-breathe",
+            "animationDuration": "2.8s",
+            "boxShadow": "rgba(243, 209, 158, 0) 0px 0px 0px 0.0174696px",
+            "settingsButtons": 1
+          },
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-custom-content",
+          "width": 380,
+          "height": 403,
+          "viewport": {
+            "width": 380,
+            "height": 403
+          },
+          "scrollHeight": 403,
+          "clientHeight": 403,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 151,
+            "width": 336,
+            "height": 34
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nD",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 293.609375,
+            "bottom": 198,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-light-reordered",
+          "width": 380,
+          "height": 495.875,
+          "viewport": {
+            "width": 380,
+            "height": 496
+          },
+          "scrollHeight": 496,
+          "clientHeight": 496,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 203.5,
+            "right": 351,
+            "bottom": 246.5,
+            "width": 322,
+            "height": 43
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 254.5,
+            "right": 286.609375,
+            "bottom": 294.5,
+            "width": 257.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "siteRule",
+            "translation",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": false,
+          "dark": false,
+          "skin": "default"
+        },
+        {
+          "caseName": "en-US-light-hidden",
+          "width": 380,
+          "height": 305.5,
+          "viewport": {
+            "width": 380,
+            "height": 306
+          },
+          "scrollHeight": 306,
+          "clientHeight": 306,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 124.5,
+            "right": 351,
+            "bottom": 167.5,
+            "width": 322,
+            "height": 43
+          },
+          "summaryLabel": "Services by feature",
+          "summaryTitle": "Manage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "",
+          "nameRect": null,
+          "nameLines": [],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 175.5,
+            "right": 286.609375,
+            "bottom": 215.5,
+            "width": 257.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "default"
+        }
+      ],
+      "httpAttempts": [],
+      "startupHttpAttempts": []
+    },
+    "optimized": {
+      "ok": true,
+      "cases": 29,
+      "checks": 0,
+      "screenshots": 25,
+      "consoleErrors": [],
+      "focusSamples": 55,
+      "frontmostApps": [
+        "Google Chrome"
+      ],
+      "ownedBrowserClosed": true,
+      "profileRemoved": true,
+      "layouts": [
+        {
+          "caseName": "zh-CN-light-default",
+          "width": 320,
+          "height": 441.8984375,
+          "viewport": {
+            "width": 320,
+            "height": 442
+          },
+          "scrollHeight": 442,
+          "clientHeight": 442,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 127,
+            "right": 291,
+            "bottom": 174.8984375,
+            "width": 262,
+            "height": 47.8984375
+          },
+          "summaryLabel": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini",
+          "summaryTitle": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini\n统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 93,
+            "top": 135,
+            "right": 136.609375,
+            "bottom": 149,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 93,
+              "right": 136.609375,
+              "top": 135,
+              "bottom": 149
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 39,
+            "top": 152.5,
+            "right": 227.0546875,
+            "bottom": 167.8984375,
+            "width": 188.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "配置模型：gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 182.8984375,
+            "right": 234,
+            "bottom": 222.8984375,
+            "width": 205,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "default"
+        },
+        {
+          "caseName": "zh-CN-light-minimal",
+          "width": 310,
+          "height": 432.8984375,
+          "viewport": {
+            "width": 310,
+            "height": 433
+          },
+          "scrollHeight": 433,
+          "clientHeight": 433,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 12,
+            "top": 130,
+            "right": 298,
+            "bottom": 177.8984375,
+            "width": 286,
+            "height": 47.8984375
+          },
+          "summaryLabel": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini",
+          "summaryTitle": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini\n统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 76,
+            "top": 138,
+            "right": 119.609375,
+            "bottom": 152,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 76,
+              "right": 119.609375,
+              "top": 138,
+              "bottom": 152
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 22,
+            "top": 155.5,
+            "right": 234.0546875,
+            "bottom": 170.8984375,
+            "width": 212.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "配置模型：gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 12,
+            "top": 189.8984375,
+            "right": 240,
+            "bottom": 235.8984375,
+            "width": 228,
+            "height": 46
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "minimal"
+        },
+        {
+          "caseName": "zh-CN-light-compact",
+          "width": 300,
+          "height": 381.8984375,
+          "viewport": {
+            "width": 300,
+            "height": 382
+          },
+          "scrollHeight": 382,
+          "clientHeight": 382,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 158.8984375,
+            "width": 256,
+            "height": 41.8984375
+          },
+          "summaryLabel": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini",
+          "summaryTitle": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini\n统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 85,
+            "top": 122,
+            "right": 128.609375,
+            "bottom": 136,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 85,
+              "right": 128.609375,
+              "top": 122,
+              "bottom": 136
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 31,
+            "top": 139.5,
+            "right": 218.0546875,
+            "bottom": 154.8984375,
+            "width": 187.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "配置模型：gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 165.8984375,
+            "right": 221,
+            "bottom": 203.8984375,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-default",
+          "width": 320,
+          "height": 441.8984375,
+          "viewport": {
+            "width": 320,
+            "height": 442
+          },
+          "scrollHeight": 442,
+          "clientHeight": 442,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 127,
+            "right": 291,
+            "bottom": 174.8984375,
+            "width": 262,
+            "height": 47.8984375
+          },
+          "summaryLabel": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini",
+          "summaryTitle": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini\n统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 93,
+            "top": 135,
+            "right": 136.609375,
+            "bottom": 149,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 93,
+              "right": 136.609375,
+              "top": 135,
+              "bottom": 149
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 39,
+            "top": 152.5,
+            "right": 227.0546875,
+            "bottom": 167.8984375,
+            "width": 188.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "配置模型：gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 182.8984375,
+            "right": 234,
+            "bottom": 222.8984375,
+            "width": 205,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "default"
+        },
+        {
+          "caseName": "zh-CN-dark-minimal",
+          "width": 310,
+          "height": 432.8984375,
+          "viewport": {
+            "width": 310,
+            "height": 433
+          },
+          "scrollHeight": 433,
+          "clientHeight": 433,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 12,
+            "top": 130,
+            "right": 298,
+            "bottom": 177.8984375,
+            "width": 286,
+            "height": 47.8984375
+          },
+          "summaryLabel": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini",
+          "summaryTitle": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini\n统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 76,
+            "top": 138,
+            "right": 119.609375,
+            "bottom": 152,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 76,
+              "right": 119.609375,
+              "top": 138,
+              "bottom": 152
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 22,
+            "top": 155.5,
+            "right": 234.0546875,
+            "bottom": 170.8984375,
+            "width": 212.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "配置模型：gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 12,
+            "top": 189.8984375,
+            "right": 240,
+            "bottom": 235.8984375,
+            "width": 228,
+            "height": 46
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "minimal"
+        },
+        {
+          "caseName": "zh-CN-dark-compact",
+          "width": 300,
+          "height": 381.8984375,
+          "viewport": {
+            "width": 300,
+            "height": 382
+          },
+          "scrollHeight": 382,
+          "clientHeight": 382,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 158.8984375,
+            "width": 256,
+            "height": 41.8984375
+          },
+          "summaryLabel": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini",
+          "summaryTitle": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini\n统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 85,
+            "top": 122,
+            "right": 128.609375,
+            "bottom": 136,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 85,
+              "right": 128.609375,
+              "top": 122,
+              "bottom": 136
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 31,
+            "top": 139.5,
+            "right": 218.0546875,
+            "bottom": 154.8984375,
+            "width": 187.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "配置模型：gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 165.8984375,
+            "right": 221,
+            "bottom": 203.8984375,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-light-default",
+          "width": 380,
+          "height": 494.2734375,
+          "viewport": {
+            "width": 380,
+            "height": 495
+          },
+          "scrollHeight": 494,
+          "clientHeight": 494,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 124.5,
+            "right": 351,
+            "bottom": 169.8984375,
+            "width": 322,
+            "height": 45.3984375
+          },
+          "summaryLabel": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini",
+          "summaryTitle": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini\nManage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 157.734375,
+            "top": 131.5,
+            "right": 201.34375,
+            "bottom": 145.5,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 157.734375,
+              "right": 201.34375,
+              "top": 131.5,
+              "bottom": 145.5
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 39,
+            "top": 147.5,
+            "right": 287.0546875,
+            "bottom": 162.8984375,
+            "width": 248.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 177.8984375,
+            "right": 286.609375,
+            "bottom": 217.8984375,
+            "width": 257.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "default"
+        },
+        {
+          "caseName": "en-US-light-minimal",
+          "width": 380,
+          "height": 449.3984375,
+          "viewport": {
+            "width": 380,
+            "height": 450
+          },
+          "scrollHeight": 449,
+          "clientHeight": 449,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 12,
+            "top": 128,
+            "right": 368,
+            "bottom": 173.3984375,
+            "width": 356,
+            "height": 45.3984375
+          },
+          "summaryLabel": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini",
+          "summaryTitle": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini\nManage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 140.734375,
+            "top": 135,
+            "right": 184.34375,
+            "bottom": 149,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 140.734375,
+              "right": 184.34375,
+              "top": 135,
+              "bottom": 149
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 22,
+            "top": 151,
+            "right": 304.0546875,
+            "bottom": 166.3984375,
+            "width": 282.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 12,
+            "top": 185.3984375,
+            "right": 302.609375,
+            "bottom": 225.3984375,
+            "width": 290.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "minimal"
+        },
+        {
+          "caseName": "en-US-light-compact",
+          "width": 380,
+          "height": 408.3984375,
+          "viewport": {
+            "width": 380,
+            "height": 409
+          },
+          "scrollHeight": 408,
+          "clientHeight": 408,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 156.3984375,
+            "width": 336,
+            "height": 39.3984375
+          },
+          "summaryLabel": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini",
+          "summaryTitle": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini\nManage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 149.734375,
+            "top": 121,
+            "right": 193.34375,
+            "bottom": 135,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 149.734375,
+              "right": 193.34375,
+              "top": 121,
+              "bottom": 135
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 31,
+            "top": 137,
+            "right": 298.0546875,
+            "bottom": 152.3984375,
+            "width": 267.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 163.3984375,
+            "right": 293.609375,
+            "bottom": 203.3984375,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-default",
+          "width": 380,
+          "height": 494.2734375,
+          "viewport": {
+            "width": 380,
+            "height": 495
+          },
+          "scrollHeight": 494,
+          "clientHeight": 494,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 124.5,
+            "right": 351,
+            "bottom": 169.8984375,
+            "width": 322,
+            "height": 45.3984375
+          },
+          "summaryLabel": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini",
+          "summaryTitle": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini\nManage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 157.734375,
+            "top": 131.5,
+            "right": 201.34375,
+            "bottom": 145.5,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 157.734375,
+              "right": 201.34375,
+              "top": 131.5,
+              "bottom": 145.5
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 39,
+            "top": 147.5,
+            "right": 287.0546875,
+            "bottom": 162.8984375,
+            "width": 248.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 177.8984375,
+            "right": 286.609375,
+            "bottom": 217.8984375,
+            "width": 257.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "default"
+        },
+        {
+          "caseName": "en-US-dark-minimal",
+          "width": 380,
+          "height": 449.3984375,
+          "viewport": {
+            "width": 380,
+            "height": 450
+          },
+          "scrollHeight": 449,
+          "clientHeight": 449,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 12,
+            "top": 128,
+            "right": 368,
+            "bottom": 173.3984375,
+            "width": 356,
+            "height": 45.3984375
+          },
+          "summaryLabel": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini",
+          "summaryTitle": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini\nManage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 140.734375,
+            "top": 135,
+            "right": 184.34375,
+            "bottom": 149,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 140.734375,
+              "right": 184.34375,
+              "top": 135,
+              "bottom": 149
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 22,
+            "top": 151,
+            "right": 304.0546875,
+            "bottom": 166.3984375,
+            "width": 282.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 12,
+            "top": 185.3984375,
+            "right": 302.609375,
+            "bottom": 225.3984375,
+            "width": 290.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "minimal"
+        },
+        {
+          "caseName": "en-US-dark-compact",
+          "width": 380,
+          "height": 408.3984375,
+          "viewport": {
+            "width": 380,
+            "height": 409
+          },
+          "scrollHeight": 408,
+          "clientHeight": 408,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 156.3984375,
+            "width": 336,
+            "height": 39.3984375
+          },
+          "summaryLabel": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini",
+          "summaryTitle": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini\nManage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 149.734375,
+            "top": 121,
+            "right": 193.34375,
+            "bottom": 135,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 149.734375,
+              "right": 193.34375,
+              "top": 121,
+              "bottom": 135
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 31,
+            "top": 137,
+            "right": 298.0546875,
+            "bottom": 152.3984375,
+            "width": 267.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 163.3984375,
+            "right": 293.609375,
+            "bottom": 203.3984375,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-long-custom",
+          "width": 300,
+          "height": 442.296875,
+          "viewport": {
+            "width": 300,
+            "height": 443
+          },
+          "scrollHeight": 442,
+          "clientHeight": 442,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 219.296875,
+            "width": 256,
+            "height": 102.296875
+          },
+          "summaryLabel": "按功能选择服务 · 网页默认服务 · Private endpoint with a deliberately long descriptive name · 配置模型：organization/very-long-configured-model-name-with-variant-and-version",
+          "summaryTitle": "按功能选择服务 · 网页默认服务 · Private endpoint with a deliberately long descriptive name · 配置模型：organization/very-long-configured-model-name-with-variant-and-version\n统一管理悬浮、划词、输入框、字幕等功能使用的服务\nPrivate endpoint with a deliberately long descriptive name",
+          "name": "Private endpoint with a deliberately long descriptive name",
+          "nameRect": {
+            "left": 31,
+            "top": 140.5,
+            "right": 218.0546875,
+            "bottom": 182.5,
+            "width": 187.0546875,
+            "height": 42
+          },
+          "nameLines": [
+            {
+              "left": 31,
+              "right": 166.8046875,
+              "top": 140.5,
+              "bottom": 154.5
+            },
+            {
+              "left": 31,
+              "right": 199.0859375,
+              "top": 154.5,
+              "bottom": 168.5
+            },
+            {
+              "left": 31,
+              "right": 63.3125,
+              "top": 168.5,
+              "bottom": 182.5
+            }
+          ],
+          "model": "organization/very-long-configured-model-name-with-variant-and-version",
+          "modelRect": {
+            "left": 31,
+            "top": 184.5,
+            "right": 218.0546875,
+            "bottom": 215.296875,
+            "width": 187.0546875,
+            "height": 30.796875
+          },
+          "modelTitle": "配置模型：organization/very-long-configured-model-name-with-variant-and-version",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 226.296875,
+            "right": 221,
+            "bottom": 264.296875,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-non-model",
+          "width": 300,
+          "height": 374,
+          "viewport": {
+            "width": 300,
+            "height": 374
+          },
+          "scrollHeight": 374,
+          "clientHeight": 374,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 151,
+            "width": 256,
+            "height": 34
+          },
+          "summaryLabel": "按功能选择服务 · 网页默认服务 · 谷歌翻译",
+          "summaryTitle": "按功能选择服务 · 网页默认服务 · 谷歌翻译\n统一管理悬浮、划词、输入框、字幕等功能使用的服务\n谷歌翻译",
+          "name": "谷歌翻译",
+          "nameRect": {
+            "left": 85,
+            "top": 125.75,
+            "right": 133,
+            "bottom": 142.25,
+            "width": 48,
+            "height": 16.5
+          },
+          "nameLines": [
+            {
+              "left": 85,
+              "right": 133,
+              "top": 126.75,
+              "bottom": 140.75
+            }
+          ],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 221,
+            "bottom": 196,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-local-model",
+          "width": 300,
+          "height": 381.8984375,
+          "viewport": {
+            "width": 300,
+            "height": 382
+          },
+          "scrollHeight": 382,
+          "clientHeight": 382,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 158.8984375,
+            "width": 256,
+            "height": 41.8984375
+          },
+          "summaryLabel": "按功能选择服务 · 网页默认服务 · 本地模型翻译 · 配置模型：fluentread/opus-zh-en",
+          "summaryTitle": "按功能选择服务 · 网页默认服务 · 本地模型翻译 · 配置模型：fluentread/opus-zh-en\n统一管理悬浮、划词、输入框、字幕等功能使用的服务\n本地模型翻译",
+          "name": "本地模型翻译",
+          "nameRect": {
+            "left": 85,
+            "top": 121,
+            "right": 157,
+            "bottom": 137.5,
+            "width": 72,
+            "height": 16.5
+          },
+          "nameLines": [
+            {
+              "left": 85,
+              "right": 157,
+              "top": 122,
+              "bottom": 136
+            }
+          ],
+          "model": "fluentread/opus-zh-en",
+          "modelRect": {
+            "left": 31,
+            "top": 139.5,
+            "right": 218.0546875,
+            "bottom": 154.8984375,
+            "width": 187.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "配置模型：fluentread/opus-zh-en",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 165.8984375,
+            "right": 221,
+            "bottom": 203.8984375,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-assigned",
+          "width": 300,
+          "height": 381.8984375,
+          "viewport": {
+            "width": 300,
+            "height": 382
+          },
+          "scrollHeight": 382,
+          "clientHeight": 382,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 158.8984375,
+            "width": 256,
+            "height": 41.8984375
+          },
+          "summaryLabel": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini",
+          "summaryTitle": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini\n统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI · DeepSeek · 谷歌翻译",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 85,
+            "top": 122,
+            "right": 128.609375,
+            "bottom": 136,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 85,
+              "right": 128.609375,
+              "top": 122,
+              "bottom": 136
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 31,
+            "top": 139.5,
+            "right": 198.0546875,
+            "bottom": 154.8984375,
+            "width": 167.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "配置模型：gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "+2",
+          "primary": {
+            "left": 22,
+            "top": 165.8984375,
+            "right": 221,
+            "bottom": 203.8984375,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "zh-CN-dark-reminder",
+          "width": 300,
+          "height": 454.3984375,
+          "viewport": {
+            "width": 300,
+            "height": 455
+          },
+          "scrollHeight": 454,
+          "clientHeight": 454,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 278,
+            "bottom": 158.8984375,
+            "width": 256,
+            "height": 41.8984375
+          },
+          "summaryLabel": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini",
+          "summaryTitle": "按功能选择服务 · 网页默认服务 · OpenAI · 配置模型：gpt-4.1-mini\n统一管理悬浮、划词、输入框、字幕等功能使用的服务\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 85,
+            "top": 122,
+            "right": 128.609375,
+            "bottom": 136,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 85,
+              "right": 128.609375,
+              "top": 122,
+              "bottom": 136
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 31,
+            "top": 139.5,
+            "right": 218.0546875,
+            "bottom": 154.8984375,
+            "width": 187.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "配置模型：gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 238.3984375,
+            "right": 221,
+            "bottom": 276.3984375,
+            "width": 199,
+            "height": 38
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": {
+            "rect": {
+              "left": 22,
+              "top": 167.8984375,
+              "right": 278,
+              "bottom": 231.3984375,
+              "width": 256,
+              "height": 63.5
+            },
+            "text": "配置提醒OpenAI 需要 API Key（访问令牌），当前尚未配置；请先在设置中填写，再开始翻译。去设置",
+            "role": "alert",
+            "animationName": "none",
+            "animationDuration": "0s",
+            "boxShadow": "none",
+            "settingsButtons": 1
+          },
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-long-custom",
+          "width": 380,
+          "height": 454.796875,
+          "viewport": {
+            "width": 380,
+            "height": 455
+          },
+          "scrollHeight": 455,
+          "clientHeight": 455,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 202.796875,
+            "width": 336,
+            "height": 85.796875
+          },
+          "summaryLabel": "Services by feature · Default page service · Private endpoint with a deliberately long descriptive name · Configured model: organization/very-long-configured-model-name-with-variant-and-version",
+          "summaryTitle": "Services by feature · Default page service · Private endpoint with a deliberately long descriptive name · Configured model: organization/very-long-configured-model-name-with-variant-and-version\nManage services for hover, selection, input, subtitles and more.\nPrivate endpoint with a deliberately long descriptive name",
+          "name": "Private endpoint with a deliberately long descriptive name",
+          "nameRect": {
+            "left": 31,
+            "top": 138,
+            "right": 298.0546875,
+            "bottom": 166,
+            "width": 267.0546875,
+            "height": 28
+          },
+          "nameLines": [
+            {
+              "left": 31,
+              "right": 268.9453125,
+              "top": 138,
+              "bottom": 152
+            },
+            {
+              "left": 31,
+              "right": 132.4375,
+              "top": 152,
+              "bottom": 166
+            }
+          ],
+          "model": "organization/very-long-configured-model-name-with-variant-and-version",
+          "modelRect": {
+            "left": 31,
+            "top": 168,
+            "right": 298.0546875,
+            "bottom": 198.796875,
+            "width": 267.0546875,
+            "height": 30.796875
+          },
+          "modelTitle": "Configured model: organization/very-long-configured-model-name-with-variant-and-version",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 209.796875,
+            "right": 293.609375,
+            "bottom": 249.796875,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-non-model",
+          "width": 380,
+          "height": 403,
+          "viewport": {
+            "width": 380,
+            "height": 403
+          },
+          "scrollHeight": 403,
+          "clientHeight": 403,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 151,
+            "width": 336,
+            "height": 34
+          },
+          "summaryLabel": "Services by feature · Default page service · Google Translate",
+          "summaryTitle": "Services by feature · Default page service · Google Translate\nManage services for hover, selection, input, subtitles and more.\nGoogle Translate",
+          "name": "Google Translate",
+          "nameRect": {
+            "left": 149.734375,
+            "top": 127,
+            "right": 249.671875,
+            "bottom": 141,
+            "width": 99.9375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 149.734375,
+              "right": 249.671875,
+              "top": 127,
+              "bottom": 141
+            }
+          ],
+          "model": "",
+          "modelRect": null,
+          "modelTitle": "",
+          "modelLineHeight": 0,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 158,
+            "right": 293.609375,
+            "bottom": 198,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-local-model",
+          "width": 380,
+          "height": 408.3984375,
+          "viewport": {
+            "width": 380,
+            "height": 409
+          },
+          "scrollHeight": 408,
+          "clientHeight": 408,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 156.3984375,
+            "width": 336,
+            "height": 39.3984375
+          },
+          "summaryLabel": "Services by feature · Default page service · Local model translation · Configured model: fluentread/opus-zh-en",
+          "summaryTitle": "Services by feature · Default page service · Local model translation · Configured model: fluentread/opus-zh-en\nManage services for hover, selection, input, subtitles and more.\nLocal model translation",
+          "name": "Local model translation",
+          "nameRect": {
+            "left": 149.734375,
+            "top": 121,
+            "right": 287.375,
+            "bottom": 135,
+            "width": 137.640625,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 149.734375,
+              "right": 287.375,
+              "top": 121,
+              "bottom": 135
+            }
+          ],
+          "model": "fluentread/opus-zh-en",
+          "modelRect": {
+            "left": 31,
+            "top": 137,
+            "right": 298.0546875,
+            "bottom": 152.3984375,
+            "width": 267.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: fluentread/opus-zh-en",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 163.3984375,
+            "right": 293.609375,
+            "bottom": 203.3984375,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-assigned",
+          "width": 380,
+          "height": 408.3984375,
+          "viewport": {
+            "width": 380,
+            "height": 409
+          },
+          "scrollHeight": 408,
+          "clientHeight": 408,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 156.3984375,
+            "width": 336,
+            "height": 39.3984375
+          },
+          "summaryLabel": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini",
+          "summaryTitle": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini\nManage services for hover, selection, input, subtitles and more.\nOpenAI · DeepSeek · Google Translate",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 149.734375,
+            "top": 121,
+            "right": 193.34375,
+            "bottom": 135,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 149.734375,
+              "right": 193.34375,
+              "top": 121,
+              "bottom": 135
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 31,
+            "top": 137,
+            "right": 278.0546875,
+            "bottom": 152.3984375,
+            "width": 247.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "+2",
+          "primary": {
+            "left": 22,
+            "top": 163.3984375,
+            "right": 293.609375,
+            "bottom": 203.3984375,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-reminder",
+          "width": 380,
+          "height": 495.3984375,
+          "viewport": {
+            "width": 380,
+            "height": 496
+          },
+          "scrollHeight": 495,
+          "clientHeight": 495,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 156.3984375,
+            "width": 336,
+            "height": 39.3984375
+          },
+          "summaryLabel": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini",
+          "summaryTitle": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini\nManage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 149.734375,
+            "top": 121,
+            "right": 193.34375,
+            "bottom": 135,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 149.734375,
+              "right": 193.34375,
+              "top": 121,
+              "bottom": 135
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 31,
+            "top": 137,
+            "right": 298.0546875,
+            "bottom": 152.3984375,
+            "width": 267.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 250.3984375,
+            "right": 293.609375,
+            "bottom": 290.3984375,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": {
+            "rect": {
+              "left": 22,
+              "top": 165.3984375,
+              "right": 358,
+              "bottom": 243.3984375,
+              "width": 336,
+              "height": 78
+            },
+            "text": "Configuration reminderOpenAI requires an API key (access token), which is not configured. Add it in settings before translating.Go to settings",
+            "role": "alert",
+            "animationName": "none",
+            "animationDuration": "0s",
+            "boxShadow": "none",
+            "settingsButtons": 1
+          },
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-dark-custom-content",
+          "width": 380,
+          "height": 410.8984375,
+          "viewport": {
+            "width": 380,
+            "height": 411
+          },
+          "scrollHeight": 411,
+          "clientHeight": 411,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 22,
+            "top": 117,
+            "right": 358,
+            "bottom": 158.8984375,
+            "width": 336,
+            "height": 41.8984375
+          },
+          "summaryLabel": "Services by feature · Default page service · 文 · Configured model: 文",
+          "summaryTitle": "Services by feature · Default page service · 文 · Configured model: 文\nManage services for hover, selection, input, subtitles and more.\n文",
+          "name": "文",
+          "nameRect": {
+            "left": 149.734375,
+            "top": 121,
+            "right": 161.734375,
+            "bottom": 137.5,
+            "width": 12,
+            "height": 16.5
+          },
+          "nameLines": [
+            {
+              "left": 149.734375,
+              "right": 161.734375,
+              "top": 122,
+              "bottom": 136
+            }
+          ],
+          "model": "文",
+          "modelRect": {
+            "left": 31,
+            "top": 139.5,
+            "right": 298.0546875,
+            "bottom": 154.8984375,
+            "width": 267.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: 文",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 22,
+            "top": 165.8984375,
+            "right": 293.609375,
+            "bottom": 205.8984375,
+            "width": 271.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": true,
+          "dark": true,
+          "skin": "compact"
+        },
+        {
+          "caseName": "en-US-light-reordered",
+          "width": 380,
+          "height": 498.2734375,
+          "viewport": {
+            "width": 380,
+            "height": 499
+          },
+          "scrollHeight": 498,
+          "clientHeight": 498,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 203.5,
+            "right": 351,
+            "bottom": 248.8984375,
+            "width": 322,
+            "height": 45.3984375
+          },
+          "summaryLabel": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini",
+          "summaryTitle": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini\nManage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 157.734375,
+            "top": 210.5,
+            "right": 201.34375,
+            "bottom": 224.5,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 157.734375,
+              "right": 201.34375,
+              "top": 210.5,
+              "bottom": 224.5
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 39,
+            "top": 226.5,
+            "right": 287.0546875,
+            "bottom": 241.8984375,
+            "width": 248.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 256.8984375,
+            "right": 286.609375,
+            "bottom": 296.8984375,
+            "width": 257.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "siteRule",
+            "translation",
+            "quickFeatures",
+            "footer"
+          ],
+          "siteNested": false,
+          "dark": false,
+          "skin": "default"
+        },
+        {
+          "caseName": "en-US-light-hidden",
+          "width": 380,
+          "height": 307.8984375,
+          "viewport": {
+            "width": 380,
+            "height": 308
+          },
+          "scrollHeight": 308,
+          "clientHeight": 308,
+          "scrollTop": 0,
+          "horizontalOverflow": false,
+          "summary": {
+            "left": 29,
+            "top": 124.5,
+            "right": 351,
+            "bottom": 169.8984375,
+            "width": 322,
+            "height": 45.3984375
+          },
+          "summaryLabel": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini",
+          "summaryTitle": "Services by feature · Default page service · OpenAI · Configured model: gpt-4.1-mini\nManage services for hover, selection, input, subtitles and more.\nOpenAI",
+          "name": "OpenAI",
+          "nameRect": {
+            "left": 157.734375,
+            "top": 131.5,
+            "right": 201.34375,
+            "bottom": 145.5,
+            "width": 43.609375,
+            "height": 14
+          },
+          "nameLines": [
+            {
+              "left": 157.734375,
+              "right": 201.34375,
+              "top": 131.5,
+              "bottom": 145.5
+            }
+          ],
+          "model": "gpt-4.1-mini",
+          "modelRect": {
+            "left": 39,
+            "top": 147.5,
+            "right": 287.0546875,
+            "bottom": 162.8984375,
+            "width": 248.0546875,
+            "height": 15.3984375
+          },
+          "modelTitle": "Configured model: gpt-4.1-mini",
+          "modelLineHeight": 15.4,
+          "defaultIcons": 1,
+          "additionalServices": "",
+          "primary": {
+            "left": 29,
+            "top": 177.8984375,
+            "right": 286.609375,
+            "bottom": 217.8984375,
+            "width": 257.609375,
+            "height": 40
+          },
+          "primaryCount": 1,
+          "primaryVisible": true,
+          "reminder": null,
+          "modules": [
+            "translation",
+            "siteRule"
+          ],
+          "siteNested": true,
+          "dark": false,
+          "skin": "default"
+        }
+      ],
+      "httpAttempts": [],
+      "startupHttpAttempts": []
+    }
+  }
+}

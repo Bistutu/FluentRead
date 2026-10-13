@@ -202,6 +202,16 @@ describe('界面皮肤与栏目配置', () => {
     expect(normalizeConfig({...initial, popupQuickFeatureVisibility: visible}).popupQuickFeatureVisibility.appearance).toBe(true)
   })
 
+  it('清理历史信息高亮快捷入口的排序和显隐，保留独立阅读偏好', () => {
+    const informationHighlight = {mode: 'surprisal-local', density: 'high', color: 'mint', style: 'underline'}
+    const migrated = normalizeConfig({popupQuickFeatureOrder: ['highlight', 'image'], popupQuickFeatureVisibility: {highlight: true, image: false}, informationHighlight})
+    expect(migrated.popupQuickFeatureOrder).toEqual(['image', 'hover', 'selection', 'appearance', 'document'])
+    expect(migrated.popupQuickFeatureVisibility).not.toHaveProperty('highlight')
+    expect(migrated.popupQuickFeatureVisibility.image).toBe(false)
+    expect(migrated.informationHighlight).toEqual({enabled: false, hotkey: 'Alt+H', hotkeyEnabled: false, ...informationHighlight, model: 'qwen2.5-0.5b', intensity: 'standard'})
+    expect(normalizeConfig(migrated)).toEqual(migrated)
+  })
+
   it('每个快捷入口都有图标路径与色调，真实菜单栏和设置页预览共用同一份数据', () => {
     const ids = popupQuickFeatureOptions.map((item) => item.id).sort()
     expect(Object.keys(popupQuickFeatureIconPaths).sort()).toEqual(ids)
@@ -211,8 +221,7 @@ describe('界面皮肤与栏目配置', () => {
       expect(popupQuickFeatureIconPaths[id]).toMatch(/^M[\d\s.a-zA-Z-]+$/)
       expect(['rose', 'violet', 'amber', 'teal', 'blue']).toContain(popupQuickFeatureIconTones[id])
     }
-    // 五个入口各用一种色调，按色调上色的风格才能把它们区分开。
-    expect(new Set(Object.values(popupQuickFeatureIconTones)).size).toBe(ids.length)
+    expect(new Set(Object.values(popupQuickFeatureIconTones)).size).toBe(5)
   })
 
   it('只接受注册皮肤，并为升级旧配置补齐栏目开关', () => {

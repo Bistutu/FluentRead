@@ -458,13 +458,17 @@ describe('图片翻译前台交互与生命周期', () => {
     });
     it('通过配置仓库通知即时更新品牌提示，不依赖配置对象的 Vue 响应式代理', () => {
         const env = setup(); env.hover();
-        expect(env.button().title).toBe('FluentRead · 翻译图片');
+        expect(env.button().title).toBe('流畅阅读 · 翻译图片');
         toRaw(settings).uiLanguage = 'en-US';
         configNotifications.forEach(notify => notify());
         expect(env.button().title).toBe('FluentRead · Translate image');
         expect(env.button().getAttribute('aria-label')).toBe(env.button().title);
         configNotifications.forEach(notify => notify());
         expect(env.button().title).toBe('FluentRead · Translate image');
+        toRaw(settings).uiLanguage = 'zh-CN';
+        configNotifications.forEach(notify => notify());
+        expect(env.button().title).toBe('流畅阅读 · 翻译图片');
+        expect(env.button().getAttribute('aria-label')).toBe(env.button().title);
         unmountImageTranslator(); expect(configNotifications.size).toBe(0);
     });
 
@@ -922,7 +926,89 @@ describe('图片入口独立开关与右键身份', () => {
         env.click(); await flush(); expect(env.bitmap()).toBeTruthy(); expect(client.translate).toHaveBeenCalledOnce();
     });
 
-    it('同一目标且仍在当前图片内时不重复扫描，跨相邻图片、pointerout 和卸载后仍重新定位', () => {
+    it.each([
+        {name: '指针未覆盖图片', point: {clientX: 600, clientY: 300}, hidden: false},
+        {name: '图片覆盖指针但不可见', point: {clientX: 100, clientY: 100}, hidden: true},
+    ])('$name 时四层嵌套容器每张图片只读取一次几何与必要样式', ({point, hidden}) => {
+        const env = setup();
+        let scope: Element = env.parent;
+        for (let depth = 0; depth < 3; depth++) {
+            const wrapper = document.createElement('div');
+            scope.parentNode!.insertBefore(wrapper, scope);
+            wrapper.append(scope);
+            scope = wrapper;
+        }
+        const imageRect = env.image.getBoundingClientRect;
+        const rectReads = [vi.spyOn(env.image, 'getBoundingClientRect')];
+        for (let index = 1; index < 64; index++) {
+            const image = document.createElement('img') as HTMLImageElement;
+            const readRect = vi.fn(imageRect);
+            image.getBoundingClientRect = readRect;
+            rectReads.push(readRect);
+            env.parent.append(image);
+            if (hidden) env.extraStyles.set(image, {visibility: 'hidden', display: 'block'});
+        }
+        if (hidden) env.imageStyle.visibility = 'hidden';
+        const styleReads = vi.fn(globalThis.getComputedStyle);
+        vi.stubGlobal('getComputedStyle', styleReads);
+        env.dispatch(env.parent, 'pointermove', true, point); env.runFrames();
+        expect(rectReads.reduce((total, read) => total + read.mock.calls.length, 0)).toBe(64);
+        expect(styleReads).toHaveBeenCalledTimes(hidden ? 64 : 0);
+        vi.advanceTimersByTime(600);
+        expect(env.roots).toHaveLength(0);
+    });
+
+    it('命中缓存只属于一次检查，下一帧重新读取位置和显隐变化', () => {
+        const env = setup();
+        const wrapper = document.createElement('div');
+        env.parent.parentNode!.insertBefore(wrapper, env.parent); wrapper.append(env.parent);
+        const rectReads = vi.spyOn(env.image, 'getBoundingClientRect');
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 600, clientY: 100}); env.runFrames();
+        expect(rectReads).toHaveBeenCalledOnce();
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 600, clientY: 100}); env.runFrames();
+        expect(rectReads).toHaveBeenCalledTimes(2);
+        env.setRect({left: 500, top: 40, width: 400, height: 200, right: 900, bottom: 240});
+        env.imageStyle.visibility = 'hidden';
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 600, clientY: 100}); env.runFrames();
+        expect(rectReads).toHaveBeenCalledTimes(3);
+        env.imageStyle.visibility = 'visible';
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 600, clientY: 100}); env.runFrames();
+        vi.advanceTimersByTime(600);
+        expect(env.button()).toBeTruthy();
+    });
+
+    it('多图重叠时第二个命中立即停止几何和样式读取，保持不显示入口', () => {
+        const env = setup();
+        const imageRect = env.image.getBoundingClientRect;
+        const rectReads = [vi.spyOn(env.image, 'getBoundingClientRect')];
+        for (let index = 1; index < 64; index++) {
+            const readRect = vi.fn(imageRect);
+            addSecondHoverImage(env, readRect);
+            rectReads.push(readRect);
+        }
+        const styleReads = vi.fn(globalThis.getComputedStyle);
+        vi.stubGlobal('getComputedStyle', styleReads);
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 100, clientY: 100}); env.runFrames();
+        expect(rectReads.reduce((total, read) => total + read.mock.calls.length, 0)).toBe(2);
+        expect(styleReads).toHaveBeenCalledTimes(2);
+        vi.advanceTimersByTime(600);
+        expect(env.roots).toHaveLength(0);
+    });
+
+    it('同一目标下一帧新增重叠图片时取消入口，解除歧义后重新显示', () => {
+        const env = setup();
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 100, clientY: 100}); env.runFrames();
+        const overlapping = addSecondHoverImage(env, env.image.getBoundingClientRect);
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 100, clientY: 100}); env.runFrames();
+        vi.advanceTimersByTime(600);
+        expect(env.roots).toHaveLength(0);
+        overlapping.remove();
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 100, clientY: 100}); env.runFrames();
+        vi.advanceTimersByTime(600);
+        expect(env.button()).toBeTruthy();
+    });
+
+    it('同一帧的指针事件合并扫描，跨相邻图片、pointerout 和卸载后重新定位', () => {
         const env = setup();
         env.dispatch(env.parent, 'pointermove', true, {clientX: 100, clientY: 100});
         env.dispatch(env.parent, 'pointermove', true, {clientX: 110, clientY: 110});
@@ -1375,7 +1461,11 @@ describe('视频预览不自动显示图片翻译', () => {
         const pages=[env.image];
         for(let i=1;i<count;i++){const image=addSecondHoverImage(env,()=>rect(i));image.src+=`?${i}`;image.className='zao-image';pages.push(image);}
         const scroll=()=>{for(const [name,callback] of env.windowObject.addEventListener.mock.calls)if(name==='scroll')(callback as EventListener)(new Event('scroll'));env.runFrames();};
-        return {pages, visit:async(index:number,near=-1)=>{current=index;nearby=near;scroll();await flush();env.runFrames();await flush();}, near:(index:number)=>{nearby=index;scroll();}};
+        const arrive = async (index: number, near = -1) => {current=index;nearby=near;scroll();await flush();env.runFrames();await flush();};
+        // visit 表示到达后停稳；同检查点返页与附近预合成仍使用 arrive/near，不推进阅读器的停留窗口。
+        return {pages, arrive, visit:async(index:number,near=-1)=>{
+            await arrive(index,near);vi.advanceTimersByTime(180);env.runFrames();await flush();
+        }, near:(index:number)=>{nearby=index;scroll();}};
     }
     it.each([
         ['https://mangalib.me/ru/1--title/read/v22/c129?p=2','ru','<div data-reader-mode="vertical"><main data-reader-info-visible="true"><div><div data-page="2" data-target></div></div></main></div>'],
@@ -1608,7 +1698,7 @@ describe('视频预览不自动显示图片翻译', () => {
         toggleMangaTranslation(); await flush(); await chapter.visit(3); await chapter.visit(6); await chapter.visit(9);
         const pending = deferred<{width: number; height: number; close: ReturnType<typeof vi.fn>}>(); decode.mockReturnValueOnce(pending.promise);
         chapter.near(0); await flush(); const before = decode.mock.calls.length;
-        chapter.near(-1); const returned = chapter.visit(0); await returned;
+        chapter.near(-1); const returned = chapter.arrive(0); await returned;
         const late = {width: 10, height: 20, close: vi.fn()}; pending.resolve(late); await flush();
         expect(chapter.pages[0].style.opacity).toBe('0'); expect(decode).toHaveBeenCalledTimes(before + 1);
         expect(client.translate).toHaveBeenCalledTimes(4);
@@ -1672,6 +1762,7 @@ describe('视频预览不自动显示图片翻译', () => {
         const scroll=()=>{for(const [name,callback] of env.windowObject.addEventListener.mock.calls)if(name==='scroll')(callback as EventListener)(new Event('scroll'));env.runFrames();};
         toggleMangaTranslation();await flush();expect(env.bitmap()).toBeNull();
         env.setRect({left:-600,right:-200,top:40,bottom:240,width:400,height:200});secondLeft=20;scroll();await flush();
+        expect(client.translate).toHaveBeenCalledOnce();vi.advanceTimersByTime(180);env.runFrames();await flush();
         env.setRect({left:20,right:420,top:40,bottom:240,width:400,height:200});secondLeft=1400;scroll();await flush();
         expect(client.translate).toHaveBeenCalledTimes(2);expect(env.bitmap()).toBeNull();
         expect(env.image.style.opacity).not.toBe('0');
@@ -1705,7 +1796,11 @@ describe('视频预览不自动显示图片翻译', () => {
         const scroll=()=>{for(const [name,callback] of env.windowObject.addEventListener.mock.calls) if(name==='scroll') (callback as EventListener)(new Event('scroll'));env.runFrames();};
         toggleMangaTranslation();await flush();expect(env.image.style.opacity).toBe('0');
         const pending=deferred<typeof result>();client.translate.mockReturnValueOnce(pending.promise);
+        const decodedBeforeScroll=env.decoded.length;
         env.setRect({left:20,right:420,top:-300,bottom:-100,width:400,height:200});secondTop=40;scroll();await flush();
+        vi.advanceTimersByTime(179);env.runFrames();await flush();
+        expect(client.translate).toHaveBeenCalledOnce();expect(env.decoded).toHaveLength(decodedBeforeScroll);
+        vi.advanceTimersByTime(1);env.runFrames();await flush();
         expect(client.translate).toHaveBeenCalledTimes(2);
         for(const stage of ['preparing','recognizing','translating','cleaning','rendering'] as const) {
             env.setRect({left:20,right:420,top:40,bottom:240,width:400,height:200});secondTop=1000;scroll();await flush();
@@ -1724,6 +1819,7 @@ describe('视频预览不自动显示图片翻译', () => {
         toggleMangaTranslation();await flush();const bitmap=env.bitmap();
         const pending=deferred<typeof result>();client.translate.mockReturnValueOnce(pending.promise);
         env.setRect({left:20,right:420,top:-300,bottom:-100,width:400,height:200});secondTop=40;scroll();await flush();
+        expect(client.translate).toHaveBeenCalledOnce();vi.advanceTimersByTime(180);env.runFrames();await flush();
         expect(client.translate).toHaveBeenCalledTimes(2);
         env.setRect({left:20,right:420,top:40,bottom:240,width:400,height:200});secondTop=1000;scroll();await flush();
         expect(env.image.style.opacity).toBe('0');expect(env.bitmap()).toBe(bitmap);expect(client.translate).toHaveBeenCalledTimes(2);
@@ -1737,6 +1833,7 @@ describe('视频预览不自动显示图片翻译', () => {
         toggleMangaTranslation();await flush();
         const pending=deferred<typeof result>(),fresh=deferred<typeof result>();client.translate.mockReturnValueOnce(pending.promise).mockReturnValue(fresh.promise);
         env.setRect({left:20,right:420,top:-300,bottom:-100,width:400,height:200});secondTop=40;scroll();await flush();
+        expect(client.translate).toHaveBeenCalledOnce();vi.advanceTimersByTime(180);env.runFrames();await flush();
         if(change==='source')env.image.src+='?new-source';
         if(change==='language')settings.to='en';
         if(change==='cache')settings.useCache=false;

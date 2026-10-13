@@ -10,6 +10,8 @@ export default defineConfig({
     // 组件生命周期测试执行实际客户端 SFC 模板，让 V8 归因到原始 Vue 源码。
     plugins: [vue({include: [
         /\/src\/(?:features\/share-card\/ui\/ShareCardStudio|features\/selection-translation\/ui\/SelectionTranslator|features\/settings\/ui\/services\/RequestLimit(?:Settings|Fields)|features\/reading-assistant\/ui\/[^/]+|ui\/components\/(?:MarkdownContent|MarkdownTable|[^/]*Reading[^/]*)|features\/image-translation\/ui\/MangaEntry|app\/document-translation\/(?:DocumentApp|DocumentSegmentEditor)|ui\/components\/(?:CustomHotkeyInput|UiSelect|GlossaryLibrarySelect|ServiceIcon|TranslationLoadingPreview|UiIcon|FeatureEnableCard)|features\/settings\/ui\/components\/(?:FieldHelp|InterfaceSkinPreview|PopupLayoutPreview|PopupLayoutPreviewItem|SettingsGroup|SettingsItem|TranslationColorField|TranslationStylePreview|WritingStylePreview|SegmentedControl))\.vue$/,
+        resolve(__dirname, 'src/features/document-translation/ui/PdfReader.vue'),
+        resolve(__dirname, 'src/features/video-subtitle/ui/VideoSentenceLearning.vue'),
         resolve(__dirname, 'docs/.vitepress/theme/BrandReader.vue'),
         resolve(__dirname, 'docs/.vitepress/theme/BrowserGlyph.vue'),
         resolve(__dirname, 'docs/.vitepress/theme/BrowserGuide.vue'),
@@ -47,8 +49,10 @@ export default defineConfig({
         resolve(__dirname, 'src/features/settings/ui/LocalDataManagement.vue'),
         resolve(__dirname, 'src/features/settings/ui/LocalTtsSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/RemoteConfigSync.vue'),
+        resolve(__dirname, 'src/features/settings/ui/SentenceHighlightStyleSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/TranslationCacheSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/VideoLocalModelSettings.vue'),
+        resolve(__dirname, 'src/features/settings/ui/VideoSentenceLearningAppearanceSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/WebDavBackup.vue'),
         resolve(__dirname, 'src/features/settings/ui/components/SettingsPanel.vue'),
         resolve(__dirname, 'src/features/settings/ui/components/SettingsPreviewLayout.vue'),
@@ -61,6 +65,7 @@ export default defineConfig({
         resolve(__dirname, 'src/features/writing-assistant/ui/WritingPanel.vue'),
         resolve(__dirname, 'src/features/writing-assistant/ui/WritingPopover.vue'),
         resolve(__dirname, 'src/features/writing-assistant/ui/WritingStyleEditor.vue'),
+        resolve(__dirname, 'src/features/personal-corrections/ui/PersonalCorrectionPanel.vue'),
         resolve(__dirname, 'userscript/SettingsPanel.vue'),
     ]})],
     resolve: {
@@ -71,7 +76,7 @@ export default defineConfig({
     },
     test: {
         environment: 'node',
-        testTransformMode: {web: ['**/tests/finalCoveragePublicBoundariesA.test.ts', '**/tests/implementationAudit49A.test.ts', '**/tests/implementationAudit49B.test.ts', '**/tests/implementationAudit49C.test.ts', '**/tests/implementationAudit49E.test.ts', '**/tests/implementationAudit49F.test.ts', '**/tests/implementationAudit49H.test.ts', '**/tests/implementationAudit48J.test.ts', '**/tests/implementationAudit48I.test.ts', '**/tests/implementationAudit48C.test.ts', '**/tests/implementationAudit48E.test.ts', '**/tests/mangaEntryComponentLifecycle.test.ts', '**/tests/customHotkeyInputLifecycle.test.ts', '**/tests/sharedUiComponentsLifecycle.test.ts', '**/tests/documentAppLifecycle.test.ts', '**/tests/documentUserActions.test.ts']},
+        testTransformMode: {web: ['**/tests/videoSentenceLearningAppearanceSettingsLifecycle.test.ts', '**/tests/personalCorrectionUiPanel.test.ts', '**/tests/pdfReaderLifecycle.test.ts', '**/tests/finalCoveragePublicBoundariesA.test.ts', '**/tests/implementationAudit49A.test.ts', '**/tests/implementationAudit49B.test.ts', '**/tests/implementationAudit49C.test.ts', '**/tests/implementationAudit49E.test.ts', '**/tests/implementationAudit49F.test.ts', '**/tests/implementationAudit49H.test.ts', '**/tests/implementationAudit48J.test.ts', '**/tests/implementationAudit48I.test.ts', '**/tests/implementationAudit48C.test.ts', '**/tests/implementationAudit48E.test.ts', '**/tests/mangaEntryComponentLifecycle.test.ts', '**/tests/customHotkeyInputLifecycle.test.ts', '**/tests/sharedUiComponentsLifecycle.test.ts', '**/tests/documentAppLifecycle.test.ts', '**/tests/documentUserActions.test.ts']},
         include: ['tests/**/*.test.ts'],
         globalSetup: ['./scripts/testing/vitest-resource-lock.mjs'],
         maxWorkers,

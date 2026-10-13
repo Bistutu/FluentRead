@@ -1,36 +1,131 @@
 /**
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
- * 主要内容：覆盖注销清理、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移。
- * 模块边界：编译真实 Vue setup 并替换浏览器和渲染依赖，不模拟完整 UI 或声称真实浏览器验证。
+ * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口。
+ * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；新增入口可选官方模板和独立 Linkedom 节点树，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import * as speechProgress from '@/src/core/tts/speechProgress';
 import {createSelectionTtsContentController} from '@/src/features/selection-translation/content/selectionTtsContentController';
 import {readFileSync} from 'node:fs';
 import {afterEach, describe, expect, it, vi, type MockInstance} from 'vitest';
-import {compileScript, parse} from 'vue/compiler-sfc';
+import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
+import {parseHTML} from 'linkedom';
 import ts from 'typescript';
 import * as Vue from 'vue';
 import {Config} from '@/src/core/config/model';
 import * as selectionCore from '@/src/features/selection-translation/core';
+import * as translationErrors from '@/src/services/translation/errors';
 import * as harness from '@/src/core/config/harness';
+import {services} from '@/src/core/config/catalog';
 import * as runtimeMessages from '@/src/platform/browser/runtimeMessages';
 import * as detect from '@/src/core/language/detect';
+import * as partOfSpeech from '@/src/core/language/partOfSpeech';
 import * as wordNormalization from '@/src/features/selection-translation/services/wordNormalization';
 import * as vocabularyProtocol from '@/src/features/vocabulary/protocol';
+import * as hotkey from '@/src/core/hotkey';
+import {setSelectionContextMenuHandler, translateSelectionFromContextMenu as translateSelectionThroughBridge} from '@/src/features/selection-translation/content/contextMenuBridge';
 
 vi.mock('webextension-polyfill', () => ({default: {}}));
 
 const filename = 'src/features/selection-translation/ui/SelectionTranslator.vue';
 const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-const compiled = ts.transpileModule(compileScript(descriptor, {id: 'selection-lifecycle'}).content, {
-    compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
-}).outputText;
+const script = compileScript(descriptor, {id: 'selection-lifecycle'});
+type SelectionBuildTarget = 'chrome' | 'userscript';
+const setupSource = script.content;
+const compiledByTarget = new Map<SelectionBuildTarget, string>();
+function compileForTarget(target: SelectionBuildTarget): string {
+    let compiled = compiledByTarget.get(target);
+    if (!compiled) {
+        // 和 Vite 的 define 使用相同静态属性替换；各构建目标只转译一次，所有用例复用真实 setup。
+        compiled = ts.transpileModule(setupSource.replaceAll('import.meta.env.BROWSER', JSON.stringify(target)), {
+            compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
+        }).outputText;
+        compiledByTarget.set(target, compiled);
+    }
+    return compiled;
+}
+let compiledTemplate: string | undefined;
+function selectionTemplateCode() {
+    if (compiledTemplate === undefined) {
+        const result = compileTemplate({source: descriptor.template!.content, filename, id: 'selection-lifecycle',
+            compilerOptions: {bindingMetadata: script.bindings, hoistStatic: false}});
+        if (result.errors.length) throw new Error(result.errors.map(String).join('\n'));
+        compiledTemplate = ts.transpileModule(result.code, {
+            compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
+        }).outputText;
+    }
+    return compiledTemplate;
+}
+// 官方 SFC render 使用独立 DOM 节点树；不替换现有浏览器事件 port，
+// 不验证 CSS 布局、原生焦点、禁用控件的浏览器事件策略或真实语言切换。
+function createSelectionTemplatePort() {
+    const parsed = parseHTML('<html><body></body></html>');
+    const document = parsed.document;
+    const listeners = new WeakMap<Element, Map<string, EventListener>>();
+    let clickResult: unknown;
+    const renderer = Vue.createRenderer<Node, Element>({
+        createElement: (tag, namespace) => namespace === 'svg'
+            ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag),
+        createText: text => document.createTextNode(text),
+        createComment: text => document.createComment(text),
+        insert: (node, parent, anchor) => {parent.insertBefore(node, anchor ?? null);},
+        remove: node => {node.parentNode?.removeChild(node);},
+        setText: (node, text) => {node.nodeValue = text;},
+        setElementText: (node, text) => {node.textContent = text;},
+        parentNode: node => node.parentNode as Element | null,
+        nextSibling: node => node.nextSibling,
+        patchProp(element, key, previous, value) {
+            if (/^on[A-Z]/.test(key)) {
+                const event = key.slice(2).toLowerCase();
+                const registered = listeners.get(element) ?? new Map<string, EventListener>();
+                listeners.set(element, registered);
+                const old = registered.get(key);
+                if (old) element.removeEventListener(event, old);
+                registered.delete(key);
+                if (value) {
+                    const listener: EventListener = event => {
+                        for (const handler of Array.isArray(value) ? value : [value]) {
+                            const result = handler(event);
+                            if (event.type === 'click') clickResult = result;
+                        }
+                    };
+                    registered.set(key, listener);
+                    element.addEventListener(event, listener);
+                }
+            } else if (key === 'style') {
+                const style = (element as HTMLElement).style;
+                if (typeof value === 'string') style.cssText = value;
+                else {
+                    for (const name of Object.keys(previous && typeof previous === 'object' ? previous : {})) {
+                        if (!(name in (value ?? {}))) style.removeProperty(name.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`));
+                    }
+                    for (const [name, raw] of Object.entries(value ?? {})) {
+                        style.setProperty(name.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), String(raw ?? ''));
+                    }
+                }
+            } else if (value == null || (key === 'disabled' && value === false)) element.removeAttribute(key);
+            else element.setAttribute(key, value === true ? '' : String(value));
+        },
+    });
+    return {renderer, root: document.body,
+        click(element: Element) {
+            clickResult = undefined;
+            element.dispatchEvent(new parsed.window.Event('click', {bubbles: true}));
+            return Promise.resolve(clickResult);
+        }};
+}
+
 let app: Vue.App | undefined;
 afterEach(() => { app?.unmount(); app = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-function mountSelection(privateContext = false) {
+function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>,
+    targetOrProps: SelectionBuildTarget | Record<string, unknown> = 'chrome', readyOrTemplate: Promise<void> | boolean = Promise.resolve()) {
+    // 保留两侧原调用：主线 target/configReady 与本地 componentProps/可选完整模板。
+    const browserTarget = typeof targetOrProps === 'string' ? targetOrProps : 'chrome';
+    const componentProps = typeof targetOrProps === 'string' ? {} : targetOrProps;
+    const configReady = typeof readyOrTemplate === 'boolean' ? Promise.resolve() : readyOrTemplate;
+    const renderTemplate = typeof readyOrTemplate === 'boolean' ? readyOrTemplate : false;
     vi.useFakeTimers();
     const config = Object.assign(new Config(), {
         disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', theme: 'light',
@@ -65,21 +160,37 @@ function mountSelection(privateContext = false) {
         extension: {inIncognitoContext: privateContext},
     };
     const unsubscribeConfig = vi.fn(), releaseContextMenu = vi.fn();
+    let configListener: (() => void) | undefined;
+    const notifyConfig = () => configListener?.();
+    const requestConfigPatch = vi.fn().mockImplementation(async patch => { Object.assign(config, patch); notifyConfig(); });
+    let contextMenuHandler = (_selectionText?: string): boolean => false;
+    const registerContextMenu = vi.fn((handler: typeof contextMenuHandler) => {
+        contextMenuHandler = handler;
+        return releaseContextMenu;
+    });
+    const translateText = vi.fn().mockResolvedValue('这是译文'), translateTextBatch = vi.fn();
     let stopTts: MockInstance<(notifyRemote?: boolean) => void>;
     let ttsRequestId = 0;
     const modules: Record<string, unknown> = {
-        './SpeechFollowText.vue': {},
+        './SpeechFollowText.vue': renderTemplate
+            ? {props: ['text'], setup: (props: {text: string}) => () => Vue.h('span', props.text)} : {},
+        '@/src/features/reading-assistant/public': {createReadingEvidenceAnchor: () => ({locate: () => 'unavailable', check: () => 'unavailable', suspend: vi.fn(), clear: vi.fn(), dispose: vi.fn()})},
         '@/src/core/tts/speechProgress': speechProgress,
         '@/src/core/translation/result': {hasDistinctTranslation},
         vue: {...Vue, useTemplateRef: () => Vue.ref(null)},
         'webextension-polyfill': browser,
         '@/src/platform/browser/runtimeMessages': runtimeMessages,
-        '@/src/services/config/store': {config, subscribeConfig: () => unsubscribeConfig},
+        '@/src/services/config/store': {config, configReady, requestConfigPatch, subscribeConfig: (listener: () => void) => { configListener = listener; return unsubscribeConfig; }},
+        '@/src/app/translation/client': {translateText, translateTextBatch},
         '@/src/features/selection-translation/core': selectionCore,
+        '@/src/services/translation/errors': translationErrors,
         '@/src/features/selection-translation/services/wordNormalization': wordNormalization,
         '@/src/core/config/harness': harness,
+        '@/src/core/config/catalog': {services},
         '@/src/core/language/detect': detect,
+        '@/src/core/language/partOfSpeech': partOfSpeech,
         '@/src/features/vocabulary/protocol': vocabularyProtocol,
+        '@/src/core/hotkey': hotkey,
         '@/src/features/share-card/public': {isShareCardMounted: () => false},
         '@/src/features/selection-translation/content/selectionTtsContentController': {
             createSelectionTtsContentController: (dependencies: Parameters<typeof createSelectionTtsContentController>[0]) => {
@@ -92,31 +203,431 @@ function mountSelection(privateContext = false) {
             },
         },
         '@/src/features/selection-translation/content/contextMenuBridge': {
-            setSelectionContextMenuHandler: () => releaseContextMenu,
+            setSelectionContextMenuHandler: registerContextMenu,
         },
         '@/src/features/selection-translation/pageZoom': {normalizeSelectionPageZoom: () => 1},
         '@/src/ui/i18n': {useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})},
     };
     const exports: Record<string, any> = {};
-    new Function('require', 'exports', compiled)((id: string) => {
+    const loadModule = (id: string) => {
         if (!(id in modules) && !id.startsWith('@/src/')) throw new Error(`Unexpected import: ${id}`);
         return modules[id] ?? {};
-    }, exports);
-    exports.default.render = () => null;
-    const renderer = Vue.createRenderer<Record<string, unknown>, Record<string, unknown>>({
+    };
+    new Function('require', 'exports', compileForTarget(browserTarget))(loadModule, exports);
+    const renderPort = renderTemplate ? createSelectionTemplatePort() : null;
+    if (renderPort) {
+        const renderExports: Record<string, any> = {};
+        new Function('require', 'exports', selectionTemplateCode())(loadModule, renderExports);
+        exports.default.render = renderExports.render;
+    } else exports.default.render = () => null;
+    const renderer = renderPort?.renderer ?? Vue.createRenderer<Record<string, unknown>, Record<string, unknown>>({
         patchProp() {}, insert() {}, remove() {}, createElement: () => ({}),
         createText: () => ({}), createComment: () => ({}), setText() {}, setElementText() {},
         parentNode: () => null, nextSibling: () => null,
     });
-    const currentApp = renderer.createApp(exports.default);
+    const currentApp: Vue.App = renderer.createApp(exports.default, {selectionAdapter, ...componentProps});
     const lifecycleErrors = vi.fn();
     currentApp.config.errorHandler = lifecycleErrors;
     app = currentApp;
-    const vm = currentApp.mount({});
+    if (renderPort) currentApp.directive('ui-i18n', {});
+    const vm = currentApp.mount(renderPort?.root ?? {});
     const state = (vm.$ as any).setupState as Record<string, any>;
-    return {state, event, browser, config, listeners, window, document, unsubscribeConfig, releaseContextMenu, stopTts: stopTts!,
-        lifecycleErrors, unmount: () => { currentApp.unmount(); app = undefined; }};
+    return {state, event, browser, config, listeners, window, document, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
+        registerContextMenu, get contextMenuHandler() {return contextMenuHandler;},
+        lifecycleErrors, renderPort, unmount: () => { currentApp.unmount(); app = undefined; }};
 }
+
+describe('explicit free selection explanation', () => {
+    function prepare(configReady?: Promise<void>, browserTarget: SelectionBuildTarget = 'chrome') {
+        const text = 'Practice makes progress.';
+        const captureReading = vi.fn(() => ({text, context: text, sentence: text}));
+        const fixture = mountSelection(false, {acceptsRange: () => true, captureReading}, browserTarget, configReady);
+        const select = () => {
+            fixture.state.snapshot = {text, range: {}, parts: [{kind: 'text', text}]};
+            fixture.state.selectedText = text;
+            fixture.state.showTooltip = true;
+            fixture.state.translationResult = '练习带来进步。';
+            fixture.state.activeContentRequest = {text, generation: 1, sourceLanguage: 'auto', targetLanguage: 'zh-Hans'};
+        };
+        select();
+        return {...fixture, text, captureReading, select};
+    }
+
+    it.each([
+        ['chrome', services.microsoft], ['chrome', services.bilibili],
+        ['userscript', services.microsoft], ['userscript', services.bilibili],
+    ] as const)('offers free enablement only with an extension stream port (%s, %s)', async (target, service) => {
+        const fixture = prepare(undefined, target);
+        fixture.config.service = service;
+        fixture.notifyConfig();
+        expect(fixture.state.canEnableFreeReading).toBe(target === 'chrome');
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).toHaveBeenCalledTimes(target === 'chrome' ? 1 : 0);
+        expect(fixture.captureReading).toHaveBeenCalledTimes(target === 'chrome' ? 1 : 0);
+        expect(fixture.config.harness.enabled).toBe(target === 'chrome');
+        expect(fixture.state.readingMode).toBe(target === 'chrome');
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.config.service).toBe(service);
+    });
+
+    it.each([services.deepseek, services.bilibili])('keeps existing enabled userscript reading preferences and UI (%s)', async service => {
+        const fixture = prepare(undefined, 'userscript');
+        fixture.config.harness = {...fixture.config.harness, enabled: true, service, defaultAction: 'grammar'};
+        const stored = JSON.stringify(fixture.config.harness);
+        fixture.notifyConfig();
+        expect(fixture.state.canEnableFreeReading).toBe(false);
+        expect(fixture.state.readingEnabled).toBe(true);
+        expect(fixture.state.readingActions.map((action: any) => action.id)).toEqual(service === services.bilibili
+            ? ['meaning', 'usage'] : ['meaning', 'grammar', 'usage', 'practice']);
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        expect(JSON.stringify(fixture.config.harness)).toBe(stored);
+        // 外部配置更新仍关闭旧选区；下一次选区继续使用已有阅读界面与偏好。
+        fixture.select();
+        fixture.state.openReading();
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.captureReading).toHaveBeenCalledOnce();
+        expect(fixture.state.readingInitialAction).toBe(service === services.bilibili ? 'meaning' : 'grammar');
+    });
+
+    it('leaves explanation disabled until clicked, preserves selection on its own config echo, and opens meaning after confirmed save', async () => {
+        const fixture = prepare();
+        let confirm!: () => void;
+        fixture.requestConfigPatch.mockImplementation(patch => {
+            Object.assign(fixture.config, patch);
+            fixture.notifyConfig();
+            return new Promise<void>(resolve => { confirm = resolve; });
+        });
+        const selection = fixture.state.snapshot;
+        expect(fixture.state.canEnableFreeReading).toBe(true);
+        expect(fixture.config.harness.enabled).toBe(false);
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        expect(fixture.state.snapshot).toBe(selection);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.freeReadingPending).toBe(true);
+        expect(fixture.state.readingEnabled).toBe(false);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).toHaveBeenCalledTimes(1);
+        expect(fixture.requestConfigPatch.mock.calls[0][0].harness).toMatchObject({enabled: true, service: services.bilibili, model: ''});
+        confirm();
+        await pending;
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.state.readingInitialAction).toBe('meaning');
+        expect(fixture.captureReading).toHaveBeenCalledTimes(1);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['service', 'model', 'inherited', 'enabled', 'disabled-selection'] as const)('protects existing choice: %s', async kind => {
+        const fixture = prepare();
+        if (kind === 'service') fixture.config.harness.service = services.deepseek;
+        if (kind === 'model') fixture.config.harness.model = 'chosen-model';
+        if (kind === 'inherited') fixture.config.service = services.deepseek;
+        if (kind === 'enabled') fixture.config.harness.enabled = true;
+        if (kind === 'disabled-selection') fixture.config.selectionTranslatorMode = 'disabled';
+        fixture.notifyConfig();
+        expect(fixture.state.canEnableFreeReading).toBe(false);
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+    });
+
+    it('allows one-click explanation when translation already defaults to Bilibili without changing translation preferences', async () => {
+        const fixture = prepare();
+        fixture.config.service = services.bilibili;
+        const selectionService = fixture.config.selectionTranslationService;
+        const translationModel = fixture.config.model[services.bilibili];
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        expect(fixture.state.canEnableFreeReading).toBe(true);
+        expect(fixture.config.harness.enabled).toBe(false);
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).toHaveBeenCalledTimes(1);
+        expect(Object.keys(fixture.requestConfigPatch.mock.calls[0][0])).toEqual(['harness']);
+        expect(fixture.config.harness).toMatchObject({enabled: true, service: services.bilibili, model: ''});
+        expect(fixture.config.service).toBe(services.bilibili);
+        expect(fixture.config.selectionTranslationService).toBe(selectionService);
+        expect(fixture.config.model[services.bilibili]).toBe(translationModel);
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.state.readingInitialAction).toBe('meaning');
+        expect(fixture.captureReading).toHaveBeenCalledTimes(1);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('does not open or request an explanation after a failed save', async () => {
+        const fixture = prepare();
+        fixture.requestConfigPatch.mockRejectedValue(new Error('storage failed'));
+        await fixture.state.enableFreeReading();
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        expect(fixture.state.noticeMessage).toContain('失败');
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('opens usage from usage-only preferences and preserves the normalized user action choices', async () => {
+        const fixture = prepare();
+        fixture.config.harness.actions = ['usage'];
+        fixture.config.harness.defaultAction = 'usage';
+        const {actions, defaultAction} = harness.normalizeHarnessPreferences(fixture.config.harness);
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        fixture.state.snapshot = {text: fixture.text, range: {}, parts: [{kind: 'text', text: fixture.text}]};
+        fixture.state.selectedText = fixture.text;
+        fixture.state.showTooltip = true;
+        fixture.state.translationResult = '练习带来进步。';
+        fixture.state.activeContentRequest = {text: fixture.text, generation: 1, sourceLanguage: 'auto', targetLanguage: 'zh-Hans'};
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).toHaveBeenCalledTimes(1);
+        expect(fixture.requestConfigPatch.mock.calls[0][0].harness).toMatchObject({actions, defaultAction});
+        expect(fixture.config.harness.actions).toEqual(actions);
+        expect(fixture.config.harness.defaultAction).toBe(defaultAction);
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.state.readingInitialAction).toBe('usage');
+        expect(fixture.captureReading).toHaveBeenCalledTimes(1);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('temporarily falls back from grammar when free explanation is enabled without changing saved actions or default', async () => {
+        const fixture = prepare();
+        fixture.config.harness.defaultAction = 'grammar';
+        const storedActions = [...fixture.config.harness.actions];
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        fixture.state.snapshot = {text: fixture.text, range: {}, parts: [{kind: 'text', text: fixture.text}]};
+        fixture.state.selectedText = fixture.text;
+        fixture.state.showTooltip = true;
+        fixture.state.translationResult = '练习带来进步。';
+        fixture.state.activeContentRequest = {text: fixture.text, generation: 1, sourceLanguage: 'auto', targetLanguage: 'zh-Hans'};
+        await fixture.state.enableFreeReading();
+        expect(fixture.config.harness.defaultAction).toBe('grammar');
+        expect(fixture.config.harness.actions).toEqual(storedActions);
+        expect(fixture.state.readingActions.map((action: {id: string}) => action.id)).toEqual(['meaning', 'usage']);
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.state.readingInitialAction).toBe('meaning');
+        expect(fixture.captureReading).toHaveBeenCalledTimes(1);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('filters an inherited Bilibili service and restores all saved actions and default after switching to a general AI', async () => {
+        const fixture = prepare();
+        fixture.config.service = services.bilibili;
+        fixture.config.harness.enabled = true;
+        fixture.config.harness.defaultAction = 'grammar';
+        const storedActions = [...fixture.config.harness.actions];
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        expect(fixture.state.readingService).toBe(services.bilibili);
+        expect(fixture.state.readingActions.map((action: {id: string}) => action.id)).toEqual(['meaning', 'usage']);
+        expect(fixture.state.readingDefaultAction).toBe('meaning');
+        fixture.state.snapshot = {text: fixture.text, range: {}, parts: [{kind: 'text', text: fixture.text}]};
+        fixture.state.selectedText = fixture.text;
+        fixture.state.showTooltip = true;
+        fixture.state.openReading('grammar');
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        fixture.config.service = services.deepseek;
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        expect(fixture.state.readingActions.map((action: {id: string}) => action.id)).toEqual(['meaning', 'grammar', 'usage', 'practice']);
+        expect(fixture.state.readingDefaultAction).toBe('grammar');
+        expect(fixture.config.harness.defaultAction).toBe('grammar');
+        expect(fixture.config.harness.actions).toEqual(storedActions);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('preserves the selected card and reports failure after its optimistic config is rolled back before rejection', async () => {
+        const fixture = prepare();
+        const originalPreferences = fixture.config.harness;
+        const selection = fixture.state.snapshot;
+        let reject!: (error: Error) => void;
+        fixture.requestConfigPatch.mockImplementation(patch => {
+            Object.assign(fixture.config, patch);
+            fixture.notifyConfig();
+            return new Promise<void>((_resolve, fail) => { reject = fail; });
+        });
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        expect(fixture.config.harness.enabled).toBe(true);
+        expect(fixture.state.freeReadingPending).toBe(true);
+        fixture.config.harness = originalPreferences;
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        expect(fixture.state.snapshot).toBe(selection);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.readingMode).toBe(false);
+        reject(new Error('storage failed'));
+        await pending;
+        expect(fixture.config.harness.enabled).toBe(false);
+        expect(fixture.state.snapshot).toBe(selection);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.state.noticeMessage).toContain('失败');
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('waits for initial config hydration and keeps the restored inherited AI service', async () => {
+        let hydrate!: () => void;
+        const fixture = prepare(new Promise<void>(resolve => { hydrate = resolve; }));
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        fixture.config.service = services.deepseek;
+        fixture.notifyConfig();
+        hydrate();
+        await pending;
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        expect(fixture.config.service).toBe(services.deepseek);
+        expect(fixture.config.harness.enabled).toBe(false);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        expect(fixture.state.freeReadingPending).toBe(false);
+    });
+
+    it.each([false, true])('builds the patch from restored preferences and keeps selection whether the hydration echo flushes first (%s)', async echoBeforeReady => {
+        let hydrate!: () => void;
+        const fixture = prepare(new Promise<void>(resolve => { hydrate = resolve; }));
+        const selection = fixture.state.snapshot;
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        const restored = harness.normalizeHarnessPreferences({...fixture.config.harness,
+            actions: ['meaning', 'usage'], defaultAction: 'usage', contextMode: 'selection', learningLevel: 'advanced',
+            explanationDepth: 'detailed', systemPrompt: 'Restored system prompt', actionPrompts: {...fixture.config.harness.actionPrompts, usage: 'Restored usage prompt'},
+        });
+        fixture.config.harness = restored;
+        fixture.notifyConfig();
+        if (echoBeforeReady) await Vue.nextTick();
+        expect(fixture.state.snapshot).toBe(selection);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.freeReadingPending).toBe(true);
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        hydrate();
+        await pending;
+        expect(fixture.requestConfigPatch).toHaveBeenCalledTimes(1);
+        expect(fixture.requestConfigPatch.mock.calls[0][0].harness).toEqual({...restored, enabled: true, service: services.bilibili, model: ''});
+        expect(fixture.config.harness).toEqual({...restored, enabled: true, service: services.bilibili, model: ''});
+        expect(fixture.state.snapshot).toBe(selection);
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.state.readingInitialAction).toBe('usage');
+        expect(fixture.captureReading).toHaveBeenCalledTimes(1);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['service', 'model', 'enabled'] as const)('does not overwrite a protected %s choice restored during hydration', async kind => {
+        let hydrate!: () => void;
+        const fixture = prepare(new Promise<void>(resolve => { hydrate = resolve; }));
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        if (kind === 'service') fixture.config.harness.service = services.deepseek;
+        if (kind === 'model') fixture.config.harness.model = 'Restored paid model';
+        if (kind === 'enabled') fixture.config.harness.enabled = true;
+        fixture.notifyConfig();
+        const restored = JSON.stringify(fixture.config.harness);
+        await Vue.nextTick();
+        hydrate();
+        await pending;
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        expect(JSON.stringify(fixture.config.harness)).toBe(restored);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['close', 'selection', 'unmount', 'external-preference'] as const)('rejects a delayed save after %s', async reason => {
+        const fixture = prepare();
+        let confirm!: () => void;
+        fixture.requestConfigPatch.mockImplementation(patch => {
+            Object.assign(fixture.config, patch);
+            fixture.notifyConfig();
+            return new Promise<void>(resolve => { confirm = resolve; });
+        });
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        if (reason === 'close') fixture.state.hideAll();
+        if (reason === 'selection') {
+            fixture.state.snapshot = {...fixture.state.snapshot, text: 'A new selected sentence.'};
+            fixture.state.selectedText = 'A new selected sentence.';
+        }
+        if (reason === 'unmount') fixture.unmount();
+        if (reason === 'external-preference') {
+            fixture.config.harness.explanationDepth = 'detailed';
+            fixture.notifyConfig();
+            await Vue.nextTick();
+        }
+        expect(fixture.state.freeReadingPending).toBe(true);
+        if (reason === 'selection') {
+            fixture.state.openReading('meaning');
+            expect(fixture.state.readingMode).toBe(false);
+            expect(fixture.captureReading).not.toHaveBeenCalled();
+        }
+        confirm();
+        await pending;
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
+
+describe('selection card language configuration without header switches', () => {
+    it.each([
+        ['Ceci est une phrase française complète.', 'fr', 'de', false, false, 'fr', 'de'],
+        ['这是完整的中文选文。', 'auto', 'zh-Hans', true, false, 'zh-Hans', 'en'],
+        ['This is a clear English sentence for reverse translation.', 'zh-Hant', 'en', true, false, 'en', 'zh-Hant'],
+        ['这是完整的中文选文。', 'auto', 'zh-Hans', false, true, 'zh-Hans', 'en'],
+        ['This is a clear English sentence for translation.', 'auto', 'zh-Hans', false, false, 'auto', 'zh-Hans'],
+    ] as const)('uses configuration and explicit reverse entry for %s', (text, from, to, bidirectional, manual, expectedSource, expectedTarget) => {
+        const fixture = mountSelection();
+        fixture.config.from = from;
+        fixture.config.to = to;
+        fixture.config.selectionTranslatorBidirectional = bidirectional;
+        fixture.state.selectionConfigVersion += 1;
+        fixture.state.selectedText = text;
+        fixture.state.manuallyRequestedSelection = manual;
+        expect(fixture.state.effectiveSourceLanguage).toBe(expectedSource);
+        expect(fixture.state.effectiveTargetLanguage).toBe(expectedTarget);
+        expect(fixture.state.beginSelectionContentRequest(text)).toMatchObject({text, sourceLanguage: expectedSource, targetLanguage: expectedTarget});
+    });
+
+    it('cancels an old direction request and rejects its delayed answer after the language setting changes', async () => {
+        const fixture = mountSelection();
+        const text = 'Ceci est une phrase française complète.';
+        let resolveOld!: (value: string) => void;
+        fixture.translateText.mockImplementationOnce(() => new Promise<string>(resolve => {resolveOld = resolve;}));
+        fixture.translateText.mockResolvedValueOnce('A fresh English answer.');
+        fixture.state.snapshot = {text, parts: [{kind: 'text', text}]};
+        fixture.state.selectedText = text;
+        fixture.state.showTooltip = true;
+        fixture.state.requestSelectionContent(text);
+        const oldOptions = fixture.translateText.mock.calls[0][2];
+        expect(oldOptions.targetLanguage).toBe('zh-Hans');
+        fixture.config.to = 'en';
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        await Promise.resolve();
+        expect(oldOptions.signal.aborted).toBe(true);
+        expect(fixture.translateText).toHaveBeenLastCalledWith(text, undefined, expect.objectContaining({sourceLanguage: 'auto', targetLanguage: 'en'}));
+        expect(fixture.state.translationResult).toBe('A fresh English answer.');
+        resolveOld('An obsolete Chinese answer.');
+        await Promise.resolve();
+        await Vue.nextTick();
+        expect(fixture.state.translationResult).toBe('A fresh English answer.');
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
 
 describe('explicit selection sentence collection', () => {
     function prepare(text: string, sourceLanguage = 'en', privateContext = false) {
@@ -760,8 +1271,8 @@ describe('SelectionTranslator trimmed speech offsets in rich text', () => {
         expect(displayed).toEqual({...rawProgress, start: text.indexOf('hello'), end: text.indexOf('hello') + 5});
         expect(fixture.state.audioTextOffset).toBe(leading.length);
         expect(fixture.state.audioProgressFor(kind === 'source' ? 'translation' : 'source')).toBeNull();
-        const displayedParts = kind === 'source' ? fixture.state.snapshot.parts : fixture.state.translationParts;
-        const offset = fixture.state.partOffset(displayedParts, 1);
+        const displayedParts = kind === 'source' ? fixture.state.sourceTextParts : fixture.state.translatedTextParts;
+        const offset = displayedParts[1].offset;
         expect(offset).toBe(leading.length + code.length);
         expect(speechProgress.speechTextSlices(displayedParts[1].text, offset, displayed)).toEqual({
             before: ' ', active: 'hello', after: trailing, fraction: 0.5,
@@ -801,13 +1312,49 @@ describe('SelectionTranslator trimmed speech offsets in rich text', () => {
         utterance.onboundary({charIndex: 2, charLength: 5});
         const displayed = fixture.state.audioProgressFor(kind);
         expect(displayed).toEqual({start: 4, end: 9, fraction: 1, estimated: false});
-        expect(speechProgress.speechTextSlices(parts[1].text, fixture.state.partOffset(parts, 1), displayed)).toEqual({
+        expect(speechProgress.speechTextSlices(parts[1].text, (kind === 'source' ? fixture.state.sourceTextParts : fixture.state.translatedTextParts)[1].offset, displayed)).toEqual({
             before: ' ', active: 'hello', after: '', fraction: 1,
         });
         fixture.state.stopAudioFromUi();
         expect(fixture.state.audioTextOffset).toBe(0);
         expectAudioReset(fixture.state);
     });
+});
+
+it('preserves the reading card during its evidence scroll, then resumes ordinary auto dismissal and clears frames on close', async () => {
+    const fixture = mountSelection();
+    vi.stubGlobal('Element', class {});
+    vi.stubGlobal('Node', class {});
+    const {state} = fixture;
+    fixture.config.selectionTranslatorAutoDismiss = true;
+    state.snapshot = {text: 'Practice helps.', range: {getClientRects: () => []}, parts: [{kind: 'text', text: 'Practice helps.'}]};
+    state.readingSelection = {text: 'Practice helps.', context: '', sentence: 'Practice helps.'};
+    state.readingMode = true;
+    state.showTooltip = true;
+    const disposeAnchor = vi.fn();
+    state.readingEvidenceAnchor = {locate: () => 'located', check: () => 'located', dispose: disposeAnchor, suspend: vi.fn()};
+    const citation = {quote: 'Practice helps.', sourceText: 'Practice helps.'};
+    expect(state.locateReadingEvidence(citation)).toBe('located');
+    state.handleScroll({target: null});
+    expect(state.showTooltip).toBe(true);
+    expect(disposeAnchor).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(40);
+    state.handleScroll({target: null});
+    expect(state.showTooltip).toBe(false);
+    expect(disposeAnchor).toHaveBeenCalledOnce();
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+
+    state.showTooltip = true;
+    state.readingMode = true;
+    state.readingEvidenceAnchor = {locate: () => 'unavailable'};
+    expect(state.locateReadingEvidence(citation)).toBe('unavailable');
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+    state.readingEvidenceAnchor = {locate: () => 'located', dispose: disposeAnchor};
+    state.readingSelection = {text: 'Practice helps.', context: '', sentence: 'Practice helps.'};
+    expect(state.locateReadingEvidence(citation)).toBe('located');
+    fixture.unmount();
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+    expect(vi.getTimerCount()).toBe(0);
 });
 
 it('keeps an existing ordinary translation running when opening the learning view', async () => {
@@ -859,6 +1406,541 @@ describe('selection card geometry across content changes', () => {
     });
 });
 
+describe('automatic card audio height ownership', () => {
+    async function audioCard() {
+        const fixture = mountSelection();
+        const cardRect = vi.fn(() => ({width: 388, height: 180}));
+        fixture.state.tooltipRef = {getBoundingClientRect: cardRect};
+        fixture.state.snapshot = {text: 'Practice helps.', range: {getClientRects: vi.fn(() => [])}};
+        fixture.state.selectedText = 'Practice helps.';
+        fixture.state.manualPopupPosition = {left: 200, top: 100};
+        fixture.state.showTooltip = true;
+        await Vue.nextTick(); await Vue.nextTick();
+        fixture.state.applyManualPopupGeometry();
+        return {...fixture, cardRect};
+    }
+
+    it.each(['source', 'word'] as const)('holds the automatic %s card during preparation and playback without adopting a manual size', async kind => {
+        const fixture = await audioCard(), response = deferredTts();
+        prepareTts(fixture, [response.promise]);
+        expect(fixture.state.tooltipStyle.height).toBeUndefined();
+        const pending = kind === 'word' ? fixture.state.toggleWordAudio({text: 'Practice helps.'})
+            : fixture.state.toggleAudio('Practice helps.', 'source');
+        expect(fixture.state.isPreparingAudio).toBe(true);
+        expect(fixture.state.tooltipStyle).toMatchObject({left: '200px', top: '100px', height: '180px'});
+        expect(fixture.state.manualPopupSize).toBeNull();
+        const capturedReads = fixture.cardRect.mock.calls.length;
+        response.resolve({success: true, transport: 'offscreen'}); await pending;
+        const {clientRequestId} = ttsMessages(fixture, 'selectionTts')[0];
+        for (let index = 0; index < 20; index++) emitTtsState(fixture, clientRequestId, 'progress', {
+            progress: {start: 0, end: 8, fraction: index / 20, estimated: true},
+        });
+        expect(fixture.state.isPlaying).toBe(true);
+        expect(fixture.state.tooltipStyle.height).toBe('180px');
+        expect(fixture.cardRect).toHaveBeenCalledTimes(capturedReads);
+        fixture.state.stopAudioFromUi();
+        expect(fixture.state.audioPopupHeight).toBeNull();
+        expect(fixture.state.tooltipStyle.height).toBeUndefined();
+        expect(fixture.state.manualPopupSize).toBeNull();
+        expect(fixture.state.manualPopupPosition).toEqual({left: 200, top: 100});
+    });
+
+    it.each(['ended', 'stopped', 'error'] as const)('releases only the matching automatic audio height on %s', async terminal => {
+        const fixture = await audioCard();
+        prepareTts(fixture, [Promise.resolve({success: true, transport: 'offscreen'})]);
+        await fixture.state.toggleAudio('Practice helps.', 'source');
+        const {clientRequestId} = ttsMessages(fixture, 'selectionTts')[0];
+        emitTtsState(fixture, 'another-card', terminal, {error: 'Unrelated error'});
+        expect(fixture.state.tooltipStyle.height).toBe('180px');
+        emitTtsState(fixture, clientRequestId, terminal, {error: 'Controlled decode failure'});
+        expect(fixture.state.audioPopupHeight).toBeNull();
+        expect(fixture.state.tooltipStyle.height).toBeUndefined();
+        expect(fixture.state.manualPopupSize).toBeNull();
+    });
+
+    it('keeps a replacement height owned when the previous synthesis finishes late', async () => {
+        const fixture = await audioCard(), oldResponse = deferredTts(), replacement = deferredTts();
+        prepareTts(fixture, [oldResponse.promise, replacement.promise]);
+        const oldPending = fixture.state.toggleAudio('Old sentence.', 'source');
+        const newPending = fixture.state.toggleAudio('New sentence.', 'source');
+        expect(fixture.state.tooltipStyle.height).toBe('180px');
+        oldResponse.resolve({success: true, transport: 'offscreen'}); await oldPending;
+        expect(fixture.state.isPreparingAudio).toBe(true);
+        expect(fixture.state.tooltipStyle.height).toBe('180px');
+        expect(fixture.state.manualPopupSize).toBeNull();
+        replacement.resolve({success: true, transport: 'offscreen'}); await newPending;
+        emitTtsState(fixture, ttsMessages(fixture, 'selectionTts')[0].clientRequestId, 'ended');
+        expect(fixture.state.tooltipStyle.height).toBe('180px');
+        fixture.state.stopAudio();
+        expect(fixture.state.tooltipStyle.height).toBeUndefined();
+    });
+
+    it('keeps an existing user size authoritative through preparation playback and stop', async () => {
+        const fixture = await audioCard(), response = deferredTts();
+        fixture.state.manualPopupSize = {width: 450, height: 240};
+        fixture.state.applyManualPopupGeometry();
+        fixture.cardRect.mockClear();
+        prepareTts(fixture, [response.promise]);
+        const pending = fixture.state.toggleAudio('Practice helps.', 'source');
+        expect(fixture.state.audioPopupHeight).toBeNull();
+        response.resolve({success: true, transport: 'offscreen'}); await pending;
+        fixture.state.stopAudio();
+        expect(fixture.state.tooltipStyle).toMatchObject({left: '200px', top: '100px', width: '450px', height: '240px'});
+        expect(fixture.state.manualPopupSize).toEqual({width: 450, height: 240});
+        expect(fixture.cardRect).not.toHaveBeenCalled();
+    });
+
+    it.each(['stop', 'hide', 'unmount', 'failure'] as const)('does not retain or restore the audio layout after %s', async reason => {
+        const fixture = await audioCard(), response = deferredTts();
+        prepareTts(fixture, [response.promise]);
+        const pending = fixture.state.toggleAudio('Practice helps.', 'source');
+        expect(fixture.state.tooltipStyle.height).toBe('180px');
+        if (reason === 'stop') fixture.state.stopAudio();
+        else if (reason === 'hide') fixture.state.hideAll();
+        else if (reason === 'unmount') fixture.unmount();
+        response.resolve(reason === 'failure' ? {success: false, error: 'Controlled synthesis failure', errorCode: 'local-only-error'}
+            : {success: true, transport: 'offscreen'});
+        await pending; await Vue.nextTick();
+        expect(fixture.state.audioPopupHeight).toBeNull();
+        expect(fixture.state.tooltipStyle.height).toBeUndefined();
+        expect(fixture.state.manualPopupSize).toBeNull();
+        expect(fixture.state.isPlaying).toBe(false);
+    });
+
+    it('clamps a temporary audio height to a smaller viewport without turning it into a user size', async () => {
+        const fixture = await audioCard();
+        prepareTts(fixture, [Promise.resolve({success: true, transport: 'offscreen'})]);
+        await fixture.state.toggleAudio('Practice helps.', 'source');
+        fixture.window.innerHeight = 180;
+        fixture.state.handleViewportResize();
+        await vi.advanceTimersByTimeAsync(20);
+        const top = parseFloat(fixture.state.tooltipStyle.top), height = parseFloat(fixture.state.tooltipStyle.height);
+        expect(top).toBeGreaterThanOrEqual(12);
+        expect(top + height).toBeLessThanOrEqual(168);
+        expect(fixture.state.manualPopupSize).toBeNull();
+        fixture.state.stopAudio();
+        expect(fixture.state.tooltipStyle.height).toBeUndefined();
+    });
+});
+
+describe('context menu selection ownership', () => {
+    async function prepareMenu(browserTarget: SelectionBuildTarget = 'chrome') {
+        const fixture = mountSelection(false, undefined, browserTarget);
+        class FakeElement {}
+        class FakeNode {}
+        vi.stubGlobal('Element', FakeElement);
+        vi.stubGlobal('Node', FakeNode);
+        let nativeText = 'Good ideas deserve attention.';
+        const paragraph = {nodeType: 1, tagName: 'P', parentElement: null,
+            getAttribute: () => null, hasAttribute: () => false, closest: () => null,
+            querySelector: () => null, querySelectorAll: () => []};
+        const node = {nodeType: 3, parentElement: paragraph, isConnected: true, ownerDocument: fixture.document};
+        const range = Vue.markRaw({startContainer: node, endContainer: node, commonAncestorContainer: node,
+            startOffset: 0, endOffset: nativeText.length, collapsed: false,
+            getClientRects: vi.fn(() => [{left: 200, right: 380, top: 250, bottom: 270, width: 180, height: 20}]),
+            cloneRange: () => range, toString: () => nativeText});
+        const selection = {rangeCount: 1, isCollapsed: false, anchorNode: node, anchorOffset: 0,
+            getRangeAt: () => range, toString: () => nativeText};
+        const getSelection = vi.fn((): typeof selection | null => selection);
+        Object.assign(fixture.window, {getSelection});
+        fixture.config.selectionTranslatorTrigger = 'contextMenu';
+        fixture.config.selectionTranslatorDelay = 9000;
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        const rightDown = () => fixture.state.handlePointerDown({isTrusted: true, button: 2, target: null});
+        const openMenu = () => {rightDown(); fixture.state.handleContextMenu({isTrusted: true, target: null});};
+        const inputTarget = Object.assign(new FakeElement(), {closest: () => ({}), getAttribute: () => null});
+        const uiTarget = Object.assign(new FakeNode(), {getRootNode: () => fixture.document});
+        return {...fixture, node, paragraph, range, getSelection, rightDown, openMenu, selection,
+            inputTarget, uiTarget, setText: (text: string) => {nativeText = text;}};
+    }
+
+    it('forwards the browser-bound text through the bridge without retaining a replaced handler', () => {
+        const first = vi.fn(() => false), second = vi.fn(() => true);
+        const releaseFirst = setSelectionContextMenuHandler(first);
+        const releaseSecond = setSelectionContextMenuHandler(second);
+        releaseFirst();
+        expect(translateSelectionThroughBridge('Good ideas deserve attention.')).toBe(true);
+        expect(second).toHaveBeenCalledWith('Good ideas deserve attention.');
+        expect(first).not.toHaveBeenCalled();
+        releaseSecond();
+        expect(translateSelectionThroughBridge('Good ideas deserve attention.')).toBe(false);
+    });
+
+    it.each(['chrome', 'userscript'] as const)('registers and cleans native listeners only for the extension target %s while keeping its live-selection bridge', browserTarget => {
+        const fixture = mountSelection(false, undefined, browserTarget);
+        expect(fixture.registerContextMenu).toHaveBeenCalledOnce();
+        expect(fixture.listeners.get('document:contextmenu')?.size ?? 0).toBe(browserTarget === 'chrome' ? 1 : 0);
+        fixture.unmount();
+        expect(fixture.listeners.get('document:contextmenu')?.size ?? 0).toBe(0);
+        expect(fixture.document.removeEventListener.mock.calls.some(([type]) => type === 'contextmenu')).toBe(browserTarget === 'chrome');
+        expect(fixture.releaseContextMenu).toHaveBeenCalledOnce();
+    });
+
+    it('keeps userscript right-click dismissal and its live-selection message bridge without native menu capture or suppressed ownership', async () => {
+        const fixture = await prepareMenu('userscript');
+        fixture.config.selectionTranslatorTrigger = 'icon';
+        fixture.config.selectionTranslatorDelay = 0;
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        fixture.translateText.mockImplementation(() => new Promise(() => {}));
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());
+        fixture.state.openTooltip();
+        const firstController = fixture.state.translationAbortController;
+        fixture.rightDown();
+        expect(firstController.signal.aborted).toBe(true);
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.snapshot).toBeNull();
+        expect(fixture.state.suppressSelectionUntil).toBe(0);
+        expect(fixture.state.contextMenuSelection).toBeNull();
+        expect(fixture.contextMenuHandler('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+        expect(fixture.state.showTooltip).toBe(true);
+        fixture.getSelection.mockReturnValue(null);
+        expect(fixture.contextMenuHandler('Good ideas deserve attention.')).toBe(false);
+        fixture.state.applySelection(null);
+        await vi.advanceTimersByTimeAsync(161);
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.contextMenuSourceRejected).toBe(false);
+    });
+
+    it('restores only the menu-captured Range after selection collapse and blur, without waiting for configured delay', async () => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        fixture.getSelection.mockReturnValue(null);
+        fixture.state.handleWindowBlur();
+        fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(200);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.state.translateSelectionFromContextMenu('  Good  ideas deserve attention.  ')).toBe(true);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+        await Vue.nextTick();
+        expect(fixture.state.translationResult).toBe('这是译文');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('cancels a pending direct-mode presentation before a native menu collapses Selection', async () => {
+        const fixture = await prepareMenu();
+        fixture.config.selectionTranslatorTrigger = 'direct';
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());
+        expect(fixture.state.selectionPresentationTimer).not.toBeNull();
+        fixture.openMenu();
+        fixture.getSelection.mockReturnValue(null);
+        await vi.advanceTimersByTimeAsync(9001);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.state.selectionPresentationTimer).toBeNull();
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+    });
+
+    it('cancels an existing entry dismissal and rejects new pointer dismissal while the native menu owns Selection', async () => {
+        const fixture = await prepareMenu();
+        fixture.config.selectionTranslatorTrigger = 'dot';
+        fixture.config.selectionTranslatorDelay = 0;
+        fixture.config.selectionTranslatorAutoDismiss = true;
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());
+        const pointer = {isTrusted: true, pointerType: 'mouse', clientX: 900, clientY: 750, target: null};
+        fixture.state.handlePointerMove(pointer);
+        expect(fixture.state.entryDismissTimer).not.toBeNull();
+        fixture.openMenu();
+        expect(fixture.state.entryDismissTimer).toBeNull();
+        fixture.state.handlePointerMove(pointer);
+        expect(fixture.state.entryDismissTimer).toBeNull();
+        fixture.getSelection.mockReturnValue(null);
+        await vi.advanceTimersByTimeAsync(601);
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps an in-flight request intact through repeated right clicks and duplicate menu commands', async () => {
+        const fixture = await prepareMenu();
+        let finish!: (text: string) => void;
+        fixture.translateText.mockImplementation(() => new Promise(resolve => {finish = resolve;}));
+        fixture.openMenu();
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        const controller = fixture.state.translationAbortController;
+        const request = fixture.state.activeContentRequest;
+        fixture.openMenu();
+        expect(controller.signal.aborted).toBe(false);
+        fixture.getSelection.mockReturnValue(null);
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.state.activeContentRequest).toBe(request);
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+        finish('好想法值得关注。'); await Vue.nextTick();
+        expect(fixture.state.translationResult).toBe('好想法值得关注。');
+        expect(controller.signal.aborted).toBe(false);
+    });
+
+    it('reuses a completed card, then starts a fresh request after explicit dismissal', async () => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        await Vue.nextTick();
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+        expect(fixture.state.translationResult).toBe('这是译文');
+        fixture.state.closeTooltip();
+        fixture.openMenu();
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses the captured geometry at command time instead of measuring the host selection again', async () => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        fixture.range.getClientRects.mockClear();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        expect(fixture.range.getClientRects).not.toHaveBeenCalled();
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+    });
+
+    it('lets another explicit menu command retry a failed translation without discarding the selected text', async () => {
+        const fixture = await prepareMenu();
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        fixture.translateText.mockRejectedValueOnce(new Error('fixture request failure'));
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        await Vue.nextTick();
+        expect(fixture.state.error).toBe('翻译失败，请重试');
+        expect(fixture.state.showTooltip).toBe(true);
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+        await Vue.nextTick();
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.translationResult).toBe('这是译文');
+    });
+
+    it('replaces an old request only when a different menu selection is explicitly translated and ignores its late response', async () => {
+        const fixture = await prepareMenu();
+        let finish!: (text: string) => void;
+        fixture.translateText.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        const previousController = fixture.state.translationAbortController;
+        fixture.setText('New ideas deserve a chance.');
+        fixture.openMenu();
+        expect(previousController.signal.aborted).toBe(false);
+        fixture.state.translateSelectionFromContextMenu('New ideas deserve a chance.');
+        expect(previousController.signal.aborted).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+        await Vue.nextTick();
+        finish('旧选区的迟到结果'); await Vue.nextTick();
+        expect(fixture.state.selectedText).toBe('New ideas deserve a chance.');
+        expect(fixture.state.translationResult).toBe('这是译文');
+    });
+
+    it('keeps an explicitly opened card when a later Selection change only clears the page highlight', async () => {
+        const fixture = await prepareMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        fixture.getSelection.mockReturnValue(null);
+        fixture.state.applySelection(null);
+        await vi.advanceTimersByTimeAsync(200);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.translationResult).toBe('这是译文');
+    });
+
+    it('rejects a browser text mismatch instead of translating a different live selection or stale menu capture', async () => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        expect(fixture.state.translateSelectionFromContextMenu('A different sentence.')).toBe(false);
+        fixture.getSelection.mockReturnValue(null);
+        expect(fixture.state.translateSelectionFromContextMenu('A different sentence.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('never turns a bare browser text or untrusted contextmenu event into a translatable selection', async () => {
+        const fixture = await prepareMenu();
+        fixture.state.handleContextMenu({isTrusted: false, target: null});
+        fixture.getSelection.mockReturnValue(null);
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('returns a missing selection response when the host Range becomes unreadable instead of throwing from the menu handler', async () => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        fixture.range.toString = () => {throw new Error('fixture disposed range');};
+        fixture.getSelection.mockImplementation(() => {throw new Error('fixture disposed document');});
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('does not capture protected input text for a later browser text fallback', async () => {
+        const fixture = await prepareMenu();
+        fixture.paragraph.tagName = 'INPUT';
+        fixture.openMenu();
+        fixture.getSelection.mockReturnValue(null);
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('rejects a menu opened in an input even when document Selection retains identical text from the page', async () => {
+        const fixture = await prepareMenu();
+        fixture.state.handleContextMenu({isTrusted: true, target: fixture.inputTarget});
+        fixture.state.handleWindowBlur();
+        expect(fixture.state.readSelectionSnapshot()).not.toBeNull();
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('invalidates a previous page capture when a trusted menu opens inside the card without cancelling its translation', async () => {
+        const fixture = await prepareMenu();
+        fixture.translateText.mockImplementation(() => new Promise(() => {}));
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        const controller = fixture.state.translationAbortController;
+        fixture.document.getElementById.mockReturnValue(fixture.uiTarget as any);
+        fixture.state.handleContextMenu({isTrusted: true, target: fixture.uiTarget});
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.state.contextMenuSelection).toBeNull();
+        expect(controller.signal.aborted).toBe(false);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+    });
+
+    it('allows a contenteditable=false text island while rejecting inherited editable targets', async () => {
+        const fixture = await prepareMenu();
+        const editableParent = {getAttribute: () => 'true', parentElement: null};
+        const target = Object.assign(Object.create(Object.getPrototypeOf(fixture.inputTarget)), {
+            closest: () => null, getAttribute: () => 'false', parentElement: editableParent,
+        });
+        expect(fixture.state.isContextMenuInputTarget(target)).toBe(false);
+        target.getAttribute = () => null;
+        expect(fixture.state.isContextMenuInputTarget(target)).toBe(true);
+    });
+
+    it.each(['disconnected', 'foreign-document', 'collapsed', 'text-changed', 'protected'] as const)(
+        'rechecks captured source ownership and rejects %s ranges', async reason => {
+            const fixture = await prepareMenu();
+            fixture.openMenu();
+            if (reason === 'disconnected') fixture.node.isConnected = false;
+            else if (reason === 'foreign-document') fixture.node.ownerDocument = {} as typeof fixture.document;
+            else if (reason === 'collapsed') fixture.range.collapsed = true;
+            else if (reason === 'text-changed') fixture.setText('A new sentence in the same node.');
+            else fixture.paragraph.tagName = 'TEXTAREA';
+            expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+            expect(fixture.translateText).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each(['pointer', 'escape', 'scroll', 'close'] as const)('discards a menu capture after a new %s interaction', async reason => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        fixture.getSelection.mockReturnValue(null);
+        if (reason === 'pointer') fixture.state.handlePointerDown({isTrusted: true, button: 0, target: null});
+        else if (reason === 'escape') fixture.state.handleKeydown({isTrusted: true, key: 'Escape', target: null});
+        else if (reason === 'scroll') fixture.state.handleScroll({target: null});
+        else fixture.state.closeTooltip();
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+});
+
+describe('selection card on an extension PDF page', () => {
+    function preparePdf() {
+        const acceptsRange = vi.fn(() => true);
+        const context = vi.fn(() => ({text: 'The Transformer uses attention.', title: 'Attention Is All You Need', sourceUrl: 'https://arxiv.org/pdf/1706.03762'}));
+        const captureReading = vi.fn(() => ({text: 'Transformer models', context: 'The Transformer uses attention.', sentence: 'The Transformer uses attention.'}));
+        let invalidate = () => {};
+        const unsubscribeSource = vi.fn();
+        const extractText = vi.fn((_range: Range, text: string) => text);
+        const fixture = mountSelection(false, {acceptsRange, extractText, normalizeText: (text: string) => text.replace(/\s+/g, ' ').trim(), context, captureReading,
+            subscribeInvalidation: (listener: () => void) => {invalidate = listener; return unsubscribeSource;}});
+        class FakeElement {}
+        class FakeNode {}
+        vi.stubGlobal('Element', FakeElement);
+        vi.stubGlobal('Node', FakeNode);
+        const start = {isConnected: true, ownerDocument: fixture.document}, end = {isConnected: true, ownerDocument: fixture.document};
+        const range = {startContainer: start, endContainer: end, startOffset: 0, endOffset: 18,
+            getClientRects: () => [{left: 200, right: 380, top: 250, bottom: 270, width: 180, height: 20}],
+            cloneRange: () => range};
+        Vue.markRaw(range); // 原生 Range 不被 Vue 代理，测试对象也保持相同身份规则。
+        Object.assign(fixture.window, {getSelection: () => ({rangeCount: 1, isCollapsed: false,
+            anchorNode: start, anchorOffset: 0, getRangeAt: () => range, toString: () => 'Transformer\nmodels'})});
+        fixture.config.selectionTranslatorTrigger = 'direct';
+        fixture.config.selectionTranslatorDelay = 0;
+        fixture.state.selectionConfigVersion += 1;
+        return {...fixture, acceptsRange, extractText, context, captureReading, range, unsubscribeSource, invalidate: () => invalidate()};
+    }
+
+    it('only captures an adapter-approved source range and normalizes PDF wraps in the snapshot', () => {
+        const fixture = preparePdf();
+        fixture.acceptsRange.mockReturnValue(false);
+        expect(fixture.state.readSelectionSnapshot()).toBeNull();
+        expect(fixture.extractText).not.toHaveBeenCalled();
+        fixture.acceptsRange.mockReturnValue(true);
+        expect(fixture.state.readSelectionSnapshot()).toMatchObject({text: 'Transformer models', parts: [{kind: 'text', text: 'Transformer models'}]});
+        expect(fixture.extractText).toHaveBeenCalledWith(fixture.range, 'Transformer\nmodels');
+        fixture.extractText.mockReturnValue('First page footer.\nSecond page title.');
+        expect(fixture.state.readSelectionSnapshot()).toMatchObject({text: 'First page footer. Second page title.'});
+    });
+
+    it('waits for pointer release and sends PDF context through the existing translation client', async () => {
+        const fixture = preparePdf();
+        const getSelection = (fixture.window as any).getSelection;
+        (fixture.window as any).getSelection = () => null;
+        fixture.state.handlePointerDown({isTrusted: true, button: 0, target: null});
+        (fixture.window as any).getSelection = getSelection;
+        fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(100);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        fixture.state.handlePointerUp({isTrusted: true, button: 0, target: null});
+        await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();
+        expect(fixture.translateText).toHaveBeenCalledWith('Transformer models', 'Attention Is All You Need', expect.objectContaining({
+            pageContext: 'The Transformer uses attention.', signal: expect.any(AbortSignal),
+        }));
+        expect(fixture.state.translationResult).toBe('这是译文');
+    });
+
+    it('aborts source requests and ignores late translations after the source owner invalidates', async () => {
+        const fixture = preparePdf();
+        let finish!: (text: string) => void;
+        fixture.translateText.mockImplementation(() => new Promise(resolve => {finish = resolve;}));
+        fixture.state.snapshot = fixture.state.readSelectionSnapshot();
+        fixture.state.selectedText = 'Transformer models';
+        const request = fixture.state.beginSelectionContentRequest('Transformer models');
+        const pending = fixture.state.requestTranslation(request);
+        const controller = fixture.state.translationAbortController;
+        fixture.acceptsRange.mockReturnValue(false);
+        fixture.invalidate();
+        expect(controller.signal.aborted).toBe(true);
+        expect(fixture.state.snapshot).toBeNull();
+        finish('旧文件的迟到译文'); await pending;
+        expect(fixture.state.translationResult).toBe('');
+        fixture.unmount();
+        expect(fixture.unsubscribeSource).toHaveBeenCalledOnce();
+    });
+
+    it('uses the adapter for PDF reading and vocabulary source metadata', async () => {
+        const fixture = preparePdf();
+        fixture.config.harness.enabled = true;
+        fixture.config.vocabularyBookEnabled = true;
+        fixture.state.selectionConfigVersion += 1;
+        fixture.state.snapshot = fixture.state.readSelectionSnapshot();
+        fixture.state.selectedText = 'Transformer models';
+        const request = fixture.state.beginSelectionContentRequest('Transformer models');
+        fixture.state.translationAnswer = {...request, answer: '模型'};
+        fixture.state.translationResult = '模型';
+        fixture.state.openReadingCard();
+        expect(fixture.captureReading).toHaveBeenCalled();
+        expect(fixture.state.readingSelection.context).toBe('The Transformer uses attention.');
+        fixture.browser.runtime.sendMessage.mockResolvedValue({success: true, data: {id: 'saved'}});
+        await fixture.state.saveVocabularyEntry({isTrusted: true});
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({action: 'upsert', input: expect.objectContaining({context: expect.objectContaining({
+            text: 'The Transformer uses attention.', sourceUrl: 'https://arxiv.org/pdf/1706.03762', pageTitle: 'Attention Is All You Need',
+        })})}));
+    });
+});
+
 it('相同译文隐藏后，切换选区与不同结果仍恢复显示', async () => {
     const {state, lifecycleErrors} = mountSelection();
     state.selectedText = 'Café'; state.translationResult = 'Cafe\u0301'; await Vue.nextTick();
@@ -868,4 +1950,1143 @@ it('相同译文隐藏后，切换选区与不同结果仍恢复显示', async (
     state.selectedText = '咖啡馆'; await Vue.nextTick();
     expect(state.hasDistinctTranslationResult).toBe(false);
     expect(lifecycleErrors).not.toHaveBeenCalled();
+});
+
+
+describe('selection card bounded layout work', () => {
+    async function gestureFixture(edge = '') {
+        const fixture = mountSelection();
+        const frames = new Map<number, FrameRequestCallback>();
+        let frameId = 0;
+        fixture.window.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
+            frames.set(++frameId, callback); return frameId;
+        }) as any;
+        fixture.window.cancelAnimationFrame = vi.fn((id: any) => {frames.delete(id);});
+        class GestureElement {
+            dataset = {resizeEdge: edge};
+            clientLeft = 0;
+            clientWidth = 388;
+            captured = false;
+            getBoundingClientRect = vi.fn(() => ({left: 200, top: 100, right: 588, bottom: 340, width: 388, height: 240}));
+            closest(selector: string) {return selector === '.fr-study-navigation' ? this : null;}
+            matches(selector: string) {return selector === '.fr-study-navigation';}
+            setPointerCapture() {this.captured = true;}
+            hasPointerCapture() {return this.captured;}
+            releasePointerCapture() {this.captured = false;}
+        }
+        vi.stubGlobal('HTMLElement', GestureElement);
+        const element = new GestureElement();
+        fixture.state.tooltipRef = element;
+        fixture.state.snapshot = {text: 'Practice helps.', range: {getClientRects: vi.fn(() => [])}};
+        fixture.state.showTooltip = true;
+        fixture.state.manualPopupPosition = {left: 200, top: 100};
+        await Vue.nextTick();
+        const pointer = (type: string, x: number, y: number, pointerId = 1) => ({
+            type, isTrusted: true, isPrimary: true, button: 0, pointerId, clientX: x, clientY: y,
+            target: element, preventDefault: vi.fn(), stopPropagation: vi.fn(),
+        });
+        fixture.state.beginPopupGesture(pointer('pointerdown', 205, 110));
+        const flush = () => {const pending = [...frames.values()];frames.clear();pending.forEach(callback => callback(0));};
+        return {...fixture, element, frames, pointer, flush};
+    }
+
+    it.each([
+        ['horizontal tab scrollbar', 'fr-study-toolbar', 300, 132],
+        ['learning menu blank space', 'fr-reading-tool-list', 250, 145],
+        ['vertical learning menu scrollbar', 'fr-reading-tool-list', 380, 175],
+    ] as const)('keeps native %s pointer handling without dragging the card', async (_label, className, x, y) => {
+        const {state, element, frames, pointer} = await gestureFixture();
+        state.stopPopupGesture();
+        element.getBoundingClientRect.mockClear();
+        // 非交互导航后代仍属于顶栏，但滚动条与菜单空白必须保留原生指针行为。
+        const target = Object.assign(Object.create(Object.getPrototypeOf(element)), {
+            dataset: {},
+            matches: (selector: string) => selector.split(',').some(part => part.trim() === `.${className}`),
+            closest: (selector: string) => selector === '.fr-study-navigation' ? element : null,
+        });
+        const down = {...pointer('pointerdown', x, y), target};
+        state.beginPopupGesture(down);
+        state.movePopupGesture({...pointer('pointermove', x + 30, y + 20), target});
+        expect(down.preventDefault).not.toHaveBeenCalled();
+        expect(element.captured).toBe(false);
+        expect(state.popupManipulating).toBe(false);
+        expect(state.manualPopupPosition).toEqual({left: 200, top: 100});
+        expect(frames.size).toBe(0);
+        expect(element.getBoundingClientRect).not.toHaveBeenCalled();
+    });
+
+    it('coalesces trusted pointer moves and paints only the last point without re-reading card geometry', async () => {
+        const {state, element, frames, pointer, flush} = await gestureFixture();
+        for (let i = 1; i <= 30; i++) state.movePopupGesture(pointer('pointermove', 205 + i, 110 + i));
+        expect(frames.size).toBe(1);
+        expect(element.getBoundingClientRect).toHaveBeenCalledTimes(1);
+        expect(state.manualPopupPosition).toEqual({left: 200, top: 100});
+        flush();
+        expect(state.tooltipStyle).toMatchObject({left: '230px', top: '130px'});
+        expect(element.getBoundingClientRect).toHaveBeenCalledTimes(1);
+        expect(frames.size).toBe(0);
+    });
+
+    it('flushes the final accepted pointer point on release and rejects a late cancelled animation frame', async () => {
+        const {state, element, frames, pointer} = await gestureFixture('se');
+        state.movePopupGesture(pointer('pointermove', 255, 145));
+        const lateFrame = [...frames.values()][0];
+        state.stopPopupGesture(pointer('pointerup', 255, 145));
+        expect(state.manualPopupSize).toEqual({width: 438, height: 275});
+        expect(state.tooltipStyle).toMatchObject({width: '438px', height: '275px'});
+        expect(element.captured).toBe(false);
+        expect(frames.size).toBe(0);
+        const settled = {...state.tooltipStyle};
+        lateFrame(0);
+        expect(state.tooltipStyle).toEqual(settled);
+    });
+
+    it('lets a real resize replace the temporary audio height and preserves that user size after audio stops', async () => {
+        const fixture = await gestureFixture('se');
+        prepareTts(fixture, [Promise.resolve({success: true, transport: 'offscreen'})]);
+        await fixture.state.toggleAudio('Practice helps.', 'source');
+        expect(fixture.state.audioPopupHeight).toBe(240);
+        fixture.state.movePopupGesture(fixture.pointer('pointermove', 255, 145));
+        fixture.state.stopPopupGesture(fixture.pointer('pointerup', 255, 145));
+        expect(fixture.state.manualPopupSize).toEqual({width: 438, height: 275});
+        expect(fixture.state.audioPopupHeight).toBeNull();
+        fixture.state.stopAudio();
+        expect(fixture.state.tooltipStyle).toMatchObject({left: '200px', top: '100px', width: '438px', height: '275px'});
+        expect(fixture.state.manualPopupSize).toEqual({width: 438, height: 275});
+    });
+
+    it.each(['pointercancel', 'lostpointercapture', 'blur', 'hide', 'unmount'])('discards pending moves after %s', async reason => {
+        const fixture = await gestureFixture();
+        const {state, frames, pointer} = fixture;
+        state.movePopupGesture(pointer('pointermove', 255, 145));
+        const lateFrame = [...frames.values()][0];
+        if (reason === 'hide') state.hideAll();
+        else if (reason === 'unmount') fixture.unmount();
+        else if (reason === 'blur') state.handleWindowBlur();
+        else state.stopPopupGesture(pointer(reason, 255, 145));
+        const settled = {...state.tooltipStyle};
+        expect(frames.size).toBe(0);
+        expect(state.popupManipulating).toBe(false);
+        lateFrame(0);
+        expect(state.tooltipStyle).toEqual(settled);
+    });
+
+    it('ignores foreign pointer moves and release events while the current gesture remains owned', async () => {
+        const {state, frames, pointer} = await gestureFixture();
+        state.movePopupGesture(pointer('pointermove', 255, 145, 2));
+        expect(frames.size).toBe(0);
+        state.stopPopupGesture(pointer('pointerup', 255, 145, 2));
+        expect(state.popupManipulating).toBe(true);
+        state.movePopupGesture({...pointer('pointermove', 255, 145), isTrusted: false});
+        expect(frames.size).toBe(0);
+    });
+
+    it('keeps a new gesture frame intact when a cancelled old callback is delivered late', async () => {
+        const {state, frames, pointer, flush} = await gestureFixture();
+        state.movePopupGesture(pointer('pointermove', 215, 120));
+        const oldFrame = [...frames.values()][0];
+        state.stopPopupGesture(pointer('pointercancel', 215, 120));
+        state.beginPopupGesture(pointer('pointerdown', 205, 110));
+        state.movePopupGesture(pointer('pointermove', 245, 150));
+        oldFrame(0);
+        expect(frames.size).toBe(1);
+        flush();
+        expect(state.tooltipStyle).toMatchObject({left: '240px', top: '140px'});
+    });
+
+    it('does not remeasure the host selection for an anchored card, and needs no card read after manual resize', () => {
+        const {state} = mountSelection();
+        const range = {getClientRects: vi.fn(() => [])};
+        const cardRect = vi.fn(() => ({width: 388, height: 240}));
+        state.snapshot = {text: 'Practice helps.', range};
+        state.tooltipRef = {getBoundingClientRect: cardRect};
+        state.showTooltip = true;
+        state.manualPopupPosition = {left: 200, top: 100};
+        state.manualPopupSize = {width: 388, height: 240};
+        for (let i = 0; i < 30; i++) state.updatePosition();
+        expect(range.getClientRects).not.toHaveBeenCalled();
+        expect(cardRect).not.toHaveBeenCalled();
+        expect(state.tooltipStyle).toMatchObject({left: '200px', top: '100px', width: '388px', height: '240px'});
+    });
+
+    it.each(['hide', 'replacement', 'unmount'])('rejects the queued first anchor after %s', async reason => {
+        const fixture = mountSelection();
+        const {state} = fixture;
+        const cardRect = vi.fn(() => ({width: 388, height: 240}));
+        state.snapshot = {text: 'Practice helps.', range: {}, anchor: {left: 40, right: 150, top: 100, bottom: 120, width: 110, height: 20}, isForward: true};
+        state.tooltipRef = {getBoundingClientRect: cardRect};
+        state.showTooltip = true;
+        state.updatePosition(false);
+        if (reason === 'hide') state.hideAll();
+        else if (reason === 'unmount') fixture.unmount();
+        else state.snapshot = {...state.snapshot, text: 'A new selection.'};
+        await Vue.nextTick();
+        expect(cardRect).not.toHaveBeenCalled();
+        expect(state.manualPopupPosition).toBeNull();
+    });
+
+    it('does not let an old position frame clear the new frame after geometry reset', async () => {
+        const {state, frames, flush} = await gestureFixture();
+        state.stopPopupGesture();
+        state.schedulePositionUpdate();
+        const oldFrame = [...frames.values()][0];
+        state.resetPopupGeometry();
+        state.manualPopupPosition = {left: 250, top: 150};
+        state.manualPopupSize = {width: 388, height: 240};
+        state.schedulePositionUpdate();
+        oldFrame(0);
+        expect(frames.size).toBe(1);
+        flush();
+        expect(state.tooltipStyle).toMatchObject({left: '250px', top: '150px'});
+    });
+
+    it('cancels a captured drag when the viewport changes its automatic width', async () => {
+        const {state, window, frames, pointer, element} = await gestureFixture();
+        state.movePopupGesture(pointer('pointermove', 900, 200));
+        const oldMove = [...frames.values()][0];
+        window.innerWidth = 390;
+        state.handleViewportResize();
+        expect(state.popupManipulating).toBe(false);
+        expect(element.captured).toBe(false);
+        state.movePopupGesture(pointer('pointermove', 905, 200));
+        oldMove(0);
+        const frameCount = frames.size;
+        expect(frameCount).toBe(1); // only the current viewport reposition remains queued
+        const current = [...frames.values()];frames.clear();current.forEach(callback => callback(0));
+        expect(parseFloat(state.tooltipStyle.left)).toBe(12);
+        expect(state.manualPopupPosition).toEqual({left: 12, top: 100});
+    });
+
+    it('dismisses the teleported tools on outside focus and viewport changes without stealing focus inside the card', () => {
+        const {state} = mountSelection();
+        const inside={}, outside={};
+        const root={contains:(node:unknown)=>node===inside};
+        const closeTools=vi.fn(), dismissToolsOutside=vi.fn();
+        state.readingPanelRef={closeTools,dismissToolsOutside};
+        const pointer={target:inside};
+        state.dismissReadingToolsOutside(pointer);
+        expect(dismissToolsOutside).toHaveBeenCalledWith(pointer);
+        state.dismissReadingToolsOnFocusOut({currentTarget:root,relatedTarget:inside});
+        expect(closeTools).not.toHaveBeenCalled();
+        state.dismissReadingToolsOnFocusOut({currentTarget:root,relatedTarget:outside});
+        state.dismissReadingToolsOnFocusOut({currentTarget:root,relatedTarget:null});
+        expect(closeTools).toHaveBeenCalledTimes(2);
+        state.handleViewportResize();
+        expect(closeTools).toHaveBeenCalledTimes(3);
+    });
+
+    it('leaves the native more summary gesture available without starting a card drag', async () => {
+        const {state,element,pointer}=await gestureFixture();
+        state.stopPopupGesture();
+        element.closest=(selector:string)=>selector.includes('summary') ? element : null;
+        const event=pointer('pointerdown',205,110);
+        state.beginPopupGesture(event);
+        expect(state.popupManipulating).toBe(false);
+        expect(element.captured).toBe(false);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('uses an ordinary wheel to scroll only the overflowing one-row navigation', () => {
+        const {state} = mountSelection();
+        class NavigationElement {
+            scrollWidth = 600; clientWidth = 280; scrollLeft = 0;
+            matches(selector: string) {return selector === '.fr-study-toolbar';}
+        }
+        vi.stubGlobal('HTMLElement', NavigationElement);
+        vi.stubGlobal('getComputedStyle', () => ({overflowX: 'auto', overflowY: 'auto'}));
+        const toolbar = new NavigationElement();
+        const preventDefault = vi.fn();
+        const event = {ctrlKey: false, deltaX: 0, deltaY: 60, cancelable: true, preventDefault, composedPath: () => [toolbar], currentTarget: toolbar};
+        state.handleUiWheel(event);
+        expect(toolbar.scrollLeft).toBe(60);
+        expect(preventDefault).toHaveBeenCalledOnce();
+        state.handleUiWheel({...event, deltaY: -30});
+        expect(toolbar.scrollLeft).toBe(30);
+        state.handleUiWheel({...event, ctrlKey: true});
+        expect(toolbar.scrollLeft).toBe(30);
+    });
+
+    it('reveals each focused toolbar action by moving only the owned horizontal strip', () => {
+        const {state} = mountSelection();
+        class NavigationElement {
+            tagName = 'BUTTON'; clientWidth = 278; clientLeft = 0; scrollLeft = 0;
+            left = 259; right = 297;
+            getBoundingClientRect() {return {left: this.left, right: this.right};}
+            contains(element: unknown) {return element === button;}
+        }
+        vi.stubGlobal('HTMLElement', NavigationElement);
+        vi.stubGlobal('getComputedStyle', () => ({paddingLeft: '8px', paddingRight: '8px'}));
+        const toolbar = new NavigationElement(), button = new NavigationElement();
+        toolbar.left = 13; toolbar.right = 291;
+        const event = {currentTarget: toolbar, target: button};
+        state.handleStudyToolbarFocus(event);
+        expect(toolbar.scrollLeft).toBe(14); // reveal the clipped final button and its focus outline
+        button.left = 7; button.right = 45;
+        state.handleStudyToolbarFocus(event);
+        expect(toolbar.scrollLeft).toBe(0);
+        button.left = 21; button.right = 59;
+        state.handleStudyToolbarFocus(event);
+        expect(toolbar.scrollLeft).toBe(0);
+        state.handleStudyToolbarFocus({...event, target: new NavigationElement()});
+        state.handleStudyToolbarFocus({...event, currentTarget: {}});
+        button.tagName = 'SPAN';
+        state.handleStudyToolbarFocus(event);
+        expect(toolbar.scrollLeft).toBe(0);
+    });
+
+    it.each([0.5, 2])('reveals focused toolbar actions at popup scale %s using layout scroll units', scale => {
+        const {state} = mountSelection();
+        state.pageZoom = 1 / scale;
+        class ScaledNavigationElement {
+            tagName = 'BUTTON'; clientWidth = 278; clientLeft = 1; scrollLeft = 0;
+            left = 246; right = 284;
+            getBoundingClientRect() {
+                if (this === toolbar) return {left:13, right:13 + 280 * scale};
+                return {left:13 + (this.left - toolbar.scrollLeft) * scale, right:13 + (this.right - toolbar.scrollLeft) * scale};
+            }
+            contains(element: unknown) {return element === button;}
+        }
+        vi.stubGlobal('HTMLElement', ScaledNavigationElement);
+        vi.stubGlobal('getComputedStyle', () => ({paddingLeft:'8px',paddingRight:'8px'}));
+        const toolbar = new ScaledNavigationElement(), button = new ScaledNavigationElement();
+        const event = {currentTarget:toolbar,target:button};
+        const visibleLeft = 13 + 9 * scale, visibleRight = 13 + 271 * scale;
+        state.handleStudyToolbarFocus(event);
+        expect(toolbar.scrollLeft).toBe(13);
+        expect(button.getBoundingClientRect().right).toBeLessThanOrEqual(visibleRight);
+        button.left = 9; button.right = 47;
+        state.handleStudyToolbarFocus(event);
+        expect(toolbar.scrollLeft).toBe(0);
+        expect(button.getBoundingClientRect().left).toBeGreaterThanOrEqual(visibleLeft);
+        button.left = 180; button.right = 218;
+        state.handleStudyToolbarFocus(event);
+        expect(toolbar.scrollLeft).toBe(0); // an already visible action must not jump the strip
+        expect(button.getBoundingClientRect().right).toBeLessThanOrEqual(visibleRight);
+    });
+
+    it('computes UTF-16 offsets once and preserves positioned segments through speech progress updates', () => {
+        const {state} = mountSelection();
+        const parts = [{kind: 'code', text: ' 😀'}, {kind: 'text', text: ' café'}, {kind: 'code', text: '`x`'}, {kind: 'text', text: ' end'}];
+        state.snapshot = {parts};
+        state.translationParts = parts;
+        const source = state.sourceTextParts, translated = state.translatedTextParts;
+        expect(source.map((part: {offset: number}) => part.offset)).toEqual([0, 3, 8, 11]);
+        expect(source.map((part: {text: string}) => part.text).join('')).toBe(' 😀 café`x` end');
+        state.isPlaying = true; state.currentAudioKind = 'source';
+        for (let i = 0; i < 30; i++) {
+            state.audioProgress = {start: 3, end: 8, fraction: i / 30, estimated: true};
+            expect(state.sourceTextParts).toBe(source);
+            expect(state.translatedTextParts).toBe(translated);
+            expect(state.sourceAudioProgress).toEqual({start: 3, end: 8, fraction: i / 30, estimated: true});
+        }
+        state.snapshot = {parts: [{kind: 'text', text: 'new'}]};
+        expect(state.sourceTextParts).not.toBe(source);
+        expect(state.sourceTextParts[0].offset).toBe(0);
+    });
+});
+
+
+describe('selection card Escape ownership', () => {
+    // These local target/trust ports exercise the real mounted capture listener;
+    // they do not reproduce native closed-shadow retargeting or dialog defaults.
+    function keyboardFixture() {
+        const fixture = mountSelection();
+        class KeyboardNode {
+            getRootNode() {return fixture.document;}
+        }
+        class KeyboardElement extends KeyboardNode {
+            constructor(readonly id = '') {super();}
+            contains(node: unknown) {return node === this;}
+        }
+        vi.stubGlobal('Node', KeyboardNode);
+        vi.stubGlobal('Element', KeyboardElement);
+        const host = new KeyboardElement('fluent-read-selection-translator-container');
+        const outside = new KeyboardElement('host-page-control');
+        const shareCard = new KeyboardElement('fluent-read-share-card-container');
+        Object.assign(fixture.document, {
+            getElementById: vi.fn((id: string) => id === host.id ? host : null),
+        });
+        const selected = Vue.markRaw({text: 'Keep the native dialog open.', parts: [], range: {} as Range});
+        const request = Vue.markRaw({text: selected.text, generation: 1, sourceLanguage: 'en', targetLanguage: 'zh-Hans'});
+        const controller = new AbortController();
+        const dismissTools = vi.fn(() => false);
+        fixture.state.snapshot = selected;
+        fixture.state.selectedText = selected.text;
+        fixture.state.showTooltip = true;
+        fixture.state.isLoading = true;
+        fixture.state.activeContentRequest = request;
+        fixture.state.translationAbortController = controller;
+        fixture.state.readingPanelRef = Vue.markRaw({dismissTools});
+        const handlers = [...(fixture.listeners.get('document:keydown') ?? [])];
+        expect(handlers).toHaveLength(1);
+        const handler = handlers[0];
+        if (!handler) throw new Error('Selection keydown capture listener was not mounted.');
+        expect(fixture.document.addEventListener).toHaveBeenCalledWith('keydown', handler, true);
+        const dispatch = (target = host, flags: Partial<Pick<KeyboardEvent, 'key' | 'isTrusted' | 'repeat' | 'isComposing'>> = {}) => {
+            const event = {target, key: 'Escape', isTrusted: true, repeat: false, isComposing: false,
+                preventDefault: vi.fn(), stopPropagation: vi.fn(), ...flags};
+            handler(event);
+            return event;
+        };
+        return {...fixture, host, outside, shareCard, selected, request, controller, dismissTools, dispatch};
+    }
+
+    it.each(['ordinary', 'repeat', 'isComposing'] as const)('consumes an owning card Escape with the existing %s ordering', mode => {
+        const fixture = keyboardFixture();
+        const event = fixture.dispatch(fixture.host, {repeat: mode === 'repeat', isComposing: mode === 'isComposing'});
+
+        expect(fixture.state.snapshot).toBeNull();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.activeContentRequest).toBeNull();
+        expect(fixture.controller.signal.aborted).toBe(true);
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.dismissedSelection).toBe(fixture.selected);
+        expect(event.preventDefault).toHaveBeenCalledOnce();
+        expect(event.stopPropagation).toHaveBeenCalledOnce();
+        expect(fixture.dismissTools).toHaveBeenCalledOnce();
+    });
+
+    it('consumes the tools Escape tier without closing the owning card or aborting its request', () => {
+        const fixture = keyboardFixture();
+        fixture.dismissTools.mockReturnValue(true);
+        const event = fixture.dispatch();
+
+        expect(fixture.state.snapshot).toBe(fixture.selected);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.activeContentRequest).toBe(fixture.request);
+        expect(fixture.controller.signal.aborted).toBe(false);
+        expect(fixture.state.isLoading).toBe(true);
+        expect(event.preventDefault).toHaveBeenCalledOnce();
+        expect(event.stopPropagation).toHaveBeenCalledOnce();
+        expect(fixture.dismissTools).toHaveBeenCalledOnce();
+    });
+
+    it.each(['outside with snapshot', 'own without snapshot', 'untrusted', 'share card', 'own non-Escape'] as const)(
+        'retains host event ownership for %s', condition => {
+            const fixture = keyboardFixture();
+            const noSnapshot = condition === 'own without snapshot';
+            if (noSnapshot) {
+                fixture.state.snapshot = null;
+                fixture.state.showTooltip = false;
+                fixture.state.activeContentRequest = null;
+                fixture.state.translationAbortController = null;
+                fixture.state.isLoading = false;
+            }
+            const target = condition === 'outside with snapshot' ? fixture.outside
+                : condition === 'share card' ? fixture.shareCard : fixture.host;
+            const event = fixture.dispatch(target, {isTrusted: condition !== 'untrusted',
+                key: condition === 'own non-Escape' ? 'ArrowLeft' : 'Escape'});
+            const closed = condition === 'outside with snapshot';
+
+            expect(fixture.state.snapshot).toBe(closed || noSnapshot ? null : fixture.selected);
+            expect(fixture.state.showTooltip).toBe(!closed && !noSnapshot);
+            expect(fixture.state.activeContentRequest).toBe(closed || noSnapshot ? null : fixture.request);
+            expect(fixture.controller.signal.aborted).toBe(closed);
+            expect(fixture.state.isLoading).toBe(!closed && !noSnapshot);
+            expect(event.preventDefault).not.toHaveBeenCalled();
+            expect(event.stopPropagation).not.toHaveBeenCalled();
+        },
+    );
+});
+
+
+describe('focused selection card dismissal requests', () => {
+    // The renderer stays null. Root activeElement and retargeted key/trust ports
+    // exercise the actual setup handler, not native browser focus behavior.
+    function focusedFixture() {
+        const dismiss = vi.fn();
+        const fixture = mountSelection(false, undefined, {onFocusedCardDismiss: dismiss});
+        const root: {activeElement: unknown} = {activeElement: null};
+        class FocusNode {
+            getRootNode() {return root;}
+        }
+        class FocusElement extends FocusNode {
+            readonly children = new Set<unknown>();
+            constructor(readonly id = '') {super();}
+            contains(value: unknown) {return this.children.has(value);}
+        }
+        vi.stubGlobal('Node', FocusNode);
+        vi.stubGlobal('Element', FocusElement);
+        const host = Vue.markRaw(new FocusElement('fluent-read-selection-translator-container'));
+        const card = Vue.markRaw(new FocusElement('card'));
+        const button = Vue.markRaw(new FocusElement('close-button'));
+        const outside = Vue.markRaw(new FocusElement('host-native-control'));
+        host.children.add(card);
+        card.children.add(button);
+        root.activeElement = button;
+        Object.assign(fixture.document, {activeElement: host,
+            getElementById: vi.fn((id: string) => id === host.id ? host : null)});
+        const selected = Vue.markRaw({text: 'Keep the native dialog open.', parts: [], range: {} as Range});
+        const controller = new AbortController();
+        const dismissTools = vi.fn(() => false);
+        fixture.state.snapshot = selected;
+        fixture.state.selectedText = selected.text;
+        fixture.state.showTooltip = true;
+        fixture.state.tooltipRef = card;
+        fixture.state.translationAbortController = controller;
+        fixture.state.readingPanelRef = Vue.markRaw({dismissTools});
+        const keydown = [...(fixture.listeners.get('document:keydown') ?? [])][0]!;
+        expect(keydown).toBeTypeOf('function');
+        const escape = (target: unknown = host, isTrusted = true) => {
+            const event = {target, key: 'Escape', isTrusted, repeat: false, isComposing: false,
+                preventDefault: vi.fn(), stopPropagation: vi.fn()};
+            keydown(event);
+            return event;
+        };
+        return {...fixture, dismiss, host, card, button, outside, root, selected, controller, dismissTools, escape};
+    }
+
+    it.each(['owned Escape', 'close button handler'] as const)('requests synchronous restoration before hiding for %s', trigger => {
+        const fixture = focusedFixture();
+        // document.activeElement is only the closed host; the actual card focus
+        // decision must read the card's root and not mistake this for no focus.
+        fixture.dismiss.mockImplementation(() => {
+            expect(fixture.state.snapshot).toBe(fixture.selected);
+            expect(fixture.state.showTooltip).toBe(true);
+            expect(fixture.controller.signal.aborted).toBe(false);
+        });
+        if (trigger === 'owned Escape') {
+            const event = fixture.escape();
+            expect(event.preventDefault).toHaveBeenCalledOnce();
+            expect(event.stopPropagation).toHaveBeenCalledOnce();
+        } else {
+            fixture.root.activeElement = fixture.card;
+            fixture.state.closeTooltip();
+        }
+
+        expect(fixture.dismiss).toHaveBeenCalledOnce();
+        expect(fixture.state.snapshot).toBeNull();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.controller.signal.aborted).toBe(true);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['outside Escape', 'untrusted Escape', 'no snapshot', 'tools tier', 'plain hideAll',
+        'configuration notification', 'unmount', 'focus outside card', 'hidden card', 'missing tooltip'] as const)(
+        'does not request focus restoration for %s', async condition => {
+            const fixture = focusedFixture();
+            if (condition === 'outside Escape') fixture.escape(fixture.outside);
+            else if (condition === 'untrusted Escape') fixture.escape(fixture.host, false);
+            else if (condition === 'no snapshot') {
+                fixture.state.snapshot = null;
+                fixture.escape();
+            } else if (condition === 'tools tier') {
+                fixture.dismissTools.mockReturnValue(true);
+                const event = fixture.escape();
+                expect(event.preventDefault).toHaveBeenCalledOnce();
+                expect(fixture.state.showTooltip).toBe(true);
+                expect(fixture.controller.signal.aborted).toBe(false);
+            } else if (condition === 'plain hideAll') fixture.state.hideAll();
+            else if (condition === 'configuration notification') {
+                fixture.config.harness.enabled = !fixture.config.harness.enabled;
+                fixture.state.selectionConfigVersion += 1;
+                await Vue.nextTick();
+                expect(fixture.state.snapshot).toBeNull();
+            } else if (condition === 'unmount') fixture.unmount();
+            else {
+                if (condition === 'focus outside card') fixture.root.activeElement = fixture.outside;
+                if (condition === 'hidden card') fixture.state.showTooltip = false;
+                if (condition === 'missing tooltip') fixture.state.tooltipRef = null;
+                fixture.state.closeTooltip();
+                expect(fixture.state.snapshot).toBeNull();
+            }
+
+            expect(fixture.dismiss).not.toHaveBeenCalled();
+            expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+        },
+    );
+});
+
+
+describe('selection translation authentication copy and request ownership', () => {
+    // Run the actual SFC catch with the real error protocol. Only the translation
+    // transport and browser message ports use the existing lifecycle fixture.
+    const authenticationCopy = '密钥或权限无效';
+    const genericCopy = '翻译失败，请重试';
+
+    function begin(fixture: ReturnType<typeof mountSelection>, text = 'Good ideas deserve attention.') {
+        fixture.config.from = 'en';
+        fixture.config.to = 'zh-Hans';
+        fixture.state.snapshot = Vue.markRaw({text, parts: [{kind: 'text', text}],
+            range: {getClientRects: () => []} as unknown as Range});
+        fixture.state.selectedText = text;
+        fixture.state.showTooltip = true;
+        return fixture.state.beginSelectionContentRequest(text);
+    }
+
+    function deferredTranslation() {
+        let resolve!: (text: string) => void;
+        let reject!: (cause: Error) => void;
+        const promise = new Promise<string>((yes, no) => {resolve = yes; reject = no;});
+        return {promise, resolve, reject};
+    }
+
+    function structuredAuthentication() {
+        const payload = translationErrors.serializeTranslationError({
+            message: 'PRIVATE_DIAGNOSTIC_OPAQUE_PROVIDER_DETAIL',
+            kind: 'authentication', retryable: false, statusCode: 403,
+        });
+        try {
+            translationErrors.unwrapTranslationResponse<never>(payload);
+        } catch (cause) {
+            expect(cause).toBeInstanceOf(translationErrors.TranslationRequestError);
+            return cause as translationErrors.TranslationRequestError;
+        }
+        throw new Error('The actual structured error protocol did not reject.');
+    }
+
+    it.each([
+        {label: 'missing API key', kind: 'authentication', copy: authenticationCopy,
+            cause: () => new Error('API key is not configured: PRIVATE_DIAGNOSTIC_MISSING_KEY')},
+        {label: 'structured authentication with an opaque message', kind: 'authentication', copy: authenticationCopy,
+            cause: structuredAuthentication},
+        {label: 'HTTP 401 through TranslationRequestError', kind: 'authentication', copy: authenticationCopy,
+            cause: () => new translationErrors.TranslationRequestError(translationErrors.serializeTranslationError({
+                message: 'HTTP 401: PRIVATE_DIAGNOSTIC_UNAUTHORIZED', statusCode: 401,
+            }))},
+        {label: 'HTTP 403', kind: 'authentication', copy: authenticationCopy,
+            cause: () => new Error('HTTP 403: PRIVATE_DIAGNOSTIC_FORBIDDEN')},
+        {label: 'rate limit mentioning an API key', kind: 'rate-limit', copy: genericCopy,
+            cause: () => new Error('429 rate limit for API key: PRIVATE_DIAGNOSTIC_RATE_LIMIT')},
+        {label: 'invalid model', kind: 'bad-request', copy: genericCopy,
+            cause: () => new Error('Invalid model: PRIVATE_DIAGNOSTIC_MODEL')},
+        {label: 'network failure', kind: 'network', copy: genericCopy,
+            cause: () => new TypeError('Failed to fetch: PRIVATE_DIAGNOSTIC_NETWORK')},
+        {label: 'unknown failure', kind: 'unknown', copy: genericCopy,
+            cause: () => new Error('PRIVATE_DIAGNOSTIC_UNKNOWN')},
+    ])('uses bounded UI copy for $label', async ({cause: createCause, kind, copy}) => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const request = begin(fixture);
+        const cause = createCause();
+        expect(translationErrors.serializeTranslationError(cause).kind).toBe(kind);
+        fixture.translateText.mockRejectedValueOnce(cause);
+
+        await fixture.state.requestTranslation(request);
+
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.state.error).toBe(copy);
+        expect(fixture.state.error).not.toContain('PRIVATE_DIAGNOSTIC');
+        expect(fixture.state.error).not.toBe(cause.message);
+        expect(fixture.state.activeContentRequest).toEqual(request);
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.state.isLoading).toBe(false);
+        expect(logged).toHaveBeenCalledWith('Selection translation error:', cause);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('ignores a late authentication failure while a replacement selection is still loading', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const old = deferredTranslation(), replacement = deferredTranslation();
+        fixture.translateText.mockReturnValueOnce(old.promise).mockReturnValueOnce(replacement.promise);
+        const oldRequest = begin(fixture, 'An earlier sentence.');
+        const oldPending = fixture.state.requestTranslation(oldRequest);
+        const oldController = fixture.state.translationAbortController;
+        const currentRequest = begin(fixture, 'The current sentence.');
+        const currentPending = fixture.state.requestTranslation(currentRequest);
+        const currentController = fixture.state.translationAbortController;
+        const activeRequest = fixture.state.activeContentRequest;
+
+        old.reject(structuredAuthentication());
+        await oldPending;
+
+        expect(oldController.signal.aborted).toBe(true);
+        expect(currentController.signal.aborted).toBe(false);
+        expect(fixture.state.activeContentRequest).toBe(activeRequest);
+        expect(fixture.state.translationAbortController).toBe(currentController);
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(true);
+        expect(fixture.state.translationResult).toBe('');
+        expect(logged).not.toHaveBeenCalled();
+        replacement.resolve('当前句子的译文。');
+        await currentPending;
+        expect(fixture.state.translationAnswer).toEqual({...currentRequest, answer: '当前句子的译文。'});
+        expect(fixture.state.translationResult).toBe('当前句子的译文。');
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('does not resurrect error copy after the owning selection card closes', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const response = deferredTranslation();
+        fixture.translateText.mockReturnValueOnce(response.promise);
+        const pending = fixture.state.requestTranslation(begin(fixture));
+        const controller = fixture.state.translationAbortController;
+
+        fixture.state.hideAll();
+        response.reject(structuredAuthentication());
+        await pending;
+
+        expect(controller.signal.aborted).toBe(true);
+        expect(fixture.state.snapshot).toBeNull();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.activeContentRequest).toBeNull();
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(logged).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('keeps AbortError silent even when its diagnostic contains authentication wording', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const request = begin(fixture);
+        fixture.translateText.mockRejectedValueOnce(new DOMException('API key: PRIVATE_DIAGNOSTIC_ABORT', 'AbortError'));
+
+        await fixture.state.requestTranslation(request);
+
+        expect(fixture.state.activeContentRequest).toEqual(request);
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(logged).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('allows an explicit manual retry to replace authentication copy with a successful translation', async () => {
+        const fixture = mountSelection();
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const request = begin(fixture);
+        fixture.translateText.mockRejectedValueOnce(structuredAuthentication());
+        await fixture.state.requestTranslation(request);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(fixture.state.error).toBe(authenticationCopy);
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+
+        fixture.translateText.mockResolvedValueOnce('好想法值得关注。');
+        fixture.state.retryTranslation();
+        await vi.advanceTimersByTimeAsync(0);
+        await Vue.nextTick();
+
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+        expect(fixture.state.activeContentRequest.generation).toBeGreaterThan(request.generation);
+        expect(fixture.state.translationAnswer).toEqual({...fixture.state.activeContentRequest, answer: '好想法值得关注。'});
+        expect(fixture.state.translationResult).toBe('好想法值得关注。');
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('preserves an independently completed dictionary answer when translation authentication later fails', async () => {
+        const fixture = mountSelection();
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const card = {word: 'read', normalizedWord: 'read', phonetics: [], sources: [],
+            meanings: [{partOfSpeech: '动词', definitions: [{definition: 'to understand written words',
+                translatedDefinition: '阅读并理解文字'}]}]};
+        fixture.browser.runtime.sendMessage.mockImplementation((message: any) => message.type === 'selectionWordLookup'
+            ? Promise.resolve({success: true, data: card}) : Promise.resolve({success: true, zoom: 1}));
+        const response = deferredTranslation();
+        fixture.translateText.mockReturnValueOnce(response.promise);
+        const request = begin(fixture, 'read');
+        const pending = fixture.state.requestTranslation(request);
+        await fixture.state.requestWordCard(request);
+        const completedCard = fixture.state.wordCard;
+        const completedAnswer = fixture.state.dictionaryAnswer;
+        expect(completedAnswer).toEqual({...request, answer: '阅读并理解文字'});
+
+        response.reject(structuredAuthentication());
+        await pending;
+
+        expect(fixture.state.error).toBe(authenticationCopy);
+        expect(fixture.state.wordCard).toBe(completedCard);
+        expect(fixture.state.dictionaryAnswer).toBe(completedAnswer);
+        expect(fixture.state.vocabularyAnswer).toBe('阅读并理解文字');
+        expect(fixture.state.wordCardError).toBe('');
+        expect(fixture.state.isWordCardLoading).toBe(false);
+        expect(fixture.state.isWordCardSupportLoading).toBe(false);
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.browser.runtime.sendMessage.mock.calls.filter(([message]) => message.type === 'selectionWordLookup')
+            .map(([message]) => message.translateFields)).toEqual([false, true]);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('uses bounded authentication copy after the real mixed code/prose batch request fails', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const parts: selectionCore.SelectionTextPart[] = [
+            {kind: 'text', text: 'Explain the call '},
+            {kind: 'code', text: 'reader.read()'},
+            {kind: 'text', text: ' before continuing.'},
+        ];
+        const text = 'Explain the call reader.read() before continuing.';
+        const request = begin(fixture, text);
+        const snapshot = Vue.markRaw({...fixture.state.snapshot, parts});
+        fixture.state.snapshot = snapshot;
+        const activeRequest = fixture.state.activeContentRequest;
+        expect(parts.map(part => part.text).join('')).toBe(text);
+        let rejectBatch!: (cause: Error) => void;
+        fixture.translateTextBatch.mockImplementationOnce(() => new Promise<string[]>((_resolve, reject) => {
+            rejectBatch = reject;
+        }));
+        const cause = structuredAuthentication();
+
+        const pending = fixture.state.requestTranslation(request);
+        const controller = fixture.state.translationAbortController;
+
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.translateTextBatch).toHaveBeenCalledOnce();
+        // The actual core function passes prose to the existing batch port.
+        // Code remains in the snapshot; no translation algorithm is copied here.
+        expect(fixture.translateTextBatch.mock.calls[0]?.[0]).toEqual(['Explain the call', 'before continuing.']);
+        expect(controller).toBeInstanceOf(AbortController);
+        expect(fixture.translateTextBatch.mock.calls[0]?.[2]).toEqual(expect.objectContaining({
+            signal: controller.signal, sourceLanguage: request.sourceLanguage, targetLanguage: request.targetLanguage,
+        }));
+        expect(controller.signal.aborted).toBe(false);
+        expect(fixture.state.isLoading).toBe(true);
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.translationParts).toEqual([]);
+
+        rejectBatch(cause);
+        await pending;
+
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.translateTextBatch).toHaveBeenCalledOnce();
+        expect(fixture.state.snapshot).toBe(snapshot);
+        expect(fixture.state.snapshot.parts).toBe(parts);
+        expect(parts).toEqual([
+            {kind: 'text', text: 'Explain the call '},
+            {kind: 'code', text: 'reader.read()'},
+            {kind: 'text', text: ' before continuing.'},
+        ]);
+        expect(fixture.state.selectedText).toBe(text);
+        expect(fixture.state.activeContentRequest).toBe(activeRequest);
+        expect(fixture.state.activeContentRequest).toEqual(request);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.error).toBe(authenticationCopy);
+        expect(fixture.state.error).not.toContain('PRIVATE_DIAGNOSTIC');
+        expect(fixture.state.error).not.toBe(cause.message);
+        expect(fixture.state.translationParts).toEqual([]);
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(controller.signal.aborted).toBe(false);
+        expect(fixture.state.isLoading).toBe(false);
+        expect(logged).toHaveBeenCalledWith('Selection translation error:', cause);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
+
+describe('selection authentication settings action ownership and rendered entry', () => {
+    const settingsMessage = {type: 'openOptionsPage', section: 'settings-general'};
+    const failureNotice = '无法打开设置，请从扩展菜单打开设置后重试';
+    const privateDetail = 'PRIVATE_SETTINGS_PROVIDER_CAUSE';
+    type Fixture = ReturnType<typeof mountSelection>;
+
+    function deferred<T>() {
+        let resolve!: (value: T) => void, reject!: (reason: Error) => void;
+        const promise = new Promise<T>((yes, no) => {resolve = yes; reject = no;});
+        return {promise, resolve, reject};
+    }
+
+    function authenticationCause() {
+        const response = translationErrors.serializeTranslationError({
+            message: privateDetail, kind: 'authentication', retryable: false, statusCode: 403,
+        });
+        try { translationErrors.unwrapTranslationResponse<never>(response); }
+        catch (cause) {
+            expect(cause).toBeInstanceOf(translationErrors.TranslationRequestError);
+            return cause as translationErrors.TranslationRequestError;
+        }
+        throw new Error('The real translation error protocol must reject.');
+    }
+
+    function begin(fixture: Fixture, text = 'Good ideas deserve attention.') {
+        fixture.state.snapshot = Vue.markRaw({text, parts: [{kind: 'text', text}],
+            range: {getClientRects: () => []} as unknown as Range});
+        fixture.state.selectedText = text;
+        fixture.state.showTooltip = true;
+        return fixture.state.beginSelectionContentRequest(text);
+    }
+
+    async function failedSelection(options: {render?: boolean; inline?: boolean; cause?: Error;
+        service?: string; selectionService?: string; adapter?: Record<string, unknown>} = {}) {
+        const fixture = mountSelection(false, options.adapter, {}, options.render === true);
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        fixture.config.from = 'en';
+        fixture.config.to = 'zh-Hans';
+        fixture.config.service = options.service ?? 'google';
+        fixture.config.selectionTranslationService = options.selectionService ?? '';
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        const card = {word: 'read', normalizedWord: 'read', phonetics: [], sources: [],
+            meanings: [{partOfSpeech: '动词', definitions: [{definition: 'to understand written words',
+                translatedDefinition: '阅读并理解文字'}]}]};
+        fixture.browser.runtime.sendMessage.mockImplementation((message: any) => message.type === 'selectionWordLookup'
+            ? Promise.resolve({success: true, data: card}) : Promise.resolve({success: true, zoom: 1}));
+        const translation = deferred<string>();
+        fixture.translateText.mockReturnValueOnce(translation.promise);
+        const request = begin(fixture, options.inline ? 'read' : undefined);
+        const pending = fixture.state.requestTranslation(request);
+        if (options.inline) await fixture.state.requestWordCard(request);
+        translation.reject(options.cause ?? authenticationCause());
+        await pending;
+        await Vue.nextTick();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+        return {...fixture, request};
+    }
+
+    function settingsCalls(fixture: Fixture) {
+        return fixture.browser.runtime.sendMessage.mock.calls.filter(([message]) => message.type === 'openOptionsPage');
+    }
+
+    function settingsResponse(fixture: Fixture, response: Promise<unknown>) {
+        fixture.browser.runtime.sendMessage.mockImplementation((message: any) => message.type === 'openOptionsPage'
+            ? response : Promise.resolve({success: true, zoom: 1}));
+    }
+
+    it.each([
+        {label: 'default built-in service', service: 'google', selectionService: '', dispatched: 'google'},
+        {label: 'different selected built-in service', service: 'deepseek', selectionService: 'openai', dispatched: 'openai'},
+        {label: 'selected custom profile', service: 'google', selectionService: 'custom:settings-owner', dispatched: 'custom:settings-owner'},
+    ])('opens only general settings for $label without changing translation or configuration', async options => {
+        const fixture = await failedSelection(options);
+        const authentication = fixture.state.authenticationError;
+        expect(authentication.service).toBe(options.dispatched);
+        expect(fixture.translateText.mock.calls[0]?.[2]).toEqual(expect.objectContaining({serviceOverride: options.dispatched}));
+        expect(settingsCalls(fixture)).toHaveLength(0);
+        const configBefore = JSON.stringify(fixture.config);
+        const active = fixture.state.activeContentRequest;
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture).map(([message]) => message)).toEqual([settingsMessage]);
+        expect(JSON.stringify(settingsCalls(fixture))).not.toContain('service');
+        expect(JSON.stringify(settingsCalls(fixture))).not.toContain(privateDetail);
+        expect(JSON.stringify(fixture.config)).toBe(configBefore);
+        expect(fixture.state.activeContentRequest).toBe(active);
+        expect(fixture.state.authenticationError).toBe(authentication);
+        expect(fixture.state.error).toBe('密钥或权限无效');
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.dictionaryAnswer).toBeNull();
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['standalone', 'dictionary inline'] as const)('renders both actions and dispatches the real configure click in the %s surface', async surface => {
+        const fixture = await failedSelection({render: true, inline: surface === 'dictionary inline'});
+        const port = fixture.renderPort!;
+        const selector = surface === 'standalone' ? '.fr-error-state' : '.fr-inline-error';
+        const other = surface === 'standalone' ? '.fr-inline-error' : '.fr-error-state';
+        expect(port.root.querySelector(other)).toBeNull();
+        const buttons = Array.from(port.root.querySelectorAll(`${selector} .fr-error-actions button`));
+        expect(buttons.map(button => button.textContent)).toEqual(['重试', '配置服务']);
+        expect(buttons).toHaveLength(2);
+        expect(buttons.every(button => button.getAttribute('type') === 'button')).toBe(true);
+        const dictionary = fixture.state.dictionaryAnswer, card = fixture.state.wordCard;
+        const calls = fixture.browser.runtime.sendMessage.mock.calls.length;
+        const response = deferred<unknown>();
+        settingsResponse(fixture, response.promise);
+        const pending = port.click(buttons[1]!);
+        const action = fixture.state.openingAuthenticationSettings;
+        await Vue.nextTick();
+        expect(action.authentication).toBe(fixture.state.authenticationError);
+        expect(buttons[1]!.hasAttribute('disabled')).toBe(true);
+        expect(buttons[0]!.hasAttribute('disabled')).toBe(false);
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture).map(([message]) => message)).toEqual([settingsMessage]);
+        response.resolve({success: true});
+        await pending;
+        await Vue.nextTick();
+        expect(buttons[1]!.hasAttribute('disabled')).toBe(false);
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledTimes(calls + 1);
+        expect(fixture.state.dictionaryAnswer).toBe(dictionary);
+        expect(fixture.state.wordCard).toBe(card);
+        if (surface === 'dictionary inline') {
+            expect(dictionary).toEqual({...fixture.request, answer: '阅读并理解文字'});
+            expect(port.root.querySelector('.fr-word-learning-card')?.textContent).toContain('阅读并理解文字');
+        }
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.state.error).toBe('密钥或权限无效');
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+        // Retry is the actual compiled template handler, not a setup-only assertion.
+        fixture.translateText.mockResolvedValueOnce('好想法值得关注。');
+        await port.click(buttons[0]!);
+        await vi.advanceTimersByTimeAsync(0);
+        await Vue.nextTick();
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.translationResult).toBe('好想法值得关注。');
+        expect(port.root.querySelector(`${selector} .fr-error-actions`)).toBeNull();
+        expect(fixture.state.authenticationError).toBeNull();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['standalone', 'dictionary inline'] as const)('renders only retry for an ordinary error in the %s surface', async surface => {
+        const fixture = await failedSelection({render: true, inline: surface === 'dictionary inline', cause: new TypeError('Failed to fetch')});
+        const selector = surface === 'standalone' ? '.fr-error-state' : '.fr-inline-error';
+        const buttons = Array.from(fixture.renderPort!.root.querySelectorAll(`${selector} .fr-error-actions button`));
+        expect(buttons.map(button => button.textContent)).toEqual(['重试']);
+        expect(fixture.state.authenticationError).toBeNull();
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture)).toHaveLength(0);
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['unsuccessful response', 'non-boolean success', 'missing response', 'rejected response', 'synchronous throw'] as const)('shows bounded feedback for the current action after %s', async outcome => {
+        const fixture = await failedSelection({inline: true});
+        const authentication = fixture.state.authenticationError;
+        const dictionary = fixture.state.dictionaryAnswer, card = fixture.state.wordCard;
+        const configBefore = JSON.stringify(fixture.config);
+        fixture.browser.runtime.sendMessage.mockImplementation((message: any) => {
+            if (message.type !== 'openOptionsPage') return Promise.resolve({success: true, zoom: 1});
+            if (outcome === 'synchronous throw') throw new Error(privateDetail);
+            if (outcome === 'rejected response') return Promise.reject(new Error(privateDetail));
+            if (outcome === 'missing response') return Promise.resolve(undefined);
+            return Promise.resolve({success: outcome === 'non-boolean success' ? 1 : false, error: privateDetail});
+        });
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture).map(([message]) => message)).toEqual([settingsMessage]);
+        expect(fixture.state.noticeMessage).toBe(failureNotice);
+        expect(fixture.state.noticeMessage).not.toContain(privateDetail);
+        expect(fixture.state.authenticationError).toBe(authentication);
+        expect(fixture.state.error).toBe('密钥或权限无效');
+        expect(fixture.state.dictionaryAnswer).toBe(dictionary);
+        expect(fixture.state.wordCard).toBe(card);
+        expect(fixture.state.translationResult).toBe('');
+        expect(JSON.stringify(fixture.config)).toBe(configBefore);
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['close', 'unmount', 'new selection', 'manual retry', 'provider change', 'target change',
+        'adapter invalidation', 'reading then return', 'hidden then return'] as const)('suppresses a late settings rejection after %s', async boundary => {
+        const acceptsRange = vi.fn(() => true);
+        const fixture = await failedSelection({adapter: {acceptsRange}});
+        const response = deferred<unknown>();
+        settingsResponse(fixture, response.promise);
+        const pending = fixture.state.openAuthenticationSettings();
+        expect(fixture.state.openingAuthenticationSettings).not.toBeNull();
+        if (boundary === 'close') fixture.state.hideAll();
+        else if (boundary === 'unmount') fixture.unmount();
+        else if (boundary === 'new selection') begin(fixture, 'A new current sentence.');
+        else if (boundary === 'manual retry') {
+            fixture.state.retryTranslation();
+            await vi.advanceTimersByTimeAsync(0);
+        } else if (boundary === 'provider change') fixture.config.service = 'microsoft';
+        else if (boundary === 'target change') {
+            fixture.config.to = 'fr';
+            fixture.notifyConfig();
+            expect(fixture.state.effectiveTargetLanguage).toBe('fr');
+            expect(fixture.state.authenticationError.request.targetLanguage).toBe('zh-Hans');
+        }
+        else if (boundary === 'adapter invalidation') acceptsRange.mockReturnValue(false);
+        else if (boundary === 'reading then return') {
+            fixture.state.readingMode = true;
+            expect(fixture.state.openingAuthenticationSettings).toBeNull();
+            fixture.state.readingMode = false;
+        } else {
+            fixture.state.showTooltip = false;
+            expect(fixture.state.openingAuthenticationSettings).toBeNull();
+            fixture.state.showTooltip = true;
+        }
+        await Vue.nextTick();
+        const current = {authentication: fixture.state.authenticationError, request: fixture.state.activeContentRequest,
+            error: fixture.state.error, translation: fixture.state.translationResult, dictionary: fixture.state.dictionaryAnswer};
+        if (boundary !== 'reading then return' && boundary !== 'hidden then return') {
+            await fixture.state.openAuthenticationSettings();
+            expect(settingsCalls(fixture)).toHaveLength(1);
+        }
+        // Transient reading/hidden revokes the original action even after return.
+        // Do not start a second unresolved action in this late-response table.
+        response.reject(new Error(privateDetail));
+        await pending;
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.state.authenticationError).toBe(current.authentication);
+        expect(fixture.state.activeContentRequest).toBe(current.request);
+        expect(fixture.state.error).toBe(current.error);
+        expect(fixture.state.translationResult).toBe(current.translation);
+        expect(fixture.state.dictionaryAnswer).toBe(current.dictionary);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['provider', 'target', 'adapter', 'reading', 'hidden'] as const)('rejects a new settings action when the original authentication loses its %s boundary', async boundary => {
+        const acceptsRange = vi.fn(() => true);
+        const fixture = await failedSelection({adapter: {acceptsRange}});
+        if (boundary === 'provider') fixture.config.service = 'microsoft';
+        else if (boundary === 'target') {
+            fixture.config.to = 'fr';
+            fixture.notifyConfig();
+            expect(fixture.state.effectiveTargetLanguage).toBe('fr');
+            expect(fixture.state.authenticationError.request.targetLanguage).toBe('zh-Hans');
+        }
+        else if (boundary === 'adapter') acceptsRange.mockReturnValue(false);
+        else if (boundary === 'reading') fixture.state.readingMode = true;
+        else fixture.state.showTooltip = false;
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.state.isAuthenticationErrorCurrent(fixture.state.authenticationError)).toBe(false);
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture)).toHaveLength(0);
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('keeps a newer action pending when an older action finishes after reading returns', async () => {
+        const fixture = await failedSelection();
+        const old = deferred<unknown>(), current = deferred<unknown>();
+        fixture.browser.runtime.sendMessage.mockImplementation((message: any) => {
+            if (message.type !== 'openOptionsPage') return Promise.resolve({success: true, zoom: 1});
+            return settingsCalls(fixture).length === 1 ? old.promise : current.promise;
+        });
+        const oldPending = fixture.state.openAuthenticationSettings();
+        const oldAction = fixture.state.openingAuthenticationSettings;
+        fixture.state.readingMode = true;
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        fixture.state.readingMode = false;
+        const currentPending = fixture.state.openAuthenticationSettings();
+        const currentAction = fixture.state.openingAuthenticationSettings;
+        expect(currentAction).not.toBe(oldAction);
+        expect(currentAction.authentication).toBe(oldAction.authentication);
+        old.reject(new Error(privateDetail));
+        await oldPending;
+        expect(fixture.state.openingAuthenticationSettings).toBe(currentAction);
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(settingsCalls(fixture).map(([message]) => message)).toEqual([settingsMessage, settingsMessage]);
+        current.resolve({success: true});
+        await currentPending;
+        expect(fixture.state.openingAuthenticationSettings).toBeNull();
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('allows general settings after an adapter authentication failure before service dispatch', async () => {
+        const cause = authenticationCause();
+        const fixture = mountSelection(false, {acceptsRange: () => true, context: () => {throw cause;}});
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        fixture.config.from = 'en';
+        fixture.config.to = 'zh-Hans';
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        const request = begin(fixture);
+        await fixture.state.requestTranslation(request);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.state.authenticationError.service).toBeUndefined();
+        expect(fixture.state.authenticationError.request).toEqual(request);
+        expect(fixture.state.isAuthenticationErrorCurrent(fixture.state.authenticationError)).toBe(true);
+        await fixture.state.openAuthenticationSettings();
+        expect(settingsCalls(fixture).map(([message]) => message)).toEqual([settingsMessage]);
+        expect(fixture.state.error).toBe('密钥或权限无效');
+        expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
 });

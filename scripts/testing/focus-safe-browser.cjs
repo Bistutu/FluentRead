@@ -590,7 +590,11 @@ async function activateExtensionTabWithoutForeground(context, page, timeout = 10
   }, pageUrl);
 }
 
+// 诊断端口独立注册原生事件；保持已有浏览器启动与 Target 创建逻辑不变。
+function startFocusEventMonitor(options) {return require('./mac-focus-event-monitor.cjs').startFocusEventMonitor(options);}
 module.exports = {
+  startFocusEventMonitor,
+  queryMacFrontmostApplication,
   activateExtensionTabWithoutForeground,
   launchFocusSafePersistentContext,
   newPageWithoutForeground,

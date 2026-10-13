@@ -23,6 +23,16 @@ import {
 } from '@/src/core/download/progress';
 
 describe('download progress data', () => {
+    it('whitelists model source status and strips unrelated URLs and malformed metadata', () => {
+        const transfer = {source: 'hf-mirror', state: 'connecting', attempt: 2, attempts: 3};
+        expect(normalizeDownloadProgress({loaded: 5, total: 10, transfer: {...transfer, url: 'https://private.invalid/?token=secret'}})).toEqual({loaded: 5, total: 10, transfer});
+        for (const source of ['modelscope', 'huggingface', 'hf-mirror', 'other']) {
+            expect(normalizeDownloadProgress({loaded: 0, total: 0, transfer: {...transfer, source, state: 'receiving'}})?.transfer?.source).toBe(source);
+        }
+        for (const invalid of [null, 'source', {...transfer, source: 'arbitrary'}, {...transfer, state: 'done'}, {...transfer, attempt: 0}, {...transfer, attempt: 1.5}, {...transfer, attempts: NaN}, {...transfer, attempts: 1}, {...transfer, attempts: 9}]) {
+            expect(normalizeDownloadProgress({loaded: 5, total: 10, transfer: invalid})).toEqual({loaded: 5, total: 10});
+        }
+    });
     it('builds stable ids and storage keys and rejects anything that is not a plain id', () => {
         expect(videoModelDownloadId('tiny')).toBe('video-model:tiny');
         expect(ocrLanguageDownloadId('chi_sim')).toBe('ocr-language:chi_sim');
@@ -64,6 +74,17 @@ describe('download progress data', () => {
 });
 
 describe('multi-file download tracker', () => {
+    it('reports connection and source switches immediately without inventing downloaded bytes', () => {
+        const reports: DownloadProgress[] = [], tracker = createDownloadProgressTracker(2, 100, progress => reports.push(progress));
+        tracker.file().cached(20);
+        const file = tracker.file();
+        tracker.transfer({source: 'modelscope', state: 'connecting', attempt: 1, attempts: 3});
+        expect(reports.at(-1)).toMatchObject({loaded: 20, total: 100, transfer: {source: 'modelscope', state: 'connecting'}});
+        file.advance(10, 80);
+        tracker.transfer({source: 'huggingface', state: 'connecting', attempt: 2, attempts: 3});
+        file.advance(0, 80);
+        expect(reports.at(-1)).toMatchObject({loaded: 20, total: 100, transfer: {source: 'huggingface', attempt: 2}});
+    });
     it('uses the declared total until every file reports its size, then switches to the exact sum', () => {
         const reports: DownloadProgress[] = [];
         const tracker = createDownloadProgressTracker(3, 1000, progress => reports.push(progress));
@@ -154,6 +175,20 @@ describe('combined percentage across sequential downloads', () => {
 });
 
 describe('download progress publisher', () => {
+    it('preserves source metadata and publishes phase/source changes during the byte throttle interval', () => {
+        const send = vi.fn(), publisher = createDownloadProgressPublisher(send, {now: () => 1});
+        const transfer = {source: 'huggingface', state: 'connecting', attempt: 1, attempts: 3} as const;
+        publisher.report('model', {loaded: 0, total: 100, transfer});
+        publisher.report('model', {loaded: 0, total: 100, transfer});
+        publisher.report('model', {loaded: 1, total: 100, transfer: {...transfer, state: 'receiving'}});
+        publisher.report('model', {loaded: 0, total: 100, transfer: {...transfer, source: 'hf-mirror', attempt: 2}});
+        publisher.report('model', {loaded: 0, total: 100});
+        publisher.finish('model');
+        publisher.report('model', {loaded: 0, total: 100, transfer});
+        expect(send).toHaveBeenCalledTimes(6);
+        expect(send.mock.calls[0][0].progress.transfer).toEqual(transfer);
+        expect(send.mock.calls[2][0].progress.transfer.source).toBe('hf-mirror');
+    });
     it('throttles per download, always sends the first report and the finish notice', () => {
         let now = 1000;
         const send = vi.fn();

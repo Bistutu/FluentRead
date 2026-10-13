@@ -62,7 +62,7 @@ The selection card includes 3,000 common English dictionary entries, available o
 
 [Open guide](/en/guide/deepseek-harness)
 
-Local definitions appear immediately, with translated definitions added afterward. The regular translation appears independently. Online lookup waits at most 2.5 seconds and shows progress in a compact line. Missing entries prompt you to check the spelling and explain that names or new words may be absent. If the dictionary cannot respond, use **Retry lookup**; the existing translation remains available. The grammar view groups meaningful sentence units and shows their role and word class in the interface language, such as “subject · noun phrase” and “postmodifier · infinitive phrase”. Learning actions keep the source and its ordinary translation above the answer, then scroll to the explanation. Scroll upward to compare them.
+Local definitions appear immediately, with translated definitions added afterward. The regular translation appears independently. Online lookup waits at most 2.5 seconds and shows progress in a compact line. Missing entries prompt you to check the spelling and explain that names or new words may be absent. If the dictionary cannot respond, use **Retry lookup**; the existing translation remains available. The grammar view groups meaningful sentence units and shows their role and word class in the interface language, such as “subject · noun phrase” and “postmodifier · infinitive phrase”. Learning actions show the explanation first. Choose **View original** in More actions to expand the complete source and its ordinary translation, then **Back to current reading** to close the comparison.
 
 </details>
 
@@ -94,6 +94,10 @@ Enable sentence highlighting and point to a sentence on either side to highlight
 ## Selection translation
 
 Enable bilingual selection translation in the extension menu, select a word or passage, and click the nearby icon.
+
+Sentences and passages show the translation first, with the complete original below it for comparison. Card navigation stays on one row; scroll it horizontally or use Tab to reach later learning actions on a narrow card. Dragging, resizing, switching learning views, and streamed answers preserve the position and size you set.
+
+Short learning answers fit their content; long answers scroll within the card. The audio bar takes no space while idle. More tools sit beside the answer, and follow-up questions appear after it; scroll or use Tab to reach them. Changing the interface language preserves the original and translated content.
 
 [Open guide](/en/guide/deepseek-harness)
 

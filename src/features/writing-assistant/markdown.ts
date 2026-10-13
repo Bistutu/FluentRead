@@ -4,7 +4,7 @@
  * 主要内容：复用阅读回答的块与行内解析，保留段落、列表编号、代码和表格单元格；链接保留文字与地址，图片只保留说明与地址。
  * 模块边界：仅转换字符串，不操作 DOM、不生成 HTML、不访问链接；沿用安全 Markdown 子集，不扩展共享预览解析器。
  */
-import {readingAnswerBlocks, readingAnswerSpans} from '@/src/features/reading-assistant/public';
+import {readingAnswerBlocks, readingAnswerSpans} from '@/src/features/reading-assistant/answer/public';
 
 // 先保护代码、转义字符和链接地址，防止把 URL 中的下划线等内容当作强调语法。
 const inlineLiteral = /\\([\\`*{}\[\]()#+.!_>~-])|`([^`\n]+)`|!?\[((?:\\.|[^\]\\\n])*)\]\(\s*(<[^>\n]*>|(?:\\.|[^()\s\\]|\([^()\n]*\))*)(?:\s+(?:"[^"\n]*"|'[^'\n]*'))?\s*\)/gu;

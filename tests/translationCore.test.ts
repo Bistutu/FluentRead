@@ -1,5 +1,5 @@
 import {parseHTML} from 'linkedom';
-import {describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {
     applyTranslationsToSnapshot,
@@ -22,6 +22,7 @@ import {
     resolveTranslationCandidateAtPoint,
 } from '@/src/core/translation/public';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
+import productionReleaseCases from './fixtures/target-language-releases.json';
 import {
     evaluateHardGuard,
     getElementTagName,
@@ -36,6 +37,7 @@ import {
 } from '@/src/core/translation/dom';
 import {
     classifyGenericCandidate,
+    getAllScopeCandidateKind,
     getDirectInlineRuns,
     hasStructuralAncestor,
     hasDirectReadableText,
@@ -100,6 +102,187 @@ function candidateIds(document: Document, url?: string): string[] {
     return core.discover(document).map((candidate) => candidate.element.id).filter(Boolean);
 }
 
+describe('Hacker News reading boundaries', () => {
+    const hnUrl = 'https://news.ycombinator.com/item?id=123';
+    const readableText = (core: TranslationCandidateCore, candidate: ReturnType<TranslationCandidateCore['discover']>[number]) =>
+        extractTranslationTextFromNodes(candidate.nodes ?? [candidate.element], core.shouldStayOriginal);
+
+    it('separates Ask HN and comment paragraphs while retaining the direct opening text, links and inline code', () => {
+        const {document, core} = page(`
+            <table><tr><td class="title"><span class="titleline"><a id="story-title" href="item?id=123">Ask HN: How do you keep browser translation responsive?</a></span></td></tr>
+            <tr><td><div class="toptext" id="ask-body">The author introduces the question before the first paragraph.
+                <p id="ask-detail">The author explains the reading problem in detail.</p>
+            </div></td></tr>
+            <tr class="comtr"><td><div class="comment"><span class="commtext c00" id="comment-body">The reader shares a <a id="reference-link" href="https://example.test/guide">useful reference</a> and <code id="inline-code">requestIdleCallback()</code>.
+                <p id="comment-detail">The second paragraph explains how the implementation works.</p>
+                <p id="comment-conclusion">The final paragraph discusses performance on long threads.</p>
+                <pre id="code-block"><code>function sample() { return 42; }</code></pre>
+            </span></div></td></tr></table>
+        `, hnUrl);
+        const candidates = core.discover(document);
+        expect(candidates.map(candidate => candidate.element.id)).toEqual([
+            'story-title', 'ask-detail', 'ask-body', 'comment-detail', 'comment-conclusion', 'comment-body',
+        ]);
+        const opening = candidates.find(candidate => candidate.element.id === 'comment-body')!;
+        expect(opening.nodes).toBeDefined();
+        expect(readableText(core, opening)).toContain('useful reference');
+        expect(readableText(core, opening)).not.toContain('requestIdleCallback');
+        expect(readableText(core, opening)).not.toContain('second paragraph');
+        expect(core.resolve(document.getElementById('reference-link')!.firstChild)?.nodes).toEqual(opening.nodes);
+        expect(core.resolve(document.getElementById('comment-detail')!.firstChild)?.element.id).toBe('comment-detail');
+        expect(core.resolve(document.getElementById('ask-detail')!.firstChild)?.element.id).toBe('ask-detail');
+        expect(document.getElementById('inline-code')!.textContent).toBe('requestIdleCallback()');
+        const detail = document.getElementById('comment-detail') as HTMLElement;
+        const snapshot = createTranslationSourceSnapshot(detail, core.shouldStayOriginal);
+        expect(snapshot.slots.map(slot => slot.source).join(' ')).toContain('second paragraph');
+        expect(snapshot.clone.querySelector('pre')).toBeNull();
+        expect(candidates.some(candidate => candidate.element.id === 'code-block')).toBe(false);
+    });
+
+    it('prunes identity, vote and navigation metadata from full and hover discovery and ignores their mutations', () => {
+        const {document, core} = page(`
+            <table><tr><td><span class="pagetop" id="navigation"><a>Hacker News</a> | new | past | comments</span></td></tr>
+            <tr><td class="rank" id="rank">One</td><td class="votelinks" id="vote"><a>upvote this story</a></td><td class="title"><span class="titleline"><a id="story-title">A useful article about browser performance</a><span class="sitebit comhead" id="site-meta">(<a><span class="sitestr">example.test</span></a>)</span></span></td></tr>
+            <tr><td class="subtext" id="story-meta"><span class="score">one hundred points</span> by <a class="hnuser">reader</a> <span class="age">three hours ago</span> | hide | ten comments</td></tr>
+            <tr class="comtr"><td><span class="comhead" id="comment-meta"><a class="hnuser">reader</a> <span class="age">three hours ago</span> | <a>parent</a> | <a>next</a> <a>[–]</a></span>
+            <div class="comment"><span class="commtext" id="comment-body">This comment is the readable content of the discussion.</span><div class="reply" id="reply"><p><font><u><a>reply</a></u></font></p></div></div></td></tr>
+            <tr><td><a class="morelink" id="more">More</a></td></tr></table>
+            <span class="yclinks" id="footer"><a>Guidelines</a> | <a>FAQ</a></span><form id="search"><label>Search:</label><input name="q"></form>
+        `, hnUrl);
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['story-title', 'comment-body']);
+        for (const id of ['navigation', 'rank', 'vote', 'site-meta', 'story-meta', 'comment-meta', 'reply', 'more', 'footer', 'search']) {
+            const metadata = document.getElementById(id)!;
+            expect(core.resolve(metadata.firstChild), id).toBeNull();
+            expect(core.shouldStayOriginal(metadata), id).toBe(true);
+            expect(core.shouldIgnoreMutation(metadata), id).toBe(true);
+        }
+        expect(core.shouldIgnoreMutation(document.getElementById('comment-body')!)).toBe(false);
+    });
+
+    it.each(['/faq', '/newsguidelines.html'])('retains generic reading content on %s', path => {
+        const {document, core} = page('<main><h1 id="heading">Frequently asked questions</h1><p id="answer">This explanation should remain available for reading and translation.</p></main>', `https://news.ycombinator.com${path}`);
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['heading', 'answer']);
+        expect(core.resolve(document.getElementById('answer')!.firstChild)?.element.id).toBe('answer');
+    });
+
+    it('keeps dense thread discovery bounded by the visible prose and does not visit metadata descendants', () => {
+        const count = 300;
+        const {document, core} = page(`<table>${Array.from({length: count}, (_, index) => `<tr class="comtr"><td>
+            <span class="comhead"><a class="hnuser"><span id="metadata-${index}">reader ${index}</span></a><span class="age"><a>three hours ago</a></span><a>parent</a><a>next</a></span>
+            <div class="comment"><span class="commtext" id="comment-${index}">The direct introduction presents a useful idea.
+                <p id="detail-${index}">The implementation paragraph provides enough reading context.</p><p id="conclusion-${index}">The conclusion explains the tradeoff for a long discussion.</p>
+            </span><div class="reply"><p><font><u><a>reply</a></u></font></p></div></div>
+        </td></tr>`).join('')}</table>`, hnUrl);
+        const steps = [...core.discoverSteps(document)];
+        const candidates = steps.flatMap(step => step.candidate ? [step.candidate] : []);
+        expect(candidates).toHaveLength(count * 3);
+        expect(candidates.every(candidate => readableText(core, candidate).length < 100)).toBe(true);
+        expect(steps.some(step => step.element.id.startsWith('metadata-'))).toBe(false);
+        expect(steps.length).toBeLessThan(count * 21 + 10);
+    });
+});
+
+describe('Explicit non-atomic inline reading containers', () => {
+    function inlineCore() {
+        return new TranslationCandidateCore({url: new URL('https://inline-reader.test'), adapters: [
+            createDeclarativeAdapter({id: 'inline-reader', hosts: ['inline-reader.test'], genericCandidatePolicy: 'targets-only', targets: [
+                {selector: '.prose p', match: 'closest', reason: 'paragraph'},
+                {selector: '.prose', match: 'self', atomic: false, reason: 'container'},
+            ]}),
+        ]});
+    }
+
+    it('keeps ordinary inline containers outside the generic paragraph-splitting boundary', () => {
+        const {document} = page('<main><span id="inline">Opening text outside an explicitly selected reading container.<p id="paragraph">The nested paragraph remains independently readable.</p></span></main>');
+        const core = new TranslationCandidateCore({adapters: []});
+        const inline = document.getElementById('inline')!;
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['paragraph']);
+        expect(getDirectInlineRuns(inline, undefined, true)).toEqual([]);
+        expect(core.resolve(inline.firstChild)).toBeNull();
+    });
+
+    it('retains the explicit span opening beside a separate paragraph and rejects an empty container', () => {
+        const {document} = page('<main><span class="prose" id="source">The directly owned opening remains readable.<p id="paragraph">The nested paragraph has its own reading boundary.</p></span><span class="prose" id="empty"></span></main>');
+        const core = inlineCore();
+        const source = document.getElementById('source')!;
+        const candidates = core.discover(document);
+        expect(candidates.map(candidate => candidate.element.id)).toEqual(['paragraph', 'source']);
+        const opening = candidates.find(candidate => candidate.element === source)!;
+        expect(extractTranslationTextFromNodes(opening.nodes!)).toBe('The directly owned opening remains readable.');
+        expect(core.resolve(source.firstChild)?.nodes).toEqual(opening.nodes);
+        expect(core.resolve(document.getElementById('paragraph')!.firstChild)?.element.id).toBe('paragraph');
+        expect(core.resolve(document.getElementById('empty'))).toBeNull();
+    });
+
+    it('preserves an explicit container inside a shadow root without crossing its neighboring reading boundary', () => {
+        const {document} = page('<main><div id="host"><p id="light-neighbor">The light DOM paragraph is outside the explicit rule.</p></div></main>');
+        const host = document.getElementById('host')!;
+        const shadow = host.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<span class="prose" id="shadow-source">The shadow opening remains directly owned.<p id="shadow-paragraph">The shadow paragraph remains independently readable.</p></span><p id="shadow-neighbor">The neighboring shadow paragraph is outside the rule.</p>';
+        const core = inlineCore();
+        const original = shadow.innerHTML;
+        const candidates = core.discover(document);
+        expect(candidates.map(candidate => candidate.element.id)).toEqual(['shadow-paragraph', 'shadow-source']);
+        const source = shadow.querySelector('#shadow-source')!;
+        expect(core.resolve(source.firstChild)?.nodes).toEqual(candidates[1]!.nodes);
+        expect(core.resolve(shadow.querySelector('#shadow-paragraph')!.firstChild)?.element.id).toBe('shadow-paragraph');
+        expect(core.resolve(shadow.querySelector('#shadow-neighbor')!.firstChild)).toBeNull();
+        expect(core.resolve(document.getElementById('light-neighbor')!.firstChild)).toBeNull();
+        expect(shadow.innerHTML).toBe(original);
+    });
+});
+
+describe('Forced discovery synchronous inspection', () => {
+    it('reuses the declared decision and wide ancestor selector misses within one enter step', () => {
+        const {document} = parseHTML(`<html><body><main>${'<div>'.repeat(48)}<p id="source">The explicitly declared source remains independently readable.</p>${'</div>'.repeat(48)}</main></body></html>`);
+        const source = document.getElementById('source')!;
+        const prune = Array.from({length: 20}, (_, index) => `.missing-prune-${index}`);
+        const adapter = createDeclarativeAdapter({id: 'forced-step', hosts: ['step-reader.test'],
+            prune: [{selector: prune, reason: 'excluded'}],
+            targets: [{selector: '#source', match: 'closest', reason: 'reading-source'}]});
+        const decisions = vi.spyOn(adapter, 'decide');
+        const closestCalls: string[] = [];
+        const spies = Array.from(document.querySelectorAll('*')).map(element => {
+            const nativeClosest = element.closest.bind(element);
+            return vi.spyOn(element, 'closest').mockImplementation(selector => {
+                if (selector === prune.join(',')) closestCalls.push(selector);
+                return nativeClosest(selector);
+            });
+        });
+        try {
+            const core = new TranslationCandidateCore({url: new URL('https://step-reader.test'), adapters: [adapter]});
+            const steps = core.discoverSteps(source);
+            expect(steps.next().value).toMatchObject({element: source, phase: 'enter'});
+            expect(decisions.mock.calls.filter(([element]) => element === source)).toHaveLength(1);
+            expect(closestCalls).toHaveLength(2);
+            expect(steps.next().value?.candidate?.element).toBe(source);
+            expect(source.textContent).toBe('The explicitly declared source remains independently readable.');
+        } finally { decisions.mockRestore(); spies.forEach(spy => spy.mockRestore()); }
+    });
+
+    it.each(['hard-guard', 'site-prune', 'target-loss'] as const)('reads %s afresh after a generator yields its first forced candidate', mutation => {
+        const {document} = parseHTML('<html><body><main id="host" class="allowed"><p id="first">First explicitly eligible reading paragraph.</p><p id="second">Second independently eligible reading paragraph.</p></main></body></html>');
+        const host = document.getElementById('host')!;
+        const core = new TranslationCandidateCore({url: new URL('https://step-reader.test'), adapters: [
+            createDeclarativeAdapter({id: 'yield-boundary', hosts: ['step-reader.test'], genericCandidatePolicy: 'targets-only',
+                prune: [{selector: '.excluded', reason: 'excluded'}],
+                keepOriginal: [{selector: '.excluded', reason: 'excluded-source'}],
+                targets: [{selector: '.allowed p', match: 'closest', reason: 'eligible-paragraph'}]}),
+        ]});
+        const steps = core.discoverSteps(document);
+        let first: ReturnType<typeof steps.next>;
+        do { first = steps.next(); } while (!first.done && !first.value.candidate);
+        expect(first.value?.candidate?.element.id).toBe('first');
+        if (mutation === 'hard-guard') host.setAttribute('translate', 'no');
+        else if (mutation === 'site-prune') host.classList.add('excluded');
+        else host.classList.remove('allowed');
+        expect([...steps].flatMap(step => step.candidate ? [step.candidate.element.id] : [])).toEqual([]);
+        host.removeAttribute('translate');
+        host.className = 'allowed';
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['first', 'second']);
+    });
+});
+
 describe('Codeforces named form controls', () => {
     it('issue #492 continues discovery after a form input shadows tagName', () => {
         const {document} = parseHTML('<html><body><form><input name="tagName"></form><p id="statement">Read this problem statement and calculate the answer.</p></body></html>');
@@ -112,6 +295,423 @@ describe('Codeforces named form controls', () => {
         expect(core.discover(document).map(candidate => candidate.element)).toContain(document.querySelector('#statement'));
         expect(core.resolve(form.querySelector('input'))).toBeNull();
         expect(getElementTagName(Object.assign(Object.create(null), {tagName: {}}) as Element)).toBe('');
+    });
+});
+
+describe('候选语言副本保留真实行内文字边界', () => {
+    const languageOptions = {includeInlineCodeForLanguage: true};
+    const withoutCodeAtoms = (copy: string) => copy.replace(/[\uFFFC\uFFFD]/gu, '').trim();
+    const styleSurface = parseHTML('<html></html>').document.defaultView!;
+    let previousStyle: PropertyDescriptor | undefined;
+    beforeEach(() => { previousStyle = Object.getOwnPropertyDescriptor(styleSurface, 'getComputedStyle'); });
+    afterEach(() => {
+        if (previousStyle) Object.defineProperty(styleSurface, 'getComputedStyle', previousStyle);
+        else Reflect.deleteProperty(styleSurface, 'getComputedStyle');
+    });
+    function inlineMarkup(source: string, mode: string): string {
+        let ordinal = 0;
+        return source.replace(/[A-Za-z][A-Za-z0-9_]*(?:[ +→][A-Za-z][A-Za-z0-9_]*)*/gu, token => {
+            const tag = mode === 'mixed' ? ordinal++ % 2 ? 'strong' : 'code' : mode;
+            return `<${tag}>${token}</${tag}>`;
+        });
+    }
+    it.each(['mixed', 'span', 'strong', 'em'].flatMap(mode => productionReleaseCases.map(source => [mode, source] as const)))
+    ('%s 发布说明仍以完整候选判断：%s', (mode, source) => {
+        const {document} = page(`<p id="release">${inlineMarkup(source, mode)}</p><p id="foreign">Please read the complete translation instructions.</p>`);
+        document.documentElement.setAttribute('lang', 'en');
+        const paragraph = document.querySelector<HTMLElement>('#release')!;
+        const providerSource = extractTranslationText(paragraph);
+        const slots = collectLiveTranslationTextSlots(paragraph).map(slot => slot.source);
+        for (const scope of ['content', 'all'] as const) {
+            const core = createTranslationCore({url: new URL('https://github.com/FluentRead/FluentRead/releases'), scope});
+            expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['release', 'foreign']);
+            const inline = paragraph.querySelector('strong, span, em, code');
+            if (mode !== 'mixed') expect(core.resolve(inline!.firstChild)?.element).toBe(paragraph);
+            const copy = extractTranslationText(paragraph, core.shouldStayOriginal, undefined, languageOptions);
+            expect(copy).toBe(source);
+            expect(extractTranslationTextFromNodes([...paragraph.childNodes], core.shouldStayOriginal, undefined, languageOptions)).toBe(source);
+            expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(true);
+            expect(shouldSkipTranslationForTarget(copy, 'en', ['zh-Hans'])).toBe(true);
+            expect(shouldSkipTranslationForTarget(copy, 'en')).toBe(false);
+            expect(shouldSkipTranslationForTarget(extractTranslationText(document.querySelector('#foreign')!, undefined, undefined, languageOptions), 'zh-Hans')).toBe(false);
+        }
+        expect(extractTranslationText(paragraph)).toBe(providerSource);
+        expect(collectLiveTranslationTextSlots(paragraph).map(slot => slot.source)).toEqual(slots);
+    });
+
+    it.each([
+        '<p>这里的并发队列配置已经完成。<br><span>Birds</span><br><strong>Fly</strong></p>',
+        '<div>这里的并发队列配置已经完成。<p>Birds</p><p>Fly</p></div>',
+        '<div>这里的并发队列配置已经完成。<p>Birds</p>Fly</div>',
+        '<p>页面的运行状态正常，所有功能可以继续使用。<span>Birds</span><span class="notranslate"> gap </span><strong>Fly</strong></p>',
+        '<p>页面的运行状态正常，所有功能可以继续使用。<span>Birds</span><span hidden> gap </span><strong>Fly</strong></p>',
+        '<p>页面的运行状态正常，所有功能可以继续使用。<span>Birds</span><span class="katex"> gap </span><strong>Fly</strong></p>',
+        '<p>页面的运行状态正常，所有功能可以继续使用。<strong>Please read the instructions.</strong></p>',
+    ])('外语正文不跨换行、语义块或保护省略处拼成名称：%s', html => {
+        const {document} = page(html);
+        const element = document.body.firstElementChild!;
+        const copy = extractTranslationText(element, undefined, undefined, languageOptions);
+        expect(copy).not.toContain('BirdsFly');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+        expect(shouldSkipTranslationForTarget(copy, 'en', ['zh-Hans'])).toBe(false);
+    });
+
+    it('不扩大部分根节点范围，也不跨数组省略节点拼接名称', () => {
+        const {document} = page('<p>页面的运行状态正常，所有功能可以继续使用。Birds<span> omitted </span>Fly</p>');
+        const paragraph = document.querySelector('p')!;
+        const copy = extractTranslationTextFromNodes([paragraph.firstChild!, paragraph.lastChild!], undefined, undefined, languageOptions);
+        expect(copy).not.toContain('omitted');
+        expect(copy).toContain('Birds\nFly');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+        expect(shouldSkipTranslationForTarget(extractTranslationTextFromNodes([paragraph.lastChild!], undefined, undefined, languageOptions), 'zh-Hans')).toBe(false);
+    });
+
+    it.each(['Hola', 'Vielen Dank', '这个软件的设置页面已经更新。'])('受保护代码自然正文不能替相邻 %s 证明英语目标', source => {
+        const {document} = page(`<p><code>This application now loads all settings and connects to the server.</code>${source}</p>`);
+        const paragraph = document.querySelector('p')!;
+        expect(extractTranslationText(paragraph)).toBe(source);
+        expect(withoutCodeAtoms(extractTranslationText(paragraph, undefined, undefined, languageOptions))).toBe(source);
+        expect(shouldSkipTranslationForTarget(extractTranslationText(paragraph, undefined, undefined, languageOptions), 'en')).toBe(false);
+    });
+
+    it.each(['This App', 'Please Restart', 'Rivers Flow', 'fetch', 'This Application Works', 'Birds Fly Across Open Fields', 'This extremely long code documentation describes every available configuration parameter on the settings page.'])
+    ('无法证明为技术名称的代码 %s 不提供正文语言证据', code => {
+        const {document} = page(`<p><code>${code}</code>Hola</p>`);
+        expect(shouldSkipTranslationForTarget(extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions), 'en')).toBe(false);
+    });
+
+    it.each(['GPU', 'requestHandler', 'Google Meet', 'MANGA Plus', 'requestHandler Plus', 'const value = 1;', 'api_key', 'browser.runtime', ''])
+    ('有结构的代码/名称 %s 不改变可译槽', code => {
+        const {document} = page(`<p>请求状态已经更新，新增<code>${code}</code>翻译服务，可以继续翻译。</p>`);
+        const paragraph = document.querySelector('p')!;
+        const providerSource = extractTranslationText(paragraph);
+        const copy = extractTranslationText(paragraph, undefined, undefined, languageOptions);
+        if (['const value = 1;', 'api_key', 'browser.runtime'].includes(code)) expect(copy).not.toContain(code);
+        else expect(copy).toContain(code);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(true);
+        expect(extractTranslationText(paragraph)).toBe(providerSource);
+    });
+
+    it('多个受保护功能词不能组合成英语正文证据', () => {
+        const {document} = page('<p><code>The</code> <code>and</code> <code>with</code> <code>this</code> <code>for</code> <code>the</code> Hola</p>');
+        const paragraph = document.querySelector('p')!;
+        const copy = extractTranslationText(paragraph, undefined, undefined, languageOptions);
+        expect(withoutCodeAtoms(copy)).toBe('Hola');
+        expect(extractTranslationText(paragraph)).toBe('Hola');
+        expect(shouldSkipTranslationForTarget(copy, 'en')).toBe(false);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans', ['en'])).toBe(false);
+    });
+
+    it('部分 Text roots 不从代码中未提供的兄弟节点借名称资格', () => {
+        const {document} = page('<p></p>');
+        const paragraph = document.querySelector('p')!;
+        const roots: Node[] = [];
+        for (const word of ['The', 'and', 'with', 'this', 'for', 'the']) {
+            const code = document.createElement('code');
+            const partial = document.createTextNode(word);
+            code.append(partial, document.createTextNode('Handler'));
+            paragraph.append(code);
+            roots.push(partial);
+        }
+        const outside = document.createTextNode(' Hola');
+        paragraph.append(outside);
+        roots.push(outside);
+        const copy = extractTranslationTextFromNodes(roots, undefined, undefined, languageOptions);
+        expect(withoutCodeAtoms(copy)).toBe('Hola');
+        expect(copy).not.toContain('Handler');
+        expect(shouldSkipTranslationForTarget(copy, 'en')).toBe(false);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans', ['en'])).toBe(false);
+    });
+
+    it.each([
+        ['真实相邻行内根', '<p>请求状态已经更新，新增<span>Google</span> <strong>Meet</strong>翻译服务，可以继续翻译。</p>', 'children', true],
+        ['根级 br', '<p>连接字段与并发配置已经完成，<code>scheduler</code><br>/fallback</p>', 'children', false],
+        ['空语义块', '<div>页面的运行状态正常，所有功能可以继续使用。Birds<p></p>Fly</div>', 'children', false],
+        ['空 CSS 块', '<p>页面的运行状态正常，所有功能可以继续使用。Birds<span id="break"></span>Fly</p>', 'css-block', false],
+        ['未提供的中间根', '<p>页面的运行状态正常，所有功能可以继续使用。Birds<span> omitted </span>Fly</p>', 'omitted', false],
+        ['独立控件标签', '<div><p>页面的运行状态正常，所有功能可以继续使用。</p><input type="button" value="Birds"><input type="button" value="Fly"></div>', 'children', false],
+        ['部分代码先于完整根', '<p>连接字段与并发配置已经完成，<code>scheduler</code>/fallback 的连接处理通过。</p>', 'partial-first', true],
+        ['完整根先于部分代码', '<p>连接字段与并发配置已经完成，<code>scheduler</code>/fallback 的连接处理通过。</p>', 'complete-first', true],
+        ['部分代码没有原文前缀', '<p>连接字段与并发配置已经完成，<code>scheduler</code>/fallback 的连接处理通过。</p>', 'partial-only', false],
+        ['空 roots', '<p>页面的运行状态正常，所有功能可以继续使用。</p>', 'none', true],
+    ] as const)('roots 事实边界表：%s', (label, html, mode, skip) => {
+        const {document} = page(html);
+        const element = document.body.firstElementChild!;
+        if (mode === 'css-block') Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: (node: Element) => ({display: node.id === 'break' ? 'block' : 'inline'}),
+        });
+        const code = element.querySelector('code');
+        const roots: Node[] = mode === 'partial-first' ? [code!.firstChild!, element]
+            : mode === 'complete-first' ? [element, code!.firstChild!]
+            : mode === 'partial-only' ? [code!.firstChild!, element.lastChild!]
+            : mode === 'omitted' ? [element.firstChild!, element.lastChild!]
+            : mode === 'none' ? [] : [...element.childNodes];
+        const providerSource = extractTranslationTextFromNodes(roots);
+        const copy = extractTranslationTextFromNodes(roots, undefined, undefined, languageOptions);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(skip);
+        expect(shouldSkipTranslationForTarget(copy, 'en', ['zh-Hans'])).toBe(skip);
+        expect(extractTranslationTextFromNodes(roots)).toBe(providerSource);
+        if (mode.startsWith('partial') || mode === 'complete-first') expect(copy).not.toContain('scheduler');
+        if (mode === 'partial-first' || mode === 'complete-first') expect(copy.match(/\uFFFC/gu)).toHaveLength(1);
+        if (mode === 'partial-only') expect(copy).not.toContain('\uFFFC');
+        if (label === '根级 br') expect(copy).toContain('\uFFFC\n/fallback');
+        if (['空语义块', '空 CSS 块', '未提供的中间根', '独立控件标签'].includes(label)) {
+            expect(copy).toMatch(/Birds\n+Fly/u);
+            expect(copy).not.toContain('BirdsFly');
+        }
+        if (mode === 'omitted') expect(copy).not.toContain('omitted');
+        if (mode === 'none') expect(copy).toBe('');
+    });
+
+    it('直接文本 roots 保留隐藏片段省略处的边界', () => {
+        const {document} = page('<p>页面的运行状态正常，所有功能可以继续使用。Birds<span hidden> gap </span>Fly</p>');
+        const paragraph = document.querySelector('p')!;
+        const copy = extractTranslationTextFromNodes([paragraph.firstChild!, paragraph.querySelector('span')!.firstChild!, paragraph.lastChild!], undefined, undefined, languageOptions);
+        expect(copy).toContain('Birds\n');
+        expect(copy).not.toContain('gap');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+    });
+
+    it('宿主在读取间丢失文本值时不把空节点作为语言证据', () => {
+        const {document} = page('<p><span>Hola</span></p>');
+        const empty = document.querySelector('span')!.firstChild!;
+        Object.defineProperty(empty, 'nodeValue', {configurable: true, value: null});
+        const copy = extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions);
+        expect(copy).toBe('');
+        expect(shouldSkipTranslationForTarget(copy, 'en')).toBe(true);
+    });
+
+    it('复杂代码名称内部的后代不提供正文语言证据', () => {
+        const {document} = page('<p>请求状态已经更新，新增<code>Google <span>Meet</span></code>翻译服务，可以继续翻译。</p>');
+        const paragraph = document.querySelector('p')!;
+        const copy = extractTranslationText(paragraph, undefined, undefined, languageOptions);
+        expect(copy).toBe('请求状态已经更新，新增\uFFFD翻译服务，可以继续翻译。');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(true);
+        expect(extractTranslationText(paragraph)).not.toContain('Google');
+    });
+
+    it.each(['inline-block', 'inline-flex', 'inline-grid', 'ruby', 'contents', ''])('CSS %s 行内布局不会制造额外空格', display => {
+        const {document} = page('<p>请求状态已经更新，新增<span>Google</span> <strong>Meet</strong>翻译服务，可以继续翻译。</p>');
+        Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: () => ({display}),
+        });
+        const copy = extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions);
+        expect(copy).toBe('请求状态已经更新，新增Google Meet翻译服务，可以继续翻译。');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(true);
+    });
+
+    it.each(['block', 'flex', 'grid'])('CSS %s 独立行保留外语边界', display => {
+        const {document} = page('<p>这里的并发队列配置已经完成。<span>Birds</span><strong>Fly</strong></p>');
+        Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: () => ({display}),
+        });
+        const copy = extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions);
+        expect(copy).toContain('Birds\nFly');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+    });
+
+    it.each([
+        ['div', 'inline'], ['p', 'inline'], ['span', 'block'], ['span', 'flex'], ['span', 'grid'],
+    ])('完整候选内部空 %s/%s 块保留分行外语', (tag, display) => {
+        const {document} = page(`<div>页面的运行状态正常，所有功能可以继续使用。<span>Birds</span><${tag} id="gap"></${tag}><strong>Fly</strong></div>`);
+        Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: (element: Element) => ({display: element.id === 'gap' ? display : 'inline'}),
+        });
+        const element = document.body.firstElementChild!;
+        const source = extractTranslationText(element);
+        const copy = extractTranslationText(element, undefined, undefined, languageOptions);
+        expect(copy).toMatch(/Birds\n+Fly/u);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+        expect(shouldSkipTranslationForTarget(copy, 'en', ['zh-Hans'])).toBe(false);
+        expect(extractTranslationText(element)).toBe(source);
+    });
+
+    it.each([
+        ['div', 'none'], ['span', 'none'], ['span', 'inline'], ['span', 'inline-block'], ['span', 'contents'],
+    ])('空 %s/%s 元素不打断真实相邻名称', (tag, display) => {
+        const {document} = page(`<div>请求状态已经更新，新增<span>Google</span><${tag} id="gap"></${tag}><strong>Meet</strong>翻译服务，可以继续翻译。</div>`);
+        Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: (element: Element) => ({display: element.id === 'gap' ? display : 'inline'}),
+        });
+        const element = document.body.firstElementChild!;
+        const copy = extractTranslationText(element, undefined, undefined, languageOptions);
+        expect(copy).toContain('GoogleMeet');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(true);
+        expect(extractTranslationTextFromNodes([...element.childNodes], undefined, undefined, languageOptions)).toContain('GoogleMeet');
+    });
+
+    it('无语义块的离线片段不会因缓存空祖先制造边界', () => {
+        const {document} = page('');
+        const fragment = document.createElement('span');
+        fragment.innerHTML = '请求状态已经更新，新增<span>Google</span> <strong>Meet</strong>翻译服务，可以继续翻译。';
+        Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: () => ({display: 'inline'}),
+        });
+        const copy = extractTranslationText(fragment, undefined, undefined, languageOptions);
+        expect(copy).toBe('请求状态已经更新，新增Google Meet翻译服务，可以继续翻译。');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(true);
+    });
+
+    it('布局读取失败仍用语义块判断外语边界', () => {
+        const {document} = page('<div>这里的并发队列配置已经完成。<p><span>Birds</span></p><p><strong>Fly</strong></p></div>');
+        Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: () => { throw new Error('layout unavailable'); },
+        });
+        const copy = extractTranslationText(document.querySelector('div')!, undefined, undefined, languageOptions);
+        expect(copy).toContain('Birds\nFly');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+    });
+
+    it('shadow 内容沿现有 composed 祖先受 code 保护，不能替外部正文证明语言', () => {
+        const {document} = page('<p><code><context-source></context-source></code><span id="outside">Hola</span></p>');
+        const host = document.querySelector('context-source')!;
+        const shadow = host.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<span>This application now loads all settings and connects to the server.</span>';
+        const codeText = shadow.querySelector('span')!;
+        const outside = document.querySelector('#outside')!;
+        const copy = extractTranslationTextFromNodes([codeText, outside], undefined, undefined, languageOptions);
+        expect(withoutCodeAtoms(copy)).toBe('Hola');
+        expect(shouldSkipTranslationForTarget(copy, 'en')).toBe(false);
+        expect(extractTranslationTextFromNodes([codeText, outside])).toBe('Hola');
+    });
+
+    it('不展开当前候选范围之外的 slot 投影正文', () => {
+        const {document} = page('<p><context-source><span slot="source">This application now loads all settings and connects to the server.</span></context-source><span id="outside">Hola</span></p>');
+        const host = document.querySelector('context-source')!;
+        const shadow = host.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<code><slot name="source"></slot></code>';
+        const code = shadow.querySelector('code')!;
+        const copy = extractTranslationTextFromNodes([code, document.querySelector('#outside')!], undefined, undefined, languageOptions);
+        expect(copy).toBe('Hola');
+        expect(shouldSkipTranslationForTarget(copy, 'en')).toBe(false);
+    });
+
+    it.each(['scheduler', 'listener→router→typed input'])('结构 code %s 不提供外部 Hola 的正文语言证据', code => {
+        const {document} = page(`<p><code>${code}</code>Hola</p>`);
+        const paragraph = document.querySelector('p')!;
+        const copy = extractTranslationText(paragraph, undefined, undefined, languageOptions);
+        expect(copy).toBe('\uFFFCHola');
+        expect(shouldSkipTranslationForTarget(copy, 'en')).toBe(false);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+        expect(extractTranslationText(paragraph)).toBe('Hola');
+    });
+
+    it.each([
+        '<p>连接字段与并发配置已经完成。<code>scheduler</code>/Please retry</p>',
+        '<p>连接字段与并发配置已经完成，<code>scheduler</code>/Please retry</p>',
+        '<p>连接字段与并发配置已经完成，<code>scheduler</code>、Birds Fly</p>',
+        '<p>连接字段与并发配置已经完成，<code>scheduler</code>、Birds Fly 是一句英文陈述。</p>',
+        '<p>连接字段与并发配置已经完成，<code>scheduler</code>、“Birds Fly” 是原文内容。</p>',
+        '<p>连接字段与并发配置已经完成，<code>scheduler</code>/ACCESS DENIED</p>',
+        '<p>连接字段与并发配置已经完成，英文标题是 <code>scheduler</code>、Birds Fly。</p>',
+        '<p>连接字段与并发配置已经完成，英文错误提示是 <code>scheduler</code>/Memory Corrupted。</p>',
+        '<p>连接字段与并发配置已经完成，<code>scheduler</code><br>/fallback</p>',
+        '<p>连接字段与并发配置已经完成，<code>scheduler</code><span hidden> gap </span>/fallback</p>',
+        '<p>连接字段与并发配置已经完成，<code>Birds Fly Across Open Fields</code>/fallback</p>',
+        '<p>连接字段与并发配置已经完成，<code>Please retry</code>/fallback</p>',
+    ])('结构 code 锚点仍拒绝外语、引述、标题和保护边界：%s', html => {
+        const {document} = page(html);
+        const copy = extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+        expect(shouldSkipTranslationForTarget(copy, 'en', ['zh-Hans'])).toBe(false);
+    });
+
+    it('结构原子只补技术表达式，不把相邻普通正文当字段', () => {
+        const {document} = page('<p>请求状态已经更新，<code>scheduler</code> Birds Fly 可以继续显示。</p>');
+        const copy = extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+    });
+
+    it('多个结构原子与实际术语形成有界并列技术表达式', () => {
+        const {document} = page('<p>连接字段与并发配置已经完成，<code>scheduler</code>、broker、<code>probe</code>、client 的连接处理通过。</p>');
+        const copy = extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions);
+        expect(copy).toContain('broker、\uFFFC、client');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(true);
+    });
+
+    it('结构原子没有连接符时不把两侧词串成一个技术表达式', () => {
+        const {document} = page('<p>连接字段与并发配置已经完成，<code>scheduler</code> broker<code>probe</code>client 的字段配置保持独立。</p>');
+        const copy = extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+    });
+
+    it.each([
+        ['已启用CPU后端，所有调用经XYZ ABC执行处理并保留原文。', true],
+        ['已启用后台服务，所有调用经XYZ ABC执行处理并保留原文。', false],
+    ] as const)('未知缩写组合需要同句独立技术缩写：%s', (source, skip) => {
+        const {document} = page(`<p>${source}</p>`);
+        const copy = extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(skip);
+    });
+
+    it('结构代码多文本节点只产生一个中性原子', () => {
+        const {document} = page('<p>连接字段与并发配置已经完成，<code></code>/fallback 的连接处理通过。</p>');
+        document.querySelector('code')!.append(document.createTextNode('listener→'), document.createTextNode('router'), document.createTextNode('→typed input'));
+        const paragraph = document.querySelector('p')!;
+        const copy = extractTranslationText(paragraph, undefined, undefined, languageOptions);
+        expect(copy.match(/\uFFFC/gu)).toHaveLength(1);
+        expect(copy).not.toContain('router');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(true);
+    });
+
+    it.each([
+        '<code>The<br>and<br>with<br>this<br>for<br>the</code>',
+        '<code>The<span>and</span><strong>with</strong><em>this</em><span>for</span><strong>the</strong></code>',
+        '<code>The<span hidden> x </span>and<span class="notranslate"> y </span>with this for the</code>',
+    ])('含内部换行或保护边界的 code %s 不能把功能词借给外部 Hola', markup => {
+        const {document} = page(`<p>${markup} Hola</p>`);
+        Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: (element: Element) => ({display: ['SPAN', 'STRONG', 'EM'].includes(element.tagName) ? 'block' : 'inline'}),
+        });
+        const copy = extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions);
+        expect(copy).not.toContain('The');
+        expect(copy).not.toContain('and');
+        expect(copy).not.toContain('with');
+        expect(shouldSkipTranslationForTarget(copy, 'en')).toBe(false);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans', ['en'])).toBe(false);
+    });
+
+    it('CSS block 的结构 code 不能跨块为其他行提供技术锚点', () => {
+        const {document} = page('<p>连接字段与并发配置已经完成，<code>scheduler</code>/fallback</p>');
+        Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: (element: Element) => ({display: element.tagName === 'CODE' ? 'block' : 'inline'}),
+        });
+        const copy = extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions);
+        expect(copy).toContain('\n\uFFFC\n/fallback');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+    });
+
+    it('inline-block code 保留同行结构表达式的物理邻接', () => {
+        const {document} = page('<p>连接字段与并发配置已经完成，<code>scheduler</code>/fallback 的连接处理通过。</p>');
+        Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: () => ({display: 'inline-block'}),
+        });
+        const copy = extractTranslationText(document.querySelector('p')!, undefined, undefined, languageOptions);
+        expect(copy).toContain('\uFFFC/fallback');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(true);
+    });
+
+    it('隐藏/代码块污染保持省略，动态外语改文重新判断', () => {
+        const {document} = page('<p>请求状态已经更新，可以继续翻译。<span hidden>Please read the instructions.</span><pre>Do not translate this source code block.</pre><code>中文代码注释</code></p>');
+        const paragraph = document.querySelector('p')!;
+        let copy = extractTranslationText(paragraph, undefined, undefined, languageOptions);
+        expect(copy).not.toContain('Please');
+        expect(copy).not.toContain('Do not');
+        expect(copy).not.toContain('中文代码');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(true);
+        paragraph.innerHTML = '请求状态已经更新，可以继续翻译。<strong>Please restart the browser.</strong>';
+        copy = extractTranslationText(paragraph, undefined, undefined, languageOptions);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
     });
 });
 
@@ -362,6 +962,29 @@ describe('translation candidate core', () => {
         }
     });
 
+    it('正文同步批量解析拒绝文档和空命中后仍解析同批普通文本', () => {
+        const {document} = parseHTML('<html><body><p id="source">A readable source after invalid hits.</p></body></html>');
+        const source = document.querySelector('p')!;
+        const resolve = new TranslationCandidateCore().createSynchronousResolver();
+        expect(resolve(document)).toBeNull();
+        expect(resolve(undefined)).toBeNull();
+        expect(resolve(source.firstChild)?.element).toBe(source);
+    });
+
+    it('结构区中的容器保留独立语义标题但不吞并相邻导航文本', () => {
+        const {document} = parseHTML('<html><body><nav><div id="group">Navigation prefix.<h2 id="heading">A readable heading inside navigation.</h2>Navigation suffix.</div></nav></body></html>');
+        const candidates = new TranslationCandidateCore().discover(document);
+        expect(candidates.map(candidate => candidate.element.id)).toEqual(['heading']);
+        expect(candidates.some(candidate => candidate.nodes?.length)).toBe(false);
+    });
+
+    it('全部节点对 ARIA 工具栏自身和内部段落使用原位控件展示', () => {
+        const {document} = parseHTML('<html><body><div role="toolbar" id="toolbar"><p id="label">Toolbar status label.</p></div><p id="article">An independent reading paragraph.</p></body></html>');
+        expect(getAllScopeCandidateKind(document.querySelector('#toolbar')!)).toBe('control');
+        expect(getAllScopeCandidateKind(document.querySelector('#label')!)).toBe('control');
+        expect(getAllScopeCandidateKind(document.querySelector('#article')!)).toBe('content');
+    });
+
     it('正文批量解析不复用其他命中的外壳放行标记或保护边界', () => {
         const {document, core} = page('<div translate="no" id="shell"><p id="inside">Readable application paragraph.</p></div><p id="outside">Another readable paragraph.</p>');
         const resolve = core.createSynchronousResolver();
@@ -370,6 +993,21 @@ describe('translation candidate core', () => {
         const outside = resolve(document.querySelector('#outside'));
         expect(outside?.element).toBe(document.querySelector('#outside'));
         expect(outside?.allowTopLevelApplicationShell).toBeUndefined();
+    });
+
+    it('无适配器的正文同步解析接受文本，空与非元素命中不污染后续候选', () => {
+        const {document} = parseHTML('<html><body><main><p>Readable paragraph for synchronous resolution.</p></main></body></html>');
+        const paragraph = document.querySelector('p')!;
+        const core = new TranslationCandidateCore({scope: 'content', adapters: []});
+        const resolve = core.createSynchronousResolver();
+        expect(resolve(undefined)).toBeNull();
+        expect(resolve(null)).toBeNull();
+        expect(resolve(document.createComment('not readable text'))).toBeNull();
+        expect(resolve(document.createTextNode('Detached readable text.'))).toBeNull();
+        expect(resolve(paragraph.firstChild)?.element).toBe(paragraph);
+        expect(resolve(paragraph)?.element).toBe(paragraph);
+        expect(resolve(document)).toBeNull();
+        expect(paragraph.textContent).toBe('Readable paragraph for synchronous resolution.');
     });
 
     it('当前文档的同批解析按范围隔离核心，下一批反映新保护属性', () => {
@@ -760,6 +1398,33 @@ describe('translation candidate core', () => {
             .flatMap((step) => step?.candidate ? [step.candidate.element.id] : []);
         expect(incremental).toEqual(core.discover(document).map((candidate) => candidate.element.id));
         expect(incremental).toHaveLength(200);
+    });
+
+    it.each(['content', 'all'] as const)('增量 %s 发现暂停时重挂 ShadowRoot 根节点，每个原文节点只访问和产出一次', scope => {
+        const {document} = parseHTML('<html><body><main><article-host></article-host></main></body></html>');
+        const shadow = document.querySelector('article-host')!.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<section><p id="first">First readable source paragraph.</p></section><p id="moved">Second readable source paragraph.</p>';
+        const section = shadow.querySelector('section')!;
+        const firstParagraph = shadow.querySelector('#first')!;
+        const moved = shadow.querySelector('#moved')!;
+        const core = new TranslationCandidateCore({scope, adapters: []});
+        const steps = core.discoverSteps(shadow);
+        const first = steps.next();
+        expect(first.done).toBe(false);
+        expect(first.value).toMatchObject({element: section, phase: 'enter'});
+        // 根列表已取快照；真实 DOM 在帧预算让出后把另一个根移入当前子树。
+        section.appendChild(moved);
+        const observed = [first.value, ...steps];
+        for (const element of [firstParagraph, moved]) {
+            expect(observed.filter(step => step?.element === element && step.phase === 'enter')).toHaveLength(1);
+            expect(observed.filter(step => step?.candidate?.element === element)).toHaveLength(1);
+        }
+        expect(observed.flatMap(step => step?.candidate ? [step.candidate.element] : []))
+            .toEqual([firstParagraph, moved]);
+        expect(section.children).toHaveLength(2);
+        expect(moved.parentNode).toBe(section);
+        expect(firstParagraph.textContent).toBe('First readable source paragraph.');
+        expect(moved.textContent).toBe('Second readable source paragraph.');
     });
 
     it('bounds one readability probe on an extremely wide subtree', () => {
@@ -3030,6 +3695,45 @@ describe('translation candidate core', () => {
         Object.defineProperty(document, 'caretPositionFromPoint', {configurable: true, value: () => ({offsetNode: article.firstChild})});
         expect(core.resolveAtPoint(document, 10, 20)?.element).toBe(article);
         expect(core.discover(document.body).some(candidate => candidate.element === editor)).toBe(false);
+    });
+
+    it('reads each hover hit stack once and observes changed content on the next call', () => {
+        const {document, core} = page('<div id="host"></div><p id="next">Updated ordinary reading text.</p>');
+        const host = document.querySelector('#host')!;
+        const shadow = host.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<p id="target">Original shadow reading text.</p>';
+        const target = shadow.querySelector('#target')!;
+        const next = document.querySelector('#next')!;
+        const documentHit = vi.fn(() => [host, document.body]);
+        const shadowHit = vi.fn(() => [target]);
+        Object.defineProperty(document, 'elementsFromPoint', {configurable: true, value: documentHit});
+        Object.defineProperty(shadow, 'elementsFromPoint', {configurable: true, value: shadowHit});
+        expect(core.resolveAtPoint(document, 10, 20)?.element).toBe(target);
+        expect(documentHit).toHaveBeenCalledTimes(1);
+        expect(shadowHit).toHaveBeenCalledTimes(1);
+
+        documentHit.mockImplementation(() => [next, document.body]);
+        host.remove();
+        expect(core.resolveAtPoint(document, 10, 20)?.element).toBe(next);
+        expect(documentHit).toHaveBeenCalledTimes(2);
+        expect(shadowHit).toHaveBeenCalledTimes(1);
+
+        next.setAttribute('contenteditable', 'true');
+        expect(core.resolveAtPoint(document, 10, 20)).toBeNull();
+        expect(documentHit).toHaveBeenCalledTimes(3);
+    });
+
+    it('discovers an aliased shadow tree once without duplicating translation owners', () => {
+        const {document, core} = page('<div id="host"></div><div id="alias"></div>');
+        const shadow = document.querySelector('#host')!.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<p id="target">Readable shadow content.</p>';
+        Object.defineProperty(document.querySelector('#alias')!, 'shadowRoot', {value: shadow});
+        const target = shadow.querySelector('#target')!;
+        const before = shadow.innerHTML;
+        const steps = [...core.discoverSteps(document)];
+        expect(steps.filter(step => step.element === target && step.phase === 'enter')).toHaveLength(1);
+        expect(steps.filter(step => step.candidate?.element === target)).toHaveLength(1);
+        expect(shadow.innerHTML).toBe(before);
     });
 
     it('keeps shadow editors opaque while preserving visible button input labels', () => {

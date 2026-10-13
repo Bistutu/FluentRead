@@ -1,0 +1,1506 @@
+{
+  "baseCommit": "854ce15d5279b875c766efd15b208380c81e3371",
+  "branch": "codex/service-workspace-density-20261009",
+  "scope": "service workspace first round",
+  "rawEvidence": "/Users/thinkstu/Desktop/copy/artifacts/service-workspace-density-20261009",
+  "probe": "Counts only directory scroller/group Element.getBoundingClientRect calls over48 native animation frames; excludes metrics/screenshots. It is not an FPS or provider/model performance measurement.",
+  "phases": {
+    "baseline": {
+      "ok": true,
+      "build": "production",
+      "layoutCount": 20,
+      "scrollSampleCount": 20,
+      "interactionCount": 8,
+      "consoleErrors": [],
+      "attemptedHttpRequests": [],
+      "networkGuard": "Page HTTP routing and worker fetch guard installed before fixture/UI actions; browser bootstrap before worker discovery is not attributed.",
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 132,
+          "top": -990,
+          "width": 1440,
+          "height": 900
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false,
+        "frontmostBefore": {
+          "pid": 44386,
+          "name": "Google Chrome"
+        },
+        "frontmostAfter": {
+          "pid": 44386,
+          "name": "Google Chrome"
+        }
+      },
+      "layoutMetrics": [
+        {
+          "id": "zh-CN-light-1440x900",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "firstKeyContentY": 218,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-light-1024x700",
+          "viewport": {
+            "width": 1024,
+            "height": 700
+          },
+          "firstKeyContentY": 270.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-light-820x600",
+          "viewport": {
+            "width": 820,
+            "height": 600
+          },
+          "firstKeyContentY": 320.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-light-390x720",
+          "viewport": {
+            "width": 390,
+            "height": 720
+          },
+          "firstKeyContentY": 306.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 32,
+          "openaiRowHeightPx": 54,
+          "directoryRowsCount": 2,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-light-1440x480",
+          "viewport": {
+            "width": 1440,
+            "height": 480
+          },
+          "firstKeyContentY": 218,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-dark-1440x900",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "firstKeyContentY": 218,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-dark-1024x700",
+          "viewport": {
+            "width": 1024,
+            "height": 700
+          },
+          "firstKeyContentY": 270.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-dark-820x600",
+          "viewport": {
+            "width": 820,
+            "height": 600
+          },
+          "firstKeyContentY": 320.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-dark-390x720",
+          "viewport": {
+            "width": 390,
+            "height": 720
+          },
+          "firstKeyContentY": 306.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 32,
+          "openaiRowHeightPx": 54,
+          "directoryRowsCount": 2,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-dark-1440x480",
+          "viewport": {
+            "width": 1440,
+            "height": 480
+          },
+          "firstKeyContentY": 218,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-light-1440x900",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "firstKeyContentY": 215.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-light-1024x700",
+          "viewport": {
+            "width": 1024,
+            "height": 700
+          },
+          "firstKeyContentY": 314.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-light-820x600",
+          "viewport": {
+            "width": 820,
+            "height": 600
+          },
+          "firstKeyContentY": 358.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-light-390x720",
+          "viewport": {
+            "width": 390,
+            "height": 720
+          },
+          "firstKeyContentY": 344.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 32,
+          "openaiRowHeightPx": 54,
+          "directoryRowsCount": 2,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-light-1440x480",
+          "viewport": {
+            "width": 1440,
+            "height": 480
+          },
+          "firstKeyContentY": 215.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-dark-1440x900",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "firstKeyContentY": 215.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-dark-1024x700",
+          "viewport": {
+            "width": 1024,
+            "height": 700
+          },
+          "firstKeyContentY": 314.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-dark-820x600",
+          "viewport": {
+            "width": 820,
+            "height": 600
+          },
+          "firstKeyContentY": 358.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-dark-390x720",
+          "viewport": {
+            "width": 390,
+            "height": 720
+          },
+          "firstKeyContentY": 344.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 32,
+          "openaiRowHeightPx": 54,
+          "directoryRowsCount": 2,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-dark-1440x480",
+          "viewport": {
+            "width": 1440,
+            "height": 480
+          },
+          "firstKeyContentY": 215.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": null,
+          "heroVerticalSpacingPx": 40,
+          "openaiRowHeightPx": 60,
+          "directoryRowsCount": 45,
+          "allNamesFit": null,
+          "headingIssues": null,
+          "horizontalOverflow": false
+        }
+      ],
+      "scrollPerformance": [
+        {
+          "id": "zh-CN-light-1440x900",
+          "motion": {
+            "maxScroll": 2362,
+            "frames": 48,
+            "durationMs": 804,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "zh-CN-light-1024x700",
+          "motion": {
+            "maxScroll": 2563,
+            "frames": 48,
+            "durationMs": 811.7000002861023,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "zh-CN-light-820x600",
+          "motion": {
+            "maxScroll": 2663,
+            "frames": 48,
+            "durationMs": 808.3999996185303,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "zh-CN-light-390x720",
+          "motion": {
+            "maxScroll": 1348,
+            "frames": 48,
+            "durationMs": 799.7999997138977,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "zh-CN-light-1440x480",
+          "motion": {
+            "maxScroll": 2782,
+            "frames": 48,
+            "durationMs": 804.8000001907349,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "zh-CN-dark-1440x900",
+          "motion": {
+            "maxScroll": 2362,
+            "frames": 48,
+            "durationMs": 802.5999999046326,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "zh-CN-dark-1024x700",
+          "motion": {
+            "maxScroll": 2563,
+            "frames": 48,
+            "durationMs": 805.5999999046326,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "zh-CN-dark-820x600",
+          "motion": {
+            "maxScroll": 2663,
+            "frames": 48,
+            "durationMs": 803.4000000953674,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "zh-CN-dark-390x720",
+          "motion": {
+            "maxScroll": 1348,
+            "frames": 48,
+            "durationMs": 804.3000001907349,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "zh-CN-dark-1440x480",
+          "motion": {
+            "maxScroll": 2782,
+            "frames": 48,
+            "durationMs": 811.5999999046326,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "en-US-light-1440x900",
+          "motion": {
+            "maxScroll": 2384,
+            "frames": 48,
+            "durationMs": 811.6999998092651,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "en-US-light-1024x700",
+          "motion": {
+            "maxScroll": 2617,
+            "frames": 48,
+            "durationMs": 812.0999999046326,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "en-US-light-820x600",
+          "motion": {
+            "maxScroll": 2717,
+            "frames": 48,
+            "durationMs": 811.1999998092651,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "en-US-light-390x720",
+          "motion": {
+            "maxScroll": 1375,
+            "frames": 48,
+            "durationMs": 797.8999996185303,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "en-US-light-1440x480",
+          "motion": {
+            "maxScroll": 2804,
+            "frames": 48,
+            "durationMs": 814.8000001907349,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "en-US-dark-1440x900",
+          "motion": {
+            "maxScroll": 2384,
+            "frames": 48,
+            "durationMs": 813.9000000953674,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "en-US-dark-1024x700",
+          "motion": {
+            "maxScroll": 2617,
+            "frames": 48,
+            "durationMs": 807.4000000953674,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "en-US-dark-820x600",
+          "motion": {
+            "maxScroll": 2717,
+            "frames": 48,
+            "durationMs": 813.7999997138977,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "en-US-dark-390x720",
+          "motion": {
+            "maxScroll": 1375,
+            "frames": 48,
+            "durationMs": 798.1999998092651,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "en-US-dark-1440x480",
+          "motion": {
+            "maxScroll": 2804,
+            "frames": 48,
+            "durationMs": 803,
+            "finalScrollTop": 0
+          },
+          "totalReads": 225,
+          "totalScrollerReads": 45,
+          "totalGroupReads": 180,
+          "maxReadsPerFrame": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "interaction-zh-CN-light-1440x900",
+          "search": true,
+          "fold": true,
+          "groupNavigation": true,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "interaction-zh-CN-light-390x720",
+          "search": true,
+          "fold": true,
+          "groupNavigation": false,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "interaction-zh-CN-dark-1440x900",
+          "search": true,
+          "fold": true,
+          "groupNavigation": true,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "interaction-zh-CN-dark-390x720",
+          "search": true,
+          "fold": true,
+          "groupNavigation": false,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "interaction-en-US-light-1440x900",
+          "search": true,
+          "fold": true,
+          "groupNavigation": true,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "interaction-en-US-light-390x720",
+          "search": true,
+          "fold": true,
+          "groupNavigation": false,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "interaction-en-US-dark-1440x900",
+          "search": true,
+          "fold": true,
+          "groupNavigation": true,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "interaction-en-US-dark-390x720",
+          "search": true,
+          "fold": true,
+          "groupNavigation": false,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        }
+      ],
+      "baselineKnownFailures": []
+    },
+    "optimized": {
+      "ok": true,
+      "build": "production",
+      "layoutCount": 20,
+      "scrollSampleCount": 20,
+      "interactionCount": 16,
+      "consoleErrors": [],
+      "attemptedHttpRequests": [],
+      "networkGuard": "Page HTTP routing and worker fetch guard installed before fixture/UI actions; browser bootstrap before worker discovery is not attributed.",
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 132,
+          "top": -990,
+          "width": 1440,
+          "height": 900
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false,
+        "frontmostBefore": {
+          "pid": 44386,
+          "name": "Google Chrome"
+        },
+        "frontmostAfter": {
+          "pid": 44386,
+          "name": "Google Chrome"
+        }
+      },
+      "layoutMetrics": [
+        {
+          "id": "zh-CN-light-1440x900",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "firstKeyContentY": 185,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-light-1024x700",
+          "viewport": {
+            "width": 1024,
+            "height": 700
+          },
+          "firstKeyContentY": 239.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 31,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-light-820x600",
+          "viewport": {
+            "width": 820,
+            "height": 600
+          },
+          "firstKeyContentY": 287.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-light-390x720",
+          "viewport": {
+            "width": 390,
+            "height": 720
+          },
+          "firstKeyContentY": 282.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 24,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-light-1440x480",
+          "viewport": {
+            "width": 1440,
+            "height": 480
+          },
+          "firstKeyContentY": 185,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-dark-1440x900",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "firstKeyContentY": 185,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-dark-1024x700",
+          "viewport": {
+            "width": 1024,
+            "height": 700
+          },
+          "firstKeyContentY": 239.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 31,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-dark-820x600",
+          "viewport": {
+            "width": 820,
+            "height": 600
+          },
+          "firstKeyContentY": 287.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-dark-390x720",
+          "viewport": {
+            "width": 390,
+            "height": 720
+          },
+          "firstKeyContentY": 282.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 24,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "zh-CN-dark-1440x480",
+          "viewport": {
+            "width": 1440,
+            "height": 480
+          },
+          "firstKeyContentY": 185,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-light-1440x900",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "firstKeyContentY": 182.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-light-1024x700",
+          "viewport": {
+            "width": 1024,
+            "height": 700
+          },
+          "firstKeyContentY": 281.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-light-820x600",
+          "viewport": {
+            "width": 820,
+            "height": 600
+          },
+          "firstKeyContentY": 325.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-light-390x720",
+          "viewport": {
+            "width": 390,
+            "height": 720
+          },
+          "firstKeyContentY": 320.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 24,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-light-1440x480",
+          "viewport": {
+            "width": 1440,
+            "height": 480
+          },
+          "firstKeyContentY": 182.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-dark-1440x900",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "firstKeyContentY": 182.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-dark-1024x700",
+          "viewport": {
+            "width": 1024,
+            "height": 700
+          },
+          "firstKeyContentY": 281.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-dark-820x600",
+          "viewport": {
+            "width": 820,
+            "height": 600
+          },
+          "firstKeyContentY": 325.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-dark-390x720",
+          "viewport": {
+            "width": 390,
+            "height": 720
+          },
+          "firstKeyContentY": 320.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 24,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        },
+        {
+          "id": "en-US-dark-1440x480",
+          "viewport": {
+            "width": 1440,
+            "height": 480
+          },
+          "firstKeyContentY": 182.5,
+          "firstKeyVisibleIntersection": true,
+          "keyContentImprovementPx": 33,
+          "heroVerticalSpacingPx": 24,
+          "openaiRowHeightPx": 44,
+          "directoryRowsCount": 45,
+          "allNamesFit": true,
+          "headingIssues": [],
+          "horizontalOverflow": false
+        }
+      ],
+      "scrollPerformance": [
+        {
+          "id": "zh-CN-light-1440x900",
+          "motion": {
+            "maxScroll": 1622,
+            "frames": 48,
+            "durationMs": 804.4000000953674,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "zh-CN-light-1024x700",
+          "motion": {
+            "maxScroll": 1833,
+            "frames": 48,
+            "durationMs": 807.6999998092651,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "zh-CN-light-820x600",
+          "motion": {
+            "maxScroll": 1933,
+            "frames": 48,
+            "durationMs": 806,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "zh-CN-light-390x720",
+          "motion": {
+            "maxScroll": 1112,
+            "frames": 48,
+            "durationMs": 806.0999999046326,
+            "finalScrollTop": 0
+          },
+          "totalReads": 5,
+          "totalScrollerReads": 1,
+          "totalGroupReads": 4,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "zh-CN-light-1440x480",
+          "motion": {
+            "maxScroll": 2042,
+            "frames": 48,
+            "durationMs": 804.8000001907349,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "zh-CN-dark-1440x900",
+          "motion": {
+            "maxScroll": 1622,
+            "frames": 48,
+            "durationMs": 815.5999999046326,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "zh-CN-dark-1024x700",
+          "motion": {
+            "maxScroll": 1833,
+            "frames": 48,
+            "durationMs": 808.1999998092651,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "zh-CN-dark-820x600",
+          "motion": {
+            "maxScroll": 1933,
+            "frames": 48,
+            "durationMs": 815.9000000953674,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "zh-CN-dark-390x720",
+          "motion": {
+            "maxScroll": 1112,
+            "frames": 48,
+            "durationMs": 800.3999996185303,
+            "finalScrollTop": 0
+          },
+          "totalReads": 10,
+          "totalScrollerReads": 2,
+          "totalGroupReads": 8,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "zh-CN-dark-1440x480",
+          "motion": {
+            "maxScroll": 2042,
+            "frames": 48,
+            "durationMs": 814.1000003814697,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "en-US-light-1440x900",
+          "motion": {
+            "maxScroll": 1726,
+            "frames": 48,
+            "durationMs": 811.7000002861023,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "en-US-light-1024x700",
+          "motion": {
+            "maxScroll": 1993,
+            "frames": 48,
+            "durationMs": 810.7999997138977,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "en-US-light-820x600",
+          "motion": {
+            "maxScroll": 2093,
+            "frames": 48,
+            "durationMs": 813.2000002861023,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "en-US-light-390x720",
+          "motion": {
+            "maxScroll": 1188,
+            "frames": 48,
+            "durationMs": 806,
+            "finalScrollTop": 0
+          },
+          "totalReads": 5,
+          "totalScrollerReads": 1,
+          "totalGroupReads": 4,
+          "maxReadsPerFrame": 5
+        },
+        {
+          "id": "en-US-light-1440x480",
+          "motion": {
+            "maxScroll": 2146,
+            "frames": 48,
+            "durationMs": 804.0999999046326,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "en-US-dark-1440x900",
+          "motion": {
+            "maxScroll": 1726,
+            "frames": 48,
+            "durationMs": 817.4000000953674,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "en-US-dark-1024x700",
+          "motion": {
+            "maxScroll": 1993,
+            "frames": 48,
+            "durationMs": 805.2000002861023,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "en-US-dark-820x600",
+          "motion": {
+            "maxScroll": 2093,
+            "frames": 48,
+            "durationMs": 813,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "en-US-dark-390x720",
+          "motion": {
+            "maxScroll": 1188,
+            "frames": 48,
+            "durationMs": 813.0999999046326,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        },
+        {
+          "id": "en-US-dark-1440x480",
+          "motion": {
+            "maxScroll": 2146,
+            "frames": 48,
+            "durationMs": 808.4000000953674,
+            "finalScrollTop": 0
+          },
+          "totalReads": 0,
+          "totalScrollerReads": 0,
+          "totalGroupReads": 0,
+          "maxReadsPerFrame": 0
+        }
+      ],
+      "cases": [
+        {
+          "id": "interaction-zh-CN-light-1440x900",
+          "search": true,
+          "fold": true,
+          "groupNavigation": true,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "external-configuration-changed-service-zh-CN-light-390x720",
+          "before": {
+            "scrollTop": 221.5,
+            "maxScroll": 222
+          },
+          "actualScrollerReset": true
+        },
+        {
+          "id": "external-configuration-same-service-zh-CN-light-390x720",
+          "before": {
+            "scrollTop": 2046,
+            "maxScroll": 2046
+          },
+          "actualScrollerReset": true
+        },
+        {
+          "id": "interaction-zh-CN-light-390x720",
+          "search": true,
+          "fold": true,
+          "groupNavigation": false,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "interaction-zh-CN-dark-1440x900",
+          "search": true,
+          "fold": true,
+          "groupNavigation": true,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "external-configuration-changed-service-zh-CN-dark-390x720",
+          "before": {
+            "scrollTop": 221.5,
+            "maxScroll": 222
+          },
+          "actualScrollerReset": true
+        },
+        {
+          "id": "external-configuration-same-service-zh-CN-dark-390x720",
+          "before": {
+            "scrollTop": 2046,
+            "maxScroll": 2046
+          },
+          "actualScrollerReset": true
+        },
+        {
+          "id": "interaction-zh-CN-dark-390x720",
+          "search": true,
+          "fold": true,
+          "groupNavigation": false,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "interaction-en-US-light-1440x900",
+          "search": true,
+          "fold": true,
+          "groupNavigation": true,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "external-configuration-changed-service-en-US-light-390x720",
+          "before": {
+            "scrollTop": 315,
+            "maxScroll": 314
+          },
+          "actualScrollerReset": true
+        },
+        {
+          "id": "external-configuration-same-service-en-US-light-390x720",
+          "before": {
+            "scrollTop": 2102,
+            "maxScroll": 2101
+          },
+          "actualScrollerReset": true
+        },
+        {
+          "id": "interaction-en-US-light-390x720",
+          "search": true,
+          "fold": true,
+          "groupNavigation": false,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "interaction-en-US-dark-1440x900",
+          "search": true,
+          "fold": true,
+          "groupNavigation": true,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        },
+        {
+          "id": "external-configuration-changed-service-en-US-dark-390x720",
+          "before": {
+            "scrollTop": 315,
+            "maxScroll": 314
+          },
+          "actualScrollerReset": true
+        },
+        {
+          "id": "external-configuration-same-service-en-US-dark-390x720",
+          "before": {
+            "scrollTop": 2102,
+            "maxScroll": 2101
+          },
+          "actualScrollerReset": true
+        },
+        {
+          "id": "interaction-en-US-dark-390x720",
+          "search": true,
+          "fold": true,
+          "groupNavigation": false,
+          "mobileConfigurationReachable": true,
+          "modelSearchAndClose": true,
+          "browsingPreservesDefault": true
+        }
+      ],
+      "baselineKnownFailures": []
+    }
+  },
+  "validation": {
+    "targetedTests": {
+      "files": 6,
+      "tests": 183,
+      "passed": true
+    },
+    "typecheck": true,
+    "testAudit": true,
+    "chromeBuild": true,
+    "firefoxBuild": true,
+    "userscriptBuild": true,
+    "userscriptVerifier": true,
+    "extensionManifests": true,
+    "docsBuild": true,
+    "userscriptBytes": 1957887
+  },
+  "unverified": [
+    "Full regression",
+    "Firefox runtime",
+    "Live provider connection and translation quality",
+    "Model downloads and inference speed",
+    "Other devices and hardware"
+  ],
+  "sourceSHA256": {
+    "src/features/settings/ui/services/ServiceCatalog.vue": "68fccf492bba1f06abd90a5c931d50b6075f603cfacddf6a7b60739ff23614bf",
+    "src/features/settings/ui/services/ServiceCatalogItem.vue": "94a06a3ffe8fd3461a07e6446fe2c37b3660a3d7661584a249a70b4c23142ba9",
+    "src/features/settings/ui/services/ServiceConfiguration.vue": "0f7c579a4a28fc704d80838854b9cc472c94a224ad812f9b39bae45cc6c028aa",
+    "src/features/settings/ui/LocalTranslationModelSettings.vue": "9e66825f8eaee26b3671da35415a86e4eb72d797a5a21cde8c4742e56ff3d3b6",
+    "scripts/testing/run-service-workspace-density-test.cjs": "1a5b3f4c8ccae64827db9d03a42689fb9771990df9b65c4e29a6898a2df021a9",
+    "tests/serviceDirectoryLifecycle.test.ts": "76f51c50329abf5aa08cfc8c50f29232fd8f67c38010e9a8c66f61b3fed614a6",
+    "tests/localTranslationModelSettingsLifecycle.test.ts": "451f1547f5501f35f15538ab2da7ad5b6a66d098b666543b72a8e6e2d83a5e62"
+  },
+  "reportSHA256": {
+    "baseline": "5e2c780eed8de136fede9ec5b112c15885c86c6d6da1dae2d6e0910cf0b70e99",
+    "optimized": "4ff5b68b54e06bc3a2315c13a00530dcd080bf8046d1092fe08055e02281921b"
+  },
+  "aggregateDirectoryReads": {
+    "baseline": 4500,
+    "optimized": 20,
+    "reductionPercent": 99.55555555555556
+  }
+}

@@ -110,6 +110,10 @@ class FakeVideo {
     this.listeners.get(type)?.delete(listener);
   }
 
+  get metadataListenerCount(): number {
+    return ['loadedmetadata', 'canplay', 'error'].reduce((sum, type) => sum + (this.listeners.get(type)?.size || 0), 0);
+  }
+
   emit(type: string): void {
     const event = new Event(type);
     for (const listener of this.listeners.get(type) || []) {
@@ -389,6 +393,229 @@ describe('完整 AI 字幕失败与取消边界', () => {
     await tick(12);
     expect(controller.getPhase()).toBe('idle');
     expect(scanVideo.removed).toBe(true);
+  });
+
+  it.each(['cancel', 'destroy'] as const)('扫描副本等待 metadata 时 %s 立即清理元素、监听器和加载 timer', async action => {
+    vi.useFakeTimers();
+    const sourceVideo = new FakeVideo();
+    const scanVideo = new FakeVideo();
+    scanVideo.readyState = 0;
+    installScanDom(scanVideo);
+    const onError = vi.fn();
+    const transcribe = vi.fn(async () => ({text: 'unused'}));
+    const controller = new VideoAiFullCaptureController({
+      getVideo: () => sourceVideo as unknown as HTMLVideoElement,
+      getModel: () => 'tiny', isSupported: () => true,
+      transcribe, onTranscriptionComplete: async () => undefined,
+      onError, onStateChange: vi.fn(),
+    });
+    expect(controller.start()).toBe(true);
+    await tick();
+    expect(scanVideo.metadataListenerCount).toBe(3);
+    expect(vi.getTimerCount()).toBe(1);
+    controller[action]();
+    await tick();
+    expect.soft(scanVideo.removed).toBe(true);
+    expect.soft(scanVideo.metadataListenerCount).toBe(0);
+    expect.soft(vi.getTimerCount()).toBe(0);
+    scanVideo.readyState = 1;
+    scanVideo.emit('loadedmetadata');
+    await vi.advanceTimersByTimeAsync(2_500);
+    expect(controller.getPhase()).toBe('idle');
+    expect(onError).not.toHaveBeenCalled();
+    expect(transcribe).not.toHaveBeenCalled();
+    expect(FakeAudioContext.instances).toHaveLength(0);
+  });
+
+  it.each(['loadedmetadata', 'canplay', 'error', 'timeout'] as const)('扫描副本 metadata 等待通过 %s 结算后释放等待资源', async outcome => {
+    vi.useFakeTimers();
+    const sourceVideo = new FakeVideo();
+    const scanVideo = new FakeVideo();
+    scanVideo.readyState = 0;
+    installScanDom(scanVideo);
+    const onError = vi.fn();
+    const controller = new VideoAiFullCaptureController({
+      getVideo: () => sourceVideo as unknown as HTMLVideoElement,
+      getModel: () => 'tiny', isSupported: () => true,
+      transcribe: async () => ({text: 'unused'}), onTranscriptionComplete: async () => undefined,
+      onError, onStateChange: vi.fn(),
+    });
+    expect(controller.start()).toBe(true);
+    await tick();
+    expect(scanVideo.metadataListenerCount).toBe(3);
+    if (outcome === 'timeout') {
+      await vi.advanceTimersByTimeAsync(2_499);
+      expect(scanVideo.removed).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+    } else {
+      if (outcome !== 'error') scanVideo.readyState = 1;
+      scanVideo.emit(outcome);
+      await tick();
+    }
+    expect(scanVideo.metadataListenerCount).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    if (outcome === 'error' || outcome === 'timeout') {
+      expect(controller.getPhase()).toBe('error');
+      expect(controller.getError()).toContain(outcome === 'timeout' ? '加载 X 视频音频超时' : '无法加载 X 视频音频');
+      expect(scanVideo.removed).toBe(true);
+      expect(onError).toHaveBeenCalledOnce();
+      expect(FakeAudioContext.instances).toHaveLength(0);
+    } else {
+      expect(controller.getPhase()).toBe('capturing');
+      expect(scanVideo.playCalls).toBe(1);
+      expect(FakeAudioContext.instances).toHaveLength(1);
+      expect(onError).not.toHaveBeenCalled();
+      controller.cancel();
+      expect(scanVideo.removed).toBe(true);
+    }
+  });
+
+  it('metadata 已到达但尚未建图时停止，迟到 continuation 不创建音频图', async () => {
+    vi.useFakeTimers();
+    const sourceVideo = new FakeVideo();
+    const scanVideo = new FakeVideo();
+    scanVideo.readyState = 0;
+    installScanDom(scanVideo);
+    const onError = vi.fn();
+    const controller = new VideoAiFullCaptureController({
+      getVideo: () => sourceVideo as unknown as HTMLVideoElement,
+      getModel: () => 'tiny', isSupported: () => true,
+      transcribe: async () => ({text: 'unused'}), onTranscriptionComplete: async () => undefined,
+      onError, onStateChange: vi.fn(),
+    });
+    controller.start();
+    await tick();
+    scanVideo.readyState = 1;
+    scanVideo.emit('loadedmetadata');
+    controller.cancel();
+    await tick();
+    expect(scanVideo.removed).toBe(true);
+    expect(scanVideo.metadataListenerCount).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(FakeAudioContext.instances).toHaveLength(0);
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('load 同步触发停止时不安装新的 metadata 监听或等待 timer', async () => {
+    vi.useFakeTimers();
+    const sourceVideo = new FakeVideo();
+    const scanVideo = new FakeVideo();
+    scanVideo.readyState = 0;
+    installScanDom(scanVideo);
+    const onError = vi.fn();
+    const controller = new VideoAiFullCaptureController({
+      getVideo: () => sourceVideo as unknown as HTMLVideoElement,
+      getModel: () => 'tiny', isSupported: () => true,
+      transcribe: async () => ({text: 'unused'}), onTranscriptionComplete: async () => undefined,
+      onError, onStateChange: vi.fn(),
+    });
+    scanVideo.load = () => controller.cancel();
+    controller.start();
+    await tick();
+    expect(scanVideo.removed).toBe(true);
+    expect(scanVideo.metadataListenerCount).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(controller.getPhase()).toBe('idle');
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('停止慢速第三方副本请求后，迟到 null 不再创建隐藏扫描副本', async () => {
+    vi.useFakeTimers();
+    const sourceVideo = new FakeVideo();
+    const scanVideo = new FakeVideo();
+    installScanDom(scanVideo);
+    const createElement = vi.spyOn(document, 'createElement');
+    let resolveIsolated!: (video: HTMLVideoElement | null) => void;
+    const isolated = new Promise<HTMLVideoElement | null>(resolve => {resolveIsolated = resolve;});
+    const onError = vi.fn();
+    const controller = new VideoAiFullCaptureController({
+      getVideo: () => sourceVideo as unknown as HTMLVideoElement,
+      getIsolatedVideo: () => isolated,
+      getModel: () => 'tiny', isSupported: () => true,
+      transcribe: async () => ({text: 'unused'}), onTranscriptionComplete: async () => undefined,
+      onError, onStateChange: vi.fn(),
+    });
+    controller.start();
+    await tick();
+    controller.cancel();
+    resolveIsolated(null);
+    await tick();
+    expect(createElement).not.toHaveBeenCalled();
+    expect(scanVideo.playCalls).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(controller.getPhase()).toBe('idle');
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('第三方副本在停止后迟到返回时，仅清理旧副本且不建立音频图', async () => {
+    vi.useFakeTimers();
+    const sourceVideo = new FakeVideo();
+    const scanVideo = new FakeVideo();
+    installScanDom(scanVideo);
+    let resolveIsolated!: (video: HTMLVideoElement) => void;
+    const isolated = new Promise<HTMLVideoElement>(resolve => {resolveIsolated = resolve;});
+    const onError = vi.fn();
+    const controller = new VideoAiFullCaptureController({
+      getVideo: () => sourceVideo as unknown as HTMLVideoElement,
+      getIsolatedVideo: () => isolated,
+      getModel: () => 'tiny', isSupported: () => true,
+      transcribe: async () => ({text: 'unused'}), onTranscriptionComplete: async () => undefined,
+      onError, onStateChange: vi.fn(),
+    });
+    controller.start();
+    await tick();
+    controller.cancel();
+    resolveIsolated(scanVideo as unknown as HTMLVideoElement);
+    await tick();
+    expect(scanVideo.removed).toBe(true);
+    expect(scanVideo.pauseCalls).toBe(1);
+    expect(scanVideo.playCalls).toBe(0);
+    expect(FakeAudioContext.instances).toHaveLength(0);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(controller.getPhase()).toBe('idle');
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('metadata 等待中停止后立即重试，不叠加旧副本和加载 timer', async () => {
+    vi.useFakeTimers();
+    const sourceVideo = new FakeVideo();
+    const firstScan = new FakeVideo();
+    const nextScan = new FakeVideo();
+    firstScan.readyState = nextScan.readyState = 0;
+    installScanDom(firstScan);
+    const createElement = vi.spyOn(document, 'createElement').mockReturnValueOnce(firstScan as unknown as HTMLElement).mockReturnValue(nextScan as unknown as HTMLElement);
+    const onError = vi.fn();
+    const controller = new VideoAiFullCaptureController({
+      getVideo: () => sourceVideo as unknown as HTMLVideoElement,
+      getModel: () => 'tiny', isSupported: () => true,
+      transcribe: async () => ({text: 'unused'}), onTranscriptionComplete: async () => undefined,
+      onError, onStateChange: vi.fn(),
+    });
+    controller.start();
+    await tick();
+    controller.cancel();
+    expect(controller.start()).toBe(true);
+    await tick();
+    expect(createElement).toHaveBeenCalledTimes(2);
+    expect(firstScan.removed).toBe(true);
+    expect(firstScan.metadataListenerCount).toBe(0);
+    expect(nextScan.removed).toBe(false);
+    expect(nextScan.metadataListenerCount).toBe(3);
+    expect(vi.getTimerCount()).toBe(1);
+    firstScan.readyState = 1;
+    firstScan.emit('loadedmetadata');
+    await tick();
+    expect(FakeAudioContext.instances).toHaveLength(0);
+    nextScan.readyState = 1;
+    nextScan.emit('loadedmetadata');
+    await tick();
+    expect(controller.getPhase()).toBe('capturing');
+    expect(nextScan.playCalls).toBe(1);
+    expect(nextScan.removed).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(onError).not.toHaveBeenCalled();
+    controller.cancel();
+    expect(nextScan.removed).toBe(true);
   });
 
   it('旧 session 返回被新 session 复用的 scan element 时不移除新图', async () => {

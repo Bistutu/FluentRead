@@ -1,0 +1,6 @@
+> FluentRead-流畅阅读@0.0.36 storybook:build /Users/thinkstu/Desktop/copy/FluentRead-pdf-selection-reader-20261009
+> node scripts/testing/run-resource-safe.mjs -- storybook build --output-dir docs/.vitepress/dist/storybook --disable-telemetry
+
+[resource-safe] CPU target 60%, maxWorkers 2, concurrency 5, command: storybook build --output-dir docs/.vitepress/dist/storybook --disable-telemetry
+[resource-safe] spawn storybook ENOENT
+ ELIFECYCLE  Command failed with exit code 1.

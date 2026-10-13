@@ -1,14 +1,15 @@
 /**
  * @file src/features/reading-assistant/public.ts
- * 文件职责：提供可被划词翻译和设置页复用的阅读卡、回答呈现、选区捕获及纯数据契约。
- * 主要内容：导出阅读卡、共用 Markdown 回答及纯文本结构解析、阅读记录界面、选区捕获、流式阅读与学习记忆客户端，隐藏后台请求编排与模型实现。
- * 模块边界：只做静态导出，不注册事件或初始化模型；跨 feature 调用保持在这个公开入口。
+ * 文件职责：公开阅读选区与纯数据契约、流式阅读和本机学习记忆客户端，避免数据消费者加载阅读卡样式。
+ * 主要内容：保留 Markdown 结构解析、选区捕获、阅读请求和记忆管理导出；纯文本消费者可使用 answer/public.ts，回答、完整阅读卡和记录管理界面分别由独立 UI 出口提供。
+ * 模块边界：此入口不引入 Vue 组件或 UI 样式，不注册事件或初始化模型；客户端仅在显式调用时发送原有后台协议。
  */
-export {default as ReadingPanel} from './ui/ReadingPanel.vue';
-export {default as ReadingAnswer} from './ui/ReadingAnswer.vue';
 export {readingAnswerBlocks, readingAnswerSpans} from './answerFormat';
-export {default as HarnessReadingHistory} from './ui/HarnessReadingHistory.vue';
 export {captureReadingSelection} from './selectionContext';
+export {createReadingEvidenceAnchor} from './evidenceAnchor';
+export type {ReadingEvidenceAnchor} from './evidenceAnchor';
+export {buildReadingEvidence, parseReadingEvidence} from '@/src/core/harness/evidence';
+export type {ReadingEvidenceSource} from '@/src/core/harness/evidence';
 export type {ReadingSelection} from './types';
 export {streamReading} from './client';
 export {clearLearningMemories, deleteLearningMemory, listLearningMemories, saveLearningMemory} from './client';

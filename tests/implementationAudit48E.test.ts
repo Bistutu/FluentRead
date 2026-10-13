@@ -35,8 +35,11 @@ vi.mock('@/src/app/translation/client', () => ({translateText: ports.translate, 
 vi.mock('@/src/platform/shadow-ui', () => ({createVueShadowUi: ports.shadow}));
 vi.mock('@/src/platform/http/runtime', async original => ({...await original<typeof import('@/src/platform/http/runtime')>(), runtimeFetch: ports.fetch}));
 vi.mock('@/src/features/share-card/public', () => ({isShareCardMounted: () => false, openShareCard: vi.fn()}));
-vi.mock('@/src/features/reading-assistant/public', () => ({
+vi.mock('@/src/features/reading-assistant/public', async original => ({
+    ...await original<typeof import('@/src/features/reading-assistant/public')>(),
     captureReadingSelection: (_range: Range, text: string) => ({text, context: '', fingerprint: text}),
+}));
+vi.mock('@/src/features/reading-assistant/ui/panel/public', () => ({
     ReadingPanel: {props: ['sourceLanguage', 'targetLanguage'], render(this: any) {
         return h('div', {'data-reading-source': this.sourceLanguage, 'data-reading-target': this.targetLanguage});
     }},

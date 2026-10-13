@@ -1,7 +1,7 @@
 <!--
  @file src/features/settings/ui/components/SettingsSectionNavigation.vue
  文件职责：为连续设置表单提供固定在内容区上方的分区导航，点击后在原页滚动到对应模块。
- 主要内容：从当前可见表单的分区标记按 DOM 顺序收集入口，复用分类名称并支持独立模块名称；监听懒加载、展开及尺寸变化，滚动时同步高亮，到底时激活最后一组，窄屏横向定位当前入口；点击折叠模块时展开后定位并尊重减少动态效果偏好。
+ 主要内容：从当前可见表单的分区标记按 DOM 顺序收集入口，复用分类名称并支持独立模块名称；监听懒加载、展开及尺寸变化，保留内容与顺序未变化的入口列表以避免无关控件变化触发导航重绘，仍完整测量可见性与位置；滚动时同步高亮，到底时激活最后一组，窄屏横向定位当前入口，点击折叠模块时展开后定位并尊重减少动态效果偏好。
  模块边界：只读取父级传入的内容容器和导航元数据，不改变路由、不隐藏表单、不读写配置；组件卸载或切换页面时清理观察器、事件和动画帧。
 -->
 <template>
@@ -143,7 +143,10 @@ watch(() => [props.container, props.sectionId] as const, ([container]) => {
       sizeObserver.observe(container)
       for (const anchor of next) sizeObserver.observe(anchor.element)
     }
-    anchors.value = next
+    if (next.length !== anchors.value.length || next.some((item, index) => {
+      const previous = anchors.value[index]
+      return item.element !== previous.element || item.id !== previous.id || item.label !== previous.label || item.labelKey !== previous.labelKey
+    })) anchors.value = next
     if (pendingAnchor && !next.some(anchor => anchor.element === pendingAnchor?.element)) cancelPendingAnchor()
     emit('availability-change', next.length > 1)
     revealPendingAnchor()

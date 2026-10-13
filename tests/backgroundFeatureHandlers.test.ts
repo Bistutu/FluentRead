@@ -41,6 +41,7 @@ import {
 import {navigationItems, NAVIGATION_SECTION_ALIASES} from '@/src/features/settings/model/navigation';
 import {isBrowserTabId, TabTranslationStateStore} from '@/src/app/background/tabTranslationState';
 import {getTranslationRequestControl} from '@/src/services/translation/requestSnapshot';
+import {createPopupNavigationHandlers} from '@/src/app/background/popupNavigation';
 import {Config} from '@/src/core/config/model';
 
 function wordCard(definitions: Array<{definition: string; example?: string; translatedDefinition?: string; translatedExample?: string}> = [
@@ -57,6 +58,40 @@ function wordCard(definitions: Array<{definition: string; example?: string; tran
 }
 
 describe('后台 feature handlers', () => {
+    it('popup 授权装配使用默认清单页面与加密随机数，兼容 MV2/MV3', async () => {
+        const getManifest = vi.fn(() => ({action: {default_popup: 'popup.html'}}));
+        const random = vi.fn((bytes: Uint8Array) => { bytes.fill(1); return bytes; });
+        const openOptionsPage = vi.fn(async () => undefined), create = vi.fn(async () => undefined);
+        vi.stubGlobal('crypto', {getRandomValues: random});
+        vi.stubGlobal('browser', {runtime: {id: 'fixture', getManifest, openOptionsPage, getURL: (path: string) => `chrome-extension://fixture/${path.replace(/^\//, '')}`}, tabs: {create}});
+        try {
+            for (const manifest of [{action: {default_popup: 'popup.html'}}, {browser_action: {default_popup: 'legacy.html'}}]) {
+                getManifest.mockReturnValueOnce(manifest as never);
+                const [request, authorize, options] = createPopupNavigationHandlers();
+                const result = await request.handle({type: 'requestFloatingPopup'}, {sender: {id: 'fixture', url: 'https://example.com', frameId: 0, tab: {id: 0}}});
+                expect(result.token).toBe('01'.repeat(16));
+                expect(random).toHaveBeenCalledWith(expect.any(Uint8Array));
+                const path = 'action' in manifest ? 'popup.html' : 'legacy.html';
+                await expect(authorize.handle({type: 'authorizeFloatingPopup', token: result.token}, {sender: {id: 'fixture', url: `chrome-extension://fixture/${path}`, frameId: 1, tab: {id: 0}}}))
+                    .resolves.toEqual({success: true, sourceTabId: 0});
+                await options.handle({type: 'openOptionsPage'});
+                await options.handle({type: 'openOptionsPage', section: 'settings-webpage'});
+                expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html#settings-translation'});
+                await options.handle({type: 'openOptionsPage', section: 'settings-vocabulary', learningTab: 'memory'});
+                expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html?learningTab=memory#settings-vocabulary'});
+                await options.handle({type: 'openOptionsPage', section: 'settings-services', service: 'microsoft'});
+                expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html?service=microsoft#settings-services'});
+                await options.handle({type: 'openOptionsPage', section: 'settings-interface', target: 'video-sentence-learning-appearance'});
+                expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html?target=video-sentence-learning-appearance#settings-interface'});
+            }
+            expect(openOptionsPage).toHaveBeenCalledTimes(2);
+            getManifest.mockReturnValueOnce({} as never);
+            expect(() => createPopupNavigationHandlers()).toThrow('未配置扩展快捷面板');
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
     it('输入框翻译严格验证 payload，并保留原文本与 provider 结果', async () => {
         const config = new Config();
         config.service = 'microsoft';
@@ -1301,5 +1336,18 @@ it('opens a validated learning-memory tab without accepting arbitrary navigation
         await expect(handler.handle({type: OPEN_OPTIONS_PAGE_MESSAGE_TYPE, section: 'settings-vocabulary', learningTab})).rejects.toThrow('无效的学习栏目');
     }
     await expect(handler.handle({type: OPEN_OPTIONS_PAGE_MESSAGE_TYPE, section: 'settings-selection', learningTab: 'memory'})).rejects.toThrow('无效的学习栏目');
+    expect(openSection).toHaveBeenCalledOnce(); expect(openDefaultPage).not.toHaveBeenCalled();
+});
+
+it('opens only registered form targets belonging to the requested settings section', async () => {
+    const openDefaultPage = vi.fn(async () => undefined), openSection = vi.fn(async () => undefined);
+    const handler = createOpenOptionsPageHandler({openDefaultPage, openSection});
+    await handler.handle({type: OPEN_OPTIONS_PAGE_MESSAGE_TYPE, section: 'settings-interface', target: 'video-sentence-learning-appearance'});
+    expect(openSection).toHaveBeenLastCalledWith('settings-interface', undefined, 'video-sentence-learning-appearance');
+    for (const target of [null, {}, 'unknown', 'video-sentence-learning-appearance&redirect=https://example.com']) {
+        await expect(handler.handle({type: OPEN_OPTIONS_PAGE_MESSAGE_TYPE, section: 'settings-interface', target})).rejects.toThrow('无效的设置目标');
+    }
+    await expect(handler.handle({type: OPEN_OPTIONS_PAGE_MESSAGE_TYPE, section: 'settings-video', target: 'video-sentence-learning-appearance'})).rejects.toThrow('无效的设置目标');
+    await expect(handler.handle({type: OPEN_OPTIONS_PAGE_MESSAGE_TYPE, target: 'video-sentence-learning-appearance'})).rejects.toThrow('无效的设置目标');
     expect(openSection).toHaveBeenCalledOnce(); expect(openDefaultPage).not.toHaveBeenCalled();
 });

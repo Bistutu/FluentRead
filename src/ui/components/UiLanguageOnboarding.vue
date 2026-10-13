@@ -1,7 +1,7 @@
 <!--
  * @file src/ui/components/UiLanguageOnboarding.vue
  * 文件职责：承载 FluentRead Popup 首次打开时的欢迎与界面语言选择引导。
- * 主要内容：直接使用轻量中英文资源展示稳定尺寸的欢迎画面和完整语言名称；冻结每次提交的语言，限定旧事件、焦点和成功计时器的活跃归属，确认保存后通知上层准备主菜单，成功动效结束后交回控制权；保留首启铺满弹窗的方形问候画板与三步同高布局。
+ * 主要内容：直接使用轻量中英文资源展示稳定尺寸的欢迎画面和完整语言名称，品牌随当前预览语言呈现；语言卡片以单一 Tab 入口、四方向键和 Home/End 循环切换预览，沿用当前步骤的焦点归属保护；冻结每次提交的语言，限定旧事件、焦点和成功计时器的活跃归属，确认保存后通知上层准备主菜单，成功动效结束后交回控制权；保留首启铺满弹窗的方形问候画板与三步同高布局。
  * 模块边界：组件只负责首次引导的呈现与确认，不读取配置、不决定浏览器 locale 映射；配置保存由 src/ui/i18n.ts 负责，语言规则由 src/core/i18n 提供。
 -->
 <template>
@@ -28,7 +28,7 @@
         <div v-else-if="step === 'welcome'" key="welcome" class="onboarding-welcome" data-testid="onboarding-welcome">
           <div class="onboarding-brand">
             <img src="/icon/128.png" alt="" />
-            <strong>FluentRead</strong>
+            <strong>{{ onboardingProductNames[selectedLanguage] }}</strong>
           </div>
 
           <div class="welcome-art" aria-hidden="true">
@@ -94,9 +94,11 @@
                 type="button"
                 role="radio"
                 :aria-checked="selectedLanguage === option.value"
+                :tabindex="interactionContext.active.value && selectedLanguage === option.value ? 0 : -1"
                 :data-language="option.value"
                 :disabled="!interactionContext.active.value"
                 :onClick="option.choose"
+                :onKeydown="option.keydown"
               >
                 <span class="onboarding-language-name">
                   <span
@@ -144,7 +146,7 @@ import {
   type UiLanguage,
 } from '@/src/core/i18n';
 import {useUiI18n} from '@/src/ui/i18n';
-import {onboardingChineseMessages, onboardingEnglishMessages, type OnboardingMessageKey} from '@/src/core/i18n/messages/onboarding';
+import {onboardingChineseMessages, onboardingEnglishMessages, onboardingProductNames, type OnboardingMessageKey} from '@/src/core/i18n/messages/onboarding';
 import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
 
 const props = defineProps<{
@@ -202,11 +204,23 @@ watch(context.revision, () => {
 }, {flush: 'sync'});
 const languageOptions = computed(() => {
   const current = interactionContext.capture();
-  return UI_LANGUAGE_OPTIONS.map(option => ({...option, choose: () => {
+  const choose = (value: UiLanguage) => {
     if (!current() || step.value !== 'language') return;
-    selectedLanguage.value = option.value;
+    selectedLanguage.value = value;
     errorMessage.value = '';
-  }}));
+  };
+  return UI_LANGUAGE_OPTIONS.map((option, index) => ({...option,
+    choose: () => choose(option.value),
+    keydown: (event: KeyboardEvent) => {
+      if (!current() || step.value !== 'language'
+        || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? UI_LANGUAGE_OPTIONS.length - 1
+        : (index + (event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1) + UI_LANGUAGE_OPTIONS.length) % UI_LANGUAGE_OPTIONS.length;
+      choose(UI_LANGUAGE_OPTIONS[nextIndex].value);
+      focusCurrentStep();
+    },
+  }));
 });
 const onboardingActions = computed(() => {
   const current = interactionContext.capture();

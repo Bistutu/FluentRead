@@ -1,7 +1,7 @@
 ---
 layout: home
 markdownStyles: false
-title: FluentRead
+title: 流畅阅读
 titleTemplate: false
 ---
 

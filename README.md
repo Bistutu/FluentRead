@@ -18,7 +18,9 @@ FluentRead displays translations alongside the original webpage and provides sel
 
 [![FluentRead introduction video](./docs/public/videos/fluentread-promo-en-poster.webp)](https://read.thinkstu.com/videos/fluentread-promo-en.mp4)
 
-[▶ Watch the 56-second introduction](https://read.thinkstu.com/videos/fluentread-promo-en.mp4) · [中文版](https://read.thinkstu.com/videos/fluentread-promo-zh.mp4)
+[▶ Watch the 56-second introduction](https://read.thinkstu.com/videos/fluentread-promo-en.mp4)
+
+For a closer look, [watch the full official introduction (4+ minutes, in Chinese on Bilibili)](https://www.bilibili.com/video/BV1qhHJ6uEiF/).
 
 </div>
 
@@ -92,6 +94,7 @@ FluentRead grows alongside a vibrant open-source community. We are grateful to t
 - [Read Frog](https://github.com/mengxi-ream/read-frog)
 - [KISS Translator](https://github.com/fishjar/kiss-translator)
 - [Duo Translator](https://github.com/linuxscreen/duo-translator)
+- [InfoLens](https://github.com/dqy08/InfoLens) — Smart Highlighting is inspired by its surprisal heatmap idea (Apache-2.0)
 
 <!-- contributors:start -->
 <a href="https://github.com/FluentRead/FluentRead/graphs/contributors">

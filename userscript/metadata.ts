@@ -25,8 +25,16 @@ const grants = [
 export function createUserscriptMetadata({version, iconDataUrl, requires = []}: UserscriptMetadataOptions): string {
     const lines = [
         '// ==UserScript==',
+        // Keep the original name/namespace identity for existing manager installations.
         '// @name         FluentRead-流畅阅读',
+        '// @name:zh-CN   流畅阅读',
+        '// @name:zh      流畅阅读',
         '// @name:en      FluentRead',
+        '// @name:ja      FluentRead',
+        '// @name:ko      FluentRead',
+        '// @name:fr      FluentRead',
+        '// @name:ru      FluentRead',
+        '// @name:es      FluentRead',
         '// @namespace    https://fr.unmeta.cn/',
         `// @version      ${version}`,
         `// @description  ${brandTaglines['en-US']} ${brandTaglines['zh-CN']}`,

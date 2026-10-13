@@ -280,8 +280,6 @@ const BUILD_ONLY_SRC_ALLOWLIST = new Set([
     'src/features/video-subtitle/content/hlsAudioRuntime.ts',
     // X 原生 TextTrack 与视频帧时钟的 DOM 映射由生产扩展同步夹具验证。
     'src/features/video-subtitle/content/xCaptionSource.ts',
-    // 独立 Worker 绑定 Transformers/ONNX WASM 与可终止推理；真实模型由隔离生产浏览器验证，时间戳解析严格覆盖。
-    'src/features/video-subtitle/offscreen/transcription.worker.ts',
     // 后台组合根只把共享 Offscreen client 和 storage 注入严格覆盖的 owner/message handlers。
     'src/features/video-subtitle/background/runtime.ts',
     // PDF Canvas 预览绑定 PDF.js worker、真实 Canvas 像素采样与对象 URL；由隔离文档浏览器回归和双浏览器构建验证。

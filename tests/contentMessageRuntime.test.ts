@@ -40,7 +40,10 @@ const mocks = vi.hoisted(() => ({
     startAreaTranslationFromContextMenu: vi.fn(),
     startSectionTranslationPicker: vi.fn(),
     sendMessage: vi.fn(),
+    showPageNotice: vi.fn(),
+    dismissPageNotice: vi.fn(),
 }));
+vi.mock('@/src/features/page-notice/public', () => ({showPageNotice: mocks.showPageNotice, dismissPageNotice: mocks.dismissPageNotice}));
 
 // Context 是受控外部生命周期端口；用原生 AbortController 驱动 invalid 门禁，避免伪造强转。
 // 本 suite 验证实际 handler，不声称执行 WXT 的启动广播或浏览器环境检测。
@@ -107,6 +110,28 @@ beforeEach(() => {
 });
 
 describe('内容脚本 runtime 消息协议', () => {
+    it('信息高亮状态在暂停或关闭时仍可读，关闭可抢占，开启和重试遵循当前页面门禁', async () => {
+        const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
+        const respond = vi.fn(); let disabled = false, suspended = false, invalid = false;
+        const snapshot = {enabled: false, phase: 'idle', sessionId: '0', processedParagraphs: 0, queuedParagraphs: 0, highlightedSpans: 0, mode: 'keywords'} as const;
+        const feature = {getState: vi.fn(() => snapshot), setEnabled: vi.fn((enabled: boolean) => ({...snapshot, enabled})), retry: vi.fn(() => snapshot)};
+        const handler = createContentRuntimeMessageHandler({get isInvalid() {return invalid;}} as ContentScriptContext, {
+            isSiteDisabled: () => disabled, isPageSuspended: () => suspended, updateSiteDisabled: vi.fn(), informationHighlight: feature,
+        });
+        expect(handler({type: 'SET_INFORMATION_HIGHLIGHT_ENABLED', enabled: 'true'}, {}, respond)).toBe(false);
+        for (const restriction of ['config', 'site', 'suspend', 'context']) {
+            mocks.config.on = restriction !== 'config'; disabled = restriction === 'site'; suspended = restriction === 'suspend'; invalid = restriction === 'context';
+            handler({type: 'GET_INFORMATION_HIGHLIGHT_STATE'}, {}, respond); expect(respond).toHaveBeenLastCalledWith({success: true, state: snapshot});
+            handler({type: 'SET_INFORMATION_HIGHLIGHT_ENABLED', enabled: true}, {}, respond); expect(respond).toHaveBeenLastCalledWith({success: false, state: snapshot, error: 'INFORMATION_HIGHLIGHT_PAGE_DISABLED'});
+            handler({type: 'RETRY_INFORMATION_HIGHLIGHT'}, {}, respond); expect(feature.retry).not.toHaveBeenCalled();
+            handler({type: 'SET_INFORMATION_HIGHLIGHT_ENABLED', enabled: false}, {}, respond); expect(respond).toHaveBeenLastCalledWith({success: true, state: snapshot});
+        }
+        mocks.config.on = true; disabled = suspended = invalid = false;
+        handler({type: 'SET_INFORMATION_HIGHLIGHT_ENABLED', enabled: true}, {}, respond); expect(respond).toHaveBeenLastCalledWith({success: true, state: {...snapshot, enabled: true}});
+        handler({type: 'RETRY_INFORMATION_HIGHLIGHT'}, {}, respond); expect(feature.retry).toHaveBeenCalledOnce();
+        const unavailable = createContentRuntimeMessageHandler({} as ContentScriptContext, {isSiteDisabled: () => false, updateSiteDisabled: vi.fn()});
+        unavailable({type: 'GET_INFORMATION_HIGHLIGHT_STATE'}, {}, respond); expect(respond).toHaveBeenLastCalledWith({success: false, error: 'INFORMATION_HIGHLIGHT_PAGE_UNAVAILABLE'});
+    });
     it('往返缓存暂停时拒绝迟到的功能挂载，恢复后允许新的用户操作', async () => {
         const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
         const respond = vi.fn();
@@ -814,7 +839,7 @@ describe('read-only exact unchanged query on existing content state channel', ()
         expect(mocks.toggleContextMenuImage).toHaveBeenCalledTimes(2);
         expect(mocks.toggleContextMenuImage).toHaveBeenCalledWith(message.srcUrl);
         expect(fixture.respond).toHaveBeenNthCalledWith(1, {status: 'success'});
-        expect(fixture.respond).toHaveBeenNthCalledWith(2, {status: 'disabled'});
+        expect(fixture.respond).toHaveBeenNthCalledWith(2, {status: 'failed'});
         const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
         const unsupported = createContentRuntimeMessageHandler(fixture.ctx, {
             isSiteDisabled: () => false, updateSiteDisabled: fixture.updateSiteDisabled,
@@ -837,4 +862,62 @@ describe('read-only exact unchanged query on existing content state channel', ()
         expect(fixture.respond).toHaveBeenCalledWith({status: 'failed', action: 'unchanged', isTranslated: active});
         expect(mocks.sendMessage).not.toHaveBeenCalled();
     });
+});
+
+
+describe('右键菜单操作反馈', () => {
+    it('转发原生选区文本，并拒绝将非字符串作为选区', async () => {
+        const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
+        const handler = createContentRuntimeMessageHandler({} as never, {isSiteDisabled: () => false, updateSiteDisabled: vi.fn()});
+        mocks.translateSelectionFromContextMenu.mockReturnValue(true);
+        handler({type: 'contextMenuTranslate', action: 'selection', selectionText: 'Selected text'}, {}, vi.fn());
+        expect(mocks.translateSelectionFromContextMenu).toHaveBeenLastCalledWith('Selected text');
+        handler({type: 'contextMenuTranslate', action: 'selection', selectionText: {}}, {}, vi.fn());
+        expect(mocks.translateSelectionFromContextMenu).toHaveBeenLastCalledWith(undefined);
+    });
+    it('停用网站仍能显示原因明确且可以关闭的反馈，使用生命周期信号和同一提示 key', async () => {
+        const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
+        const controller = new AbortController(), respond = vi.fn();
+        const handler = createContentRuntimeMessageHandler({signal: controller.signal} as never, {isSiteDisabled: () => true, updateSiteDisabled: vi.fn()});
+        expect(handler({type: 'contextMenuNotice', reason: 'selectionUnavailable'}, {}, respond)).toBe(true);
+        expect(respond).toHaveBeenCalledWith({status: 'success'});
+        expect(mocks.showPageNotice).toHaveBeenCalledWith('选区已失效，请重新选中文字后右键翻译。', 'error', {key: 'context-menu', signal: controller.signal, durationMs: 6000});
+        expect(handler({type: 'contextMenuNotice', reason: 'raw private exception'}, {}, respond)).toBe(false);
+        expect(mocks.showPageNotice).toHaveBeenCalledOnce();
+    });
+
+    it('用户脚本没有原生菜单通知，但保留实时选区消息入口', async () => {
+        vi.stubEnv('BROWSER', 'userscript');
+        try {
+            const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
+            const respond = vi.fn();
+            const handler = createContentRuntimeMessageHandler({} as never, {isSiteDisabled: () => false, updateSiteDisabled: vi.fn()});
+            expect(handler({type: 'contextMenuNotice', reason: 'failed'}, {}, respond)).toBe(false);
+            expect(mocks.showPageNotice).not.toHaveBeenCalled();
+            mocks.translateSelectionFromContextMenu.mockReturnValue(true);
+            expect(handler({type: 'contextMenuTranslate', action: 'selection'}, {}, respond)).toBe(true);
+            expect(respond).toHaveBeenCalledWith({status: 'success'});
+            expect(mocks.dismissPageNotice).not.toHaveBeenCalled();
+        } finally {vi.unstubAllEnvs();}
+    });
+    it.each(['invalid', 'suspended'])('已失效或挂起的页面 %s 不创建通知', async kind => {
+        const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
+        const respond = vi.fn();
+        const handler = createContentRuntimeMessageHandler({isInvalid: kind === 'invalid'} as never,
+            {isSiteDisabled: () => false, isPageSuspended: () => kind === 'suspended', updateSiteDisabled: vi.fn()});
+        expect(handler({type: 'contextMenuNotice', reason: 'failed'}, {}, respond)).toBe(true);
+        expect(respond).toHaveBeenCalledWith({status: 'failed'});
+        expect(mocks.showPageNotice).not.toHaveBeenCalled();
+    });
+    it('重试真正启动后撤销过期右键提示，拒绝或未启动时保留原因', async () => {
+        const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
+        const handler = createContentRuntimeMessageHandler({} as never, {isSiteDisabled: () => false, updateSiteDisabled: vi.fn()});
+        mocks.translateSelectionFromContextMenu.mockReturnValue(false);
+        handler({type: 'contextMenuTranslate', action: 'selection'}, {}, vi.fn());
+        expect(mocks.dismissPageNotice).not.toHaveBeenCalled();
+        mocks.translateSelectionFromContextMenu.mockReturnValue(true);
+        handler({type: 'contextMenuTranslate', action: 'selection'}, {}, vi.fn());
+        expect(mocks.dismissPageNotice).toHaveBeenCalledWith('context-menu');
+    });
+
 });

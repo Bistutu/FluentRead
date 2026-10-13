@@ -1,0 +1,56 @@
+{
+  "success": true,
+  "scope": "Four actual production Worker calls with exact PCM16 decoder/prepare/auto detection/encoder reuse/generation/timestamps. Node self dispatcher and local model/WASM loading boundary adapted. Not browser/WebGPU/FullCapture/live-X acceptance.",
+  "baselineRevision": "8467b6757",
+  "libraryVersions": {
+    "transformers": "3.8.1",
+    "onnxruntimeWeb": "1.23.2"
+  },
+  "backend": "wasm",
+  "threads": 1,
+  "networkForbidden": true,
+  "pairs": [
+    {
+      "model": "base",
+      "sample": "jfk",
+      "resultIdentical": true,
+      "timestampsIdentical": true,
+      "processorCalls": [
+        2,
+        1
+      ],
+      "processorMs": [
+        255.87191600000006,
+        121.85962500000096
+      ],
+      "inferenceMs": [
+        5623.384417,
+        5480.383167
+      ],
+      "savedProcessorMs": 134.0122909999991,
+      "warning": "One ordered pair/model; total elapsed noisy, not general CPU/browser speedup."
+    },
+    {
+      "model": "small",
+      "sample": "hi_in_0000",
+      "resultIdentical": true,
+      "timestampsIdentical": true,
+      "processorCalls": [
+        2,
+        1
+      ],
+      "processorMs": [
+        266.1623330000002,
+        126.3740420000031
+      ],
+      "inferenceMs": [
+        37750.397,
+        38161.193416999995
+      ],
+      "savedProcessorMs": 139.78829099999712,
+      "warning": "One ordered pair/model; total elapsed noisy, not general CPU/browser speedup."
+    }
+  ],
+  "allModelsDisposed": true,
+  "rawReportPath": "/private/tmp/fluentread-whisper-processor-reuse-20261009/paired-results/raw-report.json"
+}

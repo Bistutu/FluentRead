@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/popup.css
  * 文件职责：定义宽度随皮肤和界面语言、高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、设置抽屉、通知和响应式细节。
- * 主要内容：以白色窄版画布、浅灰控件和品牌色强调网页翻译、局部选择及站点控制；定义版本与赞赏码的原位放大、翻译服务汇总、两列入口、完整开源胶囊与开关优先的快捷抽屉，保留操作示意、舒展间距和必要的内部滚动。
+ * 主要内容：以白色窄版画布、浅灰控件和品牌色强调翻译、局部及站点控制；两个操作以 42px 高度紧凑同排，主按钮弹性伸展并用短标题合并快捷键，辅助按钮以上方图标和下方文字收拢；网站规则不再绘制外层框，独立按钮沿用指示点展示保存状态并尊重减少动画偏好；保留版本与赞赏码的原位放大、服务及模型摘要、两列入口、完整开源胶囊与开关优先的快捷抽屉和必要的内部滚动。
  * 模块边界：样式只对应 PopupApp 的 DOM 和受控第三方组件，不决定配置值、能力可用性或消息行为；跨页面 token 在 src/ui/styles，Options/文档页各自维护页面样式。
  */
 @import "../../ui/styles/feedback.css";
@@ -43,6 +43,7 @@ html { min-height: 0; }
 /* Firefox 按内容的固有宽度给 popup 定尺寸，不采用 html 的宽度；body 用百分比时会被当成 auto，首启页被裁成 200px、英文菜单右侧留白。 */
 body, #app { width: var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px)); }
 html, body, #app { min-width: 0; margin: 0; overflow-x: hidden; background: #fff; }
+
 :root.dark body, :root.dark #app { background: #14161b; }
 button, select, input { font: inherit; }
 button { color: inherit; }
@@ -204,33 +205,26 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .service-more-meta b { color: var(--muted); font-size: 15px; line-height: .7; font-weight: 500; transform: translateY(-1px); transition: transform 160ms ease; }
 .service-more-meta b.open { transform: translateY(1px) rotate(180deg); }
 
-.translate-action { display: flex; align-items: center; gap: 7px; margin-top: 8px; }
+.translate-action { display: flex; align-items: stretch; gap: 6px; margin-top: 8px; }
+.translate-action > .translate-button { flex: 1 1 0; flex-wrap: nowrap; }
+.translate-action > .section-translate-button { flex-direction: column; gap: 2px; min-height: 42px; padding: 4px 5px; }
 .translate-button {
-  display: flex; flex: 1 1 auto; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 40px; height: auto; padding: 8px;
-  overflow: hidden; border: 0; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #f35482, #e93267);
+  display: flex; flex: 1 1 auto; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 42px; height: auto; padding: 6px 10px;
+  overflow: hidden; border: 0; border-radius: 10px; color: #fff; background: linear-gradient(135deg, #f35482, #e93267);
   box-shadow: 0 6px 16px rgba(233, 50, 103, .16); font-size: 12px; font-weight: 750; cursor: pointer;
   transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
 .translate-button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 13px 26px rgba(233, 50, 103, .3); }
 .translate-button.translated { background: linear-gradient(135deg, #f35482, #d92f63); box-shadow: 0 10px 22px rgba(217, 47, 99, .22); }
 .translate-button.translated:hover:not(:disabled) { box-shadow: 0 13px 26px rgba(217, 47, 99, .3); }
-.translate-glyph { flex: none; font-size: 9px; font-weight: 850; }
 .translate-label { min-width: 0; overflow: hidden; flex: 0 1 auto; text-overflow: ellipsis; white-space: nowrap; }
-.translate-hotkey {
-  display: inline-flex; flex: 0 2 64px; align-items: center; min-width: 0; max-width: 64px; min-height: 22px; padding: 0 5px; overflow: hidden; border: 1px solid rgba(255, 255, 255, .42);
-  border-radius: 7px; color: #fff; background: rgba(255, 255, 255, .16); font-family: inherit; font-size: 9px; font-weight: 700;
-  line-height: 1; white-space: nowrap;
-}
-.translate-hotkey span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.translate-hotkey.disabled { opacity: .72; }
-.translate-button.translated .translate-hotkey { border-color: rgba(255, 255, 255, .48); background: rgba(255, 255, 255, .18); }
 .section-translate-button {
   display: inline-flex; flex: none; flex-direction: column; align-items: center; justify-content: center; align-self: stretch; gap: 1px;
-  min-width: 50px; min-height: 0; padding: 3px 8px; border: 1px solid var(--line); border-radius: 14px; color: var(--brand-strong);
+  min-width: 46px; min-height: 42px; padding: 4px 5px; border: 1px solid var(--line); border-radius: 10px; color: var(--brand-strong);
   background: var(--surface-soft); font-size: 10px; font-weight: 750; line-height: 1.1; white-space: nowrap; cursor: pointer;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, opacity 160ms ease;
 }
-.section-translate-button svg { width: 16px; height: 16px; }
+.section-translate-button svg { width: 15px; height: 15px; }
 .section-translate-button:hover:not(:disabled) { transform: translateY(-1px); border-color: rgba(239, 71, 118, .32); background: var(--brand-soft); }
 .section-translate-button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .section-translate-button:disabled { cursor: not-allowed; opacity: .48; }
@@ -267,8 +261,8 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .ai-context-explanation dt { margin-bottom: 4px; color: var(--ink); font-size: 12px; font-weight: 700; }
 .ai-context-explanation dd { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.65; overflow-wrap: anywhere; }
 .site-rule-row {
-  display: grid; min-height: 34px; margin-top: 8px; padding: 6px 8px;
-  border: 1px solid var(--line); border-radius: 11px; background: var(--surface-soft);
+  display: grid; min-height: 0; margin-top: 8px; padding: 0;
+  border: 0; border-radius: 0; background: none; box-shadow: none;
 }
 .site-rule-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 5px; max-width: 100%; }
 .site-rule-button {
@@ -279,6 +273,8 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .site-rule-button > i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: #b8bec9; }
 .site-rule-button.enabled { border-color: rgba(239, 71, 118, .35); background: var(--brand-soft); }
 .site-rule-button.enabled > i { background: var(--brand); box-shadow: 0 0 0 3px rgba(239, 71, 118, .12); }
+.site-rule-actions .site-rule-button > i.site-rule-saving { background: transparent; box-shadow: none; border: 1px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .site-rule-actions .site-rule-button > i.site-rule-saving { animation: none; border-right-color: currentColor; } }
 .site-rule-button:hover:not(:disabled) { border-color: rgba(239, 71, 118, .48); background: var(--brand-soft); }
 .site-rule-button:disabled { cursor: default; opacity: .72; }
 .site-rule-button.global-enabled:disabled { opacity: 1; }
@@ -291,19 +287,11 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .credential-warning {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-top: 9px; padding: 9px 10px;
   border: 1px solid #f3d19e; border-radius: 11px; color: #8a5a00; background: #fdf6ec; font-size: 10px; line-height: 1.45;
-  animation: credential-warning-breathe 2.8s ease-in-out infinite;
 }
 .credential-warning span { min-width: 0; }
 .credential-warning strong { margin-right: 4px; font-weight: 800; }
 .credential-warning button {
   flex: 0 0 auto; padding: 0; border: 0; color: #b46b00; background: transparent; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer;
-}
-@keyframes credential-warning-breathe {
-  0%, 100% { border-color: #f3d19e; box-shadow: 0 0 0 0 rgba(243, 209, 158, 0); }
-  50% { border-color: #e8b468; box-shadow: 0 0 0 4px rgba(243, 209, 158, .2); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .credential-warning { animation: none; }
 }
 .notice { margin: 10px 0 -2px; color: #16855e; font-size: 10px; text-align: center; }
 .notice.error { color: #d9345e; }
@@ -631,20 +619,22 @@ footer button { font-weight: 500; color: var(--muted); }
 .image-method-shortcut kbd { border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; background: var(--surface); color: var(--ink); font: 10px/1.5 inherit; }
 .image-method .switch { pointer-events: none; }
 
-/* 服务汇总只有一行；具体功能与 AI 偏好在抽屉中展开，不为隐藏内容预留高度。 */
+/* 默认服务与配置模型直接可读；具体功能与 AI 偏好在抽屉中展开，不为隐藏内容预留高度。 */
 .provider-summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 40px; margin-top: 8px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); color: var(--ink); cursor: pointer; transition: border-color 160ms ease, background 160ms ease; }
-.provider-summary > strong { font-size: 12px; font-weight: 600; }
+.provider-summary-copy { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
+.provider-summary-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 6px; min-width: 0; }
+.provider-summary-heading > small { color: var(--muted); font-size: 12px; }
+.provider-summary-heading > strong { min-width: 0; overflow-wrap: anywhere; font-size: 12px; font-weight: 600; }
+.provider-summary-model { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .provider-summary:hover, .provider-summary[aria-expanded="true"] { color: var(--brand-strong); border-color: var(--brand); background: var(--brand-soft); }
 .provider-summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-.provider-summary-icons { display: flex; align-items: center; padding-left: 6px; }
+.provider-summary-icons { display: flex; flex: none; align-items: center; padding-left: 6px; }
 .provider-avatar { display: grid; place-items: center; width: 29px; height: 29px; margin-left: -6px; border: 2px solid var(--surface); border-radius: 50%; background: var(--surface-soft); }
 .provider-avatar :is(.service-icon) { width: 23px; height: 23px; border-radius: 50%; }
 .provider-overflow { font-size: 10px; color: var(--muted); }
 .provider-summary-chevron { margin-left: 7px; font-size: 19px; color: var(--muted); }
 .drawer-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .language-pair { grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr); gap: 6px; }
-/* 皮肤的历史自动换行规则不能再把主操作中的汉字逐行拆开。 */
-:root .popup-shell[data-interface-skin] .translate-button .translate-label { white-space: nowrap; line-height: 1.4; }
 /* 不显示域名后，两个规则按钮占用整行；覆盖简洁皮肤原先为域名预留的宽度。 */
 :root .popup-shell[data-interface-skin] .site-rule-actions { max-width: 100%; }
 
@@ -700,3 +690,26 @@ footer button { font-weight: 500; color: var(--muted); }
 :root:not(:lang(zh)) .popup-shell .opensource-link { min-width: 0; white-space: normal; text-align: center; line-height: 1.4; }
 :root:not(:lang(zh)) .popup-shell .opensource-link > span:not(.external-mark) { min-width: 0; overflow-wrap: anywhere; }
 .opensource-link svg, .opensource-link .external-mark { flex: none; }
+
+/* 页内 iframe 已有视口尺寸，只在这个模式使用视口约束；工具栏仍保留固有宽度契约。 */
+:root[data-fluentread-embedded-popup] { width: min(100vw, var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px))); min-height: 0 !important; }
+:root[data-fluentread-embedded-popup] body,
+:root[data-fluentread-embedded-popup] #app { width: min(100vw, var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px))); }
+:root[data-fluentread-embedded-popup] .popup-shell { max-height: min(560px, 100dvh); }
+
+/* 同排操作保持紧凑高度；短标题合并快捷键，完整用途和长组合由按钮提示呈现。 */
+:root .popup-shell[data-interface-skin] .translate-action { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 6px; }
+:root .popup-shell[data-interface-skin] .translate-action > .translate-button {
+  display: flex; flex: 1 1 0; flex-wrap: nowrap; align-items: center; min-width: 0; min-height: 42px; height: auto; padding: 6px 10px; overflow: visible;
+}
+:root .popup-shell[data-interface-skin] .translate-action .translate-label {
+  flex: 0 1 auto; min-width: 0; overflow: visible; text-overflow: clip; white-space: nowrap; line-height: 1.25;
+}
+:root .popup-shell[data-interface-skin] .translate-action .spinner { flex: none; }
+:root .popup-shell[data-interface-skin] .translate-action > .section-translate-button {
+  display: inline-flex; flex: 0 0 auto; flex-direction: column; justify-content: center; gap: 2px; min-width: 46px; height: auto; min-height: 42px; padding: 4px 5px;
+}
+/* 仅移除网站规则模块的外框，排序容器、独立按钮与各皮肤的按钮状态均保留。 */
+:root .popup-shell[data-interface-skin] .site-rule-row[data-popup-module="siteRule"] {
+  min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+}

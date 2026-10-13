@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/ui/presentation.ts
  * 文件职责：提供文档翻译界面使用的纯展示派生规则，把 ParsedDocument 转换成空状态提示和格式特定的文本/样式标签。
- * 主要内容：相同译文保留原文且不重复展示；包含小型本地范例、基于有界编码与大型 JSON 摘录的导出预览、字幕与富文本格式判断、预览说明、DOCX 部件名称映射、阅读器文本清理及 source 节点 class 的选择。
+ * 主要内容：相同译文保留原文且不重复展示；包含小型本地范例、基于有界编码与大型 JSON 摘录的导出预览、字幕与富文本格式判断、预览说明、DOCX 部件名称映射、阅读器文本清理（含整句送翻留下的编号占位符，ASS 的换行与空格代码显示成真正的换行和空格）、译文是否带占位符的判断及 source 节点 class 的选择。
  * 模块边界：本文件不创建 DOM、不解析文件也不调用翻译；它只消费 core 模型并返回 UI 可直接使用的值，实际预览 HTML 归 core/preview，PDF 位图和导出分别归 pdfPreview 与 binary。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -44,7 +44,7 @@ export function isRichDocumentFormat(format?: DocumentFormat): boolean {
 
 export function getDocumentEmptyReaderHint(document: ParsedDocument | null): string {
     if (document?.binary?.kind === 'pdf') {
-        return '点击“开始翻译”，译文会按原页面坐标写回并生成可下载 PDF。';
+        return 'document.pdfReading.startHint';
     }
     if (isSubtitleDocumentFormat(document?.format)) {
         return '点击“开始翻译”，译文会出现在对应时间轴行中。';
@@ -64,10 +64,19 @@ export function getDocxPartLabel(path: string): string {
     return '文档内容';
 }
 
+/** 整句送翻时代替行内标签和 Markdown 语法的编号占位符：`<g1>`、`</g1>`、`<g2/>`。 */
+const DOCUMENT_PLACEHOLDER = /<\/?g\d+\/?>/gu;
+
+/** 译文里是否带有编号占位符；带有时校订视图提示保留它们才能保留原来的格式。 */
+export function hasDocumentPlaceholder(value: string | undefined): boolean {
+    return Boolean(value) && /<\/?g\d+\/?>/u.test(value!);
+}
+
 export function formatDocumentReaderText(format: DocumentFormat | undefined, value: string): string {
-    if (format === 'html') return value.replace(/<[^>]+>/gu, '').trim();
+    if (format === 'html' || format === 'epub') return value.replace(/<[^>]+>/gu, '').trim();
     if (format === 'markdown') {
         return value
+            .replace(DOCUMENT_PLACEHOLDER, '')
             .replace(/^\s{0,3}#{1,6}\s+/u, '')
             .replace(/!\[([^\]]*)\]\([^)]*\)/gu, '$1')
             .replace(/\[([^\]]+)\]\([^)]*\)/gu, '$1')
@@ -76,7 +85,10 @@ export function formatDocumentReaderText(format: DocumentFormat | undefined, val
             .trim();
     }
     if (format !== undefined && ['srt', 'vtt', 'ass'].includes(format)) {
-        return value.replace(/<[^>]+>/gu, '').replace(/\{\\[^}]+\}/gu, '').trim();
+        // ASS 用 \N、\n 表示换行、\h 表示不换行空格：阅读时显示成真正的换行和空格，而不是这几个字符。
+        // 被翻译服务转成实体的样式标签（&lt;i&gt;）同样不属于可见文字。
+        const text = value.replace(/<[^>]+>/gu, '').replace(/&lt;\s*\/?\s*[a-z][^&<>]*&gt;/giu, '').replace(/\{\\[^}]+\}/gu, '');
+        return (format === 'ass' ? text.replace(/\\[Nn]/gu, '\n').replace(/\\h/gu, ' ') : text).trim();
     }
     return value.trim();
 }

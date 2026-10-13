@@ -98,7 +98,19 @@
     "settings.fullPage.multiSegmentHelp": "일반 프롬프트를 지원하는 AI 서비스에만 적용됩니다. 기계 번역, 마우스 오버, 선택 영역, 입력란 번역에는 영향이 없습니다.",
     "glossary.builtin.helpDisabled": "용어집이 꺼져 있습니다. 추가한 용어집을 사용하려면 위 스위치를 켜세요.",
     "image.settings.languageServiceTitle": "언어 및 서비스",
-    "settings.floatingBall.disabledNote": "플로팅 버튼이 꺼져 있습니다. 이 설정은 유지되며 다시 켜면 적용됩니다."
+    "settings.floatingBall.disabledNote": "플로팅 버튼이 꺼져 있습니다. 이 설정은 유지되며 다시 켜면 적용됩니다.",
+    "video.downloadSourceLabel": "다운로드 출처",
+    "video.downloadSourceAuto": "자동 선택",
+    "video.downloadSourceMirror": "중국 미러 우선",
+    "video.downloadSourceOfficial": "공식 출처 우선",
+    "video.downloadSourceHint": "이후 다운로드에 적용됩니다. 연결에 실패하면 다른 출처로 전환합니다.",
+    "video.downloadSourcePages": "모델 출처 페이지:",
+    "video.downloadSourceOther": "대체 출처",
+    "video.downloadWaiting": "다운로드 출처에 연결 중…",
+    "video.downloadConnecting": "{source}에 연결 중 · {attempt}/{attempts}",
+    "video.downloadSwitching": "{source}(으)로 전환 중 · {attempt}/{attempts}",
+    "video.downloadReceiving": "{source}에서 다운로드 중",
+    "video.downloadRetry": "다운로드 재시도"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "동기화 연결이 변경되었습니다. 미리보기를 다시 생성하세요.",

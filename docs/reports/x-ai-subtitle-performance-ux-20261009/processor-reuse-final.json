@@ -1,0 +1,317 @@
+{
+  "success": true,
+  "scope": "Two final-source candidate production Worker calls compared with previous fixed baseline results. Exact PCM16 decoder/prepare/auto detection/encoder+processor reuse/generation/timestamps. Node self dispatcher and local model/WASM loading boundary adapted. Not browser/WebGPU/FullCapture/live-X acceptance.",
+  "sourceReportSha256": "8c0985fedb7b02b8d916ff715dd325c332f910b5e438b2aa85dcccbd72f20e7e",
+  "sourceReportPath": "/private/tmp/fluentread-whisper-processor-reuse-20261009/final-candidate-results/raw-report.json",
+  "baselineRevision": "8467b6757",
+  "libraryVersions": {
+    "transformers": "3.8.1",
+    "onnxruntimeWeb": "1.23.2"
+  },
+  "backend": "wasm",
+  "threads": 1,
+  "networkForbidden": true,
+  "sources": {
+    "baseline": {
+      "bundle": "/private/tmp/fluentread-whisper-processor-reuse-20261009/final-candidate-results/baseline-worker.mjs",
+      "workerSourceSha256": "77113e646ba12a4fa95976991c2bdea872a2616d021ce0f27d2b799d54d5d86c",
+      "adapterSourceSha256": "dffe9e1c9fb3771224b3e4e22eca524acb519785de144d34337d774a76ddb1f8",
+      "bundleSha256": "3e12f3a0ae113ea6a54baabc375e45dc6b71e7d231bfdc0c5986302f616cb854"
+    },
+    "candidate": {
+      "bundle": "/private/tmp/fluentread-whisper-processor-reuse-20261009/final-candidate-results/candidate-worker.mjs",
+      "workerSourceSha256": "2e1dfe41ceada01e88b0443aa875fc6fd9d772303eba65bb15008f0e7a6bc64c",
+      "adapterSourceSha256": "5f6417b81b57d2a09615a7622ada0ba356e3304c4956ce3b42e6350bf0e27e7a",
+      "bundleSha256": "2130c89710e2d332111770ed62fbd32dd8f3164344371538852b886e235de51d"
+    }
+  },
+  "dependencies": {
+    "src/features/video-subtitle/transcription.ts": "94e1fcfe3c2b1fea7c9cd5dbfb3fbcdab54ab128b5a7b460e3dac448bd49ff0f",
+    "src/features/video-subtitle/offscreen/transcriptionOptions.ts": "59420ac99ef1bf9ea69c49e4ace5a4da5ce5d7177748543136686bc0bbd76bc7",
+    "src/features/video-subtitle/offscreen/timestampParser.ts": "36da2c87309106f968332f44452be8cca1811b22fc23de61255f7c61959e9c26",
+    "src/shared/onnx/resources.ts": "0467f587fe13106f0abe525454094ec1608ab127997031538f3397974d7a67de"
+  },
+  "codec": {
+    "sourceSha256": "b39bff818ff060f3f00826ec129c4e63ecab1b218d6c1e20c45b313874b596bb",
+    "extractedSha256": "8ec9e37e1d0164152fec1b7146330fd1b299d8671ed0132a6bf40841bcaf9fa6"
+  },
+  "harnessSha256": "879f5defe23af807f9d0dab0c3fb9302f03d5b8058f654da06d6aaee98e053e8",
+  "baselineEvidence": {
+    "path": "/private/tmp/fluentread-whisper-processor-reuse-20261009/paired-results/raw-report.json",
+    "sha256": "0e84ffeaab5a49618fc0a4e834186bb72e6332702daab8f5e3d9b88cbead119b"
+  },
+  "completedCalls": 2,
+  "arms": [
+    {
+      "arm": "candidate",
+      "model": "base",
+      "sample": "jfk",
+      "durationMs": 11000,
+      "pcm16Bytes": 352000,
+      "sourceSha256": "aa81c2552465568567e670f3823117e633900d16bd6202346a72f3c8464c74c8",
+      "pcm16Sha256": "be8ceccdafbba2e141e7155c537c7c03b38342651dfe94414ec93372fc275768",
+      "modelPcmSha256": "bf7551c19b7ca7759d613d4d65ba898b097fa623dea384a2f55efea887943ec5",
+      "referenceSha256": "21f5f1997121e317bd7a9760206c119c353cb55b680b29993b9831d008a04df2",
+      "prepareMs": 930.484291,
+      "success": true,
+      "error": null,
+      "backend": "wasm",
+      "encoderDtype": "q4",
+      "decoderDtype": "q4",
+      "detectedLanguage": "en",
+      "languageConfidence": 0.9474490405890506,
+      "languageDetectionMs": 3732.8542500000003,
+      "inferenceMs": 5445.948583,
+      "rpcWallMs": 5447.830709,
+      "rtf": 0.49508623481818187,
+      "counts": {
+        "encoder": 1,
+        "decoder": 31,
+        "processor": 1
+      },
+      "timing": {
+        "encoderMs": 2316.467666,
+        "decoderMs": 1819.4827890000051,
+        "processorMs": 120.66387499999996
+      },
+      "textSha256": "e4e644650803b9dca2d1caaf17fbfa3b5cd835a792b8d53d888c6996f7eb1c5d",
+      "segmentsSha256": "a5982da0b4db14efb0e49c0f95eea77c1385c98445dee8ba0628f87adbe26a76",
+      "resultSha256": "ece1af3dca2d490a6170d45a5c34365e3a85f7b2a24935cfafee3c6bfec598c8",
+      "featureLifecycle": [
+        {
+          "dims": [
+            1,
+            80,
+            3000
+          ],
+          "sha256": "b442227f7595ff70683b4397ed71232576baaf62193ed1eefd49b6c3bd46a814",
+          "disposeCalls": 1,
+          "aliveAtGeneration": [
+            true
+          ]
+        }
+      ],
+      "instanceMethodsRestored": true,
+      "modelDisposed": true,
+      "actualSessions": {
+        "model": {
+          "dtype": "q4",
+          "device": "auto",
+          "executionProviders": [
+            "wasm"
+          ]
+        },
+        "decoder_model_merged": {
+          "dtype": "q4",
+          "device": "auto",
+          "executionProviders": [
+            "wasm"
+          ]
+        }
+      },
+      "modelCache": {
+        "path": "/private/tmp/fluentread-x-ai-decoder-q8-model-cache-20261009",
+        "manifestSha256": "6ca310a944a2ce546abcc014bda1eedc9baac4f41e01d09e4c645f71016d42f2",
+        "files": [
+          {
+            "file": "base/config.json",
+            "bytes": 2243,
+            "sha256": "f4d0608f7d918166da7edb3e188de5ef1bfe70d9802e785d271fd88111e9cf4b"
+          },
+          {
+            "file": "base/generation_config.json",
+            "bytes": 3832,
+            "sha256": "61070cf8de25b1e9256e8e102ded49d8d24a8369ed36ef84fdf21549e68125a0"
+          },
+          {
+            "file": "base/preprocessor_config.json",
+            "bytes": 339,
+            "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d"
+          },
+          {
+            "file": "base/tokenizer.json",
+            "bytes": 2480466,
+            "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566"
+          },
+          {
+            "file": "base/tokenizer_config.json",
+            "bytes": 282682,
+            "sha256": "2e036e4dbacfdeb7242c7d4ec4149f4a16e86026048f94d1637e3a8ee9c6a573"
+          },
+          {
+            "file": "base/onnx/encoder_model_q4.onnx",
+            "bytes": 18772451,
+            "sha256": "9d4e9c31e8559e71de3e0e49d60b830951484699ef53747a4a06261bbbc8cb88"
+          },
+          {
+            "file": "base/onnx/decoder_model_merged_q4.onnx",
+            "bytes": 123602419,
+            "sha256": "09f83b71ceedc97dab1d90b914715dc532a646a147abda11d83c64867b7c319c"
+          }
+        ]
+      }
+    },
+    {
+      "arm": "candidate",
+      "model": "small",
+      "sample": "hi_in_0000",
+      "durationMs": 9120,
+      "pcm16Bytes": 291840,
+      "sourceSha256": "38cf0e883d64ae257288bce89cf41a9c4a693b218c3381d5bd462d90bf7b7ed6",
+      "pcm16Sha256": "fa633b9b096f2e62c5c0adf5584ebd85db52435be916898d9e2c1e984ab480c7",
+      "modelPcmSha256": "22418dec2a935b34dece904936af6379f6fb08ec8b8b7fad22a4bf74cc1fdb00",
+      "referenceSha256": "121762e001e94e3db4c53ee252f44f328ea6dffe538646b9fb225c3394187bde",
+      "prepareMs": 1234.3590840000006,
+      "success": true,
+      "error": null,
+      "backend": "wasm",
+      "encoderDtype": "fp32",
+      "decoderDtype": "q4",
+      "detectedLanguage": "hi",
+      "languageConfidence": 0.9452447760404622,
+      "languageDetectionMs": 14069.066958000001,
+      "inferenceMs": 37708.7575,
+      "rpcWallMs": 37710.787000000004,
+      "rtf": 4.134732182017544,
+      "counts": {
+        "encoder": 1,
+        "decoder": 114,
+        "processor": 1
+      },
+      "timing": {
+        "encoderMs": 8880.146208999999,
+        "decoderMs": 24075.983164000034,
+        "processorMs": 128.7257499999996
+      },
+      "textSha256": "72ceffb6732845a22273459b197d84dafad3612b117ed1cc2630a60f49c194b8",
+      "segmentsSha256": "c7aec4cc5efd064adac7d8202e680e0e91577d5a69c45c058c8dc80155a0999f",
+      "resultSha256": "c4bf873939c0268c5043d181684c1c3f7c2f816b2dc95aecc56f95a0929b0ec7",
+      "featureLifecycle": [
+        {
+          "dims": [
+            1,
+            80,
+            3000
+          ],
+          "sha256": "2b10fbbd2700e6b44dc788ea60a4d64a169a85bcaf7f22c91304d64191801c62",
+          "disposeCalls": 1,
+          "aliveAtGeneration": [
+            true
+          ]
+        }
+      ],
+      "instanceMethodsRestored": true,
+      "modelDisposed": true,
+      "actualSessions": {
+        "model": {
+          "dtype": "fp32",
+          "device": "auto",
+          "executionProviders": [
+            "wasm"
+          ]
+        },
+        "decoder_model_merged": {
+          "dtype": "q4",
+          "device": "auto",
+          "executionProviders": [
+            "wasm"
+          ]
+        }
+      },
+      "modelCache": {
+        "path": "/private/tmp/fluentread-whisper-small-fp32-encoder-cache-20261009",
+        "manifestSha256": "c0612aa709a1feff55632383cbbd4209ee12bb6f922facded33c8a8872dfe3b3",
+        "files": [
+          {
+            "file": "small/config.json",
+            "bytes": 2227,
+            "sha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18"
+          },
+          {
+            "file": "small/generation_config.json",
+            "bytes": 3893,
+            "sha256": "f538b28220c6a6d6f1af1458d4141cacb4ef4963df3de98a19490440c412ddf0"
+          },
+          {
+            "file": "small/preprocessor_config.json",
+            "bytes": 339,
+            "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d"
+          },
+          {
+            "file": "small/tokenizer.json",
+            "bytes": 2480466,
+            "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566"
+          },
+          {
+            "file": "small/tokenizer_config.json",
+            "bytes": 282683,
+            "sha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce"
+          },
+          {
+            "file": "small/onnx/decoder_model_merged_q4.onnx",
+            "bytes": 233149327,
+            "sha256": "795c61b344576719c2b249cc9911c78b4cc552c8c6a5407be21a3380a0791b13"
+          },
+          {
+            "file": "small/onnx/encoder_model.onnx",
+            "bytes": 352825870,
+            "sha256": "b37cd6625dc36f9178ec7539a1876b9680ea26a910097e092be39dc766320c7b"
+          }
+        ]
+      }
+    }
+  ],
+  "pairs": [
+    {
+      "model": "base",
+      "sample": "jfk",
+      "resultIdentical": true,
+      "timestampsIdentical": true,
+      "processorCalls": [
+        2,
+        1
+      ],
+      "processorMs": [
+        255.87191600000006,
+        120.66387499999996
+      ],
+      "inferenceMs": [
+        5623.384417,
+        5445.948583
+      ],
+      "savedProcessorMs": 135.2080410000001,
+      "warning": "Fixed prior baseline versus one final candidate; total elapsed noisy, not general CPU/browser speedup."
+    },
+    {
+      "model": "small",
+      "sample": "hi_in_0000",
+      "resultIdentical": true,
+      "timestampsIdentical": true,
+      "processorCalls": [
+        2,
+        1
+      ],
+      "processorMs": [
+        266.1623330000002,
+        128.7257499999996
+      ],
+      "inferenceMs": [
+        37750.397,
+        37708.7575
+      ],
+      "savedProcessorMs": 137.4365830000006,
+      "warning": "Fixed prior baseline versus one final candidate; total elapsed noisy, not general CPU/browser speedup."
+    }
+  ],
+  "allModelsDisposed": true,
+  "memoryAfterDispose": {
+    "rssBytes": 2613755904,
+    "maxRssKiB": 3151632
+  },
+  "limitations": [
+    "Only one ordered baseline/candidate pair per model, total inference latency sensitive to warmup/order/load; processor call reduction is direct evidence.",
+    "Node ORT Web WASM local-loading boundary differs from browser Worker; no WebGPU/browser/UI acceptance.",
+    "Node same-thread timers do not prove real-time decoder interruption; production independent Offscreen watchdog unchanged.",
+    "Public natural transcripts and audio remain in local temporary evidence only; no quality improvement claimed."
+  ]
+}

@@ -1,13 +1,84 @@
 /**
  * @file src/features/video-subtitle/offscreen/whisperEncoderReuse.ts
- * 文件职责：适配锁定的 Transformers.js 3.8.1，将一个完整 Whisper 音频窗的编码张量交给语言检测与原有转写流水线共用。
- * 主要内容：核对模型实例与私有编码契约，临时允许生成接口接收 encoder_outputs，补齐上游遗漏的请求停止条件，并准确恢复实例配置和释放张量。
+ * 文件职责：适配锁定的 Transformers.js 3.8.1，将一个完整 Whisper 音频窗的特征和编码张量交给语言检测与原有转写流水线共用。
+ * 主要内容：核对单窗处理与私有编码契约，临时复用当前 processor 输出并允许生成接收 encoder_outputs，补齐请求停止条件，准确恢复实例属性与张量归属。
  * 模块边界：不修改库原型、不缓存跨窗张量、不复制上游解码或后处理；编码不兼容时执行原有检测，停止契约不兼容时明确拒绝。
  */
 
 interface EncoderTensor {
   readonly dims: readonly number[];
   dispose(): void;
+}
+
+export type WhisperAudioProcessor = ((audio: Float32Array) => Promise<Record<string, unknown>>) & {
+  feature_extractor?: {config?: {sampling_rate?: unknown; chunk_length?: unknown; hop_length?: unknown}};
+};
+
+interface WhisperProcessorPipeline {
+  model?: WhisperEncoderReuseModel;
+  processor?: WhisperAudioProcessor;
+}
+
+export interface WhisperProcessorReuse {
+  /** 调用方保留 processed 张量至此调用结束，再于 finally 释放；租约不拥有张量。 */
+  transcribe<T>(options: Record<string, unknown>, operation: () => Promise<T>): Promise<T>;
+}
+
+const activeProcessorRequests = new WeakSet<WhisperProcessorPipeline>();
+
+/**
+ * 3.8.1 prepareAudios 保留 Float32Array 引用，未分块 Whisper pipeline 只调用
+ * processor(aud) 一次。保留原 callable 的属性/getter，仅替换这个请求的调用。
+ * 不兼容时返回 null 使用原流水线，真正使用后若契约改变则拒绝，不能混用音频。
+ * https://github.com/huggingface/transformers.js/blob/3.8.1/src/pipelines.js#L1800
+ */
+export function prepareWhisperProcessorReuse(
+  transcriber: WhisperProcessorPipeline,
+  audio: Float32Array,
+  processed: Record<string, unknown>,
+  libraryVersion: unknown,
+): WhisperProcessorReuse | null {
+  const original = transcriber.processor;
+  const config = original?.feature_extractor?.config;
+  const feature = processed.input_features as EncoderTensor | undefined;
+  const descriptor = Object.getOwnPropertyDescriptor(transcriber, 'processor');
+  if (libraryVersion !== '3.8.1' || transcriber.model?.config?.model_type !== 'whisper'
+    || typeof original !== 'function' || config?.sampling_rate !== 16_000
+    || config.chunk_length !== 30 || config.hop_length !== 160
+    || !Array.isArray(feature?.dims) || feature.dims.length !== 3
+    || feature.dims[0] !== 1 || feature.dims[1] !== 80 || feature.dims[2] !== 3000
+    || typeof feature.dispose !== 'function' || (descriptor && !descriptor.configurable)
+    || (!descriptor && !Object.isExtensible(transcriber))) return null;
+
+  let consumed = false;
+  return {
+    async transcribe(options, operation) {
+      if (consumed || activeProcessorRequests.has(transcriber) || Number(options.chunk_length_s || 0) > 0) {
+        throw new Error('Whisper 特征复用不能跨请求、并发或内部分块使用');
+      }
+      consumed = true;
+      let calls = 0;
+      const processor = new Proxy(original, {
+        apply(_target, _thisArg, args) {
+          if (args.length !== 1 || args[0] !== audio || ++calls !== 1) {
+            throw new Error('Whisper 特征复用流水线改变了当前音频窗');
+          }
+          return Promise.resolve(processed);
+        },
+      });
+      Object.defineProperty(transcriber, 'processor', {
+        configurable: true, writable: true, enumerable: descriptor?.enumerable ?? false, value: processor,
+      });
+      activeProcessorRequests.add(transcriber);
+      try {
+        return await operation();
+      } finally {
+        if (descriptor) Object.defineProperty(transcriber, 'processor', descriptor);
+        else delete transcriber.processor;
+        activeProcessorRequests.delete(transcriber);
+      }
+    },
+  };
 }
 
 /** 仅描述 3.8.1 的实例接口；升级库版本必须重新核对，而不是尝试猜测私有 API。 */

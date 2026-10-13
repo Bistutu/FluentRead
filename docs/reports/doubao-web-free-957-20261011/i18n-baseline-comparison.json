@@ -1,0 +1,19 @@
+{
+  "baseCommit": "f9cf3fcb2dd75b636249f0bbc49fb40973af41b8",
+  "baselineSummary": "1 failed | 57 passed (58)",
+  "integratedSummary": "1 failed | 57 passed (58)",
+  "baselineMissing": 200,
+  "integratedMissing": 200,
+  "sameEntriesInSameOrder": true,
+  "sameEntrySet": true,
+  "newFailures": [],
+  "baselineOnlyFailures": [],
+  "failedTestsIdentical": true,
+  "missingListSha256": "9da1a2f187bb3a0056b1704054091a388a5c1431f7008d72efd3dd991e11ec87",
+  "missingBySource": {
+    "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue": 190,
+    "src/features/settings/ui/ReadingAssistanceSettings.vue, src/core/config/diff.ts": 5,
+    "src/features/settings/ui/ReadingAssistanceSettings.vue": 5
+  },
+  "classification": "All 200 entries relate to existing personal-correction copy: 190 from PersonalCorrectionPanel.vue and 10 for the personal-correction settings title/description in ReadingAssistanceSettings.vue and config/diff.ts."
+}

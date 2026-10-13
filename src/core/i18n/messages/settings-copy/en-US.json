@@ -98,7 +98,19 @@
     "settings.fullPage.multiSegmentHelp": "Applies only to AI services that support general prompts. Machine, hover, selection, and input box translation are not affected.",
     "glossary.builtin.helpDisabled": "The glossary is off. Turn on the switch above for added glossaries to take effect.",
     "image.settings.languageServiceTitle": "Languages and service",
-    "settings.floatingBall.disabledNote": "The floating button is off. These preferences are kept and apply when you turn it back on."
+    "settings.floatingBall.disabledNote": "The floating button is off. These preferences are kept and apply when you turn it back on.",
+    "video.downloadSourceLabel": "Download source",
+    "video.downloadSourceAuto": "Automatic",
+    "video.downloadSourceMirror": "China mirrors first",
+    "video.downloadSourceOfficial": "Official first",
+    "video.downloadSourceHint": "Applies to future downloads. If a connection fails, another source is tried.",
+    "video.downloadSourcePages": "Model source pages:",
+    "video.downloadSourceOther": "alternate source",
+    "video.downloadWaiting": "Connecting to a download source…",
+    "video.downloadConnecting": "Connecting to {source} · {attempt}/{attempts}",
+    "video.downloadSwitching": "Switching to {source} · {attempt}/{attempts}",
+    "video.downloadReceiving": "Downloading from {source}",
+    "video.downloadRetry": "Retry download"
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "The sync connection changed. Generate a new preview.",

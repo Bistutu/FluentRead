@@ -1,0 +1,2372 @@
+{
+  "success": true,
+  "evidence": "Production content UI and real MSE/AAC-to-PCM acquisition on a controlled X Home fixture; ASR/model-availability/download-progress and Microsoft translation responses controlled. No actual model inference or model weight downloads.",
+  "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-builds/x-ai-subtitle-performance-ux-20261009-final-v6/chrome-mv3",
+  "driverSha256": "f12cead4f523b59556618a2aeb2d3006aaa52f53e2e7df4d76135aec2de62861",
+  "extensionSha256": {
+    "manifest.json": "cc92950ad08ed2e2f02bd55a0756048e6569ec51c9341d9e678b65fb3d8d03f7",
+    "background.js": "5bf9c07d8a501ed3228e0575004a2caf010285671a8ef61a863979a7c4c97392",
+    "videoTranscriptionWorker.js": "973b9063afae257e692034a836a4bd4d8ded5cafbf8db067b053b5ca5cc9f1c7",
+    "content-scripts/content.js": "11e2a70a22d57597600ec054165477083b38d87783b9abcad74331bdbcd668ec",
+    "content-scripts/xVideoBridge.js": "f22318b71931cfc573c8aae63086438e4d186f4f654616a85ebd0c6178c50331"
+  },
+  "provenanceSha256": "995a2914706946569df8413e0dbdaa227e280561859b54f92c265f15be09ffdd",
+  "startedAt": "2026-10-09T13:30:02.144Z",
+  "finishedAt": "2026-10-09T13:30:42.730Z",
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 31005,
+      "name": "问题报告程序"
+    },
+    "frontmostAfter": {
+      "pid": 31005,
+      "name": "问题报告程序"
+    }
+  },
+  "browserPath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "browserVersion": "154.0.8037.99",
+  "focusChecks": 10,
+  "guardedCloseSucceeded": true,
+  "ownedTemporaryProfileRemoved": true,
+  "durationMs": 40203,
+  "checkCount": 78,
+  "checks": [
+    {
+      "name": "AI preview disables all three complete export buttons and model selection",
+      "pass": true
+    },
+    {
+      "name": "Completed Base restores model selection and original export",
+      "pass": true
+    },
+    {
+      "name": "Current Base opens the three-model selection view without changing preference",
+      "pass": true
+    },
+    {
+      "name": "Cancelling another choice preserves Base captions and returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "Completed Base produces one real original subtitle export",
+      "pass": true
+    },
+    {
+      "name": "Cached Tiny confirm action is start instead of download",
+      "pass": true
+    },
+    {
+      "name": "Tiny regeneration keeps preview exports and model choice disabled",
+      "pass": true
+    },
+    {
+      "name": "Previous export feedback timer cannot enable any preview export during new recognition",
+      "pass": true
+    },
+    {
+      "name": "Tiny completion restores complete original export",
+      "pass": true
+    },
+    {
+      "name": "Cached Tiny invokes Tiny recognition with automatic source language",
+      "pass": true
+    },
+    {
+      "name": "Cached Tiny does not request a cache-only model download",
+      "pass": true
+    },
+    {
+      "name": "Missing Small confirm explicitly offers download",
+      "pass": true
+    },
+    {
+      "name": "Controlled byte progress reaches the production download UI and disables model selection",
+      "pass": true
+    },
+    {
+      "name": "Progress end before prepare reply retains the last observed percent",
+      "pass": true
+    },
+    {
+      "name": "Confirmed Small becomes the current model after controlled prepare and real capture",
+      "pass": true
+    },
+    {
+      "name": "Production content queries the actual trusted background progress endpoint",
+      "pass": true
+    },
+    {
+      "name": "Completed prepare stops content progress queries",
+      "pass": true
+    },
+    {
+      "name": "zh-CN 520px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "zh-CN 520px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "zh-CN 520px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "zh-CN selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "zh-CN 300px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "zh-CN 300px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "zh-CN 300px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "zh-CN selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "en-US 520px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "en-US 520px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "en-US 520px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "en-US selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "en-US 300px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "en-US 300px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "en-US 300px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "en-US selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "ja-JP 520px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "ja-JP 520px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "ja-JP 520px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "ja-JP selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "ja-JP 300px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "ja-JP 300px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "ja-JP 300px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "ja-JP selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "ko-KR 520px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "ko-KR 520px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "ko-KR 520px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "ko-KR selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "ko-KR 300px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "ko-KR 300px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "ko-KR 300px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "ko-KR selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "es-ES 520px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "es-ES 520px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "es-ES 520px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "es-ES selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "es-ES 300px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "es-ES 300px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "es-ES 300px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "es-ES selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "fr-FR 520px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "fr-FR 520px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "fr-FR 520px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "fr-FR selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "fr-FR 300px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "fr-FR 300px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "fr-FR 300px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "fr-FR selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "ru-RU 520px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "ru-RU 520px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "ru-RU 520px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "ru-RU selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "ru-RU 300px tools layout fits player and localized label",
+      "pass": true
+    },
+    {
+      "name": "ru-RU 300px selection title and current Small are localized",
+      "pass": true
+    },
+    {
+      "name": "ru-RU 300px all model name/badge/status text ranges are separate and within their buttons",
+      "pass": true
+    },
+    {
+      "name": "ru-RU selection Escape returns focus to model row",
+      "pass": true
+    },
+    {
+      "name": "Progress publisher does not initialize a model Worker",
+      "pass": true
+    },
+    {
+      "name": "All interactions preserve visible playback state and Home route",
+      "pass": true
+    },
+    {
+      "name": "Only locally fulfilled fixture URLs were requested",
+      "pass": true
+    },
+    {
+      "name": "No unhandled page errors",
+      "pass": true
+    },
+    {
+      "name": "Focus-safe normal browser mode remains active",
+      "pass": true
+    }
+  ],
+  "phases": [
+    {
+      "name": "launch",
+      "at": 1791552602147
+    },
+    {
+      "name": "generate-cached-base-preview",
+      "at": 1791552604973
+    },
+    {
+      "name": "cancel-current-model-selection",
+      "at": 1791552605894
+    },
+    {
+      "name": "ready-export-then-confirm-cached-tiny",
+      "at": 1791552605957
+    },
+    {
+      "name": "confirm-missing-small-progress",
+      "at": 1791552610285
+    },
+    {
+      "name": "seven-locales-wide-and-narrow",
+      "at": 1791552614100
+    },
+    {
+      "name": "read-only-layout-refresh-measurement",
+      "at": 1791552637895
+    },
+    {
+      "name": "ui-proof-complete",
+      "at": 1791552642350
+    }
+  ],
+  "sourceSha256": {
+    "src/features/settings/ui/VideoLocalModelSettings.vue": "3fb7db84dcb02cdca69425bea0ee769c293c9d97dc233a757e42d4d97767ff34",
+    "src/features/video-subtitle/background/handlers.ts": "54858f0e8300ed977a088b7ad2873d5880d915e2cedb0372d7ff56752b23921f",
+    "src/features/video-subtitle/content/downloads.ts": "3ae103ec8f13e650d2a8d27c25945d240cf12ee92da34c96acaf60d3ba7b7f86",
+    "src/features/video-subtitle/content/playerMenu.ts": "53996815393c2e7685e3c62642bdfa037ff1c7a43511c0bfe3e3a4db44b3f1e5",
+    "src/features/video-subtitle/content/runtime.ts": "51745183d11ccfa60d967829d10b4cfc49758d98c5c2d4b9ab25c9e47de0f020",
+    "src/features/video-subtitle/content/ui.ts": "2c92b21e9073ea441f68972c3915e2fdd04af944fdb06ac8db1826e396a27150",
+    "src/features/video-subtitle/content/video-ai/modelMenu.ts": "bbc30ab2efc27a7f89a03261dfa22950192609996945ae141c4092fa35a8e3f0",
+    "src/features/video-subtitle/content/video-ai/modelSetup.ts": "1a61d29600779852d984e9ec63ceeabd0c2f99a9815b77f1ed79656ef05cb2e1",
+    "src/features/video-subtitle/offscreen/modelCache.ts": "32a49513be47824c804149d5fa8bf2cefac2bae0b9ec0022543f9e14b3525556",
+    "src/core/download/progress.ts": "e0cc52e3a19400b34c81b7e5f5030a6b8700ef34981693494bdbf6033e453cce",
+    "src/app/background/handlers/downloadProgress.ts": "42028e0f4700e66ff80d1463cb39c6335ec652fd56e611275a0fbcf9011d42d3",
+    "src/platform/storage/downloadProgress.ts": "75ceeb13490a17ae8e01b58e2cb683b656ed6ee5e024562c5a6062f7b4f2a60c"
+  },
+  "states": {
+    "basePreview": {
+      "view": "main",
+      "panel": "tools",
+      "model": "base",
+      "modelLabel": "识别模型：Base · 标准",
+      "modelDisabled": true,
+      "expanded": "false",
+      "activeAction": "close-subtitle-tools",
+      "detail": "识别 73%",
+      "ready": "false",
+      "toggleDisabled": false,
+      "progress": "determinate",
+      "progressStyle": "73%",
+      "exports": [
+        {
+          "action": "download-subtitles",
+          "disabled": true,
+          "hidden": false
+        },
+        {
+          "action": "download-translated-subtitles",
+          "disabled": true,
+          "hidden": false
+        },
+        {
+          "action": "download-bilingual-subtitles",
+          "disabled": true,
+          "hidden": false
+        }
+      ],
+      "originalSha256": "b1a9996f2e54fd9de5c069db67450edd82a9c9539b727b00bdf480793d82abe7",
+      "translationSha256": "d365dbc37254ffe5bacddf3d7bd5ddbb4fcf5d8b09e2956a83e06ec100a5fb16"
+    },
+    "baseReady": {
+      "view": "main",
+      "panel": "tools",
+      "model": "base",
+      "modelLabel": "识别模型：Base · 标准",
+      "modelDisabled": false,
+      "expanded": "false",
+      "activeAction": "close-subtitle-tools",
+      "detail": "已就绪",
+      "ready": "true",
+      "toggleDisabled": false,
+      "progress": "none",
+      "progressStyle": "0%",
+      "exports": [
+        {
+          "action": "download-subtitles",
+          "disabled": false,
+          "hidden": false
+        },
+        {
+          "action": "download-translated-subtitles",
+          "disabled": false,
+          "hidden": false
+        },
+        {
+          "action": "download-bilingual-subtitles",
+          "disabled": false,
+          "hidden": false
+        }
+      ],
+      "originalSha256": "b1a9996f2e54fd9de5c069db67450edd82a9c9539b727b00bdf480793d82abe7",
+      "translationSha256": "d365dbc37254ffe5bacddf3d7bd5ddbb4fcf5d8b09e2956a83e06ec100a5fb16"
+    },
+    "cancelled": {
+      "view": "main",
+      "panel": "tools",
+      "model": "base",
+      "modelLabel": "识别模型：Base · 标准",
+      "modelDisabled": false,
+      "expanded": "false",
+      "activeAction": "select-ai-model",
+      "selectedModel": "small",
+      "detail": "已就绪",
+      "ready": "true",
+      "toggleDisabled": false,
+      "progress": "none",
+      "progressStyle": "0%",
+      "exports": [
+        {
+          "action": "download-subtitles",
+          "disabled": false,
+          "hidden": false
+        },
+        {
+          "action": "download-translated-subtitles",
+          "disabled": false,
+          "hidden": false
+        },
+        {
+          "action": "download-bilingual-subtitles",
+          "disabled": false,
+          "hidden": false
+        }
+      ],
+      "originalSha256": "b1a9996f2e54fd9de5c069db67450edd82a9c9539b727b00bdf480793d82abe7",
+      "translationSha256": "d365dbc37254ffe5bacddf3d7bd5ddbb4fcf5d8b09e2956a83e06ec100a5fb16"
+    },
+    "tinyPreview": {
+      "view": "main",
+      "panel": "tools",
+      "model": "tiny",
+      "modelLabel": "识别模型：Tiny · 轻量",
+      "modelDisabled": true,
+      "expanded": "false",
+      "activeAction": "close-subtitle-tools",
+      "selectedModel": "tiny",
+      "detail": "识别 65%",
+      "ready": "false",
+      "toggleDisabled": false,
+      "progress": "determinate",
+      "progressStyle": "65%",
+      "exports": [
+        {
+          "action": "download-subtitles",
+          "disabled": true,
+          "hidden": false
+        },
+        {
+          "action": "download-translated-subtitles",
+          "disabled": true,
+          "hidden": false
+        },
+        {
+          "action": "download-bilingual-subtitles",
+          "disabled": true,
+          "hidden": false
+        }
+      ],
+      "originalSha256": "65cf3a68544e4f14775b8c96c130ed3e9b6540e66fd49e85783d7a0905b0a5b3",
+      "translationSha256": "4f8fc99028f8c9b23b14e0ae6dc4fa6f9bd97e0246b20366934fc2eb2976b1e3"
+    },
+    "tinyPreviewAfterExportTimer": {
+      "view": "main",
+      "panel": "tools",
+      "model": "tiny",
+      "modelLabel": "识别模型：Tiny · 轻量",
+      "modelDisabled": true,
+      "expanded": "false",
+      "activeAction": "close-subtitle-tools",
+      "selectedModel": "tiny",
+      "detail": "识别 65%",
+      "ready": "false",
+      "toggleDisabled": false,
+      "progress": "determinate",
+      "progressStyle": "65%",
+      "exports": [
+        {
+          "action": "download-subtitles",
+          "disabled": true,
+          "hidden": false
+        },
+        {
+          "action": "download-translated-subtitles",
+          "disabled": true,
+          "hidden": false
+        },
+        {
+          "action": "download-bilingual-subtitles",
+          "disabled": true,
+          "hidden": false
+        }
+      ],
+      "elapsedSinceExportMs": 4078,
+      "downloadCount": 1,
+      "originalSha256": "65cf3a68544e4f14775b8c96c130ed3e9b6540e66fd49e85783d7a0905b0a5b3",
+      "translationSha256": "4f8fc99028f8c9b23b14e0ae6dc4fa6f9bd97e0246b20366934fc2eb2976b1e3"
+    },
+    "tinyReady": {
+      "view": "main",
+      "panel": "tools",
+      "model": "tiny",
+      "modelLabel": "识别模型：Tiny · 轻量",
+      "modelDisabled": false,
+      "expanded": "false",
+      "activeAction": "close-subtitle-tools",
+      "selectedModel": "tiny",
+      "detail": "已就绪",
+      "ready": "true",
+      "toggleDisabled": false,
+      "progress": "none",
+      "progressStyle": "0%",
+      "exports": [
+        {
+          "action": "download-subtitles",
+          "disabled": false,
+          "hidden": false
+        },
+        {
+          "action": "download-translated-subtitles",
+          "disabled": false,
+          "hidden": false
+        },
+        {
+          "action": "download-bilingual-subtitles",
+          "disabled": false,
+          "hidden": false
+        }
+      ],
+      "originalSha256": "65cf3a68544e4f14775b8c96c130ed3e9b6540e66fd49e85783d7a0905b0a5b3",
+      "translationSha256": "4f8fc99028f8c9b23b14e0ae6dc4fa6f9bd97e0246b20366934fc2eb2976b1e3"
+    },
+    "downloading25": {
+      "view": "main",
+      "panel": "watch",
+      "model": "small",
+      "modelLabel": "识别模型：Small · 高质量",
+      "modelDisabled": true,
+      "expanded": "false",
+      "activeAction": null,
+      "selectedModel": "small",
+      "detail": "25%",
+      "ready": "false",
+      "toggleDisabled": true,
+      "progress": "determinate",
+      "progressStyle": "25%",
+      "exports": [
+        {
+          "action": "download-subtitles",
+          "disabled": true,
+          "hidden": true
+        },
+        {
+          "action": "download-translated-subtitles",
+          "disabled": true,
+          "hidden": true
+        },
+        {
+          "action": "download-bilingual-subtitles",
+          "disabled": true,
+          "hidden": true
+        }
+      ],
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "translationSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "downloading75": {
+      "view": "main",
+      "panel": "watch",
+      "model": "small",
+      "modelLabel": "识别模型：Small · 高质量",
+      "modelDisabled": true,
+      "expanded": "false",
+      "activeAction": null,
+      "selectedModel": "small",
+      "detail": "75%",
+      "ready": "false",
+      "toggleDisabled": true,
+      "progress": "determinate",
+      "progressStyle": "75%",
+      "exports": [
+        {
+          "action": "download-subtitles",
+          "disabled": true,
+          "hidden": true
+        },
+        {
+          "action": "download-translated-subtitles",
+          "disabled": true,
+          "hidden": true
+        },
+        {
+          "action": "download-bilingual-subtitles",
+          "disabled": true,
+          "hidden": true
+        }
+      ],
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "translationSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "downloadEndedBeforeReply": {
+      "view": "main",
+      "panel": "watch",
+      "model": "small",
+      "modelLabel": "识别模型：Small · 高质量",
+      "modelDisabled": true,
+      "expanded": "false",
+      "activeAction": null,
+      "selectedModel": "small",
+      "detail": "75%",
+      "ready": "false",
+      "toggleDisabled": true,
+      "progress": "determinate",
+      "progressStyle": "75%",
+      "exports": [
+        {
+          "action": "download-subtitles",
+          "disabled": true,
+          "hidden": true
+        },
+        {
+          "action": "download-translated-subtitles",
+          "disabled": true,
+          "hidden": true
+        },
+        {
+          "action": "download-bilingual-subtitles",
+          "disabled": true,
+          "hidden": true
+        }
+      ],
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "translationSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "smallReady": {
+      "view": "main",
+      "panel": "tools",
+      "model": "small",
+      "modelLabel": "识别模型：Small · 高质量",
+      "modelDisabled": false,
+      "expanded": "false",
+      "activeAction": "close-subtitle-tools",
+      "selectedModel": "small",
+      "detail": "已就绪",
+      "ready": "true",
+      "toggleDisabled": false,
+      "progress": "none",
+      "progressStyle": "0%",
+      "exports": [
+        {
+          "action": "download-subtitles",
+          "disabled": false,
+          "hidden": false
+        },
+        {
+          "action": "download-translated-subtitles",
+          "disabled": false,
+          "hidden": false
+        },
+        {
+          "action": "download-bilingual-subtitles",
+          "disabled": false,
+          "hidden": false
+        }
+      ],
+      "originalSha256": "1ef457e358659c20c2029635f1d5341ceb54b7262213b26d8be5154a171cc401",
+      "translationSha256": "b26142dcc6e84a06227bed569f56b61290b9c23b243f35ff45616d49949e0cf8"
+    }
+  },
+  "realExport": {
+    "eventCount": 1,
+    "completedExport": {
+      "filename": "X Home audio recovery-ai.srt",
+      "at": 1791552606052
+    },
+    "afterOldFeedbackElapsedMs": 4078,
+    "noAdditionalExportDuringPreview": true
+  },
+  "progress": {
+    "amountsAreControlled": true,
+    "senderAndQueryAreProduction": true,
+    "publisherTargetUrl": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/offscreen.html",
+    "publisherHttpHttpsBlocked": true,
+    "updates": [
+      {
+        "message": {
+          "type": "fluentReadDownloadProgress",
+          "id": "video-model:small",
+          "progress": {
+            "loaded": 147000000,
+            "total": 588000000
+          }
+        },
+        "reply": {
+          "success": true
+        },
+        "at": 1791552610373
+      },
+      {
+        "message": {
+          "type": "fluentReadDownloadProgress",
+          "id": "video-model:small",
+          "progress": {
+            "loaded": 441000000,
+            "total": 588000000
+          }
+        },
+        "reply": {
+          "success": true
+        },
+        "at": 1791552610881
+      },
+      {
+        "message": {
+          "type": "fluentReadDownloadProgress",
+          "id": "video-model:small"
+        },
+        "reply": {
+          "success": true
+        },
+        "at": 1791552611377
+      }
+    ],
+    "actualQueryCalls": [
+      {
+        "type": "fluentReadDownloadProgressQuery",
+        "id": "video-model:small",
+        "since": 1791552610362,
+        "at": 1791552610362
+      },
+      {
+        "type": "fluentReadDownloadProgressQuery",
+        "id": "video-model:small",
+        "since": 1791552610362,
+        "at": 1791552610866
+      },
+      {
+        "type": "fluentReadDownloadProgressQuery",
+        "id": "video-model:small",
+        "since": 1791552610362,
+        "at": 1791552611368
+      },
+      {
+        "type": "fluentReadDownloadProgressQuery",
+        "id": "video-model:small",
+        "since": 1791552610362,
+        "at": 1791552611871
+      }
+    ],
+    "queryCountAfterComplete": 4,
+    "last75PercentRetainedAfterFinishBeforePrepareReply": true
+  },
+  "rpcCalls": [
+    {
+      "type": "fluentReadGetVideoAiSubtitleCache",
+      "model": "base",
+      "at": 1791552605027
+    },
+    {
+      "type": "fluentReadGetVideoAiSubtitleCache",
+      "model": "base",
+      "at": 1791552605104
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552605107
+    },
+    {
+      "type": "fluentReadPrepareLocalVideoModel",
+      "model": "base",
+      "generation": 1,
+      "keepWarm": true,
+      "at": 1791552605112
+    },
+    {
+      "type": "fluentReadTranscribeLocalVideoAudio",
+      "model": "base",
+      "generation": 1,
+      "sourceLanguage": "auto",
+      "pcm16Bytes": 448000,
+      "at": 1791552605168
+    },
+    {
+      "sourceLanguage": "auto",
+      "at": 1791552605178
+    },
+    {
+      "type": "fluentReadTranscribeLocalVideoAudio",
+      "model": "base",
+      "generation": 1,
+      "sourceLanguage": "auto",
+      "pcm16Bytes": 231424,
+      "at": 1791552605185
+    },
+    {
+      "type": "fluentReadSetVideoAiSubtitleCache",
+      "model": "base",
+      "at": 1791552605884
+    },
+    {
+      "type": "fluentReadCancelLocalVideoTranscription",
+      "generation": 1,
+      "reason": "complete",
+      "at": 1791552605885
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552605910
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552606073
+    },
+    {
+      "type": "fluentReadCancelLocalVideoTranscription",
+      "generation": 1,
+      "reason": "cancel",
+      "at": 1791552606125
+    },
+    {
+      "type": "fluentReadPrepareLocalVideoModel",
+      "model": "tiny",
+      "generation": 3,
+      "keepWarm": true,
+      "at": 1791552606131
+    },
+    {
+      "type": "persistConfig",
+      "at": 1791552606132
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552606153
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552606154
+    },
+    {
+      "type": "fluentReadTranscribeLocalVideoAudio",
+      "model": "tiny",
+      "generation": 3,
+      "sourceLanguage": "auto",
+      "pcm16Bytes": 320000,
+      "at": 1791552606175
+    },
+    {
+      "sourceLanguage": "auto",
+      "at": 1791552606180
+    },
+    {
+      "type": "fluentReadTranscribeLocalVideoAudio",
+      "model": "tiny",
+      "generation": 3,
+      "sourceLanguage": "auto",
+      "pcm16Bytes": 320000,
+      "at": 1791552606193
+    },
+    {
+      "type": "fluentReadTranscribeLocalVideoAudio",
+      "model": "tiny",
+      "generation": 3,
+      "sourceLanguage": "auto",
+      "pcm16Bytes": 77824,
+      "at": 1791552610134
+    },
+    {
+      "type": "fluentReadSetVideoAiSubtitleCache",
+      "model": "tiny",
+      "at": 1791552610140
+    },
+    {
+      "type": "fluentReadCancelLocalVideoTranscription",
+      "generation": 3,
+      "reason": "complete",
+      "at": 1791552610142
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552610301
+    },
+    {
+      "type": "fluentReadCancelLocalVideoTranscription",
+      "generation": 3,
+      "reason": "cancel",
+      "at": 1791552610357
+    },
+    {
+      "type": "fluentReadDownloadProgressQuery",
+      "id": "video-model:small",
+      "since": 1791552610362,
+      "at": 1791552610362
+    },
+    {
+      "type": "fluentReadPrepareLocalVideoModel",
+      "model": "small",
+      "at": 1791552610362
+    },
+    {
+      "type": "persistConfig",
+      "at": 1791552610364
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552610381
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552610381
+    },
+    {
+      "type": "fluentReadDownloadProgressQuery",
+      "id": "video-model:small",
+      "since": 1791552610362,
+      "at": 1791552610866
+    },
+    {
+      "type": "fluentReadDownloadProgressQuery",
+      "id": "video-model:small",
+      "since": 1791552610362,
+      "at": 1791552611368
+    },
+    {
+      "type": "fluentReadDownloadProgressQuery",
+      "id": "video-model:small",
+      "since": 1791552610362,
+      "at": 1791552611871
+    },
+    {
+      "type": "fluentReadPrepareLocalVideoModel",
+      "model": "small",
+      "generation": 5,
+      "keepWarm": true,
+      "at": 1791552612249
+    },
+    {
+      "type": "fluentReadTranscribeLocalVideoAudio",
+      "model": "small",
+      "generation": 5,
+      "sourceLanguage": "auto",
+      "pcm16Bytes": 448000,
+      "at": 1791552612304
+    },
+    {
+      "sourceLanguage": "auto",
+      "at": 1791552612308
+    },
+    {
+      "type": "fluentReadTranscribeLocalVideoAudio",
+      "model": "small",
+      "generation": 5,
+      "sourceLanguage": "auto",
+      "pcm16Bytes": 231424,
+      "at": 1791552612314
+    },
+    {
+      "type": "fluentReadSetVideoAiSubtitleCache",
+      "model": "small",
+      "at": 1791552612874
+    },
+    {
+      "type": "fluentReadCancelLocalVideoTranscription",
+      "generation": 5,
+      "reason": "complete",
+      "at": 1791552612876
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552615287
+    },
+    {
+      "type": "incrementConfigCount",
+      "at": 1791552615701
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552615719
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552616468
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552616644
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552618787
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552619999
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552620401
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552621838
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552623127
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552623476
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552625204
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552626671
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552626912
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552628866
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552630138
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552630388
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552631890
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552633347
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552633665
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552635930
+    },
+    {
+      "type": "fluentReadGetLocalVideoModelState",
+      "at": 1791552637524
+    },
+    {
+      "type": "configStorageRead",
+      "at": 1791552637926
+    }
+  ],
+  "layouts": [
+    {
+      "locale": "zh-CN",
+      "width": 520,
+      "height": 290,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "识别模型：Small · 高质量",
+      "ariaLabel": "选择识别模型，当前为 Small · 高质量",
+      "menuRect": {
+        "x": 92,
+        "y": 487.234375,
+        "width": 440,
+        "height": 204
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 520,
+        "height": 290
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "zh-CN",
+      "width": 300,
+      "height": 180,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "识别模型：Small · 高质量",
+      "ariaLabel": "选择识别模型，当前为 Small · 高质量",
+      "menuRect": {
+        "x": 28,
+        "y": 449.234375,
+        "width": 284,
+        "height": 132
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 300,
+        "height": 180
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "en-US",
+      "width": 520,
+      "height": 290,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "Recognition model: Small · Quality",
+      "ariaLabel": "Choose a recognition model, currently Small · Quality",
+      "menuRect": {
+        "x": 92,
+        "y": 487.234375,
+        "width": 440,
+        "height": 204
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 520,
+        "height": 290
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "en-US",
+      "width": 300,
+      "height": 180,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "Recognition model: Small · Quality",
+      "ariaLabel": "Choose a recognition model, currently Small · Quality",
+      "menuRect": {
+        "x": 28,
+        "y": 449.234375,
+        "width": 284,
+        "height": 132
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 300,
+        "height": 180
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "ja-JP",
+      "width": 520,
+      "height": 290,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "認識モデル：Small · 高品質",
+      "ariaLabel": "認識モデルを選択（現在：Small · 高品質）",
+      "menuRect": {
+        "x": 92,
+        "y": 487.234375,
+        "width": 440,
+        "height": 204
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 520,
+        "height": 290
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "ja-JP",
+      "width": 300,
+      "height": 180,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "認識モデル：Small · 高品質",
+      "ariaLabel": "認識モデルを選択（現在：Small · 高品質）",
+      "menuRect": {
+        "x": 28,
+        "y": 449.234375,
+        "width": 284,
+        "height": 132
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 300,
+        "height": 180
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "ko-KR",
+      "width": 520,
+      "height": 290,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "인식 모델: Small · 고품질",
+      "ariaLabel": "인식 모델 선택, 현재 Small · 고품질",
+      "menuRect": {
+        "x": 92,
+        "y": 487.234375,
+        "width": 440,
+        "height": 204
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 520,
+        "height": 290
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "ko-KR",
+      "width": 300,
+      "height": 180,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "인식 모델: Small · 고품질",
+      "ariaLabel": "인식 모델 선택, 현재 Small · 고품질",
+      "menuRect": {
+        "x": 28,
+        "y": 449.234375,
+        "width": 284,
+        "height": 132
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 300,
+        "height": 180
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "es-ES",
+      "width": 520,
+      "height": 290,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "Modelo de reconocimiento: Small · Calidad",
+      "ariaLabel": "Elegir modelo de reconocimiento, actual: Small · Calidad",
+      "menuRect": {
+        "x": 92,
+        "y": 487.234375,
+        "width": 440,
+        "height": 204
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 520,
+        "height": 290
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "es-ES",
+      "width": 300,
+      "height": 180,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "Modelo de reconocimiento: Small · Calidad",
+      "ariaLabel": "Elegir modelo de reconocimiento, actual: Small · Calidad",
+      "menuRect": {
+        "x": 28,
+        "y": 449.234375,
+        "width": 284,
+        "height": 132
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 300,
+        "height": 180
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "fr-FR",
+      "width": 520,
+      "height": 290,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "Modèle de reconnaissance : Small · Qualité",
+      "ariaLabel": "Choisir un modèle de reconnaissance, actuel : Small · Qualité",
+      "menuRect": {
+        "x": 92,
+        "y": 487.234375,
+        "width": 440,
+        "height": 204
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 520,
+        "height": 290
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "fr-FR",
+      "width": 300,
+      "height": 180,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "Modèle de reconnaissance : Small · Qualité",
+      "ariaLabel": "Choisir un modèle de reconnaissance, actuel : Small · Qualité",
+      "menuRect": {
+        "x": 28,
+        "y": 449.234375,
+        "width": 284,
+        "height": 132
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 300,
+        "height": 180
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "ru-RU",
+      "width": 520,
+      "height": 290,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "Модель распознавания: Small · Качество",
+      "ariaLabel": "Выбрать модель распознавания, сейчас Small · Качество",
+      "menuRect": {
+        "x": 92,
+        "y": 487.234375,
+        "width": 440,
+        "height": 204
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 520,
+        "height": 290
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    },
+    {
+      "locale": "ru-RU",
+      "width": 300,
+      "height": 180,
+      "layout": "wide",
+      "panel": "tools",
+      "view": "main",
+      "modelLabel": "Модель распознавания: Small · Качество",
+      "ariaLabel": "Выбрать модель распознавания, сейчас Small · Качество",
+      "menuRect": {
+        "x": 28,
+        "y": 449.234375,
+        "width": 284,
+        "height": 132
+      },
+      "playerRect": {
+        "x": 20,
+        "y": 441.234375,
+        "width": 300,
+        "height": 180
+      },
+      "horizontalInside": true,
+      "verticalInside": true,
+      "labelFits": true
+    }
+  ],
+  "extensionTargets": [
+    {
+      "type": "service_worker",
+      "path": "/background.js"
+    },
+    {
+      "type": "background_page",
+      "path": "/offscreen.html"
+    },
+    {
+      "type": "page",
+      "path": "/popup.html"
+    }
+  ],
+  "errors": [],
+  "fixtureRequests": [
+    {
+      "url": "https://x.com/home",
+      "method": "GET"
+    },
+    {
+      "url": "https://pbs.twimg.com/ext_tw_video_thumb/333/pu/img/proof.jpg",
+      "method": "GET"
+    },
+    {
+      "url": "https://pbs.twimg.com/ext_tw_video_thumb/111/pu/img/proof.jpg",
+      "method": "GET"
+    },
+    {
+      "url": "https://fluentread-x-fixture.invalid/mse.mp4",
+      "method": "GET"
+    },
+    {
+      "url": "https://x.com/i/api/graphql/fluentread-proof/HomeTimeline",
+      "method": "GET"
+    },
+    {
+      "url": "https://video.twimg.com/ext_tw_video/111/pu/vid/low.mp4",
+      "method": "GET"
+    },
+    {
+      "url": "https://video.twimg.com/ext_tw_video/111/pu/vid/low.mp4",
+      "method": "GET"
+    },
+    {
+      "url": "https://video.twimg.com/ext_tw_video/111/pu/vid/low.mp4",
+      "method": "GET"
+    }
+  ],
+  "mediaRequests": [
+    "https://video.twimg.com/ext_tw_video/111/pu/vid/low.mp4",
+    "https://video.twimg.com/ext_tw_video/111/pu/vid/low.mp4",
+    "https://video.twimg.com/ext_tw_video/111/pu/vid/low.mp4"
+  ],
+  "screenshots": [
+    "base-preview-exports-disabled.png",
+    "tiny-preview-after-old-export-feedback.png",
+    "tiny-ready-current-model.png",
+    "small-controlled-download-progress.png",
+    "narrow-zh-CN.png",
+    "narrow-ru-RU.png"
+  ],
+  "idleLayoutRefresh": {
+    "observationMs": 3200,
+    "actualDomAttributeMutations": 12,
+    "layout": "wide",
+    "scrollHeightReadCounterValid": false,
+    "limitation": "The getter was installed in the main world; content runs in an isolated world with a different JS wrapper. Raw zero cannot establish zero layout reads or timing."
+  },
+  "incompleteAttempts": [
+    {
+      "directory": "candidate-final-v3",
+      "success": false,
+      "phase": "confirm-missing-small-progress",
+      "passedChecks": 12,
+      "error": "AssertionError [ERR_ASSERTION]: {\"exceptionId\":1,\"text\":\"Uncaught (in promise) Error: Access to storage is not allowed from this context.\",\"lineNumber\":0,\"columnNumber\":0,\"exception\":{\"type\":\"object\",\"subtype\":\"error\",\"className\":\"Error\",\"description\":\"Error: Access to storage is not allowed from this context.\",\"objectId\":\"922096144286898310.5.1\"}}",
+      "classification": "Driver attempted storage.set from restricted content context, stopped before progress/layout. Twelve prior checks passed, overall false.",
+      "guardedCloseSucceeded": true,
+      "ownedTemporaryProfileRemoved": true
+    },
+    {
+      "directory": "candidate-final-v4",
+      "success": false,
+      "phase": "confirm-missing-small-progress",
+      "passedChecks": 12,
+      "error": "page.waitForFunction: Timeout 30000ms exceeded.",
+      "classification": "Confirmed product progress channel failure: trusted writes unavailable to content storage events. Twelve prior checks passed, overall false; fixed in V5 and independently diagnosed.",
+      "guardedCloseSucceeded": true,
+      "ownedTemporaryProfileRemoved": true
+    }
+  ],
+  "scopeLimits": [
+    "Chrome production content/controller UI on a locally fulfilled X Home fixture, not a live X post.",
+    "ASR/model availability/model prepare result/translated text and download amounts are controlled; actual AAC/MSE audio recovery and PCM encoding, actual SRT download event, actual offscreen progress sender/background timestamped storage/query transport/UI are exercised.",
+    "No ONNX model initialization/inference; recognition accuracy, native GPU/WASM performance and live translation providers are not evaluated.",
+    "Seven locales at 520x290 and 300x180 tested in the same owned instance; these do not establish Firefox/mobile/device coverage."
+  ],
+  "optionTextSummary": {
+    "localeDimensions": 14,
+    "modelOptions": 42,
+    "allTextInside": true,
+    "allGroupPairsDoNotOverlap": true
+  },
+  "previousSuccessfulSnapshot": {
+    "directory": "candidate-final-v5",
+    "checks": 64,
+    "success": true,
+    "laterLayoutChange": "Only three ui.ts CSS properties changed; V6 adds 14 actual text-range checks."
+  },
+  "mediaAssets": [
+    {
+      "file": "mse.mp4",
+      "bytes": 188205,
+      "sha256": "1bfcbc4e49e4b95071276f24cfe65da44b7e4d60f54d4012d87e0a041278da60"
+    },
+    {
+      "file": "low.mp4",
+      "bytes": 191939,
+      "sha256": "2b3e074d624d924c31445425040035b06a0dfbee8ab7eeea7b532efd68e53fe4"
+    }
+  ],
+  "rawSummary": {
+    "path": "/Users/thinkstu/Desktop/copy/FluentRead-builds/x-ai-subtitle-performance-ux-20261009-final-v6/evidence/player-menu-summary.json",
+    "sha256": "f7cac00af531715ec2bc494f1908d183cbbf0e2a5ab1538ee07aaee3cb7c15e9",
+    "containsAll42OptionTextGeometries": true
+  },
+  "optionTextResults": [
+    {
+      "locale": "zh-CN",
+      "width": 520,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "zh-CN",
+      "width": 300,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "en-US",
+      "width": 520,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "en-US",
+      "width": 300,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "ja-JP",
+      "width": 520,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "ja-JP",
+      "width": 300,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "ko-KR",
+      "width": 520,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "ko-KR",
+      "width": 300,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "es-ES",
+      "width": 520,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "es-ES",
+      "width": 300,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "fr-FR",
+      "width": 520,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "fr-FR",
+      "width": 300,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "ru-RU",
+      "width": 520,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "ru-RU",
+      "width": 300,
+      "options": [
+        {
+          "model": "tiny",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    }
+  ],
+  "optionTextSamples": [
+    {
+      "locale": "zh-CN",
+      "width": 300,
+      "height": 180,
+      "options": [
+        {
+          "model": "tiny",
+          "buttonRect": {
+            "left": 161.8828125,
+            "top": 360.734375,
+            "right": 303,
+            "bottom": 419.171875,
+            "width": 141.1171875,
+            "height": 58.4375
+          },
+          "groups": {
+            "name": {
+              "text": "Tiny · 轻量",
+              "rects": [
+                {
+                  "left": 189.8828125,
+                  "top": 367.734375,
+                  "right": 247.078125,
+                  "bottom": 381.234375,
+                  "width": 57.1953125,
+                  "height": 13.5
+                }
+              ]
+            },
+            "badge": {
+              "text": "",
+              "rects": []
+            },
+            "size": {
+              "text": "已下载",
+              "rects": [
+                {
+                  "left": 263.5,
+                  "top": 384.828125,
+                  "right": 295,
+                  "bottom": 396.828125,
+                  "width": 31.5,
+                  "height": 12
+                }
+              ]
+            }
+          },
+          "pairs": [
+            {
+              "left": "name",
+              "right": "badge",
+              "overlap": false
+            },
+            {
+              "left": "name",
+              "right": "size",
+              "overlap": false
+            },
+            {
+              "left": "badge",
+              "right": "size",
+              "overlap": false
+            }
+          ],
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "buttonRect": {
+            "left": 161.8828125,
+            "top": 423.171875,
+            "right": 303,
+            "bottom": 481.609375,
+            "width": 141.1171875,
+            "height": 58.4375
+          },
+          "groups": {
+            "name": {
+              "text": "Base · 标准",
+              "rects": [
+                {
+                  "left": 189.8828125,
+                  "top": 430.171875,
+                  "right": 250.6484375,
+                  "bottom": 443.671875,
+                  "width": 60.765625,
+                  "height": 13.5
+                }
+              ]
+            },
+            "badge": {
+              "text": "",
+              "rects": []
+            },
+            "size": {
+              "text": "已下载",
+              "rects": [
+                {
+                  "left": 263.5,
+                  "top": 447.265625,
+                  "right": 295,
+                  "bottom": 459.265625,
+                  "width": 31.5,
+                  "height": 12
+                }
+              ]
+            }
+          },
+          "pairs": [
+            {
+              "left": "name",
+              "right": "badge",
+              "overlap": false
+            },
+            {
+              "left": "name",
+              "right": "size",
+              "overlap": false
+            },
+            {
+              "left": "badge",
+              "right": "size",
+              "overlap": false
+            }
+          ],
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "buttonRect": {
+            "left": 161.8828125,
+            "top": 485.609375,
+            "right": 303,
+            "bottom": 574.0390625,
+            "width": 141.1171875,
+            "height": 88.4296875
+          },
+          "groups": {
+            "name": {
+              "text": "Small · 高质量",
+              "rects": [
+                {
+                  "left": 189.8828125,
+                  "top": 492.609375,
+                  "right": 265.765625,
+                  "bottom": 506.109375,
+                  "width": 75.8828125,
+                  "height": 13.5
+                }
+              ]
+            },
+            "badge": {
+              "text": "推荐",
+              "rects": [
+                {
+                  "left": 194.8828125,
+                  "top": 511.203125,
+                  "right": 213.8828125,
+                  "bottom": 522.203125,
+                  "width": 19,
+                  "height": 11
+                }
+              ]
+            },
+            "size": {
+              "text": "已下载",
+              "rects": [
+                {
+                  "left": 263.5,
+                  "top": 526.046875,
+                  "right": 295,
+                  "bottom": 538.046875,
+                  "width": 31.5,
+                  "height": 12
+                }
+              ]
+            }
+          },
+          "pairs": [
+            {
+              "left": "name",
+              "right": "badge",
+              "overlap": false
+            },
+            {
+              "left": "name",
+              "right": "size",
+              "overlap": false
+            },
+            {
+              "left": "badge",
+              "right": "size",
+              "overlap": false
+            }
+          ],
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    },
+    {
+      "locale": "ru-RU",
+      "width": 300,
+      "height": 180,
+      "options": [
+        {
+          "model": "tiny",
+          "buttonRect": {
+            "left": 161.8828125,
+            "top": 306.234375,
+            "right": 303,
+            "bottom": 378.3203125,
+            "width": 141.1171875,
+            "height": 72.0859375
+          },
+          "groups": {
+            "name": {
+              "text": "Tiny · Быстрая",
+              "rects": [
+                {
+                  "left": 189.8828125,
+                  "top": 313.234375,
+                  "right": 274.4296875,
+                  "bottom": 326.734375,
+                  "width": 84.546875,
+                  "height": 13.5
+                }
+              ]
+            },
+            "badge": {
+              "text": "",
+              "rects": []
+            },
+            "size": {
+              "text": "Загружена",
+              "rects": [
+                {
+                  "left": 238.5859375,
+                  "top": 330.328125,
+                  "right": 295,
+                  "bottom": 342.328125,
+                  "width": 56.4140625,
+                  "height": 12
+                }
+              ]
+            }
+          },
+          "pairs": [
+            {
+              "left": "name",
+              "right": "badge",
+              "overlap": false
+            },
+            {
+              "left": "name",
+              "right": "size",
+              "overlap": false
+            },
+            {
+              "left": "badge",
+              "right": "size",
+              "overlap": false
+            }
+          ],
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "base",
+          "buttonRect": {
+            "left": 161.8828125,
+            "top": 382.3203125,
+            "right": 303,
+            "bottom": 454.40625,
+            "width": 141.1171875,
+            "height": 72.0859375
+          },
+          "groups": {
+            "name": {
+              "text": "Base · Точная",
+              "rects": [
+                {
+                  "left": 189.8828125,
+                  "top": 389.3203125,
+                  "right": 269.2890625,
+                  "bottom": 402.8203125,
+                  "width": 79.40625,
+                  "height": 13.5
+                }
+              ]
+            },
+            "badge": {
+              "text": "",
+              "rects": []
+            },
+            "size": {
+              "text": "Загружена",
+              "rects": [
+                {
+                  "left": 238.5859375,
+                  "top": 406.4140625,
+                  "right": 295,
+                  "bottom": 418.4140625,
+                  "width": 56.4140625,
+                  "height": 12
+                }
+              ]
+            }
+          },
+          "pairs": [
+            {
+              "left": "name",
+              "right": "badge",
+              "overlap": false
+            },
+            {
+              "left": "name",
+              "right": "size",
+              "overlap": false
+            },
+            {
+              "left": "badge",
+              "right": "size",
+              "overlap": false
+            }
+          ],
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        },
+        {
+          "model": "small",
+          "buttonRect": {
+            "left": 161.8828125,
+            "top": 458.40625,
+            "right": 303,
+            "bottom": 574.1328125,
+            "width": 141.1171875,
+            "height": 115.7265625
+          },
+          "groups": {
+            "name": {
+              "text": "Small · Качество",
+              "rects": [
+                {
+                  "left": 189.8828125,
+                  "top": 465.40625,
+                  "right": 286.1171875,
+                  "bottom": 478.90625,
+                  "width": 96.234375,
+                  "height": 13.5
+                }
+              ]
+            },
+            "badge": {
+              "text": "Рекомендуется",
+              "rects": [
+                {
+                  "left": 194.8828125,
+                  "top": 484,
+                  "right": 271.8125,
+                  "bottom": 495,
+                  "width": 76.9296875,
+                  "height": 11
+                }
+              ]
+            },
+            "size": {
+              "text": "Загружена",
+              "rects": [
+                {
+                  "left": 238.5859375,
+                  "top": 498.84375,
+                  "right": 295,
+                  "bottom": 510.84375,
+                  "width": 56.4140625,
+                  "height": 12
+                }
+              ]
+            }
+          },
+          "pairs": [
+            {
+              "left": "name",
+              "right": "badge",
+              "overlap": false
+            },
+            {
+              "left": "name",
+              "right": "size",
+              "overlap": false
+            },
+            {
+              "left": "badge",
+              "right": "size",
+              "overlap": false
+            }
+          ],
+          "textInsideButton": true,
+          "textPairsDoNotOverlap": true,
+          "badgeBoxInsideButton": true
+        }
+      ]
+    }
+  ]
+}

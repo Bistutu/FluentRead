@@ -3,6 +3,7 @@ import {describe, expect, it} from 'vitest';
 import {parseDocument, type BinaryDocumentData, type DocumentFormat, type ParsedDocument} from '@/src/features/document-translation/core/document';
 import {
     formatDocumentReaderText,
+    hasDocumentPlaceholder,
     DOCUMENT_QUICK_SAMPLES,
     getDocumentExportPreview,
     getDocumentEmptyReaderHint,
@@ -68,7 +69,7 @@ describe('document translation presentation', () => {
         expect(isRichDocumentFormat('pdf')).toBe(false);
         expect(isRichDocumentFormat()).toBe(false);
 
-        expect(getDocumentEmptyReaderHint(parsed('pdf', {kind: 'pdf', bytes: new Uint8Array(), pages: []}))).toContain('原页面坐标');
+        expect(getDocumentEmptyReaderHint(parsed('pdf', {kind: 'pdf', bytes: new Uint8Array(), pages: []}))).toBe('document.pdfReading.startHint');
         expect(getDocumentEmptyReaderHint(parsed('ass'))).toContain('时间轴');
         expect(getDocumentEmptyReaderHint(parsed('json'))).toContain('JSON 路径');
         expect(getDocumentEmptyReaderHint(null)).toContain('阅读结构');
@@ -90,6 +91,12 @@ describe('document translation presentation', () => {
             .toBe('Read guide now cover');
         expect(formatDocumentReaderText('ass', ' {\\i1}<i>Hello</i> ')).toBe('Hello');
         expect(formatDocumentReaderText(undefined, '  Plain text  ')).toBe('Plain text');
+        expect(formatDocumentReaderText('ass', '{\\i1}Today{\\i0} we build a small\\Nweather\\hstation\\nnow')).toBe('Today we build a small\nweather station\nnow');
+        expect(formatDocumentReaderText('srt', 'C:\\New folder\\notes')).toBe('C:\\New folder\\notes');
+        expect(formatDocumentReaderText('vtt', '今天我们搭一个 &lt;i&gt; 小 &lt;/i&gt; 气象站，温度 &lt; 5 度')).toBe('今天我们搭一个  小  气象站，温度 &lt; 5 度');
+        expect(formatDocumentReaderText('epub', ' Read <a href="#n">the note</a> ')).toBe('Read the note');
+        expect(formatDocumentReaderText('markdown', '阅读<g1>指南</g1>并运行<g2/>')).toBe('阅读指南并运行');
+        expect([hasDocumentPlaceholder('阅读<g1>指南</g1>'), hasDocumentPlaceholder('运行<g2/>'), hasDocumentPlaceholder('a < g1 > b'), hasDocumentPlaceholder(''), hasDocumentPlaceholder(undefined)]).toEqual([true, true, false, false, false]);
         expect(getDocumentReaderSourceClass('markdown', '## Heading')).toBe('reader-heading');
         expect(getDocumentReaderSourceClass('markdown', 'Paragraph')).toBe('');
         expect(getDocumentReaderSourceClass('html', '## Heading')).toBe('');

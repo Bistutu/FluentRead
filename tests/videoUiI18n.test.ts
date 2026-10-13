@@ -8,6 +8,8 @@ import {
   setVideoMenuToolsOpen,
   isVideoModelPromptOpen,
   renderVideoAiMenu,
+  renderVideoAiModelSelection,
+  focusVideoModelPromptReturn,
   renderVideoMenuMode,
   renderVideoModelPrompt,
   renderVideoSubtitleTiming,
@@ -16,13 +18,32 @@ import {
   type VideoAiMenuState,
 } from '@/src/features/video-subtitle/content/playerMenu';
 import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
-import {refreshVideoUiAccessibility, refreshVideoUiText} from '@/src/features/video-subtitle/content/ui';
+import {refreshVideoUiAccessibility, refreshVideoUiText, clearRenderedVideoTranslation, deactivateNormalizedVideoCaption, readVideoPlaybackTimeMs} from '@/src/features/video-subtitle/content/ui';
 import {VIDEO_LOCAL_TRANSCRIPTION_MODELS} from '@/src/features/video-subtitle/transcription';
+import {confirmVideoSubtitleExport} from '@/src/features/video-subtitle/content/exportPrompt';
 
 // 扩展运行时按需加载界面语言；本文件验证全部语言的文案契约，因此一次注册全部资源包。
 registerAllUiLanguageBundles();
 
 describe('player subtitle timing', () => {
+  it('清理自有字幕层并读取原媒体时钟，空播放器不伪造位置', () => {
+    const {document} = parseHTML('<body><div id="movie_player"><video class="html5-main-video"></video></div><div id="ytp-caption-window-container" class="fluent-read-video-normalized-caption"></div><div id="fluent-read-video-subtitle-layer" class="fluent-read-video-normalized-caption-active"></div><div id="fluent-read-video-subtitle">Translated</div><div id="fluent-read-video-subtitle-original">Original</div><p id="host">Host content</p></body>');
+    const player = document.querySelector<HTMLElement>('#movie_player')!;
+    const video = player.querySelector<HTMLVideoElement>('video')!;
+    Object.defineProperty(video, 'currentTime', {value: 1.25, configurable: true});
+    expect(readVideoPlaybackTimeMs(player, null)).toBe(1250);
+    expect(readVideoPlaybackTimeMs(null, video)).toBe(1250);
+    expect(readVideoPlaybackTimeMs(null, null)).toBeNaN();
+    Object.defineProperty(video, 'currentTime', {value: Infinity});
+    expect(readVideoPlaybackTimeMs(player, null)).toBeNaN();
+    clearRenderedVideoTranslation(document); deactivateNormalizedVideoCaption(document);
+    expect(document.querySelector('#fluent-read-video-subtitle')?.textContent).toBe('');
+    expect(document.querySelector('#fluent-read-video-subtitle-original')?.textContent).toBe('');
+    expect(document.querySelector('#host')?.textContent).toBe('Host content');
+    expect(document.querySelector('#ytp-caption-window-container')?.classList.contains('fluent-read-video-normalized-caption')).toBe(false);
+    expect(document.querySelector('#fluent-read-video-subtitle-layer')?.classList.contains('fluent-read-video-normalized-caption-active')).toBe(false);
+  });
+
   it('renders a single-row stepper, hides the row without a timeline and keeps reset for saved offsets', () => {
     const {document} = parseHTML('<!doctype html><body></body>');
     vi.stubGlobal('document', document);
@@ -202,7 +223,7 @@ describe('video player menu composition', () => {
     download.disabled = true;
     download.setAttribute('aria-busy', 'true');
     renderVideoSourceStatus(menu, {...state, source: 'native', cueCount: 2}, 'en-US');
-    expect(status.textContent).toBe('Native captions · 2 cues');
+    expect(status.textContent).toBe('Loaded subtitles · 2 cues');
     expect(menu.dataset.panel).toBe('tools');
     expect(download.disabled).toBe(true);
     expect(retry.hidden && regenerate.hidden).toBe(true);
@@ -237,6 +258,166 @@ describe('video player menu composition', () => {
     expect(button.querySelector('[data-state]')?.textContent).toContain('clear speech');
     expect(button.title).toBe(button.querySelector('[data-state]')?.textContent);
     expect(button.textContent).not.toContain('Base');
+  });
+
+  it('keeps model selection reachable before captions exist and preserves the chosen tools view', () => {
+    const {document} = parseHTML('<!doctype html><body></body>');
+    vi.stubGlobal('document', document);
+    const menu = createVideoPlayerMenu('zh-CN', true);
+    const source = {enabled: true, source: 'none' as const, cueCount: 0, checking: false,
+      generating: false, translationFailed: false, canRegenerate: false, canChooseModel: true};
+    renderVideoAiModelSelection(menu, {model: 'base', available: true, disabled: false}, 'zh-CN');
+    renderVideoSourceStatus(menu, source, 'zh-CN');
+    const model = menu.querySelector<HTMLButtonElement>('[data-action="select-ai-model"]')!;
+    expect(model.textContent).toBe('识别模型：Base · 标准');
+    expect(model.hidden || model.disabled).toBe(false);
+    expect(model.dataset.model).toBe('base');
+    expect(model.getAttribute('aria-controls')).toBe('fluent-read-video-model-prompt');
+    expect(model.hasAttribute('aria-haspopup')).toBe(false);
+    expect(menu.querySelector<HTMLButtonElement>('[data-action="open-subtitle-tools"]')!.hidden).toBe(false);
+    setVideoMenuToolsOpen(menu, true);
+    renderVideoSourceStatus(menu, source, 'zh-CN');
+    expect(menu.dataset.panel).toBe('tools');
+    expect(model.closest('.fluent-read-video-menu-tools')?.hasAttribute('hidden')).toBe(false);
+    renderVideoAiModelSelection(menu, {model: 'small', available: true, disabled: true}, 'en-US');
+    expect(menu.querySelector('[data-action="select-ai-model"]')).toBe(model);
+    expect(model.disabled).toBe(true);
+    expect(model.textContent).toContain('Recognition model: Small');
+    expect(model.getAttribute('aria-label')).toContain('currently Small');
+    renderVideoAiModelSelection(menu, {model: 'small', available: false, disabled: false}, 'en-US');
+    expect(model.hidden && model.disabled).toBe(true);
+    renderVideoSubtitleTiming(menu, 0, false, 'en-US');
+    renderVideoSourceStatus(menu, {...source, canChooseModel: false}, 'en-US');
+    expect(menu.querySelector<HTMLButtonElement>('[data-action="open-subtitle-tools"]')!.hidden).toBe(true);
+    expect(() => renderVideoAiModelSelection(createVideoPlayerMenu('en-US', false), {model: 'tiny', available: true, disabled: false}, 'en-US')).not.toThrow();
+  });
+
+  it('disables complete exports during AI previews and releases them only when ready, without blocking native captions', () => {
+    const {document} = parseHTML('<!doctype html><body></body>');
+    vi.stubGlobal('document', document);
+    const menu = createVideoPlayerMenu('zh-CN', true);
+    const source = {enabled: true, source: 'ai' as const, cueCount: 1, checking: false,
+      generating: true, translationFailed: false, canRegenerate: false};
+    const downloads = [...menu.querySelectorAll<HTMLButtonElement>('.fluent-read-video-menu-download')];
+    renderVideoSourceStatus(menu, source, 'zh-CN');
+    expect(downloads.every(button => button.disabled)).toBe(true);
+    renderVideoSourceStatus(menu, {...source, generating: false}, 'zh-CN');
+    expect(downloads.every(button => !button.disabled)).toBe(true);
+    renderVideoSourceStatus(menu, {...source, source: 'native'}, 'zh-CN');
+    expect(downloads.every(button => !button.disabled)).toBe(true);
+    renderVideoSourceStatus(menu, {...source, source: 'none', cueCount: 0}, 'zh-CN');
+    expect(downloads.every(button => button.disabled)).toBe(true);
+  });
+
+  it('reuses the model prompt for voluntary selection without claiming downloaded choices need another download', () => {
+    const {document} = parseHTML('<!doctype html><body></body>');
+    vi.stubGlobal('document', document);
+    const menu = createVideoPlayerMenu('zh-CN', true);
+    const model = menu.querySelector<HTMLButtonElement>('[data-action="select-ai-model"]')!;
+    const choice = {options: VIDEO_LOCAL_TRANSCRIPTION_MODELS, downloaded: ['base'] as const, recommended: 'small' as const, selected: 'base' as const, purpose: 'selection' as const};
+    renderVideoAiModelSelection(menu, {model: 'base', available: true, disabled: false}, 'zh-CN');
+    renderVideoModelPrompt(menu, choice, 'zh-CN');
+    expect(menu.querySelector('.fluent-read-video-model-prompt-title')?.textContent).toBe('选择 AI 字幕模型');
+    expect(menu.querySelector('.fluent-read-video-model-prompt-description')?.textContent).toBe('选择模型后重新识别当前视频。');
+    expect(menu.querySelector('[data-action="model-prompt-confirm"]')?.textContent).toBe('开始生成');
+    expect(model.getAttribute('aria-expanded')).toBe('true');
+    renderVideoAiModelSelection(menu, {model: 'base', available: true, disabled: false}, 'en-US');
+    expect(model.getAttribute('aria-expanded')).toBe('true');
+    renderVideoModelPrompt(menu, null, 'zh-CN');
+    expect(model.getAttribute('aria-expanded')).toBe('false');
+    renderVideoModelPrompt(menu, {...choice, purpose: 'setup'}, 'zh-CN');
+    expect(menu.querySelector('.fluent-read-video-model-prompt-title')?.textContent).toBe('下载 AI 字幕模型');
+    expect(model.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('preserves an active subtitle export confirmation when the model prompt refresh has no selection', async () => {
+    const {document} = parseHTML('<!doctype html><body></body>');
+    vi.stubGlobal('document', document);
+    const menu = createVideoPlayerMenu('zh-CN', true);
+    menu.hidden = false;
+    document.body.appendChild(menu);
+    const controller = new AbortController();
+    const add = vi.spyOn(controller.signal, 'addEventListener');
+    const remove = vi.spyOn(controller.signal, 'removeEventListener');
+    const choice = confirmVideoSubtitleExport(menu, {total: 4, ready: 2, missing: 2, requests: 1,
+      human: 1, cached: 1, startMs: 4000, endMs: 7000}, true, controller.signal, key => key);
+    let settled = false;
+    void choice.then(() => {settled = true;});
+    try {
+      const panel = menu.querySelector('[data-export-prompt]');
+      expect(panel).not.toBeNull();
+      expect(menu.dataset.view).toBe('export-prompt');
+      const before = menu.innerHTML;
+      renderVideoModelPrompt(menu, null, 'zh-CN');
+      renderVideoModelPrompt(menu, null, 'en-US');
+      await Promise.resolve();
+      expect(settled).toBe(false);
+      expect(menu.innerHTML).toBe(before);
+      expect(menu.querySelector('[data-export-prompt]')).toBe(panel);
+      expect(menu.dataset.view).toBe('export-prompt');
+      expect(menu.querySelector<HTMLElement>('.fluent-read-video-menu-main')!.hidden).toBe(true);
+      controller.abort();
+      await expect(choice).resolves.toBe('cancel');
+      expect(menu.querySelector('[data-export-prompt]')).toBeNull();
+      expect(menu.dataset.view).toBe('main');
+      expect(menu.querySelector<HTMLElement>('.fluent-read-video-menu-main')!.hidden).toBe(false);
+      expect(remove).toHaveBeenCalledWith('abort', add.mock.calls.find(([type]) => type === 'abort')![1]);
+    } finally {controller.abort(); await choice; menu.remove();}
+  });
+
+  it('returns selection focus to a visible enabled model row, then uses visible controls during download or generation', () => {
+    const {document} = parseHTML('<!doctype html><body></body>');
+    vi.stubGlobal('document', document);
+    const menu = createVideoPlayerMenu('zh-CN', true);
+    menu.hidden = false;
+    document.body.appendChild(menu);
+    renderVideoMenuMode(menu, 'bilingual', false, '');
+    renderVideoAiModelSelection(menu, {model: 'base', available: true, disabled: false}, 'zh-CN');
+    const model = menu.querySelector<HTMLButtonElement>('[data-action="select-ai-model"]')!;
+    const ai = menu.querySelector<HTMLButtonElement>('[data-action="toggle-ai-subtitle"]')!;
+    const back = menu.querySelector<HTMLButtonElement>('[data-action="close-subtitle-tools"]')!;
+    const mode = menu.querySelector<HTMLButtonElement>('[data-mode="bilingual"]')!;
+    const focused = [model, ai, back, mode].map(button => vi.spyOn(button, 'focus'));
+    setVideoMenuToolsOpen(menu, true);
+    focusVideoModelPromptReturn(menu, 'selection');
+    expect(focused[0]).toHaveBeenCalledOnce();
+    focused.forEach(spy => spy.mockClear());
+    model.disabled = true;
+    focusVideoModelPromptReturn(menu, 'selection');
+    expect(focused[2]).toHaveBeenCalledOnce();
+    expect(menu.dataset.panel).toBe('tools');
+    focused.forEach(spy => spy.mockClear());
+    setVideoMenuToolsOpen(menu, false);
+    focusVideoModelPromptReturn(menu, 'selection');
+    expect(focused[1]).toHaveBeenCalledOnce();
+    focused.forEach(spy => spy.mockClear());
+    ai.disabled = true;
+    focusVideoModelPromptReturn(menu, 'selection');
+    expect(focused[3]).toHaveBeenCalledOnce();
+    focused.forEach(spy => spy.mockClear());
+    ai.disabled = false;
+    focusVideoModelPromptReturn(menu);
+    expect(focused[1]).toHaveBeenCalledOnce();
+    focused.forEach(spy => spy.mockClear());
+    menu.hidden = true;
+    focusVideoModelPromptReturn(menu, 'selection');
+    expect(focused.every(spy => spy.mock.calls.length === 0)).toBe(true);
+    expect(() => focusVideoModelPromptReturn(createVideoPlayerMenu('en-US', false), 'selection')).not.toThrow();
+  });
+
+  it.each(['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'es-ES', 'fr-FR', 'ru-RU'] as const)('localizes the current-model row and selection prompt in %s', language => {
+    const {document} = parseHTML('<!doctype html><body></body>');
+    vi.stubGlobal('document', document);
+    const menu = createVideoPlayerMenu(language, true);
+    renderVideoAiModelSelection(menu, {model: 'tiny', available: true, disabled: false}, language);
+    renderVideoModelPrompt(menu, {options: VIDEO_LOCAL_TRANSCRIPTION_MODELS, downloaded: ['tiny'], recommended: 'small', selected: 'tiny', purpose: 'selection'}, language);
+    const model = menu.querySelector<HTMLButtonElement>('[data-action="select-ai-model"]')!;
+    const title = menu.querySelector<HTMLElement>('.fluent-read-video-model-prompt-title')!;
+    const description = menu.querySelector<HTMLElement>('.fluent-read-video-model-prompt-description')!;
+    expect(model.textContent).toContain('Tiny');
+    expect(model.getAttribute('aria-label')).toContain('Tiny');
+    expect([model.textContent, model.getAttribute('aria-label'), title.textContent, description.textContent].every(text => text && !/video\.(?:modelSelection|modelPrompt)/.test(text) && !text.includes('{model}'))).toBe(true);
+    if (language !== 'zh-CN') expect(title.textContent).not.toBe('选择 AI 字幕模型');
   });
 
   it('keeps keyboard focus in the viewing controls when a completed AI action moves to tools', () => {

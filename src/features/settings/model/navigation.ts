@@ -1,7 +1,7 @@
 /**
  * @file src/features/settings/model/navigation.ts
  * 文件职责：定义设置中心侧边栏的导航信息模型，并提供默认分区、哈希解析与搜索过滤等不依赖 Vue 或浏览器 API 的纯规则。
- * 主要内容：包含按功能分组的标题、副标题、图标、关键词和 section ID，以及同页分组、服务分配与模型用量深链接；旧圈选地址解析为图片页；通用页文案对应日常翻译、网页辅助与基本偏好的阅读顺序，从同一注册表派生导航列表与后台合法分区 ID，导出 resolveNavigationItem、resolveRequestedSection 与 filterNavigationItems。
+ * 主要内容：完整句学习外观拥有界面风格独立分类与可直达锚点；包含按功能分组的标题、副标题、图标、关键词和 section ID，以及翻译设置内区分双语逐句阅读与智能高亮的独立锚点、同页分组、服务分配与模型用量深链接；旧圈选地址解析为图片页；通用页文案对应日常翻译、网页辅助与基本偏好的阅读顺序，从同一注册表派生导航列表与后台合法分区 ID，导出 resolveNavigationItem、resolveRequestedSection 与 filterNavigationItems。
  * 模块边界：该模块只描述导航元数据，不切换 DOM、不写 location.hash 也不保存配置；Options 页面负责路由同步，SettingsSections.vue 负责各分区实际内容。
  */
 import brandTaglines from '@/src/core/i18n/messages/brand-taglines.json';
@@ -37,6 +37,10 @@ export type SettingsSearchTarget = {
 /** 表单内的直达入口与真实控件共用 targetId，避免搜索只停在长分区顶部。 */
 export const settingsSearchTargets: readonly SettingsSearchTarget[] = [
   {
+    id: 'information-highlight', sectionId: 'settings-translation', targetId: 'information-highlight-settings',
+    label: '智能高亮', description: '辅助阅读', searchTerms: '文本智能高亮、信息高亮、重点高亮、意外度、surprisal、关键词、密度、本地模型、隐私',
+  },
+  {
     id: 'feature-services', sectionId: 'settings-general', targetId: 'feature-services',
     label: '翻译服务选择', description: '通用设置', searchTerms: '按功能选择服务、默认服务、提供商、功能分配',
   },
@@ -59,6 +63,10 @@ export const settingsSearchTargets: readonly SettingsSearchTarget[] = [
   {
     id: 'translation-appearance', sectionId: 'settings-interface', targetId: 'translation-appearance-panel',
     label: '译文外观', description: '界面风格', searchTerms: '译文颜色、线条颜色、标记底色、译文字号、译文字重、译文字体、译文不透明度',
+  },
+  {
+    id: 'video-sentence-learning-appearance', sectionId: 'settings-interface', targetId: 'video-sentence-learning-appearance',
+    label: '完整句学习外观', description: '界面风格', searchTerms: '视频学习、面板样式、紧凑布局、舒适布局、背景不透明度、面板宽度、默认位置、拖动位置',
   },
 ]
 
@@ -255,7 +263,8 @@ export const settingsPagePanels: Readonly<Record<string, readonly SettingsPagePa
     {id: 'connections', labelKey: 'featureServices.connections', searchTerms: '连接 服务 密钥 API 模型', targetIds: []},
   ],
   'settings-translation': [
-    {id: 'reading', labelKey: 'options.panel.reading', searchTerms: '阅读辅助 双语逐句高亮 原文译文 句子对应', targetIds: ['translation-sentence-highlight']},
+    {id: 'reading', labelKey: 'options.panel.reading', searchTerms: '阅读辅助 双语逐句高亮 原文译文 句子对应 个人校订 修改译文 记住译法', targetIds: ['translation-sentence-highlight', 'personal-corrections-settings']},
+    {id: 'information-highlight', labelKey: 'informationHighlight.title', searchTerms: '智能高亮 文本智能高亮 辅助阅读 信息高亮 重点高亮 意外度 surprisal 关键词 本地模型 密度 隐私', targetIds: ['information-highlight-settings']},
     {"id": "hover", "labelKey": "options.panel.hover", "searchTerms": "鼠标悬浮 快捷键 延迟", "targetIds": []},
     {"id": "input", "labelKey": "options.panel.input", "searchTerms": "输入框 连按 空格", "targetIds": []},
     {id: 'page', labelKey: 'options.panel.page', searchTerms: '全文 快捷键 多段 范围', targetIds: []},
@@ -269,6 +278,7 @@ export const settingsPagePanels: Readonly<Record<string, readonly SettingsPagePa
     {"id": "translation", "labelKey": "options.panel.translation", "searchTerms": "译文 样式 颜色 字号 高亮", "targetIds": ["translation-appearance-panel", "translation-sentence-highlight-style"]},
     {"id": "skin", "labelKey": "options.panel.skin", "searchTerms": "弹窗 皮肤 界面风格", "targetIds": []},
     {"id": "layout", "labelKey": "options.panel.layout", "searchTerms": "菜单栏 布局 栏目 排序", "targetIds": []},
+    {id: 'video-learning', labelKey: 'video.learningAppearance.title', searchTerms: '完整句学习 视频学习 面板样式 紧凑 舒适 不透明度 默认位置', targetIds: ['video-sentence-learning-appearance']},
     {"id": "motion", "labelKey": "options.panel.motion", "searchTerms": "动画 加载", "targetIds": []},
     {"id": "font", "labelKey": "options.panel.font", "searchTerms": "字体 font Inter Noto Sans Roboto Manrope WenKai", "targetIds": []},
   ],

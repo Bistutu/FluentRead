@@ -1,0 +1,36 @@
+{
+  "parentCommit": "ddacc0c808bbd08f6a14e8f80342322c7c8daf47",
+  "productSources": {
+    "src/app/popup/PopupApp.vue": "1c66022f07282b97aac95c161e3805b43f72dee8114138ab3fccef5176be650e",
+    "src/app/popup/popup.css": "570965c75aa72e885b70c8e4c6c908876a345b8681bb59aa63e410bfdce6c8e4",
+    "src/features/reading-assistant/ui/ReadingPanel.vue": "8ff6284755a05ff3b4a8cec0f7e991ea832c9d7f36f0a0197dd9f13efe207b27",
+    "src/features/selection-translation/ui/SelectionTranslator.vue": "565c61f9dda005d4eafc88e2c5b351eee5490926eaf6cd206b276b079a789a2c",
+    "src/ui/i18n.ts": "c126a08711c487520d38f2a7eab707e3d9436788c13fb2306ca0b5f1b8a5b3d0"
+  },
+  "runners": {
+    "scripts/testing/run-selection-key-information-test.cjs": "732fe5a5e7a4c6f4479e119be92b950bba6111a846cb5c18ffa674805c22bff0",
+    "scripts/testing/run-popup-key-information-test.cjs": "86fa0f6c385ad9b9ee6c31a96d45aeac66e1bebc81d628dedf4477b78a06ea8d"
+  },
+  "baselineChrome": {
+    "files": 402,
+    "bytes": 60542584,
+    "treeSha256": "76907777fdf21a41849a9c9f34b0573f1b0e782325fd7e927a7345f3e668d135",
+    "manifestSha256": "cc92950ad08ed2e2f02bd55a0756048e6569ec51c9341d9e678b65fb3d8d03f7"
+  },
+  "chrome": {
+    "files": 402,
+    "bytes": 60553099,
+    "treeSha256": "68b786765015be6c3deafe5ad22f57c31c4e4b6b7f9a25e863648dc08d3ac74c",
+    "manifestSha256": "cc92950ad08ed2e2f02bd55a0756048e6569ec51c9341d9e678b65fb3d8d03f7"
+  },
+  "firefox": {
+    "files": 402,
+    "bytes": 60552090,
+    "treeSha256": "f84b237a111f7ebbe5bf6caedeea72ea04a9a72f2114644829da445ba58243df",
+    "manifestSha256": "37334569ee177d6a4046d3187d9588f230cbd1883cd0aa312eccec4fb7e4099c"
+  },
+  "userscript": {
+    "bytes": 1959477,
+    "sha256": "79d60c31a0b5460d553ea107e198d4f667cfb24af6edf3bf79b435416a4e0a05"
+  }
+}

@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/core/preview.ts
  * 文件职责：把已解析文档与对应译文转换成安全、可阅读的预览 HTML，统一支持原文、双语和纯译文三种预览模式。
- * 主要内容：包含主动 HTML 剥离、统一提供 HTML5 doctype 的阅读器外壳、无原文占位符的行内 Markdown 渲染、按解析器代码块元数据展示容器围栏、原译配对单元，以及 HTML、Markdown 和普通文本的预览分派，按所需格式生成内容，避免构建未使用的整份导出字符串；相同译文保留原文且不重复展示。
+ * 主要内容：包含主动 HTML 剥离、统一提供 HTML5 doctype 的阅读器外壳、无原文占位符的行内 Markdown 渲染、按解析器代码块元数据展示容器围栏、宽窗口下原文与译文左右对照并在翻译进行中为尚无译文的单元显示等待占位的原译配对单元，以及 HTML、Markdown 和普通文本的预览分派，按所需格式生成内容，避免构建未使用的整份导出字符串；相同译文保留原文且不重复展示。
  * 模块边界：本模块只生成展示字符串，不操作真实 DOM、不执行脚本也不修改文档模型；源文件解析由 document.ts 完成，二进制分页预览由 pdfPreview.ts 负责，页面样式由上层 UI 提供。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -47,6 +47,16 @@ a, .reader-link { color: #d83160; text-decoration: underline; text-decoration-th
 .reader-unit.horizontal-rule { height: 1px; margin: 2em 0; background: #e3e7ef; }
 .document-security-note { margin: 0 0 24px; padding: 9px 12px; border-radius: 9px; color: #6c7485; background: #f7f8fb; font-size: 12px; }
 @media (max-width: 680px) { body { padding: 30px 24px 56px; font-size: 15px; } }
+@media (min-width: 860px) {
+  body:has(article[data-reader-mode="bilingual"]) { max-width: 1480px; padding: 40px 48px 72px; }
+  article[data-reader-mode="bilingual"] .reader-unit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 44px; align-items: start; }
+  article[data-reader-mode="bilingual"] .reader-unit > * { margin-bottom: 0; }
+  article[data-reader-mode="bilingual"] .reader-translation { margin-top: 0; font-weight: 500; }
+  article[data-reader-mode="bilingual"] .reader-unit.heading .reader-translation { font-weight: 780; }
+}
+body[data-translating] article[data-reader-mode="bilingual"] .reader-unit:has(> .reader-source:only-child)::after { content: ""; width: 62%; height: .85em; margin-top: .5em; border-radius: 6px; background: linear-gradient(90deg, #eceff5 25%, #f7f8fb 50%, #eceff5 75%) 0 0 / 200% 100%; animation: reader-wait 1.3s linear infinite; }
+@keyframes reader-wait { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { body[data-translating] .reader-unit::after { animation: none !important; } }
 `;
 
 function escapeHtml(value: string): string {
@@ -177,7 +187,7 @@ function renderMarkdownPreview(document: ParsedDocument, source: string, transla
                     : 'paragraph';
         output.push(pairedUnit(sourceLine, translatedLines[index] || sourceLine, mode, kind, heading?.[1].length || 2));
     }
-    return readerShell(`<article class="markdown-article">${output.join('')}</article>`);
+    return readerShell(`<article class="markdown-article" data-reader-mode="${mode}">${output.join('')}</article>`);
 }
 
 function renderTextPreview(
@@ -191,7 +201,7 @@ function renderTextPreview(
         mode,
         'paragraph',
     )).join('');
-    return readerShell(`<article class="text-article">${body}</article>`);
+    return readerShell(`<article class="text-article" data-reader-mode="${mode}">${body}</article>`);
 }
 
 export function createDocumentPreviewHtml(

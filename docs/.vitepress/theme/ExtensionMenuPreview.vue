@@ -31,7 +31,7 @@ const features = [
   <div class="em" :class="{ 'em-onboarding': mode === 'welcome' || mode === 'language' }">
     <template v-if="mode === 'welcome' || mode === 'language'">
       <div class="em-brand">
-        <img :src="withBase('/brand-icon.webp')" alt="" width="26" height="26" /><b>FluentRead</b>
+        <img :src="withBase('/brand-icon.webp')" alt="" width="26" height="26" /><b>{{ t('流畅阅读', 'FluentRead') }}</b>
       </div>
       <template v-if="mode === 'welcome'">
         <div class="em-welcome-art" aria-hidden="true">

@@ -1,15 +1,32 @@
-import {readFileSync} from 'node:fs';
-import {createHash} from 'node:crypto';
+import {readFileSync, realpathSync, mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import {tmpdir} from 'node:os';
+import {createHash, createHmac, createCipheriv} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
-import {gunzipSync} from 'node:zlib';
+import {gunzipSync, gzipSync} from 'node:zlib';
 import {runInNewContext} from 'node:vm';
 import {describe, expect, it, vi} from 'vitest';
 import {ungzip} from 'pako';
-import {zhCNMessages} from '@/src/core/i18n/messages/zh-CN';
+import {zhCNMessages, UI_LANGUAGE_BUNDLES, userscriptMessages} from '@/userscript/languageBundles';
+import {zhCNMessages as extensionChinese} from '@/src/core/i18n/messages/zh-CN';
+import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
+import {installInformationHighlight} from '@/userscript/informationHighlight';
 import {inflateWithPako} from '@/userscript/pakoRuntime';
 import * as chineseCharacterData from '@/src/core/language/chineseVariants';
+import * as functionWordData from '@/src/core/language/functionWordData';
 import {createUserscriptCharacterDataCompressionPlugin} from '@/userscript/characterDataPlugin';
+import {createUserscriptFrancDataCompressionPlugin} from '@/userscript/francDataPlugin';
+import {createUserscriptTldtsDataCompressionPlugin} from '@/userscript/tldtsDataPlugin';
+import {createUserscriptAboutImagesCompressionPlugin} from '@/userscript/aboutImagesPlugin';
+import {createUserscriptServiceBrandIconsCompressionPlugin} from '@/userscript/serviceBrandIconsPlugin';
+import originalServiceBrandPaths from '@/src/ui/assets/serviceBrandPaths.json';
+import {getSupportImageUrl as getNormalSupportImageUrl, getContactImageUrl as getNormalContactImageUrl} from '@/src/app/options/aboutImages';
+import ordinaryContactAsset from '@/src/app/options/assets/wechat-contact.jpg';
+import {inflateWithPako as inflateBundledFrancData} from '@/userscript/pakoBundled';
+import {inflateBytesWithPako as inflateBundledTldtsData, decodeUtf8WithPako as decodeBundledTldtsLabels} from '@/userscript/pakoBundled';
+import {data as lockedFrancData} from 'franc-min/data.js';
+import {createUserscriptInlineCssCompressionPlugin} from '@/userscript/inlineCssPlugin';
 import {
     default as userscriptConfig,
     executionGuardEnd,
@@ -25,6 +42,159 @@ import {
 const entrypointId = resolve(process.cwd(), 'entrypoints/userscript-injection-fixture.ts');
 const sourceModuleId = resolve(process.cwd(), 'src/app/content/runtime.ts');
 const vueScriptModuleId = `${resolve(process.cwd(), 'src/features/selection-translation/ui/SelectionTranslator.vue')}?vue&type=script&setup=true&lang.ts`;
+
+// 使用真实 Vite/CommonJS 与发布配置的同一选项，验证 require 时序而不是断言配置字面量。
+async function bundledCommonjsOwner(entry: string, files: Record<string, string> = {}) {
+    const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-commonjs-owner-'));
+    try {
+        const entryPath = resolve(fixture, 'entry.mjs');
+        writeFileSync(entryPath, entry);
+        for (const [relative, source] of Object.entries(files)) {
+            const file = resolve(fixture, 'node_modules/initialization-owner', relative);
+            mkdirSync(resolve(file, '..'), {recursive: true});
+            writeFileSync(file, source);
+        }
+        const {build} = await import('vite');
+        const configured = (userscriptConfig as import('vite').UserConfig).build!;
+        const result = await build({root: process.cwd(), configFile: false, publicDir: false, logLevel: 'silent',
+            build: {...configured, write: false, outDir: resolve(fixture, 'unused-output'),
+                lib: {entry: entryPath, name: 'CommonjsOwnerFixture', formats: ['iife']},
+                rollupOptions: {output: {inlineDynamicImports: true}}}});
+        const outputs = Array.isArray(result) ? result : [result];
+        if (outputs.length !== 1 || !('output' in outputs[0]) || outputs[0].output.length !== 1) {
+            throw new Error('Expected exactly one private owner bundle');
+        }
+        const chunk = outputs[0].output[0];
+        if (chunk.type !== 'chunk' || chunk.imports.length || chunk.dynamicImports.length) {
+            throw new Error('Owner bundle must be complete and self contained');
+        }
+        return chunk.code;
+    } finally {
+        rmSync(fixture, {recursive: true, force: true});
+    }
+}
+
+describe('userscript bundled CommonJS initialization', () => {
+    it('runs a child at the first require after its parent starts and reuses the initialized exports', async () => {
+        const code = await bundledCommonjsOwner(
+            'import value from "./node_modules/initialization-owner/parent.cjs"; globalThis.commonjsOwnerResult = value;', {
+                'parent.cjs': 'globalThis.commonjsOwnerEvents.push("parent-before"); const first=require("./child.cjs"); const second=require("./child.cjs"); globalThis.commonjsOwnerEvents.push("parent-after"); module.exports={first,second};',
+                'child.cjs': 'globalThis.commonjsOwnerEvents.push("child"); module.exports={ready:true};',
+            });
+        const realm = {commonjsOwnerEvents: [] as string[], commonjsOwnerResult: undefined as unknown};
+        runInNewContext(code, realm, {timeout: 5000});
+        expect(Array.from(realm.commonjsOwnerEvents)).toEqual(['parent-before', 'child', 'parent-after']);
+        const result = realm.commonjsOwnerResult as {first: {ready: boolean}; second: unknown};
+        expect(result.first.ready).toBe(true);
+        expect(result.second).toBe(result.first);
+    });
+
+    it('preserves partially initialized cyclic exports without loading either module twice', async () => {
+        const code = await bundledCommonjsOwner(
+            'import value from "./node_modules/initialization-owner/a.cjs"; globalThis.commonjsOwnerResult=value;', {
+                'a.cjs': 'globalThis.commonjsOwnerEvents.push("a"); exports.phase="a-before"; exports.fromB=require("./b.cjs").observed; exports.phase="a-after";',
+                'b.cjs': 'globalThis.commonjsOwnerEvents.push("b"); exports.observed=require("./a.cjs").phase;',
+            });
+        const realm = {commonjsOwnerEvents: [] as string[], commonjsOwnerResult: undefined as unknown};
+        runInNewContext(code, realm, {timeout: 5000});
+        expect(Array.from(realm.commonjsOwnerEvents)).toEqual(['a', 'b']);
+        expect(realm.commonjsOwnerResult).toEqual({phase: 'a-after', fromB: 'a-before'});
+    });
+
+    it.each(['md5-first', 'aes-first'] as const)('keeps %s locked crypto, inflation and host-safe Dexie behavior in the actual bundle', async order => {
+        const requirePackage = createRequire(resolve(process.cwd(), 'package.json'));
+        const cryptoImports = {
+            md5: 'crypto-js/md5', sha256: 'crypto-js/sha256', hmac: 'crypto-js/hmac-sha256',
+            aes: 'crypto-js/aes', utf8: 'crypto-js/enc-utf8', base64: 'crypto-js/enc-base64',
+            ecb: 'crypto-js/mode-ecb', pkcs7: 'crypto-js/pad-pkcs7',
+        };
+        const imports = Object.entries(cryptoImports);
+        if (order === 'aes-first') imports.sort(([left], [right]) => left === 'aes' ? -1 : right === 'aes' ? 1 : 0);
+        const source = imports.map(([name, file]) => `import ${name} from ${JSON.stringify(requirePackage.resolve(file))};`).join('\n')
+            + `\nimport * as pako from ${JSON.stringify(resolve(process.cwd(), 'userscript/pakoBundled.ts'))};`
+            + `\nimport Dexie from ${JSON.stringify(resolve(process.cwd(), 'userscript/dexie.ts'))};`
+            + '\nglobalThis.commonjsOwnerResult={md5,sha256,hmac,aes,utf8,base64,ecb,pkcs7,pako,Dexie};';
+        const code = await bundledCommonjsOwner(source);
+        const sentinel = {version: 'synthetic-host-version'};
+        const realm = {commonjsOwnerResult: undefined as any, [Symbol.for('Dexie')]: sentinel,
+            Uint8Array, ArrayBuffer, setTimeout, clearTimeout, console};
+        runInNewContext(code, realm, {timeout: 5000});
+        const api = realm.commonjsOwnerResult;
+        for (const text of ['', 'abc', '流畅阅读 🦦', 'x'.repeat(55), 'x'.repeat(56), 'x'.repeat(64)]) {
+            expect(api.md5(text).toString()).toBe(createHash('md5').update(text).digest('hex'));
+            expect(api.sha256(text).toString()).toBe(createHash('sha256').update(text).digest('hex'));
+            expect(api.hmac(text, 'synthetic-key-中文').toString()).toBe(createHmac('sha256', 'synthetic-key-中文').update(text).digest('hex'));
+            const cipher = createCipheriv('aes-128-ecb', Buffer.from('0123456789abcdef'), null);
+            const expected = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]).toString('base64');
+            const encrypted = api.aes.encrypt(text, api.utf8.parse('0123456789abcdef'), {mode: api.ecb, padding: api.pkcs7});
+            expect(encrypted.toString()).toBe(expected);
+            expect(api.aes.decrypt(expected, api.utf8.parse('0123456789abcdef'), {mode: api.ecb, padding: api.pkcs7}).toString(api.utf8)).toBe(text);
+            expect(api.base64.stringify(api.utf8.parse(text))).toBe(Buffer.from(text).toString('base64'));
+        }
+        // 固定 salt 使 AES 的密码短语路径实际经过 EvpKDF/MD5；预期密文由 Node 独立生成。
+        const passphrase = 'synthetic-passphrase-中文', salt = Buffer.from('12345678');
+        let previous: Buffer = Buffer.alloc(0), derived = Buffer.alloc(0);
+        while (derived.length < 48) {
+            previous = createHash('md5').update(previous).update(passphrase).update(salt).digest();
+            derived = Buffer.concat([derived, previous]);
+        }
+        const passphraseText = '首次 require 保留 AES 与 MD5 的注册顺序 🦦';
+        const cbc = createCipheriv('aes-256-cbc', derived.subarray(0, 32), derived.subarray(32, 48));
+        const expectedPassphrase = Buffer.concat([Buffer.from('Salted__'), salt,
+            cbc.update(passphraseText, 'utf8'), cbc.final()]).toString('base64');
+        expect(api.aes.encrypt(passphraseText, passphrase, {salt: api.utf8.parse('12345678')}).toString()).toBe(expectedPassphrase);
+        expect(api.aes.decrypt(expectedPassphrase, passphrase).toString(api.utf8)).toBe(passphraseText);
+        const text = '完整保留 Unicode 与字节 🦦';
+        const compressed = new Uint8Array(gzipSync(Buffer.from(text)));
+        expect(api.pako.inflateWithPako(compressed)).toBe(text);
+        const restored = api.pako.inflateBytesWithPako(compressed);
+        expect(Array.from(restored)).toEqual(Array.from(Buffer.from(text)));
+        expect(api.pako.decodeUtf8WithPako(restored)).toBe(text);
+        expect(typeof api.Dexie).toBe('function');
+        expect(realm[Symbol.for('Dexie')]).toBe(sentinel);
+    });
+});
+
+describe('userscript inline CSS compression', () => {
+    const root = process.cwd();
+    const id = `${resolve(root, 'src/app/content/page.css')}?inline`;
+    const plugin = createUserscriptInlineCssCompressionPlugin(root);
+    const transform = (code: string, moduleId = id) => Reflect.apply((plugin.transform as {handler: Function}).handler, {}, [code, moduleId]);
+
+    it.each(['quoted', 'template'] as const)('restores exact Unicode, escaped content and CSS order from %s exports synchronously', kind => {
+        const css = '.first::after{content:"中文 🦦 \\" \\\\ \\n"}\n@media(max-width:390px){.first{color:var(--theme)}}\n'.repeat(80);
+        const code = kind === 'quoted' ? `export default ${JSON.stringify(css)};` : 'export default `' + css.replace(/\\/gu, '\\\\').replace(/`/gu, '\\`') + '`;';
+        const result = transform(code);
+        expect(result.map).toBeNull(); expect(Buffer.byteLength(result.code)).toBeLessThan(Buffer.byteLength(code));
+        const base64 = JSON.parse(result.code.match(/atob\(("[^"]+")\)/u)![1]);
+        expect(gunzipSync(Buffer.from(base64, 'base64')).toString('utf8')).toBe(css);
+        vi.stubGlobal('pako', {ungzip});
+        try {
+            const realm = {inflateWithPako, Uint8Array, atob, restored: undefined};
+            runInNewContext(result.code.replace(/^import[^\n]+\n/u, '').replace('export default ', 'restored = '), realm);
+            expect(realm.restored).toBe(css);
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it.each([
+        ['small CSS', 'export default ".a{color:red}";', id],
+        ['raw CSS before Vite', '.a{color:red}', id],
+        ['executable module', 'const value = readCss(); export default value;', id],
+        ['non-export statement', 'const value = "css";', id],
+        ['non-string export', 'export default 42;', id],
+        ['export equals', 'export = "css";', id],
+        ['plain CSS import', 'export default "css";', id.split('?')[0]],
+        ['non-CSS module', 'export default "css";', id.replace('.css', '.ts')],
+        ['external dependency', 'export default "css";', `${resolve(root, 'node_modules/vendor/style.css')}?inline`],
+    ])('leaves %s unchanged', (_name, code, moduleId) => {expect(transform(code, moduleId)).toBeNull();});
+
+    it('keeps Greasy Fork source readable and runs only after Vite CSS conversion', () => {
+        const source = 'export default ' + JSON.stringify('.repeat{color:red}'.repeat(80)) + ';';
+        const disabled = createUserscriptInlineCssCompressionPlugin(root, false);
+        expect(Reflect.apply((disabled.transform as {handler: Function}).handler, {}, [source, id])).toBeNull();
+        expect(plugin.enforce).toBe('post'); expect((plugin.transform as {order: string}).order).toBe('post');
+    });
+});
 
 describe('authoritative site catalogs with an external pinned data asset', () => {
     it.each(['unchanged', 'old-asset', 'reordered', 'removed-rule', 'missing-runtime-rule'] as const)
@@ -72,6 +242,87 @@ describe('authoritative site catalogs with an external pinned data asset', () =>
 });
 
 describe('userscript browser shim injection', () => {
+    it('preserves pinned remote dictionaries for inlined panes and keeps embedded recovery copy', () => {
+        const build = (userscriptConfig as {build: {cssCodeSplit: boolean; rollupOptions: {output: {inlineDynamicImports: boolean}}}}).build;
+        expect(build.cssCodeSplit).toBe(false);
+        expect(build.rollupOptions.output.inlineDynamicImports).toBe(true);
+        for (const key of ['learning.panelLoadError', 'learning.reloadPage'] as const) {
+            expect(zhCNMessages[key]).toBe(extensionChinese[key]);
+            expect(UI_LANGUAGE_BUNDLES['en-US'].messages[key]).toBe(extensionBundles['en-US'].messages[key]);
+        }
+        for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {
+            const original = extensionBundles[language as keyof typeof extensionBundles];
+            expect(bundle.legacyText).toBe(original.legacyText);
+            expect(bundle.legacyPatterns).toBe(original.legacyPatterns);
+            const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
+                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && !key.startsWith('popup.compact.') && (language === 'en-US' || !['learning.panelLoadError', 'learning.reloadPage'].includes(key))));
+            expect(bundle.messages).toEqual(kept);
+            expect(original.messages['learning.reloadPage']).toBeTruthy();
+        }
+    });
+    it.each(['standard', 'standalone'] as const)('keeps %s runtime icon inline and pins only the standard manager icon', async mode => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', mode === 'standalone' ? '1' : '');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', '');
+        try {
+            vi.resetModules();
+            const {default: config} = await import('@/userscript/vite.config');
+            const plugins = (config as {plugins: Array<{name: string; generateBundle?: {handler: Function}}>}).plugins;
+            const plugin = plugins.find(item => item.name === 'bundle-userscript-css')!;
+            const entry = {type: 'chunk', isEntry: true, code: 'var fixture = 1;', moduleIds: []};
+            await Reflect.apply(plugin.generateBundle!.handler, {}, [{}, {'entry.js': entry}]);
+            const iconBytes = readFileSync(resolve(process.cwd(), 'public/icon/64.png'));
+            const runtimeIcon = JSON.parse(entry.code.match(/globalThis\.__FLUENTREAD_ICON_DATA__=("[^"]+");/u)![1]) as string;
+            expect(Buffer.from(runtimeIcon.split(',')[1], 'base64')).toEqual(iconBytes);
+            const metadataIcon = entry.code.match(/^\/\/ @icon\s+(.+)$/mu)![1];
+            if (mode === 'standalone') expect(metadataIcon).toBe(runtimeIcon);
+            else {
+                const pinned = metadataIcon.match(/^https:\/\/cdn\.jsdelivr\.net\/gh\/FluentRead\/FluentRead@([a-f0-9]{40})\/public\/icon\/64\.png$/u);
+                expect(pinned).not.toBeNull();
+                expect(execFileSync('git', ['show', `${pinned![1]}:public/icon/64.png`], {cwd: process.cwd()})).toEqual(iconBytes);
+                expect(metadataIcon).not.toBe(runtimeIcon);
+            }
+        } finally {vi.unstubAllEnvs();vi.resetModules();}
+    });
+    it.each<readonly [string, Record<string, string>, Record<string, string>]>([
+        ['zh-CN', extensionChinese, zhCNMessages],
+        ...Object.entries(extensionBundles).map(([language, bundle]) => [language, bundle.messages, UI_LANGUAGE_BUNDLES[language as keyof typeof UI_LANGUAGE_BUNDLES].messages] as const),
+    ])('retains extension-only copy in %s while preserving userscript menu and settings copy', (_language, extension, projected) => {
+        const noticeKeys = Object.keys(extension).filter(key => key.startsWith('contextMenu.notice.'));
+        expect(noticeKeys).toHaveLength(6);
+        for (const key of noticeKeys) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
+        const learningKeys = Object.keys(extension).filter(key => key.startsWith('video.learning.'));
+        expect(learningKeys).not.toHaveLength(0);
+        for (const key of learningKeys) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
+        for (const key of ['popup.compact.translate', 'popup.compact.restore']) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
+        const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
+            && !noticeKeys.includes(key) && !learningKeys.includes(key)
+            && key !== 'popup.compact.translate' && key !== 'popup.compact.restore'
+            && (_language === 'zh-CN' || _language === 'en-US' || !['learning.panelLoadError', 'learning.reloadPage'].includes(key)));
+        expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
+        for (const key of retainedKeys) expect(projected[key]).toBe(extension[key]);
+        expect(projected['contextMenu.translateSelection']).toBeTruthy();
+        expect(projected['contextMenu.translatePage']).toBeTruthy();
+        expect(projected['contextMenu.restorePage']).toBeTruthy();
+    });
+    it('excludes unreachable highlight code and copy while keeping an explicitly unavailable state', () => {
+        expect(userscriptMessages(extensionChinese)).toEqual(zhCNMessages);
+        expect(Object.keys(zhCNMessages).some(key => key.startsWith('informationHighlight.'))).toBe(false);
+        const controller = installInformationHighlight({} as Document, {enabled: true, hotkey: 'Alt+H', hotkeyEnabled: true, mode: 'keywords', model: 'qwen2.5-0.5b', density: 'medium', color: 'amber', style: 'background', intensity: 'standard'});
+        expect(controller.setEnabled(true)).toMatchObject({enabled: false, phase: 'unsupported', mode: 'keywords'});
+        controller.updatePreferences({enabled: true, hotkey: 'Alt+H', hotkeyEnabled: true, mode: 'surprisal-local', model: 'qwen3-0.6b', density: 'low', color: 'mint', style: 'underline', intensity: 'standard'});
+        expect(controller.retry()).toMatchObject({enabled: false, mode: 'surprisal-local'});
+        controller.refresh();controller.dispose();expect(controller.getState().enabled).toBe(false);
+        expect(userscriptAliases.find(alias => alias.find === '@/src/features/information-highlight/public')?.replacement).toMatch(/userscript\/informationHighlight\.ts$/u);
+    });
     it('pins each remote language file to a commit containing exactly its built contents', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const commit = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__);
@@ -84,7 +335,7 @@ describe('userscript browser shim injection', () => {
             expect(committed).toBe(readFileSync(resolve(process.cwd(), path), 'utf8'));
         }
     });
-    it('embeds the complete Chinese fallback catalog as lossless static data', () => {
+    it('embeds the Chinese fallback catalog, minus the reader-only keys of the extension document page, as lossless static data', () => {
         const plugin = createUserscriptCatalogCompressionPlugin() as unknown as {
             resolveId: (source: string, importer: string) => string | null;
             load: (id: string) => string | null;
@@ -95,14 +346,52 @@ describe('userscript browser shim injection', () => {
         const base64 = moduleSource?.match(/atob\("([A-Za-z0-9+/=]+)"\)/u)?.[1];
         expect(base64).toBeTruthy();
         const restored = JSON.parse(gunzipSync(Buffer.from(base64!, 'base64')).toString('utf8'));
-        expect(restored).toEqual(zhCNMessages);
+        // 文档翻译页面（含 PDF 阅读器）只存在于扩展里，油猴脚本不含该页面：内嵌目录恰好是全部中文文案去掉 document. 这一组键，其余一条不少、内容无损。
+        const readerOnly = Object.keys(zhCNMessages).filter(key => key.startsWith('document.'));
+        expect(readerOnly.length).toBeGreaterThan(0);
+        const embedded = Object.fromEntries(Object.entries(zhCNMessages).filter(([key]) => !key.startsWith('document.')));
+        expect(Object.keys(embedded)).toHaveLength(Object.keys(zhCNMessages).length - readerOnly.length);
+        expect(restored).toEqual(embedded);
         vi.stubGlobal('pako', {ungzip});
         try {
-            expect(JSON.parse(inflateWithPako(new Uint8Array(Buffer.from(base64!, 'base64'))))).toEqual(zhCNMessages);
+            expect(JSON.parse(inflateWithPako(new Uint8Array(Buffer.from(base64!, 'base64'))))).toEqual(embedded);
         } finally {
             vi.unstubAllGlobals();
         }
         expect(moduleSource).toContain(createHash('sha256').update(gunzipSync(Buffer.from(base64!, 'base64'))).digest('hex'));
+    });
+
+    it('embeds the English bundle without the reader-only keys and preserves every other field', () => {
+        const defines = (userscriptConfig as {define: Record<string, string>}).define;
+        const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__) as Record<string, string>;
+        expect(Object.keys(compressed)).toEqual(['en-US']);
+        const original = UI_LANGUAGE_BUNDLES['en-US'];
+        const readerOnly = Object.keys(original.messages).filter(key => key.startsWith('document.'));
+        expect(readerOnly.length).toBeGreaterThan(0);
+        const messages = Object.fromEntries(Object.entries(original.messages).filter(([key]) => !readerOnly.includes(key)));
+        const expected = {...original, messages};
+        const bytes = Buffer.from(compressed['en-US'], 'base64');
+        const restored = JSON.parse(gunzipSync(bytes).toString('utf8'));
+        // 整包比较同时约束保留 messages、legacyText、legacyPatterns 及其余 bundle 字段。
+        expect(restored).toEqual(expected);
+        expect(Object.keys(restored.messages)).toHaveLength(Object.keys(original.messages).length - readerOnly.length);
+        // 读出实际 define 后再走现有脚本解码端口，不以另造的 fixture 压缩串代替构建配置。
+        vi.stubGlobal('pako', {ungzip});
+        try {
+            expect(JSON.parse(inflateWithPako(bytes))).toEqual(expected);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+    it('applies the same document-page boundary to the embedded English catalog and preserves learning-center source copy', () => {
+        const defines = (userscriptConfig as {define: Record<string, string>}).define;
+        const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__)['en-US'];
+        const restored = JSON.parse(gunzipSync(Buffer.from(compressed, 'base64')).toString('utf8'));
+        const english = UI_LANGUAGE_BUNDLES['en-US'];
+        const messages = Object.fromEntries(Object.entries(english.messages).filter(([key]) => !key.startsWith('document.')));
+        expect(Object.keys(messages).length).toBeLessThan(Object.keys(english.messages).length);
+        expect(restored).toEqual({...english, messages});
+        expect(restored.legacyText['回到视频片段']).toBe(extensionBundles['en-US'].legacyText['回到视频片段']);
     });
 
     it('keeps all site rule JSON data intact when embedding compressed offline catalogs', () => {
@@ -145,13 +434,43 @@ describe('userscript browser shim injection', () => {
             .filter((entry): entry is {find: string; replacement: string} => typeof entry.find === 'string')
             .map((entry) => [entry.find, entry.replacement]));
 
-        for (const feature of ['area-translation', 'image-translation', 'video-subtitle']) {
+        for (const feature of ['area-translation', 'image-translation', 'video-subtitle', 'personal-corrections']) {
             expect(stringAliases.get(`@/src/features/${feature}/public`)).toMatch(/userscript\/unsupportedCapabilities\.ts$/u);
         }
         expect(stringAliases.get('@/src/features/writing-assistant/public')).toMatch(/userscript\/writingAssistant\.ts$/u);
         expect(stringAliases.get('@/src/platform/storage/credentialContext')).toMatch(/userscript\/credentialContext\.ts$/u);
         expect(stringAliases.get('@/src/platform/storage/configStorageRuntime')).toMatch(/userscript\/storage\.ts$/u);
         expect(userscriptAliases.at(-1)?.find).toBe('@');
+    });
+
+    it('阻止个人校订 UI 绕过 public 空适配器进入任意 userscript chunk', async () => {
+        const plugins = (userscriptConfig as {plugins: Array<{name: string; generateBundle?: {handler: Function}}>}).plugins;
+        const plugin = plugins.find(item => item.name === 'bundle-userscript-css')!;
+        const entry = {type: 'chunk', isEntry: true, code: 'var fixture = 1;', moduleIds: []};
+        const correctionModule = `${resolve(process.cwd(), 'src/features/personal-corrections/ui/PersonalCorrectionsPanel.vue')}?vue&type=script`;
+        const otherChunk = {type: 'chunk', isEntry: false, code: '', moduleIds: [correctionModule]};
+        await expect(Reflect.apply(plugin.generateBundle!.handler, {}, [{}, {'entry.js': entry, 'other.js': otherChunk}]))
+            .rejects.toThrow(`Userscript bundle contains unsupported personal correction feature: ${correctionModule}`);
+        expect(entry.code).toBe('var fixture = 1;');
+
+        otherChunk.moduleIds = [resolve(process.cwd(), 'src/features/personal-corrections-other/public.ts')];
+        await expect(Reflect.apply(plugin.generateBundle!.handler, {}, [{}, {'entry.js': entry, 'other.js': otherChunk}])).resolves.toBeUndefined();
+    });
+
+    it('只在 userscript 构建中移除 inline page.css 的扩展校订来源提示，保留重试样式', () => {
+        const plugins = (userscriptConfig as {plugins: Array<{name: string; transform?: {order: string; handler: Function}}>}).plugins;
+        const plugin = plugins.find(item => item.name === 'bundle-userscript-css')!;
+        const pageCss = resolve(process.cwd(), 'src/app/content/page.css');
+        const source = readFileSync(pageCss, 'utf8');
+        expect(source).toContain('data-fr-personal-correction');
+        expect(plugin.transform!.order).toBe('pre');
+        const transformed = Reflect.apply(plugin.transform!.handler, {}, [source, `${pageCss}?inline`]);
+        expect(transformed.code).not.toContain('data-fr-personal-correction');
+        expect(transformed.code).toContain('.fluent-read-retry-wrapper');
+        expect(transformed.map).toBeNull();
+        expect(Reflect.apply(plugin.transform!.handler, {}, [transformed.code, pageCss])).toBeNull();
+        expect(Reflect.apply(plugin.transform!.handler, {}, [source, `${pageCss}.other.css?inline`])).toBeNull();
+        expect(readFileSync(pageCss, 'utf8')).toBe(source);
     });
 
     it('把 dexie 换成不注册全局单例的入口，且不改写 dexie 自身的实现产物路径', () => {
@@ -228,6 +547,7 @@ describe('userscript browser shim injection', () => {
 
 describe('userscript lossless Unicode character data', () => {
     const dataPath = resolve(process.cwd(), 'src/core/language/chineseVariants.ts');
+    const wordDataPath = resolve(process.cwd(), 'src/core/language/functionWordData.ts');
     const createPlugin = (enabled = true) => createUserscriptCharacterDataCompressionPlugin(process.cwd(), enabled) as unknown as {
         transform: (code: string, id: string) => {code: string; map: null} | null;
     };
@@ -260,10 +580,29 @@ describe('userscript lossless Unicode character data', () => {
         }
     });
 
-    it('preserves unsorted strings, repeated characters, surrogate pairs and empty exports', () => {
+    it('restores all 46 function-word strings byte for byte and preserves the audited lexicon digest', () => {
+        const entries = Object.entries(functionWordData).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
+        expect(entries).toHaveLength(46);
+        // 提取前四组功能词原始字符串的摘要；按导出名排序，不依赖 module namespace 的枚举实现。
+        expect(createHash('sha256').update(JSON.stringify(entries)).digest('hex'))
+            .toBe('998dc8f897b31a8b91eaaec8ffe4e563b513fe856a6f91d8d528209d90f15ca1');
+        const transformed = createPlugin().transform(readFileSync(wordDataPath, 'utf8'), wordDataPath)!;
+        vi.stubGlobal('pako', {ungzip});
+        try {
+            const restored = restoreExports(transformed.code, Object.keys(functionWordData));
+            expect(restored).toEqual({...functionWordData});
+            for (const [name, value] of entries) {
+                expect(Buffer.from(restored[name], 'utf8')).toEqual(Buffer.from(value, 'utf8'));
+            }
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it.each([dataPath, wordDataPath])('preserves unsorted strings, repeated characters, surrogate pairs and empty exports in %s', currentPath => {
         const values = {sample: 'A𱊯A\0\ud800', empty: ''};
         const original = Object.entries(values).map(([name, value]) => 'export const ' + name + ' = ' + JSON.stringify(value) + ';').join('\n');
-        const transformed = createPlugin().transform(original, dataPath)!;
+        const transformed = createPlugin().transform(original, currentPath)!;
         vi.stubGlobal('pako', {ungzip});
         try {
             expect(restoreExports(transformed.code, Object.keys(values))).toEqual(values);
@@ -272,16 +611,815 @@ describe('userscript lossless Unicode character data', () => {
         }
     });
 
-    it('rejects executable additions to the data file instead of dropping or compressing them', () => {
-        const original = readFileSync(dataPath, 'utf8');
-        expect(() => createPlugin().transform(original + '\nsideEffect();', dataPath)).toThrow('only exported const strings');
-        expect(() => createPlugin().transform('export const data = makeData();', dataPath)).toThrow('only exported const strings');
-        expect(() => createPlugin().transform('const privateData = "data";', dataPath)).toThrow('only exported const strings');
+    it.each([dataPath, wordDataPath])('rejects executable additions to %s instead of dropping or compressing them', currentPath => {
+        const original = readFileSync(currentPath, 'utf8');
+        expect(() => createPlugin().transform(original + '\nsideEffect();', currentPath)).toThrow('only exported const strings');
+        expect(() => createPlugin().transform('export const data = makeData();', currentPath)).toThrow('only exported const strings');
+        expect(() => createPlugin().transform('const privateData = "data";', currentPath)).toThrow('only exported const strings');
     });
 
     it('leaves Greasy Fork source and every other module untouched', () => {
         const original = readFileSync(dataPath, 'utf8');
         expect(createPlugin(false).transform(original, dataPath)).toBeNull();
+        expect(createPlugin(false).transform(readFileSync(wordDataPath, 'utf8'), wordDataPath)).toBeNull();
         expect(createPlugin().transform(original, resolve(process.cwd(), 'src/core/language/chinese.ts'))).toBeNull();
+        expect(createPlugin().transform(original, resolve(process.cwd(), 'src/core/language/lexicon.ts'))).toBeNull();
+        expect(createPlugin().transform(original, wordDataPath + '.backup')).toBeNull();
+    });
+});
+
+
+describe('standalone locked franc pure-data encoding', () => {
+    const require = createRequire(resolve(process.cwd(), 'package.json'));
+    const dataPath = realpathSync(require.resolve('franc-min/data.js'));
+    const original = readFileSync(dataPath, 'utf8');
+    const createPlugin = (enabled = true, root = process.cwd()) => createUserscriptFrancDataCompressionPlugin(root, enabled) as unknown as {
+        name: string;
+        transform: (code: string, id: string) => {code: string; map: null} | null;
+    };
+    const restoreData = (moduleSource: string, inflate = inflateBundledFrancData): typeof lockedFrancData => {
+        const body = moduleSource.replace("import {inflateWithPako} from '@/userscript/pakoRuntime';", '')
+            .replace('export const data =', 'const data =');
+        // 执行生成的纯数据模块与生产 bundled pako；不执行整包，也不复制检测算法。
+        return runInNewContext(body + '\ndata;', {atob, Uint8Array, JSON, inflateWithPako: inflate}, {timeout: 5_000});
+    };
+
+    it('restores every locked model string and its iteration order before the unchanged franc algorithm consumes it', () => {
+        const transformed = createPlugin().transform(original, dataPath)!;
+        expect(transformed.map).toBeNull();
+        const restored = restoreData(transformed.code);
+        expect(Object.keys(restored)).toEqual(Object.keys(lockedFrancData));
+        expect(Object.getPrototypeOf(restored)).toBe(Object.getPrototypeOf(lockedFrancData));
+        let models = 0;
+        for (const [script, values] of Object.entries(lockedFrancData)) {
+            expect(Object.keys(restored[script])).toEqual(Object.keys(values));
+            expect(Object.getPrototypeOf(restored[script])).toBe(Object.getPrototypeOf(values));
+            for (const [language, text] of Object.entries(values)) {
+                expect(restored[script][language]).toBe(text);
+                expect(Buffer.from(restored[script][language], 'utf8')).toEqual(Buffer.from(text, 'utf8'));
+                models++;
+            }
+        }
+        expect(models).toBe(66);
+    });
+
+    it('preserves repeated characters, supplementary characters, escapes and empty model strings without sorting keys', () => {
+        const data = structuredClone(lockedFrancData);
+        const models = data.Latin;
+        const [first, second] = Object.keys(models);
+        models[first] = 'A𱊯A\0\ud800';
+        models[second] = '';
+        const source = 'export const data = ' + JSON.stringify(data) + ';';
+        const transformed = createPlugin().transform(source, dataPath)!;
+        const restored = restoreData(transformed.code);
+        expect(restored).toEqual(data);
+        expect(Object.keys(restored.Latin)).toEqual(Object.keys(models));
+        expect(restored.Latin[first]).toBe(models[first]);
+        expect(restored.Latin[second]).toBe('');
+    });
+
+    it('restores no-substitution template strings through the same complete two-level data schema', () => {
+        const expected = structuredClone(lockedFrancData);
+        const first = Object.keys(expected.Latin)[0];
+        expected.Latin[first] = 'line1\n𱊯\0\ud800';
+        const placeholder = structuredClone(expected);
+        placeholder.Latin[first] = '__franc_template_fixture__';
+        const source = 'export const data = ' + JSON.stringify(placeholder)
+            .replace('"__franc_template_fixture__"', '`line1\\n𱊯\\0\\ud800`') + ';';
+        const restored = restoreData(createPlugin().transform(source, dataPath)!.code);
+        expect(restored).toEqual(expected);
+        expect(restored.Latin[first]).toBe(expected.Latin[first]);
+        expect(Object.keys(restored.Latin)).toEqual(Object.keys(expected.Latin));
+    });
+
+    it('defaults to disabled without resolving a dependency in an unavailable root', () => {
+        const disabled = createUserscriptFrancDataCompressionPlugin('/unavailable-franc-root');
+        if (typeof disabled.transform !== 'function') throw new Error('Expected the public plugin transform hook');
+        expect(Reflect.apply(disabled.transform, disabled, ['export const data = {', dataPath])).toBeNull();
+        expect(createPlugin(false, '/unavailable-franc-root').transform(original, dataPath)).toBeNull();
+    });
+
+    it.each([
+        ['logic', original + '\nsideEffect();'],
+        ['let', original.replace('export const data', 'export let data')],
+        ['wrong-export', original.replace('export const data', 'export const other')],
+        ['default', 'export default {};'],
+        ['extra-declaration', 'export const data = {}, other = 1;'],
+        ['syntax', 'export const data = {'],
+        ['call', 'export const data = {Latin: {eng: makeData()}};'],
+        ['getter', 'export const data = {get Latin() { return {}; }};'],
+        ['spread', 'export const data = {...other};'],
+        ['computed-key', 'export const data = {["Latin"]: {eng: "a"}};'],
+        ['proto', 'export const data = {"__proto__": {eng: "a"}};'],
+        ['duplicate', 'export const data = {Latin: {eng: "a", eng: "b"}};'],
+        ['wrong-depth', 'export const data = {Latin: {eng: {text: "a"}}};'],
+        ['number', 'export const data = {Latin: {eng: 42}};'],
+        ['empty', 'export const data = {};'],
+        ['wrong-model-count', 'export const data = {Latin: {eng: "a"}, Cyrillic: {rus: "b"}, Arabic: {arb: "c"}, Devanagari: {hin: "d"}};'],
+        ['wrong-script-order', 'export const data = ' + JSON.stringify(Object.fromEntries(Object.entries(lockedFrancData).reverse())) + ';'],
+        ['missing-export', original.replace('export const data', 'const data')],
+        ['extra-modifier', original.replace('export const data', 'export declare const data')],
+        ['destructured-binding', 'export const {data} = {data: {}};'],
+        ['missing-initializer', 'export const data;'],
+        ['top-level-string', 'export const data = "data";'],
+        ['inner-string', 'export const data = {Latin: "data"};'],
+        ['inner-empty-object', 'export const data = {Latin: {}};'],
+        ['interpolated-template', 'export const data = {Latin: {eng: `a${sideEffect()}`}};'],
+        ['numeric-key', 'export const data = {Latin: {1: "a"}};'],
+        ['duplicate-script', 'export const data = {Latin: {eng: "a"}, Latin: {eng: "b"}};'],
+        ['empty-source', ''],
+
+    ])('rejects %s rather than evaluating or silently compressing executable/unknown source', (_label, source) => {
+        expect(() => createPlugin().transform(source, dataPath)).toThrow('one exported const data object of model strings');
+    });
+
+    it.each([
+        ['raw', dataPath + '?raw'],
+        ['proxy', dataPath + '?commonjs-proxy'],
+        ['virtual', '\0' + dataPath],
+        ['expressions', require.resolve('franc-min/expressions.js')],
+        ['unrelated', resolve(process.cwd(), 'data.js')],
+    ])('leaves %s and disabled modules untouched without trying to parse them', (_label, id) => {
+        expect(createPlugin().transform('throw Error("must not parse")', id)).toBeNull();
+        expect(createPlugin(false).transform(original, dataPath)).toBeNull();
+        expect(createPlugin(false, '/unavailable-root').transform('export const data = {', dataPath)).toBeNull();
+    });
+
+    it.each([
+        ['ordinary', '0', '0', false],
+        ['standalone', '1', '0', true],
+        ['greasy-fork', '0', '1', false],
+        ['standalone-and-greasy', '1', '1', false],
+    ] as const)('binds the actual %s config target to the exact data plugin and existing pako alias', async (_label, standalone, greasy, enabled) => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', standalone);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', greasy);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        try {
+            vi.resetModules();
+            const {default: configuration, userscriptAliases: aliases} = await import('@/userscript/vite.config');
+            const config = configuration as unknown as {plugins: Array<{name?: string; transform?: unknown}>};
+            const plugin = config.plugins.find(item => item.name === 'compress-standalone-franc-data') as unknown as ReturnType<typeof createPlugin>;
+            expect(plugin).toBeDefined();
+            const result = plugin.transform(original, dataPath);
+            if (enabled) expect(restoreData(result!.code)).toEqual(lockedFrancData);
+            else expect(result).toBeNull();
+            const bundled = aliases.find(alias => alias.find === '@/userscript/pakoRuntime');
+            expect(bundled?.replacement).toBe(standalone === '1' ? resolve(process.cwd(), 'userscript/pakoBundled.ts') : undefined);
+        } finally {
+            vi.unstubAllEnvs();
+            vi.resetModules();
+        }
+    });
+
+    it.each([
+        ['new-version', {name: 'franc-min', version: '6.3.0'}],
+        ['other-package', {name: 'other-package', version: '6.2.0'}],
+        ['missing-version', {name: 'franc-min'}],
+    ])('fails closed for %s before transforming any dependency data', (_label, manifest) => {
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-franc-data-owner-'));
+        try {
+            writeFileSync(resolve(fixture, 'package.json'), '{}');
+            const packageRoot = resolve(fixture, 'node_modules/franc-min');
+            mkdirSync(packageRoot, {recursive: true});
+            writeFileSync(resolve(packageRoot, 'package.json'), JSON.stringify({...manifest, main: 'index.js'}));
+            writeFileSync(resolve(packageRoot, 'index.js'), 'export {};');
+            writeFileSync(resolve(packageRoot, 'data.js'), original);
+            expect(() => createPlugin(true, fixture)).toThrow('requires locked franc-min 6.2.0');
+        } finally {
+            rmSync(fixture, {recursive: true, force: true});
+        }
+    });
+
+    it('propagates restoration failure and retains the original module heading/digest instead of a fallback detector', () => {
+        const transformed = createPlugin().transform(original, dataPath)!;
+        const failure = new Error('controlled decoder failure');
+        expect(() => restoreData(transformed.code, () => {throw failure;})).toThrow(failure);
+        expect(transformed.code.startsWith(original.slice(0, original.indexOf('export const data')))).toBe(true);
+        expect(transformed.code).toContain('source sha256 ' + createHash('sha256').update(original).digest('hex'));
+        // 不改真实库文件/module id，现有 bundledLibraryNotices 根据原 package 归属保留 MIT。
+        expect(readFileSync(dataPath, 'utf8')).toBe(original);
+        const manifest = JSON.parse(readFileSync(resolve(dataPath, '../package.json'), 'utf8'));
+        expect(manifest).toMatchObject({name: 'franc-min', version: '6.2.0', license: 'MIT'});
+    });
+});
+
+
+describe('standalone locked public and private suffix pure-data encoding', () => {
+    const require = createRequire(resolve(process.cwd(), 'package.json'));
+    const packageRoot = resolve(realpathSync(require.resolve('tldts/package.json')), '..');
+    const dataPath = realpathSync(resolve(packageRoot, 'dist/es6/src/data/trie.js'));
+    const original = readFileSync(dataPath, 'utf8');
+    const originalLicense = readFileSync(resolve(packageRoot, 'LICENSE'), 'utf8');
+    const exportNames = ['nodeFlags', 'edgeStart', 'edgeLength', 'edgeChild', 'labelText', 'rulesRoot', 'exceptionsRoot'] as const;
+    const arrayNames = ['nodeFlags', 'edgeStart', 'edgeLength', 'edgeChild'] as const;
+    type TrieData = {
+        nodeFlags: Uint8Array;
+        edgeStart: Uint16Array;
+        edgeLength: Uint8Array;
+        edgeChild: Uint16Array;
+        labelText: string;
+        rulesRoot: number;
+        exceptionsRoot: number;
+    };
+    const createPlugin = (enabled = true, root = process.cwd()) => createUserscriptTldtsDataCompressionPlugin(root, enabled) as unknown as {
+        name: string;
+        transform: (code: string, id: string) => {code: string; map: null} | null;
+    };
+    const restoreData = (moduleSource: string, inflate = inflateBundledTldtsData, decode = decodeBundledTldtsLabels): TrieData => {
+        const body = moduleSource.replace("import {inflateBytesWithPako, decodeUtf8WithPako} from '@/userscript/pakoBundled';", '')
+            .replace(/\bexport const\b/gu, 'const');
+        // 仅执行原厂或生成的纯数据声明，复用真实 bundled decoder；不运行匹配算法或完整 userscript。
+        return runInNewContext(body + '\n({' + exportNames.join(', ') + '});', {
+            atob, Uint8Array, Uint16Array, JSON, inflateBytesWithPako: inflate, decodeUtf8WithPako: decode,
+        }, {timeout: 5_000}) as TrieData;
+    };
+    const locked = restoreData(original);
+    const fixtureSource = (data: TrieData): string => [
+        'export const nodeFlags = new Uint8Array(' + JSON.stringify(Array.from(data.nodeFlags)) + ');',
+        'export const edgeStart = new Uint16Array(' + JSON.stringify(Array.from(data.edgeStart)) + ');',
+        'export const edgeLength = new Uint8Array(' + JSON.stringify(Array.from(data.edgeLength)) + ');',
+        'export const edgeChild = new Uint16Array(' + JSON.stringify(Array.from(data.edgeChild)) + ');',
+        'export const labelText = ' + JSON.stringify(data.labelText) + ';',
+        'export const rulesRoot = ' + JSON.stringify(data.rulesRoot) + ';',
+        'export const exceptionsRoot = ' + JSON.stringify(data.exceptionsRoot) + ';',
+    ].join('\n');
+
+    it('restores all seven exports, every typed-array value and both ICANN/private flag classes without changing order', () => {
+        const transformed = createPlugin().transform(original, dataPath)!;
+        const restored = restoreData(transformed.code);
+        expect(transformed.map).toBeNull();
+        expect(Object.keys(restored)).toEqual(exportNames);
+        expect(Object.keys(locked)).toEqual(exportNames);
+        for (const name of arrayNames) {
+            const actual = restored[name];
+            const expected = locked[name];
+            expect(actual.constructor).toBe(expected.constructor);
+            expect(Object.getPrototypeOf(actual)).toBe(Object.getPrototypeOf(expected));
+            expect(actual.length).toBe(expected.length);
+            expect(Array.from(actual)).toEqual(Array.from(expected));
+            expect(Buffer.from(actual.buffer, actual.byteOffset, actual.byteLength))
+                .toEqual(Buffer.from(expected.buffer, expected.byteOffset, expected.byteLength));
+        }
+        expect(locked.nodeFlags).toContain(1);
+        expect(locked.nodeFlags).toContain(2);
+        // String equality preserves every UTF-16 code unit, including labels in the exception/private tries.
+        expect(restored.labelText).toBe(locked.labelText);
+        expect(Buffer.from(restored.labelText, 'utf8')).toEqual(Buffer.from(locked.labelText, 'utf8'));
+        expect(restored.rulesRoot).toBe(locked.rulesRoot);
+        expect(restored.exceptionsRoot).toBe(locked.exceptionsRoot);
+    });
+
+    it('roundtrips boundary integers and escaped label text without retaining plain numeric arrays as exports', () => {
+        const data: TrieData = {
+            ...locked,
+            nodeFlags: locked.nodeFlags.slice(),
+            edgeStart: locked.edgeStart.slice(),
+            edgeLength: locked.edgeLength.slice(),
+            edgeChild: locked.edgeChild.slice(),
+            labelText: 'A𱊯A\0\ud800\n"\\',
+            rulesRoot: 0,
+            exceptionsRoot: locked.nodeFlags.length - 1,
+        };
+        // This is a codec-boundary fixture, not a new executable/domain-lookup fixture.
+        data.nodeFlags[0] = 0; data.nodeFlags[1] = 255;
+        data.edgeStart[0] = 0; data.edgeStart[1] = 65535;
+        data.edgeLength[0] = 0; data.edgeLength[1] = 255;
+        data.edgeChild[0] = 0; data.edgeChild[1] = 65535;
+        const restored = restoreData(createPlugin().transform(fixtureSource(data), dataPath)!.code);
+        for (const name of arrayNames) {
+            expect(restored[name].constructor).toBe(data[name].constructor);
+            expect(Array.from(restored[name])).toEqual(Array.from(data[name]));
+            expect(Array.isArray(restored[name])).toBe(false);
+        }
+        expect(restored.labelText).toBe(data.labelText);
+        expect(restored.rulesRoot).toBe(data.rulesRoot);
+        expect(restored.exceptionsRoot).toBe(data.exceptionsRoot);
+    });
+
+    it('defaults to disabled without resolving a dependency or parsing unknown data', () => {
+        const plugin = createUserscriptTldtsDataCompressionPlugin('/unavailable-suffix-root');
+        if (typeof plugin.transform !== 'function') throw new Error('Expected the public plugin transform hook');
+        expect(Reflect.apply(plugin.transform, plugin, ['export const nodeFlags = {', dataPath])).toBeNull();
+        expect(createPlugin(false, '/unavailable-suffix-root').transform(original, dataPath)).toBeNull();
+    });
+
+    it.each([
+        ['unknown-declaration', original + '\nexport const unknown = 1;'],
+        ['side-effect', original + '\nsideEffect();'],
+        ['let', original.replace('export const nodeFlags', 'export let nodeFlags')],
+        ['wrong-export', original.replace('export const nodeFlags', 'export const other')],
+        ['wrong-constructor', original.replace('new Uint8Array', 'new Uint32Array')],
+        ['call-element', original.replace('new Uint8Array([1,', 'new Uint8Array([sideEffect(),')],
+        ['spread-element', original.replace('new Uint8Array([1,', 'new Uint8Array([...other,')],
+        ['negative-element', original.replace('new Uint8Array([1,', 'new Uint8Array([-1,')],
+        ['fractional-element', original.replace('new Uint8Array([1,', 'new Uint8Array([1.5,')],
+        ['overflow-element', original.replace('new Uint8Array([1,', 'new Uint8Array([256,')],
+        ['wrong-array-length', fixtureSource({...locked, nodeFlags: new Uint8Array(1)})],
+        ['root-call', fixtureSource(locked).replace('export const rulesRoot = ' + locked.rulesRoot, 'export const rulesRoot = makeRoot()')],
+        ['root-outside-table', fixtureSource({...locked, exceptionsRoot: locked.nodeFlags.length})],
+        ['label-expression', fixtureSource(locked).replace('export const labelText = ' + JSON.stringify(locked.labelText), 'export const labelText = makeLabels()')],
+        ['wrong-export-order', fixtureSource(locked).split('\n').reverse().join('\n')],
+        ['default-export', 'export default {};'],
+        ['syntax', 'export const nodeFlags = ['],
+    ])('rejects %s instead of evaluating or compressing unknown source', (_label, source) => {
+        expect(() => createPlugin().transform(source, dataPath)).toThrow('seven locked static trie exports');
+    });
+
+    it.each([
+        ['raw', dataPath + '?raw'],
+        ['proxy', dataPath + '?commonjs-proxy'],
+        ['virtual', '\0' + dataPath],
+        ['algorithm', resolve(packageRoot, 'dist/es6/src/suffix-trie.js')],
+        ['unrelated-trie', resolve(process.cwd(), 'fake-tldts/dist/es6/src/data/trie.js')],
+    ])('leaves %s and disabled modules untouched without parsing them', (_label, id) => {
+        expect(createPlugin().transform('throw Error("must not parse")', id)).toBeNull();
+        expect(createPlugin(false).transform(original, id)).toBeNull();
+    });
+
+    it.each([
+        ['ordinary', '0', '0', false],
+        ['standalone', '1', '0', true],
+        ['greasy-fork', '0', '1', false],
+        ['standalone-and-greasy', '1', '1', false],
+    ] as const)('binds the actual %s config to the suffix data plugin and existing bundled decoder only in standalone mode', async (_label, standalone, greasy, enabled) => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', standalone);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', greasy);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        try {
+            vi.resetModules();
+            const {default: configuration, userscriptAliases: aliases} = await import('@/userscript/vite.config');
+            const config = configuration as unknown as {plugins: Array<{name?: string; transform?: unknown}>};
+            const plugin = config.plugins.find(item => item.name === 'compress-standalone-tldts-data') as unknown as ReturnType<typeof createPlugin>;
+            expect(plugin).toBeDefined();
+            const transformed = plugin.transform(original, dataPath);
+            if (enabled) {
+                const restored = restoreData(transformed!.code);
+                for (const name of arrayNames) expect(Array.from(restored[name])).toEqual(Array.from(locked[name]));
+                expect(restored.labelText).toBe(locked.labelText);
+                expect(restored.rulesRoot).toBe(locked.rulesRoot);
+                expect(restored.exceptionsRoot).toBe(locked.exceptionsRoot);
+            } else expect(transformed).toBeNull();
+            const bundled = aliases.find(alias => alias.find === '@/userscript/pakoRuntime');
+            expect(bundled?.replacement).toBe(standalone === '1' ? resolve(process.cwd(), 'userscript/pakoBundled.ts') : undefined);
+        } finally {
+            vi.unstubAllEnvs();
+            vi.resetModules();
+        }
+    });
+
+    it.each([
+        ['new-version', {name: 'tldts', version: '7.4.11'}],
+        ['wrong-package', {name: 'tldts-icann', version: '7.4.10'}],
+        ['missing-version', {name: 'tldts'}],
+    ])('fails closed for %s before resolving or transforming its data module', (_label, manifest) => {
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-suffix-data-owner-'));
+        try {
+            writeFileSync(resolve(fixture, 'package.json'), '{}');
+            const packageRoot = resolve(fixture, 'node_modules/tldts');
+            mkdirSync(packageRoot, {recursive: true});
+            writeFileSync(resolve(packageRoot, 'package.json'), JSON.stringify({...manifest, main: 'index.js'}));
+            expect(() => createPlugin(true, fixture)).toThrow('requires locked tldts 7.4.10');
+        } finally {
+            rmSync(fixture, {recursive: true, force: true});
+        }
+    });
+
+    it('propagates decoder failure and keeps the original module heading, digest and dependency bytes', () => {
+        const transformed = createPlugin().transform(original, dataPath)!;
+        const failure = new Error('controlled suffix decoder failure');
+        expect(() => restoreData(transformed.code, () => {throw failure;})).toThrow(failure);
+        expect(transformed.code.startsWith(original.slice(0, original.indexOf('export const nodeFlags')))).toBe(true);
+        expect(transformed.code).toContain('source sha256 ' + createHash('sha256').update(original).digest('hex'));
+        expect(readFileSync(dataPath, 'utf8')).toBe(original);
+        expect(readFileSync(resolve(packageRoot, 'LICENSE'), 'utf8')).toBe(originalLicense);
+    });
+
+    it('retains the actual original tldts MIT notice when the transformed module id enters the standalone entry', async () => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', '1');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', '0');
+        try {
+            vi.resetModules();
+            const {default: configuration} = await import('@/userscript/vite.config');
+            const plugins = (configuration as {plugins: Array<{name: string; generateBundle?: {handler: Function}}>}).plugins;
+            const plugin = plugins.find(item => item.name === 'bundle-userscript-css')!;
+            const entry = {type: 'chunk', isEntry: true, code: 'var suffixOwnerFixture = 1;', moduleIds: [dataPath]};
+            await Reflect.apply(plugin.generateBundle!.handler, {}, [{}, {'entry.js': entry}]);
+            expect(entry.code).toContain('tldts 7.4.10 — MIT');
+            expect(entry.code).toContain(originalLicense.trim());
+            expect(entry.moduleIds).toEqual([dataPath]);
+            expect(readFileSync(resolve(packageRoot, 'LICENSE'), 'utf8')).toBe(originalLicense);
+        } finally {
+            vi.unstubAllEnvs();
+            vi.resetModules();
+        }
+    });
+
+
+    it('restores all seven locked exports without TextDecoder or a manager decoder global', () => {
+        vi.stubGlobal('TextDecoder', undefined); vi.stubGlobal('pako', undefined);
+        try {
+            const restored = restoreData(createPlugin().transform(original, dataPath)!.code);
+            expect(Object.keys(restored)).toEqual(exportNames);
+            for (const name of arrayNames) {
+                expect(restored[name].constructor).toBe(locked[name].constructor);
+                expect(Array.from(restored[name])).toEqual(Array.from(locked[name]));
+                expect(Buffer.from(restored[name].buffer, restored[name].byteOffset, restored[name].byteLength))
+                    .toEqual(Buffer.from(locked[name].buffer, locked[name].byteOffset, locked[name].byteLength));
+            }
+            expect(restored.labelText).toBe(locked.labelText);
+            expect(restored.rulesRoot).toBe(locked.rulesRoot); expect(restored.exceptionsRoot).toBe(locked.exceptionsRoot);
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it.each(['A\0\ud800🧪汉字\n"\\', ''])('restores controlled JSON label text %j through the official UTF-8 fallback', labelText => {
+        vi.stubGlobal('TextDecoder', undefined);
+        try {
+            const fixture = {...locked, labelText};
+            const restored = restoreData(createPlugin().transform(fixtureSource(fixture), dataPath)!.code);
+            for (const name of arrayNames) expect(Array.from(restored[name])).toEqual(Array.from(fixture[name]));
+            // JSON.stringify preserves the isolated surrogate as an escape before UTF-8 decoding and JSON.parse restores it.
+            expect(restored.labelText).toBe(labelText);
+            expect(restored.rulesRoot).toBe(fixture.rulesRoot); expect(restored.exceptionsRoot).toBe(fixture.exceptionsRoot);
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it('reads a nonzero-offset binary result and exports arrays independent of its backing buffer', () => {
+        let supplied: Uint8Array | undefined;
+        const restored = restoreData(createPlugin().transform(original, dataPath)!.code, compressed => {
+            const decoded = inflateBundledTldtsData(compressed);
+            const backing = Buffer.alloc(decoded.byteLength + 13, 0xa5);
+            backing.set(decoded, 5); supplied = backing.subarray(5, 5 + decoded.byteLength);
+            return supplied;
+        });
+        expect(supplied).toBeDefined(); expect(supplied!.byteOffset).toBeGreaterThan(0);
+        for (const name of arrayNames) {
+            expect(restored[name].constructor).toBe(locked[name].constructor);
+            expect(restored[name].buffer).not.toBe(supplied!.buffer);
+            expect(Array.from(restored[name])).toEqual(Array.from(locked[name]));
+        }
+        supplied!.fill(0);
+        for (const name of arrayNames) expect(Array.from(restored[name])).toEqual(Array.from(locked[name]));
+        expect(restored.labelText).toBe(locked.labelText);
+        expect(restored.rulesRoot).toBe(locked.rulesRoot); expect(restored.exceptionsRoot).toBe(locked.exceptionsRoot);
+    });
+
+    it.each([
+        ['truncated bytes', 'Invalid locked suffix data length'],
+        ['extra bytes', 'Invalid locked suffix data length'],
+        ['non-string JSON labels', 'Invalid locked suffix labels'],
+    ])('fails closed for %s and can restore the next valid binary payload', (kind, expected) => {
+        const transformed = createPlugin().transform(original, dataPath)!.code;
+        expect(() => restoreData(transformed, compressed => {
+            const decoded = inflateBundledTldtsData(compressed);
+            if (kind === 'truncated bytes') return decoded.subarray(0, decoded.byteLength - 1);
+            if (kind === 'extra bytes') {const longer = new Uint8Array(decoded.byteLength + 1); longer.set(decoded); return longer;}
+            const invalid = Uint8Array.from(decoded);
+            const tableBytes = arrayNames.reduce((total, name) => total + locked[name].byteLength, 0);
+            invalid.fill(0x20, tableBytes); invalid.set(Buffer.from('null', 'utf8'), tableBytes);
+            return invalid;
+        })).toThrow(expected);
+        const restored = restoreData(transformed);
+        for (const name of arrayNames) expect(Array.from(restored[name])).toEqual(Array.from(locked[name]));
+        expect(restored.labelText).toBe(locked.labelText);
+        expect(restored.rulesRoot).toBe(locked.rulesRoot); expect(restored.exceptionsRoot).toBe(locked.exceptionsRoot);
+    });
+});
+
+describe('standalone About images at explicit use boundaries', () => {
+    const root = process.cwd();
+    const helperId = realpathSync(resolve(root, 'src/app/options/aboutImages.ts'));
+    const originalImage = (relative: string) => readFileSync(resolve(root, relative));
+    const originals = {
+        support: originalImage('public/misc/approve.jpg'),
+        contact: originalImage('src/app/options/assets/wechat-contact.jpg'),
+    };
+    const expectedUrl = (kind: keyof typeof originals) => 'data:image/jpeg;base64,' + originals[kind].toString('base64');
+    const createPlugin = (enabled = true, fixtureRoot = root) => createUserscriptAboutImagesCompressionPlugin(fixtureRoot, enabled) as unknown as {
+        name: string; load(id: string): string | null;
+    };
+    async function loadAccessors(decoder = vi.fn(inflateBundledFrancData)) {
+        const source = createPlugin().load(helperId)!;
+        const {transformWithEsbuild} = await import('vite');
+        const compiled = await transformWithEsbuild(source, 'about-images-owner.js', {format: 'cjs', target: 'es2018'});
+        const module = {exports: {} as {getSupportImageUrl(normal: string): string; getContactImageUrl(): string}};
+        const decode = vi.fn(atob);
+        const hostImage = {controlledHostImage: true};
+        const realm = {module, exports: module.exports, Uint8Array, atob: decode,
+            __FLUENTREAD_APPROVE_DATA__: hostImage,
+            require: (id: string) => {
+                expect(id).toBe('@/userscript/pakoRuntime');
+                return {inflateWithPako: decoder};
+            }};
+        runInNewContext(compiled.code, realm, {timeout: 5_000});
+        expect(decoder).not.toHaveBeenCalled();
+        expect(decode).not.toHaveBeenCalled();
+        expect(realm.__FLUENTREAD_APPROVE_DATA__).toBe(hostImage);
+        return {api: module.exports, decoder, decode, realm, hostImage, source};
+    }
+    function assertImage(actual: string, kind: keyof typeof originals) {
+        expect(actual).toBe(expectedUrl(kind));
+        expect(Buffer.from(actual.slice('data:image/jpeg;base64,'.length), 'base64')).toEqual(originals[kind]);
+    }
+
+    it('keeps the ordinary caller snapshot and existing contact asset route', () => {
+        for (const normal of ['/misc/approve.jpg', 'controlled-captured-data-url', '']) {
+            expect(getNormalSupportImageUrl(normal)).toBe(normal);
+        }
+        expect(getNormalContactImageUrl()).toBe(ordinaryContactAsset);
+    });
+
+    it.each(['support-first', 'contact-first'] as const)('keeps import lazy and restores complete original JPEGs independently with %s', async order => {
+        const h = await loadAccessors();
+        const support = () => h.api.getSupportImageUrl('controlled-normal-url');
+        const contact = () => h.api.getContactImageUrl();
+        const first = order === 'support-first' ? support : contact;
+        const second = order === 'support-first' ? contact : support;
+        assertImage(first(), order === 'support-first' ? 'support' : 'contact');
+        expect(h.decoder).toHaveBeenCalledTimes(1);expect(h.decode).toHaveBeenCalledTimes(1);
+        first();first();expect(h.decoder).toHaveBeenCalledTimes(1);
+        assertImage(second(), order === 'support-first' ? 'contact' : 'support');
+        expect(h.decoder).toHaveBeenCalledTimes(2);expect(h.decode).toHaveBeenCalledTimes(2);
+        assertImage(support(), 'support');assertImage(contact(), 'contact');
+        expect(h.decoder).toHaveBeenCalledTimes(2);
+        expect(h.realm.__FLUENTREAD_APPROVE_DATA__).toBe(h.hostImage);
+    });
+
+    it.each(['support', 'contact'] as const)('does not publish a failed %s restoration or affect the other successful cache', async kind => {
+        const decoder = vi.fn(inflateBundledFrancData).mockImplementationOnce(() => {throw new Error('controlled restore failure');});
+        const h = await loadAccessors(decoder);
+        const selected = () => kind === 'support' ? h.api.getSupportImageUrl('normal') : h.api.getContactImageUrl();
+        const other = () => kind === 'support' ? h.api.getContactImageUrl() : h.api.getSupportImageUrl('normal');
+        expect(selected).toThrow('controlled restore failure');expect(decoder).toHaveBeenCalledTimes(1);
+        assertImage(other(), kind === 'support' ? 'contact' : 'support');
+        other();expect(decoder).toHaveBeenCalledTimes(2);
+        assertImage(selected(), kind);expect(decoder).toHaveBeenCalledTimes(3);
+        selected();other();expect(decoder).toHaveBeenCalledTimes(3);
+        expect(h.decode).toHaveBeenCalledTimes(3);
+    });
+
+    it('defaults to disabled without reading nonexistent helper or image files', () => {
+        const plugin = createUserscriptAboutImagesCompressionPlugin('/unavailable-about-images-root');
+        if (typeof plugin.load !== 'function') throw new Error('Expected image load hook');
+        expect(Reflect.apply(plugin.load, plugin, [helperId])).toBeNull();
+        expect(createPlugin(false, '/unavailable-about-images-root').load(helperId)).toBeNull();
+    });
+
+    it.each([
+        ['raw', helperId + '?raw'], ['proxy', helperId + '?commonjs-proxy'],
+        ['virtual', '\0' + helperId], ['another-module', resolve(root, 'src/app/options/other.ts')],
+        ['similar-path', resolve(root, 'fake-src/app/options/aboutImages.ts')],
+    ])('leaves the %s route and disabled module untouched', (_label, id) => {
+        expect(createPlugin().load(id)).toBeNull();
+        expect(createPlugin(false).load(id)).toBeNull();
+    });
+
+    it.each([
+        ['ordinary', '0', '0', false], ['standalone', '1', '0', true],
+        ['greasy-fork', '0', '1', false], ['standalone-and-greasy', '1', '1', false],
+    ] as const)('uses the actual %s config plugin, Vite alias resolution and asset path', async (_label, standalone, greasy, enabled) => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', standalone);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', greasy);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-about-images-owner-'));
+        try {
+            vi.resetModules();
+            const {default: configuration} = await import('@/userscript/vite.config');
+            const config = configuration as import('vite').UserConfig;
+            const plugin = (config.plugins as import('vite').Plugin[]).find(item => item.name === 'compress-standalone-about-images');
+            expect(plugin).toBeDefined();
+            const entryPath = resolve(fixture, 'entry.mjs');
+            writeFileSync(entryPath, 'import {getSupportImageUrl,getContactImageUrl} from "@/src/app/options/aboutImages"; globalThis.aboutImagesOwner={getSupportImageUrl,getContactImageUrl};');
+            const {build} = await import('vite');
+            const result = await build({root, configFile: false, publicDir: false, logLevel: 'silent',
+                plugins: [plugin!], resolve: config.resolve,
+                build: {...config.build, write: false, outDir: resolve(fixture, 'unused-output'),
+                    lib: {entry: entryPath, name: 'AboutImagesOwner', formats: ['iife']},
+                    rollupOptions: {output: {inlineDynamicImports: true}}}});
+            const outputs = Array.isArray(result) ? result : [result];
+            expect(outputs).toHaveLength(1);
+            if (!('output' in outputs[0])) throw new Error('Expected actual Rollup output');
+            expect(outputs[0].output).toHaveLength(1);
+            const chunk = outputs[0].output[0];
+            if (chunk.type !== 'chunk') throw new Error('Expected complete image owner entry');
+            expect(chunk.imports).toEqual([]);expect(chunk.dynamicImports).toEqual([]);
+            const decode = vi.fn(atob);
+            const realm = {aboutImagesOwner: undefined as any, atob: decode, Uint8Array, ArrayBuffer};
+            runInNewContext(chunk.code, realm, {timeout: 5_000});
+            expect(decode).not.toHaveBeenCalled();
+            const api = realm.aboutImagesOwner;
+            const normalUrl = 'controlled-captured-normal-url';
+            const support = api.getSupportImageUrl(normalUrl);
+            assertImage(api.getContactImageUrl(), 'contact');
+            if (enabled) {
+                assertImage(support, 'support');expect(decode).toHaveBeenCalledTimes(2);
+                expect(chunk.code).not.toContain(expectedUrl('support'));
+                expect(chunk.code).not.toContain(expectedUrl('contact'));
+                expect(chunk.moduleIds).not.toContain(resolve(root, 'src/app/options/assets/wechat-contact.jpg'));
+            } else {
+                expect(support).toBe(normalUrl);expect(decode).not.toHaveBeenCalled();
+                expect(chunk.moduleIds).toContain(resolve(root, 'src/app/options/assets/wechat-contact.jpg'));
+            }
+            api.getSupportImageUrl('other-normal-url');api.getContactImageUrl();
+            expect(decode).toHaveBeenCalledTimes(enabled ? 2 : 0);
+            const bootstrapPlugin = (config.plugins as import('vite').Plugin[]).find(item => item.name === 'bundle-userscript-css') as unknown as {
+                generateBundle: {handler: Function};
+            };
+            await Reflect.apply(bootstrapPlugin.generateBundle.handler, {emitFile: vi.fn()}, [{}, {'entry.js': chunk}]);
+            expect(chunk.code).not.toMatch(/globalThis\.__FLUENTREAD_APPROVE_DATA__\s*=/u);
+            if (enabled) {
+                expect(chunk.code).not.toContain(expectedUrl('support'));
+                expect(chunk.code).not.toContain(expectedUrl('contact'));
+            }
+        } finally {
+            rmSync(fixture, {recursive: true, force: true});
+            vi.unstubAllEnvs();vi.resetModules();
+        }
+    });
+});
+
+describe('standalone service brand paths at actual icon use', () => {
+    const root = process.cwd();
+    const helperId = realpathSync(resolve(root, 'src/ui/assets/serviceBrandIcons.ts'));
+    const dataPath = resolve(root, 'src/ui/assets/serviceBrandPaths.json');
+    type Shape = Array<Record<string, string>>;
+    type BrandApi = {getServiceBrandIcon(service: string): Shape | undefined};
+    const expected = originalServiceBrandPaths as unknown as Record<string, Shape>;
+    const unknownServices = ['unknown', 'constructor', '__proto__', 'toString', 'custom:work', 'google'];
+    type BrandPlugin = {load(id: string): string | null};
+    const createPlugin = (enabled = true, fixtureRoot = root) => createUserscriptServiceBrandIconsCompressionPlugin(fixtureRoot, enabled) as unknown as BrandPlugin;
+    function loadHook(plugin: BrandPlugin, id: string) {
+        const addWatchFile = vi.fn();
+        const source = Reflect.apply(plugin.load, {addWatchFile}, [id]) as string | null;
+        return {source, addWatchFile};
+    }
+    function positiveSource(plugin = createPlugin(), id = helperId, watchedPath = dataPath) {
+        const result = loadHook(plugin, id);
+        expect(result.addWatchFile).toHaveBeenCalledTimes(1);expect(result.addWatchFile).toHaveBeenCalledWith(watchedPath);
+        expect(result.source).toBeTypeOf('string');
+        if (typeof result.source !== 'string') throw new Error('Expected actual brand data module');
+        return result.source;
+    }
+    async function loadAccessors(decoder = vi.fn(inflateBundledFrancData), source = positiveSource()) {
+        const {transformWithEsbuild} = await import('vite');
+        const compiled = await transformWithEsbuild(source, 'service-brands-owner.js', {format: 'cjs', target: 'es2018'});
+        const module = {exports: {} as BrandApi};
+        const decode = vi.fn(atob), parse = vi.fn(JSON.parse), hostData = {controlledHostData: true};
+        const realm = {module, exports: module.exports, Uint8Array, atob: decode, JSON: {parse}, controlledHostData: hostData,
+            require: (id: string) => {
+                expect(id).toBe('@/userscript/pakoRuntime');
+                return {inflateWithPako: decoder};
+            }};
+        runInNewContext(compiled.code, realm, {timeout: 5_000});
+        expect(decoder).not.toHaveBeenCalled();expect(decode).not.toHaveBeenCalled();expect(parse).not.toHaveBeenCalled();
+        expect(realm.controlledHostData).toBe(hostData);
+        return {api: module.exports, decoder, decode, parse, realm, hostData};
+    }
+    function assertAllBrands(api: BrandApi, input: Record<string, Shape> = expected) {
+        for (const [service, shape] of Object.entries(input)) {
+            const restored = api.getServiceBrandIcon(service);
+            expect(restored, service).toEqual(shape);
+            expect(restored?.map(attributes => Object.entries(attributes)), service).toEqual(shape.map(attributes => Object.entries(attributes)));
+            expect(api.getServiceBrandIcon(service), service).toBe(restored);
+        }
+    }
+    async function withDataFixture(value: unknown, use: (fixtureRoot: string, id: string, watchedPath: string) => Promise<void> | void) {
+        const fixtureRoot = mkdtempSync(resolve(tmpdir(), 'fluentread-service-brands-owner-'));
+        const assets = resolve(fixtureRoot, 'src/ui/assets');
+        try {
+            mkdirSync(assets, {recursive: true});
+            const id = resolve(assets, 'serviceBrandIcons.ts'), watchedPath = resolve(assets, 'serviceBrandPaths.json');
+            writeFileSync(id, 'export {};');writeFileSync(watchedPath, JSON.stringify(value));
+            await use(fixtureRoot, realpathSync(id), watchedPath);
+        } finally {rmSync(fixtureRoot, {recursive: true, force: true});}
+    }
+
+    it.each(['deepL', 'openai'])('restores the entire ordered table only at the first existing %s brand and shares the successful cache', async first => {
+        const h = await loadAccessors();
+        for (const service of unknownServices) {expect(Object.hasOwn(expected, service)).toBe(false);expect(h.api.getServiceBrandIcon(service)).toBeUndefined();}
+        expect(h.decoder).not.toHaveBeenCalled();expect(h.decode).not.toHaveBeenCalled();expect(h.parse).not.toHaveBeenCalled();
+        expect(h.api.getServiceBrandIcon(first)).toEqual(expected[first]);
+        expect(h.decoder).toHaveBeenCalledTimes(1);expect(h.decode).toHaveBeenCalledTimes(1);expect(h.parse).toHaveBeenCalledTimes(1);
+        const restoredTable = h.parse.mock.results[0].value as Record<string, Shape>;
+        expect(Object.keys(restoredTable)).toEqual(Object.keys(expected));
+        assertAllBrands(h.api);
+        for (const service of unknownServices) expect(h.api.getServiceBrandIcon(service)).toBeUndefined();
+        expect(h.decoder).toHaveBeenCalledTimes(1);expect(h.decode).toHaveBeenCalledTimes(1);expect(h.parse).toHaveBeenCalledTimes(1);
+        expect(h.realm.controlledHostData).toBe(h.hostData);
+    });
+
+    it.each(['crc', 'decoder', 'malformed-json', 'null-root', 'array-root', 'numeric-root', 'missing-current', 'empty-current', 'wrong-current-type'] as const)('does not cache %s failure and can restore a valid table in the same module', async failure => {
+        const decoder = vi.fn(inflateBundledFrancData).mockImplementationOnce(bytes => {
+            switch (failure) {
+                case 'crc': {const damaged = Uint8Array.from(bytes);damaged[damaged.length - 8] ^= 0xff;return inflateBundledFrancData(damaged);}
+                case 'decoder': throw new Error('controlled brand restoration failure');
+                case 'malformed-json': return '{';
+                case 'null-root': return 'null';
+                case 'array-root': return '[]';
+                case 'numeric-root': return '1';
+                case 'missing-current': return '{}';
+                case 'empty-current': return '{"deepL":[]}';
+                case 'wrong-current-type': return '{"deepL":{}}';
+            }
+        });
+        const h = await loadAccessors(decoder);
+        expect(() => h.api.getServiceBrandIcon('deepL')).toThrow();
+        expect(h.decoder).toHaveBeenCalledTimes(1);expect(h.decode).toHaveBeenCalledTimes(1);
+        expect(h.api.getServiceBrandIcon('constructor')).toBeUndefined();expect(h.decoder).toHaveBeenCalledTimes(1);
+        expect(h.api.getServiceBrandIcon('deepL')).toEqual(expected.deepL);
+        assertAllBrands(h.api);
+        expect(h.decoder).toHaveBeenCalledTimes(2);expect(h.decode).toHaveBeenCalledTimes(2);
+        expect(h.parse).toHaveBeenCalledTimes(failure === 'crc' || failure === 'decoder' ? 1 : 2);
+        expect(h.realm.controlledHostData).toBe(h.hostData);
+    });
+
+    it('defaults to disabled without reading or watching an unavailable helper or data file', () => {
+        for (const plugin of [createUserscriptServiceBrandIconsCompressionPlugin('/unavailable-service-brands-root') as unknown as BrandPlugin, createPlugin(false, '/unavailable-service-brands-root')]) {
+            const result = loadHook(plugin, helperId);
+            expect(result.source).toBeNull();expect(result.addWatchFile).not.toHaveBeenCalled();
+        }
+    });
+
+    it.each(['raw', 'proxy', 'virtual', 'another-module', 'similar-path'] as const)('leaves the %s route untouched without reading or watching unavailable data', async kind => {
+        await withDataFixture({}, (fixtureRoot, id, watchedPath) => {
+            rmSync(watchedPath);
+            const ignored = {raw: id + '?raw', proxy: id + '?commonjs-proxy', virtual: '\0' + id,
+                'another-module': resolve(fixtureRoot, 'src/ui/assets/other.ts'),
+                'similar-path': resolve(fixtureRoot, 'fake-src/ui/assets/serviceBrandIcons.ts')}[kind];
+            for (const plugin of [createPlugin(true, fixtureRoot), createPlugin(false, fixtureRoot)]) {
+                const result = loadHook(plugin, ignored);
+                expect(result.source).toBeNull();expect(result.addWatchFile).not.toHaveBeenCalled();
+            }
+        });
+    });
+
+    it.each([
+        ['null-table', null], ['array-table', []], ['empty-table', {}],
+        ['non-array-entry', {fixture: {d: 'M0 0'}}], ['empty-entry', {fixture: []}],
+        ['missing-d', {fixture: [{'clip-rule': 'evenodd'}]}], ['non-string-d', {fixture: [{d: 1}]}],
+        ['invalid-path', {fixture: [{d: '<script>'}]}], ['event-attribute', {fixture: [{d: 'M0 0', onload: 'controlled'}]}],
+        ['link-attribute', {fixture: [{d: 'M0 0', href: 'https://fixture.invalid/'}]}], ['non-string-attribute', {fixture: [{d: 'M0 0', opacity: 1}]}],
+    ] as const)('rejects %s schema after registering exactly its actual JSON dependency', async (_label, value) => {
+        await withDataFixture(value, (fixtureRoot, id, watchedPath) => {
+            const addWatchFile = vi.fn();
+            expect(() => Reflect.apply(createPlugin(true, fixtureRoot).load, {addWatchFile}, [id])).toThrow();
+            expect(addWatchFile).toHaveBeenCalledTimes(1);expect(addWatchFile).toHaveBeenCalledWith(watchedPath);
+        });
+    });
+
+    it('preserves all allowed ordered attributes and own reserved-looking brand keys without inheriting a fallback', async () => {
+        const attributes = {d: 'M0 0 L1 1 Z', 'clip-rule': 'evenodd', 'fill-rule': 'nonzero', opacity: '0.5', 'fill-opacity': '0.25'};
+        const value = JSON.parse('{"__proto__":[],"constructor":[],"fixture":[]}') as Record<string, Shape>;
+        for (const service of Object.keys(value)) value[service] = [attributes, {d: 'M1 1 L2 2'}];
+        await withDataFixture(value, async (fixtureRoot, id, watchedPath) => {
+            const h = await loadAccessors(vi.fn(inflateBundledFrancData), positiveSource(createPlugin(true, fixtureRoot), id, watchedPath));
+            expect(h.api.getServiceBrandIcon('toString')).toBeUndefined();expect(h.decoder).not.toHaveBeenCalled();
+            assertAllBrands(h.api, value);
+            expect(Object.keys(h.parse.mock.results[0].value)).toEqual(Object.keys(value));
+            expect(h.decoder).toHaveBeenCalledTimes(1);expect(h.decode).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    it.each([
+        ['ordinary', '0', '0', false], ['standalone', '1', '0', true],
+        ['greasy-fork', '0', '1', false], ['standalone-and-greasy', '1', '1', false],
+    ] as const)('uses the actual %s Vite mode, alias and real complete data without eager restoration', async (_label, standalone, greasy, enabled) => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', standalone);vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', greasy);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-service-brands-mode-owner-'));
+        try {
+            vi.resetModules();
+            const {default: configuration} = await import('@/userscript/vite.config');
+            const config = configuration as import('vite').UserConfig;
+            const plugin = (config.plugins as import('vite').Plugin[]).find(item => item.name === 'compress-standalone-service-brand-icons');
+            expect(plugin).toBeDefined();
+            const entryPath = resolve(fixture, 'entry.mjs');
+            writeFileSync(entryPath, 'import {getServiceBrandIcon} from "@/src/ui/assets/serviceBrandIcons"; globalThis.serviceBrandOwner={getServiceBrandIcon};');
+            const {build} = await import('vite');
+            const result = await build({root, configFile: false, publicDir: false, logLevel: 'silent', plugins: [plugin!], resolve: config.resolve,
+                build: {...config.build, write: false, outDir: resolve(fixture, 'unused-output'),
+                    lib: {entry: entryPath, name: 'ServiceBrandOwner', formats: ['iife']}, rollupOptions: {output: {inlineDynamicImports: true}}}});
+            const outputs = Array.isArray(result) ? result : [result];
+            expect(outputs).toHaveLength(1);
+            if (!('output' in outputs[0]) || outputs[0].output.length !== 1 || outputs[0].output[0].type !== 'chunk') throw new Error('Expected actual complete brand owner chunk');
+            const chunk = outputs[0].output[0];
+            expect(chunk.imports).toEqual([]);expect(chunk.dynamicImports).toEqual([]);
+            expect(chunk.moduleIds).toContain(helperId);
+            expect(chunk.moduleIds.includes(dataPath)).toBe(!enabled);
+            const decode = vi.fn(atob), parse = vi.fn(JSON.parse), hostData = {controlledHostData: true};
+            const realm = {serviceBrandOwner: undefined as BrandApi | undefined, atob: decode, Uint8Array, ArrayBuffer, JSON: {parse}, controlledHostData: hostData};
+            runInNewContext(chunk.code, realm, {timeout: 5_000});
+            const api = realm.serviceBrandOwner;
+            if (!api) throw new Error('Actual brand owner API missing');
+            expect(decode).not.toHaveBeenCalled();expect(parse).not.toHaveBeenCalled();
+            for (const service of unknownServices) expect(api.getServiceBrandIcon(service)).toBeUndefined();
+            expect(decode).not.toHaveBeenCalled();expect(parse).not.toHaveBeenCalled();
+            assertAllBrands(api);
+            expect(decode).toHaveBeenCalledTimes(enabled ? 1 : 0);expect(parse).toHaveBeenCalledTimes(enabled ? 1 : 0);
+            expect(realm.controlledHostData).toBe(hostData);
+            expect(readFileSync(resolve(root, 'public/third-party-notices/lobe-icons-MIT.txt'), 'utf8')).toContain('Copyright (c) 2023 LobeHub');
+        } finally {rmSync(fixture, {recursive: true, force: true});vi.unstubAllEnvs();vi.resetModules();}
     });
 });

@@ -1,0 +1,54 @@
+{
+  "total": {
+    "lines": {
+      "total": 93,
+      "covered": 93,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "statements": {
+      "total": 93,
+      "covered": 93,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "functions": {
+      "total": 7,
+      "covered": 7,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "branches": {
+      "total": 69,
+      "covered": 69,
+      "skipped": 0,
+      "pct": 100.0
+    }
+  },
+  "/Users/thinkstu/Desktop/copy/FluentRead-target-language-quality-20261011/src/core/translation/targetResult.ts": {
+    "lines": {
+      "total": 93,
+      "covered": 93,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "statements": {
+      "total": 93,
+      "covered": 93,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "functions": {
+      "total": 7,
+      "covered": 7,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "branches": {
+      "total": 69,
+      "covered": 69,
+      "skipped": 0,
+      "pct": 100.0
+    }
+  }
+}

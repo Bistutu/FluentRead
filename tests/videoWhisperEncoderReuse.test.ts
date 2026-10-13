@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from 'vitest';
-import {prepareWhisperEncoderReuse, withWhisperStoppingCriteria, type WhisperEncoderReuseModel} from '@/src/features/video-subtitle/offscreen/whisperEncoderReuse';
+import {prepareWhisperEncoderReuse, prepareWhisperProcessorReuse, withWhisperStoppingCriteria, type WhisperEncoderReuseModel, type WhisperAudioProcessor} from '@/src/features/video-subtitle/offscreen/whisperEncoderReuse';
 
 function fixture() {
   const tensor = {dims: [1, 1500, 384], dispose: vi.fn()};
@@ -102,6 +102,111 @@ describe('Whisper 3.8.1 单窗编码适配', () => {
     const f = fixture();
     f.model._prepare_encoder_decoder_kwargs_for_generation = vi.fn(async () => {throw new Error('encoder failed');});
     await expect(prepareWhisperEncoderReuse(f.model, f.processed, '3.8.1')).rejects.toThrow('encoder failed');
+  });
+});
+
+describe('Whisper 3.8.1 单窗特征适配', () => {
+  function processorFixture(inherited = false) {
+    const processor = vi.fn(async (_audio: Float32Array) => ({})) as WhisperAudioProcessor;
+    processor.feature_extractor = {config: {sampling_rate: 16_000, chunk_length: 30, hop_length: 160}};
+    const transcriber = inherited ? Object.create({processor}) : {processor};
+    transcriber.model = {config: {model_type: 'whisper'}};
+    const feature = {dims: [1, 80, 3000], dispose: vi.fn()};
+    const processed = {input_features: feature};
+    return {processor, transcriber, processed, feature, audio: Float32Array.from([.1, .2])};
+  }
+
+  it.each([
+    ['未知版本', (f: ReturnType<typeof processorFixture>) => f, '3.8.2'],
+    ['无模型', (f: ReturnType<typeof processorFixture>) => {delete f.transcriber.model; return f;}],
+    ['无模型配置', (f: ReturnType<typeof processorFixture>) => {f.transcriber.model = {}; return f;}],
+    ['其他模型', (f: ReturnType<typeof processorFixture>) => {f.transcriber.model.config.model_type = 'other'; return f;}],
+    ['无processor', (f: ReturnType<typeof processorFixture>) => {delete f.transcriber.processor; return f;}],
+    ['不可调用processor', (f: ReturnType<typeof processorFixture>) => {f.transcriber.processor = {}; return f;}],
+    ['无extractor', (f: ReturnType<typeof processorFixture>) => {delete f.processor.feature_extractor; return f;}],
+    ['无extractor配置', (f: ReturnType<typeof processorFixture>) => {f.processor.feature_extractor = {}; return f;}],
+    ['采样率变化', (f: ReturnType<typeof processorFixture>) => {f.processor.feature_extractor!.config!.sampling_rate = 48000; return f;}],
+    ['窗长变化', (f: ReturnType<typeof processorFixture>) => {f.processor.feature_extractor!.config!.chunk_length = 20; return f;}],
+    ['步长变化', (f: ReturnType<typeof processorFixture>) => {f.processor.feature_extractor!.config!.hop_length = 80; return f;}],
+    ['无特征', (f: ReturnType<typeof processorFixture>) => {f.processed = {} as any; return f;}],
+    ['无形状', (f: ReturnType<typeof processorFixture>) => {f.feature.dims = undefined as any; return f;}],
+    ['形状维数变化', (f: ReturnType<typeof processorFixture>) => {f.feature.dims = [1, 80]; return f;}],
+    ['多batch', (f: ReturnType<typeof processorFixture>) => {f.feature.dims[0] = 2; return f;}],
+    ['特征维变化', (f: ReturnType<typeof processorFixture>) => {f.feature.dims[1] = 128; return f;}],
+    ['帧数变化', (f: ReturnType<typeof processorFixture>) => {f.feature.dims[2] = 1500; return f;}],
+    ['无法释放', (f: ReturnType<typeof processorFixture>) => {f.feature.dispose = null as any; return f;}],
+    ['不可恢复own属性', (f: ReturnType<typeof processorFixture>) => {Object.defineProperty(f.transcriber, 'processor', {configurable: false}); return f;}],
+    ['不可扩展继承对象', (_f: ReturnType<typeof processorFixture>) => {const f = processorFixture(true); Object.preventExtensions(f.transcriber); return f;}],
+  ] as const)('不兼容时保留原处理流程：%s', (_name, change, version?: string) => {
+    const f = change(processorFixture());
+    expect(prepareWhisperProcessorReuse(f.transcriber, f.audio, f.processed, version || '3.8.1')).toBeNull();
+    expect(f.processor).not.toHaveBeenCalled();
+    if (typeof f.feature.dispose === 'function') expect(f.feature.dispose).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('同一音频只复用一次，保留配置和张量归属，恢复原属性（继承：%s）', async inherited => {
+    const f = processorFixture(inherited), descriptor = Object.getOwnPropertyDescriptor(f.transcriber, 'processor');
+    const lease = prepareWhisperProcessorReuse(f.transcriber, f.audio, f.processed, '3.8.1')!;
+    expect(await lease.transcribe({}, async () => {
+      expect(f.transcriber.processor.feature_extractor).toBe(f.processor.feature_extractor);
+      const processed = await f.transcriber.processor(f.audio);
+      expect(processed).toBe(f.processed);
+      expect(f.feature.dispose).not.toHaveBeenCalled();
+      return 'complete';
+    })).toBe('complete');
+    expect(f.processor).not.toHaveBeenCalled();
+    expect(f.feature.dispose).not.toHaveBeenCalled();
+    expect(Object.getOwnPropertyDescriptor(f.transcriber, 'processor')).toEqual(descriptor);
+    expect(f.transcriber.processor).toBe(f.processor);
+    await expect(lease.transcribe({}, async () => null)).rejects.toThrow('跨请求');
+  });
+
+  it('保留getter this 与不可写但可恢复的原descriptor，异常也准确恢复', async () => {
+    const f = processorFixture();
+    Object.defineProperty(f.processor, 'feature_extractor', {get() {expect(this).toBe(f.transcriber.processor); return {config: {sampling_rate: 16_000, chunk_length: 30, hop_length: 160}};}});
+    Object.defineProperty(f.transcriber, 'processor', {writable: false, enumerable: false});
+    const descriptor = Object.getOwnPropertyDescriptor(f.transcriber, 'processor');
+    const lease = prepareWhisperProcessorReuse(f.transcriber, f.audio, f.processed, '3.8.1')!;
+    await expect(lease.transcribe({}, async () => {
+      expect(f.transcriber.processor.feature_extractor!.config!.sampling_rate).toBe(16000);
+      await f.transcriber.processor(f.audio);
+      throw new Error('decode failed');
+    })).rejects.toThrow('decode failed');
+    expect(Object.getOwnPropertyDescriptor(f.transcriber, 'processor')).toEqual(descriptor);
+    expect(f.feature.dispose).not.toHaveBeenCalled();
+  });
+
+  it.each(['foreign', 'extra', 'twice'])('流水线音频契约改变时拒绝并恢复：%s', async mode => {
+    const f = processorFixture(), lease = prepareWhisperProcessorReuse(f.transcriber, f.audio, f.processed, '3.8.1')!;
+    await expect(lease.transcribe({chunk_length_s: 0}, async () => {
+      if (mode === 'foreign') return f.transcriber.processor(f.audio.slice());
+      if (mode === 'extra') return f.transcriber.processor(f.audio, {});
+      await f.transcriber.processor(f.audio);
+      return f.transcriber.processor(f.audio);
+    })).rejects.toThrow('改变了当前音频窗');
+    expect(f.transcriber.processor).toBe(f.processor);
+  });
+
+  it('拒绝内部分块与同实例并发，其他实例独立，encoder和stop hook可以嵌套', async () => {
+    const a = processorFixture(), b = processorFixture();
+    const lease = prepareWhisperProcessorReuse(a.transcriber, a.audio, a.processed, '3.8.1')!;
+    const same = prepareWhisperProcessorReuse(a.transcriber, a.audio, a.processed, '3.8.1')!;
+    const other = prepareWhisperProcessorReuse(b.transcriber, b.audio, b.processed, '3.8.1')!;
+    await expect(lease.transcribe({chunk_length_s: 10}, async () => null)).rejects.toThrow('内部分块');
+    const e = fixture(), encoder = (await prepareWhisperEncoderReuse(e.model, e.processed, '3.8.1'))!;
+    a.transcriber.model = e.model;
+    e.model._get_stopping_criteria = () => ({criteria: [] as unknown[], push(item) {this.criteria.push(item);}});
+    await lease.transcribe({}, async () => {
+      await expect(same.transcribe({}, async () => null)).rejects.toThrow('并发');
+      expect(await other.transcribe({}, async () => b.transcriber.processor(b.audio))).toBe(b.processed);
+      await encoder.transcribe({}, async () => withWhisperStoppingCriteria(e.model, {}, '3.8.1', async () => {
+        expect(await a.transcriber.processor(a.audio)).toBe(a.processed);
+      }));
+    });
+    await same.transcribe({}, async () => a.transcriber.processor(a.audio));
+    expect(a.transcriber.processor).toBe(a.processor);
+    expect(e.model.forward_params).toBe(e.forwardParams);
+    encoder.dispose();
   });
 });
 

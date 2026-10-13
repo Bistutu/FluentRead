@@ -1,7 +1,7 @@
 /**
  * @file userscript/uiLanguageBundles.ts
  * 文件职责：按需加载并注册 userscript 的六种非中文界面语言。
- * 主要内容：英文内嵌 gzip；其他语言从静态 JSON 获取并缓存在 GM 私有存储中。
+ * 主要内容：英文内嵌 gzip；其他语言从静态 JSON 获取并缓存在 GM 私有存储中，注册时补齐缺少的错误恢复文案。
  * 模块边界：只注册核心 i18n 资源，不访问宿主网页存储；扩展继续使用自己的按需资源加载器。
  */
 import {
@@ -17,6 +17,31 @@ import {userscriptFetch} from './http';
 import {getStoredValue, setStoredValue} from './storage';
 
 const pending = new Map<RegisteredUiLanguage, Promise<boolean>>();
+
+type RecoveryMessages = Readonly<Record<'learning.panelLoadError' | 'learning.reloadPage', string>>;
+// 固定远程词典保持原发布内容；仅在注册时补齐缺少的恢复文案。
+const recoveryMessages: Readonly<Partial<Record<RegisteredUiLanguage, RecoveryMessages>>> = {
+    'ja-JP': {
+        "learning.panelLoadError": "この項目を開けませんでした。ページを再読み込みして、もう一度お試しください。",
+        "learning.reloadPage": "ページを再読み込み",
+    },
+    'ko-KR': {
+        "learning.panelLoadError": "이 항목을 열 수 없습니다. 페이지를 새로고침한 후 다시 시도하세요.",
+        "learning.reloadPage": "페이지 새로고침",
+    },
+    'fr-FR': {
+        "learning.panelLoadError": "Cette section n’a pas pu être ouverte. Rechargez la page pour réessayer.",
+        "learning.reloadPage": "Recharger la page",
+    },
+    'ru-RU': {
+        "learning.panelLoadError": "Не удалось открыть этот раздел. Перезагрузите страницу и попробуйте снова.",
+        "learning.reloadPage": "Перезагрузить страницу",
+    },
+    'es-ES': {
+        "learning.panelLoadError": "No se pudo abrir esta sección. Recarga la página para volver a intentarlo.",
+        "learning.reloadPage": "Recargar página",
+    },
+};
 
 async function inflateBundle(base64: string): Promise<UiLanguageBundle> {
     return JSON.parse(await inflateGzipBase64(base64)) as UiLanguageBundle;
@@ -75,7 +100,10 @@ export const ensureUiLanguageBundle: EnsureUiLanguageBundle = (value) => {
     const request = (embedded ? Promise.resolve(embedded) : compressed ? inflateBundle(compressed) : fetchRemoteBundle(remoteFile))
         .then((bundle) => {
             if (!isBundle(bundle)) throw new TypeError('界面语言资源格式无效');
-            registerUiLanguageBundle(registered, bundle);
+            const recovery = recoveryMessages[registered];
+            registerUiLanguageBundle(registered, recovery
+                ? {...bundle, messages: {...recovery, ...bundle.messages}}
+                : bundle);
             return true;
         })
         .catch((error: unknown) => {

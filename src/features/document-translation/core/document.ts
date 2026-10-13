@@ -1,11 +1,15 @@
 /**
  * @file src/features/document-translation/core/document.ts
  * 文件职责：定义文档翻译的纯领域模型，并负责把多种文本格式解析为可翻译片段，再按双语或纯译文模式无损还原原格式结构。
- * 主要内容：覆盖文本格式识别、片段切分、Markdown 容器围栏及受控缩进代码与行内位置保护、字幕标签保留、有界深度的非递归 JSON 遍历、空译文回退、MIME 信息和下载文件命名；文本导出支持有界编码，下载摘录无需处理全文；相同译文保留原文且不重复展示。
+ * 主要内容：覆盖文本格式识别、片段切分、HTML 中被链接或强调等行内标签隔开的文字合成整句并以编号占位符保留标签（句中的行内代码整个保留、不翻译）、给出带占位符片段替换前的原文供校订显示、字幕译文丢了硬换行时按原文行数重新断行、被翻译服务转成实体的字幕样式标签还原成标签、纯文本里按固定宽度折行的段落合成一个片段、Markdown 可选地把一行作为一个片段整句翻译并以成对占位符保护强调和链接，恢复强调时把服务正文边缘的 CommonMark 空白移到分隔符外而保留内部间隔，仅在标点/符号或 underscore 词内边界要求时补外侧分隔空格，以单占位符保护行内代码与网址、Markdown 标题、列表、容器指令与独立 HTML 标记保留，以及围栏、受控缩进代码与行内位置保护、字幕标签保留、有界深度的非递归 JSON 遍历、空译文回退、MIME 信息、按格式区分的文件大小上限和下载文件命名；文本导出支持有界编码，下载摘录无需处理全文；相同译文保留原文且不重复展示。
  * 模块边界：该文件不读取 File、不解析 PDF/EPUB/DOCX 二进制，也不发起翻译请求；文件 I/O 与压缩包处理归 services/binary，批处理归 services/translation，展示归 preview/presentation。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
+// 归一规则与服务候选验证共用，避免导出与免费线路接受不同的编号标签写法。
+import {normalizeDocumentInlineMarkers} from '@/src/core/translation/public';
 export const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+/** 带插图的论文与扫描件常超过 10 MB；PDF 按页解析、译文量只取决于文字，单独放宽上限。 */
+export const PDF_MAX_BYTES = 50 * 1024 * 1024;
 
 export const SUPPORTED_DOCUMENT_EXTENSIONS = [
     'pdf',
@@ -55,9 +59,34 @@ export interface DocumentSegment {
     markdownLineStart?: boolean;
 }
 
+export interface PdfDocumentRun {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    text: string;
+    baseline?: number;
+    fontSize?: number;
+    fontFamily?: string;
+}
+
+export interface PdfDocumentLine extends PdfDocumentRun {
+    runs?: PdfDocumentRun[];
+}
+
+export interface PdfPreservedRegion {
+    id: string;
+    kind: 'figure' | 'table' | 'formula';
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    source?: string;
+}
+
 export interface PdfDocumentBlock {
     segmentIndex: number;
-    /** PDF 视口在缩放比例 1 下的左上角坐标。 */
+    /** PDF 在缩放比例 1、页面旋转 0 下的左上角内容坐标；页面展示旋转由 PdfDocumentPage.rotation 决定。 */
     x: number;
     y: number;
     width: number;
@@ -70,14 +99,31 @@ export interface PdfDocumentBlock {
     fontFamily: string;
     fontWeight: 400 | 600 | 700;
     textAlign: 'left' | 'center' | 'right';
+    kind?: 'text' | 'heading' | 'caption' | 'metadata' | 'formula' | 'table' | 'figure-label' | 'footer';
+    column?: number;
+    readingOrder?: number;
+    preserveSource?: boolean;
+    /** 表格单元格的原始边界，供译文拟合与文字擦除使用；原字形矩形仍保留在 lines 中。 */
+    cellBounds?: Pick<PdfDocumentRun, 'x' | 'y' | 'width' | 'height'>;
+    lines?: PdfDocumentLine[];
 }
 
 export interface PdfDocumentPage {
     pageNumber: number;
+    /** 保留 PDF 页面的实际展示方向；旧模型与未旋转页面可以省略。 */
+    rotation?: 0 | 90 | 180 | 270;
+    /** 文字识别过的旋转扫描页：版面块已经按展示方向给出（因此不再带 rotation），这里只记下原页的旋转角，供导出时摆正嵌入的原页。 */
+    sourceRotation?: 90 | 180 | 270;
+    /** 展示方向的尺寸；90/270 度时，内容坐标系的宽高与这里交换。 */
     width: number;
     height: number;
     segmentIndexes: number[];
     blocks: PdfDocumentBlock[];
+    preservedRegions?: PdfPreservedRegion[];
+    /** 细分隔线只限制原位译文的可用空白，不作为重排阅读的图形区域。 */
+    layoutBoundaries?: Array<Pick<PdfDocumentRun, 'x' | 'y' | 'width' | 'height'>>;
+    /** 整页是一张图像且没有任何文字（扫描页），等待文字识别；识别之后不再标记。 */
+    scanned?: boolean;
 }
 
 export interface EpubDocumentChapter {
@@ -86,12 +132,15 @@ export interface EpubDocumentChapter {
     segmentOffset: number;
     segmentCount: number;
     title: string;
+    /** OPF content type; older saved chapters may not have this field. */
+    mediaType?: string;
 }
 
 export interface DocxDocumentPart {
     path: string;
     source: string;
-    paragraphSegments: Array<{paragraphIndex: number; segmentIndex: number}>;
+    /** table：段落位于表格里时，它所在的表格、行与单元格序号（从 0 开始），供阅读视图按表格排版；旧模型没有这项。 */
+    paragraphSegments: Array<{paragraphIndex: number; segmentIndex: number; table?: {table: number; row: number; cell: number}}>;
 }
 
 export type BinaryDocumentData =
@@ -118,6 +167,10 @@ interface SegmentPart {
     bilingualPrefix?: string;
     /** Markdown 源行分组，用于渲染一条结构完整的双语行。 */
     bilingualGroup?: number;
+    /** Markdown 整行片段里行内语法的原文：链接是成对的占位符（有 close），代码、网址等是单个占位符。 */
+    markdownTokens?: Array<{open: string; close?: string}>;
+    /** HTML 整句片段里行内标签的原文：送翻时写成编号占位符 `<gN>…</gN>`，渲染时按编号还原。 */
+    htmlTags?: Array<{open: string; close: string}>;
 }
 
 type DocumentPart = LiteralPart | SegmentPart;
@@ -191,6 +244,11 @@ export function getDocumentFormat(fileName: string): DocumentFormat | null {
     if (extension === 'lrc') return 'lrc';
     if (extension === 'json') return 'json';
     return null;
+}
+
+/** 一个文件允许的最大字节数：PDF 使用更宽的上限，其余格式沿用通用上限。 */
+export function getDocumentMaxBytes(fileName: string): number {
+    return getDocumentFormat(fileName) === 'pdf' ? PDF_MAX_BYTES : DOCUMENT_MAX_BYTES;
 }
 
 export function getDocumentAcceptAttribute(): string {
@@ -320,6 +378,141 @@ function addMarkdownProtectedText(
     addSegment(parts, segments, value.slice(cursor), atPosition(cursor));
 }
 
+/**
+ * 一行 Markdown 作为一个片段整句翻译：链接写成成对的编号占位符（链接文字仍然翻译，地址原样保留），
+ * 行内代码、网址、公式与标签写成单个占位符。这样句子不会被行内语法拆散，受保护的内容也不会被改写。
+ * 仅在调用方启用整句方式时使用；默认仍按受保护内容把一行切成多段。
+ */
+function addMarkdownSentence(
+    parts: DocumentPart[],
+    segments: DocumentSegment[],
+    value: string,
+    bilingualGroup: number,
+): void {
+    // 行首容器和标题语法留在本地：服务可能把 "# Heading" 改成 "#标题"，或擅自改动列表编号。
+    const container = inspectMarkdownLine(value);
+    const heading = container.content.match(/^#{1,6}[\t ]+/u)?.[0] ?? '';
+    const checkbox = container.listIndent ? container.content.match(/^\[[ xX]\][\t ]+/u)?.[0] ?? '' : '';
+    const prefixLength = value.length - container.content.length + heading.length + checkbox.length;
+    if (prefixLength) {
+        addLiteral(parts, value.slice(0, prefixLength), bilingualGroup);
+        value = value.slice(prefixLength);
+    }
+    const pattern = MARKDOWN_PROTECTED_PATTERN;
+    pattern.lastIndex = 0;
+    let cursor = 0;
+    const tokens: Array<{open: string; close?: string}> = [];
+    let source = '';
+    // 常见强调使用与链接相同的成对占位符，文字仍参与整句翻译；避免机器服务直接删掉 ** 或 _。
+    // 两种分支各自止于下一个同类标记，不对未闭合的长行做跨标记回溯；代码与 URL 已由外层保护。
+    const emphasis = (plain: string) => plain.replace(/(?<![\\*])(\*\*|\*)(?![\s*])([^*\n]*?\S)\1(?!\*)|(?<![\\\p{L}\p{N}])(__|_)(?![\s_])([^_\n]*?\S)\3(?![\p{L}\p{N}_])/gu,
+        (_match, stars: string | undefined, starText: string | undefined, underscores: string | undefined, underscoreText: string | undefined) => {
+            const marker = stars || underscores!;
+            tokens.push({open: marker, close: marker});
+            return `<g${tokens.length}>${starText ?? underscoreText}</g${tokens.length}>`;
+        });
+    const links = markdownLinkRanges(value);
+    let linkIndex = 0;
+    let match = pattern.exec(value);
+    while (match || linkIndex < links.length) {
+        const link = links[linkIndex];
+        const useLink = link && (!match || link.start <= match.index);
+        const start = useLink ? link.start : match!.index;
+        const end = useLink ? link.end : match!.index + match![0].length;
+        if (useLink) linkIndex += 1;
+        else match = pattern.exec(value);
+        // 链接中的 URL 或代码中的链接由更早开始的外层语法整体保护。
+        if (start < cursor) continue;
+        source += emphasis(value.slice(cursor, start));
+        const raw = value.slice(start, end);
+        // 只有“[文字](地址)”形式的链接文字参与翻译；图片与 [[双链]] 整体保护。
+        const text = useLink && !raw.startsWith('!') && !raw.startsWith('[[') ? raw.slice(1, raw.indexOf('](')) : '';
+        if (text.trim() && !MARKDOWN_PLACEHOLDER.test(text)) {
+            tokens.push({open: '[', close: raw.slice(1 + text.length)});
+            source += `<g${tokens.length}>${text}</g${tokens.length}>`;
+        } else {
+            tokens.push({open: raw});
+            source += `<g${tokens.length}/>`;
+        }
+        cursor = end;
+    }
+    source += emphasis(value.slice(cursor));
+    const options: SegmentOptions = {bilingualGroup, markdownLineStart: true};
+    // 没有行内语法，或文字本身含有占位符写法（无法区分真假占位符）时，整行按普通文字处理。
+    if (!tokens.length || MARKDOWN_PLACEHOLDER.test(value)) {addSegment(parts, segments, value, options); return;}
+    const trimmed = trimSource(value)!;
+    // 一行里只有受保护的内容（单独一个网址、一段行内代码）：没有可翻译的文字。
+    if (!source.replace(/<g\d+\/>/gu, '').trim()) {addLiteral(parts, value, bilingualGroup); return;}
+    const segmentIndex = segments.length;
+    const text = source.trim();
+    segments.push({id: segmentIndex, source: text, markdownLineStart: true});
+    parts.push({kind: 'segment', segmentIndex, source: text, rawSource: trimmed.source, prefix: trimmed.prefix, suffix: trimmed.suffix, bilingualGroup, markdownTokens: tokens});
+}
+
+const MARKDOWN_PLACEHOLDER = /<\s*\/?\s*g\s*\d+\s*\/?\s*>/iu;
+
+/**
+ * 把整句译文里的占位符还原成 Markdown 行内语法。每个占位符必须恰好出现一次、成对标记的开闭顺序正确；已知强调节点仅将 Unicode Zs 与 tab/LF/FF/CR 边缘空白移到分隔符之外，并按 CommonMark 的标点/符号和 underscore 词内边界补必要的外侧空格；空正文、链接和代码保持原样。
+ * 翻译服务弄丢或弄乱占位符时，去掉全部占位符并把没能放回句中的代码、网址等原样补在句末，内容一个不少。
+ */
+function renderMarkdownTranslation(part: SegmentPart, translation: string): string {
+    const tokens = part.markdownTokens;
+    if (!tokens) return translation;
+    const normalized = normalizeDocumentInlineMarkers(translation);
+    const pieces = normalized.split(/(<\s*\/?\s*g\s*\d+\s*\/?\s*>)/iu);
+    const marker = (piece: string) => /^<\s*(\/?)\s*g\s*(\d+)\s*(\/?)\s*>$/iu.exec(piece);
+    const seen = new Set<number>();
+    const open: number[] = [];
+    let valid = true;
+    const renderPieces = [...pieces], output: string[] = [], blankEmphasis = new Set<number>();
+    // 缺少相邻字符按空白处理；Unicode P/S 包括括号、数学符号和 emoji，不按 UTF-16 半个代理对判断。
+    const firstCharacter = (value: string) => /^./su.exec(value)?.[0] ?? '';
+    const lastCharacter = (value: string) => /.$/su.exec(value)?.[0] ?? '';
+    const emphasisGap = (outside: string, inside: string, delimiter: string) => outside && !/[\p{Zs}\t\n\f\r\p{P}\p{S}]/u.test(outside)
+        && (delimiter.startsWith('_') || /[\p{P}\p{S}]/u.test(inside)) ? ' ' : '';
+    for (let index = 0; index < renderPieces.length; index += 1) {
+        const piece = renderPieces[index]!, found = marker(piece);
+        if (!found) {output.push(piece); continue;}
+        const id = Number(found[2]), token = tokens[id - 1];
+        if (!token) {valid = false; output.push(''); continue;}
+        if (token.close === undefined) {
+            // 单个占位符：有的服务会写成一对空标签，闭合的那一半直接忽略。
+            if (found[1]) continue;
+            if (seen.has(id)) valid = false;
+            seen.add(id);
+            output.push(token.open);
+            continue;
+        }
+        const emphasis = /^(?:\*{1,2}|_{1,2})$/u.test(token.open) && token.close === token.open;
+        if (!found[1]) {
+            if (seen.has(id) || found[3]) valid = false;
+            seen.add(id); open.push(id);
+            // 不去掉词间空白或只含空白的正文；CommonMark 的边界空白不包括任意控制字符。
+            const next = renderPieces[index + 1]!, closing = marker(renderPieces[index + 2] ?? '');
+            if (emphasis && /^[\p{Zs}\t\n\f\r]*$/u.test(next) && closing?.[1] && Number(closing[2]) === id) blankEmphasis.add(id);
+            const whitespace = emphasis && !blankEmphasis.has(id) ? next.match(/^[\p{Zs}\t\n\f\r]+/u)?.[0] ?? '' : '';
+            renderPieces[index + 1] = next.slice(whitespace.length);
+            let before = output.length - 1;
+            while (before >= 0 && !output[before]) before -= 1;
+            const gap = emphasis && !blankEmphasis.has(id) ? emphasisGap(lastCharacter(output[before] ?? ''), firstCharacter(renderPieces[index + 1]!), token.open) : '';
+            output.push((whitespace || gap) + token.open);
+            continue;
+        }
+        if (open.pop() !== id) valid = false;
+        const previous = output.at(-1) ?? '';
+        const whitespace = emphasis && !blankEmphasis.has(id) ? previous.match(/[\p{Zs}\t\n\f\r]+$/u)?.[0] ?? '' : '';
+        if (whitespace) output[output.length - 1] = previous.slice(0, -whitespace.length);
+        const nextMarker = marker(renderPieces[index + 2] ?? '');
+        const next = renderPieces[index + 1] || (nextMarker ? tokens[Number(nextMarker[2]) - 1]?.[nextMarker[1] ? 'close' : 'open'] : '') || '';
+        const gap = emphasis && !blankEmphasis.has(id) ? emphasisGap(firstCharacter(next), lastCharacter(output.at(-1) ?? ''), token.open) : '';
+        output.push(token.close + (whitespace || gap));
+    }
+    if (valid && !open.length && seen.size === tokens.length) return output.join('');
+    const plain = pieces.filter(piece => !marker(piece)).join('').replace(/[ \t]{2,}/gu, ' ').trim();
+    const kept = tokens.filter(token => token.close === undefined && !plain.includes(token.open.trim())).map(token => token.open.trim());
+    return [plain, ...kept].join(' ');
+}
+
 /** 只识别容器前缀，不改源行；解析代码时，达到容器内四列便停止解释代码自身的引用/列表符号。 */
 export function inspectMarkdownLine(
     line: string,
@@ -404,7 +597,27 @@ function stripMarkdownCodeContainer(line: string, quoteDepth: number, indent: nu
     return line.slice(cursor);
 }
 
-function parseTextDocument(content: string, format: 'txt' | 'markdown'): Pick<ParsedDocument, 'parts' | 'segments' | 'markdownCodeBlocks'> {
+const UNSPACED_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}，。、；：！？（）《》“”‘’]/u;
+
+/**
+ * 纯文本里按固定宽度折行的段落：哪些行在下一行接着写。只在把握较大时才认定——这一行接近全文的折行宽度、
+ * 没有以句末标点结束、不是全大写的标题；下一行缩进相同、不是列表项或编号。认不出来时各行照旧单独翻译。
+ */
+function wrappedTextLines(lines: readonly string[]): boolean[] {
+    const lengths = lines.map(line => line.trimEnd().length).filter(Boolean).sort((left, right) => left - right);
+    // 取九成位的行长当作折行宽度，个别没有折行的超长行不影响判断。
+    const width = lengths[Math.floor((lengths.length - 1) * 0.9)] ?? 0;
+    const indent = (line: string) => line.length - line.trimStart().length;
+    return lines.map((line, index) => {
+        const text = line.trim(), next = lines[index + 1]?.trim();
+        const wide = UNSPACED_SCRIPT.test(text);
+        if (!next || text.length < Math.max(wide ? 16 : 40, width * 0.7)) return false;
+        if (/[.!?:;。！？：；…][)\]"'’”）】》]*$/u.test(text) || (/\p{Lu}/u.test(text) && !/\p{Ll}/u.test(text))) return false;
+        return indent(line) === indent(lines[index + 1]) && !/^(?:[-*+•·▪◦]|\(?\w{1,3}[.)）]|（\w{1,3}）|[=_~#>|]|-{3,})(?:\s|$)/u.test(next);
+    });
+}
+
+function parseTextDocument(content: string, format: 'txt' | 'markdown', sentences = false): Pick<ParsedDocument, 'parts' | 'segments' | 'markdownCodeBlocks'> {
     const parts: DocumentPart[] = [];
     const segments: DocumentSegment[] = [];
     const lines = splitWithEndings(content);
@@ -417,6 +630,8 @@ function parseTextDocument(content: string, format: 'txt' | 'markdown'): Pick<Pa
     let indented: (Container & {indent: number; block: CodeBlock}) | null = null;
     let paragraph: Container | null = null;
     let inFrontmatter = format === 'markdown' && /^\uFEFF?---\s*$/u.test(lines[0]?.text ?? '');
+    const wrapped = format === 'txt' ? wrappedTextLines(lines.map(line => line.text)) : undefined;
+    let wrapStart: number | undefined;
 
     lines.forEach((line, lineIndex) => {
         if (inFrontmatter) {
@@ -488,7 +703,12 @@ function parseTextDocument(content: string, format: 'txt' | 'markdown'): Pick<Pa
             const isMathLine = /^\$\$\s*$/u.test(info.content);
             const horizontalRule = /^(?:[-*_]\s*){3,}$/u.test(info.content);
             const calloutHeader = info.quoteDepth > 0 && /^\[![^\]]+\]/u.test(info.content);
-            if (marker || isMathLine || horizontalRule || calloutHeader) {
+            // Markdown 扩展容器的类型、参数与闭合标记属于语法；双语下载不能复制一份译后的 ::: 开头。
+            const directive = /^:{3,}(?:\s*[a-zA-Z][\w-]*(?:\s.*)?|\s*)$/u.test(info.content);
+            // 单独成行的 HTML/组件标签也只负责结构，带引号的属性仍按 HTML 扫描器识别。
+            const html = findNextHtmlToken(info.content, 0);
+            const htmlOnly = html?.index === 0 && html.value.length === info.content.length;
+            if (marker || isMathLine || horizontalRule || calloutHeader || directive || htmlOnly) {
                 paragraph = null;
                 if (marker) {
                     const block: CodeBlock = {
@@ -506,8 +726,17 @@ function parseTextDocument(content: string, format: 'txt' | 'markdown'): Pick<Pa
                 addLiteral(parts, content.slice(line.start, line.end));
                 return;
             }
-            addMarkdownProtectedText(parts, segments, line.text, lineIndex);
+            (sentences ? addMarkdownSentence : addMarkdownProtectedText)(parts, segments, line.text, lineIndex);
             if (info.content) paragraph = /^#{1,6}\s/u.test(info.content) ? null : container;
+        } else if (wrapped?.[lineIndex]) {
+            // 这一行在下一行接着写：攒起来，到段落的最后一行再一起处理。
+            wrapStart ??= lineIndex;
+            return;
+        } else if (wrapStart !== undefined) {
+            // 按固定宽度折行的一段话作为一个片段翻译；折行处在送翻的原文里是空格（中日韩文字之间不留空格）。
+            addSegment(parts, segments, content.slice(lines[wrapStart].start, line.textEnd), {}, source => source.replace(/[^\S\r\n]*\r?\n[^\S\r\n]*/gu, (_, offset: number, text: string) =>
+                UNSPACED_SCRIPT.test(text[offset - 1]) && UNSPACED_SCRIPT.test(text.slice(offset).trimStart()[0]) ? '' : ' '));
+            wrapStart = undefined;
         } else {
             addSegment(parts, segments, line.text);
         }
@@ -603,27 +832,98 @@ function findNextHtmlToken(content: string, from: number): HtmlToken | null {
     return null;
 }
 
+/** 不打断句子的行内标签：它们两侧的文字属于同一句话，应当作为一个片段整体翻译。 */
+const INLINE_HTML_TAGS = new Set(['a', 'abbr', 'b', 'bdi', 'bdo', 'cite', 'del', 'dfn', 'em', 'font', 'i', 'ins', 'kbd', 'mark', 'q', 's', 'samp', 'small', 'span', 'strike', 'strong', 'sub', 'sup', 'time', 'u', 'var']);
+const HTML_PLACEHOLDER = /<\s*(\/?)\s*g\s*(\d+)\s*>/giu;
+/** atom：句子里的行内代码，整个元素原样保留；它的文字写进占位符之间给翻译服务当上下文，还原时一律换回原来的元素。 */
+type HtmlRunToken = {tag?: string; name?: string; closing?: boolean; text?: string; atom?: string};
+
+/**
+ * 处理一段只被行内标签隔开的连续文字。句子内部的行内标签（链接、强调）换成编号占位符后整句送翻；
+ * 包在整段文字外面的标签、无法配对的标签，或文字本身就含有占位符写法时，退回逐段文字翻译。
+ */
+function addHtmlRun(parts: DocumentPart[], segments: DocumentSegment[], run: HtmlRunToken[]): void {
+    const literal = (token: HtmlRunToken) => addLiteral(parts, token.atom ?? token.tag ?? token.text!);
+    const blank = (token: HtmlRunToken) => token.atom === undefined && (token.tag !== undefined || !token.text!.trim());
+    let start = 0, end = run.length;
+    while (start < end && blank(run[start])) start += 1;
+    while (end > start && blank(run[end - 1])) end -= 1;
+    const core = run.slice(start, end);
+    const plain = (token: HtmlRunToken) => token.tag === undefined && token.atom === undefined;
+    const separately = () => run.forEach(token => plain(token) ? addSegment(parts, segments, token.text!, {}, decodeHtmlEntities) : literal(token));
+    // 没有行内标签，或除了行内代码之外没有别的文字时，不需要合并。
+    if (core.every(plain) || !core.some(token => plain(token) && token.text!.trim())) {separately(); return;}
+    // 按开闭顺序给行内标签配对编号；出现无法配对的标签就不合并。
+    const tags: Array<{open: string; close: string}> = [];
+    const open: Array<{name: string; id: number}> = [];
+    let source = '';
+    for (const token of core) {
+        if (token.atom !== undefined) {
+            tags.push({open: token.atom, close: ''});
+            source += `<g${tags.length}>${decodeHtmlEntities(token.text!)}</g${tags.length}>`;
+            continue;
+        }
+        if (token.tag === undefined) {source += decodeHtmlEntities(token.text!); continue;}
+        if (!token.closing) {
+            tags.push({open: token.tag, close: ''});
+            open.push({name: token.name!, id: tags.length});
+            source += `<g${tags.length}>`;
+            continue;
+        }
+        const last = open.pop();
+        if (!last || last.name !== token.name) {separately(); return;}
+        tags[last.id - 1].close = token.tag;
+        source += `</g${last.id}>`;
+    }
+    if (open.length || core.some(token => token.tag === undefined && HTML_PLACEHOLDER.test(decodeHtmlEntities(token.text!)))) {HTML_PLACEHOLDER.lastIndex = 0; separately(); return;}
+    HTML_PLACEHOLDER.lastIndex = 0;
+    run.slice(0, start).forEach(literal);
+    // 句首或句末是行内代码时，句子两端没有需要留在外面的空白。
+    const first = core[0].atom === undefined ? core[0].text! : '', last = core.at(-1)!.atom === undefined ? core.at(-1)!.text! : '';
+    const prefix = first.slice(0, first.length - first.trimStart().length), suffix = last.slice(last.trimEnd().length);
+    const raw = core.map(token => token.atom ?? token.tag ?? token.text!).join('');
+    const segmentIndex = segments.length;
+    const trimmed = source.trim();
+    segments.push({id: segmentIndex, source: trimmed});
+    parts.push({kind: 'segment', segmentIndex, source: trimmed, rawSource: raw.slice(prefix.length, raw.length - suffix.length), prefix, suffix, htmlTags: tags});
+    run.slice(end).forEach(literal);
+}
+
 function parseHtmlDocument(content: string): Pick<ParsedDocument, 'parts' | 'segments'> {
     const parts: DocumentPart[] = [];
     const segments: DocumentSegment[] = [];
     let cursor = 0;
     let protectedTag = '';
+    let run: HtmlRunToken[] = [];
+    const flush = () => {if (run.length) addHtmlRun(parts, segments, run); run = [];};
 
     let match = findNextHtmlToken(content, 0);
     while (match) {
         const tag = match.value;
-        if (!protectedTag) addSegment(parts, segments, content.slice(cursor, match.index), {}, decodeHtmlEntities);
-        else addLiteral(parts, content.slice(cursor, match.index));
-        addLiteral(parts, tag);
+        const text = content.slice(cursor, match.index);
+        if (protectedTag) addLiteral(parts, text);
+        else if (text) run.push({text});
 
         const closing = tag.match(/^<\s*\/\s*([a-z0-9-]+)/iu)?.[1]?.toLowerCase();
-        if (closing && closing === protectedTag) {
-            protectedTag = '';
-        } else if (!closing && !protectedTag) {
-            const opening = tag.match(/^<\s*([a-z0-9-]+)/iu)?.[1]?.toLowerCase();
-            if (opening && PROTECTED_HTML_TAGS.has(opening) && !/\/\s*>$/u.test(tag)) {
-                protectedTag = opening;
-            }
+        const opening = closing ? undefined : tag.match(/^<\s*([a-z0-9-]+)/iu)?.[1]?.toLowerCase();
+        const name = closing ?? opening;
+        // 行内标签留在当前这句话里；其余标签（块级、换行、图片、注释）结束这句话。
+        // 句子里的行内代码（不在 pre 里的 code）整个留在这句话里，文字不翻译。
+        const codeEnd = !protectedTag && opening === 'code' && !/\/\s*>$/u.test(tag) ? /<\s*\/\s*code\s*>/iu.exec(content.slice(match.index + tag.length)) : null;
+        if (codeEnd) {
+            const inner = content.slice(match.index + tag.length, match.index + tag.length + codeEnd.index);
+            const whole = tag + inner + codeEnd[0];
+            run.push({atom: whole, text: inner.replace(/<[^>]*>/gu, '')});
+            cursor = match.index + whole.length;
+            match = findNextHtmlToken(content, cursor);
+            continue;
+        }
+        if (!protectedTag && name && INLINE_HTML_TAGS.has(name) && !/\/\s*>$/u.test(tag)) run.push({tag, name, closing: Boolean(closing)});
+        else {
+            flush();
+            addLiteral(parts, tag);
+            if (closing && closing === protectedTag) protectedTag = '';
+            else if (opening && !protectedTag && PROTECTED_HTML_TAGS.has(opening) && !/\/\s*>$/u.test(tag)) protectedTag = opening;
         }
 
         cursor = match.index + tag.length;
@@ -632,9 +932,44 @@ function parseHtmlDocument(content: string): Pick<ParsedDocument, 'parts' | 'seg
 
     if (cursor < content.length) {
         if (protectedTag) addLiteral(parts, content.slice(cursor));
-        else addSegment(parts, segments, content.slice(cursor), {}, decodeHtmlEntities);
+        else run.push({text: content.slice(cursor)});
     }
+    flush();
     return {parts, segments};
+}
+
+/**
+ * 把整句译文里的编号占位符还原成原来的行内标签。占位符必须每个恰好开闭一次且嵌套正确；
+ * 翻译服务弄丢或弄乱占位符时去掉全部占位符，输出不带行内标签的整句译文，文字一个不少。
+ */
+function renderHtmlTranslation(part: SegmentPart, translation: string): string {
+    const tags = part.htmlTags;
+    if (!tags) return escapeHtml(translation);
+    // 有的翻译服务会把占位符的尖括号转成实体（&lt;g1&gt;）、全角尖括号或括号（（g1）、(g1)）再返回，先还原成占位符。
+    const pieces = normalizeDocumentInlineMarkers(translation).split(/(<\s*\/?\s*g\s*\d+\s*>)/iu);
+    const stack: number[] = [];
+    const seen = new Set<number>();
+    let valid = true;
+    // 行内代码（close 为空）：占位符之间无论服务返回了什么，都换回原来的整个元素。
+    const atom = () => stack.length > 0 && tags[stack.at(-1)! - 1].close === '';
+    const output = pieces.map(piece => {
+        const marker = /^<\s*(\/?)\s*g\s*(\d+)\s*>$/iu.exec(piece);
+        if (!marker) return atom() ? '' : escapeHtml(piece);
+        const id = Number(marker[2]);
+        if (!tags[id - 1]) {valid = false; return '';}
+        if (!marker[1]) {
+            if (seen.has(id) || atom()) valid = false;
+            seen.add(id); stack.push(id);
+            return tags[id - 1].open;
+        }
+        if (stack.pop() !== id) valid = false;
+        return tags[id - 1].close;
+    });
+    if (valid && !stack.length && seen.size === tags.length) return output.join('');
+    // 退回纯文字时，行内代码的文字以原文补在句末，避免留下被服务改写过的命令。
+    const code = tags.filter(tag => tag.close === '').map(tag => tag.open).join(' ');
+    const text = escapeHtml(pieces.filter(piece => !/^<\s*\/?\s*g\s*\d+\s*>$/iu.test(piece)).join(''));
+    return code ? `${text} ${code}` : text;
 }
 
 function parseTimedSubtitleDocument(content: string, format: 'srt' | 'vtt'): Pick<ParsedDocument, 'parts' | 'segments'> {
@@ -784,6 +1119,17 @@ function cloneJsonValue(value: unknown): unknown {
     return output;
 }
 
+/**
+ * JSON 里给程序看的字符串不送去翻译，原样留在文件里：没有任何文字的值（版本号、日期、数字）、网址与邮箱链接、
+ * 十六进制颜色，以及不含空格却带数字的标识符（ID、哈希、带编号的键名）。单个普通单词仍然翻译。
+ */
+function jsonMachineValue(value: string): boolean {
+    return !/\p{L}/u.test(value)
+        || /^(?:https?:\/\/|mailto:|www\.)\S+$/iu.test(value)
+        || /^#[0-9a-f]{3,8}$/iu.test(value)
+        || (/\d/u.test(value) && /^[\w.\-:/+]+$/u.test(value));
+}
+
 function parseJsonDocument(content: string): Pick<ParsedDocument, 'segments' | 'jsonValue' | 'jsonEntries'> {
     let jsonValue: unknown;
     try {
@@ -796,14 +1142,14 @@ function parseJsonDocument(content: string): Pick<ParsedDocument, 'segments' | '
 
     const segments: DocumentSegment[] = [];
     const jsonEntries: JsonSegmentEntry[] = [];
-    // 只把字符串叶节点送去翻译，并记录路径与首尾空白；渲染时在深拷贝上回填，原对象始终不变。
+    // 只把字符串叶节点送去翻译（给程序看的值除外），并记录路径与首尾空白；渲染时在深拷贝上回填，原对象始终不变。
     const stack: Array<{value: unknown; path: Array<string | number>}> = [{value: jsonValue, path: []}];
     while (stack.length) {
         const {value, path} = stack.pop()!;
         if (path.length > MAX_JSON_DEPTH) throw new Error('JSON 文件嵌套过深，请拆分后重试');
         if (typeof value === 'string') {
             const trimmed = trimSource(value);
-            if (!trimmed) continue;
+            if (!trimmed || jsonMachineValue(trimmed.source)) continue;
             const segmentIndex = segments.length;
             const pathLabel = formatJsonPath(path);
             segments.push({id: segmentIndex, source: trimmed.source, pathLabel});
@@ -830,7 +1176,12 @@ export function formatJsonPath(path: Array<string | number>): string {
     }, '$');
 }
 
-export function parseDocument(fileName: string, content: string): ParsedDocument {
+export interface ParseDocumentOptions {
+    /** Markdown 的一行作为一个片段整句翻译（链接、行内代码等写成占位符）；默认按受保护内容把一行切成多段。 */
+    markdownSentences?: boolean;
+}
+
+export function parseDocument(fileName: string, content: string, options: ParseDocumentOptions = {}): ParsedDocument {
     const format = getDocumentFormat(fileName);
     if (!format) {
         throw new Error('暂不支持该文件格式，请选择 PDF、ePub、HTML、JSON、TXT、DOCX、Markdown 或字幕文件');
@@ -852,7 +1203,7 @@ export function parseDocument(fileName: string, content: string): ParsedDocument
     const parsed = format === 'html'
         ? parseHtmlDocument(content)
         : format === 'txt' || format === 'markdown'
-            ? parseTextDocument(content, format)
+            ? parseTextDocument(content, format, Boolean(options.markdownSentences))
             : format === 'ass'
                 ? parseAssDocument(content)
                 : format === 'lrc'
@@ -871,20 +1222,81 @@ function escapeHtml(value: string): string {
         .replace(/'/g, '&#39;');
 }
 
-function preserveSubtitleMarkup(source: string, translation: string): string {
+/**
+ * 原文用 \N 硬换行分成几行、而翻译服务把换行丢掉时，按同样的行数把译文重新断开：优先断在标点或空格之后，
+ * 中日韩文字之间在词的边界也可以断；不在样式代码 {…} 里面断，也不拆开一个拉丁单词。找不到合适的位置就保持一行。
+ */
+function restoreSubtitleBreaks(source: string, translation: string): string {
+    const breaks = source.split('\\N').length - 1;
+    if (!breaks || /\\[Nn]/u.test(translation)) return translation;
+    const wide = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+    // 中日韩文字之间只在词的边界断开；环境不提供分词时退回任意两个字之间。
+    const words = typeof Intl.Segmenter === 'function' ? new Set(Array.from(new Intl.Segmenter(undefined, {granularity: 'word'}).segment(translation), entry => entry.index)) : undefined;
+    // 候选断点：断在这个下标之前；值越小越好（标点后 0，空格处 1，中日韩文字之间 2）。
+    const candidates: Array<{index: number; cost: number}> = [];
+    let depth = 0;
+    for (let index = 1; index < translation.length; index += 1) {
+        const previous = translation[index - 1], current = translation[index];
+        if (previous === '{') depth += 1;
+        if (previous === '}') depth = Math.max(0, depth - 1);
+        if (depth || current === '{' && translation.indexOf('}', index) < 0) continue;
+        if (/[，。！？；、,.!?;:：]/u.test(previous) && !/[\s，。！？；、,.!?;:：]/u.test(current)) candidates.push({index, cost: 0});
+        else if (/\s/u.test(previous) && !/\s/u.test(current)) candidates.push({index, cost: 1});
+        else if (wide.test(previous) && wide.test(current) && (words?.has(index) ?? true)) candidates.push({index, cost: 2});
+    }
+    const chosen: number[] = [];
+    for (let line = 1; line <= breaks; line += 1) {
+        const target = translation.length * line / (breaks + 1), floor = chosen.at(-1) ?? 0;
+        // 偏离理想位置越远越差；标点和空格可以多偏离几个字。
+        const best = candidates.filter(candidate => candidate.index > floor)
+            .sort((left, right) => Math.abs(left.index - target) + left.cost * 2 - (Math.abs(right.index - target) + right.cost * 2))[0];
+        if (!best) return translation;
+        chosen.push(best.index);
+    }
+    return chosen.reduceRight((text, index) => `${text.slice(0, index).trimEnd()}\\N${text.slice(index)}`, translation);
+}
+
+/**
+ * 有的翻译服务把字幕里的样式标签改写后再返回：转成实体（&lt;i&gt; … &lt;/i&gt;），或换成括号（(i) … (/i)、（i）…（/i））。
+ * 原文里确实有同名标签时还原成标签，并去掉服务加在标签内侧的空格；括号写法还要求译文里同时有它的闭合形式，
+ * 原文没有的写法不动，避免把正文里的“&lt;”或“(a)”误当成标签。
+ */
+export function restoreSubtitleTags(source: string, translation: string): string {
+    if (!/&lt;|[(（＜]\s*\/?\s*[a-z]/iu.test(translation)) return translation;
+    const names = new Set(Array.from(source.matchAll(/<\s*\/?\s*([a-z][\w.]*)/giu), match => match[1].toLowerCase()));
+    const closed = (name: string) => new RegExp(`[(（＜]\\s*[/／]\\s*${name}\\s*[)）＞]`, 'iu').test(translation);
+    return translation.replace(/(\s?)(&lt;|[(（＜])\s*([\/／]?)\s*([a-z][\w.]*)([^&<>()（）＜＞]*?)\s*(?:&gt;|[)）＞])(\s?)/giu,
+        (whole, before: string, open: string, slash: string, name: string, rest: string, after: string) =>
+            names.has(name.toLowerCase()) && (open === '&lt;' || closed(name)) ? `${slash ? '' : before}<${slash ? '/' : ''}${name}${rest}>${slash ? after : ''}` : whole);
+}
+
+function preserveSubtitleMarkup(source: string, received: string): string {
+    const translation = restoreSubtitleTags(source, received);
     const assPrefix = source.match(/^(?:\{[^}]*\})+/u)?.[0];
-    if (assPrefix && !translation.startsWith(assPrefix)) return `${assPrefix}${translation}`;
+    if (assPrefix && !translation.startsWith(assPrefix)) return restoreSubtitleBreaks(source, `${assPrefix}${translation}`);
 
     const htmlOpen = source.match(/^(?:<([a-z][a-z0-9-]*)\b[^>]*>)+/iu)?.[0];
     const htmlClose = source.match(/(?:<\/([a-z][a-z0-9-]*)>)+(?=\s|$)/iu)?.[0];
     if (htmlOpen && htmlClose && !translation.includes(htmlOpen)) {
         return `${htmlOpen}${translation}${htmlClose}`;
     }
-    return translation;
+    return restoreSubtitleBreaks(source, translation);
 }
 
 function originalPartSource(part: SegmentPart): string {
     return part.rawSource ?? part.source;
+}
+
+/**
+ * 整句送翻的片段，原文里的行内标签和 Markdown 语法已换成编号占位符；这里给出这些片段未替换前的原文，
+ * 供校订视图显示读者认得出的文字。没有占位符的片段不在结果里。
+ */
+export function documentSegmentMarkupSources(document: ParsedDocument): Map<number, string> {
+    const sources = new Map<number, string>();
+    for (const part of document.parts) {
+        if (part.kind === 'segment' && (part.htmlTags || part.markdownTokens)) sources.set(part.segmentIndex, originalPartSource(part));
+    }
+    return sources;
 }
 
 /** 字幕样式标记不属于可见正文，服务省略标记时仍按相同文字处理。 */
@@ -901,16 +1313,16 @@ export function resolveDocumentTranslation(source: string, translation: string |
     return hasDistinctTranslation(source, translation) ? translation! : source;
 }
 
-function formatBilingualTranslation(document: ParsedDocument, part: SegmentPart, translation: string): string {
+function formatBilingualTranslation(document: ParsedDocument, part: SegmentPart, translation: string, xhtml: boolean): string {
     const source = originalPartSource(part);
     const formattedTranslation = ['srt', 'vtt', 'ass'].includes(document.format)
         ? preserveSubtitleMarkup(part.source, translation)
         : translation;
     if (document.format === 'html') {
-        return `${part.prefix}${source}${part.suffix}<br><span data-fluent-read-document-translation="true">${escapeHtml(translation)}</span>`;
+        return `${part.prefix}${source}${part.suffix}${xhtml ? '<br/>' : '<br>'}<span data-fluent-read-document-translation="true">${renderHtmlTranslation(part, translation)}</span>`;
     }
     if (document.format === 'markdown') {
-        return `${part.prefix}${source}${part.suffix}\n> ${translation}`;
+        return `${part.prefix}${source}${part.suffix}\n> ${renderMarkdownTranslation(part, translation)}`;
     }
     if (document.format === 'ass') {
         return `${part.prefix}${source}${part.suffix}\\N${formattedTranslation.replace(/\r?\n/gu, '\\N')}`;
@@ -921,7 +1333,7 @@ function formatBilingualTranslation(document: ParsedDocument, part: SegmentPart,
     return `${part.prefix}${source}${part.suffix}\n${formattedTranslation}`;
 }
 
-function renderParts(document: ParsedDocument, translations: readonly string[], mode: DocumentRenderMode, maxLength: number): string {
+function renderParts(document: ParsedDocument, translations: readonly string[], mode: DocumentRenderMode, maxLength: number, xhtml: boolean): string {
     const output: string[] = [];
     let length = 0;
     const append = (value: string) => {
@@ -955,7 +1367,7 @@ function renderParts(document: ParsedDocument, translations: readonly string[], 
             for (const entry of groupParts) {
                 if (length >= maxLength) break;
                 const text = entry.kind === 'literal' ? entry.value
-                    : `${entry.prefix}${resolveDocumentTranslation(entry.source, translations[entry.segmentIndex])}${entry.suffix}`;
+                    : `${entry.prefix}${hasDistinctTranslation(entry.source, translations[entry.segmentIndex]) ? renderMarkdownTranslation(entry, translations[entry.segmentIndex]) : originalPartSource(entry)}${entry.suffix}`;
                 if (!text) continue;
                 const value = trailingCR && text.startsWith('\n') ? text.slice(1) : text;
                 trailingCR = text.endsWith('\r');
@@ -973,16 +1385,16 @@ function renderParts(document: ParsedDocument, translations: readonly string[], 
             continue;
         }
         if (mode === 'bilingual') {
-            append(formatBilingualTranslation(document, part, translation));
+            append(formatBilingualTranslation(document, part, translation, xhtml));
             continue;
         }
         if (document.format === 'html') {
-            append(`${part.prefix}${escapeHtml(translation)}${part.suffix}`);
+            append(`${part.prefix}${renderHtmlTranslation(part, translation)}${part.suffix}`);
             continue;
         }
         const formattedTranslation = ['srt', 'vtt', 'ass'].includes(document.format)
             ? preserveSubtitleMarkup(part.source, translation)
-            : translation;
+            : renderMarkdownTranslation(part, translation);
         append(`${part.prefix}${formattedTranslation}${part.suffix}`);
     }
     return output.join('');
@@ -1012,10 +1424,11 @@ export function renderDocument(
     translations: readonly string[],
     mode: DocumentRenderMode = 'bilingual',
     maxLength = Infinity,
+    options: {xhtml?: boolean} = {},
 ): string {
     maxLength = Number.isNaN(maxLength) ? 0 : Math.max(0, Math.trunc(maxLength));
     if (maxLength === 0) return '';
-    if (document.format !== 'json') return renderParts(document, translations, mode, maxLength);
+    if (document.format !== 'json') return renderParts(document, translations, mode, maxLength, options.xhtml ?? false);
 
     let output = cloneJsonValue(document.jsonValue);
     document.jsonEntries?.forEach((entry) => {

@@ -1,7 +1,7 @@
 /**
  * @file tests/serviceDirectoryLifecycle.test.ts
  * 文件职责：验证服务目录和免费权重设置的实际组件生命周期、缓存模板及有界读取。
- * 主要内容：覆盖停用与切换、迟到后台快照、轮询合并、目录焦点、搜索计算、显式设置默认服务、分组导航与尺寸观察的旧 DOM 事件。
+ * 主要内容：覆盖停用与切换、迟到后台快照、轮询合并、目录焦点、搜索计算、显式设置默认服务、分组导航、帧内布局合并、缓存位置与尺寸/字体观察的旧 DOM 事件。
  * 模块边界：编译真实客户端 Vue setup 和缓存模板并实际 mount，模块加载器只解析导入；浏览器消息、DOM 几何与观察器使用受控端口，不复制目录业务；真实 UI 另行验证。
  */
 import {createRequire} from 'node:module'
@@ -19,13 +19,18 @@ import {calculateFreeTranslationWeightSnapshot, FREE_TRANSLATION_WEIGHT_REFRESH_
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
 let server: ViteDevServer, app: import('vue').App, state: Record<string, any>, props: Record<string, any>
 let shown: import('vue').Ref<boolean>, nodes: Node[], source: Record<string, any>, hostRoot: Node
-type Node = {tag: string; props: Record<string, any>; value?: string; focus?: () => void; closest?: () => unknown; parent?: Node; children?: Node[];
+type Node = {tag: string; props: Record<string, any>; value?: string; focus?: () => void; closest?: (selector?: string) => unknown; parent?: Node; children?: Node[];
   style?: Record<string, string>; dataset?: Record<string, string>; scrollTop?: number; clientHeight?: number; scrollHeight?: number;
   getClientRects?: () => unknown[]; getBoundingClientRect?: () => {top: number}; querySelectorAll?: (selector: string) => Node[]}
 const clientModules = new Map<string, string>()
-const groupScroll = vi.fn(), readRects = vi.fn(), reducedMotion = vi.fn(() => false)
+const groupScroll = vi.fn(), readRects = vi.fn(), readBounds = vi.fn(), sectionQueries = vi.fn(), reducedMotion = vi.fn(() => false)
+const animationFrames = new Map<number, FrameRequestCallback>(), fontListeners = new Set<() => void>()
+let animationFrameId = 0, frameTime = 0
+const requestFrame = vi.fn((callback: FrameRequestCallback) => {const id = ++animationFrameId;animationFrames.set(id, callback);return id})
+const cancelFrame = vi.fn((id: number) => {animationFrames.delete(id)})
+function flushFrames() {const batch = [...animationFrames.values()];animationFrames.clear();frameTime += 16;batch.forEach(callback => callback(frameTime))}
 const geometry = {visible: true, tops: new Map<string, number>()}
-const observers: {callback: () => void; observe: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn>}[] = []
+const observers: {callback: () => void; observe: ReturnType<typeof vi.fn>; unobserve: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn>}[] = []
 function descendants(n: Node): Node[] {return (n.children || []).flatMap(child => [child, ...descendants(child)])}
 function publicNode(predicate: (n: Node) => boolean): Node {const n = descendants(hostRoot).find(predicate);expect(n).toBeDefined();return n!}
 function groupHeader(id: string): Node {
@@ -37,23 +42,25 @@ function queryInput(): Node {return publicNode(n => n.tag === 'input' && n.props
 async function search(value: string) {queryInput().props.onInput({currentTarget: {value}});await settle()}
 function observer() {const current = observers.at(-1);expect(current).toBeDefined();return current!}
 
-const focus = vi.fn(), scroll = vi.fn(), emitted = vi.fn(), defaultEmitted = vi.fn(), send = vi.fn()
+const focus = vi.fn(), scroll = vi.fn(), workspaceScroll = vi.fn(), emitted = vi.fn(), defaultEmitted = vi.fn(), send = vi.fn()
 const intervals = new Map<number, () => void>(), timeouts = new Map<number, () => void>()
 let timerId = -1
 const timerCount = () => intervals.size + timeouts.size
 async function tickIntervals(count = 1) {for (let i = 0; i < count; i++) {for (const callback of [...intervals.values()]) callback();await settle()}}
 const providerNames = ['microsoft', 'google']
 const catalog = [{value: 'machine', label: 'Machine', disabled: true}, {value: 'microsoft', label: 'Microsoft'}, {value: 'google', label: 'Google'}]
-async function settle() {await runtime.nextTick();await Promise.resolve();await runtime.nextTick();await Promise.resolve()}
+async function settle(frames = true) {await runtime.nextTick();await Promise.resolve();if (frames) flushFrames();await runtime.nextTick();await Promise.resolve()}
 function deferred<T>() {let resolve!: (value: T) => void, reject!: (error: unknown) => void;const promise = new Promise<T>((yes, no) => {resolve = yes;reject = no});return {promise, resolve, reject}}
 function response(ids = props.config.freeTranslationOrder) {return {success: true, snapshot: calculateFreeTranslationWeightSnapshot(ids, [], 123)}}
 function node(predicate: (n: Node) => boolean) {const found = [...nodes].reverse().find(predicate);expect(found).toBeDefined();return found!}
 beforeEach(async () => {
-  vi.clearAllMocks();intervals.clear();timeouts.clear();clientModules.clear();observers.length = 0;geometry.visible = true;geometry.tops.clear();reducedMotion.mockReturnValue(false)
+  vi.clearAllMocks();intervals.clear();timeouts.clear();clientModules.clear();observers.length = 0;animationFrames.clear();fontListeners.clear();geometry.visible = true;geometry.tops.clear();reducedMotion.mockReturnValue(false)
+  vi.stubGlobal('requestAnimationFrame', requestFrame);vi.stubGlobal('cancelAnimationFrame', cancelFrame)
+  vi.stubGlobal('document', {fonts: {addEventListener: (_type: string, callback: () => void) => fontListeners.add(callback), removeEventListener: (_type: string, callback: () => void) => fontListeners.delete(callback)}})
   vi.stubGlobal('window', {matchMedia: () => ({matches: reducedMotion()})})
   vi.stubGlobal('ResizeObserver', class {
-    observe = vi.fn();disconnect = vi.fn()
-    constructor(callback: () => void) {observers.push({callback, observe: this.observe, disconnect: this.disconnect})}
+    observe = vi.fn();unobserve = vi.fn();disconnect = vi.fn()
+    constructor(callback: () => void) {observers.push({callback, observe: this.observe, unobserve: this.unobserve, disconnect: this.disconnect})}
   })
   send.mockReset();send.mockResolvedValue({success: false});vi.stubGlobal('__fluentreadDirectorySend', send)
   server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
@@ -109,14 +116,31 @@ async function mount(name: string, values: Record<string, unknown>, listeners: R
   function insert(n: Node, parent: Node, anchor?: Node | null) {remove(n);const list = parent.children ||= [];const index = anchor ? list.indexOf(anchor) : -1;list.splice(index < 0 ? list.length : index, 0, n);n.parent = parent}
   const renderer = runtime.createRenderer<Node, Node>({patchProp: (n, key, _before, value) => {n.props[key] = value;if (key === 'value') n.value = value}, insert, remove,
     createElement: tag => {
-      const n: Node = {tag, value: '', props: {}, style: {}, focus, closest: () => ({querySelector: () => ({scrollTo: scroll})}),
+      const n: Node = {tag, value: '', props: {}, style: {}, focus, closest: selector => {
+        let parent: Node | undefined = n
+        while (parent && `.${parent.props.class}` !== selector) parent = parent.parent
+        return parent
+      },
         get dataset() {return {serviceSection: n.props['data-service-section']}},
         scrollTop: 0, clientHeight: 100, scrollHeight: 500,
         getClientRects: () => {readRects(n);return geometry.visible ? [{}] : []},
-        getBoundingClientRect: () => ({top: geometry.tops.get(n.props['data-service-section']) ?? 0}),
-        querySelectorAll: selector => descendants(n).filter(child => selector === '[data-service-section]' && child.props['data-service-section']),
+        getBoundingClientRect: () => {
+          readBounds(n)
+          let parent = n.parent
+          while (parent && parent.props.class !== 'service-groups') parent = parent.parent
+          return {top: (geometry.tops.get(n.props['data-service-section']) ?? 0) - (parent?.scrollTop || 0)}
+        },
+        querySelectorAll: selector => {sectionQueries(n);return descendants(n).filter(child => selector === '[data-service-section]' && child.props['data-service-section'])},
       }
-      Object.assign(n, {tagName: tag.toUpperCase(), addEventListener: () => {}, removeEventListener: () => {}, scrollTo: groupScroll})
+      Object.assign(n, {tagName: tag.toUpperCase(), addEventListener: () => {}, removeEventListener: () => {},
+        querySelector: (selector: string) => descendants(n).find(child => `.${child.props.class}` === selector),
+        scrollTo: (options: ScrollToOptions) => {
+          if (n.props.class === 'service-groups') {groupScroll(options);return}
+          if (n.props.class === 'catalog-layout') workspaceScroll(options)
+          else if (n.props.class === 'service-detail') scroll(options)
+          n.scrollTop = options.top ?? n.scrollTop
+        },
+      })
       nodes.push(n);return n
     },
     createText: () => ({tag: '#text', props: {}}), createComment: () => ({tag: '#comment', props: {}}), setText: () => {}, setElementText: () => {},
@@ -132,8 +156,8 @@ async function mount(name: string, values: Record<string, unknown>, listeners: R
   app.config.warnHandler = () => {};hostRoot = {tag: '#root', props: {}};app.mount(hostRoot);await settle()
 }
 async function mountFree(values: Record<string, unknown> = {}) {await mount('FreeTranslationSettings', {config: runtime.reactive(new Config()), ...values})}
-async function mountCatalog(values: Record<string, unknown> = {}) {await mount('ServiceCatalog', {service: 'microsoft', defaultService: 'microsoft', services: catalog,
-  favoriteServices: [], configuredServices: [], modelOptions: [], showModel: false, maximumModels: 5, maximumModelLength: 50, customModelCount: 0, allowCustomModels: false, ...values}, {'onUpdate:service': emitted, 'onUpdate:default-service': defaultEmitted, 'onAdd:service': emitted})}
+async function mountCatalog(values: Record<string, unknown> = {}, listeners: Record<string, unknown> = {}) {await mount('ServiceCatalog', {service: 'microsoft', defaultService: 'microsoft', services: catalog,
+  favoriteServices: [], configuredServices: [], modelOptions: [], showModel: false, maximumModels: 5, maximumModelLength: 50, customModelCount: 0, allowCustomModels: false, ...values}, {'onUpdate:service': emitted, 'onUpdate:default-service': defaultEmitted, 'onAdd:service': emitted, ...listeners})}
 function invalidate(reason: string) {
   if (reason === 'hidden') props.active = false
   if (reason === 'cached') shown.value = false
@@ -239,17 +263,64 @@ describe('服务目录的搜索和导航归属', () => {
   })
   it.each(['hidden', 'cached', 'unmount', 'context', 'service'])('实际缓存模板的旧目录选择在%s之后失效', async reason => {
     await mountCatalog();const old = node(n => n.props['data-directory-port'] === 'google').props.onSelect
-    invalidate(reason);await settle();old('google');expect(emitted).not.toHaveBeenCalled()
+    invalidate(reason);await settle();scroll.mockClear();workspaceScroll.mockClear();old('google');await settle();expect(emitted).not.toHaveBeenCalled()
+    expect(scroll).not.toHaveBeenCalled();expect(workspaceScroll).not.toHaveBeenCalled()
     if (reason === 'service' || reason === 'context') {const target = reason === 'service' ? 'microsoft' : 'google';node(n => n.props['data-directory-port'] === target).props.onSelect(target);expect(emitted).toHaveBeenCalledWith(target)}
   })
   it.each(['hidden', 'cached', 'unmount', 'context', 'service'])('目录延迟焦点与滚动在%s之后失效', async reason => {
-    await mountCatalog();state.directoryOpen = true;state.directoryToggle = {focus};state.addButton = {closest: () => ({querySelector: () => ({scrollTo: scroll})})}
+    await mountCatalog();state.directoryOpen = true;state.directoryToggle = {focus};state.addButton = {closest: () => ({scrollTo: workspaceScroll, querySelector: () => ({scrollTo: scroll})})}
     props.service = 'google';if (reason === 'service') props.service = 'microsoft';else invalidate(reason);await settle();expect(focus).not.toHaveBeenCalled()
-    if (reason === 'service') expect(scroll).toHaveBeenCalledOnce();else expect(scroll).not.toHaveBeenCalled()
+    if (reason === 'service') {expect(scroll).toHaveBeenCalledOnce();expect(workspaceScroll).toHaveBeenCalledOnce()}
+    else {expect(scroll).not.toHaveBeenCalled();expect(workspaceScroll).not.toHaveBeenCalled()}
   })
-  it('正常切换关闭目录、恢复一次焦点并滚动，重复当前服务只收起目录', async () => {
+  it('正常切换或重复当前服务都关闭目录、恢复一次焦点并回到配置顶部', async () => {
     await mountCatalog();state.directoryOpen = true;props.service = 'google';await settle();expect(state.directoryOpen).toBe(false);expect(focus).toHaveBeenCalledOnce();expect(scroll).toHaveBeenCalledOnce()
-    focus.mockClear();scroll.mockClear();state.directoryOpen = true;await state.selectService('google');await settle();expect(focus).toHaveBeenCalledOnce();expect(scroll).not.toHaveBeenCalled();expect(emitted).not.toHaveBeenCalled()
+    focus.mockClear();scroll.mockClear();workspaceScroll.mockClear();state.directoryOpen = true;await state.selectService('google');await settle()
+    expect(focus).toHaveBeenCalledOnce();expect(scroll).toHaveBeenCalledOnce();expect(workspaceScroll).toHaveBeenCalledOnce();expect(emitted).not.toHaveBeenCalled()
+  })
+  it.each(['google', 'microsoft'])('实际目录选择%s关闭目录并立即重置工作区和详情滚动，默认服务仍独立', async service => {
+    await mountCatalog({}, {'onUpdate:service': (value: string) => {emitted(value);source.service = value}})
+    publicNode(n => n.props.class === 'mobile-directory-toggle').props.onClick();await settle()
+    const workspace = publicNode(n => n.props.class === 'catalog-layout'), detail = publicNode(n => n.props.class === 'service-detail')
+    workspace.scrollTop = 800;detail.scrollTop = 600;focus.mockClear();scroll.mockClear();workspaceScroll.mockClear()
+    publicNode(n => n.props['data-directory-port'] === service).props.onSelect(service);await settle()
+    expect(workspace.scrollTop).toBe(0);expect(detail.scrollTop).toBe(0)
+    expect(workspaceScroll).toHaveBeenCalledOnce();expect(workspaceScroll).toHaveBeenCalledWith({top: 0, behavior: 'instant'})
+    expect(scroll).toHaveBeenCalledOnce();expect(scroll).toHaveBeenCalledWith({top: 0, behavior: 'instant'})
+    expect(focus).toHaveBeenCalledOnce();expect(state.directoryOpen).toBe(false)
+    expect(publicNode(n => n.props.class === 'service-catalog').props['data-editing-service']).toBe(service)
+    expect(source.defaultService).toBe('microsoft')
+    if (service === 'microsoft') expect(emitted).not.toHaveBeenCalled()
+    else expect(emitted).toHaveBeenCalledWith('google')
+  })
+  it.each(['hidden', 'cached'])('%s后重新进入同一服务配置，从实际工作区和详情顶部开始', async reason => {
+    await mountCatalog();const workspace = publicNode(n => n.props.class === 'catalog-layout'), detail = publicNode(n => n.props.class === 'service-detail')
+    workspace.scrollTop = 800;detail.scrollTop = 600
+    invalidatePublic(reason);await settle()
+    expect(scroll).not.toHaveBeenCalled();expect(workspaceScroll).not.toHaveBeenCalled();await reopenPublic(reason)
+    expect(source.service).toBe('microsoft');expect(workspace.scrollTop).toBe(0);expect(detail.scrollTop).toBe(0)
+    expect(workspaceScroll).toHaveBeenCalledOnce();expect(scroll).toHaveBeenCalledOnce()
+    expect(workspaceScroll).toHaveBeenCalledWith({top: 0, behavior: 'instant'});expect(scroll).toHaveBeenCalledWith({top: 0, behavior: 'instant'})
+    expect(focus).not.toHaveBeenCalled();expect(emitted).not.toHaveBeenCalled()
+  })
+  it('持续活跃时替换配置保留两区位置，之后重新进入当前配置才回到顶部', async () => {
+    await mountCatalog();const workspace = publicNode(n => n.props.class === 'catalog-layout'), detail = publicNode(n => n.props.class === 'service-detail')
+    workspace.scrollTop = 800;detail.scrollTop = 600
+    source.context = {};await settle()
+    expect(workspace.scrollTop).toBe(800);expect(detail.scrollTop).toBe(600)
+    expect(workspaceScroll).not.toHaveBeenCalled();expect(scroll).not.toHaveBeenCalled()
+    source.active = false;await settle();source.active = true;await settle()
+    expect(workspace.scrollTop).toBe(0);expect(detail.scrollTop).toBe(0)
+    expect(workspaceScroll).toHaveBeenCalledOnce();expect(scroll).toHaveBeenCalledOnce()
+    expect(focus).not.toHaveBeenCalled();expect(emitted).not.toHaveBeenCalled()
+  })
+  it.each(['hidden', 'cached', 'unmount', 'context'])('同服务目录选择排队后%s，迟到回调不能重置两个滚动区', async reason => {
+    await mountCatalog();const workspace = publicNode(n => n.props.class === 'catalog-layout'), detail = publicNode(n => n.props.class === 'service-detail')
+    workspace.scrollTop = 800;detail.scrollTop = 600
+    publicNode(n => n.props['data-directory-port'] === 'microsoft').props.onSelect('microsoft')
+    invalidatePublic(reason);await settle()
+    expect(workspace.scrollTop).toBe(800);expect(detail.scrollTop).toBe(600)
+    expect(workspaceScroll).not.toHaveBeenCalled();expect(scroll).not.toHaveBeenCalled()
   })
   it('隐藏或替换上下文后旧搜索、创建和展开回调不能修改当前目录', async () => {
     await mountCatalog();const search = node(n => n.tag === 'input').props.onInput
@@ -327,13 +398,111 @@ async function reopenPublic(reason: string): Promise<void> {
   else if (reason === 'cached') shown.value = true
   await settle()
 }
+async function reopenPublicWithoutFrames(reason: string): Promise<void> {
+  if (reason === 'hidden') source.active = true
+  else if (reason === 'cached') shown.value = true
+  await settle(false)
+}
 function scroller(): Node {return publicNode(n => n.props.class === 'service-groups')}
 async function mountGroups(): Promise<void> {
-  await mountCatalog({services: groupedCatalog})
   geometry.tops.set('machine-services', 0);geometry.tops.set('custom', 180)
+  await mountCatalog({services: groupedCatalog})
 }
 
 describe('服务分组导航的公共客户端生命周期', () => {
+  it('连续滚动每帧只排一次，使用缓存位置而不重新读取目录几何', async () => {
+    await mountGroups();requestFrame.mockClear();sectionQueries.mockClear();readBounds.mockClear();readRects.mockClear()
+    scroller().scrollTop = 190
+    for (let i = 0; i < 40; i++) scroller().props.onScrollPassive()
+    expect(requestFrame).toHaveBeenCalledOnce();expect(animationFrames.size).toBe(1)
+    expect(navigation('machine-services').props['aria-current']).toBe('location')
+    await settle();expect(navigation('custom').props['aria-current']).toBe('location')
+    expect(sectionQueries).not.toHaveBeenCalled();expect(readBounds).not.toHaveBeenCalled();expect(readRects).not.toHaveBeenCalled()
+    scroller().scrollTop = 0
+    for (let i = 0; i < 20; i++) scroller().props.onScrollPassive()
+    await settle();expect(requestFrame).toHaveBeenCalledTimes(2)
+    expect(navigation('machine-services').props['aria-current']).toBe('location')
+    expect(sectionQueries).not.toHaveBeenCalled();expect(readBounds).not.toHaveBeenCalled()
+  })
+  it('尺寸、字体、折叠和滚动同帧合并一次测量，分组尺寸也被观察', async () => {
+    await mountGroups();expect(observer().observe).toHaveBeenCalledTimes(3)
+    requestFrame.mockClear();sectionQueries.mockClear();readBounds.mockClear();readRects.mockClear()
+    groupHeader('machine-services').props.onClick();geometry.tops.set('custom', 120)
+    for (let i = 0; i < 20; i++) {observer().callback();scroller().props.onScrollPassive()}
+    for (const callback of fontListeners) callback()
+    await settle(false);expect(requestFrame).toHaveBeenCalledOnce();expect(sectionQueries).not.toHaveBeenCalled()
+    await settle();expect(sectionQueries).toHaveBeenCalledOnce();expect(readRects).toHaveBeenCalledOnce();expect(readBounds).toHaveBeenCalledTimes(3)
+    expect(groupHeader('machine-services').props['aria-expanded']).toBe(false)
+    scroller().scrollTop = 120;scroller().props.onScrollPassive();await settle()
+    expect(navigation('custom').props['aria-current']).toBe('location')
+    expect(sectionQueries).toHaveBeenCalledOnce();expect(readBounds).toHaveBeenCalledTimes(3)
+  })
+  it('字体与分组尺寸变化刷新相对位置，容器尺寸变化刷新目录末尾判断', async () => {
+    await mountGroups();scroller().scrollTop = 190;scroller().props.onScrollPassive();await settle()
+    expect(navigation('custom').props['aria-current']).toBe('location')
+    geometry.tops.set('custom', 260);for (const callback of fontListeners) callback();await settle()
+    expect(navigation('machine-services').props['aria-current']).toBe('location')
+    geometry.tops.set('custom', 140);observer().callback();await settle()
+    expect(navigation('custom').props['aria-current']).toBe('location')
+    geometry.tops.set('custom', 450);scroller().clientHeight = 320;observer().callback();await settle()
+    expect(navigation('custom').props['aria-current']).toBe('location')
+    scroller().clientHeight = 100;observer().callback();await settle()
+    expect(navigation('machine-services').props['aria-current']).toBe('location')
+  })
+  it('隐藏目录也缓存不可见状态，隐藏期间滚动不测量，重现后刷新位置', async () => {
+    await mountGroups();geometry.visible = false;observer().callback();await settle()
+    sectionQueries.mockClear();readBounds.mockClear();readRects.mockClear()
+    scroller().scrollTop = 190
+    for (let i = 0; i < 20; i++) scroller().props.onScrollPassive()
+    await settle();expect(navigation('machine-services').props['aria-current']).toBe('location')
+    expect(sectionQueries).not.toHaveBeenCalled();expect(readBounds).not.toHaveBeenCalled();expect(readRects).not.toHaveBeenCalled()
+    geometry.visible = true;observer().callback();await settle()
+    expect(sectionQueries).toHaveBeenCalledOnce();expect(readBounds).toHaveBeenCalledTimes(3)
+    expect(navigation('custom').props['aria-current']).toBe('location')
+  })
+  it('搜索更新缓存并停止观察已移除分组，导航恢复后的滚动复用新位置', async () => {
+    await mountGroups();const oldCustom = publicNode(n => n.props['data-service-section'] === 'custom')
+    await search('google')
+    expect(observer().unobserve.mock.calls.some(([element]) => runtime.toRaw(element) === oldCustom)).toBe(true)
+    expect(observer().observe).toHaveBeenCalledTimes(3)
+    await navigation('custom').props.onClick();await settle()
+    expect(groupScroll).toHaveBeenCalledWith({top: 180, behavior: 'smooth'})
+    expect(observer().observe).toHaveBeenCalledTimes(4)
+    scroller().props.onWheelPassive();scroller().scrollTop = 180;sectionQueries.mockClear();readBounds.mockClear()
+    scroller().props.onScrollPassive();await settle()
+    expect(navigation('custom').props['aria-current']).toBe('location')
+    expect(sectionQueries).not.toHaveBeenCalled();expect(readBounds).not.toHaveBeenCalled()
+  })
+  it.each([false, true])('导航等待更新/帧期间用户接管目录，nextTick已完成=%s时取消待执行跳转', async tickCompleted => {
+    await mountGroups();const pending = navigation('custom').props.onClick()
+    if (tickCompleted) await pending
+    scroller().props.onWheelPassive();await pending;await settle()
+    expect(groupScroll).not.toHaveBeenCalled()
+    expect(navigation('machine-services').props['aria-current']).toBe('location')
+  })
+  it.each(['hidden', 'cached', 'unmount', 'context', 'service'])('%s取消已排队帧，迟到旧帧不读取目录也不覆盖新帧', async reason => {
+    await mountGroups();scroller().props.onScrollPassive();const oldFrame = [...animationFrames.values()][0]
+    cancelFrame.mockClear();invalidatePublic(reason);await settle(false)
+    expect(cancelFrame).toHaveBeenCalledOnce()
+    if (reason !== 'unmount') await reopenPublicWithoutFrames(reason)
+    const currentFrames = animationFrames.size
+    sectionQueries.mockClear();readBounds.mockClear();readRects.mockClear();oldFrame(frameTime)
+    expect(animationFrames.size).toBe(currentFrames)
+    expect(sectionQueries).not.toHaveBeenCalled();expect(readBounds).not.toHaveBeenCalled();expect(readRects).not.toHaveBeenCalled()
+    if (reason !== 'unmount') {
+      requestFrame.mockClear();scroller().props.onScrollPassive();expect(requestFrame).not.toHaveBeenCalled()
+      await settle();expect(readRects).toHaveBeenCalledOnce()
+    }
+  })
+  it.each(['hidden', 'cached', 'unmount', 'context', 'service'])('%s之后迟到导航帧不能滚动，旧字体事件也不能排队', async reason => {
+    await mountGroups();await navigation('custom').props.onClick()
+    const oldFrame = [...animationFrames.values()][0], oldFont = [...fontListeners][0]
+    invalidatePublic(reason);await settle(false);requestFrame.mockClear();readBounds.mockClear()
+    oldFrame(frameTime);oldFont();await settle(false)
+    expect(groupScroll).not.toHaveBeenCalled();expect(readBounds).not.toHaveBeenCalled();expect(requestFrame).not.toHaveBeenCalled()
+    if (reason === 'unmount' || reason === 'hidden' || reason === 'cached') expect(fontListeners.size).toBe(0)
+    else expect(fontListeners.size).toBe(1)
+  })
   it.each([false, true])('导航清空搜索、展开目标，并遵循 reduced-motion=%s', async reduced => {
     await mountGroups();groupHeader('custom').props.onClick();await settle()
     expect(groupHeader('custom').props['aria-expanded']).toBe(false)
@@ -391,16 +560,17 @@ describe('服务分组导航的公共客户端生命周期', () => {
     invalidatePublic(reason);await settle();expect(previous.disconnect).toHaveBeenCalledOnce()
     readRects.mockClear();previous.callback();await settle();expect(readRects).not.toHaveBeenCalled()
     if (reason === 'context' || reason === 'service') {
-      expect(observer()).not.toBe(previous);expect(observer().observe).toHaveBeenCalledOnce()
+      expect(observer()).not.toBe(previous);expect(observer().observe).toHaveBeenCalledTimes(3)
     } else if (reason !== 'unmount') {
-      await reopenPublic(reason);expect(observer()).not.toBe(previous);expect(observer().observe).toHaveBeenCalledOnce()
+      await reopenPublic(reason);expect(observer()).not.toBe(previous);expect(observer().observe).toHaveBeenCalledTimes(3)
     }
   })
   it('ResizeObserver 排队的位置更新在上下文替换后失效，当前观察器仍可重定位', async () => {
     await mountGroups();const previous = observer()
-    source.context = {};previous.callback();readRects.mockClear();await settle()
+    previous.callback();const oldFrame = [...animationFrames.values()][0]
+    source.context = {};await settle(false);readRects.mockClear();oldFrame(frameTime)
     expect(readRects).not.toHaveBeenCalled()
-    observer().callback();await settle();expect(readRects).toHaveBeenCalled()
+    observer().callback();await settle();expect(readRects).toHaveBeenCalledOnce()
     expect(navigation('machine-services').props['aria-current']).toBe('location')
   })
   it.each(['hidden', 'cached', 'context', 'service'])('%s之后旧手势事件不得解除当前末组固定高亮', async reason => {
@@ -414,7 +584,7 @@ describe('服务分组导航的公共客户端生命周期', () => {
   })
   it('初始停用不创建尺寸观察器，激活后再观察当前目录', async () => {
     await mountCatalog({services: groupedCatalog, active: false});expect(observers).toHaveLength(0)
-    source.active = true;await settle();expect(observer().observe).toHaveBeenCalledOnce()
+    source.active = true;await settle();expect(observer().observe).toHaveBeenCalledTimes(3)
   })
   it('自定义分组已移除时，旧导航事件不得清空当前搜索', async () => {
     await mountGroups();const oldReveal = navigation('custom').props.onClick

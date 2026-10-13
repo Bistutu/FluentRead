@@ -1,4 +1,5 @@
 import type {RuntimeFetch} from '@/src/platform/http/runtime';
+import {readDoubaoGuestRequest} from '@/src/platform/http/doubaoGuest';
 import {getUserscriptFunction} from './api';
 
 export function parseResponseHeaders(rawHeaders = ''): Headers {
@@ -103,14 +104,37 @@ function shouldUseNativeFetch(url: string): boolean {
     }
 }
 
+/** 访客 Cookie 依赖管理器的匿名、特殊头和禁止重定向能力；未知实现不能静默附带账户 Cookie。 */
+function supportsAnonymousDoubao(): boolean {
+    const info = typeof GM_info !== 'undefined' ? GM_info : typeof GM !== 'undefined' ? GM?.info : undefined;
+    const version = info?.version?.match(/^(\d+)\.(\d+)(?:[.\-]|$)/u);
+    return info?.scriptHandler === 'Tampermonkey' && Boolean(version)
+        && (Number(version![1]) > 5 || Number(version![1]) === 5 && Number(version![2]) >= 5)
+        && /^(?:chrome|chromium|firefox|edge|msedge|opera|brave)$/iu.test(info?.platform?.browserName || '')
+        && /^(?:mac|macos|win|windows|linux)$/iu.test(info?.platform?.os || '');
+}
+
 /** 以旧式或现代 GM 请求 API 实现兼容 fetch 的传输层。 */
 export const userscriptFetch: RuntimeFetch = async (input, init) => {
     const request = await resolveRequest(input, init);
+    const guest = readDoubaoGuestRequest(request.url, request.method, request.headers);
     const gmRequest = getUserscriptFunction('GM_xmlhttpRequest', 'xmlHttpRequest');
     // GM_xmlhttpRequest 只接管 HTTP(S) 跨域请求；blob/data 等协议仍交给网页原生 fetch。
     if (!gmRequest || shouldUseNativeFetch(request.url)) {
+        if (guest) throw new Error('豆包匿名访客请求需要脚本管理器的跨域请求能力。');
         return globalThis.fetch(input, init);
     }
+
+    const anonymousDoubao = ['https://www.doubao.com/', 'https://ttwid.bytedance.com/ttwid/union/register/'].includes(request.url) || Boolean(guest);
+    if (anonymousDoubao && !supportsAnonymousDoubao()) throw new Error('当前运行环境无法发送豆包匿名访客请求。');
+
+    if (guest) {
+        request.headers = guest.headers;
+        request.headers.set('Cookie', `ttwid=${guest.token}`);
+        request.headers.set('Origin', 'https://www.doubao.com');
+        request.headers.set('Referer', 'https://www.doubao.com/');
+    }
+    // 豆包首页、访客注册和翻译请求均排除管理器自动附带的个人 Cookie。
 
     if (request.signal?.aborted) throw abortError();
 
@@ -143,6 +167,8 @@ export const userscriptFetch: RuntimeFetch = async (input, init) => {
                 url: request.url,
                 headers: headersToRecord(request.headers),
                 data: request.body ?? undefined,
+                ...(anonymousDoubao ? {anonymous: true} : {}),
+                ...(guest ? {redirect: 'error' as const} : {}),
                 onload(response: UserscriptXmlHttpResponse) {
                     // 完成门先关闭再构造 Response；构造失败必须 reject，否则调用方与后续 abort 都无法结算。
                     finish(() => {

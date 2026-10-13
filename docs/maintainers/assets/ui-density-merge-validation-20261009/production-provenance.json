@@ -1,0 +1,147 @@
+{
+  "baseMain": "51b0f87a7b020b1f037a721c3b7e65af73c23b23",
+  "productionUiSourceHead": "e187a308c158d51c182aa8c927d324863baa34af",
+  "recordedAt": "2026-10-09T13:57:18Z",
+  "artifactFingerprintAlgorithm": "SHA256 of sorted per-file SHA256 + two spaces + relative POSIX path + LF",
+  "chrome": {
+    "files": 412,
+    "treeSha256": "37ac74d1e4ae6485ed234eb0312f72e468c23c06bc00ac6bd06f896ea6a9747c",
+    "manifestSha256": "cc92950ad08ed2e2f02bd55a0756048e6569ec51c9341d9e678b65fb3d8d03f7"
+  },
+  "firefox": {
+    "files": 412,
+    "treeSha256": "514b1af22034476feb572d5e381221c71070023cc125a16670ae0ac9337b6185",
+    "manifestSha256": "37334569ee177d6a4046d3187d9588f230cbd1883cd0aa312eccec4fb7e4099c"
+  },
+  "userscript": {
+    "bytes": 1963242,
+    "sha256": "05236079bcbe28d132a92b46da7cf8a941e367a93c0b6e3b8eeca57dcf3471b8",
+    "mainBytes": 1959582,
+    "budgetBytes": 1964000,
+    "languagePin": "a4c8168a0e41f87592a13aa7c2ab4eb020255398",
+    "pinnedLanguageResources": 5
+  },
+  "tests": {
+    "affectedFiles": 23,
+    "affectedCases": 791,
+    "userscriptConfigFiles": 2,
+    "userscriptConfigCases": 20,
+    "scope": "Affected suites, no full regression"
+  },
+  "checks": {
+    "compile": true,
+    "testAudit": true,
+    "chromeBuild": true,
+    "firefoxBuild": true,
+    "userscriptBuildAndVerifier": true,
+    "extensionManifests": true,
+    "docsBuild": true,
+    "docsCheck": false,
+    "docsCheckFailure": "Existing missing /storybook/?path=/docs/foundations-colors--docs; local Storybook CLI unavailable"
+  },
+  "browser": {
+    "selection": {
+      "ok": true,
+      "screenshots": 63,
+      "cases": 12,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "browserFrontmostAtPlacement": false,
+      "checks": 326,
+      "requiredFailures": 0,
+      "layouts": 28,
+      "focusSamples": 127,
+      "foregroundViolations": 0,
+      "foregroundApps": [
+        "Claude"
+      ],
+      "consoleErrors": 0,
+      "cleanupErrors": 0,
+      "ownedBrowserClosed": true,
+      "profileRemoved": true
+    },
+    "popup": {
+      "ok": true,
+      "screenshots": 25,
+      "cases": 29,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "browserFrontmostAtPlacement": false,
+      "layouts": 25,
+      "focusSamples": 55,
+      "foregroundViolations": 0,
+      "foregroundApps": [
+        "Claude"
+      ],
+      "consoleErrors": 0,
+      "cleanupErrors": 0,
+      "ownedBrowserClosed": true,
+      "profileRemoved": true
+    },
+    "service": {
+      "ok": true,
+      "screenshots": 20,
+      "cases": 16,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "browserFrontmostAtPlacement": false,
+      "layouts": 20,
+      "scrollSamples": 20,
+      "consoleErrors": 0,
+      "cleanupErrors": 0,
+      "ownedBrowserClosed": true,
+      "profileRemoved": true,
+      "cleanupEvidence": "Successful strict owned close in harness finally; no cleanupErrors or retainedProfile",
+      "foregroundAppsAtLaunch": [
+        "Claude"
+      ],
+      "focusEvidence": "Launch placement before/after only; no continuous focus samples in this harness"
+    },
+    "pdf": {
+      "ok": true,
+      "screenshots": 11,
+      "cases": 11,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "browserFrontmostAtPlacement": false,
+      "focusSamples": 31,
+      "foregroundViolations": 0,
+      "foregroundApps": [
+        "Claude"
+      ],
+      "consoleErrors": 0,
+      "cleanupErrors": 0,
+      "ownedBrowserClosed": true,
+      "profileRemoved": true,
+      "cleanupEvidence": "Successful strict owned browser close in harness finally; no cleanupError or retainedProfile",
+      "skipped": [
+        "rotatedPDF"
+      ]
+    }
+  },
+  "evidenceDirectory": "/Users/thinkstu/Desktop/copy/artifacts/ui-density-merge-validation-20261009",
+  "boundaries": [
+    "Controlled provider/config/PDF fixtures; no live provider or audio quality claim",
+    "Firefox build only",
+    "PDF rotations, live arXiv and paper layout export matrix excluded",
+    "Popup ordinary extension tabs do not prove native toolbar geometry",
+    "Historical reports and fingerprints retained unchanged"
+  ],
+  "sources": {
+    "src/app/popup/PopupApp.vue": "983c1cc47c9e82b51b255475ede3ab57e1816dd0c6ffc4cd8400669e36baf610",
+    "src/features/selection-translation/ui/SelectionTranslator.vue": "884473eb65f39882dd997969680244001517fe9cb1265c276f69972cd083993e",
+    "src/features/reading-assistant/ui/ReadingPanel.vue": "1457f963d815a717107ed556ae13970e199d6b12ec745ddd9c433467c3aefef2",
+    "src/features/settings/ui/services/ServiceCatalog.vue": "68fccf492bba1f06abd90a5c931d50b6075f603cfacddf6a7b60739ff23614bf",
+    "src/features/settings/ui/LocalTranslationModelSettings.vue": "9e66825f8eaee26b3671da35415a86e4eb72d797a5a21cde8c4742e56ff3d3b6",
+    "tests/popupKeyInformation.test.ts": "28396f6058bd3adeada0caf8a20f4fe865539745fe1e9f2c246078d003bd8d62",
+    "tests/selectionTranslatorLifecycle.test.ts": "e25b3a55edb73b18c8a9237278cea78a23bbf8f2be85bbda5078173bad8bdc0f",
+    "userscript/vite.config.ts": "b62d281e4afa6c5b907767fad9cd628607ffeca3cdd47cd77dde368802aaafa9",
+    "scripts/verify-userscript-build.mjs": "f7812645e47223bdcbdc7142f8cbc9c2456c1a88879c13935ac9efd717a70764"
+  },
+  "reportFingerprints": {
+    "selection": "2f25f2d64a9ddd6c6b50071bf3989f3f02b8f431dc7ec126d9bdb547aa790ce6",
+    "popup": "3aa0893dcaad2789cc546167cdf5e3b75fa7b9723596a02e394b70abefde2b95",
+    "service": "95c4538c27e808d57e8ad5d70a1ba90b9b0e41905abb8ddc6b5aa091167a8eb9",
+    "pdf": "8ec93d9bb1852b60499b68eed9e0a5075e8cd292ba120550e739e62cbb7cd906"
+  }
+}

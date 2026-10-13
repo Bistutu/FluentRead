@@ -1,0 +1,159 @@
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-pdf-selection-reader-20261009
+
+ ✓ tests/pdfReaderLifecycle.test.ts (34 tests) 930ms
+ ✓ tests/documentUserActions.test.ts (35 tests) 1645ms
+ ✓ tests/documentAppLifecycle.test.ts (16 tests) 541ms
+ ✓ tests/architecture/verificationOwnership.test.ts (16 tests) 5186ms
+   ✓ repository verification ownership > src 中每个可执行非组装模块都进入四维 100% 覆盖率边界 3043ms
+   ✓ repository verification ownership > 覆盖率清单不能引用不存在的源码或把组装根伪装成业务覆盖 1961ms
+ ✓ tests/architecture/moduleBoundaries.test.ts (13 tests) 3183ms
+   ✓ architecture module boundaries > src 的静态依赖图不存在跨文件循环 1133ms
+   ✓ architecture module boundaries > src 只能通过精确登记的 composition/browser/provider 迁移边界读取 entrypoints 883ms
+   ✓ architecture module boundaries > feature 不能跨目录读取另一个 feature 的内部实现 485ms
+   ✓ architecture module boundaries > 按需加载的大体积资源不得被扩展运行时代码静态引入 420ms
+ ✓ tests/pdfLayoutAnalysis.test.ts (13 tests) 137ms
+ ✓ tests/documentPdfRasterizer.test.ts (25 tests) 101ms
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > extracts every page rotation with unchanged content coordinates and rotated display dimensions
+Warning: Cannot access the `require` function: "TypeError: process.getBuiltinModule is not a function".
+Warning: Cannot polyfill `DOMMatrix`, rendering may be broken.
+Warning: Cannot polyfill `ImageData`, rendering may be broken.
+Warning: Cannot polyfill `Path2D`, rendering may be broken.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > extracts every page rotation with unchanged content coordinates and rotated display dimensions
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > passes native rotation to the rasterizer and preserves the displayed page shape in bilingual downloads
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > passes native rotation to the rasterizer and preserves the displayed page shape in bilingual downloads
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > passes native rotation to the rasterizer and preserves the displayed page shape in translated downloads
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > keeps unchanged rotated bilingual pages as correctly oriented originals without rasterizing
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > keeps unchanged rotated bilingual pages as correctly oriented originals without rasterizing
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective inside crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective inside crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective inside crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective inside crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective intersection crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective intersection crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective intersection crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective empty crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective empty crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: Empty /CropBox and /MediaBox intersection.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfRotation.test.ts > real rotated PDF import and download > preserves effective empty crop geometry and visible glyphs at all rotations without changing source bytes
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+ ✓ tests/documentPdfRotation.test.ts (7 tests) 526ms
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > retains source bytes, correct column reading order, headings and baseline superscripts
+Warning: Cannot access the `require` function: "TypeError: process.getBuiltinModule is not a function".
+Warning: Cannot polyfill `DOMMatrix`, rendering may be broken.
+Warning: Cannot polyfill `ImageData`, rendering may be broken.
+Warning: Cannot polyfill `Path2D`, rendering may be broken.
+
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > retains source bytes, correct column reading order, headings and baseline superscripts
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > uses actual graphics bounds for protected tables/images/formulas while retaining captions and prose
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > opens a valid math-only text layer for source reading without creating provider segments, while rejecting graphic-only scans
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+ ✓ tests/documentPdfLayoutParsing.test.ts (3 tests) 254ms
+ ✓ tests/pdfReadingPlan.test.ts (6 tests) 5ms
+ ✓ tests/architecture/sourceFileHeaders.test.ts (844 tests) 242ms
+ ✓ tests/pdfTextLayout.test.ts (6 tests) 32ms
+
+ Test Files  12 passed (12)
+      Tests  1018 passed (1018)
+   Start at  17:20:13
+   Duration  16.59s (transform 1.03s, setup 0ms, collect 2.14s, tests 12.78s, environment 1ms, prepare 440ms)

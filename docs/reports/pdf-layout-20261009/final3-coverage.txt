@@ -1,0 +1,42 @@
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-pdf-selection-reader-20261009
+      Coverage enabled with v8
+
+ ✓ tests/pdfReaderLifecycle.test.ts (34 tests) 953ms
+ ✓ tests/pdfLayoutAnalysis.test.ts (13 tests) 147ms
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > retains source bytes, correct column reading order, headings and baseline superscripts
+Warning: Cannot access the `require` function: "TypeError: process.getBuiltinModule is not a function".
+Warning: Cannot polyfill `DOMMatrix`, rendering may be broken.
+Warning: Cannot polyfill `ImageData`, rendering may be broken.
+Warning: Cannot polyfill `Path2D`, rendering may be broken.
+
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > retains source bytes, correct column reading order, headings and baseline superscripts
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > uses actual graphics bounds for protected tables/images/formulas while retaining captions and prose
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+stdout | tests/documentPdfLayoutParsing.test.ts > real PDF structural parsing > opens a valid math-only text layer for source reading without creating provider segments, while rejecting graphic-only scans
+Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+
+ ✓ tests/documentPdfLayoutParsing.test.ts (3 tests) 324ms
+ ✓ tests/pdfReadingPlan.test.ts (6 tests) 4ms
+ ✓ tests/pdfTextLayout.test.ts (6 tests) 30ms
+
+ Test Files  5 passed (5)
+      Tests  62 passed (62)
+   Start at  17:22:40
+   Duration  3.21s (transform 433ms, setup 0ms, collect 617ms, tests 1.46s, environment 1ms, prepare 194ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |     100 |      100 |     100 |     100 |
+ core              |     100 |      100 |     100 |     100 |
+  ...utAnalysis.ts |     100 |      100 |     100 |     100 |
+  ...eadingPlan.ts |     100 |      100 |     100 |     100 |
+  pdfTextLayout.ts |     100 |      100 |     100 |     100 |
+ ui                |     100 |      100 |     100 |     100 |
+  pdfReader.ts     |     100 |      100 |     100 |     100 |
+-------------------|---------|----------|---------|---------|-------------------

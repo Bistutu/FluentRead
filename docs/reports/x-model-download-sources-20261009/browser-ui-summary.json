@@ -1,0 +1,631 @@
+{
+  "success": true,
+  "checks": {
+    "passed": 27,
+    "total": 27,
+    "items": [
+      {
+        "name": "Seven real Small files pass exact registered SHA and bytes",
+        "pass": true
+      },
+      {
+        "name": "Immutable source matches src/features/settings/ui/VideoLocalModelSettings.vue",
+        "pass": true
+      },
+      {
+        "name": "Immutable source matches src/core/download/progress.ts",
+        "pass": true
+      },
+      {
+        "name": "Immutable source matches src/platform/http/modelDownloads.ts",
+        "pass": true
+      },
+      {
+        "name": "Immutable source matches src/features/video-subtitle/offscreen/modelCache.ts",
+        "pass": true
+      },
+      {
+        "name": "Immutable source matches src/features/video-subtitle/background/handlers.ts",
+        "pass": true
+      },
+      {
+        "name": "Fresh production settings selects Small before any fixture config write",
+        "pass": true
+      },
+      {
+        "name": "Actual complete cache is available before controlled fault",
+        "pass": true
+      },
+      {
+        "name": "Initial source choice is request-only automatic",
+        "pass": true
+      },
+      {
+        "name": "Fixed source pages are safe links",
+        "pass": true
+      },
+      {
+        "name": "Deleted only tokenizer; actual status is unavailable",
+        "pass": true
+      },
+      {
+        "name": "All-source failure restores an enabled retry action",
+        "pass": true
+      },
+      {
+        "name": "Official preference traverses three distinct registered sources",
+        "pass": true
+      },
+      {
+        "name": "First-byte waiting names the actual source",
+        "pass": true
+      },
+      {
+        "name": "Failure changes the visible source and attempt",
+        "pass": true
+      },
+      {
+        "name": "Receiving status uses current source and real byte progress",
+        "pass": true
+      },
+      {
+        "name": "Real cache-only prepare restores seven keys and clears old error",
+        "pass": true
+      },
+      {
+        "name": "Controlled official failure falls back to mirror",
+        "pass": true
+      },
+      {
+        "name": "Deleted only tokenizer; actual status is unavailable",
+        "pass": true
+      },
+      {
+        "name": "Domestic preference starts with ModelScope on a later request",
+        "pass": true
+      },
+      {
+        "name": "Repaired tokenizer has the exact public registered bytes",
+        "pass": true
+      },
+      {
+        "name": "Reload resets request-only choice without changing selected model",
+        "pass": true
+      },
+      {
+        "name": "zh-CN 390px source controls do not overflow",
+        "pass": true
+      },
+      {
+        "name": "ru-RU 390px source controls do not overflow",
+        "pass": true
+      },
+      {
+        "name": "Cache-only model source UI never creates a transcription Worker",
+        "pass": true
+      },
+      {
+        "name": "Exactly two local registered tokenizer transfers occurred",
+        "pass": true
+      },
+      {
+        "name": "No unregistered remote requests escaped the owned offscreen control",
+        "pass": true
+      }
+    ]
+  },
+  "scope": "Chrome production options UI and actual cache-only prepare/background/progress/storage. Three native public 2227-byte config probes precede controlled local tokenizer repair; no ASR/ONNX or production-weight network speed acceptance.",
+  "artifact": "/Users/thinkstu/Desktop/copy/FluentRead-builds/x-model-download-sources-20261009-final-v3/chrome-mv3",
+  "baseCommit": "b077d878f2e0970b71b4c775d41c4681dfd6c911",
+  "artifactSha256": {
+    "manifest.json": "fd80314b160701ed5500e584e1373f5eed44a19acdc6f8b76f9a12c1565970d8",
+    "background.js": "5e62851d8600f94ca08bcf173908bc8cdedad60ab589780c5bc78e3522edc80a",
+    "videoTranscriptionWorker.js": "1918463ed31ba2c2b2011957f4edb139f85a74ae04fb2900a899b4ecde931fc3"
+  },
+  "provenanceSha256": "105f4b98922392b18db6018324f5daf63e59ba1e5f6e29e0f0d73c3a05b5804c",
+  "sourceHashes": {
+    "src/app/offscreen/runtime.ts": "147be423734db3455d7dac44e8cbc82971cc934e6f87574a834039793fde1dba",
+    "src/core/config/model.ts": "a56854edf96ecd6a13c39ae732c64997d9cfb7a544aefd527895c6a5011eb540",
+    "src/core/download/progress.ts": "b0664c2ff13dea95f25ff4f1bf4dd77d04721e68487a168b0043cda8945f7c79",
+    "src/core/i18n/messages/settings-copy/en-US.json": "3c1b8042a60ea0765fb8c1c2f3ad779a8c2b1a5d822788606a543957cb224f9c",
+    "src/core/i18n/messages/settings-copy/es-ES.json": "fcf6be5a3d90ef2a48695b041f9239382fc84409e92e83d00d2cd34d14889e56",
+    "src/core/i18n/messages/settings-copy/fr-FR.json": "abc9c46ed9d5384d2cb9e13ef7f2290028e5e3eb5eea03b87912f9dc20579da3",
+    "src/core/i18n/messages/settings-copy/ja-JP.json": "898d3474e93f3051950ada9903ce487e68fcf2f12f52dfa3ff37f8ab20fdaedd",
+    "src/core/i18n/messages/settings-copy/ko-KR.json": "faeb1c57f30a299ccb226294f15ad108cb1004c4e1cef3616d4748415e144f19",
+    "src/core/i18n/messages/settings-copy/ru-RU.json": "b6be645494aceb12c8cb8bfb379008fae38aadc7521e26450188bcefb1b87813",
+    "src/core/i18n/messages/settings-copy/zh-CN.json": "0150574333868305be4e8136ab81274595f44ef9358a797a0883ef4dd0ae17c1",
+    "src/features/local-tts/offscreen/modelCache.ts": "51f6979208abda27f39994ec232091ceac8b67186b183d0980265b137f8dabec",
+    "src/features/local-tts/offscreen/tts.worker.ts": "29b34886da00a4934c5d4d3fb9d366bbf55e1a833e9e9faec5380414748aa1c0",
+    "src/features/settings/ui/VideoLocalModelSettings.vue": "9dcc7da7af6d693ea756618caea9e4eda477a2701be7162a445de0463eda7ff4",
+    "src/features/video-subtitle/background/handlers.ts": "90dab592fb08e1b7598b482ec3272dba6f952a50f02bfcce14644dc7a9fc55a1",
+    "src/features/video-subtitle/offscreen/modelCache.ts": "0d37c571ef88e69307e185ab97a2a1565fb6faefbc0bb2dc24dac4e36097de32",
+    "src/features/video-subtitle/offscreen/transcription.ts": "cd918b381791221612c7bf2b42161db2b900d7a47442ca3ad603d6ff0522f545",
+    "src/features/video-subtitle/transcription.ts": "b35245a0f5c5235cc273b634e1c1b2b8656db042888cf45ccc7a90ba63e74dc8",
+    "src/platform/http/modelDownloads.ts": "4cc399c4f007eb71a920f52dfe00b6d32a89b6b5950e6196ea15dbd1b5b36ef5",
+    "src/platform/offscreen/client.ts": "b31c8f304e99c5658744684560df384f78dbe1e95c0ca942fdd089dd897da7e9"
+  },
+  "driverSha256": "5be5ba015759b21c51b75e741b6bc2d6c1c97f4f43733c0f923eeb681d920d3f",
+  "timing": {
+    "startedAt": "2026-10-09T15:19:15.684Z",
+    "finishedAt": "2026-10-09T15:19:45.094Z",
+    "wallMs": 29410,
+    "phaseEvents": [
+      {
+        "name": "preflight",
+        "at": 1791559155687
+      },
+      {
+        "name": "launch",
+        "at": 1791559156173
+      },
+      {
+        "name": "stream-seed-real-small",
+        "at": 1791559162446
+      },
+      {
+        "name": "native-browser-config-probe",
+        "at": 1791559165312,
+        "source": "modelscope"
+      },
+      {
+        "name": "native-browser-config-probe",
+        "at": 1791559165957,
+        "source": "huggingface"
+      },
+      {
+        "name": "native-browser-config-probe",
+        "at": 1791559168343,
+        "source": "hf-mirror"
+      },
+      {
+        "name": "all-sources-fail-and-retry",
+        "at": 1791559169702
+      },
+      {
+        "name": "actual-source-status-and-local-recovery",
+        "at": 1791559173203
+      },
+      {
+        "name": "mirror-preference-next-request",
+        "at": 1791559176965
+      },
+      {
+        "name": "proof-complete",
+        "at": 1791559184671
+      },
+      {
+        "name": "owned-browser-closed",
+        "at": 1791559185093
+      }
+    ]
+  },
+  "nativeSourceProbes": [
+    {
+      "source": "modelscope",
+      "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/config.json",
+      "status": 200,
+      "ok": true,
+      "bytes": 2227,
+      "sha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18",
+      "elapsedMs": 641.6999998092651,
+      "matchesRegisteredConfig": true,
+      "finalUrlWithoutQuery": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/config.json",
+      "redirectedToHuggingFace": false
+    },
+    {
+      "source": "huggingface",
+      "url": "https://huggingface.co/onnx-community/whisper-small/resolve/main/config.json",
+      "status": 200,
+      "ok": true,
+      "bytes": 2227,
+      "sha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18",
+      "elapsedMs": 2379.2999997138977,
+      "matchesRegisteredConfig": true,
+      "finalUrlWithoutQuery": "https://huggingface.co/api/resolve-cache/models/onnx-community/whisper-small/36050c46d777d46dc4b5f43f6d90574fc38f8732/config.json",
+      "redirectedToHuggingFace": false
+    },
+    {
+      "source": "hf-mirror",
+      "url": "https://hf-mirror.com/onnx-community/whisper-small/resolve/main/config.json",
+      "status": 200,
+      "ok": true,
+      "bytes": 2227,
+      "sha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18",
+      "elapsedMs": 1348,
+      "matchesRegisteredConfig": true,
+      "finalUrlWithoutQuery": "https://huggingface.co/api/resolve-cache/models/onnx-community/whisper-small/36050c46d777d46dc4b5f43f6d90574fc38f8732/config.json",
+      "redirectedToHuggingFace": true
+    }
+  ],
+  "nativeProbeContract": {
+    "origin": "owned extension offscreen",
+    "credentials": "omit",
+    "deadlinePerRequestMs": 10000,
+    "maximumDecodedBytesPerResponse": 16384,
+    "unmodifiedNativeFetch": true,
+    "allBeforeControlledFetchAndNetworkBlock": true,
+    "limitations": [
+      "Only public config.json was fetched; full 590 MB network downloads were not tested.",
+      "HF Mirror redirected to the official Hugging Face config-cache URL on this machine; it is not evidence of an independent CDN.",
+      "Durable final URLs omit query strings."
+    ],
+    "browserLanguages": {
+      "language": "zh-CN",
+      "languages": [
+        "zh-CN",
+        "zh"
+      ]
+    }
+  },
+  "isolatedModelCache": {
+    "actualModelId": "onnx-community/whisper-small",
+    "modelManifestSha256": "baa8563ad1ef4ff999f613c16684afe2e709a9622b37baf5eb111e75e12ea471",
+    "registeredFiles": [
+      {
+        "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/config.json",
+        "bytes": 2227,
+        "sha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18"
+      },
+      {
+        "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/generation_config.json",
+        "bytes": 3893,
+        "sha256": "f538b28220c6a6d6f1af1458d4141cacb4ef4963df3de98a19490440c412ddf0"
+      },
+      {
+        "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/preprocessor_config.json",
+        "bytes": 339,
+        "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d"
+      },
+      {
+        "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/tokenizer.json",
+        "bytes": 2480466,
+        "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566"
+      },
+      {
+        "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/tokenizer_config.json",
+        "bytes": 282683,
+        "sha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce"
+      },
+      {
+        "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/onnx/decoder_model_merged_q4.onnx",
+        "bytes": 233149327,
+        "sha256": "795c61b344576719c2b249cc9911c78b4cc552c8c6a5407be21a3380a0791b13"
+      },
+      {
+        "url": "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/onnx/encoder_model.onnx",
+        "bytes": 352825870,
+        "sha256": "b37cd6625dc36f9178ec7539a1876b9680ea26a910097e092be39dc766320c7b"
+      }
+    ],
+    "totalRegisteredBytes": 588744805,
+    "onlyMissingFile": "tokenizer.json",
+    "repairedTokenizer": {
+      "bytes": 2480466,
+      "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566"
+    },
+    "controlledTransferCount": 2,
+    "controlledTransferBytesEach": [
+      2480466,
+      2480466
+    ],
+    "allTransferredFileSHA256": [
+      "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566"
+    ],
+    "cacheSeedTransport": "loopback-http-response-to-extension-cache",
+    "cacheSeedWallMs": 1199,
+    "completeCacheKeys": [
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/preprocessor_config.json",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/config.json",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/generation_config.json",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/tokenizer_config.json",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/tokenizer.json",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/onnx/decoder_model_merged_q4.onnx",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/onnx/encoder_model.onnx"
+    ],
+    "repairedCacheKeys": [
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/preprocessor_config.json",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/config.json",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/generation_config.json",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/tokenizer_config.json",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/onnx/decoder_model_merged_q4.onnx",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/onnx/encoder_model.onnx",
+      "https://modelscope.cn/models/onnx-community/whisper-small/resolve/master/tokenizer.json"
+    ],
+    "completeActualModelState": {
+      "success": true,
+      "models": [
+        "small"
+      ],
+      "available": {
+        "tiny": false,
+        "base": false,
+        "small": true
+      }
+    },
+    "repairedActualModelState": {
+      "success": true,
+      "models": [
+        "small"
+      ],
+      "available": {
+        "tiny": false,
+        "base": false,
+        "small": true
+      }
+    }
+  },
+  "downloadScenarios": {
+    "allSourcesFail": {
+      "fault": "HTTP 503 controlled in the exact owned offscreen fetch transport",
+      "sourceOrder": [
+        "huggingface",
+        "hf-mirror",
+        "modelscope"
+      ],
+      "retryButton": "重试下载",
+      "retryEnabled": true,
+      "error": "模型文件下载失败（503）。请检查网络后重试。"
+    },
+    "officialRetryWithFallback": {
+      "fault": "Official connection failure controlled; mirror response uses exact local registered tokenizer bytes streamed through bounded loopback",
+      "sourceOrder": [
+        "huggingface",
+        "hf-mirror"
+      ],
+      "connectingStatus": "正在连接 Hugging Face · 1/3",
+      "switchingStatus": "正在切换至 HF Mirror · 2/3",
+      "receivingStatus": "正在从 HF Mirror 下载",
+      "firstPositiveDomProgressWaitSatisfied": true,
+      "roundedFirstReceivingProgressText": "0% · 0.0 MB / 590 MB",
+      "intermediateNumericalByteCountRetained": false,
+      "restoredKeys": 7,
+      "availableSmall": true,
+      "oldErrorCleared": true
+    },
+    "domesticLaterRequest": {
+      "firstSource": "modelscope",
+      "sourceOrder": [
+        "modelscope"
+      ]
+    },
+    "preferenceAfterReload": "auto",
+    "freshDefaultModelBeforeFixtureConfigWrite": "small"
+  },
+  "layouts": [
+    {
+      "locale": "zh-CN",
+      "section": {
+        "x": 15,
+        "width": 360
+      },
+      "scrollWidth": 360,
+      "clientWidth": 360,
+      "sourceLabel": "下载来源自动选择国内优先官方优先",
+      "select": [
+        "自动选择",
+        "国内优先",
+        "官方优先"
+      ],
+      "links": [
+        {
+          "text": "Hugging Face ↗",
+          "x": 112.5,
+          "right": 192.8828125
+        },
+        {
+          "text": "HF Mirror ↗",
+          "x": 204.8828125,
+          "right": 263.5546875
+        },
+        {
+          "text": "ModelScope ↗",
+          "x": 275.5546875,
+          "right": 349.3046875
+        }
+      ],
+      "viewport": 390
+    },
+    {
+      "locale": "ru-RU",
+      "section": {
+        "x": 15,
+        "width": 360
+      },
+      "scrollWidth": 360,
+      "clientWidth": 360,
+      "sourceLabel": "Источник загрузкиАвтоматическиСначала зеркала в КитаеСначала официальный",
+      "select": [
+        "Автоматически",
+        "Сначала зеркала в Китае",
+        "Сначала официальный"
+      ],
+      "links": [
+        {
+          "text": "Hugging Face ↗",
+          "x": 200.859375,
+          "right": 281.2421875
+        },
+        {
+          "text": "HF Mirror ↗",
+          "x": 293.2421875,
+          "right": 351.9140625
+        },
+        {
+          "text": "ModelScope ↗",
+          "x": 27,
+          "right": 100.75
+        }
+      ],
+      "viewport": 390
+    }
+  ],
+  "safety": {
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 212,
+        "top": -990,
+        "width": 1280,
+        "height": 900
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false
+    },
+    "browserVersion": "154.0.8037.99",
+    "focusChecks": 4,
+    "modelWorkerCount": 0,
+    "extensionTargets": [
+      {
+        "type": "service_worker",
+        "path": "/background.js"
+      },
+      {
+        "type": "background_page",
+        "path": "/offscreen.html"
+      },
+      {
+        "type": "page",
+        "path": "/options.html"
+      },
+      {
+        "type": "page",
+        "path": "/popup.html"
+      }
+    ],
+    "controlledPhaseUnregisteredRemoteRequestCount": 0,
+    "controlledOffscreenGetCount": 2,
+    "guardedCloseSucceeded": true,
+    "ownedTemporaryProfileRemoved": true
+  },
+  "screenshots": [
+    "browser-ui-connecting-official.png",
+    "browser-ui-source-settings-zh-390.png"
+  ],
+  "additionalTmpScreenshots": {
+    "switching-mirror": "/private/tmp/fluentread-video-model-download-source-ui-proof-20261009/final-v3/switching-mirror.png",
+    "receiving-mirror": "/private/tmp/fluentread-video-model-download-source-ui-proof-20261009/final-v3/receiving-mirror.png",
+    "sources-failed-retry": "/private/tmp/fluentread-video-model-download-source-ui-proof-20261009/final-v3/sources-failed-retry.png",
+    "source-settings-ru-RU-390": "/private/tmp/fluentread-video-model-download-source-ui-proof-20261009/final-v3/source-settings-ru-RU-390.png"
+  },
+  "failedAttemptsRetained": [
+    {
+      "report": "/private/tmp/fluentread-video-model-download-source-ui-proof-20261009/final-v1/report.json",
+      "success": false,
+      "classification": "Driver provenance field schema mismatch; no browser launched.",
+      "passedChecks": 1
+    },
+    {
+      "report": "/private/tmp/fluentread-video-model-download-source-ui-proof-20261009/final-v1-retry1/report.json",
+      "success": false,
+      "classification": "Driver mobile navigation looked for a nonexistent data-settings-category selector; source/cache/pref checks passed, layout not executed.",
+      "passedChecks": 21,
+      "guardedCloseSucceeded": true,
+      "ownedTemporaryProfileRemoved": true
+    }
+  ],
+  "rawReportTmp": "/private/tmp/fluentread-video-model-download-source-ui-proof-20261009/final-v3/report.json",
+  "previousVerification": [
+    {
+      "artifact": "/Users/thinkstu/Desktop/copy/FluentRead-builds/x-model-download-sources-20261009-final-v1/chrome-mv3",
+      "artifactSha256": {
+        "manifest.json": "cc92950ad08ed2e2f02bd55a0756048e6569ec51c9341d9e678b65fb3d8d03f7",
+        "background.js": "ef7b371854e21cc0e397c23cb529e36c7ed568b617f0ed3d3cdfbfb78ac72f3a",
+        "videoTranscriptionWorker.js": "7de67b72220244bf09726a65a89ffabc7aba81303047d50c1a8963283be05fb6"
+      },
+      "provenanceSha256": "5c02e60adf93f60c5a5003a41b3a50e6d7a9666b7d26ca0cfc2a4f8b009d4213",
+      "driverSha256": "5be5ba015759b21c51b75e741b6bc2d6c1c97f4f43733c0f923eeb681d920d3f",
+      "timing": {
+        "startedAt": "2026-10-09T15:05:02.126Z",
+        "finishedAt": "2026-10-09T15:05:37.017Z",
+        "phaseEvents": [
+          {
+            "name": "preflight",
+            "at": 1791558302128
+          },
+          {
+            "name": "launch",
+            "at": 1791558302705
+          },
+          {
+            "name": "stream-seed-real-small",
+            "at": 1791558305334
+          },
+          {
+            "name": "native-browser-config-probe",
+            "at": 1791558310752,
+            "source": "modelscope"
+          },
+          {
+            "name": "native-browser-config-probe",
+            "at": 1791558311441,
+            "source": "huggingface"
+          },
+          {
+            "name": "native-browser-config-probe",
+            "at": 1791558317484,
+            "source": "hf-mirror"
+          },
+          {
+            "name": "all-sources-fail-and-retry",
+            "at": 1791558323423
+          },
+          {
+            "name": "actual-source-status-and-local-recovery",
+            "at": 1791558326957
+          },
+          {
+            "name": "mirror-preference-next-request",
+            "at": 1791558330436
+          },
+          {
+            "name": "proof-complete",
+            "at": 1791558336629
+          },
+          {
+            "name": "owned-browser-closed",
+            "at": 1791558337016
+          }
+        ]
+      },
+      "rawReportTmp": "/private/tmp/fluentread-video-model-download-source-ui-proof-20261009/final-v1-retry2/report.json",
+      "success": true,
+      "passedChecks": 27,
+      "totalChecks": 27,
+      "guardedCloseSucceeded": true,
+      "ownedTemporaryProfileRemoved": true,
+      "scope": "Previous V1 verification; not the final integrated artifact. Native 2227-byte config probes and controlled tokenizer fault/recovery passed."
+    }
+  ],
+  "sourceCommit": "f4db4efad0524b36bbeb2b655a7958f44e1a35f1",
+  "extensionVersion": "0.0.37",
+  "integratedMainCommit": "64c6b8e67316f7757d31469800219b034d3d690f",
+  "finalIntegrationScope": {
+    "sourceHashCount": 19,
+    "allSourceHashesMatchCurrentCheckout": true,
+    "changesSincePreviousVerification": {
+      "changedPreviouslyRecordedSourceHashes": [
+        "src/core/download/progress.ts"
+      ],
+      "additionalRecordedSource": "src/platform/offscreen/client.ts"
+    },
+    "functionalReplay": "Same complete 27-check source/cache/settings proof on V3. The long 630000 ms client deadline itself was not elapsed by this browser test."
+  },
+  "screenshotSha256": {
+    "browser-ui-connecting-official.png": "862c938ad4d13bc51ed2898687aaff90d7c415b8b42c3b0195370bac52c3394a",
+    "browser-ui-source-settings-zh-390.png": "39abe23ed172eeb6a8bd78406a39ee6b279e0bab55cc9f656b8b8147cf882490"
+  },
+  "provenanceHashScope": "SHA captured at browser preflight; finalized metadata was subsequently enriched without changing the source identity or Chrome bytes.",
+  "finalizedProvenanceSha256": "23ba489f869506437a8e20555a6694ffaebd5d4e3bd10dd9811c73a77e8ee7d5",
+  "finalizedProvenanceAddedFields": [
+    "firefoxManifestSha256",
+    "verifiedTargets"
+  ]
+}

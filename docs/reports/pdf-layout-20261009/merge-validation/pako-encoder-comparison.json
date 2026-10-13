@@ -1,0 +1,119 @@
+{
+  "kind": "read-only encoder comparison from existing generated artifact",
+  "artifact": ".output/userscript/fluent-read.user.js",
+  "artifactBytes": 1960890,
+  "artifactSha256": "352aa1953c8d3e1e3de2d772bae69a7ca7cb63d4eb941b98261bcb98a86cbd37",
+  "encoder": {
+    "node": "v24.19.0",
+    "pako": "2.1.0",
+    "level": 9
+  },
+  "streams": [
+    {
+      "index": 0,
+      "label": "css",
+      "rawBytes": 165138,
+      "rawSha256": "8cdae65741aaa898ae77131788fb1dfca7406ad8814e77ba46a3b916c41e1f20",
+      "originalGzipBytes": 27674,
+      "originalBase64Bytes": 36900,
+      "pakoGzipBytes": 27639,
+      "pakoBase64Bytes": 36852,
+      "savedBytes": 48,
+      "nodeGunzipEqualsRaw": true,
+      "pakoUngzipEqualsRaw": true,
+      "repeatedEncoderBytesEqual": true
+    },
+    {
+      "index": 1,
+      "label": "unicode-delta-data",
+      "rawBytes": 32514,
+      "rawSha256": "609e41eb261020d108080238962e6fdd28ffe4a3f6ec879389ad44c2e0d396b6",
+      "originalGzipBytes": 7822,
+      "originalBase64Bytes": 10432,
+      "pakoGzipBytes": 7897,
+      "pakoBase64Bytes": 10532,
+      "savedBytes": -100,
+      "nodeGunzipEqualsRaw": true,
+      "pakoUngzipEqualsRaw": true,
+      "repeatedEncoderBytesEqual": true
+    },
+    {
+      "index": 2,
+      "label": "established-sites",
+      "rawBytes": 13378,
+      "rawSha256": "a8350a4b3dd632e37a4ed668e1e6787f2016af858f27db3570f0556d451c99cf",
+      "originalGzipBytes": 3249,
+      "originalBase64Bytes": 4332,
+      "pakoGzipBytes": 3244,
+      "pakoBase64Bytes": 4328,
+      "savedBytes": 4,
+      "nodeGunzipEqualsRaw": true,
+      "pakoUngzipEqualsRaw": true,
+      "repeatedEncoderBytesEqual": true
+    },
+    {
+      "index": 3,
+      "label": "websites",
+      "rawBytes": 68705,
+      "rawSha256": "f0580b893705463eeae33a044fd28efa9f9017b127b55fe5e76393da9e4a5909",
+      "originalGzipBytes": 7218,
+      "originalBase64Bytes": 9624,
+      "pakoGzipBytes": 7219,
+      "pakoBase64Bytes": 9628,
+      "savedBytes": -4,
+      "nodeGunzipEqualsRaw": true,
+      "pakoUngzipEqualsRaw": true,
+      "repeatedEncoderBytesEqual": true
+    },
+    {
+      "index": 4,
+      "label": "profiles",
+      "rawBytes": 17244,
+      "rawSha256": "76599767b169bf2efc629e97e3ffba8cce7d4e74dfa143a6df3d7f777b5d9590",
+      "originalGzipBytes": 1505,
+      "originalBase64Bytes": 2008,
+      "pakoGzipBytes": 1506,
+      "pakoBase64Bytes": 2008,
+      "savedBytes": 0,
+      "nodeGunzipEqualsRaw": true,
+      "pakoUngzipEqualsRaw": true,
+      "repeatedEncoderBytesEqual": true
+    },
+    {
+      "index": 5,
+      "label": "zh-CN-ui",
+      "rawBytes": 161625,
+      "rawSha256": "9aca032ad9f66def8e0756199a66ac782131867a05b3b282eba5fc4f6f0fdd85",
+      "originalGzipBytes": 46781,
+      "originalBase64Bytes": 62376,
+      "pakoGzipBytes": 46387,
+      "pakoBase64Bytes": 61852,
+      "savedBytes": 524,
+      "nodeGunzipEqualsRaw": true,
+      "pakoUngzipEqualsRaw": true,
+      "repeatedEncoderBytesEqual": true
+    },
+    {
+      "index": 6,
+      "label": "en-US-ui",
+      "rawBytes": 455855,
+      "rawSha256": "afef0ed242813e5b352000a5da2aa9f866e2947d2712e88a60ea7deab6f23889",
+      "originalGzipBytes": 139834,
+      "originalBase64Bytes": 186448,
+      "pakoGzipBytes": 139148,
+      "pakoBase64Bytes": 185532,
+      "savedBytes": 916,
+      "nodeGunzipEqualsRaw": true,
+      "pakoUngzipEqualsRaw": true,
+      "repeatedEncoderBytesEqual": true
+    }
+  ],
+  "selectedLabels": [
+    "zh-CN-ui",
+    "en-US-ui"
+  ],
+  "selectedSavings": 1440,
+  "projectedArtifactBytes": 1959450,
+  "unchangedCapBytes": 1960000,
+  "projectedHeadroomBytes": 550
+}

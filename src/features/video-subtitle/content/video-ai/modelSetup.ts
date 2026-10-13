@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/video-ai/modelSetup.ts
- * 文件职责：编排首次请求 X 本地 AI 字幕时的模型确认：读取已下载模型，缺失时提供带推荐的模型选择，确认后下载并启动识别。
- * 主要内容：维护检查中、下载中与待确认选择三种状态，下载期间记录后台回报的真实字节进度供菜单显示；推荐多语种质量模型并保留用户现有选择，读取与下载期间的视频、源语言或模型变化会作废旧结果，失败时交给运行时展示错误。
+ * 文件职责：编排 X 本地 AI 字幕首次下载与播放器内主动换模型的确认，确认后复用缓存或下载并启动识别。
+ * 主要内容：维护检查中、下载中与待确认选择三种状态，主动选模型时保留当前选择并等待明确确认；下载记录真实字节进度，重置立即停止旧界面订阅，后台下载仍可完成；视频、语言或模型变化作废旧结果，失败时交给运行时展示错误。
  * 模块边界：只通过注入的消息端口、进度订阅与回调工作，不读写 DOM、配置存储或播放器；菜单渲染、焦点和识别会话由 runtime 与 playerMenu 负责。
  */
 import {
@@ -20,6 +20,8 @@ export interface VideoAiModelChoice {
     readonly downloaded: readonly VideoLocalTranscriptionModel[];
     readonly recommended: VideoLocalTranscriptionModel;
     readonly selected: VideoLocalTranscriptionModel;
+    /** 主动换模型沿用同一确认视图，但不能误写成模型缺失或自动开始识别。 */
+    readonly purpose?: 'selection';
 }
 
 export interface VideoAiModelSetupDependencies {
@@ -42,8 +44,8 @@ export interface VideoAiModelSetup {
     /** 下载中且已收到首个进度时可用；总量未知时 total 为 0。 */
     readonly downloadProgress: DownloadProgress | undefined;
     readonly choice: VideoAiModelChoice | null;
-    /** 缓存未命中后调用：模型已下载则直接生成，否则在允许时打开模型确认。 */
-    request(canShowChoice: () => boolean): Promise<void>;
+    /** 常规请求复用已下载模型；chooseModel 时始终等待用户确认当前或其他模型。 */
+    request(canShowChoice: () => boolean, chooseModel?: boolean): Promise<void>;
     select(model: VideoLocalTranscriptionModel): void;
     cancel(): void;
     /** 换视频时隔离旧检查/下载；后台下载可完成，旧状态不占用新视频菜单。 */
@@ -57,6 +59,7 @@ export function createVideoAiModelSetup(dependencies: VideoAiModelSetupDependenc
     let downloading = false;
     let downloadProgress: DownloadProgress | undefined;
     let choice: VideoAiModelChoice | null = null;
+    let activeWatchStop: (() => void) | undefined;
 
     return {
         get checking() { return checking; },
@@ -64,7 +67,7 @@ export function createVideoAiModelSetup(dependencies: VideoAiModelSetupDependenc
         get downloadProgress() { return downloadProgress; },
         get choice() { return choice; },
 
-        async request(canShowChoice) {
+        async request(canShowChoice, chooseModel = false) {
             if (checking || downloading) return;
             const captured = dependencies.captureRequest();
             const epoch = ++requestEpoch;
@@ -87,13 +90,17 @@ export function createVideoAiModelSetup(dependencies: VideoAiModelSetupDependenc
                 }
             }
             if (!isCurrent() || model !== dependencies.getConfiguredModel()) return;
-            if (downloaded.includes(model)) {
+            if (!chooseModel && downloaded.includes(model)) {
                 dependencies.startGeneration();
                 return;
             }
             if (!canShowChoice()) return;
             // 已下载的其他模型无需等待下载；否则沿用设置中的模型，不覆盖现有偏好。
-            choice = {downloaded, recommended: VIDEO_LOCAL_TRANSCRIPTION_RECOMMENDED_MODEL, selected: downloaded[0] ?? model};
+            choice = {
+                downloaded, recommended: VIDEO_LOCAL_TRANSCRIPTION_RECOMMENDED_MODEL,
+                selected: chooseModel ? model : downloaded[0] ?? model,
+                ...(chooseModel ? {purpose: 'selection' as const} : {}),
+            };
             dependencies.onChange();
         },
 
@@ -114,6 +121,9 @@ export function createVideoAiModelSetup(dependencies: VideoAiModelSetupDependenc
 
         reset() {
             requestEpoch += 1;
+            const stopWatching = activeWatchStop;
+            activeWatchStop = undefined;
+            stopWatching?.();
             checking = false;
             downloading = false;
             downloadProgress = undefined;
@@ -136,11 +146,17 @@ export function createVideoAiModelSetup(dependencies: VideoAiModelSetupDependenc
                 dependencies.setError('');
                 dependencies.onChange();
                 // 结束事件先于下载响应到达时保留最后一次进度，避免进度条在收尾阶段退回不确定状态。
-                const stopWatching = dependencies.watchDownload(model, (progress) => {
+                let releaseWatch: (() => void) | undefined = dependencies.watchDownload(model, (progress) => {
                     if (!progress || epoch !== requestEpoch) return;
                     downloadProgress = progress;
                     dependencies.onChange();
                 });
+                const stopWatching = () => {
+                    const release = releaseWatch;
+                    releaseWatch = undefined;
+                    release?.();
+                };
+                activeWatchStop = stopWatching;
                 try {
                     await requestLocalVideoModelDownload(model, dependencies.sendMessage);
                 } catch (error) {
@@ -148,6 +164,7 @@ export function createVideoAiModelSetup(dependencies: VideoAiModelSetupDependenc
                     return;
                 } finally {
                     stopWatching();
+                    if (activeWatchStop === stopWatching) activeWatchStop = undefined;
                     if (epoch === requestEpoch) {
                         downloading = false;
                         downloadProgress = undefined;

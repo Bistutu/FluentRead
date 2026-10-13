@@ -5,6 +5,7 @@
  * 模块边界：只返回模型上下文，不改变宿主 DOM；扩展仍使用完整的 Defuddle 页面提取器。
  */
 import {buildPageTranslationContext, normalizePageText, pageContextLimits} from '@/src/services/translation/context/policy';
+import {resetPageDiscourseContext} from '@/src/services/translation/context/pageDiscourse';
 
 interface PageSnapshot {
     url: string;
@@ -85,5 +86,10 @@ export async function getPageTranslationContext(): Promise<string> {
 }
 
 export function resetPageTranslationContextCache(): void {
+    resetPageDiscourseContext();
+    invalidatePageTranslationSnapshotCache();
+}
+
+export function invalidatePageTranslationSnapshotCache(): void {
     cached = null;
 }

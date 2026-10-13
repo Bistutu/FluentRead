@@ -1,0 +1,5192 @@
+{
+  "ok": true,
+  "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-pdf-selection-reader-20261009/.output/chrome-mv3",
+  "artifactsDir": ".",
+  "cases": [
+    "local sample PDF retains canvas and a selectable PDF.js text layer",
+    "actual arXiv PDF imports locally and a real mouse selection produces Chinese fixture output",
+    "rotated 90° PDF supports exact native keyboard selection and Chinese fixture output; pointer evidence recorded separately",
+    "rotated 180° PDF supports exact native keyboard selection and Chinese fixture output; pointer evidence recorded separately",
+    "rotated 270° PDF supports exact native keyboard selection and Chinese fixture output; pointer evidence recorded separately",
+    "real cross-line drag preserves source layout and sends one normalized sentence to the chosen service",
+    "real mouse drag across adjacent pages translates source text without reader labels or page metadata",
+    "late response from the previous PDF selection cannot replace the new selection",
+    "real Control respects shortcut-only selection trigger",
+    "whole-document fixture translation preserves source geometry and original/bilingual/translated modes with bounded canvases",
+    "actual trusted background runtime command opens and reopens the selected PDF card; native OS menu gesture is outside this proof",
+    "390px dark reading retains original text selection and usable card",
+    "online HTTP PDF byte progress cancels a stalled body and retries into the same selectable reader",
+    "native PDF popup full-page action hands the source URL to the reader and its real selection card works",
+    "120-page jump, zoom, keyboard and rapid scroll keep resident Canvas/TextLayer <= 5 and pixels <= 12.5m",
+    "live arXiv URL fetches without interception and its real selection translates through the local fixture"
+  ],
+  "screenshots": [
+    "sample-local.png",
+    "arxiv-local-selection.png",
+    "rotation-90-source.png",
+    "rotation-90-keyboard-selection.png",
+    "rotation-180-source.png",
+    "rotation-180-keyboard-selection.png",
+    "rotation-270-source.png",
+    "rotation-270-keyboard-selection.png",
+    "cross-line-selection.png",
+    "cross-page-selection.png",
+    "late-selection-owner.png",
+    "translated-bilingual-selection.png",
+    "translated-only-pages.png",
+    "context-menu-runtime-selection.png",
+    "selection-390-dark.png",
+    "online-pdf-selection.png",
+    "native-popup-reader-selection.png",
+    "long-120-390.png",
+    "arxiv-live-selection.png"
+  ],
+  "importTimings": [
+    {
+      "name": "sample.pdf",
+      "firstSelectablePageMs": 294
+    },
+    {
+      "name": "attention-is-all-you-need.pdf",
+      "firstSelectablePageMs": 748
+    },
+    {
+      "name": "rotation-90.pdf",
+      "firstSelectablePageMs": 218
+    },
+    {
+      "name": "rotation-180.pdf",
+      "firstSelectablePageMs": 209
+    },
+    {
+      "name": "rotation-270.pdf",
+      "firstSelectablePageMs": 208
+    },
+    {
+      "name": "selection-fixture.pdf",
+      "firstSelectablePageMs": 227
+    },
+    {
+      "name": "long-120.pdf",
+      "firstSelectablePageMs": 319
+    }
+  ],
+  "resources": [
+    {
+      "label": "local sample",
+      "shells": 2,
+      "canvases": 2,
+      "textLayers": 2,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2497422
+        },
+        {
+          "page": 2,
+          "pixels": 2497422
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 2,
+      "pixels": 4994844,
+      "peaks": {
+        "shells": 2,
+        "canvases": 2,
+        "textLayers": 2,
+        "pixels": 4994844
+      }
+    },
+    {
+      "label": "arxiv local",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2497422
+        },
+        {
+          "page": 2,
+          "pixels": 2497422
+        },
+        {
+          "page": 3,
+          "pixels": 2497422
+        },
+        {
+          "page": 4,
+          "pixels": 2497422
+        },
+        {
+          "page": 5,
+          "pixels": 2497422
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 12487110,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 12487110
+      }
+    },
+    {
+      "label": "rotation 90",
+      "shells": 1,
+      "canvases": 1,
+      "textLayers": 1,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2498520
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 1,
+      "pixels": 2498520,
+      "peaks": {
+        "shells": 1,
+        "canvases": 1,
+        "textLayers": 1,
+        "pixels": 2498520
+      }
+    },
+    {
+      "label": "rotation 180",
+      "shells": 1,
+      "canvases": 1,
+      "textLayers": 1,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2498520
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 1,
+      "pixels": 2498520,
+      "peaks": {
+        "shells": 1,
+        "canvases": 1,
+        "textLayers": 1,
+        "pixels": 2498520
+      }
+    },
+    {
+      "label": "rotation 270",
+      "shells": 1,
+      "canvases": 1,
+      "textLayers": 1,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2498520
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 1,
+      "pixels": 2498520,
+      "peaks": {
+        "shells": 1,
+        "canvases": 1,
+        "textLayers": 1,
+        "pixels": 2498520
+      }
+    },
+    {
+      "label": "cross-page selection pins",
+      "shells": 3,
+      "canvases": 3,
+      "textLayers": 3,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2003960
+        },
+        {
+          "page": 2,
+          "pixels": 2003960
+        },
+        {
+          "page": 3,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 3,
+      "pixels": 6011880,
+      "peaks": {
+        "shells": 3,
+        "canvases": 3,
+        "textLayers": 3,
+        "pixels": 7495560
+      }
+    },
+    {
+      "label": "three-page bilingual",
+      "shells": 3,
+      "canvases": 6,
+      "textLayers": 3,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2497740
+        },
+        {
+          "page": 2,
+          "pixels": 2497740
+        },
+        {
+          "page": 3,
+          "pixels": 2497740
+        }
+      ],
+      "sourceOnly": false,
+      "attachedCanvases": 6,
+      "pixels": 7493220,
+      "peaks": {
+        "shells": 3,
+        "canvases": 6,
+        "textLayers": 3,
+        "pixels": 7495560
+      }
+    },
+    {
+      "label": "three-page translated",
+      "shells": 3,
+      "canvases": 3,
+      "textLayers": 0,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2003960
+        },
+        {
+          "page": 2,
+          "pixels": 2003960
+        },
+        {
+          "page": 3,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": false,
+      "attachedCanvases": 3,
+      "pixels": 6011880,
+      "peaks": {
+        "shells": 3,
+        "canvases": 6,
+        "textLayers": 3,
+        "pixels": 7495560
+      }
+    },
+    {
+      "label": "three-page restored source",
+      "shells": 3,
+      "canvases": 3,
+      "textLayers": 3,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2003960
+        },
+        {
+          "page": 2,
+          "pixels": 2003960
+        },
+        {
+          "page": 3,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 3,
+      "pixels": 6011880,
+      "peaks": {
+        "shells": 3,
+        "canvases": 6,
+        "textLayers": 3,
+        "pixels": 7495560
+      }
+    },
+    {
+      "label": "390 dark",
+      "shells": 3,
+      "canvases": 3,
+      "textLayers": 3,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 144640
+        },
+        {
+          "page": 2,
+          "pixels": 144640
+        },
+        {
+          "page": 3,
+          "pixels": 144640
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 3,
+      "pixels": 433920,
+      "peaks": {
+        "shells": 3,
+        "canvases": 6,
+        "textLayers": 3,
+        "pixels": 7495560
+      }
+    },
+    {
+      "label": "120 first page",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2003960
+        },
+        {
+          "page": 2,
+          "pixels": 2003960
+        },
+        {
+          "page": 3,
+          "pixels": 2003960
+        },
+        {
+          "page": 4,
+          "pixels": 2003960
+        },
+        {
+          "page": 5,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 10019800,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "jump 60",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 58,
+          "pixels": 2003960
+        },
+        {
+          "page": 59,
+          "pixels": 2003960
+        },
+        {
+          "page": 60,
+          "pixels": 2003960
+        },
+        {
+          "page": 61,
+          "pixels": 2003960
+        },
+        {
+          "page": 62,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 10019800,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "jump 120",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 116,
+          "pixels": 0
+        },
+        {
+          "page": 117,
+          "pixels": 0
+        },
+        {
+          "page": 118,
+          "pixels": 2003960
+        },
+        {
+          "page": 119,
+          "pixels": 2003960
+        },
+        {
+          "page": 120,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 3,
+      "pixels": 10019800,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "jump 1",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2003960
+        },
+        {
+          "page": 2,
+          "pixels": 2003960
+        },
+        {
+          "page": 3,
+          "pixels": 2003960
+        },
+        {
+          "page": 4,
+          "pixels": 2003960
+        },
+        {
+          "page": 5,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 10019800,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "jump 100",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 98,
+          "pixels": 2003960
+        },
+        {
+          "page": 99,
+          "pixels": 2003960
+        },
+        {
+          "page": 100,
+          "pixels": 2003960
+        },
+        {
+          "page": 101,
+          "pixels": 2003960
+        },
+        {
+          "page": 102,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 10019800,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "jump 25",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 23,
+          "pixels": 0
+        },
+        {
+          "page": 24,
+          "pixels": 2003960
+        },
+        {
+          "page": 25,
+          "pixels": 2003960
+        },
+        {
+          "page": 26,
+          "pixels": 2003960
+        },
+        {
+          "page": 27,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 4,
+      "pixels": 10019800,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "jump 119",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 116,
+          "pixels": 2003960
+        },
+        {
+          "page": 117,
+          "pixels": 2003960
+        },
+        {
+          "page": 118,
+          "pixels": 2003960
+        },
+        {
+          "page": 119,
+          "pixels": 2003960
+        },
+        {
+          "page": 120,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 10019800,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "jump 2",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 2003960
+        },
+        {
+          "page": 2,
+          "pixels": 2003960
+        },
+        {
+          "page": 3,
+          "pixels": 2003960
+        },
+        {
+          "page": 4,
+          "pixels": 2003960
+        },
+        {
+          "page": 5,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 10019800,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "jump 60",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 58,
+          "pixels": 2003960
+        },
+        {
+          "page": 59,
+          "pixels": 2003960
+        },
+        {
+          "page": 60,
+          "pixels": 2003960
+        },
+        {
+          "page": 61,
+          "pixels": 2003960
+        },
+        {
+          "page": 62,
+          "pixels": 2003960
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 10019800,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "page 60 zoom 1",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 58,
+          "pixels": 500990
+        },
+        {
+          "page": 59,
+          "pixels": 500990
+        },
+        {
+          "page": 60,
+          "pixels": 500990
+        },
+        {
+          "page": 61,
+          "pixels": 500990
+        },
+        {
+          "page": 62,
+          "pixels": 500990
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 2504950,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "page 60 zoom 1.5",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 58,
+          "pixels": 1126596
+        },
+        {
+          "page": 59,
+          "pixels": 1126596
+        },
+        {
+          "page": 60,
+          "pixels": 1126596
+        },
+        {
+          "page": 61,
+          "pixels": 1126596
+        },
+        {
+          "page": 62,
+          "pixels": 1126596
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 5632980,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "keyboard End/Home",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 1126596
+        },
+        {
+          "page": 2,
+          "pixels": 1126596
+        },
+        {
+          "page": 3,
+          "pixels": 1126596
+        },
+        {
+          "page": 4,
+          "pixels": 1126596
+        },
+        {
+          "page": 5,
+          "pixels": 0
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 4,
+      "pixels": 5632980,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "rapid scroll",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 1126596
+        },
+        {
+          "page": 2,
+          "pixels": 1126596
+        },
+        {
+          "page": 3,
+          "pixels": 1126596
+        },
+        {
+          "page": 4,
+          "pixels": 1126596
+        },
+        {
+          "page": 5,
+          "pixels": 1126596
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 5632980,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "120 pages 390 fit",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 144640
+        },
+        {
+          "page": 2,
+          "pixels": 144640
+        },
+        {
+          "page": 3,
+          "pixels": 144640
+        },
+        {
+          "page": 4,
+          "pixels": 144640
+        },
+        {
+          "page": 5,
+          "pixels": 144640
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 723200,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 10019800
+      }
+    },
+    {
+      "label": "live arxiv",
+      "shells": 5,
+      "canvases": 5,
+      "textLayers": 5,
+      "pagePixels": [
+        {
+          "page": 1,
+          "pixels": 1938816
+        },
+        {
+          "page": 2,
+          "pixels": 1938816
+        },
+        {
+          "page": 3,
+          "pixels": 1938816
+        },
+        {
+          "page": 4,
+          "pixels": 1938816
+        },
+        {
+          "page": 5,
+          "pixels": 1938816
+        }
+      ],
+      "sourceOnly": true,
+      "attachedCanvases": 5,
+      "pixels": 9694080,
+      "peaks": {
+        "shells": 5,
+        "canvases": 5,
+        "textLayers": 5,
+        "pixels": 9694080
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "providerEvidence": "Production extension and real PDF.js/Edge input; deterministic loopback translation fixture. arXiv fixture is local unless a separate live import is recorded.",
+  "profileMode": "new temporary profile",
+  "nativeCaretBrowsing": {
+    "enabled": true,
+    "scope": "new temporary test profile only",
+    "preference": "settings.a11y.caretbrowsing.enabled"
+  },
+  "selectionInput": "real Playwright mouse drag and keyboard over PDF.js TextLayer",
+  "selectionLimits": {
+    "paperTitle": "Not claimed: prior isolated background Input title drags collapsed with unchanged text-node identity and user-select:text; no product cause demonstrated. This suite selects meaningful abstract source text."
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 132,
+      "top": -1020,
+      "width": 1440,
+      "height": 960
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 44386,
+      "name": "Google Chrome"
+    },
+    "frontmostAfter": {
+      "pid": 44386,
+      "name": "Google Chrome"
+    }
+  },
+  "frontmostSnapshots": [
+    {
+      "stage": "initial document page",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "document reload",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "import sample.pdf",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "sample-local",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "document reload",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "import attention-is-all-you-need.pdf",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "arxiv-local-selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "document reload",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "import rotation-90.pdf",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "rotation-90-source",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before native keyboard selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "rotation-90-keyboard-selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "document reload",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "import rotation-180.pdf",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "rotation-180-source",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before native keyboard selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "rotation-180-keyboard-selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "document reload",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "import rotation-270.pdf",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "rotation-270-source",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before native keyboard selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "rotation-270-keyboard-selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "document reload",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "import selection-fixture.pdf",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "cross-line-selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before cross-page selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "cross-page-selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "late-selection-owner",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "translated-bilingual-selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "translated-only-pages",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "context-menu-runtime-selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "selection-390-dark",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "document reload",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "online-pdf-selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "document reload",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "native-popup-reader-selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "document reload",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "import long-120.pdf",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "long-120-390",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "document reload",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "before selection input",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "arxiv-live-selection",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    },
+    {
+      "stage": "suite complete",
+      "pid": 44386,
+      "name": "Google Chrome",
+      "browserFrontmost": false
+    }
+  ],
+  "localArxivSource": "The dominant sequence transduction models are based on complex recurrent or",
+  "selectionGestures": [
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "The dominant sequence transduction models are based on complex recurrent or",
+      "last": "The dominant sequence transduction models are based on complex recurrent or",
+      "start": {
+        "x": 391.2484375,
+        "y": 554.1875,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "The dominant sequence transduction models are based on complex recurrent or",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 23.46%; top: 52.19%; font-size: calc(var(--scale-factor)*9.96px); font-family: sans-serif; transform: scaleX(0.872124);\">The dominant sequence transduction models are based on complex recurrent or</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 391.1484375,
+          "top": 540.1875,
+          "width": 10.758453369140625,
+          "height": 28
+        },
+        "scrollTop": 645
+      },
+      "end": {
+        "x": 1040.0716796875,
+        "y": 554.1875,
+        "expectedOffset": 75,
+        "caretOffset": 75,
+        "text": "The dominant sequence transduction models are based on complex recurrent or",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 23.46%; top: 52.19%; font-size: calc(var(--scale-factor)*9.96px); font-family: sans-serif; transform: scaleX(0.872124);\">The dominant sequence transduction models are based on complex recurrent or</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 1034.12841796875,
+          "top": 540.1875,
+          "width": 6.34326171875,
+          "height": 28
+        },
+        "scrollTop": 645
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "The dominant sequence transduction models are based on complex recurrent or",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "The dominant sequence transduction models are based on complex recurrent or",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 645,
+          "pages": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "The dominant sequence transduction models are based on complex recurrent or",
+          "anchor": {
+            "text": "The dominant sequence transduction models are based on complex recurrent or",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "The dominant sequence transduction models are based on complex recurrent or",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 75,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 645,
+          "pages": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        }
+      ],
+      "selected": "The dominant sequence transduction models are based on complex recurrent or",
+      "scrollTopAfter": 645
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "PDF selection translation keeps the original layout.",
+      "last": "PDF selection translation keeps the original layout.",
+      "start": {
+        "x": 1229.6234375,
+        "y": 420.7997451782227,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950466);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 1229.5234375,
+          "top": 417.0546875,
+          "width": 24.5,
+          "height": 10.700164794921875
+        },
+        "scrollTop": 16
+      },
+      "end": {
+        "x": 1253.9234375,
+        "y": 808.5204467773438,
+        "expectedOffset": 52,
+        "caretOffset": 52,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950466);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 1229.5234375,
+          "top": 806.3150634765625,
+          "width": 24.5,
+          "height": 4.4107666015625
+        },
+        "scrollTop": 16
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 52,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 52,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1"
+          ]
+        }
+      ],
+      "selected": "",
+      "scrollTopAfter": 16
+    },
+    {
+      "kind": "native-keyboard",
+      "first": "PDF selection translation keeps the original layout.",
+      "start": {
+        "x": 1229.6234375,
+        "y": 420.7997451782227,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950466);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 1229.5234375,
+          "top": 417.0546875,
+          "width": 24.5,
+          "height": 10.700164794921875
+        },
+        "scrollTop": 16
+      },
+      "key": "Shift+ArrowRight",
+      "count": 52,
+      "states": [
+        {
+          "stage": "caret-click",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1"
+          ]
+        },
+        {
+          "stage": "keyboard-selected",
+          "text": "PDF selection translation keeps the original layout.",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 52,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 16,
+          "pages": [
+            "1"
+          ]
+        }
+      ],
+      "selected": "PDF selection translation keeps the original layout."
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "PDF selection translation keeps the original layout.",
+      "last": "PDF selection translation keeps the original layout.",
+      "start": {
+        "x": 1216.3506469726562,
+        "y": 623.7421875,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950354);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 1209.6387939453125,
+          "top": 608.2421875,
+          "width": 13.4237060546875,
+          "height": 31
+        },
+        "scrollTop": 1241
+      },
+      "end": {
+        "x": 729.1715942382813,
+        "y": 623.7421875,
+        "expectedOffset": 52,
+        "caretOffset": 52,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950354);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 729.0715942382812,
+          "top": 608.2421875,
+          "width": 5.52392578125,
+          "height": 31
+        },
+        "scrollTop": 1241
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 1241,
+          "pages": [
+            "1"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 52,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 52,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 1241,
+          "pages": [
+            "1"
+          ]
+        }
+      ],
+      "selected": "",
+      "scrollTopAfter": 1241
+    },
+    {
+      "kind": "native-keyboard",
+      "first": "PDF selection translation keeps the original layout.",
+      "start": {
+        "x": 1216.3506469726562,
+        "y": 623.7421875,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950354);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 1209.6387939453125,
+          "top": 608.2421875,
+          "width": 13.4237060546875,
+          "height": 31
+        },
+        "scrollTop": 1241
+      },
+      "key": "Shift+ArrowRight",
+      "count": 52,
+      "states": [
+        {
+          "stage": "caret-click",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 1241,
+          "pages": [
+            "1"
+          ]
+        },
+        {
+          "stage": "keyboard-selected",
+          "text": "PDF selection translation keeps the original layout.",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 52,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 1241,
+          "pages": [
+            "1"
+          ]
+        }
+      ],
+      "selected": "PDF selection translation keeps the original layout."
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "PDF selection translation keeps the original layout.",
+      "last": "PDF selection translation keeps the original layout.",
+      "start": {
+        "x": 177.9765625,
+        "y": 746.09521484375,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950466);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 177.9765625,
+          "top": 740.7451171875,
+          "width": 24.5,
+          "height": 10.7001953125
+        },
+        "scrollTop": 489.5
+      },
+      "end": {
+        "x": 202.3765625,
+        "y": 359.9795837402344,
+        "expectedOffset": 52,
+        "caretOffset": 52,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950466);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 177.9765625,
+          "top": 357.7742004394531,
+          "width": 24.5,
+          "height": 4.4107666015625
+        },
+        "scrollTop": 489.5
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 489.5,
+          "pages": [
+            "1"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 52,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 52,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 489.5,
+          "pages": [
+            "1"
+          ]
+        }
+      ],
+      "selected": "",
+      "scrollTopAfter": 489.5
+    },
+    {
+      "kind": "native-keyboard",
+      "first": "PDF selection translation keeps the original layout.",
+      "start": {
+        "x": 177.9765625,
+        "y": 746.09521484375,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950466);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 177.9765625,
+          "top": 740.7451171875,
+          "width": 24.5,
+          "height": 10.7001953125
+        },
+        "scrollTop": 489.5
+      },
+      "key": "Shift+ArrowRight",
+      "count": 52,
+      "states": [
+        {
+          "stage": "caret-click",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 489.5,
+          "pages": [
+            "1"
+          ]
+        },
+        {
+          "stage": "keyboard-selected",
+          "text": "PDF selection translation keeps the original layout.",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 52,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 489.5,
+          "pages": [
+            "1"
+          ]
+        }
+      ],
+      "selected": "PDF selection translation keeps the original layout."
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "PDF selection translation keeps the original layout.",
+      "last": "Reading across lines should become one clean sentence.",
+      "start": {
+        "x": 209.0375,
+        "y": 529.2578125,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950354);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 208.9375,
+          "top": 513.7578125,
+          "width": 13.423736572265625,
+          "height": 31
+        },
+        "scrollTop": 16
+      },
+      "end": {
+        "x": 771.3368896484375,
+        "y": 585.1640625,
+        "expectedOffset": 54,
+        "caretOffset": 54,
+        "text": "Reading across lines should become one clean sentence.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 13.49%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.960806);\">Reading across lines should become one clean sentence.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 765.8522338867188,
+          "top": 569.6640625,
+          "width": 5.58465576171875,
+          "height": 31
+        },
+        "scrollTop": 16
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "PDF selection translation keeps the original layout.\nReading across lines should become one clean sentence.",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "Reading across lines should become one clean sentence.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 54,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": false,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ],
+      "selected": "PDF selection translation keeps the original layout.\nReading across lines should become one clean sentence.",
+      "scrollTopAfter": 16
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "First ownership request must never replace a newer selection.",
+      "last": "First ownership request must never replace a newer selection.",
+      "start": {
+        "x": 462.56875,
+        "y": 494.1171875,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "First ownership request must never replace a newer selection.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 16.82%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.952431);\">First ownership request must never replace a newer selection.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 462.46875,
+          "top": 486.6171875,
+          "width": 6.0494384765625,
+          "height": 15
+        },
+        "scrollTop": 16
+      },
+      "end": {
+        "x": 764.9814208984375,
+        "y": 494.1171875,
+        "expectedOffset": 61,
+        "caretOffset": 61,
+        "text": "First ownership request must never replace a newer selection.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 16.82%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.952431);\">First ownership request must never replace a newer selection.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 762.3059692382812,
+          "top": 486.6171875,
+          "width": 2.77545166015625,
+          "height": 15
+        },
+        "scrollTop": 16
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "First ownership request must never replace a newer selection.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "First ownership request must never replace a newer selection.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "First ownership request must never replace a newer selection.",
+          "anchor": {
+            "text": "First ownership request must never replace a newer selection.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "First ownership request must never replace a newer selection.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 61,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ],
+      "selected": "First ownership request must never replace a newer selection.",
+      "scrollTopAfter": 16
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "Second ownership selection owns the final Chinese answer.",
+      "last": "Second ownership selection owns the final Chinese answer.",
+      "start": {
+        "x": 462.56875,
+        "y": 522.078125,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "Second ownership selection owns the final Chinese answer.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 20.14%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.956336);\">Second ownership selection owns the final Chinese answer.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 462.46875,
+          "top": 514.578125,
+          "width": 6.6495361328125,
+          "height": 15
+        },
+        "scrollTop": 16
+      },
+      "end": {
+        "x": 754.611669921875,
+        "y": 522.078125,
+        "expectedOffset": 57,
+        "caretOffset": 57,
+        "text": "Second ownership selection owns the final Chinese answer.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 20.14%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.956336);\">Second ownership selection owns the final Chinese answer.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 751.9248046875,
+          "top": 514.578125,
+          "width": 2.786865234375,
+          "height": 15
+        },
+        "scrollTop": 16
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "Second ownership selection owns the final Chinese answer.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "Second ownership selection owns the final Chinese answer.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "Second ownership selection owns the final Chinese answer.",
+          "anchor": {
+            "text": "Second ownership selection owns the final Chinese answer.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "Second ownership selection owns the final Chinese answer.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 57,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ],
+      "selected": "Second ownership selection owns the final Chinese answer.",
+      "scrollTopAfter": 16
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "PDF selection translation keeps the original layout.",
+      "last": "PDF selection translation keeps the original layout.",
+      "start": {
+        "x": 462.56875,
+        "y": 438.125,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950354);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 462.46875,
+          "top": 430.625,
+          "width": 6.711883544921875,
+          "height": 15
+        },
+        "scrollTop": 16
+      },
+      "end": {
+        "x": 709.3642944335937,
+        "y": 438.125,
+        "expectedOffset": 52,
+        "caretOffset": 52,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950354);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 706.7023315429688,
+          "top": 430.625,
+          "width": 2.761962890625,
+          "height": 15
+        },
+        "scrollTop": 16
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "PDF selection translation keeps the original layout.",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 52,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ],
+      "selected": "PDF selection translation keeps the original layout.",
+      "scrollTopAfter": 16
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "PDF selection translation keeps the original layout.",
+      "last": "Reading across lines should become one clean sentence.",
+      "start": {
+        "x": 155.06875,
+        "y": 438.125,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950354);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 154.96875,
+          "top": 430.625,
+          "width": 6.711883544921875,
+          "height": 15
+        },
+        "scrollTop": 16
+      },
+      "end": {
+        "x": 436.1223205566406,
+        "y": 466.078125,
+        "expectedOffset": 54,
+        "caretOffset": 54,
+        "text": "Reading across lines should become one clean sentence.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 13.49%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.960806);\">Reading across lines should become one clean sentence.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 433.4224548339844,
+          "top": 458.578125,
+          "width": 2.79986572265625,
+          "height": 15
+        },
+        "scrollTop": 16
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "PDF selection translation keeps the original layout.\nReading across lines should become one clean sentence.",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "Reading across lines should become one clean sentence.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 54,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": false,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ],
+      "selected": "PDF selection translation keeps the original layout.\nReading across lines should become one clean sentence.",
+      "scrollTopAfter": 16
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "Reading across lines should become one clean sentence.",
+      "last": "Reading across lines should become one clean sentence.",
+      "start": {
+        "x": 462.56875,
+        "y": 466.078125,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "Reading across lines should become one clean sentence.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 13.49%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.960806);\">Reading across lines should become one clean sentence.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 462.46875,
+          "top": 458.578125,
+          "width": 7.14599609375,
+          "height": 15
+        },
+        "scrollTop": 16
+      },
+      "end": {
+        "x": 743.6222900390625,
+        "y": 466.078125,
+        "expectedOffset": 54,
+        "caretOffset": 54,
+        "text": "Reading across lines should become one clean sentence.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 13.49%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.960806);\">Reading across lines should become one clean sentence.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 740.9224853515625,
+          "top": 458.578125,
+          "width": 2.7998046875,
+          "height": 15
+        },
+        "scrollTop": 16
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "Reading across lines should become one clean sentence.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "Reading across lines should become one clean sentence.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "Reading across lines should become one clean sentence.",
+          "anchor": {
+            "text": "Reading across lines should become one clean sentence.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "Reading across lines should become one clean sentence.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 54,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ],
+      "selected": "Reading across lines should become one clean sentence.",
+      "scrollTopAfter": 16
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "PDF selection translation keeps the original layout.",
+      "last": "PDF selection translation keeps the original layout.",
+      "start": {
+        "x": 58.740625,
+        "y": 568.2109375,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.951317);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 58.640625,
+          "top": 563.9609375,
+          "width": 3.619464874267578,
+          "height": 8.5
+        },
+        "scrollTop": 16
+      },
+      "end": {
+        "x": 191.19466552734374,
+        "y": 568.2109375,
+        "expectedOffset": 52,
+        "caretOffset": 52,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.951317);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 190.10079956054688,
+          "top": 563.9609375,
+          "width": 1.493865966796875,
+          "height": 8.5
+        },
+        "scrollTop": 16
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "PDF selection translation keeps the original layout.",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 52,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ],
+      "selected": "PDF selection translation keeps the original layout.",
+      "scrollTopAfter": 16
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "PDF selection translation keeps the original layout.",
+      "last": "Reading across lines should become one clean sentence.",
+      "start": {
+        "x": 213.0375,
+        "y": 529.2578125,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950354);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 212.9375,
+          "top": 513.7578125,
+          "width": 13.423751831054688,
+          "height": 31
+        },
+        "scrollTop": 16
+      },
+      "end": {
+        "x": 775.3371337890625,
+        "y": 585.1640625,
+        "expectedOffset": 54,
+        "caretOffset": 54,
+        "text": "Reading across lines should become one clean sentence.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 13.49%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.960806);\">Reading across lines should become one clean sentence.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 769.8524169921875,
+          "top": 569.6640625,
+          "width": 5.584716796875,
+          "height": 31
+        },
+        "scrollTop": 16
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "PDF selection translation keeps the original layout.\nReading across lines should become one clean sentence.",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "Reading across lines should become one clean sentence.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 54,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": false,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ],
+      "selected": "PDF selection translation keeps the original layout.\nReading across lines should become one clean sentence.",
+      "scrollTopAfter": 16
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "PDF selection translation keeps the original layout.",
+      "last": "PDF selection translation keeps the original layout.",
+      "start": {
+        "x": 213.0375,
+        "y": 529.2578125,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950354);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 212.9375,
+          "top": 513.7578125,
+          "width": 13.423751831054688,
+          "height": 31
+        },
+        "scrollTop": 16
+      },
+      "end": {
+        "x": 706.8285888671875,
+        "y": 529.2578125,
+        "expectedOffset": 52,
+        "caretOffset": 52,
+        "text": "PDF selection translation keeps the original layout.",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 10.17%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.950354);\">PDF selection translation keeps the original layout.</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 701.4046630859375,
+          "top": 513.7578125,
+          "width": 5.52392578125,
+          "height": 31
+        },
+        "scrollTop": 16
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "PDF selection translation keeps the original layout.",
+          "anchor": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "PDF selection translation keeps the original layout.",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 52,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 16,
+          "pages": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ],
+      "selected": "PDF selection translation keeps the original layout.",
+      "scrollTopAfter": 16
+    },
+    {
+      "kind": "same-page",
+      "number": 1,
+      "first": "The dominant sequence transduction models are based on complex recurrent or",
+      "last": "The dominant sequence transduction models are based on complex recurrent or",
+      "start": {
+        "x": 395.2484375,
+        "y": 596.1875,
+        "expectedOffset": 0,
+        "caretOffset": 0,
+        "text": "The dominant sequence transduction models are based on complex recurrent or",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 23.46%; top: 52.19%; font-size: calc(var(--scale-factor)*9.96px); font-family: sans-serif; transform: scaleX(0.872343);\">The dominant sequence transduction models are based on complex recurrent or</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 395.1484375,
+          "top": 582.1875,
+          "width": 10.76116943359375,
+          "height": 28
+        },
+        "scrollTop": 603
+      },
+      "end": {
+        "x": 1044.234765625,
+        "y": 596.1875,
+        "expectedOffset": 75,
+        "caretOffset": 75,
+        "text": "The dominant sequence transduction models are based on complex recurrent or",
+        "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 23.46%; top: 52.19%; font-size: calc(var(--scale-factor)*9.96px); font-family: sans-serif; transform: scaleX(0.872343);\">The dominant sequence transduction models are based on complex recurrent or</span>",
+        "ancestors": [
+          {
+            "tag": "SPAN",
+            "className": "",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "fluentread-pdf-text-layer",
+            "userSelect": "text",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-canvas-host",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-frame",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "FIGURE",
+            "className": "pdf-page-column",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-stage single",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "ARTICLE",
+            "className": "pdf-page-row",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          },
+          {
+            "tag": "DIV",
+            "className": "pdf-page-list",
+            "userSelect": "auto",
+            "pointerEvents": "auto"
+          }
+        ],
+        "glyph": {
+          "left": 1038.289794921875,
+          "top": 582.1875,
+          "width": 6.344970703125,
+          "height": 28
+        },
+        "scrollTop": 603
+      },
+      "states": [
+        {
+          "stage": "down",
+          "text": "",
+          "anchor": {
+            "text": "The dominant sequence transduction models are based on complex recurrent or",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "The dominant sequence transduction models are based on complex recurrent or",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 0,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": true,
+          "scrollTop": 603,
+          "pages": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        {
+          "stage": "move",
+          "text": "The dominant sequence transduction models are based on complex recurrent or",
+          "anchor": {
+            "text": "The dominant sequence transduction models are based on complex recurrent or",
+            "connected": true,
+            "page": "1"
+          },
+          "anchorOffset": 0,
+          "focus": {
+            "text": "The dominant sequence transduction models are based on complex recurrent or",
+            "connected": true,
+            "page": "1"
+          },
+          "focusOffset": 75,
+          "anchorSameAsStart": true,
+          "focusSameAsStart": true,
+          "originalPointConnected": true,
+          "isCollapsed": false,
+          "scrollTop": 603,
+          "pages": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        }
+      ],
+      "selected": "The dominant sequence transduction models are based on complex recurrent or",
+      "scrollTopAfter": 603
+    }
+  ],
+  "rotatedSelections": [
+    {
+      "rotation": 90,
+      "pointerAttempt": {
+        "status": "inconclusive",
+        "error": "真实拖选必须严格对应指定原文：\n+ actual - expected\n\n+ ''\n- 'PDF selection translation keeps the original layout.'\n",
+        "limitation": "Background browser Input collapsed native drag despite correct glyph hit and unchanged source node; no mouse-selection success claimed."
+      },
+      "keyboardSelection": "PDF selection translation keeps the original layout.",
+      "requestedSource": "PDF selection translation keeps the original layout."
+    },
+    {
+      "rotation": 180,
+      "pointerAttempt": {
+        "status": "inconclusive",
+        "error": "真实拖选必须严格对应指定原文：\n+ actual - expected\n\n+ ''\n- 'PDF selection translation keeps the original layout.'\n",
+        "limitation": "Background browser Input collapsed native drag despite correct glyph hit and unchanged source node; no mouse-selection success claimed."
+      },
+      "keyboardSelection": "PDF selection translation keeps the original layout.",
+      "requestedSource": "PDF selection translation keeps the original layout."
+    },
+    {
+      "rotation": 270,
+      "pointerAttempt": {
+        "status": "inconclusive",
+        "error": "真实拖选必须严格对应指定原文：\n+ actual - expected\n\n+ ''\n- 'PDF selection translation keeps the original layout.'\n",
+        "limitation": "Background browser Input collapsed native drag despite correct glyph hit and unchanged source node; no mouse-selection success claimed."
+      },
+      "keyboardSelection": "PDF selection translation keeps the original layout.",
+      "requestedSource": "PDF selection translation keeps the original layout."
+    }
+  ],
+  "crossLine": {
+    "nativeSelection": "PDF selection translation keeps the original layout.\nReading across lines should become one clean sentence.",
+    "requestedSource": "PDF selection translation keeps the original layout. Reading across lines should become one clean sentence."
+  },
+  "crossPageGesture": {
+    "start": {
+      "x": 462.56875,
+      "y": 796.1484375,
+      "expectedOffset": 0,
+      "caretOffset": 0,
+      "text": "Original figures, fonts and page geometry remain intact.",
+      "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 52.69%; font-size: calc(var(--scale-factor)*11.00px); font-family: sans-serif; transform: scaleX(0.941857);\">Original figures, fonts and page geometry remain intact.</span>",
+      "ancestors": [
+        {
+          "tag": "SPAN",
+          "className": "",
+          "userSelect": "text",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "fluentread-pdf-text-layer",
+          "userSelect": "text",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "pdf-canvas-host",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "pdf-page-frame",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "FIGURE",
+          "className": "pdf-page-column",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "pdf-page-stage single",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "ARTICLE",
+          "className": "pdf-page-row",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "pdf-page-list",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        }
+      ],
+      "glyph": {
+        "left": 462.46875,
+        "top": 788.6484375,
+        "width": 7.9468994140625,
+        "height": 15
+      },
+      "scrollTop": 16
+    },
+    "states": [
+      {
+        "stage": "down",
+        "text": "",
+        "anchor": {
+          "text": "Original figures, fonts and page geometry remain intact.",
+          "connected": true,
+          "page": "1"
+        },
+        "anchorOffset": 0,
+        "focus": {
+          "text": "Original figures, fonts and page geometry remain intact.",
+          "connected": true,
+          "page": "1"
+        },
+        "focusOffset": 0,
+        "anchorSameAsStart": true,
+        "focusSameAsStart": true,
+        "originalPointConnected": true,
+        "isCollapsed": true,
+        "scrollTop": 16,
+        "pages": [
+          "1",
+          "2",
+          "3"
+        ]
+      },
+      {
+        "stage": "start-drag",
+        "text": "Orig",
+        "anchor": {
+          "text": "Original figures, fonts and page geometry remain intact.",
+          "connected": true,
+          "page": "1"
+        },
+        "anchorOffset": 0,
+        "focus": {
+          "text": "Original figures, fonts and page geometry remain intact.",
+          "connected": true,
+          "page": "1"
+        },
+        "focusOffset": 4,
+        "anchorSameAsStart": true,
+        "focusSameAsStart": true,
+        "originalPointConnected": true,
+        "isCollapsed": false,
+        "scrollTop": 16,
+        "pages": [
+          "1",
+          "2",
+          "3"
+        ]
+      },
+      {
+        "stage": "scroll",
+        "text": "Original figures, fonts and page geometry remain intact.\n第 2 页\n可选择原文\n原文\nFluentRead PDF fixture page 2\nPDF selection translation keeps the original layout.\nReading across lines should become one clean sentence.\nFirst ownership request must never replace a newer selection.\nSecond ownership selection owns the final Chinese answer.\nOrig",
+        "anchor": {
+          "text": "Original figures, fonts and page geometry remain intact.",
+          "connected": true,
+          "page": "1"
+        },
+        "anchorOffset": 0,
+        "focus": {
+          "text": "Original figures, fonts and page geometry remain intact.",
+          "connected": true,
+          "page": "2"
+        },
+        "focusOffset": 4,
+        "anchorSameAsStart": true,
+        "focusSameAsStart": false,
+        "originalPointConnected": true,
+        "isCollapsed": false,
+        "scrollTop": 942,
+        "pages": [
+          "1",
+          "2",
+          "3"
+        ]
+      },
+      {
+        "stage": "move",
+        "text": "Original figures, fonts and page geometry remain intact.\n第 2 页\n可选择原文\n原文\nFluentRead PDF fixture page 2",
+        "anchor": {
+          "text": "Original figures, fonts and page geometry remain intact.",
+          "connected": true,
+          "page": "1"
+        },
+        "anchorOffset": 0,
+        "focus": {
+          "text": "FluentRead PDF fixture page 2",
+          "connected": true,
+          "page": "2"
+        },
+        "focusOffset": 29,
+        "anchorSameAsStart": true,
+        "focusSameAsStart": false,
+        "originalPointConnected": true,
+        "isCollapsed": false,
+        "scrollTop": 942,
+        "pages": [
+          "1",
+          "2",
+          "3"
+        ]
+      },
+      {
+        "stage": "up",
+        "text": "Original figures, fonts and page geometry remain intact.\n第 2 页\n可选择原文\n原文\nFluentRead PDF fixture page 2",
+        "anchor": {
+          "text": "Original figures, fonts and page geometry remain intact.",
+          "connected": true,
+          "page": "1"
+        },
+        "anchorOffset": 0,
+        "focus": {
+          "text": "FluentRead PDF fixture page 2",
+          "connected": true,
+          "page": "2"
+        },
+        "focusOffset": 29,
+        "anchorSameAsStart": true,
+        "focusSameAsStart": false,
+        "originalPointConnected": true,
+        "isCollapsed": false,
+        "scrollTop": 942,
+        "pages": [
+          "1",
+          "2",
+          "3"
+        ]
+      }
+    ],
+    "end": {
+      "x": 669.1315673828125,
+      "y": 393.0625,
+      "expectedOffset": 29,
+      "caretOffset": 29,
+      "text": "FluentRead PDF fixture page 2",
+      "hitHtml": "<span role=\"presentation\" dir=\"ltr\" style=\"left: 7.39%; top: 4.58%; font-size: calc(var(--scale-factor)*15.00px); font-family: sans-serif; transform: scaleX(0.962772);\">FluentRead PDF fixture page 2</span>",
+      "ancestors": [
+        {
+          "tag": "SPAN",
+          "className": "",
+          "userSelect": "text",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "fluentread-pdf-text-layer",
+          "userSelect": "text",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "pdf-canvas-host",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "pdf-page-frame",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "FIGURE",
+          "className": "pdf-page-column",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "pdf-page-stage single",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "ARTICLE",
+          "className": "pdf-page-row",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        },
+        {
+          "tag": "DIV",
+          "className": "pdf-page-list",
+          "userSelect": "auto",
+          "pointerEvents": "auto"
+        }
+      ],
+      "glyph": {
+        "left": 660.55908203125,
+        "top": 382.5625,
+        "width": 8.6724853515625,
+        "height": 21
+      },
+      "scrollTop": 942
+    }
+  },
+  "crossPage": {
+    "nativeSelection": "Original figures, fonts and page geometry remain intact.\n第 2 页\n可选择原文\n原文\nFluentRead PDF fixture page 2",
+    "requestedSource": "Original figures, fonts and page geometry remain intact. FluentRead PDF fixture page 2",
+    "input": "mouse down; inner viewport scrollTop; mouse move and up"
+  },
+  "documentContextMenu": {
+    "documentTabId": 852115826,
+    "firstResponse": {
+      "status": "success"
+    },
+    "reopenedResponse": {
+      "status": "success"
+    },
+    "sender": "actual extension service worker runtime.sendMessage",
+    "nativeOsMenuGesture": false
+  },
+  "readerGeometries": [
+    {
+      "label": "390 dark translated source",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "parent": {
+        "left": 15,
+        "top": 382,
+        "width": 360,
+        "height": 607.6796875
+      },
+      "viewer": {
+        "left": 15,
+        "top": 382,
+        "width": 360,
+        "height": 607.6796875
+      },
+      "scroll": {
+        "left": 15,
+        "top": 459.5,
+        "width": 360,
+        "height": 530.1796875
+      },
+      "frame": {
+        "left": 35,
+        "top": 519.5,
+        "width": 320,
+        "height": 452.8359375
+      },
+      "canvas": {
+        "left": 35,
+        "top": 519.5,
+        "width": 320,
+        "height": 452.8359375
+      },
+      "direction": "column"
+    },
+    {
+      "label": "120 pages 390 fit",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "parent": {
+        "left": 15,
+        "top": 382,
+        "width": 360,
+        "height": 607.6796875
+      },
+      "viewer": {
+        "left": 15,
+        "top": 382,
+        "width": 360,
+        "height": 578.6796875
+      },
+      "scroll": {
+        "left": 15,
+        "top": 459.5,
+        "width": 360,
+        "height": 501.1796875
+      },
+      "frame": {
+        "left": 35,
+        "top": 519.5,
+        "width": 320,
+        "height": 452.8359375
+      },
+      "canvas": {
+        "left": 35,
+        "top": 519.5,
+        "width": 320,
+        "height": 452.8359375
+      },
+      "direction": "column"
+    },
+    {
+      "label": "live arxiv",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "parent": {
+        "left": 25,
+        "top": 232,
+        "width": 1390,
+        "height": 703
+      },
+      "viewer": {
+        "left": 25,
+        "top": 232,
+        "width": 1390,
+        "height": 674
+      },
+      "scroll": {
+        "left": 25,
+        "top": 287,
+        "width": 1390,
+        "height": 619
+      },
+      "frame": {
+        "left": 108,
+        "top": -240,
+        "width": 1224,
+        "height": 1584
+      },
+      "canvas": {
+        "left": 108,
+        "top": -240,
+        "width": 1224,
+        "height": 1584
+      },
+      "direction": "column"
+    }
+  ],
+  "nativePopupRedirect": {
+    "sourceUrl": "http://127.0.0.1:57410/selection-fixture.pdf",
+    "requests": [
+      {
+        "url": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/document.html#pdf=http%3A%2F%2F127.0.0.1%3A57410%2Fselection-fixture.pdf"
+      }
+    ],
+    "nativeTabCreation": false,
+    "focusAdapter": "precreated background reader destination; actual popup tabs.create arguments and tabs.update(active:false), original close captured"
+  },
+  "pageJumps": [
+    {
+      "target": 60,
+      "valueBefore": "1",
+      "valueAfterFill": "60",
+      "valueAfterEnter": "60",
+      "valueAtReady": "60"
+    },
+    {
+      "target": 120,
+      "valueBefore": "60",
+      "valueAfterFill": "120",
+      "valueAfterEnter": "120",
+      "valueAtReady": "120"
+    },
+    {
+      "target": 1,
+      "valueBefore": "120",
+      "valueAfterFill": "1",
+      "valueAfterEnter": "1",
+      "valueAtReady": "1"
+    },
+    {
+      "target": 100,
+      "valueBefore": "1",
+      "valueAfterFill": "100",
+      "valueAfterEnter": "100",
+      "valueAtReady": "100"
+    },
+    {
+      "target": 25,
+      "valueBefore": "100",
+      "valueAfterFill": "25",
+      "valueAfterEnter": "25",
+      "valueAtReady": "25"
+    },
+    {
+      "target": 119,
+      "valueBefore": "25",
+      "valueAfterFill": "119",
+      "valueAfterEnter": "119",
+      "valueAtReady": "119"
+    },
+    {
+      "target": 2,
+      "valueBefore": "119",
+      "valueAfterFill": "2",
+      "valueAfterEnter": "2",
+      "valueAtReady": "2"
+    },
+    {
+      "target": 60,
+      "valueBefore": "2",
+      "valueAfterFill": "60",
+      "valueAfterEnter": "60",
+      "valueAtReady": "60"
+    }
+  ],
+  "liveArxiv": {
+    "ok": true,
+    "url": "https://arxiv.org/pdf/1706.03762",
+    "interception": false,
+    "firstSelectablePageMs": 12967,
+    "selectedSource": "The dominant sequence transduction models are based on complex recurrent or"
+  },
+  "fixtureRequests": {
+    "requests": [
+      {
+        "source": "The dominant sequence transduction models are based on complex recurrent or",
+        "startedAt": 1791530118523
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530120416
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530122216
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530123950
+      },
+      {
+        "source": "PDF selection translation keeps the original layout. Reading across lines should become one clean sentence.",
+        "startedAt": 1791530125330
+      },
+      {
+        "source": "Original figures, fonts and page geometry remain intact. FluentRead PDF fixture page 2",
+        "startedAt": 1791530126567
+      },
+      {
+        "source": "First ownership request must never replace a newer selection.",
+        "startedAt": 1791530127414
+      },
+      {
+        "source": "Second ownership selection owns the final Chinese answer.",
+        "startedAt": 1791530128016
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530131125
+      },
+      {
+        "source": "FluentRead PDF fixture page 1",
+        "startedAt": 1791530131718
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530131719
+      },
+      {
+        "source": "Reading across lines should become one clean sentence.",
+        "startedAt": 1791530131719
+      },
+      {
+        "source": "First ownership request must never replace a newer selection.",
+        "startedAt": 1791530131749
+      },
+      {
+        "source": "Second ownership selection owns the final Chinese answer.",
+        "startedAt": 1791530131754
+      },
+      {
+        "source": "Original figures, fonts and page geometry remain intact.",
+        "startedAt": 1791530131755
+      },
+      {
+        "source": "FluentRead PDF fixture page 2",
+        "startedAt": 1791530131786
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530131786
+      },
+      {
+        "source": "Reading across lines should become one clean sentence.",
+        "startedAt": 1791530131814
+      },
+      {
+        "source": "First ownership request must never replace a newer selection.",
+        "startedAt": 1791530132129
+      },
+      {
+        "source": "Second ownership selection owns the final Chinese answer.",
+        "startedAt": 1791530132729
+      },
+      {
+        "source": "Original figures, fonts and page geometry remain intact.",
+        "startedAt": 1791530132762
+      },
+      {
+        "source": "FluentRead PDF fixture page 3",
+        "startedAt": 1791530132790
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530132817
+      },
+      {
+        "source": "Reading across lines should become one clean sentence.",
+        "startedAt": 1791530132844
+      },
+      {
+        "source": "First ownership request must never replace a newer selection.",
+        "startedAt": 1791530132871
+      },
+      {
+        "source": "Second ownership selection owns the final Chinese answer.",
+        "startedAt": 1791530133356
+      },
+      {
+        "source": "Original figures, fonts and page geometry remain intact.",
+        "startedAt": 1791530133382
+      },
+      {
+        "source": "PDF selection translation keeps the original layout. Reading across lines should become one clean sentence.",
+        "startedAt": 1791530135112
+      },
+      {
+        "source": "Reading across lines should become one clean sentence.",
+        "startedAt": 1791530136838
+      },
+      {
+        "source": "Reading across lines should become one clean sentence.",
+        "startedAt": 1791530136948
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530138479
+      },
+      {
+        "source": "PDF selection translation keeps the original layout. Reading across lines should become one clean sentence.",
+        "startedAt": 1791530140052
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530142052
+      },
+      {
+        "source": "The dominant sequence transduction models are based on complex recurrent or",
+        "startedAt": 1791530158045
+      }
+    ],
+    "pdfRequests": [
+      "/selection-fixture.pdf",
+      "/selection-fixture.pdf",
+      "/selection-fixture.pdf"
+    ],
+    "completed": [
+      {
+        "source": "The dominant sequence transduction models are based on complex recurrent or",
+        "startedAt": 1791530118523,
+        "completedAt": 1791530118544,
+        "disconnected": false
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530120416,
+        "completedAt": 1791530120437,
+        "disconnected": false
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530122216,
+        "completedAt": 1791530122238,
+        "disconnected": false
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530123950,
+        "completedAt": 1791530123972,
+        "disconnected": false
+      },
+      {
+        "source": "PDF selection translation keeps the original layout. Reading across lines should become one clean sentence.",
+        "startedAt": 1791530125330,
+        "completedAt": 1791530125352,
+        "disconnected": false
+      },
+      {
+        "source": "Original figures, fonts and page geometry remain intact. FluentRead PDF fixture page 2",
+        "startedAt": 1791530126567,
+        "completedAt": 1791530126588,
+        "disconnected": false
+      },
+      {
+        "source": "Second ownership selection owns the final Chinese answer.",
+        "startedAt": 1791530128016,
+        "completedAt": 1791530128036,
+        "disconnected": false
+      },
+      {
+        "source": "First ownership request must never replace a newer selection.",
+        "startedAt": 1791530127414,
+        "completedAt": 1791530129016,
+        "disconnected": true
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530131125,
+        "completedAt": 1791530131145,
+        "disconnected": false
+      },
+      {
+        "source": "FluentRead PDF fixture page 1",
+        "startedAt": 1791530131718,
+        "completedAt": 1791530131741,
+        "disconnected": false
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530131719,
+        "completedAt": 1791530131741,
+        "disconnected": false
+      },
+      {
+        "source": "Reading across lines should become one clean sentence.",
+        "startedAt": 1791530131719,
+        "completedAt": 1791530131741,
+        "disconnected": false
+      },
+      {
+        "source": "Second ownership selection owns the final Chinese answer.",
+        "startedAt": 1791530131754,
+        "completedAt": 1791530131776,
+        "disconnected": false
+      },
+      {
+        "source": "Original figures, fonts and page geometry remain intact.",
+        "startedAt": 1791530131755,
+        "completedAt": 1791530131776,
+        "disconnected": false
+      },
+      {
+        "source": "FluentRead PDF fixture page 2",
+        "startedAt": 1791530131786,
+        "completedAt": 1791530131808,
+        "disconnected": false
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530131786,
+        "completedAt": 1791530131808,
+        "disconnected": false
+      },
+      {
+        "source": "Reading across lines should become one clean sentence.",
+        "startedAt": 1791530131814,
+        "completedAt": 1791530131834,
+        "disconnected": false
+      },
+      {
+        "source": "Second ownership selection owns the final Chinese answer.",
+        "startedAt": 1791530132729,
+        "completedAt": 1791530132751,
+        "disconnected": false
+      },
+      {
+        "source": "Original figures, fonts and page geometry remain intact.",
+        "startedAt": 1791530132762,
+        "completedAt": 1791530132785,
+        "disconnected": false
+      },
+      {
+        "source": "FluentRead PDF fixture page 3",
+        "startedAt": 1791530132790,
+        "completedAt": 1791530132812,
+        "disconnected": false
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530132817,
+        "completedAt": 1791530132839,
+        "disconnected": false
+      },
+      {
+        "source": "Reading across lines should become one clean sentence.",
+        "startedAt": 1791530132844,
+        "completedAt": 1791530132866,
+        "disconnected": false
+      },
+      {
+        "source": "First ownership request must never replace a newer selection.",
+        "startedAt": 1791530131749,
+        "completedAt": 1791530133350,
+        "disconnected": false
+      },
+      {
+        "source": "Second ownership selection owns the final Chinese answer.",
+        "startedAt": 1791530133356,
+        "completedAt": 1791530133377,
+        "disconnected": false
+      },
+      {
+        "source": "Original figures, fonts and page geometry remain intact.",
+        "startedAt": 1791530133382,
+        "completedAt": 1791530133404,
+        "disconnected": false
+      },
+      {
+        "source": "First ownership request must never replace a newer selection.",
+        "startedAt": 1791530132129,
+        "completedAt": 1791530133731,
+        "disconnected": false
+      },
+      {
+        "source": "First ownership request must never replace a newer selection.",
+        "startedAt": 1791530132871,
+        "completedAt": 1791530134473,
+        "disconnected": false
+      },
+      {
+        "source": "PDF selection translation keeps the original layout. Reading across lines should become one clean sentence.",
+        "startedAt": 1791530135112,
+        "completedAt": 1791530135134,
+        "disconnected": false
+      },
+      {
+        "source": "Reading across lines should become one clean sentence.",
+        "startedAt": 1791530136838,
+        "completedAt": 1791530136859,
+        "disconnected": false
+      },
+      {
+        "source": "Reading across lines should become one clean sentence.",
+        "startedAt": 1791530136948,
+        "completedAt": 1791530136969,
+        "disconnected": false
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530138479,
+        "completedAt": 1791530138501,
+        "disconnected": false
+      },
+      {
+        "source": "PDF selection translation keeps the original layout. Reading across lines should become one clean sentence.",
+        "startedAt": 1791530140052,
+        "completedAt": 1791530140074,
+        "disconnected": false
+      },
+      {
+        "source": "PDF selection translation keeps the original layout.",
+        "startedAt": 1791530142052,
+        "completedAt": 1791530142073,
+        "disconnected": false
+      },
+      {
+        "source": "The dominant sequence transduction models are based on complex recurrent or",
+        "startedAt": 1791530158045,
+        "completedAt": 1791530158066,
+        "disconnected": false
+      }
+    ],
+    "stalledRequests": 1,
+    "canceledDownloads": 1
+  },
+  "originalArtifactsDir": "/private/tmp/fluentread-pdf-selection/browser-layout-final"
+}

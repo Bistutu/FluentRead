@@ -1,7 +1,7 @@
 /**
  * @file src/core/download/progress.ts
  * 文件职责：为模型、语言包等按需资源定义统一的下载进度数据、跨上下文消息和展示文字，让各处下载都用同一套真实字节数说话。
- * 主要内容：下载标识与存储键、进度归一化、百分比与体积格式化、把多个文件合并为一个任务的进度汇总器、把依次进行的多项下载合成一个总百分比的汇总函数，以及带限频和结束通知的进度发布器。
+ * 主要内容：下载标识与存储键、字节及受控模型来源状态归一化、百分比与体积格式化、多文件和多项下载汇总，以及对连接或来源切换立即通知、对字节分块限频的进度发布器。
  * 模块边界：纯数据与算法，不访问网络、浏览器存储或界面；字节数只能来自真实下载回调，本模块不估算速度，也不按时间推进百分比。
  */
 
@@ -9,9 +9,20 @@
 export interface DownloadProgress {
     loaded: number;
     total: number;
+    /** 仅模型下载携带受控来源状态；不传 URL、重定向参数或用户网络信息。 */
+    transfer?: ModelDownloadStatus;
+}
+
+export interface ModelDownloadStatus {
+    source: 'modelscope' | 'huggingface' | 'hf-mirror' | 'other';
+    state: 'connecting' | 'receiving';
+    attempt: number;
+    attempts: number;
 }
 
 export const DOWNLOAD_PROGRESS_MESSAGE = 'fluentReadDownloadProgress' as const;
+/** content 无权读取受信本地存储，只能向后台查询单项下载的字节进度。 */
+export const DOWNLOAD_PROGRESS_QUERY_MESSAGE = 'fluentReadDownloadProgressQuery' as const;
 /** 进度只作为跨页面的事件通道写入扩展本地存储；界面只消费变化事件，不把存量值当作“正在下载”。 */
 export const DOWNLOAD_PROGRESS_KEY_PREFIX = 'fluentReadDownloadProgress:' as const;
 
@@ -47,9 +58,17 @@ function isByteCount(value: unknown): value is number {
 /** 跨上下文数据不可信：只接受非负有限数值，并保证已接收量不会超过总量。 */
 export function normalizeDownloadProgress(value: unknown): DownloadProgress | undefined {
     if (!value || typeof value !== 'object') return undefined;
-    const {loaded, total} = value as Partial<DownloadProgress>;
+    const {loaded, total, transfer} = value as Partial<DownloadProgress>;
     if (!isByteCount(loaded) || !isByteCount(total)) return undefined;
-    return {loaded, total: total > 0 ? Math.max(total, loaded) : 0};
+    const result: DownloadProgress = {loaded, total: total > 0 ? Math.max(total, loaded) : 0};
+    if (transfer && typeof transfer === 'object') {
+        const {source, state, attempt, attempts} = transfer;
+        if (['modelscope', 'huggingface', 'hf-mirror', 'other'].includes(source) && ['connecting', 'receiving'].includes(state)
+            && Number.isSafeInteger(attempt) && Number.isSafeInteger(attempts) && attempt > 0 && attempts >= attempt && attempts <= 8) {
+            result.transfer = {source, state, attempt, attempts};
+        }
+    }
+    return result;
 }
 
 /** 总大小未知时不给百分比，由界面改用不确定进度条和已下载体积。 */
@@ -79,7 +98,7 @@ export interface DownloadFileProgress {
 }
 
 function isKnownSize(value: unknown): value is number {
-    return typeof value === 'number' && Number.isFinite(value) && value > 0;
+    return isByteCount(value) && value > 0;
 }
 
 /**
@@ -90,15 +109,20 @@ export function createDownloadProgressTracker(
     fileCount: number,
     expectedTotal: number,
     report: (progress: DownloadProgress) => void,
-): {file(): DownloadFileProgress} {
+): {file(): DownloadFileProgress; transfer(status: ModelDownloadStatus): void} {
     const files: Array<{loaded: number; total?: number}> = [];
+    let transfer: ModelDownloadStatus | undefined;
     const publish = () => {
         const loaded = files.reduce((sum, file) => sum + file.loaded, 0);
         const known = files.reduce((sum, file) => sum + Math.max(file.total ?? 0, file.loaded), 0);
         const sized = files.length >= fileCount && files.every(file => file.total !== undefined);
-        report({loaded, total: sized ? known : expectedTotal > 0 ? Math.max(expectedTotal, known) : 0});
+        report({loaded, total: sized ? known : expectedTotal > 0 ? Math.max(expectedTotal, known) : 0, ...(transfer ? {transfer} : {})});
     };
     return {
+        transfer(status) {
+            transfer = status;
+            publish();
+        },
         file() {
             const file: {loaded: number; total?: number} = {loaded: 0};
             files.push(file);
@@ -159,16 +183,20 @@ export function createDownloadProgressPublisher(
     const now = options.now ?? Date.now;
     const intervalMs = options.intervalMs ?? 300;
     const publishedAt = new Map<string, number>();
+    const transfers = new Map<string, string | undefined>();
     const publisher: DownloadProgressPublisher = {
         report(id, progress) {
             const at = now();
             const previous = publishedAt.get(id);
-            if (previous !== undefined && at - previous < intervalMs) return;
+            const transfer = JSON.stringify(progress.transfer);
+            if (previous !== undefined && at - previous < intervalMs && transfers.get(id) === transfer) return;
             publishedAt.set(id, at);
-            send({type: DOWNLOAD_PROGRESS_MESSAGE, id, progress: {loaded: progress.loaded, total: progress.total}});
+            transfers.set(id, transfer);
+            send({type: DOWNLOAD_PROGRESS_MESSAGE, id, progress: {loaded: progress.loaded, total: progress.total, ...(progress.transfer ? {transfer: progress.transfer} : {})}});
         },
         finish(id) {
             publishedAt.delete(id);
+            transfers.delete(id);
             send({type: DOWNLOAD_PROGRESS_MESSAGE, id});
         },
         async track(id, run) {

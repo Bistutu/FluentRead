@@ -1,0 +1,18 @@
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-pdf-selection-reader-20261009
+
+ ✓ tests/i18n.test.ts (57 tests) 2994ms
+   ✓ i18n 全量界面扫描 > Vue 文案和展示注册表在非中文界面有本地化结果 1050ms
+   ✓ 运行期反馈文案资源 > 每条精确反馈都来自真实源码，不重复，并在每种界面语言中完整本地化 860ms
+   ✓ 旧界面译文人工校正 > 校正原文仍在界面源码中使用，不重复，并覆盖此前的译文 721ms
+ ✓ tests/architecture/moduleBoundaries.test.ts (13 tests) 3339ms
+   ✓ architecture module boundaries > src 的静态依赖图不存在跨文件循环 1129ms
+   ✓ architecture module boundaries > src 只能通过精确登记的 composition/browser/provider 迁移边界读取 entrypoints 926ms
+   ✓ architecture module boundaries > feature 不能跨目录读取另一个 feature 的内部实现 513ms
+   ✓ architecture module boundaries > 按需加载的大体积资源不得被扩展运行时代码静态引入 494ms
+ ✓ tests/architecture/sourceFileHeaders.test.ts (844 tests) 287ms
+
+ Test Files  3 passed (3)
+      Tests  914 passed (914)
+   Start at  16:40:04
+   Duration  9.14s (transform 1.22s, setup 0ms, collect 1.93s, tests 6.62s, environment 0ms, prepare 140ms)

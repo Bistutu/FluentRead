@@ -152,7 +152,7 @@ describe('local TTS model cache upgrade compatibility', () => {
         expect(await isLocalTtsModelCached()).toBe(true);
     });
 
-    it('accepts the actual fallback mirror provenance for both model and voice bytes without redownloading', async () => {
+    it('accepts the actual fallback official provenance for both model and voice bytes without redownloading', async () => {
         const {modelCache, voiceCache} = installCaches();
         vi.stubGlobal('navigator', {language: 'zh-CN'});
         const fetcher = vi.fn(async (url: string) => new Response(new Uint8Array([1, 2, 3]), {
@@ -164,13 +164,13 @@ describe('local TTS model cache upgrade compatibility', () => {
         for (const file of LOCAL_TTS_MODEL_FILES) {
             const pinned = getLocalTtsModelFileUrl(file);
             expect((await modelCache.match(pinned))!.headers.get('X-FluentRead-Model-Source'))
-                .toBe(pinned.replace('https://huggingface.co/', 'https://hf-mirror.net/'));
+                .toBe(pinned);
             expect(await modelCache.match(getLocalTtsModelLoaderUrl(file))).toBeUndefined();
         }
         for (const voice of LOCAL_TTS_VOICES) {
             const pinned = getLocalTtsVoiceCacheUrl(voice);
             expect((await voiceCache.match(pinned))!.headers.get('X-FluentRead-Model-Source'))
-                .toBe(pinned.replace('https://huggingface.co/', 'https://hf-mirror.net/'));
+                .toBe(pinned);
         }
         const calls = fetcher.mock.calls.length;
         await cacheLocalTtsModelFiles();

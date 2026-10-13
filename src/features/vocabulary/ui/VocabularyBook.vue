@@ -44,7 +44,7 @@
             <p v-else-if="!entryTranslation(currentReview)" class="answer-translation">尚未保存参考内容。可以先进入学习页理解这个表达，再回来复习。</p>
             <button type="button" class="study-entry-button" @click="openStudy(currentReview)">{{ t(isVocabularySentence(currentReview) ? 'learning.collection.listenLearn' : 'learning.collection.learnUsage') }}</button>
             <p v-if="latestContext(currentReview)?.text && latestContext(currentReview)?.text !== currentReview.term" class="answer-context" data-i18n-ignore>{{ latestContext(currentReview)?.text }}</p>
-            <a v-if="latestContext(currentReview)?.sourceUrl" :href="latestContext(currentReview)?.sourceUrl" target="_blank" rel="noreferrer">查看收藏来源 ↗</a>
+            <VocabularySource :context="vocabularySourceContext(currentReview)" />
             <div class="review-actions">
               <button type="button" class="again" :disabled="actionBusy" @click="rateReview('again')"><span>1</span><strong>忘了</strong><small>约 10 分钟后</small></button>
               <button type="button" class="good" :disabled="actionBusy" @click="rateReview('good')"><span>2</span><strong>记得</strong><small>{{ goodIntervalLabel(currentReview) }}</small></button>
@@ -155,10 +155,12 @@ import {applyInterfaceTheme} from '@/src/ui/interfaceAppearance'
 import {ElOption} from 'element-plus';
 function translateControlLabel(value: string): string { return translateLegacyText(value, normalizeUiLanguage(runtimeConfig.uiLanguage)); }
 
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, shallowRef, watch } from 'vue';
 import VocabularyStudy from './VocabularyStudy.vue';
 import CollectionEntry from './CollectionEntry.vue';
-import {ReadingAnswer} from '@/src/features/reading-assistant/public';
+import VocabularySource from './VocabularySource.vue';
+import {vocabularySourceContext, vocabularySourceLink} from '../source';
+import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
 import {ElMessageBox} from 'element-plus';
 import browser from 'webextension-polyfill';
 import {normalizeUiLanguage, translate, translateLegacyText, type TranslationParams} from '@/src/core/i18n';
@@ -209,7 +211,11 @@ const targetLanguageKey = ref('');
 const configBusy = ref(false);
 const entries = ref<VocabularyEntry[]>([]);
 const selectedEntryId = ref('');
-const studyEntry = computed(() => entries.value.find(entry => entry.id === selectedEntryId.value));
+const studyEntry = computed(() => {
+  const entryId = selectedEntryId.value;
+  if (entryId === '') return undefined;
+  return entries.value.find(entry => entry.id === entryId);
+});
 const recallDraft = ref('');
 const loading = ref(false);
 const actionBusy = ref(false);
@@ -659,12 +665,13 @@ async function exportAnki(): Promise<void> {
     if (!lifecycle.isActive()) return;
     const rows = data.entries.map(entry => {
       const context = includePrivateContext ? entry.contexts.at(-1) : undefined;
+      const source = vocabularySourceLink(context);
       return [
         entry.term,
         entryTranslation(entry),
         entry.note || '',
         context?.text || '',
-        context?.sourceUrl || '',
+        source.href || (source.timeLabel ? `${context?.pageTitle || '视频'} · ${source.timeLabel}` : ''),
         `fluentread ${entry.status}`,
       ];
     });
@@ -721,7 +728,7 @@ async function importCollection(event: Event): Promise<void> {
     if (!lifecycle.isActive()) return;
     await loadEntries();
     showToast(`已导入：新增 ${result.inserted} 条，更新 ${result.updated} 条，跳过 ${result.skipped} 条`);
-  } catch (cause) {if (lifecycle.isActive()) showToast(cause instanceof SyntaxError ? '无法读取文件，请选择 FluentRead 导出的收藏 JSON 文件' : cause instanceof Error ? cause.message : '收藏导入失败');}
+  } catch (cause) {if (lifecycle.isActive()) showToast(cause instanceof SyntaxError ? t('learning.collection.fileReadFailed') : cause instanceof Error ? cause.message : '收藏导入失败');}
   finally {if (lifecycle.isActive()) actionBusy.value = false;}
 }
 
@@ -805,8 +812,12 @@ function handleBookChanged(message: unknown): undefined {
   if (lifecycle.isActive() && (message as VocabularyBookChangedMessage)?.type === VOCABULARY_BOOK_CHANGED_MESSAGE) void loadEntries();
   return undefined;
 }
+// 缓存保留复习会话与已接受的保存，只有当前显示的页面处理全局复习按键。
+let reviewKeyboardActive = true;
+onActivated(() => { reviewKeyboardActive = true; });
+onDeactivated(() => { reviewKeyboardActive = false; });
 function handleReviewKeyboard(event: KeyboardEvent): void {
-  if (!lifecycle.isActive() || !reviewActive.value || actionBusy.value) return;
+  if (!reviewKeyboardActive || !lifecycle.isActive() || !reviewActive.value || actionBusy.value) return;
   const target = event.target as HTMLElement | null;
   if (target?.matches('input, textarea, select, button, a')) return;
   if (event.key === 'Escape') { event.preventDefault(); finishReview(); return; }

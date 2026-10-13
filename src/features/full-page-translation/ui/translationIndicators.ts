@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/ui/translationIndicators.ts
  * 文件职责：创建全文翻译过程中插入原页面的加载指示器和失败重试提示，并将错误详情转换为页面通知或可操作的重试控件。
- * 主要内容：提供 insertLoadingSpinner 与 insertFailedTip，组装 FluentRead 专属 DOM、完整点击区和按宿主语义启用的键盘操作控件，隔离宿主链接导航，并使用内置或动态自定义服务名称生成错误文案。
+ * 主要内容：提供 insertLoadingSpinner 与 insertFailedTip，组装 FluentRead 专属 DOM、完整点击区和按宿主语义启用的键盘操作控件；受控重试由队列接管后才清理反馈，避免先移除控件的宿主观察记录撤销排队意图；隔离宿主链接导航，并使用内置或动态自定义服务名称生成错误文案。
  * 模块边界：本文件不发起翻译、不判断候选，也不持有 session；重试回调由 runtime 注入，节点生命周期由 state 管理，全局页面通知通过 page-notice 公共接口显示。
  */
 // 全文翻译节点中的加载与失败反馈。
@@ -54,7 +54,7 @@ const INTERACTIVE_HOST_SELECTOR = [
 export function insertFailedTip(
   node: HTMLElement,
   errMsg: string,
-  onRetry: () => void,
+  onRetry: () => boolean | void,
 ): HTMLElement {
   const contextInvalidated = isExtensionContextInvalidated(errMsg);
   const keyboardAccessible = node.closest(INTERACTIVE_HOST_SELECTOR) === null;
@@ -139,15 +139,16 @@ function createActionElement(
 }
 
 // 处理重试按钮点击事件
-function handleRetryClick(node: HTMLElement, wrapper: HTMLElement, onRetry: () => void) {
+function handleRetryClick(node: HTMLElement, wrapper: HTMLElement, onRetry: () => boolean | void) {
   return (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
 
-    wrapper.remove(); // 移除错误提示元素，重新翻译
+    // boolean 回调由 runtime 持有状态和排队所有权；受限 drain 开始重试时再恢复旧 DOM。
+    // 此处先删除 wrapper 会被 MutationObserver 当作宿主撤下失败 UI，取消刚接受的 pending。
+    if (onRetry() !== undefined) return;
+    wrapper.remove(); // 兼容不持有 runtime 状态的 void 回调。
     clearTranslationFailedHost(node); // 移除失败标记
-
-    onRetry();
   };
 }
 

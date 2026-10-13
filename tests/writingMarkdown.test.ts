@@ -1,10 +1,6 @@
-import {describe, expect, it, vi} from 'vitest';
+import {describe, expect, it} from 'vitest';
 
-// 公开入口还导出浏览器 UI；仅隔离这些无关依赖，Markdown 解析始终使用真实实现。
-vi.mock('@/src/features/reading-assistant/ui/ReadingPanel.vue', () => ({default: {}}));
-vi.mock('@/src/features/reading-assistant/ui/ReadingAnswer.vue', () => ({default: {}}));
-vi.mock('@/src/features/reading-assistant/ui/HarnessReadingHistory.vue', () => ({default: {}}));
-vi.mock('webextension-polyfill', () => ({default: {}}));
+// 纯 Markdown 转换直接使用真实解析器，不依赖浏览器、模型客户端或 Vue 卡片隔离。
 import {writingPlainText} from '@/src/features/writing-assistant/markdown';
 
 describe('Writing Markdown to Gmail plain text', () => {

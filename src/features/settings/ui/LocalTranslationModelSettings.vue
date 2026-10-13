@@ -2,8 +2,8 @@
  * @file src/features/settings/ui/LocalTranslationModelSettings.vue
  *
  * 文件职责：呈现本地翻译模型选择、持续下载进度、删除确认和短文本试译。
- * 主要内容：订阅后台持久快照，通过悬停或焦点提示展示模型用途和许可，并在下载按钮边框内说明模型存储与卸载清理规则，主卡片保留语言与资源估算；试译区把输入框与操作栏合成一个输入区，目标语言用标题右侧的分段按钮选择，翻译与取消固定在输入区右下角；页面离开只撤销订阅与试译，不中止下载。
- * 模块边界：通过 runtime 消息操作下载任务，配置交给既有设置持久化；不获取模型文件、不创建推理引擎。
+ * 主要内容：活跃页面订阅后台持久快照，索引模型状态以复用默认值；停用、缓存切页或上下文替换时退订并取消所属试译，返回后独立刷新下载状态；通过悬停或焦点提示展示模型用途和许可，主卡片保留语言与资源估算，试译输入区合并操作栏。
+ * 模块边界：通过 runtime 消息操作下载任务，配置交给既有设置持久化；所有操作、确认和迟到回包限定当前页面归属，不因页面离开中止后台下载，不获取模型文件、不创建推理引擎。
  -->
 <template>
   <section class="local-models" aria-labelledby="local-models-title" data-local-translation-models>
@@ -11,14 +11,14 @@
     <p v-if="!supported" class="local-models-error" role="status">{{ t('settings.localTranslation.unavailable') }}</p>
     <div v-if="loadError" class="local-models-error" role="alert">
       {{ t('settings.localTranslation.statusReadFailed') }}
-      <button type="button" class="local-models-icon" :aria-label="t('settings.localTranslation.refresh')" :title="t('settings.localTranslation.refresh')" @click="refresh"><Refresh aria-hidden="true" /></button>
+      <button type="button" class="local-models-icon" :disabled="!active" :aria-label="t('settings.localTranslation.refresh')" :title="t('settings.localTranslation.refresh')" :onClick="actions.refresh"><Refresh aria-hidden="true" /></button>
     </div>
 
     <div class="local-models-list" role="radiogroup" :aria-label="t('settings.localTranslation.title')">
       <article v-for="item in visibleModels" :key="item.value" class="local-model" :class="{selected: selectedModel === item.value}" :data-model="item.value" :data-phase="state(item.value).phase">
         <div class="local-model-title">
           <label class="local-model-choice">
-            <input v-model="selectedModel" type="radio" name="local-translation-model" :value="item.value" :disabled="!supported" :aria-label="t('settings.localTranslation.chooseNamed', {name: modelName(item)})" />
+            <input :checked="selectedModel === item.value" type="radio" name="local-translation-model" :value="item.value" :disabled="!active || !supported" :onChange="actions.model.bind(null, item.value)" :aria-label="t('settings.localTranslation.chooseNamed', {name: modelName(item)})" />
             <strong>{{ modelName(item) }}</strong>
           </label>
           <span v-if="item.value === defaultModel" class="local-model-tag">{{ t('settings.localTranslation.recommended') }}</span>
@@ -50,10 +50,10 @@
         <footer class="local-model-actions">
           <span class="local-model-status" :class="{'is-ready': state(item.value).phase === 'ready'}" role="status" aria-live="polite"><Check v-if="state(item.value).phase === 'ready'" aria-hidden="true" />{{ loaded ? t(`settings.localTranslation.phase.${state(item.value).phase}`) : t('settings.localTranslation.statusReading') }}</span>
           <div>
-            <button v-if="canDelete(item.value)" type="button" class="local-models-icon" :disabled="busy.has(item.value) || state(item.value).phase === 'removing'" :aria-label="t('modelCache.removeNamed', {name: modelName(item)})" :title="t('settings.localTranslation.remove')" @click="confirmRemove(item)"><Delete aria-hidden="true" /></button>
-            <button v-if="isDownloading(item.value)" type="button" class="local-models-button" :disabled="busy.has(item.value)" @click="command(item.value, 'pause')"><VideoPause aria-hidden="true" />{{ t('settings.localTranslation.pause') }}</button>
+            <button v-if="canDelete(item.value)" type="button" class="local-models-icon" :disabled="!active || busy.has(item.value) || state(item.value).phase === 'removing'" :aria-label="t('modelCache.removeNamed', {name: modelName(item)})" :title="t('settings.localTranslation.remove')" :onClick="actions.remove.bind(null, item)"><Delete aria-hidden="true" /></button>
+            <button v-if="isDownloading(item.value)" type="button" class="local-models-button" :disabled="!active || busy.has(item.value)" :onClick="actions.pause.bind(null, item.value)"><VideoPause aria-hidden="true" />{{ t('settings.localTranslation.pause') }}</button>
             <div v-else-if="state(item.value).phase !== 'ready' && !item.legacy" class="local-model-download-control">
-              <button type="button" class="local-models-button primary" :disabled="!modelSupported(item) || !loaded || busy.has(item.value) || state(item.value).phase === 'removing'" @click="command(item.value, 'download')"><Download aria-hidden="true" />{{ t(state(item.value).phase === 'error' ? 'settings.localTranslation.retry' : state(item.value).phase === 'paused' ? 'settings.localTranslation.resume' : 'settings.localTranslation.download') }}</button>
+              <button type="button" class="local-models-button primary" :disabled="!active || !modelSupported(item) || !loaded || busy.has(item.value) || state(item.value).phase === 'removing'" :onClick="actions.download.bind(null, item.value)"><Download aria-hidden="true" />{{ t(state(item.value).phase === 'error' ? 'settings.localTranslation.retry' : state(item.value).phase === 'paused' ? 'settings.localTranslation.resume' : 'settings.localTranslation.download') }}</button>
               <FieldHelp button-class="local-model-storage-help" :content="t('settings.localTranslation.storageNote')" :label="t('settings.localTranslation.storageHelp')" />
             </div>
           </div>
@@ -72,15 +72,15 @@
         <h3 id="local-model-trial-title">{{ t('settings.localTranslation.trial') }}</h3>
         <div class="local-model-trial-target">
           <span aria-hidden="true">{{ t('settings.localTranslation.trialTarget') }}</span>
-          <SegmentedControl v-model="trialTarget" compact :label="t('settings.localTranslation.trialTarget')" :options="trialLanguageOptions" :disabled="trialBusy" />
+          <SegmentedControl :model-value="trialTarget" :onUpdate:modelValue="actions.target" compact :label="t('settings.localTranslation.trialTarget')" :options="trialLanguageOptions" :disabled="!active || trialBusy" />
         </div>
       </header>
       <div class="local-model-trial-composer">
-        <textarea v-model="trialText" :aria-label="t('settings.localTranslation.trialSource')" rows="3" maxlength="2000" :disabled="trialBusy" />
+        <textarea :value="trialText" :onInput="actions.text" :aria-label="t('settings.localTranslation.trialSource')" rows="3" maxlength="2000" :disabled="!active || trialBusy" />
         <div class="local-model-trial-actions">
           <p v-if="trialBusy" class="local-model-trial-status" role="status">{{ t('settings.localTranslation.trialBusy') }}</p>
-          <button v-if="trialBusy" type="button" class="local-models-button" @click="cancelTrial"><Close aria-hidden="true" />{{ t('settings.localTranslation.cancel') }}</button>
-          <button v-else type="button" class="local-models-button primary" :disabled="!selectedReady || !trialText.trim()" @click="tryTranslation"><Promotion aria-hidden="true" />{{ t('settings.localTranslation.trialAction') }}</button>
+          <button v-if="trialBusy" type="button" class="local-models-button" :disabled="!active" :onClick="actions.cancel"><Close aria-hidden="true" />{{ t('settings.localTranslation.cancel') }}</button>
+          <button v-else type="button" class="local-models-button primary" :disabled="!active || !selectedReady || !trialText.trim()" :onClick="actions.trial"><Promotion aria-hidden="true" />{{ t('settings.localTranslation.trialAction') }}</button>
         </div>
       </div>
       <p v-if="trialError" class="local-models-error" role="alert">{{ trialError }}</p>
@@ -91,6 +91,7 @@
 
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
+import {useSettingsActionContext} from '../model/useSettingsActionContext'
 import browser from 'webextension-polyfill'
 import {ElMessageBox} from 'element-plus'
 import {Check, Close, Cpu, Delete, Download, Promotion, Refresh, TopRight, VideoPause} from '@element-plus/icons-vue'
@@ -106,8 +107,9 @@ import {useUiI18n} from '@/src/ui/i18n'
 import FieldHelp from './components/FieldHelp.vue'
 import SegmentedControl from './components/SegmentedControl.vue'
 
-const props = defineProps<{config: Config; service: string}>()
+const props = withDefaults(defineProps<{config: Config; service: string; active?: boolean; context?: unknown}>(), {active: true})
 const {t} = useUiI18n()
+const {active, capture, revision} = useSettingsActionContext(() => props.active, () => [props.config, props.context, props.service])
 const supported = browserCapabilities.extensionDom
 const hunyuanSupported = supportsHunyuanTranslation()
 function modelSupported(model: LocalTranslationModel): boolean { return supported && (model.engine !== 'hunyuan' || hunyuanSupported) }
@@ -117,16 +119,21 @@ const loaded = ref(false)
 const loadError = ref(false)
 const operationError = ref('')
 const busy = ref(new Set<string>())
-let disposed = false
-const selectedModel = computed({
-  get: () => normalizeLocalTranslationModel(props.config.model[props.service]),
-  set: (value: LocalTranslationModelId) => { props.config.model[props.service] = value },
-})
+const mounted = ref(false)
+let stopObserving: (() => void) | undefined
+let readGeneration = 0
+// 空快照也可能表示模型已删除；不能只用仍存在任务的 updatedAt 排除旧读取。
+let snapshotRevision = 0
+const selectedModel = computed(() => normalizeLocalTranslationModel(props.config.model[props.service]))
+const idleStates = new Map<LocalTranslationModelId, LocalTranslationDownloadState>(LOCAL_TRANSLATION_MODELS.map(model => [model.value,
+  {model: model.value, phase: 'idle', downloadedBytes: 0, totalBytes: model.downloadSizeMb * 1_000_000, bytesPerSecond: 0, updatedAt: 0},
+]))
+const taskIndex = computed(() => new Map(tasks.value.map(task => [task.model, task])))
 const visibleModels = computed(() => LOCAL_TRANSLATION_MODELS.filter((model) => !model.legacy || selectedModel.value === model.value || state(model.value).downloadedBytes > 0))
 const selectedReady = computed(() => loaded.value && modelSupported(getLocalTranslationModel(selectedModel.value)) && state(selectedModel.value).phase === 'ready')
 function modelName(model: LocalTranslationModel): string { return model.nameKey ? t(model.nameKey) : model.label }
 function state(model: LocalTranslationModelId): LocalTranslationDownloadState {
-  return tasks.value.find((task) => task.model === model) || {model, phase: 'idle', downloadedBytes: 0, totalBytes: getLocalTranslationModel(model).downloadSizeMb * 1_000_000, bytesPerSecond: 0, updatedAt: 0}
+  return taskIndex.value.get(model) || idleStates.get(model)!
 }
 function formatBytes(bytes: number): string {
   return bytes >= 1_000_000_000 ? `${(bytes / 1_000_000_000).toFixed(2)} GB` : `${(bytes / 1_000_000).toFixed(bytes > 10_000_000 ? 0 : 1)} MB`
@@ -136,37 +143,50 @@ function percent(model: LocalTranslationModelId): number { const task = state(mo
 function isDownloading(model: LocalTranslationModelId): boolean { return ['queued', 'downloading', 'verifying'].includes(state(model).phase) }
 function showProgress(model: LocalTranslationModelId): boolean { return !['idle', 'ready', 'removing'].includes(state(model).phase) }
 function canDelete(model: LocalTranslationModelId): boolean { return loaded.value && (state(model).downloadedBytes > 0 || isDownloading(model) || state(model).phase === 'ready') }
-function applySnapshot(value: unknown): void {
+function applySnapshot(value: unknown, authoritative = true): void {
   const snapshot = normalizeLocalTranslationDownloadSnapshot(value)
-  if (!snapshot || disposed) return
+  if (!snapshot) return
+  if (authoritative) snapshotRevision++
+  const previousTasks = taskIndex.value
   tasks.value = snapshot.tasks.map((task) => {
-    const previous = tasks.value.find((item) => item.model === task.model)
+    const previous = previousTasks.get(task.model)
     return previous && previous.updatedAt > task.updatedAt ? previous : task
   })
 }
-async function refresh(): Promise<void> {
-  if (!supported) return
+async function refresh(current = capture()): Promise<void> {
+  if (!current() || !supported) return
+  const request = ++readGeneration
+  const observedSnapshot = snapshotRevision
   try {
     const response = await browser.runtime.sendMessage({type: 'fluentReadGetLocalTranslationModelState'}) as {success?: boolean} | undefined
+    if (!current() || request !== readGeneration) return
     if (!response?.success || !normalizeLocalTranslationDownloadSnapshot(response)) throw new Error('status')
-    applySnapshot(response)
+    // 读取期间事件或命令已经送来新状态，保留它；有效回包仍完成本次状态读取。
+    if (observedSnapshot === snapshotRevision) applySnapshot(response)
     loaded.value = true
     loadError.value = false
-  } catch { if (!disposed) loadError.value = true }
+  } catch { if (current() && request === readGeneration) loadError.value = true }
 }
-async function command(model: LocalTranslationModelId, action: 'download' | 'pause' | 'remove'): Promise<void> {
-  if (busy.value.has(model)) return
+async function command(model: LocalTranslationModelId, action: 'download' | 'pause' | 'remove', current = capture()): Promise<void> {
+  if (!current() || !supported || busy.value.has(model)) return
+  readGeneration++
   busy.value.add(model)
   operationError.value = ''
   const type = {download: 'fluentReadPrepareLocalTranslationModel', pause: 'fluentReadPauseLocalTranslationModel', remove: 'fluentReadRemoveLocalTranslationModel'}[action]
   try {
     const response = await browser.runtime.sendMessage({type, model}) as {success?: boolean} | undefined
+    if (!current()) return
     if (!response?.success) throw new Error('operation')
     applySnapshot(response)
-  } catch { if (!disposed) operationError.value = t('settings.localTranslation.error.unknown') }
-  finally { busy.value.delete(model) }
+  } catch { if (current()) operationError.value = t('settings.localTranslation.error.unknown') }
+  finally {
+    busy.value.delete(model)
+    // 旧命令继续在后台完成；当前视图只重新读取权威状态，不接收旧归属回包。
+    if (!current() && active.value) void refresh()
+  }
 }
-async function confirmRemove(model: LocalTranslationModel): Promise<void> {
+async function confirmRemove(model: LocalTranslationModel, current = capture()): Promise<void> {
+  if (!current() || !supported || busy.value.has(model.value)) return
   try {
     await ElMessageBox.confirm(
       t('settings.localTranslation.confirmBody', {size: formatBytes(state(model.value).downloadedBytes)}),
@@ -174,10 +194,7 @@ async function confirmRemove(model: LocalTranslationModel): Promise<void> {
       {type: 'warning', confirmButtonText: t('settings.localTranslation.confirmAction'), cancelButtonText: t('settings.localTranslation.cancel'), distinguishCancelAndClose: true, closeOnClickModal: false},
     )
   } catch { return }
-  if (!disposed) await command(model.value, 'remove')
-}
-function storageChanged(changes: Record<string, browser.Storage.StorageChange>, area: string): void {
-  if (area === 'local' && changes[LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY]) applySnapshot(changes[LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY].newValue)
+  if (current()) await command(model.value, 'remove', current)
 }
 
 const trialText = ref('When switching between different filaments, the printer flushes the remaining material to avoid color mixing.')
@@ -196,8 +213,8 @@ function cancelTrial(): void {
   trialId = undefined
   trialBusy.value = false
 }
-async function tryTranslation(): Promise<void> {
-  if (!selectedReady.value || trialBusy.value) return
+async function tryTranslation(current = capture()): Promise<void> {
+  if (!current() || !selectedReady.value || trialBusy.value || !trialText.value.trim()) return
   const id = crypto.randomUUID()
   trialId = id
   trialBusy.value = true
@@ -207,8 +224,8 @@ async function tryTranslation(): Promise<void> {
   try {
     const response = await browser.runtime.sendMessage({type: 'fluentReadTryLocalTranslation', requestId: id, model: selectedModel.value, text: trialText.value, targetLanguage: trialTarget.value}) as {success?: boolean; result?: string; error?: string} | undefined
     if (!response?.success || !response.result) throw new Error(response?.error || 'translation')
-    if (trialId === id && !disposed) { trialResult.value = response.result; trialSeconds.value = ((performance.now() - started) / 1000).toFixed(1) }
-  } catch (error) { if (trialId === id && !disposed) trialError.value = t(localTranslationErrorKey(error)) }
+    if (current() && trialId === id) { trialResult.value = response.result; trialSeconds.value = ((performance.now() - started) / 1000).toFixed(1) }
+  } catch (error) { if (current() && trialId === id) trialError.value = t(localTranslationErrorKey(error)) }
   finally { if (trialId === id) { trialBusy.value = false; trialId = undefined } }
 }
 watch(selectedModel, () => {
@@ -217,16 +234,45 @@ watch(selectedModel, () => {
   trialError.value = ''
   if (!trialLanguages.value.includes(trialTarget.value)) trialTarget.value = trialLanguages.value[0]!
 })
-onMounted(() => {
-  browser.storage.onChanged.addListener(storageChanged)
-  void browser.storage.local.get(LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY).then((stored) => applySnapshot(stored[LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY])).catch(() => undefined)
-  void refresh()
+const actions = computed(() => {
+  const current = capture(), config = props.config, service = props.service
+  return {
+    model: (model: LocalTranslationModelId) => {if (current() && supported) config.model[service] = model},
+    target: (language: string | number) => {if (current() && !trialBusy.value && trialLanguages.value.includes(String(language))) trialTarget.value = String(language)},
+    text: (event: Event) => {if (current() && !trialBusy.value) trialText.value = (event.target as HTMLTextAreaElement).value},
+    refresh: () => refresh(current),
+    download: (model: LocalTranslationModelId) => command(model, 'download', current),
+    pause: (model: LocalTranslationModelId) => command(model, 'pause', current),
+    remove: (model: LocalTranslationModel) => confirmRemove(model, current),
+    trial: () => tryTranslation(current),
+    cancel: () => {if (current()) cancelTrial()},
+  }
 })
-onUnmounted(() => {
-  disposed = true
-  browser.storage.onChanged.removeListener(storageChanged)
+watch(() => [mounted.value, revision.value], () => {
+  stopObserving?.()
+  stopObserving = undefined
+  readGeneration++
   cancelTrial()
-})
+  loaded.value = false
+  loadError.value = false
+  operationError.value = ''
+  trialResult.value = ''
+  trialError.value = ''
+  if (!mounted.value || !active.value || !supported) return
+  const current = capture()
+  const storageChanged = (changes: Record<string, browser.Storage.StorageChange>, area: string) => {
+    if (current() && area === 'local' && changes[LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY]) applySnapshot(changes[LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY].newValue)
+  }
+  browser.storage.onChanged.addListener(storageChanged)
+  stopObserving = () => browser.storage.onChanged.removeListener(storageChanged)
+  const cachedSnapshot = snapshotRevision
+  void browser.storage.local.get(LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY).then((stored) => {
+    if (current() && cachedSnapshot === snapshotRevision) applySnapshot(stored[LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY], false)
+  }).catch(() => undefined)
+  void refresh(current)
+}, {flush: 'sync'})
+onMounted(() => {mounted.value = true})
+onUnmounted(() => {mounted.value = false;stopObserving?.()})
 </script>
 
 <style scoped>

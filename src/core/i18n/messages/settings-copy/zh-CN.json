@@ -46,7 +46,7 @@
     "learning.collection.exportFailed": "收藏导出失败",
     "learning.collection.largeImport": "这个收藏文件较大，读取可能需要一些时间。继续导入吗？",
     "learning.collection.continueImport": "继续导入",
-    "learning.collection.fileReadFailed": "无法读取文件，请选择 FluentRead 导出的收藏 JSON 文件",
+    "learning.collection.fileReadFailed": "无法读取文件，请选择流畅阅读导出的收藏 JSON 文件",
     "learning.collection.importFailed": "收藏导入失败",
     "learning.collection.studySteps": "听原句 · 看译文 · 留下解释",
     "learning.collection.understand": "理解这个句子",
@@ -98,7 +98,19 @@
     "settings.fullPage.multiSegmentHelp": "仅对支持通用提示词的 AI 服务生效；机器翻译、悬浮、划词和输入框翻译不受影响",
     "glossary.builtin.helpDisabled": "术语库尚未启用，添加后需打开上方开关才会生效",
     "image.settings.languageServiceTitle": "语言与服务",
-    "settings.floatingBall.disabledNote": "悬浮球已关闭；这些偏好会保留，重新开启后生效"
+    "settings.floatingBall.disabledNote": "悬浮球已关闭；这些偏好会保留，重新开启后生效",
+    "video.downloadSourceLabel": "下载来源",
+    "video.downloadSourceAuto": "自动选择",
+    "video.downloadSourceMirror": "国内优先",
+    "video.downloadSourceOfficial": "官方优先",
+    "video.downloadSourceHint": "仅影响后续下载；连接失败会自动切换来源。",
+    "video.downloadSourcePages": "模型来源页面：",
+    "video.downloadSourceOther": "备用来源",
+    "video.downloadWaiting": "正在连接下载来源…",
+    "video.downloadConnecting": "正在连接 {source} · {attempt}/{attempts}",
+    "video.downloadSwitching": "正在切换至 {source} · {attempt}/{attempts}",
+    "video.downloadReceiving": "正在从 {source} 下载",
+    "video.downloadRetry": "重试下载"
   },
   "legacy": {}
 }
