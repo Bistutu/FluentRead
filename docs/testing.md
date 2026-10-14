@@ -477,6 +477,8 @@ pnpm test tests/pr906SchedulerAudit.test.ts tests/pr906SdkAudit.test.ts tests/pr
 
 这些测试不调用在线供应商；生产 Chrome、Firefox 和 userscript 构建检查用于确认共享代码可发布，不能替代真实接口或 Firefox 实机验收。
 
+标准 userscript 复用已有 `francDataPlugin` 压缩锁定的 franc-min 纯模型字符串，通过已有 pako 端口同步恢复；`userscriptViteConfig` 对四种构建模式和全部 66 个模型的字符串、属性顺序及 Unicode 字节逐项检查。算法、模型内容、许可和 Greasy Fork 固定资源不变，普通产物继续通过原体积预算与兼容性 verifier。
+
 ## 按需运行
 
 测试、类型检查和生产构建的 package scripts 统一经过
