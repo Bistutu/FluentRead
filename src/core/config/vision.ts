@@ -66,7 +66,7 @@ export function supportsVisionTransport(service: string, _model?: string): boole
   if (normalized === services.tongyi && model.startsWith('qwen-mt')) return false;
   if (normalized === services.doubao && isDoubaoSeedTranslationModel(model)) return false;
   return servicesType.isAiSdk(normalized)
-    || [services.deepseek, services.gemini, services.claude, services.tongyi, services.zhipu].includes(normalized);
+    || [services.chatgptPlan, services.deepseek, services.gemini, services.claude, services.tongyi, services.zhipu].includes(normalized);
 }
 
 export function normalizeModelVisionOverrides(value: unknown): ModelVisionOverrides {

@@ -3,7 +3,7 @@
  *
  * 文件职责：定义 FluentRead 完整配置模型、默认值及各项设置的合法范围，包括默认开启并按服务独立保存的原生翻译合批偏好，是配置读取、保存、迁移和 UI 绑定共同依赖的领域契约。
  * 主要内容：支持单图选择本地识别引擎，包含正文/全部节点识别范围，保留各功能独立服务，并将所有功能服务的空值解释为继承网页默认；统一中文简繁标识及历史配置别名，并保存常用服务顺序，保存默认空的 Origin/Referer 域名移除名单和组合翻译配置；组合成员只引用普通服务，删除自定义成员与组合时精确清理无效选择，包含 Config 接口、字幕和翻译模式类型、延迟与字号范围、默认 API 地址及多项功能开关，使新增配置项在一个位置获得类型和初始语义；归一化时以迭代克隆保留深层数据和共享引用，安全迁移任意自有凭据键，升级历史默认提示词，只迁移已登记模型编号，并在线性目录遍历中保护自定义服务的当前模型和 Thinking 偏好。 可核对的公开符号包括 DeepSeekApiType、DeepSeekThinkingMode、VideoSubtitleDisplayMode、FullPageTranslationMode、DEFAULT_VIDEO_SUBTITLE_FONT_SIZE、DEFAULT_NEW_API_URL、DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY。
- * AI 翻译超时：默认等待 120 秒，读取、导入及同步配置时共用 10 至 600 秒的有限数字毫秒规范化规则。
+ * AI 翻译超时：默认等待 120 秒，读取、导入及同步配置时共用 10 至 600 秒的有限数字毫秒规范化规则。ChatGPT 套餐模型来自账户发现，始终保存直接 slug；兼容已保存的自定义模型哨兵，不把动态模型再次变为通用自定义模型。
  * 模块边界：本文件属于 core 领域层，只定义规则、类型与纯转换；个人校订默认关闭且仅接受显式布尔开启，userscript 不保留该不可用设置；不直接读写浏览器存储、不发起网络请求、不挂载 Vue/WXT 入口，持久化、协议调用和界面编排分别由 services、providers 与 features 承担。
  */
 
@@ -1327,6 +1327,7 @@ export function normalizeConfig(value: unknown): Config {
         // 兼容 #219 的早期配置：该实现把 v4-pro 作为默认思考模型。
         normalized.deepseekThinkingMode = selectedModel === 'deepseek-v4-pro' ? 'enabled' : 'disabled';
     }
+    normalizeChatGPTPlanModelState(normalized);
     normalizeSavedCustomModelState(normalized, hasSavedCustomModelSchema);
     normalizeModelThinkingState(normalized, hasModelThinkingSchema);
 
@@ -1618,6 +1619,8 @@ function resolvedConfiguredModels(normalized: Config, service: string): string[]
 
 function validThinkingModels(normalized: Config, service: string, provider?: CustomOpenAIProvider): Set<string> {
     if (provider) return new Set([...provider.models, ...resolvedConfiguredModels(normalized, service)]);
+    // 套餐没有静态目录；保留已选择模型的旧偏好，不把配置规范化当作账户能力判断。
+    if (service === services.chatgptPlan) return new Set(resolvedConfiguredModels(normalized, service));
     if (!isPersistableBuiltInModelService(service)) return new Set();
     return new Set([
         ...modelsForService(service),
@@ -1707,8 +1710,20 @@ function normalizeCustomModelMapping(value: unknown): Record<string, string[]> {
 
 function isPersistableBuiltInModelService(service: string): boolean {
     return !isCustomOpenAIProviderId(service)
+        && service !== services.chatgptPlan
         && servicesType.AI.has(service)
         && servicesType.isUseModel(service);
+}
+
+/** 账户发现模型不使用静态目录或自定义入口；旧哨兵精确还原后统一保存实际 slug。 */
+function normalizeChatGPTPlanModelState(normalized: Config): void {
+    for (const [selected, custom] of [[normalized.model, normalized.customModel], [normalized.documentModel, normalized.documentCustomModel]]) {
+        const slug = resolveConfiguredModel(selected[services.chatgptPlan], custom[services.chatgptPlan]).trim();
+        if (slug) selected[services.chatgptPlan] = slug;
+        else delete selected[services.chatgptPlan];
+        delete custom[services.chatgptPlan];
+    }
+    delete normalized.customModels[services.chatgptPlan];
 }
 
 function activeSavedCustomModel(selectedModel: string, customModel: string): string {

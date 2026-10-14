@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ChatGPT 套餐接入 · FluentRead</title>
+  <style>
+    :root {color-scheme: light dark; font-family: system-ui,sans-serif; line-height: 1.75;}
+    body {max-width: 760px; margin: 48px auto; padding: 0 24px 48px;}
+    h1 {font-size: 28px;} h2 {font-size: 21px; margin-top: 32px;}
+    code {padding: 2px 6px; background: light-dark(#f3f5f7,#20252b); border-radius: 4px; overflow-wrap: anywhere;}
+    li {margin: 10px 0;} a {color: light-dark(#2563eb,#86b9ff);}
+    @media (max-width: 500px) {body {margin-top: 24px;}}
+  </style>
+</head>
+<body>
+  <h1>使用 ChatGPT 套餐</h1>
+  <p>使用符合资格的 ChatGPT Plus 或 Pro 账户授权，无需 API Key。翻译、阅读讲解和写作会使用你的套餐额度，可用模型及限额由账户决定。</p>
+  <ol>
+    <li>安装 Node.js 20 或更新版本，取得包含 <code>integrations/chatgpt-plan</code> 的 FluentRead 源码。</li>
+    <li>在源码目录打开终端，运行 <code>node integrations/chatgpt-plan/cli.mjs</code>，并保持终端打开。助手只监听本机 <code>127.0.0.1:18743</code>。</li>
+    <li>在“翻译服务 → ChatGPT 套餐”输入终端显示的配对码。配对码 5 分钟有效；过期后在终端输入 <code>pair</code> 生成新码。</li>
+    <li>点击 <strong>Continue with ChatGPT</strong>，在官方页面完成登录并允许套餐使用；返回 FluentRead 设置页。</li>
+    <li>选择账户返回的模型，再将服务设为默认或用于单独的功能。“检查连接”会发送一次使用套餐额度的最小翻译请求。</li>
+  </ol>
+  <p>重新启动助手后，已有配对和登录仍会保留。不同浏览器或扩展安装需要分别配对。</p>
+  <h2>恢复与账户管理</h2>
+  <p>“管理套餐用量”打开 ChatGPT 用量设置。达到额度后请等待恢复或调整预算。“切换账户”会新建授权注册，新授权失败或取消不会覆盖原连接。</p>
+  <p>“退出 ChatGPT 账户”清除本机 OAuth 凭据并取消未完成的请求，保留配对和已完成译文。远端撤销未确认时，请在 ChatGPT 设置中检查并移除共享。关闭助手后，启动它即可重新尝试。</p>
+  <h2>凭证保存</h2>
+  <p>OpenAI 令牌保存在助手的私有本机目录，默认 <code>~/.config/fluentread-chatgpt-plan</code>。扩展只持有独立配对凭证。两者均不进入配置历史、导出或云备份。不要分享终端配对码。</p>
+  <p>必要的文本和上下文会随模型请求发送给 OpenAI，授权不会读取你的 ChatGPT 历史对话。完整结果以 <code>response.completed</code> 为准，失败或断流不会提交为成功。</p>
+  <p><a href="https://developers.openai.com/cookbook/articles/sign-in-with-chatgpt" target="_blank" rel="noreferrer">OpenAI 官方接入说明</a> · <a href="https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations" target="_blank" rel="noreferrer">套餐协议限制</a></p>
+  <h2>English setup</h2>
+  <p>Use Node.js 20+ and a FluentRead source version containing <code>integrations/chatgpt-plan</code>. Run <code>node integrations/chatgpt-plan/cli.mjs</code> from that directory and keep the terminal open. In settings → ChatGPT Plan, enter the one-time pairing code, choose Continue with ChatGPT, authorize an eligible Plus or Pro account, and select a model from its current catalog.</p>
+  <p>OpenAI tokens stay in the helper’s private local directory. Pairing is separate and survives restarts. Neither credential appears in configuration exports or cloud backup. Manage plan usage in ChatGPT settings. Sign out to remove local OAuth credentials; if remote revocation is unconfirmed, remove app access in ChatGPT settings.</p>
+</body>
+</html>

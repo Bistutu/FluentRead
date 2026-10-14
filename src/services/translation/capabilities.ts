@@ -2,7 +2,7 @@
  * @file src/services/translation/capabilities.ts
  *
  * 文件职责：把浏览器能力映射为翻译服务可用性，防止不支持的平台展示或调用 Chrome 内置翻译。
- * 主要内容：声明不可用提示，分别判断 provider 的等长数组契约和真正的原生多文本 HTTP 协议，原生服务名单复用纯配置领域规则；只有原生接口才允许自动合并网页候选，逐项执行的数组适配器仍可用于文档等显式批次。根据 BrowserCapabilities 过滤不可用服务，不把用户合批偏好或 AI 多段开关当成机器翻译能力。
+ * 主要内容：声明不可用提示，分别判断 provider 的等长数组契约和真正的原生多文本 HTTP 协议，原生服务名单复用纯配置领域规则；只有原生接口才允许自动合并网页候选，逐项执行的数组适配器仍可用于文档等显式批次。根据 BrowserCapabilities 过滤不可用服务，ChatGPT 套餐只向扩展开放，不把用户合批偏好或 AI 多段开关当成机器翻译能力。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 
@@ -21,6 +21,7 @@ export const LOCAL_TRANSLATION_UNAVAILABLE_MESSAGE =
 const ARRAY_TRANSLATION_SERVICES = new Set<string>([
     services.freeTranslation,
     services.bilibili,
+    services.chatgptPlan,
 ]);
 
 /** 已实现供应商原生多文本请求与完整响应校验，允许自动合批；与 AI 多段开关无关。 */
@@ -56,6 +57,7 @@ export function isTranslationServiceAvailable(
 ): boolean {
     if (service === services.chromeTranslator) return capabilities.chromeTranslation;
     if (service === services.localTranslation) return capabilities.extensionDom;
+    if (service === services.chatgptPlan) return capabilities.browser !== 'userscript';
     return true;
 }
 
@@ -64,6 +66,7 @@ export function getTranslationServiceUnavailableMessage(
     capabilities: BrowserCapabilities = browserCapabilities,
 ): string | null {
     if (isTranslationServiceAvailable(service, capabilities)) return null;
+    if (service === services.chatgptPlan) return 'ChatGPT 套餐接入需要浏览器扩展与本机助手；脚本版暂不支持。';
     return service === services.localTranslation
         ? LOCAL_TRANSLATION_UNAVAILABLE_MESSAGE
         : CHROME_TRANSLATOR_UNAVAILABLE_MESSAGE;

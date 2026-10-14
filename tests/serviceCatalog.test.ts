@@ -237,6 +237,10 @@ describe('service catalog helpers', () => {
   it('为所有需要模型的 AI 服务提供自定义模型入口', () => {
     for (const service of servicesType.useModel) {
       expect(models.get(service), `${service} 缺少模型列表`).toBeDefined()
+      if (service === services.chatgptPlan) {
+        expect(models.get(service)).toEqual([])
+        continue
+      }
       expect(models.get(service), `${service} 缺少自定义模型`).toContain(customModelString)
     }
   })
@@ -246,6 +250,11 @@ describe('service catalog helpers', () => {
 
     for (const service of servicesType.useModel) {
       const defaultModel = defaultModels.get(service)
+      if (service === services.chatgptPlan) {
+        expect(defaultModel).toBeUndefined()
+        expect(normalized.model[service] || '').toBe('')
+        continue
+      }
       expect(defaultModel, `${service} 缺少默认模型`).toBeTruthy()
       if (service === services.custom) {
         expect(normalized.model[service], '未创建 profile 时不应保留静态自定义服务模型').toBeUndefined()

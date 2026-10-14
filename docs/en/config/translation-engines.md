@@ -6,6 +6,8 @@ outline: false
 
 FluentRead displays translations produced by your selected service. Use the default service or configure another machine translation provider, AI service, or local model.
 
+Eligible ChatGPT Plus or Pro accounts can authorize plan usage through the included local helper, without an API key. See [Use your ChatGPT plan](./chatgpt-plan.md) for pairing, model discovery, account switching, and quota recovery.
+
 <GuideVisual kind="provider" en />
 
 ## Combined translation services

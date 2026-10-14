@@ -1252,7 +1252,7 @@ const createServiceCompute = (serviceSource: ServiceSource) => ({
   showAI: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isAI(serviceSource.value)),
   showMachine: computed(() => servicesType.isMachine(serviceSource.value)),
   showProxy: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseProxy(serviceSource.value)),
-  showModel: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseModel(serviceSource.value)),
+  showModel: computed(() => serviceSource.value !== services.chatgptPlan && (isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseModel(serviceSource.value))),
   showCustomBody: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseCustomBody(serviceSource.value)),
   showToken: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseToken(serviceSource.value)),
   allowCustomModels: computed(() => serviceSource.value !== services.localTranslation),
