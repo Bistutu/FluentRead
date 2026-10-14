@@ -35,15 +35,14 @@ async function runPdfTaskInteractions({page, fixture, report, shot, record, patc
       assert(!layout.overflow, `${width}px PDF 工具栏不能横向溢出`);
       assert(Math.abs(layout.heading.center - layout.reader.center) < 3, `${width}px 文件状态与阅读切换应在第一行`);
       assert(Math.abs(layout.pdf.center - layout.actions.center) < 3, `${width}px 阅读工具和任务操作应在同一行`);
-      if (width < 1760) assert(layout.pdf.center > layout.heading.center + 20, `${width}px PDF 工具栏应为两行`);
-      else assert(Math.abs(layout.pdf.center - layout.heading.center) < 3, `${width}px 宽屏应保留单行`);
+      assert(layout.pdf.center > layout.heading.center + 20, `${width}px PDF 工具栏应为两行`);
       assert(layout.lastPdfControl <= layout.taskLeft - 4, `${width}px 阅读工具不能盖住翻译设置或下载操作`);
       assert.equal(layout.fieldsVisible, width >= 1360);
     }
     await page.setViewportSize({width: 1440, height: 960}); await wait(100);
     const toolbarShot = path.join(report.artifactsDir, 'pdf-toolbar-two-rows.png');
     await page.locator('.document-taskbar').screenshot({path: toolbarShot, animations: 'disabled'}); report.screenshots.push(toolbarShot);
-    record('PDF toolbar uses two desktop rows without overlapping controls, retains a wide-screen single row and keeps compact settings reachable');
+    record('PDF toolbar uses two desktop rows without overlapping controls and keeps compact settings reachable');
   }
   // 逐段请求使失败发生在确切的段落边界；批量并发失败另由核心回归覆盖。
   await page.locator('aside.document-sidebar .document-settings-button').click();

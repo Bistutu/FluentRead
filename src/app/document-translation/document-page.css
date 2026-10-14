@@ -435,7 +435,11 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-taskbar .task-file-format { width: auto; height: 20px; padding: 0 6px; border-radius: 5px; font-size: 9px; letter-spacing: .04em; }
 .document-taskbar h1 { overflow: hidden; margin: 0; max-width: none; font-size: 13px; font-weight: 650; line-height: 1.3; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
 .document-taskbar .document-status { margin: 1px 0 0; font-size: 10.5px; line-height: 1.3; white-space: nowrap; }
-.document-taskbar .document-translation-count { display: block; font-variant-numeric: tabular-nums; white-space: normal; }
+.document-taskbar .document-translation-count { display: inline; margin-left: 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.editor-retained { margin: 0 20px 16px; border: 1px solid var(--line); border-radius: 9px; }
+.editor-retained > summary { padding: 10px 12px; color: var(--muted); font-size: 12px; cursor: pointer; }
+.editor-retained .document-translation { margin: 0; white-space: pre-wrap; user-select: text; }
+.editor-retained > .ghost-button { margin: 12px; }
 .translation-recovery { position: relative; grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 4px 0 2px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .recovery-message { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .recovery-service { flex: none; padding: 0; border: 0; background: transparent; color: var(--brand-strong); font: inherit; white-space: nowrap; cursor: pointer; }
@@ -670,11 +674,6 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-taskbar .toolbar-model { width: 130px; }
 .document-taskbar .translation-actions { flex: none; width: auto; }
 .document-taskbar .translation-actions button { width: auto; }
-@media (min-width: 1760px) {
-  .document-taskbar.has-pdf-controls { grid-template-columns: minmax(100px, 170px) auto minmax(0, 1fr) auto; }
-  .document-taskbar.has-pdf-controls .reader-controls-slot { grid-column: 3; grid-row: 1; }
-  .document-taskbar.has-pdf-controls .taskbar-actions { grid-column: 4; }
-}
 @media (min-width: 1000px) and (max-width: 1759px) {
   .document-taskbar { grid-template-columns: minmax(120px, 1fr) auto auto auto auto; gap: 8px 12px; }
   .document-taskbar .taskbar-logo { display: none; }
@@ -691,11 +690,13 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
   .document-taskbar .toolbar-service { width: 168px; }
   .document-taskbar .toolbar-language { width: 120px; }
   .document-taskbar .toolbar-model { width: 150px; }
+}
+@media (min-width: 1000px) {
   .document-taskbar.has-pdf-controls { grid-template-columns: minmax(0, 1fr) auto; }
   .document-taskbar.has-pdf-controls .reader-toolbar { display: flex; grid-column: 2; grid-row: 1; justify-content: flex-end; padding-left: 0; }
   .document-taskbar.has-pdf-controls .reader-reading-controls { display: flex; flex: none; }
-  .document-taskbar.has-pdf-controls .reader-controls-slot { grid-column: 1; grid-row: 2; padding-top: 7px; }
-  .document-taskbar.has-pdf-controls .taskbar-actions { display: flex; grid-column: 2; grid-row: 2; }
+  .document-taskbar.has-pdf-controls .reader-controls-slot { grid-column: 1; grid-row: 2; padding: 7px 0 0; border: 0; border-top: 1px solid var(--line); }
+  .document-taskbar.has-pdf-controls .taskbar-actions { display: flex; grid-column: 2; grid-row: 2; padding-top: 7px; border-top: 1px solid var(--line); }
   .document-taskbar.has-pdf-controls .toolbar-translation-settings { gap: 8px; }
   .document-taskbar.has-pdf-controls .toolbar-field > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .document-taskbar.has-pdf-controls .toolbar-service { width: 150px; }
@@ -725,6 +726,8 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
   .document-taskbar .toolbar-primary-actions .translation-actions { flex: 0 1 auto; min-width: 0; }
   .document-taskbar .toolbar-primary-actions button { overflow: hidden; text-overflow: ellipsis; }
   .document-taskbar .toolbar-primary-actions .translation-actions button { max-width: 100%; }
+  .document-taskbar.has-pdf-controls .workspace-heading { grid-column: 1 / -1; }
+  .document-taskbar.has-pdf-controls .reader-tabs { grid-column: 2; grid-row: 2; }
   .document-taskbar .mode-buttons button { padding: 0 8px; }
   .is-workspace .document-reading-pane .reading-content, .document-reading-pane .reading-content.reading-pdf { min-height: 0; }
 }

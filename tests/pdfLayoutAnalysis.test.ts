@@ -522,6 +522,16 @@ describe('PDF visible graphics geometry', () => {
 });
 
 describe('PDF baseline and structural reading analysis', () => {
+    it('orders independent lines by their stable baseline when one font reports a different glyph ascent', () => {
+        const first = {...atom('First body line', 60, 100, 200), y: 100};
+        const second = atom('Second column label', 400, 108, 150, 12);
+        const before = structuredClone([first, second]);
+        const plain = pdfLayoutLines([first, second]);
+        const corrected = pdfLayoutLines([{...first, y: 92}, second]);
+        expect(plain.map(line => [line.text, line.baseline])).toEqual([['First body line', 100], ['Second column label', 108]]);
+        expect(corrected.map(line => [line.text, line.baseline])).toEqual(plain.map(line => [line.text, line.baseline]));
+        expect([first, second]).toEqual(before);
+    });
     it('keeps superscripts with their baseline and rejoins numbered section headings', () => {
         const lines = pdfLayoutLines([atom('h', 50, 50, 5), atom('t', 55, 53, 3, 7), atom('=', 62, 50, 5), atom('value', 70, 50, 25), atom('1', 50, 80, 5, 12), atom('Introduction', 69, 80, 90, 12)]);
         expect(lines).toHaveLength(2); expect(lines[0].text).toBe('ht = value'); expect(lines[0].fontSize).toBe(10); expect(lines[0].runs).toHaveLength(4);
@@ -570,13 +580,42 @@ describe('PDF baseline and structural reading analysis', () => {
     it('retains boundary-centred table labels when nearby rule coordinates merge or end at the last table edge', () => {
         const graphics = [100, 140].map(y => ({kind: 'path' as const, x: 100, y, width: 300, height: 0}));
         graphics.push({kind: 'path', x: 100.4, y: 100, width: 0, height: 40});
-        const atoms = [atom('Left', 90, 120, 20), atom('Right', 390, 120, 20), atom('Outside', 74, 180, 50)];
+        const atoms = [atom('Left', 90, 120, 20), atom('Right', 390, 120, 20),
+            {...atom('Top', 220, 100, 30), y: 99.6}, atom('Bottom', 220, 140, 35), atom('Outside', 74, 180, 50)];
         const before = structuredClone(atoms);
         const blocks = analyze(atoms, graphics).blocks;
         expect(blocks.find(block => block.source === 'Left')).toMatchObject({kind: 'table', preserveSource: false, cellBounds: {x: 100, width: 1}});
         expect(blocks.find(block => block.source === 'Right')).toMatchObject({kind: 'table', preserveSource: false, cellBounds: {x: 400, width: 1}});
+        // 合法的小 ascent 标签可能以顶表线为基线，末行也可能恰落底表线；框仍有正高度且不越过外边界。
+        expect(blocks.find(block => block.source === 'Top')).toMatchObject({kind: 'table', preserveSource: false, cellBounds: {y: 99, height: 41}});
+        expect(blocks.find(block => block.source === 'Bottom')).toMatchObject({kind: 'table', preserveSource: false, cellBounds: {y: 100, height: 41}});
         expect(blocks.find(block => block.source === 'Outside')).toMatchObject({kind: 'text', preserveSource: false});
         expect(atoms).toEqual(before);
+    });
+    it('uses the table envelope when staggered partial rules cannot define complete row boundaries', () => {
+        const graphics = [100, 120, 140].map((y, index) => ({kind: 'path' as const, x: 100 + index * 50, y, width: 200, height: 0}));
+        const atoms = [atom('First category', 155, 114, 80), atom('Second category', 205, 134, 85),
+            atom('Ordinary prose below the table remains editable.', 100, 180, 350)];
+        const before = structuredClone({atoms, graphics});
+        const result = analyze(atoms, graphics);
+        expect(result.preservedRegions).toMatchObject([{kind: 'table', x: 100, y: 99, width: 300, height: 42}]);
+        expect(result.blocks.filter(block => block.kind === 'table').map(block => [block.source, block.cellBounds, block.preserveSource])).toEqual([
+            ['First category', {x: 100, y: 99, width: 300, height: 42}, false],
+            ['Second category', {x: 100, y: 99, width: 300, height: 42}, false],
+        ]);
+        expect(result.blocks.find(block => block.source === atoms[2].text)).toMatchObject({kind: 'text', preserveSource: false});
+        expect({atoms, graphics}).toEqual(before);
+    });
+    it('preserves a shaded step diagram when neighbouring rows have no repeated column alignment', () => {
+        const graphics = [100, 125, 150].map(y => ({kind: 'path' as const, x: 100, y, width: 420, height: 25}));
+        const atoms = [['Input', 'Parse'], ['Score', 'Verify'], ['Answer', 'Export']].flatMap((row, index) =>
+            [atom(row[0], 120 + index * 40, 116 + index * 25, 35), atom(row[1], 350 + index * 40, 116 + index * 25, 35)]);
+        const before = structuredClone({atoms, graphics});
+        const result = analyze(atoms, graphics);
+        expect(result.preservedRegions).toMatchObject([{kind: 'figure', x: 100, y: 100, width: 420, height: 75}]);
+        expect(result.blocks).toHaveLength(6);
+        expect(result.blocks.every(block => block.kind === 'figure-label' && block.preserveSource && !block.cellBounds)).toBe(true);
+        expect({atoms, graphics}).toEqual(before);
     });
     it('recognizes shaded table rows and a shallow abstract box without treating real diagram labels as body text', () => {
         const graphics = [100, 125, 150, 175].map(y => ({kind: 'path' as const, x: 0, y, width: 508, height: 25}));
@@ -792,6 +831,89 @@ describe('PDF baseline and structural reading analysis', () => {
         expect(result.blocks[0]).toMatchObject({kind: 'text', lineCount: 3, preserveSource: false});
         expect(result.blocks[0].source).toContain('does not compare. Since');
     });
+});
+
+// 公开论文 2609.35738 第16页公式(7)的 PDF.js 字形几何；保留 0.04em ascent 左花括号及脚标。
+const harnessCases = ([
+    ['h',199.038,261.8169564,5.74045012,9.9626,268.731,9.9626],
+    ['⋆',204.778,259.7781828,4.08177276,6.9738,264.618,6.9738],
+    ['t',204.778,266.3541828,3.00989148,6.9738,271.194,6.9738],
+    ['=',212.125,260.76092,7.74891028,9.9626,268.731,9.9626],
+    ['{',222.642,251.296496,8.02587028,9.9626,251.695,9.9626],
+    ['h',230.667,255.0229564,5.74045012,9.9626,261.937,9.9626],
+    ['′',236.407,253.09165,2.2971693,6.9738,258.322,6.9738],
+    ['t',236.407,259.5601828,3.00989148,6.9738,264.4,6.9738],
+    [',',239.915,255.0229564,2.76761028,9.9626,261.937,9.9626],
+    ['h',230.667,269.3689564,5.74045012,9.9626,276.283,9.9626],
+    ['⋆',236.407,267.8281828,4.08177276,6.9738,272.668,6.9738],
+    ['t',236.407,273.9161828,3.00989148,6.9738,278.756,6.9738],
+    ['−',239.41689148,273.52565,6.2269059,6.9738,278.756,6.9738],
+    ['1',245.64379738,273.9510518,3.97088172,6.9738,278.756,6.9738],
+    [',',250.113,269.3689564,2.76761028,9.9626,276.283,9.9626],
+    ['if',262.84691268,253.96692,5.81218028,9.9626,261.937,9.9626],
+    ['J',271.97664296,255.0229564,5.52426028,9.9626,261.937,9.9626],
+    ['(',278.45731352,253.96692,3.87445514,9.9626,261.937,9.9626],
+    ['h',282.33176866,255.0229564,5.74045012,9.9626,261.937,9.9626],
+    ['′',288.072,253.09165,2.2971693,6.9738,258.322,6.9738],
+    ['t',288.072,259.5601828,3.00989148,6.9738,264.4,6.9738],
+    [';',291.58,253.96692,2.76761028,9.9626,261.937,9.9626],
+    ['Q',296.01136074,255.0229564,7.87641636,9.9626,261.937,9.9626],
+    ['dev',303.884,253.5170518,12.12814044,6.9738,258.322,6.9738],
+    [')',316.51,253.96692,3.87445514,9.9626,261.937,9.9626],
+    ['> J',323.15406028,255.0229564,16.0427704,9.9626,261.937,9.9626],
+    ['(',340.15324096,253.96692,3.87445514,9.9626,261.937,9.9626],
+    ['h',344.0276961,255.0229564,5.74045012,9.9626,261.937,9.9626],
+    ['⋆',349.765,253.4821828,4.08177276,6.9738,258.322,6.9738],
+    ['t',349.765,259.5701828,3.00989148,6.9738,264.41,6.9738],
+    ['−',352.77489148,259.17965,6.2269059,6.9738,264.41,6.9738],
+    ['1',359.00179738,259.6050518,3.97088172,6.9738,264.41,6.9738],
+    [';',363.47,253.96692,2.76761028,9.9626,261.937,9.9626],
+    ['Q',367.90136074,255.0229564,7.87641636,9.9626,261.937,9.9626],
+    ['dev',375.774,253.5170518,12.12814044,6.9738,258.322,6.9738],
+    [')',388.4,253.96692,3.87445514,9.9626,261.937,9.9626],
+    [',',392.27445514,255.0229564,2.76761028,9.9626,261.937,9.9626],
+    ['otherwise.',262.84321028,268.31292,43.8105335,9.9626,276.283,9.9626],
+    ['(7)',512.845,260.76192,12.73021028,9.9626,268.732,9.9626],
+] as Array<[string, number, number, number, number, number, number]>).map(([text, x, y, width, height, baseline, fontSize]) => ({text, x, y, width, height, baseline, fontSize, fontFamily: 'sans-serif'}));
+
+describe('PDF piecewise equations with right-hand conditions', () => {
+    it('preserves the actual two-branch formula including its if condition, otherwise row and low-ascent brace', () => {
+        const above = atom('Ordinary prose explains the retained model and its development score.', 70, 235, 455, 9.9626);
+        const below = atom('Methods share the seed harness and initial report within each comparison.', 70, 300, 455, 9.9626);
+        const source = structuredClone(harnessCases);
+        const result = analyze([...harnessCases, above, below], [], 595.276, 841.89);
+        const region = result.preservedRegions.find(region => region.kind === 'formula')!;
+        expect(region.source).toContain('if J('); expect(region.source).toContain('otherwise.'); expect(region.source).toContain('(7)');
+        expect(result.blocks.filter(block => block.source !== above.text && block.source !== below.text).every(block => block.kind === 'formula' && block.preserveSource)).toBe(true);
+        expect(result.blocks.filter(block => block.kind === 'text').map(block => block.source)).toEqual([above.text, below.text]);
+        expect(region.y).toBeLessThanOrEqual(251.296496);
+        expect(region.y + region.height).toBeGreaterThanOrEqual(280.9);
+        expect(harnessCases).toEqual(source);
+        const brace = result.blocks.flatMap(block => block.lines?.flatMap(line => line.runs ?? []) ?? []).find(run => run.text === '{')!;
+        expect(brace).toEqual(source.find(run => run.text === '{'));
+    });
+
+    const example = (change: 'none' | 'no-brace' | 'one-value' | 'distant-brace' | 'distant-value' | 'natural-condition' | 'distant-condition' | 'no-assignment' = 'none') => {
+        const seed = atom(change === 'no-assignment' ? 'f(x)' : 'f(x) =', 180, 269, 30);
+        const brace = {...atom('{', change === 'distant-brace' ? 300 : 220, 251, 8), y: 250.6};
+        const values = [atom('a', 230, 262, 7), ...(change === 'one-value' ? [] : [atom('b', change === 'distant-value' ? 400 : 230, 278, 7)])];
+        const condition = atom(change === 'natural-condition' ? 'if the user is ready' : 'if score > limit', 260, change === 'distant-condition' ? 325 : 262, 80);
+        const otherwise = atom('otherwise.', 260, 278, 50);
+        return {atoms: [seed, ...(change === 'no-brace' ? [] : [brace]), ...values, condition, otherwise,
+            atom('The following ordinary paragraph still needs translation.', 60, 350, 420)], condition, otherwise};
+    };
+    it('uses structural evidence rather than names or equation numbers to preserve a piecewise definition', () => {
+        const {atoms, condition, otherwise} = example();
+        const result = analyze(atoms);
+        expect(result.blocks.filter(block => block.source.includes(condition.text) || block.source.includes(otherwise.text)).every(block => block.kind === 'formula' && block.preserveSource)).toBe(true);
+        expect(result.blocks.find(block => block.source.startsWith('The following'))).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each(['no-brace', 'one-value', 'distant-brace', 'distant-value', 'natural-condition', 'distant-condition', 'no-assignment'] as const)
+        ('does not absorb an ordinary condition without a complete piecewise structure: %s', change => {
+            const {atoms, condition} = example(change);
+            const result = analyze(atoms);
+            expect(result.blocks.find(block => block.source.includes(condition.text))).toMatchObject({kind: 'text', preserveSource: false});
+        });
 });
 
 describe('PDF layout analysis on real paper typography', () => {

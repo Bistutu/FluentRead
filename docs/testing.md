@@ -1203,6 +1203,8 @@ pnpm test:pdf-selection -- \
 
 `pdfSource.test.ts`、`documentSelectionRuntime.test.ts`、`pdfReaderLifecycle.test.ts` 覆盖下载限额/取消、异步挂载/文档归属、页面渲染/释放和实际 Vue 导航布局；新增纯入口、下载、选区运行时及渲染调度器进入严格四维覆盖率。`documentAppLifecycle`、`documentUserActions` 与既有 binary/rasterizer 测试守护批量导入、校订和导出。Firefox 构建与清单验证单列，不等于 Firefox 实机验收。
 
+对于嵌入字体返回零高度指标、译文漏盖原文的论文，可用 `--harness-layout-only --arxiv-pdf <2609.35738.pdf> --harness-pages 1,3,8,16` 替换上述脚本的测试范围。专项通过真实导入、翻译、暂停和下载控件获取选定页截图、遮罩几何以及 36 页的译文和双语 PDF，独立采样首页摘要的原文字形像素，并检查桌面及 390px 的状态与数字进度同行。中文回复来自本机确定性服务，只验证布局；仅选定页要求翻译完成，其他段落可能保留原文。`FLUENTREAD_HARNESS_PDF=<2609.35738.pdf>` 可启用 `documentTranslationBinaryEdge.test.ts` 的实际论文解析测试；默认用例也保留该字体的实测几何，验证合法的小高度数学字体和正常字形降部不受影响。
+
 ## 划词窗口拖动与缩放（issue #525）
 
 `node scripts/run-selection-trigger-test.cjs --geometry-only --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <浏览器测试技能>/scripts/focus-safe-browser.cjs --artifacts-dir /private/tmp/fluentread-selection-geometry` 使用临时 Edge profile 和第二屏后台窗口，检查顶部与内容空白处拖动、八个方向缩放、自动换行、正文选择、复制、滚动后位置保持、最小尺寸和视口边界，以及关闭、禁用、重新划词和迟到译文。截图涵盖放大、窄窗口和深色主题。页面及微软翻译响应为本地夹具，不代表真实供应商质量；窗口手势通过真实 CDP 输入执行。

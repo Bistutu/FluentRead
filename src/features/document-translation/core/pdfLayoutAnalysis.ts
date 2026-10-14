@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/core/pdfLayoutAnalysis.ts
  * 文件职责：从 PDF 原始字形和绘图操作推导阅读顺序、段落与必须保留的公式、表格、插图区域。
- * 主要内容：在未旋转内容坐标中追踪绘图矩阵；按相邻行共同让出的竖带识别栏间距，松散的两端对齐行不被拆散；页眉页脚、数字/罗马数字/字母编号的标题、中英文题注与公式碎片分别归类，分栏由并排的正文段落确定、同栏内缩进不同的块按上下顺序阅读，图形在题注处断开，幻灯片内容框、段落底色和标题色带这类装文字的容器不算插图，原位重复描画的文字只读一次，表格按单元格切分且含词语的单元格可以翻译；先按局部字形端点及父链关联上下标、避免跨表头基线吸附，保留带定义算符的 cases 分支和有几何/近邻证据的 TeX 大算符，已关联根号的下伸矩形覆盖相邻被开方字符，以同基线的冒号和纯符号箭头类型、或细线两端的数学节点及直接由数学节点支撑的正交短边确认独立数学标签，两端不复用支撑节点，有限 U 形返回箭头还须匹配同页已确认的类型函数名，先识别图表和独立公式，再按列与段落边界组织正文，仅对同段相邻行中以斜杠结束的 HTTP(S) 地址和含斜杠及数字的路径首词省去人工行间空格；保留逐行字形几何供阅读和导出使用。
+ * 主要内容：在未旋转内容坐标中追踪绘图矩阵；按相邻行共同让出的竖带识别栏间距，松散的两端对齐行不被拆散；页眉页脚、数字/罗马数字/字母编号的标题、中英文题注与公式碎片分别归类，分栏由并排的正文段落确定、同栏内缩进不同的块按稳定基线组织阅读，字体顶边修正不打乱相邻栏的行序；图形在题注处断开，幻灯片内容框、段落底色和标题色带这类装文字的容器不算插图，原位重复描画的文字只读一次，表格按单元格切分且含词语的单元格可以翻译；先按局部字形端点及父链关联上下标、避免跨表头基线吸附，以赋值、紧邻左花括号、多行值及同基线数学条件共同确认分段公式，保留其右侧条件和有几何/近邻证据的 TeX 大算符，已关联根号的下伸矩形覆盖相邻被开方字符，以同基线的冒号和纯符号箭头类型、或细线两端的数学节点及直接由数学节点支撑的正交短边确认独立数学标签，两端不复用支撑节点，有限 U 形返回箭头还须匹配同页已确认的类型函数名，先识别图表和独立公式，再按列与段落边界组织正文，仅对同段相邻行中以斜杠结束的 HTTP(S) 地址和含斜杠及数字的路径首词省去人工行间空格；保留逐行字形几何供阅读和导出使用。
  * 模块边界：纯几何分析，不加载 PDF.js、不访问 Canvas、网络或 DOM，不修改来源文字或文件。
  */
 import type {PdfDocumentBlock, PdfDocumentLine, PdfDocumentRun, PdfPreservedRegion} from './document';
@@ -205,7 +205,7 @@ export function pdfLayoutLines(atoms: readonly PdfLayoutAtom[], verticalDividers
             result.push({...bounds, text: joinRuns(runs), baseline: median(runs.filter(run => run.fontSize >= fontSize * 0.85).map(run => run.baseline)), fontSize, fontFamily: dominant.fontFamily, runs: runs.map(run => ({...run}))});
         }
     }
-    return result.sort((a, b) => a.y - b.y || a.x - b.x);
+    return result.sort((a, b) => a.baseline - b.baseline || a.x - b.x);
 }
 
 const CJK = '\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Hangul}';
@@ -282,6 +282,28 @@ function formulaLine(line: LayoutLine, pageWidth: number, lines: readonly Layout
         && (Math.abs(line.x + line.width / 2 - pageWidth / 2) < pageWidth * 0.23 || /^[A-Za-z][\w (){},.]*\s*=/u.test(line.text) || /¼|ð[^Þ]*Þ/u.test(line.text))
         && !/^(?:Figure|Table)\s+\d/iu.test(line.text)
         && !/\b(?:the|we|our|of|to|and|is|in|this|with|for|that|use|each|are|from|used)\b/iu.test(line.text);
+}
+
+/**
+ * TeX 的伸展左花括号可能只有 0.04em 的 ascent，不能靠它的字形顶边猜整组公式的边界。
+ * 仅当赋值右侧确有花括号、至少两行对齐值及同基线的数学条件时扩展原图区域；普通 if 句和邻近正文不能单独触发。
+ */
+function piecewiseFormulaBounds(seed: LayoutLine, lines: readonly LayoutLine[], font: number): Rectangle | undefined {
+    if (!/[=≔]\s*$/u.test(seed.text)) return;
+    const braces = lines.flatMap(line => line.runs.filter(run => run.text.trim() === '{'
+        && run.x >= right(seed) - font * 0.5 && run.x <= right(seed) + font * 1.5
+        && Math.abs(run.baseline - seed.baseline) <= font * 2.5));
+    for (const brace of braces) {
+        const values = lines.filter(line => line !== seed && line.x >= right(brace) - 1 && line.x <= right(brace) + font * 1.2
+            && Math.abs(line.baseline - seed.baseline) <= font * 2.5 && line.width <= font * 18
+            && line.fontSize >= seed.fontSize * 0.6 && line.fontSize <= seed.fontSize * 1.2 && textUnits(line.text) <= 4);
+        if (values.length < 2 || !values.some(first => values.some(second => second.baseline - first.baseline >= font * 0.8))) continue;
+        const conditions = lines.filter(line => /^(?:(?:if|when|for)\b.{0,90}[=<>≤≥≠∈]|otherwise\b)/iu.test(line.text)
+            && line.text.length <= 100 && values.some(value => Math.abs(line.baseline - value.baseline) <= font * 0.5
+                && line.x >= right(value) + font * 0.5 && line.x <= right(value) + font * 5));
+        if (!conditions.some(line => !/^otherwise\b/iu.test(line.text))) continue;
+        return [...values, ...conditions].reduce<Rectangle>((bounds, line) => union(bounds, line), union(seed, brace));
+    }
 }
 
 /** 仅正文范围、正文字号的孤立标识可成为数学标签；词本身不构成保留依据。 */
@@ -429,7 +451,7 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
     const bodyGaps: number[] = [];
     lines.forEach((line, index) => {
         if (Math.abs(line.fontSize - font) > 0.6) return;
-        for (let next = index + 1; next < lines.length && lines[next].y - line.y <= font * 2.8; next += 1) {
+        for (let next = index + 1; next < lines.length && lines[next].baseline - line.baseline <= font * 2.8; next += 1) {
             const below = lines[next], gap = below.baseline - line.baseline;
             if (gap > font * 0.9 && Math.abs(below.fontSize - font) <= 0.6 && Math.min(right(line), right(below)) - Math.max(line.x, below.x) >= Math.min(line.width, below.width) * 0.5) {bodyGaps.push(gap); break;}
         }
@@ -496,7 +518,7 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
     const mathLabels = isolatedMathLabels(ordinary, input.graphics, font, input.width, input.height);
     const formulas = ordinary.filter(line => formulaLine(line, input.width, ordinary, font));
     for (const line of formulas) {
-        let bounds: Rectangle = line;
+        let bounds: Rectangle = piecewiseFormulaBounds(line, ordinary, font) ?? line;
         // 独立公式的小上下标、分式和式号与公式一起保留；不能把下一行正文并入遮盖区域。
         for (const near of ordinary) {
             if (near === line || near.text.length > 45 || near.width > input.width * 0.5) continue;

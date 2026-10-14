@@ -102,7 +102,7 @@ const renderer = createRenderer<Host, Host>({
     remove: node => {if (node.parent) node.parent.children.splice(node.parent.children.indexOf(node), 1); node.parent = undefined;},
     patchProp: (node, key, _old, value) => {
         node.props[key] = value;
-        if (key === 'value' || key === 'checked' || key === 'type') (node as any)[key] = value;
+        if (key === 'value' || key === 'checked' || key === 'type' || key === 'open') (node as any)[key] = value;
     },
 });
 const walk = (node: Host): Host[] => [node, ...node.children.flatMap(walk)];
@@ -543,6 +543,48 @@ describe('document user actions: download consumers', () => {
 });
 
 describe('document user actions: real editor events and parent consumers', () => {
+    it('keeps retained revisions collapsed and read-only, renders forty at a time and resets disclosure on document changes', async () => {
+        apps.pop()!.unmount();
+        const current = ref<ParsedDocument>(parseDocument('retained-first.txt', 'Current source wording.'));
+        const translations = ['当前正文校订'];
+        const retained = ref(Array.from({length: 85}, (_, index) => ({source: `Former source ${index}`, translation: `旧校订 ${index}`, contextLabel: `第 ${index + 1} 页`})));
+        const updates = vi.fn();
+        mount({setup: () => () => h(DocumentSegmentEditor, {document: current.value, translations, retainedRevisions: retained.value, disabled: false, onUpdate: updates})});
+        await flush();
+        const details = () => find(node => node.tag === 'details' && node.props.class === 'editor-retained', editor());
+        const rows = () => walk(details()).filter(node => node.tag === 'article');
+        expect(details().open).toBe(false);
+        expect(textOf(details())).toContain('document.retainedRevisions.title · 85');
+        expect(rows()).toHaveLength(0);
+        expect(textOf(details())).not.toContain('Former source 0');
+        await fire(details(), 'toggle', {open: true});
+        expect(rows()).toHaveLength(40);
+        expect(textOf(rows()[0])).toContain('Former source 0');
+        expect(textOf(rows()[39])).toContain('旧校订 39');
+        expect(walk(details()).some(node => node.tag === 'textarea' || node.tag === 'input' || node.props.contenteditable)).toBe(false);
+        await fire(button('显示更多', details()), 'click');
+        expect(rows()).toHaveLength(80);
+        await fire(button('显示更多', details()), 'click');
+        expect(rows()).toHaveLength(85);
+        expect(walk(details()).some(node => node.tag === 'button')).toBe(false);
+        expect(updates).not.toHaveBeenCalled();
+        expect(translations).toEqual(['当前正文校订']);
+        await fire(details(), 'toggle', {open: false});
+        expect(rows()).toHaveLength(0);
+        await fire(details(), 'toggle', {open: true});
+        expect(rows()).toHaveLength(85);
+
+        current.value = parseDocument('retained-second.txt', 'Replacement current wording.');
+        retained.value = retained.value.map((revision, index) => ({...revision, source: `Replacement former source ${index}`}));
+        await flush();
+        expect(details().open).toBe(false);
+        expect(rows()).toHaveLength(0);
+        await fire(details(), 'toggle', {open: true});
+        expect(rows()).toHaveLength(40);
+        expect(textOf(rows()[0])).toContain('Replacement former source 0');
+        expect(updates).not.toHaveBeenCalled();
+    });
+
     it('clamps a pending-only last page after its focused final row is translated and blurred', async () => {
         await importFiles(file('clamp.json', JSON.stringify(Array.from({length: 41}, (_, i) => `Source ${i}`))));
         await fire(button('校订译文'), 'click');

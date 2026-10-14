@@ -245,7 +245,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         const factory = new IDBFactory();
         const history = createDocumentHistory(factory);
         await history.save({id, name: 'history.txt', format: parsed.format, size: bytes.length, total: parsed.segments.length,
-            completed: 0, updatedAt: 1, bytes, mimeType, translations: [], fingerprint: '', parsed, parsedVersion: 15});
+            completed: 0, updatedAt: 1, bytes, mimeType, translations: [], fingerprint: '', parsed, parsedVersion: 16});
         app.unmount();
         vi.stubGlobal('indexedDB', factory);
         root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
@@ -411,7 +411,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         }
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(15);
+            expect(saved?.parsedVersion).toBe(16);
             expect(saved?.translations).toEqual(expectedTranslations);
             expect((saved?.parsed as any).segments.map((segment: any) => segment.source)).toEqual(expectedSources);
             expect(saved?.parsed).not.toHaveProperty('segmentOrigins');
@@ -427,6 +427,114 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(ports.translate).not.toHaveBeenCalled();
         expect(ports.batch).not.toHaveBeenCalled();
     });
+
+    it('reparses version 15 native PDF glyph bounds while preserving revisions and progress, then reuses the refreshed snapshot', async () => {
+        ports.pageProvider = async (_pageNumber, page) => ({...page, getTextContent: async () => ({
+            items: [
+                {str: 'A full native paragraph with text.', transform: [12, 0, 0, 12, 5, 20], width: 80, height: 12, fontName: 'body'},
+                {str: 'Another full native paragraph follows here.', transform: [12, 0, 0, 12, 5, 60], width: 80, height: 12, fontName: 'body'},
+            ], styles: {body: {ascent: 0, descent: 0, fontFamily: 'serif'}},
+        })});
+        const fresh = await binaryService.parseDocumentFile(file('native-metrics.pdf'));
+        if (fresh.binary?.kind !== 'pdf') throw new Error('expected PDF');
+        expect(fresh.segments).toHaveLength(2);
+        const old = structuredClone(fresh);
+        if (old.binary?.kind !== 'pdf') throw new Error('expected PDF');
+        // 旧解析把 0/0 字体的顶边直接放在基线上；缓存旧几何会让新版遮罩仍漏出原文。
+        for (const block of old.binary.pages[0].blocks) {
+            block.y += 9.6;
+            block.lines = block.lines?.map(line => ({...line, y: line.y + 9.6,
+                runs: line.runs?.map(run => ({...run, y: run.y + 9.6})),
+            }));
+        }
+        const bytes = fresh.binary.bytes, id = await documentHistoryId(bytes);
+        const translations = ['保留第一段人工校订', ''];
+        const factory = new IDBFactory(), history = createDocumentHistory(factory);
+        await history.save({id, name: 'native-metrics.pdf', format: 'pdf', size: bytes.length, total: 2, completed: 1,
+            updatedAt: 1, bytes, mimeType: 'application/pdf', translations, fingerprint: '', parsed: old, parsedVersion: 15});
+        app.unmount();
+        vi.stubGlobal('indexedDB', factory);
+        vi.stubGlobal('File', class extends Blob {name: string; constructor(parts: BlobPart[], name: string, options?: BlobPropertyBag) {super(parts, options); this.name = name;}});
+        root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
+        await flush();
+        const parsing = deferred<typeof fresh>();
+        const parse = vi.spyOn(binaryService, 'parseDocumentFile').mockReturnValueOnce(parsing.promise);
+        const opening = state.openHistory({id});
+        await vi.waitFor(() => expect(parse).toHaveBeenCalledOnce());
+        expect(parse.mock.calls[0][0].name).toBe('native-metrics.pdf');
+        expect(new Uint8Array(await parse.mock.calls[0][0].arrayBuffer())).toEqual(bytes);
+        expect((await history.load(id))?.parsedVersion).toBe(15);
+        expect((await history.load(id))?.translations).toEqual(translations);
+        parsing.resolve(fresh); await opening; await flush();
+        expect(state.translatedSegments).toEqual(translations);
+        expect(state.completedSegments).toBe(1); expect(state.progress).toBe(50);
+        expect(state.parsedDocument.binary.pages[0].blocks).toEqual(fresh.binary.pages[0].blocks);
+        expect(state.parsedDocument.binary.pages[0].blocks[0].lines[0].runs[0].y)
+            .toBeLessThan(old.binary.pages[0].blocks[0].lines![0].runs![0].y);
+        await vi.waitFor(async () => {
+            const saved = await history.load(id);
+            expect(saved?.parsedVersion).toBe(16);
+            expect(saved?.completed).toBe(1); expect(saved?.total).toBe(2);
+            expect(saved?.translations).toEqual(translations);
+            expect((saved?.parsed as typeof fresh).binary).toEqual(fresh.binary);
+        });
+        state.resetDocument(); await flush();
+        await state.openHistory({id}); await flush();
+        expect(parse).toHaveBeenCalledOnce();
+        expect(state.translatedSegments).toEqual(translations);
+        expect(state.completedSegments).toBe(1); expect(state.progress).toBe(50);
+        expect(state.parsedDocument.binary.pages[0].blocks).toEqual(fresh.binary.pages[0].blocks);
+        expect(ports.recognize).not.toHaveBeenCalled(); expect(ports.createRecognizer).not.toHaveBeenCalled();
+        expect(ports.translate).not.toHaveBeenCalled(); expect(ports.batch).not.toHaveBeenCalled();
+    });
+
+    it('retains an old condition revision after native PDF reparsing, persists it separately and keeps it recoverable on reopening', async () => {
+        const fresh = await binaryService.parseDocumentFile(file('protected-condition.pdf'));
+        if (fresh.binary?.kind !== 'pdf') throw new Error('expected PDF');
+        const old = {...structuredClone(fresh), segments: [...fresh.segments, {id: 1, source: 'otherwise.', contextLabel: '第 16 页'}]};
+        if (old.binary?.kind !== 'pdf') throw new Error('expected PDF');
+        old.binary.pages[0].segmentIndexes.push(1);
+        old.binary.pages[0].blocks.push({...old.binary.pages[0].blocks[0], segmentIndex: 1, y: 60});
+        fresh.binary.pages[0].blocks.push({...fresh.binary.pages[0].blocks[0], segmentIndex: -1, y: 60, kind: 'formula', preserveSource: true});
+        const bytes = fresh.binary.bytes, id = await documentHistoryId(bytes);
+        const previousRetained = {source: 'Earlier removed wording', translation: '先前保留的校订', contextLabel: '第 15 页'};
+        const conditionRetained = {source: 'otherwise.', translation: '用户已校订：否则保留此前结果。', contextLabel: '第 16 页'};
+        const factory = new IDBFactory(), history = createDocumentHistory(factory);
+        await history.save({id, name: 'protected-condition.pdf', format: 'pdf', size: bytes.length, total: 2, completed: 2,
+            updatedAt: 1, bytes, mimeType: 'application/pdf', translations: ['保留正文校订', conditionRetained.translation],
+            retainedRevisions: [previousRetained], fingerprint: '', parsed: old, parsedVersion: 15});
+        app.unmount();
+        vi.stubGlobal('indexedDB', factory);
+        vi.stubGlobal('File', class extends Blob {name: string; constructor(parts: BlobPart[], name: string, options?: BlobPropertyBag) {super(parts, options); this.name = name;}});
+        root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
+        await flush();
+        const parse = vi.spyOn(binaryService, 'parseDocumentFile').mockResolvedValueOnce(fresh);
+        await state.openHistory({id}); await flush();
+        expect(parse).toHaveBeenCalledOnce();
+        expect(state.parsedDocument.segments).toHaveLength(1);
+        expect(state.translatedSegments).toEqual(['保留正文校订']);
+        expect(state.completedSegments).toBe(1); expect(state.progress).toBe(100);
+        expect(state.documentQueue[0].retainedRevisions).toEqual([previousRetained, conditionRetained]);
+        const retained = walkHost(root).find(entry => entry.type === 'details' && entry.props.class === 'editor-retained')!;
+        expect(retained).toBeDefined(); expect(retained.props.open).toBe(false);
+        expect(hostText(retained)).toContain('document.retainedRevisions.title');
+        expect(hostText(retained)).not.toContain(conditionRetained.translation);
+        await vi.waitFor(async () => {
+            const saved = await history.load(id);
+            expect(saved?.parsedVersion).toBe(16);
+            expect(saved?.translations).toEqual(['保留正文校订']);
+            expect(saved?.retainedRevisions).toEqual([previousRetained, conditionRetained]);
+            expect(saved?.completed).toBe(1); expect(saved?.total).toBe(1);
+        });
+        state.resetDocument(); await flush();
+        await state.openHistory({id}); await flush();
+        expect(parse).toHaveBeenCalledOnce();
+        expect(state.documentQueue[0].retainedRevisions).toEqual([previousRetained, conditionRetained]);
+        expect(state.translatedSegments).toEqual(['保留正文校订']);
+        expect(state.completedSegments).toBe(1); expect(state.progress).toBe(100);
+        expect(ports.recognize).not.toHaveBeenCalled(); expect(ports.translate).not.toHaveBeenCalled(); expect(ports.batch).not.toHaveBeenCalled();
+    });
+
     it.each(['success', 'failure', 'cancel'] as const)('releases a background PDF export worker after %s through the actual App/runtime', async outcome => {
         await state.loadFiles([file('export.pdf')]);
         state.editSegment(0, '译文需要导出'); await flush();

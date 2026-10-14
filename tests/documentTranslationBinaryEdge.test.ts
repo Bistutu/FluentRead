@@ -3,6 +3,7 @@ import {PDFDocument} from 'pdf-lib';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {parseDocument, type ParsedDocument} from '@/src/features/document-translation/core/document';
+import {pdfLayoutLines, type PdfLayoutAtom} from '@/src/features/document-translation/core/pdfLayoutAnalysis';
 import {
     assertArchiveSafety,
     chapterTitle,
@@ -151,6 +152,59 @@ describe('binary document low-level contracts', () => {
         {width: 100, height: 100, transform: [1, 0, 0, 1, 0, 0]});
         expect(atoms.map(atom => atom.y)).toEqual([13.5, 13, 12]);
     });
+
+    it.each([0, -0.2, undefined, NaN, Infinity, -Infinity])('falls back from an invalid ascent %s without accepting zero or unusable descent', ascent => {
+        const descents = [0, .25, -1, -1.5, undefined, NaN, Infinity, -Infinity, -.25];
+        const atoms = pdfTextAtoms(descents.map((_, index) => pdfItem({fontName: String(index)})),
+            Object.fromEntries(descents.map((descent, index) => [String(index), {ascent, descent}])),
+            {width: 100, height: 100, transform: [1, 0, 0, 1, 0, 0]}, true);
+        expect(atoms.map(atom => atom.y)).toEqual([12, 12, 12, 12, 12, 12, 12, 12, 12.5]);
+        expect(atoms.every(atom => atom.fontSize === 10 && atom.baseline === 20 && atom.width === 30)).toBe(true);
+    });
+
+    it('preserves the small positive ascent of actual mathematical brackets', () => {
+        const [atom] = pdfTextAtoms([pdfItem({str: '['})], {body: {ascent: .04, descent: -.6}},
+            {width: 100, height: 100, transform: [1, 0, 0, 1, 0, 0]}, true);
+        expect(atom).toMatchObject({y: 19.6, height: 10, baseline: 20, fontSize: 10, width: 30});
+    });
+
+    it('covers actual LMRoman body ink when PDF.js reports zero ascent and descent', () => {
+        // arXiv 2609.35738 page 1: embedded LMRoman10-Regular reports 0/0 despite
+        // visible body glyphs. Independently raster-measured first-line ink spans
+        // y=294.662..304.133pt; the old run began at its 302.208pt baseline.
+        const item = pdfItem({str: 'A language-model agent is jointly defined by its model and its harness, the executable program',
+            transform: [10.0721886, 0, 0, 9.9626, 87.496, 539.682], width: 419.90551385856037, height: 9.9626});
+        const [atom] = pdfTextAtoms([item], {body: {ascent: 0, descent: 0, fontFamily: 'sans-serif'}},
+            {width: 595.276, height: 841.89, transform: [1, 0, 0, -1, 0, 841.89]}, true);
+        const [line] = pdfLayoutLines([atom as PdfLayoutAtom]);
+        expect(atom.y).toBeCloseTo(294.23792, 8);
+        expect(atom.baseline).toBeCloseTo(302.208, 8);
+        expect(atom.fontSize).toBe(9.9626);
+        expect(atom.width).toBe(item.width);
+        expect(line.y).toBeLessThan(294.662);
+        expect(line.y + line.height).toBeGreaterThan(304.133);
+        expect(line.runs[0].y).toBe(line.y);
+        expect(line.runs[0].height).toBeCloseTo(line.height, 10);
+        expect(line.text).toBe(item.str);
+    });
+
+    it.runIf(Boolean(process.env.FLUENTREAD_HARNESS_PDF))('parses the local Harness paper with the body ink inside both line and run bounds', async () => {
+        const {readFileSync} = await import('node:fs');
+        const document = await parseBinaryDocument('2609.35738.pdf', new Uint8Array(readFileSync(process.env.FLUENTREAD_HARNESS_PDF!)));
+        if (document.binary?.kind !== 'pdf') throw new Error('Expected a PDF document');
+        expect(document.binary.pages).toHaveLength(36);
+        const abstract = document.binary.pages[0].blocks.find(block => block.segmentIndex >= 0
+            && document.segments[block.segmentIndex].source.startsWith('A language-model agent'));
+        expect(abstract).toBeDefined();
+        const line = abstract!.lines![0];
+        expect(line.y).toBeCloseTo(294.23792, 6);
+        expect(line.baseline).toBeCloseTo(302.208, 6);
+        expect(abstract!.fontSize).toBeCloseTo(9.9626, 6);
+        expect(line.y).toBeLessThan(294.662);
+        expect(line.y + line.height).toBeGreaterThan(304.133);
+        expect(line.runs![0].y).toBe(line.y);
+        expect(line.runs![0].height).toBeCloseTo(line.height, 10);
+    }, 30_000);
 
     it('uses finite negative descent for glyph bounds while preserving font size, baseline and advance', () => {
         const items = [pdfItem({str: 'g', fontName: 'tall'}), pdfItem({str: 'p', fontName: 'short'})];
