@@ -8,6 +8,7 @@
  */
 import videoLearningText from './video-learning/zh-CN.json';
 import {compositeTranslationMessages} from './compositeTranslation';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingChineseMessages} from './pdfReading';
 import {informationHighlightChineseMessages} from './informationHighlight';
 import reencounterText from './reencounter/zh-CN.json';
@@ -532,6 +533,7 @@ export const zhCNMessages = {
     "settings.requestLimits.modelTitle": "模型请求限制",
     "settings.requestLimits.globalTitle": "请求限制",
     "settings.requestLimits.globalHelp": "未单独设置的服务和模型共用这些限制",
+    ...aiRequestTimeoutMessages["zh-CN"],
     "settings.requestLimits.retryIntervals": "重试间隔",
     "settings.requestLimits.apiKeyRecovery": "失败 Key 冷却时间",
     "settings.requestLimits.apiKeyRecoveryHelp": "某个 Key 因认证、额度或限流失败后会暂时跳过；服务端返回 Retry-After 时优先采用服务端时间",

@@ -7,6 +7,7 @@
  */
 import videoLearningText from './video-learning/fr-FR.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/fr-FR.json';
@@ -533,6 +534,7 @@ export const frFRMessages = {
     "settings.requestLimits.modelTitle": "Limites du modèle",
     "settings.requestLimits.globalTitle": "Limites de requêtes",
     "settings.requestLimits.globalHelp": "Les services et modèles sans réglages spécifiques partagent ces limites.",
+    ...aiRequestTimeoutMessages["fr-FR"],
     "settings.requestLimits.retryIntervals": "Délais de nouvelle tentative",
     "settings.requestLimits.apiKeyRecovery": "Refroidissement de la clé en échec",
     "settings.requestLimits.apiKeyRecoveryHelp": "Une clé ayant échoué pour authentification, quota ou limitation est temporairement ignorée. Le délai Retry-After fourni par le service est prioritaire.",

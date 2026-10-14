@@ -31,8 +31,9 @@ import {
 import type {TranslationProviderConfigSnapshot} from '@/src/services/translation/types';
 import {normalizeOpenAICompatibleUsage} from '../usage';
 import {normalizeTranslationMaxRetries} from '@/src/core/config/scheduling';
+import {DEFAULT_AI_REQUEST_TIMEOUT_MS, normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 
-export const AI_SDK_REQUEST_TIMEOUT_MS = 40_000;
+export const AI_SDK_REQUEST_TIMEOUT_MS = DEFAULT_AI_REQUEST_TIMEOUT_MS;
 export const AI_SDK_MAX_RETRIES = 2;
 
 export interface AiSdkTranslationRequest extends TranslationProviderRequestContext {
@@ -249,9 +250,10 @@ function compatibilityFetch(
   };
 }
 
-function normalizedTimeout(value?: number): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return AI_SDK_REQUEST_TIMEOUT_MS;
-  return Math.min(120_000, Math.max(1, Math.floor(value)));
+function normalizedTimeout(value: number | undefined, configuredTimeout: number | undefined): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return normalizeAiRequestTimeoutMs(configuredTimeout);
+  // 显式数值可能是事务剩余预算，不能使用设置的最小值抬高，也不能按旧 120 秒上限截断。
+  return Math.max(1, Math.floor(value));
 }
 
 function createRequestAbortContext(timeoutMs: number, callerSignal?: AbortSignal) {
@@ -325,7 +327,7 @@ async function translateSingle(
     transformRequestBody: () => requestBody,
   });
   const abortContext = createRequestAbortContext(
-    normalizedTimeout(request.requestTimeoutMs),
+    normalizedTimeout(request.requestTimeoutMs, current.aiRequestTimeoutMs),
     request.abortSignal,
   );
 
@@ -362,7 +364,7 @@ export async function translateWithOpenAICompatibleAiSdk(
 ): Promise<string | string[]> {
   const current = getTranslationProviderConfig(request, config);
   const service = request.serviceOverride || current.service;
-  const requestBudget = normalizedTimeout(request.requestTimeoutMs);
+  const requestBudget = normalizedTimeout(request.requestTimeoutMs, current.aiRequestTimeoutMs);
   if (!Array.isArray(request.origin)) {
     return translateSingle({...request, requestTimeoutMs: requestBudget}, service, request.origin, current);
   }

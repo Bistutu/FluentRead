@@ -2,7 +2,7 @@
  * @file src/services/translation/broker.ts
  *
  * 文件职责：编排翻译请求的配置快照、语言解析、缓存、请求去重、超时与 provider 调用，是后台翻译用例的中心服务。
- * 主要内容：createTranslationBroker 同时支持单条、批量和页面摘要，验证 provider 返回数量、类型及明显的原文回显或错语种，空来源在本地保留，仅在原生批次响应结构异常时以相同取消所有权和剩余 deadline 逐段恢复，整批完成前不发布缓存；对完整多段协议逐槽修复上下文回显并拒绝空译文，以包含 Chrome auto 检测样本的完整身份构建缓存键，并按实际消费的云地域和凭据摘要、匿名额度身份、等待策略、清理代次与剩余 deadline 隔离 pending 请求；入口在等待前复制消息，ready 与取消检查后沿用可信配置快照，仅未附着的公开请求复制备用配置；批次摘要与分项缓存键只构建一次并复用，重复身份只读写一次；每次公开请求累计缓存复用、上游调用次数、耗时与免费链线路尝试，结束后向注入的统计端口交付只含规模数值、服务与线路标识的事件。 可核对的公开符号包括 createTranslationBroker、聚合导出。
+ * 主要内容：createTranslationBroker 同时支持单条、批量和页面摘要，验证 provider 返回数量、类型及明显的原文回显或错语种，空来源在本地保留，仅在原生批次响应结构异常时以相同取消所有权和剩余 deadline 逐段恢复，整批完成前不发布缓存；对完整多段协议逐槽修复上下文回显并拒绝空译文，以包含 Chrome auto 检测样本的完整身份构建缓存键，并按实际消费的云地域和凭据摘要、匿名额度身份、等待策略、清理代次与剩余 deadline 隔离 pending 请求；入口在等待前复制消息，ready 采用有界水合等待，之后按最终服务解析 AI 配置预算并扣除已等待时间，取消检查后沿用可信配置快照，仅未附着的公开请求复制备用配置；批次摘要与分项缓存键只构建一次并复用，重复身份只读写一次；每次公开请求累计缓存复用、上游调用次数、耗时与免费链线路尝试，结束后向注入的统计端口交付只含规模数值、服务与线路标识的事件。 可核对的公开符号包括 createTranslationBroker、聚合导出。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；文本槽编码与解析复用 core/translation/slotProtocol.ts 纯协议，不初始化 DOM 候选或网站规则；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 
@@ -44,6 +44,7 @@ import {isNativeBatchResponseError, validateNativeBatchResults} from '@/src/core
 import {buildGlossaryRevision, resolveGlossary} from '@/src/core/glossary';
 import {supportsNativeTranslationBatch, supportsTranslationBatch, supportsTranslationGlossary} from './capabilities';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
+import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {getGlossaryProtectionEntries, isGlossaryOnlyResult, prepareGlossaryRequest} from './glossaryProtection';
 import {
     isDefinitePageContextLeak,
@@ -1711,17 +1712,21 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         // deadline 从公开入口开始计时（与统计开始时间共用一次时钟读取），配置水合不能让上层剩余预算重新获得完整时长。
         const isRemainingBudget = (message as TranslationRequestMessage & TranslationRemainingBudgetContext)
             [TRANSLATION_REMAINING_BUDGET] === true;
-        const providerBudget = (isRemainingBudget
+        const explicitProviderBudget = isRemainingBudget
             ? normalizeDeadlineTimeoutMs(message.requestTimeoutMs as number)
-            : normalizeExternalRequestTimeoutMs(message.requestTimeoutMs)) ?? DEFAULT_PROVIDER_TIMEOUT_MS;
-        const providerDeadline = providerStartedAt + providerBudget;
-        await runWithinDeadline(() => deps.ready, providerDeadline, requestControl?.signal);
+            : normalizeExternalRequestTimeoutMs(message.requestTimeoutMs);
+        // 水合仍有独立的有界等待；不得先读取未就绪的服务/设置决定此次 AI 默认。
+        await runWithinDeadline(() => deps.ready,
+            providerStartedAt + (explicitProviderBudget ?? DEFAULT_PROVIDER_TIMEOUT_MS), requestControl?.signal);
         throwIfRequestAborted(requestControl?.signal);
 
         // 步骤 1：圈选等受信后台事务沿用开始时的 symbol 快照；未附着的公开请求才在 cache/provider await 前复制配置。
         let current = getTranslationProviderConfig(message, () => createTranslationProviderConfigSnapshot(config()));
         const serviceOverride = message.serviceOverride;
         const selectedService = serviceOverride || current.service;
+        const providerBudget = explicitProviderBudget ?? (deps.serviceTypes.isAI(selectedService)
+            ? normalizeAiRequestTimeoutMs(current.aiRequestTimeoutMs) : DEFAULT_PROVIDER_TIMEOUT_MS);
+        const providerDeadline = providerStartedAt + providerBudget;
         trace.serviceId = selectedService;
         if (isCompositeTranslationProviderId(selectedService)) {
             const profile = getCompositeTranslationProvider(current.compositeTranslationProviders, selectedService);

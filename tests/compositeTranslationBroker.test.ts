@@ -51,6 +51,74 @@ function setup(members: string[] = [services.google, services.microsoft]) {
 afterEach(() => vi.useRealTimers());
 
 describe('组合翻译真实 broker 接入', () => {
+    it('AI 默认预算不覆盖组合成员超时，配置变更后回退仍沿用冻结的组合预算', async () => {
+        vi.useFakeTimers();vi.setSystemTime(0);
+        const h = setup([services.openai, services.google]);
+        h.config.aiRequestTimeoutMs = 600_000;
+        let firstSignal!: AbortSignal;
+        h.providers.openai = vi.fn(async message => {
+            expect(message.requestTimeoutMs).toBe(1_000);
+            expect(getTranslationProviderConfig(message, h.config).aiRequestTimeoutMs).toBe(600_000);
+            firstSignal = message.abortSignal as AbortSignal;
+            return new Promise((_resolve, reject) => firstSignal.addEventListener('abort', () => reject(new Error('transport aborted')), {once: true}));
+        });
+        h.providers.google = vi.fn(async message => {
+            expect(message.requestTimeoutMs).toBeLessThanOrEqual(1_000);
+            const snapshot = getTranslationProviderConfig(message, h.config);
+            expect(snapshot.aiRequestTimeoutMs).toBe(600_000);
+            expect(snapshot.compositeTranslationProviders?.[0].timeoutMs).toBe(1_000);
+            return translatedText;
+        });
+        const pending = h.broker.translateWithCache({origin: sourceText, useCache: false});
+        await vi.advanceTimersByTimeAsync(0);
+        h.config.aiRequestTimeoutMs = 10_000;
+        h.config.compositeTranslationProviders[0].timeoutMs = 45_000;
+        await vi.advanceTimersByTimeAsync(1_001);
+        await expect(pending).resolves.toBe(translatedText);
+        expect(firstSignal.aborted).toBe(true);
+        expect(h.providers.google).toHaveBeenCalledOnce();
+        expect(h.recordRequest.mock.calls[0][0]).toMatchObject({routes: ['openai', 'google'], upstreamCalls: 2});
+    });
+
+    it('含 AI 的组合总预算仍为 45 秒，AI 的长等待默认不能延长整轮或启动下一成员', async () => {
+        vi.useFakeTimers();vi.setSystemTime(0);
+        const h = setup([services.openai, services.google]);
+        h.config.aiRequestTimeoutMs = 600_000;
+        h.config.compositeTranslationProviders[0].timeoutMs = 45_000;
+        let signal!: AbortSignal;
+        h.providers.openai = vi.fn(async message => {
+            expect(message.requestTimeoutMs).toBe(45_000);
+            signal = message.abortSignal as AbortSignal;
+            return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new Error('transport aborted')), {once: true}));
+        });
+        const settled = h.broker.translateWithCache({origin: sourceText, useCache: false}).catch(error => error);
+        await vi.advanceTimersByTimeAsync(44_999);
+        expect(signal.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        await expect(settled).resolves.toMatchObject({name: 'TranslationProviderDeadlineError'});
+        expect(signal.aborted).toBe(true);
+        expect(h.providers.google).not.toHaveBeenCalled();
+        expect(h.recordRequest.mock.calls[0][0]).toMatchObject({serviceId: group, outcome: 'timeout'});
+    });
+
+    it('AI 长等待默认也不会覆盖组合取消所有权', async () => {
+        vi.useFakeTimers();vi.setSystemTime(0);
+        const h = setup([services.openai, services.google]);
+        h.config.aiRequestTimeoutMs = 600_000;
+        h.config.compositeTranslationProviders[0].timeoutMs = 45_000;
+        const controller = new AbortController();
+        let signal!: AbortSignal;
+        h.providers.openai = vi.fn(async message => {
+            signal = message.abortSignal as AbortSignal;
+            return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new Error('transport aborted')), {once: true}));
+        });
+        const settled = h.broker.translateWithCache(attachTranslationRequestControl({origin: sourceText, useCache: false},
+            {signal: controller.signal, ownershipKey: 'composite-ai-timeout-cancel'})).catch(error => error);
+        await vi.advanceTimersByTimeAsync(0);controller.abort();await vi.advanceTimersByTimeAsync(0);
+        await expect(settled).resolves.toMatchObject({name: 'AbortError'});
+        expect(signal.aborted).toBe(true);expect(h.providers.google).not.toHaveBeenCalled();
+    });
+
     it('顺序策略每个成功请求轮流首选下一成员，并在末尾回到第一项', async () => {
         const h = setup([services.google, services.microsoft, services.bilibili]);
         const attempted: string[] = [];

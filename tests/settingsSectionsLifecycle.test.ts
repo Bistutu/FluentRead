@@ -106,6 +106,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     (globalThis as Record<string, unknown>)[key] = data;
     const mocks: Plugin = {name: 'settings-sections-lifecycle-mocks', enforce: 'pre', resolveId(id, importer) {
         if (requestLimits && id.endsWith('/RequestLimitFields.vue')) return null;
+        if (requestLimits && id.endsWith('/SettingsNumberInput.vue')) return null;
         if (requestLimits && (id.endsWith('/SettingsGroup.vue') || id.endsWith('/SettingsItem.vue'))) return '\0sections-slots';
         if (template && id.endsWith('/CustomOpenAIProviderDialog.vue')) {
             // 只替换父模板的动态模块加载端口；真正的子组件在首次请求后由 Vite 编译，测试不重写其 watch/草稿行为。
@@ -143,6 +144,8 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     if (requestLimits) {
         const child = (await server.ssrLoadModule('/src/features/settings/ui/services/RequestLimitFields.vue')).default;
         compileClientTemplate(child, 'src/features/settings/ui/services/RequestLimitFields.vue');
+        const numberInput = (await server.ssrLoadModule('/src/features/settings/ui/components/SettingsNumberInput.vue')).default;
+        compileClientTemplate(numberInput, 'src/features/settings/ui/components/SettingsNumberInput.vue');
     }
     const component = (await server.ssrLoadModule('/src/features/settings/ui/SettingsSections.vue')).default;
     component.ssrRender = undefined;component.render = () => null;
@@ -505,6 +508,68 @@ describe('高级设置全局请求限制实际父子装配', () => {
         input.value = String(value);
         input.dispatchEvent(new fixture.domWindow!.Event('change', {bubbles: true}));
     }
+
+    it('AI 超时默认显示 120 秒，修改秒数后规范化并交接毫秒配置补丁', async () => {
+        const fixture = await mountSections({template: true, requestLimits: true, activeSection: 'settings-advanced'});
+        const label = 'settings.requestLimits.aiTimeout';
+        expect(limitInput(fixture, label).value).toBe('120');
+        expect(limitInput(fixture, label).getAttribute('min')).toBe('10');
+        expect(limitInput(fixture, label).getAttribute('max')).toBe('600');
+        expect(limitInput(fixture, label).disabled).toBe(false);
+        changeLimit(fixture, label, 300);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(300_000);
+        expect(fixture.patch).toHaveBeenCalledOnce();
+        expect(fixture.patch).toHaveBeenLastCalledWith(expect.objectContaining({aiRequestTimeoutMs: 300_000}), expect.any(Function));
+        await settle();
+        const change = fixture.numericPorts.get(label)!.change;
+        for (const value of [undefined, NaN, Infinity]) change(value);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(300_000);
+        expect(fixture.patch).toHaveBeenCalledOnce();
+        changeLimit(fixture, label, 5);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(10_000);
+        await settle();changeLimit(fixture, label, 900);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(600_000);
+        expect(fixture.patch).toHaveBeenCalledTimes(3);
+    });
+
+    it.each(['section', 'keepalive', 'unmount'] as const)('AI 超时在 %s 失活后拒绝旧回调，返回时拒绝已过期的输入事件', async reason => {
+        const fixture = await mountSections({template: true, requestLimits: true, activeSection: 'settings-advanced'});
+        const label = 'settings.requestLimits.aiTimeout';
+        const original = fixture.state.config.aiRequestTimeoutMs;
+        const staleChange = fixture.numericPorts.get(label)!.change;
+        if (reason === 'section') fixture.props.activeSection = 'settings-translation';
+        else if (reason === 'keepalive') fixture.visible.value = false;
+        else {app!.unmount();app = undefined;}
+        await settle();
+        const exitSaves = fixture.patch.mock.calls.length;
+        staleChange(300);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(original);
+        expect(fixture.patch).toHaveBeenCalledTimes(exitSaves);
+        if (reason === 'unmount') return;
+        expect(fixture.numericPorts.get(label)!.disabled).toBe(true);
+        fixture.props.activeSection = 'settings-advanced';fixture.visible.value = true;await settle();
+        staleChange(400);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(original);
+        changeLimit(fixture, label, 300);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(300_000);
+        expect(fixture.patch).toHaveBeenCalledTimes(exitSaves + 1);
+    });
+
+    it('收到同步后的超时设置时，旧控件回调不能覆盖新值', async () => {
+        const fixture = await mountSections({template: true, requestLimits: true, activeSection: 'settings-advanced'});
+        const label = 'settings.requestLimits.aiTimeout';
+        const staleChange = fixture.numericPorts.get(label)!.change;
+        fixture.notifyConfig({...fixture.state.config, aiRequestTimeoutMs: 240_000});
+        await settle();
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(240_000);
+        expect(fixture.patch).not.toHaveBeenCalled();
+        staleChange(300);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(240_000);
+        expect(fixture.patch).not.toHaveBeenCalled();
+        changeLimit(fixture, label, 300);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(300_000);
+        expect(fixture.patch).toHaveBeenCalledOnce();
+    });
 
     it('高级页三项限制可编辑，合法数值和不限速零值各同步交接一次配置补丁', async () => {
         const fixture = await mountSections({template: true, requestLimits: true, activeSection: 'settings-advanced'});

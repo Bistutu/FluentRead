@@ -2,14 +2,15 @@
  * @file src/features/input-translation/content/index.ts
  * 文件职责：实现网页输入框翻译 feature 的可注入生命周期，根据配置识别三连触发符、冻结请求所有权、调用后台并把译文安全提交回原控件或富文本编辑器。
  * 主要内容：相同译文保留原文且不重复展示；定义配置、依赖和 feature 契约，提供启用判断、配置键与替换/双语输出顺序写回，原生控件用原生 setter 与 input/change 事件写回，编辑宿主按光标文本度量推进三连序列并经 editableHost.ts 的原生编辑路径保留原文、清理触发符并写回；
- * 以请求 ID 复用共享 broker 取消，抑制重复请求并限制消息等待；提示与翻译并行启动，用 closed Shadow tooltip 提供取消、重试与恢复原文，随视口定位并清理临时资源，防止失焦、编辑或配置变化后的迟到提交。
+ * 以请求 ID 复用共享 broker 取消，冻结实际服务的 AI 超时预算并给消息应答保留余量；提示与翻译并行启动，用 closed Shadow tooltip 提供取消、重试与恢复原文，随视口定位并清理临时资源，防止失焦、编辑或配置变化后的迟到提交。
  * 模块边界：本文件拥有内容页事件与临时 UI，不直接调用 provider 或全局 browser API；sendMessage、Shadow UI、站点禁用和 generation 均由 composition root 注入，输入纯算法来自 inputBox.ts，编辑宿主度量与写回来自 editableHost.ts。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import {TRANSLATION_CANCEL_MESSAGE_TYPE} from '@/src/services/translation/types';
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import type { ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
-import {services as translationServices} from '@/src/core/config/catalog';
+import {services as translationServices, servicesType} from '@/src/core/config/catalog';
+import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {parseApiKeyRequirementKey} from '@/src/core/config/validation';
 import {getCompositeTranslationConfigFingerprint} from '@/src/core/config/compositeTranslation';
 import {normalizeUiLanguage, translateLegacyText} from '@/src/core/i18n';
@@ -41,6 +42,7 @@ export interface InputTranslationContentConfig {
     on?: boolean;
     uiLanguage?: string;
     service?: string;
+    aiRequestTimeoutMs?: number;
     inputBoxTranslationTrigger: string;
     inputBoxTranslationTarget: string;
     inputBoxTranslationOutputMode?: string;
@@ -117,6 +119,7 @@ function inputBoxTranslationConnectionKey(value: InputTranslationContentConfig):
     );
     const selected = {
         service,
+        aiRequestTimeoutMs: servicesType.isAI(service) ? normalizeAiRequestTimeoutMs(value.aiRequestTimeoutMs) : undefined,
         model: serviceValue('model'),
         customModel: serviceValue('customModel'),
         serviceRegion: serviceValue('serviceRegion'),
@@ -233,6 +236,8 @@ function getTooltipIcon(type: 'translating' | 'success' | 'error'): string {
 
 /** 包含后台唤醒与配置水合的页面等待上限，避免消息故障让编辑器永久停留在翻译中。 */
 export const INPUT_TRANSLATION_TIMEOUT_MS = 60_000;
+const INPUT_MACHINE_PROVIDER_TIMEOUT_MS = 45_000;
+const INPUT_TRANSLATION_RESPONSE_GRACE_MS = 1_000;
 let featureSequence = 0;
 
 async function translateInputBox(
@@ -242,6 +247,8 @@ async function translateInputBox(
     clientRequestId: string,
     signal: AbortSignal,
     cancelRemote: () => void,
+    requestTimeoutMs: number,
+    responseTimeoutMs: number,
 ): Promise<string> {
     const result = await new Promise<unknown>((resolve, reject) => {
         let timer: ReturnType<typeof setTimeout>;
@@ -256,10 +263,10 @@ async function translateInputBox(
             cleanup();
             cancelRemote();
             reject(new DOMException('输入框翻译等待超时', 'TimeoutError'));
-        }, INPUT_TRANSLATION_TIMEOUT_MS);
+        }, responseTimeoutMs);
         Promise.resolve().then(() => {
             if (signal.aborted) throw new DOMException('输入框翻译已取消', 'AbortError');
-            return sendMessage({type: 'inputBoxTranslation', text, targetLang, clientRequestId});
+            return sendMessage({type: 'inputBoxTranslation', text, targetLang, clientRequestId, requestTimeoutMs});
         }).then(resolve, reject).finally(cleanup);
     }) as { success?: boolean; translatedText?: string; error?: string } | undefined;
 
@@ -579,6 +586,10 @@ export function createInputTranslationContentFeature(
         const editGeneration = readEditGeneration(element);
         observedInputValues.set(element, inputSnapshot);
         const targetLanguage = deps.config.inputBoxTranslationTarget;
+        const service = deps.config.inputBoxTranslationService || deps.config.service || translationServices.freeTranslation;
+        const isAI = servicesType.isAI(service);
+        const requestTimeoutMs = isAI ? normalizeAiRequestTimeoutMs(deps.config.aiRequestTimeoutMs) : INPUT_MACHINE_PROVIDER_TIMEOUT_MS;
+        const responseTimeoutMs = isAI ? requestTimeoutMs + INPUT_TRANSLATION_RESPONSE_GRACE_MS : INPUT_TRANSLATION_TIMEOUT_MS;
 
         const isCurrentAndUnchanged = () => requestId === activeInputTranslationRequestId
             && isInputElement(element)
@@ -630,7 +641,8 @@ export function createInputTranslationContentFeature(
             });
 
             // 步骤 3：请求与提示并行启动；取消向共享 broker 传递，落地前再次校验快照。
-            const translatedText = await translateInputBox(deps.sendMessage, originalText, targetLanguage, clientRequestId, requestSignal, cancelRemote);
+            const translatedText = await translateInputBox(deps.sendMessage, originalText, targetLanguage, clientRequestId,
+                requestSignal, cancelRemote, requestTimeoutMs, responseTimeoutMs);
             if (!isCurrentAndUnchanged()) {
                 clearOwnedVisuals();
                 return;

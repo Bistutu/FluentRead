@@ -7,6 +7,7 @@
  */
 import videoLearningText from './video-learning/ru-RU.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/ru-RU.json';
@@ -533,6 +534,7 @@ export const ruRUMessages = {
     "settings.requestLimits.modelTitle": "Ограничения модели",
     "settings.requestLimits.globalTitle": "Ограничения запросов",
     "settings.requestLimits.globalHelp": "Сервисы и модели без отдельных настроек используют эти общие ограничения.",
+    ...aiRequestTimeoutMessages["ru-RU"],
     "settings.requestLimits.retryIntervals": "Интервалы повторов",
     "settings.requestLimits.apiKeyRecovery": "Пауза неисправного API Key",
     "settings.requestLimits.apiKeyRecoveryHelp": "Ключ после ошибки аутентификации, квоты или ограничения скорости временно пропускается. Если сервис вернул Retry-After, используется его интервал.",

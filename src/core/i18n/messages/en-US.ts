@@ -8,6 +8,7 @@
  */
 import videoLearningText from './video-learning/en-US.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/en-US.json';
@@ -535,6 +536,7 @@ export const enUSMessages = {
     "settings.requestLimits.modelTitle": "Model request limits",
     "settings.requestLimits.globalTitle": "Request limits",
     "settings.requestLimits.globalHelp": "Services and models without custom settings share these limits.",
+    ...aiRequestTimeoutMessages["en-US"],
     "settings.requestLimits.retryIntervals": "Retry intervals",
     "settings.requestLimits.apiKeyRecovery": "Failed key cooldown",
     "settings.requestLimits.apiKeyRecoveryHelp": "Temporarily skip a key after an authentication, quota, or rate-limit failure. A server-provided Retry-After takes priority.",
