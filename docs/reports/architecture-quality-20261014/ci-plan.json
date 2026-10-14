@@ -1,6 +1,6 @@
 {
-  "base": "8bdd5c20dc82b57d27b7e22d14080cacd64d7eed",
-  "head": "e8cd33bc613a49a009888a6f49e8b06d06e7e7a2",
+  "base": "573890c33ad410b48086dcb83bad97ae1bf5a82c",
+  "head": "8e4b27cd967b2fcb2300f1fb10b500dc3ff29bf5",
   "changed": [
     ".github/workflows/extension-quality.yml",
     "docs/architecture.md",
@@ -555,6 +555,7 @@
     "tests/readingPanelLifecycle.test.ts",
     "tests/readingPanelStreamingResize.test.ts",
     "tests/readingThemeStyles.test.ts",
+    "tests/regressionReport.test.ts",
     "tests/requestConfigSnapshot.test.ts",
     "tests/requestHeaderRules.test.ts",
     "tests/requestHeaderRuntime.test.ts",

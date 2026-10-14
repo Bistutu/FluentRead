@@ -1,7 +1,7 @@
 {
   "status": "passed",
-  "sourceCommit": "e8cd33bc613a49a009888a6f49e8b06d06e7e7a2",
-  "comparisonBase": "573890c33ad410b48086dcb83bad97ae1bf5a82c",
+  "sourceCommit": "8e4b27cd967b2fcb2300f1fb10b500dc3ff29bf5",
+  "comparisonBase": "8bdd5c20dc82b57d27b7e22d14080cacd64d7eed",
   "version": "0.0.38",
   "referenceRepositoriesUsed": false,
   "delivery": "local_worktree_only",
@@ -19,9 +19,9 @@
       "passed": 2003
     },
     "testRegistration": {
-      "files": 716,
-      "status": "passed",
-      "declaredCases": 12853
+      "files": 717,
+      "declaredCases": 12877,
+      "status": "passed"
     },
     "nativeNodeContracts": {
       "files": 6,
@@ -83,6 +83,14 @@
       "files": 1,
       "passed": 19,
       "actualRunnerAndFailureReportsVerified": true
+    },
+    "latestMainIntegration": {
+      "status": "passed",
+      "files": 3,
+      "passed": 50,
+      "types": "passed",
+      "docs": "passed",
+      "productionSourceDifferenceFromProgramSourceCommit": false
     }
   },
   "browserEvidence": {
@@ -110,13 +118,15 @@
     "CI workflow is validated locally and has not run on GitHub."
   ],
   "ciPlan": {
-    "files": 446,
-    "architectureFiles": 36,
+    "files": 447,
+    "architectureFiles": 37,
     "behaviorFiles": 410,
     "strictModules": 82,
     "duplicates": false,
-    "verification": "selection and actual runner fixtures tested; the complete combined 446-file command was not rerun",
+    "verification": "Current plan and runner fixtures verified; prior behavior and scoped coverage evidence retained. Hosted CI has not run at recording time.",
     "plan": "ci-plan.json"
   },
-  "programSourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb"
+  "programSourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb",
+  "recordingPhase": "local validation before PR upload",
+  "currentIntegratedBase": "573890c33ad410b48086dcb83bad97ae1bf5a82c"
 }
