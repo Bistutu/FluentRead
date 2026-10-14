@@ -1241,6 +1241,20 @@ pnpm test:pdf-selection -- \
 
 ## 单篇篇章参考
 
+### 短标题跨语言上下文误译（issue #980）
+
+```bash
+<bundled-node> scripts/testing/run-ai-context-leak-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root <bundled-node-packages> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-ai-context-leak
+```
+
+专项用 Prompts 英文标题及正文模拟短标题返回约 157 字中文页面介绍，核对一次无页面上下文/摘要重译、同批正常正文保留、悬浮与全文翻译—恢复—再次翻译、仅修复结果进入缓存、持续明确回显失败，以及关闭 AI 精翻后的单次直接翻译。检测器将 1–40 个 Unicode codepoint 的短来源、至少 `max(120, sourceLength × 6)` 个 codepoint 的结果作为保守重试信号；再次返回的合法长译文不会仅凭长度被拒绝。核心和 broker 专项同时覆盖阈值、匹配边界、取消与缓存版本隔离。
+
+测试使用生产扩展、临时 Edge profile、第二屏正常尺寸后台窗口与真实 CDP 手势；原生 macOS 激活事件核对浏览器从未成为前台。DeepSeek Chat Completions 响应在本次临时配置中拦截，端点及凭据均为虚构，不读取用户 API Key，不证明真实 DeepSeek 的翻译质量或报告者现场已恢复。报告保存 DOM 断言结果、请求摘要、缓存结果、截图与焦点证据。
+
 生产 Chrome 构建完成后运行以下独立网页套件：
 
 ```bash
