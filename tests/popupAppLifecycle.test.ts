@@ -71,7 +71,8 @@ beforeEach(async()=>{
   getTab.mockResolvedValue([{id:7,windowId:3,url:'https://example.com/a'}]);send.mockImplementation(async(_id,message)=>message.type==='getFullPageTranslationState'?{isTranslated:false}:{status:'success',isTranslated:message.action==='fullPage'});createTab.mockResolvedValue({id:8});openOptions.mockResolvedValue(undefined);runtimeSend.mockResolvedValue({success:true})
   getSourceTab.mockResolvedValue({id:7,windowId:3,url:'https://example.com/a'})
   ;(globalThis as any).__popupFixture={config,getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,tabEvents,subscribe:(fn:typeof subscribe)=>{subscribe=fn},runtime,capabilities:runtime.reactive({browser:'chrome',areaTranslation:true,imageTranslation:true})}
-  server=await createServer({root:process.cwd(),configFile:false,appType:'custom',logLevel:'silent',resolve:{alias:{'@':process.cwd()}},ssr:{noExternal:['webextension-polyfill']},plugins:[{name:'popup-owned-client',enforce:'pre',resolveId(id){
+  // popup 测试控制组件事件与轮询，不使用文件观察或热更新。
+  server=await createServer({root:process.cwd(),configFile:false,appType:'custom',logLevel:'silent',server:{watch:null},resolve:{alias:{'@':process.cwd()}},ssr:{noExternal:['webextension-polyfill']},plugins:[{name:'popup-owned-client',enforce:'pre',resolveId(id){
     if(/(?:\/|^)Popup(?:App|SiteRule)\.vue$/u.test(id))return resolve('src/app/popup',id.split('/').at(-1)!)+'.owned.ts'
     if(id==='webextension-polyfill')return '\0popup-browser'
     if(/\/src\/services\/config\/store(?:\.ts)?$/u.test(id))return '\0popup-config'

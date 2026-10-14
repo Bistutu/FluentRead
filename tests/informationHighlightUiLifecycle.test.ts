@@ -41,7 +41,8 @@ async function mount(name: 'InformationHighlightPreferences' | 'InformationHighl
 beforeEach(async () => {
   vi.useFakeTimers({toFake: ['setInterval', 'clearInterval']}); ready.mockReset(); preparing.mockReset(); send.mockReset(); send.mockResolvedValue({success: true, status: model()})
   Object.assign(globalThis, {[key]: {send}})
-  server = await createServer({appType: 'custom', configFile: false, logLevel: 'silent', root: process.cwd(), resolve: {alias: {'@': resolve(process.cwd(), '.')}}, ssr: {noExternal: ['webextension-polyfill', 'element-plus']}, server: {hmr: false, middlewareMode: true}, plugins: [{name: 'information-highlight-ui-mocks', enforce: 'pre', resolveId(id) {
+  // 模块加载与轮询测试不观察文件变化；观察器不应参与组件的虚拟时钟。
+  server = await createServer({appType: 'custom', configFile: false, logLevel: 'silent', root: process.cwd(), resolve: {alias: {'@': resolve(process.cwd(), '.')}}, ssr: {noExternal: ['webextension-polyfill', 'element-plus']}, server: {hmr: false, middlewareMode: true, watch: null}, plugins: [{name: 'information-highlight-ui-mocks', enforce: 'pre', resolveId(id) {
     if (id === 'webextension-polyfill') return '\0information-browser'
     if (id === 'element-plus') return '\0information-elements'
     if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0information-i18n'

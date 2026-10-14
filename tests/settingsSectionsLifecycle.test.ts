@@ -137,7 +137,8 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     }};
     server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(),
         plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}},
-        ssr: {noExternal: ['element-plus', '@element-plus/icons-vue', 'webextension-polyfill']},server: {hmr: false, middlewareMode: true}});
+        // 实际表单、键盘与异步归属测试不使用文件观察或热更新。
+        ssr: {noExternal: ['element-plus', '@element-plus/icons-vue', 'webextension-polyfill']},server: {hmr: false, middlewareMode: true, watch: null}});
     if (requestLimits) {
         const child = (await server.ssrLoadModule('/src/features/settings/ui/services/RequestLimitFields.vue')).default;
         compileClientTemplate(child, 'src/features/settings/ui/services/RequestLimitFields.vue');
@@ -739,7 +740,7 @@ async function mountProviderFailureSections() {
     }};
     server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(), plugins: [mocks, vue()],
         resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['element-plus', '@element-plus/icons-vue', 'webextension-polyfill']},
-        server: {hmr: false, middlewareMode: true}});
+        server: {hmr: false, middlewareMode: true, watch: null}});
     const component = (await server.ssrLoadModule('/src/features/settings/ui/SettingsSections.vue')).default;
     compileClientTemplate(component, 'src/features/settings/ui/SettingsSections.vue');
     // 每个动态创建节点的 focus 只记录，不影响旧 renderer 或全局 HTMLElement prototype。

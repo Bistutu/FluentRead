@@ -66,7 +66,8 @@ async function mountLearning(initialTab?: string, options: {listGate?: Tab} = {}
     return id === '\0learning-client-browser' ? 'export default {runtime:{sendMessage:(...args)=>globalThis.__frLearningClient.send(...args)}};' : null
   }}
   const server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
-    plugins: [mocks], resolve: {alias: {'@': resolve(process.cwd())}}, server: {middlewareMode: true, hmr: false},
+    // 测试只加载模块并驱动 Vue 延迟，server 在 fake clock 期间无需观察文件。
+    plugins: [mocks], resolve: {alias: {'@': resolve(process.cwd())}}, server: {middlewareMode: true, hmr: false, watch: null},
     ssr: {noExternal: ['webextension-polyfill']}})
   disposers.push(async () => {await server.close()})
   const {normalizeConfig} = await server.ssrLoadModule('/src/core/config/model.ts')

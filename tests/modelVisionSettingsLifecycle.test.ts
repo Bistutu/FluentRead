@@ -61,7 +61,8 @@ beforeEach(async () => {
   }}
   server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
     plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['webextension-polyfill', '@wxt-dev/storage']},
-    server: {hmr: false, middlewareMode: true}})
+    // 只加载实际模块，不测试文件变化；禁用观察，避免 Chokidar 节流进入组件的全局 fake clock。
+    server: {hmr: false, middlewareMode: true, watch: null}})
   const component = (await server.ssrLoadModule('/src/features/settings/ui/services/ModelVisionSettings.vue')).default
   component.ssrRender = undefined;component.render = () => null
   const renderer = runtime.createRenderer<Record<string, never>, Record<string, unknown>>({patchProp: () => {}, insert: () => {},
@@ -125,10 +126,15 @@ describe('实际模型识图设置的请求归属与等待预算', () => {
     expect(cancelMessages()[0][0].requestId).toBe(probeMessages()[0][0].requestId)
   })
   it('保存等待期间主动取消后可以重试，旧保存不能覆盖新请求状态', async () => {
+    vi.useFakeTimers()
     const saving = pending();save.mockReturnValueOnce(saving.promise);let done = false
-    const old = probe().then(() => {done = true});await settle();state.cancel();await settle();expect(done).toBe(true)
-    await probe();expect(probeMessages()).toHaveLength(1);expect(state.feedback).toBe('settings.services.visionProbeSupported')
-    saving.resolve();await old;expect(probeMessages()).toHaveLength(1);expect(state.feedback).toBe('settings.services.visionProbeSupported')
+    const old = probe().then(() => {done = true});await settle();expect(vi.getTimerCount()).toBe(1)
+    state.cancel();await settle();expect(done).toBe(true);expect(state.busy).toBe(false)
+    expect(state.feedback).toBe('settings.services.visionProbeCancelled');expect(cancelMessages()).toHaveLength(1);expect(vi.getTimerCount()).toBe(0)
+    await probe();await settle();expect(probeMessages()).toHaveLength(1);expect(state.feedback).toBe('settings.services.visionProbeSupported')
+    expect(probeMessages()[0][0].requestId).not.toBe(cancelMessages()[0][0].requestId);expect(vi.getTimerCount()).toBe(0)
+    saving.resolve();await old;await settle();expect(probeMessages()).toHaveLength(1);expect(state.feedback).toBe('settings.services.visionProbeSupported')
+    expect(cancelMessages()).toHaveLength(1);expect(vi.getTimerCount()).toBe(0)
   })
   it('正在检测时重复调用不创建第二次保存或请求', async () => {
     const waiting = pending();queue.mockReturnValueOnce(waiting.promise);const one = probe();await probe();await settle()
@@ -140,9 +146,25 @@ describe('实际模型识图设置的请求归属与等待预算', () => {
     if (phase === 'save') save.mockReturnValueOnce(stalled.promise)
     if (phase === 'response') send.mockImplementationOnce(() => stalled.promise)
     let done = false;const job = probe().then(() => {done = true});await settle()
-    await vi.advanceTimersByTimeAsync(phase === 'response' ? 45000 : 10000);await settle()
-    expect(done).toBe(true);expect(state.busy).toBe(false);expect(state.feedback).toContain('settings.services.visionProbeFailed')
-    expect(vi.getTimerCount()).toBe(0);stalled.resolve();await job;await probe();expect(state.feedback).toBe('settings.services.visionProbeSupported')
+    const timeoutMs = phase === 'response' ? 45000 : 10000
+    expect(vi.getTimerCount()).toBe(1)
+    await vi.advanceTimersByTimeAsync(timeoutMs - 1);await settle()
+    expect(done).toBe(false);expect(state.busy).toBe(true);expect(state.feedback).toBe('settings.services.visionProbeRunning')
+    expect(probeMessages()).toHaveLength(phase === 'response' ? 1 : 0)
+    await vi.advanceTimersByTimeAsync(1);await settle()
+    expect(done).toBe(true);expect(state.busy).toBe(false)
+    const failure = 'settings.services.visionProbeFailed ' + (phase === 'response'
+      ? 'settings.services.keys.responseTimeout' : 'settings.services.keys.configTimeout')
+    expect(state.feedback).toBe(failure);expect(vi.getTimerCount()).toBe(0)
+    expect(cancelMessages()).toHaveLength(1);expect(cancelMessages()[0][0].requestId).toEqual(expect.any(String))
+    expect(cancelMessages()[0][0].requestId).not.toBe('')
+    if (phase === 'response') expect(cancelMessages()[0][0].requestId).toBe(probeMessages()[0][0].requestId)
+    stalled.resolve({success: true, capability: 'supported', source: 'probe'});await job;await settle()
+    expect(state.feedback).toBe(failure);expect(read).toHaveBeenCalledOnce();expect(vi.getTimerCount()).toBe(0)
+    await probe();await settle();expect(state.feedback).toBe('settings.services.visionProbeSupported');expect(state.busy).toBe(false)
+    const requests = probeMessages();expect(requests).toHaveLength(phase === 'response' ? 2 : 1)
+    expect(requests.at(-1)![0].requestId).not.toBe(cancelMessages()[0][0].requestId)
+    expect(cancelMessages()).toHaveLength(1);expect(vi.getTimerCount()).toBe(0)
   })
   it('隐藏后释放缓存订阅，迟到通知无效，恢复重读且允许手动覆盖', async () => {
     const old = subscriptions[0] as typeof subscriptions[number] & {stopped?: boolean};props.active = false;await settle()
