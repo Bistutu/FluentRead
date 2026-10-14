@@ -28,6 +28,7 @@ import {
     discardTranslation,
     getTranslationState,
     markTranslationComplete,
+    setSingleTextSlotHosts,
     restoreTranslation,
     getTranslationOverflowGenerationIdentity,
     getTranslationSourceStructureSignature,
@@ -1615,5 +1616,71 @@ describe('pubdev caption identical-result source boundary diagnostic', () => {
         feedback.setAttribute('style', exactStyle);
         expect(completion.read()).toMatchObject({status: 'available', requestBoundary: 'accepted-same-session-result-reuse'});
         expect(fixture.owner.querySelector('[data-fr-translation-owned="true"]')).toBeNull();
+    });
+});
+
+describe('仅译文 flex/grid 标签的候选范围复验', () => {
+    it.each(['flex', 'grid'])('%s 原文槽不会使 Latest 失去候选身份，恢复后可再次翻译', (display) => {
+        const {document, window} = parseHTML('<html><body><main><span id="latest">Latest</span></main></body></html>');
+        const owner = document.querySelector<HTMLElement>('#latest')!;
+        const source = owner.firstChild as Text;
+        const originalHTML = owner.innerHTML;
+        const descriptor = Object.getOwnPropertyDescriptor(window, 'getComputedStyle');
+        // 真实浏览器会把 flex/grid 的直接子项 blockify；linkedom 不计算布局。
+        Object.defineProperty(window, 'getComputedStyle', {configurable: true, value: (element: Element) => ({
+            display: element === owner ? display : element.classList.contains('fluent-read-single-slot') ? 'block'
+                : element.localName === 'span' ? 'inline' : 'block',
+        })});
+        const core = getCurrentTranslationCore('content');
+        const render = () => {
+            const candidate = core.inspect(owner).candidate!;
+            expect(candidate).toMatchObject({element: owner, kind: 'content'});
+            const attempt = beginTranslation(owner, 'single', candidate.kind, false, 'Latest', [source], false, undefined, 'content')!;
+            const host = document.createElement('span');
+            host.className = 'fluent-read-single-slot';
+            host.setAttribute('data-fr-translation-owned', 'true');
+            host.setAttribute('translate', 'no');
+            owner.insertBefore(host, source);
+            host.appendChild(source);
+            setSingleTextSlotHosts(owner, [host]);
+            expect(markTranslationComplete(owner, attempt.state, attempt.generation, false)).toBe(true);
+            return {host, state: attempt.state};
+        };
+        try {
+            const current = render();
+            expect(statefulSourceAndTextSlotsAreCurrent(owner, current.state)).toBe(true);
+            for (let index = 0; index < 3; index += 1) {
+                expect(isTranslationStateCandidateCurrent(owner, current.state)).toBe(true);
+            }
+            expect(restoreTranslation(owner)).toBe(true);
+            expect(owner.innerHTML).toBe(originalHTML);
+            expect(owner.firstChild).toBe(source);
+            expect(current.host.isConnected).toBe(false);
+            const next = render();
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(true);
+
+            // 真实新增正文块仍改变候选边界，不能因为存在自有槽而忽略。
+            const paragraph = document.createElement('p');
+            paragraph.textContent = 'A new readable paragraph.';
+            owner.appendChild(paragraph);
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(false);
+            paragraph.remove();
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(true);
+
+            // 来源修改和禁译仍拒绝原候选；同字克隆不继承已验证槽身份。
+            source.data = 'Changed';
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(false);
+            source.data = 'Latest';
+            owner.setAttribute('translate', 'no');
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(false);
+            owner.removeAttribute('translate');
+            const clone = next.host.cloneNode(true);
+            next.host.replaceWith(clone);
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(false);
+        } finally {
+            restoreTranslation(owner);
+            if (descriptor) Object.defineProperty(window, 'getComputedStyle', descriptor);
+            else Reflect.deleteProperty(window, 'getComputedStyle');
+        }
     });
 });
