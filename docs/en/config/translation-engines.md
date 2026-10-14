@@ -259,6 +259,8 @@ Extra AI context can reference the page title and parts of the article to help w
 
 Restore existing translations before translating with changed settings. Use [glossaries](/en/guide/glossary) for consistent terminology.
 
+With extra AI context enabled, an unusually long result for a short heading or an output that includes reference material triggers one retry of the affected text without page context or its summary. Valid passages in the same batch are preserved. A retry that still explicitly repeats reference material is reported as a failure so you can retry manually; that output is neither displayed nor cached. Length alone triggers verification and does not reject a legitimate longer translation. After upgrading, extra-context requests use a new cache identity to avoid reusing affected results cached by older versions.
+
 ### Tencent Hunyuan connection failures
 
 Select **Tencent Hunyuan** and enter an API key created in the Hunyuan console. The default uses the official Hunyuan endpoint. **Tencent Hunyuan Translate** is a separate service that requires a SecretId and SecretKey.

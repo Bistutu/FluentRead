@@ -223,7 +223,9 @@ describe('audit 49 E actual translation and cache entries', () => {
         const source = '甲乙丙丁戊己庚辛';
         expect(isLikelyPageContextLeak(source, source.repeat(4), source)).toBe(false);
     });
-    it('keeps CJK leak decisions identical while bounding repeated whole-string searches', () => {
+    it('bounds repeated CJK whole-string searches for normal paragraphs', () => {
+        // 长源文继续验证词法检测的线性预算；短标题的极端扩写现会触发一次跨语言复验。
+        const origin = 'Translate the paragraph about the original problem and preserve its meaning.';
         const context = Array.from({length: 3000}, (_, i) => String.fromCharCode(0x4e00 + i)).join('');
         const result = Array.from({length: 1000}, (_, i) => String.fromCharCode(0x7000 + i)).join('');
         const originals = [
@@ -241,13 +243,13 @@ describe('audit 49 E actual translation and cache entries', () => {
         Object.defineProperty(Set.prototype, 'delete', {...originals[3][2], value: function (this: Set<unknown>, value: unknown) {deletions++; return remove.call(this, value);}});
         let output: boolean, elapsedMs: number;
         try {
-            const start = performance.now(); output = isLikelyPageContextLeak('source', result, context); elapsedMs = performance.now() - start;
+            const start = performance.now(); output = isLikelyPageContextLeak(origin, result, context); elapsedMs = performance.now() - start;
         } finally {
             for (const [prototype, key, descriptor] of originals) Object.defineProperty(prototype, key, descriptor);
         }
         const operations = {searches, receiverCharacterBudget, additions, lookups, deletions};
         const modulePath = (baseline ? process.env.AUDIT_E_BASELINE_SOURCE_ROOT! : root) + '/src/core/translation/prompts.ts';
-        const proof = {function: 'isLikelyPageContextLeak', modulePath, productionSha256: createHash('sha256').update(readFileSync(modulePath)).digest('hex'), inputSha256: createHash('sha256').update(context + '\0source\0' + result).digest('hex'), characters: {context: context.length, origin: 6, result: result.length}, ...operations, elapsedMs, output, sha256: createHash('sha256').update(JSON.stringify(output)).digest('hex')};
+        const proof = {function: 'isLikelyPageContextLeak', modulePath, productionSha256: createHash('sha256').update(readFileSync(modulePath)).digest('hex'), inputSha256: createHash('sha256').update(context + '\0' + origin + '\0' + result).digest('hex'), characters: {context: context.length, origin: origin.length, result: result.length}, ...operations, elapsedMs, output, sha256: createHash('sha256').update(JSON.stringify(output)).digest('hex')};
         writeFileSync(evidence + (baseline ? '/performance-baseline.json' : '/performance-current.json'), JSON.stringify(proof, null, 2));
         expect(output).toBe(false); expect(searches).toBeLessThanOrEqual(20);
         expect(isLikelyPageContextLeak('original', '甲乙丙丁戊己庚辛'.repeat(3), '甲乙丙丁戊己庚辛'.repeat(5))).toBe(true);
