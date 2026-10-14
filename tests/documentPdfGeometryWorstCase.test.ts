@@ -158,6 +158,25 @@ describe('PDF paragraph geometry worst cases through actual public functions', (
     });
 
     it.each([
+        {label: 'ASCII hyphen', fragments: ['multi-', 'lingual'], source: 'multilingual'},
+        {label: 'Unicode hyphen', fragments: ['multi‐', 'lingual'], source: 'multilingual'},
+        {label: 'nonbreaking hyphen', fragments: ['multi‑', 'lingual'], source: 'multilingual'},
+        {label: 'initial empty fragments', fragments: ['', '', 'multi-', 'lingual'], source: 'multilingual'},
+        {label: 'intervening empty fragment', fragments: ['multi-', '', 'lingual'], source: 'multi- lingual'},
+        {label: 'trailing empty fragments', fragments: ['multi-', 'lingual', '', ''], source: 'multilingual'},
+        {label: 'uppercase continuation', fragments: ['multi-', 'Lingual'], source: 'multi- Lingual'},
+        {label: 'Unicode continuation', fragments: ['multi-', '中文'], source: 'multi- 中文'},
+        {label: 'newline following hyphen', fragments: ['multi-\n', 'lingual'], source: 'multi- lingual'},
+        {label: 'newline preceding continuation', fragments: ['multi-', '\nlingual'], source: 'multi- lingual'},
+        {label: 'Unicode line separator following hyphen', fragments: ['multi-\u2028', 'lingual'], source: 'multi- lingual'},
+        {label: 'empty paragraph', fragments: ['', '', ''], source: undefined},
+    ])('preserves $label when assembling a paragraph from fragments', ({fragments, source}) => {
+        const blocks = pdfTextBlocks(fragments.map((text, index) => line(text, 20, index * 12)), 500);
+        expect(blocks.map(block => block.source)).toEqual(source === undefined ? [] : [source]);
+        if (source !== undefined) expect(blocks[0].lineCount).toBe(fragments.length);
+    });
+
+    it.each([
         {label: 'exact negative gap', x: 0, y: 8, height: 10, width: 100, merged: true},
         {label: 'below negative gap', x: 0, y: 8 - Number.EPSILON * 8, height: 10, width: 100, merged: false},
         {label: 'exact positive gap', x: 0, y: 19.5, height: 10, width: 100, merged: true},

@@ -591,11 +591,22 @@ export function pdfTextBlocks(lines: PdfTextLine[], pageWidth: number): Array<Om
     return drafts.map((draft) => {
         const draftBounds = draft.bounds;
         const first = draft.lines[0];
-        const source = draft.lines.reduce((value, line) => {
-            if (!value) return line.text;
-            if (/[-‐‑]$/u.test(value) && /^[a-z]/u.test(line.text)) return `${value.slice(0, -1)}${line.text}`;
-            return `${value} ${line.text}`;
-        }, '').replace(/\s+/gu, ' ').trim();
+        // 只检查末行片段，最后一次合并全文；避免长段反复正则检查累计字符串时复制整段。
+        const sourceParts: string[] = [];
+        draft.lines.forEach((line) => {
+            const previous = sourceParts.at(-1);
+            if (previous === undefined) {
+                if (line.text) sourceParts.push(line.text);
+                return;
+            }
+            if (/[-‐‑]$/u.test(previous) && /^[a-z]/u.test(line.text)) {
+                sourceParts[sourceParts.length - 1] = previous.slice(0, -1);
+            } else {
+                sourceParts.push(' ');
+            }
+            sourceParts.push(line.text);
+        });
+        const source = sourceParts.join('').replace(/\s+/gu, ' ').trim();
         const center = (draftBounds.x + draftBounds.right) / 2;
         const centered = Math.abs(center - pageWidth / 2) <= pageWidth * 0.045
             && draftBounds.right - draftBounds.x < pageWidth * 0.9;

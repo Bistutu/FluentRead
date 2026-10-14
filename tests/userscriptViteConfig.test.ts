@@ -291,7 +291,10 @@ describe('userscript browser shim injection', () => {
             else {
                 const pinned = metadataIcon.match(/^https:\/\/cdn\.jsdelivr\.net\/gh\/FluentRead\/FluentRead@([a-f0-9]{40})\/public\/icon\/64\.png$/u);
                 expect(pinned).not.toBeNull();
-                expect(execFileSync('git', ['show', `${pinned![1]}:public/icon/64.png`], {cwd: process.cwd()})).toEqual(iconBytes);
+                // 固定公开资源不属于 main 的祖先，干净 CI 不必包含其旧 Git 对象；
+                // 对照已发布 PNG 的精确 pin 和 SHA256，继续拒绝图标漂移或非固定地址。
+                expect(pinned![1]).toBe('184a3d74f61b9d2a8d47080787f7e0180b98414d');
+                expect(createHash('sha256').update(iconBytes).digest('hex')).toBe('4226fc057f80b2308a6153b3316bc02b31b74f1a7f92504e9f45f30d245b5535');
                 expect(metadataIcon).not.toBe(runtimeIcon);
             }
         } finally {vi.unstubAllEnvs();vi.resetModules();}
