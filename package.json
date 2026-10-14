@@ -68,6 +68,7 @@
     "@ai-sdk/google": "3.0.121",
     "@ai-sdk/openai-compatible": "2.0.70",
     "@ctrl/tinycolor": "3.6.1",
+    "@deeplx/core": "0.3.1",
     "@element-plus/icons-vue": "^2.3.1",
     "@huggingface/transformers": "3.8.1",
     "@huggingface/transformers-kokoro": "npm:@huggingface/transformers@4.2.0",
@@ -94,6 +95,7 @@
     "tldts": "^7.4.10",
     "turndown": "7.2.4",
     "webextension-polyfill": "^0.12.0",
+    "x-fetch": "0.3.0",
     "zod": "3.25.76"
   },
   "devDependencies": {

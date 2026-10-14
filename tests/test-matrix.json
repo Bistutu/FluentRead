@@ -31,6 +31,7 @@
       "tests/userscriptMetadata.test.ts",
       "tests/userscriptPrivacy.test.ts",
       "tests/userscriptViteConfig.test.ts",
+      "tests/deeplxRuntimeBuild.test.ts",
       "tests/freeTranslationSettings.test.ts",
       "tests/writingBackground.test.ts",
       "tests/requestLimitSettings.test.ts",

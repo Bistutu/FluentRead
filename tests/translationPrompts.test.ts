@@ -42,6 +42,51 @@ describe('translation prompt safety', () => {
         expect(isLikelyPageContextLeak('Ebullioscopic', leaked, pageContext)).toBe(true);
     });
 
+    it('为 Issue #980 英文参考材料被译成无标签中文正文的短标题触发软恢复', () => {
+        // 按报告整理的构造样本，不是 deepseek-flash 的实际请求日志。
+        const pageContext = `Page title: Prompts
+Readable page content (Markdown):
+# Prompts
+A prompt tells a language model what task to perform. Asking somebody for directions illustrates why a clearer question usually produces more useful guidance.
+Providers expose complicated interfaces with different message roles and types, which can be difficult to understand despite their power.
+The AI SDK simplifies this through three kinds of prompts: text, message, and system.`;
+        const result = '提示词提示词是你给大型语言模型（LLM）的指令，用来告诉它该做什么。这就像你向别人问路一样；你的问题越清晰，得到的方向就越好。许多LLM提供商都提供复杂的接口来指定提示词。这些接口涉及不同的角色和消息类型。虽然这些接口功能强大，但它们可能难以使用和理解。为了简化提示，AI SDK支持文本提示、消息提示和系统提示。';
+
+        expect(isLikelyPageContextLeak('Prompts', result, pageContext)).toBe(true);
+        expect(isLikelyPageContextLeak('Foundations', result, pageContext)).toBe(true);
+        expect(isLikelyPageContextLeak('Prompts', '提示词', pageContext)).toBe(false);
+        expect(isLikelyPageContextLeak('Prompts', result, '')).toBe(false);
+        expect(isDefinitePageContextLeak('Prompts', result, pageContext)).toBe(false);
+    });
+
+    it.each([
+        ['下限短标题的正文输出', 'A', '译'.repeat(120), true],
+        ['绝对长度边界下方', 'A', '译'.repeat(119), false],
+        ['六倍边界', 'a'.repeat(20), '译'.repeat(120), true],
+        ['六倍边界下方', 'a'.repeat(21), '译'.repeat(125), false],
+        ['短源文上限', 'a'.repeat(40), '译'.repeat(240), true],
+        ['正常长段落不使用短文本信号', 'a'.repeat(41), '译'.repeat(400), false],
+        ['空白源文不使用短文本信号', '  \n  ', '译'.repeat(120), false],
+        ['源文按 Unicode 字符计数', '🧠'.repeat(21), '译'.repeat(126), true],
+        ['结果按 Unicode 字符计数', 'A', '🧠'.repeat(60), false],
+    ])('短文本膨胀软信号：%s', (_label, source, result, expected) => {
+        const pageContext = 'The reference explains language model prompts and roles.';
+        expect(isLikelyPageContextLeak(source, result, pageContext)).toBe(expected);
+        expect(isDefinitePageContextLeak(source, result, pageContext)).toBe(false);
+    });
+
+    it.each([
+        ['AI', 'Artificial intelligence (AI)'],
+        ['SDK', 'Software development kit: tools and libraries for building applications.'],
+        ['LLM', '大型语言模型'],
+        ['HTTP', '超文本传输协议（Hypertext Transfer Protocol）'],
+        ['認証方式を選択', 'Select an authentication method for signing in.'],
+        ['Prompts', 'Eingabeaufforderungen'],
+        ['The interface supports text, message and system prompts for different model tasks.', '界面支持文本提示、消息提示和系统提示，用于不同的模型任务。'],
+    ])('保留缩写展开、短术语和正常跨语言译文：%s', (source, result) => {
+        expect(isLikelyPageContextLeak(source, result, 'The reference discusses model inputs.')).toBe(false);
+    });
+
     it('识别直接复制和异常膨胀的上下文，同时放过合法专名与正文术语', () => {
         const pageContext = 'Page title: Audio controls. Relevant content: Atoll conflicts with SoundSource superkey on macOS StudioDisplay hardware and requires restart.';
 
@@ -110,6 +155,11 @@ describe('translation prompt safety', () => {
             '<webpage_context>译文保留标记</webpage_context>',
             '页面摘要：无关材料。',
         )).toBe(false);
+    });
+
+    it('原文已包含中文参考片段时保留阈值内的展开', () => {
+        const source = '甲乙丙丁戊己庚辛';
+        expect(isLikelyPageContextLeak(source, source.repeat(4), source)).toBe(false);
     });
 
     it('识别长源文本未膨胀时被上下文连续片段替换的回显', () => {

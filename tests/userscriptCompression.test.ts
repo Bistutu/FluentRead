@@ -31,6 +31,30 @@ describe('userscript compressed assets', () => {
         expect(inflateWithBundledPako(gzipSync(source))).toBe(source);
     });
 
+    it('respects the offset and length of a typed gzip input', () => {
+        const source = 'FluentRead typed view 中文 🚀';
+        const compressed = gzipSync(source);
+        const padded = new Uint8Array(compressed.length + 8).fill(0xa5);
+        padded.set(compressed, 3);
+        const original = Uint8Array.from(padded);
+        const view = padded.subarray(3, 3 + compressed.length);
+        vi.stubGlobal('pako', undefined);
+
+        expect(view.byteOffset).toBe(3);
+        expect(inflateWithBundledPako(view)).toBe(source);
+        expect(Array.from(padded)).toEqual(Array.from(original));
+    });
+
+    it('rejects an invalid gzip header without poisoning a later valid decode', () => {
+        vi.stubGlobal('pako', undefined);
+        let failure: unknown;
+        try { inflateWithBundledPako(new Uint8Array([0xff, 0xff, 0xff, 0xff])); }
+        catch (cause) { failure = cause; }
+
+        expect(failure).toBe('incorrect header check');
+        expect(inflateWithBundledPako(gzipSync('FluentRead header recovery'))).toBe('FluentRead header recovery');
+    });
+
     it.each([
         {label: 'Unicode', source: 'FluentRead 简体／繁體 e\u0301 👩🏽‍💻 🧪 العربية'},
         {label: 'empty', source: ''},

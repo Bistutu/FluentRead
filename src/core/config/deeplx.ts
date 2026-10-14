@@ -7,8 +7,8 @@
  */
 
 /**
- * 公共 endpoint 是非官方 DeepLX 部署，因此保持显式配置，方便用户随时替换为
- * 本地或自行托管的 endpoint。
+ * 旧配置仍保存这个公共地址；无凭据的默认配置先由 provider 直连 DeepL，
+ * 此地址仅作为失败后的备用，用户自建地址和代理继续保持指定的请求边界。
  */
 export const DEFAULT_DEEPLX_ENDPOINT = "https://deeplx.1stg.me/translate"
 

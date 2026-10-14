@@ -2,6 +2,7 @@ import {copyFileSync, readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname, resolve} from 'node:path';
 import {defineConfig} from 'vite';
+import {createDeepLXRuntimeBuildPlugin} from '../../scripts/testing/deeplx-runtime-build';
 
 const integrationDir = dirname(fileURLToPath(import.meta.url));
 const repositoryDir = resolve(integrationDir, '../..');
@@ -11,7 +12,7 @@ const pdfLicense = readFileSync(resolve(repositoryDir, 'node_modules/pdfjs-dist/
 export default defineConfig({
     publicDir: false,
     resolve: {alias: {'@': repositoryDir}},
-    plugins: [{
+    plugins: [createDeepLXRuntimeBuildPlugin(repositoryDir), {
         name: 'copy-obsidian-manifest',
         closeBundle() {
             copyFileSync(resolve(integrationDir, 'manifest.json'), resolve(outputDir, 'manifest.json'));

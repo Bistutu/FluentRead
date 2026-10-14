@@ -122,12 +122,19 @@ const artifactBytes = Buffer.byteLength(source);
 // 五种已发布远程词典保持原摘要；新划选文案随注册补齐。对照见 section-sweep-selection-20261014/userscript-size.json。
 // PR #971 的 flex/grid 原文槽判定：同依赖独立主线 525108e86 为 2,080,966 字节，
 // 集成产物为 2,081,039，增加 73 字节（0.0035%）；预算增加 100 字节，余 61 字节。
+// DeepLX 直连、UTF-16 分块、匿名 transport 与固定语言资源兼容文案增加 13,325 字节（0.6403%）：
+// 同依赖独立主线 e806feff0 为 2,081,039，最终候选为 2,094,364；主线预算余 61 字节，
+// 在主线 2,081,100 预算上按既有 1 KB 步长最小增加 14 KB，余 736 字节，全部原校验保留。
+// 构建日志、前后产物与散列见工作区 research/deeplx-direct-968-20261014/userscript-size/。
 // 共享配置草稿、模型偏好清理与翻译服务边界整合：同 Node/锁依赖独立 main 6537d3de830a
 // 为 2,080,438 字节，2addf19c75fc 为 2,082,862（增 2,424，0.1165%）。
 // 按既有 1 KB 步长最小增加 2 KB，余 138；全部断言保留，见 architecture-quality-20261014/userscript-size.json。
 // 再整合 e806feff0035：同 Node/锁依赖独立 main 为 2,081,039，候选为 2,083,463，仍增加 2,424（0.1165%）。
 // 沿用主线新增的 100 字节步长，预算最小增加 2,400 字节、余 37；完整新旧对照保留在同一报告。
-const MAX_USERSCRIPT_BYTES = 2_083_500;
+// 再整合 DeepLX 主线 92da3c6f905b：同 Node 24 / 新锁依赖独立 main 为 2,094,681，候选为 2,097,103。
+// 增加 2,422 字节（0.1156%）；沿用最新主线 1 KB 步长，2,095,100 预算最小增加 3 KB、余 997。
+// 保留完整协议与运行断言；本次独立基线与此前两轮对照同列于 architecture-quality-20261014/userscript-size.json。
+const MAX_USERSCRIPT_BYTES = 2_098_100;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

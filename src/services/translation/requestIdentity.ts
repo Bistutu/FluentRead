@@ -1,7 +1,7 @@
 /**
  * @file src/services/translation/requestIdentity.ts
  * 文件职责：根据已冻结的请求配置构建翻译结果缓存身份，并统一模型、实际端点与上下文资格的纯策略。
- * 主要内容：维护单条、文本槽、原生批次与 AI 多段的身份维度，按实际消费的端点、合批偏好、图片原样成功策略、术语、文档保护、提示词和自动识别样本隔离缓存；通过注入端口复用既有模型和端点解析。
+ * 主要内容：维护单条、文本槽、原生批次与 AI 多段的身份维度，按实际消费的端点、合批偏好、图片原样成功策略、术语、文档保护、提示词、上下文泄漏门禁和自动识别样本隔离缓存；通过注入端口复用既有模型和端点解析。
  * 模块边界：不读取全局配置、不发起 provider 请求、不操作缓存仓库或在途去重，也不持有取消、调度或统计状态；broker 使用本模块生成结果身份，传输和 pending 生命周期仍由 broker 负责。
  */
 import type {TranslationBrokerDependencies, TranslationProviderConfigSnapshot} from './types';
@@ -155,6 +155,12 @@ export function createTranslationIdentityPolicy(deps: TranslationIdentityPorts) 
             // 步骤 1：DeepL 把标题上下文直接发送给 provider；AI adapter 通过 prompt 注入页面上下文。
             context: service === 'deepL' ? context : undefined,
             pageContext: isAIContextEnabled(execution, modelOverride) ? pageContext : undefined,
+            // v2 补齐跨语种短原文异常扩写的软恢复门禁。旧上下文结果未经过此门禁，
+            // 仅隔离实际携带 AI 页面上下文的正文缓存，摘要、无上下文与机器翻译身份保持稳定。
+            // 新身份中的结果已经复验；缓存读取仍只拒绝确定泄漏，合法长扩写不会每次重试。
+            ...(pageContext.trim() && isAIContextEnabled(execution, modelOverride)
+                ? {pageContextValidationPolicy: {version: 2}}
+                : {}),
             ...((service === 'chromeTranslator' || service === 'localTranslation')
                 && sourceLanguage === 'auto'
                 && sourceLanguageDetectionText?.trim()
