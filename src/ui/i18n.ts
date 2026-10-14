@@ -4,7 +4,7 @@
  * 文件职责：把 core i18n 的纯翻译能力接入 Vue，并在每个扩展 UI runtime 中
  * 订阅共享配置、即时切换语言和安全迁移尚未 key 化的旧文案。
  * 主要内容：提供 createUiI18nPlugin、useUiI18n 和 v-ui-i18n 指令；语言切换时按需加载资源包，
- * 选择以调用身份串行提交字段补丁，旧资源、旧失败和已销毁 runtime 不得回写新选择；资源到达后通过 bundleRevision 刷新渲染与旧文案扫描；源语言界面跳过无效全树扫描，切回源语言时仍恢复旧文案。指令只扫描
+ * 选择以调用身份串行提交字段补丁，旧资源、旧失败和已销毁 runtime 不得回写新选择；资源到达后通过 bundleRevision 刷新渲染与旧文案扫描；新增服务目录使用 core 的本地文案覆盖，不更改脚本版已发布远程语言包；源语言界面跳过无效全树扫描，切回源语言时仍恢复旧文案。指令只扫描
  * 显式标记或传入的自有 UI 根节点，扫描容器与扩展 document 元信息权限分离；插件在正常卸载或构建失败时释放订阅、watch、observer 和延迟扫描；跳过代码、文本编辑器和用户内容及其后代文本，避免把网页正文
  * 或翻译结果误当成扩展文案。
  * 模块边界：这里负责 Vue 响应式和配置 patch，不定义语言文案；文案资源与纯
@@ -40,6 +40,7 @@ import {
     type UiLanguage,
 } from '@/src/core/i18n';
 import {ensureUiLanguageBundle} from '@/src/platform/i18n/uiLanguageBundles';
+import {translateServiceLabel} from '@/src/core/i18n/serviceLabels';
 
 export interface UiI18nContext {
     language: Readonly<Ref<UiLanguage>>;
@@ -61,8 +62,10 @@ interface LocalizableServiceOption {
 
 interface ServiceProfileSummary {
     id: string;
-    endpoint: string;
-    models: string[];
+    name?: string;
+    endpoint?: string;
+    models?: string[];
+    services?: string[];
 }
 
 /** 在 UI 边界复用本次标签译文；profile 按需索引且保留重复 ID 首项，原始名称仍用于搜索。 */
@@ -82,12 +85,12 @@ export function localizeServiceOptions<T extends LocalizableServiceOption>(
             if (!profileIndex.has(id)) profileIndex.set(id, next);
             if (id === option.value) profile = profileIndex.get(id);
         }
-        const label = translateLegacy(option.label);
+        const label = profile?.name || translateLegacy(option.label);
         return {
             ...option,
             label,
-            description: option.description ? translateLegacy(option.description) : option.description,
-            searchTerms: [...(option.searchTerms || []), option.label, label, ...(profile ? [profile.endpoint, ...profile.models] : [])],
+            description: profile?.services ? undefined : option.description ? translateLegacy(option.description) : option.description,
+            searchTerms: [...(option.searchTerms || []), option.label, label, ...(profile ? [...(profile.endpoint ? [profile.endpoint] : []), ...(profile.models || [])] : [])],
         };
     });
 }
@@ -158,7 +161,7 @@ export function createUiI18nContext(): UiI18nContext {
     };
     const translateLegacy = (value: string): string => {
         void bundleRevision.value;
-        return translateLegacyText(value, language.value);
+        return translateServiceLabel(value, language.value) ?? translateLegacyText(value, language.value);
     };
 
     async function setLanguage(value: unknown): Promise<boolean> {

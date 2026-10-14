@@ -7,6 +7,12 @@ import { hasSavedServiceConfiguration } from '@/src/ui/view-model/serviceLibrary
 const provider = { id: 'custom:work', name: '工作接口', endpoint: 'http://localhost:11434/v1', models: ['local-model'] }
 
 describe('personal translation service library', () => {
+  it('keeps a saved combination discoverable even when deleted members leave it empty', () => {
+    const config = new Config()
+    config.compositeTranslationProviders = [{id: 'composite:daily', name: 'Daily', strategy: 'sequential', services: [], timeoutMs: 12000}]
+    expect(hasSavedServiceConfiguration('composite:daily', config)).toBe(true)
+    expect(hasSavedServiceConfiguration('composite:gone', config)).toBe(false)
+  })
   it('does not classify prefilled models or default local endpoints as saved user configuration', () => {
     const config = new Config()
     for (const service of Object.values(services)) expect(hasSavedServiceConfiguration(service, config), service).toBe(false)

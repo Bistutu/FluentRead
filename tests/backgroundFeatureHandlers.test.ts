@@ -40,7 +40,7 @@ import {
 } from '@/src/features/settings/background/openOptionsHandler';
 import {navigationItems, NAVIGATION_SECTION_ALIASES} from '@/src/features/settings/model/navigation';
 import {isBrowserTabId, TabTranslationStateStore} from '@/src/app/background/tabTranslationState';
-import {getTranslationRequestControl} from '@/src/services/translation/requestSnapshot';
+import {getTranslationRequestControl, allowUnchangedTranslationResult} from '@/src/services/translation/requestSnapshot';
 import {createPopupNavigationHandlers} from '@/src/app/background/popupNavigation';
 import {Config} from '@/src/core/config/model';
 
@@ -81,6 +81,10 @@ describe('后台 feature handlers', () => {
                 expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html?learningTab=memory#settings-vocabulary'});
                 await options.handle({type: 'openOptionsPage', section: 'settings-services', service: 'microsoft'});
                 expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html?service=microsoft#settings-services'});
+                for (const service of ['composite:team', 'custom:team']) {
+                    await options.handle({type: 'openOptionsPage', section: 'settings-services', service});
+                    expect(create).toHaveBeenLastCalledWith({url: `chrome-extension://fixture/options.html?service=${encodeURIComponent(service)}#settings-services`});
+                }
                 await options.handle({type: 'openOptionsPage', section: 'settings-interface', target: 'video-sentence-learning-appearance'});
                 expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html?target=video-sentence-learning-appearance#settings-interface'});
             }
@@ -711,14 +715,14 @@ describe('后台 feature handlers', () => {
             texts: ['hello', 'world'],
             title: 'Page',
         })).resolves.toEqual({success: true, translations: ['你好', '世界']});
-        expect(dependencies.translateTexts).toHaveBeenCalledWith({
+        expect(dependencies.translateTexts).toHaveBeenCalledWith(allowUnchangedTranslationResult({
             origin: ['hello', 'world'],
             context: 'Page',
             pageContext: '',
             useCache: true,
             serviceOverride: 'microsoft',
             requestTimeoutMs: IMAGE_TEXT_TRANSLATION_TIMEOUT_MS,
-        });
+        }));
 
         await expect(find(IMAGE_OCR_DOWNLOAD_MESSAGE_TYPE).handle({
             type: IMAGE_OCR_DOWNLOAD_MESSAGE_TYPE,
@@ -1039,7 +1043,7 @@ describe('后台 feature handlers', () => {
             {origin: 'first', context: 'Page', pageContext: '', useCache: true, serviceOverride: 'google', requestTimeoutMs: IMAGE_TEXT_TRANSLATION_TIMEOUT_MS},
             {origin: 'second', context: 'Page', pageContext: '', useCache: true, serviceOverride: 'google', requestTimeoutMs: IMAGE_TEXT_TRANSLATION_TIMEOUT_MS},
             {origin: 'third', context: 'Page', pageContext: '', useCache: true, serviceOverride: 'google', requestTimeoutMs: IMAGE_TEXT_TRANSLATION_TIMEOUT_MS},
-        ]);
+        ].map(request => allowUnchangedTranslationResult(request)));
 
         translateTexts.mockReset()
             .mockResolvedValueOnce('译:first')

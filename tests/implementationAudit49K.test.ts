@@ -281,10 +281,29 @@ describe('audit49K product OCR public entry consumes SDK job rejection', () => {
             }
             terminate() {this.terminateCalls++; this.terminated = true;}
         }
+        const canvases: any[] = [];
+        const createElement = vi.fn((tag: string) => {
+            expect(tag).toBe('canvas');
+            const canvas: any = {width: 0, height: 0};
+            const pixels = {
+                drawImage: vi.fn(),
+                getImageData: vi.fn((x: number, y: number, width: number, height: number) => {
+                    expect([x, y, width, height]).toEqual([0, 0, 80, 40]);
+                    // 本夹具是独占、不透明的完整 RGBA 图；实际生产 alpha 检查继续执行。
+                    return {data: new Uint8ClampedArray(width * height * 4).fill(255), width, height};
+                }),
+                putImageData: vi.fn(() => {throw new Error('Opaque fixture must not rewrite pixels');}),
+            };
+            canvas.getContext = vi.fn(() => pixels);
+            canvas.toBlob = vi.fn(() => {throw new Error('Original opaque PNG must not be re-encoded');});
+            canvas.pixels = pixels;
+            canvases.push(canvas);
+            return canvas;
+        });
         const context = createContext({Worker: WorkerPort, Blob, File, URL, Uint8Array, ArrayBuffer, AbortController, TextEncoder, TextDecoder, atob, btoa,
             console: {log: vi.fn(), warn: vi.fn(), error: vi.fn()}, setTimeout, clearTimeout,
             chrome: {runtime: {getURL: (path: string) => `chrome-extension://controlled${path}`}},
-            document: {}, window: {location: {href: 'chrome-extension://controlled/offscreen.html'}}});
+            document: {createElement}, window: {location: {href: 'chrome-extension://controlled/offscreen.html'}}});
         context.self = context;
         runInContext(built.outputFiles[0].text, context, {filename: 'actual-product-ocr-and-browser-sdk.js', timeout: 5000});
         const product = context.ActualProductOcr;
@@ -304,6 +323,15 @@ describe('audit49K product OCR public entry consumes SDK job rejection', () => {
             expect(sent.filter(packet => packet.action === 'recognize')).toHaveLength(2);
             expect(sent.filter(packet => packet.action === 'setParameters')).toHaveLength(1);
             expect(progress).toEqual([50, 50]); expect(borrowedImage.src).toBe('borrowed-image');
+            expect(canvases).toHaveLength(2);
+            for (const canvas of canvases) {
+                expect(canvas.getContext).toHaveBeenCalledWith('2d', {willReadFrequently: true});
+                expect(canvas.pixels.drawImage).toHaveBeenCalledWith(borrowedImage, 0, 0, 80, 40);
+                expect(canvas.pixels.getImageData).toHaveBeenCalledOnce();
+                expect(canvas.pixels.putImageData).not.toHaveBeenCalled();
+                expect(canvas.toBlob).not.toHaveBeenCalled();
+                expect([canvas.width, canvas.height]).toEqual([0, 0]);
+            }
             expect(rejectionCount).toBe(1); expect(caughtReason).toBe(reason);
             const observationDirectory = process.env.FLUENTREAD_AUDIT49K_OBSERVATION_DIR;
             if (observationDirectory) {

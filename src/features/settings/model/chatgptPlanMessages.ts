@@ -1,0 +1,158 @@
+/**
+ * @file src/features/settings/model/chatgptPlanMessages.ts
+ * 文件职责：维护 ChatGPT 登录尚未开放的公开状态，以及显式开发模式中的连接和错误恢复七语言文案。
+ * 主要内容：公开状态说明当前版本尚未提供登录并保留用户配置；开发文案区分本机助手配对和账户授权，说明资格与额度，按稳定错误代码提供恢复提示。
+ * 模块边界：纯文本目录不读取账号或凭据、不注册远端语言包、不控制授权；组件通过共享界面语言选择本目录。
+ */
+import type {UiLanguage} from '@/src/core/i18n';
+
+const zhCN = {
+    publicUnavailable: '当前版本尚未开放 ChatGPT 登录。请先使用其他翻译服务，已有配置会保留。',
+    eligibility: '使用符合资格的 ChatGPT Plus 或 Pro 账户授权，翻译消耗你的 ChatGPT 套餐额度。可用模型与限额由账户决定。',
+    helperTitle: '1. 启动本机助手',
+    helperHelp: '下载 FluentRead 仓库后，在仓库目录运行以下命令，并保持终端打开。助手负责接收授权回调并在本机保存凭据。',
+    setupGuide: '查看安装与接入说明',
+    pairingTitle: '2. 配对本机助手',
+    pairingHelp: '输入终端显示的配对码。配对码不是 API Key。',
+    pairingCode: '本机助手配对码',
+    pair: '配对',
+    pairing: '正在配对…',
+    pairRequired: '请输入本机助手显示的配对码。',
+    paired: '本机助手已配对',
+    signIn: 'Continue with ChatGPT',
+    reauthorize: '重新授权',
+    switchAccount: '切换 ChatGPT 账户',
+    revocationUnconfirmed: '已退出本机连接，远端撤销尚未确认。请在 ChatGPT 的套餐用量管理中检查并关闭共享。',
+    signInHelp: '浏览器将打开 ChatGPT 授权页。阅读并确认套餐共享范围后，返回此页。',
+    waiting: '正在等待 ChatGPT 授权…',
+    cancel: '取消登录',
+    cancelled: '已取消登录，可以重新授权。',
+    connected: '已连接 ChatGPT',
+    disconnected: '尚未连接 ChatGPT',
+    unavailableStatus: '暂时无法读取连接状态',
+    sharingDisabled: 'ChatGPT 套餐共享已关闭。请重新授权或在用量管理中开启共享。',
+    disconnect: '退出 ChatGPT 账户',
+    usage: '管理套餐用量',
+    model: '套餐可用模型',
+    modelHelp: '模型来自当前账户的实时列表。刷新不会更改已保存的选择。',
+    refreshModels: '刷新模型',
+    selectModel: '选择账户可用模型',
+    modelsEmpty: '当前账户没有返回可用模型，请检查共享权限或稍后刷新。',
+    modelUnavailable: '已保存的模型未出现在当前列表中，请选择当前账户可用的模型。',
+    loading: '正在读取…',
+    retry: '重新检查',
+    helperUnavailable: '无法连接本机助手。请确认助手仍在运行，然后重新检查。',
+    pairingFailed: '配对未成功。请使用助手当前显示的配对码重试。',
+    notConnected: '请先完成 ChatGPT 授权，再选择模型或翻译。',
+    quotaExceeded: 'ChatGPT 套餐额度已用尽或受到限流。请查看套餐用量，等待额度恢复后重试。',
+    signInFailed: 'ChatGPT 授权未完成，请重新授权。',
+    timedOut: '等待超时，请检查本机助手后重试。',
+    operationFailed: '操作未完成，请重新检查连接后重试。',
+} as const;
+
+type ChatGPTPlanTextKey = keyof typeof zhCN;
+export const chatGPTPlanMessages: Readonly<Record<UiLanguage, Readonly<Record<ChatGPTPlanTextKey, string>>>> = {
+    'zh-CN': zhCN,
+    'en-US': {
+        publicUnavailable: 'ChatGPT sign-in is not available in this version. Please use another translation service for now. Your saved configuration is preserved.',
+        eligibility: 'Authorize an eligible ChatGPT Plus or Pro account. Translation uses your ChatGPT plan allowance; available models and limits depend on your account.',
+        helperTitle: '1. Start the local helper', helperHelp: 'Download the FluentRead repository, run this command from its directory, and leave the terminal open. The helper receives the authorization callback and stores credentials locally.',
+        setupGuide: 'Installation and connection guide', pairingTitle: '2. Pair the local helper', pairingHelp: 'Enter the pairing code shown in the terminal. This is not an API key.', pairingCode: 'Local helper pairing code',
+        pair: 'Pair', pairing: 'Pairing…', pairRequired: 'Enter the pairing code shown by the local helper.', paired: 'Local helper paired',
+        reauthorize: 'Authorize again', switchAccount: 'Switch ChatGPT account', revocationUnconfirmed: 'The local connection is signed out, but remote revocation is unconfirmed. Check plan usage in ChatGPT and disable sharing.',
+        signIn: 'Continue with ChatGPT', signInHelp: 'Your browser will open ChatGPT authorization. Review the plan-sharing permissions, approve them, then return here.', waiting: 'Waiting for ChatGPT authorization…', cancel: 'Cancel sign-in', cancelled: 'Sign-in cancelled. You can authorize again.',
+        connected: 'Connected to ChatGPT', disconnected: 'ChatGPT is not connected', unavailableStatus: 'Connection status is temporarily unavailable', sharingDisabled: 'ChatGPT plan sharing is disabled. Authorize again or enable sharing in usage management.',
+        disconnect: 'Sign out of ChatGPT', usage: 'Manage plan usage', model: 'Models available with your plan', modelHelp: 'Models come from the current account’s live list. Refreshing preserves your saved selection.', refreshModels: 'Refresh models', selectModel: 'Choose an available model',
+        modelsEmpty: 'This account returned no available models. Check sharing permissions or refresh later.', modelUnavailable: 'Your saved model is missing from the current list. Choose a model available to this account.', loading: 'Loading…', retry: 'Check again',
+        helperUnavailable: 'Cannot connect to the local helper. Make sure it is still running, then check again.', pairingFailed: 'Pairing failed. Retry with the code currently shown by the helper.', notConnected: 'Authorize ChatGPT before selecting a model or translating.', quotaExceeded: 'Your ChatGPT plan allowance is exhausted or rate limited. Check usage and retry when your allowance becomes available.',
+        signInFailed: 'ChatGPT authorization did not complete. Please authorize again.', timedOut: 'The wait timed out. Check the local helper and retry.', operationFailed: 'The operation did not complete. Check the connection and retry.',
+    },
+    'ja-JP': {
+        publicUnavailable: 'このバージョンでは ChatGPT ログインはまだ利用できません。当面は別の翻訳サービスをご利用ください。保存済みの設定は保持されます。',
+        eligibility: '対象の ChatGPT Plus または Pro アカウントで認証してください。翻訳には ChatGPT プランの利用枠を使います。モデルと上限はアカウントにより異なります。',
+        helperTitle: '1. ローカルヘルパーを起動', helperHelp: 'FluentRead リポジトリを取得し、そのディレクトリで次のコマンドを実行してください。ターミナルは開いたままにします。ヘルパーが認証コールバックを受け取り、認証情報をローカルに保存します。',
+        setupGuide: 'インストールと接続の説明', pairingTitle: '2. ローカルヘルパーとペアリング', pairingHelp: 'ターミナルに表示されたペアリングコードを入力してください。API キーではありません。', pairingCode: 'ローカルヘルパーのペアリングコード',
+        pair: 'ペアリング', pairing: 'ペアリング中…', pairRequired: 'ヘルパーに表示されたペアリングコードを入力してください。', paired: 'ローカルヘルパーとペアリング済み',
+        reauthorize: '再認証', switchAccount: 'ChatGPT アカウントを切り替え', revocationUnconfirmed: 'ローカル接続からログアウトしましたが、サーバー側の取り消しは未確認です。ChatGPT のプラン利用状況で共有を確認し、無効にしてください。',
+        signIn: 'Continue with ChatGPT', signInHelp: 'ブラウザーで ChatGPT の認証画面が開きます。プラン共有の権限を確認して許可した後、この画面に戻ってください。', waiting: 'ChatGPT の認証を待っています…', cancel: 'ログインをキャンセル', cancelled: 'ログインをキャンセルしました。再認証できます。',
+        connected: 'ChatGPT に接続済み', disconnected: 'ChatGPT に未接続', unavailableStatus: '接続状態を一時的に取得できません', sharingDisabled: 'ChatGPT プラン共有が無効です。再認証するか、利用状況の管理で共有を有効にしてください。',
+        disconnect: 'ChatGPT からログアウト', usage: 'プラン利用状況の管理', model: 'プランで利用できるモデル', modelHelp: '現在のアカウントから取得した最新の一覧です。更新しても保存済みの選択は変わりません。', refreshModels: 'モデル一覧を更新', selectModel: '利用できるモデルを選択',
+        modelsEmpty: '利用できるモデルが返されませんでした。共有権限を確認するか、後で更新してください。', modelUnavailable: '保存済みモデルが現在の一覧にありません。このアカウントで利用できるモデルを選んでください。', loading: '読み込み中…', retry: '再確認',
+        helperUnavailable: 'ローカルヘルパーに接続できません。起動していることを確認して再確認してください。', pairingFailed: 'ペアリングに失敗しました。ヘルパーに現在表示されているコードで再試行してください。', notConnected: 'モデル選択や翻訳の前に ChatGPT を認証してください。', quotaExceeded: 'ChatGPT プランの利用枠を使い切ったか、レート制限中です。利用状況を確認し、枠が回復してから再試行してください。',
+        signInFailed: 'ChatGPT の認証が完了しませんでした。再認証してください。', timedOut: '待機時間を超えました。ヘルパーを確認して再試行してください。', operationFailed: '操作が完了しませんでした。接続を確認して再試行してください。',
+    },
+    'ko-KR': {
+        publicUnavailable: '이 버전에서는 아직 ChatGPT 로그인을 사용할 수 없습니다. 당분간 다른 번역 서비스를 이용해 주세요. 저장된 설정은 유지됩니다.',
+        eligibility: '이용 가능한 ChatGPT Plus 또는 Pro 계정으로 승인하세요. 번역은 ChatGPT 요금제 사용량을 소비하며 모델과 한도는 계정에 따라 달라집니다.',
+        helperTitle: '1. 로컬 도우미 시작', helperHelp: 'FluentRead 저장소를 내려받고 해당 폴더에서 다음 명령을 실행한 후 터미널을 열어 두세요. 도우미는 승인 콜백을 수신하고 인증 정보를 로컬에 저장합니다.',
+        setupGuide: '설치 및 연결 안내', pairingTitle: '2. 로컬 도우미 페어링', pairingHelp: '터미널에 표시된 페어링 코드를 입력하세요. API 키가 아닙니다.', pairingCode: '로컬 도우미 페어링 코드',
+        pair: '페어링', pairing: '페어링 중…', pairRequired: '도우미에 표시된 페어링 코드를 입력하세요.', paired: '로컬 도우미 페어링됨',
+        reauthorize: '다시 승인', switchAccount: 'ChatGPT 계정 전환', revocationUnconfirmed: '로컬 연결에서 로그아웃했지만 원격 취소는 확인되지 않았습니다. ChatGPT 요금제 사용량에서 공유를 확인하고 끄세요.',
+        signIn: 'Continue with ChatGPT', signInHelp: '브라우저에서 ChatGPT 승인 페이지가 열립니다. 요금제 공유 권한을 확인하고 승인한 후 돌아오세요.', waiting: 'ChatGPT 승인 대기 중…', cancel: '로그인 취소', cancelled: '로그인을 취소했습니다. 다시 승인할 수 있습니다.',
+        connected: 'ChatGPT 연결됨', disconnected: 'ChatGPT 연결 안 됨', unavailableStatus: '연결 상태를 일시적으로 읽을 수 없습니다', sharingDisabled: 'ChatGPT 요금제 공유가 꺼져 있습니다. 다시 승인하거나 사용량 관리에서 공유를 켜세요.',
+        disconnect: 'ChatGPT 로그아웃', usage: '요금제 사용량 관리', model: '요금제에서 이용 가능한 모델', modelHelp: '현재 계정의 최신 모델 목록입니다. 새로고침해도 저장한 선택은 바뀌지 않습니다.', refreshModels: '모델 새로고침', selectModel: '이용 가능한 모델 선택',
+        modelsEmpty: '계정에서 이용 가능한 모델을 반환하지 않았습니다. 공유 권한을 확인하거나 나중에 새로고침하세요.', modelUnavailable: '저장한 모델이 현재 목록에 없습니다. 이 계정에서 이용 가능한 모델을 선택하세요.', loading: '읽는 중…', retry: '다시 확인',
+        helperUnavailable: '로컬 도우미에 연결할 수 없습니다. 도우미가 실행 중인지 확인하고 다시 확인하세요.', pairingFailed: '페어링하지 못했습니다. 도우미에 현재 표시된 코드로 다시 시도하세요.', notConnected: '모델 선택 또는 번역 전에 ChatGPT를 승인하세요.', quotaExceeded: 'ChatGPT 요금제 한도를 소진했거나 요청이 제한되었습니다. 사용량을 확인하고 한도가 회복되면 다시 시도하세요.',
+        signInFailed: 'ChatGPT 승인이 완료되지 않았습니다. 다시 승인하세요.', timedOut: '대기 시간이 초과되었습니다. 로컬 도우미를 확인하고 다시 시도하세요.', operationFailed: '작업이 완료되지 않았습니다. 연결을 확인하고 다시 시도하세요.',
+    },
+    'fr-FR': {
+        publicUnavailable: 'La connexion à ChatGPT n’est pas encore disponible dans cette version. Utilisez un autre service de traduction pour le moment. Votre configuration enregistrée est conservée.',
+        eligibility: 'Autorisez un compte ChatGPT Plus ou Pro éligible. La traduction utilise le quota de votre forfait ChatGPT ; les modèles et limites dépendent de votre compte.',
+        helperTitle: '1. Démarrer l’assistant local', helperHelp: 'Téléchargez le dépôt FluentRead, exécutez cette commande dans son dossier et gardez le terminal ouvert. L’assistant reçoit le retour d’autorisation et conserve les identifiants localement.',
+        setupGuide: 'Guide d’installation et de connexion', pairingTitle: '2. Associer l’assistant local', pairingHelp: 'Saisissez le code d’association affiché dans le terminal. Ce n’est pas une clé API.', pairingCode: 'Code d’association de l’assistant local',
+        pair: 'Associer', pairing: 'Association…', pairRequired: 'Saisissez le code affiché par l’assistant local.', paired: 'Assistant local associé',
+        reauthorize: 'Autoriser à nouveau', switchAccount: 'Changer de compte ChatGPT', revocationUnconfirmed: 'La connexion locale est fermée, mais la révocation distante n’est pas confirmée. Vérifiez l’utilisation du forfait dans ChatGPT et désactivez le partage.',
+        signIn: 'Continue with ChatGPT', signInHelp: 'Le navigateur ouvre l’autorisation ChatGPT. Vérifiez les permissions de partage du forfait, confirmez-les, puis revenez ici.', waiting: 'En attente de l’autorisation ChatGPT…', cancel: 'Annuler la connexion', cancelled: 'Connexion annulée. Vous pouvez autoriser à nouveau.',
+        connected: 'Connecté à ChatGPT', disconnected: 'ChatGPT n’est pas connecté', unavailableStatus: 'État de connexion temporairement indisponible', sharingDisabled: 'Le partage du forfait ChatGPT est désactivé. Autorisez à nouveau ou activez le partage dans la gestion de l’utilisation.',
+        disconnect: 'Se déconnecter de ChatGPT', usage: 'Gérer l’utilisation du forfait', model: 'Modèles disponibles avec votre forfait', modelHelp: 'La liste est obtenue en direct depuis le compte actuel. L’actualisation conserve votre choix enregistré.', refreshModels: 'Actualiser les modèles', selectModel: 'Choisir un modèle disponible',
+        modelsEmpty: 'Ce compte n’a renvoyé aucun modèle disponible. Vérifiez les permissions de partage ou actualisez plus tard.', modelUnavailable: 'Votre modèle enregistré ne figure pas dans la liste actuelle. Choisissez un modèle disponible pour ce compte.', loading: 'Chargement…', retry: 'Vérifier à nouveau',
+        helperUnavailable: 'Impossible de joindre l’assistant local. Vérifiez qu’il fonctionne encore, puis réessayez.', pairingFailed: 'L’association a échoué. Réessayez avec le code actuellement affiché par l’assistant.', notConnected: 'Autorisez ChatGPT avant de choisir un modèle ou de traduire.', quotaExceeded: 'Le quota de votre forfait ChatGPT est épuisé ou limité. Consultez l’utilisation et réessayez lorsque le quota est disponible.',
+        signInFailed: 'L’autorisation ChatGPT n’a pas abouti. Veuillez autoriser à nouveau.', timedOut: 'Le délai est dépassé. Vérifiez l’assistant local et réessayez.', operationFailed: 'L’opération n’a pas abouti. Vérifiez la connexion et réessayez.',
+    },
+    'ru-RU': {
+        publicUnavailable: 'В этой версии вход через ChatGPT пока недоступен. Пока используйте другой сервис перевода. Сохранённые настройки будут сохранены.',
+        eligibility: 'Авторизуйте подходящий аккаунт ChatGPT Plus или Pro. Перевод расходует лимит подписки ChatGPT; доступные модели и ограничения зависят от аккаунта.',
+        helperTitle: '1. Запустите локальный помощник', helperHelp: 'Скачайте репозиторий FluentRead, выполните команду в его каталоге и оставьте терминал открытым. Помощник принимает ответ авторизации и хранит учётные данные локально.',
+        setupGuide: 'Инструкция по установке и подключению', pairingTitle: '2. Подключите локальный помощник', pairingHelp: 'Введите код сопряжения из терминала. Это не ключ API.', pairingCode: 'Код сопряжения локального помощника',
+        pair: 'Подключить', pairing: 'Подключение…', pairRequired: 'Введите код, отображаемый локальным помощником.', paired: 'Локальный помощник подключён',
+        reauthorize: 'Авторизовать снова', switchAccount: 'Сменить аккаунт ChatGPT', revocationUnconfirmed: 'Локальное подключение отключено, но удалённый отзыв не подтверждён. Проверьте использование подписки в ChatGPT и отключите доступ.',
+        signIn: 'Continue with ChatGPT', signInHelp: 'Браузер откроет страницу авторизации ChatGPT. Проверьте права доступа к подписке, подтвердите их и вернитесь сюда.', waiting: 'Ожидание авторизации ChatGPT…', cancel: 'Отменить вход', cancelled: 'Вход отменён. Можно авторизоваться снова.',
+        connected: 'ChatGPT подключён', disconnected: 'ChatGPT не подключён', unavailableStatus: 'Состояние подключения временно недоступно', sharingDisabled: 'Доступ к подписке ChatGPT отключён. Авторизуйтесь снова или включите доступ в управлении использованием.',
+        disconnect: 'Выйти из аккаунта ChatGPT', usage: 'Управление использованием подписки', model: 'Модели, доступные по подписке', modelHelp: 'Актуальный список получен из текущего аккаунта. Обновление сохраняет выбранную модель.', refreshModels: 'Обновить модели', selectModel: 'Выберите доступную модель',
+        modelsEmpty: 'Аккаунт не вернул доступные модели. Проверьте права доступа или обновите список позже.', modelUnavailable: 'Сохранённая модель отсутствует в текущем списке. Выберите модель, доступную этому аккаунту.', loading: 'Загрузка…', retry: 'Проверить снова',
+        helperUnavailable: 'Не удалось связаться с локальным помощником. Убедитесь, что он работает, и повторите проверку.', pairingFailed: 'Сопряжение не удалось. Повторите с кодом, который сейчас показывает помощник.', notConnected: 'Авторизуйте ChatGPT перед выбором модели или переводом.', quotaExceeded: 'Лимит подписки ChatGPT исчерпан или действует ограничение запросов. Проверьте использование и повторите после восстановления лимита.',
+        signInFailed: 'Авторизация ChatGPT не завершена. Авторизуйтесь снова.', timedOut: 'Время ожидания истекло. Проверьте локальный помощник и повторите.', operationFailed: 'Операция не завершена. Проверьте подключение и повторите.',
+    },
+    'es-ES': {
+        publicUnavailable: 'El inicio de sesión con ChatGPT aún no está disponible en esta versión. Usa otro servicio de traducción por ahora. Se conserva tu configuración guardada.',
+        eligibility: 'Autoriza una cuenta ChatGPT Plus o Pro apta. La traducción consume la cuota de tu plan ChatGPT; los modelos y límites dependen de tu cuenta.',
+        helperTitle: '1. Inicia el asistente local', helperHelp: 'Descarga el repositorio FluentRead, ejecuta este comando desde su carpeta y mantén el terminal abierto. El asistente recibe la respuesta de autorización y guarda las credenciales localmente.',
+        setupGuide: 'Guía de instalación y conexión', pairingTitle: '2. Empareja el asistente local', pairingHelp: 'Introduce el código de emparejamiento del terminal. No es una clave API.', pairingCode: 'Código del asistente local',
+        pair: 'Emparejar', pairing: 'Emparejando…', pairRequired: 'Introduce el código mostrado por el asistente local.', paired: 'Asistente local emparejado',
+        reauthorize: 'Autorizar de nuevo', switchAccount: 'Cambiar cuenta ChatGPT', revocationUnconfirmed: 'Se cerró la conexión local, pero la revocación remota no está confirmada. Comprueba el uso del plan en ChatGPT y desactiva el uso compartido.',
+        signIn: 'Continue with ChatGPT', signInHelp: 'El navegador abrirá la autorización de ChatGPT. Revisa y confirma los permisos para compartir el plan y vuelve aquí.', waiting: 'Esperando autorización de ChatGPT…', cancel: 'Cancelar inicio de sesión', cancelled: 'Inicio de sesión cancelado. Puedes autorizar de nuevo.',
+        connected: 'Conectado a ChatGPT', disconnected: 'ChatGPT no está conectado', unavailableStatus: 'El estado de conexión no está disponible temporalmente', sharingDisabled: 'Compartir el plan ChatGPT está desactivado. Autoriza de nuevo o activa el uso compartido en la gestión de uso.',
+        disconnect: 'Cerrar sesión de ChatGPT', usage: 'Gestionar uso del plan', model: 'Modelos disponibles con tu plan', modelHelp: 'Los modelos provienen de la lista actual de la cuenta. Actualizar conserva tu selección guardada.', refreshModels: 'Actualizar modelos', selectModel: 'Elige un modelo disponible',
+        modelsEmpty: 'La cuenta no devolvió modelos disponibles. Comprueba los permisos o actualiza más tarde.', modelUnavailable: 'Tu modelo guardado no aparece en la lista actual. Elige uno disponible para esta cuenta.', loading: 'Cargando…', retry: 'Comprobar de nuevo',
+        helperUnavailable: 'No se puede conectar con el asistente local. Comprueba que siga ejecutándose y vuelve a intentarlo.', pairingFailed: 'El emparejamiento falló. Reintenta con el código que muestra ahora el asistente.', notConnected: 'Autoriza ChatGPT antes de elegir un modelo o traducir.', quotaExceeded: 'La cuota de tu plan ChatGPT se ha agotado o está limitada. Comprueba el uso y reintenta cuando la cuota se recupere.',
+        signInFailed: 'La autorización de ChatGPT no se completó. Autoriza de nuevo.', timedOut: 'Se agotó el tiempo de espera. Comprueba el asistente local y reintenta.', operationFailed: 'La operación no se completó. Comprueba la conexión y reintenta.',
+    },
+};
+
+/** 独立目录沿用共享界面语言，未知语言按中文回退，不修改用户或账号文本。 */
+export function chatGPTPlanText(key: ChatGPTPlanTextKey, language: UiLanguage): string {
+    return (chatGPTPlanMessages[language] ?? zhCN)[key];
+}
+
+/** 只本地化已知安全错误类别；原始服务器错误可能包含凭据，不向界面透传。 */
+export function chatGPTPlanErrorText(error: unknown, language: UiLanguage): string {
+    const code = typeof error === 'string' ? error : error && typeof error === 'object'
+        ? String((error as {code?: unknown}).code ?? (error as {message?: unknown}).message ?? '') : '';
+    const keys: Record<string, ChatGPTPlanTextKey> = {
+        helper_unavailable: 'helperUnavailable', pairing_failed: 'pairingFailed', not_connected: 'notConnected',
+        quota_exceeded: 'quotaExceeded', rate_limited: 'quotaExceeded', sharing_disabled: 'sharingDisabled',
+        oauth_cancelled: 'cancelled', oauth_failed: 'signInFailed', timeout: 'timedOut',
+        revoke_unconfirmed: 'revocationUnconfirmed', revocation_unconfirmed: 'revocationUnconfirmed',
+    };
+    return chatGPTPlanText(keys[code] ?? 'operationFailed', language);
+}

@@ -1,16 +1,14 @@
 /**
  * @file tests/serviceDirectoryLifecycle.test.ts
  * 文件职责：验证服务目录和免费权重设置的实际组件生命周期、缓存模板及有界读取。
- * 主要内容：覆盖停用与切换、迟到后台快照、轮询合并、目录焦点、搜索计算、显式设置默认服务、分组导航、帧内布局合并、缓存位置与尺寸/字体观察的旧 DOM 事件。
+ * 主要内容：覆盖停用与切换、迟到后台快照、轮询合并、目录焦点、搜索计算、显式设置默认服务、公开版套餐旧配置展示及默认动作门控、开发版正常选择、分组导航、帧内布局合并、缓存位置与尺寸/字体观察的旧 DOM 事件。
  * 模块边界：编译真实客户端 Vue setup 和缓存模板并实际 mount，模块加载器只解析导入；浏览器消息、DOM 几何与观察器使用受控端口，不复制目录业务；真实 UI 另行验证。
  */
 import {createRequire} from 'node:module'
-import {readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import {createServer, type ViteDevServer} from 'vite'
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
+import {compileVueFixture} from './helpers/compiledVueFixture'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation'
@@ -25,7 +23,7 @@ type Node = {tag: string; props: Record<string, any>; value?: string; focus?: ()
 const clientModules = new Map<string, string>()
 const groupScroll = vi.fn(), readRects = vi.fn(), readBounds = vi.fn(), sectionQueries = vi.fn(), reducedMotion = vi.fn(() => false)
 const animationFrames = new Map<number, FrameRequestCallback>(), fontListeners = new Set<() => void>()
-let animationFrameId = 0, frameTime = 0
+let animationFrameId = 0, frameTime = 0, development = false
 const requestFrame = vi.fn((callback: FrameRequestCallback) => {const id = ++animationFrameId;animationFrames.set(id, callback);return id})
 const cancelFrame = vi.fn((id: number) => {animationFrames.delete(id)})
 function flushFrames() {const batch = [...animationFrames.values()];animationFrames.clear();frameTime += 16;batch.forEach(callback => callback(frameTime))}
@@ -54,7 +52,7 @@ function deferred<T>() {let resolve!: (value: T) => void, reject!: (error: unkno
 function response(ids = props.config.freeTranslationOrder) {return {success: true, snapshot: calculateFreeTranslationWeightSnapshot(ids, [], 123)}}
 function node(predicate: (n: Node) => boolean) {const found = [...nodes].reverse().find(predicate);expect(found).toBeDefined();return found!}
 beforeEach(async () => {
-  vi.clearAllMocks();intervals.clear();timeouts.clear();clientModules.clear();observers.length = 0;animationFrames.clear();fontListeners.clear();geometry.visible = true;geometry.tops.clear();reducedMotion.mockReturnValue(false)
+  vi.clearAllMocks();intervals.clear();timeouts.clear();clientModules.clear();observers.length = 0;animationFrames.clear();fontListeners.clear();geometry.visible = true;geometry.tops.clear();reducedMotion.mockReturnValue(false);development = false
   vi.stubGlobal('requestAnimationFrame', requestFrame);vi.stubGlobal('cancelAnimationFrame', cancelFrame)
   vi.stubGlobal('document', {fonts: {addEventListener: (_type: string, callback: () => void) => fontListeners.add(callback), removeEventListener: (_type: string, callback: () => void) => fontListeners.delete(callback)}})
   vi.stubGlobal('window', {matchMedia: () => ({matches: reducedMotion()})})
@@ -69,12 +67,14 @@ beforeEach(async () => {
       if (clientModules.has(id)) return id
       if (id === 'webextension-polyfill') return '\0directory-browser'
       if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0directory-i18n'
+      if (/\/src\/platform\/chatgpt-plan\/buildMode(?:\.ts)?$/u.test(id)) return '\0directory-build-mode'
       if (id.endsWith('.vue') && !/\/(?:ServiceCatalog|FreeTranslationSettings)\.vue$/u.test(id)) return '\0directory-display'
       return null
     }, load(id) {
       if (clientModules.has(id)) return clientModules.get(id)
       if (id === '\0directory-browser') return 'export default {runtime: {sendMessage: (...args) => globalThis.__fluentreadDirectorySend(...args)}}'
       if (id === '\0directory-i18n') return 'export const useUiI18n = () => ({t: key => key, translateLegacy: text => text})'
+      if (id === '\0directory-build-mode') return `export const chatGPTPlanDevelopmentEnabled = ${development};`
       if (id === '\0directory-display') return "import {h} from 'vue';export default {setup(_, {attrs, slots}) {return () => h('button', {...attrs, 'data-directory-port': attrs.item?.value}, slots.default?.())}}"
       return null
     }}, vue()]})
@@ -89,15 +89,12 @@ afterEach(async () => {
 })
 async function mount(name: string, values: Record<string, unknown>, listeners: Record<string, unknown> = {}) {
   const path = `src/features/settings/ui/services/${name}.vue`, filename = resolve(path)
-  const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename})
-  const script = compileScript(descriptor, {id: 'directory-lifecycle'})
+  const compiled = compileVueFixture(filename, {id: 'directory-lifecycle', cacheHandlers: true, includeScript: false})
   const clientId = `${filename}.lifecycle-client.ts`
-  clientModules.set(clientId, script.content)
-  const component = (await server.ssrLoadModule(clientId)).default, bindings = script.bindings
-  const template = compileTemplate({source: descriptor.template!.content, filename, id: 'directory-lifecycle',
-    compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: bindings, expressionPlugins: ['typescript']}})
-  expect(template.errors).toEqual([])
-  component.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime)
+  clientModules.set(clientId, compiled.scriptSource)
+  const component = (await server.ssrLoadModule(clientId)).default
+  expect(compiled.templateErrors).toEqual([])
+  component.render = new Function('Vue', compiled.renderCode)(runtime)
   if (!vi.isMockFunction(globalThis.setInterval)) {
     const originalInterval = globalThis.setInterval, originalTimeout = globalThis.setTimeout, clearInterval = globalThis.clearInterval, clearTimeout = globalThis.clearTimeout
     vi.spyOn(globalThis, 'setInterval').mockImplementation(((callback: () => void, ms: number, ...args: any[]) => {
@@ -143,7 +140,7 @@ async function mount(name: string, values: Record<string, unknown>, listeners: R
       })
       nodes.push(n);return n
     },
-    createText: () => ({tag: '#text', props: {}}), createComment: () => ({tag: '#comment', props: {}}), setText: () => {}, setElementText: () => {},
+    createText: value => ({tag: '#text', props: {}, value}), createComment: () => ({tag: '#comment', props: {}}), setText: (n, value) => {n.value = value}, setElementText: (n, value) => {n.value = value},
     parentNode: n => n.parent || null, nextSibling: n => {const list = n.parent?.children || [];return list[list.indexOf(n) + 1] || null}, querySelector: () => null, setScopeId: () => {}, cloneNode: n => ({...n}),
     insertStaticContent: (_html, parent, anchor) => {const start = {tag: '#static-start', props: {}}, end = {tag: '#static-end', props: {}};insert(start, parent, anchor);insert(end, parent, anchor);return [start, end]}})
   source = runtime.shallowReactive({active: true, context: {}, ...values})
@@ -253,6 +250,17 @@ describe('免费设置的轮询和模板事件归属', () => {
 })
 
 describe('服务目录的搜索和导航归属', () => {
+  it('组合归入自定义目录且目录仅保留一个添加服务入口，旧上下文事件失效', async () => {
+    const added = vi.fn()
+    await mountCatalog({services: [...catalog, {value: 'composite:daily', label: 'Daily'}]}, {'onAdd:service': added})
+    expect(state.directoryGroups.find((group: any) => group.id === 'custom').items.map((item: any) => item.value)).toEqual(['composite:daily'])
+    expect(descendants(hostRoot).filter(n => n.props['data-testid'] === 'custom-service-add')).toHaveLength(1)
+    expect(descendants(hostRoot).some(n => n.props['data-testid'] === 'composite-service-add')).toBe(false)
+    const old = publicNode(n => n.props['data-testid'] === 'custom-service-add').props.onClick
+    props.context = {};old();expect(added).not.toHaveBeenCalled();await settle()
+    publicNode(n => n.props['data-testid'] === 'custom-service-add').props.onClick();expect(added).toHaveBeenCalledOnce()
+    props.active = false;publicNode(n => n.props['data-testid'] === 'custom-service-add').props.onClick();expect(added).toHaveBeenCalledOnce()
+  })
   it('空搜索不读取逐项搜索字段，有关键词时缓存文本并在目录更新后失效', async () => {
     let reads = 0
     const item = runtime.reactive({value: 'custom:fixture', label: 'Fixture', get description() {reads++;return 'Ｆｕｌｌ Width'}, searchTerms: ['Alias']})
@@ -336,6 +344,37 @@ describe('服务目录的搜索和导航归属', () => {
 })
 
 describe('服务详情的显式默认服务动作', () => {
+  it.each(['microsoft', 'chatgptPlan'])('公开版默认%s的旧套餐详情完全隐藏且保留模型，不执行默认动作', async defaultService => {
+    const config = runtime.reactive(new Config());config.service = defaultService;config.model.chatgptPlan = 'saved-account-model'
+    await mountCatalog({service: 'chatgptPlan', defaultService, context: config, services: catalog, modelOptions: ['saved-account-model']})
+    expect(state.selectedService).toBeUndefined()
+    expect(descendants(hostRoot).some(n => n.props.class === 'service-catalog' || n.props.class === 'service-detail')).toBe(false)
+    expect(descendants(hostRoot).filter(n => n.props['data-set-default-service-button'] !== undefined)).toEqual([])
+    const before = JSON.stringify(config)
+    const saved = state.actions.setDefaultService
+    saved();state.setDefaultService();await settle()
+    expect(defaultEmitted).not.toHaveBeenCalled();expect(emitted).not.toHaveBeenCalled()
+    expect(JSON.stringify(config)).toBe(before);expect(props.defaultService).toBe(defaultService)
+    expect(config.model.chatgptPlan).toBe('saved-account-model');expect(send).not.toHaveBeenCalled()
+  })
+  it('公开版即使调用方带入可选套餐条目，旧按钮与直接默认动作也不能绕过门控', async () => {
+    await mountCatalog({service: 'google', services: [...catalog, {value: 'chatgptPlan', label: 'ChatGPT 套餐'}]})
+    expect(state.allServices.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false)
+    expect(descendants(hostRoot).some(n => n.props['data-directory-port'] === 'chatgptPlan')).toBe(false)
+    const saved = publicNode(n => n.props['data-set-default-service-button'] !== undefined).props.onClick
+    source.service = 'chatgptPlan';await settle()
+    expect(descendants(hostRoot).filter(n => n.props['data-set-default-service-button'] !== undefined)).toEqual([])
+    saved();state.actions.setDefaultService();state.setDefaultService()
+    expect(defaultEmitted).not.toHaveBeenCalled();expect(emitted).not.toHaveBeenCalled();expect(props.defaultService).toBe('microsoft')
+  })
+  it('开发版显式套餐夹具仍允许通过实际详情按钮设为默认', async () => {
+    development = true
+    await mountCatalog({service: 'chatgptPlan', services: [...catalog, {value: 'chatgptPlan', label: 'ChatGPT 套餐'}]})
+    const button = publicNode(n => n.props['data-set-default-service-button'] !== undefined)
+    expect(button.props.disabled).toBeFalsy();button.props.onClick()
+    expect(defaultEmitted).toHaveBeenCalledOnce();expect(defaultEmitted).toHaveBeenCalledWith('chatgptPlan')
+    expect(emitted).not.toHaveBeenCalled();expect(props.defaultService).toBe('microsoft')
+  })
   it.each(['google', 'freeTranslation', 'localTranslation', 'openai', 'custom:fixture'])('仅显式点击把正在配置的%s设为默认，不复用目录选择事件', async service => {
     await mountCatalog({service, services: [...catalog, {value: 'freeTranslation', label: 'Free'}, {value: 'localTranslation', label: 'Local'}, {value: 'openai', label: 'OpenAI'}, {value: 'custom:fixture', label: 'Fixture'}]})
     expect(defaultEmitted).not.toHaveBeenCalled()

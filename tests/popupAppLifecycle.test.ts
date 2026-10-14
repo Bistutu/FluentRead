@@ -18,6 +18,34 @@ import type {ConfigStoragePort} from '@/src/platform/storage/configStorage'
 import {createPopupTabSource} from '@/src/app/popup/sourceTab'
 
 const runtime=createRequire(import.meta.url)('vue') as typeof import('vue')
+const popupCompileOptions={
+  script:{id:'popup-client-fixture',inlineTemplate:false},
+  template:{id:'popup-client-fixture',compilerOptions:{cacheHandlers:true}},
+  typescript:{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}},
+  transition:{pattern:/<\/?Transition\b/gu,replacement:'OwnedTransition'},
+}
+type PopupCompilation=Readonly<{source:string;options:string;code:string;templateErrors:readonly unknown[]}>
+const popupCompilations=new Map<string,PopupCompilation>()
+function compilePopupClient(file:string):string{
+  const source=readFileSync(file,'utf8')
+  // bindingMetadata 由同一源码和 script 选项推导；其余编译、Transition 改写选项全部进入键。
+  const options=JSON.stringify([file,{...popupCompileOptions,transition:{...popupCompileOptions.transition,pattern:String(popupCompileOptions.transition.pattern)}}])
+  let compiled=popupCompilations.get(file)
+  if(!compiled||compiled.source!==source||compiled.options!==options){
+    const {descriptor}=parse(source,{filename:file}),script=compileScript(descriptor,popupCompileOptions.script)
+    const templateSource=descriptor.template!.content.replace(popupCompileOptions.transition.pattern,tag=>tag.replace('Transition',popupCompileOptions.transition.replacement))
+    const template=compileTemplate({...popupCompileOptions.template,source:templateSource,filename:file,
+      compilerOptions:{...popupCompileOptions.template.compilerOptions,bindingMetadata:script.bindings}})
+    const code=script.content.replace('export default','const fixtureComponent =')+'\n'+template.code+'\nfixtureComponent.render=render;export default fixtureComponent;'
+    compiled=Object.freeze({source,options,code:ts.transpileModule(code,popupCompileOptions.typescript).outputText,templateErrors:Object.freeze([...template.errors])})
+    // 保留每次 loader 的模板错误断言；失败产物不进入缓存。
+    expect(compiled.templateErrors).toEqual([])
+    if(popupCompilations.size>=2&&!popupCompilations.has(file))popupCompilations.delete(popupCompilations.keys().next().value!)
+    popupCompilations.set(file,compiled)
+  }else expect(compiled.templateErrors).toEqual([])
+  // 只共享不可变代码和编译诊断；Vite 服务、模块执行、组件及端口仍逐例新建。
+  return compiled.code
+}
 let server:ViteDevServer,app:import('vue').App,document:Document,win:any,state:Record<string,any>,focused:Element|null,shown:import('vue').Ref<boolean>,events:Map<Element,Record<string,any>>
 const close=vi.fn(),noticeFocus=vi.fn(),patches=vi.fn(),getTab=vi.fn(),getSourceTab=vi.fn(),send=vi.fn(),createTab=vi.fn(),openOptions=vi.fn(),runtimeSend=vi.fn()
 let config:Config,subscribe:(value:Config)=>void,tabEvents:Record<string,Set<(...args:any[])=>void>>
@@ -58,11 +86,8 @@ beforeEach(async()=>{
     return null
   },load(id){
     if(id.endsWith('.vue.owned.ts')){
-      const componentPath=id.slice(0,-9),file=componentPath.startsWith('/src/')?resolve(componentPath.slice(1)):componentPath,{descriptor}=parse(readFileSync(file,'utf8'),{filename:file}),script=compileScript(descriptor,{id:'popup-client-fixture',inlineTemplate:false})
-      const source=descriptor.template!.content.replace(/<\/?Transition\b/gu,tag=>tag.replace('Transition','OwnedTransition'))
-      const template=compileTemplate({source,filename:file,id:'popup-client-fixture',compilerOptions:{bindingMetadata:script.bindings,cacheHandlers:true}});expect(template.errors).toEqual([])
-      const code=script.content.replace('export default','const fixtureComponent =')+'\n'+template.code+'\nfixtureComponent.render=render;export default fixtureComponent;'
-      return ts.transpileModule(code,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText
+      const componentPath=id.slice(0,-9),file=componentPath.startsWith('/src/')?resolve(componentPath.slice(1)):componentPath
+      return compilePopupClient(file)
     }
     if(id==='\0popup-browser')return "const f=globalThis.__popupFixture;export default {tabs:{query:f.getTab,get:f.getSourceTab,sendMessage:f.send,create:f.createTab,...Object.fromEntries(Object.entries(f.tabEvents).map(([name,set])=>[name,{addListener:fn=>set.add(fn),removeListener:fn=>set.delete(fn)}]))},runtime:{getManifest:()=>({version:'0.0.35'}),getURL:p=>'extension://'+p,sendMessage:f.runtimeSend,openOptionsPage:f.openOptions}}"
     if(id==='\0popup-config')return "const f=globalThis.__popupFixture;export const config=f.config;export const subscribeConfig=fn=>{f.subscribe(fn);return()=>{}};export const requestConfigPatch=async value=>f.patches(value);export const handoffPendingConfigPatches=async()=>{}"

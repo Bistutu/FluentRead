@@ -24,20 +24,29 @@
       "tests/contentTrustBoundary.test.ts",
       "tests/extensionManifestContract.test.ts",
       "tests/fullRegressionRunner.test.ts",
+      "tests/regressionReport.test.ts",
       "tests/imageTranslationSecurityContract.test.ts",
       "tests/popupFeatureVisibility.test.ts",
       "tests/settingsUiArchitecture.test.ts",
       "tests/userscriptMetadata.test.ts",
       "tests/userscriptPrivacy.test.ts",
       "tests/userscriptViteConfig.test.ts",
+      "tests/deeplxRuntimeBuild.test.ts",
       "tests/freeTranslationSettings.test.ts",
       "tests/writingBackground.test.ts",
       "tests/requestLimitSettings.test.ts",
       "tests/backgroundVisionProbe.test.ts",
       "tests/requestHeaderRuntime.test.ts",
-      "tests/extensionSizeBudget.test.ts"
+      "tests/extensionSizeBudget.test.ts",
+      "tests/chatgptPlanBridgeClient.test.ts",
+      "tests/testConfiguration.test.ts"
     ],
     "unit": [
+      "tests/compositeTranslationConfig.test.ts",
+      "tests/compositeTranslationRouting.test.ts",
+      "tests/compositeTranslationBroker.test.ts",
+      "tests/compositeTranslationConnection.test.ts",
+      "tests/compositeServiceEditor.test.ts",
       "tests/imageOcrPixels.test.ts",
       "tests/googleRequestGate.test.ts",
       "tests/implementationAudit48H.test.ts",
@@ -72,6 +81,7 @@
       "tests/configAutoBackupDomain.test.ts",
       "tests/configCount.test.ts",
       "tests/configDiff.test.ts",
+      "tests/aiRequestTimeout.test.ts",
       "tests/glossary.test.ts",
       "tests/glossaryRevisionMemo.test.ts",
       "tests/builtinGlossaries.test.ts",
@@ -432,7 +442,9 @@
       "tests/personalCorrectionMemory.test.ts",
       "tests/readingEvidence.test.ts",
       "tests/videoSentenceTimeline.test.ts",
-      "tests/vocabularyVideoSource.test.ts"
+      "tests/vocabularyVideoSource.test.ts",
+      "tests/chatgptPlanConfig.test.ts",
+      "tests/compiledVueFixture.test.ts"
     ],
     "functional": [
       "tests/learningCenterLifecycle.test.ts",
@@ -658,7 +670,11 @@
       "tests/videoSentenceLearningHost.test.ts",
       "tests/videoSentenceLearningSession.test.ts",
       "tests/videoSentenceLearningPlacement.test.ts",
-      "tests/vocabularyVideoSourceUi.test.ts"
+      "tests/vocabularyVideoSourceUi.test.ts",
+      "tests/chatgptPlanHarness.test.ts",
+      "tests/chatgptPlanProvider.test.ts",
+      "tests/chatgptPlanSettingsLifecycle.test.ts",
+      "tests/processRegression.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

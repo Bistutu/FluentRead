@@ -499,12 +499,13 @@ function renderMarkdownTranslation(part: SegmentPart, translation: string): stri
             continue;
         }
         if (open.pop() !== id) valid = false;
-        const previous = output.at(-1) ?? '';
+        // split 始终先产生普通字符串（可为空），首轮已 push；后续只追加或覆盖，不会移除最后一项。
+        const previous = output.at(-1)!;
         const whitespace = emphasis && !blankEmphasis.has(id) ? previous.match(/[\p{Zs}\t\n\f\r]+$/u)?.[0] ?? '' : '';
         if (whitespace) output[output.length - 1] = previous.slice(0, -whitespace.length);
         const nextMarker = marker(renderPieces[index + 2] ?? '');
         const next = renderPieces[index + 1] || (nextMarker ? tokens[Number(nextMarker[2]) - 1]?.[nextMarker[1] ? 'close' : 'open'] : '') || '';
-        const gap = emphasis && !blankEmphasis.has(id) ? emphasisGap(firstCharacter(next), lastCharacter(output.at(-1) ?? ''), token.open) : '';
+        const gap = emphasis && !blankEmphasis.has(id) ? emphasisGap(firstCharacter(next), lastCharacter(output.at(-1)!), token.open) : '';
         output.push(token.close + (whitespace || gap));
     }
     if (valid && !open.length && seen.size === tokens.length) return output.join('');

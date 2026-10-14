@@ -1,7 +1,7 @@
 /**
  * @file src/core/translation/resultValidation.ts
  * 文件职责：识别翻译服务误返原文或明显错语种的响应，避免将其当成成功译文。
- * 主要内容：复用语言识别副本排除纯符号、数字和技术标识，仅在既有外语证据下识别标点边界或 U+200B 包装的原文回显，保留字词、大小写和符号差异，补足中文目标下短标签列表、运算符标签丢词或大小写回显和整段日文结果的保守判定；文档行内正文可在完整原句的既有外语证据下识别普通多词标签原样返回，专名和单词仍保持保守。
+ * 主要内容：复用语言识别副本排除纯符号、数字和技术标识，提供保持字词内容的原样响应比较，供图片入口接受空白、标点边界或 U+200B 包装的原文；仅在既有外语证据下识别原文回显，保留字词、大小写和符号差异，补足中文目标下短标签列表、运算符标签丢词或大小写回显、整段日文及有充分外语证据的长 Latin 正文错语种判定；文档行内正文可在完整原句的既有外语证据下识别普通多词标签原样返回，专名和单词仍保持保守。
  * 模块边界：仅做保守的纯文本判定；不读取配置或缓存、不请求服务，也不改写原文与译文。
  */
 import {getChineseScript} from '@/src/core/language/chinese';
@@ -26,6 +26,14 @@ function echoComparable(value: string): string {
     return value.normalize('NFKC').replace(/\u200b/gu, '')
         .replace(/(?:(?![-*/\\_%&#@:]|!(?=[\p{L}\p{N}_=!(])|\?(?=\s*[\p{L}\p{N}_?.=]))\p{P})+/gu, ' ')
         .replace(/\s+/gu, ' ').trim();
+}
+
+/** 仅比较是否保留原字词；边界标点可变化，空响应和删去字词的符号结果不能冒充原样成功。 */
+export function isUnchangedTranslationResponse(origin: string, result: string): boolean {
+    if (!origin.trim() || !result.trim()) return false;
+    if (comparable(origin) === comparable(result)) return true;
+    const source = echoComparable(origin);
+    return Boolean(source) && source === echoComparable(result);
 }
 
 /** 标签列表缺少功能词，统计语言识别通常只能给出不可信的猜测。 */
@@ -98,9 +106,32 @@ export function isLikelyUntranslatedInlineResponse(origin: string, result: strin
         && words.slice(1).every(word => !/^[A-Z][a-z]/u.test(word));
 }
 
-/** 假名与汉字共同构成日文正文；少量日语名称、短引用和不确定的混合段落照常展示。 */
+/** 只补足整段 Latin 外语正文；名称列表、技术标识和短词句不扩大判定。 */
+function hasSubstantialLatinProse(value: string): boolean {
+    const words = value.match(/\p{Script=Latin}[\p{Script=Latin}\p{M}]*/gu) ?? [];
+    // 每词均以 Latin 字母开头；满八词时匹配必非空，数组长度仍按 Unicode 码点计数。
+    return words.length >= 8 && words.join('').match(/\p{Script=Latin}/gu)!.length >= 60
+        && words.filter(word => /^\p{Ll}[\p{Ll}\p{M}]+$/u.test(word)).length >= 4;
+}
+
+function isClearlyForeignLatinProse(origin: string, result: string, targetLanguage: string): boolean {
+    // 少量中文旁的品牌、引用或技术词保持保守；常见中文结果不额外生成识别副本。
+    if (/\p{Script=Han}/u.test(result) || !/\p{Script=Latin}/u.test(result)) return false;
+    const source = createLanguageDetectionCopy(origin).text;
+    const translated = createLanguageDetectionCopy(result).text;
+    if (!hasSubstantialLatinProse(source) || !hasSubstantialLatinProse(translated)) return false;
+    const sourceLanguage = identifyTextLanguage(origin);
+    if (sourceLanguage.status !== 'identified'
+        || sourceLanguage.languages.some(language => isLanguageCodeMatch(language, targetLanguage))) return false;
+    const resultLanguage = identifyTextLanguage(result);
+    return resultLanguage.status === 'identified'
+        && !resultLanguage.languages.some(language => isLanguageCodeMatch(language, targetLanguage));
+}
+
+/** 拒绝明确的整段日文或 Latin 外语结果；名称、短引用和不确定混合段落照常展示。 */
 export function isClearlyWrongLanguageResponse(origin: string, result: string, targetLanguage: string): boolean {
     if (!origin.trim() || !result.trim() || !getChineseScript(targetLanguage)) return false;
+    if (isClearlyForeignLatinProse(origin, result, targetLanguage)) return true;
     const kanaCount = (result.match(/[\p{Script=Hiragana}\p{Script=Katakana}ーｰ]/gu) ?? []).length;
     if (kanaCount < 16) return false;
     const hanCount = (result.match(/\p{Script=Han}/gu) ?? []).length;

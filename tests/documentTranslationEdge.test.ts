@@ -16,6 +16,19 @@ afterEach(() => {
 });
 
 describe('document translation edge contracts', () => {
+    it('restores adjacent nested Markdown link and emphasis markers without losing protected code', () => {
+        const document = parseDocument('nested.md', '*emphasis* [link](https://example.test/path) `code`', {markdownSentences: true});
+        expect(document.segments[0].source).toBe('<g1>emphasis</g1> <g2>link</g2> <g3/>');
+        expect(renderDocument(document, ['<g2><g1>链接强调</g1></g2>和<g3/>'], 'translated'))
+            .toBe('[*链接强调*](https://example.test/path)和`code`');
+    });
+
+    it.each(['</g1>译文<g2/><g3/>', '</g99><g1>译文</g1><g2/><g3/>'])
+    ('keeps code and URL when a Markdown translation starts with a misplaced closing marker: %s', translation => {
+        const document = parseDocument('broken.md', '*emphasis* `code` https://example.test/path', {markdownSentences: true});
+        expect(renderDocument(document, [translation], 'translated')).toBe('译文 `code` https://example.test/path');
+    });
+
     it.each(['', '   ', '\n\t'])('empty reviewed subtitle falls back to source for partial export (%j)', blank => {
         const source = '1\r\n00:00:01,000 --> 00:00:02,000\r\nHello\r\n\r\n2\r\n00:00:03,000 --> 00:00:04,000\r\nPending\r\n';
         const document = parseDocument('episode.srt', source);

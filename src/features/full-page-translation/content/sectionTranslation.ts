@@ -1,6 +1,6 @@
 /**
  * @file src/features/full-page-translation/content/sectionTranslation.ts
- * 文件职责：把全文翻译引擎限定在用户点选的一块网页区域内执行，负责区域候选发现、译文状态盘点、按阅读位置排序的批量翻译，以及只恢复该区域的原文。
+ * 文件职责：把全文翻译引擎限定在用户点选或划选的网页区域内执行，负责多区域候选去重、译文状态盘点、按阅读位置排序的批量翻译，以及只恢复所选区域的原文。
  * 主要内容：导出区域盘点与切换接口；按译文所有者索引发现待翻译、失败与需切换方案的段落，冻结局部快捷方案请求配置；预览按步数限流，完整发现和阅读位置测量按时间片推进，以有界在途数接入共享翻译队列；区域再次确认、入口卸载或全页恢复时取消精确的在途请求，保留已提交译文，并按请求身份和原文快照记住无需翻译的候选。
  * 模块边界：本文件只编排区域级调用，单个候选的请求、渲染、状态机和全文会话协作全部复用 runtime 的 translateTarget 与 restoreTranslationOwner；不监听手势、不绘制高亮，也不决定提示文案。
  */
@@ -73,7 +73,7 @@ interface SectionDiscovery {
 const settledCandidates = new WeakMap<Node, {text: string; identity: string}>();
 
 interface SectionOperation {
-    root: Element;
+    roots: readonly Element[];
     controller: AbortController;
     identity: string;
     planned: number;
@@ -83,7 +83,7 @@ interface SectionOperation {
     attempts: Map<HTMLElement, TranslationState>;
     expectedStates: Map<TranslationCandidate, TranslationState | undefined>;
     changedSourceKeys: WeakSet<Node>;
-    allowedAncestor?: TranslationCandidate;
+    allowedAncestors: Set<TranslationCandidate>;
     isCurrent(): boolean;
 }
 
@@ -99,12 +99,24 @@ function isWithinSection(root: Element, node: Node): boolean {
     return false;
 }
 
+/** 单个区域保持原有调用方式；多区域去掉重复与已由所选祖先完整覆盖的节点。 */
+function sectionRoots(selection: Element | readonly Element[]): readonly Element[] {
+    const roots = [...new Set(Array.isArray(selection) ? selection as Element[] : [selection as Element])];
+    return roots.filter(root => !roots.some(other => other !== root && isWithinSection(other, root)));
+}
+
+function sameSelection(roots: readonly Element[], operation: SectionOperation): boolean {
+    return roots.length === operation.roots.length && roots.every(root => operation.roots.includes(root));
+}
+
 /** 延迟派发只接受当前仍在点选区域内的来源；仅显式的既有祖先 owner 可扩大到原文整段。 */
 function isCandidateWithinSection(candidate: TranslationCandidate, operation: SectionOperation): boolean {
-    const boundary = operation.allowedAncestor === candidate && isWithinSection(candidate.element, operation.root)
-        ? candidate.element : operation.root;
-    return isWithinSection(boundary, candidate.element)
-        && !candidate.nodes?.some(node => !isWithinSection(boundary, node));
+    return operation.roots.some(root => {
+        const boundary = operation.allowedAncestors.has(candidate) && isWithinSection(candidate.element, root)
+            ? candidate.element : root;
+        return isWithinSection(boundary, candidate.element)
+            && !candidate.nodes?.some(node => !isWithinSection(boundary, node));
+    });
 }
 
 function rememberPending(operation: SectionOperation | undefined, candidate: TranslationCandidate,
@@ -232,55 +244,62 @@ function resolveSectionAction(total: number, active: number, pending: number): T
     return total > 0 ? 'settled' : 'empty';
 }
 
-function* summarize(root: Element, maxSteps: number, snapshot: () => FullPageTranslationConfigSnapshot,
+function* summarize(roots: readonly Element[], maxSteps: number, snapshot: () => FullPageTranslationConfigSnapshot,
     compareInvocation: boolean, operation?: SectionOperation): Generator<void, {summary: TranslationSectionSummary; pending: TranslationCandidate[]}> {
     // 新候选和默认恢复不比较请求身份；避免每次预览都归一化、散列整份词库。
     let identity: string | undefined;
     const invocationIdentity = (): string => identity ??= getTranslationInvocationIdentity(snapshot());
     const needsProfileSwitch = (owner: HTMLElement): boolean => compareInvocation
         && getTranslationState(owner)?.translationInvocationIdentity !== invocationIdentity();
-    const ancestor = findActiveAncestorOwner(root);
-    if (ancestor) {
-        if (needsProfileSwitch(ancestor)) {
-            const candidate = translationOwnerCandidate(ancestor);
-            if (operation) operation.allowedAncestor = candidate;
-            rememberPending(operation, candidate, getTranslationState(ancestor));
-            return {summary: {total: 1, active: 0, pending: 1, truncated: false, action: 'translate'},
-                pending: [candidate]};
-        }
-        return {summary: {total: 1, active: 1, pending: 0, truncated: false, action: 'restore'}, pending: []};
-    }
-    // Step 1: 从译文所有者索引盘点区域内已有译文；失败段落直接作为待重试项。
     const activeOwners = new Set<Node>();
     const pending = new Map<Node, TranslationCandidate>();
-    for (const owner of getTranslationOwnersWithin(root)) {
-        const state = getTranslationState(owner);
-        // 所有者列表是本轮快照；让帧期间恢复的节点已失去状态，不能重建旧请求。
-        if (state) {
-            if (state.phase === 'error' || needsProfileSwitch(owner)) {
-                const candidate = translationOwnerCandidate(owner);
-                pending.set(owner, candidate);
-                rememberPending(operation, candidate, state);
-            } else activeOwners.add(owner);
-        }
-        yield;
-    }
-    // Step 2: 候选发现补齐尚未翻译的段落，并跳过已由所有者覆盖或已确认无需翻译的候选。
-    const {candidates, truncated} = yield* discoverSectionCandidates(root, maxSteps);
-    let settled = 0;
-    for (const candidate of candidates) {
-        const owner = resolveTranslationStateNode(candidate);
-        if (!owner || (!activeOwners.has(owner) && !pending.has(owner))) {
-            if (isSettled(candidate, invocationIdentity)) settled += 1;
-            else {
-                pending.set(owner ?? getTranslationCandidateKey(candidate), candidate);
-                rememberPending(operation, candidate, owner ? getTranslationState(owner) : undefined);
+    const settledOwners = new Set<Node>();
+    let truncated = false;
+    for (const root of roots) {
+        const ancestor = findActiveAncestorOwner(root);
+        if (ancestor) {
+            if (needsProfileSwitch(ancestor)) {
+                const candidate = translationOwnerCandidate(ancestor);
+                operation?.allowedAncestors.add(candidate);
+                rememberPending(operation, candidate, getTranslationState(ancestor));
+                pending.set(ancestor, candidate);
+            } else {
+                activeOwners.add(ancestor);
             }
+            yield;
+            continue;
         }
-        yield;
+        // Step 1: 从译文所有者索引盘点区域内已有译文；失败段落直接作为待重试项。
+        for (const owner of getTranslationOwnersWithin(root)) {
+            const state = getTranslationState(owner);
+            // 所有者列表是本轮快照；让帧期间恢复的节点已失去状态，不能重建旧请求。
+            if (state) {
+                if (state.phase === 'error' || needsProfileSwitch(owner)) {
+                    const candidate = translationOwnerCandidate(owner);
+                    pending.set(owner, candidate);
+                    rememberPending(operation, candidate, state);
+                } else activeOwners.add(owner);
+            }
+            yield;
+        }
+        // Step 2: 候选发现补齐尚未翻译的段落，并跳过已由所有者覆盖或已确认无需翻译的候选。
+        const discovery = yield* discoverSectionCandidates(root, Math.max(1, Math.floor(maxSteps / roots.length)));
+        truncated ||= discovery.truncated;
+        const {candidates} = discovery;
+        for (const candidate of candidates) {
+            const owner = resolveTranslationStateNode(candidate);
+            if (!owner || (!activeOwners.has(owner) && !pending.has(owner))) {
+                if (isSettled(candidate, invocationIdentity)) settledOwners.add(getTranslationCandidateKey(candidate));
+                else {
+                    pending.set(owner ?? getTranslationCandidateKey(candidate), candidate);
+                    rememberPending(operation, candidate, owner ? getTranslationState(owner) : undefined);
+                }
+            }
+            yield;
+        }
     }
     const active = activeOwners.size;
-    const total = active + pending.size + settled;
+    const total = active + pending.size + settledOwners.size;
     // 预算耗尽时剩余部分未知：没有看到任何段落也不能断言“没有文字”，先按翻译提示。
     const action = truncated && total === 0 ? 'translate' : resolveSectionAction(total, active, pending.size);
     return {summary: {total, active, pending: pending.size, truncated, action}, pending: [...pending.values()]};
@@ -288,16 +307,17 @@ function* summarize(root: Element, maxSteps: number, snapshot: () => FullPageTra
 
 /** 盘点区域状态，供选择模式的标签显示“翻译/恢复原文/无需翻译”及段落数。 */
 export function inspectTranslationSection(
-    root: Element,
+    selection: Element | readonly Element[],
     maxSteps: number = SECTION_PREVIEW_DISCOVERY_STEPS,
     overrides?: PageTranslationConfigOverrides,
 ): TranslationSectionSummary {
-    const operation = sectionOperations.get(root);
-    if (operation?.isCurrent() && (!overrides || operation.identity === getTranslationInvocationIdentity(captureFullPageTranslationConfig(overrides)))) {
+    const roots = sectionRoots(selection);
+    const operation = roots.length ? sectionOperations.get(roots[0]) : undefined;
+    if (operation?.isCurrent() && sameSelection(roots, operation) && (!overrides || operation.identity === getTranslationInvocationIdentity(captureFullPageTranslationConfig(overrides)))) {
         // 未派发项同样属于这次已确认的区域操作；再次确认的标签和实际取消/恢复保持一致。
         return {total: operation.planned, active: operation.active, pending: 0, truncated: operation.discovering, action: 'restore'};
     }
-    return finishSynchronousWork(summarize(root, maxSteps, () => captureFullPageTranslationConfig(overrides), Boolean(overrides))).summary;
+    return finishSynchronousWork(summarize(roots, maxSteps, () => captureFullPageTranslationConfig(overrides), Boolean(overrides))).summary;
 }
 
 /** 视口内的段落先翻译，其次是下方即将读到的内容，最后才是已经滚过的上方内容。 */
@@ -384,10 +404,13 @@ function translatePendingCandidates(pending: readonly TranslationCandidate[],
     });
 }
 
-function restoreSection(root: Element): number {
-    const owners = new Set<HTMLElement>(getTranslationOwnersWithin(root));
-    const ancestor = findActiveAncestorOwner(root);
-    if (ancestor) owners.add(ancestor);
+function restoreSection(roots: readonly Element[]): number {
+    const owners = new Set<HTMLElement>();
+    for (const root of roots) {
+        getTranslationOwnersWithin(root).forEach(owner => owners.add(owner));
+        const ancestor = findActiveAncestorOwner(root);
+        if (ancestor) owners.add(ancestor);
+    }
     let restored = 0;
     owners.forEach((owner) => {
         if (restoreTranslationOwner(owner)) restored += 1;
@@ -399,23 +422,27 @@ function restoreSection(root: Element): number {
  * 对点选区域执行一次“翻译或恢复原文”：区域内还有待翻译段落就翻译它们（失败段落一并重试），
  * 否则恢复区域内的全部译文。点击时完整盘点，不受悬停预览的步数预算影响。
  */
-export async function toggleTranslationSection(root: Element, overrides?: PageTranslationConfigOverrides,
+export async function toggleTranslationSection(selection: Element | readonly Element[], overrides?: PageTranslationConfigOverrides,
     signal?: AbortSignal): Promise<TranslationSectionResult> {
-    if (signal?.aborted || root.isConnected === false) return {action: 'cancelled', ...EMPTY_TALLY};
+    const roots = sectionRoots(selection);
+    if (signal?.aborted || roots.some(root => root.isConnected === false)) return {action: 'cancelled', ...EMPTY_TALLY};
     const snapshot = captureFullPageTranslationConfig(overrides);
     const identity = getTranslationInvocationIdentity(snapshot);
-    const previous = sectionOperations.get(root);
-    if (previous?.isCurrent()) {
-        previous.controller.abort();
-        if (!overrides || previous.identity === identity) {
-            return {action: 'restored', ...EMPTY_TALLY, restored: previous.restoredOnCancel + restoreSection(root)};
+    const previousOperations = new Set(roots.map(root => sectionOperations.get(root)));
+    for (const previous of previousOperations) {
+        if (previous?.isCurrent()) {
+            previous.controller.abort();
+            if (sameSelection(roots, previous) && (!overrides || previous.identity === identity)) {
+                return {action: 'restored', ...EMPTY_TALLY, restored: previous.restoredOnCancel + restoreSection(roots)};
+            }
         }
     }
     const requestSession = getHoverTranslationRequestSession();
     const generation = requestSession.renderCommitGeneration;
-    const operation: SectionOperation = {root, controller: new AbortController(), identity, planned: 0, active: 0, discovering: true,
+    const operation: SectionOperation = {roots, controller: new AbortController(), identity, planned: 0, active: 0, discovering: true,
         restoredOnCancel: 0, attempts: new Map(), expectedStates: new Map(), changedSourceKeys: new WeakSet(),
-        isCurrent: () => !operation.controller.signal.aborted && root.isConnected !== false && !requestSession.requestSignal.aborted
+        allowedAncestors: new Set(),
+        isCurrent: () => !operation.controller.signal.aborted && roots.every(root => root.isConnected !== false) && !requestSession.requestSignal.aborted
             && requestSession === getHoverTranslationRequestSession() && requestSession.renderCommitGeneration === generation};
     const cancel = (): void => operation.controller.abort();
     const cleanupAttempts = (): void => {
@@ -439,9 +466,9 @@ export async function toggleTranslationSection(root: Element, overrides?: PageTr
     });
     signal?.addEventListener('abort', cancel, {once: true});
     requestSession.requestSignal.addEventListener('abort', cancel, {once: true});
-    sectionOperations.set(root, operation);
+    roots.forEach(root => sectionOperations.set(root, operation));
     try {
-        const work = runSectionWork(summarize(root, Number.POSITIVE_INFINITY, () => snapshot, Boolean(overrides), operation), operation);
+        const work = runSectionWork(summarize(roots, Number.POSITIVE_INFINITY, () => snapshot, Boolean(overrides), operation), operation);
         const inventory = work instanceof Promise ? await work : work;
         if (!inventory) return {action: 'cancelled', ...EMPTY_TALLY};
         const {summary, pending} = inventory;
@@ -454,7 +481,7 @@ export async function toggleTranslationSection(root: Element, overrides?: PageTr
             if (!candidates) return {action: 'cancelled', ...EMPTY_TALLY};
             return await translatePendingCandidates(candidates, snapshot, operation);
         }
-        if (summary.action === 'restore') return {action: 'restored', ...EMPTY_TALLY, restored: restoreSection(root)};
+        if (summary.action === 'restore') return {action: 'restored', ...EMPTY_TALLY, restored: restoreSection(roots)};
         return {action: summary.action, ...EMPTY_TALLY};
     } finally {
         operation.controller.abort();
@@ -462,6 +489,6 @@ export async function toggleTranslationSection(root: Element, overrides?: PageTr
         signal?.removeEventListener('abort', cancel);
         requestSession.requestSignal.removeEventListener('abort', cancel);
         operation.controller.signal.removeEventListener('abort', cleanupAttempts);
-        if (sectionOperations.get(root) === operation) sectionOperations.delete(root);
+        roots.forEach(root => {if (sectionOperations.get(root) === operation) sectionOperations.delete(root);});
     }
 }

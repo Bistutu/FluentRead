@@ -1,7 +1,7 @@
 /**
  * @file tests/pdfLayoutAnalysis.test.ts
  * 文件职责：验证 PDF 阅读分析不会把分栏、表格、公式、上下标或插图误当作一个可覆盖的正文框。
- * 主要内容：使用真实绘图操作语义和可复现字形几何验证矩阵、裁剪、行关联、已关联根号的下伸擦除范围、语义边界与阅读顺序；回放实际论文第10、11页的字形/细箭头，确保类型签名名称和交换图标签不进入翻译而邻近正文仍进入，反例约束普通短标题、自然语言解释、页眉页脚、缺失数学端点和粗长短线；回放参考文献的折行 URL 并验证完整地址进入既有字面保护，覆盖普通词、独立地址、段落/分栏不误拼接和长文的几何读取上限。
+ * 主要内容：使用真实绘图操作语义和可复现字形几何验证矩阵、裁剪、行关联、已关联根号的下伸擦除范围、语义边界与阅读顺序；回放实际论文第10、11页的字形/细箭头，确保类型签名名称和交换图标签不进入翻译而邻近正文仍进入，反例约束普通短标题、自然语言解释、页眉页脚、缺失数学端点和粗长短线；回放参考文献的折行 URL 并验证完整地址进入既有字面保护，覆盖普通词、独立地址、段落/分栏不误拼接和长文的几何读取上限；回放发布论文的交错表头、分支公式、下伸大算符和嵌套脚标，保留相同符号的普通正文反例。
  * 模块边界：测试纯分析模块；真实 PDF 提取和来源字节不变由 PDF 解析集成测试补充。
  */
 import {describe, expect, it} from 'vitest';
@@ -522,6 +522,16 @@ describe('PDF visible graphics geometry', () => {
 });
 
 describe('PDF baseline and structural reading analysis', () => {
+    it('orders independent lines by their stable baseline when one font reports a different glyph ascent', () => {
+        const first = {...atom('First body line', 60, 100, 200), y: 100};
+        const second = atom('Second column label', 400, 108, 150, 12);
+        const before = structuredClone([first, second]);
+        const plain = pdfLayoutLines([first, second]);
+        const corrected = pdfLayoutLines([{...first, y: 92}, second]);
+        expect(plain.map(line => [line.text, line.baseline])).toEqual([['First body line', 100], ['Second column label', 108]]);
+        expect(corrected.map(line => [line.text, line.baseline])).toEqual(plain.map(line => [line.text, line.baseline]));
+        expect([first, second]).toEqual(before);
+    });
     it('keeps superscripts with their baseline and rejoins numbered section headings', () => {
         const lines = pdfLayoutLines([atom('h', 50, 50, 5), atom('t', 55, 53, 3, 7), atom('=', 62, 50, 5), atom('value', 70, 50, 25), atom('1', 50, 80, 5, 12), atom('Introduction', 69, 80, 90, 12)]);
         expect(lines).toHaveLength(2); expect(lines[0].text).toBe('ht = value'); expect(lines[0].fontSize).toBe(10); expect(lines[0].runs).toHaveLength(4);
@@ -566,6 +576,83 @@ describe('PDF baseline and structural reading analysis', () => {
         expect(cells.filter(cell => cell.x < 296.58).every(cell => cell.cellBounds && cell.cellBounds.x + cell.cellBounds.width === 296.58)).toBe(true);
         expect(cells.filter(cell => cell.source === 'good').every(cell => cell.cellBounds!.height <= 11)).toBe(true);
         expect(atoms).toEqual(before);
+    });
+    it('retains boundary-centred table labels when nearby rule coordinates merge or end at the last table edge', () => {
+        const graphics = [100, 140].map(y => ({kind: 'path' as const, x: 100, y, width: 300, height: 0}));
+        graphics.push({kind: 'path', x: 100.4, y: 100, width: 0, height: 40});
+        const atoms = [atom('Left', 90, 120, 20), atom('Right', 390, 120, 20),
+            {...atom('Top', 220, 100, 30), y: 99.6}, atom('Bottom', 220, 140, 35), atom('Outside', 74, 180, 50)];
+        const before = structuredClone(atoms);
+        const blocks = analyze(atoms, graphics).blocks;
+        expect(blocks.find(block => block.source === 'Left')).toMatchObject({kind: 'table', preserveSource: false, cellBounds: {x: 100, width: 1}});
+        expect(blocks.find(block => block.source === 'Right')).toMatchObject({kind: 'table', preserveSource: false, cellBounds: {x: 400, width: 1}});
+        // 合法的小 ascent 标签可能以顶表线为基线，末行也可能恰落底表线；框仍有正高度且不越过外边界。
+        expect(blocks.find(block => block.source === 'Top')).toMatchObject({kind: 'table', preserveSource: false, cellBounds: {y: 99, height: 41}});
+        expect(blocks.find(block => block.source === 'Bottom')).toMatchObject({kind: 'table', preserveSource: false, cellBounds: {y: 100, height: 41}});
+        expect(blocks.find(block => block.source === 'Outside')).toMatchObject({kind: 'text', preserveSource: false});
+        expect(atoms).toEqual(before);
+    });
+    it('uses the full table extent when staggered short rules do not define a complete row boundary', () => {
+        // 每条横线只覆盖相邻的一部分列；它们共同围出表格，不能把短线端点当作完整行界。
+        const graphics = [0, 30, 60, 90].map((x, index) => ({kind: 'path' as const, x, y: 100 + index * 20, width: 150, height: 0}));
+        const atoms = [atom('Fragmented table cell', 80, 130, 100)];
+        const before = structuredClone(atoms);
+        const result = analyze(atoms, graphics);
+        expect(result.preservedRegions).toMatchObject([{kind: 'table', x: 0, y: 99, width: 240, height: 62}]);
+        expect(result.blocks).toHaveLength(1);
+        expect(result.blocks[0]).toMatchObject({source: 'Fragmented table cell', kind: 'table', preserveSource: false,
+            cellBounds: {x: 0, y: 99, width: 240, height: 62}});
+        expect(atoms).toEqual(before);
+    });
+    it('keeps clipped top labels and final-rule baselines inside finite table cell bounds', () => {
+        const graphics = [100, 140].map(y => ({kind: 'path' as const, x: 50, y, width: 400, height: 0}));
+        // 裁剪后的文字层保留原基线，字形矩形的上沿和高度由可见部分决定。
+        const atoms = [{...atom('Boundary header', 60, 100, 90), y: 97, height: 8}, atom('Boundary result', 300, 140, 90)];
+        const before = structuredClone(atoms);
+        const blocks = analyze(atoms, graphics).blocks;
+        expect(blocks).toHaveLength(2);
+        expect(blocks.find(block => block.source === 'Boundary header')).toMatchObject({kind: 'table', preserveSource: false,
+            cellBounds: {x: 50, y: 99, width: 400, height: 41}});
+        expect(blocks.find(block => block.source === 'Boundary result')).toMatchObject({kind: 'table', preserveSource: false,
+            cellBounds: {x: 50, y: 100, width: 400, height: 41}});
+        expect(atoms).toEqual(before);
+    });
+    it('keeps stacked shaded notes editable when their text does not repeat a table column alignment', () => {
+        const graphics = [100, 125, 150].map(y => ({kind: 'path' as const, x: 0, y, width: 508, height: 25}));
+        const atoms = [100, 125, 150].flatMap((y, index) => [atom(`This note ${index} contains text for later review.`, 50, y + 16, 150, 6),
+            atom(`A note ${index} remains available for human review.`, 300 + index * 35, y + 16, 140, 6)]);
+        const before = structuredClone(atoms);
+        const result = analyze(atoms, graphics);
+        expect(result.preservedRegions.some(region => region.kind === 'table')).toBe(false);
+        expect(result.blocks.length).toBeGreaterThan(0);
+        expect(result.blocks.every(block => block.kind === 'text' && !block.preserveSource)).toBe(true);
+        expect(result.blocks.flatMap(block => block.lines!.map(line => line.text)).sort()).toEqual(atoms.map(item => item.text).sort());
+        expect(atoms).toEqual(before);
+    });
+    it('uses the table envelope when staggered partial rules cannot define complete row boundaries', () => {
+        const graphics = [100, 120, 140].map((y, index) => ({kind: 'path' as const, x: 100 + index * 50, y, width: 200, height: 0}));
+        const atoms = [atom('First category', 155, 114, 80), atom('Second category', 205, 134, 85),
+            atom('Ordinary prose below the table remains editable.', 100, 180, 350)];
+        const before = structuredClone({atoms, graphics});
+        const result = analyze(atoms, graphics);
+        expect(result.preservedRegions).toMatchObject([{kind: 'table', x: 100, y: 99, width: 300, height: 42}]);
+        expect(result.blocks.filter(block => block.kind === 'table').map(block => [block.source, block.cellBounds, block.preserveSource])).toEqual([
+            ['First category', {x: 100, y: 99, width: 300, height: 42}, false],
+            ['Second category', {x: 100, y: 99, width: 300, height: 42}, false],
+        ]);
+        expect(result.blocks.find(block => block.source === atoms[2].text)).toMatchObject({kind: 'text', preserveSource: false});
+        expect({atoms, graphics}).toEqual(before);
+    });
+    it('preserves a shaded step diagram when neighbouring rows have no repeated column alignment', () => {
+        const graphics = [100, 125, 150].map(y => ({kind: 'path' as const, x: 100, y, width: 420, height: 25}));
+        const atoms = [['Input', 'Parse'], ['Score', 'Verify'], ['Answer', 'Export']].flatMap((row, index) =>
+            [atom(row[0], 120 + index * 40, 116 + index * 25, 35), atom(row[1], 350 + index * 40, 116 + index * 25, 35)]);
+        const before = structuredClone({atoms, graphics});
+        const result = analyze(atoms, graphics);
+        expect(result.preservedRegions).toMatchObject([{kind: 'figure', x: 100, y: 100, width: 420, height: 75}]);
+        expect(result.blocks).toHaveLength(6);
+        expect(result.blocks.every(block => block.kind === 'figure-label' && block.preserveSource && !block.cellBounds)).toBe(true);
+        expect({atoms, graphics}).toEqual(before);
     });
     it('recognizes shaded table rows and a shallow abstract box without treating real diagram labels as body text', () => {
         const graphics = [100, 125, 150, 175].map(y => ({kind: 'path' as const, x: 0, y, width: 508, height: 25}));
@@ -781,6 +868,89 @@ describe('PDF baseline and structural reading analysis', () => {
         expect(result.blocks[0]).toMatchObject({kind: 'text', lineCount: 3, preserveSource: false});
         expect(result.blocks[0].source).toContain('does not compare. Since');
     });
+});
+
+// 公开论文 2609.35738 第16页公式(7)的 PDF.js 字形几何；保留 0.04em ascent 左花括号及脚标。
+const harnessCases = ([
+    ['h',199.038,261.8169564,5.74045012,9.9626,268.731,9.9626],
+    ['⋆',204.778,259.7781828,4.08177276,6.9738,264.618,6.9738],
+    ['t',204.778,266.3541828,3.00989148,6.9738,271.194,6.9738],
+    ['=',212.125,260.76092,7.74891028,9.9626,268.731,9.9626],
+    ['{',222.642,251.296496,8.02587028,9.9626,251.695,9.9626],
+    ['h',230.667,255.0229564,5.74045012,9.9626,261.937,9.9626],
+    ['′',236.407,253.09165,2.2971693,6.9738,258.322,6.9738],
+    ['t',236.407,259.5601828,3.00989148,6.9738,264.4,6.9738],
+    [',',239.915,255.0229564,2.76761028,9.9626,261.937,9.9626],
+    ['h',230.667,269.3689564,5.74045012,9.9626,276.283,9.9626],
+    ['⋆',236.407,267.8281828,4.08177276,6.9738,272.668,6.9738],
+    ['t',236.407,273.9161828,3.00989148,6.9738,278.756,6.9738],
+    ['−',239.41689148,273.52565,6.2269059,6.9738,278.756,6.9738],
+    ['1',245.64379738,273.9510518,3.97088172,6.9738,278.756,6.9738],
+    [',',250.113,269.3689564,2.76761028,9.9626,276.283,9.9626],
+    ['if',262.84691268,253.96692,5.81218028,9.9626,261.937,9.9626],
+    ['J',271.97664296,255.0229564,5.52426028,9.9626,261.937,9.9626],
+    ['(',278.45731352,253.96692,3.87445514,9.9626,261.937,9.9626],
+    ['h',282.33176866,255.0229564,5.74045012,9.9626,261.937,9.9626],
+    ['′',288.072,253.09165,2.2971693,6.9738,258.322,6.9738],
+    ['t',288.072,259.5601828,3.00989148,6.9738,264.4,6.9738],
+    [';',291.58,253.96692,2.76761028,9.9626,261.937,9.9626],
+    ['Q',296.01136074,255.0229564,7.87641636,9.9626,261.937,9.9626],
+    ['dev',303.884,253.5170518,12.12814044,6.9738,258.322,6.9738],
+    [')',316.51,253.96692,3.87445514,9.9626,261.937,9.9626],
+    ['> J',323.15406028,255.0229564,16.0427704,9.9626,261.937,9.9626],
+    ['(',340.15324096,253.96692,3.87445514,9.9626,261.937,9.9626],
+    ['h',344.0276961,255.0229564,5.74045012,9.9626,261.937,9.9626],
+    ['⋆',349.765,253.4821828,4.08177276,6.9738,258.322,6.9738],
+    ['t',349.765,259.5701828,3.00989148,6.9738,264.41,6.9738],
+    ['−',352.77489148,259.17965,6.2269059,6.9738,264.41,6.9738],
+    ['1',359.00179738,259.6050518,3.97088172,6.9738,264.41,6.9738],
+    [';',363.47,253.96692,2.76761028,9.9626,261.937,9.9626],
+    ['Q',367.90136074,255.0229564,7.87641636,9.9626,261.937,9.9626],
+    ['dev',375.774,253.5170518,12.12814044,6.9738,258.322,6.9738],
+    [')',388.4,253.96692,3.87445514,9.9626,261.937,9.9626],
+    [',',392.27445514,255.0229564,2.76761028,9.9626,261.937,9.9626],
+    ['otherwise.',262.84321028,268.31292,43.8105335,9.9626,276.283,9.9626],
+    ['(7)',512.845,260.76192,12.73021028,9.9626,268.732,9.9626],
+] as Array<[string, number, number, number, number, number, number]>).map(([text, x, y, width, height, baseline, fontSize]) => ({text, x, y, width, height, baseline, fontSize, fontFamily: 'sans-serif'}));
+
+describe('PDF piecewise equations with right-hand conditions', () => {
+    it('preserves the actual two-branch formula including its if condition, otherwise row and low-ascent brace', () => {
+        const above = atom('Ordinary prose explains the retained model and its development score.', 70, 235, 455, 9.9626);
+        const below = atom('Methods share the seed harness and initial report within each comparison.', 70, 300, 455, 9.9626);
+        const source = structuredClone(harnessCases);
+        const result = analyze([...harnessCases, above, below], [], 595.276, 841.89);
+        const region = result.preservedRegions.find(region => region.kind === 'formula')!;
+        expect(region.source).toContain('if J('); expect(region.source).toContain('otherwise.'); expect(region.source).toContain('(7)');
+        expect(result.blocks.filter(block => block.source !== above.text && block.source !== below.text).every(block => block.kind === 'formula' && block.preserveSource)).toBe(true);
+        expect(result.blocks.filter(block => block.kind === 'text').map(block => block.source)).toEqual([above.text, below.text]);
+        expect(region.y).toBeLessThanOrEqual(251.296496);
+        expect(region.y + region.height).toBeGreaterThanOrEqual(280.9);
+        expect(harnessCases).toEqual(source);
+        const brace = result.blocks.flatMap(block => block.lines?.flatMap(line => line.runs ?? []) ?? []).find(run => run.text === '{')!;
+        expect(brace).toEqual(source.find(run => run.text === '{'));
+    });
+
+    const example = (change: 'none' | 'no-brace' | 'one-value' | 'distant-brace' | 'distant-value' | 'natural-condition' | 'distant-condition' | 'no-assignment' = 'none') => {
+        const seed = atom(change === 'no-assignment' ? 'f(x)' : 'f(x) =', 180, 269, 30);
+        const brace = {...atom('{', change === 'distant-brace' ? 300 : 220, 251, 8), y: 250.6};
+        const values = [atom('a', 230, 262, 7), ...(change === 'one-value' ? [] : [atom('b', change === 'distant-value' ? 400 : 230, 278, 7)])];
+        const condition = atom(change === 'natural-condition' ? 'if the user is ready' : 'if score > limit', 260, change === 'distant-condition' ? 325 : 262, 80);
+        const otherwise = atom('otherwise.', 260, 278, 50);
+        return {atoms: [seed, ...(change === 'no-brace' ? [] : [brace]), ...values, condition, otherwise,
+            atom('The following ordinary paragraph still needs translation.', 60, 350, 420)], condition, otherwise};
+    };
+    it('uses structural evidence rather than names or equation numbers to preserve a piecewise definition', () => {
+        const {atoms, condition, otherwise} = example();
+        const result = analyze(atoms);
+        expect(result.blocks.filter(block => block.source.includes(condition.text) || block.source.includes(otherwise.text)).every(block => block.kind === 'formula' && block.preserveSource)).toBe(true);
+        expect(result.blocks.find(block => block.source.startsWith('The following'))).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each(['no-brace', 'one-value', 'distant-brace', 'distant-value', 'natural-condition', 'distant-condition', 'no-assignment'] as const)
+        ('does not absorb an ordinary condition without a complete piecewise structure: %s', change => {
+            const {atoms, condition} = example(change);
+            const result = analyze(atoms);
+            expect(result.blocks.find(block => block.source.includes(condition.text))).toMatchObject({kind: 'text', preserveSource: false});
+        });
 });
 
 describe('PDF layout analysis on real paper typography', () => {
@@ -1048,5 +1218,177 @@ describe('PDF layout analysis on real paper typography', () => {
     });
     it('falls back to a default body size when a page only has tiny glyphs', () => {
         expect(analyze([atom('tiny', 40, 100, 20, 4)]).blocks).toHaveLength(1);
+    });
+});
+
+// 发布回归使用实际 PDF.js 字形几何：Attention 1706.03762v7 的页4/9（SHA256 bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697），
+// 2608.25512v1 的页18/38（SHA256 390775dbc9debdcf2ed1b076eed013387ca057630be3cb594617b2b742e48cf0）。原始字号、基线及矩形不变。
+const releasePaperGeometry = {
+    footnote: ([
+        ["4",120.653,700.7881872,2.9888,5.9776,704.841,5.9776,"sans-serif"],
+        ["To illustrate why the dot products get large, assume that the components of",123.862,702.5707808,263.9636428800001,8.9664,708.65,8.9664,"sans-serif"],
+        ["q",390.066,702.4273184,4.11737088,8.9664,708.65,8.9664,"sans-serif"],
+        ["and",396.749,702.5707808,12.688531968000003,8.9664,708.65,8.9664,"sans-serif"],
+        ["k",411.682,702.4273184,4.797920640000001,8.9664,708.65,8.9664,"sans-serif"],
+        ["are independent random",418.987,702.5707808,85.01492160000002,8.9664,708.65,8.9664,"sans-serif"],
+        ["variables with mean",107.776,713.9207808,71.784191424,8.9664,720,8.9664,"sans-serif"],
+        ["0",181.804,713.7773184,4.6078329600000005,8.9664,720,8.9664,"sans-serif"],
+        ["and variance",188.654,713.9207808,45.207055545600014,8.9664,720,8.9664,"sans-serif"],
+        ["1",236.099,713.7773184,4.6078329600000005,8.9664,720,8.9664,"sans-serif"],
+        [". Then their dot product,",240.706,713.9207808,87.46407582719996,8.9664,720,8.9664,"sans-serif"],
+        ["q",330.413,713.7773184,4.11737088,8.9664,720,8.9664,"sans-serif"],
+        ["·",336.90000000000003,713.2752,2.5599072000000005,8.9664,720,8.9664,"monospace"],
+        ["k",341.50800000000004,713.7773184,4.797920640000001,8.9664,720,8.9664,"sans-serif"],
+        ["=",349.12800000000004,713.7773184,7.167740160000001,8.9664,720,8.9664,"sans-serif"],
+        ["P",358.85600000000005,712.8984111999999,9.727647360000002,8.9664,713.275,8.9664,"monospace"],
+        ["d",368.583,711.5895456000001,3.8406079999999996,5.9776,715.738,5.9776,"sans-serif"],
+        ["k",372.423,713.6809778,3.7763235300000004,4.9813,717.138,4.9813,"sans-serif"],
+        ["i",368.583,718.5915456,2.6636185599999997,5.9776,722.74,5.9776,"sans-serif"],
+        ["=1",371.247,718.5915456,9.24316288,5.9776,722.74,5.9776,"sans-serif"],
+        ["q",382.524,713.7773184,4.11737088,8.9664,720,8.9664,"sans-serif"],
+        ["i",386.641,716.8475456,2.6636185599999997,5.9776,720.996,5.9776,"sans-serif"],
+        ["k",389.803,713.7773184,4.797920640000001,8.9664,720,8.9664,"sans-serif"],
+        ["i",394.601,716.8475456,2.6636185599999997,5.9776,720.996,5.9776,"sans-serif"],
+        [", has mean",397.763,713.9207808,37.992878399999974,8.9664,720,8.9664,"sans-serif"],
+        ["0",438.001,713.7773184,4.6078329600000005,8.9664,720,8.9664,"sans-serif"],
+        ["and variance",444.85,713.9207808,45.207055545600014,8.9664,720,8.9664,"sans-serif"],
+        ["d",492.296,713.7773184,4.774608000000001,8.9664,720,8.9664,"sans-serif"],
+        ["k",497.07,716.9145456,3.9505958399999996,5.9776,721.063,5.9776,"sans-serif"],
+        [".",501.643,713.9207808,2.2348752000000003,8.9664,720,8.9664,"sans-serif"],
+    ] as Array<[string, number, number, number, number, number, number, string]>).map(([text, x, y, width, height, baseline, fontSize, fontFamily]) => ({text, x, y, width, height, baseline, fontSize, fontFamily})),
+    header: ([
+        ["N",146.127,137.57795559999997,8.004949100000001,9.9626,144.49199999999996,9.9626,"sans-serif"],
+        ["d",167.17299250000002,137.57795559999997,5.1855333,9.9626,144.49199999999996,9.9626,"sans-serif"],
+        ["model",172.358,141.25876359999995,17.4345,6.9738,145.98699999999997,6.9738,"sans-serif"],
+        ["d",207.132,137.57795559999997,5.1855333,9.9626,144.49199999999996,9.9626,"sans-serif"],
+        ["ff",212.317,141.25876359999995,4.470205800000011,6.9738,145.98699999999997,6.9738,"sans-serif"],
+        ["h",236.238,137.57795559999997,5.74045012,9.9626,144.49199999999996,9.9626,"sans-serif"],
+        ["d",258.47651572,137.57795559999997,5.1855333,9.9626,144.49199999999996,9.9626,"sans-serif"],
+        ["k",263.658,141.14718279999997,4.235188739999999,6.9738,145.98699999999997,6.9738,"sans-serif"],
+        ["d",285.456,137.57795559999997,5.1855333,9.9626,144.49199999999996,9.9626,"sans-serif"],
+        ["v",290.641,141.14718279999997,3.98482932,6.9738,145.98699999999997,6.9738,"sans-serif"],
+        ["P",309.843,137.57795559999997,6.3959892,9.9626,144.49199999999996,9.9626,"sans-serif"],
+        ["drop",316.23900000000003,141.14718279999997,16.10180682,6.9738,145.98699999999997,6.9738,"sans-serif"],
+        ["ϵ",345.588,137.57795559999997,4.04381934,9.9626,144.49199999999996,9.9626,"sans-serif"],
+        ["ls",349.632,141.14718279999997,6.321749699999984,6.9738,145.98699999999997,6.9738,"sans-serif"],
+        ["train",371.139,132.2833572,18.2614458,9.9626,139.038,9.9626,"sans-serif"],
+        ["steps",370.307,143.66535719999996,19.9252,9.9626,150.41999999999996,9.9626,"sans-serif"],
+        ["PPL",405.096,132.2833572,17.1655598,9.9626,139.038,9.9626,"sans-serif"],
+        ["BLEU",436.01991039999996,132.2833572,26.0123486,9.9626,139.038,9.9626,"sans-serif"],
+        ["params",473.9873789999999,132.2833572,28.7719888,9.9626,139.038,9.9626,"sans-serif"],
+        ["6",494.99500000000006,141.96518279999995,3.9715790999999996,6.9738,146.80499999999995,6.9738,"sans-serif"],
+        ["(dev)",403.293,143.66535719999996,20.77202100000003,9.9626,150.41999999999996,9.9626,"sans-serif"],
+        ["(dev)",438.6403048,143.66535719999996,20.77202100000003,9.9626,150.41999999999996,9.9626,"sans-serif"],
+        ["×",477.283,142.94804999999997,7.74891028,9.9626,150.41999999999996,9.9626,"sans-serif"],
+        ["10",485.03200000000004,143.50595559999996,9.9626,9.9626,150.41999999999996,9.9626,"sans-serif"],
+    ] as Array<[string, number, number, number, number, number, number, string]>).map(([text, x, y, width, height, baseline, fontSize, fontFamily]) => ({text, x, y, width, height, baseline, fontSize, fontFamily})),
+    cases: ([
+        ["notify",183.34407,456.62780000000004,28.127,11,465.4938,11,"sans-serif"],
+        ["𝑑",211.47107,462.00460000000004,4.5815,7.7,468.21080000000006,7.7,"sans-serif"],
+        ["(",216.73016,456.62780000000004,4.279,11,465.4938,11,"sans-serif"],
+        ["𝜎",221.00917,456.62780000000004,6.281,11,465.4938,11,"sans-serif"],
+        [",",227.55417,456.62780000000004,3.058,11,465.4938,11,"sans-serif"],
+        ["𝜎",232.4455,456.62780000000004,6.281,11,465.4938,11,"sans-serif"],
+        ["′",238.9905,455.2946,3.1339,7.7,461.5008,7.7,"sans-serif"],
+        [")",242.7404,456.62780000000004,4.279,11,465.4938,11,"sans-serif"],
+        ["≔",250.07495,456.62780000000004,9.966,11,465.4938,11,"sans-serif"],
+        ["{",263.09653,474.37520000000006,9.921999999999999,11,483.24120000000005,11,"sans-serif"],
+        ["",263.09653,468.24050000000005,9.921999999999999,11,477.10650000000004,11,"sans-serif"],
+        ["",263.09653,462.12780000000004,9.921999999999999,11,470.9938,11,"sans-serif"],
+        ["",263.09653,447.7430990000001,9.921999999999999,11,456.60909900000007,11,"sans-serif"],
+        ["",263.09653,441.63040000000007,9.921999999999999,11,450.49640000000005,11,"sans-serif"],
+        ["activating",273.01852,443.47180000000003,47.982,11,452.3378,11,"sans-serif"],
+        ["if",335.65253,443.47180000000003,6.4239999999999995,11,452.3378,11,"sans-serif"],
+        ["𝜎",345.72852,443.47180000000003,6.281,11,452.3378,11,"sans-serif"],
+        ["⊭",355.32907,443.47180000000003,8.052,11,452.3378,11,"sans-serif"],
+        ["𝑑",366.4366,443.47180000000003,5.72,11,452.3378,11,"sans-serif"],
+        ["∧",374.86508,443.47180000000003,7.337,11,452.3378,11,"sans-serif"],
+        ["𝜎",384.6465,443.47180000000003,6.281,11,452.3378,11,"sans-serif"],
+        ["′",391.1915,442.9526,3.1339,7.7,449.15880000000004,7.7,"sans-serif"],
+        ["⊧",397.99698,443.47180000000003,4.895,11,452.3378,11,"sans-serif"],
+        ["𝑑",405.9475,443.47180000000003,5.72,11,452.3378,11,"sans-serif"],
+        ["deactivating",273.01852,456.62780000000004,58.98199999999999,11,465.4938,11,"sans-serif"],
+        ["if",335.65253,456.62780000000004,6.4239999999999995,11,465.4938,11,"sans-serif"],
+        ["𝜎",345.72852,456.62780000000004,6.281,11,465.4938,11,"sans-serif"],
+        ["⊧",355.32907,456.62780000000004,4.895,11,465.4938,11,"sans-serif"],
+        ["𝑑",363.27963,456.62780000000004,5.72,11,465.4938,11,"sans-serif"],
+        ["∧",371.70807,456.62780000000004,7.337,11,465.4938,11,"sans-serif"],
+        ["𝜎",381.4895,456.62780000000004,6.281,11,465.4938,11,"sans-serif"],
+        ["′",388.03452,456.1086,3.1339,7.7,462.31480000000005,7.7,"sans-serif"],
+        ["⊭",394.83997,456.62780000000004,8.052,11,465.4938,11,"sans-serif"],
+        ["𝑑",405.9475,456.62780000000004,5.72,11,465.4938,11,"sans-serif"],
+        ["neutral",273.01852,469.78380000000004,34.265,11,478.6498,11,"sans-serif"],
+        ["otherwise",335.65253,469.78380000000004,45.309,11,478.6498,11,"sans-serif"],
+        ["(24)",504.85144,456.62780000000004,19.558,11,465.4938,11,"sans-serif"],
+    ] as Array<[string, number, number, number, number, number, number, string]>).map(([text, x, y, width, height, baseline, fontSize, fontFamily]) => ({text, x, y, width, height, baseline, fontSize, fontFamily})),
+    nested: ([
+        ["Lemma",70.86614,649.83522,37.278999999999996,11,657.75522,11,"sans-serif"],
+        ["57",111.97553,649.83522,11,11,657.75522,11,"sans-serif"],
+        [".",122.97553,649.83522,2.75,11,657.75522,11,"sans-serif"],
+        ["A member of",129.555919464,649.76922,66.27977892800001,11.077000000000002,657.75522,11,"sans-serif"],
+        ["ℑ",199.66609,648.88922,6.093999999999999,11,657.75522,11,"sans-serif"],
+        ["𝒜︀",205.83708,647.1363600000001,7.130210000000005,7.7,653.34256,7.7,"sans-serif"],
+        ["Γ",205.76009,654.5096500000001,5.4362,7.7,660.71585,7.7,"sans-serif"],
+        ["(",212.96729,648.88922,4.279,11,657.75522,11,"sans-serif"],
+        ["𝑛",217.24629,648.88922,6.6,11,657.75522,11,"sans-serif"],
+        [")",223.84628,648.88922,4.279,11,657.75522,11,"sans-serif"],
+        ["is confined to",231.955679464,649.76922,67.302778928,11.077000000000002,657.75522,11,"sans-serif"],
+        ["𝑛",303.08884,648.88922,6.6,11,657.75522,11,"sans-serif"],
+        [", and it lies in",309.68884,649.76922,69.28755785600003,11.077000000000002,657.75522,11,"sans-serif"],
+        ["ℑ",382.8068,648.88922,6.093999999999999,11,657.75522,11,"sans-serif"],
+        ["𝑑",388.97778,645.55897,4.5815,7.7,651.76517,7.7,"sans-serif"],
+        ["𝑛",393.5593,649.2340200000001,4.8454999999999995,5.5,653.6670200000001,5.5,"sans-serif"],
+        ["∪",398.836,645.55897,5.1359,7.7,651.76517,7.7,"sans-serif"],
+        ["𝑝",403.9719,645.55897,4.5353,7.7,651.76517,7.7,"sans-serif"],
+        ["𝑛",408.5072,649.2340200000001,4.8454999999999995,5.5,653.6670200000001,5.5,"sans-serif"],
+        ["Γ",388.9008,654.5096500000001,5.4362,7.7,660.71585,7.7,"sans-serif"],
+        ["(",418.230289464,649.76922,5.016,11.077000000000002,657.75522,11,"sans-serif"],
+        ["Definition 37",423.24628,649.76922,63.978389464,11.077000000000002,657.75522,11,"sans-serif"],
+        [") at the",487.22467,649.76922,37.184778928000085,11.077000000000002,657.75522,11,"sans-serif"],
+        ["projection",70.86614,663.4312000000001,48.84,11.077000000000002,671.4172000000001,11,"sans-serif"],
+        ["Definition 51",122.45614,663.4312000000001,62.897999999999996,11.077000000000002,671.4172000000001,11,"sans-serif"],
+        ["fixes, which is the witness",188.10414,663.4312000000001,125.91700000000004,11.077000000000002,671.4172000000001,11,"sans-serif"],
+        ["Definition 48",316.77115,663.4312000000001,62.897999999999996,11.077000000000002,671.4172000000001,11,"sans-serif"],
+        ["requires of it.",382.41913,663.4312000000001,64.50399999999999,11.077000000000002,671.4172000000001,11,"sans-serif"],
+    ] as Array<[string, number, number, number, number, number, number, string]>).map(([text, x, y, width, height, baseline, fontSize, fontFamily]) => ({text, x, y, width, height, baseline, fontSize, fontFamily})),
+};
+
+describe('PDF release corpus mathematical typography regressions', () => {
+    it('separates staggered table headers and keeps a raised exponent with its physically adjacent lower row', () => {
+        const lines = pdfLayoutLines(releasePaperGeometry.header);
+        expect(lines.find(line => line.text.includes('train'))?.baseline).toBe(139.038);
+        expect(lines.find(line => line.text.includes('N'))?.text).not.toContain('train');
+        expect(lines.find(line => line.text.includes('params'))?.text).not.toContain('6');
+        const scale = lines.find(line => line.text.includes('×10'))!;
+        expect(scale.text).toContain('×106');
+        expect(scale.baseline).toBeCloseTo(150.42, 12);
+        expect(scale.runs.find(run => run.text === '6')).toEqual(releasePaperGeometry.header.find(run => run.text === '6'));
+    });
+    it('preserves a detached TeX summation glyph only when its downward geometry and neighbouring equation support it', () => {
+        const result = analyze(releasePaperGeometry.footnote);
+        expect(result.blocks.find(block => block.source === 'Pdk')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source.includes('To illustrate why'))).toMatchObject({kind: 'text', preserveSource: false, lineCount: 2});
+        const ordinary = analyze(releasePaperGeometry.footnote.map(run => run.text === 'P' ? {...run, y: run.baseline - run.fontSize * 0.8} : run));
+        expect(ordinary.blocks.find(block => block.source === 'Pdk')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('keeps every piece of a compound superscript in the ordinary sentence instead of creating a false column gap', () => {
+        const result = analyze(releasePaperGeometry.nested, [], 595.2756, 841.8898);
+        expect(result.blocks).toHaveLength(1);
+        expect(result.blocks[0]).toMatchObject({kind: 'text', preserveSource: false, lineCount: 2});
+        expect(result.blocks[0].source).toContain('∪𝑝');
+        expect(result.blocks[0].source).toContain('(Definition 37) at the projection Definition 51');
+        const runs = result.blocks[0].lines!.flatMap(line => line.runs || []);
+        for (const original of releasePaperGeometry.nested) expect(runs.find(run => run.text === original.text && run.x === original.x)).toEqual(original);
+    });
+    it('preserves all branches and the equation number of a cases definition while translating prose containing the same operator', () => {
+        const prose = atom('A definition σ ≔ d is useful in this ordinary sentence.', 70.86614, 600, 453.54, 11);
+        const result = analyze([...releasePaperGeometry.cases, prose], [], 595.2756, 841.8898);
+        const region = result.preservedRegions.find(region => region.kind === 'formula' && region.source?.includes('notify'))!;
+        expect(region).toBeDefined();
+        for (const text of ['activating', 'deactivating', 'neutral', 'otherwise', '(24)']) expect(region.source).toContain(text);
+        const branches = result.blocks.filter(block => block.source !== prose.text);
+        expect(branches.length).toBeGreaterThan(0);
+        expect(branches.every(block => block.kind === 'formula' && block.preserveSource)).toBe(true);
+        expect(result.blocks.find(block => block.source === prose.text)).toMatchObject({kind: 'text', preserveSource: false});
     });
 });

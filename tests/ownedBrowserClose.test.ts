@@ -96,14 +96,22 @@ function browserPort(pid: unknown, close: () => unknown = async () => {}) {
     const cdp = {send: vi.fn(async (_method: string): Promise<any> => ({processInfo: [
         {type: 'renderer', id: process.pid}, {type: 'browser', id: pid},
     ]})), detach: vi.fn(async () => {})};
-    const browser = {newBrowserCDPSession: vi.fn(async (): Promise<any> => cdp)};
+    let announceDetach!: () => void;
+    const detachedStarted = new Promise<void>(resolve => {announceDetach = resolve;});
+    const cdpPort = {send: cdp.send, detach(...args: unknown[]) {
+        // 只观察外部端口调用开始；原 mock 的拒绝、挂起与 this 都按原样转发。
+        announceDetach();
+        return Reflect.apply(cdp.detach, cdp, args);
+    }};
+    const browser = {newBrowserCDPSession: vi.fn(async (): Promise<any> => cdpPort)};
     const session = {context: {browser: vi.fn((): any => browser)}, close: vi.fn(close), marker: 'original session'};
-    return {session, browser, cdp, nativeClose: session.close};
+    return {session, browser, cdp, nativeClose: session.close, detachedStarted};
 }
 
 async function captured(port: ReturnType<typeof browserPort>) {
     // Observe only the external CDP detach, not private guard state.
-    await vi.waitFor(() => expect(port.cdp.detach).toHaveBeenCalledTimes(1));
+    await port.detachedStarted;
+    expect(port.cdp.detach).toHaveBeenCalledTimes(1);
 }
 
 async function rejected(closing: unknown): Promise<any> {
@@ -703,12 +711,12 @@ describe('guardBrowserClose public API: bounded operations and platform start id
 
 
 describe('guardBrowserClose transport-only native boundary', () => {
-    it('routes background close and signals through the guard without invoking the old OS fallback', async () => {
+    it.each(['macos-background-cdp', 'macos-foreground-cdp'])('routes %s close and signals through the guard without invoking the old OS fallback', async launchMode => {
         const owner = await actor();
         const port = browserPort(owner.pid, () => {throw Error('unsafe old native fallback reached');});
         const connectionClose = vi.fn(() => nativeExit(owner));
         const route = vi.fn();
-        const session = Object.assign(port.session, {launchMode: 'macos-background-cdp',
+        const session = Object.assign(port.session, {launchMode,
             closeBrowserConnection: connectionClose, useGuardedClose: route});
         guardBrowserClose(session, owner.profile);
         expect(route).toHaveBeenCalledWith(session.close);
@@ -722,10 +730,10 @@ describe('guardBrowserClose transport-only native boundary', () => {
         expect(existsSync(owner.profile)).toBe(true);
     });
 
-    it('rejects a legacy background close receipt and never calls its unsafe fallback', async () => {
+    it.each(['macos-background-cdp', 'macos-foreground-cdp'])('rejects a legacy %s close receipt and never calls its unsafe fallback', async launchMode => {
         const owner = await actor();
         const port = browserPort(owner.pid, () => {throw Error('unsafe old fallback reached');});
-        const session = Object.assign(port.session, {launchMode: 'macos-background-cdp'});
+        const session = Object.assign(port.session, {launchMode});
         guardBrowserClose(session, owner.profile);
         expect(await rejected(session.close())).toMatchObject({code: 'HELPER_UNSUPPORTED'});
         expect(port.nativeClose).not.toHaveBeenCalled();
@@ -734,12 +742,12 @@ describe('guardBrowserClose transport-only native boundary', () => {
         expect(existsSync(owner.profile)).toBe(true);
     });
 
-    it('closes only the transport when CDP points at a foreign profile, without calling either OS fallback or process signal', async () => {
+    it.each(['macos-background-cdp', 'macos-foreground-cdp'])('closes only %s transport for a foreign profile, without calling either OS fallback or process signal', async launchMode => {
         const foreign = await actor();
         const ownedProfile = profile();
         const port = browserPort(foreign.pid, () => {throw Error('unsafe fallback reached');});
         const transport = vi.fn(async () => {});
-        const session = Object.assign(port.session, {launchMode: 'macos-background-cdp',
+        const session = Object.assign(port.session, {launchMode,
             closeBrowserConnection: transport, useGuardedClose: vi.fn()});
         const kill = vi.spyOn(process, 'kill');
         guardBrowserClose(session, ownedProfile);
@@ -767,12 +775,12 @@ describe('guardBrowserClose transport-only native boundary', () => {
         expect(await owner.exited).toEqual({code: 0, signal: null});
     });
 
-    it('preserves signal-routing failures as rejected receipts while still closing the known owned process', async () => {
+    it.each(['macos-background-cdp', 'macos-foreground-cdp'])('preserves %s signal-routing failures while still closing the known owned process', async launchMode => {
         const owner = await actor();
         const port = browserPort(owner.pid, () => {throw Error('unsafe fallback reached');});
         const failure = new Error('signal routing refused');
         const transport = vi.fn(() => nativeExit(owner));
-        const session = Object.assign(port.session, {launchMode: 'macos-background-cdp',
+        const session = Object.assign(port.session, {launchMode,
             closeBrowserConnection: transport, useGuardedClose() {throw failure;}});
         guardBrowserClose(session, owner.profile);
         expect(await rejected(session.close())).toBe(failure);
@@ -781,6 +789,44 @@ describe('guardBrowserClose transport-only native boundary', () => {
         expect(await owner.exited).toEqual({code: 0, signal: null});
         expect(existsSync(owner.profile)).toBe(true);
     });
+
+    it('retains an unknown foreground transport rejection after exact owned termination', async () => {
+        const owner = await actor();
+        const port = browserPort(owner.pid, () => {throw Error('persistent native close must not be reached');});
+        const failure = Object.assign(Error('unknown CDP transport failure'), {code: 'CONTROLLED_TRANSPORT_FAILURE'});
+        const connectionClose = vi.fn(async () => {throw failure;});
+        const session = Object.assign(port.session, {launchMode: 'macos-foreground-cdp',
+            closeBrowserConnection: connectionClose, useGuardedClose: vi.fn()});
+        guardBrowserClose(session, owner.profile);
+        const closing = session.close();
+        expect(session.close()).toBe(closing);
+        expect(await rejected(closing)).toBe(failure);
+        expect(await owner.exited).toEqual({code: 0, signal: null});
+        expect(connectionClose).toHaveBeenCalledOnce();
+        expect(port.nativeClose).not.toHaveBeenCalled();
+        expect(events(owner)).toEqual(expect.arrayContaining([expect.objectContaining({kind: 'TERM'})]));
+        expect(existsSync(owner.profile)).toBe(true);
+    });
+
+    it('foreground transport pending keeps the original 5000 ms failure after cleanup and late fulfillment', async () => {
+        const owner = await actor();
+        const port = browserPort(owner.pid, () => {throw Error('persistent native close must not be reached');});
+        let completeTransport!: () => void;
+        const connectionClose = vi.fn(() => new Promise<void>(resolve => {completeTransport = resolve;}));
+        const session = Object.assign(port.session, {launchMode: 'macos-foreground-cdp',
+            closeBrowserConnection: connectionClose, useGuardedClose: vi.fn()});
+        guardBrowserClose(session, owner.profile);
+        const closing = session.close();
+        const failure = await rejected(closing);
+        expect(failure).toMatchObject({code: 'NATIVE_CLOSE_TIMEOUT'});
+        expect(await owner.exited).toEqual({code: 0, signal: null});
+        completeTransport();
+        expect(session.close()).toBe(closing);
+        expect(await rejected(session.close())).toBe(failure);
+        expect(connectionClose).toHaveBeenCalledOnce();
+        expect(port.nativeClose).not.toHaveBeenCalled();
+        expect(existsSync(owner.profile)).toBe(true);
+    }, 10000);
 });
 
 

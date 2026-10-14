@@ -6,15 +6,17 @@ import {compileScript, parse} from 'vue/compiler-sfc';
 import ts from 'typescript';
 import * as vue from 'vue';
 import {Config} from '@/src/core/config/model';
+import * as compositeTranslation from '@/src/core/config/compositeTranslation';
 import * as catalog from '@/src/core/config/catalog';
 import * as documentCore from '@/src/features/document-translation/core/document';
 import * as presentation from '@/src/features/document-translation/ui/presentation';
 import * as preview from '@/src/features/document-translation/core/preview';
 import * as richPreviewSync from '@/src/features/document-translation/ui/richPreviewSync';
 import * as pdfOcr from '@/src/features/document-translation/services/pdfOcr';
+import * as downloadCopy from '@/src/app/document-translation/downloadCopy';
 import {createDocumentFileLoadGuard} from '@/src/features/document-translation/services/translation';
 import {generateDocumentArchive} from '@/src/features/document-translation/services/archive';
-import {TranslationRequestError} from '@/src/services/translation/errors';
+import {TranslationRequestError, serializeTranslationError} from '@/src/services/translation/errors';
 
 // 编译真实页面 setup，注入可控解析/翻译边界；可见控件与下载文件另由真实浏览器套件验证。
 const require = createRequire(import.meta.url);
@@ -50,7 +52,7 @@ beforeEach(async () => {
   download = vi.fn(async (document, translations, mode) => ({data: documentCore.renderDocument(document, translations, mode),
     fileName: documentCore.createDocumentDownloadName(document.fileName, mode), mimeType: 'text/plain'}));
   persist = vi.fn().mockResolvedValue(undefined);
-  const api = {...catalog, ...documentCore, ...presentation, ...preview, ...richPreviewSync, ...pdfOcr, createPdfPageRecognizer: () => async () => [], hasDistinctTranslation, Config, TranslationRequestError, createDocumentFileLoadGuard,
+  const api = {...catalog, ...compositeTranslation, ...documentCore, ...presentation, ...preview, ...richPreviewSync, ...pdfOcr, createPdfPageRecognizer: () => async () => [], hasDistinctTranslation, Config, TranslationRequestError, serializeTranslationError, createDocumentFileLoadGuard,
     documentRetryBackoff: {maxWaitMs: 0},
     createDocumentHistory: () => ({list: async () => [], load: async () => null, save: async () => false, remove: async () => {}, clear: async () => {}}), documentHistoryId: async () => '',
     parseDocumentFile: parseFile, translateDocumentSegments: translate, createDocumentDownload: download, generateDocumentArchive,
@@ -65,6 +67,7 @@ beforeEach(async () => {
   new Function('require', 'exports', compiled)((id: string) => {
     if (id === 'vue') return {...vue, onMounted: () => {}, onUnmounted: (fn: () => void) => unload.push(fn)};
     if (id === '@/src/app/document-translation' || id === '@/src/core/translation/result') return api;
+    if (id === './downloadCopy') return downloadCopy;
     if (id === 'webextension-polyfill') return {runtime: {sendMessage: vi.fn()}};
     if (id.startsWith('element-plus') || id.endsWith('.css') || id.endsWith('.vue')) return {};
     return require(id);
@@ -81,6 +84,121 @@ afterEach(() => {
 });
 
 describe('document batch page lifecycle', () => {
+  it('reports a fatal failure immediately while still accepting successful results already requested', async () => {
+    await state.loadFiles([file('partial.txt', 'First.\n\nSecond.')]);
+    const pending = deferred<void>();
+    let options: any;
+    translate.mockImplementationOnce(async (_segments, controls) => {
+      options = controls;
+      await pending.promise;
+      throw new Error('第 2 段文档翻译失败：invalid model');
+    });
+    const work = state.startTranslation();
+    options.onFailure({id: 1, reason: '第 2 段文档翻译失败：invalid model'});
+    expect(state.runState).toBe('failed');
+    expect(state.translating).toBe(true);
+    expect(state.statusLabel).toBe('document.translationProgress.collectingAfterFailure');
+    expect(state.errorMessage).toContain('invalid model');
+    options.onSegment({id: 0, translation: '已发请求返回成功'});
+    expect(state.completedSegments).toBe(1);
+    expect(state.progress).toBe(50);
+    pending.resolve(); await work;
+    expect(state.translating).toBe(false);
+    expect(state.statusLabel).toBe('翻译中断');
+    expect(state.translatedSegments).toEqual(['已发请求返回成功']);
+  });
+
+  it('counts only committed passages, holds progress during retry, and waits for task settlement before 100%', async () => {
+    await state.loadFiles([file('progress.txt', 'First.\n\nSecond.\n\nThird.')]);
+    state.editSegment(0, '已完成的译文');
+    const pending = deferred<void>();
+    let options: any;
+    translate.mockImplementationOnce(async (_segments, controls) => {options = controls; await pending.promise;});
+    const work = state.startTranslation();
+    expect(state.progress).toBe(33);
+    options.onRetry({attempt: 1, delayMs: 2000, reason: '429 rate limit'});
+    options.onRetryStateChange({waiting: 2});
+    expect(state.statusLabel).toBe('document.translationProgress.waitingRetry');
+    expect(state.progress).toBe(33);
+    options.onSegment({id: 1, translation: '第二段'});
+    options.onSegment({id: 1, translation: '第二段更新'});
+    expect(state.completedSegments).toBe(2);
+    expect(state.progress).toBe(66);
+    expect(state.retryNotice).toContain('429 rate limit');
+    options.onRetryStateChange({waiting: 1});
+    expect(state.statusLabel).toBe('document.translationProgress.waitingRetry');
+    options.onRetryStateChange({waiting: 0});
+    expect(state.statusLabel).toBe('正在翻译');
+    expect(state.retryNotice).toBe('');
+    options.onSegment({id: 2, translation: '第三段'});
+    expect(state.completedSegments).toBe(3);
+    expect(state.progress).toBe(99);
+    expect(state.translationComplete).toBe(false);
+    expect(state.statusLabel).toBe('document.translationProgress.finishing');
+    pending.resolve();
+    await work;
+    expect(state.translationComplete).toBe(true);
+    expect(state.progress).toBe(100);
+    expect(state.statusLabel).toBe('翻译完成');
+  });
+
+  it('keeps progress and reviewed translations when recovering with another service or model', async () => {
+    state.config.documentService = 'openai';
+    state.config.documentModel.openai = 'gpt-4o-mini';
+    await state.loadFiles([file('paper.txt', 'First.\n\nSecond.\n\nThird.')]);
+    state.editSegment(0, '人工校订');
+    const fingerprint = state.taskFingerprint;
+    translate.mockImplementationOnce(async (_segments, options) => {
+      options.onSegment({id: 1, translation: '保留已成功段落'});
+      throw new Error('Model unavailable: 503');
+    });
+    await state.startTranslation();
+    expect(state.runState).toBe('failed');
+    expect(state.progress).toBe(66);
+    expect(state.errorMessage).toBe('Model unavailable: 503');
+    expect(state.translationActionLabel).toBe('document.translationRecovery.retry');
+    state.config.documentModel.openai = 'gpt-4o';
+    expect(state.currentFingerprint).not.toBe(fingerprint);
+    expect(state.settingsChanged).toBe(false);
+    expect(state.progress).toBe(66);
+    state.config.documentService = 'google';
+    expect(state.settingsChanged).toBe(false);
+    state.confirmDialog = {showModal: vi.fn()};
+    state.requestTranslation();
+    await vi.waitFor(() => expect(state.translationComplete).toBe(true));
+    expect(state.confirmDialog.showModal).not.toHaveBeenCalled();
+    expect(translate.mock.calls[1][1]).toEqual(expect.objectContaining({serviceOverride: 'google', initialTranslations: ['人工校订', '保留已成功段落']}));
+    expect(state.confirmedTranslationIds).toEqual([0]);
+    expect(state.translatedSegments.slice(0, 2)).toEqual(['人工校订', '保留已成功段落']);
+    expect(state.progress).toBe(100);
+  });
+
+  it('pauses retry waits to change service and ignores late retry and segment callbacks', async () => {
+    await state.loadFiles([file('paper.txt', 'First.\n\nSecond.')]);
+    const pending = deferred<void>();
+    let options: any;
+    translate.mockImplementationOnce(async (_segments, controls) => {options = controls; await pending.promise;});
+    state.documentSettingsDialog = {showModal: vi.fn(), close: vi.fn()};
+    const work = state.startTranslation();
+    options.onSegment({id: 0, translation: '已完成'});
+    options.onRetry({attempt: 1, delayMs: 2000, reason: 'timeout'});
+    options.onRetryStateChange({waiting: 1});
+    state.pauseAndChangeService();
+    expect(state.statusLabel).toBe('已暂停');
+    expect(state.progress).toBe(50);
+    expect(state.documentSettingsDialog.showModal).toHaveBeenCalledOnce();
+    options.onRetryStateChange({waiting: 3});
+    options.onRetry({attempt: 2, delayMs: 4000, reason: 'late retry'});
+    options.onFailure({id: 1, reason: 'late failure'});
+    options.onSegment({id: 1, translation: 'late result'});
+    pending.resolve(); await work;
+    expect(state.retryWaiting).toBe(0);
+    expect(state.retryNotice).toBe('');
+    expect(state.translatedSegments).toEqual(['已完成']);
+    await state.startTranslation();
+    expect(translate.mock.calls[1][1].initialTranslations).toEqual(['已完成']);
+  });
+
   it('keeps progress accurate across existing translations, duplicate updates and clearing a result', async () => {
     await state.loadFiles([file('a.txt', 'First.\n\nSecond.\n\nThird.')]);
     state.editSegment(0, '已校订');
@@ -198,7 +316,8 @@ describe('document batch page lifecycle', () => {
     await state.loadFiles([file('episode.srt', '1\n00:00:01,000 --> 00:00:03,000\nHello there.\n')]);
     state.editSegment(0, '校订后的字幕');
     state.previewMode = 'translated';
-    state.downloadDialog = {showModal: vi.fn(), close: vi.fn()};
+    // 本套件只运行 setup；模拟真实 dialog 的 @close="downloadOpen = false" 事件。
+    state.downloadDialog = {showModal: vi.fn(), close: vi.fn(() => {state.downloadOpen = false;})};
     state.openDownload();
     expect(state.outputMode).toBe('translated');
     expect(state.downloadFileName).toBe('episode.translated.srt');
@@ -210,20 +329,28 @@ describe('document batch page lifecycle', () => {
     });
     expect((await download.mock.results[0].value).data).toContain('00:00:01,000 --> 00:00:03,000\n校订后的字幕');
     expect(state.downloadedRevision).toBe(state.editRevision);
+    expect(state.downloadDialog.close).toHaveBeenCalledOnce();
+    expect(state.downloadOpen).toBe(false);
     state.previewMode = 'bilingual';
     state.openDownload();
     expect(state.outputMode).toBe('bilingual');
+    state.downloadDialog.close();
     state.previewMode = 'source';
     state.outputMode = 'translated';
     state.openDownload();
     expect(state.outputMode).toBe('translated');
   });
 
-  it('does not open or submit export while the queue is busy or partial export is unconfirmed', async () => {
-    await state.loadFiles([file('a.txt', 'First.\n\nSecond.')]);
+  it('permits the original-download dialog but blocks translation export while untranslated, busy or unconfirmed', async () => {
+    const original = file('a.txt', 'First.\n\nSecond.');
+    await state.loadFiles([original]);
     state.downloadDialog = {showModal: vi.fn(), close: vi.fn()};
     state.openDownload();
-    expect(state.downloadDialog.showModal).not.toHaveBeenCalled();
+    expect(state.downloadDialog.showModal).toHaveBeenCalledOnce();
+    expect(state.originalDownloadSource.blob).toBe(original);
+    expect(state.hasTranslation).toBe(false);
+    await state.downloadDocument();
+    expect(download).not.toHaveBeenCalled();
     state.editSegment(0, '第一段');
     state.openDownload();
     expect(state.downloadDialog.showModal).toHaveBeenCalledOnce();
@@ -232,6 +359,8 @@ describe('document batch page lifecycle', () => {
     state.partialExportAcknowledged = true;
     state.batchRunning = true;
     state.openDownload();
+    expect(state.downloadDialog.showModal).toHaveBeenCalledOnce();
+    expect(state.originalDownloadSource.blob).toBe(original);
     state.editSegment(0, '不应写入');
     await state.downloadDocument();
     expect(download).not.toHaveBeenCalled();

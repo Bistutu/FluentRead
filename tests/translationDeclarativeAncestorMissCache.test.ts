@@ -112,8 +112,11 @@ describe('inspect-local declarative ancestor misses', () => {
         expect(new TranslationCandidateCore({url, adapters: [adapter]}).inspect(leaf).candidate).toBeNull();
     });
 
-    it('retains actual GitHub modal/exclude/source boundaries across repeated inspect calls', () => {
-        const {document} = parseHTML('<html><body><div class="markdown-body"><p id="source">Readable GitHub source with an <a href="/original">original link</a>.</p></div><div role="dialog"><p id="modal">Search modal source.</p></div><div class="ReposListItem-module__TopicsList"><span id="label">literal-topic</span></div></body></html>');
+    it.each([
+        ['legacy', '<div class="ReposListItem-module__TopicsList"><span id="label">literal-topic</span></div>'],
+        ['current', '<ul data-listview-component="items-list"><li><div class="TopicsList__XBoKUv"><span id="label">literal-topic</span></div></li></ul>'],
+    ])('retains actual GitHub %s modal/exclude/source boundaries across repeated inspect calls', (_variant, topicMarkup) => {
+        const {document} = parseHTML(`<html><body><div class="markdown-body"><p id="source">Readable GitHub source with an <a href="/original">original link</a>.</p></div><div role="dialog"><p id="modal">Search modal source.</p></div>${topicMarkup}</body></html>`);
         const core = new TranslationCandidateCore({url: new URL('https://github.com/example/repo'), adapters: compileSiteRulePack(builtinSiteRulePack)});
         const source = document.querySelector('#source')!;
         const before = document.body.innerHTML;

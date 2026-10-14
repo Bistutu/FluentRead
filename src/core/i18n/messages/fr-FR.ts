@@ -6,6 +6,8 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/fr-FR.json';
+import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/fr-FR.json';
@@ -26,6 +28,7 @@ export const frFRMessages = {
     "popup.compact.translate": "Traduire",
     "popup.compact.restore": "Rétablir",
     ...videoLearningText,
+    ...compositeTranslationMessages['fr-FR'],
     ...pdfReadingMessages['fr-FR'],
     ...informationHighlightMessages['fr-FR'],
     ...reencounterText,
@@ -531,6 +534,7 @@ export const frFRMessages = {
     "settings.requestLimits.modelTitle": "Limites du modèle",
     "settings.requestLimits.globalTitle": "Limites de requêtes",
     "settings.requestLimits.globalHelp": "Les services et modèles sans réglages spécifiques partagent ces limites.",
+    ...aiRequestTimeoutMessages["fr-FR"],
     "settings.requestLimits.retryIntervals": "Délais de nouvelle tentative",
     "settings.requestLimits.apiKeyRecovery": "Refroidissement de la clé en échec",
     "settings.requestLimits.apiKeyRecoveryHelp": "Une clé ayant échoué pour authentification, quota ou limitation est temporairement ignorée. Le délai Retry-After fourni par le service est prioritaire.",
@@ -1412,7 +1416,8 @@ export const frFRMessages = {
     'settings.services.deepl.proxyOverride': 'Une URL API personnalisée est utilisée. Le changement de forfait ne la remplacera pas.',
     'settings.services.azure.endpoint': 'Point de terminaison Azure',
     "settings.services.deeplx.endpoint": "Adresse du service",
-    "settings.services.deeplx.endpointHelp": "Saisissez l’adresse complète de traduction (se terminant généralement par /translate). Le chemin n’est pas ajouté automatiquement. Laissez vide pour utiliser le service public par défaut.",
+    "settings.services.deeplx.defaultRoute": "Connexion directe à DeepL par défaut",
+    "settings.services.deeplx.endpointHelp": "Sans clé API, la connexion par défaut se fait directement à DeepL, puis au service public en cas d’échec. Une URL personnalisée doit inclure le chemin complet (généralement /translate) ; le chemin n’est pas ajouté automatiquement.",
     "settings.services.deeplx.tokenHelp": "Dans API Key, saisissez uniquement la valeur du Token, sans préfixe Bearer. Il est envoyé dans l’en-tête par défaut. Si le site exige un Token dans l’URL, utilisez ci-dessous le format indiqué par le site.",
     "settings.services.deeplx.queryToken": "Paramètre de requête :",
     "settings.services.deeplx.pathToken": "Chemin de l’URL :",
@@ -1507,7 +1512,7 @@ export const frFRMessages = {
     "paragraphCopy.notice.noPointer": "Survolez d’abord un paragraphe, puis appuyez sur le raccourci de copie",
     "paragraphCopy.notice.failed": "Échec de la copie. Sélectionnez le texte et copiez-le manuellement.",
     "sectionTranslation.picker.title": "Traduction partielle",
-    "sectionTranslation.picker.instruction": "Cliquez pour sélectionner la zone de la page à traduire",
+    "sectionTranslation.picker.instruction": "Cliquez ou glissez pour sélectionner les zones à traduire",
     "sectionTranslation.picker.keys": "↑/↓ ajuster · Enter confirmer · Esc quitter",
     "sectionTranslation.picker.locked": "Sélection verrouillée. Ajustez si besoin, puis confirmez",
     "sectionTranslation.picker.expand": "Agrandir la sélection",
@@ -1515,12 +1520,14 @@ export const frFRMessages = {
     "sectionTranslation.picker.reselect": "Choisir une autre zone",
     "sectionTranslation.picker.confirm": "Traduire la zone sélectionnée",
     "sectionTranslation.picker.restore": "Rétablir l’original",
-    "sectionTranslation.picker.preview": "Déplacez la souris pour prévisualiser, cliquez pour sélectionner",
+    "sectionTranslation.picker.preview": "Survolez pour prévisualiser ; cliquez ou glissez pour sélectionner",
     "sectionTranslation.scope.paragraph": "Paragraphe",
     "sectionTranslation.scope.list": "Liste",
     "sectionTranslation.scope.table": "Tableau",
     "sectionTranslation.scope.article": "Texte de l’article",
     "sectionTranslation.scope.region": "Zone",
+    "sectionTranslation.picker.dragging": "Glissez pour sélectionner, relâchez puis confirmez",
+    "sectionTranslation.scope.selected": "{count} zones sélectionnées",
     "sectionTranslation.picker.close": "Quitter la traduction partielle",
     "sectionTranslation.label.inspecting": "Analyse…",
     "sectionTranslation.label.translate": "Traduire · {count} paragraphes",
@@ -1550,7 +1557,7 @@ export const frFRMessages = {
     "sectionTranslation.settings.hotkeySet": "Raccourci de traduction partielle défini sur {shortcut}",
     "sectionTranslation.settings.hotkeyConflict": "{feature} utilise déjà ce raccourci. Choisissez une autre combinaison.",
     "popup.sectionTranslation": "Zone",
-    "popup.sectionTranslationTitle": "Traduction partielle : survolez pour prévisualiser, cliquez pour sélectionner, puis confirmez pour traduire",
+    "popup.sectionTranslationTitle": "Traduction partielle : cliquez ou glissez pour sélectionner, puis confirmez",
     "popup.sectionTranslationShortcut": "Raccourci : {shortcut}",
     "popup.sectionTranslationUnavailable": "La traduction partielle n’est pas disponible sur cette page. Actualisez puis réessayez.",
     "area.settings.service": "Service de traduction de zone",
@@ -2423,6 +2430,7 @@ const frFRLegacyTextBase: Readonly<Record<string, string>> = {
 
 export const frFRLegacyText: Readonly<Record<string, string>> = {
     ...googleDriveText.legacy,
+    ...compositeTranslationLegacyText['fr-FR'],
     ...cloudBackupText.legacy,
     "腾讯交互翻译": "Tencent TranSmart",
     "火山翻译": "Traduction Volcengine",

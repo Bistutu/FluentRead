@@ -5,6 +5,7 @@
  * 模块边界：该模块不发现候选、不请求翻译也不生成译文 HTML；runtime 负责会话编排，renderer 负责内容创建，本文件仅拥有 DOM 状态与可逆样式资源，重挂时撤下旧译文尺寸隔离并同步可信模板，避免跨 session 误删新结果。
  */
 import {getTranslatableControlValueAttribute, isTranslationTooltip} from "@/src/core/translation/dom";
+import {isIdentifierLikeText, isTranslationTextNodeProtected} from "@/src/core/translation/text";
 import {clearTranslationFailedHost} from "@/src/features/full-page-translation/core/hostMarkers";
 import {withFullPageRestorationAnchors} from './viewportStability';
 import {disableBilingualRenderingContainment} from './renderingContainment';
@@ -22,7 +23,6 @@ import {
     hasActiveTranslationLineClamp,
     hasActiveTranslationTruncation,
     isProtectedDescendantElement,
-    isTranslationTextElementProtected,
     translationTruncationStyleOverrides,
     type TranslationCandidate,
     type TranslationScope,
@@ -323,12 +323,17 @@ export function getTranslationSourceStructureSignature(
                     ? 'whitespace'
                     : translatableTextNodes
                     ? (translatableTextNodes.has(current as Text) ? 'text' : 'protected-text')
-                    : ((current as Text).parentElement && !isTranslationTextElementProtected(
-                        (current as Text).parentElement!,
+                    // 普通 owner 与捕获的 provider 槽采用相同的 Text 政策。只检查
+                    // parent 会把独立数字或链接标识符误记为正文，使重放永不收敛。
+                    : (!isTranslationTextNodeProtected(
+                        current as Text,
                         shouldStayOriginal,
-                        protectionCache,
+                        undefined,
                         protectionOptions,
-                    ) ? 'text' : 'protected-text'),
+                        protectionCache,
+                    // Text 保护检查为 false 时已保证 parentElement 存在。
+                    ) && !(isIdentifierLikeText(raw) &&
+                        (current as Text).parentElement!.closest('a[href]')) ? 'text' : 'protected-text'),
                 text,
             ])) return SOURCE_STRUCTURE_OVERFLOW;
             continue;

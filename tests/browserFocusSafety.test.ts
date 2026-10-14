@@ -657,7 +657,7 @@ describe('browser regression focus safety', () => {
         expect(source).toContain("['服务 / 模型', '输入', '缓存', '输出', '次数', '总计']");
         expect(source).toContain('index % 5 === 0');
         expect(source).toContain('index % 5 === 2');
-        expect(source).toContain('FluentRead 译文缓存或配置历史');
+        expect(source).toContain('流畅阅读 译文缓存或配置历史');
         expect(source).toContain("getByText('缓存读取未上报'");
         expect(source).toContain("getByText('暂时无法拆分输入与缓存构成'");
         expect(source).toContain("mode: 'patch'");
@@ -1262,9 +1262,11 @@ type FloatingTreeOptions = {
   toolsDisplay?: 'hover' | 'always'; progressPanel?: boolean;
   toolStyle?: Partial<FloatingCdpStyle>; checkStyle?: Partial<FloatingCdpStyle>;
   checkQuad?: number[] | null;
+  nodeIdOffset?: number;
 };
 const floatingCli = require(resolve(PROJECT_ROOT, 'scripts/run-full-page-translation-test.cjs')) as {
   readFloatingUiState(page: unknown): Promise<FloatingCliState>;
+  readFloatingUiState(page: unknown, allowPending: true): Promise<FloatingCliState | null>;
   isCollapsedFloatingUiState(state: FloatingCliState, translated: boolean): boolean;
   isExpandedFloatingUiState(state: FloatingCliState): boolean;
 };
@@ -1279,6 +1281,7 @@ function makeFloatingCdpFixture(initial: FloatingTreeOptions = {}) {
   let styles: Map<number, FloatingCdpStyle>;
   let quads: Map<number, number[]>;
   let documentError: Error | undefined;
+  const styleReads = new Map<number, () => Promise<FloatingCdpStyle>>();
 
   function replace(options: FloatingTreeOptions) {
     const expanded = options.expanded === true;
@@ -1322,6 +1325,16 @@ function makeFloatingCdpFixture(initial: FloatingTreeOptions = {}) {
     if (options.checkQuad !== null) {
       quads.set(10, options.checkQuad ?? [42, 338, 56, 338, 56, 352, 42, 352]);
     }
+    if (options.nodeIdOffset) {
+      const offset = options.nodeIdOffset;
+      const rebase = (current: FloatingCdpNode) => {
+        current.nodeId += offset;
+        for (const child of [...(current.children || []), ...(current.shadowRoots || [])]) rebase(child);
+      };
+      rebase(root);
+      styles = new Map([...styles].map(([id, style]) => [id + offset, style]));
+      quads = new Map([...quads].map(([id, quad]) => [id + offset, quad]));
+    }
   }
   replace(initial);
   const page = {
@@ -1335,7 +1348,8 @@ function makeFloatingCdpFixture(initial: FloatingTreeOptions = {}) {
             return {root};
           }
           if (command === 'CSS.getComputedStyleForNode') {
-            const style = styles.get(params!.nodeId!);
+            const read = styleReads.get(params!.nodeId!);
+            const style = read ? await read() : styles.get(params!.nodeId!);
             if (!style) throw new Error(`Unexpected computed-style node ${params?.nodeId}`);
             return {computedStyle: Object.entries(style).map(([name, value]) => ({name, value}))};
           }
@@ -1351,12 +1365,15 @@ function makeFloatingCdpFixture(initial: FloatingTreeOptions = {}) {
       sessions.push(session);
       return session;
     })}),
+    waitForTimeout: vi.fn(async (_milliseconds: number) => undefined),
     // 执行 CLI 传入的原 viewport callback，而不是以预制结果替换 callback。
     evaluate: vi.fn(async (callback: () => unknown) => new Script(`(${callback.toString()})()`).runInNewContext({
       window: {innerWidth: 1280, innerHeight: 900},
     }, {timeout: 1000})),
   };
-  return {page, sessions, replace, failDocument: (error: Error) => {documentError = error;}};
+  return {page, sessions, replace, failDocument: (error: Error) => {documentError = error;},
+    controlStyle: (nodeId: number, read: () => Promise<FloatingCdpStyle>) => {styleReads.set(nodeId, read);},
+    clearStyleReads: () => styleReads.clear()};
 }
 
 describe('全文公开 CLI 的真实 CDP reader 与悬浮状态契约', () => {
@@ -1483,6 +1500,144 @@ describe('全文公开 CLI 的真实 CDP reader 与悬浮状态契约', () => {
     fixture.failDocument(error);
     await expect(floatingCli.readFloatingUiState(fixture.page)).rejects.toBe(error);
     expect(fixture.sessions[0].detach).toHaveBeenCalledTimes(1);
+  });
+});
+
+// 只在测试内存副本中访问既有 private waiter；正式 CLI 不增加导出或测试模式。
+describe('全文浮动 UI 的 CDP 节点换代采样', () => {
+  const missingNodeMessage = 'cdpSession.send: Protocol error (CSS.getComputedStyleForNode): Could not find node with given id';
+  function controlledWaiter(fixture: ReturnType<typeof makeFloatingCdpFixture>, onPoll = () => {}) {
+    let now = 0;
+    const sourcePath = resolve(PROJECT_ROOT, 'scripts/run-full-page-translation-test.cjs');
+    const module = {exports: {}};
+    new Script(readFileSync(sourcePath, 'utf8') +
+      '\nmodule.exports.__testWaitForFloatingUiState = waitForFloatingUiState;' +
+      '\nmodule.exports.__testAssertNoAutomaticFloatingExpansion = assertNoAutomaticFloatingExpansion;',
+    {filename: sourcePath}).runInNewContext({module, exports: module.exports,
+      require: createRequire(sourcePath), __dirname: dirname(sourcePath), process, console,
+      Date: {now: () => now}});
+    fixture.page.waitForTimeout.mockImplementation(async milliseconds => {now += milliseconds; onPoll();});
+    return {...module.exports as {
+      __testWaitForFloatingUiState(page: unknown, predicate: (state: FloatingCliState) => boolean,
+        timeout: number, description: string): Promise<FloatingCliState>;
+      __testAssertNoAutomaticFloatingExpansion(page: unknown, durationMs?: number): Promise<unknown>;
+    }, elapsed: () => now};
+  }
+
+  it.each([7, 6, 10])('nodeId=%s 在样式读取前失效时丢弃整样本，下个原50ms轮询重新读完整document', async nodeId => {
+    const fixture = makeFloatingCdpFixture({progressPanel: true});
+    const stale = new Error(missingNodeMessage);
+    fixture.controlStyle(nodeId, async () => {throw stale;});
+    const clock = controlledWaiter(fixture, () => {
+      fixture.clearStyleReads();
+      fixture.replace({progressPanel: true, nodeIdOffset: 100});
+    });
+    const predicate = vi.fn((state: FloatingCliState) => Boolean(state.progressPanel && state.progress?.running));
+    const state = await clock.__testWaitForFloatingUiState(fixture.page, predicate, 125, 'viewport progress');
+    expect(state.progress).toEqual({running: 2, remaining: 9, queued: 3, offscreen: 6});
+    expect(predicate).toHaveBeenCalledTimes(1);
+    expect(predicate).toHaveBeenCalledWith(state);
+    expect(fixture.sessions).toHaveLength(2);
+    expect(clock.elapsed()).toBe(50);
+    expect(fixture.page.waitForTimeout).toHaveBeenCalledOnce();
+    expect(fixture.page.waitForTimeout).toHaveBeenCalledWith(50);
+    expect(fixture.page.evaluate).toHaveBeenCalledOnce();
+    expect(fixture.sessions[0].send).toHaveBeenCalledWith('CSS.getComputedStyleForNode', {nodeId});
+    expect(fixture.sessions[1].send).toHaveBeenCalledWith('CSS.getComputedStyleForNode', {nodeId: nodeId + 100});
+    for (const session of fixture.sessions) {
+      expect(session.send.mock.calls.filter(([method]) => method === 'DOM.getDocument')).toHaveLength(1);
+      expect(session.detach).toHaveBeenCalledOnce();
+    }
+  });
+
+  it('持续失效仍在原deadline退出，既有50ms轮询不能刷新预算或把null样本交给predicate', async () => {
+    const fixture = makeFloatingCdpFixture({progressPanel: true});
+    fixture.controlStyle(10, async () => {throw new Error(missingNodeMessage);});
+    const clock = controlledWaiter(fixture);
+    const predicate = vi.fn(() => true);
+    await expect(clock.__testWaitForFloatingUiState(fixture.page, predicate, 125, 'stale deadline'))
+      .rejects.toThrow('stale deadline：null');
+    expect(predicate).not.toHaveBeenCalled();
+    expect(clock.elapsed()).toBe(150);
+    expect(fixture.sessions).toHaveLength(3);
+    expect(fixture.page.waitForTimeout.mock.calls).toEqual([[50], [50], [50]]);
+    expect(fixture.page.evaluate).not.toHaveBeenCalled();
+    for (const session of fixture.sessions) expect(session.detach).toHaveBeenCalledOnce();
+  });
+
+  it('重新读取到完整但不满足原progress条件的状态也必须超时，不能只因刷新成功而PASS', async () => {
+    const fixture = makeFloatingCdpFixture({progressPanel: true});
+    fixture.controlStyle(10, async () => {throw new Error(missingNodeMessage);});
+    const clock = controlledWaiter(fixture, () => {
+      fixture.clearStyleReads();
+      fixture.replace({progressPanel: false, nodeIdOffset: 100});
+    });
+    const predicate = vi.fn((state: FloatingCliState) => Boolean(state.progressPanel && state.progress?.running));
+    await expect(clock.__testWaitForFloatingUiState(fixture.page, predicate, 100, 'missing progress'))
+      .rejects.toThrow('missing progress');
+    expect(predicate).toHaveBeenCalledOnce();
+    expect(predicate.mock.calls[0][0]).toMatchObject({progressPanel: false, progress: null});
+    expect(clock.elapsed()).toBe(100);
+    expect(fixture.sessions).toHaveLength(2);
+  });
+
+  it.each([
+    'cdpSession.send: Protocol error (CSS.getComputedStyleForNode): Target closed',
+    'cdpSession.send: Protocol error (DOM.getBoxModel): Could not find node with given id',
+    'Could not find node with given id',
+    'CONTROLLED_UNKNOWN_CSS_FAILURE',
+  ])('未知或非精确CSS失效仍立即抛出同一错误：%s', async message => {
+    const fixture = makeFloatingCdpFixture();
+    const error = new Error(message);
+    fixture.controlStyle(10, async () => {throw error;});
+    const clock = controlledWaiter(fixture);
+    const predicate = vi.fn(() => true);
+    await expect(clock.__testWaitForFloatingUiState(fixture.page, predicate, 125, 'must stay fatal')).rejects.toBe(error);
+    expect(predicate).not.toHaveBeenCalled();
+    expect(fixture.page.waitForTimeout).not.toHaveBeenCalled();
+    expect(fixture.sessions).toHaveLength(1);
+    expect(fixture.sessions[0].detach).toHaveBeenCalledOnce();
+    expect(clock.elapsed()).toBe(0);
+  });
+
+  it('并行样式读取先失效且另一个仍pending时，未知CSS异常仍立即fatal而不被丢弃样本掩盖', async () => {
+    const fixture = makeFloatingCdpFixture();
+    const stale = new Error(missingNodeMessage);
+    const unknown = new Error('CONTROLLED_PARALLEL_CSS_FAILURE');
+    let release!: (style: FloatingCdpStyle) => void;
+    const pending = new Promise<FloatingCdpStyle>(resolve => {release = resolve;});
+    fixture.controlStyle(7, async () => {throw stale;});
+    fixture.controlStyle(6, () => pending);
+    fixture.controlStyle(10, async () => {throw unknown;});
+    const clock = controlledWaiter(fixture);
+    const predicate = vi.fn(() => true);
+    try {
+      await expect(clock.__testWaitForFloatingUiState(fixture.page, predicate, 125, 'parallel error')).rejects.toBe(unknown);
+      expect(predicate).not.toHaveBeenCalled();
+      expect(fixture.page.waitForTimeout).not.toHaveBeenCalled();
+      expect(fixture.sessions[0].detach).toHaveBeenCalledOnce();
+    } finally {release({opacity: '0', visibility: 'visible', display: 'flex'});}
+  });
+
+  it('document阶段即使抛出相同CSS字串也不是由特定style调用产生的pending状态', async () => {
+    const fixture = makeFloatingCdpFixture();
+    const error = new Error(missingNodeMessage);
+    fixture.failDocument(error);
+    const clock = controlledWaiter(fixture);
+    await expect(clock.__testWaitForFloatingUiState(fixture.page, () => true, 125, 'document failed')).rejects.toBe(error);
+    expect(fixture.page.waitForTimeout).not.toHaveBeenCalled();
+    expect(fixture.sessions[0].detach).toHaveBeenCalledOnce();
+  });
+
+  it('直接reader与无自动展开观察仍抛出原失效错误，不把空样本计作稳定成功', async () => {
+    const fixture = makeFloatingCdpFixture();
+    const stale = new Error(missingNodeMessage);
+    fixture.controlStyle(10, async () => {throw stale;});
+    await expect(floatingCli.readFloatingUiState(fixture.page)).rejects.toBe(stale);
+    const clock = controlledWaiter(fixture);
+    await expect(clock.__testAssertNoAutomaticFloatingExpansion(fixture.page)).rejects.toBe(stale);
+    expect(fixture.page.waitForTimeout).not.toHaveBeenCalled();
+    for (const session of fixture.sessions) expect(session.detach).toHaveBeenCalledOnce();
   });
 });
 
@@ -2247,4 +2402,292 @@ describe('文档配置持久化等待（实际调用，mock protocol only）', (
       expect(h.sendMessage).toHaveBeenCalledTimes(1);
       expect(vi.getTimerCount()).toBe(0);
     }));
+});
+
+
+// Execute the actual helper module with controlled I/O ports. These tests do
+// not launch a browser, query native processes, or replace its window logic.
+describe('macOS 前台 native CDP helper 的启动与窗口契约（受控端口）', () => {
+  type Viewport = {width: number; height: number};
+  type Bounds = {left: number; top: number; width: number; height: number; windowState: string};
+  type FixtureOptions = {
+    platform?: string; headless?: boolean; background?: boolean; browserPath?: string;
+    pendingOwnership?: boolean; appExists?: boolean; secondaryMissing?: boolean; omitBrowserPath?: boolean;
+    openError?: Error; captureError?: Error; placementError?: Error; viewportError?: Error; readbackError?: Error;
+    observedBounds?: Bounds;
+  };
+
+  function controlledNativeHelper(options: FixtureOptions = {}) {
+    const profileDir = '/controlled/fluentread-site-case-owned';
+    const appBundle = '/Applications/Microsoft Edge.app';
+    const ownedPid = 72191;
+    const events: string[] = [];
+    const nativeProcess = Object.assign(new EventEmitter(), {
+      platform: options.platform ?? 'darwin', pid: 72190, env: {}, exit: vi.fn(),
+    });
+    const layout = {
+      main: {x: 0, y: 0, width: 1920, height: 1080},
+      screens: [
+        {index: 0, isMain: true, frame: {x: 0, y: 0, width: 1920, height: 1080},
+          visible: {x: 0, y: 0, width: 1920, height: 1040}},
+        ...options.secondaryMissing ? [] : [{index: 1, isMain: false,
+          frame: {x: 1920, y: 0, width: 1920, height: 1080},
+          visible: {x: 1920, y: 0, width: 1920, height: 1040}}],
+      ],
+    };
+    const tabs = {getCurrent: vi.fn(async () => ({id: 11})),
+      query: vi.fn(async () => [{id: 12, url: 'https://news.ycombinator.com/'}]),
+      update: vi.fn(async () => ({}))};
+    const evaluateCallback = (callback: (...args: unknown[]) => unknown, arg?: unknown) =>
+      new Script(`(${callback.toString()})(arg)`).runInNewContext({arg,
+        window: {screen: {availLeft: 0, availTop: 0, availWidth: 1920, availHeight: 1040},
+          outerWidth: 1280, outerHeight: 900}, chrome: {tabs}}, {timeout: 1000});
+    function fixturePage(initialUrl = 'about:blank') {
+      let url = initialUrl;
+      return {
+        url: () => url, goto: vi.fn(async (destination: string) => {url = destination;}),
+        keyboard: {press: vi.fn(async (_key: string) => undefined)},
+        setViewportSize: vi.fn(async (_viewport: Viewport) => {
+          events.push('viewport'); if (options.viewportError) throw options.viewportError;
+        }),
+        evaluate: vi.fn(async (callback: (...args: unknown[]) => unknown, arg?: unknown) => {
+          events.push('page-evaluate'); return evaluateCallback(callback, arg);
+        }),
+      };
+    }
+    const pages: Array<ReturnType<typeof fixturePage>> = [];
+    const worker = {url: () => 'chrome-extension://controlled/background.js', evaluate: vi.fn(async (callback: (...args: unknown[]) => unknown, arg?: unknown) =>
+      evaluateCallback(callback, arg))};
+    const pageSessions: Array<{send: ReturnType<typeof vi.fn>; detach: ReturnType<typeof vi.fn>}> = [];
+    const context = {
+      pages: () => pages, browser: (): unknown => browser,
+      newPage: vi.fn(async () => {events.push('new-page'); const page = fixturePage(); pages.push(page); return page;}),
+      serviceWorkers: vi.fn(() => [worker]),
+      newCDPSession: vi.fn(async (_page: unknown) => {
+        const session = {send: vi.fn(async (method: string) => {
+          if (method !== 'Target.getTargetInfo') throw new Error(`Unexpected page CDP ${method}`);
+          return {targetInfo: {targetId: 'controlled-target'}};
+        }), detach: vi.fn(async () => undefined)};
+        pageSessions.push(session); return session;
+      }),
+      close: vi.fn(async () => undefined),
+    };
+    let requestedBounds: Bounds | undefined;
+    const browserSessions: Array<{send: ReturnType<typeof vi.fn>; detach: ReturnType<typeof vi.fn>}> = [];
+    const browser = {
+      contexts: () => [context], close: vi.fn(async () => {events.push('native-connection-close');}),
+      newBrowserCDPSession: vi.fn(async () => {
+        const session = {send: vi.fn(async (method: string, params?: Record<string, unknown>) => {
+          events.push(method);
+          if (method === 'Browser.getWindowForTarget') return {windowId: 6};
+          if (method === 'Browser.setWindowBounds') {
+            if (options.placementError) throw options.placementError;
+            requestedBounds = params!.bounds as Bounds; return {};
+          }
+          if (method === 'Browser.getWindowBounds') {
+            if (options.readbackError) throw options.readbackError;
+            return {bounds: options.observedBounds ?? requestedBounds};
+          }
+          if (method === 'Target.createTarget') {
+            pages.push(fixturePage(params!.url as string)); return {targetId: 'controlled-background-target'};
+          }
+          if (method === 'Target.closeTarget') return {};
+          throw new Error(`Unexpected browser CDP ${method}`);
+        }), detach: vi.fn(async () => undefined)};
+        browserSessions.push(session); return session;
+      }),
+    };
+    const chromium = {
+      connectOverCDP: vi.fn(async (_endpoint: string, _options: unknown) => {events.push('connect'); return browser;}),
+      launchPersistentContext: vi.fn(async (_profile: string, _options: unknown) => {events.push('sdk-launch'); return context;}),
+    };
+    let resolveOwnership!: (pid: number) => void;
+    const ownership = new Promise<number>(resolve => {resolveOwnership = resolve;});
+    if (!options.pendingOwnership) resolveOwnership(ownedPid);
+    const guardedClose = vi.fn(async (): Promise<unknown> => undefined);
+    const guardBrowserClose = vi.fn((session: {close: () => Promise<unknown>;
+      closeBrowserConnection: () => Promise<unknown>; useGuardedClose: (close: () => Promise<unknown>) => void}, profile: string) => {
+      expect(profile).toBe(profileDir); events.push('guard');
+      guardedClose.mockImplementation(async () => {
+        events.push('guarded-close'); return session.closeBrowserConnection();
+      });
+      session.useGuardedClose(guardedClose); return session;
+    });
+    const getGuardedBrowserPid = vi.fn(async (_session: unknown) => {
+      events.push('capture'); if (options.captureError) throw options.captureError;
+      const pid = await ownership; events.push('capture-ready'); return pid;
+    });
+    const fsPort = {existsSync: vi.fn((path: string) => path === appBundle && options.appExists !== false),
+      lstatSync: vi.fn(() => undefined), rmSync: vi.fn(),
+      readFileSync: vi.fn((_path: string, _encoding: string) => '39221\n/devtools/browser/controlled')};
+    const execFile = vi.fn(async (command: string, args: string[], _options?: unknown) => {
+      if (command === '/usr/bin/open') {
+        events.push('native-open'); if (options.openError) throw options.openError; return {stdout: ''};
+      }
+      if (command === '/usr/bin/osascript') {
+        if (args[3].includes('frontmostApplication')) {events.push('frontmost-read'); return {stdout: JSON.stringify({pid: ownedPid, name: 'Microsoft Edge'})};}
+        if (args[3].includes('NSScreen.screens')) return {stdout: JSON.stringify(layout)};
+      }
+      throw new Error(`Unexpected native I/O port ${command}`);
+    });
+    const module = {exports: {}};
+    const helperSource = readFileSync(BUNDLED_FOCUS_SAFE_HELPER, 'utf8');
+    new Script(helperSource, {filename: BUNDLED_FOCUS_SAFE_HELPER}).runInNewContext({module,
+      exports: module.exports, process: nativeProcess, console, setTimeout, clearTimeout,
+      require: (id: string) => {
+        if (id === 'node:fs') return fsPort;
+        if (id === 'node:path') return require(id);
+        if (id === 'node:crypto') return {randomUUID: () => 'controlled-background-marker'};
+        if (id === 'node:child_process') return {execFile};
+        if (id === 'node:util') return {promisify: (fn: unknown) => fn};
+        if (id === './owned-browser-close.cjs') return {guardBrowserClose, getGuardedBrowserPid};
+        throw new Error(`Unexpected helper module port ${id}`);
+      }}, {timeout: 1000});
+    const helper = module.exports as {
+      launchFocusSafePersistentContext(options: unknown): Promise<{context: typeof context; launchMode: string;
+        focusPolicy: string; windowPlacement: Record<string, unknown>; close: () => Promise<unknown>}>;
+      newPageWithoutForeground(browserContext: typeof context): Promise<ReturnType<typeof fixturePage>>;
+      activateExtensionTabWithoutForeground(browserContext: typeof context, page: ReturnType<typeof fixturePage>): Promise<void>;
+    };
+    const launchOptions = {chromium, profileDir,
+      ...options.omitBrowserPath ? {} : {browserPath: options.browserPath ?? `${appBundle}/Contents/MacOS/Microsoft Edge`},
+      headless: options.headless ?? false, background: options.background ?? false,
+      browserArgs: ['--load-extension=/controlled/extension'], viewport: {width: 1280, height: 900}, timeout: 30000};
+    const launch = () => helper.launchFocusSafePersistentContext(launchOptions);
+    return {helper, launch, launchOptions, profileDir, ownedPid, events, chromium, context, browser, pages,
+      tabs, worker, pageSessions, browserSessions, execFile, fsPort, guardBrowserClose, guardedClose,
+      getGuardedBrowserPid, resolveOwnership, nativeProcess};
+  }
+
+  async function drainNativeHelper() {for (let index = 0; index < 8; index++) await Promise.resolve();}
+  function expectNoProfileRemoval(f: ReturnType<typeof controlledNativeHelper>) {
+    expect(f.fsPort.rmSync.mock.calls.every(([path]) => path !== f.profileDir)).toBe(true);
+  }
+
+  it('前台.app等待精确owner后才创建页和居中，原生open允许前台且实际读回第二屏窗口', async () => {
+    const f = controlledNativeHelper({pendingOwnership: true,
+      observedBounds: {left: 2244, top: 114, width: 1280, height: 900, windowState: 'normal'}});
+    const opening = f.launch(); await drainNativeHelper();
+    expect(f.guardBrowserClose).toHaveBeenCalledOnce(); expect(f.getGuardedBrowserPid).toHaveBeenCalledOnce();
+    expect(f.context.newPage).not.toHaveBeenCalled(); expect(f.browser.newBrowserCDPSession).not.toHaveBeenCalled();
+    f.resolveOwnership(f.ownedPid); const session = await opening;
+    try {
+      expect(session.context).toBe(f.context);
+      expect(session).toMatchObject({launchMode: 'macos-foreground-cdp', focusPolicy: 'foreground-authorized',
+        windowPlacement: {mode: 'headed-centered', visible: true, hidden: false, centered: true,
+          displayTarget: 'secondary', source: 'macos-nsscreen', screenIndex: 1,
+          bounds: {left: 2244, top: 114, width: 1280, height: 900}}});
+      expect(f.execFile.mock.calls.find(([command]) => command === '/usr/bin/open')?.[1])
+        .toEqual(['-n', '-a', '/Applications/Microsoft Edge.app', '--args',
+          '--user-data-dir=' + f.profileDir, '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0',
+          '--enable-automation', '--password-store=basic', '--use-mock-keychain', '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--no-startup-window',
+          '--window-size=1280,900', '--load-extension=/controlled/extension']);
+      expect(f.chromium.launchPersistentContext).not.toHaveBeenCalled();
+      expect(f.events).not.toContain('frontmost-read'); // Background policy must not override authorized foreground.
+      expect(f.events.indexOf('capture-ready')).toBeLessThan(f.events.indexOf('new-page'));
+      expect(f.browserSessions[0].send.mock.calls.map(([method]) => method))
+        .toEqual(['Browser.getWindowForTarget', 'Browser.setWindowBounds', 'Browser.getWindowBounds']);
+      expect(f.browserSessions[0].send).toHaveBeenCalledWith('Browser.setWindowBounds', {windowId: 6,
+        bounds: {left: 2240, top: 110, width: 1280, height: 900, windowState: 'normal'}});
+      expectNoProfileRemoval(f);
+    } finally {await session.close();}
+    expect(f.guardedClose).toHaveBeenCalledOnce(); expect(f.browser.close).toHaveBeenCalledOnce();
+    expect(f.nativeProcess.listenerCount('SIGINT')).toBe(0); expect(f.nativeProcess.listenerCount('SIGTERM')).toBe(0);
+  });
+
+  it('后续正文页与popup页仍用原context API，逐页设固定viewport并保留键盘及扩展tab端口', async () => {
+    const f = controlledNativeHelper(); const session = await f.launch();
+    try {
+      f.launchOptions.viewport.width = 777; // The owned foreground context stores its own viewport snapshot.
+      const content = await f.helper.newPageWithoutForeground(f.context);
+      const popup = await f.helper.newPageWithoutForeground(f.context);
+      await content.goto('https://news.ycombinator.com/');
+      await content.keyboard.press('Control+KeyQ');
+      await popup.goto('chrome-extension://controlled/popup.html');
+      await f.helper.activateExtensionTabWithoutForeground(f.context, popup);
+      await f.helper.activateExtensionTabWithoutForeground(f.context, content);
+      expect(f.pages).toHaveLength(3);
+      for (const page of f.pages) {
+        expect(page.setViewportSize).toHaveBeenCalledOnce();
+        expect(page.setViewportSize).toHaveBeenCalledWith({width: 1280, height: 900});
+      }
+      expect(f.context.serviceWorkers).toHaveBeenCalledOnce(); expect(f.worker.evaluate).toHaveBeenCalledOnce();
+      expect(f.tabs.update.mock.calls).toEqual([[11, {active: true}], [12, {active: true}]]);
+      expect(content.keyboard.press).toHaveBeenCalledOnce();
+      expect(content.keyboard.press).toHaveBeenCalledWith('Control+KeyQ');
+      expect(f.chromium.launchPersistentContext).not.toHaveBeenCalled();
+    } finally {await session.close();}
+  });
+
+  it.each(['open', 'capture', 'viewport', 'placement', 'readback'] as const)('%s失败保留原错误和profile，.app不能fallback SDK', async (stage) => {
+    const error = new Error('CONTROLLED_NATIVE_' + stage);
+    const f = controlledNativeHelper({[stage + 'Error']: error});
+    await expect(f.launch()).rejects.toBe(error);
+    expect(f.chromium.launchPersistentContext).not.toHaveBeenCalled(); expectNoProfileRemoval(f);
+    if (stage === 'open') {
+      expect(f.chromium.connectOverCDP).not.toHaveBeenCalled(); expect(f.guardedClose).not.toHaveBeenCalled();
+    } else {
+      expect(f.guardedClose).toHaveBeenCalledOnce(); expect(f.browser.close).toHaveBeenCalledOnce();
+      if (stage === 'capture') expect(f.context.newPage).not.toHaveBeenCalled();
+    }
+  });
+
+  it.each([
+    {left: 20, top: 100, width: 1280, height: 900, windowState: 'normal'},
+    {left: 2240, top: 110, width: 1280, height: 900, windowState: 'minimized'},
+  ])('native窗口实际读回%s不满足第二屏契约时关闭并保留profile', async observedBounds => {
+    const f = controlledNativeHelper({observedBounds});
+    await expect(f.launch()).rejects.toThrow();
+    expect(f.browserSessions[0].send).toHaveBeenCalledWith('Browser.getWindowBounds', {windowId: 6});
+    expect(f.guardedClose).toHaveBeenCalledOnce(); expect(f.browser.close).toHaveBeenCalledOnce();
+    for (const session of [...f.pageSessions, ...f.browserSessions]) expect(session.detach).toHaveBeenCalledOnce();
+    expectNoProfileRemoval(f);
+  });
+
+  it('secondary没有真实第二屏时不能退到主屏后写成功metadata', async () => {
+    const f = controlledNativeHelper({secondaryMissing: true});
+    await expect(f.launch()).rejects.toThrow();
+    expect(f.guardedClose).toHaveBeenCalledOnce(); expect(f.browser.close).toHaveBeenCalledOnce();
+    expectNoProfileRemoval(f);
+  });
+
+  it('原background仍带-g及Target.background并拒绝自有Edge成为前台', async () => {
+    const f = controlledNativeHelper({background: true});
+    await expect(f.launch()).rejects.toThrow(/成为.*前台/u);
+    expect(f.execFile.mock.calls.find(([command]) => command === '/usr/bin/open')?.[1]?.[0]).toBe('-g');
+    expect(f.browserSessions[0].send).toHaveBeenCalledWith('Target.createTarget', {
+      url: 'about:blank#fluentread-background-controlled-background-marker', background: true});
+    expect(f.context.newPage).not.toHaveBeenCalled(); expect(f.guardedClose).toHaveBeenCalledOnce();
+    expectNoProfileRemoval(f);
+  });
+
+  it.each([
+    {platform: 'darwin', headless: true, launchMode: 'playwright-headless'},
+    {platform: 'darwin', headless: false, omitBrowserPath: true, launchMode: 'playwright-headed'},
+    {platform: 'linux', headless: false, launchMode: 'playwright-headed'},
+    {platform: 'darwin', headless: false, browserPath: '/controlled/non-app-edge', launchMode: 'playwright-headed'},
+  ])('原SDK路径保持：%j', async options => {
+    const f = controlledNativeHelper(options); const session = await f.launch();
+    try {
+      expect(session.launchMode).toBe(options.launchMode);
+      expect(f.chromium.launchPersistentContext).toHaveBeenCalledOnce();
+      expect(f.chromium.launchPersistentContext).toHaveBeenCalledWith(f.profileDir, {
+        executablePath: f.launchOptions.browserPath, headless: options.headless,
+        args: f.launchOptions.browserArgs, viewport: f.launchOptions.viewport});
+      expect(f.chromium.connectOverCDP).not.toHaveBeenCalled(); expect(f.guardBrowserClose).not.toHaveBeenCalled();
+      expect(f.execFile.mock.calls.some(([command]) => command === '/usr/bin/open')).toBe(false);
+      const page = await f.helper.newPageWithoutForeground(f.context);
+      expect(page.setViewportSize).not.toHaveBeenCalled(); // SDK launch already owns the viewport contract.
+    } finally {await session.close();}
+    expect(f.context.close).toHaveBeenCalledOnce();
+  });
+
+  it('可解析但不存在的.app拒绝启动，不落到SDK；非Mac后台拒绝仍在launch前', async () => {
+    for (const options of [{appExists: false}, {platform: 'linux', background: true}]) {
+      const f = controlledNativeHelper(options); await expect(f.launch()).rejects.toThrow();
+      expect(f.chromium.launchPersistentContext).not.toHaveBeenCalled(); expect(f.chromium.connectOverCDP).not.toHaveBeenCalled();
+      expect(f.execFile).not.toHaveBeenCalled(); expectNoProfileRemoval(f);
+    }
+  });
 });

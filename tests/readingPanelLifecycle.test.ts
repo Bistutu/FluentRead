@@ -1,10 +1,8 @@
 import {createRequire} from 'node:module';
-import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import {createServer, type Plugin, type ViteDevServer} from 'vite';
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
+import {compileVueFixture} from './helpers/compiledVueFixture';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {Config} from '@/src/core/config/model';
 import {getHarnessModelCacheKey, DEFAULT_HARNESS_PREFERENCES} from '@/src/core/config/harness';
@@ -66,12 +64,10 @@ async function mountPanel(overrides: Record<string, unknown> = {}, sessions: Har
   component.ssrRender = undefined;
   if (renderTemplate) {
     const filename = resolve('src/features/reading-assistant/ui/ReadingPanel.vue');
-    const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-    const {bindings} = compileScript(descriptor, {id: 'reading-capability-test'});
-    const template = compileTemplate({source: descriptor.template!.content, filename, id: 'reading-capability-test', compilerOptions: {mode: 'function', bindingMetadata: bindings, expressionPlugins: ['typescript']}});
-    expect(template.errors).toEqual([]);
+    const compiled = compileVueFixture(filename, {id: 'reading-capability-test', cacheHandlers: true, includeScript: false});
+    expect(compiled.templateErrors).toEqual([]);
     // 无DOM宿主只核对真实模板分支；输入赋值和显示样式属于受控端口，动作由真实setup执行。
-    component.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)({...runtime, vShow: {}, vModelText: {}});
+    component.render = new Function('Vue', compiled.renderCode)({...runtime, vShow: {}, vModelText: {}});
   } else component.render = () => null;
   type HostNode = {parent?: HostNode; children: HostNode[]};
   const removeNode = (node: HostNode) => {

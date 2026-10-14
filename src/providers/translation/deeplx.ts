@@ -1,15 +1,17 @@
 /**
  * @file src/providers/translation/deeplx.ts
  *
- * 文件职责：适配一个或多个 DeepLX 端点，并在总预算和单次预算内执行有序故障转移翻译。
- * 主要内容：规范化 AUTO、ZH 等语言代码，从 core 配置解析候选地址，逐端点请求并校验 code/data，导出 translateDeepLXText 与默认 provider。 可核对的公开符号包括 getDeepLXRequestLanguages、translateDeepLXText、default:deeplx。
+ * 文件职责：默认通过浏览器可用的 DeepLX core 直连 DeepL，失败后回退公共端点；自定义端点保留有序故障转移。
+ * 主要内容：规范化语言、按 UTF-16 预算切分长文本并保护术语和空白；所有线路共享总预算、单次预算及取消信号，自建地址、代理与令牌配置保持原有边界。
  * 模块边界：本文件位于 provider 适配层，只把统一翻译请求转换为外部或浏览器服务协议；不管理页面 DOM、UI 生命周期或配置持久化，缓存、去重和超时总预算由 translation broker 统一协调。
  */
 
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import {services} from "@/src/core/config/catalog";
 import {config} from "@/src/services/config/store";
-import {getDeepLXEndpoints} from "@/src/core/config/deeplx";
+import {DEFAULT_DEEPLX_ENDPOINT, getDeepLXEndpoints, parseDeepLXEndpoints} from "@/src/core/config/deeplx";
+import {translate, MAX_FREE_TEXT_LENGTH, type SourceLanguage, type TargetLanguage} from '@deeplx/core';
+import {translateFreeTextChunks} from './freeTextChunks';
 import {getTranslationLanguages, type TranslationLanguageOverride} from '@/src/services/translation/languages';
 import {createHttpStatusError, createProviderCodeError} from '@/src/platform/http/errors';
 import {
@@ -43,6 +45,38 @@ function normalizeLanguage(language: string): string {
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
+}
+
+async function translateDirectly(
+    text: string,
+    sourceLang: string,
+    targetLang: string,
+    timeoutMs: number,
+    callerSignal?: AbortSignal,
+): Promise<string> {
+    const abortContext = createRuntimeAbortContext(timeoutMs, callerSignal);
+    try {
+        return await translateFreeTextChunks(text, MAX_FREE_TEXT_LENGTH, async chunk => {
+            // 使用数组形状，要求 core 严格检查响应条数；skipWarm 避免浏览器不可用的手工 Cookie 预热。
+            const result = await translate([chunk], targetLang as TargetLanguage, sourceLang as SourceLanguage, {
+                signal: abortContext.signal,
+                skipWarm: true,
+            });
+            if (typeof result[0] !== 'string' || !result[0].trim()) throw new Error('缺少译文');
+            return result[0];
+        }, abortContext.signal, true, {utf16: true, splitLines: false});
+    } catch (error) {
+        if (callerSignal?.aborted) throw abortErrorFromSignal(callerSignal);
+        if (abortContext.didTimeout()) throw new Error(`请求超时（${timeoutMs / 1000} 秒）`);
+        // core 的错误正文可能含原文或网关信息；仅传播合法的 HTTP 状态码。
+        const code = (error as {cause?: {code?: unknown}})?.cause?.code;
+        if (typeof code === 'number' && Number.isInteger(code) && code >= 400 && code <= 599) {
+            throw createHttpStatusError({status: code, statusText: ''}, 'DeepL 直连失败');
+        }
+        throw new Error('DeepL 直连失败');
+    } finally {
+        abortContext.cleanup();
+    }
 }
 
 async function fetchDeepLX(
@@ -162,6 +196,22 @@ export async function translateDeepLXText(
     const failures: string[] = [];
     const failureStatuses: Array<number | undefined> = [];
     const abortSignal = languageOverride?.abortSignal;
+    const configuredEndpoints = parseDeepLXEndpoints(current.deeplx);
+
+    // 兼容已保存的默认公共地址；显式自建/多端点/代理或令牌配置不改变收件方。
+    if (!token && parseDeepLXEndpoints(current.proxy[serviceKey]).length === 0
+        && (configuredEndpoints.length === 0
+            || configuredEndpoints.length === 1 && configuredEndpoints[0] === DEFAULT_DEEPLX_ENDPOINT)
+        && endpoints.length === 1 && endpoints[0] === DEFAULT_DEEPLX_ENDPOINT) {
+        if (abortSignal?.aborted) throw abortErrorFromSignal(abortSignal);
+        try {
+            return await translateDirectly(text, sourceLang, targetLang, DEEPLX_ATTEMPT_TIMEOUT_MS, abortSignal);
+        } catch (error) {
+            if (abortSignal?.aborted) throw abortErrorFromSignal(abortSignal);
+            failures.push(`DeepL 直连: ${getErrorMessage(error)}`);
+            failureStatuses.push((error as {statusCode?: number}).statusCode);
+        }
+    }
 
     for (const [index, endpoint] of endpoints.entries()) {
         if (abortSignal?.aborted) throw abortErrorFromSignal(abortSignal);

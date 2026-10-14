@@ -244,6 +244,7 @@ import {
   getCustomOpenAIProvider,
   withCustomOpenAIServiceOptions,
 } from '@/src/core/config/customOpenAI'
+import {withCompositeTranslationServiceOptions} from '@/src/core/config/compositeTranslation'
 import type {Config} from '@/src/core/config/model'
 import {resolveParagraphCopyHotkey} from '@/src/core/config/paragraphCopy'
 import {normalizeGlossaryIds} from '@/src/core/glossary'
@@ -305,7 +306,7 @@ const visibleProfiles = computed(() => profileDraft.profiles.value.filter(profil
 const profileIndex = computed(() => new Map(visibleProfiles.value.map(profile => [profile.id, profile])))
 const isAtCapacity = computed(() => visibleProfiles.value.length >= MAX_QUICK_TRANSLATION_PROFILES)
 const showCapacity = computed(() => visibleProfiles.value.length >= MAX_QUICK_TRANSLATION_PROFILES - 1)
-const allServiceOptions = computed<ServiceOption[]>(() => withCustomOpenAIServiceOptions(options.services, props.config.customOpenAIProviders)
+const allServiceOptions = computed<ServiceOption[]>(() => withCompositeTranslationServiceOptions(withCustomOpenAIServiceOptions(options.services, props.config.customOpenAIProviders), props.config.compositeTranslationProviders)
   .filter(option => !option.disabled).map(option => ({value: option.value, label: translateLegacy(option.label)})))
 const serviceOptions = computed<ServiceOption[]>(() => filterAvailableTranslationServices(allServiceOptions.value))
 const serviceLabels = computed(() => new Map(allServiceOptions.value.map(option => [option.value, option.label])))

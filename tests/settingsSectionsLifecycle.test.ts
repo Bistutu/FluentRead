@@ -1,12 +1,10 @@
 import {createRequire} from 'node:module';
-import {readFileSync} from 'node:fs';
 import {parseHTML} from 'linkedom';
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
 import {resolve} from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import {createServer, type Plugin, type ViteDevServer} from 'vite';
 import {afterEach, describe, expect, it, vi} from 'vitest';
+import {compileVueFixture} from './helpers/compiledVueFixture';
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 const key = '__frSettingsSectionsLifecycle';
@@ -19,13 +17,9 @@ function deferred<T>() {let resolve!: (value: T) => void, reject!: (error: unkno
 async function settle() {await runtime.nextTick();for (let i = 0; i < 8; i++) await Promise.resolve();await runtime.nextTick();}
 function compileClientTemplate(component: any, relative: string) {
     const filename = resolve(process.cwd(), relative);
-    const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-    const bindings = compileScript(descriptor, {id: 'sections-lifecycle-template'}).bindings;
-    const compiled = compileTemplate({source: descriptor.template!.content, filename, id: 'sections-lifecycle-template',
-        compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: bindings, expressionPlugins: ['typescript']}});
-    expect(compiled.errors).toEqual([]);
+    const {renderCode} = compileVueFixture(filename, {id: 'sections-lifecycle-template', cacheHandlers: true});
     component.ssrRender = undefined;
-    component.render = new Function('Vue', ts.transpileModule(compiled.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime);
+    component.render = new Function('Vue', renderCode)(runtime);
 }
 
 // 实际父/子 SFC 模板使用 LinkeDOM 节点和事件；Element Plus 弹窗动画、浏览器焦点由根任务真实浏览器复验。
@@ -42,7 +36,14 @@ function createDomRenderer(document: Document, focus: ReturnType<typeof vi.fn>) 
         else element.setAttribute(name, String(next));
     }, insert: (child: any, parent: any, anchor: any = null) => parent.insertBefore(child, anchor),
     remove: (node: any) => node.parentNode?.removeChild(node), createElement: (name: string) => {
-        const node = document.createElement(name);if (name === 'input') node.focus = focus;return node;
+        const node = document.createElement(name);if (name === 'input') node.focus = focus;
+        // LinkeDOM 的 select.value 只有 getter；在 DOM 端口补齐浏览器的可写选值契约。
+        if (name === 'select') Object.defineProperty(node, 'value', {configurable: true,
+            get: () => node.querySelector('option[selected]')?.getAttribute('value') ?? '',
+            set: (value: string) => node.querySelectorAll('option').forEach(option => option.toggleAttribute('selected', option.getAttribute('value') === String(value)))});
+        if (name === 'details') Object.defineProperty(node, 'open', {configurable: true,
+            get: () => node.hasAttribute('open'), set: (value: boolean) => node.toggleAttribute('open', value)});
+        return node;
     }, createText: (value: string) => document.createTextNode(value), createComment: (value: string) => document.createComment(value),
     setText: (node: any, value: string) => {node.nodeValue = value;}, setElementText: (node: any, value: string) => {node.textContent = value;},
     parentNode: (node: any) => node.parentNode, nextSibling: (node: any) => node.nextSibling,
@@ -57,14 +58,14 @@ function createDomRenderer(document: Document, focus: ReturnType<typeof vi.fn>) 
 type NumericChange = (value: number | undefined) => void;
 type NumericPort = {disabled: boolean; change: NumericChange};
 
-async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation', requestLimits = false}:
-    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string; requestLimits?: boolean} = {}) {
+async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation', requestLimits = false, development = false, serviceSelectors = false, search = ''}:
+    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string; requestLimits?: boolean; development?: boolean; serviceSelectors?: boolean; search?: string} = {}) {
     const frames = new Map<number, FrameRequestCallback>();let nextFrame = 0;
     const query = vi.fn((_options: Record<string, unknown>) => Promise.resolve([] as {id?: number}[]));
     const send = vi.fn((_id: number, _message: {type: string; isEnabled?: boolean; mode?: string}) => Promise.resolve());
     const patch = vi.fn(() => Promise.resolve());const theme = vi.fn();const unsubscribe = vi.fn();
     const media = {matches: false, onchange: null as (() => void) | null};
-    const location = {hash: '', search: '', protocol: 'chrome-extension:'};
+    const location = {hash: '', search, protocol: 'chrome-extension:'};
     vi.stubGlobal('window', Object.assign(new EventTarget(), {location, navigator: {userAgent: ''}, matchMedia: () => media,
         requestAnimationFrame: (fn: FrameRequestCallback) => {frames.set(++nextFrame, fn);return nextFrame;},
         cancelAnimationFrame: (id: number) => frames.delete(id)}));
@@ -76,14 +77,19 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     const numericPorts = new Map<string, NumericPort>();
     let providerState: Record<string, any> | undefined;
     const providerReady = deferred<void>();
+    const catalogReady = deferred<void>();
     const loadProvider = vi.fn(async () => {
         await providerGate;
         const component = (await server!.ssrLoadModule('/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')).default;
+        for (const relative of ['src/features/settings/ui/components/SegmentedControl.vue', 'src/features/settings/ui/services/CompositeTranslationFields.vue']) {
+            const child = (await server!.ssrLoadModule(`/${relative}`)).default;
+            compileClientTemplate(child, relative);
+        }
         compileClientTemplate(component, 'src/features/settings/ui/services/CustomOpenAIProviderDialog.vue');
         providerReady.resolve();return component;
     });
     let notifyConfig: (value: unknown) => void = () => {};
-    const data = {loadProvider, config: configSnapshot ?? {}, configReady: ready,
+    const data = {loadProvider, catalogMounted: () => catalogReady.resolve(), config: configSnapshot ?? {}, configReady: ready,
         subscribeConfig: (listener: (value: unknown) => void) => {
             notifyConfig = listener;
             if (configSnapshot) listener(configSnapshot);
@@ -95,12 +101,14 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     (globalThis as Record<string, unknown>)[key] = data;
     const mocks: Plugin = {name: 'settings-sections-lifecycle-mocks', enforce: 'pre', resolveId(id, importer) {
         if (requestLimits && id.endsWith('/RequestLimitFields.vue')) return null;
-        if (requestLimits && (id.endsWith('/SettingsGroup.vue') || id.endsWith('/SettingsItem.vue'))) return '\0sections-slots';
+        if (requestLimits && id.endsWith('/SettingsNumberInput.vue')) return null;
+        if ((requestLimits || serviceSelectors) && (id.endsWith('/SettingsGroup.vue') || id.endsWith('/SettingsItem.vue'))) return '\0sections-slots';
         if (template && id.endsWith('/CustomOpenAIProviderDialog.vue')) {
             // 只替换父模板的动态模块加载端口；真正的子组件在首次请求后由 Vite 编译，测试不重写其 watch/草稿行为。
             if (importer?.includes('SettingsSections.vue')) return '\0sections-provider-loader';
             return null;
         }
+        if (template && /\/(?:CompositeTranslationFields|SegmentedControl)\.vue$/u.test(id)) return null;
         if (template && id.endsWith('/SettingsPanel.vue')) return '\0sections-panel';
         if (template && id.endsWith('/ServiceCatalog.vue')) return '\0sections-service-catalog';
         if (id.endsWith('.vue') && !id.endsWith('/SettingsSections.vue')) return '\0sections-child';
@@ -110,12 +118,13 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         if (id === 'webextension-polyfill') return '\0sections-browser';
         if (id === 'element-plus') return '\0sections-element';
         if (id === '@element-plus/icons-vue') return '\0sections-icons';
+        if (/\/src\/platform\/chatgpt-plan\/buildMode(?:\.ts)?$/u.test(id)) return '\0sections-build-mode';
         if (id.endsWith('/src/platform/browser/capabilities')) return '\0sections-capabilities';return null;
     }, load(id) {
         if (id === '\0sections-slots') return `import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, slots.default?.());}};`;
         if (id === '\0sections-panel') return `import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, slots.default?.());}};`;
         if (id === '\0sections-provider-loader') return `export default await globalThis.${key}.loadProvider();`;
-        if (id === '\0sections-service-catalog') return `import {h} from 'vue';export default {props: ['active'], emits: ['add:service'], setup(props, {emit}) {return () => props.active ? h('button', {'data-testid': 'fixture-add-service', onClick: () => emit('add:service')}, '添加服务') : null}};`;
+        if (id === '\0sections-service-catalog') return `import {h, onMounted} from 'vue';export default {props: ['active'], emits: ['add:service'], setup(props, {emit}) {onMounted(globalThis.${key}.catalogMounted);return () => props.active ? h('button', {'data-testid': 'fixture-add-service', onClick: () => emit('add:service')}, '添加服务') : null}};`;
         if (id === '\0sections-child') return 'export default {render: () => null};';
         if (id === '\0sections-i18n') return `import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: k => k, translateLegacy: t => t}); export const localizeServiceOptions = options => options;`;
         if (id === '\0sections-config') return `export const {config, configReady, subscribeConfig, requestConfigPatch, handoffPendingConfigPatches} = globalThis.${key};`;
@@ -123,6 +132,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         if (id === '\0sections-browser') return `export default globalThis.${key}.browser;`;
         if (id === '\0sections-element') return 'export const ElMessage = Object.assign(() => {}, {warning: () => {}});';
         if (id === '\0sections-icons') return 'export const ArrowRight = {};export const InfoFilled = {};export const Edit = {};';
+        if (id === '\0sections-build-mode') return `export const chatGPTPlanDevelopmentEnabled = ${development};`;
         if (id === '\0sections-capabilities') return "export const browserCapabilities = {browser: 'chrome'};";return null;
     }};
     server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(),
@@ -131,6 +141,8 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     if (requestLimits) {
         const child = (await server.ssrLoadModule('/src/features/settings/ui/services/RequestLimitFields.vue')).default;
         compileClientTemplate(child, 'src/features/settings/ui/services/RequestLimitFields.vue');
+        const numberInput = (await server.ssrLoadModule('/src/features/settings/ui/components/SettingsNumberInput.vue')).default;
+        compileClientTemplate(numberInput, 'src/features/settings/ui/components/SettingsNumberInput.vue');
     }
     const component = (await server.ssrLoadModule('/src/features/settings/ui/SettingsSections.vue')).default;
     component.ssrRender = undefined;component.render = () => null;
@@ -170,7 +182,8 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     }
     app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};
     app.mount(dom ? dom.document.querySelector('#fixture')! : {});await settle();
-    if (template) {await new Promise(resolve => setTimeout(resolve, 60));await settle();}
+    // 等实际异步目录组件挂载；静态表单仅需 Vue 更新队列，不为每例固定等待 60 ms。
+    if (template && activeSection === 'settings-services') {await catalogReady.promise;await settle();}
     return {state, props, visible, document: dom?.document, domWindow: dom?.window, numericPorts, loadProvider, focus, providerMounted, providerUnmounted,
         get providerState() {return providerState;}, get dialogPort() {return dialogPort;},
         async finishProviderLoad() {await providerReady.promise;await new Promise(resolve => setTimeout(resolve, 0));await settle();}, query, send, patch, theme, unsubscribe, frames, findTarget, location, data,
@@ -183,6 +196,7 @@ describe('设置主表单实际组件异步归属', () => {
         props.activeSection = 'settings-services';await settle();state.openCustomProviderDialog();expect(state.customProviderDialogOpen).toBe(true);
         props.activeSection = 'settings-translation';await settle();expect(state.customProviderDialogOpen).toBe(false);
         const before = JSON.stringify(state.config);state.createCustomProvider({name: 'stale', endpoint: 'https://fixture.example/v1', apiKey: '', model: 'fixture'});
+        state.createCompositeProvider({name: 'stale', services: ['google', 'microsoft'], strategy: 'sequential', timeoutMs: 12000});
         expect(JSON.stringify(state.config)).toBe(before);
     });
     it('缓存离开时关闭全文与悬浮录制，恢复暂选模式，返回后仍可录制', async () => {
@@ -298,6 +312,64 @@ describe('设置主表单实际组件异步归属', () => {
         expect(first).toBe(state.availableServiceOptions);state.config.display = 2;await settle();
         expect(state.configurationCompute.filteredServices).toBe(first);
     });
+    it('公开版水合旧套餐默认与slug不改配置，编辑目标回退可用服务且不补回隐藏入口', async () => {
+        const {state, patch} = await mountSections({activeSection: 'settings-services', configSnapshot: {
+            service: 'chatgptPlan', model: {chatgptPlan: 'saved-account-model'}, documentModel: {chatgptPlan: 'saved-document-model'},
+        }});
+        const before = JSON.stringify(state.config);
+        expect(state.config.service).toBe('chatgptPlan');expect(state.config.model.chatgptPlan).toBe('saved-account-model');
+        expect(state.config.documentModel.chatgptPlan).toBe('saved-document-model');expect(state.selectedConfigurationService).toBe('freeTranslation');
+        expect(state.availableServiceOptions.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false);
+        expect(state.textServiceGroups.flatMap((group: {options: {value: string}[]}) => group.options).some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false);
+        expect(state.videoServiceOptions.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false);
+        expect(state.configurationCompute.filteredServices.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false);
+        const saved = state.setDefaultConfigurationService;saved('chatgptPlan');state.setDefaultConfigurationService('chatgptPlan');await settle();
+        expect(JSON.stringify(state.config)).toBe(before);expect(patch).not.toHaveBeenCalled();
+    });
+    it.each(['direct', 'deep-link'])('公开版%s打开旧套餐配置不显示登录详情或改动网页默认和账户slug', async method => {
+        const {state, patch} = await mountSections({activeSection: 'settings-services', configSnapshot: {
+            service: 'microsoft', model: {chatgptPlan: 'saved-account-model'},
+        }, search: method === 'deep-link' ? '?service=chatgptPlan' : ''});
+        const saved = state.setDefaultConfigurationService;
+        if (method === 'direct') state.setConfigurationService('chatgptPlan');await settle();
+        expect(state.selectedConfigurationService).toBe('freeTranslation');
+        expect(state.configurationCompute.filteredServices.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false);
+        saved('chatgptPlan');state.setDefaultConfigurationService('chatgptPlan');await settle();
+        expect(state.config.service).toBe('microsoft');expect(state.config.model.chatgptPlan).toBe('saved-account-model');expect(patch).not.toHaveBeenCalled();
+    });
+    it('公开版真实默认和视频选项及不可用提示保留套餐名称，不冒充Chrome或自动迁移旧配置', async () => {
+        const {state, props, document: displayDocument, patch} = await mountSections({template: true, serviceSelectors: true,
+            activeSection: 'settings-general', configSnapshot: {
+                service: 'chatgptPlan', videoService: 'chatgptPlan', videoTranslationEnabled: true,
+                model: {chatgptPlan: 'saved-account-model'}, documentModel: {chatgptPlan: 'saved-document-model'},
+            }});
+        const before = JSON.stringify(state.config);
+        const general = displayDocument!.querySelector('#settings-general')!;
+        const defaultOption = general.querySelector('el-select[aria-label="默认网页翻译服务"] el-option[disabled]');
+        expect(defaultOption).not.toBeNull();expect(defaultOption!.getAttribute('label')).toBe('ChatGPT 套餐');
+        const warning = general.querySelector('.disabled-section[role="status"]');
+        expect(warning?.querySelector('strong')?.textContent).toBe('ChatGPT 套餐');
+        expect(warning?.textContent).not.toContain('Chrome');
+        expect(warning?.textContent).toContain(state.selectedTextServiceUnavailableMessage);
+        props.activeSection = 'settings-video';await settle();
+        const video = displayDocument!.querySelector('#settings-video')!;
+        const videoOption = video.querySelector('el-select[aria-label="视频字幕翻译服务"] el-option[disabled]');
+        expect(videoOption).not.toBeNull();expect(videoOption!.getAttribute('label')).toBe('ChatGPT 套餐');
+        expect(videoOption!.getAttribute('label')).not.toContain('Chrome');
+        expect(video.querySelector('.capability-warning')?.textContent).toBe(state.selectedVideoServiceUnavailableMessage);
+        expect(JSON.stringify(state.config)).toBe(before);expect(patch).not.toHaveBeenCalled();
+        expect(state.config.service).toBe('chatgptPlan');expect(state.config.videoService).toBe('chatgptPlan');
+        expect(state.config.model.chatgptPlan).toBe('saved-account-model');expect(state.config.documentModel.chatgptPlan).toBe('saved-document-model');
+    });
+    it('开发版显式套餐夹具保留公共选择和正常设置默认的配置补丁', async () => {
+        const {state, patch} = await mountSections({development: true, activeSection: 'settings-services', configSnapshot: {
+            service: 'microsoft', model: {chatgptPlan: 'saved-account-model'},
+        }});
+        expect(state.availableServiceOptions.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(true);
+        state.setConfigurationService('chatgptPlan');await settle();state.setDefaultConfigurationService('chatgptPlan');await settle();
+        expect(state.config.service).toBe('chatgptPlan');expect(state.config.model.chatgptPlan).toBe('saved-account-model');
+        expect(patch).toHaveBeenCalledWith(expect.objectContaining({service: 'chatgptPlan'}), expect.any(Function));
+    });
     it('查询完成时采用外部最新模式和进度偏好，单个标签页同步异常不阻止其余消息', async () => {
         const {state, query, send} = await mountSections();const tabs = deferred<{id?: number}[]>();query.mockReturnValueOnce(tabs.promise);
         state.selectionAreaTranslationEnabled = true;state.config.translationProgressPanelEnabled = false;state.handleTranslationProgressPanelChange(false);
@@ -331,6 +403,65 @@ function submitProviderFromTemplate(fixture: Awaited<ReturnType<typeof mountSect
 }
 
 describe('新服务对话框实际模板首次挂载与后续实例归属', () => {
+    it('唯一添加窗口切换为组合后只保留一个名称与保存按钮，提交不混入隐藏的接口密钥', async () => {
+        const fixture = await mountSections({template: true, activeSection: 'settings-services'});
+        addProviderFromTemplate(fixture);await fixture.finishProviderLoad();
+        const document = fixture.document!;
+        expect(fixture.providerState!.serviceType).toBe('interface');
+        expect(document.querySelectorAll('[data-testid="custom-service-dialog"]')).toHaveLength(1);
+        expect(document.querySelector('[data-testid="custom-service-type-interface"]')?.getAttribute('aria-pressed')).toBe('true');
+        inputProvider(fixture, 'name', '  Daily combination  ');inputProvider(fixture, 'endpoint', 'https://hidden.example/v1');
+        inputProvider(fixture, 'api-key', 'fixture-hidden-secret');inputProvider(fixture, 'model', 'hidden-model');
+        const oldInterfaceSubmit = fixture.providerState!.actions.submit;
+        document.querySelector('[data-testid="custom-service-type-composite"]')!.dispatchEvent(new fixture.domWindow!.Event('click'));
+        await settle();
+        expect(fixture.providerState!.serviceType).toBe('composite');
+        expect(document.querySelector('[data-testid="custom-service-type-composite"]')?.getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelectorAll('[data-testid="custom-service-name"]')).toHaveLength(1);
+        expect((document.querySelector('[data-testid="custom-service-name"]') as unknown as HTMLInputElement).value).toBe('  Daily combination  ');
+        expect(document.querySelector('[data-testid="composite-service-name"]')).toBeNull();
+        expect(document.querySelector('[data-testid="custom-service-endpoint"]')).toBeNull();
+        expect(document.querySelector('[data-testid="custom-service-api-key"]')).toBeNull();
+        expect(document.querySelector('[data-testid="composite-service-save"]')).toBeNull();
+        expect(document.querySelectorAll('[data-testid="custom-service-save"]')).toHaveLength(1);
+        expect(document.querySelector('[data-testid="composite-member-add"]')).toBeNull();
+        expect(document.querySelectorAll('[role="radio"]')).toHaveLength(3);
+        expect(document.querySelectorAll('[data-composite-strategy-help]')).toHaveLength(1);
+        expect(document.querySelector('[data-composite-strategy-help]')?.textContent).toBe('settings.services.composite.sequentialHelp');
+        document.querySelector('[role="radio"][data-option-index="1"]')!.dispatchEvent(new fixture.domWindow!.Event('click'));
+        await settle();
+        expect(document.querySelectorAll('[data-composite-strategy-help]')).toHaveLength(1);
+        expect(document.querySelector('[data-composite-strategy-help]')?.textContent).toBe('settings.services.composite.randomHelp');
+        expect(document.querySelector('details[data-composite-advanced]')?.hasAttribute('open')).toBe(false);
+        const select = document.querySelector('[data-testid="composite-member-select"]')!;
+        function addMember(service: string) {
+            const option = select.querySelector(`option[value="${service}"]`)!;
+            expect(option).not.toBeNull();(select as unknown as HTMLSelectElement).value = service;
+            select.dispatchEvent(new fixture.domWindow!.Event('change', {bubbles: true}));
+        }
+        addMember('google');await settle();addMember('microsoft');await settle();
+        expect(fixture.providerState!.compositeDraft.services).toEqual(['google', 'microsoft']);
+        expect(document.querySelectorAll('[data-composite-member]')).toHaveLength(2);
+        oldInterfaceSubmit();expect(fixture.state.config.customOpenAIProviders).toEqual([]);expect(fixture.state.config.compositeTranslationProviders).toEqual([]);
+        const advanced = document.querySelector('details[data-composite-advanced]')!;
+        advanced.setAttribute('open', '');advanced.dispatchEvent(new fixture.domWindow!.Event('toggle'));await settle();
+        const timeout = document.querySelector('[data-testid="composite-member-timeout"]')! as unknown as HTMLInputElement;
+        timeout.value = '0';timeout.dispatchEvent(new fixture.domWindow!.Event('input', {bubbles: true}));await settle();
+        advanced.removeAttribute('open');advanced.dispatchEvent(new fixture.domWindow!.Event('toggle'));await settle();
+        submitProviderFromTemplate(fixture);await settle();
+        expect(fixture.state.config.compositeTranslationProviders).toEqual([]);expect(fixture.patch).not.toHaveBeenCalled();
+        expect(advanced.hasAttribute('open')).toBe(true);
+        expect(advanced.querySelector('[role="alert"]')?.textContent).toBe('settings.services.composite.timeoutInvalid');
+        timeout.value = '5';timeout.dispatchEvent(new fixture.domWindow!.Event('input', {bubbles: true}));await settle();
+        expect(advanced.hasAttribute('open')).toBe(true);
+        submitProviderFromTemplate(fixture);await settle();
+        expect(fixture.state.config.compositeTranslationProviders).toEqual([expect.objectContaining({name: 'Daily combination', services: ['google', 'microsoft'], strategy: 'random', timeoutMs: 5000})]);
+        expect(fixture.state.config.customOpenAIProviders).toEqual([]);
+        expect(Object.keys(fixture.state.config.token).some(service => service.startsWith('composite:'))).toBe(false);
+        expect(JSON.stringify(fixture.state.config.compositeTranslationProviders)).not.toContain('fixture-hidden-secret');
+        expect(fixture.patch).toHaveBeenCalledOnce();expect(fixture.dialogPort!.open).toBe(false);
+    });
+
     it('通用设置和仅访问服务目录均不调用加载器，首次添加才加载一次', async () => {
         const fixture = await mountSections({template: true, activeSection: 'settings-general'});
         expect(fixture.loadProvider).not.toHaveBeenCalled();expect(fixture.providerMounted).not.toHaveBeenCalled();
@@ -433,6 +564,68 @@ describe('高级设置全局请求限制实际父子装配', () => {
         input.value = String(value);
         input.dispatchEvent(new fixture.domWindow!.Event('change', {bubbles: true}));
     }
+
+    it('AI 超时默认显示 120 秒，修改秒数后规范化并交接毫秒配置补丁', async () => {
+        const fixture = await mountSections({template: true, requestLimits: true, activeSection: 'settings-advanced'});
+        const label = 'settings.requestLimits.aiTimeout';
+        expect(limitInput(fixture, label).value).toBe('120');
+        expect(limitInput(fixture, label).getAttribute('min')).toBe('10');
+        expect(limitInput(fixture, label).getAttribute('max')).toBe('600');
+        expect(limitInput(fixture, label).disabled).toBe(false);
+        changeLimit(fixture, label, 300);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(300_000);
+        expect(fixture.patch).toHaveBeenCalledOnce();
+        expect(fixture.patch).toHaveBeenLastCalledWith(expect.objectContaining({aiRequestTimeoutMs: 300_000}), expect.any(Function));
+        await settle();
+        const change = fixture.numericPorts.get(label)!.change;
+        for (const value of [undefined, NaN, Infinity]) change(value);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(300_000);
+        expect(fixture.patch).toHaveBeenCalledOnce();
+        changeLimit(fixture, label, 5);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(10_000);
+        await settle();changeLimit(fixture, label, 900);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(600_000);
+        expect(fixture.patch).toHaveBeenCalledTimes(3);
+    });
+
+    it.each(['section', 'keepalive', 'unmount'] as const)('AI 超时在 %s 失活后拒绝旧回调，返回时拒绝已过期的输入事件', async reason => {
+        const fixture = await mountSections({template: true, requestLimits: true, activeSection: 'settings-advanced'});
+        const label = 'settings.requestLimits.aiTimeout';
+        const original = fixture.state.config.aiRequestTimeoutMs;
+        const staleChange = fixture.numericPorts.get(label)!.change;
+        if (reason === 'section') fixture.props.activeSection = 'settings-translation';
+        else if (reason === 'keepalive') fixture.visible.value = false;
+        else {app!.unmount();app = undefined;}
+        await settle();
+        const exitSaves = fixture.patch.mock.calls.length;
+        staleChange(300);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(original);
+        expect(fixture.patch).toHaveBeenCalledTimes(exitSaves);
+        if (reason === 'unmount') return;
+        expect(fixture.numericPorts.get(label)!.disabled).toBe(true);
+        fixture.props.activeSection = 'settings-advanced';fixture.visible.value = true;await settle();
+        staleChange(400);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(original);
+        changeLimit(fixture, label, 300);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(300_000);
+        expect(fixture.patch).toHaveBeenCalledTimes(exitSaves + 1);
+    });
+
+    it('收到同步后的超时设置时，旧控件回调不能覆盖新值', async () => {
+        const fixture = await mountSections({template: true, requestLimits: true, activeSection: 'settings-advanced'});
+        const label = 'settings.requestLimits.aiTimeout';
+        const staleChange = fixture.numericPorts.get(label)!.change;
+        fixture.notifyConfig({...fixture.state.config, aiRequestTimeoutMs: 240_000});
+        await settle();
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(240_000);
+        expect(fixture.patch).not.toHaveBeenCalled();
+        staleChange(300);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(240_000);
+        expect(fixture.patch).not.toHaveBeenCalled();
+        changeLimit(fixture, label, 300);
+        expect(fixture.state.config.aiRequestTimeoutMs).toBe(300_000);
+        expect(fixture.patch).toHaveBeenCalledOnce();
+    });
 
     it('高级页三项限制可编辑，合法数值和不限速零值各同步交接一次配置补丁', async () => {
         const fixture = await mountSections({template: true, requestLimits: true, activeSection: 'settings-advanced'});

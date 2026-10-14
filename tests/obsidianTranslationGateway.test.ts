@@ -46,7 +46,7 @@ describe('Obsidian translation gateway', () => {
         })) as unknown as ObsidianRequestUrl;
         const onSegment = vi.fn();
         await expect(createObsidianTranslator(request)(segments, {fileName: 'note.md', onSegment}))
-            .rejects.toThrow('返回数量异常');
+            .rejects.toThrow('第 1 段文档翻译失败：微软翻译返回的批量结果不完整');
         expect(onSegment).not.toHaveBeenCalled();
     });
 
@@ -148,8 +148,8 @@ describe('Obsidian translation gateway', () => {
     it.each([
         [429, 'Secret provider diagnostic', '翻译失败: 429'],
         [200, 'Secret non-JSON diagnostic', '不是有效 JSON'],
-        [200, '[{}, {}]', '缺少译文'],
-        [200, '[{"translations":[{"text":" "}]},{"translations":[{"text":"valid"}]}]', '片段不完整'],
+        [200, '[{}, {}]', '第 1 段文档翻译失败：微软翻译返回的批量结果不完整'],
+        [200, '[{"translations":[{"text":" "}]},{"translations":[{"text":"valid"}]}]', '第 1 段文档翻译失败：微软翻译返回的批量结果不完整'],
     ])('rejects invalid provider responses without publishing partial translations: %s %s', async (status, text, message) => {
         const request = vi.fn(async () => ({status, headers: {}, text})) as unknown as ObsidianRequestUrl;
         const onSegment = vi.fn();

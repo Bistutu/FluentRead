@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/services/translation.ts
  * 文件职责：编排文档片段的批量翻译流程，在固定语言和服务快照下按数量及字符预算拆批，并向调用方持续报告确定性进度。
- * 主要内容：定义进度与逐段提交契约，在本次文档调用中默认启用机器批量或 AI 多段槽请求而不改变全局设置，按阅读位置重排待译片段并可收紧单批大小，同时保持数批请求在途、先返回的先提交，以章节内一次去重和游标领取避免重复原文挤占批量预算或反复扫描长文队列，按原生章节和位置构建有界篇章参考并区分人工确认译文，提交前移除服务凭空加入的表情符号，请求失败时可按退避间隔自动重试并向页面报告原因，被服务原样返回的专名与短词保留原文而不中断全文，复用已有译文继续未完成片段，提供文件解析所有权，固定文件级上下文，透传全局暂停状态、校验批次结果并阻止取消和失败后的迟到提交与继续回退请求。
+ * 主要内容：定义进度与逐段提交契约，在本次文档调用中默认启用机器批量或 AI 多段槽请求而不改变全局设置，按阅读位置重排待译片段并可收紧单批大小，同时保持数批请求在途、先返回的先提交，以章节内一次去重和游标领取避免重复原文挤占批量预算或反复扫描长文队列，按原生章节和位置构建有界篇章参考并区分人工确认译文，提交前移除服务凭空加入的表情符号，请求失败时可按退避间隔自动重试并报告真实等待数量，被服务原样返回的专名与短词保留原文而不中断全文，复用已有译文继续未完成片段，提供文件解析所有权，固定文件级上下文，透传全局暂停状态、校验批次结果，服务失败后停止派发但收齐在途成功译文，显式取消后立即退出并禁止迟到提交。
  * 模块边界：该层不解析文件、不持久化配置，也不直接绑定具体 provider；上层负责冻结用户设置并注入 gateway，文档结构由 core 提供，网络和缓存语义由应用翻译客户端承担。
  */
 import {serializeTranslationError, TranslationRequestError} from '@/src/services/translation/errors';
@@ -28,7 +28,7 @@ export interface DocumentTranslationOptions {
     targetLanguage?: string;
     signal?: AbortSignal;
     maxRetries?: number;
-    /** 同一文档和设置下已完成或人工校订的译文；空白位置继续翻译。 */
+    /** 同一文档和语言对下已完成或人工校订的译文；切换服务或模型时仍复用，仅空白位置继续翻译。 */
     initialTranslations?: readonly string[];
     /** 当前阅读会话里经用户编辑确认的片段，历史机器译文不能冒充用户确认。 */
     confirmedTranslationIds?: readonly number[];
@@ -47,6 +47,10 @@ export interface DocumentTranslationOptions {
     retryBackoff?: {maxWaitMs: number; sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>};
     /** 每次退避开始前通知页面：第几次重试、要等多久、上一次失败的原因。 */
     onRetry?: (retry: {attempt: number; delayMs: number; reason: string}) => void;
+    /** 正在退避等待的请求数量；并发成功不能把其他请求的等待状态提前清除。 */
+    onRetryStateChange?: (state: {waiting: number}) => void;
+    /** 首次不可恢复的请求故障立即通知；id 为片段标识，reason 为完整可读提示，在途成功仍可继续提交。 */
+    onFailure?: (failure: {id: number; reason: string}) => void;
     onSegment?: (segment: {id: number; translation: string}) => void;
     onProgress?: (progress: DocumentTranslationProgress) => void;
 }
@@ -179,9 +183,26 @@ function invalidAIMultiSegment(error: unknown): boolean {
 
 function abortableSleep(milliseconds: number, signal?: AbortSignal): Promise<void> {
     return new Promise((resolve) => {
+        if (signal?.aborted) {resolve(); return;}
         const finish = () => {clearTimeout(timer); signal?.removeEventListener('abort', finish); resolve();};
         const timer = setTimeout(finish, milliseconds);
         signal?.addEventListener('abort', finish, {once: true});
+    });
+}
+
+/** 网关或测试 sleep 忽略取消时也及时释放任务；原 Promise 仍被观察，迟到拒绝不会成为未处理异常。 */
+function waitWithAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
+    if (!signal) return work;
+    return new Promise((resolve, reject) => {
+        const abort = () => {
+            const error = new Error('文档翻译已取消');
+            error.name = 'AbortError';
+            reject(error);
+        };
+        const cleanup = () => signal.removeEventListener('abort', abort);
+        signal.addEventListener('abort', abort, {once: true});
+        work.then(value => {cleanup(); signal.aborted ? abort() : resolve(value);}, error => {cleanup(); reject(error);});
+        if (signal.aborted) {cleanup(); abort();}
     });
 }
 
@@ -189,7 +210,8 @@ function abortableSleep(milliseconds: number, signal?: AbortSignal): Promise<voi
  * 限流和网络抖动多半是暂时的：隔一会儿再试往往就能继续，不必让读者反复手动点“继续翻译”。
  * 复用翻译服务的错误分类，认证、无效模型、缺少配置、暂停与取消不重试，也不消耗等待预算；协议不兼容直接交给有界回退，等待预算用完后抛出最后一次的错误。
  */
-async function withRetryBackoff<T>(work: () => Promise<T>, options: DocumentTranslationOptions, isStopped: () => boolean, attempt = 1, waited = 0): Promise<T> {
+async function withRetryBackoff<T>(work: () => Promise<T>, options: DocumentTranslationOptions, isStopped: () => boolean,
+    retryStop: AbortSignal, onWaiting: (started: boolean) => void, attempt = 1, waited = 0): Promise<T> {
     try {
         return await work();
     } catch (error) {
@@ -199,11 +221,21 @@ async function withRetryBackoff<T>(work: () => Promise<T>, options: DocumentTran
         if (delayMs <= 0 || untranslatedEcho(error) || invalidAIMultiSegment(error)
             || (error instanceof TranslationRequestError && error.code === 'TRANSLATION_DISABLED')
             || !serializeTranslationError(error).retryable) throw error;
-        options.onRetry?.({attempt, delayMs, reason: getErrorMessage(error)});
-        await (options.retryBackoff?.sleep ?? abortableSleep)(delayMs, options.signal);
+        onWaiting(true);
+        try {
+            options.onRetry?.({attempt, delayMs, reason: getErrorMessage(error)});
+            // 服务失败只取消退避等待，不取消已发出的翻译请求；后者的成功结果仍可保留。
+            await waitWithAbort(options.retryBackoff?.sleep
+                ? options.retryBackoff.sleep(delayMs, options.signal)
+                : abortableSleep(delayMs, retryStop), retryStop);
+        } catch (waitingError) {
+            throwIfAborted(options.signal);
+            if (isStopped()) throw error;
+            throw waitingError;
+        } finally {onWaiting(false);}
         throwIfAborted(options.signal);
         if (isStopped()) throw error;
-        return withRetryBackoff(work, options, isStopped, attempt + 1, waited + delayMs);
+        return withRetryBackoff(work, options, isStopped, retryStop, onWaiting, attempt + 1, waited + delayMs);
     }
 }
 
@@ -302,9 +334,28 @@ export function createDocumentSegmentTranslator(
             ...(options.enableAIContext === undefined ? {} : {enableAIContext}),
             ...(discourse ? {discourseContext: prepareDiscourse(segment.id, origins)!.context} : {}),
         });
+        const retryStop = new AbortController();
+        let waitingRetries = 0;
+        let callbacksActive = true;
+        const reportRetryWaiting = (started: boolean) => {
+            if (!callbacksActive || options.signal?.aborted) return;
+            waitingRetries += started ? 1 : -1;
+            options.onRetryStateChange?.({waiting: waitingRetries});
+        };
+        const abortRetries = () => {
+            retryStop.abort();
+            if (waitingRetries > 0) {
+                waitingRetries = 0;
+                options.onRetryStateChange?.({waiting: 0});
+            }
+        };
+        options.signal?.addEventListener('abort', abortRetries, {once: true});
         try {
             let completed = segments.length - pending.length;
-            const reportProgress = () => options.onProgress?.({completed, total: segments.length});
+            const reportProgress = () => {
+                throwIfAborted(options.signal);
+                options.onProgress?.({completed, total: segments.length});
+            };
             const sources = new Map(segments.map(segment => [segment.id, segment.source]));
             // 同章节原文相同的片段只翻译一次；换章后缩写或人物名可能另有所指，不跨章强行复用。
             const twins = new Map<string, DocumentSegment[]>();
@@ -362,17 +413,33 @@ export function createDocumentSegmentTranslator(
                 return taken;
             };
             const batchTranslation = options.batchTranslation !== false;
+            let stopped = false;
+            let failure: Error | undefined;
+            const stopAfterFailure = (error: unknown, id: number) => {
+                if (stopped) return;
+                stopped = true;
+                const paused = error instanceof TranslationRequestError && error.code === 'TRANSLATION_DISABLED';
+                failure = paused
+                    ? error : new Error(`第 ${id + 1} 段文档翻译失败：${getErrorMessage(error)}`);
+                retryStop.abort();
+                if (!paused) options.onFailure?.({id, reason: failure.message});
+            };
+            const finishWorkers = async (workers: Promise<void>[]) => {
+                // 普通故障先收齐已发出的成功结果再交还页面；显式暂停/换文件则不等待不支持取消的网关。
+                await waitWithAbort(Promise.all(workers), options.signal);
+                throwIfAborted(options.signal);
+                if (failure) throw failure;
+            };
             // AI 篇章模式保留逐段按序提交，后文才能使用当前任务已完成的前文译法。
             const aiMultiSegment = batchTranslation && !enableAIContext && Boolean(gateway.supportsAIMultiSegment?.(service, model));
             if (batchTranslation && (gateway.supportsBatch(service) || aiMultiSegment)) {
                 const itemLimit = boundedLimit(options.batchLimits?.items, BATCH_ITEM_LIMIT);
                 const characterLimit = boundedLimit(options.batchLimits?.characters, BATCH_CHARACTER_LIMIT);
                 // 同时发出几批请求：先出结果的那一批先显示，整篇的等待时间按并发数缩短；任何一批失败后其余批次不再认领新片段。
-                let failed = false;
                 // 一个服务不理解多段槽协议时，本次任务后面的新请求直接逐段，避免每一批都先发送一次注定失败的槽包。
                 let singleFallback = false;
                 const batchWorker = async () => {
-                while (cursor < queue.length && !failed) {
+                while (cursor < queue.length && !stopped) {
                     throwIfAborted(options.signal);
                     const single = singleFallback;
                     const batch = nextBatch(single ? 1 : itemLimit, characterLimit);
@@ -405,57 +472,53 @@ export function createDocumentSegmentTranslator(
                             throw new Error('翻译服务返回的片段不完整，请重试');
                         }
                         return result;
-                        }, options, () => failed);
-                        if (failed) return;
+                        }, options, () => stopped, retryStop.signal, reportRetryWaiting);
                         result.forEach((translation, index) => commit(batch[index].id, translation));
                         reportProgress();
                     } catch (error) {
-                        if (failed) return;
                         throwIfAborted(options.signal);
                         if (single && untranslatedEcho(error)) {
                             commit(batch[0].id, batch[0].source);
                             reportProgress();
                             continue;
                         }
+                        if (stopped) return;
                         if (untranslatedEcho(error) || (aiMultiSegment && invalidAIMultiSegment(error))) {
                             if (invalidAIMultiSegment(error)) singleFallback = true;
                             // 整批里只要有一段被原样返回就会整批报错；逐段重译，仍被原样返回的那几段保留原文。
                             for (const segment of batch) {
                                 throwIfAborted(options.signal);
+                                if (stopped) return;
                                 let translation = segment.source;
                                 try {
                                     const received = await gateway.translateText(segment.source, context, {...glossaryOptions, ...discourseOptions(segment, [segment.source]), enableNativeBatch: false, signal: options.signal, pageContext,
                                         serviceOverride: service, modelOverride: model, sourceLanguage, targetLanguage, maxRetries: options.maxRetries});
-                                    if (typeof received === 'string' && received.trim()) translation = received;
+                                    if (typeof received !== 'string' || !received.trim()) throw new Error('翻译服务返回空译文，请重试');
+                                    translation = received;
                                 } catch (single) {
-                                    if (failed) return;
                                     throwIfAborted(options.signal);
                                     if (!untranslatedEcho(single)) {
-                                        failed = true;
-                                        if (single instanceof TranslationRequestError && single.code === 'TRANSLATION_DISABLED') throw single;
-                                        throw new Error(`第 ${segment.id + 1} 段文档翻译失败：${getErrorMessage(single)}`);
+                                        stopAfterFailure(single, segment.id);
+                                        return;
                                     }
                                 }
-                                if (failed) return;
                                 commit(segment.id, translation);
                                 reportProgress();
                             }
                             continue;
                         }
-                        failed = true;
-                        if (error instanceof TranslationRequestError && error.code === 'TRANSLATION_DISABLED') throw error;
-                        throw new Error(`第 ${batch[0].id + 1} 段文档翻译失败：${getErrorMessage(error)}`);
+                        stopAfterFailure(error, batch[0].id);
+                        return;
                     }
                 }
                 };
-                await Promise.all(Array.from({length: boundedLimit(options.batchConcurrency, BATCH_CONCURRENCY)}, () => batchWorker()));
+                await finishWorkers(Array.from({length: boundedLimit(options.batchConcurrency, BATCH_CONCURRENCY)}, () => batchWorker()));
                 return translations;
             }
 
-            let stopped = false;
             const workerCount = Math.min(enableAIContext ? 1 : BATCH_CONCURRENCY, queue.length);
             const worker = async () => {
-                while (true) {
+                while (!stopped) {
                     throwIfAborted(options.signal);
                     const [segment] = nextBatch(1, Number.POSITIVE_INFINITY);
                     if (!segment) return;
@@ -475,28 +538,28 @@ export function createDocumentSegmentTranslator(
                                 maxRetries: options.maxRetries,
                             });
                             // 其他 worker 已经失败时不再为这一段重试。
-                            if (!stopped && (typeof received !== 'string' || !received.trim())) throw new Error('翻译服务返回空译文，请重试');
+                            if (typeof received !== 'string' || !received.trim()) throw new Error('翻译服务返回空译文，请重试');
                             return received;
-                        }, options, () => stopped);
-                        // Promise.all 会在首个 worker 失败时立即 reject；其余在途请求仍会稍后结束。
-                        // 步骤 1：失败后不再上报过期进度，也不继续认领新的文档片段。
-                        if (stopped) return;
+                        }, options, () => stopped, retryStop.signal, reportRetryWaiting);
+                        // 其他请求失败只能停止下一次领取；当前有效译文仍提交，避免续译重复消耗。
                         throwIfAborted(options.signal);
                         commit(segment.id, translation);
                         reportProgress();
                     } catch (error) {
-                        if (stopped) return;
-                        if (!options.signal?.aborted && untranslatedEcho(error)) {commit(segment.id, segment.source); reportProgress(); continue;}
-                        stopped = true;
-                        if (options.signal?.aborted) throwIfAborted(options.signal);
-                        if (error instanceof TranslationRequestError && error.code === 'TRANSLATION_DISABLED') throw error;
-                        throw new Error(`第 ${segment.id + 1} 段文档翻译失败：${getErrorMessage(error)}`);
+                        throwIfAborted(options.signal);
+                        if (untranslatedEcho(error)) {commit(segment.id, segment.source); reportProgress(); continue;}
+                        stopAfterFailure(error, segment.id);
+                        return;
                     }
                 }
             };
 
-            await Promise.all(Array.from({length: workerCount}, () => worker()));
+            await finishWorkers(Array.from({length: workerCount}, () => worker()));
             return translations;
-        } finally {discourse?.clear();}
+        } finally {
+            callbacksActive = false;
+            options.signal?.removeEventListener('abort', abortRetries);
+            discourse?.clear();
+        }
     };
 }

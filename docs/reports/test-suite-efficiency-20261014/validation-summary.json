@@ -1,0 +1,192 @@
+{
+  "date": "2026-10-14",
+  "baseCommit": "3711da1072c33b54f88130bef606f25e7d51277e",
+  "branch": "codex/test-suite-efficiency-20261014",
+  "scope": {
+    "productionCodeChanged": false,
+    "referenceProjectsUsed": [],
+    "registeredVitestFiles": 697,
+    "staticCaseDefinitionsBefore": 12461,
+    "staticCaseDefinitionsAfter": 12474,
+    "groups": {
+      "architecture": 35,
+      "unit": 395,
+      "functional": 224,
+      "regression": 43
+    }
+  },
+  "architecture": {
+    "coverageSharesEntireBaseConfig": true,
+    "vitestStartsBefore": 5,
+    "vitestStartsAfter": 1,
+    "duplicateTypeScriptFileExecutionsRemoved": 569,
+    "typeScriptFileExecutionsBefore": 1263,
+    "typeScriptFileExecutionsAfter": 697,
+    "nativeGroups": 3,
+    "nativePipelineStepsRemoved": 3,
+    "nativeFiles": [
+      {
+        "file": "tests/agentBridge.test.mjs",
+        "sha256": "4e628f3294ecf1e5d27fe72bee218dd11baeb625024cc86342b1d46153ea0bb1"
+      },
+      {
+        "file": "tests/focusSafeBrowserOrdinaryLifecycle.test.mjs",
+        "sha256": "5351886b70c77b4a18793f1820d8ace0f1d4f6104d6111f90307af25c6ca0bfe"
+      },
+      {
+        "file": "tests/focusSafeBrowserBackgroundSignal.test.mjs",
+        "sha256": "bace0ea46c0bd36bb41140d8d0f1b92f5e293d2413df95a371234be89b40f635"
+      },
+      {
+        "file": "tests/focusSafeBrowserBackgroundLifecycle.test.mjs",
+        "sha256": "baefdd0df6033375f2588b11d3c77b910a6a8d1b98c74c8bc6d83d70bd3b4161"
+      },
+      {
+        "file": "tests/documentLiveHttpEvidence.test.mjs",
+        "sha256": "17912605379f3ad31d6cec6d0c8146cc2d5c97ce076a5ac9dfc997a6f17fc5de"
+      }
+    ]
+  },
+  "coverage": {
+    "sourceFiles": 663,
+    "orderedSourceListSha256": "0d07e170dda8a5af7cef4871efd5ab8d517badff260786ce36bd62e038970fb2",
+    "sourceListExactlyMatchesBase": true,
+    "all": true,
+    "provider": "v8",
+    "exclude": [
+      "**/*.d.ts"
+    ],
+    "thresholds": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "perFileRawCountersAllExact": true,
+    "totals": {
+      "lines": {
+        "total": 85996,
+        "covered": 85996,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 85996,
+        "covered": 85996,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 6188,
+        "covered": 6188,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 49495,
+        "covered": 49495,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    }
+  },
+  "verification": {
+    "fullCoverageRun": {
+      "files": 696,
+      "tests": 22691,
+      "passed": 22691,
+      "failed": 0,
+      "skipped": 0,
+      "durationSeconds": 1019.31,
+      "includesRealPaperCases": true,
+      "command": "FLUENTREAD_ATTENTION_PDF=<Attention-v7.pdf> FLUENTREAD_PDF_CORPUS=<nonempty-paper-directory> pnpm test:coverage",
+      "report": "/private/tmp/fluentread-test-efficiency-20261014/final-coverage-tests.json"
+    },
+    "supplementalNativeWrapper": {
+      "files": 1,
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "originalNativeTestsPassed": 57,
+      "report": "/tmp/fluentread-process-regression-vitest-final.json",
+      "timeoutProbe": {
+        "ownedGroupGone": true,
+        "termIgnoringActorGone": true,
+        "timeoutFailure": true,
+        "fullDiagnostics": true
+      }
+    },
+    "aggregateVerifiedVitestTests": 22695,
+    "compile": "passed",
+    "docsBuild": "passed",
+    "testAudit": "passed",
+    "runnerContracts": "10 passed",
+    "fullReleasePipelineExecuted": false,
+    "browserFixturesExecuted": false,
+    "liveNetworkMatrixExecuted": false
+  },
+  "performance": {
+    "interpretation": "Single focused runs under shared resource limits; compiler-only measurements exclude evaluation and mounting. No whole-regression speedup percentage is claimed.",
+    "deterministic": {
+      "beforePassed": true,
+      "afterPassed": true,
+      "beforeTotal": 199,
+      "afterTotal": 199,
+      "files": [
+        {
+          "name": "harnessConversationPersistence.test.ts",
+          "beforeCount": 7,
+          "afterCount": 7,
+          "beforeMs": 605.15478515625,
+          "afterMs": 46.48193359375,
+          "checkpointBefore": 559.363833,
+          "checkpointAfter": 4.9411249999999995
+        },
+        {
+          "name": "mangaReader.test.ts",
+          "beforeCount": 156,
+          "afterCount": 156,
+          "beforeMs": 282.4892578125,
+          "afterMs": 277.654052734375
+        },
+        {
+          "name": "settingsSectionsLifecycle.test.ts",
+          "beforeCount": 36,
+          "afterCount": 36,
+          "beforeMs": 16288.28564453125,
+          "afterMs": 15773.2470703125
+        }
+      ]
+    },
+    "vueCompiler": {
+      "scope": "Repeated pure ReadingPanel SFC compilation only; fresh module/render evaluation and fixture mounting excluded",
+      "iterations": 24,
+      "originalCompilations": 24,
+      "cachedCompilationsAfterWarmup": 0,
+      "outputsIdentical": true,
+      "originalMs": 1141.8593339999998,
+      "cachedMs": 2.907958000000008
+    }
+  },
+  "pdfCorpus": [
+    {
+      "name": "1706.03762v7.pdf",
+      "bytes": 2215244,
+      "sha256": "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697",
+      "sourceUrl": "https://arxiv.org/pdf/1706.03762v7"
+    },
+    {
+      "name": "2608.25512v1.pdf",
+      "bytes": 2284543,
+      "sha256": "390775dbc9debdcf2ed1b076eed013387ca057630be3cb594617b2b742e48cf0",
+      "sourceUrl": "https://arxiv.org/pdf/2608.25512v1"
+    }
+  ]
+}

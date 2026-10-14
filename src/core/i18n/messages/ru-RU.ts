@@ -6,6 +6,8 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/ru-RU.json';
+import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/ru-RU.json';
@@ -26,6 +28,7 @@ export const ruRUMessages = {
     "popup.compact.translate": "Перевести",
     "popup.compact.restore": "Вернуть",
     ...videoLearningText,
+    ...compositeTranslationMessages['ru-RU'],
     ...pdfReadingMessages['ru-RU'],
     ...informationHighlightMessages['ru-RU'],
     ...reencounterText,
@@ -531,6 +534,7 @@ export const ruRUMessages = {
     "settings.requestLimits.modelTitle": "Ограничения модели",
     "settings.requestLimits.globalTitle": "Ограничения запросов",
     "settings.requestLimits.globalHelp": "Сервисы и модели без отдельных настроек используют эти общие ограничения.",
+    ...aiRequestTimeoutMessages["ru-RU"],
     "settings.requestLimits.retryIntervals": "Интервалы повторов",
     "settings.requestLimits.apiKeyRecovery": "Пауза неисправного API Key",
     "settings.requestLimits.apiKeyRecoveryHelp": "Ключ после ошибки аутентификации, квоты или ограничения скорости временно пропускается. Если сервис вернул Retry-After, используется его интервал.",
@@ -1412,7 +1416,8 @@ export const ruRUMessages = {
     'settings.services.deepl.proxyOverride': 'Используется пользовательский адрес API. Смена тарифа не заменит этот адрес.',
     'settings.services.azure.endpoint': 'Конечная точка Azure',
     "settings.services.deeplx.endpoint": "Адрес сервиса",
-    "settings.services.deeplx.endpointHelp": "Введите полный адрес API перевода (обычно заканчивается на /translate). Путь не добавляется автоматически. Пустое поле означает публичный API по умолчанию.",
+    "settings.services.deeplx.defaultRoute": "По умолчанию — напрямую к DeepL",
+    "settings.services.deeplx.endpointHelp": "Без API-ключа по умолчанию используется прямое подключение к DeepL, а при сбое — публичный API. Укажите полный путь в своём URL (обычно /translate); путь не добавляется автоматически.",
     "settings.services.deeplx.tokenHelp": "В поле API Key введите только значение Token без префикса Bearer. По умолчанию он передаётся в заголовке запроса. Если сайт требует Token в URL, используйте указанный сайтом формат ниже.",
     "settings.services.deeplx.queryToken": "Параметр запроса:",
     "settings.services.deeplx.pathToken": "Путь URL:",
@@ -1507,7 +1512,7 @@ export const ruRUMessages = {
     "paragraphCopy.notice.noPointer": "Сначала наведите курсор на абзац, затем нажмите сочетание",
     "paragraphCopy.notice.failed": "Не удалось скопировать. Выделите текст и скопируйте вручную.",
     "sectionTranslation.picker.title": "Перевод фрагмента",
-    "sectionTranslation.picker.instruction": "Нажмите, чтобы выбрать фрагмент страницы для перевода",
+    "sectionTranslation.picker.instruction": "Нажмите или протяните, чтобы выбрать области для перевода",
     "sectionTranslation.picker.keys": "↑/↓ изменить область · Enter подтвердить · Esc выйти",
     "sectionTranslation.picker.locked": "Область зафиксирована. При необходимости измените её и подтвердите",
     "sectionTranslation.picker.expand": "Расширить область",
@@ -1515,12 +1520,14 @@ export const ruRUMessages = {
     "sectionTranslation.picker.reselect": "Выбрать заново",
     "sectionTranslation.picker.confirm": "Перевести выбранный фрагмент",
     "sectionTranslation.picker.restore": "Восстановить оригинал",
-    "sectionTranslation.picker.preview": "Наведите курсор для предпросмотра, нажмите для выбора",
+    "sectionTranslation.picker.preview": "Наведите курсор для предпросмотра; нажмите или протяните для выбора",
     "sectionTranslation.scope.paragraph": "Абзац",
     "sectionTranslation.scope.list": "Список",
     "sectionTranslation.scope.table": "Таблица",
     "sectionTranslation.scope.article": "Статья",
     "sectionTranslation.scope.region": "Область",
+    "sectionTranslation.picker.dragging": "Протяните для выбора, отпустите и подтвердите",
+    "sectionTranslation.scope.selected": "Выбрано областей: {count}",
     "sectionTranslation.picker.close": "Выйти из перевода фрагмента",
     "sectionTranslation.label.inspecting": "Проверка…",
     "sectionTranslation.label.translate": "Перевести · абзацев: {count}",
@@ -1550,7 +1557,7 @@ export const ruRUMessages = {
     "sectionTranslation.settings.hotkeySet": "Сочетание для перевода фрагмента: {shortcut}",
     "sectionTranslation.settings.hotkeyConflict": "Это сочетание уже использует функция «{feature}». Выберите другое.",
     "popup.sectionTranslation": "Часть",
-    "popup.sectionTranslationTitle": "Перевод фрагмента: наведите курсор для предпросмотра, нажмите для выбора и подтвердите перевод",
+    "popup.sectionTranslationTitle": "Перевод фрагмента: нажмите или протяните для выбора, затем подтвердите",
     "popup.sectionTranslationShortcut": "Сочетание клавиш: {shortcut}",
     "popup.sectionTranslationUnavailable": "Перевод фрагмента недоступен на этой странице. Обновите её и попробуйте снова.",
     "area.settings.service": "Сервис перевода области",
@@ -2429,6 +2436,7 @@ const ruRULegacyTextBase: Readonly<Record<string, string>> = {
 
 export const ruRULegacyText: Readonly<Record<string, string>> = {
     ...googleDriveText.legacy,
+    ...compositeTranslationLegacyText['ru-RU'],
     ...cloudBackupText.legacy,
     "腾讯交互翻译": "Tencent TranSmart",
     "火山翻译": "Перевод Volcengine",

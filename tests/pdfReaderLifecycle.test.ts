@@ -985,6 +985,30 @@ describe('PDF reader actual Vue component reading interaction', () => {
         selection = {rangeCount: 1, isCollapsed: true}; document.dispatchEvent(new document.defaultView!.Event('selectionchange')); flushFrames();
     });
 
+    it('keeps overflowing translations expanded while dragging and while their native selection remains, without replacing text nodes', async () => {
+        const {root, state, currentDocument} = mountReader(model(), 'bilingual', ['长译文需要保持展开并允许复制。'.repeat(1200)]);
+        await componentFlush();
+        const block = root.querySelector('.pdf-translation-block.overflowing') as HTMLElement;
+        expect(block).toBeTruthy();
+        const span = block.querySelector('span')!, text = span.firstChild;
+        span.dispatchEvent(Object.assign(new document.defaultView!.Event('pointerdown', {bubbles: true}), {button: 0}));
+        await componentFlush();
+        expect(block.classList.contains('selection-expanded')).toBe(true);
+        // 选区仍指向译文时，移开鼠标/松开仍保留展开；只有清除选区或换文件才收起。
+        selection = {rangeCount: 1, isCollapsed: false, getRangeAt: () => ({startContainer: text, endContainer: text, intersectsNode: (node: Node) => node === block})};
+        document.dispatchEvent(new document.defaultView!.Event('selectionchange'));
+        document.body.dispatchEvent(new document.defaultView!.Event('pointerup', {bubbles: true}));
+        await componentFlush();
+        expect(block.classList.contains('selection-expanded')).toBe(true); expect(span.firstChild).toBe(text);
+        expect(root.querySelector('[data-fluentread-pdf-text].selecting')).toBeNull();
+        selection = {rangeCount: 0, isCollapsed: true};
+        document.dispatchEvent(new document.defaultView!.Event('selectionchange')); await componentFlush();
+        expect(block.classList.contains('selection-expanded')).toBe(false);
+        span.dispatchEvent(Object.assign(new document.defaultView!.Event('pointerdown', {bubbles: true}), {button: 0}));
+        await componentFlush(); expect(state.expandedSelectionBlocks.size).toBe(1);
+        currentDocument.value = model(2); await componentFlush(); expect(state.expandedSelectionBlocks.size).toBe(0);
+    });
+
     it('keeps page 60 and its position through fit, 100%, 150%, resize, and translated mode while mounting at most five page shells', async () => {
         const {root, viewport, state, currentMode, currentTranslations} = mountReader(model(120));
         await vi.waitFor(() => expect([...state.states.values()]).toEqual(Array.from({length: 5}, () => expect.objectContaining({status: 'ready'}))));

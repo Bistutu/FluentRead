@@ -1,5 +1,19 @@
 # 测试与回归
 
+## 网页操作提示
+
+网页提示按每条内容独立收缩：小品牌图标、具体结果和关闭按钮一行优先显示，不再用「流畅阅读 · 操作完成」占一行标题。品牌和状态仍供辅助技术读取；长文自动换行，缺少凭据时保留设置入口，关闭按钮至少 28px。提示外的留白允许继续点击网页，悬停或键盘聚焦暂停自动消失。
+
+`pnpm test tests/pageNotice.test.ts tests/informationHighlightContent.test.ts` 验证既有通知生命周期与智能高亮反馈。生产构建后使用 `node scripts/testing/run-page-notice-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <证据目录>`，在临时 Edge 后台可见窗口验证短提示尺寸、长文与设置操作、深色及窄屏、关闭/暂停和提示旁点击穿透，保存截图与布局报告。浏览器报告区分实际生产入口与长文布局夹具，不代表 Firefox 实机验收。
+
+## 翻译结果与浏览器清理边界
+
+`translationEchoValidationRegression` 与 `free-translation` 覆盖中文目标下长篇 Latin 外语结果的拒绝、既有线路降级、批量槽顺序、旧缓存失效、取消与共享请求期限。判定需要原文和结果都有充分的外语证据；中文结果、专名、技术标识、短句与不确定语言保持保守处理。拒绝错语种不等于对译文质量作完整评估。
+
+GitHub 仓库列表和 Issue 列表同时保留旧容器与当前结构的保护规则，正文和标题仍须翻译。站点测试查询原样完成状态时使用可见文本，原始文本与结构仍用于恢复检查；隐藏反馈内容变化或仅 CSS 可见性变化均不能沿用旧完成证明。
+
+`processRegression.test.ts` 在 Vitest 完整入口内串行执行普通上下文、后台信号与后台清理三套原生 Node 进程夹具。真实子进程验证重复中断只清理一次、保留首个退出码、等待完整所有权清理，以及原关闭期限和身份校验失效时保留失败。Node 测试不启动浏览器；实际不抢焦点及扩展功能须由临时 Edge 的原生焦点监控和生产浏览器专项另行验证。弹窗主题截图在既有阶段期限内等待颜色过渡结束。
+
 ## 网页个人校订
 
 `personalCorrectionMemory`、`personalCorrectionDom`、`personalCorrectionTranslation`、`personalCorrectionComposition` 和三组 `personalCorrectionUi` 测试覆盖确认后保存、版本竞争、范围与语言隔离、近似候选、冲突拒绝自动复用、取消、节点归属、项目显式加入、编辑、删除与撤销；实际 Vue 模板检查语言信息归入页签栏、范围选择归入底部操作栏，以及范围帮助的悬停、键盘聚焦、Escape 收起与卸载清理。新增执行模块纳入严格四维覆盖率。
@@ -482,11 +496,17 @@ pnpm test:architecture   # 分层、依赖方向与验证归属
 pnpm test:unit           # 纯函数、状态机、parser、cache、handler
 pnpm test:functional     # 多模块协作，替换网络/浏览器等外部边界
 pnpm test:regression     # 历史缺陷的最小复现
-pnpm test:coverage       # 已迁移可执行业务模块的四维 100% 门禁
+pnpm test:coverage       # 全部 Vitest 与原生进程夹具一次编排 + 四维 100% 门禁
 pnpm test:document       # 文档格式、导出、取消、边界与历史回归
 pnpm verify:extension-manifests  # fresh Chrome/Firefox 产物的权限、Offscreen 与 runtime marker
 node scripts/verify-userscript-build.mjs  # userscript 元数据与产物边界
 ```
+
+普通回归与严格覆盖率共用 `vitest.config.ts` 的 Vue 编译、环境、文件隔离、资源预算和 `tests/**/*.test.ts` 发现规则。`test:coverage` 一次执行全部分组；`processRegression.test.ts` 注册并执行所有原生 Node 进程夹具，核验实际退出码与 TAP 全部通过、零跳过，原生清理语义继续在真实子进程中运行；`test:regression:all` 不再重复运行已执行的分组，单独分组入口继续用于定向开发。覆盖率的生产源码清单、`all: true`、四维 100% 阈值及忽略检查保持严格；测试数量或四维覆盖率不能代替有效的行为断言。
+
+真实组件夹具可复用 `tests/helpers/compiledVueFixture.ts` 的纯编译结果，支持独立模板与 `inlineTemplate` 两种原有编译方式。缓存按绝对路径、完整源码及编译选项区分，并限制容量；有序脚本替换、模块格式和编译 ID 分开缓存，运行时 import 信息保持不可变。helper 不保存已执行模块、render 函数、组件实例、DOM 或 mock。挂载继续创建独立实例、DOM 和端口，并按各夹具原有生命周期清理；递归组件图只在一次挂载内保持类型身份，已有的文件级 Vite server 保持原有作用域。不得缓存运行中的组件或关闭文件隔离。时间行为优先使用可控时钟，异步持久化和挂载优先等待明确的事件；取消、超时和时间边界断言仍须保留。
+
+真实论文回归需要显式提供输入：`FLUENTREAD_ATTENTION_PDF` 指向 Attention v7 的 PDF，`FLUENTREAD_PDF_CORPUS` 指向非空论文目录，`FLUENTREAD_HARNESS_PDF` 指向 Harness 论文 PDF；Harness 历史修订用例还需 `FLUENTREAD_HARNESS_LAYOUT_OLD` 与 `FLUENTREAD_HARNESS_LAYOUT_FIXED` 指向对应解析结果 JSON，再执行 `pnpm test:coverage` 或 `pnpm test:regression:all`。未提供必要输入时相关用例会标记跳过，不能称为包含真实论文的完整验收；验收报告应保留语料文件名和 SHA-256。论文本身不进入仓库。
 
 新增测试时应选择唯一分组：
 
@@ -711,6 +731,8 @@ node scripts/testing/run-reddit-translation-test.cjs \
 同时检查正文与全部节点范围、悬浮 `[1,0,1]`、全文翻译与恢复、外部译文在请求前/途中/完成后出现、移除外部译文后重新翻译，以及外部 DOM 身份和 URL 保持不变。真实 Reddit 如果返回人机验证页，应单独记录为站点限制，不能把本地结构测试表述为真实帖子验证。
 
 ### GitHub Latest 仅译文反复翻译
+
+仓库首页的 Latest 使用 flex 布局，自有原文槽会作为 flex 子项被计算为 block。候选范围复验必须把已验证原文槽视为透明包装，不能因此把原标签排除出正文范围。`translationStability.test.ts` 覆盖 flex/grid 下的重复复验、恢复后再次翻译，以及真实新增正文块、原文修改、禁译和同字克隆的拒绝边界。验收同时检查仓库首页和下述 Release 详情页；首页译文应保持同一槽节点，其他页面变化不应导致它反复撤销。
 
 仅译文将原文搬入自有槽时，必须同时识别原父节点的移除记录与槽内加入记录，避免合成正文段把自身渲染误判为外部变化、撤销译文并重复请求。`translationStability.test.ts` 覆盖 Latest 标签结构、同字不同节点、混合增删、真实原文修改和槽被移除；来源校验仍须保留。
 
@@ -989,17 +1011,31 @@ node scripts/run-video-ai-recognition-benchmark.cjs \
 
 ### 完整流水线
 
-本地确定性回归负责测试审计、WXT prepare、类型检查、严格覆盖率、四组 Vitest、Chrome/Firefox/userscript 构建及文档构建：
+本地确定性回归负责测试审计、WXT prepare、类型检查、全部 Vitest 测试与原生 Node 进程夹具的单轮编排及严格覆盖率、Chrome/Firefox/userscript 构建及文档构建：
 
 ```bash
 pnpm test:regression:all
+pnpm test:regression:all -- --artifacts-dir /private/tmp/fluentread-regression-<本轮唯一名称>
 pnpm test:regression:all -- --browser \
   --playwright-root <path> \
   --browser-path <path> \
   --focus-safe-helper <path>
 ```
 
-真实浏览器层必须使用临时 profile、屏幕外正常尺寸窗口和 focus-safe helper；不会连接用户日常 profile，也不会静默退化成抢焦点的普通 Playwright 启动。`--browser` 追加 9 组本地浏览器夹具：划词触发、全文翻译、翻译 DOM 与按钮稳定性、视频字幕、文档翻译、设置中心、术语库、隐私边界和 userscript smoke；真实网络站点矩阵还需要单独的网络许可。具体参数以 `node scripts/testing/run-full-regression.mjs --help` 为准。
+执行后，终端显示总报告的位置；默认在系统临时目录新建本轮独立目录，也可用 `--artifacts-dir` 指定新目录。目录内包含：
+
+- `summary.md`：阶段状态、命令、耗时、退出码、日志链接，以及测试数量和四维覆盖率。
+- `report.json`：结构化结果、源码提交与工作树状态、运行开始时的源码与清单指纹、完整测试矩阵和覆盖源码清单的比对结果。
+- `repair-plan.md`：失败项、跳过项、依赖受阻项、原始复现参数与后续复验建议。
+- `logs/`、`vitest-results.json` 和 `coverage/`：本轮日志、测试结果和覆盖率原始证据。
+
+默认继续执行独立检查，构建失败后依赖其产物的检查记为受阻，避免使用上轮残留产物。需要首个失败或证据不完整后停止时，使用 `--fail-fast`。已含证据或被其他运行占用的目录会拒绝重用；复验须使用新目录，保留原始结果。每阶段结束都会更新报告，收到中断信号时保存中断状态、停止后续调度，并等待当前步骤清理退出；忽略信号的进程可能延迟结束。
+
+只有本轮计划全部通过、Vitest 逐用例计数与全部测试文件范围一致、零跳过，并且严格覆盖清单中每份源码的 statements/branches/functions/lines 原始 `covered === total`、`skipped === 0`、`pct === 100` 时，命令才返回成功。缺失或损坏的报告、测试跳过、范围遗漏、运行中源码或清单变化、中断及执行失败都返回非零；报告分别记录“失败”和“证据不完整”。真实论文用例未提供所需本地输入时仍保留跳过记录，不能认定为完整验收。测试失败时也请求生成覆盖率报告，保留可用的诊断证据。
+
+修复流程由 Codex 读取总报告与日志，先复现并核对源码，区分环境或语料问题与已确认缺陷，再自动修复已确认的缺陷并运行相关定向测试。修复记录应注明改动、复验范围、剩余失败和未执行项；定向通过后仍需按影响范围补做完整回归。CLI 负责执行和报告，修复代码由 Codex 完成。不得通过删除必要用例或断言、缩小覆盖范围、降低阈值、增加跳过或覆盖率忽略来获得通过。
+
+真实浏览器层必须使用临时 profile、屏幕外正常尺寸窗口和 focus-safe helper；不会连接用户日常 profile，也不会静默退化成抢焦点的普通 Playwright 启动。`--browser` 追加 14 组本地浏览器夹具：首次 popup 高度、划词触发、全文翻译、翻译 DOM 与按钮稳定性、固定高度双语布局、GitHub 间距、嵌套列表和任务列表、视频字幕、文档翻译、设置中心、术语库、隐私边界和 userscript smoke；真实网络站点矩阵还需要单独的网络许可。具体参数以 `node scripts/testing/run-full-regression.mjs --help` 为准。
 
 CI 或本地报告必须分别说明：确定性回归、隔离浏览器回归、真实网络矩阵是否执行。任何未执行层都不能写成“全量回归已通过”。
 
@@ -1053,6 +1089,8 @@ node scripts/testing/run-section-translation-flow-test.cjs \
   --focus-safe-helper <path> \
   --artifacts-dir /private/tmp/fluentread-section-flow
 ```
+
+使用 `--case-set sweep` 可单独验证左键划过两段、往返去重和间隙排除、逐块高亮、松开仅锁定、整组扩大缩小、精确翻译/恢复、混合已译状态补译、重新选择、Esc 取消和非首段被移除后的失效保护。`core` 保留原有单击、快捷键和页面生命周期回归，可与 `sweep` 分别运行。
 
 使用临时 Edge profile、防抢焦点 helper 和 CDP 真实指针/按键，在类 GitHub 仓库页夹具上验证：Popup 局部按钮与主按钮同排等高，消息进入选择模式后稳定预览鼠标下的段落，边缘轻微移动不换选；点击只锁定选区、不请求服务且不跳转，锁定后鼠标移动与滚动不改变范围；可见按钮扩大到 README、缩小及重新选择，确认按钮才翻译该区域，网页收不到选择点击，视口外段落排在最后翻译，导航、文件列表、侧栏、页脚和代码保持原文；再次选择同一区域显示“恢复原文”并只恢复该区域。伪造点击和 Esc 不影响选择，真实 Esc 与右键退出且不发请求；主动选择侧栏时按全部节点范围翻译；已是目标语言与空白区域给出提示且不请求服务；快捷键默认关闭、开启后可进入和退出且在输入框中让行；全文恢复原文同时清除局部译文，关闭插件立即退出选择模式。追加 `--github-url <仓库地址>` 可在真实 GitHub README 上重复点选流程并断言 README 之外没有译文。翻译传输是确定性 Google 夹具，不代表外部服务可用性。
 
@@ -1195,11 +1233,27 @@ pnpm test:pdf-selection -- \
 
 `pdfSource.test.ts`、`documentSelectionRuntime.test.ts`、`pdfReaderLifecycle.test.ts` 覆盖下载限额/取消、异步挂载/文档归属、页面渲染/释放和实际 Vue 导航布局；新增纯入口、下载、选区运行时及渲染调度器进入严格四维覆盖率。`documentAppLifecycle`、`documentUserActions` 与既有 binary/rasterizer 测试守护批量导入、校订和导出。Firefox 构建与清单验证单列，不等于 Firefox 实机验收。
 
+对于嵌入字体返回零高度指标、译文漏盖原文的论文，可用 `--harness-layout-only --arxiv-pdf <2609.35738.pdf> --harness-pages 1,3,8,16` 替换上述脚本的测试范围。专项通过真实导入、翻译、暂停和下载控件获取选定页截图、遮罩几何以及 36 页的译文和双语 PDF，独立采样首页摘要的原文字形像素，并检查桌面及 390px 的状态与数字进度同行。中文回复来自本机确定性服务，只验证布局；仅选定页要求翻译完成，其他段落可能保留原文。`FLUENTREAD_HARNESS_PDF=<2609.35738.pdf>` 可启用 `documentTranslationBinaryEdge.test.ts` 的实际论文解析测试；默认用例也保留该字体的实测几何，验证合法的小高度数学字体和正常字形降部不受影响。
+
 ## 划词窗口拖动与缩放（issue #525）
 
 `node scripts/run-selection-trigger-test.cjs --geometry-only --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <浏览器测试技能>/scripts/focus-safe-browser.cjs --artifacts-dir /private/tmp/fluentread-selection-geometry` 使用临时 Edge profile 和第二屏后台窗口，检查顶部与内容空白处拖动、八个方向缩放、自动换行、正文选择、复制、滚动后位置保持、最小尺寸和视口边界，以及关闭、禁用、重新划词和迟到译文。截图涵盖放大、窄窗口和深色主题。页面及微软翻译响应为本地夹具，不代表真实供应商质量；窗口手势通过真实 CDP 输入执行。
 
 ## 单篇篇章参考
+
+### 短标题跨语言上下文误译（issue #980）
+
+```bash
+<bundled-node> scripts/testing/run-ai-context-leak-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root <bundled-node-packages> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-ai-context-leak
+```
+
+专项用 Prompts 英文标题及正文模拟短标题返回约 157 字中文页面介绍，核对一次无页面上下文/摘要重译、同批正常正文保留、悬浮与全文翻译—恢复—再次翻译、仅修复结果进入缓存、持续明确回显失败，以及关闭 AI 精翻后的单次直接翻译。检测器将 1–40 个 Unicode codepoint 的短来源、至少 `max(120, sourceLength × 6)` 个 codepoint 的结果作为保守重试信号；再次返回的合法长译文不会仅凭长度被拒绝。核心和 broker 专项同时覆盖阈值、匹配边界、取消与缓存版本隔离。
+
+测试使用生产扩展、临时 Edge profile、第二屏正常尺寸后台窗口与真实 CDP 手势；原生 macOS 激活事件核对浏览器从未成为前台。DeepSeek Chat Completions 响应在本次临时配置中拦截，端点及凭据均为虚构，不读取用户 API Key，不证明真实 DeepSeek 的翻译质量或报告者现场已恢复。报告保存 DOM 断言结果、请求摘要、缓存结果、截图与焦点证据。
 
 生产 Chrome 构建完成后运行以下独立网页套件：
 
@@ -1228,3 +1282,9 @@ pnpm test:pdf-selection -- \
 使用临时 Edge profile 与不抢焦点的后台可见窗口。服务器先实际收到扩展 Origin，再验证启用名单后 Origin 消失且鉴权不变，独立 Referer 规则安装、另一域名隔离、网页原有 Origin/Referer 保留、关闭与删除恢复、设置重开与扩展重载后持久化、非法域名阻断和 820px 布局。仅使用本地模拟 OpenAI 服务及虚构凭据，不证明真实网关或 Firefox 运行行为。新配置、DNR 同步和请求等待屏障由 `requestHeaderRules.test.ts` 与 `requestHeaderRuntime.test.ts` 覆盖。
 
 Popup 服务概览显示默认、继承和独立功能在配置中选择的模型，包含自定义模型占位符解析；统一标注“配置模型”，自定义请求体等请求规则可能覆盖最终请求模型。机器翻译行不显示模型，凭据或能力提醒仍优先。模型说明通过局部本地化 `featureServices.configuredModel` 缓存在 rows 内，aria-label 保留服务/继承说明并追加配置模型，title 保留完整模型名。`popupServiceModelClarity` 和 `popupServicesLifecycle` 的真实 Vue 模板验证继承/独立/自定义、自定义请求体覆盖时的配置模型语义、搜索不改选模，以及活跃上下文、KeepAlive/卸载、配置替换、跨功能旧事件、已删除供应商和用户焦点保护；隔离浏览器结果另行绑定源码版本，普通扩展 tab 不代替工具栏 popup 验收。
+
+## DeepLX 默认直连（issue #968）
+
+生产 Chrome 构建后运行 `scripts/testing/run-deeplx-direct-test.cjs`，显式提供 `--extension-dir`、`--playwright-root`、`--artifacts-dir`，并使用仓库 `scripts/testing/focus-safe-browser.cjs` 作为 `--focus-safe-helper`。默认使用临时 Edge profile、第二屏后台可见窗口与焦点监控。
+
+确定性夹具经过真实 broker 和 core，覆盖默认直连且不请求公共端点、繁体目标、429 后公共回退、1500 UTF-16 分块、自定义地址边界、取消中止，以及真实 Control 悬浮翻译/恢复/再翻译的 `[1,0,1]` 和邻段 `[0,0,0]`。`--live` 额外只发送一句公开短文到 DeepL，公共备用端点仍用夹具；结果单独记录，不能推断长期可用性、全部语言质量或 Firefox 实机表现。实现及本次证据范围见 [DeepLX 直连验证](maintainers/deeplx-direct-968.md)。

@@ -283,9 +283,12 @@ describe('YouTube 视频字幕识别', () => {
         expect(getVideoServiceLabel('microsoft')).toBe('微软翻译');
         expect(getVideoServiceLabel('custom-service')).toBe('custom-service');
         expect(getVideoServiceLabel('custom:team', customProviders)).toBe('团队视频模型');
+        expect(getVideoServiceLabel('composite:team', customProviders, [{id: 'composite:team', name: '团队视频组合', strategy: 'sequential', services: ['microsoft', 'openai'], timeoutMs: 12_000}])).toBe('团队视频组合');
         expect(getVideoPretranslationWindowMs('microsoft')).toBe(10_000);
         expect(getVideoPretranslationWindowMs('openai')).toBe(30_000);
         expect(getVideoPretranslationWindowMs('custom:team', customProviders)).toBe(30_000);
+        expect(getVideoPretranslationWindowMs('composite:team', customProviders, [{id: 'composite:team', name: '团队视频组合', strategy: 'smart', services: ['microsoft', 'custom:team'], timeoutMs: 12_000}])).toBe(30_000);
+        expect(getVideoPretranslationWindowMs('composite:machine', customProviders, [{id: 'composite:machine', name: '机器组合', strategy: 'sequential', services: ['microsoft', 'google'], timeoutMs: 12_000}])).toBe(10_000);
         expect(normalizeVideoSubtitleFontSize(undefined)).toBe(100);
         expect(normalizeVideoSubtitleFontSize(125)).toBe(130);
         expect(normalizeVideoSubtitleFontSize(10)).toBe(80);

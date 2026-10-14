@@ -74,6 +74,8 @@ export function getApiKeyRequirementKey(service: string, config: CredentialConfi
 }
 
 export function isApiKeyRequired(service: string, config: CredentialConfig): boolean {
+    // ChatGPT 套餐通过用户 OAuth 授权；残留的 API Key 开关不改变此凭证边界。
+    if (service === services.chatgptPlan) return false;
     if (!servicesType.isAI(service)) return true;
     const requirement = config.requireApiKey?.[getApiKeyRequirementKey(service, config)];
     if (typeof requirement === 'boolean') return requirement;

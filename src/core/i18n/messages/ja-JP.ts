@@ -6,6 +6,8 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/ja-JP.json';
+import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/ja-JP.json';
@@ -26,6 +28,7 @@ export const jaJPMessages = {
     "popup.compact.translate": "翻訳",
     "popup.compact.restore": "戻す",
     ...videoLearningText,
+    ...compositeTranslationMessages['ja-JP'],
     ...pdfReadingMessages['ja-JP'],
     ...informationHighlightMessages['ja-JP'],
     ...reencounterText,
@@ -531,6 +534,7 @@ export const jaJPMessages = {
     "settings.requestLimits.modelTitle": "モデルのリクエスト制限",
     "settings.requestLimits.globalTitle": "リクエスト制限",
     "settings.requestLimits.globalHelp": "個別設定のないサービスとモデルは、この制限を共有します。",
+    ...aiRequestTimeoutMessages["ja-JP"],
     "settings.requestLimits.retryIntervals": "再試行の間隔",
     "settings.requestLimits.apiKeyRecovery": "失敗した Key のクールダウン",
     "settings.requestLimits.apiKeyRecoveryHelp": "認証、クォータ、レート制限で失敗した Key を一時的にスキップします。サービスが Retry-After を返した場合は、その待ち時間を優先します。",
@@ -1412,7 +1416,8 @@ export const jaJPMessages = {
     'settings.services.deepl.proxyOverride': 'カスタム API URL を使用中です。プランを変更してもこの URL は上書きされません。',
     'settings.services.azure.endpoint': 'Azure エンドポイント',
     "settings.services.deeplx.endpoint": "サービス URL",
-    "settings.services.deeplx.endpointHelp": "翻訳 API の完全な URL（通常は /translate で終わる）を入力します。パスは自動追加されません。空欄では既定の公開 API を使用します。",
+    "settings.services.deeplx.defaultRoute": "既定：DeepL に直接接続",
+    "settings.services.deeplx.endpointHelp": "API Key が未設定の場合、既定では DeepL に直接接続し、失敗時に公開 API を使用します。カスタム URL は完全なパス（通常は /translate で終わる）が必要です。パスは自動追加されません。",
     "settings.services.deeplx.tokenHelp": "API Key には Bearer を付けずに Token の値だけを入力します。通常はリクエストヘッダーで送信します。URL に Token が必要なサイトでは、サイトの指定に応じて以下の形式を使用してください。",
     "settings.services.deeplx.queryToken": "クエリパラメーター：",
     "settings.services.deeplx.pathToken": "URL パス：",
@@ -1507,7 +1512,7 @@ export const jaJPMessages = {
     "paragraphCopy.notice.noPointer": "先に段落へマウスを移動してから、コピーのショートカットを押してください",
     "paragraphCopy.notice.failed": "コピーに失敗しました。テキストを選択して手動でコピーしてください。",
     "sectionTranslation.picker.title": "部分翻訳",
-    "sectionTranslation.picker.instruction": "クリックして翻訳したい範囲を選択",
+    "sectionTranslation.picker.instruction": "クリックまたはドラッグで翻訳する範囲を選択",
     "sectionTranslation.picker.keys": "↑/↓ で範囲調整 · Enter で確定 · Esc で終了",
     "sectionTranslation.picker.locked": "範囲を固定しました。必要に応じて調整し、確定してください",
     "sectionTranslation.picker.expand": "範囲を広げる",
@@ -1515,12 +1520,14 @@ export const jaJPMessages = {
     "sectionTranslation.picker.reselect": "選び直す",
     "sectionTranslation.picker.confirm": "選択範囲を翻訳",
     "sectionTranslation.picker.restore": "原文に戻す",
-    "sectionTranslation.picker.preview": "マウスを動かしてプレビュー、クリックで選択",
+    "sectionTranslation.picker.preview": "マウスでプレビュー、クリックまたはドラッグで選択",
     "sectionTranslation.scope.paragraph": "段落",
     "sectionTranslation.scope.list": "リスト",
     "sectionTranslation.scope.table": "表",
     "sectionTranslation.scope.article": "記事",
     "sectionTranslation.scope.region": "範囲",
+    "sectionTranslation.picker.dragging": "ドラッグで選択し、離してから確定",
+    "sectionTranslation.scope.selected": "{count} 個の範囲を選択",
     "sectionTranslation.picker.close": "部分翻訳を終了",
     "sectionTranslation.label.inspecting": "確認中…",
     "sectionTranslation.label.translate": "この範囲を翻訳 · {count} 段落",
@@ -1550,7 +1557,7 @@ export const jaJPMessages = {
     "sectionTranslation.settings.hotkeySet": "部分翻訳のショートカットを {shortcut} に設定しました",
     "sectionTranslation.settings.hotkeyConflict": "このショートカットは{feature}で使われています。別の組み合わせを選んでください。",
     "popup.sectionTranslation": "部分",
-    "popup.sectionTranslationTitle": "部分翻訳：マウスでプレビュー、クリックで選択、確定して翻訳",
+    "popup.sectionTranslationTitle": "部分翻訳：クリックまたはドラッグで選択して確定",
     "popup.sectionTranslationShortcut": "ショートカット {shortcut}",
     "popup.sectionTranslationUnavailable": "このページでは部分翻訳を使えません。再読み込みしてからもう一度お試しください。",
     "area.settings.service": "範囲翻訳サービス",
@@ -2429,6 +2436,7 @@ const jaJPLegacyTextBase: Readonly<Record<string, string>> = {
 
 export const jaJPLegacyText: Readonly<Record<string, string>> = {
     ...googleDriveText.legacy,
+    ...compositeTranslationLegacyText['ja-JP'],
     ...cloudBackupText.legacy,
     "腾讯交互翻译": "Tencent TranSmart",
     "火山翻译": "Volcengine 翻訳",

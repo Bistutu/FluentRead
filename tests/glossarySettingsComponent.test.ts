@@ -8,8 +8,7 @@ import {translate} from '@/src/core/i18n';
 import {GLOSSARY_LIMITS, normalizeGlossaryLibraries, type GlossaryLibrary} from '@/src/core/glossary';
 import {Config} from '@/src/core/config/model';
 import {createQuickTranslationProfile} from '@/src/core/config/quickTranslation';
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
+import {compileVueFixture} from './helpers/compiledVueFixture';
 
 // 编译实际 SFC；文本字段回归同时执行模板绑定，原生焦点与 DOM 指令由隔离浏览器覆盖。
 const stateKey = '__fluentReadGlossarySettingsTest';
@@ -27,12 +26,7 @@ let confirm: ReturnType<typeof vi.fn>;
 type RenderElement = Record<string, any> & {tag: string; props: Record<string, any>; value?: string};
 async function mountMetadataRender(): Promise<RenderElement[]> {
   const filename = resolve(process.cwd(), 'src/features/glossary/ui/GlossarySettings.vue');
-  const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-  const bindings = compileScript(descriptor, {id: 'glossary-render-test'}).bindings;
-  const template = compileTemplate({source: descriptor.template!.content, filename, id: 'glossary-render-test',
-    compilerOptions: {mode: 'function', bindingMetadata: bindings, expressionPlugins: ['typescript']}});
-  expect(template.errors).toEqual([]);
-  const renderCode = ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText;
+  const {renderCode} = compileVueFixture(filename, {id: 'glossary-render-test'});
   const loaded = await server.ssrLoadModule('/src/features/glossary/ui/GlossarySettings.vue');
   const component = loaded.default;
   // 保留真实模板的值绑定和事件；无关 v-model 的原生 DOM 指令交给浏览器回归。

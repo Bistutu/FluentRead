@@ -7,6 +7,8 @@
  * 模块边界：资源只描述扩展自己的界面文本；翻译服务的源文本、目标文本和用户内容不属于这里。
  */
 import videoLearningText from './video-learning/zh-CN.json';
+import {compositeTranslationMessages} from './compositeTranslation';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingChineseMessages} from './pdfReading';
 import {informationHighlightChineseMessages} from './informationHighlight';
 import reencounterText from './reencounter/zh-CN.json';
@@ -25,6 +27,7 @@ export const zhCNMessages = {
     "popup.compact.translate": "翻译",
     "popup.compact.restore": "还原",
     ...videoLearningText,
+    ...compositeTranslationMessages['zh-CN'],
     ...pdfReadingChineseMessages,
     ...informationHighlightChineseMessages,
     ...reencounterText,
@@ -530,6 +533,7 @@ export const zhCNMessages = {
     "settings.requestLimits.modelTitle": "模型请求限制",
     "settings.requestLimits.globalTitle": "请求限制",
     "settings.requestLimits.globalHelp": "未单独设置的服务和模型共用这些限制",
+    ...aiRequestTimeoutMessages["zh-CN"],
     "settings.requestLimits.retryIntervals": "重试间隔",
     "settings.requestLimits.apiKeyRecovery": "失败 Key 冷却时间",
     "settings.requestLimits.apiKeyRecoveryHelp": "某个 Key 因认证、额度或限流失败后会暂时跳过；服务端返回 Retry-After 时优先采用服务端时间",
@@ -717,7 +721,7 @@ export const zhCNMessages = {
     "paragraphCopy.notice.noPointer": "先把鼠标移到段落上，再按复制快捷键",
     "paragraphCopy.notice.failed": "复制失败，请选中文字后手动复制",
     "sectionTranslation.picker.title": "局部翻译",
-    "sectionTranslation.picker.instruction": "点击选中要翻译的区域",
+    "sectionTranslation.picker.instruction": "点击或按住左键划选要翻译的区域",
     "sectionTranslation.picker.keys": "↑/↓ 调整 · Enter 确认 · Esc 退出",
     "sectionTranslation.picker.locked": "范围已锁定，可调整后确认",
     "sectionTranslation.picker.expand": "扩大范围",
@@ -725,12 +729,14 @@ export const zhCNMessages = {
     "sectionTranslation.picker.reselect": "重新选择",
     "sectionTranslation.picker.confirm": "翻译所选区域",
     "sectionTranslation.picker.restore": "恢复原文",
-    "sectionTranslation.picker.preview": "移动鼠标预览，点击选中",
+    "sectionTranslation.picker.preview": "移动鼠标预览，点击或按住左键划选",
     "sectionTranslation.scope.paragraph": "段落",
     "sectionTranslation.scope.list": "列表",
     "sectionTranslation.scope.table": "表格",
     "sectionTranslation.scope.article": "文章",
     "sectionTranslation.scope.region": "区域",
+    "sectionTranslation.picker.dragging": "划过选中，松开后确认",
+    "sectionTranslation.scope.selected": "已选 {count} 个区域",
     "sectionTranslation.picker.close": "退出局部翻译",
     "sectionTranslation.label.inspecting": "正在识别…",
     "sectionTranslation.label.translate": "翻译此区域 · {count} 段",
@@ -760,7 +766,7 @@ export const zhCNMessages = {
     "sectionTranslation.settings.hotkeySet": "局部翻译快捷键已设置为 {shortcut}",
     "sectionTranslation.settings.hotkeyConflict": "这个快捷键已用于{feature}，请换一个组合键",
     "popup.sectionTranslation": "局部",
-    "popup.sectionTranslationTitle": "局部翻译：悬停预览，点击选中，再确认翻译",
+    "popup.sectionTranslationTitle": "局部翻译：点击或按住左键划选，再确认翻译",
     "popup.sectionTranslationShortcut": "快捷键 {shortcut}",
     "popup.sectionTranslationUnavailable": "当前页面暂不支持局部翻译，请刷新后重试",
     "area.settings.service": "圈选翻译服务",
@@ -1637,7 +1643,8 @@ export const zhCNMessages = {
     'settings.services.deepl.proxyOverride': "已使用自定义接口地址，套餐选择不会覆盖此地址",
     'settings.services.azure.endpoint': 'Azure 端点',
     "settings.services.deeplx.endpoint": "服务地址",
-    "settings.services.deeplx.endpointHelp": "填写完整翻译接口地址（通常以 /translate 结尾），路径不会自动补全；留空使用默认公共接口",
+    "settings.services.deeplx.defaultRoute": "默认直连 DeepL",
+    "settings.services.deeplx.endpointHelp": "未配置 API Key 时，默认先直连 DeepL，失败回退公共接口。自定义地址须包含完整路径（通常以 /translate 结尾），路径不会自动补全。",
     "settings.services.deeplx.tokenHelp": "API Key 只填 Token 值，无需 Bearer 前缀，默认通过请求头发送；若服务要求在网址中携带 Token，请使用下方格式",
     "settings.services.deeplx.queryToken": "查询参数方式：",
     "settings.services.deeplx.pathToken": "路径方式：",

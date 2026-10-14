@@ -3245,6 +3245,23 @@ describe("全文翻译可见性锚点", () => {
         expect(runtime.requestOptions.every(options => !options.validateTranslationSlots)).toBe(true);
     });
 
+    it.each([
+        {enableAIContext: true, compositeAIContext: true, requests: 2},
+        {enableAIContext: false, compositeAIContext: true, requests: 1},
+        {enableAIContext: true, compositeAIContext: false, requests: 1},
+    ])('组合上下文能力 %j 只在真实消费页面上下文时失效已完成槽缓存', async ({enableAIContext, compositeAIContext, requests}) => {
+        const snapshot = translationSnapshot({service: 'composite:context', enableAIContext, compositeAIContext});
+        const session = {active: true, translationSlotCache: new Map(), translationConfig: snapshot,
+            ...createFullPageRequestSessionState()};
+        await expect(translateTextSlots(['Context-sensitive paragraph'], snapshot, undefined, undefined, session)).resolves.toEqual(['译:Context-sensitive paragraph']);
+        await expect(translateTextSlots(['Context-sensitive paragraph'], snapshot, undefined, undefined, session)).resolves.toEqual(['译:Context-sensitive paragraph']);
+        expect(runtime.requests).toHaveBeenCalledOnce();
+        invalidateContextSensitiveRequestCache(session);
+        expect(session.pageContextGeneration).toBe(requests - 1);
+        await expect(translateTextSlots(['Context-sensitive paragraph'], snapshot, undefined, undefined, session)).resolves.toEqual(['译:Context-sensitive paragraph']);
+        expect(runtime.requests).toHaveBeenCalledTimes(requests);
+    });
+
     it('不接受通用提示词的翻译专用 AI 模型逐槽发送原文', async () => {
         const snapshot = translationSnapshot({service: 'ai', model: 'mt-only', enableAIMultiSegment: true});
         const session = {active: true, translationSlotCache: new Map()};

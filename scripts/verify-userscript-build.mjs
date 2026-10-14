@@ -116,7 +116,17 @@ const artifactBytes = Buffer.byteLength(source);
 // 再整合豆包主线 a86180163：同依赖 main 为 2,073,858，含全部请求/正文/SSE 结算修复的候选为 2,076,455。
 // 增加 2,597 字节（0.1252%）；相对 main 预算按既有步长最小增加 3 KB，余 545 字节。
 // 最终基线、候选散列与之前集成数据保存在同一并发报告，全部原有断言保留。
-const MAX_USERSCRIPT_BYTES = 2_077_000;
+// 局部左键划选、逐块高亮和多区域共享派发增加 6,055 字节（0.2919%）：
+// 同依赖独立主线 573890c33 为 2,074,383，候选为 2,080,438；
+// 利用原余量后按既有 1 KB 步长最小增加 4 KB，余 562 字节，保留所有资源与执行校验。
+// 五种已发布远程词典保持原摘要；新划选文案随注册补齐。对照见 section-sweep-selection-20261014/userscript-size.json。
+// PR #971 的 flex/grid 原文槽判定：同依赖独立主线 525108e86 为 2,080,966 字节，
+// 集成产物为 2,081,039，增加 73 字节（0.0035%）；预算增加 100 字节，余 61 字节。
+// DeepLX 直连、UTF-16 分块、匿名 transport 与固定语言资源兼容文案增加 13,325 字节（0.6403%）：
+// 同依赖独立主线 e806feff0 为 2,081,039，最终候选为 2,094,364；主线预算余 61 字节，
+// 在主线 2,081,100 预算上按既有 1 KB 步长最小增加 14 KB，余 736 字节，全部原校验保留。
+// 构建日志、前后产物与散列见工作区 research/deeplx-direct-968-20261014/userscript-size/。
+const MAX_USERSCRIPT_BYTES = 2_095_100;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

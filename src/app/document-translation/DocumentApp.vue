@@ -1,8 +1,8 @@
 <!--
  @file src/app/document-translation/DocumentApp.vue
- 文件职责：实现独立文档翻译页面的完整 Vue 应用，承载文件导入、格式化预览、分段翻译、人工校订、保存原文件和双语文件导出的用户流程。
+ 文件职责：实现独立文档翻译页面的完整 Vue 应用，提供按已提交段落计算的实时数字与进度条、暂停及等待重试状态、保留已有译文的跨服务续译入口、简短异常提示与按需展开的技术详情，承载文件导入、格式化预览、分段翻译、人工校订、原文结构变化后旧校订的独立保留、保存原文件和双语文件导出的用户流程。
  主要内容：相同译文保留原文且不重复展示；文档打开后按窗口宽度用一行或多行工具栏承载文件、阅读方式、页码缩放、翻译服务与目标语言、翻译与下载，窄窗口用翻译设置弹窗，矮小窗口用覆盖式侧栏保留正文高度；各种格式支持只缩放正文的触控板捏合与键盘操作，复用富文本预览并保持阅读位置；左侧可折叠的侧栏放文件列表与目录，其余空间留给正文；首页列出保存在本机的最近翻译，重新打开同一份文件时接着上次的译文继续；PDF 默认按原版排版左右对照，各种格式都从正在阅读的位置开始翻译；没有文字层的扫描版 PDF 在开始翻译时先逐页识别文字并显示进度；HTML、Markdown、纯文本与 ePub 的隔离预览只载入一次，译文逐段到达后原位更新并保留滚动位置，整篇译文几乎都与原文相同时状态里提示可换目标语言，带标题的文档（含 Word）在侧栏提供可按原文或译文显示的目录，Word 里的表格在阅读视图中仍按表格排版、只有一个部分时不显示部分切换，ePub 的全部章节列在侧栏目录里（按译文显示时用章内标题的译文）、当前章节下接着它其余的各级标题，正文上方不再占一行章节按钮，Word 与文本类预览在宽窗口左右对照；组织文档阅读与翻译、增量统计和人工校订，人工译法确认只在当前文件阅读会话中参与篇章参考，按原文件身份和冻结语言隔离，重译时清空；导入与在线下载绑定独立取消所有权；PDF 清晰阅读流式显示完整段落和原图区域，源页文字层与译文更新分离，下载按原版布局左右配对，长译文以完整批注保留；切换、删除、重置及卸载释放 PDF 任务和 URL；PDF/ePub/DOCX/ZIP 导出显示进度、支持取消重试，迟到结果不得回写。
- 模块边界：组件负责页面交互与响应式状态，不自行解析二进制格式、不实现片段翻译队列、配置存储协议或导出编码；解析渲染来自 document-translation feature，配置协调来自 services/config，运行时适配由本目录 runtime 注入。
+ 模块边界：ChatGPT 套餐模型选项保留全局和文档实际 slug，独立选择也直接保存，不经过自定义模型哨兵或新增发现请求；组件负责页面交互与响应式状态，不自行解析二进制格式、不实现片段翻译队列、配置存储协议或导出编码；解析渲染来自 document-translation feature，配置协调来自 services/config，运行时适配由本目录 runtime 注入。
 -->
 <!-- 文档页面归 app 层所有；WXT 入口只负责启动。 -->
 <template>
@@ -128,7 +128,7 @@
           <div class="workspace-heading">
             <button class="sidebar-toggle" type="button" :class="{active: sidebarOpen}" :aria-expanded="sidebarOpen" :aria-label="translateLegacy('文件与目录')" :title="translateLegacy('文件与目录')" @click="sidebarOpen = !sidebarOpen"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 3.5v13" stroke="currentColor" stroke-width="1.4"/></svg><small v-if="documentQueue.length > 1">{{ documentQueue.length }}</small></button>
             <img class="taskbar-logo" src="/icon/128.png" alt="" />
-            <div class="file-heading"><div><h1 data-i18n-ignore :title="parsedDocument.fileName">{{ parsedDocument.fileName }}</h1><p class="document-status" role="status">{{ statusLabel }}<span v-if="hasTranslation"> · {{ completedSegments }} / {{ parsedDocument.segments.length }}</span></p></div></div>
+            <div class="file-heading"><div><h1 data-i18n-ignore :title="parsedDocument.fileName">{{ parsedDocument.fileName }}</h1><p class="document-status" role="status">{{ statusLabel }}<span v-if="showTranslationProgress" class="document-translation-count" data-testid="document-translation-count">{{ translationProgressLabel }}</span></p></div></div>
           </div>
           <div class="reader-toolbar">
             <div class="mode-buttons reader-tabs" role="group" aria-label="文档工作区">
@@ -139,8 +139,6 @@
             <div v-if="readerTab === 'read'" class="mode-buttons" role="group" aria-label="阅读方式">
               <button v-for="mode in readingModes" :key="mode.value" type="button" :class="{ selected: effectivePreviewMode === mode.value }" :aria-pressed="effectivePreviewMode === mode.value" :disabled="!canCompare && mode.value !== 'source'" @click="previewMode = mode.value">{{ mode.label }}</button>
             </div>
-            <!-- PDF 的页码、缩放和显示方式由阅读器传送到这里，随阅读功能组响应式分行。 -->
-            <div v-show="readerTab === 'read' && isPdfDocument" ref="readerControls" class="reader-controls-slot" />
             <div v-if="readerTab === 'read' && !isPdfDocument" class="document-zoom-control" role="group" :aria-label="t('document.readerZoom.label')">
               <button type="button" :disabled="readerScale <= .5" :aria-label="t('document.pdfReading.zoomOut')" :title="t('document.pdfReading.zoomOut')" @click="stepReaderZoom(-1)">−</button>
               <button type="button" class="document-zoom-reset" data-document-zoom :aria-label="t('document.readerZoom.reset')" :title="t('document.readerZoom.hint')" @click="resetReaderZoom">{{ Math.round(readerScale * 100) }}%</button>
@@ -149,12 +147,14 @@
             <button class="focus-toggle" type="button" :aria-label="translateLegacy('专注阅读')" :title="translateLegacy('专注阅读')" @click="setFocusMode(true)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7.5 3.5h-4v4M12.5 3.5h4v4M7.5 16.5h-4v-4M12.5 16.5h4v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
             </div>
           </div>
+          <!-- 独立的 PDF 工具组接收阅读器控件，桌面与任务操作同排，窄屏再按可用空间换行。 -->
+          <div v-show="readerTab === 'read' && isPdfDocument" ref="readerControls" class="reader-controls-slot" />
           <div class="taskbar-actions">
             <!-- 宽窗口直接在工具栏选择服务、模型与目标语言，窄窗口打开既有翻译设置弹窗；源语言和术语库在侧栏底部的“调整设置”里。 -->
             <div class="toolbar-translation-settings">
             <label class="toolbar-field"><span>翻译服务</span><ElSelect class="document-select toolbar-select toolbar-service" :wrap-label="false" :show-search-icon="false" append-to=".document-app" v-model="config.documentService" :empty-values="[null, undefined]" :disabled="queueBusy" aria-label="翻译服务" filterable>
               <ElOption :label="followDefaultLabel" value="" />
-              <ElOption v-if="config.documentService && documentServiceUnavailableMessage" :value="config.documentService" disabled :label="translateLegacy('Chrome内置AI翻译（当前浏览器不可用）')" />
+              <ElOption v-if="config.documentService && documentServiceUnavailableMessage" :value="config.documentService" disabled :label="unavailableDocumentServiceLabel" />
               <ElOption v-for="item in serviceOptions" :key="item.value" :value="item.value" :label="translateLegacy(item.label)" />
             </ElSelect></label>
             <label class="toolbar-field"><span>目标语言</span><ElSelect class="document-select toolbar-select toolbar-language" :wrap-label="false" :show-search-icon="false" append-to=".document-app" v-model="config.to" :disabled="queueBusy" aria-label="目标语言" filterable>
@@ -173,18 +173,27 @@
             </div>
             </div>
           </div>
-          <div class="task-progress" :class="{ complete: translationComplete }" role="progressbar" aria-label="文档翻译进度" :aria-valuenow="progress" :aria-valuemin="0" :aria-valuemax="100"><i :style="{width: `${progress}%`}" /></div>
+          <div v-if="showTranslationProgress" class="task-progress" :class="{ complete: translationComplete }" role="progressbar" :aria-label="t('document.translationProgress.label')" :aria-valuetext="translationProgressLabel" :aria-valuenow="progress" :aria-valuemin="0" :aria-valuemax="100" data-testid="document-translation-progress"><i :style="{width: `${progress}%`}" /></div>
+          <div v-if="translationFailureVisible" class="translation-recovery" role="alert" data-testid="document-translation-recovery">
+            <span class="recovery-message">{{ documentFailureSummary(errorMessage) }}</span>
+            <button class="recovery-service" type="button" @click="translating ? pauseAndChangeService() : openDocumentSettings()">{{ t('document.translationRecovery.switchService') }}</button>
+            <details :key="errorMessage" class="recovery-details"><summary>{{ t('document.translationRecovery.details') }}</summary><p class="recovery-error-detail" data-i18n-ignore>{{ errorMessage }}</p></details>
+          </div>
+          <div v-else-if="retryNotice" class="translation-recovery" role="status">
+            <span class="recovery-message">{{ documentFailureSummary(retryNotice) }}</span>
+            <button v-if="translating && retryWaiting" class="recovery-service" type="button" @click="pauseAndChangeService">{{ t('document.translationRecovery.switchService') }}</button>
+            <details :key="retryNotice" class="recovery-details"><summary>{{ t('document.translationRecovery.details') }}</summary><p class="recovery-error-detail" data-i18n-ignore>{{ retryNotice }}</p></details>
+          </div>
           <!-- 提示统一浮在工具栏下方，出现和消失都不改变版面高度。 -->
           <div class="taskbar-notices">
           <p v-if="openingFile || downloadingPdf" class="document-import-progress" role="status">{{ importProgress }} <button class="ghost-button" type="button" @click="cancelImport">{{ t('document.pdfReading.cancelImport') }}</button></p>
-          <p v-if="errorMessage || credentialWarning || configSaveError" class="notice error task-notice" role="alert">{{ errorMessage || credentialWarning || configSaveError }} <button v-if="credentialWarning || configSaveError" type="button" @click="documentSettingsDialog?.showModal()">调整设置</button></p>
+          <p v-if="!translationFailureVisible && (errorMessage || credentialWarning || configSaveError)" class="notice error task-notice" role="alert">{{ errorMessage || credentialWarning || configSaveError }} <button v-if="credentialWarning || configSaveError" type="button" @click="documentSettingsDialog?.showModal()">调整设置</button></p>
           <p v-if="settingsChanged" class="notice warning task-notice">设置已更改。现有译文保留，按新设置翻译会从头开始。</p>
-          <p v-if="retryNotice" class="notice warning task-notice" role="status" data-i18n-ignore>{{ retryNotice }}</p>
           <p v-if="downloadNotice" class="taskbar-toast" role="status">{{ downloadNotice }}</p>
           </div>
         </section>
         <article class="document-reading-pane" aria-label="文档内容">
-        <DocumentSegmentEditor :key="activeDocumentId ?? 0" v-show="readerTab === 'edit'" :document="parsedDocument" :translations="translatedSegments" :disabled="queueBusy" @update="editSegment" />
+        <DocumentSegmentEditor :key="activeDocumentId ?? 0" v-show="readerTab === 'edit'" :document="parsedDocument" :translations="translatedSegments" :retained-revisions="documentQueue.find(item => item.id === activeDocumentId)?.retainedRevisions" :disabled="queueBusy" @update="editSegment" />
         <div v-show="readerTab === 'read'" ref="readingContent" class="reading-content" :class="{'reading-pdf': isPdfDocument}" :data-reader-zoom="isPdfDocument ? undefined : readerScale" :tabindex="isPdfDocument || isRichDocument ? undefined : 0" @pointerdown="focusNativeReader">
         <PdfReader
           v-if="isPdfDocument"
@@ -349,7 +358,7 @@
             <span>翻译服务</span>
             <ElSelect class="document-select" :wrap-label="false" :show-search-icon="false" append-to=".document-settings-dialog" v-model="config.documentService" :empty-values="[null, undefined]" :disabled="queueBusy" aria-label="文档翻译服务" filterable>
               <ElOption :label="t('featureServices.followDefault')" value="" />
-              <ElOption v-if="config.documentService && documentServiceUnavailableMessage" :value="config.documentService" disabled :label="translateLegacy('Chrome内置AI翻译（当前浏览器不可用）')" />
+              <ElOption v-if="config.documentService && documentServiceUnavailableMessage" :value="config.documentService" disabled :label="unavailableDocumentServiceLabel" />
               <ElOption v-for="item in serviceOptions" :key="item.value" :value="item.value" :label="translateLegacy(item.label)" />
             </ElSelect>
           </label>
@@ -366,7 +375,7 @@
           v-model="config.documentGlossaryIds"
           :libraries="config.glossaryLibraries"
           :enabled="config.glossaryEnabled"
-          :unsupported="!supportsTranslationGlossary(effectiveDocumentService, selectedDocumentModel)"
+          :unsupported="!documentSupportsGlossary"
           :disabled="queueBusy"
         >
           <template #mode-control="{mode, changeMode}">
@@ -451,6 +460,7 @@ import {
   scoreDocumentInformation,
   hasDistinctTranslation,
   TranslationRequestError,
+  serializeTranslationError,
   buildGlossaryRevision,
   DOCUMENT_MAX_BYTES,
   PDF_MAX_BYTES,
@@ -465,7 +475,7 @@ import {
   createDocumentHistory,
   documentHistoryId,
   restoreDocumentHistoryPdfOcr,
-  restoreDocumentHistoryTranslations,
+  restoreDocumentHistoryRevisions,
   createDocumentPreviewHtml,
   fetchOnlinePdf,
   readPdfSourceFragment,
@@ -496,15 +506,21 @@ import {
   requestConfigPatch,
   resolveConfiguredModel,
   runtimeConfig,
+  services,
   servicesType,
   subscribeConfig,
   translateDocumentSegments,
   withCustomOpenAIServiceOptions,
+  withCompositeTranslationServiceOptions,
+  getCompositeTranslationConfigFingerprint,
+  hasCompositeTranslationAIContext,
+  isCompositeTranslationProviderId,
   GlossaryLibrarySelect,
   supportsTranslationGlossary,
   useUiI18n,
   type DocumentRenderMode,
   type DocumentHistorySummary,
+  type DocumentRetainedRevision,
   type PdfReadingPresentation,
   type ParsedDocument,
   ElSelect,
@@ -564,6 +580,7 @@ function leaveFocusOnEscape(event: KeyboardEvent): void {if (event.key === 'Esca
 function leaveFocusWithFullscreen(): void {if (!window.document.fullscreenElement && focusMode.value) focusMode.value = false;}
 const sidebarTab = ref<'files' | 'outline'>('outline');
 const recognitionProgress = ref('');
+const retryWaiting = ref(0);
 const richOutline = ref<RichOutlineItem[]>([]);
 const richOutlineLanguage = ref<'source' | 'translated'>('translated');
 const pdfPage = ref(1);
@@ -642,6 +659,8 @@ interface DocumentQueueItem {
   sourceUrl?: string;
   document: ParsedDocument | null;
   translations: string[];
+  /** 原文结构改变后无法安全回填的旧校订，独立保留供查阅与复制。 */
+  retainedRevisions?: DocumentRetainedRevision[];
   confirmedTranslationIds?: number[];
   fingerprint: string;
   state: 'ready' | 'paused' | 'failed';
@@ -721,7 +740,7 @@ function persistHistory(): void {
     if (!item.document || !item.historyId || !item.bytes || item.revision === item.savedRevision) continue;
     item.savedRevision = item.revision;
     void history.save({id: item.historyId, name: item.name, format: item.document.format, size: item.bytes.byteLength, sourceUrl: item.sourceUrl, mimeType: item.mimeType || '',
-      total: item.document.segments.length, completed, updatedAt: Date.now(), bytes: item.bytes, translations: [...item.translations], fingerprint: item.fingerprint, parsed: toRaw(item.document), parsedVersion: PARSED_VERSION}).then(refreshHistory);
+      total: item.document.segments.length, completed, updatedAt: Date.now(), bytes: item.bytes, translations: [...item.translations], retainedRevisions: item.retainedRevisions ? toRaw(item.retainedRevisions) : undefined, fingerprint: item.fingerprint, parsed: toRaw(item.document), parsedVersion: PARSED_VERSION}).then(refreshHistory);
   }
 }
 function scheduleHistorySave(): void {
@@ -731,7 +750,7 @@ function scheduleHistorySave(): void {
 // 刷新后回到正在阅读的文档：当前标签页记住它在本地历史里的标识，新开的标签页仍从首页开始。
 const SESSION_KEY = 'fluentread.document.open';
 /** 版面分析或分段规则变化时递增：旧快照作废，改为按原始文件重新解析。 */
-const PARSED_VERSION = 15;
+const PARSED_VERSION = 16;
 function rememberOpenDocument(id: string | undefined | null): void {
   try {
     if (id) globalThis.sessionStorage?.setItem(SESSION_KEY, id);
@@ -761,7 +780,7 @@ async function openHistory(entry: DocumentHistorySummary): Promise<void> {
     return;
   }
   const item: DocumentQueueItem = {id: ++nextDocumentId, name: record.name, sourceUrl: record.sourceUrl, document: markRaw(snapshot), historyId: record.id, bytes: record.bytes, mimeType: record.mimeType,
-    translations: restoreDocumentHistoryTranslations(record, snapshot, PARSED_VERSION), fingerprint: record.fingerprint, state: 'ready', revision: 0, savedRevision: 0, downloaded: 0, error: ''};
+    ...restoreDocumentHistoryRevisions(record, snapshot, PARSED_VERSION), fingerprint: record.fingerprint, state: 'ready', revision: 0, savedRevision: 0, downloaded: 0, error: ''};
   documentQueue.value.push(item);
   if (documentQueue.value.length > 1) {sidebarOpen.value = true; sidebarTab.value = 'files';}
   selectDocument(item);
@@ -796,7 +815,7 @@ async function startBatch(): Promise<void> {
   saveActiveDocument();
   const pending = documentQueue.value.filter(item => item.document && !completeItem(item));
   // 已有译文的语言或术语设置不同，留给单文件的重译确认处理，避免批量按钮抹掉校订。
-  if (pending.some(item => item.translations.some(text => text?.trim()) && item.fingerprint !== currentFingerprint.value)) {
+  if (pending.some(item => item.translations.some(text => text?.trim()) && !compatibleTranslationSettings(item.fingerprint, currentFingerprint.value))) {
     batchNotice.value = t('document.batch.settingsChanged');
     return;
   }
@@ -807,7 +826,7 @@ async function startBatch(): Promise<void> {
   try {
     for (const item of pending) {
       if (generation !== batchGeneration) break;
-      if (fingerprint !== currentFingerprint.value) {
+      if (!compatibleTranslationSettings(fingerprint, currentFingerprint.value)) {
         batchNotice.value = t('document.batch.externalSettings');
         break;
       }
@@ -930,18 +949,23 @@ const formatCards = [
   {code: 'SUB', label: '字幕 / 歌词', tone: 'violet'},
 ];
 
-const serviceOptions = computed(() => filterAvailableTranslationServices(withCustomOpenAIServiceOptions(
+const serviceOptions = computed(() => filterAvailableTranslationServices(withCompositeTranslationServiceOptions(withCustomOpenAIServiceOptions(
   options.services,
   config.customOpenAIProviders,
-)).filter((item: any) => !item.disabled).map((item: any) => ({
+), config.compositeTranslationProviders)).filter((item: any) => !item.disabled).map((item: any) => ({
   ...item,
   label: translateLegacy(item.label),
   description: item.description ? translateLegacy(item.description) : item.description,
 })));
 const effectiveDocumentService = computed(() => config.documentService || config.service);
+// 不可用只影响可选性；旧服务必须显示真实名称，不把 ChatGPT 或本地模型误写成 Chrome。
+const unavailableDocumentServiceLabel = computed(() => translateLegacy(
+  options.services.find(item => item.value === effectiveDocumentService.value)?.label || effectiveDocumentService.value,
+));
 // “跟随默认”后面写明当前默认的是哪个服务，读者不必去设置页确认。
 const followDefaultLabel = computed(() => {
-  const name = serviceOptions.value.find(item => item.value === config.service)?.label;
+  const name = serviceOptions.value.find(item => item.value === config.service)?.label
+    || translateLegacy(options.services.find(item => item.value === config.service)?.label || config.service);
   return name ? `${t('featureServices.followDefault')} · ${name}` : t('featureServices.followDefault');
 });
 const activeDocumentModels = computed(() => config.documentService ? config.documentModel : config.model);
@@ -958,6 +982,10 @@ const builtInDocumentModels = computed(() => (models.get(effectiveDocumentServic
   .filter((model) => model !== customModelString));
 const documentModelOptions = computed(() => {
   if (selectedCustomOpenAIProvider.value) return selectedCustomOpenAIProvider.value.models;
+  if (effectiveDocumentService.value === services.chatgptPlan) return Array.from(new Set([
+    resolveConfiguredModel(config.model[services.chatgptPlan], config.customModel[services.chatgptPlan]),
+    resolveConfiguredModel(activeDocumentModels.value[services.chatgptPlan], activeDocumentCustomModels.value[services.chatgptPlan]),
+  ].filter(Boolean)));
   return Array.from(new Set([
     ...builtInDocumentModels.value,
     ...(config.customModels[effectiveDocumentService.value] || []),
@@ -976,8 +1004,9 @@ const selectedDocumentModel = computed({
   set: (value: string) => {
     const service = effectiveDocumentService.value;
     config.documentService = service;
-    if (documentIsCustomOpenAIProvider.value || builtInDocumentModels.value.includes(value)) {
+    if (documentIsCustomOpenAIProvider.value || service === services.chatgptPlan || builtInDocumentModels.value.includes(value)) {
       config.documentModel[service] = value;
+      if (service === services.chatgptPlan) delete config.documentCustomModel[service];
       return;
     }
     // requestConfigPatch 只提交显式请求的顶层字段，因此必须在同一轮同时写入
@@ -987,6 +1016,8 @@ const selectedDocumentModel = computed({
   },
 });
 const documentModelValue = computed(() => selectedDocumentModel.value);
+const documentSupportsGlossary = computed(() => isCompositeTranslationProviderId(effectiveDocumentService.value)
+  || supportsTranslationGlossary(effectiveDocumentService.value, selectedDocumentModel.value));
 const credentialWarning = computed(() => {
   if (documentServiceUnavailableMessage.value) return documentServiceUnavailableMessage.value;
   if (documentUsesModel.value && !documentModelValue.value.trim()) {
@@ -1011,17 +1042,44 @@ const previewRows = computed(() => pageRows(parsedDocument.value?.segments || []
 const hasTranslation = computed(() => translatedSegments.value.some((item) => Boolean(item?.trim())));
 const completedSegments = computed(() => translating.value ? liveCompletedSegments.value
   : parsedDocument.value?.segments.filter(segment => translatedSegments.value[segment.id]?.trim()).length || 0);
-const translationComplete = computed(() => Boolean(parsedDocument.value?.segments.length && completedSegments.value === parsedDocument.value.segments.length));
-const progress = computed(() => parsedDocument.value?.segments.length ? Math.floor(completedSegments.value / parsedDocument.value.segments.length * 100) : 0);
+const translationComplete = computed(() => Boolean(!translating.value && parsedDocument.value?.segments.length && completedSegments.value === parsedDocument.value.segments.length));
+// 只有已提交译文计入分子；请求和重试不增加进度，最后一段提交后仍等任务收敛才显示 100%。
+const progress = computed(() => parsedDocument.value?.segments.length
+  ? Math.min(translating.value ? 99 : 100, Math.floor(completedSegments.value / parsedDocument.value.segments.length * 100)) : 0);
+const showTranslationProgress = computed(() => Boolean(parsedDocument.value?.segments.length && !recognitionProgress.value));
+const translationProgressLabel = computed(() => t('document.translationProgress.count', {
+  completed: completedSegments.value, total: parsedDocument.value?.segments.length || 0, percent: progress.value,
+}));
+/** 默认只显示现有错误分类的短提示；完整供应商原因按需展开，重试复用工具栏唯一主按钮。 */
+const translationFailureVisible = computed(() => Boolean(runState.value === 'failed' && errorMessage.value && !credentialWarning.value && !configSaveError.value));
+function documentFailureSummary(message: string): string {
+  const {kind} = serializeTranslationError(message);
+  return t(kind === 'unknown' ? 'document.translationRecovery.interrupted' : kind === 'bad-request' || kind === 'provider' ? 'document.translationRecovery.unavailable' : `translationStats.errorKind.${kind}`);
+}
 // PDF 打开即左右对照，其他格式从翻译开始进入所选方式：译文页先显示原页，各段译文到达后逐段替换。
 const canCompare = computed(() => translating.value || hasTranslation.value || (isPdfDocument.value && Boolean(parsedDocument.value?.segments.length)));
 const effectivePreviewMode = computed(() => canCompare.value ? previewMode.value : 'source');
 const currentFingerprint = computed(() => JSON.stringify({
   from: config.from, to: config.to, service: effectiveDocumentService.value, model: selectedDocumentModel.value,
+  compositeConnection: getCompositeTranslationConfigFingerprint(config, effectiveDocumentService.value),
   glossaryIds: config.documentGlossaryIds, glossaryRevision: buildGlossaryRevision(config.glossaryLibraries, config.glossaryEnabled),
 }));
-const settingsChanged = computed(() => Boolean(taskFingerprint.value && taskFingerprint.value !== currentFingerprint.value));
-const translationActionLabel = computed(() => settingsChanged.value ? '按新设置翻译' : translationComplete.value ? '重新翻译' : hasTranslation.value || runState.value === 'paused' ? '继续翻译' : runState.value === 'failed' ? '重试翻译' : '开始翻译');
+/** 跨服务与模型切换保留续译；同一组合内部的配置变化仍遵循原有重译确认，语言与术语始终参与兼容判断。 */
+function compatibleTranslationSettings(previous: string, current: string): boolean {
+  const readSettings = (fingerprint: string) => {
+    try {
+      const value = JSON.parse(fingerprint);
+      return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined;
+    } catch {return undefined;}
+  };
+  const before = readSettings(previous), after = readSettings(current);
+  if (!before || !after) return previous === current;
+  const contentSettings = (value: Record<string, unknown>) => JSON.stringify([value.from, value.to, value.glossaryIds, value.glossaryRevision]);
+  return contentSettings(before) === contentSettings(after)
+    && (before.service !== after.service || before.compositeConnection === after.compositeConnection);
+}
+const settingsChanged = computed(() => Boolean(taskFingerprint.value && !compatibleTranslationSettings(taskFingerprint.value, currentFingerprint.value)));
+const translationActionLabel = computed(() => settingsChanged.value ? '按新设置翻译' : translationComplete.value ? '重新翻译' : runState.value === 'failed' ? t('document.translationRecovery.retry') : hasTranslation.value || runState.value === 'paused' ? '继续翻译' : '开始翻译');
 /**
  * 整篇译完、译文却几乎都和原文一样：多半是文档本来就是目标语言。状态里直接说明，读者不必对着没有变化的页面猜原因。
  * 片段太少时不下这个判断（专名、数字本来就会原样返回）。
@@ -1032,7 +1090,7 @@ const sameAsSource = computed(() => {
   const unchanged = segments.filter(segment => !hasDistinctTranslation(segment.source, translatedSegments.value[segment.id])).length;
   return unchanged >= segments.length * 0.9;
 });
-const statusLabel = computed(() => translating.value ? recognitionProgress.value || '正在翻译' : runState.value === 'paused' ? '已暂停' : runState.value === 'failed' ? '翻译中断' : needsOcr.value ? t('document.pdfReading.scanned') : isPdfDocument.value && !parsedDocument.value?.segments.length ? t('document.pdfReading.selectableSource') : translationComplete.value ? (sameAsSource.value ? '译文与原文相同，可换目标语言' : '翻译完成') : hasTranslation.value ? '部分完成' : '准备就绪');
+const statusLabel = computed(() => translating.value ? recognitionProgress.value || (runState.value === 'failed' ? t('document.translationProgress.collectingAfterFailure') : retryWaiting.value ? t('document.translationProgress.waitingRetry') : completedSegments.value === parsedDocument.value?.segments.length ? t('document.translationProgress.finishing') : '正在翻译') : runState.value === 'paused' ? '已暂停' : runState.value === 'failed' ? '翻译中断' : needsOcr.value ? t('document.pdfReading.scanned') : isPdfDocument.value && !parsedDocument.value?.segments.length ? t('document.pdfReading.selectableSource') : translationComplete.value ? (sameAsSource.value ? '译文与原文相同，可换目标语言' : '翻译完成') : hasTranslation.value ? '部分完成' : '准备就绪');
 const hasUnsavedWork = computed(() => translating.value || batchRunning.value || openingFile.value || editRevision.value > downloadedRevision.value
   || documentQueue.value.some(item => item.id !== activeDocumentId.value && item.revision > item.downloaded));
 const isPdfDocument = computed(() => parsedDocument.value?.binary?.kind === 'pdf');
@@ -1489,7 +1547,7 @@ async function loadFiles(files: File[], sourceUrl?: string): Promise<void> {
             // 原文件里的扫描页没有文字层，旧 OCR 快照不能被重解析后的空页覆盖；文字页仍使用本次解析。
             const {document: restored, segmentOrigins} = restoreDocumentHistoryPdfOcr(saved, parsed);
             item.document = markRaw(restored);
-            Object.assign(item, {translations: restoreDocumentHistoryTranslations(saved, restored, PARSED_VERSION, segmentOrigins), fingerprint: saved.fingerprint});
+            Object.assign(item, {...restoreDocumentHistoryRevisions(saved, restored, PARSED_VERSION, segmentOrigins), fingerprint: saved.fingerprint});
           }
         }
       } catch (error) {
@@ -1659,6 +1717,7 @@ function clearConfirmation(): void {
 
 function pauseTranslation(): void {
   retryNotice.value = '';
+  retryWaiting.value = 0;
   recognitionProgress.value = '';
   batchGeneration += 1;
   batchRunning.value = false;
@@ -1667,6 +1726,11 @@ function pauseTranslation(): void {
   abortController = null;
   translating.value = false;
   runState.value = 'paused';
+}
+
+function pauseAndChangeService(): void {
+  pauseTranslation();
+  openDocumentSettings();
 }
 
 async function startTranslation(restart = false): Promise<void> {
@@ -1687,12 +1751,14 @@ async function startTranslation(restart = false): Promise<void> {
     modelOverride: documentUsesModel.value ? documentModelValue.value : undefined,
     sourceLanguage: config.from, targetLanguage: config.to, batchTranslation: documentBatchTranslation.value,
     materialId: documentQueue.value.find(item => item.id === activeDocumentId.value)?.historyId || `document:${activeDocumentId.value}`,
-    enableAIContext: config.enableAIContext && servicesType.isUseAIContext(effectiveDocumentService.value, documentModelValue.value)};
+    enableAIContext: config.enableAIContext && (servicesType.isUseAIContext(effectiveDocumentService.value, documentModelValue.value)
+      || hasCompositeTranslationAIContext(config, effectiveDocumentService.value))};
   runState.value = 'ready';
   liveCompletedSegments.value = completedSegments.value;
   translating.value = true;
   errorMessage.value = '';
   downloadNotice.value = '';
+  retryWaiting.value = 0;
   const controller = new AbortController();
   const requestId = ++translationRequestId;
   abortController = controller;
@@ -1736,11 +1802,22 @@ async function startTranslation(restart = false): Promise<void> {
       onRetry: ({delayMs, reason}) => {
         if (requestId === translationRequestId && !controller.signal.aborted) retryNotice.value = `${translateLegacy('翻译服务暂时没有响应，将自动重试')} · ${Math.ceil(delayMs / 1000)}s · ${reason}`;
       },
+      onRetryStateChange: ({waiting}) => {
+        if (requestId !== translationRequestId || parsedDocument.value !== current || controller.signal.aborted) return;
+        retryWaiting.value = waiting;
+        if (!waiting) retryNotice.value = '';
+      },
+      // 一批失败时先说明原因并提供切换入口；已发出的其它成功结果仍可提交，用户显式暂停才终止它们。
+      onFailure: ({reason}) => {
+        if (requestId !== translationRequestId || parsedDocument.value !== current || controller.signal.aborted) return;
+        runState.value = 'failed';
+        showError(reason);
+      },
       // 默认合并多段，使用 feature 的有界批量与并发；开关只作用于当前文档。
       prioritize: prioritizeReadingPosition,
       onSegment: ({id, translation}) => {
         if (requestId !== translationRequestId || parsedDocument.value !== current || controller.signal.aborted) return;
-        retryNotice.value = '';
+        if (!retryWaiting.value) retryNotice.value = '';
         liveCompletedSegments.value += Number(Boolean(translation.trim())) - Number(Boolean(translatedSegments.value[id]?.trim()));
         translatedSegments.value[id] = translation;
         editRevision.value += 1;
@@ -1760,6 +1837,7 @@ async function startTranslation(restart = false): Promise<void> {
     if (requestId === translationRequestId) {
       translating.value = false;
       retryNotice.value = '';
+      retryWaiting.value = 0;
       recognitionProgress.value = '';
       if (abortController === controller) abortController = null;
       persistHistory();

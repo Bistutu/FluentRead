@@ -3,6 +3,7 @@ import {defineConfig, type ConfigEnv, type UserManifest, type Entrypoint, type E
 import vue from '@vitejs/plugin-vue';
 import {resolve} from 'path';
 import fs from 'fs';
+import JSZip from 'jszip';
 import {resolveBrowserCapabilities} from './src/platform/browser/capabilities';
 import {checkExtensionSize} from './scripts/testing/extension-size-budget';
 import {wllamaExtensionWorker} from './scripts/testing/wllama-extension-build';
@@ -11,12 +12,28 @@ import {UI_LANGUAGE_BUNDLE_DIRECTORY} from './src/core/i18n/language';
 import {packageWasmDiagnostics, packageTesseractWasm, packageTesseractWorker} from './scripts/wasm/package-diagnostics';
 import {tesseractSdkBuildPlugin} from './scripts/wasm/tesseract-sdk-build';
 import {GOOGLE_DRIVE_DEFAULT_CLIENT_ID, GOOGLE_DRIVE_EXTENSION_PUBLIC_KEY, GOOGLE_DRIVE_SCOPES} from './src/platform/google-drive/constants';
+import {createDeepLXRuntimeBuildPlugin} from './scripts/testing/deeplx-runtime-build';
 
 
 const packageJson = JSON.parse(fs.readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
 const firefoxRunnerBinary = process.env.FLUENTREAD_FIREFOX_RUNNER_BINARY;
 const firefoxRunnerProfile = process.env.FLUENTREAD_FIREFOX_RUNNER_PROFILE;
 const firefoxRunnerStartUrl = process.env.FLUENTREAD_FIREFOX_RUNNER_START_URL;
+
+/** Chrome 只交付保留固定身份的原 ZIP；验证成功后清理同版本旧商店包。 */
+export async function finalizeExtensionZip(browser: string, zipPath: string): Promise<void> {
+    if (browser !== 'chrome') return;
+    if (!zipPath.endsWith('.zip')) throw new Error('Chrome 安装包路径必须以 .zip 结尾');
+    const archive = await JSZip.loadAsync(fs.readFileSync(zipPath), {checkCRC32: true});
+    const entry = archive.file('manifest.json');
+    if (!entry) throw new Error('Chrome 安装包缺少 manifest.json');
+    const manifest = JSON.parse(await entry.async('string'));
+    if (typeof manifest.key !== 'string' || !manifest.key.trim()) {
+        throw new Error('Chrome 安装包缺少固定扩展 ID 的 key');
+    }
+    // 只删除本次产物的确切旧命名，不扫描历史版本、其他浏览器或证据目录。
+    fs.rmSync(`${zipPath.slice(0, -4)}-store.zip`, {force: true});
+}
 
 /**
  * Edge 的扩展内容脚本加载器会拒绝产物中的 Unicode 非字符 U+FFFE/U+FFFF，
@@ -195,7 +212,7 @@ export default defineConfig({
     vite: (env) => {
         const isProductionBuild = env.command === 'build' && env.mode === 'production';
         return {
-            plugins: [vue(), sharedOnnxBuildPlugin(), wllamaExtensionWorker(), tesseractSdkBuildPlugin(), escapeExtensionNoncharacters()],
+            plugins: [createDeepLXRuntimeBuildPlugin(__dirname), vue(), sharedOnnxBuildPlugin(), wllamaExtensionWorker(), tesseractSdkBuildPlugin(), escapeExtensionNoncharacters()],
             // WXT 默认在每个开发脚本中内联源码与 sourcemap；需要源码调试时显式开启。
             build: env.command === 'serve' ? {sourcemap: process.env.FLUENTREAD_DEV_SOURCEMAPS === '1' ? 'inline' : false} : undefined,
             define: {
@@ -226,6 +243,9 @@ export default defineConfig({
         includeSources: ['docs/development/service-icons.md', 'docs/guide/deepseek-harness.md'],
     },
     hooks: {
+        'zip:extension:done': async (wxt, zipPath) => {
+            await finalizeExtensionZip(wxt.config.browser, zipPath);
+        },
         'build:done': async (wxt) => {
             const dev = wxt.config.command === 'serve';
             // PDF 字体首次导出时下载并缓存，不进入安装包；fontkit 仍使用包内静态代码。

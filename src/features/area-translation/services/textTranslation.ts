@@ -6,6 +6,7 @@
  */
 import {options as catalogOptions, resolveConfiguredModel, servicesType} from '@/src/core/config/catalog';
 import {withCustomOpenAIServiceOptions} from '@/src/core/config/customOpenAI';
+import {withCompositeTranslationServiceOptions} from '@/src/core/config/compositeTranslation';
 import {buildGlossaryRevision, resolveGlossaryEntries} from '@/src/core/glossary';
 import {
     attachTranslationGlossaryContext,
@@ -119,7 +120,7 @@ export function prepareAreaTextTranslation(
     const service = source.areaTranslationService || source.service;
     const frozen = createTranslationProviderConfigSnapshot(source);
     const model = resolveConfiguredModel(frozen.model[service], frozen.customModel[service]);
-    const serviceName = withCustomOpenAIServiceOptions(catalogOptions.services, frozen.customOpenAIProviders)
+    const serviceName = withCompositeTranslationServiceOptions(withCustomOpenAIServiceOptions(catalogOptions.services, frozen.customOpenAIProviders), frozen.compositeTranslationProviders)
         .find(option => option.value === service)?.label ?? service;
     const displayModel = servicesType.isUseModel(service) ? model : '';
     if (mode === 'ai' && !supportsAreaTranslationAI(service, model)) {
@@ -148,7 +149,7 @@ export function prepareAreaTextTranslation(
         const selectedGlossaryIds = trustedContext.context === 'document' ? snapshot.documentGlossaryIds
             : trustedContext.context === 'video' ? snapshot.videoGlossaryIds : null;
         // 用户明确要求的固定译名与 broker 共用本次冻结语言、词库和可信网站范围，优先于同目标跳过。
-        const hasExplicitGlossary = mode === 'standard' && snapshot.glossaryEnabled && resolveGlossaryEntries(snapshot.glossaryLibraries ?? [], {
+        const hasExplicitGlossary = mode === 'standard' && snapshot.glossaryEnabled && resolveGlossaryEntries(snapshot.glossaryLibraries!, {
             text: sourceText, sourceLanguage: sourceLanguage.trim() || snapshot.from, targetLanguage: snapshot.to,
             pageUrl: trustedContext.pageUrl, glossaryIds: selectedGlossaryIds ? [...selectedGlossaryIds] : null,
         }).terms.length > 0;

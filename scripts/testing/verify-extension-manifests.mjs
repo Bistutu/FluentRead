@@ -4,9 +4,15 @@ import {readFile, readdir} from 'node:fs/promises';
 import JSZip from 'jszip';
 import path from 'node:path';
 import process from 'node:process';
+import {isDeepStrictEqual} from 'node:util';
 import {fileURLToPath, pathToFileURL} from 'node:url';
+import {createHash, createPublicKey} from 'node:crypto';
 
 const PROJECT_ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
+// Node 20 CLI 不直接导入 TypeScript；与公开身份常量的对应关系由 manifest 合约测试校验。
+const GOOGLE_DRIVE_DEFAULT_CLIENT_ID = '474699705334-7fua4hnkq1nmfu92cof0kdnmqsk5kth8.apps.googleusercontent.com';
+const GOOGLE_DRIVE_EXTENSION_ID = 'djnlaiohfaaifbibleebjggkghlmcpcj';
+const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 
 function optionValue(args, name, fallback) {
     const index = args.indexOf(name);
@@ -80,6 +86,54 @@ function assert(condition, message) {
     if (!condition) throw new Error(message);
 }
 
+export function verifyChromeOfflineManifest(offlineManifest, localManifest) {
+    assert(isDeepStrictEqual(offlineManifest, localManifest), 'Chrome 离线清单必须与本地构建一致');
+    assert(typeof offlineManifest.key === 'string' && offlineManifest.key.trim().length > 0,
+        'Chrome 离线 ZIP 必须保留固定扩展 ID 的公开 key 字段');
+    const keyBytes = Buffer.from(offlineManifest.key, 'base64');
+    try {
+        createPublicKey({key: keyBytes, format: 'der', type: 'spki'});
+    } catch {
+        throw new Error('Chrome 离线 ZIP 的 key 必须是有效的公开公钥');
+    }
+    const digest = createHash('sha256').update(keyBytes).digest('hex').slice(0, 32);
+    const extensionId = [...digest].map(value => String.fromCharCode(97 + parseInt(value, 16))).join('');
+    const oauth = offlineManifest.oauth2;
+    assert(typeof oauth?.client_id === 'string' && oauth.client_id.trim().length > 0,
+        'Chrome 离线 ZIP 必须保留 Google OAuth 客户端');
+    assert(countPermission(offlineManifest, 'identity') === 1 && oauth.scopes?.includes(GOOGLE_DRIVE_SCOPE),
+        'Chrome 离线 ZIP 必须保留 identity 权限与 Drive 应用数据授权范围');
+    if (oauth.client_id === GOOGLE_DRIVE_DEFAULT_CLIENT_ID) {
+        assert(extensionId === GOOGLE_DRIVE_EXTENSION_ID,
+            'Chrome 离线 ZIP 的扩展 ID 与默认 Google OAuth 客户端不匹配');
+    }
+    return extensionId;
+}
+
+export async function verifyChromeArchive(zipBytes, localManifest, localDirectory) {
+    const archive = await JSZip.loadAsync(zipBytes, {checkCRC32: true});
+    const manifestEntry = archive.file('manifest.json');
+    assert(manifestEntry, 'Chrome ZIP 缺少 manifest.json');
+    verifyChromeOfflineManifest(JSON.parse(await manifestEntry.async('string')), localManifest);
+    const names = Object.values(archive.files).filter(entry => !entry.dir).map(entry => entry.name).sort();
+    assert(isDeepStrictEqual(names, await listArtifacts(localDirectory)),
+        'Chrome ZIP 的文件条目必须与本地构建一致');
+    for (const name of names) {
+        const [archiveBytes, localBytes] = await Promise.all([
+            archive.file(name).async('nodebuffer'), readFile(path.join(localDirectory, name)),
+        ]);
+        assert(archiveBytes.equals(localBytes), `Chrome ZIP 的文件内容与本地构建不一致：${name}`);
+    }
+}
+
+export function verifyChromeArchiveNames(outputFiles, version) {
+    const archive = `fluent-read-${version}-chrome.zip`;
+    assert(outputFiles.includes(archive), `Chrome 发布压缩包缺失：${archive}`);
+    assert(!outputFiles.includes(`fluent-read-${version}-chrome-store.zip`),
+        'Chrome 当前版本不得残留旧的 -chrome-store.zip，请重新运行 pnpm zip');
+    return archive;
+}
+
 function verifySharedFrameEntrypoint(manifest, files, browser) {
     const entries = manifest.content_scripts ?? [];
     const shared = entries.filter(entry => entry.js?.includes('content-scripts/supportedFrame.js'));
@@ -120,6 +174,7 @@ async function main() {
     const firefoxDir = path.resolve(PROJECT_ROOT, optionValue(args, '--firefox-dir', '.output/firefox-mv2'));
     const outputDir = path.resolve(PROJECT_ROOT, optionValue(args, '--output-dir', '.output'));
     const requireFirefoxArchives = args.includes('--require-firefox-archives');
+    const requireChromeArchive = args.includes('--require-chrome-archive');
     const [
         chromeManifest,
         firefoxManifest,
@@ -181,6 +236,12 @@ async function main() {
     verifySharedFrameEntrypoint(chromeManifest, chromeFiles, 'Chrome');
     verifySharedFrameEntrypoint(firefoxManifest, firefoxFiles, 'Firefox');
 
+    let chromeArchive = null;
+    if (requireChromeArchive) {
+        chromeArchive = verifyChromeArchiveNames(await readdir(outputDir), chromeManifest.version);
+        await verifyChromeArchive(await readFile(path.join(outputDir, chromeArchive)), chromeManifest, chromeDir);
+    }
+
     let firefoxArchives = [];
     let firefoxArchiveOcrAssets = [];
     if (requireFirefoxArchives) {
@@ -221,6 +282,7 @@ async function main() {
             runtimeCapabilityMarker: chromeBuildMarker,
             artifacts: chromeArtifacts,
             ocrAssets: chromeOcrAssets.length,
+            archive: chromeArchive,
         },
         firefox: {
             manifestVersion: 2,

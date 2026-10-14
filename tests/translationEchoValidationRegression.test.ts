@@ -1,13 +1,15 @@
 /**
  * @file tests/translationEchoValidationRegression.test.ts
- * 文件职责：用公开 X 短句摘录及独立编写的英文正文夹具验证标点/U+200B 回显门禁及统一 broker 的恢复、失败和缓存行为。
- * 主要内容：覆盖既有外语证据、分词边界、专名/技术标识、同目标语言、简繁、真实字词和字形差异，并通过真实 broker 入口注入内存 provider/cache。
+ * 文件职责：用公开短句及正文夹具验证回显、明确 Latin 错语种门禁和真实 broker 的恢复、失败及缓存边界。
+ * 主要内容：覆盖既有外语证据、分词边界、专名/技术标识、同目标语言、简繁和真实字词差异；以实际波兰语损坏结果验证保守长段校验，并经真实 broker 验证一次重试、逐槽恢复与缓存拒绝。
  * 模块边界：不运行浏览器、不调用网络或真实存储；只替换配置存储与纯槽协议出口，不修改语言识别或展示比较规则。
  */
 import {describe, expect, it, vi} from 'vitest';
-import {isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
+import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse, isUnchangedTranslationResponse} from '@/src/core/translation/resultValidation';
+import {allowUnchangedTranslationResult} from '@/src/services/translation/requestSnapshot';
 import {createTranslationBroker} from '@/src/services/translation/broker';
 import type {TranslationConfigSource, TranslationProvider} from '@/src/services/translation/types';
+import {identifyTextLanguage} from '@/src/core/language/identify';
 import {resolveTranslationLanguages} from '@/src/core/translation/languages';
 
 vi.mock('@/src/services/config/store', () => ({config: {}}));
@@ -125,6 +127,19 @@ function createHarness(targetLanguage = 'zh-Hans') {
 }
 
 describe('保守回显比较沿用原文已有的外语证据', () => {
+    it.each(echoVariants)('%s 的原文包装仍被图片策略接受，首次成功并缓存', async (_label, origin, result) => {
+        expect(isUnchangedTranslationResponse(origin, result)).toBe(true);
+        const harness = createHarness(); harness.provider.mockResolvedValue(result);
+        await expect(harness.broker.translateWithCache(allowUnchangedTranslationResult({origin}))).resolves.toBe(result);
+        await expect(harness.broker.translateWithCache(allowUnchangedTranslationResult({origin}))).resolves.toBe(result);
+        expect(harness.provider).toHaveBeenCalledOnce();
+    });
+
+    it.each([['', ''], ['Text', ' '], ['\u200b', ''], ['!', '?'], ['Addition (', ')'], ['C++', 'C']])(
+        '空白、仅有包装或字词变化不能冒充图片原样成功：%j → %j', (origin, result) => {
+            expect(isUnchangedTranslationResponse(origin, result)).toBe(false);
+        },
+    );
     it.each(echoVariants)('%s 只变边界或 U+200B 时拒绝回显', (_label, origin, result) => {
         // 对照证明新增比较没有引入新的外语识别规则。
         expect(isLikelyUntranslatedResponse(origin, origin, 'zh-Hans')).toBe(true);
@@ -225,5 +240,121 @@ describe('真实 broker 入口拒绝回显并保护内存缓存', () => {
         expect(harness.provider).toHaveBeenCalledOnce();
         expect(harness.cacheSet).toHaveBeenCalledOnce();
         expect([...harness.store.values()]).toEqual([result]);
+    });
+});
+
+
+describe('中文目标下明确 Latin 错语种结果', () => {
+    const polishSource = 'Osobne działko laserowe o ogromnej mocy: zabija jednym strzałem, strzela co 1,5 s, zasięg 34, niebieski promień, bardzo duży pobór prądu.';
+    const corruptPolishResult = 'Osobne dzia😍ko laserowe o ogromnej mocy：zabija jednym strza😍em，strzela co 1,5 s，zasig 34，niebieski promie😍，bardzo du😍y pobór pr😍du。';
+    const english = 'The software translates every complete paragraph and keeps all reader settings available after a restart.';
+    const french = 'Le logiciel traduit chaque paragraphe et conserve les paramètres de lecture pour tous les utilisateurs après un redémarrage.';
+    const chinese = '独立的高功率激光炮，一击即可消灭目标，每隔一点五秒发射一次，射程三十四，蓝色光束，耗电量非常大。';
+    const japanese = 'このファイルの最初の文字にも制限があります。簡単にするために、最初の文字として文字を使用できます。';
+    it.each(['zh-Hans', 'zh-Hant', 'zh-CN', 'zh-TW'])('rejects actual changed-Latin Factorio response for %s using actual identification', target => {
+        expect(identifyTextLanguage(polishSource)).toMatchObject({ status: 'identified', languages: ['pl'] });
+        expect(identifyTextLanguage(corruptPolishResult)).toMatchObject({ status: 'identified', languages: ['pl'] });
+        expect(isLikelyUntranslatedResponse(polishSource, corruptPolishResult, target)).toBe(false);
+        expect(isClearlyWrongLanguageResponse(polishSource, corruptPolishResult, target)).toBe(true);
+    });
+    it.each([polishSource.replace('34', '35'), english, french])('rejects credible substantial Latin prose without depending on emoji %#', result => {
+        expect(isClearlyWrongLanguageResponse(polishSource, result, 'zh-Hans')).toBe(true);
+    });
+    it.each([
+        [polishSource, chinese], [polishSource, chinese + ' 😍😍😍😍😍'],
+        [english, '这个功能支持 Microsoft Visual Studio Code 和 GitHub Copilot，阅读后仍保留全部设置。'],
+        [english, '中文说明中引用 “The software translates every complete paragraph and keeps all reader settings available after a restart.”'],
+        [english, 'CPU GPU API SQL HTTP JSON SVG PNG'],
+        [english, 'Mary Jane'], [english, 'International Society for Technology Innovation Management and Research'],
+        [english, 'Microsoft Visual Studio Code GitHub Copilot Azure OpenAI ChatGPT Google Chrome Safari Mozilla Firefox Edge'],
+        [english, 'Zhang Wei Li Ming Wang Fang Liu Qiang Chen Jie Zhao Yun Sun Li'],
+        [english, 'laser'], [english, 'laser engines'], [english, '😍😍😍😍😍😍😍😍'],
+        [english, '34 + 1.5 = 35.5'], [english, 'https://example.test/extremelylongidentifier/another/path/to/technical/resource.js'],
+        ['Mary Jane', english], ['CPU GPU API SQL HTTP JSON SVG PNG', english],
+        [chinese, english], ['', english], [english, ''],
+        [english, 'Ancillary nucleation photodissociation cryogenic electromechanical superconductivity'],
+    ])('keeps Chinese, names, identifiers, symbols and insufficient evidence %#', (source, result) => {
+        expect(isClearlyWrongLanguageResponse(source, result, 'zh-Hans')).toBe(false);
+    });
+    it.each([
+        [polishSource, corruptPolishResult, 'pl'], [english, english.replace('restart', 'reboot'), 'en'],
+        [english, french, 'fr'], [english, japanese, 'ja'],
+    ])('does not reject results already in the chosen non-Chinese target %#', (source, result, target) => {
+        expect(isClearlyWrongLanguageResponse(source, result, target)).toBe(false);
+    });
+    it('retains the existing Japanese paragraph protection and short-name allowance', () => {
+        expect(isClearlyWrongLanguageResponse(english, japanese, 'zh-Hans')).toBe(true);
+        expect(isClearlyWrongLanguageResponse(english, 'トヨタ自動車', 'zh-Hans')).toBe(false);
+    });
+    it.each([
+        ['Automatic configuration preserves previously selected translation preferences.', 'unknown'],
+        ['The software keeps all the settings for users.', 'identified'],
+    ])('keeps insufficient Latin prose evidence with actual %s identification', (result, status) => {
+        expect(identifyTextLanguage(result).status).toBe(status);
+        expect(isClearlyWrongLanguageResponse(english, result, 'zh-Hans')).toBe(false);
+    });
+    it.each(['source', 'result'])('keeps a substantial but mixed-language %s conservative', field => {
+        const mixed = english + ' ' + french;
+        expect(identifyTextLanguage(mixed).status).toBe('unknown');
+        expect(isClearlyWrongLanguageResponse(field === 'source' ? mixed : english, field === 'result' ? mixed : french, 'zh-Hans')).toBe(false);
+    });
+    it('keeps short underscore identifiers despite comma-list formatting', () => {
+        const identifiers = 'a__, b__, c__, d__, e__, f__';
+        expect(isLikelyUntranslatedResponse(identifiers, identifiers, 'zh-Hans')).toBe(false);
+        expect(isClearlyWrongLanguageResponse(identifiers, identifiers, 'zh-Hans')).toBe(false);
+    });
+    it('retains the existing kana-only Japanese paragraph rejection', () => {
+        const kanaOnly = 'これはすべてひらがなのながいせつめいであり、ほかのぶんしょうもひらがなだけでかかれています。';
+        expect(identifyTextLanguage(kanaOnly)).toMatchObject({ status: 'identified', languages: ['ja'] });
+        expect(isClearlyWrongLanguageResponse(english, kanaOnly, 'zh-Hans')).toBe(true);
+    });
+    it('keeps a short Japanese quotation inside a substantial Chinese paragraph', () => {
+        const quotation = '这个功能用于阅读中文文章，用户可以保留技术名称以及少量外语引用，不需要把引文视作整段错语种。'.repeat(3)
+            + 'これはひらがなだけでかかれたせつめいです。';
+        const kana = (quotation.match(/[\p{Script=Hiragana}\p{Script=Katakana}ーｰ]/gu) ?? []).length;
+        const han = (quotation.match(/\p{Script=Han}/gu) ?? []).length;
+        expect(kana).toBeGreaterThanOrEqual(16);
+        expect(han).toBeGreaterThan(kana * 2);
+        expect(isClearlyWrongLanguageResponse(english, quotation, 'zh-Hans')).toBe(false);
+    });
+    describe('真实 broker 恢复与缓存边界', () => {
+        const chinese = '独立的高功率激光炮，每隔一点五秒发射一次，射程三十四，蓝色光束，耗电量非常大。';
+        it('actual broker retries once and caches only the corrected Chinese result', async () => {
+            const harness = createHarness();
+            harness.provider.mockResolvedValueOnce(corruptPolishResult).mockResolvedValueOnce(chinese);
+            await expect(harness.broker.translateWithCache({ origin: polishSource })).resolves.toBe(chinese);
+            await expect(harness.broker.translateWithCache({ origin: polishSource })).resolves.toBe(chinese);
+            expect(harness.provider).toHaveBeenCalledTimes(2);
+            expect(harness.cacheSet).toHaveBeenCalledOnce();
+            expect([...harness.store.values()]).toEqual([chinese]);
+        });
+        it('old corrupted cache is not reused and is replaced only by a valid result', async () => {
+            const harness = createHarness();
+            harness.cacheGet.mockResolvedValueOnce(corruptPolishResult);
+            harness.provider.mockResolvedValue(chinese);
+            await expect(harness.broker.translateWithCache({ origin: polishSource })).resolves.toBe(chinese);
+            expect(harness.provider).toHaveBeenCalledOnce();
+            expect([...harness.store.values()]).toEqual([chinese]);
+        });
+        it('repeated wrong-language responses keep the existing failure and cache boundary', async () => {
+            const harness = createHarness();
+            harness.provider.mockResolvedValue(corruptPolishResult);
+            await expect(harness.broker.translateWithCache({ origin: polishSource })).rejects.toMatchObject({
+                kind: 'response', code: 'WRONG_LANGUAGE_RESPONSE', retryable: false,
+            });
+            expect(harness.provider).toHaveBeenCalledTimes(2);
+            expect(harness.cacheSet).not.toHaveBeenCalled();
+            expect(harness.store.size).toBe(0);
+        });
+        it('ordinary broker batch recovers only the corrupt slot and keeps neighboring translations and names', async () => {
+            const harness = createHarness();
+            const next = 'The software translates every complete paragraph and keeps all reader settings available after a restart.';
+            harness.provider.mockResolvedValueOnce([corruptPolishResult, '下一段已经译成中文。', 'Mary Jane']).mockResolvedValueOnce(chinese);
+            await expect(harness.broker.translateWithCache({ origin: [polishSource, next, 'Mary Jane'] }))
+                .resolves.toEqual([chinese, '下一段已经译成中文。', 'Mary Jane']);
+            expect(harness.provider).toHaveBeenCalledTimes(2);
+            expect(harness.provider.mock.calls[1][0]).toMatchObject({ origin: polishSource });
+            expect([...harness.store.values()]).not.toContain(corruptPolishResult);
+        });
     });
 });

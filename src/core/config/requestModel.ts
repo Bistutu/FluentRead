@@ -39,7 +39,7 @@ export function resolveTranslationRequestModel(
         }
     }
     selected = selected.trim();
-    if (!isAI(service) || service === services.gemini) return selected;
+    if (!isAI(service) || service === services.gemini || service === services.chatgptPlan) return selected;
     const body = parseCustomBody(current.customBody?.[service]);
     const requestedModel = service === services.huanYuanTranslation ? body?.Model : body?.model;
     // 请求体不会替换 model 中的 {{变量}}；与传输层一致把非空字符串作为模型字面值。

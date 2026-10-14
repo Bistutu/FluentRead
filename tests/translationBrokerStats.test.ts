@@ -14,6 +14,18 @@ import {getTranslationErrorMessage} from '@/src/features/full-page-translation/c
 
 const IMAGE = `data:image/png;base64,${Buffer.alloc(9, 1).toString('base64')}`;
 
+// 模拟实际 HTTP 传输：超时会取消候选，传输拒绝结算后才归还唯一并发槽。
+// 永不结算且忽略取消的替身会正确保留容量，无法用于验证随后换线的统计。
+function pendingUntilAborted(signal: AbortSignal): Promise<never> {
+    return new Promise((_, reject) => {
+        if (signal.aborted) {
+            reject(signal.reason);
+            return;
+        }
+        signal.addEventListener('abort', () => reject(signal.reason), {once: true});
+    });
+}
+
 function createConfig() {
     return {
         service: 'machine',
@@ -138,7 +150,7 @@ describe('翻译 broker 请求统计', () => {
     it('线路超时后换线成功，只记录线路 timeout 和请求 success', async () => {
         const run = createFreeFallbackRunner(1);
         harness.provider.mockImplementationOnce(message => run([
-            {identity: 'slow', label: '慢线路', translate: () => new Promise(() => {})},
+            {identity: 'slow', label: '慢线路', translate: pendingUntilAborted},
             {identity: 'healthy', label: '健康线路', translate: async () => '有效译文'},
         ], {
             timeoutMs: 5, cooldownMs: 1000,
@@ -155,7 +167,7 @@ describe('翻译 broker 请求统计', () => {
     it('线路耗尽汇总中的 timeout 不冒充总截止时间，统计和全文提示保留 provider 失败', async () => {
         const run = createFreeFallbackRunner(1);
         harness.provider.mockImplementationOnce(message => run([
-            {identity: 'slow', label: '慢线路', translate: () => new Promise(() => {})},
+            {identity: 'slow', label: '慢线路', translate: pendingUntilAborted},
             {identity: 'echo', label: '空结果线路', translate: async () => ''},
         ], {
             timeoutMs: 5, cooldownMs: 1000,

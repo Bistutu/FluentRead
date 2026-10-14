@@ -2,13 +2,12 @@
  * @file src/core/config/catalog.ts
  *
  * 文件职责：维护 FluentRead 翻译语言、服务与模型的领域目录，让设置、校验和运行时能够引用同一组稳定的服务标识与模型元数据。
- * 主要内容：明确区分简体中文和繁体中文，统一源语言、目标语言和输入框语言选项，并定义 services、servicesType、服务目录展示分类与排序（含“云服务厂商”分组）、模型候选、云厂商地域白名单、MiniMax 与 MiMo 的计费和地域选项，并提供 resolveConfiguredModel、resolveCloudRegion 等解析函数，把“自定义模型”选择归一为可请求的模型编号。 同时维护默认翻译提示词与历史默认提示词清单，供配置归一化升级未被用户改写的旧默认值。 可核对的公开符号包括 services、cloudVendorServices、referenceAiPlatformServices、servicesType、customModelString、cloudRegionOptions、getDefaultCloudRegion、resolveCloudRegion、minimaxBillingPlans、MiniMaxBillingPlan、minimaxRegions、MiniMaxRegion、mimoBillingPlans、defaultOption、LEGACY_DEFAULT_USER_ROLES。
+ * 主要内容：明确区分简体中文和繁体中文，统一源语言、目标语言和输入框语言选项，并定义 services、servicesType、服务目录展示分类与排序（含“云服务厂商”分组）、模型候选、云厂商地域白名单、MiniMax 与 MiMo 的计费和地域选项；ChatGPT 套餐服务使用本机助手发现账户模型，不预置 API 模型或密钥字段。提供 resolveConfiguredModel、resolveCloudRegion 等解析函数，把“自定义模型”选择归一为可请求的模型编号。 同时维护默认翻译提示词与历史默认提示词清单，供配置归一化升级未被用户改写的旧默认值。 可核对的公开符号包括 services、cloudVendorServices、referenceAiPlatformServices、servicesType、customModelString、cloudRegionOptions、getDefaultCloudRegion、resolveCloudRegion、minimaxBillingPlans、MiniMaxBillingPlan、minimaxRegions、MiniMaxRegion、mimoBillingPlans、defaultOption、LEGACY_DEFAULT_USER_ROLES。
  * 模块边界：本文件属于 core 领域层，只定义规则、类型与纯转换；目录解析只接受表自身登记的键，未知服务、语言或界面语言按公开回退契约处理；不直接读写浏览器存储、不发起网络请求、不挂载 Vue/WXT 入口，持久化、协议调用和界面编排分别由 services、providers 与 features 承担。
  */
 
 import {translationLanguageOptions} from '@/src/core/language/catalog';
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
-import {DEFAULT_DEEPLX_ENDPOINT} from "./deeplx";
 import {CUSTOM_OPENAI_RESERVED_MODEL_ID, isCustomOpenAIProviderId} from './customOpenAI';
 import {DOUBAO_SEED_TRANSLATION_MODEL_ID, isDoubaoSeedTranslationModel} from './doubaoSeedTranslation';
 import {buildTranslationStyleOptions} from './translationAppearance';
@@ -40,6 +39,7 @@ export const services = {
     volcTranslation: "volcTranslation", // 火山引擎机器翻译
     // 大模型翻译
     openai: "openai",
+    chatgptPlan: "chatgptPlan", // 本机助手持有 OAuth；账户模型在授权后发现。
     azureOpenai: "azureOpenai", // Azure 服务；保留旧 ID 以兼容已保存的配置和凭据
     gemini: "gemini",
     yiyan: "yiyan",
@@ -129,6 +129,7 @@ export const servicesType = {
     cloudVendor: new Set<string>(cloudVendorServices),
     AI: new Set([
         services.openai,
+        services.chatgptPlan,
         services.azureOpenai,
         services.gemini,
         services.yiyan,
@@ -212,6 +213,7 @@ export const servicesType = {
     // 需要 model
     useModel: new Set([
         services.openai,
+        services.chatgptPlan,
         services.azureOpenai,
         services.gemini,
         services.yiyan,
@@ -302,8 +304,8 @@ export const servicesType = {
     isUseToken: (service: string) => servicesType.useToken.has(service) || isCustomOpenAIProviderId(service),
     isUseProxy: (service: string) => servicesType.useProxy.has(service) || isCustomOpenAIProviderId(service),
     isUseModel: (service: string) => servicesType.useModel.has(service) || isCustomOpenAIProviderId(service),
-    // 所有 AI 服务的请求体都支持附加顶层字段。
-    isUseCustomBody: (service: string) => servicesType.isAI(service),
+    // 套餐预览协议只接受明确支持的字段；其他 AI 服务保留附加顶层字段。
+    isUseCustomBody: (service: string) => service !== services.chatgptPlan && servicesType.isAI(service),
     isCustom: (service: string) => isCustomOpenAIProviderId(service),
     isNewApi: (service: string) => service === services.newapi,
     // 文心一言已迁移到千帆 v2 的 Bearer Token 鉴权；保留方法供 UI 兼容。
@@ -409,6 +411,7 @@ export function resolveConfiguredModel(selectedModel?: string, customModel?: str
 // 当前官方模型编号的单一来源，同时供列表和旧配置迁移使用。
 export const currentModelIds = {
     openai: "gpt-5.6-luna",
+    chatgptPlan: "", // 套餐模型依账户发现，不能用 API 模型目录代替。
     zhipu: "glm-5.3",
     zhipuFlash: "glm-4.5-flash",
     tongyiTokenPlan: "qwen3.8-max-preview",
@@ -473,6 +476,7 @@ export const defaultModelIds = {
 } as const;
 
 export const models = new Map<string, Array<string>>([
+    [services.chatgptPlan, []],
     [services.openai, [defaultModelIds[services.openai], "gpt-5.4-nano", "gpt-6-astra", currentModelIds.openai, "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.5", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
     [services.azureOpenai, [defaultModelIds[services.azureOpenai], currentModelIds.openai, "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.5", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
     [services.gemini, [defaultModelIds[services.gemini], "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro", customModelString]],
@@ -636,6 +640,7 @@ export const options = {
         {value: services.mimo, label: "小米 MiMo", catalogKind: "provider"},
         {value: services.jieyue, label: "阶跃星辰", catalogKind: "provider"},
         {value: services.openai, label: "OpenAI", catalogKind: "provider"},
+        {value: services.chatgptPlan, label: "ChatGPT 套餐", description: "通过本机助手登录 ChatGPT，使用账户获准的套餐模型与额度。", catalogKind: "provider", searchTerms: ["oauth sign in chatgpt plus pro 套餐 登录"]},
         {value: services.gemini, label: "Gemini", catalogKind: "provider"},
         {value: services.claude, label: "Claude", catalogKind: "provider"},
         {value: services.grok, label: "Grok (X.AI)", catalogKind: "provider"},
@@ -1117,7 +1122,7 @@ export const defaultOption = {
     hotkey: "Control",
     service: services.freeTranslation,
     custom: "http://localhost:11434/v1/chat/completions",
-    deeplx: DEFAULT_DEEPLX_ENDPOINT,
+    deeplx: "",
     system_role:
         "You are a professional, authentic machine translation engine.",
     user_role: `Translate the following text into {{to}}. Translate every sentence, clause and phrase in full; no part of the source text may stay in its original language. Keep only code, URLs, and proper nouns that have no established {{to}} form, and keep them inline inside the translated sentence. Return the translation only. NO explanations. NO notes:

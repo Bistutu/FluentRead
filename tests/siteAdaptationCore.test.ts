@@ -291,6 +291,8 @@ describe('site adaptation compilation', () => {
         expect(parseSiteRulePack(builtinSiteRulePack)).toMatchObject({ok: true});
         for (const [id, url, html, selector] of [
             ['github', 'https://github.com/orgs/example/repositories', '<div class="ReposListItem-module__TopicsList"><span>unknown-language</span></div>', 'span'],
+            ['github', 'https://github.com/orgs/example/repositories', '<ul data-listview-component="items-list"><li><div class="TopicsList__XBoKUv"><span>unknown-language</span></div></li></ul>', 'span'],
+            ['github', 'https://github.com/orgs/example/repositories', '<ul data-listview-component="items-list"><li><div class="LabelsContainer__Bi_rOW"><span>unknown-language</span></div></li></ul>', 'span'],
             ['x-chat', 'https://chat.x.com/conversation', '<div class="flex items-center ml-auto shrink-0 gap-1">Delivered receipt</div>', 'div'],
             ['discord-messages', 'https://discord.com/channels/1/2', '<div id="message-content-1"><span class="timestamp_test">Edited receipt</span></div>', 'span'],
             ['ubuntu-manpage', 'https://manpages.ubuntu.com/manpages/noble/man8/apt.8.html', '<div id="manpage-content"><h2 id="description"></h2><section class="Sh"><p class="Pp"><b>unknown-operation</b></p><div class="Bd-indent">Explanation remains readable.</div></section></div>', 'p'],

@@ -375,6 +375,7 @@ import {
   getCustomOpenAIProvider,
   withCustomOpenAIServiceOptions,
 } from '@/src/core/config/customOpenAI';
+import {withCompositeTranslationServiceOptions} from '@/src/core/config/compositeTranslation';
 import { getMissingCredentialMessage } from '@/src/core/config/validation';
 import {
   interfaceSkinUsesContentHeight,
@@ -485,11 +486,11 @@ const sectionTranslationLabel = computed(() => {
   return `${title} · ${t('popup.sectionTranslationShortcut', {shortcut})}`;
 });
 // 自定义接口名称属于用户配置；内置服务才复用旧 UI 名称的本地化。
-const customProviderNames = computed(() => new Map(config.value.customOpenAIProviders.map(provider => [provider.id, provider.name])));
-const allServiceOptions = computed(() => withCustomOpenAIServiceOptions(
+const customProviderNames = computed(() => new Map([...config.value.customOpenAIProviders, ...config.value.compositeTranslationProviders].map(provider => [provider.id, provider.name])));
+const allServiceOptions = computed(() => withCompositeTranslationServiceOptions(withCustomOpenAIServiceOptions(
   options.services,
   config.value.customOpenAIProviders,
-).filter((item: any) => !item.disabled).map((item: any) => ({
+), config.value.compositeTranslationProviders).filter((item: any) => !item.disabled).map((item: any) => ({
   ...item,
   label: customProviderNames.value.get(item.value) ?? translateLegacy(item.label),
   description: item.description ? translateLegacy(item.description) : item.description,

@@ -6,6 +6,7 @@
  */
 import {getFreeTranslationWeightSnapshot, createProviderTestRuntimeHandlers} from './providerRuntime';
 import {createPersonalCorrectionRuntimeHandlers} from './personalCorrectionRuntime';
+import {createChatGPTPlanHandler} from './chatgptPlanRuntime';
 import {config, configReady} from '@/src/services/config/store';
 import {lookupWord} from '@/src/features/selection-translation/services/wordDictionary';
 import {createSelectionPageZoomBrowserPort, createSelectionPageZoomHandler} from '@/src/features/selection-translation/background/pageZoomHandler';
@@ -82,6 +83,7 @@ export function installBackgroundMessageRuntime(options: BackgroundMessageRuntim
     });
     const handlers: Array<BackgroundMessageHandler<BackgroundRuntimeContext>> = [
         ...createPersonalCorrectionRuntimeHandlers<BackgroundRuntimeContext>(),
+        createChatGPTPlanHandler(),
         createTranslationCancelHandler(translationRequestRegistry),
         installHarnessBackgroundRuntime(cancelWriting),
         ...createQqMailFrameBackgroundHandlers({sendTabMessage: (tabId, message, options) => browser.tabs.sendMessage(tabId, message, options)}),

@@ -33,6 +33,7 @@ const supportedUserscriptServices = new Set([
     ...servicesType.AI,
 ]);
 supportedUserscriptServices.delete(services.chromeTranslator);
+supportedUserscriptServices.delete(services.chatgptPlan);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -45,6 +46,7 @@ function nonEmptyString(value: unknown): string {
 export function isUserscriptServiceSupported(service: unknown): service is string {
     return typeof service === 'string'
         && service !== services.chromeTranslator
+        && service !== services.chatgptPlan
         && (supportedUserscriptServices.has(service) || isCustomOpenAIProviderId(service));
 }
 

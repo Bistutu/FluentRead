@@ -11,6 +11,7 @@ import type {HarnessMessage} from '@/src/core/harness/surface';
 import {readMemory, type HarnessMemoryReader} from '@/src/services/harness/memoryRecall';
 import type {Config} from '@/src/core/config/model';
 import {resolveWritingReadiness} from '@/src/core/config/writingReadiness';
+import {getTranslationServiceUnavailableMessage} from '@/src/services/translation/capabilities';
 import {WRITING_LANGUAGES, WRITING_TONES, WRITING_STYLES, WRITING_ROLES, normalizeWritingLength, resolveWritingLanguage, type WritingIntent, type WritingLength} from '@/src/core/config/writing';
 import {createHarnessLanguageModel, normalizeHarnessModelError} from '@/src/services/harness/modelGateway';
 import {createHarnessUsageEvent} from '@/src/services/harness/usage';
@@ -46,7 +47,8 @@ export function createWritingRuntime(getConfig: () => Config, record?: (event: M
         if (signal.aborted) return {success: false, error: '已停止生成', cancelled: true};
         const current = JSON.parse(JSON.stringify(getConfig())) as Config;
         if (!current.on || !current.writing.enabled) return {success: false, error: '请先启用写作助手'};
-        const {service, model: modelId, ready, message} = resolveWritingReadiness(current);
+        const {service, model: modelId, ready, message} = resolveWritingReadiness(current, true,
+            getTranslationServiceUnavailableMessage(current.writing.service || current.service));
         if (!ready) return {success: false, error: message};
         if (['polish', 'continue', 'shorten', 'translate'].includes(request.intent) && !request.draft.trim()) return {success: false, error: '请先输入草稿'};
         if (!request.instruction.trim() && !request.draft.trim() && !request.context.trim()) return {success: false, error: '请先写下要求或提供参考内容'};

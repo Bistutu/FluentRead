@@ -1,4 +1,6 @@
 import {spawnSync} from 'node:child_process';
+import {mkdtempSync, readFileSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
 import {describe, expect, it} from 'vitest';
 
@@ -38,6 +40,7 @@ describe('full regression runner', () => {
         const plan = dryRun(['--', '--artifacts-dir', '/tmp/fluentread-pnpm-separator']);
 
         expect(plan.mode).toBe('local');
+        expect(plan.failFast).toBe(false);
         expect(plan.artifactsDir).toBe('/tmp/fluentread-pnpm-separator');
     });
 
@@ -56,13 +59,6 @@ describe('full regression runner', () => {
             'wxt-prepare',
             'compile',
             'strict-coverage',
-            'vitest-architecture',
-            'vitest-unit',
-            'vitest-functional',
-            'vitest-regression',
-            'agent-bridge',
-            'focus-safe-browser-lifecycle',
-            'document-live-http-evidence',
             'chrome-build',
             'firefox-build',
             'firefox-zip',
@@ -76,16 +72,20 @@ describe('full regression runner', () => {
             'storybook-verifier',
             'docs-verifier',
         ]);
+        // 完整覆盖率配置已发现所有测试，流水线必须仅执行一次 Vitest。
+        const vitestSteps = plan.steps.filter((step: {args: string[]}) => step.args.includes('vitest'));
+        expect(vitestSteps).toHaveLength(1);
+        expect(vitestSteps[0]).toMatchObject({id: 'strict-coverage', command: 'pnpm',
+            args: [
+                'exec', 'vitest', 'run', '--coverage', '--config', 'vitest.coverage.config.ts',
+                '--reporter=default', '--reporter=json',
+                '--outputFile=/tmp/fluentread-local-only/vitest-results.json',
+                '--coverage.reportsDirectory=/tmp/fluentread-local-only/coverage',
+                '--coverage.reportOnFailure',
+            ]});
+        expect(plan.steps.some((step: {args: string[]}) => step.args.includes('scripts/testing/run-test-group.mjs'))).toBe(false);
         const firefoxZip = plan.steps.find((step: {id: string}) => step.id === 'firefox-zip');
-        expect(plan.steps.find((step: {id: string}) => step.id === 'agent-bridge')).toMatchObject({
-            command: 'node', args: ['--test', 'tests/agentBridge.test.mjs'],
-        });
-        expect(plan.steps.find((step: {id: string}) => step.id === 'focus-safe-browser-lifecycle')).toMatchObject({
-            phase: 'local', command: 'node', args: ['--test', 'tests/focusSafeBrowserOrdinaryLifecycle.test.mjs'],
-        });
-        expect(plan.steps.filter((step: {id: string}) => step.id === 'document-live-http-evidence')).toEqual([
-            expect.objectContaining({phase: 'local', command: 'node', args: ['--test', 'tests/documentLiveHttpEvidence.test.mjs']}),
-        ]);
+        expect(plan.steps.some((step: {args: string[]}) => step.args.includes('--test'))).toBe(false);
         const manifestVerifier = plan.steps.find(
             (step: {id: string}) => step.id === 'extension-manifest-verifier',
         );
@@ -93,8 +93,40 @@ describe('full regression runner', () => {
         expect(manifestVerifier).toMatchObject({
             command: 'node',
             args: ['scripts/testing/verify-extension-manifests.mjs', '--require-firefox-archives'],
+            dependsOn: ['chrome-build', 'firefox-zip'],
         });
+        // ZIP 自带一次完整 Firefox 构建，可以在此前独立 Firefox build 失败后收集新证据。
+        expect(firefoxZip.dependsOn).toEqual(['wxt-prepare']);
+        expect(plan.steps.find((step: {id: string}) => step.id === 'docs-verifier').dependsOn)
+            .toEqual(['docs-build', 'storybook-build']);
         expect(plan.steps.some((step: {phase: string}) => step.phase === 'browser' || step.phase === 'network')).toBe(false);
+    });
+
+    it('enables fail-fast only when requested without changing the checks', () => {
+        const plan = dryRun(['--fail-fast']);
+        expect(plan.failFast).toBe(true);
+        expect(plan.steps).toHaveLength(16);
+    });
+
+    it('returns a nonzero CLI exit and saves evidence when the first command cannot start', () => {
+        const directory = mkdtempSync(resolve(tmpdir(), 'fluentread-regression-cli-contract-'));
+        const artifactsDir = resolve(directory, 'artifacts');
+        try {
+            // 空 PATH 使第一个 node 审计命令确定性地 ENOENT，不启动实际完整流水线。
+            const result = spawnSync(process.execPath, [RUNNER, '--fail-fast', '--artifacts-dir', artifactsDir], {
+                cwd: PROJECT_ROOT,
+                encoding: 'utf8',
+                env: {...process.env, PATH: directory},
+            });
+            expect(result.status, result.stderr).toBe(1);
+            const report = JSON.parse(readFileSync(resolve(artifactsDir, 'report.json'), 'utf8'));
+            expect(report.status).toBe('failed');
+            expect(report.steps[0]).toMatchObject({id: 'test-suite-audit', status: 'failed'});
+            expect(report.steps.slice(1).every((step: {status: string}) => step.status === 'not-run')).toBe(true);
+            expect(readFileSync(resolve(artifactsDir, 'logs/test-suite-audit.log'), 'utf8')).toContain('ENOENT');
+        } finally {
+            rmSync(directory, {recursive: true, force: true});
+        }
     });
 
     it('requires explicit network and allow-network gates together', () => {
@@ -130,6 +162,8 @@ describe('full regression runner', () => {
         ]);
         for (const step of browserSteps) {
             expect(step.gates).toEqual(['--browser']);
+            expect(step.dependsOn).toEqual(step.id === 'userscript-smoke'
+                ? ['userscript-build', 'userscript-verifier'] : ['chrome-build']);
             expect(step.args).toContain('--focus-safe-helper');
             expect(step.args).toContain(resolve(PROJECT_ROOT, 'scripts/focus-safe-browser.cjs'));
             expect(step.args).toContain('--background');
@@ -196,6 +230,7 @@ describe('full regression runner', () => {
         expect(networkSteps).toHaveLength(1);
         expect(networkSteps[0].id).toBe('site-translation-matrix');
         expect(networkSteps[0].gates).toEqual(['--network', '--allow-network']);
+        expect(networkSteps[0].dependsOn).toEqual(['chrome-build']);
         expect(networkSteps[0].args).toContain('--allow-network');
         expect(networkSteps[0].args).toContain('--focus-safe-helper');
         expect(networkSteps[0].args).toContain('--background');

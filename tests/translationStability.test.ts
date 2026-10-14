@@ -28,6 +28,7 @@ import {
     discardTranslation,
     getTranslationState,
     markTranslationComplete,
+    setSingleTextSlotHosts,
     restoreTranslation,
     getTranslationOverflowGenerationIdentity,
     getTranslationSourceStructureSignature,
@@ -1240,9 +1241,10 @@ describe('重挂来源快照的祖先预算和隔离', () => {
 const completionUnitOwners = new Set<HTMLElement>();
 function beginCompletionUnit(
     markup = '<p id="completion">Read the same English source.</p>',
-    options: {mode?: 'bilingual' | 'single'; scope?: 'content' | 'all'; synthetic?: boolean; withoutSourceNodes?: boolean; shell?: boolean} = {},
+    options: {mode?: 'bilingual' | 'single'; scope?: 'content' | 'all'; synthetic?: boolean; withoutSourceNodes?: boolean; shell?: boolean; prepareDocument?: (document: Document) => void} = {},
 ) {
     const {document} = parseHTML('<html><body><main' + (options.shell ? ' translate="no"' : '') + '>' + markup + '</main></body></html>');
+    options.prepareDocument?.(document as unknown as Document);
     const owner = document.querySelector<HTMLElement>('#completion')!;
     const scope = options.scope ?? 'content';
     const core = getCurrentTranslationCore(scope);
@@ -1567,5 +1569,118 @@ describe('同值完成证据的真实来源与会话边界', () => {
         expect(completion.read().status).toBe('unavailable');
         artifact.remove();
         expect(completion.read().status).toBe('available');
+    });
+});
+
+// Regression for exact completion-source matching when clipboard feedback is
+// CSS-hidden. Provider output is controlled; no live-provider causation is assumed.
+describe('pubdev caption identical-result source boundary diagnostic', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        completionUnitOwners.forEach(owner => restoreTranslation(owner));
+        completionUnitOwners.clear();
+    });
+    const markup = '<h1 id="completion" class="title pub-monochrome-icon-hoverable">provider 6.1.5+1 ' +
+        '<span class="pkg-page-title-copy"><img data-copy-content="provider: ^6.1.5+1" tabindex="0">' +
+        '<div class="pkg-page-title-copy-feedback" style="display:none"><span class="code">provider: ^6.1.5+1</span> copied to clipboard</div></span></h1>';
+    function makeCaption() {
+        return beginCompletionUnit(markup, {prepareDocument(document) {
+            Object.defineProperty(document.defaultView!, 'getComputedStyle', {configurable: true,
+                value: (element: Element) => ({
+                    display: element.matches('.pkg-page-title-copy-feedback')
+                        ? (element as HTMLElement).style.display
+                        : ['SPAN', 'IMG'].includes(element.tagName) ? 'inline' : 'block',
+                    visibility: 'visible', position: 'static', overflow: 'visible', fontFamily: 'Arial',
+                })});
+        }});
+    }
+    it('real source accepts the clean identical caption but cannot certify the raw feedback-polluted query', () => {
+        const fixture = makeCaption();
+        const rawCloneSource = (fixture.owner.cloneNode(true).textContent || '').replace(/\s+/gu, ' ').trim();
+        expect(fixture.state.sourceText).toBe('provider 6.1.5+1');
+        expect(fixture.slots).toHaveLength(1);
+        expect(rawCloneSource).toBe('provider 6.1.5+1 provider: ^6.1.5+1 copied to clipboard');
+        const completion = finishCompletionUnit(fixture);
+        expect(completion.read()).toMatchObject({status: 'available', reason: 'accepted-result-identical',
+            sources: ['provider 6.1.5+1'], outputs: ['provider 6.1.5+1']});
+        expect(completion.read({source: rawCloneSource})).toEqual({status: 'unavailable', reason: 'no-current-accepted-completion'});
+        expect(fixture.owner.querySelector('[data-fr-translation-owned="true"]')).toBeNull();
+    });
+    it('copy-feedback becoming visible invalidates the clean historical receipt; exact source return can reuse it', () => {
+        const fixture = makeCaption(), completion = finishCompletionUnit(fixture);
+        const feedback = fixture.owner.querySelector<HTMLElement>('.pkg-page-title-copy-feedback')!;
+        const exactStyle = feedback.getAttribute('style')!;
+        expect(completion.read().status).toBe('available');
+        feedback.style.display = 'block';
+        expect(completion.read().status).toBe('unavailable');
+        feedback.setAttribute('style', exactStyle);
+        expect(completion.read()).toMatchObject({status: 'available', requestBoundary: 'accepted-same-session-result-reuse'});
+        expect(fixture.owner.querySelector('[data-fr-translation-owned="true"]')).toBeNull();
+    });
+});
+
+describe('仅译文 flex/grid 标签的候选范围复验', () => {
+    it.each(['flex', 'grid'])('%s 原文槽不会使 Latest 失去候选身份，恢复后可再次翻译', (display) => {
+        const {document, window} = parseHTML('<html><body><main><span id="latest">Latest</span></main></body></html>');
+        const owner = document.querySelector<HTMLElement>('#latest')!;
+        const source = owner.firstChild as Text;
+        const originalHTML = owner.innerHTML;
+        const descriptor = Object.getOwnPropertyDescriptor(window, 'getComputedStyle');
+        // 真实浏览器会把 flex/grid 的直接子项 blockify；linkedom 不计算布局。
+        Object.defineProperty(window, 'getComputedStyle', {configurable: true, value: (element: Element) => ({
+            display: element === owner ? display : element.classList.contains('fluent-read-single-slot') ? 'block'
+                : element.localName === 'span' ? 'inline' : 'block',
+        })});
+        const core = getCurrentTranslationCore('content');
+        const render = () => {
+            const candidate = core.inspect(owner).candidate!;
+            expect(candidate).toMatchObject({element: owner, kind: 'content'});
+            const attempt = beginTranslation(owner, 'single', candidate.kind, false, 'Latest', [source], false, undefined, 'content')!;
+            const host = document.createElement('span');
+            host.className = 'fluent-read-single-slot';
+            host.setAttribute('data-fr-translation-owned', 'true');
+            host.setAttribute('translate', 'no');
+            owner.insertBefore(host, source);
+            host.appendChild(source);
+            setSingleTextSlotHosts(owner, [host]);
+            expect(markTranslationComplete(owner, attempt.state, attempt.generation, false)).toBe(true);
+            return {host, state: attempt.state};
+        };
+        try {
+            const current = render();
+            expect(statefulSourceAndTextSlotsAreCurrent(owner, current.state)).toBe(true);
+            for (let index = 0; index < 3; index += 1) {
+                expect(isTranslationStateCandidateCurrent(owner, current.state)).toBe(true);
+            }
+            expect(restoreTranslation(owner)).toBe(true);
+            expect(owner.innerHTML).toBe(originalHTML);
+            expect(owner.firstChild).toBe(source);
+            expect(current.host.isConnected).toBe(false);
+            const next = render();
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(true);
+
+            // 真实新增正文块仍改变候选边界，不能因为存在自有槽而忽略。
+            const paragraph = document.createElement('p');
+            paragraph.textContent = 'A new readable paragraph.';
+            owner.appendChild(paragraph);
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(false);
+            paragraph.remove();
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(true);
+
+            // 来源修改和禁译仍拒绝原候选；同字克隆不继承已验证槽身份。
+            source.data = 'Changed';
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(false);
+            source.data = 'Latest';
+            owner.setAttribute('translate', 'no');
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(false);
+            owner.removeAttribute('translate');
+            const clone = next.host.cloneNode(true);
+            next.host.replaceWith(clone);
+            expect(isTranslationStateCandidateCurrent(owner, next.state)).toBe(false);
+        } finally {
+            restoreTranslation(owner);
+            if (descriptor) Object.defineProperty(window, 'getComputedStyle', descriptor);
+            else Reflect.deleteProperty(window, 'getComputedStyle');
+        }
     });
 });

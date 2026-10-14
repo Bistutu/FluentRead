@@ -1,4 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+const planBuild = vi.hoisted(() => ({enabled: false}));
+vi.mock('@/src/platform/chatgpt-plan/buildMode', () => ({get chatGPTPlanDevelopmentEnabled() {return planBuild.enabled;}}));
 import {
     createTranslationBroker,
     resolveTranslationRequestModel,
@@ -9,8 +11,12 @@ import type {TranslationConfigSource, TranslationModelUsageRecord} from '@/src/s
 import {Config} from '@/src/core/config/model';
 import {createInputBoxTranslationHandler} from '@/src/features/input-translation/background/handler';
 import {resolveTranslationLanguages} from '@/src/core/translation/languages';
+import {isDefinitePageContextLeak, isLikelyPageContextLeak} from '@/src/core/translation/prompts';
+import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
 import {NativeBatchResponseError} from '@/src/core/translation/nativeBatch';
+import {createImageTranslationBackgroundHandlers, IMAGE_TRANSLATE_TEXTS_MESSAGE_TYPE} from '@/src/features/image-translation/background/handlers';
 import {serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
+import {sha256Hex} from '@/src/shared/function/sha256';
 import {currentModelIds, services, customModelString} from '@/src/core/config/catalog';
 import type {ServiceRequestLimits, ModelRequestLimits} from '@/src/core/config/requestLimits';
 import {
@@ -25,6 +31,7 @@ import {
     getTranslationProviderConfig,
     markTranslationRemainingBudget,
     reportTranslationModelUsage,
+    allowUnchangedTranslationResult,
 } from '@/src/services/translation/requestSnapshot';
 
 type CacheIdentity = {
@@ -39,6 +46,7 @@ type CacheIdentity = {
     transportProfile?: string;
     context?: string;
     pageContext?: string;
+    pageContextValidationPolicy?: {version: number};
     sourceLanguageDetectionText?: string;
 };
 
@@ -57,6 +65,7 @@ const mocks = vi.hoisted(() => {
     const aiServices = new Set(['ai', 'aiSdk', 'brokenAiSdk']);
     const aiSdkServices = new Set(['aiSdk', 'brokenAiSdk']);
     const service = vi.fn();
+    const planService = vi.fn();
     const providers = {
         '': service,
         freeTranslation: service,
@@ -78,6 +87,7 @@ const mocks = vi.hoisted(() => {
         mimo: service,
         mock: service,
         newapi: service,
+        chatgptPlan: planService,
     };
     const buildTranslationCacheKey = vi.fn((identity: unknown) => JSON.stringify(identity));
     const config = {
@@ -89,6 +99,7 @@ const mocks = vi.hoisted(() => {
         to: 'zh-Hans',
         useCache: true,
         enableAIContext: false,
+        aiRequestTimeoutMs: undefined as number | undefined,
         nativeBatchTranslationEnabled: {} as Record<string, boolean>,
         model: {
             mock: 'mock-model',
@@ -140,6 +151,7 @@ const mocks = vi.hoisted(() => {
         machineServices,
         recordModelUsage: vi.fn(async (_events: readonly TranslationModelUsageRecord[]) => undefined),
         service,
+        planService,
         cacheGet: vi.fn(async (key: string) => cacheStore.get(key) ?? null),
         cacheSet: vi.fn(async (key: string, value: string) => {
             cacheStore.set(key, value);
@@ -233,6 +245,10 @@ function deferred<T>() {
     return {promise, reject, resolve};
 }
 
+// 目标语言中的长段落与英文参考材料没有字面重合，复现短标题被扩写成页面内容的漏检。
+const translatedContextExpansion = '这个问题涉及桌面应用窗口和多个显示器之间的布局变化。用户在调整屏幕大小以后发现原有窗口的位置发生了改变，部分内容被遮挡，阅读和操作也受到影响。文章介绍了系统设置、软件兼容性以及不同设备之间的行为差异，并详细记录了重新启动应用和切换显示模式之后的观察结果。开发人员需要结合运行环境继续排查，以确认页面中的这些现象是否具有共同的原因。';
+const englishPageSummary = 'The article explains window layout and display behavior on a desktop computer.';
+
 // 可枚举 source getter 只统计实际生产 snapshot 的条目展开；不复制快照实现。
 function measuredProviderConfig(entryCount = 100) {
     let entrySourceReads = 0;
@@ -247,6 +263,126 @@ function measuredProviderConfig(entryCount = 100) {
 }
 
 describe('translation broker', () => {
+    it.each([false, true])('rejects saved public ChatGPT before cache/provider without resetting service or slug (override: %s)', async override => {
+        mocks.config.service = override ? 'mock' : services.chatgptPlan;
+        mocks.config.model[services.chatgptPlan] = 'saved-account-model';
+        const before = JSON.stringify(mocks.config);
+        await expect(translateWithCache({origin: 'Source', ...(override ? {serviceOverride: services.chatgptPlan} : {})}))
+            .rejects.toMatchObject({message: expect.stringContaining('尚未开放公开接入'), kind: 'bad-request', retryable: false});
+        expect(mocks.cacheGet).not.toHaveBeenCalled(); expect(mocks.service).not.toHaveBeenCalled(); expect(mocks.planService).not.toHaveBeenCalled();
+        expect(JSON.stringify(mocks.config)).toBe(before);
+    });
+    it('skips an unavailable saved ChatGPT composite member and can use the next existing provider', async () => {
+        const current = new Config(); current.service = 'composite:saved'; current.model[services.chatgptPlan] = 'saved-account-model';
+        current.compositeTranslationProviders = [{id: 'composite:saved', name: 'Saved', strategy: 'sequential', services: [services.chatgptPlan, 'mock'], timeoutMs: 12000}];
+        installBroker(undefined, Promise.resolve(), true, undefined, current);
+        const before = JSON.stringify(current);
+        await expect(translateWithCache({origin: 'Source', useCache: false})).resolves.toBe('默认译文');
+        expect(mocks.planService).not.toHaveBeenCalled(); expect(mocks.service).toHaveBeenCalledOnce(); expect(JSON.stringify(current)).toBe(before);
+    });
+    it('permits the explicit developer extension experiment through the same broker', async () => {
+        planBuild.enabled = true; mocks.aiServices.add(services.chatgptPlan);
+        mocks.config.service = services.chatgptPlan; mocks.config.model[services.chatgptPlan] = 'account-model';
+        mocks.planService.mockResolvedValue('实验译文');
+        await expect(translateWithCache({origin: 'Source', useCache: false})).resolves.toBe('实验译文');
+        expect(mocks.planService).toHaveBeenCalledOnce(); expect(mocks.service).not.toHaveBeenCalled();
+    });
+    it.each([false, true])('AI 默认预算允许超过 45 秒响应，批量=%s', async batch => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        mocks.config.service = 'aiSdk';
+        const response = deferred<unknown>();
+        mocks.service.mockImplementation(() => response.promise);
+        const result = translateWithCache(batch
+            ? {origin: ['Slow model source'], useCache: false} : {origin: 'Slow model source', useCache: false});
+        await flushMicrotasks(40);
+        expect(mocks.service.mock.calls[0][0]).toMatchObject({requestTimeoutMs: 120_000});
+        await vi.advanceTimersByTimeAsync(60_000);
+        const actualArray = Array.isArray(mocks.service.mock.calls[0][0].origin);
+        response.resolve(actualArray ? ['缓慢模型译文'] : '缓慢模型译文');
+        await expect(result).resolves.toEqual(batch ? ['缓慢模型译文'] : '缓慢模型译文');
+    });
+
+    it('无显式预算在 ready 后按最终 AI 配置选预算，并扣除水合等待', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        const ready = deferred<void>();
+        installBroker(undefined, ready.promise);
+        const result = translateWithCache({origin: 'Hydrated AI source', useCache: false});
+        await vi.advanceTimersByTimeAsync(600);
+        mocks.config.service = 'aiSdk';
+        mocks.config.aiRequestTimeoutMs = 180_000;
+        ready.resolve();
+        await expect(result).resolves.toBe('默认译文');
+        expect(mocks.service.mock.calls[0][0]).toMatchObject({requestTimeoutMs: 179_400});
+        expect(getTranslationProviderConfig(mocks.service.mock.calls[0][0], () => createTranslationProviderConfigSnapshot(mocks.config)).service).toBe('aiSdk');
+    });
+
+    it('已附着 AI 预算快照不受 ready 期间的用户设置变化影响', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        mocks.config.service = 'aiSdk';
+        mocks.config.aiRequestTimeoutMs = 180_000;
+        const ready = deferred<void>();
+        installBroker(undefined, ready.promise);
+        const snapshot = createTranslationProviderConfigSnapshot(mocks.config);
+        const result = translateWithCache(attachTranslationProviderConfig({origin: 'Frozen AI source', useCache: false}, snapshot));
+        mocks.config.aiRequestTimeoutMs = 10_000;
+        ready.resolve();
+        await expect(result).resolves.toBe('默认译文');
+        expect(mocks.service.mock.calls[0][0]).toMatchObject({requestTimeoutMs: 180_000});
+        expect(getTranslationProviderConfig(mocks.service.mock.calls[0][0], snapshot).aiRequestTimeoutMs).toBe(180_000);
+    });
+
+    it.each([false, true])('AI 用户预算 10 秒在到期时 abort provider，批量=%s', async batch => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        mocks.config.service = 'aiSdk';
+        mocks.config.aiRequestTimeoutMs = 10_000;
+        let signal!: AbortSignal;
+        mocks.service.mockImplementation((message: {abortSignal: AbortSignal}) => {
+            signal = message.abortSignal;
+            return new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), {once: true}));
+        });
+        const outcome = translateWithCache(batch
+            ? {origin: ['Timeout AI source'], useCache: false} : {origin: 'Timeout AI source', useCache: false}).catch(error => error);
+        await flushMicrotasks(40);
+        await vi.advanceTimersByTimeAsync(9_999);
+        expect(signal.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        await expect(outcome).resolves.toMatchObject({name: 'TranslationProviderDeadlineError'});
+        expect(signal.aborted).toBe(true);
+    });
+
+    it.each([false, true])('AI 显式预算和内部剩余预算不被用户默认抬高，内部=%s', async internal => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        mocks.config.service = 'aiSdk';
+        mocks.config.aiRequestTimeoutMs = 600_000;
+        const message = {origin: 'Short AI deadline source', useCache: false, requestTimeoutMs: internal ? 200 : 1_500};
+        await translateWithCache(internal ? markTranslationRemainingBudget(message) : message);
+        expect(mocks.service.mock.calls[0][0]).toMatchObject({requestTimeoutMs: internal ? 200 : 1_500});
+    });
+
+    it('延长 AI 预算后用户取消仍立即中止 provider', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        mocks.config.service = 'aiSdk';
+        mocks.config.aiRequestTimeoutMs = 600_000;
+        const controller = new AbortController();
+        let signal!: AbortSignal;
+        mocks.service.mockImplementation((message: {abortSignal: AbortSignal}) => {
+            signal = message.abortSignal;
+            return new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), {once: true}));
+        });
+        const outcome = translateWithCache(attachTranslationRequestControl({origin: 'Cancel slow AI source', useCache: false},
+            {signal: controller.signal, ownershipKey: 'timeout:cancel'})).catch(error => error);
+        await flushMicrotasks(40);
+        controller.abort();
+        await expect(outcome).resolves.toMatchObject({name: 'AbortError'});
+        expect(signal.aborted).toBe(true);
+        expect(Date.now()).toBe(0);
+    });
     it('配置水合期间保留调用入口的原文与请求选项，后续编辑不能改变在途翻译', async () => {
         const ready = deferred<void>();
         installBroker(undefined, ready.promise);
@@ -414,6 +550,7 @@ describe('translation broker', () => {
         expect(mocks.service).toHaveBeenCalledTimes(4);
     });
     beforeEach(async () => {
+        planBuild.enabled = false; mocks.planService.mockReset();
         vi.clearAllMocks();
         mocks.cacheStore.clear();
         mocks.aiSdkServices.clear();
@@ -432,6 +569,7 @@ describe('translation broker', () => {
             to: 'zh-Hans',
             useCache: true,
             enableAIContext: false,
+            aiRequestTimeoutMs: undefined,
             nativeBatchTranslationEnabled: {},
             maxConcurrentTranslations: 6,
             translationRequestsPerSecond: 0,
@@ -785,6 +923,76 @@ describe('translation broker', () => {
         mocks.service.mockResolvedValueOnce('');
         await expect(translateWithCache({origin: 'Empty'})).rejects.toMatchObject({code: 'TRANSLATION_SLOT_RESPONSE_INVALID'});
 
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        {service: 'mock', batch: false},
+        {service: 'google', batch: true},
+        {service: 'ai', batch: true},
+    ])('图片文字经真实 broker 使用 $service 时接受原文，保留其他译文与重复位置并复用缓存', async ({service, batch}) => {
+        const origin = 'This English sentence still needs a Chinese translation.';
+        const changed = 'Please read the complete instructions before you start the application.';
+        const translated = '启动应用前，请阅读完整说明。';
+        mocks.machineServices.add(service);
+        mocks.config.enableAIContext = false;
+        mocks.service.mockImplementation(async (request: {origin: string | string[]}) => {
+            const translate = (text: string) => text === origin ? `  ${origin}\u200b  ` : translated;
+            return Array.isArray(request.origin) ? request.origin.map(translate) : translate(request.origin);
+        });
+        const handler = createImageTranslationBackgroundHandlers({
+            assertLanguagesDownloaded: async () => {}, translateImage: async () => ({}), fetchImage: async () => '',
+            getTranslationService: () => service, supportsBatchTranslation: () => batch,
+            translateTexts: request => translateWithCache(request),
+            downloadLanguages: async () => {}, markLanguagesDownloaded: async () => [],
+        }).find(handler => handler.type === IMAGE_TRANSLATE_TEXTS_MESSAGE_TYPE)!;
+        const message = {type: IMAGE_TRANSLATE_TEXTS_MESSAGE_TYPE, texts: [origin, changed, origin]};
+        const expected = {success: true, translations: [`  ${origin}\u200b  `, translated, `  ${origin}\u200b  `]};
+        await expect(handler.handle(message)).resolves.toEqual(expected);
+        expect(mocks.service).toHaveBeenCalledTimes(batch ? 1 : 2);
+        await flushMicrotasks();
+        expect(translationCacheIdentities().every(identity => identity.unchangedResultPolicy === 1)).toBe(true);
+        mocks.service.mockClear();
+        await expect(handler.handle(message)).resolves.toEqual(expected);
+        expect(mocks.service).not.toHaveBeenCalled();
+    });
+
+    it('图片原样结果的缓存不改变普通翻译判定，公开同名字段不能放宽校验', async () => {
+        const origin = 'This English sentence still needs a Chinese translation.';
+        mocks.service.mockResolvedValue(origin);
+        await expect(translateWithCache(allowUnchangedTranslationResult({origin}))).resolves.toBe(origin);
+        await flushMicrotasks();
+        expect(mocks.cacheStore.size).toBe(1);
+        await expect(translateWithCache({origin, acceptUnchangedResult: true} as TranslationRequestMessage))
+            .rejects.toMatchObject({code: 'UNTRANSLATED_RESPONSE'});
+        expect(mocks.service).toHaveBeenCalledTimes(3);
+        expect(mocks.cacheStore.size).toBe(1);
+    });
+
+    it('图片 AI 完整多段协议允许原样槽位，整批成功后可以复用', async () => {
+        mocks.config.service = 'ai'; mocks.config.enableAIContext = false;
+        const origin = ['This English sentence still needs a Chinese translation.', 'Read every instruction before you begin.'];
+        mocks.service.mockImplementation(async (request: {origin: string}) => request.origin);
+        const request = () => allowUnchangedTranslationResult({origin, aiMultiSegment: true});
+        await expect(translateWithCache(request())).resolves.toEqual(origin);
+        expect(mocks.service).toHaveBeenCalledOnce();
+        await flushMicrotasks();
+        await expect(translateWithCache(request())).resolves.toEqual(origin);
+        expect(mocks.service).toHaveBeenCalledOnce();
+    });
+
+    it('图片错语种恢复返回原文时成功，持续错语种与空白仍失败', async () => {
+        const origin = 'This English sentence still needs a Chinese translation.';
+        const wrong = 'これは画像の文章とは違う日本語の説明です。設定を確認して再度試してください。';
+        mocks.service.mockResolvedValueOnce(wrong).mockResolvedValueOnce(origin);
+        await expect(translateWithCache(allowUnchangedTranslationResult({origin, useCache: false}))).resolves.toBe(origin);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        mocks.service.mockResolvedValue(wrong);
+        await expect(translateWithCache(allowUnchangedTranslationResult({origin, useCache: false})))
+            .rejects.toMatchObject({code: 'WRONG_LANGUAGE_RESPONSE'});
+        mocks.service.mockResolvedValue(' \u200b ');
+        await expect(translateWithCache(allowUnchangedTranslationResult({origin, useCache: false})))
+            .rejects.toMatchObject({code: 'TRANSLATION_SLOT_RESPONSE_INVALID'});
         expect(mocks.cacheSet).not.toHaveBeenCalled();
     });
 
@@ -1854,6 +2062,291 @@ describe('translation broker', () => {
         warning.mockRestore();
     });
 
+    it.each(['single', 'array', 'multi-segment'] as const)('跨语种短标题膨胀仅无上下文恢复异常项：%s', async mode => {
+        mocks.config.service = 'ai';
+        mocks.config.enableAIContext = true;
+        const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const origin = 'Needs Review';
+        mocks.service.mockImplementation((message: {summaryPrompt?: string; origin: string | string[]; pageContext?: string}) => {
+            if (message.summaryPrompt) return Promise.resolve(englishPageSummary);
+            if (!message.pageContext) return Promise.resolve('待处理');
+            if (Array.isArray(message.origin)) return Promise.resolve([translatedContextExpansion, '详细信息']);
+            if (mode === 'multi-segment') return Promise.resolve(message.origin
+                .replace(origin, translatedContextExpansion).replace('Further Details', '详细信息'));
+            return Promise.resolve(translatedContextExpansion);
+        });
+        const request: TranslationRequestMessage = mode === 'single'
+            ? {origin, pageContext: englishPageSummary, useCache: false}
+            : {origin: [origin, 'Further Details'], pageContext: englishPageSummary, aiMultiSegment: mode === 'multi-segment', useCache: false};
+
+        expect(isLikelyPageContextLeak(origin, translatedContextExpansion, englishPageSummary)).toBe(true);
+        expect(isDefinitePageContextLeak(origin, translatedContextExpansion, englishPageSummary)).toBe(false);
+        await expect(translateWithCache(request)).resolves.toEqual(mode === 'single' ? '待处理' : ['待处理', '详细信息']);
+        const bodyCalls = mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt);
+        expect(bodyCalls).toHaveLength(2);
+        expect(bodyCalls[0]?.[0]).toMatchObject({pageContext: expect.stringContaining(englishPageSummary)});
+        expect(bodyCalls[1]?.[0]).toMatchObject({origin, context: '', pageContext: ''});
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+        warning.mockRestore();
+    });
+
+    it.each(['single', 'array', 'multi-segment'] as const)('无上下文复验的合法长扩写可跨 broker 复用缓存：%s', async mode => {
+        mocks.config.service = 'ai';
+        mocks.config.enableAIContext = true;
+        const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        mocks.service.mockImplementation((message: {summaryPrompt?: string; origin: string | string[]}) => {
+            if (message.summaryPrompt) return Promise.resolve(englishPageSummary);
+            if (Array.isArray(message.origin)) return Promise.resolve([translatedContextExpansion, '详细信息']);
+            return Promise.resolve(mode === 'multi-segment' && message.origin.includes('___FLUENTREAD_')
+                ? message.origin.replace('Needs Review', translatedContextExpansion).replace('Further Details', '详细信息')
+                : translatedContextExpansion);
+        });
+        const request: TranslationRequestMessage = mode === 'single'
+            ? {origin: 'Needs Review', pageContext: englishPageSummary}
+            : {origin: ['Needs Review', 'Further Details'], pageContext: englishPageSummary, aiMultiSegment: mode === 'multi-segment'};
+        const expected = mode === 'single' ? translatedContextExpansion : [translatedContextExpansion, '详细信息'];
+
+        await expect(translateWithCache(request)).resolves.toEqual(expected);
+        expect(mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt)).toHaveLength(2);
+        await flushMicrotasks();
+        installBroker();
+        mocks.service.mockClear();
+        await expect(translateWithCache(request)).resolves.toEqual(expected);
+        expect(mocks.service).not.toHaveBeenCalled();
+        expect(translationCacheIdentities().every(identity => identity.pageContextValidationPolicy?.version === 2)).toBe(true);
+        expect(mocks.buildTranslationCacheKey.mock.calls.map(([identity]) => identity as CacheIdentity)
+            .filter(identity => identity.requestMode === 'page-summary')
+            .every(identity => !('pageContextValidationPolicy' in identity))).toBe(true);
+        warning.mockRestore();
+    });
+
+    it.each(['single', 'array', 'multi-segment'] as const)('新门禁隔离旧正文缓存并升级 AI 多段邻段指纹，摘要继续复用：%s', async mode => {
+        mocks.config.service = 'ai';
+        mocks.config.enableAIContext = true;
+        const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        mocks.service.mockImplementation((message: {summaryPrompt?: string; origin: string | string[]}) => {
+            if (message.summaryPrompt) return Promise.resolve(englishPageSummary);
+            if (Array.isArray(message.origin)) return Promise.resolve(['待处理', '详细信息']);
+            return Promise.resolve(mode === 'multi-segment'
+                ? message.origin.replace('Needs Review', '待处理').replace('Further Details', '详细信息') : '待处理');
+        });
+        const request: TranslationRequestMessage = mode === 'single'
+            ? {origin: 'Needs Review', pageContext: englishPageSummary}
+            : {origin: ['Needs Review', 'Further Details'], pageContext: englishPageSummary, aiMultiSegment: mode === 'multi-segment'};
+        const expected = mode === 'single' ? '待处理' : ['待处理', '详细信息'];
+        await translateWithCache(request);
+        await flushMicrotasks();
+        const identities = translationCacheIdentities();
+        const legacyIdentity = (identity: CacheIdentity): CacheIdentity => {
+            const {pageContextValidationPolicy: _policy, ...legacy} = identity;
+            return legacy as CacheIdentity;
+        };
+        const legacyBatchKey = cacheKey(legacyIdentity(identities[0]!));
+        const legacyFingerprint = sha256Hex(legacyBatchKey);
+        const oldKeys: string[] = [];
+        for (const identity of identities) {
+            const currentKey = cacheKey(identity);
+            if (!mocks.cacheStore.has(currentKey)) continue;
+            const legacy = legacyIdentity(identity);
+            if (mode === 'multi-segment' && Array.isArray(legacy.sourceText) && legacy.sourceText[0]?.startsWith('slot:')) {
+                expect(legacy.sourceText[2]).not.toBe(`batch:${legacyFingerprint}`);
+                legacy.sourceText = [legacy.sourceText[0]!, legacy.sourceText[1]!, `batch:${legacyFingerprint}`];
+            }
+            const oldKey = cacheKey(legacy);
+            oldKeys.push(oldKey);
+            mocks.cacheStore.delete(currentKey);
+            mocks.cacheStore.set(oldKey, translatedContextExpansion);
+        }
+        expect(oldKeys).toHaveLength(mode === 'single' ? 1 : 2);
+        installBroker();
+        mocks.service.mockClear();
+        mocks.cacheGet.mockClear();
+        await expect(translateWithCache(request)).resolves.toEqual(expected);
+        expect(mocks.service.mock.calls.some(([message]) => message.summaryPrompt)).toBe(false);
+        expect(mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt)).toHaveLength(1);
+        expect(mocks.cacheGet.mock.calls.every(([key]) => !oldKeys.includes(key))).toBe(true);
+        expect(oldKeys.every(key => mocks.cacheStore.get(key) === translatedContextExpansion)).toBe(true);
+        warning.mockRestore();
+    });
+
+    it.each([
+        {service: 'mock', enableAIContext: true, pageContext: englishPageSummary},
+        {service: 'ai', enableAIContext: false, pageContext: englishPageSummary},
+        {service: 'ai', enableAIContext: true, pageContext: ''},
+    ])('机器、关闭精翻或空上下文不升级缓存协议：$service/$enableAIContext/$pageContext', async requestConfig => {
+        Object.assign(mocks.config, {service: requestConfig.service, enableAIContext: requestConfig.enableAIContext});
+        await translateWithCache({origin: 'Needs Review', pageContext: requestConfig.pageContext});
+        expect(translationCacheIdentities()).toHaveLength(1);
+        expect(translationCacheIdentities()[0]).not.toHaveProperty('pageContextValidationPolicy');
+    });
+
+    it('跨语种短标题恢复继续消耗同一绝对 deadline，到期立即取消且不缓存', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        mocks.config.service = 'ai';
+        mocks.config.enableAIContext = true;
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const firstResponse = deferred<string>();
+        let recoverySignal: AbortSignal | undefined;
+        mocks.service.mockImplementation((message: {summaryPrompt?: string; pageContext?: string; abortSignal: AbortSignal}) => {
+            if (message.summaryPrompt) return Promise.resolve(englishPageSummary);
+            if (message.pageContext) return firstResponse.promise;
+            recoverySignal = message.abortSignal;
+            return new Promise((_, reject) => message.abortSignal.addEventListener('abort', () => reject(message.abortSignal.reason), {once: true}));
+        });
+        const outcome = translateWithCache({origin: 'Needs Review', pageContext: englishPageSummary, requestTimeoutMs: 10_000}).catch(error => error);
+        await flushMicrotasks(80);
+        await vi.advanceTimersByTimeAsync(6_000);
+        firstResponse.resolve(translatedContextExpansion);
+        await flushMicrotasks(80);
+        const bodyCalls = mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt);
+        expect(bodyCalls).toHaveLength(2);
+        expect(bodyCalls[1]?.[0]).toMatchObject({context: '', pageContext: '', requestTimeoutMs: 4_000});
+        await vi.advanceTimersByTimeAsync(4_000);
+        await expect(outcome).resolves.toMatchObject({name: 'TranslationProviderDeadlineError'});
+        expect(recoverySignal?.aborted).toBe(true);
+        expect(Date.now()).toBe(10_000);
+        expect(mocks.cacheSet.mock.calls.some(([key]) => JSON.parse(key).requestMode !== 'page-summary')).toBe(false);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('用户取消跨语种短标题恢复后中止 provider，迟到结果不展示或缓存', async () => {
+        mocks.config.service = 'ai';
+        mocks.config.enableAIContext = true;
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const controller = new AbortController();
+        const recoveryResponse = deferred<string>();
+        let recoverySignal: AbortSignal | undefined;
+        mocks.service.mockImplementation((message: {summaryPrompt?: string; pageContext?: string; abortSignal: AbortSignal}) => {
+            if (message.summaryPrompt) return Promise.resolve(englishPageSummary);
+            if (message.pageContext) return Promise.resolve(translatedContextExpansion);
+            recoverySignal = message.abortSignal;
+            return recoveryResponse.promise;
+        });
+        const success = vi.fn();
+        const failure = vi.fn();
+        const outcome = translateWithCache(attachTranslationRequestControl({origin: 'Needs Review', pageContext: englishPageSummary}, {
+            signal: controller.signal, ownershipKey: 'context-expansion-cancel',
+        })).then(success, failure);
+        await vi.waitFor(() => expect(recoverySignal).toBeDefined());
+        controller.abort();
+        await outcome;
+        expect(recoverySignal?.aborted).toBe(true);
+        expect(failure).toHaveBeenCalledWith(expect.objectContaining({name: 'AbortError'}));
+        recoveryResponse.resolve('迟到的安全译文');
+        await flushMicrotasks(80);
+        expect(success).not.toHaveBeenCalled();
+        expect(mocks.cacheSet.mock.calls.some(([key]) => JSON.parse(key).requestMode !== 'page-summary')).toBe(false);
+        expect(mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt)).toHaveLength(2);
+    });
+
+    it.each(['single', 'array', 'multi-segment'] as const)('共享跨语种短标题恢复只重发一次，等待者取消不影响 owner：%s', async mode => {
+        mocks.config.service = 'ai';
+        mocks.config.enableAIContext = true;
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const firstResponse = deferred<string | string[]>();
+        const recoveryResponse = deferred<string>();
+        let recoverySignal: AbortSignal | undefined;
+        mocks.service.mockImplementation((message: {summaryPrompt?: string; pageContext?: string; abortSignal: AbortSignal}) => {
+            if (message.summaryPrompt) return Promise.resolve(englishPageSummary);
+            if (message.pageContext) return firstResponse.promise;
+            recoverySignal = message.abortSignal;
+            return recoveryResponse.promise;
+        });
+        const request = (): TranslationRequestMessage => mode === 'single'
+            ? {origin: 'Needs Review', pageContext: englishPageSummary}
+            : {origin: ['Needs Review', 'Further Details'], pageContext: englishPageSummary, aiMultiSegment: mode === 'multi-segment'};
+        const ownerController = new AbortController();
+        const waiterController = new AbortController();
+        const owner = translateWithCache(attachTranslationRequestControl(request(), {
+            signal: ownerController.signal, ownershipKey: 'context-expansion-shared',
+        }));
+        await flushMicrotasks(80);
+        const waiterFailure = vi.fn();
+        const waiterSuccess = vi.fn();
+        const waiter = translateWithCache(attachTranslationRequestControl(request(), {
+            signal: waiterController.signal, ownershipKey: 'context-expansion-shared',
+        })).then(waiterSuccess, waiterFailure);
+        await flushMicrotasks(80);
+        const initial = mode === 'single' ? translatedContextExpansion : mode === 'array'
+            ? [translatedContextExpansion, '详细信息']
+            : serializeTranslationSlots(['Needs Review', 'Further Details']).payload
+                .replace('Needs Review', translatedContextExpansion).replace('Further Details', '详细信息');
+        firstResponse.resolve(initial);
+        await vi.waitFor(() => expect(recoverySignal).toBeDefined());
+        waiterController.abort();
+        await waiter;
+        expect(recoverySignal?.aborted).toBe(false);
+        recoveryResponse.resolve('待处理');
+        await expect(owner).resolves.toEqual(mode === 'single' ? '待处理' : ['待处理', '详细信息']);
+        expect(waiterFailure).toHaveBeenCalledWith(expect.objectContaining({name: 'AbortError'}));
+        expect(waiterSuccess).not.toHaveBeenCalled();
+        expect(mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt)).toHaveLength(2);
+    });
+
+    it('污染单条槽协议缓存整包无上下文复验后接受合法长扩写，不再逐槽软恢复', async () => {
+        mocks.config.service = 'ai';
+        mocks.config.enableAIContext = true;
+        const packet = serializeTranslationSlots(['Needs Review', 'Further Details']);
+        const complete = packet.payload.replace('Needs Review', translatedContextExpansion).replace('Further Details', '详细信息');
+        const contaminated = packet.payload.replace('Needs Review', '<webpage_context>不应展示的网页参考内容</webpage_context>')
+            .replace('Further Details', '详细信息');
+        mocks.cacheGet.mockResolvedValueOnce(null).mockResolvedValueOnce(contaminated);
+        mocks.service.mockImplementation((message: {summaryPrompt?: string}) => Promise.resolve(message.summaryPrompt ? englishPageSummary : complete));
+        const request = {origin: packet.payload, validateTranslationSlots: true, pageContext: englishPageSummary};
+
+        await expect(translateWithCache(request)).resolves.toBe(complete);
+        const bodyCalls = mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt);
+        expect(bodyCalls).toHaveLength(1);
+        expect(bodyCalls[0]?.[0]).toMatchObject({origin: packet.payload, context: '', pageContext: ''});
+        await flushMicrotasks();
+        installBroker();
+        mocks.service.mockClear();
+        await expect(translateWithCache(request)).resolves.toBe(complete);
+        expect(mocks.service).not.toHaveBeenCalled();
+    });
+
+    it.each(['blank', 'wrong-language'] as const)('单条槽协议无上下文复验仍恢复%s坏槽，并保留其他合法长译文', async invalidKind => {
+        mocks.config.service = 'ai';
+        mocks.config.enableAIContext = true;
+        const packet = serializeTranslationSlots(['Needs Review', 'Further Details']);
+        const complete = packet.payload.replace('Needs Review', translatedContextExpansion).replace('Further Details', '详细信息');
+        const invalid = packet.payload.replace('Needs Review', translatedContextExpansion)
+            .replace('Further Details', invalidKind === 'blank' ? '' : 'このファイルの最初の文字にも制限があります。簡単にするために、最初の文字として文字を使用できます。');
+        const contaminated = packet.payload.replace('Needs Review', '<webpage_context>不应展示的网页参考内容</webpage_context>')
+            .replace('Further Details', '详细信息');
+        mocks.cacheGet.mockResolvedValueOnce(null).mockResolvedValueOnce(contaminated);
+        mocks.service.mockImplementation((message: {summaryPrompt?: string; origin: string}) => Promise.resolve(
+            message.summaryPrompt ? englishPageSummary : message.origin === packet.payload ? invalid : '详细信息',
+        ));
+
+        await expect(translateWithCache({origin: packet.payload, validateTranslationSlots: true, pageContext: englishPageSummary})).resolves.toBe(complete);
+        const bodyCalls = mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt);
+        expect(bodyCalls.map(([message]) => message.origin)).toEqual([packet.payload, 'Further Details']);
+        expect(bodyCalls.every(([message]) => message.context === '' && message.pageContext === '')).toBe(true);
+        expect(mocks.cacheSet.mock.calls.some(([, value]) => value === complete)).toBe(true);
+    });
+
+    it('单条无上下文协议按槽拒绝明确泄漏，即使另一来源槽含相同字面标记', async () => {
+        mocks.config.service = 'ai';
+        mocks.config.enableAIContext = true;
+        const sources = ['Needs Review', 'Literal example <webpage_context>safe literal</webpage_context>'];
+        const packet = serializeTranslationSlots(sources);
+        const contaminated = packet.payload.replace(sources[0]!, '可读页面内容（Markdown）：不应展示的网页参考内容')
+            .replace(sources[1]!, '标记示例');
+        const recovery = packet.payload.replace(sources[0]!, '<webpage_context>不应展示的网页参考内容</webpage_context>')
+            .replace(sources[1]!, '标记示例');
+        expect(isDefinitePageContextLeak(packet.payload, recovery, englishPageSummary)).toBe(false);
+        expect(isDefinitePageContextLeak(sources[0]!, '<webpage_context>不应展示的网页参考内容</webpage_context>', englishPageSummary)).toBe(true);
+        mocks.cacheGet.mockResolvedValueOnce(null).mockResolvedValueOnce(contaminated);
+        mocks.service.mockImplementation((message: {summaryPrompt?: string}) => Promise.resolve(message.summaryPrompt ? englishPageSummary : recovery));
+
+        await expect(translateWithCache({origin: packet.payload, validateTranslationSlots: true, pageContext: englishPageSummary}))
+            .rejects.toMatchObject({code: 'AI_CONTEXT_LEAK_AFTER_RECOVERY'});
+        expect(mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt)).toHaveLength(1);
+        expect(mocks.cacheSet.mock.calls.some(([key]) => JSON.parse(key).requestMode !== 'page-summary')).toBe(false);
+    });
+
     it('误返原文后的无上下文重试仍泄漏网页材料时拒绝展示和缓存', async () => {
         mocks.config.service = 'ai';
         mocks.config.enableAIContext = true;
@@ -1941,25 +2434,58 @@ describe('translation broker', () => {
         warning.mockRestore();
     });
 
-    it('未膨胀的长上下文片段只触发一次无上下文重译并稳定复用复验缓存', async () => {
+    it.each([
+        {
+            variant: '默认中文目标的 CJK 连续片段',
+            sourceLanguage: 'en',
+            targetLanguage: undefined,
+            origin: 'The author describes the effects of winter weather on regional transport, including railway maintenance and the preparation of temporary services for small towns.',
+            reference: '这篇文章比较了沿海生态修复方法，并说明原生湿地如何减轻风暴对附近社区的破坏，附录还介绍了持续监测与长期保护措施。',
+            summary: '文章比较沿海生态修复方法。',
+        },
+        {
+            variant: '德文到英文的 ASCII 连续片段',
+            sourceLanguage: 'de',
+            targetLanguage: 'en',
+            origin: 'Der Autor beschreibt die Auswirkungen des winterlichen Wetters auf den regionalen Verkehr, einschließlich der Wartung von Eisenbahnen und der Vorbereitung zusätzlicher Verbindungen für kleinere Städte.',
+            reference: 'The article compares coastal restoration methods and explains why native wetlands can reduce storm damage for nearby communities.',
+            summary: 'A brief article summary.',
+        },
+    ])('未膨胀的长上下文片段只触发一次无上下文重译并稳定复用复验缓存：$variant', async ({sourceLanguage, targetLanguage, origin, reference, summary}) => {
         mocks.config.service = 'ai';
         mocks.config.enableAIContext = true;
-        const origin = 'The author describes the effects of winter weather on regional transport, including railway maintenance and the preparation of temporary services for small towns.';
-        const reference = 'The article compares coastal restoration methods and explains why native wetlands can reduce storm damage for nearby communities.';
         const pageContext = `Page title: Coastal research. ${reference} The appendix contains details of the monitoring schedule.`;
+        const request = {origin, pageContext, sourceLanguage, ...(targetLanguage ? {targetLanguage} : {})};
+        const effectiveTarget = targetLanguage ?? mocks.config.to;
         const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         mocks.service.mockImplementation((message: {summaryPrompt?: string}) => Promise.resolve(
-            message.summaryPrompt ? 'A brief article summary.' : reference,
+            message.summaryPrompt ? summary : reference,
         ));
 
+        // 两种目标语言均使用合法结果，只触发实际上下文检测器的软重合边界。
         expect(reference.length).toBeLessThan(origin.length);
-        await expect(translateWithCache({origin, pageContext})).resolves.toBe(reference);
+        expect(isLikelyUntranslatedResponse(origin, reference, effectiveTarget)).toBe(false);
+        expect(isClearlyWrongLanguageResponse(origin, reference, effectiveTarget)).toBe(false);
+        expect(isLikelyPageContextLeak(origin, reference, pageContext)).toBe(true);
+        expect(isDefinitePageContextLeak(origin, reference, pageContext)).toBe(false);
+        await expect(translateWithCache(request)).resolves.toBe(reference);
         const bodyCalls = mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt);
         expect(bodyCalls).toHaveLength(2);
+        expect(bodyCalls[0]?.[0]).toMatchObject({
+            origin, sourceLanguage, targetLanguage: effectiveTarget,
+            pageContext: expect.stringContaining(reference),
+        });
         expect(bodyCalls[1]?.[0]).toMatchObject({origin, context: '', pageContext: ''});
+        expect(warning).toHaveBeenCalledWith(
+            '[FluentRead] AI page context leaked into translation; retrying once without page context:',
+            expect.any(Error),
+        );
+        expect(warning).toHaveBeenCalledTimes(1);
         await flushMicrotasks();
-        await expect(translateWithCache({origin, pageContext})).resolves.toBe(reference);
+        expect(mocks.cacheSet.mock.calls.some(([, value]) => value === reference)).toBe(true);
+        await expect(translateWithCache(request)).resolves.toBe(reference);
         expect(mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt)).toHaveLength(2);
+        expect(warning).toHaveBeenCalledTimes(1);
         warning.mockRestore();
     });
 

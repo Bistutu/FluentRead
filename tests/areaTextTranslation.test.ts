@@ -85,6 +85,29 @@ describe('圈选整块文字翻译事务', () => {
         expect(translate).not.toHaveBeenCalled();
     });
 
+    it('视频圈选沿用冻结词库选择，空白来源语种按配置语言匹配固定译名', async () => {
+        const source = config();
+        source.from = 'zh-Hans'; source.glossaryEnabled = true;
+        source.glossaryLibraries = [chineseTerms()]; source.videoGlossaryIds = ['notes'];
+        const text = '修复保存记录后再次打开页面时内容丢失的问题。';
+        const translate = vi.fn(async (_request: TranslationRequestMessage) => text.replace('记录', '笔记'));
+        const context = {pageUrl: 'https://example.org/video', context: 'video' as const};
+        const run = prepareAreaTextTranslation(source, ' \t', '', context, translate);
+        source.videoGlossaryIds = []; source.from = 'en';
+        const result = await run({...recognized, sourceText: text}, options());
+        expect(result.translatedText).toBe(text.replace('记录', '笔记'));
+        expect(translate).toHaveBeenCalledOnce();
+        const request = translate.mock.calls[0][0];
+        expect(getTranslationGlossaryContext(request)).toEqual(context);
+        const frozen = getTranslationProviderConfig(request, createTranslationProviderConfigSnapshot(source));
+        expect(frozen.from).toBe('zh-Hans');
+        expect(frozen.videoGlossaryIds).toEqual(['notes']);
+        const disabled = await prepareAreaTextTranslation({...source, from: 'zh-Hans'}, '', '', context, translate)(
+            {...recognized, sourceText: text}, options());
+        expect(disabled.translatedText).toBe(text);
+        expect(translate).toHaveBeenCalledOnce();
+    });
+
     it.each(['disabled', 'library-disabled', 'website', 'source', 'target', 'unmatched', 'document-disabled'] as const)(
         '标准同目标的术语范围为%s时保留原文且不请求', async boundary => {
             const source = config();

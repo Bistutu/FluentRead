@@ -2,7 +2,7 @@
  * @file src/features/settings/ui/WritingSettings.vue
  * 文件职责：提供写作助手总开关、默认回复偏好和 AI 服务连接设置。
  * 主要内容：用单层开关、与其他分区一致的“左标签、右控件”服务与语言设置行，以及左侧预览、右侧风格设置组织内容，窄屏按预览、设置依次展示；缺失配置直接提示在 AI 服务一行，清楚区分默认偏好与真实生成，服务与风格模块提供同页导航目标。
- * 模块边界：只编辑设置中心持久化的同一份写作配置并恢复被禁用的网站；选项通过写作 UI 公开入口复用，不加载网页卡片，不请求模型也不生成真实正文。
+ * 模块边界：服务候选与就绪提示遵循共享平台可用性；ChatGPT 套餐选择器保留已保存的全局与写作实际模型 slug，不发起账户模型发现；只编辑设置中心持久化的同一份写作配置并恢复被禁用的网站；选项通过写作 UI 公开入口复用，不加载网页卡片，不请求模型也不生成真实正文。
  -->
 <template>
   <div class="writing-settings">
@@ -69,9 +69,10 @@
 import {computed, ref, toRef, watch} from 'vue';
 import {useUiI18n} from '@/src/ui/i18n';
 import type {Config} from '@/src/core/config/model';
-import {models, options, resolveConfiguredModel} from '@/src/core/config/catalog';
+import {models, options, resolveConfiguredModel, services} from '@/src/core/config/catalog';
 import {isHarnessService} from '@/src/core/config/harness';
 import {resolveWritingReadiness} from '@/src/core/config/writingReadiness';
+import {filterAvailableTranslationServices, getTranslationServiceUnavailableMessage} from '@/src/services/translation/capabilities';
 import {getCustomOpenAIProviderModels, isCustomOpenAIProviderId} from '@/src/core/config/customOpenAI';
 import {WRITING_LANGUAGES, WRITING_LENGTHS, WRITING_STYLES, WRITING_TONES, WRITING_ROLES, WRITING_TONE_MAX_LENGTH, WRITING_ROLE_MAX_LENGTH, resolveWritingLanguage, resolveWritingReferenceLanguage} from '@/src/core/config/writing';
 import {WritingChoices} from '@/src/features/writing-assistant/ui/public';
@@ -108,13 +109,15 @@ function customPreference(field: 'tone' | 'role', presets: readonly {value: stri
 }
 const {choice: toneChoice, text: customTone, update: updateCustomTone} = customPreference('tone', WRITING_TONES, WRITING_TONE_MAX_LENGTH, 'natural');
 const {choice: roleChoice, text: customRole, update: updateCustomRole} = customPreference('role', WRITING_ROLES, WRITING_ROLE_MAX_LENGTH, 'auto');
-const serviceOptions = computed(() => [...options.services.filter(item => !item.disabled && isHarnessService(item.value)), ...config.value.customOpenAIProviders.map(item => ({value: item.id, label: item.name}))]);
+const serviceOptions = computed(() => filterAvailableTranslationServices([...options.services.filter(item => !item.disabled && isHarnessService(item.value)), ...config.value.customOpenAIProviders.map(item => ({value: item.id, label: item.name}))]));
 const service = computed(() => config.value.writing.service || config.value.service);
-const readiness = computed(() => resolveWritingReadiness(config.value));
+const readiness = computed(() => resolveWritingReadiness(config.value, true, getTranslationServiceUnavailableMessage(service.value)));
 const supported = computed(() => readiness.value.supported);
 const defaultServiceLabel = computed(() => options.services.find(item => item.value === config.value.service)?.label || serviceOptions.value.find(item => item.value === config.value.service)?.label || config.value.service);
 const resolvedModel = computed(() => resolveConfiguredModel(config.value.model[service.value], config.value.customModel[service.value]));
-const modelOptions = computed(() => (isCustomOpenAIProviderId(service.value) ? getCustomOpenAIProviderModels(config.value.customOpenAIProviders, service.value) : models.get(service.value) ?? []).filter(item => item !== '自定义模型'));
+const modelOptions = computed(() => service.value === services.chatgptPlan
+  ? [...new Set([resolvedModel.value, config.value.writing.model].filter(Boolean))]
+  : (isCustomOpenAIProviderId(service.value) ? getCustomOpenAIProviderModels(config.value.customOpenAIProviders, service.value) : models.get(service.value) ?? []).filter(item => item !== '自定义模型'));
 // 对照语言在示例里只提示一行，真实译文仍由写作卡片在生成后请求。
 const referencePreviewLabel = computed(() => {
   const language = resolveWritingReferenceLanguage(config.value.writing.referenceLanguage, uiLanguage.value);

@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/FeatureServiceSettings.vue
  * 文件职责：在通用设置中集中分配各功能的翻译服务，沿用基础配置中的默认服务，显示继承关系和独立选择。
- * 主要内容：按当前配置和功能选择限定缓存事件，复验服务能力，缓存各行模型与凭据提示；把翻译服务选择标题放进统一设置卡片，标题同行显示 AI 服务限制，下一行展示有效模型，阅读单独支持B站免费讲解，写作保留通用AI限制；使用相同目录与图标展示服务和缺失凭据提示，配置连接定位到翻译服务页，默认选择保持独立。
+ * 主要内容：按当前配置和功能选择限定缓存事件，复验服务能力，缓存各行模型与凭据提示；把翻译服务选择标题放进统一设置卡片，标题同行显示 AI 服务限制，下一行展示有效模型，阅读单独支持B站免费讲解，写作保留通用AI限制；使用相同目录与图标展示服务和缺失凭据提示，被过滤的旧内置服务沿用原目录的本地化名称但不重新开放选择，父级自定义标签优先，配置连接定位到翻译服务页，默认选择保持独立。
  * 模块边界：仅修改父级传入的配置草稿，复用现有字段与自动保存；不保存第二份映射，不发起翻译或测试连接请求。
  -->
 <template>
@@ -36,7 +36,7 @@ import {useSettingsActionContext} from '../model/useSettingsActionContext';
 import {type Config} from '@/src/core/config/model';
 import {featureServiceDefinitions, getFeatureService, setFeatureService, getFeatureModel, isFeatureServiceSupported} from '@/src/core/config/featureServices';
 import {isHarnessService, isReadingService} from '@/src/core/config/harness';
-import {servicesType} from '@/src/core/config/catalog';
+import {options, servicesType} from '@/src/core/config/catalog';
 import {getMissingCredentialMessage} from '@/src/core/config/validation';
 import {useUiI18n} from '@/src/ui/i18n';
 import ServiceIcon from '@/src/ui/components/ServiceIcon.vue';
@@ -52,7 +52,11 @@ const labels = computed(() => {
   for (const option of props.serviceOptions) if (!result.has(option.value)) result.set(option.value, option.label);
   return result;
 });
-const serviceLabel = (service: string) => labels.value.get(service) || service;
+const serviceLabel = (service: string) => labels.value.get(service)
+  || (() => {
+    const savedLabel = options.services.find(option => option.value === service)?.label;
+    return savedLabel ? translateLegacy(savedLabel) : service;
+  })();
 const choices = computed(() => {
   const general = props.serviceOptions.filter(option => !option.disabled);
   return {general, ai: general.filter(option => isHarnessService(option.value, props.config.customOpenAIProviders)), reading: general.filter(option => isReadingService(option.value, props.config.customOpenAIProviders))};

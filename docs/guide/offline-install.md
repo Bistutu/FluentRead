@@ -17,7 +17,13 @@ CRX搜搜是第三方分发网站，版本同步时间可能与官方商店不�
 
 打开 [GitHub 官方发布页](https://github.com/FluentRead/FluentRead/releases/latest)，这个地址会跳转到最新正式版。安装包和版本信息以发布页为准。
 
-在发布说明下方展开 **Assets**，选择文件名以 **`-chrome.zip`** 结尾的 Chrome / Edge 扩展包。如需校验文件，也可以在同一版本的 Assets 中下载 **`SHA256SUMS.txt`**。
+在发布说明下方展开 **Assets**，Chrome 选择 **`-chrome.zip`**，Edge 优先选择 **`-edge.zip`**；旧版本没有 Edge 专用包时可使用 Chrome 包。如需校验文件，也可以在同一版本的 Assets 中下载 **`SHA256SUMS.txt`**。
+
+Chrome 只有一份 **`-chrome.zip`**，保留公开公钥，扩展 ID 固定为 `djnlaiohfaaifbibleebjggkghlmcpcj`，与 Google Drive 同步客户端一致。下载后按下文步骤解压加载即可。
+
+开发者运行 `pnpm zip` 只生成这一份 Chrome ZIP，并清理输出目录中同版本的旧 `-chrome-store.zip`；`pnpm build` 生成的 `.output/chrome-mv3` 也保留相同公钥和 OAuth 配置。
+
+Edge 商店仍使用 `pnpm zip:edge` 生成的独立无 `key` 包，Firefox 的安装包和审核源码包流程不变。发行前可运行 `pnpm verify:extension-manifests -- --require-chrome-archive --require-firefox-archives` 校验统一 Chrome 包和 Firefox 产物。
 
 **`-sources.zip`** 和 GitHub 自动生成的 **Source code** 是源码包，不能直接安装。
 
@@ -38,5 +44,9 @@ GitHub 下载仍受网络环境影响；无法下载时，可以尝试上面的 
 离线安装的扩展不会随商店版本自动更新。更新前，先在流畅阅读设置的 **备份与同步** 中导出配置。
 
 从 [GitHub 官方发布页](https://github.com/FluentRead/FluentRead/releases/latest) 下载新版 Chrome ZIP 包，将内容解压覆盖到原安装目录，再回到扩展管理页点击流畅阅读的 **重新加载**。刷新需要翻译的网页。使用同一目录更新，避免另装一份而出现重复翻译；操作前保留原目录的备份。
+
+不要把拖入新 ZIP 当作更新步骤：浏览器会重新解压安装，名称和版本号相同也不保证覆盖。商店安装的版本请通过商店更新；公钥只保持身份，不能保证手动包能替换商店安装。
+
+若已经出现两个流畅阅读，先停用新出现的那份，保留原 ID 的扩展和数据。分别导出需要保留的数据，再检查安装包是否为 `-chrome.zip`。如果旧离线包没有公钥、ID 已经不同，恢复固定 ID 会切换存储身份，需要先备份，再在正确版本中导入；不要先卸载唯一保存完整数据的版本。
 
 安装完成后，请参照[快速开始](/guide/getting-started)固定图标并翻译网页。

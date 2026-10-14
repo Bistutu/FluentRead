@@ -290,6 +290,14 @@ describe('Vitest source import：实际 i18n + store + 加密 IndexedDB 的保�
 
 describe('实际 localizeServiceOptions 的翻译与 profile 搜索成本', () => {
   async function actual() {return actualHarness=await createActualStoreHarness()}
+  it('自定义及组合用户名称保留原样，组合不携带缺失端点或未本地化的重复描述', async () => {
+    const h=await actual(), translate=vi.fn((value: string) => `localized:${value}`)
+    const result=h.i18n.localizeServiceOptions([{value:'custom:work',label:'翻译',description:'接口'}, {value:'composite:work',label:'随机',description:'随机 · 2 个翻译服务'}],
+      [{id:'custom:work',name:'翻译',endpoint:'',models:[]}, {id:'composite:work',name:'随机',services:['google','microsoft']}],translate)
+    expect(result.map((item: any) => item.label)).toEqual(['翻译','随机'])
+    expect(result[0].description).toBe('localized:接口');expect(result[1].description).toBeUndefined()
+    expect(result[1].searchTerms).toEqual(['随机','随机']);expect(translate).toHaveBeenCalledOnce()
+  })
   it('同一次同步本地化仅翻译每个 label 一次，保持实际译文、描述、搜索词顺序与输入不变', async () => {
     const h=await actual(), core=await import('@/src/core/i18n')
     core.registerUiLanguageBundle('en-US',{messages:{},legacyText:{'原名':'Friendly','说明':'Details','其它':'Other'},legacyPatterns:{early:[],late:[]}})

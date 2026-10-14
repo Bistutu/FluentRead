@@ -1,7 +1,7 @@
 /**
  * @file src/app/document-translation/document-page.css
  * 文件职责：定义文档翻译独立页面的完整布局与主题表现，使导入区、阅读器、翻译进度、原文件保存、格式预览和导出操作在桌面与窄屏下保持可读。
- * 主要内容：声明页面级颜色变量与暗色覆盖，打开文档后的单行工具栏（内含翻译服务与目标语言选择）、可折叠的文件与目录侧栏和铺满窗口的阅读区，设置可收起的文件队列、本地范例、品牌头部、拖放卡片、工具栏、PDF 连续页及其不可见字体测量画布、EPUB/DOCX 分区、字幕与 JSON 行、设置摘要、下载预览和响应式断点。
+ * 主要内容：让数字进度完整可见，保留零进度和完成进度条，失败后的续译提示保持紧凑单行且仅按需展开技术详情；声明页面级颜色变量与暗色覆盖，打开文档后的单行工具栏（内含翻译服务与目标语言选择）、可折叠的文件与目录侧栏和铺满窗口的阅读区，设置可收起的文件队列、本地范例、品牌头部、拖放卡片、工具栏、PDF 连续页及其不可见字体测量画布、EPUB/DOCX 分区、字幕与 JSON 行、设置摘要、下载预览和响应式断点。
  * 模块边界：样式仅服务 DocumentApp 的 class 结构，不解析文档、不控制翻译状态，也不覆盖 content 宿主页面；跨页面基础视觉 token 仍由 src/ui/styles/tokens.css 管理。
  */
 @import "../../ui/styles/feedback.css";
@@ -369,7 +369,7 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-settings-button small { color: var(--brand-strong); font-size: 11px; }
 .task-progress { grid-column: 1 / -1; height: 3px; overflow: hidden; border-radius: 10px; background: var(--line); }
 .task-progress i { display: block; height: 100%; background: var(--brand); transition: width .2s; }
-.task-progress.complete, .task-progress[aria-valuenow="0"] { display: none; }
+.task-progress.complete i { background: #279672; }
 .task-notice { grid-column: 1 / -1; margin: 0; }
 .document-batch { padding: 10px 16px; margin-bottom: 14px; border-radius: 14px; }
 .batch-files { grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); max-height: 150px; }
@@ -435,6 +435,23 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-taskbar .task-file-format { width: auto; height: 20px; padding: 0 6px; border-radius: 5px; font-size: 9px; letter-spacing: .04em; }
 .document-taskbar h1 { overflow: hidden; margin: 0; max-width: none; font-size: 13px; font-weight: 650; line-height: 1.3; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
 .document-taskbar .document-status { margin: 1px 0 0; font-size: 10.5px; line-height: 1.3; white-space: nowrap; }
+.document-taskbar .document-translation-count { display: inline; margin-left: 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.editor-retained { margin: 0 20px 16px; border: 1px solid var(--line); border-radius: 9px; }
+.editor-retained > summary { padding: 10px 12px; color: var(--muted); font-size: 12px; cursor: pointer; }
+.editor-retained .document-translation { margin: 0; white-space: pre-wrap; user-select: text; }
+.editor-retained > .ghost-button { margin: 12px; }
+.translation-recovery { position: relative; grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 4px 0 2px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.recovery-message { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recovery-service { flex: none; padding: 0; border: 0; background: transparent; color: var(--brand-strong); font: inherit; white-space: nowrap; cursor: pointer; }
+.recovery-service:hover { text-decoration: underline; text-underline-offset: 3px; }
+.recovery-details { flex: none; }
+.recovery-details summary { cursor: pointer; white-space: nowrap; }
+.recovery-details[open] summary { color: var(--ink); }
+.recovery-service:focus-visible, .recovery-details summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 3px; }
+.recovery-error-detail { position: absolute; z-index: 26; top: 100%; left: 0; box-sizing: border-box; width: min(560px, calc(100vw - 32px)); max-height: 160px; margin: 8px 0 0; padding: 10px 12px; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted); box-shadow: 0 6px 18px #1018281a; font-size: 12px; line-height: 1.5; }
+.document-taskbar .task-notice button { display: inline-flex; align-items: center; margin: 4px 6px; padding: 3px 8px; border: 1px solid currentColor; border-radius: 6px; background: transparent; color: inherit; font: inherit; white-space: nowrap; cursor: pointer; }
+.document-taskbar .task-notice button:disabled { opacity: .5; cursor: default; }
+.document-taskbar .task-notice button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .document-taskbar .reader-toolbar { position: static; display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; margin: 0; padding: 0; border: 0; background: none; }
 .document-taskbar .mode-buttons { height: 32px; min-height: 32px; flex-wrap: nowrap; padding: 2px; border-radius: 9px; }
 .document-taskbar .mode-buttons button { min-width: 0; padding: 0 11px; border-radius: 7px; font-size: 12px; white-space: nowrap; }
@@ -453,7 +470,7 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-taskbar .download-button:enabled:hover { border-color: rgba(239, 71, 118, .42); color: var(--brand-strong); background: var(--brand-soft); }
 .document-taskbar .download-button:disabled { border-color: var(--line); color: var(--muted); background: transparent; cursor: not-allowed; opacity: .5; }
 .document-taskbar .add-file-button { border-color: transparent; color: var(--muted); background: transparent; font-weight: 600; }
-.document-taskbar .task-progress { position: absolute; inset: auto 0 -1px; height: 2px; border-radius: 0; background: transparent; }
+.document-taskbar .task-progress { position: absolute; inset: auto 0 -1px; height: 3px; border-radius: 0; background: var(--line); }
 .document-taskbar .task-notice, .document-taskbar .document-import-progress { flex-basis: 100%; margin: 0; padding: 2px 0 4px; font-size: 11.5px; }
 .is-workspace .document-reading-pane { border: 0; border-radius: 0; background: var(--reader-canvas); }
 .is-workspace .document-reading-pane .reading-content { padding: 16px max(16px, calc((100% - 1180px) / 2)); }
@@ -635,7 +652,7 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-taskbar .taskbar-notices > .notice.error { border-color: #f3c8d2; background: #fff5f7; }
 .dark .document-taskbar .taskbar-notices > .notice.warning, .dark .document-taskbar .taskbar-notices > .notice.error { background: var(--surface); }
 @keyframes taskbar-notice-in { from { opacity: 0; transform: translateY(-6px); } }
-/* 工具栏按完整功能组排布；宽度不足时明确分行，阅读和任务入口始终可达。 */
+/* 工具栏按完整功能组排布；常见桌面 PDF 使用两行，较窄桌面用设置入口收起翻译字段，保留阅读与任务操作。 */
 .document-taskbar { display: grid; grid-template-columns: minmax(100px, 170px) minmax(0, 1fr) auto; gap: 8px 10px; overflow: visible; }
 .document-taskbar .workspace-heading { grid-column: 1; grid-row: 1; width: 100%; max-width: none; min-width: 0; flex-wrap: nowrap; gap: 8px; }
 .document-taskbar .file-heading, .document-taskbar .file-heading > div { min-width: 0; }
@@ -674,6 +691,22 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
   .document-taskbar .toolbar-language { width: 120px; }
   .document-taskbar .toolbar-model { width: 150px; }
 }
+@media (min-width: 1000px) {
+  .document-taskbar.has-pdf-controls { grid-template-columns: minmax(0, 1fr) auto; }
+  .document-taskbar.has-pdf-controls .reader-toolbar { display: flex; grid-column: 2; grid-row: 1; justify-content: flex-end; padding-left: 0; }
+  .document-taskbar.has-pdf-controls .reader-reading-controls { display: flex; flex: none; }
+  .document-taskbar.has-pdf-controls .reader-controls-slot { grid-column: 1; grid-row: 2; padding: 7px 0 0; border: 0; border-top: 1px solid var(--line); }
+  .document-taskbar.has-pdf-controls .taskbar-actions { display: flex; grid-column: 2; grid-row: 2; padding-top: 7px; border-top: 1px solid var(--line); }
+  .document-taskbar.has-pdf-controls .toolbar-translation-settings { gap: 8px; }
+  .document-taskbar.has-pdf-controls .toolbar-field > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .document-taskbar.has-pdf-controls .toolbar-service { width: 150px; }
+  .document-taskbar.has-pdf-controls .toolbar-language { width: 110px; }
+  .document-taskbar.has-pdf-controls .toolbar-model { width: 130px; }
+}
+@media (min-width: 1000px) and (max-width: 1359px) {
+  .document-taskbar.has-pdf-controls .toolbar-translation-settings { display: none; }
+  .document-taskbar.has-pdf-controls .toolbar-settings-toggle { display: inline-flex; }
+}
 @media (max-width: 999px) {
   .document-taskbar { grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; padding: 8px 10px; }
   .document-taskbar .workspace-heading { grid-column: 1; grid-row: 1; }
@@ -693,6 +726,8 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
   .document-taskbar .toolbar-primary-actions .translation-actions { flex: 0 1 auto; min-width: 0; }
   .document-taskbar .toolbar-primary-actions button { overflow: hidden; text-overflow: ellipsis; }
   .document-taskbar .toolbar-primary-actions .translation-actions button { max-width: 100%; }
+  .document-taskbar.has-pdf-controls .workspace-heading { grid-column: 1 / -1; }
+  .document-taskbar.has-pdf-controls .reader-tabs { grid-column: 2; grid-row: 2; }
   .document-taskbar .mode-buttons button { padding: 0 8px; }
   .is-workspace .document-reading-pane .reading-content, .document-reading-pane .reading-content.reading-pdf { min-height: 0; }
 }

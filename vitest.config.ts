@@ -1,14 +1,19 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
+import {realpathSync} from 'node:fs';
+import {searchForWorkspaceRoot} from 'vite';
 import vue from '@vitejs/plugin-vue';
+import {createDeepLXRuntimeBuildPlugin} from './scripts/testing/deeplx-runtime-build';
 
 const configuredMaxWorkers = Number(process.env.FLUENTREAD_TEST_MAX_WORKERS);
 const maxWorkers = Number.isInteger(configuredMaxWorkers) && configuredMaxWorkers > 0 ? configuredMaxWorkers : 2;
 
 // 独立的 Vitest 配置（与 wxt 构建配置互不影响）
 export default defineConfig({
+    // worktree 可共享安装的依赖；客户端 SFC 测试须能加载其真实路径，保留默认严格文件边界。
+    server: {fs: {allow: [searchForWorkspaceRoot(__dirname), realpathSync(resolve(__dirname, 'node_modules'))]}},
     // 组件生命周期测试执行实际客户端 SFC 模板，让 V8 归因到原始 Vue 源码。
-    plugins: [vue({include: [
+    plugins: [createDeepLXRuntimeBuildPlugin(__dirname), vue({include: [
         /\/src\/(?:features\/share-card\/ui\/ShareCardStudio|features\/selection-translation\/ui\/SelectionTranslator|features\/settings\/ui\/services\/RequestLimit(?:Settings|Fields)|features\/reading-assistant\/ui\/[^/]+|ui\/components\/(?:MarkdownContent|MarkdownTable|[^/]*Reading[^/]*)|features\/image-translation\/ui\/MangaEntry|app\/document-translation\/(?:DocumentApp|DocumentSegmentEditor)|ui\/components\/(?:CustomHotkeyInput|UiSelect|GlossaryLibrarySelect|ServiceIcon|TranslationLoadingPreview|UiIcon|FeatureEnableCard)|features\/settings\/ui\/components\/(?:FieldHelp|InterfaceSkinPreview|PopupLayoutPreview|PopupLayoutPreviewItem|SettingsGroup|SettingsItem|TranslationColorField|TranslationStylePreview|WritingStylePreview|SegmentedControl))\.vue$/,
         resolve(__dirname, 'src/features/document-translation/ui/PdfReader.vue'),
         resolve(__dirname, 'src/features/video-subtitle/ui/VideoSentenceLearning.vue'),
@@ -43,6 +48,7 @@ export default defineConfig({
         resolve(__dirname, 'src/features/image-translation/ui/MangaModelSettings.vue'),
         resolve(__dirname, 'src/features/image-translation/ui/MangaSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/CloudConfigBackup.vue'),
+        resolve(__dirname, 'src/features/settings/ui/services/ChatGPTPlanSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/ConfigManagement.vue'),
         resolve(__dirname, 'src/features/settings/ui/GoogleDriveSync.vue'),
         resolve(__dirname, 'src/features/settings/ui/LearningMemoryManager.vue'),
@@ -76,7 +82,9 @@ export default defineConfig({
     },
     test: {
         environment: 'node',
-        testTransformMode: {web: ['**/tests/videoSentenceLearningAppearanceSettingsLifecycle.test.ts', '**/tests/personalCorrectionUiPanel.test.ts', '**/tests/pdfReaderLifecycle.test.ts', '**/tests/finalCoveragePublicBoundariesA.test.ts', '**/tests/implementationAudit49A.test.ts', '**/tests/implementationAudit49B.test.ts', '**/tests/implementationAudit49C.test.ts', '**/tests/implementationAudit49E.test.ts', '**/tests/implementationAudit49F.test.ts', '**/tests/implementationAudit49H.test.ts', '**/tests/implementationAudit48J.test.ts', '**/tests/implementationAudit48I.test.ts', '**/tests/implementationAudit48C.test.ts', '**/tests/implementationAudit48E.test.ts', '**/tests/mangaEntryComponentLifecycle.test.ts', '**/tests/customHotkeyInputLifecycle.test.ts', '**/tests/sharedUiComponentsLifecycle.test.ts', '**/tests/documentAppLifecycle.test.ts', '**/tests/documentUserActions.test.ts']},
+        // 对已发布 core 执行同一 transport/browser 替换，避免 Node 外置依赖绕过插件。
+        server: {deps: {inline: ['@deeplx/core']}},
+        testTransformMode: {web: ['**/tests/chatgptPlanSettingsLifecycle.test.ts', '**/tests/videoSentenceLearningAppearanceSettingsLifecycle.test.ts', '**/tests/personalCorrectionUiPanel.test.ts', '**/tests/pdfReaderLifecycle.test.ts', '**/tests/finalCoveragePublicBoundariesA.test.ts', '**/tests/implementationAudit49A.test.ts', '**/tests/implementationAudit49B.test.ts', '**/tests/implementationAudit49C.test.ts', '**/tests/implementationAudit49E.test.ts', '**/tests/implementationAudit49F.test.ts', '**/tests/implementationAudit49H.test.ts', '**/tests/implementationAudit48J.test.ts', '**/tests/implementationAudit48I.test.ts', '**/tests/implementationAudit48C.test.ts', '**/tests/implementationAudit48E.test.ts', '**/tests/mangaEntryComponentLifecycle.test.ts', '**/tests/customHotkeyInputLifecycle.test.ts', '**/tests/sharedUiComponentsLifecycle.test.ts', '**/tests/documentAppLifecycle.test.ts', '**/tests/documentUserActions.test.ts']},
         include: ['tests/**/*.test.ts'],
         globalSetup: ['./scripts/testing/vitest-resource-lock.mjs'],
         maxWorkers,

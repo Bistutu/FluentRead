@@ -1,5 +1,5 @@
 'use strict';
-/** 局部翻译生产回归：临时隔离 Edge、真实指针与按键手势、确定性翻译传输；验证防抖预览、点击锁定、按钮调整与确认，仅翻译所选区域并验证恢复与退出。 */
+/** 局部翻译生产回归：临时隔离 Edge、真实指针与按键手势、确定性翻译传输；验证防抖预览、连续划选、点击锁定、按钮调整与确认，仅翻译所选区域并验证恢复与退出。 */
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -14,7 +14,7 @@ const githubUrl = arg('github-url');
 const playwrightRoot = arg('playwright-root');
 const helper = arg('focus-safe-helper');
 const caseSet = arg('case-set', 'core');
-if (!['core', 'quality', 'all'].includes(caseSet)) throw new Error('--case-set 必须是 core、quality 或 all');
+if (!['core', 'sweep', 'quality', 'all'].includes(caseSet)) throw new Error('--case-set 必须是 core、sweep、quality 或 all');
 const qualityCases = arg('quality-cases', 'layout,nested-scroll,replacement,boundary,shadow,retry,cancel,performance,narrow').split(',');
 const knownQualityCases = ['layout', 'nested-scroll', 'replacement', 'boundary', 'shadow', 'retry', 'cancel', 'performance', 'narrow'];
 if (!qualityCases.length || qualityCases.some(name => !knownQualityCases.includes(name)) || new Set(qualityCases).size !== qualityCases.length) throw new Error('--quality-cases 包含未知或重复的专项名称');
@@ -30,7 +30,7 @@ const profileDir = fs.mkdtempSync(path.join(temporaryRoot, 'fluentread-section-f
 const profileIdentity = fs.lstatSync(profileDir);
 const owner = crypto.randomUUID();
 fs.writeFileSync(path.join(profileDir, '.owner'), owner, {flag: 'wx'});
-const report = {scope: 'production extension, trusted CDP pointer/keyboard gestures, deterministic Google transport; not live provider latency or quality', sourceProjectRoot: projectRoot, caseSet, qualityCases: caseSet === 'core' ? [] : qualityCases, cases: [], screenshots: [], errors: [], consoleErrors: [], errorCoverage: 'errors contains uncaught page exceptions; console.error messages are recorded separately, including intentionally failed fixture requests', profileMode: 'automatically-created-temporary-profile'};
+const report = {scope: 'production extension, trusted CDP pointer/keyboard gestures, deterministic Google transport; not live provider latency or quality', sourceProjectRoot: projectRoot, caseSet, qualityCases: ['core', 'sweep'].includes(caseSet) ? [] : qualityCases, cases: [], screenshots: [], errors: [], consoleErrors: [], errorCoverage: 'errors contains uncaught page exceptions; console.error messages are recorded separately, including intentionally failed fixture requests', profileMode: 'automatically-created-temporary-profile'};
 
 const filler = (id, text) => `<p id="${id}">${text}</p>`;
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Section translation fixture</title><style>
@@ -261,7 +261,85 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   await page.waitForSelector('#fluent-read-page-styles', {state: 'attached', timeout: 20000});
   const pageUrl = page.url();
 
-  if (caseSet !== 'quality') {
+  if (caseSet === 'sweep') {
+    async function sweep(from, to, retrace = false) {
+      await hover(from);
+      const start = await center(from), end = await center(to);
+      await page.mouse.move(start.x, start.y); await page.mouse.down();
+      await page.mouse.move(end.x, end.y, {steps: 10});
+      await wait(async () => (await pickerState())?.selection === 'dragging');
+      if (retrace) await page.mouse.move(start.x, start.y, {steps: 10});
+      await page.mouse.up();
+      await wait(async () => (await pickerState())?.selection === 'locked');
+    }
+    const selectedCount = () => picker('return Number(this.host.getAttribute("data-selection-count"))');
+    const visibleBoxes = () => picker('return [...this.querySelectorAll(".fr-section-box.is-visible")].map(box=>{const r=box.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}})');
+    const requestCount = () => worker.evaluate(() => globalThis.__sectionFixture.origins.length);
+    currentCase = 'left-button sweep selects exactly two paragraphs; retracing and gaps do not select the article';
+    const beforeSweep = await requestCount();
+    await startFromPopupMessage(); await sweep('#p1', '#p2', true);
+    await waitLabel(/翻译此区域 · 2 段/, '已选 2 个区域');
+    assert.equal(await selectedCount(), 2); assert.equal((await visibleBoxes()).length, 2);
+    assert.equal(await requestCount(), beforeSweep, 'release only locks; no request before confirmation');
+    assert.equal(await page.evaluate(() => getSelection().toString()), '', 'drag does not leave native text selection');
+    await hover('#about-text'); assert.equal(await selectedCount(), 2);
+    await clickPickerButton('.fr-section-expand'); await waitLabel(/翻译此区域 · 7 段/, '文章');
+    await clickPickerButton('.fr-section-shrink'); await waitLabel(/翻译此区域 · 2 段/, '已选 2 个区域');
+    report.sweepBoxes = await visibleBoxes(); await shot('sweep-locked-two-paragraphs');
+    await clickPickerButton('.fr-section-confirm');
+    await wait(async () => (await translationCount('#p1,#p2')) === 2);
+    for (const outside of ['#readme-title', '#p3', '#li1', '#li2', '#about-text', '#p-far']) assert.equal(await hasTranslation(outside), false);
+    assert.equal(page.url(), pageUrl); assert.equal(await page.evaluate(() => window.__pageClicks), 0);
+    await shot('sweep-translated-two-paragraphs'); report.cases.push(currentCase);
+
+    currentCase = 'reverse sweep of translated paragraphs restores only the selected group';
+    await wait(async () => !(await pickerActive()));
+    await startFromPopupMessage(); await sweep('#p2', '#p1');
+    await waitLabel(/恢复原文 · 2 段/, '已选 2 个区域');
+    const beforeRestore = await requestCount(); await page.keyboard.press('Enter');
+    await wait(async () => (await translationCount('#p1,#p2')) === 0);
+    assert.equal(await requestCount(), beforeRestore, 'restore needs no new request'); report.cases.push(currentCase);
+
+    currentCase = 'sweep with an existing translation fills only the untranslated paragraph';
+    await wait(async () => !(await pickerActive()));
+    await startFromPopupMessage(); await hover('#p1'); await page.keyboard.press('Enter');
+    await wait(async () => await hasTranslation('#p1'));
+    await wait(async () => !(await pickerActive()));
+    const beforeMixed = await requestCount();
+    await startFromPopupMessage(); await sweep('#p1', '#p2');
+    await waitLabel(/翻译剩余 1 段/, '已选 2 个区域');
+    await page.keyboard.press('Enter'); await wait(async () => (await translationCount('#p1,#p2')) === 2);
+    assert.equal(await requestCount(), beforeMixed + 1, 'existing translation is retained');
+    await wait(async () => !(await pickerActive()));
+    await startFromPopupMessage(); await sweep('#p1', '#p2'); await waitLabel(/恢复原文 · 2 段/);
+    await page.keyboard.press('Enter'); await wait(async () => (await translationCount('#p1,#p2')) === 0);
+    report.cases.push(currentCase);
+
+    currentCase = 'reselect clears all swept regions; Esc during dragging cancels without requests';
+    await wait(async () => !(await pickerActive()));
+    const beforeCancel = await requestCount(); await startFromPopupMessage(); await sweep('#p1', '#p2');
+    await clickPickerButton('.fr-section-reselect'); assert.equal((await pickerState()).selection, 'preview');
+    await hover('#p1'); const start = await center('#p1'), end = await center('#p2');
+    await page.mouse.down(); await page.mouse.move(end.x, end.y, {steps: 8});
+    await wait(async () => (await pickerState())?.selection === 'dragging');
+    await page.keyboard.press('Escape'); await page.mouse.up();
+    assert.equal(await pickerActive(), false); assert.equal(await requestCount(), beforeCancel);
+    report.cases.push(currentCase);
+
+    currentCase = 'removing a non-leading swept region invalidates the entire selection before confirmation';
+    await startFromPopupMessage(); await sweep('#p1', '#p2'); await waitLabel(/翻译此区域 · 2 段/);
+    const original = await page.locator('#p2').evaluate(element => element.outerHTML);
+    await page.locator('#p2').evaluate(element => element.remove());
+    await wait(async () => (await pickerState())?.selection === 'preview');
+    assert.ok(await selectedCount() <= 1, 'invalid group is cleared; preview may reacquire the paragraph under the stationary pointer');
+    assert.equal((await pickerState()).confirmDisabled, true); await page.keyboard.press('Escape');
+    assert.equal(await requestCount(), beforeCancel);
+    await page.locator('#p1').evaluate((element, html) => element.insertAdjacentHTML('afterend', html), original);
+    report.cases.push(currentCase);
+    report.sweep = {selectedRegions: 2, translated: 2, restored: 2, outsideTranslations: 0, requestsBeforeConfirmation: 0};
+  }
+
+  if (caseSet === 'core' || caseSet === 'all') {
   currentCase = 'locked closed-shadow toolbar handles range keys and Escape after webpage input focus';
   await page.locator('#notes').focus();
   await startFromPopupMessage();
@@ -580,7 +658,7 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
   report.cases.push(currentCase);
   }
 
-  if (caseSet !== 'core') {
+  if (caseSet === 'quality' || caseSet === 'all') {
     await require('./section-translation-quality-cases.cjs').runSectionQualityCases({
       page, worker, popup, tabId, report, patch, startFromPopupMessage, picker, pickerState, pickerActive,
       hover, center, clickPickerButton, wait, waitLabel, hasTranslation, translationCount, shot, noticeText,
@@ -589,7 +667,7 @@ async function noticeText() {return page.evaluate(() => document.querySelector('
     });
   }
 
-  if (githubUrl && caseSet !== 'quality') {
+  if (githubUrl && (caseSet === 'core' || caseSet === 'all')) {
     currentCase = 'real GitHub README section';
     report.githubEvidence = {url: githubUrl, webpage: 'real remote GitHub DOM', translationTransport: 'deterministic Google fixture, not live provider'};
     const githubRequestOffset = await worker.evaluate(() => globalThis.__sectionFixture.requests.length);

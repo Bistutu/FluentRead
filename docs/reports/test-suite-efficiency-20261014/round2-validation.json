@@ -1,0 +1,1108 @@
+{
+  "baselineCommit": "45e17986bcc5753275d07f4a1eb1d7134d5d558a",
+  "environment": {
+    "baselineCommit": "45e17986bcc5753275d07f4a1eb1d7134d5d558a",
+    "node": "v22.23.2",
+    "pnpm": "9.12.1",
+    "inputHashes": {
+      "pnpm-lock.yaml": {
+        "sha256": "dfd93ae1da73c89bf85214c211691cf1059584a4e1ada3470878c8554de96bd0",
+        "unchanged": true
+      },
+      "vitest.config.ts": {
+        "sha256": "d61f0907b49df510b58d4c9693bbabd6e741134adac505fb59ee0c3ce3839ce4",
+        "unchanged": true
+      },
+      "vitest.coverage.config.ts": {
+        "sha256": "44e259905ed7c0c6fc6ee195191b217edb31ae0c21684071b2885d017770567c",
+        "unchanged": true
+      },
+      "scripts/testing/run-resource-safe.mjs": {
+        "sha256": "ef0d65fcbd87288afb7ad070fc20015e24265008dd6b476d87e1daf5d71b49f2",
+        "unchanged": true
+      },
+      "scripts/testing/run-full-regression.mjs": {
+        "sha256": "e3d22c19e502b69b56fe9db8fd21866e3cd66ef29525f39d921e3136af4cbd95",
+        "unchanged": true
+      },
+      "tests/test-matrix.json": {
+        "sha256": "526690a660f60b19740b369f94b3dcf7f354f7fe6fefe0298604700ce965812e",
+        "unchanged": true
+      }
+    },
+    "corpusHashes": {
+      "1706.03762v7.pdf": {
+        "sha256": "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697",
+        "bytes": 2215244
+      },
+      "2608.25512v1.pdf": {
+        "sha256": "390775dbc9debdcf2ed1b076eed013387ca057630be3cb594617b2b742e48cf0",
+        "bytes": 2284543
+      }
+    },
+    "resourceLockDirectory": "/var/folders/2v/qd62bpkx51scgbvv2nrclsxm0000gn/T/fluentread-test-resource",
+    "control": {
+      "workers": 1,
+      "fileParallelism": false,
+      "isolationConfigUnchanged": true,
+      "cpuTargetPercent": 60,
+      "concurrency": 1,
+      "sameReporters": [
+        "default",
+        "json"
+      ],
+      "samePdfInputs": true,
+      "ownConcurrentTestsOrBuilds": 0
+    },
+    "observations": [
+      {
+        "phase": "baseline start",
+        "otherMatchingTestOrBuildProcesses": 0
+      },
+      {
+        "phase": "baseline coverage reporting",
+        "otherMatchingProcess": "brief firefox build resource wrapper observed; gone at next PID check; active compiler child not established"
+      },
+      {
+        "phase": "focused start",
+        "otherMatchingTestOrBuildProcesses": 0
+      },
+      {
+        "phase": "baseline focused iteration1",
+        "resourceLockWaitObserved": true,
+        "ownerCommand": "vue-tsc --noEmit",
+        "effect": "slowest baseline round; median taken from uncontended iteration3; Vitest duration median independently excludes startup queue"
+      }
+    ]
+  },
+  "focused": {
+    "order": [
+      [
+        "baseline",
+        1
+      ],
+      [
+        "candidate",
+        1
+      ],
+      [
+        "candidate",
+        2
+      ],
+      [
+        "baseline",
+        2
+      ],
+      [
+        "baseline",
+        3
+      ],
+      [
+        "candidate",
+        3
+      ]
+    ],
+    "repeatsPerVersion": 3,
+    "files": 7,
+    "tests": 291,
+    "inventoryIdenticalInAllSixRuns": true,
+    "inventorySha256": "cb061261176286c939e7e2cadbb035664d583fd2509942c64609af4bfff49ea2",
+    "baselineMedianWallSeconds": 94.16649366600001,
+    "candidateMedianWallSeconds": 78.49344641699997,
+    "wallReductionPercent": 16.643974559136616,
+    "baselineMedianVitestSeconds": 93.55,
+    "candidateMedianVitestSeconds": 77.82,
+    "vitestReductionPercent": 16.814537680384824,
+    "suiteMedianSeconds": [
+      {
+        "file": "tests/compiledVueFixture.test.ts",
+        "tests": 5,
+        "baseline": 0.16626611328125,
+        "candidate": 0.15913037109375
+      },
+      {
+        "file": "tests/optionsAppNavigationLifecycle.test.ts",
+        "tests": 45,
+        "baseline": 18.76170556640625,
+        "candidate": 17.252728759765624
+      },
+      {
+        "file": "tests/pdfTextExport.test.ts",
+        "tests": 19,
+        "baseline": 15.433608642578125,
+        "candidate": 10.841598876953125
+      },
+      {
+        "file": "tests/popupAppLifecycle.test.ts",
+        "tests": 37,
+        "baseline": 12.23385595703125,
+        "candidate": 10.128475830078125
+      },
+      {
+        "file": "tests/promptSyncLifecycle.test.ts",
+        "tests": 47,
+        "baseline": 12.759523681640625,
+        "candidate": 9.50556689453125
+      },
+      {
+        "file": "tests/readingPanelLifecycle.test.ts",
+        "tests": 31,
+        "baseline": 14.71216162109375,
+        "candidate": 13.88607666015625
+      },
+      {
+        "file": "tests/serviceDirectoryLifecycle.test.ts",
+        "tests": 107,
+        "baseline": 12.584992919921875,
+        "candidate": 11.513588623046875
+      }
+    ],
+    "runs": [
+      {
+        "label": "baseline",
+        "iteration": 1,
+        "startUnix": 1791941591.576299,
+        "wallSeconds": 98.430013167,
+        "exitCode": 0,
+        "totalTests": 291,
+        "passed": 291,
+        "failed": 0,
+        "pending": 0,
+        "report": "/private/tmp/fluentread-test-efficiency-20261014/round2/baseline-focused-1-tests.json",
+        "command": [
+          "pnpm",
+          "run",
+          "test",
+          "tests/optionsAppNavigationLifecycle.test.ts",
+          "tests/popupAppLifecycle.test.ts",
+          "tests/pdfTextExport.test.ts",
+          "tests/serviceDirectoryLifecycle.test.ts",
+          "tests/promptSyncLifecycle.test.ts",
+          "tests/readingPanelLifecycle.test.ts",
+          "tests/compiledVueFixture.test.ts",
+          "--reporter=default",
+          "--reporter=json",
+          "--outputFile=/private/tmp/fluentread-test-efficiency-20261014/round2/baseline-focused-1-tests.json"
+        ],
+        "verified": {
+          "files": 7,
+          "tests": 291,
+          "passed": 291,
+          "failed": 0,
+          "skipped": 0,
+          "inventorySha256": "cb061261176286c939e7e2cadbb035664d583fd2509942c64609af4bfff49ea2"
+        },
+        "vitestDurationSeconds": 93.68,
+        "resourceLockWaitObserved": true,
+        "suites": {
+          "tests/compiledVueFixture.test.ts": {
+            "tests": 5,
+            "seconds": 0.2812138671875
+          },
+          "tests/optionsAppNavigationLifecycle.test.ts": {
+            "tests": 45,
+            "seconds": 18.278053955078125
+          },
+          "tests/pdfTextExport.test.ts": {
+            "tests": 19,
+            "seconds": 17.42301171875
+          },
+          "tests/popupAppLifecycle.test.ts": {
+            "tests": 37,
+            "seconds": 12.37524560546875
+          },
+          "tests/promptSyncLifecycle.test.ts": {
+            "tests": 47,
+            "seconds": 12.759523681640625
+          },
+          "tests/readingPanelLifecycle.test.ts": {
+            "tests": 31,
+            "seconds": 15.618346435546876
+          },
+          "tests/serviceDirectoryLifecycle.test.ts": {
+            "tests": 107,
+            "seconds": 12.163146240234376
+          }
+        }
+      },
+      {
+        "label": "candidate",
+        "iteration": 1,
+        "startUnix": 1791941690.011942,
+        "wallSeconds": 88.22309625,
+        "exitCode": 0,
+        "totalTests": 291,
+        "passed": 291,
+        "failed": 0,
+        "pending": 0,
+        "report": "/private/tmp/fluentread-test-efficiency-20261014/round2/candidate-focused-1-tests.json",
+        "command": [
+          "pnpm",
+          "run",
+          "test",
+          "tests/optionsAppNavigationLifecycle.test.ts",
+          "tests/popupAppLifecycle.test.ts",
+          "tests/pdfTextExport.test.ts",
+          "tests/serviceDirectoryLifecycle.test.ts",
+          "tests/promptSyncLifecycle.test.ts",
+          "tests/readingPanelLifecycle.test.ts",
+          "tests/compiledVueFixture.test.ts",
+          "--reporter=default",
+          "--reporter=json",
+          "--outputFile=/private/tmp/fluentread-test-efficiency-20261014/round2/candidate-focused-1-tests.json"
+        ],
+        "verified": {
+          "files": 7,
+          "tests": 291,
+          "passed": 291,
+          "failed": 0,
+          "skipped": 0,
+          "inventorySha256": "cb061261176286c939e7e2cadbb035664d583fd2509942c64609af4bfff49ea2"
+        },
+        "vitestDurationSeconds": 87.25,
+        "resourceLockWaitObserved": false,
+        "suites": {
+          "tests/compiledVueFixture.test.ts": {
+            "tests": 5,
+            "seconds": 0.1651845703125
+          },
+          "tests/optionsAppNavigationLifecycle.test.ts": {
+            "tests": 45,
+            "seconds": 21.5735537109375
+          },
+          "tests/pdfTextExport.test.ts": {
+            "tests": 19,
+            "seconds": 11.660765380859376
+          },
+          "tests/popupAppLifecycle.test.ts": {
+            "tests": 37,
+            "seconds": 10.128475830078125
+          },
+          "tests/promptSyncLifecycle.test.ts": {
+            "tests": 47,
+            "seconds": 10.30728369140625
+          },
+          "tests/readingPanelLifecycle.test.ts": {
+            "tests": 31,
+            "seconds": 16.849143310546875
+          },
+          "tests/serviceDirectoryLifecycle.test.ts": {
+            "tests": 107,
+            "seconds": 11.513588623046875
+          }
+        }
+      },
+      {
+        "label": "candidate",
+        "iteration": 2,
+        "startUnix": 1791941778.239527,
+        "wallSeconds": 76.20170662499999,
+        "exitCode": 0,
+        "totalTests": 291,
+        "passed": 291,
+        "failed": 0,
+        "pending": 0,
+        "report": "/private/tmp/fluentread-test-efficiency-20261014/round2/candidate-focused-2-tests.json",
+        "command": [
+          "pnpm",
+          "run",
+          "test",
+          "tests/optionsAppNavigationLifecycle.test.ts",
+          "tests/popupAppLifecycle.test.ts",
+          "tests/pdfTextExport.test.ts",
+          "tests/serviceDirectoryLifecycle.test.ts",
+          "tests/promptSyncLifecycle.test.ts",
+          "tests/readingPanelLifecycle.test.ts",
+          "tests/compiledVueFixture.test.ts",
+          "--reporter=default",
+          "--reporter=json",
+          "--outputFile=/private/tmp/fluentread-test-efficiency-20261014/round2/candidate-focused-2-tests.json"
+        ],
+        "verified": {
+          "files": 7,
+          "tests": 291,
+          "passed": 291,
+          "failed": 0,
+          "skipped": 0,
+          "inventorySha256": "cb061261176286c939e7e2cadbb035664d583fd2509942c64609af4bfff49ea2"
+        },
+        "vitestDurationSeconds": 75.55,
+        "resourceLockWaitObserved": false,
+        "suites": {
+          "tests/compiledVueFixture.test.ts": {
+            "tests": 5,
+            "seconds": 0.15913037109375
+          },
+          "tests/optionsAppNavigationLifecycle.test.ts": {
+            "tests": 45,
+            "seconds": 16.5486484375
+          },
+          "tests/pdfTextExport.test.ts": {
+            "tests": 19,
+            "seconds": 10.841598876953125
+          },
+          "tests/popupAppLifecycle.test.ts": {
+            "tests": 37,
+            "seconds": 10.25255029296875
+          },
+          "tests/promptSyncLifecycle.test.ts": {
+            "tests": 47,
+            "seconds": 9.18657080078125
+          },
+          "tests/readingPanelLifecycle.test.ts": {
+            "tests": 31,
+            "seconds": 13.31082421875
+          },
+          "tests/serviceDirectoryLifecycle.test.ts": {
+            "tests": 107,
+            "seconds": 10.95490478515625
+          }
+        }
+      },
+      {
+        "label": "baseline",
+        "iteration": 2,
+        "startUnix": 1791941854.4436321,
+        "wallSeconds": 87.66972787499998,
+        "exitCode": 0,
+        "totalTests": 291,
+        "passed": 291,
+        "failed": 0,
+        "pending": 0,
+        "report": "/private/tmp/fluentread-test-efficiency-20261014/round2/baseline-focused-2-tests.json",
+        "command": [
+          "pnpm",
+          "run",
+          "test",
+          "tests/optionsAppNavigationLifecycle.test.ts",
+          "tests/popupAppLifecycle.test.ts",
+          "tests/pdfTextExport.test.ts",
+          "tests/serviceDirectoryLifecycle.test.ts",
+          "tests/promptSyncLifecycle.test.ts",
+          "tests/readingPanelLifecycle.test.ts",
+          "tests/compiledVueFixture.test.ts",
+          "--reporter=default",
+          "--reporter=json",
+          "--outputFile=/private/tmp/fluentread-test-efficiency-20261014/round2/baseline-focused-2-tests.json"
+        ],
+        "verified": {
+          "files": 7,
+          "tests": 291,
+          "passed": 291,
+          "failed": 0,
+          "skipped": 0,
+          "inventorySha256": "cb061261176286c939e7e2cadbb035664d583fd2509942c64609af4bfff49ea2"
+        },
+        "vitestDurationSeconds": 87.07,
+        "resourceLockWaitObserved": false,
+        "suites": {
+          "tests/compiledVueFixture.test.ts": {
+            "tests": 5,
+            "seconds": 0.163907470703125
+          },
+          "tests/optionsAppNavigationLifecycle.test.ts": {
+            "tests": 45,
+            "seconds": 18.76170556640625
+          },
+          "tests/pdfTextExport.test.ts": {
+            "tests": 19,
+            "seconds": 14.14477490234375
+          },
+          "tests/popupAppLifecycle.test.ts": {
+            "tests": 37,
+            "seconds": 11.35907861328125
+          },
+          "tests/promptSyncLifecycle.test.ts": {
+            "tests": 47,
+            "seconds": 11.620629150390625
+          },
+          "tests/readingPanelLifecycle.test.ts": {
+            "tests": 31,
+            "seconds": 14.030583984375
+          },
+          "tests/serviceDirectoryLifecycle.test.ts": {
+            "tests": 107,
+            "seconds": 12.584992919921875
+          }
+        }
+      },
+      {
+        "label": "baseline",
+        "iteration": 3,
+        "startUnix": 1791941942.113972,
+        "wallSeconds": 94.16649366600001,
+        "exitCode": 0,
+        "totalTests": 291,
+        "passed": 291,
+        "failed": 0,
+        "pending": 0,
+        "report": "/private/tmp/fluentread-test-efficiency-20261014/round2/baseline-focused-3-tests.json",
+        "command": [
+          "pnpm",
+          "run",
+          "test",
+          "tests/optionsAppNavigationLifecycle.test.ts",
+          "tests/popupAppLifecycle.test.ts",
+          "tests/pdfTextExport.test.ts",
+          "tests/serviceDirectoryLifecycle.test.ts",
+          "tests/promptSyncLifecycle.test.ts",
+          "tests/readingPanelLifecycle.test.ts",
+          "tests/compiledVueFixture.test.ts",
+          "--reporter=default",
+          "--reporter=json",
+          "--outputFile=/private/tmp/fluentread-test-efficiency-20261014/round2/baseline-focused-3-tests.json"
+        ],
+        "verified": {
+          "files": 7,
+          "tests": 291,
+          "passed": 291,
+          "failed": 0,
+          "skipped": 0,
+          "inventorySha256": "cb061261176286c939e7e2cadbb035664d583fd2509942c64609af4bfff49ea2"
+        },
+        "vitestDurationSeconds": 93.55,
+        "resourceLockWaitObserved": false,
+        "suites": {
+          "tests/compiledVueFixture.test.ts": {
+            "tests": 5,
+            "seconds": 0.16626611328125
+          },
+          "tests/optionsAppNavigationLifecycle.test.ts": {
+            "tests": 45,
+            "seconds": 19.7725029296875
+          },
+          "tests/pdfTextExport.test.ts": {
+            "tests": 19,
+            "seconds": 15.433608642578125
+          },
+          "tests/popupAppLifecycle.test.ts": {
+            "tests": 37,
+            "seconds": 12.23385595703125
+          },
+          "tests/promptSyncLifecycle.test.ts": {
+            "tests": 47,
+            "seconds": 13.556424560546875
+          },
+          "tests/readingPanelLifecycle.test.ts": {
+            "tests": 31,
+            "seconds": 14.71216162109375
+          },
+          "tests/serviceDirectoryLifecycle.test.ts": {
+            "tests": 107,
+            "seconds": 12.8801181640625
+          }
+        }
+      },
+      {
+        "label": "candidate",
+        "iteration": 3,
+        "startUnix": 1791942036.2842,
+        "wallSeconds": 78.49344641699997,
+        "exitCode": 0,
+        "totalTests": 291,
+        "passed": 291,
+        "failed": 0,
+        "pending": 0,
+        "report": "/private/tmp/fluentread-test-efficiency-20261014/round2/candidate-focused-3-tests.json",
+        "command": [
+          "pnpm",
+          "run",
+          "test",
+          "tests/optionsAppNavigationLifecycle.test.ts",
+          "tests/popupAppLifecycle.test.ts",
+          "tests/pdfTextExport.test.ts",
+          "tests/serviceDirectoryLifecycle.test.ts",
+          "tests/promptSyncLifecycle.test.ts",
+          "tests/readingPanelLifecycle.test.ts",
+          "tests/compiledVueFixture.test.ts",
+          "--reporter=default",
+          "--reporter=json",
+          "--outputFile=/private/tmp/fluentread-test-efficiency-20261014/round2/candidate-focused-3-tests.json"
+        ],
+        "verified": {
+          "files": 7,
+          "tests": 291,
+          "passed": 291,
+          "failed": 0,
+          "skipped": 0,
+          "inventorySha256": "cb061261176286c939e7e2cadbb035664d583fd2509942c64609af4bfff49ea2"
+        },
+        "vitestDurationSeconds": 77.82,
+        "resourceLockWaitObserved": false,
+        "suites": {
+          "tests/compiledVueFixture.test.ts": {
+            "tests": 5,
+            "seconds": 0.155287109375
+          },
+          "tests/optionsAppNavigationLifecycle.test.ts": {
+            "tests": 45,
+            "seconds": 17.252728759765624
+          },
+          "tests/pdfTextExport.test.ts": {
+            "tests": 19,
+            "seconds": 10.805860107421875
+          },
+          "tests/popupAppLifecycle.test.ts": {
+            "tests": 37,
+            "seconds": 10.04568798828125
+          },
+          "tests/promptSyncLifecycle.test.ts": {
+            "tests": 47,
+            "seconds": 9.50556689453125
+          },
+          "tests/readingPanelLifecycle.test.ts": {
+            "tests": 31,
+            "seconds": 13.88607666015625
+          },
+          "tests/serviceDirectoryLifecycle.test.ts": {
+            "tests": 107,
+            "seconds": 11.592236328125
+          }
+        }
+      }
+    ]
+  },
+  "full": {
+    "repeatsPerVersion": 1,
+    "inventoryIdentical": true,
+    "inventoryComparison": "Exact multiplicities after narrowly normalizing four worktree path labels and one new Date fixture label in byte-identical test sources",
+    "runtimeLabelNormalizationCounts": {
+      "baseline": {
+        "worktreePaths": 4,
+        "nonJsonDateFixture": 1
+      },
+      "candidate": {
+        "worktreePaths": 4,
+        "nonJsonDateFixture": 1
+      }
+    },
+    "rawRuntimeLabelDifferences": {
+      "baseline": [
+        [
+          "tests/siteAdaptationCore.test.ts",
+          "site adaptation JSON boundary rejects non JSON pack objects 2026-10-14T01:20:11.842Z"
+        ],
+        [
+          "tests/userscriptViteConfig.test.ts",
+          "userscript lossless Unicode character data preserves unsorted strings, repeated characters, surrogate pairs and empty exports in /private/tmp/fluentread-test-efficiency-20261014/baseline-round2/src/core/language/chineseVariants.ts"
+        ],
+        [
+          "tests/userscriptViteConfig.test.ts",
+          "userscript lossless Unicode character data preserves unsorted strings, repeated characters, surrogate pairs and empty exports in /private/tmp/fluentread-test-efficiency-20261014/baseline-round2/src/core/language/functionWordData.ts"
+        ],
+        [
+          "tests/userscriptViteConfig.test.ts",
+          "userscript lossless Unicode character data rejects executable additions to /private/tmp/fluentread-test-efficiency-20261014/baseline-round2/src/core/language/chineseVariants.ts instead of dropping or compressing them"
+        ],
+        [
+          "tests/userscriptViteConfig.test.ts",
+          "userscript lossless Unicode character data rejects executable additions to /private/tmp/fluentread-test-efficiency-20261014/baseline-round2/src/core/language/functionWordData.ts instead of dropping or compressing them"
+        ]
+      ],
+      "candidate": [
+        [
+          "tests/siteAdaptationCore.test.ts",
+          "site adaptation JSON boundary rejects non JSON pack objects 2026-10-14T01:50:33.364Z"
+        ],
+        [
+          "tests/userscriptViteConfig.test.ts",
+          "userscript lossless Unicode character data preserves unsorted strings, repeated characters, surrogate pairs and empty exports in /Users/thinkstu/Desktop/copy/FluentRead-test-suite-efficiency-20261014/src/core/language/chineseVariants.ts"
+        ],
+        [
+          "tests/userscriptViteConfig.test.ts",
+          "userscript lossless Unicode character data preserves unsorted strings, repeated characters, surrogate pairs and empty exports in /Users/thinkstu/Desktop/copy/FluentRead-test-suite-efficiency-20261014/src/core/language/functionWordData.ts"
+        ],
+        [
+          "tests/userscriptViteConfig.test.ts",
+          "userscript lossless Unicode character data rejects executable additions to /Users/thinkstu/Desktop/copy/FluentRead-test-suite-efficiency-20261014/src/core/language/chineseVariants.ts instead of dropping or compressing them"
+        ],
+        [
+          "tests/userscriptViteConfig.test.ts",
+          "userscript lossless Unicode character data rejects executable additions to /Users/thinkstu/Desktop/copy/FluentRead-test-suite-efficiency-20261014/src/core/language/functionWordData.ts instead of dropping or compressing them"
+        ]
+      ]
+    },
+    "normalizedInventorySha256": "d1dfeaab888cc0cc239a8552eba484a3a962edc750055bee80bdf068f0cc9702",
+    "coverageSourceInventoryIdentical": true,
+    "coverageSourceInventorySha256": "0bcc9ad3e3f9e955934b059610e7b7183e627a565a77e51c52d35eb76041c033",
+    "baseline": {
+      "label": "baseline-full",
+      "commit": "45e17986b",
+      "command": [
+        "pnpm",
+        "test:coverage",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/private/tmp/fluentread-test-efficiency-20261014/round2/baseline-full-tests.json"
+      ],
+      "workers": 1,
+      "fileParallelism": false,
+      "wallSeconds": 1140.7504620552063,
+      "startUnix": 1791940366.394219,
+      "endUnix": 1791941507.144681,
+      "exitCode": 0,
+      "platform": "macOS-26.6.2-arm64-arm-64bit",
+      "verified": {
+        "files": 697,
+        "tests": 22695,
+        "passed": 22695,
+        "failed": 0,
+        "skipped": 0,
+        "inventorySha256": "697ac0a316053621ec914ec75ea7bdcc24d6dd8c46f406be13105eef5e922533"
+      },
+      "vitestDurationSeconds": 1139.04,
+      "vitestTestsSeconds": 827.39,
+      "sourceFiles": 663,
+      "coverageRawCountersExactForEveryFile": true,
+      "coverageTotals": {
+        "statements": {
+          "total": 85996,
+          "covered": 85996,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 49495,
+          "covered": 49495,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 6188,
+          "covered": 6188,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 85996,
+          "covered": 85996,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "candidate": {
+      "label": "candidate-full",
+      "baselineCommit": "45e17986bcc5753275d07f4a1eb1d7134d5d558a",
+      "testSourceHashes": {
+        "tests/optionsAppNavigationLifecycle.test.ts": "a955873f3b59514e791f293d7938f4a39230d0d81b7d7935ff27c0f0d2128336",
+        "tests/popupAppLifecycle.test.ts": "8e29e8f3fe70b2e4f505be17b7dcffb0958ead975beeb1876e483182f283b448",
+        "tests/pdfTextExport.test.ts": "4889edcd58323127ef7717b845543cef11f13f5d2eba785b31a9cf82784fa8c1",
+        "tests/serviceDirectoryLifecycle.test.ts": "c17262d7ba8438a47882f9bba618f2c022122b17cf441430e306114dec70e37b",
+        "tests/promptSyncLifecycle.test.ts": "47ea51710ce9ff34fa30bad7604bee40e0f3327dcbf6b0667b9f90d5c35fbe50",
+        "tests/readingPanelLifecycle.test.ts": "b02135175b56708f85ad1c611c806d853eb628b6ae4ee899558d3412ed70225d",
+        "tests/compiledVueFixture.test.ts": "cc06207ac68e5a426a3ae95b09f73e45a63c613cdeac96687d9cdc026c97f83f",
+        "tests/helpers/compiledVueFixture.ts": "c760c985788593f36769020252e622408f1a3412af91ea56675fd16d41965e67"
+      },
+      "command": [
+        "pnpm",
+        "test:coverage",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/private/tmp/fluentread-test-efficiency-20261014/round2/candidate-full-tests.json"
+      ],
+      "workers": 1,
+      "fileParallelism": false,
+      "wallSeconds": 1053.2196249961853,
+      "startUnix": 1791942223.583182,
+      "endUnix": 1791943276.802807,
+      "exitCode": 0,
+      "platform": "macOS-26.6.2-arm64-arm-64bit",
+      "verified": {
+        "files": 697,
+        "tests": 22695,
+        "passed": 22695,
+        "failed": 0,
+        "skipped": 0,
+        "inventorySha256": "ade86402548291a818477d04c52468a879ae09c21abb26c04a2e5a8612fcec72"
+      },
+      "vitestDurationSeconds": 1051.53,
+      "vitestTestsSeconds": 772.15,
+      "sourceFiles": 663,
+      "coverageRawCountersExactForEveryFile": true,
+      "coverageTotals": {
+        "statements": {
+          "total": 85996,
+          "covered": 85996,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 49497,
+          "covered": 49497,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 6188,
+          "covered": 6188,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 85996,
+          "covered": 85996,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "wallReductionPercent": 7.673092404567
+  },
+  "quality": {
+    "preservationConclusion": {
+      "allOriginalExecutableTestDefinitionsAndMatricesPreserved": true,
+      "originalAssertionsPreservedOrEnumeratedAsEquivalent": true,
+      "helperAddsEightAssertionsWithoutReplacingOriginals": true,
+      "coverageConfigMatrixAndResourceIsolationByteUnchanged": true,
+      "runtimeObjectsRemainPerFixture": true,
+      "actionableQualityConcerns": [],
+      "status": "Static preservation review passed; focused and complete runtime/coverage verification remain the parent workflow responsibility."
+    },
+    "additionalHelperAssertions": 8,
+    "immutableCacheContractTests": 5,
+    "sourceConfigurationByteUnchanged": true,
+    "compilerParity": {
+      "parity": [
+        {
+          "file": "src/features/settings/ui/services/FreeTranslationSettings.vue",
+          "sourceSha256": "e62b19107aae8e302a3f4fd2c1b43f4e07b7c7fa298fcd04faa62ea639c28138",
+          "originalOptions": {
+            "compileScript": {
+              "id": "directory-lifecycle"
+            },
+            "compileTemplate": {
+              "id": "directory-lifecycle",
+              "mode": "function",
+              "expressionPlugins": [
+                "typescript"
+              ],
+              "bindingMetadata": "compileScript.bindings",
+              "cacheHandlers": true
+            },
+            "transpileTarget": "ES2022"
+          },
+          "optimizedOptions": {
+            "id": "directory-lifecycle",
+            "cacheHandlers": true,
+            "includeScript": false,
+            "includeScopedStyle": false
+          },
+          "original": {
+            "scriptSourceSha256": "fcf6bd3accd18daf6a741c07e54cf433d6c26fab1ffecadeb06f0758b5243faa",
+            "renderCodeSha256": "167b801939cfe59b826deb0d356910ff485617785cfe5b30c25f45cfeeef780c"
+          },
+          "optimized": {
+            "scriptSourceSha256": "fcf6bd3accd18daf6a741c07e54cf433d6c26fab1ffecadeb06f0758b5243faa",
+            "renderCodeSha256": "167b801939cfe59b826deb0d356910ff485617785cfe5b30c25f45cfeeef780c"
+          },
+          "scriptSourceIdentical": true,
+          "renderCodeIdentical": true,
+          "templateErrorsIdentical": true,
+          "templateErrorsFrozen": true,
+          "resultFrozen": true,
+          "cacheHit": true
+        },
+        {
+          "file": "src/features/settings/ui/services/ServiceCatalog.vue",
+          "sourceSha256": "ef49478907b84bdb6ef724228c3947de0e3e69d9f461d11a610b079a66c6323c",
+          "originalOptions": {
+            "compileScript": {
+              "id": "directory-lifecycle"
+            },
+            "compileTemplate": {
+              "id": "directory-lifecycle",
+              "mode": "function",
+              "expressionPlugins": [
+                "typescript"
+              ],
+              "bindingMetadata": "compileScript.bindings",
+              "cacheHandlers": true
+            },
+            "transpileTarget": "ES2022"
+          },
+          "optimizedOptions": {
+            "id": "directory-lifecycle",
+            "cacheHandlers": true,
+            "includeScript": false,
+            "includeScopedStyle": false
+          },
+          "original": {
+            "scriptSourceSha256": "1b471ea3f7a2a860f4cb87e39b3f5498efcd53e9db35043da7855a860bbd60da",
+            "renderCodeSha256": "5e381ad8114864e6f50fa111731cef44f3e60ed0cf9820911959349bb79cc9d0"
+          },
+          "optimized": {
+            "scriptSourceSha256": "1b471ea3f7a2a860f4cb87e39b3f5498efcd53e9db35043da7855a860bbd60da",
+            "renderCodeSha256": "5e381ad8114864e6f50fa111731cef44f3e60ed0cf9820911959349bb79cc9d0"
+          },
+          "scriptSourceIdentical": true,
+          "renderCodeIdentical": true,
+          "templateErrorsIdentical": true,
+          "templateErrorsFrozen": true,
+          "resultFrozen": true,
+          "cacheHit": true
+        },
+        {
+          "file": "src/features/settings/ui/services/ServiceConfiguration.vue",
+          "sourceSha256": "2f440ddb4bf6f10c6cc8e0320549f4eb1e2b292a22afd2fd664664811662e0a8",
+          "originalOptions": {
+            "compileScript": {
+              "id": "prompt-sync-public",
+              "inlineTemplate": false
+            },
+            "compileTemplate": {
+              "id": "prompt-sync-public",
+              "mode": "function",
+              "expressionPlugins": [
+                "typescript"
+              ],
+              "bindingMetadata": "compileScript.bindings",
+              "cacheHandlers": true
+            },
+            "transpileTarget": "ES2022"
+          },
+          "optimizedOptions": {
+            "id": "prompt-sync-public",
+            "cacheHandlers": true,
+            "includeScript": false,
+            "includeScopedStyle": false
+          },
+          "original": {
+            "scriptSourceSha256": "89c8edf59cf33be089730c70ceabe36a0c60e3be1139caf3bba1491f9251601a",
+            "renderCodeSha256": "3d011662851284aada3d8f1f29cad7db7ebc2853c730487e3db1c23b501c4c74"
+          },
+          "optimized": {
+            "scriptSourceSha256": "89c8edf59cf33be089730c70ceabe36a0c60e3be1139caf3bba1491f9251601a",
+            "renderCodeSha256": "3d011662851284aada3d8f1f29cad7db7ebc2853c730487e3db1c23b501c4c74"
+          },
+          "scriptSourceIdentical": true,
+          "renderCodeIdentical": true,
+          "templateErrorsIdentical": true,
+          "templateErrorsFrozen": true,
+          "resultFrozen": true,
+          "cacheHit": true
+        },
+        {
+          "file": "src/features/reading-assistant/ui/ReadingPanel.vue",
+          "sourceSha256": "89ff63c32e72bb0dd6b17bc6c27bf10b3a26b65de48abc94467296999d5c2e1f",
+          "originalOptions": {
+            "compileScript": {
+              "id": "reading-capability-test"
+            },
+            "compileTemplate": {
+              "id": "reading-capability-test",
+              "mode": "function",
+              "expressionPlugins": [
+                "typescript"
+              ],
+              "bindingMetadata": "compileScript.bindings"
+            },
+            "transpileTarget": "ES2022"
+          },
+          "optimizedOptions": {
+            "id": "reading-capability-test",
+            "cacheHandlers": true,
+            "includeScript": false,
+            "includeScopedStyle": false
+          },
+          "compilerDefault": "Vue compiler-sfc 3.5.13 defaults omitted cacheHandlers to true",
+          "original": {
+            "scriptSourceSha256": "8dcaf6bff5dc59dcbbc25dc687fb1bb102ed9a3e4fdbc4505bd332e883cac4d2",
+            "renderCodeSha256": "da61a90e9bf21d6f11af045b6c9e1dbae0b57d3d2f5363f3b043982697f1c529"
+          },
+          "optimized": {
+            "scriptSourceSha256": "8dcaf6bff5dc59dcbbc25dc687fb1bb102ed9a3e4fdbc4505bd332e883cac4d2",
+            "renderCodeSha256": "da61a90e9bf21d6f11af045b6c9e1dbae0b57d3d2f5363f3b043982697f1c529"
+          },
+          "scriptSourceIdentical": true,
+          "renderCodeIdentical": true,
+          "templateErrorsIdentical": true,
+          "templateErrorsFrozen": true,
+          "resultFrozen": true,
+          "cacheHit": true
+        }
+      ],
+      "suites": [
+        {
+          "file": "tests/serviceDirectoryLifecycle.test.ts",
+          "expectCalls": 244,
+          "definitions": 47,
+          "titlesAndExpectCountUnchanged": true
+        },
+        {
+          "file": "tests/promptSyncLifecycle.test.ts",
+          "expectCalls": 70,
+          "definitions": 11,
+          "titlesAndExpectCountUnchanged": true
+        },
+        {
+          "file": "tests/readingPanelLifecycle.test.ts",
+          "expectCalls": 205,
+          "definitions": 26,
+          "titlesAndExpectCountUnchanged": true
+        }
+      ],
+      "scope": "Pure SFC/compiler output and AST inspection only; no Vitest, Vite server, DOM fixture or business test executed"
+    },
+    "localCacheParity": {
+      "baselineRevision": "45e17986b",
+      "repository": "/Users/thinkstu/Desktop/copy/FluentRead-test-suite-efficiency-20261014",
+      "passed": true,
+      "products": [
+        {
+          "kind": "Options",
+          "browser": "userscript",
+          "byteEqual": true,
+          "baselineSha256": "93032b74150b78aa8ded1d5010561ab758f9ef96fdfe7b166d50f66c6bac0cd1",
+          "currentSha256": "93032b74150b78aa8ded1d5010561ab758f9ef96fdfe7b166d50f66c6bac0cd1",
+          "bytes": 53979
+        },
+        {
+          "kind": "Options",
+          "browser": "chrome",
+          "byteEqual": true,
+          "baselineSha256": "cf1cd99df3568369ebf8c1912f4f258256b37b8a2bd97f2bb113c884044c5074",
+          "currentSha256": "cf1cd99df3568369ebf8c1912f4f258256b37b8a2bd97f2bb113c884044c5074",
+          "bytes": 53975
+        },
+        {
+          "kind": "Options",
+          "browser": "firefox",
+          "byteEqual": true,
+          "baselineSha256": "b2b0b91054b46d63e2555c6a6d1e1932c9c4115d2c016f4e0711d6c00b01b738",
+          "currentSha256": "b2b0b91054b46d63e2555c6a6d1e1932c9c4115d2c016f4e0711d6c00b01b738",
+          "bytes": 53976
+        },
+        {
+          "kind": "Popup",
+          "component": "PopupApp.vue",
+          "byteEqual": true,
+          "baselineSha256": "ceeceef4d3b37e09d6120060da21505a7b33ecc8a0adfbae25cfdcc6339c242c",
+          "currentSha256": "ceeceef4d3b37e09d6120060da21505a7b33ecc8a0adfbae25cfdcc6339c242c",
+          "bytes": 115354
+        },
+        {
+          "kind": "Popup",
+          "component": "PopupSiteRule.vue",
+          "byteEqual": true,
+          "baselineSha256": "c64e5ffbfd771fd67dfd6135796ed9f98591b5a4fb251d9e5e652a98233ed894",
+          "currentSha256": "c64e5ffbfd771fd67dfd6135796ed9f98591b5a4fb251d9e5e652a98233ed894",
+          "bytes": 6441
+        }
+      ],
+      "cacheHits": {
+        "options": {
+          "parse": 3,
+          "script": 3,
+          "template": 0,
+          "entries": 3
+        },
+        "popup": {
+          "parse": 2,
+          "script": 2,
+          "template": 2,
+          "entries": 2
+        }
+      },
+      "invalidation": {
+        "options": {
+          "sourceChangeRecompiled": true,
+          "subsequentHitReused": true,
+          "beforeSha256": "cf1cd99df3568369ebf8c1912f4f258256b37b8a2bd97f2bb113c884044c5074",
+          "changedSha256": "abe95911dae9d0602f94ab8ac10040df7846f521999d654f84c9ebcc8bcd5c16"
+        },
+        "popup": {
+          "sourceChangeRecompiled": true,
+          "subsequentHitReused": true,
+          "boundedEntries": 2,
+          "oldestEntryEvicted": true,
+          "beforeSha256": "ceeceef4d3b37e09d6120060da21505a7b33ecc8a0adfbae25cfdcc6339c242c",
+          "changedSha256": "3e87ce76328d311d6b286063a80b9b770d9460ad197313b0f977d260a3a21783"
+        }
+      },
+      "isolation": {
+        "optionsEntriesOnlyStrings": true,
+        "popupEntriesOnlyStringsAndEmptyFrozenDiagnostics": true,
+        "evaluatedProductsCached": false
+      }
+    },
+    "focusedIndependentAudit": {
+      "wall": {
+        "beforeSeconds": 94.16649366600001,
+        "afterSeconds": 78.49344641699997,
+        "secondsSaved": 15.673047249000035,
+        "reductionPercent": 16.64397455913662,
+        "reportedMatches": true
+      },
+      "vitestExcludingPrestartQueue": {
+        "beforeSeconds": 93.55,
+        "afterSeconds": 77.82,
+        "reductionPercent": 16.814537680384824
+      }
+    },
+    "preservationAuditSha256": "319dc5867373f83a5c1d4a4a3b42c2645f02ec6691528dbf5653f644765b2a1f",
+    "all663CoveredSourceFilesByteUnchanged": true,
+    "nativeTests": {
+      "originalCases": 57,
+      "registeredOnceBy": "tests/processRegression.test.ts",
+      "allOriginalFilesByteUnchanged": true,
+      "files": [
+        {
+          "file": "tests/agentBridge.test.mjs",
+          "sha256": "4e628f3294ecf1e5d27fe72bee218dd11baeb625024cc86342b1d46153ea0bb1"
+        },
+        {
+          "file": "tests/focusSafeBrowserOrdinaryLifecycle.test.mjs",
+          "sha256": "5351886b70c77b4a18793f1820d8ace0f1d4f6104d6111f90307af25c6ca0bfe"
+        },
+        {
+          "file": "tests/focusSafeBrowserBackgroundSignal.test.mjs",
+          "sha256": "bace0ea46c0bd36bb41140d8d0f1b92f5e293d2413df95a371234be89b40f635"
+        },
+        {
+          "file": "tests/focusSafeBrowserBackgroundLifecycle.test.mjs",
+          "sha256": "baefdd0df6033375f2588b11d3c77b910a6a8d1b98c74c8bc6d83d70bd3b4161"
+        },
+        {
+          "file": "tests/documentLiveHttpEvidence.test.mjs",
+          "sha256": "17912605379f3ad31d6cec6d0c8146cc2d5c97ce076a5ac9dfc997a6f17fc5de"
+        }
+      ]
+    },
+    "runtimeCoverageCounterDifferences": [
+      {
+        "file": "src/core/site-rules/domain.ts",
+        "branchesBefore": 113,
+        "branchesAfter": 114,
+        "sourceByteUnchanged": true
+      },
+      {
+        "file": "src/features/settings/ui/components/SettingsItem.vue",
+        "branchesBefore": 12,
+        "branchesAfter": 13,
+        "sourceByteUnchanged": true
+      }
+    ],
+    "fullIndependentAudit": {
+      "artifact": "/private/tmp/fluentread-test-efficiency-20261014/round2/full-independent-audit.json",
+      "sha256": "453fdb77f2dc29344622d5284aa8f84519065f399266b87d26874e11c57cf50e",
+      "scope": "697 files, 22695 cases with exact multiplicities after five narrowly verified runtime-label normalizations; all663 source bytes unchanged and every raw four-dimensional counter exact",
+      "status": "passed"
+    }
+  },
+  "verification": {
+    "compile": "passed",
+    "testAudit": "passed",
+    "registeredFiles": 697,
+    "staticCases": 12474,
+    "releaseBuildsExecuted": false,
+    "realBrowserMatrixExecuted": false,
+    "liveNetworkMatrixExecuted": false,
+    "docsBuild": "passed"
+  },
+  "interpretation": {
+    "focused": "Three alternating pairs; complete-command median includes startup. First baseline waited behind an external vue-tsc job; it is the slowest baseline and does not determine the median. Vitest median separately excludes initial queue.",
+    "full": "One before/after full strict coverage pair on a shared host; elapsed delta is an observation and is not entirely attributable to this patch or a guaranteed future whole-suite speedup.",
+    "inventory": "Four absolute worktree path labels and one Date timestamp normalized only in two byte-identical sources, exact all-case multiplicities then compared."
+  }
+}

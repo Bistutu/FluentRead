@@ -34,24 +34,20 @@ async function closeFixture(scope: FixtureScope) {
     await closeOwnedServer(scope);
   }
 }
-async function prepareFixture(scope: FixtureScope, factory = createFixtureServer) {
+async function prepareFixture(scope: FixtureScope, factory = createFixtureServer, transformOptions = true) {
   try {
     const ownedServer = await factory();
     scope.server = ownedServer;
     if (!owns(scope)) throw inactive();
-    // Transform only: configReady and appearance mocks must be evaluated inside each mount.
-    await ownedServer.transformRequest('/src/app/options/OptionsApp.vue', {ssr: true});
+    // SSR 用例预编译入口但逐例执行模块；客户端用例只用 Vite 加载真实依赖，不重复编译另一个入口。
+    if (transformOptions) await ownedServer.transformRequest('/src/app/options/OptionsApp.vue', {ssr: true});
     if (!owns(scope)) throw inactive();
   } catch (error) {
     try { await closeOwnedServer(scope); } catch { /* Preserve the original bootstrap error. */ }
     throw error;
   }
 }
-beforeEach(async () => {
-  const scope: FixtureScope = {active: true};
-  current = scope;
-  await prepareFixture(scope);
-}, 5000);
+beforeEach(() => {current = {active: true};});
 afterEach(async () => {
   const scope = current;
   if (scope) await closeFixture(scope);
@@ -91,7 +87,9 @@ function createFixtureServer(browser = 'chrome') {
 type RecoveryFixture = {href: string; historyState: unknown; props?: {locationRouting?: 'internal'; initialSection?: string}};
 async function mountOptions(hash = '#settings-selection', ready = Promise.resolve(), appearanceRoot?: HTMLElement, load?: (server: ViteDevServer) => Promise<Record<string, any>>, browser = 'chrome', uiLanguage?: UiLanguage, recovery?: RecoveryFixture) {
   const scope = current;
-  if (!scope || !owns(scope) || !scope.server) throw inactive();
+  if (!scope || !owns(scope)) throw inactive();
+  if (!scope.server) await prepareFixture(scope);
+  if (!owns(scope) || !scope.server) throw inactive();
   const ownedServer = scope.server;
   const initialUrl = recovery ? new URL(recovery.href) : undefined;
   const location = {hash: initialUrl?.hash ?? hash, search: initialUrl?.search ?? '', href: initialUrl?.href ?? `chrome-extension://fixture/options.html${hash}`, reload: vi.fn()};
@@ -680,8 +678,24 @@ describe('OptionsApp actual learning-panel reload callback', () => {
 // Optional real-client parent mode: navigation, search, hash resolution and capability gates
 // remain the actual Options template/setup; async feature modules are counted display ports.
 type AboutClientFixture = {supportGlobal?: string};
+type ClientBrowser = 'userscript' | 'chrome' | 'firefox';
+// 仅缓存最多三种平台的不可变代码字符串；每例仍重新执行模块，创建组件、依赖端口和 DOM。
+const clientCompilations = new Map<ClientBrowser, {source: string; code: string}>();
+function compileClientOptions(browser: ClientBrowser): string {
+  const filename = resolve('src/app/options/OptionsApp.vue'), source = readFileSync(filename, 'utf8');
+  const cached = clientCompilations.get(browser);
+  if (cached?.source === source) return cached.code;
+  const {descriptor, errors: parseErrors} = parse(source, {filename});expect(parseErrors).toEqual([]);
+  const script = compileScript(descriptor, {id: 'options-capability-client', inlineTemplate: true});
+  const code = ts.transpileModule(script.content.replaceAll('import.meta.env.BROWSER', JSON.stringify(browser)),
+    {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
+  clientCompilations.set(browser, {source, code});
+  return code;
+}
 async function mountClientOptions(requestedSection: string, browser: 'userscript' | 'chrome' | 'firefox', about?: AboutClientFixture) {
   const scope = current!;
+  if (!owns(scope)) throw inactive();
+  if (!scope.server) await prepareFixture(scope, createFixtureServer, false);
   if (!owns(scope) || !scope.server) throw inactive();
   const server = scope.server;
   const [navigation, capabilities, core, english, patterns, ordinaryImages] = await Promise.all([
@@ -729,11 +743,8 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
   const anchorPort = runtime.defineComponent({setup(_props, {expose}) {expose({cancelPendingAnchor() {}});return () => runtime.h('span');}});
   const settingsPort = runtime.defineComponent({name: 'SettingsDisplayPort', props: ['activeSection'], setup: props => () => runtime.h('section', {'data-settings-child': 'settings', 'data-active-section': props.activeSection}, props.activeSection)});
   const learningPort = runtime.defineComponent({name: 'LearningDisplayPort', setup: () => () => runtime.h('section', {'data-settings-child': 'learning'}, 'Saved display port')});
-  const filename = resolve('src/app/options/OptionsApp.vue');
-  const {descriptor, errors: parseErrors} = parse(readFileSync(filename, 'utf8'), {filename});expect(parseErrors).toEqual([]);
-  const script = compileScript(descriptor, {id: 'options-capability-client', inlineTemplate: true});
   const module = {exports: {} as {default: import('vue').Component}};
-  const code = ts.transpileModule(script.content.replaceAll('import.meta.env.BROWSER', JSON.stringify(browser)), {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
+  const code = compileClientOptions(browser);
   new Function('require', 'exports', 'module', code)((id: string) => {
     if (id === 'vue') return runtime;
     if (id === '@/src/features/settings/model/navigation') return navigation;

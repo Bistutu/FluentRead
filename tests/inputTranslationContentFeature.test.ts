@@ -1,4 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {services} from '@/src/core/config/catalog';
+import {Config} from '@/src/core/config/model';
 
 const editable = vi.hoisted(() => ({
     replaceEditableText: vi.fn(),
@@ -157,6 +159,30 @@ afterEach(() => {
 });
 
 describe('input translation content feature', () => {
+    it('含 AI 的输入组合沿用独立预算，AI 默认变更不作废组合事务，超时仍发送精确取消', async () => {
+        vi.useFakeTimers();
+        const config = new Config();
+        config.inputBoxTranslationTrigger = 'ctrl_enter';config.inputBoxTranslationTarget = 'zh';
+        config.inputBoxTranslationService = 'composite:input-timeout';config.aiRequestTimeoutMs = 600_000;
+        config.compositeTranslationProviders = [{id: 'composite:input-timeout', name: 'Input timeout', strategy: 'sequential',
+            services: ['openai', 'google'], timeoutMs: 12_000}];
+        let release!: (response: unknown) => void;
+        const harness = mountHarness({config, sendMessage: () => new Promise(resolve => {release = resolve;})});
+        const connectionKey = inputBoxTranslationConfigKey(harness.config);
+        const input = fakeElement('textarea');input.value = 'Hello';harness.fakeDocument.activeElement = input;
+        const pending = harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
+        await vi.advanceTimersByTimeAsync(0);
+        expect(harness.sendMessage).toHaveBeenCalledWith(expect.objectContaining({type: 'inputBoxTranslation', requestTimeoutMs: 45_000}));
+        harness.config.aiRequestTimeoutMs = 10_000;
+        expect(inputBoxTranslationConfigKey(harness.config)).toBe(connectionKey);
+        await vi.advanceTimersByTimeAsync(INPUT_TRANSLATION_TIMEOUT_MS);
+        await pending;
+        const clientRequestId = harness.sendMessage.mock.calls[0][0].clientRequestId;
+        expect(harness.sendMessage).toHaveBeenLastCalledWith({type: 'fluentReadTranslationCancel', clientRequestId});
+        input.value = '用户的新草稿';release({success: true, translatedText: '迟到译文'});await vi.advanceTimersByTimeAsync(0);
+        expect(input.value).toBe('用户的新草稿');harness.controller.abort();expect(vi.getTimerCount()).toBe(0);
+    });
+
     it('慢提示挂载不阻塞请求或提交，迟到 loading 不覆盖成功状态', async () => {
         const records: any[] = [];
         const base = createUiFactory(records);
@@ -179,7 +205,8 @@ describe('input translation content feature', () => {
     });
 
     it('重复触发沿用进行中请求，取消不等待后台响应且发送精确请求 ID', async () => {
-        const harness = mountHarness({sendMessage: () => new Promise(() => {})});
+        const harness = mountHarness({config: {service: services.deepseek, aiRequestTimeoutMs: 300_000},
+            sendMessage: () => new Promise(() => {})});
         const input = fakeElement('textarea');
         input.value = 'Hello';
         harness.fakeDocument.activeElement = input;
@@ -257,6 +284,80 @@ describe('input translation content feature', () => {
         expect(input.value).toBe('你好');
         const ids = harness.sendMessage.mock.calls.filter(([message]) => message.type === 'inputBoxTranslation').map(([message]) => message.clientRequestId);
         expect(new Set(ids).size).toBe(2);
+        harness.controller.abort();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each([
+        [{service: services.microsoft, inputBoxTranslationService: services.deepseek}, 120_000],
+        [{service: services.deepseek, aiRequestTimeoutMs: 300_000}, 300_000],
+    ] as const)('实际 AI 输入服务沿用冻结的 %j 预算，超过旧60秒仍可完成', async (config, budget) => {
+        vi.useFakeTimers();
+        let release!: (response: unknown) => void;
+        const harness = mountHarness({config, sendMessage: () => new Promise(resolve => {release = resolve;})});
+        const input = fakeElement('textarea');
+        input.value = 'Hello';
+        harness.fakeDocument.activeElement = input;
+        const running = harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
+        await vi.advanceTimersByTimeAsync(60_001);
+        expect(harness.sendMessage).toHaveBeenCalledOnce();
+        expect(harness.sendMessage).toHaveBeenCalledWith(expect.objectContaining({type: 'inputBoxTranslation', requestTimeoutMs: budget}));
+        expect(input.value).toBe('Hello');
+        release({success: true, translatedText: '你好'});
+        await running;
+        expect(input.value).toBe('你好');
+        harness.controller.abort();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('自定义 AI 截止多留一秒收口，取消后迟到结果不写入新草稿', async () => {
+        vi.useFakeTimers();
+        let release!: (response: unknown) => void;
+        const harness = mountHarness({config: {service: services.deepseek, aiRequestTimeoutMs: 75_000},
+            sendMessage: () => new Promise(resolve => {release = resolve;})});
+        const input = fakeElement('textarea');
+        input.value = 'Hello';
+        harness.fakeDocument.activeElement = input;
+        const running = harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
+        await vi.advanceTimersByTimeAsync(75_000);
+        expect(harness.sendMessage).toHaveBeenCalledOnce();
+        expect(harness.sendMessage).toHaveBeenCalledWith(expect.objectContaining({requestTimeoutMs: 75_000}));
+        await vi.advanceTimersByTimeAsync(1_000);
+        await running;
+        expect(harness.sendMessage).toHaveBeenLastCalledWith({type: 'fluentReadTranslationCancel',
+            clientRequestId: harness.sendMessage.mock.calls[0][0].clientRequestId});
+        input.value = '继续写新草稿';
+        release({success: true, translatedText: '迟到译文'});
+        await vi.advanceTimersByTimeAsync(0);
+        expect(input.value).toBe('继续写新草稿');
+        harness.controller.abort();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('AI 超时设置变更作废输入事务，机器服务忽略该设置，旧结果不覆盖新内容', async () => {
+        vi.useFakeTimers();
+        let generation = 0;
+        let release!: (response: unknown) => void;
+        const harness = mountHarness({config: {service: services.deepseek, aiRequestTimeoutMs: 120_000},
+            generation: () => generation, sendMessage: () => new Promise(resolve => {release = resolve;})});
+        const before = inputBoxTranslationConfigKey(harness.config);
+        const input = fakeElement('textarea');
+        input.value = 'Hello';
+        harness.fakeDocument.activeElement = input;
+        const running = harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
+        await vi.advanceTimersByTimeAsync(0);
+        harness.config.aiRequestTimeoutMs = 600_000;
+        expect(inputBoxTranslationConfigKey(harness.config)).not.toBe(before);
+        generation += 1;
+        harness.feature.invalidate();
+        await running;
+        input.value = '用户最新草稿';
+        release({success: true, translatedText: '旧译文'});
+        await vi.advanceTimersByTimeAsync(0);
+        expect(input.value).toBe('用户最新草稿');
+        expect(harness.sendMessage).toHaveBeenCalledWith(expect.objectContaining({requestTimeoutMs: 120_000}));
+        const machine = {...harness.config, inputBoxTranslationService: services.microsoft};
+        expect(inputBoxTranslationConfigKey(machine)).toBe(inputBoxTranslationConfigKey({...machine, aiRequestTimeoutMs: 10_000}));
         harness.controller.abort();
         expect(vi.getTimerCount()).toBe(0);
     });
@@ -579,6 +680,23 @@ describe('input translation content feature', () => {
         expect(isInputBoxTranslationEnabled({on: true, inputBoxTranslationTrigger: 'ctrl_enter'}, true)).toBe(false);
     });
 
+    it('组合成员连接更新使输入事务失效，成员凭据只进入安全摘要', () => {
+        const config: any = {on: true, inputBoxTranslationTrigger: 'ctrl_enter', inputBoxTranslationTarget: 'en', inputBoxTranslationService: 'composite:input',
+            compositeTranslationProviders: [{id: 'composite:input', name: '输入组合', strategy: 'sequential', services: ['google', 'deepseek'], timeoutMs: 12_000}],
+            token: {deepseek: 'synthetic-member-private'}, customBody: {}, model: {deepseek: 'fixture'},
+        };
+        const initial = inputBoxTranslationConfigKey(config);
+        expect(initial).not.toContain('synthetic-member-private');
+        config.token.openai = 'unrelated';
+        expect(inputBoxTranslationConfigKey(config)).toBe(initial);
+        for (const mutate of [() => {config.token.deepseek = 'changed';}, () => {config.customBody.google = '{"test":1}';},
+            () => {config.compositeTranslationProviders[0].services.reverse();}, () => {config.model.deepseek = 'changed';}]) {
+            const before = inputBoxTranslationConfigKey(config);
+            mutate();
+            expect(inputBoxTranslationConfigKey(config)).not.toBe(before);
+        }
+    });
+
     it('配置 key 只跟踪选中服务的模型、连接和凭据指纹', () => {
         const base: any = {
             on: true,
@@ -702,7 +820,7 @@ describe('input translation content feature', () => {
         input.value = original;
         harness.fakeDocument.activeElement = input;
         await harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
-        expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: original, targetLang: 'zh', clientRequestId: expect.any(String)});
+        expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: original, targetLang: 'zh', clientRequestId: expect.any(String), requestTimeoutMs: 45_000});
         expect(input.value).toBe(mode === 'append' ? `${original}\n你好` : `你好\n${original}`);
         await harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
         expect(harness.sendMessage).toHaveBeenCalledTimes(1);
@@ -799,6 +917,7 @@ describe('input translation content feature', () => {
             clientRequestId: expect.any(String),
             text: 'Hello',
             targetLang: 'zh',
+            requestTimeoutMs: 45_000,
         });
         expect(input.value).toBe('你好');
         expect(tooltipRecords.map(record => record.options.mode)).toEqual(['closed', 'closed']);
@@ -1660,7 +1779,7 @@ describe('input translation content feature', () => {
             release({success: true, translatedText: '你好'});
             await running;
             expect(harness.sendMessage).toHaveBeenCalledOnce();
-            expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: '当前请求原文', targetLang: 'zh', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u)});
+            expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: '当前请求原文', targetLang: 'zh', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u), requestTimeoutMs: 45_000});
             expect(input.value).toBe('你好');
             expect(harness.tooltipRecords.at(-1).ui.mounted.textContent).toContain('翻译成功');
 
@@ -1685,7 +1804,7 @@ describe('input translation content feature', () => {
             await harness.fakeDocument.emit('keydown', third);
             expect(third.preventDefault).toHaveBeenCalledOnce();
             expect(harness.sendMessage).toHaveBeenCalledTimes(2);
-            expect(harness.sendMessage).toHaveBeenLastCalledWith({type: 'inputBoxTranslation', text: '后续序列原文=', targetLang: 'zh', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u)});
+            expect(harness.sendMessage).toHaveBeenLastCalledWith({type: 'inputBoxTranslation', text: '后续序列原文=', targetLang: 'zh', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u), requestTimeoutMs: 45_000});
             expect(harness.sendMessage.mock.calls[1][0].clientRequestId).not.toBe(harness.sendMessage.mock.calls[0][0].clientRequestId);
             expect(input.value).toBe('你好');
             expect(pendingUnrelatedReads).toBe(0);
@@ -1713,7 +1832,7 @@ describe('input translation content feature', () => {
             const unownedReads = readText.mock.calls.length;
             await harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
             expect(harness.sendMessage).toHaveBeenCalledOnce();
-            expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: '触发前的最新草稿', targetLang: 'zh', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u)});
+            expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: '触发前的最新草稿', targetLang: 'zh', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u), requestTimeoutMs: 45_000});
             expect(text).toBe('你好');
             const restore = harness.tooltipRecords.at(-1).ui.mounted.children.at(-1).listeners.get('click')[0];
             text = '完成后用户继续编辑';
