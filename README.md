@@ -67,7 +67,9 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Use `pnpm build` to build the Chrome extension and `pnpm zip` to generate both its offline `-chrome.zip` (fixed public key and ID) and store-upload `-chrome-store.zip` (without `key`). Install the offline package manually; upload only the store package to Chrome Web Store. Use `pnpm build:firefox` to build the Firefox extension, `pnpm zip:firefox` to generate its installation and review-source ZIPs, `pnpm zip:edge` to generate the Microsoft Edge Add-ons ZIP (the Chrome offline ZIP carries a manifest `key` that the Edge store rejects), `pnpm compile` for type checking, and `pnpm docs:build` to build the website. The review-source ZIP includes the extension build inputs; website assets, test evidence, and other distribution targets are omitted. See [architecture](./docs/architecture.md) and [testing](./docs/testing.md) for project conventions.
+Use `pnpm build` to build the Chrome extension and `pnpm zip` to generate one `-chrome.zip`, preserving its public key, fixed extension ID, and Google OAuth configuration. Use the same ZIP for manual installation and preparation for an update to the existing Chrome Web Store item. Packaging removes the obsolete `-chrome-store.zip` for the same version. See [extension identity and packages](./docs/maintainers/extension-identity-and-packages.md) for details.
+
+Use `pnpm build:firefox` to build the Firefox extension, `pnpm zip:firefox` to generate its installation and review-source ZIPs, and `pnpm zip:edge` to generate the separate Microsoft Edge Add-ons ZIP without the Chrome `key`. The review-source ZIP includes the extension build inputs; website assets, test evidence, and other distribution targets are omitted. Use `pnpm compile` for type checking and `pnpm docs:build` to build the website. See [architecture](./docs/architecture.md) and [testing](./docs/testing.md) for project conventions.
 
 Run `pnpm storybook` to explore the real Vue components and interface themes locally. See the [design system guide](./docs/en/guide/design-system.md). Use `pnpm docs:build:site` to build the documentation with the component explorer.
 
