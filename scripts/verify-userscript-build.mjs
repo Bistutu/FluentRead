@@ -120,10 +120,14 @@ const artifactBytes = Buffer.byteLength(source);
 // 同依赖独立主线 573890c33 为 2,074,383，候选为 2,080,438；
 // 利用原余量后按既有 1 KB 步长最小增加 4 KB，余 562 字节，保留所有资源与执行校验。
 // 五种已发布远程词典保持原摘要；新划选文案随注册补齐。对照见 section-sweep-selection-20261014/userscript-size.json。
+// PR #971 的 flex/grid 原文槽判定：同依赖独立主线 525108e86 为 2,080,966 字节，
+// 集成产物为 2,081,039，增加 73 字节（0.0035%）；预算增加 100 字节，余 61 字节。
 // 共享配置草稿、模型偏好清理与翻译服务边界整合：同 Node/锁依赖独立 main 6537d3de830a
 // 为 2,080,438 字节，2addf19c75fc 为 2,082,862（增 2,424，0.1165%）。
 // 按既有 1 KB 步长最小增加 2 KB，余 138；全部断言保留，见 architecture-quality-20261014/userscript-size.json。
-const MAX_USERSCRIPT_BYTES = 2_083_000;
+// 再整合 e806feff0035：同 Node/锁依赖独立 main 为 2,081,039，候选为 2,083,463，仍增加 2,424（0.1165%）。
+// 沿用主线新增的 100 字节步长，预算最小增加 2,400 字节、余 37；完整新旧对照保留在同一报告。
+const MAX_USERSCRIPT_BYTES = 2_083_500;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

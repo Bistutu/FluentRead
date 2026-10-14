@@ -1,7 +1,7 @@
 /**
  * @file src/features/image-translation/background/handlers.ts
  * 文件职责：定义跨域图片读取、整图翻译、文本批译、阶段进度、取消和语言包下载后台消息，并对来自页面或扩展 UI 的未知输入执行严格校验。
- * 主要内容：按设置选择单图 OCR，漫画俄语和韩语要求既有语言包，其他漫画走 PaddleOCR；包含消息解析、OCR 语言白名单、阶段通知和取消预算，待启动取消只保留尚未消费的有界 ID，避免旧历史误删重复 ID 的新取消；逐包下载排队、去重、部分成功保存和跨页状态查询；图片文本冻结目标语言，统一过滤同目标正文与无需翻译的标识，保留显式术语覆盖；去重批量和有界并发翻译同时保留原行映射、可信页面范围与术语版本。
+ * 主要内容：按设置选择单图 OCR，漫画俄语和韩语要求既有语言包，其他漫画走 PaddleOCR；包含消息解析、OCR 语言白名单、阶段通知和取消预算，待启动取消只保留尚未消费的有界 ID，避免旧历史误删重复 ID 的新取消；逐包下载排队、去重、部分成功保存和跨页状态查询；图片文本冻结目标语言，统一过滤同目标正文与无需翻译的标识，保留显式术语覆盖，附加内部策略将有效原样响应视为成功；去重批量和有界并发翻译同时保留原行映射、可信页面范围与术语版本。
  * 模块边界：本文件只负责协议入口与用例编排，不直接运行 Tesseract、Canvas、网络 fetch 或 Offscreen；图像读取和运算能力均由 Offscreen adapter 与 services 实现并由 app 注入。
  */
 import {normalizeRemoteImageUrl} from '../services/remoteImage';
@@ -24,6 +24,7 @@ import {
     attachTranslationGlossaryContext,
     getTranslationGlossaryContext,
     markTranslationRemainingBudget,
+    allowUnchangedTranslationResult,
 } from '@/src/services/translation/requestSnapshot';
 
 export const IMAGE_TRANSLATE_MESSAGE_TYPE = 'fluentReadImageTranslate' as const;
@@ -355,7 +356,7 @@ async function translateImageTexts(
         return remaining;
     };
     const controlledRequest = <T extends ImageTextTranslationRequest>(request: T) => {
-        const controlled = attachTranslationRequestControl(markTranslationRemainingBudget(request), {
+        const controlled = attachTranslationRequestControl(allowUnchangedTranslationResult(markTranslationRemainingBudget(request)), {
             signal: controller.signal, ownershipKey: `image:${options.requestId}`,
         });
         return glossaryContext ? attachTranslationGlossaryContext(controlled, glossaryContext) : controlled;

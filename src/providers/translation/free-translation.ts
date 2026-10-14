@@ -1,7 +1,7 @@
 /**
  * @file src/providers/translation/free-translation.ts
  * 文件职责：按冻结的用户设置编排免费翻译，并接入有界请求、取消和跨段冷却。
- * 主要内容：冻结匿名请求配置和共享预算；文档合批保留完整混合池，原生候选消费有界全组、其他候选只消费首段并继续余槽，普通调用沿用原分组条件和冻结的服务合批偏好；逐槽验证术语、文档标签、语言和原文回显，保持线路健康、间隔、取消及真实字符统计；向免费池与子服务传递真实在途租约，使取消后的迟到传输继续受候选、总池和后台并发约束；单服务检查不换线，跳过多线路中已确认不支持的语言方向。
+ * 主要内容：冻结匿名请求配置和共享预算；文档合批保留完整混合池，原生候选消费有界全组、其他候选只消费首段并继续余槽，普通调用沿用原分组条件和冻结的服务合批偏好；逐槽验证术语、文档标签、语言和原文回显，图片文字的内部策略接受有效原样结果且不继续换线，保持线路健康、间隔、取消及真实字符统计；向免费池与子服务传递真实在途租约，使取消后的迟到传输继续受候选、总池和后台并发约束；单服务检查不换线，跳过多线路中已确认不支持的语言方向。
  * 模块边界：只装配已有 provider；健康状态与并发调度由 freeFallback 服务持有。
  */
 import {sha256Hex} from '@/src/shared/function/sha256';
@@ -32,7 +32,8 @@ import {
 import {abortErrorFromSignal} from '@/src/platform/http/runtime';
 import {freeTranslationHealthStorage} from '@/src/platform/storage/freeTranslationHealthStorage';
 import {createFreeFallbackRunner, UntranslatedFreeResultError, WrongLanguageFreeResultError, type FreeFallbackCandidate, type FreeFallbackLease} from '@/src/services/translation/freeFallback';
-import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
+import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse, isUnchangedTranslationResponse} from '@/src/core/translation/resultValidation';
+import {hasTranslationContent} from '@/src/core/translation/result';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {calculateFreeTranslationWeightSnapshot, type FreeTranslationWeightSnapshot} from '@/src/services/translation/freeWeights';
 import {
@@ -42,6 +43,7 @@ import {
     requireTranslationProviderConfig,
     getTranslationRequestScheduler,
     reportTranslationRoute,
+    isUnchangedTranslationResultAllowed,
 } from '@/src/services/translation/requestSnapshot';
 import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import type {TranslationProviderConfigSnapshot} from '@/src/services/translation/types';
@@ -94,6 +96,8 @@ async function translateProviderText(id: FreeProviderId, message: TranslationPro
     const translated = id === services.google || id === services.microsoft ? await providerTranslators[id](request, lease)
         : await providerTranslators[id](request);
     const result = validateProtectedResult(message.origin, translated, message);
+    if (typeof result === 'string' && hasTranslationContent(result)
+        && isUnchangedTranslationResultAllowed(message) && isUnchangedTranslationResponse(message.origin, result)) return result;
     if (typeof result === 'string' && isLikelyUntranslatedResponse(message.origin, result, message.targetLanguage!)) {
         throw new UntranslatedFreeResultError();
     }
@@ -133,8 +137,10 @@ async function translateNativeProviderGroup(
     const translations = sources.map((source, index) => {
         const value = validateProtectedResult(source, result[index], message);
         if (typeof value !== 'string' || !value.trim()) throw new InvalidFreeGroupResultError();
-        if (isLikelyUntranslatedResponse(source, value, message.targetLanguage!)) throw new UntranslatedFreeResultError();
-        if (isClearlyWrongLanguageResponse(source, value, message.targetLanguage!)) throw new WrongLanguageFreeResultError();
+        if (!isUnchangedTranslationResultAllowed(message) || !isUnchangedTranslationResponse(source, value)) {
+            if (isLikelyUntranslatedResponse(source, value, message.targetLanguage!)) throw new UntranslatedFreeResultError();
+            if (isClearlyWrongLanguageResponse(source, value, message.targetLanguage!)) throw new WrongLanguageFreeResultError();
+        }
         // provider 的边缘空白不能吞掉源槽缩进；纯空白槽已在 owner 本地保留。
         const content = source.trim();
         const prefix = source.slice(0, source.indexOf(content));

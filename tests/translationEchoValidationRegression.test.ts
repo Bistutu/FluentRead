@@ -5,7 +5,8 @@
  * 模块边界：不运行浏览器、不调用网络或真实存储；只替换配置存储与纯槽协议出口，不修改语言识别或展示比较规则。
  */
 import {describe, expect, it, vi} from 'vitest';
-import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
+import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse, isUnchangedTranslationResponse} from '@/src/core/translation/resultValidation';
+import {allowUnchangedTranslationResult} from '@/src/services/translation/requestSnapshot';
 import {createTranslationBroker} from '@/src/services/translation/broker';
 import type {TranslationConfigSource, TranslationProvider} from '@/src/services/translation/types';
 import {identifyTextLanguage} from '@/src/core/language/identify';
@@ -126,6 +127,19 @@ function createHarness(targetLanguage = 'zh-Hans') {
 }
 
 describe('保守回显比较沿用原文已有的外语证据', () => {
+    it.each(echoVariants)('%s 的原文包装仍被图片策略接受，首次成功并缓存', async (_label, origin, result) => {
+        expect(isUnchangedTranslationResponse(origin, result)).toBe(true);
+        const harness = createHarness(); harness.provider.mockResolvedValue(result);
+        await expect(harness.broker.translateWithCache(allowUnchangedTranslationResult({origin}))).resolves.toBe(result);
+        await expect(harness.broker.translateWithCache(allowUnchangedTranslationResult({origin}))).resolves.toBe(result);
+        expect(harness.provider).toHaveBeenCalledOnce();
+    });
+
+    it.each([['', ''], ['Text', ' '], ['\u200b', ''], ['!', '?'], ['Addition (', ')'], ['C++', 'C']])(
+        '空白、仅有包装或字词变化不能冒充图片原样成功：%j → %j', (origin, result) => {
+            expect(isUnchangedTranslationResponse(origin, result)).toBe(false);
+        },
+    );
     it.each(echoVariants)('%s 只变边界或 U+200B 时拒绝回显', (_label, origin, result) => {
         // 对照证明新增比较没有引入新的外语识别规则。
         expect(isLikelyUntranslatedResponse(origin, origin, 'zh-Hans')).toBe(true);

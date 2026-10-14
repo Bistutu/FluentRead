@@ -3,6 +3,7 @@
  * @file scripts/testing/run-image-translation-flow-test.cjs
  * 图片翻译生产产物回归：真实 Tesseract、可信点击、与当前 Google 批量协议一致的确定性翻译 transport。
  * 所有用例复用同一自动临时配置，由 focus-safe helper 保持正常尺寸、后台且不抢焦点。
+ * --unchanged-fixture 仅验证原样响应成功、保留原图、文字阅读与恢复后缓存复用。
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -28,6 +29,8 @@ const recoveryOnly = process.argv.includes('--recovery-only');
 const liveTranslation = process.argv.includes('--live-translation');
 const multilingual = process.argv.includes('--multilingual');
 const harFixture = process.argv.includes('--har-fixture');
+const unchangedFixture = process.argv.includes('--unchanged-fixture');
+if (unchangedFixture && liveTranslation) throw new Error('--unchanged-fixture requires deterministic transport');
 const paragraphImage = arg('paragraph-image', null);
 const denseParagraphs = process.argv.includes('--dense-paragraphs');
 const manyLineTranslation = process.argv.includes('--many-line-translation');
@@ -422,7 +425,7 @@ async function verifyGeometryCases({worker, ui, wait, shot}) {
         });
         if (!response.success) throw new Error(response.error);
     }, {xSurface, xLightbox});
-    await worker.evaluate(({liveTranslation, paragraphFixture, xLightbox, manyLineTranslation}) => {
+    await worker.evaluate(({liveTranslation, paragraphFixture, xLightbox, manyLineTranslation, unchangedFixture}) => {
         const originalFetch = globalThis.fetch.bind(globalThis);
         // Keep the real OCR path intact while giving the loading controls enough time to sample.
         const fixture = globalThis.__imageFixture = {requests: [], endpointHosts: [], rejectPrimaryXsrf: false, operationIds: [], delay: 1800, replayProgress: false, progressTimer: null, progressRequestId: null};
@@ -464,6 +467,7 @@ async function verifyGeometryCases({worker, ui, wait, shot}) {
             chrome.runtime.onMessage.removeListener(fixtureListener);
         };
         const translateOrigin = origin => {
+                if (unchangedFixture) return origin;
                 if (manyLineTranslation) return Array(150_000).fill('a').join('\n');
                 return paragraphFixture ? (() => {
                     if (origin.startsWith('Calculate the best filament grouping')) {
@@ -533,7 +537,7 @@ async function verifyGeometryCases({worker, ui, wait, shot}) {
             // OCR worker、wasm 和语言包仍沿真实生产路径加载，不 mock Tesseract。
             return originalFetch(input, options);
         };
-    }, {liveTranslation, paragraphFixture: Boolean(paragraphImage), xLightbox, manyLineTranslation});
+    }, {liveTranslation, paragraphFixture: Boolean(paragraphImage), xLightbox, manyLineTranslation, unchangedFixture});
     if (harFixture) {
         if (liveTranslation) throw new Error('--har-fixture 只用于确定性响应验证');
         currentCase = 'HAR identifier filtering and Google XSRF cooldown';
@@ -629,6 +633,43 @@ async function verifyGeometryCases({worker, ui, wait, shot}) {
         report.screenshots.push(file);
     }
     const image = page.locator('#sample');
+    if (unchangedFixture) {
+        report.scope = 'real Tesseract OCR + unchanged deterministic Google response + production image success and cache reuse';
+        currentCase = 'unchanged image response succeeds';
+        await popup.evaluate(async () => {
+            const response = await chrome.runtime.sendMessage({type:'fluentReadImageOcrDownload',languages:['eng']});
+            if (!response.success) throw new Error(response.error);
+        });
+        const originalSource = await image.getAttribute('src');
+        await image.hover();
+        await wait(() => ui("return !!this.querySelector('.fr-image-controls')"));
+        await click('翻译');
+        await wait(() => ui("return this.querySelector('.fr-image-controls')?.dataset.phase==='translated'"), 300000);
+        assert.equal(await ui("return this.querySelector('.fluent-read-image-translation-bitmap')?.getAttribute('src')"), originalSource);
+        assert.equal(await image.getAttribute('src'), originalSource);
+        report.requests = await worker.evaluate(() => globalThis.__imageFixture.requests);
+        assert.ok(report.requests.length > 0);
+        assert.equal(new Set(report.requests).size, report.requests.length, '原样文字不能重复请求');
+        report.cases.push('unchanged OCR text succeeds without retry or replacing source pixels');
+        await click('文字');
+        report.readerText = await ui("return this.querySelector('.fr-image-reader-body').textContent");
+        assert.match(report.readerText, /Welcome to FluentRead/);
+        assert.match(report.readerText, /Translate images with one click/);
+        assert.match(report.readerText, /Read every word in your language/);
+        await shot('01-unchanged-success-reader');
+        report.cases.push('successful unchanged result keeps complete recognized text readable');
+        await click('原图');
+        await wait(() => ui("return this.querySelector('.fr-image-controls')?.dataset.phase==='idle'"));
+        await image.hover(); await click('翻译');
+        await wait(() => ui("return this.querySelector('.fr-image-controls')?.dataset.phase==='translated'"));
+        assert.deepEqual(await worker.evaluate(() => globalThis.__imageFixture.requests), report.requests);
+        assert.equal(await image.getAttribute('src'), originalSource);
+        assert.equal(await ui("return this.querySelector('.fluent-read-image-translation-bitmap')?.getAttribute('src')"), originalSource);
+        report.cases.push('restore and repeated translation reuse unchanged success without additional requests');
+        await shot('02-unchanged-cached-success');
+        report.success = true;
+        return;
+    }
     if (recoveryOnly) {
         report.scope = 'real Tesseract OCR + real local model failure routing + recovery settings + translated controls';
         let sequence = 2;

@@ -1,7 +1,7 @@
 /**
  * @file src/services/translation/requestIdentity.ts
  * 文件职责：根据已冻结的请求配置构建翻译结果缓存身份，并统一模型、实际端点与上下文资格的纯策略。
- * 主要内容：维护单条、文本槽、原生批次与 AI 多段的身份维度，按实际消费的端点、合批偏好、术语、文档保护、提示词和自动识别样本隔离缓存；通过注入端口复用既有模型和端点解析。
+ * 主要内容：维护单条、文本槽、原生批次与 AI 多段的身份维度，按实际消费的端点、合批偏好、图片原样成功策略、术语、文档保护、提示词和自动识别样本隔离缓存；通过注入端口复用既有模型和端点解析。
  * 模块边界：不读取全局配置、不发起 provider 请求、不操作缓存仓库或在途去重，也不持有取消、调度或统计状态；broker 使用本模块生成结果身份，传输和 pending 生命周期仍由 broker 负责。
  */
 import type {TranslationBrokerDependencies, TranslationProviderConfigSnapshot} from './types';
@@ -24,6 +24,8 @@ export interface TranslationRequestIdentityContext {
     readonly enableAIContext: boolean;
     readonly nativeBatchEnabled: boolean;
     readonly thinking: boolean;
+    /** 仅受信图片入口允许有效原样结果；普通请求缺省仍拒绝外语回显。 */
+    readonly acceptUnchangedResult?: boolean;
 }
 
 type TranslationIdentityPorts = Pick<TranslationBrokerDependencies,
@@ -123,6 +125,7 @@ export function createTranslationIdentityPolicy(deps: TranslationIdentityPorts) 
             sourceLanguage,
             targetLanguage,
             service,
+            ...(execution.acceptUnchangedResult ? {unchangedResultPolicy: 1} : {}),
             ...(supportsNativeTranslationBatch(service) ? {enableNativeBatch: execution.nativeBatchEnabled} : {}),
             model: getSelectedModel(current, service, modelOverride),
             endpoint: getProviderEndpoint(current, service),
