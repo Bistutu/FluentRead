@@ -53,10 +53,10 @@ const CHATGPT_PLAN_ERROR_MESSAGES: Record<string, string> = {
 };
 export function normalizeChatGPTPlanErrorCode(code: unknown): string {
     if (typeof code !== 'string') return 'invalid_response';
-    if (code === 'subscription_sharing_usage_limit_exceeded' || code === 'subscription_sharing_usage_unavailable' || code === 'usage_limit') return 'quota_exceeded';
+    if (['subscription_sharing_usage_limit_exceeded', 'subscription_sharing_usage_unavailable', 'usage_limit', 'insufficient_quota'].includes(code)) return 'quota_exceeded';
     if (['pairing_required', 'invalid_pairing', 'invalid_pairing_code', 'pairing_expired'].includes(code)) return 'pairing_failed';
     if (['plan_usage_disabled', 'insufficient_scope', 'chatgpt_plan_disabled', 'plan_permission_required'].includes(code)) return 'sharing_disabled';
-    if (['login_required', 'invalid_grant', 'unauthorized', 'sign_in_required'].includes(code)) return 'not_connected';
+    if (['login_required', 'invalid_grant', 'unauthorized', 'sign_in_required', 'invalid_token', 'token_expired', 'invalid_refresh_token', 'refresh_token_expired', 'refresh_token_invalidated', 'refresh_token_reused', 'authentication_error', 'invalid_api_key'].includes(code)) return 'not_connected';
     if (code === 'access_denied' || code === 'auth_cancelled') return 'oauth_cancelled';
     if (code === 'auth_failed' || code === 'auth_expired') return 'oauth_failed';
     return Object.hasOwn(CHATGPT_PLAN_ERROR_MESSAGES, code) ? code : 'invalid_response';

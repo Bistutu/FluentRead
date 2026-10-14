@@ -12,7 +12,7 @@ FluentRead 可以通过官方 **Sign in with ChatGPT** 授权，使用符合资�
 
 官方授权流程要求本机 HTTP 回调。浏览器扩展不能监听 TCP 端口，因此需要一起运行 FluentRead 的本机助手。
 
-1. 安装 **Node.js 20 或更新版本**，下载 [FluentRead 源码](https://github.com/Bistutu/FluentRead)，解压后在仓库目录打开终端。
+1. 安装 **Node.js 20 或更新版本**，使用已交付且包含 `integrations/chatgpt-plan/cli.mjs` 的 FluentRead 源码。本地开发版直接使用当前工作树，在源码仓库根目录打开终端；包含此助手的版本发布后，也可从 [FluentRead 仓库](https://github.com/Bistutu/FluentRead) 下载对应源码。
 2. 运行：
 
    ```sh

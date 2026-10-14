@@ -12,7 +12,7 @@ This integration is for open-source tools and locally running personal projects.
 
 The OAuth flow requires a loopback HTTP callback. A browser extension cannot listen on a TCP port, so run the included local helper:
 
-1. Install Node.js 20 or newer and download the [FluentRead repository](https://github.com/Bistutu/FluentRead).
+1. Install Node.js 20 or newer and use the delivered FluentRead source containing `integrations/chatgpt-plan/cli.mjs`. For a local development version, use the current worktree and open a terminal at its repository root. After a version containing this helper is published, its source can also be downloaded from the [FluentRead repository](https://github.com/Bistutu/FluentRead).
 2. From the repository directory, run `node integrations/chatgpt-plan/cli.mjs`. Keep the terminal open while using this provider. The helper listens only on `127.0.0.1:18743`.
 3. Open FluentRead settings → Translation services → ChatGPT plan. Enter the one-time pairing code printed by the helper. It expires after five minutes; enter `pair` in the helper terminal to obtain a new code.
 4. Choose **Continue with ChatGPT**, sign in on the official page, and authorize plan usage. Return to settings when finished.

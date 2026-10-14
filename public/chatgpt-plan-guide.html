@@ -16,8 +16,9 @@
 <body>
   <h1>使用 ChatGPT 套餐</h1>
   <p>使用符合资格的 ChatGPT Plus 或 Pro 账户授权，无需 API Key。翻译、阅读讲解和写作会使用你的套餐额度，可用模型及限额由账户决定。</p>
+  <p>公开接入适用于开源工具及本地个人项目；付费或远程托管应用需先向 OpenAI 申请访问权限。</p>
   <ol>
-    <li>安装 Node.js 20 或更新版本，取得包含 <code>integrations/chatgpt-plan</code> 的 FluentRead 源码。</li>
+    <li>安装 Node.js 20 或更新版本，使用已交付且包含 <code>integrations/chatgpt-plan/cli.mjs</code> 的 FluentRead 源码；本地开发版可直接使用当前工作树。</li>
     <li>在源码目录打开终端，运行 <code>node integrations/chatgpt-plan/cli.mjs</code>，并保持终端打开。助手只监听本机 <code>127.0.0.1:18743</code>。</li>
     <li>在“翻译服务 → ChatGPT 套餐”输入终端显示的配对码。配对码 5 分钟有效；过期后在终端输入 <code>pair</code> 生成新码。</li>
     <li>点击 <strong>Continue with ChatGPT</strong>，在官方页面完成登录并允许套餐使用；返回 FluentRead 设置页。</li>
@@ -32,7 +33,8 @@
   <p>必要的文本和上下文会随模型请求发送给 OpenAI，授权不会读取你的 ChatGPT 历史对话。完整结果以 <code>response.completed</code> 为准，失败或断流不会提交为成功。</p>
   <p><a href="https://developers.openai.com/cookbook/articles/sign-in-with-chatgpt" target="_blank" rel="noreferrer">OpenAI 官方接入说明</a> · <a href="https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations" target="_blank" rel="noreferrer">套餐协议限制</a></p>
   <h2>English setup</h2>
-  <p>Use Node.js 20+ and a FluentRead source version containing <code>integrations/chatgpt-plan</code>. Run <code>node integrations/chatgpt-plan/cli.mjs</code> from that directory and keep the terminal open. In settings → ChatGPT Plan, enter the one-time pairing code, choose Continue with ChatGPT, authorize an eligible Plus or Pro account, and select a model from its current catalog.</p>
+  <p>Use Node.js 20+ and the delivered FluentRead source containing <code>integrations/chatgpt-plan/cli.mjs</code>; a local development version can use the current worktree. Run <code>node integrations/chatgpt-plan/cli.mjs</code> from the repository root and keep the terminal open. The helper listens only on <code>127.0.0.1:18743</code>. In settings → ChatGPT Plan, enter the one-time pairing code, choose Continue with ChatGPT, authorize an eligible Plus or Pro account, and select a model from its current catalog.</p>
+  <p>The public integration is for open-source tools and local personal projects. Paid or remotely hosted apps require access approval from OpenAI. Switching accounts starts a new registration; a failed or cancelled authorization preserves the existing connection.</p>
   <p>OpenAI tokens stay in the helper’s private local directory. Pairing is separate and survives restarts. Neither credential appears in configuration exports or cloud backup. Manage plan usage in ChatGPT settings. Sign out to remove local OAuth credentials; if remote revocation is unconfirmed, remove app access in ChatGPT settings.</p>
 </body>
 </html>

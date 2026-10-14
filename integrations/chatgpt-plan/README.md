@@ -2,7 +2,7 @@
 
 FluentRead 的浏览器扩展通过此助手使用官方 Sign in with ChatGPT OAuth。浏览器扩展无法监听官方要求的 `127.0.0.1` TCP 回调；助手在本机完成登录、保存和续期 OpenAI 令牌，并向官方公共 Responses API 发起请求。
 
-需要 Node.js 20 或更新版本，无需安装新依赖或配置 API Key：
+需要 Node.js 20 或更新版本，无需安装新依赖或配置 API Key。从已交付且包含此助手的 FluentRead 源码仓库根目录运行；本地开发版可直接使用当前工作树：
 
 ```sh
 node integrations/chatgpt-plan/cli.mjs

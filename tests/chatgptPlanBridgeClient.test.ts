@@ -140,7 +140,11 @@ describe('ChatGPT 本机助手端口', () => {
         expect(() => readChatGPTPlanStatus({connected: 1, sharing: false})).toThrow(ChatGPTPlanError);
         expect(readChatGPTPlanStatus({connected: false, sharing: false, error: 'login_required', account: {name: 'x'.repeat(301), email: 'x'.repeat(321)}})).toEqual({connected: false, sharing: false, authPending: false, error: 'not_connected', account: {name: undefined, email: undefined}});
         expect(readChatGPTPlanStatus({connected: true, sharing: false})).toEqual({connected: true, sharing: false, authPending: false});
-        for (const [code, expected] of [['invalid_pairing_code', 'pairing_failed'], ['insufficient_scope', 'sharing_disabled'], ['invalid_grant', 'not_connected'], ['subscription_sharing_usage_unavailable', 'quota_exceeded'], ['oauth_cancelled', 'oauth_cancelled'], ['unknown', 'invalid_response'], [null, 'invalid_response']]) expect(normalizeChatGPTPlanErrorCode(code)).toBe(expected);
+        for (const [code, expected] of [['invalid_pairing_code', 'pairing_failed'], ['insufficient_scope', 'sharing_disabled'], ['invalid_grant', 'not_connected'], ['subscription_sharing_usage_unavailable', 'quota_exceeded'], ['insufficient_quota', 'quota_exceeded'], ['oauth_cancelled', 'oauth_cancelled'], ['unknown', 'invalid_response'], [null, 'invalid_response']]) expect(normalizeChatGPTPlanErrorCode(code)).toBe(expected);
+        for (const code of ['invalid_token', 'token_expired', 'invalid_refresh_token', 'refresh_token_expired', 'refresh_token_invalidated', 'refresh_token_reused', 'authentication_error', 'invalid_api_key']) {
+            const normalized = normalizeChatGPTPlanErrorCode(code);
+            expect(new ChatGPTPlanError(normalized)).toMatchObject({code: 'not_connected', kind: 'authentication', retryable: false});
+        }
     });
     it('不合作的metadata transport超时后也立即结束，迟到响应不得作为成功提交', async () => {
         vi.useFakeTimers();const fixture = createFixture(), delayed = pending<Response>();fixture.fetch.mockReturnValueOnce(delayed.promise);
