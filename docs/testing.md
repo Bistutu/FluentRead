@@ -1,5 +1,11 @@
 # 测试与回归
 
+## 网页操作提示
+
+网页提示按每条内容独立收缩：小品牌图标、具体结果和关闭按钮一行优先显示，不再用「流畅阅读 · 操作完成」占一行标题。品牌和状态仍供辅助技术读取；长文自动换行，缺少凭据时保留设置入口，关闭按钮至少 28px。提示外的留白允许继续点击网页，悬停或键盘聚焦暂停自动消失。
+
+`pnpm test tests/pageNotice.test.ts tests/informationHighlightContent.test.ts` 验证既有通知生命周期与智能高亮反馈。生产构建后使用 `node scripts/testing/run-page-notice-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <证据目录>`，在临时 Edge 后台可见窗口验证短提示尺寸、长文与设置操作、深色及窄屏、关闭/暂停和提示旁点击穿透，保存截图与布局报告。浏览器报告区分实际生产入口与长文布局夹具，不代表 Firefox 实机验收。
+
 ## 翻译结果与浏览器清理边界
 
 `translationEchoValidationRegression` 与 `free-translation` 覆盖中文目标下长篇 Latin 外语结果的拒绝、既有线路降级、批量槽顺序、旧缓存失效、取消与共享请求期限。判定需要原文和结果都有充分的外语证据；中文结果、专名、技术标识、短句与不确定语言保持保守处理。拒绝错语种不等于对译文质量作完整评估。
