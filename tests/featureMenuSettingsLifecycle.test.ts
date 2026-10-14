@@ -90,6 +90,17 @@ async function mountFeature(config = runtime.reactive(new Config()), values: Rec
 async function mountMenu(config: Config = runtime.reactive(Object.assign(new Config(), {disableImageTranslator: false, disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual'})), values: Record<string, unknown> = {}) {await mount(menuPath, {config, ...values})}
 
 describe('功能服务分配实际缓存模板归属', () => {
+  it('旧套餐默认继承使用目录名称，不重新开放选项且父级标签优先', async () => {
+    const config = runtime.reactive(new Config());config.service = 'chatgptPlan';config.model.chatgptPlan = 'saved-account-model';await mountFeature(config)
+    const before = JSON.stringify(config)
+    expect(state.serviceLabel(config.service)).toBe('ChatGPT 套餐')
+    expect(featureControl('hover').getAttribute('data-model-value')).toBe('')
+    expect(state.rows.find((row: any) => row.feature.id === 'hover').choices.some((item: any) => item.value === 'chatgptPlan')).toBe(false)
+    eventOf(featureControl('hover'))('chatgptPlan');expect(config.hoverTranslationService).toBe('');expect(JSON.stringify(config)).toBe(before)
+    props.serviceOptions = services.map(item => item.value === 'openai' ? {...item, label: '父级自定义显示名称'} : item);await settle()
+    expect(state.serviceLabel('openai')).toBe('父级自定义显示名称');expect(state.serviceLabel('unknown-saved-service')).toBe('unknown-saved-service')
+    expect(JSON.stringify(config)).toBe(before);expect(updates).not.toHaveBeenCalled()
+  })
   it('B站可分配给阅读并显示固定模型免密钥，写作选择事件不能越过能力限制', async () => {
     const config = runtime.reactive(new Config()); config.service = 'openai'; config.harness.model = 'unused-reader'
     await mountFeature(config, {serviceOptions: [...services, {value: 'bilibili', label: 'B站翻译'}]})

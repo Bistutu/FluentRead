@@ -146,6 +146,16 @@ async function runPublicAvailability({context, worker, optionsUrl, open, send, r
   };
   const general = await open(`${optionsUrl}#settings-general`);await general.getByTestId('default-translation-service-card').waitFor();
   await assertSelect(general, '默认网页翻译服务', 'public-general-picker-no-new-chatgpt');
+  const inheritedHover = general.locator('[data-feature-service="hover"]');
+  assert.equal((await readConfig()).hoverTranslationService, '');
+  assert.match(await inheritedHover.innerText(), /跟随默认.*ChatGPT 套餐/u);
+  assert.doesNotMatch(await inheritedHover.innerText(), /chatgptPlan/u);
+  await inheritedHover.getByRole('combobox').click();
+  const followDefault = general.getByRole('option', {name: '跟随默认 · ChatGPT 套餐', exact: true});
+  await followDefault.waitFor({state: 'visible'});assert.equal(await followDefault.isDisabled(), false);
+  await screenshot(general, 'public-general-inherits-named-chatgpt');await followDefault.click();
+  assert.equal((await readConfig()).hoverTranslationService, '');assert.deepEqual(readSaved(await readConfig()), saved);
+  record('public-general-inheritance-label-and-empty-value', {label: '跟随默认 · ChatGPT 套餐', inheritedValue: ''});
   const reading = await open(`${optionsUrl}#settings-selection`);
   await reading.getByRole('combobox', {name: '学习讲解服务', exact: true}).waitFor();
   await assertSelect(reading, '学习讲解服务', 'public-reading-picker-no-new-chatgpt');
