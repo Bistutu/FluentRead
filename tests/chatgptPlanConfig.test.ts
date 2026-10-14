@@ -5,8 +5,16 @@ import {prepareConfigForExport, prepareConfigForImport} from '@/src/core/config/
 import {createTranslationProviderConfigSnapshot} from '@/src/services/translation/requestSnapshot';
 import {translateServiceLabel} from '@/src/core/i18n/serviceLabels';
 import {isUserscriptServiceSupported, normalizeUserscriptConfig} from '@/userscript/initialize';
+import {isChatGPTPlanDevelopmentEnabled, chatGPTPlanDevelopmentEnabled} from '@/src/platform/chatgpt-plan/buildMode';
 
 describe('ChatGPT 套餐动态模型配置', () => {
+    it('本机实验必须同时为开发构建和明确开关，公开构建不能被环境开关开放', () => {
+        expect(chatGPTPlanDevelopmentEnabled).toBe(false);
+        for (const env of [undefined, {}, {DEV: false, WXT_CHATGPT_PLAN_LOCAL_DEVELOPMENT: 'true'}, {DEV: true}, {DEV: true, WXT_CHATGPT_PLAN_LOCAL_DEVELOPMENT: true}, {DEV: true, WXT_CHATGPT_PLAN_LOCAL_DEVELOPMENT: 'false'}]) {
+            expect(isChatGPTPlanDevelopmentEnabled(env)).toBe(false);
+        }
+        expect(isChatGPTPlanDevelopmentEnabled({DEV: true, WXT_CHATGPT_PLAN_LOCAL_DEVELOPMENT: 'true'})).toBe(true);
+    });
     it('初始配置不猜套餐默认模型，未知账户slug在保存与再次规范化后仍是直接编号', () => {
         expect(new Config().model[services.chatgptPlan]).toBeUndefined();
         expect(new Config().documentModel[services.chatgptPlan]).toBeUndefined();

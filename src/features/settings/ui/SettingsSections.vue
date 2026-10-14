@@ -4,7 +4,7 @@
  * 主要内容：扩展设置入口可通过已校验的 service 查询参数选择服务编辑区，目录浏览不改写默认翻译服务，详情标题栏显式设为默认后复用现有配置补丁持久化并同步其他页面；图片设置优先展示语言、服务与识别选择，资源与入口按需展开；翻译设置首先展示带交互示例的阅读辅助，普通页面与网站规则连续展示任务分组并标记顶部导航的滚动定位目标，统计保留按任务切换的视图，集中分配功能服务并将模型用量合并到翻译统计，保留已访问表单实例，自定义快捷键弹窗按显示状态挂载并在离开所属分区时取消草稿；包含正文/全部节点识别范围；模板按 activeSection 展示业务分区，通用设置首先展示全局翻译开关，再按基础配置、网页辅助、基本偏好组织控件，软件语言控件随分区及缓存活跃状态启停，并保留固定英文标题与说明以便选错语言后恢复，提供当前默认服务的配置入口并保留译文样式跨页入口；图片与圈选合并在同页，共享仅在当前分区挂载的 OCR 管理组件；服务连接在主页面的服务目录内编辑，在界面风格页组织译文样式、风格与菜单栏布局，仅在高级选项激活时挂载缓存管理；脚本以独立配置副本隔离编辑与全局差分基线，批量水合时暂停完整草稿扫描，保留用户编辑的同步保存和离页补丁交接，协调网站入口、配置及凭据保存、历史恢复和能力过滤。
  * 锚点编排：翻译设置保留连续表单，双语逐句阅读辅助与智能高亮各有独立锚点；智能高亮仅在翻译设置分区激活时挂载，定位不隐藏其他分组，既有表单配置保持原归属。新建兼容服务对话框只在首次请求打开时挂载，此后保留实例与关闭动画；加载中或失败时在添加入口旁显示可关闭提示，并停用入口说明气泡以免遮挡反馈，离开后不复活旧提示，草稿仍由原有活跃上下文和关闭流程管理。
  * AI 翻译超时：在高级全局请求限制中以秒编辑，确认后交接毫秒配置补丁；分区、缓存状态、配置同步或卸载变化会失效旧控件回调。
- * 模块边界：该组件负责设置 UI 编排但不实现 provider 网络、配置仓库或 feature 运行时；校验与迁移来自 core/config，持久化经 services/config，复杂子界面保持在各自 feature/组件内；脚本入口已拦截的扩展专属分区在构建期不引入其子 UI，原入口提示与数据接口保持。
+ * 模块边界：该组件负责设置 UI 编排但不实现 provider 网络、配置仓库或 feature 运行时；校验与迁移来自 core/config，持久化经 services/config，复杂子界面保持在各自 feature/组件内；ChatGPT 登录模块在公开构建中隐藏，旧默认或深链接只回退编辑目标，不迁移或删除用户数据；脚本入口已拦截的扩展专属分区在构建期不引入其子 UI，原入口提示与数据接口保持。
  -->
 <template>
   <section v-if="hasVisitedSection('settings-general')" v-show="props.activeSection === 'settings-general'" id="settings-general" class="settings-section general-settings-section">
@@ -24,7 +24,7 @@
         >
           <el-select v-model="config.service" aria-label="默认网页翻译服务" placeholder="请选择翻译服务" :search-placeholder="t('select.searchService')" filterable>
             <template #prefix><ServiceIcon :service="config.service" :label="defaultTextServiceLabel" size="small" /></template>
-            <el-option v-if="selectedTextServiceUnavailableMessage" label="Chrome内置AI翻译（当前浏览器不可用）" :value="config.service" disabled />
+            <el-option v-if="selectedTextServiceUnavailableMessage" :label="defaultTextServiceLabel" :value="config.service" disabled />
             <el-option-group v-for="group in textServiceGroups" :key="group.value" :label="group.label">
               <el-option v-for="item in group.options" :key="item.value" :label="item.label" :value="item.value" :disabled="item.disabled">
                 <span class="fluentread-service-option"><ServiceIcon :service="item.value" :label="item.label" size="small" /><span>{{ item.label }}</span></span>
@@ -66,7 +66,7 @@
       </SettingsItem>
     </SettingsGroup>
     <div v-if="selectedTextServiceUnavailableMessage" class="disabled-section" role="status">
-      <strong>当前默认服务在此浏览器不可用</strong>
+      <strong>{{ defaultTextServiceLabel }}</strong>
       <p>{{ selectedTextServiceUnavailableMessage }}请在上方选择可用服务。</p>
     </div>
     <section id="feature-services" class="service-assignments-section" data-settings-anchor="services" :data-settings-anchor-label="t('featureServices.assignments')" :aria-label="t('featureServices.assignments')">
@@ -226,7 +226,7 @@
         <SettingsItem label="视频翻译服务" description="默认跟随网页翻译服务，也可单独选择；AI 服务会提前预取字幕" :disabled="!config.videoTranslationEnabled">
           <el-select v-model="config.videoService" :empty-values="[null, undefined]" aria-label="视频字幕翻译服务" :disabled="!config.videoTranslationEnabled" placeholder="请选择服务" filterable>
             <el-option :label="t('featureServices.followDefault')" value="" />
-            <el-option v-if="config.videoService && selectedVideoServiceUnavailableMessage" label="Chrome内置AI翻译（当前浏览器不可用）" :value="config.videoService" disabled />
+            <el-option v-if="config.videoService && selectedVideoServiceUnavailableMessage" :label="selectedVideoServiceLabel" :value="config.videoService" disabled />
             <el-option v-for="item in videoServiceOptions" :key="item.value" class="select-left" :label="item.label" :value="item.value" />
           </el-select>
           <p v-if="selectedVideoServiceUnavailableMessage" class="capability-warning">{{ selectedVideoServiceUnavailableMessage }}</p>
@@ -705,6 +705,7 @@ import {
   getTranslationServiceUnavailableMessage,
   supportsTranslationGlossary,
 } from '@/src/services/translation/capabilities';
+import {chatGPTPlanDevelopmentEnabled} from '@/src/platform/chatgpt-plan/buildMode';
 
 const props = withDefaults(defineProps<{
   activeSection?: string
@@ -923,9 +924,11 @@ const configurationService = ref<string | null>(
     && Object.values(services).some(service => service === requestedConfigurationService)
     ? requestedConfigurationService : null,
 );
-const selectedConfigurationService = computed(
-  () => configurationService.value ?? config.value.service,
-);
+const selectedConfigurationService = computed(() => {
+  const service = configurationService.value ?? config.value.service;
+  // 隐藏可选接入模块只改变详情编辑目标；不改写旧默认、模型或功能分配。
+  return service === services.chatgptPlan && !chatGPTPlanDevelopmentEnabled ? services.freeTranslation : service;
+});
 const selectedConfigurationWebsite = computed(() => {
   const service = selectedConfigurationService.value;
   const endpoint = isCustomOpenAIProviderId(service)
@@ -962,9 +965,12 @@ const serviceOptionsWithCustomProviders = computed(() => localizeServiceOptions(
   translateLegacy,
 ));
 const availableServiceOptions = computed(() => filterAvailableTranslationServices(serviceOptionsWithCustomProviders.value));
+// 目录与可选服务采用同一可见性门控，旧配置或深链接不能把隐藏模块加回目录。
+const configurationServiceOptions = availableServiceOptions;
 // 显式设为默认沿用通用设置的配置补丁链；目录浏览本身只改变编辑目标。
 const setDefaultConfigurationService = (value: string) => {
   if (!viewActive.value || props.activeSection !== 'settings-services'
+    || (value === services.chatgptPlan && !chatGPTPlanDevelopmentEnabled)
     || value !== selectedConfigurationService.value
     || !availableServiceOptions.value.some(item => item.value === value && !item.disabled)) return;
   config.value.service = value;
@@ -984,6 +990,10 @@ const textServiceGroups = computed(() => {
 const defaultTextServiceLabel = computed(() => (
   serviceOptionsWithCustomProviders.value.find((item: any) => item.value === config.value.service)?.label || config.value.service
 ));
+const selectedVideoServiceLabel = computed(() => {
+  const service = config.value.videoService || config.value.service;
+  return serviceOptionsWithCustomProviders.value.find(item => item.value === service)?.label || service;
+});
 const configuredServiceIds = computed(() => availableServiceOptions.value
   .filter(item => !item.disabled && hasSavedServiceConfiguration(item.value, config.value))
   .map(item => item.value));
@@ -1249,7 +1259,7 @@ function removeConfigurationModel(model: string): void {
 // 两个页面都需要相同的服务能力判断，但数据源不同：实际翻译使用默认服务，
 // 设置页右侧表单使用正在配置的服务。统一从这里生成，避免两套逻辑继续漂移。
 const createServiceCompute = (serviceSource: ServiceSource) => ({
-  showAI: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isAI(serviceSource.value)),
+  showAI: computed(() => (serviceSource.value !== services.chatgptPlan || chatGPTPlanDevelopmentEnabled) && (isCustomOpenAIProviderId(serviceSource.value) || servicesType.isAI(serviceSource.value))),
   showMachine: computed(() => servicesType.isMachine(serviceSource.value)),
   showProxy: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseProxy(serviceSource.value)),
   showModel: computed(() => serviceSource.value !== services.chatgptPlan && (isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseModel(serviceSource.value))),
@@ -1292,7 +1302,7 @@ const createServiceCompute = (serviceSource: ServiceSource) => ({
 });
 
 // config.service 仍表示实际默认翻译服务；这里仅用于设置页正在编辑的服务。
-const configurationCompute = ref(createServiceCompute(selectedConfigurationService));
+const configurationCompute = ref({...createServiceCompute(selectedConfigurationService), filteredServices: configurationServiceOptions});
 
 // 监听主题变化
 watch(() => config.value.theme, (newTheme) => {

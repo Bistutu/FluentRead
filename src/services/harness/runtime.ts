@@ -8,6 +8,7 @@ import {streamText, tool, type LanguageModel, type ModelMessage, type ToolSet} f
 import {z} from 'zod';
 import type {Config} from '@/src/core/config/model';
 import {isReadingService, isReadingActionSupported, isReadingFollowUpSupported, resolveHarnessModel, type HarnessActionId} from '@/src/core/config/harness';
+import {getTranslationServiceUnavailableMessage} from '@/src/services/translation/capabilities';
 import {resolveHarnessPrompt, renderHarnessPrompt} from '@/src/core/harness/prompts';
 import {services} from '@/src/core/config/catalog';
 import {isApiKeyRequired} from '@/src/core/config/validation';
@@ -159,6 +160,8 @@ export function createHarnessRuntime(getConfig: () => Config, createUsageSink?: 
             const evidence = buildReadingEvidence(text, context);
             const {service, model: modelId} = resolveHarnessModel(current);
             if (!isReadingService(service, current.customOpenAIProviders)) return {success: false, error: '当前默认服务不支持阅读理解，请在专项翻译的“划词翻译”设置中选择 AI 服务。'};
+            const unavailable = getTranslationServiceUnavailableMessage(service);
+            if (unavailable) return {success: false, error: unavailable};
             if (!isReadingActionSupported(service, request.intent) || (service === services.bilibili && request.studyMode === 'use')) return {success: false, error: 'B站免费讲解目前仅支持读懂和用法；词性与句法、练习请使用完整 AI 服务。'};
             if (!modelId.trim()) return {success: false, error: '请先在设置中选择阅读理解模型。'};
             if (service !== services.bilibili && isApiKeyRequired(service, {...current, model: {...current.model, [service]: modelId}}) && !current.token[service]?.trim()) return {success: false, error: '这个模型服务尚未配置 API Key，请在翻译服务中完成配置。'};

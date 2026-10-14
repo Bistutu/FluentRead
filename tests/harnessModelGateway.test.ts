@@ -5,6 +5,8 @@
  * 模块边界：测试不访问真实网络，不覆盖 UI、会话、Config 持久化或背景路由。
  */
 import {afterEach, describe, expect, it, vi} from 'vitest';
+const planBuild = vi.hoisted(() => ({enabled: false}));
+vi.mock('@/src/platform/chatgpt-plan/buildMode', () => ({get chatGPTPlanDevelopmentEnabled() {return planBuild.enabled;}}));
 import {generateText, streamText, tool} from 'ai';
 import {z} from 'zod';
 import {reactive} from 'vue';
@@ -22,6 +24,22 @@ function response(body: unknown): Response {
 describe('harness model gateway', () => {
   afterEach(() => {
     setRuntimeFetch();
+    planBuild.enabled = false;
+  });
+
+  it('refuses saved ChatGPT requests in the public build before any transport and preserves their configuration', () => {
+    const config = new Config(); config.service = services.chatgptPlan;
+    config.model[services.chatgptPlan] = 'saved-account-model';
+    const before = JSON.stringify(config); const fetch = vi.fn(); setRuntimeFetch(fetch);
+    expect(() => createHarnessLanguageModel(config, services.chatgptPlan, 'saved-account-model'))
+      .toThrow('尚未开放公开接入');
+    try {createHarnessLanguageModel(config, services.chatgptPlan, 'saved-account-model');}
+    catch (error) {expect(error).toMatchObject({kind: 'bad-request', retryable: false});}
+    expect(fetch).not.toHaveBeenCalled(); expect(JSON.stringify(config)).toBe(before);
+    planBuild.enabled = true;
+    expect(createHarnessLanguageModel(config, services.chatgptPlan, 'saved-account-model'))
+      .toMatchObject({provider: 'fluentread-chatgpt-plan', modelId: 'saved-account-model'});
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('uses the fixed anonymous Bilibili endpoint without residual keys, proxy, tools or model overrides', async () => {

@@ -47,12 +47,14 @@ beforeEach(async () => {
     if (id === 'webextension-polyfill') return '\0service-browser'
     if (id === 'element-plus') return '\0service-element'
     if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0service-i18n'
+    if (/\/src\/platform\/chatgpt-plan\/buildMode(?:\.ts)?$/u.test(id)) return '\0service-build-mode'
     if (/\/src\/services\/config\/store(?:\.ts)?$/u.test(id)) return '\0service-config'
     if (/\/src\/platform\/browser\/chromeTranslationPreparationRequest(?:\.ts)?$/u.test(id)) return '\0service-chrome-store'
     if (/\/src\/features\/settings\/model\/chromeTranslationPreparation(?:\.ts)?$/u.test(id)) return '\0service-chrome-preparation'
     return null
   }, load(id) {
     if (id === '\0service-child') return 'export default {render: () => null}'
+    if (id === '\0service-build-mode') return 'export const chatGPTPlanDevelopmentEnabled = false'
     if (id === '\0service-browser') return `export default {runtime: {sendMessage: globalThis.${key}.send}}`
     if (id === '\0service-config') return `export const {queue: waitForConfigPersistenceQueue, save: requestConfigSave} = globalThis.${key}`
     if (id === '\0service-element') return `export const ElMessage = {success: globalThis.${key}.feedback};export const ElMessageBox = {confirm: globalThis.${key}.confirm};export const ElTabs = {}, ElTabPane = {}`
@@ -89,6 +91,16 @@ afterEach(async () => {
 })
 
 describe('实际服务连接配置的活跃生命周期与确认归属', () => {
+  it('公开套餐旧配置没有设置页签，直接测试或提示词操作也不发消息或修改配置', async () => {
+    props.config.model.chatgptPlan = 'saved-account-model';props.config.system_role.chatgptPlan = 'saved-system';props.config.user_role.chatgptPlan = 'saved-user'
+    props.service = 'chatgptPlan';props.compute.showToken = false;await settle()
+    const saved = JSON.stringify(props.config)
+    expect(state.settingsTabs).toEqual({translation: false, prompts: false, requests: false, 'custom-request': false})
+    expect(state.connectionTestDisabled).toBe(true)
+    await state.testConnection();state.activeSettingsTab = 'prompts';await settle();state.resetCustomTemplate();state.syncPromptTemplates();await settle()
+    expect(state.serviceActionOpen).toBe(false);expect(send).not.toHaveBeenCalled();expect(save).not.toHaveBeenCalled();expect(queue).not.toHaveBeenCalled()
+    expect(JSON.stringify(props.config)).toBe(saved)
+  })
   it('当前模型限额随请求体实际模型变化，选择器模型继续用于其他设置', async () => {
     props.service = 'ollama';props.config.model.ollama = 'gemma3:4b';props.config.customBody.ollama = '{"model":" qwen3:8b "}';await settle()
     expect(state.effectiveModelLabel).toBe('gemma3:4b');expect(state.requestLimitModel).toBe('qwen3:8b')
@@ -227,7 +239,7 @@ type ServiceClientNode = {tag: string; props: Record<string, unknown>; parent?: 
   style: Record<string, unknown>; value?: unknown; addEventListener: () => void; removeEventListener: () => void}
 type LocalModule = {__esModule: true; default: import('vue').Component}
 type LocalPropsSnapshot = {config: Config; context: unknown; service: string; active: boolean}
-async function mountServiceClient(initialService = 'freeTranslation') {
+async function mountServiceClient(initialService = 'freeTranslation', development = false) {
   vi.useFakeTimers()
   const filename = resolve('src/features/settings/ui/services/ServiceConfiguration.vue')
   const compiled = compileVueInlineFixture(filename, {id: 'service-configuration-client'})
@@ -258,9 +270,12 @@ async function mountServiceClient(initialService = 'freeTranslation') {
     return promise
   })
   const display = runtime.defineComponent({setup: (_, {slots}) => () => runtime.h('div', slots.default?.())})
+  const chatGPTPort = runtime.defineComponent({setup: () => () => runtime.h('section', {'data-chatgpt-plan-port': ''})})
+  const requestChatGPT = vi.fn(() => ({__esModule: true, default: chatGPTPort}))
   const dependencies = new Map<string, unknown>([['vue', runtime], ['element-plus/es/components/tabs/style/css', {}]])
   for (const id of compiled.runtimeImports) {
-    if (dependencies.has(id) || id === '../LocalTranslationModelSettings.vue') continue
+    if (dependencies.has(id) || id === '../LocalTranslationModelSettings.vue' || id === './ChatGPTPlanSettings.vue') continue
+    if (id === '@/src/platform/chatgpt-plan/buildMode') {dependencies.set(id, {chatGPTPlanDevelopmentEnabled: development});continue}
     if (id.endsWith('.vue')) {dependencies.set(id, {default: display});continue}
     if (id === 'element-plus') {
       dependencies.set(id, {ElMessage: {success: feedback}, ElTabs: display, ElTabPane: display});continue
@@ -271,6 +286,7 @@ async function mountServiceClient(initialService = 'freeTranslation') {
   const module = {exports: {} as {default: import('vue').Component}}
   new Function('require', 'exports', 'module', compiled.code)((id: string) => {
     if (id === '../LocalTranslationModelSettings.vue') return requestLocal()
+    if (id === './ChatGPTPlanSettings.vue') return requestChatGPT()
     if (!dependencies.has(id)) throw new Error(`Unexpected service client dependency: ${id}`)
     return dependencies.get(id)
   }, module.exports, module)
@@ -295,7 +311,8 @@ async function mountServiceClient(initialService = 'freeTranslation') {
       const start = node('#static-start'), end = node('#static-end');insert(start, parent, anchor);insert(end, parent, anchor);return [start, end]
     },
   })
-  const source = runtime.shallowReactive({...props, config: runtime.reactive(new Config()), service: initialService,
+  const connectionTarget = node('section')
+  const source = runtime.shallowReactive({...props, config: runtime.reactive(new Config()), service: initialService, connectionActionTarget: connectionTarget,
     active: true, compute: {showAI: false, showModel: false, showToken: false, requireApiKey: false, showServiceSecret: false}})
   const shown = runtime.ref(true), host = node('#host')
   const clientApp = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => shown.value
@@ -311,10 +328,43 @@ async function mountServiceClient(initialService = 'freeTranslation') {
   function localNodes(n = host): ServiceClientNode[] {return n.children.flatMap(child => [
     ...(Object.hasOwn(child.props, 'data-local-model-port') ? [child] : []), ...localNodes(child),
   ])}
-  return {source, shown, requestLocal, gates, snapshots, childProps, mounted, unmounted, clientErrors, resolveLocal, localNodes, stop, finish}
+  function descendants(n: ServiceClientNode): ServiceClientNode[] {return [n, ...n.children.flatMap(descendants)]}
+  const allNodes = () => [...descendants(host), ...descendants(connectionTarget)]
+  return {source, shown, host, requestLocal, requestChatGPT, gates, snapshots, childProps, mounted, unmounted, clientErrors, resolveLocal, localNodes, allNodes, stop, finish}
 }
 
 describe('实际服务父模板的本地子模块按需加载', () => {
+  it('公开套餐父模板没有根DOM或占位且不加载套餐子模块，保存的模型保持原值', async () => {
+    const h = await mountServiceClient('chatgptPlan')
+    try {
+      h.source.config.model.chatgptPlan = 'saved-account-model';h.source.compute = {...h.source.compute, showAI: true, showModel: true};await settle()
+      const saved = JSON.stringify(h.source.config)
+      expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-connection-test-button') || Object.hasOwn(n.props, 'data-service-settings-tabs') || Object.hasOwn(n.props, 'data-configuration-group'))).toBe(false)
+      expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-service-configuration-service') || Object.hasOwn(n.props, 'data-chatgpt-plan-port'))).toBe(false)
+      expect(h.host.children.filter(n => !n.tag.startsWith('#'))).toEqual([]);expect(h.requestChatGPT).not.toHaveBeenCalled()
+      h.source.service = 'google';await settle()
+      expect(h.allNodes().some(n => n.props['data-service-configuration-service'] === 'google')).toBe(true)
+      expect(h.requestChatGPT).not.toHaveBeenCalled()
+      h.source.service = 'chatgptPlan';await settle()
+      expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-service-configuration-service') || Object.hasOwn(n.props, 'data-chatgpt-plan-port'))).toBe(false)
+      expect(h.host.children.filter(n => !n.tag.startsWith('#'))).toEqual([]);expect(h.requestChatGPT).not.toHaveBeenCalled()
+      expect(send).not.toHaveBeenCalled();expect(save).not.toHaveBeenCalled();expect(JSON.stringify(h.source.config)).toBe(saved);expect(h.clientErrors).toEqual([])
+    } finally {await h.finish()}
+  })
+  it('显式开发模式的套餐仍显示原设置并通过既有连接测试消息', async () => {
+    const h = await mountServiceClient('chatgptPlan', true)
+    try {
+      h.source.config.model.chatgptPlan = 'fixture-account-model';h.source.compute = {...h.source.compute, showAI: true};await settle()
+      expect(h.requestChatGPT).toHaveBeenCalledOnce()
+      expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-chatgpt-plan-port'))).toBe(true)
+      const button = h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-test-button'))
+      expect(button).toBeDefined()
+      expect(h.allNodes().some(n => n.props['data-configuration-group'] === 'prompts')).toBe(true)
+      expect(h.allNodes().some(n => n.props['data-configuration-group'] === 'requests')).toBe(true)
+      await (button!.props.onClick as () => Promise<void>)();await settle();expect(messages()).toHaveLength(1);expect(messages()[0][0]).toMatchObject({type: 'testTranslationService', service: 'chatgptPlan'})
+      expect(h.source.config.model.chatgptPlan).toBe('fixture-account-model');expect(h.clientErrors).toEqual([])
+    } finally {await h.finish()}
+  })
   it.each(['freeTranslation', 'google'])('普通服务%s不加载本地子模块或挂载模型 UI', async service => {
     const h = await mountServiceClient(service)
     try {expect(h.requestLocal).not.toHaveBeenCalled();expect(h.mounted).not.toHaveBeenCalled();expect(h.localNodes()).toHaveLength(0)}

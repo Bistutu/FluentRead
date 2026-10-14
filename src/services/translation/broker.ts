@@ -42,7 +42,7 @@ import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse} from '@/sr
 import {hasTranslationContent} from '@/src/core/translation/result';
 import {isNativeBatchResponseError, validateNativeBatchResults} from '@/src/core/translation/nativeBatch';
 import {buildGlossaryRevision, resolveGlossary} from '@/src/core/glossary';
-import {supportsNativeTranslationBatch, supportsTranslationBatch, supportsTranslationGlossary} from './capabilities';
+import {supportsNativeTranslationBatch, supportsTranslationBatch, supportsTranslationGlossary, getTranslationServiceUnavailableMessage} from './capabilities';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {getGlossaryProtectionEntries, isGlossaryOnlyResult, prepareGlossaryRequest} from './glossaryProtection';
@@ -1728,6 +1728,10 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             ? normalizeAiRequestTimeoutMs(current.aiRequestTimeoutMs) : DEFAULT_PROVIDER_TIMEOUT_MS);
         const providerDeadline = providerStartedAt + providerBudget;
         trace.serviceId = selectedService;
+        if (selectedService === services.chatgptPlan) {
+            const unavailable = getTranslationServiceUnavailableMessage(selectedService);
+            if (unavailable) throw Object.assign(new Error(unavailable), {kind: 'bad-request', retryable: false});
+        }
         if (isCompositeTranslationProviderId(selectedService)) {
             const profile = getCompositeTranslationProvider(current.compositeTranslationProviders, selectedService);
             if (!profile) throw new Error('组合翻译服务已被删除，请重新选择服务');

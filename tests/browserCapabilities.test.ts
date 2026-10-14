@@ -1,4 +1,6 @@
-import {describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
+const planBuild = vi.hoisted(() => ({enabled: false}));
+vi.mock('@/src/platform/chatgpt-plan/buildMode', () => ({get chatGPTPlanDevelopmentEnabled() {return planBuild.enabled;}}));
 import {
     applyRuntimeBrowserConstraints,
     browserBuildTargetFromEnv,
@@ -150,6 +152,25 @@ describe('browser capability contract', () => {
 describe('translation service capability contract', () => {
     const chrome = resolveBrowserCapabilities({browser: 'chrome', manifestVersion: 3});
     const firefox = resolveBrowserCapabilities({browser: 'firefox', manifestVersion: 2});
+    afterEach(() => {planBuild.enabled = false;});
+
+    it('keeps ChatGPT out of public choices and enables only the explicit extension experiment without mutating options', () => {
+        const options = [{value: services.microsoft, label: 'Microsoft'}, {value: services.chatgptPlan, label: 'ChatGPT'}];
+        for (const capability of [chrome, firefox]) {
+            expect(isTranslationServiceAvailable(services.chatgptPlan, capability)).toBe(false);
+            expect(getTranslationServiceUnavailableMessage(services.chatgptPlan, capability)).toContain('尚未开放公开接入');
+            expect(filterAvailableTranslationServices(options, capability)).toEqual([options[0]]);
+        }
+        planBuild.enabled = true;
+        for (const capability of [chrome, firefox]) {
+            expect(filterAvailableTranslationServices(options, capability)).toEqual(options);
+            expect(getTranslationServiceUnavailableMessage(services.chatgptPlan, capability)).toBeNull();
+        }
+        const userscript = resolveBrowserCapabilities({browser: 'userscript', manifestVersion: 2});
+        expect(isTranslationServiceAvailable(services.chatgptPlan, userscript)).toBe(false);
+        expect(getTranslationServiceUnavailableMessage(services.chatgptPlan, userscript)).toContain('脚本版');
+        expect(options).toHaveLength(2);
+    });
 
     it('keeps local models available only with an extension DOM runtime', () => {
         expect(isTranslationServiceAvailable(services.localTranslation, chrome)).toBe(true);

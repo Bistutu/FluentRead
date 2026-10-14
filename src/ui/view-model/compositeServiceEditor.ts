@@ -1,7 +1,7 @@
 /**
  * @file src/ui/view-model/compositeServiceEditor.ts
  * 文件职责：为组合服务创建与编辑表单提供不含凭据的草稿转换和校验。
- * 主要内容：从普通服务目录派生成员候选，校验名称、成员数量、策略与单路等待时限；新建和已有组合共用规则。
+ * 主要内容：从平台可用的普通服务目录派生成员候选，校验名称、成员数量、策略与单路等待时限；新建和已有组合共用规则，显示候选不修改已保存成员。
  * 模块边界：不修改配置、不保存数据、不调用翻译；成员只引用现有服务 ID，不复制密钥、模型或接口配置。
  */
 import { options } from '@/src/core/config/catalog'
@@ -16,14 +16,15 @@ import {
   type CompositeTranslationStrategy,
 } from '@/src/core/config/compositeTranslation'
 import type { ServiceOption } from './serviceCatalog'
+import {filterAvailableTranslationServices} from '@/src/services/translation/capabilities'
 
 export type CompositeTranslationDraft = Omit<CompositeTranslationProvider, 'id'>
 export type CompositeTranslationDraftErrors = Partial<Record<'name' | 'services' | 'timeoutMs', string>>
 export const MAX_COMPOSITE_SERVICE_NAME_LENGTH = 80
 
 export function getCompositeMemberOptions(config: Config): ServiceOption[] {
-  return withCustomOpenAIServiceOptions(options.services, config.customOpenAIProviders)
-    .filter(option => !option.disabled && !isCompositeTranslationProviderId(option.value))
+  return filterAvailableTranslationServices(withCustomOpenAIServiceOptions(options.services, config.customOpenAIProviders)
+    .filter(option => !option.disabled && !isCompositeTranslationProviderId(option.value)))
 }
 
 export function createCompositeTranslationDraft(provider?: CompositeTranslationProvider): CompositeTranslationDraft {

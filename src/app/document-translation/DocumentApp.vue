@@ -154,7 +154,7 @@
             <div class="toolbar-translation-settings">
             <label class="toolbar-field"><span>翻译服务</span><ElSelect class="document-select toolbar-select toolbar-service" :wrap-label="false" :show-search-icon="false" append-to=".document-app" v-model="config.documentService" :empty-values="[null, undefined]" :disabled="queueBusy" aria-label="翻译服务" filterable>
               <ElOption :label="followDefaultLabel" value="" />
-              <ElOption v-if="config.documentService && documentServiceUnavailableMessage" :value="config.documentService" disabled :label="translateLegacy('Chrome内置AI翻译（当前浏览器不可用）')" />
+              <ElOption v-if="config.documentService && documentServiceUnavailableMessage" :value="config.documentService" disabled :label="unavailableDocumentServiceLabel" />
               <ElOption v-for="item in serviceOptions" :key="item.value" :value="item.value" :label="translateLegacy(item.label)" />
             </ElSelect></label>
             <label class="toolbar-field"><span>目标语言</span><ElSelect class="document-select toolbar-select toolbar-language" :wrap-label="false" :show-search-icon="false" append-to=".document-app" v-model="config.to" :disabled="queueBusy" aria-label="目标语言" filterable>
@@ -358,7 +358,7 @@
             <span>翻译服务</span>
             <ElSelect class="document-select" :wrap-label="false" :show-search-icon="false" append-to=".document-settings-dialog" v-model="config.documentService" :empty-values="[null, undefined]" :disabled="queueBusy" aria-label="文档翻译服务" filterable>
               <ElOption :label="t('featureServices.followDefault')" value="" />
-              <ElOption v-if="config.documentService && documentServiceUnavailableMessage" :value="config.documentService" disabled :label="translateLegacy('Chrome内置AI翻译（当前浏览器不可用）')" />
+              <ElOption v-if="config.documentService && documentServiceUnavailableMessage" :value="config.documentService" disabled :label="unavailableDocumentServiceLabel" />
               <ElOption v-for="item in serviceOptions" :key="item.value" :value="item.value" :label="translateLegacy(item.label)" />
             </ElSelect>
           </label>
@@ -958,9 +958,14 @@ const serviceOptions = computed(() => filterAvailableTranslationServices(withCom
   description: item.description ? translateLegacy(item.description) : item.description,
 })));
 const effectiveDocumentService = computed(() => config.documentService || config.service);
+// 不可用只影响可选性；旧服务必须显示真实名称，不把 ChatGPT 或本地模型误写成 Chrome。
+const unavailableDocumentServiceLabel = computed(() => translateLegacy(
+  options.services.find(item => item.value === effectiveDocumentService.value)?.label || effectiveDocumentService.value,
+));
 // “跟随默认”后面写明当前默认的是哪个服务，读者不必去设置页确认。
 const followDefaultLabel = computed(() => {
-  const name = serviceOptions.value.find(item => item.value === config.service)?.label;
+  const name = serviceOptions.value.find(item => item.value === config.service)?.label
+    || translateLegacy(options.services.find(item => item.value === config.service)?.label || config.service);
   return name ? `${t('featureServices.followDefault')} · ${name}` : t('featureServices.followDefault');
 });
 const activeDocumentModels = computed(() => config.documentService ? config.documentModel : config.model);

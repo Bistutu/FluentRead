@@ -48,7 +48,7 @@ describe('ChatGPT 套餐 provider 与能力', () => {
         const userscript = resolveBrowserCapabilities({browser: 'userscript', manifestVersion: 2});
         expect(isTranslationServiceAvailable(services.chatgptPlan, userscript)).toBe(false);
         expect(getTranslationServiceUnavailableMessage(services.chatgptPlan, userscript)).toContain('脚本版');
-        expect(isTranslationServiceAvailable(services.chatgptPlan, resolveBrowserCapabilities({browser: 'firefox', manifestVersion: 2}))).toBe(true);
+        expect(isTranslationServiceAvailable(services.chatgptPlan, resolveBrowserCapabilities({browser: 'firefox', manifestVersion: 2}))).toBe(false);
     });
 
     it('复用冻结提示词、模型和上下文，仅发送套餐协议允许字段', async () => {

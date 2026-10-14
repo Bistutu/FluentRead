@@ -1,0 +1,42 @@
+{
+  "capturedDate": "2026-10-14",
+  "timezone": "Asia/Shanghai",
+  "sourceKind": "official browser screenshots",
+  "modified": false,
+  "fieldsFilled": false,
+  "formSubmitted": false,
+  "files": [
+    {
+      "file": "01-request-client-id.jpg",
+      "source": "https://developers.openai.com/siwc/request-client-id",
+      "width": 1280,
+      "height": 720,
+      "format": "JPEG",
+      "sha256": "9faa0c0a8beb8fed7262c3c2c90142c1a5cc981c80bf1a8ef4aa799e6141e336"
+    },
+    {
+      "file": "02-interest-form-top.jpg",
+      "source": "https://openai.com/zh-Hans-CN/form/sign-in-with-chatgpt-interest/",
+      "width": 1280,
+      "height": 720,
+      "format": "JPEG",
+      "sha256": "e155f8b83ca96043f7cb53a40e034828e2adbc213642920215261e870a18e76c"
+    },
+    {
+      "file": "03-interest-form-fields.jpg",
+      "source": "https://openai.com/zh-Hans-CN/form/sign-in-with-chatgpt-interest/",
+      "width": 1280,
+      "height": 720,
+      "format": "JPEG",
+      "sha256": "3cd34d5d8b26b15c5d3ea5dc356737915ff25cc464be9fbb25b01c02f2a87762"
+    },
+    {
+      "file": "04-interest-form-plan-and-product.jpg",
+      "source": "https://openai.com/zh-Hans-CN/form/sign-in-with-chatgpt-interest/",
+      "width": 1280,
+      "height": 720,
+      "format": "JPEG",
+      "sha256": "8c7151421cabff7449126670346c838bd842b61626e2a9329754c5f7aeb85508"
+    }
+  ]
+}
