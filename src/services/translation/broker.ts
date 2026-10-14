@@ -2,7 +2,7 @@
  * @file src/services/translation/broker.ts
  *
  * 文件职责：编排翻译请求的配置快照、语言解析、缓存、请求去重、超时与 provider 调用，是后台翻译用例的中心服务。
- * 主要内容：createTranslationBroker 同时支持单条、批量和页面摘要，验证 provider 返回数量、类型及明显的原文回显或错语种，空来源在本地保留，仅在原生批次响应结构异常时以相同取消所有权和剩余 deadline 逐段恢复，整批完成前不发布缓存；对完整多段协议逐槽修复上下文回显并拒绝空译文，以包含 Chrome auto 检测样本的完整身份构建缓存键，并按实际消费的云地域和凭据摘要、匿名额度身份、等待策略、清理代次与剩余 deadline 隔离 pending 请求；入口在等待前复制消息，ready 采用有界水合等待，之后按最终服务解析 AI 配置预算并扣除已等待时间，取消检查后沿用可信配置快照，仅未附着的公开请求复制备用配置；批次摘要与分项缓存键只构建一次并复用，重复身份只读写一次；每次公开请求累计缓存复用、上游调用次数、耗时与免费链线路尝试，结束后向注入的统计端口交付只含规模数值、服务与线路标识的事件。 可核对的公开符号包括 createTranslationBroker、聚合导出。
+ * 主要内容：createTranslationBroker 同时支持单条、批量和页面摘要，验证 provider 返回数量、类型及明显的原文回显或错语种，图片文字的内部策略接受有效原样结果并隔离缓存，空来源在本地保留，仅在原生批次响应结构异常时以相同取消所有权和剩余 deadline 逐段恢复，整批完成前不发布缓存；对完整多段协议逐槽修复上下文回显并拒绝空译文，以包含 Chrome auto 检测样本的完整身份构建缓存键，并按实际消费的云地域和凭据摘要、匿名额度身份、等待策略、清理代次与剩余 deadline 隔离 pending 请求；入口在等待前复制消息，ready 采用有界水合等待，之后按最终服务解析 AI 配置预算并扣除已等待时间，取消检查后沿用可信配置快照，仅未附着的公开请求复制备用配置；批次摘要与分项缓存键只构建一次并复用，重复身份只读写一次；每次公开请求累计缓存复用、上游调用次数、耗时与免费链线路尝试，结束后向注入的统计端口交付只含规模数值、服务与线路标识的事件。 可核对的公开符号包括 createTranslationBroker、聚合导出。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；文本槽编码与解析复用 core/translation/slotProtocol.ts 纯协议，不初始化 DOM 候选或网站规则；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 
@@ -33,12 +33,13 @@ import {
     attachTranslationRequestControl,
     getTranslationImageInput,
     attachTranslationImageInput,
+    isUnchangedTranslationResultAllowed,
     TRANSLATION_REMAINING_BUDGET,
     type TranslationRemainingBudgetContext,
     type TranslationRouteObservation,
 } from './requestSnapshot';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
-import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
+import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse, isUnchangedTranslationResponse} from '@/src/core/translation/resultValidation';
 import {hasTranslationContent} from '@/src/core/translation/result';
 import {isNativeBatchResponseError, validateNativeBatchResults} from '@/src/core/translation/nativeBatch';
 import {buildGlossaryRevision, resolveGlossary} from '@/src/core/glossary';
@@ -111,6 +112,7 @@ interface TranslationRequestExecution {
     readonly targetLanguage: string;
     readonly enableAIContext: boolean;
     readonly nativeBatchEnabled: boolean;
+    readonly acceptUnchangedResult: boolean;
     readonly compositeMember?: boolean;
     readonly thinking: boolean;
     readonly abortSignal?: AbortSignal;
@@ -328,6 +330,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             sourceLanguage,
             targetLanguage,
             service,
+            ...(execution.acceptUnchangedResult ? {unchangedResultPolicy: 1} : {}),
             ...(supportsNativeTranslationBatch(service) ? {enableNativeBatch: execution.nativeBatchEnabled} : {}),
             model: getSelectedModel(current, service, modelOverride),
             endpoint: getProviderEndpoint(current, service),
@@ -394,12 +397,14 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         return current.useCache && message.useCache !== false;
     }
 
-    function isCacheableResult(origin: string, result: unknown, targetLanguage: string, current: TranslationProviderConfigSnapshot): result is string {
-        // 同目标文字和短名称仍可缓存 no-op；旧原文或明确错语种的缓存必须失效。
+    function isCacheableResult(origin: string, result: unknown, execution: TranslationRequestExecution): result is string {
+        // 图片文字的有效原样结果仅在独立策略缓存中复用；其他入口继续拒绝外语原文和明确错语种。
         return typeof result === 'string'
             && hasTranslationContent(result)
-            && (isGlossaryOnlyResult(current, origin, result) || (!isLikelyUntranslatedResponse(origin, result, targetLanguage)
-            && !isClearlyWrongLanguageResponse(origin, result, targetLanguage)));
+            && (isGlossaryOnlyResult(execution.config, origin, result)
+            || (execution.acceptUnchangedResult && isUnchangedTranslationResponse(origin, result))
+            || (!isLikelyUntranslatedResponse(origin, result, execution.targetLanguage)
+            && !isClearlyWrongLanguageResponse(origin, result, execution.targetLanguage)));
     }
 
     /** 标记与原始载荷必须同时符合内部协议；普通原文中的相似标记没有逐槽语义。 */
@@ -417,12 +422,12 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         result: string,
     ): boolean {
         if (message.validateTranslationSlots !== true) {
-            return isCacheableResult(message.origin, result, execution.targetLanguage, execution.config);
+            return isCacheableResult(message.origin, result, execution);
         }
         const protocol = getSingleSlotProtocol(message);
         const parsed = protocol && parseTranslationSlots(protocol.packet, result);
         return Boolean(parsed && parsed.every((translation, index) =>
-            isCacheableResult(protocol!.sources[index]!, translation, execution.targetLanguage, execution.config)));
+            isCacheableResult(protocol!.sources[index]!, translation, execution)));
     }
 
     function requireSingleResult(result: unknown): string {
@@ -841,6 +846,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         }
         if (!hasTranslationContent(message.origin) && !getTranslationImageInput(message)) return message.origin;
         requireTranslationContent(result);
+        if (execution.acceptUnchangedResult && isUnchangedTranslationResponse(message.origin, result)) return result;
         if (isGlossaryOnlyResult(execution.config, message.origin, result)) return result;
         if (!isLikelyUntranslatedResponse(message.origin, result, execution.targetLanguage)
             && !isClearlyWrongLanguageResponse(message.origin, result, execution.targetLanguage)) return result;
@@ -852,6 +858,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             execution, message.origin, retried, validationPageContext, message.modelOverride,
         )) throw new AIContextRecoveryResponseError();
         if (!hasTranslationContent(retried)) throw new TranslationSlotResponseError();
+        if (execution.acceptUnchangedResult && isUnchangedTranslationResponse(message.origin, retried)) return retried;
         if (isGlossaryOnlyResult(execution.config, message.origin, retried)) return retried;
         if (isLikelyUntranslatedResponse(message.origin, retried, execution.targetLanguage)) {
             throw new UntranslatedResponseError();
@@ -1012,12 +1019,14 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             );
         }
         const finalized = Array.from(parsed);
-        if (finalized.some((result, index) => !isGlossaryOnlyResult(execution.config, message.origin[index], result) && isLikelyUntranslatedResponse(
+        if (finalized.some((result, index) => !(execution.acceptUnchangedResult && isUnchangedTranslationResponse(message.origin[index], result))
+            && !isGlossaryOnlyResult(execution.config, message.origin[index], result) && isLikelyUntranslatedResponse(
             message.origin[index], result, execution.targetLanguage,
         ))) throw new AIMultiSegmentResponseError();
         for (let index = 0; index < finalized.length; index += 1) {
             const origin = message.origin[index];
-            if (isGlossaryOnlyResult(execution.config, origin, finalized[index])
+            if ((execution.acceptUnchangedResult && isUnchangedTranslationResponse(origin, finalized[index]))
+                || isGlossaryOnlyResult(execution.config, origin, finalized[index])
                 || !isClearlyWrongLanguageResponse(origin, finalized[index], execution.targetLanguage)) continue;
             finalized[index] = await recoverInvalidResult(
                 execution, {...message, origin}, finalized[index], requestDeadline, '', pageContext,
@@ -1493,7 +1502,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             const leakedCachedIndexes = new Set<number>();
             const validatedCached = cached.map((value, index) => {
                 if (!hasTranslationContent(message.origin[index] ?? '')) return message.origin[index] ?? '';
-                if (value === null || !isCacheableResult(message.origin[index]!, value, execution.targetLanguage, execution.config)) return null;
+                if (value === null || !isCacheableResult(message.origin[index]!, value, execution)) return null;
                 if (!isDefiniteRecoveryPageContextLeak(
                     execution,
                     message.origin[index]!,
@@ -1528,7 +1537,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 );
                 await Promise.all(translated.map(async (value, index) => {
                     const origin = message.origin[index];
-                    if (!isCacheableResult(origin, value, execution.targetLanguage, execution.config)) return;
+                    if (!isCacheableResult(origin, value, execution)) return;
                     await persistCacheWrite(
                         requestGeneration,
                         itemKeys[index],
@@ -1578,7 +1587,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 const itemKey = itemKeys[index];
                 const value = translatedByKey.get(itemKey);
                 result[index] = value as string;
-                if (!writtenKeys.has(itemKey) && isCacheableResult(origin, value, execution.targetLanguage, execution.config)) {
+                if (!writtenKeys.has(itemKey) && isCacheableResult(origin, value, execution)) {
                     writtenKeys.add(itemKey);
                     cacheWrites.push(persistCacheWrite(
                         requestGeneration,
@@ -1842,6 +1851,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             enableAIContext: message.enableAIContext ?? current.enableAIContext,
             nativeBatchEnabled: supportsNativeTranslationBatch(selectedService) && (message.enableNativeBatch
                 ?? isNativeTranslationBatchEnabled(selectedService, current.nativeBatchTranslationEnabled)),
+            acceptUnchangedResult: isUnchangedTranslationResultAllowed(message),
             compositeMember,
             thinking: message.thinkingOverride ?? isModelThinkingEnabled(
                 current.modelThinking,

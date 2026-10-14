@@ -90,6 +90,19 @@ beforeEach(async () => {
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('免费翻译服务', () => {
+    it.each([false, true])('图片免费池原样结果成功且不换线，原生分组=%s', async grouped => {
+        const {allowUnchangedTranslationResult} = await import('@/src/services/translation/requestSnapshot');
+        mockConfig.freeTranslationOrder = grouped ? ['microsoft'] : ['microsoft', 'google'];
+        microsoftMock.mockImplementation(async (texts: string[]) => [...texts]);
+        const sources = Array.from({length: 9}, (_, index) => `This English paragraph number ${index} explains the application settings.`);
+        const origin = grouped ? sources : sources[0];
+        await expect(settle(freeTranslation(allowUnchangedTranslationResult({origin})))).resolves.toEqual(origin);
+        expect(microsoftMock).toHaveBeenCalledTimes(grouped ? 2 : 1);
+        expect(microsoftMock.mock.calls.flatMap(call => call[0])).toEqual(grouped ? sources : [sources[0]]);
+        expect(googleMock).not.toHaveBeenCalled(); expect(googleOwnerMock).not.toHaveBeenCalled();
+        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+    });
+
     it.each(['google', 'microsoft'] as const)('单服务连接检查向 %s 传递后台真实传输租约', async provider => {
         const {attachTranslationRequestScheduler} = await import('@/src/services/translation/requestSnapshot');
         const {createTranslationRequestScheduler} = await import('@/src/services/translation/requestScheduler');
