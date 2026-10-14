@@ -1,0 +1,18 @@
+{
+  "baseCommit": "573890c33ad410b48086dcb83bad97ae1bf5a82c",
+  "baseline": {
+    "bytes": 2074383,
+    "sha256": "549816be3e32db822616df0e760797101c226f7552d0371cb0a0f31615363325"
+  },
+  "candidate": {
+    "bytes": 2080438,
+    "sha256": "b7b1c1391705f3dcd98b5aaa82087f483c20bdc30c503ed1ce75f698aa4a4896"
+  },
+  "deltaBytes": 6055,
+  "deltaPercent": 0.2919,
+  "oldBudgetBytes": 2077000,
+  "budgetBytes": 2081000,
+  "remainingBudgetBytes": 562,
+  "sameDependencies": true,
+  "languageResources": "Retains all published filenames and immutable resource commit; overlays section-sweep copy during registration, including cached language loads."
+}

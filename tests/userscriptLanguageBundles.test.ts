@@ -13,6 +13,9 @@ const languageDir = resolve(process.cwd(), 'userscript/languages');
 const digest = createHash('sha256').update(JSON.stringify(UI_LANGUAGE_BUNDLES['fr-FR'])).digest('hex').slice(0, 16);
 const fileName = `fr-FR.${digest}.json`;
 const source = readFileSync(resolve(languageDir, fileName), 'utf8');
+const sweepKeys = ['sectionTranslation.picker.preview', 'sectionTranslation.picker.instruction', 'popup.sectionTranslationTitle', 'sectionTranslation.picker.dragging', 'sectionTranslation.scope.selected'];
+const sweepCopy = (language: keyof typeof extensionBundles) => Object.fromEntries(sweepKeys.map(key => [key, extensionBundles[language].messages[key]]));
+
 const resourceCommit = '70d3d901033a579e32a5bf5e6af14555f0d140bb';
 
 describe('userscript remote UI language data', () => {
@@ -141,6 +144,8 @@ describe('userscript remote UI language data', () => {
         const remoteFile = `${language}.${digest}.json`;
         const remoteSource = readFileSync(resolve(languageDir, remoteFile), 'utf8');
         const original = JSON.parse(remoteSource);
+        expect(original.messages).not.toHaveProperty('sectionTranslation.picker.dragging');
+        expect(original.messages).not.toHaveProperty('sectionTranslation.scope.selected');
         expect(original.messages).not.toHaveProperty('learning.panelLoadError');
         expect(original.messages).not.toHaveProperty('learning.reloadPage');
         for (const key of Object.keys(aiRequestTimeoutMessages[language])) expect(original.messages).not.toHaveProperty(key);
@@ -157,6 +162,12 @@ describe('userscript remote UI language data', () => {
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', {});
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__', {[language]: remoteFile});
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__', resourceCommit);
+        const assertSweepCopy = async () => {
+            const core = await import('@/src/core/i18n');
+            for (const key of ['sectionTranslation.picker.preview', 'sectionTranslation.picker.instruction', 'popup.sectionTranslationTitle', 'sectionTranslation.picker.dragging', 'sectionTranslation.scope.selected']) {
+                expect(core.translate(key, language)).toBe(extensionBundles[language].messages[key]);
+            }
+        };
         const recovery = {
             'learning.panelLoadError': extensionBundles[language].messages['learning.panelLoadError'],
             'learning.reloadPage': extensionBundles[language].messages['learning.reloadPage'],
@@ -167,9 +178,10 @@ describe('userscript remote UI language data', () => {
             try {
                 const loader = await import('@/userscript/uiLanguageBundles');
                 await expect(loader.ensureUiLanguageBundle(language)).resolves.toBe(true);
+                await assertSweepCopy();
                 expect(register).toHaveBeenCalledTimes(1);
                 expect(register).toHaveBeenCalledWith(language, {
-                    ...original, messages: {...recovery, ...original.messages, ...aiRequestTimeoutMessages[language]},
+                    ...original, messages: {...recovery, ...original.messages, ...aiRequestTimeoutMessages[language], ...sweepCopy(language)},
                 });
                 for (const [key, text] of Object.entries(recovery)) {
                     expect(core.translate(key, language)).toBe(text);
@@ -180,6 +192,7 @@ describe('userscript remote UI language data', () => {
                     if (key !== 'settings.requestLimits.seconds') expect(core.translate(key, language)).not.toBe(core.translate(key, 'zh-CN'));
                 }
                 await expect(loader.ensureUiLanguageBundle(language)).resolves.toBe(true);
+                await assertSweepCopy();
                 expect(register).toHaveBeenCalledTimes(1);
             } finally { register.mockRestore(); }
         }
@@ -213,7 +226,7 @@ describe('userscript remote UI language data', () => {
             await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(true);
             expect(register).toHaveBeenCalledTimes(1);
             expect(register).toHaveBeenCalledWith('fr-FR', {
-                ...supplied, messages: {...supplied.messages, ...aiRequestTimeoutMessages['fr-FR']},
+                ...supplied, messages: {...supplied.messages, ...aiRequestTimeoutMessages['fr-FR'], ...sweepCopy('fr-FR')},
             });
             expect(core.translate('learning.panelLoadError', 'fr-FR')).toBe('Remote section recovery');
             expect(core.translate('learning.reloadPage', 'fr-FR')).toBe('Remote reload');

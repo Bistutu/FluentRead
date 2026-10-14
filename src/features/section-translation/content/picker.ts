@@ -1,7 +1,7 @@
 /**
  * @file src/features/section-translation/content/picker.ts
- * 文件职责：实现局部翻译的区域选择模式，稳定预览鼠标下的内容块，点击锁定后用可见按钮调整并确认翻译或恢复的区域，并在选择期间拦截网页自身的点击与悬停反应。
- * 主要内容：在封闭 Shadow Root 中创建高亮框、自然语言范围标签与固定操作条；用边界容差和短暂稳定窗口消除选区抖动，点击锁定后保持区域，按钮与方向键调整范围；识别封闭组件重定向到宿主的按键，操作条焦点不经过网页输入保护；按每帧 150 步预算发现开放 ShadowRoot，动态插入只扫描新增子树，换选与退出取消扫描；原文预览仅在换区或正文变更时重新读取，区域盘点延迟合并；观察正文及布局、保护属性，布局变化时立即按静止指针刷新预览而锁定范围保持不变，隐藏或失效选区解除锁定，排除自身浮层避免观察反馈；确认前刷新区域状态与可见盒子；确认按钮或 Enter 执行、Esc/右键/关闭按钮/页面隐藏退出；确认后短暂收束动画再移除界面。
+ * 文件职责：实现局部翻译的区域选择模式，稳定预览鼠标下的内容块，支持单击锁定或按住左键划过多个区域，松开后用可见按钮调整并确认翻译或恢复，并在选择期间拦截网页自身的点击与悬停反应。
+ * 主要内容：在封闭 Shadow Root 中创建高亮框、自然语言范围标签与固定操作条；用左键拖动采样连续收集独立区域、去重并逐块高亮，松开只锁定、确认才合并派发；取消拖动及失效节点清理整组选区；用边界容差和短暂稳定窗口消除选区抖动，点击锁定后保持区域，按钮与方向键调整范围；识别封闭组件重定向到宿主的按键，操作条焦点不经过网页输入保护；按每帧 150 步预算发现开放 ShadowRoot，动态插入只扫描新增子树，换选与退出取消扫描；原文预览仅在换区或正文变更时重新读取，区域盘点延迟合并；观察正文及布局、保护属性，布局变化时立即按静止指针刷新预览而锁定范围保持不变，隐藏或失效选区解除锁定，排除自身浮层避免观察反馈；确认前刷新区域状态与可见盒子；确认按钮或 Enter 执行、Esc/右键/关闭按钮/页面隐藏退出；确认后短暂收束动画再移除界面。
  * 模块边界：本模块只处理手势、高亮和选择生命周期，所有事件先校验 isTrusted；区域判定规则来自 ../core，区域盘点、翻译和提示文案由调用方注入，不直接发起翻译、不读取配置存储。
  */
 import pickerStyles from './picker.css?inline';
@@ -27,9 +27,9 @@ export interface SectionPickerOptions {
     /** 进入选择模式时已知的指针位置；快捷键进入时可立即高亮鼠标下的区域。 */
     initialPoint?: SectionPickerPoint | null;
     /** 盘点区域状态，决定标签显示翻译、恢复原文还是无可翻译内容。 */
-    inspect(element: Element): SectionLabelSummary;
+    inspect(element: Element | readonly Element[]): SectionLabelSummary;
     /** 用户确认区域后调用；此时选择模式已经退出，网页恢复正常交互。 */
-    onPick(element: Element): void;
+    onPick(element: Element | readonly Element[]): void;
     /** 界面文案解析，按当前界面语言返回文字。 */
     text(key: string, params?: Readonly<Record<string, string | number>>): string;
     /** 选择期间再次按下进入快捷键即退出。 */
@@ -62,8 +62,6 @@ const TARGET_OBSERVATION: MutationObserverInit = {
 
 /** 选择期间这些指针事件不交给网页，避免链接跳转、按钮触发、拖拽或划词浮层。 */
 const INTERCEPTED_MOUSE_EVENTS = ['mousedown', 'mouseup', 'click', 'dblclick', 'auxclick'] as const;
-/** pointerdown 只停止传播、不取消默认行为，让触屏仍能滚动页面。 */
-const INTERCEPTED_POINTER_EVENTS = ['pointerdown', 'pointerup'] as const;
 /** 悬停卡片、下拉菜单等网页悬停反应会遮挡目标区域，选择期间一并屏蔽。 */
 const SUPPRESSED_HOVER_EVENTS = ['pointerover', 'mouseover'] as const;
 
@@ -221,6 +219,12 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     let pointer: SectionPickerPoint | null = options.initialPoint ?? null;
     let target: Element | null = null;
     let locked = false;
+    /** 划选只保存实际经过的独立区域，不把它们的公共祖先当成隐式选区。 */
+    let swept: Element[] = [];
+    let sweepExpansion: Element[][] = [];
+    let drag: {id: number; start: SectionPickerPoint; last: SectionPickerPoint; anchor: Element | null; moved: boolean} | null = null;
+    let suppressDragClick = false;
+    const extraBoxes: HTMLElement[] = [];
     let pendingTarget: Element | null = null;
     let settleTimer: ReturnType<typeof setTimeout> | undefined;
     /** 当前范围链：首项是鼠标下的基础区域，之后每项是一次方向键扩大的结果。 */
@@ -267,19 +271,37 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     }
 
     function setTone(tone: 'translate' | 'restore' | 'muted'): void {
-        for (const element of [box, label]) {
+        for (const element of [box, label, ...extraBoxes]) {
             element.classList.toggle('tone-restore', tone === 'restore');
             element.classList.toggle('tone-muted', tone === 'muted');
         }
     }
 
+    function selectedRoots(): Element[] {
+        return swept.length ? swept : target ? [target] : [];
+    }
+
+    function selection(): Element | readonly Element[] {
+        const roots = selectedRoots();
+        return roots.length === 1 ? roots[0] : roots;
+    }
+
+    function setSwept(roots: Element[]): void {
+        swept = roots;
+        if (target) summaries.delete(target);
+        if (roots[0]) summaries.delete(roots[0]);
+        setTarget(roots[0] ?? null);
+        for (const root of roots.slice(1)) resizeObserver?.observe(root);
+    }
+
     function updateControls(): void {
         const current = target?.isConnected ? target : null;
         const summary = current ? summaries.get(current) : undefined;
-        host.setAttribute('data-selection-state', locked && current ? 'locked' : 'preview');
-        instruction.textContent = options.text(locked && current ? 'sectionTranslation.picker.locked' : 'sectionTranslation.picker.preview');
-        larger.disabled = !current || !expandSectionElement(current, geometry);
-        smaller.disabled = !current || expansion.length <= 1;
+        host.setAttribute('data-selection-state', drag?.moved ? 'dragging' : locked && current ? 'locked' : 'preview');
+        host.setAttribute('data-selection-count', String(selectedRoots().length));
+        instruction.textContent = options.text(drag?.moved ? 'sectionTranslation.picker.dragging' : locked && current ? 'sectionTranslation.picker.locked' : 'sectionTranslation.picker.preview');
+        larger.disabled = !current || (swept.length > 1 ? !swept.some(root => expandSectionElement(root, geometry)) : !expandSectionElement(current, geometry));
+        smaller.disabled = !current || (swept.length > 0 ? sweepExpansion.length === 0 : expansion.length <= 1);
         reselect.disabled = !locked;
         confirm.disabled = !locked || !summary || (summary.action !== 'translate' && summary.action !== 'restore');
         confirm.textContent = options.text(summary?.action === 'restore' ? 'sectionTranslation.picker.restore' : 'sectionTranslation.picker.confirm');
@@ -288,7 +310,7 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         if (previewTarget !== current || previewDirty) {
             previewTarget = current;
             previewDirty = false;
-            preview.textContent = current ? sectionSourcePreview(current) : '';
+            preview.textContent = selectedRoots().map(root => sectionSourcePreview(root)).join(' · ').slice(0, 180);
         }
         preview.hidden = !current;
     }
@@ -296,7 +318,8 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     function updateLabel(current: Element): void {
         updateControls();
         const summary = summaries.get(current);
-        labelMeta.textContent = options.text(describeSectionScope(current));
+        labelMeta.textContent = swept.length > 1
+            ? options.text('sectionTranslation.scope.selected', {count: swept.length}) : options.text(describeSectionScope(current));
         if (!summary) {
             setTone('translate');
             labelAction.textContent = options.text('sectionTranslation.label.inspecting');
@@ -323,7 +346,7 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         inspectTimer = setTimeout(() => {
             inspectTimer = undefined;
             if (disposed || target !== current || !current.isConnected) return;
-            summaries.set(current, options.inspect(current));
+            summaries.set(current, options.inspect(selection()));
             // “已是最大范围”提示仍在显示时先保留提示，计时结束后再显示盘点结果。
             if (topmostTimer === undefined) updateLabel(current);
             scheduleRender();
@@ -355,13 +378,15 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
 
     function commitBase(base: Element | null): void {
         cancelSettling();
+        swept = [];
+        sweepExpansion = [];
         expansion = base ? [base] : [];
         setTarget(base);
     }
 
     function refreshTarget(immediate = false): void {
         targetDirty = false;
-        if (locked || !pointer) return;
+        if (locked || drag?.moved || !pointer) return;
         const hit = elementAtPoint(pointer);
         // 操作条上的悬停不改变选区，鼠标可以平稳移向范围按钮。
         if (hit === host || (hit && isSectionPickerUi(hit))) {
@@ -423,6 +448,12 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     }
 
     function draw(): void {
+        if (swept.some(root => !root.isConnected || !hasVisibleBox(root, geometry.rect(root)))) {
+            drag = null;
+            locked = false;
+            commitBase(null);
+            targetDirty = true;
+        }
         const previousTarget = target;
         let rect = target?.isConnected ? geometry.rect(target) : null;
         if (target && (!rect || !hasVisibleBox(target, rect))) {
@@ -437,6 +468,7 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
             renderedRect = null;
             box.classList.remove('is-visible');
             label.classList.remove('is-visible');
+            extraBoxes.forEach(element => element.classList.remove('is-visible'));
             updateControls();
             return;
         }
@@ -453,6 +485,23 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         box.style.width = `${Math.round(rect.width + BOX_OUTSET * 2)}px`;
         box.style.height = `${Math.round(rect.height + BOX_OUTSET * 2)}px`;
         box.classList.add('is-visible');
+        const others = swept.filter(root => root !== target);
+        while (extraBoxes.length < others.length) {
+            const extra = createElement('div', 'fr-section-box');
+            shadow.insertBefore(extra, label);
+            extraBoxes.push(extra);
+        }
+        extraBoxes.forEach((extra, index) => {
+            const root = others[index];
+            extra.classList.toggle('is-visible', Boolean(root));
+            if (!root) return;
+            const bounds = geometry.rect(root);
+            extra.classList.toggle('tone-restore', box.classList.contains('tone-restore'));
+            extra.classList.toggle('tone-muted', box.classList.contains('tone-muted'));
+            extra.style.transform = `translate(${Math.round(bounds.left - BOX_OUTSET)}px, ${Math.round(bounds.top - BOX_OUTSET)}px)`;
+            extra.style.width = `${Math.round(bounds.width + BOX_OUTSET * 2)}px`;
+            extra.style.height = `${Math.round(bounds.height + BOX_OUTSET * 2)}px`;
+        });
         positionLabel(rect);
     }
 
@@ -476,6 +525,14 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     function expand(): void {
         if (!target?.isConnected) return;
         cancelSettling();
+        if (swept.length > 0) {
+            const expanded = swept.map(root => expandSectionElement(root, geometry) ?? root);
+            const unique = [...new Set(expanded)].filter(root => !expanded.some(other => other !== root && containsContent(other, root)));
+            if (unique.length === swept.length && unique.every(root => swept.includes(root))) {showTopmostNotice(); return;}
+            sweepExpansion.push(swept);
+            setSwept(unique);
+            return;
+        }
         const next = expandSectionElement(target, geometry);
         if (!next) {
             showTopmostNotice();
@@ -486,6 +543,7 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     }
 
     function shrink(): void {
+        if (sweepExpansion.length) {setSwept(sweepExpansion.pop()!); return;}
         if (expansion.length <= 1) return;
         cancelSettling();
         expansion.pop();
@@ -507,24 +565,27 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     }
 
     function pick(element: Element): void {
-        if (!element.isConnected || !hasVisibleBox(element, geometry.rect(element))) {
+        if (drag) return;
+        if (selectedRoots().some(root => !root.isConnected || !hasVisibleBox(root, geometry.rect(root)))) {
             locked = false;
             commitBase(null);
             return;
         }
         // 确认时重新盘点，避免页面动态更新后仍执行过时的恢复或翻译提示。
-        const summary = options.inspect(element);
+        const picked = selection();
+        const summary = options.inspect(picked);
         summaries.set(element, summary);
         previewDirty = true;
         updateLabel(element);
         if (summary.action === 'empty' || summary.action === 'settled') return;
         dispose(true);
-        options.onPick(element);
+        options.onPick(picked);
     }
 
     function dispose(confirmed: boolean): void {
         if (disposed) return;
         disposed = true;
+        drag = null;
         if (activeSession === session) activeSession = null;
         controller.abort();
         if (shadow.activeElement && previousFocus?.isConnected) previousFocus.focus?.({preventScroll: true});
@@ -544,6 +605,7 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         label.classList.remove('is-visible');
         box.classList.remove('is-following');
         box.classList.add('is-confirmed');
+        extraBoxes.forEach(extra => extra.classList.add('is-confirmed'));
         setTimeout(() => host.remove(), CONFIRM_ANIMATION_MS);
     }
 
@@ -554,25 +616,89 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         passive = false,
     ): void => window.addEventListener(type, listener, {capture: true, passive, signal});
 
+    function collectDrag(point: SectionPickerPoint): void {
+        if (!drag || !drag.moved) return;
+        const distance = Math.hypot(point.x - drag.last.x, point.y - drag.last.y);
+        const steps = Math.max(1, Math.min(64, Math.ceil(distance / 12)));
+        const roots = [...swept];
+        for (let step = 1; step <= steps; step += 1) {
+            const hit = resolveSectionElement(elementAtPoint({x: drag.last.x + (point.x - drag.last.x) * step / steps,
+                y: drag.last.y + (point.y - drag.last.y) * step / steps}), geometry);
+            // 段落间空隙往往命中文章外壳；不因经过空隙扩大成整篇文章。
+            if (hit && !roots.some(root => containsContent(root, hit) || containsContent(hit, root))) roots.push(hit);
+        }
+        drag.last = point;
+        if (roots.length !== swept.length) setSwept(roots);
+    }
+
+    function finishDrag(active: NonNullable<typeof drag>): void {
+        const moved = active.moved;
+        drag = null;
+        if (moved) {
+            suppressDragClick = true;
+            lockSelection();
+            updateControls();
+        }
+    }
+
     listen('pointermove', (event) => {
         if (!event.isTrusted) return;
         pointer = {x: event.clientX, y: event.clientY};
+        if (drag && event.pointerId === drag.id) {
+            if ((event.buttons & 1) === 0) {finishDrag(drag); return;}
+            if (!drag.moved && Math.hypot(pointer.x - drag.start.x, pointer.y - drag.start.y) > POINTER_TOLERANCE) {
+                drag.moved = true;
+                cancelSettling();
+                expansion = [];
+                sweepExpansion = [];
+                setSwept(drag.anchor ? [drag.anchor] : []);
+            }
+            collectDrag(pointer);
+            event.stopImmediatePropagation();
+            return;
+        }
         if (locked) return;
         targetDirty = true;
         scheduleRender();
     }, true);
-    for (const type of INTERCEPTED_POINTER_EVENTS) {
-        listen(type, (event) => {
-            if (!event.isTrusted) return;
-            if (!isExtensionUiEvent(event)) consume(event, false);
-        });
-    }
+    listen('pointerdown', event => {
+        if (!event.isTrusted) return;
+        suppressDragClick = false;
+        if (isExtensionUiEvent(event)) return;
+        consume(event, false);
+        if (locked || event.button !== 0 || event.isPrimary === false || event.pointerType === 'touch') return;
+        pointer = {x: event.clientX, y: event.clientY};
+        drag = {id: event.pointerId, start: pointer, last: pointer, anchor: resolveSectionElement(elementAtPoint(pointer), geometry), moved: false};
+    });
+    listen('pointerup', event => {
+        if (!event.isTrusted) return;
+        if (drag && event.pointerId === drag.id && event.button === 0) {
+            collectDrag({x: event.clientX, y: event.clientY});
+            finishDrag(drag);
+        }
+        if (!isExtensionUiEvent(event)) consume(event, false);
+    });
+    listen('pointercancel', event => {
+        if (!event.isTrusted || !drag || event.pointerId !== drag.id) return;
+        drag = null;
+        commitBase(null);
+        targetDirty = true;
+        scheduleRender();
+    });
+    listen('blur', event => {
+        if (!event.isTrusted || !drag) return;
+        drag = null;
+        commitBase(null);
+        updateControls();
+    });
     for (const type of INTERCEPTED_MOUSE_EVENTS) {
         listen(type, (event) => {
             if (!event.isTrusted) return;
+            if (event.type === 'click' && suppressDragClick) {suppressDragClick = false; consume(event); return;}
             if (isExtensionUiEvent(event)) return;
             consume(event);
             if (event.type !== 'click' || event.button !== 0) return;
+            if (drag && !drag.moved) drag = null;
             // 点击当前高亮边缘时锁定用户看到的范围；触屏或远处点击按落点即时解析。
             pointer = {x: event.clientX, y: event.clientY};
             if (locked) return;
@@ -642,6 +768,9 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     onButton(smaller, () => {lockSelection(); shrink();});
     onButton(reselect, () => {
         locked = false;
+        drag = null;
+        swept = [];
+        sweepExpansion = [];
         cancelSettling();
         expansion = [];
         setTarget(null);
@@ -660,17 +789,18 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
         snapNextRender = true;
         scheduleRender();
         if (!target) return;
-        if (!target.isConnected) {
+        if (selectedRoots().some(root => !root.isConnected)) {
+            drag = null;
             locked = false;
             commitBase(null);
             targetDirty = true;
             scheduleRender();
-        } else if (contentRecords.some(record => containsContent(target!, record.target)
-            || (record.type === 'attributes' && record.target.nodeType === 1 && containsContent(record.target as Element, target!)))) {
+        } else if (contentRecords.some(record => selectedRoots().some(root => containsContent(root, record.target)
+            || (record.type === 'attributes' && record.target.nodeType === 1 && containsContent(record.target as Element, root))))) {
             if (locked) {
                 // 不重新扫描锁定范围；只发现已插入子树中的新宿主和嵌套开放根。
                 for (const record of contentRecords) {
-                    if (record.type !== 'childList' || !containsContent(target, record.target)) continue;
+                    if (record.type !== 'childList' || !selectedRoots().some(root => containsContent(root, record.target))) continue;
                     for (const added of record.addedNodes) enqueueShadowScan(added);
                 }
                 if (!shadowScanFrame) scanShadowRoots();
@@ -692,7 +822,7 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     }
 
     function enqueueShadowScan(root: Node): void {
-        if (!mutationObserver || !target || !containsContent(target, root) || queuedShadowScans.has(root)) return;
+        if (!mutationObserver || !target || !selectedRoots().some(selected => containsContent(selected, root)) || queuedShadowScans.has(root)) return;
         // 文本变更只刷新摘要，不创建扫描器；遍历器只访问元素，不递归进入影子树。
         if (root.nodeType !== 1 && root.nodeType !== 11) return;
         queuedShadowScans.add(root);
@@ -711,7 +841,7 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
             const element = scan.current;
             remaining -= 1;
             // 同一同步批次内只检查一次归属；下一帧继续时仍复核网页是否移走了子树。
-            if (!element || (checkedRoot !== scan.root && !containsContent(target, scan.root))) {
+            if (!element || (checkedRoot !== scan.root && !selectedRoots().some(root => containsContent(root, scan.root)))) {
                 queuedShadowScans.delete(scan.root);
                 shadowScanIndex += 1;
                 continue;
@@ -741,11 +871,13 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     function observeTarget(): void {
         mutationObserver?.observe(document.documentElement, TARGET_OBSERVATION);
         // 文档观察不会穿透 ShadowRoot，额外监听目标所在树，覆盖同尺寸内容替换与祖先移除。
-        const root = target?.getRootNode();
-        if (root?.nodeType === 11) mutationObserver?.observe(root, TARGET_OBSERVATION);
+        for (const selected of selectedRoots()) {
+            const root = selected.getRootNode();
+            if (root.nodeType === 11) mutationObserver?.observe(root, TARGET_OBSERVATION);
+        }
         // 锁定后才发现范围内的开放 ShadowRoot；大范围分帧完成，不阻塞一次点击。
         if (locked && target) {
-            enqueueShadowScan(target);
+            selectedRoots().forEach(enqueueShadowScan);
             scanShadowRoots();
         }
     }
@@ -753,7 +885,7 @@ function createPickerSession(options: SectionPickerOptions): PickerSession {
     const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
         if (disposed) return;
         // observe 后的初始通知不代表网页刚发生布局变化，不能因此跳过正在等待的 hover 稳定窗。
-        if (target?.isConnected && target === renderedTarget && renderedRect) {
+        if (swept.length <= 1 && target?.isConnected && target === renderedTarget && renderedRect) {
             const currentRect = geometry.rect(target);
             if (RECT_KEYS.every(key => currentRect[key] === renderedRect![key])) return;
         }
