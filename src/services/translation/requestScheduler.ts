@@ -2,7 +2,7 @@
  * @file src/services/translation/requestScheduler.ts
  *
  * 文件职责：统一执行翻译任务的并发和请求启动速率限制，支持取消、截止时间、服务/模型 bucket 与真实 HTTP attempt。
- * 主要内容：旧配置继续使用 global bucket；启用服务或模型限制后按稳定请求身份切换 bucket，每轮按当前配置重新计入仍在途的外层请求，直到真实 transport lease 结束；provider 的 attempt 只复用速率历史而不重复占用外层并发槽；单次 drain 内缓存 bucket key 与限额，并以累积等待 bucket 的一次线性前向扫描启动全部可启动任务。
+ * 主要内容：保留 global/服务/模型动态 bucket、FIFO、取消、deadline 与真实 transport lease；同一可信 quota scope 共享 Retry-After 冷却，broker SDK 的真实 attempt 单独计并发和速率，旧直调 attempt 仍复用外层槽。
  * 模块边界：本模块只管理调度时序，不选择服务、不实现重试、不读取或写入配置；配置由调用方通过 getConfig 提供。
  */
 
@@ -32,6 +32,8 @@ export interface TranslationRequestSchedulerConfig extends TranslationRequestLim
 export interface TranslationRequestIdentity {
     readonly service?: string;
     readonly model?: string;
+    /** 后台由冻结端点、模型、凭据及普通/私密上下文计算；不接受 runtime payload。 */
+    readonly quotaScope?: string;
 }
 
 export interface TranslationRequestLease {
@@ -42,11 +44,15 @@ export interface TranslationRequestSchedulerTaskOptions {
     signal?: AbortSignal;
     deadlineAt?: number;
     identity?: TranslationRequestIdentity;
-    /** 外层 AI SDK 调用只占并发，真实 HTTP attempt 由 scheduleAttempt 计速率。 */
+    /** 外层调用的速率开关；broker SDK 由真实 scheduleAttempt 计速率。 */
     countRate?: boolean;
+    /** SDK 逻辑等待不占槽；缺省保持旧并发语义。 */
+    countConcurrency?: boolean;
 }
 
 export interface TranslationRequestAttemptOptions {
+    /** broker SDK 的真实传输持槽；直调缺省沿用已持有外层槽的旧语义。 */
+    countConcurrency?: boolean;
     signal?: AbortSignal;
     deadlineAt?: number;
     identity?: TranslationRequestIdentity;
@@ -54,8 +60,10 @@ export interface TranslationRequestAttemptOptions {
 
 export interface TranslationRequestScheduler {
     schedule<T>(task: (lease: TranslationRequestLease) => Promise<T>, options?: TranslationRequestSchedulerTaskOptions): Promise<T>;
-    /** 真实 HTTP attempt 只取得速率许可；外层 provider 已持有并发 lease。 */
+    /** 真实 HTTP attempt 可取得并发和速率；缺省仍复用直调的外层并发 lease。 */
     scheduleAttempt<T>(task: () => Promise<T>, options?: TranslationRequestAttemptOptions): Promise<T>;
+    /** transport 收到响应后、归还 attempt 前反馈；不增加重试或修改供应商响应。 */
+    observeResponse(identity: TranslationRequestIdentity | undefined, response: Pick<Response, 'status' | 'headers'>): void;
 }
 
 export class TranslationRequestSchedulerDeadlineError extends Error {
@@ -82,6 +90,7 @@ interface PendingRequest<T> {
     readonly identity?: TranslationRequestIdentity;
     readonly attemptOnly: boolean;
     readonly countRate: boolean;
+    readonly countConcurrency: boolean;
     readonly resolve: (value: T | PromiseLike<T>) => void;
     readonly reject: (reason?: unknown) => void;
     settled: boolean;
@@ -105,12 +114,26 @@ function clean(value: unknown): string {
     return typeof value === 'string' ? value.trim() : '';
 }
 
+function retryAfterMs(headers: Headers, current: number): number | undefined {
+    const milliseconds = headers.get('retry-after-ms')?.trim();
+    const ms = milliseconds && /^\d+(?:\.\d+)?$/u.test(milliseconds) ? Number(milliseconds) : NaN;
+    if (Number.isFinite(ms)) return Math.min(ms, 7 * 86_400_000);
+    const value = headers.get('retry-after')?.trim();
+    if (!value) return undefined;
+    // 不把带符号、指数、尾随垃圾或单个无效数字误当成日期。
+    const numeric = /^\d+(?:\.\d+)?$/u.test(value);
+    const duration = numeric ? Number(value) * 1000
+        : /[A-Za-z]{3}/u.test(value) ? Date.parse(value) - current : NaN;
+    return Number.isFinite(duration) && duration >= 0 ? Math.min(duration, 7 * 86_400_000) : undefined;
+}
+
 export function createTranslationRequestScheduler(
     getConfig: () => TranslationRequestSchedulerConfig,
     dependencies: TranslationRequestSchedulerDependencies = {},
 ): TranslationRequestScheduler {
     const now = dependencies.now ?? (() => Date.now());
     const buckets = new Map<string, BucketState>();
+    const cooldowns = new Map<string, number>();
     const activeRequests = new Set<PendingRequest<unknown>>();
     let pending: Array<PendingRequest<unknown> | undefined> = [];
     let head = 0;
@@ -123,7 +146,9 @@ export function createTranslationRequestScheduler(
         const current = finiteNow(now);
         if (lastNow !== undefined && current < lastNow) {
             for (const state of buckets.values()) state.starts.length = 0;
+            cooldowns.clear();
         }
+        for (const [scope, until] of cooldowns) if (until <= current) cooldowns.delete(scope);
         lastNow = current;
         return current;
     }
@@ -341,26 +366,32 @@ export function createTranslationRequestScheduler(
                 // 仍在等待的任务先行：扫描时累积这些 bucket key，每项判定只看自身 1~2 个 key，
                 // 避免对每个等待项回扫全部更早项造成 O(待处理数²)。
                 const waitingKeys = new Set<string>();
-                // HTTP 重试复用已占用的并发槽，只能被更早等待的重试阻塞，不能被外层任务反向阻塞。
+                // 旧直调重试复用外层槽；真正独立计并发的 attempt 进入普通 FIFO。
                 const waitingAttemptKeys = new Set<string>();
                 const keepWaiting = (entry: PendingRequest<unknown>, keys: readonly string[]) => {
                     for (const key of keys) {
                         waitingKeys.add(key);
-                        if (entry.attemptOnly) waitingAttemptKeys.add(key);
+                        if (entry.attemptOnly && !entry.countConcurrency) waitingAttemptKeys.add(key);
                     }
                 };
                 for (let index = head; index < pending.length; index += 1) {
                     const entry = pending[index];
                     if (!entry || entry.settled) continue;
+                    const cooldownWait = (cooldowns.get(clean(entry.identity?.quotaScope)) ?? current) - current;
+                    if (cooldownWait > 0) {
+                        earliest = Math.min(earliest, cooldownWait);
+                        // 冷却只约束同一可信 quota scope，不反向阻塞健康线路。
+                        continue;
+                    }
                     const keys = keysFor(entry.identity, config);
-                    const blocking = entry.attemptOnly ? waitingAttemptKeys : waitingKeys;
-                    if (keys.some((key) => blocking.has(key))) {
+                    const blocking = entry.attemptOnly && !entry.countConcurrency ? waitingAttemptKeys : waitingKeys;
+                    if ((entry.countConcurrency || entry.countRate) && keys.some((key) => blocking.has(key))) {
                         keepWaiting(entry, keys);
                         continue;
                     }
                     let wait = 0;
                     for (const key of keys) {
-                        wait = Math.max(wait, waitFor(key, current, config, !entry.attemptOnly, entry.countRate));
+                        wait = Math.max(wait, waitFor(key, current, config, entry.countConcurrency, entry.countRate));
                     }
                     if (wait > 0) {
                         if (wait < earliest) earliest = wait;
@@ -368,10 +399,10 @@ export function createTranslationRequestScheduler(
                         continue;
                     }
                     pending[index] = undefined;
-                    if (!entry.attemptOnly) activeRequests.add(entry);
+                    if (entry.countConcurrency) activeRequests.add(entry);
                     for (const key of keys) {
                         const state = stateFor(key);
-                        if (!entry.attemptOnly) state.active += 1;
+                        if (entry.countConcurrency) state.active += 1;
                         if (entry.countRate) state.starts.push(current);
                     }
                     void execute(entry);
@@ -385,7 +416,8 @@ export function createTranslationRequestScheduler(
                 const deadlineWait = nextDeadline === Number.POSITIVE_INFINITY
                     ? Number.POSITIVE_INFINITY
                     : Math.max(0, nextDeadline - current);
-                const nextWait = Math.min(earliest, deadlineWait);
+                let nextWait = Math.min(earliest, deadlineWait);
+                for (const until of cooldowns.values()) nextWait = Math.min(nextWait, until - current);
                 if (nextWait < Number.POSITIVE_INFINITY) arm(nextWait);
             } while (drainRequested);
         } finally {
@@ -413,12 +445,24 @@ export function createTranslationRequestScheduler(
     }
 
     return {
+        observeResponse: (identity, response) => {
+            const scope = clean(identity?.quotaScope);
+            if (!scope || (response.status !== 429 && response.status !== 503)) return;
+            const current = readNow();
+            const retryAfter = retryAfterMs(response.headers, current);
+            // 真实 429 的无效/缺省头沿用 SDK 的首个 2 秒退避；503 只有有效服务端头才共享冷却。
+            const delay = retryAfter ?? (response.status === 429 ? 2000 : 0);
+            if (delay <= 0) return;
+            cooldowns.set(scope, Math.max(cooldowns.get(scope) ?? 0, current + delay));
+            drain();
+        },
         schedule: <T>(task: (lease: TranslationRequestLease) => Promise<T>, options: TranslationRequestSchedulerTaskOptions = {}) => enqueue({
             task,
             signal: options.signal,
             deadlineAt: options.deadlineAt,
             identity: options.identity,
             attemptOnly: false,
+            countConcurrency: options.countConcurrency !== false,
             countRate: options.countRate !== false,
             resolve: undefined as never,
             reject: undefined as never,
@@ -430,6 +474,7 @@ export function createTranslationRequestScheduler(
             deadlineAt: options.deadlineAt,
             identity: options.identity,
             attemptOnly: true,
+            countConcurrency: options.countConcurrency === true,
             countRate: true,
             resolve: undefined as never,
             reject: undefined as never,

@@ -17,6 +17,8 @@ import {
     supportsInputBoxTranslationPrompt,
 } from '@/src/core/config/inputTranslation';
 import {
+    attachTranslationGlossaryContext,
+    translationPrivacyContext,
     attachTranslationProviderConfig,
     attachTranslationRequestControl,
     createTranslationProviderConfigSnapshot,
@@ -40,7 +42,7 @@ export interface InputBoxTranslationRequestContext {
         url?: string;
         frameId?: number;
         documentId?: string;
-        tab?: {id?: number};
+        tab?: {id?: number; incognito?: boolean};
     };
 }
 
@@ -181,6 +183,7 @@ export function createInputBoxTranslationHandler(
     return {
         type: INPUT_BOX_TRANSLATION_MESSAGE_TYPE,
         async handle(message, context = {}) {
+            const privacyContext = translationPrivacyContext(context);
             // 步骤 1：页面消息先经过严格协议收窄，避免对象、HTML 或空值进入翻译 broker。
             const text = parseRequiredString(message.text, 'text');
             const targetLanguage = parseRequiredString(message.targetLang, 'targetLang');
@@ -191,6 +194,7 @@ export function createInputBoxTranslationHandler(
                 await waitForReady(dependencies.ready, signal);
                 // 步骤 2：服务、模型、提示词和凭据均从配置读取，并在 provider await 前冻结。
                 const request = createInputBoxTranslationRequest(dependencies.getConfig(), text, targetLanguage, requestTimeoutMs);
+                attachTranslationGlossaryContext(request, privacyContext);
                 if (control) attachTranslationRequestControl(request, control);
                 if (shouldSkipTranslationForTarget(text, targetLanguage)) {
                     throwIfAborted(signal);

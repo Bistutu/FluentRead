@@ -45,8 +45,10 @@ export function prepareAreaVisionRecognition(
     cropArea: (image: string, selection: AreaTranslationSelection, options: ImageOperationOptions) => Promise<AreaRecognitionResult>,
     translate: (request: TranslationRequestMessage) => Promise<string | string[]>,
     now: () => number = Date.now,
+    glossaryContext: TrustedTranslationGlossaryContext = {},
 ): (image: string, selection: AreaTranslationSelection, options: ImageOperationOptions) => Promise<AreaRecognitionResult> {
     const startedAt = now();
+    const trustedContext = Object.freeze({...glossaryContext});
     const frozen = createTranslationProviderConfigSnapshot(source);
     const service = source.areaTranslationService || source.service;
     const model = resolveConfiguredModel(frozen.model[service], frozen.customModel[service]);
@@ -62,10 +64,10 @@ export function prepareAreaVisionRecognition(
         checkAbort(options.signal);
         const requestTimeoutMs = Math.floor(options.timeoutMs - (now() - startedAt));
         if (requestTimeoutMs <= 0) throw new Error('圈选翻译总时间已耗尽，请重试');
-        const visionRequest = attachTranslationImageInput(attachTranslationProviderConfig(attachTranslationRequestControl(
+        const visionRequest = attachTranslationGlossaryContext(attachTranslationImageInput(attachTranslationProviderConfig(attachTranslationRequestControl(
             markTranslationRemainingBudget({origin: 'Transcribe the cropped image.', glossaryIds: [], sourceLanguage, targetLanguage: visionSnapshot.to,
                 serviceOverride: service, modelOverride: model, context: title, pageContext: '', enableAIContext: false,
-                useCache: false, requestTimeoutMs}), {signal: options.signal, ownershipKey: `area:${options.requestId}:vision`}), visionSnapshot), cropped.image);
+                useCache: false, requestTimeoutMs}), {signal: options.signal, ownershipKey: `area:${options.requestId}:vision`}), visionSnapshot), cropped.image), trustedContext);
         const value = await translate(visionRequest);
         checkAbort(options.signal);
         if (typeof value !== 'string') throw new Error('视觉圈选识别未返回有效文字');

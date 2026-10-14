@@ -1,8 +1,8 @@
 /**
  * @file userscript/francDataPlugin.ts
- * 文件职责：仅为独立完整 userscript 无损压缩锁定 franc-min 的生成式纯数据模块。
+ * 文件职责：为标准版和独立完整 userscript 无损压缩锁定 franc-min 的生成式纯数据模块。
  * 主要内容：核对依赖版本与精确模块路径，拒绝非字符串表 AST，以 gzip 编码全部模型并在原模块求值时同步恢复。
- * 模块边界：不处理检测算法或其他依赖模块，不修改依赖文件、许可、模型或 API；普通脚本、Greasy Fork 与扩展目标不启用。
+ * 模块边界：不处理检测算法或其他依赖模块，不修改依赖文件、许可、模型或 API；Greasy Fork 可读源码与扩展目标不启用。
  */
 import {createHash} from 'node:crypto';
 import {readFileSync, realpathSync} from 'node:fs';

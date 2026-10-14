@@ -6,7 +6,7 @@
  */
 import type {BackgroundFallbackHandler} from '../messageRouter';
 import type {BackgroundMessageHandler} from '../messageRouter';
-import {attachTranslationGlossaryContext, attachTranslationRequestControl} from '@/src/services/translation/requestSnapshot';
+import {attachTranslationGlossaryContext, attachTranslationRequestControl, translationPrivacyContext} from '@/src/services/translation/requestSnapshot';
 import type {
     TranslationCancelMessage,
     TranslationCancelResponse,
@@ -30,7 +30,7 @@ export interface TranslationRequestContext {
         url?: string;
         frameId?: number;
         documentId?: string;
-        tab?: {id?: number};
+        tab?: {id?: number; incognito?: boolean};
     };
 }
 
@@ -240,6 +240,7 @@ export function createTranslationRequestFallback<TContext = undefined>(
                     delete message.documentBatch;
                 }
                 attachTranslationGlossaryContext(message, {
+                    ...translationPrivacyContext(context as TranslationRequestContext | undefined),
                     pageUrl: typeof senderUrl === 'string' && /^https?:\/\//u.test(senderUrl) ? senderUrl : undefined,
                     context: message.glossaryContext === 'document' && isDocument ? 'document'
                         : message.glossaryContext === 'video' ? 'video' : 'page',

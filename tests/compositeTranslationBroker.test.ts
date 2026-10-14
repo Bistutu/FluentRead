@@ -293,7 +293,9 @@ describe('组合翻译真实 broker 接入', () => {
             expect(snapshot.model.openai).toBe('gpt-4.1-mini');
             expect(message.modelOverride).toBeUndefined();
             expect(message.thinkingOverride).toBe(true);
-            expect(getTranslationRequestScheduler(message)?.identity).toEqual({service: 'openai', model: 'gpt-4.1-mini'});
+            expect(getTranslationRequestScheduler(message)?.identity).toEqual({
+                service: 'openai', model: 'gpt-4.1-mini', quotaScope: expect.stringMatching(/^[a-f0-9]{64}$/u),
+            });
             return translatedText;
         });
         await expect(h.broker.translateWithCache({origin: sourceText, useCache: false,
@@ -450,14 +452,20 @@ describe('组合翻译真实 broker 接入', () => {
         h.config.apiKeys.openai = ['fixture-composite-key-one', 'fixture-composite-key-two'];
         h.config.token.openai = h.config.apiKeys.openai[0];
         const used: string[] = [];
+        const quotaScopes: string[] = [];
         h.providers.openai = vi.fn(async message => {
             used.push(getTranslationProviderConfig(message, h.config).token.openai);
-            expect(getTranslationRequestScheduler(message)?.identity).toEqual({service: 'openai', model: 'gpt-4.1-mini'});
+            const identity = getTranslationRequestScheduler(message)?.identity;
+            expect(identity).toEqual({
+                service: 'openai', model: 'gpt-4.1-mini', quotaScope: expect.stringMatching(/^[a-f0-9]{64}$/u),
+            });
+            quotaScopes.push(identity!.quotaScope!);
             if (used.length === 1) throw Object.assign(new Error('unauthorized'), {statusCode: 401});
             return translatedText;
         });
         await expect(h.broker.translateWithCache({origin: sourceText, useCache: false})).resolves.toBe(translatedText);
         expect(used).toEqual(h.config.apiKeys.openai);
+        expect(new Set(quotaScopes).size).toBe(2);
     });
 
     it('成员两次回显原文仍失败时，回退到下一成员并拒绝缓存损坏译文', async () => {

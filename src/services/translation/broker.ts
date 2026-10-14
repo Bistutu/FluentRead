@@ -74,6 +74,9 @@ import {
     TranslationRequestSchedulerDeadlineError,
 } from './requestScheduler';
 import {serializeTranslationError} from './errors';
+import {currentConfiguredModel} from './templates';
+import {normalizeTranslationMaxRetries} from '@/src/core/config/scheduling';
+import {isDoubaoSeedTranslationModel} from '@/src/core/config/doubaoSeedTranslation';
 import {measureImageDataUrlBytes, measureTranslationText} from '@/src/services/translation-stats/measure';
 import {
     TRANSLATION_STATS_MAX_ROUTE_ATTEMPTS,
@@ -117,6 +120,7 @@ interface TranslationRequestExecution {
     readonly thinking: boolean;
     readonly abortSignal?: AbortSignal;
     readonly ownershipKey?: string;
+    readonly privateContext: boolean | undefined;
     readonly trace: TranslationRequestTrace;
 }
 
@@ -540,9 +544,30 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         return `${cacheKey}:generation:${requestGeneration}:timeout:${normalizedTimeoutMs}ms`;
     }
 
-    function pendingOwnershipSuffix(execution: TranslationRequestExecution): string {
+    /** 同一冻结配置派生 transport 的实际 key 与 pending 的有效 key 集合；摘要不进入成功缓存身份。 */
+    function quotaDigest(execution: TranslationRequestExecution, model: string, transport = false): string {
+        const current = execution.config;
+        if (!deps.serviceTypes.isAI(execution.service)) return sha256Hex(JSON.stringify([execution.privateContext]));
+        return sha256Hex(JSON.stringify([
+            execution.service, model, getProviderEndpoint(current, execution.service),
+            transport ? current.token[execution.service]?.trim() || ''
+                : [getServiceApiKeys(current, execution.service), current.apiKeyRotationEnabled?.[execution.service] !== false, current.apiKeyRecoveryMs],
+            current.customHeaders?.[execution.service] || '', current.requestHeaderRules, execution.privateContext,
+        ]));
+    }
+
+    function pendingIdentitySuffix(execution: TranslationRequestExecution, modelOverride?: string): string {
         const ownershipKey = execution.ownershipKey;
-        return ownershipKey ? `:owner:${ownershipKey.length}:${ownershipKey}` : '';
+        const {config: current, service} = execution;
+        const sdk = deps.serviceTypes.isAiSdk(service) && !(service === services.doubao
+            && isDoubaoSeedTranslationModel(currentConfiguredModel(current, service, modelOverride)));
+        const rotates = current.apiKeyRotationEnabled?.[service] !== false
+            && getServiceApiKeys(current, service).length > 1;
+        const retries = rotates ? 0 : current.translationMaxRetries === undefined
+            ? 2 : normalizeTranslationMaxRetries(current.translationMaxRetries);
+        return (ownershipKey ? `:owner:${ownershipKey.length}:${ownershipKey}` : '')
+            + `:quota:${quotaDigest(execution, getEffectiveRequestModel(current, service, modelOverride))}`
+            + (sdk ? `:sdk-retries:${retries}` : '');
     }
 
     function pendingAnonymousConfigSuffix(execution: TranslationRequestExecution): string {
@@ -693,6 +718,18 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         throwIfRequestAborted(execution.abortSignal);
         const timeoutMs = normalizeDeadlineTimeoutMs(message.requestTimeoutMs as number);
         const providerDeadline = now() + timeoutMs;
+        const model = getTranslationImageInput(message)
+            ? getEffectiveRequestModel({...execution.config, customBody: {}}, execution.service, message.modelOverride)
+            : getEffectiveRequestModel(execution.config, execution.service, message.modelOverride);
+        const isAiSdk = deps.serviceTypes.isAiSdk(execution.service)
+            && !(execution.service === services.doubao && isDoubaoSeedTranslationModel(
+                currentConfiguredModel(execution.config, execution.service, message.modelOverride),
+            ));
+        const identity = {
+            service: execution.service, model,
+            ...(isAiSdk ? {quotaScope: quotaDigest(execution, model, true)} : {}),
+        };
+
 
         try {
             return await requestScheduler.schedule(async (lease) => {
@@ -718,7 +755,6 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                     execution.trace.upstreamCalls += 1;
                     const usageGeneration = deps.captureModelUsageGeneration?.() ?? 0;
                     const observations: TranslationModelUsageObservation[] = [];
-                    const selectedModel = getEffectiveRequestModel(execution.config, execution.service, message.modelOverride);
                     const providerMessage = attachTranslationRequestScheduler(attachTranslationRouteObserver(
                         attachTranslationModelUsageObserver({
                             ...message,
@@ -727,10 +763,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                             abortSignal: controller.signal,
                         }, (observation) => observations.push({...observation})),
                         (observation) => collectRouteAttempt(execution.trace, observation),
-                    ), requestScheduler, {
-                        service: execution.service,
-                        model: selectedModel,
-                    }, lease);
+                    ), requestScheduler, identity, isAiSdk ? undefined : lease);
 
                     let timer: ReturnType<typeof setTimeout>;
                     const timeout = new Promise<never>((_resolve, reject) => {
@@ -780,11 +813,9 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             }, {
                 signal: execution.abortSignal,
                 deadlineAt: providerDeadline,
-                identity: {
-                    service: execution.service,
-                    model: getEffectiveRequestModel(execution.config, execution.service, message.modelOverride),
-                },
-                countRate: !deps.serviceTypes.isAiSdk(execution.service),
+                identity,
+                countRate: !isAiSdk,
+                countConcurrency: !isAiSdk,
             });
         } catch (error) {
             if (error instanceof TranslationRequestSchedulerDeadlineError) {
@@ -1269,7 +1300,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         }
 
         const summaryTimeoutMs = normalizeDeadlineTimeoutMs(requestTimeoutMs as number);
-        const pendingKey = `${buildPendingRequestKey(key, summaryTimeoutMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingOwnershipSuffix(execution)}`;
+        const pendingKey = `${buildPendingRequestKey(key, summaryTimeoutMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingIdentitySuffix(execution, modelOverride)}`;
         const existing = pendingPageSummaries.get(pendingKey);
         if (existing) return runWithinDeadline(() => existing, requestDeadline, execution.abortSignal);
 
@@ -1362,7 +1393,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         );
         const imageInput = getTranslationImageInput(message);
         const imageSuffix = imageInput ? `:image:${sha256Hex(imageInput)}` : '';
-        const pendingKey = `${buildPendingRequestKey(key, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${imageSuffix}${pendingOwnershipSuffix(execution)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
+        const pendingKey = `${buildPendingRequestKey(key, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${imageSuffix}${pendingIdentitySuffix(execution, message.modelOverride)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
         const existing = pendingTranslations.get(pendingKey);
         // 共享的是 provider 工作；每个等待者仍需保留自己的取消和截止边界。
         if (existing) {
@@ -1477,7 +1508,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         );
         // 完整批次身份只计算一次；AI 分项用定长摘要保留邻段和槽位语义，避免逐项携带整个批次。
         const batchFingerprint = cacheMode === 'ai-multi-segment' ? sha256Hex(batchKey) : '';
-        const pendingKey = `${buildPendingRequestKey(batchKey, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingOwnershipSuffix(execution)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true ? ':document-batch' : ''}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
+        const pendingKey = `${buildPendingRequestKey(batchKey, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingIdentitySuffix(execution, message.modelOverride)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true ? ':document-batch' : ''}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
         const existing = pendingBatches.get(pendingKey);
         if (existing) {
             execution.trace.shared = true;
@@ -1872,6 +1903,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             ),
             abortSignal: requestControl?.signal,
             ownershipKey: requestControl?.ownershipKey,
+            privateContext: glossarySource?.privateContext,
             trace,
         };
         const credentialConfig = message.modelOverride

@@ -2,7 +2,7 @@
  * @file src/services/translation/requestSnapshot.ts
  *
  * 文件职责：冻结翻译消息的可编辑字段与数组，并附加只读 provider 配置快照，复制并深度冻结服务合批偏好及组合成员配置，归一化 AI 超时设置，消除异步缓存读取期间全局配置变化造成的请求身份错配。
- * 主要内容：在入口一次读取消息字段并复制原文/术语数组，保留内部 symbol 描述符；通过不可序列化的内部标记允许图片文字原样返回成功；配置读取沿用已附着的可信对象，未附着时才同步执行备用快照工厂，仍兼容 provider 的对象备用值；定义配置快照、剩余预算、内部取消、线路观察与可信术语来源，携带后台调度租约让实际网络及响应读取结束前持续占用并发槽，冻结术语规则并从完整文本槽协议恢复纯匹配原文及供文档逐槽结构校验复用的协议快照；以线性首尾边界扫描确定命名空间和最终外层槽数，保留来源中的字面标记和自定义命名空间，重复、交错与缺项仍由同一严格解析器拒绝；userscript 编译时裁剪扩展文档页专属的自动字面值扫描。
+ * 主要内容：在入口一次读取消息字段并复制原文/图片文本/术语数组，保留内部 symbol 描述符；通过不可序列化的内部标记允许图片文字原样返回成功；配置读取沿用已附着的可信对象，未附着时才同步执行备用快照工厂，仍兼容 provider 的对象备用值；定义配置快照、剩余预算、内部取消、线路观察与可信术语及隐私来源，携带后台调度租约让实际网络及响应读取结束前持续占用并发槽，冻结术语规则并从完整文本槽协议恢复纯匹配原文及供文档逐槽结构校验复用的协议快照；以线性首尾边界扫描确定命名空间和最终外层槽数，保留来源中的字面标记和自定义命名空间，重复、交错与缺项仍由同一严格解析器拒绝；userscript 编译时裁剪扩展文档页专属的自动字面值扫描。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；文本槽恢复复用 core/translation/slotProtocol.ts 纯协议，不初始化 DOM 候选或网站规则；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 
@@ -12,7 +12,6 @@ import type {
     TranslationProviderConfigSnapshot,
     TranslationRequestMessageBase,
     TranslationGlossaryContext,
-    TranslationRequestMessage,
 } from './types';
 import {normalizeFreeTranslationOrder, normalizeFreeTranslationMode} from '@/src/core/config/freeTranslation';
 import {normalizeApiKeyRecoveryMs} from '@/src/core/config/scheduling';
@@ -27,13 +26,13 @@ import {findDocumentLiteralTerms} from '@/src/core/translation/documentLiterals'
 import type {TranslationRequestScheduler, TranslationRequestIdentity, TranslationRequestLease} from './requestScheduler';
 
 /** 在入口第一次等待前复制用户可编辑的数组与消息字段，同时保留不可枚举的内部 symbol。 */
-export function createTranslationRequestSnapshot<T extends TranslationRequestMessage>(message: T): T {
+export function createTranslationRequestSnapshot<T extends object>(message: T): T {
     const descriptors: PropertyDescriptorMap = Object.getOwnPropertyDescriptors(message);
     for (const key of Object.keys(descriptors)) {
         const descriptor = descriptors[key];
         const value = 'value' in descriptor ? descriptor.value : Reflect.get(message, key);
         descriptors[key] = {
-            value: (key === 'origin' || key === 'glossaryIds') && Array.isArray(value) ? [...value] : value,
+            value: (key === 'origin' || key === 'glossaryIds' || key === 'texts') && Array.isArray(value) ? [...value] : value,
             enumerable: descriptor.enumerable,
             configurable: descriptor.configurable,
             writable: descriptor.writable ?? false,
@@ -100,6 +99,18 @@ export function getTranslationImageInput(message: unknown): string | undefined {
 export interface TrustedTranslationGlossaryContext {
     readonly pageUrl?: string;
     readonly context?: TranslationGlossaryContext;
+    /** 只由后台真实 sender 绑定，用于内存 quota 隔离；不写入缓存或网络。 */
+    readonly privateContext?: boolean;
+}
+
+
+/** 只解释后台的 sender 与平台上下文，未知来源保留未知；不读取 payload 的自报隐私字段。 */
+export interface TrustedTranslationSenderContext {
+    sender?: {url?: string; tab?: unknown};
+}
+export function translationPrivacyContext(context: TrustedTranslationSenderContext | undefined): Pick<TrustedTranslationGlossaryContext, 'privateContext'> {
+    const tab = context?.sender?.tab as {incognito?: unknown} | undefined;
+    return typeof tab?.incognito === 'boolean' ? {privateContext: tab.incognito} : {};
 }
 
 /** 真实 sender 或应用组合根才能绑定网页来源；字符串 payload 无法伪造此 symbol。 */

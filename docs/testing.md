@@ -467,6 +467,18 @@ node scripts/testing/run-modal-first-translation-test.cjs \
 
 FluentRead 把测试按意图分组，而不是把所有文件塞进一个难以诊断的命令。每个 `tests/**/*.test.ts` 必须且只能出现在 `tests/test-matrix.json` 的一个分组中；测试审计会拒绝漏归类、重复归类、重复用例名、`.only`、无原因 `.skip` 和覆盖率忽略指令。
 
+### AI SDK 共享限流冷却
+
+`pr906SchedulerAudit` 验证 OpenAI 兼容 SDK 线路的 429／503 `Retry-After` 秒数、日期、毫秒头、无效头回退、最长等待、时钟回拨、健康线路绕行，以及真实 HTTP attempt 的取消、deadline 和动态并发限制。`pr906SdkAudit` 使用真实 SDK 与内存 HTTP 夹具，检查响应体未结束时超时仍占槽、不同 Key 或可信私密来源不继承其他额度的冷却，以及轮询与有效重试策略的 pending 隔离。`pr906PrivacyAudit` 检查输入框显式预算与真实隐私来源同时保留、图片入口在 ready 前冻结文本和 sender、内部取消 symbol 以及图像实际模型身份。
+
+```bash
+pnpm test tests/pr906SchedulerAudit.test.ts tests/pr906SdkAudit.test.ts tests/pr906PrivacyAudit.test.ts tests/translationRequestScheduler.test.ts tests/aiSdkOpenAICompatible.test.ts
+```
+
+这些测试不调用在线供应商；生产 Chrome、Firefox 和 userscript 构建检查用于确认共享代码可发布，不能替代真实接口或 Firefox 实机验收。
+
+标准 userscript 复用已有 `francDataPlugin` 压缩锁定的 franc-min 纯模型字符串，通过已有 pako 端口同步恢复；`userscriptViteConfig` 对四种构建模式和全部 66 个模型的字符串、属性顺序及 Unicode 字节逐项检查。算法、模型内容、许可和 Greasy Fork 固定资源不变，普通产物继续通过原体积预算与兼容性 verifier。
+
 ## 按需运行
 
 测试、类型检查和生产构建的 package scripts 统一经过
