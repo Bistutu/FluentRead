@@ -19,7 +19,9 @@ Open the [official GitHub release page](https://github.com/FluentRead/FluentRead
 
 Expand **Assets** below the release notes. Choose **`-chrome.zip`** for Chrome and **`-edge.zip`** for Edge; older releases without an Edge package can use the Chrome package. For checksums, download **`SHA256SUMS.txt`** from the same release’s Assets.
 
-The Chrome ZIP can also be uploaded to the store and omits the development-only `key` field. Developers who need a stable local extension ID can run `pnpm build` and load `.output/chrome-mv3`, which retains the fixed ID and OAuth configuration. `pnpm zip` removes `key` only from the store ZIP. Before release, run `pnpm verify:extension-manifests -- --require-chrome-archive --require-firefox-archives` to validate the packages.
+The offline **`-chrome.zip`** keeps the public key and extension ID `djnlaiohfaaifbibleebjggkghlmcpcj`, matching the Google Drive OAuth client. **`-chrome-store.zip`** is only for Chrome Web Store uploads and omits the key. Do not install the store ZIP manually: the browser may assign another ID, creating a duplicate extension and preventing Google sync.
+
+For developers, `pnpm zip` generates both packages. `pnpm build` also keeps the fixed ID in `.output/chrome-mv3`. Before release, run `pnpm verify:extension-manifests -- --require-chrome-archive --require-firefox-archives` to validate the offline and store packages separately.
 
 The **`-sources.zip`** file and GitHub’s automatic **Source code** downloads contain source code and cannot be installed directly.
 
@@ -40,5 +42,9 @@ Copy browser internal addresses into the address bar; normal websites cannot lin
 An unpacked extension does not receive store updates automatically. Before updating, export your configuration from **Backup & sync** in FluentRead’s settings.
 
 Download the new Chrome ZIP from the [official GitHub release page](https://github.com/FluentRead/FluentRead/releases/latest) and extract it over the original installation folder, then select FluentRead’s **Reload** button on the extensions page. Refresh webpages you want to translate. Reuse the same folder to avoid duplicate installations and keep a backup of the previous folder before replacing files.
+
+Dragging a new ZIP into the browser starts another extraction and installation. Matching names and versions do not guarantee an update. Update store installations through the store; the public key preserves identity but does not guarantee that a manual package can replace a store installation.
+
+If two copies appear, disable the new copy first and keep the original extension and its data. Export any data you need from each copy, then check that the installation package is `-chrome.zip`. If an older offline package had no key and already uses a different ID, restoring the fixed ID also changes its storage identity: back up first, then import into the correct version. Keep the only copy holding complete data installed until the backup is safe.
 
 After installation, follow [Quick start](/en/guide/getting-started) to pin FluentRead and translate a webpage.
