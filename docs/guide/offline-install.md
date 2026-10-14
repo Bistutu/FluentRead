@@ -19,9 +19,11 @@ CRX搜搜是第三方分发网站，版本同步时间可能与官方商店不�
 
 在发布说明下方展开 **Assets**，Chrome 选择 **`-chrome.zip`**，Edge 优先选择 **`-edge.zip`**；旧版本没有 Edge 专用包时可使用 Chrome 包。如需校验文件，也可以在同一版本的 Assets 中下载 **`SHA256SUMS.txt`**。
 
-Chrome 离线安装包 **`-chrome.zip`** 保留公开公钥，扩展 ID 固定为 `djnlaiohfaaifbibleebjggkghlmcpcj`，与 Google Drive 同步客户端一致。**`-chrome-store.zip`** 专门用于 Chrome 商店上传，不含公钥；请勿用它离线安装，否则浏览器可能生成另一个扩展 ID，导致重复安装和 Google 同步报错。
+Chrome 只有一份 **`-chrome.zip`**，保留公开公钥，扩展 ID 固定为 `djnlaiohfaaifbibleebjggkghlmcpcj`，与 Google Drive 同步客户端一致。下载后按下文步骤解压加载即可。
 
-开发者运行 `pnpm zip` 会同时生成这两个包；`pnpm build` 生成的 `.output/chrome-mv3` 也保留固定 ID。发行前可运行 `pnpm verify:extension-manifests -- --require-chrome-archive --require-firefox-archives` 分别校验离线包和商店包。
+开发者运行 `pnpm zip` 只生成这一份 Chrome ZIP，并清理输出目录中同版本的旧 `-chrome-store.zip`；`pnpm build` 生成的 `.output/chrome-mv3` 也保留相同公钥和 OAuth 配置。
+
+Edge 商店仍使用 `pnpm zip:edge` 生成的独立无 `key` 包，Firefox 的安装包和审核源码包流程不变。发行前可运行 `pnpm verify:extension-manifests -- --require-chrome-archive --require-firefox-archives` 校验统一 Chrome 包和 Firefox 产物。
 
 **`-sources.zip`** 和 GitHub 自动生成的 **Source code** 是源码包，不能直接安装。
 
