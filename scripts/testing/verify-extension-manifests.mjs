@@ -86,13 +86,6 @@ function assert(condition, message) {
     if (!condition) throw new Error(message);
 }
 
-export function verifyChromeStoreManifest(storeManifest, localManifest) {
-    assert(!Object.hasOwn(storeManifest, 'key'), 'Chrome 商店 ZIP 不得包含开发用 key 字段');
-    const expected = {...localManifest};
-    delete expected.key;
-    assert(isDeepStrictEqual(storeManifest, expected), 'Chrome 商店清单除 key 外必须与本地构建一致');
-}
-
 export function verifyChromeOfflineManifest(offlineManifest, localManifest) {
     assert(isDeepStrictEqual(offlineManifest, localManifest), 'Chrome 离线清单必须与本地构建一致');
     assert(typeof offlineManifest.key === 'string' && offlineManifest.key.trim().length > 0,
@@ -117,30 +110,28 @@ export function verifyChromeOfflineManifest(offlineManifest, localManifest) {
     return extensionId;
 }
 
-export async function verifyChromeArchivePair(offlineZip, storeZip, localManifest) {
-    const [offlineArchive, storeArchive] = await Promise.all([
-        JSZip.loadAsync(offlineZip, {checkCRC32: true}),
-        JSZip.loadAsync(storeZip, {checkCRC32: true}),
-    ]);
-    const offlineEntry = offlineArchive.file('manifest.json');
-    const storeEntry = storeArchive.file('manifest.json');
-    assert(offlineEntry, 'Chrome 离线 ZIP 缺少 manifest.json');
-    assert(storeEntry, 'Chrome 商店 ZIP 缺少 manifest.json');
-    verifyChromeOfflineManifest(JSON.parse(await offlineEntry.async('string')), localManifest);
-    verifyChromeStoreManifest(JSON.parse(await storeEntry.async('string')), localManifest);
-    const offlineNames = Object.keys(offlineArchive.files).sort();
-    assert(isDeepStrictEqual(Object.keys(storeArchive.files).sort(), offlineNames),
-        'Chrome 商店 ZIP 的文件条目必须与离线 ZIP 一致');
-    for (const name of offlineNames) {
-        const offlineFile = offlineArchive.files[name];
-        const storeFile = storeArchive.files[name];
-        assert(offlineFile.dir === storeFile.dir, `Chrome 商店 ZIP 的文件类型变化：${name}`);
-        if (name === 'manifest.json' || offlineFile.dir) continue;
-        const [offlineBytes, storeBytes] = await Promise.all([
-            offlineFile.async('nodebuffer'), storeFile.async('nodebuffer'),
+export async function verifyChromeArchive(zipBytes, localManifest, localDirectory) {
+    const archive = await JSZip.loadAsync(zipBytes, {checkCRC32: true});
+    const manifestEntry = archive.file('manifest.json');
+    assert(manifestEntry, 'Chrome ZIP 缺少 manifest.json');
+    verifyChromeOfflineManifest(JSON.parse(await manifestEntry.async('string')), localManifest);
+    const names = Object.values(archive.files).filter(entry => !entry.dir).map(entry => entry.name).sort();
+    assert(isDeepStrictEqual(names, await listArtifacts(localDirectory)),
+        'Chrome ZIP 的文件条目必须与本地构建一致');
+    for (const name of names) {
+        const [archiveBytes, localBytes] = await Promise.all([
+            archive.file(name).async('nodebuffer'), readFile(path.join(localDirectory, name)),
         ]);
-        assert(offlineBytes.equals(storeBytes), `Chrome 商店 ZIP 的文件内容与离线 ZIP 不一致：${name}`);
+        assert(archiveBytes.equals(localBytes), `Chrome ZIP 的文件内容与本地构建不一致：${name}`);
     }
+}
+
+export function verifyChromeArchiveNames(outputFiles, version) {
+    const archive = `fluent-read-${version}-chrome.zip`;
+    assert(outputFiles.includes(archive), `Chrome 发布压缩包缺失：${archive}`);
+    assert(!outputFiles.includes(`fluent-read-${version}-chrome-store.zip`),
+        'Chrome 当前版本不得残留旧的 -chrome-store.zip，请重新运行 pnpm zip');
+    return archive;
 }
 
 function verifySharedFrameEntrypoint(manifest, files, browser) {
@@ -246,14 +237,9 @@ async function main() {
     verifySharedFrameEntrypoint(firefoxManifest, firefoxFiles, 'Firefox');
 
     let chromeArchive = null;
-    let chromeStoreArchive = null;
     if (requireChromeArchive) {
-        chromeArchive = `fluent-read-${chromeManifest.version}-chrome.zip`;
-        chromeStoreArchive = `fluent-read-${chromeManifest.version}-chrome-store.zip`;
-        const [offlineZip, storeZip] = await Promise.all(
-            [chromeArchive, chromeStoreArchive].map(archivePath => readFile(path.join(outputDir, archivePath))),
-        );
-        await verifyChromeArchivePair(offlineZip, storeZip, chromeManifest);
+        chromeArchive = verifyChromeArchiveNames(await readdir(outputDir), chromeManifest.version);
+        await verifyChromeArchive(await readFile(path.join(outputDir, chromeArchive)), chromeManifest, chromeDir);
     }
 
     let firefoxArchives = [];
@@ -296,8 +282,7 @@ async function main() {
             runtimeCapabilityMarker: chromeBuildMarker,
             artifacts: chromeArtifacts,
             ocrAssets: chromeOcrAssets.length,
-            offlineArchive: chromeArchive,
-            storeArchive: chromeStoreArchive,
+            archive: chromeArchive,
         },
         firefox: {
             manifestVersion: 2,
