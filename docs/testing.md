@@ -506,7 +506,7 @@ node scripts/verify-userscript-build.mjs  # userscript 元数据与产物边界
 
 真实组件夹具可复用 `tests/helpers/compiledVueFixture.ts` 的纯编译结果，支持独立模板与 `inlineTemplate` 两种原有编译方式。缓存按绝对路径、完整源码及编译选项区分，并限制容量；有序脚本替换、模块格式和编译 ID 分开缓存，运行时 import 信息保持不可变。helper 不保存已执行模块、render 函数、组件实例、DOM 或 mock。挂载继续创建独立实例、DOM 和端口，并按各夹具原有生命周期清理；递归组件图只在一次挂载内保持类型身份，已有的文件级 Vite server 保持原有作用域。不得缓存运行中的组件或关闭文件隔离。时间行为优先使用可控时钟，异步持久化和挂载优先等待明确的事件；取消、超时和时间边界断言仍须保留。
 
-真实论文回归需要显式提供输入：`FLUENTREAD_ATTENTION_PDF` 指向 Attention v7 的 PDF，`FLUENTREAD_PDF_CORPUS` 指向非空论文目录，再执行 `pnpm test:coverage` 或 `pnpm test:regression:all`。未提供时这两个外部语料用例会标记跳过，不能称为包含真实论文的完整验收；验收报告应保留语料文件名和 SHA-256。论文本身不进入仓库。
+真实论文回归需要显式提供输入：`FLUENTREAD_ATTENTION_PDF` 指向 Attention v7 的 PDF，`FLUENTREAD_PDF_CORPUS` 指向非空论文目录，`FLUENTREAD_HARNESS_PDF` 指向 Harness 论文 PDF；Harness 历史修订用例还需 `FLUENTREAD_HARNESS_LAYOUT_OLD` 与 `FLUENTREAD_HARNESS_LAYOUT_FIXED` 指向对应解析结果 JSON，再执行 `pnpm test:coverage` 或 `pnpm test:regression:all`。未提供必要输入时相关用例会标记跳过，不能称为包含真实论文的完整验收；验收报告应保留语料文件名和 SHA-256。论文本身不进入仓库。
 
 新增测试时应选择唯一分组：
 
@@ -1013,13 +1013,27 @@ node scripts/run-video-ai-recognition-benchmark.cjs \
 
 ```bash
 pnpm test:regression:all
+pnpm test:regression:all -- --artifacts-dir /private/tmp/fluentread-regression-<本轮唯一名称>
 pnpm test:regression:all -- --browser \
   --playwright-root <path> \
   --browser-path <path> \
   --focus-safe-helper <path>
 ```
 
-真实浏览器层必须使用临时 profile、屏幕外正常尺寸窗口和 focus-safe helper；不会连接用户日常 profile，也不会静默退化成抢焦点的普通 Playwright 启动。`--browser` 追加 9 组本地浏览器夹具：划词触发、全文翻译、翻译 DOM 与按钮稳定性、视频字幕、文档翻译、设置中心、术语库、隐私边界和 userscript smoke；真实网络站点矩阵还需要单独的网络许可。具体参数以 `node scripts/testing/run-full-regression.mjs --help` 为准。
+执行后，终端显示总报告的位置；默认在系统临时目录新建本轮独立目录，也可用 `--artifacts-dir` 指定新目录。目录内包含：
+
+- `summary.md`：阶段状态、命令、耗时、退出码、日志链接，以及测试数量和四维覆盖率。
+- `report.json`：结构化结果、源码提交与工作树状态、运行开始时的源码与清单指纹、完整测试矩阵和覆盖源码清单的比对结果。
+- `repair-plan.md`：失败项、跳过项、依赖受阻项、原始复现参数与后续复验建议。
+- `logs/`、`vitest-results.json` 和 `coverage/`：本轮日志、测试结果和覆盖率原始证据。
+
+默认继续执行独立检查，构建失败后依赖其产物的检查记为受阻，避免使用上轮残留产物。需要首个失败或证据不完整后停止时，使用 `--fail-fast`。已含证据或被其他运行占用的目录会拒绝重用；复验须使用新目录，保留原始结果。每阶段结束都会更新报告，收到中断信号时保存中断状态、停止后续调度，并等待当前步骤清理退出；忽略信号的进程可能延迟结束。
+
+只有本轮计划全部通过、Vitest 逐用例计数与全部测试文件范围一致、零跳过，并且严格覆盖清单中每份源码的 statements/branches/functions/lines 原始 `covered === total`、`skipped === 0`、`pct === 100` 时，命令才返回成功。缺失或损坏的报告、测试跳过、范围遗漏、运行中源码或清单变化、中断及执行失败都返回非零；报告分别记录“失败”和“证据不完整”。真实论文用例未提供所需本地输入时仍保留跳过记录，不能认定为完整验收。测试失败时也请求生成覆盖率报告，保留可用的诊断证据。
+
+修复流程由 Codex 读取总报告与日志，先复现并核对源码，区分环境或语料问题与已确认缺陷，再自动修复已确认的缺陷并运行相关定向测试。修复记录应注明改动、复验范围、剩余失败和未执行项；定向通过后仍需按影响范围补做完整回归。CLI 负责执行和报告，修复代码由 Codex 完成。不得通过删除必要用例或断言、缩小覆盖范围、降低阈值、增加跳过或覆盖率忽略来获得通过。
+
+真实浏览器层必须使用临时 profile、屏幕外正常尺寸窗口和 focus-safe helper；不会连接用户日常 profile，也不会静默退化成抢焦点的普通 Playwright 启动。`--browser` 追加 14 组本地浏览器夹具：首次 popup 高度、划词触发、全文翻译、翻译 DOM 与按钮稳定性、固定高度双语布局、GitHub 间距、嵌套列表和任务列表、视频字幕、文档翻译、设置中心、术语库、隐私边界和 userscript smoke；真实网络站点矩阵还需要单独的网络许可。具体参数以 `node scripts/testing/run-full-regression.mjs --help` 为准。
 
 CI 或本地报告必须分别说明：确定性回归、隔离浏览器回归、真实网络矩阵是否执行。任何未执行层都不能写成“全量回归已通过”。
 
