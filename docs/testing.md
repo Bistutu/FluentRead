@@ -312,6 +312,8 @@ node scripts/testing/run-webdav-backup-ui-test.cjs \
 
 `tests/videoSubtitleTrackPriorityRuntime.test.ts` 从实际公共 mount 验证 YouTube 同轮选择、两次时钟跨界、NaN、seek、字幕偏移、换轨、迟到结果及人工目标轨命中后回退。只在同步媒体事件窗口对真实 selector 作 call-through 计数，先检查原译文及翻译请求不变；不模拟业务算法。YouTube 夹具按订阅过滤 Linkedom 错发的 attributes，保留真实 childList 与业务回调，并断言观察器预算、订阅和计时器清理；既有 X 夹具继续使用原观察器。这是受控 DOM/媒体/fetch 端口验证，不代表原生浏览器布局、在线字幕服务或设备耗时。
 
+`pnpm test -- tests/youtubeSubtitleData.test.ts tests/videoSubtitleLogic.test.ts tests/videoSubtitleDownloads.test.ts tests/videoSubtitle.test.ts tests/videoSubtitleTrackPriorityRuntime.test.ts` 离线验证原生 timedtext 的事件边界与时间轴。不同事件的 Unicode 字母、引号和括号边界保留必要空格；直/弯 apostrophe 在前一事件末尾、后一事件开头或独立事件时，有限英语缩写与常见法语省音前缀继续组成完整词，单引号及其内部缩写保留引用空格。引用判断只查看本次可合并词流，只有有限引述动词借可见闭号判断引用，普通缩写与名词所有格不会借后面的复数所有格误判；这些局部规则不声称能消除纯文本中的全部语言歧义。称谓仅在可靠人名式后继时延续，歧义缩写、域名样式和小数样式保留句界。JSON3/XML 拒绝空白、非数值类型、负时间和非有限结束时间，缺失或零时长仍按有效后继推断；前缀折叠与词流合并收敛后，重复规范化和 SRT 导出保持幂等。这些 fixture 只证明数据处理，不代表真实 YouTube 捕获、在线翻译质量或 ASR/GPU 验收。
+
 `node scripts/run-video-caption-prefetch-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-caption-prefetch` 在临时 Edge profile 的第二屏后台窗口中，以固定 500ms 翻译响应检查 YouTube/X 的预取和首次显示：重复原生条目不能占满后续句子的名额，轨道加入后立即启动预取，缓存命中的原文与译文在同一次 DOM 更新中显示。报告记录请求启动时间、两行首次显示的间隔和焦点隔离信息；页面与供应商均为受控夹具，不代表真实账号或在线翻译服务的端到端延迟。
 
 同一专项还覆盖滚动字幕的上一句残留、窗口裁切的旧行、连续每 40ms 增词、无时间轴的请求启动延迟与缓存重播。报告中的 `dispatchMs` 只度量原文变化到请求发出的等待，不包含真实供应商耗时；译文仍使用确定性响应，不能据此声称真实视频端到端零延迟。
