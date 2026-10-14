@@ -1,0 +1,230 @@
+{
+  "baselineSourceCommit": "c2549f1128d6ed9c7f49d937eeadd9bc340b3289",
+  "deliveryCommit": "42c0fc8359086f18a9b51c97df7696f189198fed",
+  "hostedCi": {
+    "runId": "38611535513",
+    "jobId": "116015851213",
+    "head": "c2549f1128d6ed9c7f49d937eeadd9bc340b3289",
+    "overallStatus": "FAIL",
+    "completedLogTime": "18:30:36 (parent-reported log time)",
+    "filesPassed": 459,
+    "filesFailed": 1,
+    "filesTotal": 460,
+    "casesPassed": 16191,
+    "casesFailed": 1,
+    "existingCasesSkipped": 4,
+    "formalCoverage": {
+      "targetModules": 84,
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "soleFailure": {
+      "file": "tests/modelVisionSettingsLifecycle.test.ts",
+      "case": "save 挂起时按配置10秒或响应45秒预算退出并允许重试",
+      "originalLine": 145,
+      "expectedTimerCount": 0,
+      "actualTimerCount": 2,
+      "uiDoneBusyFeedback": "All correct in supplied hosted log"
+    },
+    "evidenceSource": "Parent supplied complete hosted job statistics. Overall failure is not reported as CI passing; no creation stacks were present for the two hosted timers."
+  },
+  "diagnosis": {
+    "establishedMechanism": "Vite hmr:false leaves the Chokidar filesystem observer enabled. Native FS callbacks can create infrastructure throttling timers in the globally faked clock after component wait cleanup.",
+    "priorOwnerEvidence": "/private/tmp/fluentread-service-save-timeout-diagnosis.json",
+    "priorTimerStacks": "/private/tmp/fluentread-service-native-watcher-owner-evidence.json",
+    "currentInferenceLimit": "This run exposed a count of two without timer stacks. The known observer mechanism is reused, but the exact two hosted owners/paths are not claimed as stack-verified. macOS Node22 scoped tests are not Linux execution.",
+    "priorExperimentLimit": "The earlier forced native-fs-watch macOS experiment captured fourteen 5ms Chokidar._throttle timers but also reported EMFILE resource errors. It is mechanism evidence, not a clean Linux run."
+  },
+  "audit": {
+    "scope": "Only tests with actual same-realm Vite createServer overlapping vi.useFakeTimers/getTimerCount; literal-source, HTTP/TCP mocks and non-clock fixtures excluded.",
+    "textualCandidateInventory": "/private/tmp/fluentread-vite-fake-clock-fixture-inventory.json",
+    "clockOwningFiles": 7,
+    "actualServerCreationSites": 8,
+    "modifiedFiles": 6,
+    "fileScopes": [
+      {
+        "file": "tests/modelVisionSettingsLifecycle.test.ts",
+        "changed": true,
+        "reason": "Full fake clock during queue/save/response timeout and the strengthened save-cancel check; server is alive. Module graph reads prove import ownership, not filesystem changes.",
+        "serverCreationLines": [
+          62
+        ],
+        "watcherPolicy": "watch:null at every actual Vite creation point",
+        "testsPassed": 30,
+        "testsFailed": 0,
+        "testsSkipped": 0,
+        "durationMs": 2275,
+        "completeFileExecuted": true,
+        "beforeSha256": "61bd22b08469bb1a7a250b5cb5d4c5cfebe3951df222e1235b3eaba87393f5a6",
+        "afterSha256": "fad7d627ec079bb281eb18bd3f538012fe1540d46a689f3deed4988c332d83ce"
+      },
+      {
+        "file": "tests/serviceConfigurationLifecycle.test.ts",
+        "changed": false,
+        "reason": "Existing watch:null from the preceding fix; full fake clock during connection deadlines and actual client async component delays.",
+        "serverCreationLines": [
+          70
+        ],
+        "watcherPolicy": "watch:null at every actual Vite creation point",
+        "testsPassed": 33,
+        "testsFailed": 0,
+        "testsSkipped": 0,
+        "durationMs": 7311,
+        "completeFileExecuted": true,
+        "beforeSha256": "f9e30316bb442ea767d266934f157173109190c7618c8990611837d86f4703ef",
+        "afterSha256": "f9e30316bb442ea767d266934f157173109190c7618c8990611837d86f4703ef"
+      },
+      {
+        "file": "tests/settingsSectionsLifecycle.test.ts",
+        "changed": true,
+        "reason": "Both actual SFC factories share the test global clock; hotkey-recording test installs full fake timers after mounting. Tests exercise form/DOM/request ownership, not FS/HMR.",
+        "serverCreationLines": [
+          138,
+          741
+        ],
+        "watcherPolicy": "watch:null at every actual Vite creation point",
+        "testsPassed": 47,
+        "testsFailed": 0,
+        "testsSkipped": 0,
+        "durationMs": 15131,
+        "completeFileExecuted": true,
+        "beforeSha256": "7e673e49b7f68cdac8bb30152bab0328604d49816c88b78ccb474079cd369af4",
+        "afterSha256": "61591c1833948bda94f0428f62f3c1020436d6751a978cf119cba6f53ee1a795"
+      },
+      {
+        "file": "tests/learningCenterLifecycle.test.ts",
+        "changed": true,
+        "reason": "Vite initializes and closes under real time, but survives until afterEach while Vue async-pane delays use full fake timers. Source compilation/loading does not require file observation.",
+        "serverCreationLines": [
+          68
+        ],
+        "watcherPolicy": "watch:null at every actual Vite creation point",
+        "testsPassed": 18,
+        "testsFailed": 0,
+        "testsSkipped": 0,
+        "durationMs": 2635,
+        "completeFileExecuted": true,
+        "beforeSha256": "9876c815c0399d8a1b5f719b774ed28b29251668ed7dbc2aa3e56080064c4c72",
+        "afterSha256": "c7a7de568bf330d96ca6e57aa4ce42a482266c808e9ed56b0ca92293651a6101"
+      },
+      {
+        "file": "tests/informationHighlightUiLifecycle.test.ts",
+        "changed": true,
+        "reason": "Only setInterval/clearInterval are faked; lower direct throttle-timeout overlap risk, but the persistent observer is unused and shares the clock-owning fixture realm.",
+        "serverCreationLines": [
+          45
+        ],
+        "watcherPolicy": "watch:null at every actual Vite creation point",
+        "testsPassed": 33,
+        "testsFailed": 0,
+        "testsSkipped": 0,
+        "durationMs": 1933,
+        "completeFileExecuted": true,
+        "beforeSha256": "3a2953d04059bc98e0f62d8b44acd38cc07a040fd5f48d26f86abb15623faff4",
+        "afterSha256": "0c0d757f81c626456d4bb07541dd7bea89adcb245f64ebdb9c67107c7ea3f8d2"
+      },
+      {
+        "file": "tests/informationHighlightSettingsLifecycle.test.ts",
+        "changed": true,
+        "reason": "Only setInterval/clearInterval are faked; real DOM, card actions and model polling do not exercise filesystem observation.",
+        "serverCreationLines": [
+          70
+        ],
+        "watcherPolicy": "watch:null at every actual Vite creation point",
+        "testsPassed": 30,
+        "testsFailed": 0,
+        "testsSkipped": 0,
+        "durationMs": 4748,
+        "completeFileExecuted": true,
+        "beforeSha256": "eeb98ec52f1d819d0460b6a4a973a9202dea18d79201f8c3288dfbb40dae00b6",
+        "afterSha256": "0a16e58085ac243475edf5216aa72b639a88b09a0f516fee0a6e6460ee57994d"
+      },
+      {
+        "file": "tests/popupAppLifecycle.test.ts",
+        "changed": true,
+        "reason": "Only setInterval/clearInterval are faked for active-source polling; actual popup template/actions and storage draft integration do not exercise filesystem observation.",
+        "serverCreationLines": [
+          75
+        ],
+        "watcherPolicy": "watch:null at every actual Vite creation point",
+        "testsPassed": 37,
+        "testsFailed": 0,
+        "testsSkipped": 0,
+        "durationMs": 7563,
+        "completeFileExecuted": true,
+        "beforeSha256": "727920aae13aabdb389fdc12c7b15e7272590374b1bc32f1ef43519a2ac72a15",
+        "afterSha256": "f874aced4ae62cd1bed7845f36d75b7a2adc1ee38ddcea26ee17bd1b214644c5"
+      }
+    ],
+    "indirectHelpers": "uiI18nAuditHarness.ts already watch:null; its two callers do not fake timers. compiledVueFixture.ts reads and compiles synchronously without a server. No shared setupFiles/global fake clock or dynamic Vite createServer aliases were found.",
+    "exclusions": [
+      "implementationAudit49K mocked child Vite loader, not a real same-realm server",
+      "browserFocusSafety/49I HTTP and49J TCP servers",
+      "Vite-import/SSR fixtures without a fake clock",
+      "userscriptViteConfig addWatchFile contract and compiledVueFixture source-change contract remain unchanged; neither relies on a persistent Vite watcher"
+    ],
+    "requiredWatcherExceptions": "No FS/HMR contract was found in the seven clock-owning fixtures; none of their observers need preserving. No other fixtures were changed.",
+    "notExecuted": "Other 453 test files, a new Linux hosted run, full 460-file suite and formal84 coverage were not rerun. The seven complete relevant files were executed."
+  },
+  "macroEventDomain": {
+    "infrastructureChange": "Disable only native filesystem observation/throttle production via Vite watch:null. This removes irrelevant observer macro events from the test clock domain.",
+    "existingClockSelections": "Original default and interval-only toFake selections remain unchanged. No nextTick changes, custom timer threshold, clearAllTimers, WS/discovery/preTransform options or artificial clock flush were added.",
+    "visionCancelCase": "The existing save-cancel case now enters the same default fake clock as the timeout cases to verify one pending timer and zero timers after cancellation/retry/late completion. Component Promise/AbortSignal behavior remains real.",
+    "assertions": "Vision deadlines still10,000/45,000ms: minus1ms remains busy/running, final1ms fails and cancels correct request id, late real-shaped success neither overwrites failure nor refreshes cache, fresh retry uses a new id and clears all timers. Explicit cancel also clears and remains safe after late save."
+  },
+  "validation": {
+    "node": "v22.23.2",
+    "nodePath": "/opt/homebrew/opt/node@22/bin/node",
+    "platform": "macOS",
+    "environment": {
+      "CI": "true",
+      "GITHUB_REPOSITORY": "FluentRead/FluentRead"
+    },
+    "filesPassed": 7,
+    "casesPassed": 228,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 45.81,
+    "unhandledErrors": 0,
+    "log": "/private/tmp/fluentread-vite-fake-clock-fixture-final-node22.log"
+  },
+  "cleanupNegativeControl": {
+    "file": "tests/modelVisionSettingsLifecycle.test.ts",
+    "case": "save 挂起时按配置10秒或响应45秒预算退出并允许重试",
+    "sourceMutation": "Only owned temp c254 snapshot: remove the real taskWait clearTimeout(timer) finalizer",
+    "exitCode": 1,
+    "expectedFailure": "Pending component timer assertion expected1, observed2",
+    "passed": true,
+    "unselectedCases": 29,
+    "unhandledErrors": 0,
+    "log": "/private/tmp/fluentread-vision-timer-cleanup-negative.log",
+    "scope": "No production test source was mutated; this confirms the observer isolation still exposes an actual component timer leak."
+  },
+  "productionSourceUntouched": true,
+  "productionSourceSha256": {
+    "src/features/settings/ui/services/ModelVisionSettings.vue": "e07f625eac83d9a9801ac740e3ff1c7e3ba12a68dc6a4c9307bb0b989f6982fc",
+    "src/features/settings/ui/services/ServiceConfiguration.vue": "4459effbacb7900d0c15240b8575f5560976db91a4f2e3143e6649cb9edd60a5",
+    "src/features/settings/model/taskWait.ts": "99f7867d7cccc4d1793532c19df90414832e2f6d978153411e56e56a4a80278b"
+  },
+  "cleanup": {
+    "ownedNegativeSnapshotRemoved": true,
+    "removedDirectory": "/private/tmp/fluentread-vision-timer-cleanup-negative-yclnl33r",
+    "taskNodeModulesPreserved": true
+  },
+  "metadataAndBudgetChanged": false,
+  "productSourceCommit": "e85a18359fc92d88b54204f7003d2dada4884d9a",
+  "types": {
+    "status": "passed",
+    "command": "pnpm compile",
+    "log": "/private/tmp/fluentread-pr985-vite-fixture-types.log"
+  },
+  "independentReview": {
+    "clockOwningFiles": 7,
+    "uncoveredSameClassFixtures": 0,
+    "filesystemOrHmrContractsInScope": 0,
+    "productionChanges": false
+  },
+  "finalHostedStatus": "pending on updated PR head"
+}

@@ -128,7 +128,18 @@
       "userscriptVerifier": "passed",
       "userscriptBudgetMatchesMain": true,
       "proof": "latest-main-integration.json",
-      "ciFollowUp": "ci-follow-up.json"
+      "ciFollowUp": "ci-follow-up.json",
+      "viteClockFixtures": {
+        "sourceCommit": "42c0fc8359086f18a9b51c97df7696f189198fed",
+        "files": 7,
+        "passed": 228,
+        "skipped": 0,
+        "unhandledErrors": 0,
+        "cleanupNegativeControl": "passed",
+        "types": "passed",
+        "proof": "vite-clock-fixture-follow-up.json"
+      },
+      "fixtureFollowUpProductionSourceUnchanged": true
     },
     "sectionSweepIntegration": {
       "status": "passed",
@@ -280,7 +291,7 @@
     "globalInputs": []
   },
   "programSourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb",
-  "recordingPhase": "final local verification before updated PR CI",
+  "recordingPhase": "local fixture follow-up passed; updated-head hosted CI pending",
   "currentIntegratedBase": "b4125919e10bff34a81872dc3cdf69e63143a534",
   "pullRequest": "https://github.com/FluentRead/FluentRead/pull/985"
 }
