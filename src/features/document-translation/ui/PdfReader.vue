@@ -1,7 +1,7 @@
 <!--
  @file src/features/document-translation/ui/PdfReader.vue
  文件职责：以左右对照的连续页面显示可划词的 PDF 原页和保持原版排版的译文页，并保留“重排阅读”作为可选的显示方式。
- 主要内容：智能高亮按所选模型重新评分，模型切换传递固定请求身份；页面占满阅读区且不再附带逐页标题；原版排版在原页像素上按段落叠加可选择的译文文字层，译文逐段到达时只更新对应段落，等待中的段落显示设置中选定的翻译加载样式；公式、图表和页眉页脚保持原样，放不下的段落悬停展开；悬停译文高亮对应原文；拖选原文时把选区终点钉在指针附近，避免划过空白选中整页；重排阅读使用同一实际计划组织正文与原图裁剪，区域身份或坐标变化才重裁剪，普通译文变化复用原像素并保持阅读位置；目录按阅读顺序列出识别到的章节标题并标出当前位置，点击即跳转，可自行展开或传送到页面侧栏；触控板捏合与 Ctrl/Cmd 加减号只缩放阅读内容，保留指针所在页内坐标，捏合期间复用画布和文字层、停下后重绘；缩放与显示方式使用与页面一致的菜单而非浏览器原生下拉；搜索同时匹配原文与译文并逐处跳转，译文样式可调字号与字体；只挂载附近五页，目录开关、页码、缩放和显示方式控件可以传送到页面工具栏；卸载时释放全部页面资源；显式开启的信息高亮只评分真实可选文字，进度放在按钮提示里、只有出错才在工具栏显示并可重试，配置、页面和文档失效时取消旧绘制。
+ 主要内容：智能高亮按所选模型重新评分，模型切换传递固定请求身份；页面占满阅读区且不再附带逐页标题；原版排版在原页像素上按段落叠加可选择的译文文字层，译文逐段到达时只更新对应段落，等待中的段落显示设置中选定的翻译加载样式；公式、图表和页眉页脚保持原样，放不下的段落悬停展开，拖选与原生选区保留期间保持展开，译文文字层接住段间空白且背景不拦截选择；悬停译文高亮对应原文；拖选原文时把选区终点钉在指针附近，避免划过空白选中整页；重排阅读使用同一实际计划组织正文与原图裁剪，区域身份或坐标变化才重裁剪，普通译文变化复用原像素并保持阅读位置；目录按阅读顺序列出识别到的章节标题并标出当前位置，点击即跳转，可自行展开或传送到页面侧栏；触控板捏合与 Ctrl/Cmd 加减号只缩放阅读内容，保留指针所在页内坐标，捏合期间复用画布和文字层、停下后重绘；缩放与显示方式使用与页面一致的菜单而非浏览器原生下拉；搜索同时匹配原文与译文并逐处跳转，译文样式可调字号与字体；只挂载附近五页，目录开关、页码、缩放和显示方式控件可以传送到页面工具栏；卸载时释放全部页面资源；显式开启的信息高亮只评分真实可选文字，进度放在按钮提示里、只有出错才在工具栏显示并可重试，配置、页面和文档失效时取消旧绘制。
  模块边界：组件只组织阅读布局、叠加层与页面调度；文档由组合根导入、翻译由既有服务提供，划词卡片由页面组合根复用统一翻译卡。
 -->
 <template>
@@ -88,7 +88,7 @@
                 <div class="pdf-translation-layer" data-fluentread-pdf-translation :data-pdf-reading-page="layout.page.pageNumber" :style="layerStyle(layout)" @pointerleave="highlight = undefined">
                   <i v-if="searchHighlight?.pageNumber === layout.page.pageNumber" class="pdf-source-highlight search" :style="searchHighlight.style" data-fluentread-pdf-decoration aria-hidden="true" />
                   <template v-for="entry in overlayPages.get(layout.page.pageNumber)" :key="entry.id">
-                    <div v-if="entry.translated" class="pdf-translation-block" :class="{overflowing: entry.overflow, heading: entry.role === 'heading'}" :style="entry.boxStyle" :data-pdf-segment-index="entry.segmentIndex" :data-pdf-source-text="entry.source" :data-pdf-source-id="entry.id" :data-pdf-role="entry.role" data-i18n-ignore @pointerenter="showHighlight(layout, entry)">
+                    <div v-if="entry.translated" class="pdf-translation-block" :class="{overflowing: entry.overflow, heading: entry.role === 'heading', 'selection-expanded': expandedSelectionBlocks.has(entry.id)}" :style="entry.boxStyle" :data-pdf-segment-index="entry.segmentIndex" :data-pdf-source-text="entry.source" :data-pdf-source-id="entry.id" :data-pdf-role="entry.role" data-i18n-ignore @pointerenter="showHighlight(layout, entry)">
                       <i v-for="(rect, index) in entry.eraseStyles" :key="index" class="pdf-translation-erase" :style="rect" aria-hidden="true" />
                       <p class="pdf-translation-text" :style="entry.textStyle" data-fluentread-pdf-lines><span v-for="(line, index) in entry.lines" :key="index" :class="{justified: line.justified}">{{ line.text }}</span></p>
                     </div>
@@ -567,6 +567,22 @@ function indexesForRange(range?: Range | null): number[] {
 const TEXT_LAYER = '[data-fluentread-pdf-text]';
 let selectionPointerDown = false;
 let previousSelectionRange: Range | undefined;
+/** 长译文在拖选及原生选区保留期间保持展开；只更新附近页面的溢出段落，不改变文字节点或页面高度。 */
+const expandedSelectionBlocks = shallowRef<ReadonlySet<string>>(new Set());
+function retainTranslationSelection(selection: Selection | null): void {
+  const next = new Set<string>();
+  if (selection?.rangeCount && !selection.isCollapsed) {
+    const range = selection.getRangeAt(0);
+    const translated = (node: Node) => (node.nodeType === 1 ? node as Element : node.parentElement)?.closest('[data-fluentread-pdf-translation]');
+    if (translated(range.startContainer) && translated(range.endContainer)) {
+      for (const block of viewport.value?.querySelectorAll<HTMLElement>('.pdf-translation-block.overflowing') ?? []) {
+        if (range.intersectsNode(block)) next.add(block.getAttribute('data-pdf-source-id')!);
+      }
+    }
+  }
+  const previous = expandedSelectionBlocks.value;
+  if (next.size !== previous.size || [...next].some(id => !previous.has(id))) expandedSelectionBlocks.value = next;
+}
 function selectionGuard(layer: HTMLElement): HTMLElement {
   let guard = layer.querySelector<HTMLElement>('[data-fluentread-pdf-selection-guard]');
   if (!guard) {
@@ -610,6 +626,7 @@ function guardSelection(selection: Selection | null): void {
 function handleSelectionChange(): void {
   const selection = window.getSelection();
   guardSelection(selection);
+  retainTranslationSelection(selection);
   nativePins = indexesForRange(selection?.rangeCount && !selection.isCollapsed ? selection.getRangeAt(0) : undefined);
   scheduleViewport();
 }
@@ -621,6 +638,12 @@ function handlePointerDown(event: PointerEvent): void {
   const page = Number(layer?.getAttribute('data-pdf-page-number') ?? layer?.getAttribute('data-pdf-reading-page'));
   const index = pages.value.findIndex(entry => entry.pageNumber === page);
   pointerPin = index >= 0 ? index : undefined;
+  if (event.button === 0) {
+    const block = target.closest?.('.pdf-translation-block.overflowing');
+    const id = block?.getAttribute('data-pdf-source-id');
+    const previous = expandedSelectionBlocks.value;
+    if (id ? previous.size !== 1 || !previous.has(id) : previous.size > 0) expandedSelectionBlocks.value = new Set(id ? [id] : []);
+  }
   if (event.button === 0 && layer?.matches(TEXT_LAYER)) {selectionPointerDown = true; previousSelectionRange = undefined; selectionGuard(layer as HTMLElement); layer.classList.add('selecting');}
 }
 function handlePointerUp(): void {
@@ -758,6 +781,7 @@ function createScheduler(): void {
   translatedHosts.clear();
   readingHosts.clear(); regionHosts.clear(); readingHeights.value = new Map(); blockColors.value = new Map(); highlight.value = undefined;
   nativePins = []; cardPins = []; pointerPin = undefined; pageInputEditing = false; selectionPointerDown = false; previousSelectionRange = undefined;
+  expandedSelectionBlocks.value = new Set();
   pendingReadingAnchor = lastReadingAnchor = undefined; readingUpdateGeneration += 1;
   documentIdentity.value = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   scheduler = new PdfReaderScheduler(pages.value, createPdfReaderRenderPort(props.document), (pageNumber, state) => {
@@ -930,16 +954,16 @@ onBeforeUnmount(() => {
 .pdf-page-error button {align-self: center; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e6f0; background: #fff; color: #1d2535; cursor: pointer;}
 .pdf-source-highlight {position: absolute; z-index: 2; border-radius: 3px; background: color-mix(in srgb, var(--brand), transparent 88%); outline: 1.5px solid color-mix(in srgb, var(--brand), transparent 45%); pointer-events: none;}
 /* 译文层：段落按原文坐标绝对定位，底色遮住原文字形，文字可选择可复制。 */
-.pdf-translation-layer {position: absolute; top: 0; left: 0; transform-origin: 0 0; z-index: 1; pointer-events: none;}
-.pdf-translation-block {position: absolute; pointer-events: auto; user-select: text; cursor: text;}
-.pdf-translation-erase {position: absolute; background: var(--pdf-block-background, #fff);}
-.pdf-translation-text {position: relative; margin: 0; max-height: 100%; overflow: hidden; white-space: pre; font-synthesis: weight; font-kerning: normal; text-rendering: geometricPrecision;}
+.pdf-translation-layer {position: absolute; top: 0; left: 0; transform-origin: 0 0; z-index: 1; pointer-events: auto; user-select: text; -webkit-user-select: text;}
+.pdf-translation-block {position: absolute; pointer-events: auto; user-select: text; -webkit-user-select: text; cursor: text;}
+.pdf-translation-erase {position: absolute; background: var(--pdf-block-background, #fff); pointer-events: none; user-select: none;}
+.pdf-translation-text {position: relative; margin: 0; max-height: 100%; overflow: hidden; white-space: pre; user-select: text; -webkit-user-select: text; font-synthesis: weight; font-kerning: normal; text-rendering: geometricPrecision;}
 .pdf-translation-text span {display: block;}
 .pdf-translation-text span.justified {text-align-last: justify;}
 .pdf-translation-block.overflowing .pdf-translation-text::after {content: ""; position: absolute; inset: auto 0 0; height: 1.2em; background: linear-gradient(transparent, var(--pdf-block-background, #fff)); pointer-events: none;}
-.pdf-translation-block.overflowing:hover {z-index: 3;}
-.pdf-translation-block.overflowing:hover .pdf-translation-text {max-height: none; overflow: visible; background: var(--pdf-block-background, #fff); box-shadow: 0 0 0 4px var(--pdf-block-background, #fff), 0 6px 18px 4px #10182833;}
-.pdf-translation-block.overflowing:hover .pdf-translation-text::after {display: none;}
+.pdf-translation-block.overflowing:is(:hover, .selection-expanded) {z-index: 3;}
+.pdf-translation-block.overflowing:is(:hover, .selection-expanded) .pdf-translation-text {max-height: none; overflow: visible; background: var(--pdf-block-background, #fff); box-shadow: 0 0 0 4px var(--pdf-block-background, #fff), 0 6px 18px 4px #10182833;}
+.pdf-translation-block.overflowing:is(:hover, .selection-expanded) .pdf-translation-text::after {display: none;}
 .pdf-translation-block ::selection, .pdf-reading-sheet ::selection {background: color-mix(in srgb, var(--brand), transparent 65%);}
 /* 等待中的段落使用设置里选定的翻译加载样式，按原文字号缩放并跟在段落末行之后。 */
 .pdf-translation-spinner {position: absolute; display: inline-flex; width: 16px; height: 16px; transform-origin: 0 50%; pointer-events: none;}
