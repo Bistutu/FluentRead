@@ -685,7 +685,7 @@ describe('userscript lossless Unicode character data', () => {
 });
 
 
-describe('standalone locked franc pure-data encoding', () => {
+describe('userscript locked franc pure-data encoding', () => {
     const require = createRequire(resolve(process.cwd(), 'package.json'));
     const dataPath = realpathSync(require.resolve('franc-min/data.js'));
     const original = readFileSync(dataPath, 'utf8');
@@ -802,7 +802,7 @@ describe('standalone locked franc pure-data encoding', () => {
     });
 
     it.each([
-        ['ordinary', '0', '0', false],
+        ['ordinary', '0', '0', true],
         ['standalone', '1', '0', true],
         ['greasy-fork', '0', '1', false],
         ['standalone-and-greasy', '1', '1', false],

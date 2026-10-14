@@ -197,12 +197,15 @@ function compatibilityFetch(
     let result: {response: Response; normalized: Awaited<ReturnType<typeof normalizeSuccessfulTextResponse>>};
     try {
       const schedulerContext = getTranslationRequestScheduler(request);
+      const identity = {...schedulerContext?.identity,
+        service: request.serviceOverride || schedulerContext?.identity?.service, model: requestedModel};
       const fetchAttempt = () => {
         const settlement = (async () => {
           const response = await runtimeFetch(endpoint.exactEndpoint || input, init);
+          schedulerContext?.scheduler.observeResponse(identity, response);
           const normalized = await normalizeSuccessfulTextResponse(response);
           // SDK 还会读取失败响应体；先读完克隆，确保取消时该网络读取也受并发槽约束。
-          if (schedulerContext?.lease && !response.ok) {
+          if (schedulerContext && !response.ok) {
             try {
               await response.clone().arrayBuffer();
             } catch {
@@ -218,7 +221,8 @@ function compatibilityFetch(
       result = schedulerContext
         ? await schedulerContext.scheduler.scheduleAttempt(fetchAttempt, {
             signal: init?.signal ?? undefined,
-            identity: {service: request.serviceOverride || schedulerContext.identity?.service, model: requestedModel},
+            identity,
+            countConcurrency: Boolean(schedulerContext.identity?.quotaScope),
           })
         : await fetchAttempt();
     } catch (error) {

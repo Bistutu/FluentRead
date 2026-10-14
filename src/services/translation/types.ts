@@ -34,6 +34,8 @@ export const TRANSLATION_IMAGE_INPUT = Symbol('fluentread.translation-image-inpu
 export interface TrustedTranslationGlossaryContext {
     readonly pageUrl?: string;
     readonly context?: TranslationGlossaryContext;
+    /** 只由后台真实 sender 绑定，用于内存 quota 隔离；不写入缓存或网络。 */
+    readonly privateContext?: boolean;
 }
 
 export type TranslationModelUsageObserver = (observation: TranslationModelUsageObservation) => void;
