@@ -243,7 +243,15 @@ describe('authoritative site catalogs with an external pinned data asset', () =>
 });
 
 describe('userscript browser shim injection', () => {
-    const registeredSupplementKeys = ['learning.panelLoadError', 'learning.reloadPage', ...Object.keys(aiRequestTimeoutMessages['en-US'])];
+    const registeredSupplementKeys = ['learning.panelLoadError', 'learning.reloadPage', ...Object.keys(aiRequestTimeoutMessages['en-US']),
+        'sectionTranslation.picker.dragging', 'sectionTranslation.scope.selected'];
+    const publishedSectionKeys = ['sectionTranslation.picker.preview', 'sectionTranslation.picker.instruction', 'popup.sectionTranslationTitle'];
+    const remoteFiles = JSON.parse((userscriptConfig as {define: Record<string, string>}).define.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__) as Record<string, string>;
+    const publishedMessages = Object.fromEntries(Object.entries(remoteFiles).map(([language, fileName]) => [language,
+        (JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', fileName), 'utf8')) as {messages: Record<string, string>}).messages,
+    ]));
+    const expectedMessage = (language: string, key: string, current: string): string =>
+        language !== 'zh-CN' && language !== 'en-US' && publishedSectionKeys.includes(key) ? publishedMessages[language][key] : current;
     it('preserves pinned remote dictionaries for inlined panes and keeps embedded recovery copy', () => {
         const build = (userscriptConfig as {build: {cssCodeSplit: boolean; rollupOptions: {output: {inlineDynamicImports: boolean}}}}).build;
         expect(build.cssCodeSplit).toBe(false);
@@ -259,7 +267,8 @@ describe('userscript browser shim injection', () => {
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
                 !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && !key.startsWith('popup.compact.')
                 && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
-                && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !registeredSupplementKeys.includes(key))));
+                && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !registeredSupplementKeys.includes(key)))
+                .map(([key, text]) => [key, expectedMessage(language, key, text)]));
             expect(bundle.messages).toEqual(kept);
             expect(original.messages['learning.reloadPage']).toBeTruthy();
         }
@@ -320,7 +329,7 @@ describe('userscript browser shim injection', () => {
             && key !== 'popup.compact.translate' && key !== 'popup.compact.restore'
             && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)));
         expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
-        for (const key of retainedKeys) expect(projected[key]).toBe(extension[key]);
+        for (const key of retainedKeys) expect(projected[key]).toBe(expectedMessage(_language, key, extension[key]));
         expect(projected['contextMenu.translateSelection']).toBeTruthy();
         expect(projected['contextMenu.translatePage']).toBeTruthy();
         expect(projected['contextMenu.restorePage']).toBeTruthy();

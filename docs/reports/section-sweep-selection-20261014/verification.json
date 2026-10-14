@@ -1,0 +1,91 @@
+{
+  "baseCommit": "573890c33ad410b48086dcb83bad97ae1bf5a82c",
+  "branch": "codex/section-sweep-selection-20261014",
+  "behavior": "Hold the left mouse button and sweep independent regions. Each is highlighted and deduplicated. Release locks the group; confirmation translates remaining regions or restores the group through the existing section engine.",
+  "tests": {
+    "targetedFiles": 6,
+    "passed": 210,
+    "coverage": {
+      "files": [
+        "src/features/section-translation/content/picker.ts",
+        "src/features/full-page-translation/content/sectionTranslation.ts"
+      ],
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "moduleBoundaries": "passed",
+    "sourceHeaders": "passed",
+    "audit": "passed",
+    "compile": "passed",
+    "docsBuild": "passed",
+    "chromeBuild": "passed",
+    "firefoxBuild": "passed",
+    "userscriptBuild": "passed",
+    "userscriptVerifier": "passed"
+  },
+  "knownBaselineFailure": {
+    "file": "tests/i18n.test.ts",
+    "line": 1138,
+    "reason": "Legacy correction inventory contains an obsolete Chrome built-in AI unavailable label absent from current UI source.",
+    "reproducedOnMain": true
+  },
+  "browser": {
+    "sweep": {
+      "success": true,
+      "cases": [
+        "popup shows the section entry next to the page action",
+        "left-button sweep selects exactly two paragraphs; retracing and gaps do not select the article",
+        "reverse sweep of translated paragraphs restores only the selected group",
+        "sweep with an existing translation fills only the untranslated paragraph",
+        "reselect clears all swept regions; Esc during dragging cancels without requests",
+        "removing a non-leading swept region invalidates the entire selection before confirmation"
+      ],
+      "errors": [],
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacementMode": "background-visible-no-focus",
+      "browserFrontmost": false,
+      "browserActivations": 0,
+      "temporaryProfileRemoved": true,
+      "reportPath": "/Users/thinkstu/Desktop/copy/research/section-sweep-selection-20261014/sweep/report.json"
+    },
+    "core": {
+      "success": true,
+      "cases": [
+        "popup shows the section entry next to the page action",
+        "locked closed-shadow toolbar handles range keys and Escape after webpage input focus",
+        "toolbar buttons keep range keys and native Enter activation after Tab",
+        "stable boundary preview, explicit locking, visible range buttons and reselect",
+        "picker highlights the paragraph under the pointer and widens with ArrowUp",
+        "click locks the section without navigation or requests; Enter confirms only that section",
+        "picking the translated section again restores only that section",
+        "Escape, right-click and forged events leave the page untouched",
+        "picking page chrome translates it even though page translation keeps it original",
+        "same-language and empty sections explain why nothing was requested",
+        "optional shortcut enters and leaves picking, and yields to typing",
+        "restoring page translation also restores translated sections",
+        "independent section shortcut selects a container before requesting its target language",
+        "another section profile switches the container language, and the same profile restores it",
+        "section profile yields while editing and cancels without translation",
+        "narrow layout keeps all range controls and confirmation within the viewport",
+        "new nested open ShadowRoots keep locked empty-to-source summaries current",
+        "turning the plugin off exits picking and rejects new requests"
+      ],
+      "errors": [],
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacementMode": "background-visible-no-focus",
+      "browserFrontmost": false,
+      "browserActivations": 0,
+      "temporaryProfileRemoved": true,
+      "reportPath": "/Users/thinkstu/Desktop/copy/research/section-sweep-selection-20261014/core/report.json"
+    }
+  },
+  "limits": [
+    "The local deterministic Google transport verifies request and rendering flow; it does not verify live provider availability or translation quality.",
+    "Firefox runtime and ordinary user browser profiles were not tested."
+  ],
+  "referenceRepositoryCodeUsed": false
+}
