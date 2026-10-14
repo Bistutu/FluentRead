@@ -41,10 +41,6 @@
             <span>{{ t('settings.services.library.add') }}</span>
           </button>
           </el-tooltip>
-          <button type="button" class="service-add-button service-composite-add" data-testid="composite-service-add" :disabled="!active" :aria-label="t('settings.services.composite.add')" :onClick="actions.addCompositeService">
-            <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="14" width="7" height="7" rx="2" /><path d="M14 6h4v8M6 10v8h8" /></svg>
-            <span>{{ t('settings.services.composite.add') }}</span>
-          </button>
         </div>
         <slot name="add-service-status" />
         <label class="catalog-search">
@@ -99,6 +95,7 @@
           </div>
           <div class="hero-service-actions">
             <button
+              v-if="!isCompositeTranslationProviderId(service) || service !== defaultService"
               type="button"
               class="service-default-button"
               data-set-default-service-button
@@ -233,7 +230,6 @@ const emit = defineEmits<{
   'update:default-service': [value: string]
   'update:model': [value: string]
   'add:service': []
-  'add:composite-service': []
   'add:model': [value: string]
   'remove:model': [value: string]
 }>()
@@ -501,7 +497,6 @@ const actions = computed(() => {
     toggleDirectory: () => {if (current()) directoryOpen.value = !directoryOpen.value},
     updateQuery: (event: Event) => {const value = (event.currentTarget as HTMLInputElement | null)?.value;if (current() && typeof value === 'string') serviceQuery.value = value},
     addService: () => {if (current()) emit('add:service')},
-    addCompositeService: () => {if (current()) emit('add:composite-service')},
     selectModel: (value: string) => {if (current()) emit('update:model', value)},
     addModel: (value: string) => {if (current()) emit('add:model', value)},
     removeModel: (value: string) => {if (current()) emit('remove:model', value)},
@@ -532,7 +527,6 @@ watch(() => props.service, (service) => {
 .rail-heading strong { color: var(--ink, #172033); font-size: 13px; font-weight: 700; }
 .service-add-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 34px; padding: 7px 11px; border: 1.5px solid color-mix(in srgb, var(--brand) 65%, var(--line)); border-radius: 10px; color: var(--brand-strong); background: var(--surface); font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s; }
 .service-add-button:hover, .service-add-button:focus-visible { border-color: var(--brand); background: var(--brand-soft); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 10%, transparent); }
-.service-composite-add { width: 100%; }
 
 .service-count { margin-left: 4px; font-variant-numeric: tabular-nums; }
 .service-groups { overflow-y: auto; min-height: 0; flex: 1; margin-top: 12px; overscroll-behavior: contain; }

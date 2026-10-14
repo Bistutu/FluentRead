@@ -68,6 +68,7 @@ async function mount(name: string, values: Record<string, unknown>, listeners: R
 function change(reason: string) {
   if (reason === 'hidden') props.active = false
   if (reason === 'context') props.context = {}
+  if (reason === 'config') props.config = runtime.reactive(new Config())
   if (reason === 'service') props.contextKey = 'service-b'
   if (reason === 'unmount') app.unmount()
   if (reason === 'cached') visible.value = false
@@ -76,22 +77,53 @@ const picker = {options: [{value: 'fixed'}, {value: 'custom', removable: true}],
 function fillProvider() {Object.assign(state.draft, {name: 'Local', endpoint: 'http://localhost:11434/v1', apiKey: 'synthetic', model: 'local-model'})}
 
 describe('服务子编辑器的写入与焦点归属', () => {
-  it('组合创建校验至少两个成员、保存策略与超时且旧提交不跨重开', async () => {
-    await mount('CompositeTranslationProviderDialog', {config: runtime.reactive(new Config()), modelValue: true}, {onSubmit: emitted})
-    state.actions.submit();expect(state.errors.name).toBe('settings.services.composite.nameRequired');expect(emitted).not.toHaveBeenCalled()
-    Object.assign(state.draft, {name: ' Daily ', strategy: 'smart', services: ['google'], timeoutMs: 5000})
-    state.actions.submit();expect(state.errors.services).toBe('settings.services.composite.membersRequired')
+  it('唯一创建窗口默认接口，组合校验至少两个成员且旧提交不跨重开', async () => {
+    const interfaceSubmit = vi.fn()
+    await mount('CustomOpenAIProviderDialog', {config: runtime.reactive(new Config()), modelValue: true}, {onSubmit: interfaceSubmit, 'onSubmit:composite': emitted})
+    expect(state.serviceType).toBe('interface');state.actions.type('composite')
+    state.actions.submit();expect(state.compositeErrors.name).toBe('settings.services.composite.nameRequired');expect(emitted).not.toHaveBeenCalled()
+    state.draft.name = ' Daily ';Object.assign(state.compositeDraft, {strategy: 'smart', services: ['google'], timeoutMs: 5000})
+    state.actions.submit();expect(state.compositeErrors.services).toBe('settings.services.composite.membersRequired')
     const old = state.actions;props.modelValue = false;props.modelValue = true
-    Object.assign(state.draft, {name: ' Daily ', strategy: 'smart', services: ['google', 'microsoft'], timeoutMs: 5000})
+    expect(state.serviceType).toBe('interface');state.actions.type('composite')
+    state.draft.name = ' Daily ';Object.assign(state.compositeDraft, {strategy: 'smart', services: ['google', 'microsoft'], timeoutMs: 5000})
     old.submit();expect(emitted).not.toHaveBeenCalled();state.actions.submit()
     expect(emitted).toHaveBeenCalledWith({name: 'Daily', strategy: 'smart', services: ['google', 'microsoft'], timeoutMs: 5000})
-    expect(state.draft.services).toEqual([])
+    expect(state.compositeDraft.services).toEqual([]);expect(state.draft.name).toBe('');expect(interfaceSubmit).not.toHaveBeenCalled()
+  })
+  it('切换类型保留唯一名称与各自草稿，旧接口事件不能提交或关闭当前组合', async () => {
+    const interfaceSubmit = vi.fn()
+    await mount('CustomOpenAIProviderDialog', {config: runtime.reactive(new Config()), modelValue: true}, {onSubmit: interfaceSubmit, 'onSubmit:composite': emitted})
+    fillProvider();const oldInterface = state.actions
+    state.actions.type('composite');state.actions.composite({services: ['google', 'microsoft'], strategy: 'random', timeoutMs: 3000})
+    expect(state.draft.name).toBe('Local');const oldComposite = state.actions
+    oldInterface.submit();oldInterface.close();oldInterface.draft('endpoint', {target: {value: 'https://late.example'}})
+    expect(state.ownedOpen).toBe(true);expect(interfaceSubmit).not.toHaveBeenCalled();expect(emitted).not.toHaveBeenCalled()
+    state.actions.type('interface');expect(state.draft).toEqual({name: 'Local', endpoint: 'http://localhost:11434/v1', apiKey: 'synthetic', model: 'local-model'})
+    oldComposite.composite({services: []});oldComposite.submit();expect(state.compositeDraft.services).toEqual(['google', 'microsoft'])
+    state.draft.name = 'Shared name';state.actions.type('composite');state.actions.submit()
+    expect(emitted).toHaveBeenCalledWith({name: 'Shared name', services: ['google', 'microsoft'], strategy: 'random', timeoutMs: 3000})
+    expect(Object.keys(emitted.mock.calls[0][0]).sort()).toEqual(['name', 'services', 'strategy', 'timeoutMs'])
+    expect(interfaceSubmit).not.toHaveBeenCalled();expect(state.draft.apiKey).toBe('')
+  })
+  it('取消后重开回到接口类型，同时清空接口密钥及组合成员草稿', async () => {
+    await mount('CustomOpenAIProviderDialog', {config: runtime.reactive(new Config()), modelValue: true}, {'onSubmit:composite': emitted})
+    fillProvider();state.actions.type('composite');state.actions.composite({services: ['google', 'microsoft'], strategy: 'smart', timeoutMs: 5000})
+    const old = state.actions;state.actions.close();props.modelValue = false;props.modelValue = true
+    expect(state.serviceType).toBe('interface');expect(state.draft).toEqual({name: '', endpoint: '', apiKey: '', model: ''});expect(state.compositeDraft.services).toEqual([])
+    fillProvider();old.submit();old.composite({services: ['google', 'microsoft']});expect(emitted).not.toHaveBeenCalled();expect(state.compositeDraft.services).toEqual([])
+  })
+  it.each(['hidden', 'context', 'config', 'cached', 'unmount'])('组合类型在%s后清空两类草稿且禁止迟到提交', async reason => {
+    await mount('CustomOpenAIProviderDialog', {config: runtime.reactive(new Config()), modelValue: true}, {'onSubmit:composite': emitted})
+    fillProvider();state.actions.type('composite');state.actions.composite({services: ['google', 'microsoft'], strategy: 'smart', timeoutMs: 5000})
+    const old = state.actions;change(reason);await settle();old.submit();old.composite({services: ['google', 'microsoft']})
+    expect(emitted).not.toHaveBeenCalled();expect(state.draft.apiKey).toBe('');expect(state.compositeDraft.services).toEqual([])
   })
   it('组合成员添加拒绝嵌套，重排与移除使用服务身份且旧事件不能跨列表改动', async () => {
     const draft = runtime.reactive({name: 'Daily', strategy: 'sequential', services: ['google', 'microsoft'], timeoutMs: 12000})
     await mount('CompositeTranslationFields', {draft, members: [{value: 'google', label: 'Google'}, {value: 'microsoft', label: 'Microsoft'}, {value: 'custom:work', label: 'Work'}]}, {onUpdate: emitted})
-    state.selectedMember = 'composite:nested';state.actions.add();expect(emitted).not.toHaveBeenCalled()
-    state.selectedMember = 'custom:work';state.actions.add();expect(emitted).toHaveBeenLastCalledWith({services: ['google', 'microsoft', 'custom:work']})
+    state.actions.selectMember({currentTarget: {value: 'composite:nested'}});expect(emitted).not.toHaveBeenCalled()
+    state.actions.selectMember({currentTarget: {value: 'custom:work'}});expect(emitted).toHaveBeenLastCalledWith({services: ['google', 'microsoft', 'custom:work']})
     state.actions.move('microsoft', -1);expect(emitted).toHaveBeenLastCalledWith({services: ['microsoft', 'google']})
     const old = state.actions;draft.services.reverse();old.remove('google');expect(emitted).toHaveBeenCalledTimes(2)
     state.actions.remove('google');expect(emitted).toHaveBeenLastCalledWith({services: ['microsoft']})

@@ -10,7 +10,7 @@ FluentRead displays translations produced by your selected service. Use the defa
 
 ## Combined translation services
 
-In **Translation services**, select **Add combination** beside **Custom service**, name the combination, and add at least two existing individual services, such as Google translation, Microsoft translation, and a custom AI endpoint. Use the up, down, and remove buttons to arrange members. Combinations cannot contain other combinations. After saving, the combination appears in the custom service directory and can be set as the default or selected from the extension menu, document reader, and other service selectors.
+In **Translation services**, select **Custom service**, then choose **Combined translation** in the same creation window. Enter a name and select at least two existing services, such as Google translation, Microsoft translation, or a custom AI endpoint. Selecting a service adds it immediately; use the member buttons to reorder or remove it. Combinations cannot contain other combinations. To add your own API address, choose **Compatible endpoint** in this window instead. After saving, the combination appears in the custom service directory and can be set as the default or selected from the extension menu, document reader, and other service selectors.
 
 | Strategy | How members are selected |
 | --- | --- |
@@ -22,9 +22,9 @@ In **Translation services**, select **Add combination** beside **Custom service*
 
 Each request returns the first successful translation; it does not merge several translations. Smart routing evaluates availability and speed rather than translation quality. Each member keeps its own model, API key, prompts, and request limits. Configure the member services first; model selection and key rotation continue to follow each member's existing settings.
 
-The **Per-member timeout** defaults to 12 seconds and accepts 1–45 seconds. The complete request remains subject to the overall translation timeout, so later members may receive no attempt when the remaining budget runs out. Cancelling translation stops the current attempt and prevents further fallback. Fallback may send the same source to several providers and consume allowance at each provider. Consider their data policies and fees when choosing members.
+**More settings → Timeout (seconds)** controls the wait for each member, defaults to 12 seconds, and accepts 1–45 seconds. The complete request remains subject to the overall translation timeout, so later members may receive no attempt when the remaining budget runs out. Cancelling translation stops the current attempt and prevents further fallback. Fallback may send the same source to several providers and consume allowance at each provider. Consider their data policies and fees when choosing members.
 
-Select a saved combination to edit its name, members, strategy, and timeout, then select **Save**. **Check connection** in the title bar sends a short translation through the saved strategy. An imported combination or one whose member services were deleted may have no members; it is kept for repair and cannot translate or run a connection check. Deleting a combination keeps all member services and their settings.
+Select a saved combination to edit its name, members, and routing. Only the selected strategy has a short description; its help icon explains the detailed rules. Change the timeout under **More settings**, then select **Save**. **Check connection** in the title bar sends a short translation through the saved strategy. An imported combination or one whose member services were deleted may have no members; it is kept for repair and cannot translate or run a connection check. Deleting a combination keeps all member services and their settings.
 
 ## Multi-text requests and reliability
 

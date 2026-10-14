@@ -8,9 +8,9 @@
   <form v-if="provider" class="composite-settings" data-composite-service-settings :onSubmit="withModifiers(actions.save, ['prevent'])">
     <CompositeTranslationFields :draft="draft" :members="members" :errors="errors" :active="active" :context="props.config" :onUpdate="actions.update" />
     <footer>
+      <button type="submit" class="save-button" data-testid="composite-service-edit-save" :disabled="!active">{{ t('common.save') }}</button>
       <button type="button" class="delete-button" data-testid="composite-service-delete" :disabled="!active" :onClick="actions.remove">{{ t('settings.services.composite.delete') }}</button>
       <span v-if="saved" class="saved-status" role="status">{{ t('settings.services.library.saved') }}</span>
-      <button type="submit" class="save-button" data-testid="composite-service-edit-save" :disabled="!active">{{ t('common.save') }}</button>
     </footer>
   </form>
   <el-dialog :key="revision" :model-value="deleteOpen && active" :onUpdate:modelValue="deleteActions.open" :title="t('settings.services.composite.deleteTitle')" width="min(460px, calc(100vw - 32px))" append-to-body destroy-on-close>
@@ -64,11 +64,12 @@ watch(() => [props.config, props.service, provider.value], () => {Object.assign(
 watch(() => active.value, () => {deleteOpen.value = false}, {flush: 'sync'})
 </script>
 <style scoped>
-.composite-settings { display: grid; gap: 16px; }
-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-button { min-height: 38px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: var(--surface); font: inherit; font-size: 13px; cursor: pointer; }
-.delete-button { margin-right: auto; border-color: transparent; color: var(--el-color-danger); }
+.composite-settings { display: grid; gap: 18px; width: 100%; max-width: 760px; }
+footer { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; padding-left: 114px; }
+button { min-height: 34px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; font-size: 12px; cursor: pointer; }
+.delete-button { border-color: transparent; color: var(--el-color-danger); }
 .save-button { border-color: var(--brand, #ef4776); color: white; background: var(--brand, #ef4776); }
 .saved-status { color: var(--muted); font-size: 12px; }
 button:disabled { opacity: .5; cursor: default; }
+@media (max-width: 560px) { footer { padding-left: 0; } }
 </style>

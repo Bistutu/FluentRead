@@ -174,7 +174,6 @@
         @update:default-service="setDefaultConfigurationService"
         @update:model="selectConfigurationModel"
         @add:service="openCustomProviderDialog"
-        @add:composite-service="openCompositeProviderDialog"
         @add:model="addConfigurationModel"
         @remove:model="removeConfigurationModel"
       >
@@ -534,8 +533,7 @@
       @confirm="handleCustomSelectionHotkeyConfirm"
       @cancel="handleCustomSelectionHotkeyCancel"
     />
-  <CompositeTranslationProviderDialog v-if="compositeProviderDialogRequested" :active="viewActive && props.activeSection === 'settings-services'" :config="config" :context="config" v-model="compositeProviderDialogOpen" @submit="createCompositeProvider" />
-  <CustomOpenAIProviderDialog v-if="customProviderDialogRequested" :active="viewActive && props.activeSection === 'settings-services'" :context="config" v-model="customProviderDialogOpen" @submit="createCustomProvider" />
+  <CustomOpenAIProviderDialog v-if="customProviderDialogRequested" :active="viewActive && props.activeSection === 'settings-services'" :config="config" :context="config" v-model="customProviderDialogOpen" @submit="createCustomProvider" @submit:composite="createCompositeProvider" />
 </template>
 
 <script lang="ts" setup>
@@ -605,7 +603,6 @@ import { hasSavedServiceConfiguration } from '@/src/ui/view-model/serviceLibrary
 import {getServiceCredentialGuide, getServiceWebsite} from '@/src/ui/view-model/serviceCatalog';
 const ServiceCatalog = defineAsyncComponent(() => import('./services/ServiceCatalog.vue'));
 const ServiceConfiguration = defineAsyncComponent(() => import('./services/ServiceConfiguration.vue'));
-const CompositeTranslationProviderDialog = defineAsyncComponent(() => import('./services/CompositeTranslationProviderDialog.vue'));
 const customProviderLoadState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
 const CustomOpenAIProviderDialog = defineAsyncComponent(async () => {
   customProviderLoadState.value = 'loading';
@@ -730,13 +727,12 @@ onActivated(() => {viewActive.value = true;});
 onDeactivated(() => {
   viewActive.value = false;
   customProviderDialogOpen.value = false;
-  compositeProviderDialogOpen.value = false;
   cancelPendingScroll();
 });
 onBeforeUnmount(() => {disposed = true;viewActive.value = false;cancelPendingScroll();});
 watch(() => props.activeSection, (section) => {
   if (section !== scrollDestination) cancelPendingScroll();
-  if (section !== 'settings-services') {customProviderDialogOpen.value = false;compositeProviderDialogOpen.value = false;}
+  if (section !== 'settings-services') customProviderDialogOpen.value = false;
 });
 
 function openSettingsSection(section: string, targetId?: string): void {
@@ -811,8 +807,6 @@ const {
 } = useTranslationShortcutSettings(config,
   kind => viewActive.value && props.activeSection === (kind === 'selection' ? 'settings-selection' : 'settings-translation'),
   () => applyingExternalConfig);
-const compositeProviderDialogOpen = ref(false);
-const compositeProviderDialogRequested = ref(false);
 const customProviderDialogOpen = ref(false);
 const customProviderDialogRequested = ref(false);
 const customProviderFeedbackContext = useSettingsActionContext(
@@ -1026,12 +1020,6 @@ function openCustomProviderDialog(): void {
   if (disposed || !viewActive.value || props.activeSection !== 'settings-services') return;
   customProviderDialogRequested.value = true;
   customProviderDialogOpen.value = true;
-}
-
-function openCompositeProviderDialog(): void {
-  if (disposed || !viewActive.value || props.activeSection !== 'settings-services') return;
-  compositeProviderDialogRequested.value = true;
-  compositeProviderDialogOpen.value = true;
 }
 
 function createCompositeProvider(draft: Omit<CompositeTranslationProvider, 'id'>): void {
