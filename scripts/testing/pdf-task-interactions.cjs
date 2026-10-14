@@ -2,6 +2,7 @@
 
 // 仅验证 PDF 译文拖选与任务恢复；复用主脚本的临时 profile、无前台输入和本机服务。
 const assert = require('node:assert/strict');
+const path = require('node:path');
 
 async function runPdfTaskInteractions({page, fixture, report, shot, record, patch, service, until, wait, resourceState, uiNode, translateDrag, baseline}) {
   report.runScope = baseline ? 'translated-selection-baseline' : 'pdf-selection-progress-recovery';
@@ -18,6 +19,32 @@ async function runPdfTaskInteractions({page, fixture, report, shot, record, patc
   };
   const before = await snapshot();
   report.segmentTotal = before.length;
+  if (!baseline) {
+    report.toolbarRows = [];
+    for (const width of [1000, 1280, 1359, 1360, 1440, 1759, 1760, 1920]) {
+      await page.setViewportSize({width, height: 960}); await wait(100);
+      const layout = await page.locator('.document-taskbar').evaluate(element => {
+        const box = selector => {const node = element.querySelector(selector), rect = node.getBoundingClientRect(); return {left: rect.left, right: rect.right, center: rect.top + rect.height / 2};};
+        const visible = node => node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0;
+        return {width: innerWidth, overflow: document.documentElement.scrollWidth > innerWidth,
+          heading: box('.workspace-heading'), reader: box('.reader-toolbar'), pdf: box('.reader-controls-slot .pdf-viewer-toolbar'), actions: box('.toolbar-primary-actions'),
+          lastPdfControl: Math.max(...[...element.querySelectorAll('.pdf-viewer-toolbar > *')].filter(visible).map(node => node.getBoundingClientRect().right)),
+          taskLeft: box('.taskbar-actions').left, settingsVisible: visible(element.querySelector('.toolbar-settings-toggle')), fieldsVisible: visible(element.querySelector('.toolbar-translation-settings'))};
+      });
+      report.toolbarRows.push(layout);
+      assert(!layout.overflow, `${width}px PDF 工具栏不能横向溢出`);
+      assert(Math.abs(layout.heading.center - layout.reader.center) < 3, `${width}px 文件状态与阅读切换应在第一行`);
+      assert(Math.abs(layout.pdf.center - layout.actions.center) < 3, `${width}px 阅读工具和任务操作应在同一行`);
+      if (width < 1760) assert(layout.pdf.center > layout.heading.center + 20, `${width}px PDF 工具栏应为两行`);
+      else assert(Math.abs(layout.pdf.center - layout.heading.center) < 3, `${width}px 宽屏应保留单行`);
+      assert(layout.lastPdfControl <= layout.taskLeft - 4, `${width}px 阅读工具不能盖住翻译设置或下载操作`);
+      assert.equal(layout.fieldsVisible, width >= 1360);
+    }
+    await page.setViewportSize({width: 1440, height: 960}); await wait(100);
+    const toolbarShot = path.join(report.artifactsDir, 'pdf-toolbar-two-rows.png');
+    await page.locator('.document-taskbar').screenshot({path: toolbarShot, animations: 'disabled'}); report.screenshots.push(toolbarShot);
+    record('PDF toolbar uses two desktop rows without overlapping controls, retains a wide-screen single row and keeps compact settings reachable');
+  }
   // 逐段请求使失败发生在确切的段落边界；批量并发失败另由核心回归覆盖。
   await page.locator('aside.document-sidebar .document-settings-button').click();
   await page.locator('.document-batch-translation input').uncheck();
