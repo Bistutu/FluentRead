@@ -1,6 +1,6 @@
 {
-  "sourceCommit": null,
-  "candidateSource": "main integration working tree before merge commit",
+  "sourceCommit": "a8e04e2a9b4d6a98f5f21e1a4b45ebc925107edd",
+  "candidateSource": "final main integration merge source; build ran before the merge commit with identical staged product source",
   "parentCommits": [
     "0dfac538f02a6d7577045ec42824d000592baaaa",
     "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde"
@@ -11,17 +11,17 @@
     "sha256": "37c69a5b321538b82403e323cbe53430b87dab9a4adc1a9626d5231583974a34"
   },
   "candidate": {
-    "bytes": 2097103,
-    "sha256": "8276d8bae8370728301945cbdc72ecc9eb024f5ac50d3d534832f8746e03299c"
+    "bytes": 2097156,
+    "sha256": "261c0b7fe6e36022e267f7fee7b4f82684983b57971396cd66608ee3ff6e1e06"
   },
-  "deltaBytes": 2422,
-  "deltaPercent": 0.1156,
+  "deltaBytes": 2475,
+  "deltaPercent": 0.1182,
   "oldBudgetBytes": 2095100,
   "budgetBytes": 2098100,
   "budgetIncreaseBytes": 3000,
-  "remainingBudgetBytes": 997,
+  "remainingBudgetBytes": 944,
   "budgetStepBytes": 1000,
-  "budgetPolicy": "Latest main verifier explicitly uses a 1,000-byte increment; +2,000 leaves 2,097,100 below the actual candidate by 3 bytes, so +3,000 is the smallest accepted increment.",
+  "budgetPolicy": "Latest main verifier explicitly uses a 1,000-byte increment; +2,000 leaves 2,097,100 below the final candidate by 56 bytes, so +3,000 is the smallest accepted increment.",
   "sameDependencies": true,
   "sameNodeRuntime": true,
   "dependencies": {
@@ -50,9 +50,9 @@
     "command": "node scripts/testing/run-resource-safe.mjs -- node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
     "node": "v24.19.0",
     "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
-    "durationSeconds": 4.21,
+    "durationSeconds": 3.7,
     "modules": 683,
-    "buildLog": "/private/tmp/fluentread-userscript-candidate-92da-node24-build.log"
+    "buildLog": "/private/tmp/fluentread-userscript-candidate-92da-final-node24-build.log"
   },
   "mainRecordedArtifact": {
     "bytes": 2094364,
@@ -70,7 +70,7 @@
   "measurementLimit": "Delta is measured for the complete minified artifact; incrementScope identifies shared consumers rather than claiming additive per-module byte attribution.",
   "verifier": {
     "actualArtifact": "passed",
-    "log": "/private/tmp/fluentread-architecture-userscript-92da-verifier.log",
+    "log": "/private/tmp/fluentread-architecture-userscript-92da-final-verifier.log",
     "negativeCliCases": [
       {
         "name": "one-byte-over-budget",
@@ -89,7 +89,12 @@
         "log": "/private/tmp/fluentread-userscript-92da-negative-missing-required-GM-grant.log"
       }
     ],
-    "temporaryFixtureRemoved": true
+    "temporaryFixtureRemoved": true,
+    "negativeCliArtifact": {
+      "bytes": 2097103,
+      "sha256": "8276d8bae8370728301945cbdc72ecc9eb024f5ac50d3d534832f8746e03299c"
+    },
+    "negativeCliScope": "The earlier candidate was used for these unchanged verifier-body/threshold negative cases. The final candidate was rebuilt and its actual verifier rerun; source-free projection and metadata tests were not redundantly repeated."
   },
   "focusedTests": [
     {
@@ -115,7 +120,14 @@
       "passed": 33,
       "failed": 1,
       "failure": "Existing verification ownership list still treats deeplx.ts as exempt while the coverage list includes it; root owns the coverage/ownership integration and has been notified.",
-      "log": "/private/tmp/fluentread-userscript-92da-verifier-tests.log"
+      "log": "/private/tmp/fluentread-userscript-92da-verifier-tests.log",
+      "resolution": {
+        "owner": "root",
+        "status": "resolved",
+        "verificationOwnershipPassed": 16,
+        "coveragePlannerPassed": 19,
+        "evidence": "Parent confirmed the DeepLX adapter has executable mode/failover/deadline/response validation and removed it from the obsolete composition-only exemption; focused 16+19 checks passed."
+      }
     }
   ],
   "cleanup": {
@@ -326,5 +338,25 @@
       "matchesPairedNode24Measurement": true,
       "verifier": "passed"
     }
+  },
+  "preFinalCandidateMeasurement": {
+    "candidate": {
+      "bytes": 2097103,
+      "sha256": "8276d8bae8370728301945cbdc72ecc9eb024f5ac50d3d534832f8746e03299c"
+    },
+    "candidateBuild": {
+      "command": "node scripts/testing/run-resource-safe.mjs -- node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+      "node": "v24.19.0",
+      "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "durationSeconds": 4.21,
+      "modules": 683,
+      "buildLog": "/private/tmp/fluentread-userscript-candidate-92da-node24-build.log"
+    },
+    "deltaBytes": 2422,
+    "deltaPercent": 0.1156,
+    "reasonForFinalRebuild": "Final DeepLX error-normalization helper was adjusted after this measurement; the same baseline and locked dependencies are reused."
+  },
+  "candidateSourceFileSha256": {
+    "src/providers/translation/deeplx.ts": "7881fe185673180eeb38455d5001ece847212ded7354091c63d8509cdfe43244"
   }
 }

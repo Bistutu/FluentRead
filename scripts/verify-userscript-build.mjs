@@ -131,8 +131,8 @@ const artifactBytes = Buffer.byteLength(source);
 // 按既有 1 KB 步长最小增加 2 KB，余 138；全部断言保留，见 architecture-quality-20261014/userscript-size.json。
 // 再整合 e806feff0035：同 Node/锁依赖独立 main 为 2,081,039，候选为 2,083,463，仍增加 2,424（0.1165%）。
 // 沿用主线新增的 100 字节步长，预算最小增加 2,400 字节、余 37；完整新旧对照保留在同一报告。
-// 再整合 DeepLX 主线 92da3c6f905b：同 Node 24 / 新锁依赖独立 main 为 2,094,681，候选为 2,097,103。
-// 增加 2,422 字节（0.1156%）；沿用最新主线 1 KB 步长，2,095,100 预算最小增加 3 KB、余 997。
+// 再整合 DeepLX 主线 92da3c6f905b：同 Node 24 / 新锁依赖独立 main 为 2,094,681，最终候选为 2,097,156。
+// 增加 2,475 字节（0.1182%）；沿用最新主线 1 KB 步长，2,095,100 预算最小增加 3 KB、余 944。
 // 保留完整协议与运行断言；本次独立基线与此前两轮对照同列于 architecture-quality-20261014/userscript-size.json。
 const MAX_USERSCRIPT_BYTES = 2_098_100;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';

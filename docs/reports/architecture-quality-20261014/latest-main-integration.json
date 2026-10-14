@@ -1,0 +1,123 @@
+{
+  "recordingPhase": "local integration before final commit; source hashes identify validated files",
+  "base": "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde",
+  "scope": "3 strict production modules plus directly related behavior consumers; no all84 run",
+  "sourceSha256": {
+    "src/services/translation/broker.ts": "2122a68dbb9b15d87df9610d3e1931a1c24aa95c5e6dd368efb59b06becd1003",
+    "src/providers/translation/deeplx.ts": "7881fe185673180eeb38455d5001ece847212ded7354091c63d8509cdfe43244",
+    "src/services/translation/requestIdentity.ts": "e3380868e1fd36e42521143c67b58fe19dff8c823e5fb5667785e46b5ad78332"
+  },
+  "coverage": {
+    "src/services/translation/broker.ts": {
+      "lines": {
+        "total": 1551,
+        "covered": 1551,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 78,
+        "covered": 78,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 1551,
+        "covered": 1551,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 810,
+        "covered": 810,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "src/providers/translation/deeplx.ts": {
+      "lines": {
+        "total": 212,
+        "covered": 212,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 10,
+        "covered": 10,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 212,
+        "covered": 212,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 127,
+        "covered": 127,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "src/services/translation/requestIdentity.ts": {
+      "lines": {
+        "total": 119,
+        "covered": 119,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 7,
+        "covered": 7,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 119,
+        "covered": 119,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 75,
+        "covered": 75,
+        "skipped": 0,
+        "pct": 100
+      }
+    }
+  },
+  "coverageSummary": "/private/tmp/fluentread-quality-cli-diagnosis/main-context-deeplx-integration-coverage/coverage-summary.json",
+  "log": "/private/tmp/fluentread-quality-cli-diagnosis/main-context-deeplx-integration-coverage-final.log",
+  "plan": "/private/tmp/fluentread-quality-cli-diagnosis/main-context-deeplx-integration-plan-final.json",
+  "changesToTestContract": [
+    "required frozen snapshot attached to 15 new DeepLX public calls",
+    "runtime build fixture resolves actual published package paths under isolated pnpm install",
+    "provider defensive input/response, caller cancel, late transport/body and shared absolute budget outcomes tested"
+  ],
+  "proofLimits": [
+    "Vitest and real local bundle fixtures, no online DeepL or browser account claim",
+    "local darwin Node20, new-head Linux22 CI remains required"
+  ],
+  "targetedResult": {
+    "filesPassed": 32,
+    "testsPassed": 1532,
+    "skips": 0,
+    "durationSeconds": 28.38
+  },
+  "auditResult": {
+    "files": 718,
+    "cases": 12950,
+    "architecture": 38,
+    "unit": 406,
+    "functional": 231,
+    "regression": 43,
+    "status": "ok"
+  },
+  "planResult": {
+    "testFiles": 448,
+    "strictModules": 84,
+    "globalInputs": [],
+    "providerIncluded": true
+  }
+}

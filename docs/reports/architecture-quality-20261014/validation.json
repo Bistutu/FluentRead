@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "sourceCommit": "a27e1171cf60b6c23b1d58bb3bfaea20d9afcfc2",
+  "sourceCommit": "a8e04e2a9b4d6a98f5f21e1a4b45ebc925107edd",
   "comparisonBase": "8bdd5c20dc82b57d27b7e22d14080cacd64d7eed",
   "version": "0.0.38",
   "referenceRepositoriesUsed": false,
@@ -19,8 +19,8 @@
       "passed": 2003
     },
     "testRegistration": {
-      "files": 717,
-      "declaredCases": 12907,
+      "files": 718,
+      "declaredCases": 12950,
       "status": "passed"
     },
     "nativeNodeContracts": {
@@ -37,8 +37,8 @@
     },
     "manifestVerifier": "passed",
     "userscriptVerifier": "passed",
-    "userscriptBytes": 2083463,
-    "userscriptBudgetBytes": 2083500,
+    "userscriptBytes": 2097156,
+    "userscriptBudgetBytes": 2098100,
     "affectedBehavior": {
       "status": "passed",
       "files": 410,
@@ -49,10 +49,10 @@
     },
     "strictCoverage": {
       "status": "passed",
-      "files": 83,
+      "files": 84,
       "requiredPercent": 100,
       "perFile": true,
-      "verificationMode": "historical affected run and independent scoped runtime, broker, main integration and PDF binary runs; all 83 source hashes match final source",
+      "verificationMode": "Independent affected/runtime/broker/main/PDF scoped runs; all 84 current source hashes match.",
       "report": "strict-coverage.json"
     },
     "historyScoped": {
@@ -94,6 +94,74 @@
       "productionSourceDifferenceFromProgramSourceCommit": false
     },
     "finalMainIntegration": {
+      "sourceCommit": "a8e04e2a9b4d6a98f5f21e1a4b45ebc925107edd",
+      "baseCommit": "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde",
+      "types": "passed",
+      "builds": {
+        "chrome_mv3": "passed",
+        "firefox_mv2": "passed",
+        "userscript": "passed",
+        "docs": "passed"
+      },
+      "manifestVerifier": "passed",
+      "userscriptVerifier": "passed",
+      "translation": {
+        "files": 32,
+        "passed": 1532,
+        "strictModules": 3
+      },
+      "languageProjection": {
+        "files": 3,
+        "passed": 288
+      },
+      "userscriptCompressionAndMetadata": {
+        "passed": 18
+      },
+      "verificationOwnershipAndPlanner": {
+        "files": 2,
+        "passed": 35
+      },
+      "proof": "latest-main-integration.json"
+    },
+    "sectionSweepIntegration": {
+      "status": "passed",
+      "sourceCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224",
+      "integratedMainCommit": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
+      "sectionSweep": {
+        "files": 3,
+        "passed": 158
+      },
+      "languageProjection": {
+        "files": 3,
+        "passed": 287
+      },
+      "sectionStrictCoverage": {
+        "files": 3,
+        "passed": 105,
+        "module": "src/features/full-page-translation/content/sectionTranslation.ts",
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "types": "passed",
+      "builds": {
+        "chrome_mv3": "passed",
+        "firefox_mv2": "passed",
+        "userscript": "passed",
+        "docs": "passed"
+      },
+      "manifestVerifier": "passed",
+      "productionSourceDifferenceFromProgramSourceCommit": true,
+      "userscriptVerifier": "passed",
+      "userscriptSizeReport": "userscript-size.json",
+      "userscriptVerifierFixtures": {
+        "files": 2,
+        "passed": 17,
+        "realCliNegativeCases": 2
+      }
+    },
+    "priorFinalMainIntegration": {
       "sourceCommit": "a27e1171cf60b6c23b1d58bb3bfaea20d9afcfc2",
       "baseCommit": "e806feff0035d7df3e794265a4a9a648015dd487",
       "translation": {
@@ -134,44 +202,6 @@
       },
       "manifestVerifier": "passed",
       "userscriptVerifier": "passed"
-    },
-    "sectionSweepIntegration": {
-      "status": "passed",
-      "sourceCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224",
-      "integratedMainCommit": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
-      "sectionSweep": {
-        "files": 3,
-        "passed": 158
-      },
-      "languageProjection": {
-        "files": 3,
-        "passed": 287
-      },
-      "sectionStrictCoverage": {
-        "files": 3,
-        "passed": 105,
-        "module": "src/features/full-page-translation/content/sectionTranslation.ts",
-        "statements": 100,
-        "branches": 100,
-        "functions": 100,
-        "lines": 100
-      },
-      "types": "passed",
-      "builds": {
-        "chrome_mv3": "passed",
-        "firefox_mv2": "passed",
-        "userscript": "passed",
-        "docs": "passed"
-      },
-      "manifestVerifier": "passed",
-      "productionSourceDifferenceFromProgramSourceCommit": true,
-      "userscriptVerifier": "passed",
-      "userscriptSizeReport": "userscript-size.json",
-      "userscriptVerifierFixtures": {
-        "files": 2,
-        "passed": 17,
-        "realCliNegativeCases": 2
-      }
     }
   },
   "browserEvidence": {
@@ -202,16 +232,17 @@
     "The final local CLI/PDF checks use macOS Node20 and the icon checks use macOS Node22; Linux Node22 results require the final hosted workflow."
   ],
   "ciPlan": {
-    "files": 447,
-    "architectureFiles": 37,
+    "files": 448,
+    "architectureFiles": 38,
     "behaviorFiles": 410,
-    "strictModules": 83,
+    "strictModules": 84,
     "duplicates": false,
     "verification": "Updated plan and scoped integration verified; the complete combined command is run by hosted PR CI.",
-    "plan": "ci-plan.json"
+    "plan": "ci-plan.json",
+    "globalInputs": []
   },
   "programSourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb",
   "recordingPhase": "final local verification before updated PR CI",
-  "currentIntegratedBase": "e806feff0035d7df3e794265a4a9a648015dd487",
+  "currentIntegratedBase": "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde",
   "pullRequest": "https://github.com/FluentRead/FluentRead/pull/985"
 }
