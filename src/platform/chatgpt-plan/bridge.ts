@@ -1,10 +1,11 @@
 /**
  * @file src/platform/chatgpt-plan/bridge.ts
  * 文件职责：连接用户本机的 ChatGPT 套餐助手，隔离配对凭证与 OAuth 令牌。
- * 主要内容：固定 loopback 地址、单独的本地凭据存储、状态和模型校验；元信息的请求头与正文共用有界等待，非合作传输的迟到响应也隔离，退出及重新配对时中断旧请求；所有错误只输出稳定代码及安全说明。
+ * 主要内容：仅显式开发构建的请求入口可连接固定 loopback 地址；公共版本不读取配对凭证、不调用本机助手。独立凭据存储与状态/模型校验，有界等待及迟到响应隔离；所有错误只输出稳定代码及安全说明。
  * 模块边界：本模块不处理翻译提示词或设置组件；OAuth 令牌仅由本机助手持有，配对凭证不进入 Config、配置历史、导出或云同步。
  */
 import {abortErrorFromSignal, createRuntimeAbortContext, runtimeFetch, type RuntimeFetch} from '@/src/platform/http/runtime';
+import {chatGPTPlanDevelopmentEnabled} from './buildMode';
 
 export const CHATGPT_PLAN_BRIDGE_URL = 'http://127.0.0.1:18743';
 export const CHATGPT_PLAN_USAGE_URL = 'https://chatgpt.com/#settings/Usage';
@@ -30,7 +31,8 @@ export class ChatGPTPlanError extends Error {
         this.name = 'ChatGPTPlanError';
         const authentication = ['not_connected', 'sharing_disabled', 'oauth_failed', 'oauth_cancelled', 'pairing_failed'].includes(code);
         this.statusCode = status ?? (code === 'quota_exceeded' ? 429 : authentication ? code === 'sharing_disabled' ? 403 : 401 : undefined);
-        if (code === 'quota_exceeded' || status === 429) {this.kind = 'rate-limit';this.retryable = false;}
+        if (code === 'public_unavailable') {this.kind = 'provider';this.retryable = false;this.statusCode = 503;}
+        else if (code === 'quota_exceeded' || status === 429) {this.kind = 'rate-limit';this.retryable = false;}
         else if (authentication || status === 401 || status === 403) {this.kind = 'authentication';this.retryable = false;}
         else if (status === 408) {this.kind = 'timeout';this.retryable = true;}
         else if (status !== undefined && status >= 500) {this.kind = 'provider';this.retryable = true;}
@@ -40,6 +42,7 @@ export class ChatGPTPlanError extends Error {
     }
 }
 const CHATGPT_PLAN_ERROR_MESSAGES: Record<string, string> = {
+    public_unavailable: '当前版本尚未开放 ChatGPT 登录，请先选择其他翻译服务；已有配置会保留。',
     helper_unavailable: '无法连接 ChatGPT 本机助手，请启动助手后重试。',
     pairing_failed: '本机配对码无效或已过期，请使用助手显示的新配对码。',
     not_connected: '请先在翻译服务设置中连接 ChatGPT 账户。',
@@ -252,4 +255,6 @@ const bridge = createChatGPTPlanBridge({fetch: runtimeFetch, storage: {
     async write(token) {await browser.storage.local.set({[CHATGPT_PLAN_PAIRING_KEY]: token});},
 }});
 export const chatGPTPlanBridge = bridge;
-export const requestChatGPTPlanResponse = (payload: ChatGPTPlanPayload, signal?: AbortSignal) => bridge.respond(payload, signal);
+export const requestChatGPTPlanResponse = (payload: ChatGPTPlanPayload, signal?: AbortSignal) => chatGPTPlanDevelopmentEnabled
+    ? bridge.respond(payload, signal)
+    : Promise.reject(new ChatGPTPlanError('public_unavailable'));

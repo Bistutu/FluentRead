@@ -1,7 +1,7 @@
 /**
  * @file tests/chatgptPlanSettingsLifecycle.test.ts
- * 文件职责：执行 ChatGPT 套餐设置的真实 Vue 模板与生命周期，验证配对、授权取消和动态模型的操作归属。
- * 主要内容：仅控制后台服务端口和第三方输入控件，覆盖账号切换迟到结果、页面停用、缓存卸载、有界等待、模型选择保留与七语言安全错误反馈。
+ * 文件职责：执行 ChatGPT 设置的真实 Vue 模板，验证公开构建完全不展示登录界面，开发模式维持授权和模型操作的生命周期归属。
+ * 主要内容：仅控制构建模式、后台服务端口和第三方输入控件，覆盖公开模式无根节点、无任何助手操作且保留配置，开发模式状态加载、取消、账号切换迟到结果、停用和七语言反馈。
  * 模块边界：不替换组件业务实现，不使用真实账号或凭据；这些确定性测试不证明 OpenAI 授权、套餐资格或在线推理可用。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -19,7 +19,8 @@ await vi.hoisted(async () => {
         set(value) {for (const option of this.querySelectorAll('option')) option.selected = option.value === String(value);},
     });
 });
-const ports = vi.hoisted(() => ({status: vi.fn(), pair: vi.fn(), signIn: vi.fn(), cancel: vi.fn(), disconnect: vi.fn(), models: vi.fn(), usage: vi.fn(), locale: 'zh-CN'}));
+const ports = vi.hoisted(() => ({status: vi.fn(), pair: vi.fn(), signIn: vi.fn(), cancel: vi.fn(), disconnect: vi.fn(), models: vi.fn(), usage: vi.fn(), locale: 'zh-CN', development: true}));
+vi.mock('@/src/platform/chatgpt-plan/buildMode', () => ({get chatGPTPlanDevelopmentEnabled() {return ports.development;}}));
 vi.mock('@/src/services/chatgpt-plan/client', () => ({
     getChatGPTPlanStatus: ports.status, pairChatGPTPlan: ports.pair, startChatGPTPlanSignIn: ports.signIn,
     cancelChatGPTPlanSignIn: ports.cancel, disconnectChatGPTPlan: ports.disconnect,
@@ -72,7 +73,7 @@ async function mount(savedModel = '') {
     app.mount(container);await settle();
 }
 beforeEach(() => {
-    vi.useFakeTimers();vi.clearAllMocks();releases.length = 0;document.body.replaceChildren();ports.locale = 'zh-CN';
+    vi.useFakeTimers();vi.clearAllMocks();releases.length = 0;document.body.replaceChildren();ports.locale = 'zh-CN';ports.development = true;
     helperStatus = {paired: false, connected: false, sharing: false};
     ports.status.mockImplementation(async () => helperStatus);
     ports.pair.mockImplementation(async () => {helperStatus = disconnected();return helperStatus;});
@@ -87,6 +88,27 @@ afterEach(async () => {
 });
 
 describe('ChatGPT 套餐设置真实组件', () => {
+    it.each(Object.keys(chatGPTPlanMessages))('公开%s不渲染任何界面，保留配置且不调用任何助手端口', async locale => {
+        ports.development = false;ports.locale = locale;await mount('saved-account-model');
+        props.config.service = services.chatgptPlan;props.config.documentModel[services.chatgptPlan] = 'saved-document-model';
+        const saved = JSON.stringify(props.config);
+        expect(container.textContent).toBe('');expect(container.childElementCount).toBe(0);
+        expect(container.querySelector('[data-chatgpt-plan-settings], [data-chatgpt-plan-unavailable]')).toBeNull();
+        state.pairingCode = 'fixture-pairing';state.status = {...connected(), authPending: true};
+        await state.refreshStatus();await state.refreshModels();await state.pair();await state.signIn(false);await state.signIn(true);
+        await state.cancelSignIn();await state.disconnect();await state.manageUsage();state.selectModel('account-model-two');
+        props.active = false;await settle();props.active = true;await settle();await vi.advanceTimersByTimeAsync(300_000);await settle();
+        for (const port of [ports.status, ports.pair, ports.signIn, ports.cancel, ports.disconnect, ports.models, ports.usage]) expect(port).not.toHaveBeenCalled();
+        expect(JSON.stringify(props.config)).toBe(saved);expect(vi.getTimerCount()).toBe(0);
+    });
+    it('显式开发模式先等待初始连接状态，读取完成前不闪现配对或安装表单', async () => {
+        const initial = pending<PlanStatus>();ports.status.mockReturnValueOnce(initial.promise);await mount('saved-account-model');
+        expect(container.querySelector('[data-chatgpt-plan-loading]')).not.toBeNull();
+        expect(container.querySelector('form, code, a, [data-chatgpt-plan-sign-in]')).toBeNull();
+        initial.resolve(disconnected());await settle();
+        expect(container.querySelector('[data-chatgpt-plan-loading]')).toBeNull();expect(container.querySelector('[data-chatgpt-plan-sign-in]')).not.toBeNull();
+        expect(props.config.model[services.chatgptPlan]).toBe('saved-account-model');
+    });
     it('首次使用说明本机助手与套餐资格，只配对助手，不把配对码当成 API Key', async () => {
         await mount();
         expect(container.textContent).toContain('ChatGPT Plus 或 Pro');expect(container.textContent).toContain('node integrations/chatgpt-plan/cli.mjs');

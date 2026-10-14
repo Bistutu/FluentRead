@@ -99,6 +99,7 @@ import WritingLanguagePicker from './WritingLanguagePicker.vue';
 import {config as initialConfig, subscribeConfig, requestConfigPatch} from '@/src/services/config/store';
 import {options} from '@/src/core/config/catalog';
 import {resolveWritingReadiness} from '@/src/core/config/writingReadiness';
+import {getTranslationServiceUnavailableMessage} from '@/src/services/translation/capabilities';
 import {WRITING_LANGUAGES, WRITING_LENGTHS, WRITING_TONES, resolveWritingLanguage, resolveWritingReferenceLanguage, type WritingPreferences, type WritingIntent} from '@/src/core/config/writing';
 import type {WritingRequest} from '../types';
 import {streamWriting} from '../client';
@@ -137,7 +138,8 @@ const hasDraft = computed(() => versions.value.length > 0);
 const requestedLanguage = ref(''); const resultLanguage = ref('');
 const actualModel = ref(''); const requestedService = ref(''); const resultService = ref(''); const resultModel = ref('');
 // 网页配置刻意不包含凭据；缺失密钥必须以后台返回为准，不能从公开快照推断。
-const readiness = computed(() => resolveWritingReadiness(config.value, false));
+const readiness = computed(() => resolveWritingReadiness(config.value, false,
+  getTranslationServiceUnavailableMessage(config.value.writing.service || config.value.service)));
 const credentialError = computed(() => error.value === '请先在翻译服务中配置这个服务的 API Key');
 const service = computed(() => readiness.value.service);
 const supported = computed(() => readiness.value.supported);

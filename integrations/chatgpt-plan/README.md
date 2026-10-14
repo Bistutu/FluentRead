@@ -1,4 +1,16 @@
-# ChatGPT 套餐本机助手
+# ChatGPT 套餐本机助手：开发者实验
+
+此目录仅供维护者和开发者研究官方 OAuth 协议，不是普通用户的安装流程。FluentRead 尚未申请或获得公共应用接入批准，当前公开版本不提供此服务。公共流程的 client ID、精确回调、套餐使用及托管访问权限需要维护者先向 OpenAI 申请；身份登录权限不能代替套餐推理权限。
+
+公共申请入口、实际表单字段和官方页面截图见 [维护者申请指南](../../docs/guide/chatgpt-application.md)。下述本机实验不提供公共托管批准。
+
+本机实验入口只在开发模式并显式启用以下开关时出现：
+
+```sh
+WXT_CHATGPT_PLAN_LOCAL_DEVELOPMENT=true pnpm dev
+```
+
+此开关必须同时满足 WXT `DEV` 模式才有效，不能在 production 构建中开放服务。下述助手、授权和配对步骤只用于这个隔离开发实验；模拟测试通过也不代表公共产品已经可用。
 
 FluentRead 的浏览器扩展通过此助手使用官方 Sign in with ChatGPT OAuth。浏览器扩展无法监听官方要求的 `127.0.0.1` TCP 回调；助手在本机完成登录、保存和续期 OpenAI 令牌，并向官方公共 Responses API 发起请求。
 

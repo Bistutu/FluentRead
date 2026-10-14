@@ -2,10 +2,11 @@
  * @file src/features/settings/ui/services/ServiceCatalog.vue
  * 文件职责：以服务目录和清晰分层的配置工作区呈现翻译服务，窄屏按需展开目录，保持配置与默认使用分离。
  * 主要内容：侧栏展示全部内置及自定义服务，分组可单独收起，选中服务或回到本页时展开正在配置的服务所在分组；顶部分组导航点击后展开并滚动到对应分组，并随目录滚动同步高亮；搜索过滤目录时展开全部匹配分组，此时点击分组导航会清空搜索并回到完整目录；自定义按钮直接打开创建表单，入口下方的状态插槽由父组件反馈首次窗口加载，反馈显示时停用按钮说明气泡，避免遮挡提示与关闭操作；右侧集中展示服务名称及接口性质徽章、模型、官网帮助和连接配置；目录搜索文本按需缓存，目录几何按帧合并并缓存分组位置，滚动只读取当前位置，活跃上下文限定操作并取消过期焦点、滚动与帧回调。
- * 模块边界：目录提供“配置服务”“自定义服务”和“添加组合”入口，组合与自建接口共同显示在自定义目录且不展示模型字段；标题栏在检查连接左侧提供显式设为默认操作，通过独立事件交给外层 SettingsSections 持久化，不编辑凭据、不测试连接也不保存配置；分组收起状态只保存在本次页面会话，不写入配置，停用或切换上下文时取消目录帧并重建分组尺寸及字体观察，卸载时清理观察器与监听；详细表单归 ServiceConfiguration.vue，服务定义来自 core/config。
+ * 模块边界：目录提供“配置服务”“自定义服务”和“添加组合”入口，组合与自建接口共同显示在自定义目录且不展示模型字段；标题栏在检查连接左侧提供显式设为默认操作，通过独立事件交给外层 SettingsSections 持久化，公开构建不展示 ChatGPT 登录模块或旧配置详情，模块只在显式开发开关下可见，不编辑凭据、不测试连接也不保存配置；分组收起状态只保存在本次页面会话，不写入配置，停用或切换上下文时取消目录帧并重建分组尺寸及字体观察，卸载时清理观察器与监听；详细表单归 ServiceConfiguration.vue，服务定义来自 core/config。
  -->
 <template>
   <section
+    v-if="!publicPlanBlocked"
     class="service-catalog"
     aria-label="翻译服务配置"
     :data-default-service="defaultService"
@@ -77,7 +78,7 @@
               <span v-if="service === defaultService" class="active-badge">{{ t('settings.services.library.default') }}</span>
               <span v-else class="editing-badge">{{ t('settings.services.library.viewing') }}</span>
               <a
-                v-if="website"
+                v-if="website && !publicPlanBlocked"
                 class="service-website-link"
                 data-testid="service-website-link"
                 :href="website.url"
@@ -95,7 +96,7 @@
           </div>
           <div class="hero-service-actions">
             <button
-              v-if="!isCompositeTranslationProviderId(service) || service !== defaultService"
+              v-if="!publicPlanBlocked && (!isCompositeTranslationProviderId(service) || service !== defaultService)"
               type="button"
               class="service-default-button"
               data-set-default-service-button
@@ -109,10 +110,10 @@
           </div>
         </div>
 
-        <p v-if="selectedService?.description && !credentialGuide && service !== 'freeTranslation' && !isCustomOpenAIProviderId(service)" class="service-description">{{ selectedService.description }}</p>
+        <p v-if="!publicPlanBlocked && selectedService?.description && !credentialGuide && service !== 'freeTranslation' && !isCustomOpenAIProviderId(service)" class="service-description">{{ selectedService.description }}</p>
 
         <details
-          v-if="credentialGuide"
+          v-if="credentialGuide && !publicPlanBlocked"
           :key="service"
           class="credential-guide"
           data-testid="service-credential-guide"
@@ -156,7 +157,7 @@
           </div>
         </details>
 
-        <div v-if="showModel && service !== 'localTranslation' && !isCompositeTranslationProviderId(service)" class="model-section">
+        <div v-if="!publicPlanBlocked && showModel && service !== 'localTranslation' && !isCompositeTranslationProviderId(service)" class="model-section">
           <div class="model-heading">
             <strong>模型</strong>
           </div>
@@ -189,6 +190,8 @@ import ServiceNatureBadge from './ServiceNatureBadge.vue'
 import { useUiI18n } from '@/src/ui/i18n'
 import { isCustomOpenAIProviderId } from '@/src/core/config/customOpenAI'
 import { isCompositeTranslationProviderId } from '@/src/core/config/compositeTranslation'
+import {options as catalogOptions, services} from '@/src/core/config/catalog'
+import {chatGPTPlanDevelopmentEnabled} from '@/src/platform/chatgpt-plan/buildMode'
 import {
   buildServiceSections,
   type ServiceCredentialGuide,
@@ -234,7 +237,7 @@ const emit = defineEmits<{
   'remove:model': [value: string]
 }>()
 
-const { t } = useUiI18n()
+const { t, translateLegacy } = useUiI18n()
 const {active, capture} = useSettingsActionContext(() => props.active, () => [props.context, props.service])
 const serviceQuery = ref('')
 const directoryOpen = ref(false)
@@ -245,7 +248,8 @@ const connectionActionTarget = ref<HTMLElement | null>(null)
 const configuredSet = computed(() => new Set(props.configuredServices))
 const favoriteSet = computed(() => new Set(props.favoriteServices))
 const customServices = computed(() => props.services.filter((item) => isCustomOpenAIProviderId(item.value) || isCompositeTranslationProviderId(item.value)))
-const builtInServices = computed(() => props.services.filter((item) => !isCustomOpenAIProviderId(item.value) && !isCompositeTranslationProviderId(item.value)))
+const builtInServices = computed(() => props.services.filter((item) => !isCustomOpenAIProviderId(item.value) && !isCompositeTranslationProviderId(item.value)
+  && (item.value !== services.chatgptPlan || chatGPTPlanDevelopmentEnabled)))
 const sections = computed(() => buildServiceSections(builtInServices.value))
 const directoryGroups = computed(() => [
   ...sections.value.flatMap(section => section.groups.map(group => ({ ...group, label: group.label || section.label }))),
@@ -263,7 +267,12 @@ const visibleDirectoryGroups = computed(() => {
     .map(group => ({ ...group, items: group.items.filter(item => directorySearchText.value.get(item)!.includes(keyword)) }))
     .filter(group => group.items.length)
 })
-const selectedService = computed(() => allServices.value.find(item => item.value === props.service))
+const selectedService = computed(() => allServices.value.find(item => item.value === props.service)
+  || (props.service === services.chatgptPlan && chatGPTPlanDevelopmentEnabled ? (() => {
+    const saved = catalogOptions.services.find(item => item.value === services.chatgptPlan)!
+    return {...saved, label: translateLegacy(saved.label)}
+  })() : undefined))
+const publicPlanBlocked = computed(() => props.service === services.chatgptPlan && !chatGPTPlanDevelopmentEnabled)
 const searching = computed(() => Boolean(serviceQuery.value.trim()))
 const groupsElement = ref<HTMLElement | null>(null)
 const collapsedGroups = ref<ReadonlySet<string>>(new Set())
@@ -482,7 +491,7 @@ function selectService(service: string): void {
   emit('update:service', service)
 }
 function setDefaultService(): void {
-  if (!active.value || props.service === props.defaultService || !selectedService.value || selectedService.value.disabled) return
+  if (!active.value || publicPlanBlocked.value || props.service === props.defaultService || !selectedService.value || selectedService.value.disabled) return
   emit('update:default-service', props.service)
 }
 const actions = computed(() => {

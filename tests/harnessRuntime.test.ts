@@ -16,6 +16,7 @@ vi.mock('@/src/services/harness/modelGateway', () => ({createHarnessLanguageMode
 
 import {UI_LANGUAGE_OPTIONS} from '@/src/core/i18n/language';
 import {HARNESS_ACTIONS} from '@/src/core/config/harness';
+import {services} from '@/src/core/config/catalog';
 import {getDefaultHarnessPrompt, renderHarnessPrompt} from '@/src/core/harness/prompts';
 import {Config} from '@/src/core/config/model';
 import {createApiKeyRequirementKey} from '@/src/core/config/validation';
@@ -37,6 +38,15 @@ describe('Harness runtime', () => {
         generateText.mockReset();
         createModel.mockClear();
         normalizeError.mockClear();
+    });
+    it('rejects an unavailable saved ChatGPT service before reading memory, creating a model or generating', async () => {
+        const current = config(); current.harness.service = services.chatgptPlan; current.harness.model = 'saved-account-model'; current.harness.memoryEnabled = true;
+        const before = JSON.stringify(current); const recall = vi.fn();
+        const request: ReadingRequest = {type: 'fluentReadHarness', action: 'run', requestId: 'public-plan', intent: 'meaning', question: '', selection: {text: 'Source', context: 'Authorized context', sentence: ''}};
+        const result = await createHarnessRuntime(() => current, undefined, {recall}).run(request, new AbortController().signal);
+        expect(result).toMatchObject({success: false, error: expect.stringContaining('尚未开放公开接入')});
+        expect(recall).not.toHaveBeenCalled(); expect(createModel).not.toHaveBeenCalled(); expect(generateText).not.toHaveBeenCalled();
+        expect(JSON.stringify(current)).toBe(before);
     });
     it.each(['meaning', 'usage'] as const)('runs Bilibili %s without a Key and keeps initial questions and context without unsupported tools', async intent => {
         const current = config();

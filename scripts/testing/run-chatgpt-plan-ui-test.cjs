@@ -2,7 +2,7 @@
 /**
  * @file scripts/testing/run-chatgpt-plan-ui-test.cjs
  * 文件职责：在独立后台 Edge 的真实生产扩展中验证 ChatGPT 套餐设置与翻译链路。
- * 主要内容：使用只监听 loopback 的 synthetic 助手，覆盖真实请求 Origin、界面配对和待授权状态、模拟回调、账户模型保存、后台翻译 SSE、额度失败、退出以及凭据与配置/导出隔离；记录截图和明确的验证边界。
+ * 主要内容：public-availability 模式验证公共版本不探测本机、不提供配对或新选择，保留旧服务与模型并返回不可用；原实验模式保留 synthetic 助手的配对与 SSE 专项。记录真实选择器、后台消息、截图、源码摘要及清理结果，其他供应商的成功推理仅用明确标记的 transport fixture。
  * 模块边界：不访问真实 OpenAI 账户、不操作用户浏览器 profile、不移动系统鼠标或抢前台；认证及推理均为标记明确的 fixture，复用已有 focus-safe 和拥有者清理机制。
  */
 'use strict';
@@ -12,6 +12,8 @@ const path = require('node:path');
 const http = require('node:http');
 const assert = require('node:assert/strict');
 const {createRequire} = require('node:module');
+const {createHash} = require('node:crypto');
+const {execFileSync} = require('node:child_process');
 const {guardBrowserClose} = require('./owned-browser-close.cjs');
 const args = Object.fromEntries(process.argv.slice(2).reduce((all, value, index, values) => {
   if (value.startsWith('--')) all.push([value.slice(2), values[index + 1]]); return all;
@@ -20,7 +22,11 @@ for (const field of ['extension-dir', 'playwright-root', 'artifacts-dir']) asser
 const {chromium} = createRequire(path.join(args['playwright-root'], 'chatgpt-plan-ui.cjs'))('playwright');
 const helper = require(args['focus-safe-helper'] || './focus-safe-browser.cjs');
 const extensionDir = path.resolve(args['extension-dir']);
-assert(!extensionDir.endsWith('-dev'), 'This suite verifies production extension builds');
+const publicAvailability = process.argv.includes('--public-availability');
+const developerFixture = process.argv.includes('--developer-fixture');
+assert(publicAvailability !== developerFixture, 'Choose exactly one explicit mode: --public-availability or --developer-fixture');
+if (publicAvailability) assert(!extensionDir.endsWith('-dev'), 'Public availability requires a production extension build');
+else assert(extensionDir.endsWith('-dev'), 'Developer fixture requires an explicitly enabled development extension build');
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.json'), 'utf8'));
 const artifacts = path.resolve(args['artifacts-dir']);
 fs.mkdirSync(artifacts, {recursive: true});
@@ -29,10 +35,21 @@ const pairCode = 'synthetic-fixture-pairing-code-1234';
 const pairToken = 'synthetic-bridge-token-fixture-1234567890';
 const state = {connected: false, sharing: false, authPending: false, responseMode: 'success'};
 let expectedOrigin = '';
-const report = {ok: false, build: 'production', extensionDir, evidence: 'real-extension-synthetic-chatgpt-helper',
+const report = {ok: false, build: publicAvailability ? 'production' : 'development', extensionDir, evidence: 'real-extension-synthetic-chatgpt-helper',
   fixtures: {authentication: 'synthetic', account: 'synthetic', models: 'synthetic', inference: 'synthetic', helper: 'owned Node loopback fixture'},
   cases: [], screenshots: [], helperRequests: [], consoleErrors: [], deniedExternalRequests: [],
   unverified: ['real ChatGPT authorization and token refresh', 'real account model availability', 'real provider inference and quota', 'Firefox runtime']};
+if (publicAvailability) Object.assign(report, {mode: 'public-availability', evidence: 'real-public-production-extension',
+  fixtures: {savedConfig: 'synthetic previous service and model preferences', otherProviderInference: 'synthetic MyMemory response', helper: 'not started', authentication: 'not invoked'},
+  publicNetworkAttempts: [], publicRouteAttempts: [], otherProviderRequests: [],
+  unverified: ['approved public ChatGPT client', 'real provider inference and quota', 'Firefox runtime']});
+const sourceDigest = () => {
+  const root = path.resolve(__dirname, '../..');
+  const paths = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'src', 'userscript', 'entrypoints', 'wxt.config.ts'], {cwd: root, encoding: 'utf8'}).split('\0').filter(Boolean).sort();
+  const hash = createHash('sha256');for (const file of paths) {hash.update(file);hash.update(fs.readFileSync(path.join(root, file)));}
+  return {sha256: hash.digest('hex'), files: paths.length};
+};
+if (publicAvailability) report.sourceBefore = sourceDigest();
 const save = () => fs.writeFileSync(path.join(artifacts, 'report.json'), JSON.stringify(report, null, 2));
 const frame = (type, fields = {}) => `event: ${type}\ndata: ${JSON.stringify({type, ...fields})}\n\n`;
 const status = () => ({connected: state.connected, sharing: state.sharing, authPending: state.authPending,
@@ -74,12 +91,149 @@ const fixture = http.createServer(async (req, res) => {
   } catch (error) {report.fixtureError = String(error.stack || error);json({error: {code: 'fixture_failure'}}, 500);}
 });
 
+async function runPublicAvailability({context, worker, optionsUrl, open, send, readConfig, shot, selectPage}) {
+  const record = (id, details = {}) => report.cases.push({id, passed: true, ...details});
+  const screenshot = async (surface, name) => {selectPage(surface);await shot(name);};
+  const readSaved = value => ({service: value.service, model: value.model?.chatgptPlan, documentService: value.documentService,
+    documentModel: value.documentModel?.chatgptPlan, readingService: value.harness?.service, readingModel: value.harness?.model,
+    writingService: value.writing?.service, writingModel: value.writing?.model});
+  // Observe the production worker's actual fetch boundary. An unexpected helper attempt
+  // is recorded and refused, so this test cannot contact an existing personal helper.
+  await worker.evaluate(() => {
+    const original = globalThis.fetch.bind(globalThis);
+    globalThis.__publicPlanNetworkAttempts = [];globalThis.__publicOtherProviderRequests = [];
+    globalThis.fetch = (input, init) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+      if (url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname.endsWith('openai.com')) {
+        globalThis.__publicPlanNetworkAttempts.push({origin: url.origin, path: url.pathname});
+        return Promise.reject(new Error('Unexpected public ChatGPT network attempt blocked by test observer'));
+      }
+      if (url.hostname === 'api.mymemory.translated.net') {
+        globalThis.__publicOtherProviderRequests.push({origin: url.origin, path: url.pathname});
+        return Promise.resolve(new Response(JSON.stringify({responseStatus: 200, responseData: {translatedText: '普通服务测试译文。'}}), {headers: {'content-type': 'application/json'}}));
+      }
+      return original(input, init);
+    };
+  });
+  const current = await readConfig();
+  const patch = {uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true, theme: 'light', on: true, service: 'chatgptPlan', useCache: false,
+    translationMaxRetries: 0, enableAIContext: false, model: {...current.model, chatgptPlan: 'saved-account-model'},
+    documentService: 'chatgptPlan', documentModel: {...current.documentModel, chatgptPlan: 'saved-document-model'},
+    harness: {...current.harness, enabled: true, service: 'chatgptPlan', model: 'saved-reading-model'},
+    writing: {...current.writing, enabled: true, service: 'chatgptPlan', model: 'saved-writing-model'}};
+  assert.equal((await send({type: 'persistConfig', mode: 'patch', config: patch, expected: Object.fromEntries(Object.keys(patch).map(key => [key, current[key]]))})).success, true);
+  const saved = readSaved(await readConfig());report.savedConfiguration = saved;
+  assert.equal(saved.service, 'chatgptPlan');assert.equal(saved.model, 'saved-account-model');
+  const assertHiddenPlanDetails = async surface => {
+    selectPage(surface);
+    await surface.locator('.service-catalog:visible').waitFor();
+    await surface.waitForFunction(() => {
+      const catalog = document.querySelector('.service-catalog'), service = catalog?.getAttribute('data-editing-service');
+      return Boolean(service && service !== 'chatgptPlan' && catalog.getAttribute('data-default-service') === 'chatgptPlan');
+    });
+    const catalog = surface.locator('.service-catalog:visible');
+    assert.equal(await catalog.getAttribute('data-default-service'), 'chatgptPlan');
+    const editingService = await catalog.getAttribute('data-editing-service');
+    assert.notEqual(editingService, 'chatgptPlan');
+    assert(await surface.locator(`.service-rail [data-service-value="${editingService}"]`).count() > 0);
+    await surface.locator(`[data-service-configuration-service="${editingService}"]:visible`).waitFor();
+    const title = await surface.locator('.detail-title-row h4').innerText();assert.doesNotMatch(title, /ChatGPT/u);
+    assert.equal(await surface.locator('.service-rail [data-service-value="chatgptPlan"], [data-service-configuration-service="chatgptPlan"]').count(), 0);
+    assert.equal(await surface.locator('[data-chatgpt-plan-settings], [data-chatgpt-plan-unavailable], [data-chatgpt-plan-pair], [data-chatgpt-plan-pair-code], [data-chatgpt-plan-sign-in], .chatgpt-plan-command, .chatgpt-plan-guide').count(), 0);
+    assert.doesNotMatch(await surface.locator('.service-detail').innerText(), /ChatGPT\s*(?:登录|套餐)|node integrations|本机助手|配对码|启动助手/u);
+    assert.deepEqual(readSaved(await readConfig()), saved);
+    return {editingService, title};
+  };
+  const services = await open(`${optionsUrl}#settings-services`);
+  record('saved-plan-details-hidden-with-available-service-editor', await assertHiddenPlanDetails(services));
+  await screenshot(services, 'public-saved-chatgpt-detail-hidden');
+  await services.reload();await assertHiddenPlanDetails(services);
+  assert.deepEqual(readSaved(await readConfig()), saved);record('saved-plan-and-all-feature-models-survive-options-reload');
+  const deepLink = await open(`${optionsUrl}?service=chatgptPlan#settings-services`);
+  record('chatgpt-deep-link-opens-normal-service-editor-without-login-details', await assertHiddenPlanDetails(deepLink));
+  await screenshot(deepLink, 'public-chatgpt-deep-link-detail-hidden');
+  const assertSelect = async (surface, name, id) => {
+    selectPage(surface);
+    const control = surface.getByRole('combobox', {name, exact: true});await control.click();
+    await surface.getByRole('option', {name: /Google|OpenAI|B站|微软/}).first().waitFor({state: 'visible'});
+    // The empty "follow default" choice may name the retained unavailable default;
+    // it does not add a ChatGPT service ID and still resolves through the request gate.
+    const choices = surface.getByRole('option', {name: /^ChatGPT/u});
+    (report.pickerCandidates ||= []).push({id, matches: await choices.evaluateAll(nodes => nodes.map(node => ({text: node.textContent, className: node.className, ariaDisabled: node.getAttribute('aria-disabled'), html: node.outerHTML}))) });
+    for (const choice of await choices.all()) assert(await choice.getAttribute('aria-disabled') === 'true' || /is-disabled/.test(await choice.getAttribute('class') || ''), `${id}: public ChatGPT option was selectable`);
+    record(id, {retainedDisabledOptions: await choices.count()});await screenshot(surface, id);await control.press('Escape');
+  };
+  const general = await open(`${optionsUrl}#settings-general`);await general.getByTestId('default-translation-service-card').waitFor();
+  await assertSelect(general, '默认网页翻译服务', 'public-general-picker-no-new-chatgpt');
+  const inheritedHover = general.locator('[data-feature-service="hover"]');
+  assert.equal((await readConfig()).hoverTranslationService, '');
+  assert.match(await inheritedHover.innerText(), /跟随默认.*ChatGPT 套餐/u);
+  assert.doesNotMatch(await inheritedHover.innerText(), /chatgptPlan/u);
+  await inheritedHover.getByRole('combobox').click();
+  const followDefault = general.getByRole('option', {name: '跟随默认 · ChatGPT 套餐', exact: true});
+  await followDefault.waitFor({state: 'visible'});assert.equal(await followDefault.isDisabled(), false);
+  await screenshot(general, 'public-general-inherits-named-chatgpt');await followDefault.click();
+  assert.equal((await readConfig()).hoverTranslationService, '');assert.deepEqual(readSaved(await readConfig()), saved);
+  record('public-general-inheritance-label-and-empty-value', {label: '跟随默认 · ChatGPT 套餐', inheritedValue: ''});
+  const reading = await open(`${optionsUrl}#settings-selection`);
+  await reading.getByRole('combobox', {name: '学习讲解服务', exact: true}).waitFor();
+  await assertSelect(reading, '学习讲解服务', 'public-reading-picker-no-new-chatgpt');
+  const writing = await open(`${optionsUrl}#settings-writing`);
+  await writing.getByRole('combobox', {name: '写作服务', exact: true}).waitFor();
+  await assertSelect(writing, '写作服务', 'public-writing-picker-no-new-chatgpt');
+  assert.match(await writing.locator('.writing-setup-message').first().innerText(), /ChatGPT.*尚未开放/);
+  const documentPage = await open(`${expectedOrigin}/document.html`);
+  await documentPage.locator('input[type="file"]').setInputFiles({name: 'public-availability-fixture.txt', mimeType: 'text/plain', buffer: Buffer.from('This is an owned document fixture for a public service picker check.')});
+  await documentPage.getByRole('combobox', {name: '翻译服务', exact: true}).waitFor();
+  await assertSelect(documentPage, '翻译服务', 'public-document-picker-no-new-chatgpt');
+  const documentDisabled = await documentPage.locator('.toolbar-service').innerText();
+  const accurateDocumentLabel = /ChatGPT/u.test(documentDisabled) && !/Chrome/u.test(documentDisabled);
+  record('document-retained-unavailable-label-names-chatgpt', {passed: accurateDocumentLabel, label: documentDisabled});
+  if (!accurateDocumentLabel) (report.productFailures ||= []).push('document-retained-unavailable-label-names-chatgpt');
+  const popup = await open(`${expectedOrigin}/${manifest.action.default_popup}`);
+  selectPage(popup);
+  await popup.locator('.popup-shell[data-config-ready="true"]').waitFor();await popup.getByTestId('popup-feature-services').click();
+  for (const feature of ['default', 'reading', 'writing']) {
+    await popup.locator(`[data-feature-service="${feature}"]`).click();await popup.locator(`[data-service-picker="${feature}"]`).waitFor();
+    const retained = popup.locator('[data-service-choice="chatgptPlan"]');
+    for (const choice of await retained.all()) assert.equal(await choice.isDisabled(), true);
+    record(`public-popup-${feature}-picker-no-new-chatgpt`, {retainedDisabledOptions: await retained.count()});
+    await popup.locator('.service-picker-back').click();
+  }
+  await screenshot(popup, 'public-popup-keeps-unavailable-saved-plan');
+  assert.deepEqual(readSaved(await readConfig()), saved);record('selector-inspection-does-not-reset-saved-service-or-slugs');
+  const blocked = await send({origin: 'Public ChatGPT request must stop locally.', serviceOverride: 'chatgptPlan', useCache: false, enableAIContext: false, clientRequestId: 'public-unavailable-translation'});
+  assert.equal(blocked.marker, 'fluentread-translation-error-v1');assert.equal(blocked.retryable, false);assert.match(blocked.message, /ChatGPT.*尚未开放/);
+  record('production-broker-refuses-saved-plan-before-upstream', {kind: blocked.kind, retryable: blocked.retryable});
+  const readingResult = await send({type: 'fluentReadHarness', action: 'run', requestId: 'public-unavailable-reading', intent: 'meaning', question: '', selection: {text: 'Owned reading fixture.', context: '', sentence: ''}});
+  assert.equal(readingResult.success, false);assert.match(readingResult.error, /ChatGPT.*尚未开放/);record('production-reading-refuses-saved-plan');
+  for (const action of ['status', 'pair', 'signIn', 'cancel', 'disconnect', 'models', 'usage']) {
+    const result = await send({type: 'chatgptPlanConnection', action, ...(action === 'pair' ? {code: pairCode} : {})});
+    assert.deepEqual(result, {success: false, code: 'public_unavailable'});
+  }
+  record('all-production-connection-actions-refused-before-helper');
+  await popup.locator('[data-feature-service="default"]').click();await popup.locator('[data-service-choice="myMemory"]').click();
+  await popup.waitForFunction(async () => {const response = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});const value = typeof response.value === 'string' ? JSON.parse(response.value) : response.value;return value?.service === 'myMemory';});
+  const selected = await readConfig();assert.equal(selected.service, 'myMemory');assert.equal(selected.model.chatgptPlan, saved.model);record('normal-provider-can-be-chosen-without-removing-saved-chatgpt-model');
+  const ordinary = await send({origin: 'This normal provider remains available.', serviceOverride: 'myMemory', sourceLanguage: 'en', targetLanguage: 'zh-Hans', useCache: false, enableAIContext: false, clientRequestId: 'public-normal-provider'});
+  assert.equal(ordinary, '普通服务测试译文。');record('normal-provider-production-broker-still-works', {inference: 'synthetic MyMemory fixture'});
+  const normalServices = await open(`${optionsUrl}#settings-services`);await normalServices.locator('.service-catalog:visible').waitFor();
+  assert.equal(await normalServices.locator('.service-rail [data-service-value="chatgptPlan"]').count(), 0);
+  assert.equal(await normalServices.locator('[data-chatgpt-plan-settings]').count(), 0);record('new-public-service-directory-omits-plan');await screenshot(normalServices, 'public-normal-service-directory');
+  report.publicNetworkAttempts = [...await worker.evaluate(() => globalThis.__publicPlanNetworkAttempts), ...report.publicRouteAttempts];
+  report.otherProviderRequests = await worker.evaluate(() => globalThis.__publicOtherProviderRequests);
+  assert.deepEqual(report.publicNetworkAttempts, []);assert.equal(report.otherProviderRequests.length, 1);
+  assert.deepEqual(report.helperRequests, []);assert.deepEqual(report.consoleErrors, []);assert.deepEqual(report.deniedExternalRequests, []);
+  record('no-helper-or-openai-network-attempts');report.savedConfigurationAfterInspection = saved;
+  assert.deepEqual(report.productFailures || [], [], 'Product regressions recorded above');
+}
+
 (async () => {
   let session, page, control, primaryError, serverListening = false, launchAttempted = false;
   try {
     // Fail if the user's real helper already occupies the port; never stop or replace it.
-    await new Promise((resolve, reject) => {fixture.once('error', reject);fixture.listen(18743, '127.0.0.1', resolve);});
-    serverListening = true;launchAttempted = true;
+    if (!publicAvailability) {await new Promise((resolve, reject) => {fixture.once('error', reject);fixture.listen(18743, '127.0.0.1', resolve);});serverListening = true;}
+    launchAttempted = true;
     session = await helper.launchFocusSafePersistentContext({chromium, profileDir,
       browserPath: args['browser-path'] || '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
       headless: false, background: true, displayTarget: 'secondary', viewport: {width: 1440, height: 1000}, timeout: 30000,
@@ -91,6 +245,10 @@ const fixture = http.createServer(async (req, res) => {
     const context = session.context;context.setDefaultTimeout(15000);
     await context.route(/^https?:\/\//, route => {
       const url = route.request().url();
+      const parsed = new URL(url);
+      if (publicAvailability && (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost' || parsed.hostname.endsWith('openai.com'))) {
+        report.publicRouteAttempts.push({origin: parsed.origin, path: parsed.pathname});return route.abort('blockedbyclient');
+      }
       if (url.startsWith('http://127.0.0.1:18743/')) return route.continue();
       report.deniedExternalRequests.push(url);
       if (url.startsWith('https://auth.openai.com/api/accounts/authorize')) return route.fulfill({status: 200, contentType: 'text/html', body: '<title>Synthetic OAuth fixture</title><p>Synthetic authentication only.</p>'});
@@ -103,7 +261,7 @@ const fixture = http.createServer(async (req, res) => {
     // Browser-created auth tabs may navigate before CDP routing attaches. Keep the actual
     // validated runtime operation but redirect this fixture's tab creation to about:blank.
     // This explicitly synthetic API hook prevents all real identity-provider navigation.
-    await worker.evaluate(() => {
+    if (!publicAvailability) await worker.evaluate(() => {
       const create = chrome.tabs.create.bind(chrome.tabs);
       globalThis.__chatgptPlanSyntheticAuthTabs = [];
       chrome.tabs.create = (details, callback) => {
@@ -114,11 +272,12 @@ const fixture = http.createServer(async (req, res) => {
         return callback ? create(details, callback) : create(details);
       };
     });
-    report.fixtures.authorizationTab = 'synthetic chrome.tabs.create redirect to owned about:blank; production URL validation and background handler still execute';
+    if (!publicAvailability) report.fixtures.authorizationTab = 'synthetic chrome.tabs.create redirect to owned about:blank; production URL validation and background handler still execute';
     const optionsUrl = `${expectedOrigin}/${manifest.options_page || manifest.options_ui.page}`;
     const open = async url => {
       const target = await helper.newPageWithoutForeground(context, 30000);
       target.on('pageerror', error => report.consoleErrors.push({surface: url, message: error.message}));
+      if (publicAvailability) target.on('console', message => {if (message.type() === 'error') report.consoleErrors.push({surface: url, message: message.text()});});
       await target.goto(url, {waitUntil: 'domcontentloaded'});return target;
     };
     const shot = async name => {
@@ -137,6 +296,10 @@ const fixture = http.createServer(async (req, res) => {
       const response = await send({type: 'configStorageRead', key: 'local:config'});assert.equal(response?.success, true);
       return typeof response.value === 'string' ? JSON.parse(response.value) : response.value;
     };
+    if (publicAvailability) {
+      await runPublicAvailability({context, worker, optionsUrl, open, send, readConfig, shot, selectPage: target => {page = target;}});
+      report.ok = true;return;
+    }
     const current = await readConfig();
     const patch = {uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true, service: 'freeTranslation', theme: 'light', translationMaxRetries: 0, useCache: false, enableAIContext: false};
     const persisted = await send({type: 'persistConfig', mode: 'patch', config: patch, expected: Object.fromEntries(Object.keys(patch).map(key => [key, current[key]]))});
@@ -256,6 +419,9 @@ const fixture = http.createServer(async (req, res) => {
     catch (error) {report.ok = false;process.exitCode = 1;(report.cleanupErrors ||= []).push(String(error));}
     if (closed || !launchAttempted) fs.rmSync(profileDir, {recursive: true, force: true});else report.retainedProfile = profileDir;
     if (serverListening) await new Promise(resolve => fixture.close(resolve));
+    report.cleanup = {browserClosed: closed, profileRemoved: !fs.existsSync(profileDir), helperStarted: serverListening, helperClosed: !fixture.listening};
+    if (publicAvailability) {report.sourceAfter = sourceDigest();report.sourceUnchanged = report.sourceBefore.sha256 === report.sourceAfter.sha256;
+      if (!report.sourceUnchanged) {report.ok = false;process.exitCode = 1;report.sourceChangedDuringTest = true;}}
     save();console.log(JSON.stringify(report, null, 2));if (primaryError) console.error(primaryError);
   }
 })().catch(error => {console.error(error);process.exitCode = 1;});
