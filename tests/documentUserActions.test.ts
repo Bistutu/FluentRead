@@ -839,7 +839,7 @@ describe('document user actions: confirmation and task consumers', () => {
         ports.batch.mockRejectedValueOnce(new Error('provider offline'));
         await fire(translateButton(), 'click');
         expect(textOf(taskbar())).toContain('第 1 段文档翻译失败：provider offline');
-        expect(textOf(translateButton())).toBe('重试翻译');
+        expect(textOf(translateButton())).toBe('document.translationRecovery.retry');
         await fire(translateButton(), 'click');
         expect(textOf(taskbar())).toContain('翻译完成');
         expect(textOf(taskbar())).not.toContain('provider offline');

@@ -101,12 +101,22 @@ describe('界面语言注册表', () => {
             expect(progress).toContain('100');
             expect(progress).toContain('%');
             expect(progress).not.toMatch(/[{}]/u);
-            for (const key of ['document.translationProgress.waitingRetry', 'document.translationProgress.collectingAfterFailure', 'document.translationRecovery.retry', 'document.translationRecovery.switchService']) {
+            for (const key of ['document.translationProgress.waitingRetry', 'document.translationProgress.collectingAfterFailure',
+                'document.translationRecovery.retry', 'document.translationRecovery.switchService', 'document.translationRecovery.pauseAndSwitch',
+                'document.translationRecovery.details', 'document.translationRecovery.interrupted', 'document.translationRecovery.unavailable']) {
                 expect(i18n.translate(key, language as any)).not.toBe(key);
             }
+            expect(i18n.translate('document.translationRecovery.kept', language as any)).toBe('document.translationRecovery.kept');
         }
         expect(i18n.translate('document.translationProgress.count', 'zh-CN', {completed: 35, total: 100, percent: 35}))
             .toBe('已翻译 35/100 个文本段落（35%）');
+        expect(i18n.translate('document.translationRecovery.retry', 'zh-CN')).toBe('重试');
+        expect(i18n.translate('document.translationRecovery.switchService', 'zh-CN')).toBe('更换服务');
+        expect(i18n.translate('document.translationRecovery.pauseAndSwitch', 'zh-CN')).toBe('暂停并更换服务');
+        expect(i18n.translate('document.translationRecovery.details', 'zh-CN')).toBe('详情');
+        expect(i18n.translate('document.translationRecovery.interrupted', 'zh-CN')).toBe('翻译暂时中断');
+        expect(i18n.translate('document.translationRecovery.unavailable', 'zh-CN')).toBe('当前服务不可用');
+        expect(i18n.translate('document.translationRecovery.unavailable', 'en-US')).toBe('Service unavailable');
     });
 
     it('默认中文入口只消费 PDF 阅读和信息高亮的独立中文常量', () => {
