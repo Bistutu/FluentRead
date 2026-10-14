@@ -74,6 +74,33 @@ describe('userscript HTTP transport', () => {
         expect(await response.json()).toEqual({translation: '你好'});
     });
 
+    it('honors credentials omit from Request or RequestInit without changing ordinary GM credentials', async () => {
+        const captured: UserscriptXmlHttpRequestDetails[] = [];
+        globalThis.GM_xmlhttpRequest = details => {
+            captured.push(details);
+            queueMicrotask(() => details.onload?.({status: 200, responseText: 'ok'}));
+            return {abort() {}};
+        };
+        const endpoint = 'https://oneshot-free.www.deepl.com/v1/translate';
+        await userscriptFetch(endpoint, {credentials: 'omit'});
+        await userscriptFetch(new Request(endpoint, {credentials: 'omit'}));
+        await userscriptFetch(new Request(endpoint, {credentials: 'include'}), {credentials: 'omit'});
+        await userscriptFetch(new Request(endpoint, {credentials: 'omit'}), {credentials: 'include'});
+        await userscriptFetch(endpoint, {credentials: 'same-origin'});
+        expect(captured.slice(0, 3).every(request => request.anonymous === true)).toBe(true);
+        expect(captured[3]).not.toHaveProperty('anonymous');
+        expect(captured[4]).not.toHaveProperty('anonymous');
+
+        globalThis.GM_xmlhttpRequest = undefined;
+        globalThis.GM = {
+            xmlHttpRequest(details) {
+                expect(details.anonymous).toBe(true);
+                return Promise.resolve({status: 200, responseText: 'ok'});
+            },
+        };
+        await expect(userscriptFetch(endpoint, {credentials: 'omit'})).resolves.toBeInstanceOf(Response);
+    });
+
     it('settles null-body statuses and non-ByteString manager metadata instead of stalling', async () => {
         const responses: UserscriptXmlHttpResponse[] = [
             {status: 204, statusText: 'No Content', responseText: ''},

@@ -12,6 +12,7 @@ import {UI_LANGUAGE_BUNDLE_DIRECTORY} from './src/core/i18n/language';
 import {packageWasmDiagnostics, packageTesseractWasm, packageTesseractWorker} from './scripts/wasm/package-diagnostics';
 import {tesseractSdkBuildPlugin} from './scripts/wasm/tesseract-sdk-build';
 import {GOOGLE_DRIVE_DEFAULT_CLIENT_ID, GOOGLE_DRIVE_EXTENSION_PUBLIC_KEY, GOOGLE_DRIVE_SCOPES} from './src/platform/google-drive/constants';
+import {createDeepLXRuntimeBuildPlugin} from './scripts/testing/deeplx-runtime-build';
 
 
 const packageJson = JSON.parse(fs.readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
@@ -211,7 +212,7 @@ export default defineConfig({
     vite: (env) => {
         const isProductionBuild = env.command === 'build' && env.mode === 'production';
         return {
-            plugins: [vue(), sharedOnnxBuildPlugin(), wllamaExtensionWorker(), tesseractSdkBuildPlugin(), escapeExtensionNoncharacters()],
+            plugins: [createDeepLXRuntimeBuildPlugin(__dirname), vue(), sharedOnnxBuildPlugin(), wllamaExtensionWorker(), tesseractSdkBuildPlugin(), escapeExtensionNoncharacters()],
             // WXT 默认在每个开发脚本中内联源码与 sourcemap；需要源码调试时显式开启。
             build: env.command === 'serve' ? {sourcemap: process.env.FLUENTREAD_DEV_SOURCEMAPS === '1' ? 'inline' : false} : undefined,
             define: {

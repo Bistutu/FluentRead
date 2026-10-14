@@ -134,7 +134,7 @@ export const userscriptFetch: RuntimeFetch = async (input, init) => {
         request.headers.set('Origin', 'https://www.doubao.com');
         request.headers.set('Referer', 'https://www.doubao.com/');
     }
-    // 豆包首页、访客注册和翻译请求均排除管理器自动附带的个人 Cookie。
+    // 显式 credentials: omit 与豆包请求均排除管理器自动附带的个人 Cookie；豆包手工访客 Cookie 保持原协议。
 
     if (request.signal?.aborted) throw abortError();
 
@@ -167,7 +167,7 @@ export const userscriptFetch: RuntimeFetch = async (input, init) => {
                 url: request.url,
                 headers: headersToRecord(request.headers),
                 data: request.body ?? undefined,
-                ...(anonymousDoubao ? {anonymous: true} : {}),
+                ...(anonymousDoubao || request.credentials === 'omit' ? {anonymous: true} : {}),
                 ...(guest ? {redirect: 'error' as const} : {}),
                 onload(response: UserscriptXmlHttpResponse) {
                     // 完成门先关闭再构造 Response；构造失败必须 reject，否则调用方与后续 abort 都无法结算。

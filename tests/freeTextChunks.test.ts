@@ -11,6 +11,16 @@ import {documentLongMathParagraph, protectedDocumentLongMathParagraph} from './f
 const marker = '__FRTERM_0123456789ab_0__';
 
 describe('bounded free translation chunks', () => {
+    it('UTF-16 预算不拆代理对或术语标记，保持完整原文和句末优先', async () => {
+        for (const source of ['😀'.repeat(1501), 'a'.repeat(1499) + '😀' + marker, '😀'.repeat(400) + '。' + '😀'.repeat(400), marker]) {
+            const chunks = [...splitFreeTextChunks(source, 1500, true, true)];
+            expect(chunks.join('')).toBe(source);
+            expect(chunks.every(chunk => chunk.length <= 1500 && !/[\uD800-\uDBFF]$/u.test(chunk) && !/^[\uDC00-\uDFFF]/u.test(chunk))).toBe(true);
+            expect(chunks.filter(chunk => chunk.includes(marker))).toHaveLength(source.includes(marker) ? 1 : 0);
+            await expect(translateFreeTextChunks(source, 1500, async chunk => chunk, undefined, true, {utf16: true, splitLines: false})).resolves.toBe(source);
+        }
+        expect(() => [...splitFreeTextChunks('😀', 1, false, true)]).toThrow('分块字符预算不足');
+    });
     it.each([500, 1000, 2000])('keeps all 60 actual mathematical occurrences intact at %i codepoints', limit => {
         const packet = protectedDocumentLongMathParagraph();
         expect(documentLongMathParagraph).toHaveLength(2083);

@@ -599,6 +599,7 @@ export default defineConfig({
                 'src/features/vocabulary/domain/expressionMatcher.ts',
                 'src/platform/http/errors.ts',
                 'src/platform/http/runtime.ts',
+                'src/platform/http/deeplxRuntime.ts',
                 'src/platform/http/doubaoGuest.ts',
                 'src/platform/shadow-ui/pageBridgeCore.ts',
                 'src/platform/browser/ids.ts',

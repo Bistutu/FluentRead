@@ -8,7 +8,6 @@
 
 import {translationLanguageOptions} from '@/src/core/language/catalog';
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
-import {DEFAULT_DEEPLX_ENDPOINT} from "./deeplx";
 import {CUSTOM_OPENAI_RESERVED_MODEL_ID, isCustomOpenAIProviderId} from './customOpenAI';
 import {DOUBAO_SEED_TRANSLATION_MODEL_ID, isDoubaoSeedTranslationModel} from './doubaoSeedTranslation';
 import {buildTranslationStyleOptions} from './translationAppearance';
@@ -1123,7 +1122,7 @@ export const defaultOption = {
     hotkey: "Control",
     service: services.freeTranslation,
     custom: "http://localhost:11434/v1/chat/completions",
-    deeplx: DEFAULT_DEEPLX_ENDPOINT,
+    deeplx: "",
     system_role:
         "You are a professional, authentic machine translation engine.",
     user_role: `Translate the following text into {{to}}. Translate every sentence, clause and phrase in full; no part of the source text may stay in its original language. Keep only code, URLs, and proper nouns that have no established {{to}} form, and keep them inline inside the translated sentence. Return the translation only. NO explanations. NO notes:
