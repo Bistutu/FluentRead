@@ -4,12 +4,10 @@
  * 主要内容：逐次刷新回答与结构变化、同帧首次回答/完成/错误、用户阅读位置、晚到译文、隐藏/替换/卸载的迟到响应；统一导航顶栏的唯一传送工具、正文追问与回答优先顺序、菜单边界和监听清理，以及真实表单/按钮事件。
  * 模块边界：仅控制后台流端口、展示子组件与 DOM 几何；不复制阅读业务，不请求模型，不声称真实浏览器性能。
  */
-import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {parseHTML} from 'linkedom';
-import {compileScript, compileStyle, compileTemplate, parse} from 'vue/compiler-sfc';
 import {useRenderDateFormatter} from '@/src/ui/dateFormat';
-import ts from 'typescript';
+import {compileVueFixture} from './helpers/compiledVueFixture';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {DEFAULT_HARNESS_PREFERENCES, HARNESS_ACTIONS, isReadingActionSupported, isReadingFollowUpSupported} from '@/src/core/config/harness';
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -54,18 +52,11 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
     '@/src/core/language/detect':{detectlang:()=> 'en'},
   };
   const filename='src/features/reading-assistant/ui/ReadingPanel.vue';
-  const {descriptor}=parse(readFileSync(filename,'utf8'),{filename});
-  const script=compileScript(descriptor,{id:'reading-stream-resize'});
-  const compiled=ts.transpileModule(script.content,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+  const compiled=compileVueFixture(filename,{id:'reading-stream-resize',cacheHandlers:true,includeScript:true,includeScopedStyle:true});
   const exports:Record<string,any>={};
-  new Function('require','exports',compiled)((id:string)=>{if(!(id in modules))throw new Error(`Unexpected ReadingPanel import: ${id}`);return modules[id];},exports);
-  const template=compileTemplate({source:descriptor.template!.content,filename,id:'reading-stream-resize',
-    compilerOptions:{mode:'function',cacheHandlers:true,bindingMetadata:script.bindings,expressionPlugins:['typescript']}});
-  expect(template.errors).toEqual([]);
-  exports.default.render=new Function('Vue',ts.transpileModule(template.code,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)(runtime);
+  new Function('require','exports',compiled.scriptCode)((id:string)=>{if(!(id in modules))throw new Error(`Unexpected ReadingPanel import: ${id}`);return modules[id];},exports);
+  exports.default.render=new Function('Vue',compiled.renderCode)(runtime);
   exports.default.__scopeId='data-v-reading-stream-resize';
-  const styles=compileStyle({source:descriptor.styles[0].content,filename,id:'data-v-reading-stream-resize',scoped:true});
-  expect(styles.errors).toEqual([]);
   const remove=(node:HostNode)=>node.parentNode?.removeChild(node);
   const insert=(node:HostNode,parent:HostNode,anchor?:HostNode|null)=>parent.insertBefore(node,anchor||null);
   const renderer=runtime.createRenderer<HostNode,HostNode>({
@@ -106,7 +97,7 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
   const viewport=host.querySelector('.fr-reading-result') as unknown as HTMLElement;
   if(viewport){Object.defineProperty(viewport,'scrollTop',{configurable:true,writable:true,value:0});Object.defineProperty(panel.answerBody,'offsetTop',{configurable:true,value:100});}
   const finish=(text:string,call=calls.at(-1)!)=>call.callbacks.result({success:true,text,service:'deepseek',model:'fixture-model'});
-  return {host,toolsTarget,panel,props,calls,resize,viewport,finish,errors,window,sendMessage,writeClipboard,playSource,translateLegacy,saveLearningMemory,styles:styles.code,unmount:()=>{dispose?.();dispose=undefined;}};
+  return {host,toolsTarget,panel,props,calls,resize,viewport,finish,errors,window,sendMessage,writeClipboard,playSource,translateLegacy,saveLearningMemory,styles:compiled.styleCode,unmount:()=>{dispose?.();dispose=undefined;}};
 }
 
 it('copies and saves readable source quotes without leaking model citation IDs or external markers', async () => {

@@ -5,10 +5,8 @@
  * 模块边界：执行完整 SFC/setup/template 与公共后台消息 handlers，仅控制 DOM、存储、确认和 Offscreen 端口，不访问网络、GPU、真实模型或源码私有导出。
  */
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {readFileSync} from 'node:fs';
 import path from 'node:path';
-import {compileScript, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
+import {compileVueInlineFixture} from './helpers/compiledVueFixture';
 import type {App, Component} from 'vue';
 
 const dom = await vi.hoisted(async () => {
@@ -59,14 +57,11 @@ for (const key of ['createVNode', 'createBlock', 'createElementVNode', 'createEl
 const t = (key: string, values?: unknown) => values ? `${key}:${JSON.stringify(values)}` : key;
 const FieldHelp = Vue.defineComponent({name: 'FieldHelpPort', setup: (_, {slots}) => () => Vue.h('span', slots.default?.())});
 const icons = Object.fromEntries(['Check', 'Close', 'Cpu', 'Delete', 'Download', 'Promotion', 'Refresh', 'TopRight', 'VideoPause'].map(name => [name, {render: () => Vue.h('svg')}]));
-const components = new Map<string, Component>();
-function loadClient(relative: string): Component {
+function loadClient(relative: string, components: Map<string, Component>): Component {
     if (components.has(relative)) return components.get(relative)!;
     const filename = path.resolve(process.cwd(), relative);
-    const {descriptor, errors} = parse(readFileSync(filename, 'utf8'), {filename});
-    expect(errors).toEqual([]);
-    const script = compileScript(descriptor, {id: relative, inlineTemplate: true});
-    const code = ts.transpileModule(script.content, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
+    const compiled = compileVueInlineFixture(filename, {id: relative});
+    expect(compiled.parseErrors).toEqual([]);
     const dependencies: Record<string, any> = {
         vue: clientVue, 'webextension-polyfill': {default: browser}, '@element-plus/icons-vue': icons,
         'element-plus': {ElMessageBox: {confirm: (...args: any[]) => ports.confirm(...args)}},
@@ -77,9 +72,9 @@ function loadClient(relative: string): Component {
         '@/src/ui/i18n': {useUiI18n: () => ({t})},
         './components/FieldHelp.vue': {default: FieldHelp},
     };
-    if (!relative.endsWith('SegmentedControl.vue')) dependencies['./components/SegmentedControl.vue'] = {default: loadClient('src/features/settings/ui/components/SegmentedControl.vue')};
+    if (!relative.endsWith('SegmentedControl.vue')) dependencies['./components/SegmentedControl.vue'] = {default: loadClient('src/features/settings/ui/components/SegmentedControl.vue', components)};
     const module = {exports: {} as any};
-    new Function('require', 'exports', 'module', code)((id: string) => {
+    new Function('require', 'exports', 'module', compiled.code)((id: string) => {
         if (!(id in dependencies)) throw new Error(`Unexpected client dependency: ${id}`);
         return dependencies[id];
     }, module.exports, module);
@@ -147,7 +142,9 @@ async function mount(enabled = true) {
     fixture = backend();renderedEvents.length = 0;
     const state = Vue.reactive({config: normalizeConfig({}), service: 'localTranslation', active: enabled, context: {id: 1}});
     const cached = Vue.ref(false), host = dom.document.createElement('div');dom.document.body.append(host);
-    const component = loadClient('src/features/settings/ui/LocalTranslationModelSettings.vue');
+    // 子组件 type 只在这个挂载的组件图中复用，后续挂载重新执行各业务模块。
+    const components = new Map<string, Component>();
+    const component = loadClient('src/features/settings/ui/LocalTranslationModelSettings.vue', components);
     const empty = Vue.defineComponent({render: () => null});
     const app = Vue.createApp({setup: () => () => Vue.h(Vue.KeepAlive, null, {default: () => cached.value ? Vue.h(empty, {key: 'other'}) : Vue.h(component, {
         config: state.config, service: state.service, active: state.active, context: state.context,

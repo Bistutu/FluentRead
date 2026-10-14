@@ -96,14 +96,22 @@ function browserPort(pid: unknown, close: () => unknown = async () => {}) {
     const cdp = {send: vi.fn(async (_method: string): Promise<any> => ({processInfo: [
         {type: 'renderer', id: process.pid}, {type: 'browser', id: pid},
     ]})), detach: vi.fn(async () => {})};
-    const browser = {newBrowserCDPSession: vi.fn(async (): Promise<any> => cdp)};
+    let announceDetach!: () => void;
+    const detachedStarted = new Promise<void>(resolve => {announceDetach = resolve;});
+    const cdpPort = {send: cdp.send, detach(...args: unknown[]) {
+        // 只观察外部端口调用开始；原 mock 的拒绝、挂起与 this 都按原样转发。
+        announceDetach();
+        return Reflect.apply(cdp.detach, cdp, args);
+    }};
+    const browser = {newBrowserCDPSession: vi.fn(async (): Promise<any> => cdpPort)};
     const session = {context: {browser: vi.fn((): any => browser)}, close: vi.fn(close), marker: 'original session'};
-    return {session, browser, cdp, nativeClose: session.close};
+    return {session, browser, cdp, nativeClose: session.close, detachedStarted};
 }
 
 async function captured(port: ReturnType<typeof browserPort>) {
     // Observe only the external CDP detach, not private guard state.
-    await vi.waitFor(() => expect(port.cdp.detach).toHaveBeenCalledTimes(1));
+    await port.detachedStarted;
+    expect(port.cdp.detach).toHaveBeenCalledTimes(1);
 }
 
 async function rejected(closing: unknown): Promise<any> {

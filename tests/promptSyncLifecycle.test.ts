@@ -5,11 +5,9 @@
  * 模块边界：编译真实客户端 SFC setup 与缓存模板并实际挂载，Element Plus 和浏览器为受控端口；不访问 setup 私有函数、不证明真实浏览器或存储。
  */
 import {createRequire} from 'node:module'
-import {readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
 import {parseHTML} from 'linkedom'
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
+import {compileVueFixture} from './helpers/compiledVueFixture'
 import vue from '@vitejs/plugin-vue'
 import {createServer, type Plugin, type ViteDevServer} from 'vite'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
@@ -104,15 +102,12 @@ afterEach(async () => {
 })
 async function mount(raw = false) {
   const filename = resolve('src/features/settings/ui/services/ServiceConfiguration.vue')
-  const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename})
-  const script = compileScript(descriptor, {id: 'prompt-sync-public', inlineTemplate: false})
+  const compiled = compileVueFixture(filename, {id: 'prompt-sync-public', cacheHandlers: true, includeScript: false})
   const clientId = `${filename}.lifecycle-client.ts`
-  clientModules.set(clientId, script.content)
+  clientModules.set(clientId, compiled.scriptSource)
   const component = (await server.ssrLoadModule(clientId)).default
-  const template = compileTemplate({source: descriptor.template!.content, filename, id: 'prompt-sync-public',
-    compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: script.bindings, expressionPlugins: ['typescript']}})
-  expect(template.errors).toEqual([])
-  component.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime)
+  expect(compiled.templateErrors).toEqual([])
+  component.render = new Function('Vue', compiled.renderCode)(runtime)
   const renderer = runtime.createRenderer({patchProp(element: any, key: string, previous: any, next: any) {
     if (/^on[A-Z]/u.test(key)) {
       const handlers = events.get(element) || {};handlers[key] = next;events.set(element, handlers)

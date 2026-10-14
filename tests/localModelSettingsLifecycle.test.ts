@@ -5,10 +5,8 @@
  * 模块边界：实际 SFC/setup/template、进度 watcher/display 和公共后台 handlers；只控制 DOM、存储、Offscreen 与回包传输端口，无浏览器、网络、GPU、native 或源码私有导出。
  */
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {readFileSync} from 'node:fs';
 import path from 'node:path';
-import {compileScript, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
+import {compileVueInlineFixture} from './helpers/compiledVueFixture';
 import type {App, Component} from 'vue';
 
 const dom = await vi.hoisted(async () => {
@@ -76,16 +74,13 @@ const Select = Vue.defineComponent({name: 'SelectPort', props: ['modelValue', 'd
 const Option = Vue.defineComponent({props: ['value', 'label'], setup: props => () => Vue.h('option', {value: props.value}, props.label)});
 const t = (key: string, parameters?: unknown) => parameters ? `${key}:${JSON.stringify(parameters)}` : key;
 const icons = Object.fromEntries(['Cpu', 'Delete', 'Download', 'Loading', 'Check', 'Files'].map(name => [name, {render: () => Vue.h('svg')} ]));
-const components = new Map<string, Component>();
-function loadClient(relative: string): Component {
+function loadClient(relative: string, components: Map<string, Component>): Component {
     if (components.has(relative)) return components.get(relative)!;
     const filename = path.resolve(process.cwd(), relative);
-    const {descriptor, errors} = parse(readFileSync(filename, 'utf8'), {filename});
-    expect(errors).toEqual([]);
+    const compiled = compileVueInlineFixture(filename, {id: relative});
+    expect(compiled.parseErrors).toEqual([]);
     // Compile the unchanged complete SFC as a client module, not an SSR/no-op
     // renderer. Only its dependency transport is supplied by this test loader.
-    const script = compileScript(descriptor, {id: relative, inlineTemplate: true});
-    const code = ts.transpileModule(script.content, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
     const dependencies: Record<string, any> = {
         vue: clientVue, 'webextension-polyfill': {default: browser}, '@element-plus/icons-vue': icons,
         '@/src/core/config/localTts': ttsModel, '@/src/core/config/selectionTts': selectionTts,
@@ -102,11 +97,11 @@ function loadClient(relative: string): Component {
         // The progress display still runs the actual shared byte formatter.
         dependencies['@/src/core/download/progress'] = progressModule;
     } else if (!relative.endsWith('SegmentedControl.vue')) {
-        dependencies['@/src/ui/components/DownloadProgress.vue'] = {default: loadClient('src/ui/components/DownloadProgress.vue')};
-        dependencies['./components/SegmentedControl.vue'] = {default: loadClient('src/features/settings/ui/components/SegmentedControl.vue')};
+        dependencies['@/src/ui/components/DownloadProgress.vue'] = {default: loadClient('src/ui/components/DownloadProgress.vue', components)};
+        dependencies['./components/SegmentedControl.vue'] = {default: loadClient('src/features/settings/ui/components/SegmentedControl.vue', components)};
     }
     const module = {exports: {} as any};
-    new Function('require', 'exports', 'module', code)((id: string) => {
+    new Function('require', 'exports', 'module', compiled.code)((id: string) => {
         if (!(id in dependencies)) throw new Error(`Unexpected client dependency: ${id}`);
         return dependencies[id];
     }, module.exports, module);
@@ -218,7 +213,9 @@ async function mount(kind: Kind) {
     const state = Vue.reactive({config: normalizeConfig({videoTranslationEnabled: true, videoLocalModel: 'tiny', selectionTtsMode: 'online-first'}), active: true});
     const cached = Vue.ref(false);
     const host = dom.document.createElement('div'); dom.document.body.append(host);
-    const component = loadClient(`src/features/settings/ui/${kind === 'tts' ? 'LocalTtsSettings' : 'VideoLocalModelSettings'}.vue`);
+    // 每个根挂载拥有自己的已执行组件图；同根复用子组件 type，跨根只共享不可变编译字符串。
+    const components = new Map<string, Component>();
+    const component = loadClient(`src/features/settings/ui/${kind === 'tts' ? 'LocalTtsSettings' : 'VideoLocalModelSettings'}.vue`, components);
     const empty = Vue.defineComponent({render: () => null});
     const app = Vue.createApp({setup: () => () => Vue.h(Vue.KeepAlive, null, {default: () => cached.value ? Vue.h(empty, {key: 'other'}) : Vue.h(component, {
         config: state.config, active: state.active, context: state.config,

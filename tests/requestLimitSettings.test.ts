@@ -5,8 +5,7 @@ import vue from '@vitejs/plugin-vue';
 import {createServer, type ViteDevServer} from 'vite';
 import {afterAll, afterEach, beforeAll, describe, expect, it, vi} from 'vitest';
 import {ShadowRoot} from 'linkedom';
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
+import {compileVueFixture} from './helpers/compiledVueFixture';
 import {Config} from '@/src/core/config/model';
 import {normalizeTranslationRequestLimits, withModelRequestLimit, withServiceRequestLimit} from '@/src/core/config/requestLimits';
 import {resolveTranslationRequestModel} from '@/src/core/config/requestModel';
@@ -31,15 +30,9 @@ afterAll(async () => {await server?.close(); vi.unstubAllGlobals();});
 
 async function mount(name: string, props: Record<string, unknown>) {
   const filename = resolve(`src/features/settings/ui/services/${name}.vue`);
-  const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-  const bindings = compileScript(descriptor, {id: 'request-limit-ui-test'}).bindings;
-  const template = compileTemplate({source: descriptor.template!.content, filename, id: 'request-limit-ui-test',
-    compilerOptions: {mode: 'function', bindingMetadata: bindings, expressionPlugins: ['typescript']}});
-  expect(template.errors).toEqual([]);
+  const {renderCode} = compileVueFixture(filename, {id: 'request-limit-ui-test'});
   const component = (await server.ssrLoadModule(`/src/features/settings/ui/services/${name}.vue`)).default;
-  component.render = new Function('Vue', ts.transpileModule(template.code, {
-    compilerOptions: {target: ts.ScriptTarget.ES2022},
-  }).outputText)(runtime);
+  component.render = new Function('Vue', renderCode)(runtime);
   const nodes: Node[] = [];
   const renderer = runtime.createRenderer<Node, Node>({
     patchProp: (node, key, _previous, value) => {node.props[key] = value;},

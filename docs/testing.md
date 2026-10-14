@@ -12,7 +12,7 @@
 
 GitHub 仓库列表和 Issue 列表同时保留旧容器与当前结构的保护规则，正文和标题仍须翻译。站点测试查询原样完成状态时使用可见文本，原始文本与结构仍用于恢复检查；隐藏反馈内容变化或仅 CSS 可见性变化均不能沿用旧完成证明。
 
-完整回归的 `focus-safe-browser-lifecycle` 阶段串行执行普通上下文、后台信号与后台清理三套 Node 测试。真实子进程验证重复中断只清理一次、保留首个退出码、等待完整所有权清理，以及原关闭期限和身份校验失效时保留失败。Node 测试不启动浏览器；实际不抢焦点及扩展功能须由临时 Edge 的原生焦点监控和生产浏览器专项另行验证。弹窗主题截图在既有阶段期限内等待颜色过渡结束。
+`processRegression.test.ts` 在 Vitest 完整入口内串行执行普通上下文、后台信号与后台清理三套原生 Node 进程夹具。真实子进程验证重复中断只清理一次、保留首个退出码、等待完整所有权清理，以及原关闭期限和身份校验失效时保留失败。Node 测试不启动浏览器；实际不抢焦点及扩展功能须由临时 Edge 的原生焦点监控和生产浏览器专项另行验证。弹窗主题截图在既有阶段期限内等待颜色过渡结束。
 
 ## 网页个人校订
 
@@ -500,11 +500,17 @@ pnpm test:architecture   # 分层、依赖方向与验证归属
 pnpm test:unit           # 纯函数、状态机、parser、cache、handler
 pnpm test:functional     # 多模块协作，替换网络/浏览器等外部边界
 pnpm test:regression     # 历史缺陷的最小复现
-pnpm test:coverage       # 已迁移可执行业务模块的四维 100% 门禁
+pnpm test:coverage       # 全部 Vitest 与原生进程夹具一次编排 + 四维 100% 门禁
 pnpm test:document       # 文档格式、导出、取消、边界与历史回归
 pnpm verify:extension-manifests  # fresh Chrome/Firefox 产物的权限、Offscreen 与 runtime marker
 node scripts/verify-userscript-build.mjs  # userscript 元数据与产物边界
 ```
+
+普通回归与严格覆盖率共用 `vitest.config.ts` 的 Vue 编译、环境、文件隔离、资源预算和 `tests/**/*.test.ts` 发现规则。`test:coverage` 一次执行全部分组；`processRegression.test.ts` 注册并执行所有原生 Node 进程夹具，核验实际退出码与 TAP 全部通过、零跳过，原生清理语义继续在真实子进程中运行；`test:regression:all` 不再重复运行已执行的分组，单独分组入口继续用于定向开发。覆盖率的生产源码清单、`all: true`、四维 100% 阈值及忽略检查保持严格；测试数量或四维覆盖率不能代替有效的行为断言。
+
+真实组件夹具可复用 `tests/helpers/compiledVueFixture.ts` 的纯编译结果，支持独立模板与 `inlineTemplate` 两种原有编译方式。缓存按绝对路径、完整源码及编译选项区分，并限制容量；有序脚本替换、模块格式和编译 ID 分开缓存，运行时 import 信息保持不可变。helper 不保存已执行模块、render 函数、组件实例、DOM 或 mock。挂载继续创建独立实例、DOM 和端口，并按各夹具原有生命周期清理；递归组件图只在一次挂载内保持类型身份，已有的文件级 Vite server 保持原有作用域。不得缓存运行中的组件或关闭文件隔离。时间行为优先使用可控时钟，异步持久化和挂载优先等待明确的事件；取消、超时和时间边界断言仍须保留。
+
+真实论文回归需要显式提供输入：`FLUENTREAD_ATTENTION_PDF` 指向 Attention v7 的 PDF，`FLUENTREAD_PDF_CORPUS` 指向非空论文目录，再执行 `pnpm test:coverage` 或 `pnpm test:regression:all`。未提供时这两个外部语料用例会标记跳过，不能称为包含真实论文的完整验收；验收报告应保留语料文件名和 SHA-256。论文本身不进入仓库。
 
 新增测试时应选择唯一分组：
 
@@ -1026,7 +1032,7 @@ node scripts/run-video-ai-recognition-benchmark.cjs \
 
 ### 完整流水线
 
-本地确定性回归负责测试审计、WXT prepare、类型检查、严格覆盖率、四组 Vitest、Chrome/Firefox/userscript 构建及文档构建：
+本地确定性回归负责测试审计、WXT prepare、类型检查、全部 Vitest 测试与原生 Node 进程夹具的单轮编排及严格覆盖率、Chrome/Firefox/userscript 构建及文档构建：
 
 ```bash
 pnpm test:regression:all

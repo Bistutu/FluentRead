@@ -153,29 +153,38 @@ function verificationOwners(path: string, strictCoverage: Set<string>): Verifica
     return [...owners].sort();
 }
 
-function isTypeOnlyModule(path: string): boolean {
-    if (path.endsWith('.d.ts')) return true;
-    if (!path.endsWith('.ts')) return false;
-    // 以实际输出判断纯声明；任意文件中的常量、枚举和副作用仍须拥有行为验证。
+const classificationCompilerOptions = Object.freeze({module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ESNext});
+const classificationOptions = JSON.stringify([classificationCompilerOptions, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS, ts.ScriptKind.TS]);
+type ModuleClassification = Readonly<{typeOnly: boolean; pureBarrel: boolean}>;
+const moduleClassifications = new Map<string, {source: string; options: string; result: ModuleClassification}>();
+function classifyModule(path: string): ModuleClassification {
     const source = readFileSync(projectPath(path), 'utf8');
-    const emitted = ts.transpileModule(source, {
-        compilerOptions: {module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ESNext},
-    }).outputText;
+    const cached = moduleClassifications.get(path);
+    if (cached?.source === source && cached.options === classificationOptions) return cached.result;
+    // 仍按实际输出判断纯声明；只缓存两个布尔结果，不共享可变 AST 或模块执行状态。
+    const emitted = ts.transpileModule(source, {compilerOptions: classificationCompilerOptions}).outputText;
     const runtime = ts.createSourceFile(path + '.js', emitted, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
-    return runtime.statements.every((statement) => ts.isEmptyStatement(statement)
+    const typeOnly = runtime.statements.every((statement) => ts.isEmptyStatement(statement)
         || (ts.isExportDeclaration(statement)
             && !statement.moduleSpecifier
             && !!statement.exportClause
             && ts.isNamedExports(statement.exportClause)
             && statement.exportClause.elements.length === 0));
+    const original = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const pureBarrel = original.statements.length > 0
+        && original.statements.every((statement) => ts.isExportDeclaration(statement));
+    const result = Object.freeze({typeOnly, pureBarrel});
+    moduleClassifications.set(path, {source, options: classificationOptions, result});
+    return result;
+}
+
+function isTypeOnlyModule(path: string): boolean {
+    if (path.endsWith('.d.ts')) return true;
+    return path.endsWith('.ts') && classifyModule(path).typeOnly;
 }
 
 function isPureBarrel(path: string): boolean {
-    if (!path.endsWith('.ts')) return false;
-    const source = readFileSync(projectPath(path), 'utf8');
-    const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    return sourceFile.statements.length > 0
-        && sourceFile.statements.every((statement) => ts.isExportDeclaration(statement));
+    return path.endsWith('.ts') && classifyModule(path).pureBarrel;
 }
 
 function isCoverageExemptSrcModule(path: string): boolean {

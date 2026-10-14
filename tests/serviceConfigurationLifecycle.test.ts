@@ -1,9 +1,7 @@
 import {createRequire} from 'node:module'
-import {readFileSync} from 'node:fs'
 import {dirname, resolve} from 'node:path'
 import vue from '@vitejs/plugin-vue'
-import {compileScript, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
+import {compileVueInlineFixture} from './helpers/compiledVueFixture'
 import {createServer, type Plugin, type ViteDevServer} from 'vite'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
@@ -244,9 +242,8 @@ type LocalPropsSnapshot = {config: Config; context: unknown; service: string; ac
 async function mountServiceClient(initialService = 'freeTranslation', development = false) {
   vi.useFakeTimers()
   const filename = resolve('src/features/settings/ui/services/ServiceConfiguration.vue')
-  const {descriptor, errors} = parse(readFileSync(filename, 'utf8'), {filename})
-  expect(errors).toEqual([])
-  const script = compileScript(descriptor, {id: 'service-configuration-client', inlineTemplate: true})
+  const compiled = compileVueInlineFixture(filename, {id: 'service-configuration-client'})
+  expect(compiled.parseErrors).toEqual([])
   const snapshots: LocalPropsSnapshot[] = [], childProps: LocalPropsSnapshot[] = []
   const mounted = vi.fn(), unmounted = vi.fn(), clientErrors: unknown[] = []
   const localPort = runtime.defineComponent({
@@ -276,9 +273,8 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   const chatGPTPort = runtime.defineComponent({setup: () => () => runtime.h('section', {'data-chatgpt-plan-port': ''})})
   const requestChatGPT = vi.fn(() => ({__esModule: true, default: chatGPTPort}))
   const dependencies = new Map<string, unknown>([['vue', runtime], ['element-plus/es/components/tabs/style/css', {}]])
-  for (const item of Object.values(script.imports ?? {})) {
-    const id = item.source
-    if (item.isType || dependencies.has(id) || id === '../LocalTranslationModelSettings.vue' || id === './ChatGPTPlanSettings.vue') continue
+  for (const id of compiled.runtimeImports) {
+    if (dependencies.has(id) || id === '../LocalTranslationModelSettings.vue' || id === './ChatGPTPlanSettings.vue') continue
     if (id === '@/src/platform/chatgpt-plan/buildMode') {dependencies.set(id, {chatGPTPlanDevelopmentEnabled: development});continue}
     if (id.endsWith('.vue')) {dependencies.set(id, {default: display});continue}
     if (id === 'element-plus') {
@@ -288,8 +284,7 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
     dependencies.set(id, await server.ssrLoadModule(resolved))
   }
   const module = {exports: {} as {default: import('vue').Component}}
-  const code = ts.transpileModule(script.content, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText
-  new Function('require', 'exports', 'module', code)((id: string) => {
+  new Function('require', 'exports', 'module', compiled.code)((id: string) => {
     if (id === '../LocalTranslationModelSettings.vue') return requestLocal()
     if (id === './ChatGPTPlanSettings.vue') return requestChatGPT()
     if (!dependencies.has(id)) throw new Error(`Unexpected service client dependency: ${id}`)
