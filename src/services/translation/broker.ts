@@ -360,6 +360,12 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             // 步骤 1：DeepL 把标题上下文直接发送给 provider；AI adapter 通过 prompt 注入页面上下文。
             context: service === 'deepL' ? context : undefined,
             pageContext: isAIContextEnabled(execution, modelOverride) ? pageContext : undefined,
+            // v2 补齐跨语种短原文异常扩写的软恢复门禁。旧上下文结果未经过此门禁，
+            // 仅隔离实际携带 AI 页面上下文的正文缓存，摘要、无上下文与机器翻译身份保持稳定。
+            // 新身份中的结果已经复验；缓存读取仍只拒绝确定泄漏，合法长扩写不会每次重试。
+            ...(pageContext.trim() && isAIContextEnabled(execution, modelOverride)
+                ? {pageContextValidationPolicy: {version: 2}}
+                : {}),
             ...((service === 'chromeTranslator' || service === 'localTranslation')
                 && sourceLanguage === 'auto'
                 && sourceLanguageDetectionText?.trim()
@@ -820,6 +826,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         requestDeadline: number,
         context = '',
         validationPageContext = '',
+        usedContextFreeRequest = false,
     ): Promise<string> {
         const protocol = getSingleSlotProtocol(message);
         if (protocol) {
@@ -833,12 +840,17 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                     continue;
                 }
                 const translation = parsed[index]!;
-                if (isGlossaryOnlyResult(execution.config, slotMessage.origin, translation)) continue;
-                parsed[index] = !hasTranslationContent(translation) || shouldRecoverPageContextLeak(
+                // 整包已经无上下文重译时，每槽仍检查明确泄漏；软信号不能再次触发逐槽请求。
+                // 按槽比较也能识别另一来源槽包含相同字面标记而被整包检测豁免的泄漏。
+                if (usedContextFreeRequest && isDefiniteRecoveryPageContextLeak(
                     execution, slotMessage.origin, translation, validationPageContext, message.modelOverride,
-                )
+                )) throw new AIContextRecoveryResponseError();
+                if (isGlossaryOnlyResult(execution.config, slotMessage.origin, translation)) continue;
+                parsed[index] = !hasTranslationContent(translation) || (!usedContextFreeRequest && shouldRecoverPageContextLeak(
+                    execution, slotMessage.origin, translation, validationPageContext, message.modelOverride,
+                ))
                     ? await callSingleProviderWithoutPageContext(execution, slotMessage, requestDeadline, validationPageContext)
-                    : await recoverInvalidResult(execution, slotMessage, translation, requestDeadline, context, validationPageContext);
+                    : await recoverInvalidResult(execution, slotMessage, translation, requestDeadline, context, validationPageContext, usedContextFreeRequest);
                 requireTranslationContent(parsed[index]!);
             }
             return parsed.map((translation, index) =>
@@ -886,7 +898,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             validationPageContext,
             message.modelOverride,
         )) throw new AIContextRecoveryResponseError();
-        return recoverInvalidResult(execution, message, result, requestDeadline, '', validationPageContext);
+        return recoverInvalidResult(execution, message, result, requestDeadline, '', validationPageContext, true);
     }
 
     async function callSingleProviderWithContextRecovery(

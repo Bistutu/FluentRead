@@ -1,0 +1,298 @@
+{
+  "issue": "https://github.com/FluentRead/FluentRead/issues/980",
+  "baseCommit": "525108e86e7620ab8820ac809b3071cdad513f22",
+  "sourceHashes": {
+    "src/core/translation/prompts.ts": "50f60f5aba6801e397fd0cdfc25aec957b5da38520289a2ee54f1cca789d6ee0",
+    "src/services/translation/broker.ts": "f0ec08c7ada5cf8bff227899241b19d56bb405412d7d5d3f045f995e333311d0",
+    "scripts/testing/run-ai-context-leak-test.cjs": "6b0c98d09d81435da95211c7bc03e9f84b1389cc4008e82100c67304fa47a09e"
+  },
+  "change": {
+    "shortSourceUnicodeCodepoints": [
+      1,
+      40
+    ],
+    "resultMinimumCodepoints": "max(120, sourceLength * 6)",
+    "signal": "One context-free verification, never a final length rejection",
+    "cachePolicy": {
+      "version": 2,
+      "scope": "AI translations with nonempty page context; summaries and other translations retain their identities"
+    },
+    "packetRecovery": "Context-free packets validate definite leakage per slot without repeating soft recovery"
+  },
+  "tests": {
+    "fullSuiteRun": false,
+    "directlyAffectedBrokerCacheSlotAndSharing": {
+      "files": 6,
+      "passed": 367
+    },
+    "translationCandidatesAndPrompts": {
+      "files": 2,
+      "passed": 371
+    },
+    "pageContextExtractionPolicyMarkdownAndSerialization": {
+      "files": 5,
+      "passed": 100
+    },
+    "selectedCjkAuditCases": {
+      "file": "tests/implementationAudit49E.test.ts",
+      "passed": 2,
+      "unselected": 20
+    },
+    "distinctPassedTotal": 840,
+    "initialIssueReproduction": "Five focused assertions failed before repair; final prompts suite passed",
+    "audit": "passed"
+  },
+  "coverage": {
+    "prompts": {
+      "lines": {
+        "total": 130,
+        "covered": 130,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 130,
+        "covered": 130,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 11,
+        "covered": 11,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 83,
+        "covered": 83,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": "Unknown"
+      }
+    },
+    "brokerFocused": {
+      "lines": {
+        "total": 1663,
+        "covered": 1625,
+        "skipped": 0,
+        "pct": 97.71
+      },
+      "statements": {
+        "total": 1663,
+        "covered": 1625,
+        "skipped": 0,
+        "pct": 97.71
+      },
+      "functions": {
+        "total": 83,
+        "covered": 82,
+        "skipped": 0,
+        "pct": 98.79
+      },
+      "branches": {
+        "total": 803,
+        "covered": 756,
+        "skipped": 0,
+        "pct": 94.14
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": "Unknown"
+      }
+    },
+    "limit": "Broker focused coverage is below 100%; other configuration and routing branches are outside these six test files"
+  },
+  "checks": {
+    "compile": "passed",
+    "chromeBuild": "passed",
+    "firefoxBuild": "passed",
+    "extensionManifests": "passed",
+    "userscriptBuild": "passed",
+    "docsBuild": "passed",
+    "userscriptVerifier": "passed",
+    "userscriptBudgetEvidence": "userscript-size.json"
+  },
+  "browser": {
+    "success": true,
+    "service": "deepseek",
+    "model": "deepseek-flash",
+    "cases": [
+      {
+        "name": "hover-context-recovery-and-toggle",
+        "counts": [
+          1,
+          0,
+          1
+        ],
+        "neighboringCounts": [
+          0,
+          0,
+          0
+        ],
+        "providerCalls": 2,
+        "visibleTranslation": "提示词"
+      },
+      {
+        "name": "recovered-persistent-cache",
+        "cacheRecords": 2,
+        "rejectedResultStored": false,
+        "freshSessionProviderCalls": 0
+      },
+      {
+        "name": "full-page-multi-slot-recovery-and-toggle",
+        "counts": [
+          4,
+          0,
+          4
+        ],
+        "validBodyCallsPerRound": 1,
+        "protectedCodeUnchanged": true,
+        "nestedWrappers": 0
+      },
+      {
+        "name": "persistent-leak-rejected",
+        "providerCalls": 2,
+        "visibleWrappers": 0,
+        "retryPlaceholders": 1,
+        "rejectedResultStored": false
+      },
+      {
+        "name": "context-switch-off",
+        "providerCalls": 1,
+        "summaryCalls": 0,
+        "contextPresent": false
+      }
+    ],
+    "errors": [],
+    "consoleErrors": [],
+    "focusPolicy": "launchservices-no-foreground",
+    "launchMode": "macos-background-cdp",
+    "display": "secondary",
+    "browserActivations": 0,
+    "profileRemoved": true,
+    "evidenceDirectory": "/private/tmp/fluentread-issue-980-production-20261014",
+    "evidenceBoundary": "Production Edge extension and DeepSeek Chat Completions adapter with synthetic responses from a nonexistent endpoint. No live DeepSeek request, account or quality claim."
+  },
+  "unverified": [
+    "Live deepseek-flash responses",
+    "Reporter environment",
+    "Firefox runtime",
+    "Real userscript manager runtime"
+  ],
+  "referenceRepositoriesUsed": false,
+  "stage": "Initial implementation record, followed by latest-main integration validation",
+  "integrationValidation": {
+    "baseCommit": "3f0984f3bbc35821320d799c3476406ec63faf9f",
+    "runtimeTestedHead": "32dbeb3104c27f00a4a7815fb5d22dc1a9f31c28",
+    "runtimeSourceHashes": {
+      "src/core/translation/prompts.ts": "50f60f5aba6801e397fd0cdfc25aec957b5da38520289a2ee54f1cca789d6ee0",
+      "src/services/translation/broker.ts": "f0ec08c7ada5cf8bff227899241b19d56bb405412d7d5d3f045f995e333311d0",
+      "scripts/testing/run-ai-context-leak-test.cjs": "6b0c98d09d81435da95211c7bc03e9f84b1389cc4008e82100c67304fa47a09e"
+    },
+    "runtimeChangeAfterValidation": false,
+    "tests": {
+      "directFiles": 13,
+      "passed": 838,
+      "selectedCjkAuditCases": 2,
+      "distinctTotal": 840,
+      "fullSuiteRun": false
+    },
+    "checks": {
+      "compile": "passed",
+      "chromeBuild": "passed",
+      "firefoxBuild": "passed",
+      "userscriptBuild": "passed",
+      "userscriptVerifier": "passed",
+      "docsBuild": "passed",
+      "extensionManifests": "passed",
+      "testAudit": "passed",
+      "diffCheck": "passed"
+    },
+    "userscript": {
+      "bytes": 2094681,
+      "sha256": "37c69a5b321538b82403e323cbe53430b87dab9a4adc1a9626d5231583974a34",
+      "budget": 2095100,
+      "budgetChangeAgainstLatestMain": false,
+      "remainingBytes": 419
+    },
+    "browser": {
+      "success": true,
+      "cases": [
+        {
+          "name": "hover-context-recovery-and-toggle",
+          "counts": [
+            1,
+            0,
+            1
+          ],
+          "neighboringCounts": [
+            0,
+            0,
+            0
+          ],
+          "providerCalls": 2,
+          "visibleTranslation": "提示词"
+        },
+        {
+          "name": "recovered-persistent-cache",
+          "cacheRecords": 2,
+          "rejectedResultStored": false,
+          "freshSessionProviderCalls": 0
+        },
+        {
+          "name": "full-page-multi-slot-recovery-and-toggle",
+          "counts": [
+            4,
+            0,
+            4
+          ],
+          "validBodyCallsPerRound": 1,
+          "protectedCodeUnchanged": true,
+          "nestedWrappers": 0
+        },
+        {
+          "name": "persistent-leak-rejected",
+          "providerCalls": 2,
+          "visibleWrappers": 0,
+          "retryPlaceholders": 1,
+          "rejectedResultStored": false
+        },
+        {
+          "name": "context-switch-off",
+          "providerCalls": 1,
+          "summaryCalls": 0,
+          "contextPresent": false
+        }
+      ],
+      "errors": [],
+      "consoleErrors": [],
+      "focusEvents": {
+        "monitoring": "native macOS activation events throughout the test",
+        "browserActivations": 0,
+        "observerClosed": true
+      },
+      "profileRemoved": true,
+      "evidenceDirectory": "/private/tmp/fluentread-issue-980-integration-20261015",
+      "evidenceBoundary": "Production Edge extension and DeepSeek Chat Completions adapter with synthetic responses from a nonexistent endpoint. No live DeepSeek request, account or quality claim."
+    },
+    "buildEvidence": {
+      "sourceHead": "32dbeb3104c27f00a4a7815fb5d22dc1a9f31c28",
+      "baseHead": "3f0984f3bbc35821320d799c3476406ec63faf9f",
+      "sha256": {
+        "scripts/testing/run-ai-context-leak-test.cjs": "6b0c98d09d81435da95211c7bc03e9f84b1389cc4008e82100c67304fa47a09e",
+        "src/core/translation/prompts.ts": "50f60f5aba6801e397fd0cdfc25aec957b5da38520289a2ee54f1cca789d6ee0",
+        "src/services/translation/broker.ts": "f0ec08c7ada5cf8bff227899241b19d56bb405412d7d5d3f045f995e333311d0",
+        ".output/chrome-mv3/manifest.json": "a12a20416fc826d3dc7278b74a112b4170f8985b1ac8b1a74c91f73d5e09b642",
+        ".output/chrome-mv3/background.js": "a1104287cb7daa36baa446c2f13a1859dc342796c59de7be01fc20a48df20499",
+        ".output/chrome-mv3/content-scripts/content.js": "a7c4341c135023a7bc4b73f4fe96e2295a021ba7b83c20c0d3a6e5bf24296705"
+      }
+    }
+  }
+}

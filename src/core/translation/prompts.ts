@@ -2,7 +2,7 @@
  * @file src/core/translation/prompts.ts
  *
  * 文件职责：生成页面摘要提示词、识别上下文回显并清理大模型输出中的推理标记，集中维护翻译上下文的提示协议。
- * 主要内容：buildPageSummaryPrompt 把不可信页面材料包在 webpage_context 中，buildPageSummarySystemPrompt 约束两至三句摘要，isLikelyPageContextLeak 用标记、膨胀和有界连续片段信号触发一次重译，isDefinitePageContextLeak 仅识别可用于最终拒绝的明确回显，stripTranslationReasoning 清理 think 标签。 可核对的公开符号包括 buildPageSummaryPrompt、buildPageSummarySystemPrompt、isDefinitePageContextLeak、isLikelyPageContextLeak、stripTranslationReasoning。
+ * 主要内容：buildPageSummaryPrompt 把不可信页面材料包在 webpage_context 中，buildPageSummarySystemPrompt 约束两至三句摘要，isLikelyPageContextLeak 用标记、短文本跨语言异常膨胀和有界连续片段信号触发一次重译，isDefinitePageContextLeak 仅识别可用于最终拒绝的明确回显，stripTranslationReasoning 清理 think 标签。 可核对的公开符号包括 buildPageSummaryPrompt、buildPageSummarySystemPrompt、isDefinitePageContextLeak、isLikelyPageContextLeak、stripTranslationReasoning。
  * 模块边界：本文件属于可独立测试的 core 候选领域；可以读取传入 DOM 以计算结果，但不访问配置存储、不调用 provider、不注册页面监听器，也不负责译文渲染或 feature 生命周期。
  */
 
@@ -104,11 +104,35 @@ function containsPredominantContextCopy(context: string, origin: string, result:
 }
 
 /**
+ * 短标题被扩写成正文时，英译中等跨语言结果可能没有任何字面重合。
+ * 仅将 1–40 个 Unicode 字符的源文、至少 120 字符且达到源文六倍的结果视为
+ * 软恢复信号；常见缩写展开与普通语言长度差异留在阈值内。无上下文复验结果
+ * 仍只接受明确回显门禁，不按长度截断或拒绝。计数达到边界就退出，限制扫描成本。
+ */
+function hasExtremeShortSourceExpansion(origin: string, result: string): boolean {
+    let sourceLength = 0;
+    for (const _character of origin) {
+        sourceLength += 1;
+        if (sourceLength > 40) return false;
+    }
+    if (sourceLength === 0) return false;
+
+    const minimumResultLength = Math.max(120, sourceLength * 6);
+    let resultLength = 0;
+    for (const _character of result) {
+        resultLength += 1;
+        if (resultLength >= minimumResultLength) return true;
+    }
+    return false;
+}
+
+/**
  * 判断译文是否把只应用作参考的网页上下文泄漏到了用户可见结果中。
  *
  * 明确的 XML/提示词标记是强信号；对被模型翻译掉标签说明文字的情况，再用
  * “译文异常膨胀 + 多个原文未出现的上下文专有词”组合判断，避免短专名、代码或
- * 本就包含页面术语的合法译文被误判。长段被上下文替换且未膨胀时，再检测
+ * 本就包含页面术语的合法译文被误判。短源文的极端膨胀不要求字面重合，以覆盖
+ * 参考正文被翻译成另一语言的漏检；这只触发一次无上下文复验。长段被上下文替换且未膨胀时，再检测
  * 原文没有的连续片段是否覆盖了大部分译文；该信号只用于一次无上下文重译。
  */
 export function isLikelyPageContextLeak(origin: string, result: string, pageContext: string): boolean {
@@ -118,6 +142,7 @@ export function isLikelyPageContextLeak(origin: string, result: string, pageCont
 
     const normalizedOrigin = normalizeLeakComparable(origin);
     if (isDefinitePageContextLeak(origin, result, pageContext)) return true;
+    if (hasExtremeShortSourceExpansion(normalizedOrigin, normalizedResult)) return true;
 
     const leakedTokens = contextOnlyAsciiTokens(pageContext, origin)
         .filter((token) => normalizedResult.includes(token));

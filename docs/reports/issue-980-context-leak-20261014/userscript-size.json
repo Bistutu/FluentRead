@@ -1,0 +1,90 @@
+{
+  "issue": 980,
+  "measuredAt": "2026-10-14T15:57:00.117Z",
+  "baseline": {
+    "sourceCommit": "525108e86e7620ab8820ac809b3071cdad513f22",
+    "sourceClean": true,
+    "artifact": {
+      "bytes": 2080966,
+      "sha256": "bdb1b963d4d4c717bba4fcda136a218e5efbbaff0d867bf0d859c67f95ba5e9c"
+    },
+    "sourceHashes": {
+      "src/core/translation/prompts.ts": "6b422433804b5995adde6a35d6e8a63d98710c362110915fd474a4699028b5bd",
+      "src/services/translation/broker.ts": "0815c91e506efc8c75102df9a1804855563a8b7ae0d820ff9e2c416fd731d402"
+    },
+    "verifier": {
+      "budgetBytes": 2081000,
+      "sha256": "32b480242d693fc45695b399085ae1fddf0b0881dc4ed2a587de5cda23ed2801",
+      "exitCode": 0
+    }
+  },
+  "candidate": {
+    "sourceBaseCommit": "525108e86e7620ab8820ac809b3071cdad513f22",
+    "runtimeDiffSha256": "b8ffa23175a9574937ce1e5a9a9900a13f1ebbd482ef86eeea7d0ffcd2f55c9d",
+    "artifact": {
+      "bytes": 2081283,
+      "sha256": "f8ffc8c1e05eba34543b67f2e6f5722c53ade6ff251219b392a5f2f9113e8c56"
+    },
+    "sourceHashes": {
+      "src/core/translation/prompts.ts": "50f60f5aba6801e397fd0cdfc25aec957b5da38520289a2ee54f1cca789d6ee0",
+      "src/services/translation/broker.ts": "f0ec08c7ada5cf8bff227899241b19d56bb405412d7d5d3f045f995e333311d0"
+    },
+    "verifierBefore": {
+      "budgetBytes": 2081000,
+      "exitCode": 1,
+      "failure": "artifact exceeds the 2,081,000-byte size budget"
+    },
+    "verifierAfter": {
+      "budgetBytes": 2082000,
+      "sha256": "35b8a3313f84861173ecbf7521e055c609797e4e906623402fbf7457168396fa",
+      "exitCode": 0,
+      "allOtherAssertionsUnchanged": true
+    }
+  },
+  "deltaBytes": 317,
+  "deltaPercent": 0.015233,
+  "budget": {
+    "oldBytes": 2081000,
+    "newBytes": 2082000,
+    "stepBytes": 1000,
+    "increaseBytes": 1000,
+    "overflowBytes": 283,
+    "remainingBytes": 717,
+    "minimumStepAdjustment": true
+  },
+  "reproducibility": {
+    "nodeVersion": "v20.11.1",
+    "pnpmVersion": "9.12.1",
+    "sharedNodeModules": "/Users/thinkstu/Desktop/copy/FluentRead/node_modules",
+    "dependencyParity": {
+      "package.json": {
+        "sha256": "5c46180818e17f62015352ec0594302456f539a250ec0a68514bac2458ea11e2",
+        "identical": true
+      },
+      "pnpm-lock.yaml": {
+        "sha256": "dfd93ae1da73c89bf85214c211691cf1059584a4e1ada3470878c8554de96bd0",
+        "identical": true
+      },
+      ".wxt/tsconfig.json": {
+        "sha256": "c15fb0142bc081ebaece383995c949510112365c33a71ecba5d5ccb8e4f6fe27",
+        "identical": true
+      }
+    },
+    "baselineCommands": [
+      "pnpm exec wxt prepare",
+      "pnpm build:userscript",
+      "node scripts/verify-userscript-build.mjs"
+    ],
+    "candidateCommands": [
+      "pnpm build:userscript (parent task)",
+      "node scripts/verify-userscript-build.mjs (old budget: failed)",
+      "node scripts/verify-userscript-build.mjs (new budget: passed)"
+    ]
+  },
+  "temporaryBaselineWorktree": {
+    "path": "/private/tmp/fluentread-issue-980-size-baseline-20261014-review",
+    "removed": true,
+    "cleanup": "git worktree remove without --force; dependency symlink unlinked before removal; task worktree and branch retained"
+  },
+  "scope": "Only the size budget and its evidence comments changed; all protocol, resource, and execution assertions are retained."
+}
