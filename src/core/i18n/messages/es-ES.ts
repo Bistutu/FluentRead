@@ -6,6 +6,8 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入、提示词或翻译结果。
  */
 import videoLearningText from './video-learning/es-ES.json';
+import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/es-ES.json';
@@ -26,6 +28,7 @@ export const esESMessages = {
     "popup.compact.translate": "Traducir",
     "popup.compact.restore": "Restaurar",
     ...videoLearningText,
+    ...compositeTranslationMessages['es-ES'],
     ...pdfReadingMessages['es-ES'],
     ...informationHighlightMessages['es-ES'],
     ...reencounterText,
@@ -531,6 +534,7 @@ export const esESMessages = {
     "settings.requestLimits.modelTitle": "Límites del modelo",
     "settings.requestLimits.globalTitle": "Límites de solicitudes",
     "settings.requestLimits.globalHelp": "Los servicios y modelos sin ajustes propios comparten estos límites.",
+    ...aiRequestTimeoutMessages["es-ES"],
     "settings.requestLimits.retryIntervals": "Intervalos de reintento",
     "settings.requestLimits.apiKeyRecovery": "Enfriamiento de la API key fallida",
     "settings.requestLimits.apiKeyRecoveryHelp": "Una clave que falla por autenticación, cuota o límite de frecuencia se omite temporalmente. Si el servicio devuelve Retry-After, se prioriza ese tiempo.",
@@ -2425,6 +2429,7 @@ const esESLegacyTextBase: Readonly<Record<string, string>> = {
 
 export const esESLegacyText: Readonly<Record<string, string>> = {
     ...googleDriveText.legacy,
+    ...compositeTranslationLegacyText['es-ES'],
     ...cloudBackupText.legacy,
     "腾讯交互翻译": "Tencent TranSmart",
     "火山翻译": "Traducción de Volcengine",

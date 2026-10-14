@@ -3,6 +3,7 @@
  * 文件职责：承载 FluentRead Options 页面各业务设置分区，连接运行时配置、服务选择、快捷键、站点规则、翻译中心、OCR、词书以及导入导出和历史恢复。
  * 主要内容：扩展设置入口可通过已校验的 service 查询参数选择服务编辑区，目录浏览不改写默认翻译服务，详情标题栏显式设为默认后复用现有配置补丁持久化并同步其他页面；图片设置优先展示语言、服务与识别选择，资源与入口按需展开；翻译设置首先展示带交互示例的阅读辅助，普通页面与网站规则连续展示任务分组并标记顶部导航的滚动定位目标，统计保留按任务切换的视图，集中分配功能服务并将模型用量合并到翻译统计，保留已访问表单实例，自定义快捷键弹窗按显示状态挂载并在离开所属分区时取消草稿；包含正文/全部节点识别范围；模板按 activeSection 展示业务分区，通用设置首先展示全局翻译开关，再按基础配置、网页辅助、基本偏好组织控件，软件语言控件随分区及缓存活跃状态启停，并保留固定英文标题与说明以便选错语言后恢复，提供当前默认服务的配置入口并保留译文样式跨页入口；图片与圈选合并在同页，共享仅在当前分区挂载的 OCR 管理组件；服务连接在主页面的服务目录内编辑，在界面风格页组织译文样式、风格与菜单栏布局，仅在高级选项激活时挂载缓存管理；脚本以独立配置副本隔离编辑与全局差分基线，批量水合时暂停完整草稿扫描，保留用户编辑的同步保存和离页补丁交接，协调网站入口、配置及凭据保存、历史恢复和能力过滤。
  * 锚点编排：翻译设置保留连续表单，双语逐句阅读辅助与智能高亮各有独立锚点；智能高亮仅在翻译设置分区激活时挂载，定位不隐藏其他分组，既有表单配置保持原归属。新建兼容服务对话框只在首次请求打开时挂载，此后保留实例与关闭动画；加载中或失败时在添加入口旁显示可关闭提示，并停用入口说明气泡以免遮挡反馈，离开后不复活旧提示，草稿仍由原有活跃上下文和关闭流程管理。
+ * AI 翻译超时：在高级全局请求限制中以秒编辑，确认后交接毫秒配置补丁；分区、缓存状态、配置同步或卸载变化会失效旧控件回调。
  * 模块边界：该组件负责设置 UI 编排但不实现 provider 网络、配置仓库或 feature 运行时；校验与迁移来自 core/config，持久化经 services/config，复杂子界面保持在各自 feature/组件内；脚本入口已拦截的扩展专属分区在构建期不引入其子 UI，原入口提示与数据接口保持。
  -->
 <template>
@@ -198,6 +199,7 @@
             @update:model-thinking="updateSelectedConfigurationModelThinking"
             @update:custom-provider="updateSelectedCustomProvider"
             @delete:custom-provider="deleteSelectedCustomProvider"
+            @remove:service="deleteSelectedCompositeProvider"
           />
         </template>
       </ServiceCatalog>
@@ -461,6 +463,19 @@
 <SettingsGroup :title="t('settings.requestLimits.globalTitle')" :description="t('settings.requestLimits.globalHelp')">
         <div data-testid="translation-scheduler-settings">
           <RequestLimitFields :active="viewActive && props.activeSection === 'settings-advanced'" :model-value="config" @update:model-value="Object.assign(config, $event)" />
+          <SettingsItem data-testid="ai-request-timeout-settings" :label="t('settings.requestLimits.aiTimeout')" :description="t('settings.requestLimits.aiTimeoutHelp')">
+              <SettingsNumberInput
+                :key="aiRequestTimeoutContext.revision.value"
+                :model-value="aiRequestTimeoutSeconds"
+                :disabled="!aiRequestTimeoutContext.active.value"
+                :unit="t('settings.requestLimits.seconds')"
+                :aria-label="t('settings.requestLimits.aiTimeout')"
+                :min="MIN_AI_REQUEST_TIMEOUT_MS / 1000"
+                :max="MAX_AI_REQUEST_TIMEOUT_MS / 1000"
+                :step="1"
+                :onChange="aiRequestTimeoutActions.update"
+              />
+          </SettingsItem>
           <SettingsItem label="失败后最多重试">
             <SettingsNumberInput :model-value="config.translationMaxRetries" aria-label="失败后最多重试" :min="0" :max="10" @change="handleTranslationMaxRetriesChange" />
           </SettingsItem>
@@ -532,7 +547,7 @@
       @confirm="handleCustomSelectionHotkeyConfirm"
       @cancel="handleCustomSelectionHotkeyCancel"
     />
-  <CustomOpenAIProviderDialog v-if="customProviderDialogRequested" :active="viewActive && props.activeSection === 'settings-services'" :context="config" v-model="customProviderDialogOpen" @submit="createCustomProvider" />
+  <CustomOpenAIProviderDialog v-if="customProviderDialogRequested" :active="viewActive && props.activeSection === 'settings-services'" :config="config" :context="config" v-model="customProviderDialogOpen" @submit="createCustomProvider" @submit:composite="createCompositeProvider" />
 </template>
 
 <script lang="ts" setup>
@@ -558,6 +573,7 @@ import {
   withCustomOpenAIServiceOptions,
   type CustomOpenAIProvider,
 } from '@/src/core/config/customOpenAI';
+import {createNextCompositeTranslationProviderId, getCompositeTranslationProvider, isCompositeTranslationProviderId, normalizeCompositeTranslationProviders, removeCompositeTranslationProvider, withCompositeTranslationServiceOptions, type CompositeTranslationProvider} from '@/src/core/config/compositeTranslation';
 import {
   withModelThinkingPreference,
   withoutModelThinkingPreference,
@@ -577,6 +593,8 @@ import {
   MIN_API_KEY_RECOVERY_MINUTES,
   MIN_TRANSLATION_BACKOFF_BASE_MS,
   MIN_TRANSLATION_BACKOFF_MAX_MS,
+  MAX_AI_REQUEST_TIMEOUT_MS,
+  MIN_AI_REQUEST_TIMEOUT_MS,
   SELECTION_TRANSLATOR_DELAY_MAX,
   SELECTION_TRANSLATOR_DELAY_MIN,
   SELECTION_TRANSLATOR_DELAY_STEP,
@@ -585,6 +603,7 @@ import {
   normalizeMouseHoverTranslationDelay,
   normalizeSelectionTranslatorDelay,
   normalizeApiKeyRecoveryMs,
+  normalizeAiRequestTimeoutMs,
   normalizeTranslationBackoffBaseMs,
   normalizeTranslationBackoffMaxMs,
 } from '@/src/core/config/model';
@@ -862,6 +881,12 @@ void configReady
   .then(() => {
     if (disposed) return;
     hydrateConfigDraft(runtimeConfig);
+    // 动态 profile 要等配置水合后解析；同步 watcher 不能把尚未到达的合法直达目标提前清空。
+    if (configurationService.value === null && /^(?:chrome|moz)-extension:$/u.test(window.location.protocol) && requestedConfigurationService
+      && (getCustomOpenAIProvider(config.value.customOpenAIProviders, requestedConfigurationService)
+        || getCompositeTranslationProvider(config.value.compositeTranslationProviders, requestedConfigurationService))) {
+      configurationService.value = requestedConfigurationService;
+    }
     hydrated = true;
     updateTheme(config.value.theme || 'auto');
   })
@@ -915,10 +940,10 @@ const selectedConfigurationCredentialGuide = computed(
 // 导入、撤销或恢复可能在当前页面仍打开时删除正在编辑的 profile。
 // 失效的 custom:* 选择应立即回退到新的默认服务，避免渲染孤儿配置字段。
 watch(
-  () => [configurationService.value, config.value.customOpenAIProviders.map((provider) => provider.id)] as const,
+  () => [configurationService.value, config.value.customOpenAIProviders.map((provider) => provider.id), config.value.compositeTranslationProviders.map((provider) => provider.id)] as const,
   ([service]) => {
-    if (service && isCustomOpenAIProviderId(service)
-      && !getCustomOpenAIProvider(config.value.customOpenAIProviders, service)) {
+    if (service && (isCustomOpenAIProviderId(service) && !getCustomOpenAIProvider(config.value.customOpenAIProviders, service)
+      || isCompositeTranslationProviderId(service) && !getCompositeTranslationProvider(config.value.compositeTranslationProviders, service))) {
       configurationService.value = null;
     }
   },
@@ -932,8 +957,8 @@ const setConfigurationService = (value: string) => {
 type ServiceSource = { value: string };
 
 const serviceOptionsWithCustomProviders = computed(() => localizeServiceOptions(
-  withCustomOpenAIServiceOptions(options.services, config.value.customOpenAIProviders),
-  config.value.customOpenAIProviders,
+  withCompositeTranslationServiceOptions(withCustomOpenAIServiceOptions(options.services, config.value.customOpenAIProviders), config.value.compositeTranslationProviders),
+  [...config.value.customOpenAIProviders, ...config.value.compositeTranslationProviders],
   translateLegacy,
 ));
 const availableServiceOptions = computed(() => filterAvailableTranslationServices(serviceOptionsWithCustomProviders.value));
@@ -1012,6 +1037,31 @@ function openCustomProviderDialog(): void {
   if (disposed || !viewActive.value || props.activeSection !== 'settings-services') return;
   customProviderDialogRequested.value = true;
   customProviderDialogOpen.value = true;
+}
+
+function createCompositeProvider(draft: Omit<CompositeTranslationProvider, 'id'>): void {
+  if (disposed || !viewActive.value || props.activeSection !== 'settings-services') return;
+  const id = createNextCompositeTranslationProviderId(config.value.compositeTranslationProviders);
+  updateConfigAtomically((next) => {
+    next.compositeTranslationProviders = normalizeCompositeTranslationProviders([
+      ...next.compositeTranslationProviders, {...draft, id},
+    ], next.customOpenAIProviders);
+  });
+  configurationService.value = id;
+  ElMessage({message: '组合翻译已添加', type: 'success', grouping: true, duration: 1800});
+}
+
+function deleteSelectedCompositeProvider(service: string): void {
+  if (disposed || !viewActive.value || props.activeSection !== 'settings-services'
+    || service !== selectedConfigurationService.value
+    || !getCompositeTranslationProvider(config.value.compositeTranslationProviders, service)) return;
+  updateConfigAtomically((next) => {
+    next.compositeTranslationProviders = removeCompositeTranslationProvider(next.compositeTranslationProviders, service);
+    // 归一化负责清理各功能、快捷方案与常用列表中的失效组合选择。
+    if (next.service === service) next.service = defaultOption.service;
+  });
+  configurationService.value = config.value.service;
+  ElMessage({message: '组合翻译已删除', type: 'success', grouping: true, duration: 1800});
 }
 
 function createCustomProvider(draft: CustomProviderDraft): void {
@@ -1202,7 +1252,7 @@ const createServiceCompute = (serviceSource: ServiceSource) => ({
   showAI: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isAI(serviceSource.value)),
   showMachine: computed(() => servicesType.isMachine(serviceSource.value)),
   showProxy: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseProxy(serviceSource.value)),
-  showModel: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseModel(serviceSource.value)),
+  showModel: computed(() => serviceSource.value !== services.chatgptPlan && (isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseModel(serviceSource.value))),
   showCustomBody: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseCustomBody(serviceSource.value)),
   showToken: computed(() => isCustomOpenAIProviderId(serviceSource.value) || servicesType.isUseToken(serviceSource.value)),
   allowCustomModels: computed(() => serviceSource.value !== services.localTranslation),
@@ -1353,6 +1403,20 @@ const handleTranslationMaxRetriesChange = (currentValue: number | undefined) => 
 const apiKeyRecoveryMinutes = computed(() => Math.round(
   normalizeApiKeyRecoveryMs(config.value.apiKeyRecoveryMs) / API_KEY_RECOVERY_MINUTE_MS,
 ));
+
+const aiRequestTimeoutSeconds = computed(() => normalizeAiRequestTimeoutMs(config.value.aiRequestTimeoutMs) / 1000);
+const aiRequestTimeoutContext = useSettingsActionContext(
+  () => !disposed && viewActive.value && props.activeSection === 'settings-advanced'
+    && (!props.activePanel || props.activePanel === 'requests'),
+  () => [config.value, config.value.aiRequestTimeoutMs, props.activePanel],
+);
+const aiRequestTimeoutActions = computed(() => {
+  const owns = aiRequestTimeoutContext.capture();
+  return {update: (value: number | undefined) => {
+    if (!owns() || value === undefined || !Number.isFinite(value)) return;
+    config.value.aiRequestTimeoutMs = normalizeAiRequestTimeoutMs(value * 1000);
+  }};
+});
 
 const handleApiKeyRecoveryChange = (currentValue: number | undefined) => {
   if (currentValue === undefined || !Number.isFinite(currentValue)) return;

@@ -6,8 +6,8 @@
  */
 import {IDBFactory} from 'fake-indexeddb';
 import {describe, expect, it} from 'vitest';
-import {parseDocument} from '@/src/features/document-translation/core/document';
-import {createDocumentHistory, documentHistoryId, restoreDocumentHistoryPdfOcr, restoreDocumentHistoryTranslations, DOCUMENT_HISTORY_MAX_BYTES, DOCUMENT_HISTORY_MAX_ENTRIES, type DocumentHistoryRecord} from '@/src/features/document-translation/services/history';
+import {parseDocument, type ParsedDocument, type PdfDocumentBlock, type PdfDocumentLine} from '@/src/features/document-translation/core/document';
+import {createDocumentHistory, documentHistoryId, restoreDocumentHistoryPdfOcr, restoreDocumentHistoryRevisions, restoreDocumentHistoryTranslations, DOCUMENT_HISTORY_MAX_BYTES, DOCUMENT_HISTORY_MAX_ENTRIES, type DocumentHistoryRecord} from '@/src/features/document-translation/services/history';
 
 const record = (id: string, updatedAt: number, extra: Partial<DocumentHistoryRecord> = {}): DocumentHistoryRecord => ({id, name: `${id}.pdf`, format: 'pdf', size: 3, total: 4, completed: 2, updatedAt,
     bytes: new Uint8Array([1, 2, 3]), mimeType: 'application/pdf', translations: ['甲', '', '丙', ''], fingerprint: 'fp', ...extra});
@@ -24,6 +24,23 @@ const pdf = (pageSources: Array<string[] | null>) => {
         return {pageNumber: index + 1, width: 100, height: 100, blocks, segmentIndexes: blocks.map(block => block.segmentIndex), ...(sources === null ? {scanned: true} : {})};
     });
     return {...parsed([]), format: 'pdf' as const, segments, binary: {kind: 'pdf' as const, bytes: new Uint8Array([1, 2, 3]), pages}};
+};
+
+const pdfTextSplit = () => {
+    const previous = pdf([['Left', 'Middle', 'Right', 'End']]), current = pdf([['Left Middle Right End']]);
+    const oldBlocks = previous.binary.pages[0].blocks as PdfDocumentBlock[];
+    const freshBlock = current.binary.pages[0].blocks[0] as PdfDocumentBlock;
+    const lines = oldBlocks.map((block, index): PdfDocumentLine => {
+        const run = {x: block.x, y: 24 + index * 14 - 8.8, width: 80, height: 11,
+            baseline: 24 + index * 14, fontSize: 11, fontFamily: 'sans-serif', text: previous.segments[index].source};
+        return {...run, runs: [{...run}]};
+    });
+    oldBlocks.forEach((block, index) => Object.assign(block, {kind: 'text', y: lines[index].baseline,
+        lines: [{...lines[index], y: lines[index].baseline!, runs: [{...lines[index].runs![0], y: lines[index].baseline!}]}]}));
+    Object.assign(freshBlock, {kind: 'text', y: lines[0].y, height: lines[3].y + lines[3].height - lines[0].y,
+        lines, lineCount: lines.length, lineHeight: 14, readingOrder: 2});
+    const saved = record('geometry', 1, {parsed: previous, translations: ['左段校订', '', '右段校订', '末段校订']});
+    return {previous, current, oldBlocks, freshBlock, saved};
 };
 
 describe('document history translation migration', () => {
@@ -97,6 +114,178 @@ describe('document history translation migration', () => {
     ])('refuses unsafe index recovery with unknown versions or mismatched counts: %j', ({parsedVersion, currentVersion, total}) => {
         const saved = record('unsafe', 1, {parsedVersion, total, translations: ['错位旧译文', '另一错位旧译文']});
         expect(restoreDocumentHistoryTranslations(saved, parsed(['First', 'Second']), currentVersion)).toEqual(['', '']);
+    });
+});
+
+describe('document history retained revisions', () => {
+    it('archives only unconsumed independent slots and reserves direct origins including empty revisions', () => {
+        const saved = record('unmatched', 1, {parsed: parsed(['Left', 'Right', 'Repeat', 'Repeat']),
+            translations: ['左侧校订', '右侧校订', '', '第二次独立校订']});
+        const result = restoreDocumentHistoryRevisions(saved, parsed(['Repeat', 'Right']), 16, [2, undefined]);
+        expect(result.translations).toEqual(['', '右侧校订']);
+        expect(result.retainedRevisions).toEqual([{source: 'Left', translation: '左侧校订'}, {source: 'Repeat', translation: '第二次独立校订'}]);
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Repeat']), 16).retainedRevisions)
+            .toEqual([{source: 'Left', translation: '左侧校订'}, {source: 'Right', translation: '右侧校订'}, {source: 'Repeat', translation: '第二次独立校订'}]);
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Left', 'Right', 'Repeat', 'Repeat']), 16).retainedRevisions).toEqual([]);
+    });
+
+    it('keeps removed revisions as separate source pairs without synthesizing a merged translation', () => {
+        const previous = {segments: [{id: 2, source: 'Left', contextLabel: '第 3 页'}, {id: 0, source: 'Right'}, {source: 'Legacy'}]};
+        const saved = record('separate', 1, {parsed: previous, translations: ['右侧校订', '', '左侧校订']});
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Left Right']), 16)).toEqual({translations: [''], retainedRevisions: [
+            {source: 'Left', translation: '左侧校订', contextLabel: '第 3 页'}, {source: 'Right', translation: '右侧校订'}, {source: 'Legacy', translation: '左侧校订'},
+        ]});
+    });
+
+    it('merges existing retained material, validates dirty data and deduplicates complete source/translation/context pairs', () => {
+        const saved = record('dirty', 1, {parsed: {segments: [null, 12, {source: 12}, {source: '  '}, {source: 'Missing'},
+            {source: 'Duplicate', contextLabel: '  第 2 页  '}, {source: 'Empty'}, {source: 'Other', contextLabel: 9}]},
+            translations: ['skip', 'skip', 'skip', 'skip', undefined as any, '独立校订', ' \n ', '其它校订'],
+            retainedRevisions: [null, 12, {source: 'Duplicate', translation: '独立校订', contextLabel: '第 2 页'},
+                {source: 'Duplicate', translation: '独立校订', contextLabel: '第 2 页'}, {source: '', translation: 'skip'},
+                {source: 'Invalid', translation: 12}, {source: ' Spaced ', translation: '  保留换行\n '}, {source: 'No translation', translation: '  '}] as any});
+        const before = JSON.stringify(saved);
+        const result = restoreDocumentHistoryRevisions(saved, parsed(['Fresh']), 16);
+        expect(result).toEqual({translations: [''], retainedRevisions: [
+            {source: 'Duplicate', translation: '独立校订', contextLabel: '第 2 页'},
+            {source: ' Spaced ', translation: '  保留换行\n '}, {source: 'Other', translation: '其它校订'},
+        ]});
+        result.retainedRevisions[0].translation = 'changed';
+        expect(JSON.stringify(saved)).toBe(before);
+    });
+
+    it.each([undefined, null, 12, {}, {segments: null}])('does not fabricate source material for unavailable or corrupt snapshots: %j', snapshot => {
+        const saved = record('no-source', 1, {parsed: snapshot, translations: null as any, retainedRevisions: 12 as any});
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Fresh']), 16)).toEqual({translations: [''], retainedRevisions: []});
+    });
+
+    it('keeps already saved revisions through reopening without duplicating normal matching translations', async () => {
+        const history = createDocumentHistory(new IDBFactory());
+        const retained = [{source: 'otherwise.', translation: '否则。', contextLabel: '第 16 页'}];
+        const pending = history.save(record('retained', 1, {parsed: parsed(['Normal']), translations: ['正常校订'], retainedRevisions: retained}));
+        retained[0].translation = 'changed'; retained.push({source: 'late', translation: 'late', contextLabel: ''});
+        expect(await pending).toBe(true);
+        const saved = (await history.load('retained'))!;
+        expect(saved.retainedRevisions).toEqual([{source: 'otherwise.', translation: '否则。', contextLabel: '第 16 页'}]);
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Normal']), 16)).toEqual({translations: ['正常校订'], retainedRevisions: saved.retainedRevisions});
+        await history.save(record('empty-retained', 2));
+        expect((await history.load('empty-retained'))!.retainedRevisions).toEqual([]);
+    });
+});
+
+describe('document history PDF geometry migration', () => {
+    it('keeps independent old slots using only corrected fresh lines and bounds', () => {
+        const {previous, current, oldBlocks, freshBlock, saved} = pdfTextSplit();
+        const before = JSON.stringify({previous, current, saved});
+        const {document, segmentOrigins} = restoreDocumentHistoryPdfOcr(saved, current);
+        expect(document.segments.map(segment => segment.source)).toEqual(previous.segments.map(segment => segment.source));
+        expect(segmentOrigins).toEqual([0, 1, 2, 3]);
+        expect(restoreDocumentHistoryTranslations(saved, document, 16, segmentOrigins)).toEqual(saved.translations);
+        if (document.binary?.kind !== 'pdf') throw new Error('expected PDF');
+        expect(document.binary.bytes).toBe(current.binary.bytes);
+        expect(document.binary.pages[0].segmentIndexes).toEqual([0, 1, 2, 3]);
+        document.binary.pages[0].blocks.forEach((block, index) => {
+            expect(block.lines![0]).toBe(freshBlock.lines![index]);
+            expect(block.y).toBe(freshBlock.lines![index].y);
+            expect(block.y).not.toBe(oldBlocks[index].y);
+            expect(block.height).toBeCloseTo(11, 10);
+            expect(block.lineCount).toBe(1);
+            expect(block.lineHeight).toBe(11);
+            expect(block.readingOrder).toBe(2 + index / 4);
+        });
+        expect(JSON.stringify({previous, current, saved})).toBe(before);
+    });
+
+    it('rebuilds multiline old paragraphs and leaves unrelated fresh blocks untouched', () => {
+        const {previous, current, oldBlocks, freshBlock, saved} = pdfTextSplit();
+        oldBlocks[1].lines!.push(...oldBlocks[2].lines!);
+        oldBlocks[1].lineCount = 2;
+        previous.segments[1].source = 'Middle Right';
+        previous.binary.pages[0].blocks.splice(2, 1);
+        current.binary.pages[0].blocks.push({...freshBlock, kind: 'heading', segmentIndex: 1, lines: undefined, lineCount: 1} as any);
+        current.segments.push({id: 1, source: 'New heading'});
+        delete freshBlock.readingOrder;
+        const {document, segmentOrigins} = restoreDocumentHistoryPdfOcr(saved, current);
+        expect(document.segments.map(segment => segment.source)).toEqual(['Left', 'Middle Right', 'End', 'New heading']);
+        expect(segmentOrigins).toEqual([0, 1, 3, undefined]);
+        if (document.binary?.kind !== 'pdf') throw new Error('expected PDF');
+        expect(document.binary.pages[0].blocks[1]).toMatchObject({lineCount: 2, lineHeight: 14});
+        expect(document.binary.pages[0].blocks[1].lines).toEqual(freshBlock.lines!.slice(1, 3));
+        expect(document.binary.pages[0].blocks[0]).not.toHaveProperty('readingOrder');
+        expect(restoreDocumentHistoryTranslations(saved, document, 16, segmentOrigins)).toEqual(['左段校订', '', '末段校订', '']);
+    });
+
+    it.each([
+        ['changed record bytes', (f: ReturnType<typeof pdfTextSplit>) => {f.saved.bytes[0] = 9;}],
+        ['changed snapshot bytes', (f: ReturnType<typeof pdfTextSplit>) => {f.previous.binary.bytes[0] = 9;}],
+        ['different page', (f: ReturnType<typeof pdfTextSplit>) => {f.previous.binary.pages[0].pageNumber = 2;}],
+        ['different width', (f: ReturnType<typeof pdfTextSplit>) => {f.previous.binary.pages[0].width += 1;}],
+        ['different rotation', (f: ReturnType<typeof pdfTextSplit>) => {Object.assign(f.previous.binary.pages[0], {rotation: 90});}],
+        ['unrecognized scan', (f: ReturnType<typeof pdfTextSplit>) => {f.previous.binary.pages[0].scanned = true;}],
+        ['old formula', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].kind = 'formula';}],
+        ['old table', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].kind = 'table';}],
+        ['old preservation', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].preserveSource = true;}],
+        ['old cell', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].cellBounds = {x: 0, y: 0, width: 100, height: 100};}],
+        ['intervening formula', (f: ReturnType<typeof pdfTextSplit>) => {f.previous.binary.pages[0].blocks.splice(1, 0, {...f.oldBlocks[0], kind: 'formula', segmentIndex: -1} as any);}],
+        ['fresh caption', (f: ReturnType<typeof pdfTextSplit>) => {f.freshBlock.kind = 'caption';}],
+        ['missing old lines', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].lines = undefined;}],
+        ['empty old lines', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].lines = [];}],
+        ['wrong line count', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].lineCount = 2;}],
+        ['missing old runs', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].lines![0].runs = undefined;}],
+        ['empty old runs', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].lines![0].runs = [];}],
+        ['changed old run text', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].lines![0].runs![0].text = 'Changed';}],
+        ['invalid old run height', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].lines![0].runs![0].height = 0;}],
+        ['changed old baseline', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].lines![0].baseline! += 1;}],
+        ['changed old advance', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].lines![0].width += 1;}],
+        ['changed first-line x', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[0].lines![0].x += 1;}],
+        ['changed old font size', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].lines![0].fontSize! += 1;}],
+        ['changed column', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].column = 1;}],
+        ['changed font family', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].fontFamily = 'serif';}],
+        ['changed alignment', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks[1].textAlign = 'right';}],
+        ['changed source', (f: ReturnType<typeof pdfTextSplit>) => {f.previous.segments[1].source = 'MIDDLE';}],
+        ['unknown old ID', (f: ReturnType<typeof pdfTextSplit>) => {f.previous.segments[1].id = 9;}],
+        ['unknown fresh ID', (f: ReturnType<typeof pdfTextSplit>) => {f.current.segments[0].id = 9;}],
+        ['missing fresh line', (f: ReturnType<typeof pdfTextSplit>) => {f.freshBlock.lines![1] = null as any;}],
+        ['invalid fresh geometry', (f: ReturnType<typeof pdfTextSplit>) => {f.freshBlock.lines![1].height = NaN;}],
+        ['missing fresh baseline', (f: ReturnType<typeof pdfTextSplit>) => {f.freshBlock.lines![1].baseline = undefined;}],
+        ['incomplete coverage', (f: ReturnType<typeof pdfTextSplit>) => {f.previous.binary.pages[0].blocks.pop();}],
+        ['source-only concatenation', (f: ReturnType<typeof pdfTextSplit>) => {f.freshBlock.lines![1].runs![0].x += 1;}],
+        ['ambiguous geometry', (f: ReturnType<typeof pdfTextSplit>) => {f.oldBlocks.push(...structuredClone(f.oldBlocks));}],
+    ])('refuses unsafe ordinary-text geometry migration: %s', (_name, change) => {
+        const fixture = pdfTextSplit();
+        change(fixture);
+        expect(restoreDocumentHistoryPdfOcr(fixture.saved, fixture.current).document).toBe(fixture.current);
+    });
+
+    it.runIf(Boolean(process.env.FLUENTREAD_HARNESS_PDF && process.env.FLUENTREAD_HARNESS_LAYOUT_OLD && process.env.FLUENTREAD_HARNESS_LAYOUT_FIXED))('retains the independent Harness revisions without reviving changed formula sources', async () => {
+        const {readFileSync} = await import('node:fs');
+        const previous = JSON.parse(readFileSync(process.env.FLUENTREAD_HARNESS_LAYOUT_OLD!, 'utf8')) as ParsedDocument;
+        const current = JSON.parse(readFileSync(process.env.FLUENTREAD_HARNESS_LAYOUT_FIXED!, 'utf8')) as ParsedDocument;
+        if (previous.binary?.kind !== 'pdf' || current.binary?.kind !== 'pdf') throw new Error('expected PDF');
+        const bytes = new Uint8Array(readFileSync(process.env.FLUENTREAD_HARNESS_PDF!));
+        previous.binary.bytes = bytes.slice(); current.binary.bytes = bytes.slice();
+        const translations = previous.segments.map((_segment, index) => index === 104 ? '' : `Reviewed ${index}`);
+        const saved = record('harness', 1, {bytes, parsed: previous, total: previous.segments.length, translations});
+        const {document, segmentOrigins} = restoreDocumentHistoryPdfOcr(saved, current);
+        const expectedBySource = new Map<string, string[]>();
+        previous.segments.forEach((segment, index) => {const slots = expectedBySource.get(segment.source) ?? []; slots.push(translations[index]); expectedBySource.set(segment.source, slots);});
+        const restoredTranslations = restoreDocumentHistoryTranslations(saved, document, 16, segmentOrigins);
+        expect(restoredTranslations).toEqual(document.segments.map(segment => expectedBySource.get(segment.source)?.shift() ?? ''));
+        for (const origin of [103, 104, 105, 106]) {
+            const index = segmentOrigins!.indexOf(origin);
+            expect(index).toBeGreaterThanOrEqual(0);
+            expect(document.segments[index].source).toBe(previous.segments[origin].source);
+            expect(restoredTranslations[index]).toBe(translations[origin]);
+        }
+        if (document.binary?.kind !== 'pdf') throw new Error('expected PDF');
+        const repaired = document.binary.pages[7].blocks.filter(block => [103, 104, 105, 106].includes(segmentOrigins![block.segmentIndex]!));
+        expect(repaired.map(block => block.lineCount)).toEqual([1, 7, 1, 1]);
+        expect(repaired.flatMap(block => block.lines)).toEqual(current.binary.pages[7].blocks.find(block => block.segmentIndex === 103)!.lines);
+        expect(repaired.every(block => block.y < block.lines![0].baseline!)).toBe(true);
+        const recovery = restoreDocumentHistoryRevisions(saved, document, 16, segmentOrigins);
+        expect(recovery.translations).toEqual(restoredTranslations);
+        expect(recovery.retainedRevisions).toEqual([{source: 'otherwise.', translation: 'Reviewed 213'}]);
+        expect(restoredTranslations.filter(value => value.trim()).length + recovery.retainedRevisions.length).toBe(translations.filter(value => value.trim()).length);
     });
 });
 

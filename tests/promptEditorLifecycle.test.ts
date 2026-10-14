@@ -24,6 +24,7 @@ let events: Map<Element, Record<string, any>>
 const updates = vi.fn(), focus = vi.fn(), selectionRange = vi.fn()
 const promptPath = 'src/features/settings/ui/services/PromptTemplateEditor.vue', inputPath = 'src/features/settings/ui/InputTranslationSettings.vue'
 const harnessPath = 'src/features/settings/ui/HarnessSettings.vue'
+const writingPath = 'src/features/settings/ui/WritingSettings.vue'
 async function settle() {await runtime.nextTick();await Promise.resolve();await runtime.nextTick()}
 beforeEach(async () => {
   vi.clearAllMocks();events = new Map();const parsed = parseHTML('<html><body><div id="app"></div></body></html>');win = parsed.window;document = win.document;focused = document.body
@@ -35,7 +36,7 @@ beforeEach(async () => {
       if (/\/src\/features\/reading-assistant\/public(?:\.ts)?$/u.test(id)) return '\0harness-reading-display'
       if (id === 'element-plus') return '\0prompt-element'
       if (id === '@element-plus/icons-vue') return '\0prompt-icons'
-      if (id.endsWith('.vue') && !/\/(?:PromptTemplateEditor|InputTranslationSettings|HarnessSettings)\.vue$/u.test(id)) return '\0prompt-display'
+      if (id.endsWith('.vue') && !/\/(?:PromptTemplateEditor|InputTranslationSettings|HarnessSettings|WritingSettings)\.vue$/u.test(id)) return '\0prompt-display'
       return null
     }, load(id) {
       if (id === '\0prompt-i18n') return "import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: key => key, translateLegacy: text => text})"
@@ -99,6 +100,25 @@ const services = [{value: 'openai', label: 'OpenAI'}, {value: 'microsoft', label
 async function mountInput(config = profile(), values: Record<string, unknown> = {}) {await mount(inputPath, {config, serviceOptions: services, ...values}, {'onTrigger-change': updates})}
 
 describe('学习讲解服务设置的实际组件切换', () => {
+  it('ChatGPT空静态目录仍显示全局和讲解直存slug，选择与服务切回不写自定义哨兵', async () => {
+    const config = runtime.reactive(new Config());config.service = 'chatgptPlan';config.model.chatgptPlan = 'account-default';config.harness.model = 'account-reading'
+    await mount(harnessPath, {config});expect(state.modelOptions).toEqual(['account-default', 'account-reading'])
+    eventOf(document.querySelector('[aria-label="学习讲解模型"]')!, 'onUpdate:modelValue')('account-default')
+    expect(config.harness.model).toBe('account-default');expect(config.customModel.chatgptPlan).toBeUndefined()
+    const service = document.querySelector('[aria-label="学习讲解服务"]')!
+    eventOf(service, 'onUpdate:modelValue')('openai');eventOf(service, 'onChange')();await settle()
+    eventOf(service, 'onUpdate:modelValue')('chatgptPlan');eventOf(service, 'onChange')();await settle()
+    expect(state.modelOptions).toEqual(['account-default']);expect(state.effectiveModel.model).toBe('account-default');expect(config.model.chatgptPlan).toBe('account-default')
+  })
+  it('ChatGPT写作选择器保留已保存专项slug和全局slug，显式模型选择保持直接保存', async () => {
+    const config = runtime.reactive(new Config());config.writing.service = 'chatgptPlan';config.writing.model = 'account-writing';config.model.chatgptPlan = 'account-default'
+    await mount(writingPath, {config});expect(state.modelOptions).toEqual(['account-default', 'account-writing'])
+    const selector = document.querySelector('[aria-label="写作模型"]')!
+    eventOf(selector, 'onUpdate:modelValue')('account-default');await settle()
+    expect(config.writing.model).toBe('account-default');expect(config.model.chatgptPlan).toBe('account-default');expect(config.customModel.chatgptPlan).toBeUndefined()
+    config.writing.service = 'openai';await settle();config.writing.service = 'chatgptPlan';await settle()
+    expect(state.modelOptions).toEqual(['account-default']);expect(config.writing.model).toBe('account-default')
+  })
   it('选择免费B站后显示固定模型与免密钥说明，保留默认关闭并可切回普通模型编辑', async () => {
     const config = runtime.reactive(new Config()); config.service = 'openai'; config.model.openai = 'reader'
     await mount(harnessPath, {config})

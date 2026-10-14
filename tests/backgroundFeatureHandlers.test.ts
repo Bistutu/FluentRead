@@ -81,6 +81,10 @@ describe('后台 feature handlers', () => {
                 expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html?learningTab=memory#settings-vocabulary'});
                 await options.handle({type: 'openOptionsPage', section: 'settings-services', service: 'microsoft'});
                 expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html?service=microsoft#settings-services'});
+                for (const service of ['composite:team', 'custom:team']) {
+                    await options.handle({type: 'openOptionsPage', section: 'settings-services', service});
+                    expect(create).toHaveBeenLastCalledWith({url: `chrome-extension://fixture/options.html?service=${encodeURIComponent(service)}#settings-services`});
+                }
                 await options.handle({type: 'openOptionsPage', section: 'settings-interface', target: 'video-sentence-learning-appearance'});
                 expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html?target=video-sentence-learning-appearance#settings-interface'});
             }

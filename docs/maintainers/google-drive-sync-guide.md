@@ -2,6 +2,8 @@
 
 这篇文档面向 FluentRead 开发者，从配置同步的背景开始，解释授权、云端文件、本机加密和冲突处理，再说明 Google Cloud 的实际操作与验证步骤。
 
+如果你先想理解扩展 ID、`manifest.key` 和 Google 客户端之间的关系，请阅读 [扩展身份和安装包说明](./extension-identity-and-packages.md)。
+
 FluentRead 直接把配置保存到**每位用户自己的 Google Drive**。开发者提供公开的应用身份，每位用户单独授权；这条路线不需要部署 FluentRead 配置服务器。本文以 PR [303](https://github.com/FluentRead/FluentRead/pull/303) 为起点，并同步说明默认普通设置与持续敏感信息选择的规则；是否已发布应以合并和商店版本为准。核对日期：2026 年 10 月 5 日。
 
 ## 1 为什么需要配置同步
@@ -218,7 +220,7 @@ Chrome 扩展原生路线不需要把 Client Secret 放进扩展，也不需要�
 
 ## 7 怎样接入并加载开发构建
 
-本次 PR 已连接默认公开 Client ID 和商店公开公钥。公钥从已发布 CRX 的签名信息取得，并核对其 SHA-256 派生的扩展 ID；它只稳定身份，不授予账号访问权。
+当前 Chrome 构建已连接默认公开 Client ID 和商店公开公钥。公钥从已发布 CRX 的签名信息取得，并核对其 SHA-256 派生的扩展 ID；它只稳定身份，不授予账号访问权。
 
 如需自己的独立开发客户端，复制 `.env.example` 为 `.env.local`，设置公开标识：
 
@@ -239,6 +241,12 @@ pnpm build
 ```
 
 打开独立测试 Chrome 的 `chrome://extensions`，开启开发者模式，选择“加载已解压的扩展程序”，加载 `.output/chrome-mv3`。核对页面显示的扩展 ID 与客户端的内容 ID 相同。不要在仍保存唯一完整配置的日常浏览器中卸载扩展来切换测试包。
+
+`pnpm zip` 只生成 `fluent-read-版本-chrome.zip`，使用与构建目录相同的 manifest，保留原 `key`、固定扩展 ID 和默认 OAuth 配置。同一份 ZIP 既用于解压后离线加载，也用于向 Chrome 商店的既有条目准备上传更新，不再生成单独的 `-chrome-store.zip`。保留公钥不是商店上传禁令；[官方上传准备指南](https://developer.chrome.com/docs/webstore/prepare)没有要求删除 `key`。
+
+打包会自动清理输出目录中同版本的旧 `fluent-read-版本-chrome-store.zip`。这不会重写其他历史安装包，也不会合并已经重复安装的扩展数据。用 `pnpm verify:extension-manifests -- --require-chrome-archive` 校验统一 Chrome 包、构建目录和固定身份。Edge 商店仍使用 `pnpm zip:edge` 生成的独立无 `key` 包；Firefox 安装包与审核源码包流程不变。
+
+离线更新应覆盖原目录并点击重新加载；拖拽 ZIP 会重新解压，不能保证覆盖已有版本。固定公钥不授予商店发布权限，也不保证手动包能够替换商店安装。若已出现重复扩展，先停用新 ID，保留旧 ID 的配置并导出备份，再按[离线更新说明](/guide/offline-install#更新离线安装的版本)处理。
 
 manifest 由 WXT 回调在加载环境变量后生成，包含 `identity` 权限与唯一的 `oauth2.scopes`：`drive.appdata`。Firefox/Edge 专用构建不会声明这个 Chrome OAuth 客户端；Chrome 包在 Edge 中也会显示支持范围提示。
 
@@ -342,6 +350,8 @@ v3 元数据响应头缺少强 ETag 时，补取同一文件的 [v2 File 元数�
 新增范围检查覆盖默认备份排除连接与私密信息、普通恢复或合并保留本机连接、旧完整 v1 可读、新普通 v2 被旧扩展拒绝、敏感完整 v1 兼容、旧待确认事务失效，以及敏感选择持续保存与手动关闭。七语言风险弹窗、390px 与深色的浏览器专项命令见[测试与回归](../testing.md#云备份范围与敏感信息选择)。这些检查仍使用隔离浏览器和虚构凭据。
 
 受控 HTTP 或身份夹具可以验证本地流程，不能证明 Google 真实授权、Drive 配额、商店安装或多设备并发成功。公开发布前还要完成真实测试账号授权、两台独立 Chrome 设备同步和实际服务连接，并记录明文没有出现在云端文件中。
+
+统一 Chrome ZIP 尚未实际上传或发布到 Chrome 商店，服务端接收和发版结果仍需通过控制台确认。
 
 Google Auth Platform 的 Production 与 Chrome Web Store 发布是两个独立步骤。完成 OAuth 所需品牌资料与验证，再发布包含同步功能的扩展包；仅创建 Client ID 不会让旧商店版本自动获得新按钮。Edge、Firefox 若要支持同类同步，需要设计与其网页登录流程匹配的客户端，本次提供清楚的支持范围提示。[Edge 官方 API 支持列表](https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/api-support)
 

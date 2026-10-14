@@ -68,9 +68,11 @@ describe('userscript credential persistence regression', () => {
         expect(userscriptStorage.values.has('session:credentials')).toBe(false);
 
         first.config.to = 'ja';
+        first.config.aiRequestTimeoutMs = 300_000;
         await first.saveConfig(first.config, {recordHistory: true, immediateHistory: true});
         const publicConfig = userscriptStorage.values.get('local:config') as Record<string, unknown>;
         expect(publicConfig.to).toBe('ja');
+        expect(publicConfig.aiRequestTimeoutMs).toBe(300_000);
         expect(publicConfig).not.toHaveProperty('token');
         expect(userscriptStorage.values.get('local:credentials')).toEqual(
             expect.objectContaining({token: {openai: 'gm-secret-token'}}),
@@ -78,6 +80,7 @@ describe('userscript credential persistence regression', () => {
 
         const reloaded = await loadConfigStore();
         expect(reloaded.config.to).toBe('ja');
+        expect(reloaded.config.aiRequestTimeoutMs).toBe(300_000);
         expect(reloaded.config.token.openai).toBe('gm-secret-token');
     });
 

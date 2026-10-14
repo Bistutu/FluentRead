@@ -1,5 +1,11 @@
 # 测试与回归
 
+## 网页操作提示
+
+网页提示按每条内容独立收缩：小品牌图标、具体结果和关闭按钮一行优先显示，不再用「流畅阅读 · 操作完成」占一行标题。品牌和状态仍供辅助技术读取；长文自动换行，缺少凭据时保留设置入口，关闭按钮至少 28px。提示外的留白允许继续点击网页，悬停或键盘聚焦暂停自动消失。
+
+`pnpm test tests/pageNotice.test.ts tests/informationHighlightContent.test.ts` 验证既有通知生命周期与智能高亮反馈。生产构建后使用 `node scripts/testing/run-page-notice-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <证据目录>`，在临时 Edge 后台可见窗口验证短提示尺寸、长文与设置操作、深色及窄屏、关闭/暂停和提示旁点击穿透，保存截图与布局报告。浏览器报告区分实际生产入口与长文布局夹具，不代表 Firefox 实机验收。
+
 ## 翻译结果与浏览器清理边界
 
 `translationEchoValidationRegression` 与 `free-translation` 覆盖中文目标下长篇 Latin 外语结果的拒绝、既有线路降级、批量槽顺序、旧缓存失效、取消与共享请求期限。判定需要原文和结果都有充分的外语证据；中文结果、专名、技术标识、短句与不确定语言保持保守处理。拒绝错语种不等于对译文质量作完整评估。
@@ -1208,6 +1214,8 @@ pnpm test:pdf-selection -- \
 脚本验证精确跨行/跨页选区、来源过滤、快捷键与后台右键指令、旧请求迟到、390px 暗色、在线导入、原生 PDF 页面 Popup 分流，以及 120 页跳转、缩放、键盘和快速滚动的资源上限。普通页面先核验原生 caret 命中，再执行真实拖选；旋转页单独记录鼠标结果，并在本次临时 profile 开启浏览器光标浏览后用真实 Shift + 方向键核对原生选区，不写入 DOM Selection。适合宽度时还检查阅读器与 PDF 页面实际宽度，避免资源上限通过却没有可读页面。原生系统右键菜单点击及前台创建标签页不在这项证据内，Popup 测试记录实际 `tabs.create` 参数并将目标更新到预建后台标签页。
 
 `pdfSource.test.ts`、`documentSelectionRuntime.test.ts`、`pdfReaderLifecycle.test.ts` 覆盖下载限额/取消、异步挂载/文档归属、页面渲染/释放和实际 Vue 导航布局；新增纯入口、下载、选区运行时及渲染调度器进入严格四维覆盖率。`documentAppLifecycle`、`documentUserActions` 与既有 binary/rasterizer 测试守护批量导入、校订和导出。Firefox 构建与清单验证单列，不等于 Firefox 实机验收。
+
+对于嵌入字体返回零高度指标、译文漏盖原文的论文，可用 `--harness-layout-only --arxiv-pdf <2609.35738.pdf> --harness-pages 1,3,8,16` 替换上述脚本的测试范围。专项通过真实导入、翻译、暂停和下载控件获取选定页截图、遮罩几何以及 36 页的译文和双语 PDF，独立采样首页摘要的原文字形像素，并检查桌面及 390px 的状态与数字进度同行。中文回复来自本机确定性服务，只验证布局；仅选定页要求翻译完成，其他段落可能保留原文。`FLUENTREAD_HARNESS_PDF=<2609.35738.pdf>` 可启用 `documentTranslationBinaryEdge.test.ts` 的实际论文解析测试；默认用例也保留该字体的实测几何，验证合法的小高度数学字体和正常字形降部不受影响。
 
 ## 划词窗口拖动与缩放（issue #525）
 

@@ -3,7 +3,6 @@ import {defineConfig, type ConfigEnv, type UserManifest, type Entrypoint, type E
 import vue from '@vitejs/plugin-vue';
 import {resolve} from 'path';
 import fs from 'fs';
-import {randomUUID} from 'node:crypto';
 import JSZip from 'jszip';
 import {resolveBrowserCapabilities} from './src/platform/browser/capabilities';
 import {checkExtensionSize} from './scripts/testing/extension-size-budget';
@@ -20,26 +19,19 @@ const firefoxRunnerBinary = process.env.FLUENTREAD_FIREFOX_RUNNER_BINARY;
 const firefoxRunnerProfile = process.env.FLUENTREAD_FIREFOX_RUNNER_PROFILE;
 const firefoxRunnerStartUrl = process.env.FLUENTREAD_FIREFOX_RUNNER_START_URL;
 
-/** 仅商店 ZIP 移除开发用固定 ID；保留本地构建的 key、OAuth 和全部运行文件。 */
-export async function prepareExtensionStoreZip(browser: string, zipPath: string): Promise<void> {
+/** Chrome 只交付保留固定身份的原 ZIP；验证成功后清理同版本旧商店包。 */
+export async function finalizeExtensionZip(browser: string, zipPath: string): Promise<void> {
     if (browser !== 'chrome') return;
+    if (!zipPath.endsWith('.zip')) throw new Error('Chrome 安装包路径必须以 .zip 结尾');
     const archive = await JSZip.loadAsync(fs.readFileSync(zipPath), {checkCRC32: true});
     const entry = archive.file('manifest.json');
-    if (!entry) throw new Error('Chrome 商店包缺少 manifest.json');
+    if (!entry) throw new Error('Chrome 安装包缺少 manifest.json');
     const manifest = JSON.parse(await entry.async('string'));
-    if (!Object.hasOwn(manifest, 'key')) return;
-    delete manifest.key;
-    archive.file('manifest.json', `${JSON.stringify(manifest, null, 2)}\n`, {date: entry.date});
-    const data = await archive.generateAsync({
-        type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: {level: 6},
-    });
-    const temporary = `${zipPath}.${randomUUID()}.tmp`;
-    try {
-        fs.writeFileSync(temporary, data, {flag: 'wx'});
-        fs.renameSync(temporary, zipPath);
-    } finally {
-        fs.rmSync(temporary, {force: true});
+    if (typeof manifest.key !== 'string' || !manifest.key.trim()) {
+        throw new Error('Chrome 安装包缺少固定扩展 ID 的 key');
     }
+    // 只删除本次产物的确切旧命名，不扫描历史版本、其他浏览器或证据目录。
+    fs.rmSync(`${zipPath.slice(0, -4)}-store.zip`, {force: true});
 }
 
 /**
@@ -251,7 +243,7 @@ export default defineConfig({
     },
     hooks: {
         'zip:extension:done': async (wxt, zipPath) => {
-            await prepareExtensionStoreZip(wxt.config.browser, zipPath);
+            await finalizeExtensionZip(wxt.config.browser, zipPath);
         },
         'build:done': async (wxt) => {
             const dev = wxt.config.command === 'serve';

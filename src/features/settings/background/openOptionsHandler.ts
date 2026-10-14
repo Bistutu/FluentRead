@@ -5,6 +5,8 @@
  * 模块边界：本文件不直接绑定 browser.runtime、不渲染设置页也不持久化配置；浏览器页面创建由 app 注入，分区展示与搜索逻辑属于 settings/model 和 Options composition root。
  */
 import {services} from '@/src/core/config/catalog';
+import {isCustomOpenAIProviderId} from '@/src/core/config/customOpenAI';
+import {isCompositeTranslationProviderId} from '@/src/core/config/compositeTranslation';
 import {NAVIGATION_SECTION_ALIASES, NAVIGATION_SECTION_IDS, settingsSearchTargets, type NavigationSectionId} from '@/src/features/settings/model/navigation';
 
 export const OPEN_OPTIONS_PAGE_MESSAGE_TYPE = 'openOptionsPage' as const;
@@ -63,7 +65,8 @@ export function createOpenOptionsPageHandler(
             }
             const service = message.service;
             if (service !== undefined && (section !== 'settings-services' || typeof service !== 'string'
-                || !Object.values(services).some(value => value === service))) throw new TypeError('无效的翻译服务设置');
+                || !(Object.values(services).some(value => value === service)
+                    || isCustomOpenAIProviderId(service) || isCompositeTranslationProviderId(service)))) throw new TypeError('无效的翻译服务设置');
             const target = message.target;
             if (target !== undefined && (typeof target !== 'string'
                 || !settingsSearchTargets.some(item => item.sectionId === section && item.targetId === target))) throw new TypeError('无效的设置目标');

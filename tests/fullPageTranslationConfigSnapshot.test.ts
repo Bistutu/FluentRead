@@ -1,7 +1,9 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {buildGlossaryRevision, type GlossaryLibrary} from '@/src/core/glossary';
 import * as hashModule from '@/src/shared/function/sha256';
+import * as pageDiscourse from '@/src/services/translation/context/pageDiscourse';
 import {translateText, translateTextBatch} from '@/src/app/translation/client';
+import type {CompositeTranslationProvider} from '@/src/core/config/compositeTranslation';
 
 const fixture = vi.hoisted(() => ({config: {
     service: 'microsoft', model: {microsoft: 'default-model'}, customModel: {}, modelThinking: {},
@@ -9,17 +11,19 @@ const fixture = vi.hoisted(() => ({config: {
     excludedLanguages: ['de'], useCache: true, enableAIContext: false, enableAIMultiSegment: false,
     nativeBatchTranslationEnabled: {}, display: 1, style: 0,
     longParagraphLineBreakEnabled: false, translationBeforeOriginal: false,
+    compositeTranslationProviders: [] as CompositeTranslationProvider[], customBody: {} as Record<string, string>,
 }}));
 vi.mock('@/src/services/config/store', () => ({config: fixture.config}));
 vi.mock('@/src/app/translation/client', () => ({translateText: vi.fn(), translateTextBatch: vi.fn()}));
 vi.mock('@/src/services/translation/queue', () => ({cancelTranslationQueueSession: vi.fn(), createTranslationQueueSession: vi.fn()}));
-import {captureFullPageTranslationConfig, translateTextSlots} from '@/src/features/full-page-translation/content/translationRequest';
+import {captureFullPageTranslationConfig, getTranslationInvocationIdentity, translateTextSlots} from '@/src/features/full-page-translation/content/translationRequest';
 
 let generation = 0;
 beforeEach(() => {
     Object.assign(fixture.config, {service: 'microsoft', from: 'en', to: 'zh-Hans', glossaryEnabled: true,
         excludedLanguages: ['de'], useCache: true, display: 1, longParagraphLineBreakEnabled: false,
-        translationBeforeOriginal: false, enableAIMultiSegment: false,
+        translationBeforeOriginal: false, enableAIMultiSegment: false, enableAIContext: false,
+        compositeTranslationProviders: [], customBody: {},
         glossaryLibraries: [{id: `library-${generation++}`, name: '技术', enabled: true,
             sourceLanguage: 'en', targetLanguage: 'zh-Hans', domains: [],
             entries: [{id: 'term-1', source: 'agent', target: '智能体', caseSensitive: false}]}],
@@ -31,6 +35,42 @@ beforeEach(() => {
 afterEach(() => {vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('网页翻译配置捕获与词库摘要复用', () => {
+    it('组合以原始数组进入 broker；成员连接修改隔离前端完成缓存与操作身份', async () => {
+        fixture.config.service = 'composite:page';
+        fixture.config.compositeTranslationProviders = [{id: 'composite:page', name: '网页组合', strategy: 'sequential', services: ['google', 'microsoft'], timeoutMs: 12_000}];
+        vi.mocked(translateTextBatch).mockImplementation(async origins => origins.map(origin => `译:${origin}`));
+        const session = {active: true, translationSlotCache: new Map()};
+        const first = captureFullPageTranslationConfig();
+        await expect(translateTextSlots(['First paragraph', 'Second paragraph'], first, undefined, undefined, session)).resolves.toEqual(['译:First paragraph', '译:Second paragraph']);
+        expect(translateText).not.toHaveBeenCalled();
+        expect(vi.mocked(translateTextBatch).mock.calls[0][0]).toEqual(['First paragraph', 'Second paragraph']);
+        await expect(translateTextSlots(['First paragraph', 'Second paragraph'], first, undefined, undefined, session)).resolves.toEqual(['译:First paragraph', '译:Second paragraph']);
+        expect(translateTextBatch).toHaveBeenCalledOnce();
+        fixture.config.customBody.google = '{"fixture":"changed"}';
+        const next = captureFullPageTranslationConfig();
+        expect(getTranslationInvocationIdentity(next)).not.toBe(getTranslationInvocationIdentity(first));
+        await expect(translateTextSlots(['First paragraph', 'Second paragraph'], next, undefined, undefined, session)).resolves.toEqual(['译:First paragraph', '译:Second paragraph']);
+        expect(translateTextBatch).toHaveBeenCalledTimes(2);
+    });
+
+    it('组合冻结通用 AI 成员能力并为其准备篇章上下文，保留原生数组而不启用 AI 槽协议', async () => {
+        fixture.config.service = 'composite:context';
+        fixture.config.enableAIContext = true;
+        fixture.config.enableAIMultiSegment = true;
+        fixture.config.compositeTranslationProviders = [{id: fixture.config.service, name: '上下文组合', strategy: 'smart', services: ['google', 'openai'], timeoutMs: 12_000}];
+        const commit = vi.fn();
+        const prepare = vi.spyOn(pageDiscourse, 'preparePageDiscourseContext').mockReturnValue({context: 'Bounded member context', commit});
+        vi.mocked(translateTextBatch).mockResolvedValue(['译文一', '译文二']);
+        const snapshot = captureFullPageTranslationConfig();
+        expect(snapshot.compositeAIContext).toBe(true);
+        await expect(translateTextSlots(['First paragraph', 'Second paragraph'], snapshot, undefined, undefined, undefined, false, {} as Element)).resolves.toEqual(['译文一', '译文二']);
+        expect(prepare).toHaveBeenCalledOnce();
+        expect(commit).toHaveBeenCalledWith(['译文一', '译文二']);
+        expect(vi.mocked(translateTextBatch).mock.calls[0][2]).toMatchObject({discourseContext: 'Bounded member context'});
+        expect(vi.mocked(translateTextBatch).mock.calls[0][2]?.aiMultiSegment).toBeUndefined();
+        expect(translateText).not.toHaveBeenCalled();
+    });
+
     it('重复悬浮捕获只复用词库摘要，每次仍生成独立配置并复制选库/排除数组', () => {
         const hash = vi.spyOn(hashModule, 'sha256Hex');
         const ids = ['selected'], first = captureFullPageTranslationConfig({glossaryIds: ids});

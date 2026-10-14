@@ -9,6 +9,8 @@
     "node": ">=20"
   },
   "scripts": {
+    "chatgpt:bridge": "node integrations/chatgpt-plan/cli.mjs",
+    "test:chatgpt-bridge": "node --test tests/chatgptPlanBridge.test.mjs",
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
     "build": "node scripts/testing/run-resource-safe.mjs -- wxt build",

@@ -484,6 +484,7 @@ import {useUiI18n} from '@/src/ui/i18n'
 import {useRenderDateFormatter} from '@/src/ui/dateFormat'
 import {options} from '@/src/core/config/catalog'
 import {getCustomOpenAIProviderLabel, type CustomOpenAIProvider} from '@/src/core/config/customOpenAI'
+import {getCompositeTranslationProvider, type CompositeTranslationProvider} from '@/src/core/config/compositeTranslation'
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation'
 import {config, subscribeConfig} from '@/src/services/config/store'
 import {
@@ -540,6 +541,7 @@ const props = withDefaults(defineProps<{active?: boolean}>(), {active: true})
 const {t, translateLegacy, language} = useUiI18n()
 
 const customOpenAIProviders = ref<CustomOpenAIProvider[]>(config.customOpenAIProviders)
+const compositeProviders = ref<CompositeTranslationProvider[]>(config.compositeTranslationProviders ?? [])
 const snapshot = ref<TranslationStatsSnapshot | null>(null)
 const loading = ref(false)
 const errorMessage = ref('')
@@ -578,6 +580,7 @@ let inertSettingsApp: HTMLElement | null = null
 
 const unsubscribeConfig = subscribeConfig((nextConfig) => {
   customOpenAIProviders.value = nextConfig.customOpenAIProviders.map((provider) => ({...provider, models: [...provider.models]}))
+  compositeProviders.value = (nextConfig.compositeTranslationProviders ?? []).map(provider => ({...provider, services: [...provider.services]}))
 })
 
 const totals = computed<TranslationStatsTotals>(() => snapshot.value!.selected.totals)
@@ -610,6 +613,8 @@ const errorRows = computed(() => buildErrorKindRows(totals.value.errorKinds))
 const logRange = computed(() => requestPageRange(logOffset.value, logPageSize.value, logTotal.value))
 
 function serviceLabel(serviceId: string): string {
+  const composite = getCompositeTranslationProvider(compositeProviders.value, serviceId)
+  if (composite) return composite.name
   const label = options.services.find((option) => option.value === serviceId)?.label
     || getCustomOpenAIProviderLabel(customOpenAIProviders.value, serviceId)
   return label ? translateLegacy(label) : serviceId

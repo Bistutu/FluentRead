@@ -9,6 +9,29 @@ function group(result: ReturnType<typeof buildConfigDiff>, id: string) {
 }
 
 describe('配置差异预览', () => {
+    it('组合配置以策略、成员和单成员超时展示，空及旧损坏条目仍可预览', () => {
+        expect(configDiffFieldLabel('compositeTranslationProviders')).toBe('组合翻译服务');
+        const preview = buildConfigDiff({compositeTranslationProviders: []}, {compositeTranslationProviders: [
+            {id: 'composite:work', name: '工作组合', strategy: 'smart', services: ['google', 'microsoft'], timeoutMs: 12_000},
+            {id: 'composite:random', name: '随机组合', strategy: 'random', services: ['google'], timeoutMs: 1000},
+            {id: 'composite:empty', name: '', services: false},
+            42,
+        ]});
+        const serialized = JSON.stringify(group(preview, 'translationServices'));
+        expect(serialized).toContain('工作组合（智能；成员：谷歌翻译');
+        expect(serialized).toContain('随机组合（随机');
+        expect(serialized).toContain('未命名组合（轮流；成员：无');
+        expect(serialized).toContain('单次超时：12000 ms');
+        expect(buildConfigDiff({compositeTranslationProviders: null}, {compositeTranslationProviders: []}).groups[0].changes[0].before).toBe('无');
+    });
+
+    it('AI 请求超时归入高级设置并使用秒单位预览', () => {
+        expect(configDiffFieldLabel('aiRequestTimeoutMs')).toBe('AI 翻译请求超时');
+        expect(group(buildConfigDiff({aiRequestTimeoutMs: 120_000}, {aiRequestTimeoutMs: 300_000}), 'advanced')?.changes).toEqual([
+            {key: 'aiRequestTimeoutMs', label: 'AI 翻译请求超时', before: '120 秒', after: '300 秒'},
+        ]);
+        expect(group(buildConfigDiff({aiRequestTimeoutMs: 'invalid'}, {aiRequestTimeoutMs: 120_000}), 'advanced')?.changes[0].before).toBe('invalid');
+    });
     it('原生合批偏好按服务展示开启和关闭，不暴露配置字段名', () => {
         expect(configDiffFieldLabel('nativeBatchTranslationEnabled')).toBe('原生翻译合批');
         const result = buildConfigDiff(

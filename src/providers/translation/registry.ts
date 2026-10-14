@@ -2,7 +2,7 @@
  * @file src/providers/translation/registry.ts
  *
  * 文件职责：集中登记翻译服务标识到 provider 函数的映射，是 background 路由和连接测试查找适配器的唯一目录。
- * 主要内容：汇集传统 REST、免费翻译、云服务厂商机器翻译、Chrome Translator 与 AI SDK 服务，声明 TranslationProviderRegistry，按 AI_SDK_SERVICE_IDS 为兼容服务绑定共享 transport，并为 Azure 与豆包保留各自的前置分流。 可核对的公开符号包括 TranslationProvider、TranslationProviderRegistry、translationProviderRegistry。
+ * 主要内容：汇集传统 REST、免费翻译、云服务厂商机器翻译、Chrome Translator 与 AI SDK 服务，声明 TranslationProviderRegistry，按 AI_SDK_SERVICE_IDS 为兼容服务绑定共享 transport，并为 Azure 与豆包保留各自的前置分流；ChatGPT 套餐使用独立的本机 OAuth Responses 适配器。 可核对的公开符号包括 TranslationProvider、TranslationProviderRegistry、translationProviderRegistry。
  * 模块边界：本文件位于 provider 适配层，只把统一翻译请求转换为外部或浏览器服务协议；不管理页面 DOM、UI 生命周期或配置持久化，缓存、去重和超时总预算由 translation broker 统一协调。
  */
 
@@ -34,6 +34,7 @@ import aliyunTranslation from "./aliyun-translation";
 import baiduTranslation from "./baidu-translation";
 import volcTranslation from "./volc-translation";
 import doubao from "./doubao";
+import chatgptPlan from './chatgpt-plan';
 
 export type TranslationProvider = (message: any) => Promise<any>;
 export type TranslationProviderRegistry = Record<string, TranslationProvider>;
@@ -67,6 +68,8 @@ const legacyServices: TranslationProviderRegistry = {
     [services.deepseek]: deepseek,
     [services.huanYuanTranslation]: hunyuanTranslation,
     [services.localTranslation]: localTranslation,
+    // ChatGPT 套餐通过独立本机 OAuth 助手使用 Responses SSE，不走 API Key transport。
+    [services.chatgptPlan]: chatgptPlan,
 };
 
 const aiSdkServices: TranslationProviderRegistry = Object.fromEntries(

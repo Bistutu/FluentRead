@@ -1,11 +1,12 @@
 /**
  * @file src/features/input-translation/background/handler.ts
  * 文件职责：定义输入框快捷翻译的后台消息处理器，在调用共享翻译 broker 前校验原文和目标语言，并统一返回成功译文结构。
- * 主要内容：包含 inputBoxTranslation 消息常量、请求/响应与依赖接口、非空字符串和可选请求标识解析，按发送者注册可取消请求，在配置水合和共享翻译 broker 调用期间响应取消，并冻结本地服务配置快照；可信属于本次目标的普通文本直接保留原文。
- * 模块边界：此文件不监听键盘、不修改输入框也不绑定具体 provider；content feature 负责触发和提交，翻译实现与请求注册表由 composition root 注入，统一路由负责错误响应。网页消息只能携带纯文本、目标语言和取消标识，服务、模型、提示词与凭据均从后台配置读取。
+ * 主要内容：包含 inputBoxTranslation 消息常量、请求/响应与依赖接口、非空字符串、可选请求标识和有界超时解析，按发送者注册可取消请求，在配置水合和共享翻译 broker 调用期间响应取消，并冻结本地服务配置与超时快照；可信属于本次目标的普通文本直接保留原文。
+ * 模块边界：此文件不监听键盘、不修改输入框也不绑定具体 provider；content feature 负责触发和提交，翻译实现与请求注册表由 composition root 注入，统一路由负责错误响应。网页消息只能携带纯文本、目标语言、取消标识和不超出配置的请求预算，服务、模型、提示词与凭据均从后台配置读取。
  */
 import {servicesType, resolveConfiguredModel} from '@/src/core/config/catalog';
 import {Config} from '@/src/core/config/model';
+import {MAX_AI_REQUEST_TIMEOUT_MS, normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import {
     DEFAULT_INPUT_BOX_TRANSLATION_SYSTEM_PROMPT,
@@ -29,6 +30,7 @@ export interface InputBoxTranslationMessage {
     text?: unknown;
     targetLang?: unknown;
     clientRequestId?: unknown;
+    requestTimeoutMs?: unknown;
 }
 
 /** 仅约束 composition root 提供的发送者上下文，不依赖 app 的具体后台实现。 */
@@ -81,6 +83,14 @@ function parseClientRequestId(value: unknown): string | undefined {
     return value;
 }
 
+function parseRequestTimeoutMs(value: unknown): number | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 1 || value > MAX_AI_REQUEST_TIMEOUT_MS) {
+        throw new TypeError('输入框翻译 requestTimeoutMs 必须是有效的正数预算');
+    }
+    return Math.floor(value);
+}
+
 function createAbortError(): Error {
     const error = new Error('输入框翻译已取消');
     error.name = 'AbortError';
@@ -124,10 +134,12 @@ export function createInputBoxTranslationRequest(
     current: Config,
     text: string,
     targetLanguage: string,
+    requestTimeoutMs?: number,
 ): TranslationSingleRequestMessage {
     const service = normalizeInputBoxTranslationService(
         current.inputBoxTranslationService,
         current.customOpenAIProviders,
+        current.compositeTranslationProviders,
     ) || current.service;
     const model = normalizeInputBoxTranslationModel(current.inputBoxTranslationModel);
     const configuredModel = resolveConfiguredModel(current.model[service], current.customModel[service]);
@@ -148,6 +160,7 @@ export function createInputBoxTranslationRequest(
         } : {}),
     };
     const snapshot = createTranslationProviderConfigSnapshot(snapshotSource);
+    const configuredTimeoutMs = servicesType.isAI(service) ? normalizeAiRequestTimeoutMs(snapshot.aiRequestTimeoutMs) : 45_000;
     return attachTranslationProviderConfig({
         origin: text,
         sourceLanguage: 'auto',
@@ -157,6 +170,7 @@ export function createInputBoxTranslationRequest(
         serviceOverride: service,
         ...(servicesType.isUseModel(service) && model ? {modelOverride: model} : {}),
         useCache: current.useCache,
+        requestTimeoutMs: Math.min(configuredTimeoutMs, requestTimeoutMs ?? configuredTimeoutMs),
     }, snapshot);
 }
 
@@ -171,11 +185,12 @@ export function createInputBoxTranslationHandler(
             const text = parseRequiredString(message.text, 'text');
             const targetLanguage = parseRequiredString(message.targetLang, 'targetLang');
             const clientRequestId = parseClientRequestId(message.clientRequestId);
+            const requestTimeoutMs = parseRequestTimeoutMs(message.requestTimeoutMs);
             const translate = async (control?: TranslationRequestControl): Promise<InputBoxTranslationResponse> => {
                 const signal = control?.signal;
                 await waitForReady(dependencies.ready, signal);
                 // 步骤 2：服务、模型、提示词和凭据均从配置读取，并在 provider await 前冻结。
-                const request = createInputBoxTranslationRequest(dependencies.getConfig(), text, targetLanguage);
+                const request = createInputBoxTranslationRequest(dependencies.getConfig(), text, targetLanguage, requestTimeoutMs);
                 if (control) attachTranslationRequestControl(request, control);
                 if (shouldSkipTranslationForTarget(text, targetLanguage)) {
                     throwIfAborted(signal);

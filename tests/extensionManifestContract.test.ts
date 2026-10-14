@@ -1,4 +1,4 @@
-import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import JSZip from 'jszip';
 import {createRequire} from 'node:module';
@@ -7,76 +7,197 @@ import {pathToFileURL} from 'node:url';
 import {describe, expect, it, vi} from 'vitest';
 import ts from 'typescript';
 import {defineUnlistedScript} from 'wxt/utils/define-unlisted-script';
-import {createHash} from 'node:crypto';
+import {createHash, generateKeyPairSync} from 'node:crypto';
 import {GOOGLE_DRIVE_DEFAULT_CLIENT_ID, GOOGLE_DRIVE_EXTENSION_ID, GOOGLE_DRIVE_EXTENSION_PUBLIC_KEY, GOOGLE_DRIVE_SCOPES} from '@/src/platform/google-drive/constants';
+import {createDriveAuth, type DriveAuthPorts} from '@/src/platform/google-drive/auth';
 import type {Entrypoint, EntrypointGroup} from 'wxt';
-import {remoteConfigStorageBuildPlugin, createExtensionManifest, extendRemoteConfigBuildConfig, groupModuleWorkers, prepareExtensionStoreZip} from '@/wxt.config';
+import {remoteConfigStorageBuildPlugin, createExtensionManifest, extendRemoteConfigBuildConfig, groupModuleWorkers, finalizeExtensionZip} from '@/wxt.config';
 
 const PROJECT_ROOT = resolve(__dirname, '..');
 
-describe('Chrome store ZIP packaging', () => {
-    async function fixture(manifest: Record<string, unknown>) {
-        const directory = mkdtempSync(resolve(tmpdir(), 'fluentread-store-zip-'));
-        const zipPath = resolve(directory, 'chrome.zip');
-        const archive = new JSZip();
-        archive.file('manifest.json', JSON.stringify(manifest));
-        archive.file('background.js', 'globalThis.packagingProbe = true;');
-        archive.file('asset.wasm', Buffer.from([0, 97, 115, 109, 255, 0]));
-        writeFileSync(zipPath, await archive.generateAsync({type: 'nodebuffer'}));
-        return {directory, zipPath};
+describe('Chrome unified ZIP packaging', () => {
+    async function verifier() {
+        const url = pathToFileURL(resolve(PROJECT_ROOT, 'scripts/testing/verify-extension-manifests.mjs')).href;
+        return import(/* @vite-ignore */ url);
     }
 
-    it('商店包仅移除 key，保留 OAuth、权限和二进制，本地清单仍固定 ID', async () => {
+    async function fixture(manifest: Record<string, unknown>) {
+        const directory = mkdtempSync(resolve(tmpdir(), 'fluentread-single-zip-'));
+        const zipPath = resolve(directory, 'fluent-read-0.0.37-chrome.zip');
+        const buildDirectory = resolve(directory, 'chrome-mv3');
+        const files = {
+            'manifest.json': JSON.stringify(manifest),
+            'background.js': 'globalThis.packagingProbe = true;',
+            'asset.wasm': Buffer.from([0, 97, 115, 109, 255, 0]),
+            '_locales/zh_CN/messages.json': '{"name":{"message":"流畅阅读"}}',
+        };
+        const archive = new JSZip();
+        for (const [name, bytes] of Object.entries(files)) {
+            archive.file(name, bytes);
+            const file = resolve(buildDirectory, name);
+            mkdirSync(dirname(file), {recursive: true});
+            writeFileSync(file, bytes);
+        }
+        writeFileSync(zipPath, await archive.generateAsync({type: 'nodebuffer'}));
+        return {directory, zipPath, buildDirectory, storePath: zipPath.replace(/\.zip$/u, '-store.zip')};
+    }
+
+    it('唯一 ZIP 保留全部原字节，清理同版本旧商店包且重复执行稳定', async () => {
         const manifest = createExtensionManifest({browser: 'chrome', manifestVersion: 3});
-        const {directory, zipPath} = await fixture(manifest);
+        const {directory, zipPath, buildDirectory, storePath} = await fixture(manifest);
         try {
-            const localManifest = resolve(directory, 'manifest.json');
-            const localBytes = JSON.stringify(manifest);
-            writeFileSync(localManifest, localBytes);
-            const before = await JSZip.loadAsync(readFileSync(zipPath), {checkCRC32: true});
-            await prepareExtensionStoreZip('chrome', zipPath);
-            const after = await JSZip.loadAsync(readFileSync(zipPath), {checkCRC32: true});
-            const expected = {...manifest}; delete expected.key;
-            expect(JSON.parse(await after.file('manifest.json')!.async('string'))).toEqual(expected);
-            expect(Object.keys(after.files).sort()).toEqual(Object.keys(before.files).sort());
-            for (const name of ['background.js', 'asset.wasm']) {
-                expect(await after.file(name)!.async('nodebuffer')).toEqual(await before.file(name)!.async('nodebuffer'));
-            }
-            expect(readFileSync(localManifest, 'utf8')).toBe(localBytes);
-            const once = readFileSync(zipPath);
-            await prepareExtensionStoreZip('chrome', zipPath);
-            expect(readFileSync(zipPath)).toEqual(once);
+            const originalBytes = readFileSync(zipPath);
+            writeFileSync(storePath, 'old store archive');
+            const unrelated = ['fluent-read-0.0.36-chrome-store.zip', 'fluent-read-0.0.37-edge.zip', 'notes.txt'];
+            for (const name of unrelated) writeFileSync(resolve(directory, name), name);
+            expect(await finalizeExtensionZip('chrome', zipPath)).toBeUndefined();
+            expect(readFileSync(zipPath)).toEqual(originalBytes);
+            expect(existsSync(storePath)).toBe(false);
+            const archive = await JSZip.loadAsync(readFileSync(zipPath), {checkCRC32: true});
+            expect(JSON.parse(await archive.file('manifest.json')!.async('string'))).toEqual(manifest);
+            const {verifyChromeArchive} = await verifier();
+            await expect(verifyChromeArchive(originalBytes, manifest, buildDirectory)).resolves.toBeUndefined();
+            await finalizeExtensionZip('chrome', zipPath);
+            expect(readFileSync(zipPath)).toEqual(originalBytes);
+            expect(existsSync(storePath)).toBe(false);
+            for (const name of unrelated) expect(readFileSync(resolve(directory, name), 'utf8')).toBe(name);
         } finally {rmSync(directory, {recursive: true, force: true});}
     });
 
-    it.each(['edge', 'firefox'])('%s ZIP 保持原字节，不进入 Chrome 重打包流程', async (browser) => {
-        const {directory, zipPath} = await fixture({manifest_version: 3, version: '0.0.37', key: 'control'});
+    it.each(['edge', 'firefox'])('%s ZIP 保持原字节，不清理 Chrome 旧包', async (browser) => {
+        const {directory, zipPath, storePath} = await fixture({manifest_version: 3, version: '0.0.37', key: 'control'});
         try {
             const before = readFileSync(zipPath);
-            await prepareExtensionStoreZip(browser, zipPath);
+            writeFileSync(storePath, 'retained store archive');
+            expect(await finalizeExtensionZip(browser, zipPath)).toBeUndefined();
             expect(readFileSync(zipPath)).toEqual(before);
+            expect(readFileSync(storePath, 'utf8')).toBe('retained store archive');
         } finally {rmSync(directory, {recursive: true, force: true});}
     });
 
-    it('缺少清单时拒绝发布，原 ZIP 不被替换', async () => {
-        const {directory, zipPath} = await fixture({manifest_version: 3});
+    it('缺少清单时拒绝交付，不改写原 ZIP 或删除旧包', async () => {
+        const {directory, zipPath, storePath} = await fixture({manifest_version: 3});
         try {
             const zip = await JSZip.loadAsync(readFileSync(zipPath)); zip.remove('manifest.json');
             writeFileSync(zipPath, await zip.generateAsync({type: 'nodebuffer'}));
+            writeFileSync(storePath, 'retained store archive');
             const before = readFileSync(zipPath);
-            await expect(prepareExtensionStoreZip('chrome', zipPath)).rejects.toThrow('缺少 manifest.json');
+            await expect(finalizeExtensionZip('chrome', zipPath)).rejects.toThrow('缺少 manifest.json');
             expect(readFileSync(zipPath)).toEqual(before);
+            expect(readFileSync(storePath, 'utf8')).toBe('retained store archive');
         } finally {rmSync(directory, {recursive: true, force: true});}
     });
 
-    it('发行校验拒绝 key 或额外字段变化，接受仅删除 key 的商店清单', async () => {
-        const url = pathToFileURL(resolve(PROJECT_ROOT, 'scripts/testing/verify-extension-manifests.mjs')).href;
-        const {verifyChromeStoreManifest} = await import(/* @vite-ignore */ url);
+    it('缺少 key 的 ZIP 拒绝交付，不改原包或删除旧包', async () => {
+        const manifest = createExtensionManifest({browser: 'chrome', manifestVersion: 3}); delete manifest.key;
+        const {directory, zipPath, storePath} = await fixture(manifest);
+        try {
+            const before = readFileSync(zipPath);
+            writeFileSync(storePath, 'retained store archive');
+            await expect(finalizeExtensionZip('chrome', zipPath)).rejects.toThrow('key');
+            expect(readFileSync(zipPath)).toEqual(before);
+            expect(readFileSync(storePath, 'utf8')).toBe('retained store archive');
+        } finally {rmSync(directory, {recursive: true, force: true});}
+    });
+
+    it('非 ZIP 路径拒绝处理，避免删除输入文件', async () => {
+        const manifest = createExtensionManifest({browser: 'chrome', manifestVersion: 3});
+        const {directory, zipPath} = await fixture(manifest);
+        try {
+            const file = resolve(directory, 'archive.txt');
+            const before = readFileSync(zipPath); writeFileSync(file, before);
+            await expect(finalizeExtensionZip('chrome', file)).rejects.toThrow('.zip');
+            expect(readFileSync(file)).toEqual(before);
+        } finally {rmSync(directory, {recursive: true, force: true});}
+    });
+
+    it('单包发行校验拒绝清单变化或公钥缺失，接受完整原清单', async () => {
+        const {verifyChromeOfflineManifest} = await verifier();
         const local = createExtensionManifest({browser: 'chrome', manifestVersion: 3});
-        const store = {...local}; delete store.key;
-        expect(() => verifyChromeStoreManifest(local, local)).toThrow('key');
-        expect(() => verifyChromeStoreManifest({...store, oauth2: undefined}, local)).toThrow('除 key');
-        expect(() => verifyChromeStoreManifest(store, local)).not.toThrow();
+        const withoutKey = {...local}; delete withoutKey.key;
+        expect(() => verifyChromeOfflineManifest({...local, description: 'changed'}, local)).toThrow('本地构建一致');
+        expect(() => verifyChromeOfflineManifest(withoutKey, local)).toThrow('本地构建一致');
+        expect(() => verifyChromeOfflineManifest(withoutKey, withoutKey)).toThrow('key');
+        expect(verifyChromeOfflineManifest(local, local)).toBe(GOOGLE_DRIVE_EXTENSION_ID);
+    });
+
+    it('身份校验拒绝无效公钥与默认客户端错配，仍允许独立开发客户端', async () => {
+        const {verifyChromeOfflineManifest} = await verifier();
+        const local = createExtensionManifest({browser: 'chrome', manifestVersion: 3});
+        for (const key of ['', 'invalid']) {
+            const invalid = {...local, key};
+            expect(() => verifyChromeOfflineManifest(invalid, invalid)).toThrow('key');
+        }
+        const otherKey = generateKeyPairSync('ed25519').publicKey.export({type: 'spki', format: 'der'}).toString('base64');
+        const mismatched = {...local, key: otherKey};
+        expect(() => verifyChromeOfflineManifest(mismatched, mismatched)).toThrow('默认 Google OAuth 客户端不匹配');
+        const custom = {...mismatched, oauth2: {...local.oauth2, client_id: 'custom-developer.apps.googleusercontent.com'}};
+        expect(() => verifyChromeOfflineManifest(custom, custom)).not.toThrow();
+        for (const invalid of [
+            {...local, oauth2: undefined},
+            {...local, oauth2: {...local.oauth2, client_id: ''}},
+            {...local, permissions: local.permissions!.filter(permission => permission !== 'identity')},
+            {...local, oauth2: {...local.oauth2, scopes: []}},
+        ]) expect(() => verifyChromeOfflineManifest(invalid, invalid)).toThrow(/OAuth|identity/u);
+    });
+
+    it('统一 ZIP 的真实清单与派生 ID 满足默认 OAuth，错误 ID 不发起授权', async () => {
+        const manifest = createExtensionManifest({browser: 'chrome', manifestVersion: 3});
+        const {directory, zipPath} = await fixture(manifest);
+        try {
+            await finalizeExtensionZip('chrome', zipPath);
+            const archive = await JSZip.loadAsync(readFileSync(zipPath), {checkCRC32: true});
+            const offline = JSON.parse(await archive.file('manifest.json')!.async('string'));
+            const {verifyChromeOfflineManifest} = await verifier();
+            const runtimeId = verifyChromeOfflineManifest(offline, manifest);
+            const ports: DriveAuthPorts = {
+                userAgent: () => 'Chrome/142.0.0.0',
+                identity: {getAuthToken: vi.fn(async () => ({})), removeCachedAuthToken: vi.fn(async () => undefined), clearAllCachedAuthTokens: vi.fn(async () => undefined)},
+                runtime: {id: runtimeId, getManifest: () => offline}, fetch: vi.fn(),
+            };
+            const auth = createDriveAuth(ports);
+            expect(auth.availability()).toEqual({available: true, reason: ''});
+            ports.runtime.id = 'aakdnohjinpalkgcdkjpbbfbkieohfce';
+            expect(auth.availability().reason).toContain('扩展 ID');
+            await expect(auth.open(true)).rejects.toThrow('OAuth 客户端不匹配');
+            expect(ports.identity!.getAuthToken).not.toHaveBeenCalled();
+            expect(ports.fetch).not.toHaveBeenCalled();
+        } finally {rmSync(directory, {recursive: true, force: true});}
+    });
+
+    it('发行校验检查 CRC 和构建目录全部文件，拒绝资产损坏、增删或清单缺失', async () => {
+        const manifest = createExtensionManifest({browser: 'chrome', manifestVersion: 3});
+        const {directory, zipPath, buildDirectory, storePath} = await fixture(manifest);
+        try {
+            const bytes = readFileSync(zipPath);
+            const {verifyChromeArchive} = await verifier();
+            const broken = Buffer.from(bytes);
+            const offset = broken.indexOf(Buffer.from('globalThis.packagingProbe = true;'));
+            expect(offset).toBeGreaterThan(-1); broken[offset] ^= 1;
+            await expect(verifyChromeArchive(broken, manifest, buildDirectory)).rejects.toThrow('CRC32');
+            writeFileSync(zipPath, broken); writeFileSync(storePath, 'retained store archive');
+            await expect(finalizeExtensionZip('chrome', zipPath)).rejects.toThrow('CRC32');
+            expect(readFileSync(storePath, 'utf8')).toBe('retained store archive');
+            for (const change of ['add', 'remove', 'content', 'manifest', 'manifest-format']) {
+                const archive = await JSZip.loadAsync(bytes, {checkCRC32: true});
+                if (change === 'add') archive.file('extra.js', 'extra');
+                else if (change === 'remove') archive.remove('asset.wasm');
+                else if (change === 'content') archive.file('asset.wasm', Buffer.from([0, 97, 115, 109, 0, 0]));
+                else if (change === 'manifest-format') archive.file('manifest.json', JSON.stringify(manifest, null, 2));
+                else archive.remove('manifest.json');
+                await expect(verifyChromeArchive(await archive.generateAsync({type: 'nodebuffer'}), manifest, buildDirectory))
+                    .rejects.toThrow(change === 'content' || change === 'manifest-format' ? '文件内容' : change === 'manifest' ? 'manifest.json' : '文件条目');
+            }
+        } finally {rmSync(directory, {recursive: true, force: true});}
+    });
+
+    it('当前版本只接受统一 Chrome 包，拒绝旧商店包残留并保留其他浏览器与版本', async () => {
+        const {verifyChromeArchiveNames} = await verifier();
+        const archive = 'fluent-read-0.0.37-chrome.zip';
+        const files = [archive, 'fluent-read-0.0.36-chrome-store.zip', 'fluent-read-0.0.37-edge.zip', 'fluent-read-0.0.37-firefox.zip'];
+        expect(verifyChromeArchiveNames(files, '0.0.37')).toBe(archive);
+        expect(() => verifyChromeArchiveNames([...files, 'fluent-read-0.0.37-chrome-store.zip'], '0.0.37')).toThrow('不得残留');
+        expect(() => verifyChromeArchiveNames(files.filter(name => name !== archive), '0.0.37')).toThrow('缺失');
     });
 });
 

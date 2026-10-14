@@ -8,6 +8,7 @@
 import {showPageNotice} from '@/src/features/page-notice/public';
 import {options} from '@/src/core/config/catalog';
 import {getCustomOpenAIProviderLabel} from '@/src/core/config/customOpenAI';
+import {getCompositeTranslationProvider} from '@/src/core/config/compositeTranslation';
 import {config} from '@/src/services/config/store';
 import {getTranslationErrorMessage} from '@/src/features/full-page-translation/core/errorMessage';
 import {
@@ -176,6 +177,7 @@ function handleErrorClick(errMsg: string) {
 function resolveErrorMessage(errMsg: string): string {
   const service = options.services.find(({value}) => value === config.service);
   const label = service?.label
+    || getCompositeTranslationProvider(config.compositeTranslationProviders, config.service)?.name
     || getCustomOpenAIProviderLabel(config.customOpenAIProviders, config.service);
   return getTranslationErrorMessage(errMsg, label);
 }

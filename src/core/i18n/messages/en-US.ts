@@ -7,6 +7,8 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入、提示词或翻译结果。
  */
 import videoLearningText from './video-learning/en-US.json';
+import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/en-US.json';
@@ -28,6 +30,7 @@ export const enUSMessages = {
     "popup.compact.translate": "Translate",
     "popup.compact.restore": "Restore",
     ...videoLearningText,
+    ...compositeTranslationMessages['en-US'],
     ...pdfReadingMessages['en-US'],
     ...informationHighlightMessages['en-US'],
     ...reencounterText,
@@ -533,6 +536,7 @@ export const enUSMessages = {
     "settings.requestLimits.modelTitle": "Model request limits",
     "settings.requestLimits.globalTitle": "Request limits",
     "settings.requestLimits.globalHelp": "Services and models without custom settings share these limits.",
+    ...aiRequestTimeoutMessages["en-US"],
     "settings.requestLimits.retryIntervals": "Retry intervals",
     "settings.requestLimits.apiKeyRecovery": "Failed key cooldown",
     "settings.requestLimits.apiKeyRecoveryHelp": "Temporarily skip a key after an authentication, quota, or rate-limit failure. A server-provided Retry-After takes priority.",
@@ -2419,6 +2423,7 @@ const enUSLegacyTextBase: Readonly<Record<string, string>> = {
 
 export const enUSLegacyText: Readonly<Record<string, string>> = {
     ...googleDriveText.legacy,
+    ...compositeTranslationLegacyText['en-US'],
     ...cloudBackupText.legacy,
     "腾讯交互翻译": "Tencent TranSmart",
     "火山翻译": "Volcengine Translate",
