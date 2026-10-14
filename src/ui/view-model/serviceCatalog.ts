@@ -6,6 +6,7 @@
  */
 import { resolveConfiguredModel, services } from '@/src/core/config/catalog'
 import { isCustomOpenAIProviderId } from '@/src/core/config/customOpenAI'
+import { isCompositeTranslationProviderId } from '@/src/core/config/compositeTranslation'
 
 export interface ServiceWebsite {
   url: string
@@ -172,6 +173,7 @@ export function getServiceWebsite(
   service: string,
   context: { endpoint?: string; minimaxRegion?: string } = {},
 ): ServiceWebsite | undefined {
+  if (isCompositeTranslationProviderId(service)) return {url: serviceGuide, kind: 'documentation'}
   if (isCustomOpenAIProviderId(service) || service === services.custom || service === services.newapi) {
     try {
       const endpoint = new URL(context.endpoint || '')

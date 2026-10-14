@@ -22,6 +22,8 @@ export {
     getCustomOpenAIProvider,
     withCustomOpenAIServiceOptions,
 } from '@/src/core/config/customOpenAI';
+export {getCompositeTranslationConfigFingerprint, hasCompositeTranslationAIContext, isCompositeTranslationProviderId,
+    withCompositeTranslationServiceOptions} from '@/src/core/config/compositeTranslation';
 export {
     config as runtimeConfig,
     configReady,

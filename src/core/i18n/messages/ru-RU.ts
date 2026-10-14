@@ -6,6 +6,7 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/ru-RU.json';
+import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
@@ -27,6 +28,7 @@ export const ruRUMessages = {
     "popup.compact.translate": "Перевести",
     "popup.compact.restore": "Вернуть",
     ...videoLearningText,
+    ...compositeTranslationMessages['ru-RU'],
     ...pdfReadingMessages['ru-RU'],
     ...informationHighlightMessages['ru-RU'],
     ...reencounterText,
@@ -2431,6 +2433,7 @@ const ruRULegacyTextBase: Readonly<Record<string, string>> = {
 
 export const ruRULegacyText: Readonly<Record<string, string>> = {
     ...googleDriveText.legacy,
+    ...compositeTranslationLegacyText['ru-RU'],
     ...cloudBackupText.legacy,
     "腾讯交互翻译": "Tencent TranSmart",
     "火山翻译": "Перевод Volcengine",

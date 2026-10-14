@@ -102,7 +102,7 @@ describe('translation center independent comparison sessions', () => {
     expect(isComparisonStale(card, input())).toBe(false);
     card.input = input();
     expect(isComparisonStale(card, input('  Original '))).toBe(false);
-    for (const change of [{text: 'new'}, {sourceLanguage: 'auto'}, {targetLanguage: 'ja'}, {model: 'b'}]) {
+    for (const change of [{text: 'new'}, {sourceLanguage: 'auto'}, {targetLanguage: 'ja'}, {model: 'b'}, {connectionFingerprint: 'composite-v1:changed'}]) {
       expect(isComparisonStale(card, {...input(), ...change})).toBe(true);
     }
   });

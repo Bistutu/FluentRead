@@ -2,12 +2,15 @@
  * @file src/providers/translation/connectionTest.ts
  *
  * 文件职责：通过真实 provider registry 执行最小翻译连接测试，覆盖服务鉴权、端点、模型配置和响应解析。
- * 主要内容：使用固定英文测试文本调用指定适配器，为 MyMemory 和免费池单服务指定测试语言对，逐服务检查使用匿名适配器与配置等待上限，传递共享调度租约直到真实传输结束，验证非空结果并返回耗时；formatConnectionTestError 将失败转换为可读消息。
+ * 主要内容：使用固定英文测试文本调用指定适配器，为 MyMemory 和免费池单服务指定测试语言对；组合服务按配置策略逐成员检查，沿用冻结凭据、成员模型、共享总预算和取消边界，模型用量仍记录真实服务；传递共享调度租约直到真实传输结束，验证非空结果并返回耗时；formatConnectionTestError 将失败转换为可读消息。
  * 模块边界：本文件位于 provider 适配层，只把统一翻译请求转换为外部或浏览器服务协议；不管理页面 DOM、UI 生命周期或配置持久化，缓存、去重和超时总预算由 translation broker 统一协调。
  */
 
 import {translationProviderRegistry} from './registry';
-import {services} from '@/src/core/config/catalog';
+import {resolveConfiguredModel, services, servicesType} from '@/src/core/config/catalog';
+import {getCompositeTranslationProvider, isCompositeTranslationProviderId} from '@/src/core/config/compositeTranslation';
+import {resolveTranslationRequestModel} from '@/src/core/config/requestModel';
+import {createCompositeTranslationRoutingState} from '@/src/services/translation/compositeRouting';
 import {formatServiceError} from '@/src/services/translation/serviceErrors';
 import {isCustomOpenAIProviderId, LEGACY_CUSTOM_OPENAI_PROVIDER_ID} from '@/src/core/config/customOpenAI';
 import {
@@ -31,6 +34,8 @@ import {translateFreeTranslationProvider} from './free-translation';
 
 export const CONNECTION_TEST_ORIGIN = 'Hello from FluentRead.';
 export const CONNECTION_TEST_TIMEOUT_MS = 30_000;
+const COMPOSITE_CONNECTION_TEST_TIMEOUT_MS = 45_000;
+const compositeRouting = createCompositeTranslationRoutingState();
 
 export interface ConnectionTestUsageOptions {
     configSnapshot?: TranslationProviderConfigSnapshot;
@@ -46,6 +51,9 @@ export interface ConnectionTestUsageOptions {
     effectiveModel?: string;
     countRate?: boolean;
     freeProviderId?: unknown;
+    /** 内部组合成员继承的剩余时间，不能重新取得完整连接检查预算。 */
+    requestTimeoutMs?: number;
+    signal?: AbortSignal;
 }
 
 function isNonEmptyText(value: unknown): value is string {
@@ -57,6 +65,8 @@ export async function runTranslationServiceConnectionTest(
     service: string,
     usageOptions: ConnectionTestUsageOptions = {},
 ): Promise<{durationMs: number}> {
+    if (usageOptions.signal?.aborted) throw connectionTestAbortError();
+    if (isCompositeTranslationProviderId(service)) return runCompositeConnectionTest(service, usageOptions);
     const freeProviderId = usageOptions.freeProviderId;
     if (freeProviderId !== undefined && (service !== services.freeTranslation || !isFreeTranslationProviderId(freeProviderId))) {
         throw new Error('无效的免费翻译服务');
@@ -79,8 +89,10 @@ export async function runTranslationServiceConnectionTest(
     const effectiveModel = usageOptions.effectiveModel?.trim() || configuredModel;
     const controller = new AbortController();
     const snapshot = usageOptions.config ?? usageOptions.configSnapshot;
-    const timeoutMs = freeProviderId === undefined ? CONNECTION_TEST_TIMEOUT_MS
+    const configuredTimeoutMs = freeProviderId === undefined ? CONNECTION_TEST_TIMEOUT_MS
         : normalizeFreeTranslationTimeoutMs(snapshot?.freeTranslationTimeoutMs);
+    const timeoutMs = normalizeConnectionTestTimeout(usageOptions.requestTimeoutMs, configuredTimeoutMs,
+        freeProviderId === undefined ? COMPOSITE_CONNECTION_TEST_TIMEOUT_MS : configuredTimeoutMs);
     let timedOut = false;
     let timer: ReturnType<typeof setTimeout>;
     const timeout = new Promise<never>((_resolve, reject) => {
@@ -89,6 +101,15 @@ export async function runTranslationServiceConnectionTest(
             controller.abort();
             reject(new Error('翻译请求超时'));
         }, timeoutMs);
+    });
+    let cleanupExternalAbort!: () => void;
+    const abort = new Promise<never>((_resolve, reject) => {
+        usageOptions.signal?.addEventListener('abort', abortConnectionTest, {once: true});
+        function abortConnectionTest() {
+            controller.abort();
+            reject(connectionTestAbortError());
+        }
+        cleanupExternalAbort = () => usageOptions.signal?.removeEventListener('abort', abortConnectionTest);
     });
 
     try {
@@ -135,7 +156,7 @@ export async function runTranslationServiceConnectionTest(
                     countRate: usageOptions.countRate !== false,
                 })
                 : Promise.resolve().then(() => adapter(requestWithConfig));
-            const response = await Promise.race([transport, timeout]);
+            const response = await Promise.race([transport, timeout, abort]);
             if (!isNonEmptyText(response)) throw new Error('服务已响应，但没有返回有效译文');
             if (freeProviderId !== undefined && response.trim() === CONNECTION_TEST_ORIGIN) {
                 throw new Error('服务已响应，但未翻译测试文本');
@@ -157,6 +178,7 @@ export async function runTranslationServiceConnectionTest(
         await Promise.race([
             selectedKeyRequest,
             timeout,
+            abort,
         ]);
         clearTimeout(timer!);
         finishedAt = now();
@@ -180,6 +202,7 @@ export async function runTranslationServiceConnectionTest(
         throw error;
     } finally {
         clearTimeout(timer!);
+        cleanupExternalAbort();
     }
 
     return {durationMs: Math.max(0, finishedAt - startedAt)};
@@ -209,6 +232,61 @@ export async function runTranslationServiceConnectionTest(
             },
         );
     }
+}
+
+function connectionTestAbortError(): Error {
+    const error = new Error('翻译请求已取消');
+    error.name = 'AbortError';
+    return error;
+}
+
+function normalizeConnectionTestTimeout(value: number | undefined, fallback: number, maximum = fallback): number {
+    return typeof value === 'number' && Number.isFinite(value)
+        ? Math.max(1, Math.min(maximum, Math.trunc(value)))
+        : fallback;
+}
+
+/** 组合检查沿用相同成员配置与实际 provider 路径，逐项用量仍归属真实服务。 */
+async function runCompositeConnectionTest(service: string, options: ConnectionTestUsageOptions): Promise<{durationMs: number}> {
+    if (options.keyIndex !== undefined || options.keyRevision !== undefined || options.freeProviderId !== undefined) {
+        throw new Error('组合翻译连接检查不支持指定 Key 或免费线路');
+    }
+    const snapshot = options.config ?? options.configSnapshot;
+    if (!snapshot) throw new Error('组合翻译连接检查缺少配置快照');
+    const profile = getCompositeTranslationProvider(snapshot.compositeTranslationProviders, service);
+    if (!profile) throw new Error('组合翻译服务已被删除，请重新选择');
+    if (profile.services.length === 0) throw new Error('组合翻译尚未添加成员服务');
+    const now = options.now ?? Date.now;
+    const startedAt = now();
+    const deadlineAt = startedAt + normalizeConnectionTestTimeout(options.requestTimeoutMs, COMPOSITE_CONNECTION_TEST_TIMEOUT_MS);
+    let lastError: unknown;
+    for (const member of compositeRouting.order(profile)) {
+        if (options.signal?.aborted) throw connectionTestAbortError();
+        // 受信旧快照也不能让组合引用自己或递归嵌套。
+        if (isCompositeTranslationProviderId(member)) continue;
+        const remaining = deadlineAt - now();
+        if (remaining <= 0) throw new Error('翻译请求超时');
+        const memberStartedAt = now();
+        try {
+            await runTranslationServiceConnectionTest(member, {
+                ...options,
+                config: snapshot,
+                configSnapshot: snapshot,
+                configuredModel: resolveConfiguredModel(snapshot.model[member], snapshot.customModel[member]),
+                effectiveModel: resolveTranslationRequestModel(snapshot, member, undefined, servicesType.isAiSdk, servicesType.isAI),
+                countRate: !servicesType.isAiSdk(member),
+                requestTimeoutMs: Math.min(profile.timeoutMs, remaining),
+            });
+            if (options.signal?.aborted) throw connectionTestAbortError();
+            compositeRouting.record(profile.id, member, true, Math.max(0, now() - memberStartedAt));
+            return {durationMs: Math.max(0, now() - startedAt)};
+        } catch (error) {
+            if (options.signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error;
+            compositeRouting.record(profile.id, member, false, Math.max(0, now() - memberStartedAt));
+            lastError = error;
+        }
+    }
+    throw lastError ?? new Error('组合翻译没有可用的成员服务');
 }
 
 function isTimeoutError(error: unknown): boolean {

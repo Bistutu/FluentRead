@@ -30,6 +30,7 @@ import {
     getTranslationGlossarySourceText,
     getTranslationGlossaryTerms,
     getTranslationRequestControl,
+    attachTranslationRequestControl,
     getTranslationImageInput,
     attachTranslationImageInput,
     TRANSLATION_REMAINING_BUDGET,
@@ -41,7 +42,7 @@ import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse} from '@/sr
 import {hasTranslationContent} from '@/src/core/translation/result';
 import {isNativeBatchResponseError, validateNativeBatchResults} from '@/src/core/translation/nativeBatch';
 import {buildGlossaryRevision, resolveGlossary} from '@/src/core/glossary';
-import {supportsNativeTranslationBatch, supportsTranslationGlossary} from './capabilities';
+import {supportsNativeTranslationBatch, supportsTranslationBatch, supportsTranslationGlossary} from './capabilities';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {getGlossaryProtectionEntries, isGlossaryOnlyResult, prepareGlossaryRequest} from './glossaryProtection';
@@ -50,6 +51,8 @@ import {
     isLikelyPageContextLeak,
 } from '@/src/core/translation/prompts';
 import {isCustomOpenAIProviderId, LEGACY_CUSTOM_OPENAI_PROVIDER_ID} from '@/src/core/config/customOpenAI';
+import {getCompositeTranslationProvider, isCompositeTranslationProviderId} from '@/src/core/config/compositeTranslation';
+import {createCompositeTranslationRoutingState} from './compositeRouting';
 import {resolveCloudRegion, services} from '@/src/core/config/catalog';
 import {resolveTranslationRequestModel} from '@/src/core/config/requestModel';
 import {getAliyunTranslationEndpoint} from '@/src/core/config/constants';
@@ -108,6 +111,7 @@ interface TranslationRequestExecution {
     readonly targetLanguage: string;
     readonly enableAIContext: boolean;
     readonly nativeBatchEnabled: boolean;
+    readonly compositeMember?: boolean;
     readonly thinking: boolean;
     readonly abortSignal?: AbortSignal;
     readonly ownershipKey?: string;
@@ -209,6 +213,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
     let cacheGeneration = 0;
     let cacheClearBarrier: Promise<void> | null = null;
     const now = deps.now ?? (() => Date.now());
+    const compositeRouting = createCompositeTranslationRoutingState({now});
     const logger = deps.logger ?? console;
     const requestScheduler = deps.requestScheduler ?? createTranslationRequestScheduler(
         () => deps.getConfig() as unknown as {
@@ -1070,6 +1075,17 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 startWithoutPageContext,
             );
         }
+        if (execution.compositeMember && !supportsTranslationBatch(execution.service)) {
+            // 单条协议的成员逐段执行，仍只在整批校验成功后发布组合批次缓存。
+            const translated: string[] = [];
+            for (const origin of message.origin) {
+                const single = {...message, origin};
+                translated.push(startWithoutPageContext
+                    ? await callSingleProviderWithoutPageContext(execution, single, requestDeadline, pageContext)
+                    : await callSingleProviderWithContextRecovery(execution, single, context, pageContext, requestDeadline));
+            }
+            return requireBatchResult(translated, message.origin.length);
+        }
         const nativeOrigins = nativeBatch ? [...message.origin] : message.origin;
         let results: string[];
         try {
@@ -1686,6 +1702,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         message: TranslationRequestMessage,
         trace: TranslationRequestTrace,
         providerStartedAt: number,
+        compositeMember = false,
     ): Promise<string | string[]> {
         const requestControl = getTranslationRequestControl(message);
         throwIfRequestAborted(requestControl?.signal);
@@ -1711,6 +1728,60 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             ? normalizeAiRequestTimeoutMs(current.aiRequestTimeoutMs) : DEFAULT_PROVIDER_TIMEOUT_MS);
         const providerDeadline = providerStartedAt + providerBudget;
         trace.serviceId = selectedService;
+        if (isCompositeTranslationProviderId(selectedService)) {
+            const profile = getCompositeTranslationProvider(current.compositeTranslationProviders, selectedService);
+            if (!profile) throw new Error('组合翻译服务已被删除，请重新选择服务');
+            if (!profile.services.length) throw new Error('请先为组合翻译添加至少一个服务');
+            let lastError: unknown;
+            for (const member of compositeRouting.order(profile)) {
+                throwIfRequestAborted(requestControl?.signal);
+                // 即使受信快照含未规范化的旧配置，也不允许递归组合或自引用。
+                if (isCompositeTranslationProviderId(member)) continue;
+                const startedAt = now();
+                const remaining = Math.min(profile.timeoutMs, getRemainingDeadlineMs(providerDeadline));
+                const child = attachTranslationProviderConfig({
+                    ...message,
+                    serviceOverride: member,
+                    requestTimeoutMs: remaining,
+                    [TRANSLATION_REMAINING_BUDGET]: true,
+                }, current);
+                // 组合使用成员各自的模型、Thinking 和合批偏好，入口模型不能覆盖整组。
+                delete child.modelOverride;
+                delete child.thinkingOverride;
+                delete child.enableNativeBatch;
+                if (requestControl) attachTranslationRequestControl(child, requestControl);
+                const memberTrace: TranslationRequestTrace = {
+                    cachedSegments: 0, shared: false, upstreamCalls: 0, upstreamMs: 0, routeAttempts: [],
+                };
+                try {
+                    const result = await executeTranslation(child, memberTrace, startedAt, true);
+                    throwIfRequestAborted(requestControl?.signal);
+                    // 缓存和共享请求不代表上游响应速度，不能让它们污染智能选择。
+                    if (memberTrace.upstreamCalls > 0 && !memberTrace.shared) {
+                        compositeRouting.record(profile.id, member, true, now() - startedAt);
+                    }
+                    trace.cachedSegments = memberTrace.cachedSegments;
+                    trace.shared = memberTrace.shared;
+                    trace.model = memberTrace.model;
+                    collectRouteAttempt(trace, {route: member, outcome: 'success',
+                        durationMs: now() - startedAt, chars: measureTranslationText(message.origin).chars});
+                    return result;
+                } catch (error) {
+                    throwIfRequestAborted(requestControl?.signal);
+                    if (error instanceof GlossaryRevisionChangedError
+                        || (error instanceof Error && error.name === 'AbortError')) throw error;
+                    lastError = error;
+                    compositeRouting.record(profile.id, member, false, now() - startedAt);
+                    collectRouteAttempt(trace, {route: member, outcome: modelUsageOutcome(error),
+                        durationMs: now() - startedAt, chars: measureTranslationText(message.origin).chars});
+                } finally {
+                    trace.upstreamCalls += memberTrace.upstreamCalls;
+                    trace.upstreamMs += memberTrace.upstreamMs;
+                    for (const attempt of memberTrace.routeAttempts) collectRouteAttempt(trace, attempt);
+                }
+            }
+            throw lastError ?? new Error('组合翻译没有可用的成员服务');
+        }
         if (deps.serviceTypes.isAI(selectedService)) {
             trace.model = cleanModelName(getEffectiveRequestModel(current, selectedService, message.modelOverride));
         }
@@ -1767,6 +1838,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             enableAIContext: message.enableAIContext ?? current.enableAIContext,
             nativeBatchEnabled: supportsNativeTranslationBatch(selectedService) && (message.enableNativeBatch
                 ?? isNativeTranslationBatchEnabled(selectedService, current.nativeBatchTranslationEnabled)),
+            compositeMember,
             thinking: message.thinkingOverride ?? isModelThinkingEnabled(
                 current.modelThinking,
                 selectedService,

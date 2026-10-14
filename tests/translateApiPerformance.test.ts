@@ -1,5 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {buildGlossaryRevision, type GlossaryLibrary} from '@/src/core/glossary';
+import type {CompositeTranslationProvider} from '@/src/core/config/compositeTranslation';
 
 const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(),
@@ -32,6 +33,7 @@ const mocks = vi.hoisted(() => ({
     enableAIContext: false,
     nativeBatchTranslationEnabled: {} as Record<string, boolean>,
     videoService: 'mock',
+    compositeTranslationProviders: [] as CompositeTranslationProvider[],
     aiRequestTimeoutMs: undefined as number | undefined,
   },
 }));
@@ -127,6 +129,7 @@ describe('translation API request lifecycle performance', () => {
     mocks.config.nativeBatchTranslationEnabled = {};
     mocks.config.service = 'mock';
     mocks.config.videoService = 'mock';
+    mocks.config.compositeTranslationProviders = [];
     mocks.config.aiRequestTimeoutMs = undefined;
     mocks.config.from = 'en';
     mocks.config.to = 'zh-CN';
@@ -1096,6 +1099,22 @@ describe('translation API request lifecycle performance', () => {
       pageContext,
     }));
     expect(mocks.config.enableAIContext).toBe(true);
+  });
+
+  it.each(['single', 'batch', 'video'] as const)('%s 组合中的通用 AI 成员保留页面上下文，纯机器组合不提取', async kind => {
+    mocks.config.enableAIContext = true;
+    mocks.config.service = 'composite:context';
+    mocks.config.videoService = 'composite:context';
+    mocks.config.compositeTranslationProviders = [{id: 'composite:context', name: '上下文组合', strategy: 'sequential', services: ['mock', 'mock-ai'], timeoutMs: 12_000}];
+    mocks.getPageTranslationContext.mockResolvedValue('Combined page context');
+    mocks.sendMessage.mockImplementation(({origin}: {origin: string | string[]}) => Promise.resolve(Array.isArray(origin) ? ['译文'] : '译文'));
+    await contextGateRequest(kind);
+    expect(mocks.getPageTranslationContext).toHaveBeenCalledOnce();
+    expect(mocks.sendMessage).toHaveBeenLastCalledWith(expect.objectContaining({serviceOverride: 'composite:context', pageContext: 'Combined page context'}));
+    mocks.config.compositeTranslationProviders[0].services = ['mock'];
+    await contextGateRequest(kind);
+    expect(mocks.getPageTranslationContext).toHaveBeenCalledOnce();
+    expect(mocks.sendMessage).toHaveBeenLastCalledWith(expect.objectContaining({serviceOverride: 'composite:context', pageContext: undefined}));
   });
 
   it('显式 AI 上下文策略覆盖实时配置并原样发送给 background', async () => {

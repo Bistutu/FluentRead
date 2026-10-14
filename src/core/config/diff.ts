@@ -442,6 +442,17 @@ function formatCustomOpenAIProviders(value: unknown): string {
     });
 }
 
+function formatCompositeTranslationProviders(value: unknown): string {
+    if (!Array.isArray(value) || value.length === 0) return '无';
+    return formatArray(value, (item) => {
+        if (!isRecord(item)) return formatValue(item);
+        const name = typeof item.name === 'string' && item.name.trim() ? item.name.trim() : '未命名组合';
+        const strategy = item.strategy === 'random' ? '随机' : item.strategy === 'smart' ? '智能' : '轮流';
+        const members = Array.isArray(item.services) ? formatArray(item.services, formatService) : '无';
+        return `${name}（${strategy}；成员：${members}；单次超时：${formatValue(item.timeoutMs)} ms）`;
+    });
+}
+
 function formatQuickTranslationProfiles(value: unknown): string {
     if (!Array.isArray(value) || value.length === 0) return '无';
     return value.map((item) => {
@@ -549,6 +560,7 @@ const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
     service: {group: 'general', label: '默认翻译服务', format: formatService},
     favoriteServices: {group: 'translationServices', label: '常用翻译服务', format: (value) => Array.isArray(value) ? formatArray(value, formatService) : formatValue(value)},
     customOpenAIProviders: {group: 'translationServices', label: '自定义 OpenAI 服务', format: formatCustomOpenAIProviders},
+    compositeTranslationProviders: {group: 'translationServices', label: '组合翻译服务', format: formatCompositeTranslationProviders},
     apiKeyRotationEnabled: {group: 'translationServices', label: '自动轮换', format: value => formatRecord(configRecord(value))},
     model: {group: 'translationServices', label: '服务模型', mapping: serviceMapping('模型')},
     customModel: {group: 'translationServices', label: '自定义模型', mapping: serviceMapping('自定义模型')},

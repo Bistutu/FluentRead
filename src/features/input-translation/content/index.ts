@@ -12,6 +12,7 @@ import type { ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shad
 import {services as translationServices, servicesType} from '@/src/core/config/catalog';
 import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {parseApiKeyRequirementKey} from '@/src/core/config/validation';
+import {getCompositeTranslationConfigFingerprint} from '@/src/core/config/compositeTranslation';
 import {normalizeUiLanguage, translateLegacyText} from '@/src/core/i18n';
 import {normalizeInputBoxTranslationOutputMode, type InputBoxTranslationOutputMode} from '@/src/core/config/inputTranslation';
 import {
@@ -95,6 +96,8 @@ function hashConfigValue(value: unknown): string {
 function inputBoxTranslationConnectionKey(value: InputTranslationContentConfig): string {
     const source = value as unknown as Record<string, unknown>;
     const service = value.inputBoxTranslationService || value.service || translationServices.freeTranslation;
+    const compositeFingerprint = getCompositeTranslationConfigFingerprint(value, service);
+    if (compositeFingerprint) return compositeFingerprint;
     const serviceValue = (key: string): unknown => {
         const candidate = source[key];
         if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {

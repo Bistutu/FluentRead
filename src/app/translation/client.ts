@@ -1,7 +1,7 @@
 /**
  * @file src/app/translation/client.ts
  * 文件职责：作为页面与后台翻译 broker 之间的客户端代理，统一管理单条、批量和视频字幕翻译的队列、取消、重试、超时、上下文与统计。
- * 主要内容：在等待前冻结调用选项、原文数组、服务/模型与语言参数及各服务原生合批偏好，单条与批量文本共用同目标预检，批量只发送待译片段并按原索引回填，显式 skipLanguageDetection 可强制发送；免费聚合及谷歌内部换线免除外层重复重试，验证凭据与页面摘要上下文，使用 runtime 协议分派请求，AI 默认在等待前冻结用户请求预算并额外预留一秒收取后台结果；为带调用者取消信号的文本、批量请求以及视频和 Chrome 内置翻译携带随机 clientRequestId，auto 时转发纯检测样本，并在页面取消/超时时通知后台停止真实 provider。 自动页面摘要等待随本调用信号结束，不中断其他调用共用的正文提取。
+ * 主要内容：在等待前冻结调用选项、原文数组、服务/模型与语言参数及各服务原生合批偏好，单条与批量文本共用同目标预检，批量只发送待译片段并按原索引回填，显式 skipLanguageDetection 可强制发送；免费聚合及谷歌内部换线免除外层重复重试，验证凭据与页面摘要上下文；所选组合含通用 AI 成员时保留其可消费的上下文，使用 runtime 协议分派请求，AI 默认在等待前冻结用户请求预算并额外预留一秒收取后台结果；为带调用者取消信号的文本、批量请求以及视频和 Chrome 内置翻译携带随机 clientRequestId，auto 时转发纯检测样本，并在页面取消/超时时通知后台停止真实 provider。自动页面摘要等待随本调用信号结束，不中断其他调用共用的正文提取。
  * 模块边界：客户端不实现供应商协议、不直接读写翻译缓存，也不修改全文 DOM；内部槽请求保留空响应供调用方严格解析和逐槽回退，后台 runtime/broker 负责 provider 与缓存，各 feature 负责展示和会话状态。
  */
 /**
@@ -12,6 +12,7 @@
 import browser from 'webextension-polyfill';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import {resolveConfiguredModel, services, servicesType} from '@/src/core/config/catalog';
+import {hasCompositeTranslationAIContext} from '@/src/core/config/compositeTranslation';
 import {isModelThinkingEnabled} from '@/src/core/config/modelThinking';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
@@ -684,7 +685,7 @@ async function resolvePageContext(
   const service = serviceOverride || config.service;
   const selectedModel = resolveConfiguredModel(modelOverride || config.model[service], modelOverride || config.customModel[service]);
   if (!(enableAIContextOverride ?? config.enableAIContext)
-    || !servicesType.isUseAIContext(service, selectedModel)) return undefined;
+    || !(servicesType.isUseAIContext(service, selectedModel) || hasCompositeTranslationAIContext(config, service))) return undefined;
   const supplied = suppliedContext?.trim().slice(0, 4000);
   if (supplied) return supplied;
   throwIfAborted(signal);

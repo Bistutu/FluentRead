@@ -169,6 +169,7 @@ import {ElMessage} from 'element-plus';
 import browser from 'webextension-polyfill';
 import {getMultilingualTargetLanguageLabel, options} from '@/src/core/config/catalog';
 import {getCustomOpenAIProviderLabel} from '@/src/core/config/customOpenAI';
+import {getCompositeTranslationProvider} from '@/src/core/config/compositeTranslation';
 import {buildConfigDiff, type ConfigDiffResult} from '@/src/core/config/diff';
 import {buildConfigHistoryTimeline, type ConfigHistoryTimelineEntry} from '../model/configHistory';
 import type {Config} from '@/src/core/config/model';
@@ -249,6 +250,7 @@ function snapshotSummary(value: ConfigHistoryEntry['config'] | ConfigAutoBackupE
     language.value,
   );
   const service = options.services.find((item: any) => item.value === value.service)?.label
+    || getCompositeTranslationProvider(value.compositeTranslationProviders, value.service)?.name
     || getCustomOpenAIProviderLabel(value.customOpenAIProviders, value.service);
   const rules = (value.alwaysTranslateDomains?.length || 0) + (value.disabledExtensionDomains?.length || 0);
   return `${target} · ${translateLegacy(service)} · ${translateLegacy(`${rules} 条网站规则`)}`;

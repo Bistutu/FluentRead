@@ -88,6 +88,11 @@ export default defineConfig({
         // 按真实规则内容验证共享词书样式，与普通测试配置一致。
         css: {include: [/(?:src\/app\/content\/page|src\/ui\/styles\/(?:translation-display|bilingual-sentence-highlight|vocabulary-reencounter))\.css(?:\?|$)/]},
         include: [
+            'tests/compositeTranslationConfig.test.ts',
+            'tests/compositeTranslationRouting.test.ts',
+            'tests/compositeTranslationBroker.test.ts',
+            'tests/compositeTranslationConnection.test.ts',
+            'tests/compositeServiceEditor.test.ts',
             'tests/userscriptViteConfig.test.ts',
             'tests/personalCorrectionMemory.test.ts',
             'tests/personalCorrectionDom.test.ts',
@@ -670,6 +675,10 @@ export default defineConfig({
             reportsDirectory: 'coverage/core',
             reporter: ['text', 'json-summary', 'json', 'html'],
             include: [
+                'src/core/config/compositeTranslation.ts',
+                'src/core/i18n/messages/compositeTranslation.ts',
+                'src/services/translation/compositeRouting.ts',
+                'src/ui/view-model/compositeServiceEditor.ts',
                 'userscript/inlineCssPlugin.ts',
                 'src/app/options/aboutImages.ts',
                 'src/core/personal-corrections/model.ts',

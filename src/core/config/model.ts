@@ -2,7 +2,7 @@
  * @file src/core/config/model.ts
  *
  * 文件职责：定义 FluentRead 完整配置模型、默认值及各项设置的合法范围，包括默认开启并按服务独立保存的原生翻译合批偏好，是配置读取、保存、迁移和 UI 绑定共同依赖的领域契约。
- * 主要内容：支持单图选择本地识别引擎，包含正文/全部节点识别范围，保留各功能独立服务，并将所有功能服务的空值解释为继承网页默认；统一中文简繁标识及历史配置别名，并保存常用服务顺序，保存默认空的 Origin/Referer 域名移除名单，包含 Config 接口、字幕和翻译模式类型、延迟与字号范围、默认 API 地址及多项功能开关，使新增配置项在一个位置获得类型和初始语义；归一化时以迭代克隆保留深层数据和共享引用，安全迁移任意自有凭据键，升级历史默认提示词，只迁移已登记模型编号，并在线性目录遍历中保护自定义服务的当前模型和 Thinking 偏好。 可核对的公开符号包括 DeepSeekApiType、DeepSeekThinkingMode、VideoSubtitleDisplayMode、FullPageTranslationMode、DEFAULT_VIDEO_SUBTITLE_FONT_SIZE、DEFAULT_NEW_API_URL、DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY。
+ * 主要内容：支持单图选择本地识别引擎，包含正文/全部节点识别范围，保留各功能独立服务，并将所有功能服务的空值解释为继承网页默认；统一中文简繁标识及历史配置别名，并保存常用服务顺序，保存默认空的 Origin/Referer 域名移除名单和组合翻译配置；组合成员只引用普通服务，删除自定义成员与组合时精确清理无效选择，包含 Config 接口、字幕和翻译模式类型、延迟与字号范围、默认 API 地址及多项功能开关，使新增配置项在一个位置获得类型和初始语义；归一化时以迭代克隆保留深层数据和共享引用，安全迁移任意自有凭据键，升级历史默认提示词，只迁移已登记模型编号，并在线性目录遍历中保护自定义服务的当前模型和 Thinking 偏好。 可核对的公开符号包括 DeepSeekApiType、DeepSeekThinkingMode、VideoSubtitleDisplayMode、FullPageTranslationMode、DEFAULT_VIDEO_SUBTITLE_FONT_SIZE、DEFAULT_NEW_API_URL、DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY。
  * AI 翻译超时：默认等待 120 秒，读取、导入及同步配置时共用 10 至 600 秒的有限数字毫秒规范化规则。
  * 模块边界：本文件属于 core 领域层，只定义规则、类型与纯转换；个人校订默认关闭且仅接受显式布尔开启，userscript 不保留该不可用设置；不直接读写浏览器存储、不发起网络请求、不挂载 Vue/WXT 入口，持久化、协议调用和界面编排分别由 services、providers 与 features 承担。
  */
@@ -37,6 +37,12 @@ import {
     normalizeCustomOpenAIProviders,
     type CustomOpenAIProvider,
 } from './customOpenAI';
+import {
+    isCompositeTranslationProviderId,
+    isConfiguredCompositeTranslationProvider,
+    normalizeCompositeTranslationProviders,
+    type CompositeTranslationProvider,
+} from './compositeTranslation';
 import {
     DEFAULT_FREE_TRANSLATION_ORDER, DEFAULT_FREE_TRANSLATION_TIMEOUT_MS, DEFAULT_FREE_TRANSLATION_COOLDOWN_MS,
     normalizeFreeTranslationOrder, normalizeFreeTranslationTimeoutMs, normalizeFreeTranslationCooldownMs,
@@ -402,6 +408,7 @@ export class Config {
     customModels: Record<string, string[]>; // 按内置服务保存的自定义模型列表
     modelThinking: ModelThinkingMapping; // 按服务和实际模型保存 Thinking 开关，缺省为关闭
     customOpenAIProviders: CustomOpenAIProvider[]; // 用户保存的 OpenAI-compatible 自定义服务（不含凭据）
+    compositeTranslationProviders: CompositeTranslationProvider[]; // 组合策略与普通成员的公开配置（不含统计或凭据）
     favoriteServices: string[]; // 用户标记的常用翻译服务，按标记顺序保存
     requestHeaderRules: RequestHeaderRule[]; // 用户指定精确域名的 Origin/Referer 移除名单，默认空
     customHeaders: IMapping; // 自定义服务 HTTP 请求头 JSON，按服务隔离并作为凭据保存
@@ -609,6 +616,7 @@ export class Config {
         this.customModels = {};
         this.modelThinking = {};
         this.customOpenAIProviders = [];
+        this.compositeTranslationProviders = [];
         this.favoriteServices = [];
         this.customBody = {};
         this.customHeaders = {};
@@ -1224,31 +1232,33 @@ export function normalizeConfig(value: unknown): Config {
     normalized.deeplApiPlan = normalizeDeepLApiPlan(source.deeplApiPlan);
     if (typeof normalized.newApiUrl !== 'string') normalized.newApiUrl = DEFAULT_NEW_API_URL;
     normalizeCustomOpenAIProviderState(normalized, source);
+    normalized.compositeTranslationProviders = normalizeCompositeTranslationProviders(source.compositeTranslationProviders, normalized.customOpenAIProviders);
     normalized.favoriteServices = Array.isArray(source.favoriteServices)
         ? [...new Set(source.favoriteServices.filter(service =>
-            typeof service === 'string' && isSupportedTranslationService(service, normalized.customOpenAIProviders)))].slice(0, 100)
+            typeof service === 'string' && isSupportedTranslationService(service, normalized.customOpenAIProviders, normalized.compositeTranslationProviders)))].slice(0, 100)
         : [];
     normalized.inputBoxTranslationService = normalizeInputBoxTranslationService(
         source.inputBoxTranslationService,
         normalized.customOpenAIProviders,
+        normalized.compositeTranslationProviders,
     );
     normalized.writing = normalizeWritingPreferences(source.writing, normalized.customOpenAIProviders);
     normalized.harness = normalizeHarnessPreferences(source.harness, normalized.customOpenAIProviders);
 
-    if (!isSupportedTranslationService(normalized.service, normalized.customOpenAIProviders)) {
+    if (!isSupportedTranslationService(normalized.service, normalized.customOpenAIProviders, normalized.compositeTranslationProviders)) {
         normalized.service = defaultOption.service;
     }
 
-    if (!isSupportedTranslationService(normalized.documentService, normalized.customOpenAIProviders)) {
+    if (!isSupportedTranslationService(normalized.documentService, normalized.customOpenAIProviders, normalized.compositeTranslationProviders)) {
         normalized.documentService = '';
     }
 
     for (const field of ['hoverTranslationService', 'selectionTranslationService', 'imageTranslationService'] as const) {
-        normalized[field] = isSupportedTranslationService(source[field], normalized.customOpenAIProviders) ? source[field] : '';
+        normalized[field] = isSupportedTranslationService(source[field], normalized.customOpenAIProviders, normalized.compositeTranslationProviders) ? source[field] : '';
     }
 
     normalized.areaTranslationMode = source.areaTranslationMode === 'ai' ? 'ai' : 'standard';
-    normalized.areaTranslationService = isSupportedTranslationService(source.areaTranslationService, normalized.customOpenAIProviders)
+    normalized.areaTranslationService = isSupportedTranslationService(source.areaTranslationService, normalized.customOpenAIProviders, normalized.compositeTranslationProviders)
         ? source.areaTranslationService : '';
     normalized.areaRecognitionMode = source.areaRecognitionMode === 'ocr' ? 'ocr' : 'prefer-vision';
     normalized.areaVisionPrompt = normalizeAreaVisionPrompt(source.areaVisionPrompt);
@@ -1271,7 +1281,7 @@ export function normalizeConfig(value: unknown): Config {
     const shouldMigrateLegacyVideoDefault = source.videoService === services.deeplx
         && source.videoServiceDefaultMigrated !== true;
     if (shouldMigrateLegacyVideoDefault
-        || !isSupportedTranslationService(normalized.videoService, normalized.customOpenAIProviders)) {
+        || !isSupportedTranslationService(normalized.videoService, normalized.customOpenAIProviders, normalized.compositeTranslationProviders)) {
         normalized.videoService = '';
     }
     normalized.videoServiceDefaultMigrated = true;
@@ -1492,7 +1502,7 @@ export function normalizeConfig(value: unknown): Config {
         normalized.fullPageTranslationMode = 'viewport';
     }
     normalized.translationCenterServices = normalizeStringList(source.translationCenterServices)
-        .filter(service => isSupportedTranslationService(service, normalized.customOpenAIProviders));
+        .filter(service => isSupportedTranslationService(service, normalized.customOpenAIProviders, normalized.compositeTranslationProviders));
     normalized.translationCenterSourceLanguage = normalizeConfigLanguage(source.translationCenterSourceLanguage);
     normalized.translationCenterTargetLanguage = normalizeConfigLanguage(source.translationCenterTargetLanguage);
     normalized.translationCenterLayout = source.translationCenterLayout === 'grid' ? 'grid' : 'list';
@@ -1506,6 +1516,7 @@ export function normalizeConfig(value: unknown): Config {
             isSupportedService: (service) => isSupportedTranslationService(
                 service,
                 normalized.customOpenAIProviders,
+                normalized.compositeTranslationProviders,
             ),
             serviceUsesModel: (service) => isCustomOpenAIProviderId(service)
                 || servicesType.isUseModel(service),
@@ -1784,8 +1795,12 @@ function withoutRetiredRequirementEntries(mapping: Record<string, boolean>): Rec
 function isSupportedTranslationService(
     value: unknown,
     customProviders: readonly CustomOpenAIProvider[],
+    compositeProviders: readonly CompositeTranslationProvider[] = [],
 ): value is string {
     if (typeof value !== 'string') return false;
+    if (isCompositeTranslationProviderId(value)) {
+        return isConfiguredCompositeTranslationProvider(compositeProviders, value);
+    }
     if (isCustomOpenAIProviderId(value)) {
         return isConfiguredCustomOpenAIProvider(customProviders, value);
     }

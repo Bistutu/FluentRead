@@ -6,6 +6,7 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/fr-FR.json';
+import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
@@ -27,6 +28,7 @@ export const frFRMessages = {
     "popup.compact.translate": "Traduire",
     "popup.compact.restore": "Rétablir",
     ...videoLearningText,
+    ...compositeTranslationMessages['fr-FR'],
     ...pdfReadingMessages['fr-FR'],
     ...informationHighlightMessages['fr-FR'],
     ...reencounterText,
@@ -2425,6 +2427,7 @@ const frFRLegacyTextBase: Readonly<Record<string, string>> = {
 
 export const frFRLegacyText: Readonly<Record<string, string>> = {
     ...googleDriveText.legacy,
+    ...compositeTranslationLegacyText['fr-FR'],
     ...cloudBackupText.legacy,
     "腾讯交互翻译": "Tencent TranSmart",
     "火山翻译": "Traduction Volcengine",

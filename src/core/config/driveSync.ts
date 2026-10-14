@@ -2,13 +2,14 @@
  * @file src/core/config/driveSync.ts
  * 文件职责：定义默认排除敏感信息的云同步范围、兼容完整快照和不泄露凭据的差异预览。
  * 主要内容：投影普通设置、读取 v1 完整与 v2 普通快照，兼容枚举列表去重与退役条目迁移，保留凭据明确删除语义、执行三方字段合并，并将请求体、
- * 地址、请求头、密钥和未知字段统一隐藏，普通设置包含按服务保存的原生翻译合批偏好并展示稳定名称和值；数组整体合并。
+ * 地址、请求头、密钥和未知字段统一隐藏，普通设置包含不带统计或凭据的公开组合配置和按服务保存的原生翻译合批偏好并展示稳定名称和值；数组整体合并。
  * 模块边界：只处理纯数据；不拥有口令、加密、存储、浏览器消息或 Google API。
  */
 import {options, servicesType} from './catalog';
 import {CONFIG_CREDENTIAL_FIELDS, isSensitiveConfigKey} from './credentials';
 import {Config} from './model';
 import {isConfiguredCustomOpenAIProvider, isCustomOpenAIProviderId, normalizeCustomOpenAIProviders} from './customOpenAI';
+import {isCompositeTranslationProviderId, isConfiguredCompositeTranslationProvider, normalizeCompositeTranslationProviders} from './compositeTranslation';
 import {isConfigImportValid, prepareConfigForExport} from './transfer';
 import {configDiffFieldLabel} from './diff';
 export class DriveConfigError extends Error {}
@@ -103,6 +104,7 @@ function parseCompleteDriveSyncPayload(value: unknown): DriveSyncConfig {
     const config = value.config;
     validateTree(config);
     const providers = normalizeCustomOpenAIProviders(config.customOpenAIProviders);
+    const composites = normalizeCompositeTranslationProviders(config.compositeTranslationProviders, providers);
     const references = [
         ...SERVICE_FIELDS.map(field => config[field]),
         ...(Array.isArray(config.translationCenterServices) ? config.translationCenterServices : []),
@@ -113,6 +115,9 @@ function parseCompleteDriveSyncPayload(value: unknown): DriveSyncConfig {
     ];
     if (references.some(service => isCustomOpenAIProviderId(service) && !isConfiguredCustomOpenAIProvider(providers, service))) {
         throw new DriveConfigError('同步配置引用了不存在的自定义服务，请重新预览并选择完整连接配置。');
+    }
+    if (references.some(service => isCompositeTranslationProviderId(service) && !isConfiguredCompositeTranslationProvider(composites, service))) {
+        throw new DriveConfigError('同步配置引用了不存在的组合翻译服务，请重新预览配置。');
     }
     // 快照省略运行时迁移状态，但必须按已完成迁移的用户配置解析，保留用户选择。
     return toDriveSyncConfig({...value.config, videoServiceDefaultMigrated: true});

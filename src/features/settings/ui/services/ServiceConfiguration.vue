@@ -2,7 +2,7 @@
  * @file src/features/settings/ui/services/ServiceConfiguration.vue
  * 文件职责：渲染当前翻译服务的详细连接配置：连接字段（密钥、区域、端点等）直接排在服务标题下方、不再单设“连接与密钥”标题，输入下方是添加密钥与密钥使用方式；其后用模型偏好、提示词、请求限制、接口兼容几个页签显示代理、密钥要求、提示词、自定义请求体与请求头、按域名移除来源头等字段，以及服务和模型的独立请求限制；只有一个页签的服务改用小节标题。
  * 主要内容：组件派生字段可见性与连接示例，密钥列表始终展示全部已保存的密钥并区分参与请求与备用的行，密钥要求放在接口兼容页签，提示词可在确认后一键同步到所有 AI 服务；原生支持多文本的服务在请求限制中独立编辑默认开启的合并请求开关，当前模型限额按自定义请求体覆盖后的真实模型显示、读取和保存，保留其他模型限额；将成对密钥 ID 同步到 apiKeys 和兼容 token，区分缺少必填 Key 与允许匿名的连接检查并管理等待超时；免费翻译检查完整目录并逐服务展示结果，Chrome 在点击时准备当前语言对并用进度条显示模型下载比例，通过配置 store 提交修改；隐藏、缓存停用或配置变化取消所属等待，Chrome 状态只在活跃服务订阅，恢复、同步模板和删除共用当前操作所属确认，同步复验来源并按确认时刻重算目标。
- * 模块边界：本地模型设置只在对应服务首次呈现时异步加载，实例归属与后台下载由子组件维持；本组件不执行网页正文翻译或保存公开配置中的明文凭据；Chrome 内置翻译仅在当前点击页完成模型自检，其他连接测试经后台消息，字段规则来自 core/config，服务切换由 ServiceCatalog 和 SettingsSections 负责。
+ * 模块边界：组合服务交给独立草稿表单编辑，不展示普通服务的模型或凭据页签；无成员禁止连接测试，组合与各成员配置修改使旧测试失效，测试等待不早于逐路预算与整轮上限；本地模型设置只在对应服务首次呈现时异步加载，实例归属与后台下载由子组件维持；本组件不执行网页正文翻译或保存公开配置中的明文凭据；Chrome 内置翻译仅在当前点击页完成模型自检，其他连接测试经后台消息，字段规则来自 core/config，服务切换由 ServiceCatalog 和 SettingsSections 负责。
  -->
 <template>
   <section
@@ -11,6 +11,8 @@
     :data-custom-service-configuration="compute.showCustomOpenAI ? 'true' : 'false'"
     :data-ai-advanced-settings="compute.showAI ? 'true' : 'false'"
   >
+    <CompositeTranslationSettings v-if="isCompositeService" :key="service" :active="active" :config="config" :service="service" @remove="$emit('remove:service', service)" />
+    <p v-if="isCompositeService && !compositeProvider?.services.length" class="configuration-scope" data-composite-test-empty role="status">{{ t('settings.services.composite.empty') }}</p>
     <FreeTranslationSettings v-if="service === services.freeTranslation" :active="active" :config="config" :advanced="false" :checks="freeProviderChecks" />
 
     <LocalTranslationModelSettings v-if="service === services.localTranslation" :active="active" :context="config" :config="config" :service="service" />
@@ -46,7 +48,7 @@
 
     </section>
     </Teleport>
-    <section v-if="service !== services.freeTranslation && service !== services.localTranslation" class="connection-card" data-configuration-group="connection">
+    <section v-if="service !== services.freeTranslation && service !== services.localTranslation && !isCompositeService" class="connection-card" data-configuration-group="connection">
       <p v-if="service === services.microsoft || service === services.google || service === services.bilibili" class="configuration-scope" data-service-no-setup>{{ t('settings.organization.noSetup') }}</p>
     <template v-if="service === services.myMemory">
       <div class="connection-field" data-mymemory-email>
@@ -324,8 +326,10 @@
     </div>
     </section>
 
+    <div v-if="isCompositeService && connectionTestMessage" class="connection-test-result" :class="`is-${connectionTestState}`" data-connection-test-status role="status" aria-live="polite"><strong>{{ connectionTestTitle }}</strong><span>{{ connectionTestMessage }}</span></div>
+
     <header v-if="singleSettingsTab" class="configuration-group-heading settings-tabs-heading" data-service-settings-heading><h5>{{ singleSettingsTab }}</h5></header>
-    <el-tabs v-if="settingsTabs.requests" v-model="activeSettingsTab" class="service-settings-tabs" :class="{ 'is-single-tab': singleSettingsTab }" data-service-settings-tabs>
+    <el-tabs v-if="settingsTabs.requests && !isCompositeService" v-model="activeSettingsTab" class="service-settings-tabs" :class="{ 'is-single-tab': singleSettingsTab }" data-service-settings-tabs>
     <el-tab-pane v-if="settingsTabs.translation" name="translation" :label="t(SETTINGS_TAB_LABELS.translation)">
       <section id="service-translation-settings" class="service-settings-panel" data-configuration-group="translation">
 
@@ -454,6 +458,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, shallowRef, toRef, watch } from 'vue'
 import type { Config } from '@/src/core/config/model'
+import {getCompositeTranslationProvider, isCompositeTranslationProviderId} from '@/src/core/config/compositeTranslation'
 import type { TranslationParams } from '@/src/core/i18n'
 import { defaultOption, options as optionConfig, resolveConfiguredModel, services, servicesType } from '@/src/core/config/catalog'
 import {
@@ -496,6 +501,7 @@ const LocalTranslationModelSettings = defineAsyncComponent(() => import('../Loca
 import ModelVisionSettings from './ModelVisionSettings.vue'
 import RequestLimitSettings from './RequestLimitSettings.vue'
 import RequestHeaderSettings from './RequestHeaderSettings.vue'
+import CompositeTranslationSettings from './CompositeTranslationSettings.vue'
 import { checkAllFreeTranslationProviders, type FreeTranslationChecks } from './freeTranslationChecks'
 import { listPromptTemplateSyncTargets, syncPromptTemplates as applyPromptTemplateSync } from './promptTemplateSync'
 import {waitForSettingsTask} from '../../model/taskWait'
@@ -517,10 +523,13 @@ const emit = defineEmits<{
   'update:model-thinking': [value: boolean]
   'update:custom-provider': [patch: Partial<Pick<CustomOpenAIProvider, 'name' | 'endpoint'>>]
   'delete:custom-provider': []
+  'remove:service': [service: string]
 }>()
 
 const config = toRef(props, 'config')
 const service = toRef(props, 'service')
+const isCompositeService = computed(() => isCompositeTranslationProviderId(service.value))
+const compositeProvider = computed(() => getCompositeTranslationProvider(config.value.compositeTranslationProviders, service.value))
 const compute = toRef(props, 'compute')
 const options = toRef(props, 'options')
 const isValidAzureEndpoint = toRef(props, 'isValidAzureEndpoint')
@@ -557,7 +566,7 @@ const SETTINGS_TAB_LABELS = {
 const settingsTabs = computed<Record<keyof typeof SETTINGS_TAB_LABELS, boolean>>(() => ({
   translation: Boolean(compute.value.showAI && compute.value.showModel),
   prompts: Boolean(compute.value.showAI),
-  requests: service.value !== services.localTranslation,
+  requests: service.value !== services.localTranslation && !isCompositeService.value,
   'custom-request': Boolean(compute.value.showDeepseekApiType || compute.value.showAI || compute.value.showCustomBody || customProvider.value),
 }))
 // 只有一个页签时（机器翻译服务只有“请求限制”）不显示孤立的页签条，改用小节标题。
@@ -749,7 +758,7 @@ const CHROME_PREPARATION_ERROR_KEYS: Readonly<Record<ChromeTranslationPreparatio
   'model-unavailable': 'settings.services.chromePreparation.error.modelUnavailable',
 }
 const connectionTestBusy = ref(false)
-const connectionTestDisabled = computed(() => !active.value || (connectionTestBusy.value
+const connectionTestDisabled = computed(() => !active.value || (isCompositeService.value && !compositeProvider.value?.services.length) || (connectionTestBusy.value
   ? !usesApiKeyList.value
   : usesApiKeyList.value && apiKeyIndexes.value.length === 0
     && (service.value === services.deeplx ? deepLXRequiresToken.value : compute.value.requireApiKey)))
@@ -1049,10 +1058,13 @@ async function testConnection(): Promise<void> {
       connectionTestState.value = failures === 0 ? 'success' : 'error'
       connectionTestMessageState.value = null
     } else {
+      const testWaitMs = isCompositeService.value && compositeProvider.value
+        ? Math.min(45000, compositeProvider.value.timeoutMs * Math.max(1, compositeProvider.value.services.length)) + 5000
+        : CONNECTION_RESPONSE_WAIT_TIMEOUT_MS
       const response = await waitForConnectionStep(browser.runtime.sendMessage({
         type: CONNECTION_TEST_MESSAGE,
         service: testedService,
-      }), CONNECTION_RESPONSE_WAIT_TIMEOUT_MS, 'settings.services.keys.responseTimeout', controller.signal) as {success?: boolean; durationMs?: number; error?: string} | undefined
+      }), testWaitMs, 'settings.services.keys.responseTimeout', controller.signal) as {success?: boolean; durationMs?: number; error?: string} | undefined
       if (!isCurrent()) return
       if (!response?.success) throw new Error(response?.error || '连接测试失败')
       connectionTestState.value = 'success'
@@ -1138,6 +1150,7 @@ function confirmDeleteProvider(): void {
 }
 
 watch(() => active.value ? [config.value, service.value, config.value.from, config.value.to, createApiKeyCheckRevision(config.value, service.value),
+  isCompositeService.value ? JSON.stringify([compositeProvider.value, compositeProvider.value?.services.map(member => [member, createApiKeyCheckRevision(config.value, member)])]) : '',
   config.value.ak, config.value.sk, config.value.appid, config.value.key, config.value.secret?.[service.value],
   config.value.apiKeyRotationEnabled?.[service.value], compute.value.requireApiKey,
   ...(service.value === services.freeTranslation ? [config.value.myMemoryEmail, config.value.freeTranslationTimeoutMs] : [])] : null,

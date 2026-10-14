@@ -69,6 +69,7 @@ import {filterAvailableTranslationServices, isTranslationServiceAvailable} from 
 import {getMultilingualTargetLanguageLabel, models, options, resolveConfiguredModel, servicesType} from '@/src/core/config/catalog';
 import {getMissingCredentialMessage} from '@/src/core/config/validation';
 import {getCustomOpenAIProvider, getCustomOpenAIProviderModels, isConfiguredCustomOpenAIProvider, type CustomOpenAIProvider, withCustomOpenAIServiceOptions} from '@/src/core/config/customOpenAI';
+import {getCompositeTranslationConfigFingerprint, isCompositeTranslationProviderId, withCompositeTranslationServiceOptions} from '@/src/core/config/compositeTranslation';
 import {config, configReady, requestConfigPatch, subscribeConfig} from '@/src/services/config/store';
 import {translateText} from '@/src/app/translation/client';
 import {TranslationRequestError} from '@/src/services/translation/errors';
@@ -115,9 +116,9 @@ type TranslationCenterConfigPatch = {translationCenterServices?: string[]; trans
 
 const serviceOptions = computed(() => {
   void configRevision.value;
-  return filterAvailableTranslationServices(withCustomOpenAIServiceOptions(
+  return filterAvailableTranslationServices(withCompositeTranslationServiceOptions(withCustomOpenAIServiceOptions(
     options.services, customOpenAIProviders.value,
-  )).filter(item => !item.disabled).map(item => ({...item, label: translateLegacy(item.label)}));
+  ), config.compositeTranslationProviders)).filter(item => !item.disabled).map(item => ({...item, label: translateLegacy(item.label)}));
 });
 const hiddenUnavailableServices = computed(() => {
   void configRevision.value;
@@ -164,14 +165,18 @@ function credentialWarning(service: string): string | null {
   if ((servicesType.isAI(service) || provider) && !serviceModel(service)) return ct('modelMissing');
   return getMissingCredentialMessage(service, config);
 }
-function serviceCategory(service: string): string {return ct(servicesType.isCloudVendor(service) ? 'cloud' : servicesType.isMachine(service) ? 'machine' : 'ai');}
+function serviceCategory(service: string): string {
+  return isCompositeTranslationProviderId(service) ? t('settings.services.composite.badge')
+    : ct(servicesType.isCloudVendor(service) ? 'cloud' : servicesType.isMachine(service) ? 'machine' : 'ai');
+}
 function serviceLabel(service: string): string {return serviceOptions.value.find(item => item.value === service)?.label || service;}
 function languageLabel(value: string): string {
   if (value === 'auto') return translateLegacy('自动检测');
   const option = targetLanguageOptions.value.find(item => item.value === value);
   return getMultilingualTargetLanguageLabel(value, option?.label || value, language.value);
 }
-function currentInput(service: string) {return {text: sourceText.value.trim(), sourceLanguage: sourceLanguage.value, targetLanguage: targetLanguage.value, model: serviceModel(service)};}
+function currentInput(service: string) {return {text: sourceText.value.trim(), sourceLanguage: sourceLanguage.value,
+  targetLanguage: targetLanguage.value, model: serviceModel(service), connectionFingerprint: getCompositeTranslationConfigFingerprint(config, service)};}
 function isStale(card: ComparisonCard) {return isComparisonStale(card, currentInput(card.service));}
 function cardStatus(card: ComparisonCard): string {
   if (card.status === 'loading') return 'loading';

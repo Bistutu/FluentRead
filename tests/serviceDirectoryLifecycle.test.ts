@@ -253,6 +253,17 @@ describe('免费设置的轮询和模板事件归属', () => {
 })
 
 describe('服务目录的搜索和导航归属', () => {
+  it('组合归入自定义目录且目录仅保留一个添加服务入口，旧上下文事件失效', async () => {
+    const added = vi.fn()
+    await mountCatalog({services: [...catalog, {value: 'composite:daily', label: 'Daily'}]}, {'onAdd:service': added})
+    expect(state.directoryGroups.find((group: any) => group.id === 'custom').items.map((item: any) => item.value)).toEqual(['composite:daily'])
+    expect(descendants(hostRoot).filter(n => n.props['data-testid'] === 'custom-service-add')).toHaveLength(1)
+    expect(descendants(hostRoot).some(n => n.props['data-testid'] === 'composite-service-add')).toBe(false)
+    const old = publicNode(n => n.props['data-testid'] === 'custom-service-add').props.onClick
+    props.context = {};old();expect(added).not.toHaveBeenCalled();await settle()
+    publicNode(n => n.props['data-testid'] === 'custom-service-add').props.onClick();expect(added).toHaveBeenCalledOnce()
+    props.active = false;publicNode(n => n.props['data-testid'] === 'custom-service-add').props.onClick();expect(added).toHaveBeenCalledOnce()
+  })
   it('空搜索不读取逐项搜索字段，有关键词时缓存文本并在目录更新后失效', async () => {
     let reads = 0
     const item = runtime.reactive({value: 'custom:fixture', label: 'Fixture', get description() {reads++;return 'Ｆｕｌｌ Width'}, searchTerms: ['Alias']})

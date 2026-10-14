@@ -1,5 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {services} from '@/src/core/config/catalog';
+import {Config} from '@/src/core/config/model';
 
 const editable = vi.hoisted(() => ({
     replaceEditableText: vi.fn(),
@@ -158,6 +159,30 @@ afterEach(() => {
 });
 
 describe('input translation content feature', () => {
+    it('含 AI 的输入组合沿用独立预算，AI 默认变更不作废组合事务，超时仍发送精确取消', async () => {
+        vi.useFakeTimers();
+        const config = new Config();
+        config.inputBoxTranslationTrigger = 'ctrl_enter';config.inputBoxTranslationTarget = 'zh';
+        config.inputBoxTranslationService = 'composite:input-timeout';config.aiRequestTimeoutMs = 600_000;
+        config.compositeTranslationProviders = [{id: 'composite:input-timeout', name: 'Input timeout', strategy: 'sequential',
+            services: ['openai', 'google'], timeoutMs: 12_000}];
+        let release!: (response: unknown) => void;
+        const harness = mountHarness({config, sendMessage: () => new Promise(resolve => {release = resolve;})});
+        const connectionKey = inputBoxTranslationConfigKey(harness.config);
+        const input = fakeElement('textarea');input.value = 'Hello';harness.fakeDocument.activeElement = input;
+        const pending = harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
+        await vi.advanceTimersByTimeAsync(0);
+        expect(harness.sendMessage).toHaveBeenCalledWith(expect.objectContaining({type: 'inputBoxTranslation', requestTimeoutMs: 45_000}));
+        harness.config.aiRequestTimeoutMs = 10_000;
+        expect(inputBoxTranslationConfigKey(harness.config)).toBe(connectionKey);
+        await vi.advanceTimersByTimeAsync(INPUT_TRANSLATION_TIMEOUT_MS);
+        await pending;
+        const clientRequestId = harness.sendMessage.mock.calls[0][0].clientRequestId;
+        expect(harness.sendMessage).toHaveBeenLastCalledWith({type: 'fluentReadTranslationCancel', clientRequestId});
+        input.value = '用户的新草稿';release({success: true, translatedText: '迟到译文'});await vi.advanceTimersByTimeAsync(0);
+        expect(input.value).toBe('用户的新草稿');harness.controller.abort();expect(vi.getTimerCount()).toBe(0);
+    });
+
     it('慢提示挂载不阻塞请求或提交，迟到 loading 不覆盖成功状态', async () => {
         const records: any[] = [];
         const base = createUiFactory(records);
@@ -653,6 +678,23 @@ describe('input translation content feature', () => {
         expect(isInputBoxTranslationEnabled({on: false, inputBoxTranslationTrigger: 'ctrl_enter'}, false)).toBe(false);
         expect(isInputBoxTranslationEnabled({on: true, inputBoxTranslationTrigger: 'disabled'}, false)).toBe(false);
         expect(isInputBoxTranslationEnabled({on: true, inputBoxTranslationTrigger: 'ctrl_enter'}, true)).toBe(false);
+    });
+
+    it('组合成员连接更新使输入事务失效，成员凭据只进入安全摘要', () => {
+        const config: any = {on: true, inputBoxTranslationTrigger: 'ctrl_enter', inputBoxTranslationTarget: 'en', inputBoxTranslationService: 'composite:input',
+            compositeTranslationProviders: [{id: 'composite:input', name: '输入组合', strategy: 'sequential', services: ['google', 'deepseek'], timeoutMs: 12_000}],
+            token: {deepseek: 'synthetic-member-private'}, customBody: {}, model: {deepseek: 'fixture'},
+        };
+        const initial = inputBoxTranslationConfigKey(config);
+        expect(initial).not.toContain('synthetic-member-private');
+        config.token.openai = 'unrelated';
+        expect(inputBoxTranslationConfigKey(config)).toBe(initial);
+        for (const mutate of [() => {config.token.deepseek = 'changed';}, () => {config.customBody.google = '{"test":1}';},
+            () => {config.compositeTranslationProviders[0].services.reverse();}, () => {config.model.deepseek = 'changed';}]) {
+            const before = inputBoxTranslationConfigKey(config);
+            mutate();
+            expect(inputBoxTranslationConfigKey(config)).not.toBe(before);
+        }
     });
 
     it('配置 key 只跟踪选中服务的模型、连接和凭据指纹', () => {
