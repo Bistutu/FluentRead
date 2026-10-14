@@ -1,11 +1,25 @@
 /**
  * @file src/core/i18n/messages/pdfReading.ts
- * 文件职责：维护 PDF 在线导入、分页阅读、缩放、划词提示和扫描件文字识别的七种界面语言文案。
- * 主要内容：按七种语言独立导出静态目录，让默认中文界面直接引用中文资源；保留七语汇总对象供构建期资源生成、userscript 与其他 locale 复用。
+ * 文件职责：维护 PDF 在线导入、分页阅读、缩放、划词提示、真实段落进度、失败续译和扫描件文字识别的七种界面语言文案。
+ * 主要内容：提供简短的重试、更换服务、暂时中断和按需展开详情文案，按七种语言独立导出静态目录，让默认中文界面直接引用中文资源；保留七语汇总对象供构建期资源生成、userscript 与其他 locale 复用。
  * 模块边界：仅提供静态资源，不读取文档、网络或用户配置；运行时消费者按语言引用独立常量，避免把非当前语言文案打进默认目录。
  */
 
 export const pdfReadingChineseMessages = {
+    "document.translationRecovery.unavailable": "当前服务不可用",
+    "document.translationRecovery.retry": "重试",
+    "document.translationRecovery.switchService": "更换服务",
+    "document.translationRecovery.pauseAndSwitch": "暂停并更换服务",
+    "document.translationRecovery.details": "详情",
+    "document.translationRecovery.interrupted": "翻译暂时中断",
+    "document.retainedRevisions.title": "保留的旧校订",
+    "document.retainedRevisions.hint": "原文结构已变化，以下校订保留供查阅和复制。",
+    "document.retainedRevisions.revision": "旧校订",
+    "document.translationProgress.collectingAfterFailure": "翻译中断 · 正在收取已发出的结果",
+    "document.translationProgress.label": "文档翻译进度",
+    "document.translationProgress.count": "已翻译 {completed}/{total} 个文本段落（{percent}%）",
+    "document.translationProgress.waitingRetry": "等待自动重试",
+    "document.translationProgress.finishing": "正在完成翻译",
     "document.localProcessingNote": "文件在本地解析，待译文字发送至所选翻译服务。扫描版 PDF 在开始翻译时先识别文字。",
     "document.changeDocument.historyHint": "需要保留当前翻译和校订时，建议先下载。本机“最近翻译”中已有的记录也可以重新打开。",
     "document.changeDocument.downloadHint": "需要保留当前翻译和校订时，请先下载。",
@@ -74,6 +88,20 @@ export const pdfReadingChineseMessages = {
 };
 
 export const pdfReadingEnglishMessages = {
+    "document.translationRecovery.unavailable": "Service unavailable",
+    "document.translationRecovery.retry": "Retry",
+    "document.translationRecovery.switchService": "Change service",
+    "document.translationRecovery.pauseAndSwitch": "Pause and change service",
+    "document.translationRecovery.details": "Details",
+    "document.translationRecovery.interrupted": "Translation temporarily interrupted",
+    "document.retainedRevisions.title": "Saved earlier revisions",
+    "document.retainedRevisions.hint": "The source structure changed. These revisions are saved for reference and copying.",
+    "document.retainedRevisions.revision": "Earlier revision",
+    "document.translationProgress.collectingAfterFailure": "Translation interrupted · collecting results already requested",
+    "document.translationProgress.label": "Document translation progress",
+    "document.translationProgress.count": "Translated {completed}/{total} text passages ({percent}%)",
+    "document.translationProgress.waitingRetry": "Waiting to retry automatically",
+    "document.translationProgress.finishing": "Finishing translation",
     "document.localProcessingNote": "Files are parsed locally. Text to translate is sent to the selected service. Scanned PDFs have their text recognized when translation starts.",
     "document.changeDocument.historyHint": "Download first if you need to keep the current translation and edits. You can also reopen existing entries in Recent translations on this device.",
     "document.changeDocument.downloadHint": "Download first if you need to keep the current translation and edits.",
@@ -142,6 +170,20 @@ export const pdfReadingEnglishMessages = {
 };
 
 export const pdfReadingJapaneseMessages = {
+    "document.translationRecovery.unavailable": "サービスを利用できません",
+    "document.translationRecovery.retry": "再試行",
+    "document.translationRecovery.switchService": "サービスを変更",
+    "document.translationRecovery.pauseAndSwitch": "一時停止してサービスを変更",
+    "document.translationRecovery.details": "詳細",
+    "document.translationRecovery.interrupted": "翻訳が一時的に中断しました",
+    "document.retainedRevisions.title": "保存された以前の修正",
+    "document.retainedRevisions.hint": "原文の構造が変わったため、以前の修正を参照・コピー用に保存しています。",
+    "document.retainedRevisions.revision": "以前の修正",
+    "document.translationProgress.collectingAfterFailure": "翻訳が中断しました · 送信済みの結果を受信しています",
+    "document.translationProgress.label": "文書翻訳の進捗",
+    "document.translationProgress.count": "{total} 段落中 {completed} 段落を翻訳済み（{percent}%）",
+    "document.translationProgress.waitingRetry": "自動再試行を待機中",
+    "document.translationProgress.finishing": "翻訳を完了しています",
     "document.localProcessingNote": "ファイルは端末で解析し、翻訳する文章を選択したサービスに送信します。スキャン PDF は翻訳開始時に文字を認識します。",
     "document.changeDocument.historyHint": "現在の翻訳と校訂を残すには、先にダウンロードしてください。この端末の「最近の翻訳」にある記録も開き直せます。",
     "document.changeDocument.downloadHint": "現在の翻訳と校訂を残すには、先にダウンロードしてください。",
@@ -210,6 +252,20 @@ export const pdfReadingJapaneseMessages = {
 };
 
 export const pdfReadingKoreanMessages = {
+    "document.translationRecovery.unavailable": "서비스를 사용할 수 없습니다",
+    "document.translationRecovery.retry": "재시도",
+    "document.translationRecovery.switchService": "서비스 변경",
+    "document.translationRecovery.pauseAndSwitch": "일시 중지 후 서비스 변경",
+    "document.translationRecovery.details": "자세히",
+    "document.translationRecovery.interrupted": "번역이 일시적으로 중단되었습니다",
+    "document.retainedRevisions.title": "보관된 이전 교정",
+    "document.retainedRevisions.hint": "원문 구조가 변경되어 이전 교정 내용을 참조하고 복사할 수 있도록 보관했습니다.",
+    "document.retainedRevisions.revision": "이전 교정",
+    "document.translationProgress.collectingAfterFailure": "번역 중단 · 이미 요청한 결과를 받는 중",
+    "document.translationProgress.label": "문서 번역 진행률",
+    "document.translationProgress.count": "{total}개 문단 중 {completed}개 번역 완료 ({percent}%)",
+    "document.translationProgress.waitingRetry": "자동 재시도 대기 중",
+    "document.translationProgress.finishing": "번역 마무리 중",
     "document.localProcessingNote": "파일은 기기에서 분석하고 번역할 텍스트는 선택한 서비스로 전송합니다. 스캔 PDF는 번역을 시작할 때 텍스트를 인식합니다.",
     "document.changeDocument.historyHint": "현재 번역과 수정 내용을 보관하려면 먼저 다운로드하세요. 이 기기의 최근 번역에 있는 기록도 다시 열 수 있습니다.",
     "document.changeDocument.downloadHint": "현재 번역과 수정 내용을 보관하려면 먼저 다운로드하세요.",
@@ -278,6 +334,20 @@ export const pdfReadingKoreanMessages = {
 };
 
 export const pdfReadingFrenchMessages = {
+    "document.translationRecovery.unavailable": "Service indisponible",
+    "document.translationRecovery.retry": "Réessayer",
+    "document.translationRecovery.switchService": "Changer de service",
+    "document.translationRecovery.pauseAndSwitch": "Suspendre et changer de service",
+    "document.translationRecovery.details": "Détails",
+    "document.translationRecovery.interrupted": "Traduction temporairement interrompue",
+    "document.retainedRevisions.title": "Révisions précédentes conservées",
+    "document.retainedRevisions.hint": "La structure du texte source a changé. Ces révisions restent disponibles pour consultation et copie.",
+    "document.retainedRevisions.revision": "Révision précédente",
+    "document.translationProgress.collectingAfterFailure": "Traduction interrompue · réception des résultats déjà demandés",
+    "document.translationProgress.label": "Progression de la traduction du document",
+    "document.translationProgress.count": "{completed}/{total} passages traduits ({percent} %)",
+    "document.translationProgress.waitingRetry": "En attente de la nouvelle tentative automatique",
+    "document.translationProgress.finishing": "Finalisation de la traduction",
     "document.localProcessingNote": "Les fichiers sont analysés localement. Le texte à traduire est envoyé au service choisi. Le texte des PDF numérisés est reconnu au démarrage de la traduction.",
     "document.changeDocument.historyHint": "Téléchargez d’abord la traduction et vos corrections pour les conserver. Vous pouvez aussi rouvrir les entrées existantes des traductions récentes sur cet appareil.",
     "document.changeDocument.downloadHint": "Téléchargez d’abord la traduction et vos corrections pour les conserver.",
@@ -346,6 +416,20 @@ export const pdfReadingFrenchMessages = {
 };
 
 export const pdfReadingSpanishMessages = {
+    "document.translationRecovery.unavailable": "Servicio no disponible",
+    "document.translationRecovery.retry": "Reintentar",
+    "document.translationRecovery.switchService": "Cambiar servicio",
+    "document.translationRecovery.pauseAndSwitch": "Pausar y cambiar servicio",
+    "document.translationRecovery.details": "Detalles",
+    "document.translationRecovery.interrupted": "Traducción interrumpida temporalmente",
+    "document.retainedRevisions.title": "Revisiones anteriores guardadas",
+    "document.retainedRevisions.hint": "La estructura del texto original ha cambiado. Estas revisiones se conservan para consultarlas y copiarlas.",
+    "document.retainedRevisions.revision": "Revisión anterior",
+    "document.translationProgress.collectingAfterFailure": "Traducción interrumpida · recibiendo los resultados ya solicitados",
+    "document.translationProgress.label": "Progreso de traducción del documento",
+    "document.translationProgress.count": "{completed}/{total} pasajes traducidos ({percent} %)",
+    "document.translationProgress.waitingRetry": "Esperando el reintento automático",
+    "document.translationProgress.finishing": "Finalizando la traducción",
     "document.localProcessingNote": "Los archivos se analizan localmente. El texto que se va a traducir se envía al servicio elegido. El texto de los PDF escaneados se reconoce al iniciar la traducción.",
     "document.changeDocument.historyHint": "Descarga primero la traducción y tus correcciones para conservarlas. También puedes volver a abrir las entradas existentes de las traducciones recientes de este dispositivo.",
     "document.changeDocument.downloadHint": "Descarga primero la traducción y tus correcciones para conservarlas.",
@@ -414,6 +498,20 @@ export const pdfReadingSpanishMessages = {
 };
 
 export const pdfReadingRussianMessages = {
+    "document.translationRecovery.unavailable": "Сервис недоступен",
+    "document.translationRecovery.retry": "Повторить",
+    "document.translationRecovery.switchService": "Сменить сервис",
+    "document.translationRecovery.pauseAndSwitch": "Приостановить и сменить сервис",
+    "document.translationRecovery.details": "Подробности",
+    "document.translationRecovery.interrupted": "Перевод временно прерван",
+    "document.retainedRevisions.title": "Сохранённые предыдущие правки",
+    "document.retainedRevisions.hint": "Структура исходного текста изменилась. Эти правки сохранены для просмотра и копирования.",
+    "document.retainedRevisions.revision": "Предыдущая правка",
+    "document.translationProgress.collectingAfterFailure": "Перевод прерван · получение уже запрошенных результатов",
+    "document.translationProgress.label": "Ход перевода документа",
+    "document.translationProgress.count": "Переведено {completed}/{total} фрагментов текста ({percent}%)",
+    "document.translationProgress.waitingRetry": "Ожидание автоматической повторной попытки",
+    "document.translationProgress.finishing": "Завершение перевода",
     "document.localProcessingNote": "Файлы разбираются на устройстве. Текст для перевода отправляется выбранному сервису. Текст сканированных PDF распознаётся при запуске перевода.",
     "document.changeDocument.historyHint": "Чтобы сохранить текущий перевод и правки, сначала скачайте файл. Можно также открыть существующие записи недавних переводов на этом устройстве.",
     "document.changeDocument.downloadHint": "Чтобы сохранить текущий перевод и правки, сначала скачайте файл.",

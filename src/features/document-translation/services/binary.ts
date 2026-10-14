@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/services/binary.ts
  * 文件职责：处理 PDF、EPUB 与 DOCX 二进制文档的受限解析和导出，把压缩包或页面文本转换为统一 ParsedDocument，并生成可下载的双语产物。
- * 主要内容：相同译文回退原文；Word 段落记下表格单元格供阅读视图排版；按实际字节限制导入、按需加载二进制依赖，包含归档安全上限、可取消 PDF 提取与译文回填；PDF 字形边界包含有限负 descent，字号与基线保持不变；零宽文字项使用受限同行位置估算，不把组合标记当作额外字形；默认逐页原版左右对照，保留旋转裁剪、直接嵌入 JPEG 并保存溢出译文批注，显式重排端口才生成续页；ePub/DOCX 导出让出主线程并使用可取消归档流，ePub 保持首项 mimetype 无压缩及 XHTML 章节格式；未改资源保留原压缩方式，文本导出直接使用 core 的回退规则避免重复规范化。
+ * 主要内容：相同译文回退原文；Word 段落记下表格单元格供阅读视图排版；按实际字节限制导入、按需加载二进制依赖，包含归档安全上限、可取消 PDF 提取与译文回填；PDF 字形边界回退无效的零/负 ascent 并包含有限负 descent，字号与基线保持不变；零宽文字项使用受限同行位置估算，不把组合标记当作额外字形；默认逐页原版左右对照，保留旋转裁剪、直接嵌入 JPEG 并保存溢出译文批注，显式重排端口才生成续页；ePub/DOCX 导出让出主线程并使用可取消归档流，ePub 保持首项 mimetype 无压缩及 XHTML 章节格式；未改资源保留原压缩方式，文本导出直接使用 core 的回退规则避免重复规范化。
  * 模块边界：此服务可以依赖 JSZip、pdf-lib 和二进制 I/O，但不负责调用翻译服务或渲染设置页；文本格式规则归 core/document，浏览器 Canvas 光栅实现由 ui/pdfPreview 通过接口注入。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -341,10 +341,11 @@ export function pdfTextAtoms(
         if (Math.abs(angle) > 0.12) return [];
         const style = styles[item.fontName] || {};
         const fontHeight = Math.max(1, Math.hypot(transform[2], transform[3]) || item.height || 1);
-        // 标准 Type 1 字体可能给出 NaN 指标；不能让有效正文因 y=NaN 被视口过滤掉。
-        const ascent = typeof style.ascent === 'number' && Number.isFinite(style.ascent)
+        // Type 1 字体可能给出 NaN 或全零指标；零 ascent 会把字形顶部误放到基线，遮罩漏掉正文。
+        // 保留数学字体合法的小正 ascent；仅无效时采用有限负 descent 或既有的 0.8em 回退。
+        const ascent = typeof style.ascent === 'number' && Number.isFinite(style.ascent) && style.ascent > 0
             ? style.ascent
-            : typeof style.descent === 'number' && Number.isFinite(style.descent)
+            : typeof style.descent === 'number' && Number.isFinite(style.descent) && style.descent < 0 && style.descent > -1
                 ? 1 + style.descent
                 : 0.8;
         const x = transform[4];
