@@ -22,7 +22,8 @@ concurrency:
 jobs:
   extension-quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # A single-worker sample completed 210 of 447 files in 32 minutes; reserve time for the remaining scope and builds.
+    timeout-minutes: 75
     env:
       FLUENTREAD_TEST_MAX_WORKERS: 1
       FLUENTREAD_TEST_CONCURRENCY: 1

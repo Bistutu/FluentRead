@@ -53,7 +53,7 @@ async function assertBackground(context, report, label) {
 }
 
 async function main() {
-  assert.equal(process.platform, 'darwin', 'This suite requires the macOS focus-safe browser helper');
+  assert.equal(os.platform(), 'darwin', 'This suite requires the macOS focus-safe browser helper');
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.json'), 'utf8'));
   const popupPath = manifest.action?.default_popup || manifest.browser_action?.default_popup;
   const optionsPath = manifest.options_ui?.page || manifest.options_page;
