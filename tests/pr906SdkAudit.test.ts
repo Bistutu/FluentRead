@@ -15,6 +15,7 @@ import doubao from '@/src/providers/translation/doubao';
 import {setRuntimeFetch} from '@/src/platform/http/runtime';
 import {createTranslationBroker} from '@/src/services/translation/broker';
 import type {TranslationConfigSource, TranslationRequestMessage} from '@/src/services/translation/types';
+import {attachTranslationGlossaryContext} from '@/src/services/translation/requestSnapshot';
 
 function configFor(service: string = services.custom) {
   const defaults = new Config();
@@ -92,6 +93,38 @@ afterEach(() => {
 });
 
 describe('PR #906 actual SDK settlement and effective pending policy', () => {
+  it.each(['private-context', 'another-key'] as const)(
+    'a 429 cools the frozen quota while %s can use the free transport slot', async isolation => {
+      const current = configFor();
+      current.maxConcurrentTranslations = 1;
+      const fetchMock = vi.fn(() => Promise.resolve(fetchMock.mock.calls.length === 1
+        ? new Response(JSON.stringify({error: {message: 'Synthetic quota limit'}}), {
+          status: 429, headers: {'content-type': 'application/json', 'retry-after': '2'},
+        }) : success()));
+      setRuntimeFetch(fetchMock);
+      const broker = brokerFor(current);
+      const invoke = (origin: string, privateContext = false) => broker.translateWithCache(
+        attachTranslationGlossaryContext({origin, requestTimeoutMs: 5_000}, {privateContext}),
+      );
+      const first = invoke('The first synthetic paragraph exceeds its API quota.').catch(error => error);
+      await vi.advanceTimersByTimeAsync(0);
+      await expect(first).resolves.toMatchObject({kind: 'rate-limit', statusCode: 429});
+      const cooled = invoke('The second synthetic paragraph must respect the shared cooldown.');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      if (isolation === 'another-key') current.token[services.custom] = 'fake-sdk-audit-secondary';
+      const healthy = invoke('The third synthetic paragraph belongs to an isolated healthy quota.', isolation === 'private-context');
+      await vi.advanceTimersByTimeAsync(0);
+      await expect(healthy).resolves.toBe('有效中文译文');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(cooled).resolves.toBe('有效中文译文');
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    },
+  );
+
   it.each([200, 500])('HTTP %s body already arrived: a deadline retains the real attempt slot until body EOF', async status => {
     const current = configFor();
     current.maxConcurrentTranslations = 1;
