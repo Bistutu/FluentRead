@@ -143,7 +143,9 @@ Choose API Free or API Pro and enter the matching key. A DeepL website subscript
 
 ## DeepLX
 
-Enter the full translation endpoint, such as `https://deeplx.example.com/translate`. Entering only a domain does not automatically add `/translate`. Leave it blank to use the default public endpoint.
+When the API Key is empty and the service URL is blank or unchanged from the default, FluentRead first connects directly to DeepL’s anonymous endpoint. If that fails, it falls back to the default public DeepLX endpoint. Long text is split into requests within the endpoint’s 1500 UTF-16 code unit limit, and the translations are combined.
+
+For a custom service, enter the full translation endpoint, such as `https://deeplx.example.com/translate`. Entering only a domain does not automatically add `/translate`. A custom URL, a configured proxy, or an API Key keeps requests on the specified route. A proxy URL takes priority over the service URL.
 
 Endpoints that do not require authentication can be used and checked with an empty API Key. If the site requires authentication, enter only its Token value, without a `Bearer` prefix. The Token is sent in the request header by default. If the site requires it in the URL, follow the site's instructions:
 
@@ -153,8 +155,6 @@ Endpoints that do not require authentication can be used and checked with an emp
 Keep <code v-pre>{{apiKey}}</code> exactly as written. It is replaced with your saved API Key when sending, so you do not need to put the actual Token in the URL. A configured proxy URL takes priority; use the full path and the site's required Token format there too. Then click **Check connection**.
 
 If several endpoints are configured, an empty Key skips addresses containing <code v-pre>{{apiKey}}</code> or <code v-pre>{{token}}</code> and uses any valid anonymous addresses in the effective list. If all effective addresses require a token, enter a Key first. An unresolved token address does not silently switch to the default public endpoint.
-
-These settings apply only to the standalone DeepLX service. DeepLX in the free fallback service uses the default public anonymous endpoint.
 
 </details>
 

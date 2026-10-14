@@ -1,7 +1,7 @@
 /**
  * @file userscript/uiLanguageBundles.ts
  * 文件职责：按需加载并注册 userscript 的六种非中文界面语言。
- * 主要内容：英文内嵌 gzip；其他语言从静态 JSON 获取并缓存在 GM 私有存储中，注册时补齐缺少的错误恢复、AI 翻译超时与局部划选文案，保留已发布远端文件内容与提交号。
+ * 主要内容：英文内嵌 gzip；其他语言从静态 JSON 获取并缓存在 GM 私有存储中，注册时补齐缺少的错误恢复、AI 翻译超时、局部划选与 DeepLX 直连文案，保留已发布远端文件内容与提交号。
  * 模块边界：只注册核心 i18n 资源，不访问宿主网页存储；扩展继续使用自己的按需资源加载器。
  */
 import {
@@ -82,6 +82,29 @@ const sectionSweepMessages: Readonly<Partial<Record<RegisteredUiLanguage, Readon
     }
 };
 
+const deeplxMessages: Readonly<Partial<Record<RegisteredUiLanguage, Readonly<Record<string, string>>>>> = {
+    'ja-JP': {
+        'settings.services.deeplx.defaultRoute': '既定：DeepL に直接接続',
+        'settings.services.deeplx.endpointHelp': 'API Key が未設定の場合、既定では DeepL に直接接続し、失敗時に公開 API を使用します。カスタム URL は完全なパス（通常は /translate で終わる）が必要です。パスは自動追加されません。',
+    },
+    'ko-KR': {
+        'settings.services.deeplx.defaultRoute': '기본: DeepL 직접 연결',
+        'settings.services.deeplx.endpointHelp': 'API Key가 없으면 기본적으로 DeepL에 직접 연결하고, 실패하면 공개 API를 사용합니다. 사용자 지정 주소에는 전체 경로(보통 /translate로 끝남)가 필요하며 경로는 자동으로 추가되지 않습니다.',
+    },
+    'fr-FR': {
+        'settings.services.deeplx.defaultRoute': 'Connexion directe à DeepL par défaut',
+        'settings.services.deeplx.endpointHelp': 'Sans clé API, la connexion par défaut se fait directement à DeepL, puis au service public en cas d’échec. Une URL personnalisée doit inclure le chemin complet (généralement /translate) ; le chemin n’est pas ajouté automatiquement.',
+    },
+    'ru-RU': {
+        'settings.services.deeplx.defaultRoute': 'По умолчанию — напрямую к DeepL',
+        'settings.services.deeplx.endpointHelp': 'Без API-ключа по умолчанию используется прямое подключение к DeepL, а при сбое — публичный API. Укажите полный путь в своём URL (обычно /translate); путь не добавляется автоматически.',
+    },
+    'es-ES': {
+        'settings.services.deeplx.defaultRoute': 'Conexión directa a DeepL por defecto',
+        'settings.services.deeplx.endpointHelp': 'Sin clave API, la conexión predeterminada es directa a DeepL; si falla, se usa el servicio público. Las URL personalizadas necesitan la ruta completa (normalmente /translate); no se añade automáticamente.',
+    },
+};
+
 async function inflateBundle(base64: string): Promise<UiLanguageBundle> {
     return JSON.parse(await inflateGzipBase64(base64)) as UiLanguageBundle;
 }
@@ -142,6 +165,7 @@ export const ensureUiLanguageBundle: EnsureUiLanguageBundle = (value) => {
             const recovery = recoveryMessages[registered];
             registerUiLanguageBundle(registered, {...bundle, messages: {
                 ...recovery, ...bundle.messages, ...aiRequestTimeoutMessages[registered], ...sectionSweepMessages[registered],
+                ...deeplxMessages[registered],
             }});
             return true;
         })

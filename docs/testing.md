@@ -1268,3 +1268,9 @@ pnpm test:pdf-selection -- \
 使用临时 Edge profile 与不抢焦点的后台可见窗口。服务器先实际收到扩展 Origin，再验证启用名单后 Origin 消失且鉴权不变，独立 Referer 规则安装、另一域名隔离、网页原有 Origin/Referer 保留、关闭与删除恢复、设置重开与扩展重载后持久化、非法域名阻断和 820px 布局。仅使用本地模拟 OpenAI 服务及虚构凭据，不证明真实网关或 Firefox 运行行为。新配置、DNR 同步和请求等待屏障由 `requestHeaderRules.test.ts` 与 `requestHeaderRuntime.test.ts` 覆盖。
 
 Popup 服务概览显示默认、继承和独立功能在配置中选择的模型，包含自定义模型占位符解析；统一标注“配置模型”，自定义请求体等请求规则可能覆盖最终请求模型。机器翻译行不显示模型，凭据或能力提醒仍优先。模型说明通过局部本地化 `featureServices.configuredModel` 缓存在 rows 内，aria-label 保留服务/继承说明并追加配置模型，title 保留完整模型名。`popupServiceModelClarity` 和 `popupServicesLifecycle` 的真实 Vue 模板验证继承/独立/自定义、自定义请求体覆盖时的配置模型语义、搜索不改选模，以及活跃上下文、KeepAlive/卸载、配置替换、跨功能旧事件、已删除供应商和用户焦点保护；隔离浏览器结果另行绑定源码版本，普通扩展 tab 不代替工具栏 popup 验收。
+
+## DeepLX 默认直连（issue #968）
+
+生产 Chrome 构建后运行 `scripts/testing/run-deeplx-direct-test.cjs`，显式提供 `--extension-dir`、`--playwright-root`、`--artifacts-dir`，并使用仓库 `scripts/testing/focus-safe-browser.cjs` 作为 `--focus-safe-helper`。默认使用临时 Edge profile、第二屏后台可见窗口与焦点监控。
+
+确定性夹具经过真实 broker 和 core，覆盖默认直连且不请求公共端点、繁体目标、429 后公共回退、1500 UTF-16 分块、自定义地址边界、取消中止，以及真实 Control 悬浮翻译/恢复/再翻译的 `[1,0,1]` 和邻段 `[0,0,0]`。`--live` 额外只发送一句公开短文到 DeepL，公共备用端点仍用夹具；结果单独记录，不能推断长期可用性、全部语言质量或 Firefox 实机表现。实现及本次证据范围见 [DeepLX 直连验证](maintainers/deeplx-direct-968.md)。

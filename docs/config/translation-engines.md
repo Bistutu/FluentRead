@@ -148,7 +148,9 @@ outline: false
 
 ## 使用 DeepLX
 
-服务地址需要填写完整翻译接口路径，例如 `https://deeplx.example.com/translate`；只填域名不会自动补全 `/translate`。留空时使用默认公共接口。
+未填写 API Key，且服务地址留空或保持默认地址时，FluentRead 会先直接请求 DeepL 匿名接口，失败后回退到默认公共 DeepLX 接口。直连按每次 1500 个 UTF-16 单元的上限自动拆分长文本，再合并译文。
+
+自定义服务地址需要填写完整翻译接口路径，例如 `https://deeplx.example.com/translate`；只填域名不会自动补全 `/translate`。填写自定义地址、配置代理或填写 API Key 时，只使用指定线路；代理地址优先于服务地址。
 
 无需验证的 DeepLX 接口可以留空 API Key，并直接点击 **检查连接**。需要验证时，API Key 中只填站点提供的 Token 值，不加 `Bearer` 前缀。默认通过请求头发送 Token；如果站点要求在网址中携带 Token，请按站点说明选择：
 
@@ -156,8 +158,6 @@ outline: false
 - 路径：<code v-pre>https://deeplx.example.com/{{apiKey}}/translate</code>
 
 保留 <code v-pre>{{apiKey}}</code> 原样，发送时会自动替换为已填写的 API Key，无需把真实 Token 写进地址。若地址使用占位符且没有可用的免 Key 地址，需要先填写 Key；不会悄悄转到默认公共接口。配置了代理地址时优先使用代理地址，因此也要在那里填写完整路径和站点要求的 Token 格式。完成后点击 **检查连接**。
-
-这些设置仅用于单独的 DeepLX 服务；免费翻译服务中的 DeepLX 使用默认公共匿名接口。
 
 </details>
 

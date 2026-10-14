@@ -260,7 +260,7 @@
     <div v-if="compute.showDeepLX" class="connection-field" data-deeplx-endpoint>
       <div class="connection-field-label"><strong>{{ t('settings.services.deeplx.endpoint') }}</strong></div>
       <div class="connection-field-control">
-        <el-input v-model="config.deeplx" :aria-label="t('settings.services.deeplx.endpoint')" :placeholder="DEFAULT_DEEPLX_ENDPOINT" aria-describedby="deeplx-endpoint-help" />
+        <el-input v-model="config.deeplx" :aria-label="t('settings.services.deeplx.endpoint')" :placeholder="t('settings.services.deeplx.defaultRoute')" aria-describedby="deeplx-endpoint-help" />
         <div id="deeplx-endpoint-help">
           <p class="provider-field-help">{{ t('settings.services.deeplx.endpointHelp') }}</p>
           <p class="provider-field-help">无需密钥的接口可留空；需要验证时填写 Token</p>
@@ -477,7 +477,7 @@ import { isValidCustomHeaders } from '@/src/core/config/customHeaders'
 import { createApiKeyCheckRevision } from '@/src/core/config/apiKeyCheckIdentity'
 import { normalizeMyMemoryEmail } from '@/src/core/config/freeTranslation'
 import { isNativeBatchTranslationService, isNativeTranslationBatchEnabled } from '@/src/core/config/nativeBatch'
-import { DEFAULT_DEEPLX_ENDPOINT, requiresDeepLXToken } from '@/src/core/config/deeplx'
+import { requiresDeepLXToken } from '@/src/core/config/deeplx'
 import { getDeepLEndpoint } from '@/src/core/config/deepl'
 import browser from 'webextension-polyfill'
 import { requestConfigSave, waitForConfigPersistenceQueue } from '@/src/services/config/store'

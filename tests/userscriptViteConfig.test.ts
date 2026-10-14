@@ -243,7 +243,19 @@ describe('authoritative site catalogs with an external pinned data asset', () =>
 });
 
 describe('userscript browser shim injection', () => {
-    const registeredSupplementKeys = ['learning.panelLoadError', 'learning.reloadPage', ...Object.keys(aiRequestTimeoutMessages['en-US'])];
+    const registeredSupplementKeys = ['learning.panelLoadError', 'learning.reloadPage', ...Object.keys(aiRequestTimeoutMessages['en-US']),
+        'sectionTranslation.picker.dragging', 'sectionTranslation.scope.selected', 'settings.services.deeplx.defaultRoute'];
+    const publishedOverrideKeys = ['sectionTranslation.picker.preview', 'sectionTranslation.picker.instruction',
+        'popup.sectionTranslationTitle', 'settings.services.deeplx.endpointHelp'];
+    const pinnedLanguageFiles = {
+        'ja-JP': 'ja-JP.5bb4b24b0a41715f.json',
+        'ko-KR': 'ko-KR.e6befd8f0b3fb833.json',
+        'fr-FR': 'fr-FR.afc75e324ace2ce5.json',
+        'ru-RU': 'ru-RU.52b510364aae90e1.json',
+        'es-ES': 'es-ES.d821e30eac68a115.json',
+    };
+    const publishedMessages: Record<string, Record<string, string>> = Object.fromEntries(Object.entries(pinnedLanguageFiles)
+        .map(([language, file]) => [language, JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8')).messages]));
     it('preserves pinned remote dictionaries for inlined panes and keeps embedded recovery copy', () => {
         const build = (userscriptConfig as {build: {cssCodeSplit: boolean; rollupOptions: {output: {inlineDynamicImports: boolean}}}}).build;
         expect(build.cssCodeSplit).toBe(false);
@@ -260,6 +272,7 @@ describe('userscript browser shim injection', () => {
                 !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && !key.startsWith('popup.compact.')
                 && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
                 && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !registeredSupplementKeys.includes(key))));
+            if (language !== 'en-US') for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
             expect(bundle.messages).toEqual(kept);
             expect(original.messages['learning.reloadPage']).toBeTruthy();
         }
@@ -319,7 +332,8 @@ describe('userscript browser shim injection', () => {
             && key !== 'popup.compact.translate' && key !== 'popup.compact.restore'
             && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)));
         expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
-        for (const key of retainedKeys) expect(projected[key]).toBe(extension[key]);
+        for (const key of retainedKeys) expect(projected[key]).toBe(publishedMessages[_language] && publishedOverrideKeys.includes(key)
+            ? publishedMessages[_language]![key] : extension[key]);
         expect(projected['contextMenu.translateSelection']).toBeTruthy();
         expect(projected['contextMenu.translatePage']).toBeTruthy();
         expect(projected['contextMenu.restorePage']).toBeTruthy();
@@ -339,13 +353,7 @@ describe('userscript browser shim injection', () => {
         const commit = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__);
         const bundles = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__) as Record<string, string>;
         expect(commit).toBe('6112632a8ced3de4f104cab445eefdbc9f23bdb7');
-        expect(bundles).toEqual({
-            'ja-JP': 'ja-JP.5bb4b24b0a41715f.json',
-            'ko-KR': 'ko-KR.e6befd8f0b3fb833.json',
-            'fr-FR': 'fr-FR.afc75e324ace2ce5.json',
-            'ru-RU': 'ru-RU.52b510364aae90e1.json',
-            'es-ES': 'es-ES.d821e30eac68a115.json',
-        });
+        expect(bundles).toEqual(pinnedLanguageFiles);
         for (const file of Object.values(bundles)) {
             const path = `userscript/languages/${file}`;
             const committed = execFileSync('git', ['show', `${commit}:${path}`], {cwd: process.cwd(), encoding: 'utf8'});
