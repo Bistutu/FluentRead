@@ -120,7 +120,10 @@ const artifactBytes = Buffer.byteLength(source);
 // 同依赖独立主线 573890c33 为 2,074,383，候选为 2,080,438；
 // 利用原余量后按既有 1 KB 步长最小增加 4 KB，余 562 字节，保留所有资源与执行校验。
 // 五种已发布远程词典保持原摘要；新划选文案随注册补齐。对照见 section-sweep-selection-20261014/userscript-size.json。
-const MAX_USERSCRIPT_BYTES = 2_081_000;
+// 共享配置草稿、模型偏好清理与翻译服务边界整合：同 Node/锁依赖独立 main 6537d3de830a
+// 为 2,080,438 字节，2addf19c75fc 为 2,082,862（增 2,424，0.1165%）。
+// 按既有 1 KB 步长最小增加 2 KB，余 138；全部断言保留，见 architecture-quality-20261014/userscript-size.json。
+const MAX_USERSCRIPT_BYTES = 2_083_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

@@ -1,6 +1,6 @@
 {
-  "base": "573890c33ad410b48086dcb83bad97ae1bf5a82c",
-  "head": "8e4b27cd967b2fcb2300f1fb10b500dc3ff29bf5",
+  "base": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
+  "head": "2addf19c75fc753c0b72ced44d7a14612eee1224",
   "changed": [
     ".github/workflows/extension-quality.yml",
     "docs/architecture.md",
@@ -9,10 +9,12 @@
     "docs/reports/architecture-quality-20261014/browser-document-scenarios.json",
     "docs/reports/architecture-quality-20261014/ci-plan.json",
     "docs/reports/architecture-quality-20261014/strict-coverage.json",
+    "docs/reports/architecture-quality-20261014/userscript-size.json",
     "docs/reports/architecture-quality-20261014/validation.json",
     "docs/testing.md",
     "scripts/testing/run-affected-tests.d.mts",
     "scripts/testing/run-affected-tests.mjs",
+    "scripts/verify-userscript-build.mjs",
     "src/app/background/capabilityRegistry.ts",
     "src/app/background/chatgptPlanRuntime.ts",
     "src/app/background/configMessageHandlers.ts",

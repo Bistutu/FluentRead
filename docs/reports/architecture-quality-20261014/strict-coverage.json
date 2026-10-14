@@ -813,34 +813,34 @@
       "sourceSha256": "4378fc457041d4aaa0996b13a73f25d918217beb11dafe87913dfeb8aec4268f"
     },
     "src/features/full-page-translation/content/sectionTranslation.ts": {
-      "evidence": "affected-behavior",
+      "evidence": "latest-main-section-integration",
       "metrics": {
-        "statements": {
-          "total": 333,
-          "covered": 333,
-          "skipped": 0,
-          "pct": 100
-        },
-        "branches": {
-          "total": 249,
-          "covered": 249,
+        "lines": {
+          "total": 357,
+          "covered": 357,
           "skipped": 0,
           "pct": 100
         },
         "functions": {
-          "total": 33,
-          "covered": 33,
+          "total": 35,
+          "covered": 35,
           "skipped": 0,
           "pct": 100
         },
-        "lines": {
-          "total": 333,
-          "covered": 333,
+        "statements": {
+          "total": 357,
+          "covered": 357,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 270,
+          "covered": 270,
           "skipped": 0,
           "pct": 100
         }
       },
-      "sourceSha256": "72ab959d6f77102a8bc55dcc4730341beccaad18bea3482ad56235c4c0834e35"
+      "sourceSha256": "37d182dcc7cc530d441b7575ff9374da5cdbb5f237321ecd4cce6b16adf9a87d"
     },
     "src/features/full-page-translation/content/titleTranslation.ts": {
       "evidence": "affected-behavior",
@@ -2462,5 +2462,17 @@
       },
       "sourceSha256": "02a32fcef32f57d116d3d6f920ca90d23248998353c1933738ac8c7b51381426"
     }
-  }
+  },
+  "latestMainIntegration": {
+    "sourceCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224",
+    "integratedMainCommit": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
+    "files": 3,
+    "passed": 105,
+    "testFiles": [
+      "tests/sectionTranslationRegion.test.ts",
+      "tests/sectionTranslationRuntime.test.ts",
+      "tests/fullPageTranslationConfigSnapshot.test.ts"
+    ]
+  },
+  "sourceHashesVerifiedAtCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224"
 }

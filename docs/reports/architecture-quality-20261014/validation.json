@@ -1,10 +1,10 @@
 {
   "status": "passed",
-  "sourceCommit": "8e4b27cd967b2fcb2300f1fb10b500dc3ff29bf5",
+  "sourceCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224",
   "comparisonBase": "8bdd5c20dc82b57d27b7e22d14080cacd64d7eed",
   "version": "0.0.38",
   "referenceRepositoriesUsed": false,
-  "delivery": "local_worktree_only",
+  "delivery": "github_pull_request",
   "changes": [
     "shared configuration draft ownership",
     "explicit provider request snapshots and typed service ports",
@@ -20,7 +20,7 @@
     },
     "testRegistration": {
       "files": 717,
-      "declaredCases": 12877,
+      "declaredCases": 12891,
       "status": "passed"
     },
     "nativeNodeContracts": {
@@ -37,8 +37,8 @@
     },
     "manifestVerifier": "passed",
     "userscriptVerifier": "passed",
-    "userscriptBytes": 2076806,
-    "userscriptBudgetBytes": 2077000,
+    "userscriptBytes": 2082862,
+    "userscriptBudgetBytes": 2083000,
     "affectedBehavior": {
       "status": "passed",
       "files": 410,
@@ -86,6 +86,44 @@
     },
     "latestMainIntegration": {
       "status": "passed",
+      "sourceCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224",
+      "integratedMainCommit": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
+      "sectionSweep": {
+        "files": 3,
+        "passed": 158
+      },
+      "languageProjection": {
+        "files": 3,
+        "passed": 287
+      },
+      "sectionStrictCoverage": {
+        "files": 3,
+        "passed": 105,
+        "module": "src/features/full-page-translation/content/sectionTranslation.ts",
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "types": "passed",
+      "builds": {
+        "chrome_mv3": "passed",
+        "firefox_mv2": "passed",
+        "userscript": "passed",
+        "docs": "passed"
+      },
+      "manifestVerifier": "passed",
+      "productionSourceDifferenceFromProgramSourceCommit": true,
+      "userscriptVerifier": "passed",
+      "userscriptSizeReport": "userscript-size.json",
+      "userscriptVerifierFixtures": {
+        "files": 2,
+        "passed": 17,
+        "realCliNegativeCases": 2
+      }
+    },
+    "priorToolingIntegration": {
+      "status": "passed",
       "files": 3,
       "passed": 50,
       "types": "passed",
@@ -108,14 +146,16 @@
     ],
     "consoleErrors": 0,
     "temporaryProfilesRemoved": true,
-    "allRecordedFocusChecksBrowserFrontmost": false
+    "allRecordedFocusChecksBrowserFrontmost": false,
+    "sourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb"
   },
   "proofLimits": [
     "Affected graph tests are not the complete repository suite.",
     "Translation responses in browser scenarios are controlled fixtures, not live provider quality.",
     "Firefox is built and its manifest checked; Firefox runtime is not tested.",
     "Browser smoke checks do not verify real PCM capture or local model accuracy.",
-    "CI workflow is validated locally and has not run on GitHub."
+    "Browser architecture checks were recorded at programSourceCommit; the later main section-sweep integration is covered by focused tests and rebuilt artifacts, not rerun browser scenarios.",
+    "Hosted CI is pending on the updated PR head at recording time; final results are recorded by the PR checks."
   ],
   "ciPlan": {
     "files": 447,
@@ -123,10 +163,11 @@
     "behaviorFiles": 410,
     "strictModules": 82,
     "duplicates": false,
-    "verification": "Current plan and runner fixtures verified; prior behavior and scoped coverage evidence retained. Hosted CI has not run at recording time.",
+    "verification": "Updated plan and scoped integration verified; the complete combined command is run by hosted PR CI.",
     "plan": "ci-plan.json"
   },
   "programSourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb",
-  "recordingPhase": "local validation before PR upload",
-  "currentIntegratedBase": "573890c33ad410b48086dcb83bad97ae1bf5a82c"
+  "recordingPhase": "local integration validation before updated PR CI",
+  "currentIntegratedBase": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
+  "pullRequest": "https://github.com/FluentRead/FluentRead/pull/985"
 }

@@ -1,0 +1,99 @@
+{
+  "sourceCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224",
+  "baseCommit": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
+  "baseline": {
+    "bytes": 2080438,
+    "sha256": "b7b1c1391705f3dcd98b5aaa82087f483c20bdc30c503ed1ce75f698aa4a4896"
+  },
+  "candidate": {
+    "bytes": 2082862,
+    "sha256": "c5eac2c1abf9141982f6625c1a19716582088551ad0704de41676ec0f00c688f"
+  },
+  "deltaBytes": 2424,
+  "deltaPercent": 0.1165,
+  "oldBudgetBytes": 2081000,
+  "budgetBytes": 2083000,
+  "remainingBudgetBytes": 138,
+  "budgetStepBytes": 1000,
+  "sameDependencies": true,
+  "dependencies": {
+    "node": "v24.19.0",
+    "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+    "nodeModulesRealPath": "/Users/thinkstu/Desktop/copy/FluentRead/node_modules",
+    "pnpmLockSha256": "dfd93ae1da73c89bf85214c211691cf1059584a4e1ada3470878c8554de96bd0",
+    "vite": "5.4.19",
+    "wxt": "0.20.18"
+  },
+  "baselineMethod": "git archive of exact origin/main6537 snapshot in an owned temporary directory; shared locked node_modules; wxt prepare then standard userscript Vite build. Main checkout and tracked snapshot sources remain unchanged.",
+  "baselineBuild": {
+    "command": "node scripts/testing/run-resource-safe.mjs -- node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+    "durationSeconds": 3.96,
+    "modules": 668,
+    "prepareLog": "/private/tmp/fluentread-userscript-main6537-prepare.log",
+    "buildLog": "/private/tmp/fluentread-userscript-main6537-build.log",
+    "node": "v24.19.0",
+    "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
+  },
+  "incrementScope": [
+    "Shared settings config-editor/controller lifecycle preserves pending and failed drafts; SettingsSections uses the same implementation in extension and userscript full settings.",
+    "Shared removeConfiguredModel command removes every model preference, including userscript request limits, through the existing config draft.",
+    "Translation preflight/identity/template logic is shared across app and userscript through application services; dependency moves do not introduce a parallel runtime."
+  ],
+  "languageResources": "Same immutable resource commit and five published dictionary filenames/content; extension-only document config copy is excluded and new section-sweep copy is added at registration.",
+  "assertions": "Only the measured size budget and its explanation changed; all metadata, resource, exclusion, duplicate-injection and isolated VM compatibility assertions remain byte-identical.",
+  "cleanup": {
+    "baselineDirectoryRemoved": true,
+    "removedOwnedDirectory": "/private/tmp/fluentread-userscript-main6537-zfvr10uv",
+    "sharedNodeModulesPreserved": true
+  },
+  "verifier": {
+    "actualArtifact": "passed",
+    "log": "/private/tmp/fluentread-architecture-userscript-verifier-final.log",
+    "negativeCliCases": [
+      {
+        "name": "one-byte-over-budget",
+        "bytes": 2083001,
+        "exitCode": 1,
+        "expectedFailure": "artifact exceeds the 2,083,000-byte size budget",
+        "passed": true
+      },
+      {
+        "name": "missing-required-GM-grant",
+        "bytes": 2082878,
+        "exitCode": 1,
+        "expectedFailure": "GM_xmlhttpRequest grant is required",
+        "passed": true
+      }
+    ],
+    "temporaryFixtureRemoved": true
+  },
+  "measurementLimit": "Delta is measured for the complete minified artifact; incrementScope identifies shared consumers rather than claiming additive per-module byte attribution.",
+  "sameNodeRuntime": true,
+  "candidateBuild": {
+    "command": "node scripts/testing/run-resource-safe.mjs -- node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+    "node": "v24.19.0",
+    "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+    "durationSeconds": 4.44,
+    "modules": 672,
+    "buildLog": "/private/tmp/fluentread-userscript-candidate-node24-build.log",
+    "matchesPriorNode20Artifact": true
+  },
+  "priorCandidateBuild": {
+    "node": "v20.11.1",
+    "runtimeSource": "Parent-confirmed pnpm build/runtime error stack",
+    "artifact": {
+      "bytes": 2082862,
+      "sha256": "c5eac2c1abf9141982f6625c1a19716582088551ad0704de41676ec0f00c688f"
+    },
+    "role": "Cross-runtime comparison only; same-Node baseline delta uses the explicit Node24 rebuild."
+  },
+  "focusedTests": {
+    "files": [
+      "tests/userscriptMetadata.test.ts",
+      "tests/architecture/verificationOwnership.test.ts"
+    ],
+    "passed": 17,
+    "failed": 0,
+    "log": "/private/tmp/fluentread-architecture-userscript-verifier-tests.log"
+  }
+}
