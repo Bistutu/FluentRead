@@ -51,6 +51,101 @@ function setup(members: string[] = [services.google, services.microsoft]) {
 afterEach(() => vi.useRealTimers());
 
 describe('组合翻译真实 broker 接入', () => {
+    it('顺序策略每个成功请求轮流首选下一成员，并在末尾回到第一项', async () => {
+        const h = setup([services.google, services.microsoft, services.bilibili]);
+        const attempted: string[] = [];
+        for (const service of h.config.compositeTranslationProviders[0].services) {
+            h.providers[service] = vi.fn(async () => {attempted.push(service); return translatedText;});
+        }
+        for (let index = 0; index < 4; index += 1) {
+            await expect(h.broker.translateWithCache({origin: sourceText, useCache: false})).resolves.toBe(translatedText);
+        }
+        expect(attempted).toEqual(['google', 'microsoft', 'bilibili', 'google']);
+        expect(h.recordRequest.mock.calls.map(([event]) => event.routes)).toEqual([
+            ['google'], ['microsoft'], ['bilibili'], ['google'],
+        ]);
+    });
+
+    it('首选失败只推进当前请求的回退，下一请求仍按独立轮次从下一成员开始', async () => {
+        const h = setup([services.google, services.microsoft, services.bilibili]);
+        const attempted: string[] = [];
+        let googleCalls = 0, microsoftCalls = 0, bilibiliCalls = 0;
+        h.providers.google = vi.fn(async () => {
+            attempted.push('google');
+            if (++googleCalls === 1) throw new Error('first unavailable');
+            return translatedText;
+        });
+        h.providers.microsoft = vi.fn(async () => {
+            attempted.push('microsoft');
+            if (++microsoftCalls === 2) throw new Error('second unavailable');
+            return translatedText;
+        });
+        h.providers.bilibili = vi.fn(async () => {
+            attempted.push('bilibili');
+            if (++bilibiliCalls === 1) throw new Error('third unavailable');
+            return translatedText;
+        });
+        for (let index = 0; index < 3; index += 1) {
+            await expect(h.broker.translateWithCache({origin: sourceText, useCache: false})).resolves.toBe(translatedText);
+        }
+        expect(attempted).toEqual(['google', 'microsoft', 'microsoft', 'bilibili', 'google', 'bilibili']);
+        expect(h.recordRequest.mock.calls.map(([event]) => event.routes)).toEqual([
+            ['google', 'microsoft'], ['microsoft', 'bilibili', 'google'], ['bilibili'],
+        ]);
+    });
+
+    it('并发公开请求在任何成员响应前已经取得不同轮流起点', async () => {
+        const h = setup([services.google, services.microsoft, services.bilibili]);
+        const attempted: string[] = [];
+        const complete: Array<() => void> = [];
+        for (const service of h.config.compositeTranslationProviders[0].services) {
+            h.providers[service] = vi.fn(async () => {
+                attempted.push(service);
+                return new Promise(resolve => complete.push(() => resolve(translatedText)));
+            });
+        }
+        const requests = Array.from({length: 3}, () => h.broker.translateWithCache({origin: sourceText, useCache: false}));
+        void Promise.all(requests).catch(() => undefined);
+        await vi.waitFor(() => expect(attempted).toEqual(['google', 'microsoft', 'bilibili']));
+        complete.forEach(resolve => resolve());
+        await expect(Promise.all(requests)).resolves.toEqual([translatedText, translatedText, translatedText]);
+    });
+
+    it('单条和数组按公开请求轮流，数组拆成单条协议时保持同一成员', async () => {
+        const h = setup([services.google, services.microsoft]);
+        h.config.nativeBatchTranslationEnabled.microsoft = false;
+        const attempted: Array<{service: string; origin: unknown}> = [];
+        for (const service of [services.google, services.microsoft]) {
+            h.providers[service] = vi.fn(async message => {
+                attempted.push({service, origin: message.origin});
+                return Array.isArray(message.origin) ? message.origin.map(() => translatedText) : translatedText;
+            });
+        }
+        const origins = [sourceText, 'The second paragraph describes caching.'];
+        await expect(h.broker.translateWithCache({origin: sourceText, useCache: false})).resolves.toBe(translatedText);
+        await expect(h.broker.translateWithCache({origin: origins, useCache: false})).resolves.toEqual([translatedText, translatedText]);
+        await expect(h.broker.translateWithCache({origin: origins, useCache: false})).resolves.toEqual([translatedText, translatedText]);
+        expect(attempted).toEqual([
+            {service: 'google', origin: sourceText},
+            {service: 'microsoft', origin: origins[0]},
+            {service: 'microsoft', origin: origins[1]},
+            {service: 'google', origin: origins},
+        ]);
+        expect(h.recordRequest.mock.calls.map(([event]) => event.routes)).toEqual([['google'], ['microsoft'], ['google']]);
+    });
+
+    it('同一原文的缓存命中也推进组合轮次，成员缓存仍各自复用', async () => {
+        const h = setup();
+        for (let index = 0; index < 4; index += 1) {
+            await expect(h.broker.translateWithCache({origin: sourceText})).resolves.toBe(translatedText);
+        }
+        expect(h.providers.google).toHaveBeenCalledOnce();
+        expect(h.providers.microsoft).toHaveBeenCalledOnce();
+        expect(h.recordRequest.mock.calls.map(([event]) => [event.routes[0], event.source])).toEqual([
+            ['google', 'network'], ['microsoft', 'network'], ['google', 'cache'], ['microsoft', 'cache'],
+        ]);
+    });
+
     it('智能策略从真实上游失败学习，下一次优先使用成功成员', async () => {
         const h = setup();
         Object.assign(h.config.compositeTranslationProviders[0], {strategy: 'smart'});
@@ -104,7 +199,7 @@ describe('组合翻译真实 broker 接入', () => {
         expect(h.recordRequest.mock.calls[0][0]).toMatchObject({serviceId: group, mode: 'batch', segmentCount: 2, upstreamCalls: 3});
     });
 
-    it('只有单条协议的成员也能完成组合数组，失败批次不发布部分缓存', async () => {
+    it('单条协议成员数组失败不发布部分缓存，下一轮使用其他成员后再轮回重试', async () => {
         const h = setup([services.claude, services.google]);
         h.config.token.claude = 'fixture-claude';
         h.providers.claude = vi.fn(async message => {
@@ -122,6 +217,10 @@ describe('组合翻译真实 broker 接入', () => {
             expect(typeof message.origin).toBe('string');
             return translatedText;
         });
+        await expect(h.broker.translateWithCache({origin: origins})).resolves.toEqual([translatedText, translatedText]);
+        expect(h.providers.claude).not.toHaveBeenCalled();
+        expect(h.providers.google).toHaveBeenCalledOnce();
+        expect(h.recordRequest.mock.calls[1][0]).toMatchObject({routes: ['google'], source: 'cache', upstreamCalls: 0});
         await expect(h.broker.translateWithCache({origin: origins})).resolves.toEqual([translatedText, translatedText]);
         expect(h.providers.claude).toHaveBeenCalledTimes(2);
     });

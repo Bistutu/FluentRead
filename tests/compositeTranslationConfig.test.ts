@@ -78,7 +78,7 @@ describe('组合翻译公开配置', () => {
         expect(getCompositeTranslationProviderLabel(undefined, item.id)).toBe(item.id);
         expect(getCompositeTranslationProviderLabel([provider({name: ''})], item.id)).toBe(item.id);
         expect(getCompositeTranslationServiceOptions(undefined)).toEqual([]);
-        expect(getCompositeTranslationServiceOptions([item, provider({strategy: 'random'}), provider({strategy: 'smart'})]).map(option => option.description)).toEqual(['顺序 · 2 个翻译服务', '随机 · 2 个翻译服务', '智能 · 2 个翻译服务']);
+        expect(getCompositeTranslationServiceOptions([item, provider({strategy: 'random'}), provider({strategy: 'smart'})]).map(option => option.description)).toEqual(['轮流 · 2 个翻译服务', '随机 · 2 个翻译服务', '智能 · 2 个翻译服务']);
         expect(withCompositeTranslationServiceOptions([{value: 'google', label: 'Google'}, {value: item.id, label: '旧目录'}], [item])).toEqual([{value: 'google', label: 'Google'}, ...getCompositeTranslationServiceOptions([item])]);
         expect(withCompositeTranslationServiceOptions([], undefined)).toEqual([]);
         expect(servicesType.isAI(item.id)).toBe(false);

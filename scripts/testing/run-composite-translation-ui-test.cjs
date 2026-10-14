@@ -111,7 +111,17 @@ const fixture = http.createServer((request, response) => {
     const result = await page.evaluate(async service => chrome.runtime.sendMessage({origin: 'This combination returns the first working translation.', serviceOverride: service, clientRequestId: crypto.randomUUID(), requestTimeoutMs: 15000, useCache: false}), groupId);
     assert.match(typeof result === 'string' ? result : JSON.stringify(result), /组合翻译已成功完成/);
     assert(report.fixtureRequests.some(request => request.path.startsWith('/fail')));assert(report.fixtureRequests.some(request => request.path.startsWith('/success')));
-    report.cases.push('actual-background-broker-sequential-provider-fallback');
+    const failedCalls = report.fixtureRequests.filter(request => request.path.startsWith('/fail')).length;
+    const successfulCalls = report.fixtureRequests.filter(request => request.path.startsWith('/success')).length;
+    const second = await page.evaluate(async service => chrome.runtime.sendMessage({origin: 'This combination returns the first working translation.', serviceOverride: service, clientRequestId: crypto.randomUUID(), requestTimeoutMs: 15000, useCache: false}), groupId);
+    assert.match(typeof second === 'string' ? second : JSON.stringify(second), /组合翻译已成功完成/);
+    assert.equal(report.fixtureRequests.filter(request => request.path.startsWith('/fail')).length, failedCalls);
+    assert.equal(report.fixtureRequests.filter(request => request.path.startsWith('/success')).length, successfulCalls + 1);
+    const third = await page.evaluate(async service => chrome.runtime.sendMessage({origin: 'This combination returns the first working translation.', serviceOverride: service, clientRequestId: crypto.randomUUID(), requestTimeoutMs: 15000, useCache: false}), groupId);
+    assert.match(typeof third === 'string' ? third : JSON.stringify(third), /组合翻译已成功完成/);
+    assert(report.fixtureRequests.filter(request => request.path.startsWith('/fail')).length > failedCalls);
+    assert.equal(report.fixtureRequests.filter(request => request.path.startsWith('/success')).length, successfulCalls + 2);
+    report.cases.push('actual-background-broker-round-robin-and-failure-fallback');
     await page.locator('[data-connection-test-button]:visible').click();await page.locator('[data-connection-test-status]:visible').filter({hasText: /连接正常/}).waitFor({state: 'visible', timeout: 55000});report.cases.push('connection-check-uses-combination');await shot('composite-connection-check');
     await settings().getByTestId('composite-service-delete').click();await page.locator('.el-dialog:visible').getByRole('button', {name: '确认', exact: true}).click();
     config = await waitConfig(config => config.compositeTranslationProviders.length === 0);

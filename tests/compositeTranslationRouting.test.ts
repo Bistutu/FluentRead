@@ -7,13 +7,40 @@ const profile = (strategy: CompositeTranslationProvider['strategy']): CompositeT
 });
 
 describe('composite routing observations', () => {
-    it('preserves priority and shuffles random members without mutating configuration', () => {
+    it('rotates each request through list order and shuffles random members without mutating configuration', () => {
         const state = createCompositeTranslationRoutingState({random: () => 0});
         const sequential = profile('sequential');
+        expect(state.order(sequential)).toEqual(sequential.services);
+        expect(state.order(sequential)).toEqual(['microsoft', 'deepL', 'google']);
+        expect(state.order(sequential)).toEqual(['deepL', 'google', 'microsoft']);
         expect(state.order(sequential)).toEqual(sequential.services);
         expect(state.order(profile('random'))).toEqual(['microsoft', 'deepL', 'google']);
         expect(sequential.services).toEqual(['google', 'microsoft', 'deepL']);
         expect(state.order({...sequential, strategy: 'random', services: []})).toEqual([]);
+    });
+
+    it('isolates round-robin groups and resets when members change or another strategy runs', () => {
+        const state = createCompositeTranslationRoutingState({random: () => 0});
+        const sequential = profile('sequential');
+        expect(state.order(sequential)).toEqual(sequential.services);
+        expect(state.order({...sequential, id: 'composite:other'})).toEqual(sequential.services);
+        expect(state.order({...sequential, services: ['deepL', 'google']})).toEqual(['deepL', 'google']);
+        expect(state.order({...sequential, services: ['deepL', 'google']})).toEqual(['google', 'deepL']);
+        expect(state.order(sequential)).toEqual(sequential.services);
+        state.order({...sequential, strategy: 'random'});
+        expect(state.order(sequential)).toEqual(sequential.services);
+        expect(state.order({...sequential, services: []})).toEqual([]);
+        expect(state.order(sequential)).toEqual(sequential.services);
+        expect(state.order({...sequential, services: ['google']})).toEqual(['google']);
+        expect(state.order({...sequential, services: ['google']})).toEqual(['google']);
+    });
+
+    it('bounds round-robin groups without changing the saved member list', () => {
+        const state = createCompositeTranslationRoutingState();
+        const sequential = profile('sequential');
+        state.order(sequential);
+        for (let index = 0; index < 201; index += 1) state.order({...sequential, id: `composite:${index}`});
+        expect(state.order(sequential)).toEqual(sequential.services);
     });
 
     it('learns speed and success, cools failures, and keeps observations isolated by group', () => {

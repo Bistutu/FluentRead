@@ -12,7 +12,8 @@ import {
     reportTranslationModelUsage,
 } from '@/src/services/translation/requestSnapshot';
 
-const group = 'composite:connection';
+let group = 'composite:connection';
+let groupSequence = 0;
 function source(services = ['google', 'microsoft']) {
     return Object.assign(new Config(), {service: group,
         compositeTranslationProviders: [{id: group, name: '组合连接检查', strategy: 'sequential' as const,
@@ -22,6 +23,8 @@ function source(services = ['google', 'microsoft']) {
 }
 
 beforeEach(() => {
+    // 真实连接模块拥有会话级 router；各测试独立 profile，避免继承前一测试的轮次。
+    group = `composite:connection-${++groupSequence}`;
     vi.clearAllMocks();
     google.mockReset().mockResolvedValue('你好，FluentRead。');
     microsoft.mockReset().mockResolvedValue('你好，FluentRead。');
@@ -30,6 +33,60 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('组合翻译连接检查', () => {
+    it('连续连接检查轮流首选成员，成功不会固定后续检查的首选服务', async () => {
+        const snapshot = createTranslationProviderConfigSnapshot(source(['google', 'microsoft', 'openai']));
+        const attempted: string[] = [];
+        for (const [service, adapter] of [['google', google], ['microsoft', microsoft], ['openai', openai]] as const) {
+            adapter.mockImplementation(async () => {attempted.push(service); return '你好，FluentRead。';});
+        }
+        for (let index = 0; index < 4; index += 1) {
+            await expect(runTranslationServiceConnectionTest(group, {config: snapshot})).resolves.toEqual({durationMs: expect.any(Number)});
+        }
+        expect(attempted).toEqual(['google', 'microsoft', 'openai', 'google']);
+    });
+
+    it('首成员检查失败后当前轮次回退，下一轮仍从轮到的第二成员开始', async () => {
+        const snapshot = createTranslationProviderConfigSnapshot(source(['google', 'microsoft', 'openai']));
+        const attempted: string[] = [];
+        let googleCalls = 0, microsoftCalls = 0, openaiCalls = 0;
+        google.mockImplementation(async () => {
+            attempted.push('google');
+            if (++googleCalls === 1) throw new Error('first unavailable');
+            return '你好，FluentRead。';
+        });
+        microsoft.mockImplementation(async () => {
+            attempted.push('microsoft');
+            if (++microsoftCalls === 2) throw new Error('second unavailable');
+            return '你好，FluentRead。';
+        });
+        openai.mockImplementation(async () => {
+            attempted.push('openai');
+            if (++openaiCalls === 1) throw new Error('third unavailable');
+            return '你好，FluentRead。';
+        });
+        for (let index = 0; index < 3; index += 1) {
+            await expect(runTranslationServiceConnectionTest(group, {config: snapshot})).resolves.toBeTruthy();
+        }
+        expect(attempted).toEqual(['google', 'microsoft', 'microsoft', 'openai', 'google', 'openai']);
+    });
+
+    it('并发连接检查在响应前分配不同首选成员', async () => {
+        const snapshot = createTranslationProviderConfigSnapshot(source(['google', 'microsoft', 'openai']));
+        const attempted: string[] = [];
+        const complete: Array<() => void> = [];
+        for (const [service, adapter] of [['google', google], ['microsoft', microsoft], ['openai', openai]] as const) {
+            adapter.mockImplementation(async () => {
+                attempted.push(service);
+                return new Promise(resolve => complete.push(() => resolve('你好，FluentRead。')));
+            });
+        }
+        const pending = Array.from({length: 3}, () => runTranslationServiceConnectionTest(group, {config: snapshot}));
+        void Promise.all(pending).catch(() => undefined);
+        await vi.waitFor(() => expect(attempted).toEqual(['google', 'microsoft', 'openai']));
+        complete.forEach(resolve => resolve());
+        await expect(Promise.all(pending)).resolves.toHaveLength(3);
+    });
+
     it('从真实 registry 按顺序检查成员，复用冻结配置与实际服务限流身份', async () => {
         const current = source(['google', 'openai']);
         const snapshot = createTranslationProviderConfigSnapshot(current);

@@ -447,7 +447,7 @@ function formatCompositeTranslationProviders(value: unknown): string {
     return formatArray(value, (item) => {
         if (!isRecord(item)) return formatValue(item);
         const name = typeof item.name === 'string' && item.name.trim() ? item.name.trim() : '未命名组合';
-        const strategy = item.strategy === 'random' ? '随机' : item.strategy === 'smart' ? '智能' : '顺序';
+        const strategy = item.strategy === 'random' ? '随机' : item.strategy === 'smart' ? '智能' : '轮流';
         const members = Array.isArray(item.services) ? formatArray(item.services, formatService) : '无';
         return `${name}（${strategy}；成员：${members}；单次超时：${formatValue(item.timeoutMs)} ms）`;
     });

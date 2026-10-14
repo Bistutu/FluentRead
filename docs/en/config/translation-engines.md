@@ -14,9 +14,11 @@ In **Translation services**, select **Add combination** beside **Custom service*
 
 | Strategy | How members are selected |
 | --- | --- |
-| Sequential | Start with the first member and try the next after a failure or timeout |
+| Round robin | Rotate the first-choice member in list order for each request; try the remaining members after a failure or timeout |
 | Random | Shuffle the list for each request and try remaining members after a failure or timeout |
 | Smart | Rank members by recent success rate and response speed, then try the next after a failure or timeout |
+
+**Round robin** rotates the first-choice service across consecutive requests: **A→B→C→A**. If that member fails or times out, the current request continues with the next member and wraps to the beginning when needed. Each member is tried at most once per request. Restarting the background process or changing the member list or order resets the rotation to the first member.
 
 Each request returns the first successful translation; it does not merge several translations. Smart routing evaluates availability and speed rather than translation quality. Each member keeps its own model, API key, prompts, and request limits. Configure the member services first; model selection and key rotation continue to follow each member's existing settings.
 

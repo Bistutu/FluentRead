@@ -1,7 +1,7 @@
 /**
  * @file src/core/config/compositeTranslation.ts
  * 文件职责：定义可把多个已配置翻译服务组成单一选择项的公开配置契约，供配置归一化、服务目录、设置表单与 broker 共同使用。
- * 主要内容：规范化随机、顺序与智能策略、稳定组合 ID、成员顺序及单成员时间预算；剔除失效自定义成员、重复成员和嵌套组合，并提供无副作用的查询、目录和删除辅助函数。
+ * 主要内容：规范化随机、轮流与智能策略、稳定组合 ID、成员顺序及单成员时间预算；剔除失效自定义成员、重复成员和嵌套组合，并提供无副作用的查询、目录和删除辅助函数。
  * 模块边界：只处理不含凭据的公开组合数据，不读写存储、不发起网络请求、不保存运行统计；真实服务调用、失败回退和智能排序由翻译编排层负责。
  */
 import {resolveConfiguredModel, services, servicesType} from './catalog';
@@ -89,7 +89,7 @@ export function getCompositeTranslationProviderLabel(providers: readonly Composi
 
 export function getCompositeTranslationServiceOptions(providers: readonly CompositeTranslationProvider[] | undefined): CustomOpenAIServiceOption[] {
     return (providers || []).map(provider => ({value: provider.id, label: provider.name,
-        description: `${({random: '随机', sequential: '顺序', smart: '智能'} as const)[provider.strategy]} · ${provider.services.length} 个翻译服务`,
+        description: `${({random: '随机', sequential: '轮流', smart: '智能'} as const)[provider.strategy]} · ${provider.services.length} 个翻译服务`,
     }));
 }
 

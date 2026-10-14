@@ -20,7 +20,7 @@ describe('配置差异预览', () => {
         const serialized = JSON.stringify(group(preview, 'translationServices'));
         expect(serialized).toContain('工作组合（智能；成员：谷歌翻译');
         expect(serialized).toContain('随机组合（随机');
-        expect(serialized).toContain('未命名组合（顺序；成员：无');
+        expect(serialized).toContain('未命名组合（轮流；成员：无');
         expect(serialized).toContain('单次超时：12000 ms');
         expect(buildConfigDiff({compositeTranslationProviders: null}, {compositeTranslationProviders: []}).groups[0].changes[0].before).toBe('无');
     });
