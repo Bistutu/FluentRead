@@ -103,6 +103,23 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
+    it('preserves ChatGPT direct model slugs in inherited and independent document selectors without a custom sentinel', async () => {
+        state.config.service = 'chatgptPlan';state.config.model.chatgptPlan = 'account-default';
+        await state.loadFiles([file('account.txt', 'First paragraph\n\nSecond paragraph')]);await flush();
+        expect(state.documentModelOptions).toEqual(['account-default']);expect(state.selectedDocumentModel).toBe('account-default');
+        state.config.documentService = 'chatgptPlan';await flush();
+        expect(state.documentModelOptions).toEqual(['account-default']);expect(state.selectedDocumentModel).toBe('account-default');
+        state.selectedDocumentModel = 'account-default';await flush();
+        expect(state.config.documentModel.chatgptPlan).toBe('account-default');expect(state.config.documentCustomModel.chatgptPlan).toBeUndefined();
+        state.config.documentModel.chatgptPlan = 'account-document';state.config.documentCustomModel.chatgptPlan = 'obsolete-custom-value';await flush();
+        expect(state.documentModelOptions).toEqual(['account-default', 'account-document']);expect(state.selectedDocumentModel).toBe('account-document');
+        state.editSegment(0, '人工保留译文');state.selectedDocumentModel = 'account-default';await flush();
+        expect(state.translatedSegments[0]).toBe('人工保留译文');expect(state.config.documentModel.chatgptPlan).toBe('account-default');expect(state.config.documentCustomModel.chatgptPlan).toBeUndefined();
+        await state.startTranslation();await flush();expect(state.translationComplete).toBe(true);expect(state.translatedSegments[0]).toBe('人工保留译文');
+        expect(ports.batch).toHaveBeenCalledWith(['Second paragraph'], 'account.txt', expect.objectContaining({serviceOverride: 'chatgptPlan', modelOverride: 'account-default'}));
+        state.config.documentService = 'google';await flush();state.config.documentService = 'chatgptPlan';await flush();
+        expect(state.selectedDocumentModel).toBe('account-default');expect(state.config.documentModel.chatgptPlan).toBe('account-default');
+    });
     it('exposes a service switch immediately after failure even while another request is pending', async () => {
         const paragraphs = Array.from({length: 18}, (_, index) => `Paragraph ${index}`);
         await state.loadFiles([file('failure.txt', paragraphs.join('\n\n'))]); await flush();

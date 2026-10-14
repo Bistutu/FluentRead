@@ -308,7 +308,7 @@ describe('configmodelAudit 配置、目录和真实消费者边界', () => {
             expect(catalog.servicesType.isUseProxy(service)).toBe(catalog.servicesType.useProxy.has(service) || custom);
             expect(catalog.servicesType.isUseModel(service)).toBe(catalog.servicesType.useModel.has(service) || custom);
             expect(catalog.servicesType.isUseCustomUrl(service)).toBe(catalog.servicesType.useCustomUrl.has(service) || custom);
-            expect(catalog.servicesType.isUseCustomBody(service)).toBe(catalog.servicesType.isAI(service));
+            expect(catalog.servicesType.isUseCustomBody(service)).toBe(service !== catalog.services.chatgptPlan && catalog.servicesType.isAI(service));
             expect(catalog.servicesType.isCustom(service)).toBe(custom);
             expect(catalog.servicesType.isNewApi(service)).toBe(service === 'newapi');
             expect(catalog.servicesType.isUseAkSk(service)).toBe(false);

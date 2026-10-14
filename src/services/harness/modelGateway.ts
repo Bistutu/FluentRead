@@ -33,6 +33,7 @@ import {createTranslationProviderConfigSnapshot} from '@/src/services/translatio
 import {isApiKeyRequired} from '@/src/core/config/validation';
 import {normalizeApiKeyRecoveryMs} from '@/src/core/config/scheduling';
 import {sha256Hex} from '@/src/shared/function/sha256';
+import {createChatGPTPlanHarnessModel} from './chatgptPlanModel';
 
 function zhipuBearer(apiKey: string): string {
   const [key, secret] = apiKey.split('.', 2);
@@ -107,6 +108,7 @@ export function normalizeHarnessModelError(error: unknown, service: string, apiK
 type ConcreteLanguageModel = Extract<LanguageModel, {specificationVersion: 'v3'}>;
 
 function createSingleHarnessLanguageModel(config: Config, service: string, model: string): ConcreteLanguageModel {
+  if (service === services.chatgptPlan) return createChatGPTPlanHarnessModel(model);
   if (service === services.bilibili) {
     // 免费入口只使用已验证的官方模型；残留凭据、代理、多 Key 和自定义模型均不参与请求。
     const provider = createOpenAICompatible({
@@ -173,6 +175,7 @@ function snapshotHarnessConfig(config: Config): Config {
 
 /** 后台取消只比较 gateway 的生效输入；摘要不包含可展示或发送的凭据。 */
 export function getHarnessModelInputKey(config: Config, service: string, model: string): string {
+  if (service === services.chatgptPlan) return sha256Hex(JSON.stringify([service, model.trim(), 'chatgpt-plan-local-oauth']));
   if (service === services.bilibili) return sha256Hex(JSON.stringify([service, BILIBILI_FREE_TRANSLATION_MODEL, BILIBILI_FREE_TRANSLATION_DOMAIN]));
   const requestedModel = model.trim();
   const keys = getServiceApiKeys(config, service);
@@ -196,6 +199,7 @@ export function getHarnessModelInputKey(config: Config, service: string, model: 
  * 重新创建底层 provider，避免某次调用中途读取到 UI 正在编辑的凭据。
  */
 export function createHarnessLanguageModel(config: Config, service: string, model: string): LanguageModel {
+  if (service === services.chatgptPlan) return createChatGPTPlanHarnessModel(model);
   if (service === services.bilibili) return createSingleHarnessLanguageModel(config, service, model);
   const keys = getServiceApiKeys(config, service);
   if (keys.length < 2) return createSingleHarnessLanguageModel(withServiceApiKey(config, service, keys[0] ?? ''), service, model);

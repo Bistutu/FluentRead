@@ -8,6 +8,7 @@ const PROVIDER_ROOT = resolve(PROJECT_ROOT, 'src/providers/translation');
 
 const EXPECTED_PROVIDER_FILES = [
     'registry.ts',
+    'chatgpt-plan.ts',
     'ai-sdk/endpoints.ts',
     'ai-sdk/errors.ts',
     'ai-sdk/openai-compatible.ts',

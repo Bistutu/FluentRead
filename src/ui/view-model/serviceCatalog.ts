@@ -35,6 +35,7 @@ const serviceWebsites = {
   chromeTranslator: 'https://developer.chrome.com/docs/ai/translator-api',
   localTranslation: serviceGuide,
   openai: 'https://platform.openai.com/',
+  chatgptPlan: 'https://developers.openai.com/cookbook/articles/sign-in-with-chatgpt',
   azureOpenai: 'https://ai.azure.com/',
   gemini: 'https://aistudio.google.com/',
   yiyan: 'https://console.bce.baidu.com/qianfan/',

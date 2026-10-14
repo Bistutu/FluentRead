@@ -1,7 +1,7 @@
 <!--
  @file src/ui/components/ServiceIcon.vue
  文件职责：为翻译服务和模型选项提供统一品牌图标组件，在没有专用品牌图形时输出统一几何图标。
- 主要内容：根据 service、label、size 与 model props 选择尺寸和色调，读取固定版本 Lobe Icons 的单色路径，豆包网页免费节点复用已有豆包品牌图形，为品牌、内置及动态 OpenAI-compatible 服务渲染内联 SVG；路径与 MIT 许可来源见 docs/development/service-icons.md。
+ 主要内容：根据 service、label、size 与 model props 选择尺寸和色调，读取固定版本 Lobe Icons 的单色路径，豆包网页免费节点复用已有豆包品牌图形，ChatGPT 套餐复用 OpenAI 品牌，为品牌、内置及动态 OpenAI-compatible 服务渲染内联 SVG；路径与 MIT 许可来源见 docs/development/service-icons.md。
  模块边界：组件只负责装饰性视觉且 aria-hidden，不加载远程商标、不判断服务可用性，也不选择模型；服务目录和能力过滤由 core/catalog 与 services/capabilities 管理。
 -->
 <template>
@@ -93,7 +93,7 @@ const isCustomOpenAIService = computed(() => isCustomOpenAIProviderId(props.serv
 
 const tone = computed(() => {
   if (isCustomOpenAIService.value) return 'violet'
-  if (['openai', 'azureOpenai', 'newapi'].includes(props.service)) return 'violet'
+  if (['openai', 'chatgptPlan', 'azureOpenai', 'newapi'].includes(props.service)) return 'violet'
   if (['deepseek', 'deepL', 'deeplx', 'microsoft', 'freeTranslation', 'myMemory'].includes(props.service)) return 'blue'
   if (['gemini', 'google', 'chromeTranslator', 'localTranslation', 'ollama', 'googleCloudTranslation'].includes(props.service)) return 'green'
   if (['azureTranslator', 'tencent', 'baiduTranslation'].includes(props.service)) return 'blue'
@@ -102,7 +102,7 @@ const tone = computed(() => {
 })
 
 const brandIcon = computed(() => {
-  const service = props.service === 'doubaoWeb' ? 'doubao' : props.service
+  const service = props.service === 'doubaoWeb' ? 'doubao' : props.service === 'chatgptPlan' ? 'openai' : props.service
   return getServiceBrandIcon(service)
 })
 </script>
@@ -215,7 +215,8 @@ const brandIcon = computed(() => {
   background: #e8f8f0;
 }
 
-.service-brand-icon[data-service='openai'] {
+.service-brand-icon[data-service='openai'],
+.service-brand-icon[data-service='chatgptPlan'] {
   color: #252a31;
   background: #f0f2f5;
 }

@@ -2,7 +2,7 @@
  @file src/app/document-translation/DocumentApp.vue
  文件职责：实现独立文档翻译页面的完整 Vue 应用，提供按已提交段落计算的实时数字与进度条、暂停及等待重试状态、保留已有译文的跨服务续译入口、简短异常提示与按需展开的技术详情，承载文件导入、格式化预览、分段翻译、人工校订、原文结构变化后旧校订的独立保留、保存原文件和双语文件导出的用户流程。
  主要内容：相同译文保留原文且不重复展示；文档打开后按窗口宽度用一行或多行工具栏承载文件、阅读方式、页码缩放、翻译服务与目标语言、翻译与下载，窄窗口用翻译设置弹窗，矮小窗口用覆盖式侧栏保留正文高度；各种格式支持只缩放正文的触控板捏合与键盘操作，复用富文本预览并保持阅读位置；左侧可折叠的侧栏放文件列表与目录，其余空间留给正文；首页列出保存在本机的最近翻译，重新打开同一份文件时接着上次的译文继续；PDF 默认按原版排版左右对照，各种格式都从正在阅读的位置开始翻译；没有文字层的扫描版 PDF 在开始翻译时先逐页识别文字并显示进度；HTML、Markdown、纯文本与 ePub 的隔离预览只载入一次，译文逐段到达后原位更新并保留滚动位置，整篇译文几乎都与原文相同时状态里提示可换目标语言，带标题的文档（含 Word）在侧栏提供可按原文或译文显示的目录，Word 里的表格在阅读视图中仍按表格排版、只有一个部分时不显示部分切换，ePub 的全部章节列在侧栏目录里（按译文显示时用章内标题的译文）、当前章节下接着它其余的各级标题，正文上方不再占一行章节按钮，Word 与文本类预览在宽窗口左右对照；组织文档阅读与翻译、增量统计和人工校订，人工译法确认只在当前文件阅读会话中参与篇章参考，按原文件身份和冻结语言隔离，重译时清空；导入与在线下载绑定独立取消所有权；PDF 清晰阅读流式显示完整段落和原图区域，源页文字层与译文更新分离，下载按原版布局左右配对，长译文以完整批注保留；切换、删除、重置及卸载释放 PDF 任务和 URL；PDF/ePub/DOCX/ZIP 导出显示进度、支持取消重试，迟到结果不得回写。
- 模块边界：组件负责页面交互与响应式状态，不自行解析二进制格式、不实现片段翻译队列、配置存储协议或导出编码；解析渲染来自 document-translation feature，配置协调来自 services/config，运行时适配由本目录 runtime 注入。
+ 模块边界：ChatGPT 套餐模型选项保留全局和文档实际 slug，独立选择也直接保存，不经过自定义模型哨兵或新增发现请求；组件负责页面交互与响应式状态，不自行解析二进制格式、不实现片段翻译队列、配置存储协议或导出编码；解析渲染来自 document-translation feature，配置协调来自 services/config，运行时适配由本目录 runtime 注入。
 -->
 <!-- 文档页面归 app 层所有；WXT 入口只负责启动。 -->
 <template>
@@ -506,6 +506,7 @@ import {
   requestConfigPatch,
   resolveConfiguredModel,
   runtimeConfig,
+  services,
   servicesType,
   subscribeConfig,
   translateDocumentSegments,
@@ -976,6 +977,10 @@ const builtInDocumentModels = computed(() => (models.get(effectiveDocumentServic
   .filter((model) => model !== customModelString));
 const documentModelOptions = computed(() => {
   if (selectedCustomOpenAIProvider.value) return selectedCustomOpenAIProvider.value.models;
+  if (effectiveDocumentService.value === services.chatgptPlan) return Array.from(new Set([
+    resolveConfiguredModel(config.model[services.chatgptPlan], config.customModel[services.chatgptPlan]),
+    resolveConfiguredModel(activeDocumentModels.value[services.chatgptPlan], activeDocumentCustomModels.value[services.chatgptPlan]),
+  ].filter(Boolean)));
   return Array.from(new Set([
     ...builtInDocumentModels.value,
     ...(config.customModels[effectiveDocumentService.value] || []),
@@ -994,8 +999,9 @@ const selectedDocumentModel = computed({
   set: (value: string) => {
     const service = effectiveDocumentService.value;
     config.documentService = service;
-    if (documentIsCustomOpenAIProvider.value || builtInDocumentModels.value.includes(value)) {
+    if (documentIsCustomOpenAIProvider.value || service === services.chatgptPlan || builtInDocumentModels.value.includes(value)) {
       config.documentModel[service] = value;
+      if (service === services.chatgptPlan) delete config.documentCustomModel[service];
       return;
     }
     // requestConfigPatch 只提交显式请求的顶层字段，因此必须在同一轮同时写入

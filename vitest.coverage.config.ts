@@ -16,6 +16,7 @@ export default defineConfig({
     plugins: [vue({include: [
         /\/src\/(?:features\/share-card\/ui\/ShareCardStudio|features\/selection-translation\/ui\/SelectionTranslator|features\/settings\/ui\/services\/RequestLimit(?:Settings|Fields)|features\/reading-assistant\/ui\/[^/]+|ui\/components\/(?:MarkdownContent|MarkdownTable|[^/]*Reading[^/]*)|features\/image-translation\/ui\/MangaEntry|app\/document-translation\/(?:DocumentApp|DocumentSegmentEditor)|ui\/components\/(?:CustomHotkeyInput|UiSelect|GlossaryLibrarySelect|ServiceIcon|TranslationLoadingPreview|UiIcon|FeatureEnableCard)|features\/settings\/ui\/components\/(?:FieldHelp|InterfaceSkinPreview|PopupLayoutPreview|PopupLayoutPreviewItem|SettingsGroup|SettingsItem|TranslationColorField|TranslationStylePreview|WritingStylePreview|SegmentedControl))\.vue$/,
         resolve(__dirname, 'src/features/document-translation/ui/PdfReader.vue'),
+        resolve(__dirname, 'src/features/settings/ui/services/ChatGPTPlanSettings.vue'),
         resolve(__dirname, 'src/features/video-subtitle/ui/VideoSentenceLearning.vue'),
         resolve(__dirname, 'docs/.vitepress/theme/BrandReader.vue'),
         resolve(__dirname, 'docs/.vitepress/theme/BrowserGlyph.vue'),
@@ -88,6 +89,11 @@ export default defineConfig({
         // 按真实规则内容验证共享词书样式，与普通测试配置一致。
         css: {include: [/(?:src\/app\/content\/page|src\/ui\/styles\/(?:translation-display|bilingual-sentence-highlight|vocabulary-reencounter))\.css(?:\?|$)/]},
         include: [
+            'tests/chatgptPlanBridgeClient.test.ts',
+            'tests/chatgptPlanConfig.test.ts',
+            'tests/chatgptPlanHarness.test.ts',
+            'tests/chatgptPlanProvider.test.ts',
+            'tests/chatgptPlanSettingsLifecycle.test.ts',
             'tests/compositeTranslationConfig.test.ts',
             'tests/compositeTranslationRouting.test.ts',
             'tests/compositeTranslationBroker.test.ts',
@@ -675,6 +681,15 @@ export default defineConfig({
             reportsDirectory: 'coverage/core',
             reporter: ['text', 'json-summary', 'json', 'html'],
             include: [
+                'src/core/i18n/serviceLabels.ts',
+                'src/platform/chatgpt-plan/bridge.ts',
+                'src/platform/chatgpt-plan/events.ts',
+                'src/services/chatgpt-plan/client.ts',
+                'src/services/harness/chatgptPlanModel.ts',
+                'src/providers/translation/chatgpt-plan.ts',
+                'src/app/background/chatgptPlanRuntime.ts',
+                'src/features/settings/model/chatgptPlanMessages.ts',
+                'src/features/settings/ui/services/ChatGPTPlanSettings.vue',
                 'src/core/config/compositeTranslation.ts',
                 'src/core/i18n/messages/compositeTranslation.ts',
                 'src/services/translation/compositeRouting.ts',
