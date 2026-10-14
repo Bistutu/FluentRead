@@ -1,12 +1,12 @@
 /**
  * @file src/features/translation-center/model/comparison.ts
  * 文件职责：维护翻译中心每个服务独立的对比任务，隔离输入快照、取消和迟到响应。
- * 主要内容：同步服务顺序时保留结果，以任务身份保护并发重试，保留已完成项并仅停止未完成项；空译文作为失败处理，过期结果按原文、语言和模型快照判定。
+ * 主要内容：同步服务顺序时保留结果，以任务身份保护并发重试，保留已完成项并仅停止未完成项；空译文作为失败处理，过期结果按原文、语言、模型和组合连接摘要快照判定。
  * 模块边界：本模块不读配置、不持久化原文、不操作 DOM，也不实现 provider 协议；响应式状态和翻译函数由界面注入。
  */
 export const MAX_COMPARISON_TEXT_LENGTH = 5000;
 export type ComparisonStatus = 'idle' | 'loading' | 'success' | 'error' | 'cancelled';
-export type ComparisonInput = {text: string; sourceLanguage: string; targetLanguage: string; model: string};
+export type ComparisonInput = {text: string; sourceLanguage: string; targetLanguage: string; model: string; connectionFingerprint?: string};
 export type ComparisonCard = {
   service: string; status: ComparisonStatus; result: string; error: string;
   duration: number; run: number; input: ComparisonInput | null;
@@ -18,7 +18,8 @@ export function isComparisonStale(card: ComparisonCard, input: ComparisonInput):
   return card.input !== null && (card.input.text !== input.text.trim()
     || card.input.sourceLanguage !== input.sourceLanguage
     || card.input.targetLanguage !== input.targetLanguage
-    || card.input.model !== input.model);
+    || card.input.model !== input.model
+    || card.input.connectionFingerprint !== input.connectionFingerprint);
 }
 
 export function createComparisonSession(state: ComparisonState, translate: ComparisonTranslator, now = () => performance.now()) {

@@ -23,6 +23,7 @@ import {
   LEGACY_CUSTOM_OPENAI_PROVIDER_ID,
   normalizeCustomOpenAIProviders,
 } from './customOpenAI'
+import {isCompositeTranslationProviderId, isConfiguredCompositeTranslationProvider, normalizeCompositeTranslationProviders} from './compositeTranslation'
 import {dropCredentialsForChangedDestinations} from './credentialBinding'
 
 type ConfigRecord = Record<string, any>
@@ -59,7 +60,11 @@ export function isConfigImportValid(value: unknown): value is ConfigRecord {
   if (typeof value.from !== 'string' || !value.from.trim()) return false
   if (typeof value.to !== 'string' || !value.to.trim()) return false
   if (typeof value.service !== 'string') return false
-  if (isCustomOpenAIProviderId(value.service)) {
+  if (isCompositeTranslationProviderId(value.service)) {
+    const rawProviders = Object.hasOwn(value, 'compositeTranslationProviders') ? value.compositeTranslationProviders : undefined
+    const customProviders = normalizeCustomOpenAIProviders(Object.hasOwn(value, 'customOpenAIProviders') ? value.customOpenAIProviders : undefined)
+    if (!isConfiguredCompositeTranslationProvider(normalizeCompositeTranslationProviders(rawProviders, customProviders), value.service)) return false
+  } else if (isCustomOpenAIProviderId(value.service)) {
     const rawProviders = Object.hasOwn(value, 'customOpenAIProviders') ? value.customOpenAIProviders : undefined
     const providers = normalizeCustomOpenAIProviders(rawProviders)
     const isLegacyImport = value.service === LEGACY_CUSTOM_OPENAI_PROVIDER_ID

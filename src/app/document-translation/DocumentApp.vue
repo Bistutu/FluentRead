@@ -375,7 +375,7 @@
           v-model="config.documentGlossaryIds"
           :libraries="config.glossaryLibraries"
           :enabled="config.glossaryEnabled"
-          :unsupported="!supportsTranslationGlossary(effectiveDocumentService, selectedDocumentModel)"
+          :unsupported="!documentSupportsGlossary"
           :disabled="queueBusy"
         >
           <template #mode-control="{mode, changeMode}">
@@ -510,6 +510,10 @@ import {
   subscribeConfig,
   translateDocumentSegments,
   withCustomOpenAIServiceOptions,
+  withCompositeTranslationServiceOptions,
+  getCompositeTranslationConfigFingerprint,
+  hasCompositeTranslationAIContext,
+  isCompositeTranslationProviderId,
   GlossaryLibrarySelect,
   supportsTranslationGlossary,
   useUiI18n,
@@ -944,10 +948,10 @@ const formatCards = [
   {code: 'SUB', label: '字幕 / 歌词', tone: 'violet'},
 ];
 
-const serviceOptions = computed(() => filterAvailableTranslationServices(withCustomOpenAIServiceOptions(
+const serviceOptions = computed(() => filterAvailableTranslationServices(withCompositeTranslationServiceOptions(withCustomOpenAIServiceOptions(
   options.services,
   config.customOpenAIProviders,
-)).filter((item: any) => !item.disabled).map((item: any) => ({
+), config.compositeTranslationProviders)).filter((item: any) => !item.disabled).map((item: any) => ({
   ...item,
   label: translateLegacy(item.label),
   description: item.description ? translateLegacy(item.description) : item.description,
@@ -1001,6 +1005,8 @@ const selectedDocumentModel = computed({
   },
 });
 const documentModelValue = computed(() => selectedDocumentModel.value);
+const documentSupportsGlossary = computed(() => isCompositeTranslationProviderId(effectiveDocumentService.value)
+  || supportsTranslationGlossary(effectiveDocumentService.value, selectedDocumentModel.value));
 const credentialWarning = computed(() => {
   if (documentServiceUnavailableMessage.value) return documentServiceUnavailableMessage.value;
   if (documentUsesModel.value && !documentModelValue.value.trim()) {
@@ -1044,18 +1050,22 @@ const canCompare = computed(() => translating.value || hasTranslation.value || (
 const effectivePreviewMode = computed(() => canCompare.value ? previewMode.value : 'source');
 const currentFingerprint = computed(() => JSON.stringify({
   from: config.from, to: config.to, service: effectiveDocumentService.value, model: selectedDocumentModel.value,
+  compositeConnection: getCompositeTranslationConfigFingerprint(config, effectiveDocumentService.value),
   glossaryIds: config.documentGlossaryIds, glossaryRevision: buildGlossaryRevision(config.glossaryLibraries, config.glossaryEnabled),
 }));
-/** 保持旧历史指纹可读：服务和模型只决定剩余段落的请求，语言与术语才决定已有译文能否继续使用。 */
+/** 跨服务与模型切换保留续译；同一组合内部的配置变化仍遵循原有重译确认，语言与术语始终参与兼容判断。 */
 function compatibleTranslationSettings(previous: string, current: string): boolean {
-  const contentSettings = (fingerprint: string): string => {
+  const readSettings = (fingerprint: string) => {
     try {
       const value = JSON.parse(fingerprint);
-      if (!value || typeof value !== 'object' || Array.isArray(value)) return fingerprint;
-      return JSON.stringify([value.from, value.to, value.glossaryIds, value.glossaryRevision]);
-    } catch {return fingerprint;}
+      return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined;
+    } catch {return undefined;}
   };
-  return contentSettings(previous) === contentSettings(current);
+  const before = readSettings(previous), after = readSettings(current);
+  if (!before || !after) return previous === current;
+  const contentSettings = (value: Record<string, unknown>) => JSON.stringify([value.from, value.to, value.glossaryIds, value.glossaryRevision]);
+  return contentSettings(before) === contentSettings(after)
+    && (before.service !== after.service || before.compositeConnection === after.compositeConnection);
 }
 const settingsChanged = computed(() => Boolean(taskFingerprint.value && !compatibleTranslationSettings(taskFingerprint.value, currentFingerprint.value)));
 const translationActionLabel = computed(() => settingsChanged.value ? '按新设置翻译' : translationComplete.value ? '重新翻译' : runState.value === 'failed' ? t('document.translationRecovery.retry') : hasTranslation.value || runState.value === 'paused' ? '继续翻译' : '开始翻译');
@@ -1730,7 +1740,8 @@ async function startTranslation(restart = false): Promise<void> {
     modelOverride: documentUsesModel.value ? documentModelValue.value : undefined,
     sourceLanguage: config.from, targetLanguage: config.to, batchTranslation: documentBatchTranslation.value,
     materialId: documentQueue.value.find(item => item.id === activeDocumentId.value)?.historyId || `document:${activeDocumentId.value}`,
-    enableAIContext: config.enableAIContext && servicesType.isUseAIContext(effectiveDocumentService.value, documentModelValue.value)};
+    enableAIContext: config.enableAIContext && (servicesType.isUseAIContext(effectiveDocumentService.value, documentModelValue.value)
+      || hasCompositeTranslationAIContext(config, effectiveDocumentService.value))};
   runState.value = 'ready';
   liveCompletedSegments.value = completedSegments.value;
   translating.value = true;

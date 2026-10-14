@@ -5,6 +5,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 // 脚本发布的语言资源不含智能高亮文案；摘要必须按脚本实际使用的投影计算。
 import {UI_LANGUAGE_BUNDLES} from '../userscript/languageBundles';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
+import {aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
 import {ungzip} from 'pako';
 import userscriptConfig from '../userscript/vite.config';
 
@@ -142,6 +143,7 @@ describe('userscript remote UI language data', () => {
         const original = JSON.parse(remoteSource);
         expect(original.messages).not.toHaveProperty('learning.panelLoadError');
         expect(original.messages).not.toHaveProperty('learning.reloadPage');
+        for (const key of Object.keys(aiRequestTimeoutMessages[language])) expect(original.messages).not.toHaveProperty(key);
         const values = new Map<string, unknown>();
         const requests: string[] = [];
         globalThis.GM = {
@@ -167,11 +169,15 @@ describe('userscript remote UI language data', () => {
                 await expect(loader.ensureUiLanguageBundle(language)).resolves.toBe(true);
                 expect(register).toHaveBeenCalledTimes(1);
                 expect(register).toHaveBeenCalledWith(language, {
-                    ...original, messages: {...recovery, ...original.messages},
+                    ...original, messages: {...recovery, ...original.messages, ...aiRequestTimeoutMessages[language]},
                 });
                 for (const [key, text] of Object.entries(recovery)) {
                     expect(core.translate(key, language)).toBe(text);
                     expect(core.translate(key, language)).not.toBe(core.translate(key, 'zh-CN'));
+                }
+                for (const [key, text] of Object.entries(aiRequestTimeoutMessages[language])) {
+                    expect(core.translate(key, language)).toBe(text);
+                    if (key !== 'settings.requestLimits.seconds') expect(core.translate(key, language)).not.toBe(core.translate(key, 'zh-CN'));
                 }
                 await expect(loader.ensureUiLanguageBundle(language)).resolves.toBe(true);
                 expect(register).toHaveBeenCalledTimes(1);
@@ -206,7 +212,9 @@ describe('userscript remote UI language data', () => {
             const loader = await import('@/userscript/uiLanguageBundles');
             await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(true);
             expect(register).toHaveBeenCalledTimes(1);
-            expect(register).toHaveBeenCalledWith('fr-FR', supplied);
+            expect(register).toHaveBeenCalledWith('fr-FR', {
+                ...supplied, messages: {...supplied.messages, ...aiRequestTimeoutMessages['fr-FR']},
+            });
             expect(core.translate('learning.panelLoadError', 'fr-FR')).toBe('Remote section recovery');
             expect(core.translate('learning.reloadPage', 'fr-FR')).toBe('Remote reload');
             expect(supplied.messages).toEqual(messages);

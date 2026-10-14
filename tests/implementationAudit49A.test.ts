@@ -290,7 +290,7 @@ describe('49A input production public entries', () => {
   it('writes a valid runtime result through native value setter and host events', async () => {
     const f = inputFeature({success: true, translatedText: '你好'}); const changed = vi.fn(); f.input.addEventListener('input', changed);
     f.trigger(); await vi.waitFor(() => expect(f.input.value).toBe('你好'));
-    expect(changed).toHaveBeenCalledOnce(); expect(f.send).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: 'Hello', targetLang: 'zh-CN', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u)});
+    expect(changed).toHaveBeenCalledOnce(); expect(f.send).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: 'Hello', targetLang: 'zh-CN', clientRequestId: expect.stringMatching(/^input:[^\s]+$/u), requestTimeoutMs: 45_000});
   });
 });
 

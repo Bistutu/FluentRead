@@ -171,6 +171,65 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(progress().props['aria-valuenow']).toBe(100);
     });
 
+    it('preserves glossary and AI context for combinations and invalidates saved document settings after member edits', async () => {
+        const service = 'composite:document';
+        Object.assign(state.config, {from: 'en', to: 'zh-Hans', documentService: service, enableAIContext: true,
+            compositeTranslationProviders: [{id: service, name: 'Document combination', strategy: 'sequential', services: ['openai', 'google'], timeoutMs: 12000}]});
+        state.config.model.openai = 'gpt-4.1-mini';
+        state.config.customModel.openai = '';
+        state.config.token.openai = 'fixture-document-composite';
+        await state.loadFiles([file('combined.txt', 'The first paragraph explains translation.\n\nThe next paragraph explains caching.')]);
+        await flush();
+        expect(state.documentSupportsGlossary).toBe(true);
+        expect(state.credentialWarning).toBeNull();
+        ports.translate.mockImplementation(async (source: string) => `译 ${source}`);
+        await state.startTranslation(); await flush();
+        expect(ports.translate).toHaveBeenCalledTimes(2);
+        expect(ports.batch).not.toHaveBeenCalled();
+        for (const [, , options] of ports.translate.mock.calls) {
+            expect(options).toMatchObject({serviceOverride: service, enableAIContext: true});
+            expect(options.modelOverride).toBeFalsy();
+        }
+        expect(state.settingsChanged).toBe(false);
+        const translatedFingerprint = state.taskFingerprint;
+        state.config.compositeTranslationProviders[0].strategy = 'smart'; await flush();
+        expect(state.settingsChanged).toBe(true);
+        expect(state.translationActionLabel).toBe('按新设置翻译');
+        state.config.compositeTranslationProviders[0].strategy = 'sequential'; await flush();
+        expect(state.currentFingerprint).toBe(translatedFingerprint);
+        state.config.token.openai = 'changed-member-credential'; await flush();
+        expect(state.settingsChanged).toBe(true);
+    });
+    it.each([
+        ['google', 'composite:first'], ['composite:first', 'google'], ['composite:first', 'composite:second'],
+    ])('resumes unfinished segments from %s to %s without discarding manual revisions', async (before, after) => {
+        Object.assign(state.config, {documentService: before, enableAIContext: false,
+            compositeTranslationProviders: [
+                {id: 'composite:first', name: 'First combination', strategy: 'sequential', services: ['google', 'microsoft'], timeoutMs: 12000},
+                {id: 'composite:second', name: 'Second combination', strategy: 'smart', services: ['microsoft', 'google'], timeoutMs: 15000},
+            ]});
+        await state.loadFiles([file('combined-resume.txt', 'First.\n\nSecond.')]); await flush();
+        state.documentBatchTranslation = false;
+        state.editSegment(0, '保留人工校订');
+        ports.translate.mockRejectedValueOnce(Object.assign(new Error('provider unavailable'), {retryable: false}));
+        await state.startTranslation(); await flush();
+        expect(state.runState).toBe('failed'); expect(state.progress).toBe(50);
+        state.config.documentService = after; await flush();
+        expect(state.settingsChanged).toBe(false);
+        expect(state.translatedSegments[0]).toBe('保留人工校订');
+        expect(state.translatedSegments[1] || '').toBe('');
+        ports.translate.mockResolvedValue('第二段');
+        state.requestTranslation();
+        await vi.waitFor(() => expect(state.translationComplete).toBe(true)); await flush();
+        expect(state.translatedSegments).toEqual(['保留人工校订', '第二段']);
+        expect(state.confirmedTranslationIds).toEqual([0]);
+        expect(ports.translate.mock.calls.map(([source]) => source)).toEqual(['Second.', 'Second.']);
+        expect(ports.translate.mock.calls[1][2].serviceOverride).toBe(after);
+        expect(state.progress).toBe(100);
+        state.config.to = 'fr'; await flush();
+        expect(state.settingsChanged).toBe(true);
+    });
+
     it('keeps the exact original download copy localized and reacts to the shared language selection', async () => {
         for (const language of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES']) {
             const copy = getDocumentDownloadCopy(language);

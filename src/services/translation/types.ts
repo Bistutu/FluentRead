@@ -7,6 +7,7 @@
  */
 
 import type {CustomOpenAIProvider} from '@/src/core/config/customOpenAI';
+import type {CompositeTranslationProvider} from '@/src/core/config/compositeTranslation';
 import type {DeepLApiPlan} from '@/src/core/config/deepl';
 import type {ModelThinkingMapping} from '@/src/core/config/modelThinking';
 import type {GlossaryLibrary} from '@/src/core/glossary';
@@ -149,11 +150,14 @@ export interface TranslationConfigSnapshot {
     to: string;
     useCache: boolean;
     enableAIContext: boolean;
+    /** AI provider 总请求预算；缺省使用统一默认值，不影响机器/浏览器内置翻译。 */
+    aiRequestTimeoutMs?: number;
     nativeBatchTranslationEnabled?: Readonly<Record<string, boolean>>;
     model: Record<string, string>;
     customModel: Record<string, string>;
     modelThinking?: ModelThinkingMapping;
     customOpenAIProviders?: CustomOpenAIProvider[];
+    compositeTranslationProviders?: CompositeTranslationProvider[];
     proxy: Record<string, string>;
     custom: string;
     deeplApiPlan?: DeepLApiPlan;

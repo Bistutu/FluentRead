@@ -6,6 +6,7 @@
  */
 import {options as catalogOptions, resolveConfiguredModel, servicesType} from '@/src/core/config/catalog';
 import {withCustomOpenAIServiceOptions} from '@/src/core/config/customOpenAI';
+import {withCompositeTranslationServiceOptions} from '@/src/core/config/compositeTranslation';
 import {buildGlossaryRevision, resolveGlossaryEntries} from '@/src/core/glossary';
 import {
     attachTranslationGlossaryContext,
@@ -117,7 +118,7 @@ export function prepareAreaTextTranslation(
     const service = source.areaTranslationService || source.service;
     const frozen = createTranslationProviderConfigSnapshot(source);
     const model = resolveConfiguredModel(frozen.model[service], frozen.customModel[service]);
-    const serviceName = withCustomOpenAIServiceOptions(catalogOptions.services, frozen.customOpenAIProviders)
+    const serviceName = withCompositeTranslationServiceOptions(withCustomOpenAIServiceOptions(catalogOptions.services, frozen.customOpenAIProviders), frozen.compositeTranslationProviders)
         .find(option => option.value === service)?.label ?? service;
     const displayModel = servicesType.isUseModel(service) ? model : '';
     if (mode === 'ai' && !supportsAreaTranslationAI(service, model)) {

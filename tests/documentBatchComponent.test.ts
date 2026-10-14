@@ -6,6 +6,7 @@ import {compileScript, parse} from 'vue/compiler-sfc';
 import ts from 'typescript';
 import * as vue from 'vue';
 import {Config} from '@/src/core/config/model';
+import * as compositeTranslation from '@/src/core/config/compositeTranslation';
 import * as catalog from '@/src/core/config/catalog';
 import * as documentCore from '@/src/features/document-translation/core/document';
 import * as presentation from '@/src/features/document-translation/ui/presentation';
@@ -51,7 +52,7 @@ beforeEach(async () => {
   download = vi.fn(async (document, translations, mode) => ({data: documentCore.renderDocument(document, translations, mode),
     fileName: documentCore.createDocumentDownloadName(document.fileName, mode), mimeType: 'text/plain'}));
   persist = vi.fn().mockResolvedValue(undefined);
-  const api = {...catalog, ...documentCore, ...presentation, ...preview, ...richPreviewSync, ...pdfOcr, createPdfPageRecognizer: () => async () => [], hasDistinctTranslation, Config, TranslationRequestError, serializeTranslationError, createDocumentFileLoadGuard,
+  const api = {...catalog, ...compositeTranslation, ...documentCore, ...presentation, ...preview, ...richPreviewSync, ...pdfOcr, createPdfPageRecognizer: () => async () => [], hasDistinctTranslation, Config, TranslationRequestError, serializeTranslationError, createDocumentFileLoadGuard,
     documentRetryBackoff: {maxWaitMs: 0},
     createDocumentHistory: () => ({list: async () => [], load: async () => null, save: async () => false, remove: async () => {}, clear: async () => {}}), documentHistoryId: async () => '',
     parseDocumentFile: parseFile, translateDocumentSegments: translate, createDocumentDownload: download, generateDocumentArchive,

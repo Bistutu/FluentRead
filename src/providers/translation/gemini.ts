@@ -2,7 +2,7 @@
  * @file src/providers/translation/gemini.ts
  *
  * 文件职责：适配 Google Gemini generateContent 协议，支持官方 endpoint、代理、自定义模型与 API Key 头部差异。
- * 主要内容：从配置快照选取模型和 URL，使用 geminiMsgTemplate 构造 contents，通过 runtimeFetch 请求，校验并拼接 candidates 的最终文本、忽略思考块，再旁路归一 usageMetadata。 可核对的公开符号包括 default:gemini。
+ * 主要内容：从配置快照选取模型和 URL，使用 geminiMsgTemplate 构造 contents，把调用方取消与显式剩余预算或 AI 配置默认截止合并后通过 runtimeFetch 请求，校验并拼接 candidates 的最终文本、忽略思考块，再旁路归一 usageMetadata。 可核对的公开符号包括 default:gemini。
  * 模块边界：本文件位于 provider 适配层，只把统一翻译请求转换为外部或浏览器服务协议；不管理页面 DOM、UI 生命周期或配置持久化，缓存、去重和超时总预算由 translation broker 统一协调。
  */
 
@@ -12,7 +12,8 @@ import {customModelString} from "@/src/core/config/catalog";
 import {config} from "@/src/services/config/store";
 import {appendOptionalHeader} from './auth';
 import {createHttpStatusError, createImageInputHttpError, readJsonResponse} from '@/src/platform/http/errors';
-import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
+import {abortErrorFromSignal, createRuntimeAbortContext, runtimeFetch} from '@/src/platform/http/runtime';
+import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {
     getTranslationProviderConfig,
     reportTranslationModelUsage,
@@ -47,6 +48,10 @@ async function gemini(message: TranslationProviderRequest<string>) {
     }
 
     const body = geminiMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service, message.targetLanguage, current, message.modelOverride, message.thinkingOverride, getTranslationImageInput(message));
+    // broker 数值是扣除排队/摘要后的预算；直接 provider 调用才使用冻结配置默认值。
+    const timeoutMs = typeof message.requestTimeoutMs === 'number' && Number.isFinite(message.requestTimeoutMs)
+        ? Math.max(1, Math.floor(message.requestTimeoutMs)) : normalizeAiRequestTimeoutMs(current.aiRequestTimeoutMs);
+    const abortContext = createRuntimeAbortContext(timeoutMs, message.abortSignal);
     const startedAt = Date.now();
     let attemptReported = false;
     try {
@@ -54,7 +59,7 @@ async function gemini(message: TranslationProviderRequest<string>) {
             method: method.POST,
             headers,
             body,
-            signal: message.abortSignal,
+            signal: abortContext.signal,
         });
         if (!resp.ok) {
             reportTranslationModelUsageFailure(message, undefined, startedAt, model, resp.status);
@@ -62,7 +67,7 @@ async function gemini(message: TranslationProviderRequest<string>) {
             throw getTranslationImageInput(message) ? await createImageInputHttpError(resp, '翻译失败') : createHttpStatusError(resp, '翻译失败');
         }
         const result = await readJsonResponse<any>(resp, 'Gemini 返回的不是有效 JSON');
-        if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
+        if (abortContext.signal.aborted) throw abortErrorFromSignal(abortContext.signal);
         const actualModel = typeof result?.modelVersion === 'string' && result.modelVersion.trim()
             ? result.modelVersion
             : model;
@@ -84,8 +89,13 @@ async function gemini(message: TranslationProviderRequest<string>) {
         attemptReported = true;
         return translatedText;
     } catch (error) {
-        if (!attemptReported) reportTranslationModelUsageFailure(message, error, startedAt, model);
-        throw error;
+        const failure = abortContext.didTimeout()
+            ? Object.assign(new Error('当前翻译服务请求超时，请稍后重试。'), {name: 'TimeoutError', kind: 'timeout', retryable: true})
+            : error;
+        if (!attemptReported) reportTranslationModelUsageFailure(message, failure, startedAt, model);
+        throw failure;
+    } finally {
+        abortContext.cleanup();
     }
 }
 

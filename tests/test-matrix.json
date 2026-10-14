@@ -38,6 +38,11 @@
       "tests/extensionSizeBudget.test.ts"
     ],
     "unit": [
+      "tests/compositeTranslationConfig.test.ts",
+      "tests/compositeTranslationRouting.test.ts",
+      "tests/compositeTranslationBroker.test.ts",
+      "tests/compositeTranslationConnection.test.ts",
+      "tests/compositeServiceEditor.test.ts",
       "tests/imageOcrPixels.test.ts",
       "tests/googleRequestGate.test.ts",
       "tests/implementationAudit48H.test.ts",
@@ -72,6 +77,7 @@
       "tests/configAutoBackupDomain.test.ts",
       "tests/configCount.test.ts",
       "tests/configDiff.test.ts",
+      "tests/aiRequestTimeout.test.ts",
       "tests/glossary.test.ts",
       "tests/glossaryRevisionMemo.test.ts",
       "tests/builtinGlossaries.test.ts",

@@ -7,6 +7,7 @@
 
 import {isConfiguredCustomOpenAIProvider, isCustomOpenAIProviderId, type CustomOpenAIProvider} from './customOpenAI';
 import {servicesType} from './catalog';
+import {isCompositeTranslationProviderId, isConfiguredCompositeTranslationProvider, type CompositeTranslationProvider} from './compositeTranslation';
 
 export const DEFAULT_INPUT_BOX_TRANSLATION_INTERVAL = 1000;
 export const INPUT_BOX_TRANSLATION_INTERVAL_MIN = 200;
@@ -38,9 +39,13 @@ export function normalizeInputBoxTranslationInterval(value: unknown): number {
 export function normalizeInputBoxTranslationService(
     value: unknown,
     customProviders: readonly CustomOpenAIProvider[] = [],
+    compositeProviders: readonly CompositeTranslationProvider[] = [],
 ): string {
     if (typeof value !== 'string') return '';
     const service = value.trim();
+    if (isCompositeTranslationProviderId(service)) {
+        return isConfiguredCompositeTranslationProvider(compositeProviders, service) ? service : '';
+    }
     if (isCustomOpenAIProviderId(service)) {
         return isConfiguredCustomOpenAIProvider(customProviders, service) ? service : '';
     }

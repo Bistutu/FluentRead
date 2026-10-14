@@ -2,7 +2,7 @@
  * @file src/features/translation-center/ui/TranslationCenter.vue
  * 文件职责：提供以输入和多服务对照为中心的翻译工作台，清晰展示凭据、请求进度和旧结果。
  * 主要内容：为服务对比保留完整结果，相同译文仍可显示和复制；复用配置补丁保存语言、顺序和结果布局；服务目录按凭据状态分组并支持模型搜索；卡片提供配置入口、独立重试和复制，设置同步保留原文及结果，请求身份和停止由 comparison 模型维护，全局暂停取消在途任务并保留输入与已完成结果。
- * 模块边界：不实现 provider 协议、不保存原文和译文、不更改网页默认服务；翻译复用 app client，设置导航交给外层，卸载时释放自有页面监听器和请求。
+ * 模块边界：不实现 provider 协议、不保存原文和译文、不更改网页默认服务；翻译复用 app client 的服务超时配置，设置导航交给外层，卸载时释放自有页面监听器和请求。
  -->
 <template>
   <section class="translation-center" :aria-label="translateLegacy('翻译中心')">
@@ -69,6 +69,7 @@ import {filterAvailableTranslationServices, isTranslationServiceAvailable} from 
 import {getMultilingualTargetLanguageLabel, models, options, resolveConfiguredModel, servicesType} from '@/src/core/config/catalog';
 import {getMissingCredentialMessage} from '@/src/core/config/validation';
 import {getCustomOpenAIProvider, getCustomOpenAIProviderModels, isConfiguredCustomOpenAIProvider, type CustomOpenAIProvider, withCustomOpenAIServiceOptions} from '@/src/core/config/customOpenAI';
+import {getCompositeTranslationConfigFingerprint, isCompositeTranslationProviderId, withCompositeTranslationServiceOptions} from '@/src/core/config/compositeTranslation';
 import {config, configReady, requestConfigPatch, subscribeConfig} from '@/src/services/config/store';
 import {translateText} from '@/src/app/translation/client';
 import {TranslationRequestError} from '@/src/services/translation/errors';
@@ -115,9 +116,9 @@ type TranslationCenterConfigPatch = {translationCenterServices?: string[]; trans
 
 const serviceOptions = computed(() => {
   void configRevision.value;
-  return filterAvailableTranslationServices(withCustomOpenAIServiceOptions(
+  return filterAvailableTranslationServices(withCompositeTranslationServiceOptions(withCustomOpenAIServiceOptions(
     options.services, customOpenAIProviders.value,
-  )).filter(item => !item.disabled).map(item => ({...item, label: translateLegacy(item.label)}));
+  ), config.compositeTranslationProviders)).filter(item => !item.disabled).map(item => ({...item, label: translateLegacy(item.label)}));
 });
 const hiddenUnavailableServices = computed(() => {
   void configRevision.value;
@@ -140,7 +141,7 @@ const shortcutLabel = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ ↵' : '
 const session = createComparisonSession(state, async (service, input, signal) => {
   try {
     return await translateText(input.text, 'FluentRead 翻译中心', {
-  maxRetries: 0, timeout: 30_000, useCache: false, serviceOverride: service,
+  maxRetries: 0, useCache: false, serviceOverride: service,
   sourceLanguage: input.sourceLanguage, targetLanguage: input.targetLanguage, modelOverride: input.model || undefined, signal,
     });
   } catch (error) {
@@ -164,14 +165,18 @@ function credentialWarning(service: string): string | null {
   if ((servicesType.isAI(service) || provider) && !serviceModel(service)) return ct('modelMissing');
   return getMissingCredentialMessage(service, config);
 }
-function serviceCategory(service: string): string {return ct(servicesType.isCloudVendor(service) ? 'cloud' : servicesType.isMachine(service) ? 'machine' : 'ai');}
+function serviceCategory(service: string): string {
+  return isCompositeTranslationProviderId(service) ? t('settings.services.composite.badge')
+    : ct(servicesType.isCloudVendor(service) ? 'cloud' : servicesType.isMachine(service) ? 'machine' : 'ai');
+}
 function serviceLabel(service: string): string {return serviceOptions.value.find(item => item.value === service)?.label || service;}
 function languageLabel(value: string): string {
   if (value === 'auto') return translateLegacy('自动检测');
   const option = targetLanguageOptions.value.find(item => item.value === value);
   return getMultilingualTargetLanguageLabel(value, option?.label || value, language.value);
 }
-function currentInput(service: string) {return {text: sourceText.value.trim(), sourceLanguage: sourceLanguage.value, targetLanguage: targetLanguage.value, model: serviceModel(service)};}
+function currentInput(service: string) {return {text: sourceText.value.trim(), sourceLanguage: sourceLanguage.value,
+  targetLanguage: targetLanguage.value, model: serviceModel(service), connectionFingerprint: getCompositeTranslationConfigFingerprint(config, service)};}
 function isStale(card: ComparisonCard) {return isComparisonStale(card, currentInput(card.service));}
 function cardStatus(card: ComparisonCard): string {
   if (card.status === 'loading') return 'loading';
