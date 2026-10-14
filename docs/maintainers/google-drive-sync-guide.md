@@ -2,6 +2,8 @@
 
 这篇文档面向 FluentRead 开发者，从配置同步的背景开始，解释授权、云端文件、本机加密和冲突处理，再说明 Google Cloud 的实际操作与验证步骤。
 
+如果你先想理解扩展 ID、`manifest.key` 和 Google 客户端之间的关系，请阅读 [扩展身份和安装包说明](./extension-identity-and-packages.md)。
+
 FluentRead 直接把配置保存到**每位用户自己的 Google Drive**。开发者提供公开的应用身份，每位用户单独授权；这条路线不需要部署 FluentRead 配置服务器。本文以 PR [303](https://github.com/FluentRead/FluentRead/pull/303) 为起点，并同步说明默认普通设置与持续敏感信息选择的规则；是否已发布应以合并和商店版本为准。核对日期：2026 年 10 月 5 日。
 
 ## 1 为什么需要配置同步
