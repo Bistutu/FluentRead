@@ -1,7 +1,7 @@
 /**
  * @file src/features/page-notice/content/notice.css
- * 文件职责：定义隔离页面通知的紧凑布局、清晰层级和浅色/深色外观，避免堆栈裁切阴影形成方形边缘。
- * 主要内容：堆栈为柔和阴影预留空间，正文自然换行，关闭与设置按钮有完整点击和键盘焦点区域；长内容独立滚动，窄屏保留视口边距，减少动态效果时关闭过渡。
+ * 文件职责：定义隔离页面通知的内容自适应布局和浅色/深色外观，让简短反馈只占一行，避免整行留白与堆栈裁切阴影。
+ * 主要内容：每条通知独立收缩为小品牌图标、结果正文和关闭按钮；重复标题仅供辅助技术读取，长文自然换行，关闭与设置按钮保留完整点击和键盘焦点区域，窄屏及长内容受视口约束。
  * 模块边界：只注入 notice.ts 的 Shadow Root，不影响网页样式、不决定计时与操作；主题由宿主属性及系统配色解析。
  */
 :host {
@@ -66,6 +66,7 @@
     overflow: auto;
     overscroll-behavior: contain;
     flex-direction: column;
+    align-items: center;
     gap: 10px;
     pointer-events: none;
     transform: translateX(-50%);
@@ -74,10 +75,12 @@
 .page-notice {
     display: flex;
     flex-shrink: 0;
-    align-items: flex-start;
-    gap: 10px;
-    width: 100%;
-    padding: 12px;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    padding: 8px 10px;
     border: 1px solid var(--notice-border);
     border-radius: 12px;
     color: var(--notice-text);
@@ -98,11 +101,10 @@
 
 .notice-mark {
     display: block;
-    width: 28px;
-    height: 28px;
-    flex: 0 0 28px;
-    margin-top: 2px;
-    border-radius: 8px;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    border-radius: 6px;
     object-fit: cover;
 }
 
@@ -112,7 +114,7 @@
     justify-content: center;
     color: #fff;
     background: #df4878;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1;
 }
@@ -120,19 +122,21 @@
 .notice-copy {
     display: flex;
     min-width: 0;
-    flex: 1 1 0%;
+    flex: 0 1 auto;
     flex-direction: column;
-    gap: 3px;
 }
 
 .notice-heading {
-    display: flex;
-    min-width: 0;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 4px 6px;
-    font-size: 11px;
-    line-height: 1.4;
+    /* 品牌与通用状态保留播报语义，视觉上直接呈现用户关心的结果。 */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
 }
 .notice-brand {color: var(--notice-brand); font-weight: 650;}
 .notice-divider {color: var(--notice-muted);}
@@ -142,7 +146,7 @@
     display: flex;
     min-width: 0;
     flex-wrap: wrap;
-    align-items: flex-start;
+    align-items: center;
     gap: 8px;
 }
 .notice-detail {
@@ -154,7 +158,7 @@
     color: var(--notice-text);
     font-size: 13px;
     font-weight: 450;
-    line-height: 1.55;
+    line-height: 1.5;
     user-select: text;
     white-space: pre-wrap;
 }
@@ -182,7 +186,7 @@
     display: inline-flex;
     width: 28px;
     height: 28px;
-    margin: -3px -3px 0 0;
+    margin: 0;
     padding: 0;
     border: 0;
     align-items: center;
@@ -202,9 +206,6 @@
     outline-offset: 2px;
 }
 
-@media (max-width: 420px) {
-    .page-notice {gap: 9px; padding: 11px;}
-}
 @media (prefers-reduced-motion: reduce) {
     .page-notice {transition: none;}
 }
