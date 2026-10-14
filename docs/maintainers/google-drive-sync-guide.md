@@ -240,6 +240,10 @@ pnpm build
 
 打开独立测试 Chrome 的 `chrome://extensions`，开启开发者模式，选择“加载已解压的扩展程序”，加载 `.output/chrome-mv3`。核对页面显示的扩展 ID 与客户端的内容 ID 相同。不要在仍保存唯一完整配置的日常浏览器中卸载扩展来切换测试包。
 
+`pnpm zip` 同时生成保留公钥的 `fluent-read-版本-chrome.zip` 离线安装包和移除 `key` 的 `fluent-read-版本-chrome-store.zip` 商店上传包。离线包与构建目录使用相同 manifest；商店包只删除 `key`，其余文件一致。不要把商店包发给用户手动安装，否则会出现其他 ID 和默认 OAuth 客户端不匹配的问题。用 `pnpm verify:extension-manifests -- --require-chrome-archive` 同时校验两种 Chrome 包。
+
+离线更新应覆盖原目录并点击重新加载；拖拽 ZIP 会重新解压，不能保证覆盖已有版本。固定公钥不授予商店发布权限，也不保证手动包能够替换商店安装。若已出现重复扩展，先停用新 ID，保留旧 ID 的配置并导出备份，再按[离线更新说明](/guide/offline-install#更新离线安装的版本)处理。
+
 manifest 由 WXT 回调在加载环境变量后生成，包含 `identity` 权限与唯一的 `oauth2.scopes`：`drive.appdata`。Firefox/Edge 专用构建不会声明这个 Chrome OAuth 客户端；Chrome 包在 Edge 中也会显示支持范围提示。
 
 ## 8 用户怎样完成第一次同步

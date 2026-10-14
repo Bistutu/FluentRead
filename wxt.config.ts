@@ -20,26 +20,30 @@ const firefoxRunnerBinary = process.env.FLUENTREAD_FIREFOX_RUNNER_BINARY;
 const firefoxRunnerProfile = process.env.FLUENTREAD_FIREFOX_RUNNER_PROFILE;
 const firefoxRunnerStartUrl = process.env.FLUENTREAD_FIREFOX_RUNNER_START_URL;
 
-/** 仅商店 ZIP 移除开发用固定 ID；保留本地构建的 key、OAuth 和全部运行文件。 */
-export async function prepareExtensionStoreZip(browser: string, zipPath: string): Promise<void> {
+/** 保留离线 ZIP 的固定身份，另生成只移除 key 的 Chrome 商店上传包。 */
+export async function prepareExtensionStoreZip(browser: string, zipPath: string): Promise<string | undefined> {
     if (browser !== 'chrome') return;
     const archive = await JSZip.loadAsync(fs.readFileSync(zipPath), {checkCRC32: true});
     const entry = archive.file('manifest.json');
     if (!entry) throw new Error('Chrome 商店包缺少 manifest.json');
     const manifest = JSON.parse(await entry.async('string'));
-    if (!Object.hasOwn(manifest, 'key')) return;
+    if (typeof manifest.key !== 'string' || !manifest.key.trim()) {
+        throw new Error('Chrome 离线包缺少固定扩展 ID 的 key，不能生成商店包');
+    }
     delete manifest.key;
     archive.file('manifest.json', `${JSON.stringify(manifest, null, 2)}\n`, {date: entry.date});
     const data = await archive.generateAsync({
         type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: {level: 6},
     });
-    const temporary = `${zipPath}.${randomUUID()}.tmp`;
+    const storePath = `${zipPath.slice(0, -4)}-store.zip`;
+    const temporary = `${storePath}.${randomUUID()}.tmp`;
     try {
         fs.writeFileSync(temporary, data, {flag: 'wx'});
-        fs.renameSync(temporary, zipPath);
+        fs.renameSync(temporary, storePath);
     } finally {
         fs.rmSync(temporary, {force: true});
     }
+    return storePath;
 }
 
 /**
@@ -250,8 +254,12 @@ export default defineConfig({
         includeSources: ['docs/development/service-icons.md', 'docs/guide/deepseek-harness.md'],
     },
     hooks: {
-        'zip:extension:done': async (wxt, zipPath) => {
-            await prepareExtensionStoreZip(wxt.config.browser, zipPath);
+        'zip:done': async (wxt, zipPaths) => {
+            const storePath = await prepareExtensionStoreZip(wxt.config.browser, zipPaths[0]);
+            if (storePath) {
+                zipPaths.push(storePath);
+                wxt.logger.success(`Chrome 商店上传包：${storePath}；离线安装请使用 -chrome.zip`);
+            }
         },
         'build:done': async (wxt) => {
             const dev = wxt.config.command === 'serve';
