@@ -25,11 +25,15 @@ describe('immutable Vue fixture compilation cache', () => {
     const filename = fixture(), first = compileVueFixture(filename, {id: 'fixture', includeScript: true});
     expect(compileVueFixture(filename, {id: 'fixture', includeScript: true})).toBe(first);
     expect(Object.isFrozen(first)).toBe(true);
+    expect(Reflect.set(first, 'scriptSource', 'mutated')).toBe(false);
+    expect(Object.isFrozen(first.templateErrors)).toBe(true);
+    expect(Reflect.set(first.templateErrors, 0, 'injected template error')).toBe(false);
+    expect(first.templateErrors).toEqual([]);
     fixture('<script setup>const label = "second"</script><template><section>{{label}}</section></template>');
     const second = compileVueFixture(filename, {id: 'fixture', includeScript: true});
     expect(second).not.toBe(first);
-    expect(second.scriptCode).toContain('second');expect(second.renderCode).toContain('section');
-    expect(first.scriptCode).toContain('first');expect(first.renderCode).toContain('button');
+    expect(second.scriptSource).toContain('second');expect(second.scriptCode).toContain('second');expect(second.renderCode).toContain('section');
+    expect(first.scriptSource).toContain('first');expect(first.scriptCode).toContain('first');expect(first.renderCode).toContain('button');
   });
 
   it('keeps compiler IDs, cached-handler settings and optional script/style outputs separate', () => {
@@ -39,6 +43,7 @@ describe('immutable Vue fixture compilation cache', () => {
     const scoped = compileVueFixture(filename, {id: 'first', includeScript: true, includeScopedStyle: true});
     const otherId = compileVueFixture(filename, {id: 'second', includeScript: true, includeScopedStyle: true});
     expect(plain.scriptCode).toBe('');expect(plain.styleCode).toBe('');
+    expect(plain.scriptSource).toContain('first');expect(plain.templateErrors).toEqual([]);
     expect(cached.renderCode).not.toBe(plain.renderCode);
     expect(scoped.scriptCode).not.toBe('');expect(scoped.styleCode).toContain('data-v-first');
     expect(otherId.styleCode).toContain('data-v-second');expect(otherId).not.toBe(scoped);

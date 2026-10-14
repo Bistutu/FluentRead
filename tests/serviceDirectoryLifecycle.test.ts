@@ -5,12 +5,10 @@
  * 模块边界：编译真实客户端 Vue setup 和缓存模板并实际 mount，模块加载器只解析导入；浏览器消息、DOM 几何与观察器使用受控端口，不复制目录业务；真实 UI 另行验证。
  */
 import {createRequire} from 'node:module'
-import {readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import {createServer, type ViteDevServer} from 'vite'
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
+import {compileVueFixture} from './helpers/compiledVueFixture'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation'
@@ -89,15 +87,12 @@ afterEach(async () => {
 })
 async function mount(name: string, values: Record<string, unknown>, listeners: Record<string, unknown> = {}) {
   const path = `src/features/settings/ui/services/${name}.vue`, filename = resolve(path)
-  const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename})
-  const script = compileScript(descriptor, {id: 'directory-lifecycle'})
+  const compiled = compileVueFixture(filename, {id: 'directory-lifecycle', cacheHandlers: true, includeScript: false})
   const clientId = `${filename}.lifecycle-client.ts`
-  clientModules.set(clientId, script.content)
-  const component = (await server.ssrLoadModule(clientId)).default, bindings = script.bindings
-  const template = compileTemplate({source: descriptor.template!.content, filename, id: 'directory-lifecycle',
-    compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: bindings, expressionPlugins: ['typescript']}})
-  expect(template.errors).toEqual([])
-  component.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime)
+  clientModules.set(clientId, compiled.scriptSource)
+  const component = (await server.ssrLoadModule(clientId)).default
+  expect(compiled.templateErrors).toEqual([])
+  component.render = new Function('Vue', compiled.renderCode)(runtime)
   if (!vi.isMockFunction(globalThis.setInterval)) {
     const originalInterval = globalThis.setInterval, originalTimeout = globalThis.setTimeout, clearInterval = globalThis.clearInterval, clearTimeout = globalThis.clearTimeout
     vi.spyOn(globalThis, 'setInterval').mockImplementation(((callback: () => void, ms: number, ...args: any[]) => {
