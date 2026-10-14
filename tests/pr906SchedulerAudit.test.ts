@@ -34,7 +34,7 @@ describe('PR906 scheduler independent audit', () => {
         vi.useRealTimers();
     });
 
-    it.each([
+    it.each<{status: number; headers: Record<string, string>; delay: number}>([
         {status: 429, headers: {}, delay: 2_000},
         {status: 503, headers: {}, delay: 0},
         {status: 429, headers: {'retry-after': '1e3'}, delay: 2_000},
