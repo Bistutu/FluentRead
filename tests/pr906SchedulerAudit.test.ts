@@ -34,6 +34,63 @@ describe('PR906 scheduler independent audit', () => {
         vi.useRealTimers();
     });
 
+    it.each([
+        {status: 429, headers: {}, delay: 2_000},
+        {status: 503, headers: {}, delay: 0},
+        {status: 429, headers: {'retry-after': '1e3'}, delay: 2_000},
+        {status: 429, headers: {'retry-after': 'garbage'}, delay: 2_000},
+        {status: 503, headers: {'retry-after': '-2'}, delay: 0},
+        {status: 503, headers: {'retry-after': '0'}, delay: 0},
+        {status: 429, headers: {'retry-after': new Date(5_000).toUTCString()}, delay: 5_000},
+        {status: 503, headers: {'retry-after': new Date(-5_000).toUTCString()}, delay: 0},
+        {status: 429, headers: {'retry-after-ms': 'invalid', 'retry-after': '0.25'}, delay: 250},
+        {status: 503, headers: {'retry-after-ms': '0', 'retry-after': '2'}, delay: 0},
+        {status: 503, headers: {'retry-after-ms': '999999999'}, delay: 7 * 86_400_000},
+        {status: 503, headers: {'retry-after': '999999999'}, delay: 7 * 86_400_000},
+    ])('honors bounded Retry-After policy for $status with $headers', async ({status, headers, delay}) => {
+        const scheduler = createTranslationRequestScheduler(() => limits(1));
+        const identity = {service: 'svc', model: 'm', quotaScope: 'header-policy'};
+        scheduler.observeResponse(identity, {status, headers: new Headers(headers)});
+        const task = vi.fn(async () => 'finished');
+        const request = scheduler.scheduleAttempt(task, {identity, countConcurrency: true});
+        if (delay > 0) {
+            expect(task).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(delay - 1);
+            expect(task).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(1);
+        }
+        await expect(request).resolves.toBe('finished');
+        expect(task).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores responses without a trusted quota and successful responses', async () => {
+        const scheduler = createTranslationRequestScheduler(() => limits(1));
+        const headers = new Headers({'retry-after': '2'});
+        scheduler.observeResponse(undefined, {status: 429, headers});
+        scheduler.observeResponse({quotaScope: 'healthy'}, {status: 200, headers});
+        const task = vi.fn(async () => 'finished');
+        await expect(scheduler.scheduleAttempt(task, {identity: {quotaScope: 'healthy'}, countConcurrency: true}))
+            .resolves.toBe('finished');
+        expect(task).toHaveBeenCalledTimes(1);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps the longest observed cooldown and clears it when the clock moves backwards', async () => {
+        const scheduler = createTranslationRequestScheduler(() => limits(1));
+        const identity = {quotaScope: 'clock-adjustment'};
+        scheduler.observeResponse(identity, {status: 429, headers: new Headers({'retry-after': '3'})});
+        await vi.advanceTimersByTimeAsync(1_000);
+        scheduler.observeResponse(identity, {status: 429, headers: new Headers({'retry-after': '0.25'})});
+        const task = vi.fn(async () => 'finished');
+        const request = scheduler.scheduleAttempt(task, {identity, countConcurrency: true});
+        await vi.advanceTimersByTimeAsync(250);
+        expect(task).not.toHaveBeenCalled();
+        vi.setSystemTime(0);
+        await scheduler.schedule(async () => undefined, {countConcurrency: false, countRate: false});
+        await expect(request).resolves.toBe('finished');
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
     it.each(['global-to-service', 'service-to-model', 'model-to-global'] as const)(
         'reprojects unsettled counted attempts across %s without freeing their slots',
         async (transition) => {

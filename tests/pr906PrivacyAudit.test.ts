@@ -120,22 +120,23 @@ describe('PR906 ready 前的请求与可信隐私边界', () => {
 
     it('输入框在 ready 前冻结文本/目标/隐私并把内部取消控制交给真实 translate', async () => {
         const ready = deferred<void>();
-        const config = Object.assign(new Config(), {service: 'microsoft'});
+        const config = Object.assign(new Config(), {service: 'openai', aiRequestTimeoutMs: 180_000});
         let observed!: TranslationSingleRequestMessage;
         const translate = vi.fn(async (request: TranslationSingleRequestMessage) => {observed = request; return '译文';});
         const handler = createInputBoxTranslationHandler({ready: ready.promise, getConfig: () => config,
             translate, requestRegistry: createTranslationRequestRegistry()});
         const message = {type: 'inputBoxTranslation' as const, text: 'Alpha sentence.', targetLang: 'zh-Hans',
-            clientRequestId: 'input-audit'};
+            clientRequestId: 'input-audit', requestTimeoutMs: 180_000};
         const context = {sender: {tab: {id: 7, incognito: true}}};
         const pending = handler.handle(message, context);
         message.text = 'Changed sentence.';
         message.targetLang = 'ja';
+        message.requestTimeoutMs = 1_000;
         context.sender.tab.incognito = false;
         expect(translate).not.toHaveBeenCalled();
         ready.resolve();
         await expect(pending).resolves.toEqual({success: true, translatedText: '译文'});
-        expect(observed).toMatchObject({origin: 'Alpha sentence.', targetLanguage: 'zh-Hans'});
+        expect(observed).toMatchObject({origin: 'Alpha sentence.', targetLanguage: 'zh-Hans', requestTimeoutMs: 180_000});
         expect(getTranslationGlossaryContext(observed)).toEqual({privateContext: true});
         expect(getTranslationRequestControl(observed)).toMatchObject({signal: expect.any(AbortSignal)});
         expect(Object.getOwnPropertyDescriptor(observed, TRANSLATION_REQUEST_CONTROL)?.enumerable).toBe(false);
