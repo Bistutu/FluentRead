@@ -135,7 +135,13 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
         },
         load(id) {
             if (id === externalChineseMessagesId) {
-                if (greasyForkSource) return 'export const zhCNMessages = globalThis.__FLUENTREAD_USERSCRIPT_DATA__.zhCNMessages;';
+                if (greasyForkSource) {
+                    const deeplxCopy = {
+                        'settings.services.deeplx.defaultRoute': zhCNMessages['settings.services.deeplx.defaultRoute'],
+                        'settings.services.deeplx.endpointHelp': zhCNMessages['settings.services.deeplx.endpointHelp'],
+                    };
+                    return `export const zhCNMessages = {...globalThis.__FLUENTREAD_USERSCRIPT_DATA__.zhCNMessages,...${JSON.stringify(deeplxCopy)}};`;
+                }
                 const contents = serializeUiMessages(userscriptPageMessages(zhCNMessages));
                 const compressed = Buffer.from(gzipUiMessages(Buffer.from(contents), {level: 9})).toString('base64');
                 return [

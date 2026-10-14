@@ -1,6 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
+import {runInNewContext} from 'node:vm';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 // 脚本发布的语言资源不含智能高亮文案；摘要必须按脚本实际使用的投影计算。
 import {UI_LANGUAGE_BUNDLES} from '../userscript/languageBundles';
@@ -37,15 +38,22 @@ describe('userscript remote UI language data', () => {
         globalThis.GM = {
             xmlHttpRequest(details) { requests.push(details.url); throw new Error('unexpected request'); },
         };
-        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_DATA__', {english: UI_LANGUAGE_BUNDLES['en-US']});
-        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', {});
+        const pinned = runInNewContext(readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8'), {}, {timeout: 5000});
+        const original = JSON.stringify(pinned.english);
+        expect(pinned.english.messages).not.toHaveProperty('settings.services.deeplx.defaultRoute');
+        expect(pinned.english.messages['settings.services.deeplx.endpointHelp']).not.toBe(extensionBundles['en-US'].messages['settings.services.deeplx.endpointHelp']);
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_DATA__', pinned);
+        // 嵌入的旧 data 优先于压缩资源，因此两条新文案必须在注册时覆盖。
+        vi.stubGlobal('__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__', {'en-US': 'invalid-if-selected'});
         vi.stubGlobal('__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__', {});
 
-        const {hasUiLanguageBundle} = await import('@/src/core/i18n');
+        const {hasUiLanguageBundle, translate} = await import('@/src/core/i18n');
         expect(hasUiLanguageBundle('en-US')).toBe(false);
         const loader = await import('@/userscript/uiLanguageBundles');
         await expect(loader.ensureUiLanguageBundle('en-US')).resolves.toBe(true);
         expect(hasUiLanguageBundle('en-US')).toBe(true);
+        for (const key of deeplxKeys) expect(translate(key, 'en-US')).toBe(extensionBundles['en-US'].messages[key]);
+        expect(JSON.stringify(pinned.english)).toBe(original);
         expect(requests).toEqual([]);
     });
 

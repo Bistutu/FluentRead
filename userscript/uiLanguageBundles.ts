@@ -83,6 +83,10 @@ const sectionSweepMessages: Readonly<Partial<Record<RegisteredUiLanguage, Readon
 };
 
 const deeplxMessages: Readonly<Partial<Record<RegisteredUiLanguage, Readonly<Record<string, string>>>>> = {
+    'en-US': {
+        'settings.services.deeplx.defaultRoute': 'Direct to DeepL by default',
+        'settings.services.deeplx.endpointHelp': 'Without an API key, the default connects directly to DeepL, then tries the public endpoint on failure. Custom URLs need the full path (usually ending in /translate); paths are not added automatically.',
+    },
     'ja-JP': {
         'settings.services.deeplx.defaultRoute': '既定：DeepL に直接接続',
         'settings.services.deeplx.endpointHelp': 'API Key が未設定の場合、既定では DeepL に直接接続し、失敗時に公開 API を使用します。カスタム URL は完全なパス（通常は /translate で終わる）が必要です。パスは自動追加されません。',

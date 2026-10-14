@@ -386,6 +386,33 @@ describe('userscript browser shim injection', () => {
         expect(moduleSource).toContain(createHash('sha256').update(gunzipSync(Buffer.from(base64!, 'base64'))).digest('hex'));
     });
 
+    it('updates only the two DeepLX Chinese messages when Greasy Fork uses its pinned old data', async () => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', '1');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        try {
+            vi.resetModules();
+            const {createUserscriptCatalogCompressionPlugin: createPlugin} = await import('@/userscript/vite.config');
+            const {transformWithEsbuild} = await import('vite');
+            const plugin = createPlugin();
+            const resolveId = typeof plugin.resolveId === 'function' ? plugin.resolveId : plugin.resolveId!.handler;
+            const load = typeof plugin.load === 'function' ? plugin.load : plugin.load!.handler;
+            const id = await Reflect.apply(resolveId, {}, ['./messages/zh-CN', resolve(process.cwd(), 'src/core/i18n/index.ts')]);
+            const source = await Reflect.apply(load, {}, [id]);
+            const compiled = await transformWithEsbuild(source, 'pinned-chinese.js', {format: 'cjs', target: 'es2018'});
+            const data = runInNewContext(readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8'), {}, {timeout: 5000});
+            const before = JSON.stringify(data);
+            const realm = {module: {exports: {} as {zhCNMessages: Record<string, string>}}, __FLUENTREAD_USERSCRIPT_DATA__: data};
+            runInNewContext(compiled.code, realm, {timeout: 5000});
+            const result = realm.module.exports.zhCNMessages;
+            const keys = ['settings.services.deeplx.defaultRoute', 'settings.services.deeplx.endpointHelp'];
+            for (const key of keys) expect(result[key]).toBe((zhCNMessages as Record<string, string>)[key]);
+            const changes = Object.keys(result).filter(key => result[key] !== data.zhCNMessages[key]);
+            expect(changes.sort()).toEqual(keys.sort());
+            expect(JSON.stringify(data)).toBe(before);
+        } finally {vi.unstubAllEnvs();vi.resetModules();}
+    });
+
     it('embeds the English bundle without the reader-only keys and preserves every other field', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__) as Record<string, string>;
