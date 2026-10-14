@@ -4,7 +4,7 @@
  * 主要内容：定义仓库和广播依赖，构造词书变更消息及浏览器广播适配器，创建变更 ACK、主业务 handler 和组合 handlers，并在成功写操作后通知相关标签页。
  * 模块边界：本文件不直接操作 Dexie 表或 Vue UI；持久化由 repository contract 注入，消息形状来自 protocol，browser.tabs 广播通过适配器隔离，失败不会泄露内部数据。
  */
-import type {BackgroundMessageHandler} from '@/src/app/background/messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {reencounterSnapshot, reencounterTerm} from '../domain/reencounter';
 import type {VocabularyEntry} from '../learningModel';
 import {

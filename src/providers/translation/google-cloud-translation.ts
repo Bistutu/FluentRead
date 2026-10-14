@@ -9,11 +9,11 @@
 import {services} from '@/src/core/config/catalog';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {method, urls} from '@/src/core/config/constants';
-import {config} from '@/src/services/config/store';
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError} from '@/src/platform/http/errors';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
-import {getTranslationProviderConfig, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {resolveCloudLanguages} from './cloud/languages';
 import {readNativeBatchJson, translateNativeTextBatch} from './native-batch';
 
@@ -26,7 +26,7 @@ type GoogleCloudResponse = {
 
 async function googleCloudTranslation(message: TranslationProviderRequest<string | string[]>) {
     if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const enableNativeBatch = message.enableNativeBatch
         ?? isNativeTranslationBatchEnabled(services.googleCloudTranslation, current.nativeBatchTranslationEnabled);
     const apiKey = current.token[services.googleCloudTranslation]?.trim();
@@ -34,7 +34,7 @@ async function googleCloudTranslation(message: TranslationProviderRequest<string
         throw new Error('谷歌云翻译尚未配置 API Key，请先在设置中填写');
     }
 
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
     const {source, target} = resolveCloudLanguages('googleCloudTranslation', sourceLanguage, targetLanguage);
 
     return translateNativeTextBatch(message.origin, async origins => {

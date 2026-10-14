@@ -8,7 +8,6 @@
 
 import {createOpenAICompatible} from '@ai-sdk/openai-compatible';
 import {generateText} from 'ai';
-import {config} from '@/src/services/config/store';
 import {stripTranslationReasoning as contentPostHandler} from '@/src/core/translation/prompts';
 import {commonMsgTemplate} from '@/src/services/translation/templates';
 import {services} from '@/src/core/config/catalog';
@@ -22,12 +21,12 @@ import {LlmTransportError, normalizeAiSdkError} from './errors';
 import {createImageInputHttpError} from '@/src/platform/http/errors';
 import {runtimeFetch} from '@/src/platform/http/runtime';
 import {
-  getTranslationProviderConfig,
-  getTranslationRequestScheduler,
-  reportTranslationModelUsage,
-  getTranslationImageInput,
-  type TranslationProviderRequestContext,
+    requireTranslationProviderConfig,
+    getTranslationRequestScheduler,
+    reportTranslationModelUsage,
+    getTranslationImageInput,
 } from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequestContext} from '@/src/services/translation/types';
 import type {TranslationProviderConfigSnapshot} from '@/src/services/translation/types';
 import {normalizeOpenAICompatibleUsage} from '../usage';
 import {normalizeTranslationMaxRetries} from '@/src/core/config/scheduling';
@@ -303,17 +302,18 @@ async function translateSingle(
     kind: 'bad-request', retryable: false,
   });
   const apiKey = current.token[service]?.trim() || '';
-  const payload = parsePayload(commonMsgTemplate(
-    origin,
-    request.pageContext,
-    request.summaryPrompt,
-    request.summarySystemPrompt,
-    service,
-    request.targetLanguage,
-    request.modelOverride,
-    current,
-    request.thinkingOverride,
-    getTranslationImageInput(request),
+  const payload = parsePayload(commonMsgTemplate({
+      origin,
+      context: request.pageContext,
+      prompt: request.summaryPrompt,
+      systemPrompt: request.summarySystemPrompt,
+      serviceOverride: service,
+      targetLanguage: request.targetLanguage,
+      modelOverride: request.modelOverride,
+      current,
+      thinkingOverride: request.thinkingOverride,
+      imageInput: getTranslationImageInput(request),
+  }
   ));
 
   // 协议的 stream 标记由 SDK 管理。自定义请求体仍可替换 model/messages，并添加任意
@@ -366,7 +366,7 @@ async function translateSingle(
 export async function translateWithOpenAICompatibleAiSdk(
   request: AiSdkTranslationRequest,
 ): Promise<string | string[]> {
-  const current = getTranslationProviderConfig(request, config);
+  const current = requireTranslationProviderConfig(request);
   const service = request.serviceOverride || current.service;
   const requestBudget = normalizedTimeout(request.requestTimeoutMs, current.aiRequestTimeoutMs);
   if (!Array.isArray(request.origin)) {

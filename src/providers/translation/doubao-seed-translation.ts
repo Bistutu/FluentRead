@@ -7,22 +7,17 @@
  */
 
 import {method, urls} from '@/src/core/config/constants';
-import {config} from '@/src/services/config/store';
 import {mergeCustomBody} from '@/src/core/config/customBody';
 import {services} from '@/src/core/config/catalog';
 import {resolveDoubaoSeedTranslationLanguage} from '@/src/core/config/doubaoSeedTranslation';
 import {currentConfiguredModel} from '@/src/services/translation/templates';
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
 import {appendOptionalBearer} from './auth';
 import {buildOpenAIApiEndpoint, readResponsesApiText} from './responses-api';
-import {
-    getTranslationProviderConfig,
-    reportTranslationModelUsage,
-    reportTranslationModelUsageFailure,
-    type TranslationProviderRequest,
-} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig, reportTranslationModelUsage, reportTranslationModelUsageFailure} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import type {TranslationProviderConfigSnapshot} from '@/src/services/translation/types';
 import {normalizeDeepSeekResponsesUsage as normalizeResponsesApiUsage} from './usage';
 
@@ -125,13 +120,13 @@ async function translateSingle(
 async function doubaoSeedTranslation(
     message: TranslationProviderRequest<string | string[]>,
 ): Promise<string | string[]> {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const service = message.serviceOverride || services.doubao;
     if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
     const configuredModel = currentConfiguredModel(current, service, message.modelOverride);
     if (!configuredModel) throw new Error('模型尚未配置，请前往设置页面进行检查。');
 
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
     const target = resolveDoubaoSeedTranslationLanguage(targetLanguage);
     if (!target) throw new Error('Doubao-Seed-Translation 不支持该目标语言，请更换目标语言或翻译模型');
     // 源语言留空即交给模型自动识别；未收录的源语言同样走自动识别，不阻断翻译。

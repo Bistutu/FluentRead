@@ -1,3 +1,4 @@
+import {realpathSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {runInNewContext} from 'node:vm';
 import {build} from 'vite';
@@ -13,10 +14,10 @@ afterEach(() => setRuntimeFetch());
 describe('DeepLX runtime build boundary', () => {
     it('only redirects the published core transport and selects its browser dependencies', () => {
         const plugin = createDeepLXRuntimeBuildPlugin(root);
-        const importer = resolve(root, 'node_modules/@deeplx/core/lib/translate.js');
+        const importer = realpathSync(resolve(root, 'node_modules/@deeplx/core/lib/translate.js'));
         expect(plugin.resolveId('x-fetch', importer)).toBe(resolve(root, 'src/platform/http/deeplxRuntime.ts'));
         expect(plugin.resolveId('x-fetch', importer + '?v=1')).toBe(resolve(root, 'src/platform/http/deeplxRuntime.ts'));
-        expect(plugin.resolveId('./random.js', importer)).toBe(resolve(root, 'node_modules/@deeplx/core/lib/random.browser.js'));
+        expect(plugin.resolveId('./random.js', importer)).toBe(realpathSync(resolve(root, 'node_modules/@deeplx/core/lib/random.browser.js')));
         expect(plugin.resolveId('node-fetch-native/proxy', importer)).toMatch(/\/node-fetch-native\/dist\/proxy-stub\.mjs$/u);
         expect(plugin.resolveId('unrelated-package', importer)).toBeNull();
         expect(plugin.resolveId('x-fetch', resolve(root, 'src/providers/translation/deeplx.ts'))).toBeNull();

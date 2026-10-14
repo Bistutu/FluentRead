@@ -12,7 +12,7 @@ import {
     createTranslationCacheHandlers,
     GET_TRANSLATION_CACHE_STATS_MESSAGE,
 } from '@/src/app/background/handlers/translationCache';
-import {createBackgroundMessageRouter} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter} from '@/src/services/messaging/backgroundRouter';
 
 describe('background core message handlers', () => {
     it('返回后台真实缓存用量，统计失败由 router 边界报告', async () => {

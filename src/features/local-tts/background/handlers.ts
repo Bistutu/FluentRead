@@ -5,7 +5,7 @@
  * 模块边界：不执行语音合成；实际模型缓存和 Worker 初始化由 Offscreen 适配器完成，存储与适配器均由 runtime 注入。
  */
 
-import type {BackgroundMessageHandler} from '@/src/app/background/messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {LOCAL_TTS_MODEL, LOCAL_TTS_MODEL_ID, LOCAL_TTS_MODEL_STATE_KEY} from '@/src/core/config/localTts';
 
 type Context = unknown;

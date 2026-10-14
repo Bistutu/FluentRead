@@ -4,13 +4,13 @@
  * 主要内容：按码点预算且不切术语标记，固定模型与端点、关闭思考输出，按 Unicode 码点有界分块，保护全文文本槽、换行和边缘空白，拒绝截断、空值及损坏响应并透传取消和 HTTP 状态，取消或错误响应也等待未读正文结算后归还容量。
  * 模块边界：仅通过 runtimeFetch 请求官方服务，不读取用户密钥、Cookie、代理或可编辑请求体；Origin 兼容由扩展后台网络层处理，独立入口与免费池共用协议，调度与换线由上层编排负责。
  */
-import {config} from '@/src/services/config/store';
 import {translateFreeTextChunks} from './freeTextChunks';
 import {resolveTranslationLanguages} from '@/src/core/translation/languages';
 import {BILIBILI_FREE_TRANSLATION_DOMAIN, BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation';
 import {translationLanguageOptions} from '@/src/core/language/catalog';
 import {serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
-import {getTranslationGlossarySourceText, getTranslationProviderConfig, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {getTranslationGlossarySourceText, requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
 
@@ -86,7 +86,7 @@ export async function translateBilibiliFree(request: TranslationProviderRequest<
 
 /** 独立服务读取冻结配置和语言覆盖；批量保持输入顺序并共用调用方取消信号。 */
 export default async function bilibili(request: TranslationProviderRequest): Promise<string | string[]> {
-    const current = getTranslationProviderConfig(request, config);
+    const current = requireTranslationProviderConfig(request);
     const languages = resolveTranslationLanguages(request, {sourceLanguage: current.from, targetLanguage: current.to});
     const translate = (origin: string) => translateBilibiliFree({...request, ...languages, origin});
     if (typeof request.origin === 'string') return translate(request.origin);

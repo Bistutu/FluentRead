@@ -8,7 +8,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import {createDownloadProgressHandler, createDownloadProgressQueryHandler} from '@/src/app/background/handlers/downloadProgress';
 import {DOWNLOAD_PROGRESS_MESSAGE, DOWNLOAD_PROGRESS_QUERY_MESSAGE, downloadProgressKey, type DownloadProgress} from '@/src/core/download/progress';
 import {watchContentDownloadProgress, watchDownloadProgress} from '@/src/platform/storage/downloadProgress';
-import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/services/messaging/backgroundRouter';
 
 const runtimeId = 'fluentread-extension';
 const offscreenUrl = 'chrome-extension://fluentread-extension/offscreen.html';

@@ -69,7 +69,9 @@ beforeEach(async () => {
   }}
   server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
     plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['webextension-polyfill', 'element-plus']},
-    server: {hmr: false, middlewareMode: true}})
+    // 本夹具只加载实际 SFC，不测试文件变化；hmr:false 仍会启动 Chokidar。
+    // 禁用观察，避免 Node fs.watch 的异步节流进入组件的 fake clock 清理断言。
+    server: {hmr: false, middlewareMode: true, watch: null}})
   const component = (await server.ssrLoadModule('/src/features/settings/ui/services/ServiceConfiguration.vue')).default
   component.ssrRender = undefined;component.render = () => null
   const renderer = runtime.createRenderer<Record<string, never>, Record<string, unknown>>({patchProp: () => {}, insert: () => {},
@@ -179,9 +181,21 @@ describe('实际服务连接配置的活跃生命周期与确认归属', () => {
     vi.useFakeTimers();const delayed = pending();if (phase === 'queue') queue.mockReturnValueOnce(delayed.promise)
     if (phase === 'save') save.mockReturnValueOnce(delayed.promise);if (phase === 'response') send.mockReturnValueOnce(delayed.promise)
     let ended = false;const job = check(true).then(() => {ended = true});await settle()
-    await vi.advanceTimersByTimeAsync(phase === 'response' ? 45000 : 10000);await settle();expect(ended).toBe(true)
+    const timeoutMs = phase === 'response' ? 45000 : 10000
+    expect(vi.getTimerCount()).toBe(1)
+    await vi.advanceTimersByTimeAsync(timeoutMs - 1);await settle()
+    expect(ended).toBe(false);expect(state.connectionTestBusy).toBe(true);expect(state.connectionTestState).toBe('testing')
+    expect(messages()).toHaveLength(phase === 'response' ? 1 : 0)
+    await vi.advanceTimersByTimeAsync(1);await settle();expect(ended).toBe(true)
     expect(state.connectionTestBusy).toBe(false);expect(state.connectionTestState).toBe('error');expect(vi.getTimerCount()).toBe(0)
-    delayed.resolve({success: true});await job;await check(true);expect(state.connectionTestState).toBe('success')
+    expect(state.apiKeyChecks[0]).toMatchObject({status: 'error', error: phase === 'response'
+      ? 'settings.services.keys.responseTimeout' : 'settings.services.keys.configTimeout'})
+    delayed.resolve({success: true});await job;await settle()
+    expect(state.connectionTestState).toBe('error');expect(state.apiKeyChecks[0].status).toBe('error');expect(vi.getTimerCount()).toBe(0)
+    await check(true);await settle()
+    expect(state.connectionTestState).toBe('success');expect(state.connectionTestBusy).toBe(false)
+    expect(state.apiKeyChecks[0]).toMatchObject({status: 'success', durationMs: 25})
+    expect(messages()).toHaveLength(phase === 'response' ? 2 : 1);expect(vi.getTimerCount()).toBe(0)
   })
   it('非法或已经不存在的密钥行不写配置、重置检查或发出请求', async () => {
     const before = JSON.stringify(props.config)

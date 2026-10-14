@@ -2,6 +2,7 @@
  * @file src/features/document-translation/services/history.ts
  * 文件职责：在浏览器本地保存最近翻译过的文档及其译文，使文档翻译首页可以列出记录并一键恢复阅读。
  * 主要内容：以文件内容摘要为稳定标识，在独立的 IndexedDB 库中保存原始文件字节、解析结果快照、译文、进度与设置指纹；解析规则变化后按原文和重复出现次序恢复未变化片段的独立校订，复用同文件中页号、展示尺寸与旋转一致的已识别扫描页；原文件、逐行及逐项稳定几何均一致时，保留因字体指标修正而合并的连续普通文字段，使用新字形重建边界而不拼接译文；其余文字页保持新解析结果，统一重编号全文片段；本次复用的旧索引保留独立校订与空槽并从原文匹配池排除，不写入解析快照；列表只返回不含文件字节的摘要并按最近更新时间排序；超过条数或总字节上限时淘汰最旧的记录；数据库不可用、被其他标签页占用而超时或读写失败时安静降级为“没有记录”，并在其他标签页需要升级或删除时让出连接，不影响打开和翻译文档。
+ * 保存生命周期：超时撤销后续写入资格并取消活跃写事务，只有真实事务提交后才确认保存成功，避免迟到打开数据库的旧修订覆盖新校订。
  * 模块边界：只负责本地存取与已有译文匹配，不解析文档、不发起翻译、不读取配置，也不把任何内容发送到网络；页面状态、解析版本与何时保存由文档页面组合根决定。
  */
 import type {DocumentSegment, ParsedDocument, PdfDocumentBlock, PdfDocumentLine, PdfDocumentPage, PdfDocumentRun} from '../core/document';
@@ -313,33 +314,56 @@ export function createDocumentHistory(factory: IDBFactory | undefined = globalTh
         opened.onerror = () => reject(opened.error);
         opened.onblocked = () => reject(new Error('blocked'));
     }).catch(error => {opening = undefined; throw error;});
-    const store = async (mode: IDBTransactionMode) => (await open()).transaction(STORE, mode).objectStore(STORE);
+    const readStore = async (signal: AbortSignal) => {
+        const database = await open();
+        signal.throwIfAborted();
+        return database.transaction(STORE, 'readonly').objectStore(STORE);
+    };
+    /** 撤销资格贯穿数据库打开等待与真实事务；请求成功还不代表事务已经提交。 */
+    const write = async (signal: AbortSignal, enqueue: (target: IDBObjectStore) => void): Promise<void> => {
+        const database = await open();
+        signal.throwIfAborted();
+        const transaction = database.transaction(STORE, 'readwrite');
+        const settled = new Promise<void>((resolve, reject) => {
+            transaction.oncomplete = () => resolve();
+            transaction.onabort = () => reject(transaction.error);
+        });
+        const abort = () => {
+            try {transaction.abort();} catch { /* 已提交事务无法撤销，也不会在稍后覆盖新写入。 */ }
+        };
+        signal.addEventListener('abort', abort, {once: true});
+        try {
+            try {enqueue(transaction.objectStore(STORE));} catch {abort();}
+            await settled;
+        } finally {signal.removeEventListener('abort', abort);}
+    };
     /** 历史记录是锦上添花：任何存储错误都退化为默认值，绝不打断文档流程。 */
-    const guarded = async <T>(fallback: T, work: () => Promise<T>): Promise<T> => {
+    const guarded = async <T>(fallback: T, work: (signal: AbortSignal) => Promise<T>): Promise<T> => {
         if (!factory) return fallback;
         // 被其他标签页占用的数据库可能迟迟不响应；超过时限同样按“没有记录”处理，不能卡住打开文件。
+        const controller = new AbortController();
         let timer: ReturnType<typeof setTimeout> | undefined;
-        const expired = new Promise<T>(resolve => {timer = setTimeout(() => {opening = undefined; resolve(fallback);}, timeoutMs);});
-        const result = await Promise.race([work().catch(() => fallback), expired]);
+        const expired = new Promise<T>(resolve => {timer = setTimeout(() => {controller.abort(); opening = undefined; resolve(fallback);}, timeoutMs);});
+        const result = await Promise.race([work(controller.signal).catch(() => fallback), expired]);
         clearTimeout(timer);
         return result;
     };
-    const all = async () => (await request((await store('readonly')).getAll()) as DocumentHistoryRecord[]).sort((left, right) => right.updatedAt - left.updatedAt);
+    const all = async (signal: AbortSignal) => (await request((await readStore(signal)).getAll()) as DocumentHistoryRecord[]).sort((left, right) => right.updatedAt - left.updatedAt);
     return {
-        list: () => guarded<DocumentHistorySummary[]>([], async () => (await all()).map(summary)),
-        load: id => guarded<DocumentHistoryRecord | null>(null, async () => (await request((await store('readonly')).get(id)) as DocumentHistoryRecord | undefined) ?? null),
-        save: record => guarded(false, async () => {
+        list: () => guarded<DocumentHistorySummary[]>([], async signal => (await all(signal)).map(summary)),
+        load: id => guarded<DocumentHistoryRecord | null>(null, async signal => (await request((await readStore(signal)).get(id)) as DocumentHistoryRecord | undefined) ?? null),
+        save: record => guarded(false, async signal => {
             if (!record.id || record.bytes.byteLength > DOCUMENT_HISTORY_MAX_BYTES) return false;
             const saved = {...record, bytes: record.bytes.slice(), translations: [...record.translations],
                 retainedRevisions: retainedDocumentRevisions(Array.isArray(record.retainedRevisions) ? record.retainedRevisions : [])};
-            await request((await store('readwrite')).put(saved));
+            await write(signal, target => {target.put(saved);});
             // 先写入再淘汰：保留最近的记录，直到条数与总字节都回到上限以内。
             let bytes = 0;
-            const stale = (await all()).filter((entry, index) => {bytes += entry.bytes.byteLength; return index >= DOCUMENT_HISTORY_MAX_ENTRIES || bytes > DOCUMENT_HISTORY_MAX_BYTES;});
-            if (stale.length) {const writable = await store('readwrite'); await Promise.all(stale.map(entry => request(writable.delete(entry.id))));}
+            const stale = (await all(signal)).filter((entry, index) => {bytes += entry.bytes.byteLength; return index >= DOCUMENT_HISTORY_MAX_ENTRIES || bytes > DOCUMENT_HISTORY_MAX_BYTES;});
+            if (stale.length) await write(signal, target => {stale.forEach(entry => target.delete(entry.id));});
             return true;
         }),
-        remove: id => guarded(undefined, async () => {await request((await store('readwrite')).delete(id));}),
-        clear: () => guarded(undefined, async () => {await request((await store('readwrite')).clear());}),
+        remove: id => guarded(undefined, signal => write(signal, target => {target.delete(id);})),
+        clear: () => guarded(undefined, signal => write(signal, target => {target.clear();})),
     };
 }

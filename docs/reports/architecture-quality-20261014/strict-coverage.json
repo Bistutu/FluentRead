@@ -1,0 +1,2630 @@
+{
+  "mode": "per-file verification across independent scoped runs",
+  "requiredPercent": 100,
+  "modules": {
+    "src/app/background/capabilityRegistry.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "a5d531a9b2136acd072df776c7fafa736d11687fbb6f9e892d892a40072cda59"
+    },
+    "src/app/background/imageGlossaryContext.ts": {
+      "evidence": "pr991-integration-50-consumers",
+      "metrics": {
+        "lines": {
+          "total": 76,
+          "covered": 76,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 76,
+          "covered": 76,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 48,
+          "covered": 48,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "6a35d0526d60c4752648505846ee915a49d87adbbec3e89afc4effda16c6252c"
+    },
+    "src/app/background/localInsightsHandlers.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "4007697252bb607211bdca2223d7ec9372503678ed43e7911f064c32c200aab9"
+    },
+    "src/app/background/localModelMessageRuntime.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "5706aff368aec6721ba0faad21697317593d602fe952e0ec97d0bd06a0456d97"
+    },
+    "src/app/background/personalCorrectionRuntime.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 70,
+          "covered": 70,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 58,
+          "covered": 58,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 70,
+          "covered": 70,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "a56dfe0520a3232ea46b3450c2c63244bc51cf5cd56eba3cb56d4406373ad549"
+    },
+    "src/app/background/handlers/configAutoBackup.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 20,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 20,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "9d334499395ae9406ef335a70287cca805f649dd4a67d833eb7707d37e50a385"
+    },
+    "src/app/background/handlers/configCount.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "cb1f9eb59bcde06839c290566541ba3a2a4d94eb2bd2a0a5b75cabba53126a68"
+    },
+    "src/app/background/handlers/downloadProgress.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 47,
+          "covered": 47,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 39,
+          "covered": 39,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 47,
+          "covered": 47,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "affd53a630462f1420258d624876faf013a1072c7e217a02b7b2318c7fd1cf2d"
+    },
+    "src/app/background/handlers/googleDriveSync.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 38,
+          "covered": 38,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 63,
+          "covered": 63,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 38,
+          "covered": 38,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "f09a65243859f8b468b870678ac83aeb769dad96d8caf3d256c6188f14a8b7be"
+    },
+    "src/app/background/handlers/modelUsage.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 140,
+          "covered": 140,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 110,
+          "covered": 110,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 140,
+          "covered": 140,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "00b16262b1f3f7e4b88f015a0b1f48bfc4588d31aa128eff060978f893f1856a"
+    },
+    "src/app/background/handlers/translationStats.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 100,
+          "covered": 100,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 82,
+          "covered": 82,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 100,
+          "covered": 100,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "787af25aef33ec88db998f3f56a8cc7de368a4c9f02b8f919ae635d4b26c9ffd"
+    },
+    "src/app/background/handlers/visionProbe.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 13,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "847525c5ce1c130923efacff6bf7fe412de40a651eb609b6b499c319d949453a"
+    },
+    "src/app/background/handlers/webDavBackup.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 38,
+          "covered": 38,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 65,
+          "covered": 65,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 38,
+          "covered": 38,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "fa5aa6f47bd5d91300f521f6e2f754d9f4636edba30c3ebf0c8c7525288db775"
+    },
+    "src/app/content/siteAdaptationRuntime.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 29,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 29,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "d170100129e598648553a54c83727f863a0f3cf029344673130c9c751b03d53a"
+    },
+    "src/core/config/modelEditing.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 34,
+          "covered": 34,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 21,
+          "covered": 21,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 34,
+          "covered": 34,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "8f15d9503d97cff80a7acf9af5c86dd25bb12c0f489d078ce4acecd3aa07a0bd"
+    },
+    "src/core/config/translationPreflight.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 17,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 21,
+          "covered": 21,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 17,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "1566034f924a30551808c7a4f7dc3589faef7b1151f810ed7e1dce80b4bf65aa"
+    },
+    "src/core/site-adaptation/schema.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 188,
+          "covered": 188,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 134,
+          "covered": 134,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 13,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 188,
+          "covered": 188,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "238d3f4fe2c92a4d716aca16605deb422131518578f61985e50dfcc09f8f20cc"
+    },
+    "src/features/area-translation/services/textTranslation.ts": {
+      "evidence": "pr991-integration-50-consumers",
+      "metrics": {
+        "lines": {
+          "total": 125,
+          "covered": 125,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 125,
+          "covered": 125,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 84,
+          "covered": 84,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "50be110044d7ded6e5d969529f940401f3ed3c96f8dc2010413026c15977ba77"
+    },
+    "src/features/document-translation/public.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "18c83b975014db187237c26483dc4967c48b231fbde402b8c725c5340131d598"
+    },
+    "src/features/document-translation/services/history.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 290,
+          "covered": 290,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 317,
+          "covered": 317,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 37,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 290,
+          "covered": 290,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "76e578ac56045b553f4521d3819f22762f517b4da2edf4ab0b0ab47e909c246d"
+    },
+    "src/features/document-translation/services/historyCommitter.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 27,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 17,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 27,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "06c8462ebc6d5107ac0118f2044bff626093425579796d63e939c199e2893765"
+    },
+    "src/features/document-translation/ui/useDocumentTasks.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 34,
+          "covered": 34,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 12,
+          "covered": 12,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 34,
+          "covered": 34,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "279e3f1fecc88ba93d383469a053ea545edbbb9fcaab1cbbaf43c934bc39db88"
+    },
+    "src/features/full-page-translation/background/embeddedFrameHandlers.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 44,
+          "covered": 44,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 26,
+          "covered": 26,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 44,
+          "covered": 44,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "b3ff264c5c78133119f2e3511b39d3ba102fc632ea0b6243b0839145f4f4ccac"
+    },
+    "src/features/full-page-translation/background/neteaseMailFrameHandlers.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 47,
+          "covered": 47,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 22,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 47,
+          "covered": 47,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "10f9d6794e18eeddd64b9e26fb15cb4eaceee40cb1ca71f248ce50ec1c79d461"
+    },
+    "src/features/full-page-translation/background/qqMailFrameHandlers.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 59,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 30,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 10,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 59,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "673605e2be4a01f21b9e3b2a251829fbc4d9e2e53791c05fc963cb5805ff3e61"
+    },
+    "src/features/full-page-translation/content/configCheck.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "b909fc2d1290030ba522eeef0d7fd49577dc7d30954de7a4c0fac9ea198458ce"
+    },
+    "src/features/full-page-translation/content/fullPageSession.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 92,
+          "covered": 92,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 14,
+          "covered": 14,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 92,
+          "covered": 92,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "4378fc457041d4aaa0996b13a73f25d918217beb11dafe87913dfeb8aec4268f"
+    },
+    "src/features/full-page-translation/content/sectionTranslation.ts": {
+      "evidence": "latest-main-section-integration",
+      "metrics": {
+        "lines": {
+          "total": 357,
+          "covered": 357,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 35,
+          "covered": 35,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 357,
+          "covered": 357,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 270,
+          "covered": 270,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "37d182dcc7cc530d441b7575ff9374da5cdbb5f237321ecd4cce6b16adf9a87d"
+    },
+    "src/features/full-page-translation/content/titleTranslation.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 71,
+          "covered": 71,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 37,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 71,
+          "covered": 71,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "2ebb898bb56a95aaa37717df57156c3628b8e1c9c319e20cb378c02d569e4e90"
+    },
+    "src/features/full-page-translation/content/translationRequest.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 853,
+          "covered": 853,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 412,
+          "covered": 412,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 49,
+          "covered": 49,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 853,
+          "covered": 853,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "4feb2a398ee1e4cf7b1dea7bc48eb2d59bde5ca0452634ee29a4c5b000cc923f"
+    },
+    "src/features/image-translation/core.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 200,
+          "covered": 200,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 126,
+          "covered": 126,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 20,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 200,
+          "covered": 200,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "e3ea1da807acac2e5cb21fd12b3cfc6d3456de5cf5b34919237eae3b2d098be2"
+    },
+    "src/features/image-translation/paragraphs.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 152,
+          "covered": 152,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 116,
+          "covered": 116,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 13,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 152,
+          "covered": 152,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "2fd49201edb3aee30b7691bf3bf2479eba6d057f42e3e59c3bd3ad912eabc86f"
+    },
+    "src/features/image-translation/services/inpainting.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 148,
+          "covered": 148,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 77,
+          "covered": 77,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 148,
+          "covered": 148,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "e29918e7771ac1ea863089720892d944389be20ab6db99cd9512a712f171944d"
+    },
+    "src/features/image-translation/services/rendering.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 206,
+          "covered": 206,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 101,
+          "covered": 101,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 10,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 206,
+          "covered": 206,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "2ed0b88c73102f5ef645056b2e75ed27aaf36bfb32402669c1c4b69b9d283463"
+    },
+    "src/features/input-translation/background/handler.ts": {
+      "evidence": "pr991-integration-50-consumers",
+      "metrics": {
+        "lines": {
+          "total": 130,
+          "covered": 130,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 11,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 130,
+          "covered": 130,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 72,
+          "covered": 72,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "71381e931c1e03e8ae6a997b37f44133a077ddb983d1eb76d6114674b88795e3"
+    },
+    "src/features/local-tts/background/handlers.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 101,
+          "covered": 101,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 50,
+          "covered": 50,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 101,
+          "covered": 101,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "8b3a2a5a30c9ce57ce5eb3a81568f23d54412e96d8491e0876e4f07e599ebee6"
+    },
+    "src/features/settings/model/dataBackup.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 149,
+          "covered": 149,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 101,
+          "covered": 101,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 149,
+          "covered": 149,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "43474441cd2feb4cf7fda82569c8091deb75cd849f076f749a1895562b2d095e"
+    },
+    "src/features/settings/model/siteAdaptationEditor.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 189,
+          "covered": 189,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 138,
+          "covered": 138,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 189,
+          "covered": 189,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "6eceb75487e36cee69156309b89b4baa6471e2c72b45dacf9768a5e8c88cb3a4"
+    },
+    "src/features/settings/model/useConfigEditor.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 40,
+          "covered": 40,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 16,
+          "covered": 16,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 40,
+          "covered": 40,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "6791dd3312dc089bd0174ffa98024499f92aec948b75ba6b284f283df26b93b3"
+    },
+    "src/features/video-subtitle/background/cacheHandlers.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 42,
+          "covered": 42,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 18,
+          "covered": 18,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 42,
+          "covered": 42,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "35c4e704ecf60836f3af0c3690a6cd2c234ba2a7bf4897aad905bc7c9f6ca4c1"
+    },
+    "src/features/video-subtitle/background/handlers.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 166,
+          "covered": 166,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 116,
+          "covered": 116,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 166,
+          "covered": 166,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "2e01e4df1c6afc0c16775e85a5f06c83082e3c8b491751a55ba7b89672de38a1"
+    },
+    "src/features/video-subtitle/content/video-ai/requestSession.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 10,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "12352956bf06e6364a57744163bb023e9d6c5bc75d0ace4fa145c9f29e28b417"
+    },
+    "src/features/video-subtitle/content/video-ai/subtitleSession.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 78,
+          "covered": 78,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 62,
+          "covered": 62,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 13,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 78,
+          "covered": 78,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "b0b5c0fd27e1696a03381fc4d7b2d9c45310b07edb26ac7d43d0848a20630a56"
+    },
+    "src/features/vocabulary/background/handler.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 213,
+          "covered": 213,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 95,
+          "covered": 95,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 213,
+          "covered": 213,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "425c7b03bf16fef439e9554274ef52ba81b8742ccabe1432bc33d70c73b51a57"
+    },
+    "src/providers/translation/aliyun-translation.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 99,
+          "covered": 99,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 32,
+          "covered": 32,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 99,
+          "covered": 99,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "3201c35ec2c45d6bee0b23fef00dc2a132a51c97945c0c726acdecd91665dff3"
+    },
+    "src/providers/translation/azure-translator.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 50,
+          "covered": 50,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 30,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 50,
+          "covered": 50,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "c2690e9eb2b9bfcad7be3c90a338cf5a9455bd1f6e30b7023f100e145c3f1f64"
+    },
+    "src/providers/translation/baidu-translation.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 50,
+          "covered": 50,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 50,
+          "covered": 50,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "2cc9c9e1f5726857a73d5f9ba5f20bd45449016038d10ae49f2fa67cb96df151"
+    },
+    "src/providers/translation/bilibili-free.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 73,
+          "covered": 73,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 54,
+          "covered": 54,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 73,
+          "covered": 73,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "c728b61054520fa075f59a27acc46da7d34fb577bbb61f6f4daf658824ce2841"
+    },
+    "src/providers/translation/chatgpt-plan.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 83,
+          "covered": 83,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 52,
+          "covered": 52,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 83,
+          "covered": 83,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "b889a0ab0ff940d877eb365951f469e3b26e475fc1b46a16a40915daf3463e6a"
+    },
+    "src/providers/translation/chromeTranslatorRequest.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 26,
+          "covered": 26,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 26,
+          "covered": 26,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "b38504a0daf3dead4f5458aa1abc3da0454d1050842f475edae433c1aaeb8622"
+    },
+    "src/providers/translation/connectionTest.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 234,
+          "covered": 234,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 160,
+          "covered": 160,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 14,
+          "covered": 14,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 234,
+          "covered": 234,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "3e1adf7ce9bbb856d5e9fe2359be25465df2dbca352fe2e1152940488c44d6af"
+    },
+    "src/providers/translation/doubao-web.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 223,
+          "covered": 223,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 169,
+          "covered": 169,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 223,
+          "covered": 223,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "327ac9b527d0203114830752f7a77cf503d85e2b4af60f5e37817f628977a6d5"
+    },
+    "src/providers/translation/free-official-web.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 130,
+          "covered": 130,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 127,
+          "covered": 127,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 11,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 130,
+          "covered": 130,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "afeec4c70b528dea1e811b553777232e0e40232278337ccdbd2df05ac48a409d"
+    },
+    "src/providers/translation/free-translation.ts": {
+      "evidence": "latest-main-image-integration",
+      "metrics": {
+        "lines": {
+          "total": 282,
+          "covered": 282,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 34,
+          "covered": 34,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 282,
+          "covered": 282,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 185,
+          "covered": 185,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "9205dcbb2f72c6bfded0cd7a62e4de90939597c2abed337586ed6c45d64c1c81"
+    },
+    "src/providers/translation/google-cloud-translation.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 37,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 27,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 37,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "3664c518dcf28e8c17ea5ef565c72ccf3867048d0abc08affce1e67827846805"
+    },
+    "src/providers/translation/hunyuan-translation.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 173,
+          "covered": 173,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 62,
+          "covered": 62,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 173,
+          "covered": 173,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "6349b362368b81064b3d78959d895a5da9c8e8509b805da62dd753484a74a289"
+    },
+    "src/providers/translation/mymemory.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 110,
+          "covered": 110,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 97,
+          "covered": 97,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 110,
+          "covered": 110,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "b0fd96ffe9a193c0fb9145a55e83025ab59d06bd86bfbd4fa2c20ed330996279"
+    },
+    "src/providers/translation/tencent.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 123,
+          "covered": 123,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 38,
+          "covered": 38,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 123,
+          "covered": 123,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "85609f29204b5d3c3c1ac8328c15fe815dd4354b857e6f6f2f390106a2734b4e"
+    },
+    "src/providers/translation/volc-translation.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 82,
+          "covered": 82,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 23,
+          "covered": 23,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 82,
+          "covered": 82,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "e53306c6018bbd93aaa3ee7f7b6e73968dd748585e28a9bce2560a1e1692be6b"
+    },
+    "src/providers/translation/xiaoniu.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 39,
+          "covered": 39,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 39,
+          "covered": 39,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "68fe15c52a3ca7739d18565ebd1c2b754b20dc799241d9297af64191cdc8db05"
+    },
+    "src/providers/translation/youdao.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 150,
+          "covered": 150,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 27,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 150,
+          "covered": 150,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "2d7fcfe179801a71f2e2216a514e419b3215577ca8efa90a235ab28c1707d298"
+    },
+    "src/providers/translation/ai-sdk/endpoints.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 150,
+          "covered": 150,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 82,
+          "covered": 82,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 150,
+          "covered": 150,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "8eb15cc4498e776cd88b0dbe433ecbca21b410d3ec0635fda311f99d0df50fb3"
+    },
+    "src/services/config/editor.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 80,
+          "covered": 80,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 41,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 11,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 80,
+          "covered": 80,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "b2ce585416b9ff90181d84880fce37810d5a500b66424f378b86bdbfdc4973e1"
+    },
+    "src/services/translation/availability.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 62,
+          "covered": 62,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 29,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 62,
+          "covered": 62,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "008f3344e6a991afdeb758efecf6414ee2a85707c4fa331b6ae0d369f3896b89"
+    },
+    "src/services/translation/client.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 513,
+          "covered": 513,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 249,
+          "covered": 249,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 35,
+          "covered": 35,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 513,
+          "covered": 513,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "e038c38b5cdce0e99ff5cf5237004db23256261a2e711cb241855df470e1a4a4"
+    },
+    "src/services/translation/requestIdentity.ts": {
+      "evidence": "latest-main-context-deeplx-integration",
+      "metrics": {
+        "lines": {
+          "total": 119,
+          "covered": 119,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 119,
+          "covered": 119,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 75,
+          "covered": 75,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "e3380868e1fd36e42521143c67b58fe19dff8c823e5fb5667785e46b5ad78332"
+    },
+    "src/services/translation/requestSnapshot.ts": {
+      "evidence": "pr991-integration-50-consumers",
+      "metrics": {
+        "lines": {
+          "total": 349,
+          "covered": 349,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 36,
+          "covered": 36,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 349,
+          "covered": 349,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 209,
+          "covered": 209,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "95b2a4ee1112c4e50403d8cdc473550eeb80bb1eff7bb8028672978b7f34c2f7"
+    },
+    "src/services/translation/templates.ts": {
+      "evidence": "affected-behavior",
+      "metrics": {
+        "statements": {
+          "total": 300,
+          "covered": 300,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 128,
+          "covered": 128,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 20,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 300,
+          "covered": 300,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "75b02b6ebd8df8d62fd785b360b5f004d91574121b1797fe0c1786a1dcf44db6"
+    },
+    "src/services/translation/types.ts": {
+      "evidence": "pr991-integration-50-consumers",
+      "metrics": {
+        "lines": {
+          "total": 11,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 11,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "74e3bf3405cc753308ec17fa3f3d691b4956f6e8ee8871c29e21757c77cc7966"
+    },
+    "src/app/background/chatgptPlanRuntime.ts": {
+      "evidence": "runtime-consumers",
+      "metrics": {
+        "statements": {
+          "total": 25,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 30,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 25,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "46cef6211cf0a43e850aed1114807eb74bc3219c28dff639a1da4d1314ccacbc"
+    },
+    "src/app/background/harnessRuntime.ts": {
+      "evidence": "runtime-consumers",
+      "metrics": {
+        "statements": {
+          "total": 62,
+          "covered": 62,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 60,
+          "covered": 60,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 11,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 62,
+          "covered": 62,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "1e7d06803fba5725ea1e3c4cee2bd97c58a7c641b94e5a84381e4fff6a598e82"
+    },
+    "src/app/background/providerRuntime.ts": {
+      "evidence": "runtime-consumers",
+      "metrics": {
+        "statements": {
+          "total": 29,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 29,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "2c431e4c726f2db8f273c10b39223252beb7c6f63b26a4a1f24da207f619d611"
+    },
+    "src/app/background/handlers/configHistory.ts": {
+      "evidence": "runtime-consumers",
+      "metrics": {
+        "statements": {
+          "total": 21,
+          "covered": 21,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 12,
+          "covered": 12,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 21,
+          "covered": 21,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "200c0718f64f9e196f8783b88403f41ca27313cbddd225925f38fcbca79f8892"
+    },
+    "src/app/background/handlers/configPersistence.ts": {
+      "evidence": "runtime-consumers",
+      "metrics": {
+        "statements": {
+          "total": 219,
+          "covered": 219,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 147,
+          "covered": 147,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 17,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 219,
+          "covered": 219,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "c40faff1e86e9f912725f515e7d246fe2a3338f8b636ec4d4861a01a4ff941ce"
+    },
+    "src/app/background/handlers/configStorage.ts": {
+      "evidence": "runtime-consumers",
+      "metrics": {
+        "statements": {
+          "total": 46,
+          "covered": 46,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 22,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 46,
+          "covered": 46,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "efaa1ae5483db708bc579f055a68215009fd41915888ad4cc0946959e8ebc487"
+    },
+    "src/app/background/handlers/connectionTest.ts": {
+      "evidence": "runtime-consumers",
+      "metrics": {
+        "statements": {
+          "total": 43,
+          "covered": 43,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 30,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 43,
+          "covered": 43,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "b6280883eb101d0b96535d81d0d7fa236f75b90958201cb194df825f6bf44a08"
+    },
+    "src/app/background/handlers/freeTranslationWeights.ts": {
+      "evidence": "runtime-consumers",
+      "metrics": {
+        "statements": {
+          "total": 20,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 13,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 20,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "a0258d70a1172522ef88fbc44829c7e54a7177cf0f29db3257b230107da23404"
+    },
+    "src/app/background/handlers/translation.ts": {
+      "evidence": "pr991-integration-50-consumers",
+      "metrics": {
+        "lines": {
+          "total": 207,
+          "covered": 207,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 207,
+          "covered": 207,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 162,
+          "covered": 162,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "dce7767c1a8d66e30bb242f6f2ed263bba580f169109a919c1a4a0d030548a29"
+    },
+    "src/app/background/handlers/translationCache.ts": {
+      "evidence": "runtime-consumers",
+      "metrics": {
+        "statements": {
+          "total": 47,
+          "covered": 47,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 12,
+          "covered": 12,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 47,
+          "covered": 47,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "253d50d129e22f460cbd6db55f1f264ad319f5378d777864096f0bdd7dfc898c"
+    },
+    "src/services/messaging/backgroundRouter.ts": {
+      "evidence": "runtime-consumers",
+      "metrics": {
+        "statements": {
+          "total": 58,
+          "covered": 58,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 37,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 58,
+          "covered": 58,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "054e26c3bbebd3befce3bf7d34bb499bc66674112290657ae67feb88d387ca61"
+    },
+    "src/services/translation/visionProbe.ts": {
+      "evidence": "runtime-consumers",
+      "metrics": {
+        "statements": {
+          "total": 119,
+          "covered": 119,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 74,
+          "covered": 74,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 119,
+          "covered": 119,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "5a4699aee23ccc85e246a45271239e698329c3d5ddfc9afd5ea92cebda2cbd16"
+    },
+    "src/services/translation/broker.ts": {
+      "evidence": "pr991-integration-50-consumers",
+      "metrics": {
+        "lines": {
+          "total": 1576,
+          "covered": 1576,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 79,
+          "covered": 79,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 1576,
+          "covered": 1576,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 841,
+          "covered": 841,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "65cb9d2a3f6165cc4fa890cadafca8995cf6e0b3f07a9d11ea139727c23384bb"
+    },
+    "src/features/document-translation/services/binary.ts": {
+      "evidence": "pdf-fragment-aggregation",
+      "metrics": {
+        "lines": {
+          "total": 1064,
+          "covered": 1064,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 59,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 1064,
+          "covered": 1064,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 743,
+          "covered": 743,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "eda9bd603783a533c270d410db878c75deaa49a2ab09d1be098bff65f98b97ec"
+    },
+    "src/providers/translation/deeplx.ts": {
+      "evidence": "latest-main-context-deeplx-integration",
+      "metrics": {
+        "lines": {
+          "total": 212,
+          "covered": 212,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 10,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 212,
+          "covered": 212,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 127,
+          "covered": 127,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "7881fe185673180eeb38455d5001ece847212ded7354091c63d8509cdfe43244"
+    }
+  },
+  "latestMainIntegration": {
+    "sourceCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224",
+    "integratedMainCommit": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
+    "files": 3,
+    "passed": 105,
+    "testFiles": [
+      "tests/sectionTranslationRegion.test.ts",
+      "tests/sectionTranslationRuntime.test.ts",
+      "tests/fullPageTranslationConfigSnapshot.test.ts"
+    ]
+  },
+  "sourceHashesVerifiedAtCommit": "a8e04e2a9b4d6a98f5f21e1a4b45ebc925107edd",
+  "latestImageIntegration": {
+    "sourceCommit": "2003e06432cc5f7e204f4908bb56c684fd8235af",
+    "integratedMainCommit": "e806feff0035d7df3e794265a4a9a648015dd487",
+    "files": 26,
+    "passed": 1339,
+    "modules": [
+      "src/services/translation/broker.ts",
+      "src/providers/translation/free-translation.ts",
+      "src/services/translation/requestSnapshot.ts",
+      "src/services/translation/requestIdentity.ts"
+    ]
+  },
+  "pdfFragmentAggregation": {
+    "sourceCommit": "a27e1171cf60b6c23b1d58bb3bfaea20d9afcfc2",
+    "files": 13,
+    "passed": 505,
+    "existingSkipped": 3,
+    "measurement": "pdf-fragment-aggregation.json"
+  },
+  "latestContextDeepLXIntegration": {
+    "sourceCommit": "a8e04e2a9b4d6a98f5f21e1a4b45ebc925107edd",
+    "baseCommit": "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde",
+    "files": 32,
+    "passed": 1532,
+    "existingSkipped": 0,
+    "modules": [
+      "src/services/translation/broker.ts",
+      "src/providers/translation/deeplx.ts",
+      "src/services/translation/requestIdentity.ts"
+    ]
+  },
+  "supplementalMainContractModules": {
+    "src/features/area-translation/background/handlers.ts": {
+      "metrics": {
+        "lines": {
+          "total": 129,
+          "covered": 129,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 12,
+          "covered": 12,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 129,
+          "covered": 129,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 107,
+          "covered": 107,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "1951653f38c266bf5f1b41386f9c220c9d7380e584b818e56341805152554190"
+    },
+    "src/services/translation/requestScheduler.ts": {
+      "metrics": {
+        "lines": {
+          "total": 347,
+          "covered": 347,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 34,
+          "covered": 34,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 347,
+          "covered": 347,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 212,
+          "covered": 212,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceSha256": "a1b55270e0066c2cdb63c4665804aa49cb1d5a1fedcdf3a4c10c074626ed5e22"
+    }
+  },
+  "supplementalMainContractEvidence": "latest-main-integration.json"
+}

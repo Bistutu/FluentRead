@@ -10,7 +10,14 @@
  */
 
 import {zhCNMessages} from './messages/zh-CN';
-import type {LegacyPatternEntry, MessageCatalog, RegisteredUiLanguage, TranslationParams, UiLanguage, UiLanguageBundle} from './types';
+import type {
+    LegacyPatternEntry,
+    MessageCatalog,
+    RegisteredUiLanguage,
+    TranslationParams,
+    UiLanguage,
+    UiLanguageBundle,
+} from './types';
 
 export * from './types';
 export * from './language';

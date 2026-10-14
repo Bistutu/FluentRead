@@ -6,7 +6,7 @@
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import { getRequiredImageOcrLanguages, type ImageOcrLanguageCode } from './ocrLanguages';
-import type { OcrLine } from '@/src/shared/image/types';
+import type {OcrLine} from '@/src/shared/image/types';
 
 export type { OcrLine } from '@/src/shared/image/types';
 

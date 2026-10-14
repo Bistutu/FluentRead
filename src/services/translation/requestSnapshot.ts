@@ -2,17 +2,32 @@
  * @file src/services/translation/requestSnapshot.ts
  *
  * 文件职责：冻结翻译消息的可编辑字段与数组，并附加只读 provider 配置快照，复制并深度冻结服务合批偏好及组合成员配置，归一化 AI 超时设置，消除异步缓存读取期间全局配置变化造成的请求身份错配。
- * 主要内容：在入口一次读取消息字段并复制原文/图片文本/术语数组，保留内部 symbol 描述符；通过不可序列化的内部标记允许图片文字原样返回成功；配置读取沿用已附着的可信对象，未附着时才同步执行备用快照工厂，仍兼容 provider 的对象备用值；定义配置快照、剩余预算、内部取消、线路观察与可信术语及隐私来源，携带后台调度租约让实际网络及响应读取结束前持续占用并发槽，冻结术语规则并从完整文本槽协议恢复纯匹配原文及供文档逐槽结构校验复用的协议快照；以线性首尾边界扫描确定命名空间和最终外层槽数，保留来源中的字面标记和自定义命名空间，重复、交错与缺项仍由同一严格解析器拒绝；userscript 编译时裁剪扩展文档页专属的自动字面值扫描。
+ * 主要内容：在入口一次读取消息字段并复制原文/图片文本/术语数组，保留内部 symbol 描述符，通过不可序列化的内部标记允许图片文字原样返回成功；配置读取沿用已附着的可信对象，未附着时才同步执行备用快照工厂，请求边界可以显式提供备用快照工厂，provider 内核只消费必需的受信快照；构造配置快照并操作 types.ts 唯一持有的剩余预算、内部取消、线路观察与可信术语及隐私来源契约，携带后台调度租约让实际网络及响应读取结束前持续占用并发槽，冻结术语规则并从完整文本槽协议恢复纯匹配原文及供文档逐槽结构校验复用的协议快照；以线性首尾边界扫描确定命名空间和最终外层槽数，保留来源中的字面标记和自定义命名空间，重复、交错与缺项仍由同一严格解析器拒绝；userscript 编译时裁剪扩展文档页专属的自动字面值扫描。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；文本槽恢复复用 core/translation/slotProtocol.ts 纯协议，不初始化 DOM 候选或网站规则；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 
-import type {
-    TranslationConfigSource,
-    TranslationModelUsageObservation,
-    TranslationProviderConfigSnapshot,
-    TranslationRequestMessageBase,
-    TranslationGlossaryContext,
+import {
+    TRANSLATION_PROVIDER_CONFIG,
+    TRANSLATION_REMAINING_BUDGET,
+    TRANSLATION_MODEL_USAGE_OBSERVER,
+    TRANSLATION_ROUTE_OBSERVER,
+    TRANSLATION_REQUEST_CONTROL,
+    TRANSLATION_REQUEST_SCHEDULER,
+    TRANSLATION_GLOSSARY_CONTEXT,
+    TRANSLATION_IMAGE_INPUT,
+    type TrustedTranslationGlossaryContext,
+    type TranslationModelUsageObserver,
+    type TranslationRouteObservation,
+    type TranslationRouteObserver,
+    type TranslationRemainingBudgetContext,
+    type TranslationRequestControl,
+    type TranslationRequestControlContext,
+    type TranslationProviderRequestContext,
+    type TranslationConfigSource,
+    type TranslationModelUsageObservation,
+    type TranslationProviderConfigSnapshot,
 } from './types';
+export type {TrustedTranslationGlossaryContext} from './types';
 import {normalizeFreeTranslationOrder, normalizeFreeTranslationMode} from '@/src/core/config/freeTranslation';
 import {normalizeApiKeyRecoveryMs} from '@/src/core/config/scheduling';
 import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
@@ -23,6 +38,7 @@ import {normalizeNativeBatchTranslationEnabled} from '@/src/core/config/nativeBa
 import {resolveGlossaryEntries} from '@/src/core/glossary';
 import {parseTranslationSlots, type SerializedTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {findDocumentLiteralTerms} from '@/src/core/translation/documentLiterals';
+import {resolveTranslationLanguages, type TranslationLanguageOverride} from '@/src/core/translation/languages';
 import type {TranslationRequestScheduler, TranslationRequestIdentity, TranslationRequestLease} from './requestScheduler';
 
 /** 在入口第一次等待前复制用户可编辑的数组与消息字段，同时保留不可枚举的内部 symbol。 */
@@ -41,15 +57,6 @@ export function createTranslationRequestSnapshot<T extends object>(message: T): 
     return Object.defineProperties({}, descriptors) as T;
 }
 
-/** 内部 symbol 无法由 content runtime 消息伪造，也不会进入网络 JSON。 */
-export const TRANSLATION_PROVIDER_CONFIG = Symbol('fluentread.translation-provider-config');
-export const TRANSLATION_REMAINING_BUDGET = Symbol('fluentread.translation-remaining-budget');
-export const TRANSLATION_MODEL_USAGE_OBSERVER = Symbol('fluentread.translation-model-usage-observer');
-export const TRANSLATION_ROUTE_OBSERVER = Symbol('fluentread.translation-route-observer');
-export const TRANSLATION_REQUEST_CONTROL = Symbol('fluentread.translation-request-control');
-export const TRANSLATION_REQUEST_SCHEDULER = Symbol('fluentread.translation-scheduler');
-export const TRANSLATION_GLOSSARY_CONTEXT = Symbol('fluentread.translation-glossary-context');
-export const TRANSLATION_IMAGE_INPUT = Symbol('fluentread.translation-image-input');
 const TRANSLATION_ACCEPT_UNCHANGED_RESULT = Symbol('fluentread.translation-accept-unchanged-result');
 
 /** 图片文字允许有效原样结果；内部标记随后台对象展开保留，不进入 runtime 或网络 JSON。 */
@@ -95,14 +102,6 @@ export function getTranslationImageInput(message: unknown): string | undefined {
         ? image
         : undefined;
 }
-
-export interface TrustedTranslationGlossaryContext {
-    readonly pageUrl?: string;
-    readonly context?: TranslationGlossaryContext;
-    /** 只由后台真实 sender 绑定，用于内存 quota 隔离；不写入缓存或网络。 */
-    readonly privateContext?: boolean;
-}
-
 
 /** 只解释后台的 sender 与平台上下文，未知来源保留未知；不读取 payload 的自报隐私字段。 */
 export interface TrustedTranslationSenderContext {
@@ -196,47 +195,6 @@ export function getTranslationGlossaryTerms(current: TranslationProviderConfigSn
         ? [...entries, ...findDocumentLiteralTerms(source, entries)] : entries;
     return terms.map(({source, target}) => ({source, target: target || source}));
 }
-
-export type TranslationModelUsageObserver = (observation: TranslationModelUsageObservation) => void;
-
-/** 免费翻译链等内部多线路 provider 对单次线路尝试的无文本观察。 */
-export interface TranslationRouteObservation {
-    readonly route: string;
-    readonly outcome: TranslationRouteOutcome;
-    readonly durationMs: number;
-    readonly chars: number;
-}
-export type TranslationRouteOutcome = 'success' | 'error' | 'timeout' | 'cancelled';
-export type TranslationRouteObserver = (observation: TranslationRouteObservation) => void;
-
-export type TranslationRemainingBudgetContext = {
-    readonly [TRANSLATION_REMAINING_BUDGET]?: true;
-};
-
-export interface TranslationRequestControl {
-    readonly signal: AbortSignal;
-    /** 只影响 pending 去重所有权，不进入持久缓存 identity。 */
-    readonly ownershipKey: string;
-}
-
-export type TranslationRequestControlContext = {
-    readonly [TRANSLATION_REQUEST_CONTROL]?: TranslationRequestControl;
-};
-
-export type TranslationProviderRequestContext = {
-    readonly [TRANSLATION_PROVIDER_CONFIG]?: TranslationProviderConfigSnapshot;
-    readonly [TRANSLATION_MODEL_USAGE_OBSERVER]?: TranslationModelUsageObserver;
-    readonly [TRANSLATION_ROUTE_OBSERVER]?: TranslationRouteObserver;
-    /** 仅由 broker 在后台注入；provider 必须向底层 transport 继续传递。 */
-    readonly abortSignal?: AbortSignal;
-    /** 后台注入的共享调度器；provider 仅用于真实 HTTP attempt，不取得嵌套并发槽。 */
-    readonly [TRANSLATION_REQUEST_SCHEDULER]?: {
-        readonly scheduler: TranslationRequestScheduler;
-        readonly identity?: TranslationRequestIdentity;
-        /** provider 在真正启动 transport 时登记结算，取消包装不能提前归还外层并发槽。 */
-        readonly lease?: TranslationRequestLease;
-    };
-};
 
 export function attachTranslationRequestScheduler<T extends object>(
     message: T,
@@ -354,16 +312,6 @@ export function markTranslationRemainingBudget<T extends {requestTimeoutMs: numb
     Object.defineProperty(request, TRANSLATION_REMAINING_BUDGET, {value: true});
     return request as T & TranslationRemainingBudgetContext;
 }
-
-/** Provider 收到的类型化内部请求；在公开翻译消息之上附加配置快照和取消信号。 */
-export type TranslationProviderRequest<TOrigin = string | string[]> = TranslationRequestMessageBase
-    & TranslationProviderRequestContext
-    & {
-        origin: TOrigin;
-        /** 仅摘要请求使用；普通正文 provider 可忽略。 */
-        summaryPrompt?: string;
-        summarySystemPrompt?: string;
-    };
 
 function frozenStringMap(value: Record<string, string> | undefined): Readonly<Record<string, string>> {
     return Object.freeze({...value});
@@ -492,7 +440,24 @@ export function attachTranslationProviderConfig<T extends object>(
     return Object.assign(message, {[TRANSLATION_PROVIDER_CONFIG]: snapshot});
 }
 
-/** 沿用可信 symbol 对象；缺失时同步读取一次备用工厂，provider 直调仍支持对象备用值。 */
+/** Provider 只消费调用边界已经冻结的配置；缺失时在发起 transport 前明确失败。 */
+export function requireTranslationProviderConfig(message: unknown): TranslationProviderConfigSnapshot {
+    if (message && typeof message === 'object') {
+        const snapshot = (message as TranslationProviderRequestContext)[TRANSLATION_PROVIDER_CONFIG];
+        if (snapshot) return snapshot;
+    }
+    throw Object.assign(new TypeError('翻译服务缺少配置快照，请通过翻译请求入口调用'), {
+        code: 'TRANSLATION_PROVIDER_CONFIG_REQUIRED',
+    });
+}
+
+/** Provider 的语言缺省也必须来自同一冻结快照，不能隐式读取全局配置。 */
+export function getTranslationProviderLanguages(message: (TranslationLanguageOverride & TranslationProviderRequestContext) | null | undefined) {
+    const current = requireTranslationProviderConfig(message);
+    return resolveTranslationLanguages(message, {sourceLanguage: current.from, targetLanguage: current.to});
+}
+
+/** 沿用可信 symbol 对象；缺失时同步读取一次备用工厂，仅供请求边界构造快照。 */
 export function getTranslationProviderConfig(
     message: unknown,
     fallback: TranslationProviderConfigSnapshot | (() => TranslationProviderConfigSnapshot),

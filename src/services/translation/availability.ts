@@ -5,7 +5,8 @@
  * 模块边界：只组合注入的配置和翻译端口，不访问浏览器、不改写用户设置，也不清除已完成译文或缓存。
  */
 import type {TranslationBroker, TranslationRequestMessage} from './types';
-import {attachTranslationRequestControl, createTranslationRequestSnapshot, getTranslationRequestControl, TRANSLATION_REQUEST_CONTROL} from './requestSnapshot';
+import {attachTranslationRequestControl, createTranslationRequestSnapshot, getTranslationRequestControl} from './requestSnapshot';
+import {TRANSLATION_REQUEST_CONTROL} from './types';
 
 interface AvailabilityDependencies {
     ready: Promise<unknown>;

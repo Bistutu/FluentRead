@@ -5,7 +5,7 @@
  * 模块边界：不读取私有 Map，不执行真实合成、网络或浏览器。
  */
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/services/messaging/backgroundRouter';
 import {createOffscreenMessageListener} from '@/src/app/offscreen/messageRouter';
 import {createCapabilityGatedSelectionTtsTransport} from '@/src/app/background/capabilityRegistry';
 import {resolveBrowserCapabilities} from '@/src/platform/browser/capabilities';

@@ -36,7 +36,7 @@ vi.mock('@/src/services/config/store', async () => {
     const config = new Config(); ports.config = config;
     return {config, configReady: Promise.resolve(), subscribeConfig: (observer: any) => {ports.observer = observer; return ports.unsubscribe;}, requestConfigPatch: (patch: any, send: any) => send({patch})};
 });
-vi.mock('@/src/app/translation/client', () => ({translateText: ports.translate, translateTextBatch: ports.batch}));
+vi.mock('@/src/services/translation/client', () => ({translateText: ports.translate, translateTextBatch: ports.batch}));
 vi.mock('@/src/ui/i18n', () => ({createUiI18nPlugin: (options: unknown) => options, useUiI18n: () => ({language: ref('zh-CN'), t: (key: string, values?: unknown) => {ports.i18n(key, values); return key;}, translateLegacy: (text: string) => text})}));
 vi.mock('@/src/ui/components/UiSelect.vue', () => ({default: {props: ['modelValue'], setup: (_props: any, {slots}: any) => () => h('select', slots.default?.())}}));
 vi.mock('@/src/ui/components/GlossaryLibrarySelect.vue', () => ({default: {setup: () => () => h('div')}}));
@@ -103,6 +103,25 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
+    it('uses each queued task as the immediate source of truth for edits and switches', async () => {
+        await state.loadFiles([file('first.txt'), file('second.txt')]); await flush();
+        const first = state.documentQueue[0];
+        state.editSegment(0, 'Reader correction'); await flush();
+        expect(first.translations).toEqual(['Reader correction']);
+        expect(first.confirmedTranslationIds).toEqual([0]);
+        expect(first.revision).toBe(state.editRevision);
+        expect(state.batchCompletedCount).toBe(1);
+        state.documentBatchTranslation = false;
+        expect(first.batchTranslation).toBe(false);
+        state.selectDocument(state.documentQueue[1]); await flush();
+        state.editSegment(0, 'Second correction'); await flush();
+        expect(first.translations).toEqual(['Reader correction']);
+        state.selectDocument(first); await flush();
+        expect(state.translatedSegments).toBe(first.translations);
+        expect(state.confirmedTranslationIds).toBe(first.confirmedTranslationIds);
+        expect(state.documentBatchTranslation).toBe(false);
+        expect(state.batchCompletedCount).toBe(2);
+    });
     it('preserves unavailable ChatGPT names, direct slugs and manual translations without starting public requests', async () => {
         state.config.service = 'chatgptPlan';state.config.model.chatgptPlan = 'account-default';
         await state.loadFiles([file('account.txt', 'First paragraph\n\nSecond paragraph')]);await flush();
@@ -780,6 +799,77 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(state.needsOcr).toBe(true);
     });
 
+    it('keeps an empty OCR result readable and shows its failure without requesting translation or repeating OCR', async () => {
+        await state.loadFiles([file('scanned.pdf')]);
+        const original = state.parsedDocument;
+        const scanned = markRaw({...original, segments: [], binary: {...original.binary,
+            pages: original.binary.pages.map((page: PdfDocumentPage) => ({...page, scanned: true, segmentIndexes: [], blocks: []})),
+        }});
+        state.parsedDocument = scanned;
+        const recognized = {...scanned, binary: {...scanned.binary,
+            pages: scanned.binary.pages.map((page: PdfDocumentPage) => ({...page, scanned: false})),
+        }};
+        ports.recognize.mockResolvedValueOnce(recognized);
+
+        await state.startTranslation(); await flush();
+
+        expect(state.runState).toBe('failed');
+        expect(state.documentQueue[0].state).toBe('failed');
+        expect(state.errorMessage).toBe('document.pdfReading.ocrEmpty');
+        expect(state.documentQueue[0].error).toBe(state.errorMessage);
+        expect(state.parsedDocument).toBe(recognized);
+        expect(state.documentQueue[0].document).toBe(recognized);
+        expect(state.parsedDocument.binary.bytes).toBe(original.binary.bytes);
+        expect(state.needsOcr).toBe(false);
+        expect(state.translating).toBe(false);
+        expect(state.recognitionProgress).toBe('');
+        expect(state.batchCompletedCount).toBe(0);
+        const recovery = walkHost(root).find(entry => entry.props['data-testid'] === 'document-translation-recovery')!;
+        expect(walkHost(recovery).find(entry => entry.props.class === 'recovery-error-detail')!.text).toBe('document.pdfReading.ocrEmpty');
+        expect(walkHost(root).some(entry => entry.props['data-document-reader'] === 'pdf')).toBe(true);
+        await state.startTranslation(); await flush();
+        expect(ports.recognize).toHaveBeenCalledOnce();
+        expect(ports.batch).not.toHaveBeenCalled();
+        expect(ports.translate).not.toHaveBeenCalled();
+        expect(state.runState).toBe('failed');
+        expect(state.errorMessage).toBe('document.pdfReading.ocrEmpty');
+    });
+
+    it('ignores a canceled empty OCR result after switching to another document', async () => {
+        await state.loadFiles([file('scanned.pdf'), file('other.txt', 'Other document')]);
+        const original = state.parsedDocument;
+        const scanned = markRaw({...original, segments: [], binary: {...original.binary,
+            pages: original.binary.pages.map((page: PdfDocumentPage) => ({...page, scanned: true, segmentIndexes: [], blocks: []})),
+        }});
+        state.parsedDocument = scanned;
+        const recognizing = deferred<unknown>();
+        ports.recognize.mockReturnValueOnce(recognizing.promise);
+        const running = state.startTranslation();
+        await flush();
+        expect(ports.recognize).toHaveBeenCalledOnce();
+        const signal = ports.recognize.mock.calls[0][2].signal;
+        state.pauseTranslation();
+        state.selectDocument(state.documentQueue[1]);
+        state.editSegment(0, 'Reader correction');
+        const current = state.parsedDocument;
+        recognizing.resolve({...scanned, binary: {...scanned.binary,
+            pages: scanned.binary.pages.map((page: PdfDocumentPage) => ({...page, scanned: false})),
+        }});
+        await running; await flush();
+
+        expect(signal.aborted).toBe(true);
+        expect(state.parsedDocument).toBe(current);
+        expect(state.runState).toBe('ready');
+        expect(state.errorMessage).toBe('');
+        expect(state.translatedSegments).toEqual(['Reader correction']);
+        expect(state.documentQueue[0].document).toBe(scanned);
+        expect(state.documentQueue[0].state).toBe('paused');
+        expect(state.documentQueue[0].error).toBe('');
+        expect(state.documentQueue[0].document.binary.pages[0].scanned).toBe(true);
+        expect(ports.batch).not.toHaveBeenCalled();
+        expect(ports.translate).not.toHaveBeenCalled();
+    });
+
     it.each([false, true])('uses accurate import and change-file guidance with local history available=%s', async available => {
         app.unmount(); vi.stubGlobal('indexedDB', available ? new IDBFactory() : undefined);
         root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
@@ -955,6 +1045,30 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(ports.translate).not.toHaveBeenCalled();
         expect(state.translating).toBe(false);
         expect(state.errorMessage).toBe('');
+    });
+    it('preserves failed task recovery through another import and isolates online import failures', async () => {
+        await state.loadFiles([file('first.txt', 'First.\n\nSecond.')]);
+        state.editSegment(0, 'Reviewed first passage');
+        const task = state.documentQueue[0];
+        ports.batch.mockRejectedValueOnce(Object.assign(new Error('HTTP 400 invalid model'), {retryable: false}));
+        await state.startTranslation(); await flush();
+        const taskError = state.errorMessage;
+        expect(task.state).toBe('failed'); expect(taskError).toContain('HTTP 400');
+        await state.loadFiles([file('second.txt')]);
+        state.selectDocument(task); await flush();
+        expect(state.errorMessage).toBe(taskError); expect(state.progress).toBe(50);
+        expect(state.translatedSegments[0]).toBe('Reviewed first passage');
+        expect(walkHost(root).some(entry => entry.props['data-testid'] === 'document-translation-recovery')).toBe(true);
+        ports.fetchPdf.mockRejectedValueOnce(new Error('Online PDF unavailable'));
+        state.onlinePdfUrl = 'https://example.test/unavailable.pdf';
+        await state.openOnlinePdf(); await flush();
+        expect(state.importError).toBe('Online PDF unavailable');
+        expect(walkHost(root).some(entry => entry.props.role === 'alert' && hostText(entry) === 'Online PDF unavailable')).toBe(true);
+        expect(state.errorMessage).toBe(taskError); expect(task.state).toBe('failed');
+        await state.openOnlinePdf();
+        expect(state.importError).toBe('');
+        state.selectDocument(task); await flush();
+        expect(state.errorMessage).toBe(taskError); expect(state.confirmedTranslationIds).toEqual([0]);
     });
     it('imports the online PDF fragment on mount, retains its source metadata, and keeps translation user-triggered', async () => {
         app.unmount(); await flush();

@@ -1,0 +1,297 @@
+{
+  "status": "local_checks_passed_hosted_pending",
+  "sourceCommit": "e85a18359fc92d88b54204f7003d2dada4884d9a",
+  "comparisonBase": "8bdd5c20dc82b57d27b7e22d14080cacd64d7eed",
+  "version": "0.0.38",
+  "referenceRepositoriesUsed": false,
+  "delivery": "github_pull_request",
+  "changes": [
+    "shared configuration draft ownership",
+    "explicit provider request snapshots and typed service ports",
+    "document task source of truth and durable history commit",
+    "full-page resource ownership",
+    "video request and subtitle cache ownership",
+    "affected-test CI and strict dependency boundaries"
+  ],
+  "checks": {
+    "architecture": {
+      "files": 36,
+      "passed": 2003
+    },
+    "testRegistration": {
+      "files": 721,
+      "declaredCases": 12997,
+      "status": "passed"
+    },
+    "nativeNodeContracts": {
+      "files": 6,
+      "passed": 79,
+      "skipped": 0
+    },
+    "types": "passed",
+    "builds": {
+      "chrome_mv3": "passed",
+      "firefox_mv2": "passed",
+      "userscript": "passed",
+      "docs": "passed"
+    },
+    "manifestVerifier": "passed",
+    "userscriptVerifier": "passed",
+    "userscriptBytes": 2059882,
+    "userscriptBudgetBytes": 2095100,
+    "affectedBehavior": {
+      "status": "passed",
+      "files": 410,
+      "passed": 13417,
+      "existingSkipped": 4,
+      "completeRepositorySuite": false,
+      "sourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb"
+    },
+    "strictCoverage": {
+      "status": "passed",
+      "files": 84,
+      "requiredPercent": 100,
+      "perFile": true,
+      "verificationMode": "Independent previous affected/runtime/broker/PDF scopes plus current Node22 scheduling/privacy integration; all84 current source hashes match, with two additional main-contract targets recorded separately.",
+      "report": "strict-coverage.json"
+    },
+    "historyScoped": {
+      "passed": 119,
+      "existingSkipped": 1,
+      "modules": 2,
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "supplementalRuntimeConsumers": {
+      "status": "passed",
+      "files": 12,
+      "passed": 245,
+      "coveredModules": 12
+    },
+    "supplementalBrokerContracts": {
+      "status": "passed",
+      "files": 21,
+      "passed": 990,
+      "coveredModules": 1
+    },
+    "finalFocusedGates": {
+      "files": 2,
+      "passed": 46
+    },
+    "planner": {
+      "files": 1,
+      "passed": 19,
+      "actualRunnerAndFailureReportsVerified": true
+    },
+    "priorToolingIntegration": {
+      "status": "passed",
+      "files": 3,
+      "passed": 50,
+      "types": "passed",
+      "docs": "passed",
+      "productionSourceDifferenceFromProgramSourceCommit": false
+    },
+    "finalMainIntegration": {
+      "sourceCommit": "e85a18359fc92d88b54204f7003d2dada4884d9a",
+      "baseCommit": "b4125919e10bff34a81872dc3cdf69e63143a534",
+      "translation": {
+        "files": 50,
+        "passed": 1819,
+        "strictModules": 9,
+        "skipped": 0
+      },
+      "youtubeSupplement": {
+        "files": 10,
+        "passed": 617,
+        "strictModules": 1,
+        "sourceSha256": "c3432c66fe568608f53724b7089545355117e3657336c14759a3eef75516d759"
+      },
+      "serviceConfigurationFixture": {
+        "files": 1,
+        "passed": 33,
+        "zeroTimerCleanupNegativeControl": "passed"
+      },
+      "ownershipPlannerInventory": {
+        "files": 3,
+        "passed": 62
+      },
+      "types": "passed",
+      "builds": {
+        "chrome_mv3": "passed",
+        "firefox_mv2": "passed",
+        "userscript": "passed",
+        "docs": "passed"
+      },
+      "manifestVerifier": "passed",
+      "userscriptVerifier": "passed",
+      "userscriptBudgetMatchesMain": true,
+      "proof": "latest-main-integration.json",
+      "ciFollowUp": "ci-follow-up.json",
+      "viteClockFixtures": {
+        "sourceCommit": "42c0fc8359086f18a9b51c97df7696f189198fed",
+        "files": 7,
+        "passed": 228,
+        "skipped": 0,
+        "unhandledErrors": 0,
+        "cleanupNegativeControl": "passed",
+        "types": "passed",
+        "proof": "vite-clock-fixture-follow-up.json"
+      },
+      "fixtureFollowUpProductionSourceUnchanged": true
+    },
+    "sectionSweepIntegration": {
+      "status": "passed",
+      "sourceCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224",
+      "integratedMainCommit": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
+      "sectionSweep": {
+        "files": 3,
+        "passed": 158
+      },
+      "languageProjection": {
+        "files": 3,
+        "passed": 287
+      },
+      "sectionStrictCoverage": {
+        "files": 3,
+        "passed": 105,
+        "module": "src/features/full-page-translation/content/sectionTranslation.ts",
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "types": "passed",
+      "builds": {
+        "chrome_mv3": "passed",
+        "firefox_mv2": "passed",
+        "userscript": "passed",
+        "docs": "passed"
+      },
+      "manifestVerifier": "passed",
+      "productionSourceDifferenceFromProgramSourceCommit": true,
+      "userscriptVerifier": "passed",
+      "userscriptSizeReport": "userscript-size.json",
+      "userscriptVerifierFixtures": {
+        "files": 2,
+        "passed": 17,
+        "realCliNegativeCases": 2
+      }
+    },
+    "priorFinalMainIntegration": {
+      "sourceCommit": "a27e1171cf60b6c23b1d58bb3bfaea20d9afcfc2",
+      "baseCommit": "e806feff0035d7df3e794265a4a9a648015dd487",
+      "translation": {
+        "files": 26,
+        "passed": 1339,
+        "coveredModules": 4
+      },
+      "pdfBinary": {
+        "files": 13,
+        "passed": 505,
+        "existingSkipped": 3,
+        "coveredModules": 1
+      },
+      "pdfPressure": {
+        "passed": 43,
+        "fragments": 160000,
+        "childTimeoutMs": 15000,
+        "measurement": "pdf-fragment-aggregation.json"
+      },
+      "cliFixtures": {
+        "files": 1,
+        "passed": 112,
+        "ownedActorsVerifiedGone": 180,
+        "remainingOwnerRoots": 0
+      },
+      "icon": {
+        "passed": 2,
+        "node": "22.23.2",
+        "publishedPngSha256": "4226fc057f80b2308a6153b3316bc02b31b74f1a7f92504e9f45f30d245b5535",
+        "negativeFixtures": 2
+      },
+      "types": "passed",
+      "builds": {
+        "chrome_mv3": "passed",
+        "firefox_mv2": "passed",
+        "userscript": "passed",
+        "docs": "passed"
+      },
+      "manifestVerifier": "passed",
+      "userscriptVerifier": "passed"
+    },
+    "previousDeepLXMainIntegration": {
+      "sourceCommit": "a8e04e2a9b4d6a98f5f21e1a4b45ebc925107edd",
+      "baseCommit": "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde",
+      "types": "passed",
+      "builds": {
+        "chrome_mv3": "passed",
+        "firefox_mv2": "passed",
+        "userscript": "passed",
+        "docs": "passed"
+      },
+      "manifestVerifier": "passed",
+      "userscriptVerifier": "passed",
+      "translation": {
+        "files": 32,
+        "passed": 1532,
+        "strictModules": 3
+      },
+      "languageProjection": {
+        "files": 3,
+        "passed": 288
+      },
+      "userscriptCompressionAndMetadata": {
+        "passed": 18
+      },
+      "verificationOwnershipAndPlanner": {
+        "files": 2,
+        "passed": 35
+      },
+      "proof": "latest-main-integration.json"
+    }
+  },
+  "browserEvidence": {
+    "finalBuild": "browser-delivery.json",
+    "earlierDocumentScenarios": "browser-document-scenarios.json",
+    "finalAssertions": [
+      "options and popup keep latest language after immediate close",
+      "latest manual document corrections committed in actual IndexedDB and restored after reload"
+    ],
+    "earlierAssertions": [
+      "failed task recovery persists after importing and switching documents",
+      "completed and reviewed translations survive failure and continuation",
+      "exported document excludes another task",
+      "canceling removal preserves newer corrections"
+    ],
+    "consoleErrors": 0,
+    "temporaryProfilesRemoved": true,
+    "allRecordedFocusChecksBrowserFrontmost": false,
+    "sourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb"
+  },
+  "proofLimits": [
+    "Affected graph tests are not the complete repository suite.",
+    "Translation responses in browser scenarios are controlled fixtures, not live provider quality.",
+    "Firefox is built and its manifest checked; Firefox runtime is not tested.",
+    "Browser smoke checks do not verify real PCM capture or local model accuracy.",
+    "Browser architecture checks were recorded at programSourceCommit; the later main section-sweep integration is covered by focused tests and rebuilt artifacts, not rerun browser scenarios.",
+    "Hosted CI is pending on the updated PR head at recording time; final results are recorded by the PR checks.",
+    "The final local CLI/PDF checks use macOS Node20 and the icon checks use macOS Node22; Linux Node22 results require the final hosted workflow.",
+    "Newest scheduling/privacy/UI fixture and candidate builds use local macOS Node22; final updated-head Ubuntu Node22 checks remain required."
+  ],
+  "ciPlan": {
+    "files": 460,
+    "architectureFiles": 38,
+    "behaviorFiles": 422,
+    "strictModules": 84,
+    "duplicates": false,
+    "verification": "Updated plan and scoped integration verified; the complete combined command is run by hosted PR CI.",
+    "plan": "ci-plan.json",
+    "globalInputs": []
+  },
+  "programSourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb",
+  "recordingPhase": "local fixture follow-up passed; updated-head hosted CI pending",
+  "currentIntegratedBase": "b4125919e10bff34a81872dc3cdf69e63143a534",
+  "pullRequest": "https://github.com/FluentRead/FluentRead/pull/985"
+}

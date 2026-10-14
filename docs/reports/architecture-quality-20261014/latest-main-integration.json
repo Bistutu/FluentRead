@@ -1,0 +1,538 @@
+{
+  "baseCommit": "b4125919e10bff34a81872dc3cdf69e63143a534",
+  "recordingPhase": "local final integration verified at immutable source commit",
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "coverageTargets": [
+    "src/app/background/imageGlossaryContext.ts",
+    "src/app/background/handlers/translation.ts",
+    "src/features/area-translation/background/handlers.ts",
+    "src/features/area-translation/services/textTranslation.ts",
+    "src/features/input-translation/background/handler.ts",
+    "src/services/translation/broker.ts",
+    "src/services/translation/requestScheduler.ts",
+    "src/services/translation/requestSnapshot.ts",
+    "src/services/translation/types.ts"
+  ],
+  "sourceSha256": {
+    "src/app/background/imageGlossaryContext.ts": "6a35d0526d60c4752648505846ee915a49d87adbbec3e89afc4effda16c6252c",
+    "src/app/background/handlers/translation.ts": "dce7767c1a8d66e30bb242f6f2ed263bba580f169109a919c1a4a0d030548a29",
+    "src/features/area-translation/background/handlers.ts": "1951653f38c266bf5f1b41386f9c220c9d7380e584b818e56341805152554190",
+    "src/features/area-translation/services/textTranslation.ts": "50be110044d7ded6e5d969529f940401f3ed3c96f8dc2010413026c15977ba77",
+    "src/features/input-translation/background/handler.ts": "71381e931c1e03e8ae6a997b37f44133a077ddb983d1eb76d6114674b88795e3",
+    "src/services/translation/broker.ts": "65cb9d2a3f6165cc4fa890cadafca8995cf6e0b3f07a9d11ea139727c23384bb",
+    "src/services/translation/requestScheduler.ts": "a1b55270e0066c2cdb63c4665804aa49cb1d5a1fedcdf3a4c10c074626ed5e22",
+    "src/services/translation/requestSnapshot.ts": "95b2a4ee1112c4e50403d8cdc473550eeb80bb1eff7bb8028672978b7f34c2f7",
+    "src/services/translation/types.ts": "74e3bf3405cc753308ec17fa3f3d691b4956f6e8ee8871c29e21757c77cc7966"
+  },
+  "coverage": {
+    "src/app/background/imageGlossaryContext.ts": {
+      "lines": {
+        "total": 76,
+        "covered": 76,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 6,
+        "covered": 6,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 76,
+        "covered": 76,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 48,
+        "covered": 48,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "src/app/background/handlers/translation.ts": {
+      "lines": {
+        "total": 207,
+        "covered": 207,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 15,
+        "covered": 15,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 207,
+        "covered": 207,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 162,
+        "covered": 162,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "src/features/area-translation/background/handlers.ts": {
+      "lines": {
+        "total": 129,
+        "covered": 129,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 12,
+        "covered": 12,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 129,
+        "covered": 129,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 107,
+        "covered": 107,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "src/features/area-translation/services/textTranslation.ts": {
+      "lines": {
+        "total": 125,
+        "covered": 125,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 5,
+        "covered": 5,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 125,
+        "covered": 125,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 84,
+        "covered": 84,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "src/features/input-translation/background/handler.ts": {
+      "lines": {
+        "total": 130,
+        "covered": 130,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 11,
+        "covered": 11,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 130,
+        "covered": 130,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 72,
+        "covered": 72,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "src/services/translation/broker.ts": {
+      "lines": {
+        "total": 1576,
+        "covered": 1576,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 79,
+        "covered": 79,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 1576,
+        "covered": 1576,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 841,
+        "covered": 841,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "src/services/translation/requestScheduler.ts": {
+      "lines": {
+        "total": 347,
+        "covered": 347,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 34,
+        "covered": 34,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 347,
+        "covered": 347,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 212,
+        "covered": 212,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "src/services/translation/requestSnapshot.ts": {
+      "lines": {
+        "total": 349,
+        "covered": 349,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 36,
+        "covered": 36,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 349,
+        "covered": 349,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 209,
+        "covered": 209,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "src/services/translation/types.ts": {
+      "lines": {
+        "total": 11,
+        "covered": 11,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 11,
+        "covered": 11,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    }
+  },
+  "coverageSummary": "/private/tmp/fluentread-quality-cli-diagnosis/pr991-integration-coverage/coverage-summary.json",
+  "log": "/private/tmp/fluentread-quality-cli-diagnosis/pr991-integration-coverage-final.log",
+  "strictThresholds": {
+    "statements": 100,
+    "branches": 100,
+    "functions": 100,
+    "lines": 100,
+    "perFile": true,
+    "reportOnFailure": true
+  },
+  "testContractChanges": [
+    "PR906 privacy test imports sole public control symbol from types and uses current typed commonMsgTemplate request",
+    "Root composite OpenAI failure test checks exact service/model and new trusted hashed quota; non-SDK Claude retains exact legacy identity"
+  ],
+  "proofLimits": [
+    "Targeted production consumers; did not rerun 458 tests or all85 modules",
+    "SDK actual behavior verified without claiming formally registered strict SDK coverage; areaRuntime composition wiring was only reviewed read-only",
+    "Local macOS Node22, final hosted Linux22 CI still required"
+  ],
+  "targetedResult": {
+    "filesPassed": 50,
+    "testsPassed": 1819,
+    "skips": 0,
+    "durationSeconds": 41.3
+  },
+  "auditResult": {
+    "files": 721,
+    "cases": 12997,
+    "architecture": 38,
+    "unit": 407,
+    "functional": 232,
+    "regression": 44,
+    "status": "ok"
+  },
+  "unregisteredSourceSha256": {
+    "src/providers/translation/ai-sdk/openai-compatible.ts": "007ceef97b6375d09ca523fc18ebe7e12057818d61cfd581e35157b140238975",
+    "src/app/background/areaRuntime.ts": "9e7d2096b9c3a3c0a9f15eac4e2a71842efa695198ffd8bd6a101778a4b3fbd7"
+  },
+  "behaviorVerifiedSources": [
+    "src/providers/translation/ai-sdk/openai-compatible.ts"
+  ],
+  "readOnlyCompositionReviewSources": [
+    "src/app/background/areaRuntime.ts"
+  ],
+  "reusedYoutubeSourceSha256": "c3432c66fe568608f53724b7089545355117e3657336c14759a3eef75516d759",
+  "reusedYoutubeProof": "/private/tmp/fluentread-pr985-candidate-subtitle-strict/validation.json",
+  "previousIntegration": {
+    "recordingPhase": "local integration before final commit; source hashes identify validated files",
+    "base": "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde",
+    "scope": "3 strict production modules plus directly related behavior consumers; no all84 run",
+    "sourceSha256": {
+      "src/services/translation/broker.ts": "2122a68dbb9b15d87df9610d3e1931a1c24aa95c5e6dd368efb59b06becd1003",
+      "src/providers/translation/deeplx.ts": "7881fe185673180eeb38455d5001ece847212ded7354091c63d8509cdfe43244",
+      "src/services/translation/requestIdentity.ts": "e3380868e1fd36e42521143c67b58fe19dff8c823e5fb5667785e46b5ad78332"
+    },
+    "coverage": {
+      "src/services/translation/broker.ts": {
+        "lines": {
+          "total": 1551,
+          "covered": 1551,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 78,
+          "covered": 78,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 1551,
+          "covered": 1551,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 810,
+          "covered": 810,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/providers/translation/deeplx.ts": {
+        "lines": {
+          "total": 212,
+          "covered": 212,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 10,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 212,
+          "covered": 212,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 127,
+          "covered": 127,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/services/translation/requestIdentity.ts": {
+        "lines": {
+          "total": 119,
+          "covered": 119,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 119,
+          "covered": 119,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 75,
+          "covered": 75,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "coverageSummary": "/private/tmp/fluentread-quality-cli-diagnosis/main-context-deeplx-integration-coverage/coverage-summary.json",
+    "log": "/private/tmp/fluentread-quality-cli-diagnosis/main-context-deeplx-integration-coverage-final.log",
+    "plan": "/private/tmp/fluentread-quality-cli-diagnosis/main-context-deeplx-integration-plan-final.json",
+    "changesToTestContract": [
+      "required frozen snapshot attached to 15 new DeepLX public calls",
+      "runtime build fixture resolves actual published package paths under isolated pnpm install",
+      "provider defensive input/response, caller cancel, late transport/body and shared absolute budget outcomes tested"
+    ],
+    "proofLimits": [
+      "Vitest and real local bundle fixtures, no online DeepL or browser account claim",
+      "local darwin Node20, new-head Linux22 CI remains required"
+    ],
+    "targetedResult": {
+      "filesPassed": 32,
+      "testsPassed": 1532,
+      "skips": 0,
+      "durationSeconds": 28.38
+    },
+    "auditResult": {
+      "files": 718,
+      "cases": 12950,
+      "architecture": 38,
+      "unit": 406,
+      "functional": 231,
+      "regression": 43,
+      "status": "ok"
+    },
+    "planResult": {
+      "testFiles": 448,
+      "strictModules": 84,
+      "globalInputs": [],
+      "providerIncluded": true
+    }
+  },
+  "youtubeSupplement": {
+    "candidateCommit": "3ecea5b70e349e743280e72dce658a271838e74b",
+    "candidateRef": "refs/pr-checks/985-merge",
+    "exportMethod": "git archive; independent temporary source snapshot, no extra git worktree",
+    "source": "src/features/video-subtitle/content/youtubeSubtitleData.ts",
+    "sourceSha256": "c3432c66fe568608f53724b7089545355117e3657336c14759a3eef75516d759",
+    "matchesCandidateBlob": true,
+    "runtime": {
+      "node": "v22.23.2",
+      "platform": "darwin",
+      "arch": "arm64",
+      "binary": "/opt/homebrew/opt/node@22/bin/node"
+    },
+    "dependencies": "symlink to locked task node_modules, no install or upgrade",
+    "prepare": "wxt0.20.18 prepare only inside temporary candidate directory",
+    "resource": {
+      "concurrency": 1,
+      "maxWorkers": 1
+    },
+    "strictThresholds": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100,
+      "perFile": true,
+      "reportOnFailure": true
+    },
+    "singleParserTest": {
+      "files": 1,
+      "passed": 384,
+      "skips": 0,
+      "log": "youtube-data-strict.log",
+      "coverageSummary": "coverage/youtube-data-strict/coverage-summary.json"
+    },
+    "consumerIntegration": {
+      "files": 10,
+      "passed": 617,
+      "skips": 0,
+      "durationSeconds": 9.55,
+      "selectedTests": [
+        "tests/userscriptUnsupportedCapabilities.test.ts",
+        "tests/videoAiAlgorithmsCoverage.test.ts",
+        "tests/videoAiCapture.test.ts",
+        "tests/videoAiFullCapture.test.ts",
+        "tests/videoAiFullCaptureFailures.test.ts",
+        "tests/videoAiStreaming.test.ts",
+        "tests/videoSentencePlayback.test.ts",
+        "tests/videoSpeechAlignment.test.ts",
+        "tests/videoTranscriptionCacheClient.test.ts",
+        "tests/youtubeSubtitleData.test.ts"
+      ],
+      "log": "youtube-candidate-10.log",
+      "coverageSummary": "coverage/youtube-candidate-10/coverage-summary.json"
+    },
+    "coverage": {
+      "lines": {
+        "total": 424,
+        "covered": 424,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 31,
+        "covered": 31,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 424,
+        "covered": 424,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 306,
+        "covered": 306,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "proofLimits": [
+      "Temporary candidate files and current locked dependencies; no task or primary checkout edits",
+      "macOS Node22 validation does not replace hosted Linux22 CI",
+      "Only additional 10 consumers and one new strict module; did not repeat 448 tests or 84-module coverage"
+    ]
+  },
+  "sourceCommit": "e85a18359fc92d88b54204f7003d2dada4884d9a",
+  "builds": {
+    "types": "passed",
+    "chrome": "passed",
+    "firefox": "passed",
+    "manifestVerifier": "passed",
+    "userscript": "passed",
+    "userscriptVerifier": "passed",
+    "docs": "passed"
+  },
+  "gates": {
+    "files": 3,
+    "passed": 62,
+    "scope": "verification ownership, affected planner, real source inventory CLI",
+    "log": "/private/tmp/fluentread-pr985-b412-ownership-plan-inventory.log"
+  }
+}

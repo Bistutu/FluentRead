@@ -4,7 +4,7 @@
  * 主要内容：按源行框及有界边缘修补，保留行间图案；相接簇用链表连接成员后一次展开，避免重复复制和参数展开；仅为局部范围分配去重蒙版和分层队列，按预乘透明度扩散；默认保留输入，也可显式复用调用方独占的像素缓冲。
  * 模块边界：本模块是无 DOM、无网络的轻量像素算法，不进行 OCR 或译文绘制，也不宣称能够重建复杂纹理；输入和输出保持原图尺寸，无法取得已知边界时保留原像素。
  */
-import type { OcrLine } from '@/src/shared/image/types';
+import type {OcrLine} from '@/src/shared/image/types';
 import type {ImageTextRegion} from '../paragraphs';
 
 interface MaskRectangle {

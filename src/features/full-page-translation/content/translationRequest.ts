@@ -21,7 +21,7 @@ import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import {isModelThinkingEnabled} from '@/src/core/config/modelThinking';
 import {createGlossaryRevisionMemoizer} from '@/src/core/glossary';
-import {translateText, translateTextBatch, type TranslateOptions} from '@/src/app/translation/client';
+import {translateText, translateTextBatch, type TranslateOptions} from '@/src/services/translation/client';
 import {supportsNativeTranslationBatch, supportsTranslationBatch} from '@/src/services/translation/capabilities';
 import {validateNativeBatchResults} from '@/src/core/translation/nativeBatch';
 import {hasTranslationContent} from '@/src/core/translation/result';

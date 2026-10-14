@@ -5,7 +5,7 @@
  * 模块边界：本文件不直接访问 IndexedDB、不记录 provider 请求，也不处理图表渲染；仓库和采集器由后台组合根注入。
  */
 
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {
     MODEL_USAGE_REQUEST_MAX_PAGE_SIZE,
     MODEL_USAGE_MAX_STORED_EVENTS,

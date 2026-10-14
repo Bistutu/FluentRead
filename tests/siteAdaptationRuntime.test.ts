@@ -16,7 +16,7 @@ vi.mock('@/src/core/translation/text', () => ({
     },
 }));
 vi.mock('@/src/features/full-page-translation/public', () => ({restoreOriginalContent: () => effects.events.push('restore')}));
-vi.mock('@/src/app/translation/client', () => ({cancelAllTranslations: () => effects.events.push('cancel')}));
+vi.mock('@/src/services/translation/client', () => ({cancelAllTranslations: () => effects.events.push('cancel')}));
 vi.mock('@/src/services/translation/context', () => ({resetPageTranslationContextCache: () => effects.events.push('reset-context')}));
 
 import {applyCoreTranslationPreferences, createContentSiteAdaptationRuntime} from '@/src/app/content/siteAdaptationRuntime';

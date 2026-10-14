@@ -26,6 +26,10 @@ beforeEach(() => {
 afterEach(() => setRuntimeFetch());
 
 describe('MyMemory 检查连接的短英文语言回归', () => {
+    it('真实适配器缺少快照时在网络前明确失败', async () => {
+        await expect(runTranslationServiceConnectionTest('myMemory')).rejects.toMatchObject({code: 'TRANSLATION_PROVIDER_CONFIG_REQUIRED'});
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
     it.each([
         {from: 'auto', to: 'zh-Hans', myMemoryEmail: ''},
         {from: 'auto', to: 'en', myMemoryEmail: ''},
@@ -50,8 +54,8 @@ describe('MyMemory 检查连接的短英文语言回归', () => {
         expect(snapshot).toMatchObject(settings);
     });
 
-    it('没有显式快照的调用也能发送请求，无需改动自动识别设置', async () => {
-        await expect(runTranslationServiceConnectionTest('myMemory')).resolves.toBeTruthy();
+    it('调用边界显式注入快照后发送请求，无需改动自动识别设置', async () => {
+        await expect(runTranslationServiceConnectionTest('myMemory', {configSnapshot: createTranslationProviderConfigSnapshot(Object.assign(new Config(), mockConfig))})).resolves.toBeTruthy();
         expect(requestUrl().searchParams.get('langpair')).toBe('en|zh-CN');
         expect(mockConfig).toEqual({from: 'auto', to: 'zh-Hans', myMemoryEmail: ''});
     });
@@ -60,8 +64,8 @@ describe('MyMemory 检查连接的短英文语言回归', () => {
         fetchMock.mockResolvedValueOnce(Response.json({
             responseStatus: 200, quotaFinished: true, responseData: {translatedText: 'quota exhausted'},
         }));
-        await expect(runTranslationServiceConnectionTest('myMemory')).rejects.toMatchObject({statusCode: 429});
-        await expect(runTranslationServiceConnectionTest('myMemory')).resolves.toBeTruthy();
+        await expect(runTranslationServiceConnectionTest('myMemory', {configSnapshot: createTranslationProviderConfigSnapshot(Object.assign(new Config(), mockConfig))})).rejects.toMatchObject({statusCode: 429});
+        await expect(runTranslationServiceConnectionTest('myMemory', {configSnapshot: createTranslationProviderConfigSnapshot(Object.assign(new Config(), mockConfig))})).resolves.toBeTruthy();
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 });

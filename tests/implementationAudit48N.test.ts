@@ -1,3 +1,4 @@
+let withProviderSnapshot: typeof import('./helpers/providerSnapshot').withProviderSnapshot;
 import {parseHTML} from 'linkedom';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import type {BrowserCapabilities} from '@/src/platform/browser/capabilities';
@@ -24,6 +25,7 @@ afterEach(() => {
 async function browserPort(browser: string, extensionDom?: boolean) {
     vi.resetModules();
     vi.stubEnv('BROWSER', browser);
+    ({withProviderSnapshot} = await import('./helpers/providerSnapshot'));
     const actual = await vi.importActual<typeof import('@/src/platform/browser/capabilities')>(
         '@/src/platform/browser/capabilities',
     );
@@ -67,7 +69,10 @@ describe('implementation audit 48 N: userscript local translation boundary', () 
         const {localTranslationOffscreenAdapter} = await import('@/src/platform/offscreen/localTranslation');
         const send = vi.spyOn(localTranslationOffscreenAdapter, 'translate');
         const {default: translate} = await import('@/src/providers/translation/local-translation');
-        await expect(translate({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}))
+        await expect(translate(withProviderSnapshot({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}, {
+    from: 'auto', to: 'zh-Hans', uiLanguage: 'en-US',
+    model: {localTranslation: 'Xenova/m2m100_418M'}, customModel: {},
+})))
             .rejects.toMatchObject({
                 message: '当前浏览器不支持本地模型翻译，请切换到其他翻译服务',
                 localTranslationErrorKey: 'settings.localTranslation.error.browser',
@@ -80,7 +85,10 @@ describe('implementation audit 48 N: userscript local translation boundary', () 
         const {localTranslationOffscreenAdapter} = await import('@/src/platform/offscreen/localTranslation');
         const send = vi.spyOn(localTranslationOffscreenAdapter, 'translate');
         const {default: translate} = await import('@/src/providers/translation/local-translation');
-        await expect(translate({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}))
+        await expect(translate(withProviderSnapshot({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}, {
+    from: 'auto', to: 'zh-Hans', uiLanguage: 'en-US',
+    model: {localTranslation: 'Xenova/m2m100_418M'}, customModel: {},
+})))
             .rejects.toMatchObject({localTranslationErrorKey: 'settings.localTranslation.error.browser'});
         expect(send).not.toHaveBeenCalled();
     });
@@ -89,8 +97,11 @@ describe('implementation audit 48 N: userscript local translation boundary', () 
         const port = await browserPort(browser);
         const {default: translate} = await import('@/src/providers/translation/local-translation');
         const controller = new AbortController();
-        await expect(translate({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-Hans',
-            abortSignal: controller.signal, requestTimeoutMs: 12_000}))
+        await expect(translate(withProviderSnapshot({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-Hans',
+            abortSignal: controller.signal, requestTimeoutMs: 12_000}, {
+    from: 'auto', to: 'zh-Hans', uiLanguage: 'en-US',
+    model: {localTranslation: 'Xenova/m2m100_418M'}, customModel: {},
+})))
             .resolves.toBe('translated locally');
         expect(port.messages.map(message => message.type))
             .toEqual(['FLUENT_READ_OFFSCREEN_READY', 'LOCAL_TRANSLATION_TRANSLATE']);

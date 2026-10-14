@@ -1,3 +1,4 @@
+let withProviderSnapshot: typeof import('./helpers/providerSnapshot').withProviderSnapshot;
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 vi.mock('@/src/services/config/store', () => ({config: {from: 'auto', to: 'zh-Hans'}}));
@@ -58,9 +59,9 @@ async function scheduledGoogle(maxConcurrentTranslations = 1) {
     return {
         scheduler,
         start: (origin: string, signal?: AbortSignal, requestTimeoutMs = 5_000) => scheduler.schedule(lease => api.default(
-            attachTranslationRequestScheduler({
+            withProviderSnapshot(attachTranslationRequestScheduler({
                 origin, sourceLanguage: 'en', targetLanguage: 'zh-Hans', abortSignal: signal, requestTimeoutMs,
-            }, scheduler, identity, lease),
+            }, scheduler, identity, lease), {from: 'auto', to: 'zh-Hans'}),
         ), {signal, identity}),
     };
 }
@@ -71,6 +72,7 @@ beforeEach(async () => {
     fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
     api = await import('@/src/providers/translation/google');
+    ({withProviderSnapshot} = await import('./helpers/providerSnapshot'));
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -111,9 +113,9 @@ describe('Google 批量传输与换线', () => {
         fetchMock.mockImplementation(async (url, init) => successfulResponse(url,
             requestData(url, init).texts.map(text => `译文${text.match(/\d+/)![0]}`)));
         await expect(flush(Promise.all([
-            api.default({origin: 'Paragraph 1', sourceLanguage: 'en', targetLanguage: 'zh', enableNativeBatch: false}),
-            api.default({origin: 'Paragraph 2', sourceLanguage: 'en', targetLanguage: 'zh', enableNativeBatch: true}),
-            api.default({origin: 'Paragraph 3', sourceLanguage: 'en', targetLanguage: 'zh', enableNativeBatch: true}),
+            api.default(withProviderSnapshot({origin: 'Paragraph 1', sourceLanguage: 'en', targetLanguage: 'zh', enableNativeBatch: false}, {from: 'auto', to: 'zh-Hans'})),
+            api.default(withProviderSnapshot({origin: 'Paragraph 2', sourceLanguage: 'en', targetLanguage: 'zh', enableNativeBatch: true}, {from: 'auto', to: 'zh-Hans'})),
+            api.default(withProviderSnapshot({origin: 'Paragraph 3', sourceLanguage: 'en', targetLanguage: 'zh', enableNativeBatch: true}, {from: 'auto', to: 'zh-Hans'})),
         ]))).resolves.toEqual(['译文1', '译文2', '译文3']);
         expect(fetchMock.mock.calls.map(([url, init]) => requestData(url, init).texts.length)).toEqual([1, 2]);
     });
@@ -190,7 +192,7 @@ describe('Google 批量传输与换线', () => {
     });
     it('优先浏览器批量接口，纯文本转义、换行与实体只还原一次', async () => {
         fetchMock.mockResolvedValue(response([['<pre>第一行 &amp; &lt;b&gt;\n  第二行\n\n&amp;lt;</pre>']]));
-        const request = api.default({origin: '<b>Hello & world</b>\n  Next line\n\n&lt;'});
+        const request = api.default(withProviderSnapshot({origin: '<b>Hello & world</b>\n  Next line\n\n&lt;'}, {from: 'auto', to: 'zh-Hans'}));
         await expect(flush(request)).resolves.toBe('第一行 & <b>\n  第二行\n\n&lt;');
         expect(hosts()).toEqual([HTML]);
         const init = fetchMock.mock.calls[0]![1]!;
@@ -203,7 +205,7 @@ describe('Google 批量传输与换线', () => {
     it('并发段落与显式数组共享一批请求，并按原调用者顺序返回', async () => {
         fetchMock.mockResolvedValue(response([['第一段', '第二段', '第三段']]));
         const single = api.translateGoogleText('First paragraph', 'en', 'zh-Hans');
-        const batch = api.default({origin: ['Second paragraph', 'Third paragraph'], sourceLanguage: 'en', targetLanguage: 'zh-Hans'});
+        const batch = api.default(withProviderSnapshot({origin: ['Second paragraph', 'Third paragraph'], sourceLanguage: 'en', targetLanguage: 'zh-Hans'}, {from: 'auto', to: 'zh-Hans'}));
         await expect(flush(Promise.all([single, batch]))).resolves.toEqual(['第一段', ['第二段', '第三段']]);
         expect(fetchMock).toHaveBeenCalledOnce();
         expect(JSON.parse(String(fetchMock.mock.calls[0]![1]!.body))[0][0]).toHaveLength(3);
@@ -238,7 +240,7 @@ describe('Google 批量传输与换线', () => {
     });
     it('批量返回缺槽、空译文或错误类型时继续换线，不能错配原文', async () => {
         for (const bad of [[['只有一段']], [['', '第二段']], [['<pre></pre>', '第二段']], [[12, '第二段']]]) {
-            vi.resetModules(); api = await import('@/src/providers/translation/google'); fetchMock.mockReset();
+            vi.resetModules(); api = await import('@/src/providers/translation/google'); ({withProviderSnapshot} = await import('./helpers/providerSnapshot')); fetchMock.mockReset();
             fetchMock.mockResolvedValueOnce(response(bad)).mockResolvedValueOnce(response(['第一段', '第二段']));
             await expect(flush(api.translateGoogleTexts(['First', 'Second'], 'en', 'zh'))).resolves.toEqual(['第一段', '第二段']);
             expect(hosts()).toEqual([HTML, LIST]);
@@ -433,7 +435,7 @@ describe('Google 所有入口共享限流与恢复', () => {
     });
     it('收集、HTTP 排队与短退避共用 caller 截止时间，预算装不下 429 等待时不发恢复请求', async () => {
         fetchMock.mockResolvedValue(response('', 429, {'Retry-After': '1'}));
-        const failure = await flush(api.default({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh', requestTimeoutMs: 1000})).catch(error => error);
+        const failure = await flush(api.default(withProviderSnapshot({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh', requestTimeoutMs: 1000}, {from: 'auto', to: 'zh-Hans'}))).catch(error => error);
         expect(failure).toMatchObject({statusCode: 429, retryAfterMs: 1000});
         expect(fetchMock).toHaveBeenCalledOnce();
         fetchMock.mockClear();

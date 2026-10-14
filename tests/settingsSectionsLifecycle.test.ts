@@ -137,7 +137,8 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     }};
     server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(),
         plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}},
-        ssr: {noExternal: ['element-plus', '@element-plus/icons-vue', 'webextension-polyfill']},server: {hmr: false, middlewareMode: true}});
+        // 实际表单、键盘与异步归属测试不使用文件观察或热更新。
+        ssr: {noExternal: ['element-plus', '@element-plus/icons-vue', 'webextension-polyfill']},server: {hmr: false, middlewareMode: true, watch: null}});
     if (requestLimits) {
         const child = (await server.ssrLoadModule('/src/features/settings/ui/services/RequestLimitFields.vue')).default;
         compileClientTemplate(child, 'src/features/settings/ui/services/RequestLimitFields.vue');
@@ -228,7 +229,7 @@ describe('设置主表单实际组件异步归属', () => {
         app?.unmount();app = undefined;ready.resolve();await settle();
         expect(theme).not.toHaveBeenCalled();expect(patch).not.toHaveBeenCalled();expect(unsubscribe).toHaveBeenCalledOnce();
     });
-    it('同步订阅与后续批量水合只扫描完整草稿两次，随后编辑仍同步保存', async () => {
+    it('同步订阅与后续批量水合只重建一次完整草稿观察，随后编辑仍同步保存', async () => {
         const {state, patch, notifyConfig} = await mountSections({configSnapshot: {to: 'en', theme: 'dark'}});
         expect(state.config.to).toBe('en');expect(state.config.theme).toBe('dark');expect(patch).not.toHaveBeenCalled();
         const stringify = JSON.stringify;
@@ -238,7 +239,7 @@ describe('设置主表单实际组件异步归属', () => {
             return stringify(value, replacer, space);
         });
         notifyConfig({...state.config, to: 'ja', theme: 'light', hotkey: 'Shift', customHotkey: 'Alt+J'});
-        expect(draftScans).toBe(2);
+        expect(draftScans).toBe(1);
         expect(patch).not.toHaveBeenCalled();expect(state.config.to).toBe('ja');
         state.config.to = 'fr';
         expect(patch).toHaveBeenCalledOnce();expect(patch).toHaveBeenCalledWith(expect.objectContaining({to: 'fr'}), expect.any(Function));
@@ -273,7 +274,7 @@ describe('设置主表单实际组件异步归属', () => {
         const error = new Error('fixture draft hydration failure');
         if (failure === 'normalize') {
             const invalid = Object.defineProperty({}, 'to', {enumerable: true, get: () => {throw error;}});
-            expect(() => state.hydrateConfigDraft(invalid)).toThrow(error);
+            expect(() => state.configEditor.hydrate(invalid)).toThrow(error);
             expect(state.config.to).toBe('en');
         } else {
             const stringify = JSON.stringify;let rejectDraft = true;
@@ -739,7 +740,7 @@ async function mountProviderFailureSections() {
     }};
     server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(), plugins: [mocks, vue()],
         resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['element-plus', '@element-plus/icons-vue', 'webextension-polyfill']},
-        server: {hmr: false, middlewareMode: true}});
+        server: {hmr: false, middlewareMode: true, watch: null}});
     const component = (await server.ssrLoadModule('/src/features/settings/ui/SettingsSections.vue')).default;
     compileClientTemplate(component, 'src/features/settings/ui/SettingsSections.vue');
     // 每个动态创建节点的 focus 只记录，不影响旧 renderer 或全局 HTMLElement prototype。

@@ -11,7 +11,7 @@ FluentRead 继续使用 WXT 0.20、Vue 3、TypeScript 和 pnpm。架构目标不
 3. **核心可测**：翻译算法、候选发现、文本识别算法、语言与热键规则尽量保持纯函数。
 4. **边界可执行**：核心、provider、feature 内部与 WXT 入口等关键依赖方向由 fitness tests 约束。
 5. **静态插件化**：各运行上下文使用静态注册表，兼顾 WXT 构建、MV2/MV3 与 tree-shaking。
-6. **渐进迁移**：旧路径保留带 deprecated 标记的兼容导出，每次迁移都能独立编译和回归。
+6. **渐进演进**：按真实职责迁移完整实现和消费者，不保留只为旧目录服务的兼容壳；每次迁移都能独立编译和回归。
 7. **开源友好**：目录、公共入口、注释、测试命令和扩展方式对新贡献者可发现、可复现。
 
 ## 与 Go 项目的对应关系
@@ -155,7 +155,7 @@ src/ui 只能依赖 feature 的公开 view-model/contract、core 类型和 share
 - 禁止新增跨层循环依赖。
 - 兼容 re-export 只能位于明确的迁移白名单，并带 `@deprecated`。
 
-当前仍有少量 feature 通过 `src/app/translation` 客户端或 background router 类型复用应用层契约；它们不形成循环，且关键 provider/core/跨 feature 边界已受测试约束，但仍是后续下沉 public port 的迁移债务。因此本文中的依赖图是目标方向，不代表所有历史调用已经完全单向。
+跨 feature 的翻译客户端位于 `src/services/translation/client.ts`，通用后台路由及 handler 类型位于 `src/services/messaging/backgroundRouter.ts`。Feature 不得反向依赖 app 的实现或类型，静态依赖测试检查相对路径、公开导出、动态 import 和类型 import。App 只负责装配这些契约与各运行上下文的生命周期。
 
 ## WXT 边界
 
@@ -293,7 +293,7 @@ handler registry 必须静态 import。每个 feature 保存自己的 protocol �
 
 ```text
 feature
-  -> translation service public API
+  -> services/translation/client (跨上下文请求)
   -> broker (凭据校验、上下文、pending 去重、缓存)
   -> provider registry
   -> provider adapter
@@ -306,6 +306,8 @@ feature
 - provider 不直接读 UI 状态。
 - 缓存 key 必须包含会改变结果的 service、model、endpoint、语言、prompt/context 与 transport profile。
 - background 与 userscript 共用同一 broker，不维护两份相似实现。
+- Provider 必须消费入口绑定的配置快照，不直接或通过提示词、语言、端点 helper 间接读取全局配置 store。没有快照的内部直调在开始网络前失败；连接测试和免费服务二级路由同样传递配置、取消与传输租约。
+- `requestIdentity.ts` 单独维护结果缓存的模型、端点、上下文与保护策略维度；它不持有请求或缓存状态。Broker 仍拥有在途去重、取消、剩余 deadline 与真实传输结算，结果身份和在途身份不能混为一谈。
 - cache 失败只能降级为未命中，不能让翻译功能整体失效。
 - 翻译结果缓存默认及可调上限为 10,000 条、10 MiB（10 × 1024 × 1024 字节），任一达到上限就先清理过期项，再按 LRU 淘汰；有效期为 24 小时。保留已有较小配置，超出新上限的配置自动收敛。
 - 缓存通过 Dexie 存入扩展 IndexedDB，browser.storage 只承载容量配置，不承载整份翻译结果。容量统计为 UTF-8 键与译文之和，不包含数据库记录和索引开销，不能视作磁盘占用硬上限。正常统计增量更新、读取按键查询，内存热层最多 128 条；命中的访问时间只作为 LRU 排序提示，短窗口内合并为一次 bulkGet/bulkPut 事务，在依赖 LRU 顺序的写入和维护前先落盘，已清空、替换或删除的记录不会被写回。
@@ -336,6 +338,12 @@ feature
 - `core/config`：类型、默认值、纯 normalize/validate/migrate。
 - `services/config`：latest-write-wins、历史记录、保存队列、凭据协调。
 - `platform/storage`：后台专属加密 IndexedDB、旧 WXT storage/会话凭据迁移与跨上下文只读代理。
+
+设置页、Popup 与文档页通过 `services/config/editor.ts` 管理独立草稿、权威快照和在途字段所有权，Vue 观察由 `features/settings/model/useConfigEditor.ts` 适配。页面只决定提交字段、`sync/post` 时机和保存反馈，不重复实现水合 guard、dirty 基线或迟到反馈代次。提交解除字段所有权后，必须协调请求期间收到的新权威快照，并保留后继编辑；没有新确认时不能用请求前的旧快照回滚草稿。模型删除使用 `core/config/modelEditing.ts` 的同一条领域命令，扩展与精简 Userscript 均清理选择、思考、凭据要求及请求限制。
+
+文档队列中的每个任务是译文、人工确认、设置指纹和修订的唯一状态来源，`useDocumentTasks` 仅切换当前任务引用，不在页面与队列之间复制这些字段。阅读预览仍可维护独立的已结算快照，导入错误与当前文档的翻译错误各自保存。历史保存由 `historyCommitter` 按文件串行协调；只有数据库事务实际提交才推进 `savedRevision`，拒绝或失败后相同修订仍可重试。存储操作超时会撤销后续写入资格并中止活动写事务，旧操作不能迟到覆盖新校订。最后一段返回后，任务及完成计数仍等待整个翻译调用结算。
+
+全文会话的初始化与资源释放配对位于 `fullPageSession.ts`，每次会话有独立的候选索引、取消域、结果缓存与计时器，销毁首先撤销提交资格，且重复销毁不会重复结束进度。视频 AI 字幕的缓存/完整生成所有权由 `video-ai/subtitleSession.ts` 持有；直播与完整采集保留各自 PCM 生命周期，并由 `video-ai/requestSession.ts` 映射到同一 stream 内单调递增的后台请求代次，旧取消不能命中新请求。
 
 后台首次读取先检查 IndexedDB 的 `local:config` 主记录：存在时直接解密使用，完全不再读取旧
 storage；只有主记录不存在时，才加载旧配置、原子写入并读回验证 IndexedDB，成功后清理旧键。

@@ -4,7 +4,7 @@ import {
     CONNECTION_TEST_MESSAGE_TYPE,
     createConnectionTestHandler,
 } from '@/src/app/background/handlers/connectionTest';
-import {createBackgroundMessageRouter} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter} from '@/src/services/messaging/backgroundRouter';
 
 describe('background connection test handler', () => {
     it('免费池检查显式转交单服务标识，并拒绝未知或非免费池请求', async () => {

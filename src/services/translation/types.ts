@@ -2,8 +2,8 @@
  * @file src/services/translation/types.ts
  *
  * 文件职责：定义翻译 broker、缓存和 provider 之间的端口与消息契约，约束单条、批量、语言和配置快照的数据形状。
- * 主要内容：包含 TranslationRequestMessage、runtime 请求/取消协议、识图探测与取消的唯一消息名称、ProviderRegistry、CachePort、ConfigSnapshot、ProviderConfigFields 及含模型用量与翻译统计端口的 BrokerDependencies/Broker 等接口，并允许 Chrome 内置翻译携带不含结构哨兵的源语言检测样本，为依赖注入和测试替身提供稳定边界。 可核对的公开符号包括 TranslationRequestMessageBase、TranslationRuntimeRequestMessage、TranslationCancelMessage、VISION_PROBE_MESSAGE、VISION_PROBE_CANCEL_MESSAGE、TranslationProvider、TranslationProviderRegistry、TranslationLanguageOverride、TranslationLanguages。
- * 模块边界：本文件位于翻译 application service 层，只提供纯类型与消息字面量；所有依赖均为 type-only，导入契约不初始化探测实现、正文候选或供应商；不挂载页面 UI，具体 HTTP 协议由 providers/platform 实现。
+ * 主要内容：统一持有 ProviderRequest、配置/调度/取消 symbol context、观察契约、TranslationRequestMessage、runtime 请求/取消协议、识图探测与取消的唯一消息名称、ProviderRegistry、CachePort、ConfigSnapshot、ProviderConfigFields 及含模型用量与翻译统计端口的 BrokerDependencies/Broker 等接口，并允许 Chrome 内置翻译携带不含结构哨兵的源语言检测样本，为依赖注入和测试替身提供稳定边界。 可核对的公开符号包括 TranslationRequestMessageBase、TranslationRuntimeRequestMessage、TranslationCancelMessage、VISION_PROBE_MESSAGE、VISION_PROBE_CANCEL_MESSAGE、TranslationProvider、TranslationProviderRegistry、TranslationLanguageOverride、TranslationLanguages。
+ * 模块边界：本文件位于翻译 application service 层，只提供纯类型、消息字面量和内部 symbol 身份；所有依赖均为 type-only，导入契约不初始化探测实现、正文候选或供应商；不挂载页面 UI，具体 HTTP 协议由 providers/platform 实现。
  */
 
 import type {CustomOpenAIProvider} from '@/src/core/config/customOpenAI';
@@ -12,6 +12,84 @@ import type {DeepLApiPlan} from '@/src/core/config/deepl';
 import type {ModelThinkingMapping} from '@/src/core/config/modelThinking';
 import type {GlossaryLibrary} from '@/src/core/glossary';
 import type {TranslationRequestStatsEvent} from '@/src/services/translation-stats/types';
+import type {TranslationRequestScheduler, TranslationRequestIdentity, TranslationRequestLease} from './requestScheduler';
+
+/** 内部 symbol 无法由 content runtime 消息伪造，也不会进入网络 JSON。 */
+export const TRANSLATION_PROVIDER_CONFIG = Symbol('fluentread.translation-provider-config');
+
+export const TRANSLATION_REMAINING_BUDGET = Symbol('fluentread.translation-remaining-budget');
+
+export const TRANSLATION_MODEL_USAGE_OBSERVER = Symbol('fluentread.translation-model-usage-observer');
+
+export const TRANSLATION_ROUTE_OBSERVER = Symbol('fluentread.translation-route-observer');
+
+export const TRANSLATION_REQUEST_CONTROL = Symbol('fluentread.translation-request-control');
+
+export const TRANSLATION_REQUEST_SCHEDULER = Symbol('fluentread.translation-scheduler');
+
+export const TRANSLATION_GLOSSARY_CONTEXT = Symbol('fluentread.translation-glossary-context');
+
+export const TRANSLATION_IMAGE_INPUT = Symbol('fluentread.translation-image-input');
+
+export interface TrustedTranslationGlossaryContext {
+    readonly pageUrl?: string;
+    readonly context?: TranslationGlossaryContext;
+    /** 只由后台真实 sender 绑定，用于内存 quota 隔离；不写入缓存或网络。 */
+    readonly privateContext?: boolean;
+}
+
+export type TranslationModelUsageObserver = (observation: TranslationModelUsageObservation) => void;
+
+/** 免费翻译链等内部多线路 provider 对单次线路尝试的无文本观察。 */
+export interface TranslationRouteObservation {
+    readonly route: string;
+    readonly outcome: TranslationRouteOutcome;
+    readonly durationMs: number;
+    readonly chars: number;
+}
+
+export type TranslationRouteOutcome = 'success' | 'error' | 'timeout' | 'cancelled';
+
+export type TranslationRouteObserver = (observation: TranslationRouteObservation) => void;
+
+export type TranslationRemainingBudgetContext = {
+    readonly [TRANSLATION_REMAINING_BUDGET]?: true;
+};
+
+export interface TranslationRequestControl {
+    readonly signal: AbortSignal;
+    /** 只影响 pending 去重所有权，不进入持久缓存 identity。 */
+    readonly ownershipKey: string;
+}
+
+export type TranslationRequestControlContext = {
+    readonly [TRANSLATION_REQUEST_CONTROL]?: TranslationRequestControl;
+};
+
+export type TranslationProviderRequestContext = {
+    readonly [TRANSLATION_PROVIDER_CONFIG]?: TranslationProviderConfigSnapshot;
+    readonly [TRANSLATION_MODEL_USAGE_OBSERVER]?: TranslationModelUsageObserver;
+    readonly [TRANSLATION_ROUTE_OBSERVER]?: TranslationRouteObserver;
+    /** 仅由 broker 在后台注入；provider 必须向底层 transport 继续传递。 */
+    readonly abortSignal?: AbortSignal;
+    /** 后台注入的共享调度器；provider 仅用于真实 HTTP attempt，不取得嵌套并发槽。 */
+    readonly [TRANSLATION_REQUEST_SCHEDULER]?: {
+        readonly scheduler: TranslationRequestScheduler;
+        readonly identity?: TranslationRequestIdentity;
+        /** provider 在真正启动 transport 时登记结算，取消包装不能提前归还外层并发槽。 */
+        readonly lease?: TranslationRequestLease;
+    };
+};
+
+/** Provider 收到的类型化内部请求；在公开翻译消息之上附加配置快照和取消信号。 */
+export type TranslationProviderRequest<TOrigin = string | string[]> = TranslationRequestMessageBase
+    & TranslationProviderRequestContext
+    & {
+        origin: TOrigin;
+        /** 仅摘要请求使用；普通正文 provider 可忽略。 */
+        summaryPrompt?: string;
+        summarySystemPrompt?: string;
+    };
 
 export type TranslationGlossaryContext = 'page' | 'document' | 'video';
 export interface TranslationGlossaryTerm {
@@ -77,8 +155,11 @@ export interface TranslationCancelResponse {
     readonly clientRequestId: string;
 }
 
-export type TranslationProvider = (message: Record<string, unknown>) => Promise<unknown>;
-export type TranslationProviderRegistry = Record<string, TranslationProvider>;
+/** 适配器的合法输出；broker 面对不可信供应商响应时仍以 unknown 完成运行时校验。 */
+export type TranslationProviderResult = string | string[];
+export type TranslationProvider<TResult = unknown, TOrigin = string | string[]> =
+    (message: TranslationProviderRequest<TOrigin>) => Promise<TResult>;
+export type TranslationProviderRegistry<TResult = unknown> = Record<string, TranslationProvider<TResult>>;
 
 export type TranslationModelUsageOutcome = 'success' | 'error' | 'timeout' | 'cancelled';
 export type TranslationModelUsageAvailability = 'reported' | 'unreported' | 'malformed';
@@ -128,6 +209,8 @@ export interface TranslationCachePort {
 }
 
 export interface TranslationConfigSnapshot {
+    /** 本次请求的界面语言，仅用于本地服务稳定失败文案。 */
+    uiLanguage?: string;
     glossaryEnabled?: boolean;
     glossaryLibraries?: readonly GlossaryLibrary[];
     documentGlossaryIds?: readonly string[] | null;
@@ -237,7 +320,7 @@ export interface TranslationServiceTypes {
 export interface TranslationEndpointResolver {
     resolveOpenAICompatibleEndpoint: (
         service: string,
-        config?: TranslationProviderConfigSnapshot,
+        config: TranslationProviderConfigSnapshot,
     ) => {endpoint: string};
     aiSdkTransportProfile: string;
 }

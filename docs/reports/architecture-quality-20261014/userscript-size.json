@@ -1,0 +1,546 @@
+{
+  "sourceCommit": "e85a18359fc92d88b54204f7003d2dada4884d9a",
+  "candidateSource": "immutable final main-integration commit; only evidence metadata follows",
+  "parentCommits": [
+    "a3f02898de610cceb9c90086b7decff761b9a16f",
+    "b4125919e10bff34a81872dc3cdf69e63143a534"
+  ],
+  "candidateSourceSha256": {
+    "src/app/background/handlers/translation.ts": "dce7767c1a8d66e30bb242f6f2ed263bba580f169109a919c1a4a0d030548a29",
+    "src/services/translation/broker.ts": "65cb9d2a3f6165cc4fa890cadafca8995cf6e0b3f07a9d11ea139727c23384bb",
+    "src/services/translation/requestSnapshot.ts": "95b2a4ee1112c4e50403d8cdc473550eeb80bb1eff7bb8028672978b7f34c2f7",
+    "src/services/translation/types.ts": "74e3bf3405cc753308ec17fa3f3d691b4956f6e8ee8871c29e21757c77cc7966",
+    "userscript/francDataPlugin.ts": "dd67149d3721936e33476cf55fee92c07206cdc3b5cb946f9e72d2397bee20dc",
+    "userscript/vite.config.ts": "f4a9339f0a2a0ab240fac0fbb643156c5ae228a6092359641a2c19312e176a36",
+    "userscript/languageBundles.ts": "de7cbbe5094fbe22bd19433c4a9715a9b1c8cb421d189a48e641183da7756117"
+  },
+  "baseCommit": "b4125919e10bff34a81872dc3cdf69e63143a534",
+  "baseline": {
+    "bytes": 2057407,
+    "sha256": "230660036897a34453984f91406dd9cf8f250553ed206279739c5e451ab13321"
+  },
+  "candidate": {
+    "bytes": 2059882,
+    "sha256": "ebf606c60a25a23f47817c78140a02f49fb94ed4db7bf193b39d4c2e922d0bcb"
+  },
+  "deltaBytes": 2475,
+  "deltaPercent": 0.1203,
+  "mainBudgetBytes": 2095100,
+  "oldBudgetBytes": 2098100,
+  "budgetBytes": 2095100,
+  "budgetIncreaseBytes": 0,
+  "minimumAdditionalBudgetBytes": 0,
+  "remainingBudgetBytes": 35218,
+  "budgetStepBytes": 1000,
+  "budgetPolicy": "After b412 compresses standard franc data, the final candidate is below the exact main 2,095,100-byte threshold. Restore the verifier byte-identically to b412, removing the obsolete task-only budget increment and provenance diff; retain all prior measured thresholds in priorMeasurement history.",
+  "sameDependencies": true,
+  "sameNodeRuntime": true,
+  "dependencies": {
+    "node": "v22.23.2",
+    "nodePath": "/opt/homebrew/opt/node@22/bin/node",
+    "nodeModulesRealPath": "/Users/thinkstu/Desktop/copy/FluentRead-architecture-quality-20261014/node_modules",
+    "pnpmLockSha256": "f05a7705309a18c1da81c8a155aee748bbfe8974f8dd2f2d3a7de66adbdca206",
+    "vite": "5.4.19",
+    "wxt": "0.20.18",
+    "pako": "2.1.0",
+    "@deeplx/core": "0.3.1",
+    "x-fetch": "0.3.0"
+  },
+  "buildImplementation": "Main b412 additionally enables the existing locked franc-min pure-data gzip transform for the standard userscript. Vite esbuild minification and official pako decompression remain; Greasy Fork readable source and extension targets do not enable the data transform.",
+  "baselineMethod": "git archive of immutable main b412 in an owned temporary directory; exact same task-local frozen-lock node_modules and explicit Node22; wxt prepare followed by standard userscript Vite build. Main checkout and tracked archive sources were not modified.",
+  "baselineBuild": {
+    "command": "/opt/homebrew/opt/node@22/bin/node scripts/testing/run-resource-safe.mjs -- /opt/homebrew/opt/node@22/bin/node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+    "node": "v22.23.2",
+    "nodePath": "/opt/homebrew/opt/node@22/bin/node",
+    "durationSeconds": 3.87,
+    "modules": 679,
+    "prepareLog": "/private/tmp/fluentread-userscript-main-b412-prepare.log",
+    "buildLog": "/private/tmp/fluentread-userscript-main-b412-build.log",
+    "verifier": "passed",
+    "verifierLog": "/private/tmp/fluentread-userscript-main-b412-verifier.log"
+  },
+  "candidateBuild": {
+    "command": "/opt/homebrew/opt/node@22/bin/node scripts/testing/run-resource-safe.mjs -- /opt/homebrew/opt/node@22/bin/node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+    "node": "v22.23.2",
+    "nodePath": "/opt/homebrew/opt/node@22/bin/node",
+    "durationSeconds": 4.04,
+    "modules": 683,
+    "buildLog": "/private/tmp/fluentread-userscript-candidate-b412-node22-build.log"
+  },
+  "incrementScope": [
+    "Shared settings config-editor/controller lifecycle preserves pending and failed drafts; SettingsSections uses the same implementation in extension and userscript full settings.",
+    "Shared removeConfiguredModel command removes every model preference, including userscript request limits, through the existing config draft.",
+    "Translation preflight/identity/template logic is shared across app and userscript through application services; dependency moves do not introduce a parallel runtime."
+  ],
+  "languageResources": "Preserves fixed language-resource commit, five published dictionaries, published section messages and published DeepLX endpointHelp; current section and DeepLX copy are registered through uiLanguageBundles, while document.config and other extension-only reader copy are excluded from all seven userscript projections.",
+  "automaticMergeReview": {
+    "files": [
+      "userscript/francDataPlugin.ts",
+      "userscript/vite.config.ts",
+      "tests/userscriptViteConfig.test.ts"
+    ],
+    "result": "Plugin and Vite source remain byte-identical to exact main b412. The test delta retains only document.config exclusion and the previously verified exact manager-icon pin/PNG digest contract; no test weakening or production changes were needed.",
+    "semantics": "Transforms only the exact locked franc-min6.2.0 data module; rejects non-data AST; restores all 66 model strings and iteration order synchronously before the unchanged algorithm consumes it. Standard and standalone enabled; Greasy Fork disabled; existing pako aliases preserved."
+  },
+  "assertions": "Entire verifier source is byte-identical to exact b412 main, including its original 2,095,100-byte threshold and all metadata/resource/compatibility/VM assertion bodies.",
+  "measurementLimit": "Delta compares complete minified artifacts under the same Node22/runtime and locked dependencies. It is not additive per-module attribution or a claim that macOS execution reproduces Ubuntu CI.",
+  "verifier": {
+    "actualArtifact": "passed",
+    "exitCode": 0,
+    "log": "/private/tmp/fluentread-userscript-candidate-b412-restored-verifier.log",
+    "negativeCliArtifact": {
+      "bytes": 2059882,
+      "sha256": "ebf606c60a25a23f47817c78140a02f49fb94ed4db7bf193b39d4c2e922d0bcb"
+    },
+    "negativeCliCases": [
+      {
+        "name": "one-byte-over-budget",
+        "bytes": 2095101,
+        "exitCode": 1,
+        "expectedFailure": "artifact exceeds the 2,095,100-byte size budget",
+        "passed": true,
+        "log": "/private/tmp/fluentread-userscript-b412-negative-one-byte-over-budget.log"
+      },
+      {
+        "name": "missing-required-GM-grant",
+        "bytes": 2059881,
+        "exitCode": 1,
+        "expectedFailure": "GM_xmlhttpRequest grant is required",
+        "passed": true,
+        "log": "/private/tmp/fluentread-userscript-b412-negative-missing-required-GM-grant.log"
+      }
+    ],
+    "temporaryFixtureRemoved": true,
+    "matchesExactMainSource": true
+  },
+  "focusedTests": {
+    "files": [
+      "tests/userscriptViteConfig.test.ts"
+    ],
+    "filter": "userscript locked franc pure-data encoding|keeps .*runtime icon inline",
+    "passed": 47,
+    "failed": 0,
+    "unselected": 141,
+    "environment": {
+      "CI": "true",
+      "GITHUB_REPOSITORY": "FluentRead/FluentRead"
+    },
+    "log": "/private/tmp/fluentread-userscript-b412-franc-icon-tests.log",
+    "scope": "Selection skips the other 141 existing cases through the CLI -t filter; no .skip/assertion/threshold edits and no full-suite claim."
+  },
+  "cleanup": {
+    "baselineDirectoryRemoved": true,
+    "removedOwnedDirectory": "/private/tmp/fluentread-userscript-main-b412-cynrf33s",
+    "taskNodeModulesPreserved": true,
+    "primaryNodeModulesUntouched": true
+  },
+  "priorMeasurement": {
+    "sourceCommit": "a8e04e2a9b4d6a98f5f21e1a4b45ebc925107edd",
+    "candidateSource": "final main integration merge source; build ran before the merge commit with identical staged product source",
+    "parentCommits": [
+      "0dfac538f02a6d7577045ec42824d000592baaaa",
+      "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde"
+    ],
+    "baseCommit": "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde",
+    "baseline": {
+      "bytes": 2094681,
+      "sha256": "37c69a5b321538b82403e323cbe53430b87dab9a4adc1a9626d5231583974a34"
+    },
+    "candidate": {
+      "bytes": 2097156,
+      "sha256": "261c0b7fe6e36022e267f7fee7b4f82684983b57971396cd66608ee3ff6e1e06"
+    },
+    "deltaBytes": 2475,
+    "deltaPercent": 0.1182,
+    "oldBudgetBytes": 2095100,
+    "budgetBytes": 2098100,
+    "budgetIncreaseBytes": 3000,
+    "remainingBudgetBytes": 944,
+    "budgetStepBytes": 1000,
+    "budgetPolicy": "Latest main verifier explicitly uses a 1,000-byte increment; +2,000 leaves 2,097,100 below the final candidate by 56 bytes, so +3,000 is the smallest accepted increment.",
+    "sameDependencies": true,
+    "sameNodeRuntime": true,
+    "dependencies": {
+      "node": "v24.19.0",
+      "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "nodeModulesRealPath": "/Users/thinkstu/Desktop/copy/FluentRead-architecture-quality-20261014/node_modules",
+      "pnpmLockSha256": "f05a7705309a18c1da81c8a155aee748bbfe8974f8dd2f2d3a7de66adbdca206",
+      "vite": "5.4.19",
+      "wxt": "0.20.18",
+      "pako": "2.1.0",
+      "@deeplx/core": "0.3.1",
+      "x-fetch": "0.3.0"
+    },
+    "buildImplementation": "Exact 92da tree uses Vite esbuild minification and the existing official pako inflate/string helper; it adds @deeplx/core and x-fetch. No fflate or terser dependency was added or assumed.",
+    "baselineMethod": "git archive of immutable main 92da in an owned temporary directory; linked to task-local independent frozen-lock node_modules; wxt prepare then standard userscript Vite build. Main checkout and tracked archive sources were not modified.",
+    "baselineBuild": {
+      "command": "node scripts/testing/run-resource-safe.mjs -- node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+      "node": "v24.19.0",
+      "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "durationSeconds": 4.08,
+      "modules": 679,
+      "prepareLog": "/private/tmp/fluentread-userscript-main-92da-prepare.log",
+      "buildLog": "/private/tmp/fluentread-userscript-main-92da-build.log"
+    },
+    "candidateBuild": {
+      "command": "node scripts/testing/run-resource-safe.mjs -- node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+      "node": "v24.19.0",
+      "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+      "durationSeconds": 3.7,
+      "modules": 683,
+      "buildLog": "/private/tmp/fluentread-userscript-candidate-92da-final-node24-build.log"
+    },
+    "mainRecordedArtifact": {
+      "bytes": 2094364,
+      "source": "92da scripts/verify-userscript-build.mjs provenance comment",
+      "differenceFromPairedBaselineBytes": 317,
+      "role": "Historical main measurement only; architecture delta uses the actual paired same-runtime baseline, so this difference is not attributed to the task."
+    },
+    "incrementScope": [
+      "Shared settings config-editor/controller lifecycle preserves pending and failed drafts; SettingsSections uses the same implementation in extension and userscript full settings.",
+      "Shared removeConfiguredModel command removes every model preference, including userscript request limits, through the existing config draft.",
+      "Translation preflight/identity/template logic is shared across app and userscript through application services; dependency moves do not introduce a parallel runtime."
+    ],
+    "languageResources": "Preserves fixed language-resource commit, five published dictionaries, published section messages and published DeepLX endpointHelp; current section and DeepLX copy are registered through uiLanguageBundles, while document.config and other extension-only reader copy are excluded from all seven userscript projections.",
+    "assertions": "Assertion and isolated VM bodies from const preludeStartMarker onward are byte-identical to both merge parents; only provenance comments and the measured size threshold changed.",
+    "measurementLimit": "Delta is measured for the complete minified artifact; incrementScope identifies shared consumers rather than claiming additive per-module byte attribution.",
+    "verifier": {
+      "actualArtifact": "passed",
+      "log": "/private/tmp/fluentread-architecture-userscript-92da-final-verifier.log",
+      "negativeCliCases": [
+        {
+          "name": "one-byte-over-budget",
+          "bytes": 2098101,
+          "exitCode": 1,
+          "expectedFailure": "artifact exceeds the 2,098,100-byte size budget",
+          "passed": true,
+          "log": "/private/tmp/fluentread-userscript-92da-negative-one-byte-over-budget.log"
+        },
+        {
+          "name": "missing-required-GM-grant",
+          "bytes": 2097102,
+          "exitCode": 1,
+          "expectedFailure": "GM_xmlhttpRequest grant is required",
+          "passed": true,
+          "log": "/private/tmp/fluentread-userscript-92da-negative-missing-required-GM-grant.log"
+        }
+      ],
+      "temporaryFixtureRemoved": true,
+      "negativeCliArtifact": {
+        "bytes": 2097103,
+        "sha256": "8276d8bae8370728301945cbdc72ecc9eb024f5ac50d3d534832f8746e03299c"
+      },
+      "negativeCliScope": "The earlier candidate was used for these unchanged verifier-body/threshold negative cases. The final candidate was rebuilt and its actual verifier rerun; source-free projection and metadata tests were not redundantly repeated."
+    },
+    "focusedTests": [
+      {
+        "files": [
+          "tests/i18n.test.ts",
+          "tests/userscriptLanguageBundles.test.ts",
+          "tests/userscriptViteConfig.test.ts"
+        ],
+        "passed": 288,
+        "failed": 0,
+        "environment": {
+          "CI": "true",
+          "GITHUB_REPOSITORY": "FluentRead/FluentRead"
+        },
+        "log": "/private/tmp/fluentread-userscript-92da-projection-tests.log"
+      },
+      {
+        "files": [
+          "tests/userscriptCompression.test.ts",
+          "tests/userscriptMetadata.test.ts",
+          "tests/architecture/verificationOwnership.test.ts"
+        ],
+        "passed": 33,
+        "failed": 1,
+        "failure": "Existing verification ownership list still treats deeplx.ts as exempt while the coverage list includes it; root owns the coverage/ownership integration and has been notified.",
+        "log": "/private/tmp/fluentread-userscript-92da-verifier-tests.log",
+        "resolution": {
+          "owner": "root",
+          "status": "resolved",
+          "verificationOwnershipPassed": 16,
+          "coveragePlannerPassed": 19,
+          "evidence": "Parent confirmed the DeepLX adapter has executable mode/failover/deadline/response validation and removed it from the obsolete composition-only exemption; focused 16+19 checks passed."
+        }
+      }
+    ],
+    "cleanup": {
+      "baselineDirectoryRemoved": true,
+      "removedOwnedDirectory": "/private/tmp/fluentread-userscript-main-92da-b6_asrln",
+      "taskNodeModulesPreserved": true,
+      "primaryNodeModulesUntouched": true
+    },
+    "priorMeasurement": {
+      "sourceCommit": "a27e1171cf60b6c23b1d58bb3bfaea20d9afcfc2",
+      "candidateSource": "main integration working tree before merge commit",
+      "parentCommits": [
+        "94277058af0bff6cfa87cfeca5519e17a07cea2d",
+        "e806feff0035d7df3e794265a4a9a648015dd487"
+      ],
+      "baseCommit": "e806feff0035d7df3e794265a4a9a648015dd487",
+      "baseline": {
+        "bytes": 2081039,
+        "sha256": "60b6a58e9c0865fe1a7a82449d11338eca3bb462ea9e8904d42e5428bac535bc"
+      },
+      "candidate": {
+        "bytes": 2083463,
+        "sha256": "18b6cf3486a36b0939c27f2c7053d7c8d37ae65cd7d010b5190a1d4f74bd12f2"
+      },
+      "deltaBytes": 2424,
+      "deltaPercent": 0.1165,
+      "oldBudgetBytes": 2081100,
+      "budgetBytes": 2083500,
+      "budgetIncreaseBytes": 2400,
+      "remainingBudgetBytes": 37,
+      "budgetStepBytes": 100,
+      "sameDependencies": true,
+      "sameNodeRuntime": true,
+      "dependencies": {
+        "node": "v24.19.0",
+        "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "nodeModulesRealPath": "/Users/thinkstu/Desktop/copy/FluentRead/node_modules",
+        "pnpmLockSha256": "dfd93ae1da73c89bf85214c211691cf1059584a4e1ada3470878c8554de96bd0",
+        "vite": "5.4.19",
+        "wxt": "0.20.18"
+      },
+      "baselineMethod": "git archive of exact e806feff0035 main snapshot in an owned temporary directory; shared locked node_modules; wxt prepare then standard userscript Vite build. Main checkout and tracked snapshot sources remain unchanged.",
+      "baselineBuild": {
+        "command": "node scripts/testing/run-resource-safe.mjs -- node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+        "node": "v24.19.0",
+        "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "durationSeconds": 3.59,
+        "modules": 668,
+        "prepareLog": "/private/tmp/fluentread-userscript-main-e806-prepare.log",
+        "buildLog": "/private/tmp/fluentread-userscript-main-e806-build.log"
+      },
+      "candidateBuild": {
+        "command": "node scripts/testing/run-resource-safe.mjs -- node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+        "node": "v24.19.0",
+        "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "durationSeconds": 3.78,
+        "modules": 672,
+        "buildLog": "/private/tmp/fluentread-userscript-candidate-e806-node24-build.log"
+      },
+      "incrementScope": [
+        "Shared settings config-editor/controller lifecycle preserves pending and failed drafts; SettingsSections uses the same implementation in extension and userscript full settings.",
+        "Shared removeConfiguredModel command removes every model preference, including userscript request limits, through the existing config draft.",
+        "Translation preflight/identity/template logic is shared across app and userscript through application services; dependency moves do not introduce a parallel runtime."
+      ],
+      "languageResources": "Same immutable resource commit and five published dictionary filenames/content; extension-only document config copy is excluded and new section-sweep copy is added at registration.",
+      "assertions": "All metadata, resource, exclusion, duplicate-injection and isolated VM compatibility assertion bodies remain byte-identical to both merge parents; only combined provenance comments and the measured size threshold changed.",
+      "measurementLimit": "Delta is measured for the complete minified artifact; incrementScope identifies shared consumers rather than claiming additive per-module byte attribution.",
+      "cleanup": {
+        "baselineDirectoryRemoved": true,
+        "removedOwnedDirectory": "/private/tmp/fluentread-userscript-main-e806-vmpv6szw",
+        "sharedNodeModulesPreserved": true
+      },
+      "priorMeasurement": {
+        "sourceCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224",
+        "baseCommit": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
+        "baseline": {
+          "bytes": 2080438,
+          "sha256": "b7b1c1391705f3dcd98b5aaa82087f483c20bdc30c503ed1ce75f698aa4a4896"
+        },
+        "candidate": {
+          "bytes": 2082862,
+          "sha256": "c5eac2c1abf9141982f6625c1a19716582088551ad0704de41676ec0f00c688f"
+        },
+        "deltaBytes": 2424,
+        "deltaPercent": 0.1165,
+        "oldBudgetBytes": 2081000,
+        "budgetBytes": 2083000,
+        "remainingBudgetBytes": 138,
+        "budgetStepBytes": 1000,
+        "sameDependencies": true,
+        "dependencies": {
+          "node": "v24.19.0",
+          "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "nodeModulesRealPath": "/Users/thinkstu/Desktop/copy/FluentRead/node_modules",
+          "pnpmLockSha256": "dfd93ae1da73c89bf85214c211691cf1059584a4e1ada3470878c8554de96bd0",
+          "vite": "5.4.19",
+          "wxt": "0.20.18"
+        },
+        "baselineMethod": "git archive of exact origin/main6537 snapshot in an owned temporary directory; shared locked node_modules; wxt prepare then standard userscript Vite build. Main checkout and tracked snapshot sources remain unchanged.",
+        "baselineBuild": {
+          "command": "node scripts/testing/run-resource-safe.mjs -- node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+          "durationSeconds": 3.96,
+          "modules": 668,
+          "prepareLog": "/private/tmp/fluentread-userscript-main6537-prepare.log",
+          "buildLog": "/private/tmp/fluentread-userscript-main6537-build.log",
+          "node": "v24.19.0",
+          "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
+        },
+        "incrementScope": [
+          "Shared settings config-editor/controller lifecycle preserves pending and failed drafts; SettingsSections uses the same implementation in extension and userscript full settings.",
+          "Shared removeConfiguredModel command removes every model preference, including userscript request limits, through the existing config draft.",
+          "Translation preflight/identity/template logic is shared across app and userscript through application services; dependency moves do not introduce a parallel runtime."
+        ],
+        "languageResources": "Same immutable resource commit and five published dictionary filenames/content; extension-only document config copy is excluded and new section-sweep copy is added at registration.",
+        "assertions": "Only the measured size budget and its explanation changed; all metadata, resource, exclusion, duplicate-injection and isolated VM compatibility assertions remain byte-identical.",
+        "cleanup": {
+          "baselineDirectoryRemoved": true,
+          "removedOwnedDirectory": "/private/tmp/fluentread-userscript-main6537-zfvr10uv",
+          "sharedNodeModulesPreserved": true
+        },
+        "verifier": {
+          "actualArtifact": "passed",
+          "log": "/private/tmp/fluentread-architecture-userscript-verifier-final.log",
+          "negativeCliCases": [
+            {
+              "name": "one-byte-over-budget",
+              "bytes": 2083001,
+              "exitCode": 1,
+              "expectedFailure": "artifact exceeds the 2,083,000-byte size budget",
+              "passed": true
+            },
+            {
+              "name": "missing-required-GM-grant",
+              "bytes": 2082878,
+              "exitCode": 1,
+              "expectedFailure": "GM_xmlhttpRequest grant is required",
+              "passed": true
+            }
+          ],
+          "temporaryFixtureRemoved": true
+        },
+        "measurementLimit": "Delta is measured for the complete minified artifact; incrementScope identifies shared consumers rather than claiming additive per-module byte attribution.",
+        "sameNodeRuntime": true,
+        "candidateBuild": {
+          "command": "node scripts/testing/run-resource-safe.mjs -- node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+          "node": "v24.19.0",
+          "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "durationSeconds": 4.44,
+          "modules": 672,
+          "buildLog": "/private/tmp/fluentread-userscript-candidate-node24-build.log",
+          "matchesPriorNode20Artifact": true
+        },
+        "priorCandidateBuild": {
+          "node": "v20.11.1",
+          "runtimeSource": "Parent-confirmed pnpm build/runtime error stack",
+          "artifact": {
+            "bytes": 2082862,
+            "sha256": "c5eac2c1abf9141982f6625c1a19716582088551ad0704de41676ec0f00c688f"
+          },
+          "role": "Cross-runtime comparison only; same-Node baseline delta uses the explicit Node24 rebuild."
+        },
+        "focusedTests": {
+          "files": [
+            "tests/userscriptMetadata.test.ts",
+            "tests/architecture/verificationOwnership.test.ts"
+          ],
+          "passed": 17,
+          "failed": 0,
+          "log": "/private/tmp/fluentread-architecture-userscript-verifier-tests.log"
+        }
+      },
+      "verifier": {
+        "actualArtifact": "passed",
+        "log": "/private/tmp/fluentread-architecture-userscript-e806-verifier.log",
+        "negativeCliCases": [
+          {
+            "name": "one-byte-over-budget",
+            "bytes": 2083501,
+            "exitCode": 1,
+            "expectedFailure": "artifact exceeds the 2,083,500-byte size budget",
+            "passed": true
+          },
+          {
+            "name": "missing-required-GM-grant",
+            "bytes": 2083479,
+            "exitCode": 1,
+            "expectedFailure": "GM_xmlhttpRequest grant is required",
+            "passed": true
+          }
+        ],
+        "temporaryFixtureRemoved": true
+      },
+      "focusedTests": {
+        "files": [
+          "tests/userscriptMetadata.test.ts",
+          "tests/architecture/verificationOwnership.test.ts"
+        ],
+        "passed": 17,
+        "failed": 0,
+        "log": "/private/tmp/fluentread-architecture-userscript-e806-verifier-tests.log"
+      },
+      "measurementSourceCommit": "2003e06432cc5f7e204f4908bb56c684fd8235af",
+      "finalRebuild": {
+        "sourceCommit": "a27e1171cf60b6c23b1d58bb3bfaea20d9afcfc2",
+        "node": "v20.11.1",
+        "bytes": 2083463,
+        "sha256": "18b6cf3486a36b0939c27f2c7053d7c8d37ae65cd7d010b5190a1d4f74bd12f2",
+        "matchesPairedNode24Measurement": true,
+        "verifier": "passed"
+      }
+    },
+    "preFinalCandidateMeasurement": {
+      "candidate": {
+        "bytes": 2097103,
+        "sha256": "8276d8bae8370728301945cbdc72ecc9eb024f5ac50d3d534832f8746e03299c"
+      },
+      "candidateBuild": {
+        "command": "node scripts/testing/run-resource-safe.mjs -- node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+        "node": "v24.19.0",
+        "nodePath": "/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "durationSeconds": 4.21,
+        "modules": 683,
+        "buildLog": "/private/tmp/fluentread-userscript-candidate-92da-node24-build.log"
+      },
+      "deltaBytes": 2422,
+      "deltaPercent": 0.1156,
+      "reasonForFinalRebuild": "Final DeepLX error-normalization helper was adjusted after this measurement; the same baseline and locked dependencies are reused."
+    },
+    "candidateSourceFileSha256": {
+      "src/providers/translation/deeplx.ts": "7881fe185673180eeb38455d5001ece847212ded7354091c63d8509cdfe43244"
+    }
+  },
+  "priorIntegrationSmoke": {
+    "candidate": "3ecea5b70e349e743280e72dce658a271838e74b",
+    "parents": [
+      "4d027e529b4aa230d7dcd9c931a6515e044ba899",
+      "a3f02898de610cceb9c90086b7decff761b9a16f"
+    ],
+    "snapshot": "/private/tmp/fluentread-pr985-parser-candidate-2lvykpib",
+    "lockSHA256": "f05a7705309a18c1da81c8a155aee748bbfe8974f8dd2f2d3a7de66adbdca206",
+    "nodeModulesRealPath": "/Users/thinkstu/Desktop/copy/FluentRead-architecture-quality-20261014/node_modules",
+    "node": "v22.23.2",
+    "nodePath": "/opt/homebrew/opt/node@22/bin/node",
+    "artifact": {
+      "bytes": 2097052,
+      "sha256": "a6fb648cbda1e255c20aab019ecf9b66767465a6e423781c19cb2e52fdaf359b"
+    },
+    "budgetBytes": 2098100,
+    "remainingBudgetBytes": 1048,
+    "build": {
+      "modules": 683,
+      "durationSeconds": 3.83,
+      "command": "/opt/homebrew/opt/node@22/bin/node scripts/testing/run-resource-safe.mjs -- /opt/homebrew/opt/node@22/bin/node node_modules/vite/bin/vite.js build --config userscript/vite.config.ts",
+      "log": "/private/tmp/fluentread-pr985-parser-candidate-build.log",
+      "prepareLog": "/private/tmp/fluentread-pr985-parser-candidate-prepare.log"
+    },
+    "verifier": {
+      "passed": true,
+      "exitCode": 0,
+      "log": "/private/tmp/fluentread-pr985-parser-candidate-verifier.log",
+      "bodyAndBudget": "Existing exact candidate verifier, unchanged"
+    },
+    "scope": "Only exact automatic PR merge candidate userscript build and existing verifier were run. No full suite, baseline rebuild or tracked-file edits; Node 22 is the requested CI generation on macOS, not an Ubuntu environment claim.",
+    "method": "git archive exact 3ecea5b into owned temporary snapshot; same frozen pnpm lock as task and task-local dependencies; wxt prepare; explicit Node22 standard userscript build and existing verifier",
+    "cleanup": {
+      "ownedSnapshotRemoved": true,
+      "taskNodeModulesPreserved": true,
+      "mainCheckoutEdited": false,
+      "taskTrackedFilesEdited": false,
+      "newGitWorktreeCreated": false
+    }
+  },
+  "budgetChangeBytes": -3000,
+  "budgetRestoration": {
+    "previousTaskBudgetBytes": 2098100,
+    "restoredExactMainBudgetBytes": 2095100,
+    "candidateBelowRestoredBudgetBytes": 35218,
+    "reason": "Paired same-runtime measurement is 35,218 bytes below the latest exact main threshold; the earlier task-only +3 KB increment is no longer required after standard franc data compression."
+  }
+}

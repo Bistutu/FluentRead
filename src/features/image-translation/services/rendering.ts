@@ -4,7 +4,7 @@
  * 主要内容：按周长采样主色、依据亮度选择文字颜色、按单词与字素换行；每次排版有界复用同字号测宽和字素分割，避免字号搜索中的重复工作，保留正文对齐及字号上限并隔离 Canvas 状态。
  * 模块边界：颜色和排版算法无浏览器副作用；绘制函数仅操作调用方传入的 Canvas context，不读取配置、不请求翻译、不修补背景或修改宿主图片元素。
  */
-import type { OcrLine } from '@/src/shared/image/types';
+import type {OcrLine} from '@/src/shared/image/types';
 
 /** 从 OCR 框外围采样主色，忽略透明像素且不遍历框内面积。 */
 export function getImageTextBackgroundColor(

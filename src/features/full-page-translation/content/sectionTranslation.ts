@@ -4,7 +4,7 @@
  * 主要内容：导出区域盘点与切换接口；按译文所有者索引发现待翻译、失败与需切换方案的段落，冻结局部快捷方案请求配置；预览按步数限流，完整发现和阅读位置测量按时间片推进，以有界在途数接入共享翻译队列；区域再次确认、入口卸载或全页恢复时取消精确的在途请求，保留已提交译文，并按请求身份和原文快照记住无需翻译的候选。
  * 模块边界：本文件只编排区域级调用，单个候选的请求、渲染、状态机和全文会话协作全部复用 runtime 的 translateTarget 与 restoreTranslationOwner；不监听手势、不绘制高亮，也不决定提示文案。
  */
-import {checkConfig} from '@/src/app/translation/check';
+import {checkConfig} from '@/src/features/full-page-translation/content/configCheck';
 import {
     getComposedParent,
     getCurrentTranslationCore,

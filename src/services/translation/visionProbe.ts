@@ -8,8 +8,13 @@ import {resolveAreaRecognitionRoute, resolveModelVisionCapability, supportsVisio
 import {createVisionProbeIdentity, matchesVisionProbeAnswer, normalizeVisionProbeRecords, VISION_PROBE_TIMEOUT_MS,
     type VisionProbeRecord, type VisionProbeResult} from '@/src/core/config/visionProbe';
 import {createVisionProbeImage} from '@/src/core/translation/visionProbeImage';
-import {attachTranslationImageInput, attachTranslationProviderConfig, attachTranslationRequestControl,
-    createTranslationProviderConfigSnapshot, markTranslationRemainingBudget} from './requestSnapshot';
+import {
+    attachTranslationImageInput,
+    attachTranslationProviderConfig,
+    attachTranslationRequestControl,
+    createTranslationProviderConfigSnapshot,
+    markTranslationRemainingBudget,
+} from './requestSnapshot';
 import type {TranslationConfigSource, TranslationRequestMessage} from './types';
 
 export interface VisionProbeConfig extends TranslationConfigSource {modelVision?: Record<string, Record<string, boolean>>;}

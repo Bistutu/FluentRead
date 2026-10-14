@@ -17,13 +17,13 @@ import brandTaglines from './brand-taglines.json';
 import {onboardingChineseMessages} from './onboarding';
 import googleDriveText from './google-drive/zh-CN.json';
 import cloudBackupText from './cloud-backup/zh-CN.json';
-import type {
-MessageCatalog} from '../types';
+import type {MessageCatalog} from '../types';
 import {localTtsChineseMessages} from './localTts';
 import {translationStatsChineseMessages} from './translationStats';
 import {localTranslationChineseMessages} from './localTranslation';
 
 export const zhCNMessages = {
+    "document.config.loadFailed": "设置未能读取，请重新加载后再试。",
     "popup.compact.translate": "翻译",
     "popup.compact.restore": "还原",
     ...videoLearningText,

@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockConfig } = vi.hoisted(() => ({
@@ -58,7 +59,7 @@ describe('自定义接口适配器', () => {
         const fetchMock = vi.fn().mockResolvedValue(successResponse());
         vi.stubGlobal('fetch', fetchMock);
 
-        await expect(translateWithOpenAICompatibleAiSdk({origin: 'hello'})).resolves.toBe('译文');
+        await expect(translateWithOpenAICompatibleAiSdk(withProviderSnapshot({origin: 'hello'}, mockConfig))).resolves.toBe('译文');
 
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
         expect(url).toBe('http://127.0.0.1:8080/');
@@ -70,7 +71,7 @@ describe('自定义接口适配器', () => {
         const fetchMock = vi.fn().mockResolvedValue(successResponse());
         vi.stubGlobal('fetch', fetchMock);
 
-        await translateWithOpenAICompatibleAiSdk({origin: 'hello'});
+        await translateWithOpenAICompatibleAiSdk(withProviderSnapshot({origin: 'hello'}, mockConfig));
 
         expect(fetchMock.mock.calls[0]?.[0]).toBe(mockConfig.custom);
     });
@@ -81,8 +82,8 @@ describe('自定义接口适配器', () => {
         }), 'custom:other': '{"x-opencode-session":"other-session"}'};
         const fetchMock = vi.fn().mockImplementation(async () => successResponse());
         vi.stubGlobal('fetch', fetchMock);
-        await translateWithOpenAICompatibleAiSdk({origin: ['hello', 'world']});
-        await translateWithOpenAICompatibleAiSdk({origin: 'again'});
+        await translateWithOpenAICompatibleAiSdk(withProviderSnapshot({origin: ['hello', 'world']}, mockConfig));
+        await translateWithOpenAICompatibleAiSdk(withProviderSnapshot({origin: 'again'}, mockConfig));
         expect(fetchMock).toHaveBeenCalledTimes(3);
         for (const [, init] of fetchMock.mock.calls) {
             const headers = new Headers(init.headers);
@@ -99,10 +100,10 @@ describe('自定义接口适配器', () => {
         const fetchMock = vi.fn().mockImplementation(async () => successResponse());
         vi.stubGlobal('fetch', fetchMock);
         mockConfig.customHeaders.custom = '{"x-token":42}';
-        await expect(translateWithOpenAICompatibleAiSdk({origin: 'hello'})).rejects.toMatchObject({kind: 'bad-request', retryable: false});
+        await expect(translateWithOpenAICompatibleAiSdk(withProviderSnapshot({origin: 'hello'}, mockConfig))).rejects.toMatchObject({kind: 'bad-request', retryable: false});
         expect(fetchMock).not.toHaveBeenCalled();
         mockConfig.customHeaders = {'custom:other': '{"x-opencode-session":"other-session"}'};
-        await translateWithOpenAICompatibleAiSdk({origin: 'hello'});
+        await translateWithOpenAICompatibleAiSdk(withProviderSnapshot({origin: 'hello'}, mockConfig));
         const headers = new Headers(fetchMock.mock.calls[0][1].headers);
         expect(headers.get('x-opencode-session')).toBeNull();
         expect(headers.get('authorization')).toBe('Bearer local-token');
@@ -114,7 +115,7 @@ describe('自定义接口适配器', () => {
             error: {message: 'rejected gateway-private-sentinel', code: 'gateway-private-sentinel'},
         }), {status: 400, headers: {'content-type': 'application/json', 'x-request-id': 'gateway-private-sentinel'}})));
         try {
-            await translateWithOpenAICompatibleAiSdk({origin: 'hello'});
+            await translateWithOpenAICompatibleAiSdk(withProviderSnapshot({origin: 'hello'}, mockConfig));
             expect.fail('must reject');
         } catch (error) {
             expect(String(error)).not.toContain('gateway-private-sentinel');

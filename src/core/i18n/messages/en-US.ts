@@ -17,8 +17,7 @@ import brandTaglines from './brand-taglines.json';
 import {onboardingEnglishMessages} from './onboarding';
 import googleDriveText from './google-drive/en-US.json';
 import cloudBackupText from './cloud-backup/en-US.json';
-import type {
-MessageCatalog} from '../types';
+import type {MessageCatalog} from '../types';
 import {legacyTextOverrides} from './legacy-overrides';
 import {createLegacyCorrectionText} from './legacy-corrections';
 import {createRuntimeFeedbackLegacyText} from './runtime-feedback';
@@ -27,6 +26,7 @@ import {translationStatsEnglishMessages} from './translationStats';
 import {localTranslationEnglishMessages} from './localTranslation';
 
 export const enUSMessages = {
+    "document.config.loadFailed": "Could not load settings. Reload and try again.",
     "popup.compact.translate": "Translate",
     "popup.compact.restore": "Restore",
     ...videoLearningText,

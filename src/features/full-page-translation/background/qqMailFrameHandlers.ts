@@ -4,7 +4,7 @@
  * 主要内容：校验 frame URL、sender frameId/tabId 与消息协议，向 frameId=0 转发命令，并广播邮件切换刷新通知。
  * 模块边界：本文件只编排注入的 sendTabMessage，不读取 sid、不解析邮件正文、不保存会话状态；页面状态快照由 content composition root 管理。
  */
-import type {BackgroundMessageHandler} from '@/src/app/background/messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {
     isQqMailReadmailUrl,
     isQqMailLegacyTopUrl,

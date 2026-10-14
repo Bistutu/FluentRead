@@ -8,19 +8,14 @@
 
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import { method } from "@/src/core/config/constants";
-import { config } from "@/src/services/config/store";
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import { mergeCustomBody } from "@/src/core/config/customBody";
 import {resolveConfiguredModel, services} from "@/src/core/config/catalog";
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
 import {runtimeFetch} from '@/src/platform/http/runtime';
-import {
-    getTranslationProviderConfig,
-    reportTranslationModelUsage,
-    reportTranslationModelUsageFailure,
-    type TranslationProviderRequest,
-} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig, reportTranslationModelUsage, reportTranslationModelUsageFailure} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {normalizeHunyuanUsage} from './usage';
 
 // 混元翻译大模型支持的语言代码映射
@@ -125,7 +120,7 @@ export function buildHunyuanTranslationRequestBody(
 }
 
 async function hunyuanTranslation(message: TranslationProviderRequest<string>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const service = message.serviceOverride || services.huanYuanTranslation;
 
     const secretId = current.tencentSecretId?.trim();
@@ -139,7 +134,7 @@ async function hunyuanTranslation(message: TranslationProviderRequest<string>) {
 
     // 显式源语言与目标相同时尊重用户设定；自动识别只在统一语言判断可信确认目标语言时短路，
     // 不能用统计最佳猜测（或去掉空白后的文本）决定跳过，否则短句误判会静默漏译。
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
     const normalizedSource = normalizeChineseLanguageCode(sourceLanguage);
     const normalizedTarget = normalizeChineseLanguageCode(targetLanguage);
     const mappedTargetLang = (Object.hasOwn(languageMap, normalizedTarget) ? languageMap[normalizedTarget] : targetLanguage);

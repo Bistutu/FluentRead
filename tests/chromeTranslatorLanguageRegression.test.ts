@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -82,12 +83,12 @@ describe('Chrome translator 请求级语言回归', () => {
 
     it('真实 provider 发往 offscreen 的标记正文和纯检测样本彼此独立，并为首次下载保留五分钟', async () => {
         const markedText = '___FLUENTREAD_test_0_BEGIN___\nBonjour\n___FLUENTREAD_test_0_END___';
-        await expect(chromeTranslator({
+        await expect(chromeTranslator(withProviderSnapshot({
             origin: markedText,
             sourceLanguage: 'auto',
             targetLanguage: 'ja',
             sourceLanguageDetectionText: 'Bonjour',
-        })).resolves.toBe('翻译结果');
+        }, mocks.config))).resolves.toBe('翻译结果');
 
         expect(mocks.send).toHaveBeenCalledWith({
             type: 'CHROME_TRANSLATE_OFFSCREEN',
@@ -109,18 +110,18 @@ describe('Chrome translator 请求级语言回归', () => {
     });
 
     it('未覆盖语言时仍使用当前配置，非法原文不会发消息', async () => {
-        await expect(chromeTranslator({origin: 'hello'})).resolves.toBe('翻译结果');
+        await expect(chromeTranslator(withProviderSnapshot({origin: 'hello'}, mocks.config))).resolves.toBe('翻译结果');
         expect(mocks.send).toHaveBeenLastCalledWith(expect.objectContaining({
             data: {text: 'hello', from: 'auto', to: 'zh-Hans'},
         }), expect.any(Object));
 
         mocks.send.mockClear();
-        await expect(chromeTranslator({origin: ''})).rejects.toThrow('翻译文本不能为空');
+        await expect(chromeTranslator(withProviderSnapshot({origin: ''}, mocks.config))).rejects.toThrow('翻译文本不能为空');
         expect(mocks.send).not.toHaveBeenCalled();
     });
 
     it('默认 unknown 构建保守拒绝 Chrome provider，且不会触碰 Offscreen', async () => {
-        await expect(defaultChromeTranslator({origin: 'hello'}))
+        await expect(defaultChromeTranslator(withProviderSnapshot({origin: 'hello'}, mocks.config)))
             .rejects.toThrow('当前浏览器不支持 Chrome 内置翻译');
         expect(mocks.send).not.toHaveBeenCalled();
     });
@@ -135,11 +136,11 @@ describe('Chrome translator 请求级语言回归', () => {
             });
         });
 
-        const pending = chromeTranslator({
+        const pending = chromeTranslator(withProviderSnapshot({
             origin: 'hello',
             abortSignal: controller.signal,
             requestTimeoutMs: 1_234,
-        });
+        }, mocks.config));
         await vi.waitFor(() => expect(mocks.send).toHaveBeenCalledOnce());
         const [runtimePayload, options] = mocks.send.mock.calls[0] as unknown as [
             Record<string, unknown>,
@@ -156,16 +157,16 @@ describe('Chrome translator 请求级语言回归', () => {
 
     it('拒绝缺失或错配 requestId 的迟到响应', async () => {
         mocks.send.mockResolvedValueOnce({success: true, result: '旧结果', requestId: 'old-request'});
-        await expect(chromeTranslator({origin: 'hello'})).rejects.toThrow('requestId 不匹配');
+        await expect(chromeTranslator(withProviderSnapshot({origin: 'hello'}, mocks.config))).rejects.toThrow('requestId 不匹配');
 
         mocks.send.mockResolvedValueOnce({success: false, error: '请求已取消', requestId: 'chrome-request-1'});
-        await expect(chromeTranslator({origin: 'hello'})).rejects.toThrow('请求已取消');
+        await expect(chromeTranslator(withProviderSnapshot({origin: 'hello'}, mocks.config))).rejects.toThrow('请求已取消');
 
         mocks.send.mockResolvedValueOnce({success: false, requestId: 'chrome-request-1'});
-        await expect(chromeTranslator({origin: 'hello'})).rejects.toThrow('无效的翻译响应');
+        await expect(chromeTranslator(withProviderSnapshot({origin: 'hello'}, mocks.config))).rejects.toThrow('无效的翻译响应');
 
         mocks.send.mockRejectedValueOnce('string failure');
-        await expect(chromeTranslator({origin: 'hello'})).rejects.toThrow('未知错误');
+        await expect(chromeTranslator(withProviderSnapshot({origin: 'hello'}, mocks.config))).rejects.toThrow('未知错误');
     });
 
     it('收到待准备 pair 时写入 session 状态，取消请求不写入', async () => {
@@ -185,14 +186,14 @@ describe('Chrome translator 请求级语言回归', () => {
             targetLanguage: 'zh',
             error: 'prepare',
         });
-        await expect(provider({origin: 'hello'})).rejects.toThrow('prepare');
+        await expect(provider(withProviderSnapshot({origin: 'hello'}, mocks.config))).rejects.toThrow('prepare');
         expect(set).toHaveBeenCalledWith({sourceLanguage: 'en', targetLanguage: 'zh'});
 
         set.mockClear();
         const controller = new AbortController();
         controller.abort();
         mocks.send.mockClear();
-        await expect(provider({origin: 'hello', abortSignal: controller.signal})).rejects.toMatchObject({name: 'AbortError'});
+        await expect(provider(withProviderSnapshot({origin: 'hello', abortSignal: controller.signal}, mocks.config))).rejects.toMatchObject({name: 'AbortError'});
         expect(mocks.send).not.toHaveBeenCalled();
         expect(set).not.toHaveBeenCalled();
     });
@@ -208,6 +209,6 @@ describe('Chrome translator 请求级语言回归', () => {
 it('Chrome provider 请求级简繁体互译不被全局目标覆盖', async () => {
     mocks.send.mockReset();
     mocks.send.mockImplementation(async (request: {requestId?: unknown}) => ({success: true, result: '繁體譯文', requestId: request.requestId}));
-    await expect(chromeTranslator({origin: '简体中文', sourceLanguage: 'zh-Hans', targetLanguage: 'zh-Hant'})).resolves.toBe('繁體譯文');
+    await expect(chromeTranslator(withProviderSnapshot({origin: '简体中文', sourceLanguage: 'zh-Hans', targetLanguage: 'zh-Hant'}, mocks.config))).resolves.toBe('繁體譯文');
     expect(mocks.send).toHaveBeenLastCalledWith(expect.objectContaining({data: {text: '简体中文', from: 'zh-Hans', to: 'zh-Hant'}}), expect.any(Object));
 });

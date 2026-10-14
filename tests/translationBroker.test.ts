@@ -969,6 +969,33 @@ describe('translation broker', () => {
         expect(mocks.cacheStore.size).toBe(1);
     });
 
+    it('图片原样策略与普通请求隔离真实在途传输，同策略等待者仍共用自己的结果', async () => {
+        const origin = 'This English sentence still needs a Chinese translation.';
+        const imageTransport = deferred<string>(), ordinaryTransport = deferred<string>();
+        mocks.service.mockImplementationOnce(() => imageTransport.promise)
+            .mockImplementationOnce(() => ordinaryTransport.promise);
+        const image = translateWithCache(allowUnchangedTranslationResult({origin}));
+        const ordinary = translateWithCache({origin});
+        const imageWaiter = translateWithCache(allowUnchangedTranslationResult({origin}));
+        let ordinarySettled = false;
+        void ordinary.then(() => {ordinarySettled = true;}, () => {ordinarySettled = true;});
+        try {
+            await flushMicrotasks();
+            expect(mocks.service).toHaveBeenCalledTimes(2);
+            imageTransport.resolve(origin);
+            await expect(image).resolves.toBe(origin);
+            await expect(imageWaiter).resolves.toBe(origin);
+            await flushMicrotasks();
+            expect(ordinarySettled).toBe(false);
+            ordinaryTransport.resolve('这句英文仍需要翻译成中文。');
+            await expect(ordinary).resolves.toBe('这句英文仍需要翻译成中文。');
+            expect(mocks.service).toHaveBeenCalledTimes(2);
+        } finally {
+            imageTransport.resolve(origin); ordinaryTransport.resolve('这句英文仍需要翻译成中文。');
+            await Promise.allSettled([image, ordinary, imageWaiter]);
+        }
+    });
+
     it('图片 AI 完整多段协议允许原样槽位，整批成功后可以复用', async () => {
         mocks.config.service = 'ai'; mocks.config.enableAIContext = false;
         const origin = ['This English sentence still needs a Chinese translation.', 'Read every instruction before you begin.'];

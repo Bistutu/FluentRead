@@ -13,11 +13,7 @@ import {resolveTranslationRequestModel} from '@/src/core/config/requestModel';
 import {createCompositeTranslationRoutingState} from '@/src/services/translation/compositeRouting';
 import {formatServiceError} from '@/src/services/translation/serviceErrors';
 import {isCustomOpenAIProviderId, LEGACY_CUSTOM_OPENAI_PROVIDER_ID} from '@/src/core/config/customOpenAI';
-import {
-    attachTranslationModelUsageObserver,
-    attachTranslationProviderConfig,
-    attachTranslationRequestScheduler,
-} from '@/src/services/translation/requestSnapshot';
+import {attachTranslationModelUsageObserver, attachTranslationProviderConfig, attachTranslationRequestScheduler} from '@/src/services/translation/requestSnapshot';
 import type {TranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
 import type {
     TranslationProviderConfigSnapshot,

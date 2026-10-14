@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({render: vi.fn(), recognize: vi.fn()}));
 
 vi.mock('@/src/services/config/store', () => ({config: {service: 'microsoft'}, configReady: Promise.resolve()}));
 vi.mock('@/src/core/config/catalog', () => ({services: {microsoft: 'microsoft', freeTranslation: 'freeTranslation'}}));
-vi.mock('@/src/app/translation/client', () => ({translateText: vi.fn(), translateTextBatch: vi.fn()}));
+vi.mock('@/src/services/translation/client', () => ({translateText: vi.fn(), translateTextBatch: vi.fn()}));
 vi.mock('@/src/features/document-translation/ui/pdfPreview', () => ({rasterizePdfReadingPages: vi.fn(), rasterizePdfTranslationPage: vi.fn(), renderPdfPageImage: mocks.render}));
 vi.mock('@/src/features/image-translation/ocr', () => ({recognizeImageText: mocks.recognize}));
 

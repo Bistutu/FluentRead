@@ -4,8 +4,8 @@
  * 主要内容：校验 origin、clientRequestId、原生合批冻结偏好、AI 多段、文档合批、内部槽校验与检测样本；文档合批仅从真实扩展文档页的数组请求保留，以发送者和随机 ID 管理 AbortController，并提供精确取消 handler。
  * 模块边界：本文件只承担协议验证与 fallback 适配，不选择 provider、不缓存结果、不读取配置或凭据；真正的翻译执行由注入的 translateWithCache 完成。
  */
-import type {BackgroundFallbackHandler} from '../messageRouter';
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundFallbackHandler} from '@/src/services/messaging/backgroundRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {attachTranslationGlossaryContext, attachTranslationRequestControl, translationPrivacyContext} from '@/src/services/translation/requestSnapshot';
 import type {
     TranslationCancelMessage,

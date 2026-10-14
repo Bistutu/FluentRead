@@ -14,7 +14,6 @@ import {createInputBoxTranslationHandler} from '@/src/features/input-translation
 import {createTranslationBroker} from '@/src/services/translation/broker';
 import {commonMsgTemplate} from '@/src/services/translation/templates';
 import {
-    TRANSLATION_REQUEST_CONTROL,
     attachTranslationGlossaryContext,
     attachTranslationImageInput,
     attachTranslationRequestControl,
@@ -26,7 +25,7 @@ import {
     getTranslationRequestControl,
     getTranslationRequestScheduler,
 } from '@/src/services/translation/requestSnapshot';
-import type {TranslationRequestMessage, TranslationSingleRequestMessage} from '@/src/services/translation/types';
+import {TRANSLATION_REQUEST_CONTROL, type TranslationRequestMessage, type TranslationSingleRequestMessage} from '@/src/services/translation/types';
 
 const OFFSCREEN_URL = 'chrome-extension://audit/offscreen.html';
 const IMAGE = 'data:image/png;base64,YQ==';
@@ -179,8 +178,9 @@ describe('PR906 图像实际模型调度身份', () => {
         expect(identity).toMatchObject({service: 'openai', model: expected});
         expect(identity?.quotaScope).toMatch(/^[a-f0-9]{64}$/u);
         const snapshot = getTranslationProviderConfig(observed, createTranslationProviderConfigSnapshot(current));
-        const body = JSON.parse(commonMsgTemplate(String(observed.origin), undefined, undefined, undefined, 'openai',
-            'zh-Hans', observed.modelOverride, snapshot, undefined, getTranslationImageInput(observed)));
+        const body = JSON.parse(commonMsgTemplate({current: snapshot, origin: String(observed.origin),
+            serviceOverride: 'openai', targetLanguage: 'zh-Hans', modelOverride: observed.modelOverride,
+            imageInput: getTranslationImageInput(observed)}));
         expect(String(body.model).trim()).toBe(expected);
         expect(body.model).not.toBe('unrelated-body-model');
         expect(JSON.stringify(body)).not.toContain('privateContext');

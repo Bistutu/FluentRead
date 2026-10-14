@@ -1,0 +1,122 @@
+{
+  "sourceCommit": "e85a18359fc92d88b54204f7003d2dada4884d9a",
+  "priorHostedRun": {
+    "runId": 38603313100,
+    "head": "a3f02898de610cceb9c90086b7decff761b9a16f",
+    "candidate": "3ecea5b70e349e743280e72dce658a271838e74b",
+    "url": "https://github.com/FluentRead/FluentRead/actions/runs/38603313100",
+    "status": "failed",
+    "filesPassed": 456,
+    "filesFailed": 2,
+    "testsPassed": 16152,
+    "testsFailed": 1,
+    "skipped": 26,
+    "strictModules": 85,
+    "strictAllFour100": true,
+    "durationSeconds": 1811.4,
+    "failures": [
+      "missing rg executable for real audit CLI",
+      "global fake-clock assertion observed 14 filesystem-watcher timers"
+    ]
+  },
+  "auditTools": {
+    "fix": "Explicit conditional ripgrep installation in the hosted Ubuntu workflow before real inventory tests",
+    "productionInventoryUnchanged": true,
+    "localRealInventoryCasesPassed": 27
+  },
+  "timerFixture": {
+    "hostedFailure": {
+      "run": "38603313100",
+      "head": "a3f02898de610cceb9c90086b7decff761b9a16f",
+      "platform": "Ubuntu Node22",
+      "assertion": "vi.getTimerCount() expected 0, received 14",
+      "uiOutcome": "ended=true, busy=false, error were all correct according to the hosted log supplied by root"
+    },
+    "localRuntime": {
+      "node": "v22.23.2",
+      "nodePath": "/opt/homebrew/opt/node@22/bin/node",
+      "platform": "macOS",
+      "environment": {
+        "CI": "true",
+        "GITHUB_REPOSITORY": "FluentRead/FluentRead"
+      }
+    },
+    "originalFocusedRun": {
+      "passed": 3,
+      "failed": 0,
+      "filter": "服务.*超时退出",
+      "log": "/private/tmp/fluentread-service-save-timeout-original-node22.log"
+    },
+    "nativeWatcherReproducer": {
+      "snapshotCommit": "a3f02898de610cceb9c90086b7decff761b9a16f",
+      "backend": "Explicit useFsEvents:false,usePolling:false to select Node fs.watch, matching the backend path used on Linux",
+      "controlledStimulus": "14 real writes to a small watched temporary fixture after the component save timeout completes",
+      "count": 14,
+      "componentTimersCreated": 2,
+      "componentTimersActive": 0,
+      "watcherTimersActive": 14,
+      "watcherDelayMs": 5,
+      "ownerStack": [
+        "Vite bundled Chokidar FSWatcher._throttle:44517",
+        "Node-fs-watch listener:43012",
+        "fsWatchBroadcast:42797",
+        "node:events FSWatcher.handleEvent"
+      ],
+      "log": "/private/tmp/fluentread-service-save-timeout-native-watcher-clean-owner.log",
+      "timerStacks": "/private/tmp/fluentread-service-native-watcher-owner-evidence.json",
+      "instrumentation": "/private/tmp/fluentread-service-native-watcher-instrumentation.ts",
+      "expectedAssertionFailure": "0 vs 14 timer count after correct UI outcome",
+      "additionalResourceErrors": "The macOS forced-native watcher experiment also reported two EMFILE errors; it is not a clean Linux execution or a passing test. The captured active timer handles/stacks establish the ownership mechanism independently of these errors."
+    },
+    "diagnosis": "hmr:false does not disable the Vite/Chokidar filesystem observer. Its asynchronous Node-fs-watch throttles share the globally faked clock with taskWait. vi.getTimerCount therefore measured fixture-infrastructure activity after actual component timeout cleanup.",
+    "evidenceLimit": "Hosted CI exposed the count but no creation stacks. The local controlled backend reproduction proves matching timer ownership/mechanism; it does not identify the exact fourteen hosted paths or claim Linux runtime verification.",
+    "fix": {
+      "file": "tests/serviceConfigurationLifecycle.test.ts",
+      "watcher": "server.watch:null, supported by installed Vite5.4.19 WatchOptions|null; Vite source selects a NoopWatcher",
+      "scope": "The fixture loads the real SFC and does not test HMR/filesystem mutation. Production ServiceConfiguration.vue and taskWait.ts are unchanged.",
+      "strengthenedAssertions": [
+        "Exactly one component timer while the chosen queue/save/response port is pending",
+        "At configured 10,000/45,000ms minus 1ms, still testing and unresolved",
+        "At the final millisecond, expected error and zero remaining timers",
+        "Late underlying success preserves the timed-out error and zero timers",
+        "Fresh retry succeeds with duration25 and zero timers"
+      ]
+    },
+    "finalFocusedRun": {
+      "files": [
+        "tests/serviceConfigurationLifecycle.test.ts"
+      ],
+      "passed": 33,
+      "failed": 0,
+      "durationSeconds": 8.42,
+      "log": "/private/tmp/fluentread-service-configuration-final-node22.log",
+      "unhandledErrors": 0
+    },
+    "cleanupNegativeControl": {
+      "mutation": "Only in owned temporary snapshot: remove taskWait clearTimeout(timer)",
+      "filter": "服务save超时退出",
+      "exitCode": 1,
+      "expectedFailure": "expected 2 to be 1 at the pending-stage timer assertion",
+      "passed": true,
+      "log": "/private/tmp/fluentread-service-save-timeout-cleanup-negative.log",
+      "unhandledErrors": 0
+    },
+    "changedTestSha256": "f9e30316bb442ea767d266934f157173109190c7618c8990611837d86f4703ef",
+    "cleanup": {
+      "ownedSnapshotRemoved": true,
+      "removedDirectory": "/private/tmp/fluentread-service-timer-owner-j_4f0dy4",
+      "taskNodeModulesPreserved": true
+    }
+  },
+  "localTargeted": {
+    "contractFiles": 50,
+    "contractCasesPassed": 1819,
+    "strictTargets": 9,
+    "uiCasesPassed": 33,
+    "ownershipPlannerInventoryCasesPassed": 62
+  },
+  "proofLimits": [
+    "Prior hosted workflow was failed overall despite four100 coverage; final updated-head hosted workflow remains required.",
+    "The native-watcher ownership experiment was on macOS and reported two EMFILE errors; it establishes timer-owner mechanism, not a clean Linux run."
+  ]
+}

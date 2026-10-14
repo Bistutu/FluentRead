@@ -316,6 +316,19 @@ describe('architecture module boundaries', () => {
         ));
     });
 
+    it('feature 的运行时和类型契约都不反向依赖 app 组装层', () => {
+        const violations: string[] = [];
+        for (const file of listSourceFiles('src/features')) {
+            for (const specifier of importSpecifiers(readSource(file))) {
+                const target = resolveProjectImport(file, specifier);
+                if (target && relativePath(target).startsWith('src/app/')) {
+                    violations.push(`${relativePath(file)} -> ${specifier}`);
+                }
+            }
+        }
+        expect(violations).toEqual([]);
+    });
+
     it('core 与 shared 保持低层，不依赖 app、feature、service、provider、platform 或 UI', () => {
         const forbidden = /^@\/src\/(?:app|features|services|providers|platform|ui)(?:\/|$)/;
         const violations: string[] = [];

@@ -66,7 +66,7 @@ async function mountTimeoutSettings() {
     vi.stubGlobal('document', dom.document);
     vi.stubGlobal('window', Object.assign(dom.window, {matchMedia: () => ({matches: false})}));
     vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
-    const saved = vi.fn(async () => undefined);
+    const saved = vi.fn(async (_snapshot: Config) => undefined);
     (globalThis as Record<string, unknown>)[fixtureKey] = {config: new Config(), saved};
     const mocks: Plugin = {name: 'userscript-timeout-settings-ports', enforce: 'pre', resolveId(id) {
         if (id.endsWith('.vue') && !id.endsWith('/SettingsPanel.vue')) return '\0timeout-child';
@@ -162,5 +162,26 @@ describe('userscript AI timeout actual input', () => {
         const currentCommit = fixture.state.aiRequestTimeoutActions.commit;
         timeoutApp!.unmount();timeoutApp = undefined;
         currentCommit();expect(fixture.state.draft.aiRequestTimeoutMs).toBe(120_000);
+    });
+});
+
+
+describe('compact userscript shared model editing', () => {
+    it('removes the current custom model through the visible button and clears its request preferences before saving', async () => {
+        const fixture = await mountTimeoutSettings();
+        const draft = fixture.state.draft;
+        draft.service = 'deepseek'; draft.customModels.deepseek = ['obsolete-model', 'retained-model'];
+        draft.model.deepseek = '自定义模型'; draft.customModel.deepseek = 'obsolete-model';
+        draft.documentModel.deepseek = '自定义模型'; draft.documentCustomModel.deepseek = 'obsolete-model';
+        draft.modelRequestLimits.deepseek = {'obsolete-model': {enabled: true, limits: {maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0}}};
+        await vueRuntime.nextTick();
+        const remove = document.querySelector('button.inline-action.is-danger');
+        expect(remove).not.toBeNull();
+        remove!.dispatchEvent(new window.Event('click', {bubbles: true})); await vueRuntime.nextTick();
+        expect(draft.customModels.deepseek).toEqual(['retained-model']);
+        expect(draft.customModel.deepseek).toBe('retained-model'); expect(draft.documentCustomModel.deepseek).toBe('retained-model');
+        expect(draft.modelRequestLimits.deepseek).toBeUndefined();
+        await fixture.state.save(); expect(fixture.saved).toHaveBeenCalledOnce();
+        expect(fixture.saved.mock.calls[0][0].modelRequestLimits.deepseek).toBeUndefined();
     });
 });

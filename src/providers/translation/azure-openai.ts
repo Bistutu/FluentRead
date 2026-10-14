@@ -6,13 +6,13 @@
  * 模块边界：本文件位于 provider 适配层，只把统一翻译请求转换为外部或浏览器服务协议；不管理页面 DOM、UI 生命周期或配置持久化，缓存、去重和超时总预算由 translation broker 统一协调。
  */
 
-import {config} from "@/src/services/config/store";
 import {isApiKeyRequired} from "@/src/core/config/validation";
 import {translateWithOpenAICompatibleAiSdk} from './ai-sdk/openai-compatible';
-import {getTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 
-async function azureOpenai(message: any) {
-    const current = getTranslationProviderConfig(message, config);
+async function azureOpenai(message: TranslationProviderRequest) {
+    const current = requireTranslationProviderConfig(message);
     const service = message.serviceOverride || current.service;
     const apiKey = current.token[service];
     if ((!apiKey || apiKey.trim() === '') && isApiKeyRequired(service, current)) {

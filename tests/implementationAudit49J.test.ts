@@ -338,36 +338,69 @@ describe('audit49 J public browser tooling ownership', () => {
     });
 });
 
+interface PlanProbeReport {
+    status: string;
+    paths: {json: string; summary: string; repairPlan: string};
+    steps: {id: string; status: string; exitCode: number | null; signal: string | null; error: string | null;
+        startedAt: string; finishedAt: string; durationMs: number; logPath: string}[];
+}
+
 async function planChild(command: string, args: string[]) {
     const entry = join(fixtureRoot, `plan-${++serial}.mjs`);
+    const artifactsDir = join(fixtureRoot, `plan-artifacts-${serial}`);
     writeFileSync(entry, `import {executePlan} from ${JSON.stringify(pathToFileURL(join(sourceRoot, 'scripts/testing/run-full-regression.mjs')).href)};
 console.log('ORIGINAL_PUBLIC_RUNNER_LOADED');
-try {await executePlan({dryRun:false, steps:[{command:${JSON.stringify(command)},args:${JSON.stringify(args)},label:'controlled step'}]}); console.log('PLAN_FINISHED');}
+try {
+ const report=await executePlan({version:3,mode:'contract-fixture',dryRun:false,artifactsDir:${JSON.stringify(artifactsDir)},
+  failFast:false,continueOnError:true,policies:{browser:'disabled',network:'disabled',headed:'disabled'},
+  steps:[{id:'controlled-step',phase:'local',command:${JSON.stringify(command)},args:${JSON.stringify(args)},label:'controlled step',gates:[],dependsOn:[]}]});
+ console.log('PLAN_RESULT '+JSON.stringify(report));console.log('PLAN_FINISHED');process.exitCode=report.status==='passed'?0:1;
+}
 catch (error) {console.error('PLAN_REJECTED', error.message); process.exitCode=17;}`);
-    return child([entry], {});
+    const result = await child([entry], {});
+    const returned = JSON.parse(/^PLAN_RESULT (.+)$/m.exec(result.stdout)![1]) as PlanProbeReport;
+    const persisted = JSON.parse(readFileSync(join(artifactsDir, 'report.json'), 'utf8')) as PlanProbeReport;
+    expect(persisted).toEqual(returned);
+    expect(existsSync(join(artifactsDir, '.regression.lock'))).toBe(false);
+    expect(existsSync(persisted.paths.summary)).toBe(true);
+    expect(existsSync(persisted.paths.repairPlan)).toBe(true);
+    expect(persisted.steps).toHaveLength(1);
+    expect(persisted.steps[0].startedAt).toEqual(expect.any(String));
+    expect(persisted.steps[0].finishedAt).toEqual(expect.any(String));
+    expect(persisted.steps[0].durationMs).toBeGreaterThanOrEqual(0);
+    expect(result.stdout).toContain('PLAN_FINISHED');
+    expect(result.stderr).not.toContain('PLAN_REJECTED');
+    return {...result, report: persisted, log: readFileSync(persisted.steps[0].logPath, 'utf8')};
 }
 
 describe('audit49 J public bounded regression orchestration', () => {
-    it('rejects a child spawn error through executePlan instead of emitting an unhandled error', async () => {
+    it('returns and persists a failed report for a child spawn error without an unhandled error', async () => {
         const result = await planChild(join(fixtureRoot, 'nonexistent-command'), []);
         expect(result.timedOut).toBe(false);
         expect(result.stdout).toContain('ORIGINAL_PUBLIC_RUNNER_LOADED');
-        expect(result.code).toBe(17);
-        expect(result.stderr).toContain('PLAN_REJECTED');
-        expect(result.stderr).toContain('ENOENT');
+        expect(result.code).toBe(1);
+        expect(result.report.status).toBe('failed');
+        expect(result.report.steps[0]).toMatchObject({id: 'controlled-step', status: 'failed', signal: null, error: expect.stringContaining('ENOENT')});
+        expect(result.log).toContain('ENOENT');
+        expect(result.stdout).toContain('[regression] controlled step ->');
         expect(result.stderr).not.toContain("Unhandled 'error' event");
     });
     it('preserves a real child nonzero exit as step failure', async () => {
-        const result = await planChild(process.execPath, ['-e', 'process.exitCode = 23;']);
+        const result = await planChild(process.execPath, ['-e', 'console.error("CONTROLLED_CHILD_EXECUTED");process.exitCode = 23;']);
         expect(result.timedOut).toBe(false);
-        expect(result.code).toBe(17);
-        expect(result.stderr).toContain('退出码 23');
-        expect(result.stdout).not.toContain('PLAN_FINISHED');
+        expect(result.code).toBe(1);
+        expect(result.report.status).toBe('failed');
+        expect(result.report.steps[0]).toMatchObject({id: 'controlled-step', status: 'failed', exitCode: 23, signal: null, error: null});
+        expect(result.stderr).toContain('CONTROLLED_CHILD_EXECUTED');
+        expect(result.log).toContain('CONTROLLED_CHILD_EXECUTED');
     });
     it('waits for a successful real child before completing the plan', async () => {
         const result = await planChild(process.execPath, ['-e', 'setTimeout(() => console.log("CONTROLLED_CHILD_FINISHED"), 30);']);
         expect(result.timedOut).toBe(false);
         expect(result.code).toBe(0);
+        expect(result.report.status).toBe('passed');
+        expect(result.report.steps[0]).toMatchObject({status: 'passed', exitCode: 0, signal: null, error: null});
+        expect(result.log).toContain('CONTROLLED_CHILD_FINISHED');
         expect(result.stdout.indexOf('CONTROLLED_CHILD_FINISHED')).toBeGreaterThan(-1);
         expect(result.stdout.indexOf('PLAN_FINISHED')).toBeGreaterThan(result.stdout.indexOf('CONTROLLED_CHILD_FINISHED'));
     });
@@ -587,6 +620,22 @@ exports.queryMacFrontmostApplication=async()=>({pid:process.pid,name:'controlled
     writeFileSync(preload, String.raw`
 const Module = require('node:module'); const original = Module._extensions['.js'];
 Module._extensions['.js']=(mod,file)=>{if(file===process.argv[1])console.log('ORIGINAL_CLI_LOADED',file);return original(mod,file);};
+// Only the selected CLI's OS capability is a controlled external port. Its
+// production macOS gate still runs; dependencies retain the host OS module and
+// real process.platform, including Linux /proc start identity and native ps.
+const nativeLoad=Module._load;
+Module._load=function(request,parent,...args){
+ const loaded=nativeLoad.call(this,request,parent,...args);
+ const entry=parent?.filename===process.argv[1];
+ const mode=process.env.AUDIT_PORT_MODE;
+ const macConsumer=process.argv[1].endsWith('/run-ai-context-ui-test.cjs')||process.argv[1].endsWith('/run-translation-stats-ui-test.cjs');
+ if(request==='node:os'&&entry&&macConsumer&&(mode.startsWith('scan-')||mode.startsWith('idb')||mode==='platform-block')){
+  const consumerPlatform=mode==='platform-block'?'unsupported-fixture-platform':'darwin';
+  console.log('CONTROLLED_MACOS_PLATFORM_PORT',JSON.stringify({hostPlatform:process.platform,consumerPlatform}));
+  return {...loaded,platform:()=>consumerPlatform};
+ }
+ return loaded;
+};
 if(process.env.AUDIT_PORT_MODE.startsWith('scan-')) {
  const fs=require('node:fs'),path=require('node:path');
  const root=path.dirname(__filename),ports=path.join(root,'ports.cjs');
@@ -844,9 +893,28 @@ describe('audit49 J continuation2 actual RDP client and public CLI', () => {
 
 
 describe('audit49 J continuation2 public stats callback and native error paths', () => {
+    it.each([
+        ['scripts/testing/run-translation-stats-ui-test.cjs', '本专项仅使用 macOS'],
+        ['scripts/run-ai-context-ui-test.cjs', 'This suite requires the macOS'],
+    ])('%s rejects an unsupported OS before acquiring browser/server/profile resources', async (script, reason) => {
+        const observation = await portCLI(script, 'platform-block');
+        try {
+            const {result, profiles, ownerStates} = observation;
+            expect(result.stdout).toContain(`CONTROLLED_MACOS_PLATFORM_PORT ${JSON.stringify({hostPlatform: process.platform, consumerPlatform: 'unsupported-fixture-platform'})}`);
+            expect(result.stderr).toContain(reason);
+            expect(result.stdout).not.toContain('PUBLIC_LAUNCH_REACHED');
+            expect(result.stdout).not.toContain('PUBLIC_IDB_SEED_CALLBACK');
+            expect(result.stdout).not.toContain('OWNED_HTTP_SERVER_CLOSED');
+            expect(result.code).toBe(1);
+            expect(result.timedOut).toBe(false);
+            expect(profiles).toEqual([]);
+            expect(ownerStates).toEqual([]);
+        } finally {await observation.cleanup();}
+    }, 20000);
     for (const mode of ['idb-seed', 'idb-paging']) it(`${mode}: abort after successful puts rejects and releases the public consumer`, async () => {
         const {result, profiles} = await portCLI('scripts/testing/run-translation-stats-ui-test.cjs', mode);
         expect(result.stdout).toContain('ORIGINAL_CLI_LOADED');
+        expect(result.stdout).toContain(`CONTROLLED_MACOS_PLATFORM_PORT ${JSON.stringify({hostPlatform: process.platform, consumerPlatform: 'darwin'})}`);
         expect(result.stdout).toContain('PUBLIC_IDB_SEED_CALLBACK');
         expect(result.stdout).toContain('IDB_ABORT_ONLY');
         expect(result.stdout).not.toContain('IDB_TX_ERROR');
@@ -1006,6 +1074,9 @@ describe('audit49 J continuation3 complete manual cleanup consumers', () => {
           for (const observation of observations) {
             const {mode, result, profiles, retainedMarkers} = observation;
             expect(result.stdout, `${script} ${mode} original load`).toContain('ORIGINAL_CLI_LOADED');
+            if (script === 'scripts/run-ai-context-ui-test.cjs') {
+                expect(result.stdout).toContain(`CONTROLLED_MACOS_PLATFORM_PORT ${JSON.stringify({hostPlatform: process.platform, consumerPlatform: 'darwin'})}`);
+            }
             expect(result.stdout, `${script} ${mode} acquired external port`).toContain('PUBLIC_LAUNCH_REACHED');
             expect(result.timedOut, `${script} ${mode} finite consumer`).toBe(false);
             if (mode !== 'scan-partial') expect(result.stdout, `${script} ${mode} closes acquired browser`).toContain('SESSION_CLOSE');

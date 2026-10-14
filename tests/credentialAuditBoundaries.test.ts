@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 /**
  * 凭据审计的合成配置回归：身份、继承、不可变转换、深层清洗和实际 HTTP 字节语义。
  * 不读取本地存储、不执行网络请求，所有 Key 与端点均为测试值。
@@ -114,8 +115,8 @@ describe('云服务凭据绑定与实际 adapter 请求一致', () => {
         });
         const next = Object.assign(new Config(), current, {serviceRegion: {[service]: afterRegion}});
         const requests = captureCloudRequests({Code: '200', Data: {Translated: 'synthetic-result'}});
-        await aliyunTranslation(cloudRequest(current));
-        await aliyunTranslation(cloudRequest(next));
+        await aliyunTranslation(withProviderSnapshot(cloudRequest(current), {}));
+        await aliyunTranslation(withProviderSnapshot(cloudRequest(next), {}));
         expect(requests[1].url !== requests[0].url).toBe(changed);
         expect(requests[1].url).toBe(`https://mt.${afterRegion}.aliyuncs.com/`);
         const credentials = extractConfigCredentials(current);
@@ -127,14 +128,14 @@ describe('云服务凭据绑定与实际 adapter 请求一致', () => {
         expect(rebound.token).toEqual({}); expect(rebound.secret).toEqual({});
         expect(rebound.apiKeys).toEqual({}); expect(rebound.customHeaders).toEqual({});
         expect(dropCredentialsForChangedDestinations(credentials, next, current).token).toEqual({});
-        await expect(aliyunTranslation(cloudRequest(Object.assign(new Config(), next, rebound)))).rejects.toThrow('尚未配置');
+        await expect(aliyunTranslation(withProviderSnapshot(cloudRequest(Object.assign(new Config(), next, rebound)), {}))).rejects.toThrow('尚未配置');
         expect(requests).toHaveLength(2);
         const explicitToken = dropCredentialsForChangedDestinations(credentials, current, next, new Set([service]));
         expect(explicitToken.token).toEqual(credentials.token); expect(explicitToken.secret).toEqual(credentials.secret);
         expect(explicitToken.apiKeys).toEqual({}); expect(explicitToken.customHeaders).toEqual({});
         const explicitAll = dropCredentialsForChangedDestinations(credentials, current, next, new Set([service]), new Set(), new Set([service]), new Set([service]));
         expect(explicitAll).toBe(credentials);
-        await expect(aliyunTranslation(cloudRequest(Object.assign(new Config(), next, explicitAll)))).resolves.toBe('synthetic-result');
+        await expect(aliyunTranslation(withProviderSnapshot(cloudRequest(Object.assign(new Config(), next, explicitAll)), {}))).resolves.toBe('synthetic-result');
     });
 
     it.each([

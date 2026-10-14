@@ -13,9 +13,12 @@ import * as presentation from '@/src/features/document-translation/ui/presentati
 import * as preview from '@/src/features/document-translation/core/preview';
 import * as richPreviewSync from '@/src/features/document-translation/ui/richPreviewSync';
 import * as pdfOcr from '@/src/features/document-translation/services/pdfOcr';
+import * as documentTasks from '@/src/features/document-translation/ui/useDocumentTasks';
 import * as downloadCopy from '@/src/app/document-translation/downloadCopy';
+import {useConfigEditor} from '@/src/features/settings/model/useConfigEditor';
 import {createDocumentFileLoadGuard} from '@/src/features/document-translation/services/translation';
 import {generateDocumentArchive} from '@/src/features/document-translation/services/archive';
+import {createDocumentHistoryCommitter} from '@/src/features/document-translation/services/historyCommitter';
 import {TranslationRequestError, serializeTranslationError} from '@/src/services/translation/errors';
 
 // 编译真实页面 setup，注入可控解析/翻译边界；可见控件与下载文件另由真实浏览器套件验证。
@@ -52,8 +55,8 @@ beforeEach(async () => {
   download = vi.fn(async (document, translations, mode) => ({data: documentCore.renderDocument(document, translations, mode),
     fileName: documentCore.createDocumentDownloadName(document.fileName, mode), mimeType: 'text/plain'}));
   persist = vi.fn().mockResolvedValue(undefined);
-  const api = {...catalog, ...compositeTranslation, ...documentCore, ...presentation, ...preview, ...richPreviewSync, ...pdfOcr, createPdfPageRecognizer: () => async () => [], hasDistinctTranslation, Config, TranslationRequestError, serializeTranslationError, createDocumentFileLoadGuard,
-    documentRetryBackoff: {maxWaitMs: 0},
+  const api = {...catalog, ...compositeTranslation, ...documentCore, ...presentation, ...preview, ...richPreviewSync, ...pdfOcr, ...documentTasks, useConfigEditor, createPdfPageRecognizer: () => async () => [], hasDistinctTranslation, Config, TranslationRequestError, serializeTranslationError, createDocumentFileLoadGuard,
+    documentRetryBackoff: {maxWaitMs: 0}, createDocumentHistoryCommitter,
     createDocumentHistory: () => ({list: async () => [], load: async () => null, save: async () => false, remove: async () => {}, clear: async () => {}}), documentHistoryId: async () => '',
     parseDocumentFile: parseFile, translateDocumentSegments: translate, createDocumentDownload: download, generateDocumentArchive,
     buildGlossaryRevision: () => '', runtimeConfig: new Config(), configReady: Promise.resolve(),
@@ -134,10 +137,12 @@ describe('document batch page lifecycle', () => {
     expect(state.completedSegments).toBe(3);
     expect(state.progress).toBe(99);
     expect(state.translationComplete).toBe(false);
+    expect(state.batchCompletedCount).toBe(0);
     expect(state.statusLabel).toBe('document.translationProgress.finishing');
     pending.resolve();
     await work;
     expect(state.translationComplete).toBe(true);
+    expect(state.batchCompletedCount).toBe(1);
     expect(state.progress).toBe(100);
     expect(state.statusLabel).toBe('翻译完成');
   });

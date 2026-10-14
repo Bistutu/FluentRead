@@ -1,7 +1,7 @@
 <!--
  * @file userscript/SettingsPanel.vue
  * 文件职责：提供 userscript 紧凑设置对话框，编辑翻译服务、触发方式、输入翻译与界面配置草稿。
- * 主要内容：复用配置目录和持久化入口；AI 翻译超时按秒编辑，保留逐键输入草稿并在确认或保存时规范化为毫秒；动画样式末尾的“无”直接关闭界面动画并保留上次静态反馈样式。
+ * 主要内容：复用配置目录、持久化入口和共享模型删除命令，清理模型选择、思考偏好与请求限制；AI 翻译超时按秒编辑，保留逐键输入草稿并在确认或保存时规范化为毫秒；动画样式末尾的“无”直接关闭界面动画并保留上次静态反馈样式。
  * 模块边界：只管理设置草稿和保存反馈，不实现网页翻译或扩展专有能力。
 -->
 <template>
@@ -178,6 +178,7 @@
 import {computed, onMounted, ref, watch} from 'vue';
 import browser from 'webextension-polyfill';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
+import {removeConfiguredModel} from '@/src/core/config/modelEditing';
 import {Config, MIN_AI_REQUEST_TIMEOUT_MS, MAX_AI_REQUEST_TIMEOUT_MS, normalizeAiRequestTimeoutMs} from '@/src/core/config/model';
 import {useUiI18n} from '@/src/ui/i18n';
 import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
@@ -199,9 +200,7 @@ import {
   withCustomOpenAIServiceOptions,
 } from '@/src/core/config/customOpenAI';
 import {
-  createApiKeyRequirementKey,
   getApiKeyRequirementKey,
-  getLegacyApiKeyRequirementKey,
   getMissingCredentialMessage,
   isApiKeyRequired,
 } from '@/src/core/config/validation';
@@ -209,7 +208,6 @@ import {isUserscriptServiceSupported, normalizeUserscriptConfig} from './initial
 import {
   isModelThinkingEnabled,
   withModelThinkingPreference,
-  withoutModelThinkingPreference,
 } from '@/src/core/config/modelThinking';
 
 const emit = defineEmits<{close: []}>();
@@ -423,52 +421,7 @@ function submitCustomModel(): void {
 }
 
 function removeSelectedCustomModel(): void {
-  const service = draft.value.service;
-  const model = selectedServiceModel.value;
-  if (selectedCustomOpenAIProvider.value) {
-    const remaining = selectedCustomOpenAIProvider.value.models.filter((item) => item !== model);
-    draft.value.customOpenAIProviders = draft.value.customOpenAIProviders.map((provider) => (
-      provider.id === service ? {...provider, models: remaining} : provider
-    ));
-    const fallback = remaining[0] || '';
-    if (draft.value.model[service] === model) {
-      if (fallback) draft.value.model[service] = fallback;
-      else delete draft.value.model[service];
-    }
-    if (draft.value.documentModel[service] === model) {
-      if (fallback) draft.value.documentModel[service] = fallback;
-      else delete draft.value.documentModel[service];
-    }
-    delete draft.value.requireApiKey[createApiKeyRequirementKey(service, model)];
-    delete draft.value.requireApiKey[getLegacyApiKeyRequirementKey(service, model)];
-    draft.value.modelThinking = withoutModelThinkingPreference(draft.value.modelThinking, service, model);
-    return;
-  }
-  const remaining = (draft.value.customModels[service] || []).filter((item) => item !== model);
-  if (remaining.length > 0) draft.value.customModels[service] = remaining;
-  else delete draft.value.customModels[service];
-  const fallbackCustom = remaining[0];
-  const fallbackBuiltIn = builtInModelOptions.value[0] || '';
-  if (draft.value.model[service] === customModelString && draft.value.customModel[service] === model) {
-    if (fallbackCustom) {
-      draft.value.customModel[service] = fallbackCustom;
-    } else {
-      delete draft.value.customModel[service];
-      draft.value.model[service] = fallbackBuiltIn;
-    }
-  }
-  if (draft.value.documentModel[service] === customModelString
-    && draft.value.documentCustomModel[service] === model) {
-    if (fallbackCustom) {
-      draft.value.documentCustomModel[service] = fallbackCustom;
-    } else {
-      delete draft.value.documentCustomModel[service];
-      draft.value.documentModel[service] = fallbackBuiltIn;
-    }
-  }
-  delete draft.value.requireApiKey[createApiKeyRequirementKey(service, model)];
-  delete draft.value.requireApiKey[getLegacyApiKeyRequirementKey(service, model)];
-  draft.value.modelThinking = withoutModelThinkingPreference(draft.value.modelThinking, service, model);
+  removeConfiguredModel(draft.value, draft.value.service, selectedServiceModel.value, builtInModelOptions.value[0] || '');
 }
 
 watch(() => draft.value.service, cancelAddCustomModel);

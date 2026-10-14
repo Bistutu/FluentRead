@@ -28,16 +28,13 @@ import {
     getTranslationGlossaryContext,
     getTranslationProviderConfig,
     getTranslationGlossarySourceText,
-    getTranslationGlossaryTerms,
     getTranslationRequestControl,
     attachTranslationRequestControl,
     getTranslationImageInput,
     attachTranslationImageInput,
     isUnchangedTranslationResultAllowed,
-    TRANSLATION_REMAINING_BUDGET,
-    type TranslationRemainingBudgetContext,
-    type TranslationRouteObservation,
 } from './requestSnapshot';
+import {TRANSLATION_REMAINING_BUDGET, type TranslationRemainingBudgetContext, type TranslationRouteObservation} from './types';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse, isUnchangedTranslationResponse} from '@/src/core/translation/resultValidation';
 import {hasTranslationContent} from '@/src/core/translation/result';
@@ -46,7 +43,7 @@ import {buildGlossaryRevision, resolveGlossary} from '@/src/core/glossary';
 import {supportsNativeTranslationBatch, supportsTranslationBatch, supportsTranslationGlossary, getTranslationServiceUnavailableMessage} from './capabilities';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
-import {getGlossaryProtectionEntries, isGlossaryOnlyResult, prepareGlossaryRequest} from './glossaryProtection';
+import {isGlossaryOnlyResult, prepareGlossaryRequest} from './glossaryProtection';
 import {
     isDefinitePageContextLeak,
     isLikelyPageContextLeak,
@@ -56,7 +53,6 @@ import {getCompositeTranslationProvider, isCompositeTranslationProviderId} from 
 import {createCompositeTranslationRoutingState} from './compositeRouting';
 import {resolveCloudRegion, services} from '@/src/core/config/catalog';
 import {resolveTranslationRequestModel} from '@/src/core/config/requestModel';
-import {getAliyunTranslationEndpoint} from '@/src/core/config/constants';
 import {getServiceApiKeys} from '@/src/core/config/apiKeys';
 import {isModelThinkingEnabled} from '@/src/core/config/modelThinking';
 import {supportsVisionTransport} from '@/src/core/config/vision';
@@ -66,7 +62,6 @@ import {
     normalizeFreeTranslationCooldownMs,
 } from '@/src/core/config/freeTranslation';
 import {sha256Hex} from '@/src/shared/function/sha256';
-import {getDeepLEndpoint} from '@/src/core/config/deepl';
 import {waitForBoundedPersistence} from './persistenceBarrier';
 import {runWithApiKeyRotation} from './apiKeyRotation';
 import {
@@ -74,6 +69,7 @@ import {
     TranslationRequestSchedulerDeadlineError,
 } from './requestScheduler';
 import {serializeTranslationError} from './errors';
+import {createTranslationIdentityPolicy, type CacheRequestMode, type TranslationRequestIdentityContext} from './requestIdentity';
 import {currentConfiguredModel} from './templates';
 import {normalizeTranslationMaxRetries} from '@/src/core/config/scheduling';
 import {isDoubaoSeedTranslationModel} from '@/src/core/config/doubaoSeedTranslation';
@@ -95,8 +91,6 @@ export type {
     TranslationSingleRequestMessage,
 } from './types';
 
-type CacheRequestMode = 'single' | 'slot-protocol' | 'batch' | 'ai-multi-segment';
-
 /** 单次公开翻译请求的观测累加器，只记录服务标识与数值，随 execution 传入缓存和 provider 路径。 */
 interface TranslationRequestTrace {
     serviceId?: string;
@@ -108,16 +102,9 @@ interface TranslationRequestTrace {
     routeAttempts: TranslationRouteAttempt[];
 }
 
-interface TranslationRequestExecution {
-    readonly config: TranslationProviderConfigSnapshot;
-    readonly service: string;
-    readonly sourceLanguage: string;
-    readonly targetLanguage: string;
-    readonly enableAIContext: boolean;
-    readonly nativeBatchEnabled: boolean;
+interface TranslationRequestExecution extends TranslationRequestIdentityContext {
     readonly acceptUnchangedResult: boolean;
     readonly compositeMember?: boolean;
-    readonly thinking: boolean;
     readonly abortSignal?: AbortSignal;
     readonly ownershipKey?: string;
     readonly privateContext: boolean | undefined;
@@ -242,141 +229,8 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         return deps.getConfig();
     }
 
-    function getSelectedModel(
-        current: TranslationProviderConfigSnapshot,
-        service: string,
-        modelOverride?: string,
-    ): string {
-        return deps.resolveConfiguredModel(
-            modelOverride || current.model[service],
-            modelOverride || current.customModel[service],
-        );
-    }
-
-    /** 自定义请求体可以改写最终发送模型；调度身份必须与 provider payload 一致。 */
-    function getEffectiveRequestModel(
-        current: TranslationProviderConfigSnapshot,
-        service: string,
-        modelOverride?: string,
-    ): string {
-        return resolveTranslationRequestModel(
-            current,
-            service,
-            modelOverride,
-            deps.serviceTypes.isAiSdk,
-            deps.serviceTypes.isAI,
-        );
-    }
-
-    function isPromptBasedAI(
-        current: TranslationProviderConfigSnapshot,
-        service: string,
-        modelOverride?: string,
-    ): boolean {
-        return deps.serviceTypes.isUseAIContext(service, getSelectedModel(current, service, modelOverride));
-    }
-
-    function isAIContextEnabled(
-        execution: TranslationRequestExecution,
-        modelOverride?: string,
-    ): boolean {
-        return execution.enableAIContext && isPromptBasedAI(
-            execution.config,
-            execution.service,
-            modelOverride,
-        );
-    }
-
-    function getProviderEndpoint(current: TranslationProviderConfigSnapshot, service: string): string {
-        // 这些路径固定使用匿名端点，残留代理不能分裂缓存或在途去重。
-        if (service === 'freeTranslation' || service === 'myMemory' || service === 'bilibili' || service === services.chatgptPlan) return '';
-        if (deps.serviceTypes.isAiSdk(service)) {
-            try {
-                return deps.endpointResolver.resolveOpenAICompatibleEndpoint(service, current).endpoint;
-            } catch {
-                // 步骤 1：配置校验负责用户可见错误；缓存 key 生成必须在设置缺失时仍可完成。
-                return '';
-            }
-        }
-        // custom、New API、MiniMax 与 MiMo 都经 AI SDK 端点解析；这里只保留仍走旧适配器的地址来源，
-        // 避免同一服务出现第二套默认区域或地址补全规则。
-        if (service === 'deepL') return getDeepLEndpoint(current.deeplApiPlan, current.proxy[service]);
-        // 云服务按固定端点或地域访问，未消费的旧代理值不能分裂缓存与在途身份。
-        if (service === services.aliyunTranslation) return getAliyunTranslationEndpoint(current.serviceRegion?.[service]);
-        if (service === services.baiduTranslation || service === services.googleCloudTranslation
-            || service === services.azureTranslator || service === services.volcTranslation
-            || service === services.youdao) return '';
-        if (current.proxy[service]) return current.proxy[service];
-        if (service === 'deeplx') return current.deeplx;
-        return '';
-    }
-
-    function buildCacheKey(
-        execution: TranslationRequestExecution,
-        origin: string | string[],
-        context: string,
-        pageContext: string,
-        mode: CacheRequestMode,
-        modelOverride?: string,
-        sourceLanguageDetectionText?: string,
-    ): string {
-        const {config: current, service, sourceLanguage, targetLanguage} = execution;
-        // 公开入口已冻结本次匹配范围；普通键复用保护条目，避免两次扫描同一术语库。
-        // token（包括空数组）继续按原 helper 筛选，未命中时不追加保护解析。
-        const glossaryEntries = current.glossaryProtectedTokens ? undefined : getGlossaryProtectionEntries(current, origin);
-        const glossaryTerms = glossaryEntries
-            ? glossaryEntries.map(({source, target}) => ({source, target: target || source}))
-            : getTranslationGlossaryTerms(current, origin);
-
-        return deps.buildTranslationCacheKey({
-            requestMode: mode,
-            sourceText: origin,
-            sourceLanguage,
-            targetLanguage,
-            service,
-            ...(execution.acceptUnchangedResult ? {unchangedResultPolicy: 1} : {}),
-            ...(supportsNativeTranslationBatch(service) ? {enableNativeBatch: execution.nativeBatchEnabled} : {}),
-            model: getSelectedModel(current, service, modelOverride),
-            endpoint: getProviderEndpoint(current, service),
-            azureOpenaiEndpoint: service === 'azureOpenai' ? current.azureOpenaiEndpoint : undefined,
-            ...(service === 'freeTranslation' ? {freeTranslationPolicy: {
-                // v4 使用后台动态权重；缓存按用户模式隔离，不随每次性能观测抖动。
-                version: 4,
-                order: current.freeTranslationOrder,
-                mode: current.freeTranslationMode,
-                nativeBatch: [services.google, services.microsoft].map(id =>
-                    [id, isNativeTranslationBatchEnabled(id, current.nativeBatchTranslationEnabled)]),
-            }} : {}),
-            // v3 将相邻自动数学字面值合为有界保护组，旧文档缓存不能绕过完整恢复契约。
-            // 仅分隔文档请求；网页缓存、已保存译文和人工校订不清空。
-            ...(current.glossaryMatchContext?.context === 'document' ? {documentTranslationPolicy: {version: 3}} : {}),
-            customBody: current.customBody[service] || '',
-            ...(current.customHeaders?.[service] ? {customHeaders: current.customHeaders[service]} : {}),
-            systemRole: current.system_role[service] || '',
-            userRole: current.user_role[service] || '',
-            ...(glossaryTerms.length ? {glossaryTerms, glossaryProtection: {version: 1,
-                entries: glossaryEntries ?? getGlossaryProtectionEntries(current, origin)}} : {}),
-            deepseekApiType: current.deepseekApiType,
-            modelThinking: execution.thinking,
-            transportProfile: deps.serviceTypes.isAiSdk(service)
-                ? deps.endpointResolver.aiSdkTransportProfile
-                : undefined,
-            // 步骤 1：DeepL 把标题上下文直接发送给 provider；AI adapter 通过 prompt 注入页面上下文。
-            context: service === 'deepL' ? context : undefined,
-            pageContext: isAIContextEnabled(execution, modelOverride) ? pageContext : undefined,
-            // v2 补齐跨语种短原文异常扩写的软恢复门禁。旧上下文结果未经过此门禁，
-            // 仅隔离实际携带 AI 页面上下文的正文缓存，摘要、无上下文与机器翻译身份保持稳定。
-            // 新身份中的结果已经复验；缓存读取仍只拒绝确定泄漏，合法长扩写不会每次重试。
-            ...(pageContext.trim() && isAIContextEnabled(execution, modelOverride)
-                ? {pageContextValidationPolicy: {version: 2}}
-                : {}),
-            ...((service === 'chromeTranslator' || service === 'localTranslation')
-                && sourceLanguage === 'auto'
-                && sourceLanguageDetectionText?.trim()
-                ? {sourceLanguageDetectionText}
-                : {}),
-        });
-    }
+    const {getSelectedModel, getEffectiveRequestModel, isPromptBasedAI, isAIContextEnabled,
+        getProviderEndpoint, buildCacheKey} = createTranslationIdentityPolicy(deps);
 
     function buildBatchItemCacheKey(
         execution: TranslationRequestExecution,

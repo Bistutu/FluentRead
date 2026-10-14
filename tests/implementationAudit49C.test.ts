@@ -120,7 +120,7 @@ import {VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY, VIDEO_LOCAL_TRANSCRIPTION_STATE_MES
 import {getVideoAiModelFileUrl, VIDEO_AI_Q4_MODEL_FILES, VIDEO_AI_SMALL_MODEL_FILES} from '@/src/features/video-subtitle/offscreen/modelCache';
 import {VIDEO_AI_SUBTITLE_CACHE_CLEAR_MESSAGE, VIDEO_AI_SUBTITLE_CACHE_STATS_MESSAGE} from '@/src/features/video-subtitle/transcriptionCache';
 import {createVideoSubtitleBackgroundHandlers} from '@/src/features/video-subtitle/background/handlers';
-import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/services/messaging/backgroundRouter';
 import {downloadProgressKey, videoModelDownloadId} from '@/src/core/download/progress';
 import {appendConfigHistorySnapshot, toRestorableConfig} from '@/src/services/config/history';
 import {appendConfigAutoBackup} from '@/src/services/config/autoBackup';

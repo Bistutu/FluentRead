@@ -1,0 +1,129 @@
+{
+  "sourceCommit": "a27e1171cf60b6c23b1d58bb3bfaea20d9afcfc2",
+  "baseCommit": "e806feff0035d7df3e794265a4a9a648015dd487",
+  "oldRun": "38587152394",
+  "oldRunConclusion": "cancelled as superseded",
+  "visibleFailures": 8,
+  "fixes": {
+    "reportFixture": "Align artifactsDir, step id, returned report, persisted output, real child failures and completion order with current runner.",
+    "nativeCli": "Use the existing node:os platform capability at the two CLI entry guards. Controlled fixtures replace only that capability; native ownership uses actual process.platform.",
+    "icon": "Verify the exact published pin and PNG digest without requiring an unrelated old Git object in clean checkouts.",
+    "pdf": "Linear fragment aggregation preserves the 160000-fragment, output-digest, read-count and 15000ms child deadline contracts."
+  },
+  "cli": {
+    "passed": 112,
+    "ownedActorsGone": 180,
+    "remainingOwnerRoots": 0,
+    "platform": "macOS Node20"
+  },
+  "icon": {
+    "failure": "tests/userscriptViteConfig.test.ts > keeps standard runtime icon inline and pins only the standard manager icon",
+    "ciEvidence": {
+      "log": "/private/tmp/fluentread-pr985-cancelled-ci-complete.log",
+      "lines": [
+        6335,
+        6344,
+        6345,
+        6346
+      ],
+      "node": "v22.23.3",
+      "os": "Ubuntu24.04.5"
+    },
+    "rootCause": "The fixed public resource commit184a3d74 is not in main ancestry. A normal full-history checkout of main lacks that Git object, while the developer repository retains it through old local branches. git show reports the same path-not-in-commit text even when cat-file confirms the commit object is absent. GITHUB_REPOSITORY does not participate in the static icon URL.",
+    "gitEvidence": {
+      "resourceCommit": "184a3d74f61b9d2a8d47080787f7e0180b98414d",
+      "localCommitTree": "e61135b5115d6fda13f48cd344570bc8a08a6710",
+      "localIconBlob": "2cc3dec8401db10e6c7e68ffb1e834f0076a24a3",
+      "replacementRefs": false,
+      "noReplaceObjectsReadMatches": true,
+      "ancestorOfMain": false,
+      "cleanMainCommit": "e806feff0035d7df3e794265a4a9a648015dd487",
+      "cleanMainFetch": "Full non-shallow fetch of exact origin/main history into an independent temporary Git repository; no old branch refs or alternates.",
+      "cleanCommitObjectMissing": true,
+      "cleanGitShowMatchesCiError": true
+    },
+    "publishedResources": [
+      {
+        "name": "current-raw",
+        "url": "https://raw.githubusercontent.com/FluentRead/FluentRead/184a3d74f61b9d2a8d47080787f7e0180b98414d/public/icon/64.png",
+        "status": 200,
+        "contentType": "image/png",
+        "bytes": 6331,
+        "sha256": "4226fc057f80b2308a6153b3316bc02b31b74f1a7f92504e9f45f30d245b5535",
+        "pngSignature": true
+      },
+      {
+        "name": "current-cdn",
+        "url": "https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@184a3d74f61b9d2a8d47080787f7e0180b98414d/public/icon/64.png",
+        "status": 200,
+        "contentType": "image/png",
+        "bytes": 6331,
+        "sha256": "4226fc057f80b2308a6153b3316bc02b31b74f1a7f92504e9f45f30d245b5535",
+        "pngSignature": true
+      },
+      {
+        "name": "main-raw",
+        "url": "https://raw.githubusercontent.com/FluentRead/FluentRead/6537d3de830a94384f16c76ff8c3ccc41ac051d5/public/icon/64.png",
+        "status": 200,
+        "contentType": "image/png",
+        "bytes": 6331,
+        "sha256": "4226fc057f80b2308a6153b3316bc02b31b74f1a7f92504e9f45f30d245b5535",
+        "pngSignature": true
+      }
+    ],
+    "productionChanged": false,
+    "fix": "Only the failing test: retain immutable URL shape and runtime/standalone bytes checks; require the exact published commit and PNG SHA256 rather than reading an unrelated old Git object.",
+    "reproduction": {
+      "node": "v22.23.2",
+      "os": "macOS",
+      "ciEnvironment": {
+        "CI": "true",
+        "GITHUB_REPOSITORY": "FluentRead/FluentRead",
+        "FLUENTREAD_TEST_MAX_WORKERS": "1",
+        "FLUENTREAD_TEST_CONCURRENCY": "1",
+        "FLUENTREAD_DISABLE_BROWSER_RUNNER": "1",
+        "NODE_OPTIONS": "--max-old-space-size=4096"
+      },
+      "originalTaskSelectedCase": "passed",
+      "originalCleanMainSelectedCase": "failed with same CI git show error",
+      "fixedCleanMainCoverageConfigCases": 2,
+      "fixedTaskNormalCases": 2,
+      "negativeControls": [
+        {
+          "name": "changed-published-png-bytes",
+          "exitCode": 1,
+          "correctlyRejected": true,
+          "log": "/private/tmp/fluentread-icon-ci-negative-changed-published-png-bytes.log"
+        },
+        {
+          "name": "changed-manager-pin",
+          "exitCode": 1,
+          "correctlyRejected": true,
+          "log": "/private/tmp/fluentread-icon-ci-negative-changed-manager-pin.log"
+        }
+      ],
+      "logs": [
+        "/private/tmp/fluentread-icon-ci-current-node22.log",
+        "/private/tmp/fluentread-icon-ci-main-node22.log",
+        "/private/tmp/fluentread-icon-ci-clean-fixed-coverage.log",
+        "/private/tmp/fluentread-icon-ci-task-fixed.log"
+      ]
+    },
+    "proofLimits": [
+      "Local Node22.23.2/macOS reproduces the Git object-availability failure; the canceled CI used Node22.23.3/Ubuntu.",
+      "Only the selected icon cases ran. Coverage-config diagnostics retain all100% thresholds and V8 instrumentation, but intentionally do not meet complete-file coverage when the other185 cases are excluded; no full-suite or100% coverage claim."
+    ],
+    "cleanup": {
+      "independentTemporaryRepositoryRemoved": true,
+      "sharedNodeModulesPreserved": true
+    }
+  },
+  "workflow": {
+    "selectedFiles": 447,
+    "strictModules": 83,
+    "maxWorkers": 1,
+    "timeoutMinutes": 75,
+    "reason": "The prior single-worker run completed 210 of 447 files in 32 minutes before cancellation; leave bounded time for the remaining scope and builds."
+  },
+  "hostedFinalCI": "pending at recording time"
+}

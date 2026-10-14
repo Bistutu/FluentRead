@@ -65,7 +65,7 @@ vi.mock('@/src/app/content/features', () => ({
     createInputTranslationContentFeature: () => ({mount: mocks.mountInput, invalidate: mocks.invalidateInput}),
     mountHoverTranslationContentFeature: () => vi.fn(),
 }));
-vi.mock('@/src/app/translation/client', () => ({cancelAllTranslations: vi.fn()}));
+vi.mock('@/src/services/translation/client', () => ({cancelAllTranslations: vi.fn()}));
 vi.mock('@/src/services/translation/context', () => ({resetPageTranslationContextCache: vi.fn()}));
 vi.mock('@/src/services/translation/legacyPageCache', () => ({clearLegacyPageTranslationCache: vi.fn()}));
 vi.mock('@/src/app/content/hotkeyRuntime', () => ({

@@ -1,5 +1,6 @@
-import {readdirSync, readFileSync, statSync} from 'node:fs';
+import {mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import {relative, resolve, sep} from 'node:path';
+import {tmpdir} from 'node:os';
 import {describe, expect, it} from 'vitest';
 
 const PROJECT_ROOT = resolve(__dirname, '../..');
@@ -17,7 +18,12 @@ function extensionOf(path: string): string {
     return dotIndex >= 0 ? path.slice(dotIndex) : '';
 }
 
-function listSourceFiles(): string[] {
+function isOperatingSystemMetadata(path: string): boolean {
+    // Finder 可以在任何浏览过的目录创建此文件；仅忽略精确文件名，源码和未知资产仍接受原审计。
+    return path.replaceAll('\\', '/').split('/').at(-1) === '.DS_Store';
+}
+
+function listSourceFiles(root = SRC_ROOT): string[] {
     const files: string[] = [];
 
     const visit = (directory: string) => {
@@ -25,13 +31,13 @@ function listSourceFiles(): string[] {
             const absolute = resolve(directory, entry);
             if (statSync(absolute).isDirectory()) {
                 visit(absolute);
-            } else {
+            } else if (!isOperatingSystemMetadata(absolute)) {
                 files.push(relativePath(absolute));
             }
         }
     };
 
-    visit(SRC_ROOT);
+    visit(root);
     return files.sort();
 }
 
@@ -56,6 +62,19 @@ function normalizedHeaderLines(header: string): string[] {
 describe('src file header documentation', () => {
     const allSourceFiles = listSourceFiles();
     const sourceFiles = allSourceFiles.filter((path) => DOCUMENTED_EXTENSIONS.has(extensionOf(path)));
+
+    it('只排除 Finder 元数据，不放宽隐藏源码和未知资产的审计', () => {
+        const directory = mkdtempSync(resolve(tmpdir(), 'fluentread-source-headers-'));
+        const retained = ['.hidden.ts', '.DS_Store.ts', '.DS_Store.backup', 'unknown.bin'];
+        try {
+            for (const name of ['.DS_Store', ...retained]) writeFileSync(resolve(directory, name), 'fixture');
+            expect(listSourceFiles(directory).map(path => path.split('/').at(-1))).toEqual(retained.sort());
+            expect(isOperatingSystemMetadata('src\\core\\.DS_Store')).toBe(true);
+            expect(DOCUMENTED_EXTENSIONS.has(extensionOf('unknown.bin'))).toBe(false);
+        } finally {
+            rmSync(directory, {recursive: true, force: true});
+        }
+    });
 
     it('源码提供文件头，声明式 JSON 数据使用标准 JSON 语法', () => {
         // JSON 不支持注释；数据目录由对应 catalog 测试校验语义，不能强塞源码注释破坏导入格式。

@@ -14,13 +14,13 @@ import {buildChromeOffscreenTranslationData} from '@/src/providers/translation/c
 import {disposeChromeTranslationModels, translateWithChromeApi, type ChromeTranslationEnvironment} from '@/src/app/offscreen/translation';
 import {attachTranslationRequestControl} from '@/src/services/translation/requestSnapshot';
 import type {TranslationConfigSource, TranslationProvider} from '@/src/services/translation/types';
-import type {TranslateOptions} from '@/src/app/translation/client';
+import type {TranslateOptions} from '@/src/services/translation/client';
 import {translateTextSlots, type FullPageTranslationConfigSnapshot,
     type FullPageTranslationSessionCache} from '@/src/features/full-page-translation/content/translationRequest';
 
 const ports = vi.hoisted(() => ({single: vi.fn(), batch: vi.fn()}));
 const ownedChromeEnvironments = new Set<ChromeTranslationEnvironment>();
-vi.mock('@/src/app/translation/client', () => ({translateText: ports.single, translateTextBatch: ports.batch}));
+vi.mock('@/src/services/translation/client', () => ({translateText: ports.single, translateTextBatch: ports.batch}));
 vi.mock('@/src/services/config/store', () => ({config: {maxConcurrentTranslations: 2}}));
 vi.mock('@/src/core/translation/public', () => import('@/src/core/translation/slotProtocol'));
 

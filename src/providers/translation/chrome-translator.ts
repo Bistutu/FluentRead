@@ -6,9 +6,8 @@
  * 模块边界：本文件位于 provider 适配层，只把统一翻译请求转换为外部或浏览器服务协议；不管理页面 DOM、UI 生命周期或配置持久化，缓存、去重和超时总预算由 translation broker 统一协调。
  */
 
-import {config} from '@/src/services/config/store';
 import {abortErrorFromSignal} from '@/src/platform/http/runtime';
-import {getTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
 import {
     browserCapabilities,
     type BrowserCapabilities,
@@ -64,7 +63,7 @@ export function createChromeTranslator(dependencies: ChromeTranslatorDependencie
 
         try {
             if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
-            const current = getTranslationProviderConfig(message, config);
+            const current = requireTranslationProviderConfig(message);
             const requestId = dependencies.createRequestId();
             const response = await dependencies.offscreenClient.send<ChromeTranslationOffscreenResponse>({
                 type: 'CHROME_TRANSLATE_OFFSCREEN',

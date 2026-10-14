@@ -154,6 +154,7 @@ describe('AI 模型编号列表', () => {
             services.mimo,
             services.jieyue,
             services.openai,
+            services.chatgptPlan,
             services.gemini,
             services.claude,
             services.grok,
@@ -190,7 +191,7 @@ describe('AI 模型编号列表', () => {
             services.ollama,
             services.custom,
         ]);
-        expect(aiServices.filter(option => option.catalogKind === 'provider')).toHaveLength(15);
+        expect(aiServices.filter(option => option.catalogKind === 'provider')).toHaveLength(16);
         expect(servicesType.isMachine(services.freeTranslation)).toBe(true);
         expect(defaultOption.service).toBe(services.freeTranslation);
     });

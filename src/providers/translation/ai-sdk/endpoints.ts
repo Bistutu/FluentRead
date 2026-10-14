@@ -7,7 +7,6 @@
  */
 
 import {getMimoEndpoint, MINIMAX_ENDPOINTS, urls} from '@/src/core/config/constants';
-import {config as runtimeConfig} from '@/src/services/config/store';
 import {referenceAiPlatformServices, services} from '@/src/core/config/catalog';
 import {normalizeAzureEndpoint} from '@/src/core/config/azure';
 import {
@@ -198,7 +197,7 @@ function resolveCommonEndpoint(service: string, config: AiSdkEndpointConfig): st
 
 export function resolveOpenAICompatibleEndpoint(
     service: string,
-    config: AiSdkEndpointConfig = runtimeConfig,
+    config: AiSdkEndpointConfig,
 ): ResolvedOpenAICompatibleEndpoint {
     const route = getAiSdkEndpointRoute(service);
     if (!route) throw new Error(`翻译服务尚未纳入 AI SDK 端点解析: ${service}`);

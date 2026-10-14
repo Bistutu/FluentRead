@@ -6,8 +6,13 @@
  */
 
 import type {
-    SiteAdaptationSettings, SiteContentRule, SiteRecipe, SiteRule,
-    SiteRuleIssue, SiteRulePack, SiteRulePackParseResult,
+    SiteAdaptationSettings,
+    SiteContentRule,
+    SiteRecipe,
+    SiteRule,
+    SiteRuleIssue,
+    SiteRulePack,
+    SiteRulePackParseResult,
 } from './types';
 
 export const SITE_RULE_LIMITS = Object.freeze({

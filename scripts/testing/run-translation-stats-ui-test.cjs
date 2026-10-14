@@ -26,7 +26,7 @@ const panel = '#settings-translation-stats';
 const AI_SERVICE = 'custom:stats-fixture';
 const FIXTURE_WORDS = ['alpha', 'bravo', 'charlie', 'exceeded', 'golf', 'hotel', 'india', 'juliet', 'kilo', '译:'];
 
-assert.equal(process.platform, 'darwin', '本专项仅使用 macOS 隔离 Edge 防抢焦点流程');
+assert.equal(os.platform(), 'darwin', '本专项仅使用 macOS 隔离 Edge 防抢焦点流程');
 assert.ok(fs.existsSync(focusHelper), `防抢焦点 helper 不存在：${focusHelper}`);
 assert.ok(fs.existsSync(path.join(extensionDir, 'manifest.json')), `扩展产物不存在：${extensionDir}`);
 assert.ok(!extensionDir.endsWith('-dev'), '本专项必须使用 production 扩展产物');

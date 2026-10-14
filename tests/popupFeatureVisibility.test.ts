@@ -260,8 +260,10 @@ describe('popup feature visibility', () => {
         expect(popup).toContain(':data-config-ready="hydrated ? \'true\' : \'false\'"');
         expect(popup).toContain(':inert="!hydrated"');
         expect(popup).toContain(':aria-busy="!hydrated"');
-        expect(popup).toContain('watch(() => JSON.stringify(config.value)');
-        expect(popup).toContain("}, { flush: 'post' });");
+        expect(popup).toContain('useConfigEditor({');
+        expect(popup).toContain("flush: 'post'");
+        expect(popup).toContain('ready: configReady');
+        expect(popup).toContain('saveDraft: snapshot => persistConfigPatch(snapshot)');
         expect(popup).toContain('!config.value.uiLanguageSetupCompleted');
         expect(styles).toContain('.popup-shell.config-loading { pointer-events: none; }');
         expect(startup.indexOf('await configReady')).toBeLessThan(startup.indexOf('const app = createApp(App)'));
@@ -457,7 +459,7 @@ describe('popup feature visibility', () => {
         expect(source('src/app/popup/PopupServices.vue')).toContain('isTranslationServiceAvailable(option.value)');
         expect(popup).toContain('selectedServiceUnavailableMessage');
         expect(popup).not.toContain("activeDrawer === 'video'");
-        expect(source('src/features/settings/ui/SettingsSections.vue')).toContain('Chrome内置AI翻译（当前浏览器不可用）');
+        expect(source('src/features/settings/ui/SettingsSections.vue')).toContain('<el-option v-if="selectedTextServiceUnavailableMessage" :label="defaultTextServiceLabel" :value="config.service" disabled />');
         expect(popup).toContain('原有开关偏好已保留');
     });
 

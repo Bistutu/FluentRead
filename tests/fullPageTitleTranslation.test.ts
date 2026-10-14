@@ -11,7 +11,7 @@ const hooks = vi.hoisted(() => ({
     shouldSkip: vi.fn<(origin: string, target: string) => boolean>(() => false),
 }));
 
-vi.mock('@/src/app/translation/client', () => ({translateText: hooks.translateText}));
+vi.mock('@/src/services/translation/client', () => ({translateText: hooks.translateText}));
 vi.mock('@/src/core/language/detect', () => ({shouldSkipTranslationForTarget: hooks.shouldSkip}));
 vi.mock('@/src/features/full-page-translation/content/translationRequest', () => ({
     createSnapshotTranslateOptions: (snapshot: unknown, options: unknown) => ({snapshot, ...(options as object)}),

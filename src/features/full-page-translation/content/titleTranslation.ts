@@ -9,7 +9,7 @@
  * 替换式呈现，不跟随 displayMode。
  */
 import {hasDistinctTargetTranslation as hasDistinctTranslation} from '@/src/core/translation/targetResult';
-import {translateText} from '@/src/app/translation/client';
+import {translateText} from '@/src/services/translation/client';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import {createSnapshotTranslateOptions, type FullPageTranslationConfigSnapshot} from './translationRequest';
 

@@ -4,7 +4,7 @@
  * 主要内容：凭浏览器提供的 tab、frameId 和 URL 验证来源，向顶层请求状态，并向同标签页广播刷新。
  * 模块边界：不读取页面凭据、正文或 DOM；真实会话快照只由经过认证的顶层 content 返回。
  */
-import type {BackgroundMessageHandler} from '@/src/app/background/messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {
     EMBEDDED_FRAME_CHANGED, EMBEDDED_FRAME_COMMAND, EMBEDDED_FRAME_REFRESH,
     EMBEDDED_FRAME_REQUEST, isSupportedEmbeddedFramePair, isSupportedEmbeddedTopUrl,

@@ -9,22 +9,21 @@
 import {resolveConfiguredModel, services} from "@/src/core/config/catalog";
 import {method, urls} from "@/src/core/config/constants";
 import {claudeMsgTemplate} from '@/src/services/translation/templates';
-import {config} from "@/src/services/config/store";
 import {appendOptionalHeader} from './auth';
 import {createHttpStatusError, createImageInputHttpError, readJsonResponse} from '@/src/platform/http/errors';
 import {abortErrorFromSignal, createRuntimeAbortContext, runtimeFetch} from '@/src/platform/http/runtime';
 import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {
-    getTranslationProviderConfig,
+    requireTranslationProviderConfig,
     reportTranslationModelUsage,
     reportTranslationModelUsageFailure,
     getTranslationImageInput,
-    type TranslationProviderRequest,
 } from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {normalizeClaudeUsage} from './usage';
 
 async function claude(message: TranslationProviderRequest<string>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const service = message.serviceOverride || services.claude;
     if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
     const configuredModel = resolveConfiguredModel(
@@ -40,7 +39,18 @@ async function claude(message: TranslationProviderRequest<string>) {
 
     const url = current.proxy[service] || urls[services.claude];
 
-    const body = claudeMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service, message.targetLanguage, message.modelOverride, current, message.thinkingOverride, getTranslationImageInput(message));
+    const body = claudeMsgTemplate({
+        origin: message.origin,
+        context: message.pageContext,
+        prompt: message.summaryPrompt,
+        systemPrompt: message.summarySystemPrompt,
+        serviceOverride: service,
+        targetLanguage: message.targetLanguage,
+        modelOverride: message.modelOverride,
+        current,
+        thinkingOverride: message.thinkingOverride,
+        imageInput: getTranslationImageInput(message),
+    });
     // broker 数值是扣除排队/摘要后的预算；直接 provider 调用才使用冻结配置默认值。
     const timeoutMs = typeof message.requestTimeoutMs === 'number' && Number.isFinite(message.requestTimeoutMs)
         ? Math.max(1, Math.floor(message.requestTimeoutMs)) : normalizeAiRequestTimeoutMs(current.aiRequestTimeoutMs);

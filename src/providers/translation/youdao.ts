@@ -8,15 +8,12 @@
 
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import { method } from "@/src/core/config/constants";
-import { config } from "@/src/services/config/store";
 import {sha256Hex} from '@/src/shared/function/sha256';
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
 import {runtimeFetch} from '@/src/platform/http/runtime';
-import {
-  getTranslationProviderConfig,
-  type TranslationProviderRequest,
-} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 
 interface YoudaoResponse {
   errorCode: string;
@@ -24,7 +21,7 @@ interface YoudaoResponse {
 }
 
 async function youdao(message: TranslationProviderRequest<string>): Promise<string> {
-  const current = getTranslationProviderConfig(message, config);
+  const current = requireTranslationProviderConfig(message);
   // 检查必需的配置
   if (!current.youdaoAppKey || !current.youdaoAppSecret) {
     throw new Error('请先配置有道翻译的 App Key 和 App Secret');
@@ -111,7 +108,7 @@ async function youdao(message: TranslationProviderRequest<string>): Promise<stri
     'yue': 'yue'
   };
 
-  const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+  const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
   const normalizedSource = normalizeChineseLanguageCode(sourceLanguage);
   const normalizedTarget = normalizeChineseLanguageCode(targetLanguage);
   const fromLang = Object.hasOwn(langMap, normalizedSource) ? langMap[normalizedSource] : sourceLanguage;

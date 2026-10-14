@@ -7,8 +7,7 @@ import {resolveTranslationLanguages} from '@/src/core/translation/languages';
 import {
     attachTranslationImageInput, attachTranslationRequestControl, getTranslationImageInput,
     getTranslationProviderConfig, getTranslationRequestScheduler, markTranslationRemainingBudget,
-    reportTranslationModelUsage,
-    allowUnchangedTranslationResult, reportTranslationRoute,
+    reportTranslationModelUsage, allowUnchangedTranslationResult, reportTranslationRoute,
 } from '@/src/services/translation/requestSnapshot';
 import type {TranslationModelUsageRecord, TranslationProvider, TranslationProviderRegistry} from '@/src/services/translation/types';
 
@@ -484,5 +483,133 @@ describe('组合翻译真实 broker 接入', () => {
         h.config.compositeTranslationProviders = [];
         await expect(h.broker.translateWithCache({origin: sourceText})).rejects.toThrow('已被删除');
         expect(h.providers.google).not.toHaveBeenCalled();
+    });
+
+    it('单条 AI 成员把数组中的旧泄漏缓存逐段无上下文恢复，保留冻结模型与取消所有权', async () => {
+        const h = setup([services.claude]);
+        h.config.token.claude = 'fixture-claude-before';
+        h.config.model.claude = 'claude-sonnet-4-5';
+        h.config.enableAIContext = true;
+        const origins = ['Alpha', 'Beta'];
+        const translations = ['阿尔法', '贝塔'];
+        const context = 'Article heading';
+        const pageContext = 'Page title: private reference material.';
+        h.providers.claude = vi.fn(async message => {
+            if (message.summaryPrompt) return 'Private article summary';
+            expect(typeof message.origin).toBe('string');
+            return message.origin === origins[0] ? translations[0] : translations[1];
+        });
+        await expect(h.broker.translateWithCache({origin: origins, context, pageContext})).resolves.toEqual(translations);
+        const itemKeys = [...h.cacheStore.keys()].filter(key => JSON.parse(key).requestMode === 'batch');
+        expect(itemKeys).toHaveLength(2);
+        for (const key of itemKeys) h.cacheStore.set(key, '旧译文 <webpage_context>泄漏的私有参考</webpage_context>');
+        const owner = new AbortController();
+        const snapshots: unknown[] = [];
+        h.recordRequest.mockClear();
+        h.providers.claude = vi.fn(async message => {
+            expect(message.summaryPrompt).toBeUndefined();
+            expect(message.context).toBe('');
+            expect(message.pageContext).toBe('');
+            expect(message.abortSignal?.aborted).toBe(false);
+            expect(getTranslationRequestScheduler(message)?.identity).toEqual({service: 'claude', model: 'claude-sonnet-4-5'});
+            const snapshot = getTranslationProviderConfig(message, h.config);
+            snapshots.push(snapshot);
+            expect(snapshot.token.claude).toBe('fixture-claude-before');
+            expect(snapshot.model.claude).toBe('claude-sonnet-4-5');
+            h.config.token.claude = 'changed-during-recovery';
+            h.config.model.claude = 'changed-model';
+            return message.origin === origins[0] ? translations[0] : translations[1];
+        });
+        await expect(h.broker.translateWithCache(attachTranslationRequestControl({origin: origins, context, pageContext,
+            modelOverride: 'group-model'}, {signal: owner.signal, ownershipKey: 'recover-cached-array'}))).resolves.toEqual(translations);
+        expect(h.providers.claude).toHaveBeenCalledTimes(2);
+        expect(snapshots[0]).toStrictEqual(snapshots[1]);
+        expect(snapshots.every(snapshot => Object.isFrozen(snapshot))).toBe(true);
+        expect(owner.signal.aborted).toBe(false);
+        expect(itemKeys.map(key => h.cacheStore.get(key))).toEqual(translations);
+        expect(h.recordRequest.mock.calls[0][0]).toMatchObject({serviceId: group, model: 'claude-sonnet-4-5',
+            mode: 'batch', upstreamCalls: 2, cachedSegments: 0, routes: ['claude'], outcome: 'success'});
+    });
+
+    it('受信旧配置中的递归成员不会派发，成功成员的内部线路统计仍归属于组合请求', async () => {
+        const h = setup([services.freeTranslation]);
+        h.config.compositeTranslationProviders[0].services = [group, 'composite:nested', services.freeTranslation];
+        const owner = new AbortController();
+        h.providers.freeTranslation = vi.fn(async message => {
+            expect(message.abortSignal?.aborted).toBe(false);
+            expect(message.modelOverride).toBeUndefined();
+            expect(getTranslationRequestScheduler(message)?.identity?.service).toBe(services.freeTranslation);
+            reportTranslationRoute(message, {route: 'microsoft', outcome: 'error', durationMs: 4, chars: sourceText.length});
+            reportTranslationRoute(message, {route: 'google', outcome: 'success', durationMs: 7, chars: sourceText.length});
+            return translatedText;
+        });
+        await expect(h.broker.translateWithCache(attachTranslationRequestControl({origin: sourceText, useCache: false,
+            modelOverride: 'group-model'}, {signal: owner.signal, ownershipKey: 'trusted-recursive-members'}))).resolves.toBe(translatedText);
+        expect(h.providers.freeTranslation).toHaveBeenCalledOnce();
+        expect(owner.signal.aborted).toBe(false);
+        expect(h.recordRequest.mock.calls[0][0]).toMatchObject({serviceId: group, upstreamCalls: 1, outcome: 'success',
+            routes: ['freeTranslation', 'microsoft', 'google'], routeAttempts: [
+                {route: 'freeTranslation', outcome: 'success'},
+                {route: 'microsoft', outcome: 'error', durationMs: 4, chars: sourceText.length},
+                {route: 'google', outcome: 'success', durationMs: 7, chars: sourceText.length},
+            ]});
+    });
+
+    it('全为递归成员的受信组合明确失败，不递归调用或记录伪造的上游尝试', async () => {
+        const h = setup();
+        h.config.compositeTranslationProviders[0].services = [group, 'composite:nested'];
+        await expect(h.broker.translateWithCache({origin: sourceText, useCache: false})).rejects.toThrow('组合翻译没有可用的成员服务');
+        expect(h.providers.google).not.toHaveBeenCalled();
+        expect(h.providers.microsoft).not.toHaveBeenCalled();
+        expect(h.recordRequest.mock.calls[0][0]).toMatchObject({serviceId: group, upstreamCalls: 0, outcome: 'error'});
+        expect(h.recordRequest.mock.calls[0][0]).not.toHaveProperty('routes');
+        expect(h.cacheStore.size).toBe(0);
+    });
+
+    it('所有真实成员失败时返回最后供应商错误，回退仍消费最初的模型与凭据快照', async () => {
+        const h = setup([services.google, services.openai]);
+        const firstError = Object.assign(new Error('first member unavailable'), {statusCode: 503});
+        const lastError = Object.assign(new Error('last member rate limited'), {statusCode: 429});
+        h.providers.google = vi.fn(async () => {
+            h.config.token.openai = 'changed-during-failure';
+            h.config.model.openai = 'changed-model';
+            throw firstError;
+        });
+        h.providers.openai = vi.fn(async message => {
+            const snapshot = getTranslationProviderConfig(message, h.config);
+            expect(snapshot.token.openai).toBe('fixture-composite-openai');
+            expect(snapshot.model.openai).toBe('gpt-4.1-mini');
+            expect(message.modelOverride).toBeUndefined();
+            expect(getTranslationRequestScheduler(message)?.identity).toEqual({
+                service: 'openai', model: 'gpt-4.1-mini', quotaScope: expect.stringMatching(/^[a-f0-9]{64}$/u),
+            });
+            throw lastError;
+        });
+        await expect(h.broker.translateWithCache({origin: sourceText, useCache: false, modelOverride: 'group-model'})).rejects.toBe(lastError);
+        expect(h.providers.google).toHaveBeenCalledOnce();
+        expect(h.providers.openai).toHaveBeenCalledOnce();
+        expect(h.recordRequest.mock.calls[0][0]).toMatchObject({serviceId: group, upstreamCalls: 2, outcome: 'error',
+            routes: ['google', 'openai'], routeAttempts: [
+                {route: 'google', outcome: 'error'}, {route: 'openai', outcome: 'error'},
+            ]});
+        expect(h.cacheStore.size).toBe(0);
+    });
+
+    it('成员返回 AbortError 时保持取消身份并停止回退，内部已记录线路不会丢失', async () => {
+        const h = setup();
+        const owner = new AbortController();
+        const cancellation = Object.assign(new Error('upstream cancelled'), {name: 'AbortError'});
+        h.providers.google = vi.fn(async message => {
+            reportTranslationRoute(message, {route: 'google-web', outcome: 'cancelled', durationMs: 3, chars: sourceText.length});
+            throw cancellation;
+        });
+        await expect(h.broker.translateWithCache(attachTranslationRequestControl({origin: sourceText, useCache: false},
+            {signal: owner.signal, ownershipKey: 'provider-abort'}))).rejects.toBe(cancellation);
+        expect(owner.signal.aborted).toBe(false);
+        expect(h.providers.google).toHaveBeenCalledOnce();
+        expect(h.providers.microsoft).not.toHaveBeenCalled();
+        expect(h.recordRequest.mock.calls[0][0]).toMatchObject({serviceId: group, upstreamCalls: 1, outcome: 'cancelled',
+            routes: ['google-web'], routeAttempts: [{route: 'google-web', outcome: 'cancelled', durationMs: 3, chars: sourceText.length}]});
+        expect(h.cacheStore.size).toBe(0);
     });
 });

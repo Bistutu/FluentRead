@@ -17,7 +17,7 @@ import {learningMemoryRepository} from '@/src/platform/storage/learningMemoryRep
 import {createLearningMemoryRecall} from '@/src/services/harness/memoryRecall';
 import {modelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
 import {isExtensionDisabledOnSite} from '@/src/core/site-rules/domain';
-import type {BackgroundMessageHandler} from './messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import type {ReadingSender} from '@/src/features/reading-assistant/background';
 import type {Config} from '@/src/core/config/model';
 import {resolveHarnessModel} from '@/src/core/config/harness';

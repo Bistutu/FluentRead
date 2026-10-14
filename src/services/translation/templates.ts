@@ -1,8 +1,8 @@
 /**
  * @file src/services/translation/templates.ts
  *
- * 文件职责：构造不同大模型协议所需的请求消息和 payload，是翻译语义与 provider transport 之间的模板层。
- * 主要内容：生成 common、DeepSeek chat/responses、Gemini、Claude 和通义的文本或图像请求体，保持受信图片、识图提示词和冻结模型不被自定义 body 替换，每次只解析一次高级请求体，解析当前模型并转出页面摘要 prompt 构建器。 可核对的公开符号包括 commonMsgTemplate、getCurrentModel、deepseekResponsesMsgTemplate、deepseekMsgTemplate、geminiMsgTemplate、claudeMsgTemplate、tongyiMsgTemplate。
+ * 文件职责：从必需的冻结配置构造不同大模型协议所需的请求消息和 payload，是翻译语义与 provider transport 之间的模板层。
+ * 主要内容：生成 common、DeepSeek chat/responses、Gemini、Claude 和通义的文本或图像请求体，保持受信图片、识图提示词和冻结模型不被自定义 body 替换，所有入口使用对象契约，共享 system/user 提示词组装与视觉/文本最终序列化边界，语言缺省来自同一快照且不读取全局存储；每次只解析一次高级请求体，解析当前模型并转出页面摘要 prompt 构建器。 可核对的公开符号包括 commonMsgTemplate、getCurrentModel、deepseekResponsesMsgTemplate、deepseekMsgTemplate、geminiMsgTemplate、claudeMsgTemplate、tongyiMsgTemplate。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 
@@ -11,7 +11,6 @@ import {getChineseScript, normalizeChineseLanguageCode} from '@/src/core/languag
 import {currentModelIds, customModelString, defaultOption, services} from '@/src/core/config/catalog';
 import {mergeCustomBody, parseCustomBody} from '@/src/core/config/customBody';
 import {migrateModelIdentifier} from '@/src/core/config/model';
-import {config} from '@/src/services/config/store';
 import type {TranslationProviderConfigSnapshot} from './types';
 import {
     hasModelThinkingPreference,
@@ -19,6 +18,21 @@ import {
 } from '@/src/core/config/modelThinking';
 import {applyModelThinkingPreference, type ModelThinkingProtocol} from './modelThinking';
 import {getTranslationGlossaryTerms} from './requestSnapshot';
+
+/** 所有协议模板显式消费同一配置快照，目标/源语言缺省不得重新读取当前设置。 */
+export interface TranslationTemplateRequest {
+    current: TranslationProviderConfigSnapshot;
+    origin: string;
+    context?: string;
+    prompt?: string;
+    systemPrompt?: string;
+    serviceOverride?: string;
+    targetLanguage?: string;
+    modelOverride?: string;
+    thinkingOverride?: boolean;
+    imageInput?: string;
+    sourceLanguage?: string;
+}
 
 function imageParts(imageInput: string | undefined, text: string, protocol: 'openai' | 'responses' | 'gemini' | 'claude') {
     if (!imageInput) return protocol === 'gemini' ? [{text}] : text;
@@ -195,19 +209,34 @@ function finalizeThinkingPayload(
     };
 }
 
+/** 视觉与纯文本共用最终序列化边界，持续保留各自的 Thinking 与自定义字段保护规则。 */
+function serializeTemplatePayload(
+    payload: Record<string, unknown>,
+    request: TranslationTemplateRequest,
+    service: string,
+    model: string,
+    protocol: ModelThinkingProtocol,
+    thinkingOverride: boolean | undefined,
+    preferenceModel = model,
+): string {
+    const {current, imageInput} = request;
+    return JSON.stringify(imageInput
+        ? finalizeVisionPayload(payload, current, service, model, protocol, thinkingOverride)
+        : finalizeThinkingPayload(payload, current, service, model, protocol, thinkingOverride, preferenceModel));
+}
+
+/** 各协议共用冻结配置的译文提示词语义；供应商函数只决定消息容器和协议字段。 */
+function templatePrompts(request: TranslationTemplateRequest, service: string) {
+    const {current, origin, context, prompt, systemPrompt, targetLanguage = current.to} = request;
+    return {
+        system: systemPrompt?.trim() || current.system_role[service] || defaultOption.system_role,
+        user: buildUserPrompt(origin, context, prompt, service, targetLanguage, current),
+    };
+}
+
 // OpenAI 格式的消息模板（通用模板）。
-export function commonMsgTemplate(
-    origin: string,
-    context?: string,
-    prompt?: string,
-    systemPrompt?: string,
-    serviceOverride?: string,
-    targetLanguage = config.to,
-    modelOverride?: string,
-    current: TranslationProviderConfigSnapshot = config,
-    thinkingOverride?: boolean,
-    imageInput?: string,
-) {
+export function commonMsgTemplate(request: TranslationTemplateRequest) {
+    const {current, serviceOverride, modelOverride, thinkingOverride, imageInput} = request;
     const service = serviceOverride || current.service;
     const preferenceModel = currentConfiguredModel(current, service, modelOverride);
     let model = preferenceModel;
@@ -215,8 +244,7 @@ export function commonMsgTemplate(
     // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
     model = model.replace(/（.*）/g, "");
 
-    const system = systemPrompt?.trim() || current.system_role[service] || defaultOption.system_role;
-    const user = buildUserPrompt(origin, context, prompt, service, targetLanguage, current);
+    const {system, user} = templatePrompts(request, service);
 
     const payload: Record<string, unknown> = {
         'model': model,
@@ -226,19 +254,12 @@ export function commonMsgTemplate(
         ]
     };
 
-    if (imageInput) return JSON.stringify(finalizeVisionPayload(payload, current, service, model, 'openai-chat', thinkingOverride));
-
-    return JSON.stringify(finalizeThinkingPayload(
-        payload, current, service, model, 'openai-chat', thinkingOverride, preferenceModel,
-    ))
+    return serializeTemplatePayload(payload, request, service, model, 'openai-chat', thinkingOverride, preferenceModel);
 }
 
 // DeepSeek 消息模板。
-export function getCurrentModel(
-    serviceOverride?: string,
-    modelOverride?: string,
-    current: TranslationProviderConfigSnapshot = config,
-): string {
+export function getCurrentModel(request: Pick<TranslationTemplateRequest, 'current' | 'serviceOverride' | 'modelOverride'>): string {
+    const {current, serviceOverride, modelOverride} = request;
     const service = serviceOverride || current.service;
     const selectedModel = currentConfiguredModel(current, service, modelOverride);
     const normalizedModel = (selectedModel || '').replace(/（.*）/g, "");
@@ -251,83 +272,37 @@ export function getCurrentModel(
     return normalizedModel;
 }
 
-function deepseekPrompt(
-    origin: string,
-    context: string | undefined,
-    prompt: string | undefined,
-    systemPrompt: string | undefined,
-    serviceOverride: string | undefined,
-    targetLanguage: string,
-    current: TranslationProviderConfigSnapshot,
-) {
-    const service = serviceOverride || current.service;
-    return {
-        system: systemPrompt?.trim() || current.system_role[service] || defaultOption.system_role,
-        user: buildUserPrompt(origin, context, prompt, service, targetLanguage, current),
-    };
-}
-
 // DeepSeek 官方与代理的 Responses API；图片只能放在 user 输入中。
-export function deepseekResponsesMsgTemplate(
-    origin: string,
-    context?: string,
-    prompt?: string,
-    systemPrompt?: string,
-    serviceOverride?: string,
-    targetLanguage = config.to,
-    modelOverride?: string,
-    current: TranslationProviderConfigSnapshot = config,
-    thinkingOverride?: boolean,
-    imageInput?: string,
-) {
-    const model = getCurrentModel(serviceOverride, modelOverride, current);
+export function deepseekResponsesMsgTemplate(request: TranslationTemplateRequest) {
+    const {current, serviceOverride, modelOverride, thinkingOverride, imageInput} = request;
+    const service = serviceOverride || current.service;
+    const model = getCurrentModel({serviceOverride, modelOverride, current});
     const legacyThinkingOverride = thinkingOverride ?? (
         modelOverride === 'deepseek-reasoner' ? true
             : modelOverride === 'deepseek-chat' ? false
                 : undefined
     );
-    const {system, user} = deepseekPrompt(origin, context, prompt, systemPrompt, serviceOverride, targetLanguage, current);
+    const {system, user} = templatePrompts(request, service);
     const payload: Record<string, unknown> = {
         model,
         instructions: system,
         input: imageInput ? [{role: 'user', content: imageParts(imageInput, user, 'responses')}] : user,
     };
 
-    if (imageInput) return JSON.stringify(finalizeVisionPayload(
-        payload, current, serviceOverride || current.service, model, 'deepseek-responses', legacyThinkingOverride,
-    ));
-
-    return JSON.stringify(finalizeThinkingPayload(
-        payload,
-        current,
-        serviceOverride || current.service,
-        model,
-        'deepseek-responses',
-        legacyThinkingOverride,
-    ));
+    return serializeTemplatePayload(payload, request, service, model, 'deepseek-responses', legacyThinkingOverride);
 }
 
 // DeepSeek 官方 V4 Chat Completion 格式。
-export function deepseekMsgTemplate(
-    origin: string,
-    context?: string,
-    prompt?: string,
-    systemPrompt?: string,
-    serviceOverride?: string,
-    targetLanguage = config.to,
-    modelOverride?: string,
-    current: TranslationProviderConfigSnapshot = config,
-    thinkingOverride?: boolean,
-    imageInput?: string,
-) {
-    const model = getCurrentModel(serviceOverride, modelOverride, current);
+export function deepseekMsgTemplate(request: TranslationTemplateRequest) {
+    const {current, serviceOverride, modelOverride, thinkingOverride, imageInput} = request;
+    const service = serviceOverride || current.service;
+    const model = getCurrentModel({serviceOverride, modelOverride, current});
     const legacyThinkingOverride = thinkingOverride ?? (
         modelOverride === 'deepseek-reasoner' ? true
             : modelOverride === 'deepseek-chat' ? false
                 : undefined
     );
-    const {system, user} = deepseekPrompt(origin, context, prompt, systemPrompt, serviceOverride, targetLanguage, current);
-    const service = serviceOverride || current.service;
+    const {system, user} = templatePrompts(request, service);
     const payload: Record<string, unknown> = {
         model,
         messages: [
@@ -336,31 +311,15 @@ export function deepseekMsgTemplate(
         ],
     };
 
-    if (imageInput) return JSON.stringify(finalizeVisionPayload(
-        payload, current, service, model, 'deepseek-chat', legacyThinkingOverride,
-    ));
-
-    return JSON.stringify(finalizeThinkingPayload(
-        payload, current, service, model, 'deepseek-chat', legacyThinkingOverride,
-    ));
+    return serializeTemplatePayload(payload, request, service, model, 'deepseek-chat', legacyThinkingOverride);
 }
 
 // Gemini 消息模板。
-export function geminiMsgTemplate(
-    origin: string,
-    context?: string,
-    prompt?: string,
-    systemPrompt?: string,
-    serviceOverride?: string,
-    targetLanguage = config.to,
-    current: TranslationProviderConfigSnapshot = config,
-    modelOverride?: string,
-    thinkingOverride?: boolean,
-    imageInput?: string,
-) {
+export function geminiMsgTemplate(request: TranslationTemplateRequest) {
+    const {current, systemPrompt, serviceOverride, modelOverride, thinkingOverride, imageInput} = request;
     const service = serviceOverride || current.service;
     const model = currentConfiguredModel(current, service, modelOverride);
-    const userPrompt = buildUserPrompt(origin, context, prompt, service, targetLanguage, current);
+    const userPrompt = templatePrompts(request, service).user;
     const user = systemPrompt?.trim() ? `${systemPrompt.trim()}\n\n${userPrompt}` : userPrompt;
 
     const payload: Record<string, unknown> = {
@@ -369,31 +328,16 @@ export function geminiMsgTemplate(
         ]
     };
 
-    if (imageInput) return JSON.stringify(finalizeVisionPayload(payload, current, service, model, 'gemini-generate-content', thinkingOverride));
-
-    return JSON.stringify(finalizeThinkingPayload(
-        payload, current, service, model, 'gemini-generate-content', thinkingOverride,
-    ))
+    return serializeTemplatePayload(payload, request, service, model, 'gemini-generate-content', thinkingOverride);
 }
 
 // Claude 消息模板。
-export function claudeMsgTemplate(
-    origin: string,
-    context?: string,
-    prompt?: string,
-    systemPrompt?: string,
-    serviceOverride?: string,
-    targetLanguage = config.to,
-    modelOverride?: string,
-    current: TranslationProviderConfigSnapshot = config,
-    thinkingOverride?: boolean,
-    imageInput?: string,
-) {
+export function claudeMsgTemplate(request: TranslationTemplateRequest) {
+    const {current, serviceOverride, modelOverride, thinkingOverride, imageInput} = request;
     const service = serviceOverride || services.claude;
     const model = currentConfiguredModel(current, service, modelOverride);
 
-    const system = systemPrompt?.trim() || current.system_role[service] || defaultOption.system_role;
-    const user = buildUserPrompt(origin, context, prompt, service, targetLanguage, current);
+    const {system, user} = templatePrompts(request, service);
 
     const payload: Record<string, unknown> = {
         model: model,
@@ -405,32 +349,17 @@ export function claudeMsgTemplate(
         ]
     };
 
-    if (imageInput) return JSON.stringify(finalizeVisionPayload(payload, current, service, model, 'claude-messages', thinkingOverride));
-
-    return JSON.stringify(finalizeThinkingPayload(
-        payload, current, service, model, 'claude-messages', thinkingOverride,
-    ))
+    return serializeTemplatePayload(payload, request, service, model, 'claude-messages', thinkingOverride);
 }
 
 // 通义千问
-export function tongyiMsgTemplate(
-    origin: string,
-    context?: string,
-    prompt?: string,
-    systemPrompt?: string,
-    serviceOverride?: string,
-    targetLanguage = config.to,
-    modelOverride?: string,
-    current: TranslationProviderConfigSnapshot = config,
-    thinkingOverride?: boolean,
-    sourceLanguage = current.from || 'auto',
-    imageInput?: string,
-) {
+export function tongyiMsgTemplate(request: TranslationTemplateRequest) {
+    const {current, origin, serviceOverride, targetLanguage = current.to, modelOverride, thinkingOverride,
+        sourceLanguage = current.from || 'auto', imageInput} = request;
     const service = serviceOverride || current.service;
     const model = currentConfiguredModel(current, service, modelOverride);
     const normalTemplate = () => {
-        const system = systemPrompt?.trim() || current.system_role[service] || defaultOption.system_role;
-        const user = buildUserPrompt(origin, context, prompt, service, targetLanguage, current);
+        const {system, user} = templatePrompts(request, service);
 
         const payload: Record<string, unknown> = {
             "model": model,
@@ -439,10 +368,7 @@ export function tongyiMsgTemplate(
                 {"role": "user", "content": imageParts(imageInput, user, 'openai')},
             ]
         };
-        if (imageInput) return JSON.stringify(finalizeVisionPayload(payload, current, service, model, 'tongyi-chat', thinkingOverride));
-        return JSON.stringify(finalizeThinkingPayload(
-            payload, current, service, model, 'tongyi-chat', thinkingOverride,
-        ))
+        return serializeTemplatePayload(payload, request, service, model, 'tongyi-chat', thinkingOverride);
     }
     // 翻译模型qwen-mt-plus和qwen-mt-turbo的格式和通用的不同
     const mtModelTemplate = () => {

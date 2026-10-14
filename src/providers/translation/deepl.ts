@@ -10,22 +10,19 @@ import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {method} from "@/src/core/config/constants";
 import {getDeepLEndpoint} from '@/src/core/config/deepl';
-import {config} from "@/src/services/config/store";
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError} from '@/src/platform/http/errors';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
-import {
-    getTranslationProviderConfig,
-    type TranslationProviderRequest,
-} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {readNativeBatchJson, translateNativeTextBatch} from './native-batch';
 
 async function deepl(message: TranslationProviderRequest<string | string[]>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const service = message.serviceOverride || current.service;
     if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
     // DeepL 的目标语言区分书写系统，源语言参数仅接受基础 ZH。
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
     // 2026-09-08 官方语言表：Filipino 使用 TL；KN / SI 尚未提供文本翻译。
     // 不替换成其他语言，也不修改用户保存的选择；允许切换到其他服务重试。
     const normalizeDeepLLanguage = (code: string): string => {

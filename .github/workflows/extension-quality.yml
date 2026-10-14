@@ -1,0 +1,90 @@
+name: Extension quality
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Git baseline for affected tests
+        default: HEAD^
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extension-quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  extension-quality:
+    runs-on: ubuntu-latest
+    # A single-worker sample completed 210 of 447 files in 32 minutes; reserve time for the remaining scope and builds.
+    timeout-minutes: 75
+    env:
+      FLUENTREAD_TEST_MAX_WORKERS: 1
+      FLUENTREAD_TEST_CONCURRENCY: 1
+      FLUENTREAD_DISABLE_BROWSER_RUNNER: 1
+      NODE_OPTIONS: --max-old-space-size=4096
+      # Event values are data, never interpolated into shell source.
+      FLUENTREAD_CI_BASE: ${{ github.event.pull_request.base.sha || github.event.before || inputs.base || 'HEAD^' }}
+    steps:
+      - name: Checkout tested commit and diff history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+      - name: Set up Node.js and dependency cache
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Prepare build tools and WXT types
+        run: |
+          pnpm rebuild esbuild
+          pnpm exec wxt prepare
+      - name: Install audit tools
+        run: |
+          if ! command -v rg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends ripgrep
+          fi
+          rg --version
+      - name: Audit test registration
+        run: pnpm test:audit
+      - name: Check native bridge and verification fixture contracts
+        run: node scripts/testing/run-resource-safe.mjs -- node --test --test-concurrency=1 tests/*.test.mjs
+      - name: Run architecture gates, affected behavior and changed strict coverage once
+        id: affected
+        run: node scripts/testing/run-resource-safe.mjs -- node scripts/testing/run-affected-tests.mjs --report coverage/affected-plan/plan.json
+      - name: Check extension and shared Vue types
+        if: steps.affected.outputs.extension_changed == 'true'
+        run: pnpm compile
+      - name: Build Chrome and Firefox and verify generated manifests
+        if: steps.affected.outputs.extension_changed == 'true'
+        run: |
+          pnpm build
+          pnpm build:firefox
+          pnpm verify:extension-manifests
+      - name: Build and verify the userscript
+        if: steps.affected.outputs.extension_changed == 'true'
+        run: |
+          pnpm build:userscript
+          node scripts/verify-userscript-build.mjs
+      - name: Preserve affected test plan and coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: affected-test-evidence
+          path: |
+            coverage/affected-plan/plan.json
+            coverage/affected/coverage-summary.json
+          if-no-files-found: ignore
+          retention-days: 7

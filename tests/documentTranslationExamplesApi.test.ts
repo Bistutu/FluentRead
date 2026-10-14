@@ -13,7 +13,7 @@ vi.mock('@/src/services/config/store', () => ({
     configReady: Promise.resolve(),
 }));
 
-vi.mock('@/src/app/translation/client', () => ({
+vi.mock('@/src/services/translation/client', () => ({
     translateText: mocks.translateText,
     translateTextBatch: mocks.translateTextBatch,
 }));

@@ -23,7 +23,7 @@ vi.mock('@/src/services/config/store', () => ({
     for (const listener of [...ports.subscribers]) listener(ports.config);
   },
 }));
-vi.mock('@/src/app/translation/client', () => ({translateVideoText: ports.translate}));
+vi.mock('@/src/services/translation/client', () => ({translateVideoText: ports.translate}));
 vi.mock('@/src/platform/browser/runtimeMessages', () => ({sendRuntimeMessage: ports.send}));
 vi.mock('webextension-polyfill', () => ({default: {runtime: {getURL: (path: string) => 'chrome-extension://fixture/' + path}}}));
 vi.mock('@/src/platform/storage/downloadProgress', () => ({watchContentDownloadProgress: ports.watchProgress}));

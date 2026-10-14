@@ -20,7 +20,7 @@ import * as result from '@/src/core/translation/result';
 import * as speech from '@/src/features/selection-translation/speech/public';
 import {createSelectionTtsSynthesizer} from '@/src/features/selection-translation/background/selectionTtsSynthesis';
 import {createSelectionTtsBackgroundHandlers, type SelectionTtsContext} from '@/src/features/selection-translation/background/ttsHandler';
-import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/services/messaging/backgroundRouter';
 import type {LocalTtsAudio} from '@/src/features/local-tts/protocol';
 
 function deferred<T>() {

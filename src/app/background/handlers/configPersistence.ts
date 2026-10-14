@@ -4,7 +4,7 @@
  * 主要内容：声明 persistConfig replace/patch 与 persistConfigBatch 协议及依赖，完整校验批次后逐条复用单次保存，屏蔽同客户端过期序号，共享同序号在途结果并允许失败后重试，最后返回实际提交 revision。
  * 模块边界：这里只处理跨上下文消息和保存编排，不定义 Config 字段、不直接操作 browser.storage，也不负责历史裁剪；校验、凭据拆分和存储事务由注入的配置服务承担。
  */
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 
 export const CONFIG_PERSIST_MESSAGE_TYPE = 'persistConfig' as const;
 export const CONFIG_PERSIST_BATCH_MESSAGE_TYPE = 'persistConfigBatch' as const;

@@ -5,7 +5,7 @@
  * 主要内容：即时转发下载、暂停和删除命令；只接受可信离屏页面的进度，将快照保存到扩展存储供所有设置页订阅。
  * 模块边界：后台不持有下载 Promise 或模型文件，不以页面是否打开决定任务生命周期。
  */
-import type {BackgroundMessageHandler} from '@/src/app/background/messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {
     LOCAL_TRANSLATION_MODEL_STATE_KEY, LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY,
     isLocalTranslationModel, normalizeLocalTranslationDownloadSnapshot,

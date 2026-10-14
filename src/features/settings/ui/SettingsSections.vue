@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/SettingsSections.vue
  * 文件职责：承载 FluentRead Options 页面各业务设置分区，连接运行时配置、服务选择、快捷键、站点规则、翻译中心、OCR、词书以及导入导出和历史恢复。
- * 主要内容：扩展设置入口可通过已校验的 service 查询参数选择服务编辑区，目录浏览不改写默认翻译服务，详情标题栏显式设为默认后复用现有配置补丁持久化并同步其他页面；图片设置优先展示语言、服务与识别选择，资源与入口按需展开；翻译设置首先展示带交互示例的阅读辅助，普通页面与网站规则连续展示任务分组并标记顶部导航的滚动定位目标，统计保留按任务切换的视图，集中分配功能服务并将模型用量合并到翻译统计，保留已访问表单实例，自定义快捷键弹窗按显示状态挂载并在离开所属分区时取消草稿；包含正文/全部节点识别范围；模板按 activeSection 展示业务分区，通用设置首先展示全局翻译开关，再按基础配置、网页辅助、基本偏好组织控件，软件语言控件随分区及缓存活跃状态启停，并保留固定英文标题与说明以便选错语言后恢复，提供当前默认服务的配置入口并保留译文样式跨页入口；图片与圈选合并在同页，共享仅在当前分区挂载的 OCR 管理组件；服务连接在主页面的服务目录内编辑，在界面风格页组织译文样式、风格与菜单栏布局，仅在高级选项激活时挂载缓存管理；脚本以独立配置副本隔离编辑与全局差分基线，批量水合时暂停完整草稿扫描，保留用户编辑的同步保存和离页补丁交接，协调网站入口、配置及凭据保存、历史恢复和能力过滤。
+ * 主要内容：扩展设置入口可通过已校验的 service 查询参数选择服务编辑区，目录浏览不改写默认翻译服务，详情标题栏显式设为默认后复用现有配置补丁持久化并同步其他页面；图片设置优先展示语言、服务与识别选择，资源与入口按需展开；翻译设置首先展示带交互示例的阅读辅助，普通页面与网站规则连续展示任务分组并标记顶部导航的滚动定位目标，统计保留按任务切换的视图，集中分配功能服务并将模型用量合并到翻译统计，保留已访问表单实例，自定义快捷键弹窗按显示状态挂载并在离开所属分区时取消草稿；包含正文/全部节点识别范围；模板按 activeSection 展示业务分区，通用设置首先展示全局翻译开关，再按基础配置、网页辅助、基本偏好组织控件，软件语言控件随分区及缓存活跃状态启停，并保留固定英文标题与说明以便选错语言后恢复，提供当前默认服务的配置入口并保留译文样式跨页入口；图片与圈选合并在同页，共享仅在当前分区挂载的 OCR 管理组件；服务连接在主页面的服务目录内编辑，在界面风格页组织译文样式、风格与菜单栏布局，仅在高级选项激活时挂载缓存管理；脚本复用配置编辑会话隔离草稿与权威基线，批量水合时暂停完整草稿扫描，在途与失败编辑保留字段归属，继续同步保存和离页补丁交接，协调网站入口、配置及凭据保存、历史恢复和能力过滤。
  * 锚点编排：翻译设置保留连续表单，双语逐句阅读辅助与智能高亮各有独立锚点；智能高亮仅在翻译设置分区激活时挂载，定位不隐藏其他分组，既有表单配置保持原归属。新建兼容服务对话框只在首次请求打开时挂载，此后保留实例与关闭动画；加载中或失败时在添加入口旁显示可关闭提示，并停用入口说明气泡以免遮挡反馈，离开后不复活旧提示，草稿仍由原有活跃上下文和关闭流程管理。
  * AI 翻译超时：在高级全局请求限制中以秒编辑，确认后交接毫秒配置补丁；分区、缓存状态、配置同步或卸载变化会失效旧控件回调。
  * 模块边界：该组件负责设置 UI 编排但不实现 provider 网络、配置仓库或 feature 运行时；校验与迁移来自 core/config，持久化经 services/config，复杂子界面保持在各自 feature/组件内；ChatGPT 登录模块在公开构建中隐藏，旧默认或深链接只回退编辑目标，不迁移或删除用户数据；脚本入口已拦截的扩展专属分区在构建期不引入其子 UI，原入口提示与数据接口保持。
@@ -576,9 +576,7 @@ import {
 import {createNextCompositeTranslationProviderId, getCompositeTranslationProvider, isCompositeTranslationProviderId, normalizeCompositeTranslationProviders, removeCompositeTranslationProvider, withCompositeTranslationServiceOptions, type CompositeTranslationProvider} from '@/src/core/config/compositeTranslation';
 import {
   withModelThinkingPreference,
-  withoutModelThinkingPreference,
 } from '@/src/core/config/modelThinking';
-import {withoutModelRequestLimit} from '@/src/core/config/requestLimits';
 import {resolveAreaTranslationHotkey} from '@/src/core/config/areaTranslation';
 import {useServiceModelOptions} from './services/modelOptions';
 import {
@@ -658,9 +656,7 @@ async function inspectSiteRule(id: string) {
 }
 import type {SiteAdaptationSettings as SiteAdaptationConfig} from '@/src/core/site-adaptation/types';
 import {
-  createApiKeyRequirementKey,
   getApiKeyRequirementKey,
-  getLegacyApiKeyRequirementKey,
   getMissingCredentialMessage,
   isApiKeyRequired,
 } from '@/src/core/config/validation';
@@ -693,6 +689,8 @@ const QuickTranslationProfiles = defineAsyncComponent(() => import('./QuickTrans
 const ContextMenuSettings = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('./ContextMenuSettings.vue'));
 import {useTranslationShortcutSettings} from './useTranslationShortcutSettings';
 import {useSettingsActionContext} from '../model/useSettingsActionContext';
+import {useConfigEditor} from '../model/useConfigEditor';
+import {removeConfiguredModel} from '@/src/core/config/modelEditing';
 import {
   config as runtimeConfig,
   configReady,
@@ -797,7 +795,38 @@ function updateTheme(theme: string) {
 }
 // 配置信息
 const config = ref(new Config());
-let applyingExternalConfig = false;
+const sendConfigMessage = browser.runtime.sendMessage.bind(browser.runtime);
+const persistConfigPatch = (value: unknown) => requestConfigPatch(value, sendConfigMessage);
+// 适配器有显式 JSON 保存动作，等待后台提交后才确认；订阅会同步权威状态，避免触发另一份全量快照保存。
+const saveSiteAdaptationSettings = (value: SiteAdaptationConfig): Promise<void> =>
+  persistConfigPatch({siteAdaptation: value});
+let hydrated = false;
+let pageExitSaveStarted = false;
+const configEditor = useConfigEditor({
+  copySnapshot: normalizeConfig,
+  readDraft: () => config.value,
+  writeDraft: snapshot => {Object.assign(config.value, snapshot);},
+  saveDraft: snapshot => persistConfigPatch(snapshot),
+  subscribe: subscribeConfig,
+  ready: configReady,
+  readAuthority: () => runtimeConfig,
+  flush: 'sync',
+  onEdited: () => {pageExitSaveStarted = false;},
+  onSaved: () => {},
+  onSaveError: error => console.warn('[FluentRead] 保存设置失败', error),
+  onReady: () => {
+    // 动态 profile 要等配置水合后解析；同步 watcher 不能把尚未到达的合法直达目标提前清空。
+    if (configurationService.value === null && /^(?:chrome|moz)-extension:$/u.test(window.location.protocol) && requestedConfigurationService
+      && (getCustomOpenAIProvider(config.value.customOpenAIProviders, requestedConfigurationService)
+        || getCompositeTranslationProvider(config.value.compositeTranslationProviders, requestedConfigurationService))) {
+      configurationService.value = requestedConfigurationService;
+    }
+    hydrated = true;
+    updateTheme(config.value.theme || 'auto');
+  },
+  onReadyError: error => console.warn('[FluentRead] 无法读取本地配置', error),
+});
+
 const {
   getCustomHotkeyDisplayName,
   getCustomMouseHotkeyDisplayName,
@@ -824,7 +853,7 @@ const {
   validateCustomSelectionHotkey,
 } = useTranslationShortcutSettings(config,
   kind => viewActive.value && props.activeSection === (kind === 'selection' ? 'settings-selection' : 'settings-translation'),
-  () => applyingExternalConfig);
+  () => configEditor.applying);
 const customProviderDialogOpen = ref(false);
 const customProviderDialogRequested = ref(false);
 const customProviderFeedbackContext = useSettingsActionContext(
@@ -837,62 +866,6 @@ const customProviderFeedbackActions = computed(() => {
   const owns = customProviderFeedbackContext.capture();
   return {close: () => {if (owns()) customProviderDialogOpen.value = false;}};
 });
-const sendConfigMessage = browser.runtime.sendMessage.bind(browser.runtime);
-const persistConfigPatch = (value: unknown) => requestConfigPatch(value, sendConfigMessage);
-// 适配器有显式 JSON 保存动作，等待后台提交后才确认；订阅会同步权威状态，避免触发另一份全量快照保存。
-const saveSiteAdaptationSettings = (value: SiteAdaptationConfig): Promise<void> =>
-  persistConfigPatch({siteAdaptation: value});
-let lastSerialized = '';
-let hydrated = false;
-let pageExitSaveStarted = false;
-const autosaveWatcher = watch(() => JSON.stringify(config.value), (serialized) => {
-  if (disposed || !hydrated || applyingExternalConfig) return;
-  if (serialized === lastSerialized) return;
-  // 若关闭被外部原因取消，后续真实编辑应能再次交接；外部水合不会重置退出去重。
-  pageExitSaveStarted = false;
-  lastSerialized = serialized;
-  const snapshot = normalizeConfig(config.value);
-  void persistConfigPatch(snapshot).catch((error) => {
-    // 失败时释放去重标记，下一次修改或 pagehide 仍能提交最新快照。
-    if (lastSerialized === serialized) lastSerialized = '';
-    console.warn('[FluentRead] 保存设置失败', error);
-  });
-}, { flush: 'sync' });
-
-function hydrateConfigDraft(value: unknown): void {
-  // 同步 watcher 的回调 guard 不能阻止 getter；暂停一批赋值，结束后只重建一次依赖。
-  // 编辑副本仍须独立归一化，避免嵌套修改污染运行时 patch 的比较基线。
-  applyingExternalConfig = true;
-  autosaveWatcher.pause();
-  try {
-    Object.assign(config.value, normalizeConfig(value));
-    lastSerialized = JSON.stringify(config.value);
-  } finally {
-    // resume 会同步执行 getter，必须仍在外部水合 guard 内，不能保存权威快照。
-    autosaveWatcher.resume();
-    applyingExternalConfig = false;
-  }
-}
-// store 可能立即调用订阅者；先建立 watcher，避免同步水合访问未初始化句柄。
-const unsubscribeConfig = subscribeConfig((nextConfig) => {
-  if (disposed || JSON.stringify(nextConfig) === lastSerialized) return;
-  hydrateConfigDraft(nextConfig);
-});
-void configReady
-  .then(() => {
-    if (disposed) return;
-    hydrateConfigDraft(runtimeConfig);
-    // 动态 profile 要等配置水合后解析；同步 watcher 不能把尚未到达的合法直达目标提前清空。
-    if (configurationService.value === null && /^(?:chrome|moz)-extension:$/u.test(window.location.protocol) && requestedConfigurationService
-      && (getCustomOpenAIProvider(config.value.customOpenAIProviders, requestedConfigurationService)
-        || getCompositeTranslationProvider(config.value.compositeTranslationProviders, requestedConfigurationService))) {
-      configurationService.value = requestedConfigurationService;
-    }
-    hydrated = true;
-    updateTheme(config.value.theme || 'auto');
-  })
-  .catch((error) => console.warn('[FluentRead] 无法读取本地配置', error));
-
 // 设置页关闭前同步交接尚未确认的字段补丁链，后台继续按 sequence 去重和字段 CAS 保存。
 // beforeunload 在扩展消息通道仍可用时先交接，pagehide/unmounted 回退且只交接一次。
 // 不阻止关闭或弹出确认；空队列不发送消息或新增历史。
@@ -1193,67 +1166,9 @@ function addConfigurationModel(model: string): void {
 }
 
 function removeConfigurationModel(model: string): void {
-  const service = selectedConfigurationService.value;
-  const provider = selectedCustomProvider.value;
-  if (provider) {
-    const remainingModels = provider.models.filter((item) => item !== model);
-    const fallback = remainingModels[0] || '';
-    updateConfigAtomically((next) => {
-      next.customOpenAIProviders = normalizeCustomOpenAIProviders(
-        next.customOpenAIProviders.map((item) => item.id === service
-          ? {...item, models: remainingModels}
-          : item),
-      );
-      if (next.model[service] === model) {
-        if (fallback) next.model[service] = fallback;
-        else delete next.model[service];
-      }
-      if (next.documentModel[service] === model) {
-        if (fallback) next.documentModel[service] = fallback;
-        else delete next.documentModel[service];
-      }
-      next.modelThinking = withoutModelThinkingPreference(next.modelThinking, service, model);
-      next.modelRequestLimits = withoutModelRequestLimit(next.modelRequestLimits, service, model);
-    });
-    return;
-  }
-  updateConfigAtomically((next) => {
-    const remainingModels = (next.customModels[service] || []).filter((item) => item !== model);
-    if (remainingModels.length > 0) next.customModels[service] = remainingModels;
-    else delete next.customModels[service];
-    const fallbackCustomModel = remainingModels[0];
-    const fallbackBuiltInModel = builtInConfigurationModels.value[0] || '';
-    const pageUsesRemovedModel = next.model[service] === customModelString
-      && next.customModel[service] === model;
-    if (next.customModel[service] === model) {
-      if (!pageUsesRemovedModel) {
-        delete next.customModel[service];
-      } else if (fallbackCustomModel) {
-        next.customModel[service] = fallbackCustomModel;
-        next.model[service] = customModelString;
-      } else {
-        delete next.customModel[service];
-        next.model[service] = fallbackBuiltInModel;
-      }
-    }
-    const documentUsesRemovedModel = next.documentModel[service] === customModelString
-      && next.documentCustomModel[service] === model;
-    if (next.documentCustomModel[service] === model) {
-      if (!documentUsesRemovedModel) {
-        delete next.documentCustomModel[service];
-      } else if (fallbackCustomModel) {
-        next.documentCustomModel[service] = fallbackCustomModel;
-        next.documentModel[service] = customModelString;
-      } else {
-        delete next.documentCustomModel[service];
-        next.documentModel[service] = fallbackBuiltInModel;
-      }
-    }
-    delete next.requireApiKey[createApiKeyRequirementKey(service, model)];
-    delete next.requireApiKey[getLegacyApiKeyRequirementKey(service, model)];
-    next.modelThinking = withoutModelThinkingPreference(next.modelThinking, service, model);
-    next.modelRequestLimits = withoutModelRequestLimit(next.modelRequestLimits, service, model);
-  });
+  updateConfigAtomically(next => removeConfiguredModel(
+    next, selectedConfigurationService.value, model, builtInConfigurationModels.value[0] || '',
+  ));
 }
 
 // 两个页面都需要相同的服务能力判断，但数据源不同：实际翻译使用默认服务，
@@ -1319,7 +1234,7 @@ darkModeMediaQuery.onchange = () => {
 // 组件卸载时清理
 onUnmounted(() => {
   darkModeMediaQuery.onchange = null;
-  unsubscribeConfig();
+  configEditor.dispose();
 });
 
 // 一次待完成查询复用当前编辑状态，避免快速切换向页面发送过时的开关值。

@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {APICallError, RetryError} from 'ai';
 import {createHash} from 'node:crypto';
@@ -69,7 +70,7 @@ describe('audit48F: public frozen language defaults', () => {
         const message = attachTranslationProviderConfig({origin: 'hello', serviceOverride: 'deepL'}, snapshot);
         config.from = 'fr'; config.to = 'ja';
         fetchPort.mockResolvedValue(json({translations: [{text: 'fixture'}]}));
-        await expect(deepl(message)).resolves.toBe('fixture');
+        await expect(deepl(withProviderSnapshot(message, config))).resolves.toBe('fixture');
         const outgoing = JSON.parse(String(fetchPort.mock.calls[0]![1]?.body));
         if (process.env.AUDIT_F_SNAPSHOT) writeFileSync(process.env.AUDIT_F_SNAPSHOT, JSON.stringify({
             snapshotLanguages: {from: snapshot.from, to: snapshot.to},
@@ -83,7 +84,7 @@ describe('audit48F: public frozen language defaults', () => {
         const message = attachTranslationProviderConfig({origin: 'hello', serviceOverride: 'deepL',
             sourceLanguage: 'de', targetLanguage: 'zh-Hant'}, snapshot);
         fetchPort.mockResolvedValue(json({translations: [{text: 'fixture'}]}));
-        await expect(deepl(message)).resolves.toBe('fixture');
+        await expect(deepl(withProviderSnapshot(message, config))).resolves.toBe('fixture');
         expect(JSON.parse(String(fetchPort.mock.calls[0]![1]?.body))).toMatchObject({source_lang: 'DE', target_lang: 'ZH-HANT'});
     });
     it('missing request snapshots continue to use live defaults and explicit overrides', () => {
@@ -116,13 +117,13 @@ describe('audit48F: public frozen language defaults', () => {
 describe('audit48F: actual provider response parsing', () => {
     it('Claude rejects whitespace-only final text before recording success', async () => {
         fetchPort.mockResolvedValue(json({content: [{type: 'text', text: ' \n '}] }));
-        await expect(claude(request('claude'))).rejects.toThrow('Claude 返回数据格式异常');
+        await expect(claude(withProviderSnapshot(request('claude'), config))).rejects.toThrow('Claude 返回数据格式异常');
         expect(observations[0]?.outcome).toBe('error');
     });
     it('Doubao translation model rejects whitespace-only Responses text and reports error', async () => {
         config.model.doubao = 'doubao-seed-translation';
         fetchPort.mockResolvedValue(json({output_text: ' \n '}));
-        await expect(doubaoSeedTranslation(request('doubao'))).rejects.toThrow('火山方舟返回数据格式异常');
+        await expect(doubaoSeedTranslation(withProviderSnapshot(request('doubao'), config))).rejects.toThrow('火山方舟返回数据格式异常');
         expect(observations[0]?.outcome).toBe('error');
     });
     it.each(['youdaoFree', 'icibaFree'] as const)('%s classifies null JSON as an unavailable response', async provider => {
@@ -135,7 +136,7 @@ describe('audit48F: actual provider response parsing', () => {
             {text: '甲'}, {text: '乙'}, null,
         ]}}, {content: {parts: [{text: 'alternative'}]}}],
         usageMetadata: {promptTokenCount: 3, candidatesTokenCount: 2, thoughtsTokenCount: 1}}));
-        await expect(gemini(request('gemini'))).resolves.toBe('甲乙');
+        await expect(gemini(withProviderSnapshot(request('gemini'), config))).resolves.toBe('甲乙');
         expect(observations).toEqual([expect.objectContaining({outcome: 'success', inputTokens: 3, outputTokens: 3, reasoningTokens: 1})]);
     });
     it.each([
@@ -145,7 +146,7 @@ describe('audit48F: actual provider response parsing', () => {
         {candidates: [{content: {parts: [{text: ' \n '}]}}]},
     ])('Gemini rejects empty, blocked or malformed final content %#', async body => {
         fetchPort.mockResolvedValue(json(body));
-        await expect(gemini(request('gemini'))).rejects.toThrow('Gemini 返回数据格式异常：缺少文本内容');
+        await expect(gemini(withProviderSnapshot(request('gemini'), config))).rejects.toThrow('Gemini 返回数据格式异常：缺少文本内容');
         expect(observations).toEqual([expect.objectContaining({outcome: 'error'})]);
     });
     it.each([
@@ -154,27 +155,27 @@ describe('audit48F: actual provider response parsing', () => {
         for (const content of [null, 42, {secret: 'malformed'}, '', '  ']) {
             observations.length = 0;
             fetchPort.mockResolvedValue(json({choices: [{message: {content}}]}));
-            await expect(provider(request(service))).rejects.toThrow('返回数据格式异常');
+            await expect(provider(withProviderSnapshot(request(service), config))).rejects.toThrow('返回数据格式异常');
             expect(observations).toEqual([expect.objectContaining({outcome: 'error'})]);
         }
     });
     it('DeepSeek rejects a response containing only stripped reasoning', async () => {
         fetchPort.mockResolvedValue(json({choices: [{message: {content: '<think>private</think>'}}]}));
-        await expect(deepseek(request('deepseek'))).rejects.toThrow('返回数据格式异常');
+        await expect(deepseek(withProviderSnapshot(request('deepseek'), config))).rejects.toThrow('返回数据格式异常');
         expect(observations[0]?.outcome).toBe('error');
     });
     it.each([null, {}, {translations: []}, {translations: [{text: 4}]}, {translations: [{text: '  '}]}])
     ('DeepL rejects malformed translation payload %#', async body => {
         fetchPort.mockResolvedValue(json(body));
-        await expect(deepl(request('deepL'))).rejects.toThrow('DeepL 返回数据格式异常：缺少译文');
+        await expect(deepl(withProviderSnapshot(request('deepL'), config))).rejects.toThrow('DeepL 返回数据格式异常：缺少译文');
     });
     it('preserves whitespace in valid final text for every direct chat adapter', async () => {
         for (const [service, provider] of [['tongyi', tongyi], ['zhipu', zhipu], ['deepseek', deepseek]] as const) {
             fetchPort.mockResolvedValue(json({choices: [{message: {content: '  译文\n'}}]}));
-            await expect(provider(request(service))).resolves.toBe(service === 'deepseek' ? '译文' : '  译文\n');
+            await expect(provider(withProviderSnapshot(request(service), config))).resolves.toBe(service === 'deepseek' ? '译文' : '  译文\n');
         }
         fetchPort.mockResolvedValue(json({translations: [{text: '  译文\n'}]}));
-        await expect(deepl(request('deepL'))).resolves.toBe('  译文\n');
+        await expect(deepl(withProviderSnapshot(request('deepL'), config))).resolves.toBe('  译文\n');
     });
 });
 
@@ -222,10 +223,10 @@ describe('audit48F: cancellation at controlled external boundaries', () => {
             createRequestId: () => 'contract-request', preparationStore: {set: vi.fn()},
         });
         const controller = new AbortController(); controller.abort();
-        await expect(provider({origin: 'hello', abortSignal: controller.signal})).rejects.toThrow();
+        await expect(provider(withProviderSnapshot({origin: 'hello', abortSignal: controller.signal}, config))).rejects.toThrow();
         expect(sent.filter(message => message.type === 'CHROME_TRANSLATE_OFFSCREEN')).toEqual([]);
         expect(create).not.toHaveBeenCalled();
-        await expect(provider({origin: '简体中文', sourceLanguage: 'zh-Hans', targetLanguage: 'zh-Hant'})).resolves.toBe('繁體譯文');
+        await expect(provider(withProviderSnapshot({origin: '简体中文', sourceLanguage: 'zh-Hans', targetLanguage: 'zh-Hant'}, config))).resolves.toBe('繁體譯文');
         expect(sent.find(message => message.type === 'CHROME_TRANSLATE_OFFSCREEN')).toMatchObject({
             target: 'offscreen', data: {text: '简体中文', from: 'zh-Hans', to: 'zh-Hant'},
         });
@@ -247,7 +248,7 @@ describe('audit48F: cancellation at controlled external boundaries', () => {
         config.model.doubao = 'doubao-seed-translation';
         const controller = new AbortController();
         fetchPort.mockResolvedValue({ok: true, json: async () => {controller.abort(); return {output_text: 'late'};}} as Response);
-        await expect(doubaoSeedTranslation({...request('doubao'), origin: ['one', 'two'], abortSignal: controller.signal})).rejects.toMatchObject({name: 'AbortError'});
+        await expect(doubaoSeedTranslation(withProviderSnapshot({...request('doubao'), origin: ['one', 'two'], abortSignal: controller.signal}, config))).rejects.toMatchObject({name: 'AbortError'});
         expect(fetchPort).toHaveBeenCalledOnce();
         expect(observations[0]?.outcome).toBe('cancelled');
     });
@@ -262,10 +263,10 @@ describe('audit48F: cancellation at controlled external boundaries', () => {
         const controller = new AbortController();
         fetchPort.mockResolvedValue({ok: true, json: async () => {controller.abort(); return body;}} as Response);
         const message = {...request(service), abortSignal: controller.signal};
-        await expect(provider(message)).rejects.toMatchObject({name: 'AbortError'});
+        await expect(provider(withProviderSnapshot(message, config))).rejects.toMatchObject({name: 'AbortError'});
         if (service !== 'deepL') expect(observations).toEqual([expect.objectContaining({outcome: 'cancelled'})]);
         fetchPort.mockClear(); observations.length = 0;
-        await expect(provider(message)).rejects.toMatchObject({name: 'AbortError'});
+        await expect(provider(withProviderSnapshot(message, config))).rejects.toMatchObject({name: 'AbortError'});
         expect(fetchPort).not.toHaveBeenCalled();
         expect(observations).toEqual([]);
     });
@@ -276,26 +277,26 @@ describe('audit48F: cancellation at controlled external boundaries', () => {
             return {success: true, result: 'late', requestId: payload.requestId};
         });
         const provider = createChromeTranslator({capabilities: {chromeTranslation: true}, offscreenClient: {send} as never, createRequestId: () => 'audit-request'});
-        await expect(provider({origin: 'hello', abortSignal: controller.signal})).rejects.toMatchObject({name: 'AbortError'});
+        await expect(provider(withProviderSnapshot({origin: 'hello', abortSignal: controller.signal}, config))).rejects.toMatchObject({name: 'AbortError'});
         expect(send).toHaveBeenCalledOnce();
     });
     it('Chrome does not send an already cancelled request', async () => {
         const controller = new AbortController(); controller.abort();
         const send = vi.fn();
         const provider = createChromeTranslator({capabilities: {chromeTranslation: true}, offscreenClient: {send}, createRequestId: () => 'audit-request'});
-        await expect(provider({origin: 'hello', abortSignal: controller.signal})).rejects.toMatchObject({name: 'AbortError'});
+        await expect(provider(withProviderSnapshot({origin: 'hello', abortSignal: controller.signal}, config))).rejects.toMatchObject({name: 'AbortError'});
         expect(send).not.toHaveBeenCalled();
     });
     it('Chrome retains model-unavailable identity from offscreen', async () => {
         const send = vi.fn(async () => ({success: false, requestId: 'audit-request', errorCode: 'model-unavailable', error: 'offline'}));
         const provider = createChromeTranslator({capabilities: {chromeTranslation: true}, offscreenClient: {send} as never, createRequestId: () => 'audit-request'});
-        await expect(provider({origin: 'hello'})).rejects.toMatchObject({name: 'ChromeModelUnavailableError', message: 'Chrome Translation API 不可用：offline'});
+        await expect(provider(withProviderSnapshot({origin: 'hello'}, config))).rejects.toMatchObject({name: 'ChromeModelUnavailableError', message: 'Chrome Translation API 不可用：offline'});
     });
     it('DeepLX refuses a body read that completes after cancellation and does not fail over', async () => {
         config.deeplx = 'https://fixture.invalid/one\nhttps://fixture.invalid/two';
         const controller = new AbortController();
         fetchPort.mockResolvedValue({ok: true, text: async () => {controller.abort(); return JSON.stringify({code: 200, data: 'late'});}} as Response);
-        await expect(translateDeepLXText('hello', 'deeplx', {sourceLanguage: 'en', targetLanguage: 'zh-Hans', abortSignal: controller.signal}))
+        await expect(translateDeepLXText('hello', 'deeplx', withProviderSnapshot({sourceLanguage: 'en', targetLanguage: 'zh-Hans', abortSignal: controller.signal}, config)))
             .rejects.toMatchObject({name: 'AbortError'});
         expect(fetchPort).toHaveBeenCalledOnce();
     });
@@ -319,7 +320,7 @@ describe('audit48F: bounded production performance and output contracts', () => 
         });
         const encode = vi.spyOn(TextEncoder.prototype, 'encode');
         const start = performance.now();
-        const output = await translateMyMemoryText(text, {sourceLanguage: 'en', targetLanguage: 'zh-Hans'});
+        const output = await translateMyMemoryText(text, withProviderSnapshot({sourceLanguage: 'en', targetLanguage: 'zh-Hans'}, config));
         const durationMs = performance.now() - start;
         const allocations = encode.mock.calls.filter(([value]) => typeof value === 'string' && value.length <= 2).length;
         encode.mockRestore();
@@ -336,7 +337,7 @@ describe('audit48F: bounded production performance and output contracts', () => 
             return json({responseStatus: 200, responseData: {translatedText: q}});
         });
         const input = 'a'.repeat(499) + '\ud800' + 'é'.repeat(249) + '\udc00';
-        const output = await translateMyMemoryText(input, {sourceLanguage: 'en', targetLanguage: 'zh-Hans'});
+        const output = await translateMyMemoryText(input, withProviderSnapshot({sourceLanguage: 'en', targetLanguage: 'zh-Hans'}, config));
         const expected = 'a'.repeat(499) + '\ufffd' + 'é'.repeat(249) + '\ufffd';
         if (process.env.AUDIT_F_SURROGATE) writeFileSync(process.env.AUDIT_F_SURROGATE, JSON.stringify({
             inputCodePoints: Array.from(input, character => character.codePointAt(0)),
@@ -400,7 +401,7 @@ describe('audit48F: bounded production performance and output contracts', () => 
         const snapshot = createTranslationProviderConfigSnapshot(config as Config);
         config.proxy.gemini = 'https://different.invalid'; config.token.gemini = 'changed';
         fetchPort.mockResolvedValue(json({candidates: [{content: {parts: [{text: '译文'}]}}]}));
-        await expect(gemini(attachTranslationProviderConfig({origin: 'hello', serviceOverride: 'gemini'}, snapshot))).resolves.toBe('译文');
+        await expect(gemini(withProviderSnapshot(attachTranslationProviderConfig({origin: 'hello', serviceOverride: 'gemini'}, snapshot), config))).resolves.toBe('译文');
         expect(fetchPort.mock.calls[0]![0]).toBe('https://fixture.invalid/fixture-model?key=fixture-key');
     });
 });

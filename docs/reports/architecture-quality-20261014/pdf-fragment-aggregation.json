@@ -1,0 +1,51 @@
+{
+  "runtime": "Node20.11.1/darwin",
+  "input": "actual pdfTextBlocks 160000 x fragments in one paragraph; proxy geometry then plain geometry",
+  "beforeSourceSha256": "e262d0f63bd3a66dca0ff951097dcdbd685938a1e27c109a6cd20bb0016018b8",
+  "afterSourceSha256": "eda9bd603783a533c270d410db878c75deaa49a2ab09d1be098bff65f98b97ec",
+  "beforeNativeScalingMs": {
+    "20000": 63.88787500000001,
+    "40000": 145.58512499999995,
+    "80000": 765.7127499999999,
+    "160000": 5143.998207999999
+  },
+  "beforeGetterScalingMs": {
+    "20000": 94.41004099999992,
+    "40000": 149.77979100000005,
+    "80000": 780.1470410000001,
+    "160000": 5124.713542
+  },
+  "inputSha256": "8bcd1089acbe2456af7eff8990d2a2518aa39894cb4a383941570f9f6748fba0",
+  "outputSha256": "77c082ba0cc8ba7b150a5a2a959a34a7a675b4322237886b07364895533b0ec6",
+  "nativeOutputSha256": "77c082ba0cc8ba7b150a5a2a959a34a7a675b4322237886b07364895533b0ec6",
+  "reads": {
+    "x": 160000,
+    "y": 160000,
+    "width": 160000,
+    "height": 480001
+  },
+  "readLimit": 9600000,
+  "proofLimits": "Local darwin20 evidence; CI Linux22 timeout evidence retained separately; no claim of new-head Linux22 execution",
+  "afterGetterHostMs": 271.025208,
+  "afterNativeHostMs": 240.103208,
+  "beforeSingleVitestCaseMs": 7457,
+  "afterSingleVitestCaseMs": 819,
+  "beforeSingleVitestGetterHostMs": 3571.339167,
+  "beforeSingleVitestNativeHostMs": 3583.0929170000004,
+  "childTimeoutMs": 15000,
+  "fragmentCount": 160000,
+  "fullText": true,
+  "coverageLog": "/private/tmp/fluentread-quality-cli-diagnosis/pdf-binary-main-integration-coverage.log",
+  "coverageSummary": "/private/tmp/fluentread-quality-cli-diagnosis/pdf-binary-main-integration-coverage/coverage-summary.json",
+  "targetedResult": {
+    "filesPassed": 13,
+    "testsPassed": 505,
+    "existingSkips": 3,
+    "testDefinitions": 508
+  },
+  "geometrySuiteResult": {
+    "testsPassed": 43,
+    "skips": 0
+  },
+  "sourceAggregationCost": "each input fragment evaluated once and joined once; spatial grouping index unchanged"
+}

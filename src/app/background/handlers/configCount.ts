@@ -9,7 +9,7 @@ import {
     parseConfigCountIncrement,
     parseConfigCountOperationId,
 } from '@/src/services/config/count';
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 
 export interface ConfigCountIncrementMessage {
     type: typeof CONFIG_COUNT_INCREMENT_MESSAGE;

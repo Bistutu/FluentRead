@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const {config} = vi.hoisted(() => ({config: {} as Record<string, any>}));
@@ -140,7 +141,7 @@ describe('Doubao-Seed-Translation provider', () => {
         respond(responsesBody('你好', {input_tokens: 12, output_tokens: 3, total_tokens: 15}));
         const signal = new AbortController().signal;
 
-        await expect(doubaoSeedTranslation({origin: 'hello', abortSignal: signal} as any)).resolves.toBe('你好');
+        await expect(doubaoSeedTranslation(withProviderSnapshot({origin: 'hello', abortSignal: signal} as any, config))).resolves.toBe('你好');
 
         const call = lastCall();
         expect(call.url).toBe(ARK_RESPONSES_URL);
@@ -156,12 +157,12 @@ describe('Doubao-Seed-Translation provider', () => {
     it('显式源语言随请求发出，源语言与目标语言相同时直接返回原文', async () => {
         Object.assign(config, {from: 'en', to: 'zh-Hant'});
         respond(responsesBody('你好'));
-        await expect(doubaoSeedTranslation({origin: 'hello'} as any)).resolves.toBe('你好');
+        await expect(doubaoSeedTranslation(withProviderSnapshot({origin: 'hello'} as any, config))).resolves.toBe('你好');
         expect(lastCall().body.input[0].content[0].translation_options)
             .toEqual({source_language: 'en', target_language: 'zh-Hant'});
 
         Object.assign(config, {from: 'zh-Hans', to: 'zh-CN'});
-        await expect(doubaoSeedTranslation({origin: '你好'} as any)).resolves.toBe('你好');
+        await expect(doubaoSeedTranslation(withProviderSnapshot({origin: '你好'} as any, config))).resolves.toBe('你好');
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
@@ -171,38 +172,38 @@ describe('Doubao-Seed-Translation provider', () => {
             return json(responsesBody(`译:${text}`));
         });
 
-        await expect(doubaoSeedTranslation({origin: ['a', 'b']} as any)).resolves.toEqual(['译:a', '译:b']);
+        await expect(doubaoSeedTranslation(withProviderSnapshot({origin: ['a', 'b']} as any, config))).resolves.toEqual(['译:a', '译:b']);
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it('拒绝不支持的目标语言与未配置的模型，不发出请求', async () => {
         Object.assign(config, {to: 'he'});
-        await expect(doubaoSeedTranslation({origin: 'hello'} as any)).rejects.toThrow('不支持该目标语言');
+        await expect(doubaoSeedTranslation(withProviderSnapshot({origin: 'hello'} as any, config))).rejects.toThrow('不支持该目标语言');
 
         Object.assign(config, {to: 'zh-Hans', model: {[services.doubao]: ''}});
-        await expect(doubaoSeedTranslation({origin: 'hello'} as any)).rejects.toThrow('模型尚未配置');
+        await expect(doubaoSeedTranslation(withProviderSnapshot({origin: 'hello'} as any, config))).rejects.toThrow('模型尚未配置');
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('HTTP 失败与缺少输出文本都抛出可读错误', async () => {
         respond({error: {message: 'bad model'}}, {status: 400});
-        await expect(doubaoSeedTranslation({origin: 'hello'} as any)).rejects.toThrow('火山方舟翻译请求失败: 400');
+        await expect(doubaoSeedTranslation(withProviderSnapshot({origin: 'hello'} as any, config))).rejects.toThrow('火山方舟翻译请求失败: 400');
 
         respond({id: 'resp_2', output: []});
-        await expect(doubaoSeedTranslation({origin: 'hello'} as any)).rejects.toThrow('缺少 Responses API 输出文本');
+        await expect(doubaoSeedTranslation(withProviderSnapshot({origin: 'hello'} as any, config))).rejects.toThrow('缺少 Responses API 输出文本');
 
         fetchMock.mockImplementation(async () => new Response('not json', {status: 200}));
-        await expect(doubaoSeedTranslation({origin: 'hello'} as any)).rejects.toThrow('火山方舟返回的不是有效 JSON');
+        await expect(doubaoSeedTranslation(withProviderSnapshot({origin: 'hello'} as any, config))).rejects.toThrow('火山方舟返回的不是有效 JSON');
     });
 
     it('注册表按生效模型分流：翻译模型走 Responses，其余模型仍走 chat/completions', async () => {
         respond(responsesBody('你好'));
-        await expect(translationProviderRegistry[services.doubao]({origin: 'hello'})).resolves.toBe('你好');
+        await expect(translationProviderRegistry[services.doubao](withProviderSnapshot({origin: 'hello'}, config))).resolves.toBe('你好');
         expect(lastCall().url).toBe(ARK_RESPONSES_URL);
 
         Object.assign(config, {model: {[services.doubao]: 'doubao-seed-1-6-250615'}});
         respond({choices: [{message: {role: 'assistant', content: '你好'}, finish_reason: 'stop'}]});
-        await expect(translationProviderRegistry[services.doubao]({origin: 'hello'})).resolves.toBe('你好');
+        await expect(translationProviderRegistry[services.doubao](withProviderSnapshot({origin: 'hello'}, config))).resolves.toBe('你好');
         expect(lastCall().url).toBe('https://ark.cn-beijing.volces.com/api/v3/chat/completions');
     });
 });

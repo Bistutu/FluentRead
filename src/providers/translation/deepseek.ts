@@ -12,18 +12,17 @@ import {
     deepseekResponsesMsgTemplate,
     getCurrentModel,
 } from '@/src/services/translation/templates';
-import { config } from "@/src/services/config/store";
 import {stripTranslationReasoning as contentPostHandler} from '@/src/core/translation/prompts';
 import { appendOptionalBearer } from './auth';
 import {createHttpStatusError, createImageInputHttpError, readJsonResponse} from '@/src/platform/http/errors';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
 import {
-    getTranslationProviderConfig,
+    requireTranslationProviderConfig,
     getTranslationImageInput,
     reportTranslationModelUsage,
     reportTranslationModelUsageFailure,
-    type TranslationProviderRequest,
 } from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import type {TranslationProviderConfigSnapshot} from '@/src/services/translation/types';
 import {normalizeDeepSeekResponsesUsage, normalizeOpenAICompatibleUsage} from './usage';
 import {buildOpenAIApiEndpoint, readResponsesApiText} from './responses-api';
@@ -36,7 +35,7 @@ function useResponsesApi(current: TranslationProviderConfigSnapshot) {
 }
 
 async function deepseek(message: TranslationProviderRequest<string>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const service = message.serviceOverride || current.service;
     if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
     const headers = new Headers({'Content-Type': 'application/json'});
@@ -45,12 +44,34 @@ async function deepseek(message: TranslationProviderRequest<string>) {
     const endpoint = current.proxy[service] || urls[service];
     const isResponses = useResponsesApi(current);
     const url = buildDeepSeekEndpoint(endpoint, isResponses);
-    const configuredModel = getCurrentModel(service, message.modelOverride, current);
+    const configuredModel = getCurrentModel({serviceOverride: service, modelOverride: message.modelOverride, current});
     const imageInput = getTranslationImageInput(message);
 
     const body = isResponses
-        ? deepseekResponsesMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service, message.targetLanguage, message.modelOverride, current, message.thinkingOverride, imageInput)
-        : deepseekMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service, message.targetLanguage, message.modelOverride, current, message.thinkingOverride, imageInput);
+        ? deepseekResponsesMsgTemplate({
+            origin: message.origin,
+            context: message.pageContext,
+            prompt: message.summaryPrompt,
+            systemPrompt: message.summarySystemPrompt,
+            serviceOverride: service,
+            targetLanguage: message.targetLanguage,
+            modelOverride: message.modelOverride,
+            current,
+            thinkingOverride: message.thinkingOverride,
+            imageInput,
+        })
+        : deepseekMsgTemplate({
+            origin: message.origin,
+            context: message.pageContext,
+            prompt: message.summaryPrompt,
+            systemPrompt: message.summarySystemPrompt,
+            serviceOverride: service,
+            targetLanguage: message.targetLanguage,
+            modelOverride: message.modelOverride,
+            current,
+            thinkingOverride: message.thinkingOverride,
+            imageInput,
+        });
     const startedAt = Date.now();
     let attemptReported = false;
     try {

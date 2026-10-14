@@ -18,11 +18,7 @@ import {
     VOCABULARY_BOOK_EXPORT_VERSION,
     type VocabularyBookExport,
 } from '@/src/features/vocabulary/public';
-import {
-    MODEL_USAGE_TRANSFER_FORMAT,
-    MODEL_USAGE_TRANSFER_VERSION,
-    type ModelUsageTransferDocument,
-} from '@/src/services/model-usage/types';
+import {MODEL_USAGE_TRANSFER_FORMAT, MODEL_USAGE_TRANSFER_VERSION, type ModelUsageTransferDocument} from '@/src/services/model-usage/types';
 
 export const FLUENTREAD_DATA_BACKUP_FORMAT = 'fluentread-data-backup' as const;
 export const FLUENTREAD_DATA_BACKUP_LEGACY_VERSION = 1 as const;

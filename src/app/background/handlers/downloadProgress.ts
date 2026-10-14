@@ -12,7 +12,7 @@ import {
     normalizeDownloadProgress,
     type DownloadProgress,
 } from '@/src/core/download/progress';
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 
 export interface DownloadProgressHandlerDependencies {
     readonly runtimeId: string;

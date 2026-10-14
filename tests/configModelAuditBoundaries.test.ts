@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {createHash} from 'node:crypto';
 import {writeFileSync} from 'node:fs';
@@ -341,7 +342,7 @@ describe('configmodelAudit 配置、目录和真实消费者边界', () => {
         Object.assign(runtimeConfig, new model.Config(), {service: 'doubao', to: 'constructor', model: {doubao: seed.DOUBAO_SEED_TRANSLATION_MODEL_ID}});
         const fetchPort = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({output_text: 'wrong'})));
         vi.stubGlobal('fetch', fetchPort);
-        await expect(doubaoSeedTranslation({origin: 'hello'} as any)).rejects.toThrow('不支持该目标语言');
+        await expect(doubaoSeedTranslation(withProviderSnapshot({origin: 'hello'} as any, runtimeConfig))).rejects.toThrow('不支持该目标语言');
         expect(fetchPort).not.toHaveBeenCalled();
     });
 
@@ -351,12 +352,12 @@ describe('configmodelAudit 配置、目录和真实消费者边界', () => {
         const fetchPort = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({output_text: '翻譯段落'}), {status: 200}));
         vi.stubGlobal('fetch', fetchPort);
         const message = {origin} as any;
-        expect(await doubaoSeedTranslation(message)).toBe('翻譯段落');
+        expect(await doubaoSeedTranslation(withProviderSnapshot(message, runtimeConfig))).toBe('翻譯段落');
         const body = JSON.parse(String(fetchPort.mock.calls[0][1]?.body));
         expect(body.input[0].content[0]).toMatchObject({text: origin, translation_options: {source_language: 'en', target_language: 'zh-Hant'}});
         expect(message.origin).toBe(origin);
         runtimeConfig.to = 'en';
-        expect(await doubaoSeedTranslation(message)).toBe(origin);
+        expect(await doubaoSeedTranslation(withProviderSnapshot(message, runtimeConfig))).toBe(origin);
         expect(fetchPort).toHaveBeenCalledTimes(1);
     });
 

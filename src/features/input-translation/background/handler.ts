@@ -22,8 +22,8 @@ import {
     attachTranslationProviderConfig,
     attachTranslationRequestControl,
     createTranslationProviderConfigSnapshot,
-    type TranslationRequestControl,
 } from '@/src/services/translation/requestSnapshot';
+import type {TranslationRequestControl} from '@/src/services/translation/types';
 import type {TranslationSingleRequestMessage} from '@/src/services/translation/types';
 export const INPUT_BOX_TRANSLATION_MESSAGE_TYPE = 'inputBoxTranslation' as const;
 

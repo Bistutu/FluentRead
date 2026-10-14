@@ -9,7 +9,7 @@ import {
     type FreeTranslationWeightSnapshot,
     type FreeTranslationWeightsResponse,
 } from '@/src/services/translation/freeWeights';
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 
 export interface FreeTranslationWeightsMessage {
     type: typeof FREE_TRANSLATION_WEIGHTS_MESSAGE_TYPE;

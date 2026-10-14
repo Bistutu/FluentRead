@@ -4,7 +4,7 @@ import {
     createCapabilityGatedSelectionTtsTransport,
 } from '@/src/app/background/capabilityRegistry';
 import {resolveBrowserCapabilities} from '@/src/platform/browser/capabilities';
-import type {BackgroundMessageHandler} from '@/src/app/background/messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 
 const handler = (type: string): BackgroundMessageHandler<object> => ({
     type,

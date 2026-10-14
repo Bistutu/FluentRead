@@ -34,7 +34,7 @@ vi.mock('@/src/services/config/store', async () => {
         requestConfigPatch: (patch: unknown, send: (message: unknown) => Promise<unknown>) => send({patch}),
     };
 });
-vi.mock('@/src/app/translation/client', () => ({translateText: ports.single, translateTextBatch: ports.batch}));
+vi.mock('@/src/services/translation/client', () => ({translateText: ports.single, translateTextBatch: ports.batch}));
 vi.mock('@/src/features/document-translation/services/binary', async () => {
     const actual = await vi.importActual<typeof import('@/src/features/document-translation/services/binary')>('@/src/features/document-translation/services/binary');
     ports.download.mockImplementation(actual.createDocumentDownload);
@@ -298,7 +298,7 @@ describe('document user actions: configuration consumers', () => {
         expect(ports.send).not.toHaveBeenCalled();
     });
 
-    it('shows local save failure, consumes authoritative rollback, and dismisses the error after a later successful edit', async () => {
+    it('retains a failed language draft across authority updates and retries it with the next user edit', async () => {
         await importFiles(file('save.txt'));
         ports.send.mockRejectedValueOnce(new Error('storage unavailable'));
         await fire(labelled('文档目标语言'), 'change', {value: 'fr'});
@@ -307,11 +307,22 @@ describe('document user actions: configuration consumers', () => {
         await fire(button('调整设置', taskbar()), 'click');
         expect(dialog('document-settings-heading').open).toBe(true);
         broadcast({to: 'zh-CN'}); await flush();
-        expect(labelled('文档目标语言').value).toBe('zh-CN');
-        expect(ports.send).toHaveBeenCalledOnce();
-        await fire(labelled('文档目标语言'), 'change', {value: 'ja'});
-        expect(textOf(root)).not.toContain('设置未能保存');
+        expect(labelled('文档目标语言').value).toBe('fr');
         expect(ports.config.to).toBe('zh-CN');
+        expect(textOf(root)).toContain('设置未能保存');
+        expect(ports.send).toHaveBeenCalledOnce();
+        const retry = deferred<unknown>(undefined); ports.send.mockReturnValueOnce(retry.promise);
+        await fire(labelled('文档源语言'), 'change', {value: 'en'});
+        expect(ports.send).toHaveBeenLastCalledWith({patch: {from: 'en', to: 'fr'}});
+        expect(textOf(root)).toContain('设置未能保存');
+        expect(ports.config.to).toBe('zh-CN');
+        broadcast({from: 'en', to: 'fr'}); await flush();
+        expect(textOf(root)).toContain('设置未能保存');
+        expect(ports.send).toHaveBeenCalledTimes(2);
+        retry.resolve(undefined); await flush();
+        expect(textOf(root)).not.toContain('设置未能保存');
+        expect(labelled('文档目标语言').value).toBe('fr');
+        expect(ports.config.to).toBe('fr');
     });
 
     it('keeps a newer failure visible when an older save succeeds late', async () => {
@@ -324,8 +335,20 @@ describe('document user actions: configuration consumers', () => {
         older.resolve(undefined); await flush();
         expect(textOf(root)).toContain('设置未能保存');
         broadcast({from: 'en', to: 'de'}); await flush();
-        expect(labelled('文档目标语言').value).toBe('de');
+        expect(labelled('文档目标语言').value).toBe('fr');
+        expect(ports.config.to).toBe('de');
+        expect(textOf(root)).toContain('设置未能保存');
         expect(ports.send).toHaveBeenCalledTimes(2);
+        const latest = deferred<unknown>(undefined); ports.send.mockReturnValueOnce(latest.promise);
+        await fire(labelled('文档源语言'), 'change', {value: 'ja'});
+        expect(ports.send).toHaveBeenLastCalledWith({patch: {from: 'ja', to: 'fr'}});
+        expect(textOf(root)).toContain('设置未能保存');
+        broadcast({from: 'ja', to: 'fr'}); await flush();
+        latest.resolve(undefined); await flush();
+        expect(textOf(root)).not.toContain('设置未能保存');
+        expect(labelled('文档目标语言').value).toBe('fr');
+        expect(ports.config.to).toBe('fr');
+        expect(ports.send).toHaveBeenCalledTimes(3);
     });
 
     it('saves custom model sentinel and value together while preserving another service mapping', async () => {

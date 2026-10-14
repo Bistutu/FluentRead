@@ -8,11 +8,11 @@
 
 import {resolveCloudRegion, services} from '@/src/core/config/catalog';
 import {getAliyunTranslationEndpoint, method} from '@/src/core/config/constants';
-import {config} from '@/src/services/config/store';
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
 import {runtimeFetch} from '@/src/platform/http/runtime';
-import {getTranslationProviderConfig, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {resolveCloudLanguages} from './cloud/languages';
 import {canonicalQueryString, hmacSha1, percentEncode, toBase64} from './cloud/signature';
 
@@ -94,7 +94,7 @@ export async function buildAliyunSignedForm(input: AliyunSignatureInput): Promis
 }
 
 async function aliyunTranslation(message: TranslationProviderRequest<string>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const accessKeyId = current.token[services.aliyunTranslation]?.trim();
     const accessKeySecret = current.secret[services.aliyunTranslation]?.trim();
     if (!accessKeyId || !accessKeySecret) {
@@ -102,7 +102,7 @@ async function aliyunTranslation(message: TranslationProviderRequest<string>) {
     }
     const region = resolveCloudRegion(services.aliyunTranslation, current.serviceRegion?.[services.aliyunTranslation]);
 
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
     const {source, target} = resolveCloudLanguages('aliyunTranslation', sourceLanguage, targetLanguage);
 
     const form = await buildAliyunSignedForm({

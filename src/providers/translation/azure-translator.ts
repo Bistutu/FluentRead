@@ -9,11 +9,11 @@
 import {resolveCloudRegion, services} from '@/src/core/config/catalog';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {AZURE_TRANSLATOR_ENDPOINT, method} from '@/src/core/config/constants';
-import {config} from '@/src/services/config/store';
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError} from '@/src/platform/http/errors';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
-import {getTranslationProviderConfig, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {resolveCloudLanguages} from './cloud/languages';
 import {readNativeBatchJson, translateNativeTextBatch} from './native-batch';
 
@@ -23,7 +23,7 @@ type AzureTranslatorResponse =
 
 async function azureTranslator(message: TranslationProviderRequest<string | string[]>) {
     if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const enableNativeBatch = message.enableNativeBatch
         ?? isNativeTranslationBatchEnabled(services.azureTranslator, current.nativeBatchTranslationEnabled);
     const apiKey = current.token[services.azureTranslator]?.trim();
@@ -32,7 +32,7 @@ async function azureTranslator(message: TranslationProviderRequest<string | stri
     }
     const region = resolveCloudRegion(services.azureTranslator, current.serviceRegion?.[services.azureTranslator]);
 
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
     const {source, target} = resolveCloudLanguages('azureTranslator', sourceLanguage, targetLanguage);
 
     const url = new URL(AZURE_TRANSLATOR_ENDPOINT);

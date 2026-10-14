@@ -4,7 +4,7 @@
  * 主要内容：校验发送者、同步或删除动作、预览 ID 与冲突选择，自动使用固定应用口令；上传完成但未核验时返回可本地化的提示，屏蔽外部异常原文。
  * 模块边界：不读取配置或令牌；依赖服务执行同步，返回值仅含状态与隐藏内容的预览。
  */
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import type {ConfigPersistenceContext} from './configPersistence';
 import type {createGoogleDriveSync} from '@/src/services/config/googleDriveSync';
 import {GOOGLE_DRIVE_APPLICATION_PASSPHRASE} from '@/src/platform/google-drive/constants';

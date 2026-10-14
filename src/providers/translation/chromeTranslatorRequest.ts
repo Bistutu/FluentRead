@@ -7,7 +7,7 @@
  */
 
 import {resolveTranslationLanguages, type TranslationLanguageDefaults} from '@/src/core/translation/languages';
-import type {TranslationProviderRequestContext} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequestContext} from '@/src/services/translation/types';
 
 export interface ChromeTranslatorMessage extends TranslationProviderRequestContext {
     readonly origin?: unknown;

@@ -1,3 +1,4 @@
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {getGlossaryProtectionEntries, isGlossaryOnlyResult} from '@/src/services/translation/glossaryProtection';
 import {describe, expect, it, vi} from 'vitest';
 import {Config} from '@/src/core/config/model';
@@ -68,13 +69,11 @@ function harness() {
     const cache = new Map<string, string>();
     const identities: Record<string, unknown>[] = [];
     const resolutionCaptures: Array<{identity: Record<string, unknown>; eventEnd: number; providerCalls: number}> = [];
-    const calls: Array<{message: Record<string, unknown>; snapshot: TranslationProviderConfigSnapshot; body: any}> = [];
-    const provider = vi.fn(async (message: Record<string, unknown>): Promise<unknown> => {
+    const calls: Array<{message: TranslationProviderRequest; snapshot: TranslationProviderConfigSnapshot; body: any}> = [];
+    const provider = vi.fn(async (message: TranslationProviderRequest): Promise<unknown> => {
         const snapshot = getTranslationProviderConfig(message, createTranslationProviderConfigSnapshot(config));
         const translate = (origin: string) => {
-            const body = JSON.parse(commonMsgTemplate(origin, message.pageContext as string | undefined,
-                message.summaryPrompt as string | undefined, message.summarySystemPrompt as string | undefined,
-                'openai', 'zh-Hans', 'model-fixture', snapshot));
+            const body = JSON.parse(commonMsgTemplate({origin: origin, context: message.pageContext as string | undefined, prompt: message.summaryPrompt as string | undefined, systemPrompt: message.summarySystemPrompt as string | undefined, serviceOverride: 'openai', targetLanguage: 'zh-Hans', modelOverride: 'model-fixture', current: snapshot}));
             calls.push({message, snapshot, body});
             if (message.summaryPrompt) return 'This page explains translation systems.';
             return snapshot.glossaryProtectedTokens?.some(token => origin.includes(token)) ? origin : `译文:${origin}`;
@@ -339,8 +338,7 @@ describe('术语库与真实翻译编排协作', () => {
         await h.request({origin: packet.payload, serviceOverride: 'tongyi', modelOverride: 'qwen-mt-plus'});
         const current = h.calls[0].snapshot;
         const protectedPayload = String(h.calls[0].message.origin);
-        const body = JSON.parse(tongyiMsgTemplate(protectedPayload, undefined, undefined, undefined,
-            'tongyi', 'zh-Hans', 'qwen-mt-plus', current));
+        const body = JSON.parse(tongyiMsgTemplate({origin: protectedPayload, serviceOverride: 'tongyi', targetLanguage: 'zh-Hans', modelOverride: 'qwen-mt-plus', current: current}));
         expect(body.messages).toEqual([{role: 'user', content: protectedPayload}]);
         expect(body.translation_options.terms).toEqual(current.glossaryProtectedTokens?.map(token => ({source: token, target: token})));
         expect(h.identities[0]).toMatchObject({glossaryTerms: [{source: 'agent', target: '智能体'}]});
@@ -510,9 +508,9 @@ describe('术语模板与服务协议', () => {
         config.customBody.openai = JSON.stringify({messages: [{role: 'user', content: 'custom task'}]});
         config.customBody.tongyi = JSON.stringify({translation_options: {source_lang: 'auto', target_lang: 'English'}});
         const current = createTranslationProviderConfigSnapshot(config);
-        const common = JSON.parse(commonMsgTemplate('agent', undefined, undefined, undefined, 'openai', 'zh-Hans', undefined, current));
+        const common = JSON.parse(commonMsgTemplate({origin: 'agent', serviceOverride: 'openai', targetLanguage: 'zh-Hans', current: current}));
         expect(common.messages).toEqual([{role: 'user', content: 'custom task'}]);
-        const mt = JSON.parse(tongyiMsgTemplate('agent', undefined, undefined, undefined, 'tongyi', 'zh-Hans', 'qwen-mt-plus', current));
+        const mt = JSON.parse(tongyiMsgTemplate({origin: 'agent', serviceOverride: 'tongyi', targetLanguage: 'zh-Hans', modelOverride: 'qwen-mt-plus', current: current}));
         expect(mt.translation_options).toEqual({source_lang: 'auto', target_lang: 'English', terms: [{source: 'agent', target: '智能体'}]});
     });
 
@@ -520,7 +518,7 @@ describe('术语模板与服务协议', () => {
         const config = Object.assign(new Config(), {glossaryTerms: [{source: 'Token', target: '词元'}]});
         config.customBody.tongyi = JSON.stringify({translation_options: {terms: [{source: 'Token', target: 'Token'}]}});
         const current = createTranslationProviderConfigSnapshot(config);
-        const body = JSON.parse(tongyiMsgTemplate('Token', undefined, undefined, undefined, 'tongyi', 'en', 'qwen-mt-flash', current, undefined, 'auto'));
+        const body = JSON.parse(tongyiMsgTemplate({origin: 'Token', serviceOverride: 'tongyi', targetLanguage: 'en', modelOverride: 'qwen-mt-flash', current: current, sourceLanguage: 'auto'}));
         expect(body.translation_options).toEqual({source_lang: 'auto', target_lang: 'en', terms: [{source: 'Token', target: 'Token'}]});
         expect(config.customBody.tongyi).toBe(JSON.stringify({translation_options: {terms: [{source: 'Token', target: 'Token'}]}}));
     });
@@ -537,12 +535,12 @@ describe('术语模板与服务协议', () => {
         const config = Object.assign(new Config(), {service: 'openai', glossaryTerms: [{source: 'agent', target: '<value>$&\nquoted'}]});
         const current = createTranslationProviderConfigSnapshot(config);
         const bodies = [
-            commonMsgTemplate('agent', undefined, undefined, undefined, 'openai', 'zh-Hans', undefined, current),
-            deepseekMsgTemplate('agent', undefined, undefined, undefined, 'deepseek', 'zh-Hans', undefined, current),
-            deepseekResponsesMsgTemplate('agent', undefined, undefined, undefined, 'deepseek', 'zh-Hans', undefined, current),
-            geminiMsgTemplate('agent', undefined, undefined, undefined, 'gemini', 'zh-Hans', current),
-            claudeMsgTemplate('agent', undefined, undefined, undefined, 'claude', 'zh-Hans', undefined, current),
-            tongyiMsgTemplate('agent', undefined, undefined, undefined, 'tongyi', 'zh-Hans', undefined, current),
+            commonMsgTemplate({origin: 'agent', serviceOverride: 'openai', targetLanguage: 'zh-Hans', current: current}),
+            deepseekMsgTemplate({origin: 'agent', serviceOverride: 'deepseek', targetLanguage: 'zh-Hans', current: current}),
+            deepseekResponsesMsgTemplate({origin: 'agent', serviceOverride: 'deepseek', targetLanguage: 'zh-Hans', current: current}),
+            geminiMsgTemplate({origin: 'agent', serviceOverride: 'gemini', targetLanguage: 'zh-Hans', current: current}),
+            claudeMsgTemplate({origin: 'agent', serviceOverride: 'claude', targetLanguage: 'zh-Hans', current: current}),
+            tongyiMsgTemplate({origin: 'agent', serviceOverride: 'tongyi', targetLanguage: 'zh-Hans', current: current}),
         ];
         for (const body of bodies) {
             expect(body).toContain('fluentread_glossary');
@@ -555,7 +553,7 @@ describe('术语模板与服务协议', () => {
     it('Qwen-MT使用官方translation_options.terms且原始message不混入提示词', () => {
         const config = Object.assign(new Config(), {glossaryTerms: [{source: 'agent', target: '智能体'}]});
         const current = createTranslationProviderConfigSnapshot(config);
-        const body = JSON.parse(tongyiMsgTemplate('agent', undefined, undefined, undefined, 'tongyi', 'zh-Hans', 'qwen-mt-plus', current));
+        const body = JSON.parse(tongyiMsgTemplate({origin: 'agent', serviceOverride: 'tongyi', targetLanguage: 'zh-Hans', modelOverride: 'qwen-mt-plus', current: current}));
         expect(body.messages).toEqual([{role: 'user', content: 'agent'}]);
         expect(body.translation_options.terms).toEqual([{source: 'agent', target: '智能体'}]);
         expect(JSON.stringify(body)).not.toContain('fluentread_glossary');

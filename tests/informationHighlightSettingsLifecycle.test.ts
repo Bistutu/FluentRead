@@ -69,7 +69,8 @@ beforeEach(async () => {
   vi.stubGlobal('document', document); Object.assign(globalThis, {[key]: {send, Tooltip, Dialog, previewStory}})
   server = await createServer({appType: 'custom', configFile: false, logLevel: 'silent', root: process.cwd(),
     resolve: {alias: {'@': resolve(process.cwd())}}, ssr: {noExternal: ['webextension-polyfill', 'element-plus']},
-    server: {hmr: false, middlewareMode: true}, plugins: [{name: 'information-highlight-settings-controlled-ports', enforce: 'pre', resolveId(id) {
+    // 夹具验证 DOM、组件事件和轮询，不使用文件观察或热更新。
+    server: {hmr: false, middlewareMode: true, watch: null}, plugins: [{name: 'information-highlight-settings-controlled-ports', enforce: 'pre', resolveId(id) {
       if (id === 'webextension-polyfill') return '\0highlight-settings-browser'
       if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0highlight-settings-i18n'
       if (id === 'element-plus') return '\0highlight-settings-options'

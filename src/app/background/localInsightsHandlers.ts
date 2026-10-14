@@ -6,7 +6,7 @@
  */
 import {modelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
 import {translationStatsRepository} from '@/src/platform/storage/translationStatsRepository';
-import type {BackgroundMessageHandler} from './messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import type {ConfigPersistenceContext} from './handlers/configPersistence';
 import {createModelUsageHandler} from './handlers/modelUsage';
 import {createTranslationStatsHandler} from './handlers/translationStats';

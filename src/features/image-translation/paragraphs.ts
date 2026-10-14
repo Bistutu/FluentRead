@@ -4,7 +4,7 @@
  * 主要内容：按行距、字号、对齐和遮挡关系合并连续正文，按纵向邻域扫描候选并增量维护对齐范围；大输入首次尝试合段时建立有界深度的遮挡索引，暂时排除当前段成员并在结束后恢复，跳过无关区域及成员子树；保留标题、列表、栏位及竖排边界、原始擦除框与字号上限。
  * 模块边界：只处理原图坐标与识别文本，不运行 OCR、不调用翻译或 Canvas；漫画仍使用其气泡分组策略。
  */
-import type { OcrLine } from '@/src/shared/image/types';
+import type {OcrLine} from '@/src/shared/image/types';
 export interface ImageTextRegion extends OcrLine {
     sourceBoxes?: OcrLine['bbox'][];
     /** 典型源行字形高度，用于限制译文字号；不是合并段落的总高度。 */

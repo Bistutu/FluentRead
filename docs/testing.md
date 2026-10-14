@@ -22,6 +22,10 @@ GitHub 仓库列表和 Issue 列表同时保留旧容器与当前结构的保护
 
 ## 视频完整句学习
 
+AI 字幕运行时的缓存恢复与完整生成提交由 `video-ai/subtitleSession.ts` 统一拥有：媒体、模型、来源语言变化或卸载后，旧缓存不能写入新会话；原生轨道就绪时拒绝缓存恢复；同媒体元数据补全保持生成开始时的模型与语言快照。`videoAiSubtitleSession` 使用受控未决 Promise 验证这些边界、请求去重、新旧请求终结顺序、失败恢复、重入与销毁，完整时间轴提交会复制身份和 cue，缓存失败保留已识别字幕。
+
+`video-ai/requestSession.ts` 将完整和实时采集器的本地 session 映射为同一后台流的单调请求 generation，避免相同本地计数碰撞。模型预热、转写和取消共用冻结身份，缓存恢复不虚构识别请求；销毁后禁止新请求，原采集器仍用精确旧身份终止资源。`videoAiRequestSession` 联合真实后台 handler 验证旧预热、旧取消与新代际的隔离；`videoSubtitleTrackPriorityRuntime` 继续验证实际挂载、原生字幕优先、模型切换、元数据补全、预览和离开清理。两模块四维覆盖率单列；这组端口/DOM 证据不代表真实 PCM 采集、本地模型准确率或原站播放验收。
+
 `pnpm test:video:learning --coverage` 限定执行原始字幕聚合、播放控制、面板所有权与来源恢复、收藏来源及 UI 五份测试；四个新增 TypeScript 模块的 statements/branches/functions/lines 均要求 100%。字幕菜单和运行时回归使用 `videoSubtitle`、`videoSubtitleTrackPriorityRuntime`、`videoSubtitleLogic`、`videoUiI18n`，以及架构、文件头和 i18n 检查。
 
 生产 Chrome 构建后运行：
@@ -532,6 +536,25 @@ node scripts/verify-userscript-build.mjs  # userscript 元数据与产物边界
 `tests/architecture/sourceFileHeaders.test.ts` 会枚举 `src/` 下所有 TypeScript、Vue、CSS 与 Markdown 文件，检查首字符处的长注释、精确 `@file` 路径以及职责、内容、边界三个非空语义段。新增或移动源码时必须同步书写文件级说明，不能只让旧文件一次性通过。
 
 ## 覆盖率定义
+
+### PR 的扩展质量检查
+
+`.github/workflows/extension-quality.yml` 在面向 `main` 的 PR、主线提交和手动运行时检查扩展。使用锁文件安装与 pnpm 缓存，单个 Vitest worker、一个资源槽和串行构建；同一 PR 的新提交取消旧检查。工作流先执行测试登记审计，再由 `scripts/testing/run-affected-tests.mjs` 将完整架构组与受影响行为测试合并去重，统一执行一次。架构组中已有真实 runtime 消费者；它们在同一覆盖率运行中贡献执行证据，不能按分类标签排除。涉及扩展、共享源码、测试、资源或构建脚本时，继续检查 TypeScript/Vue、Chrome 与 Firefox 构建、生成清单，以及 userscript 构建和产物验证。文档内容独立变化仍执行架构门禁，不触发这些扩展构建。
+
+影响规划以 PR 基线到实际检出提交的 Git diff 为准，跟踪静态 import、使用明确路径的动态 import、barrel、CSS、夹具路径，以及现有组件测试直接读取 SFC 的文件路径；删除和重命名的旧路径同样参与追踪。测试归类复用 `tests/test-matrix.json`，架构组只执行一次。单纯新增测试登记或覆盖率清单保持定向范围；共享依赖、TypeScript/Vitest 执行环境变化则显式扩大到全部受影响行为套件，计划记录扩大原因。改动的严格覆盖模块没有可追踪行为测试时检查失败，不能以空选择通过。
+
+严格覆盖率只统计此次改动并已纳入显式清单的源码，以及此次新纳入清单的已有源码；生成的临时配置继承真实测试插件与资源设置，并保留 statements/branches/functions/lines 四项 100% 门槛，逐文件检查。测试本身或纯文档变化没有覆盖源码目标时，执行所选行为测试并明确记录覆盖率未执行。计划与 coverage summary 作为 7 天 CI 证据保存；这些结果不代表全项目行为覆盖、真实浏览器、Firefox 实机或在线供应商验证。依赖图选择不能替代新增功能测试与必要的人工浏览器专项。
+
+本地可检查和执行相同范围：
+
+```bash
+node scripts/testing/run-affected-tests.mjs --base origin/main --plan-only --report coverage/affected-plan/plan.json
+node scripts/testing/run-resource-safe.mjs -- node scripts/testing/run-affected-tests.mjs --base origin/main
+```
+
+没有受影响测试时，入口明确跳过执行，不向 Vitest 传空筛选而误跑全量。缺失 Git 基线、无效覆盖清单、测试失败或子进程终止均使入口失败。源码头审计仅忽略 Finder 的精确 `.DS_Store` 文件名；隐藏源码、相似文件名和未知资产仍遵循原规则。
+
+### 全项目的验证归属
 
 项目使用两道互补门禁，不能把“构建成功”和“代码行为已经覆盖”混为一谈：
 

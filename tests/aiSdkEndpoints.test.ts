@@ -138,8 +138,8 @@ describe('AI SDK endpoint 选择规则', () => {
         }
     });
 
-    it('未显式注入配置时使用运行时配置默认值', () => {
-        expect(resolveOpenAICompatibleEndpoint(services.openai).endpoint).toBe(urls[services.openai]);
+    it('显式空代理配置使用服务目录的默认端点', () => {
+        expect(resolveOpenAICompatibleEndpoint(services.openai, endpointConfig()).endpoint).toBe(urls[services.openai]);
     });
 
     it('common 服务优先使用当前服务的代理地址', () => {

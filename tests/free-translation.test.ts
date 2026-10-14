@@ -5,6 +5,7 @@
  * 模块边界：不运行浏览器或实际免费服务，不替换语言识别、结果校验、免费池或调度器。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {providerConfigFixture} from './helpers/providerSnapshot';
 
 const {mockConfig, storedHealth, microsoftMock, officialMock, bilibiliMock, doubaoMock, googleMock, googleOwnerMock, myMemoryMock, webMock, chineseMock, extraMock, unsupportedApertiumMock} = vi.hoisted(() => ({
     mockConfig: {} as Record<string, any>,
@@ -35,7 +36,7 @@ vi.mock('@/src/providers/translation/free-extra-web', () => ({translateExtraFree
 
 import type {TranslationConfigSource} from '@/src/services/translation/types';
 import type {FreeFallbackLease} from '@/src/services/translation/freeFallback';
-import type {TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {servicesType} from '@/src/core/config/catalog';
 import {DEFAULT_DEEPLX_ENDPOINT} from '@/src/core/config/deeplx';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
@@ -48,8 +49,11 @@ let translateFreeTranslationProvider: typeof import('@/src/providers/translation
 let attachTranslationProviderConfig: typeof import('@/src/services/translation/requestSnapshot').attachTranslationProviderConfig;
 let createTranslationProviderConfigSnapshot: typeof import('@/src/services/translation/requestSnapshot').createTranslationProviderConfigSnapshot;
 let getTranslationProviderConfig: typeof import('@/src/services/translation/requestSnapshot').getTranslationProviderConfig;
+function withProviderSnapshot<T extends object>(message: T, source: Partial<TranslationConfigSource>): T {
+    return attachTranslationProviderConfig({...message}, getTranslationProviderConfig(message, () => createTranslationProviderConfigSnapshot(providerConfigFixture(source))));
+}
 const translateFreeText = (text: string, message: Record<string, unknown> = {}) => (
-    freeTranslation({...message, origin: text}) as Promise<string>
+    freeTranslation(withProviderSnapshot({...message, origin: text}, mockConfig)) as Promise<string>
 );
 const flush = async () => { await vi.advanceTimersByTimeAsync(0); };
 async function settle<T>(request: Promise<T>): Promise<T> {
@@ -96,11 +100,11 @@ describe('免费翻译服务', () => {
         microsoftMock.mockImplementation(async (texts: string[]) => [...texts]);
         const sources = Array.from({length: 9}, (_, index) => `This English paragraph number ${index} explains the application settings.`);
         const origin = grouped ? sources : sources[0];
-        await expect(settle(freeTranslation(allowUnchangedTranslationResult({origin})))).resolves.toEqual(origin);
+        await expect(settle(freeTranslation(withProviderSnapshot(allowUnchangedTranslationResult({origin}), mockConfig)))).resolves.toEqual(origin);
         expect(microsoftMock).toHaveBeenCalledTimes(grouped ? 2 : 1);
         expect(microsoftMock.mock.calls.flatMap(call => call[0])).toEqual(grouped ? sources : [sources[0]]);
         expect(googleMock).not.toHaveBeenCalled(); expect(googleOwnerMock).not.toHaveBeenCalled();
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
     });
 
     it.each(['google', 'microsoft'] as const)('单服务连接检查向 %s 传递后台真实传输租约', async provider => {
@@ -113,7 +117,7 @@ describe('免费翻译服务', () => {
         const request = attachTranslationRequestScheduler({origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'},
             scheduler, {service: 'freeTranslation'}, lease);
 
-        await expect(translateFreeTranslationProvider(provider, request)).resolves.toBe('有效译文');
+        await expect(translateFreeTranslationProvider(provider, withProviderSnapshot(request, mockConfig))).resolves.toBe('有效译文');
         expect(leaf.mock.calls[0][provider === 'microsoft' ? 5 : 6]).toBe(lease);
     });
 
@@ -132,7 +136,7 @@ describe('免费翻译服务', () => {
         const {attachTranslationRequestControl} = await import('@/src/services/translation/requestSnapshot');
         const broker = createTranslationBroker({
             ready: Promise.resolve(), getConfig: () => mockConfig as unknown as TranslationConfigSource,
-            providers: {freeTranslation: message => freeTranslation(message as unknown as TranslationProviderRequest)},
+            providers: {freeTranslation: message => freeTranslation(withProviderSnapshot(message as unknown as TranslationProviderRequest, mockConfig))},
             cache: {get: async () => null, set: async () => true, clear: async () => {}, cleanup: async () => {}},
             serviceTypes: servicesType,
             endpointResolver: {resolveOpenAICompatibleEndpoint: () => ({endpoint: ''}), aiSdkTransportProfile: ''},
@@ -219,7 +223,7 @@ describe('免费翻译服务', () => {
         }
         const request = attachTranslationRequestScheduler({origin: ['Document paragraph one.', 'Document paragraph two.'],
             documentBatch: true, requestTimeoutMs: 5_000}, scheduler, {service: 'freeTranslation'}, outerLease);
-        const translation = freeTranslation(request);
+        const translation = freeTranslation(withProviderSnapshot(request, mockConfig));
         await vi.advanceTimersByTimeAsync(300);
         expect(pending).toBeGreaterThan(0);
         if (provider === 'google') expect(googleMock).not.toHaveBeenCalled();
@@ -239,14 +243,14 @@ describe('免费翻译服务', () => {
         chineseMock.mockResolvedValue(invalid); googleMock.mockResolvedValue(valid);
         const current = createTranslationProviderConfigSnapshot({...mockConfig, glossaryProtectedTokens: [token],
             glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource);
-        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: source}, current)))).resolves.toBe(valid);
+        await expect(settle(freeTranslation(withProviderSnapshot(attachTranslationProviderConfig({origin: source}, current), mockConfig)))).resolves.toBe(valid);
         expect(chineseMock).toHaveBeenCalledOnce(); expect(googleMock).toHaveBeenCalledOnce();
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'youdaoFree')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'youdaoFree')?.status).toBe('ready');
         // 无文档 context 的既有纯文本/网页调用不引入格式占用约束。
         await expect(settle(translateFreeText(source))).resolves.toBe(invalid);
         const page = Object.freeze({...current, freeTranslationOrder: Object.freeze(['youdaoFree'] as const),
             glossaryMatchContext: {...current.glossaryMatchContext!, context: 'page' as const}});
-        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: source}, page)))).resolves.toBe(invalid);
+        await expect(settle(freeTranslation(withProviderSnapshot(attachTranslationProviderConfig({origin: source}, page), mockConfig)))).resolves.toBe(invalid);
         expect(chineseMock).toHaveBeenCalledTimes(3); expect(googleMock).toHaveBeenCalledOnce();
     });
 
@@ -259,9 +263,9 @@ describe('免费翻译服务', () => {
         googleOwnerMock.mockImplementation(async (texts: string[]) => texts.map(target));
         const request = attachTranslationProviderConfig({origin: origins}, createTranslationProviderConfigSnapshot({...mockConfig,
             glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource));
-        await expect(settle(freeTranslation(request))).resolves.toEqual(origins.map(target));
+        await expect(settle(freeTranslation(withProviderSnapshot(request, mockConfig)))).resolves.toEqual(origins.map(target));
         expect(microsoftMock).toHaveBeenCalledOnce(); expect(googleOwnerMock).toHaveBeenCalledTimes(2); expect(googleMock).not.toHaveBeenCalled();
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
     });
 
     it('真实文档正文已译但行内菜单原样英文时在胜出前换线，不冷却该服务或增加小请求', async () => {
@@ -273,9 +277,9 @@ describe('免费翻译服务', () => {
         googleMock.mockResolvedValue(translated);
         const current = createTranslationProviderConfigSnapshot({...mockConfig,
             glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource);
-        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: source}, current)))).resolves.toBe(translated);
+        await expect(settle(freeTranslation(withProviderSnapshot(attachTranslationProviderConfig({origin: source}, current), mockConfig)))).resolves.toBe(translated);
         expect(microsoftMock).toHaveBeenCalledOnce(); expect(googleMock).toHaveBeenCalledOnce();
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
         microsoftMock.mockResolvedValue(['下一段有效译文']);
         await expect(settle(translateFreeText('The next paragraph should use the same provider.'))).resolves.toBe('下一段有效译文');
         expect(microsoftMock).toHaveBeenCalledTimes(2); expect(googleMock).toHaveBeenCalledOnce();
@@ -289,13 +293,13 @@ describe('免费翻译服务', () => {
         microsoftMock.mockResolvedValue([echoed]); googleMock.mockResolvedValue('读者应选择 <g1>文档翻译</g1> 再导入文档。');
         const current = createTranslationProviderConfigSnapshot({...mockConfig,
             glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource);
-        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: source, targetLanguage: 'zh-Hans'}, current))))
+        await expect(settle(freeTranslation(withProviderSnapshot(attachTranslationProviderConfig({origin: source, targetLanguage: 'zh-Hans'}, current), mockConfig))))
             .resolves.toBe('读者应选择 <g1>文档翻译</g1> 再导入文档。');
-        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: source, targetLanguage: 'en'}, current)))).resolves.toBe(echoed);
+        await expect(settle(freeTranslation(withProviderSnapshot(attachTranslationProviderConfig({origin: source, targetLanguage: 'en'}, current), mockConfig)))).resolves.toBe(echoed);
         const token = '__FRTERM_123456789abc_0__', protectedSource = source.replace('Document translation', token);
         microsoftMock.mockResolvedValue([echoed.replace('Document translation', token)]);
-        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: protectedSource, targetLanguage: 'zh-Hans'},
-            Object.freeze({...current, glossaryProtectedTokens: [token]}))))).resolves.toBe(echoed.replace('Document translation', token));
+        await expect(settle(freeTranslation(withProviderSnapshot(attachTranslationProviderConfig({origin: protectedSource, targetLanguage: 'zh-Hans'},
+            Object.freeze({...current, glossaryProtectedTokens: [token]})), mockConfig)))).resolves.toBe(echoed.replace('Document translation', token));
         expect(microsoftMock).toHaveBeenCalledTimes(3); expect(googleMock).toHaveBeenCalledOnce();
     });
 
@@ -308,9 +312,9 @@ describe('免费翻译服务', () => {
         googleMock.mockImplementation(async (text: string) => target(text));
         const request = attachTranslationProviderConfig({origin: origins}, createTranslationProviderConfigSnapshot({...mockConfig,
             glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource));
-        await expect(settle(freeTranslation(request))).resolves.toEqual(origins.map(target));
+        await expect(settle(freeTranslation(withProviderSnapshot(request, mockConfig)))).resolves.toEqual(origins.map(target));
         expect(microsoftMock).toHaveBeenCalledOnce(); expect(googleOwnerMock).toHaveBeenCalledTimes(2); expect(googleMock).not.toHaveBeenCalled();
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
     });
 
     it.each(['missing', 'duplicate', 'foreign'])('文档强调标记被候选%s时在获胜前换线，恢复后仍为原始Markdown语法', async kind => {
@@ -326,12 +330,12 @@ describe('免费翻译服务', () => {
             : text + (kind === 'duplicate' ? '<g1>重复</g1>' : '<g2/>')}`);
         // 此句是实际匿名 Transmart A/B 返回；单测复用记录值验证请求和 Markdown 恢复，网络证据另存 /private/tmp。
         googleMock.mockResolvedValue('翻译这一段，并保留<g1>粗体</g1>文本。');
-        const result = await settle(freeTranslation(packet.message));
+        const result = await settle(freeTranslation(withProviderSnapshot(packet.message, mockConfig)));
         expect(renderDocument(document, [packet.restore(result) as string], 'translated'))
             .toBe('翻译这一段，并保留**粗体**文本。');
         expect(chineseMock).toHaveBeenCalledOnce();
         expect(googleMock).toHaveBeenCalledOnce();
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'youdaoFree')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'youdaoFree')?.status).toBe('ready');
     });
 
     it('文档候选必须保留嵌套父子关系，并把合法全角和实体恢复为canonical标签', async () => {
@@ -341,7 +345,7 @@ describe('免费翻译服务', () => {
             glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource));
         chineseMock.mockResolvedValue('<g1>外层</g1><g2>粗体</g2><g3/>');
         googleMock.mockResolvedValue('保留（g1）外层&lt;g2&gt;粗体&lt;/g2&gt;（/g1）和 <g3></g3>。');
-        await expect(settle(freeTranslation(request))).resolves.toBe('保留<g1>外层<g2>粗体</g2></g1>和 <g3/>。');
+        await expect(settle(freeTranslation(withProviderSnapshot(request, mockConfig)))).resolves.toBe('保留<g1>外层<g2>粗体</g2></g1>和 <g3/>。');
         expect(chineseMock).toHaveBeenCalledOnce(); expect(googleMock).toHaveBeenCalledOnce();
         await expect(settle(translateFreeText(source))).resolves.toBe('<g1>外层</g1><g2>粗体</g2><g3/>');
         expect(chineseMock).toHaveBeenCalledTimes(2);
@@ -354,7 +358,7 @@ describe('免费翻译服务', () => {
         googleOwnerMock.mockImplementation(async (texts: string[]) => texts.map(text => `译文:${text.replace('bold', '粗体').replace(/</gu, '&lt;').replace(/>/gu, '&gt;')}`));
         const request = attachTranslationProviderConfig({origin: origins}, createTranslationProviderConfigSnapshot({...mockConfig,
             glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource));
-        await expect(settle(freeTranslation(request))).resolves.toEqual(origins.map(text => `译文:${text.replace('bold', '粗体')}`));
+        await expect(settle(freeTranslation(withProviderSnapshot(request, mockConfig)))).resolves.toEqual(origins.map(text => `译文:${text.replace('bold', '粗体')}`));
         expect(googleOwnerMock).toHaveBeenCalled(); expect(googleMock).not.toHaveBeenCalled();
     });
 
@@ -365,10 +369,10 @@ describe('免费翻译服务', () => {
         googleMock.mockImplementation(async (source: string) => `译文:${source}`);
         const request = attachTranslationProviderConfig({origin: `Use ${token} here.`},
             createTranslationProviderConfigSnapshot({...mockConfig, glossaryProtectedTokens: [token]} as unknown as TranslationConfigSource));
-        await expect(settle(freeTranslation(request))).resolves.toBe(`译文:Use ${token} here.`);
+        await expect(settle(freeTranslation(withProviderSnapshot(request, mockConfig)))).resolves.toBe(`译文:Use ${token} here.`);
         expect(chineseMock).toHaveBeenCalledOnce();
         expect(googleMock).toHaveBeenCalledOnce();
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'youdaoFree')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'youdaoFree')?.status).toBe('ready');
         await expect(settle(translateFreeText('Ordinary prose.'))).resolves.toBe('使用 FRTERM 123456789abc 0。');
         expect(chineseMock).toHaveBeenCalledTimes(2);
     });
@@ -382,10 +386,10 @@ describe('免费翻译服务', () => {
         const request = attachTranslationProviderConfig({origin: `Use ${token} here.`},
             createTranslationProviderConfigSnapshot({...mockConfig, glossaryProtectedTokens: [token]} as unknown as TranslationConfigSource));
 
-        await expect(settle(freeTranslation(request))).resolves.toBe(`译文:Use ${token} here.`);
+        await expect(settle(freeTranslation(withProviderSnapshot(request, mockConfig)))).resolves.toBe(`译文:Use ${token} here.`);
         expect(doubaoMock).toHaveBeenCalledOnce();
         expect(googleMock).toHaveBeenCalledOnce();
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'doubaoWeb')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'doubaoWeb')?.status).toBe('ready');
 
         await vi.advanceTimersByTimeAsync(1_000);
         await expect(settle(translateFreeText('Ordinary prose.'))).resolves.toBe('正常文字的译文。');
@@ -402,7 +406,7 @@ describe('免费翻译服务', () => {
         googleOwnerMock.mockImplementation(async (texts: string[]) => texts.map(text => `译文:${text}`));
         const request = attachTranslationProviderConfig({origin: origins},
             createTranslationProviderConfigSnapshot({...mockConfig, glossaryProtectedTokens: tokens} as unknown as TranslationConfigSource));
-        await expect(settle(freeTranslation(request))).resolves.toEqual(origins.map(text => `译文:${text}`));
+        await expect(settle(freeTranslation(withProviderSnapshot(request, mockConfig)))).resolves.toEqual(origins.map(text => `译文:${text}`));
         expect(googleOwnerMock).toHaveBeenCalled();
         expect(googleMock).not.toHaveBeenCalled();
     });
@@ -421,7 +425,7 @@ describe('免费翻译服务', () => {
         await expect(settle(translateFreeText('Next prose', {sourceLanguage: 'en', targetLanguage: 'zh-Hans'}))).resolves.toBe('有效译文');
         expect(extraMock).toHaveBeenCalledOnce();
         expect(mockConfig.freeTranslationOrder).toEqual(['apertiumFree', 'google']);
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'apertiumFree')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'apertiumFree')?.status).toBe('ready');
 
         await expect(settle(translateFreeText('Hello', {sourceLanguage: 'en', targetLanguage: 'es'}))).resolves.toBe('Hola');
         expect(extraMock).toHaveBeenCalledTimes(2);
@@ -446,7 +450,7 @@ describe('免费翻译服务', () => {
         mockConfig.freeTranslationOrder = ['microsoft'];
         microsoftMock.mockResolvedValue(['有效译文']);
         for (const mock of [officialMock, bilibiliMock, doubaoMock, googleMock, myMemoryMock, webMock, chineseMock, extraMock]) mock.mockResolvedValue('有效译文');
-        await expect(translateFreeTranslationProvider(id, {origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'})).resolves.toBe('有效译文');
+        await expect(translateFreeTranslationProvider(id, withProviderSnapshot({origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}, mockConfig))).resolves.toBe('有效译文');
         const calls = [microsoftMock, officialMock, bilibiliMock, doubaoMock, googleMock, myMemoryMock, webMock, chineseMock, extraMock].reduce((total, mock) => total + mock.mock.calls.length, 0);
         expect(calls).toBe(1);
         const families = {transmart: webMock, yandexFree: webMock, volcengineFree: webMock, youdaoFree: chineseMock, icibaFree: chineseMock,
@@ -469,7 +473,7 @@ describe('免费翻译服务', () => {
         const snapshot = getTranslationProviderConfig(bilibiliMock.mock.calls[0][0], mockConfig as any);
         expect(snapshot.token).toEqual({});
         expect(snapshot.proxy).toEqual({});
-        await expect(translateFreeTranslationProvider('bilibiliFree', {origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-Hans'})).rejects.toMatchObject({statusCode: 429});
+        await expect(translateFreeTranslationProvider('bilibiliFree', withProviderSnapshot({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}, mockConfig))).rejects.toMatchObject({statusCode: 429});
         expect(googleMock).toHaveBeenCalledOnce();
     });
 
@@ -486,7 +490,7 @@ describe('免费翻译服务', () => {
         expect(message).toMatchObject({origin: 'Hello from FluentRead.', sourceLanguage: 'auto', targetLanguage: 'zh-Hans', serviceOverride: 'doubaoWeb', abortSignal: expect.any(AbortSignal)});
         expect(readSnapshot(message)).toMatchObject({token: {}, secret: {}, customHeaders: {}, proxy: {}, freeTranslationOrder: ['doubaoWeb', 'google'], to: 'zh-Hans'});
         expect(googleMock).toHaveBeenCalledOnce(); expect(microsoftMock).not.toHaveBeenCalled();
-        await expect(translateFreeTranslationProvider('doubaoWeb', {origin: 'Hello', targetLanguage: 'zh-Hans'})).rejects.toMatchObject({statusCode: 403});
+        await expect(translateFreeTranslationProvider('doubaoWeb', withProviderSnapshot({origin: 'Hello', targetLanguage: 'zh-Hans'}, mockConfig))).rejects.toMatchObject({statusCode: 403});
         expect(googleMock).toHaveBeenCalledOnce();
     });
 
@@ -500,7 +504,7 @@ describe('免费翻译服务', () => {
             : fail ? Response.json({code: 710012001, msg: 'private diagnostic'})
                 : new Response('event: json\ndata: {"code":0,"data":{"items":[{"index":0,"res":"豆包译文"}]}}\n\nevent: done\ndata:\n\n', {headers: {'Content-Type': 'text/event-stream'}}));
         vi.stubGlobal('fetch', fetch);
-        await expect(translateFreeTranslationProvider('doubaoWeb', {origin: 'Hello', targetLanguage: 'zh-Hans'})).resolves.toBe('豆包译文');
+        await expect(translateFreeTranslationProvider('doubaoWeb', withProviderSnapshot({origin: 'Hello', targetLanguage: 'zh-Hans'}, mockConfig))).resolves.toBe('豆包译文');
         expect(fetch).toHaveBeenCalledTimes(2); expect(googleMock).not.toHaveBeenCalled();
         fail = true;
         await expect(settle(translateFreeText('New readable paragraph.'))).resolves.toBe('备用译文');
@@ -513,18 +517,18 @@ describe('免费翻译服务', () => {
         mockConfig.proxy = {deeplx: 'https://private.example'};
         mockConfig.deeplx = 'https://private.example/translate';
         officialMock.mockResolvedValueOnce('有效译文');
-        await translateFreeTranslationProvider('alibabaFree', {origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'});
+        await translateFreeTranslationProvider('alibabaFree', withProviderSnapshot({origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}, mockConfig));
         const snapshot = getTranslationProviderConfig(officialMock.mock.calls[0][1], mockConfig as any);
         expect(snapshot.token).toEqual({});
         expect(snapshot.proxy).toEqual({});
         expect(snapshot.deeplx).toBe(DEFAULT_DEEPLX_ENDPOINT);
         microsoftMock.mockResolvedValue(['备用译文']);
         officialMock.mockRejectedValueOnce(new Error('服务不可用'));
-        await expect(translateFreeTranslationProvider('alibabaFree', {origin: 'Hello', targetLanguage: 'zh-Hans'})).rejects.toThrow('服务不可用');
+        await expect(translateFreeTranslationProvider('alibabaFree', withProviderSnapshot({origin: 'Hello', targetLanguage: 'zh-Hans'}, mockConfig))).rejects.toThrow('服务不可用');
         const echoed = 'The software translates this paragraph with a fast backup when the first service is slow.';
         officialMock.mockResolvedValueOnce(echoed);
-        await expect(translateFreeTranslationProvider('alibabaFree', {origin: echoed, targetLanguage: 'zh-Hans'})).rejects.toThrow();
-        await expect(translateFreeTranslationProvider('unknown', {origin: 'Hello'})).rejects.toThrow('无效的免费翻译服务');
+        await expect(translateFreeTranslationProvider('alibabaFree', withProviderSnapshot({origin: echoed, targetLanguage: 'zh-Hans'}, mockConfig))).rejects.toThrow();
+        await expect(translateFreeTranslationProvider('unknown', withProviderSnapshot({origin: 'Hello'}, mockConfig))).rejects.toThrow('无效的免费翻译服务');
         expect(microsoftMock).not.toHaveBeenCalled();
     });
     it('保留微软、阿里翻译、谷歌优先顺序并新增 MyMemory 官方后备', async () => {
@@ -549,7 +553,7 @@ describe('免费翻译服务', () => {
         officialMock.mockResolvedValue('阿里翻译 译文');
         const message = attachTranslationRouteObserver({origin: 'Hello route'}, observation => observations.push({...observation}));
 
-        await expect(settle(freeTranslation(message) as Promise<string>)).resolves.toBe('阿里翻译 译文');
+        await expect(settle(freeTranslation(withProviderSnapshot(message, mockConfig)) as Promise<string>)).resolves.toBe('阿里翻译 译文');
 
         expect(observations).toEqual([
             {route: 'microsoft', outcome: 'error', durationMs: expect.any(Number), chars: 11},
@@ -559,7 +563,7 @@ describe('免费翻译服务', () => {
 
     it('首个服务成功即返回，不会外发给后续服务', async () => {
         microsoftMock.mockResolvedValue(['微软译文']);
-        await expect(settle(freeTranslation({origin: 'Hello'}))).resolves.toBe('微软译文');
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: 'Hello'}, mockConfig)))).resolves.toBe('微软译文');
         expect(microsoftMock).toHaveBeenCalledOnce();
         expect(officialMock).not.toHaveBeenCalled();
         expect(myMemoryMock).not.toHaveBeenCalled();
@@ -568,7 +572,7 @@ describe('免费翻译服务', () => {
     it('图片裸网址原样返回时不轮询后备服务或报免费线路全部失败', async () => {
         const url = 'docs.sglang.io/cookbook';
         microsoftMock.mockResolvedValue([url]);
-        await expect(settle(freeTranslation({origin: [url]}))).resolves.toEqual([url]);
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: [url]}, mockConfig)))).resolves.toEqual([url]);
         expect(microsoftMock).toHaveBeenCalledOnce();
         expect(officialMock).not.toHaveBeenCalled();
         expect(googleMock).not.toHaveBeenCalled();
@@ -624,7 +628,7 @@ describe('免费翻译服务', () => {
         // 实际全文槽包含本地保真的右括号；无字母的槽仍允许原样返回。
         microsoftMock.mockImplementation(async (texts: string[]) => texts.map(text => text === ')'
             ? ')' : text === source ? invalid : '下一段中文译文'));
-        await expect(settle(freeTranslation(message))).resolves.toEqual([translated, ')']);
+        await expect(settle(freeTranslation(withProviderSnapshot(message, mockConfig)))).resolves.toEqual([translated, ')']);
         expect(observations).toContainEqual({route: 'microsoft', outcome: 'error'});
         expect(observations).toContainEqual({route: 'alibabaFree', outcome: 'success'});
         expect(officialMock).toHaveBeenCalledWith('alibabaFree', expect.objectContaining({origin: source}));
@@ -650,9 +654,9 @@ describe('免费翻译服务', () => {
 
     it('单服务检查也拒绝运算符丢词，不偷偷换线', async () => {
         officialMock.mockResolvedValue('（');
-        await expect(translateFreeTranslationProvider('alibabaFree', {
+        await expect(translateFreeTranslationProvider('alibabaFree', withProviderSnapshot({
             origin: 'Division (', targetLanguage: 'zh-Hans',
-        })).rejects.toThrow('返回未翻译原文');
+        }, mockConfig))).rejects.toThrow('返回未翻译原文');
         expect(microsoftMock).not.toHaveBeenCalled();
     });
 
@@ -726,12 +730,12 @@ describe('免费翻译服务', () => {
     it('broker 附带的配置快照优先于已经变化的全局设置', async () => {
         mockConfig.freeTranslationOrder = ['myMemory'];
         mockConfig.myMemoryEmail = 'old@example.com';
-        const snapshot = createTranslationProviderConfigSnapshot(mockConfig as TranslationConfigSource);
+        const snapshot = createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig));
         const message = attachTranslationProviderConfig({origin: 'Hello', targetLanguage: 'ja'}, snapshot);
         mockConfig.freeTranslationOrder = ['google'];
         mockConfig.myMemoryEmail = 'new@example.com';
         myMemoryMock.mockResolvedValue('冻结译文');
-        await expect(settle(freeTranslation(message))).resolves.toBe('冻结译文');
+        await expect(settle(freeTranslation(withProviderSnapshot(message, mockConfig)))).resolves.toBe('冻结译文');
         expect(readSnapshot(myMemoryMock.mock.calls[0][0]).myMemoryEmail).toBe('old@example.com');
         expect(myMemoryMock.mock.calls[0][0].targetLanguage).toBe('ja');
         expect(googleMock).not.toHaveBeenCalled();
@@ -786,7 +790,7 @@ describe('免费翻译服务', () => {
         mockConfig.freeTranslationOrder = [id, 'google'];
         googleMock.mockResolvedValue('官方译文');
         await expect(settle(translateFreeText('Hello'))).resolves.toBe('官方译文');
-        await expect(translateFreeTranslationProvider(id, {origin: 'Hello'})).rejects.toThrow('无效的免费翻译服务');
+        await expect(translateFreeTranslationProvider(id, withProviderSnapshot({origin: 'Hello'}, mockConfig))).rejects.toThrow('无效的免费翻译服务');
         expect(officialMock).not.toHaveBeenCalled();
     });
 
@@ -800,7 +804,7 @@ describe('免费翻译服务', () => {
             maximum = Math.max(maximum, active);
             pending.push({text, resolve: value => { active -= 1; resolve(value); }});
         }));
-        const request = freeTranslation({origin: ['A', 'B', 'C', 'D', 'E', 'F']});
+        const request = freeTranslation(withProviderSnapshot({origin: ['A', 'B', 'C', 'D', 'E', 'F']}, mockConfig));
         await flush();
         expect(pending).toHaveLength(1);
         await vi.advanceTimersByTimeAsync(100);
@@ -825,7 +829,7 @@ describe('免费翻译服务', () => {
         mockConfig.freeTranslationOrder = ['microsoft'];
         const pending: Array<(value: string[]) => void> = [];
         microsoftMock.mockImplementation(() => new Promise<string[]>(resolve => { pending.push(resolve); }));
-        const request = freeTranslation({origin: ['A', 'B', 'C', 'D', 'E'], requestTimeoutMs: 500});
+        const request = freeTranslation(withProviderSnapshot({origin: ['A', 'B', 'C', 'D', 'E'], requestTimeoutMs: 500}, mockConfig));
         const assertion = expect(request).rejects.toThrow('请求超时');
         await vi.advanceTimersByTimeAsync(300);
         expect(microsoftMock).toHaveBeenCalledTimes(2);
@@ -842,7 +846,7 @@ describe('免费翻译服务', () => {
     it('批量遇限流后后续段跳过失败服务，保序翻译', async () => {
         microsoftMock.mockRejectedValue(httpFailure(429));
         officialMock.mockImplementation(async (_id: string, request: {origin: string}) => `译:${request.origin}`);
-        await expect(settle(freeTranslation({origin: ['A', 'B', 'C', 'D', 'E']}))).resolves.toEqual(['译:A', '译:B', '译:C', '译:D', '译:E']);
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: ['A', 'B', 'C', 'D', 'E']}, mockConfig)))).resolves.toEqual(['译:A', '译:B', '译:C', '译:D', '译:E']);
         expect(microsoftMock).toHaveBeenCalledTimes(1);
         expect(officialMock).toHaveBeenCalledTimes(5);
     });
@@ -852,7 +856,7 @@ describe('免费翻译服务', () => {
         const controller = new AbortController();
         const releases: Array<(value: string[]) => void> = [];
         microsoftMock.mockImplementation(() => new Promise<string[]>(resolve => {releases.push(resolve);}));
-        const request = freeTranslation({origin: ['A', 'B', 'C', 'D', 'E'], abortSignal: controller.signal});
+        const request = freeTranslation(withProviderSnapshot({origin: ['A', 'B', 'C', 'D', 'E'], abortSignal: controller.signal}, mockConfig));
         const assertion = expect(request).rejects.toThrow('用户取消');
         await vi.advanceTimersByTimeAsync(100);
         controller.abort(new Error('用户取消'));
@@ -870,7 +874,7 @@ describe('免费翻译服务', () => {
 
     it('任一文本耗尽所有备用后取消 sibling，避免余下请求继续外发', async () => {
         microsoftMock.mockImplementation(([text]: [string]) => text === 'bad' ? Promise.reject(httpFailure()) : new Promise(() => {}));
-        await expect(settle(freeTranslation({origin: ['bad', 'slow-1', 'slow-2', 'not-started']}))).rejects.toThrow('免费翻译服务均不可用');
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: ['bad', 'slow-1', 'slow-2', 'not-started']}, mockConfig)))).rejects.toThrow('免费翻译服务均不可用');
         expect(microsoftMock).toHaveBeenCalledTimes(1);
         expect(microsoftMock.mock.calls.slice(1).every(call => call[3].aborted)).toBe(true);
         expect(officialMock).toHaveBeenCalledOnce();
@@ -881,7 +885,7 @@ describe('免费翻译服务', () => {
     it.each(['single', 'batch'])('预先取消的%s消息不启动任何服务', async kind => {
         const controller = new AbortController();
         controller.abort('stop');
-        await expect(freeTranslation({origin: kind === 'batch' ? ['Hello'] : 'Hello', abortSignal: controller.signal}))
+        await expect(freeTranslation(withProviderSnapshot({origin: kind === 'batch' ? ['Hello'] : 'Hello', abortSignal: controller.signal}, mockConfig)))
             .rejects.toMatchObject({name: 'AbortError'});
         expect(microsoftMock).not.toHaveBeenCalled();
     });
@@ -893,16 +897,16 @@ describe('免费翻译服务', () => {
     });
 
     it('空批量直接返回并拒绝非文本输入', async () => {
-        await expect(settle(freeTranslation({origin: []}))).resolves.toEqual([]);
-        await expect(settle(freeTranslation({origin: [42 as unknown as string]}))).rejects.toThrow('仅支持文本输入');
-        await expect(settle(freeTranslation({origin: 42 as unknown as string}))).rejects.toThrow('仅支持文本输入');
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: []}, mockConfig)))).resolves.toEqual([]);
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: [42 as unknown as string]}, mockConfig)))).rejects.toThrow('仅支持文本输入');
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: 42 as unknown as string}, mockConfig)))).rejects.toThrow('仅支持文本输入');
         expect(microsoftMock).not.toHaveBeenCalled();
     });
 
     it('原生高槽批次在任何 HTTP 前拒绝非字符串来源', async () => {
         mockConfig.freeTranslationOrder = ['microsoft', 'google'];
         const origins = Array.from({length: 9}, (_, index) => index === 7 ? 42 as unknown as string : `Source ${index}`);
-        await expect(freeTranslation({origin: origins})).rejects.toThrow('仅支持文本输入');
+        await expect(freeTranslation(withProviderSnapshot({origin: origins}, mockConfig))).rejects.toThrow('仅支持文本输入');
         expect(microsoftMock).not.toHaveBeenCalled();
         expect(googleOwnerMock).not.toHaveBeenCalled();
     });
@@ -922,9 +926,9 @@ describe('免费翻译服务', () => {
             }
         };
         const origins = Array.from({length: 17}, (_, index) => `Source passage ${index}`);
-        const request = freeTranslation(attachTranslationRouteObserver({origin: origins, abortSignal: owner.signal}, event => {
+        const request = freeTranslation(withProviderSnapshot(attachTranslationRouteObserver({origin: origins, abortSignal: owner.signal}, event => {
             if (event.outcome === 'success' && !owner.signal.aborted) cancel(microtasks);
-        }));
+        }), mockConfig));
         await expect(settle(request)).rejects.toBe(reason);
         expect(callsAtCancellation).toBeGreaterThan(0);
         expect(microsoftMock).toHaveBeenCalledTimes(callsAtCancellation);
@@ -949,7 +953,7 @@ it('maps background health to the enabled services of the current settings for t
     myMemoryMock.mockResolvedValue('MyMemory 译文');
     await expect(settle(translateFreeText('Hello'))).resolves.toBe('MyMemory 译文');
 
-    const snapshot = await getFreeTranslationWeightSnapshot(Date.now());
+    const snapshot = await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)), Date.now());
     const byId = new Map(snapshot.entries.map(entry => [entry.providerId, entry]));
     expect(snapshot.total).toBe(100);
     expect(byId.get('microsoft')).toMatchObject({weight: 0, status: 'cooling'});
@@ -963,7 +967,7 @@ it('maps background health to the enabled services of the current settings for t
     // MyMemory 邮箱属于连接身份；换邮箱后不能把旧身份的健康记录展示给新配置。
     mockConfig.freeTranslationOrder = ['microsoft', 'myMemory'];
     mockConfig.myMemoryEmail = 'new@example.com';
-    const changed = await getFreeTranslationWeightSnapshot(Date.now());
+    const changed = await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)), Date.now());
     expect(changed.entries.find(entry => entry.providerId === 'google')).toMatchObject({weight: 0, status: 'disabled'});
     expect(changed.entries.find(entry => entry.providerId === 'myMemory')).toMatchObject({weight: 100, status: 'ready'});
 });
@@ -974,7 +978,7 @@ it('shows a persisted legacy cooling record without performance data after a bac
     storedHealth.records = [{identity: `google:${sha256(JSON.stringify(['google'])).toString()}`, retryAt, failures: 2, category: 'blocked'}];
     mockConfig.freeTranslationOrder = ['microsoft', 'google'];
 
-    const snapshot = await getFreeTranslationWeightSnapshot(Date.now());
+    const snapshot = await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)), Date.now());
     expect(snapshot.entries.find(entry => entry.providerId === 'google')).toEqual({providerId: 'google', weight: 0, status: 'cooling', retryAt});
     expect(snapshot.entries.find(entry => entry.providerId === 'microsoft')).toMatchObject({weight: 100, status: 'ready'});
 });
@@ -1009,7 +1013,7 @@ it('passes balanced mode while excluding supplied manual weights from the frozen
     await expect(settle(translateFreeText('Hello'))).resolves.toBe('均衡译文');
     const request = extraMock.mock.calls[0]![4];
     expect(request).toBeInstanceOf(AbortSignal);
-    const snapshot = createTranslationProviderConfigSnapshot(mockConfig as TranslationConfigSource);
+    const snapshot = createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig));
     expect(mockConfig.freeTranslationMode).toBe('balanced');
     expect(mockConfig.freeTranslationWeights).toEqual({microsoft: 7, sogouFree: 2});
     expect(Object.isFrozen(snapshot.freeTranslationOrder)).toBe(true);
@@ -1032,7 +1036,7 @@ it('六家官方节点同时分担不同段落，任务上限和输出顺序保�
     webMock.mockImplementation((id, text) => pending(id, text));
     officialMock.mockImplementation((id, request) => pending(id, request.origin));
     const texts = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-    const request = freeTranslation({origin: texts});
+    const request = freeTranslation(withProviderSnapshot({origin: texts}, mockConfig));
     await flush();
     expect(running).toHaveLength(6);
     expect(new Set(running.map(item => item.id)).size).toBe(6);
@@ -1055,7 +1059,7 @@ it('取消同时停止六家节点，不继续领取队列中的段落', async (
     webMock.mockImplementation((_id, _text, _from, _to, signal) => pending(signal));
     officialMock.mockImplementation((_id, request) => pending(request.abortSignal));
     const caller = new AbortController();
-    const request = freeTranslation({origin: ['A', 'B', 'C', 'D', 'E', 'F', 'queued'], abortSignal: caller.signal});
+    const request = freeTranslation(withProviderSnapshot({origin: ['A', 'B', 'C', 'D', 'E', 'F', 'queued'], abortSignal: caller.signal}, mockConfig));
     const assertion = expect(request).rejects.toMatchObject({name: 'AbortError'});
     await flush();
     expect(signals).toHaveLength(6);
@@ -1083,8 +1087,8 @@ it.each([
     const origin = mode === 'batch' ? ['Hello', 'World'] : 'Hello';
     const message = {origin, sourceLanguage: 'en', targetLanguage: 'zh-Hans'};
     const request = entrypoint === 'broker'
-        ? attachTranslationProviderConfig(message, createTranslationProviderConfigSnapshot(mockConfig as TranslationConfigSource)) : message;
-    await expect(settle(freeTranslation(request))).resolves.toEqual(mode === 'batch' ? ['译:Hello', '译:World'] : '译:Hello');
+        ? attachTranslationProviderConfig(message, createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig))) : message;
+    await expect(settle(freeTranslation(withProviderSnapshot(request, mockConfig)))).resolves.toEqual(mode === 'batch' ? ['译:Hello', '译:World'] : '译:Hello');
     expect(fetchMock).toHaveBeenCalledTimes(mode === 'batch' ? 4 : 2);
     for (const [url, init] of fetchMock.mock.calls) {
         expect(new URL(String(url)).hostname).toBe('translate.alibaba.com');
@@ -1129,7 +1133,7 @@ describe('owner-local bounded high-slot free batches', () => {
         const observations: Array<{route: string; outcome: string; chars: number}> = [];
         const start = Date.now();
         let outcome: unknown;
-        const request = freeTranslation(attachTranslationRouteObserver({origin: originals, requestTimeoutMs: 20_000}, event => observations.push(event)));
+        const request = freeTranslation(withProviderSnapshot(attachTranslationRouteObserver({origin: originals, requestTimeoutMs: 20_000}, event => observations.push(event)), mockConfig));
         void request.then(value => { outcome = {value}; }, error => { outcome = {error}; });
         originals[0] = 'Caller mutation after dispatch';
         mockConfig.freeTranslationOrder = ['google'];
@@ -1170,7 +1174,7 @@ describe('owner-local bounded high-slot free batches', () => {
         });
         vi.stubGlobal('fetch', fetchMock);
         const origins = ownerSlots().slice(0, 9);
-        await expect(settle(freeTranslation({origin: origins, requestTimeoutMs: 20_000}))).resolves.toEqual(valid(origins));
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: origins, requestTimeoutMs: 20_000}, mockConfig)))).resolves.toEqual(valid(origins));
         expect(bodies).toHaveLength(9);
         expect(bodies.every(body => body.length === 1)).toBe(true);
         expect(googleOwnerMock).not.toHaveBeenCalled();
@@ -1189,7 +1193,7 @@ describe('owner-local bounded high-slot free batches', () => {
         });
         vi.stubGlobal('fetch', fetchMock);
         const origins = ownerSlots();
-        await expect(settle(freeTranslation({origin: origins}))).resolves.toEqual(valid(origins));
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: origins}, mockConfig)))).resolves.toEqual(valid(origins));
         expect(fetchMock).toHaveBeenCalledTimes(8);
         expect(googleOwnerMock.mock.calls.map(call => call[0].length)).toEqual([8, 8, 8, 8, 8, 8, 8, 7]);
         expect(starts.every((time, index) => index === 0 || time - starts[index - 1]! >= 300)).toBe(true);
@@ -1201,14 +1205,14 @@ describe('owner-local bounded high-slot free batches', () => {
         mockConfig.freeTranslationOrder = ['microsoft'];
         const origins = ['&'.repeat(500), ...Array.from({length: 8}, (_, index) => `Small prose ${index}`)];
         microsoftMock.mockImplementation(async (texts: string[]) => valid(texts));
-        await expect(settle(freeTranslation({origin: origins}))).resolves.toEqual(valid(origins));
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: origins}, mockConfig)))).resolves.toEqual(valid(origins));
         expect(microsoftMock.mock.calls.map(call => call[0].length)).toEqual([1, 8]);
         expect(microsoftMock.mock.calls[0][0]).toEqual([origins[0]]);
         // 不截断单槽，不为了满足小组大小而给同一 owner 增加总预算。
         expect(microsoftMock.mock.calls[1][0]).toEqual(origins.slice(1));
         microsoftMock.mockClear();
         const bounded = Array.from({length: 9}, () => '&'.repeat(160));
-        await expect(settle(freeTranslation({origin: bounded}))).resolves.toEqual(valid(bounded));
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: bounded}, mockConfig)))).resolves.toEqual(valid(bounded));
         // 每槽保守估算 971，两槽 1942；第三槽会越过 2000，而单槽未超限。
         expect(microsoftMock.mock.calls.map(call => call[0].length)).toEqual([2, 2, 2, 2, 1]);
     });
@@ -1224,7 +1228,7 @@ describe('owner-local bounded high-slot free batches', () => {
                 finished.push(index); resolve(texts.map((_, ordinal) => `第${index}组第${ordinal}槽译文`));
             }, index === 0 ? 400 : 10));
         });
-        const request = freeTranslation({origin: origins});
+        const request = freeTranslation(withProviderSnapshot({origin: origins}, mockConfig));
         await vi.advanceTimersByTimeAsync(500);
         await expect(request).resolves.toEqual([...Array.from({length: 8}, (_, ordinal) => `第0组第${ordinal}槽译文`), '第1组第0槽译文']);
         expect(finished).toEqual([1, 0]);
@@ -1237,7 +1241,7 @@ describe('owner-local bounded high-slot free batches', () => {
             'Literal ___FLUENTREAD_literal_0_BEGIN___code___FLUENTREAD_literal_0_END___',
             'Line one\n\n  Line two', 'Repeated prose', 'Repeated prose', 'Last prose'];
         microsoftMock.mockImplementation(async (texts: string[]) => texts.map(text => ` ${`译:${text.trim()}`} `));
-        await expect(settle(freeTranslation({origin: origins}))).resolves.toEqual([
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: origins}, mockConfig)))).resolves.toEqual([
             ' \t译:Alpha prose  \n', '', ' \n\t', '译:A & <b>"quoted"</b>',
             '译:Literal ___FLUENTREAD_literal_0_BEGIN___code___FLUENTREAD_literal_0_END___',
             '译:Line one\n\n  Line two', '译:Repeated prose', '译:Repeated prose', '译:Last prose',
@@ -1261,12 +1265,12 @@ describe('owner-local bounded high-slot free batches', () => {
             return values;
         });
         googleOwnerMock.mockImplementation(async (texts: string[]) => valid(texts));
-        await expect(settle(freeTranslation({origin: origins}))).resolves.toEqual([...valid(origins.slice(0, 8)), '']);
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: origins}, mockConfig)))).resolves.toEqual([...valid(origins.slice(0, 8)), '']);
         expect(microsoftMock).toHaveBeenCalledOnce();
         expect(googleOwnerMock).toHaveBeenCalledOnce();
         expect(googleOwnerMock.mock.calls[0][0]).toEqual(origins.slice(0, 8));
         expect(mockConfig.freeTranslationOrder).toEqual(['microsoft', 'google']);
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
     });
 
     it('non-native high-slot batches retain per-slot candidate calls and actual HTTP counts', async () => {
@@ -1283,7 +1287,7 @@ describe('owner-local bounded high-slot free batches', () => {
         vi.stubGlobal('fetch', fetchMock);
         const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
         const observations: Array<{route: string; outcome: string; chars: number}> = [];
-        await expect(settle(freeTranslation(attachTranslationRouteObserver({origin: origins}, event => observations.push(event))))).resolves.toEqual(valid(origins));
+        await expect(settle(freeTranslation(withProviderSnapshot(attachTranslationRouteObserver({origin: origins}, event => observations.push(event)), mockConfig)))).resolves.toEqual(valid(origins));
         expect(officialMock).toHaveBeenCalledTimes(9);
         expect(fetchMock).toHaveBeenCalledTimes(18); // 9 槽各自 CSRF + text，每槽仍独立 candidate，并非把两个 group 当作 HTTP。
         expect([...queryTexts].sort()).toEqual([...origins].sort());
@@ -1298,9 +1302,9 @@ describe('owner-local bounded high-slot free batches', () => {
     it('pure-whitespace high-slot batches stay local and already-cancelled callers start no group', async () => {
         mockConfig.freeTranslationOrder = ['microsoft', 'google'];
         const whitespace = Array.from({length: 15}, (_, index) => index % 2 ? ' \t\n' : '');
-        await expect(freeTranslation({origin: whitespace})).resolves.toEqual(whitespace);
+        await expect(freeTranslation(withProviderSnapshot({origin: whitespace}, mockConfig))).resolves.toEqual(whitespace);
         const cancelled = new AbortController(); cancelled.abort();
-        await expect(freeTranslation({origin: whitespace, abortSignal: cancelled.signal})).rejects.toMatchObject({name: 'AbortError'});
+        await expect(freeTranslation(withProviderSnapshot({origin: whitespace, abortSignal: cancelled.signal}, mockConfig))).rejects.toMatchObject({name: 'AbortError'});
         expect(microsoftMock).not.toHaveBeenCalled(); expect(googleOwnerMock).not.toHaveBeenCalled(); expect(officialMock).not.toHaveBeenCalled();
     });
 
@@ -1315,7 +1319,7 @@ describe('owner-local bounded high-slot free batches', () => {
                 else signal.addEventListener('abort', () => reject(signal.reason), {once: true});
             });
         });
-        const request = freeTranslation({origin: origins});
+        const request = freeTranslation(withProviderSnapshot({origin: origins}, mockConfig));
         const assertion = expect(request).rejects.toThrow('免费翻译服务均不可用');
         await vi.advanceTimersByTimeAsync(300); await assertion;
         expect(microsoftMock).toHaveBeenCalledTimes(2);
@@ -1330,7 +1334,7 @@ describe('owner-local bounded high-slot free batches', () => {
         mockConfig.freeTranslationOrder = ['microsoft'];
         const pending: Array<{texts: string[]; resolve: (texts: string[]) => void}> = [];
         microsoftMock.mockImplementation((texts: string[]) => new Promise<string[]>(resolve => pending.push({texts, resolve})));
-        const request = freeTranslation({origin: ownerSlots(), requestTimeoutMs: 500});
+        const request = freeTranslation(withProviderSnapshot({origin: ownerSlots(), requestTimeoutMs: 500}, mockConfig));
         const assertion = expect(request).rejects.toMatchObject({kind: 'timeout'});
         await vi.advanceTimersByTimeAsync(300);
         expect(pending).toHaveLength(2);
@@ -1340,7 +1344,7 @@ describe('owner-local bounded high-slot free batches', () => {
         await vi.advanceTimersByTimeAsync(200); await assertion;
         expect(microsoftMock).toHaveBeenCalledTimes(3);
         expect(googleOwnerMock).not.toHaveBeenCalled();
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
         pending[1]!.resolve(valid(pending[1]!.texts)); await flush();
         expect(microsoftMock).toHaveBeenCalledTimes(3);
         expect(vi.getTimerCount()).toBe(0);
@@ -1354,9 +1358,9 @@ describe('owner-local bounded high-slot free batches', () => {
         }));
         const origins = Array.from({length: 9}, (_, index) => `Same owner prose ${index}`);
         const firstOwner = new AbortController();
-        const first = freeTranslation({origin: origins, abortSignal: firstOwner.signal});
+        const first = freeTranslation(withProviderSnapshot({origin: origins, abortSignal: firstOwner.signal}, mockConfig));
         const firstAssertion = expect(first).rejects.toMatchObject({name: 'AbortError'});
-        const second = freeTranslation({origin: origins});
+        const second = freeTranslation(withProviderSnapshot({origin: origins}, mockConfig));
         await vi.advanceTimersByTimeAsync(100);
         expect(pending).toHaveLength(2);
         firstOwner.abort(); await firstAssertion;
@@ -1376,7 +1380,7 @@ describe('owner-local bounded high-slot free batches', () => {
         unsupportedApertiumMock.mockReturnValue(true);
         microsoftMock.mockImplementation(async (texts: string[]) => valid(texts));
         const origins = ownerSlots();
-        await expect(settle(freeTranslation({origin: origins, sourceLanguage: 'en', targetLanguage: 'zh-Hans'}))).resolves.toEqual(valid(origins));
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: origins, sourceLanguage: 'en', targetLanguage: 'zh-Hans'}, mockConfig)))).resolves.toEqual(valid(origins));
         expect(extraMock).not.toHaveBeenCalled();
         expect(mockConfig.freeTranslationOrder).toEqual(['apertiumFree', 'microsoft']);
         expect(microsoftMock).toHaveBeenCalledTimes(63);
@@ -1400,7 +1404,7 @@ describe('owner-local bounded high-slot free batches', () => {
         const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
         const observations: Array<{route: string; outcome: string; chars: number}> = [];
         const origins = ownerSlots();
-        const request = freeTranslation(attachTranslationRouteObserver({origin: origins, requestTimeoutMs: 20_000}, event => observations.push(event)));
+        const request = freeTranslation(withProviderSnapshot(attachTranslationRouteObserver({origin: origins, requestTimeoutMs: 20_000}, event => observations.push(event)), mockConfig));
         // native-only 设置不能在 dispatch 后改变已经冻结的混合池执行方式。
         mockConfig.freeTranslationOrder = ['microsoft', 'google'];
         await expect(settle(request)).resolves.toEqual(valid(origins));
@@ -1458,9 +1462,9 @@ describe('owner-local bounded high-slot free batches', () => {
         const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
         const observations: Array<{route: string; outcome: string; chars: number; durationMs: number}> = [];
         let outcome: unknown;
-        const request = freeTranslation(attachTranslationRouteObserver({
+        const request = freeTranslation(withProviderSnapshot(attachTranslationRouteObserver({
             origin: origins, sourceLanguage: 'en', targetLanguage: 'zh-Hans', requestTimeoutMs: 20_000,
-        }, event => observations.push(event)));
+        }, event => observations.push(event)), mockConfig));
         void request.then(value => {outcome = {value};}, error => {outcome = {error};});
         await vi.advanceTimersByTimeAsync(8_800);
         // 对此前 all-provider 分组生产基线，5000ms 首组超时使这条断言红；不是导出缺失或 mock API 差异。
@@ -1473,7 +1477,7 @@ describe('owner-local bounded high-slot free batches', () => {
         expect(observations).toHaveLength(9);
         expect(observations.every(event => event.route === 'laraFree' && event.outcome === 'success' && event.durationMs === 800)).toBe(true);
         expect(observations.reduce((sum, event) => sum + event.chars, 0)).toBe(origins.join('').length);
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'laraFree')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'laraFree')?.status).toBe('ready');
         expect(mockConfig.freeTranslationTimeoutMs).toBe(5_000);
         expect(mockConfig.freeTranslationCooldownMs).toBe(60_000);
         expect(microsoftMock).not.toHaveBeenCalled(); expect(googleOwnerMock).not.toHaveBeenCalled();
@@ -1493,7 +1497,7 @@ describe('document-only mixed free-pool batching', () => {
         const fetchMock = vi.fn(async (_url, init) => Response.json(JSON.parse(String(init.body))
             .map((text: string) => ({translations: [{text: `译:${text}`}]}))));
         vi.stubGlobal('fetch', fetchMock);
-        await expect(settle(freeTranslation({origin: originals, documentBatch: true}))).resolves.toEqual(valid(originals));
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: originals, documentBatch: true}, mockConfig)))).resolves.toEqual(valid(originals));
         expect(fetchMock).toHaveBeenCalledOnce();
         expect(JSON.parse(String(fetchMock.mock.calls[0]![1]!.body))).toEqual(originals);
         expect(bilibiliMock).not.toHaveBeenCalled();
@@ -1507,7 +1511,7 @@ describe('document-only mixed free-pool batching', () => {
         const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
         const observed: Array<{route: string; chars: number}> = [];
         const originals = sources(4);
-        await expect(settle(freeTranslation(attachTranslationRouteObserver({origin: originals, documentBatch: true}, event => observed.push(event)))))
+        await expect(settle(freeTranslation(withProviderSnapshot(attachTranslationRouteObserver({origin: originals, documentBatch: true}, event => observed.push(event)), mockConfig))))
             .resolves.toEqual(valid(originals));
         expect(officialMock).toHaveBeenCalledOnce();
         expect(officialMock.mock.calls[0]![1].origin).toBe(originals[0]);
@@ -1521,7 +1525,7 @@ describe('document-only mixed free-pool batching', () => {
         mockConfig.freeTranslationOrder = ['alibabaFree'];
         officialMock.mockImplementation(async (_id, request) => `译:${request.origin}`);
         const originals = ['First source', ' ', 'First source', 'Second source', '\n'];
-        await expect(settle(freeTranslation({origin: originals, documentBatch: true})))
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: originals, documentBatch: true}, mockConfig))))
             .resolves.toEqual(['译:First source', ' ', '译:First source', '译:Second source', '\n']);
         expect(officialMock.mock.calls.map(call => call[1].origin)).toEqual(['First source', 'First source', 'Second source']);
         expect(officialMock.mock.calls.every(call => !call[1].origin.includes('___FLUENTREAD_'))).toBe(true);
@@ -1537,7 +1541,7 @@ describe('document-only mixed free-pool batching', () => {
         const before = [...originals];
         const request = attachTranslationRouteObserver({origin: originals, documentBatch: true, requestTimeoutMs: 5_000}, event => observed.push(event));
 
-        await expect(settle(freeTranslation(request)))
+        await expect(settle(freeTranslation(withProviderSnapshot(request, mockConfig))))
             .resolves.toEqual(['译:First source', ' ', '译:First source', '译:Second source', '\n']);
         expect(doubaoMock.mock.calls.map(call => call[0].origin)).toEqual(['First source', 'First source', 'Second source']);
         expect(doubaoMock.mock.calls.every(call => call[0].serviceOverride === 'doubaoWeb' && call[0].enableNativeBatch === false)).toBe(true);
@@ -1560,16 +1564,16 @@ describe('document-only mixed free-pool batching', () => {
         const before = [...originals];
         const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
         const observed: Array<{route: string; chars: number}> = [];
-        await expect(settle(freeTranslation(attachTranslationRouteObserver({origin: originals, documentBatch: true}, event => observed.push(event)))))
+        await expect(settle(freeTranslation(withProviderSnapshot(attachTranslationRouteObserver({origin: originals, documentBatch: true}, event => observed.push(event)), mockConfig))))
             .resolves.toEqual(valid(originals));
         expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals, ...originals.slice(1).map(source => [source])]);
         expect(officialMock.mock.calls.map(call => call[1].origin)).toEqual([originals[0]]);
         expect(observed.map(event => event.chars)).toEqual([originals.join('').length, ...originals.map(source => source.length)]);
         expect(originals).toEqual(before);
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
         microsoftMock.mockClear();
         await vi.advanceTimersByTimeAsync(200);
-        await expect(settle(freeTranslation({origin: originals, documentBatch: true}))).resolves.toEqual(valid(originals));
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: originals, documentBatch: true}, mockConfig)))).resolves.toEqual(valid(originals));
         expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals]);
     });
 
@@ -1578,7 +1582,7 @@ describe('document-only mixed free-pool batching', () => {
         mockConfig.nativeBatchTranslationEnabled = {google: enabled};
         googleOwnerMock.mockImplementation(async (texts: string[]) => valid(texts));
         const originals = sources(3);
-        await expect(settle(freeTranslation({origin: originals, documentBatch: true}))).resolves.toEqual(valid(originals));
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: originals, documentBatch: true}, mockConfig)))).resolves.toEqual(valid(originals));
         expect(googleOwnerMock).toHaveBeenCalledWith(originals, 'auto', 'zh-Hans', expect.any(AbortSignal),
             expect.objectContaining({holdUntil: expect.any(Function)}));
         expect(googleMock).not.toHaveBeenCalled();
@@ -1591,7 +1595,7 @@ describe('document-only mixed free-pool batching', () => {
         microsoftMock.mockImplementation((texts: string[]) => new Promise(resolve => {
             setTimeout(() => resolve(valid(texts)), texts[0]!.startsWith('&') ? 500 : 0);
         }));
-        await expect(settle(freeTranslation({origin: originals, documentBatch: true}))).resolves.toEqual(valid(originals));
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: originals, documentBatch: true}, mockConfig)))).resolves.toEqual(valid(originals));
         expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([[originals[0]], originals.slice(1, 9), originals.slice(9)]);
     });
 
@@ -1602,7 +1606,7 @@ describe('document-only mixed free-pool batching', () => {
         officialMock.mockReturnValue(new Promise<string>((res, rej) => {resolve = res; reject = rej;}));
         const controller = new AbortController();
         const reason = new Error('Document cancelled');
-        const request = freeTranslation({origin: sources(3), documentBatch: true, abortSignal: controller.signal});
+        const request = freeTranslation(withProviderSnapshot({origin: sources(3), documentBatch: true, abortSignal: controller.signal}, mockConfig));
         const assertion = expect(request).rejects.toBe(reason);
         await flush();
         expect(officialMock).toHaveBeenCalledOnce();
@@ -1618,7 +1622,7 @@ describe('document-only mixed free-pool batching', () => {
     it('single-slot continuation shares the original deadline instead of giving later slots fresh time', async () => {
         mockConfig.freeTranslationOrder = ['alibabaFree'];
         officialMock.mockImplementation(async (_id, request) => `译:${request.origin}`);
-        const request = freeTranslation({origin: sources(3), documentBatch: true, requestTimeoutMs: 250});
+        const request = freeTranslation(withProviderSnapshot({origin: sources(3), documentBatch: true, requestTimeoutMs: 250}, mockConfig));
         const assertion = expect(request).rejects.toThrow('超时');
         await vi.advanceTimersByTimeAsync(400);
         await assertion;
@@ -1630,16 +1634,16 @@ describe('document-only mixed free-pool batching', () => {
         mockConfig.freeTranslationOrder = ['microsoft', 'alibabaFree'];
         microsoftMock.mockImplementation(async (texts: string[]) => valid(texts));
         const originals = sources(3);
-        await expect(settle(freeTranslation({origin: originals, documentBatch: false}))).resolves.toEqual(valid(originals));
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: originals, documentBatch: false}, mockConfig)))).resolves.toEqual(valid(originals));
         expect(microsoftMock.mock.calls).toHaveLength(3);
         expect(microsoftMock.mock.calls.every(call => call[0].length === 1)).toBe(true);
     });
 
     it('document whitespace remains local and a caller cancelled before dispatch starts no candidate', async () => {
-        await expect(freeTranslation({origin: [' ', '\n', ''], documentBatch: true})).resolves.toEqual([' ', '\n', '']);
+        await expect(freeTranslation(withProviderSnapshot({origin: [' ', '\n', ''], documentBatch: true}, mockConfig))).resolves.toEqual([' ', '\n', '']);
         const controller = new AbortController();
         controller.abort(new Error('Already cancelled'));
-        await expect(freeTranslation({origin: sources(2), documentBatch: true, abortSignal: controller.signal})).rejects.toBe(controller.signal.reason);
+        await expect(freeTranslation(withProviderSnapshot({origin: sources(2), documentBatch: true, abortSignal: controller.signal}, mockConfig))).rejects.toBe(controller.signal.reason);
         for (const mock of [microsoftMock, googleOwnerMock, officialMock, bilibiliMock, myMemoryMock, webMock]) expect(mock).not.toHaveBeenCalled();
     });
 
@@ -1724,7 +1728,7 @@ describe('document-only mixed free-pool batching', () => {
         }
         const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
         const observed: Array<{route: string; chars: number}> = [];
-        await expect(settle(freeTranslation(attachTranslationRouteObserver({origin: originals, documentBatch: true}, event => observed.push(event)))))
+        await expect(settle(freeTranslation(withProviderSnapshot(attachTranslationRouteObserver({origin: originals, documentBatch: true}, event => observed.push(event)), mockConfig))))
             .resolves.toEqual(expected);
         if (provider === 'microsoft') expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals, [originals[0]], [originals[1]]]);
         else {
@@ -1734,7 +1738,7 @@ describe('document-only mixed free-pool batching', () => {
         }
         expect(starts.map(time => time - starts[0]!)).toEqual(provider === 'microsoft' ? [0, 100, 200] : [0, 300, 600]);
         expect(observed.map(event => event.chars)).toEqual([originals.join('').length, ...originals.map(source => source.length)]);
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === provider)?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === provider)?.status).toBe('ready');
         expect(originals).toEqual(sources(2));
         expect(vi.getTimerCount()).toBe(0);
     });
@@ -1743,7 +1747,7 @@ describe('document-only mixed free-pool batching', () => {
         mockConfig.freeTranslationOrder = ['microsoft'];
         const originals = sources(2);
         microsoftMock.mockImplementation(async (texts: string[]) => texts.length > 1 ? valid(texts.slice(0, 1)) : ['']);
-        await expect(settle(freeTranslation({origin: originals, documentBatch: true}))).rejects.toThrow('免费翻译服务均不可用');
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: originals, documentBatch: true}, mockConfig)))).rejects.toThrow('免费翻译服务均不可用');
         expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals, [originals[0]]]);
         expect(vi.getTimerCount()).toBe(0);
     });
@@ -1752,7 +1756,7 @@ describe('document-only mixed free-pool batching', () => {
         mockConfig.freeTranslationOrder = ['microsoft'];
         const originals = sources(2);
         microsoftMock.mockImplementation(async (texts: string[]) => valid(texts.length > 1 ? texts.slice(0, 1) : texts));
-        const request = freeTranslation({origin: originals, documentBatch: true, requestTimeoutMs: 150});
+        const request = freeTranslation(withProviderSnapshot({origin: originals, documentBatch: true, requestTimeoutMs: 150}, mockConfig));
         const assertion = expect(request).rejects.toThrow('超时');
         await vi.advanceTimersByTimeAsync(200);
         await assertion;
@@ -1768,7 +1772,7 @@ describe('document-only mixed free-pool batching', () => {
             : new Promise<string[]>((res, rej) => {resolve = res; reject = rej;}));
         const controller = new AbortController(), reason = new Error('Cancel scalar recovery');
         const originals = sources(2);
-        const request = freeTranslation({origin: originals, documentBatch: true, abortSignal: controller.signal});
+        const request = freeTranslation(withProviderSnapshot({origin: originals, documentBatch: true, abortSignal: controller.signal}, mockConfig));
         const assertion = expect(request).rejects.toBe(reason);
         await vi.advanceTimersByTimeAsync(100);
         expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals, [originals[0]]]);
@@ -1784,7 +1788,7 @@ describe('document-only mixed free-pool batching', () => {
     it('HTTP failure without a new native validation marker is not retried as scalar recovery', async () => {
         mockConfig.freeTranslationOrder = ['microsoft'];
         microsoftMock.mockRejectedValue(httpFailure(503));
-        await expect(settle(freeTranslation({origin: sources(2), documentBatch: true}))).rejects.toThrow('HTTP 503');
+        await expect(settle(freeTranslation(withProviderSnapshot({origin: sources(2), documentBatch: true}, mockConfig)))).rejects.toThrow('HTTP 503');
         expect(microsoftMock).toHaveBeenCalledOnce();
         expect(vi.getTimerCount()).toBe(0);
     });
@@ -1793,7 +1797,7 @@ describe('document-only mixed free-pool batching', () => {
         mockConfig.freeTranslationOrder = ['microsoft'];
         let resolve!: (value: string[]) => void;
         microsoftMock.mockReturnValue(new Promise<string[]>(res => {resolve = res;}));
-        const request = freeTranslation({origin: sources(2), documentBatch: true});
+        const request = freeTranslation(withProviderSnapshot({origin: sources(2), documentBatch: true}, mockConfig));
         const assertion = expect(request).rejects.toThrow('超时');
         await vi.advanceTimersByTimeAsync(1_000);
         await assertion;
@@ -1820,15 +1824,15 @@ describe('中文目标下明确 Latin 错语种结果', () => {
         microsoftMock.mockResolvedValueOnce([corruptPolishResult]).mockResolvedValue([chinese]);
         googleMock.mockResolvedValue(chinese);
         const request = attachTranslationRouteObserver({ origin: polishSource, targetLanguage: 'zh-Hans' }, event => observations.push(event));
-        await expect(settle(freeTranslation(request))).resolves.toBe(chinese);
+        await expect(settle(freeTranslation(withProviderSnapshot(request, mockConfig)))).resolves.toBe(chinese);
         expect(microsoftMock).toHaveBeenCalledOnce();
         expect(googleMock).toHaveBeenCalledOnce();
         expect(observations.map(({ route, outcome, chars }) => ({ route, outcome, chars }))).toEqual([
             { route: 'microsoft', outcome: 'error', chars: polishSource.length },
             { route: 'google', outcome: 'success', chars: polishSource.length },
         ]);
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
-        await expect(settle(freeTranslation({ origin: polishSource + ' Another paragraph.' }))).resolves.toBe(chinese);
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        await expect(settle(freeTranslation(withProviderSnapshot({ origin: polishSource + ' Another paragraph.' }, mockConfig)))).resolves.toBe(chinese);
         expect(microsoftMock).toHaveBeenCalledTimes(2);
         expect(googleMock).toHaveBeenCalledOnce();
         expect(mockConfig.freeTranslationOrder).toEqual(['microsoft', 'google']);
@@ -1839,19 +1843,19 @@ describe('中文目标下明确 Latin 错语种结果', () => {
         const original = [...sources, ''];
         microsoftMock.mockImplementation(async (texts: string[]) => texts.map((_, index) => index === 6 ? corruptPolishResult : `首选中文译文${index}`));
         googleOwnerMock.mockImplementation(async (texts: string[]) => texts.map((_, index) => `后备中文译文${index}`));
-        await expect(settle(freeTranslation({ origin: original }))).resolves.toEqual([...sources.map((_, index) => `后备中文译文${index}`), '']);
+        await expect(settle(freeTranslation(withProviderSnapshot({ origin: original }, mockConfig)))).resolves.toEqual([...sources.map((_, index) => `后备中文译文${index}`), '']);
         expect(microsoftMock).toHaveBeenCalledOnce();
         expect(googleOwnerMock).toHaveBeenCalledOnce();
         expect(microsoftMock.mock.calls[0][0]).toEqual(sources);
         expect(googleOwnerMock.mock.calls[0][0]).toEqual(sources);
         expect(googleMock).not.toHaveBeenCalled();
         expect(original).toEqual([...sources, '']);
-        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
     });
     it('single-provider check rejects wrong language and never silently changes provider', async () => {
         microsoftMock.mockResolvedValue([corruptPolishResult]);
         googleMock.mockResolvedValue(chinese);
-        await expect(translateFreeTranslationProvider('microsoft', { origin: polishSource, targetLanguage: 'zh-Hans' }))
+        await expect(translateFreeTranslationProvider('microsoft', withProviderSnapshot({ origin: polishSource, targetLanguage: 'zh-Hans' }, mockConfig)))
             .rejects.toMatchObject({ freeFailure: 'request', message: '返回的译文语言与目标语言不符' });
         expect(microsoftMock).toHaveBeenCalledOnce();
         expect(googleMock).not.toHaveBeenCalled();
@@ -1861,7 +1865,7 @@ describe('中文目标下明确 Latin 错语种结果', () => {
     it('all invalid providers stay failed with one attempt per configured candidate', async () => {
         microsoftMock.mockResolvedValue([corruptPolishResult]);
         googleMock.mockResolvedValue(corruptPolishResult);
-        await expect(settle(freeTranslation({ origin: polishSource }))).rejects.toThrow('语言与目标语言不符');
+        await expect(settle(freeTranslation(withProviderSnapshot({ origin: polishSource }, mockConfig)))).rejects.toThrow('语言与目标语言不符');
         expect(microsoftMock).toHaveBeenCalledOnce();
         expect(googleMock).toHaveBeenCalledOnce();
     });
@@ -1874,7 +1878,7 @@ describe('中文目标下明确 Latin 错语种结果', () => {
             googleSignal = signal;
             return new Promise(() => { });
         });
-        const request = freeTranslation({ origin: polishSource, requestTimeoutMs: 50 }).catch(error => error);
+        const request = freeTranslation(withProviderSnapshot({ origin: polishSource, requestTimeoutMs: 50 }, mockConfig)).catch(error => error);
         await vi.advanceTimersByTimeAsync(30);
         release();
         await vi.advanceTimersByTimeAsync(0);
@@ -1899,16 +1903,16 @@ describe('中文目标下明确 Latin 错语种结果', () => {
         });
         const first = new AbortController(), second = new AbortController();
         const reason1 = new Error('first owner cancelled'), reason2 = new Error('second owner cancelled');
-        const one = freeTranslation({ origin: polishSource, abortSignal: first.signal }).catch(error => error);
+        const one = freeTranslation(withProviderSnapshot({ origin: polishSource, abortSignal: first.signal }, mockConfig)).catch(error => error);
         await vi.advanceTimersByTimeAsync(100);
-        const two = freeTranslation({ origin: polishSource, abortSignal: second.signal }).catch(error => error);
+        const two = freeTranslation(withProviderSnapshot({ origin: polishSource, abortSignal: second.signal }, mockConfig)).catch(error => error);
         await vi.advanceTimersByTimeAsync(100);
         expect(microsoftMock).toHaveBeenCalledTimes(2);
         first.abort(reason1);
         second.abort(reason2);
         expect(await one).toBe(reason1);
         expect(await two).toBe(reason2);
-        const recovery = freeTranslation({ origin: 'The software translates this recovery paragraph and keeps all user settings available after restart.' });
+        const recovery = freeTranslation(withProviderSnapshot({ origin: 'The software translates this recovery paragraph and keeps all user settings available after restart.' }, mockConfig));
         await vi.advanceTimersByTimeAsync(100);
         expect(microsoftMock).toHaveBeenCalledTimes(2);
         release[0]();

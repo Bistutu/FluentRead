@@ -5,7 +5,7 @@ import {
     createBackgroundRuntimeMessageListener,
     type BackgroundFallbackHandler,
     type BackgroundMessageHandler,
-} from '@/src/app/background/messageRouter';
+} from '@/src/services/messaging/backgroundRouter';
 
 interface TestContext {
     prefix: string;

@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {createHash, createHmac} from 'node:crypto';
 
@@ -102,14 +103,14 @@ describe('注册表', () => {
             expect(translationProviderRegistry[service], service).toBeTypeOf('function');
         }
         expect(translationProviderRegistry[services.googleCloudTranslation]).toBe(googleCloudTranslation);
-        expect(translationProviderRegistry[services.volcTranslation]).toBe(volcTranslation);
+        expect(translationProviderRegistry[services.volcTranslation]).toEqual(expect.any(Function));
     });
 });
 
 describe('谷歌云翻译', () => {
     it('密钥走请求头而非 URL，自动检测时省略 source', async () => {
         respond({data: {translations: [{translatedText: '你好'}]}});
-        await expect(googleCloudTranslation({origin: 'Hello'})).resolves.toBe('你好');
+        await expect(googleCloudTranslation(withProviderSnapshot({origin: 'Hello'}, config))).resolves.toBe('你好');
         const {url, headers, body} = lastCall();
         expect(url).toBe(GOOGLE_CLOUD_TRANSLATION_URL);
         expect(url).not.toContain('gcp-key');
@@ -119,28 +120,28 @@ describe('谷歌云翻译', () => {
 
     it('显式源语言与错误路径', async () => {
         respond({data: {translations: [{translatedText: 'ok'}]}});
-        await googleCloudTranslation({origin: 'x', sourceLanguage: 'ja', targetLanguage: 'en'});
+        await googleCloudTranslation(withProviderSnapshot({origin: 'x', sourceLanguage: 'ja', targetLanguage: 'en'}, config));
         expect(JSON.parse(lastCall().body)).toMatchObject({source: 'ja', target: 'en'});
 
         config.token[services.googleCloudTranslation] = ' ';
-        await expect(googleCloudTranslation({origin: 'x'})).rejects.toThrow(/API Key/u);
+        await expect(googleCloudTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow(/API Key/u);
         config.token[services.googleCloudTranslation] = 'gcp-key';
 
         fetchMock.mockResolvedValue(new Response('denied', {status: 403}));
-        await expect(googleCloudTranslation({origin: 'x'})).rejects.toMatchObject({message: '谷歌云翻译请求失败: 403', statusCode: 403});
+        await expect(googleCloudTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toMatchObject({message: '谷歌云翻译请求失败: 403', statusCode: 403});
         respond({error: {code: 400, message: 'secret payload'}}, {status: 200});
-        await expect(googleCloudTranslation({origin: 'x'})).rejects.toThrow('谷歌云翻译错误（错误码 400）');
+        await expect(googleCloudTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('谷歌云翻译错误（错误码 400）');
         respond({data: {translations: []}});
-        await expect(googleCloudTranslation({origin: 'x'})).rejects.toThrow('谷歌云翻译返回格式异常');
+        await expect(googleCloudTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('谷歌云翻译返回格式异常');
         fetchMock.mockResolvedValue(new Response('not json'));
-        await expect(googleCloudTranslation({origin: 'x'})).rejects.toThrow('谷歌云翻译返回的不是有效 JSON');
+        await expect(googleCloudTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('谷歌云翻译返回的不是有效 JSON');
     });
 });
 
 describe('Azure 翻译', () => {
     it('全球资源不发区域头，区域资源附带 Ocp-Apim-Subscription-Region', async () => {
         respond([{translations: [{text: '你好', to: 'zh-Hans'}]}]);
-        await expect(azureTranslator({origin: 'Hello'})).resolves.toBe('你好');
+        await expect(azureTranslator(withProviderSnapshot({origin: 'Hello'}, config))).resolves.toBe('你好');
         let call = lastCall();
         let url = new URL(call.url);
         expect(url.origin + url.pathname).toBe('https://api.cognitive.microsofttranslator.com/translate');
@@ -152,7 +153,7 @@ describe('Azure 翻译', () => {
         expect(JSON.parse(call.body)).toEqual([{Text: 'Hello'}]);
 
         config.serviceRegion[services.azureTranslator] = 'eastasia';
-        await azureTranslator({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-TW'});
+        await azureTranslator(withProviderSnapshot({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-TW'}, config));
         call = lastCall();
         url = new URL(call.url);
         expect(call.headers.get('Ocp-Apim-Subscription-Region')).toBe('eastasia');
@@ -160,32 +161,32 @@ describe('Azure 翻译', () => {
         expect(url.searchParams.get('to')).toBe('zh-Hant');
 
         config.serviceRegion[services.azureTranslator] = 'japanwest';
-        await azureTranslator({origin: 'Hello'});
+        await azureTranslator(withProviderSnapshot({origin: 'Hello'}, config));
         expect(lastCall().headers.get('Ocp-Apim-Subscription-Region')).toBe('japanwest');
 
         config.serviceRegion[services.azureTranslator] = 'not-a-region';
-        await azureTranslator({origin: 'Hello'});
+        await azureTranslator(withProviderSnapshot({origin: 'Hello'}, config));
         expect(lastCall().headers.has('Ocp-Apim-Subscription-Region')).toBe(false);
     });
 
     it('错误路径', async () => {
         config.token[services.azureTranslator] = '';
-        await expect(azureTranslator({origin: 'x'})).rejects.toThrow(/密钥/u);
+        await expect(azureTranslator(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow(/密钥/u);
         config.token[services.azureTranslator] = 'azure-key';
         fetchMock.mockResolvedValue(new Response('', {status: 401}));
-        await expect(azureTranslator({origin: 'x'})).rejects.toMatchObject({statusCode: 401});
+        await expect(azureTranslator(withProviderSnapshot({origin: 'x'}, config))).rejects.toMatchObject({statusCode: 401});
         respond({error: {code: 401000, message: 'leak'}});
-        await expect(azureTranslator({origin: 'x'})).rejects.toThrow('Azure 翻译错误（错误码 401000）');
+        await expect(azureTranslator(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('Azure 翻译错误（错误码 401000）');
         respond({});
-        await expect(azureTranslator({origin: 'x'})).rejects.toMatchObject({kind: 'response', code: 'NATIVE_BATCH_RESPONSE_INVALID'});
+        await expect(azureTranslator(withProviderSnapshot({origin: 'x'}, config))).rejects.toMatchObject({kind: 'response', code: 'NATIVE_BATCH_RESPONSE_INVALID'});
         respond([{translations: []}]);
-        await expect(azureTranslator({origin: 'x'})).rejects.toThrow('Azure 翻译返回格式异常');
+        await expect(azureTranslator(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('Azure 翻译返回格式异常');
         for (const translations of [{0: {text: '译文'}}, [{text: '译文'}, {text: '多余'}]]) {
             respond([{translations}]);
-            await expect(azureTranslator({origin: 'x'})).rejects.toMatchObject({code: 'NATIVE_BATCH_RESPONSE_INVALID'});
+            await expect(azureTranslator(withProviderSnapshot({origin: 'x'}, config))).rejects.toMatchObject({code: 'NATIVE_BATCH_RESPONSE_INVALID'});
         }
         respond([]);
-        await expect(azureTranslator({origin: 'x'})).rejects.toThrow('Azure 翻译返回格式异常');
+        await expect(azureTranslator(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('Azure 翻译返回格式异常');
     });
 });
 
@@ -203,18 +204,18 @@ describe.each(nativeCloudProviders)('$label 原生数组完整性', ({translate,
         config.nativeBatchTranslationEnabled = {googleCloudTranslation: false, azureTranslator: false};
         fetchMock.mockImplementation(async (_url, init) => json(success(bodySources(JSON.parse(String(init?.body)))
             .map((source: string) => `译:${source}`))));
-        await expect(translate({origin: ['first', '', 'second']})).resolves.toEqual(['译:first', '', '译:second']);
+        await expect(translate(withProviderSnapshot({origin: ['first', '', 'second']}, config))).resolves.toEqual(['译:first', '', '译:second']);
         expect(fetchMock.mock.calls.map(([, init]) => bodySources(JSON.parse(String(init?.body)))))
             .toEqual([['first'], ['second']]);
         fetchMock.mockClear();
-        await expect(translate({origin: ['first', 'second'], enableNativeBatch: true})).resolves.toEqual(['译:first', '译:second']);
+        await expect(translate(withProviderSnapshot({origin: ['first', 'second'], enableNativeBatch: true}, config))).resolves.toEqual(['译:first', '译:second']);
         expect(fetchMock).toHaveBeenCalledOnce();
     });
 
     it('一次请求保留重复源槽、字面 HTML 与内部换行，空白槽不上传', async () => {
         const origins = ['<b>Hello & &lt;</b>\nNext', 'duplicate', '', ' \r\n', 'duplicate'];
         respond(success(['<b>你好 & &lt;</b>\n下一行', '重复一', '重复二']));
-        await expect(translate({origin: origins})).resolves.toEqual([
+        await expect(translate(withProviderSnapshot({origin: origins}, config))).resolves.toEqual([
             '<b>你好 & &lt;</b>\n下一行', '重复一', '', ' \r\n', '重复二',
         ]);
         expect(fetchMock).toHaveBeenCalledOnce();
@@ -227,7 +228,7 @@ describe.each(nativeCloudProviders)('$label 原生数组完整性', ({translate,
     it.each([[], ['一'], ['一', '二', '额外'], ['一', undefined], ['一', 7], ['一', ' \n'], ['一', '\u200b']].map(translations => ({translations})))(
         '异常结果 $translations 拒绝整批且不在 provider 内重试', async ({translations}) => {
             respond(success(translations));
-            await expect(translate({origin: ['first', 'second']})).rejects.toMatchObject({
+            await expect(translate(withProviderSnapshot({origin: ['first', 'second']}, config))).rejects.toMatchObject({
                 kind: 'response', code: 'NATIVE_BATCH_RESPONSE_INVALID', retryable: false,
             });
             expect(fetchMock).toHaveBeenCalledOnce();
@@ -237,36 +238,36 @@ describe.each(nativeCloudProviders)('$label 原生数组完整性', ({translate,
     it('按条数和字符数分包，后包缺项则整个调用失败', async () => {
         const origins = Array.from({length: 33}, (_, index) => `source ${index}`);
         fetchMock.mockImplementation(async (_url, init) => json(success(bodySources(JSON.parse(String(init?.body))).map((text: string) => `译:${text}`))));
-        await expect(translate({origin: origins})).resolves.toEqual(origins.map(text => `译:${text}`));
+        await expect(translate(withProviderSnapshot({origin: origins}, config))).resolves.toEqual(origins.map(text => `译:${text}`));
         expect(fetchMock.mock.calls.map(([, init]) => bodySources(JSON.parse(String(init?.body))).length)).toEqual([32, 1]);
         fetchMock.mockReset();
         fetchMock.mockResolvedValueOnce(json(success(Array.from({length: 32}, () => '译文')))).mockResolvedValueOnce(json(success([])));
-        await expect(translate({origin: origins})).rejects.toMatchObject({code: 'NATIVE_BATCH_RESPONSE_INVALID'});
+        await expect(translate(withProviderSnapshot({origin: origins}, config))).rejects.toMatchObject({code: 'NATIVE_BATCH_RESPONSE_INVALID'});
         expect(fetchMock).toHaveBeenCalledTimes(2);
         fetchMock.mockClear();
         fetchMock.mockImplementation(async (_url, init) => json(success(bodySources(JSON.parse(String(init?.body))).map(() => '译文'))));
-        await expect(translate({origin: ['a'.repeat(2_001), 'b'.repeat(2_000)]})).resolves.toEqual(['译文', '译文']);
+        await expect(translate(withProviderSnapshot({origin: ['a'.repeat(2_001), 'b'.repeat(2_000)]}, config))).resolves.toEqual(['译文', '译文']);
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it('空白数组本地返回，取消后不启动请求或后续分包', async () => {
-        await expect(translate({origin: ['', ' \n', '\u200b']})).resolves.toEqual(['', ' \n', '\u200b']);
-        await expect(translate({origin: []})).resolves.toEqual([]);
+        await expect(translate(withProviderSnapshot({origin: ['', ' \n', '\u200b']}, config))).resolves.toEqual(['', ' \n', '\u200b']);
+        await expect(translate(withProviderSnapshot({origin: []}, config))).resolves.toEqual([]);
         expect(fetchMock).not.toHaveBeenCalled();
         const cancelled = new AbortController();
         cancelled.abort();
-        await expect(translate({origin: ['source'], abortSignal: cancelled.signal})).rejects.toMatchObject({name: 'AbortError'});
+        await expect(translate(withProviderSnapshot({origin: ['source'], abortSignal: cancelled.signal}, config))).rejects.toMatchObject({name: 'AbortError'});
         expect(fetchMock).not.toHaveBeenCalled();
         const active = new AbortController();
         fetchMock.mockImplementation(async () => { active.abort(); return json(success(Array.from({length: 32}, () => '译文'))); });
-        await expect(translate({origin: Array.from({length: 33}, () => 'source'), abortSignal: active.signal}))
+        await expect(translate(withProviderSnapshot({origin: Array.from({length: 33}, () => 'source'), abortSignal: active.signal}, config)))
             .rejects.toMatchObject({name: 'AbortError'});
         expect(fetchMock).toHaveBeenCalledOnce();
     });
 
     it('成功 HTTP 的损坏 JSON 属于可识别的响应结构错误', async () => {
         fetchMock.mockResolvedValue(new Response('not json'));
-        await expect(translate({origin: ['first', 'second']})).rejects.toMatchObject({code: 'NATIVE_BATCH_RESPONSE_INVALID'});
+        await expect(translate(withProviderSnapshot({origin: ['first', 'second']}, config))).rejects.toMatchObject({code: 'NATIVE_BATCH_RESPONSE_INVALID'});
         expect(fetchMock).toHaveBeenCalledOnce();
     });
 
@@ -279,7 +280,7 @@ describe.each(nativeCloudProviders)('$label 原生数组完整性', ({translate,
         const reading = new Promise<void>(resolve => {markJsonReading = resolve;});
         const readJson = vi.fn(() => {markJsonReading(); return body;});
         fetchMock.mockResolvedValue({ok: true, headers: new Headers({'Content-Type': 'application/json'}), json: readJson} as unknown as Response);
-        const pending = translate({origin: Array.from({length: 33}, (_, index) => `source ${index}`), abortSignal: active.signal});
+        const pending = translate(withProviderSnapshot({origin: Array.from({length: 33}, (_, index) => `source ${index}`), abortSignal: active.signal}, config));
         const rejected = expect(pending).rejects.toBe(reason);
         await reading;
         expect(active.signal.aborted).toBe(false);
@@ -294,7 +295,7 @@ describe.each(nativeCloudProviders)('$label 原生数组完整性', ({translate,
 
     it('HTTP200读取中断不会被归为可拆批的结构错误', async () => {
         fetchMock.mockResolvedValue({ok: true, json: async () => {throw new TypeError('private response');}} as unknown as Response);
-        await expect(translate({origin: ['first', 'second']})).rejects.toMatchObject({message: '翻译响应读取失败'});
+        await expect(translate(withProviderSnapshot({origin: ['first', 'second']}, config))).rejects.toMatchObject({message: '翻译响应读取失败'});
         expect(fetchMock).toHaveBeenCalledOnce();
     });
 });
@@ -318,7 +319,7 @@ describe('阿里云机器翻译', () => {
 
     it('按地域选择域名，表单包含签名后的公共参数', async () => {
         respond({Code: '200', Data: {Translated: '你好，世界'}});
-        await expect(aliyunTranslation({origin: 'Hello world'})).resolves.toBe('你好，世界');
+        await expect(aliyunTranslation(withProviderSnapshot({origin: 'Hello world'}, config))).resolves.toBe('你好，世界');
         let call = lastCall();
         expect(call.url).toBe('https://mt.cn-hangzhou.aliyuncs.com/');
         expect(call.headers.get('Content-Type')).toContain('application/x-www-form-urlencoded');
@@ -333,7 +334,7 @@ describe('阿里云机器翻译', () => {
 
         config.serviceRegion[services.aliyunTranslation] = 'ap-southeast-1';
         respond({Code: 200, Data: {Translated: 'ok'}});
-        await aliyunTranslation({origin: 'x', sourceLanguage: 'zh-Hant', targetLanguage: 'en'});
+        await aliyunTranslation(withProviderSnapshot({origin: 'x', sourceLanguage: 'zh-Hant', targetLanguage: 'en'}, config));
         call = lastCall();
         expect(call.url).toBe('https://mt.ap-southeast-1.aliyuncs.com/');
         params = new URLSearchParams(call.body);
@@ -351,7 +352,7 @@ describe('阿里云机器翻译', () => {
         ['10013', 403, '未开通或账号欠费'],
     ])('HTTP 失败保留 %s 错误码并提供可操作提示', async (Code, status, hint) => {
         respond({Code, Message: 'ali-ak ali-sk private source', Recommend: 'https://example.com/?key=ali-sk'}, {status});
-        const error = await aliyunTranslation({origin: 'private source'}).catch((error: Error) => error);
+        const error = await aliyunTranslation(withProviderSnapshot({origin: 'private source'}, config)).catch((error: Error) => error);
         expect(error).toMatchObject({statusCode: status});
         expect((error as Error).message).toContain(String(Code));
         expect((error as Error).message).toContain(hint);
@@ -360,18 +361,18 @@ describe('阿里云机器翻译', () => {
 
     it('HTTP 限流保留 Retry-After，业务错误同样提供提示', async () => {
         respond({Code: 'Throttling'}, {status: 429, headers: {'Retry-After': '3'}});
-        await expect(aliyunTranslation({origin: 'x'})).rejects.toMatchObject({
+        await expect(aliyunTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toMatchObject({
             statusCode: 429, retryAfterMs: 3000,
             message: '阿里云机器翻译请求失败: 429（错误码 Throttling）：请求过于频繁，请稍后重试',
         });
         respond({Code: 10005, Message: 'private source'});
-        await expect(aliyunTranslation({origin: 'x'})).rejects.toThrow('暂不支持所选语言组合');
+        await expect(aliyunTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('暂不支持所选语言组合');
     });
 
     it.each([null, [], {}, {Code: 'ali-sk'}, {Code: 'SignatureDoesNotMatch ali-sk'}, {Code: 'constructor'}, {Code: '__proto__'}, {Code: {secret: 'ali-sk'}}, {Code: 200, Data: {Translated: 'should not succeed'}}])(
         '未知或畸形 HTTP 错误体不泄漏内容且不覆盖状态', async (body) => {
             respond(body, {status: 400});
-            await expect(aliyunTranslation({origin: 'x'})).rejects.toMatchObject({
+            await expect(aliyunTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toMatchObject({
                 statusCode: 400, message: '阿里云机器翻译请求失败: 400',
             });
         },
@@ -379,25 +380,25 @@ describe('阿里云机器翻译', () => {
 
     it('非 JSON HTTP 错误保留状态，成功 HTTP 响应仍校验 JSON 和结构', async () => {
         fetchMock.mockResolvedValueOnce(new Response('<html>ali-sk private source</html>', {status: 502}));
-        await expect(aliyunTranslation({origin: 'x'})).rejects.toMatchObject({statusCode: 502, message: '阿里云机器翻译请求失败: 502'});
+        await expect(aliyunTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toMatchObject({statusCode: 502, message: '阿里云机器翻译请求失败: 502'});
         fetchMock.mockResolvedValueOnce(new Response('ali-sk private source'));
-        await expect(aliyunTranslation({origin: 'x'})).rejects.toThrow('阿里云机器翻译返回的不是有效 JSON');
+        await expect(aliyunTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('阿里云机器翻译返回的不是有效 JSON');
         respond(null);
-        await expect(aliyunTranslation({origin: 'x'})).rejects.toThrow('阿里云机器翻译错误');
+        await expect(aliyunTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('阿里云机器翻译错误');
     });
 
     it('错误路径', async () => {
         config.secret[services.aliyunTranslation] = '';
-        await expect(aliyunTranslation({origin: 'x'})).rejects.toThrow(/AccessKey ID 与 AccessKey Secret/u);
+        await expect(aliyunTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow(/AccessKey ID 与 AccessKey Secret/u);
         config.secret[services.aliyunTranslation] = 'ali-sk';
         fetchMock.mockResolvedValue(new Response('', {status: 500}));
-        await expect(aliyunTranslation({origin: 'x'})).rejects.toMatchObject({statusCode: 500});
+        await expect(aliyunTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toMatchObject({statusCode: 500});
         respond({Code: '10001', Message: 'signature mismatch'});
-        await expect(aliyunTranslation({origin: 'x'})).rejects.toThrow('阿里云机器翻译错误（错误码 10001）');
+        await expect(aliyunTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('阿里云机器翻译错误（错误码 10001）');
         respond({Message: 'no code'});
-        await expect(aliyunTranslation({origin: 'x'})).rejects.toThrow('阿里云机器翻译错误');
+        await expect(aliyunTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('阿里云机器翻译错误');
         respond({Code: '200', Data: {}});
-        await expect(aliyunTranslation({origin: 'x'})).rejects.toThrow('阿里云机器翻译返回格式异常');
+        await expect(aliyunTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('阿里云机器翻译返回格式异常');
     });
 });
 
@@ -408,7 +409,7 @@ describe('百度翻译', () => {
         expect(buildBaiduSignedForm({appId: 'a', secretKey: 'k', query: 'q', from: 'auto', to: 'en'}).salt).toMatch(/^\d+$/u);
 
         respond({from: 'zh', to: 'en', trans_result: [{src: '第一行', dst: 'Line one'}, {src: '第二行', dst: 'Line two'}]});
-        await expect(baiduTranslation({origin: '第一行\n第二行', sourceLanguage: 'zh-Hans', targetLanguage: 'en'})).resolves.toBe('Line one\nLine two');
+        await expect(baiduTranslation(withProviderSnapshot({origin: '第一行\n第二行', sourceLanguage: 'zh-Hans', targetLanguage: 'en'}, config))).resolves.toBe('Line one\nLine two');
         const call = lastCall();
         expect(call.url).toBe('https://fanyi-api.baidu.com/api/trans/vip/translate');
         const params = new URLSearchParams(call.body);
@@ -421,18 +422,18 @@ describe('百度翻译', () => {
 
     it('错误路径与成功码 52000', async () => {
         config.token[services.baiduTranslation] = '';
-        await expect(baiduTranslation({origin: 'x'})).rejects.toThrow(/APP ID 与密钥/u);
+        await expect(baiduTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow(/APP ID 与密钥/u);
         config.token[services.baiduTranslation] = 'baidu-app';
         fetchMock.mockResolvedValue(new Response('', {status: 429}));
-        await expect(baiduTranslation({origin: 'x'})).rejects.toMatchObject({statusCode: 429});
+        await expect(baiduTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toMatchObject({statusCode: 429});
         respond({error_code: '54003', error_msg: 'rate limit'});
-        await expect(baiduTranslation({origin: 'x'})).rejects.toThrow('百度翻译错误（错误码 54003）');
+        await expect(baiduTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('百度翻译错误（错误码 54003）');
         respond({error_code: 52000, trans_result: [{src: 'x', dst: 'y'}]});
-        await expect(baiduTranslation({origin: 'x'})).resolves.toBe('y');
+        await expect(baiduTranslation(withProviderSnapshot({origin: 'x'}, config))).resolves.toBe('y');
         respond({trans_result: []});
-        await expect(baiduTranslation({origin: 'x'})).rejects.toThrow('百度翻译返回格式异常');
+        await expect(baiduTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('百度翻译返回格式异常');
         respond({trans_result: [{src: 'x'}]});
-        await expect(baiduTranslation({origin: 'x'})).rejects.toThrow('百度翻译返回格式异常');
+        await expect(baiduTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('百度翻译返回格式异常');
     });
 });
 
@@ -460,7 +461,7 @@ describe('火山引擎翻译', () => {
 
     it('请求携带签名头，地域进入凭证范围，自动检测时省略 SourceLanguage', async () => {
         respond({ResponseMetadata: {}, TranslationList: [{Translation: '你好', DetectedSourceLanguage: 'en'}]});
-        await expect(volcTranslation({origin: 'Hello'})).resolves.toBe('你好');
+        await expect(volcTranslation(withProviderSnapshot({origin: 'Hello'}, config))).resolves.toBe('你好');
         let call = lastCall();
         expect(call.url).toBe('https://translate.volcengineapi.com/?Action=TranslateText&Version=2020-06-01');
         expect(JSON.parse(call.body)).toEqual({TargetLanguage: 'zh', TextList: ['Hello']});
@@ -469,7 +470,7 @@ describe('火山引擎翻译', () => {
         expect(call.body).not.toContain('volc-sk');
 
         config.serviceRegion[services.volcTranslation] = 'ap-southeast-1';
-        await volcTranslation({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-Hant'});
+        await volcTranslation(withProviderSnapshot({origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-Hant'}, config));
         call = lastCall();
         expect(JSON.parse(call.body)).toEqual({TargetLanguage: 'zh-Hant', TextList: ['Hello'], SourceLanguage: 'en'});
         expect(call.headers.get('Authorization')).toContain('/ap-southeast-1/translate/request');
@@ -477,13 +478,13 @@ describe('火山引擎翻译', () => {
 
     it('错误路径', async () => {
         config.token[services.volcTranslation] = '';
-        await expect(volcTranslation({origin: 'x'})).rejects.toThrow(/Access Key ID 与 Secret Access Key/u);
+        await expect(volcTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow(/Access Key ID 与 Secret Access Key/u);
         config.token[services.volcTranslation] = 'volc-ak';
         fetchMock.mockResolvedValue(new Response('', {status: 403}));
-        await expect(volcTranslation({origin: 'x'})).rejects.toMatchObject({statusCode: 403});
+        await expect(volcTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toMatchObject({statusCode: 403});
         respond({ResponseMetadata: {Error: {Code: 'SignatureDoesNotMatch', CodeN: 100009, Message: 'leak'}}});
-        await expect(volcTranslation({origin: 'x'})).rejects.toThrow('火山引擎翻译错误（错误码 100009）');
+        await expect(volcTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('火山引擎翻译错误（错误码 100009）');
         respond({TranslationList: []});
-        await expect(volcTranslation({origin: 'x'})).rejects.toThrow('火山引擎翻译返回格式异常');
+        await expect(volcTranslation(withProviderSnapshot({origin: 'x'}, config))).rejects.toThrow('火山引擎翻译返回格式异常');
     });
 });

@@ -25,6 +25,7 @@ import {translationStatsSpanishMessages} from './translationStats';
 import {localTranslationSpanishMessages} from './localTranslation';
 
 export const esESMessages = {
+    "document.config.loadFailed": "No se pudieron cargar los ajustes. Recarga la página e inténtalo de nuevo.",
     "popup.compact.translate": "Traducir",
     "popup.compact.restore": "Restaurar",
     ...videoLearningText,

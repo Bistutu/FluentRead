@@ -9,7 +9,7 @@ import {resolveTranslationToolbarStatus, countFullPageTranslationWork} from '../
 import {hasDistinctTargetTranslation as hasDistinctTranslation} from '@/src/core/translation/targetResult';
 import {getFullPageTranslationStateRevision, notifyFullPageTranslationState, notifyTranslationToolbarStatus} from './stateNotification';
 import type {FrameTranslationState} from './frameSession';
-import { checkConfig } from "@/src/app/translation/check";
+import { checkConfig } from "@/src/features/full-page-translation/content/configCheck";
 import {insertFailedTip} from '@/src/features/full-page-translation/ui/translationIndicators';
 import {scheduleTranslationLoadingIndicator} from './loadingIndicator';
 import {syncModalTranslationHint} from '../ui/modalProgressHint';
@@ -30,7 +30,6 @@ import {
 import type {
     TranslationCandidate,
     TranslationScope,
-    TranslationDiscoveryStep,
 } from "@/src/core/translation/public";
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import { config } from "@/src/services/config/store";
@@ -43,7 +42,6 @@ import {
     startFullPageTranslationProgress,
     updateFullPageTranslationProgress,
 } from '@/src/features/full-page-translation/progress';
-import {createFullPageOutcomeRegistry} from '../core/outcomes';
 import {bindFullPageOutcomeRecovery, getFullPageOutcomeSummary, getFullPageModalOutcomePhases, registerFullPageOutcomeTarget} from './outcomeSession';
 import {
     appendBilingualTranslation,
@@ -86,7 +84,6 @@ import {
 import {
     captureFullPageTranslationConfig,
     getTranslationInvocationIdentity,
-    type FullPageTranslationCacheEntry,
     type FullPageTranslationConfigSnapshot, type FullPageTranslationSessionCache,
     type PageTranslationConfigOverrides,
 } from '@/src/features/full-page-translation/content/translationRequest';
@@ -97,13 +94,12 @@ import {
 import {
     createFullPageScrollController,
     withFullPageViewportAnchor,
-    type FullPageScrollController,
 } from '@/src/features/full-page-translation/content/viewportStability';
-import {clearFullPageQueueState, createFullPageQueueState, noteFullPageScroll, queueFullPageCandidate, queueFullPageFailedCandidate, removeFullPagePending, createFullPageDispatchPlan, type FullPageQueueState, type FullPageDispatchPlan} from '@/src/features/full-page-translation/content/fullPageQueue';
+import {noteFullPageScroll, queueFullPageCandidate, queueFullPageFailedCandidate, removeFullPagePending, createFullPageDispatchPlan, type FullPageDispatchPlan} from '@/src/features/full-page-translation/content/fullPageQueue';
 import {FULL_PAGE_PREFETCH_MARGIN_PX} from '@/src/features/full-page-translation/content/fullPagePriority';
 import {
     createLifecycleRetry, sameLifecycleRetry, createAcceptedUnchangedCompletion, readAcceptedUnchangedCompletion,
-    type FullPageLifecycleRetry, type AcceptedUnchangedCompletion, canKeepTranslationAttempt,
+    type AcceptedUnchangedCompletion, canKeepTranslationAttempt,
     getCandidateTranslationTextProtectionOptions,
     isTranslationCandidateCurrent as candidateIsCurrent,
     isTranslationStateCandidateCurrent, createTranslationMutationStabilityChecks,
@@ -127,15 +123,16 @@ import {
 } from '@/src/features/full-page-translation/content/liveTextTranslation';
 import {restorePageTranslationContent, consumeOrphanedOwnerClassMutation, isTextEquivalentHostReplacement, normalizeOrphanedSingleSlots, normalizeOrphanedTranslationArtifacts, normalizeOrphanedTranslationOwner}
     from '@/src/features/full-page-translation/content/orphanArtifacts';
-import {bindFullPageRequestSessionAttempt, createFullPageRequestSessionState, disposeFullPageRequestSession, getHoverTranslationRequestSession, invalidateContextSensitiveRequestCache, invalidateFullPageRequestSessionCache, invalidateHoverTranslationRequestSession, resetHoverTranslationRequestSession, type FullPageRequestSessionState} from '@/src/features/full-page-translation/content/requestSession';
+import {bindFullPageRequestSessionAttempt, getHoverTranslationRequestSession, invalidateContextSensitiveRequestCache, invalidateFullPageRequestSessionCache, invalidateHoverTranslationRequestSession, resetHoverTranslationRequestSession} from '@/src/features/full-page-translation/content/requestSession';
 import {resetFullPageRouteSession} from './routeLifecycle';
 import {HoverTranslationScheduler, type HoverTranslationInvocation} from './hoverScheduler';
 import {personalCorrectionIsCurrent, registerPersonalCorrectionResult} from './personalCorrections';
 import {getSiteAdapterAttributeFilter} from '@/src/core/site-adaptation/compiler';
 import {isElementNode, asHTMLElement, mutationTargetElement, allMutationNodesMatch, createTranslationAttributeMutationFilter, createTranslationMutationObserverOptions, isOwnSyntheticSegmentMarkerMutation, mutationRootContains as nodeContains, collapseMutationRescanRoot as broadRescanRoot} from './mutationObservation';
 import {isWithinTranslationModal, mayChangeTranslationModal} from './modalPriority';
-import {refreshModalSession, type ModalPrioritySession} from './modalSession';
+import {refreshModalSession} from './modalSession';
 import {createAttributeMutationBatch} from './attributeMutationBatch';
+import {createFullPageSessionState, type FullPageSession} from './fullPageSession';
 const translationSourceStability = new TranslationSourceStabilityGate<FullPageSession>({
     isCurrent: session => session.active && fullPageSession === session,
     resolve: resolveFullPageRetryCandidate, discover: scheduleDiscoveredCandidate, source: candidateLifecycleSource,
@@ -150,60 +147,6 @@ export type TranslationTargetOutcome =
         /** 尝试 owner，用于在较新的 generation 接管后拒绝旧重试。 */
         attemptNode?: HTMLElement;
     };
-interface FullPageSession extends FullPageRequestSessionState, ModalPrioritySession, FullPageQueueState {
-    translationMode: FullPageTranslationMode;
-    scope: TranslationScope;
-    /** 会话启动时冻结所有会改变译文或 DOM 表达的配置，防止设置热更新混入当前页面。 */
-    translationConfig: FullPageTranslationConfigSnapshot;
-    progressSessionId: number;
-    progressPublishScheduled: boolean;
-    outcomes: ReturnType<typeof createFullPageOutcomeRegistry<HTMLElement>>;
-    unsubscribeOutcomeChanges: () => void;
-    observer: IntersectionObserver;
-    mutationObserver: MutationObserver;
-    shadowEventController: AbortController;
-    /** 可见性锚点 -> 等待该锚点进入视口的候选。 */
-    observedCandidates: Map<HTMLElement, Map<Node, TranslationCandidate>>;
-    /** 最近一次 IO 通知为可见的锚点；同锚点迟到的候选需立即入队。 */
-    visibleCandidateAnchors: WeakSet<HTMLElement>;
-    /** 候选元素 -> 候选 key；与可见性锚点分开保存，便于精确清理。 */
-    candidateOwnerKeys: Map<HTMLElement, Set<Node>>;
-    /** 宿主 owner/祖先 -> 其下活跃翻译目标，避免 mutation 时全局扫描状态。 */
-    statefulTargetsByAncestor: Map<Element, Set<HTMLElement>>;
-    /** 活跃目标 -> 上述索引中为它登记的精确祖先 key。 */
-    statefulAncestorsByTarget: WeakMap<HTMLElement, readonly Element[]>;
-    /** provider 请求在途时失效候选的有界即时重试记录。 */
-    lifecycleRetries: WeakMap<Node, FullPageLifecycleRetry>;
-    /** 限定在本次全文会话内的 provider/语言“无需变更”判定。 */
-    unchangedCandidates: WeakMap<Node, FullPageLifecycleRetry>;
-    /**
-     * 用户在本次全文会话中显式恢复的候选标识。来源快照允许真实宿主编辑
-     * 清除取消墓碑，同时让扩展自身产生的恢复 mutation 继续排除该片段。
-     * 按节点弱关联，不因保留取消记录而延长已被宿主删除节点的生命周期。
-     */
-    userCancelledCandidates: WeakMap<Node, string>;
-    /** 用户滚动期间暂停新增翻译/重排，等待虚拟列表稳定后再继续。 */
-    scrollController: FullPageScrollController;
-    /** 宿主连续拒绝 wrapper 后，对稳定边界内的同源候选停止写 DOM。 */
-    bilingualRemountCapitulations: ReturnType<typeof createBilingualRemountCapitulationRegistry>;
-    /**
-     * 本次全文会话已经请求过的翻译结果。宿主框架可能在样式/布局 mutation 后
-     * 重新挂载同一段正文；此缓存避免生命周期抖动再次发出相同 provider 请求。
-     */
-    translationSlotCache: Map<string, FullPageTranslationCacheEntry>;
-    draining: boolean;
-    flushTimer: number | null;
-    dirtyRoots: Set<Node>;
-    mutationFlushTimer: number | null;
-    activeDiscovery: {root: Node; steps: Generator<TranslationDiscoveryStep>} | null;
-    broadRescanRoots: WeakSet<Node>;
-    dirtyRootsBroadMode: boolean;
-    pruneTimer: number | null;
-    pruneIterator: Iterator<TranslationCandidate> | null;
-    pruneRequested: boolean;
-    statefulAttributeTimers: Map<HTMLElement, {timer: number; boundaryTimer?: number}>;
-    statefulAttributeRescanTargets: WeakSet<HTMLElement>;
-}
 const BROAD_RESCAN_COOLDOWN_MS = 1_000;
 const CANDIDATE_PRUNE_BUDGET_MS = 4;
 const STATEFUL_ATTRIBUTE_DEBOUNCE_MS = 500;
@@ -1989,101 +1932,27 @@ function createFullPageSession(
         afterIdle: () => scheduleFullPageDrain(session),
     });
 
-    session = {
-        active: true,
-        modal: null,
-        modalDirty: true,
+    session = createFullPageSessionState({root,
         translationMode: invocation.fullPageMode ?? config.fullPageTranslationMode,
         scope: invocation.scope ?? config.translationScope,
         translationConfig: inheritedConfig ? {...inheritedConfig} : captureFullPageTranslationConfig(invocation),
-        progressSessionId: startFullPageTranslationProgress(),
-        progressPublishScheduled: false,
-        outcomes: createFullPageOutcomeRegistry<HTMLElement>(),
-        unsubscribeOutcomeChanges: () => {},
-        observer,
-        mutationObserver,
-        shadowEventController: new AbortController(),
-        roots: new Set(),
-        ...createFullPageQueueState(),
-        scheduled: new Map(),
-        observedCandidates: new Map(),
-        visibleCandidateAnchors: new WeakSet(),
-        candidateOwnerKeys: new Map(),
-        statefulTargetsByAncestor: new Map(),
-        statefulAncestorsByTarget: new WeakMap(),
-        lifecycleRetries: new WeakMap(),
-        unchangedCandidates: new WeakMap(),
-        userCancelledCandidates: new WeakMap(),
-        inFlightCandidates: new Map(),
-        scrollController,
-        bilingualRemountCapitulations: createBilingualRemountCapitulationRegistry(),
-        translationSlotCache: new Map(),
-        ...createFullPageRequestSessionState(),
-        draining: false,
-        flushTimer: null,
-        dirtyRoots: new Set(),
-        mutationFlushTimer: null,
-        activeDiscovery: null,
-        broadRescanRoots: new WeakSet([root]),
-        broadRescanCooldowns: new WeakMap(),
-        dirtyRootsBroadMode: false,
-        pruneTimer: null,
-        pruneIterator: null,
-        pruneRequested: false,
-        statefulAttributeTimers: new Map(),
-        statefulAttributeRescanTargets: new WeakSet(),
-    };
+        progressSessionId: startFullPageTranslationProgress(), observer, mutationObserver, scrollController,
+        createAbortError, clearTimeout: timer => window.clearTimeout(timer),
+        clearModalPresentation: () => syncModalTranslationHint(null, 'none', false),
+        releaseSourceStability: current => translationSourceStability.dispose(current),
+        finishProgress: finishFullPageTranslationProgress,
+    });
     session.unsubscribeOutcomeChanges = bindFullPageOutcomeRecovery(session,
         () => fullPageSession === session, () => scheduleFullPageProgressPublish(session));
     return session;
 }
 
-function disposeFullPageSession(session: FullPageSession): void {
-    session.active = false;
-    session.unsubscribeOutcomeChanges();
-    session.outcomes.clear();
-    syncModalTranslationHint(null, 'none', false);
-    session.modal = null;
-    session.modalDirty = false;
-    disposeFullPageRequestSession(session, createAbortError());
-    if (session.flushTimer !== null) window.clearTimeout(session.flushTimer);
-    if (session.mutationFlushTimer !== null) window.clearTimeout(session.mutationFlushTimer);
-    if (session.pruneTimer !== null) window.clearTimeout(session.pruneTimer);
-    session.scrollController.dispose();
-    translationSourceStability.dispose(session);
-    session.statefulAttributeTimers.forEach(({timer, boundaryTimer}) => {
-        window.clearTimeout(timer);
-        if (boundaryTimer !== undefined) window.clearTimeout(boundaryTimer);
-    });
-    session.observer.disconnect();
-    session.mutationObserver.disconnect();
-    session.shadowEventController.abort();
-    session.roots.clear();
-    clearFullPageQueueState(session);
-    session.scheduled.clear();
-    session.observedCandidates.clear();
-    session.visibleCandidateAnchors = new WeakSet();
-    session.candidateOwnerKeys.clear();
-    session.statefulTargetsByAncestor.clear();
-    session.statefulAncestorsByTarget = new WeakMap();
-    session.inFlightCandidates.clear();
-    session.userCancelledCandidates = new WeakMap();
-    session.translationSlotCache.clear();
-    session.dirtyRoots.clear();
-    session.dirtyRootsBroadMode = false;
-    session.activeDiscovery = null;
-    session.pruneIterator = null;
-    session.pruneRequested = false;
-    session.statefulAttributeTimers.clear();
-    session.statefulAttributeRescanTargets = new WeakSet();
-    finishFullPageTranslationProgress(session.progressSessionId);
-}
 
 function stopFullPageSession(): void {
     const session = fullPageSession;
     if (!session) return;
     fullPageSession = null;
-    disposeFullPageSession(session);
+    session.dispose();
 }
 export function invalidateFullPageTranslationSessionCache(): void { if (fullPageSession?.active) invalidateFullPageRequestSessionCache(fullPageSession); }
 /** 新路由取消旧请求并重扫当前 DOM；旧页面的熔断和无需变更判定不能压住新页面。 */

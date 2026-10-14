@@ -39,6 +39,7 @@ import {navigationItems} from '@/src/features/settings/model/navigation';
 import {parseHotkey} from '@/src/core/hotkey';
 import {IMAGE_OCR_LANGUAGE_PACKS} from '@/src/features/image-translation/ocrLanguages';
 import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {translateServiceLabel} from '@/src/core/i18n/serviceLabels';
 
 // 扩展运行时按需加载界面语言；本文件验证全部语言的文案契约，因此一次注册全部资源包。
 registerAllUiLanguageBundles();
@@ -1131,11 +1132,38 @@ describe('运行期反馈文案资源', () => {
 
 // 机器补齐的旧译文会人工校正；校正层必须对应仍在使用的界面原文，并在最终资源包中生效。
 describe('旧界面译文人工校正', () => {
+  const availableServiceOptions = options.services.filter((option) => !option.disabled);
+  const unavailableServiceKey = 'quickTranslation.serviceUnavailable';
+
+  it('不可用服务提示由七语键和完整服务目录生成，并保留本地化服务名称', () => {
+    const catalogs = { 'zh-CN': zhCNMessages, 'en-US': enUSMessages, 'ja-JP': jaJPMessages,
+      'ko-KR': koKRMessages, 'fr-FR': frFRMessages, 'ru-RU': ruRUMessages, 'es-ES': esESMessages };
+    for (const {value: locale} of UI_LANGUAGE_OPTIONS) {
+      const template = catalogs[locale][unavailableServiceKey];
+      expect(template, locale).toBeTruthy();
+      expect([...template.matchAll(/\{(\w+)\}/gu)].map((match) => match[1]), locale).toEqual(['service']);
+      for (const option of availableServiceOptions) {
+        const label = translateServiceLabel(option.label, locale) ?? translateLegacyText(option.label, locale);
+        const message = translate(unavailableServiceKey, locale, {service: label});
+        expect(message, `${locale} ${option.value}`).toContain(label);
+        expect(message, `${locale} ${option.value}`).not.toContain('{service}');
+        expect(message, `${locale} ${option.value}`).not.toBe(label);
+        if (locale !== 'zh-CN' && locale !== 'ja-JP') expect(message, `${locale} ${option.value}`).not.toMatch(/[\u3400-\u9fff]/u);
+      }
+    }
+  });
+
   it('校正原文仍在界面源码中使用，不重复，并覆盖此前的译文', () => {
     const sourceText = collectSourceText('src', (path) => !path.includes('/i18n/messages/'));
+    // QuickTranslationProfiles 将目录名称传给 key 化提示；完整句没有对应的源码字面量。
+    // 从真实 key 与完整目录登记合成文案，而不是把校正字典本身当成使用证据。
+    const generatedServiceSources = availableServiceOptions.map((option) => (
+      translate(unavailableServiceKey, 'zh-CN', {service: option.label})
+    ));
+    const generatedSourceText = generatedServiceSources.join('\n');
     const sources = getLegacyCorrectionSources();
     expect(new Set(sources).size).toBe(sources.length);
-    expect(sources.filter((source) => !sourceText.includes(source))).toEqual([]);
+    expect(sources.filter((source) => !sourceText.includes(source) && !generatedSourceText.includes(source))).toEqual([]);
     for (const locale of ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const) {
       const catalog = createLegacyCorrectionText(locale);
       for (const source of sources) {

@@ -260,8 +260,6 @@ const BUILD_ONLY_SRC_ALLOWLIST = new Set([
     'src/app/content/messageRuntime.ts',
     // 这是 WXT/provider/config 的静态组装根；行为由被注入模块的单测和双浏览器构建验证。
     'src/app/translation/runtime.ts',
-    // 内容侧客户端绑定 browser.runtime、页面上下文、AbortSignal 与持久化定时器；由 translateApi 功能测试和三种构建验证。
-    'src/app/translation/client.ts',
     // 页面上下文运行时绑定 live DOM、脱离文档快照和 Defuddle 动态导入；纯预算与格式化策略已严格覆盖。
     'src/services/translation/context/browser.ts',
     // 文档组合根只把 config/store 与 app translation client 注入严格覆盖的编排服务；由文档功能回归和双浏览器构建验证。
@@ -306,11 +304,11 @@ const BUILD_ONLY_SRC_ALLOWLIST = new Set([
     'src/providers/translation/local-translation.ts',
     'src/providers/translation/ai-sdk/openai-compatible.ts',
     // 以下文件逐一绑定真实网络协议或浏览器 offscreen API；纯端点、错误和鉴权逻辑已拆出并纳入 strict coverage。
+    // DeepLX 自身包含模式选择、有序故障转移、共享时限及响应校验，现通过外部传输端口测试进入严格覆盖，不再按仅组装模块豁免。
     'src/providers/translation/azure-openai.ts',
     'src/providers/translation/chrome-translator.ts',
     'src/providers/translation/claude.ts',
     'src/providers/translation/deepl.ts',
-    'src/providers/translation/deeplx.ts',
     'src/providers/translation/deepseek.ts',
     // 豆包按生效模型分流并直连方舟 Responses API；模型识别、语言映射与协议工具已拆出并纳入 strict coverage。
     'src/providers/translation/doubao.ts',

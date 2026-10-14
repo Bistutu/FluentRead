@@ -8,22 +8,19 @@
 
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import {services} from "@/src/core/config/catalog";
-import {config} from "@/src/services/config/store";
 import {DEFAULT_DEEPLX_ENDPOINT, getDeepLXEndpoints, parseDeepLXEndpoints} from "@/src/core/config/deeplx";
 import {translate, MAX_FREE_TEXT_LENGTH, type SourceLanguage, type TargetLanguage} from '@deeplx/core';
 import {translateFreeTextChunks} from './freeTextChunks';
-import {getTranslationLanguages, type TranslationLanguageOverride} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
+import type {TranslationLanguageOverride} from '@/src/core/translation/languages';
 import {createHttpStatusError, createProviderCodeError} from '@/src/platform/http/errors';
 import {
     abortErrorFromSignal,
     createRuntimeAbortContext,
     runtimeFetch,
 } from '@/src/platform/http/runtime';
-import {
-    getTranslationProviderConfig,
-    type TranslationProviderRequest,
-    type TranslationProviderRequestContext,
-} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest, TranslationProviderRequestContext} from '@/src/services/translation/types';
 
 const DEEPLX_TOTAL_TIMEOUT_MS = 20_000;
 const DEEPLX_ATTEMPT_TIMEOUT_MS = 8_000;
@@ -47,6 +44,17 @@ function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
 
+/** 统一归类直连失败，保留取消原因和合法 HTTP 状态，不透传 core 的响应正文。 */
+function directFailure(error: unknown, timeoutMs: number, callerSignal: AbortSignal | undefined, didTimeout: () => boolean): Error {
+    if (callerSignal?.aborted) return abortErrorFromSignal(callerSignal);
+    if (didTimeout()) return new Error(`请求超时（${timeoutMs / 1000} 秒）`);
+    const code = (error as {cause?: {code?: unknown}})?.cause?.code;
+    if (typeof code === 'number' && Number.isInteger(code) && code >= 400 && code <= 599) {
+        return createHttpStatusError({status: code, statusText: ''}, 'DeepL 直连失败');
+    }
+    return new Error('DeepL 直连失败');
+}
+
 async function translateDirectly(
     text: string,
     sourceLang: string,
@@ -55,6 +63,7 @@ async function translateDirectly(
     callerSignal?: AbortSignal,
 ): Promise<string> {
     const abortContext = createRuntimeAbortContext(timeoutMs, callerSignal);
+    let directError: Error;
     try {
         return await translateFreeTextChunks(text, MAX_FREE_TEXT_LENGTH, async chunk => {
             // 使用数组形状，要求 core 严格检查响应条数；skipWarm 避免浏览器不可用的手工 Cookie 预热。
@@ -66,17 +75,11 @@ async function translateDirectly(
             return result[0];
         }, abortContext.signal, true, {utf16: true, splitLines: false});
     } catch (error) {
-        if (callerSignal?.aborted) throw abortErrorFromSignal(callerSignal);
-        if (abortContext.didTimeout()) throw new Error(`请求超时（${timeoutMs / 1000} 秒）`);
-        // core 的错误正文可能含原文或网关信息；仅传播合法的 HTTP 状态码。
-        const code = (error as {cause?: {code?: unknown}})?.cause?.code;
-        if (typeof code === 'number' && Number.isInteger(code) && code >= 400 && code <= 599) {
-            throw createHttpStatusError({status: code, statusText: ''}, 'DeepL 直连失败');
-        }
-        throw new Error('DeepL 直连失败');
+        directError = directFailure(error, timeoutMs, callerSignal, abortContext.didTimeout);
     } finally {
         abortContext.cleanup();
     }
+    throw directError;
 }
 
 async function fetchDeepLX(
@@ -183,14 +186,14 @@ export async function translateDeepLXText(
         throw new Error("DeepLX 翻译仅支持单条文本");
     }
 
-    const current = getTranslationProviderConfig(languageOverride, config);
+    const current = requireTranslationProviderConfig(languageOverride);
     const token = current.token[serviceKey]?.trim() || "";
     const endpoints = getDeepLXEndpoints(
         current.deeplx,
         current.proxy[serviceKey],
         token,
     );
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(languageOverride);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(languageOverride);
     const {sourceLang, targetLang} = getDeepLXRequestLanguages(sourceLanguage, targetLanguage);
     const deadline = Date.now() + DEEPLX_TOTAL_TIMEOUT_MS;
     const failures: string[] = [];
