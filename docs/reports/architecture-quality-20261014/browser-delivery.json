@@ -1,0 +1,1275 @@
+{
+  "ok": true,
+  "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-architecture-quality-20261014/.output/chrome-mv3",
+  "profileDir": "/var/folders/2v/qd62bpkx51scgbvv2nrclsxm0000gn/T/fluentread-config-persistence-MXJz4L",
+  "production": true,
+  "manifest": {
+    "version": "0.0.38",
+    "popup": "popup.html",
+    "options": "options.html"
+  },
+  "scope": "Final frozen delivery0.0.38 bundle: consecutive options de-to-ja immediate close/reopen and live/reopened popup sync; actual IndexedDB latest manual-review commit followed by real document reload and restoration. Earlier four document lifecycle and eight configuration cases remain separate evidence from earlier builds.",
+  "selectedCases": [
+    "options-language-latest-write"
+  ],
+  "selectedPhases": [
+    "config",
+    "history-smoke"
+  ],
+  "selectedDocumentCases": [
+    "history-reopen"
+  ],
+  "documentCases": [
+    {
+      "name": "history-reopen",
+      "passed": true,
+      "restoredFile": "history-smoke.txt",
+      "actualIndexedDB": true,
+      "firstReview": "初次人工校订",
+      "latestReview": "最终人工校订：实际 IndexedDB 保存后刷新恢复",
+      "committedRows": [
+        {
+          "name": "history-smoke.txt",
+          "translations": [
+            "最终人工校订：实际 IndexedDB 保存后刷新恢复"
+          ],
+          "updatedAt": 1791987746722
+        }
+      ],
+      "rows": [
+        {
+          "name": "history-smoke.txt",
+          "translations": [
+            "最终人工校订：实际 IndexedDB 保存后刷新恢复"
+          ],
+          "updatedAt": 1791987746722
+        }
+      ],
+      "commitScreenshot": "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/document-history-real-commit.png",
+      "screenshot": "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/document-history-smoke-reopen.png"
+    }
+  ],
+  "documentTransport": [],
+  "downloads": [],
+  "configHistory": null,
+  "canonicalDraft": null,
+  "persistenceCases": [
+    {
+      "name": "options-language-latest-write",
+      "surface": "options",
+      "section": "settings-general",
+      "field": "to",
+      "before": {
+        "on": true,
+        "to": "zh-Hans",
+        "service": "freeTranslation",
+        "disableImageTranslator": false,
+        "selectionTranslatorMode": "bilingual",
+        "__fluentConfigRevision": 2
+      },
+      "writes": [
+        "de",
+        "ja"
+      ],
+      "messageStart": 4,
+      "feedback": {
+        "first": "Deutsch / German / 德语",
+        "second": "日本語 / Japanese / 日语"
+      },
+      "close": {
+        "action": "real document close with beforeunload/pagehide",
+        "feedbackToCloseRequestedMs": 0,
+        "closed": true
+      },
+      "reopenedUi": "日本語 / Japanese / 日语",
+      "authority": {
+        "on": true,
+        "to": "ja",
+        "service": "freeTranslation",
+        "disableImageTranslator": false,
+        "selectionTranslatorMode": "bilingual",
+        "__fluentConfigRevision": 4
+      },
+      "authorityReadSuccess": true,
+      "screenshot": "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/options-language-latest-write-reopened.png",
+      "livePopupUi": "日本語",
+      "crossPageReopenedUi": "日本語",
+      "crossPageScreenshot": "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/options-language-latest-write-popup-cross-page.png",
+      "passed": true
+    }
+  ],
+  "quickClose": {
+    "passed": true,
+    "skipped": false,
+    "cases": 1,
+    "storageOrAckWaitBeforeClose": false,
+    "feedbackToCloseRequestedMs": [
+      {
+        "name": "options-language-latest-write",
+        "ms": 0
+      }
+    ]
+  },
+  "crossPageSync": {
+    "passed": true,
+    "skipped": false,
+    "direction": "options→live popup and independently reopened popup",
+    "fields": [
+      "to"
+    ]
+  },
+  "latestWriteWins": {
+    "passed": true,
+    "skipped": false,
+    "field": "to",
+    "writes": [
+      "de",
+      "ja"
+    ],
+    "final": "ja",
+    "injectedDelay": false
+  },
+  "consoleErrors": [],
+  "consoleWarnings": [],
+  "focusChecks": [
+    {
+      "name": "options-language-latest-write-reopened",
+      "browserFrontmost": false,
+      "foreground": {
+        "pid": 7816,
+        "name": "提醒事项"
+      }
+    },
+    {
+      "name": "options-language-latest-write-popup-cross-page",
+      "browserFrontmost": false,
+      "foreground": {
+        "pid": 7816,
+        "name": "提醒事项"
+      }
+    },
+    {
+      "name": "document-history-real-commit",
+      "browserFrontmost": false,
+      "foreground": {
+        "pid": 7816,
+        "name": "提醒事项"
+      }
+    },
+    {
+      "name": "document-history-smoke-reopen",
+      "browserFrontmost": false,
+      "foreground": {
+        "pid": 7816,
+        "name": "提醒事项"
+      }
+    }
+  ],
+  "screenshots": [
+    "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/options-language-latest-write-reopened.png",
+    "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/options-language-latest-write-popup-cross-page.png",
+    "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/document-history-real-commit.png",
+    "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/document-history-smoke-reopen.png"
+  ],
+  "pageMessages": [
+    {
+      "surface": "128.png",
+      "phase": "request",
+      "type": "persistConfig",
+      "patches": [
+        {
+          "sequence": 1,
+          "values": {
+            "on": true,
+            "to": "zh-Hans",
+            "service": "freeTranslation",
+            "disableImageTranslator": false,
+            "selectionTranslatorMode": "bilingual"
+          }
+        }
+      ]
+    },
+    {
+      "surface": "128.png",
+      "phase": "response",
+      "type": "persistConfig",
+      "success": true,
+      "revision": 2
+    },
+    {
+      "surface": "128.png",
+      "phase": "request",
+      "type": "persistConfig",
+      "patches": [
+        {
+          "sequence": 2,
+          "values": {
+            "on": true
+          }
+        }
+      ]
+    },
+    {
+      "surface": "128.png",
+      "phase": "response",
+      "type": "persistConfig",
+      "success": true,
+      "revision": 2
+    },
+    {
+      "surface": "options.html#settings-general",
+      "phase": "request",
+      "type": "persistConfig",
+      "patches": [
+        {
+          "sequence": 1,
+          "values": {
+            "to": "de"
+          }
+        }
+      ]
+    },
+    {
+      "surface": "options.html#settings-general",
+      "phase": "response",
+      "type": "persistConfig",
+      "success": true,
+      "revision": 3
+    },
+    {
+      "surface": "options.html#settings-general",
+      "phase": "request",
+      "type": "persistConfig",
+      "patches": [
+        {
+          "sequence": 2,
+          "values": {
+            "to": "ja"
+          }
+        }
+      ]
+    },
+    {
+      "surface": "options.html#settings-general",
+      "phase": "request",
+      "type": "persistConfigBatch",
+      "patches": [
+        {
+          "sequence": 2,
+          "values": {
+            "to": "ja"
+          }
+        }
+      ]
+    }
+  ],
+  "workerMessages": [
+    {
+      "type": "persistConfig",
+      "surface": "128.png",
+      "patches": [
+        {
+          "sequence": 1,
+          "values": {
+            "on": true,
+            "to": "zh-Hans",
+            "service": "freeTranslation",
+            "disableImageTranslator": false,
+            "selectionTranslatorMode": "bilingual"
+          }
+        }
+      ]
+    },
+    {
+      "type": "persistConfig",
+      "surface": "128.png",
+      "patches": [
+        {
+          "sequence": 2,
+          "values": {
+            "on": true
+          }
+        }
+      ]
+    },
+    {
+      "type": "persistConfig",
+      "surface": "options.html#settings-general",
+      "patches": [
+        {
+          "sequence": 1,
+          "values": {
+            "to": "de"
+          }
+        }
+      ]
+    },
+    {
+      "type": "persistConfig",
+      "surface": "options.html#settings-general",
+      "patches": [
+        {
+          "sequence": 2,
+          "values": {
+            "to": "ja"
+          }
+        }
+      ]
+    },
+    {
+      "type": "persistConfigBatch",
+      "surface": "options.html#settings-general",
+      "patches": [
+        {
+          "sequence": 2,
+          "values": {
+            "to": "ja"
+          }
+        }
+      ]
+    }
+  ],
+  "fixtureWrites": [
+    {
+      "fields": [
+        "uiLanguageSetupCompleted",
+        "uiLanguage",
+        "on",
+        "to",
+        "service",
+        "disableImageTranslator",
+        "selectionTranslatorMode",
+        "selectionTranslatorModeBeforeDisable",
+        "theme"
+      ],
+      "success": true,
+      "revision": 2
+    },
+    {
+      "fields": [
+        "on"
+      ],
+      "success": true,
+      "revision": 2
+    }
+  ],
+  "cleanup": {
+    "profileRemoved": true
+  },
+  "testedBuild": {
+    "capturedAt": "2026-10-14T14:22:18.610Z",
+    "files": [
+      {
+        "file": "_locales/en/messages.json",
+        "sha256": "431eb2dda461197a5be7ab758d6c3346b977013a0629882f29d73272a4f2c059"
+      },
+      {
+        "file": "_locales/es/messages.json",
+        "sha256": "431eb2dda461197a5be7ab758d6c3346b977013a0629882f29d73272a4f2c059"
+      },
+      {
+        "file": "_locales/fr/messages.json",
+        "sha256": "431eb2dda461197a5be7ab758d6c3346b977013a0629882f29d73272a4f2c059"
+      },
+      {
+        "file": "_locales/ja/messages.json",
+        "sha256": "431eb2dda461197a5be7ab758d6c3346b977013a0629882f29d73272a4f2c059"
+      },
+      {
+        "file": "_locales/ko/messages.json",
+        "sha256": "431eb2dda461197a5be7ab758d6c3346b977013a0629882f29d73272a4f2c059"
+      },
+      {
+        "file": "_locales/ru/messages.json",
+        "sha256": "431eb2dda461197a5be7ab758d6c3346b977013a0629882f29d73272a4f2c059"
+      },
+      {
+        "file": "_locales/zh_CN/messages.json",
+        "sha256": "ae74417bdfcb61a4cb4b1d252a06f6173271d202d40f653f9d8f93f3c7f4c240"
+      },
+      {
+        "file": "assets/AreaTranslationSettings-DI1pk1De.css",
+        "sha256": "748790a8c5a6ecfbace3dd6c43714aee319d02389589c6147ea5ea3f8baa27d5"
+      },
+      {
+        "file": "assets/base-CMRK1q-d.css",
+        "sha256": "e382397766c23fb4ecb734471d413d646b2e1b38472cf463891440ff926b39e9"
+      },
+      {
+        "file": "assets/capabilities-BM3lhJ_G.css",
+        "sha256": "cd98329b974516093d1870a05181cbf77363782f08e17adfd027f413fa1c54e4"
+      },
+      {
+        "file": "assets/CompositeTranslationFields-B94XbUo7.css",
+        "sha256": "93a83811583cf918219302e806b19f10197ea8375ebd8324224959491b08be50"
+      },
+      {
+        "file": "assets/ConfigManagement-l_X2aev5.css",
+        "sha256": "682eda574bdb8d333e9840ddbf732c1cd7c89f4f76c01bbdfbf6015d939a0be1"
+      },
+      {
+        "file": "assets/ContextMenuSettings-Dvfh5iv0.css",
+        "sha256": "05e593e5104eeada0131e78e967a3f231e6e82293b67106e42195bb50660c770"
+      },
+      {
+        "file": "assets/CustomHotkeyInput-CnrUIExo.css",
+        "sha256": "5262ab7a1177342a007573271c0980ef5236c0d617e6a0a9f0721c4d0835eda3"
+      },
+      {
+        "file": "assets/CustomOpenAIProviderDialog-uVBmTYGe.css",
+        "sha256": "5fcd52621bedb40c44469728ace4227bff3367d4d87aa408c75e193b64fcbe98"
+      },
+      {
+        "file": "assets/document-CeffrzM7.css",
+        "sha256": "d26b533b1944afb7caf9fd60dc954cec6f4476a5e41cb87bdc9ae164a2223018"
+      },
+      {
+        "file": "assets/DownloadProgress-E5aTQrXU.css",
+        "sha256": "ed1f28ea6ba1a16dde808daec84f677fd86bccd3e2a486e451a72098cfd21fd6"
+      },
+      {
+        "file": "assets/el-overlay-CUAhHdWP.css",
+        "sha256": "6e0625dda9705862b149b88a50aca9845faa26a3ce4789f989bca4b19c605108"
+      },
+      {
+        "file": "assets/featureServices-BdV7p7Qm.css",
+        "sha256": "94d2ad4201a53c5507d9ff36fc993040a4d1447eb8bd722adf057966a5afc972"
+      },
+      {
+        "file": "assets/FloatingBallSettings-CcrfvAOe.css",
+        "sha256": "a9c4fb93edd9e4c8fcf737a9cd462f7cf9a6e4c83079762179f588184619de27"
+      },
+      {
+        "file": "assets/GlossaryLibrarySelect-D0hlCUHC.css",
+        "sha256": "a204e27f7403ecaa8d690ec7389f0b0a4cf156c26349cc04d200b5646c751422"
+      },
+      {
+        "file": "assets/InformationHighlightSettings-C-YpC7jZ.css",
+        "sha256": "c71d3bf9b27ef6631e14b889b1f306235aa9b369a0afcedee333e7149d5a6dec"
+      },
+      {
+        "file": "assets/InputTranslationSettings-BX1C3rYd.css",
+        "sha256": "ef597fd403ff944bf5791a1dddacc32b0674a741a23360c11d75c7dd1dbc43f1"
+      },
+      {
+        "file": "assets/interface-skins-C-micYUc.css",
+        "sha256": "7439658a60c945c9e651f8d772c667ef009f29e2b4a086bba6ae7be94518f89d"
+      },
+      {
+        "file": "assets/InterfaceSettings-0irdT6BP.css",
+        "sha256": "67039076892fac434aa2bd0cd3325339f1a78a9c1d40deef5a5a90604b019083"
+      },
+      {
+        "file": "assets/LearningCenter-BTkUXw_8.css",
+        "sha256": "4b48e55da68ef918ce9e52c66ef304b60f1dd03cfb77a8254581eca1e53332cd"
+      },
+      {
+        "file": "assets/LearningMemoryManager-JbVjfmIw.css",
+        "sha256": "c8f0efd13065c193ff37e374aa9bd90a0942f1a9c9c929d0fee1d8cf244d425c"
+      },
+      {
+        "file": "assets/LocalTranslationModelSettings-BezRJO1S.css",
+        "sha256": "a9af32b062b794912433a347bdcf5a9896acf2714b6637ef3ef1847c73be7c73"
+      },
+      {
+        "file": "assets/LocalTtsSettings-BsSmeD7e.css",
+        "sha256": "521cca7259b3a73190c79b915a1be35cfcb63778a9045785665183f5cf2a8a78"
+      },
+      {
+        "file": "assets/MangaSettings-BEP2kir-.css",
+        "sha256": "c0771ddd6debc58a9dcc192824f715115df16fc4f9d27eaec94a1408f904f92a"
+      },
+      {
+        "file": "assets/options-BHKEfHJ0.css",
+        "sha256": "57d79d3ead63f1089b6b9b0dca6f486d3fedb220f6e296c1bfeeabcad4b24bad"
+      },
+      {
+        "file": "assets/ParagraphCopySettings-C3wU--Qz.css",
+        "sha256": "61e67d470159187e1f5b07615b0c8d45b6ed2c77f9b98c14ebc68fa8fbb14933"
+      },
+      {
+        "file": "assets/PdfReader-Vdsujv-R.css",
+        "sha256": "a6d1b6030eda32674554adc2f9527021a819e4179fe9189c7f186278e4458777"
+      },
+      {
+        "file": "assets/popup-Cme32qy8.css",
+        "sha256": "0f94140c05b98361fc24fb45bede7ad797b3646aa333d77c85289c5b8d2fb128"
+      },
+      {
+        "file": "assets/PopupDrawer-CpuVa63I.css",
+        "sha256": "978af640cdf56e3264ee8b2e46f3d071cb2b5ac5e3f4db3e6f6701bec0db10d2"
+      },
+      {
+        "file": "assets/PopupOnboarding-CJGUjYze.css",
+        "sha256": "670d3c7caffeac6bb3d613b8a2921c216b6c705715d4d0be63874e970f7fe246"
+      },
+      {
+        "file": "assets/PopupServices-CtEUu-f_.css",
+        "sha256": "3575a315cde034299af0122f2c3f7df26c3e0b06eacaf36e2ea081001e9c286b"
+      },
+      {
+        "file": "assets/PromptTemplateEditor-DT1dj0WZ.css",
+        "sha256": "1be268cde3f03ef7145cd1a6142c599366ebec3109afbacaa379f5aaebac56c5"
+      },
+      {
+        "file": "assets/public-1smmMcHZ.css",
+        "sha256": "2f5e0d7409db6c79346cb8e1a8190a933fe3d1627a6676670e2766690f2ceeb3"
+      },
+      {
+        "file": "assets/public-Clsx03oD.css",
+        "sha256": "9907e38d19d74e1adc7154f6f69aacdf99a09a788a9e87fd951a6c25c59b386f"
+      },
+      {
+        "file": "assets/public-DfhfJD8i.css",
+        "sha256": "f660fd2910e6bfefd7e1ba6bf17217d59ad33142014293b64170d61d55c1a7c3"
+      },
+      {
+        "file": "assets/public-fNgz3YCM.css",
+        "sha256": "d33d77f7f7d599e5149e0a550eebd8e24d20dab6f9a072d9ce6fad3249e8a87c"
+      },
+      {
+        "file": "assets/public-OkW6VBNy.css",
+        "sha256": "099f254453d77d3dcd616b7f9984d66e3b765cd532dc6f9ecabbf5fa96dd2b1e"
+      },
+      {
+        "file": "assets/QuickTranslationProfiles-DEUu-fZJ.css",
+        "sha256": "b731c85642e16aa2065544fd8d7c9711a7205036dad3474e3b348c246c887876"
+      },
+      {
+        "file": "assets/ReadingAnswer-CjIGpX6S.css",
+        "sha256": "bb88b3da2ff79a6c7eb1fb4aa1511525527892d03c97dacd2975ca1021bdf2a2"
+      },
+      {
+        "file": "assets/SectionTranslationSettings-C2xEIatw.css",
+        "sha256": "5508aa55b724d90d79c634cc14edc4819f5f915b0c0e0c37d41a288d4bbc203b"
+      },
+      {
+        "file": "assets/SegmentedControl-B-G9CCIY.css",
+        "sha256": "2bf57e3bc21bee06e0e9f4b48cb14bc48213459a2f23771d7faccf0bec0d1a75"
+      },
+      {
+        "file": "assets/SelectionSettings-C9SAOraF.css",
+        "sha256": "8ef03762ed81eacfea5ed0a85e6d40da7516c0801c3b37ae0990513c158157e3"
+      },
+      {
+        "file": "assets/SelectionTranslator-DaTC8U5Y.css",
+        "sha256": "77a4170a2c3bc48472573498bd74e807a96bb4d0c692ccdd608dc2e60c6d9dc2"
+      },
+      {
+        "file": "assets/ServiceCatalog-R_P2R2UK.css",
+        "sha256": "7298cad5fc6869c9dd7790bf74714708698f8e8d059e8e6559ee88352c2656dc"
+      },
+      {
+        "file": "assets/ServiceConfiguration-BU3KEQqT.css",
+        "sha256": "226dbf5d9a482cea65003cf5d940cbb2d93c631d449355fc76b26fd470e9b08c"
+      },
+      {
+        "file": "assets/ServiceNatureBadge-4wmXKo2F.css",
+        "sha256": "9ba82408f1791e95871192b4f3eb80062a9a3b2caeb4d418ce1e11b38ed67076"
+      },
+      {
+        "file": "assets/SettingsPreviewLayout-e2D_WJRq.css",
+        "sha256": "49fe11c6ca271c7bab1e89515a70975945eda28bf16688c2fd8908e2a149d0a1"
+      },
+      {
+        "file": "assets/SettingsSections-DIxqncQZ.css",
+        "sha256": "b9f455991f8360d64db69b82852eb2f782cedf601084c86031ed2e9386d13ef7"
+      },
+      {
+        "file": "assets/SiteAdaptationSettings-DgXU1SEe.css",
+        "sha256": "3d00f1c3b733086e9914c41a386833aa7e63c5c377a36eb3334abce91577c1c8"
+      },
+      {
+        "file": "assets/SitePreferencesSettings-DZM8c0yL.css",
+        "sha256": "fb62a323b0349771ed07d30880c006a83f0c1664573e3dec85f7ba7153598fc8"
+      },
+      {
+        "file": "assets/SiteRulePreview-aKN6Wzfu.css",
+        "sha256": "f577ba06225829a82295188c9619c491af94b90bdafc2d9d4c3a5972d799bd3c"
+      },
+      {
+        "file": "assets/TranslationCacheSettings-DRKA4HHG.css",
+        "sha256": "ef32e29c30034a90d48fa6c3daaeae6cc13cfb8e23b5d53cafb13b95f4719cc0"
+      },
+      {
+        "file": "assets/TranslationLoadingPreview-iTE9ogdz.css",
+        "sha256": "6d32448abe5e0ec471134ecdd68d9962643619ff5828d148efaae503acf7078f"
+      },
+      {
+        "file": "assets/UiLanguageOnboarding-DOD-GF2t.css",
+        "sha256": "0bc55f209d00de47988cba3934bd5a21229377ca6630964023988a2b1ef58350"
+      },
+      {
+        "file": "assets/VideoLocalModelSettings-BgU4eO-l.css",
+        "sha256": "8b091c8b360d5ba593d9acc44b6a6c7628f78e66ba49971f60c0b56118744cfb"
+      },
+      {
+        "file": "assets/VideoSubtitleAppearanceSettings-DMcydbb-.css",
+        "sha256": "aee9ccbadf9035d9371d3ee26a0e574d424511dad79cf735d45a0a1fce08bbff"
+      },
+      {
+        "file": "assets/WritingSettings-DMHD79qa.css",
+        "sha256": "710e2764ebbe21e91c823a966886ce7bbd0a04774bb670be2298abe876160cd5"
+      },
+      {
+        "file": "background.js",
+        "sha256": "6f391edcbd653d20e09c0274595ac9443336b517f3b0d35e202b061dde2c76b0"
+      },
+      {
+        "file": "chatgpt-plan-guide.html",
+        "sha256": "5a68b5336fffed31445911d2554dec62a7c891537114ccdc31d5037008107b40"
+      },
+      {
+        "file": "chunks/_commonjs-dynamic-modules-TDtrdbi3.js",
+        "sha256": "590ab8057bc032c3e14f9f1a76aaeffd01da609413fb12888819ca0433c1fae9"
+      },
+      {
+        "file": "chunks/_plugin-vue_export-helper-DlAUqK2U.js",
+        "sha256": "cb85b0f263dbe24e857338301c0627076592e9f1f1a5662929f86d2c126444aa"
+      },
+      {
+        "file": "chunks/_virtual_wxt-html-plugins-CASRt4Tk.js",
+        "sha256": "ce08dda8781386fc56d24a56bac6e9303950fb2f08c2f7926b5d9311b24f9fff"
+      },
+      {
+        "file": "chunks/_virtual_wxt-plugins-DkXLw86N.js",
+        "sha256": "5fcdb4bd03a2bc65840d900463f471987cc9a1b0308dd61fefac1e319dbda16a"
+      },
+      {
+        "file": "chunks/128-rof0LK9z.js",
+        "sha256": "c2c1b4849a455abe1d0addec181081392aa5edda088f006af669128962b63628"
+      },
+      {
+        "file": "chunks/AreaTranslationSettings-DkAUsjft.js",
+        "sha256": "e0b8cdee209165a14379a0ff918b0dcab47b24f648a8188f45691472b26667da"
+      },
+      {
+        "file": "chunks/base-oSUGgB2X.js",
+        "sha256": "a50b733cfee57858a243e439377aefc6f89f86caeb308bda7a22bb769bb014cf"
+      },
+      {
+        "file": "chunks/capabilities-Cz2RGS8h.js",
+        "sha256": "1f6153dc5b5b0644d77f4d77bb648878299182dd38979f12629e64df9290aeb5"
+      },
+      {
+        "file": "chunks/client-BJvCj-9c.js",
+        "sha256": "4b25fa3ea63979e7e07cd1a44524c0bdd658f34a50d021421c13ff272ee132ed"
+      },
+      {
+        "file": "chunks/client-DojgrNbd.js",
+        "sha256": "008167380829647416884a3c7ed3a8e3052a98dce4f90e57cd1d8ede4633dfa9"
+      },
+      {
+        "file": "chunks/compiler-9Qe3IU5p.js",
+        "sha256": "355747a7eecd22b49b929360507c25c93e6b997611219b4864f01445b11b5f34"
+      },
+      {
+        "file": "chunks/CompositeTranslationFields-518zOuBc.js",
+        "sha256": "17fc86805ff31ef23eda693de42eea7caf02d7444586a5d142a12fc36eefa50a"
+      },
+      {
+        "file": "chunks/confidence-ORrcoCaj.js",
+        "sha256": "b03e639e61dfb9c83623c1690b7c941f573abfec728c0e92294518b1f93b0372"
+      },
+      {
+        "file": "chunks/ConfigManagement-DcoaC2pZ.js",
+        "sha256": "a2a48f576110273ba71806d08a82686223e95a2aaeb86ca06f960187948e235f"
+      },
+      {
+        "file": "chunks/contextMenuBridge-Cd7EoZ8L.js",
+        "sha256": "93e8b47c7e01953499808f019f9f747ebf41b6d968456fd469897102f2947dad"
+      },
+      {
+        "file": "chunks/ContextMenuSettings-D6xWguv_.js",
+        "sha256": "3d13e2c92c3c6d6e818e31b01a49831a524759ceace58fe003e0f1bde4a4f125"
+      },
+      {
+        "file": "chunks/core-UAGEQBtU.js",
+        "sha256": "0671a7869def00120388db6423d3524e78cfc129f75f67ad00ba8e58e64facae"
+      },
+      {
+        "file": "chunks/CustomHotkeyInput-CGWMDLfr.js",
+        "sha256": "282065ddb258c116dab9ed92969b80d71e5d6b786d882b1ca7355c233ae7d0c5"
+      },
+      {
+        "file": "chunks/CustomOpenAIProviderDialog-CNAd1hWP.js",
+        "sha256": "fe1aa0415a6b09c1960cfe4273cf488d3067f8d548706ff4c0556a0c624e1a41"
+      },
+      {
+        "file": "chunks/dateFormat-B0nZ8KKh.js",
+        "sha256": "2fbeb1cdc0d466ef6d876acf628afe540b1fdd33d234d5787b4a973642cdd24d"
+      },
+      {
+        "file": "chunks/detect-B7DcMcrU.js",
+        "sha256": "685abb1bb3bbe171de0ce62d44d04d58747c04e5da18cbfe8098342b7796cdc4"
+      },
+      {
+        "file": "chunks/document-CVjN3u9E.js",
+        "sha256": "c846f8d06c4c2f71f9e2f2614523b80de10e31f6723aa2a5539941ce824dc6a6"
+      },
+      {
+        "file": "chunks/dom-CwaJpi2Z.js",
+        "sha256": "40ed0a8cbe439f97341dfe37f7c7153d15fe6b5b140bcd3d9f500528576b8350"
+      },
+      {
+        "file": "chunks/DownloadProgress-Cw8mh8v0.js",
+        "sha256": "e09fdb271222138c3dfeec4140c1e077b94020de4fdf677b0a2979508619ca2d"
+      },
+      {
+        "file": "chunks/downloadProgress-MXaw4NsE.js",
+        "sha256": "37c38a8b58f2017e122121e7852a82758009ae6b566ce010fdb82fa8c2798be2"
+      },
+      {
+        "file": "chunks/el-overlay-BYl1fH-Z.js",
+        "sha256": "97f50a84fcb9691afa56cb7ea1a7e19d58cc7cb5da5a09df9cb6d04fe483abca"
+      },
+      {
+        "file": "chunks/featureServices-BoKHNpaP.js",
+        "sha256": "41ab61565f49d615ebe9c6c24afbcbc29a212ed40bf5ddb7d5c62928008751f4"
+      },
+      {
+        "file": "chunks/FloatingBallSettings-lVz82Hdm.js",
+        "sha256": "f2fa71c5eb696149472d6549d3895bd4cb19aff1b1421710cfd4c98a61582485"
+      },
+      {
+        "file": "chunks/fontkit.es-DXbOwqdG.js",
+        "sha256": "75295687a8a776909b4d8fd736ad315c9541c1f3315e3b0b65ecd27b9d827a07"
+      },
+      {
+        "file": "chunks/GlossaryLibrarySelect-Dznfj95k.js",
+        "sha256": "9e20c33e1890d11b32a19892399d7f8994a80ac35ba0b8dd58152d9b5d8b77fd"
+      },
+      {
+        "file": "chunks/i18n-mnSu5VCw.js",
+        "sha256": "49b3bdfc57041b9b48d776d5866b1d6d0a12b829371f904f78a6d75129b81886"
+      },
+      {
+        "file": "chunks/index-BMNzhUvM.js",
+        "sha256": "d87a50e780f8a26a847bcfbc9ae518ee0d1a92054e14d487237b510d127e02fa"
+      },
+      {
+        "file": "chunks/index-C20sHd8K.js",
+        "sha256": "48316bc1ef00427d38ba01a787a90da60e58558df7127f050a3d1b7d6263247f"
+      },
+      {
+        "file": "chunks/index-CEz7xnM7.js",
+        "sha256": "7ebbee8bc59687bd6adad038189e58bd26f61c99897386e4ad90ac0fdc914cc8"
+      },
+      {
+        "file": "chunks/index-CNJguz3V.js",
+        "sha256": "9bcdd6d4719ffbbee267b6a08d025747b51ff176ab02190b0cc4a02ccadffb83"
+      },
+      {
+        "file": "chunks/index-DB2SoCKz.js",
+        "sha256": "4b336a39dc493132b18e49dce4ab635851e350d18d1d395f0c32ff0d85db257d"
+      },
+      {
+        "file": "chunks/index-DIxPZGFt.js",
+        "sha256": "00b608f355a7c5d27cf744e600ddc96c7a33d86c4d556c4ac631d90ebfe70318"
+      },
+      {
+        "file": "chunks/index-DZxKiWI7.js",
+        "sha256": "53a064fc610da564e2190eb133c847e46dbb6cf02a303362dedd4f8fc421eaa2"
+      },
+      {
+        "file": "chunks/index-mcqUuUa3.js",
+        "sha256": "ef9504605ed1bf1e4ed3478dc2598dde001c955d37b36adb88f0bc8505bb2452"
+      },
+      {
+        "file": "chunks/InformationHighlightSettings-Ck7Ncbux.js",
+        "sha256": "2e7decbdd74f5d03a8b684f6b424d416b1c8f236ebaf99b144429d446c7a62d1"
+      },
+      {
+        "file": "chunks/InputTranslationSettings-8ignw6Nc.js",
+        "sha256": "46a6f68ab353dc17b32f72a5e36a56af5f76c94c0dfb01633a4c27b221c05ccf"
+      },
+      {
+        "file": "chunks/interfaceAppearance-a02Ku1Ky.js",
+        "sha256": "5a6e32e7f8b30126a653fed5c312b1188085f905a1e201daa7cc67b9e7f5abe5"
+      },
+      {
+        "file": "chunks/InterfaceSettings-DZORWMB8.js",
+        "sha256": "b865aecebba63e258102ea6e422c3392c85f2857488c7eb250ad275f45fe059a"
+      },
+      {
+        "file": "chunks/jszip.min-tUB_Ewc-.js",
+        "sha256": "014d6e197cd507d14197bf784ae3892a9fd5dddeedd52bc666a4e31c917f608a"
+      },
+      {
+        "file": "chunks/LearningCenter-DieJwpU6.js",
+        "sha256": "564e7e0d146843640f8f00e296f52f166cf7d4b76e29416943dcafc7a3bb8a11"
+      },
+      {
+        "file": "chunks/LearningMemoryManager-BqJryYlm.js",
+        "sha256": "5a7382c5bf7c611139205ce1abd063533e312f5364d6c3b2918cbe27bf5c69f5"
+      },
+      {
+        "file": "chunks/learningModel-B1q9bLNZ.js",
+        "sha256": "e04746584a58312d8884c9f63243aa324c7f5b32537f52a994305f94f25e44f9"
+      },
+      {
+        "file": "chunks/LocalTranslationModelSettings-YRPttdDf.js",
+        "sha256": "5711e6aecb2dd512b6fe77cb60e42ab871209c55bd4ae22c5e059f484af8f536"
+      },
+      {
+        "file": "chunks/localTranslationSupport-Dq55OZJm.js",
+        "sha256": "efb1de164f39b3d01b0c7627132d8b8a3a32dea917a1a19cf23a9688fd534403"
+      },
+      {
+        "file": "chunks/localTts-6rJn_pXH.js",
+        "sha256": "305f73cc160896a9da3031892283ee88797e727774739bd059789da7faa9fd8d"
+      },
+      {
+        "file": "chunks/LocalTtsSettings-C3eeHpsb.js",
+        "sha256": "40685b6927b2c887647641ce6bec974fa6edd1778ffb294d956219337fb7e936"
+      },
+      {
+        "file": "chunks/mangaOcrAssets-CGIfHmvi.js",
+        "sha256": "a7fc4a72f8f35a432251b2ebae3d8254bf22373da8b32964537b7851735dbffb"
+      },
+      {
+        "file": "chunks/MangaSettings.vue_vue_type_style_index_0_scoped_8861e740_lang-Bx2dh6yC.js",
+        "sha256": "138be58c9e7c1aea1c283023dcc7eb6418574ebef5d730cb1fbc217614b409fe"
+      },
+      {
+        "file": "chunks/markdown-CoaRkMae.js",
+        "sha256": "0fdf723e113e9610b432e534a416149714c1757243f86ccf3fdbab18b06b7f26"
+      },
+      {
+        "file": "chunks/modelDownloads-x4RZHIUY.js",
+        "sha256": "961095763b755f6baab40324fc0ff1b0e54cf66c997006a7bd8ff6ec68089e37"
+      },
+      {
+        "file": "chunks/mount-BXzxKRL9.js",
+        "sha256": "b43d76ec6ce63c220e3be14cfaafbf1196a8559650d33d3080c1aebd4c73c901"
+      },
+      {
+        "file": "chunks/numberFormat-BTgBvnxC.js",
+        "sha256": "9aea44b0aabc7207bf7eb710926a9fc6620daf82c1b1119f897ed43e81fce945"
+      },
+      {
+        "file": "chunks/ocr-DiakcmIo.js",
+        "sha256": "a642c412fbd76c1bb14103f52a688c038f4256e46c1207119a0e4e8d0eaed1e2"
+      },
+      {
+        "file": "chunks/ocrLanguages-BWu-7Upn.js",
+        "sha256": "8f714980893536da4279c528af19d7325e92ed8e84d0d2138baa6751207d01a5"
+      },
+      {
+        "file": "chunks/offscreen-Bxg4F1JH.js",
+        "sha256": "4d9a6cbfe6b1149543029327c3d3cc8a56f84ae424050ed55885949bfe1295a4"
+      },
+      {
+        "file": "chunks/options-CdnZrUPq.js",
+        "sha256": "69fe8276af6e4ea24158bf3e9a740cf2be4e82891eefb19bfd687bcf7da2eb9d"
+      },
+      {
+        "file": "chunks/ParagraphCopySettings-C0GnHawZ.js",
+        "sha256": "55ab835e71605bddb81fa586473434924ca0d53037359a76f4637463d65604e1"
+      },
+      {
+        "file": "chunks/ParagraphHandlingSettings-Cu3HKbkz.js",
+        "sha256": "a1fe7498942ee1062fd8d047b5005af923d85207640cc9dfc30a88825720a4a9"
+      },
+      {
+        "file": "chunks/pdf-DTIIO-U_.js",
+        "sha256": "bf7aa8f6b38d3de0d76d2e059a9a024de014cd2f798a692527abae20c3f37544"
+      },
+      {
+        "file": "chunks/PdfReader-Cm1TyfM8.js",
+        "sha256": "0743b4960b2329c69ef338a5270f81b93fabfb3b66e6c97785b128d4c360105b"
+      },
+      {
+        "file": "chunks/pdfReadingFont-DEanYswF.js",
+        "sha256": "0fd6e53e513cfc501f6117b7712f5faf382c2bdeed1bbb5f7cdf26565c764f6a"
+      },
+      {
+        "file": "chunks/pdfSource-gjBoXda6.js",
+        "sha256": "0395c10529e3db3666b46b88eda6c5f6d376e92d496cd8ef7abc3fc67d69088c"
+      },
+      {
+        "file": "chunks/popup-CNknGabq.js",
+        "sha256": "4dd5a370a1851e47de87c85fc9730c76851cee7f8ee8e0574094ebcf5fd8eae3"
+      },
+      {
+        "file": "chunks/PopupApp-DQLzruwc.js",
+        "sha256": "594382e8057ecfb2c23c45f932ee62d408326ac902cfb538a398aee74825bf98"
+      },
+      {
+        "file": "chunks/PopupDrawer-BeoZDgLF.js",
+        "sha256": "e79579aa71e33a70e513cf340cbf681b119b99ddd5266e413f4f978d1b1ad90f"
+      },
+      {
+        "file": "chunks/PopupOnboarding-DqY0rmoK.js",
+        "sha256": "7306cbce40fd544e9a0e06207c349310b0a2060a676729752f69d270057626dc"
+      },
+      {
+        "file": "chunks/popupQuickFeatureIcons-BOZF-9oy.js",
+        "sha256": "c1f531189a5e59731e7f4063b867b56b6d40f5200b6f64847108c363b5bf045c"
+      },
+      {
+        "file": "chunks/PopupServices-CeXhUX-Z.js",
+        "sha256": "ce8f717a5ebb8b046af05ddb371afbd32d6308f597c1df7685992064388778f6"
+      },
+      {
+        "file": "chunks/presentation-Ck8BgFQ4.js",
+        "sha256": "f5ae5a634053de33099e86141f766ef656bf090639bfaee7edab6bfc59d82d26"
+      },
+      {
+        "file": "chunks/progress-CTpLRi5J.js",
+        "sha256": "24ce6d1d65b330531ee15e08910dca19416ddbe5dbca1ba18605d8e5c80cf2ac"
+      },
+      {
+        "file": "chunks/PromptTemplateEditor-DWx7x-C7.js",
+        "sha256": "1e8f0d1cfdf4ea7da64c20d54bdc5a102b715d9313374d49da363e155dda651c"
+      },
+      {
+        "file": "chunks/protocol-DokfpzeP.js",
+        "sha256": "46c65bb56b66504e6fa7927c6c4b42a64a0dee706e287be834eca4cfadbcc5db"
+      },
+      {
+        "file": "chunks/public-B0GHopBA.js",
+        "sha256": "d2d4c5ec065aced9d3b434cb91344a03bf1d61cc63d715c93c37b801a967e4ce"
+      },
+      {
+        "file": "chunks/public-B403g6w7.js",
+        "sha256": "2d6f7148dff300491773fead67b4a4144fed755d27512b213024dd2559b5a1a2"
+      },
+      {
+        "file": "chunks/public-CgxTADgA.js",
+        "sha256": "77f583e1c1554438a42a73a207544d5afa700d510b338be15feb954637458448"
+      },
+      {
+        "file": "chunks/public-DisS4-gx.js",
+        "sha256": "89826b00a47a10711379168209fa7d254f523e910f0506841359044cd3c6792b"
+      },
+      {
+        "file": "chunks/public-DvjyxBqL.js",
+        "sha256": "86f989d24e7490c3ea20ea3ceb5833e992c5a3bdc1d578a718b22e6cebefa5a6"
+      },
+      {
+        "file": "chunks/public-u8ekkMAz.js",
+        "sha256": "abb02438113e623f0d29a54d0ad58bfb818eee6b340e4613d08a042d9e4a139c"
+      },
+      {
+        "file": "chunks/QuickTranslationProfiles-Bx0cQzDa.js",
+        "sha256": "6e0b31d9c57ca6bf3b340901b75c1a4a56789fecab9d74eee3380d22cb48e25f"
+      },
+      {
+        "file": "chunks/ReadingAnswer-DJ3_F6DW.js",
+        "sha256": "17c8652ca76b25a72facede80225c80436eff252e654e0dd5be5130218e94f08"
+      },
+      {
+        "file": "chunks/result-S8stjcMA.js",
+        "sha256": "8ccfc9444f2d6a2fcc996dcd33b7402df172d0353f51ad847b9c57bca3c728c0"
+      },
+      {
+        "file": "chunks/SectionTranslationSettings-D1YUtLFx.js",
+        "sha256": "c79b00389ff4d017497945e8d978ae4da7ec4555f0aadfd28c522b9862867952"
+      },
+      {
+        "file": "chunks/SegmentedControl-0sjRSvC1.js",
+        "sha256": "e027924497595b316acef5502f9629361bbf7dd51f4b68fd8277365214df4df3"
+      },
+      {
+        "file": "chunks/SelectionSettings-DvEyzWdZ.js",
+        "sha256": "e2a632f316560a728b524aa3823241a10d44f701ec15836ab7399e4f297270fd"
+      },
+      {
+        "file": "chunks/SelectionTranslator-DRA9q1EK.js",
+        "sha256": "2014be4fa11b13026fb79ff431bdc7b122bd3d55daa99d4237b187d957116503"
+      },
+      {
+        "file": "chunks/ServiceCatalog-CofYj7x_.js",
+        "sha256": "2da989ae657bdd4908ef8384eb12ecff2aa60bebe2eec034f9808b24b5be1a50"
+      },
+      {
+        "file": "chunks/serviceCatalog-DNEvHCCO.js",
+        "sha256": "66faad098b759e9a44900c9a7ca4b9f37072650b67c631012fdddb2bf777de18"
+      },
+      {
+        "file": "chunks/ServiceConfiguration-B4XMccrg.js",
+        "sha256": "adcf4f11b32bc3ad24f77361823e9f876e0f2f8f178c9041dc8b9d34da91e63a"
+      },
+      {
+        "file": "chunks/ServiceNatureBadge-_CCWYcoA.js",
+        "sha256": "9af6d07521b8f8b814572c68fb0f282b0f25f3d92bd8de9f8a29e1058bdff0db"
+      },
+      {
+        "file": "chunks/SettingsPreviewLayout-BaKEWEpR.js",
+        "sha256": "b4a4f42b05b87abbc0c52ce1e7111ffadf333e2cb0a8cdf7b5eb09256e68e502"
+      },
+      {
+        "file": "chunks/SettingsSections-BBb_6s6T.js",
+        "sha256": "d18fb90c48424f1831bcb9072fd1c27686bd192f73f90bd8ff0a17528ad84d6e"
+      },
+      {
+        "file": "chunks/siteAdaptationEditor-C9a5cD_M.js",
+        "sha256": "feda59ed363dde92f3cd167e18633d8b7e9fa67b08bf8d623f5583ce1a5e1f68"
+      },
+      {
+        "file": "chunks/SiteAdaptationSettings-DDSPXhyH.js",
+        "sha256": "51bac3d55ad817ffe989ec949b5da78d36e9de2b1bc4d777cfc5f4ef31fe738c"
+      },
+      {
+        "file": "chunks/sitePreferences-TH6Gana7.js",
+        "sha256": "778fdcbf9f7f4787991528641a5a30cfee2fb79a908f3dcc8cf10298323f8aef"
+      },
+      {
+        "file": "chunks/SitePreferencesSettings-CjEIvh8J.js",
+        "sha256": "f7e6383bdb52335c9f69e85f7df02b5244a6d5dafb86594c604014afbd02314d"
+      },
+      {
+        "file": "chunks/SiteRulePreview-DnCNqmSi.js",
+        "sha256": "e599899544a5d703d05133d9128998b9e58bc6c8c9321830ffec377b24e3d546"
+      },
+      {
+        "file": "chunks/speechProgress-YfUuy-6E.js",
+        "sha256": "b91e7a6a692597e1b52e6169c9fab98aa790b5048325548a3d6e79c2bdc240c5"
+      },
+      {
+        "file": "chunks/tensor-B9JHZz66.js",
+        "sha256": "2bbfe7954c2053b74a87e4c67dd53f87307b4898bda52b4855037ba552c63dfc"
+      },
+      {
+        "file": "chunks/transcription-DYs8Ok0M.js",
+        "sha256": "343f162ec8170d8f78b6b3705d6278463460adaa42fabd66f378e0189acfe077"
+      },
+      {
+        "file": "chunks/transformers.web-x8n3daXx.js",
+        "sha256": "a5ccff82187dd3fbcf5c21cbfb0d4a4d09141af01fb1d81fcbdf4ab80c71874b"
+      },
+      {
+        "file": "chunks/TranslationCacheSettings-Df53JTHf.js",
+        "sha256": "3dfc7d05fe6239d7570a06b954c1a11ea32d0553002e161fffec4389133752b9"
+      },
+      {
+        "file": "chunks/TranslationLoadingPreview-C46sLL4W.js",
+        "sha256": "712bfcdb4d40c4eb7fa7ddc6146b450bbbe46e9df2112216b9dce3e57e16df24"
+      },
+      {
+        "file": "chunks/types-CN7jBpgI.js",
+        "sha256": "c779522bc87a94e683c35a5a8843c4d0504cf5dcf8bc2322a417a897e070ccfe"
+      },
+      {
+        "file": "chunks/types-Cqyc83Ir.js",
+        "sha256": "79b0ee21c72a6409dad47b604b9f0973358ce74f8d59a180264d5219eae2df0a"
+      },
+      {
+        "file": "chunks/UiLanguageOnboarding-RX2koSnC.js",
+        "sha256": "d4bcc9c66cc28cc6317d26b65da51a5c13ea07f21eeedad8fb8e4ba0a586e76e"
+      },
+      {
+        "file": "chunks/useConfigEditor-DlPnumcF.js",
+        "sha256": "2242d36c1758cff05cf0e878c3bed38f41ace09c85802a24f1a8f9edc7c39bc5"
+      },
+      {
+        "file": "chunks/useHotkeyDraft-D2P1HW1y.js",
+        "sha256": "8944f666ec77611ac3da7f573718220c06246ff64e97e3b2f4af134e97f76b71"
+      },
+      {
+        "file": "chunks/useSettingsActionContext-CG4fQ4Um.js",
+        "sha256": "1f980102c6ff394026bc86bd7539175148d5615ffb587d5d92b29d2a9ec9656c"
+      },
+      {
+        "file": "chunks/useVisionProbeStatus-BN1frn-J.js",
+        "sha256": "bc7290fbfdccc228380cd28cf282f2daa4fd42b80e9c7a1d1c20fae3a69c9ef5"
+      },
+      {
+        "file": "chunks/VideoLocalModelSettings-C_IpLHn6.js",
+        "sha256": "569bc1b57512a7782a59ff11130a0e4a4ca51150878f6c212a33d2c6fc21bf5a"
+      },
+      {
+        "file": "chunks/VideoSubtitleAppearanceSettings-6klt4xtF.js",
+        "sha256": "a0587a196a419913c3df9ca77f9212a0e0efef1692c646a954be1f23b0884cf8"
+      },
+      {
+        "file": "chunks/webgpu-C2Up5DtH.js",
+        "sha256": "d8a5e7bc7977cc8dafed05fd0e77bf11ed997ae157b8c6b264a4d44f1d5e58a4"
+      },
+      {
+        "file": "chunks/WritingSettings-C-bb7Hz0.js",
+        "sha256": "f66e36cf7b2949b2fadbbb17a222ee055f241a51356dcb398679896fa743070d"
+      },
+      {
+        "file": "content-scripts/content.css",
+        "sha256": "2c7fc431bcbe3416e6c65be4f1b378253127015b11582736d3594b980abacbcc"
+      },
+      {
+        "file": "content-scripts/content.js",
+        "sha256": "47a3d8d691a1c9bf9ccdad65058c71ec5b6663e32bb5621e056210d054c663f4"
+      },
+      {
+        "file": "content-scripts/neteaseMailFrame.css",
+        "sha256": "aef83c13e33df6e249fd33bc549bc10e7daeed9d9dc3d204e9095ed4f5497273"
+      },
+      {
+        "file": "content-scripts/neteaseMailFrame.js",
+        "sha256": "7c678036c2f39125d432d7012ead22e04b18ff1527ab433901a6b4730931dda8"
+      },
+      {
+        "file": "content-scripts/shadowBridge.js",
+        "sha256": "ac4cd36fa2f66d591c031c44f3d0b7bc58a39888aee263037b71be2fad686e39"
+      },
+      {
+        "file": "content-scripts/supportedFrame.css",
+        "sha256": "aef83c13e33df6e249fd33bc549bc10e7daeed9d9dc3d204e9095ed4f5497273"
+      },
+      {
+        "file": "content-scripts/supportedFrame.js",
+        "sha256": "d951da2fc6d2f6b4089a415b9e143e081afcbb05a4f9df30f93072c8312de70f"
+      },
+      {
+        "file": "content-scripts/xVideoBridge.js",
+        "sha256": "f22318b71931cfc573c8aae63086438e4d186f4f654616a85ebd0c6178c50331"
+      },
+      {
+        "file": "content-scripts/youtubeBridge.js",
+        "sha256": "f5304857608090e874b144266f0def19809b0ba228765f3c7d14ef22faa57af3"
+      },
+      {
+        "file": "document.html",
+        "sha256": "a97cf4857f2bfa16d16d2e979dc516c26d0c858166c1c79e50c79a1412dfa4fb"
+      },
+      {
+        "file": "ecdict-core.json",
+        "sha256": "af135b66f9e94d5ab189605fda471e7333c874bf96e3b6ac7faf6a645b21f80f"
+      },
+      {
+        "file": "fluent-read-ai/wllama.worker.js",
+        "sha256": "2d2341d0b5ce81ff8de94a0ac77878d71c5389d537eef556aceaf489670917a7"
+      },
+      {
+        "file": "fluent-read-ocr/core/tesseract-core-simd-lstm.wasm.js",
+        "sha256": "d3d28ef9f80a9daaf3c8bad44b0ed078840cb6a569a5a90c47143795d2b9a03d"
+      },
+      {
+        "file": "fluent-read-ocr/worker/worker.min.js",
+        "sha256": "ef61564534cc5d69ca33b6b29d30732a81f745d330d2b5c485663ddb0a4f0566"
+      },
+      {
+        "file": "i18n/en-US.json",
+        "sha256": "62f3ba1febe06dc09980364b4e9b53cc40cf6de38ad5123d2a13c544ebbf4bc5"
+      },
+      {
+        "file": "i18n/es-ES.json",
+        "sha256": "9bfbe85cd9b3cdbadbdf2096a08befd45e0e8e5cc2d1335fcf473189d01a38b8"
+      },
+      {
+        "file": "i18n/fr-FR.json",
+        "sha256": "812e001249b90e785340e924e4c645be24f7ea5d558159d8fc197953cee87856"
+      },
+      {
+        "file": "i18n/ja-JP.json",
+        "sha256": "ac205a58da8a83ff3638ffa75e952b1fe1550f11f5c20c8ac60960fa0b0cf44b"
+      },
+      {
+        "file": "i18n/ko-KR.json",
+        "sha256": "1ec011d8697f623b2d6d723e5499445ca66ffe252368cc2ddb59f54eebae0847"
+      },
+      {
+        "file": "i18n/ru-RU.json",
+        "sha256": "40c07be906bbd9f76168406654c83f4d08159f415559c0f87b0986a17b3ec61f"
+      },
+      {
+        "file": "informationHighlightWorker.js",
+        "sha256": "335969402e709639654833d442603749ed2b2f265f855341dc9335b14cfbe066"
+      },
+      {
+        "file": "localTranslationWorker.js",
+        "sha256": "fe917a9b03410858bb4a9c065480ef1b26a58e2ea72cc6988f3e07edd155ff24"
+      },
+      {
+        "file": "localTtsWorker.js",
+        "sha256": "ba88ba14cd030e8f130bcd200c42e91a106b26e95d8d73f3bf2fca009716fdee"
+      },
+      {
+        "file": "mangaInferenceWorker.js",
+        "sha256": "4887ef72f41af34e469be70dfdeb9e54124e306e6a9f851f07c5398a38d0d4e4"
+      },
+      {
+        "file": "manifest.json",
+        "sha256": "a12a20416fc826d3dc7278b74a112b4170f8985b1ac8b1a74c91f73d5e09b642"
+      },
+      {
+        "file": "offscreen.html",
+        "sha256": "461bbc8e285252b7094908521a3b8eb2f36298bef925536675e704b19443ea59"
+      },
+      {
+        "file": "options.html",
+        "sha256": "43c650697f9c486af69cbd212149399db6349a29b543f95ce24f44b6123a7cd7"
+      },
+      {
+        "file": "popup-startup.js",
+        "sha256": "4646f618a2186919c1fbe1a06254ac848e284c587c806fdf8b75c2d7e9af88a6"
+      },
+      {
+        "file": "popup.html",
+        "sha256": "437fb4fb8b03edb80868106dc69017ed3fcfe036e9e876223a98c916ad1dd95e"
+      },
+      {
+        "file": "third-party-notices/pdf-reading-font-PROVENANCE.json",
+        "sha256": "a90ff9d76fd919a5f3cbcaa802510545bde742035ef0604d6bca1c8331fcb062"
+      },
+      {
+        "file": "videoTranscriptionWorker.js",
+        "sha256": "67dbcc2d2174193505a5336ddf170bc89aeea1289e32673c1dd78c39b8efd0fd"
+      }
+    ],
+    "bundleDigestAlgorithm": "sha256 of sorted relative path + NUL + file sha256 + LF, UTF-8",
+    "bundleDigestSHA256": "c6a21bb40dcb1d4b42b92fa80a88a551a0737c2a5b4bb75eeb3e56e98c8eab1f",
+    "sourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb"
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 132,
+      "top": -1040,
+      "width": 1440,
+      "height": 1000
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 7816,
+      "name": "提醒事项"
+    },
+    "frontmostAfter": {
+      "pid": 7816,
+      "name": "提醒事项"
+    }
+  },
+  "documentProviderProof": "Manual review and actual browser IndexedDB only; no translation request was initiated by this smoke case.",
+  "singleBrowserInstance": true,
+  "finalAuthority": {
+    "on": true,
+    "to": "ja",
+    "service": "freeTranslation",
+    "disableImageTranslator": false,
+    "selectionTranslatorMode": "bilingual",
+    "__fluentConfigRevision": 4
+  },
+  "visualReview": {
+    "passed": true,
+    "reviewedScreenshots": [
+      "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/options-language-latest-write-reopened.png",
+      "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/options-language-latest-write-popup-cross-page.png",
+      "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/document-history-real-commit.png",
+      "/private/tmp/fluentread-architecture-ui-20261014/evidence-delivery/document-history-smoke-reopen.png"
+    ],
+    "observations": "All four PNGs inspected. Manual latest review appears identically before and after refresh. Both source and translation are readable, no clipping or overlapping controls. Popup version0.0.38 and Japanese target agree with reopened options Japanese target."
+  },
+  "proofLimits": [
+    "Manual-review/browser IndexedDB smoke uses no provider translation request; it does not reproduce the intentionally delayed transaction matrix, which root validated separately.",
+    "Firefox runtime not tested because the available launch mode would occupy the foreground; Firefox build is handled by root.",
+    "The four document lifecycle scenarios and eight other configuration cases were tested against earlier bundles; this final-bundle report covers only its explicit two smoke cases."
+  ]
+}

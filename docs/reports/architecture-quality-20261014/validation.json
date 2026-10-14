@@ -1,0 +1,122 @@
+{
+  "status": "passed",
+  "sourceCommit": "e8cd33bc613a49a009888a6f49e8b06d06e7e7a2",
+  "comparisonBase": "573890c33ad410b48086dcb83bad97ae1bf5a82c",
+  "version": "0.0.38",
+  "referenceRepositoriesUsed": false,
+  "delivery": "local_worktree_only",
+  "changes": [
+    "shared configuration draft ownership",
+    "explicit provider request snapshots and typed service ports",
+    "document task source of truth and durable history commit",
+    "full-page resource ownership",
+    "video request and subtitle cache ownership",
+    "affected-test CI and strict dependency boundaries"
+  ],
+  "checks": {
+    "architecture": {
+      "files": 36,
+      "passed": 2003
+    },
+    "testRegistration": {
+      "files": 716,
+      "status": "passed",
+      "declaredCases": 12853
+    },
+    "nativeNodeContracts": {
+      "files": 6,
+      "passed": 79,
+      "skipped": 0
+    },
+    "types": "passed",
+    "builds": {
+      "chrome_mv3": "passed",
+      "firefox_mv2": "passed",
+      "userscript": "passed",
+      "docs": "passed"
+    },
+    "manifestVerifier": "passed",
+    "userscriptVerifier": "passed",
+    "userscriptBytes": 2076806,
+    "userscriptBudgetBytes": 2077000,
+    "affectedBehavior": {
+      "status": "passed",
+      "files": 410,
+      "passed": 13417,
+      "existingSkipped": 4,
+      "completeRepositorySuite": false
+    },
+    "strictCoverage": {
+      "status": "passed",
+      "files": 82,
+      "requiredPercent": 100,
+      "perFile": true,
+      "verificationMode": "affected run plus independently scoped runtime consumers and broker contracts",
+      "report": "strict-coverage.json"
+    },
+    "historyScoped": {
+      "passed": 119,
+      "existingSkipped": 1,
+      "modules": 2,
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "supplementalRuntimeConsumers": {
+      "status": "passed",
+      "files": 12,
+      "passed": 245,
+      "coveredModules": 12
+    },
+    "supplementalBrokerContracts": {
+      "status": "passed",
+      "files": 21,
+      "passed": 990,
+      "coveredModules": 1
+    },
+    "finalFocusedGates": {
+      "files": 2,
+      "passed": 46
+    },
+    "planner": {
+      "files": 1,
+      "passed": 19,
+      "actualRunnerAndFailureReportsVerified": true
+    }
+  },
+  "browserEvidence": {
+    "finalBuild": "browser-delivery.json",
+    "earlierDocumentScenarios": "browser-document-scenarios.json",
+    "finalAssertions": [
+      "options and popup keep latest language after immediate close",
+      "latest manual document corrections committed in actual IndexedDB and restored after reload"
+    ],
+    "earlierAssertions": [
+      "failed task recovery persists after importing and switching documents",
+      "completed and reviewed translations survive failure and continuation",
+      "exported document excludes another task",
+      "canceling removal preserves newer corrections"
+    ],
+    "consoleErrors": 0,
+    "temporaryProfilesRemoved": true,
+    "allRecordedFocusChecksBrowserFrontmost": false
+  },
+  "proofLimits": [
+    "Affected graph tests are not the complete repository suite.",
+    "Translation responses in browser scenarios are controlled fixtures, not live provider quality.",
+    "Firefox is built and its manifest checked; Firefox runtime is not tested.",
+    "Browser smoke checks do not verify real PCM capture or local model accuracy.",
+    "CI workflow is validated locally and has not run on GitHub."
+  ],
+  "ciPlan": {
+    "files": 446,
+    "architectureFiles": 36,
+    "behaviorFiles": 410,
+    "strictModules": 82,
+    "duplicates": false,
+    "verification": "selection and actual runner fixtures tested; the complete combined 446-file command was not rerun",
+    "plan": "ci-plan.json"
+  },
+  "programSourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb"
+}
