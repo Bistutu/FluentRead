@@ -25,7 +25,7 @@ import {translationStatsKoreanMessages} from './translationStats';
 import {localTranslationKoreanMessages} from './localTranslation';
 
 export const koKRMessages = {
-    "settings.loadFailed": "설정을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.",
+    "document.config.loadFailed": "설정을 불러오지 못했습니다. 새로고침 후 다시 시도하세요.",
     "popup.compact.translate": "번역",
     "popup.compact.restore": "복원",
     ...videoLearningText,

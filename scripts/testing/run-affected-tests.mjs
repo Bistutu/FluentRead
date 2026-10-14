@@ -82,7 +82,7 @@ function references(source, filename) {
     };
     visit(ast);
     // Vue 模板、CSS @import 与夹具拼接的 import 源码未必是合法 TS；保留其中明确的项目文件路径。
-    for (const match of source.matchAll(/(['"`])((?:@\/|\/src\/|src\/|scripts\/|tests\/|userscript\/|\.\.?\/)[^'"`\n]+)\1/gu)) {
+    for (const match of source.matchAll(/(['"`])((?:@\/|\/src\/|src\/|scripts\/|tests\/|userscript\/|assets\/|\.\.?\/)[^'"`\n]+)\1/gu)) {
         values.add(match[2]);
     }
     return [...values];
@@ -96,7 +96,7 @@ export function buildDependencyGraph(files) {
         let candidate;
         if (value.startsWith('@/')) candidate = value.slice(2);
         else if (value.startsWith('/src/')) candidate = value.slice(1);
-        else if (/^(?:src|scripts|tests|userscript|entrypoints|docs|public|styles)\//u.test(value)) candidate = value;
+        else if (/^(?:src|scripts|tests|userscript|entrypoints|docs|public|styles|assets)\//u.test(value)) candidate = value;
         else if (value.startsWith('.')) candidate = path.posix.normalize(path.posix.join(path.posix.dirname(owner), value));
         else return [];
         candidate = candidate.split(/[?#]/u)[0];
@@ -150,7 +150,7 @@ export function selectAffected({files, changed, matrix, coveragePaths, coverageA
     }
     return {changed: [...changed].sort(), testFiles: testFiles.sort(), coverageFiles: coverageFiles.sort(),
         globalInputs, reason: globalInputs.length ? 'shared-test-configuration' : 'changed-dependency-graph',
-        extensionChanged: changed.some(file => /^(?:src|entrypoints|userscript|public|styles|scripts|tests)\//u.test(file)
+        extensionChanged: changed.some(file => /^(?:src|entrypoints|userscript|public|styles|scripts|tests|assets)\//u.test(file)
             || /^(?:package\.json|pnpm-lock\.yaml|tsconfig\.json|wxt\.config\.ts|vitest[^/]*\.ts)$/u.test(file)
             || file === '.github/workflows/extension-quality.yml')};
 }

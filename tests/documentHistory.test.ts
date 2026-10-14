@@ -459,7 +459,10 @@ describe('document history storage', () => {
         // 数据库能打开但单次请求失败（例如配额不足）：同样退化为空结果。
         const failing = () => {const pending = {error: new Error('quota')} as unknown as IDBRequest; queueMicrotask(() => pending.onerror?.(new Event('error'))); return pending;};
         const rejecting = createDocumentHistory({open: () => {
-            const opened = {result: {transaction: () => ({objectStore: () => ({getAll: failing, get: failing, put: failing, delete: failing, clear: failing})})}} as unknown as IDBOpenDBRequest;
+            const opened = {result: {transaction: (_store: string, mode: IDBTransactionMode) => {
+                if (mode === 'readwrite') throw new Error('quota');
+                return {objectStore: () => ({getAll: failing, get: failing})};
+            }}} as unknown as IDBOpenDBRequest;
             queueMicrotask(() => opened.onsuccess?.(new Event('success')));
             return opened;
         }} as unknown as IDBFactory);

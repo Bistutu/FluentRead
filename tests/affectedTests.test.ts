@@ -99,6 +99,25 @@ describe('affected behavior test planning', () => {
         expect(createPlan(root, base)).toMatchObject({base, head: base, changed: ['src/core/a.ts'],
             testFiles: ['tests/a.test.ts', 'tests/b.test.ts'], coverageFiles: ['src/core/a.ts']});
     });
+    it('tracks actual root asset readers and builds even when an unrelated asset has no behavior reader', () => {
+        const root = directory();git(root, 'init', '-q');git(root, 'config', 'user.email', 'fixture@example.test');git(root, 'config', 'user.name', 'Fixture');
+        const asset = 'assets/optional/dictionary.json', unrelated = 'assets/interface-fonts/preview.woff2';
+        save(root, asset, '["before"]');save(root, unrelated, 'font-before');
+        save(root, 'tests/asset.test.ts', `import {readFileSync} from 'node:fs';import {resolve} from 'node:path';
+            const dictionary = JSON.parse(readFileSync(resolve(process.cwd(), '${asset}'), 'utf8'));`);
+        save(root, 'tests/test-matrix.json', JSON.stringify({groups: {regression: ['tests/asset.test.ts']}}));
+        save(root, 'vitest.coverage.config.ts', 'export default {test:{coverage:{include:[]}}}');
+        git(root, 'add', '.');git(root, 'commit', '-qm', 'asset baseline');const base = git(root, 'rev-parse', 'HEAD');
+        save(root, asset, '["after"]');
+        expect(createPlan(root, base)).toMatchObject({changed: [asset], testFiles: ['tests/asset.test.ts'],
+            coverageFiles: [], extensionChanged: true});
+        // Vue/CSS 原文也支持根资源路径，资源本身的二进制字节无需进入解析图。
+        const graph = buildDependencyGraph({'src/ui/Font.vue': `<template><img src="${asset}" /></template>`, [asset]: ''});
+        expect([...graph.get('src/ui/Font.vue')!]).toEqual([asset]);
+        git(root, 'checkout', '--', asset);save(root, unrelated, 'font-after');
+        expect(createPlan(root, base)).toMatchObject({changed: [unrelated], testFiles: [],
+            coverageFiles: [], extensionChanged: true});
+    });
 });
 
 describe('affected behavior test execution', () => {

@@ -25,7 +25,7 @@ import {translationStatsRussianMessages} from './translationStats';
 import {localTranslationRussianMessages} from './localTranslation';
 
 export const ruRUMessages = {
-    "settings.loadFailed": "Не удалось загрузить настройки. Обновите страницу и повторите попытку.",
+    "document.config.loadFailed": "Не удалось загрузить настройки. Обновите страницу и повторите попытку.",
     "popup.compact.translate": "Перевести",
     "popup.compact.restore": "Вернуть",
     ...videoLearningText,

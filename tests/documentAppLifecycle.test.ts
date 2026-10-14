@@ -799,6 +799,77 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(state.needsOcr).toBe(true);
     });
 
+    it('keeps an empty OCR result readable and shows its failure without requesting translation or repeating OCR', async () => {
+        await state.loadFiles([file('scanned.pdf')]);
+        const original = state.parsedDocument;
+        const scanned = markRaw({...original, segments: [], binary: {...original.binary,
+            pages: original.binary.pages.map((page: PdfDocumentPage) => ({...page, scanned: true, segmentIndexes: [], blocks: []})),
+        }});
+        state.parsedDocument = scanned;
+        const recognized = {...scanned, binary: {...scanned.binary,
+            pages: scanned.binary.pages.map((page: PdfDocumentPage) => ({...page, scanned: false})),
+        }};
+        ports.recognize.mockResolvedValueOnce(recognized);
+
+        await state.startTranslation(); await flush();
+
+        expect(state.runState).toBe('failed');
+        expect(state.documentQueue[0].state).toBe('failed');
+        expect(state.errorMessage).toBe('document.pdfReading.ocrEmpty');
+        expect(state.documentQueue[0].error).toBe(state.errorMessage);
+        expect(state.parsedDocument).toBe(recognized);
+        expect(state.documentQueue[0].document).toBe(recognized);
+        expect(state.parsedDocument.binary.bytes).toBe(original.binary.bytes);
+        expect(state.needsOcr).toBe(false);
+        expect(state.translating).toBe(false);
+        expect(state.recognitionProgress).toBe('');
+        expect(state.batchCompletedCount).toBe(0);
+        const recovery = walkHost(root).find(entry => entry.props['data-testid'] === 'document-translation-recovery')!;
+        expect(walkHost(recovery).find(entry => entry.props.class === 'recovery-error-detail')!.text).toBe('document.pdfReading.ocrEmpty');
+        expect(walkHost(root).some(entry => entry.props['data-document-reader'] === 'pdf')).toBe(true);
+        await state.startTranslation(); await flush();
+        expect(ports.recognize).toHaveBeenCalledOnce();
+        expect(ports.batch).not.toHaveBeenCalled();
+        expect(ports.translate).not.toHaveBeenCalled();
+        expect(state.runState).toBe('failed');
+        expect(state.errorMessage).toBe('document.pdfReading.ocrEmpty');
+    });
+
+    it('ignores a canceled empty OCR result after switching to another document', async () => {
+        await state.loadFiles([file('scanned.pdf'), file('other.txt', 'Other document')]);
+        const original = state.parsedDocument;
+        const scanned = markRaw({...original, segments: [], binary: {...original.binary,
+            pages: original.binary.pages.map((page: PdfDocumentPage) => ({...page, scanned: true, segmentIndexes: [], blocks: []})),
+        }});
+        state.parsedDocument = scanned;
+        const recognizing = deferred<unknown>();
+        ports.recognize.mockReturnValueOnce(recognizing.promise);
+        const running = state.startTranslation();
+        await flush();
+        expect(ports.recognize).toHaveBeenCalledOnce();
+        const signal = ports.recognize.mock.calls[0][2].signal;
+        state.pauseTranslation();
+        state.selectDocument(state.documentQueue[1]);
+        state.editSegment(0, 'Reader correction');
+        const current = state.parsedDocument;
+        recognizing.resolve({...scanned, binary: {...scanned.binary,
+            pages: scanned.binary.pages.map((page: PdfDocumentPage) => ({...page, scanned: false})),
+        }});
+        await running; await flush();
+
+        expect(signal.aborted).toBe(true);
+        expect(state.parsedDocument).toBe(current);
+        expect(state.runState).toBe('ready');
+        expect(state.errorMessage).toBe('');
+        expect(state.translatedSegments).toEqual(['Reader correction']);
+        expect(state.documentQueue[0].document).toBe(scanned);
+        expect(state.documentQueue[0].state).toBe('paused');
+        expect(state.documentQueue[0].error).toBe('');
+        expect(state.documentQueue[0].document.binary.pages[0].scanned).toBe(true);
+        expect(ports.batch).not.toHaveBeenCalled();
+        expect(ports.translate).not.toHaveBeenCalled();
+    });
+
     it.each([false, true])('uses accurate import and change-file guidance with local history available=%s', async available => {
         app.unmount(); vi.stubGlobal('indexedDB', available ? new IDBFactory() : undefined);
         root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;

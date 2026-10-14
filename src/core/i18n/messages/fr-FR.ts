@@ -25,7 +25,7 @@ import {translationStatsFrenchMessages} from './translationStats';
 import {localTranslationFrenchMessages} from './localTranslation';
 
 export const frFRMessages = {
-    "settings.loadFailed": "Impossible de charger les paramètres. Rechargez la page et réessayez.",
+    "document.config.loadFailed": "Impossible de charger les paramètres. Rechargez la page et réessayez.",
     "popup.compact.translate": "Traduire",
     "popup.compact.restore": "Rétablir",
     ...videoLearningText,

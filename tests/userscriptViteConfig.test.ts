@@ -258,7 +258,7 @@ describe('userscript browser shim injection', () => {
             expect(bundle.legacyPatterns).toBe(original.legacyPatterns);
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
                 !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && !key.startsWith('popup.compact.')
-                && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
+                && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
                 && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !registeredSupplementKeys.includes(key))));
             expect(bundle.messages).toEqual(kept);
             expect(original.messages['learning.reloadPage']).toBeTruthy();
@@ -307,7 +307,8 @@ describe('userscript browser shim injection', () => {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
-        const readerRecoveryKeys = Object.keys(extension).filter(key => key.startsWith('document.translationRecovery.')
+        expect(extension['document.config.loadFailed']).toBeTruthy();
+        const readerRecoveryKeys = Object.keys(extension).filter(key => key.startsWith('document.config.') || key.startsWith('document.translationRecovery.')
             || key.startsWith('document.retainedRevisions.') || key.startsWith('document.translationProgress.'));
         expect(readerRecoveryKeys.length).toBeGreaterThan(0);
         for (const key of readerRecoveryKeys) {

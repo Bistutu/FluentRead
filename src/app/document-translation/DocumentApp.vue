@@ -1415,7 +1415,7 @@ const configEditor = useConfigEditor({
   onSaved: () => {configSaveError.value = '';},
   onSaveError: () => {configSaveError.value = '设置未能保存，请重新调整后再试。';},
   onReady: () => {hydrated.value = true;},
-  onReadyError: () => {configSaveError.value = t('settings.loadFailed');},
+  onReadyError: () => {configSaveError.value = t('document.config.loadFailed');},
 });
 
 // 翻译期间不订阅整份数组，避免每个片段都触发 O(n) 的深度遍历。
@@ -1689,19 +1689,13 @@ async function startTranslation(restart = false): Promise<void> {
       });
       if (requestId !== translationRequestId || parsedDocument.value !== source) return;
       recognitionProgress.value = '';
-      if (!recognized.segments.length) {
-        // 一个字也没认出来：仍然采用识别后的文档（扫描页不再反复识别），并说明原因。
-        const empty = markRaw(recognized);
-        const item = documentQueue.value.find(entry => entry.id === activeDocumentId.value);
-        if (item) item.document = empty;
-        parsedDocument.value = empty;
-        throw new Error(t('document.pdfReading.ocrEmpty'));
-      }
       // 识别结果成为这份文档新的解析结果；之后的翻译、校订、保存和下载都基于它。
       document = markRaw(recognized);
-      const item = documentQueue.value.find(entry => entry.id === activeDocumentId.value);
-      if (item) item.document = document;
       parsedDocument.value = document;
+      if (!document.segments.length) {
+        // 一个字也没认出来：仍然采用识别后的文档（扫描页不再反复识别），并说明原因。
+        throw new Error(t('document.pdfReading.ocrEmpty'));
+      }
       translatedSegments.value = [];
       settledTranslations.value = [];
       confirmedTranslationIds.value = [];
