@@ -24,6 +24,7 @@
       "tests/contentTrustBoundary.test.ts",
       "tests/extensionManifestContract.test.ts",
       "tests/fullRegressionRunner.test.ts",
+      "tests/regressionReport.test.ts",
       "tests/imageTranslationSecurityContract.test.ts",
       "tests/popupFeatureVisibility.test.ts",
       "tests/settingsUiArchitecture.test.ts",
