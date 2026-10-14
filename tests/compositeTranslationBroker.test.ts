@@ -8,6 +8,7 @@ import {
     attachTranslationImageInput, attachTranslationRequestControl, getTranslationImageInput,
     getTranslationProviderConfig, getTranslationRequestScheduler, markTranslationRemainingBudget,
     reportTranslationModelUsage,
+    allowUnchangedTranslationResult, reportTranslationRoute,
 } from '@/src/services/translation/requestSnapshot';
 import type {TranslationModelUsageRecord, TranslationProvider, TranslationProviderRegistry} from '@/src/services/translation/types';
 
@@ -51,6 +52,59 @@ function setup(members: string[] = [services.google, services.microsoft]) {
 afterEach(() => vi.useRealTimers());
 
 describe('组合翻译真实 broker 接入', () => {
+    it('图片组合的单条协议成员接受整批原样结果，沿用取消所有权且不换成员', async () => {
+        const h = setup([services.claude, services.google]);
+        h.config.token.claude = 'fixture-claude';
+        const origins = [sourceText, 'The second paragraph describes caching.'];
+        h.providers.claude = vi.fn(async message => message.origin);
+        const controller = new AbortController();
+        const request = attachTranslationRequestControl(allowUnchangedTranslationResult({origin: origins}),
+            {signal: controller.signal, ownershipKey: 'image-composite-original'});
+        await expect(h.broker.translateWithCache(request)).resolves.toEqual(origins);
+        expect(h.providers.claude).toHaveBeenCalledTimes(2);
+        expect(h.providers.google).not.toHaveBeenCalled();
+        expect(h.recordRequest.mock.calls[0][0]).toMatchObject({outcome: 'success', upstreamCalls: 2});
+    });
+
+    it('图片组合旧缓存泄漏后逐段恢复仍允许原样结果，清除上下文并保留正确槽', async () => {
+        const h = setup([services.claude]);
+        h.config.token.claude = 'fixture-claude'; h.config.enableAIContext = true;
+        const origins = [sourceText, 'The second paragraph describes caching.'];
+        h.providers.claude = vi.fn(async message => 'summaryPrompt' in message ? '安全摘要' : message.origin);
+        const request = () => allowUnchangedTranslationResult({origin: origins, pageContext: 'Page title: Reference. Readable page content: caching instructions.'});
+        await expect(h.broker.translateWithCache(request())).resolves.toEqual(origins);
+        for (const [key] of h.cacheStore) {
+            if (JSON.parse(key).sourceText === sourceText) h.cacheStore.set(key, '<webpage_context>页面参考材料</webpage_context>');
+        }
+        vi.mocked(h.providers.claude).mockClear();
+        await expect(h.broker.translateWithCache(request())).resolves.toEqual(origins);
+        expect(h.providers.claude).toHaveBeenCalledOnce();
+        expect(h.providers.claude).toHaveBeenCalledWith(expect.objectContaining({origin: sourceText, pageContext: ''}));
+    });
+
+    it('图片组合中的免费成员原样成功时保留线路统计，不误判为回退', async () => {
+        const h = setup([services.freeTranslation, services.google]);
+        h.providers.freeTranslation = vi.fn(async message => {
+            reportTranslationRoute(message, {route: 'microsoft', outcome: 'success', durationMs: 1, chars: sourceText.length});
+            return sourceText;
+        });
+        await expect(h.broker.translateWithCache(allowUnchangedTranslationResult({origin: sourceText}))).resolves.toBe(sourceText);
+        expect(h.providers.google).not.toHaveBeenCalled();
+        expect(h.recordRequest.mock.calls[0][0].routes).toEqual(['freeTranslation', 'microsoft']);
+    });
+
+    it('图片组合仍拒绝递归配置和成员取消，不把真实错误当作原样成功', async () => {
+        const nested = setup([group]);
+        await expect(nested.broker.translateWithCache(allowUnchangedTranslationResult({origin: sourceText})))
+            .rejects.toThrow('没有可用的成员服务');
+        expect(nested.providers[group]).not.toHaveBeenCalled();
+        const h = setup();
+        h.providers.google = vi.fn(async () => {throw new DOMException('provider cancelled', 'AbortError');});
+        await expect(h.broker.translateWithCache(allowUnchangedTranslationResult({origin: sourceText})))
+            .rejects.toMatchObject({name: 'AbortError'});
+        expect(h.providers.microsoft).not.toHaveBeenCalled();
+    });
+
     it('AI 默认预算不覆盖组合成员超时，配置变更后回退仍沿用冻结的组合预算', async () => {
         vi.useFakeTimers();vi.setSystemTime(0);
         const h = setup([services.openai, services.google]);

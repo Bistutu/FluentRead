@@ -14,6 +14,7 @@ import {resolveTranslationLanguages} from '@/src/core/translation/languages';
 import {isDefinitePageContextLeak, isLikelyPageContextLeak} from '@/src/core/translation/prompts';
 import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
 import {NativeBatchResponseError} from '@/src/core/translation/nativeBatch';
+import {createImageTranslationBackgroundHandlers, IMAGE_TRANSLATE_TEXTS_MESSAGE_TYPE} from '@/src/features/image-translation/background/handlers';
 import {serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {currentModelIds, services, customModelString} from '@/src/core/config/catalog';
 import type {ServiceRequestLimits, ModelRequestLimits} from '@/src/core/config/requestLimits';
@@ -29,6 +30,7 @@ import {
     getTranslationProviderConfig,
     markTranslationRemainingBudget,
     reportTranslationModelUsage,
+    allowUnchangedTranslationResult,
 } from '@/src/services/translation/requestSnapshot';
 
 type CacheIdentity = {
@@ -915,6 +917,76 @@ describe('translation broker', () => {
         mocks.service.mockResolvedValueOnce('');
         await expect(translateWithCache({origin: 'Empty'})).rejects.toMatchObject({code: 'TRANSLATION_SLOT_RESPONSE_INVALID'});
 
+        expect(mocks.cacheSet).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        {service: 'mock', batch: false},
+        {service: 'google', batch: true},
+        {service: 'ai', batch: true},
+    ])('图片文字经真实 broker 使用 $service 时接受原文，保留其他译文与重复位置并复用缓存', async ({service, batch}) => {
+        const origin = 'This English sentence still needs a Chinese translation.';
+        const changed = 'Please read the complete instructions before you start the application.';
+        const translated = '启动应用前，请阅读完整说明。';
+        mocks.machineServices.add(service);
+        mocks.config.enableAIContext = false;
+        mocks.service.mockImplementation(async (request: {origin: string | string[]}) => {
+            const translate = (text: string) => text === origin ? `  ${origin}\u200b  ` : translated;
+            return Array.isArray(request.origin) ? request.origin.map(translate) : translate(request.origin);
+        });
+        const handler = createImageTranslationBackgroundHandlers({
+            assertLanguagesDownloaded: async () => {}, translateImage: async () => ({}), fetchImage: async () => '',
+            getTranslationService: () => service, supportsBatchTranslation: () => batch,
+            translateTexts: request => translateWithCache(request),
+            downloadLanguages: async () => {}, markLanguagesDownloaded: async () => [],
+        }).find(handler => handler.type === IMAGE_TRANSLATE_TEXTS_MESSAGE_TYPE)!;
+        const message = {type: IMAGE_TRANSLATE_TEXTS_MESSAGE_TYPE, texts: [origin, changed, origin]};
+        const expected = {success: true, translations: [`  ${origin}\u200b  `, translated, `  ${origin}\u200b  `]};
+        await expect(handler.handle(message)).resolves.toEqual(expected);
+        expect(mocks.service).toHaveBeenCalledTimes(batch ? 1 : 2);
+        await flushMicrotasks();
+        expect(translationCacheIdentities().every(identity => identity.unchangedResultPolicy === 1)).toBe(true);
+        mocks.service.mockClear();
+        await expect(handler.handle(message)).resolves.toEqual(expected);
+        expect(mocks.service).not.toHaveBeenCalled();
+    });
+
+    it('图片原样结果的缓存不改变普通翻译判定，公开同名字段不能放宽校验', async () => {
+        const origin = 'This English sentence still needs a Chinese translation.';
+        mocks.service.mockResolvedValue(origin);
+        await expect(translateWithCache(allowUnchangedTranslationResult({origin}))).resolves.toBe(origin);
+        await flushMicrotasks();
+        expect(mocks.cacheStore.size).toBe(1);
+        await expect(translateWithCache({origin, acceptUnchangedResult: true} as TranslationRequestMessage))
+            .rejects.toMatchObject({code: 'UNTRANSLATED_RESPONSE'});
+        expect(mocks.service).toHaveBeenCalledTimes(3);
+        expect(mocks.cacheStore.size).toBe(1);
+    });
+
+    it('图片 AI 完整多段协议允许原样槽位，整批成功后可以复用', async () => {
+        mocks.config.service = 'ai'; mocks.config.enableAIContext = false;
+        const origin = ['This English sentence still needs a Chinese translation.', 'Read every instruction before you begin.'];
+        mocks.service.mockImplementation(async (request: {origin: string}) => request.origin);
+        const request = () => allowUnchangedTranslationResult({origin, aiMultiSegment: true});
+        await expect(translateWithCache(request())).resolves.toEqual(origin);
+        expect(mocks.service).toHaveBeenCalledOnce();
+        await flushMicrotasks();
+        await expect(translateWithCache(request())).resolves.toEqual(origin);
+        expect(mocks.service).toHaveBeenCalledOnce();
+    });
+
+    it('图片错语种恢复返回原文时成功，持续错语种与空白仍失败', async () => {
+        const origin = 'This English sentence still needs a Chinese translation.';
+        const wrong = 'これは画像の文章とは違う日本語の説明です。設定を確認して再度試してください。';
+        mocks.service.mockResolvedValueOnce(wrong).mockResolvedValueOnce(origin);
+        await expect(translateWithCache(allowUnchangedTranslationResult({origin, useCache: false}))).resolves.toBe(origin);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        mocks.service.mockResolvedValue(wrong);
+        await expect(translateWithCache(allowUnchangedTranslationResult({origin, useCache: false})))
+            .rejects.toMatchObject({code: 'WRONG_LANGUAGE_RESPONSE'});
+        mocks.service.mockResolvedValue(' \u200b ');
+        await expect(translateWithCache(allowUnchangedTranslationResult({origin, useCache: false})))
+            .rejects.toMatchObject({code: 'TRANSLATION_SLOT_RESPONSE_INVALID'});
         expect(mocks.cacheSet).not.toHaveBeenCalled();
     });
 

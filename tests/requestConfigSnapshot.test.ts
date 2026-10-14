@@ -21,6 +21,8 @@ import {
     getTranslationGlossaryTerms,
     getTranslationGlossarySourceText,
     getTranslationGlossarySourceSlots,
+    allowUnchangedTranslationResult,
+    isUnchangedTranslationResultAllowed,
 } from '@/src/services/translation/requestSnapshot';
 import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/public';
@@ -63,6 +65,15 @@ function configSource(overrides: Partial<TranslationConfigSource> = {}): Transla
 }
 
 describe('translation provider request config snapshot', () => {
+    it('图片原样响应策略随内部快照和展开保留，公开字段与 JSON 无法附加策略', () => {
+        const request = allowUnchangedTranslationResult({origin: 'Original English sentence.'});
+        for (const internal of [request, {...request}, createTranslationRequestSnapshot(request)]) {
+            expect(isUnchangedTranslationResultAllowed(internal)).toBe(true);
+        }
+        for (const publicRequest of [null, undefined, false, '', {acceptUnchangedResult: true}, JSON.parse(JSON.stringify(request))]) {
+            expect(isUnchangedTranslationResultAllowed(publicRequest)).toBe(false);
+        }
+    });
     it.each(['chrome', 'userscript'])('保留 %s 的用户术语和严格槽原文，自动文档字面值仅用于扩展构建', browser => {
         vi.stubEnv('BROWSER', browser);
         try {
