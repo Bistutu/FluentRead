@@ -175,7 +175,7 @@ export function createPlan(root, base) {
 }
 
 export function scopedCoverageConfig(plan, baseConfigUrl) {
-    return `import base from ${JSON.stringify(baseConfigUrl)};\nexport default {...base,test:{...base.test,include:${JSON.stringify(plan.testFiles)},coverage:{...base.test.coverage,enabled:true,all:true,include:${JSON.stringify(plan.coverageFiles)},reportsDirectory:'coverage/affected',thresholds:{...base.test.coverage.thresholds,statements:100,branches:100,functions:100,lines:100,perFile:true}}}};\n`;
+    return `import base from ${JSON.stringify(baseConfigUrl)};\nexport default {...base,test:{...base.test,include:${JSON.stringify(plan.testFiles)},coverage:{...base.test.coverage,enabled:true,all:true,reportOnFailure:true,include:${JSON.stringify(plan.coverageFiles)},reportsDirectory:'coverage/affected',thresholds:{...base.test.coverage.thresholds,statements:100,branches:100,functions:100,lines:100,perFile:true}}}};\n`;
 }
 
 export function testInvocation(plan, configPath) {
@@ -196,7 +196,8 @@ function run(root, args) {
 export async function executePlan(root, plan, runner = run) {
     const directory = path.join(root, 'coverage', 'affected-plan');
     mkdirSync(directory, {recursive: true});
-    const configPath = path.join(directory, 'vitest.affected.config.mts');
+    // 运行产物由 Vite 加载；不作为源码参与并行的 TypeScript/Vue 全工程检查。
+    const configPath = path.join(directory, 'vitest.affected.config.mjs');
     const args = testInvocation(plan, configPath);
     if (!args) return {skipped: true, reason: 'no-affected-behavior-tests'};
     try {

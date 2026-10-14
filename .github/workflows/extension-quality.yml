@@ -53,6 +53,8 @@ jobs:
         run: |
           pnpm test:audit
           pnpm test:architecture
+      - name: Check native bridge and verification fixture contracts
+        run: node scripts/testing/run-resource-safe.mjs -- node --test --test-concurrency=1 tests/*.test.mjs
       - name: Run affected behavior tests and changed strict coverage
         id: affected
         run: node scripts/testing/run-resource-safe.mjs -- node scripts/testing/run-affected-tests.mjs --report coverage/affected-plan/plan.json

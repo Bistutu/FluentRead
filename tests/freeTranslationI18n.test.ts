@@ -1,9 +1,24 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import {translate, translateLegacyText} from '@/src/core/i18n';
 import type {UiLanguage} from '@/src/core/i18n';
 import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
 import {options} from '@/src/core/config/catalog';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
+import {createUiI18nContext, localizeServiceOptions} from '@/src/ui/i18n';
+
+// 目录文案执行实际 UI 展示链；只隔离持久化、浏览器和资源加载端口。
+const configPort = vi.hoisted(() => ({language: 'zh-CN'}));
+vi.mock('@/src/services/config/store', () => ({
+  config: {get uiLanguage() {return configPort.language;}}, configReady: Promise.resolve(),
+  getConfigRevision: () => 0, subscribeConfig: () => () => undefined,
+  requestConfigPatch: () => {throw new Error('Service copy checks must not persist configuration');},
+}));
+vi.mock('webextension-polyfill', () => ({default: {runtime: {
+  sendMessage: () => {throw new Error('Service copy checks must not send browser messages');},
+}}}));
+vi.mock('@/src/platform/i18n/uiLanguageBundles', () => ({
+  ensureUiLanguageBundle: async () => true,
+}));
 
 // 扩展运行时按需加载界面语言；本文件验证全部语言的文案契约，因此一次注册全部资源包。
 registerAllUiLanguageBundles();
@@ -28,16 +43,26 @@ describe('free translation legacy text localization', () => {
     expect(options.services.find(item => item.value === 'deeplx')?.label).toBe('DeepLX');
   });
 
-  // 服务目录的说明在设置页整句显示，在翻译中心按第一个“；”截取摘要显示，两种形态都必须有译文。
+  // 全目录名称与说明执行设置页的实际 localizeServiceOptions；旧入口短说明也保留翻译契约。
   it.each(languages)('%s translates every service label, description and description summary', language => {
-    const copy = (options.services as ReadonlyArray<{label: string; description?: string}>).flatMap(({label, description}) => (
-      description ? [label, description, description.split('；')[0]!] : [label]
-    )).filter(source => /[\u3400-\u9fff]/u.test(source));
-    const untranslated = copy.filter(source => {
-      const translated = translateLegacyText(source, language);
-      return translated === source || (language !== 'ja-JP' && /[\u3400-\u9fff]/u.test(translated));
-    });
-    expect(untranslated).toEqual([]);
+    configPort.language = language;
+    const context = createUiI18nContext();
+    try {
+      const localized = localizeServiceOptions(options.services, [], context.translateLegacy);
+      expect(localized.map(item => item.value)).toEqual(options.services.map(item => item.value));
+      for (const [index, source] of options.services.entries()) {
+        const rendered = localized[index]!;
+        const copy = [{source: source.label, translated: rendered.label}, ...(source.description ? [
+          {source: source.description, translated: rendered.description},
+          {source: source.description.split('；')[0]!, translated: context.translateLegacy(source.description.split('；')[0]!)},
+        ] : [])];
+        for (const entry of copy.filter(item => /[\u3400-\u9fff]/u.test(item.source))) {
+          expect(entry.translated, `${language} ${source.value}: ${entry.source}`).toBeTruthy();
+          expect(entry.translated, `${language} ${source.value}: ${entry.source}`).not.toBe(entry.source);
+          if (language !== 'ja-JP') expect(entry.translated, `${language} ${source.value}: ${entry.source}`).not.toMatch(/[\u3400-\u9fff]/u);
+        }
+      }
+    } finally {context.dispose();}
   });
 
   it.each(languages)('%s translates new free-service labels and guidance', language => {

@@ -138,9 +138,16 @@ describe('affected behavior test execution', () => {
         const compiled = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e',
             'const {default: config} = await import(process.argv[1]);console.log(JSON.stringify(config));', filename], {encoding: 'utf8'}));
         expect(compiled).toMatchObject({plugins: ['actual-plugin'], test: {include: plan.testFiles,
-            coverage: {all: true, include: ['src/core/a.ts'], thresholds: {statements: 100, branches: 100, functions: 100, lines: 100, perFile: true}}}});
+            coverage: {all: true, reportOnFailure: true, include: ['src/core/a.ts'], thresholds: {statements: 100, branches: 100, functions: 100, lines: 100, perFile: true}}}});
+        save(root, 'vitest.coverage.config.ts', 'export default {test:{coverage:{thresholds:{statements:100,branches:100,functions:100,lines:100}}}};');
+        save(root, 'tsconfig.json', JSON.stringify({compilerOptions: {noEmit: true, strict: true, types: []}, include: ['**/*']}));
         const runner = vi.fn(async (_root: string, args: string[]) => {
-            expect(readFileSync(args[args.length - 1], 'utf8')).toContain('vitest.coverage.config.ts');return {code: 0, signal: null};
+            const generatedPath = args[args.length - 1];
+            expect(generatedPath).toBe(path.join(root, 'coverage/affected-plan/vitest.affected.config.mjs'));
+            expect(readFileSync(generatedPath, 'utf8')).toContain('vitest.coverage.config.ts');
+            // 真实 TS compiler 在产物存活时检查源码；.mjs 不被 **/* 当成 TypeScript 源文件。
+            execFileSync(process.execPath, [path.resolve('node_modules/typescript/lib/tsc.js'), '--project', path.join(root, 'tsconfig.json')], {encoding: 'utf8'});
+            return {code: 0, signal: null};
         });
         await executePlan(root, plan, runner);
         expect(runner.mock.calls[0][1].slice(0, 4)).toEqual(['exec', 'vitest', 'run', '--config']);
@@ -148,7 +155,7 @@ describe('affected behavior test execution', () => {
     it('fails on command failure or termination and cleans the generated config in both cases', async () => {
         for (const outcome of [{code: 1, signal: null}, {code: null, signal: 'SIGTERM'}]) {
             const root = directory();await expect(executePlan(root, select(['src/core/a.ts']), vi.fn().mockResolvedValue(outcome))).rejects.toThrow('受影响测试失败');
-            expect(() => readFileSync(path.join(root, 'coverage/affected-plan/vitest.affected.config.mts'))).toThrow();
+            expect(() => readFileSync(path.join(root, 'coverage/affected-plan/vitest.affected.config.mjs'))).toThrow();
         }
     });
     it('actually enforces scoped V8 coverage and rejects an untested branch', () => {
@@ -171,5 +178,12 @@ describe('affected behavior test execution', () => {
         expect(execute).toThrow();
         const failed = JSON.parse(readFileSync(path.join(root, 'coverage/affected/coverage-summary.json'), 'utf8'));
         expect(failed.total.branches.pct).toBeLessThan(100);
+        // 行为断言失败也须重新生成真实覆盖证据，不能只在覆盖率阈值失败时有报告。
+        rmSync(path.join(root, 'coverage/affected/coverage-summary.json'));
+        save(root, 'tests/choice.test.ts', fixtureSource(true).replace("toBe('yes')", "toBe('wrong')"));
+        expect(execute).toThrow();
+        const behaviorFailure = JSON.parse(readFileSync(path.join(root, 'coverage/affected/coverage-summary.json'), 'utf8'));
+        expect(behaviorFailure.total.statements.covered).toBeGreaterThan(0);
+        expect(behaviorFailure.total.branches.pct).toBeLessThan(100);
     }, 60_000);
 });
