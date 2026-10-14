@@ -8,11 +8,8 @@ import {
     type ImageOperationOptions,
     type ImageTranslationBackgroundDependencies,
 } from '@/src/features/image-translation/background/handlers';
-import {
-    getTranslationRequestControl,
-    TRANSLATION_REMAINING_BUDGET,
-    type TranslationRemainingBudgetContext,
-} from '@/src/services/translation/requestSnapshot';
+import {getTranslationRequestControl} from '@/src/services/translation/requestSnapshot';
+import {TRANSLATION_REMAINING_BUDGET, type TranslationRemainingBudgetContext} from '@/src/services/translation/types';
 
 type ProviderRequest = Parameters<ImageTranslationBackgroundDependencies['translateTexts']>[0];
 type Outcome = {ok: true; value: unknown} | {ok: false; error: unknown};

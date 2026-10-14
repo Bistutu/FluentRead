@@ -181,7 +181,7 @@ import browser from 'webextension-polyfill';
 import {addRuntimeMessageListener} from '@/src/platform/browser/runtimeMessages';
 import {openShareCard, isShareCardMounted} from '@/src/features/share-card/public';
 import { config, configReady, requestConfigPatch, subscribeConfig } from '@/src/services/config/store';
-import { translateText, translateTextBatch } from '@/src/app/translation/client';
+import { translateText, translateTextBatch } from '@/src/services/translation/client';
 import {serializeTranslationError} from '@/src/services/translation/errors';
 import {detectlang, shouldSkipChineseSelection, shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import { matchesConfiguredHotkey, matchesModifierOnlyHotkey, resolveConfiguredHotkey } from '@/src/core/hotkey';

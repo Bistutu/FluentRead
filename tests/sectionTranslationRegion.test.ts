@@ -33,7 +33,7 @@ const harness = vi.hoisted(() => ({
 }));
 
 vi.mock('@/src/services/config/store', () => ({config: harness.config}));
-vi.mock('@/src/app/translation/check', () => ({checkConfig: harness.checkConfig}));
+vi.mock('@/src/features/full-page-translation/content/configCheck', () => ({checkConfig: harness.checkConfig}));
 vi.mock('@/src/features/full-page-translation/content/translationRequest', () => ({
     captureFullPageTranslationConfig: harness.capture,
     getTranslationInvocationIdentity: harness.identity,

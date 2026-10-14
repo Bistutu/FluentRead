@@ -4,7 +4,7 @@
  * 主要内容：定义 testTranslationService 消息与成功/失败响应，验证服务、Key 行及免费池候选标识，调用注入的测试能力，并通过 formatError 把异常转换成面向 UI 的错误文本。
  * 模块边界：本文件不发起网络请求、不读取凭据，也不识别具体供应商协议；连接测试实现和错误格式化由 providers 层注入，message runtime 负责注册。
  */
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {isFreeTranslationProviderId, type FreeTranslationProviderId} from '@/src/core/config/freeTranslation';
 
 export const CONNECTION_TEST_MESSAGE_TYPE = 'testTranslationService' as const;

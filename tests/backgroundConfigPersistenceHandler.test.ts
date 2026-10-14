@@ -9,7 +9,7 @@ import {
     type ConfigPersistenceBatchMessage,
     type ConfigPersistenceDependencies,
 } from '@/src/app/background/handlers/configPersistence';
-import {createBackgroundMessageRouter} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter} from '@/src/services/messaging/backgroundRouter';
 
 interface TestConfig {
     marker: string;

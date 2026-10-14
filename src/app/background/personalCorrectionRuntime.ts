@@ -11,7 +11,7 @@ import {PersonalCorrectionRepository} from '@/src/platform/storage/personalCorre
 import {PersonalCorrectionService} from '@/src/services/personal-corrections/service';
 import {PERSONAL_CORRECTIONS_CHANGED, PERSONAL_CORRECTIONS_MESSAGE, type PersonalCorrectionMessage} from '@/src/services/personal-corrections/protocol';
 import {createMaterialId, correctionMaterialId, PersonalCorrectionError, validateCorrectionInput, validateCorrectionQuery} from '@/src/core/personal-corrections/public';
-import type {BackgroundMessageHandler} from './messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 export interface PersonalCorrectionContext {sender?: {id?: string; url?: string; tab?: {id?: number; incognito?: boolean}}}
 export interface PersonalCorrectionRuntimeDependencies {
     service: PersonalCorrectionService;

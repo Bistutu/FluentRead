@@ -76,6 +76,10 @@ function readProjectFile(path: string): string {
 
 function importedSpecifiers(path: string): string[] {
     const source = readProjectFile(`src/providers/translation/${path}`);
+    return sourceImportSpecifiers(path, source);
+}
+
+function sourceImportSpecifiers(path: string, source: string): string[] {
     const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const specifiers: string[] = [];
     const visit = (node: ts.Node) => {
@@ -87,6 +91,8 @@ function importedSpecifiers(path: string): string[] {
             && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) {
             specifiers.push(node.arguments[0].text);
         }
+        if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)
+            && ts.isStringLiteral(node.argument.literal)) specifiers.push(node.argument.literal.text);
         ts.forEachChild(node, visit);
     };
     visit(sourceFile);
@@ -153,6 +159,32 @@ describe('translation provider architecture', () => {
             }),
         );
 
+        expect(violations).toEqual([]);
+    });
+
+    it('provider 及其提示词、语言和端点依赖都不能隐式读取全局配置 store', () => {
+        const pending = EXPECTED_PROVIDER_FILES.map(path => `src/providers/translation/${path}`);
+        const visited = new Set<string>();
+        const violations: string[] = [];
+        while (pending.length) {
+            const path = pending.pop()!;
+            if (visited.has(path)) continue;
+            visited.add(path);
+            for (const specifier of sourceImportSpecifiers(path, readProjectFile(path))) {
+                const unresolved = specifier.startsWith('@/') ? resolve(PROJECT_ROOT, specifier.slice(2))
+                    : specifier.startsWith('.') ? resolve(PROJECT_ROOT, dirname(path), specifier) : null;
+                if (!unresolved) continue;
+                const target = [unresolved, `${unresolved}.ts`, `${unresolved}.vue`, resolve(unresolved, 'index.ts')]
+                    .find(candidate => existsSync(candidate) && statSync(candidate).isFile());
+                if (!target) continue;
+                const relativeTarget = relative(PROJECT_ROOT, target).split(sep).join('/');
+                if (relativeTarget === 'src/services/config/store.ts') {
+                    violations.push(`${path} -> ${specifier}`);
+                } else if (relativeTarget.startsWith('src/') && /\.(?:ts|vue)$/u.test(relativeTarget)) {
+                    pending.push(relativeTarget);
+                }
+            }
+        }
         expect(violations).toEqual([]);
     });
 

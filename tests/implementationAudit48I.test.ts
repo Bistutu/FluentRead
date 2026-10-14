@@ -23,7 +23,7 @@ vi.mock('webextension-polyfill', () => ({default: {extension: {inIncognitoContex
     onMessage: {addListener: (fn: (message: unknown) => unknown) => ports.messages.add(fn),
         removeListener: (fn: (message: unknown) => unknown) => ports.messages.delete(fn)},
 }}}));
-vi.mock('@/src/app/translation/client', () => ({translateText: ports.translate, translateTextBatch: ports.translate}));
+vi.mock('@/src/services/translation/client', () => ({translateText: ports.translate, translateTextBatch: ports.translate}));
 vi.mock('@/src/features/share-card/public', () => ({isShareCardMounted: () => false, openShareCard: vi.fn()}));
 vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})}));
 // public 同时静态导出设置页历史视图；其外部确认弹窗/CSS 不参与本次阅读缓存链。

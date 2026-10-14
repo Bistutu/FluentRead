@@ -779,6 +779,50 @@ describe('统一配置存储', () => {
         expect(storageOperations).toContain('set:local:config');
     });
 
+    it.each(['canonical-success', 'newer-external-failure'] as const)('配置编辑会话在真实 store 的 %s 结束后释放遮挡且保留可重试修改', async outcome => {
+        const canonical = sanitizeConfigCredentials(normalizeConfig({...storedConfig, to: 'en'}));
+        const store = await loadConfigModule({...canonical, __fluentConfigRevision: 4}, {writeOwner: false});
+        await store.configReady;
+        const {createConfigEditor} = await import('@/src/services/config/editor');
+        const draft = reactive(normalizeConfig(store.config));
+        let acknowledge!: () => void;
+        const ack = new Promise<void>(resolve => {acknowledge = resolve;});
+        let calls = 0;
+        const sender = vi.fn<NonNullable<Parameters<typeof store.requestConfigPatch>[1]>>(async message => {
+            calls += 1;
+            const value = calls === 1
+                ? {...store.config, to: 'de', theme: 'dark'}
+                : {...store.config, ...message.config};
+            const revision = calls === 1 ? outcome === 'canonical-success' ? 5 : 6 : 7;
+            const record = {...sanitizeConfigCredentials(normalizeConfig(value)), __fluentConfigRevision: revision};
+            storageState.set('local:config', record);
+            storageWatchers.get('local:config')?.(record);
+            if (calls === 1) await ack;
+            return {success: true, revision: calls === 1 ? 5 : 7};
+        });
+        const onSaved = vi.fn(), onSaveError = vi.fn();
+        const editor = createConfigEditor({copySnapshot: normalizeConfig, readDraft: () => draft,
+            writeDraft: snapshot => Object.assign(draft, snapshot),
+            saveDraft: snapshot => store.requestConfigPatch(snapshot, sender),
+            onEdited: vi.fn(), onSaved, onSaveError});
+        editor.initialize(store.config);
+        const unsubscribe = store.subscribeConfig(editor.hydrate);
+        draft.to = 'fr'; const saving = editor.save();
+        await vi.waitFor(() => expect(calls).toBe(1));
+        // 更高 revision 在响应之前被 store 暂存，当前提交仍拥有其乐观界面。
+        expect(draft.to).toBe('fr'); expect(store.config.to).toBe('fr');
+        acknowledge(); await saving;
+        expect(store.config.to).toBe('de'); expect(draft.theme).toBe('dark');
+        if (outcome === 'canonical-success') {
+            expect(draft.to).toBe('de'); expect(onSaved).toHaveBeenCalledOnce(); expect(onSaveError).not.toHaveBeenCalled();
+            await editor.save(); expect(calls).toBe(1);
+        } else {
+            expect(draft.to).toBe('fr'); expect(onSaveError).toHaveBeenCalledOnce(); expect(onSaved).not.toHaveBeenCalled();
+            await editor.save(); expect(store.config.to).toBe('fr'); expect(draft.to).toBe('fr'); expect(calls).toBe(2);
+        }
+        unsubscribe(); editor.dispose();
+    });
+
     it.each([
         ['轮换', {openai: 'remote-imported-secret'}],
         ['清除', {}],
@@ -2745,19 +2789,20 @@ describe('统一配置存储', () => {
         const exit = parsed.statements.find(statement => ts.isFunctionDeclaration(statement) && statement.name?.text === 'persistOnPageExit');
         expect(exit).toBeDefined();
         const exitBody = ts.transpileModule(exit!.getText(parsed), {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText;
-        const autosave = parsed.statements.flatMap(statement => ts.isVariableStatement(statement)
-            ? statement.declarationList.declarations : []).find(declaration => declaration.name.getText(parsed) === 'autosaveWatcher');
-        expect(autosave?.initializer && ts.isCallExpression(autosave.initializer)).toBe(true);
-        const callback = (autosave!.initializer as ts.CallExpression).arguments[1].getText(parsed);
-        const autosaveBody = ts.transpileModule(`const onDraftChange = ${callback};`, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText;
+        const {createConfigEditor} = await import('@/src/services/config/editor');
         const warnings = {warn: vi.fn()};
         const createExit = (hydrated: boolean) => new Function(
-            'handoffPendingConfigPatches', 'sendConfigMessage', 'persistConfigPatch', 'persistConfigReplace', 'config', 'console', 'normalizeConfig',
-            `let hydrated = ${hydrated}; let disposed = false; let pageExitSaveStarted = false; let applyingExternalConfig = false; let lastSerialized = JSON.stringify(config.value); ${exitBody}; ${autosaveBody}; return Object.assign(persistOnPageExit, {onDraftChange, dispose: () => {disposed = true;}});`,
+            'createConfigEditor', 'handoffPendingConfigPatches', 'sendConfigMessage', 'persistConfigPatch', 'config', 'console', 'normalizeConfig',
+            `let hydrated = ${hydrated}; let pageExitSaveStarted = false;
+            const editor = createConfigEditor({copySnapshot: normalizeConfig, readDraft: () => config.value,
+                writeDraft: snapshot => Object.assign(config.value, snapshot),
+                saveDraft: snapshot => persistConfigPatch(snapshot), onEdited: () => {pageExitSaveStarted = false;},
+                onSaved: () => {}, onSaveError: error => console.warn(error)});
+            if (hydrated) editor.initialize(config.value);
+            ${exitBody}; return Object.assign(persistOnPageExit, {onDraftChange: () => editor.save(), dispose: () => editor.dispose()});`,
         )(
-            configStore.handoffPendingConfigPatches, sender,
-            (value: unknown) => configStore.requestConfigPatch(value, sender),
-            (value: unknown) => configStore.requestConfigSave(value, sender), draft, warnings, normalizeConfig,
+            createConfigEditor, configStore.handoffPendingConfigPatches, sender,
+            (value: unknown) => configStore.requestConfigPatch(value, sender), draft, warnings, normalizeConfig,
         ) as (() => void) & {onDraftChange(serialized: string): void; dispose(): void};
         createExit(false)();
         expect(sender).not.toHaveBeenCalled();

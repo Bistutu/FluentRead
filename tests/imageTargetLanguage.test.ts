@@ -11,7 +11,7 @@ import {Config} from '@/src/core/config/model';
 import {resolveConfiguredModel, servicesType} from '@/src/core/config/catalog';
 import {buildGlossaryRevision} from '@/src/core/glossary';
 import {createImageGlossaryContext, type ImageGlossarySenderContext} from '@/src/app/background/imageGlossaryContext';
-import type {BackgroundMessageHandler} from '@/src/app/background/messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {createTranslationBroker, type TranslationRequestMessage} from '@/src/services/translation/broker';
 import {getTranslationGlossaryContext} from '@/src/services/translation/requestSnapshot';
 

@@ -33,7 +33,7 @@ vi.mock('@/src/features/full-page-translation/public', () => ({
     resetFullPageTranslationRouteState: mocks.resetRouteState,
     cancelPendingHoverTranslation: vi.fn(), handleTranslation: vi.fn(), noteBilingualHostGesture: vi.fn(),
 }));
-vi.mock('@/src/app/translation/client', () => ({cancelAllTranslations: vi.fn()}));
+vi.mock('@/src/services/translation/client', () => ({cancelAllTranslations: vi.fn()}));
 vi.mock('@/src/services/translation/context', () => ({resetPageTranslationContextCache: mocks.resetContext}));
 vi.mock('@/src/shared/geometry/touch', () => ({getCenterPoint: vi.fn()}));
 vi.mock('@/src/features/hover-translation/public', () => ({mountHoverTranslationContentFeature: () => vi.fn()}));

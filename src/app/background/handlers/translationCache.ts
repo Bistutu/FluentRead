@@ -4,7 +4,7 @@
  * 主要内容：声明统计请求、clearTranslationCache 请求与清理完成广播，并在底层清理成功后通知所有活动 content 会话失效内存结果。
  * 模块边界：本文件不直接访问 IndexedDB、内存缓存或页面 localStorage，也不决定清理代次；缓存一致性和旧写入排空由 translation cache 服务负责。
  */
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import type {TranslationCacheStats} from '@/src/services/translation/cache';
 
 export const CLEAR_TRANSLATION_CACHE_MESSAGE = 'clearTranslationCache' as const;

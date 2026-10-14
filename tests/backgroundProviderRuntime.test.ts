@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
     recordMany: vi.fn(async (_events: unknown, _generation: number) => 1),
     resolveConfiguredModel: vi.fn((_selected?: string, _custom?: string) => 'resolved-model'),
     runConnectionTest: vi.fn(async (_service: string, _options: any) => ({durationMs: 25})),
-    getFreeTranslationWeightSnapshot: vi.fn(async () => ({total: 100, observedAt: 1, entries: []})),
+    getFreeTranslationWeightSnapshot: vi.fn(async (_snapshot: unknown) => ({total: 100, observedAt: 1, entries: []})),
 }));
 
 vi.mock('@/src/providers/translation/connectionTest', () => ({
@@ -72,5 +72,7 @@ describe('background provider runtime', () => {
     it('exposes the provider-owned free translation weight snapshot through the composition root', async () => {
         await expect(getFreeTranslationWeightSnapshot()).resolves.toEqual({total: 100, observedAt: 1, entries: []});
         expect(mocks.getFreeTranslationWeightSnapshot).toHaveBeenCalledOnce();
+        expect(mocks.getFreeTranslationWeightSnapshot).toHaveBeenCalledWith(expect.objectContaining({model: {moonshot: 'kimi-k2.6'}}));
+        expect(Object.isFrozen(mocks.getFreeTranslationWeightSnapshot.mock.calls[0][0])).toBe(true);
     });
 });

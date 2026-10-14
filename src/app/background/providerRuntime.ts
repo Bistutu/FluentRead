@@ -9,7 +9,7 @@ import {
     formatConnectionTestError,
     runTranslationServiceConnectionTest,
 } from '@/src/providers/translation/connectionTest';
-import {getFreeTranslationWeightSnapshot} from '@/src/providers/translation/free-translation';
+import {getFreeTranslationWeightSnapshot as readFreeTranslationWeightSnapshot} from '@/src/providers/translation/free-translation';
 import {config, configReady} from '@/src/services/config/store';
 import {createConnectionTestHandler} from './handlers/connectionTest';
 import {createVisionProbeHandlers} from './handlers/visionProbe';
@@ -21,7 +21,12 @@ import {createTranslationProviderConfigSnapshot} from '@/src/services/translatio
 import {resolveTranslationRequestModel} from '@/src/services/translation/broker';
 import type {FreeTranslationProviderId} from '@/src/core/config/freeTranslation';
 
-export {formatConnectionTestError, getFreeTranslationWeightSnapshot};
+export {formatConnectionTestError};
+
+/** 后台组合根冻结设置后注入权重查询，provider 不读取全局配置。 */
+export function getFreeTranslationWeightSnapshot() {
+    return readFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(config));
+}
 
 export function createProviderTestRuntimeHandlers() {
     return [createConnectionTestHandler({ready: configReady,

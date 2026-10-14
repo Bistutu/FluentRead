@@ -25,7 +25,7 @@ import {
     invalidateFullPageTranslationSessionCache, restoreOriginalContent, resetFullPageTranslationRouteState,
     type PageTranslationInvocation,
 } from '@/src/features/full-page-translation/public';
-import {cancelAllTranslations} from '@/src/app/translation/client';
+import {cancelAllTranslations} from '@/src/services/translation/client';
 import {resetPageTranslationContextCache} from '@/src/services/translation/context';
 import {getCenterPoint} from '@/src/shared/geometry/touch';
 import {mountHoverTranslationContentFeature} from '@/src/features/hover-translation/public';

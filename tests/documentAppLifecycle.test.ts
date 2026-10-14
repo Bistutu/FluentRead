@@ -36,7 +36,7 @@ vi.mock('@/src/services/config/store', async () => {
     const config = new Config(); ports.config = config;
     return {config, configReady: Promise.resolve(), subscribeConfig: (observer: any) => {ports.observer = observer; return ports.unsubscribe;}, requestConfigPatch: (patch: any, send: any) => send({patch})};
 });
-vi.mock('@/src/app/translation/client', () => ({translateText: ports.translate, translateTextBatch: ports.batch}));
+vi.mock('@/src/services/translation/client', () => ({translateText: ports.translate, translateTextBatch: ports.batch}));
 vi.mock('@/src/ui/i18n', () => ({createUiI18nPlugin: (options: unknown) => options, useUiI18n: () => ({language: ref('zh-CN'), t: (key: string, values?: unknown) => {ports.i18n(key, values); return key;}, translateLegacy: (text: string) => text})}));
 vi.mock('@/src/ui/components/UiSelect.vue', () => ({default: {props: ['modelValue'], setup: (_props: any, {slots}: any) => () => h('select', slots.default?.())}}));
 vi.mock('@/src/ui/components/GlossaryLibrarySelect.vue', () => ({default: {setup: () => () => h('div')}}));
@@ -103,6 +103,25 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
+    it('uses each queued task as the immediate source of truth for edits and switches', async () => {
+        await state.loadFiles([file('first.txt'), file('second.txt')]); await flush();
+        const first = state.documentQueue[0];
+        state.editSegment(0, 'Reader correction'); await flush();
+        expect(first.translations).toEqual(['Reader correction']);
+        expect(first.confirmedTranslationIds).toEqual([0]);
+        expect(first.revision).toBe(state.editRevision);
+        expect(state.batchCompletedCount).toBe(1);
+        state.documentBatchTranslation = false;
+        expect(first.batchTranslation).toBe(false);
+        state.selectDocument(state.documentQueue[1]); await flush();
+        state.editSegment(0, 'Second correction'); await flush();
+        expect(first.translations).toEqual(['Reader correction']);
+        state.selectDocument(first); await flush();
+        expect(state.translatedSegments).toBe(first.translations);
+        expect(state.confirmedTranslationIds).toBe(first.confirmedTranslationIds);
+        expect(state.documentBatchTranslation).toBe(false);
+        expect(state.batchCompletedCount).toBe(2);
+    });
     it('preserves unavailable ChatGPT names, direct slugs and manual translations without starting public requests', async () => {
         state.config.service = 'chatgptPlan';state.config.model.chatgptPlan = 'account-default';
         await state.loadFiles([file('account.txt', 'First paragraph\n\nSecond paragraph')]);await flush();
@@ -955,6 +974,30 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(ports.translate).not.toHaveBeenCalled();
         expect(state.translating).toBe(false);
         expect(state.errorMessage).toBe('');
+    });
+    it('preserves failed task recovery through another import and isolates online import failures', async () => {
+        await state.loadFiles([file('first.txt', 'First.\n\nSecond.')]);
+        state.editSegment(0, 'Reviewed first passage');
+        const task = state.documentQueue[0];
+        ports.batch.mockRejectedValueOnce(Object.assign(new Error('HTTP 400 invalid model'), {retryable: false}));
+        await state.startTranslation(); await flush();
+        const taskError = state.errorMessage;
+        expect(task.state).toBe('failed'); expect(taskError).toContain('HTTP 400');
+        await state.loadFiles([file('second.txt')]);
+        state.selectDocument(task); await flush();
+        expect(state.errorMessage).toBe(taskError); expect(state.progress).toBe(50);
+        expect(state.translatedSegments[0]).toBe('Reviewed first passage');
+        expect(walkHost(root).some(entry => entry.props['data-testid'] === 'document-translation-recovery')).toBe(true);
+        ports.fetchPdf.mockRejectedValueOnce(new Error('Online PDF unavailable'));
+        state.onlinePdfUrl = 'https://example.test/unavailable.pdf';
+        await state.openOnlinePdf(); await flush();
+        expect(state.importError).toBe('Online PDF unavailable');
+        expect(walkHost(root).some(entry => entry.props.role === 'alert' && hostText(entry) === 'Online PDF unavailable')).toBe(true);
+        expect(state.errorMessage).toBe(taskError); expect(task.state).toBe('failed');
+        await state.openOnlinePdf();
+        expect(state.importError).toBe('');
+        state.selectDocument(task); await flush();
+        expect(state.errorMessage).toBe(taskError); expect(state.confirmedTranslationIds).toEqual([0]);
     });
     it('imports the online PDF fragment on mount, retains its source metadata, and keeps translation user-triggered', async () => {
         app.unmount(); await flush();

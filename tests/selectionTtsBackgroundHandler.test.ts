@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from 'vitest';
 
-import {createBackgroundMessageRouter, type BackgroundMessageHandler} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter, type BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {
     createSelectionTtsBackgroundHandlers,
     googleSelectionTtsUrl,

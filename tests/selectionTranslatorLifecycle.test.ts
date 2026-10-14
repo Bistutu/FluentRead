@@ -181,7 +181,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         'webextension-polyfill': browser,
         '@/src/platform/browser/runtimeMessages': runtimeMessages,
         '@/src/services/config/store': {config, configReady, requestConfigPatch, subscribeConfig: (listener: () => void) => { configListener = listener; return unsubscribeConfig; }},
-        '@/src/app/translation/client': {translateText, translateTextBatch},
+        '@/src/services/translation/client': {translateText, translateTextBatch},
         '@/src/features/selection-translation/core': selectionCore,
         '@/src/services/translation/errors': translationErrors,
         '@/src/features/selection-translation/services/wordNormalization': wordNormalization,

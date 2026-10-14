@@ -8,14 +8,11 @@
 
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import { method } from "@/src/core/config/constants";
-import { config } from "@/src/services/config/store";
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
 import {runtimeFetch} from '@/src/platform/http/runtime';
-import {
-    getTranslationProviderConfig,
-    type TranslationProviderRequest,
-} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 
 // 腾讯云机器翻译语言代码映射
 const languageMap: Record<string, string> = {
@@ -102,7 +99,7 @@ async function createTencentSignature(requestPayload: string, timestamp: number,
 }
 
 async function tencent(message: TranslationProviderRequest<string>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     // 从配置中获取 SecretId 和 SecretKey
     const secretId = current.tencentSecretId?.trim();
     const secretKey = current.tencentSecretKey?.trim();
@@ -117,7 +114,7 @@ async function tencent(message: TranslationProviderRequest<string>) {
     }
 
     // 转换语言代码
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
     const normalizedSource = normalizeChineseLanguageCode(sourceLanguage);
     const normalizedTarget = normalizeChineseLanguageCode(targetLanguage);
     const sourceLang = (Object.hasOwn(languageMap, normalizedSource) ? languageMap[normalizedSource] : sourceLanguage);

@@ -4,7 +4,7 @@
  * 主要内容：校验同步或删除动作、客户端身份、连接字段和冲突选择；返回受控错误 key 或脱敏摘要。
  * 模块边界：不读取配置或发起网络请求；不向 popup、content 或外部页面返回连接密码。
  */
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import type {ConfigPersistenceContext} from './configPersistence';
 import type {createWebDavBackup} from '@/src/services/config/webDavBackup';
 import {WebDavError, type WebDavConnectionInput} from '@/src/platform/webdav/connection';

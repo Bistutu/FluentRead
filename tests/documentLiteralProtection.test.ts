@@ -1,3 +1,4 @@
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 /**
  * @file tests/documentLiteralProtection.test.ts
  * 文件职责：验证真实文档中行内语法、根号标识、URL、邮箱、代码式专名及 GNMT+RL 的自动原样保护边界。
@@ -348,7 +349,7 @@ describe('document literal protection', () => {
         const config = Object.assign(new Config(), {service: 'microsoft', from: 'en', to: 'zh-Hans', useCache: true});
         const cache = new Map<string, string>(), identities: Record<string, unknown>[] = [];
         const origin = 'Translate this paragraph and keep <g1>bold</g1> text.';
-        const provider = vi.fn(async (message: Record<string, unknown>) => {
+        const provider = vi.fn(async (message: TranslationProviderRequest) => {
             expect(message.origin).toBe(origin);
             expect(getTranslationProviderConfig(message, createTranslationProviderConfigSnapshot(config)).glossaryProtectedTokens).toBeUndefined();
             return '翻译这一段，并保留&lt;g1&gt;粗体&lt;/g1&gt;文本。';
@@ -376,7 +377,7 @@ describe('document literal protection', () => {
         const userSource = 'The developer improves the documentation for this project.';
         config.glossaryLibraries = [{id: 'user', name: 'User', enabled: true, sourceLanguage: '', targetLanguage: 'zh-hans', domains: [],
             entries: [{id: 'developer', source: userSource, target: userSource, caseSensitive: true}]}];
-        provider.mockImplementation(async (message: Record<string, unknown>) => String(message.origin));
+        provider.mockImplementation(async (message: TranslationProviderRequest) => String(message.origin));
         const emphasized = `<g1>${userSource}</g1>`;
         await expect(broker.translateWithCache({origin: emphasized, glossaryContext: 'document'})).resolves.toBe(emphasized);
         await expect(broker.translateWithCache({origin: emphasized, glossaryContext: 'document'})).resolves.toBe(emphasized);
@@ -481,7 +482,7 @@ describe('document literal protection', () => {
                 entries: [{id: 'gnmt', source: 'GNMT', target: '用户译法', caseSensitive: true}]}]});
         const before = JSON.stringify(config.glossaryLibraries);
         const cache = new Map<string, string>(), identities: Record<string, unknown>[] = [];
-        const provider = vi.fn(async (message: Record<string, unknown>) => {
+        const provider = vi.fn(async (message: TranslationProviderRequest) => {
             const snapshot = getTranslationProviderConfig(message, createTranslationProviderConfigSnapshot(config));
             expect(snapshot.glossaryProtectedTokens).toHaveLength(2);
             expect(message.origin).not.toContain('GNMT'); expect(message.origin).not.toContain('FluentRead');

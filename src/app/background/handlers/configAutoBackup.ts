@@ -4,7 +4,7 @@
  * 主要内容：声明消息类型和成功失败响应，创建可注入恢复函数的 handler，将合法正整数版本转换为一次受协调的恢复调用。
  * 模块边界：本文件不读取备份列表、不合并凭据也不写浏览器存储；这些安全恢复语义由 services/config/autoBackupStore 与共享修改队列负责。
  */
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 
 export const CONFIG_AUTO_BACKUP_RESTORE_MESSAGE_TYPE = 'configAutoBackupRestore' as const;
 

@@ -19,7 +19,7 @@ vi.mock('@/src/core/config/catalog', () => ({
 vi.mock('@/src/services/config/store', () => ({config: mocks.config}));
 vi.mock('@/src/features/page-notice/public', () => ({sendErrorMessage: mocks.sendErrorMessage}));
 
-import {checkConfig} from '@/src/app/translation/check';
+import {checkConfig} from '@/src/features/full-page-translation/content/configCheck';
 
 describe('translation configuration guard', () => {
     beforeEach(() => {

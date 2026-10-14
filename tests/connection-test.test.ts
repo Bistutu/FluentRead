@@ -21,7 +21,8 @@ import {
 } from '@/src/providers/translation/connectionTest';
 import {formatServiceError, getServiceErrorMessage} from '@/src/services/translation/serviceErrors';
 import {services} from '@/src/core/config/catalog';
-import {getTranslationRequestScheduler, reportTranslationModelUsage, TRANSLATION_PROVIDER_CONFIG} from '@/src/services/translation/requestSnapshot';
+import {getTranslationRequestScheduler, reportTranslationModelUsage} from '@/src/services/translation/requestSnapshot';
+import {TRANSLATION_PROVIDER_CONFIG} from '@/src/services/translation/types';
 import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
 import {createTranslationProviderConfigSnapshot, getTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
 import {Config, normalizeConfig} from '@/src/core/config/model';

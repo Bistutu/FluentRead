@@ -37,7 +37,7 @@ vi.mock('@/src/services/config/store', () => ({config: mocks.config, requestConf
 vi.mock('@/src/services/translation/context', () => ({getPageTranslationContext: vi.fn(async () => '')}));
 vi.mock('@/src/core/config/validation', () => ({getMissingCredentialMessage: () => null}));
 
-import {translateText, translateTextBatch} from '@/src/app/translation/client';
+import {translateText, translateTextBatch} from '@/src/services/translation/client';
 import {clearTranslationQueue} from '@/src/services/translation/queue';
 import {startFullPageTitleTranslation, stopFullPageTitleTranslation} from '@/src/features/full-page-translation/content/titleTranslation';
 import type {FullPageTranslationConfigSnapshot} from '@/src/features/full-page-translation/content/translationRequest';

@@ -10,13 +10,8 @@ import {normalizeLanguageCode} from '@/src/core/language/codes';
 import {identifyTextLanguage} from '@/src/core/language/identify';
 import {resolveTranslationLanguages, type TranslationLanguageOverride} from '@/src/core/translation/languages';
 import {serializeTranslationSlots} from '@/src/core/translation/serialization';
-import {config} from '@/src/services/config/store';
-import {
-    getTranslationGlossarySourceText,
-    getTranslationProviderConfig,
-    type TranslationProviderRequest,
-    type TranslationProviderRequestContext,
-} from '@/src/services/translation/requestSnapshot';
+import {getTranslationGlossarySourceText, requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest, TranslationProviderRequestContext} from '@/src/services/translation/types';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
 
@@ -72,7 +67,7 @@ export async function translateMyMemoryText(text: string, request: MyMemoryReque
     if (typeof text !== 'string') throw Object.assign(new Error('MyMemory 仅支持文本输入'), {statusCode: 400});
     if (request.abortSignal?.aborted) throw abortErrorFromSignal(request.abortSignal);
     if (!text.trim()) return text;
-    const current = getTranslationProviderConfig(request, config);
+    const current = requireTranslationProviderConfig(request);
     const languages = resolveTranslationLanguages(request, {sourceLanguage: current.from, targetLanguage: current.to});
     const pureSource = getTranslationGlossarySourceText(text);
     const sourceText = Array.isArray(pureSource) ? pureSource.join('\n') : pureSource;

@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 /**
  * @file tests/bilibiliFreeTranslation.test.ts
  * 文件职责：验证 B站匿名 API 协议、字幕以外的纯文本边界和免费池所需错误契约。
@@ -28,7 +29,7 @@ describe('B站官方免费翻译', () => {
             observed.push(text); return reply(text);
         }));
         const slots = serializeTranslationSlots([packet.text, 'tail'], 'protected-bili');
-        expect(parseTranslationSlots(slots, await translateBilibiliFree(request(slots.payload)))).toEqual([packet.text, 'tail']);
+        expect(parseTranslationSlots(slots, await translateBilibiliFree(withProviderSnapshot(request(slots.payload), {from: 'auto', to: 'zh-Hans'})))).toEqual([packet.text, 'tail']);
         expect(observed.every(text => [...text].length <= 2000 && !text.includes('___FLUENTREAD'))).toBe(true);
         for (const token of packet.tokens) expect(observed.filter(text => text.includes(token))).toHaveLength(1);
     });
@@ -45,17 +46,17 @@ describe('B站官方免费翻译', () => {
         setRuntimeFetch(fetch);
         const current = new Config(); current.from = 'en'; current.to = 'zh-Hant';
         const frozen = attachTranslationProviderConfig({origin: ['Hello', 'World']}, createTranslationProviderConfigSnapshot(current));
-        expect(await bilibili(frozen)).toEqual(['翻譯', '翻譯']);
+        expect(await bilibili(withProviderSnapshot(frozen, {from: 'auto', to: 'zh-Hans'}))).toEqual(['翻譯', '翻譯']);
         expect(JSON.parse(fetch.mock.calls[0][1].body).messages[0].content).toContain('繁體中文');
-        await bilibili({...frozen, origin: 'Hello', targetLanguage: 'ja'});
+        await bilibili(withProviderSnapshot({...frozen, origin: 'Hello', targetLanguage: 'ja'}, {from: 'auto', to: 'zh-Hans'}));
         expect(JSON.parse(fetch.mock.calls[2][1].body).messages[0].content).toContain('日本語');
-        await expect(bilibili({...frozen, origin: 42 as any})).rejects.toMatchObject({statusCode: 400});
-        await expect(bilibili({...frozen, origin: [42] as any})).rejects.toMatchObject({statusCode: 400});
+        await expect(bilibili(withProviderSnapshot({...frozen, origin: 42 as any}, {from: 'auto', to: 'zh-Hans'}))).rejects.toMatchObject({statusCode: 400});
+        await expect(bilibili(withProviderSnapshot({...frozen, origin: [42] as any}, {from: 'auto', to: 'zh-Hans'}))).rejects.toMatchObject({statusCode: 400});
     });
     it('匿名直连固定官方模型，关闭思考，忽略用户凭据和服务覆盖', async () => {
         const fetch = vi.fn().mockResolvedValue(reply());
         setRuntimeFetch(fetch);
-        expect(await translateBilibiliFree(request(' Hello ', {token: 'private', serviceOverride: 'other'}))).toBe(' 你好 ');
+        expect(await translateBilibiliFree(withProviderSnapshot(request(' Hello ', {token: 'private', serviceOverride: 'other'}), {from: 'auto', to: 'zh-Hans'}))).toBe(' 你好 ');
         const [url, init] = fetch.mock.calls[0];
         expect(url).toBe(BILIBILI_FREE_TRANSLATION_URL);
         expect(init).toMatchObject({credentials: 'omit', headers: {'Content-Type': 'application/json'}});
@@ -68,12 +69,12 @@ describe('B站官方免费翻译', () => {
     it('自动源语言与默认目标可用，繁体目标不会降为简体', async () => {
         const fetch = vi.fn().mockImplementation(async () => reply('翻譯'));
         setRuntimeFetch(fetch);
-        await translateBilibiliFree({origin: 'Hello'});
+        await translateBilibiliFree(withProviderSnapshot({origin: 'Hello'}, {from: 'auto', to: 'zh-Hans'}));
         expect(JSON.parse(fetch.mock.calls[0][1].body).messages[0].content).toContain('以下文本');
-        await translateBilibiliFree(request('Hello', {sourceLanguage: 'auto', targetLanguage: 'zh-Hant'}));
+        await translateBilibiliFree(withProviderSnapshot(request('Hello', {sourceLanguage: 'auto', targetLanguage: 'zh-Hant'}), {from: 'auto', to: 'zh-Hans'}));
         expect(JSON.parse(fetch.mock.calls[1][1].body).messages[0].content).toContain('繁體中文');
         for (const extra of [{sourceLanguage: 'invalid'}, {targetLanguage: 'auto'}, {targetLanguage: 'invalid'}]) {
-            await expect(translateBilibiliFree(request('Hello', extra))).rejects.toMatchObject({statusCode: 400});
+            await expect(translateBilibiliFree(withProviderSnapshot(request('Hello', extra), {from: 'auto', to: 'zh-Hans'}))).rejects.toMatchObject({statusCode: 400});
         }
         expect(fetch).toHaveBeenCalledTimes(2);
     });
@@ -81,10 +82,10 @@ describe('B站官方免费翻译', () => {
     it('纯空白和相同语种不联网，长行按 Unicode 码点有界分块并保留换行', async () => {
         const fetch = vi.fn().mockImplementation(async () => reply('译文'));
         setRuntimeFetch(fetch);
-        expect(await translateBilibiliFree(request(' \r\n\t'))).toBe(' \r\n\t');
-        expect(await translateBilibiliFree(request('Hello', {targetLanguage: 'en'}))).toBe('Hello');
+        expect(await translateBilibiliFree(withProviderSnapshot(request(' \r\n\t'), {from: 'auto', to: 'zh-Hans'}))).toBe(' \r\n\t');
+        expect(await translateBilibiliFree(withProviderSnapshot(request('Hello', {targetLanguage: 'en'}), {from: 'auto', to: 'zh-Hans'}))).toBe('Hello');
         expect(fetch).not.toHaveBeenCalled();
-        expect(await translateBilibiliFree(request(`  ${'😀'.repeat(2001)} \r\n\tWorld\n`))).toBe('  译文译文 \r\n\t译文\n');
+        expect(await translateBilibiliFree(withProviderSnapshot(request(`  ${'😀'.repeat(2001)} \r\n\tWorld\n`), {from: 'auto', to: 'zh-Hans'}))).toBe('  译文译文 \r\n\t译文\n');
         expect(fetch).toHaveBeenCalledTimes(3);
         const texts = fetch.mock.calls.map(([, init]) => JSON.parse(init.body).messages[0].content.split('\n\n')[1]);
         expect(texts.map(text => Array.from(text).length)).toEqual([1998, 3, 5]);
@@ -94,7 +95,7 @@ describe('B站官方免费翻译', () => {
         const fetch = vi.fn().mockResolvedValueOnce(reply('一')).mockResolvedValueOnce(reply('二'));
         setRuntimeFetch(fetch);
         const packet = serializeTranslationSlots([' One ', '', 'Two'], 'test-nonce');
-        const result = await translateBilibiliFree(request(packet.payload));
+        const result = await translateBilibiliFree(withProviderSnapshot(request(packet.payload), {from: 'auto', to: 'zh-Hans'}));
         expect(parseTranslationSlots(packet, result)).toEqual([' 一 ', '', '二']);
         expect(JSON.stringify(fetch.mock.calls)).not.toContain('___FLUENTREAD_');
     });
@@ -108,32 +109,32 @@ describe('B站官方免费翻译', () => {
         {choices: [{message: {content: '<think>private thought</think>'}}]},
     ])('拒绝截断、空值和未闭合思考响应 %#', async body => {
         setRuntimeFetch(async () => Response.json(body));
-        await expect(translateBilibiliFree(request())).rejects.toThrow('B站翻译');
+        await expect(translateBilibiliFree(withProviderSnapshot(request(), {from: 'auto', to: 'zh-Hans'}))).rejects.toThrow('B站翻译');
     });
 
     it('只返回译文，完整思考块不进入展示', async () => {
         setRuntimeFetch(async () => reply('<think>private thought</think>\n你好'));
-        expect(await translateBilibiliFree(request())).toBe('你好');
+        expect(await translateBilibiliFree(withProviderSnapshot(request(), {from: 'auto', to: 'zh-Hans'}))).toBe('你好');
     });
 
     it('HTTP 状态和 Retry-After 供换线使用，外部正文与 JSON 解析预览不泄露', async () => {
         setRuntimeFetch(async () => new Response('private response', {status: 429, headers: {'Retry-After': '12'}}));
-        await expect(translateBilibiliFree(request())).rejects.toMatchObject({statusCode: 429, retryAfterMs: 12000, message: 'B站翻译请求失败: 429'});
+        await expect(translateBilibiliFree(withProviderSnapshot(request(), {from: 'auto', to: 'zh-Hans'}))).rejects.toMatchObject({statusCode: 429, retryAfterMs: 12000, message: 'B站翻译请求失败: 429'});
         setRuntimeFetch(async () => new Response('private broken JSON'));
-        await expect(translateBilibiliFree(request())).rejects.toThrow('B站翻译返回的不是有效 JSON');
+        await expect(translateBilibiliFree(withProviderSnapshot(request(), {from: 'auto', to: 'zh-Hans'}))).rejects.toThrow('B站翻译返回的不是有效 JSON');
     });
 
     it('开始前、HTTP 后及解析后取消均拒绝结果，保留取消原因', async () => {
         const fetch = vi.fn(); setRuntimeFetch(fetch);
         const before = new AbortController(); const reason = new Error('cancelled'); before.abort(reason);
-        await expect(translateBilibiliFree(request('Hello', {abortSignal: before.signal}))).rejects.toBe(reason);
+        await expect(translateBilibiliFree(withProviderSnapshot(request('Hello', {abortSignal: before.signal}), {from: 'auto', to: 'zh-Hans'}))).rejects.toBe(reason);
         expect(fetch).not.toHaveBeenCalled();
         const after = new AbortController();
         setRuntimeFetch(async (_, init) => {expect(init?.signal).toBe(after.signal); after.abort(reason); return reply();});
-        await expect(translateBilibiliFree(request('Hello', {abortSignal: after.signal}))).rejects.toBe(reason);
+        await expect(translateBilibiliFree(withProviderSnapshot(request('Hello', {abortSignal: after.signal}), {from: 'auto', to: 'zh-Hans'}))).rejects.toBe(reason);
         const parsing = new AbortController();
         setRuntimeFetch(async () => ({ok: true, json: async () => {parsing.abort(); return {};}} as Response));
-        await expect(translateBilibiliFree(request('Hello', {abortSignal: parsing.signal}))).rejects.toMatchObject({name: 'AbortError'});
+        await expect(translateBilibiliFree(withProviderSnapshot(request('Hello', {abortSignal: parsing.signal}), {from: 'auto', to: 'zh-Hans'}))).rejects.toMatchObject({name: 'AbortError'});
     });
     it.each(['http', 'abort'] as const)('B站 %s headers 后仍等待真实流式正文结算且保留错误分类', async mode => {
         let body!: ReadableStreamDefaultController<Uint8Array>;
@@ -143,7 +144,7 @@ describe('B站官方免费翻译', () => {
         const reason = new Error('cancelled after headers');
         setRuntimeFetch(async () => {if (mode === 'abort') signal.abort(reason); return response;});
         let settled = false;
-        const result = translateBilibiliFree(request('Hello', {abortSignal: signal.signal})).then(
+        const result = translateBilibiliFree(withProviderSnapshot(request('Hello', {abortSignal: signal.signal}), {from: 'auto', to: 'zh-Hans'})).then(
             () => {settled = true; throw new Error('unexpected success');},
             error => {settled = true; return error;},
         );
@@ -159,7 +160,7 @@ describe('B站官方免费翻译', () => {
         let body!: ReadableStreamDefaultController<Uint8Array>;
         const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {status: 503});
         setRuntimeFetch(async () => response);
-        const result = translateBilibiliFree(request()).catch(error => error);
+        const result = translateBilibiliFree(withProviderSnapshot(request(), {from: 'auto', to: 'zh-Hans'})).catch(error => error);
         await new Promise(resolve => setTimeout(resolve, 0));
         body.error(new Error('body failed'));
         expect(await result).toMatchObject({statusCode: 503});

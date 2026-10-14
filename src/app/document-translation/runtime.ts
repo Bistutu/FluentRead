@@ -4,7 +4,7 @@
  * 主要内容：按固定服务和模型提供文档默认批量、可关闭的翻译流程，不改写全局 AI 多段开关；为扫描版 PDF 组装“渲染页面 → 文字识别 → 换算坐标”的页面识别器；为默认原版导出注入 JPEG 绘制器，为显式重排导出注入可复制文字与图表端口，并持有、释放本次导出的 PDF.js 租约。
  * 模块边界：本文件是 app adapter，不解析源文件、不维护页面进度，也不实现 PDF/EPUB/DOCX 编码；业务算法归 document-translation feature，网络请求归 translation client。
  */
-import {translateText, translateTextBatch} from '@/src/app/translation/client';
+import {translateText, translateTextBatch} from '@/src/services/translation/client';
 import {resolveConfiguredModel, services, servicesType} from '@/src/core/config/catalog';
 import {buildGlossaryRevision} from '@/src/core/glossary';
 import {hasDistinctTranslation} from '@/src/core/translation/result';

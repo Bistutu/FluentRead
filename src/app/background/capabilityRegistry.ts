@@ -4,7 +4,7 @@
  * 主要内容：接收区域翻译、图片翻译等 handler 工厂并按 BrowserCapabilities 选择性实例化，同时为 Selection TTS 返回扩展 DOM 播放传输或页面播放后备实现，保留本地 AbortSignal 参数。
  * 模块边界：本文件只做能力门控与依赖选择，不探测浏览器品牌、不实现 OCR、区域翻译或音频播放；具体业务由 feature 工厂和 platform capability 模块承担。
  */
-import type {BackgroundMessageHandler} from './messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import type {BrowserCapabilities} from '@/src/platform/browser/capabilities';
 
 export interface CapabilityGatedBackgroundFactories<TContext> {

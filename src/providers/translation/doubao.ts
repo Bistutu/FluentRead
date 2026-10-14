@@ -6,18 +6,18 @@
  * 模块边界：本文件位于 provider 适配层，只把统一翻译请求转换为外部或浏览器服务协议；不管理页面 DOM、UI 生命周期或配置持久化，缓存、去重和超时总预算由 translation broker 统一协调。
  */
 
-import {config} from '@/src/services/config/store';
 import {services} from '@/src/core/config/catalog';
 import {isDoubaoSeedTranslationModel} from '@/src/core/config/doubaoSeedTranslation';
 import {currentConfiguredModel} from '@/src/services/translation/templates';
-import {getTranslationProviderConfig, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {translateWithOpenAICompatibleAiSdk} from './ai-sdk/openai-compatible';
 import doubaoSeedTranslation from './doubao-seed-translation';
 
 async function doubao(
     message: TranslationProviderRequest<string | string[]>,
 ): Promise<string | string[]> {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const service = message.serviceOverride || services.doubao;
     const model = currentConfiguredModel(current, service, message.modelOverride);
 

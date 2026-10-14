@@ -33,7 +33,7 @@ import {normalizeConfig} from '@/src/core/config/model';
 import * as models from '@/src/core/config/localTranslation';
 import * as settingsActionContext from '@/src/features/settings/model/useSettingsActionContext';
 import {createLocalTranslationBackgroundHandlers} from '@/src/features/local-translation/background/handlers';
-import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/services/messaging/backgroundRouter';
 
 function deferred<T>() {
     let resolve!: (value: T) => void, reject!: (error: unknown) => void;

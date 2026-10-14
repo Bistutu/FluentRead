@@ -20,6 +20,7 @@ export type {PdfExportProgress} from './services/binary';
 export * from './services/translation';
 export {generateDocumentArchive} from './services/archive';
 export * from './services/history';
+export {createDocumentHistoryCommitter} from './services/historyCommitter';
 export * from './services/pdfOcr';
 export {
     createPdfPagePreview,
@@ -29,3 +30,5 @@ export * from './ui/presentation';
 export * from './ui/richPreviewSync';
 export {installDocumentZoomGestures} from './ui/documentZoom';
 export type {DocumentZoomOptions, DocumentZoomPoint} from './ui/documentZoom';
+export {createDocumentTaskState, useDocumentTasks} from './ui/useDocumentTasks';
+export type {DocumentQueueItem} from './ui/useDocumentTasks';

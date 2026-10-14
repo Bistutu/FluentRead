@@ -11,7 +11,7 @@ import {
     CONFIG_AUTO_BACKUP_RESTORE_MESSAGE_TYPE,
     createConfigAutoBackupRestoreHandler,
 } from '@/src/app/background/handlers/configAutoBackup';
-import {createBackgroundMessageRouter} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter} from '@/src/services/messaging/backgroundRouter';
 import {
     appendConfigAutoBackup,
     createBaselineConfigAutoBackups,

@@ -4,7 +4,7 @@
  * 主要内容：声明 configHistoryAction 消息、动作与成功/失败响应类型，校验 action 和 version，再委托注入的 applyConfigHistoryAction 执行并返回新配置。
  * 模块边界：本文件只负责消息解析和调用适配，不读写历史仓库、不决定版本冲突策略，也不持久化配置；历史事务由 services/config 中的协调器实现。
  */
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 
 export const CONFIG_HISTORY_MESSAGE_TYPE = 'configHistoryAction' as const;
 

@@ -2,7 +2,7 @@
  @file src/app/document-translation/DocumentApp.vue
  文件职责：实现独立文档翻译页面的完整 Vue 应用，提供按已提交段落计算的实时数字与进度条、暂停及等待重试状态、保留已有译文的跨服务续译入口、简短异常提示与按需展开的技术详情，承载文件导入、格式化预览、分段翻译、人工校订、原文结构变化后旧校订的独立保留、保存原文件和双语文件导出的用户流程。
  主要内容：相同译文保留原文且不重复展示；文档打开后按窗口宽度用一行或多行工具栏承载文件、阅读方式、页码缩放、翻译服务与目标语言、翻译与下载，窄窗口用翻译设置弹窗，矮小窗口用覆盖式侧栏保留正文高度；各种格式支持只缩放正文的触控板捏合与键盘操作，复用富文本预览并保持阅读位置；左侧可折叠的侧栏放文件列表与目录，其余空间留给正文；首页列出保存在本机的最近翻译，重新打开同一份文件时接着上次的译文继续；PDF 默认按原版排版左右对照，各种格式都从正在阅读的位置开始翻译；没有文字层的扫描版 PDF 在开始翻译时先逐页识别文字并显示进度；HTML、Markdown、纯文本与 ePub 的隔离预览只载入一次，译文逐段到达后原位更新并保留滚动位置，整篇译文几乎都与原文相同时状态里提示可换目标语言，带标题的文档（含 Word）在侧栏提供可按原文或译文显示的目录，Word 里的表格在阅读视图中仍按表格排版、只有一个部分时不显示部分切换，ePub 的全部章节列在侧栏目录里（按译文显示时用章内标题的译文）、当前章节下接着它其余的各级标题，正文上方不再占一行章节按钮，Word 与文本类预览在宽窗口左右对照；组织文档阅读与翻译、增量统计和人工校订，人工译法确认只在当前文件阅读会话中参与篇章参考，按原文件身份和冻结语言隔离，重译时清空；导入与在线下载绑定独立取消所有权；PDF 清晰阅读流式显示完整段落和原图区域，源页文字层与译文更新分离，下载按原版布局左右配对，长译文以完整批注保留；切换、删除、重置及卸载释放 PDF 任务和 URL；PDF/ePub/DOCX/ZIP 导出显示进度、支持取消重试，迟到结果不得回写。
- 模块边界：ChatGPT 套餐模型选项保留全局和文档实际 slug，独立选择也直接保存，不经过自定义模型哨兵或新增发现请求；组件负责页面交互与响应式状态，不自行解析二进制格式、不实现片段翻译队列、配置存储协议或导出编码；解析渲染来自 document-translation feature，配置协调来自 services/config，运行时适配由本目录 runtime 注入。
+ 模块边界：ChatGPT 套餐模型选项保留全局和文档实际 slug，独立选择也直接保存，不经过自定义模型哨兵或新增发现请求；组件负责页面交互与响应式状态，不自行解析二进制格式、不实现片段翻译队列、配置存储协议或导出编码；解析渲染来自 document-translation feature，配置协调来自 services/config，草稿共享设置编辑会话并保留文档字段与模型映射的原子补丁，运行时适配由本目录 runtime 注入。
 -->
 <!-- 文档页面归 app 层所有；WXT 入口只负责启动。 -->
 <template>
@@ -120,10 +120,11 @@
           <div><p>导入后确认设置，再开始翻译。范例也可以校订和下载。</p></div>
           <div class="sample-buttons"><button v-for="sample in DOCUMENT_QUICK_SAMPLES" :key="sample.name" type="button" :disabled="queueBusy" @click="loadSample(sample)"><strong>{{ sample.label }}<span aria-hidden="true"> ↗</span></strong><small>{{ sample.description }}</small></button></div>
         </details>
-        <p v-if="errorMessage" class="notice error" role="alert">{{ errorMessage }}</p>
+        <p v-if="importError || errorMessage" class="notice error" role="alert">{{ importError || errorMessage }}</p>
       </section>
 
       <section v-else class="workspace-section">
+        <p v-if="importError" class="notice error" role="alert">{{ importError }}</p>
         <section class="document-taskbar" :class="{'has-pdf-controls': readerTab === 'read' && isPdfDocument}" aria-label="当前文档与翻译任务">
           <div class="workspace-heading">
             <button class="sidebar-toggle" type="button" :class="{active: sidebarOpen}" :aria-expanded="sidebarOpen" :aria-label="translateLegacy('文件与目录')" :title="translateLegacy('文件与目录')" @click="sidebarOpen = !sidebarOpen"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 3.5v13" stroke="currentColor" stroke-width="1.4"/></svg><small v-if="documentQueue.length > 1">{{ documentQueue.length }}</small></button>
@@ -445,6 +446,7 @@ import DocumentSegmentEditor from './DocumentSegmentEditor.vue';
 import browser from 'webextension-polyfill';
 import {
   Config,
+  useConfigEditor,
   PdfReader,
   syncRichPreview,
   richPreviewInterval,
@@ -473,6 +475,7 @@ import {
   createDocumentDownloadName,
   createDocumentFileLoadGuard,
   createDocumentHistory,
+  createDocumentHistoryCommitter,
   documentHistoryId,
   restoreDocumentHistoryPdfOcr,
   restoreDocumentHistoryRevisions,
@@ -518,9 +521,11 @@ import {
   GlossaryLibrarySelect,
   supportsTranslationGlossary,
   useUiI18n,
+  useDocumentTasks,
+  createDocumentTaskState,
   type DocumentRenderMode,
   type DocumentHistorySummary,
-  type DocumentRetainedRevision,
+  type DocumentQueueItem,
   type PdfReadingPresentation,
   type ParsedDocument,
   ElSelect,
@@ -558,8 +563,10 @@ const config = reactive(new Config());
 const {language, t, translateLegacy} = useUiI18n();
 const downloadCopy = computed(() => getDocumentDownloadCopy(language.value));
 const fileInput = ref<HTMLInputElement | null>(null);
-const parsedDocument = ref<ParsedDocument | null>(null);
-const translatedSegments = ref<string[]>([]);
+const documentTasks = useDocumentTasks();
+const {documentQueue, activeDocumentId, parsedDocument, translatedSegments,
+  confirmedTranslationIds, taskFingerprint, runState, editRevision, downloadedRevision,
+  errorMessage, documentBatchTranslation} = documentTasks;
 const outputMode = ref<DocumentRenderMode>('bilingual');
 const previewMode = ref<'source' | DocumentRenderMode>('bilingual');
 const pdfPresentation = ref<PdfReadingPresentation>('layout');
@@ -589,11 +596,7 @@ const readingContent = ref<HTMLElement | null>(null);
 const readerScale = ref(1);
 const readerZoomStyle = computed(() => ({zoom: String(readerScale.value)}));
 const readerPage = ref(1);
-const runState = ref<'ready' | 'paused' | 'failed'>('ready');
-const taskFingerprint = ref('');
 const settledTranslations = ref<string[]>([]);
-/** 仅当前阅读会话的人工校订来源；历史译文保留为普通参考，不推断成用户确认。 */
-const confirmedTranslationIds = ref<number[]>([]);
 const confirmDialog = ref<HTMLDialogElement | null>(null);
 const downloadDialog = ref<HTMLDialogElement | null>(null);
 const downloadOpen = ref(false);
@@ -608,15 +611,14 @@ const downloadNotice = ref('');
 const originalDownloadError = ref('');
 const originalDownloadNotice = ref('');
 let downloadNoticeTimer: ReturnType<typeof setTimeout> | undefined;
-const editRevision = ref(0);
-const downloadedRevision = ref(0);
 const readingModes = [{value: 'source', label: '原文'}, {value: 'bilingual', label: '双语'}, {value: 'translated', label: '译文'}] as const;
 const isDragging = ref(false);
 const translating = ref(false);
 const liveCompletedSegments = ref(0);
 
-const errorMessage = ref('');
 const retryNotice = ref('');
+// 导入操作不属于当前文档的翻译任务，下载或解析新文件不能改写旧任务的失败原因。
+const importError = ref('');
 const openingFile = ref(false);
 const preparingDownload = ref(false);
 const cancelingDownload = ref(false);
@@ -637,75 +639,28 @@ const isDark = ref(colorSchemeMedia.matches);
 let abortController: AbortController | null = null;
 const documentFileLoads = createDocumentFileLoadGuard();
 let translationRequestId = 0;
-let lastSerialized = '';
-let applyingExternalConfig = false;
-let configSaveRequest = 0;
-let unsubscribeConfig: (() => void) | undefined;
 let fileLoadController: AbortController | null = null;
 let disposed = false;
 const downloadUrls = new Map<string, ReturnType<typeof setTimeout>>();
 
-interface DocumentQueueItem {
-  id: number;
-  name: string;
-  /** 保留导入时的 File/Blob 引用，下载原文无需再次读取、请求 URL 或复制大文件。 */
-  originalFile?: File;
-  /** 原始文件内容的摘要与字节，仅在浏览器支持本地历史时保留，用于“最近翻译”。 */
-  historyId?: string;
-  bytes?: Uint8Array;
-  mimeType?: string;
-  /** 已写入本地历史的修订号，避免没有变化时重复保存。 */
-  savedRevision?: number;
-  sourceUrl?: string;
-  document: ParsedDocument | null;
-  translations: string[];
-  /** 原文结构改变后无法安全回填的旧校订，独立保留供查阅与复制。 */
-  retainedRevisions?: DocumentRetainedRevision[];
-  confirmedTranslationIds?: number[];
-  fingerprint: string;
-  state: 'ready' | 'paused' | 'failed';
-  revision: number;
-  downloaded: number;
-  error: string;
-  /** 仅在本页为这份文档保留批量选择，不写入全局配置或本地历史。 */
-  batchTranslation?: boolean;
-}
-const documentBatchTranslation = ref(true);
-const documentQueue = ref<DocumentQueueItem[]>([]);
-const activeDocumentId = ref<number | null>(null);
 const batchRunning = ref(false);
 const batchNotice = ref('');
 let nextDocumentId = 0;
 let batchGeneration = 0;
 const queueBusy = computed(() => translating.value || batchRunning.value || openingFile.value || downloadingPdf.value || preparingDownload.value);
-const completeItem = (item: DocumentQueueItem) => Boolean(item.document && item.document.segments.every(segment => item.translations[segment.id]?.trim()));
-const batchCompletedCount = computed(() => documentQueue.value.filter(item => item.id === activeDocumentId.value ? translationComplete.value : completeItem(item)).length);
-const batchPendingCount = computed(() => documentQueue.value.filter(item => item.document && !(item.id === activeDocumentId.value ? translationComplete.value : completeItem(item))).length);
-
-function saveActiveDocument(): void {
-  const item = documentQueue.value.find(item => item.id === activeDocumentId.value);
-  if (!item) return;
-  Object.assign(item, {translations: [...translatedSegments.value], confirmedTranslationIds: [...confirmedTranslationIds.value], fingerprint: taskFingerprint.value,
-    state: runState.value, revision: editRevision.value, downloaded: downloadedRevision.value, error: errorMessage.value, batchTranslation: documentBatchTranslation.value});
-}
+const completeItem = (item: DocumentQueueItem) => Boolean(item.document?.segments.length
+  && !(item.id === activeDocumentId.value && translating.value)
+  && item.document.segments.every(segment => item.translations[segment.id]?.trim()));
+const batchCompletedCount = computed(() => documentQueue.value.filter(completeItem).length);
+const batchPendingCount = computed(() => documentQueue.value.filter(item => item.document && !completeItem(item)).length);
 
 function selectDocument(item: DocumentQueueItem): void {
   if (!item.document || item.id === activeDocumentId.value) return;
-  saveActiveDocument();
   releaseDocumentPreview(parsedDocument.value);
   recognitionProgress.value = '';
   activeDocumentId.value = item.id;
-  documentBatchTranslation.value = item.batchTranslation !== false;
   rememberOpenDocument(item.historyId);
-  parsedDocument.value = item.document;
-  translatedSegments.value = [...item.translations];
-  confirmedTranslationIds.value = [...(item.confirmedTranslationIds || [])];
   settledTranslations.value = [...item.translations];
-  taskFingerprint.value = item.fingerprint;
-  runState.value = item.state;
-  editRevision.value = item.revision;
-  downloadedRevision.value = item.downloaded;
-  errorMessage.value = item.error;
   downloadNotice.value = '';
   originalDownloadError.value = '';
   originalDownloadNotice.value = '';
@@ -724,6 +679,7 @@ function queueProgress(item: DocumentQueueItem): number {
 // 最近翻译：只在浏览器提供 IndexedDB 时启用；记录留在本机，重新打开同一份文件会接着上次的译文继续。
 const historyAvailable = typeof indexedDB !== 'undefined';
 const history = createDocumentHistory();
+const historyCommitter = createDocumentHistoryCommitter(record => history.save(record));
 const historyEntries = ref<DocumentHistorySummary[]>([]);
 let historyTimer: ReturnType<typeof setTimeout> | undefined;
 async function refreshHistory(): Promise<void> {
@@ -734,13 +690,11 @@ async function refreshHistory(): Promise<void> {
 function persistHistory(): void {
   if (historyTimer !== undefined) {clearTimeout(historyTimer); historyTimer = undefined;}
   if (!historyAvailable) return;
-  saveActiveDocument();
   for (const item of documentQueue.value) {
     const completed = item.translations.filter(text => text?.trim()).length;
     if (!item.document || !item.historyId || !item.bytes || item.revision === item.savedRevision) continue;
-    item.savedRevision = item.revision;
-    void history.save({id: item.historyId, name: item.name, format: item.document.format, size: item.bytes.byteLength, sourceUrl: item.sourceUrl, mimeType: item.mimeType || '',
-      total: item.document.segments.length, completed, updatedAt: Date.now(), bytes: item.bytes, translations: [...item.translations], retainedRevisions: item.retainedRevisions ? toRaw(item.retainedRevisions) : undefined, fingerprint: item.fingerprint, parsed: toRaw(item.document), parsedVersion: PARSED_VERSION}).then(refreshHistory);
+    void historyCommitter.save(item, {id: item.historyId, name: item.name, format: item.document.format, size: item.bytes.byteLength, sourceUrl: item.sourceUrl, mimeType: item.mimeType || '',
+      total: item.document.segments.length, completed, updatedAt: Date.now(), bytes: item.bytes, translations: [...item.translations], retainedRevisions: item.retainedRevisions ? toRaw(item.retainedRevisions) : undefined, fingerprint: item.fingerprint, parsed: toRaw(item.document), parsedVersion: PARSED_VERSION}).then(written => {if (written) void refreshHistory();});
   }
 }
 function scheduleHistorySave(): void {
@@ -779,7 +733,7 @@ async function openHistory(entry: DocumentHistorySummary): Promise<void> {
     await loadFiles([new File([record.bytes], record.name, {type: record.mimeType})], record.sourceUrl);
     return;
   }
-  const item: DocumentQueueItem = {id: ++nextDocumentId, name: record.name, sourceUrl: record.sourceUrl, document: markRaw(snapshot), historyId: record.id, bytes: record.bytes, mimeType: record.mimeType,
+  const item: DocumentQueueItem = {...createDocumentTaskState(), id: ++nextDocumentId, name: record.name, sourceUrl: record.sourceUrl, document: markRaw(snapshot), historyId: record.id, bytes: record.bytes, mimeType: record.mimeType,
     ...restoreDocumentHistoryRevisions(record, snapshot, PARSED_VERSION), fingerprint: record.fingerprint, state: 'ready', revision: 0, savedRevision: 0, downloaded: 0, error: ''};
   documentQueue.value.push(item);
   if (documentQueue.value.length > 1) {sidebarOpen.value = true; sidebarTab.value = 'files';}
@@ -812,7 +766,6 @@ function queueStatus(item: DocumentQueueItem): string {
 
 async function startBatch(): Promise<void> {
   if (!config.on || queueBusy.value || !hydrated.value || credentialWarning.value) return;
-  saveActiveDocument();
   const pending = documentQueue.value.filter(item => item.document && !completeItem(item));
   // 已有译文的语言或术语设置不同，留给单文件的重译确认处理，避免批量按钮抹掉校订。
   if (pending.some(item => item.translations.some(text => text?.trim()) && !compatibleTranslationSettings(item.fingerprint, currentFingerprint.value))) {
@@ -832,7 +785,6 @@ async function startBatch(): Promise<void> {
       }
       selectDocument(item);
       await startTranslation(settingsChanged.value);
-      saveActiveDocument();
     }
   } finally {
     if (generation === batchGeneration) batchRunning.value = false;
@@ -841,7 +793,6 @@ async function startBatch(): Promise<void> {
 
 function removeDocument(item: DocumentQueueItem, confirmed = false): void {
   if (queueBusy.value) return;
-  saveActiveDocument();
   if (!confirmed && item.revision > item.downloaded) {
     pendingRemoval = item;
     pendingAction.value = 'remove';
@@ -855,18 +806,14 @@ function removeDocument(item: DocumentQueueItem, confirmed = false): void {
     if (next) selectDocument(next);
     else {
       rememberOpenDocument(null);
-      activeDocumentId.value = null;
-      parsedDocument.value = null;
-      translatedSegments.value = [];
+      documentTasks.clearSelection();
       settledTranslations.value = [];
-      editRevision.value = downloadedRevision.value = 0;
     }
   }
 }
 
 async function downloadBatch(): Promise<void> {
   if (queueBusy.value) return;
-  saveActiveDocument();
   const items = documentQueue.value.filter(completeItem);
   if (!items.length) return;
   preparingDownload.value = true;
@@ -902,8 +849,6 @@ async function downloadBatch(): Promise<void> {
     if (generation !== batchGeneration) return;
     saveDownloadBlob(blob, 'FluentRead-documents.zip');
     for (const item of items) item.downloaded = item.revision;
-    const active = items.find(item => item.id === activeDocumentId.value);
-    if (active) downloadedRevision.value = active.revision;
     batchNotice.value = t('document.batch.downloaded', {count: items.length});
   } catch (error) {
     if (generation === batchGeneration) batchNotice.value = controller.signal.aborted
@@ -1428,67 +1373,50 @@ function applyTheme(): void {
   isDark.value = colorSchemeMedia.matches;
 }
 
-async function hydrateConfig(): Promise<void> {
-  await configReady;
-  if (disposed) return;
-  lastSerialized = JSON.stringify(runtimeConfig);
-  // 页面编辑不能借共享对象引用提前修改运行时配置；保存仍通过字段级协调器。
-  Object.assign(config, JSON.parse(lastSerialized));
-  hydrated.value = true;
-}
-void hydrateConfig();
-
-unsubscribeConfig = subscribeConfig((nextConfig) => {
-  if (disposed) return;
-  const serialized = JSON.stringify(nextConfig);
-  if (serialized === lastSerialized) return;
-  lastSerialized = serialized;
-  applyingExternalConfig = true;
-  try {
-    Object.assign(config, JSON.parse(serialized));
+const configEditor = useConfigEditor({
+  copySnapshot: value => JSON.parse(JSON.stringify(value)) as Config,
+  readDraft: () => config,
+  writeDraft: snapshot => {
+    Object.assign(config, snapshot);
     if (!config.on && (translating.value || batchRunning.value)) pauseTranslation();
-  } finally {
-    applyingExternalConfig = false;
-  }
+  },
+  // 同一轮模型选择保留 documentModel/documentCustomModel 的原子 patch，
+  // 独立模型映射继续基于最新运行时配置合并，不能覆盖其他服务的修改。
+  saveDraft: (value, previous) => {
+    const patch: DocumentConfigPatch = {};
+    if (value.from !== previous.from) patch.from = value.from;
+    if (value.to !== previous.to) patch.to = value.to;
+    if (value.documentService !== previous.documentService) patch.documentService = value.documentService;
+    if (JSON.stringify(value.documentGlossaryIds) !== JSON.stringify(previous.documentGlossaryIds)) {
+      patch.documentGlossaryIds = value.documentGlossaryIds === null ? null : [...value.documentGlossaryIds];
+    }
+    if (!sameDocumentModelMapping(value.documentModel, previous.documentModel)) {
+      patch.documentModel = mergeChangedDocumentModelMapping(
+        runtimeConfig.documentModel,
+        previous.documentModel,
+        value.documentModel,
+      );
+    }
+    if (!sameDocumentModelMapping(value.documentCustomModel, previous.documentCustomModel)) {
+      patch.documentCustomModel = mergeChangedDocumentModelMapping(
+        runtimeConfig.documentCustomModel,
+        previous.documentCustomModel,
+        value.documentCustomModel,
+      );
+    }
+    return Object.keys(patch).length === 0 ? Promise.resolve()
+      : requestConfigPatch(patch, browser.runtime.sendMessage.bind(browser.runtime));
+  },
+  subscribe: subscribeConfig,
+  ready: configReady,
+  readAuthority: () => runtimeConfig,
+  flush: 'post',
+  onEdited: () => {},
+  onSaved: () => {configSaveError.value = '';},
+  onSaveError: () => {configSaveError.value = '设置未能保存，请重新调整后再试。';},
+  onReady: () => {hydrated.value = true;},
+  onReadyError: () => {configSaveError.value = t('settings.loadFailed');},
 });
-
-// post flush 会把一次模型选择对 documentModel/documentCustomModel 的同步修改
-// 合并成一个字段 patch，避免先保存 sentinel 或 scalar 的半成品。
-watch(config, (value) => {
-  if (disposed || !hydrated.value || applyingExternalConfig) return;
-  const serialized = JSON.stringify(value);
-  if (serialized === lastSerialized) return;
-  const previous = JSON.parse(lastSerialized) as Config;
-  lastSerialized = serialized;
-  const patch: DocumentConfigPatch = {};
-  if (value.from !== previous.from) patch.from = value.from;
-  if (value.to !== previous.to) patch.to = value.to;
-  if (value.documentService !== previous.documentService) patch.documentService = value.documentService;
-  if (JSON.stringify(value.documentGlossaryIds) !== JSON.stringify(previous.documentGlossaryIds)) {
-    patch.documentGlossaryIds = value.documentGlossaryIds === null ? null : [...value.documentGlossaryIds];
-  }
-  if (!sameDocumentModelMapping(value.documentModel, previous.documentModel)) {
-    patch.documentModel = mergeChangedDocumentModelMapping(
-      runtimeConfig.documentModel,
-      previous.documentModel,
-      value.documentModel,
-    );
-  }
-  if (!sameDocumentModelMapping(value.documentCustomModel, previous.documentCustomModel)) {
-    patch.documentCustomModel = mergeChangedDocumentModelMapping(
-      runtimeConfig.documentCustomModel,
-      previous.documentCustomModel,
-      value.documentCustomModel,
-    );
-  }
-  if (Object.keys(patch).length === 0) return;
-  const request = ++configSaveRequest;
-  void requestConfigPatch(patch, browser.runtime.sendMessage.bind(browser.runtime)).then(() => {
-    if (request === configSaveRequest) configSaveError.value = '';
-  }).catch(() => {
-    if (request === configSaveRequest) configSaveError.value = '设置未能保存，请重新调整后再试。';
-  });
-}, {deep: true, flush: 'post'});
 
 // 翻译期间不订阅整份数组，避免每个片段都触发 O(n) 的深度遍历。
 watch(() => translating.value ? null : [...translatedSegments.value], (translations) => {
@@ -1519,11 +1447,11 @@ async function loadFiles(files: File[], sourceUrl?: string): Promise<void> {
   importProgress.value = '';
   importRatio.value = 0;
   batchNotice.value = '';
-  errorMessage.value = '';
+  importError.value = '';
   let opened = false;
   try {
     for (const file of files) {
-      const item: DocumentQueueItem = {id: ++nextDocumentId, name: file.name, sourceUrl, document: null,
+      const item: DocumentQueueItem = {...createDocumentTaskState(), id: ++nextDocumentId, name: file.name, sourceUrl, document: null,
         translations: [], fingerprint: '', state: 'ready', revision: 0, downloaded: 0, error: ''};
       try {
         if (!getDocumentFormat(file.name)) throw new Error('暂不支持该文件格式，请选择 PDF、ePub、HTML、JSON、TXT、DOCX、Markdown 或字幕文件。');
@@ -1583,7 +1511,7 @@ async function openOnlinePdf(): Promise<void> {
   const controller = new AbortController();
   onlinePdfController = controller;
   downloadingPdf.value = true;
-  errorMessage.value = '';
+  importError.value = '';
   importProgress.value = t('document.pdfReading.downloading');
   try {
     const file = await fetchOnlinePdf(sourceUrl, {signal: controller.signal, onProgress: ({received, total}) => {
@@ -1598,7 +1526,7 @@ async function openOnlinePdf(): Promise<void> {
     await loadFiles([file], sourceUrl);
   } catch (error) {
     if (!disposed && onlinePdfController === controller && !controller.signal.aborted) {
-      showError(error instanceof Error ? error.message : String(error));
+      importError.value = error instanceof Error ? error.message : String(error);
     }
   } finally {
     if (onlinePdfController === controller) {
@@ -1631,7 +1559,7 @@ function resetDocument(): void {
   fileLoadController?.abort();
   fileLoadController = null;
   clearConfirmation();
-  configSaveRequest += 1;
+  configEditor.invalidateFeedback();
   downloadController?.abort();
   downloadController = null;
   cancelingDownload.value = false;
@@ -1642,27 +1570,17 @@ function resetDocument(): void {
   downloadOpen.value = false;
   batchGeneration += 1;
   batchRunning.value = false;
-  documentQueue.value = [];
-  activeDocumentId.value = null;
-  documentBatchTranslation.value = true;
+  documentTasks.clear();
   batchNotice.value = '';
   documentFileLoads.invalidate();
   translationRequestId += 1;
   abortController?.abort();
   abortController = null;
   translating.value = false;
-  parsedDocument.value = null;
-  translatedSegments.value = [];
-  confirmedTranslationIds.value = [];
   settledTranslations.value = [];
-  taskFingerprint.value = '';
-  runState.value = 'ready';
-  editRevision.value = 0;
-  downloadedRevision.value = 0;
   downloadNotice.value = '';
   originalDownloadError.value = '';
   originalDownloadNotice.value = '';
-  errorMessage.value = '';
   openingFile.value = false;
   preparingDownload.value = false;
   epubChapterIndex.value = 0;
@@ -1977,8 +1895,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   disposed = true;
-  unsubscribeConfig?.();
-  unsubscribeConfig = undefined;
+  configEditor.dispose();
   resetDocument();
   colorSchemeMedia.removeEventListener?.('change', applyTheme);
   window.removeEventListener('pagehide', resetDocument);

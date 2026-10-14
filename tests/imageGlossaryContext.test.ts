@@ -1,6 +1,7 @@
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {describe, expect, it, vi} from 'vitest';
 import {createImageGlossaryContext, type ImageGlossarySenderContext} from '@/src/app/background/imageGlossaryContext';
-import type {BackgroundMessageHandler} from '@/src/app/background/messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {
     createImageTranslationBackgroundHandlers, IMAGE_TRANSLATE_MESSAGE_TYPE, IMAGE_TRANSLATE_TEXTS_MESSAGE_TYPE,
     IMAGE_CANCEL_MESSAGE_TYPE, type ImageTranslationBackgroundDependencies,
@@ -161,7 +162,7 @@ function integration(batch: boolean, texts = ['API', 'other']) {
             domains: ['docs.example.com'], entries: [{id: 'api', source: 'API', target: '专用接口', caseSensitive: false}]}],
     });
     const requests: object[] = [];
-    const provider = vi.fn(async (message: Record<string, unknown>) => {
+    const provider = vi.fn(async (message: TranslationProviderRequest) => {
         const snapshot = getTranslationProviderConfig(message, createTranslationProviderConfigSnapshot(config));
         const translate = (origin: string) => getTranslationGlossaryTerms(snapshot, origin)[0]?.target ?? `译文:${origin}`;
         return Array.isArray(message.origin) ? message.origin.map(translate) : translate(String(message.origin));

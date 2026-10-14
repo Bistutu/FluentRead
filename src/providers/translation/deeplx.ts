@@ -8,20 +8,17 @@
 
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import {services} from "@/src/core/config/catalog";
-import {config} from "@/src/services/config/store";
 import {getDeepLXEndpoints} from "@/src/core/config/deeplx";
-import {getTranslationLanguages, type TranslationLanguageOverride} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
+import type {TranslationLanguageOverride} from '@/src/core/translation/languages';
 import {createHttpStatusError, createProviderCodeError} from '@/src/platform/http/errors';
 import {
     abortErrorFromSignal,
     createRuntimeAbortContext,
     runtimeFetch,
 } from '@/src/platform/http/runtime';
-import {
-    getTranslationProviderConfig,
-    type TranslationProviderRequest,
-    type TranslationProviderRequestContext,
-} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest, TranslationProviderRequestContext} from '@/src/services/translation/types';
 
 const DEEPLX_TOTAL_TIMEOUT_MS = 20_000;
 const DEEPLX_ATTEMPT_TIMEOUT_MS = 8_000;
@@ -149,14 +146,14 @@ export async function translateDeepLXText(
         throw new Error("DeepLX 翻译仅支持单条文本");
     }
 
-    const current = getTranslationProviderConfig(languageOverride, config);
+    const current = requireTranslationProviderConfig(languageOverride);
     const token = current.token[serviceKey]?.trim() || "";
     const endpoints = getDeepLXEndpoints(
         current.deeplx,
         current.proxy[serviceKey],
         token,
     );
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(languageOverride);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(languageOverride);
     const {sourceLang, targetLang} = getDeepLXRequestLanguages(sourceLanguage, targetLanguage);
     const deadline = Date.now() + DEEPLX_TOTAL_TIMEOUT_MS;
     const failures: string[] = [];

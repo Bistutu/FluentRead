@@ -10,7 +10,7 @@ import {setCurrentTranslationAdapters, setCurrentTranslationSidebarRegions} from
 import {setMinimumTranslationTextLength} from '@/src/core/translation/text';
 import type {Config} from '@/src/core/config/model';
 import {restoreOriginalContent} from '@/src/features/full-page-translation/public';
-import {cancelAllTranslations} from '@/src/app/translation/client';
+import {cancelAllTranslations} from '@/src/services/translation/client';
 import {resetPageTranslationContextCache} from '@/src/services/translation/context';
 
 let appliedMinimumLength: number | null = null;

@@ -1,3 +1,4 @@
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {describe, expect, it, vi} from 'vitest';
 import {decodeGlossaryText, parseGlossaryImport, protectGlossaryText, resolveGlossaryEntries,
     type GlossaryLibrary} from '@/src/core/glossary';
@@ -21,7 +22,7 @@ function brokerHarness(originals: string[]) {
         glossaryEnabled: true, glossaryLibraries: [library(originals.map(original => term(original.normalize('NFC'))))]});
     config.model.openai = 'model-fixture';
     const cache = new Map<string, string>();
-    const provider = vi.fn(async (message: Record<string, unknown>): Promise<unknown> => message.origin);
+    const provider = vi.fn(async (message: TranslationProviderRequest): Promise<unknown> => message.origin);
     const cacheSet = vi.fn(async (key: string, value: string) => {cache.set(key, value); return true;});
     const broker = createTranslationBroker({ready: Promise.resolve(), getConfig: () => config,
         providers: {openai: provider}, cache: {get: async key => cache.get(key) ?? null, set: cacheSet, clear: async () => {cache.clear();}, cleanup: async () => {}},

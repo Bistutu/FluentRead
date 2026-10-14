@@ -1,6 +1,7 @@
 import {describe, expect, it, vi} from 'vitest';
 import {createTranslationAvailability} from '@/src/services/translation/availability';
-import {attachTranslationRequestControl, getTranslationRequestControl, markTranslationRemainingBudget, TRANSLATION_REMAINING_BUDGET} from '@/src/services/translation/requestSnapshot';
+import {attachTranslationRequestControl, getTranslationRequestControl, markTranslationRemainingBudget} from '@/src/services/translation/requestSnapshot';
+import {TRANSLATION_REMAINING_BUDGET} from '@/src/services/translation/types';
 import {serializeTranslationError} from '@/src/services/translation/errors';
 import type {TranslationRequestMessage} from '@/src/services/translation/types';
 

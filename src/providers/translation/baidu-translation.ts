@@ -8,11 +8,11 @@
 
 import {services} from '@/src/core/config/catalog';
 import {method, urls} from '@/src/core/config/constants';
-import {config} from '@/src/services/config/store';
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
 import {runtimeFetch} from '@/src/platform/http/runtime';
-import {getTranslationProviderConfig, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {resolveCloudLanguages} from './cloud/languages';
 import {md5Hex} from './cloud/signature';
 
@@ -45,14 +45,14 @@ export function buildBaiduSignedForm(input: {
 }
 
 async function baiduTranslation(message: TranslationProviderRequest<string>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const appId = current.token[services.baiduTranslation]?.trim();
     const secretKey = current.secret[services.baiduTranslation]?.trim();
     if (!appId || !secretKey) {
         throw new Error('百度翻译尚未配置 APP ID 与密钥，请先在设置中填写');
     }
 
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
     const {source, target} = resolveCloudLanguages('baiduTranslation', sourceLanguage, targetLanguage);
 
     const form = buildBaiduSignedForm({

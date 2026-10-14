@@ -32,7 +32,7 @@ const runtime = vi.hoisted(() => ({
 }));
 
 vi.mock('@/src/services/config/store', () => ({config: runtime.config}));
-vi.mock('@/src/app/translation/client', () => ({
+vi.mock('@/src/services/translation/client', () => ({
     translateText: async (origin: string) => {
         runtime.requests.push([origin]);
         return `T(${origin})`;

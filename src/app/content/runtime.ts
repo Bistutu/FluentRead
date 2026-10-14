@@ -11,7 +11,7 @@ import {constants} from '@/src/core/config/constants';
 import {createSiteRuleMatcher} from '@/src/features/site-rules/domain';
 import {config, configReady, subscribeConfig} from '@/src/services/config/store';
 import {ensureUiLanguageBundle} from '@/src/platform/i18n/uiLanguageBundles';
-import {cancelAllTranslations} from '@/src/app/translation/client';
+import {cancelAllTranslations} from '@/src/services/translation/client';
 import {resetPageTranslationContextCache} from '@/src/services/translation/context';
 import {clearLegacyPageTranslationCache} from '@/src/services/translation/legacyPageCache';
 import {getCenterPoint} from '@/src/shared/geometry/touch';

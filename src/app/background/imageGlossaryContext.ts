@@ -4,7 +4,7 @@
  * 主要内容：包装已通过能力门控的图片和圈选 handler，以活跃 requestId 保存只读页面、源语言和版本快照；只有当前扩展精确的无标签页 Offscreen 发送者能取回事务，结束后立即清理。
  * 模块边界：本文件是可独立验证的后台装配规则，通过依赖注入接收配置就绪状态及 Offscreen URL；不访问 browser、不传输词表、不执行 OCR，也不信任消息中的页面 URL 或版本声明。
  */
-import type {BackgroundMessage, BackgroundMessageHandler} from './messageRouter';
+import type {BackgroundMessage, BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {AREA_TRANSLATE_CAPTURE_MESSAGE_TYPE} from './handlers/areaTranslation';
 import {IMAGE_TRANSLATE_MESSAGE_TYPE, IMAGE_TRANSLATE_TEXTS_MESSAGE_TYPE} from './handlers/imageTranslation';
 import {attachTranslationGlossaryContext} from '@/src/services/translation/requestSnapshot';

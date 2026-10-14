@@ -25,6 +25,7 @@ import {translationStatsJapaneseMessages} from './translationStats';
 import {localTranslationJapaneseMessages} from './localTranslation';
 
 export const jaJPMessages = {
+    "settings.loadFailed": "設定を読み込めませんでした。再読み込みしてもう一度お試しください。",
     "popup.compact.translate": "翻訳",
     "popup.compact.restore": "戻す",
     ...videoLearningText,

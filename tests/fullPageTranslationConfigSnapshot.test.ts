@@ -2,7 +2,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {buildGlossaryRevision, type GlossaryLibrary} from '@/src/core/glossary';
 import * as hashModule from '@/src/shared/function/sha256';
 import * as pageDiscourse from '@/src/services/translation/context/pageDiscourse';
-import {translateText, translateTextBatch} from '@/src/app/translation/client';
+import {translateText, translateTextBatch} from '@/src/services/translation/client';
 import type {CompositeTranslationProvider} from '@/src/core/config/compositeTranslation';
 
 const fixture = vi.hoisted(() => ({config: {
@@ -14,7 +14,7 @@ const fixture = vi.hoisted(() => ({config: {
     compositeTranslationProviders: [] as CompositeTranslationProvider[], customBody: {} as Record<string, string>,
 }}));
 vi.mock('@/src/services/config/store', () => ({config: fixture.config}));
-vi.mock('@/src/app/translation/client', () => ({translateText: vi.fn(), translateTextBatch: vi.fn()}));
+vi.mock('@/src/services/translation/client', () => ({translateText: vi.fn(), translateTextBatch: vi.fn()}));
 vi.mock('@/src/services/translation/queue', () => ({cancelTranslationQueueSession: vi.fn(), createTranslationQueueSession: vi.fn()}));
 import {captureFullPageTranslationConfig, getTranslationInvocationIdentity, translateTextSlots} from '@/src/features/full-page-translation/content/translationRequest';
 

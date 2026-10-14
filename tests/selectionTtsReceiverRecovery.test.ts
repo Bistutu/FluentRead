@@ -4,7 +4,7 @@
  * READ 后丢接收端是对照；RESERVE 后或 PLAY 投递时丢接收端是 P2 活性候选。
  */
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/services/messaging/backgroundRouter';
 import {createCapabilityGatedSelectionTtsTransport} from '@/src/app/background/capabilityRegistry';
 import {resolveBrowserCapabilities} from '@/src/platform/browser/capabilities';
 import {createOffscreenClient, type OffscreenRuntimeApi} from '@/src/platform/offscreen/client';

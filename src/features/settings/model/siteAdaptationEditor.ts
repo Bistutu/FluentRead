@@ -7,9 +7,7 @@
 
 import {composeSiteAdapters, resolveSiteRule} from '@/src/core/site-adaptation/compiler';
 import {parseSiteRulePack, SITE_RULE_LIMITS, validateSelectors} from '@/src/core/site-adaptation/schema';
-import type {
-    SiteAdaptationSettings, SiteRule, SiteRuleIssue, SiteRulePack, SiteRulePackParseResult,
-} from '@/src/core/site-adaptation/types';
+import type {SiteAdaptationSettings, SiteRule, SiteRuleIssue, SiteRulePack, SiteRulePackParseResult} from '@/src/core/site-adaptation/types';
 
 export const SITE_ADAPTATION_EXAMPLE: SiteRulePack = {
     version: 1,

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// template.ts 顶层会 import config（其内部使用了 wxt 注入的 storage 全局），
-// 在纯 Node 测试环境下并不存在，因此用一个可变的 mock 对象替换该模块。
+// 用例在调用边界创建只读配置快照，模板不读取全局配置。
 const { mockConfig } = vi.hoisted(() => ({
     mockConfig: {
         service: 'openai',
@@ -70,9 +69,17 @@ beforeEach(() => {
     mockConfig.deepseekThinkingMode = 'disabled';
 });
 
+it('模板默认目标语言沿用已冻结的请求配置，后改设置不能改写该请求', () => {
+    const current = currentConfigSnapshot();
+    mockConfig.to = 'en';
+    const body = JSON.parse(commonMsgTemplate({origin: 'Hello', current}));
+    expect(body.messages[1].content).toContain('Simplified Chinese (zh-Hans)');
+    expect(body.messages[1].content).not.toContain('Translate to en:');
+});
+
 describe('mergeCustomBody（纯函数）', () => {
     it('篇章证据遵循用户术语优先并把定义、译法和歧义作为数据', () => {
-        const body = JSON.parse(commonMsgTemplate('She revises AP.', '<discourse_evidence>{"section":"lab"}</discourse_evidence>'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'She revises AP.', context: '<discourse_evidence>{"section":"lab"}</discourse_evidence>', current: currentConfigSnapshot()}));
         const user = body.messages.find((item: {role: string}) => item.role === 'user').content;
         expect(user).toContain('User glossary terms override all evidence');
         expect(user).toContain('Preserve unresolved ambiguity');
@@ -164,7 +171,7 @@ describe('自定义请求体校验与配置兼容', () => {
 
 describe('commonMsgTemplate（集成）', () => {
     it('开启网页上下文时，将不可信参考材料放在真正翻译任务之前', () => {
-        const body = JSON.parse(commonMsgTemplate('hello', 'Page title: A guide\nRelevant page content: hello in context'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', context: 'Page title: A guide\nRelevant page content: hello in context', current: currentConfigSnapshot()}));
         const prompt = body.messages[1].content as string;
 
         expect(prompt).toContain('Translate to Simplified Chinese (zh-Hans): hello');
@@ -176,13 +183,13 @@ describe('commonMsgTemplate（集成）', () => {
     });
 
     it('没有网页上下文时保持原有请求提示词不变', () => {
-        const body = JSON.parse(commonMsgTemplate('hello'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.messages[1].content).toBe('Translate to Simplified Chinese (zh-Hans): hello');
     });
 
     it('多段来源追加最小标记协议，并保持普通单段提示词不变', () => {
         const packet = '___FLUENTREAD_nonce_0_BEGIN___hello___FLUENTREAD_nonce_0_END___';
-        const body = JSON.parse(commonMsgTemplate(packet));
+        const body = JSON.parse(commonMsgTemplate({origin: packet, current: currentConfigSnapshot()}));
         const prompt = body.messages[1].content as string;
 
         expect(prompt).toContain(`Translate to Simplified Chinese (zh-Hans): ${packet}`);
@@ -192,7 +199,7 @@ describe('commonMsgTemplate（集成）', () => {
 
     it('摘要请求使用独立的安全提示词，不把摘要任务混入原文翻译模板', () => {
         const summaryPrompt = buildPageSummaryPrompt('Page title: A guide\nReadable page content (Markdown):\nA useful article');
-        const body = JSON.parse(commonMsgTemplate('ignored', undefined, summaryPrompt, buildPageSummarySystemPrompt()));
+        const body = JSON.parse(commonMsgTemplate({origin: 'ignored', prompt: summaryPrompt, systemPrompt: buildPageSummarySystemPrompt(), current: currentConfigSnapshot()}));
 
         expect(body.messages[0].content).toBe(buildPageSummarySystemPrompt());
         expect(body.messages[1].content).toBe(summaryPrompt);
@@ -202,7 +209,7 @@ describe('commonMsgTemplate（集成）', () => {
     });
 
     it('未配置自定义请求体时，生成标准 OpenAI 请求体', () => {
-        const body = JSON.parse(commonMsgTemplate('hello'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body).toEqual({
             model: 'gpt-5.6-luna',
             reasoning_effort: 'none',
@@ -214,7 +221,7 @@ describe('commonMsgTemplate（集成）', () => {
     });
 
     it('文档入口可以覆盖模型而不改写网页翻译模型', () => {
-        const body = JSON.parse(commonMsgTemplate('hello', undefined, undefined, undefined, services.openai, undefined, 'gpt-document-model'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', serviceOverride: services.openai, modelOverride: 'gpt-document-model', current: currentConfigSnapshot()}));
 
         expect(body.model).toBe('gpt-document-model');
         expect(mockConfig.model.openai).toBe('gpt-5.6-luna');
@@ -223,7 +230,7 @@ describe('commonMsgTemplate（集成）', () => {
     it('选择“自定义模型”时使用 customModel 的值', () => {
         mockConfig.model = { openai: customModelString };
         mockConfig.customModel = { openai: 'gpt-4o-mini' };
-        const body = JSON.parse(commonMsgTemplate('hello'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.model).toBe('gpt-4o-mini');
     });
 
@@ -231,13 +238,13 @@ describe('commonMsgTemplate（集成）', () => {
         mockConfig.service = services.custom;
         mockConfig.model = { [services.custom]: customModelString };
         mockConfig.customModel = { [services.custom]: 'local/translation-model' };
-        const body = JSON.parse(commonMsgTemplate('hello'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.model).toBe('local/translation-model');
     });
 
     it('非法的自定义请求体被忽略，标准请求体保持完整', () => {
         mockConfig.customBody = { openai: '{oops' };
-        const body = JSON.parse(commonMsgTemplate('hello'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.model).toBe('gpt-5.6-luna');
         expect(body.thinking).toBeUndefined();
         expect(body.messages).toHaveLength(2);
@@ -246,7 +253,7 @@ describe('commonMsgTemplate（集成）', () => {
     it('仅对当前服务生效：其他服务的自定义请求体不会被应用', () => {
         // 当前服务是 openai，却给另一个服务配置了自定义请求体
         mockConfig.customBody = { gemini: '{"thinking": {"type": "disabled"}}' };
-        const body = JSON.parse(commonMsgTemplate('hello'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.thinking).toBeUndefined();
     });
 });
@@ -256,7 +263,7 @@ describe('自定义请求体注入 thinking 字段（issue #213）', () => {
     it('关闭思考：{"thinking": {"type": "disabled"}} 注入到请求体顶层', () => {
         mockConfig.service = services.moonshot;
         mockConfig.customBody = { moonshot: '{"thinking": {"type": "disabled"}}' };
-        const body = JSON.parse(commonMsgTemplate('你好世界'));
+        const body = JSON.parse(commonMsgTemplate({origin: '你好世界', current: currentConfigSnapshot()}));
         expect(body.thinking).toEqual({ type: 'disabled' });
         // 同时不破坏原有字段
         expect(body.model).toBe('kimi-k3');
@@ -265,13 +272,13 @@ describe('自定义请求体注入 thinking 字段（issue #213）', () => {
 
     it('开启思考：{"thinking": {"type": "enabled"}} 注入到请求体顶层', () => {
         mockConfig.customBody = { openai: '{"thinking": {"type": "enabled"}}' };
-        const body = JSON.parse(commonMsgTemplate('hi'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hi', current: currentConfigSnapshot()}));
         expect(body.thinking).toEqual({ type: 'enabled' });
     });
 
     it('可注入 thinking', () => {
         mockConfig.customBody = { openai: '{"thinking": {"type": "disabled"}}' };
-        const body = JSON.parse(commonMsgTemplate('hi'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hi', current: currentConfigSnapshot()}));
         expect(body.thinking).toEqual({ type: 'disabled' });
     });
 
@@ -281,7 +288,7 @@ describe('自定义请求体注入 thinking 字段（issue #213）', () => {
                 "thinking": { "type": "disabled" }
             }`,
         };
-        const body = JSON.parse(commonMsgTemplate('hi'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hi', current: currentConfigSnapshot()}));
         expect(body.thinking).toEqual({ type: 'disabled' });
     });
 });
@@ -289,17 +296,8 @@ describe('自定义请求体注入 thinking 字段（issue #213）', () => {
 describe('模型级 Thinking 请求集成', () => {
     it('按服务和实际模型读取偏好，并允许请求级快照显式覆盖', () => {
         mockConfig.modelThinking = {openai: {'gpt-5.6-luna': true}};
-        expect(JSON.parse(commonMsgTemplate('hello')).reasoning_effort).toBe('low');
-        expect(JSON.parse(commonMsgTemplate(
-            'hello',
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            currentConfigSnapshot(),
-            false,
+        expect(JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()})).reasoning_effort).toBe('low');
+        expect(JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot(), thinkingOverride: false}
         )).reasoning_effort).toBe('none');
     });
 
@@ -307,7 +305,7 @@ describe('模型级 Thinking 请求集成', () => {
         mockConfig.model.openai = 'gpt-5.6-luna（推荐）';
         mockConfig.modelThinking = {openai: {'gpt-5.6-luna（推荐）': true}};
 
-        const body = JSON.parse(commonMsgTemplate('hello'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.model).toBe('gpt-5.6-luna');
         expect(body.reasoning_effort).toBe('low');
     });
@@ -316,17 +314,17 @@ describe('模型级 Thinking 请求集成', () => {
         'DeepSeek %s 在 Chat 和 Responses 中发送正确编号并默认关闭思考', (model) => {
             mockConfig.service = services.deepseek;
             mockConfig.model.deepseek = model;
-            expect(JSON.parse(deepseekMsgTemplate('hello'))).toMatchObject({
+            expect(JSON.parse(deepseekMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}))).toMatchObject({
                 model, thinking: {type: 'disabled'},
             });
-            expect(JSON.parse(deepseekResponsesMsgTemplate('hello'))).toMatchObject({
+            expect(JSON.parse(deepseekResponsesMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}))).toMatchObject({
                 model, reasoning: {effort: 'none'},
             });
             mockConfig.modelThinking = {deepseek: {[model]: true}};
-            expect(JSON.parse(deepseekMsgTemplate('hello'))).toMatchObject({
+            expect(JSON.parse(deepseekMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}))).toMatchObject({
                 model, thinking: {type: 'enabled'},
             });
-            expect(JSON.parse(deepseekResponsesMsgTemplate('hello'))).toMatchObject({
+            expect(JSON.parse(deepseekResponsesMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}))).toMatchObject({
                 model, reasoning: {effort: 'high'},
             });
         },
@@ -338,29 +336,26 @@ describe('模型级 Thinking 请求集成', () => {
         mockConfig.deepseekThinkingMode = 'enabled';
         mockConfig.modelThinking = {deepseek: {'deepseek-v4-flash': false}};
 
-        expect(JSON.parse(deepseekMsgTemplate('hello')).thinking).toEqual({type: 'disabled'});
-        expect(JSON.parse(deepseekResponsesMsgTemplate(
-            'hello', undefined, undefined, undefined, undefined, undefined, undefined, currentConfigSnapshot(), true,
+        expect(JSON.parse(deepseekMsgTemplate({origin: 'hello', current: currentConfigSnapshot()})).thinking).toEqual({type: 'disabled'});
+        expect(JSON.parse(deepseekResponsesMsgTemplate({origin: 'hello', current: currentConfigSnapshot(), thinkingOverride: true}
         )).reasoning).toEqual({effort: 'high'});
-        expect(JSON.parse(deepseekResponsesMsgTemplate(
-            'hello', undefined, undefined, undefined, undefined, undefined, 'deepseek-reasoner', currentConfigSnapshot(),
+        expect(JSON.parse(deepseekResponsesMsgTemplate({origin: 'hello', modelOverride: 'deepseek-reasoner', current: currentConfigSnapshot()}
         )).reasoning).toEqual({effort: 'high'});
-        expect(JSON.parse(deepseekResponsesMsgTemplate(
-            'hello', undefined, undefined, undefined, undefined, undefined, 'deepseek-chat', currentConfigSnapshot(),
+        expect(JSON.parse(deepseekResponsesMsgTemplate({origin: 'hello', modelOverride: 'deepseek-chat', current: currentConfigSnapshot()}
         )).reasoning).toEqual({effort: 'none'});
     });
 
     it('自定义请求体最后合并，可以覆盖自动生成的思考字段', () => {
         mockConfig.modelThinking = {openai: {'gpt-5.6-luna': true}};
         mockConfig.customBody = {openai: '{"reasoning_effort":"high"}'};
-        expect(JSON.parse(commonMsgTemplate('hello')).reasoning_effort).toBe('high');
+        expect(JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()})).reasoning_effort).toBe('high');
     });
 
     it('自定义请求体替换模型时不遗留原模型的自动思考字段', () => {
         mockConfig.modelThinking = {openai: {'gpt-5.6-luna': true}};
         mockConfig.customBody = {openai: '{"model":"gpt-4.1"}'};
 
-        const body = JSON.parse(commonMsgTemplate('hello'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.model).toBe('gpt-4.1');
         expect(body).not.toHaveProperty('reasoning_effort');
     });
@@ -371,7 +366,7 @@ describe('模型级 Thinking 请求集成', () => {
         mockConfig.modelThinking = {claude: {'claude-haiku-4-5': true}};
         mockConfig.customBody = {claude: '{"max_tokens":1024}'};
 
-        const body = JSON.parse(claudeMsgTemplate('hello'));
+        const body = JSON.parse(claudeMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.max_tokens).toBe(1024);
         expect(body).not.toHaveProperty('thinking');
     });
@@ -382,7 +377,7 @@ describe('模型级 Thinking 请求集成', () => {
         mockConfig.customModel = {[services.custom]: 'private-thinking-model'};
         mockConfig.modelThinking = {[services.custom]: {'private-thinking-model': true}};
 
-        const body = JSON.parse(commonMsgTemplate('hello'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body).not.toHaveProperty('thinking');
         expect(body).not.toHaveProperty('reasoning');
         expect(body).not.toHaveProperty('reasoning_effort');
@@ -408,20 +403,20 @@ describe('所有 AI 请求模板的自定义请求体支持', () => {
         mockConfig.service = service;
         mockConfig.customBody = {[service]: '{"request_tag": "custom"}'};
 
-        const body = JSON.parse(template('hello'));
+        const body = JSON.parse(template({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.request_tag).toBe('custom');
     });
 
     it.each(temperatureTemplateCases)('%s 模板默认不发送 temperature', (service, template) => {
         mockConfig.service = service;
 
-        const body = JSON.parse(template('hello'));
+        const body = JSON.parse(template({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body).not.toHaveProperty('temperature');
     });
 
-    it('自定义请求体入口覆盖所有 AI 服务，但不覆盖机器翻译', () => {
+    it('自定义请求体入口覆盖通用 AI 协议，套餐 OAuth 与机器翻译保留各自边界', () => {
         for (const service of servicesType.AI) {
-            expect(servicesType.isUseCustomBody(service)).toBe(true);
+            expect(servicesType.isUseCustomBody(service), service).toBe(service !== services.chatgptPlan);
         }
         expect(servicesType.isUseCustomBody(services.google)).toBe(false);
     });
@@ -431,7 +426,7 @@ describe('所有 AI 请求模板的自定义请求体支持', () => {
         mockConfig.model[services.openai] = 'video-model';
         mockConfig.customBody = {[services.openai]: '{"video_request": true}'};
 
-        const body = JSON.parse(commonMsgTemplate('hello', undefined, undefined, undefined, services.openai));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', serviceOverride: services.openai, current: currentConfigSnapshot()}));
 
         expect(body.model).toBe('video-model');
         expect(body.video_request).toBe(true);
@@ -443,7 +438,7 @@ describe('请求时旧模型编号兜底', () => {
         mockConfig.service = services.claude;
         mockConfig.model[services.claude] = 'claude-3-5-sonnet';
 
-        const body = JSON.parse(claudeMsgTemplate('hello'));
+        const body = JSON.parse(claudeMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.model).toBe('claude-sonnet-5');
     });
 
@@ -451,7 +446,7 @@ describe('请求时旧模型编号兜底', () => {
         mockConfig.service = services.zhipu;
         mockConfig.model[services.zhipu] = 'glm-4-plus';
 
-        const body = JSON.parse(commonMsgTemplate('hello'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.model).toBe('glm-5.3');
     });
 
@@ -460,7 +455,7 @@ describe('请求时旧模型编号兜底', () => {
         mockConfig.model[services.claude] = '自定义模型';
         mockConfig.customModel[services.claude] = 'claude-3-5-sonnet';
 
-        const body = JSON.parse(claudeMsgTemplate('hello'));
+        const body = JSON.parse(claudeMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.model).toBe('claude-3-5-sonnet');
     });
 });
@@ -471,64 +466,60 @@ describe('模板默认值与协议分支', () => {
         mockConfig.user_role = {};
         mockConfig.model = {};
 
-        const body = JSON.parse(commonMsgTemplate('hello'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(body.model).toBe('');
         expect(body.messages[0].content).toBeTruthy();
         expect(body.messages[1].content).toContain('hello');
-        expect(getCurrentModel('openai')).toBe('');
+        expect(getCurrentModel({serviceOverride: 'openai', current: currentConfigSnapshot()})).toBe('');
     });
 
     it('自定义模型未填写时保留空模型，让上游配置门禁给出提示', () => {
         mockConfig.model.openai = customModelString;
         mockConfig.customModel.openai = '';
 
-        expect(JSON.parse(commonMsgTemplate('hello')).model).toBe('');
+        expect(JSON.parse(commonMsgTemplate({origin: 'hello', current: currentConfigSnapshot()})).model).toBe('');
     });
 
     it('DeepSeek 当前模型处理新编号、旧编号和四种思考模式', () => {
         mockConfig.service = services.deepseek;
         mockConfig.model[services.deepseek] = 'deepseek-v4';
-        expect(getCurrentModel()).toBe('deepseek-v4');
+        expect(getCurrentModel({current: currentConfigSnapshot()})).toBe('deepseek-v4');
 
         mockConfig.model[services.deepseek] = 'deepseek-chat';
-        expect(getCurrentModel()).not.toBe('deepseek-chat');
+        expect(getCurrentModel({current: currentConfigSnapshot()})).not.toBe('deepseek-chat');
 
-        expect(JSON.parse(deepseekMsgTemplate('hello', undefined, undefined, undefined, undefined, undefined, 'deepseek-reasoner')).thinking)
+        expect(JSON.parse(deepseekMsgTemplate({origin: 'hello', modelOverride: 'deepseek-reasoner', current: currentConfigSnapshot()})).thinking)
             .toEqual({type: 'enabled'});
-        expect(JSON.parse(deepseekMsgTemplate('hello', undefined, undefined, undefined, undefined, undefined, 'deepseek-chat')).thinking)
+        expect(JSON.parse(deepseekMsgTemplate({origin: 'hello', modelOverride: 'deepseek-chat', current: currentConfigSnapshot()})).thinking)
             .toEqual({type: 'disabled'});
 
         mockConfig.model[services.deepseek] = 'deepseek-v4';
         mockConfig.deepseekThinkingMode = 'enabled';
-        expect(JSON.parse(deepseekMsgTemplate('hello')).thinking).toEqual({type: 'enabled'});
+        expect(JSON.parse(deepseekMsgTemplate({origin: 'hello', current: currentConfigSnapshot()})).thinking).toEqual({type: 'enabled'});
         mockConfig.deepseekThinkingMode = 'disabled';
-        expect(JSON.parse(deepseekMsgTemplate('hello')).thinking).toEqual({type: 'disabled'});
+        expect(JSON.parse(deepseekMsgTemplate({origin: 'hello', current: currentConfigSnapshot()})).thinking).toEqual({type: 'disabled'});
     });
 
     it('DeepSeek 提示词支持显式系统提示并在缺省时回退全局默认值', () => {
         mockConfig.service = services.deepseek;
         mockConfig.model[services.deepseek] = 'deepseek-v4';
-        const explicit = JSON.parse(deepseekResponsesMsgTemplate(
-            'hello',
-            undefined,
-            undefined,
-            'Explicit DeepSeek system',
+        const explicit = JSON.parse(deepseekResponsesMsgTemplate({origin: 'hello', systemPrompt: 'Explicit DeepSeek system', current: currentConfigSnapshot()}
         ));
         expect(explicit.instructions).toBe('Explicit DeepSeek system');
 
         mockConfig.system_role = {};
-        const fallback = JSON.parse(deepseekResponsesMsgTemplate('hello'));
+        const fallback = JSON.parse(deepseekResponsesMsgTemplate({origin: 'hello', current: currentConfigSnapshot()}));
         expect(fallback.instructions).toBeTruthy();
     });
 
     it('显式系统提示词会覆盖 Gemini、Claude 和通义默认值', () => {
-        const gemini = JSON.parse(geminiMsgTemplate('hello', undefined, undefined, 'Gemini system'));
+        const gemini = JSON.parse(geminiMsgTemplate({origin: 'hello', systemPrompt: 'Gemini system', current: currentConfigSnapshot()}));
         expect(gemini.contents[0].parts[0].text).toContain('Gemini system');
 
-        const claude = JSON.parse(claudeMsgTemplate('hello', undefined, undefined, 'Claude system'));
+        const claude = JSON.parse(claudeMsgTemplate({origin: 'hello', systemPrompt: 'Claude system', current: currentConfigSnapshot()}));
         expect(claude.system).toBe('Claude system');
 
-        const tongyi = JSON.parse(tongyiMsgTemplate('hello', undefined, undefined, 'Tongyi system'));
+        const tongyi = JSON.parse(tongyiMsgTemplate({origin: 'hello', systemPrompt: 'Tongyi system', current: currentConfigSnapshot()}));
         expect(tongyi.messages[0].content).toBe('Tongyi system');
 
     });
@@ -536,15 +527,15 @@ describe('模板默认值与协议分支', () => {
     it('缺少服务级系统角色时 Claude 和通义使用默认系统角色', () => {
         mockConfig.system_role = {};
 
-        expect(JSON.parse(claudeMsgTemplate('hello')).system).toBeTruthy();
-        expect(JSON.parse(tongyiMsgTemplate('hello')).messages[0].content).toBeTruthy();
+        expect(JSON.parse(claudeMsgTemplate({origin: 'hello', current: currentConfigSnapshot()})).system).toBeTruthy();
+        expect(JSON.parse(tongyiMsgTemplate({origin: 'hello', current: currentConfigSnapshot()})).messages[0].content).toBeTruthy();
     });
 
     it('仅 user 模板会替换所有动态变量，并保留原文中的美元字符', () => {
         mockConfig.system_role.openai = 'Translate {{origin}} into {{to}}; target={{to}}';
         mockConfig.user_role.openai = 'Source={{origin}}; language={{to}}; again={{origin}}';
 
-        const body = JSON.parse(commonMsgTemplate('hello $&', undefined, undefined, undefined, undefined, 'ja'));
+        const body = JSON.parse(commonMsgTemplate({origin: 'hello $&', targetLanguage: 'ja', current: currentConfigSnapshot()}));
 
         expect(body.messages[0].content).toBe('Translate {{origin}} into {{to}}; target={{to}}');
         expect(body.messages[1].content).toBe('Source=hello $&; language=ja; again=hello $&');
@@ -561,13 +552,7 @@ describe('模板默认值与协议分支', () => {
         mockConfig.service = services.tongyi;
         mockConfig.model[services.tongyi] = 'qwen-mt-plus';
 
-        const body = JSON.parse(tongyiMsgTemplate(
-            'hello',
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            targetLanguage,
+        const body = JSON.parse(tongyiMsgTemplate({origin: 'hello', targetLanguage: targetLanguage, current: currentConfigSnapshot()}
         ));
         expect(body.translation_options).toEqual({source_lang: 'auto', target_lang: expected});
         expect(body.messages).toEqual([{role: 'user', content: 'hello'}]);
@@ -601,7 +586,7 @@ describe('所有 LLM 模板中的中文书写系统', () => {
         ['zh-HK', 'Traditional Chinese (zh-Hant)'],
     ])('%s 在每种文本协议中明确要求 %s', (target, label) => {
         for (const template of templates) {
-            const payload = template('hello', undefined, undefined, undefined, undefined, target);
+            const payload = template({origin: 'hello', targetLanguage: target, current: currentConfigSnapshot()});
             expect(payload).toContain(label);
         }
     });
@@ -612,8 +597,17 @@ describe('所有 LLM 模板中的中文书写系统', () => {
             ['zh-Hans', 'zh-Hant', 'zh', 'zh_tw'],
             ['zh-TW', 'zh-CN', 'zh_tw', 'zh'],
         ]) {
-            const body = JSON.parse(tongyiMsgTemplate('翻譯测试', undefined, undefined, undefined, undefined, target, undefined, currentConfigSnapshot(), undefined, source));
+            const body = JSON.parse(tongyiMsgTemplate({origin: '翻譯测试', targetLanguage: target, current: currentConfigSnapshot(), sourceLanguage: source}));
             expect(body.translation_options).toEqual({source_lang: sourceCode, target_lang: targetCode});
         }
     });
+});
+
+
+it('通义翻译请求对旧空来源配置使用auto，目标仍来自显式快照', () => {
+    mockConfig.service = services.tongyi;
+    mockConfig.model.tongyi = 'qwen-mt-plus';
+    const current = createTranslationProviderConfigSnapshot({...currentConfigSnapshot(), from: ''});
+    const body = JSON.parse(tongyiMsgTemplate({origin: 'Hello', current}));
+    expect(body.translation_options).toEqual({source_lang: 'auto', target_lang: 'zh'});
 });

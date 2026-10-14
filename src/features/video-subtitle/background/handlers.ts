@@ -8,7 +8,7 @@ import type {OffscreenClient} from '@/src/platform/offscreen/client';
 import {VIDEO_LOCAL_TRANSCRIPTION_MODELS, VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY, VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE, getVideoLocalTranscriptionRequestTimeoutMs, normalizeVideoLocalTranscriptionModels, normalizeVideoLocalTranscriptionModel} from '@/src/features/video-subtitle/transcription';
 import {VideoAiCanceledGenerationRegistry} from '@/src/features/video-subtitle/content/video-ai/generationRegistry';
 import {readCachedVideoAiModels} from '@/src/features/video-subtitle/offscreen/modelCache';
-import type {BackgroundMessageHandler} from '@/src/app/background/messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 
 type Owner = {tabId: number; streamId: string; generation: number};
 type Context = {sender?: {tab?: {id?: number}}};

@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {createHash, createHmac} from 'node:crypto';
 
@@ -18,7 +19,7 @@ import {commonMsgTemplate} from '@/src/services/translation/templates';
 import {attachTranslationProviderConfig, attachTranslationRequestControl, createTranslationProviderConfigSnapshot, attachTranslationModelUsageObserver} from '@/src/services/translation/requestSnapshot';
 import type {TranslationProviderRegistry} from '@/src/services/translation/types';
 import {TRANSLATION_CANCEL_MESSAGE_TYPE} from '@/src/services/translation/types';
-import {createBackgroundMessageRouter} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter} from '@/src/services/messaging/backgroundRouter';
 import {createTranslationCancelHandler, createTranslationRequestRegistry} from '@/src/app/background/handlers/translation';
 import {setRuntimeFetch, type RuntimeFetch} from '@/src/platform/http/runtime';
 import baidu from '@/src/providers/translation/baidu-translation';
@@ -283,7 +284,7 @@ describe('cloudprovidersAudit resumed immutable policy and consumed identity', (
         '%s retains key cooldown after an unused proxy edit rather than spending another rejected attempt', async service => {
             install(service); config.apiKeys[service] = [`synthetic-health-${service}-a`, `synthetic-health-${service}-b`];
             const invoke = () => runWithApiKeyRotation(createTranslationProviderConfigSnapshot(config as any), service,
-                selected => adapters[service](attachTranslationProviderConfig({...request}, selected)), {now: () => 1000});
+                selected => adapters[service](withProviderSnapshot(attachTranslationProviderConfig({...request}, selected), config)), {now: () => 1000});
             transport.mockImplementation(async (_url, init) => {
                 const headers = new Headers(init?.headers); const form = new URLSearchParams(String(init?.body));
                 const key = service === 'googleCloudTranslation' ? headers.get('x-goog-api-key')
@@ -311,7 +312,7 @@ describe('cloudprovidersAudit resumed immutable policy and consumed identity', (
         install('xiaoniu'); config.apiKeys.xiaoniu = ['synthetic-health-proxy-a', 'synthetic-health-proxy-b'];
         config.proxy.xiaoniu = 'https://first-health.invalid/translation';
         const invoke = () => runWithApiKeyRotation(createTranslationProviderConfigSnapshot(config as any), 'xiaoniu',
-            selected => xiaoniu(attachTranslationProviderConfig({...request}, selected)), {now: () => 1000});
+            selected => xiaoniu(withProviderSnapshot(attachTranslationProviderConfig({...request}, selected), config)), {now: () => 1000});
         transport.mockImplementationOnce(async () => json({}, {status: 429})).mockImplementation(async () => success('xiaoniu'));
         await invoke(); config.proxy.xiaoniu = 'https://second-health.invalid/translation'; await invoke();
         expect(transport.mock.calls.map(([url]) => String(url))).toEqual([
@@ -364,7 +365,7 @@ describe('cloudprovidersAudit resumed immutable policy and consumed identity', (
         '%s retries a corrected signing credential instead of inheriting both old key cooldowns', async service => {
             install(service); config.apiKeys[service] = [`synthetic-secret-scope-${service}-a`, `synthetic-secret-scope-${service}-b`];
             const invoke = () => runWithApiKeyRotation(createTranslationProviderConfigSnapshot(config as any), service,
-                selected => adapters[service](attachTranslationProviderConfig({...request}, selected)), {now: () => 1000});
+                selected => adapters[service](withProviderSnapshot(attachTranslationProviderConfig({...request}, selected), config)), {now: () => 1000});
             transport.mockImplementation(async () => json({}, {status: 401}));
             await expect(invoke()).rejects.toMatchObject({statusCode: 401});
             expect(transport).toHaveBeenCalledTimes(2);
@@ -377,13 +378,13 @@ describe('cloudprovidersAudit resumed immutable policy and consumed identity', (
 describe('cloudprovidersAudit protocol and error contracts', () => {
     it('Youdao retains HTTP retry metadata and never echoes provider response bodies', async () => {
         install('youdao'); transport.mockResolvedValue(json({secret: 'private remote detail'}, {status: 429, headers: {'Retry-After': '3'}}));
-        await expect(youdao(request)).rejects.toMatchObject({statusCode: 429, retryAfterMs: 3000, message: '有道翻译请求失败: 429'});
+        await expect(youdao(withProviderSnapshot(request, config))).rejects.toMatchObject({statusCode: 429, retryAfterMs: 3000, message: '有道翻译请求失败: 429'});
     });
 
     it('Youdao uses one clock snapshot, floors epoch seconds, and signs original reserved/unicode text', async () => {
         install('youdao'); const clock = vi.spyOn(Date, 'now').mockReturnValue(1760000000999);
         const query = "符号 +&%😀/".repeat(8);
-        await youdao({...request, origin: query, sourceLanguage: 'zh-TW', targetLanguage: 'en'});
+        await youdao(withProviderSnapshot({...request, origin: query, sourceLanguage: 'zh-TW', targetLanguage: 'en'}, config));
         const params = new URLSearchParams(String(transport.mock.calls[0][1]?.body));
         expect(params.get('curtime')).toBe('1760000000'); expect(params.get('salt')).toBe('1760000000999');
         expect(clock).toHaveBeenCalledTimes(1); expect(params.get('q')).toBe(query); expect(params.get('from')).toBe('zh-CHT');
@@ -394,14 +395,14 @@ describe('cloudprovidersAudit protocol and error contracts', () => {
     it.each(Object.keys(adapters) as Service[])('%s forwards its abort signal and rejects malformed JSON without input previews', async service => {
         install(service); const controller = new AbortController();
         transport.mockResolvedValue(new Response('private-source synthetic-key malformed'));
-        const error = await adapters[service]({...request, abortSignal: controller.signal}).catch(x => x);
+        const error = await adapters[service](withProviderSnapshot({...request, abortSignal: controller.signal}, config)).catch(x => x);
         expect(error).toBeInstanceOf(Error); expect(error.message).toMatch(/有效 JSON/u); expect(error.message).not.toMatch(/private-source|synthetic-key/);
         expect(transport.mock.calls[0][1]?.signal).toBe(controller.signal);
     });
 
     it.each(Object.keys(adapters) as Service[])('%s converts null JSON to a safe protocol error', async service => {
         install(service); transport.mockResolvedValue(json(null));
-        const error = await adapters[service](request).catch(x => x);
+        const error = await adapters[service](withProviderSnapshot(request, config)).catch(x => x);
         expect(error).toBeInstanceOf(Error); expect(error).not.toBeInstanceOf(TypeError);
         expect(error.message).toMatch(/格式异常|翻译错误|API错误|未返回译文/u);
     });
@@ -410,17 +411,17 @@ describe('cloudprovidersAudit protocol and error contracts', () => {
         ['tencent', {Response: {TargetText: {secret: 'not text'}}}],
         ['huanYuanTranslation', {Response: {Choices: [null]}}], ['huanYuanTranslation', {Response: {Choices: [{Message: {Content: {secret: 'not text'}}}]}}]] as const)(
         '%s rejects non-text or null nested output %j', async (service, body) => {
-            install(service); transport.mockResolvedValue(json(body)); await expect(adapters[service](request)).rejects.toBeInstanceOf(Error);
+            install(service); transport.mockResolvedValue(json(body)); await expect(adapters[service](withProviderSnapshot(request, config))).rejects.toBeInstanceOf(Error);
         });
 
     it('Hunyuan sends the resolved custom model, reports usage, and rejects auto target before fetch', async () => {
         install('huanYuanTranslation'); config.model.huanYuanTranslation = customModelString;
         config.customModel.huanYuanTranslation = 'hunyuan-custom-model';
         const observations: any[] = [];
-        await hunyuan(attachTranslationModelUsageObserver({...request}, x => observations.push(x)));
+        await hunyuan(withProviderSnapshot(attachTranslationModelUsageObserver({...request}, x => observations.push(x)), config));
         expect(JSON.parse(String(transport.mock.calls[0][1]?.body)).Model).toBe('hunyuan-custom-model');
         expect(observations[0]).toMatchObject({actualModel: 'hunyuan-custom-model', outcome: 'success'});
-        transport.mockClear(); await expect(hunyuan({...request, targetLanguage: 'auto'})).rejects.toThrow('不支持该目标语言');
+        transport.mockClear(); await expect(hunyuan(withProviderSnapshot({...request, targetLanguage: 'auto'}, config))).rejects.toThrow('不支持该目标语言');
         expect(transport).not.toHaveBeenCalled();
     });
 
@@ -432,7 +433,7 @@ describe('cloudprovidersAudit protocol and error contracts', () => {
 
     it.each(['youdao', 'tencent', 'huanYuanTranslation', 'xiaoniu'] as const)('%s preserves unknown codes instead of inherited object members', async service => {
         install(service);
-        await adapters[service]({...request, sourceLanguage: 'constructor', targetLanguage: 'toString'});
+        await adapters[service](withProviderSnapshot({...request, sourceLanguage: 'constructor', targetLanguage: 'toString'}, config));
         const raw = String(transport.mock.calls[0][1]?.body);
         if (service === 'tencent') expect(JSON.parse(raw)).toMatchObject({Source: 'constructor', Target: 'toString'});
         else if (service === 'huanYuanTranslation') expect(JSON.parse(raw).Target).toBe('toString');
@@ -442,7 +443,7 @@ describe('cloudprovidersAudit protocol and error contracts', () => {
     it('frozen provider symbols beat live fallback credentials and languages remain explicit', async () => {
         install('googleCloudTranslation'); const snapshot = createTranslationProviderConfigSnapshot(config as any);
         config.token.googleCloudTranslation = 'synthetic-live-change';
-        await google(attachTranslationProviderConfig({...request, sourceLanguage: 'ja', targetLanguage: 'zh-TW'}, snapshot));
+        await google(withProviderSnapshot(attachTranslationProviderConfig({...request, sourceLanguage: 'ja', targetLanguage: 'zh-TW'}, snapshot), config));
         const init = transport.mock.calls[0][1]!;
         expect(new Headers(init.headers).get('x-goog-api-key')).toBe('synthetic-key');
         expect(JSON.parse(String(init.body))).toMatchObject({source: 'ja', target: 'zh-TW'});
@@ -473,7 +474,7 @@ describe('cloudprovidersAudit actual template parse hot path', () => {
         config.customBody = {[services.openai]: raw};
         const originalParse = JSON.parse;
         const parser = vi.spyOn(JSON, 'parse'); const iterations = 50;
-        const output = Array.from({length: iterations}, () => commonMsgTemplate('Source with $&', undefined, undefined, undefined, undefined, 'zh-Hans', undefined, config as any));
+        const output = Array.from({length: iterations}, () => commonMsgTemplate({origin: 'Source with $&', targetLanguage: 'zh-Hans', current: config as any}));
         const parseCalls = parser.mock.calls.filter(call => call[0] === raw).length;
         const expected = originalParse(output[0]);
         expect(expected).toMatchObject({temperature: 0.25, reasoning_effort: 'minimal', metadata: {label: 'same'}});
@@ -486,50 +487,50 @@ describe('cloudprovidersAudit actual template parse hot path', () => {
 describe('cloudprovidersAudit failure, queue, and model contracts', () => {
     it.each(['youdao', 'tencent', 'huanYuanTranslation'] as const)('%s stops before transport when credentials are missing', async service => {
         install(service); config.youdaoAppKey = ''; config.tencentSecretId = '';
-        await expect(adapters[service](request)).rejects.toThrow(/配置/u); expect(transport).not.toHaveBeenCalled();
+        await expect(adapters[service](withProviderSnapshot(request, config))).rejects.toThrow(/配置/u); expect(transport).not.toHaveBeenCalled();
     });
 
     it.each(['tencent', 'huanYuanTranslation'] as const)('%s rejects incomplete credential pairs and explicit auto targets', async service => {
         install(service); config.tencentSecretKey = 'short';
-        await expect(adapters[service](request)).rejects.toThrow('格式不正确');
+        await expect(adapters[service](withProviderSnapshot(request, config))).rejects.toThrow('格式不正确');
         config.tencentSecretKey = 'synthetic-secret-key';
-        await expect(adapters[service]({...request, targetLanguage: 'auto'})).rejects.toThrow(/不支持/u);
+        await expect(adapters[service](withProviderSnapshot({...request, targetLanguage: 'auto'}, config))).rejects.toThrow(/不支持/u);
         expect(transport).not.toHaveBeenCalled();
     });
 
     it.each(['tencent', 'huanYuanTranslation', 'xiaoniu'] as const)('%s preserves HTTP failures and Retry-After metadata', async service => {
         install(service); transport.mockResolvedValue(json({message: 'private provider detail'}, {status: 503, headers: {'Retry-After': '2'}}));
-        await expect(adapters[service](request)).rejects.toMatchObject({statusCode: 503, retryAfterMs: 2000});
+        await expect(adapters[service](withProviderSnapshot(request, config))).rejects.toMatchObject({statusCode: 503, retryAfterMs: 2000});
     });
 
     it.each(['tencent', 'huanYuanTranslation'] as const)('%s handles safe provider errors without reporting translation success', async service => {
         install(service); const observations: any[] = [];
         transport.mockResolvedValue(json({Response: {Error: {Code: 123, Message: 'private diagnostic'}, Model: ' reported-model ', Usage: {PromptTokens: 2, CompletionTokens: 3, TotalTokens: 5}}}));
-        await expect(adapters[service](attachTranslationModelUsageObserver({...request}, x => observations.push(x)))).rejects.toThrow('错误码 123');
+        await expect(adapters[service](withProviderSnapshot(attachTranslationModelUsageObserver({...request}, x => observations.push(x)), config))).rejects.toThrow('错误码 123');
         if (service === 'huanYuanTranslation') expect(observations).toEqual([expect.objectContaining({outcome: 'error', actualModel: 'reported-model', totalTokens: 5})]);
     });
 
     it('Youdao directly preserves AbortError identity rather than turning cancellation into failure', async () => {
         install('youdao'); const original = new DOMException('Synthetic cancellation', 'AbortError'); transport.mockRejectedValue(original);
-        await expect(youdao(request)).rejects.toBe(original);
+        await expect(youdao(withProviderSnapshot(request, config))).rejects.toBe(original);
     });
 
     it.each(['101', 'constructor', '__proto__', 'unexpected'])('Youdao error code %s uses own known messages and never provider reflection', async code => {
         install('youdao'); transport.mockResolvedValue(json({errorCode: code, message: 'private provider detail'}));
-        const error = await youdao(request).catch(x => x);
+        const error = await youdao(withProviderSnapshot(request, config)).catch(x => x);
         expect(error.message).toBe(code === '101' ? '有道翻译API错误: 缺少必填的参数' : '有道翻译API错误: 未知错误');
     });
 
     it('Hunyuan uses default model fallback, explicit override, payload Model precedence, and reported usage model', async () => {
         install('huanYuanTranslation'); config.model = {}; const observations: any[] = [];
-        await hunyuan(request); expect(JSON.parse(String(transport.mock.calls[0][1]?.body)).Model).toBe('hunyuan-translation');
+        await hunyuan(withProviderSnapshot(request, config)); expect(JSON.parse(String(transport.mock.calls[0][1]?.body)).Model).toBe('hunyuan-translation');
         config.customBody.huanYuanTranslation = '{"Model":"body-model"}';
         transport.mockResolvedValue(json({Response: {Model: 'reported-model', Usage: {PromptTokens: 2, CompletionTokens: 3, TotalTokens: 5}, Choices: [{Message: {Content: '译文'}}]}}));
-        await hunyuan(attachTranslationModelUsageObserver({...request, modelOverride: 'override-model', serviceOverride: services.huanYuanTranslation}, x => observations.push(x)));
+        await hunyuan(withProviderSnapshot(attachTranslationModelUsageObserver({...request, modelOverride: 'override-model', serviceOverride: services.huanYuanTranslation}, x => observations.push(x)), config));
         expect(JSON.parse(String(transport.mock.calls[1][1]?.body)).Model).toBe('body-model');
         expect(observations[0]).toMatchObject({actualModel: 'reported-model', outcome: 'success', totalTokens: 5});
         transport.mockImplementation(async () => success('huanYuanTranslation'));
-        await hunyuan(attachTranslationModelUsageObserver({...request}, x => observations.push(x)));
+        await hunyuan(withProviderSnapshot(attachTranslationModelUsageObserver({...request}, x => observations.push(x)), config));
         expect(observations[1]).toMatchObject({actualModel: 'body-model', outcome: 'success'});
     });
 
@@ -582,7 +583,7 @@ describe('cloudprovidersAudit independent TC3 golden contracts', () => {
     it.each(['tencent', 'huanYuanTranslation'] as const)('%s signs the exact UTF-8 body using UTC seconds even through a proxy', async service => {
         install(service); config.proxy[service] = 'https://relay.invalid/translation';
         vi.spyOn(Date, 'now').mockReturnValue(1760000000999);
-        await adapters[service]({...request, origin: '原文 +%😀'});
+        await adapters[service](withProviderSnapshot({...request, origin: '原文 +%😀'}, config));
         const init = transport.mock.calls[0][1]!; const headers = new Headers(init.headers);
         const expectedService = service === 'tencent' ? 'tmt' : 'hunyuan';
         const expectedHash = service === 'tencent' ? '87e051e1d23b7cb164a50b04751e64698321bfcdc88bd52d73f428793ce5a7e2' : 'f4593107c3044811115426b6917a6fa7ab2147ebd63eb1529d62693692514a83';
@@ -601,11 +602,11 @@ describe('cloudprovidersAudit advanced body and key rotation boundaries', () => 
         install('huanYuanTranslation'); config.model.huanYuanTranslation = customModelString;
         config.customModel.huanYuanTranslation = '';
         transport.mockImplementation(async () => json({Response: {Error: {Code: 400, Message: 'private diagnostic'}}}));
-        await expect(hunyuan(request)).rejects.toThrow('错误码 400');
+        await expect(hunyuan(withProviderSnapshot(request, config))).rejects.toThrow('错误码 400');
         expect(JSON.parse(String(transport.mock.calls[0][1]?.body)).Model).toBe(customModelString);
         config.model.huanYuanTranslation = 'hunyuan-translation'; config.customBody.huanYuanTranslation = '{"Model":null}';
         const observations: any[] = [];
-        await expect(hunyuan(attachTranslationModelUsageObserver({...request}, x => observations.push(x)))).rejects.toThrow('错误码 400');
+        await expect(hunyuan(withProviderSnapshot(attachTranslationModelUsageObserver({...request}, x => observations.push(x)), config))).rejects.toThrow('错误码 400');
         expect(JSON.parse(String(transport.mock.calls[1][1]?.body)).Model).toBeNull();
         expect(observations[0]).toMatchObject({actualModel: 'hunyuan-translation', outcome: 'error'});
     });

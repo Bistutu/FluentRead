@@ -71,7 +71,7 @@ import {getMissingCredentialMessage} from '@/src/core/config/validation';
 import {getCustomOpenAIProvider, getCustomOpenAIProviderModels, isConfiguredCustomOpenAIProvider, type CustomOpenAIProvider, withCustomOpenAIServiceOptions} from '@/src/core/config/customOpenAI';
 import {getCompositeTranslationConfigFingerprint, isCompositeTranslationProviderId, withCompositeTranslationServiceOptions} from '@/src/core/config/compositeTranslation';
 import {config, configReady, requestConfigPatch, subscribeConfig} from '@/src/services/config/store';
-import {translateText} from '@/src/app/translation/client';
+import {translateText} from '@/src/services/translation/client';
 import {TranslationRequestError} from '@/src/services/translation/errors';
 import {createComparisonSession, isComparisonStale, MAX_COMPARISON_TEXT_LENGTH, type ComparisonCard, type ComparisonState} from '../model/comparison';
 

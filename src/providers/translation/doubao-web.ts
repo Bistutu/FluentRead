@@ -5,7 +5,8 @@
  * 模块边界：只通过 runtimeFetch 访问固定官方端点，不读取个人 Cookie、配置或持久化访客令牌；平台层把受限内部访客头转换为匿名 Cookie，调度、超时和失败换线由上层免费池负责。
  */
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
-import {getTranslationGlossarySourceText, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {getTranslationGlossarySourceText} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
 import {DOUBAO_GUEST_HEADER} from '@/src/platform/http/doubaoGuest';

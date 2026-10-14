@@ -9,22 +9,21 @@
 import {currentModelIds, resolveConfiguredModel, services} from "@/src/core/config/catalog";
 import {method, tongyiTokenPlanUrl, urls} from "@/src/core/config/constants";
 import {tongyiMsgTemplate} from '@/src/services/translation/templates';
-import {config} from "@/src/services/config/store";
 import {appendOptionalBearer} from './auth';
 import {createHttpStatusError, createImageInputHttpError, readJsonResponse} from '@/src/platform/http/errors';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
 import {
-    getTranslationProviderConfig,
+    requireTranslationProviderConfig,
     reportTranslationModelUsage,
     reportTranslationModelUsageFailure,
     getTranslationImageInput,
-    type TranslationProviderRequest,
 } from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {normalizeOpenAICompatibleUsage} from './usage';
 
 // 文档：https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-thousand-questions-metering-and-billing
 async function tongyi(message: TranslationProviderRequest<string>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const service = message.serviceOverride || services.tongyi;
     if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
     // 构建请求头
@@ -40,7 +39,19 @@ async function tongyi(message: TranslationProviderRequest<string>) {
         : urls[services.tongyi];
     const url: string = current.proxy[service] || officialUrl;
 
-    const body = tongyiMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service, message.targetLanguage, message.modelOverride, current, message.thinkingOverride, message.sourceLanguage, getTranslationImageInput(message));
+    const body = tongyiMsgTemplate({
+        origin: message.origin,
+        context: message.pageContext,
+        prompt: message.summaryPrompt,
+        systemPrompt: message.summarySystemPrompt,
+        serviceOverride: service,
+        targetLanguage: message.targetLanguage,
+        modelOverride: message.modelOverride,
+        current,
+        thinkingOverride: message.thinkingOverride,
+        sourceLanguage: message.sourceLanguage,
+        imageInput: getTranslationImageInput(message),
+    });
     const startedAt = Date.now();
     let attemptReported = false;
     try {

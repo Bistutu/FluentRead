@@ -251,8 +251,6 @@ const BUILD_ONLY_SRC_ALLOWLIST = new Set([
     'src/app/content/messageRuntime.ts',
     // 这是 WXT/provider/config 的静态组装根；行为由被注入模块的单测和双浏览器构建验证。
     'src/app/translation/runtime.ts',
-    // 内容侧客户端绑定 browser.runtime、页面上下文、AbortSignal 与持久化定时器；由 translateApi 功能测试和三种构建验证。
-    'src/app/translation/client.ts',
     // 页面上下文运行时绑定 live DOM、脱离文档快照和 Defuddle 动态导入；纯预算与格式化策略已严格覆盖。
     'src/services/translation/context/browser.ts',
     // 文档组合根只把 config/store 与 app translation client 注入严格覆盖的编排服务；由文档功能回归和双浏览器构建验证。

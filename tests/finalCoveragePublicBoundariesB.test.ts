@@ -73,7 +73,7 @@ async function providerComposition() {
     port('@/src/app/translation/visionProbeRuntime', () => ({modelVisionProbe: {resolve: resolveProbe}}));
     port('@/src/platform/storage/modelUsageRepository', () => ({modelUsageRepository: {recordMany, captureGeneration}}));
     const {createProviderTestRuntimeHandlers} = await import('@/src/app/background/providerRuntime');
-    const {createBackgroundMessageRouter} = await import('@/src/app/background/messageRouter');
+    const {createBackgroundMessageRouter} = await import('@/src/services/messaging/backgroundRouter');
     // 通过实际 router 分派，不调用组合根内部闭包或替换两个真实 handler factory。
     const router = createBackgroundMessageRouter<{sender?: {url?: string}}>(createProviderTestRuntimeHandlers());
     return {source, ready, router, runConnection, resolveProbe, recordMany, captureGeneration, scheduler};

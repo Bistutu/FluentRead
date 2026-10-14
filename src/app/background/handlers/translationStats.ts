@@ -5,7 +5,7 @@
  * 模块边界：本文件不直接访问 IndexedDB、不采集翻译请求，也不格式化界面文案；仓库由后台组合根注入。
  */
 
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {
     TRANSLATION_REQUEST_OUTCOMES,
     TRANSLATION_REQUEST_SOURCES,

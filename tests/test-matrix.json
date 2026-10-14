@@ -39,6 +39,8 @@
       "tests/chatgptPlanBridgeClient.test.ts"
     ],
     "unit": [
+      "tests/documentHistoryCommitter.test.ts",
+      "tests/fullPageSession.test.ts",
       "tests/compositeTranslationConfig.test.ts",
       "tests/compositeTranslationRouting.test.ts",
       "tests/compositeTranslationBroker.test.ts",
@@ -439,9 +441,13 @@
       "tests/readingEvidence.test.ts",
       "tests/videoSentenceTimeline.test.ts",
       "tests/vocabularyVideoSource.test.ts",
-      "tests/chatgptPlanConfig.test.ts"
+      "tests/chatgptPlanConfig.test.ts",
+      "tests/modelEditing.test.ts",
+      "tests/documentTasks.test.ts"
     ],
     "functional": [
+      "tests/videoAiRequestSession.test.ts",
+      "tests/videoAiSubtitleSession.test.ts",
       "tests/learningCenterLifecycle.test.ts",
       "tests/dateFormatLifecycle.test.ts",
       "tests/finalCoveragePublicBoundariesA.test.ts",
@@ -667,7 +673,9 @@
       "tests/vocabularyVideoSourceUi.test.ts",
       "tests/chatgptPlanHarness.test.ts",
       "tests/chatgptPlanProvider.test.ts",
-      "tests/chatgptPlanSettingsLifecycle.test.ts"
+      "tests/chatgptPlanSettingsLifecycle.test.ts",
+      "tests/configEditor.test.ts",
+      "tests/affectedTests.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

@@ -1,9 +1,9 @@
 /**
- * @file src/app/background/messageRouter.ts
+ * @file src/services/messaging/backgroundRouter.ts
  * 文件职责：提供与业务无关的类型化后台消息路由器，确保已注册消息、fallback 消息和未知消息具有确定性的分派结果。
  * 主要内容：定义 handler/fallback/context 泛型契约，从未知输入安全读取 type，维护按 type 索引的处理器 Map，并通过 dispatch 返回 handled、unhandled 或处理结果；
  * createBackgroundRuntimeMessageListener 统一未知消息与异常的通用失败回复，保留稳定 errorCode。
- * 模块边界：路由器不认识翻译、配置或词汇业务，不访问 browser.runtime，也不解释业务错误语义；监听器注册和具体 handler 集合由 messageRuntime 负责。
+ * 模块边界：路由器不认识翻译、配置或词汇业务，不访问 browser.runtime，也不解释业务错误语义；应用组合根负责监听器注册和具体 handler 集合；feature 只消费这里的公共 handler 契约，不反向依赖 app。
  */
 export interface BackgroundMessage {
     type: string;

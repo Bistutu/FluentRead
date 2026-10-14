@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const {mockConfig} = vi.hoisted(() => ({
@@ -51,7 +52,7 @@ describe('Claude Thinking 响应', () => {
             {text: '结束'},
         ]));
 
-        await expect(claude({origin: 'hello'})).resolves.toBe('译文结束');
+        await expect(claude(withProviderSnapshot({origin: 'hello'}, mockConfig))).resolves.toBe('译文结束');
         const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
         expect(request.thinking).toEqual({type: 'enabled', budget_tokens: 1024});
     });
@@ -59,7 +60,7 @@ describe('Claude Thinking 响应', () => {
     it('没有最终文本块时返回明确错误', async () => {
         fetchMock.mockResolvedValue(response([{type: 'thinking', thinking: 'private reasoning'}]));
 
-        await expect(claude({origin: 'hello'})).rejects.toThrow('Claude 返回数据格式异常：缺少文本内容');
+        await expect(claude(withProviderSnapshot({origin: 'hello'}, mockConfig))).rejects.toThrow('Claude 返回数据格式异常：缺少文本内容');
     });
 });
 
@@ -73,7 +74,7 @@ describe('claude AI 请求超时预算', () => {
             signal = init!.signal!;
             return new Promise<Response>(done => {resolve = done;});
         });
-        const result = claude({origin: 'Slow native AI source'});
+        const result = claude(withProviderSnapshot({origin: 'Slow native AI source'}, mockConfig));
         await vi.advanceTimersByTimeAsync(60_000);
         expect(signal.aborted).toBe(false);
         resolve(response([{type: 'text', text: '缓慢模型译文'}]));
@@ -94,7 +95,7 @@ describe('claude AI 请求超时预算', () => {
             return new Promise((_, reject) => signal.addEventListener('abort',
                 () => reject(new DOMException('aborted', 'AbortError')), {once: true}));
         });
-        const outcome = claude({origin: 'Native AI deadline source', requestTimeoutMs: explicit}).catch(error => error);
+        const outcome = claude(withProviderSnapshot({origin: 'Native AI deadline source', requestTimeoutMs: explicit}, mockConfig)).catch(error => error);
         await vi.advanceTimersByTimeAsync(deadline - 1);
         expect(signal.aborted).toBe(false);
         await vi.advanceTimersByTimeAsync(1);
@@ -113,7 +114,7 @@ describe('claude AI 请求超时预算', () => {
             return new Promise((_, reject) => signal.addEventListener('abort',
                 () => reject(new DOMException('aborted', 'AbortError')), {once: true}));
         });
-        const outcome = claude({origin: 'Cancelled native AI source', abortSignal: controller.signal}).catch(error => error);
+        const outcome = claude(withProviderSnapshot({origin: 'Cancelled native AI source', abortSignal: controller.signal}, mockConfig)).catch(error => error);
         controller.abort();
         await expect(outcome).resolves.toMatchObject({name: 'AbortError'});
         expect(signal.aborted).toBe(true);

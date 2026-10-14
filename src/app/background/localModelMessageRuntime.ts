@@ -7,7 +7,7 @@
 import {createLocalTranslationBackgroundRuntime} from '@/src/features/local-translation/background/runtime';
 import {createInformationHighlightBackgroundRuntime} from '@/src/features/information-highlight/background/runtime';
 import {createLocalTtsBackgroundRuntime} from '@/src/features/local-tts/background/runtime';
-import type {BackgroundMessageHandler} from './messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 
 export function createLocalModelMessageHandlers<TContext>(): Array<BackgroundMessageHandler<TContext>> {
     return [

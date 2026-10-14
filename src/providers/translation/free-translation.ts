@@ -29,7 +29,6 @@ import {
     normalizeFreeTranslationCooldownMs,
     normalizeFreeTranslationMode,
 } from '@/src/core/config/freeTranslation';
-import {config} from '@/src/services/config/store';
 import {abortErrorFromSignal} from '@/src/platform/http/runtime';
 import {freeTranslationHealthStorage} from '@/src/platform/storage/freeTranslationHealthStorage';
 import {createFreeFallbackRunner, UntranslatedFreeResultError, WrongLanguageFreeResultError, type FreeFallbackCandidate, type FreeFallbackLease} from '@/src/services/translation/freeFallback';
@@ -40,11 +39,11 @@ import {
     attachTranslationProviderConfig,
     attachTranslationRequestScheduler,
     createTranslationProviderConfigSnapshot,
-    getTranslationProviderConfig,
+    requireTranslationProviderConfig,
     getTranslationRequestScheduler,
     reportTranslationRoute,
-    type TranslationProviderRequest,
 } from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import type {TranslationProviderConfigSnapshot} from '@/src/services/translation/types';
 import {documentFreeAttemptCharacters, runDocumentFreeNativeCandidate, serializeDocumentFreeFirstSlot, translateDocumentFreeGroups} from './documentFreeBatch';
 
@@ -65,7 +64,7 @@ const providerTranslators: Record<FreeProviderId, (request: TranslationProviderR
         return results[0];
     },
     google: (request, lease) => {
-        const current = getTranslationProviderConfig(request, config);
+        const current = requireTranslationProviderConfig(request);
         // 文档逐段和已降级的槽必须保持真正单项，避免收集窗重新拼成刚被拒绝的协议批次。
         const documentSingle = import.meta.env.BROWSER !== 'userscript' && request.enableNativeBatch === false
             && (request.documentBatch === true || current.glossaryMatchContext?.context === 'document');
@@ -107,7 +106,7 @@ async function translateProviderText(id: FreeProviderId, message: TranslationPro
 /** 文本级协议不兼容只让本段换线，不暂停正常文字在同一服务上的翻译。 */
 function validateProtectedResult(origin: string, result: unknown, message: TranslationProviderRequest<string>): unknown {
     try {
-        const current = getTranslationProviderConfig(message, config);
+        const current = requireTranslationProviderConfig(message);
         validateGlossaryProtectedTokens(origin, result, current.glossaryProtectedTokens);
         return validateDocumentTranslationResult(current, origin, result, message.targetLanguage);
     } catch (error) {
@@ -158,7 +157,7 @@ export async function translateFreeTranslationProvider(providerId: string, messa
 function prepareRequest(message: FreeTranslationRequest): PreparedRequest {
     // provider 直调也在第一次 await 之前冻结；批量中的所有文本共享该副本与截止时间。
     const current = createTranslationProviderConfigSnapshot({
-        ...getTranslationProviderConfig(message, config),
+        ...requireTranslationProviderConfig(message),
         // 免费链仅使用匿名公共服务，不能沿用独立 provider 已保存的 Key 或代理。
         // 独立服务的凭据和代理不进入免费池，DeepLX 只保留独立服务用途。
         token: {},
@@ -191,8 +190,7 @@ function providerIdentity(id: string, current: TranslationProviderConfigSnapshot
 }
 
 /** 为设置页提供当前免费服务权重；只暴露服务 ID 与健康状态，不暴露连接身份哈希。 */
-export async function getFreeTranslationWeightSnapshot(now = Date.now()): Promise<FreeTranslationWeightSnapshot> {
-    const current = getTranslationProviderConfig(undefined, config);
+export async function getFreeTranslationWeightSnapshot(current: TranslationProviderConfigSnapshot, now = Date.now()): Promise<FreeTranslationWeightSnapshot> {
     const enabledProviderIds = normalizeFreeTranslationOrder(current.freeTranslationOrder);
     const healthByIdentity = new Map((await runFallback.getHealthSnapshot()).map(entry => [entry.identity, entry]));
     const health = enabledProviderIds.flatMap(providerId => {
@@ -212,7 +210,7 @@ function candidatesFor(text: string, message: PreparedRequest, groupSources?: re
     candidates: FreeFallbackCandidate[];
     routeByIdentity: Map<string, string>;
 } {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const routeByIdentity = new Map<string, string>();
     const enabled = normalizeFreeTranslationOrder(current.freeTranslationOrder);
     // 单线路仍让 provider 返回准确的语言方向错误；多线路不反复消费已证实无效的候选。
@@ -254,7 +252,7 @@ function candidatesFor(text: string, message: PreparedRequest, groupSources?: re
 
 async function translatePreparedText(text: string, message: PreparedRequest, groupSources?: readonly string[], scalarProviders?: Set<string>): Promise<string> {
     if (typeof text !== 'string') throw new Error('免费翻译服务仅支持文本输入');
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const {candidates, routeByIdentity} = candidatesFor(text, message, groupSources, scalarProviders);
     const scalarBeforeAttempt = import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true ? new Set(scalarProviders) : undefined;
     return runFallback(candidates, {
@@ -316,7 +314,7 @@ async function translateFreeBatch(texts: string[], message: PreparedRequest): Pr
                 }
             });
     }
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const enabled = normalizeFreeTranslationOrder(current.freeTranslationOrder);
     // 按冻结的完整启用池决定；不能借健康/方向过滤把混合池提升为原生分组池。
     const grouped = texts.length > FREE_TRANSLATION_GROUP_MAX_SLOTS

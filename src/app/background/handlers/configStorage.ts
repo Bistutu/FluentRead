@@ -12,7 +12,7 @@ import {
     type ConfigIndexedDbKey,
 } from '@/src/platform/storage/configStorage';
 import {sanitizeConfigCredentials} from '@/src/core/config/credentials';
-import type {BackgroundMessageHandler} from '../messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import type {ConfigPersistenceContext} from './configPersistence';
 
 const CREDENTIAL_KEYS = new Set<ConfigIndexedDbKey>([

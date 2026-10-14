@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const {mockConfig} = vi.hoisted(() => ({
@@ -71,7 +72,7 @@ describe('DeepL adapter', () => {
         mockConfig.deeplApiPlan = plan;
         const controller = new AbortController();
 
-        await expect(deepl({origin: 'Hello', context: 'Article title', abortSignal: controller.signal}))
+        await expect(deepl(withProviderSnapshot({origin: 'Hello', context: 'Article title', abortSignal: controller.signal}, mockConfig)))
             .resolves.toBe('你好');
 
         expect(fetchMock).toHaveBeenCalledOnce();
@@ -91,14 +92,14 @@ describe('DeepL adapter', () => {
     it.each(['free', 'pro'] as const)('自定义代理优先于 %s 套餐的官方端点', async (plan) => {
         mockConfig.deeplApiPlan = plan;
         mockConfig.proxy.deepL = '  https://proxy.example/translate  ';
-        await deepl({origin: 'Hello'});
+        await deepl(withProviderSnapshot({origin: 'Hello'}, mockConfig));
         expect(fetchMock.mock.calls[0]?.[0]).toBe('https://proxy.example/translate');
     });
 
     it('空白代理仍使用所选 Pro 官方端点', async () => {
         mockConfig.deeplApiPlan = 'pro';
         mockConfig.proxy.deepL = '  ';
-        await deepl({origin: 'Hello'});
+        await deepl(withProviderSnapshot({origin: 'Hello'}, mockConfig));
         expect(fetchMock.mock.calls[0]?.[0]).toBe(DEEPL_API_ENDPOINTS.pro);
     });
 
@@ -115,7 +116,7 @@ describe('DeepL adapter', () => {
         mockConfig.token.deepL = 'global-key';
         mockConfig.proxy.deepL = 'https://new-proxy.example/translate';
 
-        await deepl(request);
+        await deepl(withProviderSnapshot(request, mockConfig));
 
         expect(fetchMock.mock.calls[0]?.[0]).toBe(DEEPL_API_ENDPOINTS.free);
         expect(fetchMock.mock.calls[0]?.[1]?.headers).toMatchObject({
@@ -128,7 +129,7 @@ describe('DeepL adapter', () => {
         mockConfig.deeplApiPlan = 'pro';
         fetchMock.mockResolvedValue(new Response('Forbidden', {status: 403}));
 
-        await expect(deepl({origin: 'Hello'})).rejects.toThrow('403');
+        await expect(deepl(withProviderSnapshot({origin: 'Hello'}, mockConfig))).rejects.toThrow('403');
     });
 });
 
@@ -140,14 +141,14 @@ describe('DeepL 中文源和目标的协议边界', () => {
         ['zh-Hans', 'zh-Hant', 'ZH', 'ZH-HANT'],
         ['zh-Hant', 'en', 'ZH', 'EN'],
     ])('%s → %s 将目标脚本传给 DeepL 并保留有效源参数', async (sourceLanguage, targetLanguage, source, target) => {
-        await deepl({origin: '測試 test', sourceLanguage, targetLanguage});
+        await deepl(withProviderSnapshot({origin: '測試 test', sourceLanguage, targetLanguage}, mockConfig));
         expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({source_lang: source, target_lang: target});
     });
 });
 
 describe('DeepL 扩展语言协议', () => {
     it.each(['de', 'pt', 'it', 'ar', 'hi', 'bn', 'ur', 'fa', 'he', 'tr', 'vi', 'th', 'id', 'ms', 'nl', 'pl', 'uk', 'cs', 'sk', 'da', 'sv', 'nb', 'fi', 'el', 'ro', 'hu', 'bg', 'hr', 'sr', 'sl', 'et', 'lv', 'lt', 'ta', 'te', 'mr', 'gu', 'ml', 'pa', 'ne', 'sw', 'fil'])('按官方代码发送 %s，纯文本标签不启用 HTML 解析或废弃 beta 参数', async language => {
-        await deepl({origin: '<b>Hello</b>', sourceLanguage: language, targetLanguage: language});
+        await deepl(withProviderSnapshot({origin: '<b>Hello</b>', sourceLanguage: language, targetLanguage: language}, mockConfig));
         const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
         const code = language === 'fil' ? 'TL' : language.toUpperCase();
         expect(body).toMatchObject({source_lang: code, target_lang: code, text: ['<b>Hello</b>']});
@@ -156,8 +157,8 @@ describe('DeepL 扩展语言协议', () => {
         expect(mockConfig.to).toBe('zh-Hans');
     });
     it.each(['kn', 'si'])('不支持的 %s 在源语言或目标语言中均明确失败且不发送请求', async language => {
-        await expect(deepl({origin: 'Hello', sourceLanguage: 'en', targetLanguage: language})).rejects.toThrow('请选择其他翻译服务');
-        await expect(deepl({origin: 'Hello', sourceLanguage: language, targetLanguage: 'en'})).rejects.toThrow('请选择其他翻译服务');
+        await expect(deepl(withProviderSnapshot({origin: 'Hello', sourceLanguage: 'en', targetLanguage: language}, mockConfig))).rejects.toThrow('请选择其他翻译服务');
+        await expect(deepl(withProviderSnapshot({origin: 'Hello', sourceLanguage: language, targetLanguage: 'en'}, mockConfig))).rejects.toThrow('请选择其他翻译服务');
         expect(fetchMock).not.toHaveBeenCalled();
         expect(mockConfig.to).toBe('zh-Hans');
     });
@@ -168,10 +169,10 @@ describe('DeepL 原生数组的源槽对应', () => {
         mockConfig.nativeBatchTranslationEnabled.deepL = false;
         fetchMock.mockImplementation(async (_url, init) => Response.json({translations:
             JSON.parse(String(init?.body)).text.map((source: string) => ({text: `译:${source}`}))}));
-        await expect(deepl({origin: ['first', '', 'second']})).resolves.toEqual(['译:first', '', '译:second']);
+        await expect(deepl(withProviderSnapshot({origin: ['first', '', 'second']}, mockConfig))).resolves.toEqual(['译:first', '', '译:second']);
         expect(fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init?.body)).text)).toEqual([['first'], ['second']]);
         fetchMock.mockClear();
-        await expect(deepl({origin: ['first', 'second'], enableNativeBatch: true})).resolves.toEqual(['译:first', '译:second']);
+        await expect(deepl(withProviderSnapshot({origin: ['first', 'second'], enableNativeBatch: true}, mockConfig))).resolves.toEqual(['译:first', '译:second']);
         expect(fetchMock).toHaveBeenCalledOnce();
     });
 
@@ -180,7 +181,7 @@ describe('DeepL 原生数组的源槽对应', () => {
         fetchMock.mockResolvedValue(new Response(JSON.stringify({translations: [
             {text: '<b>你好 & &lt;</b>\n下一行'}, {text: '重复槽一'}, {text: '重复槽二'},
         ]})));
-        await expect(deepl({origin: origins})).resolves.toEqual([
+        await expect(deepl(withProviderSnapshot({origin: origins}, mockConfig))).resolves.toEqual([
             '<b>你好 & &lt;</b>\n下一行', '重复槽一', '', ' \r\n', '重复槽二',
         ]);
         expect(fetchMock).toHaveBeenCalledOnce();
@@ -196,16 +197,16 @@ describe('DeepL 原生数组的源槽对应', () => {
         {translations: [{text: '一'}, {text: ' \n'}]}, {}, null,
     ])('异常响应 %j 显式拒绝整批且不自行重试', async result => {
         fetchMock.mockResolvedValue(new Response(JSON.stringify(result)));
-        await expect(deepl({origin: ['first', 'second']})).rejects.toMatchObject({
+        await expect(deepl(withProviderSnapshot({origin: ['first', 'second']}, mockConfig))).rejects.toMatchObject({
             kind: 'response', code: 'NATIVE_BATCH_RESPONSE_INVALID', retryable: false,
         });
         expect(fetchMock).toHaveBeenCalledOnce();
     });
 
     it('空数组或纯空白文本只在本地返回', async () => {
-        await expect(deepl({origin: []})).resolves.toEqual([]);
-        await expect(deepl({origin: [' ', '', '\r\n']})).resolves.toEqual([' ', '', '\r\n']);
-        await expect(deepl({origin: ' \n'})).resolves.toBe(' \n');
+        await expect(deepl(withProviderSnapshot({origin: []}, mockConfig))).resolves.toEqual([]);
+        await expect(deepl(withProviderSnapshot({origin: [' ', '', '\r\n']}, mockConfig))).resolves.toEqual([' ', '', '\r\n']);
+        await expect(deepl(withProviderSnapshot({origin: ' \n'}, mockConfig))).resolves.toBe(' \n');
         expect(fetchMock).not.toHaveBeenCalled();
     });
 });

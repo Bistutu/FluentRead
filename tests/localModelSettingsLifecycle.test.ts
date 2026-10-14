@@ -41,7 +41,7 @@ import * as settingsActionContext from '@/src/features/settings/model/useSetting
 import {createLocalTtsBackgroundHandlers} from '@/src/features/local-tts/background/handlers';
 import {createVideoSubtitleBackgroundHandlers} from '@/src/features/video-subtitle/background/handlers';
 import {getVideoAiModelFileUrl, VIDEO_AI_Q4_MODEL_FILES, VIDEO_AI_SMALL_MODEL_FILES} from '@/src/features/video-subtitle/offscreen/modelCache';
-import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/services/messaging/backgroundRouter';
 import {createDownloadProgressHandler} from '@/src/app/background/handlers/downloadProgress';
 import {watchDownloadProgress} from '@/src/platform/storage/downloadProgress';
 import {createDownloadProgressPublisher, downloadProgressKey, LOCAL_TTS_DOWNLOAD_ID, videoModelDownloadId} from '@/src/core/download/progress';

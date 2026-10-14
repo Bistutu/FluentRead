@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const {config, bridge} = vi.hoisted(() => ({config: {} as Record<string, any>, bridge: vi.fn()}));
@@ -57,7 +58,7 @@ describe('ChatGPT 套餐 provider 与能力', () => {
         const request = attachTranslationProviderConfig({origin: 'Hello', pageContext: '标题', modelOverride: 'selected-account-model'}, frozen());
         config.model[services.chatgptPlan] = 'changed-model';
         config.system_role[services.chatgptPlan] = 'changed-system';
-        expect(await chatgptPlan(request)).toBe('译文');
+        expect(await chatgptPlan(withProviderSnapshot(request, config))).toBe('译文');
         const [payload] = bridge.mock.calls[0];
         expect(Object.keys(payload).sort()).toEqual(['input', 'instructions', 'model']);
         expect(payload.model).toBe('selected-account-model');
@@ -69,7 +70,7 @@ describe('ChatGPT 套餐 provider 与能力', () => {
 
     it('图片转换为 Responses input_image 并保留可信识别提示词', async () => {
         const request = attachTranslationImageInput(attachTranslationProviderConfig({origin: '识别文字'}, frozen()), 'data:image/png;base64,YQ==');
-        await chatgptPlan(request);
+        await chatgptPlan(withProviderSnapshot(request, config));
         const [payload] = bridge.mock.calls[0];
         expect(payload.input[0].content).toEqual(expect.arrayContaining([{type: 'input_image', image_url: 'data:image/png;base64,YQ=='}]));
         expect(JSON.stringify(payload.input)).toContain('识别文字');
@@ -90,7 +91,7 @@ describe('ChatGPT 套餐 provider 与能力', () => {
             config.model[services.chatgptPlan] = 'changed-during-batch';
             return sse(doneEvent('text', {usage: {input_tokens: 8, output_tokens: 2, total_tokens: 10, input_tokens_details: {cached_tokens: 3}}}));
         });
-        expect(await chatgptPlan(attachTranslationModelUsageObserver({origin: ['one', 'two']}, observation => observations.push(observation)))).toEqual(['text', 'text']);
+        expect(await chatgptPlan(withProviderSnapshot(attachTranslationModelUsageObserver({origin: ['one', 'two']}, observation => observations.push(observation)), config))).toEqual(['text', 'text']);
         expect(bridge.mock.calls.map(([payload]) => payload.model)).toEqual(['account-model', 'account-model']);
         expect(observations).toHaveLength(2);
         expect(observations[0]).toMatchObject({actualModel: 'account-model', usageAvailability: 'reported', inputTokens: 8, outputTokens: 2, totalTokens: 10, cachedInputTokens: 3, outcome: 'success'});
@@ -100,7 +101,7 @@ describe('ChatGPT 套餐 provider 与能力', () => {
         const scheduleAttempt = vi.fn(async (task: () => Promise<string>) => task());
         const holdUntil = vi.fn();
         const request = attachTranslationRequestScheduler({origin: ['one', 'two']}, {scheduleAttempt} as any, undefined, {holdUntil} as any);
-        await chatgptPlan(request);
+        await chatgptPlan(withProviderSnapshot(request, config));
         expect(scheduleAttempt).toHaveBeenCalledTimes(1);
         expect(holdUntil).toHaveBeenCalledTimes(2);
     });
@@ -108,7 +109,7 @@ describe('ChatGPT 套餐 provider 与能力', () => {
     it('已完成但仅含推理或拒绝输出不提交为译文，用量观察记失败', async () => {
         const observe = vi.fn();
         bridge.mockResolvedValue(sse(doneEvent('', {output: [{type: 'reasoning', summary: [{type: 'summary_text', text: 'secret reasoning'}]}]})));
-        await expect(chatgptPlan(attachTranslationModelUsageObserver({origin: 'text'}, observe))).rejects.toThrow('没有返回有效译文');
+        await expect(chatgptPlan(withProviderSnapshot(attachTranslationModelUsageObserver({origin: 'text'}, observe), config))).rejects.toThrow('没有返回有效译文');
         expect(observe).toHaveBeenCalledWith(expect.objectContaining({outcome: 'error', usageAvailability: 'unreported'}));
     });
 
@@ -117,7 +118,7 @@ describe('ChatGPT 套餐 provider 与能力', () => {
         bridge.mockImplementation((_payload, signal: AbortSignal) => new Promise((_, reject) => {
             signal.addEventListener('abort', () => reject(new DOMException('abort', 'AbortError')), {once: true});
         }));
-        const pending = chatgptPlan({origin: 'text', requestTimeoutMs: 40});
+        const pending = chatgptPlan(withProviderSnapshot({origin: 'text', requestTimeoutMs: 40}, config));
         const expectation = expect(pending).rejects.toMatchObject({kind: 'timeout', retryable: true});
         await vi.advanceTimersByTimeAsync(40);
         await expectation;
@@ -131,30 +132,30 @@ describe('ChatGPT 套餐 provider 与能力', () => {
                 controller.abort();
                 throw signal.reason;
             });
-        await expect(chatgptPlan({origin: ['one', 'two'], abortSignal: controller.signal})).rejects.toMatchObject({name: 'AbortError'});
+        await expect(chatgptPlan(withProviderSnapshot({origin: ['one', 'two'], abortSignal: controller.signal}, config))).rejects.toMatchObject({name: 'AbortError'});
         expect(bridge).toHaveBeenCalledTimes(2);
     });
 
     it('额度与其他流错误记失败用量，完成缺失model时使用冻结模型', async () => {
         const observe = vi.fn();
         bridge.mockResolvedValueOnce(sse(event('error', {code: 'subscription_sharing_usage_unavailable'})));
-        await expect(chatgptPlan(attachTranslationModelUsageObserver({origin: 'text'}, observe))).rejects.toMatchObject({kind: 'rate-limit', retryable: false});
+        await expect(chatgptPlan(withProviderSnapshot(attachTranslationModelUsageObserver({origin: 'text'}, observe), config))).rejects.toMatchObject({kind: 'rate-limit', retryable: false});
         expect(observe).toHaveBeenCalledWith(expect.objectContaining({outcome: 'error', statusCode: 429}));
         bridge.mockResolvedValueOnce(sse(doneEvent('text', {model: undefined})));
-        await chatgptPlan(attachTranslationModelUsageObserver({origin: 'text', targetLanguage: 'en'}, observe));
+        await chatgptPlan(withProviderSnapshot(attachTranslationModelUsageObserver({origin: 'text', targetLanguage: 'en'}, observe), config));
         expect(observe).toHaveBeenLastCalledWith(expect.objectContaining({actualModel: 'account-model', outcome: 'success'}));
         bridge.mockRejectedValueOnce(undefined);
-        await expect(chatgptPlan(attachTranslationModelUsageObserver({origin: 'text'}, observe))).rejects.toBeUndefined();
+        await expect(chatgptPlan(withProviderSnapshot(attachTranslationModelUsageObserver({origin: 'text'}, observe), config))).rejects.toBeUndefined();
         expect(observe).toHaveBeenLastCalledWith(expect.objectContaining({outcome: 'error', statusCode: undefined}));
     });
 
     it('批次剩余预算已过时不启动下一条，读取完成后的取消仍不提交', async () => {
         const time = vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValue(50);
-        await expect(chatgptPlan({origin: ['one'], requestTimeoutMs: 40})).rejects.toMatchObject({kind: 'timeout'});
+        await expect(chatgptPlan(withProviderSnapshot({origin: ['one'], requestTimeoutMs: 40}, config))).rejects.toMatchObject({kind: 'timeout'});
         expect(bridge).not.toHaveBeenCalled();time.mockRestore();
         const controller = new AbortController();
         vi.spyOn(planEvents, 'readChatGPTPlanStream').mockImplementationOnce(async () => {controller.abort();return completed();});
-        await expect(chatgptPlan({origin: 'text', abortSignal: controller.signal})).rejects.toMatchObject({name: 'AbortError'});
+        await expect(chatgptPlan(withProviderSnapshot({origin: 'text', abortSignal: controller.signal}, config))).rejects.toMatchObject({name: 'AbortError'});
     });
 });
 

@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 
 const {mockConfig} = vi.hoisted(() => ({
@@ -86,7 +87,7 @@ describe("DeepLX adapter", () => {
     it("sends the expected request and parses a successful response", async () => {
         fetchMock.mockResolvedValue(mockResponse({code: 200, data: "你好"}));
 
-        await expect(deeplx({origin: "Hello"})).resolves.toBe("你好");
+        await expect(deeplx(withProviderSnapshot({origin: "Hello"}, mockConfig))).resolves.toBe("你好");
 
         expect(fetchMock).toHaveBeenCalledOnce();
         const [url, init] = fetchMock.mock.calls[0]!;
@@ -111,7 +112,7 @@ describe("DeepLX adapter", () => {
             }))
             .mockResolvedValueOnce(mockResponse({code: 200, data: "备用译文"}));
 
-        await expect(deeplx({origin: "Hello"})).resolves.toBe("备用译文");
+        await expect(deeplx(withProviderSnapshot({origin: "Hello"}, mockConfig))).resolves.toBe("备用译文");
         expect(fetchMock).toHaveBeenCalledTimes(2);
         expect(fetchMock.mock.calls[1]?.[0]).toBe("https://backup.example/translate");
     });
@@ -122,7 +123,7 @@ describe("DeepLX adapter", () => {
             .mockResolvedValueOnce(mockResponse({code: 200, data: ""}))
             .mockResolvedValueOnce(mockResponse({code: 200, data: "有效译文"}));
 
-        await expect(deeplx({origin: "Hello"})).resolves.toBe("有效译文");
+        await expect(deeplx(withProviderSnapshot({origin: "Hello"}, mockConfig))).resolves.toBe("有效译文");
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
@@ -131,7 +132,7 @@ describe("DeepLX adapter", () => {
         for (const status of statuses) {
             fetchMock.mockResolvedValueOnce(mockResponse({}, {ok: false, status}));
         }
-        await expect(deeplx({origin: 'private original'})).rejects.toMatchObject({statusCode: statuses[0]});
+        await expect(deeplx(withProviderSnapshot({origin: 'private original'}, mockConfig))).rejects.toMatchObject({statusCode: statuses[0]});
     });
 
     it.each([429, 503, undefined])('does not mask a mixed availability failure with a parameter error %s', async status => {
@@ -139,7 +140,7 @@ describe("DeepLX adapter", () => {
         fetchMock.mockResolvedValueOnce(mockResponse({}, {ok: false, status: 400}));
         if (status === undefined) fetchMock.mockRejectedValueOnce(new Error('network secret'));
         else fetchMock.mockResolvedValueOnce(mockResponse({}, {ok: false, status}));
-        const request = deeplx({origin: 'private original'});
+        const request = deeplx(withProviderSnapshot({origin: 'private original'}, mockConfig));
         await expect(request).rejects.not.toHaveProperty('statusCode');
         await expect(request).rejects.toThrow('备用站点 1: 请求失败: 400；备用站点 2:');
         await expect(request).rejects.not.toThrow('secret');
@@ -149,7 +150,7 @@ describe("DeepLX adapter", () => {
         mockConfig.token = {deeplx: "test-token"};
         fetchMock.mockResolvedValue(mockResponse({code: 200, data: "你好"}));
 
-        await deeplx({origin: "Hello"});
+        await deeplx(withProviderSnapshot({origin: "Hello"}, mockConfig));
 
         expect(fetchMock.mock.calls[0]?.[1]?.headers).toEqual({
             "Content-Type": "application/json",
@@ -162,7 +163,7 @@ describe("DeepLX adapter", () => {
         mockConfig.token = {deeplx: "site-token"};
         fetchMock.mockResolvedValue(mockResponse({code: 200, data: "你好"}));
 
-        await expect(deeplx({origin: "Hello"})).resolves.toBe("你好");
+        await expect(deeplx(withProviderSnapshot({origin: "Hello"}, mockConfig))).resolves.toBe("你好");
 
         expect(fetchMock.mock.calls[0]?.[0]).toBe("https://freeapi.fanyimao.cn/translate?token=site-token");
     });
@@ -179,7 +180,7 @@ describe("DeepLX adapter", () => {
             }));
         });
 
-        const request = deeplx({origin: "Hello"});
+        const request = deeplx(withProviderSnapshot({origin: "Hello"}, mockConfig));
         const rejection = expect(request).rejects.toThrow("请求超时（8 秒）");
         await vi.advanceTimersByTimeAsync(7_999);
         expect(transportSignal?.aborted).toBe(false);
@@ -203,7 +204,7 @@ describe("DeepLX adapter", () => {
             }));
         });
 
-        const request = deeplx({origin: "Hello", abortSignal: controller.signal});
+        const request = deeplx(withProviderSnapshot({origin: "Hello", abortSignal: controller.signal}, mockConfig));
         await vi.waitFor(() => expect(responseText).toHaveBeenCalledOnce());
         controller.abort(new Error('broker deadline'));
         await expect(request).rejects.toThrow('broker deadline');

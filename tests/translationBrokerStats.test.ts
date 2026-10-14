@@ -1,3 +1,4 @@
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {createTranslationBroker} from '@/src/services/translation/broker';
 import type {TranslationBrokerDependencies} from '@/src/services/translation/types';
@@ -58,7 +59,7 @@ function createConfig() {
 
 interface Harness {
     translate: ReturnType<typeof createTranslationBroker>['translateWithCache'];
-    provider: ReturnType<typeof vi.fn<(message: Record<string, unknown>) => Promise<unknown>>>;
+    provider: ReturnType<typeof vi.fn<(message: TranslationProviderRequest) => Promise<unknown>>>;
     record: ReturnType<typeof vi.fn>;
     warn: ReturnType<typeof vi.fn>;
     config: ReturnType<typeof createConfig>;
@@ -70,7 +71,7 @@ function createHarness(overrides: Partial<TranslationBrokerDependencies> = {}): 
     let clock = 10_000;
     const config = createConfig();
     const cache = new Map<string, string>();
-    const provider = vi.fn(async (message: Record<string, unknown>): Promise<unknown> => (
+    const provider = vi.fn(async (message: TranslationProviderRequest): Promise<unknown> => (
         Array.isArray(message.origin) ? message.origin.map((value) => `译:${value}`) : `译:${String(message.origin)}`
     ));
     const record = vi.fn();
@@ -185,7 +186,7 @@ describe('翻译 broker 请求统计', () => {
     });
 
     it('单条请求记录规模、服务耗时与结果字符，并在缓存命中时标记来源', async () => {
-        harness.provider.mockImplementationOnce(async (message: Record<string, unknown>) => {
+        harness.provider.mockImplementationOnce(async (message: TranslationProviderRequest) => {
             harness.advance(250);
             return `译文:${String(message.origin)}`;
         });
@@ -221,7 +222,7 @@ describe('翻译 broker 请求统计', () => {
         await harness.translate({origin: ['a', 'c', 'd']});
 
         let release!: () => void;
-        harness.provider.mockImplementationOnce((message: Record<string, unknown>) => new Promise((resolve) => {
+        harness.provider.mockImplementationOnce((message: TranslationProviderRequest) => new Promise((resolve) => {
             release = () => resolve((message.origin as string[]).map((value) => `译:${value}`));
         }));
         const owner = harness.translate({origin: ['x', 'y']});
@@ -312,7 +313,7 @@ describe('翻译 broker 请求统计', () => {
             {route: 'google', outcome: 'success' as const, durationMs: 250, chars: 5},
             {route: 'google', outcome: 'success' as const, durationMs: 150, chars: 4},
         ];
-        harness.provider.mockImplementationOnce(async (message: Record<string, unknown>) => {
+        harness.provider.mockImplementationOnce(async (message: TranslationProviderRequest) => {
             for (const attempt of attempts) reportTranslationRoute(message, attempt);
             return '译:free';
         });
@@ -323,7 +324,7 @@ describe('翻译 broker 请求统计', () => {
         expect(event.routes).toEqual(['microsoft', 'google']);
         expect(event.routeAttempts).toEqual(attempts);
 
-        harness.provider.mockImplementationOnce(async (message: Record<string, unknown>) => {
+        harness.provider.mockImplementationOnce(async (message: TranslationProviderRequest) => {
             for (let index = 0; index < 250; index += 1) {
                 reportTranslationRoute(message, {route: `route-${index}`, outcome: 'success', durationMs: -5, chars: 1});
             }
@@ -338,7 +339,7 @@ describe('翻译 broker 请求统计', () => {
 
     it('未注入统计端口时不采集，未注入代次捕获时使用 0', async () => {
         const silent = createHarness({recordTranslationRequest: undefined});
-        silent.provider.mockImplementationOnce(async (message: Record<string, unknown>) => {
+        silent.provider.mockImplementationOnce(async (message: TranslationProviderRequest) => {
             reportTranslationRoute(message, {route: 'google', outcome: 'success', durationMs: 10, chars: 2});
             return '译:quiet';
         });

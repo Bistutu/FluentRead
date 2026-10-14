@@ -20,7 +20,7 @@ import {
     restoreConfigAutoBackup,
 } from '@/src/services/config/autoBackupStore';
 import {configStorage} from '@/src/platform/storage/configStorageRuntime';
-import type {BackgroundMessageHandler} from './messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {createGoogleDriveSyncRuntime} from './googleDriveSyncRuntime';
 import {createWebDavBackupRuntime} from './webDavBackupRuntime';
 import {createConfigAutoBackupRestoreHandler} from './handlers/configAutoBackup';

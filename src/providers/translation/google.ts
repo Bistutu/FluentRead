@@ -7,7 +7,7 @@
  */
 
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError} from '@/src/platform/http/errors';
 import {
     getDynamicFreeProviderWeight,
@@ -19,10 +19,10 @@ import {
     createRuntimeAbortContext,
     runtimeFetch,
 } from '@/src/platform/http/runtime';
-import {getTranslationProviderConfig, getTranslationRequestScheduler, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig, getTranslationRequestScheduler} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import type {TranslationRequestLease} from '@/src/services/translation/requestScheduler';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
-import {config} from '@/src/services/config/store';
 import {createGoogleRequestGate, googleRequestDeadlineError} from './googleRequestGate';
 import {isNativeBatchResponseError, NativeBatchResponseError} from '@/src/core/translation/nativeBatch';
 import {hasTranslationContent} from '@/src/core/translation/result';
@@ -612,8 +612,8 @@ export async function translateGoogleText(text: string, fromLang: string, toLang
 }
 
 async function google(message: TranslationProviderRequest) {
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
-    const current = getTranslationProviderConfig(message, config);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
+    const current = requireTranslationProviderConfig(message);
     const enableNativeBatch = message.enableNativeBatch
         ?? isNativeTranslationBatchEnabled('google', current.nativeBatchTranslationEnabled);
     const texts = typeof message.origin === 'string' ? [message.origin] : message.origin;

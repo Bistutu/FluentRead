@@ -6,13 +6,13 @@
  * 模块边界：本文件位于 provider 适配层，只把统一翻译请求转换为外部或浏览器服务协议；不管理页面 DOM、UI 生命周期或配置持久化，缓存、去重和超时总预算由 translation broker 统一协调。
  */
 
-import {getTranslationLanguages} from '@/src/services/translation/languages';
-import type {TranslationLanguageOverride} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
+import type {TranslationLanguageOverride} from '@/src/core/translation/languages';
 import {runtimeFetch} from '@/src/platform/http/runtime';
 import {translateMicrosoftTextsWithTransport, type MicrosoftTranslationLease} from './microsoftTransport';
-import {getTranslationProviderConfig, getTranslationRequestScheduler, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig, getTranslationRequestScheduler} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
-import {config} from '@/src/services/config/store';
 
 export async function translateMicrosoftTexts(
     texts: string[],
@@ -30,8 +30,8 @@ async function microsoft(message: TranslationProviderRequest & TranslationLangua
     const origin = message.origin;
     const isSingleText = typeof origin === 'string';
     const texts: string[] = typeof origin === 'string' ? [origin] : origin;
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
-    const current = getTranslationProviderConfig(message, config);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
+    const current = requireTranslationProviderConfig(message);
     const enableNativeBatch = message.enableNativeBatch
         ?? isNativeTranslationBatchEnabled('microsoft', current.nativeBatchTranslationEnabled);
     const translations = await translateMicrosoftTexts(texts, sourceLanguage, targetLanguage, message.abortSignal,

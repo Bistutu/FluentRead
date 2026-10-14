@@ -11,17 +11,16 @@ import {resolveConfiguredModel, services} from "@/src/core/config/catalog";
 import {commonMsgTemplate} from '@/src/services/translation/templates';
 import hmacSha256 from 'crypto-js/hmac-sha256';
 import base64 from 'crypto-js/enc-base64';
-import {config} from "@/src/services/config/store";
 import {isApiKeyRequired} from "@/src/core/config/validation";
 import {createHttpStatusError, createImageInputHttpError, readJsonResponse} from '@/src/platform/http/errors';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
 import {
-    getTranslationProviderConfig,
+    requireTranslationProviderConfig,
     reportTranslationModelUsage,
     reportTranslationModelUsageFailure,
     getTranslationImageInput,
-    type TranslationProviderRequest,
 } from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {normalizeOpenAICompatibleUsage} from './usage';
 
 
@@ -30,7 +29,7 @@ const jwtCache = new Map<string, {apiKey: string; secret: string; expiration: nu
 
 // 文档参考：https://open.bigmodel.cn/dev/api#nosdk
 async function zhipu(message: TranslationProviderRequest<string>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const service = message.serviceOverride || services.zhipu;
     if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
     const configuredModel = resolveConfiguredModel(
@@ -58,7 +57,18 @@ async function zhipu(message: TranslationProviderRequest<string>) {
     headers.append('Content-Type', 'application/json');
     if (secret) headers.append('Authorization', `Bearer ${secret}`);
 
-    const body = commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service, message.targetLanguage, message.modelOverride, current, message.thinkingOverride, getTranslationImageInput(message));
+    const body = commonMsgTemplate({
+        origin: message.origin,
+        context: message.pageContext,
+        prompt: message.summaryPrompt,
+        systemPrompt: message.summarySystemPrompt,
+        serviceOverride: service,
+        targetLanguage: message.targetLanguage,
+        modelOverride: message.modelOverride,
+        current,
+        thinkingOverride: message.thinkingOverride,
+        imageInput: getTranslationImageInput(message),
+    });
     const startedAt = Date.now();
     let attemptReported = false;
     try {

@@ -1,3 +1,4 @@
+let withProviderSnapshot: typeof import('./helpers/providerSnapshot').withProviderSnapshot;
 /** 真实 Google 数组 transport 经免费池和 broker 的预算合同；仅替换 HTTP 与健康持久化端口，不访问真实网络。 */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
@@ -50,6 +51,7 @@ beforeEach(async () => {
         freeTranslationTimeoutMs: 5000, freeTranslationCooldownMs: 60000,
     });
     ({default: freeTranslation} = await import('@/src/providers/translation/free-translation'));
+    ({withProviderSnapshot} = await import('./helpers/providerSnapshot'));
     ({createTranslationBroker} = await import('@/src/services/translation/broker'));
 });
 afterEach(() => {
@@ -65,7 +67,7 @@ describe('Google HTTP 退避与免费池/broker 集成', () => {
             if (starts.length === 1) return new Response('private original', {status: 429, headers: {'Retry-After': '1'}});
             return successful(input, init);
         });
-        const outcome = observe(freeTranslation({origin: slots(63), requestTimeoutMs: 20000}));
+        const outcome = observe(freeTranslation(withProviderSnapshot({origin: slots(63), requestTimeoutMs: 20000}, current)));
         await vi.advanceTimersByTimeAsync(10000);
         expect(outcome).toMatchObject({value: translated(63)});
         expect(outcome.error).toBeUndefined();
@@ -84,7 +86,7 @@ describe('Google HTTP 退避与免费池/broker 集成', () => {
         const translate = broker(request => {
             if (++calls === 1) return new Promise<string>(resolve => {release = resolve;});
             admitted.push({at: Date.now(), budget: request.requestTimeoutMs});
-            return freeTranslation(request);
+            return freeTranslation(withProviderSnapshot(request, current));
         });
         const starts: number[] = [];
         fetchMock.mockImplementation(async (input, init) => {
@@ -110,7 +112,7 @@ describe('Google HTTP 退避与免费池/broker 集成', () => {
         let release!: (value: string) => void;
         let calls = 0;
         const translate = broker(request => ++calls === 1
-            ? new Promise<string>(resolve => {release = resolve;}) : freeTranslation(request));
+            ? new Promise<string>(resolve => {release = resolve;}) : freeTranslation(withProviderSnapshot(request, current)));
         fetchMock.mockResolvedValue(new Response('', {status: 429, headers: {'Retry-After': '1'}}));
         const occupying = observe(translate({origin: 'Occupying readable English paragraph.', useCache: false, requestTimeoutMs: 20000}));
         const queued = observe(translate({origin: slots(9), useCache: false, requestTimeoutMs: 20000}));
@@ -142,7 +144,7 @@ describe('Google HTTP 退避与免费池/broker 集成', () => {
             return new Promise(resolve => pending.push({input, init, resolve}));
         });
         const caller = new AbortController();
-        const cancelled = observe(freeTranslation({origin: slots(9), requestTimeoutMs: 20000, abortSignal: caller.signal}));
+        const cancelled = observe(freeTranslation(withProviderSnapshot({origin: slots(9), requestTimeoutMs: 20000, abortSignal: caller.signal}, current)));
         await vi.advanceTimersByTimeAsync(1050);
         expect(pending).toHaveLength(1);
         caller.abort(); await vi.advanceTimersByTimeAsync(0);

@@ -9,23 +9,22 @@
 import {method} from "@/src/core/config/constants";
 import {geminiMsgTemplate} from '@/src/services/translation/templates';
 import {customModelString} from "@/src/core/config/catalog";
-import {config} from "@/src/services/config/store";
 import {appendOptionalHeader} from './auth';
 import {createHttpStatusError, createImageInputHttpError, readJsonResponse} from '@/src/platform/http/errors';
 import {abortErrorFromSignal, createRuntimeAbortContext, runtimeFetch} from '@/src/platform/http/runtime';
 import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {
-    getTranslationProviderConfig,
+    requireTranslationProviderConfig,
     reportTranslationModelUsage,
     reportTranslationModelUsageFailure,
     getTranslationImageInput,
-    type TranslationProviderRequest,
 } from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {normalizeGeminiUsage} from './usage';
 
 
 async function gemini(message: TranslationProviderRequest<string>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const service = message.serviceOverride || current.service;
     if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
 
@@ -47,7 +46,18 @@ async function gemini(message: TranslationProviderRequest<string>) {
         appendOptionalHeader(headers, 'x-goog-api-key', current.token[service]);
     }
 
-    const body = geminiMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service, message.targetLanguage, current, message.modelOverride, message.thinkingOverride, getTranslationImageInput(message));
+    const body = geminiMsgTemplate({
+        origin: message.origin,
+        context: message.pageContext,
+        prompt: message.summaryPrompt,
+        systemPrompt: message.summarySystemPrompt,
+        serviceOverride: service,
+        targetLanguage: message.targetLanguage,
+        current,
+        modelOverride: message.modelOverride,
+        thinkingOverride: message.thinkingOverride,
+        imageInput: getTranslationImageInput(message),
+    });
     // broker 数值是扣除排队/摘要后的预算；直接 provider 调用才使用冻结配置默认值。
     const timeoutMs = typeof message.requestTimeoutMs === 'number' && Number.isFinite(message.requestTimeoutMs)
         ? Math.max(1, Math.floor(message.requestTimeoutMs)) : normalizeAiRequestTimeoutMs(current.aiRequestTimeoutMs);

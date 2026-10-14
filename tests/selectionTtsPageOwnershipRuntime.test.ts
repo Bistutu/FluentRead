@@ -10,7 +10,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import {
     createBackgroundMessageRouter,
     createBackgroundRuntimeMessageListener,
-} from '@/src/app/background/messageRouter';
+} from '@/src/services/messaging/backgroundRouter';
 import {
     createSelectionTtsBackgroundHandlers,
     SELECTION_TTS_GOOGLE_MESSAGE_TYPE,

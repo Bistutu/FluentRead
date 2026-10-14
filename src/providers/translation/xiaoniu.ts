@@ -9,19 +9,16 @@
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import {method, urls} from "@/src/core/config/constants";
 import {services} from "@/src/core/config/catalog";
-import {config} from "@/src/services/config/store";
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
 import {runtimeFetch} from '@/src/platform/http/runtime';
-import {
-    getTranslationProviderConfig,
-    type TranslationProviderRequest,
-} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 
 async function xiaoniu(message: TranslationProviderRequest<string>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const service = message.serviceOverride || current.service;
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
     const niutransLanguage = (code: string): string => {
         const normalized = normalizeChineseLanguageCode(code);
         const codes: Record<string, string> = {'zh-Hans': 'zh', 'zh-Hant': 'cht', nb: 'no'};

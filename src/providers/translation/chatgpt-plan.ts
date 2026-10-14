@@ -8,10 +8,15 @@
 import {services} from '@/src/core/config/catalog';
 import {normalizeAiRequestTimeoutMs} from '@/src/core/config/aiRequestTimeout';
 import {stripTranslationReasoning} from '@/src/core/translation/prompts';
-import {config} from '@/src/services/config/store';
 import {commonMsgTemplate} from '@/src/services/translation/templates';
-import {getTranslationProviderConfig, getTranslationImageInput, getTranslationRequestScheduler,
-    reportTranslationModelUsage, createTranslationProviderConfigSnapshot, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {
+    requireTranslationProviderConfig,
+    getTranslationImageInput,
+    getTranslationRequestScheduler,
+    reportTranslationModelUsage,
+    createTranslationProviderConfigSnapshot,
+} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import type {TranslationProviderConfigSnapshot} from '@/src/services/translation/types';
 import {createRuntimeAbortContext, abortErrorFromSignal} from '@/src/platform/http/runtime';
 import {requestChatGPTPlanResponse} from '@/src/platform/chatgpt-plan/bridge';
@@ -31,9 +36,18 @@ export function buildChatGPTPlanPayload(request: ChatGPTPlanRequest, origin: str
     model: string; input: unknown[]; instructions?: string;
 } {
     const safeConfig = {...current, customBody: {...current.customBody, [services.chatgptPlan]: ''}};
-    const payload = JSON.parse(commonMsgTemplate(origin, request.pageContext, request.summaryPrompt,
-        request.summarySystemPrompt, services.chatgptPlan, request.targetLanguage || current.to,
-        request.modelOverride, safeConfig, request.thinkingOverride, getTranslationImageInput(request))) as {
+    const payload = JSON.parse(commonMsgTemplate({
+        origin,
+        context: request.pageContext,
+        prompt: request.summaryPrompt,
+        systemPrompt: request.summarySystemPrompt,
+        serviceOverride: services.chatgptPlan,
+        targetLanguage: request.targetLanguage || current.to,
+        modelOverride: request.modelOverride,
+        current: safeConfig,
+        thinkingOverride: request.thinkingOverride,
+        imageInput: getTranslationImageInput(request),
+    })) as {
             model: string; messages: [{role: 'system'; content: string}, {role: 'user'; content: string | Array<
                 {type: 'text'; text: string} | {type: 'image_url'; image_url: {url: string}}> }];
         };
@@ -94,7 +108,7 @@ async function translateSingle(request: ChatGPTPlanRequest, origin: string, curr
 
 /** 数组逐条执行并共享剩余预算，完整成功才返回等长结果；外部槽协议仍保持为单条文本。 */
 export default async function chatgptPlan(request: ChatGPTPlanRequest): Promise<string | string[]> {
-    const current = createTranslationProviderConfigSnapshot(getTranslationProviderConfig(request, config));
+    const current = createTranslationProviderConfigSnapshot(requireTranslationProviderConfig(request));
     const configured = normalizeAiRequestTimeoutMs(current.aiRequestTimeoutMs);
     const budget = typeof request.requestTimeoutMs === 'number' && Number.isFinite(request.requestTimeoutMs)
         ? Math.max(1, Math.floor(request.requestTimeoutMs)) : configured;

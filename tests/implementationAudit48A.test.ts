@@ -35,7 +35,7 @@ import {runtimeFetch, setRuntimeFetch} from '@/src/platform/http/runtime';
 import {installConfigStorageBroadcast} from '@/src/app/background/configStorageBroadcast';
 import type {ConfigStoragePort} from '@/src/platform/storage/configStorage';
 import {createBaselineConfigAutoBackups} from '@/src/services/config/autoBackup';
-import {createBackgroundMessageRouter} from '@/src/app/background/messageRouter';
+import {createBackgroundMessageRouter} from '@/src/services/messaging/backgroundRouter';
 import {createContentRuntimeMessageHandler} from '@/src/app/content/messageRuntime';
 import {createTabTranslationStateReader} from '@/src/app/background/tabTranslationQuery';
 import {TabTranslationStateStore} from '@/src/app/background/tabTranslationState';

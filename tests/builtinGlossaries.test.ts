@@ -1,3 +1,4 @@
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {describe, expect, it, vi} from 'vitest';
 import {addBuiltinGlossary, BUILTIN_GLOSSARIES} from '@/src/core/glossary/builtins';
 import {buildGlossaryRevision, createGlossaryLibrary, exportGlossary, GLOSSARY_LIMITS,
@@ -145,7 +146,7 @@ describe('离线内置术语词库', () => {
             glossaryLibraries: [ai], documentGlossaryIds: [ai.id]});
         const before = structuredClone(config.glossaryLibraries);
         const cache = new Map<string, string>();
-        const provider = vi.fn(async (message: Record<string, unknown>) => {
+        const provider = vi.fn(async (message: TranslationProviderRequest) => {
             const response = (origin: string) => `译文:${origin.replace(/\bTransformer\b/gu, '变压器').replace(/\bsoftmax\b/gu, '软极大')}`;
             return Array.isArray(message.origin) ? message.origin.map(response) : response(String(message.origin));
         });

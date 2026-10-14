@@ -75,7 +75,7 @@ const runtime = vi.hoisted(() => ({
     clearlyTargetLanguage: vi.fn<(value: string, targetLanguage: string, excluded?: readonly string[]) => boolean>(() => false),
 }));
 
-vi.mock("@/src/app/translation/check", () => ({checkConfig: () => true}));
+vi.mock("@/src/features/full-page-translation/content/configCheck", () => ({checkConfig: () => true}));
 vi.mock('@/src/features/full-page-translation/ui/modalProgressHint', () => ({syncModalTranslationHint: vi.fn()}));
 vi.mock("@/src/core/config/catalog", async (importOriginal) => ({
     ...await importOriginal<typeof import('@/src/core/config/catalog')>(),
@@ -108,7 +108,7 @@ vi.mock("@/src/core/language/detect", () => ({
         runtime.clearlyTargetLanguage(origin, target, excluded)
         || (excluded.includes('zh-Hant') && origin.includes('這個')) || (excluded.includes('ja') && origin.includes('これは')),
 }));
-vi.mock("@/src/app/translation/client", () => ({
+vi.mock("@/src/services/translation/client", () => ({
     translateText: async (origin: string, _context: string, options: Record<string, unknown>) => {
         runtime.requestOptions.push(options);
         runtime.requestContexts.push(_context);

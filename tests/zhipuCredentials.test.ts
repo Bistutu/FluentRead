@@ -1,3 +1,4 @@
+import {withProviderSnapshot} from './helpers/providerSnapshot';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const mockConfig = vi.hoisted(() => ({
@@ -34,9 +35,9 @@ describe('智谱派生 JWT 凭据', () => {
 
     it('只在模块内存复用 JWT，不读取或改写 config.extra', async () => {
         const legacyExtra = structuredClone(mockConfig.extra);
-        await zhipu({origin: 'hello', targetLanguage: 'zh-Hans'});
+        await zhipu(withProviderSnapshot({origin: 'hello', targetLanguage: 'zh-Hans'}, mockConfig));
         vi.setSystemTime(new Date('2026-01-01T01:00:00Z'));
-        await zhipu({origin: 'world', targetLanguage: 'zh-Hans'});
+        await zhipu(withProviderSnapshot({origin: 'world', targetLanguage: 'zh-Hans'}, mockConfig));
 
         const fetchMock = vi.mocked(fetch);
         const firstHeaders = fetchMock.mock.calls[0][1]?.headers as Headers;

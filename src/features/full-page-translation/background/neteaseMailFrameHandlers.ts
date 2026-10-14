@@ -4,7 +4,7 @@
  * 主要内容：核对标签页、顶层阅读路由、子文档 URL 与 frameId，拒绝未知消息字段并定向转发。
  * 模块边界：不读取邮件、sid 或配置；顶层内容脚本仍拥有全文会话真值。
  */
-import type {BackgroundMessageHandler} from '@/src/app/background/messageRouter';
+import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {
     isNeteaseMailChildUrl, isNeteaseMailReadUrl, isNeteaseMailTopUrl, parseNeteaseMailFrameChanged,
     parseNeteaseMailFrameRequest, NETEASE_MAIL_FRAME_CHANGED_MESSAGE_TYPE,

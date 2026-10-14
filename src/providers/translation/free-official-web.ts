@@ -7,7 +7,8 @@
 import MD5 from 'crypto-js/md5';
 import {translateFreeTextChunks} from './freeTextChunks';
 import {serializeTranslationSlots} from '@/src/core/translation/serialization';
-import {getTranslationGlossarySourceText, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {getTranslationGlossarySourceText} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
 

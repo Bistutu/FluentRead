@@ -46,7 +46,7 @@ async function respond(kind: 'text' | 'batch', origins: string[], options: Recor
 }
 
 vi.mock('@/src/services/config/store', () => ({config: runtime.config}));
-vi.mock('@/src/app/translation/client', () => ({
+vi.mock('@/src/services/translation/client', () => ({
     translateText: async (origin: string, _context: string, options: Record<string, unknown>) =>
         (await respond('text', [origin], options))[0],
     translateTextBatch: (origins: readonly string[], _context: string, options: Record<string, unknown>) =>

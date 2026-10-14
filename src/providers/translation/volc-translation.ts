@@ -8,11 +8,11 @@
 
 import {resolveCloudRegion, services} from '@/src/core/config/catalog';
 import {method, VOLC_TRANSLATION_ENDPOINT} from '@/src/core/config/constants';
-import {config} from '@/src/services/config/store';
-import {getTranslationLanguages} from '@/src/services/translation/languages';
+import {getTranslationProviderLanguages} from '@/src/services/translation/requestSnapshot';
 import {createHttpStatusError, createProviderCodeError, readJsonResponse} from '@/src/platform/http/errors';
 import {runtimeFetch} from '@/src/platform/http/runtime';
-import {getTranslationProviderConfig, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {requireTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationProviderRequest} from '@/src/services/translation/types';
 import {resolveCloudLanguages} from './cloud/languages';
 import {canonicalQueryString, hmacSha256, sha256Hex, toHex} from './cloud/signature';
 
@@ -77,7 +77,7 @@ export async function buildVolcAuthorization(input: VolcSignatureInput): Promise
 }
 
 async function volcTranslation(message: TranslationProviderRequest<string>) {
-    const current = getTranslationProviderConfig(message, config);
+    const current = requireTranslationProviderConfig(message);
     const accessKeyId = current.token[services.volcTranslation]?.trim();
     const secretAccessKey = current.secret[services.volcTranslation]?.trim();
     if (!accessKeyId || !secretAccessKey) {
@@ -85,7 +85,7 @@ async function volcTranslation(message: TranslationProviderRequest<string>) {
     }
     const region = resolveCloudRegion(services.volcTranslation, current.serviceRegion?.[services.volcTranslation]);
 
-    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    const {sourceLanguage, targetLanguage} = getTranslationProviderLanguages(message);
     const {source, target} = resolveCloudLanguages('volcTranslation', sourceLanguage, targetLanguage);
 
     const body = JSON.stringify({

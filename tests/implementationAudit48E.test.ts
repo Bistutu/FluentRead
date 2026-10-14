@@ -31,7 +31,7 @@ vi.mock('webextension-polyfill', () => ({default: {
 vi.mock('@/src/services/config/store', () => ({config: ports.config,
     subscribeConfig: (fn: () => void) => {ports.subscriptions.add(fn); return () => ports.subscriptions.delete(fn);},
 }));
-vi.mock('@/src/app/translation/client', () => ({translateText: ports.translate, translateTextBatch: ports.translate}));
+vi.mock('@/src/services/translation/client', () => ({translateText: ports.translate, translateTextBatch: ports.translate}));
 vi.mock('@/src/platform/shadow-ui', () => ({createVueShadowUi: ports.shadow}));
 vi.mock('@/src/platform/http/runtime', async original => ({...await original<typeof import('@/src/platform/http/runtime')>(), runtimeFetch: ports.fetch}));
 vi.mock('@/src/features/share-card/public', () => ({isShareCardMounted: () => false, openShareCard: vi.fn()}));

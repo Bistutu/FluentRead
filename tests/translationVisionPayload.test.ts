@@ -7,11 +7,8 @@
  */
 
 import {describe, expect, it} from 'vitest';
-import {
-    attachTranslationImageInput,
-    getTranslationImageInput,
-    TRANSLATION_IMAGE_INPUT,
-} from '@/src/services/translation/requestSnapshot';
+import {attachTranslationImageInput, getTranslationImageInput} from '@/src/services/translation/requestSnapshot';
+import {TRANSLATION_IMAGE_INPUT} from '@/src/services/translation/types';
 import {
     claudeMsgTemplate,
     commonMsgTemplate,
@@ -49,32 +46,32 @@ describe('trusted translation image payload', () => {
     });
 
     it('rejects unsupported image formats at the template boundary', () => {
-        expect(() => commonMsgTemplate('read this', undefined, undefined, undefined, 'custom', 'zh-Hans', undefined, base, undefined, 'data:image/svg+xml;base64,PHN2Zz4=')).toThrow('图片输入格式无效');
-        expect(() => deepseekResponsesMsgTemplate('read this', undefined, undefined, undefined, 'deepseek', 'zh-Hans', 'deepseek-flash', base, undefined, 'data:image/svg+xml;base64,PHN2Zz4=')).toThrow('图片输入格式无效');
+        expect(() => commonMsgTemplate({origin: 'read this', serviceOverride: 'custom', targetLanguage: 'zh-Hans', current: base, imageInput: 'data:image/svg+xml;base64,PHN2Zz4='})).toThrow('图片输入格式无效');
+        expect(() => deepseekResponsesMsgTemplate({origin: 'read this', serviceOverride: 'deepseek', targetLanguage: 'zh-Hans', modelOverride: 'deepseek-flash', current: base, imageInput: 'data:image/svg+xml;base64,PHN2Zz4='})).toThrow('图片输入格式无效');
     });
 
     it.each([deepseekMsgTemplate, deepseekResponsesMsgTemplate])('keeps thinking disabled for visual transcription unless explicitly enabled', template => {
         const current = {...base, service: 'deepseek', model: {deepseek: 'deepseek-flash'}};
-        const payload = JSON.parse(template('read this', undefined, undefined, undefined, undefined, 'zh-Hans', undefined, current, undefined, image));
+        const payload = JSON.parse(template({origin: 'read this', targetLanguage: 'zh-Hans', current: current, imageInput: image}));
         expect(payload.model).toBe('deepseek-flash');
         if (template === deepseekMsgTemplate) expect(payload.thinking).toEqual({type: 'disabled'});
         else expect(payload.reasoning).toEqual({effort: 'none'});
     });
 
     it('serializes native image parts and ignores custom body replacement', () => {
-        const openai = JSON.parse(commonMsgTemplate('read this', undefined, undefined, undefined, 'custom', 'zh-Hans', undefined, base, undefined, image));
+        const openai = JSON.parse(commonMsgTemplate({origin: 'read this', serviceOverride: 'custom', targetLanguage: 'zh-Hans', current: base, imageInput: image}));
         expect(openai.model).toBe('vision-model');
         expect(openai.messages[1].content[1]).toEqual({type: 'image_url', image_url: {url: image}});
 
-        const gemini = JSON.parse(geminiMsgTemplate('read this', undefined, undefined, undefined, 'gemini', 'zh-Hans', base, undefined, undefined, image));
+        const gemini = JSON.parse(geminiMsgTemplate({origin: 'read this', serviceOverride: 'gemini', targetLanguage: 'zh-Hans', current: base, imageInput: image}));
         expect(gemini.contents[0].parts[1].inline_data).toEqual({mime_type: 'image/png', data: 'iVBORw0KGgo='});
 
-        const claude = JSON.parse(claudeMsgTemplate('read this', undefined, undefined, undefined, 'claude', 'zh-Hans', undefined, base, undefined, image));
+        const claude = JSON.parse(claudeMsgTemplate({origin: 'read this', serviceOverride: 'claude', targetLanguage: 'zh-Hans', current: base, imageInput: image}));
         expect(claude.messages[0].content[1].source).toEqual({type: 'base64', media_type: 'image/png', data: 'iVBORw0KGgo='});
 
-        const tongyi = JSON.parse(tongyiMsgTemplate('read this', undefined, undefined, undefined, 'tongyi', 'zh-Hans', undefined, base, undefined, 'en', image));
+        const tongyi = JSON.parse(tongyiMsgTemplate({origin: 'read this', serviceOverride: 'tongyi', targetLanguage: 'zh-Hans', current: base, sourceLanguage: 'en', imageInput: image}));
         expect(tongyi.messages[1].content[1].image_url.url).toBe(image);
         expect(openai.model).not.toBe('attacker');
-        expect(() => tongyiMsgTemplate('read this', undefined, undefined, undefined, 'tongyi', 'zh-Hans', 'qwen-mt-plus', base, undefined, 'en', image)).toThrow('不支持图片');
+        expect(() => tongyiMsgTemplate({origin: 'read this', serviceOverride: 'tongyi', targetLanguage: 'zh-Hans', modelOverride: 'qwen-mt-plus', current: base, sourceLanguage: 'en', imageInput: image})).toThrow('不支持图片');
     });
 });
