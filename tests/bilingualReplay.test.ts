@@ -337,6 +337,16 @@ describe('双语译文骨架重放', () => {
                 expect(state.sourceTextNodes).toEqual(sourceNodes);
                 expectCurrent();
 
+                // 旧版在 resize 后用另一套 Text 保护规则复验，静置正常也会进入自重放循环。
+                const RealmEvent = (document.defaultView as unknown as {Event: typeof Event}).Event;
+                for (let round = 0; round < 3; round += 1) {
+                    document.defaultView!.dispatchEvent(new RealmEvent('resize'));
+                    await flushLayoutRefresh();
+                    expect(hook).not.toHaveBeenCalled();
+                    expect(state.sourceTextNodes).toEqual(sourceNodes);
+                    expectCurrent();
+                }
+
                 // 原文链接提示只刷新安全骨架一次；译文副本的装饰不重写、不耗尽修复预算。
                 sourceLink.setAttribute('title', 'Agent definitions');
                 await flushLayoutRefresh();

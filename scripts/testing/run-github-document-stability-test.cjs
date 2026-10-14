@@ -1,8 +1,8 @@
 /**
  * @file scripts/testing/run-github-document-stability-test.cjs
  * 文件职责：在隔离后台 Edge 中验证 GitHub 文档混合行内代码、链接和列表的译文稳定性。
- * 主要内容：使用真实快捷键与受控微软响应，记录源码节点身份、保护内容、译文增删 mutation，覆盖全文翻译、恢复、再次翻译及悬浮切换；支持旧包预期回归取证与截图来源实站。
- * 模块边界：仅通过公开配置消息驱动扩展；不读取业务内部状态，不连接用户 profile，不改变实站源码或供应商配置。
+ * 主要内容：使用真实快捷键与受控微软响应，记录源码节点身份、保护内容、译文增删与内部子节点重写，覆盖窗口尺寸变化、全文翻译、恢复、再次翻译及悬浮切换；尺寸复验超时只关闭本次隔离浏览器，支持正式发行包与截图来源实站。
+ * 模块边界：仅通过公开配置消息驱动临时配置；不读取业务内部状态、不连接用户 profile、不替换实站正文，不改变用户的供应商设置。
  */
 'use strict';
 const assert = require('node:assert/strict');
@@ -26,13 +26,14 @@ const {chromium} = require(path.join(packages, 'playwright'));
 const helper = require(path.resolve(argument('focus-safe-helper', path.join(__dirname, 'focus-safe-browser.cjs'))));
 const live = process.argv.includes('--live');
 const expectRegression = process.argv.includes('--expect-regression');
+const published = process.argv.includes('--published');
 const fullMode = argument('full-mode', 'viewport');
 assert.ok(['viewport', 'all'].includes(fullMode), 'full-mode 必须为 viewport 或 all');
 const url = argument('url', live ? 'https://github.com/nicobailon/pi-subagents/blob/main/docs/models.md' : 'https://github.com/fixture/document/blob/main/models.md');
 const durationMs = Number(argument('observe-ms', '8000'));
 assert.ok(Number.isFinite(durationMs) && durationMs >= 1000 && durationMs <= 60000, 'observe-ms 必须为 1000 至 60000');
 fs.mkdirSync(output, {recursive: true});
-const report = {ok: false, live, expectRegression, fullMode, url, provider: 'microsoft-controlled-local-response',
+const report = {ok: false, live, expectRegression, published, fullMode, url, provider: 'microsoft-controlled-local-response',
   scope: live ? 'Live screenshot-source GitHub document, controlled provider response' : 'Authored GitHub-domain mixed-inline document fixture, controlled provider response',
   limitations: ['Local provider responses do not prove live translation service quality or latency', 'Only the selected document paragraphs, heading and fixture list are monitored'],
   cases: [], consoleErrors: []};
@@ -114,7 +115,7 @@ async function prepareOwners() {
       const node = document.getElementById(id);
       return {node, id, html: node.outerHTML};
     });
-    const watcher = {records, events: [], adds: new Map(), removals: new Map(), mutationCount: 0, eventOverflow: 0};
+    const watcher = {records, events: [], adds: new Map(), removals: new Map(), innerWrites: new Map(), mutationCount: 0, eventOverflow: 0};
     const ids = new WeakMap(); let nextId = 1;
     const idFor = node => {if (!ids.has(node)) ids.set(node, nextId++); return ids.get(node);};
     const ownerFor = node => records.find(record => record.node === node || record.node.contains(node));
@@ -132,6 +133,10 @@ async function prepareOwners() {
           targetHtml: mutation.target.nodeType === 1 ? mutation.target.outerHTML.slice(0, 500) : undefined,
           insideTranslation: Boolean((mutation.target.nodeType === 1 ? mutation.target : mutation.target.parentElement)?.closest(wrapper))};
         if (mutation.type === 'childList') {
+          if (common.insideTranslation) {
+            watcher.innerWrites.set(record.index, (watcher.innerWrites.get(record.index) || 0) + 1);
+            log({...common, action: 'inner-rewrite', addedCount: mutation.addedNodes.length, removedCount: mutation.removedNodes.length});
+          }
           for (const [action, nodes, counts] of [['add', mutation.addedNodes, watcher.adds], ['remove', mutation.removedNodes, watcher.removals]]) {
             for (const node of nodes) for (const artifact of wrappersIn(node)) {
               counts.set(record.index, (counts.get(record.index) || 0) + 1);
@@ -143,7 +148,7 @@ async function prepareOwners() {
     });
     watcher.observer.observe(document.body, {subtree: true, childList: true, characterData: true, characterDataOldValue: true,
       attributes: true, attributeOldValue: true});
-    watcher.reset = () => {watcher.observer.takeRecords(); watcher.events.length = 0; watcher.adds.clear(); watcher.removals.clear(); watcher.mutationCount = 0; watcher.eventOverflow = 0;};
+    watcher.reset = () => {watcher.observer.takeRecords(); watcher.events.length = 0; watcher.adds.clear(); watcher.removals.clear(); watcher.innerWrites.clear(); watcher.mutationCount = 0; watcher.eventOverflow = 0;};
     watcher.snapshot = () => ({mutationCount: watcher.mutationCount, eventOverflow: watcher.eventOverflow, events: [...watcher.events],
       guards: guards.map(({node,id,html}) => ({id, intact: node.isConnected && node.outerHTML === html,
         translationCount: node.querySelectorAll(wrapper).length})),
@@ -153,6 +158,7 @@ async function prepareOwners() {
         count: [...record.node.querySelectorAll(wrapper)].filter(node => node.parentElement === record.node ||
           (node.parentElement.matches('[data-fr-translation-segment="true"]') && node.parentElement.parentElement === record.node)).length,
         adds: watcher.adds.get(record.index) || 0, removes: watcher.removals.get(record.index) || 0,
+        innerWrites: watcher.innerWrites.get(record.index) || 0,
         sourceTextIdentityIntact: record.textNodes.every(node => node.isConnected && record.node.contains(node)),
         sourceValuesIntact: record.textNodes.map(node => node.data).join('') === record.originalText,
         protectedIntact: record.protectedNodes.every(({node, html}) => node.isConnected && record.node.contains(node) && node.outerHTML === html),
@@ -216,6 +222,36 @@ async function verifyViewportRoundTrip() {
     requestAssertion: fullMode === 'all' ? 'unchanged across roundtrip' : 'not asserted; viewport may discover new source paragraphs', wrapperIdentityPreserved: true};
 }
 
+async function verifyResizeStability(label, hover = false) {
+  const before = await page.evaluate(() => window.__githubDocumentStability.snapshot());
+  await page.evaluate(() => window.__githubDocumentStability.reset());
+  const deadlineMs = Math.max(30000, durationMs + 15000);
+  let watchdog;
+  const expired = new Promise((_, reject) => {
+    watchdog = setTimeout(() => {
+      report.resizeWatchdog = {label, expired: true, deadlineMs};
+      report.ok = false;
+      fs.writeFileSync(path.join(output, 'report.json'), JSON.stringify(report, null, 2));
+      // 旧版观察器的微任务循环会让页面命令无法返回；看门狗在 Node 侧运行，
+      // 通过既有所有权守卫关闭本次浏览器，使异常也有明确的失败与清理结果。
+      void session.close().catch(error => {report.cleanupError = error.message;});
+      reject(new Error(`${label}: viewport resize exceeded ${deadlineMs}ms`));
+    }, deadlineMs);
+  });
+  try {
+    await Promise.race([expired, (async () => {
+      await page.setViewportSize({width: 1000, height: 816});
+      await page.waitForTimeout(200);
+      await page.setViewportSize({width: 1280, height: 816});
+      await observe(label, hover);
+      const after = await page.evaluate(() => window.__githubDocumentStability.snapshot());
+      assert.deepEqual(after.owners.map(owner => owner.wrapperIds), before.owners.map(owner => owner.wrapperIds),
+        `${label}: viewport resize replaced completed wrappers`);
+      assert.notEqual(report.resizeWatchdog?.expired, true, `${label}: renderer did not settle before deadline`);
+    })()]);
+  } finally {clearTimeout(watchdog);}
+}
+
 async function waitCounts(count, hover = false) {
   await page.waitForFunction(({count, hover}) => {
     const state = window.__githubDocumentStability.snapshot();
@@ -244,11 +280,13 @@ async function observe(label, hover = false) {
     assert.equal(owner.protectedIntact, true, `${label}/${owner.index}: code/link changed`);
   }
   const removed = selected.reduce((count, owner) => count + owner.removes, 0);
+  const innerWrites = selected.reduce((count, owner) => count + owner.innerWrites, 0);
   if (expectRegression && label === 'full-first') {
-    assert.ok(removed > 0, '旧包未复现预期的译文移除回归'); report.regressionObserved = true;
+    assert.ok(removed > 0 || innerWrites >= 3, '旧包未复现预期的译文移除或内部重写回归'); report.regressionObserved = true;
     return;
   }
   assert.equal(removed, 0, `${label}: completed translation was removed ${removed} times`);
+  assert.equal(innerWrites, 0, `${label}: completed translation contents were rewritten ${innerWrites} times`);
   selected.forEach(owner => {
     assert.equal(owner.count, 1, `${label}/${owner.index}: one translation expected`);
     assert.match(owner.translation, /[\u3400-\u9fff]/u, `${label}/${owner.index}: translated text missing`);
@@ -258,7 +296,7 @@ async function observe(label, hover = false) {
 (async () => {
   let primaryError;
   try {
-    report.buildFreshness = expectRegression ? {skipped: 'Explicit old-bundle regression reproduction; current source freshness does not apply'}
+    report.buildFreshness = expectRegression || published ? {skipped: 'Explicit external bundle verification; current checkout source freshness does not apply'}
       : assertFreshProductionExtension(extensionDir, root);
     report.extensionVersion = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.json'), 'utf8')).version;
     report.contentSha256 = crypto.createHash('sha256').update(fs.readFileSync(path.join(extensionDir, 'content-scripts/content.js'))).digest('hex');
@@ -310,6 +348,7 @@ async function observe(label, hover = false) {
     else await waitCounts(1);
     await observe('full-first');
     if (!expectRegression) {
+      await verifyResizeStability('full-resize');
       await page.evaluate(() => window.__githubDocumentStability.reset());
       await inspectTranslationPointerTargets('full-copied-code-link-pointer');
       await observe('full-copied-code-link-pointer');
@@ -323,6 +362,7 @@ async function observe(label, hover = false) {
       await fullToggle(); await waitCounts(0);
       await page.evaluate(() => window.__githubDocumentStability.reset());
       await hoverToggle(); await waitCounts(1, true); await observe('hover-first', true);
+      await verifyResizeStability('hover-resize', true);
       await hoverToggle(); await waitCounts(0, true);
       await page.evaluate(() => window.__githubDocumentStability.reset());
       await hoverToggle(); await waitCounts(1, true); await observe('hover-retranslate', true);
@@ -339,7 +379,7 @@ async function observe(label, hover = false) {
     report.ok = true;
   } catch (error) {
     primaryError = error; report.error = error.stack || String(error);
-    if (page && !page.isClosed()) {
+    if (page && !page.isClosed() && !report.resizeWatchdog?.expired) {
       report.failureSnapshot = await page.evaluate(() => window.__githubDocumentStability?.snapshot()).catch(() => null);
       await page.screenshot({path: path.join(output, 'failure.png'), fullPage: false}).catch(() => {});
       const html = await page.content().catch(() => null);
