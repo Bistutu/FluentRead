@@ -149,6 +149,8 @@ export interface TranslationConfigSnapshot {
     to: string;
     useCache: boolean;
     enableAIContext: boolean;
+    /** AI provider 总请求预算；缺省使用统一默认值，不影响机器/浏览器内置翻译。 */
+    aiRequestTimeoutMs?: number;
     nativeBatchTranslationEnabled?: Readonly<Record<string, boolean>>;
     model: Record<string, string>;
     customModel: Record<string, string>;

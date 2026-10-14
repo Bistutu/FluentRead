@@ -9,6 +9,13 @@ function group(result: ReturnType<typeof buildConfigDiff>, id: string) {
 }
 
 describe('配置差异预览', () => {
+    it('AI 请求超时归入高级设置并使用秒单位预览', () => {
+        expect(configDiffFieldLabel('aiRequestTimeoutMs')).toBe('AI 翻译请求超时');
+        expect(group(buildConfigDiff({aiRequestTimeoutMs: 120_000}, {aiRequestTimeoutMs: 300_000}), 'advanced')?.changes).toEqual([
+            {key: 'aiRequestTimeoutMs', label: 'AI 翻译请求超时', before: '120 秒', after: '300 秒'},
+        ]);
+        expect(group(buildConfigDiff({aiRequestTimeoutMs: 'invalid'}, {aiRequestTimeoutMs: 120_000}), 'advanced')?.changes[0].before).toBe('invalid');
+    });
     it('原生合批偏好按服务展示开启和关闭，不暴露配置字段名', () => {
         expect(configDiffFieldLabel('nativeBatchTranslationEnabled')).toBe('原生翻译合批');
         const result = buildConfigDiff(

@@ -3,6 +3,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 const {mockConfig} = vi.hoisted(() => ({
     mockConfig: {
         service: 'gemini',
+        aiRequestTimeoutMs: undefined as number | undefined,
         to: 'zh-Hans',
         token: {gemini: 'google-secret-key'} as Record<string, string>,
         model: {gemini: 'gemini-2.5-flash'} as Record<string, string>,
@@ -39,6 +40,7 @@ function mockResponse(body: unknown, overrides: Partial<Response> = {}): Respons
 
 beforeEach(() => {
     fetchMock.mockReset();
+        mockConfig.aiRequestTimeoutMs = undefined;
     mockConfig.token.gemini = 'google-secret-key';
     mockConfig.model.gemini = 'gemini-2.5-flash';
     mockConfig.customModel = {};
@@ -47,7 +49,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.useRealTimers();
+        vi.unstubAllGlobals();
 });
 
 describe('Gemini adapter credential transport', () => {
@@ -214,5 +217,63 @@ describe('Gemini adapter credential transport', () => {
         expect(error).toBeInstanceOf(Error);
         expect((error as Error).message).toBe('Gemini 返回的不是有效 JSON');
         expect((error as Error).message).not.toContain('SENSITIVE_SUCCESS_RESPONSE_SENTINEL');
+    });
+});
+
+
+describe('gemini AI 请求超时预算', () => {
+    it('直接调用默认允许 60 秒响应，完成后清理超时计时器', async () => {
+        vi.useFakeTimers();
+        let resolve!: (value: Response) => void;
+        let signal!: AbortSignal;
+        fetchMock.mockImplementation((_input, init) => {
+            signal = init!.signal!;
+            return new Promise<Response>(done => {resolve = done;});
+        });
+        const result = gemini({origin: 'Slow native AI source'});
+        await vi.advanceTimersByTimeAsync(60_000);
+        expect(signal.aborted).toBe(false);
+        resolve(mockResponse({candidates: [{content: {parts: [{text: '缓慢模型译文'}]}}]}));
+        await expect(result).resolves.toBe('缓慢模型译文');
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each([
+        {configured: 10_000, explicit: undefined, deadline: 10_000},
+        {configured: 600_000, explicit: 500, deadline: 500},
+        {configured: 10_000, explicit: 180_000, deadline: 180_000},
+    ])('配置与显式剩余预算在精确截止 abort：$deadline 毫秒', async ({configured, explicit, deadline}) => {
+        vi.useFakeTimers();
+        mockConfig.aiRequestTimeoutMs = configured;
+        let signal!: AbortSignal;
+        fetchMock.mockImplementation((_input, init) => {
+            signal = init!.signal!;
+            return new Promise((_, reject) => signal.addEventListener('abort',
+                () => reject(new DOMException('aborted', 'AbortError')), {once: true}));
+        });
+        const outcome = gemini({origin: 'Native AI deadline source', requestTimeoutMs: explicit}).catch(error => error);
+        await vi.advanceTimersByTimeAsync(deadline - 1);
+        expect(signal.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        await expect(outcome).resolves.toMatchObject({kind: 'timeout', retryable: true});
+        expect(signal.aborted).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('用户取消立即传播，与延长后的等待时间无关', async () => {
+        vi.useFakeTimers();
+        mockConfig.aiRequestTimeoutMs = 600_000;
+        const controller = new AbortController();
+        let signal!: AbortSignal;
+        fetchMock.mockImplementation((_input, init) => {
+            signal = init!.signal!;
+            return new Promise((_, reject) => signal.addEventListener('abort',
+                () => reject(new DOMException('aborted', 'AbortError')), {once: true}));
+        });
+        const outcome = gemini({origin: 'Cancelled native AI source', abortSignal: controller.signal}).catch(error => error);
+        controller.abort();
+        await expect(outcome).resolves.toMatchObject({name: 'AbortError'});
+        expect(signal.aborted).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
     });
 });

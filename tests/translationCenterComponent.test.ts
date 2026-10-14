@@ -61,6 +61,22 @@ describe('translation center product workflow', () => {
     state.sourceText = 'Original'; state.runTranslation(); await vue.nextTick();
     expect(translateText).toHaveBeenCalledOnce(); expect(translateText.mock.calls[0][2].serviceOverride).toBe('google');
   });
+  it('lets AI comparison requests inherit the configured timeout and retain cancellation', async () => {
+    config.translationCenterServices = ['ollama'];
+    config.aiRequestTimeoutMs = 300_000;
+    subscription(config);
+    const pending = deferred(); translateText.mockReturnValueOnce(pending.promise);
+    state.sourceText = 'A long source paragraph'; state.runTranslation(); await vue.nextTick();
+    expect(translateText).toHaveBeenCalledOnce();
+    const options = translateText.mock.calls[0][2];
+    expect(options.serviceOverride).toBe('ollama');
+    expect(options).not.toHaveProperty('timeout');
+    state.session.stop();
+    expect(options.signal.aborted).toBe(true);
+    pending.resolve('late translation'); await vue.nextTick(); await vue.nextTick();
+    expect(state.cards[0].status).toBe('cancelled');
+    expect(state.cards[0].result).toBe('');
+  });
   it('does not treat missing custom endpoints or models as ready even without an API key requirement', () => {
     const service = 'custom:incomplete';
     config.customOpenAIProviders = [{id: service, name: 'Incomplete', endpoint: '', models: []}];

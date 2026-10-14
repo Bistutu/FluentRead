@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
     enableAIContext: false,
     nativeBatchTranslationEnabled: {} as Record<string, boolean>,
     videoService: 'mock',
+    aiRequestTimeoutMs: undefined as number | undefined,
   },
 }));
 
@@ -53,6 +54,7 @@ vi.mock('@/src/core/config/catalog', async (importOriginal) => {
     resolveConfiguredModel: (model: string) => model,
     servicesType: {
       ...actual.servicesType,
+    isAI: (service: string) => service === 'mock-ai' || actual.servicesType.isAI(service),
     isUseAIContext: (service: string) => service === 'mock-ai',
     isAiSdk: (service: string) => service === 'mock-ai',
     },
@@ -125,6 +127,7 @@ describe('translation API request lifecycle performance', () => {
     mocks.config.nativeBatchTranslationEnabled = {};
     mocks.config.service = 'mock';
     mocks.config.videoService = 'mock';
+    mocks.config.aiRequestTimeoutMs = undefined;
     mocks.config.from = 'en';
     mocks.config.to = 'zh-CN';
     mocks.config.useCache = true;
@@ -147,6 +150,68 @@ describe('translation API request lifecycle performance', () => {
     vi.useRealTimers();
     Object.defineProperty(globalThis, 'document', {value: originalDocument, configurable: true});
     Object.defineProperty(globalThis, 'location', {value: originalLocation, configurable: true});
+  });
+
+  it.each(['single', 'batch', 'video'] as const)('%s AI 默认允许超过 45 秒响应，并完整提供 120 秒后台预算', async kind => {
+    mocks.config.service = 'mock-ai';
+    mocks.config.videoService = 'mock-ai';
+    const transport = deferred<string | string[]>();
+    mocks.sendMessage.mockReturnValue(transport.promise);
+    const request = contextGateRequest(kind);
+    await flushMicrotasks();
+    expect(mocks.sendMessage.mock.calls[0][0]).toMatchObject({requestTimeoutMs: 120_000});
+    await vi.advanceTimersByTimeAsync(60_000);
+    transport.resolve(kind === 'batch' ? ['缓慢模型译文'] : '缓慢模型译文');
+    await expect(request).resolves.toEqual(kind === 'batch' ? ['缓慢模型译文'] : '缓慢模型译文');
+  });
+
+  it.each(['single', 'batch', 'video'] as const)('%s AI 在等待前冻结用户预算，外层只增加一秒收取后台结果', async kind => {
+    mocks.config.service = 'mock-ai';
+    mocks.config.videoService = 'mock-ai';
+    mocks.config.translationMaxRetries = 0;
+    mocks.config.aiRequestTimeoutMs = 180_000;
+    mocks.config.enableAIContext = true;
+    const context = deferred<string>();
+    const transport = deferred<string | string[]>();
+    mocks.getPageTranslationContext.mockReturnValue(context.promise);
+    mocks.sendMessage.mockReturnValue(transport.promise);
+    const request = contextGateRequest(kind);
+    const outcome = request.catch(error => error);
+    mocks.config.aiRequestTimeoutMs = 10_000;
+    context.resolve('Frozen page context');
+    await flushMicrotasks();
+    expect(mocks.sendMessage.mock.calls[0][0]).toMatchObject({requestTimeoutMs: 180_000});
+    await vi.advanceTimersByTimeAsync(180_000);
+    let finished = false;
+    void outcome.then(() => {finished = true;});
+    await flushMicrotasks();
+    expect(finished).toBe(false);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await expect(outcome).resolves.toMatchObject({message: '翻译请求超时'});
+    transport.resolve(kind === 'batch' ? ['迟到译文'] : '迟到译文');
+  });
+
+  it.each(['single', 'batch'] as const)('%s AI 显式 timeout 优先于用户默认配置', async kind => {
+    mocks.config.service = 'mock-ai';
+    mocks.config.aiRequestTimeoutMs = 600_000;
+    const transport = deferred<string | string[]>();
+    mocks.sendMessage.mockReturnValue(transport.promise);
+    const request = kind === 'batch'
+      ? translateTextBatch(['Override source'], 'Page', {timeout: 2_000, maxRetries: 0})
+      : translateText('Override source', 'Page', {timeout: 2_000, maxRetries: 0});
+    const outcome = request.catch(error => error);
+    await flushMicrotasks();
+    expect(mocks.sendMessage.mock.calls[0][0]).toMatchObject({requestTimeoutMs: 1_000});
+    await vi.advanceTimersByTimeAsync(2_000);
+    await expect(outcome).resolves.toMatchObject({message: '翻译请求超时'});
+    transport.resolve(kind === 'batch' ? ['迟到译文'] : '迟到译文');
+  });
+
+  it.each(['single', 'batch', 'video'] as const)('%s 机器翻译保持原默认预算', async kind => {
+    mocks.config.aiRequestTimeoutMs = 600_000;
+    mocks.sendMessage.mockResolvedValue(kind === 'batch' ? ['机器译文'] : '机器译文');
+    await contextGateRequest(kind);
+    expect(mocks.sendMessage.mock.calls[0][0]).toMatchObject({requestTimeoutMs: kind === 'video' ? 19_000 : 44_000});
   });
 
   it.each(['single', 'batch', 'video'] as const)('术语版本和选择在 %s 的上下文提取前冻结', async kind => {
@@ -301,7 +366,7 @@ describe('translation API request lifecycle performance', () => {
       sourceLanguage: 'en',
       targetLanguage: 'ja',
       useCache: false,
-      requestTimeoutMs: 44_000,
+      requestTimeoutMs: 120_000,
     }));
     expect(mocks.config.model['mock-ai']).toBe('mock-ai-model');
   });
@@ -1105,7 +1170,7 @@ describe('translation API request lifecycle performance', () => {
       thinkingOverride: false,
       sourceLanguage: 'en',
       targetLanguage: 'zh-Hans',
-      requestTimeoutMs: 19_000,
+      requestTimeoutMs: 120_000,
     }));
     expect(mocks.sendMessage.mock.calls[0]?.[0].clientRequestId).toEqual(expect.any(String));
   });

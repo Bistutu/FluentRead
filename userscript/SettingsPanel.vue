@@ -1,7 +1,7 @@
 <!--
  * @file userscript/SettingsPanel.vue
  * 文件职责：提供 userscript 紧凑设置对话框，编辑翻译服务、触发方式、输入翻译与界面配置草稿。
- * 主要内容：复用配置目录和持久化入口；动画样式末尾的“无”直接关闭界面动画并保留上次静态反馈样式。
+ * 主要内容：复用配置目录和持久化入口；AI 翻译超时按秒编辑，保留逐键输入草稿并在确认或保存时规范化为毫秒；动画样式末尾的“无”直接关闭界面动画并保留上次静态反馈样式。
  * 模块边界：只管理设置草稿和保存反馈，不实现网页翻译或扩展专有能力。
 -->
 <template>
@@ -143,6 +143,8 @@
 
         <fieldset>
           <legend>任务调度</legend>
+          <label data-testid="ai-request-timeout-settings"><span>{{ t('settings.requestLimits.aiTimeout') }}（{{ t('settings.requestLimits.seconds') }}）</span><input :key="aiRequestTimeoutContext.revision.value" v-model.number="aiRequestTimeoutSecondsDraft" type="number" :min="MIN_AI_REQUEST_TIMEOUT_MS / 1000" :max="MAX_AI_REQUEST_TIMEOUT_MS / 1000" step="1" :aria-label="t('settings.requestLimits.aiTimeout')" :disabled="!aiRequestTimeoutContext.active.value" :onChange="aiRequestTimeoutActions.commit" :onBlur="aiRequestTimeoutActions.commit" /></label>
+          <p class="hint">{{ t('settings.requestLimits.aiTimeoutHelp') }}</p>
           <label><span>每秒最多请求（0=不限）</span><input v-model.number="draft.translationRequestsPerSecond" type="number" min="0" max="1000" /></label>
           <label><span>每分钟最多请求（0=不限）</span><input v-model.number="draft.translationRequestsPerMinute" type="number" min="0" max="10000" /></label>
           <label><span>失败后最多重试</span><input v-model.number="draft.translationMaxRetries" type="number" min="0" max="10" /></label>
@@ -176,7 +178,9 @@
 import {computed, onMounted, ref, watch} from 'vue';
 import browser from 'webextension-polyfill';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
-import {Config} from '@/src/core/config/model';
+import {Config, MIN_AI_REQUEST_TIMEOUT_MS, MAX_AI_REQUEST_TIMEOUT_MS, normalizeAiRequestTimeoutMs} from '@/src/core/config/model';
+import {useUiI18n} from '@/src/ui/i18n';
+import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
 import {applyTranslationLoadingStyleChoice, getTranslationLoadingStyleChoice, translationLoadingStyleChoices} from '@/src/core/config/translationLoadingStyle';
 import TranslationLoadingPreview from '@/src/ui/components/TranslationLoadingPreview.vue';
 import UiSelect from '@/src/ui/components/UiSelect.vue';
@@ -213,7 +217,24 @@ const versionLabel = `流畅阅读 V${process.env.VUE_APP_VERSION} · Userscript
 const iconUrl = globalThis.__FLUENTREAD_ICON_DATA__ || '';
 const menuContainer = ref<HTMLElement>();
 const draft = ref(new Config());
+const {t} = useUiI18n();
 const hydrated = ref(false);
+const aiRequestTimeoutSecondsDraft = ref<number | string>(draft.value.aiRequestTimeoutMs / 1000);
+watch(() => [draft.value, draft.value.aiRequestTimeoutMs] as const, ([, value]) => {
+  aiRequestTimeoutSecondsDraft.value = normalizeAiRequestTimeoutMs(value) / 1000;
+}, {flush: 'sync'});
+const aiRequestTimeoutContext = useSettingsActionContext(() => hydrated.value, () => [draft.value]);
+const aiRequestTimeoutActions = computed(() => {
+  const owns = aiRequestTimeoutContext.capture();
+  return {commit: () => {
+    if (!owns()) return;
+    const value = aiRequestTimeoutSecondsDraft.value;
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      draft.value.aiRequestTimeoutMs = normalizeAiRequestTimeoutMs(value * 1000);
+    }
+    aiRequestTimeoutSecondsDraft.value = normalizeAiRequestTimeoutMs(draft.value.aiRequestTimeoutMs) / 1000;
+  }};
+});
 const fallbackLabel = (id: string) => FREE_TRANSLATION_PROVIDERS.find(item => item.id === id)?.label || id;
 const availableFallbacks = computed(() => FREE_TRANSLATION_PROVIDERS.filter(item => !draft.value.freeTranslationOrder.includes(item.id)));
 function moveFallback(index: number, delta: number) {
@@ -479,6 +500,7 @@ async function syncCurrentPage(next: Config): Promise<void> {
 
 async function save(): Promise<void> {
   if (saving.value || !hydrated.value) return;
+  aiRequestTimeoutActions.value.commit();
   saving.value = true;
   status.value = '';
   statusIsError.value = false;

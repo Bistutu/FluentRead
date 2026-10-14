@@ -1,7 +1,7 @@
 /**
  * @file src/core/config/diff.ts
  * 文件职责：把两份配置转换为可供预览的结构化差异，同时确保凭据和嵌套敏感内容只显示脱敏摘要。
- * 主要内容：维护设置字段到页面分组及中文标签的映射，按服务展示原生翻译合批开关，格式化枚举、映射和长文本，用迭代比较检查深层对象并对预览深度作安全摘要，生成稳定的分组差异结果。
+ * 主要内容：维护设置字段到页面分组及中文标签的映射，按服务展示原生翻译合批开关，在高级设置中以秒展示 AI 翻译超时，格式化枚举、映射和长文本，用迭代比较检查深层对象并对预览深度作安全摘要，生成稳定的分组差异结果。
  * 模块边界：本文件是无浏览器副作用的纯配置算法，不读取存储、不打开确认框也不执行恢复；设置页面只消费其脱敏后的 ConfigDiffResult。
  */
 import {CONFIG_CREDENTIAL_FIELDS, isSensitiveConfigKey} from './credentials';
@@ -661,6 +661,7 @@ const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
     enableAIContext: {group: 'general', label: 'AI 智能上下文', format: formatBoolean},
     enableAIMultiSegment: {group: 'translation', label: 'AI 多段翻译', format: formatBoolean},
     maxConcurrentTranslations: {group: 'advanced', label: '翻译并发数'},
+    aiRequestTimeoutMs: {group: 'advanced', label: 'AI 翻译请求超时', format: value => typeof value === 'number' ? `${value / 1000} 秒` : formatValue(value)},
     translationRequestsPerSecond: {group: 'advanced', label: '每秒最多请求数', format: formatRequestRate},
     translationRequestsPerMinute: {group: 'advanced', label: '每分钟最多请求数', format: formatRequestRate},
     serviceRequestLimits: {group: 'advanced', label: '服务请求限制', format: formatValue},

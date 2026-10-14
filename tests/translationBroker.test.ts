@@ -91,6 +91,7 @@ const mocks = vi.hoisted(() => {
         to: 'zh-Hans',
         useCache: true,
         enableAIContext: false,
+        aiRequestTimeoutMs: undefined as number | undefined,
         nativeBatchTranslationEnabled: {} as Record<string, boolean>,
         model: {
             mock: 'mock-model',
@@ -249,6 +250,102 @@ function measuredProviderConfig(entryCount = 100) {
 }
 
 describe('translation broker', () => {
+    it.each([false, true])('AI 默认预算允许超过 45 秒响应，批量=%s', async batch => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        mocks.config.service = 'aiSdk';
+        const response = deferred<unknown>();
+        mocks.service.mockImplementation(() => response.promise);
+        const result = translateWithCache(batch
+            ? {origin: ['Slow model source'], useCache: false} : {origin: 'Slow model source', useCache: false});
+        await flushMicrotasks(40);
+        expect(mocks.service.mock.calls[0][0]).toMatchObject({requestTimeoutMs: 120_000});
+        await vi.advanceTimersByTimeAsync(60_000);
+        const actualArray = Array.isArray(mocks.service.mock.calls[0][0].origin);
+        response.resolve(actualArray ? ['缓慢模型译文'] : '缓慢模型译文');
+        await expect(result).resolves.toEqual(batch ? ['缓慢模型译文'] : '缓慢模型译文');
+    });
+
+    it('无显式预算在 ready 后按最终 AI 配置选预算，并扣除水合等待', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        const ready = deferred<void>();
+        installBroker(undefined, ready.promise);
+        const result = translateWithCache({origin: 'Hydrated AI source', useCache: false});
+        await vi.advanceTimersByTimeAsync(600);
+        mocks.config.service = 'aiSdk';
+        mocks.config.aiRequestTimeoutMs = 180_000;
+        ready.resolve();
+        await expect(result).resolves.toBe('默认译文');
+        expect(mocks.service.mock.calls[0][0]).toMatchObject({requestTimeoutMs: 179_400});
+        expect(getTranslationProviderConfig(mocks.service.mock.calls[0][0], () => createTranslationProviderConfigSnapshot(mocks.config)).service).toBe('aiSdk');
+    });
+
+    it('已附着 AI 预算快照不受 ready 期间的用户设置变化影响', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        mocks.config.service = 'aiSdk';
+        mocks.config.aiRequestTimeoutMs = 180_000;
+        const ready = deferred<void>();
+        installBroker(undefined, ready.promise);
+        const snapshot = createTranslationProviderConfigSnapshot(mocks.config);
+        const result = translateWithCache(attachTranslationProviderConfig({origin: 'Frozen AI source', useCache: false}, snapshot));
+        mocks.config.aiRequestTimeoutMs = 10_000;
+        ready.resolve();
+        await expect(result).resolves.toBe('默认译文');
+        expect(mocks.service.mock.calls[0][0]).toMatchObject({requestTimeoutMs: 180_000});
+        expect(getTranslationProviderConfig(mocks.service.mock.calls[0][0], snapshot).aiRequestTimeoutMs).toBe(180_000);
+    });
+
+    it.each([false, true])('AI 用户预算 10 秒在到期时 abort provider，批量=%s', async batch => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        mocks.config.service = 'aiSdk';
+        mocks.config.aiRequestTimeoutMs = 10_000;
+        let signal!: AbortSignal;
+        mocks.service.mockImplementation((message: {abortSignal: AbortSignal}) => {
+            signal = message.abortSignal;
+            return new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), {once: true}));
+        });
+        const outcome = translateWithCache(batch
+            ? {origin: ['Timeout AI source'], useCache: false} : {origin: 'Timeout AI source', useCache: false}).catch(error => error);
+        await flushMicrotasks(40);
+        await vi.advanceTimersByTimeAsync(9_999);
+        expect(signal.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        await expect(outcome).resolves.toMatchObject({name: 'TranslationProviderDeadlineError'});
+        expect(signal.aborted).toBe(true);
+    });
+
+    it.each([false, true])('AI 显式预算和内部剩余预算不被用户默认抬高，内部=%s', async internal => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        mocks.config.service = 'aiSdk';
+        mocks.config.aiRequestTimeoutMs = 600_000;
+        const message = {origin: 'Short AI deadline source', useCache: false, requestTimeoutMs: internal ? 200 : 1_500};
+        await translateWithCache(internal ? markTranslationRemainingBudget(message) : message);
+        expect(mocks.service.mock.calls[0][0]).toMatchObject({requestTimeoutMs: internal ? 200 : 1_500});
+    });
+
+    it('延长 AI 预算后用户取消仍立即中止 provider', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(0);
+        mocks.config.service = 'aiSdk';
+        mocks.config.aiRequestTimeoutMs = 600_000;
+        const controller = new AbortController();
+        let signal!: AbortSignal;
+        mocks.service.mockImplementation((message: {abortSignal: AbortSignal}) => {
+            signal = message.abortSignal;
+            return new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), {once: true}));
+        });
+        const outcome = translateWithCache(attachTranslationRequestControl({origin: 'Cancel slow AI source', useCache: false},
+            {signal: controller.signal, ownershipKey: 'timeout:cancel'})).catch(error => error);
+        await flushMicrotasks(40);
+        controller.abort();
+        await expect(outcome).resolves.toMatchObject({name: 'AbortError'});
+        expect(signal.aborted).toBe(true);
+        expect(Date.now()).toBe(0);
+    });
     it('配置水合期间保留调用入口的原文与请求选项，后续编辑不能改变在途翻译', async () => {
         const ready = deferred<void>();
         installBroker(undefined, ready.promise);
@@ -434,6 +531,7 @@ describe('translation broker', () => {
             to: 'zh-Hans',
             useCache: true,
             enableAIContext: false,
+            aiRequestTimeoutMs: undefined,
             nativeBatchTranslationEnabled: {},
             maxConcurrentTranslations: 6,
             translationRequestsPerSecond: 0,

@@ -6,6 +6,7 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/ja-JP.json';
+import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/ja-JP.json';
@@ -531,6 +532,7 @@ export const jaJPMessages = {
     "settings.requestLimits.modelTitle": "モデルのリクエスト制限",
     "settings.requestLimits.globalTitle": "リクエスト制限",
     "settings.requestLimits.globalHelp": "個別設定のないサービスとモデルは、この制限を共有します。",
+    ...aiRequestTimeoutMessages["ja-JP"],
     "settings.requestLimits.retryIntervals": "再試行の間隔",
     "settings.requestLimits.apiKeyRecovery": "失敗した Key のクールダウン",
     "settings.requestLimits.apiKeyRecoveryHelp": "認証、クォータ、レート制限で失敗した Key を一時的にスキップします。サービスが Retry-After を返した場合は、その待ち時間を優先します。",

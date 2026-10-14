@@ -26,6 +26,7 @@ const {mockConfig} = vi.hoisted(() => ({
     deepseekApiType: 'auto',
     deepseekThinkingMode: 'disabled',
     translationMaxRetries: 2,
+    aiRequestTimeoutMs: undefined as number | undefined,
     youdaoAppKey: '',
     youdaoAppSecret: '',
     tencentSecretId: '',
@@ -136,6 +137,7 @@ describe('Vercel AI SDK OpenAI-compatible transport', () => {
     mockConfig.proxy = {};
     mockConfig.requireApiKey = {};
     mockConfig.translationMaxRetries = 2;
+    mockConfig.aiRequestTimeoutMs = undefined;
     mockConfig.custom = 'http://127.0.0.1:11434/v1/chat/completions';
     mockConfig.newApiUrl = '';
     mockConfig.azureOpenaiEndpoint = '';
@@ -145,6 +147,93 @@ describe('Vercel AI SDK OpenAI-compatible transport', () => {
     setRuntimeFetch();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it('直接 SDK 调用默认允许 60 秒待响应，覆盖旧 40 秒 provider 超时', async () => {
+    vi.useFakeTimers();
+    const transport = deferredResponse();
+    let signal!: AbortSignal;
+    setRuntimeFetch(vi.fn((_input, init) => {
+      signal = init!.signal!;
+      signal.addEventListener('abort', () => transport.reject(new DOMException('aborted', 'AbortError')), {once: true});
+      return transport.promise;
+    }));
+    const result = translateWithOpenAICompatibleAiSdk({origin: 'Slow direct model source'});
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(signal.aborted).toBe(false);
+    transport.resolve(successResponse('缓慢模型译文'));
+    await expect(result).resolves.toBe('缓慢模型译文');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each([
+    {configured: 10_000, explicit: undefined, deadline: 10_000},
+    {configured: 600_000, explicit: 500, deadline: 500},
+    {configured: 10_000, explicit: 180_000, deadline: 180_000},
+  ])('SDK 采用配置或显式预算并在精确截止 abort：$deadline 毫秒', async ({configured, explicit, deadline}) => {
+    vi.useFakeTimers();
+    mockConfig.aiRequestTimeoutMs = configured;
+    let signal!: AbortSignal;
+    setRuntimeFetch(vi.fn((_input, init) => {
+      signal = init!.signal!;
+      return new Promise<Response>((_, reject) => signal.addEventListener('abort',
+        () => reject(new DOMException('aborted', 'AbortError')), {once: true}));
+    }));
+    const outcome = translateWithOpenAICompatibleAiSdk({origin: 'SDK deadline source', requestTimeoutMs: explicit}).catch(error => error);
+    await vi.advanceTimersByTimeAsync(deadline - 1);
+    expect(signal.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(outcome).resolves.toMatchObject({kind: 'timeout', retryable: true});
+    expect(signal.aborted).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('SDK 数组的总预算继承 180 秒设置，并向后项只传剩余预算', async () => {
+    vi.useFakeTimers();
+    mockConfig.aiRequestTimeoutMs = 180_000;
+    const responses = [deferredResponse(), deferredResponse()];
+    const signals: AbortSignal[] = [];
+    setRuntimeFetch(vi.fn((_input, init) => {
+      const response = responses[signals.length];
+      signals.push(init!.signal!);
+      init!.signal!.addEventListener('abort', () => response.reject(new DOMException('aborted', 'AbortError')), {once: true});
+      return response.promise;
+    }));
+    const result = translateWithOpenAICompatibleAiSdk({origin: ['First slow source', 'Second slow source']});
+    await vi.advanceTimersByTimeAsync(70_000);
+    expect(signals[0].aborted).toBe(false);
+    responses[0].resolve(successResponse('第一段译文'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(signals).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(70_000);
+    expect(signals[1].aborted).toBe(false);
+    responses[1].resolve(successResponse('第二段译文'));
+    await expect(result).resolves.toEqual(['第一段译文', '第二段译文']);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('SDK 数组第二项在总预算耗尽时 abort，而不重新得到完整用户预算', async () => {
+    vi.useFakeTimers();
+    mockConfig.aiRequestTimeoutMs = 10_000;
+    const first = deferredResponse();
+    const signals: AbortSignal[] = [];
+    setRuntimeFetch(vi.fn((_input, init) => {
+      signals.push(init!.signal!);
+      if (signals.length === 1) return first.promise;
+      return new Promise<Response>((_, reject) => init!.signal!.addEventListener('abort',
+        () => reject(new DOMException('aborted', 'AbortError')), {once: true}));
+    }));
+    const outcome = translateWithOpenAICompatibleAiSdk({origin: ['First source', 'Pending second source']}).catch(error => error);
+    await vi.advanceTimersByTimeAsync(7_000);
+    first.resolve(successResponse('第一段译文'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(signals).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(2_999);
+    expect(signals[1].aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(outcome).resolves.toMatchObject({kind: 'timeout'});
+    expect(signals[1].aborted).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('issue #626：Base URL 经真实 SDK 发往完整接口并保留模型和鉴权', async () => {

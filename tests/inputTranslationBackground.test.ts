@@ -1,7 +1,7 @@
 /**
  * @file tests/inputTranslationBackground.test.ts
  * 文件职责：验证输入框翻译后台 handler 从本地配置建立冻结独立请求，拒绝网页侧伪造配置，并将可取消请求交给按发送者隔离的共享注册表。
- * 主要内容：覆盖 AI prompt 的默认与自定义变量、机器翻译忽略 prompt/model、源语言/上下文/词库隔离、缓存开关、取消字段收窄、同目标早退清理、配置水合取消、先取消后触发及 provider 迟到响应。
+ * 主要内容：覆盖 AI prompt 的默认与自定义变量、机器翻译忽略 prompt/model、源语言/上下文/词库隔离、缓存开关、超时预算冻结与非法值拒绝、取消字段收窄、同目标早退清理、配置水合取消、先取消后触发及 provider 迟到响应。
  * 模块边界：本文件使用内存 mock 翻译函数，不发起网络请求；provider 的真实协议由 translation broker 与 provider 专项测试负责。
  */
 import {describe, expect, it, vi} from 'vitest';
@@ -17,6 +17,49 @@ import {
 } from '@/src/features/input-translation/background/handler';
 
 describe('输入框翻译后台配置绑定', () => {
+    it('按实际输入服务冻结配置预算，短调用预算可保留且不能超过本地上限', () => {
+        const config = new Config();
+        config.service = services.microsoft;
+        config.inputBoxTranslationService = services.deepseek;
+        config.aiRequestTimeoutMs = 240_000;
+        const frozen = createInputBoxTranslationRequest(config, 'Hello', 'ja');
+        expect(frozen.requestTimeoutMs).toBe(240_000);
+        expect(createInputBoxTranslationRequest(config, 'Hello', 'ja', 1_500).requestTimeoutMs).toBe(1_500);
+        expect(createInputBoxTranslationRequest(config, 'Hello', 'ja', 600_000).requestTimeoutMs).toBe(240_000);
+        config.aiRequestTimeoutMs = 10_000;
+        expect(frozen.requestTimeoutMs).toBe(240_000);
+        expect(getTranslationProviderConfig(frozen, config as never).aiRequestTimeoutMs).toBe(240_000);
+        config.inputBoxTranslationService = services.microsoft;
+        expect(createInputBoxTranslationRequest(config, 'Hello', 'ja').requestTimeoutMs).toBe(45_000);
+        expect(createInputBoxTranslationRequest(config, 'Hello', 'ja', 30_000).requestTimeoutMs).toBe(30_000);
+    });
+
+    it.each([null, '120000', 0, -1, 0.5, NaN, Infinity, 600_001])('入口拒绝非法请求预算 %s，不读取配置或调用翻译', async requestTimeoutMs => {
+        const getConfig = vi.fn(() => new Config());
+        const translate = vi.fn(async () => '译文');
+        const handler = createInputBoxTranslationHandler({ready: Promise.resolve(), getConfig, translate});
+        await expect(handler.handle({type: 'inputBoxTranslation', text: 'Hello', targetLang: 'ja', requestTimeoutMs}))
+            .rejects.toThrow('requestTimeoutMs 必须是有效的正数预算');
+        expect(getConfig).not.toHaveBeenCalled();
+        expect(translate).not.toHaveBeenCalled();
+    });
+
+    it('在配置水合前解析调用预算，迟到消息修改不会放大冻结预算', async () => {
+        const config = new Config();
+        config.inputBoxTranslationService = services.deepseek;
+        config.aiRequestTimeoutMs = 240_000;
+        let hydrate!: () => void;
+        const ready = new Promise<void>(resolve => {hydrate = resolve;});
+        const translate = vi.fn(async (_request: TranslationSingleRequestMessage) => '译文');
+        const handler = createInputBoxTranslationHandler({ready, getConfig: () => config, translate});
+        const message = {type: 'inputBoxTranslation' as const, text: 'Hello', targetLang: 'ja', requestTimeoutMs: 1_500.9};
+        const running = handler.handle(message);
+        message.requestTimeoutMs = 600_000;
+        hydrate();
+        await expect(running).resolves.toEqual({success: true, translatedText: '译文'});
+        expect(translate.mock.calls[0][0].requestTimeoutMs).toBe(1_500);
+    });
+
     it.each([
         ['  修复保存记录后再次打开页面时内容丢失的问题。  ', 'zh-Hans', 'en'],
         ['You can return to your saved paragraphs after closing the browser.', 'en', 'zh-Hans'],
