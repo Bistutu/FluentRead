@@ -620,10 +620,6 @@ function repairMarkdown(report) {
         ...report.evidence.scope.addedFiles.map((file) => `- ${inlineCode(file)}`));
     if (report.evidence?.scope?.removedFiles?.length) lines.push('', '本轮移除的源码、测试或构建输入：', '',
         ...report.evidence.scope.removedFiles.map((file) => `- ${inlineCode(file)}`));
-    if (report.evidence?.scope?.addedFiles?.length) lines.push('', '本轮新增的源码、helper 或配置文件：', '',
-        ...report.evidence.scope.addedFiles.map((file) => `- ${inlineCode(file)}`));
-    if (report.evidence?.scope?.removedFiles?.length) lines.push('', '本轮移除的源码、helper 或配置文件：', '',
-        ...report.evidence.scope.removedFiles.map((file) => `- ${inlineCode(file)}`));
     const coverage = report.evidence?.coverage;
     if (coverage?.missingFiles?.length) lines.push('', '清单中缺少报告的源码：', '', ...coverage.missingFiles.map((file) => `- ${inlineCode(file)}`));
     if (coverage?.unexpectedFiles?.length) lines.push('', '报告中超出清单的源码：', '', ...coverage.unexpectedFiles.map((file) => `- ${inlineCode(file)}`));
