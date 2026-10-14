@@ -1,12 +1,10 @@
 import {createRequire} from 'node:module';
-import {readFileSync} from 'node:fs';
 import {parseHTML} from 'linkedom';
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
 import {resolve} from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import {createServer, type Plugin, type ViteDevServer} from 'vite';
 import {afterEach, describe, expect, it, vi} from 'vitest';
+import {compileVueFixture} from './helpers/compiledVueFixture';
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 const key = '__frSettingsSectionsLifecycle';
@@ -19,13 +17,9 @@ function deferred<T>() {let resolve!: (value: T) => void, reject!: (error: unkno
 async function settle() {await runtime.nextTick();for (let i = 0; i < 8; i++) await Promise.resolve();await runtime.nextTick();}
 function compileClientTemplate(component: any, relative: string) {
     const filename = resolve(process.cwd(), relative);
-    const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-    const bindings = compileScript(descriptor, {id: 'sections-lifecycle-template'}).bindings;
-    const compiled = compileTemplate({source: descriptor.template!.content, filename, id: 'sections-lifecycle-template',
-        compilerOptions: {mode: 'function', cacheHandlers: true, bindingMetadata: bindings, expressionPlugins: ['typescript']}});
-    expect(compiled.errors).toEqual([]);
+    const {renderCode} = compileVueFixture(filename, {id: 'sections-lifecycle-template', cacheHandlers: true});
     component.ssrRender = undefined;
-    component.render = new Function('Vue', ts.transpileModule(compiled.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime);
+    component.render = new Function('Vue', renderCode)(runtime);
 }
 
 // 实际父/子 SFC 模板使用 LinkeDOM 节点和事件；Element Plus 弹窗动画、浏览器焦点由根任务真实浏览器复验。
@@ -83,6 +77,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     const numericPorts = new Map<string, NumericPort>();
     let providerState: Record<string, any> | undefined;
     const providerReady = deferred<void>();
+    const catalogReady = deferred<void>();
     const loadProvider = vi.fn(async () => {
         await providerGate;
         const component = (await server!.ssrLoadModule('/src/features/settings/ui/services/CustomOpenAIProviderDialog.vue')).default;
@@ -94,7 +89,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         providerReady.resolve();return component;
     });
     let notifyConfig: (value: unknown) => void = () => {};
-    const data = {loadProvider, config: configSnapshot ?? {}, configReady: ready,
+    const data = {loadProvider, catalogMounted: () => catalogReady.resolve(), config: configSnapshot ?? {}, configReady: ready,
         subscribeConfig: (listener: (value: unknown) => void) => {
             notifyConfig = listener;
             if (configSnapshot) listener(configSnapshot);
@@ -129,7 +124,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         if (id === '\0sections-slots') return `import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, slots.default?.());}};`;
         if (id === '\0sections-panel') return `import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, slots.default?.());}};`;
         if (id === '\0sections-provider-loader') return `export default await globalThis.${key}.loadProvider();`;
-        if (id === '\0sections-service-catalog') return `import {h} from 'vue';export default {props: ['active'], emits: ['add:service'], setup(props, {emit}) {return () => props.active ? h('button', {'data-testid': 'fixture-add-service', onClick: () => emit('add:service')}, '添加服务') : null}};`;
+        if (id === '\0sections-service-catalog') return `import {h, onMounted} from 'vue';export default {props: ['active'], emits: ['add:service'], setup(props, {emit}) {onMounted(globalThis.${key}.catalogMounted);return () => props.active ? h('button', {'data-testid': 'fixture-add-service', onClick: () => emit('add:service')}, '添加服务') : null}};`;
         if (id === '\0sections-child') return 'export default {render: () => null};';
         if (id === '\0sections-i18n') return `import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: k => k, translateLegacy: t => t}); export const localizeServiceOptions = options => options;`;
         if (id === '\0sections-config') return `export const {config, configReady, subscribeConfig, requestConfigPatch, handoffPendingConfigPatches} = globalThis.${key};`;
@@ -187,7 +182,8 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     }
     app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};
     app.mount(dom ? dom.document.querySelector('#fixture')! : {});await settle();
-    if (template) {await new Promise(resolve => setTimeout(resolve, 60));await settle();}
+    // 等实际异步目录组件挂载；静态表单仅需 Vue 更新队列，不为每例固定等待 60 ms。
+    if (template && activeSection === 'settings-services') {await catalogReady.promise;await settle();}
     return {state, props, visible, document: dom?.document, domWindow: dom?.window, numericPorts, loadProvider, focus, providerMounted, providerUnmounted,
         get providerState() {return providerState;}, get dialogPort() {return dialogPort;},
         async finishProviderLoad() {await providerReady.promise;await new Promise(resolve => setTimeout(resolve, 0));await settle();}, query, send, patch, theme, unsubscribe, frames, findTarget, location, data,

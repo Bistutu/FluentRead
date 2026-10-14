@@ -5,8 +5,7 @@ import {resolve} from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import {createServer, type ViteDevServer} from 'vite';
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
-import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
+import {compileVueFixture} from './helpers/compiledVueFixture';
 import {Config} from '@/src/core/config/model';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
 import {checkAllFreeTranslationProviders, type FreeTranslationChecks} from '@/src/features/settings/ui/services/freeTranslationChecks';
@@ -40,21 +39,14 @@ beforeAll(async () => {
 async function mountComponent(advanced: boolean): Promise<void> {
   const badgePath = 'src/features/settings/ui/services/ServiceNatureBadge.vue';
   const badgeFilename = resolve(process.cwd(), badgePath);
-  const badgeDescriptor = parse(readFileSync(badgeFilename, 'utf8'), {filename: badgeFilename}).descriptor;
-  const badgeScript = compileScript(badgeDescriptor, {id: 'free-service-badge-test'});
-  const badgeTemplate = compileTemplate({source: badgeDescriptor.template!.content, filename: badgeFilename, id: 'free-service-badge-test',
-    compilerOptions: {mode: 'function', bindingMetadata: badgeScript.bindings, expressionPlugins: ['typescript']}});
-  expect(badgeTemplate.errors).toEqual([]);
+  const badgeTemplate = compileVueFixture(badgeFilename, {id: 'free-service-badge-test'});
   const badge = (await server.ssrLoadModule(`/${badgePath}`)).default;
   badge.ssrRender = undefined;
-  badge.render = new Function('Vue', ts.transpileModule(badgeTemplate.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime);
+  badge.render = new Function('Vue', badgeTemplate.renderCode)(runtime);
   const filename = resolve(process.cwd(), componentPath);
-  const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-  const bindings = compileScript(descriptor, {id: 'free-settings-test'}).bindings;
-  const template = compileTemplate({source: descriptor.template!.content, filename, id: 'free-settings-test', compilerOptions: {mode: 'function', bindingMetadata: bindings, expressionPlugins: ['typescript']}});
-  expect(template.errors).toEqual([]);
+  const template = compileVueFixture(filename, {id: 'free-settings-test'});
   component = (await server.ssrLoadModule(`/${componentPath}?advanced=${advanced}`)).default;
-  component.render = new Function('Vue', ts.transpileModule(template.code, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)(runtime);
+  component.render = new Function('Vue', template.renderCode)(runtime);
   elements = [];
   renderer = runtime.createRenderer<Node, Node>({patchProp: (node, key, _previous, value) => {node.props[key] = value;}, insert: () => undefined, remove: () => undefined, createElement: tag => {const node = {tag, props: {}}; elements.push(node); return node;}, createText: () => ({tag: '#text', props: {}}), createComment: () => ({tag: '#comment', props: {}}), setText: () => undefined, setElementText: (node, value) => {node.text = value;}, parentNode: () => null, nextSibling: () => null, querySelector: () => null, setScopeId: () => undefined, cloneNode: node => ({...node}), insertStaticContent: () => [{tag: '#static', props: {}}, {tag: '#static', props: {}}]});
   app = renderer.createApp(component, {config, advanced, checks});

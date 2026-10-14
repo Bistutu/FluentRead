@@ -72,7 +72,10 @@ describe('visible Unicode PDF reading export', () => {
         expect(full.every(character => supported.has(character.codePointAt(0)!))).toBe(true);
         const reviewed = ['‣', '⌀', '⟶', '⟺'];
         expect(reviewed.every(character => supported.has(character.codePointAt(0)!))).toBe(true);
-        expect(reviewed.every(character => font.layout(character).glyphs[0].id !== 0 && font.layout(character).glyphs[0].path.toSVG())).toBe(true);
+        expect(reviewed.every(character => {
+            const glyph = font.layout(character).glyphs[0];
+            return glyph.id !== 0 && glyph.path.toSVG();
+        })).toBe(true);
         const translations = ['扩展字符与数学符号', full.join('') + ' ∗ϵŁł ἀὯ𝒜𝜖𝟟 ‣ ⌀ ⟶ ⟺ 中文唯一尾部：完。'];
         const download = await createDocumentDownload(await fixture(), translations, 'translated', textOnlyOptions);
         const extracted = await extract(download.data as Uint8Array);
@@ -127,10 +130,12 @@ describe('visible Unicode PDF reading export', () => {
 
     it('retains the bundled font base outlines for unsupported variation mappings while keeping each full sequence identity', () => {
         // 数学补充字形未携带其 donor 的变体映射；这些序列按该字体回退到基础轮廓，仍保留选择符。
+        // fontkit 按 glyph id 缓存首次 codePoints；普通字形与变体须分开解析，仅在本用例各自复用只读布局。
+        const baseFont = fontkit.create(fontBytes), variationFont = fontkit.create(fontBytes);
         for (const sequence of ['𝒱︀', '𝒞︀', '𝒮︀', 'C︀', 'S︀', '葛\u{E0100}']) {
             const base = Array.from(sequence)[0];
-            const normal = fontkit.create(fontBytes).layout(base, {liga: false}).glyphs;
-            const variant = fontkit.create(fontBytes).layout(sequence, {liga: false}).glyphs;
+            const normal = baseFont.layout(base, {liga: false}).glyphs;
+            const variant = variationFont.layout(sequence, {liga: false}).glyphs;
             expect(variant).toHaveLength(1);
             expect(variant[0].codePoints).toEqual(Array.from(sequence, character => character.codePointAt(0)!));
             expect(variant[0].path.toSVG()).toBe(normal[0].path.toSVG());
@@ -138,10 +143,11 @@ describe('visible Unicode PDF reading export', () => {
     });
 
     it('retains genuinely different CJK punctuation variation outlines supplied by the bundled font', () => {
+        const baseFont = fontkit.create(fontBytes), variationFont = fontkit.create(fontBytes);
         for (const sequence of ['、︁', '。︁', '！︁']) {
             const base = Array.from(sequence)[0];
-            const normal = fontkit.create(fontBytes).layout(base, {liga: false}).glyphs[0];
-            const variant = fontkit.create(fontBytes).layout(sequence, {liga: false}).glyphs[0];
+            const normal = baseFont.layout(base, {liga: false}).glyphs[0];
+            const variant = variationFont.layout(sequence, {liga: false}).glyphs[0];
             expect(variant.id).not.toBe(normal.id);
             expect(variant.path.toSVG()).not.toBe(normal.path.toSVG());
             expect(variant.codePoints).toEqual(Array.from(sequence, character => character.codePointAt(0)!));

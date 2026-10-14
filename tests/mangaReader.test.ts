@@ -544,10 +544,23 @@ describe('漫画站点适配与 DOM 生命周期', () => {
         page.remove();f.reader.schedule();f.run();expect(f.reader.status().available).toBe(false);
         f.ports.enabled.mockReturnValue(false);f.reader.schedule();f.run();expect(background.prepare).toHaveBeenLastCalledWith([]);f.reader.dispose();expect(background.prepare).toHaveBeenLastCalledWith([]);
     });
-    it.each([{display:'none'},{visibility:'hidden'},{visibility:'collapse'},{}])('背景正文就绪判断尊重 CSS 可见性 %j',style=>{
+    it.each([{display:'none'},{visibility:'hidden'},{visibility:'collapse'},{}])('背景正文就绪判断尊重 CSS 可见性 %j',async style=>{
         const background={identity:vi.fn(()=> 'bg'),translate:vi.fn().mockResolvedValue(undefined),reuse:vi.fn(()=>false),restore:vi.fn(),release:vi.fn(),failed:vi.fn(()=>false),update:vi.fn(),prepare:vi.fn(),pixels:vi.fn(()=>1),bounds:vi.fn(()=>({left:0,top:0,right:640,bottom:900,width:640,height:900}) as DOMRect)};
         const f=readerFixture(false,'https://comic.pixiv.net/viewer/stories/249534',undefined,undefined,undefined,undefined,{background});
-        const page=f.document.createElement('div');page.id='page-2';page.style.backgroundImage='url(blob:page)';f.document.body.append(page);f.setStyle(style);f.reader.schedule();f.run();f.reader.toggle();f.reader.dispose();
+        const page=f.document.createElement('div');page.id='page-2';page.style.backgroundImage='url(blob:page)';f.document.body.append(page);f.setStyle(style);f.reader.schedule();f.run();
+        expect(background.prepare).toHaveBeenLastCalledWith([page]);
+        expect(f.reader.status()).toMatchObject({available:true,active:false,pageCount:1,areaFallback:false,completed:0});
+        expect(f.reader.toggle()).toBe(true);await flush();
+        const visible=Object.keys(style).length===0;
+        if(visible)expect(background.translate.mock.calls.map(([element])=>element)).toEqual([page]);
+        else expect(background.translate).not.toHaveBeenCalled();
+        expect(f.ports.translate).not.toHaveBeenCalled();
+        expect(f.reader.status()).toMatchObject({active:true,pending:false,errors:0,completed:visible?1:0});
+        f.reader.dispose();
+        expect(background.prepare).toHaveBeenLastCalledWith([]);
+        expect(f.reader.status()).toMatchObject({available:false,active:false,pending:false,pageCount:0,completed:0});
+        if(visible)expect(background.release.mock.calls.map(([element])=>element)).toEqual([page]);
+        else expect(background.release).not.toHaveBeenCalled();
     });
     it('无背景处理端口时仅提供正文圈选，尺寸不足不启动正文翻译',()=>{
         const f=readerFixture(false,'https://palcy.jp/comics/554');const page=f.document.createElement('div');page.id='page-1';page.style.backgroundImage='url(blob:page)';

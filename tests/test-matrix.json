@@ -36,7 +36,8 @@
       "tests/backgroundVisionProbe.test.ts",
       "tests/requestHeaderRuntime.test.ts",
       "tests/extensionSizeBudget.test.ts",
-      "tests/chatgptPlanBridgeClient.test.ts"
+      "tests/chatgptPlanBridgeClient.test.ts",
+      "tests/testConfiguration.test.ts"
     ],
     "unit": [
       "tests/compositeTranslationConfig.test.ts",
@@ -439,7 +440,8 @@
       "tests/readingEvidence.test.ts",
       "tests/videoSentenceTimeline.test.ts",
       "tests/vocabularyVideoSource.test.ts",
-      "tests/chatgptPlanConfig.test.ts"
+      "tests/chatgptPlanConfig.test.ts",
+      "tests/compiledVueFixture.test.ts"
     ],
     "functional": [
       "tests/learningCenterLifecycle.test.ts",
@@ -667,7 +669,8 @@
       "tests/vocabularyVideoSourceUi.test.ts",
       "tests/chatgptPlanHarness.test.ts",
       "tests/chatgptPlanProvider.test.ts",
-      "tests/chatgptPlanSettingsLifecycle.test.ts"
+      "tests/chatgptPlanSettingsLifecycle.test.ts",
+      "tests/processRegression.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

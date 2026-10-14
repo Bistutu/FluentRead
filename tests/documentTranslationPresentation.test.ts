@@ -27,6 +27,7 @@ function parsed(format: DocumentFormat, binary?: BinaryDocumentData): ParsedDocu
 describe('document translation presentation', () => {
     it('does not read the rest of a large text document to produce its download excerpt', () => {
         const document = parseDocument('long.txt', 'A'.repeat(1700));
+        expect(getDocumentExportPreview(document, [], 'translated')).toBe(`${'A'.repeat(1600)}\n…`);
         document.parts = [
             {kind: 'literal', value: 'A'.repeat(1700)},
             {get kind() {throw new Error('preview read beyond limit');}} as any,
@@ -52,9 +53,7 @@ describe('document translation presentation', () => {
         }
     });
 
-    it('export preview is bounded and binary excerpts follow the selected mode', () => {
-        const document = parseDocument('long.txt', 'A'.repeat(1700));
-        expect(getDocumentExportPreview(document, [], 'translated')).toBe(`${'A'.repeat(1600)}\n…`);
+    it('binary export excerpts follow the selected mode', () => {
         const pdf = parsed('pdf', {kind: 'pdf', bytes: new Uint8Array(), pages: []});
         pdf.segments = [{id: 0, source: 'Original'}, {id: 1, source: 'Pending'}];
         expect(getDocumentExportPreview(pdf, ['译文', ' '], 'translated')).toBe('译文\n\nPending');

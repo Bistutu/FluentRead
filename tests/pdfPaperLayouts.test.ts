@@ -204,7 +204,9 @@ describe('common paper layouts survive real PDF parsing', () => {
     // 本地真实论文的结构检查：把 FLUENTREAD_PDF_CORPUS 指向一个放有 PDF 的目录即可启用；论文本身不进入仓库。
     it.runIf(Boolean(process.env.FLUENTREAD_PDF_CORPUS))('local paper corpus keeps the structural invariants', async () => {
         const directory = process.env.FLUENTREAD_PDF_CORPUS!;
-        for (const name of readdirSync(directory).filter(file => file.toLowerCase().endsWith('.pdf'))) {
+        const papers = readdirSync(directory).filter(file => file.toLowerCase().endsWith('.pdf'));
+        expect(papers.length, 'PDF corpus must contain at least one paper').toBeGreaterThan(0);
+        for (const name of papers) {
             const document = await parseBinaryDocument(name, new Uint8Array(readFileSync(join(directory, name))));
             expectSoundStructure(document);
             // 被拆散的正文表现为大量一两个词的“正文段落”；正常论文里这种碎片远少于十分之一。

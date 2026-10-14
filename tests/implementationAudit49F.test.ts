@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createContext, runInContext} from 'node:vm';
+import {compileVueInlineFixture} from './helpers/compiledVueFixture';
 
 // 使用真实 Vue runtime-dom 和 SFC；linkedom 只提供受控 DOM 外部端口。
 const dom = await vi.hoisted(async () => {
@@ -1402,8 +1403,6 @@ describe('49F owned settings i18n client admission', () => {
         const bundleGates = new Map<string, ReturnType<typeof deferred<boolean>>>();
         vi.doMock('@/src/platform/i18n/uiLanguageBundles', () => ({ensureUiLanguageBundle: (language: string) => bundleGates.get(language)?.promise ?? Promise.resolve(true)}));
         const Vue = await import('vue');
-        const {parse, compileScript} = await import('vue/compiler-sfc');
-        const ts = await import('typescript');
         const {Config} = await import('@/src/core/config/model');
         const appearance = await import('@/src/core/config/translationAppearance');
         const highlight = await import('@/src/core/config/sentenceHighlight');
@@ -1432,11 +1431,9 @@ describe('49F owned settings i18n client admission', () => {
         const colorPort = Vue.defineComponent({props: ['modelValue', 'fieldId', 'label'], setup: props => () => Vue.h('span', {'data-color-port': props.fieldId}, props.label)});
         function client(relative: string): import('vue').Component {
             const filename = resolve(relative);if (compiled.has(filename)) return compiled.get(filename)!;
-            const {descriptor, errors} = parse(readFileSync(filename, 'utf8'), {filename});expect(errors).toEqual([]);
-            const script = compileScript(descriptor, {id: `owned-style-${compiled.size}`, inlineTemplate: true});
+            const compilation = compileVueInlineFixture(filename, {id: `owned-style-${compiled.size}`});expect(compilation.parseErrors).toEqual([]);
             const module = {exports: {} as {default: import('vue').Component}};
-            const code = ts.transpileModule(script.content, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
-            new Function('require', 'exports', 'module', code)((id: string) => {
+            new Function('require', 'exports', 'module', compilation.code)((id: string) => {
                 if (id === 'vue') return Vue;
                 if (id === '@/src/ui/i18n') return i18n;
                 if (id === '@/src/core/config/translationAppearance') return appearance;

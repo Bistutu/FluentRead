@@ -592,6 +592,43 @@ describe('PDF baseline and structural reading analysis', () => {
         expect(blocks.find(block => block.source === 'Outside')).toMatchObject({kind: 'text', preserveSource: false});
         expect(atoms).toEqual(before);
     });
+    it('uses the full table extent when staggered short rules do not define a complete row boundary', () => {
+        // 每条横线只覆盖相邻的一部分列；它们共同围出表格，不能把短线端点当作完整行界。
+        const graphics = [0, 30, 60, 90].map((x, index) => ({kind: 'path' as const, x, y: 100 + index * 20, width: 150, height: 0}));
+        const atoms = [atom('Fragmented table cell', 80, 130, 100)];
+        const before = structuredClone(atoms);
+        const result = analyze(atoms, graphics);
+        expect(result.preservedRegions).toMatchObject([{kind: 'table', x: 0, y: 99, width: 240, height: 62}]);
+        expect(result.blocks).toHaveLength(1);
+        expect(result.blocks[0]).toMatchObject({source: 'Fragmented table cell', kind: 'table', preserveSource: false,
+            cellBounds: {x: 0, y: 99, width: 240, height: 62}});
+        expect(atoms).toEqual(before);
+    });
+    it('keeps clipped top labels and final-rule baselines inside finite table cell bounds', () => {
+        const graphics = [100, 140].map(y => ({kind: 'path' as const, x: 50, y, width: 400, height: 0}));
+        // 裁剪后的文字层保留原基线，字形矩形的上沿和高度由可见部分决定。
+        const atoms = [{...atom('Boundary header', 60, 100, 90), y: 97, height: 8}, atom('Boundary result', 300, 140, 90)];
+        const before = structuredClone(atoms);
+        const blocks = analyze(atoms, graphics).blocks;
+        expect(blocks).toHaveLength(2);
+        expect(blocks.find(block => block.source === 'Boundary header')).toMatchObject({kind: 'table', preserveSource: false,
+            cellBounds: {x: 50, y: 99, width: 400, height: 41}});
+        expect(blocks.find(block => block.source === 'Boundary result')).toMatchObject({kind: 'table', preserveSource: false,
+            cellBounds: {x: 50, y: 100, width: 400, height: 41}});
+        expect(atoms).toEqual(before);
+    });
+    it('keeps stacked shaded notes editable when their text does not repeat a table column alignment', () => {
+        const graphics = [100, 125, 150].map(y => ({kind: 'path' as const, x: 0, y, width: 508, height: 25}));
+        const atoms = [100, 125, 150].flatMap((y, index) => [atom(`This note ${index} contains text for later review.`, 50, y + 16, 150, 6),
+            atom(`A note ${index} remains available for human review.`, 300 + index * 35, y + 16, 140, 6)]);
+        const before = structuredClone(atoms);
+        const result = analyze(atoms, graphics);
+        expect(result.preservedRegions.some(region => region.kind === 'table')).toBe(false);
+        expect(result.blocks.length).toBeGreaterThan(0);
+        expect(result.blocks.every(block => block.kind === 'text' && !block.preserveSource)).toBe(true);
+        expect(result.blocks.flatMap(block => block.lines!.map(line => line.text)).sort()).toEqual(atoms.map(item => item.text).sort());
+        expect(atoms).toEqual(before);
+    });
     it('uses the table envelope when staggered partial rules cannot define complete row boundaries', () => {
         const graphics = [100, 120, 140].map((y, index) => ({kind: 'path' as const, x: 100 + index * 50, y, width: 200, height: 0}));
         const atoms = [atom('First category', 155, 114, 80), atom('Second category', 205, 134, 85),

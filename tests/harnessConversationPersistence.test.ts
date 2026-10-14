@@ -10,8 +10,15 @@ const request = (extra: Partial<ReadingRequest> = {}): ReadingRequest => ({type:
 const success: ReadingResponse = {success: true, text: 'First paragraph.\n\nSecond paragraph.', model: 'm', service: 'openai'};
 function repository(name = `Harness-real-conversation-${++sequence}`) {const database = new FluentReadHarnessSessionDatabase(name); databases.push(database); return new HarnessSessionRepository(database);}
 function conversation(store: HarnessSessionRepository, runtime: HarnessRuntime) {return createHarnessConversationRuntime({store, runtime, preferences: () => ({contextMode: 'paragraph', maxContextChars: 1500})});}
-async function until(check: () => boolean) {for (let i = 0; i < 200 && !check(); i++) await new Promise(resolve => setTimeout(resolve, 5)); expect(check()).toBe(true);}
-afterEach(async () => {for (const database of databases.splice(0)) {database.close(); await database.delete();}});
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>(done => {resolve = done;});
+    return {promise, resolve};
+}
+afterEach(async () => {
+    vi.useRealTimers();vi.restoreAllMocks();
+    for (const database of databases.splice(0)) {database.close(); await database.delete();}
+});
 
 describe('Harness streaming with real IndexedDB persistence', () => {
     it('retains a cached practice question after other actions have added more than four later turns', async () => {
@@ -47,15 +54,32 @@ describe('Harness streaming with real IndexedDB persistence', () => {
         expect((await store.get(result.sessionId!))?.turns).toHaveLength(2);
     });
     it('checkpoints partial output and retains it as stopped when the user cancels', async () => {
+        // 仅控制节流时钟；真实 IndexedDB 事务仍由正常事件循环提交。
+        vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
         const store = repository();
-        let publish: ((progress: ReadingProgress) => void) | undefined;
+        const started = deferred<(progress: ReadingProgress) => void>();
+        const checkpointCommitted = deferred<void>();
+        const upsertTurn = store.upsertTurn.bind(store);
+        const save = vi.spyOn(store, 'upsertTurn').mockImplementation(async (...args) => {
+            const saved = await upsertTurn(...args);
+            if (args[1].answer === '已生成一部分' && args[1].status === 'streaming') checkpointCommitted.resolve();
+            return saved;
+        });
         let finish!: (response: ReadingResponse) => void;
-        const current = conversation(store, {run: async (_request, _signal, callback) => {publish = callback; return new Promise(resolve => {finish = resolve;});}});
+        const current = conversation(store, {run: async (_request, _signal, callback) => {
+            started.resolve(callback!);
+            return new Promise(resolve => {finish = resolve;});
+        }});
         const controller = new AbortController();
         const running = current.run(request(), controller.signal);
-        await until(() => Boolean(publish));
-        publish!({kind: 'text', text: '已生成一部分'});
-        await new Promise(resolve => setTimeout(resolve, 550));
+        const publish = await started.promise;
+        publish({kind: 'text', text: '已生成一部分'});
+        expect(save).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(499);
+        expect(save).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(1);
+        await checkpointCommitted.promise;
+        expect(save).toHaveBeenCalledTimes(2);
         const id = (await store.list()).sessions[0].id;
         expect((await store.get(id))?.turns[0]).toMatchObject({answer: '已生成一部分', status: 'streaming', service: '', model: ''});
         controller.abort(); finish(success);
@@ -64,12 +88,12 @@ describe('Harness streaming with real IndexedDB persistence', () => {
     });
     it('clear during an active stream prevents final write resurrection in the real repository', async () => {
         const store = repository();
-        let finish: ((response: ReadingResponse) => void) | undefined;
-        const current = conversation(store, {run: async () => new Promise(resolve => {finish = resolve;})});
+        const started = deferred<(response: ReadingResponse) => void>();
+        const current = conversation(store, {run: async () => new Promise(resolve => {started.resolve(resolve);})});
         const running = current.run(request(), new AbortController().signal);
-        await until(() => Boolean(finish));
+        const finish = await started.promise;
         expect((await store.list()).sessions).toHaveLength(1);
-        await store.clear(); finish!(success);
+        await store.clear(); finish(success);
         expect(await running).toMatchObject({success: true, persistenceWarning: expect.any(String)});
         expect((await store.list()).sessions).toEqual([]);
     });

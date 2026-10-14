@@ -2,6 +2,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {compileScript, parse} from 'vue/compiler-sfc';
 import ts from 'typescript';
+import {compileVueInlineFixture} from './helpers/compiledVueFixture';
 import * as vue from 'vue';
 import * as progressApi from '@/src/features/full-page-translation/progress';
 import * as siteDomainApi from '@/src/core/site-rules/domain';
@@ -776,14 +777,12 @@ describe('进度面板稳定 key 的完整 DOM 与真实 i18n 生命周期', () 
     const advance = async (ms: number) => {await vi.advanceTimersByTimeAsync(ms); await flush();};
     try {
       const i18n = await import('@/src/ui/i18n');
-      const {descriptor, errors} = parse(readFileSync(panelFile, 'utf8'), {filename: panelFile});
-      expect(errors).toEqual([]);
-      const script = compileScript(descriptor, {id: 'progress-panel-full-render-owner', inlineTemplate: true});
-      const code = ts.transpileModule(script.content, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
+      const compiled = compileVueInlineFixture(panelFile, {id: 'progress-panel-full-render-owner'});
+      expect(compiled.parseErrors).toEqual([]);
       // 仅以同步 slot 端口代替 CSS 过渡；完整业务模板、Vue响应式、DOM事件均实际运行。
       const TransitionPort = vue.defineComponent({inheritAttrs: false, props: {name: String}, setup: (_props, {slots}) => () => slots.default?.()});
       const module = {exports: {} as {default: vue.Component}};
-      new Function('require', 'exports', 'module', code)((id: string) => {
+      new Function('require', 'exports', 'module', compiled.code)((id: string) => {
         if (id === 'vue') return {...vue, Transition: TransitionPort};
         if (id === '@/src/features/full-page-translation/progress') return progressApi;
         if (id === './progressPanelVisibility') return {createProgressPanelVisibility};
