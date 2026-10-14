@@ -730,4 +730,60 @@ describe('YouTube 字幕轨道数据', () => {
     expect(finalizeVideoSubtitleCues(finalized)).toEqual(finalized);
     expect(cuesToSrt(cues)).toBe(cuesToSrt(finalized));
   });
+
+  const apostropheBoundaryCases = apostrophes.flatMap((apostrophe) => [
+    ...suffixForms.map(([stem, suffix]) => ({
+      words: ['The', 'caption', 'reads', `${stem}${apostrophe}`, suffix, 'today.'],
+      text: `The caption reads ${stem}${apostrophe}${suffix} today.`,
+    })),
+    {words: ['I', `don${apostrophe}`, 't', 'know.'], text: `I don${apostrophe}t know.`},
+    {words: ['Nous', `l${apostrophe}`, 'aimons', 'bien.'], text: `Nous l${apostrophe}aimons bien.`},
+    {words: ['Nous', 'l', `${apostrophe}aimons`, 'bien.'], text: `Nous l${apostrophe}aimons bien.`},
+    {words: [`c${apostrophe}est`, `l${apostrophe}`, 'amour', 'ici.'], text: `c${apostrophe}est l${apostrophe}amour ici.`},
+    {words: ['Je', 'parle', `d${apostrophe}`, 'amour.'], text: `Je parle d${apostrophe}amour.`},
+    {words: ['Je', 'parle', 'd', `${apostrophe}amour.`], text: `Je parle d${apostrophe}amour.`},
+    {words: ['one', 'two', 'it', apostrophe, 's', 'fine.'], text: `one two it${apostrophe}s fine.`},
+    {words: ['on', 'voit', 'l', apostrophe, 'amour', 'ici.'], text: `on voit l${apostrophe}amour ici.`},
+    {words: ['we', 'say', `${apostrophe}s`, `means${apostrophe}`, 'plural.'], text: `we say ${apostrophe}s means${apostrophe} plural.`},
+    {words: ['he', 'said', `${apostrophe}it`, `${apostrophe}s`, 'good', `today${apostrophe}`], text: `he said ${apostrophe}it${apostrophe}s good today${apostrophe}`},
+    {words: ['He', 'said', `${apostrophe}I`, `don${apostrophe}`, 't', `know.${apostrophe}`], text: `He said ${apostrophe}I don${apostrophe}t know.${apostrophe}`},
+    {words: ['we', 'quote', `${apostrophe}nous`, `l${apostrophe}`, 'aimons', `bien.${apostrophe}`], text: `we quote ${apostrophe}nous l${apostrophe}aimons bien.${apostrophe}`},
+    {words: ['It', `${apostrophe}s`, `dogs${apostrophe}`, 'food.'], text: `It${apostrophe}s dogs${apostrophe} food.`},
+    {words: ['This', `${apostrophe}s`, 'a', `James${apostrophe}`, 'book.'], text: `This${apostrophe}s a James${apostrophe} book.`},
+    {words: ['John', `${apostrophe}s`, `dogs${apostrophe}`, 'food.'], text: `John${apostrophe}s dogs${apostrophe} food.`},
+    {words: ['John', apostrophe, 's', `dogs${apostrophe}`, 'food.'], text: `John${apostrophe}s dogs${apostrophe} food.`},
+    {words: ['we', 'quote', `${apostrophe}I don${apostrophe}`, 't', 'today.'], text: `we quote ${apostrophe}I don${apostrophe} t today.`},
+    {words: ['we', 'quote', `${apostrophe}we l${apostrophe}`, 'aimons', 'today.'], text: `we quote ${apostrophe}we l${apostrophe} aimons today.`},
+    {words: ['it', `${apostrophe}s`, `${apostrophe}ready${apostrophe}`, 'now.'], text: `it${apostrophe}s ${apostrophe}ready${apostrophe} now.`},
+    {words: ['we', 'say', apostrophe, 'ready', apostrophe, 'now.'], text: `we say ${apostrophe}ready${apostrophe} now.`},
+    {words: ['we', 'say', apostrophe, 's', apostrophe, 'now.'], text: `we say ${apostrophe}s${apostrophe} now.`},
+    {words: ['we', 'say', apostrophe, 's', apostrophe], text: `we say ${apostrophe}s${apostrophe}`},
+    ...['quote', 'word', 'letter', 'term'].map((noun) => ({
+      words: ['The', noun, apostrophe, 's', 'meaning.'], text: `The ${noun}${apostrophe}s meaning.`,
+    })),
+    ...['quote', 'word', 'letter', 'term'].flatMap((noun) => [
+      {words: ['The', noun, `${apostrophe}s`, `writers${apostrophe}`, 'intentions.'], text: `The ${noun}${apostrophe}s writers${apostrophe} intentions.`},
+      {words: ['The', noun, apostrophe, 's', `writers${apostrophe}`, 'intentions.'], text: `The ${noun}${apostrophe}s writers${apostrophe} intentions.`},
+    ]),
+    {words: ['we', 'said', `${apostrophe}it`, `works!${apostrophe}`], text: `we said ${apostrophe}it works!${apostrophe}`},
+    {words: [`${apostrophe}we`, 'are', `ready${apostrophe}`, 'today.'], text: `${apostrophe}we are ready${apostrophe} today.`},
+    {words: ['we', 'say', `${apostrophe}‘ready’${apostrophe}`, 'now.'], text: `we say ${apostrophe}‘ready’${apostrophe} now.`},
+    {words: ['we', 'say', `${apostrophe}l${apostrophe}amour`, 'is', `lovely${apostrophe}.`], text: `we say ${apostrophe}l${apostrophe}amour is lovely${apostrophe}.`},
+  ]);
+
+  it.each(apostropheBoundaryCases)('双向及独立撇号事件保留词形、引用和时间轴：$text', ({words, text}) => {
+    const cues = words.map((word, index) => ({startMs: index * 450, durationMs: 500, text: word}));
+    const snapshot = cues.map((cue) => ({...cue}));
+    const expected = [{startMs: 0, durationMs: (words.length - 1) * 450 + 500, text}];
+    const finalized = finalizeVideoSubtitleCues(cues);
+    expect(finalized).toEqual(expected);
+    expect(finalizeVideoSubtitleCues(finalized)).toEqual(expected);
+    const json3 = JSON.stringify({events: cues.map((cue) => ({
+      tStartMs: cue.startMs, dDurationMs: cue.durationMs, segs: [{utf8: cue.text}],
+    }))});
+    expect(finalizeVideoSubtitleCues(parseYoutubeTimedTextResponse(json3))).toEqual(expected);
+    expect(cuesToSrt(cues)).toBe(cuesToSrt(finalized));
+    expect(cuesToSrt(cues).split('\n')[2]).toBe(text);
+    expect(cues).toEqual(snapshot);
+  });
 });

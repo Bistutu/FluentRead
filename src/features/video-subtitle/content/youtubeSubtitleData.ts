@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/youtubeSubtitleData.ts
  * 文件职责：提供 YouTube 字幕轨道发现、timedtext 响应解析、增量词流合并、时间轴规范化和 SRT 导出的纯数据处理能力。
- * 主要内容：定义 caption track 与 cue 模型，从页面脚本提取平衡 JSON，选择目标轨道、构造 json3 URL，校验 XML/json3 时间字段，按事件边界合并词流并收敛增量前缀，生成可重复导出的时间轴和安全文件名。
+ * 主要内容：定义 caption track 与 cue 模型，从页面脚本提取平衡 JSON，选择目标轨道、构造 json3 URL，校验 XML/json3 时间字段，按事件边界及有限撇号/引用规则合并词流并收敛增量前缀，生成可重复导出的时间轴和安全文件名。
  * 模块边界：模块不监听网络、不修改播放器 DOM也不调用翻译；runtime 消费生成的 cues，youtubeTimedTextBridge 只负责捕获响应，函数可在离线 fixture 中独立验证。
  */
 export interface YoutubeCaptionTrack {
@@ -236,18 +236,77 @@ function canJoinWordStreamCues(previous: VideoSubtitleCue, next: VideoSubtitleCu
     && cueGapMs(previous, next) <= WORD_STREAM_JOIN_GAP_MS;
 }
 
-function joinCueText(previous: string, next: string): string {
+/** 仅追踪词边界上的单引号；词内的 don't / l'amour 不改变引用状态。 */
+function hasOpenCueSingleQuote(value: string): boolean {
+  const characters = Array.from(value);
+  let open = false;
+  characters.forEach((character, index) => {
+    if (!/['‘’]/u.test(character)) return;
+    const previous = characters[index - 1] || '';
+    const next = characters[index + 1] || '';
+    const previousIsWord = /[\p{L}\p{N}\p{M}]/u.test(previous);
+    const nextIsWord = /[\p{L}\p{N}\p{M}]/u.test(next);
+    if (previousIsWord && nextIsWord) return;
+    if (nextIsWord) open = true;
+    else if (previousIsWord || /[.,!?;:)]/u.test(previous)) open = false;
+  });
+  return open;
+}
+
+/** 只在本次已经确定可合并的词流内找闭引号；先遇到另一开引号时不借用其闭号。 */
+function hasFollowingCueSingleQuoteEnd(value: string): boolean {
+  const characters = Array.from(value);
+  for (let index = 0; index < characters.length; index += 1) {
+    const character = characters[index];
+    if (!/['‘’]/u.test(character)) continue;
+    const previous = characters[index - 1] || '';
+    const next = characters[index + 1] || '';
+    const previousIsWord = /[\p{L}\p{N}\p{M}]/u.test(previous);
+    const nextIsWord = /[\p{L}\p{N}\p{M}]/u.test(next);
+    if (previousIsWord && nextIsWord) continue;
+    if (nextIsWord) return false;
+    if (previousIsWord || /[.,!?;:)]/u.test(previous)) return true;
+    if (character !== '‘' && /\s/u.test(previous) && (!next || /\s/u.test(next))) return true;
+  }
+  return false;
+}
+
+function joinCueText(previous: string, next: string, following = ''): string {
   const left = previous.trim();
   const right = next.trim();
+  const stem = left.match(/([\p{L}\p{M}]+)['’]?$/u)?.[1] || '';
+  const frenchElision = /^(?:[cdjlmnst]|qu|jusqu|lorsqu|puisqu|quoiqu)$/i.test(stem);
+  const quoteIntroducingStem = /^(?:say|says|said|write|writes|wrote|read|reads|quoted|spell|spells|spelled)$/i.test(stem);
+  const quoteOpen = hasOpenCueSingleQuote(left);
+  if (/^['‘’]$/u.test(right)) {
+    const wordContinuation = right !== '‘' && (
+      (frenchElision && /^\p{L}/u.test(following))
+      || (stem && !(quoteIntroducingStem && hasFollowingCueSingleQuoteEnd(following))
+        && /^(?:s|re|ve|ll|d|m|t)[.,!?;:]*(?=$|\s)/i.test(following))
+    );
+    return `${left}${!wordContinuation && !quoteOpen ? ' ' : ''}${right}`;
+  }
+  // 独立开引号事件已经在它前面保留空格，下一词紧贴开引号。
+  if (/(?:^|\s)['‘’]$/u.test(left)) return `${left}${right}`;
+  const suffixAtStart = /^['’](?:s|re|ve|ll|d|m|t)[.,!?;:]*(?=$|\s)/i.test(right);
+  const closesQuote = /^['’]/u.test(right)
+    && hasFollowingCueSingleQuoteEnd(`${right.slice(1)} ${following}`);
+  // 仅有限引述动词借闭号识别引用；quote/word 等名词所有格不借 dogs' / James' 改判。
+  const startsQuotedSuffix = suffixAtStart && !quoteOpen && quoteIntroducingStem && closesQuote;
+  const quoteBeforeTail = /['’]$/u.test(left) && hasOpenCueSingleQuote(left.slice(0, -1));
+  const tailWithinQuote = quoteBeforeTail && hasFollowingCueSingleQuoteEnd(`${right} ${following}`);
+  const joinsApostrophe = /['’]$/u.test(left) && (!quoteBeforeTail || tailWithinQuote)
+    ? /^(?:s|re|ve|ll|d|m|t)[.,!?;:]*(?=$|\s)/i.test(right) || (frenchElision && /^\p{L}/u.test(right))
+    : frenchElision && /^['’]\p{L}/u.test(right) && (quoteOpen || !closesQuote);
   const leftWord = hasCueTitleContinuation(left, right)
     ? left.slice(0, -1)
     : left.replace(/["'’”»)\]}」』】）,]+$/u, '');
-  const rightWord = /^['’](?:s|re|ve|ll|d|m|t)[.,!?;:]*(?=$|\s)/i.test(right)
+  const rightWord = suffixAtStart && !startsQuotedSuffix
     ? right
     : right.replace(/^["'’“‘«(\[{「『【（]+/u, '');
   const boundary = [...Array.from(leftWord).slice(-1), ...Array.from(rightWord).slice(0, 1)].join('');
   // 此处只连接不同事件；JSON3 原始 segment 仍按原样 join('')，避免破坏子词。
-  const needsSpace = /^[\p{L}\p{N}\p{M}]{2}$/u.test(boundary)
+  const needsSpace = !joinsApostrophe && /^[\p{L}\p{N}\p{M}]{2}$/u.test(boundary)
     && !/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(boundary);
   return `${left}${needsSpace ? ' ' : ''}${right}`;
 }
@@ -315,8 +374,7 @@ function mergeWordStreamCues(cues: VideoSubtitleCue[]): VideoSubtitleCue[] {
     const first = cues[index];
     let last = first;
     let endIndex = index;
-    let text = first.text;
-    let wordCount = countCueWords(text);
+    let wordCount = countCueWords(first.text);
     let endMs = first.startMs + Math.max(first.durationMs, 500);
 
     while (endIndex + 1 < cues.length) {
@@ -330,7 +388,6 @@ function mergeWordStreamCues(cues: VideoSubtitleCue[]): VideoSubtitleCue[] {
       const nextEndMs = next.startMs + Math.max(next.durationMs, 500);
       if (wordCount + nextWordCount > WORD_STREAM_MAX_WORDS || nextEndMs - first.startMs > WORD_STREAM_MAX_CUE_SPAN_MS) break;
 
-      text = joinCueText(text, next.text);
       wordCount += nextWordCount;
       endMs = Math.max(endMs, nextEndMs);
       last = next;
@@ -338,6 +395,13 @@ function mergeWordStreamCues(cues: VideoSubtitleCue[]): VideoSubtitleCue[] {
       if (hasCueTerminalPunctuation(next.text, following?.text)) break;
     }
 
+    // 先确定同一可合并 run，引用识别不能借用句界、时间间隔或预算之外的闭引号。
+    const run = cues.slice(index, endIndex + 1);
+    const text = run.reduce((joined, cue, cueIndex) => cueIndex === 0 ? cue.text : joinCueText(
+      joined,
+      cue.text,
+      run.slice(cueIndex + 1).map((followingCue) => followingCue.text).join(' '),
+    ), '');
     result.push({
       startMs: first.startMs,
       durationMs: Math.max(500, endMs - first.startMs),
