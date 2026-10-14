@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "sourceCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224",
+  "sourceCommit": "a27e1171cf60b6c23b1d58bb3bfaea20d9afcfc2",
   "comparisonBase": "8bdd5c20dc82b57d27b7e22d14080cacd64d7eed",
   "version": "0.0.38",
   "referenceRepositoriesUsed": false,
@@ -20,7 +20,7 @@
     },
     "testRegistration": {
       "files": 717,
-      "declaredCases": 12891,
+      "declaredCases": 12907,
       "status": "passed"
     },
     "nativeNodeContracts": {
@@ -37,21 +37,22 @@
     },
     "manifestVerifier": "passed",
     "userscriptVerifier": "passed",
-    "userscriptBytes": 2082862,
-    "userscriptBudgetBytes": 2083000,
+    "userscriptBytes": 2083463,
+    "userscriptBudgetBytes": 2083500,
     "affectedBehavior": {
       "status": "passed",
       "files": 410,
       "passed": 13417,
       "existingSkipped": 4,
-      "completeRepositorySuite": false
+      "completeRepositorySuite": false,
+      "sourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb"
     },
     "strictCoverage": {
       "status": "passed",
-      "files": 82,
+      "files": 83,
       "requiredPercent": 100,
       "perFile": true,
-      "verificationMode": "affected run plus independently scoped runtime consumers and broker contracts",
+      "verificationMode": "historical affected run and independent scoped runtime, broker, main integration and PDF binary runs; all 83 source hashes match final source",
       "report": "strict-coverage.json"
     },
     "historyScoped": {
@@ -84,7 +85,57 @@
       "passed": 19,
       "actualRunnerAndFailureReportsVerified": true
     },
-    "latestMainIntegration": {
+    "priorToolingIntegration": {
+      "status": "passed",
+      "files": 3,
+      "passed": 50,
+      "types": "passed",
+      "docs": "passed",
+      "productionSourceDifferenceFromProgramSourceCommit": false
+    },
+    "finalMainIntegration": {
+      "sourceCommit": "a27e1171cf60b6c23b1d58bb3bfaea20d9afcfc2",
+      "baseCommit": "e806feff0035d7df3e794265a4a9a648015dd487",
+      "translation": {
+        "files": 26,
+        "passed": 1339,
+        "coveredModules": 4
+      },
+      "pdfBinary": {
+        "files": 13,
+        "passed": 505,
+        "existingSkipped": 3,
+        "coveredModules": 1
+      },
+      "pdfPressure": {
+        "passed": 43,
+        "fragments": 160000,
+        "childTimeoutMs": 15000,
+        "measurement": "pdf-fragment-aggregation.json"
+      },
+      "cliFixtures": {
+        "files": 1,
+        "passed": 112,
+        "ownedActorsVerifiedGone": 180,
+        "remainingOwnerRoots": 0
+      },
+      "icon": {
+        "passed": 2,
+        "node": "22.23.2",
+        "publishedPngSha256": "4226fc057f80b2308a6153b3316bc02b31b74f1a7f92504e9f45f30d245b5535",
+        "negativeFixtures": 2
+      },
+      "types": "passed",
+      "builds": {
+        "chrome_mv3": "passed",
+        "firefox_mv2": "passed",
+        "userscript": "passed",
+        "docs": "passed"
+      },
+      "manifestVerifier": "passed",
+      "userscriptVerifier": "passed"
+    },
+    "sectionSweepIntegration": {
       "status": "passed",
       "sourceCommit": "2addf19c75fc753c0b72ced44d7a14612eee1224",
       "integratedMainCommit": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
@@ -121,14 +172,6 @@
         "passed": 17,
         "realCliNegativeCases": 2
       }
-    },
-    "priorToolingIntegration": {
-      "status": "passed",
-      "files": 3,
-      "passed": 50,
-      "types": "passed",
-      "docs": "passed",
-      "productionSourceDifferenceFromProgramSourceCommit": false
     }
   },
   "browserEvidence": {
@@ -155,19 +198,20 @@
     "Firefox is built and its manifest checked; Firefox runtime is not tested.",
     "Browser smoke checks do not verify real PCM capture or local model accuracy.",
     "Browser architecture checks were recorded at programSourceCommit; the later main section-sweep integration is covered by focused tests and rebuilt artifacts, not rerun browser scenarios.",
-    "Hosted CI is pending on the updated PR head at recording time; final results are recorded by the PR checks."
+    "Hosted CI is pending on the updated PR head at recording time; final results are recorded by the PR checks.",
+    "The final local CLI/PDF checks use macOS Node20 and the icon checks use macOS Node22; Linux Node22 results require the final hosted workflow."
   ],
   "ciPlan": {
     "files": 447,
     "architectureFiles": 37,
     "behaviorFiles": 410,
-    "strictModules": 82,
+    "strictModules": 83,
     "duplicates": false,
     "verification": "Updated plan and scoped integration verified; the complete combined command is run by hosted PR CI.",
     "plan": "ci-plan.json"
   },
   "programSourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb",
-  "recordingPhase": "local integration validation before updated PR CI",
-  "currentIntegratedBase": "6537d3de830a94384f16c76ff8c3ccc41ac051d5",
+  "recordingPhase": "final local verification before updated PR CI",
+  "currentIntegratedBase": "e806feff0035d7df3e794265a4a9a648015dd487",
   "pullRequest": "https://github.com/FluentRead/FluentRead/pull/985"
 }
