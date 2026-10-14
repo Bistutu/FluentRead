@@ -349,14 +349,11 @@ describe('服务目录的搜索和导航归属', () => {
 })
 
 describe('服务详情的显式默认服务动作', () => {
-  it.each(['microsoft', 'chatgptPlan'])('公开版展示已存套餐名称并保留模型，默认%s时不渲染或执行套餐默认动作', async defaultService => {
+  it.each(['microsoft', 'chatgptPlan'])('公开版默认%s的旧套餐详情完全隐藏且保留模型，不执行默认动作', async defaultService => {
     const config = runtime.reactive(new Config());config.service = defaultService;config.model.chatgptPlan = 'saved-account-model'
     await mountCatalog({service: 'chatgptPlan', defaultService, context: config, services: catalog, modelOptions: ['saved-account-model']})
-    expect(state.selectedService?.label).toBe('ChatGPT 套餐')
-    const detail = publicNode(n => n.props.class === 'service-detail')
-    const heading = descendants(detail).find(n => n.tag === 'h4')!
-    expect(heading).toBeDefined()
-    expect([heading, ...descendants(heading)].map(n => n.value || '').join('')).toBe('ChatGPT 套餐')
+    expect(state.selectedService).toBeUndefined()
+    expect(descendants(hostRoot).some(n => n.props.class === 'service-catalog' || n.props.class === 'service-detail')).toBe(false)
     expect(descendants(hostRoot).filter(n => n.props['data-set-default-service-button'] !== undefined)).toEqual([])
     const before = JSON.stringify(config)
     const saved = state.actions.setDefaultService
@@ -367,6 +364,8 @@ describe('服务详情的显式默认服务动作', () => {
   })
   it('公开版即使调用方带入可选套餐条目，旧按钮与直接默认动作也不能绕过门控', async () => {
     await mountCatalog({service: 'google', services: [...catalog, {value: 'chatgptPlan', label: 'ChatGPT 套餐'}]})
+    expect(state.allServices.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false)
+    expect(descendants(hostRoot).some(n => n.props['data-directory-port'] === 'chatgptPlan')).toBe(false)
     const saved = publicNode(n => n.props['data-set-default-service-button'] !== undefined).props.onClick
     source.service = 'chatgptPlan';await settle()
     expect(descendants(hostRoot).filter(n => n.props['data-set-default-service-button'] !== undefined)).toEqual([])

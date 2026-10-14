@@ -4,7 +4,7 @@ title: ChatGPT plan availability
 
 # ChatGPT plan availability
 
-**ChatGPT plan integration is not available in current public FluentRead releases.** The required OpenAI application and approval have not been completed, so there is no public sign-in flow for this service yet.
+**The ChatGPT sign-in module is temporarily hidden in current public FluentRead releases.** It does not appear in the provider directory or detail view. The required OpenAI application and approval have not been completed.
 
 Continue choosing an available provider in **Settings → Translation services**. Existing provider settings and completed translations are retained. If you previously saved a ChatGPT plan service or model, choose an available provider for the features you need; you do not need to delete the saved configuration.
 

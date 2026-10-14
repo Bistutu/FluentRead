@@ -1,7 +1,7 @@
 /**
  * @file tests/chatgptPlanSettingsLifecycle.test.ts
- * 文件职责：执行 ChatGPT 设置的真实 Vue 模板，验证公开构建准确显示未开放状态，开发模式维持授权和模型操作的生命周期归属。
- * 主要内容：仅控制构建模式、后台服务端口和第三方输入控件，覆盖公开模式无安装引导、无假登录及无网络操作、配置保留，开发模式状态加载、取消、账号切换迟到结果、停用和七语言反馈。
+ * 文件职责：执行 ChatGPT 设置的真实 Vue 模板，验证公开构建完全不展示登录界面，开发模式维持授权和模型操作的生命周期归属。
+ * 主要内容：仅控制构建模式、后台服务端口和第三方输入控件，覆盖公开模式无根节点、无任何助手操作且保留配置，开发模式状态加载、取消、账号切换迟到结果、停用和七语言反馈。
  * 模块边界：不替换组件业务实现，不使用真实账号或凭据；这些确定性测试不证明 OpenAI 授权、套餐资格或在线推理可用。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -88,13 +88,12 @@ afterEach(async () => {
 });
 
 describe('ChatGPT 套餐设置真实组件', () => {
-    it.each(Object.keys(chatGPTPlanMessages))('公开%s仅显示未开放状态，保留配置且不调用任何助手端口', async locale => {
+    it.each(Object.keys(chatGPTPlanMessages))('公开%s不渲染任何界面，保留配置且不调用任何助手端口', async locale => {
         ports.development = false;ports.locale = locale;await mount('saved-account-model');
         props.config.service = services.chatgptPlan;props.config.documentModel[services.chatgptPlan] = 'saved-document-model';
         const saved = JSON.stringify(props.config);
-        expect(container.textContent).toBe(chatGPTPlanMessages[locale as UiLanguage].publicUnavailable);
-        expect(container.querySelector('[data-chatgpt-plan-unavailable]')).not.toBeNull();
-        expect(container.querySelector('code, input, button, a, select, form, [data-chatgpt-plan-eligibility]')).toBeNull();
+        expect(container.textContent).toBe('');expect(container.childElementCount).toBe(0);
+        expect(container.querySelector('[data-chatgpt-plan-settings], [data-chatgpt-plan-unavailable]')).toBeNull();
         state.pairingCode = 'fixture-pairing';state.status = {...connected(), authPending: true};
         await state.refreshStatus();await state.refreshModels();await state.pair();await state.signIn(false);await state.signIn(true);
         await state.cancelSignIn();await state.disconnect();await state.manageUsage();state.selectModel('account-model-two');

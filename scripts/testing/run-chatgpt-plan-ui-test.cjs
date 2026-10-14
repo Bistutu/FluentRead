@@ -124,15 +124,34 @@ async function runPublicAvailability({context, worker, optionsUrl, open, send, r
   assert.equal((await send({type: 'persistConfig', mode: 'patch', config: patch, expected: Object.fromEntries(Object.keys(patch).map(key => [key, current[key]]))})).success, true);
   const saved = readSaved(await readConfig());report.savedConfiguration = saved;
   assert.equal(saved.service, 'chatgptPlan');assert.equal(saved.model, 'saved-account-model');
+  const assertHiddenPlanDetails = async surface => {
+    selectPage(surface);
+    await surface.locator('.service-catalog:visible').waitFor();
+    await surface.waitForFunction(() => {
+      const catalog = document.querySelector('.service-catalog'), service = catalog?.getAttribute('data-editing-service');
+      return Boolean(service && service !== 'chatgptPlan' && catalog.getAttribute('data-default-service') === 'chatgptPlan');
+    });
+    const catalog = surface.locator('.service-catalog:visible');
+    assert.equal(await catalog.getAttribute('data-default-service'), 'chatgptPlan');
+    const editingService = await catalog.getAttribute('data-editing-service');
+    assert.notEqual(editingService, 'chatgptPlan');
+    assert(await surface.locator(`.service-rail [data-service-value="${editingService}"]`).count() > 0);
+    await surface.locator(`[data-service-configuration-service="${editingService}"]:visible`).waitFor();
+    const title = await surface.locator('.detail-title-row h4').innerText();assert.doesNotMatch(title, /ChatGPT/u);
+    assert.equal(await surface.locator('.service-rail [data-service-value="chatgptPlan"], [data-service-configuration-service="chatgptPlan"]').count(), 0);
+    assert.equal(await surface.locator('[data-chatgpt-plan-settings], [data-chatgpt-plan-unavailable], [data-chatgpt-plan-pair], [data-chatgpt-plan-pair-code], [data-chatgpt-plan-sign-in], .chatgpt-plan-command, .chatgpt-plan-guide').count(), 0);
+    assert.doesNotMatch(await surface.locator('.service-detail').innerText(), /ChatGPT\s*(?:登录|套餐)|node integrations|本机助手|配对码|启动助手/u);
+    assert.deepEqual(readSaved(await readConfig()), saved);
+    return {editingService, title};
+  };
   const services = await open(`${optionsUrl}#settings-services`);
-  await services.locator('[data-chatgpt-plan-unavailable]:visible').waitFor();
-  assert.match(await services.locator('[data-chatgpt-plan-unavailable]').innerText(), /尚未开放 ChatGPT 登录/);
-  assert.equal(await services.locator('[data-chatgpt-plan-pair], [data-chatgpt-plan-pair-code], [data-chatgpt-plan-sign-in], .chatgpt-plan-command, .chatgpt-plan-guide').count(), 0);
-  assert.equal(await services.locator('[data-set-default-service-button]:visible, [data-connection-test-button]:visible').count(), 0);
-  assert.doesNotMatch(await services.locator('.service-detail').innerText(), /node integrations|本机助手|配对码|启动助手/);
-  record('saved-plan-public-unavailable-without-development-flow');await screenshot(services, 'public-saved-chatgpt-unavailable');
-  await services.reload();await services.locator('[data-chatgpt-plan-unavailable]:visible').waitFor();
+  record('saved-plan-details-hidden-with-available-service-editor', await assertHiddenPlanDetails(services));
+  await screenshot(services, 'public-saved-chatgpt-detail-hidden');
+  await services.reload();await assertHiddenPlanDetails(services);
   assert.deepEqual(readSaved(await readConfig()), saved);record('saved-plan-and-all-feature-models-survive-options-reload');
+  const deepLink = await open(`${optionsUrl}?service=chatgptPlan#settings-services`);
+  record('chatgpt-deep-link-opens-normal-service-editor-without-login-details', await assertHiddenPlanDetails(deepLink));
+  await screenshot(deepLink, 'public-chatgpt-deep-link-detail-hidden');
   const assertSelect = async (surface, name, id) => {
     selectPage(surface);
     const control = surface.getByRole('combobox', {name, exact: true});await control.click();

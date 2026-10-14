@@ -64,14 +64,14 @@ function createDomRenderer(document: Document, focus: ReturnType<typeof vi.fn>) 
 type NumericChange = (value: number | undefined) => void;
 type NumericPort = {disabled: boolean; change: NumericChange};
 
-async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation', requestLimits = false, development = false, serviceSelectors = false}:
-    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string; requestLimits?: boolean; development?: boolean; serviceSelectors?: boolean} = {}) {
+async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation', requestLimits = false, development = false, serviceSelectors = false, search = ''}:
+    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string; requestLimits?: boolean; development?: boolean; serviceSelectors?: boolean; search?: string} = {}) {
     const frames = new Map<number, FrameRequestCallback>();let nextFrame = 0;
     const query = vi.fn((_options: Record<string, unknown>) => Promise.resolve([] as {id?: number}[]));
     const send = vi.fn((_id: number, _message: {type: string; isEnabled?: boolean; mode?: string}) => Promise.resolve());
     const patch = vi.fn(() => Promise.resolve());const theme = vi.fn();const unsubscribe = vi.fn();
     const media = {matches: false, onchange: null as (() => void) | null};
-    const location = {hash: '', search: '', protocol: 'chrome-extension:'};
+    const location = {hash: '', search, protocol: 'chrome-extension:'};
     vi.stubGlobal('window', Object.assign(new EventTarget(), {location, navigator: {userAgent: ''}, matchMedia: () => media,
         requestAnimationFrame: (fn: FrameRequestCallback) => {frames.set(++nextFrame, fn);return nextFrame;},
         cancelAnimationFrame: (id: number) => frames.delete(id)}));
@@ -316,28 +316,28 @@ describe('设置主表单实际组件异步归属', () => {
         expect(first).toBe(state.availableServiceOptions);state.config.display = 2;await settle();
         expect(state.configurationCompute.filteredServices).toBe(first);
     });
-    it('公开版水合旧套餐默认与slug不改配置，只在详情保留套餐入口并从公共分配列表隐藏', async () => {
+    it('公开版水合旧套餐默认与slug不改配置，编辑目标回退可用服务且不补回隐藏入口', async () => {
         const {state, patch} = await mountSections({activeSection: 'settings-services', configSnapshot: {
             service: 'chatgptPlan', model: {chatgptPlan: 'saved-account-model'}, documentModel: {chatgptPlan: 'saved-document-model'},
         }});
         const before = JSON.stringify(state.config);
         expect(state.config.service).toBe('chatgptPlan');expect(state.config.model.chatgptPlan).toBe('saved-account-model');
-        expect(state.config.documentModel.chatgptPlan).toBe('saved-document-model');expect(state.selectedConfigurationService).toBe('chatgptPlan');
+        expect(state.config.documentModel.chatgptPlan).toBe('saved-document-model');expect(state.selectedConfigurationService).toBe('freeTranslation');
         expect(state.availableServiceOptions.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false);
         expect(state.textServiceGroups.flatMap((group: {options: {value: string}[]}) => group.options).some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false);
         expect(state.videoServiceOptions.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false);
-        expect(state.configurationCompute.filteredServices.find((item: {value: string}) => item.value === 'chatgptPlan')?.label).toBe('ChatGPT 套餐');
+        expect(state.configurationCompute.filteredServices.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false);
         const saved = state.setDefaultConfigurationService;saved('chatgptPlan');state.setDefaultConfigurationService('chatgptPlan');await settle();
         expect(JSON.stringify(state.config)).toBe(before);expect(patch).not.toHaveBeenCalled();
     });
-    it('公开版浏览旧套餐详情后直接调用已存默认处理器，不能改网页默认或账户slug', async () => {
+    it.each(['direct', 'deep-link'])('公开版%s打开旧套餐配置不显示登录详情或改动网页默认和账户slug', async method => {
         const {state, patch} = await mountSections({activeSection: 'settings-services', configSnapshot: {
             service: 'microsoft', model: {chatgptPlan: 'saved-account-model'},
-        }});
+        }, search: method === 'deep-link' ? '?service=chatgptPlan' : ''});
         const saved = state.setDefaultConfigurationService;
-        state.setConfigurationService('chatgptPlan');await settle();
-        expect(state.selectedConfigurationService).toBe('chatgptPlan');
-        expect(state.configurationCompute.filteredServices.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(true);
+        if (method === 'direct') state.setConfigurationService('chatgptPlan');await settle();
+        expect(state.selectedConfigurationService).toBe('freeTranslation');
+        expect(state.configurationCompute.filteredServices.some((item: {value: string}) => item.value === 'chatgptPlan')).toBe(false);
         saved('chatgptPlan');state.setDefaultConfigurationService('chatgptPlan');await settle();
         expect(state.config.service).toBe('microsoft');expect(state.config.model.chatgptPlan).toBe('saved-account-model');expect(patch).not.toHaveBeenCalled();
     });

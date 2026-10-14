@@ -1,13 +1,11 @@
 <!--
  * @file src/features/settings/ui/services/ChatGPTPlanSettings.vue
- * 文件职责：真实表达当前构建的 ChatGPT 登录开放状态，显式本机开发模式才提供助手配对、账户授权和动态模型设置。
- * 主要内容：公开构建只说明登录尚未开放并保留已有配置，不展示开发安装步骤或调用助手；开发模式先等待安全状态读取，再提供配对、取消授权、退出、用量管理和模型刷新，仅保存用户选择的模型 slug，账号变化隔离旧模型结果。
+ * 文件职责：仅为显式本机开发模式提供 ChatGPT 助手配对、账户授权和动态模型设置，公开构建不展示登录界面。
+ * 主要内容：公开构建不渲染根节点、不调用助手且保留已有配置；开发模式先等待安全状态读取，再提供配对、取消授权、退出、用量管理和模型刷新，仅保存用户选择的模型 slug，账号变化隔离旧模型结果。
  * 模块边界：本组件不处理 OAuth URL 或令牌、不直接访问助手 HTTP、不定义套餐模型；授权及凭据属于后台与本机助手，隐藏、缓存停用、配置替换和卸载释放本地任务及计时器并取消未完成登录。
  -->
 <template>
-  <section class="chatgpt-plan-settings" data-chatgpt-plan-settings>
-    <p v-if="!chatGPTPlanDevelopmentEnabled" class="chatgpt-plan-help" role="status" data-chatgpt-plan-unavailable>{{ text('publicUnavailable') }}</p>
-    <template v-else>
+  <section v-if="chatGPTPlanDevelopmentEnabled" class="chatgpt-plan-settings" data-chatgpt-plan-settings>
     <p v-if="!statusResolved" class="chatgpt-plan-help" role="status" data-chatgpt-plan-loading>{{ text('loading') }}</p>
     <template v-else>
     <p class="chatgpt-plan-help" data-chatgpt-plan-eligibility>{{ text('eligibility') }}</p>
@@ -61,7 +59,6 @@
       <p :class="{'chatgpt-plan-error': Boolean(panelError || status.error)}">{{ panelError ? errorText(panelError) : status.error ? errorText(status.error) : text(feedback!) }}</p>
       <el-button v-if="panelError || status.error" :disabled="!active || statusLoading || Boolean(busy)" @click="refreshStatus" data-chatgpt-plan-retry>{{ text('retry') }}</el-button>
     </div>
-    </template>
     </template>
   </section>
 </template>

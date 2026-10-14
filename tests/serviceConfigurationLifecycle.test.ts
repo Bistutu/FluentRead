@@ -273,12 +273,13 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
     return promise
   })
   const display = runtime.defineComponent({setup: (_, {slots}) => () => runtime.h('div', slots.default?.())})
-  const dependencies = new Map<string, unknown>([['vue', runtime], ['element-plus/es/components/tabs/style/css', {}], ['./ChatGPTPlanSettings.vue', {__esModule: true, default: display}]])
+  const chatGPTPort = runtime.defineComponent({setup: () => () => runtime.h('section', {'data-chatgpt-plan-port': ''})})
+  const requestChatGPT = vi.fn(() => ({__esModule: true, default: chatGPTPort}))
+  const dependencies = new Map<string, unknown>([['vue', runtime], ['element-plus/es/components/tabs/style/css', {}]])
   for (const item of Object.values(script.imports ?? {})) {
     const id = item.source
-    if (item.isType || dependencies.has(id) || id === '../LocalTranslationModelSettings.vue') continue
+    if (item.isType || dependencies.has(id) || id === '../LocalTranslationModelSettings.vue' || id === './ChatGPTPlanSettings.vue') continue
     if (id === '@/src/platform/chatgpt-plan/buildMode') {dependencies.set(id, {chatGPTPlanDevelopmentEnabled: development});continue}
-    if (id === './ChatGPTPlanSettings.vue') {dependencies.set(id, {__esModule: true, default: display});continue}
     if (id.endsWith('.vue')) {dependencies.set(id, {default: display});continue}
     if (id === 'element-plus') {
       dependencies.set(id, {ElMessage: {success: feedback}, ElTabs: display, ElTabPane: display});continue
@@ -290,6 +291,7 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   const code = ts.transpileModule(script.content, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText
   new Function('require', 'exports', 'module', code)((id: string) => {
     if (id === '../LocalTranslationModelSettings.vue') return requestLocal()
+    if (id === './ChatGPTPlanSettings.vue') return requestChatGPT()
     if (!dependencies.has(id)) throw new Error(`Unexpected service client dependency: ${id}`)
     return dependencies.get(id)
   }, module.exports, module)
@@ -333,17 +335,24 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   ])}
   function descendants(n: ServiceClientNode): ServiceClientNode[] {return [n, ...n.children.flatMap(descendants)]}
   const allNodes = () => [...descendants(host), ...descendants(connectionTarget)]
-  return {source, shown, requestLocal, gates, snapshots, childProps, mounted, unmounted, clientErrors, resolveLocal, localNodes, allNodes, stop, finish}
+  return {source, shown, host, requestLocal, requestChatGPT, gates, snapshots, childProps, mounted, unmounted, clientErrors, resolveLocal, localNodes, allNodes, stop, finish}
 }
 
 describe('实际服务父模板的本地子模块按需加载', () => {
-  it('公开套餐父模板没有连接测试、提示词或请求限制，保存的模型保持原值', async () => {
+  it('公开套餐父模板没有根DOM或占位且不加载套餐子模块，保存的模型保持原值', async () => {
     const h = await mountServiceClient('chatgptPlan')
     try {
       h.source.config.model.chatgptPlan = 'saved-account-model';h.source.compute = {...h.source.compute, showAI: true, showModel: true};await settle()
       const saved = JSON.stringify(h.source.config)
       expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-connection-test-button') || Object.hasOwn(n.props, 'data-service-settings-tabs') || Object.hasOwn(n.props, 'data-configuration-group'))).toBe(false)
-      expect(h.allNodes().find(n => Object.hasOwn(n.props, 'data-service-configuration-service'))?.props['data-ai-advanced-settings']).toBe('false')
+      expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-service-configuration-service') || Object.hasOwn(n.props, 'data-chatgpt-plan-port'))).toBe(false)
+      expect(h.host.children.filter(n => !n.tag.startsWith('#'))).toEqual([]);expect(h.requestChatGPT).not.toHaveBeenCalled()
+      h.source.service = 'google';await settle()
+      expect(h.allNodes().some(n => n.props['data-service-configuration-service'] === 'google')).toBe(true)
+      expect(h.requestChatGPT).not.toHaveBeenCalled()
+      h.source.service = 'chatgptPlan';await settle()
+      expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-service-configuration-service') || Object.hasOwn(n.props, 'data-chatgpt-plan-port'))).toBe(false)
+      expect(h.host.children.filter(n => !n.tag.startsWith('#'))).toEqual([]);expect(h.requestChatGPT).not.toHaveBeenCalled()
       expect(send).not.toHaveBeenCalled();expect(save).not.toHaveBeenCalled();expect(JSON.stringify(h.source.config)).toBe(saved);expect(h.clientErrors).toEqual([])
     } finally {await h.finish()}
   })
@@ -351,6 +360,8 @@ describe('实际服务父模板的本地子模块按需加载', () => {
     const h = await mountServiceClient('chatgptPlan', true)
     try {
       h.source.config.model.chatgptPlan = 'fixture-account-model';h.source.compute = {...h.source.compute, showAI: true};await settle()
+      expect(h.requestChatGPT).toHaveBeenCalledOnce()
+      expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-chatgpt-plan-port'))).toBe(true)
       const button = h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-test-button'))
       expect(button).toBeDefined()
       expect(h.allNodes().some(n => n.props['data-configuration-group'] === 'prompts')).toBe(true)
