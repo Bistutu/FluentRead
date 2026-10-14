@@ -28,6 +28,7 @@ const harness = vi.hoisted(() => ({
     discoveries: {content: [] as unknown[], all: [] as unknown[]},
     structural: vi.fn(() => false),
     scopesUsed: [] as string[],
+    byRoot: new Map<unknown, unknown[]>(),
     requestSession: {requestSignal: new AbortController().signal, renderCommitGeneration: 0},
     stateListeners: new Set<(owner: unknown, state: Record<string, unknown> | undefined, previousState?: Record<string, unknown>) => void>(),
 }));
@@ -64,9 +65,9 @@ vi.mock('@/src/core/translation/public', () => ({
     selectPreferredTranslationCandidate: (existing: unknown, incoming: unknown) => existing ?? incoming,
     getCurrentTranslationCore: (scope: 'content' | 'all') => ({
         isWithinStructuralRegion: harness.structural,
-        *discoverSteps() {
+        *discoverSteps(root: unknown) {
             harness.scopesUsed.push(scope);
-            for (const step of harness.discoveries[scope]) yield step;
+            for (const step of harness.byRoot.get(root) ?? harness.discoveries[scope]) yield step;
         },
     }),
 }));
@@ -120,6 +121,7 @@ beforeEach(() => {
     harness.discoveries.all = [];
     harness.structural.mockReturnValue(false);
     harness.scopesUsed.length = 0;
+    harness.byRoot.clear();
     vi.stubGlobal('window', {innerHeight: 600});
 });
 
@@ -179,6 +181,7 @@ describe('局部翻译区域盘点', () => {
         harness.structural.mockReturnValue(false);
         harness.config.translationScope = 'all';
         harness.scopesUsed.length = 0;
+    harness.byRoot.clear();
         inspectTranslationSection(root as unknown as Element);
         expect(harness.scopesUsed).toEqual(['all']);
         expect(harness.structural).toHaveBeenCalledOnce();
@@ -973,5 +976,87 @@ describe('区域批次响应、取消和精确所有权', () => {
         });
         harness.restoreTranslationOwner.mockReturnValue(false);
         await expect(toggleTranslationSection(root as unknown as Element)).resolves.toMatchObject({action: 'restored', restored: 0});
+    });
+});
+
+
+describe('连续划选的多个区域', () => {
+    it('仅翻译实际选中的两个区域，重叠根去重且统一按阅读位置派发', async () => {
+        const first = element('first', 100, root), second = element('second', 30, root), outside = element('outside', 60, root);
+        harness.byRoot.set(first, steps([candidate(first)])); harness.byRoot.set(second, steps([candidate(second)]));
+        harness.byRoot.set(root, steps([candidate(first), candidate(second), candidate(outside)]));
+        harness.translateTarget.mockResolvedValue({status: 'committed'});
+        const selection = [first, second, first] as unknown as Element[];
+        expect(inspectTranslationSection(selection)).toMatchObject({total: 2, pending: 2, action: 'translate'});
+        expect(await toggleTranslationSection(selection)).toMatchObject({action: 'translated', translated: 2});
+        expect(harness.translateTarget.mock.calls.map(([target]) => target.element)).toEqual([second, first]);
+        harness.translateTarget.mockClear();
+        await toggleTranslationSection([root, first, root] as unknown as Element[]);
+        expect(harness.translateTarget).toHaveBeenCalledTimes(3);
+    });
+
+    it('混合已译和未译区域只补齐未译，全部已译时整组恢复且不触及外部', async () => {
+        const first = element('first', 10, root), second = element('second', 60, root), outside = element('outside', 100, root);
+        own(first, 'translated'); own(outside, 'translated');
+        harness.ownersWithin.mockImplementation(selected => harness.owners.filter(owner => owner === selected));
+        harness.byRoot.set(first, steps([candidate(first)])); harness.byRoot.set(second, steps([candidate(second)]));
+        harness.translateTarget.mockResolvedValue({status: 'committed'});
+        const selection = [first, second] as unknown as Element[];
+        expect(inspectTranslationSection(selection)).toMatchObject({total: 2, active: 1, pending: 1, action: 'translate'});
+        await toggleTranslationSection(selection);
+        expect(harness.translateTarget).toHaveBeenCalledTimes(1); expect(harness.restoreTranslationOwner).not.toHaveBeenCalled();
+        own(second, 'translated');
+        expect(await toggleTranslationSection(selection)).toMatchObject({action: 'restored', restored: 2});
+        expect(harness.restoreTranslationOwner.mock.calls.map(([owner]) => owner)).toEqual([first, second]);
+    });
+
+    it('共享同一祖先译文的两个区域只计数和恢复一次，切换方案只重译一次', async () => {
+        const first = element('first', 10, root), second = element('second', 60, root);
+        own(root, 'translated', {translationInvocationIdentity: 'old'});
+        const selection = [first, second] as unknown as Element[];
+        expect(inspectTranslationSection(selection)).toMatchObject({total: 1, active: 1});
+        expect(await toggleTranslationSection(selection)).toMatchObject({action: 'restored', restored: 1});
+        harness.translateTarget.mockResolvedValue({status: 'committed'});
+        expect(await toggleTranslationSection(selection, {to: 'fr'} as never)).toMatchObject({translated: 1});
+        expect(harness.translateTarget).toHaveBeenCalledTimes(1);
+    });
+
+    it('反向再次确认同一组取消在途和未派发项，迟到结果不会污染下一次重译', async () => {
+        vi.useFakeTimers(); harness.config.maxConcurrentTranslations = 1;
+        const first = element('first', 10, root), second = element('second', 60, root);
+        harness.byRoot.set(first, steps([candidate(first)])); harness.byRoot.set(second, steps([candidate(second)]));
+        harness.ownersWithin.mockImplementation(selected => harness.owners.filter(owner => owner === selected));
+        let finish!: (value: unknown) => void;
+        harness.translateTarget.mockImplementation((item: FakeCandidate) => {
+            own(item.element, 'loading', {controller: new AbortController()});
+            return new Promise(resolve => {finish = resolve;});
+        });
+        harness.restoreTranslationOwner.mockImplementation(owner => {
+            const state = harness.states.get(owner); harness.states.delete(owner);
+            harness.owners = harness.owners.filter(value => value !== owner);
+            (state?.controller as AbortController | undefined)?.abort();
+            return Boolean(state);
+        });
+        const selection = [first, second] as unknown as Element[];
+        const old = toggleTranslationSection(selection);
+        expect(inspectTranslationSection([second, first] as unknown as Element[])).toMatchObject({action: 'restore', total: 2});
+        expect(await toggleTranslationSection([second, first] as unknown as Element[])).toMatchObject({action: 'restored', restored: 1});
+        expect(await old).toMatchObject({action: 'cancelled'});
+        finish({status: 'unchanged'}); await vi.runAllTimersAsync();
+        expect(harness.translateTarget).toHaveBeenCalledOnce();
+        harness.translateTarget.mockResolvedValue({status: 'committed'});
+        const retry = toggleTranslationSection(selection); await vi.runAllTimersAsync();
+        expect(await retry).toMatchObject({action: 'translated', translated: 2});
+        expect(harness.translateTarget).toHaveBeenCalledTimes(3);
+    });
+
+    it('空选区不发请求，任一根已断开或调用已取消时不执行', async () => {
+        expect(inspectTranslationSection([])).toMatchObject({total: 0, action: 'empty'});
+        expect(await toggleTranslationSection([])).toMatchObject({action: 'empty'});
+        const first = {...element('first'), isConnected: false};
+        expect(await toggleTranslationSection([root, first] as unknown as Element[])).toMatchObject({action: 'cancelled'});
+        const controller = new AbortController(); controller.abort();
+        expect(await toggleTranslationSection([root] as unknown as Element[], undefined, controller.signal)).toMatchObject({action: 'cancelled'});
+        expect(harness.translateTarget).not.toHaveBeenCalled();
     });
 });

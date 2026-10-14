@@ -1,7 +1,7 @@
 /**
  * @file userscript/uiLanguageBundles.ts
  * 文件职责：按需加载并注册 userscript 的六种非中文界面语言。
- * 主要内容：英文内嵌 gzip；其他语言从静态 JSON 获取并缓存在 GM 私有存储中，注册时补齐缺少的错误恢复与 AI 翻译超时文案，保留已发布远端文件内容与提交号。
+ * 主要内容：英文内嵌 gzip；其他语言从静态 JSON 获取并缓存在 GM 私有存储中，注册时补齐缺少的错误恢复、AI 翻译超时与局部划选文案，保留已发布远端文件内容与提交号。
  * 模块边界：只注册核心 i18n 资源，不访问宿主网页存储；扩展继续使用自己的按需资源加载器。
  */
 import {
@@ -42,6 +42,44 @@ const recoveryMessages: Readonly<Partial<Record<RegisteredUiLanguage, RecoveryMe
         "learning.panelLoadError": "No se pudo abrir esta sección. Recarga la página para volver a intentarlo.",
         "learning.reloadPage": "Recargar página",
     },
+};
+
+const sectionSweepMessages: Readonly<Partial<Record<RegisteredUiLanguage, Readonly<Record<string, string>>>>> = {
+    "ja-JP": {
+        "sectionTranslation.picker.preview": "マウスでプレビュー、クリックまたはドラッグで選択",
+        "popup.sectionTranslationTitle": "部分翻訳：クリックまたはドラッグで選択して確定",
+        "sectionTranslation.picker.instruction": "クリックまたはドラッグで翻訳する範囲を選択",
+        "sectionTranslation.picker.dragging": "ドラッグで選択し、離してから確定",
+        "sectionTranslation.scope.selected": "{count} 個の範囲を選択"
+    },
+    "ko-KR": {
+        "sectionTranslation.picker.preview": "마우스로 미리 보고 클릭하거나 드래그하여 선택",
+        "popup.sectionTranslationTitle": "부분 번역: 클릭하거나 드래그하여 선택한 뒤 확인",
+        "sectionTranslation.picker.instruction": "클릭하거나 드래그하여 번역할 영역 선택",
+        "sectionTranslation.picker.dragging": "드래그하여 선택하고 놓은 뒤 확인",
+        "sectionTranslation.scope.selected": "선택한 영역 {count}개"
+    },
+    "fr-FR": {
+        "sectionTranslation.picker.preview": "Survolez pour prévisualiser ; cliquez ou glissez pour sélectionner",
+        "popup.sectionTranslationTitle": "Traduction partielle : cliquez ou glissez pour sélectionner, puis confirmez",
+        "sectionTranslation.picker.instruction": "Cliquez ou glissez pour sélectionner les zones à traduire",
+        "sectionTranslation.picker.dragging": "Glissez pour sélectionner, relâchez puis confirmez",
+        "sectionTranslation.scope.selected": "{count} zones sélectionnées"
+    },
+    "ru-RU": {
+        "sectionTranslation.picker.preview": "Наведите курсор для предпросмотра; нажмите или протяните для выбора",
+        "popup.sectionTranslationTitle": "Перевод фрагмента: нажмите или протяните для выбора, затем подтвердите",
+        "sectionTranslation.picker.instruction": "Нажмите или протяните, чтобы выбрать области для перевода",
+        "sectionTranslation.picker.dragging": "Протяните для выбора, отпустите и подтвердите",
+        "sectionTranslation.scope.selected": "Выбрано областей: {count}"
+    },
+    "es-ES": {
+        "sectionTranslation.picker.preview": "Mueve el ratón para previsualizar; haz clic o arrastra para seleccionar",
+        "popup.sectionTranslationTitle": "Traducción parcial: haz clic o arrastra para seleccionar y confirma",
+        "sectionTranslation.picker.instruction": "Haz clic o arrastra para seleccionar las zonas que quieres traducir",
+        "sectionTranslation.picker.dragging": "Arrastra para seleccionar, suelta y confirma",
+        "sectionTranslation.scope.selected": "{count} zonas seleccionadas"
+    }
 };
 
 async function inflateBundle(base64: string): Promise<UiLanguageBundle> {
@@ -103,7 +141,7 @@ export const ensureUiLanguageBundle: EnsureUiLanguageBundle = (value) => {
             if (!isBundle(bundle)) throw new TypeError('界面语言资源格式无效');
             const recovery = recoveryMessages[registered];
             registerUiLanguageBundle(registered, {...bundle, messages: {
-                ...recovery, ...bundle.messages, ...aiRequestTimeoutMessages[registered],
+                ...recovery, ...bundle.messages, ...aiRequestTimeoutMessages[registered], ...sectionSweepMessages[registered],
             }});
             return true;
         })
