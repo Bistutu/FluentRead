@@ -1,4 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+const planBuild = vi.hoisted(() => ({enabled: false}));
+vi.mock('@/src/platform/chatgpt-plan/buildMode', () => ({get chatGPTPlanDevelopmentEnabled() {return planBuild.enabled;}}));
 import {
     createTranslationBroker,
     resolveTranslationRequestModel,
@@ -59,6 +61,7 @@ const mocks = vi.hoisted(() => {
     const aiServices = new Set(['ai', 'aiSdk', 'brokenAiSdk']);
     const aiSdkServices = new Set(['aiSdk', 'brokenAiSdk']);
     const service = vi.fn();
+    const planService = vi.fn();
     const providers = {
         '': service,
         freeTranslation: service,
@@ -80,6 +83,7 @@ const mocks = vi.hoisted(() => {
         mimo: service,
         mock: service,
         newapi: service,
+        chatgptPlan: planService,
     };
     const buildTranslationCacheKey = vi.fn((identity: unknown) => JSON.stringify(identity));
     const config = {
@@ -143,6 +147,7 @@ const mocks = vi.hoisted(() => {
         machineServices,
         recordModelUsage: vi.fn(async (_events: readonly TranslationModelUsageRecord[]) => undefined),
         service,
+        planService,
         cacheGet: vi.fn(async (key: string) => cacheStore.get(key) ?? null),
         cacheSet: vi.fn(async (key: string, value: string) => {
             cacheStore.set(key, value);
@@ -250,6 +255,30 @@ function measuredProviderConfig(entryCount = 100) {
 }
 
 describe('translation broker', () => {
+    it.each([false, true])('rejects saved public ChatGPT before cache/provider without resetting service or slug (override: %s)', async override => {
+        mocks.config.service = override ? 'mock' : services.chatgptPlan;
+        mocks.config.model[services.chatgptPlan] = 'saved-account-model';
+        const before = JSON.stringify(mocks.config);
+        await expect(translateWithCache({origin: 'Source', ...(override ? {serviceOverride: services.chatgptPlan} : {})}))
+            .rejects.toMatchObject({message: expect.stringContaining('尚未开放公开接入'), kind: 'bad-request', retryable: false});
+        expect(mocks.cacheGet).not.toHaveBeenCalled(); expect(mocks.service).not.toHaveBeenCalled(); expect(mocks.planService).not.toHaveBeenCalled();
+        expect(JSON.stringify(mocks.config)).toBe(before);
+    });
+    it('skips an unavailable saved ChatGPT composite member and can use the next existing provider', async () => {
+        const current = new Config(); current.service = 'composite:saved'; current.model[services.chatgptPlan] = 'saved-account-model';
+        current.compositeTranslationProviders = [{id: 'composite:saved', name: 'Saved', strategy: 'sequential', services: [services.chatgptPlan, 'mock'], timeoutMs: 12000}];
+        installBroker(undefined, Promise.resolve(), true, undefined, current);
+        const before = JSON.stringify(current);
+        await expect(translateWithCache({origin: 'Source', useCache: false})).resolves.toBe('默认译文');
+        expect(mocks.planService).not.toHaveBeenCalled(); expect(mocks.service).toHaveBeenCalledOnce(); expect(JSON.stringify(current)).toBe(before);
+    });
+    it('permits the explicit developer extension experiment through the same broker', async () => {
+        planBuild.enabled = true; mocks.aiServices.add(services.chatgptPlan);
+        mocks.config.service = services.chatgptPlan; mocks.config.model[services.chatgptPlan] = 'account-model';
+        mocks.planService.mockResolvedValue('实验译文');
+        await expect(translateWithCache({origin: 'Source', useCache: false})).resolves.toBe('实验译文');
+        expect(mocks.planService).toHaveBeenCalledOnce(); expect(mocks.service).not.toHaveBeenCalled();
+    });
     it.each([false, true])('AI 默认预算允许超过 45 秒响应，批量=%s', async batch => {
         vi.useFakeTimers();
         vi.setSystemTime(0);
@@ -513,6 +542,7 @@ describe('translation broker', () => {
         expect(mocks.service).toHaveBeenCalledTimes(4);
     });
     beforeEach(async () => {
+        planBuild.enabled = false; mocks.planService.mockReset();
         vi.clearAllMocks();
         mocks.cacheStore.clear();
         mocks.aiSdkServices.clear();

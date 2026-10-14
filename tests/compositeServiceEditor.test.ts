@@ -6,12 +6,21 @@
  */
 import {describe, expect, it} from 'vitest'
 import {Config} from '@/src/core/config/model'
+import {services} from '@/src/core/config/catalog'
 import {createCompositeTranslationDraft, getCompositeMemberOptions, validateCompositeTranslationDraft, type CompositeTranslationDraft} from '@/src/ui/view-model/compositeServiceEditor'
 
 const members = [{value: 'google', label: 'Google'}, {value: 'microsoft', label: 'Microsoft'}, {value: 'custom:work', label: 'Work'}]
 const base = (): CompositeTranslationDraft => ({name: ' Everyday ', strategy: 'sequential', services: ['google', 'microsoft'], timeoutMs: 12000})
 
 describe('组合翻译编辑草稿', () => {
+  it('公开成员目录不提供未开放的ChatGPT，不改写已保存组合或模型', () => {
+    const config = new Config(); config.model[services.chatgptPlan] = 'saved-account-model';
+    config.compositeTranslationProviders = [{id: 'composite:saved', name: 'Saved', strategy: 'sequential', services: [services.chatgptPlan, services.microsoft], timeoutMs: 12000}];
+    const before = JSON.stringify(config);
+    expect(getCompositeMemberOptions(config).some(member => member.value === services.chatgptPlan)).toBe(false);
+    expect(JSON.stringify(config)).toBe(before);
+    expect(createCompositeTranslationDraft(config.compositeTranslationProviders[0]).services).toEqual([services.chatgptPlan, services.microsoft]);
+  })
   it('候选包含内置和已创建自定义服务，排除目录标题与任何组合', () => {
     const config = new Config()
     config.customOpenAIProviders = [{id: 'custom:work', name: 'Work', endpoint: 'https://example.test/v1', models: ['fixture']},

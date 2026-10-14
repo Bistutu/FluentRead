@@ -7,6 +7,7 @@ export default defineConfig({...base, test: {...base.test,
     coverage: {provider: 'v8', all: true, reporter: ['text', 'json-summary', 'json'], reportsDirectory: '/private/tmp/fluentread-chatgpt-plan-coverage',
         include: [
             'src/core/i18n/serviceLabels.ts',
+            'src/platform/chatgpt-plan/buildMode.ts',
             'src/platform/chatgpt-plan/bridge.ts', 'src/platform/chatgpt-plan/events.ts',
             'src/services/chatgpt-plan/client.ts', 'src/services/harness/chatgptPlanModel.ts',
             'src/providers/translation/chatgpt-plan.ts', 'src/app/background/chatgptPlanRuntime.ts',

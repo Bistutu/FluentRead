@@ -1,7 +1,7 @@
 import {describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {isWritingPage, normalizeWritingPreferences, normalizeWritingReferenceLanguage, resolveWritingReferenceLanguage, normalizeWritingLanguage, resolveWritingLanguage, WRITING_ACTIONS, WRITING_LANGUAGES, WRITING_LENGTHS, WRITING_STYLES, WRITING_ROLES, WRITING_TONES, WRITING_ROLE_MAX_LENGTH, WRITING_TONE_MAX_LENGTH} from '@/src/core/config/writing';
-import {options} from '@/src/core/config/catalog';
+import {options, services} from '@/src/core/config/catalog';
 import {Config, normalizeConfig} from '@/src/core/config/model';
 import {resolveWritingReadiness} from '@/src/core/config/writingReadiness';
 import {createApiKeyRequirementKey} from '@/src/core/config/validation';
@@ -9,6 +9,14 @@ import {writingSite, isWritingEditor, findReplyEditors, editorText, captureEdito
 import {parseWritingRequest} from '@/src/features/writing-assistant/background';
 export const request = {type: 'fluentReadWriting', action: 'run', requestId: 'write-1', intent: 'draft', instruction: 'Write an invitation', draft: '', context: '', language: 'zh-CN', tone: 'natural', history: []} as const;
 describe('Writing readiness shared by settings, card and runtime', () => {
+  it('keeps an unavailable saved AI service and model while preventing generation even with complete configuration', () => {
+    const config = new Config(); config.service = services.chatgptPlan; config.model[services.chatgptPlan] = 'saved-account-model';
+    const before = JSON.stringify(config);
+    for (const checkCredentials of [true, false]) expect(resolveWritingReadiness(config, checkCredentials, 'Service not available'))
+      .toMatchObject({service: services.chatgptPlan, model: 'saved-account-model', supported: true, ready: false, issue: 'unavailable', message: 'Service not available'});
+    expect(JSON.stringify(config)).toBe(before);
+    expect(resolveWritingReadiness(config, true, null)).toMatchObject({ready: true, issue: null});
+  });
   it('distinguishes unsupported default, absent model and missing credentials before sending', () => {
     const config = new Config(); config.service = 'microsoft';
     expect(resolveWritingReadiness(config)).toMatchObject({ready: false, issue: 'service', supported: false});

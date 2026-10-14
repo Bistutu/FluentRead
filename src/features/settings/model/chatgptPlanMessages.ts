@@ -1,12 +1,13 @@
 /**
  * @file src/features/settings/model/chatgptPlanMessages.ts
- * 文件职责：维护 ChatGPT 套餐接入引导、连接状态、账号操作与错误恢复的七语言文案。
- * 主要内容：明确本机助手配对和 ChatGPT 授权是两个步骤，说明 Plus/Pro 资格与套餐额度，按稳定错误代码提供可执行的恢复提示。
+ * 文件职责：维护 ChatGPT 登录尚未开放的公开状态，以及显式开发模式中的连接和错误恢复七语言文案。
+ * 主要内容：公开状态说明当前版本尚未提供登录并保留用户配置；开发文案区分本机助手配对和账户授权，说明资格与额度，按稳定错误代码提供恢复提示。
  * 模块边界：纯文本目录不读取账号或凭据、不注册远端语言包、不控制授权；组件通过共享界面语言选择本目录。
  */
 import type {UiLanguage} from '@/src/core/i18n';
 
 const zhCN = {
+    publicUnavailable: '当前版本尚未开放 ChatGPT 登录。请先使用其他翻译服务，已有配置会保留。',
     eligibility: '使用符合资格的 ChatGPT Plus 或 Pro 账户授权，翻译消耗你的 ChatGPT 套餐额度。可用模型与限额由账户决定。',
     helperTitle: '1. 启动本机助手',
     helperHelp: '下载 FluentRead 仓库后，在仓库目录运行以下命令，并保持终端打开。助手负责接收授权回调并在本机保存凭据。',
@@ -53,6 +54,7 @@ type ChatGPTPlanTextKey = keyof typeof zhCN;
 export const chatGPTPlanMessages: Readonly<Record<UiLanguage, Readonly<Record<ChatGPTPlanTextKey, string>>>> = {
     'zh-CN': zhCN,
     'en-US': {
+        publicUnavailable: 'ChatGPT sign-in is not available in this version. Please use another translation service for now. Your saved configuration is preserved.',
         eligibility: 'Authorize an eligible ChatGPT Plus or Pro account. Translation uses your ChatGPT plan allowance; available models and limits depend on your account.',
         helperTitle: '1. Start the local helper', helperHelp: 'Download the FluentRead repository, run this command from its directory, and leave the terminal open. The helper receives the authorization callback and stores credentials locally.',
         setupGuide: 'Installation and connection guide', pairingTitle: '2. Pair the local helper', pairingHelp: 'Enter the pairing code shown in the terminal. This is not an API key.', pairingCode: 'Local helper pairing code',
@@ -66,6 +68,7 @@ export const chatGPTPlanMessages: Readonly<Record<UiLanguage, Readonly<Record<Ch
         signInFailed: 'ChatGPT authorization did not complete. Please authorize again.', timedOut: 'The wait timed out. Check the local helper and retry.', operationFailed: 'The operation did not complete. Check the connection and retry.',
     },
     'ja-JP': {
+        publicUnavailable: 'このバージョンでは ChatGPT ログインはまだ利用できません。当面は別の翻訳サービスをご利用ください。保存済みの設定は保持されます。',
         eligibility: '対象の ChatGPT Plus または Pro アカウントで認証してください。翻訳には ChatGPT プランの利用枠を使います。モデルと上限はアカウントにより異なります。',
         helperTitle: '1. ローカルヘルパーを起動', helperHelp: 'FluentRead リポジトリを取得し、そのディレクトリで次のコマンドを実行してください。ターミナルは開いたままにします。ヘルパーが認証コールバックを受け取り、認証情報をローカルに保存します。',
         setupGuide: 'インストールと接続の説明', pairingTitle: '2. ローカルヘルパーとペアリング', pairingHelp: 'ターミナルに表示されたペアリングコードを入力してください。API キーではありません。', pairingCode: 'ローカルヘルパーのペアリングコード',
@@ -79,6 +82,7 @@ export const chatGPTPlanMessages: Readonly<Record<UiLanguage, Readonly<Record<Ch
         signInFailed: 'ChatGPT の認証が完了しませんでした。再認証してください。', timedOut: '待機時間を超えました。ヘルパーを確認して再試行してください。', operationFailed: '操作が完了しませんでした。接続を確認して再試行してください。',
     },
     'ko-KR': {
+        publicUnavailable: '이 버전에서는 아직 ChatGPT 로그인을 사용할 수 없습니다. 당분간 다른 번역 서비스를 이용해 주세요. 저장된 설정은 유지됩니다.',
         eligibility: '이용 가능한 ChatGPT Plus 또는 Pro 계정으로 승인하세요. 번역은 ChatGPT 요금제 사용량을 소비하며 모델과 한도는 계정에 따라 달라집니다.',
         helperTitle: '1. 로컬 도우미 시작', helperHelp: 'FluentRead 저장소를 내려받고 해당 폴더에서 다음 명령을 실행한 후 터미널을 열어 두세요. 도우미는 승인 콜백을 수신하고 인증 정보를 로컬에 저장합니다.',
         setupGuide: '설치 및 연결 안내', pairingTitle: '2. 로컬 도우미 페어링', pairingHelp: '터미널에 표시된 페어링 코드를 입력하세요. API 키가 아닙니다.', pairingCode: '로컬 도우미 페어링 코드',
@@ -92,6 +96,7 @@ export const chatGPTPlanMessages: Readonly<Record<UiLanguage, Readonly<Record<Ch
         signInFailed: 'ChatGPT 승인이 완료되지 않았습니다. 다시 승인하세요.', timedOut: '대기 시간이 초과되었습니다. 로컬 도우미를 확인하고 다시 시도하세요.', operationFailed: '작업이 완료되지 않았습니다. 연결을 확인하고 다시 시도하세요.',
     },
     'fr-FR': {
+        publicUnavailable: 'La connexion à ChatGPT n’est pas encore disponible dans cette version. Utilisez un autre service de traduction pour le moment. Votre configuration enregistrée est conservée.',
         eligibility: 'Autorisez un compte ChatGPT Plus ou Pro éligible. La traduction utilise le quota de votre forfait ChatGPT ; les modèles et limites dépendent de votre compte.',
         helperTitle: '1. Démarrer l’assistant local', helperHelp: 'Téléchargez le dépôt FluentRead, exécutez cette commande dans son dossier et gardez le terminal ouvert. L’assistant reçoit le retour d’autorisation et conserve les identifiants localement.',
         setupGuide: 'Guide d’installation et de connexion', pairingTitle: '2. Associer l’assistant local', pairingHelp: 'Saisissez le code d’association affiché dans le terminal. Ce n’est pas une clé API.', pairingCode: 'Code d’association de l’assistant local',
@@ -105,6 +110,7 @@ export const chatGPTPlanMessages: Readonly<Record<UiLanguage, Readonly<Record<Ch
         signInFailed: 'L’autorisation ChatGPT n’a pas abouti. Veuillez autoriser à nouveau.', timedOut: 'Le délai est dépassé. Vérifiez l’assistant local et réessayez.', operationFailed: 'L’opération n’a pas abouti. Vérifiez la connexion et réessayez.',
     },
     'ru-RU': {
+        publicUnavailable: 'В этой версии вход через ChatGPT пока недоступен. Пока используйте другой сервис перевода. Сохранённые настройки будут сохранены.',
         eligibility: 'Авторизуйте подходящий аккаунт ChatGPT Plus или Pro. Перевод расходует лимит подписки ChatGPT; доступные модели и ограничения зависят от аккаунта.',
         helperTitle: '1. Запустите локальный помощник', helperHelp: 'Скачайте репозиторий FluentRead, выполните команду в его каталоге и оставьте терминал открытым. Помощник принимает ответ авторизации и хранит учётные данные локально.',
         setupGuide: 'Инструкция по установке и подключению', pairingTitle: '2. Подключите локальный помощник', pairingHelp: 'Введите код сопряжения из терминала. Это не ключ API.', pairingCode: 'Код сопряжения локального помощника',
@@ -118,6 +124,7 @@ export const chatGPTPlanMessages: Readonly<Record<UiLanguage, Readonly<Record<Ch
         signInFailed: 'Авторизация ChatGPT не завершена. Авторизуйтесь снова.', timedOut: 'Время ожидания истекло. Проверьте локальный помощник и повторите.', operationFailed: 'Операция не завершена. Проверьте подключение и повторите.',
     },
     'es-ES': {
+        publicUnavailable: 'El inicio de sesión con ChatGPT aún no está disponible en esta versión. Usa otro servicio de traducción por ahora. Se conserva tu configuración guardada.',
         eligibility: 'Autoriza una cuenta ChatGPT Plus o Pro apta. La traducción consume la cuota de tu plan ChatGPT; los modelos y límites dependen de tu cuenta.',
         helperTitle: '1. Inicia el asistente local', helperHelp: 'Descarga el repositorio FluentRead, ejecuta este comando desde su carpeta y mantén el terminal abierto. El asistente recibe la respuesta de autorización y guarda las credenciales localmente.',
         setupGuide: 'Guía de instalación y conexión', pairingTitle: '2. Empareja el asistente local', pairingHelp: 'Introduce el código de emparejamiento del terminal. No es una clave API.', pairingCode: 'Código del asistente local',

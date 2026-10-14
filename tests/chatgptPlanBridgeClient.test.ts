@@ -5,6 +5,8 @@
  * 模块边界：不替换被测业务模块、不使用真实授权或令牌；本地端口夹具不证明在线 ChatGPT 套餐可用。
  */
 import {afterEach, describe, expect, it, vi} from 'vitest';
+const buildMode = vi.hoisted(() => ({enabled: true}));
+vi.mock('@/src/platform/chatgpt-plan/buildMode', () => ({get chatGPTPlanDevelopmentEnabled() {return buildMode.enabled;}}));
 import {
     CHATGPT_PLAN_BRIDGE_URL, CHATGPT_PLAN_PAIRING_KEY, CHATGPT_PLAN_USAGE_URL,
     ChatGPTPlanError, createChatGPTPlanBridge, normalizeChatGPTPlanErrorCode,
@@ -34,7 +36,7 @@ function createFixture(initial: string | undefined = fixtureToken) {
     const write = vi.fn(async (value: string) => {token = value;});
     return {bridge: createChatGPTPlanBridge({fetch, storage: {read: async () => token, write}}), fetch, write, token: () => token};
 }
-afterEach(() => {setRuntimeFetch();vi.unstubAllGlobals(); vi.useRealTimers();});
+afterEach(() => {buildMode.enabled = true;setRuntimeFetch();vi.unstubAllGlobals(); vi.useRealTimers();});
 describe('ChatGPT 本机助手端口', () => {
     it('错误结构保留HTTP和broker重试语义，套餐额度与授权失败不自动重试', () => {
         for (const [code, status, kind, retryable, expectedStatus] of [
@@ -42,6 +44,7 @@ describe('ChatGPT 本机助手端口', () => {
             ['sharing_disabled', undefined, 'authentication', false, 403], ['oauth_failed', undefined, 'authentication', false, 401],
             ['oauth_cancelled', undefined, 'authentication', false, 401], ['pairing_failed', undefined, 'authentication', false, 401],
             ['helper_unavailable', undefined, 'network', true, undefined], ['invalid_response', undefined, 'response', false, undefined],
+            ['public_unavailable', undefined, 'provider', false, 503],
             ['invalid_response', 403, 'authentication', false, 403], ['invalid_response', 401, 'authentication', false, 401],
             ['invalid_response', 503, 'provider', true, 503], ['invalid_response', 408, 'timeout', true, 408],
             ['invalid_response', 400, 'bad-request', false, 400], ['invalid_response', 429, 'rate-limit', false, 429],
@@ -244,6 +247,19 @@ describe('ChatGPT 本机助手端口', () => {
     });
 });
 describe('ChatGPT 设置消息边界', () => {
+    it('公共构建即使有旧配对也不读取凭据、访问助手或打开授权网页', async () => {
+        buildMode.enabled = false;
+        const fixture = createFixture(), open = vi.fn(), get = vi.fn(), set = vi.fn();
+        vi.stubGlobal('browser', {storage: {local: {get, set}}});
+        const handler = createChatGPTPlanHandler(fixture.bridge, () => true, open);
+        for (const action of ['status', 'pair', 'signIn', 'models', 'cancel', 'disconnect', 'usage']) {
+            expect(await handler.handle({type: client.CHATGPT_PLAN_MESSAGE_TYPE, action, code: 'saved-pairing'}, {sender: {}} as never)).toEqual({success: false, code: 'public_unavailable'});
+        }
+        await expect(requestChatGPTPlanResponse({model: 'saved-account-model', input: []})).rejects.toMatchObject({code: 'public_unavailable', kind: 'provider', retryable: false});
+        expect(fixture.fetch).not.toHaveBeenCalled();expect(open).not.toHaveBeenCalled();
+        expect(get).not.toHaveBeenCalled();expect(set).not.toHaveBeenCalled();
+        expect(normalizeChatGPTPlanErrorCode('public_unavailable')).toBe('public_unavailable');
+    });
     it('网页和content sender不能配对、授权或查看账户', async () => {
         const fixture = createFixture(); const handler = createChatGPTPlanHandler(fixture.bridge, () => false, vi.fn());
         expect(await handler.handle({type: client.CHATGPT_PLAN_MESSAGE_TYPE, action: 'status'}, {sender: {}} as never)).toEqual({success: false, code: 'not_connected'});

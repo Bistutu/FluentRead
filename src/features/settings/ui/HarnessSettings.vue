@@ -2,7 +2,7 @@
  * @file src/features/settings/ui/HarnessSettings.vue
  * 文件职责：作为划词翻译的学习子设置，用示例说明 AI 讲解，并明确原文范围、学习笔记和自定义指令的用途。
  * 主要内容：左侧用真实回答组件预览学习动作，右侧配置服务、模型、动作与回答偏好；B站仅预览基础读懂和用法、禁用暂不可用动作，默认动作临时回退而保留用户偏好，明确免费免密钥并展示固定模型，其他服务恢复完整动作与模型选择；多行偏好使用完整单列控件保持左侧对齐，窄屏下默认动作也纵向排列；独立展示上下文和记忆分区，提供学习中心入口；关闭讲解保留偏好，示例不发送请求。
- * 模块边界：ChatGPT 套餐选择器保留已保存的全局与讲解实际模型 slug，不另行发现账户模型；只编辑传入 Config 的 harness 字段；记录由学习中心管理，不发起模型请求、不拥有网页选区。
+ * 模块边界：服务候选遵循共享平台可用性；ChatGPT 套餐选择器保留已保存的全局与讲解实际模型 slug，不另行发现账户模型；只编辑传入 Config 的 harness 字段；记录由学习中心管理，不发起模型请求、不拥有网页选区。
  -->
 <template>
   <SettingsGroup data-settings-anchor="learning" data-settings-anchor-label="AI 深入讲解" title="AI 深入讲解" description="切换左侧示例了解学习动作；在网页卡片中触发学习动作后，才向所选 AI 服务发送请求">
@@ -81,6 +81,7 @@ import {computed, ref, toRef, watch} from 'vue'
 import {models, options, resolveConfiguredModel, services} from '@/src/core/config/catalog'
 import {getCustomOpenAIProviderLabel, getCustomOpenAIProviderModels, isCustomOpenAIProviderId} from '@/src/core/config/customOpenAI'
 import {HARNESS_ACTIONS, isReadingActionSupported, isReadingService, resolveHarnessModel, type HarnessActionId} from '@/src/core/config/harness'
+import {filterAvailableTranslationServices} from '@/src/services/translation/capabilities'
 import type {Config} from '@/src/core/config/model'
 import SettingsGroup from './components/SettingsGroup.vue'
 import SettingsItem from './components/SettingsItem.vue'
@@ -94,10 +95,10 @@ const emit = defineEmits<{navigate: [section: string]}>()
 const previewAction = ref<HarnessActionId>(props.config.harness.defaultAction)
 const previewAnswer = computed(() => previewAction.value === 'grammar' ? sentenceAnalysis : learningPreviewAnswers[previewAction.value][config.value.harness.explanationDepth])
 const {t} = useUiI18n()
-const serviceOptions = computed(() => [
+const serviceOptions = computed(() => filterAvailableTranslationServices([
   ...options.services.filter((item) => !item.disabled && isReadingService(item.value)).map(item => item.value === services.bilibili ? {...item, label: 'B站翻译 · 免费'} : item),
   ...config.value.customOpenAIProviders.filter((provider) => !options.services.some((item) => item.value === provider.id)).map((provider) => ({value: provider.id, label: getCustomOpenAIProviderLabel(config.value.customOpenAIProviders, provider.id)})),
-])
+]))
 const modelOptions = computed(() => {
   const service = config.value.harness.service || config.value.service
   if (service === services.chatgptPlan) return [...new Set([

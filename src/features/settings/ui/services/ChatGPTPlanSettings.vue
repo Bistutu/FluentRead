@@ -1,11 +1,15 @@
 <!--
  * @file src/features/settings/ui/services/ChatGPTPlanSettings.vue
- * 文件职责：提供 ChatGPT 套餐翻译的本机助手配对、账户授权和动态模型设置。
- * 主要内容：展示本机启动命令与配对码引导，通过共享服务端口读取安全账号元信息，支持等待、取消授权、退出、用量管理和模型刷新；仅保存用户选择的模型 slug，账号变化隔离旧模型结果。
+ * 文件职责：真实表达当前构建的 ChatGPT 登录开放状态，显式本机开发模式才提供助手配对、账户授权和动态模型设置。
+ * 主要内容：公开构建只说明登录尚未开放并保留已有配置，不展示开发安装步骤或调用助手；开发模式先等待安全状态读取，再提供配对、取消授权、退出、用量管理和模型刷新，仅保存用户选择的模型 slug，账号变化隔离旧模型结果。
  * 模块边界：本组件不处理 OAuth URL 或令牌、不直接访问助手 HTTP、不定义套餐模型；授权及凭据属于后台与本机助手，隐藏、缓存停用、配置替换和卸载释放本地任务及计时器并取消未完成登录。
  -->
 <template>
   <section class="chatgpt-plan-settings" data-chatgpt-plan-settings>
+    <p v-if="!chatGPTPlanDevelopmentEnabled" class="chatgpt-plan-help" role="status" data-chatgpt-plan-unavailable>{{ text('publicUnavailable') }}</p>
+    <template v-else>
+    <p v-if="!statusResolved" class="chatgpt-plan-help" role="status" data-chatgpt-plan-loading>{{ text('loading') }}</p>
+    <template v-else>
     <p class="chatgpt-plan-help" data-chatgpt-plan-eligibility>{{ text('eligibility') }}</p>
     <template v-if="!status.paired">
       <div class="chatgpt-plan-step">
@@ -57,6 +61,8 @@
       <p :class="{'chatgpt-plan-error': Boolean(panelError || status.error)}">{{ panelError ? errorText(panelError) : status.error ? errorText(status.error) : text(feedback!) }}</p>
       <el-button v-if="panelError || status.error" :disabled="!active || statusLoading || Boolean(busy)" @click="refreshStatus" data-chatgpt-plan-retry>{{ text('retry') }}</el-button>
     </div>
+    </template>
+    </template>
   </section>
 </template>
 
@@ -64,6 +70,7 @@
 import {computed, onBeforeUnmount, ref, watch} from 'vue';
 import type {Config} from '@/src/core/config/model';
 import {services} from '@/src/core/config/catalog';
+import {chatGPTPlanDevelopmentEnabled} from '@/src/platform/chatgpt-plan/buildMode';
 import {
     getChatGPTPlanStatus, pairChatGPTPlan, startChatGPTPlanSignIn, cancelChatGPTPlanSignIn,
     disconnectChatGPTPlan, listChatGPTPlanModels, openChatGPTPlanUsage,
@@ -79,9 +86,10 @@ const props = withDefaults(defineProps<{config: Config; active?: boolean}>(), {a
 const {language} = useUiI18n();
 const text = (key: Parameters<typeof chatGPTPlanText>[0]) => chatGPTPlanText(key, language.value);
 const errorText = (error: unknown) => chatGPTPlanErrorText(error, language.value);
-const {active} = useSettingsActionContext(() => props.active, () => [props.config]);
+const {active} = useSettingsActionContext(() => props.active && chatGPTPlanDevelopmentEnabled, () => [props.config]);
 const emptyStatus = (): PlanStatus => ({paired: false, connected: false, sharing: false});
 const status = ref<PlanStatus>(emptyStatus());
+const statusResolved = ref(false);
 const pairingCode = ref('');
 const busy = ref<'' | 'pair' | 'signin' | 'cancel' | 'disconnect' | 'usage'>('');
 const models = ref<PlanModel[]>([]);
@@ -97,6 +105,7 @@ let pollTimer: ReturnType<typeof setTimeout> | undefined, signInTimer: ReturnTyp
 let statusController: AbortController | undefined, modelController: AbortController | undefined, actionController: AbortController | undefined;
 
 function ignoreCancellation(): void {
+    if (!chatGPTPlanDevelopmentEnabled) return;
     try {void cancelChatGPTPlanSignIn().catch(() => undefined);} catch { /* 页面退出不能被已关闭的消息端口阻止。 */ }
 }
 function clearPoll(): void {if (pollTimer !== undefined) clearTimeout(pollTimer);pollTimer = undefined;}
@@ -158,7 +167,7 @@ async function refreshStatus(): Promise<void> {
         }
     } finally {
         if (statusController === controller) {statusController = undefined;statusLoading.value = false;controller.abort();}
-        if (current(owner) && revision === statusRevision) schedulePoll();
+        if (current(owner) && revision === statusRevision) {statusResolved.value = true;schedulePoll();}
     }
 }
 async function refreshModels(): Promise<void> {
@@ -242,7 +251,7 @@ async function disconnect(): Promise<void> {
 }
 async function manageUsage(): Promise<void> {if (status.value.paired) await runAction('usage', openChatGPTPlanUsage);}
 watch(() => [active.value, props.config] as const, () => {
-    invalidate();feedback.value = undefined;panelError.value = undefined;modelError.value = undefined;status.value = emptyStatus();models.value = [];accountIdentity = '';
+    invalidate();feedback.value = undefined;panelError.value = undefined;modelError.value = undefined;status.value = emptyStatus();statusResolved.value = false;models.value = [];accountIdentity = '';
     if (active.value) void refreshStatus();
 }, {immediate: true, flush: 'sync'});
 onBeforeUnmount(invalidate);

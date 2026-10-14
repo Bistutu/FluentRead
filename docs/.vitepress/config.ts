@@ -57,7 +57,7 @@ const guide = (en = false): DefaultTheme.SidebarItem[] => {
       items: [
         item('设置概览', 'Settings overview', '/config/'),
         item('翻译服务', 'Translation providers', '/config/translation-engines'),
-        item('使用 ChatGPT 套餐', 'Use your ChatGPT plan', '/config/chatgpt-plan'),
+        item('ChatGPT 套餐接入状态', 'ChatGPT plan availability', '/config/chatgpt-plan'),
         item('译文外观与阅读辅助', 'Appearance & reading aids', '/config/appearance'),
         item('术语库', 'Glossaries', '/guide/glossary'),
         item('快捷键与触发方式', 'Shortcuts & triggers', '/guide/custom-hotkey'),
@@ -80,7 +80,10 @@ const guide = (en = false): DefaultTheme.SidebarItem[] => {
     {
       collapsed: true,
       text: en ? 'Design & contribution' : '设计与贡献',
-      items: [item('设计系统与组件预览', 'Design system & component previews', '/guide/design-system')],
+      items: [
+        item('设计系统与组件预览', 'Design system & component previews', '/guide/design-system'),
+        item('维护者申请 ChatGPT 接入', 'Maintainers: ChatGPT application', '/guide/chatgpt-application'),
+      ],
     },
     {
       collapsed: true,
