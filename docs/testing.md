@@ -498,7 +498,7 @@ node scripts/verify-userscript-build.mjs  # userscript 元数据与产物边界
 
 普通回归与严格覆盖率共用 `vitest.config.ts` 的 Vue 编译、环境、文件隔离、资源预算和 `tests/**/*.test.ts` 发现规则。`test:coverage` 一次执行全部分组；`processRegression.test.ts` 注册并执行所有原生 Node 进程夹具，核验实际退出码与 TAP 全部通过、零跳过，原生清理语义继续在真实子进程中运行；`test:regression:all` 不再重复运行已执行的分组，单独分组入口继续用于定向开发。覆盖率的生产源码清单、`all: true`、四维 100% 阈值及忽略检查保持严格；测试数量或四维覆盖率不能代替有效的行为断言。
 
-真实组件夹具可复用 `tests/helpers/compiledVueFixture.ts` 的纯编译结果。缓存按绝对路径、完整源码及编译选项区分，并限制容量；helper 不保存已执行模块、render 函数、组件实例、DOM 或 mock。挂载继续创建独立实例、DOM 和端口，并按各夹具原有生命周期清理；已有的文件级 Vite server 保持原有作用域。不得缓存运行中的组件或关闭文件隔离。时间行为优先使用可控时钟，异步持久化和挂载优先等待明确的事件；取消、超时和时间边界断言仍须保留。
+真实组件夹具可复用 `tests/helpers/compiledVueFixture.ts` 的纯编译结果，支持独立模板与 `inlineTemplate` 两种原有编译方式。缓存按绝对路径、完整源码及编译选项区分，并限制容量；有序脚本替换、模块格式和编译 ID 分开缓存，运行时 import 信息保持不可变。helper 不保存已执行模块、render 函数、组件实例、DOM 或 mock。挂载继续创建独立实例、DOM 和端口，并按各夹具原有生命周期清理；递归组件图只在一次挂载内保持类型身份，已有的文件级 Vite server 保持原有作用域。不得缓存运行中的组件或关闭文件隔离。时间行为优先使用可控时钟，异步持久化和挂载优先等待明确的事件；取消、超时和时间边界断言仍须保留。
 
 真实论文回归需要显式提供输入：`FLUENTREAD_ATTENTION_PDF` 指向 Attention v7 的 PDF，`FLUENTREAD_PDF_CORPUS` 指向非空论文目录，再执行 `pnpm test:coverage` 或 `pnpm test:regression:all`。未提供时这两个外部语料用例会标记跳过，不能称为包含真实论文的完整验收；验收报告应保留语料文件名和 SHA-256。论文本身不进入仓库。
 

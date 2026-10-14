@@ -1,8 +1,6 @@
 import {createRequire} from 'node:module'
-import {readFileSync} from 'node:fs'
 import {dirname, resolve} from 'node:path'
-import {compileScript, parse} from 'vue/compiler-sfc'
-import ts from 'typescript'
+import {compileVueInlineFixture} from './helpers/compiledVueFixture'
 import {parseHTML} from 'linkedom'
 import {createServer, type Plugin} from 'vite'
 import {afterEach, describe, expect, it, vi} from 'vitest'
@@ -94,11 +92,9 @@ async function mountLearning(initialTab?: string, options: {listGate?: Tab} = {}
   }
   function compileClient(relative: string): Component {
     const filename = resolve(relative);if (cache.has(filename)) return cache.get(filename)!
-    const {descriptor, errors} = parse(readFileSync(filename, 'utf8'), {filename});expect(errors).toEqual([])
-    const script = compileScript(descriptor, {id: `learning-client-${cache.size}`, inlineTemplate: true})
+    const compiled = compileVueInlineFixture(filename, {id: `learning-client-${cache.size}`});expect(compiled.parseErrors).toEqual([])
     const module = {exports: {} as {default: Component}}
-    const code = ts.transpileModule(script.content, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText
-    new Function('require', 'exports', 'module', code)((id: string) => {
+    new Function('require', 'exports', 'module', compiled.code)((id: string) => {
       if (id === 'vue') return runtime
       if (id === '@/src/ui/i18n') return i18n
       if (id === '@/src/ui/dateFormat') return date

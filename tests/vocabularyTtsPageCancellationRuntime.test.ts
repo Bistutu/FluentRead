@@ -6,12 +6,10 @@
  * Default imports consume repository production; apply the separate candidate
  * handler patch for the after run. No business method or private state is copied.
  */
-import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {parseHTML} from 'linkedom';
-import {compileScript, parse} from 'vue/compiler-sfc';
-import ts from 'typescript';
+import {compileVueInlineFixture} from './helpers/compiledVueFixture';
 import * as Vue from 'vue';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {normalizeConfig} from '@/src/core/config/model';
@@ -111,12 +109,10 @@ async function mountBook(honorAbort = true) {
         '@/src/ui/i18n': {useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})},
     };
     function loadClient(relative: string): Vue.Component {
-        const filename = resolve(process.cwd(), relative), {descriptor, errors} = parse(readFileSync(filename, 'utf8'), {filename});
-        expect(errors).toEqual([]);
-        const script = compileScript(descriptor, {id: relative, inlineTemplate: true});
-        const code = ts.transpileModule(script.content, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
+        const filename = resolve(process.cwd(), relative), compiled = compileVueInlineFixture(filename, {id: relative});
+        expect(compiled.parseErrors).toEqual([]);
         const module = {exports: {} as {default: Vue.Component}};
-        new Function('require', 'exports', 'module', code)((id: string) => {
+        new Function('require', 'exports', 'module', compiled.code)((id: string) => {
             if (!Object.hasOwn(modules, id)) throw new Error(`Unconfigured client dependency: ${id}`);
             return modules[id];
         }, module.exports, module);
