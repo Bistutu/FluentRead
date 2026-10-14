@@ -1,6 +1,6 @@
 {
-  "status": "passed",
-  "sourceCommit": "a8e04e2a9b4d6a98f5f21e1a4b45ebc925107edd",
+  "status": "local_checks_passed_hosted_pending",
+  "sourceCommit": "e85a18359fc92d88b54204f7003d2dada4884d9a",
   "comparisonBase": "8bdd5c20dc82b57d27b7e22d14080cacd64d7eed",
   "version": "0.0.38",
   "referenceRepositoriesUsed": false,
@@ -19,8 +19,8 @@
       "passed": 2003
     },
     "testRegistration": {
-      "files": 718,
-      "declaredCases": 12950,
+      "files": 721,
+      "declaredCases": 12997,
       "status": "passed"
     },
     "nativeNodeContracts": {
@@ -37,8 +37,8 @@
     },
     "manifestVerifier": "passed",
     "userscriptVerifier": "passed",
-    "userscriptBytes": 2097156,
-    "userscriptBudgetBytes": 2098100,
+    "userscriptBytes": 2059882,
+    "userscriptBudgetBytes": 2095100,
     "affectedBehavior": {
       "status": "passed",
       "files": 410,
@@ -52,7 +52,7 @@
       "files": 84,
       "requiredPercent": 100,
       "perFile": true,
-      "verificationMode": "Independent affected/runtime/broker/main/PDF scoped runs; all 84 current source hashes match.",
+      "verificationMode": "Independent previous affected/runtime/broker/PDF scopes plus current Node22 scheduling/privacy integration; all84 current source hashes match, with two additional main-contract targets recorded separately.",
       "report": "strict-coverage.json"
     },
     "historyScoped": {
@@ -94,8 +94,29 @@
       "productionSourceDifferenceFromProgramSourceCommit": false
     },
     "finalMainIntegration": {
-      "sourceCommit": "a8e04e2a9b4d6a98f5f21e1a4b45ebc925107edd",
-      "baseCommit": "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde",
+      "sourceCommit": "e85a18359fc92d88b54204f7003d2dada4884d9a",
+      "baseCommit": "b4125919e10bff34a81872dc3cdf69e63143a534",
+      "translation": {
+        "files": 50,
+        "passed": 1819,
+        "strictModules": 9,
+        "skipped": 0
+      },
+      "youtubeSupplement": {
+        "files": 10,
+        "passed": 617,
+        "strictModules": 1,
+        "sourceSha256": "c3432c66fe568608f53724b7089545355117e3657336c14759a3eef75516d759"
+      },
+      "serviceConfigurationFixture": {
+        "files": 1,
+        "passed": 33,
+        "zeroTimerCleanupNegativeControl": "passed"
+      },
+      "ownershipPlannerInventory": {
+        "files": 3,
+        "passed": 62
+      },
       "types": "passed",
       "builds": {
         "chrome_mv3": "passed",
@@ -105,23 +126,9 @@
       },
       "manifestVerifier": "passed",
       "userscriptVerifier": "passed",
-      "translation": {
-        "files": 32,
-        "passed": 1532,
-        "strictModules": 3
-      },
-      "languageProjection": {
-        "files": 3,
-        "passed": 288
-      },
-      "userscriptCompressionAndMetadata": {
-        "passed": 18
-      },
-      "verificationOwnershipAndPlanner": {
-        "files": 2,
-        "passed": 35
-      },
-      "proof": "latest-main-integration.json"
+      "userscriptBudgetMatchesMain": true,
+      "proof": "latest-main-integration.json",
+      "ciFollowUp": "ci-follow-up.json"
     },
     "sectionSweepIntegration": {
       "status": "passed",
@@ -202,6 +209,36 @@
       },
       "manifestVerifier": "passed",
       "userscriptVerifier": "passed"
+    },
+    "previousDeepLXMainIntegration": {
+      "sourceCommit": "a8e04e2a9b4d6a98f5f21e1a4b45ebc925107edd",
+      "baseCommit": "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde",
+      "types": "passed",
+      "builds": {
+        "chrome_mv3": "passed",
+        "firefox_mv2": "passed",
+        "userscript": "passed",
+        "docs": "passed"
+      },
+      "manifestVerifier": "passed",
+      "userscriptVerifier": "passed",
+      "translation": {
+        "files": 32,
+        "passed": 1532,
+        "strictModules": 3
+      },
+      "languageProjection": {
+        "files": 3,
+        "passed": 288
+      },
+      "userscriptCompressionAndMetadata": {
+        "passed": 18
+      },
+      "verificationOwnershipAndPlanner": {
+        "files": 2,
+        "passed": 35
+      },
+      "proof": "latest-main-integration.json"
     }
   },
   "browserEvidence": {
@@ -229,12 +266,13 @@
     "Browser smoke checks do not verify real PCM capture or local model accuracy.",
     "Browser architecture checks were recorded at programSourceCommit; the later main section-sweep integration is covered by focused tests and rebuilt artifacts, not rerun browser scenarios.",
     "Hosted CI is pending on the updated PR head at recording time; final results are recorded by the PR checks.",
-    "The final local CLI/PDF checks use macOS Node20 and the icon checks use macOS Node22; Linux Node22 results require the final hosted workflow."
+    "The final local CLI/PDF checks use macOS Node20 and the icon checks use macOS Node22; Linux Node22 results require the final hosted workflow.",
+    "Newest scheduling/privacy/UI fixture and candidate builds use local macOS Node22; final updated-head Ubuntu Node22 checks remain required."
   ],
   "ciPlan": {
-    "files": 448,
+    "files": 460,
     "architectureFiles": 38,
-    "behaviorFiles": 410,
+    "behaviorFiles": 422,
     "strictModules": 84,
     "duplicates": false,
     "verification": "Updated plan and scoped integration verified; the complete combined command is run by hosted PR CI.",
@@ -243,6 +281,6 @@
   },
   "programSourceCommit": "3204afefb81bd26e5211419b3fab5b1c1ad6dafb",
   "recordingPhase": "final local verification before updated PR CI",
-  "currentIntegratedBase": "92da3c6f905b8b796cdebfe91d5c3abbf9cb0cde",
+  "currentIntegratedBase": "b4125919e10bff34a81872dc3cdf69e63143a534",
   "pullRequest": "https://github.com/FluentRead/FluentRead/pull/985"
 }

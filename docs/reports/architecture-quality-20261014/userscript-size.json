@@ -1,6 +1,6 @@
 {
-  "sourceCommit": null,
-  "candidateSource": "main integration staged working tree after core conflict resolution; final merge commit to be filled by root",
+  "sourceCommit": "e85a18359fc92d88b54204f7003d2dada4884d9a",
+  "candidateSource": "immutable final main-integration commit; only evidence metadata follows",
   "parentCommits": [
     "a3f02898de610cceb9c90086b7decff761b9a16f",
     "b4125919e10bff34a81872dc3cdf69e63143a534"

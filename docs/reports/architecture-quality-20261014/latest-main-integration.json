@@ -1,6 +1,6 @@
 {
   "baseCommit": "b4125919e10bff34a81872dc3cdf69e63143a534",
-  "recordingPhase": "local final integration, exact source hashes; source commit recorded after merge",
+  "recordingPhase": "local final integration verified at immutable source commit",
   "runtime": {
     "node": "v22.23.2",
     "platform": "darwin",
@@ -518,5 +518,21 @@
       "macOS Node22 validation does not replace hosted Linux22 CI",
       "Only additional 10 consumers and one new strict module; did not repeat 448 tests or 84-module coverage"
     ]
+  },
+  "sourceCommit": "e85a18359fc92d88b54204f7003d2dada4884d9a",
+  "builds": {
+    "types": "passed",
+    "chrome": "passed",
+    "firefox": "passed",
+    "manifestVerifier": "passed",
+    "userscript": "passed",
+    "userscriptVerifier": "passed",
+    "docs": "passed"
+  },
+  "gates": {
+    "files": 3,
+    "passed": 62,
+    "scope": "verification ownership, affected planner, real source inventory CLI",
+    "log": "/private/tmp/fluentread-pr985-b412-ownership-plan-inventory.log"
   }
 }
