@@ -8,6 +8,10 @@
 
 ## 翻译结果与浏览器清理边界
 
+GitHub 文档出现译文消失、重现时，先记录扩展版本、浏览器、网页地址和触发动作。`tests/bilingualReplay.test.ts` 包含 Issue #969 截图对应的行内代码与链接段落，使用真实 MutationObserver 检查译文零移除、链接提示变化、同文 Text 重绘与恢复原文。它验证当前实现的状态保持，不能单独证明反馈者的根因。
+
+生产 Chrome 构建后，运行 `node scripts/testing/run-github-document-stability-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --artifacts-dir <证据目录> --background --live --full-mode viewport`。默认访问截图对应的 `pi-subagents/docs/models.md`，在临时 Edge 后台正常窗口记录选定正文的译文增删、源码节点身份、链接与代码、滚动返回、可信鼠标经过以及全文/段落翻译—恢复—再次翻译；`--full-mode all` 检查立即处理整页，省略 `--live` 使用自建 GitHub 域名夹具。网页使用实站 DOM，翻译响应受控；结果不代表在线供应商、其他扩展共存或反馈者安装版本的验收，GitHub 错误页单独记录为访问失败。
+
 `translationEchoValidationRegression` 与 `free-translation` 覆盖中文目标下长篇 Latin 外语结果的拒绝、既有线路降级、批量槽顺序、旧缓存失效、取消与共享请求期限。判定需要原文和结果都有充分的外语证据；中文结果、专名、技术标识、短句与不确定语言保持保守处理。拒绝错语种不等于对译文质量作完整评估。
 
 GitHub 仓库列表和 Issue 列表同时保留旧容器与当前结构的保护规则，正文和标题仍须翻译。站点测试查询原样完成状态时使用可见文本，原始文本与结构仍用于恢复检查；隐藏反馈内容变化或仅 CSS 可见性变化均不能沿用旧完成证明。
