@@ -28,35 +28,37 @@ function git(root: string, ...args: string[]) {return execFileSync('git', args, 
 afterEach(() => {temporary.splice(0).forEach(root => rmSync(root, {recursive: true, force: true}));});
 
 describe('affected behavior test planning', () => {
-    it('traces direct and transitive imports without adding unrelated or architecture suites', () => {
-        expect(select(['src/core/a.ts'])).toMatchObject({testFiles: ['tests/a.test.ts', 'tests/b.test.ts'],
+    it('traces direct and transitive imports with one always-run architecture gate and no unrelated behavior', () => {
+        expect(select(['src/core/a.ts'])).toMatchObject({testFiles: ['tests/a.test.ts', 'tests/architecture/boundary.test.ts', 'tests/b.test.ts'],
             coverageFiles: ['src/core/a.ts'], reason: 'changed-dependency-graph', extensionChanged: true});
-        expect(select(['src/unrelated.ts']).testFiles).toEqual([]);
+        expect(select(['src/unrelated.ts']).testFiles).toEqual(['tests/architecture/boundary.test.ts']);
     });
     it('tracks actual SFC reads and embedded source imports used by the existing component harnesses', () => {
         const input = {...files(), 'src/ui/Card.vue': '<script setup>import {a} from "../core/a";</script>',
             'tests/b.test.ts': "const filename = 'src/ui/Card.vue'; readFileSync(filename);"};
-        expect(select(['src/core/a.ts'], input).testFiles).toEqual(['tests/a.test.ts', 'tests/b.test.ts']);
+        expect(select(['src/core/a.ts'], input).testFiles).toEqual(['tests/a.test.ts', 'tests/architecture/boundary.test.ts', 'tests/b.test.ts']);
     });
     it('tracks fixtures, query suffixes, CSS imports and folder readers', () => {
         const input = {...files(), 'src/ui.css': '@import "./base.css";', 'src/base.css': 'p {color: red;}',
             'tests/b.test.ts': "import css from '../src/ui.css?inline'; const folder = './fixtures';"};
-        expect(select(['src/base.css'], input, []).testFiles).toEqual(['tests/b.test.ts']);
-        expect(select(['tests/fixtures/sample.html'], input, []).testFiles).toEqual(['tests/b.test.ts', 'tests/fixture.test.ts']);
+        expect(select(['src/base.css'], input, []).testFiles).toEqual(['tests/architecture/boundary.test.ts', 'tests/b.test.ts']);
+        expect(select(['tests/fixtures/sample.html'], input, []).testFiles).toEqual(['tests/architecture/boundary.test.ts', 'tests/b.test.ts', 'tests/fixture.test.ts']);
     });
     it('preserves deleted module references while never running deleted test files', () => {
         const input = files();delete input['src/core/a.ts'];
-        expect(select(['src/core/a.ts'], input).testFiles).toEqual(['tests/a.test.ts', 'tests/b.test.ts']);
+        expect(select(['src/core/a.ts'], input).testFiles).toEqual(['tests/a.test.ts', 'tests/architecture/boundary.test.ts', 'tests/b.test.ts']);
         expect(select(['src/core/a.ts'], input).coverageFiles).toEqual([]);
         delete input['tests/a.test.ts'];
-        expect(select(['tests/a.test.ts'], input, []).testFiles).toEqual([]);
+        expect(select(['tests/a.test.ts'], input, []).testFiles).toEqual(['tests/architecture/boundary.test.ts']);
+        delete input['tests/architecture/boundary.test.ts'];
+        expect(select(['tests/architecture/boundary.test.ts'], input, []).testFiles).toEqual([]);
     });
     it('runs changed tests themselves and recognizes docs-only changes without production builds', () => {
-        expect(select(['tests/b.test.ts']).testFiles).toEqual(['tests/b.test.ts']);
-        expect(select(['docs/testing.md'])).toMatchObject({testFiles: [], coverageFiles: [], extensionChanged: false});
+        expect(select(['tests/b.test.ts']).testFiles).toEqual(['tests/architecture/boundary.test.ts', 'tests/b.test.ts']);
+        expect(select(['docs/testing.md'])).toMatchObject({testFiles: ['tests/architecture/boundary.test.ts'], coverageFiles: [], extensionChanged: false});
     });
     it('explicitly widens behavior scope when shared test configuration changes', () => {
-        expect(select(['vitest.config.ts'])).toMatchObject({testFiles: ['tests/a.test.ts', 'tests/b.test.ts', 'tests/fixture.test.ts'],
+        expect(select(['vitest.config.ts'])).toMatchObject({testFiles: ['tests/a.test.ts', 'tests/architecture/boundary.test.ts', 'tests/b.test.ts', 'tests/fixture.test.ts'],
             coverageFiles: [], globalInputs: ['vitest.config.ts'], reason: 'shared-test-configuration'});
     });
     it('rejects duplicated classification and changed covered code without traceable behavior tests', () => {
@@ -77,10 +79,10 @@ describe('affected behavior test planning', () => {
         const config = (include: string, branches = 100) => `export default {test:{include:['tests/a.test.ts'],coverage:{include:[${include}],thresholds:{branches:${branches}}}}}`;
         expect(coverageRuntimeSignature(config("'src/a.ts'"))).toBe(coverageRuntimeSignature(config("'src/a.ts','src/b.ts'")));
         expect(coverageRuntimeSignature(config("'src/a.ts'", 90))).not.toBe(coverageRuntimeSignature(config("'src/a.ts'")));
-        expect(select(['tests/test-matrix.json', 'vitest.coverage.config.ts', 'tests/b.test.ts']).testFiles).toEqual(['tests/b.test.ts']);
+        expect(select(['tests/test-matrix.json', 'vitest.coverage.config.ts', 'tests/b.test.ts']).testFiles).toEqual(['tests/architecture/boundary.test.ts', 'tests/b.test.ts']);
         expect(selectAffected({files: files(), changed: ['vitest.coverage.config.ts'], matrix,
             coveragePaths: ['src/core/a.ts'], coverageAdded: ['src/core/a.ts']})).toMatchObject({
-            testFiles: ['tests/a.test.ts', 'tests/b.test.ts'], coverageFiles: ['src/core/a.ts']});
+            testFiles: ['tests/a.test.ts', 'tests/architecture/boundary.test.ts', 'tests/b.test.ts'], coverageFiles: ['src/core/a.ts']});
     });
     it('uses an actual Git diff, including deletion and untracked new tests, without evaluating ref text in a shell', () => {
         const root = directory();git(root, 'init', '-q');git(root, 'config', 'user.email', 'fixture@example.test');git(root, 'config', 'user.name', 'Fixture');
@@ -97,7 +99,7 @@ describe('affected behavior test planning', () => {
         git(root, 'add', '.');git(root, 'commit', '-qm', 'baseline');const base = git(root, 'rev-parse', 'HEAD');
         save(root, 'src/core/a.ts', 'export const a = 2;');
         expect(createPlan(root, base)).toMatchObject({base, head: base, changed: ['src/core/a.ts'],
-            testFiles: ['tests/a.test.ts', 'tests/b.test.ts'], coverageFiles: ['src/core/a.ts']});
+            testFiles: ['tests/a.test.ts', 'tests/architecture/boundary.test.ts', 'tests/b.test.ts'], coverageFiles: ['src/core/a.ts']});
     });
     it('tracks actual root asset readers and builds even when an unrelated asset has no behavior reader', () => {
         const root = directory();git(root, 'init', '-q');git(root, 'config', 'user.email', 'fixture@example.test');git(root, 'config', 'user.name', 'Fixture');
@@ -118,18 +120,49 @@ describe('affected behavior test planning', () => {
         expect(createPlan(root, base)).toMatchObject({changed: [unrelated], testFiles: [],
             coverageFiles: [], extensionChanged: true});
     });
+    it('keeps the actual matrix runtime consumers of all thirteen coverage targets in one architecture and behavior pass', () => {
+        const readers = {
+            'src/app/background/handlers/configPersistence.ts': 'tests/backgroundConfigPersistenceHandler.test.ts',
+            'src/app/background/handlers/configStorage.ts': 'tests/backgroundConfigStorage.test.ts',
+            'src/app/background/handlers/translation.ts': 'tests/backgroundTranslationHandler.test.ts',
+            'src/app/background/harnessRuntime.ts': 'tests/harnessAppRuntime.test.ts',
+            'src/services/messaging/backgroundRouter.ts': 'tests/backgroundMessageRouter.test.ts',
+            'src/app/background/handlers/configHistory.ts': 'tests/backgroundCoreHandlers.test.ts',
+            'src/app/background/handlers/connectionTest.ts': 'tests/backgroundConnectionTestHandler.test.ts',
+            'src/app/background/providerRuntime.ts': 'tests/backgroundProviderRuntime.test.ts',
+            'src/app/background/chatgptPlanRuntime.ts': 'tests/chatgptPlanBridgeClient.test.ts',
+            'src/app/background/handlers/freeTranslationWeights.ts': 'tests/freeTranslationWeightsHandler.test.ts',
+            'src/app/background/handlers/translationCache.ts': 'tests/backgroundCoreHandlers.test.ts',
+            'src/services/translation/broker.ts': 'tests/compositeTranslationBroker.test.ts',
+            'src/services/translation/visionProbe.ts': 'tests/backgroundVisionProbe.test.ts',
+        };
+        const actualMatrix = JSON.parse(readFileSync('tests/test-matrix.json', 'utf8'));
+        const targets = Object.keys(readers);
+        const paths: string[] = [...new Set([...targets, ...actualMatrix.groups.architecture, ...Object.values(readers)])] as string[];
+        const sources = Object.fromEntries(paths.map(file => [file, readFileSync(file, 'utf8')]));
+        const graph = buildDependencyGraph(sources);
+        const plan = selectAffected({files: sources, changed: targets, matrix: actualMatrix, coveragePaths: targets});
+        expect(plan.coverageFiles).toEqual([...targets].sort());
+        expect(plan.testFiles.filter(file => actualMatrix.groups.architecture.includes(file))).toEqual([...actualMatrix.groups.architecture].sort());
+        for (const [target, reader] of Object.entries(readers)) {
+            expect([...graph.get(reader)!], reader).toContain(target);
+            expect(plan.testFiles, target).toContain(reader);
+        }
+        expect(new Set(plan.testFiles).size).toBe(plan.testFiles.length);
+    });
 });
 
 describe('affected behavior test execution', () => {
-    it('skips an empty selection explicitly instead of accidentally invoking every Vitest file', async () => {
+    it('skips when neither architecture nor affected behavior tests exist instead of invoking every Vitest file', async () => {
         const runner = vi.fn();
-        await expect(executePlan(directory(), select(['docs/testing.md']), runner)).resolves.toMatchObject({skipped: true});
+        const plan = selectAffected({files: files(), changed: ['docs/testing.md'], matrix: {groups: {unit: ['tests/a.test.ts']}}, coveragePaths: []});
+        await expect(executePlan(directory(), plan, runner)).resolves.toMatchObject({skipped: true});
         expect(runner).not.toHaveBeenCalled();expect(testInvocation({testFiles: [], coverageFiles: []}, '/tmp/config')).toBeNull();
     });
     it('passes only selected files to the regular Vitest entry', async () => {
         const runner = vi.fn().mockResolvedValue({code: 0, signal: null});const root = directory();
         await executePlan(root, select(['tests/b.test.ts']), runner);
-        expect(runner).toHaveBeenCalledWith(root, ['exec', 'vitest', 'run', 'tests/b.test.ts']);
+        expect(runner).toHaveBeenCalledWith(root, ['exec', 'vitest', 'run', 'tests/architecture/boundary.test.ts', 'tests/b.test.ts']);
     });
     it('executes a generated config that inherits real plugins and preserves 100 percent thresholds', async () => {
         const root = directory();save(root, 'base.mjs', 'export default {plugins:["actual-plugin"],test:{coverage:{all:true,thresholds:{statements:100,branches:100,functions:100,lines:100}}}};');

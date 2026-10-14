@@ -49,13 +49,11 @@ jobs:
         run: |
           pnpm rebuild esbuild
           pnpm exec wxt prepare
-      - name: Audit test registration and dependency boundaries
-        run: |
-          pnpm test:audit
-          pnpm test:architecture
+      - name: Audit test registration
+        run: pnpm test:audit
       - name: Check native bridge and verification fixture contracts
         run: node scripts/testing/run-resource-safe.mjs -- node --test --test-concurrency=1 tests/*.test.mjs
-      - name: Run affected behavior tests and changed strict coverage
+      - name: Run architecture gates, affected behavior and changed strict coverage once
         id: affected
         run: node scripts/testing/run-resource-safe.mjs -- node scripts/testing/run-affected-tests.mjs --report coverage/affected-plan/plan.json
       - name: Check extension and shared Vue types

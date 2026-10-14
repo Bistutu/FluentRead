@@ -203,6 +203,70 @@ describe('background config persistence handler', () => {
         );
     });
 
+    it.each([
+        ['patch', true], ['patch', false], ['replace', true], ['replace', false],
+    ] as const)('等待 ready 时被新序号取代的 %s 请求不触发 CAS、写入或历史（revision port=%s）', async (mode, hasRevisionPort) => {
+        let releaseReady!: () => void;
+        const ready = new Promise<void>(resolve => {releaseReady = resolve;});
+        let enteredMutation!: () => void;
+        const entered = new Promise<void>(resolve => {enteredMutation = resolve;});
+        const coordinator = createConfigMutationCoordinator();
+        let current: TestConfig = {marker: 'hydrated-current'};
+        let revision = 9;
+        const history: string[] = [];
+        const dependencies = createDependencies({
+            ready,
+            runMutation: mutation => coordinator.run(async () => {
+                enteredMutation();
+                return mutation();
+            }),
+            getCurrentConfig: vi.fn(() => current),
+            getCurrentRevision: hasRevisionPort ? () => revision : undefined,
+            prepareConfigPatchRequest: vi.fn((patch, expected, source) => {
+                if (source.marker !== expected.marker) throw new Error('stale patch must not reach CAS');
+                return {...source, marker: String(patch.marker)};
+            }),
+            saveConfig: vi.fn(async (next, options) => {
+                current = next;
+                revision += 1;
+                if (options.recordHistory) history.push(next.marker);
+            }),
+        });
+        const handler = createConfigPersistenceHandler(dependencies);
+        const first = handler.handle({type: CONFIG_PERSIST_MESSAGE_TYPE, mode,
+            config: {marker: 'old'}, expected: {marker: 'stale-before-hydration'},
+            clientId: 'hydrating-options', sequence: 1, baseRevision: 4}, {});
+        // 等待公开 mutation 端口进入真实 handler；旧请求已经通过首次序号检查并挂在 ready 上。
+        await entered;
+        expect(dependencies.getCurrentConfig).not.toHaveBeenCalled();
+        expect(dependencies.prepareConfigPatchRequest).not.toHaveBeenCalled();
+        expect(dependencies.prepareConfigSaveRequest).not.toHaveBeenCalled();
+        expect(dependencies.saveConfig).not.toHaveBeenCalled();
+        const latest = handler.handle({type: CONFIG_PERSIST_MESSAGE_TYPE, mode,
+            config: {marker: 'latest'}, expected: {marker: 'hydrated-current'},
+            clientId: 'hydrating-options', sequence: 2, baseRevision: 9}, {});
+        releaseReady();
+
+        await expect(first).resolves.toEqual({success: true, revision: hasRevisionPort ? 9 : 0});
+        await expect(latest).resolves.toEqual({success: true, revision: hasRevisionPort ? 10 : 0});
+        expect(current.marker).toBe('latest');
+        expect(history).toEqual(['latest']);
+        expect(dependencies.saveConfig).toHaveBeenCalledOnce();
+        expect(dependencies.saveConfig).toHaveBeenCalledWith(expect.objectContaining({marker: 'latest'}), {recordHistory: true});
+        expect(dependencies.getCurrentConfig).toHaveBeenCalledOnce();
+        if (mode === 'patch') {
+            expect(dependencies.prepareConfigPatchRequest).toHaveBeenCalledOnce();
+            expect(dependencies.prepareConfigPatchRequest).toHaveBeenCalledWith(
+                {marker: 'latest'}, {marker: 'hydrated-current'}, {marker: 'hydrated-current'}, false,
+            );
+            expect(dependencies.prepareConfigSaveRequest).not.toHaveBeenCalled();
+        } else {
+            expect(dependencies.prepareConfigSaveRequest).toHaveBeenCalledOnce();
+            expect(dependencies.prepareConfigSaveRequest).toHaveBeenCalledWith({marker: 'latest'}, {marker: 'hydrated-current'}, false);
+            expect(dependencies.prepareConfigPatchRequest).not.toHaveBeenCalled();
+        }
+    });
+
     it('未注入 revision 读取器时所有 sequence 分支稳定回退为 revision 0', async () => {
         const dependencies = createDependencies({getCurrentRevision: undefined});
         const handler = createConfigPersistenceHandler(dependencies);

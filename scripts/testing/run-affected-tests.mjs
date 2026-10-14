@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * PR 与本地定向回归共用变更依赖图；只执行受影响测试，对改动的严格覆盖模块保留四维 100%。
+ * PR 与本地定向回归共用变更依赖图；架构门禁与受影响行为测试一次去重执行，对改动的严格覆盖模块保留四维 100%。
  * 文件清单来自现有测试矩阵，外部边界、SFC 源码读取与资源路径同样纳入依赖追踪。
  * 本入口不启动浏览器、不调用在线供应商，也不把构建或静态归属描述为行为覆盖。
  */
@@ -117,6 +117,8 @@ export function selectAffected({files, changed, matrix, coveragePaths, coverageA
     const allTests = GROUPS.flatMap(group => matrix.groups?.[group] ?? []);
     if (new Set(allTests).size !== allTests.length) throw new Error('测试矩阵存在重复归类');
     const architecture = new Set(matrix.groups?.architecture ?? []);
+    // 现有架构组也包含真实 runtime 消费者；统一进入同一次执行才能贡献严格覆盖。
+    const architectureTests = allTests.filter(file => architecture.has(file) && Object.hasOwn(files, file));
     const behaviorTests = allTests.filter(file => !architecture.has(file) && Object.hasOwn(files, file));
     const nodes = {...files};
     for (const file of changed) nodes[file] ??= ''; // 被删除源码仍保留在解析空间内。
@@ -137,7 +139,8 @@ export function selectAffected({files, changed, matrix, coveragePaths, coverageA
     }
     const globalInputs = changed.filter(file => GLOBAL_TEST_INPUTS.has(file));
     if (coverageRuntimeChanged) globalInputs.push('vitest.coverage.config.ts');
-    const testFiles = globalInputs.length ? behaviorTests : behaviorTests.filter(file => affected.has(file));
+    const affectedBehaviorTests = globalInputs.length ? behaviorTests : behaviorTests.filter(file => affected.has(file));
+    const testFiles = [...new Set([...architectureTests, ...affectedBehaviorTests])];
     const coverageFiles = coveragePaths.filter(file => (changed.includes(file) || coverageAdded.includes(file)) && Object.hasOwn(files, file));
     for (const file of coverageFiles) {
         const reachable = new Set([file]), pending = [file];
