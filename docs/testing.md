@@ -732,6 +732,8 @@ node scripts/testing/run-reddit-translation-test.cjs \
 
 ### GitHub Latest 仅译文反复翻译
 
+仓库首页的 Latest 使用 flex 布局，自有原文槽会作为 flex 子项被计算为 block。候选范围复验必须把已验证原文槽视为透明包装，不能因此把原标签排除出正文范围。`translationStability.test.ts` 覆盖 flex/grid 下的重复复验、恢复后再次翻译，以及真实新增正文块、原文修改、禁译和同字克隆的拒绝边界。验收同时检查仓库首页和下述 Release 详情页；首页译文应保持同一槽节点，其他页面变化不应导致它反复撤销。
+
 仅译文将原文搬入自有槽时，必须同时识别原父节点的移除记录与槽内加入记录，避免合成正文段把自身渲染误判为外部变化、撤销译文并重复请求。`translationStability.test.ts` 覆盖 Latest 标签结构、同字不同节点、混合增删、真实原文修改和槽被移除；来源校验仍须保留。
 
 手动验收使用仅译文及 AI 网页语境设置：翻译 GitHub Release 页，待首轮完成后停留至少 30 秒，确认 Latest 不闪烁且翻译次数不再持续增加；再恢复原文、重新翻译，并确认页面新增或修改的正文仍可正常翻译。
