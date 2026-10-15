@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "recordedAt": "2026-10-15T16:22:41.265967+00:00",
-  "baseCommit": "633baacd32cb9aa32789dfe4472c880311df50cc",
+  "recordedAt": "2026-10-15T17:04:35.984483+00:00",
+  "baseCommit": "11732fa311d829807c41fd45573ba091196ae904",
   "branch": "codex/mobile-safari-product-20261015",
   "overallGoalComplete": false,
-  "status": "Mobile source ownership repair integrated with material workspace; actual AVKit module selection/Off/reselection passed on iOS Simulator, YouTube and latest package device evidence separately versioned; physical acceptance incomplete",
+  "status": "Mobile layouts integrated with current onboarding/diagnostics; targeted818 checks and nine production UI cases passed. Current Safari native rebuild awaits explicit human confirmation after approval-review rejection. Physical acceptance incomplete.",
   "evidenceRoot": "research/mobile-safari-20261015 (workspace level, outside repository)",
-  "sourceSnapshotSha256": "cf41d5a78915b5d0a3dc6263ff8feb8069b17fc6cd7b71146af89595a03783c8",
+  "sourceSnapshotSha256": "9d3dc81bd31965dec26cd3af9b9caa32d36d0fcec43c2d664026f1e40f3a39e1",
   "changedRuntimeSources": {
     "package.json": "f2d0cb391c8a4049f85cacd393069f39bb62de49f2bf79558ae4e31f86991871",
     "scripts/safari/container/Main.html": "8359d2ff5a18fc2c655ef8798869b242b7c8495fa9a4575919213a2226d7789e",
@@ -14,10 +14,10 @@
     "scripts/safari/container/Style.css": "3f4c01b933fe9622c01784d8e2eec2a228225fb07284bb5adacaf4bef4319a40",
     "scripts/safari/container/ViewController.swift": "6d9d7f1bb044d88eb17b644c8c038062f964a4486f59a90f4d3b081f09931d06",
     "scripts/safari/package.mjs": "9b2f03d5d9b3729150498adf0e50318a30465ec3982c6c198aa280e5cfd6796f",
-    "src/app/popup/PopupApp.vue": "690998e1fdb09eada4e90445e11665d893d5396a39d7b007165c2c5b71b71a26",
+    "src/app/popup/PopupApp.vue": "a3cac54e35f3aca77b68307580d3b6be727c659ae6bb1dc616564768fff2fb2d",
     "src/app/popup/PopupServices.vue": "8083cde0601b48e0b02a606cfd45eeea408eb103ac5cdd29fe2eca9a79ebe3bd",
-    "src/app/popup/mount.ts": "208d90c048ac6014a6a97ae78db3cdb329a559d29635009d986892bbe7cc88cc",
-    "src/app/popup/popup.css": "8fe833c2781247d0c2308090dd795852d51852bc254bafa74f3c75d87b933b55",
+    "src/app/popup/mount.ts": "e1f5c3d176149d4ee5ea4a4fe7b8595d8f41385eeaa58c8df0d23b939e0a78f4",
+    "src/app/popup/popup.css": "4d3fc68dbb522c63bbe0717433878e18f4a6af880be16fb6f86834c30b6787da",
     "src/core/config/freeProviderOrigins.json": "8b4004cade979ded8b2b76ac3398dfa108f9e423de2b6d7336dc2530cadf2418",
     "src/core/config/freeProviderOrigins.ts": "ee38f3e7bdaf46a7f9f3097da746d279a2215cf3bdbf336a88c15669f73b3f36",
     "src/core/i18n/messages/en-US.ts": "fefaccce594aec16c3a6cfde8d05f68b6fb5a285e76c7eddb8adbddba4cb7cfb",
@@ -41,7 +41,7 @@
     "src/features/selection-translation/core.ts": "3c5f2d93a2872884b1029e3bae94b4b15362a300ba41adacfe9fd00f14f0ae68",
     "src/features/selection-translation/ui/SelectionTranslator.vue": "1b9192ebe42d56fbb9281f6865cc60240320854168b550ba3f2d50e6fdab6502",
     "src/features/settings/ui/services/FreeTranslationSettings.vue": "1ec580cbca47f5ed474e4f9b39136724d19eb88ef62d37bfc403a0af3dbe8456",
-    "src/features/settings/ui/services/ServiceConfiguration.vue": "251a3084643266336095f85775166b7d8dbcedb72dc5a93ac351652eaeb4bfa8",
+    "src/features/settings/ui/services/ServiceConfiguration.vue": "bbf9d5b1e38435ad55c4733ef7760dbc8369f6a3def390d521e850d9ed9910aa",
     "src/features/video-subtitle/content/nativeFullscreen.ts": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
     "src/features/video-subtitle/content/playerMenu.ts": "5cc6bb174d6c94ffc9f8e1d2ccdbfcd688556d80955de8bacfbf998fb4112d8b",
     "src/features/video-subtitle/content/runtime.ts": "2ccd7ad37e76eab5f0905ae1d075e1437e5b7cf858fcf7844c59077bb568dc2c",
@@ -53,7 +53,9 @@
     "src/platform/browser/freeProviderPermissions.ts": "eb2d47c062e0c476e190b53059761d25607e4355bc47aea85cead162752a6f8a",
     "src/platform/dom/visualViewport.ts": "fec540c69ca5703e8051e04df51a79e192a2da55be359385eb4a91c11050c8d2",
     "src/providers/translation/free-translation.ts": "2374e76df1cef27a6948b4d4bcdb25cfe60611489bba40e9588643f147062c17",
+    "userscript/interfaceAppearanceDataPlugin.ts": "3282ec6466771deae04bcd6d175967401198e57e9d1228250a6da338ba1fb39e",
     "userscript/languageBundles.ts": "ab7a652538f22a5554a121406afa0b01871a03122013543ddcf1a7204e4946c9",
+    "userscript/vite.config.ts": "45786c1e8cbf43dac0c3b1fd631c23616f3ad659529dca29199ec797534e0056",
     "wxt.config.ts": "09e6aea80f44a41f7cfa24acdf486f79d73c0011a086be9d36b35c4dbbd252d6"
   },
   "checks": {
@@ -98,7 +100,7 @@
     "docsBuild": "passed",
     "diffCheck": "passed",
     "formalBuildVerification": {
-      "results": [
+      "initialResults": [
         {
           "name": "firefox",
           "command": [
@@ -106,8 +108,8 @@
             "build:firefox"
           ],
           "exitCode": 0,
-          "seconds": 25.86,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/firefox.log"
+          "seconds": 25.27,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-117-final/firefox.log"
         },
         {
           "name": "safari",
@@ -116,8 +118,8 @@
             "build:safari"
           ],
           "exitCode": 0,
-          "seconds": 24.22,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/safari.log"
+          "seconds": 24.37,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-117-final/safari.log"
         },
         {
           "name": "safari-verify",
@@ -131,7 +133,7 @@
           ],
           "exitCode": 0,
           "seconds": 0.23,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/safari-verify.log"
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-117-final/safari-verify.log"
         },
         {
           "name": "chrome",
@@ -140,8 +142,8 @@
             "build"
           ],
           "exitCode": 0,
-          "seconds": 23.99,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/chrome.log"
+          "seconds": 24.96,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-117-final/chrome.log"
         },
         {
           "name": "extension-manifests",
@@ -153,8 +155,8 @@
             "scripts/testing/verify-extension-manifests.mjs"
           ],
           "exitCode": 0,
-          "seconds": 0.29,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/extension-manifests.log"
+          "seconds": 0.27,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-117-final/extension-manifests.log"
         },
         {
           "name": "userscript",
@@ -163,8 +165,8 @@
             "build:userscript"
           ],
           "exitCode": 0,
-          "seconds": 5.65,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/userscript.log"
+          "seconds": 5.63,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-117-final/userscript.log"
         },
         {
           "name": "userscript-verify",
@@ -175,27 +177,12 @@
             "node",
             "scripts/verify-userscript-build.mjs"
           ],
-          "exitCode": 0,
+          "exitCode": 1,
           "seconds": 0.17,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/userscript-verify.log"
-        },
-        {
-          "name": "audit",
-          "command": [
-            "node",
-            "scripts/testing/run-resource-safe.mjs",
-            "--",
-            "pnpm",
-            "test:audit"
-          ],
-          "exitCode": 0,
-          "seconds": 2.89,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/audit.log"
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-117-final/userscript-verify.log"
         }
       ],
-      "safari": "validation/integrated-main-633-final/safari.log",
-      "safariVerify": "validation/integrated-main-633-final/safari-verify.log",
-      "chromeFirefoxManifests": "validation/integrated-main-633-final/extension-manifests.log"
+      "scope": "Initial userscript verification failure preserved; repaired userscript evidence is separate. Chrome/Firefox/Safari Web and manifest checks passed; audit passed separately. New native targets not built."
     },
     "formalArchitectureTests": {
       "verificationOwnership": 20,
@@ -879,7 +866,7 @@
     },
     "latestTypes": {
       "passed": true,
-      "log": "validation/integrated-main-633-final/compile.log"
+      "log": "validation/integrated-main-117/compile-appearance-final.log"
     },
     "nativeSheetTouchMargin": {
       "cssPixels": 46,
@@ -940,8 +927,7 @@
     },
     "finalDocs": {
       "passed": true,
-      "log": "validation/integrated-main-633-final/docs-final.log",
-      "scope": "Source-revalidation repair, material integration and current actual AVKit module results; earlier versioned failures retained."
+      "log": "validation/integrated-main-117-final/docs-final.log"
     },
     "videoControlsClone": {
       "scope": "Controls DOM clone ownership; fixture proof only, actual mobile YouTube cloning not established",
@@ -4018,153 +4004,47 @@
       }
     },
     "latestMainIntegration": {
-      "summary": {
-        "sourceCommit": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
-        "baseCommit": "633baacd32cb9aa32789dfe4472c880311df50cc",
-        "selectionConsumerTests": 265,
-        "associatedTests": 343,
-        "uniqueTotal": 608,
-        "logs": [
-          "validation/materials-merge/selection-conflict-resolution.json",
-          "validation/integrated-main-633-final/targeted.log"
-        ],
-        "compile": {
-          "passed": true,
-          "log": "validation/integrated-main-633-final/compile.log"
+      "sourceCommit": "657376c7f1096dba3c02df2cf08b820406a3064a",
+      "baseMain": "11732fa311d829807c41fd45573ba091196ae904",
+      "testFiles": 13,
+      "uniqueTestsPassed": 590,
+      "groups": [
+        {
+          "file": "validation/integrated-main-117/related-targeted.log",
+          "files": 9,
+          "passed": 384
         },
-        "previousSourceFix": {
-          "uniqueTests": 290,
-          "runtimeCoverage": "100% in statements, branches, functions and lines; runtime source unchanged by633 integration",
-          "evidence": "validation/selection-runtime-source-combination/summary.json",
-          "coverage": "validation/selection-runtime-source-combination/coverage/verification.json"
+        {
+          "file": "validation/integrated-main-117/verification-ownership.log",
+          "files": 1,
+          "passed": 21
         },
-        "sourceAndIndexReview": "merge-main-633-review.json",
-        "scope": "Targeted integration checks only; no local full-suite run."
-      },
-      "selectionConflictResolution": {
-        "at": "2026-10-15T15:35:51.669443+00:00",
-        "incoming": "633baacd3 (#997)",
-        "file": "tests/selectionTranslatorLifecycle.test.ts",
-        "conflictResolution": [
-          "Union mobile runtime/visualViewport/modal imports and upstream materialCapture imports/ports",
-          "Retain real-DOM optional/deferred mounting harness and all four Safari runtime combination cases",
-          "Add material document dispatchEvent port for ordinary harness and preserve real-DOM integration mode",
-          "Return material extraction/generation/capture/real begin+complete orchestration spies alongside mobile runtime mount API"
-        ],
-        "retainedStaticItTitles": {
-          "ours": 137,
-          "theirs": 119,
-          "merged": 140,
-          "missing": []
+        {
+          "file": "validation/merge-117-popup-lifecycle.log",
+          "files": 1,
+          "passed": 78
         },
-        "test": {
-          "command": "FLUENTREAD_TEST_MAX_WORKERS=1 pnpm exec vitest run tests/selectionTranslatorLifecycle.test.ts --maxWorkers=1 --maxConcurrency=3",
-          "cases": 265,
-          "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/materials-merge/selection-lifecycle.log"
+        {
+          "file": "validation/integrated-main-117/mount-merge.log",
+          "files": 1,
+          "passed": 45
         },
-        "scope": "Only owned test resolved/staged; no other file edited or staged by this agent. Production SFC conflict resolved separately by root. No business method replacement: begin/complete capture invoke actual materialCapture functions, extraction and background clients are controlled ports. No browser/device/build/commit/push.",
-        "sha256": "696f78208b59d7be3cb02791bf815a40835ffdc1a004dfee18eb78257f8fadbc"
-      },
-      "review": {
-        "reviewedAt": "2026-10-15T15:38:07.711600+00:00",
-        "mode": "read-only pending-index/worktree union review; merge completed by owner during review",
-        "sourceHeadAtStart": "e88c24bd428dd2141fc4284ff11401ce8556f947",
-        "sourceHeadAtEnd": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
-        "upstream": "633baacd32cb9aa32789dfe4472c880311df50cc",
-        "unmergedPathsAtEnd": [],
-        "blockingFindings": [],
-        "upstreamPreservation": {
-          "changedUpstreamFiles": 113,
-          "exactUpstreamFiles": 107,
-          "unionFiles": [
-            "src/features/selection-translation/ui/SelectionTranslator.vue",
-            "tests/architecture/vue-verification-owners.json",
-            "tests/selectionTranslatorLifecycle.test.ts",
-            "tests/test-matrix.json",
-            "tests/userscriptViteConfig.test.ts",
-            "vitest.coverage.config.ts"
-          ],
-          "allNewMaterialProductionCodeExactUpstream": true
-        },
-        "mobileRepair": {
-          "runtimeExactPreMerge": true,
-          "sfcRevalidateSourceExposeRetained": true,
-          "touchOwnershipNativeSelectionMenuViewportBranchesRetained": true,
-          "headerCombinesMobileAndMaterial": true,
-          "nativeFullscreenPopupViewportAndContainerExactPreMerge": true,
-          "previous4dDeviceResultsNotReclaimed": true
-        },
-        "materialInterfaces": {
-          "sourceLanguage": "Existing vocabularySourceLanguage(contentRequest), explicit source/target language props and video inputs retained; new optional ReadingSelection.material does not change language direction.",
-          "privacy": "SFC save exits in private context; reading material snapshot only nonprivate; beginMaterialCapture exits before generation lookup; client and background both reject private/incognito.",
-          "modelBoundary": "ReadingPanel and VideoSentenceLearning construct explicit text/context/sentence model request objects; local material source is not spread into model transport.",
-          "captureOwnership": "vocabulary request token/content request check after generation await and actual upsert success, then guarded reference completion; stale material operation does not authorize a new selection."
-        },
-        "video": {
-          "learningSourceAndContentPublicExactUpstream": true,
-          "oldSentenceLearningHostReexportsPreserved": true,
-          "nativeModePolicyUnchanged": true
-        },
-        "testAndCoverage": {
-          "matrixPreservesBoth": {
-            "e88c24bd428dd2141fc4284ff11401ce8556f947": true,
-            "633baacd32cb9aa32789dfe4472c880311df50cc": true
-          },
-          "coveragePreservesBoth": {
-            "e88c24bd428dd2141fc4284ff11401ce8556f947": true,
-            "633baacd32cb9aa32789dfe4472c880311df50cc": true
-          },
-          "selectionWorktreeContainsMobileCombinationAndMaterialOwnershipCases": true,
-          "vueOwnersMobileBehaviorAndNewMaterialOwnersRetained": true,
-          "noTestsRerunByReviewer": true
-        },
-        "i18n": {
-          "extensionMaterialJsonAndSourceExactUpstream": true,
-          "userscriptProjectionRetainsMobileFiltersAndPublishedDocumentFreeze": true,
-          "newRemoteLanguageCommit": "50e59c08290b47af8ea0d91c9d8403a8841c304f",
-          "newPinnedResources": [
-            {
-              "file": "userscript/languages/es-ES.be72661f69196d35.json",
-              "exactPinnedCommit": true,
-              "contentDigest": "be72661f69196d35"
-            },
-            {
-              "file": "userscript/languages/fr-FR.ecb180570edeb097.json",
-              "exactPinnedCommit": true,
-              "contentDigest": "ecb180570edeb097"
-            },
-            {
-              "file": "userscript/languages/ja-JP.a2e0e46262be844e.json",
-              "exactPinnedCommit": true,
-              "contentDigest": "a2e0e46262be844e"
-            },
-            {
-              "file": "userscript/languages/ko-KR.496a2393c33e1f1a.json",
-              "exactPinnedCommit": true,
-              "contentDigest": "496a2393c33e1f1a"
-            },
-            {
-              "file": "userscript/languages/ru-RU.3ae9903f73059e86.json",
-              "exactPinnedCommit": true,
-              "contentDigest": "3ae9903f73059e86"
-            }
-          ],
-          "legacyGreasyForkProjectionUsesOldPublishedDocumentSourceIntentionally": true
-        },
-        "scopeLimits": [
-          "Integration correctness review, not a new material feature audit or live acceptance.",
-          "Source changed for material integration; do not claim all selection/video learning production bytes remain old4d.",
-          "Future wrapper must use new owner-announced Safari resources; no build/install/UI here."
-        ],
-        "actions": {
-          "sourceEdits": false,
-          "indexEdits": false,
-          "commit": false,
-          "testsOrBuilds": false,
-          "deviceOrExternalMessages": false
+        {
+          "file": "validation/integrated-main-117/services-merge.log",
+          "files": 1,
+          "passed": 62
         }
-      }
+      ],
+      "compile": "passed",
+      "mountStrictCoverage": "100% all four dimensions; same45 tests, not additional unique tests",
+      "scope": "Targeted Popup, onboarding, diagnostic consumers, permission intersections and verification ownership; not a full local suite",
+      "independentReview": "Sibling source review of mount/services and root review of diagnostic retry grant path; original fullmask/inner drawer/scrollbar gap retained",
+      "newIntegrationRepairs": [
+        "Route diagnostic retry through synchronous Safari user-gesture permission entry",
+        "Preserve permission-read failures as explicit site access feedback, outside provider diagnostics",
+        "Apply existing46px mobile touch target budget to new Popup onboarding/diagnostic/startup controls"
+      ],
+      "productRuntimeEvidence": "productionPopup117: nine production Chromium cases passed; viewport/coarse/Android-marker fixtures only. Actual633 Safari selection and228 YouTube remain versioned prior evidence."
     },
     "sourceRevalidation": {
       "summary": {
@@ -6547,6 +6427,154 @@
       "allDiscoveredPopupResourcesByteIdentical": true,
       "opaqueImports": [],
       "limitation": "Computed/runtime URLs and extension background/content scripts are outside this bounded popup graph; prior UI acceptance remains prior-version evidence."
+    },
+    "onboardingMainIntegration": {
+      "sourceCommit": "657376c7f1096dba3c02df2cf08b820406a3064a",
+      "baseMain": "11732fa311d829807c41fd45573ba091196ae904",
+      "testFiles": 13,
+      "uniqueTestsPassed": 590,
+      "groups": [
+        {
+          "file": "validation/integrated-main-117/related-targeted.log",
+          "files": 9,
+          "passed": 384
+        },
+        {
+          "file": "validation/integrated-main-117/verification-ownership.log",
+          "files": 1,
+          "passed": 21
+        },
+        {
+          "file": "validation/merge-117-popup-lifecycle.log",
+          "files": 1,
+          "passed": 78
+        },
+        {
+          "file": "validation/integrated-main-117/mount-merge.log",
+          "files": 1,
+          "passed": 45
+        },
+        {
+          "file": "validation/integrated-main-117/services-merge.log",
+          "files": 1,
+          "passed": 62
+        }
+      ],
+      "compile": "passed",
+      "mountStrictCoverage": "100% all four dimensions; same45 tests, not additional unique tests",
+      "scope": "Targeted Popup, onboarding, diagnostic consumers, permission intersections and verification ownership; not a full local suite",
+      "independentReview": "Sibling source review of mount/services and root review of diagnostic retry grant path; original fullmask/inner drawer/scrollbar gap retained",
+      "newIntegrationRepairs": [
+        "Route diagnostic retry through synchronous Safari user-gesture permission entry",
+        "Preserve permission-read failures as explicit site access feedback, outside provider diagnostics",
+        "Apply existing46px mobile touch target budget to new Popup onboarding/diagnostic/startup controls"
+      ],
+      "productRuntimeEvidence": "productionPopup117: nine production Chromium cases passed; viewport/coarse/Android-marker fixtures only. Actual633 Safari selection and228 YouTube remain versioned prior evidence."
+    },
+    "userscriptAppearanceRepair": {
+      "atEpochMs": 1792083775138,
+      "status": "passed",
+      "sourceFiles": {
+        "userscript/interfaceAppearanceDataPlugin.ts": "3282ec6466771deae04bcd6d175967401198e57e9d1228250a6da338ba1fb39e",
+        "userscript/vite.config.ts": "45786c1e8cbf43dac0c3b1fd631c23616f3ad659529dca29199ec797534e0056",
+        "tests/userscriptViteConfig.test.ts": "a9f50ab60385ed7fad393ea9a33b22c64e6b30d872fe769be1fc70c4505b96a4"
+      },
+      "sharedInterfaceAppearanceSourceSHA256": "7dd32958d5a549b053709f5915fd3830526ad058fda495277bcf322aff5f3b5c",
+      "actualArtifact": {
+        "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/userscript/fluent-read.user.js",
+        "bytes": 2093894,
+        "sha256": "475d6ec29b4174aa2b9a8ed88d9b8cfec626cb98fd0971f1021cc4c26c18ba2a",
+        "budgetBytes": 2095100,
+        "headroomBytes": 1206,
+        "buildExitCode": 0,
+        "verifyExitCode": 0,
+        "logs": [
+          "userscript-appearance-root-final-build.log",
+          "userscript-appearance-root-final-verify.log"
+        ]
+      },
+      "tests": {
+        "uniqueFullFileTestsPassed": 228,
+        "file": "tests/userscriptViteConfig.test.ts",
+        "newSubsetTests": 35,
+        "existingFileTests": 193,
+        "subsetCoverageRunIsNotAdditionalUniqueTests": true,
+        "fullFileLog": "userscript-config-file-final.log",
+        "subsetFinalLog": "userscript-appearance-coverage-final.log",
+        "noNewSkipOrOnly": true
+      },
+      "coverage": {
+        "scope": "userscript/interfaceAppearanceDataPlugin.ts",
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100,
+        "reportsDirectory": "userscript-appearance-coverage-final",
+        "initial9827BranchFailurePreserved": "userscript-appearance-coverage.log",
+        "finalExitCode": 0
+      },
+      "audit": {
+        "exitCode": 0,
+        "status": "ok",
+        "files": 748,
+        "cases": 13721,
+        "log": "userscript-appearance-audit.log"
+      },
+      "semanticConsumer": {
+        "realModuleExecuted": true,
+        "skinCount": 14,
+        "fontCount": 10,
+        "allValuesAndRecursiveObjectEnumerationOrder": true,
+        "arrayOrderAndValueTypes": true,
+        "normalizationRetiredAndFallbackCases": true,
+        "sameDecodedObjectReferencesInExistingMaps": true,
+        "synchronousInitialization": true,
+        "standardAndStandaloneActualViteModes": true,
+        "GreasyForkDisabled": true,
+        "unknownASTRejected": true,
+        "corruptedCodecRejected": true
+      },
+      "unchangedAgainstHEAD": {
+        "package.json": true,
+        "pnpm-lock.yaml": true,
+        "scripts/verify-userscript-build.mjs": true,
+        "userscript/languageBundles.ts": true,
+        "userscript/metadata.ts": true
+      },
+      "noLoss": true,
+      "noNewDependencies": true,
+      "pinUnchanged": true,
+      "budgetUnchanged": true,
+      "licenseNoticesPreserved": true,
+      "sharedSrcUnchanged": true,
+      "firstBudgetFailurePreserved": {
+        "rootBytes": 2097258,
+        "budget": 2095100,
+        "over": 2158,
+        "originalParentBuildEvidence": "See parent integrated-main-117 summary; investigation retains separate same-tmp control failure",
+        "tmpControlBytes": 2098186,
+        "tmpControlVerifyLog": "userscript-integrated657-verified-control-verify.log"
+      },
+      "baselineAndExperiments": "userscript-size-investigation.json",
+      "rootVsTmpBoundary": "928-byte historic difference isolated to gzip encoded length total over identical14decoded blocks; encoding runtime origin not asserted. Final root artifact now byte-identical to successful tmp proof, so not a fixed path effect. Minifier identifier renames observed in old artifacts.",
+      "cleanup": "userscript-baseline-worktree-cleanup.json",
+      "resourceBudget": {
+        "maxWorkers": 1,
+        "concurrency": 3,
+        "cpuTarget": 40
+      },
+      "gitAddPerformed": false,
+      "commitPerformed": false,
+      "globalCoverageRegistration": {
+        "registered": true,
+        "file": "vitest.coverage.config.ts",
+        "registeredBy": "parent/root",
+        "entry": "userscript/interfaceAppearanceDataPlugin.ts",
+        "readOnlyVerifiedByThisAgent": true
+      },
+      "baseSourceCommit": "657376c7f1096dba3c02df2cf08b820406a3064a",
+      "finalCommit": "acae06466490e7899bd55f84414650fe645ba1e9",
+      "commitScope": "The raw report recorded the pre-change base; its file hashes and final artifact identify the uncommitted build. This index adds the committed repair."
     }
   },
   "productionBrowserSuites": [
@@ -6689,254 +6717,84 @@
   ],
   "artifacts": {
     "chrome": {
-      "sha256": "855609934fd04f78698612edbaa15a6efd91a8694621606a679ede863e7da666",
-      "files": 476,
+      "sha256": "54884ed463a841573284c12a3c1804b0fe4c156ad9173e46ccda4267cc158c9e",
+      "files": 478,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "firefox": {
-      "sha256": "2c223daa260b73ce781578301296d36347a1d0afc46839f0a4bc393be33030f1",
-      "files": 476,
+      "sha256": "31f6303330c56b56b71e5582a1d0590c19b954eca861438bf76f4581c9036ba4",
+      "files": 478,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "safari": {
-      "sha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
-      "files": 465,
+      "sha256": "2370a210fd9d816fcbfe569a9470406866342b0b2f7da9343a045beeab22de7c",
+      "files": 467,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "userscript": {
-      "sha256": "2d71101b42961c92987684c066556971ca6c70da52cf836ef4f7c4e61b1b0018",
-      "bytes": 2091317,
+      "sha256": "475d6ec29b4174aa2b9a8ed88d9b8cfec626cb98fd0971f1021cc4c26c18ba2a",
+      "bytes": 2093894,
+      "budget": 2095100,
       "verifier": "passed"
     }
   },
   "safari": {
-    "createdAt": "2026-10-15T15:40:40.941406+00:00",
-    "artifactStatus": "Frozen073/material633 artifact: all3 native SDK builds and465resource per-file verification passed; build-only scope, no new device acceptance",
-    "researchProbe": false,
-    "reviewed": true,
-    "productionWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
-    "productionWebResourceCount": 465,
-    "nativeContainerSourceSha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
-    "nativeFullscreenSourceSha256": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
-    "popupAppSourceSha256": "690998e1fdb09eada4e90445e11665d893d5396a39d7b007165c2c5b71b71a26",
-    "popupCssSourceSha256": "8fe833c2781247d0c2308090dd795852d51852bc254bafa74f3c75d87b933b55",
-    "mountSourceSha256": "208d90c048ac6014a6a97ae78db3cdb329a559d29635009d986892bbe7cc88cc",
-    "wrapper": {
-      "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
-      "version": "0.0.38",
-      "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
-      "checkedReferences": 10,
-      "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
-      "artifactCount": 465,
-      "packager": {
-        "name": "safari-web-extension-packager",
-        "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/safari-web-extension-packager"
-      },
-      "projects": [
-        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-633-final/FluentRead/FluentRead.xcodeproj"
-      ],
-      "copiedExtensions": [
-        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-633-final/FluentRead/Shared (Extension)/Resources"
-      ],
-      "containerGuides": [
-        {
-          "sha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
-          "files": [
-            "Shared (App)/ViewController.swift",
-            "Shared (App)/Resources/Base.lproj/Main.html",
-            "Shared (App)/Resources/Style.css",
-            "Shared (App)/Resources/Script.js",
-            "iOS (App)/Info.plist"
-          ],
-          "layout": "shared",
-          "locales": [
-            "en",
-            "zh-Hans"
-          ],
-          "iosSettingsMinimum": "26.2",
-          "iosSettingsPolicy": "physical device with actual DEVELOPMENT_TEAM only; Simulator and no-team builds use manual steps; physical-device API not accepted yet"
-        }
-      ],
+    "nativeBuildsComplete": false,
+    "currentWebVerified": true,
+    "productionWebResourceSha256": "2370a210fd9d816fcbfe569a9470406866342b0b2f7da9343a045beeab22de7c",
+    "plan": {
+      "createdAt": "2026-10-15T16:30:44.531398+00:00",
+      "phase": "integrated-main-117-final",
+      "state": "blocked-after-same-command-human-scope-evidence-re-review",
+      "upstreamBase": "11732fa311d829807c41fd45573ba091196ae904",
+      "extensionInput": ".output/safari-mv2",
+      "wrapper": ".output/safari-xcode-integrated-main-117-final",
+      "derivedSimulator": ".output/safari-derived-ios-integrated-main-117-final",
+      "derivedMacOS": ".output/safari-derived-macos-integrated-main-117-final",
+      "iphoneOSTargetOutput": ".output/safari-target-iphoneos-integrated-main-117-final",
       "bundleId": "org.example.FluentReadDevelopment",
-      "platform": "both",
-      "minimumOS": {
-        "ios": "26.0",
-        "macos": "14.0"
+      "resourceVerifier": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/verify-compiled-integrated-main-117-final.mjs",
+      "evidenceReport": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-integrated-main-117-final.json",
+      "requirements": [
+        "Explicit parent Safari ready notice plus exact expectedtreehash/files before input inspection or packaging",
+        "New suffix directories only; original633 andotheroldrecords preserved",
+        "resource-safe defaultglobalconcurrency3/maxWorkers1; xcodebuild-jobs1 sequentialSimulator→macOS→iPhoneOS",
+        "CODE_SIGNING_ALLOWED=NO;CODE_SIGNING_REQUIRED=NO; noaccount/provisioning",
+        "All compiledWeb files must byte-match original source andwrapper; reject extraWebresources/symlinks; inspect nativeguide andnoTeam signature",
+        "No install/launch/device/AVD operations; report build-only, prior0d/228/633 actual UI remains version-specific"
+      ],
+      "readonlyUnionReview": {
+        "mount": "No new blocker identified: hydration guards atbothawaitboundaries plus existing nonblockingplatformprobe,own-marker cleanup/delayedread rejection andbothroots retained.",
+        "services": "No new blocker identified:permissionspreflight,zeroidle/failure explicit,doublegrantedcheck/update filter wraps upstreamdiagnostic/cooldown; current/abortownership retained.",
+        "testsRepeated": false
       },
-      "minimumSafari": "26.0",
-      "signed": false,
-      "installed": false
-    },
-    "platforms": {
-      "iosSimulator": {
-        "createdAt": "2026-10-15T15:41:54.181Z",
-        "platform": "iosSimulator",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-633-final/Build/Products/Release-iphonesimulator/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-633-final/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
-        "source": {
-          "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
-          "version": "0.0.38",
-          "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
-          "checkedReferences": 10,
-          "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
-          "artifactCount": 465
-        },
-        "compiledWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
-        "compiledWebResourceCount": 465,
-        "nativeExtras": [
-          "FluentRead Extension",
-          "Info.plist"
-        ],
-        "nativeExecutableSha256": "90f1df99b39f7a27964f4a9dbe56ef00f8dea69c156ad2dc42a76dc18e418fb5",
-        "guideResourcesByteIdentical": true,
-        "build": {
-          "result": "passed",
-          "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-integrated-main-633-final.log",
-          "configuration": "Release",
-          "jobs": 1,
-          "CODE_SIGNING_ALLOWED": "NO",
-          "CODE_SIGNING_REQUIRED": "NO"
-        },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-integrated-main-633-final.log",
-        "signatureInspectionExitCode": 0,
-        "signatureSummary": "linker ad-hoc; no developer team",
-        "installedByThisAgent": false,
-        "launchedByThisAgent": false
-      },
-      "macos": {
-        "createdAt": "2026-10-15T15:42:42.698Z",
-        "platform": "macos",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-633-final/Build/Products/Release/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-633-final/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
-        "source": {
-          "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
-          "version": "0.0.38",
-          "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
-          "checkedReferences": 10,
-          "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
-          "artifactCount": 465
-        },
-        "compiledWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
-        "compiledWebResourceCount": 465,
-        "nativeExtras": [],
-        "nativeExecutableSha256": "1fb71397ca261d1d785fc6c2ec8a77a11f0762f7c3ce0c437b3f40ab98826c89",
-        "guideResourcesByteIdentical": true,
-        "build": {
-          "result": "passed",
-          "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-integrated-main-633-final.log",
-          "configuration": "Release",
-          "jobs": 1,
-          "CODE_SIGNING_ALLOWED": "NO",
-          "CODE_SIGNING_REQUIRED": "NO"
-        },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-integrated-main-633-final.log",
-        "signatureInspectionExitCode": 0,
-        "signatureSummary": "linker ad-hoc; no developer team",
-        "installedByThisAgent": false,
-        "launchedByThisAgent": false
-      },
-      "iphoneos": {
-        "createdAt": "2026-10-15T15:43:24.456Z",
-        "platform": "iphoneos",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-633-final/build/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-633-final/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
-        "source": {
-          "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
-          "version": "0.0.38",
-          "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
-          "checkedReferences": 10,
-          "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
-          "artifactCount": 465
-        },
-        "compiledWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
-        "compiledWebResourceCount": 465,
-        "nativeExtras": [
-          "FluentRead Extension",
-          "Info.plist"
-        ],
-        "nativeExecutableSha256": "72d2c6f562535b80abd46af070e55f59ee53aa43c15fed0cc852f701d2f4cdd2",
-        "guideResourcesByteIdentical": true,
-        "build": {
-          "result": "passed",
-          "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-integrated-main-633-final.log",
-          "configuration": "Release",
-          "jobs": 1,
-          "CODE_SIGNING_ALLOWED": "NO",
-          "CODE_SIGNING_REQUIRED": "NO"
-        },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-integrated-main-633-final.log",
-        "signatureInspectionExitCode": 1,
-        "signatureSummary": "unsigned; no developer team",
-        "installedByThisAgent": false,
-        "launchedByThisAgent": false
+      "updatedAt": "2026-10-15T16:40:03.433386+00:00",
+      "expectedWebSha256": "2370a210fd9d816fcbfe569a9470406866342b0b2f7da9343a045beeab22de7c",
+      "expectedWebFiles": 467,
+      "expectedSourceCommitShort": "657376c7f",
+      "readOnlySourceVerification": "passed",
+      "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
+      "newWrapperExists": false,
+      "nativeFullscreenSha256": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
+      "approvalReview": {
+        "action": "resource-safe Apple dual-platform package generation in new117 wrapper with no signing/install/launch",
+        "executed": false,
+        "reason": "Reviewer considered native packaging authorized only by agent delegation and did not find direct human authorization; request rejected.",
+        "nextStep": "Current human confirmation explicitly covering unsigned wrapper generation plus sequential3native compilation; no installation/launch/signing/accounts/publication. No further retry or alternate route before that.",
+        "reReview": {
+          "humanScopeEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/native-build-human-scope-evidence.json",
+          "sameCommand": true,
+          "executed": false,
+          "result": "rejected",
+          "reason": "Reviewer did not accept historical tool-retrieved human context as current authorization for specific packaging side effects; requests current direct human confirmation.",
+          "attemptsStopped": true,
+          "newWrapperExists": false,
+          "nativeBuildsStarted": false
+        }
       }
     },
-    "nativeBuildsComplete": true,
-    "resourceSnapshotFrozen": true,
-    "formalWebValidation": {
-      "result": "passed",
-      "steps": 8,
-      "resultsPath": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/results.json",
-      "resultsSha256": "024e41df9bc6bf658f0efb9da9fca2197341f6edb150d96a5d84463759028994"
-    },
-    "sourceValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/source-at-build.json",
-    "independentReview": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-633-review.json",
-    "webValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/results.json",
-    "nativeSourceValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/native-system-choice-final/native-validation-summary.json",
-    "packageLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/package-integrated-main-633-final.log",
-    "schemesLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/schemes-integrated-main-633-final.log",
-    "resourceDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/resources-delta-selection-to-633-final.json",
-    "previousAcceptance": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-selection-source-revalidation-final.json",
-    "previousProductionWebResourceSha256": "4d973883ac2add80087a29a0979cbbc70591dfa4e7fa32be5f0b4c2d8b0c8052",
-    "versionHistoryNote": "Integrates upstream633 material workspace into073. Preserves source-revalidation fix, nativeFullscreen7ae and containerf84. Material interfaces/SFC/video learning source and sharedi18n are new; do not infer all selection/video learning bytes unchanged. Current228 actualYouTube and prior4d source-revalidation artifacts remain separate historical snapshots; no installation/UI by packaging agent.",
-    "acceptanceBoundary": "Native compilation/resource identity only; root/UI agent owns actual device/browser acceptance. No installation or device control by packaging agent.",
-    "resourceSafeRunner": {
-      "maxWorkers": 1,
-      "concurrency": 3,
-      "xcodeJobs": 1
-    },
-    "installedByThisAgent": false,
-    "launchedByThisAgent": false,
-    "beforeMaskFailureEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-popup-mask/before/report.json",
-    "simulatorAppHandedToUiAgent": false,
-    "deviceInstallationBoundary": "No device installation, launch or UI by packaging agent in integrated phase.",
-    "popupServicesSourceSha256": "8083cde0601b48e0b02a606cfd45eeea408eb103ac5cdd29fe2eca9a79ebe3bd",
-    "sourceCommit": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
-    "priorActualUiEvidence": {
-      "sourceCommit": "215e40fba",
-      "productionWebResourceSha256": "0d624626ee4fa1efe35a3b8c11fa6b5db80fc3ce815fdf95a26ffaeeed827033",
-      "android": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/android-runtime/firefox-attempt4-layout-summary.json",
-      "ios": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/drawer-layout-keyboard-search-discovered-summary.json",
-      "mobileSourceEquivalence": "Partial continuity only; see current mobileSourceComparison andd3 review, not all187 unchanged.",
-      "limitation": "Earlier0d/228 actual UI does not validate new633 material integration or source-revalidation fix. New bundle/source identity and parent Chrome smoke are separate evidence."
-    },
-    "actualUiAcceptanceForThisArtifact": "Build-only from packaging agent; parent runs version-specific Chrome11lifecycle smoke and owns any later device installation.",
-    "newAvdAttemptPreparedOrStarted": false,
-    "deviceUiPerformedThisPhase": false,
-    "mobileSourceComparison": {
-      "comparedToSource": "8d85e62c7171cf46d150e3b2c3bf8bf25a1e6df4",
-      "unchangedPopupNativeViewportContainerPaths": [
-        "src/app/popup/PopupApp.vue",
-        "src/app/popup/PopupServices.vue",
-        "src/app/popup/mount.ts",
-        "src/app/popup/popup.css",
-        "src/features/video-subtitle/content/nativeFullscreen.ts",
-        "src/platform/dom/visualViewport.ts",
-        "scripts/safari/container/ViewController.swift"
-      ],
-      "changedProductionInputCount": 46,
-      "preciseDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/source-delta-selection-to-633-final.json",
-      "review": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-633-review.json"
-    },
-    "finalHeadClaim": false,
-    "upstreamBase": "633baacd32cb9aa32789dfe4472c880311df50cc",
-    "sourceDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/source-delta-selection-to-633-final.json",
-    "updatedAt": "2026-10-15T15:43:24.458Z",
-    "completedAt": "2026-10-15T15:43:24.527933+00:00",
-    "simulatorAppPathProvidedForLaterInstallation": true
+    "lastCompletedNativeReport": "safari/acceptance-integrated-main-633-final.json",
+    "scope": "Current wrapper generation command was rejected before execution twice; no current native build or install. Prior633/228/0d evidence remains independently versioned."
   },
   "review": {
     "code": "independent scoped review found no remaining confirmed P1/P2 regressions",
@@ -6960,6 +6818,7 @@
     "AVKit presentation, OS reclamation, real audio and VoiceOver/TalkBack require their own runtime evidence."
   ],
   "remainingAcceptance": [
+    "Current117 unsigned Safari wrapper and macOS/iOS Simulator/iPhoneOS compilation await explicit human confirmation after two approval-review rejections; commands not executed.",
     "Physical iPhone/iPad/Android and macOS Safari installation, update, permissions and disable/uninstall",
     "YouTube alternate native source track, native menu/keyboard interaction, rotation, video changes and background reclamation; scoped228 Off/reselection/reentry is separately observed",
     "Firefox Android direct entry activation while native actionmode remains open; current633 card/copy feedback/close/new source is separately observed",
@@ -7743,6 +7602,262 @@
         "cleanup": "Runner completed exit0 with final report ok and no cleanupErrors/retainedProfile; guarded owned close and profile cleanup are in runner finally. No separate new PID query."
       },
       "scope": "Source validation repair before material workspace integration; four Web/three native builds and eleven Chrome lifecycle cases passed, no Simulator installation of this4d package."
+    },
+    "material633Integration": {
+      "sourceCommit": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
+      "baseCommit": "633baacd32cb9aa32789dfe4472c880311df50cc",
+      "sourceSnapshotSha256": "cf41d5a78915b5d0a3dc6263ff8feb8069b17fc6cd7b71146af89595a03783c8",
+      "artifacts": {
+        "chrome": {
+          "sha256": "855609934fd04f78698612edbaa15a6efd91a8694621606a679ede863e7da666",
+          "files": 476,
+          "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+        },
+        "firefox": {
+          "sha256": "2c223daa260b73ce781578301296d36347a1d0afc46839f0a4bc393be33030f1",
+          "files": 476,
+          "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+        },
+        "safari": {
+          "sha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+          "files": 465,
+          "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+        },
+        "userscript": {
+          "sha256": "2d71101b42961c92987684c066556971ca6c70da52cf836ef4f7c4e61b1b0018",
+          "bytes": 2091317,
+          "verifier": "passed"
+        }
+      },
+      "safari": {
+        "createdAt": "2026-10-15T15:40:40.941406+00:00",
+        "artifactStatus": "Frozen073/material633 artifact: all3 native SDK builds and465resource per-file verification passed; build-only scope, no new device acceptance",
+        "researchProbe": false,
+        "reviewed": true,
+        "productionWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+        "productionWebResourceCount": 465,
+        "nativeContainerSourceSha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
+        "nativeFullscreenSourceSha256": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
+        "popupAppSourceSha256": "690998e1fdb09eada4e90445e11665d893d5396a39d7b007165c2c5b71b71a26",
+        "popupCssSourceSha256": "8fe833c2781247d0c2308090dd795852d51852bc254bafa74f3c75d87b933b55",
+        "mountSourceSha256": "208d90c048ac6014a6a97ae78db3cdb329a559d29635009d986892bbe7cc88cc",
+        "wrapper": {
+          "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+          "version": "0.0.38",
+          "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
+          "checkedReferences": 10,
+          "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+          "artifactCount": 465,
+          "packager": {
+            "name": "safari-web-extension-packager",
+            "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/safari-web-extension-packager"
+          },
+          "projects": [
+            "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-633-final/FluentRead/FluentRead.xcodeproj"
+          ],
+          "copiedExtensions": [
+            "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-633-final/FluentRead/Shared (Extension)/Resources"
+          ],
+          "containerGuides": [
+            {
+              "sha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
+              "files": [
+                "Shared (App)/ViewController.swift",
+                "Shared (App)/Resources/Base.lproj/Main.html",
+                "Shared (App)/Resources/Style.css",
+                "Shared (App)/Resources/Script.js",
+                "iOS (App)/Info.plist"
+              ],
+              "layout": "shared",
+              "locales": [
+                "en",
+                "zh-Hans"
+              ],
+              "iosSettingsMinimum": "26.2",
+              "iosSettingsPolicy": "physical device with actual DEVELOPMENT_TEAM only; Simulator and no-team builds use manual steps; physical-device API not accepted yet"
+            }
+          ],
+          "bundleId": "org.example.FluentReadDevelopment",
+          "platform": "both",
+          "minimumOS": {
+            "ios": "26.0",
+            "macos": "14.0"
+          },
+          "minimumSafari": "26.0",
+          "signed": false,
+          "installed": false
+        },
+        "platforms": {
+          "iosSimulator": {
+            "createdAt": "2026-10-15T15:41:54.181Z",
+            "platform": "iosSimulator",
+            "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-633-final/Build/Products/Release-iphonesimulator/FluentRead.app",
+            "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-633-final/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
+            "source": {
+              "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+              "version": "0.0.38",
+              "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
+              "checkedReferences": 10,
+              "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+              "artifactCount": 465
+            },
+            "compiledWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+            "compiledWebResourceCount": 465,
+            "nativeExtras": [
+              "FluentRead Extension",
+              "Info.plist"
+            ],
+            "nativeExecutableSha256": "90f1df99b39f7a27964f4a9dbe56ef00f8dea69c156ad2dc42a76dc18e418fb5",
+            "guideResourcesByteIdentical": true,
+            "build": {
+              "result": "passed",
+              "exitCode": 0,
+              "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-integrated-main-633-final.log",
+              "configuration": "Release",
+              "jobs": 1,
+              "CODE_SIGNING_ALLOWED": "NO",
+              "CODE_SIGNING_REQUIRED": "NO"
+            },
+            "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-integrated-main-633-final.log",
+            "signatureInspectionExitCode": 0,
+            "signatureSummary": "linker ad-hoc; no developer team",
+            "installedByThisAgent": false,
+            "launchedByThisAgent": false
+          },
+          "macos": {
+            "createdAt": "2026-10-15T15:42:42.698Z",
+            "platform": "macos",
+            "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-633-final/Build/Products/Release/FluentRead.app",
+            "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-633-final/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
+            "source": {
+              "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+              "version": "0.0.38",
+              "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
+              "checkedReferences": 10,
+              "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+              "artifactCount": 465
+            },
+            "compiledWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+            "compiledWebResourceCount": 465,
+            "nativeExtras": [],
+            "nativeExecutableSha256": "1fb71397ca261d1d785fc6c2ec8a77a11f0762f7c3ce0c437b3f40ab98826c89",
+            "guideResourcesByteIdentical": true,
+            "build": {
+              "result": "passed",
+              "exitCode": 0,
+              "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-integrated-main-633-final.log",
+              "configuration": "Release",
+              "jobs": 1,
+              "CODE_SIGNING_ALLOWED": "NO",
+              "CODE_SIGNING_REQUIRED": "NO"
+            },
+            "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-integrated-main-633-final.log",
+            "signatureInspectionExitCode": 0,
+            "signatureSummary": "linker ad-hoc; no developer team",
+            "installedByThisAgent": false,
+            "launchedByThisAgent": false
+          },
+          "iphoneos": {
+            "createdAt": "2026-10-15T15:43:24.456Z",
+            "platform": "iphoneos",
+            "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-633-final/build/FluentRead.app",
+            "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-633-final/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
+            "source": {
+              "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+              "version": "0.0.38",
+              "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
+              "checkedReferences": 10,
+              "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+              "artifactCount": 465
+            },
+            "compiledWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+            "compiledWebResourceCount": 465,
+            "nativeExtras": [
+              "FluentRead Extension",
+              "Info.plist"
+            ],
+            "nativeExecutableSha256": "72d2c6f562535b80abd46af070e55f59ee53aa43c15fed0cc852f701d2f4cdd2",
+            "guideResourcesByteIdentical": true,
+            "build": {
+              "result": "passed",
+              "exitCode": 0,
+              "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-integrated-main-633-final.log",
+              "configuration": "Release",
+              "jobs": 1,
+              "CODE_SIGNING_ALLOWED": "NO",
+              "CODE_SIGNING_REQUIRED": "NO"
+            },
+            "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-integrated-main-633-final.log",
+            "signatureInspectionExitCode": 1,
+            "signatureSummary": "unsigned; no developer team",
+            "installedByThisAgent": false,
+            "launchedByThisAgent": false
+          }
+        },
+        "nativeBuildsComplete": true,
+        "resourceSnapshotFrozen": true,
+        "formalWebValidation": {
+          "result": "passed",
+          "steps": 8,
+          "resultsPath": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/results.json",
+          "resultsSha256": "024e41df9bc6bf658f0efb9da9fca2197341f6edb150d96a5d84463759028994"
+        },
+        "sourceValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/source-at-build.json",
+        "independentReview": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-633-review.json",
+        "webValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/results.json",
+        "nativeSourceValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/native-system-choice-final/native-validation-summary.json",
+        "packageLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/package-integrated-main-633-final.log",
+        "schemesLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/schemes-integrated-main-633-final.log",
+        "resourceDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/resources-delta-selection-to-633-final.json",
+        "previousAcceptance": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-selection-source-revalidation-final.json",
+        "previousProductionWebResourceSha256": "4d973883ac2add80087a29a0979cbbc70591dfa4e7fa32be5f0b4c2d8b0c8052",
+        "versionHistoryNote": "Integrates upstream633 material workspace into073. Preserves source-revalidation fix, nativeFullscreen7ae and containerf84. Material interfaces/SFC/video learning source and sharedi18n are new; do not infer all selection/video learning bytes unchanged. Current228 actualYouTube and prior4d source-revalidation artifacts remain separate historical snapshots; no installation/UI by packaging agent.",
+        "acceptanceBoundary": "Native compilation/resource identity only; root/UI agent owns actual device/browser acceptance. No installation or device control by packaging agent.",
+        "resourceSafeRunner": {
+          "maxWorkers": 1,
+          "concurrency": 3,
+          "xcodeJobs": 1
+        },
+        "installedByThisAgent": false,
+        "launchedByThisAgent": false,
+        "beforeMaskFailureEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-popup-mask/before/report.json",
+        "simulatorAppHandedToUiAgent": false,
+        "deviceInstallationBoundary": "No device installation, launch or UI by packaging agent in integrated phase.",
+        "popupServicesSourceSha256": "8083cde0601b48e0b02a606cfd45eeea408eb103ac5cdd29fe2eca9a79ebe3bd",
+        "sourceCommit": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
+        "priorActualUiEvidence": {
+          "sourceCommit": "215e40fba",
+          "productionWebResourceSha256": "0d624626ee4fa1efe35a3b8c11fa6b5db80fc3ce815fdf95a26ffaeeed827033",
+          "android": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/android-runtime/firefox-attempt4-layout-summary.json",
+          "ios": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/drawer-layout-keyboard-search-discovered-summary.json",
+          "mobileSourceEquivalence": "Partial continuity only; see current mobileSourceComparison andd3 review, not all187 unchanged.",
+          "limitation": "Earlier0d/228 actual UI does not validate new633 material integration or source-revalidation fix. New bundle/source identity and parent Chrome smoke are separate evidence."
+        },
+        "actualUiAcceptanceForThisArtifact": "Build-only from packaging agent; parent runs version-specific Chrome11lifecycle smoke and owns any later device installation.",
+        "newAvdAttemptPreparedOrStarted": false,
+        "deviceUiPerformedThisPhase": false,
+        "mobileSourceComparison": {
+          "comparedToSource": "8d85e62c7171cf46d150e3b2c3bf8bf25a1e6df4",
+          "unchangedPopupNativeViewportContainerPaths": [
+            "src/app/popup/PopupApp.vue",
+            "src/app/popup/PopupServices.vue",
+            "src/app/popup/mount.ts",
+            "src/app/popup/popup.css",
+            "src/features/video-subtitle/content/nativeFullscreen.ts",
+            "src/platform/dom/visualViewport.ts",
+            "scripts/safari/container/ViewController.swift"
+          ],
+          "changedProductionInputCount": 46,
+          "preciseDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/source-delta-selection-to-633-final.json",
+          "review": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-633-review.json"
+        },
+        "finalHeadClaim": false,
+        "upstreamBase": "633baacd32cb9aa32789dfe4472c880311df50cc",
+        "sourceDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/source-delta-selection-to-633-final.json",
+        "updatedAt": "2026-10-15T15:43:24.458Z",
+        "completedAt": "2026-10-15T15:43:24.527933+00:00",
+        "simulatorAppPathProvidedForLaterInstallation": true
+      }
     }
   },
   "productionBrowserSuitesScope": "Initial, permission, popup and selection suites retain their own versioned artifacts. The clone, native-selection and keyboard revisions have separately versioned production browser suites; none is physical-device acceptance.",
@@ -14594,7 +14709,7 @@
       "preflight": "preflight-sandbox-blocked.json records local-server EPERM before browser launch; subsequent approved isolated run passed."
     }
   },
-  "sourceCommit": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
+  "sourceCommit": "acae06466490e7899bd55f84414650fe645ba1e9",
   "productionSelectionSourceRevalidation": {
     "report": "selection-source-revalidation-integrated-633/report.json",
     "sha256": "03b83e99143ea4e2efc6b90f51574a54748ce3e9b845abec752e5a1f897c183b",
@@ -15310,5 +15425,230 @@
     "webFilesCompared": 465,
     "webTreeSHA256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
     "scope": "Separate actual Simulator update and source lifecycle evidence; packaging-agent installedByThisAgent remains false."
+  },
+  "extensionBuildSourceCommit": "657376c7f",
+  "productionPopup117": {
+    "report": "production-popup-integrated-117/attempt2/report.json",
+    "sha256": "21b0f7f20fc4e76492399a44b7fbcb503aef9b6fef538ebff479e0df7b81fb9c",
+    "review": {
+      "reviewedAt": "2026-10-15T16:47:14.310892+00:00",
+      "status": "passed-within-declared-production-Chromium-fixture-scope",
+      "rootApprovedSource": "657376c7f",
+      "artifact": {
+        "algorithm": "sha256 of sorted UTF-8 records: relativePath NUL fileSha256 NUL byteLength LF",
+        "sha256": "999b76030704d7a5269209761f511fae000e8441bba1357adedb5fbfac2d353a",
+        "fileCount": 478,
+        "totalBytes": 62267159,
+        "manifest": "artifact-tree-manifest.json",
+        "unchangedAfterValidation": true
+      },
+      "casesPassed": 9,
+      "screenshotsViewed": [
+        "desktop-english-intrinsic-380.png",
+        "light-320-keyboard-search.png",
+        "light-320-keyboard-dismissed-while-open.png",
+        "light-320-keyboard-cleared.png",
+        "light-320-last-service-scrolled.png",
+        "light-320-keyboard-dismissed-reopened.png",
+        "light-390-keyboard-search.png",
+        "light-390-keyboard-dismissed-while-open.png",
+        "light-390-keyboard-cleared.png",
+        "light-390-last-service-scrolled.png",
+        "light-390-keyboard-dismissed-reopened.png",
+        "dark-320-keyboard-search.png",
+        "dark-320-keyboard-dismissed-while-open.png",
+        "dark-320-keyboard-cleared.png",
+        "dark-320-last-service-scrolled.png",
+        "dark-320-keyboard-dismissed-reopened.png",
+        "dark-390-keyboard-search.png",
+        "dark-390-keyboard-dismissed-while-open.png",
+        "dark-390-keyboard-cleared.png",
+        "dark-390-last-service-scrolled.png",
+        "dark-390-keyboard-dismissed-reopened.png",
+        "117-onboarding-coarse-320.png",
+        "117-onboarding-confirmed-coarse-320.png",
+        "117-onboarding-android-marker-fine-390.png",
+        "117-onboarding-confirmed-android-marker-fine-390.png",
+        "117-diagnostic-collapsed-coarse-320.png",
+        "117-diagnostic-expanded-coarse-320.png",
+        "117-diagnostic-collapsed-android-marker-fine-390.png",
+        "117-diagnostic-expanded-android-marker-fine-390.png"
+      ],
+      "screenshotsViewedCount": 29,
+      "newUiMetrics": {
+        "117-language-onboarding-touch-targets": [
+          {
+            "surface": "coarse-320",
+            "controls": 8,
+            "minimumWidth": 140,
+            "minimumHeight": 46,
+            "saved": {
+              "uiLanguage": "zh-CN",
+              "uiLanguageSetupCompleted": true
+            }
+          },
+          {
+            "surface": "android-marker-fine-390",
+            "controls": 8,
+            "minimumWidth": 140,
+            "minimumHeight": 46,
+            "saved": {
+              "uiLanguage": "en-US",
+              "uiLanguageSetupCompleted": true
+            }
+          }
+        ],
+        "117-diagnostic-popover-coarse-320": {
+          "collapsed": {
+            "width": 46,
+            "height": 46
+          },
+          "popover": {
+            "x": 15,
+            "y": 24,
+            "right": 291,
+            "bottom": 241,
+            "width": 276,
+            "height": 217
+          },
+          "buttons": 5,
+          "minWidth": 46,
+          "minHeight": 46,
+          "close": {
+            "width": 46,
+            "height": 46,
+            "edgeHits": [
+              true,
+              true,
+              true,
+              true
+            ]
+          }
+        },
+        "117-diagnostic-popover-android-marker-fine-390": {
+          "collapsed": {
+            "width": 46,
+            "height": 46
+          },
+          "popover": {
+            "x": 75,
+            "y": 296.5,
+            "right": 351,
+            "bottom": 530,
+            "width": 276,
+            "height": 233.5
+          },
+          "buttons": 5,
+          "minWidth": 46,
+          "minHeight": 46,
+          "close": {
+            "width": 46,
+            "height": 46,
+            "edgeHits": [
+              true,
+              true,
+              true,
+              true
+            ]
+          }
+        }
+      },
+      "observations": [
+        "Desktop Chinese320/English380 intrinsic widths remain independent of a narrow180px viewport; not native toolbar first-open proof.",
+        "All four320/390 light/dark service drawers retain full-page mask,16px search,46px back/close/clear, reachable last service and return to visible source row; input remains after visible-viewport restoration, clears by real button and resets on reopen.",
+        "Coarse320 and fine+explicit Android marker390 guide language choices/confirm each meet46px; real clicks persist Chinese/English and reach main panel. Marker is a DOM selector fixture, not Firefox platform API execution or fresh-install proof.",
+        "Production empty-document scan creates no-content diagnostic with no title/body translation request. Both popovers remain within viewport/shell; mounted buttons and collapsed trigger meet46px; actual close works with center/four-edge hit proof.",
+        "All29 original screenshots read individually. No overlapping close/scrollbar, incomplete backdrop, horizontal overflow or unreadable language choice found. Long service lists are intentionally internally scrollable; input example text may truncate.",
+        "English Android-marker main is scrollable within560px cap after onboarding; this added handoff shot does not assert that all footer content is simultaneously visible. Empty no-content views retain a restore action for the active page session; no successful translation/provider response is claimed."
+      ],
+      "providerRequests": 0,
+      "ownedProviderRequests": [],
+      "permissionRequests": {
+        "popup": [],
+        "worker": []
+      },
+      "consoleErrors": [],
+      "workerUnhandledErrors": [],
+      "focus": {
+        "launchMode": "macos-background-cdp",
+        "policy": "launchservices-no-foreground",
+        "windowPlacement": {
+          "mode": "background-visible-no-focus",
+          "visible": true,
+          "hidden": false,
+          "centered": true,
+          "windowState": "normal",
+          "bounds": {
+            "left": 132,
+            "top": -1040,
+            "width": 1440,
+            "height": 1000
+          },
+          "displayTarget": "secondary",
+          "source": "macos-nsscreen",
+          "screenIndex": 1,
+          "browserFrontmost": false,
+          "frontmostBefore": {
+            "pid": 99817,
+            "name": "ChatGPT"
+          },
+          "frontmostAfter": {
+            "pid": 99817,
+            "name": "ChatGPT"
+          }
+        },
+        "nativeEvents": [],
+        "monitoredThroughCleanup": true
+      },
+      "cleanup": {
+        "officialBrowserClose": {
+          "ownerVerifiedAt": 1792082740401,
+          "browserPid": 36893,
+          "profileDir": "/var/folders/2v/qd62bpkx51scgbvv2nrclsxm0000gn/T/fluentread-popup-integrated-117-NN9Ree",
+          "command": "Browser.close",
+          "commandSentAt": 1792082740401,
+          "protocolAcknowledgedAt": 1792082740409,
+          "pidAbsentBeforeGuard": true,
+          "pidObservationAt": 1792082740594
+        },
+        "sameOwnerVerified": "Fresh SystemInfo browser PID equals shared captured PID; exact ps start+command and mkdtemp profile dev/ino/realpath matched before Browser.close. No other browser close request.",
+        "officialCloseSessionDetach": "Error: cdpSession.detach: Target page, context or browser has been closed",
+        "detachMeaning": "Target already closed after acknowledged Browser.close; not used as PID-gone or ownership receipt.",
+        "sharedGuardReceipt": "shared-guard-fulfilled",
+        "guardFallback": "Browser PID already absent before guard; existing guard confirms owned actor gone, no SIGTERM fallback needed in this run.",
+        "ownedPidAbsentAfterRun": true,
+        "profileRemoved": true,
+        "profileActuallyAbsent": true,
+        "runnerExitCode": 0,
+        "serverClosed": true
+      },
+      "priorFailedAttempt": "../report.json and ../attempt1-review.json retained without alteration; first empty-body fixture had a title and cleanup had one real focus activation.",
+      "changes": "Research runner only: remove empty fixture title, preserve original zero request assertion, retain primary/fatal errors separately, officially close exact owned browser before unchanged shared guard. No product/shared-helper/build/device changes.",
+      "boundaries": [
+        "physical Android/iOS devices",
+        "Safari and Firefox runtime",
+        "actual native keyboard",
+        "live translation providers",
+        "Explicit CDP coarse pointer, VisualViewport and Android root-attribute fixtures; no actual native keyboard or platform detection acceptance.",
+        "No live provider quality or successful webpage translation assertion in this UI-only suite."
+      ],
+      "evidence": {
+        "report": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-popup-integrated-117/attempt2/report.json",
+        "runner": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-popup-integrated-117/attempt2/run.cjs",
+        "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-popup-integrated-117/attempt2/runner.log",
+        "treeManifest": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-popup-integrated-117/attempt2/artifact-tree-manifest.json"
+      },
+      "runnerSha256": "784a7ff43140ee2685379f918f8f37c6fb540d904e313a6132d923ee39b426c7"
+    },
+    "priorFailure": "production-popup-integrated-117/attempt1-review.json",
+    "rootViewed": [
+      "light-320-keyboard-search.png",
+      "117-onboarding-coarse-320.png",
+      "117-onboarding-android-marker-fine-390.png",
+      "117-diagnostic-expanded-coarse-320.png",
+      "117-diagnostic-expanded-android-marker-fine-390.png",
+      "light-390-last-service-scrolled.png"
+    ],
+    "scope": "Actual production Chromium with explicit viewport/coarse/Android-marker fixtures; not latest Safari or Firefox device UI."
   }
 }
