@@ -1376,5 +1376,168 @@
       },
       "earlyDriverFailures": "Forced non-CJK 320px viewport against native 380px layout, and expected popup close during successful settings navigation. Both retained separately with guarded cleanup; not counted as passes."
     }
+  },
+  "statusPopoverRevision": {
+    "revisionBase": "4fe8a42e42af91cb1832ca4cc69f3f4c25b5f62d",
+    "defaultPresentation": "24x24 status icon below the section translation button in the existing metadata row; recovery dialog only on explicit open.",
+    "productionSnapshot": {
+      "files": 474,
+      "sha256": "e4d90cdb129b2f3626255dadb9807347c382406efe346185802cc6937570bb06",
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+    },
+    "strict": {
+      "files": 5,
+      "passed": 233,
+      "coverage": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      }
+    },
+    "coreUi": {
+      "report": "status-popover-ui/core-pass-before-scroll-wheel-correction/report.json",
+      "coreOk": true,
+      "rawOk": false,
+      "cases": 9,
+      "nativeMatrixSamples": 20,
+      "openedLocales": 7,
+      "nativePopupWidths": {
+        "zh-CN": 320,
+        "en-US": 380,
+        "ja-JP": 320,
+        "ko-KR": 320,
+        "fr-FR": 380,
+        "ru-RU": 380,
+        "es-ES": 380
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "snapshotRemoved": true,
+      "headerCloseVisibility": {
+        "export-after-native-scroll": {
+          "top": 23,
+          "bottom": 45,
+          "panelTop": 12,
+          "panelBottom": 226.8984375,
+          "headingPosition": "sticky",
+          "panelScrollTop": 123,
+          "hitClose": true
+        },
+        "short-preview": {
+          "top": 23,
+          "bottom": 45,
+          "panelTop": 12,
+          "panelBottom": 201.0546875,
+          "headingPosition": "sticky",
+          "panelScrollTop": 0,
+          "hitClose": true
+        },
+        "short-internal-scroll": {
+          "top": 23,
+          "bottom": 45,
+          "panelTop": 12,
+          "panelBottom": 201.0546875,
+          "headingPosition": "sticky",
+          "panelScrollTop": 220.5,
+          "hitClose": true
+        }
+      },
+      "lastFailureBoundary": "Single wheel event consumed by inner shell before reaching outer-window scroll precondition. Original raw report retained; separate same-package addon verifies actual scroll and closure."
+    },
+    "scrollAddon": {
+      "report": "status-popover-ui/scroll-addon/report.json",
+      "ok": true,
+      "productionSnapshot": {
+        "files": 474,
+        "sha256": "e4d90cdb129b2f3626255dadb9807347c382406efe346185802cc6937570bb06",
+        "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+      },
+      "before": {
+        "windowY": 300,
+        "shellY": 11.5,
+        "shellHeight": 560,
+        "shellScrollHeight": 637
+      },
+      "wheelTrace": [
+        {
+          "windowY": 300,
+          "shellY": 0,
+          "triggerTop": 218.5546875,
+          "triggerBottom": 242.5546875,
+          "visibleTop": 0,
+          "visibleBottom": 260,
+          "triggerOutside": false,
+          "popoverOpen": true
+        },
+        {
+          "windowY": 0,
+          "shellY": 0,
+          "triggerTop": 518.5546875,
+          "triggerBottom": 542.5546875,
+          "visibleTop": 0,
+          "visibleBottom": 260,
+          "triggerOutside": true,
+          "popoverOpen": false
+        }
+      ],
+      "after": {
+        "windowY": 0,
+        "shellY": 0,
+        "triggerRect": "{\"x\":327,\"y\":518.5546875,\"width\":24,\"height\":24,\"top\":518.5546875,\"right\":351,\"bottom\":542.5546875,\"left\":327}",
+        "focusOnTrigger": false
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "snapshotRemoved": true
+    },
+    "fullMainFlowBaseline": {
+      "report": "ui-status-popover/report.json",
+      "ok": true,
+      "cases": 22,
+      "screenshots": 19,
+      "package": {
+        "files": 474,
+        "sha256": "a22d8b178bc90bdfe5e23c404a4cad2135cc2e704063f5027bd1a52c1e572fea",
+        "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+      },
+      "deltaToFinal": [
+        "Sticky diagnostic header CSS",
+        "Expanded watcher flush post before focus"
+      ]
+    },
+    "screenshots": [
+      {
+        "file": "status-default.png",
+        "source": "status-popover-ui/status-default-hero.png",
+        "sha256": "6633129a7769ad48b4455b0853e76b6e158abe6b456969bfe3c9ba3ea8eecfda",
+        "privacy": "Only synthetic product UI and allowlisted report fields; no private URL, text or credentials."
+      },
+      {
+        "file": "status-open.png",
+        "source": "status-popover-ui/status-expanded.png",
+        "sha256": "280b224af05cf88c31629c8b47c22d00693b788925ef46d6e117d541950bc78c",
+        "privacy": "Only synthetic product UI and allowlisted report fields; no private URL, text or credentials."
+      },
+      {
+        "file": "status-report.png",
+        "source": "status-popover-ui/04-export-header-visible.png",
+        "sha256": "35a1e4d5f6daf5a8e098897eaf165142293015dc6ab5061fe7a2b4c456ff8aca",
+        "privacy": "Only synthetic product UI and allowlisted report fields; no private URL, text or credentials."
+      }
+    ],
+    "review": {
+      "code": "Independent review confirmed scroll listener and cleanup; KeepAlive/pagehide context revision removes diagnosis and unmounts child.",
+      "ui": "Default hero, actual opened dialog and scrolled report inspected; fixed header close visibility.",
+      "operation": "Actual keyboard first-focus race fixed; busy/cooldown/report/export/source repair and scroll paths verified."
+    },
+    "limitations": [
+      "Isolated Edge/Chromium extension tab with synthetic HTTP and controlled viewport, not physical mobile or other browser runtime.",
+      "No new external live provider, Firefox/Safari runtime or screen-reader acceptance."
+    ]
   }
 }

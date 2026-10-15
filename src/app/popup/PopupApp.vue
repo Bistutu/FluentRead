@@ -134,17 +134,21 @@
         </button>
       </div>
 
-      <DiagnosticNotice v-if="pageDiagnostic" :diagnostic="pageDiagnostic" :language="config.uiLanguage" :busy="translating" :version="version" @action="diagnosticAction" />
-      <p v-else-if="pageResultStatus === 'translating'" class="first-use-hint" role="status" data-i18n-ignore>{{ getDiagnosticUiText('first-use-translating', config.uiLanguage) }}</p>
-      <p v-else-if="pageResultStatus === 'translated'" class="first-use-hint" role="status" data-i18n-ignore>{{ getDiagnosticUiText('first-use-ready', config.uiLanguage) }}</p>
-      <p v-else-if="config.count === 0 && config.on && !currentSiteExtensionDisabled && !credentialWarning" class="first-use-hint" data-testid="first-translation-hint" data-i18n-ignore>{{ getDiagnosticUiText('first-use-start', config.uiLanguage) }}</p>
+      <template v-if="!pageDiagnostic">
+        <p v-if="pageResultStatus === 'translating'" class="first-use-hint" role="status" data-i18n-ignore>{{ getDiagnosticUiText('first-use-translating', config.uiLanguage) }}</p>
+        <p v-else-if="pageResultStatus === 'translated'" class="first-use-hint" role="status" data-i18n-ignore>{{ getDiagnosticUiText('first-use-ready', config.uiLanguage) }}</p>
+        <p v-else-if="config.count === 0 && config.on && !currentSiteExtensionDisabled && !credentialWarning" class="first-use-hint" data-testid="first-translation-hint" data-i18n-ignore>{{ getDiagnosticUiText('first-use-start', config.uiLanguage) }}</p>
+      </template>
 
-      <PopupSiteRule
+      <div v-if="(siteModuleNestedInTranslation && isSiteModuleVisible) || pageDiagnostic" class="translation-meta">
+        <PopupSiteRule
         v-if="siteModuleNestedInTranslation && isSiteModuleVisible"
         v-bind="siteRuleModuleProps"
         :onSetAlwaysTranslated="pageButtons.always"
         :onSetExtensionDisabled="pageButtons.disabled"
-      />
+        />
+        <DiagnosticNotice v-if="pageDiagnostic" :diagnostic="pageDiagnostic" :language="config.uiLanguage" :busy="translating" :version="version" @action="diagnosticAction" />
+      </div>
 
       <p v-if="notice" class="notice" :class="noticeType" :role="noticeType === 'error' ? 'alert' : 'status'" :aria-live="noticeType === 'error' ? 'assertive' : 'polite'">{{ notice }}</p>
     </section>
@@ -913,7 +917,11 @@ function handleTabActivated(info: Tabs.OnActivatedActiveInfoType) {
 }
 async function diagnosticAction(action: DiagnosticAction) {
   if (!popupContext.active.value || !pageDiagnostic.value) return;
-  if (action === 'dismiss') {pageDiagnostic.value = undefined;return;}
+  if (action === 'dismiss') {
+    const current = popupContext.capture();pageDiagnostic.value = undefined;
+    await nextTick();if (current()) document.querySelector<HTMLButtonElement>('[data-testid="page-translation"]')?.focus();
+    return;
+  }
   if (action === 'services') return openOptions('settings-services', undefined, config.value.service);
   if (action === 'site-settings') return openOptions('settings-sites', 'adaptation', undefined, true);
   if (action === 'refresh') {

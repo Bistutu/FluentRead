@@ -337,9 +337,11 @@ export function getDiagnosticActionLabel(action: DiagnosticAction, locale = 'zh-
   return labels[language(locale)][action];
 }
 
-export type DiagnosticUiTextKey = "details" | "service-action" | "site-action" | "preview" | "report" | "privacy" | "export" | "exportFailed" | "first-use-start" | "first-use-translating" | "first-use-ready" | "refresh-failed" | "source-closed" | "source-looking" | "source-return" | "source-unavailable" | "source-returned" | "source-return-hint";
+export type DiagnosticUiTextKey = "close-details" | "dismiss-notice" | "details" | "service-action" | "site-action" | "preview" | "report" | "privacy" | "export" | "exportFailed" | "first-use-start" | "first-use-translating" | "first-use-ready" | "refresh-failed" | "source-closed" | "source-looking" | "source-return" | "source-unavailable" | "source-returned" | "source-return-hint";
 const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = {
   zh: {
+    "close-details": "收起详情",
+    "dismiss-notice": "忽略提示",
     "details": "查看详情",
     "service-action": "检查服务",
     "site-action": "检查范围",
@@ -360,6 +362,8 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "译文已显示。下次也可选中文字，或用快捷键翻译段落。",
   },
   en: {
+    "close-details": "Close details",
+    "dismiss-notice": "Dismiss notice",
     "details": "View details",
     "service-action": "Check service",
     "site-action": "Check scope",
@@ -380,6 +384,8 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "Translation is ready. You can also select text or use the paragraph shortcut.",
   },
   ja: {
+    "close-details": "詳細を閉じる",
+    "dismiss-notice": "通知を非表示",
     "details": "詳細を表示",
     "service-action": "サービスを確認",
     "site-action": "範囲を確認",
@@ -400,6 +406,8 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "訳文を表示しました。次回はテキストの選択や段落翻訳のショートカットも使えます。",
   },
   ko: {
+    "close-details": "세부 정보 닫기",
+    "dismiss-notice": "알림 숨기기",
     "details": "자세히 보기",
     "service-action": "서비스 확인",
     "site-action": "범위 확인",
@@ -420,6 +428,8 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "번역문이 표시되었습니다. 다음에는 텍스트를 선택하거나 문단 번역 단축키를 사용할 수도 있습니다.",
   },
   fr: {
+    "close-details": "Fermer les détails",
+    "dismiss-notice": "Ignorer l’alerte",
     "details": "Voir les détails",
     "service-action": "Vérifier le service",
     "site-action": "Vérifier la zone",
@@ -440,6 +450,8 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "La traduction est affichée. Vous pouvez aussi sélectionner du texte ou utiliser le raccourci de traduction des paragraphes.",
   },
   ru: {
+    "close-details": "Закрыть подробности",
+    "dismiss-notice": "Скрыть уведомление",
     "details": "Подробнее",
     "service-action": "Проверить сервис",
     "site-action": "Проверить область",
@@ -460,6 +472,8 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "Перевод отображён. В следующий раз можно также выделить текст или использовать сочетание клавиш для перевода абзаца.",
   },
   es: {
+    "close-details": "Cerrar detalles",
+    "dismiss-notice": "Descartar aviso",
     "details": "Ver detalles",
     "service-action": "Revisar servicio",
     "site-action": "Revisar área",

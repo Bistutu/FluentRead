@@ -62,7 +62,8 @@ async function settle(){await runtime.nextTick();await Promise.resolve();await r
 async function drain(){for(let i=0;i<10;i++)await settle()}
 function expectCollapsedDiagnostic(){
   expect(document.querySelector('[data-diagnostic-details-toggle]')?.getAttribute('aria-expanded')).toBe('false')
-  expect(document.querySelector('[data-diagnostic-details]')).toBeNull();expect(document.querySelector('.diagnostic-actions')).toBeNull();expect(document.querySelector('.diagnostic-report')).toBeNull()
+  const notice=document.querySelector('.fluentread-diagnostic')!;expect(notice.querySelectorAll('button')).toHaveLength(1);expect(notice.querySelector('[data-diagnostic-details-toggle]')!.getAttribute('aria-haspopup')).toBe('dialog')
+  for(const selector of ['[data-diagnostic-details]','.diagnostic-actions','.diagnostic-report','[data-diagnostic-primary]','[data-diagnostic-preview]','[data-diagnostic-dismiss]'])expect(notice.querySelector(selector)).toBeNull()
 }
 async function openDiagnosticDetails(){
   expectCollapsedDiagnostic();await eventOf(document.querySelector('[data-diagnostic-details-toggle]')!)();await drain()
@@ -75,7 +76,7 @@ function commands(){return send.mock.calls.filter(call=>call[1].type==='contextM
 beforeEach(async()=>{
   vi.clearAllMocks();for(const mock of [getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,reloadTab])mock.mockReset();events=new Map();runtimeEvents=new Set();tabEvents={onUpdated:new Set(),onActivated:new Set(),onRemoved:new Set()};const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;focused=document.body
   vi.stubGlobal('location',{search:''})
-  Object.defineProperty(document,'activeElement',{configurable:true,get:()=>focused});win.close=close;win.matchMedia=()=>({matches:false,onchange:null})
+  Object.defineProperty(document,'activeElement',{configurable:true,get:()=>focused});win.innerHeight=600;win.close=close;win.matchMedia=()=>({matches:false,onchange:null})
   for(const [key,value]of Object.entries({document,window:win,HTMLElement:win.HTMLElement,Event:win.Event,Node:win.Node,navigator:{languages:['zh-CN'],onLine:true}}))vi.stubGlobal(key,value)
   config=new Config();config.uiLanguageSetupCompleted=true;config.on=true;config.service='google';config.alwaysTranslateDomains=[];config.disabledExtensionDomains=[]
   getTab.mockResolvedValue([{id:7,windowId:3,url:'https://example.com/a'}]);send.mockImplementation(async(_id,message)=>message.type==='getFullPageTranslationState'?{isTranslated:false,documentToken:'popup-fixture-document'}:{status:'success',isTranslated:message.action==='fullPage',documentToken:'popup-fixture-document'});createTab.mockResolvedValue({id:8});openOptions.mockResolvedValue(undefined);runtimeSend.mockResolvedValue({success:true})
@@ -133,7 +134,9 @@ async function attachPersistence(gates:Array<ReturnType<typeof deferred<void>>> 
 async function mount(){
   const component=(await server.ssrLoadModule('/src/app/popup/PopupApp.vue')).default;shown=runtime.ref(true)
   const renderer=runtime.createRenderer({patchProp(el:any,key:string,previous:any,next:any){const handlers=events.get(el)||{};events.set(el,handlers);if(/^on[A-Z]/u.test(key)){handlers[key]=next;const name=key.slice(2).toLowerCase();if(previous)el.removeEventListener(name,previous);if(next)el.addEventListener(name,next);return}if(key==='class'){el.className=next??'';return}if(next===undefined||next===null||(next===false&&!/^(?:aria-|data-)/u.test(key)))el.removeAttribute(key);else el.setAttribute(key,String(next))},
-    insert:(child:any,parent:any,anchor:any=null)=>parent.insertBefore(child,anchor),remove:(child:any)=>child.parentNode?.removeChild(child),createElement:tag=>{const el=document.createElement(tag) as any;el.focus=()=>{noticeFocus();focused=el};return el},createText:text=>document.createTextNode(text),createComment:text=>document.createComment(text),setText:(node:any,text)=>{node.nodeValue=text},setElementText:(el:any,text)=>{el.textContent=text},parentNode:(node:any)=>node.parentNode,nextSibling:(node:any)=>node.nextSibling,querySelector:selector=>document.querySelector(selector),setScopeId:()=>{},cloneNode:(node:any)=>node.cloneNode(true),insertStaticContent:(html,parent:any,anchor:any)=>{const template=document.createElement('template');template.innerHTML=html;const first=template.content.firstChild!,last=template.content.lastChild!;parent.insertBefore(template.content,anchor);return[first,last]}})
+    insert:(child:any,parent:any,anchor:any=null)=>parent.insertBefore(child,anchor),remove:(child:any)=>child.parentNode?.removeChild(child),createElement:tag=>{const el=document.createElement(tag) as any;el.focus=()=>{noticeFocus();focused=el};
+      // Linkedom has no layout: model an in-view 24px status anchor inside the real 560px Popup shell.
+      el.getBoundingClientRect=()=>el.classList.contains('popup-shell')?{top:0,bottom:560,left:0,right:320,width:320,height:560}:{top:230,bottom:254,left:272,right:296,width:24,height:24};return el},createText:text=>document.createTextNode(text),createComment:text=>document.createComment(text),setText:(node:any,text)=>{node.nodeValue=text},setElementText:(el:any,text)=>{el.textContent=text},parentNode:(node:any)=>node.parentNode,nextSibling:(node:any)=>node.nextSibling,querySelector:selector=>document.querySelector(selector),setScopeId:()=>{},cloneNode:(node:any)=>node.cloneNode(true),insertStaticContent:(html,parent:any,anchor:any)=>{const template=document.createElement('template');template.innerHTML=html;const first=template.content.firstChild!,last=template.content.lastChild!;parent.insertBefore(template.content,anchor);return[first,last]}})
   // 保留真实模板事件；Transition 的 CSS 动画为展示端口，生产截图验证真实动画。
   app=renderer.createApp({setup:()=>()=>runtime.h(runtime.KeepAlive,null,{default:()=>shown.value?runtime.h(component,{ref:(vm:any)=>{if(vm)state=vm.$.setupState}}):runtime.h({render:()=>null},{key:'other'})})});app.component('OwnedTransition',{setup:(_:unknown,{slots}:any)=>()=>slots.default?.()});app.config.warnHandler=()=>{};app.mount(document.getElementById('app')!);await drain()
 }
@@ -205,7 +208,7 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
   it('实际诊断动作遇到设置、刷新和重试失败时保留可见的安全恢复入口',async()=>{
     await mount()
     const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}
-    const publish=async(code:string)=>{runtimeEvent({type:'fullPageTranslationState',isTranslated:false,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code}},sender);await drain();expectCollapsedDiagnostic()}
+    const publish=async(code:string)=>{runtimeEvent({type:'fullPageTranslationState',isTranslated:false,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code}},sender);await drain();expectCollapsedDiagnostic();await openDiagnosticDetails()}
     const action=(id:string)=>{const node=document.querySelector(`[data-diagnostic-action="${id}"]`);expect(node).not.toBeNull();return eventOf(node!)}
     await publish('authentication');createTab.mockRejectedValueOnce(Error('PRIVATE service tab error'));action('services')();await drain()
     expect(document.querySelector('.notice')!.getAttribute('role')).toBe('alert');expect(document.querySelector('.notice')!.textContent).toContain('无法打开设置');expect(document.querySelector('[data-diagnostic-code="authentication"]')).not.toBeNull();expect(close).not.toHaveBeenCalled()
@@ -215,7 +218,7 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     expect(document.querySelector('.notice')!.textContent).toContain('无法刷新网页');expect(close).not.toHaveBeenCalled()
     await publish('timeout');send.mockRejectedValueOnce(Error('Failed to fetch PRIVATE provider body'));action('retry')();await drain()
     expect(document.querySelector('[data-diagnostic-code="network"]')).not.toBeNull();expect(document.querySelector('.fluentread-diagnostic')!.textContent).toContain('服务连接失败');expect(document.body.textContent).not.toContain('PRIVATE');expect(button('page-translation').hasAttribute('disabled')).toBe(false)
-    eventOf(document.querySelector('[data-diagnostic-dismiss]')!)();await drain();expect(document.querySelector('.fluentread-diagnostic')).toBeNull()
+    expectCollapsedDiagnostic();await openDiagnosticDetails();eventOf(document.querySelector('[data-diagnostic-dismiss]')!)();await drain();expect(document.querySelector('.fluentread-diagnostic')).toBeNull();expect(focused).toBe(button('page-translation'))
   })
   it('权威计数同步保留真实鉴权诊断与报告预览，并继续允许打开当前服务设置',async()=>{
     await mount()
@@ -236,10 +239,25 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
   it('无正文诊断直达适配目标并携带固定来源，普通导航不附加来源且服务参数不丢失',async()=>{
     win.location.search='?sourceTabId=7';getTab.mockResolvedValue([{id:99,url:'https://other.example/'}]);await mount()
     runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'no-content'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain()
-    expectCollapsedDiagnostic();const inspect=document.querySelector('[data-diagnostic-primary][data-diagnostic-action="site-settings"]')!;await eventOf(inspect)();await drain()
+    expectCollapsedDiagnostic();await openDiagnosticDetails();const inspect=document.querySelector('[data-diagnostic-primary][data-diagnostic-action="site-settings"]')!;await eventOf(inspect)();await drain()
     let url=new URL(createTab.mock.calls.at(-1)![0].url);expect(url.hash).toBe('#settings-sites');expect(url.searchParams.get('target')).toBe('adaptation');expect(url.searchParams.get('returnTabId')).toBe('7');expect(url.searchParams.has('service')).toBe(false);expect(getTab).not.toHaveBeenCalled()
     createTab.mockClear();await state.openOptions('settings-sites','adaptation');url=new URL(createTab.mock.calls[0][0].url);expect(url.searchParams.get('target')).toBe('adaptation');expect(url.searchParams.has('returnTabId')).toBe(false)
     createTab.mockClear();await state.openOptions('settings-services','connections','openai');url=new URL(createTab.mock.calls[0][0].url);expect(url.searchParams.get('service')).toBe('openai');expect(url.searchParams.get('target')).toBe('connections');expect(url.searchParams.get('returnTabId')).toBe('7')
+  })
+  it.each(['nested','hidden','independent'] as const)('诊断状态入口在%s网站模块布局下仍唯一归属翻译区，保留既有模块顺序',async layout=>{
+    if(layout==='hidden')config.interfaceVisibility.popupSiteRule=false
+    if(layout==='independent')config.popupModuleOrder=['siteRule','translation','quickFeatures','footer']
+    await mount();runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'authentication'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain()
+    const translation=document.querySelector('[data-popup-module="translation"]')!,meta=translation.querySelector('.translation-meta')!,notice=document.querySelector('.fluentread-diagnostic')!
+    expect(document.querySelectorAll('.fluentread-diagnostic')).toHaveLength(1);expect(notice.parentElement).toBe(meta);expect(notice.closest('[data-popup-module="translation"]')).toBe(translation);expectCollapsedDiagnostic()
+    expect(translation.querySelectorAll('[data-diagnostic-details-toggle]')).toHaveLength(1)
+    const site=document.querySelector('[data-popup-module="siteRule"]')
+    if(layout==='nested'){expect(site?.parentElement).toBe(meta);expect(site?.nextElementSibling).toBe(notice)}
+    else if(layout==='hidden')expect(site).toBeNull()
+    else {expect(site).not.toBeNull();expect(site!.closest('[data-popup-module="translation"]')).toBeNull();expect(meta.querySelector('[data-popup-module="siteRule"]')).toBeNull()}
+    const expected=config.popupModuleOrder.filter(id=>layout!=='hidden'||id!=='siteRule')
+    expect([...document.querySelectorAll('[data-popup-module]')].map(el=>el.getAttribute('data-popup-module'))).toEqual(expected)
+    expect(document.querySelector('.popup-shell')!.getAttribute('data-popup-module-order')).toBe(config.popupModuleOrder.join(','))
   })
   it.each(['authentication','model-configuration','configuration'])('%s修复后明确重试恢复旧会话再翻译，不改变主按钮正常恢复语义',async code=>{
     await mount();runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain()
