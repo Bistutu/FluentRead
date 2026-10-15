@@ -1539,5 +1539,97 @@
       "Isolated Edge/Chromium extension tab with synthetic HTTP and controlled viewport, not physical mobile or other browser runtime.",
       "No new external live provider, Firefox/Safari runtime or screen-reader acceptance."
     ]
+  },
+  "mainIntegration": {
+    "base": "d3fb95d65",
+    "priorHead": "d17947f564e5e71afc03302138d06e8f7a3e8e28",
+    "conflicts": "Runtime file responsibility comment and test registry; preserved both sides.",
+    "strict": {
+      "files": 30,
+      "passed": 1465,
+      "businessModules": 11,
+      "perFileFourMetrics100": true
+    },
+    "newBoundaries": {
+      "file": "tests/fullPageVisibilityScheduling.test.ts",
+      "passed": 400,
+      "newCases": 5,
+      "review": "Independent read-only review; no weakened original assertions"
+    },
+    "productionPackage": {
+      "files": 474,
+      "sha256": "a3d32ce60163f29e506fd34ade1686f784138b6249794a920ca84b409b9a92dc",
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256",
+      "source": "d17947f564e5e71afc03302138d06e8f7a3e8e28 + merge d3fb95d65; production sources frozen"
+    },
+    "mainUi": {
+      "ok": true,
+      "cases": 22,
+      "screenshots": 19,
+      "refreshRounds": 3,
+      "locales": 7,
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "snapshotUnchangedAfterRun": true,
+      "immutableSnapshotRemoved": true,
+      "report": "research/self-help-diagnostics-20261015/ui-main-integration/report.json"
+    },
+    "counting": "Targeted groups overlap; not summed. e4 special keyboard/scroll proof remains separate from a3 main flow.",
+    "limitations": [
+      "Controlled provider/observer tests are not native browser timing or live-provider proof.",
+      "No additional Firefox/Safari runtime, physical mobile or screen-reader acceptance."
+    ]
+  },
+  "materialIntegration": {
+    "base": "633baacd3",
+    "priorHead": "5b12b9cde369b309ae020c5fc1902cc38634e294",
+    "productionPackage": {
+      "files": 476,
+      "sha256": "a828650dacab446b967745b5c72f3036c69f7863a204545f657f6f39b3982a2f",
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256",
+      "source": "5b12b9cde + main 633baacd3 merge-pending; production sources frozen"
+    },
+    "scope": "Only verification metadata conflicts; popup/diagnostics/fullpage source unchanged. Material source remains main ownership.",
+    "targeted": {
+      "files": 7,
+      "passed": 231
+    },
+    "checks": {
+      "compile": "passed",
+      "Chrome": "passed",
+      "Firefox": "passed",
+      "userscript": "passed",
+      "manifests": "passed",
+      "userscriptVerifier": "passed",
+      "registrationAudit": "passed"
+    },
+    "mainUi": {
+      "ok": true,
+      "cases": 22,
+      "screenshots": 19,
+      "refreshRounds": 3,
+      "locales": 7,
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "snapshotUnchangedAfterRun": true,
+      "immutableSnapshotRemoved": true
+    },
+    "review": "19 original images individually inspected; root also opened auth, dark rate and French",
+    "firstAttempt": {
+      "outcome": "focus guard aborted before any test case or HTTP",
+      "cases": 0,
+      "http": 0,
+      "ownedBrowserBrieflyForeground": true,
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "immutableSnapshotRemoved": true,
+      "evidence": "ui-material-integration/attempt-focus-guard-first-open",
+      "policy": "Only one retry under unchanged focus guards; no manual foreground action"
+    },
+    "evidenceDirectories": [
+      "material-integration-verification",
+      "ui-material-integration"
+    ],
+    "limits": "No new live-provider, Firefox/Safari runtime, physical mobile or screen-reader proof; e4 keyboard/scroll cases remain separate-package history."
   }
 }
