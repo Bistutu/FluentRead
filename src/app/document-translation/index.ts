@@ -7,6 +7,7 @@
 export * from '@/src/features/document-translation/public';
 export {hasDistinctTranslation} from '@/src/core/translation/result';
 export {buildGlossaryRevision} from '@/src/core/glossary';
+export {materialCapture, materialGet, materialGeneration, MATERIAL_RESUME_PARAMETER, type MaterialRecord, type MaterialSelection} from '@/src/features/vocabulary/material/public';
 export {Config} from '@/src/core/config/model';
 export {TranslationRequestError, serializeTranslationError} from '@/src/services/translation/errors';
 export {getMissingCredentialMessage} from '@/src/core/config/validation';

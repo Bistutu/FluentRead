@@ -1,3 +1,9 @@
+/**
+ * @file tests/videoSentenceLearningComponent.test.ts
+ * 文件职责：执行完整句视频学习组件的真实 setup，验证调度、收藏、问答与材料关联的异步归属。
+ * 主要内容：保留播放器操作、翻译与草稿回归；材料通过真实公开 begin/complete/client 验证来源、时间、代次冻结与成功引用，失败和旧播放器卸载不会误关联。
+ * 模块边界：仅替换媒体、模型及浏览器消息传输，不替换材料采集逻辑；DOM 布局与真实平台由独立生产验收覆盖。
+ */
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -11,6 +17,10 @@ import * as timeline from '@/src/features/video-subtitle/content/sentenceTimelin
 import * as playback from '@/src/features/video-subtitle/content/sentencePlayback';
 import {getVideoTranslationConfigFingerprint} from '@/src/features/video-subtitle/content/subtitleLogic';
 import * as vocabulary from '@/src/features/vocabulary/public';
+import {beginMaterialCapture, completeMaterialCapture} from '@/src/features/vocabulary/material/public';
+
+const materialTransport = vi.hoisted(() => ({sendMessage: vi.fn(), extension: {inIncognitoContext: false}}));
+vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: materialTransport.sendMessage}, extension: materialTransport.extension}}));
 
 // 执行实际 SFC setup；媒体、服务和存储是边界替身，DOM 操作另由生产浏览器专项验证。
 const filename = 'src/features/video-subtitle/ui/VideoSentenceLearning.vue';
@@ -51,6 +61,8 @@ async function mount(): Promise<void> {
     if (id === '@/src/features/reading-assistant/ui/answer/public') return {ReadingAnswer: {}};
     if (id === '@/src/features/reading-assistant/public') return {streamReading};
     if (id === '@/src/features/vocabulary/public') return vocabulary;
+    if (id === 'webextension-polyfill') return {extension: materialTransport.extension};
+    if (id === '@/src/features/vocabulary/material/public') return {beginMaterialCapture, completeMaterialCapture};
     if (id === '../content/sentenceTimeline') return timeline;
     if (id === '../content/sentencePlayback') return playback;
     if (id === '../content/subtitleLogic') return {getVideoTranslationConfigFingerprint};
@@ -71,6 +83,10 @@ function changeTranslationConfig(kind: 'service' | 'model' | 'glossary'): void {
 
 beforeEach(() => {
   vi.useFakeTimers();
+  materialTransport.extension.inIncognitoContext = false;
+  materialTransport.sendMessage.mockReset().mockImplementation(async message => ({success: true, data: message.action === 'generation' ? 7 : {id: 'video-material'}}));
+  const {document, window} = parseHTML('<html><body></body></html>');
+  vi.stubGlobal('document', document); vi.stubGlobal('CustomEvent', window.CustomEvent);
   config = new Config(); config.on = true; config.videoTranslationEnabled = true; config.videoSubtitleVisible = true;
   config.service = 'google'; config.videoService = ''; config.harness.enabled = true; config.harness.actions = ['usage'];
   config.glossaryEnabled = true;
@@ -332,5 +348,86 @@ describe('完整句学习组件的调度与异步归属回归', () => {
     const late = deferred<{success: boolean}>(); sendRuntimeMessage.mockReturnValueOnce(late.promise);
     const savingSecond = state.save(); close(); late.resolve({success: true}); await savingSecond; await flush();
     expect(state.savedSnapshot).toBe(''); expect(state.saved).toBe(false);
+  });
+});
+
+const materialCaptures = () => materialTransport.sendMessage.mock.calls.filter(([message]) => message.action === 'capture').map(([message]) => message.input);
+describe('视频句子通过真实公开客户端关联材料', () => {
+  it('收藏在异步代次前冻结原视频与句子时间，A迟到成功只关联实际A条目而不误绑当前B', async () => {
+    await mount(); await step(1); await advance(120);
+    const generation = deferred<{success: true; data: number}>(), saved = deferred<{success: true; data: {id: string}}>();
+    materialTransport.sendMessage.mockReturnValueOnce(generation.promise); sendRuntimeMessage.mockReturnValueOnce(saved.promise);
+    vi.setSystemTime(10000); const source = props.sourceUrl, title = props.title;
+    const saving = state.save();
+    expect(sendRuntimeMessage).toHaveBeenCalledWith(expect.objectContaining({action: 'upsert', input: expect.objectContaining({term: second})}));
+    expect(materialTransport.sendMessage).toHaveBeenCalledWith({type: 'fluentReadMaterials', action: 'generation'});
+    expect(materialCaptures()).toEqual([]);
+    await step(1); await advance(120); expect(state.sentence.text).toBe(third);
+    vi.setSystemTime(20000); saved.resolve({success: true, data: {id: 'actual-saved-A'}}); await flush();
+    expect(materialCaptures()).toEqual([]); generation.resolve({success: true, data: 23}); await saving;
+    expect(materialCaptures()).toEqual([{
+      source: {kind: 'video', url: source, title}, locator: {kind: 'video', quote: second, startMs: 2000, endMs: 3000},
+      capturedAt: 10000, generation: 23, reference: {kind: 'vocabulary', id: 'actual-saved-A', excerpt: second},
+    }]);
+    expect(state.sentence.text).toBe(third); expect(state.saved).toBe(false);
+    await step(-1); expect(state.saved).toBe(true);
+  });
+
+  it('X多视频问答只在成功sessionId后关联冻结的具体媒体与时间，来源不进入模型请求', async () => {
+    props.platform = 'x'; props.sourceUrl = 'https://x.com/example/status/123456/video/2';
+    props.cues = [{text: first, startMs: 1250.5, durationMs: 1000.25}]; video.currentTime = 1.3;
+    await mount();
+    const generation = deferred<{success: true; data: number}>(); materialTransport.sendMessage.mockReturnValueOnce(generation.promise);
+    vi.setSystemTime(30000); state.explain();
+    const request = streamReading.mock.calls[0][0];
+    expect(request.selection.text).toBe(first); expect(JSON.stringify(request)).not.toContain('x.com'); expect(JSON.stringify(request)).not.toContain('material');
+    readingCallbacks.result({success: true, text: 'Saved explanation', sessionId: 'actual-session-X'});
+    await flush(); expect(materialCaptures()).toEqual([]);
+    vi.setSystemTime(40000); generation.resolve({success: true, data: 31}); await flush();
+    expect(materialCaptures()).toEqual([{
+      source: {kind: 'video', url: 'https://x.com/example/status/123456/video/2', title: 'Fixture title'},
+      locator: {kind: 'video', quote: first, startMs: 1250, endMs: 2251}, capturedAt: 30000, generation: 31,
+      reference: {kind: 'session', id: 'actual-session-X', excerpt: first},
+    }]);
+    expect(materialCaptures()[0].reference.note).toBeUndefined();
+  });
+
+  it.each([
+    ['failure', {success: false, error: {message: 'Save failed'}}],
+    ['missing data', {success: true}], ['missing entryId', {success: true, data: {}}],
+  ] as const)('收藏%s不创建材料引用', async (_reason, response) => {
+    await mount(); sendRuntimeMessage.mockResolvedValueOnce(response); await state.save(); await flush();
+    expect(sendRuntimeMessage).toHaveBeenCalledOnce(); expect(materialCaptures()).toEqual([]);
+  });
+
+  it.each(['failure', 'missing sessionId', 'error'] as const)('问答%s不创建材料引用', async reason => {
+    await mount(); state.explain();
+    if (reason === 'error') readingCallbacks.error(new Error('Stream failed'));
+    else readingCallbacks.result(reason === 'failure' ? {success: false, error: 'Answer failed'} : {success: true, text: 'Unpersisted answer'});
+    await flush(); expect(materialCaptures()).toEqual([]);
+  });
+
+  it('原播放器卸载后迟到收藏不能关联到新播放器材料', async () => {
+    await mount(); const saved = deferred<{success: true; data: {id: string}}>(); sendRuntimeMessage.mockReturnValueOnce(saved.promise);
+    const saving = state.save(); close(); props.sourceUrl = 'https://www.youtube.com/watch?v=frSentence2';
+    props.video = Object.assign(new EventTarget(), {currentTime: 0, paused: true, seeking: false, ended: false, isConnected: true, play: vi.fn(), pause: vi.fn()});
+    await mount(); saved.resolve({success: true, data: {id: 'old-player-entry'}}); await saving; await flush();
+    expect(materialCaptures()).toEqual([]); expect(state.saved).toBe(false);
+  });
+
+  it.each(['next sentence', 'stop', 'close'] as const)('成功会话等待代次期间%s撤销材料关联归属', async boundary => {
+    await mount(); const generation = deferred<{success: true; data: number}>(); materialTransport.sendMessage.mockReturnValueOnce(generation.promise);
+    state.explain(); readingCallbacks.result({success: true, text: 'Persisted old explanation', sessionId: 'old-session'});
+    if (boundary === 'next sentence') await step(1);
+    else if (boundary === 'stop') state.stopExplanation();
+    else close();
+    generation.resolve({success: true, data: 41}); await flush(); expect(materialCaptures()).toEqual([]);
+  });
+
+  it('无痕材料客户端在传输前拒绝关联，原收藏成功不会绕过隐私门控', async () => {
+    materialTransport.extension.inIncognitoContext = true; await mount();
+    sendRuntimeMessage.mockResolvedValueOnce({success: true, data: {id: 'private-entry'}}); await state.save();
+    state.explain(); readingCallbacks.result({success: true, text: 'Private answer', sessionId: 'private-session'}); await flush();
+    expect(materialTransport.sendMessage).not.toHaveBeenCalled(); expect(materialCaptures()).toEqual([]);
   });
 });

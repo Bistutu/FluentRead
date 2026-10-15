@@ -1,0 +1,99 @@
+{
+  "ok": true,
+  "extensionDir": ".output/chrome-mv3",
+  "artifactType": "production",
+  "consoleScope": "page console errors and unhandled page errors; background operations verified by actual responses",
+  "cases": [
+    "keyboard-management-menu",
+    "canonical-duplicate-and-same-title-distinct-source",
+    "topics-notes-and-independent-drafts",
+    "real-content-text-resume",
+    "refresh-keeps-material-position-tracking",
+    "real-video-time-and-progress",
+    "source-fragment-failure-recovery-guidance",
+    "390-dark-layout-and-keyboard",
+    "archive-restore-preserves-records",
+    "explicit-private-backup-clear-and-restore",
+    "authoritative-learning-references-and-independent-clear",
+    "document-material-independent-of-collection-and-ai",
+    "real-pdf-fingerprint-and-page-resume",
+    "missing-file-and-same-name-fingerprint-recovery",
+    "real-docx-page-2-native-dom-and-fingerprint-resume",
+    "real-epub-chapter-2-original-dom-and-fingerprint-resume"
+  ],
+  "screenshots": [
+    "materials-empty.png",
+    "materials-desktop.png",
+    "material-detail-desktop.png",
+    "article-resumed-position.png",
+    "video-resumed-position.png",
+    "article-missing-passage-recovery.png",
+    "material-detail-dark-390.png",
+    "material-authority-references.png",
+    "document-resumed-page-2.png",
+    "document-missing-file-recovery.png",
+    "document-same-name-mismatch.png",
+    "document-reselected-original.png",
+    "document-material-390.png",
+    "material-docx-saved-page-2.png",
+    "material-docx-resumed-page-2.png",
+    "material-docx-390.png",
+    "material-epub-saved-chapter-2.png",
+    "material-epub-resumed-chapter-2.png",
+    "material-epub-390.png"
+  ],
+  "consoleErrors": [],
+  "limitations": [
+    "Controlled local HTTP, MP4, PDF, DOCX and EPUB fixtures; no live provider, live YouTube/X, Firefox runtime, Safari or physical mobile acceptance.",
+    "Learning question fixture is written directly to its authoritative session store; this validates retrieval and preservation, not live model generation.",
+    "Private-window eligibility is covered by deterministic client and sender tests, not an incognito browser session."
+  ],
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 132,
+      "top": -1040,
+      "width": 1440,
+      "height": 1000
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false
+  },
+  "materialDocumentFixtures": [
+    {
+      "format": "docx",
+      "file": "material-docx-page-resume.docx",
+      "materialId": "979306bc-4967-41ec-b89e-f430de0b343a",
+      "fingerprint": "7933987e4659e0502b752ca6fad7a44e",
+      "page": 2,
+      "section": "docx:0",
+      "firstOriginal": "Material DOCX paragraph 081: a unique original passage keeps the reading position connected to this document.",
+      "lastOriginal": "Material DOCX paragraph 090: a unique original passage keeps the reading position connected to this document.",
+      "visibleOriginalParagraphs": 10
+    },
+    {
+      "format": "epub",
+      "file": "material-epub-chapter-resume.epub",
+      "materialId": "1d74f3d3-c300-46a5-bc42-ed8828bebd19",
+      "fingerprint": "4af29d8bcd7bc96dd3825f1789cc9377",
+      "page": 1,
+      "section": "epub:1",
+      "originalHeading": "Material chapter 2: Returning to the source",
+      "originalPassage": "EPUB chapter 2 original passage: This second chapter contains the exact passage that must return with its saved material."
+    }
+  ],
+  "cleanupConfirmed": true,
+  "fixturePolicy": "Synthetic source files and private backup are generated locally by the runner and are not committed.",
+  "visualReview": {
+    "screenshotsReviewed": 19,
+    "result": "原文与继续阅读主次清晰；PDF正文绘制完成；材料与文档工具栏在390px无横向溢出，按钮紧凑且未覆盖既有操作。"
+  }
+}

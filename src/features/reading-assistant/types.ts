@@ -1,15 +1,18 @@
 /**
  * @file src/features/reading-assistant/types.ts
  * 文件职责：声明划词阅读卡与后台 Harness 之间的可序列化请求和回答契约。
- * 主要内容：限定选区快照、近期问答、流式增量、持久会话及后台签发的追问锚点和取消消息；传输内容不包含密钥、DOM 节点或页面 URL。
+ * 主要内容：限定选区快照及只在客户端使用的材料来源、近期问答、流式增量、持久会话及后台签发的追问锚点和取消消息；传输内容不包含密钥、DOM 节点或页面 URL。
  * 模块边界：这里只定义类型，页面负责捕获用户选中的正文，后台负责校验、模型请求和内核运行。
  */
 import type {HarnessActionId} from '@/src/core/config/harness';
+import type {MaterialSelection} from '@/src/features/vocabulary/material/protocol';
 
 export interface ReadingSelection {
     text: string;
     context: string;
     sentence: string;
+    /** 仅供本机学习关联，调用模型时必须移除此字段。 */
+    material?: MaterialSelection;
 }
 
 export interface ReadingTurn {

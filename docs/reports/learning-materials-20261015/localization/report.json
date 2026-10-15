@@ -1,0 +1,62 @@
+{
+  "ok": true,
+  "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-material-learning-20261015/.output/chrome-mv3",
+  "artifactType": "production",
+  "scope": "materials-localization",
+  "consoleScope": "page console errors and unhandled page errors; background operations verified by actual responses",
+  "cases": [
+    "english-ui-and-original-user-text",
+    "english-material-390-layout",
+    "english-native-content-notice-and-close",
+    "english-document-save-and-390-hit-test"
+  ],
+  "screenshots": [
+    "materials-empty-en.png",
+    "material-detail-en.png",
+    "material-detail-en-390.png",
+    "article-recovery-notice-en.png",
+    "document-material-en.png",
+    "document-material-en-390.png"
+  ],
+  "consoleErrors": [],
+  "limitations": [
+    "Controlled local HTTP, MP4, PDF, DOCX and EPUB fixtures; no live provider, live YouTube/X, Firefox runtime, Safari or physical mobile acceptance.",
+    "Learning question fixture is written directly to its authoritative session store; this validates retrieval and preservation, not live model generation.",
+    "Private-window eligibility is covered by deterministic client and sender tests, not an incognito browser session."
+  ],
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 132,
+      "top": -1040,
+      "width": 1440,
+      "height": 1000
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 65658,
+      "name": "问题报告程序"
+    },
+    "frontmostAfter": {
+      "pid": 65658,
+      "name": "问题报告程序"
+    }
+  },
+  "localizedDocumentControl": {
+    "x": 8,
+    "y": 86,
+    "width": 123.53125,
+    "height": 30
+  },
+  "cleanupConfirmed": true,
+  "originalReport": "/private/tmp/fluentread-material-localization-accepted/report.json"
+}

@@ -462,6 +462,45 @@ const click = (element: Element | null | undefined): void => {element!.dispatchE
 const classes = (element: Element | null | undefined): string[] => (element!.getAttribute('class') ?? '').split(/\s+/).filter(Boolean);
 function flushFrames(): void {const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback(0));}
 
+describe('PDF material resume ownership', () => {
+    it('restores after initial layout work and preserves the requested page through the first resize', async () => {
+        const reader = mountReader(documentModel(3));
+        const exposed = mountedApp._instance.subTree.component.exposed;
+        const restoring = exposed.resumePage(2);
+        resizeCallback!([], {} as ResizeObserver);
+        await restoring; await componentFlush(); flushFrames(); await componentFlush();
+        expect(reader.state.currentPage).toBe(2); expect(reader.state.pageInput).toBe(2);
+        expect(reader.pageChanges.at(-1)).toBe(2);
+        expect(reader.viewport.scrollTop).toBeGreaterThan(0);
+    });
+    it('keeps only the latest request and discards restore work after replacement or unmount', async () => {
+        const reader = mountReader(documentModel(3)); const exposed = mountedApp._instance.subTree.component.exposed;
+        const old = exposed.resumePage(2); const latest = exposed.resumePage(3);
+        await Promise.all([old, latest]); await componentFlush(); flushFrames(); await componentFlush(); expect(reader.state.currentPage).toBe(3);
+        const stale = exposed.resumePage(2); reader.currentDocument.value = documentModel(1); await stale; await componentFlush();
+        expect(reader.state.currentPage).toBe(1);
+        const closing = exposed.resumePage(1); mountedApp.unmount(); mountedApp = undefined; await closing;
+    });
+    it('keeps the resumed page while the professional full-passage view opens and receives corrected text', async () => {
+        const doc = model(3), sources = doc.segments.map(segment => segment.source);
+        const reader = mountReader(doc, 'bilingual', ['Reviewed first page', 'Reviewed second page', 'Reviewed third page']);
+        const exposed = mountedApp._instance.subTree.component.exposed;
+        await exposed.resumePage(2); await componentFlush(); flushFrames(); await componentFlush();
+        await reader.state.openFullPassage(2, 1); await componentFlush();
+        const dialog = reader.root.querySelector<HTMLDialogElement>('.pdf-full-passage-dialog')!;
+        expect(dialog.hasAttribute('open')).toBe(true);
+        expect(dialog.querySelector('.pdf-full-passage-source p')!.textContent).toBe(sources[1]);
+        expect(dialog.querySelector('.pdf-full-passage-translation')!.textContent).toBe('Reviewed second page');
+        reader.currentTranslations.value = ['Reviewed first page', 'Corrected after material resume', 'Reviewed third page'];
+        await componentFlush(); flushFrames(); await componentFlush();
+        expect(dialog.querySelector('.pdf-full-passage-translation')!.textContent).toBe('Corrected after material resume');
+        dialog.close(); await componentFlush();
+        expect(reader.state.currentPage).toBe(2); expect(reader.state.pageInput).toBe(2);
+        expect(doc.segments.map(segment => segment.source)).toEqual(sources);
+        expect(reader.currentTranslations.value[1]).toBe('Corrected after material resume');
+    });
+});
+
 describe('PDF document pinch zoom integration', () => {
     it('keeps the pointer over the same page point and reuses raster output until the pinch settles', async () => {
         const {root, viewport, state} = mountReader(model());

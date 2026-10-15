@@ -1,0 +1,1066 @@
+{
+  "createdAt": "2026-10-15T06:56:49.756182+00:00",
+  "baseCommit": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+  "branch": "codex/material-learning-workspace-20261015",
+  "scope": "Targeted materials integration only; no full regression suite.",
+  "checks": [
+    {
+      "name": "material domain/client/background",
+      "testsPassed": 38,
+      "coverageModules": 6,
+      "evidence": "coverage above; resource-safe Vitest run at 2026-10-15 14:23:33 +08:00",
+      "result": "passed",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "material source/content/video identity",
+      "testsPassed": 52,
+      "log": "fluentread-material-source-coverage-refresh.log",
+      "result": "passed",
+      "logSha256": "2790928e4d60b58ffc372f3a27f3c7f538abcc61cd241c396f3a880b0e89931e",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "DocumentApp and PdfReader full targeted files",
+      "testsPassed": 150,
+      "log": "fluentread-material-document-composition-final.log",
+      "result": "passed",
+      "logSha256": "6205a289ddfee5ca75ed723a0f94fd80f621b396ae51fab49e99a8efb01a788f",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "material UI, LearningCenter, module boundaries, verification ownership, source headers",
+      "testsPassed": 1102,
+      "log": "fluentread-material-architecture-delivery.log",
+      "result": "passed",
+      "logSha256": "37f451d0dd8d8986dd43d3dcaf0649eb8e6bc31fd74fe5d2a0c3cf2ebcc54dd1",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "video learning component",
+      "testsPassed": 20,
+      "log": "fluentread-material-video-component-final.log",
+      "result": "passed",
+      "logSha256": "ec85f38d135a343f935824c035758d92edb644a43924fe7b5a08a2888fc46042",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "typecheck",
+      "command": "pnpm compile",
+      "log": "fluentread-material-typecheck-delivery.log",
+      "result": "passed",
+      "logSha256": "36ae1c459fbde9fad10a51b2d9fe4c71b46ac1e9a156298812ac1e7d486f49c6",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "chrome production",
+      "command": "pnpm build",
+      "log": "fluentread-material-chrome-delivery.log",
+      "result": "passed",
+      "logSha256": "4677e1c08071baf60776f06213b7b5a56957a35d5a5f844c75ec9785a3f70370",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "firefox production",
+      "command": "pnpm build:firefox",
+      "log": "fluentread-material-firefox-delivery.log",
+      "result": "passed",
+      "logSha256": "a0b24ff5b84615984a36b62056f615f5e0afa42bd508068707ef51b9aae39d5b",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "userscript production and verifier",
+      "command": "pnpm build:userscript; node scripts/verify-userscript-build.mjs",
+      "log": "fluentread-material-userscript-accepted-verify.log",
+      "result": "passed",
+      "logSha256": "3a33519b210904341be598a2b4a400f47a429aebef7a8fd18d90044e0e24fc49",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "test audit",
+      "command": "pnpm test:audit",
+      "log": "fluentread-material-test-audit-delivery.log",
+      "result": "passed",
+      "logSha256": "1ea50d06da353584d43e6d33c5cc623ada6e0cdad6a90b357d55565ff4f3edc2",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "document button dimensions and center hit-testing",
+      "testsPassed": 5,
+      "result": "passed",
+      "evidence": "document-control-verification.json",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "docs production",
+      "command": "pnpm docs:build",
+      "result": "passed",
+      "log": "fluentread-material-docs-delivery.log",
+      "logSha256": "27b256db92ba7cc9744a7032dac9413042a3aef24ce1810013ea633bf613c738",
+      "phase": "initial-delivery-before-ci-follow-up"
+    },
+    {
+      "name": "CI repair: material registration and sentence action fixtures",
+      "phase": "CI follow-up targeted verification",
+      "testsPassed": 46,
+      "testFiles": [
+        "tests/implementationAudit48K.test.ts",
+        "tests/sentenceActionsMount.test.ts"
+      ],
+      "command": "node scripts/testing/run-resource-safe.mjs -- pnpm exec vitest run --config /private/tmp/fluentread-material-composition.coverage.config.ts",
+      "log": "fluentread-material-composition-after.log",
+      "logSource": "/private/tmp/fluentread-material-composition-after.log",
+      "logSha256": "b3dd6eeb90d08302c5ff08fe6b09cc81328ec907f6fa969dedc69be0c3a75fd8",
+      "result": "passed",
+      "coverageModules": 1
+    },
+    {
+      "name": "CI repair: validated material settings destination",
+      "phase": "CI follow-up targeted verification",
+      "testsPassed": 55,
+      "testFiles": [
+        "tests/backgroundFeatureHandlers.test.ts"
+      ],
+      "command": "node scripts/testing/run-resource-safe.mjs -- pnpm exec vitest run tests/backgroundFeatureHandlers.test.ts --coverage --coverage.provider=v8 --coverage.include=src/features/settings/background/openOptionsHandler.ts --coverage.reporter=text --coverage.reporter=json --coverage.reporter=json-summary --coverage.reportsDirectory=/private/tmp/fluentread-material-options-handler-coverage --coverage.thresholds.statements=100 --coverage.thresholds.branches=100 --coverage.thresholds.functions=100 --coverage.thresholds.lines=100",
+      "log": "fluentread-material-options-handler-20261015.log",
+      "logSource": "/private/tmp/fluentread-material-options-handler-20261015.log",
+      "logSha256": "92b4c301b614307f93a8fd672cf37d8561f5e1c05faf241ab684ed2c2fcdceb8",
+      "result": "passed",
+      "coverageModules": 1
+    },
+    {
+      "name": "CI repair: document batch and reading stream public material ports",
+      "phase": "CI follow-up targeted verification",
+      "testsPassed": 47,
+      "testFiles": [
+        "tests/documentBatchComponent.test.ts",
+        "tests/readingPanelStreamingResize.test.ts"
+      ],
+      "command": "node scripts/testing/run-resource-safe.mjs -- pnpm exec vitest run tests/documentBatchComponent.test.ts tests/readingPanelStreamingResize.test.ts",
+      "log": "fluentread-material-ci-fixtures-20261015.log",
+      "logSource": "/private/tmp/fluentread-material-ci-fixtures-20261015.log",
+      "logSha256": "c80c72a15df8149547c888f27bf5d6cc0f2af0198959d901c3396e0e2cba26ba",
+      "result": "passed"
+    },
+    {
+      "name": "CI repair: content and selection lifecycles",
+      "phase": "CI follow-up targeted verification",
+      "testsPassed": 271,
+      "testFiles": [
+        "tests/contentRuntimeLifecycle.test.ts",
+        "tests/selectionTranslatorLifecycle.test.ts"
+      ],
+      "command": "node scripts/testing/run-resource-safe.mjs -- pnpm exec vitest run tests/contentRuntimeLifecycle.test.ts tests/selectionTranslatorLifecycle.test.ts",
+      "log": "fluentread-material-content-selection-after.log",
+      "logSource": "/private/tmp/fluentread-material-content-selection-after.log",
+      "logSha256": "930b5738d5d1eea553294b65f4c45379350ce66e2a2b3f91329bfd9321e2f150",
+      "result": "passed"
+    },
+    {
+      "name": "Native material notice localization and source coverage",
+      "phase": "CI follow-up targeted verification",
+      "testsPassed": 55,
+      "testFiles": [
+        "tests/materialSource.test.ts",
+        "tests/videoSentenceLearningHost.test.ts"
+      ],
+      "command": "node scripts/testing/run-resource-safe.mjs -- pnpm exec vitest run tests/materialSource.test.ts tests/videoSentenceLearningHost.test.ts --coverage --coverage.include=src/features/vocabulary/material{Source,Capture,Content}.ts --coverage.include=src/features/video-subtitle/content/learningSource.ts --coverage.reporter=text --coverage.reporter=json --coverage.reporter=json-summary --coverage.reportsDirectory=/private/tmp/fluentread-material-native-i18n-coverage --coverage.thresholds.statements=100 --coverage.thresholds.branches=100 --coverage.thresholds.functions=100 --coverage.thresholds.lines=100",
+      "log": "fluentread-material-native-i18n-coverage.log",
+      "logSource": "/private/tmp/fluentread-material-native-i18n-coverage.log",
+      "logSha256": "8dad0e9660f442c8866b5267d71b62bfdf3af09eb8a34569de3db768f64f9afb",
+      "result": "passed",
+      "coverageModules": 4
+    },
+    {
+      "name": "Material localization resources and dynamic patterns",
+      "phase": "CI follow-up targeted verification",
+      "testsPassed": 94,
+      "testFiles": [
+        "tests/i18n.test.ts",
+        "tests/i18nMaterials.test.ts"
+      ],
+      "command": "node scripts/testing/run-resource-safe.mjs -- pnpm exec vitest run --config vitest.coverage.config.ts tests/i18n.test.ts tests/i18nMaterials.test.ts --coverage --coverage.include=src/core/i18n/messages/learningMaterials.ts --coverage.include=src/core/i18n/messages/legacy-overrides.ts --coverage.include=src/core/i18n/messages/legacy-patterns.ts --coverage.reporter=text --coverage.reporter=json-summary --coverage.reportsDirectory=/private/tmp/fluentread-material-i18n-three-coverage",
+      "log": "fluentread-material-i18n-three-strict.log",
+      "logSource": "/private/tmp/fluentread-material-i18n-three-strict.log",
+      "logSha256": "6e551675e3aab5e2988a8c8d63e5d8abaf2ef18f1d9400c6ebe439af14d8ca4f",
+      "result": "passed",
+      "coverageModules": 3
+    },
+    {
+      "name": "Video sentence learning host strict coverage",
+      "phase": "CI follow-up targeted verification",
+      "testsPassed": 12,
+      "testFiles": [
+        "tests/videoSentenceLearningHost.test.ts"
+      ],
+      "command": "node scripts/testing/run-resource-safe.mjs -- pnpm exec vitest run tests/videoSentenceLearningHost.test.ts --coverage --coverage.provider=v8 --coverage.include=src/features/video-subtitle/content/sentenceLearningHost.ts --coverage.reporter=text --coverage.reporter=json-summary --coverage.reportsDirectory=/private/tmp/fluentread-material-host-coverage --coverage.thresholds.statements=100 --coverage.thresholds.branches=100 --coverage.thresholds.functions=100 --coverage.thresholds.lines=100",
+      "log": "fluentread-material-host-final.log",
+      "logSource": "/private/tmp/fluentread-material-host-final.log",
+      "logSha256": "f7e500cb921b0c8ecef6f7ca1b66fb3ad526797631203ccb55714b61158b6853",
+      "result": "passed",
+      "coverageModules": 1
+    },
+    {
+      "name": "typecheck",
+      "command": "pnpm compile",
+      "log": "fluentread-material-accepted-typecheck-2.log",
+      "logSha256": "56fb05489b037acc4aaca9f30f028701b8c775bf3d3dc284a5d9faf205a677b4",
+      "result": "passed",
+      "phase": "final-follow-up"
+    },
+    {
+      "name": "chrome production",
+      "command": "pnpm build",
+      "log": "fluentread-material-accepted-chrome-2.log",
+      "logSha256": "9b44cacce78bfb5aebbd673e07782ca65c6849be8090f8619bab25acb56b06a4",
+      "result": "passed",
+      "phase": "final-follow-up"
+    },
+    {
+      "name": "firefox production",
+      "command": "pnpm build:firefox",
+      "log": "fluentread-material-accepted-firefox-2.log",
+      "logSha256": "a966a6cb3eca45d5fae92d7fe83870e46c3cf237b28c864c8f846cec42176384",
+      "result": "passed",
+      "phase": "final-follow-up"
+    },
+    {
+      "name": "userscript production",
+      "command": "pnpm build:userscript",
+      "log": "fluentread-material-accepted-userscript-2.log",
+      "logSha256": "c2f7f895fad710e18fc911aa101a4aa79f6c74f9a18f3bcdd6804e86555c5b45",
+      "result": "passed",
+      "phase": "final-follow-up"
+    },
+    {
+      "name": "userscript verifier",
+      "command": "node scripts/verify-userscript-build.mjs",
+      "log": "fluentread-material-accepted-userscript-verify-2.log",
+      "logSha256": "e318a8e43fe1d6173a2e6a774ca287a79b7494bea74e483642fa291f2b9555ae",
+      "result": "passed",
+      "phase": "final-follow-up"
+    },
+    {
+      "name": "manifest verifier",
+      "command": "node scripts/testing/verify-extension-manifests.mjs",
+      "log": "fluentread-material-accepted-manifests.json",
+      "logSha256": "e4660128a642fd99c7b039647dd73a4dc171659427d637805f88b94e6e67da1e",
+      "result": "passed",
+      "phase": "final-follow-up"
+    },
+    {
+      "name": "test audit",
+      "command": "pnpm test:audit",
+      "log": "fluentread-material-template-accepted-audit.log",
+      "logSha256": "b3317b76ef2b998cc2cac9fae4de7d6e26df599be026d1e814c6cc43dfb520d5",
+      "result": "passed",
+      "phase": "final-follow-up"
+    },
+    {
+      "name": "docs production",
+      "command": "pnpm docs:build",
+      "log": "fluentread-material-accepted-docs.log",
+      "logSha256": "07947e4f3e9568d97944272a0cafb2a960ac19a6c5bfeebe0c37db2924848ecc",
+      "result": "passed",
+      "phase": "final-follow-up"
+    },
+    {
+      "name": "i18n exact resources and actual Vue template",
+      "command": "resource-safe Vitest i18n + i18nMaterials with three strict i18n modules",
+      "log": "fluentread-material-i18n-accepted-strict.log",
+      "logSha256": "39ce1f149d451a7352c6c4bbe053916427416bde2fc8eb477c268d1ce16dda56",
+      "result": "passed",
+      "phase": "final-follow-up",
+      "testsPassed": 95
+    },
+    {
+      "name": "architecture, ownership and headers",
+      "command": "resource-safe Vitest moduleBoundaries + verificationOwnership + sourceFileHeaders",
+      "log": "fluentread-material-template-accepted-architecture.log",
+      "logSha256": "5da261546ba0378e4e3d4e5a57bc6b9cb73334e7f61227e740f86efe15989226",
+      "result": "passed",
+      "phase": "final-follow-up",
+      "testsPassed": 1076
+    },
+    {
+      "name": "material workspace and learning center",
+      "command": "resource-safe Vitest materialWorkspaceLifecycle + learningCenterLifecycle",
+      "log": "fluentread-material-accepted-ui.log",
+      "logSha256": "b0b13e5f411ec544caf307f89074c635ab900b9ec96ff70db70dfdc6d738c480",
+      "result": "passed",
+      "phase": "final-follow-up",
+      "testsPassed": 27
+    },
+    {
+      "name": "production English UI, protected user content, native notice and document control",
+      "command": "resource-safe run-material-workspace-test.cjs --localization-only true",
+      "log": "fluentread-material-localization-accepted.log",
+      "logSha256": "ffe8188b8b87423d31fc75a7e4fc073d0e8c0c1d56ddb216a9e25577c7c7b752",
+      "result": "passed",
+      "phase": "final-follow-up",
+      "testsPassed": 4,
+      "evidence": "localization/report.json",
+      "screenshots": 6
+    },
+    {
+      "name": "production sources after registration repair",
+      "phase": "after-registration-before-localization",
+      "testsPassed": 11,
+      "result": "passed",
+      "evidence": "source-followup/report.json"
+    },
+    {
+      "name": "video subtitle panel actual material association",
+      "command": "node scripts/testing/run-resource-safe.mjs -- pnpm exec vitest run tests/videoSentenceLearningComponent.test.ts",
+      "log": "fluentread-material-video-association-accepted.log",
+      "logSha256": "ac2bead61b79f9eabe167960773a1d7817d01937cba35f60dedb747091aec26f",
+      "result": "passed",
+      "phase": "final-video-association-audit",
+      "testsPassed": 33
+    },
+    {
+      "name": "test audit after video association evidence",
+      "command": "pnpm test:audit",
+      "log": "fluentread-material-video-association-audit.log",
+      "logSha256": "acee4515d16e9ad2671f3a16e67abd650a820a78e47af7a03605161569a3ee77",
+      "result": "passed",
+      "phase": "final-video-association-audit"
+    },
+    {
+      "name": "docs after video association completion audit",
+      "command": "pnpm docs:build",
+      "log": "fluentread-material-video-association-docs-final.log",
+      "logSha256": "d88c823d0fc790300e224d271346a50799935c85b5a597a67d8a8ac1ebeae0a4",
+      "result": "passed",
+      "phase": "final-video-association-audit"
+    },
+    {
+      "name": "userscript fixed resource commit and build contracts",
+      "command": "resource-safe Vitest tests/userscriptViteConfig.test.ts",
+      "log": "fluentread-material-userscript-resource-pin-tests.log",
+      "logSha256": "a320db5ac95d41d8e469fdd8e1f47f8637bce9b5cd08e350538e0c83bcf92de1",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin",
+      "testsPassed": 188
+    },
+    {
+      "name": "typecheck after userscript fixed resource commit",
+      "command": "pnpm compile",
+      "log": "fluentread-material-resource-pin-typecheck.log",
+      "logSha256": "e97e2636befaf850e43600824c52748478dc03be1f23c249257e6e79da058489",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin"
+    },
+    {
+      "name": "userscript rebuilt with available language assets",
+      "command": "pnpm build:userscript",
+      "log": "fluentread-material-userscript-resource-pin-build.log",
+      "logSha256": "73bb9483c2a1dc0e50d2de3bcbddb25022e295405d3666dc886c6ea80f1d788f",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin"
+    },
+    {
+      "name": "userscript verifier after fixed resource commit",
+      "command": "node scripts/verify-userscript-build.mjs",
+      "log": "fluentread-material-userscript-resource-pin-verifier.log",
+      "logSha256": "9adb9ca41c66af359afc2365aa9de6f29ed28ab01782898985f05a10c3072d26",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin"
+    },
+    {
+      "name": "five immutable raw GitHub resources match local bytes and filenames",
+      "command": "HTTPS GET with system curl; compare full bytes and SHA256",
+      "log": "fluentread-material-userscript-resource-remote.json",
+      "logSha256": "cad41bf9d872cae1adbf1f3d8a25d7ea03a9e084c956a09551bfb5fe02058399",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin",
+      "testsPassed": 5,
+      "evidence": "userscript-resource-verification.json"
+    },
+    {
+      "name": "test audit after fixed resource commit",
+      "command": "pnpm test:audit",
+      "log": "fluentread-material-resource-pin-audit.log",
+      "logSha256": "acee4515d16e9ad2671f3a16e67abd650a820a78e47af7a03605161569a3ee77",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin"
+    },
+    {
+      "name": "docs after fixed resource commit",
+      "command": "pnpm docs:build",
+      "log": "fluentread-material-resource-pin-docs.log",
+      "logSha256": "5d04434271cb01c273d7995f553977b05dd40790158a3f2c63e13a713a2fee92",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin"
+    },
+    {
+      "name": "main baseline same Chrome brand test",
+      "log": "fluentread-main-options-brand-baseline.log",
+      "logSha256": "8a1a1a9c82669ac90e0521e46dfe9bcffa5278b18c3be26491321f3928a3c588",
+      "result": "passed",
+      "phase": "ci-fixture-time-budget",
+      "testsPassed": 1,
+      "scope": "Read-only main/task timing comparison; final full test file preserves all assertions with a local 10s brand-test deadline."
+    },
+    {
+      "name": "task same Chrome brand test before timeout change",
+      "log": "fluentread-material-options-brand-before.log",
+      "logSha256": "30cd11372e1e7354e7abf53efaf06df91782edbcffd6d44824d9409c5247a8b1",
+      "result": "passed",
+      "phase": "ci-fixture-time-budget",
+      "testsPassed": 1,
+      "scope": "Read-only main/task timing comparison; final full test file preserves all assertions with a local 10s brand-test deadline."
+    },
+    {
+      "name": "options navigation and all platform brand tests",
+      "log": "fluentread-material-options-brand-accepted.log",
+      "logSha256": "3127b547cfdb130306adc52ef101ac7b1feb8c57f16cb0140626ab5f29daa938",
+      "result": "passed",
+      "phase": "ci-fixture-time-budget",
+      "testsPassed": 45,
+      "scope": "Read-only main/task timing comparison; final full test file preserves all assertions with a local 10s brand-test deadline."
+    },
+    {
+      "name": "final test audit after local fixture deadline",
+      "command": "pnpm test:audit",
+      "log": "fluentread-material-ci-fixture-final-audit.log",
+      "logSha256": "acee4515d16e9ad2671f3a16e67abd650a820a78e47af7a03605161569a3ee77",
+      "result": "passed",
+      "phase": "ci-fixture-time-budget"
+    },
+    {
+      "name": "final docs build after local fixture deadline",
+      "command": "pnpm docs:build",
+      "log": "fluentread-material-ci-fixture-final-docs.log",
+      "logSha256": "dd7e44d725486b42fb31f46e232558a6f85e01c95645d79ddff1b46ee9a9d9f3",
+      "result": "passed",
+      "phase": "ci-fixture-time-budget"
+    }
+  ],
+  "coverage": [
+    {
+      "file": "src/app/background/handlers/vocabulary.ts",
+      "coverage": {
+        "statements": {
+          "covered": 18,
+          "total": 18,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 6,
+          "total": 6,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 18,
+          "total": 18,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 18,
+          "total": 18,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f",
+      "sourceSha256": "6ba30b2794ac3327647f6cb947df93e825613532fe5f4188c235913545fae008"
+    },
+    {
+      "file": "src/features/vocabulary/materialBackground.ts",
+      "coverage": {
+        "statements": {
+          "covered": 53,
+          "total": 53,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 4,
+          "total": 4,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 66,
+          "total": 66,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 53,
+          "total": 53,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f",
+      "sourceSha256": "49169391fa405f3df98d61278a97ba76e71d1fc9daef55e07012aac651c7e1f6"
+    },
+    {
+      "file": "src/features/vocabulary/materialClient.ts",
+      "coverage": {
+        "statements": {
+          "covered": 22,
+          "total": 22,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 14,
+          "total": 14,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 26,
+          "total": 26,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 22,
+          "total": 22,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f",
+      "sourceSha256": "38b70a5364ed67d1fda7435e19413d4776339430575fa75fdd72f3c2d281bd12"
+    },
+    {
+      "file": "src/features/vocabulary/materialModel.ts",
+      "coverage": {
+        "statements": {
+          "covered": 74,
+          "total": 74,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 7,
+          "total": 7,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 94,
+          "total": 94,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 74,
+          "total": 74,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f",
+      "sourceSha256": "a6df7eec05b92efaee6acf34cbe00881de3e34fea63d5b320edca989d8378cb3"
+    },
+    {
+      "file": "src/features/vocabulary/materialProtocol.ts",
+      "coverage": {
+        "statements": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f",
+      "sourceSha256": "c022b010b06a359b5558cf15cd54b14e3c13549b4b33e687bdaefc9c2d5be03e"
+    },
+    {
+      "file": "src/features/vocabulary/materialRepository.ts",
+      "coverage": {
+        "statements": {
+          "covered": 214,
+          "total": 214,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 21,
+          "total": 21,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 259,
+          "total": 259,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 214,
+          "total": 214,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f",
+      "sourceSha256": "0147499fd14120eba8b36570b0143ce22070b84fb4a4f473d63da2cb7fbd675f"
+    },
+    {
+      "file": "src/features/video-subtitle/content/learningSource.ts",
+      "coverage": {
+        "statements": {
+          "covered": 24,
+          "total": 24,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 33,
+          "total": 33,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 24,
+          "total": 24,
+          "pct": 100
+        }
+      },
+      "coverageEvidenceSource": "/private/tmp/fluentread-material-native-i18n-coverage/coverage-summary.json",
+      "coverageEvidenceFormat": "istanbul-json-summary",
+      "coverageEvidenceSha256": "2feb4573ffc3d92bc9168751b3d84ffe4cc0f6bb358fe5c187c3980fa2740aa9",
+      "rawCoverageSource": "/private/tmp/fluentread-material-native-i18n-coverage/coverage-final.json",
+      "rawCoverageSha256": "25507dbe1bd5a2a541d83a5de8fddbb6117ff80597469b925844c6e69f1a04dc",
+      "sourceSha256": "a4301314ed3153b063888330792d2c1553bd06935559d40c841bae67f53d8d04"
+    },
+    {
+      "file": "src/features/vocabulary/materialCapture.ts",
+      "coverage": {
+        "statements": {
+          "covered": 12,
+          "total": 12,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 3,
+          "total": 3,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 15,
+          "total": 15,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 12,
+          "total": 12,
+          "pct": 100
+        }
+      },
+      "coverageEvidenceSource": "/private/tmp/fluentread-material-native-i18n-coverage/coverage-summary.json",
+      "coverageEvidenceFormat": "istanbul-json-summary",
+      "coverageEvidenceSha256": "2feb4573ffc3d92bc9168751b3d84ffe4cc0f6bb358fe5c187c3980fa2740aa9",
+      "rawCoverageSource": "/private/tmp/fluentread-material-native-i18n-coverage/coverage-final.json",
+      "rawCoverageSha256": "25507dbe1bd5a2a541d83a5de8fddbb6117ff80597469b925844c6e69f1a04dc",
+      "sourceSha256": "c8e02dff81e72db90ff89d93b987146c639a44f218fe9c96f797fbfd1cdcc20b"
+    },
+    {
+      "file": "src/features/vocabulary/materialContent.ts",
+      "coverage": {
+        "statements": {
+          "covered": 148,
+          "total": 148,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 23,
+          "total": 23,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 152,
+          "total": 152,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 148,
+          "total": 148,
+          "pct": 100
+        }
+      },
+      "coverageEvidenceSource": "/private/tmp/fluentread-material-native-i18n-coverage/coverage-summary.json",
+      "coverageEvidenceFormat": "istanbul-json-summary",
+      "coverageEvidenceSha256": "2feb4573ffc3d92bc9168751b3d84ffe4cc0f6bb358fe5c187c3980fa2740aa9",
+      "rawCoverageSource": "/private/tmp/fluentread-material-native-i18n-coverage/coverage-final.json",
+      "rawCoverageSha256": "25507dbe1bd5a2a541d83a5de8fddbb6117ff80597469b925844c6e69f1a04dc",
+      "sourceSha256": "a1185e437033a0b440b4462e5e8aee0b6e775fe0fd8109dc43edce8978a076b3"
+    },
+    {
+      "file": "src/features/vocabulary/materialSource.ts",
+      "coverage": {
+        "statements": {
+          "covered": 46,
+          "total": 46,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 56,
+          "total": 56,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 46,
+          "total": 46,
+          "pct": 100
+        }
+      },
+      "coverageEvidenceSource": "/private/tmp/fluentread-material-native-i18n-coverage/coverage-summary.json",
+      "coverageEvidenceFormat": "istanbul-json-summary",
+      "coverageEvidenceSha256": "2feb4573ffc3d92bc9168751b3d84ffe4cc0f6bb358fe5c187c3980fa2740aa9",
+      "rawCoverageSource": "/private/tmp/fluentread-material-native-i18n-coverage/coverage-final.json",
+      "rawCoverageSha256": "25507dbe1bd5a2a541d83a5de8fddbb6117ff80597469b925844c6e69f1a04dc",
+      "sourceSha256": "0123962ee9358e2f3746408c6dc6b20b5272bd8c25dc674967f589e3d90e2c56"
+    },
+    {
+      "file": "src/app/content/learningFeatures.ts",
+      "coverage": {
+        "statements": {
+          "covered": 14,
+          "total": 14,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 9,
+          "total": 9,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 20,
+          "total": 20,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 14,
+          "total": 14,
+          "pct": 100
+        }
+      },
+      "coverageEvidenceSource": "/private/tmp/fluentread-material-composition-coverage/coverage-summary.json",
+      "coverageEvidenceFormat": "istanbul-json-summary",
+      "coverageEvidenceSha256": "4e7bc906108f362919936bf3795ec6011f74fdd2b34809124976af385706e69b",
+      "rawCoverageSource": "/private/tmp/fluentread-material-composition-coverage/coverage-final.json",
+      "rawCoverageSha256": "c98a141a4c447207cf13e0acd028dc2c893e9cd1b7f28c13e059b146c5e0be8b",
+      "sourceSha256": "3edf62e72cdad6c5d07b2c4a3c8eb06e924bc48b5c3c125dd4ee647a251a4a54"
+    },
+    {
+      "file": "src/features/settings/background/openOptionsHandler.ts",
+      "coverage": {
+        "statements": {
+          "covered": 45,
+          "total": 45,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 3,
+          "total": 3,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 38,
+          "total": 38,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 45,
+          "total": 45,
+          "pct": 100
+        }
+      },
+      "coverageEvidenceSource": "/private/tmp/fluentread-material-options-handler-coverage/coverage-summary.json",
+      "coverageEvidenceFormat": "istanbul-json-summary",
+      "coverageEvidenceSha256": "f018db149e00a1799985aabe13d3c379e8e22cc59d9a3232b08ca90f31c7513d",
+      "rawCoverageSource": "/private/tmp/fluentread-material-options-handler-coverage/coverage-final.json",
+      "rawCoverageSha256": "265680df3af1e009038cd67a1c2dc503d5ab5af497a5d395cd1020fb90e0226c",
+      "sourceSha256": "bc60eaaeabd13f510b0ba63e74da849684ed03b47df7b0bf49866400dc0e9b23"
+    },
+    {
+      "file": "src/features/video-subtitle/content/sentenceLearningHost.ts",
+      "coverage": {
+        "statements": {
+          "covered": 79,
+          "total": 79,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 10,
+          "total": 10,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 68,
+          "total": 68,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 79,
+          "total": 79,
+          "pct": 100
+        }
+      },
+      "coverageEvidenceSource": "/private/tmp/fluentread-material-host-coverage/coverage-summary.json",
+      "coverageEvidenceFormat": "istanbul-json-summary",
+      "coverageEvidenceSha256": "449e0efaac57a3fb39d619ed2dc704b350c525b0d81b8ced61143b1b31d2879f",
+      "sourceSha256": "f8c9b334d82f558a063f18e8a4b07fd974bc347f7616d4cfb4a8ae1a3f2ed37f"
+    },
+    {
+      "file": "src/core/i18n/messages/learningMaterials.ts",
+      "coverage": {
+        "lines": {
+          "covered": 59,
+          "total": 59,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        },
+        "statements": {
+          "covered": 59,
+          "total": 59,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "coverageEvidenceSource": "/private/tmp/fluentread-material-i18n-accepted-coverage/coverage-summary.json",
+      "coverageEvidenceFormat": "istanbul-summary",
+      "coverageEvidenceSha256": "8180e28a089cdb8499c6713a5c5b85d436a9a3bbf7b0b292c3a44146080dd5c1",
+      "sourceSha256": "754adbedc2755d9e4691a4061a0ba8f6c4cac9a6d83d2f79f504dfbf03e164f5"
+    },
+    {
+      "file": "src/core/i18n/messages/legacy-overrides.ts",
+      "coverage": {
+        "lines": {
+          "covered": 3748,
+          "total": 3748,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        },
+        "statements": {
+          "covered": 3748,
+          "total": 3748,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        }
+      },
+      "coverageEvidenceSource": "/private/tmp/fluentread-material-i18n-accepted-coverage/coverage-summary.json",
+      "coverageEvidenceFormat": "istanbul-summary",
+      "coverageEvidenceSha256": "8180e28a089cdb8499c6713a5c5b85d436a9a3bbf7b0b292c3a44146080dd5c1",
+      "sourceSha256": "15d38d8734c7c08831a34d6ba48cd906d30a9147692613ba814b9eac62fee926"
+    },
+    {
+      "file": "src/core/i18n/messages/legacy-patterns.ts",
+      "coverage": {
+        "lines": {
+          "covered": 1267,
+          "total": 1267,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100
+        },
+        "statements": {
+          "covered": 1267,
+          "total": 1267,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 9,
+          "total": 9,
+          "pct": 100
+        }
+      },
+      "coverageEvidenceSource": "/private/tmp/fluentread-material-i18n-accepted-coverage/coverage-summary.json",
+      "coverageEvidenceFormat": "istanbul-summary",
+      "coverageEvidenceSha256": "8180e28a089cdb8499c6713a5c5b85d436a9a3bbf7b0b292c3a44146080dd5c1",
+      "sourceSha256": "0ab236dfd6ea548529731ebb929c6a91f27b57a2bba773ff6fae1f43a0679f11"
+    }
+  ],
+  "sourceSha256": {
+    "scripts/testing/material-document-fixtures.cjs": "ad49f1b7a43c2e8ce15e17857b3521e8dcee0fcfaf8a70bbbfaf76101db37075",
+    "scripts/testing/run-material-workspace-test.cjs": "991648803191f863b914df0112e073541bea0a0c32849cc1d37b4a5e7aadba52",
+    "src/app/background/handlers/vocabulary.ts": "6ba30b2794ac3327647f6cb947df93e825613532fe5f4188c235913545fae008",
+    "src/app/background/messageRuntime.ts": "9ba4f4312b5ba847dddf92b39b0fa6d1654b0df1d76a0655454dba87ffe3c5c3",
+    "src/app/content/learningFeatures.ts": "3edf62e72cdad6c5d07b2c4a3c8eb06e924bc48b5c3c125dd4ee647a251a4a54",
+    "src/app/content/runtime.ts": "69d96a36629826067eb5d5b4cc7c1c8eb65245254c892cb1d34470f3ff51e63b",
+    "src/app/document-translation/DocumentApp.vue": "07f1c6232dd5c6df196b1ccc32f534d30601f4cf69053768d3c012616bf84545",
+    "src/app/document-translation/document-page.css": "32d8b0d851de3d8dc61283e8b4e4df906e2a1eee745204ffe46da88316046ca8",
+    "src/app/document-translation/index.ts": "c620b093060573a2bab47d982eaa66daecd1fece06409480c7c29a09f1c8842e",
+    "src/core/i18n/messages/learning-materials/en-US.json": "e034b24feba204814422d9dc918c3aac26f4d43f2ab9fd20630f510082e5ccac",
+    "src/core/i18n/messages/learning-materials/es-ES.json": "1fac4ae2aba83baddf8ca4f3c7353b38d07024417305398b707de1d8251753ee",
+    "src/core/i18n/messages/learning-materials/fr-FR.json": "3cd7e7d17ee7de17c863a739de2d9862aafd0d99e7555b12e9e9ad3c8dc2f03b",
+    "src/core/i18n/messages/learning-materials/ja-JP.json": "906bfa7d28a99e5f09fc31acbfed9b1c67d724a0592a0aa605e72c3b27ad1189",
+    "src/core/i18n/messages/learning-materials/ko-KR.json": "a291bfc9af0996535b92a37d53e3c488fa6cb06cecde67a91ef78c99c3f25482",
+    "src/core/i18n/messages/learning-materials/ru-RU.json": "9f34fa8f08989916da936b008e0d17ba562beac34de2ee8e5248c25c2b5691d8",
+    "src/core/i18n/messages/learningMaterials.ts": "754adbedc2755d9e4691a4061a0ba8f6c4cac9a6d83d2f79f504dfbf03e164f5",
+    "src/core/i18n/messages/legacy-overrides.ts": "15d38d8734c7c08831a34d6ba48cd906d30a9147692613ba814b9eac62fee926",
+    "src/core/i18n/messages/legacy-patterns.ts": "0ab236dfd6ea548529731ebb929c6a91f27b57a2bba773ff6fae1f43a0679f11",
+    "src/features/document-translation/ui/PdfReader.vue": "4a126e79e77298a211053c422089beb34fe1005c82822b6825699b022183c9f8",
+    "src/features/reading-assistant/public.ts": "25d867b51bd8a5d844b41df5261e632de760d1301daefd91f8cef2cf7e7f4424",
+    "src/features/reading-assistant/types.ts": "7b2145aa1c6a27d1b7466ae593ccb0b4d535bb29cddc16d5ab4196569ec4fc81",
+    "src/features/reading-assistant/ui/ReadingPanel.vue": "3c90724f417c29596b1de313f6a885b12f5aae5f84d0aa413620c589f7f84c71",
+    "src/features/selection-translation/ui/SelectionTranslator.vue": "af0c9b59129f7ff89dc7f8236492782ef862a0f3984c991eeea75a73c61fc8ae",
+    "src/features/settings/background/openOptionsHandler.ts": "bc60eaaeabd13f510b0ba63e74da849684ed03b47df7b0bf49866400dc0e9b23",
+    "src/features/settings/ui/LearningCenter.vue": "7fb8938aeb1f808f091a7d45c174b397b6e680364ec7452dd75c1f784d476b2c",
+    "src/features/video-subtitle/content/learningSource.ts": "a4301314ed3153b063888330792d2c1553bd06935559d40c841bae67f53d8d04",
+    "src/features/video-subtitle/content/public.ts": "b6dbfba3c20d01b6fca0c6631c917c8096f84defee93ea449cf1671b295436b9",
+    "src/features/video-subtitle/content/sentenceLearningHost.ts": "f8c9b334d82f558a063f18e8a4b07fd974bc347f7616d4cfb4a8ae1a3f2ed37f",
+    "src/features/video-subtitle/ui/VideoSentenceLearning.vue": "bd10a098a3aa70d003a2c81ae03847c1dde58ca126d9ee6adcfe59e0acdf07c3",
+    "src/features/vocabulary/material/content/public.ts": "9e24c9635b8bfb124d41885e5a1a9d8bfe092cc3c00665c0254eedfa530723a8",
+    "src/features/vocabulary/material/protocol.ts": "934dc3fdd20378e905ef03d2c12d517314ec23525cd8d9ee471426c2f38b04e6",
+    "src/features/vocabulary/material/public.ts": "4c4eb2a4782b048c633b2a63b554e40edb044355ae0ea67fa06788109546b7c7",
+    "src/features/vocabulary/materialBackground.ts": "49169391fa405f3df98d61278a97ba76e71d1fc9daef55e07012aac651c7e1f6",
+    "src/features/vocabulary/materialCapture.ts": "c8e02dff81e72db90ff89d93b987146c639a44f218fe9c96f797fbfd1cdcc20b",
+    "src/features/vocabulary/materialClient.ts": "38b70a5364ed67d1fda7435e19413d4776339430575fa75fdd72f3c2d281bd12",
+    "src/features/vocabulary/materialContent.ts": "a1185e437033a0b440b4462e5e8aee0b6e775fe0fd8109dc43edce8978a076b3",
+    "src/features/vocabulary/materialModel.ts": "a6df7eec05b92efaee6acf34cbe00881de3e34fea63d5b320edca989d8378cb3",
+    "src/features/vocabulary/materialProtocol.ts": "c022b010b06a359b5558cf15cd54b14e3c13549b4b33e687bdaefc9c2d5be03e",
+    "src/features/vocabulary/materialRepository.ts": "0147499fd14120eba8b36570b0143ce22070b84fb4a4f473d63da2cb7fbd675f",
+    "src/features/vocabulary/materialSource.ts": "0123962ee9358e2f3746408c6dc6b20b5272bd8c25dc674967f589e3d90e2c56",
+    "src/features/vocabulary/ui/MaterialWorkspace.vue": "d20a7860ee48ddb02a4fac467a2d7c93acba3ad8ed7535e2577604d1814bdbf3",
+    "src/features/vocabulary/ui/public.ts": "ec20f45e21251d5b2c5e0b3e507825bf219ca13a2f7c8ffbe5ebf612d3044b9f",
+    "tests/architecture/vue-verification-owners.json": "04ea13ce5c4f5900657ed7b894f8f19596139ea76e905cd30636d4b338adafb5",
+    "tests/backgroundFeatureHandlers.test.ts": "f6ae16f3baf5af150735bd0058947109997c88f6d6f741ca169dc9dc7dbe0978",
+    "tests/contentRuntimeLifecycle.test.ts": "11ff602fc5b6142c2de57b24e7258a2cc8b62d38384e0388424fdff54bd94c74",
+    "tests/documentAppLifecycle.test.ts": "9fe1c0d312dc870ae479889c348898e2d4edba62ce2ffb006885c7eae00f06de",
+    "tests/documentBatchComponent.test.ts": "4ebdeedf4023136ce12cf38cb3cbcc6b045ec723ec6032573e5151a3a8fa2957",
+    "tests/i18nMaterials.test.ts": "1b6fdfa64153d9e9370e1b49184bc299c291e4024854d1cb1932344370318528",
+    "tests/implementationAudit48K.test.ts": "65c3b3ea48d49a74ee4303c571265db3860e0ba6ce1631c0d0bb1ea83165fa78",
+    "tests/learningCenterLifecycle.test.ts": "3bc278e99ad8ac3c3189ce851fcad03eda2271a7f9a803805e6c37ad4eb4d2d3",
+    "tests/materialClient.test.ts": "2040b63800e5e13b99b049f5d586c095d3d45daffc7f9bfb7f40b4d08005f7d0",
+    "tests/materialRepository.test.ts": "19eb04aae314be3909b9508cbfd95611c907d2a028dde452cf3b22d9b36ed01f",
+    "tests/materialSource.test.ts": "6764369b5ddfed4ff2afd3ab89cc8c085319f61976d25774267cde732ae83858",
+    "tests/materialWorkspaceLifecycle.test.ts": "d889e341fa1e878d1c540bf516da21657797a976456bff04eb7f85d74ec09e2b",
+    "tests/optionsAppNavigationLifecycle.test.ts": "aeafcd48674999eeface4cf058620a33cc7a8a48ab29cfd6af9e2805436957c1",
+    "tests/pdfReaderLifecycle.test.ts": "687e30e96aaa76e4a0da98cea3737274fca2a49d42945667b9a00e46b8aaa1b0",
+    "tests/readingPanelStreamingResize.test.ts": "f8dfd102678b4342094dbf3c2467898336a71e60764907a77869082f5edfea63",
+    "tests/selectionTranslatorLifecycle.test.ts": "1690d66107a3195347de517695e6ad3c02e00a1146043806857bd89f59b5fdcf",
+    "tests/sentenceActionsMount.test.ts": "f7e30b4cdd3b4ee30eb1a9b021dc84284c60f69cb227f51a11965438169815b3",
+    "tests/test-matrix.json": "1f1d917aad3d4d6ebe66a63c8541e338ef60215192188060e1c23a6168ee6ab8",
+    "tests/userscriptViteConfig.test.ts": "392020b72b4ccda5361e4bad25ea338d6cbad2242fb09899a09f4fc241fb6015",
+    "tests/videoSentenceLearningComponent.test.ts": "a3709c0a0343d980f466e0049d4c61c920548f292b46f3d0364897bbd9196df1",
+    "userscript/languages/es-ES.be72661f69196d35.json": "fdbb85f2ac2a6069fa11251fc2aab46085ef1e9d9034e1851042a768e12dfe7b",
+    "userscript/languages/fr-FR.ecb180570edeb097.json": "5537d1e084403071a9b9c0af68e3139c4cc78dc0b27241ad377449914db4ac5d",
+    "userscript/languages/ja-JP.a2e0e46262be844e.json": "99623c9a6da17ae7dec5193256595c23a3080bcdb004740fc03c2df7b12753d8",
+    "userscript/languages/ko-KR.496a2393c33e1f1a.json": "247e49b5673f97533d49ff92f5aba989fbe7f6681d4687588efe28319913b58f",
+    "userscript/languages/ru-RU.3ae9903f73059e86.json": "838f2c50614a40f980902d1097fdfafb5fe31610aeb2c1b07a3a7c83d8bd29a4",
+    "userscript/vite.config.ts": "98cd57329931c8072bde35172a8dd2dcf34157dbb7bed569da99bd504394b36b",
+    "vitest.coverage.config.ts": "e7e5fe32aca4cceaa9c0d3bd843f7c816ca254d333b0348fafc56b239b2decbb"
+  },
+  "artifactSha256": {
+    ".output/chrome-mv3/manifest.json": "a12a20416fc826d3dc7278b74a112b4170f8985b1ac8b1a74c91f73d5e09b642",
+    ".output/firefox-mv2/manifest.json": "9802dab15f2073f80469306f3bcdfb957f8204d6a2904fe65cc1ae26ee3965f1",
+    ".output/userscript/fluent-read.user.js": "788dd577d2e43e43dd04d1243d25dd473d9bada028e9e0de5ac3040eee78f70a"
+  },
+  "screenshotsSha256": {
+    "article-missing-passage-recovery.png": "6d28e3f5fd9f57503863d718f5bbceea5b1e0b2c4e2251d165120d53e27627f8",
+    "article-resumed-position.png": "55937d335fa3477e26e49bc2d0dd0cbe961ad0d081e3b9abf986b4b3a143ddd9",
+    "document-material-390.png": "89f815560b5597786eb52cc6128e4e4158f4fda94f61ccff1f388784ab228231",
+    "document-missing-file-recovery.png": "e08d87d2094d763973cacdcf46269c392764f934b62edbc78e690d641caf9554",
+    "document-reselected-original.png": "91d879181942be9d59fd514e8d8639806789d84a29c548e6f9a24dfa6b9d68fb",
+    "document-resumed-page-2.png": "a5a25ca63589dca3b0280b3d35b9a05d18a5ab5b7bf50bb70e45afe80bef1833",
+    "document-same-name-mismatch.png": "c1486b1567be5bd63cc3c0b03eef304b0d332de6b3cd75a51f68f2d5dbfb209d",
+    "localization/article-recovery-notice-en.png": "1040f184d9fc406add738c08cb8ca934c80d07f79fd7410870f6b1a9a013f4d6",
+    "localization/document-material-en-390.png": "432c960a9327ef7914b4d2b1d5c2ff01142d75764b0e0c8159e628d480292c4b",
+    "localization/document-material-en.png": "6db1e9591905db5f7a3086141d6b6938ac1c3b34591499cb57e00e24fdcae19c",
+    "localization/material-detail-en-390.png": "ef51c0b31cf67e9984ba5062c4059da2e58811a9477df322827557f9df5f6275",
+    "localization/material-detail-en.png": "1dcbe071efd269bf662c3e972d78f5d7e515a9f857efb341fcdea83c729c5227",
+    "localization/materials-empty-en.png": "9552abef5f96c587b224af930ca7c8d117db03727945ae273931e8101b0ffc8b",
+    "material-authority-references.png": "7d9d07594f6a922967e8fae0c84e3b534cf1fdc4939024d0568ff3bbff78cbd3",
+    "material-detail-dark-390.png": "e460a14a7509a7f85b29fb9ab0a331fc88fdb5e3534b45b5d1d842b53767016b",
+    "material-detail-desktop.png": "3ab64d72cf3863f88079843f176d968a2dc70a9b924655b181a16000eedbab0d",
+    "material-docx-390.png": "416e19a4ac1e0108e29afa062e6632fc01f58dafb94dc3ab3fc16df5ae0b0d35",
+    "material-docx-resumed-page-2.png": "006affccd16fdbfcf960c5af8e38111790964d64b4245983da25ef748be68128",
+    "material-docx-saved-page-2.png": "2793077d9dbc3439c6314cf3e983813e8bb3fe94b19ea46afeb3bc058fca9af3",
+    "material-epub-390.png": "3d8d13257b25f5c58155b9ac3accbe7537e5b074bb381c41824ba61d07d4af7b",
+    "material-epub-resumed-chapter-2.png": "c0dfc0979380744c56a052339e248bca470f0a8a1ef760dedb98d65f620bc404",
+    "material-epub-saved-chapter-2.png": "f0a94a0fe7fd0e65390fe71b6c0d41ac620d8db213929bb23a308620aeb9f234",
+    "materials-desktop.png": "db911619f100090b5afe20b9642e9ea05ccae9a11279a1cb19cb6603ae1e6957",
+    "materials-empty.png": "068cdb11a0859087640eca83734341b36a04fc8ce5e40d01e16e8ccea8d630b2",
+    "source-followup/article-missing-passage-recovery.png": "6d28e3f5fd9f57503863d718f5bbceea5b1e0b2c4e2251d165120d53e27627f8",
+    "source-followup/article-resumed-position.png": "056522095cd065313bde824c44744c94b8908b6ca1f319735754ad39161f5e86",
+    "source-followup/material-authority-references.png": "c8be0e31270e15d69b061aeff52840748b9c50b262e76f0d3243374221c339ca",
+    "source-followup/material-detail-dark-390.png": "2f9bdb8e85dd3fb3e918b90709e75cc6b36bd234b3d0013abb0d90130e57e7a5",
+    "source-followup/material-detail-desktop.png": "eedee1e0d630bb0b497bfceaaf33f6de4df0e5eacf6e428d1016005da5eef855",
+    "source-followup/materials-desktop.png": "8267c9ea2d910da5d9e1efa2fe3f53103ca4270245df27a9750a548a81e10aab",
+    "source-followup/materials-empty.png": "068cdb11a0859087640eca83734341b36a04fc8ce5e40d01e16e8ccea8d630b2",
+    "source-followup/video-resumed-position.png": "ba132b95d5646a94c4c8456c0f442444a7dd8d325a887a49f20fa8e174a6dce4",
+    "video-resumed-position.png": "0ee72168d5c30c5b865615fa80b3e6e7f394b650999f8bd3c9b731e964ced9ed"
+  },
+  "limitations": [
+    "Controlled local HTTP, MP4, PDF, DOCX and EPUB fixtures; no live provider, live YouTube/X, Firefox runtime, Safari or physical mobile acceptance.",
+    "Learning question fixture is written directly to its authoritative session store; this validates retrieval and preservation, not live model generation.",
+    "Private-window eligibility is covered by deterministic client and sender tests, not an incognito browser session."
+  ],
+  "coveragePlan": {
+    "source": "/private/tmp/fluentread-material-ci-plan-resource-final.json",
+    "evidenceSha256": "33da68f41800546cdd6de797fb618ad559996b2e0fa10dfeae7af9f60fd2ea4a",
+    "plannedModuleCount": 16,
+    "recordedModuleCount": 16,
+    "exactModuleSetMatch": true,
+    "scope": "Aggregated targeted four-dimensional coverage; remote CI is separate from the recorded local checks."
+  },
+  "updatedAt": "2026-10-15T08:34:58.819513+00:00",
+  "affectedPlan": {
+    "base": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+    "reason": "changed-dependency-graph",
+    "testFileCount": 209,
+    "strictModuleCount": 16,
+    "globalInputs": [],
+    "scope": "Local plan includes uncommitted follow-up files; exact final file hashes above. Remote CI result is recorded on the PR."
+  },
+  "productionRuns": [
+    {
+      "phase": "initial-delivery",
+      "scope": "full-materials",
+      "cases": 16,
+      "report": "browser-report.json"
+    },
+    {
+      "phase": "before-registration-follow-up",
+      "scope": "document-controls",
+      "cases": 5,
+      "report": "document-control-verification.json"
+    },
+    {
+      "phase": "after-registration-before-localization",
+      "scope": "sources",
+      "cases": 11,
+      "report": "source-followup/report.json"
+    },
+    {
+      "phase": "final-localization",
+      "scope": "english-ui-only",
+      "cases": 4,
+      "report": "localization/report.json"
+    }
+  ],
+  "finalFollowUpScope": "After final localized extension acceptance: video association tests, a local options brand-test deadline and docs changed; userscript fixed resource commit was corrected and rebuilt. Extension runtime source and Chrome/Firefox artifacts remained unchanged."
+}
