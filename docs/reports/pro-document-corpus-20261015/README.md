@@ -1,6 +1,6 @@
 # 专业文档阅读与导出验收
 
-实现基于 `fa431a8459f3c1ddcd0c274d6c027cb8223b16c2`，生产包对应提交 `e5020ae2eb774bc2ea1efc16fd8f97550ffa8b3a`。随后修改只涉及验收驱动和记录，生产源码没有变化。完整源哈希、命令、证据路径和边界见 [delivery.json](./delivery.json)。
+实现基于 `fa431a8459f3c1ddcd0c274d6c027cb8223b16c2`，生产包对应提交 `e5020ae2eb774bc2ea1efc16fd8f97550ffa8b3a`。随后修改涉及验收驱动、记录及 userscript 构建期语言投影，扩展运行时源码没有变化。完整源哈希、命令、证据路径和边界见 [delivery.json](./delivery.json)。
 
 ## 实现结果
 
@@ -22,8 +22,9 @@
 | 架构、源文件头、验证归属、i18n、驱动 | 5 文件，1189 通过 |
 | 阅读器、PDF.js 和光栅生命周期 | 3 文件，152 通过 |
 | 最终真实翻译驱动修复 | 1 文件，44 通过 |
+| 固定 userscript 语言资源与构建契约 | 4 文件，315 通过 |
 | 8 个相关核心/服务模块覆盖率 | statements、branches、functions、lines 均为 100% |
-| 静态与构建 | test:audit、compile、Chrome、Firefox、docs:build 通过 |
+| 静态与构建 | test:audit、compile、Chrome、Firefox、userscript 构建与 verifier、docs:build 通过 |
 
 条件跳过属于需要额外环境变量的历史 Harness/本地语料用例；独立的公开语料审计实际执行了 70 页。来源、页号和 SHA 在 [manifest.json](./manifest.json)，逐页结果在 [report.json](./report.json)，修复对照和原页视觉检查在 [review.json](./review.json)。
 
@@ -46,6 +47,10 @@ NASA 356 页原文件实际执行一次导入取消和一次成功导入。跳�
 - `live-openstax-delivery/report.json`：教材独立复验。
 - `final-pdf-review/renders.json`、`review.json`：7 份 PDF 的 SHA、36 张渲染页和视觉记录。
 - `final-validation/`：类型检查、构建、架构专项、manifest 与源哈希。
+
+## 远端质量检查发现与修复
+
+首轮 CI 的 288 个受影响测试文件中，284 文件通过，4 文件因五语 userscript 资源摘要漂移失败；共 11229 项通过、8 项失败、5 项条件跳过。独立读取实际基线字典后确认，漂移仅来自本次新增或修改的 7 个文档键。按照现有“已发布远端文档键保持原内容”的契约，构建期静态读取五份已发布 JSON 的 `document.*` 子集，其它词条和扩展词典保持当前内容；固定提交、加载器、生成器与严格摘要门禁均未改动。315 项定向测试、userscript 构建和 verifier 通过，独立复算的五份 JSON 与固定提交文件逐字一致。首轮失败和修复证据保存在 `final-validation/userscript-ci-fix/`，不会将首轮 CI 标记为成功。
 
 ## 审查与集成
 

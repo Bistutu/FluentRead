@@ -98,9 +98,15 @@
       "pnpm compile",
       "pnpm build",
       "pnpm build:firefox",
-      "pnpm docs:build"
+      "pnpm docs:build",
+      "pnpm build:userscript",
+      "node scripts/verify-userscript-build.mjs"
     ],
-    "skipBoundary": "Pre-existing opt-in local corpus/Harness fixtures were not configured in these deterministic suites; the explicit 70-page public corpus audit ran separately."
+    "skipBoundary": "Pre-existing opt-in local corpus/Harness fixtures were not configured in these deterministic suites; the explicit 70-page public corpus audit ran separately.",
+    "userscriptResourceContracts": {
+      "files": 4,
+      "passed": 315
+    }
   },
   "corpus": {
     "documents": 4,
@@ -395,7 +401,8 @@
     "src/app/document-translation/DocumentApp.vue": "PARSED_VERSION 17 causes safe reparse through existing history workflow.",
     "src/app/document-translation/runtime.ts": "Default searchable raster fallback injected through existing export ports; PDF.js lease remains scoped.",
     "src/core/i18n/messages/pdfReading.ts": "Seven-language full passage/cross-page/waiting/export strings.",
-    "tests/test-matrix.json and vitest.coverage.config.ts": "New materialLocator/pdfContinuations modules registered in existing audit/coverage contracts."
+    "tests/test-matrix.json and vitest.coverage.config.ts": "New materialLocator/pdfContinuations modules registered in existing audit/coverage contracts.",
+    "userscript/languageBundles.ts": "Remote five-language document.* subset stays byte-identical to the published immutable JSON; extension-only PDF copy cannot invalidate pinned resources."
   },
   "limits": [
     "Firefox build passed; Firefox runtime, Safari, mobile devices and assistive technologies were not exercised here.",
@@ -473,9 +480,34 @@
     "final-validation/post-driver-report.json": {
       "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/post-driver-report.json",
       "sha256": "8358c1bc056568b1e3d9bf80675d0316dfd29660e78e32de0ed5ed9eb646c441"
+    },
+    "final-validation/userscript-ci-fix/verification.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/userscript-ci-fix/verification.json",
+      "sha256": "1cdc3ebb4978175f38283e51c56f992e34207342b0a3c0a3b251eb4fa75d615a"
+    },
+    "final-validation/userscript-ci-fix/baseline-dictionary-proof.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/userscript-ci-fix/baseline-dictionary-proof.json",
+      "sha256": "8736b55b068cf88ffaa4132bc7dca048f63559e52845f1214519bdc768365ff3"
     }
   },
   "productionUnchangedAfterAllRuns": true,
-  "runtimeSourceUnchangedAfterBuild": true,
-  "finalDriverSha256": "dd69e00fb933ff42f7456952b57c89d2777ea4dbc3de8215f6d2241f3dacff4e"
+  "runtimeSourceUnchangedAfterBuild": "Extension src/ is unchanged; userscript build-time projection was subsequently repaired and separately built/verified.",
+  "finalDriverSha256": "dd69e00fb933ff42f7456952b57c89d2777ea4dbc3de8215f6d2241f3dacff4e",
+  "ciFirstRun": {
+    "run": "https://github.com/FluentRead/FluentRead/actions/runs/38709183579",
+    "state": "failed",
+    "files": {
+      "passed": 284,
+      "failed": 4
+    },
+    "tests": {
+      "passed": 11229,
+      "failed": 8,
+      "skipped": 5
+    },
+    "cause": "The seven updated PDF document message keys changed five immutable userscript language bundle hashes.",
+    "fix": "Build-time projection restores published remote document.* values and excludes new extension-only document keys; all non-document copy and immutable pin/verifier contracts remain unchanged.",
+    "verification": "315 targeted tests, userscript build and verifier passed; five entire bundle JSON files match git show of the fixed published commit byte for byte.",
+    "rerun": "Triggered by follow-up PR commit; status recorded separately in published.json."
+  }
 }
