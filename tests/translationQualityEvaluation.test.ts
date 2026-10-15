@@ -3,7 +3,7 @@ import {readFileSync, mkdtempSync, writeFileSync, rmSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
-import {validateCorpus, evaluateTranslation, classifyFailure, compareReports, summarize} from '../scripts/quality/evaluate.mjs';
+import {validateCorpus, evaluateTranslation, classifyFailure, providerDeferral, compareReports, summarize} from '../scripts/quality/evaluate.mjs';
 
 const corpus = JSON.parse(readFileSync(new URL('./fixtures/translation-quality/corpus.json', import.meta.url), 'utf8'));
 const sample = {id: 'audit', domain: 'technical', sourceLanguage: 'en', targetLanguage: 'zh-Hans', source: '12 ms and 12 ms',
@@ -58,6 +58,17 @@ describe('translation quality evidence boundaries', () => {
         after.corpus = fixture();
         after.runs[0] = {...run(''), status: 'failure'};
         expect(compareReports(before, after)[0]).toMatchObject({comparable: false, resolvedSignals: [], outputChanged: null});
+    });
+    it('keeps server refusal backoff when a rate-limited body times out or the caller cancels', () => {
+        const events = [{status: 429, aborted: true, retryAt: 900_000}];
+        expect(classifyFailure({}, events, true).category).toBe('timeout');
+        expect(providerDeferral({}, events, 1000)).toEqual({category: 'rate-limit', retryAt: 900_000});
+        expect(classifyFailure({}, events, false, true).category).toBe('cancelled');
+        expect(providerDeferral({freeFailure: 'quota'}, [], 1000)).toEqual({category: 'quota', retryAt: 86_401_000});
+        expect(providerDeferral({}, [{status: 403}, {status: null, aborted: true, retryAt: Infinity}], 1000)).toEqual({category: 'blocked', retryAt: 86_401_000});
+        expect(providerDeferral({statusCode: 429}, [], 1000)).toEqual({category: 'rate-limit', retryAt: 301_000});
+        expect(providerDeferral({freeFailure: 'request'}, [{status: 400}], 1000)).toBeUndefined();
+        expect(providerDeferral({}, [{status: null, aborted: true}], 1000)).toBeUndefined();
     });
     it('reports failed requests separately from flags and successful-return latency', () => {
         const summary = summarize([run('12 ms'), {...run(''), status: 'failure', durationMs: 5000, failure: {category: 'network'}}])[0];
