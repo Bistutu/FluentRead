@@ -201,6 +201,7 @@ import { VOCABULARY_BOOK_CHANGED_MESSAGE, VOCABULARY_BOOK_MESSAGE, type Vocabula
 import {ReadingPanel} from '@/src/features/reading-assistant/ui/panel/public';
 import {captureReadingSelection, createReadingEvidenceAnchor, type ReadingEvidenceAnchor, type ReadingSelection} from '@/src/features/reading-assistant/public';
 import {captureMaterialSelection, beginMaterialCapture, completeMaterialCapture} from '@/src/features/vocabulary/material/public';
+import {projectMaterialOriginalText} from '@/src/features/vocabulary/material/text/public';
 import {HARNESS_ACTIONS, getHarnessModelCacheKey, isReadingActionSupported, isReadingService, normalizeHarnessPreferences, type HarnessActionId} from '@/src/core/config/harness';
 import {services} from '@/src/core/config/catalog';
 import {useUiI18n} from '@/src/ui/i18n';
@@ -1213,16 +1214,9 @@ function selectionContextText(): string {
   if (props.selectionAdapter?.context) return props.selectionAdapter.context(range, selectedText.value, 500).text;
   const boundary = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer as Element : range.startContainer.parentElement;
   const prose = boundary?.closest('p, li, blockquote, dd, dt, figcaption, article') || boundary?.parentElement;
-  let selectedIndex: number | undefined;
-  if (prose?.contains(range.startContainer)) {
-    try {
-      const prefix = document.createRange();
-      prefix.selectNodeContents(prose);
-      prefix.setEnd(range.startContainer, range.startOffset);
-      selectedIndex = prefix.toString().replace(/\s+/gu, ' ').trimStart().length;
-    } catch { selectedIndex = undefined; }
-  }
-  return summarizeSelectionContext(prose?.textContent || '', selectedText.value, 500, selectedIndex);
+  const original = prose ? projectMaterialOriginalText(prose, range) : undefined;
+  // 超预算或失效时只保留实际选中文字，不回退到含双语译文的 textContent。
+  return summarizeSelectionContext(original?.text || selectedText.value, selectedText.value, 500, original?.selection?.start);
 }
 
 function pageSourceUrl(): string {
@@ -1253,6 +1247,7 @@ async function saveVocabularyEntry(event: MouseEvent): Promise<void> {
   const requestToken = vocabularySaveGate.begin();
   const materialSelection = snapshot.value ? captureMaterialSafely(snapshot.value.range, contentRequest.text) : undefined;
   try {
+    const context = {text: selectionContextText(), sourceUrl: pageSourceUrl(), pageTitle: selectionPageTitle(), capturedAt: Date.now()};
     const materialOperation = await beginMaterialCapture(materialSelection, isPrivateContext);
     if (!vocabularySaveGate.isCurrent(requestToken) || !isContentRequestCurrent(contentRequest)) return;
     const response = await browser.runtime.sendMessage({
@@ -1265,7 +1260,7 @@ async function saveVocabularyEntry(event: MouseEvent): Promise<void> {
         translation: answer,
         phonetic: wordCard.value?.phonetics.find(item => item.text)?.text || '',
         partOfSpeech: wordCard.value?.meanings.map(meaning => meaning.partOfSpeech) || [],
-        context: {text: selectionContextText(), sourceUrl: pageSourceUrl(), pageTitle: selectionPageTitle(), capturedAt: Date.now()},
+        context,
       },
     }) as VocabularyBookResponse<unknown>;
     if (!vocabularySaveGate.isCurrent(requestToken) || !isContentRequestCurrent(contentRequest)) return;

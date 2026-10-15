@@ -27,6 +27,7 @@ import * as hotkey from '@/src/core/hotkey';
 import * as visualViewport from '@/src/platform/dom/visualViewport';
 import {setSelectionContextMenuHandler, translateSelectionFromContextMenu as translateSelectionThroughBridge} from '@/src/features/selection-translation/content/contextMenuBridge';
 import {beginMaterialCapture as beginCapture, completeMaterialCapture as completeCapture, type MaterialSelection} from '@/src/features/vocabulary/materialCapture';
+import {projectMaterialOriginalText} from '@/src/features/vocabulary/materialOriginalText';
 
 vi.mock('webextension-polyfill', () => ({default: {}}));
 const materialPorts = vi.hoisted(() => ({generation: vi.fn(), capture: vi.fn()}));
@@ -204,6 +205,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         '@/src/core/language/partOfSpeech': partOfSpeech,
         '@/src/features/vocabulary/protocol': vocabularyProtocol,
         '@/src/features/vocabulary/material/public': material,
+        '@/src/features/vocabulary/material/text/public': {projectMaterialOriginalText},
         '@/src/core/hotkey': hotkey,
         '@/src/features/share-card/public': {isShareCardMounted: () => false},
         '@/src/features/selection-translation/content/selectionTtsContentController': {
@@ -674,6 +676,40 @@ describe('explicit selection sentence collection', () => {
             locator: {kind: 'text', quote: fixture.request.text}, generation: 17,
             reference: {kind: 'vocabulary', id: 'saved-sentence', excerpt: fixture.request.text},
         }));
+    });
+    it('J1 saves only original DOM context while retaining privacy-stripped wordbook URLs and independent material identity', async () => {
+        const text = 'Use getUserID to load the original passage.';
+        const fixture = prepare(text);
+        const parsed = parseHTML('<html><body><p>Before. <span>Use <code>getUserID</code> to load the original passage.</span><span class="fluent-read-bilingual-content">受控译文不应保存</span> After.</p></body></html>');
+        const node = parsed.document.querySelector('span')!;
+        const range = {startContainer:node.firstChild!,startOffset:0,endContainer:node.lastChild!,endOffset:node.lastChild!.textContent!.length} as unknown as Range;
+        vi.stubGlobal('Node',parsed.window.Node);vi.stubGlobal('location',new URL('https://example.test/read?id=7&token=private#part'));
+        fixture.state.snapshot = {text,range};
+        fixture.material.captureMaterialSelection.mockReturnValue({source:{kind:'article',url:'https://example.test/read?id=7'},locator:{kind:'text',quote:text}});
+        await fixture.state.saveVocabularyEntry({isTrusted:true});
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({action:'upsert',input:expect.objectContaining({context:expect.objectContaining({text:'Before. Use getUserID to load the original passage. After.',sourceUrl:'https://example.test/read'})})}));
+        expect(fixture.materialCapture).toHaveBeenCalledWith(expect.objectContaining({source:{kind:'article',url:'https://example.test/read?id=7'},locator:{kind:'text',quote:text}}));
+    });
+    it.each(['over-budget','detached'] as const)('J1 retains only selected text when original context is %s', async condition => {
+        const text='Selected original sentence.';const fixture=prepare(text);
+        const parsed=parseHTML(`<html><body><p><span>${text}</span>${'b'.repeat(13000)}<span class="fluent-read-bilingual-content">译文不应保存</span></p></body></html>`);
+        const node=parsed.document.querySelector('span')!.firstChild!;
+        fixture.state.snapshot={text,range:{startContainer:node,startOffset:0,endContainer:node,endOffset:text.length}};
+        vi.stubGlobal('Node',parsed.window.Node);
+        if(condition==='detached')parsed.document.querySelector('p')!.remove();
+        await fixture.state.saveVocabularyEntry({isTrusted:true});
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({action:'upsert',input:expect.objectContaining({context:expect.objectContaining({text})})}));
+    });
+    it('J1 freezes original context before asynchronous material generation rather than rereading a mutated page', async () => {
+        const text='Selected original sentence.';const fixture=prepare(text);
+        const parsed=parseHTML(`<html><body><p>Before. <span>${text}</span> After.</p></body></html>`),node=parsed.document.querySelector('span')!.firstChild!;
+        fixture.state.snapshot={text,range:{startContainer:node,startOffset:0,endContainer:node,endOffset:text.length}};
+        vi.stubGlobal('Node',parsed.window.Node);vi.stubGlobal('location',new URL('https://example.test/first?private=1'));
+        let release!: (value:number)=>void;fixture.materialGeneration.mockReturnValueOnce(new Promise(resolve=>{release=resolve;}));
+        const pending=fixture.state.saveVocabularyEntry({isTrusted:true});
+        parsed.document.querySelector('p')!.textContent='Replacement page context';vi.stubGlobal('location',new URL('https://other.test/replaced'));
+        release(17);await pending;
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({action:'upsert',input:expect.objectContaining({context:expect.objectContaining({text:`Before. ${text} After.`,sourceUrl:'https://example.test/first'})})}));
     });
 
     it('uses the captured language for other-language sentences and retrieves saved state after explicit card requests', async () => {

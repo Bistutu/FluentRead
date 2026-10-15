@@ -1,13 +1,13 @@
 /**
  * @file src/features/vocabulary/materialRepository.ts
  * 文件职责：持久化独立于可同步配置的本地材料与学习位置，提供原子写入和可撤销归档。
- * 主要内容：Dexie 唯一来源索引、旧收藏惰性投影、引用去重、清空世代与迟到位置保护。
+ * 主要内容：Dexie 唯一来源索引、按引用及来源兼容键去重的旧收藏惰性投影、清空世代与迟到位置保护；词书隐私地址仅作兼容比较，不改写材料规范身份。
  * 模块边界：不访问网页与浏览器消息；旧收藏只读不改写，材料正文、URL 与笔记不会进入配置同步。
  */
 import Dexie, {type Table} from 'dexie';
 import type {VocabularyEntry} from './learningModel';
 import type {MaterialOperationGuard, MaterialBackup, MaterialImportResult, MaterialCaptureInput, MaterialListOptions, MaterialPatch, MaterialRecord, MaterialReference} from './materialProtocol';
-import {MaterialError, materialText, normalizeMaterialLocator, normalizeMaterialReference, normalizeMaterialSource, normalizeMaterialTopics} from './materialModel';
+import {MaterialError, canonicalMaterialUrl, materialText, normalizeMaterialLocator, normalizeMaterialReference, normalizeMaterialSource, normalizeMaterialTopics} from './materialModel';
 interface MaterialMeta {key: string; generation: number; migrated: boolean; clearedAt: number}
 export class MaterialDatabase extends Dexie {
     materials!: Table<MaterialRecord, string>;
@@ -18,6 +18,13 @@ export class MaterialDatabase extends Dexie {
     }
 }
 const initialMeta = (): MaterialMeta => ({key: 'state', generation: 0, migrated: false, clearedAt: 0});
+/** 仅用于比对旧词书隐私地址，不回写材料身份；视频必须使用其完整规范身份。 */
+function privateArticleSource(url: string): string | undefined {
+    const canonical = canonicalMaterialUrl(url);
+    if (!canonical) return;
+    const source = new URL(canonical); source.search = ''; source.hash = '';
+    return source.href;
+}
 export class MaterialRepository {
     constructor(readonly db = new MaterialDatabase(), private readonly legacyEntries?: () => Promise<VocabularyEntry[]>) {}
     private async findIdentity(key: string): Promise<MaterialRecord | undefined> {
@@ -36,10 +43,32 @@ export class MaterialRepository {
         await this.db.transaction('rw', this.db.materials, this.db.meta, async () => {
             const meta = await this.db.meta.get('state') ?? initialMeta();
             if (meta.migrated || meta.generation !== startGeneration) return;
+            // 首次打开材料前可能已经显式收藏。一次索引现有引用的来源，避免把这次
+            // 新收藏当旧词书再次导入；同词条的其他明确来源仍正常迁移。
+            const linkedSources = new Map<string, Set<string>>();
+            for (const material of await this.db.materials.toArray()) {
+                const sources = [material.identityKey, ...(material.aliases ?? [])];
+                if (material.kind === 'document' && material.source.url) {
+                    const url = canonicalMaterialUrl(material.source.url);
+                    if (url) sources.push(`article:${url}`);
+                }
+                for (const key of [...sources]) if (key.startsWith('article:')) {
+                    const url = privateArticleSource(key.slice('article:'.length));
+                    if (url) sources.push(`legacy-article:${url}`);
+                }
+                for (const reference of material.references) if (reference.kind === 'vocabulary') {
+                    const keys = linkedSources.get(reference.id) ?? new Set<string>();
+                    for (const key of sources) keys.add(key);
+                    linkedSources.set(reference.id, keys);
+                }
+            }
             for (const entry of entries) for (const context of entry.contexts) {
                 if (!context.sourceUrl) continue;
                 try {
                     const normalized = normalizeMaterialSource({kind: context.video ? 'video' : 'article', url: context.sourceUrl, title: context.pageTitle});
+                    const linked = linkedSources.get(entry.id);
+                    const privateUrl = normalized.source.kind === 'article' ? privateArticleSource(normalized.source.url!) : undefined;
+                    if (linked?.has(normalized.identityKey) || (privateUrl === normalized.source.url && linked?.has(`legacy-article:${privateUrl}`))) continue;
                     const previous = await this.findIdentity(normalized.identityKey);
                     // 已归档和显式采集的材料仍可关联旧词条，但不覆盖其阅读位置与标题。
                     const reference = normalizeMaterialReference({kind: 'vocabulary', id: entry.id, excerpt: context.text, createdAt: context.capturedAt}, Date.now());

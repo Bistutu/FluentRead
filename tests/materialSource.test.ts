@@ -39,6 +39,12 @@ function dom(body: string, url = 'https://example.com/read?id=1&__fluentread_mat
     for (const node of document.querySelectorAll('p,video')) (node as unknown as HTMLElement).scrollIntoView = vi.fn();
     return {document: document as unknown as Document, window, location};
 }
+function readingInput(document: Document, window: ReturnType<typeof dom>['window'], options: {type?: string; key?: string; trusted?: boolean; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean; target?: Element | Document} = {}) {
+    const event = new window.Event(options.type ?? 'wheel',{bubbles:true});
+    Object.defineProperty(event,'isTrusted',{value:options.trusted !== false});
+    Object.assign(event,{key:options.key,ctrlKey:options.ctrlKey,metaKey:options.metaKey,altKey:options.altKey});
+    (options.target ?? document.body).dispatchEvent(event);
+}
 beforeEach(() => {vi.useFakeTimers(); ports.config.uiLanguage = 'zh-CN'; ports.resolve.mockReset(); ports.capture.mockReset(); ports.generation.mockReset().mockResolvedValue(3); ports.capture.mockResolvedValue(record());});
 afterEach(() => {dispose.splice(0).forEach(stop => stop()); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
@@ -195,10 +201,127 @@ describe('材料来源与继续阅读', () => {
         for (const node of document.querySelectorAll('p')) node.getBoundingClientRect = () => ({top: 20, bottom: 80}) as DOMRect;
         Object.defineProperty(window, 'innerHeight', {value: 600, configurable: true});
         const stop = mountMaterialContent(document, new AbortController().signal, () => true); dispose.push(stop); await tick();
-        document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201);
+        readingInput(document,window);document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201);
         expect(ports.capture).toHaveBeenCalledWith(expect.objectContaining({positionOnly: true, locator: {kind: 'text', quote: 'A sufficiently long original paragraph.', paragraphId: 'first'}}));
-        ports.capture.mockClear(); document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201); expect(ports.capture).not.toHaveBeenCalled();
+        ports.capture.mockClear(); readingInput(document,window);document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201); expect(ports.capture).not.toHaveBeenCalled();
         stop(); document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201); expect(ports.capture).not.toHaveBeenCalled();
+    });
+    it('J1 捕获前排队的滚动不能在新收藏完成后覆盖精确原句', async () => {
+        const {document, window} = dom('<p id="old">Earlier viewport paragraph sufficiently long.</p>', 'https://example.com/read?id=1#/chapter/2');
+        document.querySelector('p')!.getBoundingClientRect = () => ({top:20,bottom:80}) as DOMRect;
+        Object.defineProperty(window, 'innerHeight', {value:600,configurable:true});
+        ports.resolve.mockResolvedValue(record({locator:{kind:'text',quote:'Saved exact sentence',paragraphId:'saved'}}));
+        dispose.push(mountMaterialContent(document,new AbortController().signal,()=>true));
+        document.dispatchEvent(new window.Event('scroll'));
+        await vi.advanceTimersByTimeAsync(200);
+        document.dispatchEvent(new window.CustomEvent('fluentread-material-captured',{detail:'material-1'}));await tick();
+        await vi.advanceTimersByTimeAsync(1001);
+        expect(ports.capture).not.toHaveBeenCalled();
+    });
+    it('J1 程序滚动和响应式重排不冒充读者继续阅读，可信滚轮之后才保存新位置', async () => {
+        const {document, window} = dom('<p id="viewport">A later reading paragraph that is sufficiently long.</p>', 'https://example.com/read?id=1#/chapter/2');
+        document.querySelector('p')!.getBoundingClientRect = () => ({top:20,bottom:80}) as DOMRect;
+        Object.defineProperty(window, 'innerHeight', {value:600,configurable:true});
+        ports.resolve.mockResolvedValue(record());
+        dispose.push(mountMaterialContent(document,new AbortController().signal,()=>true));
+        document.dispatchEvent(new window.CustomEvent('fluentread-material-captured',{detail:'material-1'}));await tick();
+        window.dispatchEvent(new window.Event('resize'));document.dispatchEvent(new window.Event('scroll'));
+        await vi.advanceTimersByTimeAsync(1201);expect(ports.capture).not.toHaveBeenCalled();
+        const wheel = new window.Event('wheel',{bubbles:true});Object.defineProperty(wheel,'isTrusted',{value:true});document.body.dispatchEvent(wheel);
+        document.dispatchEvent(new window.Event('scroll'));await vi.advanceTimersByTimeAsync(1201);
+        expect(ports.capture).toHaveBeenCalledWith(expect.objectContaining({positionOnly:true,locator:{kind:'text',quote:'A later reading paragraph that is sufficiently long.',paragraphId:'viewport'}}));
+    });
+    it.each(['capture','resize','hidden','pagehide'] as const)('J1 %s 撤销已开始的读者滚动计时与输入归属', async boundary => {
+        const {document, window} = dom('<p id="viewport">Current viewport original paragraph.</p>');
+        ports.resolve.mockResolvedValue(record({locator:undefined}));
+        const scanner = vi.spyOn(paragraphScanner,'scanMaterialParagraphs').mockResolvedValue({status:'matched',locator:{kind:'text',quote:'Later viewport'},metrics:{} as never});
+        dispose.push(mountMaterialContent(document,new AbortController().signal,()=>true));await tick();
+        readingInput(document,window);document.dispatchEvent(new window.Event('scroll'));await vi.advanceTimersByTimeAsync(200);
+        if(boundary==='capture')document.dispatchEvent(new window.CustomEvent('fluentread-material-captured',{detail:'material-1'}));
+        if(boundary==='resize')window.dispatchEvent(new window.Event('resize'));
+        if(boundary==='hidden'){Object.defineProperty(document,'visibilityState',{value:'hidden',configurable:true});document.dispatchEvent(new window.Event('visibilitychange'));}
+        if(boundary==='pagehide')window.dispatchEvent(new window.Event('pagehide'));
+        await tick();await vi.advanceTimersByTimeAsync(1201);expect(scanner).not.toHaveBeenCalled();expect(ports.capture).not.toHaveBeenCalled();
+        Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});document.dispatchEvent(new window.Event('visibilitychange'));
+        document.dispatchEvent(new window.Event('scroll'));await vi.advanceTimersByTimeAsync(1201);expect(ports.capture).not.toHaveBeenCalled();
+    });
+    it('J1 filters synthetic/modifier/typing/UI gestures and UI scrolling but accepts reading keys and touch momentum', async () => {
+        const {document, window} = dom('<p>Current paragraph.</p><input><div data-fluent-read-ui="card"></div>');
+        ports.resolve.mockResolvedValue(record({locator:undefined}));
+        const scanner = vi.spyOn(paragraphScanner,'scanMaterialParagraphs').mockResolvedValue({status:'matched',locator:{kind:'text',quote:'Keyboard position'},metrics:{} as never});
+        dispose.push(mountMaterialContent(document,new AbortController().signal,()=>true));await tick();
+        for(const options of [{trusted:false},{ctrlKey:true},{metaKey:true},{altKey:true},{type:'keydown',key:'a'},{type:'keydown',key:'PageDown',target:document.querySelector('input')!},{target:document.querySelector('[data-fluent-read-ui]')!}]){
+            readingInput(document,window,options);document.dispatchEvent(new window.Event('scroll'));await vi.advanceTimersByTimeAsync(1201);
+        }
+        expect(scanner).not.toHaveBeenCalled();
+        readingInput(document,window);document.querySelector('[data-fluent-read-ui]')!.dispatchEvent(new window.Event('scroll',{bubbles:true}));
+        await vi.advanceTimersByTimeAsync(1201);expect(scanner).not.toHaveBeenCalled();
+        // Unconsumed input expires: a much later programmatic scroll is not a user gesture.
+        document.dispatchEvent(new window.Event('scroll'));await vi.advanceTimersByTimeAsync(1201);expect(scanner).not.toHaveBeenCalled();
+        readingInput(document,window,{type:'keydown',key:'PageDown',target:document});document.dispatchEvent(new window.Event('scroll'));await vi.advanceTimersByTimeAsync(1201);
+        expect(ports.capture).toHaveBeenCalledOnce();ports.capture.mockClear();scanner.mockClear();
+        scanner.mockResolvedValue({status:'matched',locator:{kind:'text',quote:'Touch position'},metrics:{} as never});
+        readingInput(document,window,{type:'touchmove'});document.dispatchEvent(new window.Event('scroll'));await vi.advanceTimersByTimeAsync(1000);
+        document.dispatchEvent(new window.Event('scroll'));await vi.advanceTimersByTimeAsync(1000);
+        document.dispatchEvent(new window.Event('scroll'));await vi.advanceTimersByTimeAsync(1201);
+        expect(ports.capture).toHaveBeenCalledOnce();expect(ports.capture.mock.calls[0][0].locator.quote).toBe('Touch position');
+    });
+    it.each(['wheel','touchmove','keydown'] as const)('J1 preserves host nested article scrolling after %s input, including pointer input over links', async type => {
+        const {document,window}=dom('<main><div id="reader" style="height:300px;overflow:auto"><p id="inside"><a href="#next"><span>Original linked article paragraph.</span></a></p></div></main>');
+        const reader=document.querySelector('#reader')!, paragraph=document.querySelector('#inside')!;
+        paragraph.getBoundingClientRect=()=>({top:40,bottom:90}) as DOMRect;
+        Object.defineProperty(window,'innerHeight',{value:600,configurable:true});
+        ports.resolve.mockResolvedValue(record({locator:undefined}));
+        dispose.push(mountMaterialContent(document,new AbortController().signal,()=>true));await tick();
+        readingInput(document,window,{type,key:'PageDown',target:type==='keydown'?reader:document.querySelector('a span')!});
+        // Linkedom needs bubbling to deliver the event to document; browsers use the
+        // production capture listener for the native non-bubbling element scroll.
+        reader.scrollTop=200;reader.dispatchEvent(new window.Event('scroll',{bubbles:true}));
+        await vi.advanceTimersByTimeAsync(1201);
+        expect(ports.capture).toHaveBeenCalledWith(expect.objectContaining({positionOnly:true,locator:{kind:'text',quote:'Original linked article paragraph.',paragraphId:'inside'}}));
+    });
+    it('J1 article media timeupdate and pause cannot bypass the reading-input scroll owner', async () => {
+        const {document,window}=dom('<p>Current article paragraph.</p><video></video>');
+        ports.resolve.mockResolvedValue(record({locator:undefined}));
+        const scanner=vi.spyOn(paragraphScanner,'scanMaterialParagraphs').mockResolvedValue({status:'matched',locator:{kind:'text',quote:'Unrequested viewport'},metrics:{} as never});
+        dispose.push(mountMaterialContent(document,new AbortController().signal,()=>true));await tick();
+        document.querySelector('video')!.dispatchEvent(new window.Event('timeupdate',{bubbles:true}));await tick();
+        expect(scanner).not.toHaveBeenCalled();expect(ports.capture).not.toHaveBeenCalled();
+        readingInput(document,window);document.querySelector('video')!.dispatchEvent(new window.Event('pause',{bubbles:true}));await vi.advanceTimersByTimeAsync(1201);
+        expect(scanner).not.toHaveBeenCalled();expect(ports.capture).not.toHaveBeenCalled();
+    });
+    it('J1 cancels an in-flight viewport scan on a new capture', async () => {
+        const {document,window} = dom('<p>Current paragraph.</p>');
+        ports.resolve.mockResolvedValue(record({locator:undefined}));
+        const scanner=vi.spyOn(paragraphScanner,'scanMaterialParagraphs');
+        dispose.push(mountMaterialContent(document,new AbortController().signal,()=>true));await tick();
+        let viewport!: (value: Awaited<ReturnType<typeof paragraphScanner.scanMaterialParagraphs>>) => void;
+        scanner.mockImplementationOnce(()=>new Promise(done=>{viewport=done;}));
+        readingInput(document,window);document.dispatchEvent(new window.Event('scroll'));await vi.advanceTimersByTimeAsync(1201);
+        const scanOptions=scanner.mock.calls.at(-1)![2]!;expect(scanOptions.signal?.aborted).toBe(false);
+        document.dispatchEvent(new window.CustomEvent('fluentread-material-captured',{detail:'material-1'}));await tick();
+        expect(scanOptions.signal?.aborted).toBe(true);expect(scanOptions.isCurrent!()).toBe(false);
+        viewport({status:'matched',locator:{kind:'text',quote:'Stale viewport'},metrics:{} as never});await tick();expect(ports.capture).not.toHaveBeenCalled();
+    });
+    it.each(['wheel','touchmove','keydown'] as const)('J1 trusted %s interrupts pending article restore and late matches cannot pull the reader back', async type => {
+        const {document,window}=dom('<p id="saved">Saved original paragraph.</p><p id="current">Reader chosen paragraph.</p><button>UI action</button>');
+        ports.resolve.mockResolvedValue(record({locator:{kind:'text',quote:'Saved original paragraph.',paragraphId:'saved'}}));
+        let finish!: (value: Awaited<ReturnType<typeof paragraphScanner.scanMaterialParagraphs>>) => void;
+        const scanner=vi.spyOn(paragraphScanner,'scanMaterialParagraphs').mockImplementationOnce(()=>new Promise(done=>{finish=done;}))
+            .mockResolvedValueOnce({status:'matched',locator:{kind:'text',quote:'Reader chosen paragraph.',paragraphId:'current'},metrics:{} as never});
+        dispose.push(mountMaterialContent(document,new AbortController().signal,()=>true));await tick();
+        const restoreOptions=scanner.mock.calls[0][2]!;
+        readingInput(document,window,{trusted:false});readingInput(document,window,{type:'keydown',key:'a'});
+        readingInput(document,window,{type:'keydown',key:'PageDown',target:document.querySelector('button')!});
+        document.dispatchEvent(new window.Event('scroll'));await vi.advanceTimersByTimeAsync(1201);
+        expect(restoreOptions.signal?.aborted).toBe(false);expect(scanner).toHaveBeenCalledOnce();
+        readingInput(document,window,{type,key:'PageDown'});document.dispatchEvent(new window.Event('scroll'));
+        expect(restoreOptions.signal?.aborted).toBe(true);expect(restoreOptions.isCurrent!()).toBe(false);
+        await vi.advanceTimersByTimeAsync(1201);
+        expect(ports.capture).toHaveBeenCalledWith(expect.objectContaining({positionOnly:true,locator:{kind:'text',quote:'Reader chosen paragraph.',paragraphId:'current'}}));
+        finish({status:'matched',node:document.querySelector<HTMLElement>('#saved')!,metrics:{} as never});await tick();await vi.advanceTimersByTimeAsync(8000);
+        expect(document.querySelector('#saved')!.scrollIntoView).not.toHaveBeenCalled();expect(ports.capture).toHaveBeenCalledOnce();
+        expect(document.querySelector('[role="status"]')).toBeNull();
     });
     it('字体与布局变化重试恢复，路由静默改变后已排队重试失效', async () => {
         const {document, window, location} = dom('<p>waiting source</p>'); const fonts = document.createElement('div');
@@ -227,7 +350,7 @@ describe('材料来源与继续阅读', () => {
         ports.resolve.mockResolvedValue(record({locator: undefined}));
         dispose.push(mountMaterialContent(document, new AbortController().signal, () => true)); await tick();
         const scanner = vi.spyOn(paragraphScanner, 'scanMaterialParagraphs').mockResolvedValueOnce({status: 'matched', metrics: {} as never});
-        document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201);
+        readingInput(document,window);document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201);
         expect(ports.capture).not.toHaveBeenCalled(); scanner.mockClear();
         window.dispatchEvent(new window.Event('pagehide')); await tick(); expect(scanner).not.toHaveBeenCalled();
     });
@@ -279,8 +402,8 @@ describe('材料来源与继续阅读', () => {
         document.querySelector('p')!.getBoundingClientRect = () => ({top: 1, bottom: 2}) as DOMRect;
         paragraph.getBoundingClientRect = () => ({top: 1, bottom: 30}) as DOMRect; Object.defineProperty(window, 'innerHeight', {value: 600, configurable: true});
         let enabled = true; ports.resolve.mockResolvedValue(record({locator: undefined})); dispose.push(mountMaterialContent(document, new AbortController().signal, () => enabled)); await tick();
-        ports.capture.mockRejectedValueOnce(new Error('cleared')); document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201); expect(ports.capture).toHaveBeenCalledOnce();
-        ports.capture.mockClear(); enabled = false; document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201); expect(ports.capture).not.toHaveBeenCalled();
+        ports.capture.mockRejectedValueOnce(new Error('cleared')); readingInput(document,window);document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201); expect(ports.capture).toHaveBeenCalledOnce();
+        ports.capture.mockClear(); enabled = false; readingInput(document,window);document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201); expect(ports.capture).not.toHaveBeenCalled();
     });
     it('隐私、已取消及代次失败不关联；引用只保存定位信息', async () => {
         expect(await beginMaterialCapture(record(), true)).toBeUndefined(); expect(ports.generation).not.toHaveBeenCalled();
