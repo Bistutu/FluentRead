@@ -22,6 +22,8 @@ beforeEach(async () => {
     Object.assign(ports.config, {uiLanguageSetupCompleted: false, uiLanguage: 'en-US', interfaceFont: 'system'});
     ports.font.mockReset().mockResolvedValue(undefined); ports.ensureBundle.mockReset().mockResolvedValue(undefined);
     ports.createApp.mockReturnValue({use: ports.use, component: ports.component, mount: ports.mount});
+    vi.stubGlobal('navigator', {language: 'zh-CN'});
+    vi.stubGlobal('window', new EventTarget());
     vi.stubGlobal('document', {body: {kind: 'owned-popup'}});
     vi.doMock('../src/app/popup/PopupApp.vue', async () => {ports.mainLoaded(); await ports.mainGate; return {default: {kind: 'main'}};});
     vi.doMock('../src/app/popup/PopupOnboarding.vue', async () => {ports.onboardingLoaded(); await ports.onboardingGate; return {default: {kind: 'onboarding'}};});

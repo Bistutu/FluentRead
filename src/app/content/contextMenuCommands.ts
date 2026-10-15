@@ -1,7 +1,7 @@
 /**
  * @file src/app/content/contextMenuCommands.ts
  * 文件职责：将右键菜单命令转给对应翻译功能，并通过现有页面通知解释未启动操作的原因。
- * 主要内容：严格校验失败原因与选区文本，绑定通知的文档生命周期，回收图片、选区、圈选及全文翻译的实际启动状态，成功后撤销同组过期提示。
+ * 主要内容：严格校验失败原因与选区文本，绑定通知的文档生命周期，回收图片、选区、圈选及全文翻译的实际启动状态；全文回执带文档实例标识、当前工具栏结果和脱敏诊断，成功后撤销同组过期提示。
  * 模块边界：只适配生产消息和 feature 公共入口，不执行供应商请求、不读写菜单；停用与页面挂起门禁由消息组合根统一执行。
  */
 import type {ContentScriptContext} from 'wxt/utils/content-script-context';
@@ -11,6 +11,7 @@ import {normalizeUiLanguage, translate} from '@/src/core/i18n';
 import {dismissPageNotice, showPageNotice} from '@/src/features/page-notice/public';
 import type {BrowserCapabilities} from '@/src/platform/browser/capabilities';
 import {autoTranslateEnglishPage, isFullPageTranslationActive, restoreOriginalContent,
+    getTranslationToolbarStatus, getFullPageTranslationDiagnostic, getFullPageTranslationDocumentToken,
     startAreaTranslationFromContextMenu, startSectionTranslationPicker, translateSelectionFromContextMenu, toggleContextMenuImage} from './features';
 import {respondToAreaContextMenu} from './areaContextMenuResponse';
 
@@ -38,7 +39,8 @@ export function handleContextMenuNotice(payload: Record<string, unknown>, ctx: C
 export function handleContextMenuTranslation(payload: Record<string, unknown>, state: PageState,
     capabilities: BrowserCapabilities, sendResponse: Respond): boolean | undefined {
     const respond = import.meta.env.BROWSER === 'userscript' ? sendResponse
-        : (response: {status: string; action?: string; isTranslated?: boolean}): void => {
+        : (response: {status: string; action?: string; isTranslated?: boolean;
+            documentToken?: string; toolbarStatus?: ReturnType<typeof getTranslationToolbarStatus>; diagnostic?: ReturnType<typeof getFullPageTranslationDiagnostic>}): void => {
             if (response.status === 'success') dismissPageNotice('context-menu');
             sendResponse(response);
         };
@@ -69,8 +71,11 @@ export function handleContextMenuTranslation(payload: Record<string, unknown>, s
             else autoTranslateEnglishPage();
             const isTranslated = isFullPageTranslationActive();
             const changed = isTranslated !== restoring;
+            const diagnostic = getFullPageTranslationDiagnostic();
             respond({status: changed ? 'success' : 'failed',
-                action: changed ? (restoring ? 'restored' : 'translated') : 'unchanged', isTranslated});
+                action: changed ? (restoring ? 'restored' : 'translated') : 'unchanged', isTranslated,
+                documentToken: getFullPageTranslationDocumentToken(),
+                toolbarStatus: getTranslationToolbarStatus(), ...(diagnostic ? {diagnostic} : {})});
             return true;
         }
     }

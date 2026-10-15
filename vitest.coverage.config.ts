@@ -18,6 +18,8 @@ export default defineConfig({
             reportsDirectory: 'coverage/core',
             reporter: ['text', 'json-summary', 'json', 'html'],
             include: [
+                'src/services/diagnostics/index.ts',
+                'src/app/popup/startupFeedback.ts',
                 'src/core/i18n/serviceLabels.ts',
                 'src/platform/chatgpt-plan/bridge.ts',
                 'src/platform/chatgpt-plan/events.ts',

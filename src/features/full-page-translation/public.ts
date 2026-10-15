@@ -32,7 +32,7 @@ export {
     subscribeFullPageTranslationProgress,
 } from './progress';
 
-export {getTranslationToolbarStatus, subscribeTranslationToolbarStatus} from './content/stateNotification';
+export {getTranslationToolbarStatus, subscribeTranslationToolbarStatus, getFullPageTranslationDiagnostic, getFullPageTranslationDocumentToken} from './content/stateNotification';
 export type {TranslationToolbarStatus} from './toolbarStatus';
 
 export {readBilingualExcerpt} from './content/excerpt';
