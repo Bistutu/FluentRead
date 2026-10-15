@@ -949,7 +949,7 @@ export const koKRMessages = {
     'video.modeTranslation': '번역',
     'video.modeOriginal': '원문',
     'video.modeOff': '끄기',
-    "video.nativeFullscreenHint": "시스템 전체 화면에서는 기본 자막 스타일과 이미 불러온 번역을 사용합니다. 자막이 안 보이면 시스템 자막 메뉴에서 FluentRead를 선택하거나 전체 화면을 종료하여 이중 언어 자막을 보세요.",
+    "video.nativeFullscreenHint": "시스템 전체 화면에 들어간 후 자막 메뉴에서 FluentRead를 선택하세요. 기본 자막 스타일과 이미 불러온 번역을 사용합니다. 표시나 전환에 문제가 있으면 전체 화면을 종료하여 이중 언어 자막을 보세요.",
     'video.modeOffHint': 'FluentRead 자막을 끄고 사이트 자막을 사용합니다',
     'video.timingShort': '싱크',
     'video.downloadOriginalShort': '원문 자막',

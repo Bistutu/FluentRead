@@ -2,7 +2,7 @@
  @file src/app/popup/PopupServices.vue
  文件职责：在 Popup 翻译服务抽屉中展示功能分配概览，以独立选择面板替代层叠下拉菜单，让窄弹窗里的服务选择更直观。
  B站匿名讲解只出现在阅读分配中，并展示固定有效模型；写作继续遵循通用AI服务边界。
- 主要内容：突出网页默认服务，以紧凑列表展示各功能的独立服务或继承状态，继承行在同一行标出“跟随默认”与实际跟随的服务，且仅在模型与默认服务的配置模型不同时才显示模型行，以统一状态标签呈现服务并让多语言名称完整换行，保留本地图标、配置模型和配置提醒；选择面板合并功能标题、返回与关闭操作，搜索框随列表一起滚动，常用区只放可直接使用的服务，按免费翻译、已配置或正在使用的服务、微软与谷歌、热门服务排序，待配置的服务留在更多服务中，当前选中项始终在常用区，更多服务默认展开并按机器翻译、云服务厂商与 AI 翻译分组，选项下方标出配置模型或待配置状态，支持模型搜索及键盘导航，保留不可用的旧选择，缓存默认、继承或独立行的配置模型及本地化说明，避免将设置中的模型声明为最终请求模型；只让当前活跃配置和所属面板的事件修改草稿，焦点返回复验面板与用户焦点。
+ 主要内容：突出网页默认服务，以紧凑列表展示各功能的独立服务或继承状态，继承行在同一行标出“跟随默认”与实际跟随的服务，且仅在模型与默认服务的配置模型不同时才显示模型行，以统一状态标签呈现服务并让多语言名称完整换行，保留本地图标、配置模型和配置提醒；选择面板合并功能标题、返回与关闭操作，搜索框随列表一起滚动，常用区只放可直接使用的服务，按免费翻译、已配置或正在使用的服务、微软与谷歌、热门服务排序，待配置的服务留在更多服务中，当前选中项始终在常用区，更多服务默认展开并按机器翻译、云服务厂商与 AI 翻译分组，选项下方标出配置模型或待配置状态，支持模型搜索及键盘导航，保留不可用的旧选择，缓存默认、继承或独立行的配置模型及本地化说明，避免将设置中的模型声明为最终请求模型；只让当前活跃配置和所属面板的事件修改草稿，焦点返回复验面板与用户焦点；切换时仅重置所属抽屉的滚动，渲染后在同一归属保护内让搜索框或原分配行可见，不滚动宿主页面。
  模块边界：复用功能服务映射、模型解析及供应商能力，只修改父级配置草稿；保存由 PopupApp 负责，不请求翻译或处理连接密钥。
 -->
 <template>
@@ -209,17 +209,30 @@ function ownView() {
 }
 function focusAfterRender(current: () => boolean, before: Element | null, target: () => HTMLElement | null) {
   const root = panel.value, startedHere = before === document.body || Boolean(before && root?.contains(before));
+  const scroller = root?.closest<HTMLElement>('.popup-services-drawer .el-drawer__body');
+  const canRestore = () => current() && root?.isConnected && startedHere
+    && (document.activeElement === before || document.activeElement === document.body);
+  // 两个视图复用同一个滚动容器；先清掉长列表位置，不能让下一帧直接落在概览末尾。
+  if (canRestore() && scroller) scroller.scrollTop = 0;
   void nextTick(() => {
-    if (!current() || !root?.isConnected || !startedHere) return;
-    if (document.activeElement !== before && document.activeElement !== document.body) return;
-    target()?.focus({preventScroll: true});
+    if (!canRestore()) return;
+    const destination = target();
+    if (destination && scroller?.isConnected && root?.closest('.popup-services-drawer .el-drawer__body') === scroller) {
+      const bounds = scroller.getBoundingClientRect(), item = destination.getBoundingClientRect();
+      const top = Math.max(bounds.top + scroller.clientTop,
+        root.querySelector('.popup-service-toolbar')?.getBoundingClientRect().bottom ?? bounds.top);
+      const bottom = bounds.top + scroller.clientTop + scroller.clientHeight;
+      const delta = item.top < top ? item.top - top : item.bottom > bottom ? Math.min(item.top - top, item.bottom - bottom) : 0;
+      if (delta) scroller.scrollTop = Math.max(0, scroller.scrollTop + delta);
+    }
+    destination?.focus({preventScroll: true});
   });
 }
 function openPicker(field: Field) {
   if (!active.value || !fields.includes(field)) return;
   const before = document.activeElement, config = props.config;
   resetPicker();session.value = {field, config, selected: selected(field.feature), service: effective(field.feature), current: capture()};
-  // 当前选中项始终在常用区内，面板从顶部打开即可看到，无需滚动定位。
+  // 当前选中项始终在常用区内；转场回顶并只在当前抽屉内恢复搜索位置。
   focusAfterRender(ownView(), before, () => searchInput.value);
 }
 function backToOverview(value: PickerSession) {

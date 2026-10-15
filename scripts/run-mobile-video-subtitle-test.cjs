@@ -262,17 +262,56 @@ async function main() {
     const video=document.querySelector('video'); const track=video.addTextTrack('captions','Site captions','en');track.addCue(new VTTCue(0,30,'Site caption'));track.mode='showing';window.__siteTrack=track;
   });
   await isolated(`document.querySelector('video').webkitEnterFullscreen()`);
-  await page.waitForFunction(()=>document.querySelector('track[data-fluent-read-native-subtitles]')?.track.mode==='showing');
-  assert.equal(await page.evaluate(()=>window.__siteTrack.mode),'disabled'); await capture('native-interface-enter');
+  await page.waitForFunction(()=>document.querySelector('track[data-fluent-read-native-subtitles]')?.track.mode==='hidden');
+  assert.equal(await page.evaluate(()=>window.__siteTrack.mode),'showing','Entering the native interface must preserve the site selection');
+  await capture('native-interface-enter');
+  report.nativeSystemSelectionShim={scope:'Explicit standard TextTrack.mode writes emulate system-menu selections on Chromium; not native AVKit selection or rendering',beginPreservedSiteSelection:true};
+  // Chromium has no AVKit menu. Explicitly emulate its mutually exclusive
+  // selection rather than requiring the production bridge to force showing.
+  await page.evaluate(()=>{
+    const node=document.querySelector('track[data-fluent-read-native-subtitles]');
+    window.__nativeBridgeNode=node;
+    window.__siteTrack.mode='disabled';node.track.mode='showing';
+  });
   const countBeforeOff=await page.evaluate(()=>document.querySelector('track[data-fluent-read-native-subtitles]').track.cues.length);
   await page.evaluate(()=>{document.querySelector('track[data-fluent-read-native-subtitles]').track.mode='disabled';});
   await page.waitForTimeout(1200);
   assert.equal(await page.evaluate(()=>document.querySelector('track[data-fluent-read-native-subtitles]').track.mode),'disabled');
+  assert.equal(await page.evaluate(()=>document.querySelector('track[data-fluent-read-native-subtitles]')===window.__nativeBridgeNode),true,'Off must preserve the owned track identity');
   await page.evaluate(()=>{document.querySelector('track[data-fluent-read-native-subtitles]').track.mode='showing';});
-  assert.equal(await page.evaluate(()=>document.querySelector('track[data-fluent-read-native-subtitles]').track.cues.length),countBeforeOff,'Off must not accumulate duplicate hidden cues');
+  await page.waitForFunction(count=>document.querySelector('track[data-fluent-read-native-subtitles]')?.track.cues?.length===count,countBeforeOff);
   await isolated(`document.querySelector('video').webkitExitFullscreen()`);
   await page.waitForFunction(()=>document.querySelector('track[data-fluent-read-native-subtitles]')?.track.mode==='hidden');
   assert.equal(await page.evaluate(()=>window.__siteTrack.mode),'showing');
+  // Selecting Off and then leaving/re-entering must not restore the old site
+  // track or automatically select FluentRead on the following entry.
+  await isolated(`document.querySelector('video').webkitEnterFullscreen()`);
+  await page.evaluate(()=>{window.__siteTrack.mode='disabled';window.__nativeBridgeNode.track.mode='showing';});
+  await page.waitForTimeout(50);
+  await page.evaluate(()=>{window.__nativeBridgeNode.track.mode='disabled';});
+  await page.waitForTimeout(50);
+  await isolated(`document.querySelector('video').webkitExitFullscreen()`);
+  assert.equal(await page.evaluate(()=>window.__siteTrack.mode),'disabled','Leaving after Off must not restore an earlier site selection');
+  await isolated(`document.querySelector('video').webkitEnterFullscreen()`);
+  await page.waitForTimeout(1200);
+  assert.equal(await page.evaluate(()=>window.__nativeBridgeNode.track.mode),'hidden');
+  assert.equal(await page.evaluate(()=>window.__siteTrack.mode),'disabled');
+  report.nativeSystemSelectionShim.offPreservedAcrossReentry=true;
+  await isolated(`document.querySelector('video').webkitExitFullscreen()`);
+  await page.evaluate(()=>{
+    window.__siteTrack.mode='showing';
+    const other=document.querySelector('video').addTextTrack('captions','Other site captions','en');
+    other.addCue(new VTTCue(0,30,'Other site caption'));other.mode='disabled';window.__otherSiteTrack=other;
+  });
+  await isolated(`document.querySelector('video').webkitEnterFullscreen()`);
+  await page.evaluate(()=>{window.__siteTrack.mode='disabled';window.__nativeBridgeNode.track.mode='showing';});
+  await page.waitForTimeout(50);
+  await page.evaluate(()=>{window.__nativeBridgeNode.track.mode='disabled';window.__otherSiteTrack.mode='showing';});
+  await isolated(`document.querySelector('video').webkitExitFullscreen()`);
+  assert.equal(await page.evaluate(()=>window.__otherSiteTrack.mode),'showing','Leaving after another site selection must preserve that selection');
+  assert.equal(await page.evaluate(()=>window.__siteTrack.mode),'disabled');
+  report.nativeSystemSelectionShim.otherSiteSelectionPreserved=true;
+  await page.evaluate(()=>{window.__otherSiteTrack.mode='disabled';window.__siteTrack.mode='showing';});
   await configure({videoSubtitleVisible:false});await page.waitForFunction(()=>!document.querySelector('track[data-fluent-read-native-subtitles]'));
   assert.equal(await page.evaluate(()=>window.__siteTrack.mode),'showing');
   await configure({videoSubtitleVisible:true});await ready();
