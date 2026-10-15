@@ -838,6 +838,15 @@ describe('browser regression focus safety', () => {
         assertHeadedCliEvidence(path);
     });
 
+    it('userscript accepts an explicit compact-save scope and keeps selects as a separate unchanged scope', () => {
+        const {parseArgs} = require(resolve(PROJECT_ROOT, 'scripts/run-userscript-smoke-test.cjs'));
+        const args = RUNNER_CLI_CASES[0].requiredArgs;
+        expect(parseArgs([...args, '--suite', 'compact-save'], {}).suite).toBe('compact-save');
+        expect(parseArgs([...args, '--suite', 'selects'], {}).suite).toBe('selects');
+        expect(parseArgs([...args, '--suite', 'compact-save'], {}).background).toBe(true);
+        expect(() => parseArgs([...args, '--suite', 'compact-skip-layout'], {})).toThrow('无法识别测试套件');
+    });
+
     it('WebKit userscript 回归只运行无窗口模式，且不需要前台浏览器 helper', async () => {
         const {parseArgs} = require(resolve(PROJECT_ROOT, 'scripts/run-userscript-smoke-test.cjs'));
         const args = [...RUNNER_CLI_CASES[0].requiredArgs, '--engine', 'webkit'];
