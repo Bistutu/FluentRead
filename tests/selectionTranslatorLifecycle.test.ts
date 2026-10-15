@@ -3893,3 +3893,164 @@ it('captures document materials through the owner adapter and keeps safe optiona
     expect(fixture.state.captureMaterialSafely(range, 'selected translation')).toBeUndefined();
     expect(fixture.material.captureMaterialSelection).not.toHaveBeenCalled();
 });
+
+
+describe('Safari reading input keyboard transition', () => {
+    // Render the actual parent SFC and deliver focus/input through its DOM listeners.
+    // A minimal child input and closed-root focus/viewport ports model the native boundary;
+    // they do not synthesize a Safari keyboard or claim browser acceptance.
+    async function keyboardTransitionFixture(target: SelectionBuildTarget = 'safari') {
+        const fixture = mountSelection(false, {acceptsRange: () => true}, target, true);
+        const port = fixture.renderPort!;
+        vi.stubGlobal('Node', port.domWindow.Node);
+        vi.stubGlobal('Element', port.domWindow.Element);
+        vi.stubGlobal('HTMLElement', port.domWindow.HTMLElement);
+        const host = port.document.createElement('div');
+        host.id = 'fluent-read-selection-translator-container';
+        const shadow = host.attachShadow({mode: 'closed'});
+        const ui = port.root.firstElementChild!;
+        shadow.append(ui); port.root.append(host);
+        const viewport = {width: 402, height: 754, scale: 1, offsetLeft: 0, offsetTop: 0};
+        Object.assign(fixture.window, {visualViewport: viewport});
+        let active: Element | null = null;
+        Object.defineProperty(shadow, 'activeElement', {get: () => active});
+        Object.assign(fixture.document, {activeElement: host,
+            getElementById: (id: string) => id === host.id ? host : null});
+        const source = {isConnected: true, ownerDocument: fixture.document};
+        const range = {startContainer: source, endContainer: source, collapsed: false,
+            toString: () => 'Keep the original source.', getClientRects: () => []};
+        const selected = Vue.markRaw({text: 'Keep the original source.', rangeText: 'Keep the original source.', range,
+            parts: [], anchor: {left: 20, right: 250, top: 400, bottom: 424, width: 230, height: 24}});
+        Object.assign(fixture.state, {snapshot: selected, selectedText: selected.text, readingMode: true, showTooltip: true});
+        fixture.config.selectionTranslatorAutoDismiss = true;
+        await Vue.nextTick();
+        const card = shadow.querySelector('.fr-translation-tooltip') as HTMLElement;
+        expect(card).not.toBeNull();
+        card.getBoundingClientRect = () => ({left: 12, top: 320, right: 390, bottom: 537, width: 378, height: 217}) as DOMRect;
+        fixture.state.tooltipRef = Vue.markRaw(card);
+        const form = port.document.createElement('form'); form.className = 'fr-reading-followup';
+        const input = port.document.createElement('input'); input.setAttribute('aria-label', '继续追问');
+        form.append(input); card.append(form);
+        const controller = new AbortController(); fixture.state.translationAbortController = controller;
+        const send = (where: 'window' | 'document', type: string, fields: Record<string, unknown> = {}) => {
+            const event = {isTrusted: true, target: fixture.document, ...fields};
+            for (const fn of [...(fixture.listeners.get(`${where}:${type}`) ?? [])]) fn(event);
+        };
+        const domEvent = (type: string, trusted = true) => {
+            const event = new port.domWindow.Event(type, {bubbles: true});
+            Object.defineProperty(event, 'isTrusted', {value: trusted}); input.dispatchEvent(event);
+        };
+        const focus = (trusted = true, interaction = true) => {
+            if (interaction) send('document', 'pointerdown', {target: host, pointerType: 'touch', button: 0});
+            active = input; domEvent('focusin', trusted);
+            if (interaction) send('document', 'pointerup', {target: host, pointerType: 'touch', button: 0});
+        };
+        const keyboardScroll = () => {
+            Object.assign(viewport, {height: 376, offsetTop: 284});
+            send('window', 'scroll');
+        };
+        return {...fixture, host, shadow, card, input, viewport, selected, source, controller, focus, domEvent, send,
+            keyboardScroll, setActive: (element: Element | null) => {active = element;}};
+    }
+
+    it('keeps the rendered owned card and request during the actual stable-scale keyboard document pan', async () => {
+        const f = await keyboardTransitionFixture();
+        f.focus(); await vi.advanceTimersByTimeAsync(231); f.keyboardScroll(); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(true);
+        expect(f.shadow.querySelector('.fr-translation-tooltip')).toBe(f.card);
+        expect(f.state.snapshot).toBe(f.selected);
+        expect(f.controller.signal.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(20);
+        expect(f.state.viewportSize).toMatchObject({width: 402, height: 376, top: 284});
+        expect(f.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+
+    it('does not renew the focus window on repeated keyboard pans and releases its wheel observer at expiry', async () => {
+        const f = await keyboardTransitionFixture(); f.focus();
+        expect(f.listeners.get('window:wheel')?.size).toBe(1);
+        await vi.advanceTimersByTimeAsync(700); f.keyboardScroll();
+        expect(f.state.showTooltip).toBe(true);
+        await vi.advanceTimersByTimeAsync(101);
+        expect(f.listeners.get('window:wheel')?.size).toBe(0);
+        f.keyboardScroll(); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(false);
+        expect(f.shadow.querySelector('.fr-translation-tooltip')).toBeNull();
+        expect(f.controller.signal.aborted).toBe(true);
+    });
+
+    it.each(['untrusted focus', 'no owned gesture', 'stale gesture', 'readonly', 'no viewport', 'no auto-dismiss'] as const)(
+        'does not arm keyboard protection for %s', async reason => {
+            const f = await keyboardTransitionFixture();
+            if (reason === 'readonly') f.input.setAttribute('readonly', '');
+            if (reason === 'no viewport') Object.assign(f.window, {visualViewport: undefined});
+            if (reason === 'no auto-dismiss') { f.config.selectionTranslatorAutoDismiss = false; f.notifyConfig(); }
+            if (reason === 'no owned gesture') vi.setSystemTime(0);
+            if (reason === 'stale gesture') {
+                f.send('document', 'pointerdown', {target: f.host, pointerType: 'touch', button: 0});
+                await vi.advanceTimersByTimeAsync(501);
+            }
+            f.focus(reason !== 'untrusted focus', reason !== 'no owned gesture' && reason !== 'stale gesture');
+            expect(f.listeners.get('window:wheel')?.size ?? 0).toBe(0);
+            f.keyboardScroll(); await Vue.nextTick();
+            expect(f.state.showTooltip).toBe(reason === 'no auto-dismiss');
+        },
+    );
+
+    it.each(['ordinary document scroll', 'nested scroll', 'pinch zoom', 'width change', 'focus lost', 'detached input', 'changed source', 'disconnected source'] as const)(
+        'keeps normal dismissal for %s during the short focus window', async reason => {
+            const f = await keyboardTransitionFixture(); f.focus();
+            Object.assign(f.viewport, {height: 376, offsetTop: 284});
+            let target: unknown = f.document;
+            if (reason === 'ordinary document scroll') f.viewport.height = 754;
+            if (reason === 'nested scroll') target = f.renderPort!.document.createElement('div');
+            if (reason === 'pinch zoom') f.viewport.scale = 1.2;
+            if (reason === 'width change') f.viewport.width = 300;
+            if (reason === 'focus lost') f.setActive(null);
+            if (reason === 'detached input') f.input.remove();
+            if (reason === 'changed source') f.state.snapshot = {...f.selected, text: 'A different source.'};
+            if (reason === 'disconnected source') f.source.isConnected = false;
+            f.send('window', 'scroll', {target}); await Vue.nextTick();
+            expect(f.state.showTooltip).toBe(false);
+            expect(f.controller.signal.aborted).toBe(true);
+            expect(f.listeners.get('window:wheel')?.size).toBe(0);
+        },
+    );
+
+    it.each(['wheel', 'touch move', 'outside pointer', 'scroll key', 'input', 'focusout', 'window blur', 'pagehide'] as const)(
+        'revokes only the temporary protection for deliberate intent or teardown: %s', async reason => {
+            const f = await keyboardTransitionFixture(); f.focus();
+            const preventDefault = vi.fn(), stopPropagation = vi.fn();
+            if (reason === 'wheel') f.send('window', 'wheel', {preventDefault, stopPropagation});
+            if (reason === 'touch move') f.send('document', 'pointermove', {pointerType: 'touch'});
+            if (reason === 'outside pointer') f.send('document', 'pointerdown', {target: f.renderPort!.document.createElement('p'), pointerType: 'touch', button: 0});
+            if (reason === 'scroll key') f.send('document', 'keydown', {target: f.host, key: 'PageDown', preventDefault, stopPropagation});
+            if (reason === 'input' || reason === 'focusout') f.domEvent(reason);
+            if (reason === 'window blur') f.send('window', 'blur');
+            if (reason === 'pagehide') f.send('window', 'pagehide');
+            expect(preventDefault).not.toHaveBeenCalled(); expect(stopPropagation).not.toHaveBeenCalled();
+            expect(f.listeners.get('window:wheel')?.size).toBe(0);
+            f.keyboardScroll(); await Vue.nextTick();
+            expect(f.state.showTooltip).toBe(false);
+            expect(f.controller.signal.aborted).toBe(true);
+        },
+    );
+
+    it('ignores an untrusted wheel, then unregisters the one observer and timer on unmount', async () => {
+        const f = await keyboardTransitionFixture(); f.focus();
+        f.send('window', 'wheel', {isTrusted: false}); f.keyboardScroll();
+        expect(f.state.showTooltip).toBe(true);
+        f.unmount(); expect(f.listeners.get('window:wheel')?.size).toBe(0);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(f.controller.signal.aborted).toBe(true);
+        expect(f.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['chrome', 'firefox', 'userscript'] as const)('does not register a page wheel listener or change %s dismissal', async target => {
+        const f = await keyboardTransitionFixture(target); f.focus();
+        expect(f.listeners.get('window:wheel')?.size ?? 0).toBe(0);
+        expect(f.listeners.get('document:wheel')?.size ?? 0).toBe(0);
+        f.keyboardScroll(); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(false);
+    });
+});
