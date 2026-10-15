@@ -120,6 +120,7 @@ import {VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY, VIDEO_LOCAL_TRANSCRIPTION_STATE_MES
 import {getVideoAiModelFileUrl, VIDEO_AI_Q4_MODEL_FILES, VIDEO_AI_SMALL_MODEL_FILES} from '@/src/features/video-subtitle/offscreen/modelCache';
 import {VIDEO_AI_SUBTITLE_CACHE_CLEAR_MESSAGE, VIDEO_AI_SUBTITLE_CACHE_STATS_MESSAGE} from '@/src/features/video-subtitle/transcriptionCache';
 import {createVideoSubtitleBackgroundHandlers} from '@/src/features/video-subtitle/background/handlers';
+import type {OffscreenResponseMap, VideoTranscriptionModel} from '@/src/core/messaging/offscreen';
 import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} from '@/src/services/messaging/backgroundRouter';
 import {downloadProgressKey, videoModelDownloadId} from '@/src/core/download/progress';
 import {appendConfigHistorySnapshot, toRestorableConfig} from '@/src/services/config/history';
@@ -476,6 +477,9 @@ describe('audit49C video model and cache lifecycle in the client template', () =
 
 // 实际后台 handler + 实际路由/失败回复纪律。这里只控制 Offscreen、storage 和回包传输端口，
 // 不生成业务 snapshot；捕获的 models 完全由生产 handler 的串行写入产生。
+function videoPrepared(model: VideoTranscriptionModel): Extract<OffscreenResponseMap['VIDEO_AI_PREPARE'], {success: true}> {
+    return {success: true, model};
+}
 function videoHandlerFixture(initial: string[] = []) {
     let values: Record<string, unknown> = {[VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY]: [...initial]};
     const events: unknown[] = [];
@@ -493,7 +497,14 @@ function videoHandlerFixture(initial: string[] = []) {
             }}, 'local');
         }),
     };
-    const offscreen = {send: vi.fn(async (_message: any) => ({success: true})), sendIfPresent: vi.fn(async () => ({success: true}))};
+    const offscreen = {
+        send: vi.fn(async (message: {type: string; model?: VideoTranscriptionModel}): Promise<OffscreenResponseMap['VIDEO_AI_PREPARE'] | OffscreenResponseMap['VIDEO_AI_REMOVE_MODEL']> => {
+            if (message.type === 'VIDEO_AI_PREPARE') return videoPrepared(message.model ?? 'tiny');
+            if (message.type === 'VIDEO_AI_REMOVE_MODEL') return {success: true};
+            throw new Error(`Unexpected Offscreen fixture request: ${message.type}`);
+        }),
+        sendIfPresent: vi.fn(async () => ({success: true})),
+    };
     const listener = createBackgroundRuntimeMessageListener(createBackgroundMessageRouter(
         createVideoSubtitleBackgroundHandlers({offscreen: offscreen as any, storage}),
     ), () => ({}));
@@ -593,7 +604,7 @@ describe('video settings real template recovery boundaries', () => {
         expect(host.querySelector('[data-video-model-progress="small"] progress')!.getAttribute('value')).toBe('20');
         emitVideoProgress('small'); await settle();
         expect(videoCard(host, 'small').querySelector('.video-model-availability')!.textContent).toContain('尚未下载');
-        fixture.offscreen.send.mockImplementationOnce(async () => {fixture.cacheUrls.add(tokenizer); return {success: true};});
+        fixture.offscreen.send.mockImplementationOnce(async () => {fixture.cacheUrls.add(tokenizer); return videoPrepared('small');});
         await clickVideoModel(host, 'small');
         expect(videoCard(host, 'small').querySelector('.video-model-availability')!.textContent).toContain('可离线使用');
         const oldProgress = [...ports.storageListeners]; state.active = false; await settle();
@@ -683,14 +694,14 @@ describe('video settings real template recovery boundaries', () => {
 });
 describe('audit49C followup1 cross-model convergence through public handlers and real client buttons', () => {
     it('keeps both successful concurrent downloads when the earlier captured reply is delivered last', async () => {
-        const fixture = videoHandlerFixture(); const tinyWorker = deferred<{success: boolean}>(); const baseWorker = deferred<{success: boolean}>();
+        const fixture = videoHandlerFixture(); const tinyWorker = deferred<OffscreenResponseMap['VIDEO_AI_PREPARE']>(); const baseWorker = deferred<OffscreenResponseMap['VIDEO_AI_PREPARE']>();
         fixture.offscreen.send.mockImplementation((message: any) => message.model === 'tiny' ? tinyWorker.promise : baseWorker.promise);
         const tinyReply = fixture.hold('fluentReadPrepareLocalVideoModel', 'tiny');
         const {host} = await mount(VideoLocalModelSettings, {config: normalizeConfig({videoTranslationEnabled: true})});
         await clickVideoModel(host, 'tiny'); await clickVideoModel(host, 'base');
         expect(fixture.offscreen.send.mock.calls.map(([message]) => message.model)).toEqual(['tiny', 'base']);
-        tinyWorker.resolve({success: true}); expect((await tinyReply.captured.promise).models).toEqual(['tiny']);
-        baseWorker.resolve({success: true}); await settle();
+        tinyWorker.resolve(videoPrepared('tiny')); expect((await tinyReply.captured.promise).models).toEqual(['tiny']);
+        baseWorker.resolve(videoPrepared('base')); await settle();
         expect(fixture.models()).toEqual(['tiny', 'base']);
         tinyReply.release.resolve(); await settle(); expectVideoModels(host, ['tiny', 'base']);
     });
@@ -716,7 +727,7 @@ describe('audit49C followup1 cross-model convergence through public handlers and
         tinyReply.release.resolve(); await settle(); expectVideoModels(host, ['base']);
     });
     it('re-reads external changes after a failed command and retains the independent command error', async () => {
-        const fixture = videoHandlerFixture(); const worker = deferred<{success: boolean; error: string}>();
+        const fixture = videoHandlerFixture(); const worker = deferred<OffscreenResponseMap['VIDEO_AI_PREPARE']>();
         fixture.offscreen.send.mockImplementationOnce(() => worker.promise);
         const {host} = await mount(VideoLocalModelSettings, {config: normalizeConfig({videoTranslationEnabled: true})});
         await clickVideoModel(host, 'tiny');
@@ -728,8 +739,8 @@ describe('audit49C followup1 cross-model convergence through public handlers and
         expect(host.querySelector('.video-model-management [role="alert"]')).toBeNull();
     });
     it('keeps one concurrent download success when the other command fails', async () => {
-        const fixture = videoHandlerFixture(); const tinyWorker = deferred<{success: boolean; error?: string}>();
-        fixture.offscreen.send.mockImplementation((message: any) => message.model === 'tiny' ? tinyWorker.promise : Promise.resolve({success: true}));
+        const fixture = videoHandlerFixture(); const tinyWorker = deferred<OffscreenResponseMap['VIDEO_AI_PREPARE']>();
+        fixture.offscreen.send.mockImplementation(message => message.model === 'tiny' ? tinyWorker.promise : Promise.resolve(videoPrepared('base')));
         const {host} = await mount(VideoLocalModelSettings, {config: normalizeConfig({videoTranslationEnabled: true})});
         await clickVideoModel(host, 'tiny'); await clickVideoModel(host, 'base');
         tinyWorker.resolve({success: false, error: 'tiny failed'}); await settle();
@@ -762,19 +773,19 @@ describe('audit49C followup1 cross-model convergence through public handlers and
     });
     it('keeps a command error after a failed terminal read is later recovered', async () => {
         const fixture = videoHandlerFixture(); const {host} = await mount(VideoLocalModelSettings, {config: normalizeConfig({videoTranslationEnabled: true})});
-        fixture.offscreen.send.mockResolvedValueOnce({success: false});
+        fixture.offscreen.send.mockResolvedValueOnce({success: false, error: 'controlled failed download'});
         fixture.failState(new Error('read failed after command failure'));
         await clickVideoModel(host, 'tiny');
         await fixture.storage.set({[VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY]: ['base']}); await settle();
         expectVideoModels(host, ['base']); expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('模型下载失败，请检查网络后重试');
     });
     it('preserves external state after an actual remove handler rejects and permits retry', async () => {
-        const fixture = videoHandlerFixture(['tiny']); const worker = deferred<{success: boolean}>();
+        const fixture = videoHandlerFixture(['tiny']); const worker = deferred<OffscreenResponseMap['VIDEO_AI_REMOVE_MODEL']>();
         fixture.offscreen.send.mockImplementationOnce(() => worker.promise);
         const {host} = await mount(VideoLocalModelSettings, {config: normalizeConfig({videoTranslationEnabled: true})});
         await clickVideoModel(host, 'tiny');
         await fixture.storage.set({[VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY]: ['tiny', 'base']});
-        worker.resolve({success: false}); await settle();
+        worker.resolve({success: false, error: '模型清除失败'}); await settle();
         expectVideoModels(host, ['tiny', 'base']); expect(host.querySelector('.video-model-management [role="alert"]')!.textContent).toContain('模型清除失败');
         await clickVideoModel(host, 'tiny'); expect(fixture.models()).toEqual(['base']); expectVideoModels(host, ['base']);
         expect(host.querySelector('.video-model-management [role="alert"]')).toBeNull();
@@ -806,7 +817,7 @@ describe('audit49C followup1 cross-model convergence through public handlers and
         expect(page.host.querySelector('[data-video-model-source]')).toBeNull();
     });
     it('renders real download byte progress while keeping connection and fallback sources internal, then permits retry', async () => {
-        const gate = deferred<{success: boolean; error?: string}>(), fixture = videoHandlerFixture(); fixture.offscreen.send.mockReturnValueOnce(gate.promise);
+        const gate = deferred<OffscreenResponseMap['VIDEO_AI_PREPARE']>(), fixture = videoHandlerFixture(); fixture.offscreen.send.mockReturnValueOnce(gate.promise);
         const {host} = await mount(VideoLocalModelSettings, {config: normalizeConfig({videoTranslationEnabled: true})});
         await clickVideoModel(host, 'small');
         const progress = () => host.querySelector('[data-video-model-progress="small"]')!;

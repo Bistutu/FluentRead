@@ -1,7 +1,7 @@
 <!--
  * @file userscript/SettingsPanel.vue
  * 文件职责：提供 userscript 紧凑设置对话框，编辑翻译服务、触发方式、输入翻译与界面配置草稿。
- * 主要内容：以共享纯配置 editor 管理手动保存、外部快照和在途草稿所有权，后继编辑与默认恢复不被旧保存覆盖；复用配置目录及模型删除命令，AI 超时按秒保留输入草稿并在确认或保存时规范化；只有已保存的运行时设置应用到当前页面。
+ * 主要内容：以共享纯配置 editor 管理手动保存、外部快照和在途草稿所有权，后继编辑与默认恢复不被旧保存覆盖；编辑资源由应用卸载入口与组件正常卸载共用幂等清理，失败挂载也释放订阅；复用配置目录及模型删除命令，AI 超时按秒保留输入草稿并在确认或保存时规范化；只有已保存的运行时设置应用到当前页面。
  * 模块边界：只管理设置草稿和保存反馈，不实现网页翻译或扩展专有能力。
 -->
 <template>
@@ -175,7 +175,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
+import {computed, getCurrentInstance, onMounted, onUnmounted, ref, watch} from 'vue';
 import browser from 'webextension-polyfill';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
 import {removeConfiguredModel} from '@/src/core/config/modelEditing';
@@ -447,6 +447,25 @@ const configEditor = createConfigEditor({
   },
 });
 const unsubscribeConfig = subscribeConfig(configEditor.hydrate);
+const editorApp = getCurrentInstance()!.appContext.app;
+const previousUnmount = editorApp.unmount;
+function disposeEditor(): void {
+  if (disposed) return;
+  disposed = true;
+  saving.value = false;
+  try { unsubscribeConfig(); }
+  finally {
+    configEditor.dispose();
+    if (editorApp.unmount === unmountEditor) editorApp.unmount = previousUnmount;
+  }
+}
+function unmountEditor(): void {
+  try { disposeEditor(); }
+  finally { previousUnmount.call(editorApp); }
+}
+// mount 期间的 DOM 端口也可能抛错；Vue 此时不会运行 onUnmounted。
+// 与 i18n 插件共用 app 的释放入口，失败构造和正常关闭都只释放本次编辑会话。
+editorApp.unmount = unmountEditor;
 onMounted(async () => {
   try {
     await configReady;
@@ -459,12 +478,7 @@ onMounted(async () => {
     status.value = `设置加载失败：${error instanceof Error ? error.message : String(error)}`;
   }
 });
-onUnmounted(() => {
-  disposed = true;
-  saving.value = false;
-  unsubscribeConfig();
-  configEditor.dispose();
-});
+onUnmounted(disposeEditor);
 
 function close(): void {
   emit('close');

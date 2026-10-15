@@ -727,9 +727,10 @@
     "userscript/SettingsPanel.vue": {
       "kind": "behavior",
       "tests": [
-        "tests/userscriptFreeTranslationSettings.test.ts"
+        "tests/userscriptFreeTranslationSettings.test.ts",
+        "tests/implementationAudit49F.test.ts"
       ],
-      "scenario": "真实userscript模板事件、受控持久化、authority、失败恢复及卸载；不把源码字符串当编辑证明"
+      "scenario": "真实userscript模板事件、受控持久化、authority、失败恢复，以及挂载失败、重入重试和正常卸载时的订阅与观察器释放；不把源码字符串当编辑证明"
     }
   }
 }

@@ -4,6 +4,7 @@ import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createContext, runInContext} from 'node:vm';
 import {compileVueInlineFixture} from './helpers/compiledVueFixture';
+import type {Config} from '@/src/core/config/model';
 
 // 使用真实 Vue runtime-dom 和 SFC；linkedom 只提供受控 DOM 外部端口。
 const dom = await vi.hoisted(async () => {
@@ -565,6 +566,13 @@ describe('49F malformed resource boundaries through real loaders', () => {
 describe('49F actual settings client template', () => {
     it('hydrates, edits a native control, saves normalized config, and applies the current-page messages', async () => {
         ports.config.on = true;
+        const subscribers = new Set<(snapshot: Config) => void>();
+        ports.subscribe.mockImplementation(callback => {subscribers.add(callback);return () => subscribers.delete(callback);});
+        // ACK 前发布已接受的权威快照，与真实 store 的 patch/订阅契约一致。
+        ports.patch.mockImplementation(async (snapshot: Config) => {
+            Object.assign(ports.config, snapshot);
+            for (const subscriber of subscribers) subscriber(ports.config);
+        });
         const root = document.createElement('div'); document.body.append(root);
         app = createApp(SettingsPanel); app.mount(root);
         await nextTick(); await nextTick();
@@ -574,8 +582,9 @@ describe('49F actual settings client template', () => {
         await nextTick();
         const save = root.querySelector<HTMLButtonElement>('button.primary')!;
         save.dispatchEvent(Object.assign(new Event('click', {bubbles: true}), {_vts: Date.now() + 1}));
-        await vi.waitFor(() => expect(root.querySelector('.status')!.textContent).toContain('设置已保存'));
-        expect(ports.save.mock.calls[0][0]).toMatchObject({on: false, contextMenuEnabled: false, disableImageTranslator: true});
+        await vi.waitFor(() => expect(root.querySelector('.status')!.textContent).toBe('本次提交已保存，并已应用到当前页面。'));
+        expect(ports.patch).toHaveBeenCalledOnce();
+        expect(ports.patch.mock.calls[0][0]).toMatchObject({on: false, contextMenuEnabled: false, disableImageTranslator: true});
         expect(ports.send.mock.calls.map(call => call[1])).toEqual([
             {type: 'toggleFloatingBall', isEnabled: false}, {type: 'updateSelectionTranslatorMode', mode: 'disabled'}, {type: 'toggleTranslationProgressPanel', isEnabled: false},
         ]);
@@ -858,10 +867,10 @@ describe('49F concrete Vue mount-failure ownership boundary', () => {
                 .rejects.toThrow('controlled client DOM insertion failure');
             expect(failedUi.shadowHost.isConnected).toBe(false); expect(failedUi.mounted).toBeUndefined();
             expect(failedUi.uiContainer.querySelector('[role="dialog"]')).toBeNull();
-            expect(stops).toHaveLength(1); expect(subscribed.size).toBe(0);
-            expect(stops[0]).toHaveBeenCalledOnce();
+            expect(stops).toHaveLength(2); expect(subscribed.size).toBe(0);
+            for (const stop of stops) expect(stop).toHaveBeenCalledOnce();
             failedUi.remove(); expect(subscribed.size).toBe(0);
-            expect(stops[0]).toHaveBeenCalledOnce();
+            for (const stop of stops) expect(stop).toHaveBeenCalledOnce();
         } finally {
             for (const stop of stops) stop(); failedUi?.uiContainer.replaceChildren(); failedUi?.remove();
             vi.doUnmock('wxt/utils/content-script-ui/shadow-root');
@@ -945,7 +954,8 @@ describe('49F real Vue partial construction disposal and retry', () => {
             expect(ui.shadowHost.isConnected).toBe(true); expect(ui.uiContainer.querySelector('[role="dialog"]')).not.toBeNull();
             ui.uiContainer.querySelector<HTMLButtonElement>('button.close')!.click(); expect(close).toHaveBeenCalledOnce();
             ui.remove(); expect(unmounts[1]).toHaveBeenCalledOnce();
-            expect(client.stops).toHaveLength(1); expect(client.stops[0]).toHaveBeenCalledOnce();
+            // 正常重试各自拥有一个 i18n 与一个 editor 订阅，均只能释放一次。
+            expect(client.stops).toHaveLength(2); for (const stop of client.stops) expect(stop).toHaveBeenCalledOnce();
             await client.deliverLateWork();
         } finally {ui?.remove();}
     });
@@ -1080,10 +1090,12 @@ describe('49F real Vue partial construction disposal and retry', () => {
         try {
             await expect((await import('@/src/platform/shadow-ui')).createVueShadowUi({isInvalid:false} as never,{name:'audit49f-new-owner',hostId:'audit49f-new-owner',component:client.Panel,props:{onClose:close}})).rejects.toBe(first);
             await nextTick(); await nextTick();
-            expect(ui.mounted).toBe(newer); expect(ui.shadowHost.isConnected).toBe(true); expect(client.subscribed.size).toBe(1);
-            expect(client.stops).toHaveLength(2); expect(client.stops[0]).toHaveBeenCalledOnce(); expect(client.stops[1]).not.toHaveBeenCalled();
+            expect(ui.mounted).toBe(newer); expect(ui.shadowHost.isConnected).toBe(true); expect(client.subscribed.size).toBe(2);
+            expect(client.stops).toHaveLength(4);
+            for (const stop of client.stops.slice(0, 2)) expect(stop).toHaveBeenCalledOnce();
+            for (const stop of client.stops.slice(2)) expect(stop).not.toHaveBeenCalled();
             ui.uiContainer.querySelector<HTMLButtonElement>('button.close')!.click(); expect(close).toHaveBeenCalledOnce();
-            ui.remove(); expect(client.stops[1]).toHaveBeenCalledOnce(); await client.deliverLateWork();
+            ui.remove(); for (const stop of client.stops) expect(stop).toHaveBeenCalledOnce(); await client.deliverLateWork();
         } finally {ui?.remove();}
     });
 
@@ -1100,9 +1112,11 @@ describe('49F real Vue partial construction disposal and retry', () => {
                 if (++configuring === 1) {ui.remove(); ui.mount(); newer = ui.mounted; throw first;}
             }})).rejects.toBe(first);
             await nextTick(); await nextTick();
-            expect(ui.mounted).toBe(newer); expect(ui.shadowHost.isConnected).toBe(true); expect(client.subscribed.size).toBe(1);
+            expect(ui.mounted).toBe(newer); expect(ui.shadowHost.isConnected).toBe(true); expect(client.subscribed.size).toBe(2);
+            expect(client.stops).toHaveLength(3);
             expect(ui.uiContainer.querySelectorAll('[role="dialog"]')).toHaveLength(1); expect(client.stops[0]).toHaveBeenCalledOnce();
-            ui.remove(); expect(client.stops[1]).toHaveBeenCalledOnce(); await client.deliverLateWork();
+            for (const stop of client.stops.slice(1)) expect(stop).not.toHaveBeenCalled();
+            ui.remove(); for (const stop of client.stops) expect(stop).toHaveBeenCalledOnce(); await client.deliverLateWork();
         } finally {ui?.remove();}
     });
 
@@ -1127,14 +1141,14 @@ describe('49F real Vue partial construction disposal and retry', () => {
         try {
             await expect((await import('@/src/platform/shadow-ui')).createVueShadowUi({isInvalid:false} as never,{name:'audit49f-late-directive',hostId:'audit49f-late-directive',component:Panel})).rejects.toBe(first);
             expect(ui.shadowHost.isConnected).toBe(false); expect(ui.uiContainer.childNodes.length).toBe(0);
-            expect(client.subscribed.size).toBe(0); expect(client.stops[0]).toHaveBeenCalledOnce();
+            expect(client.subscribed.size).toBe(0); for (const stop of client.stops) expect(stop).toHaveBeenCalledOnce();
             expect(client.observers).toHaveLength(0);
             ui.mount(); await nextTick(); await nextTick();
             // 重试的真实 Vue render 会 flush 旧 fragment 已排队的 mounted hook；旧插件不能再获取资源。
-            expect(client.observers).toHaveLength(1); expect(client.subscribed.size).toBe(1);
+            expect(client.observers).toHaveLength(1); expect(client.subscribed.size).toBe(2);
             expect(ui.uiContainer.querySelectorAll('[role="dialog"]')).toHaveLength(1);
             ui.uiContainer.querySelector<HTMLButtonElement>('button.close')!.click(); expect(close).toHaveBeenCalledOnce();
-            ui.remove(); expect(client.stops[1]).toHaveBeenCalledOnce(); await client.deliverLateWork();
+            ui.remove(); for (const stop of client.stops) expect(stop).toHaveBeenCalledOnce(); await client.deliverLateWork();
         } finally {ui?.remove();}
     });
 
@@ -1153,7 +1167,7 @@ describe('49F real Vue partial construction disposal and retry', () => {
             }});
             expect(handled).toHaveBeenCalledOnce(); expect(handled.mock.calls[0][0]).toBe(first);
             expect(ui.shadowHost.isConnected).toBe(true); expect(ui.uiContainer.querySelector('[role="dialog"]')).not.toBeNull();
-            expect(client.subscribed.size).toBe(1);
+            expect(client.subscribed.size).toBe(2);
             expect(client.observers).toHaveLength(1); expect(client.observers[0].active).toBe(false); expect(client.observers[0].disconnect).toHaveBeenCalledOnce();
             ui.remove(); expect(ui.shadowHost.isConnected).toBe(false); expect(ui.uiContainer.childNodes.length).toBe(0);
             expect(client.stops[0]).toHaveBeenCalledOnce(); await client.deliverLateWork();
