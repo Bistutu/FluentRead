@@ -47,6 +47,7 @@ export default defineConfig({
                 'src/services/translation/compositeRouting.ts',
                 'src/ui/view-model/compositeServiceEditor.ts',
                 'userscript/inlineCssPlugin.ts',
+                'userscript/interfaceAppearanceDataPlugin.ts',
                 'src/app/options/aboutImages.ts',
                 'src/core/personal-corrections/model.ts',
                 'src/core/personal-corrections/matching.ts',
