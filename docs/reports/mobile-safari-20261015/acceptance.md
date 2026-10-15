@@ -28,7 +28,7 @@
 
 ## 验证状态
 
-本地验证限定改动与直接影响范围。首轮 GitHub CI 因 `package.json` 新增 Safari 命令，被既有 planner 归为共享测试配置变更，自动执行全部 730 个测试文件；这不是本地专项范围。CI 的改动模块覆盖率均为 100%，但三个原本未改的测试文件失败：Linux 不存在 `/private/tmp`、Vue renderer 引用未声明入口，以及单个 PDF 导入用例超过默认 5 秒。已在 `cd55bc55c` 作最小测试修复，95 项定向检查通过；[Ubuntu 复验](https://github.com/FluentRead/FluentRead/actions/runs/38700538192)完整通过：730 文件、24,092 项通过及 4 项既有跳过，改动模块四维覆盖率 100%，类型和构建步骤也通过。后续 UTF-8 与原生指引提交 `82fa8085f` 的[独立 CI](https://github.com/FluentRead/FluentRead/actions/runs/38709422336)也已通过；它不包含本轮后续的权限与触摸修复。PDF 的本地超时未复现，仅增加该用例的 15 秒有界预算，保留全部进度与取消断言。
+本地验证限定改动与直接影响范围。首轮 GitHub CI 因 `package.json` 新增 Safari 命令，被既有 planner 归为共享测试配置变更，自动执行全部 730 个测试文件；这不是本地专项范围。CI 的改动模块覆盖率均为 100%，但三个原本未改的测试文件失败：Linux 不存在 `/private/tmp`、Vue renderer 引用未声明入口，以及单个 PDF 导入用例超过默认 5 秒。已在 `cd55bc55c` 作最小测试修复，95 项定向检查通过；[Ubuntu 复验](https://github.com/FluentRead/FluentRead/actions/runs/38700538192)完整通过：730 文件、24,092 项通过及 4 项既有跳过，改动模块四维覆盖率 100%，类型和构建步骤也通过。后续 UTF-8 与原生指引提交 `82fa8085f` 的[独立 CI](https://github.com/FluentRead/FluentRead/actions/runs/38709422336)也已通过；它不包含本轮后续的权限与触摸修复。权限、46px 触摸目标与 Safari 原生选区菜单清理提交 `915672c7c` 的[质量检查](https://github.com/FluentRead/FluentRead/actions/runs/38722958827)和[文档检查](https://github.com/FluentRead/FluentRead/actions/runs/38722958865)随后均通过；这些远端结果不包含后续尚未提交的播放器控制栏副本修复。PDF 的本地超时未复现，仅增加该用例的 15 秒有界预算，保留全部进度与取消断言。
 
 | 验证 | 结果与范围 |
 | --- | --- |
@@ -107,6 +107,14 @@
 
 这项检查证明模块桥接的真实原生渲染，不等于正式扩展在 YouTube 的整条采集/翻译链路已通过。原生接管后，页面 DOM 的 cue 状态不能单独替代或否定系统截图；系统菜单还真实提供 FluentRead 轨；选择“关闭”后原生视频无字幕，观察 5 秒未被模块重新打开。菜单勾选状态曾与实际渲染不一致，故没有用勾选或 DOM 状态冒充渲染证明。仅原文模式也已在真实原生画面显示；没有缓存译文时，Reference 保留且没有空 FluentRead 轨；禁用/销毁后实际退出回到内联，并恢复 Reference。换视频、完整 YouTube 链路、后台冻结与物理设备仍按各自操作验收。证据为 `avkit-loopback/runtime-acceptance.json`。原生控件自动隐藏造成的一轮前置测试失败保留，重试只复用已观察到的控件，没有改业务来满足测试。
 
+## 实际 YouTube 生产路径与后续修复
+
+正式 `e3f9c0…` App 在实际 `m.youtube.com/watch?v=R0JKCYZ8hng` 上，只给该站允许一天。公开 [TED-Ed 候选视频](https://www.youtube.com/watch?v=R0JKCYZ8hng)匿名加载并静音播放，实际选择人工“英语”轨后，页面下缘显示英文原文与中文 FluentRead 字幕。进入真实 AVKit 后，顶层原生 Close/PlayPause/Overflow 控件及系统菜单中的 FluentRead 轨已核对；播放时英中字幕随时间变化，已查看系统截图。这是实际生产链路，区别于上一节的模块夹具。默认配置优先目标语言人工字幕，未取得逐 cue 上游来源证据，因此没有把这次显示归因为某个机器翻译服务。
+
+独立检查仍有未通过项：实际字幕入口点击后未取得自定义菜单；候选播完自动切到下一视频/广告时曾出现两个相邻可点击入口，以及随后自行消失的额外权限横幅。未知域没有批准、没有归因。单独 DOM 深复制 fixture 确实复现控制栏复制了带标签但无事件监听的入口，随后绑定原节点形成双入口。修复只在当前绑定实例所持控制栏清除同实例副本，保留原节点监听；不扫描全页面或误删其他实例/同 ID 页面节点。修复前两种场景失败，修复后 46 项专项、152 项关联测试通过，binding 模块四维覆盖率 100%。该 fixture 并未证明广告现场就是同一根因。后续隔离生产 Chrome MV3 的 5 项检查也通过：控制栏真实 `cloneNode(true)` 后由现有观察器自动清除无监听副本，保留原活按钮并能开菜单；空宿主、移动宿主以及禁用后的节点清理通过，没有直接调用私有同步函数。它仍是受控站点夹具。新 Safari 产物 `730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f` 的四目标 Web 构建及三目标原生编译通过；与 `e3f9c0…` 的 462 资源中只有 `content-scripts/content.js` 改变，其余 461 文件逐字节一致。新产物已安装，实际 YouTube 正在另行对照，尚未把所有入口与菜单问题判为修复。
+
+真实 YouTube 的系统菜单还存在“关闭”勾选与渲染不一致：一次点击已选的“关闭”后观察 5 秒仍有双语，故该次关闭不通过；不能用模块夹具成功覆盖该结果。退出回到内联及英中字幕恢复已有证据，明确选择 FluentRead 再关闭的状态切换正在另验。完整结果和失败输入前置轮次见 `ios-ui-harness/production-youtube-acceptance.json`。
+
 仍需完整验收：
 
 - Safari macOS 与物理 iPhone/iPad 的安装、站点授权、更新保留配置、禁用/卸载。Simulator 的已验项目见各版本报告。
@@ -155,3 +163,7 @@
 最终 `e3f9c0…` App 的 Safari 初始半屏保留主操作与授权状态；按钮原生实测高度 46 点，展开状态另行验证。
 
 ![iOS Simulator Safari 半屏主操作](./images/safari-ios-popup-touch.png)
+
+以下为实际公开 YouTube 视频在正式 `e3f9c0…` 扩展中的系统全屏播放截图，字幕随视频时间更新；视频画面来源为上文 TED-Ed 候选，译文具体来源未归因为机器服务。
+
+![iOS Simulator 实际 YouTube 系统全屏双语字幕](./images/safari-ios-youtube-native-bilingual.png)
