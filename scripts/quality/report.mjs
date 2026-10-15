@@ -3,6 +3,7 @@
  * 生成离线可审阅的翻译质量报告。此工具只展示评测证据和导出待审表，
  * 不执行翻译、不发起网络请求，也不把自动规则信号认定为人工质量结论。
  */
+import {summarize} from './evaluate.mjs';
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
 const jsonForScript = value => JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, character => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`);
@@ -83,20 +84,24 @@ function renderRun(run, sample, index) {
     </article>`;
 }
 
-function renderComparison(runs) {
+function renderComparison(runs, plan) {
     const groups = new Map();
+    const summaries = summarize(runs, plan);
+    for (const summary of summaries) groups.set(JSON.stringify([summary.providerId, summary.configurationId]), {
+        provider: summary.providerId, configuration: summary.configurationId, summary, runs: [],
+    });
     for (const run of runs) {
         const key = JSON.stringify([run.providerId, run.configurationId]);
-        if (!groups.has(key)) groups.set(key, {provider: run.providerId, configuration: run.configurationId, runs: []});
         groups.get(key).runs.push(run);
     }
     return [...groups.values()].map(group => {
         const success = group.runs.filter(run => run.status === 'success');
+        const counts = group.summary;
         const durations = success.map(run => run.durationMs).filter(Number.isFinite).sort((a, b) => a - b);
         const median = durations.length ? (durations[Math.floor((durations.length - 1) / 2)] + durations[Math.ceil((durations.length - 1) / 2)]) / 2 : null;
         const sum = property => group.runs.some(run => !Number.isFinite(run.cost?.[property])) ? '未知'
             : group.runs.reduce((total, run) => total + run.cost[property], 0).toLocaleString('en-US');
-        return `<tr><th scope="row">${escapeHtml(group.provider)}<small>${escapeHtml(group.configuration)}</small></th><td>${success.length} / ${group.runs.length}</td><td>${success.filter(run => run.checks?.some(check => check.status === 'flagged')).length}</td><td>${group.runs.filter(run => run.status === 'failure').length} / ${group.runs.filter(run => run.status === 'cancelled').length}</td><td>${median === null ? '—' : `${(median / 1000).toFixed(2)} 秒`}</td><td>${sum('httpRequests')}</td><td>${sum('inputCharacters').toLocaleString('en-US')}</td><td>${sum('requestBytes').toLocaleString('en-US')} / ${sum('responseBytes').toLocaleString('en-US')}</td></tr>`;
+        return `<tr><th scope="row">${escapeHtml(group.provider)}<small>${escapeHtml(group.configuration)}</small></th><td>${counts.planned ?? '未知'} / ${counts.recordedRuns}</td><td>${counts.attempted} / ${counts.requested}</td><td>${counts.returned}</td><td>${counts.flagged}</td><td>${counts.failed} / ${counts.deferred} / ${counts.cancelled}</td><td>${median === null ? '—' : `${(median / 1000).toFixed(2)} 秒`}</td><td>${sum('httpRequests')}</td><td>${sum('inputCharacters').toLocaleString('en-US')}</td><td>${sum('requestBytes').toLocaleString('en-US')} / ${sum('responseBytes').toLocaleString('en-US')}</td></tr>`;
     }).join('');
 }
 
@@ -225,10 +230,10 @@ export function renderQualityReport(report) {
 ${report.interrupted || report.complete === false ? `<p class="caution" role="status"><strong>${report.interrupted ? '评测已中断' : '评测未完成'}。</strong>当前展示已保存的执行记录；请使用同一语料与配置恢复评测，再进行完整对照。</p>` : ''}
 <div class="stats" aria-label="执行摘要"><div><strong>${new Set(runs.map(run => run.sampleId)).size}</strong><span>个本轮样本 / 语料共 ${report.corpus.samples.length} 个</span></div><div><strong>${successful}</strong><span>条已返回译文</span></div><div><strong>${flagged}</strong><span>条规则疑点</span></div><div><strong>${failures}</strong><span>条未返回译文</span></div>${cancelled ? `<div><strong>${cancelled}</strong><span>条已取消</span></div>` : ''}</div>
 <p class="caution">自动规则只提供核对线索；未触发规则不代表语义正确。请求失败与取消单独记录。金额成本未核实，不以零成本表示。</p>
-<details class="filters-disclosure" id="filter-disclosure"><summary>筛选结果 · 服务、领域、关键词</summary><form id="filters" class="filter-grid" aria-label="筛选评测结果" tabindex="-1"><label for="provider">服务<select id="provider"><option value="">全部服务</option>${options(runs.map(run => run.providerId))}</select></label><label for="configuration">配置<select id="configuration"><option value="">全部配置</option>${options(runs.map(run => run.configurationId))}</select></label><label for="domain">领域<select id="domain"><option value="">全部领域</option>${options(report.corpus.samples.map(sample => sample.domain), domainNames)}</select></label><label for="status">结果状态<select id="status"><option value="attention">疑点与待审</option><option value="all">全部结果</option><option value="flagged">自动规则疑点</option><option value="pending">待人工核对</option><option value="failure">请求失败</option><option value="cancelled">已取消</option><option value="clear">已审阅且无规则疑点</option></select></label><label class="search" for="search">搜索样本、原文或译文（/ 聚焦）<input id="search" type="search" placeholder="例如：否定、25 ms、样本编号" autocomplete="off"></label><div class="reset-wrap"><button type="button" data-reset>清除筛选，显示全部</button></div></form></details>
+<details class="filters-disclosure" id="filter-disclosure"><summary>筛选结果 · 服务、领域、关键词</summary><form id="filters" class="filter-grid" aria-label="筛选评测结果" tabindex="-1"><label for="provider">服务<select id="provider"><option value="">全部服务</option>${options(runs.map(run => run.providerId))}</select></label><label for="configuration">配置<select id="configuration"><option value="">全部配置</option>${options(runs.map(run => run.configurationId))}</select></label><label for="domain">领域<select id="domain"><option value="">全部领域</option>${options(report.corpus.samples.map(sample => sample.domain), domainNames)}</select></label><label for="status">结果状态<select id="status"><option value="attention">疑点与待审</option><option value="all">全部结果</option><option value="flagged">自动规则疑点</option><option value="pending">待人工核对</option><option value="failure">未返回译文</option><option value="cancelled">已取消</option><option value="clear">已审阅且无规则疑点</option></select></label><label class="search" for="search">搜索样本、原文或译文（/ 聚焦）<input id="search" type="search" placeholder="例如：否定、25 ms、样本编号" autocomplete="off"></label><div class="reset-wrap"><button type="button" data-reset>清除筛选，显示全部</button></div></form></details>
 <p class="status-message" id="action-status" role="status" aria-live="polite"></p>
 <section id="results" aria-labelledby="results-title"><div class="results-heading"><h2 id="results-title">样本与核对线索</h2><span class="hint" id="result-count" role="status" aria-live="polite">${runs.length} 条结果</span></div><div id="empty-state" class="empty" hidden><strong>没有匹配的结果</strong><p>可调整服务、领域或关键词，也可查看全部执行记录。</p><button type="button" data-reset>显示全部结果</button></div>${sorted.map(({run, index}) => renderRun(run, samples.get(run.sampleId), index)).join('')}</section>
-<details class="comparison"><summary>服务与配置对照 · ${new Set(runs.map(run => JSON.stringify([run.providerId, run.configurationId]))).size} 组</summary><p class="hint">疑点按有规则告警的成功请求计数，未进行语义排名。中位耗时只统计成功请求；请求、字符与字节包含失败尝试。样本缺失或服务失败时，不宜直接比较。</p><div class="table-wrap" role="region" aria-label="服务与配置对照表，可横向滚动" tabindex="0"><table><thead><tr><th scope="col">服务 / 配置</th><th scope="col">返回译文 / 执行</th><th scope="col">规则疑点</th><th scope="col">失败 / 取消</th><th scope="col">中位耗时</th><th scope="col">HTTP 请求</th><th scope="col">输入字符</th><th scope="col">请求 / 响应字节</th></tr></thead><tbody>${renderComparison(runs)}</tbody></table></div><p class="hint">金额成本：未知（未核实 USD 计费）；请求数与输入字符是可审计的用量记录。</p></details>
+<details class="comparison"><summary>服务与配置对照 · ${new Set(runs.map(run => JSON.stringify([run.providerId, run.configurationId]))).size} 组</summary><p class="hint">疑点与中位耗时只统计返回译文的记录，未进行语义排名。计划表示样本×重复次数；已记录包含恢复后的多次尝试。已执行不含冷却暂缓，已发请求按含 HTTP 的逻辑尝试计数，HTTP 重试另计。旧报告没有计划时显示未知，不用这些计数推算语义准确率。</p><div class="table-wrap" role="region" aria-label="服务与配置对照表，可横向滚动" tabindex="0"><table><thead><tr><th scope="col">服务 / 配置</th><th scope="col">计划 / 已记录</th><th scope="col">已执行 / 已发请求</th><th scope="col">返回译文</th><th scope="col">规则疑点</th><th scope="col">失败 / 暂缓 / 取消</th><th scope="col">中位耗时</th><th scope="col">HTTP 请求</th><th scope="col">输入字符</th><th scope="col">请求 / 响应字节</th></tr></thead><tbody>${renderComparison(runs, report.plan)}</tbody></table></div><p class="hint">金额成本：未知（未核实 USD 计费）；请求数与输入字符是可审计的用量记录。</p></details>
 <details class="provenance"><summary>复现信息与语料来源</summary><p>报告 ${escapeHtml(report.id)} · ${escapeHtml(report.createdAt)}</p><p>语料 ${escapeHtml(report.corpus.id)} · SHA-256 ${escapeHtml(report.corpus.sha256)}</p><pre>${escapeHtml(readable(report.environment))}</pre>${report.audit ? `<p>审计订正：原始记录已保留，以下仅订正与传输证据矛盾的失败分类。</p><pre>${escapeHtml(readable(report.audit))}</pre>` : ''}${report.providerDeferrals && Object.keys(report.providerDeferrals).length ? `<p>服务暂缓记录（请求未执行，不能作为质量结论）</p><pre>${escapeHtml(readable(report.providerDeferrals))}</pre>` : ''}${report.comparison ? `<pre>${escapeHtml(readable(report.comparison))}</pre>` : ''}</details>
 <noscript><p>脚本未启用，已展示全部结果。筛选、复制和下载审阅表需要启用 JavaScript。</p></noscript>
 </main><script id="report-data" type="application/json">${jsonForScript(normalized)}</script><script id="review-template" type="application/json">${jsonForScript(createReviewTemplate(normalized))}</script><script>(${installReportInteractions.toString()})();</script></body></html>`;

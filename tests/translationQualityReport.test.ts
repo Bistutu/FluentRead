@@ -234,4 +234,20 @@ describe('translation quality report', () => {
         expect(page.document.querySelector('#run-1 .failure')!.textContent).toContain('尚未发送请求');
         expect(openReport({...report, runs: []}).document.querySelector('.stats')!.textContent).toContain('0个本轮样本 / 语料共 2 个');
     });
+
+    it('对照表保留计划、恢复记录与真实发出请求的不同分母，并列出尚未执行的服务', () => {
+        const report = fixture();
+        const success = report.runs[0];
+        const noRequest = {...success.cost, httpRequests: 0, inputCharacters: 0, requestBytes: 0, responseBytes: 0};
+        report.plan = {sampleIds: ['technical-negation', 'news-budget'], providerIds: ['alpha', 'not-started'], configurationId: 'default', repeats: 2};
+        report.runs = [success,
+            {...success, status: 'failure', failure: {category: 'deferred', message: 'Cooldown'}, cost: noRequest},
+            {...success, status: 'cancelled', cost: noRequest},
+        ];
+        const page = openReport(report);
+        const rows = [...page.document.querySelectorAll('tbody tr')];
+        expect([...rows[0].querySelectorAll('td')].slice(0, 5).map(cell => cell.textContent)).toEqual(['4 / 3', '2 / 1', '1', '1', '0 / 1 / 1']);
+        expect(rows[1].querySelector('th')!.textContent).toContain('not-started');
+        expect([...rows[1].querySelectorAll('td')].slice(0, 5).map(cell => cell.textContent)).toEqual(['4 / 0', '0 / 0', '0', '0', '0 / 0 / 0']);
+    });
 });
