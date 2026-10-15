@@ -113,11 +113,13 @@ describe('YouTube 目标语言人工字幕时间轴', () => {
     it('只请求一次并保留空档和截止时间，不把人工轨当作原文轨', async () => {
         const fetch = vi.fn().mockResolvedValue(response()), ready = vi.fn();
         const source = new YoutubeHumanCaptions(fetch, ready);
+        expect(source.revision).toBe(0);
         expect(source.ownsUrl('invalid')).toBe(false);
         source.sync(page(), location, 'zh-Hans', true);
         source.sync(page(), location, 'zh-Hans', true);
         await source.ready();
         expect(fetch).toHaveBeenCalledTimes(1); expect(ready).toHaveBeenCalledOnce();
+        expect(source.revision).toBe(1);
         expect(source.at(200)).toBe('人工译文'); expect(source.at(1500)).toBe('');
         expect(source.ownsUrl('https://www.youtube.com/api/timedtext?v=abc&lang=zh-CN&fmt=json3')).toBe(true);
         for (const url of ['bad-url', 'https://www.youtube.com/api/timedtext?v=xyz&lang=zh-CN',
@@ -126,8 +128,27 @@ describe('YouTube 目标语言人工字幕时间轴', () => {
             'https://www.youtube.com/api/timedtext?v=abc&lang=zh-CN&kind=asr']) expect(source.ownsUrl(url), url).toBe(false);
         source.sync(page(), location, 'zh-Hans', true);
         expect(fetch).toHaveBeenCalledTimes(1);
+        expect(source.revision).toBe(1);
         source.sync(page(), location, 'zh-Hans', false);
+        expect(source.revision).toBe(2);
+        source.clear(); expect(source.revision).toBe(2);
         expect(source.at(200)).toBe(''); expect(source.ownsUrl('https://www.youtube.com/api/timedtext?v=abc&lang=zh-CN')).toBe(false);
+    });
+
+    it('按索引保留重叠cue最新开始、同起点首条、空档和精确截止语义', async () => {
+        const cues = [
+            {tStartMs: 0, dDurationMs: 10000, segs: [{utf8: 'Earlier active.'}]},
+            {tStartMs: 1000, dDurationMs: 500, segs: [{utf8: 'Recent short.'}]},
+            {tStartMs: 2000, dDurationMs: 8000, segs: [{utf8: 'Equal first.'}]},
+            {tStartMs: 2000, dDurationMs: 8000, segs: [{utf8: 'Equal second.'}]},
+        ];
+        const source = new YoutubeHumanCaptions(vi.fn().mockResolvedValue(new Response(JSON.stringify({events: cues}))), vi.fn());
+        source.sync(page(), location, 'zh-Hans', true); await source.ready();
+        expect(source.at(-1)).toBe(''); expect(source.at(NaN)).toBe('');
+        expect(source.at(1100)).toBe('Recent short.');
+        expect(source.at(1800)).toBe('Earlier active.');
+        expect(source.at(2500)).toBe('Equal first.'); expect(source.at(10000)).toBe('');
+        source.clear(); expect(source.at(1100)).toBe('');
     });
 
     it.each(['bad', 'http://www.youtube.com/api/timedtext?v=abc&lang=zh-CN',

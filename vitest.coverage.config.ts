@@ -56,6 +56,8 @@ export default defineConfig({
                 'src/features/vocabulary/source.ts',
                 'src/features/vocabulary/materialOriginalText.ts',
                 'src/features/floating-ball/content/anchoredPopup.ts',
+                'src/platform/dom/visualViewport.ts',
+                'src/features/video-subtitle/content/nativeFullscreen.ts',
                 'src/app/popup/embedded.ts',
                 'src/features/floating-ball/background/popupHandler.ts',
                 'src/app/popup/sourceTab.ts',

@@ -81,9 +81,9 @@ function fixture(options: {
   vi.stubGlobal('HTMLVideoElement', window.HTMLVideoElement);
   vi.stubGlobal('HTMLStyleElement', window.HTMLStyleElement);
   vi.stubGlobal('getComputedStyle', (element: Element) => ({
-    display: 'block',
-    visibility: 'visible',
-    opacity: '1',
+    display: (element as HTMLElement).style.display || 'block',
+    visibility: (element as HTMLElement).style.visibility || 'visible',
+    opacity: (element as HTMLElement).style.opacity || '1',
     position: 'relative',
     objectFit: element === video ? options.objectFit || 'contain' : '',
     objectPosition: element === video ? options.objectPosition || '50% 50%' : '',
@@ -258,6 +258,54 @@ describe('X video subtitle viewport', () => {
     expect(document.getElementById(VIDEO_TRANSLATION_LAYER_ID)).toBeNull();
     expect(document.getElementById(VIDEO_TRANSLATION_OVERLAY_ID)).toBeNull();
   });
+  it('anchors compact YouTube bilingual captions 12px above the painted video instead of reserving desktop 52px', () => {
+    const {document, window, layer} = fixture({player: rect(0, 0, 390, 300), intrinsic: [1920, 1080]});
+    Object.defineProperty(window, 'location', {configurable: true, value: new URL('https://m.youtube.com/watch?v=mobile')});
+    const panel = document.createElement('div'); panel.id = VIDEO_SUBTITLE_PANEL_ID;
+    const overlay = document.createElement('div'); overlay.id = VIDEO_TRANSLATION_OVERLAY_ID; overlay.textContent = '双语字幕';
+    panel.appendChild(overlay); layer.appendChild(panel);
+    const container = document.createElement('div'); document.body.appendChild(container);
+    syncTranslationOverlayPosition(container);
+    // 390×300 容器中 16:9 画面高度 219.375，底部留白 40.3125；仅保留 12px 画内安全距。
+    expect(panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom')).toBe('52.3125px');
+    expect(panel.style.top).toBe('auto');
+    expect(panel.style.maxWidth).toBe('366px');
+  });
+
+  it('moves compact YouTube captions above visible controls and back down when controls hide', () => {
+    const {document, window, player, layer} = fixture({player: rect(0, 0, 390, 219.375), intrinsic: [1920, 1080]});
+    Object.defineProperty(window, 'location', {configurable: true, value: new URL('https://m.youtube.com/watch?v=mobile')});
+    const panel = document.createElement('div'); panel.id = VIDEO_SUBTITLE_PANEL_ID;
+    const overlay = document.createElement('div'); overlay.id = VIDEO_TRANSLATION_OVERLAY_ID; overlay.textContent = '双语字幕';
+    panel.appendChild(overlay); layer.appendChild(panel);
+    const controls = document.createElement('div'); controls.className = 'ytp-right-controls';
+    Object.defineProperty(controls, 'getBoundingClientRect', {value: () => rect(250, 179.375, 120, 32)});
+    player.appendChild(controls);
+    const container = document.createElement('div'); document.body.appendChild(container);
+    syncTranslationOverlayPosition(container);
+    expect(panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom')).toBe('48px');
+    controls.style.opacity = '0'; syncTranslationOverlayPosition(container);
+    expect(panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom')).toBe('12px');
+  });
+
+  it('constrains fullscreen captions by both notch sides and the upper/lower system safe areas', () => {
+    const {document, player, layer} = fixture({player: rect(0, 0, 390, 219.375), intrinsic: [1920, 1080]});
+    Object.defineProperty(document, 'fullscreenElement', {value: player});
+    const panel = document.createElement('div'); panel.id = VIDEO_SUBTITLE_PANEL_ID;
+    const overlay = document.createElement('div'); overlay.id = VIDEO_TRANSLATION_OVERLAY_ID; overlay.textContent = '双语字幕';
+    panel.appendChild(overlay); layer.appendChild(panel);
+    const container = document.createElement('div'); document.body.appendChild(container);
+    syncTranslationOverlayPosition(container);
+    expect(panel.style.maxWidth).toContain('env(safe-area-inset-left');
+    expect(panel.style.maxWidth).toContain('env(safe-area-inset-right');
+    expect(panel.style.left).toContain('env(safe-area-inset-right');
+    expect(panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom')).toContain('env(safe-area-inset-bottom');
+    expect(panel.style.maxHeight).toContain('env(safe-area-inset-top');
+    config.videoSubtitleAppearance = {...DEFAULT_VIDEO_SUBTITLE_APPEARANCE, position: 'top'};
+    syncTranslationOverlayPosition(container);
+    expect(panel.style.top).toContain('env(safe-area-inset-top');
+  });
+
   it('500% 长双语字幕按可见画面适配，换短句后恢复请求字号', () => {
     const {document, layer} = fixture({intrinsic: [1080, 1920], objectFit: 'contain'});
     config.videoSubtitleAppearance = {...DEFAULT_VIDEO_SUBTITLE_APPEARANCE, fontScale: 500};

@@ -1175,6 +1175,7 @@ export const zhCNMessages = {
     'video.modeTranslation': '译文',
     'video.modeOriginal': '原文',
     'video.modeOff': '关闭',
+    "video.nativeFullscreenHint": "系统全屏使用原生字幕样式，译文以已获取的内容为准。若未显示，请在系统字幕菜单选择 FluentRead，或退出全屏观看双语字幕。",
     'video.modeOffHint': '关闭流畅阅读字幕，保留网站原有字幕',
     'video.timingShort': '字幕时间',
     'video.downloadOriginalShort': '原文',

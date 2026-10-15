@@ -24,6 +24,7 @@ import * as partOfSpeech from '@/src/core/language/partOfSpeech';
 import * as wordNormalization from '@/src/features/selection-translation/services/wordNormalization';
 import * as vocabularyProtocol from '@/src/features/vocabulary/protocol';
 import * as hotkey from '@/src/core/hotkey';
+import * as visualViewport from '@/src/platform/dom/visualViewport';
 import {setSelectionContextMenuHandler, translateSelectionFromContextMenu as translateSelectionThroughBridge} from '@/src/features/selection-translation/content/contextMenuBridge';
 
 vi.mock('webextension-polyfill', () => ({default: {}}));
@@ -144,7 +145,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     const media = eventTarget('media');
     const document = {...eventTarget('document'), getElementById: vi.fn(() => null)};
     const window = {
-        ...eventTarget('window'), innerWidth: 1000, innerHeight: 800,
+        ...eventTarget('window'), innerWidth: 1000, innerHeight: 800, document,
         matchMedia: () => ({matches: false, ...media}),
         setTimeout, clearTimeout,
         requestAnimationFrame: (callback: () => void) => setTimeout(callback, 16),
@@ -180,6 +181,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         vue: {...Vue, useTemplateRef: () => Vue.ref(null)},
         'webextension-polyfill': browser,
         '@/src/platform/browser/runtimeMessages': runtimeMessages,
+        '@/src/platform/dom/visualViewport': visualViewport,
         '@/src/services/config/store': {config, configReady, requestConfigPatch, subscribeConfig: (listener: () => void) => { configListener = listener; return unsubscribeConfig; }},
         '@/src/services/translation/client': {translateText, translateTextBatch},
         '@/src/features/selection-translation/core': selectionCore,
@@ -1377,6 +1379,21 @@ it('keeps an existing ordinary translation running when opening the learning vie
 
 
 describe('selection card geometry across content changes', () => {
+    it('keeps a card and its entry within the panned visual viewport above a software keyboard', () => {
+        const {state, window} = mountSelection();
+        Object.assign(window, {visualViewport: {width: 390, height: 300, offsetLeft: 80, offsetTop: 160}});
+        state.handleViewportResize();
+        state.tooltipRef = {getBoundingClientRect: () => ({width: 388, height: 240})};
+        state.manualPopupPosition = {left: 20, top: 700};
+        state.manualPopupSize = {width: 388, height: 240};
+        state.applyManualPopupGeometry();
+        expect(state.tooltipStyle).toMatchObject({left: '92px', top: '308px', width: '366px', height: '140px', maxHeight: '140px'});
+        state.touchInteraction = true;
+        state.snapshot = {text: 'A selection.', anchor: {left: 0, top: 0, right: 5, bottom: 5}, isForward: true};
+        state.showTooltip = false;
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: '108px', top: '188px'});
+    });
     it('preserves the opening position across learning tabs and expanding content', async () => {
         const {state} = mountSelection();
         state.tooltipRef = {getBoundingClientRect: () => ({width: 388, height: 180})};
@@ -1401,8 +1418,150 @@ describe('selection card geometry across content changes', () => {
         state.applyManualPopupGeometry();
         expect(state.tooltipStyle).toMatchObject({left: '510px', top: '490px', width: '450px', height: '240px'});
         window.innerWidth = 390; window.innerHeight = 400;
+        state.handleViewportResize();
         state.applyManualPopupGeometry();
         expect(state.tooltipStyle).toMatchObject({left: '12px', top: '248px', width: '366px', height: '140px'});
+    });
+});
+
+describe('native mobile selection and page lifecycle', () => {
+    function mobileSelection() {
+        const fixture = mountSelection(false, {acceptsRange: () => true, normalizeText: (text: string) => text});
+        vi.stubGlobal('Element', class {}); vi.stubGlobal('Node', class {});
+        let text = 'Good ideas deserve attention.';
+        const source = {isConnected: true, ownerDocument: fixture.document};
+        const range = Vue.markRaw({startContainer: source, endContainer: source, collapsed: false, startOffset: 0,
+            getClientRects: () => [{left: 20, right: 210, top: 150, bottom: 174, width: 190, height: 24}],
+            cloneRange: () => range, toString: () => text});
+        Object.assign(fixture.window, {getSelection: () => ({rangeCount: 1, isCollapsed: false,
+            anchorNode: source, anchorOffset: 0, getRangeAt: () => range, toString: () => text})});
+        Object.assign(fixture.config, {selectionTranslatorTrigger: 'icon', selectionTranslatorDelay: 0});
+        fixture.state.selectionConfigVersion += 1;
+        const pointer = {isTrusted: true, pointerType: 'touch', button: 0, target: null};
+        return {...fixture, pointer, source, range, setText: (next: string) => {text = next;}};
+    }
+
+    it('waits for native long-press and handle adjustment to settle after pointercancel without freezing the range at contextmenu', async () => {
+        const fixture = mobileSelection();
+        fixture.state.handlePointerDown(fixture.pointer);
+        await vi.advanceTimersByTimeAsync(1800);
+        fixture.state.handleContextMenu({isTrusted: true, target: null});
+        // 系统菜单接管后有些浏览器不再向页面发送 pointerup/pointercancel。
+        fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(200);
+        fixture.setText('Good ideas deserve careful attention.');
+        fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(249);
+        expect(fixture.state.showIndicator).toBe(false);
+        await vi.advanceTimersByTimeAsync(32);
+        expect(fixture.state.selectedText).toBe('Good ideas deserve careful attention.');
+        expect(fixture.state.showIndicator).toBe(true);
+        expect(fixture.state.contextMenuSelection).toBeNull();
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        fixture.state.openTooltip();
+        await Vue.nextTick();
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+    });
+
+    it('preserves the direct trigger preference but never queries while the finger still owns selection', async () => {
+        const fixture = mobileSelection();
+        fixture.config.selectionTranslatorTrigger = 'direct';
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        const nativeSelection = (fixture.window as any).getSelection;
+        (fixture.window as any).getSelection = () => null;
+        fixture.state.handlePointerDown(fixture.pointer);
+        (fixture.window as any).getSelection = nativeSelection;
+        fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(400);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        fixture.state.handlePointerUp(fixture.pointer);
+        await vi.advanceTimersByTimeAsync(280);
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.state.showTooltip).toBe(true);
+    });
+
+    it('rejects a touch menu in an input before considering the previous body Range', async () => {
+        const fixture = mobileSelection();
+        fixture.state.handlePointerDown(fixture.pointer);
+        const target = Object.assign(Object.create(Element.prototype), {closest: () => ({}), getAttribute: () => null});
+        fixture.state.handleContextMenu({isTrusted: true, target});
+        fixture.state.handlePointerUp({...fixture.pointer, target});
+        fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(400);
+        expect(fixture.state.contextMenuSourceRejected).toBe(true);
+        expect(fixture.state.showIndicator).toBe(false);
+        expect(fixture.contextMenuHandler('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it.each(['untrusted', 'expired', 'closed', 'pagehide', 'unmount'] as const)('does not resurrect a touch selection after %s', async reason => {
+        const fixture = mobileSelection();
+        fixture.state.handlePointerDown({...fixture.pointer, isTrusted: reason !== 'untrusted'});
+        fixture.state.handlePointerCancel(fixture.pointer);
+        if (reason === 'expired') {
+            await vi.advanceTimersByTimeAsync(30_001);
+            // 隐藏之前合法出现的入口，但保留过期的触摸 deadline，验证事件本身不能重新武装。
+            fixture.state.showIndicator = false; fixture.state.snapshot = null;
+        }
+        else if (reason === 'closed') fixture.state.closeTooltip();
+        else if (reason === 'pagehide') fixture.state.handlePageHide();
+        else if (reason === 'unmount') fixture.unmount();
+        if (reason !== 'unmount') fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(400);
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.showIndicator).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('cancels queued automatic display when backgrounded and drops a disconnected source on resume', async () => {
+        const fixture = mobileSelection();
+        fixture.state.handlePointerDown(fixture.pointer);
+        fixture.state.handlePointerUp(fixture.pointer);
+        Object.assign(fixture.document, {visibilityState: 'hidden'});
+        fixture.state.handlePageVisibility();
+        await vi.advanceTimersByTimeAsync(400);
+        expect(fixture.state.showIndicator).toBe(false);
+        Object.assign(fixture.document, {visibilityState: 'visible'});
+        fixture.state.snapshot = fixture.state.readSelectionSnapshot();
+        fixture.state.selectedText = fixture.state.snapshot.text;
+        fixture.state.showTooltip = true;
+        const controller = new AbortController(); fixture.state.translationAbortController = controller;
+        fixture.state.restoreSelectionSource();
+        expect(fixture.state.showTooltip).toBe(true);
+        fixture.source.isConnected = false;
+        fixture.state.restoreSelectionSource();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(controller.signal.aborted).toBe(true);
+        fixture.unmount();
+        expect([...fixture.listeners.values()].every(listeners => listeners.size === 0)).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each(['rewritten', 'throwing'] as const)('drops a still-connected %s source on resume', reason => {
+        const fixture = mobileSelection();
+        fixture.state.snapshot = fixture.state.readSelectionSnapshot();
+        fixture.state.showTooltip = true;
+        if (reason === 'rewritten') fixture.setText('The source changed in the background.');
+        else fixture.range.toString = () => {throw new Error('source invalidated');};
+        expect(() => fixture.state.restoreSelectionSource()).not.toThrow();
+        expect(fixture.state.showTooltip).toBe(false);
+    });
+
+    it('preserves a cross-paragraph Selection with different Range serialization until the actual Range text changes', () => {
+        const fixture = mobileSelection();
+        const nativeText = 'First paragraph.\n\nSecond paragraph.';
+        let rangeText = 'First paragraph.Second paragraph.';
+        fixture.setText(nativeText);
+        fixture.range.toString = () => rangeText;
+        fixture.state.snapshot = fixture.state.readSelectionSnapshot();
+        expect(fixture.state.snapshot).toMatchObject({nativeText, text: nativeText, rangeText});
+        fixture.state.showTooltip = true;
+        fixture.state.restoreSelectionSource();
+        expect(fixture.state.showTooltip).toBe(true);
+        rangeText = 'First paragraph.The source changed.';
+        fixture.state.restoreSelectionSource();
+        expect(fixture.state.showTooltip).toBe(false);
     });
 });
 
@@ -2025,6 +2184,21 @@ describe('selection card bounded layout work', () => {
         expect(state.tooltipStyle).toMatchObject({left: '230px', top: '130px'});
         expect(element.getBoundingClientRect).toHaveBeenCalledTimes(1);
         expect(frames.size).toBe(0);
+    });
+
+    it.each(['fr-tooltip-content', 'fr-text-block', 'fr-popup-resize-handle'])('preserves touch pan on %s without starting card manipulation', async className => {
+        const {state, element, pointer} = await gestureFixture();
+        state.stopPopupGesture();
+        const target = Object.assign(Object.create(Object.getPrototypeOf(element)), {
+            dataset: {resizeEdge: className === 'fr-popup-resize-handle' ? 'se' : ''},
+            matches: (selector: string) => selector.split(',').some(part => part.trim() === `.${className}`),
+            closest: () => null,
+        });
+        const event = {...pointer('pointerdown', 250, 150), target, pointerType: 'touch'};
+        state.beginPopupGesture(event);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+        expect(state.popupManipulating).toBe(false);
+        expect(element.captured).toBe(false);
     });
 
     it('flushes the final accepted pointer point on release and rejects a late cancelled animation frame', async () => {

@@ -1,11 +1,11 @@
 <!--
  * @file src/features/selection-translation/ui/SelectionTranslator.vue
- * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、原生菜单可信选区恢复与重复请求复用、翻译与词卡展示、免费 AI 讲解的显式启用、朗读、收藏选中的单词/表达/句子、双语分享卡片、鉴权服务配置入口、重试和关闭。
+ * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、触摸原生句柄稳定等待、可见视口与安全区定位、后台恢复来源校验、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、原生菜单可信选区恢复与重复请求复用、翻译与词卡展示、免费 AI 讲解的显式启用、朗读、收藏选中的单词/表达/句子、双语分享卡片、鉴权服务配置入口、重试和关闭。
  * 主要内容：相同译文保留原文且不重复展示；组件管理可信手势、已关闭选区与选择丢失宽限、继续阅读或复制原文时自动收起、请求 token、按既有错误种类显示有限提示并仅为当前鉴权失败提供通用设置入口、行内代码保护与纯文本安全渲染、按标签页页面缩放补偿的弹窗定位、空白拖动、边角缩放、主题及可换行的多语言标题；普通译文先于完整原文，单行可横向滚动的导航与右侧固定分享、收藏、关闭及更多操作把高度留给正文，次级菜单按可见窗口覆盖显示；指针移动按帧合并并在结束时提交最后位置，已定位卡片不重复读取选区几何；富文本 UTF-16 跟读偏移一次计算并复用；默认过滤同语言选区，按配置开放中英反向入口，翻译方向始终按现有语言配置判断；统一卡片默认显示翻译并以同一导航进入学习；首次定位后保持弹窗锚点，手动尺寸下内容与播放状态变化只影响内部布局；闲置语音栏不占空间，自动卡生成与播放期间用独立临时高度保持外框，停止恢复自然尺寸；学习短回答自然收拢、长回答受高度上限约束，完整原文和译文按需对照并允许翻译继续完成；单词先展示原文与可用词卡，再补充辅助释义，以紧凑状态提示等待、未命中与网络失败；关闭或更换选区取消等待并阻止旧响应覆盖新结果；区分语音生成和播放，按实际音频时钟或浏览器词边界显示完整词高亮，并提供真实音频时间与前后 5 秒跳转。
  * 模块边界：组件只通过公共客户端和 runtime 消息触达后台及现有设置入口，不直接持有 provider、IndexedDB 或 Offscreen 资源；纯选区算法在 core，活动 Range 通过回调交给 content/runtime 管理 modal 挂载所有权；扩展 PDF 文档页通过可选来源适配器复用同一卡片、标题和阅读上下文，来源失效时取消当前请求，词书协议独立维护；阅读依据的 DOM 锚点只属于当前选区，关闭、换区或卸载释放临时绘制和监听。
  -->
 <template>
-  <div v-ui-i18n v-show="showIndicator || showTooltip || noticeMessage || copySuccess" class="fr-selection-translator-root" :data-display-delay="selectionSettings.delay" @pointerdown.capture="dismissReadingToolsOutside" @pointerdown.stop @focusin="dismissReadingToolsOutside" @focusout="dismissReadingToolsOnFocusOut" @wheel.stop="handleUiWheel">
+  <div v-ui-i18n v-show="showIndicator || showTooltip || noticeMessage || copySuccess" class="fr-selection-translator-root" :class="{'fr-touch-selection': touchInteraction}" :data-display-delay="selectionSettings.delay" @pointerdown.capture="dismissReadingToolsOutside" @pointerdown.stop @focusin="dismissReadingToolsOutside" @focusout="dismissReadingToolsOnFocusOut" @wheel.stop="handleUiWheel">
     <button v-if="showIndicator && !showTooltip && triggerMode !== 'contextMenu'" class="fr-selection-indicator" :class="`fr-selection-indicator--${triggerMode}`" :style="indicatorStyle" type="button" aria-label="打开划词翻译" title="打开划词翻译" @pointerdown.prevent.stop @pointerenter="scheduleIndicatorHover" @pointerleave="cancelReadingHover" @click="openTooltip()">
       <span class="fr-selection-indicator-glyph" aria-hidden="true">译</span>
     </button>
@@ -179,6 +179,7 @@ import {hasDistinctTranslation} from '@/src/core/translation/result';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import browser from 'webextension-polyfill';
 import {addRuntimeMessageListener} from '@/src/platform/browser/runtimeMessages';
+import {getSafeVisualViewportRect, observeVisualViewport} from '@/src/platform/dom/visualViewport';
 import {openShareCard, isShareCardMounted} from '@/src/features/share-card/public';
 import { config, configReady, requestConfigPatch, subscribeConfig } from '@/src/services/config/store';
 import { translateText, translateTextBatch } from '@/src/services/translation/client';
@@ -221,7 +222,7 @@ const shareCardAvailable = isShareCardMounted();
 type SelectionTrigger = 'direct' | 'icon' | 'dot' | 'shortcut' | 'contextMenu';
 type AudioKind = 'source' | 'translation' | 'word';
 type CopyKind = 'source' | 'translation';
-interface SelectionSnapshot { text: string; nativeText: string; parts: SelectionTextPart[]; range: Range; anchor: SelectionRect; isForward: boolean; }
+interface SelectionSnapshot { text: string; nativeText: string; rangeText: string; parts: SelectionTextPart[]; range: Range; anchor: SelectionRect; isForward: boolean; }
 interface ContextMenuSelection { snapshot: SelectionSnapshot; rangeText: string; }
 interface SelectionAuthenticationError { request: SelectionContentRequest; requestId: number; service?: string; }
 
@@ -282,7 +283,8 @@ const indicatorStyle = ref<Record<string, string>>({});
 const tooltipStyle = ref<Record<string, string>>({});
 const popupPlacement = ref<'top' | 'bottom'>('top');
 const pageZoom = ref(1);
-const viewportSize = ref({width: window.innerWidth, height: window.innerHeight});
+const viewportSize = ref(getSafeVisualViewportRect());
+const touchInteraction = ref(false);
 const popupScale = computed(() => 1 / pageZoom.value);
 const tooltipScaleStyle = computed(() => ({
   transform: `scale(${popupScale.value})`,
@@ -352,6 +354,12 @@ let contentRequestGeneration = 0;
 let noticeTimer: number | null = null;
 let lastTrustedSelectionInteractionAt = 0;
 const TRUSTED_SELECTION_INTERACTION_GRACE_MS = 1_500;
+// 原生选区句柄可能由系统处理而不向网页继续派发 pointer 事件；只给明确的触摸会话有限宽限。
+const TOUCH_SELECTION_GRACE_MS = 30_000;
+const TOUCH_SELECTION_SETTLE_MS = 250;
+let touchSelectionActiveUntil = 0;
+let touchSelectionTimer: number | null = null;
+let unsubscribeVisualViewport: (() => void) | null = null;
 let audio: HTMLAudioElement | null = null;
 let audioUrl = '';
 let pageAudioProgressTimer: ReturnType<typeof setInterval> | undefined;
@@ -508,7 +516,8 @@ function readSelectionSnapshot(): SelectionSnapshot | null {
     const isForward = selection.anchorNode === range.startContainer && selection.anchorOffset === range.startOffset;
     const anchor = chooseSelectionRect(visualRects, isForward);
     if (!anchor || (anchor.width === 0 && anchor.height === 0)) return null;
-    return { text, nativeText, parts, range, anchor, isForward };
+    // 跨段时 Selection 会插入段落换行，Range 的序列化则可能直接拼接文本；各自只与同一种序列化核对。
+    return { text, nativeText, rangeText: range.toString(), parts, range, anchor, isForward };
   } catch {
     // 文档/Range 在导航或宿主重绘期间失效时，据实返回缺选区，不让页面事件或菜单消息抛错。
     return null;
@@ -531,6 +540,24 @@ function scheduleSelectionRead(shortcutTriggered = false): void {
     pendingSelectionShortcutUntil = 0;
     if (!isSelecting && !isSelectionReadSuppressed()) applySelection(readSelectionSnapshot(), shouldTriggerShortcut);
   });
+}
+
+function cancelTouchSelectionRead(): void {
+  if (touchSelectionTimer !== null) window.clearTimeout(touchSelectionTimer);
+  touchSelectionTimer = null;
+}
+
+function isTouchSelectionActive(): boolean {
+  return touchInteraction.value && Date.now() < touchSelectionActiveUntil;
+}
+
+function scheduleTouchSelectionRead(): void {
+  cancelTouchSelectionRead();
+  if (!isTouchSelectionActive() || isSelecting || isSelectionReadSuppressed() || contextMenuSourceRejected) return;
+  touchSelectionTimer = window.setTimeout(() => {
+    touchSelectionTimer = null;
+    if (!componentDisposed && isTouchSelectionActive() && document.visibilityState !== 'hidden') scheduleSelectionRead();
+  }, TOUCH_SELECTION_SETTLE_MS);
 }
 
 function suppressSelectionRead(duration = UI_SELECTION_SUPPRESSION_MS): void {
@@ -778,14 +805,15 @@ function applyManualPopupGeometry(measured?: Pick<DOMRect, 'width'>): void {
   const element = tooltipRef.value;
   if (!element || !manualPopupPosition) return;
   const scale = popupScale.value;
-  const widthLimit = Math.max(1, window.innerWidth - 24);
-  const heightLimit = Math.max(1, window.innerHeight - 24);
+  const viewport = viewportSize.value;
+  const widthLimit = Math.max(1, viewport.width - 24);
+  const heightLimit = Math.max(1, viewport.height - 24);
   const width = Math.min(manualPopupSize?.width ?? measured?.width ?? element.getBoundingClientRect().width, widthLimit);
-  const left = Math.max(12, Math.min(manualPopupPosition.left, window.innerWidth - width - 12));
+  const left = Math.max(viewport.left + 12, Math.min(manualPopupPosition.left, viewport.right - width - 12));
   // 内容变多时保留左上角，以当前位置下方的可用空间限制高度；仅视口缩小时夹回可操作区域。
   const minHeight = Math.min(140 * scale, heightLimit);
-  const top = Math.max(12, Math.min(manualPopupPosition.top, window.innerHeight - minHeight - 12));
-  const availableHeight = Math.max(1, window.innerHeight - top - 12);
+  const top = Math.max(viewport.top + 12, Math.min(manualPopupPosition.top, viewport.bottom - minHeight - 12));
+  const availableHeight = Math.max(1, viewport.bottom - top - 12);
   const preferredHeight = manualPopupSize?.height ?? audioPopupHeight;
   const height = preferredHeight !== null ? Math.min(preferredHeight, availableHeight) : undefined;
   manualPopupPosition = {left, top};
@@ -825,6 +853,8 @@ function beginPopupGesture(event: PointerEvent): void {
   if (target.closest('button, summary, a, input, textarea, select, [contenteditable]')) return;
   const edge = target.dataset.resizeEdge ?? '';
   const blank = target.matches('.fr-translation-tooltip, .fr-tooltip-content, .fr-translation-container, .fr-text-block');
+  // 触摸正文应滚动或选词，不让空白拖动吞掉原生平移；触摸仅从明确的标题栏移动卡片。
+  if (event.pointerType === 'touch' && (edge || blank)) return;
   if (!edge && !target.matches('.fr-study-navigation') && !blank) return;
   // 不截获内容滚动条上的按下。
   if (!edge && blank && event.clientX >= target.getBoundingClientRect().left + target.clientLeft + target.clientWidth) return;
@@ -861,13 +891,14 @@ function flushPopupGesture(gesture: NonNullable<typeof popupGesture>): void {
   if (!edge) {
     manualPopupPosition = {left: rect.left + dx, top: rect.top + dy};
   } else {
-    const minWidth = Math.min(280 * popupScale.value, window.innerWidth - 24);
-    const minHeight = Math.min(140 * popupScale.value, window.innerHeight - 24);
+    const viewport = viewportSize.value;
+    const minWidth = Math.min(280 * popupScale.value, viewport.width - 24);
+    const minHeight = Math.min(140 * popupScale.value, viewport.height - 24);
     let {left, top, right, bottom} = rect;
-    if (edge.includes('w')) left = Math.max(12, Math.min(rect.left + dx, right - minWidth));
-    if (edge.includes('e')) right = Math.min(window.innerWidth - 12, Math.max(rect.right + dx, left + minWidth));
-    if (edge.includes('n')) top = Math.max(12, Math.min(rect.top + dy, bottom - minHeight));
-    if (edge.includes('s')) bottom = Math.min(window.innerHeight - 12, Math.max(rect.bottom + dy, top + minHeight));
+    if (edge.includes('w')) left = Math.max(viewport.left + 12, Math.min(rect.left + dx, right - minWidth));
+    if (edge.includes('e')) right = Math.min(viewport.right - 12, Math.max(rect.right + dx, left + minWidth));
+    if (edge.includes('n')) top = Math.max(viewport.top + 12, Math.min(rect.top + dy, bottom - minHeight));
+    if (edge.includes('s')) bottom = Math.min(viewport.bottom - 12, Math.max(rect.bottom + dy, top + minHeight));
     manualPopupPosition = {left, top};
     manualPopupSize = {width: right - left, height: bottom - top};
     clearAudioPopupHeightLock();
@@ -891,17 +922,18 @@ function updatePosition(refreshSelection = true): void {
     : current.anchor;
   if (!anchor) return;
   current.anchor = anchor;
-  const entryInset = 14 * popupScale.value;
+  const viewport = viewportSize.value;
+  const entryInset = (touchInteraction.value ? 28 : 14) * popupScale.value;
   indicatorStyle.value = {
-    left: `${Math.max(entryInset, Math.min(window.innerWidth - entryInset, current.isForward ? anchor.right + entryInset : anchor.left - entryInset))}px`,
-    top: `${Math.max(entryInset, Math.min(window.innerHeight - entryInset, anchor.bottom + entryInset))}px`,
+    left: `${Math.max(viewport.left + entryInset, Math.min(viewport.right - entryInset, current.isForward ? anchor.right + entryInset : anchor.left - entryInset))}px`,
+    top: `${Math.max(viewport.top + entryInset, Math.min(viewport.bottom - entryInset, anchor.bottom + entryInset))}px`,
   };
   if (showTooltip.value) void nextTick(() => {
     const tooltip = tooltipRef.value;
     if (!tooltip || !showTooltip.value || snapshot.value !== current || revision !== positionRevision) return;
     if (manualPopupPosition) { applyManualPopupGeometry(); return; }
     const rect = tooltip.getBoundingClientRect();
-    const position = calculateSelectionPopupPosition(snapshot.value.anchor, { width: rect.width, height: rect.height }, { width: window.innerWidth, height: window.innerHeight });
+    const position = calculateSelectionPopupPosition(snapshot.value.anchor, { width: rect.width, height: rect.height }, viewportSize.value);
     manualPopupPosition = {left: position.left, top: position.top};
     applyManualPopupGeometry(rect);
     popupPlacement.value = position.placement;
@@ -942,7 +974,7 @@ function applyPageZoom(value: unknown): void {
   };
   if (audioPopupHeight !== null) audioPopupHeight *= ratio;
   pageZoom.value = nextZoom;
-  viewportSize.value = {width: window.innerWidth, height: window.innerHeight};
+  viewportSize.value = getSafeVisualViewportRect();
   schedulePositionUpdate();
 }
 
@@ -968,7 +1000,7 @@ function handleViewportResize(): void {
   readingPanelRef.value?.closeTools();
   // 视口宽度会改变自动卡片的真实宽度，不能继续用按下时的旧矩形夹边。
   stopPopupGesture();
-  viewportSize.value = {width: window.innerWidth, height: window.innerHeight};
+  viewportSize.value = getSafeVisualViewportRect();
   schedulePositionUpdate();
   void requestPageZoom();
 }
@@ -1803,11 +1835,18 @@ function isContextMenuInputTarget(target: EventTarget | null): boolean {
 function handleContextMenu(event: MouseEvent): void {
   if (!event.isTrusted) return;
   clearContextMenuSelection();
+  // 输入控件的系统菜单可能保留正文旧 Range，触摸与鼠标都必须先核对来源。
+  contextMenuSourceRejected = isInsideUi(event.target) || isContextMenuInputTarget(event.target);
+  if (contextMenuSourceRejected) { cancelSelectionPresentation(); cancelTouchSelectionRead(); return; }
+  // 移动端长按菜单与系统选区句柄共用同一次触摸。保留原生菜单，不冻结后续句柄调整。
+  if (isTouchSelectionActive()) {
+    isSelecting = false;
+    cancelSelectionPresentation();
+    scheduleTouchSelectionRead();
+    return;
+  }
   // 原生菜单接管这次选区交互，旧的延迟出卡和入口收起计时器不能在菜单期间清掉快照。
   cancelSelectionPresentation();
-  // 输入控件中的浏览器选择可能与 document Selection 分离，不能把仍在正文中的旧 Range 当成输入来源。
-  contextMenuSourceRejected = isInsideUi(event.target) || isContextMenuInputTarget(event.target);
-  if (contextMenuSourceRejected) return;
   const current = readSelectionSnapshot();
   if (!current) return;
   contextMenuSelection = {snapshot: current, rangeText: current.range.toString()};
@@ -1868,6 +1907,8 @@ function hideAll(): void {
   // 保留关闭时的选区身份，避免按钮保留原生选区时 pointerup / selectionchange 再次打开卡片。
   dismissedSelection = snapshot.value ?? readSelectionSnapshot() ?? dismissedSelection;
   lastTrustedSelectionInteractionAt = 0;
+  touchSelectionActiveUntil = 0;
+  cancelTouchSelectionRead();
   if (selectionFrame !== null) window.cancelAnimationFrame(selectionFrame);
   selectionFrame = null;
   cancelSelectionLoss();
@@ -1908,6 +1949,8 @@ function handlePointerDown(event: PointerEvent): void {
   if (!event.isTrusted) return;
   lastTrustedSelectionInteractionAt = Date.now();
   if (isInsideUi(event.target)) {
+    touchSelectionActiveUntil = 0;
+    cancelTouchSelectionRead();
     uiPointerInteraction = true;
     isSelecting = false;
     suppressSelectionRead();
@@ -1927,6 +1970,11 @@ function handlePointerDown(event: PointerEvent): void {
   isSelecting = event.button === 0;
   pendingSelectionShortcutUntil = 0;
   hideAll();
+  touchInteraction.value = event.pointerType === 'touch';
+  if (touchInteraction.value) {
+    touchSelectionActiveUntil = Date.now() + TOUCH_SELECTION_GRACE_MS;
+    lastTrustedSelectionInteractionAt = Date.now();
+  }
 }
 function handlePointerUp(event: PointerEvent): void {
   if (!event.isTrusted) return;
@@ -1941,7 +1989,8 @@ function handlePointerUp(event: PointerEvent): void {
   const completedSelectionGesture = isSelecting;
   isSelecting = false;
   if (!completedSelectionGesture || event.button !== 0) return;
-  scheduleSelectionRead(matchesSelectionModifierOnPointer(event) || selectionShortcutHeld);
+  if (event.pointerType === 'touch') scheduleTouchSelectionRead();
+  else scheduleSelectionRead(matchesSelectionModifierOnPointer(event) || selectionShortcutHeld);
 }
 function handlePointerCancel(event: PointerEvent): void {
   if (!event.isTrusted) return;
@@ -1952,6 +2001,11 @@ function handlePointerCancel(event: PointerEvent): void {
     return;
   }
   isSelecting = false;
+  // 浏览器接管长按选择/滚动时会派发 pointercancel。等待原生选区稳定，不阻止系统手势。
+  if (event.pointerType === 'touch' && isTouchSelectionActive()) {
+    scheduleTouchSelectionRead();
+    return;
+  }
   hideAll();
 }
 function cancelEntryDismiss(): void {
@@ -1989,9 +2043,15 @@ function handleSelectionChange(event: Event): void {
   if (!event.isTrusted) return;
   if (import.meta.env.BROWSER !== 'userscript' && (contextMenuSelection || contextMenuSourceRejected)) return;
   // 新的拖选/双击可以再次选中同一段；单纯点击保留旧选区的按钮不能解除关闭状态。
-  if (isSelecting && dismissedSelection) {
+  if ((isSelecting || isTouchSelectionActive()) && dismissedSelection) {
     const current = readSelectionSnapshot();
     if (!current || !isSameSelection(dismissedSelection, current)) dismissedSelection = null;
+  }
+  if (isTouchSelectionActive() && !isSelectionReadSuppressed()) {
+    cancelSelectionPresentation();
+    showIndicator.value = false;
+    scheduleTouchSelectionRead();
+    return;
   }
   if (Date.now() - lastTrustedSelectionInteractionAt > TRUSTED_SELECTION_INTERACTION_GRACE_MS) return;
   if (!isSelectionReadSuppressed()) scheduleSelectionRead(selectionShortcutHeld);
@@ -2103,7 +2163,45 @@ function handleWindowBlur(): void {
   cancelReadingHover();
   selectionShortcutHeld = false;
   pendingSelectionShortcutUntil = 0;
-  if (!showTooltip.value && (import.meta.env.BROWSER === 'userscript' || !contextMenuSelection && !contextMenuSourceRejected)) hideAll();
+  if (!showTooltip.value && !isTouchSelectionActive()
+    && (import.meta.env.BROWSER === 'userscript' || !contextMenuSelection && !contextMenuSourceRejected)) hideAll();
+}
+
+function handlePageVisibility(): void {
+  if (document.visibilityState !== 'hidden') return;
+  stopPopupGesture();
+  cancelTouchSelectionRead();
+  touchSelectionActiveUntil = 0;
+  isSelecting = false;
+  uiPointerInteraction = false;
+  selectionShortcutHeld = false;
+  pendingSelectionShortcutUntil = 0;
+  cancelReadingHover();
+  cancelSelectionPresentation();
+  if (selectionFrame !== null) window.cancelAnimationFrame(selectionFrame);
+  selectionFrame = null;
+  if (!showTooltip.value) hideAll();
+}
+
+function restoreSelectionSource(): void {
+  if (document.visibilityState === 'hidden') return;
+  const current = snapshot.value;
+  // bfcache/后台期间正文可能被替换；不再展示失去来源的结果或恢复旧的自动触发。
+  if (!current) return;
+  try {
+    if (isSelectionRangeConnected(current.range)
+      && (typeof current.rangeText !== 'string' || current.range.toString() === current.rangeText)
+      && (props.selectionAdapter ? props.selectionAdapter.acceptsRange(current.range) : !shouldIgnoreSelection(current.range))) return;
+  } catch {
+    // 已销毁的来源适配器与失效 Range 同样按来源丢失处理，不能阻断页面恢复。
+  }
+  hideAll();
+}
+
+function handlePageHide(): void {
+  isSelecting = false;
+  uiPointerInteraction = false;
+  hideAll();
 }
 
 function handleSelectionSettingsMessage(message: unknown): undefined {
@@ -2151,7 +2249,11 @@ onMounted(() => {
   window.addEventListener('blur', handleWindowBlur);
   runtimeMessageUnsubscribers.push(addRuntimeMessageListener(browser.runtime, handleSelectionTtsState));
   window.addEventListener('scroll', handleScroll, true);
-  window.addEventListener('resize', handleViewportResize);
+  unsubscribeVisualViewport = observeVisualViewport(handleViewportResize);
+  document.addEventListener('visibilitychange', handlePageVisibility);
+  document.addEventListener('visibilitychange', restoreSelectionSource);
+  window.addEventListener('pagehide', handlePageHide);
+  window.addEventListener('pageshow', restoreSelectionSource);
   watch(tooltipRef, (tooltip) => {
     stopPopupGesture();
     tooltipResizeObserver?.disconnect();
@@ -2237,6 +2339,9 @@ onBeforeUnmount(() => {
   releaseContextMenuHandler?.();
   releaseContextMenuHandler = null;
   stopPopupGesture();
+  cancelTouchSelectionRead();
+  unsubscribeVisualViewport?.();
+  unsubscribeVisualViewport = null;
   if (selectionFrame !== null) window.cancelAnimationFrame(selectionFrame);
   cancelPositionUpdate();
   clearAudioPopupHeightLock();
@@ -2265,7 +2370,10 @@ onBeforeUnmount(() => {
   document.removeEventListener('keyup', handleKeyup, true);
   window.removeEventListener('blur', handleWindowBlur);
   window.removeEventListener('scroll', handleScroll, true);
-  window.removeEventListener('resize', handleViewportResize);
+  document.removeEventListener('visibilitychange', handlePageVisibility);
+  document.removeEventListener('visibilitychange', restoreSelectionSource);
+  window.removeEventListener('pagehide', handlePageHide);
+  window.removeEventListener('pageshow', restoreSelectionSource);
   resetSelectionContentState(true);
   if (import.meta.env.BROWSER !== 'userscript') clearContextMenuSelection();
 });
@@ -2431,6 +2539,21 @@ onBeforeUnmount(() => {
 .fr-dark-theme .fr-word-meaning em { border-color: #684b58; }
 .fr-dark-theme .fr-word-meaning em, .fr-dark-theme .fr-word-definition-zh, .fr-dark-theme .fr-word-example-zh, .fr-dark-theme .fr-word-translation-loading, .fr-dark-theme .fr-word-empty { color: #c8aab5; }
 .fr-dark-theme .fr-word-fallback-note { background: #4a303b; }
+/* 保持桌面紧凑；触摸操作用完整命中区，点模式仍只显示小点，不挤占正文。 */
+.fr-touch-selection .fr-selection-indicator { width:44px; height:44px; border-radius:12px; touch-action:manipulation; }
+.fr-touch-selection .fr-selection-indicator--dot { background:transparent; box-shadow:none; }
+.fr-touch-selection .fr-selection-indicator--dot::after { content:''; position:absolute; inset:18px; border-radius:50%; background:#ef4b86; }
+.fr-touch-selection .fr-translation-tooltip button { min-width:44px; min-height:44px; touch-action:manipulation; }
+.fr-touch-selection .fr-study-navigation { touch-action:none; }
+.fr-touch-selection .fr-study-toolbar { touch-action:pan-x; }
+.fr-touch-selection .fr-popup-resize-handle { display:none; }
+.fr-touch-selection .fr-playing-status { height:auto; min-height:52px; flex-wrap:wrap; }
+.fr-touch-selection .fr-tooltip-content { -webkit-overflow-scrolling:touch; }
+.fr-touch-selection .fr-copy-success-toast, .fr-touch-selection .fr-action-toast { right:max(12px, env(safe-area-inset-right)); bottom:max(12px, env(safe-area-inset-bottom)); }
+@media (any-pointer: coarse) {
+  .fr-translation-tooltip button { min-width:44px; min-height:44px; touch-action:manipulation; }
+  .fr-playing-status { height:auto; min-height:52px; flex-wrap:wrap; }
+}
 @media (prefers-reduced-motion: reduce) { .fr-selection-indicator, .fr-loading-spinner { transition: none; animation: none; } }
 
 </style>

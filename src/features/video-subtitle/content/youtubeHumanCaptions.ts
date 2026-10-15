@@ -6,15 +6,18 @@
  */
 import {chooseTargetHumanCaptionTrack} from './platforms';
 import {buildYoutubeTimedTextUrl, extractYoutubeCaptionTracks, getYoutubeVideoId, parseYoutubeTimedTextResponse, finalizeVideoSubtitleCues, type VideoSubtitleCue} from './youtubeSubtitleData';
-import {selectVideoSubtitleCueAtOffset} from './subtitleLogic';
 
 export class YoutubeHumanCaptions {
     private key = '';
     private cues: VideoSubtitleCue[] = [];
+    private maximumEnds: number[] = [];
     private controller: AbortController | undefined;
     private retryAt = 0;
     private pending: Promise<void> | undefined;
     private requestUrl = '';
+    private visibleRevision = 0;
+    /** 供原生轨道避免每秒遍历未变化的人工字幕。 */
+    get revision(): number { return this.visibleRevision; }
     constructor(private readonly request: typeof fetch, private readonly onReady: () => void) {}
 
     sync(root: ParentNode, location: Pick<Location, 'hostname' | 'pathname' | 'search'>, target: string, enabled: boolean): void {
@@ -38,6 +41,9 @@ export class YoutubeHumanCaptions {
                 if (controller.signal.aborted || this.key !== key) return;
                 if (!cues.length) throw new Error('人工字幕为空');
                 this.cues = cues;
+                let maximumEnd = 0;
+                this.maximumEnds = cues.map(cue => (maximumEnd = Math.max(maximumEnd, cue.startMs + cue.durationMs)));
+                this.visibleRevision += 1;
                 this.onReady();
             } catch {
                 if (!controller.signal.aborted && this.key === key) this.retryAt = Date.now() + 5000;
@@ -48,7 +54,23 @@ export class YoutubeHumanCaptions {
     }
 
     at(timeMs: number): string {
-        return selectVideoSubtitleCueAtOffset(this.cues, timeMs, 0)?.text || '';
+        if (!Number.isFinite(timeMs)) return '';
+        // finalized 时间轴按开始时间排序；二分跳过未来 cue，prefix end 跳过已全部结束的区间。
+        // 原生轨批量构建会调用数千次，不能每句重新扫描全长人工字幕。
+        let lower = 0, upper = this.cues.length;
+        while (lower < upper) {
+            const middle = (lower + upper) >>> 1;
+            if (this.cues[middle].startMs <= timeMs) lower = middle + 1;
+            else upper = middle;
+        }
+        let active: VideoSubtitleCue | undefined;
+        for (let index = lower - 1; index >= 0 && this.maximumEnds[index] > timeMs; index -= 1) {
+            const cue = this.cues[index];
+            if (active && cue.startMs < active.startMs) break;
+            // 同起点保留原有顺序；较新的短 cue 结束后仍可回到较早的有效长 cue。
+            if (cue.startMs + cue.durationMs > timeMs) active = cue;
+        }
+        return active?.text || '';
     }
 
     ownsUrl(url: string): boolean {
@@ -72,7 +94,9 @@ export class YoutubeHumanCaptions {
         this.pending = undefined;
         this.key = '';
         this.requestUrl = '';
+        if (this.cues.length) this.visibleRevision += 1;
         this.cues = [];
+        this.maximumEnds = [];
         this.retryAt = 0;
     }
 }

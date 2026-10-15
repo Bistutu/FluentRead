@@ -449,7 +449,8 @@
       "tests/chatgptPlanConfig.test.ts",
       "tests/modelEditing.test.ts",
       "tests/documentTasks.test.ts",
-      "tests/compiledVueFixture.test.ts"
+      "tests/compiledVueFixture.test.ts",
+      "tests/mobileVisualViewport.test.ts"
     ],
     "functional": [
       "tests/videoAiRequestSession.test.ts",
@@ -691,7 +692,10 @@
       "tests/localTranslationWorker.test.ts",
       "tests/translationQualityEvaluation.test.ts",
       "tests/translationQualityReport.test.ts",
-      "tests/translationQualityTransport.test.ts"
+      "tests/translationQualityTransport.test.ts",
+      "tests/videoNativeFullscreen.test.ts",
+      "tests/floatingBallLifecycle.test.ts",
+      "tests/translationProgressMobileLifecycle.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

@@ -77,3 +77,5 @@ Chrome 商店打不开时，可以从 [GitHub 官方发布页](https://github.co
 - [网页翻译](/guide/webpage-translation)
 - [译文外观与阅读辅助](/config/appearance)
 - [翻译服务](/config/translation-engines)
+
+移动设备与 Safari 的安装、更新、触摸操作及视频全屏限制，参见[移动端与 Safari](./mobile-safari)。

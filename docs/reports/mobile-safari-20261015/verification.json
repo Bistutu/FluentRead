@@ -1,0 +1,334 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-15T06:42:33.647540+00:00",
+  "baseCommit": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+  "branch": "codex/mobile-safari-product-20261015",
+  "overallGoalComplete": false,
+  "status": "implementation-reviewed; device acceptance pending",
+  "evidenceRoot": "research/mobile-safari-20261015 (workspace level, outside repository)",
+  "sourceSnapshotSha256": "e2f980b20088fb545b33de68a69d97a69435a2cca7010305d7b9cd1d7d6d7955",
+  "changedRuntimeSources": {
+    "package.json": "f2d0cb391c8a4049f85cacd393069f39bb62de49f2bf79558ae4e31f86991871",
+    "src/core/i18n/messages/en-US.ts": "740c08ca4921eaf3805e604db490fff22b8b933fcf1405a0739e236eabf35a19",
+    "src/core/i18n/messages/es-ES.ts": "3fe56e8d80a10dab85825394df9878e59dfa02c93184e88fddf57ad88daa6a21",
+    "src/core/i18n/messages/fr-FR.ts": "8c04e391b16d1867ba6ebdacb8024c250ff3f41aac6b1f87231d382bef22dadf",
+    "src/core/i18n/messages/ja-JP.ts": "7128ff73ed7d26a11ea96c86e38bf851a1cb5f77a855e8dcabdd535a1b1f4be6",
+    "src/core/i18n/messages/ko-KR.ts": "cd0a849333b12268086a92a703ac356c279bd78b8421ab888e1499962e69e1ad",
+    "src/core/i18n/messages/ru-RU.ts": "1adaf74d2a01278759d9d9070c1b5ff2ce3624368f636b0c00c1e766938c246e",
+    "src/core/i18n/messages/zh-CN.ts": "7da421ca7fa92cf2b3e1c52bec34b2fbaf924cbc21af398a706c63ccd58ce830",
+    "src/features/floating-ball/content/anchoredPopup.ts": "c6a8ed6b145ef29489df1a0c3d3b69ea4a23b092a972bc96540351d25fe9b7bf",
+    "src/features/floating-ball/ui/FloatingBall.vue": "7dc94a202f3a6ee588b98d02ab06314f95fc33fcb440587f7ef5ad707fa851e4",
+    "src/features/full-page-translation/ui/TranslationProgressPanel.vue": "1b33297965759c8117b56a4a956e7f7b981d7ff0d519a0391e2452f9e842ef5c",
+    "src/features/selection-translation/core.ts": "3c5f2d93a2872884b1029e3bae94b4b15362a300ba41adacfe9fd00f14f0ae68",
+    "src/features/selection-translation/ui/SelectionTranslator.vue": "af08584692e604ca921e3e6a1aeac14b2c914b27e89962493540e17cbdfc25f7",
+    "src/features/video-subtitle/content/nativeFullscreen.ts": "c5856eda860e7c5b15fcb3f4ad45bb7707b6fc202f60a53f075bc0a4375b5e87",
+    "src/features/video-subtitle/content/playerMenu.ts": "5cc6bb174d6c94ffc9f8e1d2ccdbfcd688556d80955de8bacfbf998fb4112d8b",
+    "src/features/video-subtitle/content/runtime.ts": "2ccd7ad37e76eab5f0905ae1d075e1437e5b7cf858fcf7844c59077bb568dc2c",
+    "src/features/video-subtitle/content/translationCache.ts": "ecdda524d2891a331fbd7068e313a828e0fee39f71bcad1e33a65fde8477514b",
+    "src/features/video-subtitle/content/ui.ts": "1c24a4e2ba8491df3e9fc583801bc7fd1cd016e7dc80613da32b292fbc177499",
+    "src/features/video-subtitle/content/videoPlayerBinding.ts": "f68544937394c992abdd89756d4640ef752107f3c3648dd5c60642c68ad788b4",
+    "src/features/video-subtitle/content/videoPlayerLocator.ts": "67ff409285b5116088605c13174ea0b9a7881f2ac08f1aed73e68e73f8ddba97",
+    "src/features/video-subtitle/content/youtubeHumanCaptions.ts": "675e1a19dc0de7b787bb6b56775ff0ae020e84368634c9750a2136c5cfd2e86e",
+    "src/platform/dom/visualViewport.ts": "fec540c69ca5703e8051e04df51a79e192a2da55be359385eb4a91c11050c8d2",
+    "userscript/languageBundles.ts": "d900ee683df9ddfdb7e2dd04c04f0786b79a22f648e4ea8588b03829dd7e0335",
+    "wxt.config.ts": "5fe7f8bfb97b44a338556b857a05063e64e3fb131c566222d469978ef0ca2160"
+  },
+  "checks": {
+    "typecheck": "passed",
+    "integration": {
+      "files": 10,
+      "passed": 1436,
+      "sourceHeaderRulesIncluded": 1028,
+      "log": "validation/integration-1436.log"
+    },
+    "safariManifest": {
+      "passed": 37
+    },
+    "strictCoverage": {
+      "modules": [
+        "src/platform/dom/visualViewport.ts",
+        "src/features/video-subtitle/content/nativeFullscreen.ts",
+        "src/features/floating-ball/content/anchoredPopup.ts",
+        "src/features/selection-translation/core.ts",
+        "src/features/video-subtitle/content/translationCache.ts",
+        "src/features/video-subtitle/content/youtubeHumanCaptions.ts"
+      ],
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100,
+      "scope": "module-scoped runs; not global coverage"
+    },
+    "vueBehaviorCases": {
+      "FloatingBall": 10,
+      "TranslationProgressPanel": 5
+    },
+    "audit": {
+      "filesClassified": 730,
+      "casesIndexed": 13126,
+      "note": "audit only; not a full test run"
+    },
+    "finalMenuGeometryTests": {
+      "passed": 21
+    },
+    "docsBuild": "passed",
+    "diffCheck": "passed"
+  },
+  "productionBrowserSuites": [
+    {
+      "suite": "floating-progress",
+      "passedCases": 14,
+      "report": "floating-progress/report.json",
+      "reportSha256": "7cc85f33a1738cb7583fe603abadb8e9ebf785f6c5b56c9eef5faa595a8bcc71",
+      "focusEvents": 0,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 132,
+          "top": -1040,
+          "width": 1440,
+          "height": 1000
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false,
+        "frontmostBefore": {
+          "pid": 65658,
+          "name": "问题报告程序"
+        },
+        "frontmostAfter": {
+          "pid": 65658,
+          "name": "问题报告程序"
+        }
+      }
+    },
+    {
+      "suite": "selection-final",
+      "passedCases": 8,
+      "report": "selection-final/report.json",
+      "reportSha256": "6e1240d18ef33494edb5693f4221b554a62a800a77bd372b501edd66164cd196",
+      "focusEvents": 0,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 212,
+          "top": -990,
+          "width": 1280,
+          "height": 900
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false,
+        "frontmostBefore": {
+          "pid": 65658,
+          "name": "问题报告程序"
+        },
+        "frontmostAfter": {
+          "pid": 65658,
+          "name": "问题报告程序"
+        }
+      }
+    },
+    {
+      "suite": "progress-status",
+      "passedCases": 12,
+      "report": "progress-status/report.json",
+      "reportSha256": "5c4ed8c624f2e4f642e5b56aa8dafed18b7878f3010c19301a4372695f8471b6",
+      "focusEvents": 0,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 302,
+          "top": -940,
+          "width": 1100,
+          "height": 800
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false,
+        "frontmostBefore": {
+          "pid": 65658,
+          "name": "问题报告程序"
+        },
+        "frontmostAfter": {
+          "pid": 65658,
+          "name": "问题报告程序"
+        }
+      }
+    },
+    {
+      "suite": "video-complete",
+      "passedCases": 10,
+      "report": "video-complete/report.json",
+      "reportSha256": "52e07149f3568f3b858893a0079bdaf0a6b3807e1c226fb6b16c4ec23575afaa",
+      "focusEvents": 0,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 212,
+          "top": -990,
+          "width": 1280,
+          "height": 900
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false,
+        "frontmostBefore": {
+          "pid": 65658,
+          "name": "问题报告程序"
+        },
+        "frontmostAfter": {
+          "pid": 65658,
+          "name": "问题报告程序"
+        }
+      }
+    }
+  ],
+  "artifacts": {
+    "chrome": {
+      "sha256": "8d18bb58d70f4a4f69f0e4ddad9faea95ad984bbecfba26032bd3d9e10270a0b",
+      "files": 472,
+      "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+    },
+    "firefox": {
+      "sha256": "94ca21c68ea7c46fef5c3aadf4ecc94538c5812602ad249dabd84215aab622bb",
+      "files": 472,
+      "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+    },
+    "safari": {
+      "sha256": "46f9b1ba57749000a4816d09cac46e19e472926739d38326b2bf5522eee3d767",
+      "files": 460,
+      "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+    },
+    "userscript": {
+      "sha256": "cbe7706009374fa15c907984b84dac7f4e6935bb9ab5a83794d7d52139f80ed7",
+      "bytes": 2072040,
+      "verifier": "passed"
+    }
+  },
+  "safari": {
+    "productionResourceSha256": "46f9b1ba57749000a4816d09cac46e19e472926739d38326b2bf5522eee3d767",
+    "sourceAndCopiedResourcesIdentical": true,
+    "packaging": "passed",
+    "xcodeSchemes": "passed",
+    "macOSCompile": {
+      "result": "passed",
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ],
+      "developerSigning": false,
+      "linkerAdhocMarker": true,
+      "installed": false,
+      "opened": false,
+      "resourceSha256": "46f9b1ba57749000a4816d09cac46e19e472926739d38326b2bf5522eee3d767",
+      "log": "build-macos-complete.log",
+      "derivedData": ".output/safari-derived-macos-complete"
+    },
+    "iOSSimulatorCompile": {
+      "result": "blocked",
+      "attempts": [
+        {
+          "mode": "generic scheme destination",
+          "exitCode": 70,
+          "stage": "destination eligibility",
+          "reason": "Xcode reports iOS 26.2 is not installed"
+        },
+        {
+          "mode": "direct target with iphonesimulator SDK arm64",
+          "exitCode": 65,
+          "extensionTarget": "compiled and linked",
+          "stage": "CompileAssetCatalogVariant",
+          "reason": "No available simulator runtimes for platform iphonesimulator. supportedRuntimes=[]"
+        }
+      ],
+      "evidenceResourceSnapshot": "0c03185ab20dbc52c0be4aad27a6d16abbd2ad3b4be5acb31fe7b9de63201aa5",
+      "scope": "Earlier wrapper; same missing-runtime environment; not repeated for delivery resources"
+    },
+    "manifestContractTests": {
+      "passed": 37
+    },
+    "runtimeAcceptance": {
+      "safariMacOS": "not-run",
+      "iOSDevice": "not-run",
+      "iOSSimulator": "not-run",
+      "liveProviders": "not-run"
+    },
+    "iOSDeviceSDKCompile": {
+      "result": "blocked",
+      "mode": "direct target with iphoneos SDK arm64",
+      "exitCode": 65,
+      "extensionTarget": "compiled and linked",
+      "stage": "CompileAssetCatalogVariant",
+      "reason": "No available simulator runtimes for platform iphonesimulator. supportedRuntimes=[]",
+      "evidenceResourceSnapshot": "0c03185ab20dbc52c0be4aad27a6d16abbd2ad3b4be5acb31fe7b9de63201aa5",
+      "scope": "Earlier wrapper; same missing-runtime environment; not repeated for delivery resources"
+    },
+    "schemaVersion": 3,
+    "artifactCount": 460,
+    "wrapper": ".output/safari-xcode-complete/FluentRead/FluentRead.xcodeproj",
+    "sourceAndCompiledMacOSResourcesIdentical": true,
+    "finalSnapshot": "complete",
+    "finalEvidence": {
+      "resourceIdentity": "artifact-identity-complete.json",
+      "packaging": "package-complete.log",
+      "packageReport": "package-report-complete.json",
+      "schemes": "schemes-complete.json",
+      "macOSSignature": "macos-signature-complete.log"
+    },
+    "priorResourceEvidence": [
+      "acceptance-delivery.json",
+      "acceptance-pre-delivery.json"
+    ]
+  },
+  "review": {
+    "code": "independent scoped review found no remaining confirmed P1/P2 regressions",
+    "visual": "screenshots inspected; 44px specificity and truncated timing label repaired",
+    "operations": "normal/loading/error/retry/cancel/toggle/restore/refresh/background/dispose covered in scoped unit and controlled production browser runs"
+  },
+  "evidenceLimits": [
+    "Controlled pages and provider responses, not live providers.",
+    "CDP touch, DOM Range, VisualViewport/lifecycle fixtures and webkit/fullscreen shims are not native iOS/Android acceptance.",
+    "Actual TextTrack API and trusted track resource error events were exercised in Edge; iOS AVKit rendering was not.",
+    "Page, selection and progress suites predate only the final video-menu CSS changes; the video suite was rerun against final production output.",
+    "Nonzero safe-area CDP emulation unavailable; safe-area logic has unit coverage, not notch-device evidence.",
+    "Firefox build passed; Firefox runtime was not exercised.",
+    "macOS unsigned compilation passed; no Safari App installation, extension enablement, developer signing or publication.",
+    "iOS complete App builds blocked by missing Simulator runtime; earlier failures are retained, not claimed as final resource builds."
+  ],
+  "remainingAcceptance": [
+    "Safari macOS/iPhone/iPad install, site permissions, update retaining configuration, disable/uninstall",
+    "iOS native selection, keyboard, rotation, safe areas and AVKit subtitle Off/switch/return",
+    "Android Edge/Firefox device installation/update and three translation paths",
+    "Background suspension/memory reclamation on devices",
+    "Real provider and audio behavior; VoiceOver/TalkBack; Safari Userscripts manager runtime"
+  ]
+}

@@ -5,6 +5,7 @@
  * 模块边界：本文件只在 content 页面编排，完整 AI 字幕缓存请求与提交身份由 subtitleSession 拥有，requestSession 将两类采集映射为后台单流的唯一请求代际；采集资源仍归 capture/fullCapture，不拦截 fetch/XHR 也不实现翻译 provider，翻译经统一 service client。
  */
 import {createApp, h, shallowReactive} from 'vue';
+import {createNativeFullscreenSubtitles, supportsNativeVideoFullscreen} from './nativeFullscreen';
 import {createSavedVideoPositionRestorer, getVideoLearningSource, type MutableVideoSentenceLearningProps} from './sentenceLearningHost';
 import {createVideoSentenceLearningSession} from './sentenceLearningSession';
 import {createVideoLearningPlacementOwner} from './sentenceLearningPlacement';
@@ -381,6 +382,15 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
     return videoTranslator.request(source, prefetch);
   };
+
+  const nativeFullscreen = createNativeFullscreenSubtitles(() => ({
+    video: observedVideo, enabled: canReadVideo() && isYouTubeVideoPage(),
+    cues: pretranslationCues, mode: normalizeVideoSubtitleDisplayMode(config.videoSubtitleDisplayMode),
+    offsetMs: subtitleOffsetMs, language: config.to,
+    revision: `${videoTranslator.revision}:${humanCaptions.revision}:${config.to}:${config.videoPreferHumanSubtitles}`,
+    translation: (source, cue) => (config.videoPreferHumanSubtitles ? humanCaptions.at(cue.startMs + cue.durationMs / 2) : '')
+      || (isVideoSubtitleInTargetLanguage(source, config.to) ? source : videoTranslator.peek(source)),
+  }));
 
   const getCurrentVideoTimeMs = () => readVideoPlaybackTimeMs(
     playerLocator.getTarget()?.player || (isYouTubeVideoPage() ? findVideoPlayer() : null), observedVideo);
@@ -1028,6 +1038,8 @@ export function mountVideoSubtitleTranslation(): () => void {
         canChooseModel: canChooseAiModel,
       }, language);
     }
+    const nativeHint = menu.querySelector<HTMLElement>('[data-native-fullscreen-hint]');
+    if (nativeHint) nativeHint.hidden = !isYouTubeVideoPage() || !supportsNativeVideoFullscreen(observedVideo) || !enabled || !visible;
     if (!menu.hidden) syncVideoPlayerMenuLayout(menu);
   };
 
@@ -1449,10 +1461,11 @@ export function mountVideoSubtitleTranslation(): () => void {
     const player = playerLocator.getTarget()?.player || (isYouTubeVideoPage() ? findVideoPlayer() : null);
     if (!player) return;
     const source = readCurrentCaptionText(container);
+    const compactYoutube = isYouTubeVideoPage() && (player.getBoundingClientRect().width <= 600 || window.matchMedia?.('(pointer: coarse)').matches === true);
     const canTranslate = config.on && config.videoTranslationEnabled && config.videoSubtitleVisible !== false && displayMode !== 'original-only';
     if (!canTranslate) {
       if (config.on && config.videoTranslationEnabled && config.videoSubtitleVisible !== false
-        && displayMode === 'original-only' && (container.id === VIDEO_AI_CAPTION_CONTAINER_ID || hasAdjustedTimeline())) {
+        && displayMode === 'original-only' && (container.id === VIDEO_AI_CAPTION_CONTAINER_ID || hasAdjustedTimeline() || compactYoutube)) {
         if (!source) {
           resetTranslationState();
           if (hasAdjustedTimeline()) container.classList.add(VIDEO_NORMALIZED_CAPTION_CLASS);
@@ -1517,6 +1530,10 @@ export function mountVideoSubtitleTranslation(): () => void {
       writeVideoCaptionText(overlay, '');
     }
 
+    if (compactYoutube) {
+      normalizedCaptionActive = true;
+      renderHumanVideoCaption(player, container, source, lastTranslatedSource === source ? visibleTranslation(lastTranslatedText, source) : '');
+    }
     if (source === lastSource) {
       syncTranslationOverlayPosition(container);
       const shown = lastTranslatedSource === source ? visibleTranslation(lastTranslatedText, source) : '';
@@ -1555,7 +1572,7 @@ export function mountVideoSubtitleTranslation(): () => void {
   };
   const startCaptionClock = () => {
     const video = observedVideo;
-    if (!config.on || !config.videoTranslationEnabled || config.videoSubtitleVisible === false
+    if (document.visibilityState === 'hidden' || !config.on || !config.videoTranslationEnabled || config.videoSubtitleVisible === false
       || !video || video.paused || video.ended || captionFrame !== undefined
       || (!isXVideoPage() && !hasAdjustedTimeline() && !progressiveCue)
       || typeof video.requestVideoFrameCallback !== 'function') return;
@@ -1620,16 +1637,20 @@ export function mountVideoSubtitleTranslation(): () => void {
   };
 
   const handleVideoVisibilityChange = () => {
-    if (!isXVideoPage()) return;
     if (document.visibilityState === 'hidden') {
-      if (isAiCaptureRunning()) stopAiSubtitleCapture(false);
+      stopCaptionClock();
+      if (isXVideoPage() && isAiCaptureRunning()) stopAiSubtitleCapture(false);
       return;
     }
+    // Safari 可能挂起后台页的时钟；回来时重读媒体身份、cue、画幅及菜单位置。
+    syncPlayerUi();
+    scheduleSubtitleLayout();
     const video = observedVideo;
-    if (isAiCaptureRequested() && !isAiCaptureRunning() && !isAiFullActive() && video && !video.paused && !video.ended) {
+    if (isXVideoPage() && isAiCaptureRequested() && !isAiCaptureRunning() && !isAiFullActive() && video && !video.paused && !video.ended) {
       startAiSubtitleCapture(false);
     }
   };
+  const handlePageShow = () => { syncPlayerUi(); scheduleSubtitleLayout(); };
 
   const observeCaptionContainer = () => {
     const container = findCaptionContainer();
@@ -1700,10 +1721,12 @@ export function mountVideoSubtitleTranslation(): () => void {
       buttonElement = null;
       menuElement = null;
       removeTranslationOverlay();
+      nativeFullscreen.sync();
       return;
     }
     syncPretranslationConfig();
     syncVideoElement();
+    nativeFullscreen.sync();
     const learningTarget = playerLocator.getTarget();
     if (learning.isOpen() && (learningTarget ? !learning.syncPlayer(learningTarget.player, learningTarget.video) : !learning.isConnected())) closeSentenceLearning();
     restoreSavedVideoPosition();
@@ -1734,6 +1757,10 @@ export function mountVideoSubtitleTranslation(): () => void {
   document.addEventListener('visibilitychange', handleVideoVisibilityChange);
   document.addEventListener('fullscreenchange', scheduleSubtitleLayout);
   window.addEventListener('resize', scheduleSubtitleLayout);
+  window.addEventListener('orientationchange', scheduleSubtitleLayout);
+  window.addEventListener('pageshow', handlePageShow);
+  window.visualViewport?.addEventListener('resize', scheduleSubtitleLayout);
+  window.visualViewport?.addEventListener('scroll', scheduleSubtitleLayout);
   videoTimelineEventNames.forEach((eventName) => document.addEventListener(eventName, handleVideoTimelineEvent, true));
   window.addEventListener('message', handleTimedTextMessage);
   window.addEventListener('message', handleXSubtitleResourceMessage);
@@ -1809,6 +1836,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     destroyed = true; aiModelSetup.reset(); karaoke.destroy();
     humanCaptions.clear();
     downloads.destroy();
+    nativeFullscreen.destroy();
     aiSubtitleSession.dispose();
     aiRequests.dispose();
     unsubscribePlayer();
@@ -1840,6 +1868,10 @@ export function mountVideoSubtitleTranslation(): () => void {
     document.removeEventListener('visibilitychange', handleVideoVisibilityChange);
     document.removeEventListener('fullscreenchange', scheduleSubtitleLayout);
     window.removeEventListener('resize', scheduleSubtitleLayout);
+    window.removeEventListener('orientationchange', scheduleSubtitleLayout);
+    window.removeEventListener('pageshow', handlePageShow);
+    window.visualViewport?.removeEventListener('resize', scheduleSubtitleLayout);
+    window.visualViewport?.removeEventListener('scroll', scheduleSubtitleLayout);
     videoTimelineEventNames.forEach((eventName) => document.removeEventListener(eventName, handleVideoTimelineEvent, true));
     window.removeEventListener('message', handleTimedTextMessage);
     window.removeEventListener('message', handleXSubtitleResourceMessage);

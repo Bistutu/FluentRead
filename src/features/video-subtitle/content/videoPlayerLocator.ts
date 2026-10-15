@@ -375,11 +375,14 @@ export function createVideoPlayerLocator(options: VideoPlayerLocatorOptions = {}
     } else scheduleDeferredDomSync();
   };
   document.addEventListener('pointerover', onPointer, true);
+  document.addEventListener('pointerdown', onPointer, true);
   document.addEventListener('pointerout', onPointerOut, true);
   document.addEventListener('mouseover', onPointer, true);
   document.addEventListener('focusin', onFocus, true);
   document.addEventListener('focusout', onFocusOut, true);
   document.addEventListener('fullscreenchange', onFullscreen, true);
+  document.addEventListener('webkitbeginfullscreen', onFullscreen, true);
+  document.addEventListener('webkitendfullscreen', onFullscreen, true);
   view.addEventListener('resize', onFullscreen, true);
   const observer = typeof MutationObserver !== 'undefined'
     ? new MutationObserver(onDom)
@@ -402,11 +405,14 @@ export function createVideoPlayerLocator(options: VideoPlayerLocatorOptions = {}
         else view.clearTimeout(domSyncHandle);
       }
       document.removeEventListener('pointerover', onPointer, true);
+      document.removeEventListener('pointerdown', onPointer, true);
       document.removeEventListener('pointerout', onPointerOut, true);
       document.removeEventListener('mouseover', onPointer, true);
       document.removeEventListener('focusin', onFocus, true);
       document.removeEventListener('focusout', onFocusOut, true);
       document.removeEventListener('fullscreenchange', onFullscreen, true);
+      document.removeEventListener('webkitbeginfullscreen', onFullscreen, true);
+      document.removeEventListener('webkitendfullscreen', onFullscreen, true);
       view.removeEventListener('resize', onFullscreen, true);
       listeners.clear();
       selected = null;

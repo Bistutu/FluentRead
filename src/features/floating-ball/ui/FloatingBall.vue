@@ -1,7 +1,7 @@
 <!--
  * @file src/features/floating-ball/ui/FloatingBall.vue
  * 文件职责：呈现用户开启后的页面悬浮工具，将全文翻译、品牌手柄和漫画入口按顺序组织，并保留拖动停靠与可选常驻模式。
- * 主要内容：品牌主体只显示圆形本地图标，上方翻译按钮分别呈现处理中、成功与失败，活动会话仍提供恢复原文动作，用户可见名称复用当前界面语言的品牌文案；默认悬停展开、移出和 Escape 收回边缘，键盘聚焦与触屏轻点保持入口可操作。
+ * 主要内容：品牌主体只显示圆形本地图标，上方翻译按钮分别呈现处理中、成功与失败，活动会话仍提供恢复原文动作，用户可见名称复用当前界面语言的品牌文案；默认悬停展开、移出和 Escape 收回边缘，键盘聚焦与触屏轻点保持入口可操作；软键盘、缩放与屏幕旋转时按可见视口停靠，触屏入口保留完整命中区域。
  * 模块边界：它只负责视觉与局部交互，不直接调用浏览器消息、保存配置或执行全文翻译；这些副作用由 content/runtime 通过 props、事件和 defineExpose 桥接，外观配置的归一化留在 core/config。
  -->
 <template>
@@ -57,6 +57,7 @@
       @pointerdown="startDrag"
       @pointerup="finishPointerInteraction"
       @pointercancel="cancelPointerInteraction"
+      @click="handleMainClick"
       @keydown="handleMainKeydown"
     >
       <svg class="floating-ball-mascot" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -112,6 +113,7 @@ import type {MangaTranslationStatus} from '@/src/features/image-translation/publ
 import type {TranslationToolbarStatus} from '@/src/features/full-page-translation/public';
 import type { FloatingBallPresentation } from '@/src/features/floating-ball/types';
 import {resolveFloatingBallCenterY, toFloatingBallVerticalPosition} from '@/src/features/floating-ball/position';
+import {getVisualViewportRect, observeVisualViewport} from '@/src/platform/dom/visualViewport';
 
 const {translateLegacy: t, t: translateMessage} = useUiI18n();
 
@@ -184,6 +186,8 @@ interface PointerDragState {
   pointerOffsetY: number;
   mainWidth: number;
   mainHeight: number;
+  mainOffsetX: number;
+  mainOffsetY: number;
   dockHeight: number;
   moved: boolean;
 }
@@ -200,6 +204,7 @@ const floatingBall = ref<HTMLElement | null>(null);
 const floatingBallMain = ref<HTMLElement | null>(null);
 const dragState = ref<PointerDragState | null>(null);
 const touchExpanded = ref(false);
+let pointerClickSuppressedUntil = 0;
 let expandTimer: ReturnType<typeof setTimeout> | null = null;
 let mangaIdleTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -328,12 +333,15 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function applyDockPositionStyle(containerHeight: number) {
-  const centerY = `${resolveFloatingBallCenterY(verticalPosition.value, window.innerHeight, containerHeight)}px`;
-
+  const viewport = getVisualViewportRect();
+  const halfHeight = Math.min(containerHeight / 2, viewport.height / 2);
+  const centerY = viewport.top + resolveFloatingBallCenterY(verticalPosition.value, viewport.height, containerHeight);
   positionStyle.value = {
-    top: centerY,
-    left: undefined,
-    right: undefined,
+    top: `clamp(calc(${viewport.top + halfHeight}px + env(safe-area-inset-top, 0px)), ${centerY}px, calc(${viewport.bottom - halfHeight}px - env(safe-area-inset-bottom, 0px)))`,
+    left: currentDisplayPosition.value === 'left'
+      ? `calc(${viewport.left}px + max(var(--fr-ball-edge-gap), env(safe-area-inset-left, 0px)))` : 'auto',
+    right: currentDisplayPosition.value === 'right'
+      ? `calc(${Math.max(0, window.innerWidth - viewport.right)}px + max(var(--fr-ball-edge-gap), env(safe-area-inset-right, 0px)))` : 'auto',
     transform: undefined,
   };
 }
@@ -352,6 +360,7 @@ function startDrag(event: PointerEvent) {
   if (event.pointerType === 'mouse' && event.button !== 0) return;
 
   event.preventDefault();
+  pointerClickSuppressedUntil = Infinity;
   // 触屏没有稳定的 hover；轻点时展开主体和允许显示的工具，直到点击球外或开始拖动。
   if (event.pointerType === 'touch' && !isAlwaysExpanded.value) {
     touchExpanded.value = true;
@@ -368,6 +377,8 @@ function startDrag(event: PointerEvent) {
     pointerOffsetY: rect ? event.clientY - rect.top : mainHeight / 2,
     mainWidth,
     mainHeight,
+    mainOffsetX: floatingBallMain.value?.offsetLeft || 0,
+    mainOffsetY: floatingBallMain.value?.offsetTop || 0,
     dockHeight: dockRect?.height || mainHeight,
     moved: false,
   };
@@ -391,19 +402,20 @@ function handlePointerMove(event: PointerEvent) {
     isDragging.value = true;
   }
 
+  const viewport = getVisualViewportRect();
   const nextLeft = clamp(
     event.clientX - currentDrag.pointerOffsetX,
-    0,
-    Math.max(0, window.innerWidth - currentDrag.mainWidth),
+    viewport.left,
+    Math.max(viewport.left, viewport.right - currentDrag.mainWidth),
   );
   const nextTop = clamp(
     event.clientY - currentDrag.pointerOffsetY,
-    0,
-    Math.max(0, window.innerHeight - currentDrag.mainHeight),
+    viewport.top,
+    Math.max(viewport.top, viewport.bottom - currentDrag.mainHeight),
   );
   positionStyle.value = {
-    left: `${nextLeft}px`,
-    top: `${nextTop}px`,
+    left: `${nextLeft - currentDrag.mainOffsetX}px`,
+    top: `${nextTop - currentDrag.mainOffsetY}px`,
     right: 'auto',
     transform: 'none',
   };
@@ -414,6 +426,7 @@ function finishPointerInteraction(event: PointerEvent) {
   if (!currentDrag || currentDrag.pointerId !== event.pointerId) return;
 
   removePointerListeners();
+  pointerClickSuppressedUntil = performance.now() + 750;
   dragState.value = null;
   if (!currentDrag.moved) {
     isDragging.value = false;
@@ -422,10 +435,11 @@ function finishPointerInteraction(event: PointerEvent) {
     return;
   }
 
-  const rect = floatingBallMain.value?.getBoundingClientRect();
+  const rect = floatingBall.value?.getBoundingClientRect();
   const finalCenterY = rect ? rect.top + rect.height / 2 : event.clientY;
-  const nextPosition = event.clientX < window.innerWidth / 2 ? 'left' : 'right';
-  verticalPosition.value = toFloatingBallVerticalPosition(finalCenterY, window.innerHeight);
+  const viewport = getVisualViewportRect();
+  const nextPosition = event.clientX < viewport.left + viewport.width / 2 ? 'left' : 'right';
+  verticalPosition.value = toFloatingBallVerticalPosition(finalCenterY - viewport.top, viewport.height);
   internalPosition.value = nextPosition;
   props.onPositionChanged(nextPosition, verticalPosition.value);
   applyDockPositionStyle(currentDrag.dockHeight);
@@ -447,6 +461,7 @@ function cancelActivePointerInteraction() {
   if (!currentDrag) return;
 
   removePointerListeners();
+  pointerClickSuppressedUntil = performance.now() + 750;
   dragState.value = null;
   if (!currentDrag.moved) {
     isDragging.value = false;
@@ -466,7 +481,7 @@ function removePointerListeners() {
 }
 
 /** 悬浮球主体的点击与回车行为；'none' 保留纯拖动手柄语义。 */
-function runMainAction(event: PointerEvent | KeyboardEvent) {
+function runMainAction(event: PointerEvent | KeyboardEvent | MouseEvent) {
   const action = presentation.value.clickAction;
   if (action === 'translate') {
     props.onTranslationToggle(!isTranslating.value);
@@ -475,6 +490,12 @@ function runMainAction(event: PointerEvent | KeyboardEvent) {
   if (action === 'settings') {
     props.onSettingsClick(event as unknown as MouseEvent);
   }
+}
+
+/** 无 pointer 手势的辅助技术激活走 click；实体点击已由 pointerup 处理，拖动兼容 click 不重复执行。 */
+function handleMainClick(event: MouseEvent) {
+  if (!isMainActionable.value || event.detail !== 0 || performance.now() < pointerClickSuppressedUntil) return;
+  runMainAction(event);
 }
 
 function handleMainKeydown(event: KeyboardEvent) {
@@ -540,10 +561,17 @@ function handleDocumentPointerDown(event: PointerEvent) {
   }
 }
 
+let stopObservingViewport: (() => void) | undefined;
+function handleViewportChange() {
+  // 旋转或键盘改变坐标系时取消未结束的手势，不能把旧坐标写成用户的新位置。
+  cancelActivePointerInteraction();
+  nextTick(updatePositionStyle);
+}
+
 onMounted(() => {
   internalPosition.value = props.position;
   updatePositionStyle();
-  window.addEventListener('resize', updatePositionStyle);
+  stopObservingViewport = observeVisualViewport(handleViewportChange);
   document.addEventListener('keydown', handleDocumentKeydown);
   document.addEventListener('pointerdown', handleDocumentPointerDown, true);
 });
@@ -552,7 +580,7 @@ onBeforeUnmount(() => {
   clearExpandTimer();
   clearMangaIdleTimer();
   removePointerListeners();
-  window.removeEventListener('resize', updatePositionStyle);
+  stopObservingViewport?.();
   document.removeEventListener('keydown', handleDocumentKeydown);
   document.removeEventListener('pointerdown', handleDocumentPointerDown, true);
 });
@@ -862,6 +890,8 @@ watch(() => presentation.value.settingsEntryVisible, () => {
   transition: none;
 }
 
+.dragging .floating-ball-item { transform: none !important; }
+
 .dragging .floating-ball-main {
   transform: none !important;
   opacity: 1;
@@ -871,8 +901,9 @@ watch(() => presentation.value.settingsEntryVisible, () => {
 }
 
 .dragging .floating-ball-tool {
+  /* 保留布局尺寸，使主体与停靠容器的偏移在整个手势中保持一致。 */
   visibility: hidden;
-  display: none;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -881,6 +912,22 @@ watch(() => presentation.value.settingsEntryVisible, () => {
   .floating-ball-main,
   .floating-ball-tool {
     transition: none;
+  }
+}
+/* 触屏没有 hover，完整的 44px 手柄可直接点击和拖动，避免半圆只剩十几像素。 */
+@media (pointer: coarse) {
+  .fr-floating-ball,
+  .fr-floating-ball.is-compact,
+  .fr-floating-ball.manga-reader {
+    --fr-ball-size: 44px;
+    --fr-ball-tool-size: 44px;
+    --fr-ball-edge-gap: 12px;
+  }
+  .fr-floating-ball:not(.floating-ball-expanded):not(.dragging)[data-position] :is(.floating-ball-main, .floating-ball-manga),
+  .fr-floating-ball.manga-reader:not(.floating-ball-expanded):not(.dragging)[data-position] :is(.floating-ball-main, .floating-ball-manga) {
+    transform: none;
+    clip-path: none;
+    opacity: max(.7, var(--fr-ball-collapsed-opacity, .52));
   }
 }
 </style>

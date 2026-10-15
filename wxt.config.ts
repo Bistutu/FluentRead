@@ -125,6 +125,11 @@ export function createExtensionManifest(
             },
         },
     } : {};
+    // Safari 26 起支持现有 DNR initiatorDomains/requestMethods 隔离条件；iOS 与 Safari 版本号一致。
+    // 更早系统不应安装后才发现请求头适配不可用，最低版本同时写入可检查的清单。
+    const safariManifest = env.browser === 'safari' ? {
+        browser_specific_settings: {safari: {strict_min_version: '26.0'}},
+    } : {};
     return {
         name: '__MSG_extensionName__',
         default_locale: 'en',
@@ -168,10 +173,11 @@ export function createExtensionManifest(
                 // 不要把需要 import() 执行的脚本放进这里：动态 ID 地址不满足内容脚本隔离环境的 script-src 'self'。
                 resources: ['icon/32.png', 'icon/48.png', 'icon/128.png', `${UI_LANGUAGE_BUNDLE_DIRECTORY}/*.json`],
                 matches: ['<all_urls>'],
-                use_dynamic_url: true,
+                ...(env.browser === 'safari' ? {} : {use_dynamic_url: true}),
             },
         ],
         ...firefoxManifest,
+        ...safariManifest,
         ...googleDriveManifest,
     } as UserManifest;
 }

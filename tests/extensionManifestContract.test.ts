@@ -15,6 +15,92 @@ import {remoteConfigStorageBuildPlugin, createExtensionManifest, extendRemoteCon
 
 const PROJECT_ROOT = resolve(__dirname, '..');
 
+describe('Safari unsigned delivery contract', () => {
+    async function safariTools() {
+        return import(/* @vite-ignore */ pathToFileURL(resolve(PROJECT_ROOT, 'scripts/safari/package.mjs')).href);
+    }
+
+    function safariFixture() {
+        const source = createExtensionManifest({browser: 'safari', manifestVersion: 2});
+        return {...source, manifest_version: 2, version: '0.0.38',
+            permissions: [...source.permissions!, ...source.host_permissions!],
+            background: {scripts: ['background.js'], persistent: false},
+            browser_action: {default_popup: 'popup.html'},
+            content_scripts: [{matches: ['<all_urls>'], js: ['content.js']}],
+        };
+    }
+
+    it('Safari 使用独立版本门槛及能力权限，保留共享网页业务入口', async () => {
+        const {verifySafariManifest} = await safariTools();
+        const manifest = safariFixture();
+        expect(verifySafariManifest(manifest)).toBe(manifest);
+        expect(manifest.browser_specific_settings).toEqual({safari: {strict_min_version: '26.0'}});
+        expect(manifest.web_accessible_resources).toEqual(expect.arrayContaining([
+            expect.objectContaining({resources: ['popup.html']}),
+        ]));
+        expect(JSON.stringify(manifest.web_accessible_resources)).not.toContain('use_dynamic_url');
+        for (const invalid of [
+            {...manifest, manifest_version: 3},
+            {...manifest, background: {scripts: ['background.js'], persistent: true}},
+            {...manifest, permissions: [...manifest.permissions, 'offscreen']},
+            {...manifest, permissions: [...manifest.permissions, 'identity']},
+            {...manifest, permissions: ['storage']},
+            {...manifest, browser_specific_settings: {safari: {strict_min_version: '15.0'}}},
+            {...manifest, key: 'chromium-id'},
+            {...manifest, content_scripts: []},
+            {...manifest, browser_action: undefined},
+        ]) expect(() => verifySafariManifest(invalid)).toThrow();
+        expect(readFileSync(resolve(PROJECT_ROOT, 'entrypoints/background.ts'), 'utf8')).toContain('safari: false');
+    });
+
+    it('打包新旧工具回退可用，生成参数始终复制资源且不打开、覆盖或签名', async () => {
+        const {findPackager, packagingArguments, applyDeploymentTargets} = await safariTools();
+        const probe = vi.fn((_command, args) => args[1] === 'safari-web-extension-packager'
+            ? {status: 1, stdout: ''} : {status: 0, stdout: '/Xcode/safari-web-extension-converter\n'});
+        expect(findPackager(probe, {})).toEqual({name: 'safari-web-extension-converter', executable: '/Xcode/safari-web-extension-converter'});
+        expect(probe).toHaveBeenCalledTimes(2);
+        expect(() => findPackager(() => ({status: 1}), {})).toThrow('Xcode');
+        const config = {extension: '/build/safari-mv2', projectLocation: '/output/FluentRead', bundleId: 'org.example.FluentRead', platform: 'both'};
+        const args = packagingArguments(config);
+        expect(args).toEqual([config.extension, '--project-location', config.projectLocation, '--app-name', 'FluentRead', '--bundle-identifier', config.bundleId,
+            '--swift', '--copy-resources', '--no-open', '--no-prompt']);
+        expect(packagingArguments({...config, platform: 'ios'})).toContain('--ios-only');
+        expect(packagingArguments({...config, platform: 'macos'})).toContain('--macos-only');
+        expect(() => packagingArguments({...config, bundleId: ''})).toThrow('bundle-id');
+        expect(() => packagingArguments({...config, platform: 'windows'})).toThrow('platform');
+        expect(applyDeploymentTargets('IPHONEOS_DEPLOYMENT_TARGET = 15.0;\nMACOSX_DEPLOYMENT_TARGET = 10.14;', 'both'))
+            .toBe('IPHONEOS_DEPLOYMENT_TARGET = 26.0;\nMACOSX_DEPLOYMENT_TARGET = 14.0;');
+        expect(applyDeploymentTargets('IPHONEOS_DEPLOYMENT_TARGET = 27.0;', 'ios')).toContain('27.0');
+        expect(applyDeploymentTargets('MACOSX_DEPLOYMENT_TARGET = 15.0;', 'macos')).toContain('15.0');
+        expect(() => applyDeploymentTargets('unknown template', 'both')).toThrow('deployment target');
+    });
+
+    it('检查最终文件，拒绝错放的浏览器后台、缺失引用和 Offscreen 容器', async () => {
+        const {verifySafariBuild} = await safariTools();
+        const directory = mkdtempSync(resolve(tmpdir(), 'fluentread-safari-contract-'));
+        try {
+            writeFileSync(resolve(directory, 'manifest.json'), JSON.stringify(safariFixture()));
+            writeFileSync(resolve(directory, 'background.js'), '__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:safari:mv2__');
+            writeFileSync(resolve(directory, 'popup.html'), '<html></html>');
+            writeFileSync(resolve(directory, 'content.js'), 'sharedContent();');
+            const verified = await verifySafariBuild(directory);
+            expect(verified).toEqual(expect.objectContaining({extension: directory, version: '0.0.38', checkedReferences: 3, artifactCount: 4}));
+            writeFileSync(resolve(directory, 'content.js'), 'changedSharedContent();');
+            const changed = await verifySafariBuild(directory);
+            expect(changed.manifestSha256).toBe(verified.manifestSha256);
+            expect(changed.buildSha256).not.toBe(verified.buildSha256);
+            writeFileSync(resolve(directory, 'background.js'), '__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:chrome:mv3__');
+            await expect(verifySafariBuild(directory)).rejects.toThrow('能力标记');
+            writeFileSync(resolve(directory, 'background.js'), '__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:safari:mv2__');
+            writeFileSync(resolve(directory, 'offscreen.html'), '<html></html>');
+            await expect(verifySafariBuild(directory)).rejects.toThrow('Offscreen');
+            rmSync(resolve(directory, 'offscreen.html'));
+            rmSync(resolve(directory, 'content.js'));
+            await expect(verifySafariBuild(directory)).rejects.toThrow('ENOENT');
+        } finally {rmSync(directory, {recursive: true, force: true});}
+    });
+});
+
 describe('Chrome unified ZIP packaging', () => {
     async function verifier() {
         const url = pathToFileURL(resolve(PROJECT_ROOT, 'scripts/testing/verify-extension-manifests.mjs')).href;

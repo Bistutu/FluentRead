@@ -1178,6 +1178,7 @@ export const enUSMessages = {
     'video.modeTranslation': 'Translated',
     'video.modeOriginal': 'Original',
     'video.modeOff': 'Off',
+    "video.nativeFullscreenHint": "System fullscreen uses native caption styles and translations already loaded. If captions are missing, choose FluentRead in the system caption menu, or exit fullscreen to watch bilingual captions.",
     'video.modeOffHint': 'Turn off FluentRead subtitles and keep the site\'s captions',
     'video.timingShort': 'Timing',
     'video.downloadOriginalShort': 'Original',
