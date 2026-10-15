@@ -47,6 +47,9 @@ function compilePopupClient(file:string):string{
   return compiled.code
 }
 let server:ViteDevServer,app:import('vue').App,document:Document,win:any,state:Record<string,any>,focused:Element|null,shown:import('vue').Ref<boolean>,events:Map<Element,Record<string,any>>
+let viewport:HTMLElement & {width:number;height:number;offsetLeft:number;offsetTop:number},viewportFrames:Map<number,FrameRequestCallback>
+let executeServicePicker=false
+function flushViewport(){const pending=[...viewportFrames.values()];viewportFrames.clear();for(const callback of pending)callback(0)}
 const readAccess=vi.fn(),requestAccess=vi.fn()
 const close=vi.fn(),noticeFocus=vi.fn(),patches=vi.fn(),getTab=vi.fn(),getSourceTab=vi.fn(),send=vi.fn(),createTab=vi.fn(),openOptions=vi.fn(),runtimeSend=vi.fn()
 let config:Config,subscribe:(value:Config)=>void,tabEvents:Record<string,Set<(...args:any[])=>void>>
@@ -64,9 +67,11 @@ function eventOf(el:Element,name='onClick'){const fn=events.get(el)?.[name];expe
 function button(name:string){return document.querySelector(`[data-testid="${name}"]`)!}
 function commands(){return send.mock.calls.filter(call=>call[1].type==='contextMenuTranslate')}
 beforeEach(async()=>{
-  vi.clearAllMocks();for(const mock of [getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,readAccess,requestAccess])mock.mockReset();events=new Map();tabEvents={onUpdated:new Set(),onActivated:new Set(),onRemoved:new Set()};const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;focused=document.body
+  vi.clearAllMocks();executeServicePicker=false;for(const mock of [getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,readAccess,requestAccess])mock.mockReset();events=new Map();tabEvents={onUpdated:new Set(),onActivated:new Set(),onRemoved:new Set()};const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;focused=document.body
   vi.stubGlobal('location',{search:''})
   Object.defineProperty(document,'activeElement',{configurable:true,get:()=>focused});win.close=close;win.matchMedia=()=>({matches:false,onchange:null})
+  viewport=Object.assign(document.createElement('div'),{width:320,height:600,offsetLeft:0,offsetTop:0});win.visualViewport=viewport;win.innerWidth=320;win.innerHeight=600;viewportFrames=new Map();let frame=0
+  win.requestAnimationFrame=vi.fn((callback:FrameRequestCallback)=>{viewportFrames.set(++frame,callback);return frame});win.cancelAnimationFrame=vi.fn((id:number)=>viewportFrames.delete(id))
   for(const [key,value]of Object.entries({document,window:win,HTMLElement:win.HTMLElement,Event:win.Event,Node:win.Node,navigator:{languages:['zh-CN']}}))vi.stubGlobal(key,value)
   config=new Config();config.uiLanguageSetupCompleted=true;config.on=true;config.service='google';config.alwaysTranslateDomains=[];config.disabledExtensionDomains=[]
   getTab.mockResolvedValue([{id:7,windowId:3,url:'https://example.com/a'}]);send.mockImplementation(async(_id,message)=>message.type==='getFullPageTranslationState'?{isTranslated:false}:{status:'success',isTranslated:message.action==='fullPage'});createTab.mockResolvedValue({id:8});openOptions.mockResolvedValue(undefined);runtimeSend.mockResolvedValue({success:true})
@@ -74,7 +79,7 @@ beforeEach(async()=>{
   ;(globalThis as any).__popupFixture={readAccess,requestAccess,config,getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,tabEvents,subscribe:(fn:typeof subscribe)=>{subscribe=fn},runtime,capabilities:runtime.reactive({browser:'chrome',areaTranslation:true,imageTranslation:true})}
   // popup 测试控制组件事件与轮询，不使用文件观察或热更新。
   server=await createServer({root:process.cwd(),configFile:false,appType:'custom',logLevel:'silent',server:{watch:null},resolve:{alias:{'@':process.cwd()}},ssr:{noExternal:['webextension-polyfill']},plugins:[{name:'popup-owned-client',enforce:'pre',resolveId(id){
-    if(/(?:\/|^)Popup(?:App|SiteRule)\.vue$/u.test(id))return resolve('src/app/popup',id.split('/').at(-1)!)+'.owned.ts'
+    if(/(?:\/|^)Popup(?:App|SiteRule)\.vue$/u.test(id)||(executeServicePicker&&/(?:\/|^)PopupServices\.vue$/u.test(id)))return resolve('src/app/popup',id.split('/').at(-1)!)+'.owned.ts'
     if(id==='webextension-polyfill')return '\0popup-browser'
     if(/\/src\/services\/config\/store(?:\.ts)?$/u.test(id))return '\0popup-config'
     if(/\/src\/platform\/storage\/configStorageRuntime(?:\.ts)?$/u.test(id))return '\0popup-storage'
@@ -101,7 +106,7 @@ beforeEach(async()=>{
     if(id==='\0popup-permissions')return 'export const readFreePoolAccess=globalThis.__popupFixture.readAccess,requestFreeProviderAccess=globalThis.__popupFixture.requestAccess'
     if(id==='\0popup-capabilities')return 'export const browserCapabilities=globalThis.__popupFixture.capabilities'
     if(id==='\0popup-icons')return 'export const Setting={render:()=>null}'
-    if(id==='\0popup-drawer')return "import {h} from 'vue';export default {setup(_, {attrs,slots}){return()=>attrs.modelValue||attrs['model-value']?h('div',{...attrs,class:'drawer-port'},slots.default?.()):null}}"
+    if(id==='\0popup-drawer')return "import {h,Teleport} from 'vue';export default {setup(_, {attrs,slots}){return()=>attrs.modelValue||attrs['model-value']?h(Teleport,{to:'body'},h('div',{class:'popup-drawer-modal'},h('div',{...attrs,class:['drawer-port',attrs.class]},slots.default?.()))):null}}"
     if(id==='\0popup-display')return "import {h} from 'vue';export default {setup(_, {attrs,slots}){return()=>h('div',attrs,slots.default?.())}}"
     return null
   }}]})
@@ -130,6 +135,49 @@ async function mount(){
   app=renderer.createApp({setup:()=>()=>runtime.h(runtime.KeepAlive,null,{default:()=>shown.value?runtime.h(component,{ref:(vm:any)=>{if(vm)state=vm.$.setupState}}):runtime.h({render:()=>null},{key:'other'})})});app.component('OwnedTransition',{setup:(_:unknown,{slots}:any)=>()=>slots.default?.()});app.config.warnHandler=()=>{};app.mount(document.getElementById('app')!);await drain()
 }
 describe('实际 Popup 缓存模板与页面操作',()=>{
+  it('真实服务搜索在键盘 viewport 变化时保留输入，清除、返回与关闭仍属当前抽屉',async()=>{
+    executeServicePicker=true;await mount();eventOf(document.querySelector('.provider-summary')!)()
+    for(let i=0;i<100&&!document.querySelector('[data-feature-service="default"]');i++){await drain();await new Promise(resolve=>setTimeout(resolve,2))}
+    const assignment=document.querySelector<HTMLElement>('[data-feature-service="default"]')!;expect(assignment).not.toBeNull();assignment.focus();eventOf(assignment)();await drain()
+    const input=document.querySelector<HTMLInputElement>('input[type="search"]')!;expect(input).not.toBeNull();input.value='micro';eventOf(input,'onInput')({target:input});await drain()
+    expect(document.querySelector('[data-service-choice="microsoft"]')).not.toBeNull()
+    Object.assign(viewport,{height:220,offsetTop:40});viewport.dispatchEvent(new win.Event('resize'));viewport.dispatchEvent(new win.Event('scroll'));flushViewport();await drain()
+    expect(document.querySelector('input[type="search"]')).toBe(input);expect(input.value).toBe('micro')
+    const overlay=document.querySelector<HTMLElement>('.popup-drawer-modal')!;expect(overlay.style.getPropertyValue('--fluent-read-drawer-height')).toBe('220px')
+    eventOf(document.querySelector('.service-picker-search button')!)();await drain();expect(input.value).toBe('');expect(focused).toBe(input)
+    eventOf(document.querySelector('.service-picker-back')!)();await drain();expect(document.querySelector('[data-service-picker]')).toBeNull()
+    const current=document.querySelector<HTMLElement>('[data-feature-service="default"]')!;current.focus();eventOf(current)();await drain()
+    eventOf(document.querySelector('.service-panel-close')!)();await drain();expect(state.drawerVisible).toBe(false);expect(overlay.hasAttribute('data-fluent-read-popup-viewport')).toBe(false)
+  })
+  it('只在打开的实际 teleport 遮罩跟随键盘可见边界，根 popup 固有尺寸不变',async()=>{
+    await mount();const rootStyle=document.documentElement.getAttribute('style'),bodyStyle=document.body.getAttribute('style'),add=vi.spyOn(viewport,'addEventListener'),remove=vi.spyOn(viewport,'removeEventListener')
+    expect(document.querySelector('.popup-drawer-modal')).toBeNull();expect(add).not.toHaveBeenCalled()
+    await openFeature('hover');const overlay=document.querySelector<HTMLElement>('body > .popup-drawer-modal')!
+    expect(overlay).not.toBeNull();expect(overlay.hasAttribute('data-fluent-read-popup-viewport')).toBe(true)
+    expect(overlay.style.getPropertyValue('--fluent-read-drawer-height')).toBe('600px');expect(add).toHaveBeenCalledTimes(2)
+    Object.assign(viewport,{width:300,height:220,offsetLeft:10,offsetTop:45});viewport.dispatchEvent(new win.Event('resize'));viewport.dispatchEvent(new win.Event('scroll'))
+    expect(viewportFrames.size).toBe(1);flushViewport()
+    expect(overlay.style.getPropertyValue('--fluent-read-drawer-left')).toBe('10px');expect(overlay.style.getPropertyValue('--fluent-read-drawer-top')).toBe('45px')
+    expect(overlay.style.getPropertyValue('--fluent-read-drawer-width')).toBe('300px');expect(overlay.style.getPropertyValue('--fluent-read-drawer-height')).toBe('220px')
+    expect(document.documentElement.getAttribute('style')).toBe(rootStyle);expect(document.body.getAttribute('style')).toBe(bodyStyle)
+    viewport.dispatchEvent(new win.Event('resize'));expect(viewportFrames.size).toBe(1);eventOf(document.querySelector('.drawer-header > button')!)();await drain()
+    expect(remove).toHaveBeenCalledTimes(2);expect(viewportFrames.size).toBe(0);expect(overlay.hasAttribute('data-fluent-read-popup-viewport')).toBe(false)
+    viewport.dispatchEvent(new win.Event('resize'));expect(viewportFrames.size).toBe(0)
+  })
+  it.each(['cached','pagehide','unmount'] as const)('%s 释放抽屉 viewport 订阅与已排队帧，旧遮罩不能回写',async reason=>{
+    await mount();await openFeature('selection');const overlay=document.querySelector<HTMLElement>('.popup-drawer-modal')!,remove=vi.spyOn(viewport,'removeEventListener')
+    viewport.dispatchEvent(new win.Event('scroll'));const queued=[...viewportFrames.values()];expect(queued).toHaveLength(1)
+    if(reason==='cached')shown.value=false;else if(reason==='pagehide')win.dispatchEvent(new win.Event('pagehide'));else app.unmount()
+    await drain();expect(remove).toHaveBeenCalledTimes(2);expect(viewportFrames.size).toBe(0)
+    Object.assign(viewport,{height:100});queued.forEach(callback=>callback(0));expect(overlay.hasAttribute('data-fluent-read-popup-viewport')).toBe(false)
+    if(reason==='cached'){shown.value=true;await drain();expect(state.drawerVisible).toBe(false);await openFeature('selection');expect(document.querySelector<HTMLElement>('.popup-drawer-modal')!.style.getPropertyValue('--fluent-read-drawer-height')).toBe('100px')}
+  })
+  it('缺少 VisualViewport 时用布局边界打开抽屉，恢复页面事件可更新且关闭释放',async()=>{
+    win.visualViewport=undefined;await mount();await openFeature('hover');const overlay=document.querySelector<HTMLElement>('.popup-drawer-modal')!
+    expect(overlay.style.getPropertyValue('--fluent-read-drawer-width')).toBe('320px');expect(overlay.style.getPropertyValue('--fluent-read-drawer-height')).toBe('600px')
+    win.innerHeight=250;win.dispatchEvent(new win.Event('pageshow'));flushViewport();expect(overlay.style.getPropertyValue('--fluent-read-drawer-height')).toBe('250px')
+    eventOf(document.querySelector('.drawer-header > button')!)();await drain();win.dispatchEvent(new win.Event('resize'));expect(viewportFrames.size).toBe(0)
+  })
   async function safariFree(granted: string[] = []) {
     config.service='freeTranslation';config.freeTranslationOrder=['microsoft','google'];(globalThis as any).__popupFixture.capabilities.browser='safari'
     readAccess.mockResolvedValue({supported:true,grantedIds:granted,preferredGrant:{id:'microsoft',origins:['https://edge.microsoft.com/*']}})

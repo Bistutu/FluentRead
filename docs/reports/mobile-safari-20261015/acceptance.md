@@ -12,7 +12,7 @@
 | 划词 | 触摸稳定等待、系统句柄调整、长按菜单和 pointercancel；44px 入口与操作；正文原生滚动；安全区与可见视口缓存 | 图标按下不丢选区、关闭不重新出现、软键盘、切换、来源失效、刷新与卸载 |
 | 划词恢复 | 分别保存 Selection 文本与 Range 指纹 | 跨段文本序列化不同不误关闭；原文实际改变才清理 |
 | 视频内联字幕 | YouTube/X 复用实际视频画幅几何，小播放器按可见控件留底距；移动双语合并显示；四边安全区 | 竖屏底部、横屏、控件显隐、模式切换、后台恢复 |
-| 系统原生全屏 | 复用原时间轴与已缓存译文生成原生 TextTrack；空轨、平台错误、退出、禁用和换视频恢复原轨状态；明确系统样式与挂起限制 | 浏览器真实 TextTrack 接口与模拟 webkit 事件；iOS AVKit 仍必须实机验收 |
+| 系统原生全屏 | 复用原时间轴与已缓存译文预备原生 TextTrack，由系统菜单选择；缓存更新保持用户模式，退出与清理只保守恢复仍由 FluentRead 让位的原轨；明确系统样式与挂起限制 | 系统选择、关闭、重选与退出恢复必须按实际 AVKit 产物独立验收 |
 | Safari 交付 | WXT 0.20.18 Safari MV2、Safari 26 门槛；显式 UTF-8 非持久后台页；最终产物与完整资源校验；Apple 单/双平台包装与中英安装指引 | 生成和编译可复现；语言配置可保存；不签名发布、不把包装当运行验收 |
 
 没有新增独立翻译实现。触摸和字幕均继续通过已有配置、服务与生命周期接入。未复制或借鉴外部参考项目代码。
@@ -28,7 +28,7 @@
 
 ## 验证状态
 
-本地验证限定改动与直接影响范围。首轮 GitHub CI 因 `package.json` 新增 Safari 命令，被既有 planner 归为共享测试配置变更，自动执行全部 730 个测试文件；这不是本地专项范围。CI 的改动模块覆盖率均为 100%，但三个原本未改的测试文件失败：Linux 不存在 `/private/tmp`、Vue renderer 引用未声明入口，以及单个 PDF 导入用例超过默认 5 秒。已在 `cd55bc55c` 作最小测试修复，95 项定向检查通过；[Ubuntu 复验](https://github.com/FluentRead/FluentRead/actions/runs/38700538192)完整通过：730 文件、24,092 项通过及 4 项既有跳过，改动模块四维覆盖率 100%，类型和构建步骤也通过。后续 UTF-8 与原生指引提交 `82fa8085f` 的[独立 CI](https://github.com/FluentRead/FluentRead/actions/runs/38709422336)也已通过；它不包含本轮后续的权限与触摸修复。权限、46px 触摸目标与 Safari 原生选区菜单清理提交 `915672c7c` 的[质量检查](https://github.com/FluentRead/FluentRead/actions/runs/38722958827)和[文档检查](https://github.com/FluentRead/FluentRead/actions/runs/38722958865)随后均通过；这些远端结果不包含后续尚未提交的播放器控制栏副本修复。PDF 的本地超时未复现，仅增加该用例的 15 秒有界预算，保留全部进度与取消断言。
+本地验证限定改动与直接影响范围。首轮 GitHub CI 因 `package.json` 新增 Safari 命令，被既有 planner 归为共享测试配置变更，自动执行全部 730 个测试文件；这不是本地专项范围。CI 的改动模块覆盖率均为 100%，但三个原本未改的测试文件失败：Linux 不存在 `/private/tmp`、Vue renderer 引用未声明入口，以及单个 PDF 导入用例超过默认 5 秒。已在 `cd55bc55c` 作最小测试修复，95 项定向检查通过；[Ubuntu 复验](https://github.com/FluentRead/FluentRead/actions/runs/38700538192)完整通过：730 文件、24,092 项通过及 4 项既有跳过，改动模块四维覆盖率 100%，类型和构建步骤也通过。后续 UTF-8 与原生指引提交 `82fa8085f` 的[独立 CI](https://github.com/FluentRead/FluentRead/actions/runs/38709422336)也已通过；它不包含本轮后续的权限与触摸修复。权限、46px 触摸目标与 Safari 原生选区菜单清理提交 `915672c7c` 的[质量检查](https://github.com/FluentRead/FluentRead/actions/runs/38722958827)和[文档检查](https://github.com/FluentRead/FluentRead/actions/runs/38722958865)随后均通过；随后控制栏副本修复提交 `48e195d54` 的[质量检查](https://github.com/FluentRead/FluentRead/actions/runs/38729484457)和[文档检查](https://github.com/FluentRead/FluentRead/actions/runs/38729484201)也通过。这些检查对应上述提交，不包含本报告后续的原生选择策略、键盘和完整布局修复。PDF 的本地超时未复现，仅增加该用例的 15 秒有界预算，保留全部进度与取消断言。
 
 | 验证 | 结果与范围 |
 | --- | --- |
@@ -99,7 +99,7 @@
 
 源目录只覆盖当前直接请求域；后续服务端跨域跳转及预检后的授权撤销仍需各自验证。
 
-包含 46px 与菜单清理的最新正式 Safari 构建为 `e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544`，三个原生目标完整编译及 462 资源逐文件校验通过；四目标 Web 构建、verifier 与审计通过。中间 `d040da…` 版本只完成构建和独立 CSS46 Chrome 界面 8 项验证，未安装到模拟器；不能把它计作原生通过。当前 Popup CSS 与该 8 项验证一致。菜单修改后的最终 Chrome 生产包另通过划词 8 项实际浏览器专项：入口模板点击后原生 Selection 仍保留，卡片、窄屏深色、横屏与明确标注的 viewport/生命周期夹具通过，说明 Safari 清选分支没有改变 Chrome 路径；它不替代原生 iOS 菜单消失的证明。
+包含 46px 与菜单清理的该轮正式 Safari 构建为 `e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544`，三个原生目标完整编译及 462 资源逐文件校验通过；四目标 Web 构建、verifier 与审计通过。中间 `d040da…` 版本只完成构建和独立 CSS46 Chrome 界面 8 项验证，未安装到模拟器；不能把它计作原生通过。该轮 Popup CSS 与上述 8 项验证一致；后续键盘和 Android 宽度修复另记产物与验证。菜单修改后的最终 Chrome 生产包另通过划词 8 项实际浏览器专项：入口模板点击后原生 Selection 仍保留，卡片、窄屏深色、横屏与明确标注的 viewport/生命周期夹具通过，说明 Safari 清选分支没有改变 Chrome 路径；它不替代原生 iOS 菜单消失的证明。
 
 ## iOS AVKit 真实平台检查
 
@@ -111,9 +111,43 @@
 
 正式 `e3f9c0…` App 在实际 `m.youtube.com/watch?v=R0JKCYZ8hng` 上，只给该站允许一天。公开 [TED-Ed 候选视频](https://www.youtube.com/watch?v=R0JKCYZ8hng)匿名加载并静音播放，实际选择人工“英语”轨后，页面下缘显示英文原文与中文 FluentRead 字幕。进入真实 AVKit 后，顶层原生 Close/PlayPause/Overflow 控件及系统菜单中的 FluentRead 轨已核对；播放时英中字幕随时间变化，已查看系统截图。这是实际生产链路，区别于上一节的模块夹具。默认配置优先目标语言人工字幕，未取得逐 cue 上游来源证据，因此没有把这次显示归因为某个机器翻译服务。
 
-独立检查仍有未通过项：实际字幕入口点击后未取得自定义菜单；候选播完自动切到下一视频/广告时曾出现两个相邻可点击入口，以及随后自行消失的额外权限横幅。未知域没有批准、没有归因。单独 DOM 深复制 fixture 确实复现控制栏复制了带标签但无事件监听的入口，随后绑定原节点形成双入口。修复只在当前绑定实例所持控制栏清除同实例副本，保留原节点监听；不扫描全页面或误删其他实例/同 ID 页面节点。修复前两种场景失败，修复后 46 项专项、152 项关联测试通过，binding 模块四维覆盖率 100%。该 fixture 并未证明广告现场就是同一根因。后续隔离生产 Chrome MV3 的 5 项检查也通过：控制栏真实 `cloneNode(true)` 后由现有观察器自动清除无监听副本，保留原活按钮并能开菜单；空宿主、移动宿主以及禁用后的节点清理通过，没有直接调用私有同步函数。它仍是受控站点夹具。新 Safari 产物 `730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f` 的四目标 Web 构建及三目标原生编译通过；与 `e3f9c0…` 的 462 资源中只有 `content-scripts/content.js` 改变，其余 461 文件逐字节一致。新产物已安装，实际 YouTube 正在另行对照，尚未把所有入口与菜单问题判为修复。
+独立检查仍有未通过项：实际字幕入口点击后未取得自定义菜单；候选播完自动切到下一视频/广告时曾出现两个相邻可点击入口，以及随后自行消失的额外权限横幅。未知域没有批准、没有归因。单独 DOM 深复制 fixture 确实复现控制栏复制了带标签但无事件监听的入口，随后绑定原节点形成双入口。修复只在当前绑定实例所持控制栏清除同实例副本，保留原节点监听；不扫描全页面或误删其他实例/同 ID 页面节点。修复前两种场景失败，修复后 46 项专项、152 项关联测试通过，binding 模块四维覆盖率 100%。该 fixture 并未证明广告现场就是同一根因。后续隔离生产 Chrome MV3 的 5 项检查也通过：控制栏真实 `cloneNode(true)` 后由现有观察器自动清除无监听副本，保留原活按钮并能开菜单；空宿主、移动宿主以及禁用后的节点清理通过，没有直接调用私有同步函数。它仍是受控站点夹具。新 Safari 产物 `730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f` 的四目标 Web 构建及三目标原生编译通过；与 `e3f9c0…` 的 462 资源中只有 `content-scripts/content.js` 改变，其余 461 文件逐字节一致。该包已安装，其实际原生关闭对照结果见下文；自定义入口菜单仍未完成验收。
 
-真实 YouTube 的系统菜单还存在“关闭”勾选与渲染不一致：一次点击已选的“关闭”后观察 5 秒仍有双语，故该次关闭不通过；不能用模块夹具成功覆盖该结果。退出回到内联及英中字幕恢复已有证据，明确选择 FluentRead 再关闭的状态切换正在另验。完整结果和失败输入前置轮次见 `ios-ui-harness/production-youtube-acceptance.json`。
+真实 YouTube 的系统菜单还存在“关闭”勾选与渲染不一致：`e3f9c0…` 一次点击已选的“关闭”后观察 5 秒仍有双语，故该次关闭不通过；不能用模块夹具成功覆盖该结果。后续 `730bdb…` 的原生配对进一步排除“只点了已选项”的解释：明确选择 FluentRead 后重开菜单，截图确认该项被勾选；再选“关闭”并播放 3 秒，视频继续前进，系统画面仍停留在旧的英中 cue，而后台网页已有下一句。该轮 Off 同样不通过。退出到内联后恢复当前英中字幕；退出后未证实暂停，测试随后终止自己的 Safari 以避免自动播放。完整结果、截图和失败输入前置轮次见 `ios-ui-harness/production-youtube-acceptance.json`。
+
+据此调整原生轨道选择策略：只准备轨道，进入系统全屏不强制打开 FluentRead，也不关闭源轨；由系统菜单选择。字幕缓存更新保持用户选择，离开时只有 FluentRead 仍被选中且没有其他源轨显示，才恢复先前显示的源轨；已选“关闭”不被恢复逻辑重新打开。七语提示与使用说明明确选择方式和退出全屏的回退路径。新策略的 23 项专项、四维 100% 覆盖、164 项关联及类型检查已通过；独立审查未发现阻断问题。`c5d007…` 中间产物的四目标 Web、三目标原生构建及生产 Chrome 视频专项 10 项通过，浏览器中明确以标准 TextTrack.mode 写入模拟系统选择，不能当作 AVKit 操作；本机不支持该套件的非零 safe-area 模拟接口，只验证了回退几何。该中间包未安装到模拟器。后续 `1cfa94…` 实装在实际 YouTube 中已进入原生全屏并观察到初始画面没有字幕；明确选择 FluentRead、关闭和重选仍未完成，输入前置失败与候选播完的记录保留，不能据此宣称旧 cue 残留已修复。站点点击过暂停也不代表原生进入后持续暂停；后续已观察到视频继续至结尾。
+
+
+## 服务抽屉的真实软键盘问题
+
+`730bdb…` 正式 App 的服务抽屉在实际搜索框输入 micro 后，列表变短，整个抽屉退到系统键盘后。返回、关闭、搜索和清除控件均落入键盘覆盖区；辅助功能仍报告 hittable，但真实点击清除没有清空输入，因此该轮失败。原始截图、控件帧和失败操作保存在 `ios-ui-harness/popup-keyboard-acceptance.json` 及 `popup-service-keyboard-evidence/`，没有选择新服务或申请新授权。
+
+修复只让当前打开的实际 teleport 遮罩跟随 VisualViewport 坐标与高度，并复用现有内部滚动；工具栏 Popup 的根宽高仍由内容决定。关闭、页面离开、缓存停用和卸载会撤销监听与待执行帧。触屏服务按钮使用 46px 命中区，搜索框使用 16px 字号；桌面尺寸保留。真实 PopupApp 与 PopupServices 消费者联动覆盖输入、过滤、可见视口变化、清除、返回和关闭，115 项专项、20 项验证归属检查、类型检查及独立审查通过。统一新 Web 产物 `1cfa94…` 含 463 个 Safari 资源，四目标构建、verifier 及三个 Apple 目标完整编译通过。生产 Chrome 的 320/390px × 浅/深色 4 项和打开中收键盘恢复 1 项的控件几何与操作断言通过，16 张截图曾作初步审查；后续用户指出遮罩断层，已撤回该轮的完整视觉通过结论。它是明确的 VisualViewport/CDP 夹具。
+
+随后正式 `1cfa94…` App 在专用模拟器上更新，481 个 App 文件逐字节匹配，已安装的 463 个 Web 资源摘要独立核对一致。真实键盘复验通过：输入 micro 后搜索框与清除位于 y279–325 点，返回与关闭位于 y222–268 点，均在键盘附件栏上方；各操作高度 46 点。实际清除生效，返回时键盘消失，关闭回主面板后中文、默认免费服务和可用 1 / 启用 17 的授权状态保留，最后系统 sheet 关闭。根代理查看了搜索与清除两张完整截图。该结果验证服务搜索抽屉；划词卡片与键盘同时显示、横屏键盘和物理设备仍分别待验收。
+
+## Android Firefox 实际运行检查
+
+专用 Android 12 / API 31 arm64 模拟器安装了 Mozilla 官方 Firefox 158 APK，并核验包标识、版本、架构和签名。通过 Firefox 官方远程调试流程临时加载当前生产 Firefox MV2 扩展；474 个文件在运行前后保持一致，摘要及算法见 `android-runtime/firefox-production-run.json`。它不是 AMO 签名分发或真机安装验证。模拟器使用独立 AVD、独立 ADB 服务端口及明确设备序列号，没有操作用户设备、默认 ADB 服务或日常浏览器。
+
+实际扩展菜单和首次语言引导可用。确认英文界面后，主面板点击 Translate，公开测试页保留英文并出现中文译文；重新打开面板仍保持语言设置并显示 Restore，点击后中文消失、原文保留。没有替换网络响应或使用 DOM 翻译夹具，未记录具体成功供应商，因此只证明本次默认免费池真实返回。根代理已查看实际主面板及翻译结果截图。正式调试 runner 退出后关闭任务 Firefox、移除临时扩展与调试转发；宿主焦点监测没有违规。
+
+该轮同时发现 360dp 竖屏的主面板仍按 380px 布局，右侧设置、功能卡片与清除缓存被裁切。翻译和恢复成功不能覆盖这个 UI 失败；原始 `firefox-23-popup-main.png` 与 `firefox-runtime-summary.json` 保留，布局修复另行验证。划词、系统键盘、字幕、旋转、后台恢复和物理 Android 设备不在本轮通过范围。
+
+修复放在 Popup 唯一组装入口：仅当 Firefox 的公开 [`runtime.getPlatformInfo()`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/runtime/getPlatformInfo) 返回 Android 时，为固定容器启用视口限宽；轻量首次引导与主菜单共享这一设置。平台查询不阻塞挂载，关闭、卸载或加载失败清理自有标记，迟到响应不再写入。桌面保留中文 320px、英文 380px 的固有尺寸。227 个直接相关用例、挂载模块四维 100% 覆盖、类型检查及独立审查通过；四目标 Web 构建与 verifier、审计通过。新生产 Chrome 在隔离 Edge 的三项复验通过，五张截图已审查：桌面宽度保持、窄页面仍保留固有宽度，以及服务抽屉的搜索、清除、返回、关闭与重开。它使用明确的可见视口夹具，未当作 Android 键盘验收。随后新 Firefox 生产包在同一专用 Android 模拟器复验，英文主面板的设置、右侧功能卡和清除缓存完整位于屏幕内，原有英文设置与翻译统计保留；根代理已查看主面板和真实键盘搜索截图。该轮同时发现部分按钮仍使用较小的桌面点击区：返回和关闭约 28dp，不能把 iOS 的 46 点通过结果推到 Android。触摸尺寸作为后续修复另记，不将宽度通过等同于完整移动 UI 通过。
+
+
+## 遮罩与滚动的后续样式修复
+
+用户提供的服务抽屉截图暴露了先前审查遗漏：整个 ElOverlay 被缩成可见区域，页面其他位置没有遮暗，也不再拦截背景按钮。新的生产浏览器回归在修复前稳定失败：页面 320×844px，而遮罩仅覆盖 x8–312、y40–280；在 (160,450) 实际命中背景“开源项目”链接。控件仍能点击不能证明模态层正确。失败报告 `production-popup-mask/before/report.json` 保留，不通过裁剪图片或绘制假键盘掩盖。
+
+修复保留整页遮罩，仅让内部抽屉按 VisualViewport 定位与限高。新生产浏览器检查确认该点由遮罩命中，背景隔离恢复；长服务列表实际滚动到最后的 Ollama 项。Android 实际 Firefox 的 popup 同时确认 `any-pointer: coarse=false`、`any-pointer: fine=true`，因此通过已确认的 Android 根标记补齐 46px 点击区，保留原 coarse 媒体规则。`1e95fc…` Safari 包四目标 Web 与三目标原生构建通过；新 Android 包在真实键盘下的返回、关闭、清除均为 46×46px，清除、返回、关闭操作完成，IME 上方没有发现背景控件露出。
+
+进一步检查未放宽通过条件：长列表返回概览会沿用旧的底部滚动位置，关闭按钮右缘也出现命中失败；Android 主画布 560px 超过实际 512px 高度，一次滑动后页脚仍未完整露出。这些结果分别保留在 `production-popup-mask/after/report.json` 与 `android-runtime/firefox-attempt3-mask-summary.json`。逐像素命中检查进一步确认：关闭按钮右缘 6px 被系统 overlay 滚动条占用，而 `scrollbar-gutter: stable` 未扣除布局宽度。
+
+最终布局修复为滚动条显式留出 16px 空间，Android 固定容器按可见页面高度限制主画布，并让服务面板在当前会话、焦点和所属容器都有效时恢复局部滚动位置。进入选择页回顶，返回时让源行露出；不滚动宿主网页、不夺取已转移的焦点。40 个服务 SFC 专项与类型检查通过，独立审查无新增阻断。生产 Chrome 最终六项复验全部通过，21 张完整截图逐张复核：320/390px × 浅/深色下整页遮罩拦截背景，列表末项可滚达，返回后默认服务可见，关闭按钮中心及四边均可点，收起模拟键盘保留查询，再次打开正常；桌面 320/380px 固有尺寸保留。报告为 `production-popup-layout-final/report.json`，明确不把模拟 VisualViewport 当作原生键盘。
+
+最终 Safari 资源摘要 `0d624626ee4fa1efe35a3b8c11fa6b5db80fc3ce815fdf95a26ffaeeed827033`，463 文件在三个原生目标中逐字节一致，四目标 Web、verifier、审计均通过。Android 最终包已实测主画布及根均为 512px，实际滑动后页脚完整可见，两个主要页脚按钮高 46px、下缘 507px，消除了先前的外层截断。Android 最终七组实际检查通过，包括主画布、页脚、46px 控件、服务末项返回、关闭按钮四边、真实键盘和完整遮罩；另有公开页翻译后短暂 Home→Firefox 往返保留双语、再恢复原文通过，不代表系统内存回收。任务 Firefox、调试端口和 AVD 均已关闭。iOS 最终 App 的 481 文件和 463 Web 资源逐字匹配，真实 micro 输入、清除、返回收键盘、关闭及配置保留通过，四个关键控件均为 46 点，完整画面遮罩持续覆盖 Popup；该轮未进行原生背景点击或末项滚动，明确不算这些通过。两端原始失败均保留，结果分别见 `android-runtime/firefox-attempt4-layout-summary.json` 和 `ios-ui-harness/popup-keyboard-acceptance.json`。
 
 仍需完整验收：
 
@@ -128,7 +162,7 @@
 
 共享几何端口为 `src/platform/dom/visualViewport.ts`，业务自行持有生命周期与显示状态。公共配置字段和消息协议未新增。
 
-可能与其他并行任务冲突的共享文件：`package.json`、`wxt.config.ts`、`tests/test-matrix.json`、`tests/architecture/vue-verification-owners.json`、严格覆盖率清单、七种 i18n 消息、userscript 文案投影、文档导航与快速开始；另有全文进度组件和对应测试的最小移动定位接入。合并时应保留各任务的新增条目，不整文件覆盖。CI 兼容性修复另涉及 `tests/ownedBrowserClose.test.ts`、`tests/vocabularyVideoSourceUi.test.ts`、`tests/documentTranslationBinary.test.ts`；前两个仅修测试环境适配，后一个仅调整单用例有界预算。
+可能与其他并行任务冲突的共享文件：`package.json`、`wxt.config.ts`、`tests/test-matrix.json`、`tests/architecture/vue-verification-owners.json`、严格覆盖率清单、七种 i18n 消息、userscript 文案投影、文档导航与快速开始；另有全文进度组件和对应测试的最小移动定位接入，以及 Popup 组装入口对 Firefox Android 容器宽度的适配。合并时应保留各任务的新增条目，不整文件覆盖。CI 兼容性修复另涉及 `tests/ownedBrowserClose.test.ts`、`tests/vocabularyVideoSourceUi.test.ts`、`tests/documentTranslationBinary.test.ts`；前两个仅修测试环境适配，后一个仅调整单用例有界预算。
 
 ## 界面审查截图
 
@@ -167,3 +201,17 @@
 以下为实际公开 YouTube 视频在正式 `e3f9c0…` 扩展中的系统全屏播放截图，字幕随视频时间更新；视频画面来源为上文 TED-Ed 候选，译文具体来源未归因为机器服务。
 
 ![iOS Simulator 实际 YouTube 系统全屏双语字幕](./images/safari-ios-youtube-native-bilingual.png)
+
+以下为正式 `1cfa94…` App 的真实 iOS Simulator 服务搜索与软件键盘：搜索、清除、返回和关闭均在键盘上方，实际点击已另行核验。
+
+![iOS Simulator 服务搜索避让真实键盘](./images/safari-ios-popup-keyboard.png)
+
+以下为最终布局包在专用 Android 12 / Firefox 158 模拟器中的实际画面：页脚经真实滑动完整可见，服务搜索使用原生软件键盘。已另行实际验证关闭按钮四边命中及长列表返回，区别于前述桌面可见视口夹具。
+
+![Android Firefox 实际页脚滚动可达](./images/android-firefox-footer.png)
+
+![Android Firefox 真实键盘与服务抽屉](./images/android-firefox-keyboard.png)
+
+以下为同一最终布局源在正式 Safari App 中的实际 iOS Simulator 键盘画面：整页遮罩连续，内部服务抽屉在系统键盘上方，搜索与关闭控件保留完整命中区域。
+
+![iOS Simulator 最终遮罩与真实键盘](./images/safari-ios-popup-layout-final.png)

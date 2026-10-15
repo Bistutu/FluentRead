@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/nativeFullscreen.ts
  * 文件职责：将已有 YouTube 字幕时间轴映射到 Safari 系统视频全屏可选择的原生 TextTrack。
- * 主要内容：页面内预备原生轨道，按显示方式组合已缓存译文与原文，进入系统全屏时切换并在退出、禁用、换视频和卸载时恢复站点原轨道；不重启网络翻译，也不承诺系统播放器显示网页覆盖层。
+ * 主要内容：页面内预备原生轨道，按显示方式组合已缓存译文与原文，由系统菜单选择显示，缓存更新保留用户模式，退出、禁用、换视频和卸载时仅保守恢复仍被选中轨道让位的站点原轨道；不重启网络翻译，也不承诺系统播放器显示网页覆盖层。
  * 模块边界：只持有自己创建的 track 节点与 cue，运行时注入媒体、配置和缓存读取；系统字幕样式和后台脚本调度由浏览器负责。
  */
 import type {VideoSubtitleCue} from './youtubeSubtitleData';
@@ -43,45 +43,74 @@ export function buildNativeFullscreenCues(state: NativeFullscreenSubtitleState):
 export function createNativeFullscreenSubtitles(read: () => NativeFullscreenSubtitleState) {
   let video: NativeVideo | null = null;
   let node: HTMLTrackElement | null = null;
+  let trackList: TextTrackList | null = null;
   let active = false;
   let disposed = false;
-  let claimed = false;
+  let syncing = false;
   let fingerprint = '';
   let prepared: VideoSubtitleCue[] = [];
   let preparedCues: readonly VideoSubtitleCue[] | undefined;
   let preparedKey = '';
   let preparedFingerprint = '';
-  const previousModes = new Map<TextTrack, TextTrackMode>();
-  const onTrackResource = () => sync();
-  const removeTrackNode = () => {
-    if (!node) return;
-    node.removeEventListener('load', onTrackResource);
-    node.removeEventListener('error', onTrackResource);
-    node.track.mode = 'disabled';
-    node.remove();
-    node = null;
+  const previousShowing = new Set<TextTrack>();
+  const onTrackChange = () => sync();
+  const tracks = (): TextTrack[] => {
+    try { return Array.from(trackList || []); } catch { return []; }
   };
-  const restoreModes = () => {
-    for (const [track, mode] of previousModes) {
-      try { if (track.mode === 'disabled') track.mode = mode; } catch { /* 已销毁的媒体轨道无需恢复。 */ }
+  const ownedMode = () => {
+    try { return node?.track.mode; } catch { return undefined; }
+  };
+  const snapshotSources = () => {
+    previousShowing.clear();
+    for (const track of tracks()) {
+      try {
+        if (track !== node?.track && ['subtitles', 'captions'].includes(track.kind) && track.mode === 'showing') previousShowing.add(track);
+      } catch { /* 宿主已销毁的轨道没有可恢复状态。 */ }
     }
-    previousModes.clear();
+  };
+  const restoreSources = () => {
+    const current = tracks();
+    // 用户另选的站点轨优先；不能把进入前的原轨叠加到新选择上。
+    const anotherShowing = current.some(track => {
+      try { return track !== node?.track && ['subtitles', 'captions'].includes(track.kind) && track.mode === 'showing'; }
+      catch { return false; }
+    });
+    if (anotherShowing) return;
+    for (const track of previousShowing) {
+      try { if (current.includes(track) && track.mode === 'disabled') track.mode = 'showing'; }
+      catch { /* 单条宿主轨道失效不能中断其余清理。 */ }
+    }
+  };
+  const removeTrackNode = () => {
+    const previous = node;
+    node = null;
+    if (!previous) return;
+    previous.removeEventListener('load', onTrackChange);
+    previous.removeEventListener('error', onTrackChange);
+    try { previous.track.mode = 'disabled'; } catch { /* 失效的 TextTrack 不能阻止 DOM 回收。 */ }
+    previous.remove();
   };
   const leave = () => {
+    // Off 或用户另选源轨后不恢复旧源，避免退出再进入时重新开启字幕。
+    const restore = active && ownedMode() === 'showing';
     active = false;
-    claimed = false;
-    if (node?.track) node.track.mode = 'hidden';
-    restoreModes();
+    try { if (node) node.track.mode = 'hidden'; } catch { /* 原生轨道可能已销毁。 */ }
+    if (restore) restoreSources();
+    previousShowing.clear();
   };
   const enter = () => {
-    active = true;
-    claimed = false;
+    if (!active) {
+      snapshotSources();
+      active = true;
+    }
     sync();
   };
   const detach = () => {
     leave();
     video?.removeEventListener('webkitbeginfullscreen', enter);
     video?.removeEventListener('webkitendfullscreen', leave);
+    trackList?.removeEventListener('change', onTrackChange);
+    trackList = null;
     removeTrackNode();
     video = null;
     fingerprint = '';
@@ -90,79 +119,60 @@ export function createNativeFullscreenSubtitles(read: () => NativeFullscreenSubt
     preparedKey = '';
   };
   const sync = () => {
-    if (disposed) return;
-    const state = read();
-    const next = state.enabled && supportsNativeVideoFullscreen(state.video) ? state.video as NativeVideo : null;
-    if (video !== next) {
-      detach();
-      video = next;
-      video?.addEventListener('webkitbeginfullscreen', enter);
-      video?.addEventListener('webkitendfullscreen', leave);
-      active = video?.webkitDisplayingFullscreen === true;
-    }
-    if (!video) return;
-    const Cue = (video.ownerDocument.defaultView as (Window & {VTTCue?: typeof VTTCue}) | null)?.VTTCue;
-    if (typeof Cue !== 'function') return;
-    const preparationKey = JSON.stringify([state.revision, state.mode, state.offsetMs, state.language]);
-    if (state.revision === undefined || state.cues !== preparedCues || preparationKey !== preparedKey) {
-      prepared = buildNativeFullscreenCues(state);
-      preparedFingerprint = JSON.stringify(prepared);
-      preparedCues = state.cues;
-      preparedKey = preparationKey;
-    }
-    // 标准规定 disabled 时 cues 返回 null；这是用户在系统菜单选择 Off，不能当作丢失时间轴反复 addCue。
-    if (active && claimed && node?.track.mode === 'disabled') return;
-    if (node?.track.mode === 'disabled') node.track.mode = 'hidden';
-    if (!prepared.length) {
-      // 空轨会出现在系统字幕菜单中，用户选中后反而看不到网站字幕。
-      removeTrackNode();
-      claimed = false;
-      fingerprint = '';
-      restoreModes();
-      return;
-    }
-    if (!node || node.parentElement !== video) {
-      removeTrackNode();
-      node = video.ownerDocument.createElement('track');
-      node.kind = 'subtitles';
-      node.label = 'FluentRead';
-      node.setAttribute('data-fluent-read-native-subtitles', 'true');
-      node.srclang = state.language;
-      // 资源任务清空cue后会派发error/load；在可能进入系统全屏前立即恢复，不等待后台轮询。
-      node.addEventListener('load', onTrackResource);
-      node.addEventListener('error', onTrackResource);
-      video.appendChild(node);
-      node.track.mode = 'hidden';
-      claimed = false;
-      fingerprint = '';
-    }
-    if (node.srclang !== state.language) node.srclang = state.language;
-    const nextFingerprint = preparedFingerprint;
-    // HTMLTrackElement 首次资源选择（无外部src）可能在脚本任务结束后清空动态cue。
-    // 指纹相同也要确认浏览器仍持有时间轴，下一轮恢复后不重复重写完整轨道。
-    if (nextFingerprint === fingerprint && node.track.cues?.length === prepared.length && (!active || claimed)) return;
+    if (disposed || syncing) return;
+    syncing = true;
     try {
+      const state = read();
+      const next = state.enabled && supportsNativeVideoFullscreen(state.video) ? state.video as NativeVideo : null;
+      if (video !== next) {
+        detach();
+        video = next;
+        video?.addEventListener('webkitbeginfullscreen', enter);
+        video?.addEventListener('webkitendfullscreen', leave);
+        try { trackList = video?.textTracks || null; } catch { trackList = null; }
+        trackList?.addEventListener('change', onTrackChange);
+        // 已在全屏才挂载时没有进入前快照，不能猜测并恢复过去的源轨选择。
+        active = video?.webkitDisplayingFullscreen === true;
+      }
+      if (!video) return;
+      const Cue = (video.ownerDocument.defaultView as (Window & {VTTCue?: typeof VTTCue}) | null)?.VTTCue;
+      if (typeof Cue !== 'function') return;
+      const preparationKey = JSON.stringify([state.revision, state.mode, state.offsetMs, state.language]);
+      if (state.revision === undefined || state.cues !== preparedCues || preparationKey !== preparedKey) {
+        prepared = buildNativeFullscreenCues(state);
+        preparedFingerprint = JSON.stringify(prepared);
+        preparedCues = state.cues;
+        preparedKey = preparationKey;
+      }
+      if (node && node.parentElement !== video) { removeTrackNode(); fingerprint = ''; }
+      if (!node) {
+        // 首次没有内容不占用系统菜单；已有轨暂时无译文则保留身份和用户选择。
+        if (!prepared.length) return;
+        node = video.ownerDocument.createElement('track');
+        node.kind = 'subtitles';
+        node.label = 'FluentRead';
+        node.setAttribute('data-fluent-read-native-subtitles', 'true');
+        node.srclang = state.language;
+        node.addEventListener('load', onTrackChange);
+        node.addEventListener('error', onTrackChange);
+        video.appendChild(node);
+        node.track.mode = 'hidden';
+        fingerprint = '';
+      }
       const track = node.track;
+      // disabled.cues 为 null 是系统 Off；只准备缓存，不借补 cue 之名改写用户选择。
+      if (track.mode === 'disabled') return;
+      if (node.srclang !== state.language) node.srclang = state.language;
+      // 资源任务可能清空动态 cue；只有模式允许时恢复，不切换轨道、不重置选中状态。
+      if (preparedFingerprint === fingerprint && track.cues?.length === prepared.length) return;
       for (const cue of Array.from(track.cues || [])) track.removeCue(cue);
       for (const cue of prepared) track.addCue(new Cue(cue.startMs / 1000, (cue.startMs + cue.durationMs) / 1000, cue.text));
-      fingerprint = nextFingerprint;
-      // 没有可显示的译文时不把原生字幕关掉；稍后译文到达时首次接管。
-      if (active && !claimed) {
-        for (const original of Array.from(video.textTracks || [])) {
-          if (original !== track && ['subtitles', 'captions'].includes(original.kind) && original.mode === 'showing') {
-            previousModes.set(original, original.mode);
-            original.mode = 'disabled';
-          }
-        }
-        track.mode = 'showing';
-        claimed = true;
-      }
+      fingerprint = preparedFingerprint;
     } catch {
-      // 平台拒绝动态 cue 时保留站点字幕；菜单提供退出系统全屏的可行路径。
-      node.track.mode = 'hidden';
-      claimed = false;
-      restoreModes();
+      // 动态 cue 失败只等待下一次补齐，不能暗改用户模式或替其重新选择站点轨。
       fingerprint = '';
+    } finally {
+      syncing = false;
     }
   };
   return {sync, destroy: () => { disposed = true; detach(); }};

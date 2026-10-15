@@ -1,11 +1,13 @@
 /**
  * @file src/app/popup/mount.ts
  * 文件职责：在轻量启动入口唤醒后台后，读取配置并创建 Popup Vue 应用。
- * 主要内容：配置就绪后选择首启轻量根组件或完整主菜单；异步资源完成后复核最新引导、语言及字体，只准备变化的资源，页面退出后停止挂载。
+ * 主要内容：配置就绪后选择首启轻量根组件或完整主菜单；异步资源完成后复核最新引导、语言及字体，只准备变化的资源，页面退出后停止挂载；Firefox Android 通过公开平台 API 为首启与主菜单共用固定容器宽度模式，查询不阻塞挂载，退出、失败和卸载仅清理自身标记。
  * 模块边界：这里不读取当前标签页、不保存配置，也不处理 Popup 业务事件；所有响应式交互在 PopupApp 中，feature 与 runtime 行为通过公开模块完成。
  */
 import {createApp, type Component} from 'vue';
 import {Coffee} from '@element-plus/icons-vue';
+import browser from 'webextension-polyfill';
+import {browserCapabilities} from '@/src/platform/browser/capabilities';
 import {createUiI18nPlugin} from '@/src/ui/i18n'
 import {config, configReady} from '@/src/services/config/store'
 import {ensureUiLanguageBundle} from '@/src/platform/i18n/uiLanguageBundles'
@@ -14,9 +16,33 @@ import {prepareInterfaceFont} from '@/src/ui/interfaceAppearance'
 /** Popup 的唯一组装入口：配置就绪后才创建界面，避免默认布局先绘制。 */
 export async function mountPreparedPopupApp(selector: string): Promise<void> {
   const target = typeof window === 'undefined' ? undefined : window;
+  const root = document.documentElement;
   let exited = false;
-  const onPageHide = () => {exited = true;};
+  let mounted = false;
+  let disposed = false;
+  let ownsAndroidWidth = false;
+  const releaseContainer = () => {
+    disposed = true;
+    target?.removeEventListener('pagehide', onPageHide);
+    if (ownsAndroidWidth) root.removeAttribute('data-fluentread-android-popup');
+    ownsAndroidWidth = false;
+  };
+  const onPageHide = () => {exited = true; releaseContainer();};
   target?.addEventListener('pagehide', onPageHide);
+  // Android 容器已有固定视口；桌面固有尺寸不能依赖 viewport 的首次协商结果。
+  if (browserCapabilities.browser === 'firefox') {
+    void (async () => {
+      try {
+        const platform = await browser.runtime.getPlatformInfo();
+        if (!disposed && platform.os === 'android' && !root.hasAttribute('data-fluentread-android-popup')) {
+          ownsAndroidWidth = true;
+          root.setAttribute('data-fluentread-android-popup', '');
+        }
+      } catch {
+        // 平台 API 不可用时保留固有尺寸，不阻断配置、语言引导或翻译菜单。
+      }
+    })();
+  }
   try {
     await configReady;
     if (exited) return;
@@ -43,9 +69,11 @@ export async function mountPreparedPopupApp(selector: string): Promise<void> {
     const app = createApp(App)
     app.use(createUiI18nPlugin({documentRoot: document.body, documentTitleKey: 'metadata.popupTitle'}))
     app.component('Coffee', Coffee);
+    app.onUnmount(releaseContainer);
     // 由唯一的 WXT 启动入口提供挂载目标，避免 app 层假定页面结构。
     app.mount(selector)
+    mounted = true;
   } finally {
-    target?.removeEventListener('pagehide', onPageHide);
+    if (!mounted) releaseContainer();
   }
 }
