@@ -7,8 +7,10 @@
  */
 import type {LegacyPatternEntry, LegacyPatternSet, LocalizedLegacyPattern, RegisteredUiLanguage} from '../types';
 import {runtimeFeedbackPatterns} from './runtime-feedback-patterns';
+import {learningMaterialPatterns} from './learningMaterials';
 
 export const localizedLegacyPatterns: readonly LocalizedLegacyPattern[] = [
+    ...learningMaterialPatterns,
     {pattern: "^当前网页有 (\\d+) 处相同原句。出现不同的已保存译法时，不会自动采用。$", localizedCaptures: [], messages: {
         'en-US': "This page contains {1} instances of the same source sentence. Conflicting saved translations are not applied automatically.",
         'ja-JP': "現在のページには同じ原文が {1} か所あります。異なる訳文が保存されている場合は、自動で採用しません。",

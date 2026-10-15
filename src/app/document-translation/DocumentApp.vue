@@ -2,6 +2,7 @@
  @file src/app/document-translation/DocumentApp.vue
  文件职责：实现独立文档翻译页面的完整 Vue 应用，提供按已提交段落计算的实时数字与进度条、暂停及等待重试状态、保留已有译文的跨服务续译入口、简短异常提示与按需展开的技术详情，承载文件导入、格式化预览、分段翻译、人工校订、原文结构变化后旧校订的独立保留、保存原文件和双语文件导出的用户流程。
  主要内容：相同译文保留原文且不重复展示；文档打开后按窗口宽度用一行或多行工具栏承载文件、阅读方式、页码缩放、翻译服务与目标语言、翻译与下载，窄窗口用翻译设置弹窗，矮小窗口用覆盖式侧栏保留正文高度；各种格式支持只缩放正文的触控板捏合与键盘操作，复用富文本预览并保持阅读位置；左侧可折叠的侧栏放文件列表与目录，其余空间留给正文；首页列出保存在本机的最近翻译，重新打开同一份文件时接着上次的译文继续；PDF 默认按原版排版左右对照，各种格式都从正在阅读的位置开始翻译；没有文字层的扫描版 PDF 在开始翻译时先逐页识别文字并显示进度；HTML、Markdown、纯文本与 ePub 的隔离预览只载入一次，译文逐段到达后原位更新并保留滚动位置，整篇译文几乎都与原文相同时状态里提示可换目标语言，带标题的文档（含 Word）在侧栏提供可按原文或译文显示的目录，Word 里的表格在阅读视图中仍按表格排版、只有一个部分时不显示部分切换，ePub 的全部章节列在侧栏目录里（按译文显示时用章内标题的译文）、当前章节下接着它其余的各级标题，正文上方不再占一行章节按钮，Word 与文本类预览在宽窗口左右对照；组织文档阅读与翻译、增量统计和人工校订，人工译法确认只在当前文件阅读会话中参与篇章参考，按原文件身份和冻结语言隔离，重译时清空；导入与在线下载绑定独立取消所有权；PDF 清晰阅读流式显示完整段落和原图区域，源页文字层与译文更新分离，下载按原版布局左右配对，长译文以完整批注保留；切换、删除、重置及卸载释放 PDF 任务和 URL；PDF/ePub/DOCX/ZIP 导出显示进度、支持取消重试，迟到结果不得回写。
+ 材料接入：按原文件内容指纹加入本机学习工作区，恢复文档页码与章节，重解析后只按唯一原句重新匹配位置；原文件记录缺失时重新选择并核对指纹，不把同名文件误认作原件。
  模块边界：ChatGPT 套餐模型选项保留全局和文档实际 slug，独立选择也直接保存，不经过自定义模型哨兵或新增发现请求；组件负责页面展示与交互，导入、OCR 与导出生命周期由 feature 控制器持有并经显式端口连接唯一任务模型；不自行解析二进制格式、不实现片段翻译队列、配置存储协议或导出编码；解析渲染来自 document-translation feature，配置协调来自 services/config，草稿共享设置编辑会话并保留文档字段与模型映射的原子补丁，运行时适配由本目录 runtime 注入。
 -->
 <!-- 文档页面归 app 层所有；WXT 入口只负责启动。 -->
@@ -146,6 +147,7 @@
               <button type="button" :disabled="readerScale >= 3" :aria-label="t('document.pdfReading.zoomIn')" :title="t('document.pdfReading.zoomIn')" @click="stepReaderZoom(1)">+</button>
             </div>
             <button class="focus-toggle" type="button" :aria-label="translateLegacy('专注阅读')" :title="translateLegacy('专注阅读')" @click="setFocusMode(true)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7.5 3.5h-4v4M12.5 3.5h4v4M7.5 16.5h-4v-4M12.5 16.5h4v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button v-if="config.on && !materialPrivate" class="ghost-button material-save-button" type="button" :disabled="materialSaving || !activeTask?.historyId" @click="saveDocumentMaterial">{{ materialSaving ? '保存中…' : documentMaterialId ? '已加入学习材料' : '加入学习材料' }}</button>
             </div>
           </div>
           <!-- 独立的 PDF 工具组接收阅读器控件，桌面与任务操作同排，窄屏再按可用空间换行。 -->
@@ -195,8 +197,9 @@
         </section>
         <article class="document-reading-pane" aria-label="文档内容">
         <DocumentSegmentEditor :key="activeDocumentId ?? 0" v-show="readerTab === 'edit'" :document="parsedDocument" :translations="translatedSegments" :retained-revisions="documentQueue.find(item => item.id === activeDocumentId)?.retainedRevisions" :disabled="queueBusy" @update="editSegment" />
-        <div v-show="readerTab === 'read'" ref="readingContent" class="reading-content" :class="{'reading-pdf': isPdfDocument}" :data-reader-zoom="isPdfDocument ? undefined : readerScale" :tabindex="isPdfDocument || isRichDocument ? undefined : 0" @pointerdown="focusNativeReader">
+        <div v-show="readerTab === 'read'" ref="readingContent" class="reading-content" :class="{'reading-pdf': isPdfDocument}" :data-fluentread-material-fingerprint="activeTask?.historyId || undefined" :data-fluentread-material-title="parsedDocument.fileName" :data-fluentread-material-source="activeTask?.sourceUrl || undefined" :data-fluentread-material-page="isPdfDocument ? pdfPage : readerPage" :data-fluentread-material-section="isEpubDocument ? `epub:${epubChapterIndex}` : isDocxDocument ? `docx:${docxPartIndex}` : undefined" :data-reader-zoom="isPdfDocument ? undefined : readerScale" :tabindex="isPdfDocument || isRichDocument ? undefined : 0" @pointerdown="focusNativeReader">
         <PdfReader
+          ref="materialPdfReader"
           v-if="isPdfDocument"
           :key="activeDocumentId ?? 0"
           :document="parsedDocument"
@@ -444,6 +447,7 @@ import 'element-plus/es/components/select/style/css';
 import {markRaw, computed, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, watch} from 'vue';
 import DocumentSegmentEditor from './DocumentSegmentEditor.vue';
 import browser from 'webextension-polyfill';
+import {materialCapture, materialGet, materialGeneration, MATERIAL_RESUME_PARAMETER, type MaterialRecord, type MaterialSelection} from './index';
 import {
   Config,
   useConfigEditor,
@@ -682,6 +686,86 @@ const historyAvailable = typeof indexedDB !== 'undefined';
 const history = createDocumentHistory();
 const historyCommitter = createDocumentHistoryCommitter(record => history.save(record));
 const historyEntries = ref<DocumentHistorySummary[]>([]);
+const materialPrivate = browser.extension?.inIncognitoContext === true;
+const materialSaving = ref(false);
+const documentMaterialId = ref('');
+const materialPdfReader = ref<{resumePage(page: number): void} | null>(null);
+let pendingMaterialResume: MaterialRecord | undefined;
+let materialPositionTimer: ReturnType<typeof setTimeout> | undefined;
+let materialEpoch = 0;
+function documentMaterialSelection(): MaterialSelection | undefined {
+  const item = activeTask.value; const doc = parsedDocument.value;
+  if (!item?.historyId || !doc) return;
+  return {source: {kind: 'document', fingerprint: item.historyId, title: doc.fileName, ...(item.sourceUrl ? {url: item.sourceUrl} : {})},
+    locator: {kind: 'document', fingerprint: item.historyId, page: isPdfDocument.value ? pdfPage.value : readerPage.value,
+      ...(isEpubDocument.value ? {section: `epub:${epubChapterIndex.value}`} : isDocxDocument.value ? {section: `docx:${docxPartIndex.value}`} : {}),
+      quote: doc.segments[(isPdfDocument.value ? doc.binary?.kind === 'pdf' ? doc.binary.pages[pdfPage.value - 1]?.segmentIndexes[0] : 0
+        : isDocxDocument.value ? currentDocxPart.value?.paragraphSegments[(readerPage.value - 1) * READER_PAGE_SIZE]?.segmentIndex
+          : isEpubDocument.value ? currentEpubChapter.value?.segmentOffset : (readerPage.value - 1) * READER_PAGE_SIZE) || 0]?.source.slice(0, 6000)}};
+}
+async function saveDocumentMaterial(): Promise<void> {
+  const selection = documentMaterialSelection(); if (!selection || !config.on || materialPrivate || materialSaving.value) return;
+  const owner = materialEpoch; const capturedAt = Date.now(); materialSaving.value = true;
+  try {const generation = await materialGeneration(); if (disposed || owner !== materialEpoch || !config.on) return;
+    const record = await materialCapture({...selection, generation, capturedAt});
+    if (!disposed && owner === materialEpoch) {documentMaterialId.value = record.id; downloadNotice.value = '已加入本机学习材料，可从学习中心继续阅读。';}
+  } catch (error) {if (owner === materialEpoch) downloadNotice.value = error instanceof Error ? error.message : '学习材料保存失败，请重试。';}
+  finally {if (owner === materialEpoch) materialSaving.value = false;}
+}
+async function applyMaterialResume(): Promise<void> {
+  const record = pendingMaterialResume; const item = activeTask.value; const doc = parsedDocument.value;
+  if (!record || !item?.historyId || !doc || disposed) return;
+  if (item.historyId !== record.source.fingerprint) {importError.value = '所选文件与材料内容指纹不一致。请选择原文件；同名文件不会覆盖原材料。'; return;}
+  const owner = materialEpoch; const locator = record.locator;
+  let section = locator?.section; let page = locator?.page || 1; let unmatched = false;
+  if (locator?.quote && (doc.binary?.kind === 'docx' || doc.binary?.kind === 'epub')) {
+    const quote = locator.quote.replace(/\s+/gu, ' ').trim();
+    const matches = doc.segments.flatMap((segment, index) => quote && segment.source.replace(/\s+/gu, ' ').trim().includes(quote) ? [index] : []);
+    if (matches.length === 1 && doc.binary.kind === 'docx') {
+      const parts = docxParts.value.flatMap((part, index) => {const paragraph = part.paragraphSegments.findIndex(entry => entry.segmentIndex === matches[0]); return paragraph < 0 ? [] : [{index, paragraph}];});
+      if (parts.length === 1) {section = `docx:${parts[0].index}`; page = Math.floor(parts[0].paragraph / READER_PAGE_SIZE) + 1;} else unmatched = true;
+    } else if (matches.length === 1 && doc.binary.kind === 'epub') {
+      const chapters = epubChapters.value.flatMap((chapter, index) => matches[0] >= chapter.segmentOffset && matches[0] < chapter.segmentOffset + chapter.segmentCount ? [index] : []);
+      if (chapters.length === 1) {section = `epub:${chapters[0]}`; page = 1;} else unmatched = true;
+    } else unmatched = true;
+  }
+  if (section?.startsWith('epub:') || section && /^\d+$/u.test(section)) epubChapterIndex.value = Math.min(Math.max(0, Number(section.replace(/^epub:/u, '')) || 0), Math.max(0, epubChapters.value.length - 1));
+  if (section?.startsWith('docx:')) docxPartIndex.value = Math.min(Math.max(0, Number(section.slice(5)) || 0), Math.max(0, docxParts.value.length - 1));
+  await nextTick(); if (disposed || owner !== materialEpoch || doc !== parsedDocument.value || pendingMaterialResume !== record) return;
+  // PdfReader 公共出口按需加载独立 chunk；普通 nextTick 不代表异步组件的公开 ref 已就绪。
+  const pdfReader = materialPdfReader.value;
+  if (doc.binary?.kind === 'pdf' && typeof pdfReader?.resumePage !== 'function') return;
+  pendingMaterialResume = undefined; documentMaterialId.value = record.id;
+  if (unmatched) downloadNotice.value = '文档已重新解析，原段落未匹配或不唯一；已恢复原章节与页码，请核对内容。';
+  if (locator?.quote && doc.binary?.kind === 'pdf') {
+    const indexes = doc.segments.flatMap((segment, index) => segment.source === locator.quote ? [index] : []);
+    const matching = doc.binary.pages.filter(candidate => candidate.segmentIndexes.some(index => indexes.includes(index)));
+    if (matching.length === 1) page = matching[0].pageNumber;
+    else if (!matching.length) downloadNotice.value = '文档已重新解析，原段落未能匹配；已恢复原页码，请核对内容。';
+  }
+  readerPage.value = Math.max(1, Math.min(page, readerPageCount.value));
+  await nextTick(); if (!disposed && owner === materialEpoch && doc === parsedDocument.value && doc.binary?.kind === 'pdf') await pdfReader!.resumePage(page);
+}
+async function restoreMaterialDocument(id: string): Promise<void> {
+  const owner = materialEpoch;
+  try {const record = await materialGet(id); if (disposed || owner !== materialEpoch) return;
+    if (!record || record.kind !== 'document' || !record.source.fingerprint) throw new Error('材料已移除或文档来源不完整，请从学习工作区检查。');
+    pendingMaterialResume = record;
+    const existing = await history.load(record.source.fingerprint); if (disposed || owner !== materialEpoch) return;
+    if (!existing) {importError.value = '本机文件记录已移除。请选择原文件，FluentRead 会按内容指纹找回阅读位置与学习记录。';return;}
+    await openHistory(existing); await applyMaterialResume();
+  } catch (error) {if (!disposed && owner === materialEpoch) importError.value = error instanceof Error ? error.message : '恢复材料失败，请重新打开或选择原文件。';}
+  finally {if (!disposed && (owner === materialEpoch || pendingMaterialResume?.id === id || documentMaterialId.value === id)) restoring.value = false;}
+}
+watch(activeDocumentId, () => {materialEpoch++; clearTimeout(materialPositionTimer); documentMaterialId.value = ''; materialSaving.value = false; void nextTick(applyMaterialResume);});
+watch(materialPdfReader, reader => {if (typeof reader?.resumePage === 'function' && pendingMaterialResume) void applyMaterialResume();}, {flush: 'post'});
+watch([pdfPage, readerPage, epubChapterIndex, docxPartIndex], () => {
+  clearTimeout(materialPositionTimer);
+  if (!documentMaterialId.value || materialPrivate || pendingMaterialResume) return;
+  const selection = documentMaterialSelection(); const owner = materialEpoch; const capturedAt = Date.now(); if (!selection) return;
+  materialPositionTimer = setTimeout(async () => {try {const generation = await materialGeneration(); if (disposed || owner !== materialEpoch) return;
+    await materialCapture({...selection, positionOnly: true, generation, capturedAt});} catch { /* 已移除、归档或隐私禁用时停止更新。 */ }}, 1000);
+});
 let historyTimer: ReturnType<typeof setTimeout> | undefined;
 async function refreshHistory(): Promise<void> {
   if (!historyAvailable) return;
@@ -1739,6 +1823,10 @@ onMounted(() => {
   window.addEventListener('keydown', leaveFocusOnEscape);
   window.document.addEventListener?.('fullscreenchange', leaveFocusWithFullscreen);
   void refreshHistory();
+  let materialUrl: URL | undefined;
+  try {materialUrl = new URL(window.location.href);} catch { /* 只在完整浏览器页面解析继续阅读参数。 */ }
+  const materialId = materialUrl?.searchParams.get(MATERIAL_RESUME_PARAMETER);
+  if (materialUrl && materialId && !materialPrivate) {materialUrl.searchParams.delete(MATERIAL_RESUME_PARAMETER); window.history.replaceState(window.history.state, '', materialUrl.href); void restoreMaterialDocument(materialId); return;}
   const source = readPdfSourceFragment(window.location.hash || '');
   if (source) {onlinePdfUrl.value = source; void openOnlinePdf();}
   else void restoreOpenDocument();
@@ -1746,6 +1834,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   disposed = true;
+  materialEpoch++; clearTimeout(materialPositionTimer);
   configEditor.dispose();
   importWorkflow.dispose();
   recognitionWorkflow.dispose();

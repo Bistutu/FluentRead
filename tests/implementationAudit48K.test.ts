@@ -1,8 +1,8 @@
 /**
  * @file tests/implementationAudit48K.test.ts
  * 文件职责：经公开消费者验证第 48 批 K 的学习装配、词书状态、轻量引导资源及漫画排印边界。
- * 主要内容：执行真实功能注册表，验证写作与默认关闭的个人校订独立协调；覆盖词书公开生命周期、客户端 SFC 模板及界面翻译入口，以有界长输入、完整输出哈希和分段操作数验证排印。
- * 模块边界：Shadow UI、写作和个人校订公开挂载、扫描器、存储、Canvas 和模块加载为受控端口；不读取账号、不连接日常浏览器、不复制私有业务逻辑。
+ * 主要内容：执行真实功能注册表，验证材料续读、写作与默认关闭的个人校订独立协调；覆盖词书公开生命周期、客户端 SFC 模板及界面翻译入口，以有界长输入、完整输出哈希和分段操作数验证排印。
+ * 模块边界：Shadow UI、材料、写作和个人校订公开挂载、扫描器、存储、Canvas 和模块加载为受控端口；不读取账号、不连接日常浏览器、不复制私有业务逻辑。
  */
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
@@ -25,6 +25,7 @@ const ports = vi.hoisted(() => ({
     scanner: {setEntries: vi.fn(), dispose: vi.fn()}, writingMounted: false,
     mountWriting: vi.fn(), unmountWriting: vi.fn(), setLanguage: vi.fn(), language: undefined as unknown as Vue.Ref<string>,
     mountCorrections: vi.fn(), unmountCorrections: vi.fn(),
+    mountMaterial: vi.fn(), unmountMaterial: vi.fn(),
     appearance: vi.fn(), subscribe: vi.fn(), unsubscribe: vi.fn(), reload: vi.fn(),
 }));
 vi.mock('vue', async importOriginal => {
@@ -46,6 +47,7 @@ vi.mock('@/src/ui/interfaceAppearance', () => ({applyInterfaceSkin: ports.appear
 
 vi.mock('@/src/app/content/personalCorrections', () => ({mountPersonalCorrectionContent: ports.mountCorrections, unmountPersonalCorrectionContent: ports.unmountCorrections}));
 vi.mock('@/src/features/personal-corrections/public', () => ({unmountPersonalCorrections: vi.fn()}));
+vi.mock('@/src/features/vocabulary/material/content/public', () => ({mountMaterialContent: ports.mountMaterial}));
 
 import {createLearningContentFeatures} from '@/src/app/content/learningFeatures';
 import {createContentFeatureRegistry, type ContentFeatureRegistry} from '@/src/app/content/featureRegistry';
@@ -76,6 +78,7 @@ beforeEach(() => {
     ports.config.vocabularyReencounterEnabled = true; ports.extension.inIncognitoContext = false; ports.writingMounted = false;
     ports.mountWriting.mockImplementation(() => {ports.writingMounted = true;});
     ports.unmountWriting.mockImplementation(() => {ports.writingMounted = false;});
+    ports.mountMaterial.mockReturnValue(ports.unmountMaterial);
     ports.installScanner.mockReturnValue(ports.scanner); ports.patch.mockResolvedValue(undefined);
     ports.subscribe.mockReturnValue(ports.unsubscribe); ports.language = Vue.ref('zh-CN');
     ports.setLanguage.mockResolvedValue(true); ports.send.mockResolvedValue({success: true, data: []});
@@ -185,8 +188,10 @@ describe('48K 当前写作学习装配公开消费者', () => {
         const runtime = learning({on, writing: {enabled: writing}}, browser);
         const active = activation();
         expect((await runtime.mountEnabled(active)).map(row => ({id: row.id, status: row.status}))).toEqual([
+            {id: 'material-resume', status: browser !== 'userscript' && on ? 'mounted' : 'skipped'},
             {id: 'personal-corrections', status: 'skipped'}, {id: 'writing-assistant', status},
         ]);
+        expect(ports.mountMaterial).toHaveBeenCalledTimes(browser !== 'userscript' && on ? 1 : 0);
         expect(ports.mountCorrections).not.toHaveBeenCalled();
         expect(ports.mountWriting).toHaveBeenCalledTimes(status === 'mounted' ? 1 : 0);
     });
@@ -195,15 +200,19 @@ describe('48K 当前写作学习装配公开消费者', () => {
         const runtime = learning(config); await runtime.mountEnabled(activation());
         config.writing.enabled = true;
         expect((await runtime.reconcileEnabled()).map(row => ({id: row.id, status: row.status}))).toEqual([
+            {id: 'material-resume', status: 'mounted'},
             {id: 'personal-corrections', status: 'skipped'}, {id: 'writing-assistant', status: 'mounted'},
         ]);
-        await runtime.reconcileEnabled(); expect(ports.mountWriting).toHaveBeenCalledOnce();
+        await runtime.reconcileEnabled(); expect(ports.mountWriting).toHaveBeenCalledOnce(); expect(ports.mountMaterial).toHaveBeenCalledOnce();
         config.on = false; await runtime.reconcileEnabled();
+        expect(ports.unmountMaterial).toHaveBeenCalledOnce();
         expect(ports.unmountWriting).toHaveBeenCalledOnce(); expect(ports.writingMounted).toBe(false);
         config.on = true; await runtime.reconcileEnabled();
         expect(ports.mountWriting).toHaveBeenCalledTimes(2); expect(ports.writingMounted).toBe(true);
+        expect(ports.mountMaterial).toHaveBeenCalledTimes(2);
         runtime.unmountAll(); registry = undefined;
         expect(ports.unmountWriting).toHaveBeenCalledTimes(2);
+        expect(ports.unmountMaterial).toHaveBeenCalledTimes(2);
     });
     it('个人校订显式开启才挂载，开关变化独立清理，不卸载或重复挂载写作', async () => {
         const config = {on: true, writing: {enabled: true}, personalCorrectionsEnabled: false};

@@ -917,6 +917,8 @@ describe('OptionsApp actual client standalone capability navigation', () => {
 });
 
 describe('OptionsApp actual client localized sidebar brand', () => {
+  // 此用例包含每个平台的真实 SFC 冷编译与六语 SSR 资源加载，CI 实测约 5.1 秒。
+  // 这里只验证响应式品牌恢复，不约定 5 秒初始化性能；局部预算保留有界失败及全部语言断言。
   it.each(['userscript', 'chrome', 'firefox'] as const)('reactively restores the brand through all UI languages in %s without a legacy DOM scanner', async browser => {
     const h = await mountClientOptions('settings-general', browser);
     const bundles = await current!.server!.ssrLoadModule('/src/core/i18n/bundles.ts');
@@ -934,7 +936,7 @@ describe('OptionsApp actual client localized sidebar brand', () => {
     await h.settle();
     expect(brand().textContent).toBe('流畅阅读');
     expect(h.errors).toEqual([]);
-  });
+  }, 10000);
 });
 
 // Linkedom/client display-port evidence only: this is not an Element Plus animation,

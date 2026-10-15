@@ -100,7 +100,7 @@ async function mountLearning(initialTab?: string, options: {listGate?: Tab} = {}
       if (id === '@/src/ui/i18n') return i18n
       if (id === '@/src/ui/dateFormat') return date
       if (id === '@/src/services/config/store') return store
-      if (id === '@/src/features/vocabulary/ui/public') return {VocabularyBook: saved}
+      if (id === '@/src/features/vocabulary/ui/public') return {VocabularyBook: saved, MaterialWorkspace: saved}
       if (id === '@/src/features/reading-assistant/ui/public') return load('history')
       if (id === './LearningMemoryManager.vue') return load('memory')
       if (id === '@/src/features/reading-assistant/public' || id === '../client') return client
@@ -151,7 +151,7 @@ async function mountLearning(initialTab?: string, options: {listGate?: Tab} = {}
     listGate.resolve({success: true, memories: [], sessions: [], hasMore: false});writeGate.resolve({success: true, memory})
     await settle();frames.clear();host.remove()})
   app.mount(host);await settle()
-  const choose = async (tab: 'saved' | Tab) => {host.querySelector<HTMLButtonElement>(`[data-option-index="${['saved', 'history', 'memory'].indexOf(tab)}"]`)!.click();await settle()}
+  const choose = async (tab: 'saved' | Tab) => {host.querySelector<HTMLButtonElement>(`[data-option-index="${['saved', 'materials', 'history', 'memory'].indexOf(tab)}"]`)!.click();await settle()}
   const resolvePanel = async (tab: Tab) => {gates[tab].at(-1)?.resolve(namespaces[tab]);await settle()}
   const actions = (action: string) => send.mock.calls.filter(([message]) => message.action === action)
   return {host, props, shown, language, loads, gates, namespaces, clientErrors, navigations, reloads, send, configListeners, config,
@@ -176,8 +176,10 @@ describe('LearningCenter actual client pane loading and lifetime', () => {
   })
   it('uses real segmented keys and valid latest initialTab, retaining one tab stop and resolved modules', async () => {
     const h = await mountLearning();const saved = h.host.querySelector<HTMLElement>('[data-option-index="0"]')!
-    h.key(saved, 'ArrowRight');await h.settle();await h.resolvePanel('history');h.flushFrames()
+    h.key(saved, 'ArrowRight');await h.settle();h.flushFrames()
     expect(h.host.querySelector('[data-option-index="1"][aria-checked="true"]')).not.toBeNull()
+    h.key(h.host.querySelector<HTMLElement>('[data-option-index="1"]')!, 'ArrowRight');await h.settle();await h.resolvePanel('history');h.flushFrames()
+    expect(h.host.querySelector('[data-option-index="2"][aria-checked="true"]')).not.toBeNull()
     expect(h.host.querySelectorAll('[role="radio"][tabindex="0"]')).toHaveLength(1)
     h.props.initialTab = 'memory';await h.settle();await h.resolvePanel('memory')
     h.props.initialTab = 'invalid';await h.settle();expect(h.host.querySelector('.fr-learning-memory')).not.toBeNull()

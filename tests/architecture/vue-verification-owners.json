@@ -746,6 +746,18 @@
         "tests/serviceRepairReturn.test.ts"
       ],
       "scenario": "合法来源标签页明确返回、关闭和切换后迟到操作拒绝"
+    },
+    "src/features/vocabulary/ui/MaterialWorkspace.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/materialWorkspaceLifecycle.test.ts"
+      ],
+      "scenario": "真实材料客户端的草稿、归档恢复、清空、迟到响应和卸载边界；生产浏览器补充文章/视频/PDF/DOCX/EPUB恢复与视觉证据",
+      "browser": {
+        "runner": "scripts/testing/run-material-workspace-test.cjs",
+        "scope": "生产学习材料界面、权威记录关联与独立清空、文章定位、视频时间、本地PDF/DOCX/EPUB与宽窄屏深色",
+        "limitation": "本地确定性素材；不代表线上供应商、Firefox、Safari或移动真机验收"
+      }
     }
   }
 }
