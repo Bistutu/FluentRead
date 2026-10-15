@@ -345,6 +345,8 @@ describe('site translation coverage contract', () => {
     expect(isNaturalLanguageText('select-stmt: hide')).toBe(false);
     expect(isNaturalLanguageText('select-stmt: 藏起来')).toBe(false);
     expect(isNaturalLanguageText('HTTPS')).toBe(false);
+    expect(isNaturalLanguageText('https://science.nasa.gov/webb')).toBe(false);
+    expect(isNaturalLanguageText('Read https://science.nasa.gov/webb for details.')).toBe(true);
     expect(isNaturalLanguageText('Referer')).toBe(false);
     expect(isNaturalLanguageText('Introduction')).toBe(true);
     expect(isNaturalLanguageText('WHY')).toBe(true);
@@ -357,6 +359,7 @@ describe('site translation coverage contract', () => {
         <p>#!/bin/sh</p>
         <p>HTTPS</p>
         <p>The natural paragraph remains an eligible translation target.</p>
+        <p>https://science.nasa.gov/webb</p>
       </main></body></html>
     `);
     Object.defineProperty(window.HTMLElement.prototype, 'getBoundingClientRect', {

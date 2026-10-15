@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-// 使用临时 Edge profile 验证划词翻译的触发矩阵；--context-menu-only 只运行右键入口专项。
+// 使用临时 Edge profile 验证划词翻译的触发矩阵；--context-menu-only 只运行右键入口专项，
+// --lifecycle-only 仅检查宿主节点恢复、启停、路由、失败重试与键盘/窄屏界面。
 // Popup 快捷抽屉提供独立启用开关与双语/仅译文选择；触发方式、显示延迟和自定义快捷键在完整设置页修改，
 // 两个真实扩展页面同时打开，断言设置页写入、Popup 模式同步与网页中的真实划词手势结果一致。
 // 该脚本只操作本次创建的隔离 profile，不连接用户正在使用的浏览器。
@@ -37,6 +38,7 @@ function parseArgs(argv) {
     headed: argv.includes('--headed'),
     chineseOnly: argv.includes('--chinese-only'),
     contextMenuOnly: argv.includes('--context-menu-only'),
+    lifecycleOnly: argv.includes('--lifecycle-only'),
     directionOnly: argv.includes('--direction-only'),
     geometryOnly: argv.includes('--geometry-only'),
     zoomOnly: argv.includes('--zoom-only'),
@@ -1201,7 +1203,8 @@ async function main() {
     extensionDir: args.extensionDir,
     artifactsDir: args.artifactsDir,
     browser: 'Microsoft Edge',
-    testScope: args.contextMenuOnly ? 'context-menu-only' : 'selection-trigger-filter-or-matrix',
+    testScope: args.lifecycleOnly ? 'selection-host-lifecycle-only'
+      : args.contextMenuOnly ? 'context-menu-only' : 'selection-trigger-filter-or-matrix',
     profileMode: 'temporary-isolated',
     windowMode: args.headed ? 'headed-dedicated-profile' : 'background-visible-no-focus',
     cases: [],
@@ -1290,17 +1293,17 @@ async function main() {
       context = browserSession.context;
       createIsolatedPage = () => focusSafe.newPageWithoutForeground(context);
       activateInputPage = page => focusSafe.activateExtensionTabWithoutForeground(context, page);
-      if (args.contextMenuOnly) {
+      if (args.contextMenuOnly || args.lifecycleOnly) {
         const browserPid = await getGuardedBrowserPid(browserSession);
         result.ownedBrowserPid = browserPid;
         assertBackgroundFocus = async label => {
           const frontmost = await focusSafe.queryMacFrontmostApplication();
           assert(frontmost && Number.isSafeInteger(frontmost.pid) && frontmost.pid > 0
             && Number.isSafeInteger(browserPid) && browserPid > 0 && frontmost.pid !== browserPid,
-          `右键专项焦点检查失败：${JSON.stringify({label, frontmost, browserPid})}`);
+          `划词专项焦点检查失败：${JSON.stringify({label, frontmost, browserPid})}`);
           (result.focusChecks ||= []).push({label, frontmost, browserFrontmost: false});
         };
-        await assertBackgroundFocus('context-menu startup');
+        await assertBackgroundFocus('selection startup');
       }
       result.launchMode = browserSession.launchMode;
       result.focusPolicy = browserSession.focusPolicy;
@@ -1374,6 +1377,178 @@ async function main() {
     page.on('console', (message) => { if (message.type() === 'error') recordConsoleIssue(`console: ${message.text()}`); });
     await page.goto('https://example.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await waitForContentScript(page);
+
+    if (args.lifecycleOnly) {
+      const saved = await readStoredConfig(popup);
+      await patchStoredConfig(popup, {
+        on: true, disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual',
+        selectionTranslatorTrigger: 'icon', selectionTranslatorDelay: 0, selectionTranslatorAutoDismiss: false,
+        to: 'zh-Hans', from: 'auto', service: 'microsoft', useCache: false,
+        hotkey: 'none', floatingBallHotkey: 'none', theme: 'light',
+        harness: {...saved.harness, enabled: false},
+      });
+      await page.waitForTimeout(600);
+      const hostSelector = '#fluent-read-selection-translator-container';
+      const rememberHost = () => page.evaluate(selector => {
+        const host = document.querySelector(selector);
+        if (!host) throw new Error('划词 host 尚未挂载');
+        globalThis.__fluentReadLifecycleHost = host;
+        return {closed: host.shadowRoot === null, hosts: document.querySelectorAll(selector).length};
+      }, hostSelector);
+      const removeHost = () => page.evaluate(() => globalThis.__fluentReadLifecycleHost.remove());
+      const waitForSameHost = () => page.waitForFunction(selector => {
+        const host = globalThis.__fluentReadLifecycleHost;
+        return host?.isConnected && document.querySelector(selector) === host
+          && document.querySelectorAll(selector).length === 1;
+      }, hostSelector, {timeout: 5000});
+      const selectFresh = async text => {
+        await activateInputPage(page);
+        await closeSelectionUi(page);
+        await resetFixture(page);
+        if (text) await page.locator('#target').evaluate((element, value) => {element.textContent = value;}, text);
+        if (page.viewportSize()?.width <= 480) await page.locator('#selection-test-fixture').evaluate(element => {
+          element.style.padding = '20px'; element.style.fontSize = '20px';
+        });
+        const selection = await tripleClickTarget(page);
+        assert(selection.mouseDown?.isTrusted, '生命周期选区没有来自可信鼠标手势');
+        await waitForSelectionUi(page, {indicator: true, tooltip: false}, '新选区显示划词图标');
+        return selection;
+      };
+      const keyboardActivate = async className => {
+        await activateInputPage(page);
+        const {session, root} = await getSelectionUiTree(page);
+        const container = findCdpNode(root, node => hasCdpClass(node, className));
+        const button = container?.nodeName === 'BUTTON' ? container
+          : findCdpNode(container, node => node.nodeName === 'BUTTON');
+        assert(button, `找不到键盘操作目标 ${className}`);
+        await session.send('DOM.focus', {nodeId: button.nodeId});
+        await page.keyboard.press('Enter');
+      };
+      const screenshot = async name => {
+        await assertBackgroundFocus(name);
+        const file = path.join(args.artifactsDir, `${name}.png`);
+        await page.screenshot({path: file});
+        result.screenshots.push(file);
+      };
+
+      const firstSelection = await selectFresh();
+      const hostState = await rememberHost();
+      assert(hostState.closed && hostState.hosts === 1, `初始 host 所有权不唯一：${JSON.stringify(hostState)}`);
+      await removeHost();
+      await waitForSameHost();
+      await waitForSelectionUi(page, {indicator: true}, '删除后同一划词图标恢复');
+      await screenshot('selection-lifecycle-icon-restored-light');
+      result.cases.push({id: 'lifecycle.icon-host-restored', status: 'passed', selection: firstSelection, hostState});
+
+      const requestsBeforeOpen = translationRequestCount;
+      translationResponseDelayMs = 900;
+      await clickSelectionIndicator(page);
+      await waitForSelectionUi(page, {tooltip: true, loading: true}, '点击恢复入口后显示加载');
+      await removeHost();
+      await waitForSameHost();
+      await waitForSelectionUi(page, {tooltip: true, translation: true, resultPrefix: '测试译文：'}, '在途卡片恢复后完成翻译');
+      translationResponseDelayMs = 0;
+      assert(translationRequestCount === requestsBeforeOpen + 1, '重新连接卡片重复发起翻译请求');
+      await screenshot('selection-lifecycle-card-restored-light');
+      result.cases.push({id: 'lifecycle.pending-card-keeps-request', status: 'passed', additionalRequests: 1, ui: await readSelectionUi(page)});
+
+      // 同一选区连续第三次删除停止自动修复；新的可信选区允许再次恢复。
+      await removeHost();
+      await page.waitForTimeout(300);
+      assert(await page.locator(hostSelector).count() === 0, '持续删除 host 时仍无限自动重挂');
+      const recoveredSelection = await selectFresh('A fresh selected sentence should restore the translation entry after repeated removal.');
+      await waitForSameHost();
+      assert(translationRequestCount === requestsBeforeOpen + 1, '新图标尚未点击时重复发起请求');
+      result.cases.push({id: 'lifecycle.repeated-removal-is-bounded-and-new-selection-recovers', status: 'passed', selection: recoveredSelection});
+      await clearPageSelection(page);
+      await waitForSelectionUi(page, {indicator: false, tooltip: false}, '空选区收起入口');
+      result.cases.push({id: 'lifecycle.empty-selection-cleans-entry', status: 'passed'});
+
+      await page.evaluate(() => {
+        const nextBody = document.createElement('body');
+        nextBody.innerHTML = '<main><p>New route body</p></main>';
+        document.body.replaceWith(nextBody);
+      });
+      await waitForSameHost();
+      await page.evaluate(() => history.pushState({}, '', '/selection-next-route'));
+      await page.waitForTimeout(500);
+      const nextRouteSelection = await selectFresh('The newly rendered route still supports selection translation.');
+      await clickSelectionIndicator(page);
+      await waitForSelectionUi(page, {tooltip: true, translation: true, resultPrefix: '测试译文：'}, '替换 body 和路由后翻译新选区');
+      assert(await page.locator(hostSelector).count() === 1, '路由后出现重复划词 host');
+      result.cases.push({id: 'lifecycle.body-and-route-replacement', status: 'passed', selection: nextRouteSelection, ui: await readSelectionUi(page)});
+
+      await patchStoredConfig(popup, {disableSelectionTranslator: true, selectionTranslatorMode: 'disabled'});
+      await page.locator(hostSelector).waitFor({state: 'detached'});
+      const requestsBeforeDisabled = translationRequestCount;
+      await resetFixture(page);
+      await selectTarget(page);
+      await page.waitForTimeout(350);
+      assert(await page.locator(hostSelector).count() === 0 && translationRequestCount === requestsBeforeDisabled,
+        '禁用期间页面变化或新选区使划词入口复活');
+      await patchStoredConfig(popup, {disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual'});
+      await page.locator(hostSelector).waitFor({state: 'attached'});
+      await selectFresh('Re-enabled selection translation should use one new owner.');
+      assert(await page.locator(hostSelector).count() === 1, '重新启用后存在重复实例');
+      result.cases.push({id: 'lifecycle.disable-cleanup-and-reenable', status: 'passed', disabledAdditionalRequests: 0});
+
+      translationResponseDelayMs = 900;
+      await clickSelectionIndicator(page);
+      await waitForSelectionUi(page, {loading: true}, '取消前请求正在加载');
+      await activateInputPage(page);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(1100);
+      await waitForSelectionUi(page, {indicator: false, tooltip: false}, '取消后的迟到响应不能重开卡片');
+      translationResponseDelayMs = 0;
+      result.cases.push({id: 'lifecycle.escape-cancels-late-result', status: 'passed'});
+
+      await selectFresh('A failed selection translation can be retried with the keyboard.');
+      translationFailureResponses = 1;
+      expectingProviderFailure = true;
+      await clickSelectionIndicator(page);
+      await waitForSelectionUi(page, {tooltip: true, error: true, retryButton: true}, '失败后保留明确重试入口');
+      await screenshot('selection-lifecycle-error-retry');
+      await keyboardActivate('fr-error-state');
+      await waitForSelectionUi(page, {tooltip: true, translation: true, error: false, resultPrefix: '测试译文：'}, '键盘重试完成');
+      expectingProviderFailure = false;
+      result.cases.push({id: 'lifecycle.error-and-keyboard-retry', status: 'passed'});
+
+      await patchStoredConfig(popup, {theme: 'dark'});
+      await page.setViewportSize({width: 390, height: 844});
+      await selectFresh('A narrow dark screen still leaves the translation readable and its actions reachable.');
+      await keyboardActivate('fr-selection-indicator');
+      await waitForSelectionUi(page, {tooltip: true, translation: true, resultPrefix: '测试译文：'}, '窄屏键盘打开卡片');
+      await page.waitForTimeout(250);
+      const {session, root} = await getSelectionUiTree(page);
+      const card = findCdpNode(root, node => hasCdpClass(node, 'fr-translation-tooltip'));
+      const {object} = await session.send('DOM.resolveNode', {nodeId: card.nodeId});
+      let layout;
+      try {
+        const response = await session.send('Runtime.callFunctionOn', {objectId: object.objectId, returnByValue: true,
+          functionDeclaration: `function() { const r = this.getBoundingClientRect(); return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,viewportWidth:innerWidth,viewportHeight:innerHeight,dark:this.classList.contains('fr-dark-theme'),background:getComputedStyle(this).backgroundColor,scrollWidth:this.scrollWidth,clientWidth:this.clientWidth}; }`});
+        assert(!response.exceptionDetails, '读取窄屏卡片布局失败');
+        layout = response.result.value;
+      } finally { await session.send('Runtime.releaseObject', {objectId: object.objectId}); }
+      assert(layout.dark && layout.x >= 0 && layout.y >= 0 && layout.right <= layout.viewportWidth
+        && layout.bottom <= layout.viewportHeight && layout.scrollWidth <= layout.clientWidth + 1,
+      `窄屏划词卡片溢出：${JSON.stringify(layout)}`);
+      await screenshot('selection-lifecycle-390-dark');
+      await page.keyboard.press('Escape');
+      await waitForSelectionUi(page, {tooltip: false, indicator: false}, '键盘关闭窄屏卡片');
+      result.cases.push({id: 'lifecycle.narrow-dark-keyboard-open-close', status: 'passed', layout,
+        focusMethod: 'CDP DOM.focus on the actual closed-shadow button, followed by trusted Enter/Escape'});
+      await patchStoredConfig(popup, {disableSelectionTranslator: true, selectionTranslatorMode: 'disabled'});
+      await page.locator(hostSelector).waitFor({state: 'detached'});
+      await page.waitForTimeout(250);
+      await assertBackgroundFocus('selection lifecycle final cleanup');
+      result.cases.push({id: 'lifecycle.final-unmount', status: 'passed', hostCount: await page.locator(hostSelector).count()});
+      result.ok = result.consoleErrors.length === 0;
+      assert(result.ok, `划词生命周期控制台异常：${JSON.stringify(result.consoleErrors)}`);
+      result.providerEvidence = 'Production extension in isolated desktop Edge; local Microsoft HTTP fixture and controlled host/body mutations. Trusted CDP input (DOM range fallback recorded when needed), real closed Shadow DOM. 390px is desktop viewport emulation, not mobile hardware. No live-provider, Firefox or Safari claim.';
+      fs.writeFileSync(path.join(args.artifactsDir, 'report.json'), `${JSON.stringify(result, null, 2)}\n`);
+      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      return;
+    }
 
     if (args.inlineCodeOnly) {
       const saved = await readStoredConfig(popup);

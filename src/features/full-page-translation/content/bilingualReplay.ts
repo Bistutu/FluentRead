@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/bilingualReplay.ts
  * 文件职责：在 provider 文本槽未变化时，按宿主最新安全 DOM 骨架原子重放已提交双语译文。
- * 主要内容：复验可重放槽、构建最新快照、沿用提交时的换行选项就地刷新 wrapper，并把状态重绑到实时 Text 节点。
+ * 主要内容：复验自动外壳许可与可重放槽、构建最新快照、沿用提交时的换行选项就地刷新 wrapper，并把状态重绑到实时 Text 节点。
  * 模块边界：本文件不监听 DOM、不调 provider、不管理会话；runtime 决定何时重放及何时熔断。
  */
 import {
@@ -14,6 +14,7 @@ import {
 import {refreshBilingualTranslation} from './renderer';
 import {
     isOwnedBilingualArtifactAttached,
+    isTranslationApplicationShellPolicyCurrent,
     setBilingualContent,
     setRenderedStyleAttribute,
     type TranslationState,
@@ -38,7 +39,7 @@ export function refreshBilingualTranslationSkeleton(
     // 但可译文本未变，按当前 DOM 重建骨架并复用已提交译文才是正确的恢复路径；
     // 要求精确工件相等会把它误判成“需要重新请求”。
     if (state.phase !== 'translated' || state.mode !== 'bilingual' || state.kind !== 'content' ||
-        !replay || !content || !isOwnedBilingualArtifactAttached(node, state)) return false;
+        !replay || !content || !isTranslationApplicationShellPolicyCurrent(node, state) || !isOwnedBilingualArtifactAttached(node, state)) return false;
 
     const core = getCurrentTranslationCore(state.scope);
     const boundary = state.syntheticSegment ? node : undefined;

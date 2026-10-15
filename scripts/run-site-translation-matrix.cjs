@@ -4,6 +4,7 @@
 // 每个子进程仍由 run-site-translation-test.cjs 创建独立 profile。
 
 const path = require('node:path');
+const fs = require('node:fs');
 const {spawn} = require('node:child_process');
 const {
   CASES,
@@ -12,6 +13,7 @@ const {
   normalizeCaseConfig,
 } = require('./site-translation/case-config.cjs');
 
+const MAINTENANCE = require('./site-translation/maintenance-cases.json');
 const CASE_RUNNER = path.join(__dirname, 'run-site-translation-test.cjs');
 const MAX_CONCURRENT_JOBS = 2;
 
@@ -32,6 +34,10 @@ function parseArgs(argv) {
     if (token === '--background') continue;
     if (token === '--headed') {
       args.background = false;
+      continue;
+    }
+    if (['--controlled-provider', '--stability-probes'].includes(token)) {
+      args[token === '--controlled-provider' ? 'controlledProvider' : 'stabilityProbes'] = true;
       continue;
     }
     if (token === '--allow-network') {
@@ -62,6 +68,7 @@ function parseArgs(argv) {
     index += 1;
   }
 
+  if (args.stabilityProbes && args.mode !== 'full') throw new Error('--stability-probes requires --mode full');
   if (!['hover', 'full', 'both'].includes(args.mode)) throw new Error('--mode 必须是 hover、full 或 both');
   if (args.timeout !== undefined && (!Number.isFinite(Number(args.timeout)) || Number(args.timeout) <= 0)) {
     throw new Error('--timeout 必须为正数');
@@ -198,7 +205,9 @@ function validateMatrix(caseConfigs = CASES) {
 }
 
 function selectedEntries(args, entries) {
-  const requested = [...new Set(args.cases)];
+  if (args.profile && args.profile !== 'maintenance') throw new Error('Unknown profile: ' + args.profile);
+  if (args.profile && args.cases.length) throw new Error('--profile and --cases cannot be combined');
+  const requested = [...new Set(args.profile === 'maintenance' ? MAINTENANCE.cases.map(item => item.case) : args.cases)];
   if (requested.length > 0) {
     const unknown = requested.filter((name) => !CASES[name]);
     if (unknown.length > 0) throw new Error(`未知 case：${unknown.join(', ')}`);
@@ -216,6 +225,8 @@ function childArgs(args, name, mode, attempt = 1) {
     '--playwright-root', args.playwrightRoot,
     args.background ? '--background' : '--headed',
   ];
+  if (args.controlledProvider) values.push('--controlled-provider');
+  if (args.stabilityProbes) values.push('--stability-probes');
   if (args.browserPath) values.push('--browser-path', args.browserPath);
   if (args.timeout) values.push('--timeout', args.timeout);
   if (args.focusSafeHelper) values.push('--focus-safe-helper', args.focusSafeHelper);
@@ -411,6 +422,7 @@ async function runJobsWithBoundedConcurrency(jobs, runJob, options = {}) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const matrix = validateMatrix();
+  const entries = selectedEntries(args, matrix.entries);
 
   if (args.list) {
     process.stdout.write(`${JSON.stringify({
@@ -418,7 +430,9 @@ async function main() {
       required: matrix.required.length,
       requiredHosts: matrix.requiredHosts.size,
       quarantine: matrix.quarantine.length,
-      cases: matrix.entries.map(([name, config]) => ({
+      profile: args.profile || null,
+      selected: entries.length,
+      cases: (args.profile || args.cases.length ? entries : matrix.entries).map(([name, config]) => ({
         name,
         tier: config.tier || 'required',
         url: config.url,
@@ -430,7 +444,6 @@ async function main() {
     return;
   }
 
-  const entries = selectedEntries(args, matrix.entries);
   const requestedModes = args.mode === 'both' ? ['hover', 'full'] : [args.mode];
   const jobs = entries.flatMap(([name, config]) => requestedModes
     .filter((mode) => (config.modes || ['hover', 'full']).includes(mode))
@@ -453,12 +466,19 @@ async function main() {
 
   const requiredFailures = results.filter((result) => !result.ok && result.tier === 'required');
   const quarantineFailures = results.filter((result) => !result.ok && result.tier === 'quarantine');
+  const evidence = {at: new Date().toISOString(), profile: args.profile || null, controlledProvider: args.controlledProvider === true,
+    stabilityProbes: args.stabilityProbes === true, requiredFailures, quarantineFailures, results, aborted, abortSignal};
+  if (args.artifactsDir) {fs.mkdirSync(args.artifactsDir, {recursive: true});
+    fs.writeFileSync(path.join(args.artifactsDir, 'matrix-report.json'), JSON.stringify(evidence, null, 2));}
   process.stdout.write(`${JSON.stringify({
     ok: !aborted && requiredFailures.length === 0 && (!args.failOnQuarantine || quarantineFailures.length === 0),
     maxConcurrentJobs: MAX_CONCURRENT_JOBS,
     aborted,
     abortSignal,
     jobs: results.length,
+    requiredPassed: results.filter(result => result.ok && result.tier === 'required').length,
+    requiredPassedHosts: new Set(results.filter(result => result.ok && result.tier === 'required')
+      .map(result => new URL(CASES[result.name].url).hostname)).size,
     passed: results.filter((result) => result.ok).length,
     recoveredFailures: results.filter((result) => result.ok && result.attempts?.length > 1)
       .map((result) => ({name: result.name, mode: result.mode, attempts: result.attempts})),
@@ -481,6 +501,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  MATRIX_REQUIREMENTS, MAX_CONCURRENT_JOBS, computeJobTimeoutMs,
+  MATRIX_REQUIREMENTS, MAX_CONCURRENT_JOBS, computeJobTimeoutMs, parseArgs, selectedEntries, childArgs,
   runChildWithWatchdog, runJobAttempts, runJobsWithBoundedConcurrency, validateMatrix,
 };

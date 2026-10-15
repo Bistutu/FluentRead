@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/renderer.ts
  * 文件职责：把翻译返回的受限 HTML 或纯文本安全插入原页面，构造 FluentRead 双语与仅译文节点，为学习标记保留逐行文字片段，同时保护链接属性并触发布局截断修复。
- * 主要内容：包含复验来源连续顺序的安全候选物化与显式原文行容器、URL 协议白名单、可复制属性集合、显式迭代节点净化、本地公式可视骨架的无递归受限克隆与辅助副本排除、DocumentFragment 创建、不改写宿主 class 的双语 wrapper、跨 CJK 书写体系时前置目标字体族、可选的译文前置与长段落按句换行、长页新译文的保守屏外渲染隔离，以及通过 Shadow DOM 保留宿主原文的仅译文文本槽。
+ * 主要内容：渲染前通知组合根为开放 ShadowRoot 安装公共翻译样式；包含复验来源连续顺序的安全候选物化与显式原文行容器、URL 协议白名单、可复制属性集合、显式迭代节点净化、本地公式可视骨架的无递归受限克隆与辅助副本排除、DocumentFragment 创建、不改写宿主 class 的双语 wrapper、跨 CJK 书写体系时前置目标字体族、可选的译文前置与长段落按句换行、长页新译文的保守屏外渲染隔离，以及通过 Shadow DOM 保留宿主原文的仅译文文本槽。
  * 模块边界：本文件只负责安全渲染，不发起翻译或管理请求状态；服务调用归 runtime，节点所有权归 state，配置仅用于展示选项，任意脚本、事件属性和危险链接都不得穿过净化边界。
  */
 import type {TranslationCandidate} from "@/src/core/translation/types";
@@ -10,6 +10,7 @@ import { config } from "@/src/services/config/store";
 import {ensureTranslationTruncationLayout} from "@/src/features/full-page-translation/content/layout";
 import {applyLongParagraphLineBreaks} from "@/src/core/translation/lineBreak";
 import {resolveTranslationFontFamily} from "@/src/core/translation/font";
+import {prepareTranslationStyleRoot} from './styleRoots';
 import {registerVisibleTranslationRoot} from './visibleTranslation';
 import {enableBilingualRenderingContainment} from './renderingContainment';
 
@@ -273,6 +274,7 @@ function createBilingualTranslationContent(
     text: string,
     renderOptions: BilingualTranslationRenderOptions = {},
 ): HTMLElement {
+    prepareTranslationStyleRoot(node);
     const content = node.ownerDocument.createElement("span");
     content.classList.add("fluent-read-bilingual-content");
     content.setAttribute("data-fr-translation-owned", "true");

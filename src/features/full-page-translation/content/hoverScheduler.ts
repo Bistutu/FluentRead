@@ -2,7 +2,7 @@
  * @file src/features/full-page-translation/content/hoverScheduler.ts
  * 文件职责：为共享网页翻译引擎管理悬浮候选的停留计时、冻结配置与取消生命周期。
  * 主要内容：同一真实候选继续移动时只更新坐标并保留首次截止时间；跨段、视觉范围、内联节点或方案变化时重新计时，到期复验当前命中防止滚动后翻译新内容；仅新停留捕获请求配置，零延迟沿用下一任务单次解析，保留浏览器让步；调度前及执行前后复验启用/可见性与请求会话提交代次。
- * 模块边界：只拥有短暂候选和定时器，通过注入端口解析、检查与派发；不监听网页事件、不读取全局配置、不创建 provider 请求或操作译文 DOM。
+ * 模块边界：只拥有短暂候选和定时器，候选身份包含自动外壳策略来源，通过注入端口解析、检查与派发；不监听网页事件、不读取全局配置、不创建 provider 请求或操作译文 DOM。
  */
 import {getTranslationCandidateKey, type TranslationCandidate, type TranslationScope} from '@/src/core/translation/public';
 import type {FullPageTranslationConfigSnapshot, PageTranslationConfigOverrides} from './translationConfigSnapshot';
@@ -41,6 +41,7 @@ function isSameHoverTranslationCandidate(previous: TranslationCandidate, current
     if (previous.element !== current.element || getTranslationCandidateKey(previous) !== getTranslationCandidateKey(current)
         || previous.kind !== current.kind || previous.scope !== current.scope || previous.reason !== current.reason
         || previous.adapterId !== current.adapterId || previous.allowTopLevelApplicationShell !== current.allowTopLevelApplicationShell
+        || previous.applicationShellPolicyId !== current.applicationShellPolicyId
         || previous.sourceLine !== current.sourceLine || previous.manualChunk !== current.manualChunk
         || previous.nodes?.length !== current.nodes?.length
         || previous.nodes?.some((node, index) => node !== current.nodes?.[index])) return false;

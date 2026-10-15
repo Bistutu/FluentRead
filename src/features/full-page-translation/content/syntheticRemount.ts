@@ -2,7 +2,7 @@
  * @file src/features/full-page-translation/content/syntheticRemount.ts
  * 文件职责：当宿主保留候选容器却以 source-only 子节点替换已物化的行内双语片段时，在同一 observer 检查点原子接回可信译文。
  * 主要内容：从当前宿主解析唯一等价 inline-run、复验文本与安全结构、迁移实时来源节点并延续原状态/熔断预算。
- * 模块边界：只处理 mutation.target 就是原候选宿主的 synthetic 换代；普通 block owner 与祖先 clone 继续由 bilingualRemount 处理。
+ * 模块边界：只处理 mutation.target 就是原候选宿主的 synthetic 换代；仅认证完整段落的自动外壳策略不能迁移为内联片段；普通 block owner 与祖先 clone 继续由 bilingualRemount 处理。
  */
 import {
     collectLiveTranslationTextSlots,
@@ -74,6 +74,8 @@ function candidateStructureSignature(
 }
 
 function equivalentInlineCandidate(host: HTMLElement, state: TranslationState): SyntheticTranslationCandidate | null {
+    // 自动应用外壳策略目前只认证完整段落，不能把它转成没有对应策略的内联片段。
+    if (state.applicationShellPolicyId) return null;
     if (host.childNodes.length > SYNTHETIC_REMOUNT_MAX_HOST_CHILDREN) return null;
     const core = getCurrentTranslationCore(state.scope);
     const candidates = new Map<Node, SyntheticTranslationCandidate>();

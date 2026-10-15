@@ -299,6 +299,15 @@ describe('局部翻译切换', () => {
             {element: plain, kind: 'content', reason: 'section-retry'},
         ]);
     });
+    it('区域重试保留自动应用外壳策略来源，交给共享请求门禁复验', async () => {
+        const owner = element('automatic-shell-owner', 0, root);
+        own(owner, 'error', {allowTopLevelApplicationShell: true, applicationShellPolicyId: 'mastodon'});
+        harness.translateTarget.mockResolvedValue({status: 'committed'});
+        await expect(toggleTranslationSection(root as unknown as Element)).resolves.toMatchObject({translated: 1});
+        expect(harness.translateTarget.mock.calls[0]![0]).toMatchObject({
+            element: owner, reason: 'section-retry', allowTopLevelApplicationShell: true, applicationShellPolicyId: 'mastodon',
+        });
+    });
 
     it('配置检查未通过时不发出任何请求', async () => {
         harness.discoveries.content = steps([candidate(element('blocked', 0, root))]);
