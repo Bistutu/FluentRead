@@ -432,8 +432,8 @@ footer > button { justify-self: end; }
 }
 .drawer-content { margin-top: 16px; }
 .provider-drawer-content { margin-top: 0; }
-/* 服务概览滚动时为滚动条留出独立槽位，避免覆盖右侧关闭按钮。 */
-.popup-services-drawer .el-drawer__body { padding-right: 8px; scrollbar-gutter: stable; scrollbar-width: thin; }
+/* 系统叠加滚动条不为 stable gutter 留槽；额外预留 16px，避免滚动后热点覆盖关闭按钮右边缘。 */
+.popup-services-drawer .el-drawer__body { padding-right: 16px; scrollbar-gutter: stable; scrollbar-width: thin; }
 .selection-mode-tabs {
   display: flex; gap: 4px; margin-bottom: 16px; padding: 4px; border-radius: 16px; background: var(--surface-soft);
 }
