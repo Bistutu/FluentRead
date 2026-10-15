@@ -7,7 +7,7 @@
  * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；--readable-pdf-first 在首份 PDF 同次真实译文上另验可复制重排导出、逐段中文文字层及首页/尾页图片。普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，以 VitePress 已有 markdown-it 的标准强调节点核对实际下载（先扣除原文节点，不能只数星号或用产品预览证明译文格式），并按源文本与同一标签检查两项已确认的内部英文残留回归；仅读取这些内容，不执行组件。
  * 交互验证：--exercise-pdf-ui 在首份实际 PDF 上保存首页扫描说明，经 CDP 键盘 Tab/Enter/Space 选择原生菜单按钮，验证受控 Ctrl/Cmd wheel 的文档缩放、指针锚点及键盘复位；真实译文完成后切换显示方式，恢复原版对照和适合整页，再执行既有小屏阅读与下载验收。这些事件不代表物理触控板实测。
  * 词库验证：可选 --builtin-glossary ai-en-zh-hans 从本生产包的设置界面导入可编辑副本，启用总开关，再通过公开配置端口只选择该真实库 ID；保存启用状态、来源版本、词条数及文档选择，不读取词条作为测试预期或输出其它配置。无参数时只记录实际公开状态。
- * 恢复验证：--translation-resumes 0..3 默认关闭，仅在实际翻译中断且错误为请求超时时点击同页“继续翻译”。每次保存原错误、部分译文和截图，保留停止批次首编号而不归因该段；原翻译总截止不重置，设置和所有已完成译文必须保持不变。恢复后完成仍明确记录曾失败，不能视作一次无失败完成。
+ * 恢复验证：--translation-resumes 0..3 默认关闭，读取当前恢复提示及兼容旧提示，仅在实际翻译中断且错误为请求超时时点击同工具栏“重试”或“继续翻译”，记录实际按钮名称，禁止重新翻译。每次保存原错误、部分译文和截图，保留停止批次首编号而不归因该段；原翻译总截止不重置，设置和所有已完成译文必须保持不变。恢复后完成仍明确记录曾失败，不能视作一次无失败完成。
  * 诊断收尾：响应正文观察每条最多等五秒，记录超时/失败并拒绝晚到正文回填；文档失败先保存状态，批次诊断与最终清理各有截止。HTTP 证据按固定翻译端点辨认 Microsoft/Google 有序原生槽位、单文本与未知请求；仅完整多槽响应进入已完成合批统计，不把同域 2xx 或背景消息数组当作合批。
  * 模块边界：不创建请求路由、不替换 fetch、不伪造译文、不配置付费账户，不读取或输出任何凭据；只使用本次新建的临时浏览器配置，不操作用户浏览器。中文及无测试标记只能证明实际结果，译文质量和排版需结合保存的数据与图片人工复核。
  */
@@ -48,7 +48,7 @@ function parseBuiltinGlossaryArg(args) {
   return value;
 }
 
-/** 恢复次数在任何浏览器/profile 操作之前校验，默认保持遇错立即失败。 */
+/** 恢复次数在任何浏览器/profile 操作之前校验；默认不手动恢复，只允许原在途请求在原截止内收尾。 */
 function parseTranslationResumesArg(args) {
   assert(!args.some(value => value.startsWith('--translation-resumes=')), 'Use --translation-resumes 0..3');
   const positions = args.flatMap((value, index) => value === '--translation-resumes' ? [index] : []);
@@ -72,10 +72,29 @@ async function readPublicResumeSettings() {
     freeTranslationTimeoutMs: config.freeTranslationTimeoutMs, documentBatchTranslation: batch.checked};
 }
 
-/** 只恢复已实际复现的 terminal timeout；暂停、取消、鉴权、配置或回显仍立即失败。 */
-function isResumableTranslationTimeout(current) {
-  return /^翻译中断(?:\s|·|$)/u.test(current.status) && /(?:翻译)?请求超时$/u.test(current.error)
+/** 自包含页面端口：完整技术原因来自当前恢复提示，旧工具栏提示只作兼容回退。 */
+function readProductionTranslationStatus() {
+  const text = selector => document.querySelector(selector)?.textContent.trim() || '';
+  return {status: text('.document-status'), progress: Number(document.querySelector('.task-progress')?.getAttribute('aria-valuenow') || 0),
+    translating: Boolean(document.querySelector('.taskbar-actions .pause-button')),
+    error: text('.translation-recovery[role="alert"] .recovery-error-detail') || text('.taskbar-notices .notice.error'),
+    retry: text('.translation-recovery[role="status"] .recovery-error-detail') || text('.taskbar-notices .notice.warning')};
+}
+
+/** 只识别实际中断的 timeout；暂停、取消、鉴权、配置或回显仍立即失败。 */
+function hasTranslationTimeoutFailure(current) {
+  return /^翻译中断(?:\s|·|$|已翻译\s*\d+\s*\/\s*\d+(?:\s|·|$))/u.test(current.status) && /(?:翻译)?请求超时$/u.test(current.error)
     && !/401|403|auth|unauthori[sz]ed|forbidden|bad.?config|鉴权|凭据|配置|取消|cancel|原文|回显/iu.test(current.error);
+}
+
+/** 已发请求仍在收尾时只观察并保留状态，避免主按钮尚未恢复就提前点击。 */
+function isTranslationTimeoutSettling(current) {
+  return hasTranslationTimeoutFailure(current) && (current.translating === true || /正在收取已发出的结果/u.test(current.status));
+}
+
+/** 恢复必须等待 timeout 收尾结束，不能把仍在提交结果的任务判作 terminal。 */
+function isResumableTranslationTimeout(current) {
+  return hasTranslationTimeoutFailure(current) && !isTranslationTimeoutSettling(current);
 }
 
 /** 逐位置、ID 和原文验证同一解析文档；曾完成的目标必须逐字保留，不用 normalized 文本替代证据。 */
@@ -145,11 +164,13 @@ function createTranslationResumeGuard({limit, started, timeout, settings, now = 
       if (failure.observedTotal !== null) assert.equal(snapshot.segments.length, failure.observedTotal, 'Resume changed visible segment count');
       assert.deepEqual(await bounded(readSettings, 'Resume settings read'), settings, 'Resume settings/input/library changed'); assertActive();
       snapshots.push(structuredClone(snapshot));
-      await bounded(activateContinue, 'Actual continue button activation'); assertActive();
+      const actualButtonName = await bounded(activateContinue, 'Actual continue button activation'); assertActive();
+      assert(actualButtonName === undefined || actualButtonName === '重试' || actualButtonName === '继续翻译', 'Unsupported production resume action');
       assert(remaining() > 0, 'Original translation deadline exhausted');
       failure.resumed = true;
       recoveries.push({failureNumber: failure.number, elapsedMs: now() - started, completedBefore: failure.completed,
-        actualAction: 'Same production document: 继续翻译', settingsUnchanged: true, originalDeadline: deadline}); persist();
+        actualAction: `Same production document: ${actualButtonName ?? 'resume (legacy port; button name unreported)'}`,
+        actualButtonName: actualButtonName ?? null, settingsUnchanged: true, originalDeadline: deadline}); persist();
       return true;
     },
     async verifyFinal(snapshot, readSettings) {
@@ -163,15 +184,19 @@ function createTranslationResumeGuard({limit, started, timeout, settings, now = 
   };
 }
 
-/** 只激活同一页面当前可见、可用的生产“继续翻译”，不能改成重试/重新翻译或跳过焦点守卫。 */
+/** 只激活同工具栏当前可见、可用的生产“重试/继续翻译”主按钮，禁止重新翻译并保留焦点和原截止守卫。 */
 async function activateProductionTranslationContinue({page, checkFocus, number, deadline, readStatus}) {
   await checkFocus(`translation-continue-${number}`);
   assert(isResumableTranslationTimeout(await readStatus()), 'Only the same terminal timeout may be continued');
-  const button = page.locator('.taskbar-actions').getByRole('button', {name: '继续翻译', exact: true});
+  const button = page.locator('.taskbar-actions').getByRole('button', {name: /^(?:重试|继续翻译)$/u, exact: true})
+    .and(page.locator('.translate-document-button'));
   assert.equal(await button.count(), 1, 'Production continue button must be unique');
   assert(await button.isVisible() && await button.isEnabled(), 'Production continue button must be visible and enabled');
+  const action = (await button.innerText()).trim();
+  assert(action === '重试' || action === '继续翻译', 'Only production retry or continue may be activated');
   assert(deadline > Date.now(), 'Original translation deadline exhausted');
   await button.click({timeout: Math.min(5000, deadline - Date.now())});
+  return action;
 }
 
 /** 自包含页面端口：只投影运行所需的公开词库元数据，不能输出词条、token 或其余配置。 */
@@ -959,9 +984,7 @@ async function main() {
           if (focusFailure) throw focusFailure;
           if (page.isClosed()) throw new Error('Document page closed during translation recovery');
         };
-        const readTranslationStatus = () => page.evaluate(() => ({status: document.querySelector('.document-status')?.textContent.trim() || '',
-          progress: Number(document.querySelector('.task-progress')?.getAttribute('aria-valuenow') || 0),
-          error: document.querySelector('.taskbar-notices .notice.error')?.textContent.trim() || '', retry: document.querySelector('.taskbar-notices .notice.warning')?.textContent.trim() || ''}));
+        const readTranslationStatus = () => page.evaluate(readProductionTranslationStatus);
         await checkFocus('translation');
         await page.locator('.taskbar-actions .translate-document-button').filter({hasText: '开始翻译'}).click();
         let lastStatus = '', lastLog = 0;
@@ -971,6 +994,10 @@ async function main() {
           if (current.status !== lastStatus) {lastStatus = current.status; result.statuses.push({...current, elapsedMs: Date.now() - started}); persist();}
           if (Date.now() - lastLog > 30000 || current.progress === 100) {lastLog = Date.now(); console.log(JSON.stringify({stage: 'translation', name, ...current, elapsedMs: Date.now() - started}));}
           if (current.status.startsWith('翻译完成')) {result.state = 'complete'; break;}
+          if (isTranslationTimeoutSettling(current)) {
+            await pause(Math.min(500, Math.max(0, resumeGuard.deadline - Date.now())));
+            continue;
+          }
           if (/翻译中断|已暂停|译文与原文相同/u.test(current.status) || current.error) {
             const resumed = await resumeGuard.tryResume(current, {
               readSnapshot: () => historySnapshot(page, name), readSettings: readResumeSettings, assertActive: assertTranslationActive, persist,
@@ -1212,5 +1239,6 @@ async function main() {
 
 module.exports = {createResponseBodyObserver, closeLiveSession, isProviderDomain, shouldObserveResponseBody,
   parseBuiltinGlossaryArg, readPublicGlossaryState, selectPublicDocumentGlossary, installBuiltinGlossaryForLiveRun,
-  parseTranslationResumesArg, readPublicResumeSettings, isResumableTranslationTimeout, assertPreservedTranslations, createTranslationResumeGuard, activateProductionTranslationContinue};
+  parseTranslationResumesArg, readPublicResumeSettings, readProductionTranslationStatus, isResumableTranslationTimeout, isTranslationTimeoutSettling,
+  assertPreservedTranslations, createTranslationResumeGuard, activateProductionTranslationContinue};
 if (require.main === module) main().catch(error => {console.error(error.stack || error); process.exitCode = 1;});
