@@ -10,7 +10,7 @@ Popup 保留原来的界面语言选择，不重置已有语言、服务、模�
 
 - `diagnoseFailure(error, context)`：优先使用结构化 kind、HTTP 状态及 Retry-After 分类；旧供应商仅把消息作为内部归因线索，结果不保留原始消息。
 - `normalizeDiagnostic(value)`：跨消息边界只接收已知 code，重新生成文案键和允许动作，忽略传入的任意文案、动作与额外字段。
-- `getDiagnosticText`、`getDiagnosticActionLabel`：共享中英文固定文案。当前中文界面使用中文，其余界面语言明确回退英文；此诊断词库尚未提供七语言翻译。返回原网页与 popup 刷新失败等操作反馈通过现有 `translateLegacy` 词库覆盖七种界面语言。
+- `getDiagnosticText`、`getDiagnosticActionLabel`：从已注册的七语资源读取固定诊断文案，资源位于 `src/core/i18n/messages/self-help/`。界面沿用现有语言包按需加载；尚未加载时回退中文，资源就绪后更新文案。语言更新保留当前报告预览和限流截止时间。服务检查结果保存安全资源 key，逐密钥、逐服务及独立错误会同步更新，不重新请求服务，也不翻译供应商原始错误。返回原网页与 popup 刷新失败等操作反馈继续通过现有 `translateLegacy` 词库覆盖七种界面语言。
 - `buildDiagnosticReport(input)`：生成白名单 JSON 数据，无存储、日志、下载或网络副作用。
 
 分类包含取消、离线、无正文、不支持的页面、扩展上下文更新、网页组件未接入、凭据或权限、模型配置、普通配置、配置未保存、限流、超时、网络、服务异常与未知失败。配置未保存明确表示没有向供应商发起检测，用户取消不标记供应商不可用。
