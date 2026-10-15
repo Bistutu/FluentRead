@@ -130,6 +130,29 @@ export function getDiagnosticActionLabel(action: DiagnosticAction, locale = 'zh-
   return translate(`diagnostics.action.${action}`, resolveUiLanguageFromLocale(locale));
 }
 
+export type DiagnosticUiTextKey = "refresh-failed" | "source-closed" | "source-looking" | "source-return" | "source-unavailable" | "source-returned" | "source-return-hint" | "preview" | "report" | "privacy" | "export" | "exportFailed" | "first-use-start" | "first-use-translating" | "first-use-ready";
+const diagnosticUiKeys: Record<DiagnosticUiTextKey, string> = {
+  "refresh-failed": "diagnostics.ui.refresh-failed",
+  "source-closed": "diagnostics.ui.source-closed",
+  "source-looking": "diagnostics.ui.source-looking",
+  "source-return": "diagnostics.ui.source-return",
+  "source-unavailable": "diagnostics.ui.source-unavailable",
+  "source-returned": "diagnostics.ui.source-returned",
+  "source-return-hint": "diagnostics.ui.source-return-hint",
+  "preview": "diagnostics.report.preview",
+  "report": "diagnostics.report.previewLabel",
+  "privacy": "diagnostics.report.localOnly",
+  "export": "diagnostics.report.export",
+  "exportFailed": "diagnostics.report.exportFailed",
+  "first-use-start": "diagnostics.ui.first-use-start",
+  "first-use-translating": "diagnostics.ui.first-use-translating",
+  "first-use-ready": "diagnostics.ui.first-use-ready"
+};
+/** 纯文案读取；界面通过现有 bundleRevision 跟踪按需资源更新。 */
+export function getDiagnosticUiText(key: DiagnosticUiTextKey, locale = 'zh-CN'): string {
+  return translate(diagnosticUiKeys[key], resolveUiLanguageFromLocale(locale));
+}
+
 const FEATURES = ['popup', 'page', 'services', 'selection', 'hover', 'document', 'image', 'video', 'unknown'] as const;
 const SERVICE_TYPES = ['free', 'traditional', 'ai', 'custom', 'composite', 'local', 'unknown'] as const;
 export interface DiagnosticReportInput {

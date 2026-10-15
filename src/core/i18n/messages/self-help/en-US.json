@@ -41,5 +41,15 @@
   "diagnostics.report.previewLabel": "Diagnostic report preview",
   "diagnostics.report.export": "Export JSON",
   "diagnostics.report.exportFailed": "Export failed. Select and copy the preview.",
-  "diagnostics.action.retryLater": "Retry shortly"
+  "diagnostics.action.retryLater": "Retry shortly",
+  "diagnostics.ui.refresh-failed": "Could not reload the page. Reload it manually and try again.",
+  "diagnostics.ui.source-closed": "The original page is closed. Open it again.",
+  "diagnostics.ui.source-looking": "Finding your page…",
+  "diagnostics.ui.source-return": "Return to your page",
+  "diagnostics.ui.source-unavailable": "The original page is closed or unavailable. Open the page you want to translate and retry from the extension.",
+  "diagnostics.ui.source-returned": "Your page is active. Retry translation from the extension.",
+  "diagnostics.ui.source-return-hint": "After checking your service, return to your page and retry translation from the extension.",
+  "diagnostics.ui.first-use-start": "Open a foreign-language page and translate. Choose a service above if needed.",
+  "diagnostics.ui.first-use-translating": "Translating. Read the result on the page when ready.",
+  "diagnostics.ui.first-use-ready": "Translation is ready. You can also select text or use the paragraph shortcut."
 }

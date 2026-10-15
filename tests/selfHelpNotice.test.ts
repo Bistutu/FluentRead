@@ -7,7 +7,7 @@
 import {createRequire} from 'node:module';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import * as diagnostics from '@/src/services/diagnostics';
-import {diagnoseFailure, getDiagnosticText} from '@/src/services/diagnostics';
+import {diagnoseFailure, getDiagnosticText, getDiagnosticActionLabel, getDiagnosticUiText} from '@/src/services/diagnostics';
 import {createPopupPageActions, type PopupPageState} from '@/src/app/popup/pageActions';
 import {Config} from '@/src/core/config/model';
 import {compileVueInlineFixture} from './helpers/compiledVueFixture';
@@ -182,6 +182,27 @@ describe('actual self help notice', () => {
     f.props.language = 'es-ES';await settle();
     dispose?.();dispose = undefined;resolve(false);await settle();
     expect(all(f.root, value => value.tag === 'section')).toHaveLength(0);
+  });
+
+  it('switches actual recovery, report preview and export failure copy across all seven locales without losing the preview', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {throw new Error('PRIVATE export failure');});
+    const diagnostic = diagnoseFailure({kind: 'timeout'}), f = await mount(diagnostic);
+    await f.click(getDiagnosticUiText('preview', 'zh-CN'));
+    const preview = all(f.root, value => value.tag === 'pre')[0], report = contents(preview);
+    for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES', 'pt-BR']) {
+      f.props.language = locale;await settle();
+      expect(contents(f.root)).toContain(getDiagnosticText(diagnostic, locale).title);
+      expect(contents(f.root)).toContain(getDiagnosticText(diagnostic, locale).detail);
+      expect(f.button(getDiagnosticActionLabel('retry', locale))).toBeDefined();
+      expect(f.button(i18n.translate('diagnostics.report.hidePreview', i18n.resolveUiLanguageFromLocale(locale))).props['aria-expanded']).toBe(true);
+      expect(contents(f.root)).toContain(getDiagnosticUiText('privacy', locale));
+      expect(preview.props['aria-label']).toBe(getDiagnosticUiText('report', locale));
+      expect(all(f.root, value => value.tag === 'pre')[0]).toBe(preview);expect(contents(preview)).toBe(report);
+      await f.click(getDiagnosticUiText('export', locale));
+      expect(contents(f.root)).toContain(getDiagnosticUiText('exportFailed', locale));
+      expect(contents(f.root)).not.toContain('PRIVATE');
+    }
+
   });
 });
 

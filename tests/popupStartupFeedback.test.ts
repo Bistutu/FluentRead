@@ -52,11 +52,33 @@ describe('popup startup recovery feedback', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it.each(['en-US', 'fr-FR'])('uses a comprehensible English fallback for %s', language => {
+  it.each(['en-US', 'pt-BR', ''])('uses a comprehensible English fallback for %s', language => {
     vi.stubGlobal('navigator', {language});feedback = createPopupStartupFeedback('#app');vi.advanceTimersByTime(5000);
     expect(document.querySelector('#app')!.textContent).toContain('Still loading your settings');
     feedback.fail();expect(document.querySelector('#app')!.textContent).toContain('Could not open FluentRead');
     expect(document.querySelector('button')!.textContent).toBe('Reopen');
+  });
+
+  it.each([
+    {locale: 'zh-CN', waiting: '正在读取设置…', failed: '暂时无法打开流畅阅读', detail: '已保存的偏好会保留', button: '重新打开'},
+    {locale: 'en-US', waiting: 'Still loading your settings…', failed: 'Could not open FluentRead', detail: 'Saved preferences are preserved', button: 'Reopen'},
+    {locale: 'ja-JP', waiting: '設定を読み込んでいます…', failed: 'FluentReadを開けませんでした', detail: '保存した設定は保持されています', button: '開き直す'},
+    {locale: 'ko-KR', waiting: '설정을 불러오는 중…', failed: 'FluentRead를 열 수 없습니다', detail: '저장한 설정은 유지됩니다', button: '다시 열기'},
+    {locale: 'fr-FR', waiting: 'Chargement de vos paramètres…', failed: 'Impossible d’ouvrir FluentRead', detail: 'Vos préférences sont conservées', button: 'Rouvrir'},
+    {locale: 'ru-RU', waiting: 'Загружаем настройки…', failed: 'Не удалось открыть FluentRead', detail: 'Сохранённые настройки не изменились', button: 'Открыть снова'},
+    {locale: 'es-ES', waiting: 'Cargando tu configuración…', failed: 'No se pudo abrir FluentRead', detail: 'Tus preferencias se conservan', button: 'Volver a abrir'},
+  ])('renders waiting, safe failure and manual recovery in $locale', ({locale, waiting, failed, detail, button}) => {
+    vi.stubGlobal('navigator', {language: locale});feedback = createPopupStartupFeedback('#app');
+    vi.advanceTimersByTime(5000);expect(document.querySelector('strong')!.textContent).toBe(waiting);
+    expect(document.querySelector('p')!.textContent).toContain(detail);expect(document.querySelector('button')!.textContent).toBe(button);
+    feedback.fail();expect(document.querySelector('strong')!.textContent).toBe(failed);
+    expect(document.querySelector('p')!.textContent).toContain(detail);expect(reload).not.toHaveBeenCalled();
+    document.querySelector('button')!.dispatchEvent(new window.Event('click'));expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it.each([['FR-ca', 'Rouvrir'], ['es-MX', 'Volver a abrir'], ['JA_jp', '開き直す']])('routes browser language variant %s using its primary language', (language, label) => {
+    vi.stubGlobal('navigator', {language});feedback = createPopupStartupFeedback('#app');feedback.fail();
+    expect(document.querySelector('button')!.textContent).toBe(label);expect(navigator.language).toBe(language);
   });
 
   it('supports Chinese browser locale variants without persisting or changing any language preference', () => {

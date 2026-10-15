@@ -41,5 +41,15 @@
   "diagnostics.report.previewLabel": "Aperçu du rapport de diagnostic",
   "diagnostics.report.export": "Exporter en JSON",
   "diagnostics.report.exportFailed": "Échec de l’exportation. Sélectionnez et copiez le contenu de l’aperçu.",
-  "diagnostics.action.retryLater": "Réessayer dans un instant"
+  "diagnostics.action.retryLater": "Réessayer dans un instant",
+  "diagnostics.ui.refresh-failed": "Impossible d’actualiser la page. Actualisez-la manuellement, puis réessayez.",
+  "diagnostics.ui.source-closed": "La page d’origine est fermée. Rouvrez-la.",
+  "diagnostics.ui.source-looking": "Recherche de la page d’origine…",
+  "diagnostics.ui.source-return": "Revenir à la page d’origine",
+  "diagnostics.ui.source-unavailable": "La page d’origine est fermée ou inaccessible. Ouvrez la page à traduire, puis réessayez depuis l’extension.",
+  "diagnostics.ui.source-returned": "La page d’origine est active. Réessayez la traduction depuis l’extension.",
+  "diagnostics.ui.source-return-hint": "Après avoir vérifié le service, revenez à la page d’origine et réessayez la traduction depuis l’extension.",
+  "diagnostics.ui.first-use-start": "Ouvrez une page en langue étrangère et lancez la traduction. Vous pouvez choisir un service ci-dessus.",
+  "diagnostics.ui.first-use-translating": "Traduction en cours. Le résultat sera lisible sur la page une fois prêt.",
+  "diagnostics.ui.first-use-ready": "La traduction est affichée. Vous pouvez aussi sélectionner du texte ou utiliser le raccourci de traduction des paragraphes."
 }

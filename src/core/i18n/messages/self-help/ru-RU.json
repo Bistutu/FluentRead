@@ -41,5 +41,15 @@
   "diagnostics.report.previewLabel": "Предпросмотр диагностического отчёта",
   "diagnostics.report.export": "Экспорт в JSON",
   "diagnostics.report.exportFailed": "Не удалось экспортировать отчёт. Выделите и скопируйте текст предпросмотра.",
-  "diagnostics.action.retryLater": "Повторите чуть позже"
+  "diagnostics.action.retryLater": "Повторите чуть позже",
+  "diagnostics.ui.refresh-failed": "Не удалось обновить страницу. Обновите её вручную и повторите попытку.",
+  "diagnostics.ui.source-closed": "Исходная страница закрыта. Откройте её снова.",
+  "diagnostics.ui.source-looking": "Поиск исходной страницы…",
+  "diagnostics.ui.source-return": "Вернуться к исходной странице",
+  "diagnostics.ui.source-unavailable": "Исходная страница закрыта или недоступна. Откройте нужную страницу и повторите попытку из расширения.",
+  "diagnostics.ui.source-returned": "Исходная страница открыта. Повторите перевод из расширения.",
+  "diagnostics.ui.source-return-hint": "Проверьте сервис, вернитесь к исходной странице и повторите перевод из расширения.",
+  "diagnostics.ui.first-use-start": "Откройте страницу на иностранном языке и нажмите кнопку перевода. Сервис можно выбрать выше.",
+  "diagnostics.ui.first-use-translating": "Идёт перевод. Когда он завершится, результат появится на странице.",
+  "diagnostics.ui.first-use-ready": "Перевод отображён. В следующий раз можно также выделить текст или использовать сочетание клавиш для перевода абзаца."
 }

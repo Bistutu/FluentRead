@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {
   buildDiagnosticReport, diagnoseFailure, DIAGNOSTIC_CODES,
-  getDiagnosticActionLabel, getDiagnosticText, normalizeDiagnostic,
+  getDiagnosticActionLabel, getDiagnosticText, getDiagnosticUiText, normalizeDiagnostic,
   type DiagnosticCode, type DiagnosticReportInput,
 } from '../src/services/diagnostics';
 import {serializeTranslationError, TranslationRequestError} from '../src/services/translation/errors';
@@ -146,6 +146,42 @@ describe('self help diagnosis', () => {
     const copy = getDiagnosticText({code: 'unknown'});
     copy.title = 'changed';
     expect(getDiagnosticText({code: 'unknown'}).title).not.toBe('changed');
+  });
+
+  it('provides all diagnostic explanations, recovery actions and first-use/report copy in seven languages', () => {
+    const locales = ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'];
+    const uiKeys = ['preview', 'report', 'privacy', 'export', 'exportFailed', 'first-use-start', 'first-use-translating', 'first-use-ready',
+      'refresh-failed', 'source-closed', 'source-looking', 'source-return', 'source-unavailable', 'source-returned', 'source-return-hint'] as const;
+    const actions = ['retry', 'services', 'site-settings', 'refresh', 'dismiss'] as const;
+    for (const locale of locales) {
+      for (const code of DIAGNOSTIC_CODES) {
+        const copy = getDiagnosticText({code}, locale);
+        expect(copy.title.trim().length).toBeGreaterThan(3);expect(copy.detail.trim().length).toBeGreaterThan(15);
+        if (locale !== 'en-US') {expect(copy.title).not.toBe(getDiagnosticText({code}, 'en-US').title);expect(copy.detail).not.toBe(getDiagnosticText({code}, 'en-US').detail);}
+      }
+      for (const action of actions) {
+        expect(getDiagnosticActionLabel(action, locale).trim()).not.toBe('');
+        if (locale !== 'en-US') expect(getDiagnosticActionLabel(action, locale)).not.toBe(getDiagnosticActionLabel(action, 'en-US'));
+      }
+      for (const key of uiKeys) {
+        expect(getDiagnosticUiText(key, locale).trim()).not.toBe('');
+        if (locale !== 'en-US') expect(getDiagnosticUiText(key, locale)).not.toBe(getDiagnosticUiText(key, 'en-US'));
+      }
+    }
+    expect(getDiagnosticUiText('preview')).toBe(getDiagnosticUiText('preview', 'zh-CN'));
+  });
+
+  it('routes supported language variants and uses the shared default for unsupported or empty locales', () => {
+    for (const [variant, canonical] of [['zh-TW', 'zh-CN'], ['EN-gb', 'en-US'], ['ja_JP', 'ja-JP'], ['ko', 'ko-KR'], ['fr-CA', 'fr-FR'], ['ru', 'ru-RU'], ['es-MX', 'es-ES']]) {
+      expect(getDiagnosticText({code: 'authentication'}, variant)).toEqual(getDiagnosticText({code: 'authentication'}, canonical));
+      expect(getDiagnosticActionLabel('retry', variant)).toBe(getDiagnosticActionLabel('retry', canonical));
+      expect(getDiagnosticUiText('first-use-ready', variant)).toBe(getDiagnosticUiText('first-use-ready', canonical));
+    }
+    for (const locale of ['', 'pt-BR', 'unknown-language']) {
+      expect(getDiagnosticText({code: 'page-unavailable'}, locale)).toEqual(getDiagnosticText({code: 'page-unavailable'}, 'zh-CN'));
+      expect(getDiagnosticActionLabel('services', locale)).toBe(getDiagnosticActionLabel('services', 'zh-CN'));
+      expect(getDiagnosticUiText('privacy', locale)).toBe(getDiagnosticUiText('privacy', 'zh-CN'));
+    }
   });
 });
 

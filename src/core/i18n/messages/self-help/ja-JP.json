@@ -41,5 +41,15 @@
   "diagnostics.report.previewLabel": "診断レポートのプレビュー",
   "diagnostics.report.export": "JSON をエクスポート",
   "diagnostics.report.exportFailed": "エクスポートに失敗しました。プレビューの内容を選択してコピーしてください。",
-  "diagnostics.action.retryLater": "しばらくして再試行"
+  "diagnostics.action.retryLater": "しばらくして再試行",
+  "diagnostics.ui.refresh-failed": "ページを再読み込みできませんでした。手動で再読み込みしてから再試行してください。",
+  "diagnostics.ui.source-closed": "元のページは閉じられています。もう一度開いてください。",
+  "diagnostics.ui.source-looking": "元のページを探しています…",
+  "diagnostics.ui.source-return": "元のページに戻る",
+  "diagnostics.ui.source-unavailable": "元のページは閉じられているか、現在アクセスできません。翻訳するページを開き、拡張機能から再試行してください。",
+  "diagnostics.ui.source-returned": "元のページに戻りました。拡張機能から翻訳を再試行できます。",
+  "diagnostics.ui.source-return-hint": "サービスを確認したら元のページに戻り、拡張機能から翻訳を再試行してください。",
+  "diagnostics.ui.first-use-start": "外国語のページを開き、翻訳をクリックして開始します。上で翻訳サービスを選べます。",
+  "diagnostics.ui.first-use-translating": "翻訳中です。完了したらページ上で訳文を読めます。",
+  "diagnostics.ui.first-use-ready": "訳文を表示しました。次回はテキストの選択や段落翻訳のショートカットも使えます。"
 }

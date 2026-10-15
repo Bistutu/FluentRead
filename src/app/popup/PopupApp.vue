@@ -135,9 +135,9 @@
       </div>
 
       <DiagnosticNotice v-if="pageDiagnostic" :diagnostic="pageDiagnostic" :language="config.uiLanguage" :busy="translating" :version="version" @action="diagnosticAction" />
-      <p v-else-if="pageResultStatus === 'translating'" class="first-use-hint" role="status" data-i18n-ignore>{{ config.uiLanguage === 'zh-CN' ? '正在翻译，完成后可在网页中阅读译文。' : 'Translating. Read the result on the page when ready.' }}</p>
-      <p v-else-if="pageResultStatus === 'translated'" class="first-use-hint" role="status" data-i18n-ignore>{{ config.uiLanguage === 'zh-CN' ? '译文已显示。下次也可选中文字，或用快捷键翻译段落。' : 'Translation is ready. You can also select text or use the paragraph shortcut.' }}</p>
-      <p v-else-if="config.count === 0 && config.on && !currentSiteExtensionDisabled && !credentialWarning" class="first-use-hint" data-testid="first-translation-hint" data-i18n-ignore>{{ config.uiLanguage === 'zh-CN' ? '打开外文网页，点击翻译即可开始。可在上方选择翻译服务。' : 'Open a foreign-language page and translate. Choose a service above if needed.' }}</p>
+      <p v-else-if="pageResultStatus === 'translating'" class="first-use-hint" role="status" data-i18n-ignore>{{ diagnosticUi('first-use-translating') }}</p>
+      <p v-else-if="pageResultStatus === 'translated'" class="first-use-hint" role="status" data-i18n-ignore>{{ diagnosticUi('first-use-ready') }}</p>
+      <p v-else-if="config.count === 0 && config.on && !currentSiteExtensionDisabled && !credentialWarning" class="first-use-hint" data-testid="first-translation-hint" data-i18n-ignore>{{ diagnosticUi('first-use-start') }}</p>
 
       <PopupSiteRule
         v-if="siteModuleNestedInTranslation && isSiteModuleVisible"
@@ -350,7 +350,7 @@
 <script lang="ts" setup>
 import PopupLanguageSelect from './PopupLanguageSelect.vue';
 import DiagnosticNotice from '@/src/features/self-help/ui/DiagnosticNotice.vue';
-import {diagnoseFailure, normalizeDiagnostic, type Diagnostic, type DiagnosticAction} from '@/src/services/diagnostics';
+import {getDiagnosticUiText, diagnoseFailure, normalizeDiagnostic, type Diagnostic, type DiagnosticAction, type DiagnosticUiTextKey} from '@/src/services/diagnostics';
 import {normalizeTranslationToolbarStatus, type TranslationToolbarStatus} from '@/src/features/full-page-translation/toolbarStatus';
 
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, toRefs, watch } from 'vue';
@@ -429,7 +429,11 @@ import {featureServiceDefinitions, getFeatureService} from '@/src/core/config/fe
 const PopupServices = defineAsyncComponent(() => import('./PopupServices.vue'));
 const ElDrawer = defineAsyncComponent(() => import('./PopupDrawer'));
 const UiLanguageOnboarding = defineAsyncComponent(() => import('@/src/ui/components/UiLanguageOnboarding.vue'));
-const {language, t, translateLegacy} = useUiI18n();
+const {language, bundleRevision, t, translateLegacy} = useUiI18n();
+function diagnosticUi(key: DiagnosticUiTextKey): string {
+  void bundleRevision.value;
+  return getDiagnosticUiText(key, config.value.uiLanguage);
+}
 const version = browser.runtime.getManifest().version;
 // composition root 已等待配置服务；首次渲染直接使用完整快照，不能先暴露默认布局。
 const config = ref(normalizeConfig(runtimeConfig));
@@ -921,9 +925,9 @@ async function diagnosticAction(action: DiagnosticAction) {
     try {
     const tab = await tabSource.getTab();
     if (current() && tab?.id === currentTabId.value && (tab.pendingUrl || tab.url || '') === pageState.url) {
-      try {await browser.tabs.reload(tab.id);if (current()) closePopupSurface();} catch {if (current()) showNotice(translateLegacy('无法刷新网页，请手动刷新后重试。'), 'error');}
+      try {await browser.tabs.reload(tab.id);if (current()) closePopupSurface();} catch {if (current()) showNotice(diagnosticUi('refresh-failed'), 'error');}
     }
-    } catch {if (current()) showNotice(translateLegacy('原网页已关闭，请重新打开网页。'), 'error');}
+    } catch {if (current()) showNotice(diagnosticUi('source-closed'), 'error');}
     return;
   }
   if (action === 'retry') {pageDiagnostic.value = undefined;await pageActions.retry();}

@@ -6,11 +6,13 @@
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import * as vue from 'vue'
-import {translateLegacyText, type UiLanguage} from '@/src/core/i18n'
-import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles'
+import type {UiLanguage} from '@/src/core/i18n'
+import {registerUiLanguageBundle} from '@/src/core/i18n'
+import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles'
+registerAllUiLanguageBundles()
+import * as diagnostics from '@/src/services/diagnostics'
 import * as actionContext from '@/src/features/settings/model/useSettingsActionContext'
 import {compileVueInlineFixture} from './helpers/compiledVueFixture'
-registerAllUiLanguageBundles()
 const get = vi.fn(), update = vi.fn()
 const disposals: (() => void)[] = []
 type TestNode = {props: Record<string, any>; children: TestNode[]; parent?: TestNode; value?: string}
@@ -18,9 +20,9 @@ async function settle() {for (let i = 0; i < 8; i++) await Promise.resolve();awa
 async function mount(href = 'chrome-extension://fixture/options.html?returnTabId=7', locale: UiLanguage = 'zh-CN') {
   vi.stubGlobal('location', {href})
   const compiled = compileVueInlineFixture('src/features/settings/ui/services/ServiceRepairReturn.vue', {id: 'service-return'})
-  const language = vue.ref<UiLanguage>(locale)
+  const language = vue.ref<UiLanguage>(locale), bundleRevision = vue.ref(0)
   const dependencies: Record<string, unknown> = {'vue': vue, 'webextension-polyfill': {default: {tabs: {get, update}}},
-    '@/src/ui/i18n': {useUiI18n: () => ({language, translateLegacy: (text: string) => translateLegacyText(text, language.value)})}, '../../model/useSettingsActionContext': actionContext}
+    '@/src/ui/i18n': {useUiI18n: () => ({language, bundleRevision})}, '@/src/services/diagnostics': diagnostics, '../../model/useSettingsActionContext': actionContext}
   const module = {exports: {} as {default: vue.Component}}
   new Function('require', 'exports', 'module', compiled.code)((id: string) => {if (!(id in dependencies)) throw new Error(id);return dependencies[id]}, module.exports, module)
   const make = (): TestNode => ({props: {}, children: []})
@@ -40,27 +42,40 @@ async function mount(href = 'chrome-extension://fixture/options.html?returnTabId
   const button = () => nodes().find(n => Object.hasOwn(n.props, 'data-return-source-tab'))
   const text = () => nodes().map(n => n.value || '').join(' ')
   const click = async () => {const element = button();if (element) await element.props.onClick();await settle()}
-  return {props, shown, stop, button, text, click, language}
+  return {props, shown, stop, button, text, click, language, bundleRevision}
 }
 beforeEach(() => {vi.clearAllMocks();get.mockResolvedValue({id: 7, url: 'https://example.test/private?secret=fixture'});update.mockResolvedValue({id: 7})})
 afterEach(() => {for (const stop of disposals.splice(0)) stop();vi.unstubAllGlobals()})
 describe('服务修复后返回来源网页', () => {
+  it('迟到语言资源更新已有失败提示与按钮，不重新激活网页或清除失败状态', async () => {
+    registerUiLanguageBundle('fr-FR', {...UI_LANGUAGE_BUNDLES['fr-FR'], messages: {}})
+    try {
+      const h = await mount('chrome-extension://fixture/options.html?returnTabId=7', 'fr-FR')
+      get.mockResolvedValueOnce({id: 7, url: 'chrome://settings'})
+      await h.click();expect(h.text()).toContain('原网页已关闭或当前无法访问')
+      registerUiLanguageBundle('fr-FR', UI_LANGUAGE_BUNDLES['fr-FR'])
+      h.bundleRevision.value++;await settle()
+      expect(h.text()).toContain(diagnostics.getDiagnosticUiText('source-unavailable', 'fr-FR'))
+      expect(h.text()).toContain(diagnostics.getDiagnosticUiText('source-return', 'fr-FR'))
+      expect(get).toHaveBeenCalledTimes(1);expect(update).not.toHaveBeenCalled()
+    } finally {registerUiLanguageBundle('fr-FR', UI_LANGUAGE_BUNDLES['fr-FR'])}
+  })
   it.each(['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const)('%s 实际模板的空闲、等待、失败和返回成功反馈使用同一语言词库', async locale => {
     const h = await mount('chrome-extension://fixture/options.html?returnTabId=7', locale)
-    expect(h.text()).toContain(translateLegacyText('检查服务后，返回原网页，通过扩展重试翻译。', locale))
-    expect(h.text()).toContain(translateLegacyText('返回原网页', locale))
+    expect(h.text()).toContain(diagnostics.getDiagnosticUiText('source-return-hint', locale))
+    expect(h.text()).toContain(diagnostics.getDiagnosticUiText('source-return', locale))
     let release!: (value: unknown) => void
     get.mockReturnValueOnce(new Promise(resolve => {release = resolve}))
     const job = h.click();await settle()
-    expect(h.text()).toContain(translateLegacyText('正在查找原网页…', locale))
+    expect(h.text()).toContain(diagnostics.getDiagnosticUiText('source-looking', locale))
     release({id: 7, url: 'chrome://settings'});await job
-    expect(h.text()).toContain(translateLegacyText('原网页已关闭或当前无法访问。请打开需要翻译的网页，再通过扩展重试。', locale))
+    expect(h.text()).toContain(diagnostics.getDiagnosticUiText('source-unavailable', locale))
     await h.click()
-    expect(h.text()).toContain(translateLegacyText('已返回原网页，可通过扩展重试翻译。', locale))
+    expect(h.text()).toContain(diagnostics.getDiagnosticUiText('source-returned', locale))
     if (locale !== 'zh-CN' && locale !== 'ja-JP') expect(h.text()).not.toMatch(/[\u3400-\u9fff]/u)
     expect(get).toHaveBeenCalledTimes(2);expect(update).toHaveBeenCalledWith(7, {active: true})
     h.language.value = locale === 'zh-CN' ? 'en-US' : 'zh-CN';await settle()
-    expect(h.text()).toContain(translateLegacyText('已返回原网页，可通过扩展重试翻译。', h.language.value))
+    expect(h.text()).toContain(diagnostics.getDiagnosticUiText('source-returned', h.language.value))
     expect(get).toHaveBeenCalledTimes(2)
   })
   it.each([

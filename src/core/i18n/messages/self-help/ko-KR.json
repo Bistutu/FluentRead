@@ -41,5 +41,15 @@
   "diagnostics.report.previewLabel": "진단 보고서 미리보기",
   "diagnostics.report.export": "JSON 내보내기",
   "diagnostics.report.exportFailed": "내보내지 못했습니다. 미리보기 내용을 선택해 복사하세요.",
-  "diagnostics.action.retryLater": "잠시 후 다시 시도"
+  "diagnostics.action.retryLater": "잠시 후 다시 시도",
+  "diagnostics.ui.refresh-failed": "페이지를 새로고침하지 못했습니다. 직접 새로고침한 후 다시 시도하세요.",
+  "diagnostics.ui.source-closed": "원래 페이지가 닫혔습니다. 페이지를 다시 여세요.",
+  "diagnostics.ui.source-looking": "원래 페이지를 찾는 중…",
+  "diagnostics.ui.source-return": "원래 페이지로 돌아가기",
+  "diagnostics.ui.source-unavailable": "원래 페이지가 닫혔거나 현재 접근할 수 없습니다. 번역할 페이지를 열고 확장 프로그램에서 다시 시도하세요.",
+  "diagnostics.ui.source-returned": "원래 페이지로 돌아왔습니다. 확장 프로그램에서 번역을 다시 시도할 수 있습니다.",
+  "diagnostics.ui.source-return-hint": "서비스를 확인한 후 원래 페이지로 돌아가 확장 프로그램에서 번역을 다시 시도하세요.",
+  "diagnostics.ui.first-use-start": "외국어 페이지를 열고 번역을 누르면 시작됩니다. 위에서 번역 서비스를 선택할 수 있습니다.",
+  "diagnostics.ui.first-use-translating": "번역 중입니다. 완료되면 웹페이지에서 번역문을 읽을 수 있습니다.",
+  "diagnostics.ui.first-use-ready": "번역문이 표시되었습니다. 다음에는 텍스트를 선택하거나 문단 번역 단축키를 사용할 수도 있습니다."
 }
