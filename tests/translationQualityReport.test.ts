@@ -238,7 +238,7 @@ describe('translation quality report', () => {
     it('对照表保留计划、恢复记录与真实发出请求的不同分母，并列出尚未执行的服务', () => {
         const report = fixture();
         const success = report.runs[0];
-        const noRequest = {...success.cost, httpRequests: 0, inputCharacters: 0, requestBytes: 0, responseBytes: 0};
+        const noRequest = {...success.cost, httpRequests: 0, inputCharacters: 999, requestBytes: 0, responseBytes: 0};
         report.plan = {sampleIds: ['technical-negation', 'news-budget'], providerIds: ['alpha', 'not-started'], configurationId: 'default', repeats: 2};
         report.runs = [success,
             {...success, status: 'failure', failure: {category: 'deferred', message: 'Cooldown'}, cost: noRequest},
@@ -249,5 +249,9 @@ describe('translation quality report', () => {
         expect([...rows[0].querySelectorAll('td')].slice(0, 5).map(cell => cell.textContent)).toEqual(['4 / 3', '2 / 1', '1', '1', '0 / 1 / 1']);
         expect(rows[1].querySelector('th')!.textContent).toContain('not-started');
         expect([...rows[1].querySelectorAll('td')].slice(0, 5).map(cell => cell.textContent)).toEqual(['4 / 0', '0 / 0', '0', '0', '0 / 0 / 0']);
+        expect(rows[0].querySelector('td:nth-of-type(8)')!.textContent).toBe('20');
+        expect(page.document.body.textContent).toContain('零 HTTP');
+        expect(report.runs[1].cost.inputCharacters).toBe(999);
+        expect(openReport({...report, runs: []}).document.querySelector('.comparison > summary')!.textContent).toContain('2 组');
     });
 });
