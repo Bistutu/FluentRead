@@ -16,6 +16,7 @@ import {Config, normalizeConfig} from '@/src/core/config/model'
 import {extractConfigCredentials, sanitizeConfigCredentials} from '@/src/core/config/credentials'
 import type {ConfigStoragePort} from '@/src/platform/storage/configStorage'
 import {createPopupTabSource} from '@/src/app/popup/sourceTab'
+import {getDiagnosticUiText} from '@/src/services/diagnostics'
 
 const runtime=createRequire(import.meta.url)('vue') as typeof import('vue')
 const popupCompileOptions={
@@ -223,6 +224,17 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     const repair=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='检查翻译服务')!
     eventOf(repair)();await drain()
     expect(createTab).toHaveBeenCalledWith({url:expect.stringContaining('options.html?service=google')});expect(close).toHaveBeenCalledOnce()
+  })
+  it('首次使用、翻译中和真实完成提示在实际模板中跟随七种界面语言切换',async()=>{
+    await mount()
+    const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}
+    for(const locale of ['zh-CN','en-US','ja-JP','ko-KR','fr-FR','ru-RU','es-ES']){
+      state.config.uiLanguage=locale;await drain()
+      for(const [toolbarStatus,key]of [['idle','first-use-start'],['translating','first-use-translating'],['translated','first-use-ready']]as const){
+        runtimeEvent({type:'fullPageTranslationState',isTranslated:toolbarStatus!=='idle',toolbarStatus,documentToken:'popup-fixture-document'},sender);await drain()
+        expect(document.querySelector('.first-use-hint')!.textContent).toBe(getDiagnosticUiText(key,locale))
+      }
+    }
   })
   it.each(['service','key','endpoint'] as const)('真实%s配置变更使旧诊断和报告预览失效',async change=>{
     config.service='openai';config.apiKeys.openai=['fixture-key-before'];config.token.openai='fixture-key-before';await mount()

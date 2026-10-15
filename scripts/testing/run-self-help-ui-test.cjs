@@ -28,6 +28,12 @@ async function pollValue(read, accepts, label, timeout=30000) {
  do {const value=await read();if(accepts(value))return value;await new Promise(resolve=>setTimeout(resolve,50));} while(Date.now()<until);
  throw new Error('Timed out waiting for '+label);
 }
+async function fitNativePopup(page) {
+ const width=await page.evaluate(()=>Math.ceil(parseFloat(getComputedStyle(document.documentElement).width)));
+ assert.ok(width>=300&&width<=420,'Use the production popup intrinsic width');await page.setViewportSize({width,height:600});
+ const bounds=await page.evaluate(()=>({viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,root:document.documentElement.clientWidth,body:document.body.getBoundingClientRect().width,right:Math.max(...['.popup-header','.hero-card','.fluentread-diagnostic'].flatMap(selector=>[...document.querySelectorAll(selector)].map(el=>el.getBoundingClientRect().right)))}));
+ assert.ok(bounds.scrollWidth<=bounds.viewport&&bounds.body<=bounds.viewport&&bounds.right<=bounds.viewport);return bounds;
+}
 (async () => {
  try {
   server = http.createServer((req, res) => {
@@ -161,7 +167,19 @@ async function pollValue(read, accepts, label, timeout=30000) {
   mode = 'success';await source.goto(base+'/empty');await popup.reload();await popup.locator('[data-testid="page-translation"]').waitFor();await click('[data-testid="page-translation"]');
   await popup.locator('[data-diagnostic-code="no-content"]').waitFor({timeout:30000});await shot(popup,'09-no-content');record('no content diagnosis uses completed empty scan');
   await popup.close();popup=await open(`chrome-extension://${id}/popup.html?sourceTabId=${tabId}`,{width:320,height:600});await popup.locator('[data-diagnostic-code="no-content"]').waitFor();assert.equal(await popup.locator('.provider-summary-heading strong').textContent(),'OpenAI');record('reopen restores current page diagnosis and selected service');
-  await patch(popup,{service:'openai',uiLanguage:'en-US',theme:'light'});await popup.reload();await popup.locator('[data-diagnostic-code="no-content"]').waitFor();await shot(popup,'10-english');
+  await patch(popup,{service:'openai',uiLanguage:'en-US',theme:'light'});await popup.reload();await popup.locator('[data-diagnostic-code="no-content"]').waitFor();result.localeLayouts={'en-US':await fitNativePopup(popup)};await shot(popup,'10-english');
+  if(args.locales==='true') {
+   for(const [locale,title] of [['ja-JP','翻訳できる本文が見つかりません'],['ko-KR','번역할 본문을 찾지 못했습니다'],['fr-FR','Aucun texte à traduire trouvé'],['ru-RU','Текст для перевода не найден'],['es-ES','No se encontró texto para traducir']]) {
+    await patch(popup,{uiLanguage:locale});await popup.reload();
+    await popup.locator('[data-diagnostic-code="no-content"] strong').filter({hasText:title}).waitFor();
+    assert.equal(await popup.locator('[data-diagnostic-code="no-content"] strong').textContent(),title);
+    result.localeLayouts[locale]=await fitNativePopup(popup);
+    await popup.locator('.diagnostic-actions > button').last().evaluate(el=>el.click());
+    await popup.locator('.diagnostic-report pre').waitFor();
+    assert.ok(await popup.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await shot(popup,'11-'+locale);record('localized diagnosis and local report preview in '+locale);
+   }
+  }
   assert.equal(result.consoleErrors.length,0,JSON.stringify(result.consoleErrors));result.ok=true;
  } catch(error) {result.ok=false;result.error=error.stack;
   if(session)for(const [index,p] of session.context.pages().entries()){try{await shot(p,'failure-'+index);if(p.url().includes('/popup.html')){result.popupText=await p.locator('body').innerText();result.failureState=await p.evaluate(async()=>{const tabId=Number(new URL(location.href).searchParams.get('sourceTabId'));let state;try{const s=await chrome.tabs.sendMessage(tabId,{type:'getFullPageTranslationState'},{frameId:0});state={active:s?.isTranslated,status:s?.toolbarStatus,token:s?.documentToken,code:s?.diagnostic?.code};}catch(e){state={queryFailed:true};}return {state,transitions:window.__selfHelpTransitions};});}}catch{}}

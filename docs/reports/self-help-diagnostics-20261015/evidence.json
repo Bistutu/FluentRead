@@ -20,7 +20,12 @@
       "explicit retry resumes the same page after timeout",
       "cancel restores source and aborts in-flight local request",
       "no content diagnosis uses completed empty scan",
-      "reopen restores current page diagnosis and selected service"
+      "reopen restores current page diagnosis and selected service",
+      "localized diagnosis and local report preview in ja-JP",
+      "localized diagnosis and local report preview in ko-KR",
+      "localized diagnosis and local report preview in fr-FR",
+      "localized diagnosis and local report preview in ru-RU",
+      "localized diagnosis and local report preview in es-ES"
     ],
     "providerValidation": "Local HTTP fixtures only.",
     "launchMode": "macos-background-cdp",
@@ -55,7 +60,9 @@
     "05-report.png",
     "07-settings-narrow.png",
     "08-dark-rate.png",
-    "startup-failure.png"
+    "startup-failure.png",
+    "11-fr-FR.png",
+    "11-ru-RU.png"
   ],
   "startupUi": {
     "ok": true,
@@ -74,5 +81,49 @@
       "No provider translation, Firefox, Safari or physical-device acceptance.",
       "Startup failure is induced through this temporary page route only; configuration storage is real and unmodified."
     ]
+  },
+  "localeLayouts": {
+    "en-US": {
+      "viewport": 380,
+      "scrollWidth": 380,
+      "root": 380,
+      "body": 380,
+      "right": 364
+    },
+    "ja-JP": {
+      "viewport": 320,
+      "scrollWidth": 320,
+      "root": 320,
+      "body": 320,
+      "right": 304
+    },
+    "ko-KR": {
+      "viewport": 320,
+      "scrollWidth": 320,
+      "root": 320,
+      "body": 320,
+      "right": 304
+    },
+    "fr-FR": {
+      "viewport": 380,
+      "scrollWidth": 380,
+      "root": 380,
+      "body": 380,
+      "right": 364
+    },
+    "ru-RU": {
+      "viewport": 380,
+      "scrollWidth": 380,
+      "root": 380,
+      "body": 380,
+      "right": 364
+    },
+    "es-ES": {
+      "viewport": 380,
+      "scrollWidth": 380,
+      "root": 380,
+      "body": 380,
+      "right": 364
+    }
   }
 }

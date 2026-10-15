@@ -7,25 +7,26 @@
 <template>
   <div v-if="sourceTabId !== undefined" class="service-repair-return" data-service-repair-return>
     <p role="status" aria-live="polite">{{ message }}</p>
-    <button type="button" data-return-source-tab :disabled="!active || busy" @click="returnToSource">{{ translateLegacy(busy ? '正在查找原网页…' : '返回原网页') }}</button>
+    <button type="button" data-return-source-tab :disabled="!active || busy" @click="returnToSource">{{ getDiagnosticUiText(busy ? 'source-looking' : 'source-return', language) }}</button>
   </div>
 </template>
 <script setup lang="ts">
 import {computed, ref, watch} from 'vue'
 import browser from 'webextension-polyfill'
 import {useUiI18n} from '@/src/ui/i18n'
+import {getDiagnosticUiText} from '@/src/services/diagnostics'
 import {useSettingsActionContext} from '../../model/useSettingsActionContext'
 const props = withDefaults(defineProps<{active?: boolean; context?: unknown; contextKey?: string}>(), {active: true})
-const {translateLegacy} = useUiI18n()
+const {language} = useUiI18n()
 const sourceTabId = readSourceTabId()
 const busy = ref(false)
 const status = ref<'idle' | 'unavailable' | 'returned'>('idle')
 const {active, capture} = useSettingsActionContext(() => props.active, () => [props.context, props.contextKey])
 const message = computed(() => status.value === 'unavailable'
-  ? translateLegacy('原网页已关闭或当前无法访问。请打开需要翻译的网页，再通过扩展重试。')
+  ? getDiagnosticUiText('source-unavailable', language.value)
   : status.value === 'returned'
-    ? translateLegacy('已返回原网页，可通过扩展重试翻译。')
-    : translateLegacy('检查服务后，返回原网页，通过扩展重试翻译。'))
+    ? getDiagnosticUiText('source-returned', language.value)
+    : getDiagnosticUiText('source-return-hint', language.value))
 function readSourceTabId(): number | undefined {
   try {
     const source = new URL(location.href)
