@@ -2,7 +2,7 @@
  @file src/app/popup/PopupServices.vue
  文件职责：在 Popup 翻译服务抽屉中展示功能分配概览，以独立选择面板替代层叠下拉菜单，让窄弹窗里的服务选择更直观。
  B站匿名讲解只出现在阅读分配中，并展示固定有效模型；写作继续遵循通用AI服务边界。
- 主要内容：突出网页默认服务，以紧凑列表展示各功能的独立服务或继承状态，继承行在同一行标出“跟随默认”与实际跟随的服务，且仅在模型与默认服务的配置模型不同时才显示模型行，以统一状态标签呈现服务并让多语言名称完整换行，保留本地图标、配置模型和配置提醒；选择面板合并功能标题、返回与关闭操作，搜索框随列表一起滚动，常用区只放可直接使用的服务，按免费翻译、已配置或正在使用的服务、微软与谷歌、热门服务排序，待配置的服务留在更多服务中，当前选中项始终在常用区，更多服务默认展开并按机器翻译、云服务厂商与 AI 翻译分组，选项下方标出配置模型或待配置状态，支持模型搜索及键盘导航，保留不可用的旧选择，缓存默认、继承或独立行的配置模型及本地化说明，避免将设置中的模型声明为最终请求模型；只让当前活跃配置和所属面板的事件修改草稿，焦点返回复验面板与用户焦点；切换时仅重置所属抽屉的滚动，渲染后在同一归属保护内让搜索框或原分配行可见，不滚动宿主页面。
+ 主要内容：突出网页默认服务，以紧凑列表展示各功能的独立服务或继承状态，继承行在同一行标出“跟随默认”与实际跟随的服务，且仅在模型与默认服务的配置模型不同时才显示模型行，以统一状态标签呈现服务并让多语言名称完整换行，保留本地图标、配置模型和配置提醒；选择面板合并功能标题、返回与关闭操作，搜索框随列表一起滚动，常用区只放可直接使用的服务，按免费翻译、已配置或正在使用的服务、微软与谷歌、热门服务排序，待配置的服务留在更多服务中，当前选中项始终在常用区，更多服务默认展开并按机器翻译、云服务厂商与 AI 翻译分组，选项下方标出配置模型或待配置状态，支持模型搜索及键盘导航，保留不可用的旧选择，缓存默认、继承或独立行的配置模型及本地化说明，避免将设置中的模型声明为最终请求模型；只让当前活跃配置和所属面板的事件修改草稿，焦点返回复验面板与用户焦点；切换时仅重置所属抽屉的滚动，渲染后在同一归属保护内让搜索框或原分配行可见，不滚动宿主页面；可见区扩大时只修正仍聚焦的同一搜索外框被吸顶标题遮住的位置，保留查询和长列表滚动归属。
  模块边界：复用功能服务映射、模型解析及供应商能力，只修改父级配置草稿；保存由 PopupApp 负责，不请求翻译或处理连接密钥。
  键盘布局：极矮可见区复用同一输入和按钮排成单行，保留原有键盘顺序及控件名称；普通高度保留标题及关闭吸顶、搜索随列表滚动，不因旋转重建查询或会话。
 -->
@@ -208,6 +208,31 @@ function ownView() {
   const value = session.value, token = viewRevision.value, current = capture();
   return () => current() && token === viewRevision.value && (value ? ownsSession(value) : !session.value);
 }
+function revealInScroller(scroller: HTMLElement, destination: HTMLElement, sticky: Element | null, margin = 0) {
+  const bounds = scroller.getBoundingClientRect(), item = destination.getBoundingClientRect();
+  const top = Math.max(bounds.top + scroller.clientTop, sticky?.getBoundingClientRect().bottom ?? bounds.top);
+  const bottom = bounds.top + scroller.clientTop + scroller.clientHeight;
+  if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) return;
+  const delta = item.top - margin < top ? item.top - margin - top
+    : item.bottom + margin > bottom ? Math.min(item.top - margin - top, item.bottom + margin - bottom) : 0;
+  if (delta) scroller.scrollTop = Math.max(0, scroller.scrollTop + delta);
+}
+function revealFocusedSearch(owner: () => boolean) {
+  const root = panel.value, input = searchInput.value, current = ownView();
+  const scroller = root?.closest<HTMLElement>('.popup-services-drawer .el-drawer__body');
+  if (!owner() || !root || !input || !session.value || !scroller || document.activeElement !== input) return;
+  void nextTick(() => {
+    if (!owner() || !current() || !root.isConnected || searchInput.value !== input || document.activeElement !== input
+      || root.closest('.popup-services-drawer .el-drawer__body') !== scroller
+      || root.closest('.popup-drawer-modal')?.hasAttribute('data-fluent-read-popup-short')) return;
+    const border = input.closest<HTMLElement>('.service-picker-search'), heading = root.querySelector('.service-picker-heading');
+    if (!border || !heading) return;
+    const item = border.getBoundingClientRect(), cover = heading.getBoundingClientRect();
+    // 只修正标题压住当前搜索外框的情形；尽量保留本组件的2px focus ring，滚动始终受容器0边界约束。
+    if (item.top - 2 < cover.bottom && item.bottom > cover.top) revealInScroller(scroller, border, heading, 2);
+  });
+}
+defineExpose({revealFocusedSearch});
 function focusAfterRender(current: () => boolean, before: Element | null, target: () => HTMLElement | null) {
   const root = panel.value, startedHere = before === document.body || Boolean(before && root?.contains(before));
   const scroller = root?.closest<HTMLElement>('.popup-services-drawer .el-drawer__body');
@@ -219,12 +244,7 @@ function focusAfterRender(current: () => boolean, before: Element | null, target
     if (!canRestore()) return;
     const destination = target();
     if (destination && scroller?.isConnected && root?.closest('.popup-services-drawer .el-drawer__body') === scroller) {
-      const bounds = scroller.getBoundingClientRect(), item = destination.getBoundingClientRect();
-      const top = Math.max(bounds.top + scroller.clientTop,
-        root.querySelector('.popup-service-toolbar')?.getBoundingClientRect().bottom ?? bounds.top);
-      const bottom = bounds.top + scroller.clientTop + scroller.clientHeight;
-      const delta = item.top < top ? item.top - top : item.bottom > bottom ? Math.min(item.top - top, item.bottom - bottom) : 0;
-      if (delta) scroller.scrollTop = Math.max(0, scroller.scrollTop + delta);
+      revealInScroller(scroller, destination, root.querySelector('.popup-service-toolbar'));
     }
     destination?.focus({preventScroll: true});
   });
