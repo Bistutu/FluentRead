@@ -1,5 +1,5 @@
 {
-  "status": "passed-with-explicit-platform-gaps",
+  "status": "local-verification-passed-ci-fixes-awaiting-confirmation",
   "baseCommit": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
   "taskBranch": "codex/web-stability-20261015",
   "localEvidenceRoot": "/Users/thinkstu/Desktop/copy/research/web-stability-20261015",
@@ -927,7 +927,7 @@
   "notVerified": [
     "Physical Android Firefox and iOS/iPadOS Safari touch input",
     "macOS Safari runtime and Safari signed distribution",
-    "Userscript manager runtime; bundle/verifier only",
+    "Userscript MV3 managers and manager/browser combinations other than Violentmonkey 2.49.0 MV2 on Edge 131",
     "Long-term or cross-region provider reliability and systematic translation quality",
     "Every website, login-only feed, and unknown third-party protection shell"
   ],
@@ -1008,5 +1008,72 @@
     "focusPolicy": "Secondary display, normal visible window, background launch; never daily profiles or bringToFront",
     "controlledVsNative": "Maintenance mutations are controlled DOM probes on actual live pages; HN comment toggles and Mastodon pagination/navigation use native site controls",
     "siteFailuresAtFinal": []
+  },
+  "userscriptManagerFollowUp": {
+    "ok": true,
+    "userscriptSha256": "bc79b555292bb614bdf5615d1a151598fb1fe8e12ea72ccebc0c938450c94740",
+    "manager": "Violentmonkey 2.49.0 MV2",
+    "browser": "Microsoft Edge 131",
+    "stages": 9,
+    "requests": 13,
+    "provider": "Real GM HTTP to a loopback controlled DeepLX endpoint",
+    "gcRounds": 16,
+    "documentAndShadowStylesCollected": true,
+    "hostStayedConnected": true,
+    "artifactUnchanged": true,
+    "browserClosed": true,
+    "profileRemoved": true,
+    "profileProcessesGone": true,
+    "focusEvents": [],
+    "consoleErrors": [],
+    "evidence": "final/userscript-manager/report.json",
+    "visualReview": "final/userscript-manager/visual-review.json",
+    "cleanup": "final/userscript-manager/cleanup.json",
+    "provenance": "final/userscript-manager/manager-provenance.json",
+    "scope": "MV2 and Edge 131 only; not MV3, Safari, mobile or private invalidation callback-count proof"
+  },
+  "ciFollowUp": {
+    "initialRun": "https://github.com/FluentRead/FluentRead/actions/runs/38700308975",
+    "initialCommit": "206f72b5c985172f87a93915fd69d652418e4753",
+    "initialResult": {
+      "testFilesPassed": 469,
+      "testFilesFailed": 2,
+      "testsPassed": 17354,
+      "testsFailed": 2,
+      "testsSkipped": 4,
+      "changedStrictModules": 14,
+      "allFourCoverageDimensions": 100
+    },
+    "fixes": [
+      {
+        "file": "scripts/testing/owned-browser-close.cjs",
+        "cause": "Owned Linux actor may exit after ps but before /proc stat; on ENOENT confirm absence with one bounded ps observation",
+        "baseline": "Actual actor-exit timing test fails against fa431a845 original guard and passes after repair; same original hash as CI",
+        "negativeControls": "Live or reused PID, empty successful ps, ps permission and stat permission failures continue to reject without signals"
+      },
+      {
+        "file": "tests/obsidianPdfLifecycle.test.ts",
+        "cause": "CI stack entered real PDF.js while test replaced URL constructor with a plain object",
+        "baseline": "Original Node22 baseline/HEAD and V8 coverage all pass locally; CI failure is not locally reproduced",
+        "repair": "Preserve URL constructor, verify API mock, gate two concurrent documents and prove controlled worker Blob and separate task destruction; production extraction unchanged"
+      }
+    ],
+    "targetedValidation": {
+      "node": "22.23.2 macOS",
+      "files": 3,
+      "passed": 125,
+      "scope": "ownedBrowserClose, processRegression including native focus-safe lifecycle, obsidianPdfLifecycle",
+      "log": "final/ci-followup/ci-fixes-combined-node22.log",
+      "audit": "passed",
+      "docsBuild": "passed"
+    },
+    "evidence": "final/ci-followup",
+    "latestCi": "Pending push and CI confirmation",
+    "environmentBlockedAttempt": {
+      "node": "24.19.0",
+      "environment": "default macOS sandbox",
+      "result": "Native process tests cannot observe /bin/ps: spawn EPERM; reran intended Node22 scope with required process observation permission",
+      "log": "final/ci-followup/ci-fixes-combined-sandbox-blocked.log"
+    }
   }
 }
