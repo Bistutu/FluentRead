@@ -294,6 +294,30 @@ describe('userscript browser shim injection', () => {
             expect(original.messages['learning.reloadPage']).toBeTruthy();
         }
     });
+    it.each(Object.keys(pinnedLanguageFiles) as Array<keyof typeof extensionBundles>)('freezes only the published %s document messages while retaining current extension copy', language => {
+        const original = extensionBundles[language], projected = UI_LANGUAGE_BUNDLES[language];
+        const originalBefore = JSON.stringify(original);
+        const documentMessages = (messages: Record<string, string>) => Object.fromEntries(Object.entries(messages).filter(([key]) => key.startsWith('document.')));
+        expect(documentMessages(projected.messages)).toEqual(documentMessages(publishedMessages[language]!));
+        for (const suffix of ['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage']) {
+            const key = `document.pdfReading.${suffix}`;
+            expect(original.messages[key]).toBeTruthy(); expect(projected.messages).not.toHaveProperty(key);
+        }
+        for (const suffix of ['exportHint', 'layoutExportHint', 'exportPageCount']) {
+            const key = `document.pdfReading.${suffix}`;
+            expect(original.messages[key]).toBeTruthy(); expect(original.messages[key]).not.toBe(publishedMessages[language]![key]);
+            expect(projected.messages[key]).toBe(publishedMessages[language]![key]);
+        }
+        const nonDocument = Object.fromEntries(Object.entries(projected.messages).filter(([key]) => !key.startsWith('document.')));
+        for (const [key, value] of Object.entries(nonDocument)) expect(value).toBe(publishedOverrideKeys.includes(key)
+            ? publishedMessages[language]![key] : original.messages[key]);
+        // 原文案继续使用root已发布投影，材料扩展界面文本不重新进入脚本固定资源。
+        const materialSources = new Set(Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]));
+        expect(projected.legacyText).toEqual(Object.fromEntries(Object.entries(original.legacyText).filter(([source]) => !materialSources.has(source))));
+        const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
+        for (const phase of ['early', 'late'] as const) expect(projected.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
+        expect(JSON.stringify(original)).toBe(originalBefore);
+    });
     it.each(['standard', 'standalone'] as const)('keeps %s runtime icon inline and pins only the standard manager icon', async mode => {
         vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', mode === 'standalone' ? '1' : '');
         vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', '');

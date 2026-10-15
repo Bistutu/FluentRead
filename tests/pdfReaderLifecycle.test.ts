@@ -481,6 +481,24 @@ describe('PDF material resume ownership', () => {
         expect(reader.state.currentPage).toBe(1);
         const closing = exposed.resumePage(1); mountedApp.unmount(); mountedApp = undefined; await closing;
     });
+    it('keeps the resumed page while the professional full-passage view opens and receives corrected text', async () => {
+        const doc = model(3), sources = doc.segments.map(segment => segment.source);
+        const reader = mountReader(doc, 'bilingual', ['Reviewed first page', 'Reviewed second page', 'Reviewed third page']);
+        const exposed = mountedApp._instance.subTree.component.exposed;
+        await exposed.resumePage(2); await componentFlush(); flushFrames(); await componentFlush();
+        await reader.state.openFullPassage(2, 1); await componentFlush();
+        const dialog = reader.root.querySelector<HTMLDialogElement>('.pdf-full-passage-dialog')!;
+        expect(dialog.hasAttribute('open')).toBe(true);
+        expect(dialog.querySelector('.pdf-full-passage-source p')!.textContent).toBe(sources[1]);
+        expect(dialog.querySelector('.pdf-full-passage-translation')!.textContent).toBe('Reviewed second page');
+        reader.currentTranslations.value = ['Reviewed first page', 'Corrected after material resume', 'Reviewed third page'];
+        await componentFlush(); flushFrames(); await componentFlush();
+        expect(dialog.querySelector('.pdf-full-passage-translation')!.textContent).toBe('Corrected after material resume');
+        dialog.close(); await componentFlush();
+        expect(reader.state.currentPage).toBe(2); expect(reader.state.pageInput).toBe(2);
+        expect(doc.segments.map(segment => segment.source)).toEqual(sources);
+        expect(reader.currentTranslations.value[1]).toBe('Corrected after material resume');
+    });
 });
 
 describe('PDF document pinch zoom integration', () => {
