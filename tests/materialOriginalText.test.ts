@@ -38,15 +38,46 @@ describe('bounded original text for material locators', () => {
     });
 
     it.each([
+        {markup: '<code>getUserID</code>', text: 'getUserID'},
+        {markup: '<kbd>Ctrl</kbd>', text: 'Ctrl'},
+        {markup: '<span class="notranslate">getUserID</span>', text: 'getUserID'},
+        {markup: '<span data-notranslate="true">getUserID</span>', text: 'getUserID'},
+    ])('retains visible original text from $markup in the expanded quote', ({markup, text}) => {
+        const {paragraph} = fixture(`<p>Use ${markup} to load.</p>`);
+        const tail = paragraph.lastChild!;
+        const offset = tail.textContent!.indexOf('load');
+        const projected = projectMaterialOriginalText(paragraph, rangeAt(tail, offset, tail, offset + 4))!;
+        const quote = `Use ${text} to load.`;
+        expect(projected.text).toBe(quote);
+        expect(projected.selection).toEqual({start: quote.indexOf('load'), end: quote.indexOf('load') + 4});
+        expect(locateMaterialOriginalQuote(projected, quote)?.quote).toBe(quote);
+        const inside = projectMaterialOriginalText(paragraph, rangeAt(paragraph.children[0].firstChild!))!;
+        expect(locateMaterialOriginalQuote(inside, quote)?.index).toBe(0);
+    });
+
+    it.each(['class="notranslate"', 'data-notranslate="true"'])('retains original prose under a translation opt-out ancestor: %s', attributes => {
+        const {document, paragraph} = fixture(`<div ${attributes}><p>Visible original source.</p></div>`);
+        document.body.classList.add('notranslate');
+        const projection = projectMaterialOriginalText(paragraph, rangeAt(paragraph.firstChild!))!;
+        expect(locateMaterialOriginalQuote(projection, 'Visible original source.')?.quote).toBe('Visible original source.');
+    });
+
+    it('still excludes inline code in hidden, editable or FluentRead-owned branches and code blocks', () => {
+        const {document, paragraph} = fixture('<p>Visible <code hidden>SECRET</code><span contenteditable><kbd>PRIVATE</kbd></span><span data-fluent-read-ui><code>TOOLS</code></span>original.</p>');
+        const block = document.createElement('pre'); block.innerHTML = '<code>BLOCK SECRET</code>'; paragraph.append(block);
+        expect(projectMaterialOriginalText(paragraph)?.text).toBe('Visible original.');
+        for (const code of paragraph.querySelectorAll('code,kbd')) expect(projectMaterialOriginalText(paragraph, rangeAt(code.firstChild!))).toBeUndefined();
+    });
+
+    it.each([
         '<script>secret</script>', '<style>secret</style>', '<noscript>secret</noscript>', '<template>secret</template>',
         '<textarea>secret</textarea>', '<button>secret</button>', '<select><option>secret</option></select>',
-        '<code>secret</code>', '<svg><text>secret</text></svg>', '<math>secret</math>',
+        '<svg><text>secret</text></svg>', '<math>secret</math>',
         '<span hidden>secret</span>', '<span inert>secret</span>', '<span aria-hidden="true">secret</span>',
         '<span contenteditable="true">secret</span>', '<span contenteditable>secret</span>', '<span role="textbox">secret</span>',
         '<span role="button">secret</span>', '<span data-fr-translation-owned="true">secret</span>',
         '<span data-fluent-read-ui>secret</span>', '<span id="fluent-read-toolbar">secret</span>',
-        '<span class="fluent-read-translation-text">secret</span>', '<span class="notranslate">secret</span>',
-        '<span data-notranslate="true">secret</span>',
+        '<span class="fluent-read-translation-text">secret</span>',
     ])('does not collect the excluded descendant %s', child => {
         const {paragraph} = fixture(`<p>Original ${child}continues.</p>`);
         expect(projectMaterialOriginalText(paragraph)?.text).toBe('Original continues.');

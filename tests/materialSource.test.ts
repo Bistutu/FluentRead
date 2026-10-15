@@ -7,6 +7,7 @@
 import {parseHTML} from 'linkedom';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {captureMaterialSelection, materialResumeLink} from '@/src/features/vocabulary/materialSource';
+import * as paragraphScanner from '@/src/features/vocabulary/materialParagraphScan';
 import {locateMaterialParagraph, mountMaterialContent} from '@/src/features/vocabulary/materialContent';
 import {beginMaterialCapture, completeMaterialCapture} from '@/src/features/vocabulary/materialCapture';
 import type {MaterialRecord} from '@/src/features/vocabulary/materialProtocol';
@@ -16,8 +17,12 @@ import {sanitizeVocabularyVideoUrl} from '@/src/features/vocabulary/source';
 const ports = vi.hoisted(() => ({resolve: vi.fn(), generation: vi.fn(), capture: vi.fn()}));
 vi.mock('@/src/features/vocabulary/materialClient', () => ({materialResolve: ports.resolve, materialGeneration: ports.generation, materialCapture: ports.capture}));
 const record = (overrides: Partial<MaterialRecord> = {}): MaterialRecord => ({id: 'material-1', identityKey: 'article:https://example.com/read?id=1#/chapter/2', kind: 'article', title: 'Reading', source: {kind: 'article', url: 'https://example.com/read?id=1#/chapter/2'}, locator: {kind: 'text', quote: 'unique original sentence'}, topics: [], references: [], createdAt: 1, updatedAt: 1, lastReadAt: 1, archivedAt: null, ...overrides});
-const tick = async () => {await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();};
+const tick = async () => {await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await vi.advanceTimersByTimeAsync(0);};
 const dispose: Array<() => void> = [];
+const rangeAt = (startContainer: Node, startOffset: number, endOffset: number, endContainer = startContainer) => ({startContainer, startOffset, endContainer, endOffset}) as Range;
+const locate = async (...args: Parameters<typeof locateMaterialParagraph>) => {
+    const pending = locateMaterialParagraph(...args); await vi.runAllTimersAsync(); return pending;
+};
 function dom(body: string, url = 'https://example.com/read?id=1&__fluentread_material=material-1#/chapter/2') {
     const {document, window} = parseHTML(`<html><head><title>Source title</title></head><body>${body}</body></html>`);
     const location = new URL(url);
@@ -32,7 +37,7 @@ function dom(body: string, url = 'https://example.com/read?id=1&__fluentread_mat
     return {document: document as unknown as Document, window, location};
 }
 beforeEach(() => {vi.useFakeTimers(); ports.resolve.mockReset(); ports.capture.mockReset(); ports.generation.mockReset().mockResolvedValue(3); ports.capture.mockResolvedValue(record());});
-afterEach(() => {dispose.splice(0).forEach(stop => stop()); vi.useRealTimers(); vi.unstubAllGlobals();});
+afterEach(() => {dispose.splice(0).forEach(stop => stop()); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('材料来源与继续阅读', () => {
     it('空来源、文件页与缺少公共文档地址均提供恢复操作', () => {
@@ -56,24 +61,44 @@ describe('材料来源与继续阅读', () => {
         expect(new URL(materialResumeLink(video).href!).searchParams.get('t')).toBe('12.345s');
         expect(materialResumeLink({...video, source: {kind: 'video', url: 'javascript:alert(1)'}})).toMatchObject({label: '找回来源'});
     });
-    it('按语境消歧单词，支持跨行内节点的原句与两侧空白', () => {
+    it('按语境消歧单词，支持跨行内节点的原句与两侧空白', async () => {
         const {document} = dom('<p>A <strong>word</strong> followed.</p><p>Another word exists.</p>');
-        expect(locateMaterialParagraph(document, {kind: 'text', quote: 'word', prefix: 'A ', suffix: ' followed.'})?.textContent).toBe('A word followed.');
+        expect((await locate(document, {kind: 'text', quote: 'word', prefix: 'A ', suffix: ' followed.'})).node?.textContent).toBe('A word followed.');
     });
-    it('重复原句没有上下文时不猜测；段落 ID 优先但仍核对原句', () => {
+    it('重复原句没有上下文时不猜测；段落 ID 优先但仍核对原句', async () => {
         const {document} = dom('<p id="first">same sentence</p><p id="second">same sentence</p>');
-        expect(locateMaterialParagraph(document, {kind: 'text', quote: 'same sentence'})).toBeUndefined();
-        expect(locateMaterialParagraph(document, {kind: 'text', quote: 'same sentence', paragraphId: 'second'})?.id).toBe('second');
-        expect(locateMaterialParagraph(document, {kind: 'text', quote: 'changed', paragraphId: 'second'})).toBeUndefined();
+        expect((await locate(document, {kind: 'text', quote: 'same sentence'})).status).toBe('ambiguous');
+        expect((await locate(document, {kind: 'text', quote: 'same sentence', paragraphId: 'second'})).node?.id).toBe('second');
+        expect((await locate(document, {kind: 'text', quote: 'changed', paragraphId: 'second'})).status).toBe('not-found');
     });
-    it('相同段落重复单词可使用第二次出现的上下文，不把导航当正文', () => {
+    it('相同段落重复单词可使用第二次出现的上下文，不把导航当正文', async () => {
         const {document} = dom('<nav><p>word</p></nav><p>first word and second word done</p>');
-        expect(locateMaterialParagraph(document, {kind: 'text', quote: 'word', prefix: 'second ', suffix: ' done'})?.textContent).toContain('second word');
+        expect((await locate(document, {kind: 'text', quote: 'word', prefix: 'second ', suffix: ' done'})).node?.textContent).toContain('second word');
     });
     it('选择快照保留语义来源和用户当前段落，不保存扩展内部页地址', () => {
         const {document} = dom('<p id="source">A word followed.</p>'); const text = document.querySelector('p')!.firstChild!;
-        const range = {startContainer: text, endContainer: text, cloneRange: () => {throw new Error('stub');}} as unknown as Range;
+        const range = rangeAt(text, 2, 6);
         expect(captureMaterialSelection(range, 'word')).toMatchObject({source: {kind: 'article', url: 'https://example.com/read?id=1#/chapter/2'}, locator: {paragraphId: 'source', prefix: 'A ', suffix: ' followed.'}});
+    });
+    it('双语页面只保存包含实际选区的完整原句，恢复原文后仍能定位', async () => {
+        const {document} = dom('<p>First practice sentence. We <em>practice</em> daily.<span class="fluent-read-bilingual-content">双语译文</span></p>');
+        const selected = document.querySelector('em')!.firstChild!;
+        const captured = captureMaterialSelection(rangeAt(selected, 0, 8), 'We practice daily.')!;
+        expect(captured).not.toBeInstanceOf(Promise);
+        expect(captured.locator).toMatchObject({quote: 'We practice daily.', prefix: 'First practice sentence. ', suffix: ''});
+        document.querySelector('.fluent-read-bilingual-content')!.remove();
+        expect((await locate(document, captured.locator!)).status).toBe('matched');
+    });
+    it('网页不翻译区域中的code/kbd完整句子同步捕获，跨段与隐藏选区不产生定位', () => {
+        const {document} = dom('<article class="notranslate"><p>Use <code>getUserID</code> to load. Press <kbd>Ctrl</kbd> to continue.<span hidden>private</span></p><p>Other paragraph.</p></article>');
+        const code = document.querySelector('code')!.firstChild!;
+        expect(captureMaterialSelection(rangeAt(code, 0, 9), 'Use getUserID to load.')?.locator?.quote).toBe('Use getUserID to load.');
+        const keyboard = document.querySelector('kbd')!.firstChild!;
+        expect(captureMaterialSelection(rangeAt(keyboard, 0, 4), 'Press Ctrl to continue.')?.locator?.quote).toBe('Press Ctrl to continue.');
+        const other = document.querySelectorAll('p')[1].firstChild!;
+        expect(captureMaterialSelection(rangeAt(code, 0, 4, other), 'Use getUserID to load.')).toBeUndefined();
+        const hidden = document.querySelector('[hidden]')!.firstChild!;
+        expect(captureMaterialSelection(rangeAt(hidden, 0, 7), 'private')).toBeUndefined();
     });
     it('文档选择使用内容指纹和页号，不使用随机渲染身份', () => {
         const {document} = dom('<div data-fluentread-material-fingerprint="hash-content" data-fluentread-material-title="Paper"><article data-page-number="4"><p>original text</p></article></div>', 'chrome-extension://id/document.html');
@@ -88,19 +113,18 @@ describe('材料来源与继续阅读', () => {
         const {document} = dom('<div data-fluentread-material-fingerprint="hash" data-fluentread-material-page="2" data-fluentread-material-section="docx:1"><p>selected text</p></div>', 'chrome-extension://id/document.html'); const node = document.querySelector('p')!;
         expect(captureMaterialSelection({startContainer: node, endContainer: node} as unknown as Range, 'selected text')?.locator).toMatchObject({page: 2, section: 'docx:1'});
     });
-    it('丢失选区、无Document、不可恢复的内部页面及无原句定位均安全降级', () => {
+    it('丢失选区、无Document、不可恢复的内部页面及无原句定位均安全降级', async () => {
         expect(captureMaterialSelection({startContainer: {isConnected: false}, endContainer: {isConnected: true}} as unknown as Range, 'a')).toBeUndefined();
         expect(captureMaterialSelection({startContainer: {isConnected: true, nodeType: 1}, endContainer: {isConnected: true}} as unknown as Range, 'a')).toBeUndefined();
         const {document} = dom('<span id="inside">some <b>word</b></span>', 'chrome-extension://id/document.html'); const node = document.querySelector('b')!;
         expect(captureMaterialSelection({startContainer: node, endContainer: node} as unknown as Range, 'word')).toBeUndefined();
-        expect(locateMaterialParagraph(document, {kind: 'text'})).toBeUndefined();
+        expect((await locate(document, {kind: 'text'})).status).toBe('not-found');
         expect(mountMaterialContent({defaultView: null} as Document, new AbortController().signal, () => true)()).toBeUndefined();
     });
     it('完整选区偏移和缺少上下文的选区均不猜测正文，文档无页号与可选来源仍保留指纹', () => {
         const {document} = dom('<p>word first; word second</p>'); const node = document.querySelector('p')!;
-        const cloned = {selectNodeContents() {}, setEnd() {}, toString: () => 'word first; '};
-        expect(captureMaterialSelection({startContainer: node, endContainer: node, startOffset: 12, cloneRange: () => cloned} as unknown as Range, 'word')?.locator?.prefix).toBe('word first; ');
-        expect(captureMaterialSelection({startContainer: node, endContainer: node} as unknown as Range, 'absent')?.locator?.prefix).toBeUndefined();
+        expect(captureMaterialSelection(rangeAt(node.firstChild!, 12, 16), 'word')?.locator?.prefix).toBe('word first; ');
+        expect(captureMaterialSelection(rangeAt(node.firstChild!, 12, 16), 'absent')).toBeUndefined();
         node.setAttribute('data-fluentread-material-fingerprint', 'hash'); node.setAttribute('data-fluentread-material-source', 'https://example.com/p.pdf'); node.setAttribute('data-fluentread-material-section', 'epub:2');
         expect(captureMaterialSelection({startContainer: node, endContainer: node} as unknown as Range, 'word')).toMatchObject({source: {url: 'https://example.com/p.pdf'}, locator: {section: 'epub:2'}});
     });
@@ -112,7 +136,7 @@ describe('材料来源与继续阅读', () => {
     it('位置无法匹配有明确恢复说明；不存在的材料立即提示', async () => {
         const {document, location, window} = dom('<p>new content</p>'); ports.resolve.mockResolvedValue(record());
         dispose.push(mountMaterialContent(document, new AbortController().signal, () => true)); await tick(); await vi.advanceTimersByTimeAsync(8000);
-        expect(document.querySelector('[role="status"]')?.textContent).toContain('原段落已变化');
+        expect(document.querySelector('[role="status"]')?.textContent).toContain('暂时未能确认原文位置');
         location.pathname = '/changed'; window.dispatchEvent(new window.Event('popstate')); expect(document.querySelector('[role="status"]')).toBeNull();
         ports.resolve.mockResolvedValue(null); const other = dom(''); dispose.push(mountMaterialContent(other.document, new AbortController().signal, () => true)); await tick();
         expect(other.document.querySelector('[role="status"]')?.textContent).toContain('材料已移除');
@@ -134,7 +158,7 @@ describe('材料来源与继续阅读', () => {
     it('动态原文出现时恢复，普通锚点保留归属，SPA 路由变化撤销等待', async () => {
         const {document, location, window} = dom('<div></div>'); ports.resolve.mockResolvedValue(record());
         dispose.push(mountMaterialContent(document, new AbortController().signal, () => true)); await tick();
-        const paragraph = document.createElement('p'); paragraph.textContent = 'unique original sentence'; paragraph.scrollIntoView = vi.fn(); paragraph.animate = vi.fn(); document.body.append(paragraph); await tick();
+        const paragraph = document.createElement('p'); paragraph.textContent = 'unique original sentence'; paragraph.scrollIntoView = vi.fn(); paragraph.animate = vi.fn(); document.body.append(paragraph); await tick(); await vi.advanceTimersByTimeAsync(121);
         expect(paragraph.scrollIntoView).toHaveBeenCalledOnce(); expect(paragraph.animate).toHaveBeenCalledOnce();
         location.hash = '#/other'; window.dispatchEvent(new window.Event('hashchange')); document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(9000);
         expect(document.querySelector('[role="status"]')).toBeNull(); expect(ports.capture).not.toHaveBeenCalled();
@@ -151,10 +175,41 @@ describe('材料来源与继续阅读', () => {
         for (const node of document.querySelectorAll('p')) node.getBoundingClientRect = () => ({top: 20, bottom: 80}) as DOMRect;
         Object.defineProperty(window, 'innerHeight', {value: 600, configurable: true});
         const stop = mountMaterialContent(document, new AbortController().signal, () => true); dispose.push(stop); await tick();
-        document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1200);
+        document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201);
         expect(ports.capture).toHaveBeenCalledWith(expect.objectContaining({positionOnly: true, locator: {kind: 'text', quote: 'A sufficiently long original paragraph.', paragraphId: 'first'}}));
-        ports.capture.mockClear(); document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1200); expect(ports.capture).not.toHaveBeenCalled();
-        stop(); document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1200); expect(ports.capture).not.toHaveBeenCalled();
+        ports.capture.mockClear(); document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201); expect(ports.capture).not.toHaveBeenCalled();
+        stop(); document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201); expect(ports.capture).not.toHaveBeenCalled();
+    });
+    it('字体与布局变化重试恢复，路由静默改变后已排队重试失效', async () => {
+        const {document, window, location} = dom('<p>waiting source</p>'); const fonts = document.createElement('div');
+        Object.defineProperty(document, 'fonts', {value: fonts});
+        const add = vi.spyOn(fonts, 'addEventListener'), remove = vi.spyOn(fonts, 'removeEventListener');
+        ports.resolve.mockResolvedValue(record()); const stop = mountMaterialContent(document, new AbortController().signal, () => true); dispose.push(stop); await tick();
+        window.dispatchEvent(new window.Event('resize')); fonts.dispatchEvent(new window.Event('loadingdone')); await tick();
+        location.pathname = '/new'; await vi.advanceTimersByTimeAsync(121);
+        expect(document.querySelector('p')!.scrollIntoView).not.toHaveBeenCalled(); stop();
+        expect(add).toHaveBeenCalledWith('loadingdone', expect.any(Function)); expect(remove).toHaveBeenCalledWith('loadingdone', expect.any(Function));
+    });
+    it('异步恢复迟到且页面已禁用时不滚动，失效结果只安排一次重试', async () => {
+        const {document} = dom('<p>unique original sentence</p>'); let enabled = true;
+        let release!: (value: Awaited<ReturnType<typeof paragraphScanner.scanMaterialParagraphs>>) => void;
+        const scanner = vi.spyOn(paragraphScanner, 'scanMaterialParagraphs').mockImplementationOnce(() => new Promise(resolve => {release = resolve;}));
+        ports.resolve.mockResolvedValue(record()); dispose.push(mountMaterialContent(document, new AbortController().signal, () => enabled)); await tick();
+        enabled = false; release({status: 'matched', node: document.querySelector('p')!, metrics: {} as never}); await tick();
+        expect(document.querySelector('p')!.scrollIntoView).not.toHaveBeenCalled();
+        scanner.mockResolvedValueOnce({status: 'invalidated', metrics: {} as never});
+        const other = dom('<p>unique original sentence</p>'); dispose.push(mountMaterialContent(other.document, new AbortController().signal, () => true)); await tick();
+        expect(other.document.querySelector('p')!.scrollIntoView).not.toHaveBeenCalled(); await vi.advanceTimersByTimeAsync(121);
+        expect(other.document.querySelector('p')!.scrollIntoView).toHaveBeenCalledOnce();
+    });
+    it('视口扫描未完成或返回无效定位时保留旧记录，页面关闭不开始全页扫描', async () => {
+        const {document, window} = dom('<p>Enough original prose for the current viewport.</p>');
+        ports.resolve.mockResolvedValue(record({locator: undefined}));
+        dispose.push(mountMaterialContent(document, new AbortController().signal, () => true)); await tick();
+        const scanner = vi.spyOn(paragraphScanner, 'scanMaterialParagraphs').mockResolvedValueOnce({status: 'matched', metrics: {} as never});
+        document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201);
+        expect(ports.capture).not.toHaveBeenCalled(); scanner.mockClear();
+        window.dispatchEvent(new window.Event('pagehide')); await tick(); expect(scanner).not.toHaveBeenCalled();
     });
     it('捕获事件仅解析本地标识，空位置与文档来源不自动新增，空页面不写', async () => {
         const {document, window} = dom('', 'https://example.com/read?id=1#/chapter/2');
@@ -204,8 +259,8 @@ describe('材料来源与继续阅读', () => {
         document.querySelector('p')!.getBoundingClientRect = () => ({top: 1, bottom: 2}) as DOMRect;
         paragraph.getBoundingClientRect = () => ({top: 1, bottom: 30}) as DOMRect; Object.defineProperty(window, 'innerHeight', {value: 600, configurable: true});
         let enabled = true; ports.resolve.mockResolvedValue(record({locator: undefined})); dispose.push(mountMaterialContent(document, new AbortController().signal, () => enabled)); await tick();
-        ports.capture.mockRejectedValueOnce(new Error('cleared')); window.dispatchEvent(new window.Event('pagehide')); await tick(); expect(ports.capture).toHaveBeenCalledOnce();
-        ports.capture.mockClear(); enabled = false; window.dispatchEvent(new window.Event('pagehide')); await tick(); expect(ports.capture).not.toHaveBeenCalled();
+        ports.capture.mockRejectedValueOnce(new Error('cleared')); document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201); expect(ports.capture).toHaveBeenCalledOnce();
+        ports.capture.mockClear(); enabled = false; document.dispatchEvent(new window.Event('scroll')); await vi.advanceTimersByTimeAsync(1201); expect(ports.capture).not.toHaveBeenCalled();
     });
     it('隐私、已取消及代次失败不关联；引用只保存定位信息', async () => {
         expect(await beginMaterialCapture(record(), true)).toBeUndefined(); expect(ports.generation).not.toHaveBeenCalled();
@@ -232,10 +287,11 @@ describe('材料来源与继续阅读', () => {
         ports.generation.mockRejectedValueOnce(new Error('private')); expect(await beginMaterialCapture({source: record().source}, false)).toBeUndefined();
         expect(await beginMaterialCapture(undefined, false)).toBeUndefined();
     });
-    it('原句采集接受元素边界并处理空段落、断开的结束点与无父节点文本', () => {
+    it('原句采集接受元素边界并拒绝空原文、断开的结束点与无父节点文本', async () => {
         const {document} = dom('<div><span></span></div><p></p><ul><li>nested <p>matching quote</p></li></ul>'); const span = document.querySelector('span')!;
-        expect(captureMaterialSelection({startContainer: span, endContainer: span} as unknown as Range, 'unknown')).toMatchObject({locator: {kind: 'text', quote: 'unknown'}});
-        expect(locateMaterialParagraph(document, {kind: 'text', quote: 'matching quote'})?.tagName).toBe('LI');
+        expect(captureMaterialSelection(rangeAt(span, 0, 0), 'unknown')).toBeUndefined();
+        expect((await locate(document, {kind: 'text', quote: 'matching quote'})).node?.tagName).toBe('P');
+        const paragraph = document.querySelector('li p')!; expect(captureMaterialSelection(rangeAt(paragraph, 0, 1), 'matching quote')?.locator?.quote).toBe('matching quote');
         expect(captureMaterialSelection({startContainer: span, endContainer: {isConnected: false}} as unknown as Range, 'a')).toBeUndefined();
         expect(captureMaterialSelection({startContainer: {isConnected: true, nodeType: 3, ownerDocument: document, parentElement: null}, endContainer: span} as unknown as Range, 'a')).toBeUndefined();
     });
@@ -259,13 +315,12 @@ describe('材料来源与继续阅读', () => {
         expect(ports.capture).toHaveBeenCalledWith(expect.objectContaining({source: {kind: 'video', url: 'https://x.com/user/status/123'}, locator: {kind: 'video', startMs: 25000}}));
         ports.capture.mockClear(); location.pathname = '/user/status/456'; video.currentTime = 30; window.dispatchEvent(new window.Event('pagehide')); await tick(); expect(ports.capture).not.toHaveBeenCalled();
     });
-    it('动态页面多次突变按一帧恢复，过期frame不产生滚动', async () => {
-        const {document, window} = dom('<div></div>'); const frames: Array<() => void> = [];
-        Object.defineProperty(window, 'requestAnimationFrame', {value: (callback: () => void) => {frames.push(callback); return 1;}, configurable: true});
+    it('动态页面多次突变合并为安静期重试，取消后不滚动或写入', async () => {
+        const {document} = dom('<div></div>');
         ports.resolve.mockResolvedValue(record()); const controller = new AbortController(); mountMaterialContent(document, controller.signal, () => true); await tick();
         document.body.append(document.createElement('p')); await tick(); document.body.append(document.createElement('p')); await tick();
-        expect(frames).toHaveLength(1); controller.abort(); frames[0]();
-        expect(document.querySelector('[role="status"]')).toBeNull();
+        expect(vi.getTimerCount()).toBe(2); controller.abort(); expect(vi.getTimerCount()).toBe(0); await vi.advanceTimersByTimeAsync(9000);
+        expect(document.querySelector('[role="status"]')).toBeNull(); expect(ports.capture).not.toHaveBeenCalled();
     });
     it('通用播放器坏来源或已改成专用平台时拒绝复用，空媒体页不猜测', async () => {
         for (const source of [{kind: 'video' as const}, {kind: 'video' as const, url: 'bad url'}, {kind: 'video' as const, url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'}]) {

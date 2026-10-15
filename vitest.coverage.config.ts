@@ -67,6 +67,7 @@ export default defineConfig({
                 'src/features/video-subtitle/content/sentenceLearningPlacement.ts',
                 'src/features/vocabulary/source.ts',
                 'src/features/vocabulary/materialOriginalText.ts',
+                'src/features/vocabulary/materialParagraphScan.ts',
                 'src/features/floating-ball/content/anchoredPopup.ts',
                 'src/platform/dom/visualViewport.ts',
                 'src/features/video-subtitle/content/nativeFullscreen.ts',
