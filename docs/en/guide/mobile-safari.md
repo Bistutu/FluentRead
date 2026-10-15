@@ -37,7 +37,7 @@ The current capability contract disables Chrome's built-in translator, OCR/image
 <details class="guide-details">
 <summary>Maintainers: generate and check an unsigned Xcode wrapper</summary>
 
-Use macOS, full Xcode, Node 20+ and the repository's locked pnpm dependencies. The target uses WXT 0.20.18's Safari MV2 build. Its existing `persistent: false` background follows [Apple's iOS lifecycle requirement](https://developer.apple.com/documentation/safariservices/optimizing-your-web-extension-for-safari).
+Use macOS, full Xcode, Node 20+ and the repository's locked pnpm dependencies. The target uses WXT 0.20.18's Safari MV2 build. An explicit UTF-8 `safari-background.html` loads the existing script and retains `persistent: false`, following [Apple's iOS lifecycle requirement](https://developer.apple.com/documentation/safariservices/optimizing-your-web-extension-for-safari). Keep this page entry: the generated `background.scripts` page prevented initial language settings from saving in the Chinese iOS 26.2 Simulator; a comparison using the same App confirmed the explicit-page fix.
 
 Run these commands from the repository root:
 
@@ -50,7 +50,9 @@ pnpm safari:package --bundle-id org.example.FluentRead
 
 Replace the example bundle identifier with your own. Set `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` before a command when needed. The build uses the resource-safe runner; packaging does not rebuild the extension.
 
-`safari:check` reads tool and Xcode versions and SDK path availability. An SDK path does not establish an installed simulator runtime or connected device. `safari:verify` checks the final manifest, background build target, content scripts and referenced files under `.output/safari-mv2`. Packaging selects `safari-web-extension-packager`, falling back to `safari-web-extension-converter` on older Xcode. It copies resources into macOS/iOS projects without opening Xcode, signing or uploading.
+`safari:check` reads tool and Xcode versions and SDK path availability. An SDK path does not establish an installed simulator runtime or connected device. `safari:verify` checks the final manifest, UTF-8 background page, background build target, content scripts and referenced files under `.output/safari-mv2`. Packaging selects `safari-web-extension-packager`, falling back to `safari-web-extension-converter` on older Xcode. It copies resources into macOS/iOS projects without opening Xcode, signing or uploading.
+
+The container app shows Chinese or English enablement steps based on the system language and supports dark mode. On iPhone, open Settings → Apps → Safari → Extensions → FluentRead, then grant access to the sites you want to translate. Simulator and no-team builds show manual steps. On physical iOS 26.2+ devices with an actual Xcode development team, the app also offers Apple's public settings shortcut; that physical-device shortcut still needs acceptance. The Mac button opens Safari extension settings. Packaging does not configure a development team.
 
 Packaging raises Apple's template deployment targets to iOS 26 and macOS 14, retaining any higher existing target. Macs still need Safari 26+. These OS requirements follow [Apple's Safari 26 release notes](https://developer.apple.com/documentation/safari-release-notes/safari-26-release-notes).
 
@@ -77,7 +79,7 @@ If Xcode cannot find an iOS Simulator destination and reports that iOS 26.2 is n
 
 ## Acceptance limits
 
-On 2026-10-15, production Safari resources were validated, packaged by Apple's tool and compiled for universal macOS with developer signing disabled on Xcode 26.2. The generic iOS Simulator destination was unavailable. Direct target builds using the existing Simulator and iPhoneOS SDKs compiled and linked the extension target, but both complete app builds failed during asset processing because no Simulator runtime is installed. The iOS app build has not passed. No iOS simulator instance or Apple device is available.
+On 2026-10-15, production Safari resources were validated and packaged with Xcode 26.2, and the universal macOS app compiled. Initial iOS builds failed because no runtime was available. After installing the iOS 26.2 (23C52) runtime, both the complete Simulator app and iPhoneOS arm64 app compiled with developer signing disabled. On a dedicated iPhone simulator, the formal app was installed, the extension enabled for one site, settings retained, and three public sample paragraphs translated. Sequential provider-domain permission prompts still blocked restore controls, so the complete operation cycle remains unverified. Page access and translation-service domain access are separate; granting all websites is not required. The iPhoneOS artifact still requires signing before physical-device installation.
 
 Packaging warns about `world`, `match_about_blank` and `open_in_tab`, although [MDN's official compatibility data](https://github.com/mdn/browser-compat-data/tree/main/webextensions/manifest) records support before the minimum Safari 26 version (options always open in a separate tab). Warnings remain in the evidence; packaging cannot establish runtime compatibility. Manifest checks and narrow desktop viewport tests establish only their stated scope. These checks still require real devices:
 

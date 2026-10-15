@@ -20,6 +20,26 @@ const firefoxRunnerBinary = process.env.FLUENTREAD_FIREFOX_RUNNER_BINARY;
 const firefoxRunnerProfile = process.env.FLUENTREAD_FIREFOX_RUNNER_PROFILE;
 const firefoxRunnerStartUrl = process.env.FLUENTREAD_FIREFOX_RUNNER_START_URL;
 
+/** Safari 的自动 MV2 后台页没有编码声明；显式页面在任何宿主语言下均按 UTF-8 加载原后台脚本。 */
+export function createSafariBackgroundPage(env: Pick<ConfigEnv, 'browser' | 'manifestVersion'>): {relativeDest: string; contents: string}[] {
+    if (env.browser !== 'safari' || env.manifestVersion !== 2) return [];
+    return [{relativeDest: 'safari-background.html', contents: '<!doctype html>\n<html>\n<head><meta charset="utf-8"></head>\n<body><script src="./background.js"></script></body>\n</html>\n'}];
+}
+
+/** WXT 0.20.18 先由入口生成 scripts，再调用 manifestGenerated；在此保留非持久生命周期并替换页面。 */
+export function configureSafariBackgroundPage(
+    env: Pick<ConfigEnv, 'browser' | 'manifestVersion'>,
+    manifest: {background?: {scripts?: string[]; persistent?: boolean; page?: string; service_worker?: string}},
+): void {
+    if (env.browser !== 'safari' || env.manifestVersion !== 2) return;
+    const background = manifest.background;
+    if (background?.persistent !== false || background.scripts?.length !== 1 || background.scripts[0] !== 'background.js'
+        || background.page !== undefined || background.service_worker !== undefined) {
+        throw new Error('Safari 后台入口已变化，无法安全生成显式 UTF-8 页面');
+    }
+    manifest.background = {persistent: false, page: 'safari-background.html'};
+}
+
 /** Chrome 只交付保留固定身份的原 ZIP；验证成功后清理同版本旧商店包。 */
 export async function finalizeExtensionZip(browser: string, zipPath: string): Promise<void> {
     if (browser !== 'chrome') return;
@@ -249,6 +269,9 @@ export default defineConfig({
         includeSources: ['docs/development/service-icons.md', 'docs/guide/deepseek-harness.md'],
     },
     hooks: {
+        'build:manifestGenerated': (wxt, manifest) => {
+            configureSafariBackgroundPage(wxt.config, manifest);
+        },
         'zip:extension:done': async (wxt, zipPath) => {
             await finalizeExtensionZip(wxt.config.browser, zipPath);
         },
@@ -269,7 +292,8 @@ export default defineConfig({
                 viteConfig.build = {...viteConfig.build, modulePreload: false};
             }
         },
-        'build:publicAssets': (_wxt, files) => {
+        'build:publicAssets': (wxt, files) => {
+            files.push(...createSafariBackgroundPage(wxt.config));
             // 非中文界面文案只生成一份 JSON，由各运行上下文按当前语言加载，不再内联进每个 bundle。
             files.push(...createUiLanguageBundleFiles());
             // 安装名称由浏览器原生 locale 解析，复用七语品牌，不复制完整界面目录。

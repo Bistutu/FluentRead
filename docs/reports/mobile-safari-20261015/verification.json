@@ -1,14 +1,19 @@
 {
-  "schemaVersion": 1,
-  "recordedAt": "2026-10-15T06:42:33.647540+00:00",
+  "schemaVersion": 2,
+  "recordedAt": "2026-10-15T08:52:52.126957+00:00",
   "baseCommit": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
   "branch": "codex/mobile-safari-product-20261015",
   "overallGoalComplete": false,
-  "status": "implementation-reviewed; device acceptance pending",
+  "status": "formal UTF-8 Safari production build reviewed; Simulator runtime checks tracked separately; physical-device acceptance pending",
   "evidenceRoot": "research/mobile-safari-20261015 (workspace level, outside repository)",
-  "sourceSnapshotSha256": "e2f980b20088fb545b33de68a69d97a69435a2cca7010305d7b9cd1d7d6d7955",
+  "sourceSnapshotSha256": "f03af67eba0a9f80d17f9352e4b0a75aa45e70ba8ac57d08794d0990312f7a59",
   "changedRuntimeSources": {
     "package.json": "f2d0cb391c8a4049f85cacd393069f39bb62de49f2bf79558ae4e31f86991871",
+    "scripts/safari/container/Main.html": "8359d2ff5a18fc2c655ef8798869b242b7c8495fa9a4575919213a2226d7789e",
+    "scripts/safari/container/Script.js": "ff9d564bd55a9742f77043dc08ebfd4cc2415989d70576851182d9c34c0ad2f8",
+    "scripts/safari/container/Style.css": "3f4c01b933fe9622c01784d8e2eec2a228225fb07284bb5adacaf4bef4319a40",
+    "scripts/safari/container/ViewController.swift": "6d9d7f1bb044d88eb17b644c8c038062f964a4486f59a90f4d3b081f09931d06",
+    "scripts/safari/package.mjs": "f65f5e7383d257a347240f063fbfdc3de13d6455e2b276c8562546ce00b9f0a9",
     "src/core/i18n/messages/en-US.ts": "740c08ca4921eaf3805e604db490fff22b8b933fcf1405a0739e236eabf35a19",
     "src/core/i18n/messages/es-ES.ts": "3fe56e8d80a10dab85825394df9878e59dfa02c93184e88fddf57ad88daa6a21",
     "src/core/i18n/messages/fr-FR.ts": "8c04e391b16d1867ba6ebdacb8024c250ff3f41aac6b1f87231d382bef22dadf",
@@ -31,7 +36,7 @@
     "src/features/video-subtitle/content/youtubeHumanCaptions.ts": "675e1a19dc0de7b787bb6b56775ff0ae020e84368634c9750a2136c5cfd2e86e",
     "src/platform/dom/visualViewport.ts": "fec540c69ca5703e8051e04df51a79e192a2da55be359385eb4a91c11050c8d2",
     "userscript/languageBundles.ts": "d900ee683df9ddfdb7e2dd04c04f0786b79a22f648e4ea8588b03829dd7e0335",
-    "wxt.config.ts": "5fe7f8bfb97b44a338556b857a05063e64e3fb131c566222d469978ef0ca2160"
+    "wxt.config.ts": "0f8d462b7efb8ae2f97fe59b3e76163d70cb517806687403ac458dc9d81ab2f6"
   },
   "checks": {
     "typecheck": "passed",
@@ -42,7 +47,8 @@
       "log": "validation/integration-1436.log"
     },
     "safariManifest": {
-      "passed": 37
+      "passed": 42,
+      "scope": "manifest, explicit UTF-8 background, native guide, all packaging templates"
     },
     "strictCoverage": {
       "modules": [
@@ -72,7 +78,86 @@
       "passed": 21
     },
     "docsBuild": "passed",
-    "diffCheck": "passed"
+    "diffCheck": "passed",
+    "formalBuildVerification": {
+      "results": [
+        {
+          "name": "compile",
+          "command": [
+            "pnpm",
+            "compile"
+          ],
+          "exitCode": 0,
+          "seconds": 41.18,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/compile.log"
+        },
+        {
+          "name": "chrome",
+          "command": [
+            "pnpm",
+            "build"
+          ],
+          "exitCode": 0,
+          "seconds": 25.71,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/chrome.log"
+        },
+        {
+          "name": "firefox",
+          "command": [
+            "pnpm",
+            "build:firefox"
+          ],
+          "exitCode": 0,
+          "seconds": 26.36,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/firefox.log"
+        },
+        {
+          "name": "userscript",
+          "command": [
+            "pnpm",
+            "build:userscript"
+          ],
+          "exitCode": 0,
+          "seconds": 8.38,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/userscript.log"
+        },
+        {
+          "name": "userscript-verify",
+          "command": [
+            "node",
+            "scripts/testing/run-resource-safe.mjs",
+            "--",
+            "node",
+            "scripts/verify-userscript-build.mjs"
+          ],
+          "exitCode": 0,
+          "seconds": 0.24,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/userscript-verify.log"
+        },
+        {
+          "name": "audit",
+          "command": [
+            "node",
+            "scripts/testing/run-resource-safe.mjs",
+            "--",
+            "pnpm",
+            "test:audit"
+          ],
+          "exitCode": 0,
+          "seconds": 3.39,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/audit.log"
+        }
+      ],
+      "safari": "validation/utf8-final/safari.log",
+      "safariVerify": "safari-utf8-production-verify.log",
+      "chromeFirefoxManifests": "validation/utf8-final/extension-manifests.log"
+    },
+    "formalArchitectureTests": {
+      "verificationOwnership": 20,
+      "moduleBoundaries": 15,
+      "sourceFileHeaders": 1028,
+      "browserCapabilities": 13
+    }
   },
   "productionBrowserSuites": [
     {
@@ -224,8 +309,8 @@
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "safari": {
-      "sha256": "46f9b1ba57749000a4816d09cac46e19e472926739d38326b2bf5522eee3d767",
-      "files": 460,
+      "sha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+      "files": 461,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "userscript": {
@@ -235,94 +320,206 @@
     }
   },
   "safari": {
-    "productionResourceSha256": "46f9b1ba57749000a4816d09cac46e19e472926739d38326b2bf5522eee3d767",
-    "sourceAndCopiedResourcesIdentical": true,
-    "packaging": "passed",
-    "xcodeSchemes": "passed",
-    "macOSCompile": {
-      "result": "passed",
-      "architectures": [
-        "arm64",
-        "x86_64"
+    "createdAt": "2026-10-15T08:32:02.260Z",
+    "artifactStatus": "reviewed formal UTF-8 production wrapper; native compilation passed; UI/device acceptance separately owned by root",
+    "researchProbe": false,
+    "reviewed": true,
+    "productionWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+    "productionWebResourceCount": 461,
+    "nativeContainerSourceSha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
+    "wrapper": {
+      "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+      "version": "0.0.38",
+      "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+      "checkedReferences": 10,
+      "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+      "artifactCount": 461,
+      "packager": {
+        "name": "safari-web-extension-packager",
+        "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/safari-web-extension-packager"
+      },
+      "projects": [
+        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-utf8-final-reviewed/FluentRead/FluentRead.xcodeproj"
       ],
-      "developerSigning": false,
-      "linkerAdhocMarker": true,
-      "installed": false,
-      "opened": false,
-      "resourceSha256": "46f9b1ba57749000a4816d09cac46e19e472926739d38326b2bf5522eee3d767",
-      "log": "build-macos-complete.log",
-      "derivedData": ".output/safari-derived-macos-complete"
-    },
-    "iOSSimulatorCompile": {
-      "result": "blocked",
-      "attempts": [
+      "copiedExtensions": [
+        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-utf8-final-reviewed/FluentRead/Shared (Extension)/Resources"
+      ],
+      "containerGuides": [
         {
-          "mode": "generic scheme destination",
-          "exitCode": 70,
-          "stage": "destination eligibility",
-          "reason": "Xcode reports iOS 26.2 is not installed"
-        },
-        {
-          "mode": "direct target with iphonesimulator SDK arm64",
-          "exitCode": 65,
-          "extensionTarget": "compiled and linked",
-          "stage": "CompileAssetCatalogVariant",
-          "reason": "No available simulator runtimes for platform iphonesimulator. supportedRuntimes=[]"
+          "sha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
+          "files": [
+            "Shared (App)/ViewController.swift",
+            "Shared (App)/Resources/Base.lproj/Main.html",
+            "Shared (App)/Resources/Style.css",
+            "Shared (App)/Resources/Script.js",
+            "iOS (App)/Info.plist"
+          ],
+          "layout": "shared",
+          "locales": [
+            "en",
+            "zh-Hans"
+          ],
+          "iosSettingsMinimum": "26.2",
+          "iosSettingsPolicy": "physical device with actual DEVELOPMENT_TEAM only; Simulator and no-team builds use manual steps; physical-device API not accepted yet"
         }
       ],
-      "evidenceResourceSnapshot": "0c03185ab20dbc52c0be4aad27a6d16abbd2ad3b4be5acb31fe7b9de63201aa5",
-      "scope": "Earlier wrapper; same missing-runtime environment; not repeated for delivery resources"
+      "bundleId": "org.example.FluentReadDevelopment",
+      "platform": "both",
+      "minimumOS": {
+        "ios": "26.0",
+        "macos": "14.0"
+      },
+      "minimumSafari": "26.0",
+      "signed": false,
+      "installed": false
     },
-    "manifestContractTests": {
-      "passed": 37
+    "platforms": {
+      "iosSimulator": {
+        "nativeExecutableSha256": "6e3a1f4af1fc2d2ee3e06f44ad9866b649ca46b8bbe35960f19915ac428dfabe",
+        "createdAt": "2026-10-15T08:30:22.594Z",
+        "platform": "iosSimulator",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-utf8-final-reviewed/Build/Products/Release-iphonesimulator/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-utf8-final-reviewed/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
+        "source": {
+          "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+          "version": "0.0.38",
+          "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+          "checkedReferences": 10,
+          "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+          "artifactCount": 461
+        },
+        "compiledWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+        "compiledWebResourceCount": 461,
+        "nativeExtras": [
+          "FluentRead Extension",
+          "Info.plist"
+        ],
+        "guideResourcesByteIdentical": true,
+        "build": {
+          "result": "passed",
+          "exitCode": 0,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-utf8-final-reviewed.log",
+          "configuration": "Release",
+          "jobs": 1,
+          "CODE_SIGNING_ALLOWED": "NO",
+          "CODE_SIGNING_REQUIRED": "NO"
+        },
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-utf8-final-reviewed.log",
+        "signatureSummary": "linker ad-hoc; no developer team",
+        "installedByThisAgent": false,
+        "launchedByThisAgent": false,
+        "actualExpandedDevelopmentTeam": ""
+      },
+      "macos": {
+        "nativeExecutableSha256": "092a76a1cbe1e652a8f30b2e438ae8b81c22052ef203d70b90ff5204d03f06d8",
+        "createdAt": "2026-10-15T08:31:14.767Z",
+        "platform": "macos",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-utf8-final-reviewed/Build/Products/Release/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-utf8-final-reviewed/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
+        "source": {
+          "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+          "version": "0.0.38",
+          "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+          "checkedReferences": 10,
+          "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+          "artifactCount": 461
+        },
+        "compiledWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+        "compiledWebResourceCount": 461,
+        "nativeExtras": [],
+        "guideResourcesByteIdentical": true,
+        "build": {
+          "result": "passed",
+          "exitCode": 0,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-utf8-final-reviewed.log",
+          "configuration": "Release",
+          "jobs": 1,
+          "CODE_SIGNING_ALLOWED": "NO",
+          "CODE_SIGNING_REQUIRED": "NO"
+        },
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-utf8-final-reviewed.log",
+        "signatureSummary": "linker ad-hoc; no developer team",
+        "installedByThisAgent": false,
+        "launchedByThisAgent": false
+      },
+      "iphoneos": {
+        "nativeExecutableSha256": "fa1e2d9dff7867a9007d98730dccb0613721dc197eaff5e1ed9e5fd915c582d0",
+        "createdAt": "2026-10-15T08:32:02.207Z",
+        "platform": "iphoneos",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-utf8-final-reviewed/build/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-utf8-final-reviewed/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
+        "source": {
+          "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+          "version": "0.0.38",
+          "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+          "checkedReferences": 10,
+          "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+          "artifactCount": 461
+        },
+        "compiledWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+        "compiledWebResourceCount": 461,
+        "nativeExtras": [
+          "FluentRead Extension",
+          "Info.plist"
+        ],
+        "guideResourcesByteIdentical": true,
+        "build": {
+          "result": "passed",
+          "exitCode": 0,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-utf8-final-reviewed.log",
+          "configuration": "Release",
+          "jobs": 1,
+          "CODE_SIGNING_ALLOWED": "NO",
+          "CODE_SIGNING_REQUIRED": "NO"
+        },
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-utf8-final-reviewed.log",
+        "signatureSummary": "unsigned",
+        "installedByThisAgent": false,
+        "launchedByThisAgent": false,
+        "actualExpandedDevelopmentTeam": ""
+      }
     },
-    "runtimeAcceptance": {
-      "safariMacOS": "not-run",
-      "iOSDevice": "not-run",
-      "iOSSimulator": "not-run",
-      "liveProviders": "not-run"
+    "review": {
+      "utf8PageVerifier": "read-only checked: explicit UTF-8; only local ./background.js; persistent false; no scripts/service_worker mixing; strict relative file references; compatible with all native template layouts",
+      "nativeContainer": "weak WKScriptMessageHandler delegate and deinit unregister copied exactly from reviewed source",
+      "nativeContainerSourceCopiedIdentically": true,
+      "unitTests": "42 targeted tests passed as confirmed by owning agent/root; not rerun in this packaging-only turn"
     },
-    "iOSDeviceSDKCompile": {
-      "result": "blocked",
-      "mode": "direct target with iphoneos SDK arm64",
-      "exitCode": 65,
-      "extensionTarget": "compiled and linked",
-      "stage": "CompileAssetCatalogVariant",
-      "reason": "No available simulator runtimes for platform iphonesimulator. supportedRuntimes=[]",
-      "evidenceResourceSnapshot": "0c03185ab20dbc52c0be4aad27a6d16abbd2ad3b4be5acb31fe7b9de63201aa5",
-      "scope": "Earlier wrapper; same missing-runtime environment; not repeated for delivery resources"
+    "buildPolicy": {
+      "sequential": true,
+      "resourceSafe": true,
+      "defaultConcurrency": 3,
+      "jobs": 1,
+      "CODE_SIGNING_ALLOWED": "NO",
+      "CODE_SIGNING_REQUIRED": "NO"
     },
-    "schemaVersion": 3,
-    "artifactCount": 460,
-    "wrapper": ".output/safari-xcode-complete/FluentRead/FluentRead.xcodeproj",
-    "sourceAndCompiledMacOSResourcesIdentical": true,
-    "finalSnapshot": "complete",
-    "finalEvidence": {
-      "resourceIdentity": "artifact-identity-complete.json",
-      "packaging": "package-complete.log",
-      "packageReport": "package-report-complete.json",
-      "schemes": "schemes-complete.json",
-      "macOSSignature": "macos-signature-complete.log"
-    },
-    "priorResourceEvidence": [
-      "acceptance-delivery.json",
-      "acceptance-pre-delivery.json"
-    ]
+    "notPerformedByThisAgent": [
+      "App installation",
+      "App launch",
+      "Simulator device operations",
+      "Developer signing or provisioning",
+      "Physical-device acceptance"
+    ],
+    "productSourceOrDocsChangedByThisTurn": false,
+    "supersededIntermediateEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-utf8-final.json",
+    "preservedResearchEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-utf8-probe.json"
   },
   "review": {
     "code": "independent scoped review found no remaining confirmed P1/P2 regressions",
     "visual": "screenshots inspected; 44px specificity and truncated timing label repaired",
-    "operations": "normal/loading/error/retry/cancel/toggle/restore/refresh/background/dispose covered in scoped unit and controlled production browser runs"
+    "operations": "normal/loading/error/retry/cancel/toggle/restore/refresh/background/dispose covered in scoped unit and controlled production browser runs",
+    "nativeContainer": "Independent review repaired WKScriptMessageHandler retain cycle with weak forwarding and unregister; strict CSP/local bridge and all template layouts reviewed; Swift compiled on all three targets; dynamic deallocation not instrumented"
   },
   "evidenceLimits": [
-    "Controlled pages and provider responses, not live providers.",
-    "CDP touch, DOM Range, VisualViewport/lifecycle fixtures and webkit/fullscreen shims are not native iOS/Android acceptance.",
-    "Actual TextTrack API and trusted track resource error events were exercised in Edge; iOS AVKit rendering was not.",
-    "Page, selection and progress suites predate only the final video-menu CSS changes; the video suite was rerun against final production output.",
-    "Nonzero safe-area CDP emulation unavailable; safe-area logic has unit coverage, not notch-device evidence.",
-    "Firefox build passed; Firefox runtime was not exercised.",
-    "macOS unsigned compilation passed; no Safari App installation, extension enablement, developer signing or publication.",
-    "iOS complete App builds blocked by missing Simulator runtime; earlier failures are retained, not claimed as final resource builds."
+    "Earlier Edge suites use controlled pages/provider responses, CDP touch, DOM Range, viewport/lifecycle/fullscreen shims; they are not native mobile acceptance.",
+    "Real iOS 26.2 Simulator Safari evidence is separately recorded with the exact installed resource identity; it is not a physical iPhone/iPad.",
+    "The exact A/B changed only manifest background entry plus explicit UTF-8 HTML; it does not independently isolate charset from page-loading semantics.",
+    "The rebuilt formal artifact has its own hash; the A/B claim of 124 unchanged JavaScript files applies only to the exact research comparison.",
+    "Hidden standalone macOS WebKit tests do not establish actual Safari app or foreground viewport behavior.",
+    "macOS compilation passed without developer signing; the built macOS Safari extension was not installed in a user Safari profile.",
+    "iPhoneOS complete compilation passed without signing; no physical-device installation, developer account, provisioning or publication was performed.",
+    "Firefox build passed; Firefox runtime and Android device acceptance remain outstanding.",
+    "AVKit presentation, OS reclamation, real audio and VoiceOver/TalkBack require their own runtime evidence."
   ],
   "remainingAcceptance": [
     "Safari macOS/iPhone/iPad install, site permissions, update retaining configuration, disable/uninstall",
@@ -330,5 +527,560 @@
     "Android Edge/Firefox device installation/update and three translation paths",
     "Background suspension/memory reclamation on devices",
     "Real provider and audio behavior; VoiceOver/TalkBack; Safari Userscripts manager runtime"
-  ]
+  ],
+  "continuation": {
+    "ciFixCommit": "cd55bc55c",
+    "ciFirstRun": {
+      "runId": 38694159839,
+      "selectedFiles": 730,
+      "passedFiles": 727,
+      "failedFiles": 3,
+      "changedModuleCoveragePercent": 100,
+      "scopeReason": "package.json categorized as shared-test-configuration by existing planner",
+      "failures": [
+        "ownedBrowserClose Linux /private/tmp path",
+        "vocabularyVideoSourceUi undeclared @vue/server-renderer import",
+        "documentTranslationBinary single PDF import case timeout"
+      ],
+      "fixVerification": {
+        "passedCases": 95,
+        "scope": "93 owned-browser-close + 1 vocabulary source UI + 1 PDF case with coverage",
+        "ubuntuRerun": "passed: 730 files, 24092 tests passed, 4 existing skips; scoped changed-module coverage 100%"
+      },
+      "productionLogicChangedForCi": false
+    },
+    "nativeBuildsAfterRuntimeInstallation": {
+      "report": "safari/acceptance-runtime-ready.json",
+      "completeSimulatorApp": "passed",
+      "completeIPhoneOSApp": "passed",
+      "webResourcesMatch": true,
+      "webResourceSha256": "46f9b1ba57749000a4816d09cac46e19e472926739d38326b2bf5522eee3d767"
+    },
+    "runtimeInstallation": {
+      "version": "26.2",
+      "build": "23C52",
+      "architecture": "arm64",
+      "downloadExportAlsoRegisteredRuntime": true,
+      "report": "safari/runtime-installation.json"
+    },
+    "simulatorApp": {
+      "device": "iPhone 16 Pro",
+      "udid": "3D298EC7-49B4-4FDB-BD68-4AF09792BCBE",
+      "installed": true,
+      "launched": true,
+      "extensionRegistered": true,
+      "registeredName": "流畅阅读",
+      "hostSimulatorAppLaunched": false,
+      "hostFocusActivationEvents": 0,
+      "scope": "container launch and extension registration, not all translation paths"
+    },
+    "webkitResearch": {
+      "report": "webkit-isolated/report-final.json",
+      "unmodifiedManifestAcceptance": false,
+      "researchVariantPassedChecks": 11,
+      "unchangedProductionJsFiles": 124,
+      "explicitUtf8BackgroundPageRequiredInResearchHost": true,
+      "actualSafariAppResultEstablished": "Exact background-page A/B separately reproduced in iOS Simulator Safari; full translation is separate"
+    },
+    "sharedTestFiles": [
+      "tests/ownedBrowserClose.test.ts",
+      "tests/vocabularyVideoSourceUi.test.ts",
+      "tests/documentTranslationBinary.test.ts"
+    ],
+    "ciSuccess": {
+      "commit": "cd55bc55cd26c185d97f587b58a5732830b15295",
+      "runId": 38700538192,
+      "jobId": 116307370533,
+      "result": "success",
+      "localScope": "95 targeted tests, not a local full suite",
+      "remoteScope": "existing planner selected 730 files from total PR package.json change",
+      "log": "pr995-ci-fix-success.log",
+      "checkedAt": "2026-10-15T08:31:58.747512+00:00"
+    },
+    "exactBackgroundAB": {
+      "report": "ios-ui-harness/cold-ab-comparison.json",
+      "originalColdRestart": "language save failed",
+      "exactPageVariantColdRestart": "main popup opened",
+      "javaScriptFilesUnchanged": 124,
+      "formalRebuildIsSeparate": true
+    }
+  },
+  "sourceSnapshotScope": "Runtime, build and native container files changed relative to baseCommit, including untracked source files; documentation excluded",
+  "historicalEvidence": {
+    "initialCommit": "51c4e8ac6e49d5f057df2772587b69d51403bd54",
+    "initialSourceSnapshotSha256": "e2f980b20088fb545b33de68a69d97a69435a2cca7010305d7b9cd1d7d6d7955",
+    "initialArtifacts": {
+      "chrome": {
+        "sha256": "8d18bb58d70f4a4f69f0e4ddad9faea95ad984bbecfba26032bd3d9e10270a0b",
+        "files": 472,
+        "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+      },
+      "firefox": {
+        "sha256": "94ca21c68ea7c46fef5c3aadf4ecc94538c5812602ad249dabd84215aab622bb",
+        "files": 472,
+        "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+      },
+      "safari": {
+        "sha256": "46f9b1ba57749000a4816d09cac46e19e472926739d38326b2bf5522eee3d767",
+        "files": 460,
+        "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+      },
+      "userscript": {
+        "sha256": "cbe7706009374fa15c907984b84dac7f4e6935bb9ab5a83794d7d52139f80ed7",
+        "bytes": 2072040,
+        "verifier": "passed"
+      }
+    },
+    "initialNativeBuilds": {
+      "productionResourceSha256": "46f9b1ba57749000a4816d09cac46e19e472926739d38326b2bf5522eee3d767",
+      "sourceAndCopiedResourcesIdentical": true,
+      "packaging": "passed",
+      "xcodeSchemes": "passed",
+      "macOSCompile": {
+        "result": "passed",
+        "architectures": [
+          "arm64",
+          "x86_64"
+        ],
+        "developerSigning": false,
+        "linkerAdhocMarker": true,
+        "installed": false,
+        "opened": false,
+        "resourceSha256": "46f9b1ba57749000a4816d09cac46e19e472926739d38326b2bf5522eee3d767",
+        "log": "build-macos-complete.log",
+        "derivedData": ".output/safari-derived-macos-complete"
+      },
+      "iOSSimulatorCompile": {
+        "result": "blocked",
+        "attempts": [
+          {
+            "mode": "generic scheme destination",
+            "exitCode": 70,
+            "stage": "destination eligibility",
+            "reason": "Xcode reports iOS 26.2 is not installed"
+          },
+          {
+            "mode": "direct target with iphonesimulator SDK arm64",
+            "exitCode": 65,
+            "extensionTarget": "compiled and linked",
+            "stage": "CompileAssetCatalogVariant",
+            "reason": "No available simulator runtimes for platform iphonesimulator. supportedRuntimes=[]"
+          }
+        ],
+        "evidenceResourceSnapshot": "0c03185ab20dbc52c0be4aad27a6d16abbd2ad3b4be5acb31fe7b9de63201aa5",
+        "scope": "Earlier wrapper; same missing-runtime environment; not repeated for delivery resources"
+      },
+      "manifestContractTests": {
+        "passed": 37
+      },
+      "runtimeAcceptance": {
+        "safariMacOS": "not-run",
+        "iOSDevice": "not-run",
+        "iOSSimulator": "not-run",
+        "liveProviders": "not-run"
+      },
+      "iOSDeviceSDKCompile": {
+        "result": "blocked",
+        "mode": "direct target with iphoneos SDK arm64",
+        "exitCode": 65,
+        "extensionTarget": "compiled and linked",
+        "stage": "CompileAssetCatalogVariant",
+        "reason": "No available simulator runtimes for platform iphonesimulator. supportedRuntimes=[]",
+        "evidenceResourceSnapshot": "0c03185ab20dbc52c0be4aad27a6d16abbd2ad3b4be5acb31fe7b9de63201aa5",
+        "scope": "Earlier wrapper; same missing-runtime environment; not repeated for delivery resources"
+      },
+      "schemaVersion": 3,
+      "artifactCount": 460,
+      "wrapper": ".output/safari-xcode-complete/FluentRead/FluentRead.xcodeproj",
+      "sourceAndCompiledMacOSResourcesIdentical": true,
+      "finalSnapshot": "complete",
+      "finalEvidence": {
+        "resourceIdentity": "artifact-identity-complete.json",
+        "packaging": "package-complete.log",
+        "packageReport": "package-report-complete.json",
+        "schemes": "schemes-complete.json",
+        "macOSSignature": "macos-signature-complete.log"
+      },
+      "priorResourceEvidence": [
+        "acceptance-delivery.json",
+        "acceptance-pre-delivery.json"
+      ]
+    },
+    "supersededIntermediateReports": [
+      "safari/acceptance-runtime-ready.json",
+      "safari/acceptance-guide-fixed.json",
+      "safari/acceptance-single-platform.json",
+      "safari/acceptance-utf8-final.json"
+    ]
+  },
+  "productionBrowserSuitesScope": "Existing Edge suites used initial production artifacts; the latest Chrome, Firefox and userscript outputs remain byte-identical by full-resource hashes. These are not Simulator or physical-device acceptance.",
+  "formalSimulatorRuntime": {
+    "report": "ios-ui-harness/formal-production-acceptance.json",
+    "sha256": "d7ef71b2251ec472c28cbb63773d65e46b0029948772e79ecc77eb403a7c41b3",
+    "results": {
+      "updatedAt": "2026-10-15T08:43:41.682306+00:00",
+      "status": "blocked-by-sequential-provider-permission-prompts",
+      "formalApp": "/Users/thinkstu/Library/Developer/CoreSimulator/Devices/3D298EC7-49B4-4FDB-BD68-4AF09792BCBE/data/Containers/Bundle/Application/BC544FE5-8891-4585-8D8D-E14102C2BFA3/FluentRead.app",
+      "preparedApp": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-utf8-final-reviewed/Build/Products/Release-iphonesimulator/FluentRead.app",
+      "webTree": {
+        "sha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+        "files": 461
+      },
+      "appTree": {
+        "sha256": "c588021f489bddcf74761e958f37e246935a4fb857f60bc5d2c90a55b2af9153",
+        "files": 479
+      },
+      "nativeExecutableSHA256": {
+        "FluentRead": "6e3a1f4af1fc2d2ee3e06f44ad9866b649ca46b8bbe35960f19915ac428dfabe",
+        "PlugIns/FluentRead Extension.appex/FluentRead Extension": "9d00fd8778b38cd3b51684a6c0646822a59ac1d77b2481816e6a7a599f89cddc"
+      },
+      "nativeGuideSourceSnapshotSHA256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
+      "identity": {
+        "allPreparedFilesCompared": 479,
+        "allFileMismatches": [],
+        "webFilesCompared": 461,
+        "webMismatches": []
+      },
+      "scope": {
+        "guideChinese": "passed",
+        "guideEnglish": "passed",
+        "guideDark": "passed",
+        "simulatorShortcutHidden": "passed",
+        "configurationRetainedOnColdSafari": "passed",
+        "initialRealTranslation": "passed",
+        "restoreThenRetranslate": "notrun-blocked-by-provider-permission",
+        "refreshRecovery": "notrun-blocked-by-provider-permission",
+        "touchSelection": "notrun-blocked-by-provider-permission",
+        "keyboard": "notrun-blocked-by-provider-permission",
+        "rotation": "notrun-blocked-by-provider-permission",
+        "YouTube": "notrun",
+        "AVKitModule": "notrun"
+      },
+      "attempts": [
+        {
+          "stem": "formal-guide-light",
+          "testExecutionStatus": "completed",
+          "productStatus": "passed",
+          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-guide-light.xcresult"
+        },
+        {
+          "stem": "formal-guide-dark",
+          "testExecutionStatus": "completed",
+          "productStatus": "passed",
+          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-guide-dark.xcresult"
+        },
+        {
+          "stem": "formal-page-cycle",
+          "testExecutionStatus": "failed",
+          "productStatus": "blocked-at-observed-exact-provider-permission",
+          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-page-cycle.xcresult"
+        },
+        {
+          "stem": "formal-provider-resume",
+          "testExecutionStatus": "failed",
+          "productStatus": "blocked-at-observed-exact-provider-permission",
+          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-provider-resume.xcresult"
+        },
+        {
+          "stem": "formal-iciba-resume",
+          "testExecutionStatus": "failed",
+          "productStatus": "blocked-at-observed-exact-provider-permission",
+          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-iciba-resume.xcresult"
+        },
+        {
+          "stem": "formal-lara-resume",
+          "testExecutionStatus": "failed",
+          "productStatus": "blocked-at-observed-exact-provider-permission",
+          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lara-resume.xcresult"
+        },
+        {
+          "stem": "formal-lingvanex-resume",
+          "testExecutionStatus": "failed",
+          "productStatus": "blocked-at-observed-exact-provider-permission",
+          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lingvanex-resume.xcresult"
+        }
+      ],
+      "provider": {
+        "selectedService": "免费翻译服务",
+        "targetLanguage": "简体中文",
+        "actualObservedDomainPermission": "dict.youdao.com",
+        "exactFinalUpstreamSupplierProven": false,
+        "normalBusinessPath": true,
+        "mockProvider": false,
+        "repeatMayUseCache": true,
+        "domainGrant": "Each exact captured prompt granted one day; no always/all-sites selection",
+        "allSitesPermission": false,
+        "exactGrantedOneDayDomains": [
+          "127.0.0.1",
+          "dict.youdao.com",
+          "ifanyi.iciba.com",
+          "webapi.laratranslate.com",
+          "lingvanex.com"
+        ],
+        "currentBlockedUnapprovedDomain": "index-translate.bilibili.com",
+        "outboundNetworkRequestsProven": false,
+        "observedPermissionRequestsProven": true,
+        "explanation": "A domain permission prompt establishes requested host access, not a successful HTTP request or final winning supplier. Real Chinese DOM came from unmodified production business flow using selected default free service."
+      },
+      "safety": {
+        "exactUDID": "3D298EC7-49B4-4FDB-BD68-4AF09792BCBE",
+        "focusEvents": [],
+        "newHostSimulatorPIDs": [],
+        "hostWindowOperations": [],
+        "allGuardReportsReviewed": true,
+        "appearanceRestored": "light",
+        "reports": [
+          {
+            "stem": "formal-guide-light",
+            "status": "completed",
+            "startedAt": "2026-10-15T08:32:23.087Z",
+            "endedAt": null,
+            "focusEvents": [],
+            "hostProcessBaseline": [],
+            "newHostSimulatorPIDs": [],
+            "violations": [],
+            "cleanupErrors": [],
+            "signals": [],
+            "frontmostBefore": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "frontmostAfter": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "hostWindowOperations": []
+          },
+          {
+            "stem": "formal-guide-dark",
+            "status": "completed",
+            "startedAt": "2026-10-15T08:33:50.747Z",
+            "endedAt": null,
+            "focusEvents": [],
+            "hostProcessBaseline": [],
+            "newHostSimulatorPIDs": [],
+            "violations": [],
+            "cleanupErrors": [],
+            "signals": [],
+            "frontmostBefore": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "frontmostAfter": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "hostWindowOperations": []
+          },
+          {
+            "stem": "formal-page-cycle",
+            "status": "failed",
+            "startedAt": "2026-10-15T08:35:01.884Z",
+            "endedAt": null,
+            "focusEvents": [],
+            "hostProcessBaseline": [],
+            "newHostSimulatorPIDs": [],
+            "violations": [],
+            "cleanupErrors": [],
+            "signals": [],
+            "frontmostBefore": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "frontmostAfter": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "hostWindowOperations": []
+          },
+          {
+            "stem": "formal-provider-resume",
+            "status": "failed",
+            "startedAt": "2026-10-15T08:37:42.027Z",
+            "endedAt": null,
+            "focusEvents": [],
+            "hostProcessBaseline": [],
+            "newHostSimulatorPIDs": [],
+            "violations": [],
+            "cleanupErrors": [],
+            "signals": [],
+            "frontmostBefore": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "frontmostAfter": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "hostWindowOperations": []
+          },
+          {
+            "stem": "formal-iciba-resume",
+            "status": "failed",
+            "startedAt": "2026-10-15T08:39:57.267Z",
+            "endedAt": null,
+            "focusEvents": [],
+            "hostProcessBaseline": [],
+            "newHostSimulatorPIDs": [],
+            "violations": [],
+            "cleanupErrors": [],
+            "signals": [],
+            "frontmostBefore": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "frontmostAfter": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "hostWindowOperations": []
+          },
+          {
+            "stem": "formal-lara-resume",
+            "status": "failed",
+            "startedAt": "2026-10-15T08:40:58.668Z",
+            "endedAt": null,
+            "focusEvents": [],
+            "hostProcessBaseline": [],
+            "newHostSimulatorPIDs": [],
+            "violations": [],
+            "cleanupErrors": [],
+            "signals": [],
+            "frontmostBefore": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "frontmostAfter": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "hostWindowOperations": []
+          },
+          {
+            "stem": "formal-lingvanex-resume",
+            "status": "failed",
+            "startedAt": "2026-10-15T08:42:04.171Z",
+            "endedAt": null,
+            "focusEvents": [],
+            "hostProcessBaseline": [],
+            "newHostSimulatorPIDs": [],
+            "violations": [],
+            "cleanupErrors": [],
+            "signals": [],
+            "frontmostBefore": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "frontmostAfter": {
+              "pid": 65658,
+              "name": "问题报告程序"
+            },
+            "hostWindowOperations": []
+          }
+        ],
+        "onlyUIOperator": "mobile_selection",
+        "uiStopped": true,
+        "currentSimulatorApp": "com.apple.mobilesafari",
+        "currentVisibleUI": "Exact index-translate.bilibili.com permission alert over translated fixture and FluentRead main popup; no click after parent stop instruction",
+        "stopInstructionTiming": "Parent stop arrived after lingvanex.com bounded case had completed at 2026-10-15 16:42:19 +0800. No fifth-domain authorization or later UI interaction performed."
+      },
+      "screenshots": [
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-guide-light-evidence/formal-guide-zh-Hans.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-guide-light-evidence/formal-guide-en.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-guide-dark-evidence/formal-guide-chinese-current-appearance.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-page-cycle-evidence/formal-cycle-00-original.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-page-cycle-evidence/formal-cycle-action-0.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-page-cycle-evidence/formal-cycle-popup-0.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-provider-resume-evidence/formal-provider-00-observed-youdao-request.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-provider-resume-evidence/formal-provider-02-next-unknown-alert.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-provider-resume-evidence/formal-provider-01-after-exact-domain-grant.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-iciba-resume-evidence/formal-provider-00-previously-captured-domain-request.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-iciba-resume-evidence/formal-provider-02-next-unknown-alert.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-iciba-resume-evidence/formal-provider-01-after-exact-domain-grant.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lara-resume-evidence/formal-provider-00-previously-captured-domain-request.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lara-resume-evidence/formal-provider-02-next-unknown-alert.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lara-resume-evidence/formal-provider-01-after-exact-domain-grant.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lingvanex-resume-evidence/formal-provider-00-previously-captured-domain-request.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lingvanex-resume-evidence/formal-provider-02-next-unknown-alert.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lingvanex-resume-evidence/formal-provider-01-after-exact-domain-grant.png"
+      ],
+      "limitations": [
+        "iOS Simulator only; no physical device acceptance",
+        "A/B probes excluded from formal passes",
+        "Exact upstream supplier and outbound-vs-cache cannot be inferred from DOM alone",
+        "Continuous initial provider-domain permissions obstruct main popup controls even after translation completes. Full translate/restore/retranslate/refresh acceptance remains incomplete.",
+        "Fixture DOM reports expose public task text only; no extension storage, keys, cookies, credentials or form values are read."
+      ],
+      "liveDOMEvidence": {
+        "report": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-page-dom-report.json",
+        "lastReceivedAt": "2026-10-15T08:43:38.863Z",
+        "lastPageAt": 1792053818855,
+        "geometry": {
+          "width": 402,
+          "height": 714,
+          "visual": {
+            "left": 0,
+            "top": 0,
+            "width": 402,
+            "height": 714
+          },
+          "visibility": "visible"
+        },
+        "metrics": {
+          "status": "DOM translated",
+          "pageLifecycle": "1792053323684-1b9e4145337e1",
+          "targets": [
+            {
+              "id": "public-paragraph",
+              "paragraphPresent": true,
+              "wrapperCount": 1,
+              "nestedCount": 0,
+              "translationText": "晨曦洒在宁静的花园上。一只小鸟停在木栅栏上，人们沿着河边散步。",
+              "hasCjk": true,
+              "originalPreserved": true
+            },
+            {
+              "id": "selection-paragraph",
+              "paragraphPresent": true,
+              "wrapperCount": 1,
+              "nestedCount": 0,
+              "translationText": "使用本机触摸手势选择此英语段落以检查FluentRead选择控件。",
+              "hasCjk": true,
+              "originalPreserved": true
+            },
+            {
+              "id": "cross-paragraph",
+              "paragraphPresent": true,
+              "wrapperCount": 1,
+              "nestedCount": 0,
+              "translationText": "第二段在背景恢复后跨块边界进行选择。",
+              "hasCjk": true,
+              "originalPreserved": true
+            }
+          ],
+          "allWrappers": 5
+        },
+        "duplicateNestedOrOriginalMismatchReports": 0,
+        "filter": "Only visibility=visible task fixture reports included; hidden duplicate Safari page contexts excluded."
+      },
+      "currentBlocker": {
+        "thirdGrant": "webapi.laratranslate.com",
+        "afterThirdPrompt": "lingvanex.com",
+        "fourthGrant": "lingvanex.com",
+        "afterFourthPrompt": "index-translate.bilibili.com",
+        "fourthCaseFinishedAt": "2026-10-15T16:42:19.129+08:00",
+        "popupActionBehindAlert": "恢复当前网页; accessibility switch value 1",
+        "nativeDoneButtonBlockedByAlert": true,
+        "initialProductTranslation": "Three public body paragraphs each contain exactly one CJK translation and retain exact English original; 5 total bilingual wrappers including heading/other text",
+        "completeCycle": "Not established; no restore or retranslate click reached",
+        "productSourceModified": false
+      }
+    }
+  },
+  "unchangedArtifactsComparedToInitial": {
+    "chrome": true,
+    "firefox": true,
+    "safari": false,
+    "userscript": true
+  }
 }
