@@ -1,31 +1,44 @@
 {
   "schemaVersion": 2,
-  "recordedAt": "2026-10-15T08:52:52.126957+00:00",
+  "recordedAt": "2026-10-15T10:48:43.211715+00:00",
   "baseCommit": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
   "branch": "codex/mobile-safari-product-20261015",
   "overallGoalComplete": false,
-  "status": "formal UTF-8 Safari production build reviewed; Simulator runtime checks tracked separately; physical-device acceptance pending",
+  "status": "formal Safari UTF-8 and free-service permission policy reviewed; Simulator runtime checks tracked separately; physical-device acceptance pending",
   "evidenceRoot": "research/mobile-safari-20261015 (workspace level, outside repository)",
-  "sourceSnapshotSha256": "f03af67eba0a9f80d17f9352e4b0a75aa45e70ba8ac57d08794d0990312f7a59",
+  "sourceSnapshotSha256": "879ff2caccd2a711f977dc6c448a2564732999233d4c2849abe2cda05b4e3752",
   "changedRuntimeSources": {
     "package.json": "f2d0cb391c8a4049f85cacd393069f39bb62de49f2bf79558ae4e31f86991871",
     "scripts/safari/container/Main.html": "8359d2ff5a18fc2c655ef8798869b242b7c8495fa9a4575919213a2226d7789e",
     "scripts/safari/container/Script.js": "ff9d564bd55a9742f77043dc08ebfd4cc2415989d70576851182d9c34c0ad2f8",
     "scripts/safari/container/Style.css": "3f4c01b933fe9622c01784d8e2eec2a228225fb07284bb5adacaf4bef4319a40",
     "scripts/safari/container/ViewController.swift": "6d9d7f1bb044d88eb17b644c8c038062f964a4486f59a90f4d3b081f09931d06",
-    "scripts/safari/package.mjs": "f65f5e7383d257a347240f063fbfdc3de13d6455e2b276c8562546ce00b9f0a9",
+    "scripts/safari/package.mjs": "9b2f03d5d9b3729150498adf0e50318a30465ec3982c6c198aa280e5cfd6796f",
+    "src/app/popup/PopupApp.vue": "003c61a31dc3dab1fe81ca6fe69f4d695e49b79fc3fc8430f004c18d7cfd86ce",
+    "src/app/popup/popup.css": "115cf321eeeea9a1abe888fbb879c25e884100e137abaa0ebe664f1ae96b4b1f",
+    "src/core/config/freeProviderOrigins.json": "8b4004cade979ded8b2b76ac3398dfa108f9e423de2b6d7336dc2530cadf2418",
+    "src/core/config/freeProviderOrigins.ts": "ee38f3e7bdaf46a7f9f3097da746d279a2215cf3bdbf336a88c15669f73b3f36",
     "src/core/i18n/messages/en-US.ts": "740c08ca4921eaf3805e604db490fff22b8b933fcf1405a0739e236eabf35a19",
     "src/core/i18n/messages/es-ES.ts": "3fe56e8d80a10dab85825394df9878e59dfa02c93184e88fddf57ad88daa6a21",
     "src/core/i18n/messages/fr-FR.ts": "8c04e391b16d1867ba6ebdacb8024c250ff3f41aac6b1f87231d382bef22dadf",
     "src/core/i18n/messages/ja-JP.ts": "7128ff73ed7d26a11ea96c86e38bf851a1cb5f77a855e8dcabdd535a1b1f4be6",
     "src/core/i18n/messages/ko-KR.ts": "cd0a849333b12268086a92a703ac356c279bd78b8421ab888e1499962e69e1ad",
     "src/core/i18n/messages/ru-RU.ts": "1adaf74d2a01278759d9d9070c1b5ff2ce3624368f636b0c00c1e766938c246e",
+    "src/core/i18n/messages/settings-copy/en-US.json": "61958ef9eef05f32c4bbb173c5dd80d24f44d48af9ae08b721ed14b43a1fd944",
+    "src/core/i18n/messages/settings-copy/es-ES.json": "37a16dff8cf08aa4400e3aedc3e740a47d74c9627ce9c6d7c960687c82fb9de1",
+    "src/core/i18n/messages/settings-copy/fr-FR.json": "929e5f0bc0ab483eb32c8029787abebb5c58acf700cfa7e80e6526f838f4af1f",
+    "src/core/i18n/messages/settings-copy/ja-JP.json": "5274819676b545d9249cea8e348c4e7479e672894c02022b266187fd410dd96f",
+    "src/core/i18n/messages/settings-copy/ko-KR.json": "e85288cccae44a2e603b396bf8bcf4eebc5cb6b6a2b51d4fcce5190bcce570c6",
+    "src/core/i18n/messages/settings-copy/ru-RU.json": "b8cf19e8a6b471f16277a0a7a3f6b63e90148207d20c6c9040938bde36b082da",
+    "src/core/i18n/messages/settings-copy/zh-CN.json": "d6ca67b4b1045195ded436a18124e7832f23df9472e716d18f95b80bcadd2e13",
     "src/core/i18n/messages/zh-CN.ts": "7da421ca7fa92cf2b3e1c52bec34b2fbaf924cbc21af398a706c63ccd58ce830",
     "src/features/floating-ball/content/anchoredPopup.ts": "c6a8ed6b145ef29489df1a0c3d3b69ea4a23b092a972bc96540351d25fe9b7bf",
     "src/features/floating-ball/ui/FloatingBall.vue": "7dc94a202f3a6ee588b98d02ab06314f95fc33fcb440587f7ef5ad707fa851e4",
     "src/features/full-page-translation/ui/TranslationProgressPanel.vue": "1b33297965759c8117b56a4a956e7f7b981d7ff0d519a0391e2452f9e842ef5c",
     "src/features/selection-translation/core.ts": "3c5f2d93a2872884b1029e3bae94b4b15362a300ba41adacfe9fd00f14f0ae68",
-    "src/features/selection-translation/ui/SelectionTranslator.vue": "af08584692e604ca921e3e6a1aeac14b2c914b27e89962493540e17cbdfc25f7",
+    "src/features/selection-translation/ui/SelectionTranslator.vue": "7ee2015a5b86ff2276fb94879b0286eaaf2cf4b746e5b14342d2ef7990394163",
+    "src/features/settings/ui/services/FreeTranslationSettings.vue": "1ec580cbca47f5ed474e4f9b39136724d19eb88ef62d37bfc403a0af3dbe8456",
+    "src/features/settings/ui/services/ServiceConfiguration.vue": "251a3084643266336095f85775166b7d8dbcedb72dc5a93ac351652eaeb4bfa8",
     "src/features/video-subtitle/content/nativeFullscreen.ts": "c5856eda860e7c5b15fcb3f4ad45bb7707b6fc202f60a53f075bc0a4375b5e87",
     "src/features/video-subtitle/content/playerMenu.ts": "5cc6bb174d6c94ffc9f8e1d2ccdbfcd688556d80955de8bacfbf998fb4112d8b",
     "src/features/video-subtitle/content/runtime.ts": "2ccd7ad37e76eab5f0905ae1d075e1437e5b7cf858fcf7844c59077bb568dc2c",
@@ -34,9 +47,11 @@
     "src/features/video-subtitle/content/videoPlayerBinding.ts": "f68544937394c992abdd89756d4640ef752107f3c3648dd5c60642c68ad788b4",
     "src/features/video-subtitle/content/videoPlayerLocator.ts": "67ff409285b5116088605c13174ea0b9a7881f2ac08f1aed73e68e73f8ddba97",
     "src/features/video-subtitle/content/youtubeHumanCaptions.ts": "675e1a19dc0de7b787bb6b56775ff0ae020e84368634c9750a2136c5cfd2e86e",
+    "src/platform/browser/freeProviderPermissions.ts": "eb2d47c062e0c476e190b53059761d25607e4355bc47aea85cead162752a6f8a",
     "src/platform/dom/visualViewport.ts": "fec540c69ca5703e8051e04df51a79e192a2da55be359385eb4a91c11050c8d2",
-    "userscript/languageBundles.ts": "d900ee683df9ddfdb7e2dd04c04f0786b79a22f648e4ea8588b03829dd7e0335",
-    "wxt.config.ts": "0f8d462b7efb8ae2f97fe59b3e76163d70cb517806687403ac458dc9d81ab2f6"
+    "src/providers/translation/free-translation.ts": "2374e76df1cef27a6948b4d4bcdb25cfe60611489bba40e9588643f147062c17",
+    "userscript/languageBundles.ts": "4753fd28aa09ba76a56167fe204dbc94ba4e16254e0e5f7cc79635b86d943f00",
+    "wxt.config.ts": "09e6aea80f44a41f7cfa24acdf486f79d73c0011a086be9d36b35c4dbbd252d6"
   },
   "checks": {
     "typecheck": "passed",
@@ -47,8 +62,8 @@
       "log": "validation/integration-1436.log"
     },
     "safariManifest": {
-      "passed": 42,
-      "scope": "manifest, explicit UTF-8 background, native guide, all packaging templates"
+      "passed": 45,
+      "scope": "manifest, explicit UTF-8 background, 21 optional service origins, native guide, all packaging templates and symmetric input/output nesting refusal"
     },
     "strictCoverage": {
       "modules": [
@@ -82,14 +97,28 @@
     "formalBuildVerification": {
       "results": [
         {
-          "name": "compile",
+          "name": "safari",
           "command": [
             "pnpm",
-            "compile"
+            "build:safari"
           ],
           "exitCode": 0,
-          "seconds": 41.18,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/compile.log"
+          "seconds": 25.54,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/safari.log"
+        },
+        {
+          "name": "safari-verify",
+          "command": [
+            "node",
+            "scripts/testing/run-resource-safe.mjs",
+            "--",
+            "node",
+            "scripts/safari/package.mjs",
+            "--verify"
+          ],
+          "exitCode": 0,
+          "seconds": 0.26,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/safari-verify.log"
         },
         {
           "name": "chrome",
@@ -98,8 +127,8 @@
             "build"
           ],
           "exitCode": 0,
-          "seconds": 25.71,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/chrome.log"
+          "seconds": 25.21,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/chrome.log"
         },
         {
           "name": "firefox",
@@ -108,8 +137,21 @@
             "build:firefox"
           ],
           "exitCode": 0,
-          "seconds": 26.36,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/firefox.log"
+          "seconds": 27.35,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/firefox.log"
+        },
+        {
+          "name": "extension-manifests",
+          "command": [
+            "node",
+            "scripts/testing/run-resource-safe.mjs",
+            "--",
+            "node",
+            "scripts/testing/verify-extension-manifests.mjs"
+          ],
+          "exitCode": 0,
+          "seconds": 0.32,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/extension-manifests.log"
         },
         {
           "name": "userscript",
@@ -118,8 +160,8 @@
             "build:userscript"
           ],
           "exitCode": 0,
-          "seconds": 8.38,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/userscript.log"
+          "seconds": 5.89,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/userscript.log"
         },
         {
           "name": "userscript-verify",
@@ -131,8 +173,8 @@
             "scripts/verify-userscript-build.mjs"
           ],
           "exitCode": 0,
-          "seconds": 0.24,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/userscript-verify.log"
+          "seconds": 0.18,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/userscript-verify.log"
         },
         {
           "name": "audit",
@@ -144,19 +186,817 @@
             "test:audit"
           ],
           "exitCode": 0,
-          "seconds": 3.39,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/utf8-final/audit.log"
+          "seconds": 2.82,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/audit.log"
         }
       ],
-      "safari": "validation/utf8-final/safari.log",
-      "safariVerify": "safari-utf8-production-verify.log",
-      "chromeFirefoxManifests": "validation/utf8-final/extension-manifests.log"
+      "safari": "validation/mobile-selection-menu-final/safari.log",
+      "safariVerify": "validation/mobile-selection-menu-final/safari-verify.log",
+      "chromeFirefoxManifests": "validation/mobile-selection-menu-final/extension-manifests.log",
+      "intermediateCssOnlyResults": [
+        {
+          "name": "safari",
+          "command": [
+            "pnpm",
+            "build:safari"
+          ],
+          "exitCode": 0,
+          "seconds": 25.08,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/safari.log"
+        },
+        {
+          "name": "safari-verify",
+          "command": [
+            "node",
+            "scripts/testing/run-resource-safe.mjs",
+            "--",
+            "node",
+            "scripts/safari/package.mjs",
+            "--verify"
+          ],
+          "exitCode": 0,
+          "seconds": 0.71,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/safari-verify.log"
+        },
+        {
+          "name": "chrome",
+          "command": [
+            "pnpm",
+            "build"
+          ],
+          "exitCode": 0,
+          "seconds": 25.51,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/chrome.log"
+        },
+        {
+          "name": "firefox",
+          "command": [
+            "pnpm",
+            "build:firefox"
+          ],
+          "exitCode": 0,
+          "seconds": 24.78,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/firefox.log"
+        },
+        {
+          "name": "extension-manifests",
+          "command": [
+            "node",
+            "scripts/testing/run-resource-safe.mjs",
+            "--",
+            "node",
+            "scripts/testing/verify-extension-manifests.mjs"
+          ],
+          "exitCode": 0,
+          "seconds": 0.42,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/extension-manifests.log"
+        }
+      ]
     },
     "formalArchitectureTests": {
       "verificationOwnership": 20,
       "moduleBoundaries": 15,
       "sourceFileHeaders": 1028,
       "browserCapabilities": 13
+    },
+    "permissionBackend": {
+      "schemaVersion": 1,
+      "createdAt": "2026-10-15T09:34:12.789Z",
+      "worktree": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+      "rerunPerformedForThisArchive": false,
+      "scope": "Previously completed deterministic backend/manifest/architecture checks; this archive does not claim Safari UI, physical-device, or live-provider acceptance.",
+      "targeted": {
+        "exitCode": 0,
+        "result": "passed",
+        "files": 3,
+        "cases": 277,
+        "fileCases": {
+          "tests/free-translation.test.ts": 196,
+          "tests/extensionManifestContract.test.ts": 44,
+          "tests/freeProviderPermissions.test.ts": 37
+        },
+        "command": [
+          "node",
+          "scripts/testing/run-resource-safe.mjs",
+          "--max-workers",
+          "1",
+          "--concurrency",
+          "3",
+          "--",
+          "pnpm",
+          "exec",
+          "vitest",
+          "run",
+          "tests/extensionManifestContract.test.ts",
+          "tests/freeProviderPermissions.test.ts",
+          "tests/free-translation.test.ts",
+          "--config",
+          "vitest.coverage.config.ts",
+          "--coverage.include=src/core/config/freeProviderOrigins.ts",
+          "--coverage.include=src/platform/browser/freeProviderPermissions.ts",
+          "--coverage.include=src/providers/translation/free-translation.ts",
+          "--coverage.reportsDirectory=coverage/safari-free-provider-permissions"
+        ],
+        "startedAt": "2026-10-15T17:16:33+08:00",
+        "durationSeconds": 8.44,
+        "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/backend-targeted-existing-tool-output.log",
+        "logProvenance": {
+          "kind": "existing-conversation-tool-output-excerpt",
+          "toolChunkId": "f8bfba",
+          "sessionId": 84073,
+          "originalDiskLogAvailable": false
+        }
+      },
+      "coverage": {
+        "result": "passed",
+        "statementPercent": 100,
+        "branchPercent": 100,
+        "functionPercent": 100,
+        "linePercent": 100,
+        "originalDirectory": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/coverage/safari-free-provider-permissions",
+        "archivedDirectory": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/backend-coverage",
+        "summary": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/backend-coverage/coverage-summary.json",
+        "raw": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/backend-coverage/coverage-final.json",
+        "html": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/backend-coverage/index.html",
+        "metrics": {
+          "total": {
+            "lines": {
+              "total": 359,
+              "covered": 359,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 359,
+              "covered": 359,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 44,
+              "covered": 44,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 262,
+              "covered": 262,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/src/core/config/freeProviderOrigins.ts": {
+            "lines": {
+              "total": 3,
+              "covered": 3,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 3,
+              "covered": 3,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 1,
+              "covered": 1,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/src/platform/browser/freeProviderPermissions.ts": {
+            "lines": {
+              "total": 53,
+              "covered": 53,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 8,
+              "covered": 8,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 53,
+              "covered": 53,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 55,
+              "covered": 55,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/src/providers/translation/free-translation.ts": {
+            "lines": {
+              "total": 303,
+              "covered": 303,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 36,
+              "covered": 36,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 303,
+              "covered": 303,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 206,
+              "covered": 206,
+              "skipped": 0,
+              "pct": 100
+            }
+          }
+        }
+      },
+      "architecture": {
+        "exitCode": 0,
+        "result": "passed",
+        "files": 4,
+        "cases": 1072,
+        "fileCases": {
+          "tests/architecture/verificationOwnership.test.ts": 20,
+          "tests/architecture/moduleBoundaries.test.ts": 15,
+          "tests/architecture/providerBoundaries.test.ts": 7,
+          "tests/architecture/sourceFileHeaders.test.ts": 1030
+        },
+        "command": [
+          "node",
+          "scripts/testing/run-resource-safe.mjs",
+          "--max-workers",
+          "1",
+          "--concurrency",
+          "3",
+          "--",
+          "pnpm",
+          "exec",
+          "vitest",
+          "run",
+          "tests/architecture/moduleBoundaries.test.ts",
+          "tests/architecture/providerBoundaries.test.ts",
+          "tests/architecture/sourceFileHeaders.test.ts",
+          "tests/architecture/verificationOwnership.test.ts"
+        ],
+        "startedAt": "2026-10-15T17:17:11+08:00",
+        "durationSeconds": 12.6,
+        "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/backend-architecture-existing-tool-output.log",
+        "logProvenance": {
+          "kind": "existing-conversation-tool-output-excerpt",
+          "toolChunkId": "12cd4a",
+          "sessionId": 37011,
+          "originalDiskLogAvailable": false
+        }
+      },
+      "audit": {
+        "result": "passed",
+        "name": "audit",
+        "command": [
+          "node",
+          "scripts/testing/run-resource-safe.mjs",
+          "--",
+          "pnpm",
+          "test:audit"
+        ],
+        "exitCode": 0,
+        "seconds": 2.86,
+        "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/audit.log",
+        "summary": {
+          "status": "ok",
+          "groups": {
+            "architecture": 38,
+            "unit": 409,
+            "functional": 240,
+            "regression": 44
+          },
+          "files": 731,
+          "cases": 13182
+        },
+        "provenance": "existing raw redirected log and results.json; not rerun"
+      },
+      "sourceHashes": [
+        {
+          "relative": "src/core/config/freeProviderOrigins.json",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/src/core/config/freeProviderOrigins.json",
+          "sha256": "8b4004cade979ded8b2b76ac3398dfa108f9e423de2b6d7336dc2530cadf2418",
+          "bytes": 1021,
+          "modifiedAt": "2026-10-15T09:15:44.596Z"
+        },
+        {
+          "relative": "src/core/config/freeProviderOrigins.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/src/core/config/freeProviderOrigins.ts",
+          "sha256": "ee38f3e7bdaf46a7f9f3097da746d279a2215cf3bdbf336a88c15669f73b3f36",
+          "bytes": 868,
+          "modifiedAt": "2026-10-15T09:15:44.621Z"
+        },
+        {
+          "relative": "src/core/config/freeTranslation.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/src/core/config/freeTranslation.ts",
+          "sha256": "dc63b34bdf1820d847d53dff9008ccc04105edd4a49ee53c4f9653c69715ae63",
+          "bytes": 5583,
+          "modifiedAt": "2026-10-15T05:34:25.340Z"
+        },
+        {
+          "relative": "src/platform/browser/freeProviderPermissions.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/src/platform/browser/freeProviderPermissions.ts",
+          "sha256": "eb2d47c062e0c476e190b53059761d25607e4355bc47aea85cead162752a6f8a",
+          "bytes": 5597,
+          "modifiedAt": "2026-10-15T09:15:44.645Z"
+        },
+        {
+          "relative": "src/providers/translation/free-translation.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/src/providers/translation/free-translation.ts",
+          "sha256": "2374e76df1cef27a6948b4d4bcdb25cfe60611489bba40e9588643f147062c17",
+          "bytes": 26698,
+          "modifiedAt": "2026-10-15T09:11:50.225Z"
+        },
+        {
+          "relative": "wxt.config.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/wxt.config.ts",
+          "sha256": "09e6aea80f44a41f7cfa24acdf486f79d73c0011a086be9d36b35c4dbbd252d6",
+          "bytes": 19585,
+          "modifiedAt": "2026-10-15T09:15:44.669Z"
+        },
+        {
+          "relative": "scripts/safari/package.mjs",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/scripts/safari/package.mjs",
+          "sha256": "fd70fe2cfa856d6da09f20a7e5fa4d0a8ddeec76e88ffd6b6ec899a19b754823",
+          "bytes": 21516,
+          "modifiedAt": "2026-10-15T09:15:44.693Z"
+        },
+        {
+          "relative": "tests/freeProviderPermissions.test.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/tests/freeProviderPermissions.test.ts",
+          "sha256": "4143b356ae249e1c00738b7b680cf48bc35b19a5dc62709cd029d0e5f8e6d28e",
+          "bytes": 16357,
+          "modifiedAt": "2026-10-15T09:16:32.392Z"
+        },
+        {
+          "relative": "tests/free-translation.test.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/tests/free-translation.test.ts",
+          "sha256": "ddb3f190d3df9eb32e1f394eb203570436e575ed68cc68b122eda1b4bf8b525a",
+          "bytes": 156953,
+          "modifiedAt": "2026-10-15T09:12:15.890Z"
+        },
+        {
+          "relative": "tests/extensionManifestContract.test.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/tests/extensionManifestContract.test.ts",
+          "sha256": "1d0997126809f8fc0bb835b92c6a87709bbcd05022a4f1aa4f344e94f0c8458e",
+          "bytes": 56234,
+          "modifiedAt": "2026-10-15T09:16:32.368Z"
+        },
+        {
+          "relative": "vitest.coverage.config.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/vitest.coverage.config.ts",
+          "sha256": "2354f5581cb00611df031ccbb59c6e761afab70a473d370ae54eadd79814ec2d",
+          "bytes": 46799,
+          "modifiedAt": "2026-10-15T09:15:44.717Z"
+        },
+        {
+          "relative": "tests/test-matrix.json",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/tests/test-matrix.json",
+          "sha256": "d053ce239e78f6e9e7b7dc979d343929f84ff46f2980bfaddf8f9e372a78e42d",
+          "bytes": 32868,
+          "modifiedAt": "2026-10-15T09:00:59.661Z"
+        },
+        {
+          "relative": "tests/architecture/moduleBoundaries.test.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/tests/architecture/moduleBoundaries.test.ts",
+          "sha256": "2175fb526fea79da6bda6e017733314d4dc3ae35e3a88798cdec9d38f929106f",
+          "bytes": 20719,
+          "modifiedAt": "2026-10-15T05:34:25.705Z"
+        },
+        {
+          "relative": "tests/architecture/providerBoundaries.test.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/tests/architecture/providerBoundaries.test.ts",
+          "sha256": "d137777ccbd689633b2569c6119bd9f7a6e6aeadbaaa007636793f4631a71412",
+          "bytes": 9839,
+          "modifiedAt": "2026-10-15T05:34:25.705Z"
+        },
+        {
+          "relative": "tests/architecture/sourceFileHeaders.test.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/tests/architecture/sourceFileHeaders.test.ts",
+          "sha256": "17e363585ae3f909c6c13f61ab1e27ac631f0c104166c5658ab16e908a70f254",
+          "bytes": 6867,
+          "modifiedAt": "2026-10-15T05:34:25.705Z"
+        },
+        {
+          "relative": "tests/architecture/verificationOwnership.test.ts",
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/tests/architecture/verificationOwnership.test.ts",
+          "sha256": "906cb147511465853086271c87575187119aa35fd059477851233895ac36a521",
+          "bytes": 31581,
+          "modifiedAt": "2026-10-15T06:03:06.119Z"
+        }
+      ],
+      "sourceHashProvenance": "Hashes collected at archival time; original invocations did not record per-file hashes. Listed source/test mtimes precede their respective runs; current hashes are not presented as contemporaneously captured run hashes.",
+      "artifacts": [
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/backend-targeted-existing-tool-output.log",
+          "sha256": "e3fbe8e54096cf03ee4f397c1349921225768760edb2bd2a119921058a0aa39f",
+          "bytes": 1058
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/backend-architecture-existing-tool-output.log",
+          "sha256": "1d9b59205be2833eecc6b6b2e7f8df1067037c03da5587cbb9a82d76dbbb58b8",
+          "bytes": 1678
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/audit.log",
+          "sha256": "aea54a99b5d7ee46519db6dad0b8dc40d56444fa35e6262ea26dc5adea32f616",
+          "bytes": 406
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/results.json",
+          "sha256": "decd85be991ff5f2ba650c9b579a4a6d8b70caa636b45fbc2329c11ff9c25bca",
+          "bytes": 2404
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/backend-coverage/coverage-summary.json",
+          "sha256": "98a13e645353cf504de37c01debbbc53cbd9ed323b40428c89c2240e3372307d",
+          "bytes": 1385
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/backend-coverage/coverage-final.json",
+          "sha256": "afb8aa42fa1328ecebd005bdb8bfd4e3e412ee3c9cb55f1191442ebab83af04a",
+          "bytes": 89092
+        }
+      ],
+      "relatedProductionBuild": {
+        "acceptance": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-permissions-final.json",
+        "buildSha256": "efe1dff6ab2a22a0ed4814262455aae756eb550be47e97437aec0cfe42f1ccd1",
+        "fileCount": 462
+      }
+    },
+    "permissionUI": {
+      "scope": "Existing completed permission UI targeted validations only. Evidence preservation, no tests/build/device actions rerun in this collection task. No product source edits. Counts are latest captured passed results per file, not one new aggregate execution.",
+      "provenance": "These commands were originally captured by this task execution tool without separate tee files. Logs here are exact aggregated_output copies recovered from their completed command records; command, exit code and record line are indexed below. No outputs were regenerated.",
+      "worktree": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+      "resourcePolicy": {
+        "maxWorkers": 1,
+        "concurrency": 3,
+        "cpuTargetPercent": 60
+      },
+      "compile": {
+        "scope": "Final pnpm compile / vue-tsc --noEmit after correcting the unsupported test fixture failure category network to unavailable.",
+        "status": "passed",
+        "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-compile-final.log",
+        "sha256": "ef944d2e6fafa2e2c212e80331d7b0ab05e8a24beb8dbc25e1a0c256532dec61",
+        "originalRecord": {
+          "sessionFile": "/Users/thinkstu/.codex/sessions/2026/10/15/rollout-2026-10-15T13-34-38-01a13e0e-2ca5-7c90-92ec-a3b532b012e5.jsonl",
+          "line": 3317,
+          "commandExecutionId": "exec-f766e2ea-1abc-4031-8a60-c585a1bdfd7d",
+          "processId": "97506"
+        },
+        "command": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm compile",
+        "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+        "completedAt": "2026-10-15T09:19:50.829Z",
+        "exitCode": 0
+      },
+      "suites": [
+        {
+          "testFile": "tests/popupAppLifecycle.test.ts",
+          "casesPassed": 48,
+          "scope": "Actual SFC setup/render/events: popup page actions, Safari synchronous single-provider request, deny/partial grant and stale/close ownership; non-Safari bypass.",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-popup-lifecycle-final.log",
+          "sha256": "f5d2eb77148966ec0905d8c435d1cf02894db8abee0d72e53a4de2bb4e639441",
+          "originalRecord": {
+            "sessionFile": "/Users/thinkstu/.codex/sessions/2026/10/15/rollout-2026-10-15T13-34-38-01a13e0e-2ca5-7c90-92ec-a3b532b012e5.jsonl",
+            "line": 3077,
+            "commandExecutionId": "exec-774b6a00-a9f4-4d4b-b988-bc0179a63f56",
+            "processId": "99580"
+          },
+          "command": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm test tests/popupAppLifecycle.test.ts tests/freeTranslationSettings.test.ts tests/serviceConfigurationLifecycle.test.ts",
+          "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+          "completedAt": "2026-10-15T09:04:50.093Z",
+          "exitCode": 0
+        },
+        {
+          "testFile": "tests/freeTranslationSettings.test.ts",
+          "casesPassed": 24,
+          "scope": "Actual settings SFC: per-provider grants, cancellation/late results, deny/partial grant and permission-before-first-weight-snapshot race; single granted provider non-default cooling weights accepted. Final fixture uses valid unavailable failure category with positive 1-second remaining cooldown.",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-free-settings-final.log",
+          "sha256": "db7eb9c5738e9e6d18746c921084171373e2ec91909910adbadab31e9b23c5e3",
+          "originalRecord": {
+            "sessionFile": "/Users/thinkstu/.codex/sessions/2026/10/15/rollout-2026-10-15T13-34-38-01a13e0e-2ca5-7c90-92ec-a3b532b012e5.jsonl",
+            "line": 3339,
+            "commandExecutionId": "exec-f3c8875e-ba90-41a2-b930-d0a860f17a98",
+            "processId": "57820"
+          },
+          "command": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm test tests/freeTranslationSettings.test.ts",
+          "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+          "completedAt": "2026-10-15T09:20:17.684Z",
+          "exitCode": 0
+        },
+        {
+          "testFile": "tests/serviceConfigurationLifecycle.test.ts",
+          "casesPassed": 35,
+          "scope": "Actual service configuration SFC: Safari unauthorized providers are permission-pending rather than failed provider checks; existing fixed/custom controls.",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-service-configuration-directory.log",
+          "sha256": "6d5a0042601d02a73742095f323fb61c2a45a09f7ae1b3d9ee791f677f1cdfc9",
+          "originalRecord": {
+            "sessionFile": "/Users/thinkstu/.codex/sessions/2026/10/15/rollout-2026-10-15T13-34-38-01a13e0e-2ca5-7c90-92ec-a3b532b012e5.jsonl",
+            "line": 3148,
+            "commandExecutionId": "exec-bf91d619-24d9-44ba-b35d-1030beb9f0b5",
+            "processId": "43929"
+          },
+          "command": "git diff --check; FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm test tests/serviceConfigurationLifecycle.test.ts tests/serviceDirectoryLifecycle.test.ts",
+          "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+          "completedAt": "2026-10-15T09:07:27.860Z",
+          "exitCode": 0
+        },
+        {
+          "testFile": "tests/serviceDirectoryLifecycle.test.ts",
+          "casesPassed": 112,
+          "scope": "Existing actual service/settings lifecycle consumers and directory integration.",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-directory-free-snapshot-final.log",
+          "sha256": "fc6361bb23a4104b0f6955513e0a8c0c1ad600a8fd2304cee56d5b1fac8de9d6",
+          "originalRecord": {
+            "sessionFile": "/Users/thinkstu/.codex/sessions/2026/10/15/rollout-2026-10-15T13-34-38-01a13e0e-2ca5-7c90-92ec-a3b532b012e5.jsonl",
+            "line": 3244,
+            "commandExecutionId": "exec-1a7adf6d-2a54-4f89-abab-cb3661fa5d4e",
+            "processId": "49934"
+          },
+          "command": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm test tests/freeTranslationSettings.test.ts tests/serviceDirectoryLifecycle.test.ts",
+          "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+          "completedAt": "2026-10-15T09:12:38.239Z",
+          "exitCode": 0
+        },
+        {
+          "testFile": "tests/popupFeatureVisibility.test.ts",
+          "casesPassed": 31,
+          "scope": "Popup template contracts including Safari loading guard; corrected old exact-disabled-expression assertion.",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-popup-feature-visibility-final.log",
+          "sha256": "a9fa99855977594324839e30f6713c1065d62407a25b6971bf2a452c3962383e",
+          "originalRecord": {
+            "sessionFile": "/Users/thinkstu/.codex/sessions/2026/10/15/rollout-2026-10-15T13-34-38-01a13e0e-2ca5-7c90-92ec-a3b532b012e5.jsonl",
+            "line": 3111,
+            "commandExecutionId": "exec-82db78a1-c2e3-4ce0-a387-423f9c909659",
+            "processId": "51082"
+          },
+          "command": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm test tests/popupFeatureVisibility.test.ts",
+          "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+          "completedAt": "2026-10-15T09:06:12.648Z",
+          "exitCode": 0
+        },
+        {
+          "testFile": "tests/popupActions.test.ts",
+          "casesPassed": 5,
+          "scope": "Existing popup action contracts. This file passed within the combined run whose process exit was 1 because popupFeatureVisibility still had its old assertion; that assertion was subsequently fixed and all 31 passed.",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-architecture-actions-with-resolved-failure.log",
+          "sha256": "621279ea05a550414497ebbc16da138181e8f92ccc32508e6facd20b1e9313b1",
+          "originalRecord": {
+            "sessionFile": "/Users/thinkstu/.codex/sessions/2026/10/15/rollout-2026-10-15T13-34-38-01a13e0e-2ca5-7c90-92ec-a3b532b012e5.jsonl",
+            "line": 3098,
+            "commandExecutionId": "exec-453ff727-aeee-48e7-830c-c60f463d7fa7",
+            "processId": "82911"
+          },
+          "command": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm test tests/architecture/verificationOwnership.test.ts tests/architecture/moduleBoundaries.test.ts tests/architecture/sourceFileHeaders.test.ts tests/popupActions.test.ts tests/popupFeatureVisibility.test.ts tests/freeTranslationChecks.test.ts",
+          "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+          "completedAt": "2026-10-15T09:05:31.630Z",
+          "exitCode": 1
+        },
+        {
+          "testFile": "tests/architecture/verificationOwnership.test.ts",
+          "casesPassed": 20,
+          "scope": "Final Vue behavioral owner registry, including ServiceConfiguration migration out of frozen debt and popup/free-settings actual SFC ownership.",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-verification-ownership-final.log",
+          "sha256": "1dc50f9e1083188653f43a7b35d0870497b5dcc87539b16788e68a25403bf57f",
+          "originalRecord": {
+            "sessionFile": "/Users/thinkstu/.codex/sessions/2026/10/15/rollout-2026-10-15T13-34-38-01a13e0e-2ca5-7c90-92ec-a3b532b012e5.jsonl",
+            "line": 3184,
+            "commandExecutionId": "exec-5a65dc6b-6225-4c1c-a5e7-40a4c4c2fad8",
+            "processId": "83349"
+          },
+          "command": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm test tests/architecture/verificationOwnership.test.ts",
+          "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+          "completedAt": "2026-10-15T09:08:59.866Z",
+          "exitCode": 0
+        },
+        {
+          "testFile": "tests/architecture/moduleBoundaries.test.ts",
+          "casesPassed": 15,
+          "scope": "Module-boundary checks passed in the mixed run; no claim that the entire mixed run exited successfully.",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-architecture-actions-with-resolved-failure.log",
+          "sha256": "621279ea05a550414497ebbc16da138181e8f92ccc32508e6facd20b1e9313b1",
+          "originalRecord": {
+            "sessionFile": "/Users/thinkstu/.codex/sessions/2026/10/15/rollout-2026-10-15T13-34-38-01a13e0e-2ca5-7c90-92ec-a3b532b012e5.jsonl",
+            "line": 3098,
+            "commandExecutionId": "exec-453ff727-aeee-48e7-830c-c60f463d7fa7",
+            "processId": "82911"
+          },
+          "command": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm test tests/architecture/verificationOwnership.test.ts tests/architecture/moduleBoundaries.test.ts tests/architecture/sourceFileHeaders.test.ts tests/popupActions.test.ts tests/popupFeatureVisibility.test.ts tests/freeTranslationChecks.test.ts",
+          "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+          "completedAt": "2026-10-15T09:05:31.630Z",
+          "exitCode": 1
+        },
+        {
+          "testFile": "tests/architecture/sourceFileHeaders.test.ts",
+          "casesPassed": 1029,
+          "scope": "Source-header checks passed in the mixed run; no claim that the entire mixed run exited successfully.",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-architecture-actions-with-resolved-failure.log",
+          "sha256": "621279ea05a550414497ebbc16da138181e8f92ccc32508e6facd20b1e9313b1",
+          "originalRecord": {
+            "sessionFile": "/Users/thinkstu/.codex/sessions/2026/10/15/rollout-2026-10-15T13-34-38-01a13e0e-2ca5-7c90-92ec-a3b532b012e5.jsonl",
+            "line": 3098,
+            "commandExecutionId": "exec-453ff727-aeee-48e7-830c-c60f463d7fa7",
+            "processId": "82911"
+          },
+          "command": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm test tests/architecture/verificationOwnership.test.ts tests/architecture/moduleBoundaries.test.ts tests/architecture/sourceFileHeaders.test.ts tests/popupActions.test.ts tests/popupFeatureVisibility.test.ts tests/freeTranslationChecks.test.ts",
+          "cwd": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+          "completedAt": "2026-10-15T09:05:31.630Z",
+          "exitCode": 1
+        }
+      ],
+      "caseCounts": {
+        "actualSfcLifecycle": {
+          "popup": 48,
+          "freeSettings": 24,
+          "serviceConfiguration": 35,
+          "serviceDirectory": 112,
+          "uniqueTotal": 219
+        },
+        "popupContracts": {
+          "featureVisibility": 31,
+          "actions": 5,
+          "uniqueTotal": 36
+        },
+        "architecture": {
+          "ownership": 20,
+          "moduleBoundaries": 15,
+          "sourceFileHeaders": 1029,
+          "uniqueTotal": 1064
+        },
+        "allListedUniqueCases": 1319
+      },
+      "caveats": [
+        "The architecture/actions combined command exited 1 due to one old popupFeatureVisibility assertion. Architecture 20/15/1029 and popupActions 5 passed in that output; the UI assertion was corrected and its standalone 31-case rerun exited 0. Final ownership 20-case rerun also exited 0.",
+        "Final popup lifecycle log includes 48 popup + 35 service-configuration + 22 earlier free-settings cases (105 total); use the separate final free-settings 24-case log for final free-settings count. Directory/free-snapshot log contains 112 directory + 24 free-settings (136); do not sum repeated executions.",
+        "Targeted SFC/contract checks do not establish Safari device acceptance, live-provider correctness, or a full suite."
+      ],
+      "productionChromeRegression": {
+        "casesPassed": 5,
+        "report": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-chrome-permissions-regression/report.json",
+        "visualReview": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-chrome-permissions-regression/review-summary.json"
+      },
+      "followUpWeightGeneration": {
+        "scope": "Minimal allowProvider successful permission re-read now restarts the existing weight generation. New actual SFC async case leaves old weight query pending, grants Google, asserts immediate second query, applies the new Microsoft-cooling/Google-100 snapshot, then resolves old snapshot and verifies no overwrite.",
+        "testFile": "tests/freeTranslationSettings.test.ts",
+        "casesPassed": 25,
+        "command": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm test tests/freeTranslationSettings.test.ts",
+        "exitCode": 0,
+        "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-free-settings-generation-final.log",
+        "localStartAt": "2026-10-15 18:01:50 Asia/Shanghai",
+        "supersedesFinalFreeSettingsCount": 24,
+        "currentActualSfcUniqueTotal": 220,
+        "currentAllListedUniqueCases": 1320,
+        "compileLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/permissions-final/ui-compile-generation-final.log",
+        "compileStatus": "passed",
+        "compileExitCode": 0,
+        "compileCommand": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm compile"
+      },
+      "productionChromeFinalReview": {
+        "casesPassed": 11,
+        "report": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-popup-reviewed-final/report.json",
+        "summary": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-popup-reviewed-final/review-summary.json",
+        "artifactTreeSha256": "45135367f3fab52657b527dfd21f7e8b6895a7ece5662df93872ce448e4b31fb",
+        "cssInjected": false,
+        "profileActuallyAbsent": true
+      },
+      "productionChromeNativeTouchFinal": {
+        "casesPassed": 8,
+        "report": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-popup-native-touch-final/report.json",
+        "summary": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/production-popup-native-touch-final/review-summary.json",
+        "artifactTreeSha256": "7794166a3ef5e5f3ed9cc95a294ac346d6cd1c9046cf7673752d86fc526a5bbd",
+        "cssInjected": false,
+        "providerRequests": 0,
+        "profileActuallyAbsent": true,
+        "doesNotReplacePriorElevenCaseArtifact": true
+      }
+    },
+    "permissionI18n": {
+      "files": 3,
+      "passed": 288,
+      "log": "validation/safari-permissions-i18n-final.log",
+      "scope": "i18n, userscript language projection and pinned language resource/build contracts"
+    },
+    "selectionNativeMenuRepair": {
+      "at": 1792058462772,
+      "sourceStable": true,
+      "source": {
+        "src/features/selection-translation/ui/SelectionTranslator.vue": "7a69297efd4c1da58dda8a7fb5c836fd61c21aacfbd0c4de9fe77c9f9f88c9d3",
+        "tests/selectionTranslatorLifecycle.test.ts": "b6603cfc545fdb752c3e18ccc240bd3711e68247c4bcff0ab8013f825c17515d"
+      },
+      "reason": "Actual task iOS native edit menu intercepted observed indicator semantic tap and opened native Lookup",
+      "change": "Touch-only endpoint-line center, flip horizontal side only when opposite side fits, existing safe viewport clamp; desktop position unchanged",
+      "tests": {
+        "runner": "resource-safe max-workers1 concurrency3 cpu40",
+        "selectionTranslatorLifecycle": 248,
+        "selectionTranslatorCore": 67,
+        "failures": 0
+      },
+      "review": {
+        "ownership": "Only selection Vue and existing lifecycle test touched",
+        "newBrowserAPIs": false,
+        "newResourcesToClean": false,
+        "refreshSelectionStillUsesActualForwardOrBackwardEndpoint": true,
+        "requestAndSnapshotLifecycleChanged": false,
+        "nativeMenuBoundsHardcoded": false,
+        "desktopOffsetPreserved": true
+      },
+      "pending": "Unified final reviewed production App build and actual iOS native gesture retest; full-width edge clamping still requires runtime geometry review, not claimed universally menu-proof"
+    },
+    "touchPopupPreview": {
+      "passed": 8,
+      "report": "production-popup-touch-drawer-preview/report.json",
+      "scope": "New CSS applied to isolated production Chrome popup; actual fine/coarse media, 320/390 main and teleported drawer, enlarged switch hit target; not formal Safari runtime proof",
+      "sourceSHA256": "c1b50480b96f2954e5a1a73a2b6a04a204a677e4fc638d452b179bec3be26474",
+      "contractTestsPassed": 31
+    },
+    "latestTypes": {
+      "passed": true,
+      "log": "validation/mobile-native-touch-final/selection-native-menu-compile.log"
+    },
+    "nativeSheetTouchMargin": {
+      "cssPixels": 46,
+      "contractTestsPassed": 31,
+      "log": "validation/permissions-final/ui-popup-touch-sheet-margin-final.log",
+      "sourceDelta": {
+        "sourceDeltaComparedToC24a": {
+          "src/app/popup/popup.css": {
+            "before": "c1b50480b96f2954e5a1a73a2b6a04a204a677e4fc638d452b179bec3be26474",
+            "after": "115cf321eeeea9a1abe888fbb879c25e884100e137abaa0ebe664f1ae96b4b1f"
+          }
+        },
+        "userscriptSHA256": "a42f756f6c74bebc3151a614528f0ee2bcbe059460990f4cf33757deba9b51e0",
+        "userscriptUnchanged": true,
+        "reusedBuildValidation": "validation/mobile-reviewed-final/results.json",
+        "scope": "Later change is CSS for extension popup only; no claim that rebuild JS minifier output must be byte-identical"
+      },
+      "nativePointsVerifiedSeparately": true
+    },
+    "selectionNativeMenuCleanup": {
+      "scope": "Minimal Safari-touch explicit indicator selection cleanup; no device/build action",
+      "sources": [
+        {
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/src/features/selection-translation/ui/SelectionTranslator.vue",
+          "sha256": "7ee2015a5b86ff2276fb94879b0286eaaf2cf4b746e5b14342d2ef7990394163"
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/tests/selectionTranslatorLifecycle.test.ts",
+          "sha256": "aed9ddce95a238afb7fa9d1b82e7e57af755bbd2965a0d70055531df5429a709"
+        }
+      ],
+      "behavior": [
+        "Actual indicator template click first uses existing openTooltip gates",
+        "Only Safari build plus touch-created selection consumes the same live selection fingerprint after successful open",
+        "Independent current-snapshot touch ownership preserves card and target language; original manuallyRequestedSelection remains unchanged",
+        "Cancel selection loss/touch-read/read-frame then suppress queued empty-selection reads and call standard Selection.removeAllRanges",
+        "Owned selection loss reuses restoreSelectionSource so disconnected/changed source still closes",
+        "New selection, hideAll and unmount release ownership; clear API errors retain the already opened card"
+      ],
+      "validation": {
+        "command": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm test tests/selectionTranslatorLifecycle.test.ts",
+        "casesPassed": 256,
+        "newCases": 8,
+        "exitCode": 0,
+        "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/selection-native-menu-final-passed.log",
+        "compileLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/selection-native-menu-compile.log",
+        "compileStatus": "passed",
+        "compileExitCode": 0,
+        "compileCommand": "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm compile"
+      },
+      "officialApiBasis": {
+        "url": "https://www.w3.org/TR/selection-api/#dom-selection-removeallranges",
+        "verifiedBehavior": "removeAllRanges disassociates the document selection range and schedules selectionchange; existing cloned Range is retained by the component.",
+        "limit": "Standard selection clearing is not a specified API to dismiss iOS native edit menus. Actual system menu disappearance remains unverified until separate owned iOS final-product evidence."
+      },
+      "deviceUiEvidenceReadOnly": "research/mobile-safari-20261015/ios-ui-harness/final-card-stable-dimensions-evidence/final-card-00-stable-portrait.png",
+      "productionChangesOutsideTheseFiles": false
+    },
+    "finalDocs": {
+      "passed": true,
+      "log": "validation/mobile-selection-menu-final/docs-final.log"
     }
   },
   "productionBrowserSuites": [
@@ -299,50 +1139,50 @@
   ],
   "artifacts": {
     "chrome": {
-      "sha256": "8d18bb58d70f4a4f69f0e4ddad9faea95ad984bbecfba26032bd3d9e10270a0b",
-      "files": 472,
+      "sha256": "19f97c5473fbccbf8e31a0ad3e6ac81034597ed098e5adb033fa232a0c2cacb8",
+      "files": 473,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "firefox": {
-      "sha256": "94ca21c68ea7c46fef5c3aadf4ecc94538c5812602ad249dabd84215aab622bb",
-      "files": 472,
+      "sha256": "d411dffbcba76c903d1504715a1ca4c84a88a9b2b91fabfb76950611954c648c",
+      "files": 473,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "safari": {
-      "sha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
-      "files": 461,
+      "sha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+      "files": 462,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "userscript": {
-      "sha256": "cbe7706009374fa15c907984b84dac7f4e6935bb9ab5a83794d7d52139f80ed7",
-      "bytes": 2072040,
+      "sha256": "36204c9cc5994966d7dcfac3c83785a97f93874ce4d687277ac0ad9e140e29ca",
+      "bytes": 2074322,
       "verifier": "passed"
     }
   },
   "safari": {
-    "createdAt": "2026-10-15T08:32:02.260Z",
-    "artifactStatus": "reviewed formal UTF-8 production wrapper; native compilation passed; UI/device acceptance separately owned by root",
+    "createdAt": "2026-10-15T10:35:05.373Z",
+    "artifactStatus": "Safari selection menu reviewed source wrapper with 46px coarse CSS; UI/device acceptance separately owned by root",
     "researchProbe": false,
     "reviewed": true,
-    "productionWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
-    "productionWebResourceCount": 461,
+    "productionWebResourceSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+    "productionWebResourceCount": 462,
     "nativeContainerSourceSha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
     "wrapper": {
       "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
       "version": "0.0.38",
-      "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+      "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
       "checkedReferences": 10,
-      "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
-      "artifactCount": 461,
+      "buildSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+      "artifactCount": 462,
       "packager": {
         "name": "safari-web-extension-packager",
         "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/safari-web-extension-packager"
       },
       "projects": [
-        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-utf8-final-reviewed/FluentRead/FluentRead.xcodeproj"
+        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-mobile-selection-menu-final/FluentRead/FluentRead.xcodeproj"
       ],
       "copiedExtensions": [
-        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-utf8-final-reviewed/FluentRead/Shared (Extension)/Resources"
+        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-mobile-selection-menu-final/FluentRead/Shared (Extension)/Resources"
       ],
       "containerGuides": [
         {
@@ -375,134 +1215,118 @@
     },
     "platforms": {
       "iosSimulator": {
-        "nativeExecutableSha256": "6e3a1f4af1fc2d2ee3e06f44ad9866b649ca46b8bbe35960f19915ac428dfabe",
-        "createdAt": "2026-10-15T08:30:22.594Z",
+        "createdAt": "2026-10-15T10:35:05.369Z",
         "platform": "iosSimulator",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-utf8-final-reviewed/Build/Products/Release-iphonesimulator/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-utf8-final-reviewed/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-mobile-selection-menu-final/Build/Products/Release-iphonesimulator/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-mobile-selection-menu-final/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
-          "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+          "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
-          "artifactCount": 461
+          "buildSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+          "artifactCount": 462
         },
-        "compiledWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
-        "compiledWebResourceCount": 461,
+        "compiledWebResourceSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+        "compiledWebResourceCount": 462,
         "nativeExtras": [
           "FluentRead Extension",
           "Info.plist"
         ],
+        "nativeExecutableSha256": "08f1f40e5a24f5c3ff02e4367b0cbc1d1cb6326ae110e4bb2068da148ca33f32",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-utf8-final-reviewed.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-mobile-selection-menu-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-utf8-final-reviewed.log",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-mobile-selection-menu-final.log",
+        "signatureInspectionExitCode": 0,
         "signatureSummary": "linker ad-hoc; no developer team",
         "installedByThisAgent": false,
-        "launchedByThisAgent": false,
-        "actualExpandedDevelopmentTeam": ""
+        "launchedByThisAgent": false
       },
       "macos": {
-        "nativeExecutableSha256": "092a76a1cbe1e652a8f30b2e438ae8b81c22052ef203d70b90ff5204d03f06d8",
-        "createdAt": "2026-10-15T08:31:14.767Z",
+        "createdAt": "2026-10-15T10:36:12.853Z",
         "platform": "macos",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-utf8-final-reviewed/Build/Products/Release/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-utf8-final-reviewed/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-mobile-selection-menu-final/Build/Products/Release/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-mobile-selection-menu-final/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
-          "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+          "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
-          "artifactCount": 461
+          "buildSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+          "artifactCount": 462
         },
-        "compiledWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
-        "compiledWebResourceCount": 461,
+        "compiledWebResourceSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+        "compiledWebResourceCount": 462,
         "nativeExtras": [],
+        "nativeExecutableSha256": "95a73bcd61ec226e4466465c97fa8970789d320d54c66ae623b6c50638ca583c",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-utf8-final-reviewed.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-mobile-selection-menu-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-utf8-final-reviewed.log",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-mobile-selection-menu-final.log",
+        "signatureInspectionExitCode": 0,
         "signatureSummary": "linker ad-hoc; no developer team",
         "installedByThisAgent": false,
         "launchedByThisAgent": false
       },
       "iphoneos": {
-        "nativeExecutableSha256": "fa1e2d9dff7867a9007d98730dccb0613721dc197eaff5e1ed9e5fd915c582d0",
-        "createdAt": "2026-10-15T08:32:02.207Z",
+        "createdAt": "2026-10-15T10:37:06.707Z",
         "platform": "iphoneos",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-utf8-final-reviewed/build/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-utf8-final-reviewed/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-mobile-selection-menu-final/build/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-mobile-selection-menu-final/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
-          "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+          "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
-          "artifactCount": 461
+          "buildSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+          "artifactCount": 462
         },
-        "compiledWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
-        "compiledWebResourceCount": 461,
+        "compiledWebResourceSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+        "compiledWebResourceCount": 462,
         "nativeExtras": [
           "FluentRead Extension",
           "Info.plist"
         ],
+        "nativeExecutableSha256": "e74ca9864bc45c2912b8716b7a67ab5fea12e5bf76d2d94040c729b63b0002f7",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-utf8-final-reviewed.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-mobile-selection-menu-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-utf8-final-reviewed.log",
-        "signatureSummary": "unsigned",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-mobile-selection-menu-final.log",
+        "signatureInspectionExitCode": 1,
+        "signatureSummary": "unsigned; no developer team",
         "installedByThisAgent": false,
-        "launchedByThisAgent": false,
-        "actualExpandedDevelopmentTeam": ""
+        "launchedByThisAgent": false
       }
     },
-    "review": {
-      "utf8PageVerifier": "read-only checked: explicit UTF-8; only local ./background.js; persistent false; no scripts/service_worker mixing; strict relative file references; compatible with all native template layouts",
-      "nativeContainer": "weak WKScriptMessageHandler delegate and deinit unregister copied exactly from reviewed source",
-      "nativeContainerSourceCopiedIdentically": true,
-      "unitTests": "42 targeted tests passed as confirmed by owning agent/root; not rerun in this packaging-only turn"
-    },
-    "buildPolicy": {
-      "sequential": true,
-      "resourceSafe": true,
-      "defaultConcurrency": 3,
-      "jobs": 1,
-      "CODE_SIGNING_ALLOWED": "NO",
-      "CODE_SIGNING_REQUIRED": "NO"
-    },
-    "notPerformedByThisAgent": [
-      "App installation",
-      "App launch",
-      "Simulator device operations",
-      "Developer signing or provisioning",
-      "Physical-device acceptance"
-    ],
-    "productSourceOrDocsChangedByThisTurn": false,
-    "supersededIntermediateEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-utf8-final.json",
-    "preservedResearchEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-utf8-probe.json"
+    "previousAcceptance": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-mobile-native-touch-final.json",
+    "previousProductionWebResourceSha256": "d040dad230fb0ab3f1d47de4eea37e1dc52b7504491cbf9c6d5ed712c99b064c",
+    "priorAcceptedInteractionVersion": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-mobile-reviewed-final.json",
+    "formalWebBuildLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/safari.log",
+    "versionHistoryNote": "Root reports Safari touch explicit selection entry clears the same native selection while preserving independent snapshot ownership and reverse target behavior. Source lifecycle checks are separately owned by root. d040 is a preserved intermediate build. No assertion that minified JS bytes equal prior versions; this report verifies all current compiled resources against e3f9.",
+    "nativeBuildsComplete": true,
+    "updatedAt": "2026-10-15T10:37:06.708Z"
   },
   "review": {
     "code": "independent scoped review found no remaining confirmed P1/P2 regressions",
@@ -603,6 +1427,24 @@
       "exactPageVariantColdRestart": "main popup opened",
       "javaScriptFilesUnchanged": 124,
       "formalRebuildIsSeparate": true
+    },
+    "optionalPermissionAB": {
+      "report": "request-gesture-probe/ab-result.json",
+      "withoutOptionalOrigin": "request true, no prompt, contains false",
+      "withExactOptionalOrigin": "actual deny false/contains false, then actual allow-one-day true/contains true",
+      "providerRequests": 0,
+      "allSitesPermission": false
+    },
+    "readOnlyPermissions": {
+      "report": "permissions-diagnostic/result.json",
+      "scope": "getAll and contains only; does not infer CORS network reachability from contains false"
+    },
+    "ciUtf8Success": {
+      "conclusion": "success",
+      "headSha": "82fa8085fabdf974088816daf8a689832c7822a6",
+      "status": "completed",
+      "updatedAt": "2026-10-15T09:41:55Z",
+      "url": "https://github.com/FluentRead/FluentRead/actions/runs/38709422336"
     }
   },
   "sourceSnapshotScope": "Runtime, build and native container files changed relative to baseCommit, including untracked source files; documentation excluded",
@@ -706,315 +1548,588 @@
         "acceptance-pre-delivery.json"
       ]
     },
+    "utf8Commit": "82fa8085fabdf974088816daf8a689832c7822a6",
+    "utf8Artifacts": {
+      "chrome": {
+        "sha256": "8d18bb58d70f4a4f69f0e4ddad9faea95ad984bbecfba26032bd3d9e10270a0b",
+        "files": 472,
+        "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+      },
+      "firefox": {
+        "sha256": "94ca21c68ea7c46fef5c3aadf4ecc94538c5812602ad249dabd84215aab622bb",
+        "files": 472,
+        "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+      },
+      "safari": {
+        "sha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+        "files": 461,
+        "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+      },
+      "userscript": {
+        "sha256": "cbe7706009374fa15c907984b84dac7f4e6935bb9ab5a83794d7d52139f80ed7",
+        "bytes": 2072040,
+        "verifier": "passed"
+      }
+    },
+    "utf8NativeBuilds": {
+      "createdAt": "2026-10-15T08:32:02.260Z",
+      "artifactStatus": "reviewed formal UTF-8 production wrapper; native compilation passed; UI/device acceptance separately owned by root",
+      "researchProbe": false,
+      "reviewed": true,
+      "productionWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+      "productionWebResourceCount": 461,
+      "nativeContainerSourceSha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
+      "wrapper": {
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+        "version": "0.0.38",
+        "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+        "checkedReferences": 10,
+        "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+        "artifactCount": 461,
+        "packager": {
+          "name": "safari-web-extension-packager",
+          "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/safari-web-extension-packager"
+        },
+        "projects": [
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-utf8-final-reviewed/FluentRead/FluentRead.xcodeproj"
+        ],
+        "copiedExtensions": [
+          "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-utf8-final-reviewed/FluentRead/Shared (Extension)/Resources"
+        ],
+        "containerGuides": [
+          {
+            "sha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
+            "files": [
+              "Shared (App)/ViewController.swift",
+              "Shared (App)/Resources/Base.lproj/Main.html",
+              "Shared (App)/Resources/Style.css",
+              "Shared (App)/Resources/Script.js",
+              "iOS (App)/Info.plist"
+            ],
+            "layout": "shared",
+            "locales": [
+              "en",
+              "zh-Hans"
+            ],
+            "iosSettingsMinimum": "26.2",
+            "iosSettingsPolicy": "physical device with actual DEVELOPMENT_TEAM only; Simulator and no-team builds use manual steps; physical-device API not accepted yet"
+          }
+        ],
+        "bundleId": "org.example.FluentReadDevelopment",
+        "platform": "both",
+        "minimumOS": {
+          "ios": "26.0",
+          "macos": "14.0"
+        },
+        "minimumSafari": "26.0",
+        "signed": false,
+        "installed": false
+      },
+      "platforms": {
+        "iosSimulator": {
+          "nativeExecutableSha256": "6e3a1f4af1fc2d2ee3e06f44ad9866b649ca46b8bbe35960f19915ac428dfabe",
+          "createdAt": "2026-10-15T08:30:22.594Z",
+          "platform": "iosSimulator",
+          "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-utf8-final-reviewed/Build/Products/Release-iphonesimulator/FluentRead.app",
+          "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-utf8-final-reviewed/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
+          "source": {
+            "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+            "version": "0.0.38",
+            "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+            "checkedReferences": 10,
+            "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+            "artifactCount": 461
+          },
+          "compiledWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+          "compiledWebResourceCount": 461,
+          "nativeExtras": [
+            "FluentRead Extension",
+            "Info.plist"
+          ],
+          "guideResourcesByteIdentical": true,
+          "build": {
+            "result": "passed",
+            "exitCode": 0,
+            "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-utf8-final-reviewed.log",
+            "configuration": "Release",
+            "jobs": 1,
+            "CODE_SIGNING_ALLOWED": "NO",
+            "CODE_SIGNING_REQUIRED": "NO"
+          },
+          "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-utf8-final-reviewed.log",
+          "signatureSummary": "linker ad-hoc; no developer team",
+          "installedByThisAgent": false,
+          "launchedByThisAgent": false,
+          "actualExpandedDevelopmentTeam": ""
+        },
+        "macos": {
+          "nativeExecutableSha256": "092a76a1cbe1e652a8f30b2e438ae8b81c22052ef203d70b90ff5204d03f06d8",
+          "createdAt": "2026-10-15T08:31:14.767Z",
+          "platform": "macos",
+          "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-utf8-final-reviewed/Build/Products/Release/FluentRead.app",
+          "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-utf8-final-reviewed/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
+          "source": {
+            "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+            "version": "0.0.38",
+            "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+            "checkedReferences": 10,
+            "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+            "artifactCount": 461
+          },
+          "compiledWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+          "compiledWebResourceCount": 461,
+          "nativeExtras": [],
+          "guideResourcesByteIdentical": true,
+          "build": {
+            "result": "passed",
+            "exitCode": 0,
+            "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-utf8-final-reviewed.log",
+            "configuration": "Release",
+            "jobs": 1,
+            "CODE_SIGNING_ALLOWED": "NO",
+            "CODE_SIGNING_REQUIRED": "NO"
+          },
+          "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-utf8-final-reviewed.log",
+          "signatureSummary": "linker ad-hoc; no developer team",
+          "installedByThisAgent": false,
+          "launchedByThisAgent": false
+        },
+        "iphoneos": {
+          "nativeExecutableSha256": "fa1e2d9dff7867a9007d98730dccb0613721dc197eaff5e1ed9e5fd915c582d0",
+          "createdAt": "2026-10-15T08:32:02.207Z",
+          "platform": "iphoneos",
+          "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-utf8-final-reviewed/build/FluentRead.app",
+          "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-utf8-final-reviewed/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
+          "source": {
+            "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
+            "version": "0.0.38",
+            "manifestSha256": "6f78a759d83d89852a882e710f35f536a808aa9df13a49025df45e78bd1f7ec0",
+            "checkedReferences": 10,
+            "buildSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+            "artifactCount": 461
+          },
+          "compiledWebResourceSha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
+          "compiledWebResourceCount": 461,
+          "nativeExtras": [
+            "FluentRead Extension",
+            "Info.plist"
+          ],
+          "guideResourcesByteIdentical": true,
+          "build": {
+            "result": "passed",
+            "exitCode": 0,
+            "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-utf8-final-reviewed.log",
+            "configuration": "Release",
+            "jobs": 1,
+            "CODE_SIGNING_ALLOWED": "NO",
+            "CODE_SIGNING_REQUIRED": "NO"
+          },
+          "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-utf8-final-reviewed.log",
+          "signatureSummary": "unsigned",
+          "installedByThisAgent": false,
+          "launchedByThisAgent": false,
+          "actualExpandedDevelopmentTeam": ""
+        }
+      },
+      "review": {
+        "utf8PageVerifier": "read-only checked: explicit UTF-8; only local ./background.js; persistent false; no scripts/service_worker mixing; strict relative file references; compatible with all native template layouts",
+        "nativeContainer": "weak WKScriptMessageHandler delegate and deinit unregister copied exactly from reviewed source",
+        "nativeContainerSourceCopiedIdentically": true,
+        "unitTests": "42 targeted tests passed as confirmed by owning agent/root; not rerun in this packaging-only turn"
+      },
+      "buildPolicy": {
+        "sequential": true,
+        "resourceSafe": true,
+        "defaultConcurrency": 3,
+        "jobs": 1,
+        "CODE_SIGNING_ALLOWED": "NO",
+        "CODE_SIGNING_REQUIRED": "NO"
+      },
+      "notPerformedByThisAgent": [
+        "App installation",
+        "App launch",
+        "Simulator device operations",
+        "Developer signing or provisioning",
+        "Physical-device acceptance"
+      ],
+      "productSourceOrDocsChangedByThisTurn": false,
+      "supersededIntermediateEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-utf8-final.json",
+      "preservedResearchEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-utf8-probe.json"
+    },
+    "priorFormalSimulatorReport": "ios-ui-harness/formal-production-acceptance.json (translation passed, full operation cycle blocked by queued provider prompts)",
+    "permissionPolicyFreshInstall": {
+      "artifactSha256": "efe1dff6ab2a22a0ed4814262455aae756eb550be47e97437aec0cfe42f1ccd1",
+      "nativeReport": "safari/acceptance-permissions-final.json",
+      "runtimeReport": "ios-ui-harness/formal-permissions-acceptance.json",
+      "scope": "Zero grants, exact deny/retry/allow, actual translation/restore/retranslation/reload; older touch failure retained separately"
+    },
+    "nativeTouch44Artifact": {
+      "nativeReport": "safari/acceptance-mobile-reviewed-final.json",
+      "sourceSnapshotSha256": "10c62a7c6b6d50772daf0f14e80e72af299d0f8f33f6da65c8a2955ec1a8ca96",
+      "webTreeSha256": "c24aab5e0f58dffff29e6cbf576b24123b05a919f9b0d751262b9f7e9fb269d3",
+      "scope": "Actual native selection tap/result/dictionary/rotation/close and update-retained page cycle passed; stable half-sheet CSS44 scaled to 43pt and prompted CSS46 margin"
+    },
     "supersededIntermediateReports": [
+      "safari/acceptance-mobile-native-touch-final.json (CSS46 intermediate, not installed)",
+      "safari/acceptance-permissions-touch-final.json",
       "safari/acceptance-runtime-ready.json",
       "safari/acceptance-guide-fixed.json",
       "safari/acceptance-single-platform.json",
       "safari/acceptance-utf8-final.json"
     ]
   },
-  "productionBrowserSuitesScope": "Existing Edge suites used initial production artifacts; the latest Chrome, Firefox and userscript outputs remain byte-identical by full-resource hashes. These are not Simulator or physical-device acceptance.",
+  "productionBrowserSuitesScope": "Initial Edge suites retain their original artifact identity. The permission-policy revision has a separate current-production Chrome popup regression; none is physical-device acceptance.",
   "formalSimulatorRuntime": {
-    "report": "ios-ui-harness/formal-production-acceptance.json",
-    "sha256": "d7ef71b2251ec472c28cbb63773d65e46b0029948772e79ecc77eb403a7c41b3",
+    "report": "ios-ui-harness/formal-permissions-acceptance.json",
+    "sha256": "dd8fd62260ab93f8697fdb1101455c25d2485f7e4dafaae20fe24d76203308aa",
     "results": {
-      "updatedAt": "2026-10-15T08:43:41.682306+00:00",
-      "status": "blocked-by-sequential-provider-permission-prompts",
-      "formalApp": "/Users/thinkstu/Library/Developer/CoreSimulator/Devices/3D298EC7-49B4-4FDB-BD68-4AF09792BCBE/data/Containers/Bundle/Application/BC544FE5-8891-4585-8D8D-E14102C2BFA3/FluentRead.app",
-      "preparedApp": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-utf8-final-reviewed/Build/Products/Release-iphonesimulator/FluentRead.app",
-      "webTree": {
-        "sha256": "67b0af77f5e99f0c665643765c7f3e2399e4c93ab05097767b475e020cda853a",
-        "files": 461
+      "updatedAt": "2026-10-15T10:47:16.591344+00:00",
+      "status": "versioned runtime: EFE page flow / c24a selection lifecycle / e3f9 menu cleanup, touch targets and update passed; broader acceptance pending",
+      "scope": "New formal production Safari fresh-permission acceptance; old blocked report and research probes retained separately",
+      "artifact": {
+        "at": "2026-10-15T09:31:52.741067+00:00",
+        "installedApp": "/Users/thinkstu/Library/Developer/CoreSimulator/Devices/3D298EC7-49B4-4FDB-BD68-4AF09792BCBE/data/Containers/Bundle/Application/CBD4A312-7FEC-4C45-88A7-454F0E79B45C/FluentRead.app",
+        "preparedApp": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-permissions-final/Build/Products/Release-iphonesimulator/FluentRead.app",
+        "allFilesCompared": 480,
+        "mismatches": [],
+        "webFilesCompared": 462,
+        "webMismatches": [],
+        "webTreeSHA256": "efe1dff6ab2a22a0ed4814262455aae756eb550be47e97437aec0cfe42f1ccd1",
+        "containerNativeSHA256": "60f5e98f695d65c78b2739ca111f427409f660acd39dc18eec00a28fe2d4f1c7",
+        "extensionNativeSHA256": "0b7132de654455c6e10aa5f63fb795b98e2ace3730b9ea56872504bdc39a200c",
+        "optionalOrigins": [
+          "https://edge.microsoft.com/*",
+          "https://index-translate.bilibili.com/*",
+          "https://transmart.qq.com/*",
+          "https://translate.volcengine.com/*",
+          "https://www.doubao.com/*",
+          "https://translate.google.com/*",
+          "https://translate.google.co.uk/*",
+          "https://translate-pa.googleapis.com/*",
+          "https://translate.googleapis.com/*",
+          "https://dict.youdao.com/*",
+          "https://ifanyi.iciba.com/*",
+          "https://translate.yandex.net/*",
+          "https://api.mymemory.translated.net/*",
+          "https://translate.sogou.com/*",
+          "https://api.reverso.net/*",
+          "https://apertium.org/*",
+          "https://translate.alibaba.com/*",
+          "https://webapi.modernmt.com/*",
+          "https://webapi.laratranslate.com/*",
+          "https://lingvanex.com/*",
+          "https://api-b2b.backenster.com/*"
+        ],
+        "background": {
+          "persistent": false,
+          "page": "safari-background.html"
+        },
+        "diagnosticHTMLPresent": false,
+        "nativeGuideSourceSnapshotSHA256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55"
       },
-      "appTree": {
-        "sha256": "c588021f489bddcf74761e958f37e246935a4fb857f60bc5d2c90a55b2af9153",
-        "files": 479
-      },
-      "nativeExecutableSHA256": {
-        "FluentRead": "6e3a1f4af1fc2d2ee3e06f44ad9866b649ca46b8bbe35960f19915ac428dfabe",
-        "PlugIns/FluentRead Extension.appex/FluentRead Extension": "9d00fd8778b38cd3b51684a6c0646822a59ac1d77b2481816e6a7a599f89cddc"
-      },
-      "nativeGuideSourceSnapshotSHA256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
-      "identity": {
-        "allPreparedFilesCompared": 479,
-        "allFileMismatches": [],
-        "webFilesCompared": 461,
-        "webMismatches": []
-      },
-      "scope": {
-        "guideChinese": "passed",
-        "guideEnglish": "passed",
-        "guideDark": "passed",
-        "simulatorShortcutHidden": "passed",
-        "configurationRetainedOnColdSafari": "passed",
-        "initialRealTranslation": "passed",
-        "restoreThenRetranslate": "notrun-blocked-by-provider-permission",
-        "refreshRecovery": "notrun-blocked-by-provider-permission",
-        "touchSelection": "notrun-blocked-by-provider-permission",
-        "keyboard": "notrun-blocked-by-provider-permission",
-        "rotation": "notrun-blocked-by-provider-permission",
-        "YouTube": "notrun",
-        "AVKitModule": "notrun"
-      },
-      "attempts": [
-        {
-          "stem": "formal-guide-light",
-          "testExecutionStatus": "completed",
-          "productStatus": "passed",
-          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-guide-light.xcresult"
-        },
-        {
-          "stem": "formal-guide-dark",
-          "testExecutionStatus": "completed",
-          "productStatus": "passed",
-          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-guide-dark.xcresult"
-        },
-        {
-          "stem": "formal-page-cycle",
-          "testExecutionStatus": "failed",
-          "productStatus": "blocked-at-observed-exact-provider-permission",
-          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-page-cycle.xcresult"
-        },
-        {
-          "stem": "formal-provider-resume",
-          "testExecutionStatus": "failed",
-          "productStatus": "blocked-at-observed-exact-provider-permission",
-          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-provider-resume.xcresult"
-        },
-        {
-          "stem": "formal-iciba-resume",
-          "testExecutionStatus": "failed",
-          "productStatus": "blocked-at-observed-exact-provider-permission",
-          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-iciba-resume.xcresult"
-        },
-        {
-          "stem": "formal-lara-resume",
-          "testExecutionStatus": "failed",
-          "productStatus": "blocked-at-observed-exact-provider-permission",
-          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lara-resume.xcresult"
-        },
-        {
-          "stem": "formal-lingvanex-resume",
-          "testExecutionStatus": "failed",
-          "productStatus": "blocked-at-observed-exact-provider-permission",
-          "preservedXcresult": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lingvanex-resume.xcresult"
-        }
-      ],
-      "provider": {
-        "selectedService": "免费翻译服务",
-        "targetLanguage": "简体中文",
-        "actualObservedDomainPermission": "dict.youdao.com",
-        "exactFinalUpstreamSupplierProven": false,
-        "normalBusinessPath": true,
-        "mockProvider": false,
-        "repeatMayUseCache": true,
-        "domainGrant": "Each exact captured prompt granted one day; no always/all-sites selection",
-        "allSitesPermission": false,
-        "exactGrantedOneDayDomains": [
+      "ownedUDID": "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
+      "freshPreparation": {
+        "previousStateAndHashes": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-permissions-before-uninstall.json",
+        "taskBundleUninstalled": true,
+        "newFormalAppInstalled": true,
+        "sameDeviceNoReset": true,
+        "oldGrantsCleared": false,
+        "needNewOwnedDevice": true,
+        "configurationClearingExpected": true,
+        "oldGrantsEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-permissions-settings-registration-evidence/registration-outcome.json",
+        "retainedAllowedHosts": [
           "127.0.0.1",
           "dict.youdao.com",
           "ifanyi.iciba.com",
-          "webapi.laratranslate.com",
-          "lingvanex.com"
+          "lingvanex.com",
+          "webapi.laratranslate.com"
         ],
-        "currentBlockedUnapprovedDomain": "index-translate.bilibili.com",
-        "outboundNetworkRequestsProven": false,
-        "observedPermissionRequestsProven": true,
-        "explanation": "A domain permission prompt establishes requested host access, not a successful HTTP request or final winning supplier. Real Chinese DOM came from unmodified production business flow using selected default free service."
+        "newOwnedDevice": {
+          "udid": "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
+          "name": "FluentRead-PR995-FreshPermissions-20261015",
+          "createdAt": "2026-10-15T09:38:41.634Z",
+          "ownedBy": "FluentRead PR995 fresh permission acceptance",
+          "previousDevicePreserved": "3D298EC7-49B4-4FDB-BD68-4AF09792BCBE"
+        },
+        "oldDeviceShutdown": true,
+        "oldDeviceDeletedOrReset": false,
+        "newDeviceInitialNoWebsiteGrant": true,
+        "initialNoGrantEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-08-extension-details.png"
       },
-      "safety": {
-        "exactUDID": "3D298EC7-49B4-4FDB-BD68-4AF09792BCBE",
-        "focusEvents": [],
-        "newHostSimulatorPIDs": [],
-        "hostWindowOperations": [],
-        "allGuardReportsReviewed": true,
-        "appearanceRestored": "light",
-        "reports": [
-          {
-            "stem": "formal-guide-light",
-            "status": "completed",
-            "startedAt": "2026-10-15T08:32:23.087Z",
-            "endedAt": null,
-            "focusEvents": [],
-            "hostProcessBaseline": [],
-            "newHostSimulatorPIDs": [],
-            "violations": [],
-            "cleanupErrors": [],
-            "signals": [],
-            "frontmostBefore": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "frontmostAfter": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "hostWindowOperations": []
-          },
-          {
-            "stem": "formal-guide-dark",
-            "status": "completed",
-            "startedAt": "2026-10-15T08:33:50.747Z",
-            "endedAt": null,
-            "focusEvents": [],
-            "hostProcessBaseline": [],
-            "newHostSimulatorPIDs": [],
-            "violations": [],
-            "cleanupErrors": [],
-            "signals": [],
-            "frontmostBefore": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "frontmostAfter": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "hostWindowOperations": []
-          },
-          {
-            "stem": "formal-page-cycle",
-            "status": "failed",
-            "startedAt": "2026-10-15T08:35:01.884Z",
-            "endedAt": null,
-            "focusEvents": [],
-            "hostProcessBaseline": [],
-            "newHostSimulatorPIDs": [],
-            "violations": [],
-            "cleanupErrors": [],
-            "signals": [],
-            "frontmostBefore": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "frontmostAfter": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "hostWindowOperations": []
-          },
-          {
-            "stem": "formal-provider-resume",
-            "status": "failed",
-            "startedAt": "2026-10-15T08:37:42.027Z",
-            "endedAt": null,
-            "focusEvents": [],
-            "hostProcessBaseline": [],
-            "newHostSimulatorPIDs": [],
-            "violations": [],
-            "cleanupErrors": [],
-            "signals": [],
-            "frontmostBefore": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "frontmostAfter": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "hostWindowOperations": []
-          },
-          {
-            "stem": "formal-iciba-resume",
-            "status": "failed",
-            "startedAt": "2026-10-15T08:39:57.267Z",
-            "endedAt": null,
-            "focusEvents": [],
-            "hostProcessBaseline": [],
-            "newHostSimulatorPIDs": [],
-            "violations": [],
-            "cleanupErrors": [],
-            "signals": [],
-            "frontmostBefore": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "frontmostAfter": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "hostWindowOperations": []
-          },
-          {
-            "stem": "formal-lara-resume",
-            "status": "failed",
-            "startedAt": "2026-10-15T08:40:58.668Z",
-            "endedAt": null,
-            "focusEvents": [],
-            "hostProcessBaseline": [],
-            "newHostSimulatorPIDs": [],
-            "violations": [],
-            "cleanupErrors": [],
-            "signals": [],
-            "frontmostBefore": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "frontmostAfter": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "hostWindowOperations": []
-          },
-          {
-            "stem": "formal-lingvanex-resume",
-            "status": "failed",
-            "startedAt": "2026-10-15T08:42:04.171Z",
-            "endedAt": null,
-            "focusEvents": [],
-            "hostProcessBaseline": [],
-            "newHostSimulatorPIDs": [],
-            "violations": [],
-            "cleanupErrors": [],
-            "signals": [],
-            "frontmostBefore": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "frontmostAfter": {
-              "pid": 65658,
-              "name": "问题报告程序"
-            },
-            "hostWindowOperations": []
-          }
-        ],
-        "onlyUIOperator": "mobile_selection",
-        "uiStopped": true,
-        "currentSimulatorApp": "com.apple.mobilesafari",
-        "currentVisibleUI": "Exact index-translate.bilibili.com permission alert over translated fixture and FluentRead main popup; no click after parent stop instruction",
-        "stopInstructionTiming": "Parent stop arrived after lingvanex.com bounded case had completed at 2026-10-15 16:42:19 +0800. No fifth-domain authorization or later UI interaction performed."
+      "cases": {
+        "freshLanguageOnboarding": "passed",
+        "onlyLoopbackSiteGrant": "passed",
+        "zeroServiceGrantQuietWindow": "passed",
+        "firstTranslateExactMicrosoftPrompt": "passed",
+        "denyNoTranslationRetryAvailable": "passed",
+        "retryExactMicrosoftPrompt": "passed",
+        "allowOneDayActualState": "passed",
+        "realTranslation": "passed",
+        "restore": "passed",
+        "retranslation": "passed",
+        "realReload": "passed",
+        "nativeTouchSelection": "passed",
+        "keyboard": "passed",
+        "rotation": "passed",
+        "extensionOverlayAvoidsKeyboard": "notrun",
+        "stableLandscapeOverlayVisual": "passed",
+        "nativeSelectionIndicatorOpensCard": "failed",
+        "finalNativeSelectionIndicatorOpensCard": "passed",
+        "wordDictionarySupplementSteadyState": "passed",
+        "finalUpdateConfigRetention": "passed",
+        "finalUpdateSiteAndServiceGrantRetention": "passed",
+        "finalExpandedPopup44pt": "passed",
+        "finalHalfSheetPopup44pt": "failed",
+        "finalActualCardClose": "passed",
+        "finalActualCardRotation": "passed"
       },
+      "providerPolicy": {
+        "fixture": "http://127.0.0.1:62656/fixture-5249a9ba9cd94b63/",
+        "contents": "Public English task text only",
+        "serviceSelection": "Default free pool; only exact Microsoft edge host may be authorized in fresh flow",
+        "requestedHost": "https://edge.microsoft.com/*",
+        "allSitesPermission": false,
+        "providerSwitch": false,
+        "directNetworkCapture": false,
+        "evidenceBoundary": "Zero service grant and no queued alert/translation are observed via real UI/DOM; lack of packets is not independently measured.",
+        "freshSiteGrant": "127.0.0.1 only, Allow for One Day via actual system alert",
+        "providerProof": {
+          "directTrafficCapture": false,
+          "observedProviderPermission": "Only exact edge.microsoft.com granted; production popup reports1/17 and default free service",
+          "inference": "Unmodified grants-only candidate policy restricts free-pool requests to Microsoft; DOM independently establishes translated output, not raw network routing or cache hit."
+        }
+      },
+      "touchTargets": {
+        "unit": "XCTest accessibility frames in points",
+        "mainTranslation": {
+          "width": 210,
+          "height": 42,
+          "meets44": false
+        },
+        "sectionTranslation": {
+          "width": 46,
+          "height": 42,
+          "meets44": false
+        },
+        "providerAuthorization": {
+          "productionEntryHeight": 42,
+          "nativeSystemButtons": {
+            "width": 288,
+            "height": 48,
+            "meets44": true
+          },
+          "nativeButtons": [
+            "允许1天",
+            "始终允许",
+            "不允许"
+          ],
+          "evidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-first-microsoft-evidence/fresh-07-first-translate-exact-edge-prompt-accessibility.txt"
+        },
+        "thresholdHeight": 44,
+        "evidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-onboarding-zero-evidence/fresh-06-zero-grants-after-quiet-window-accessibility.txt",
+        "selectionDrawer": {
+          "close": {
+            "width": 30,
+            "height": 30
+          },
+          "selectionSwitch": {
+            "width": 40,
+            "height": 25
+          },
+          "modeOption": {
+            "width": 133,
+            "height": 36
+          },
+          "moreSettings": {
+            "width": 270,
+            "height": 36
+          },
+          "evidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-selection-drawer-evidence/formal-selection-01-actual-drawer-accessibility.txt",
+          "note": "AX frames only; surrounding hit-region extension not independently established"
+        }
+      },
+      "guards": [
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-fresh-device-boot-guard.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-fresh-device-bootstatus-guard.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-fresh-device-create-guard.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-fresh-device-install-guard.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-original-device-shutdown-guard.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-permissions-guide-settings-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-permissions-install-guard.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-permissions-settings-registration-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-permissions-terminate-guard.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-permissions-uninstall-guard.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-allow-microsoft-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-deny-microsoft-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-enable-extension-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-first-microsoft-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-guide-settings-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-keyboard-rotation-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-native-icon-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-native-selection-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-onboarding-zero-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-open-fixture-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-real-reload-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-real-translate-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-restore-retranslate-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-retry-microsoft-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-selection-drawer-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-guard-report.json"
+      ],
       "screenshots": [
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-guide-light-evidence/formal-guide-zh-Hans.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-guide-light-evidence/formal-guide-en.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-guide-dark-evidence/formal-guide-chinese-current-appearance.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-page-cycle-evidence/formal-cycle-00-original.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-page-cycle-evidence/formal-cycle-action-0.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-page-cycle-evidence/formal-cycle-popup-0.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-provider-resume-evidence/formal-provider-00-observed-youdao-request.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-provider-resume-evidence/formal-provider-02-next-unknown-alert.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-provider-resume-evidence/formal-provider-01-after-exact-domain-grant.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-iciba-resume-evidence/formal-provider-00-previously-captured-domain-request.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-iciba-resume-evidence/formal-provider-02-next-unknown-alert.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-iciba-resume-evidence/formal-provider-01-after-exact-domain-grant.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lara-resume-evidence/formal-provider-00-previously-captured-domain-request.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lara-resume-evidence/formal-provider-02-next-unknown-alert.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lara-resume-evidence/formal-provider-01-after-exact-domain-grant.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lingvanex-resume-evidence/formal-provider-00-previously-captured-domain-request.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lingvanex-resume-evidence/formal-provider-02-next-unknown-alert.png",
-        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-lingvanex-resume-evidence/formal-provider-01-after-exact-domain-grant.png"
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-allow-microsoft-evidence/fresh-12-granted-immediate-popup-state.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-allow-microsoft-evidence/fresh-13-granted-final-observation-no-extra-click.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-deny-microsoft-evidence/fresh-08-denied-immediate-popup-state.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-deny-microsoft-evidence/fresh-10-denied-ready-to-retry.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-enable-extension-evidence/fresh-enable-00-before.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-enable-extension-evidence/fresh-enable-01-enabled-no-site-grant-change.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-first-microsoft-evidence/fresh-07-first-translate-exact-edge-prompt.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-guide-settings-evidence/fresh-00-formal-guide.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-guide-settings-evidence/fresh-01-settings-current.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-keyboard-rotation-evidence/formal-mobile-00-portrait-keyboard.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-keyboard-rotation-evidence/formal-mobile-01-landscape-keyboard.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-keyboard-rotation-evidence/formal-mobile-02-portrait-restored.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-native-icon-evidence/fresh-native-selection-03-before-observed-icon-tap.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-native-icon-evidence/fresh-native-selection-04-after-observed-icon-tap.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-native-selection-evidence/fresh-native-selection-00-enabled.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-native-selection-evidence/fresh-native-selection-01-before-semantic-longpress.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-native-selection-evidence/fresh-native-selection-02-actual-native-result.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-onboarding-zero-evidence/fresh-04-onboarding-initial.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-onboarding-zero-evidence/fresh-05-main-zero-service-grants.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-onboarding-zero-evidence/fresh-06-zero-grants-after-quiet-window.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-open-fixture-evidence/fresh-02-safari-initial.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-open-fixture-evidence/fresh-03-popup-before-onboarding-loopback-only-before.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-open-fixture-evidence/fresh-03-popup-before-onboarding.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-real-reload-evidence/fresh-reload-00-original.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-real-reload-evidence/fresh-reload-01-persisted-config-and-grant.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-real-reload-evidence/fresh-reload-02-ready.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-real-translate-evidence/fresh-15-translation-already-started-no-second-click.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-real-translate-evidence/fresh-16-real-translated-page.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-restore-retranslate-evidence/fresh-cycle-popup-0.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-restore-retranslate-evidence/fresh-cycle-popup-1.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-restore-retranslate-evidence/fresh-cycle-result-0.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-restore-retranslate-evidence/fresh-cycle-result-1.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-retry-microsoft-evidence/fresh-11-retry-exact-edge-prompt.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-selection-drawer-evidence/formal-selection-00-popup.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-selection-drawer-evidence/formal-selection-01-actual-drawer.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-selection-drawer-evidence/formal-selection-keyboard-dismissed.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-00-start.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-01-apps-before-tap.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-01-apps-scroll-1.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-02-apps-open.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-03-safari-before-tap.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-03-safari-scroll-1.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-04-safari-open.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-05-extensions-before-tap.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-05-extensions-scroll-1.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-06-extension-list.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-07-fluentread-before-tap.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-08-extension-details.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-09-details-scroll-1.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-settings-registration-evidence/registration-09-details-scroll-2.png"
       ],
       "limitations": [
-        "iOS Simulator only; no physical device acceptance",
-        "A/B probes excluded from formal passes",
-        "Exact upstream supplier and outbound-vs-cache cannot be inferred from DOM alone",
-        "Continuous initial provider-domain permissions obstruct main popup controls even after translation completes. Full translate/restore/retranslate/refresh acceptance remains incomplete.",
-        "Fixture DOM reports expose public task text only; no extension storage, keys, cookies, credentials or form values are read."
+        "iOS26.2 Simulator only; not a physical-device acceptance",
+        "Earlier update-retention passed separately; uninstall/reinstall here deliberately clears this task App configuration",
+        "A/B permission probes do not count as formal translation acceptance",
+        "Live provider output is not a semantic-quality guarantee; screenshots show literal/awkward translations of testing terminology."
       ],
-      "liveDOMEvidence": {
-        "report": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-page-dom-report.json",
-        "lastReceivedAt": "2026-10-15T08:43:38.863Z",
-        "lastPageAt": 1792053818855,
+      "case30Guide": {
+        "status": "passed",
+        "manualPathVisible": true,
+        "ineffectiveSimulatorButtonHidden": true,
+        "evidenceDirectory": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-permissions-guide-settings-evidence",
+        "freshDeviceEvidenceDirectory": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-guide-settings-evidence"
+      },
+      "updatedAtEpochMs": 1792061236591,
+      "nativeGuardInterruption": {
+        "action": "new device bootstatus",
+        "reason": "PID observer /bin/ps command failed, guard aborted; bootstatus itself code0, no UI test spawned",
+        "evidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-fresh-device-bootstatus-guard.json",
+        "guardNotBypassed": true
+      },
+      "artifactOnFreshDevice": {
+        "at": "2026-10-15T09:31:52.741067+00:00",
+        "installedApp": "/Users/thinkstu/Library/Developer/CoreSimulator/Devices/A407390F-7AA8-42AE-AFEB-F93EE99E9FF8/data/Containers/Bundle/Application/346277EA-570E-46B2-9400-F880DAC87C53/FluentRead.app",
+        "preparedApp": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-permissions-final/Build/Products/Release-iphonesimulator/FluentRead.app",
+        "allFilesCompared": 480,
+        "mismatches": [],
+        "webFilesCompared": 462,
+        "webMismatches": [],
+        "webTreeSHA256": "efe1dff6ab2a22a0ed4814262455aae756eb550be47e97437aec0cfe42f1ccd1",
+        "containerNativeSHA256": "60f5e98f695d65c78b2739ca111f427409f660acd39dc18eec00a28fe2d4f1c7",
+        "extensionNativeSHA256": "0b7132de654455c6e10aa5f63fb795b98e2ace3730b9ea56872504bdc39a200c",
+        "optionalOrigins": [
+          "https://edge.microsoft.com/*",
+          "https://index-translate.bilibili.com/*",
+          "https://transmart.qq.com/*",
+          "https://translate.volcengine.com/*",
+          "https://www.doubao.com/*",
+          "https://translate.google.com/*",
+          "https://translate.google.co.uk/*",
+          "https://translate-pa.googleapis.com/*",
+          "https://translate.googleapis.com/*",
+          "https://dict.youdao.com/*",
+          "https://ifanyi.iciba.com/*",
+          "https://translate.yandex.net/*",
+          "https://api.mymemory.translated.net/*",
+          "https://translate.sogou.com/*",
+          "https://api.reverso.net/*",
+          "https://apertium.org/*",
+          "https://translate.alibaba.com/*",
+          "https://webapi.modernmt.com/*",
+          "https://webapi.laratranslate.com/*",
+          "https://lingvanex.com/*",
+          "https://api-b2b.backenster.com/*"
+        ],
+        "background": {
+          "persistent": false,
+          "page": "safari-background.html"
+        },
+        "diagnosticHTMLPresent": false,
+        "nativeGuideSourceSnapshotSHA256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
+        "ownedUDID": "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8"
+      },
+      "freshFixtureNavigationStartEpochMs": 1792057362627,
+      "planningMetadataNote": "First fresh-device guide plan inherited stale dataPath/logPath fields from old plan; actual command destination, XCTest expected UDID and nativeguard simctl identity all used A407390F-7AA8-42AE-AFEB-F93EE99E9FF8. Later plans now retain only current device metadata.",
+      "freshPageBaseline": {
+        "at": 1792057384490,
+        "pageLifecycle": "1792057384124-cbbe63e97048d",
+        "visibility": "visible",
+        "metrics": {
+          "status": "DOM untranslated",
+          "pageLifecycle": "1792057384124-cbbe63e97048d",
+          "targets": [
+            {
+              "id": "public-paragraph",
+              "paragraphPresent": true,
+              "wrapperCount": 0,
+              "nestedCount": 0,
+              "translationText": "",
+              "hasCjk": false,
+              "originalPreserved": true
+            },
+            {
+              "id": "selection-paragraph",
+              "paragraphPresent": true,
+              "wrapperCount": 0,
+              "nestedCount": 0,
+              "translationText": "",
+              "hasCjk": false,
+              "originalPreserved": true
+            },
+            {
+              "id": "cross-paragraph",
+              "paragraphPresent": true,
+              "wrapperCount": 0,
+              "nestedCount": 0,
+              "translationText": "",
+              "hasCjk": false,
+              "originalPreserved": true
+            }
+          ],
+          "allWrappers": 0
+        },
         "geometry": {
           "width": 402,
           "height": 714,
@@ -1025,62 +2140,855 @@
             "height": 714
           },
           "visibility": "visible"
-        },
-        "metrics": {
-          "status": "DOM translated",
-          "pageLifecycle": "1792053323684-1b9e4145337e1",
-          "targets": [
-            {
-              "id": "public-paragraph",
-              "paragraphPresent": true,
-              "wrapperCount": 1,
-              "nestedCount": 0,
-              "translationText": "晨曦洒在宁静的花园上。一只小鸟停在木栅栏上，人们沿着河边散步。",
-              "hasCjk": true,
-              "originalPreserved": true
-            },
-            {
-              "id": "selection-paragraph",
-              "paragraphPresent": true,
-              "wrapperCount": 1,
-              "nestedCount": 0,
-              "translationText": "使用本机触摸手势选择此英语段落以检查FluentRead选择控件。",
-              "hasCjk": true,
-              "originalPreserved": true
-            },
-            {
-              "id": "cross-paragraph",
-              "paragraphPresent": true,
-              "wrapperCount": 1,
-              "nestedCount": 0,
-              "translationText": "第二段在背景恢复后跨块边界进行选择。",
-              "hasCjk": true,
-              "originalPreserved": true
-            }
-          ],
-          "allWrappers": 5
-        },
-        "duplicateNestedOrOriginalMismatchReports": 0,
-        "filter": "Only visibility=visible task fixture reports included; hidden duplicate Safari page contexts excluded."
+        }
       },
-      "currentBlocker": {
-        "thirdGrant": "webapi.laratranslate.com",
-        "afterThirdPrompt": "lingvanex.com",
-        "fourthGrant": "lingvanex.com",
-        "afterFourthPrompt": "index-translate.bilibili.com",
-        "fourthCaseFinishedAt": "2026-10-15T16:42:19.129+08:00",
-        "popupActionBehindAlert": "恢复当前网页; accessibility switch value 1",
-        "nativeDoneButtonBlockedByAlert": true,
-        "initialProductTranslation": "Three public body paragraphs each contain exactly one CJK translation and retain exact English original; 5 total bilingual wrappers including heading/other text",
-        "completeCycle": "Not established; no restore or retranslate click reached",
-        "productSourceModified": false
+      "zeroGrantDOMWindow": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-zero-grant-dom-window.json",
+      "denyDOMMetrics": {
+        "status": "DOM untranslated",
+        "pageLifecycle": "1792057384124-cbbe63e97048d",
+        "targets": [
+          {
+            "id": "public-paragraph",
+            "paragraphPresent": true,
+            "wrapperCount": 0,
+            "nestedCount": 0,
+            "translationText": "",
+            "hasCjk": false,
+            "originalPreserved": true
+          },
+          {
+            "id": "selection-paragraph",
+            "paragraphPresent": true,
+            "wrapperCount": 0,
+            "nestedCount": 0,
+            "translationText": "",
+            "hasCjk": false,
+            "originalPreserved": true
+          },
+          {
+            "id": "cross-paragraph",
+            "paragraphPresent": true,
+            "wrapperCount": 0,
+            "nestedCount": 0,
+            "translationText": "",
+            "hasCjk": false,
+            "originalPreserved": true
+          }
+        ],
+        "allWrappers": 0
+      },
+      "versionScopes": [
+        {
+          "webTreeSHA256": "efe1dff6ab2a22a0ed4814262455aae756eb550be47e97437aec0cfe42f1ccd1",
+          "scope": "Fresh installation, zero-grant, exact Microsoft deny/retry/allow and initial page lifecycle; 42pt action height finding retained",
+          "touchTargetFix": "separate later CSS-only artifact pending, never counted under efe hash"
+        },
+        {
+          "webTreeSHA256": "c24aab5e0f58dffff29e6cbf576b24123b05a919f9b0d751262b9f7e9fb269d3",
+          "scope": "Normal update retention, full page restore/retranslate, selection side-icon entry and dictionary, card rotation/close; actual half-sheet 43pt and native menu overlap findings retained. Separate AVKit module evidence.",
+          "identity": "480 sourceApp files and462 Web files byte-identical; c24a tree independently recalculated",
+          "status": "completed-with-followup-findings"
+        },
+        {
+          "webTreeSHA256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+          "scope": "Normal update over c24a; retained config/grant,46px coarse targets and native selection clear/snapshot retest, then separate production video acceptance",
+          "identity": "formal-selection-menu-final-installed-identity.json;480 installed files match source and462 installed Web tree independently recomputed",
+          "status": "core-targeted-runtime-passed; production video pending"
+        }
+      ],
+      "allowObservation": {
+        "popupRemainedVisible": true,
+        "availableCount": 1,
+        "enabledCount": 17,
+        "automaticTranslationFinished": true,
+        "extraTranslateClicks": 0,
+        "otherProviderPrompts": 0
+      },
+      "corePageFlowStatus": "passed",
+      "domEvidence": {
+        "report": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-page-cycle-dom-report.json",
+        "invariantViolations": 0,
+        "transitions": [
+          {
+            "lifecycle": "1792057384124-cbbe63e97048d",
+            "state": "DOM untranslated",
+            "allWrappers": 0
+          },
+          {
+            "lifecycle": "1792057384124-cbbe63e97048d",
+            "state": "DOM translated",
+            "allWrappers": 5
+          },
+          {
+            "lifecycle": "1792057384124-cbbe63e97048d",
+            "state": "DOM untranslated",
+            "allWrappers": 0
+          },
+          {
+            "lifecycle": "1792057384124-cbbe63e97048d",
+            "state": "DOM translated",
+            "allWrappers": 5
+          },
+          {
+            "lifecycle": "1792057743567-712e8f39b109e8",
+            "state": "DOM untranslated",
+            "allWrappers": 0
+          }
+        ]
+      },
+      "keyboardRotation": {
+        "fixtureViewportMocked": false,
+        "portraitVisualViewportHeight": 376,
+        "portraitVisualViewportTopObserved": 290.65625,
+        "landscapeLayoutWidth": 874,
+        "landscapeLayoutHeight": 402,
+        "landscapeScreenshot": "Immediate XCTest app screenshot contains black/partial transition area; not accepted as stable landscape visual proof",
+        "portraitRestoration": true,
+        "extensionOverlayWhileKeyboard": "not exercised by this basic viewport probe",
+        "scope": "Fixture input and real viewport/orientation events only; no visible production ball/card/progress geometry measured"
+      },
+      "guardSummary": [
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-final-update-terminate-guard.json",
+          "status": "completed",
+          "focusEvents": 0,
+          "violations": [],
+          "cleanupErrors": []
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/formal-final-update-install-guard.json",
+          "status": "completed",
+          "focusEvents": 0,
+          "violations": [],
+          "cleanupErrors": []
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/final-native-reselect-guard-report.json",
+          "status": "failed",
+          "focusEvents": 0,
+          "violations": [],
+          "cleanupErrors": []
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/final-update-open-fixture-guard-report.json",
+          "status": "completed",
+          "focusEvents": 0,
+          "violations": [],
+          "cleanupErrors": []
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/final-update-real-translate-guard-report.json",
+          "status": "completed",
+          "focusEvents": 0,
+          "violations": [],
+          "cleanupErrors": []
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/final-native-icon-guard-report.json",
+          "status": "completed",
+          "focusEvents": 0,
+          "violations": [],
+          "cleanupErrors": []
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/final-card-stable-dimensions-guard-report.json",
+          "status": "completed",
+          "focusEvents": 0,
+          "violations": [],
+          "cleanupErrors": []
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/final-native-original-gesture-guard-report.json",
+          "status": "completed",
+          "focusEvents": 0,
+          "violations": [],
+          "cleanupErrors": []
+        },
+        {
+          "path": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/final-update-restore-retranslate-guard-report.json",
+          "status": "running",
+          "focusEvents": 0,
+          "violations": [],
+          "cleanupErrors": []
+        }
+      ],
+      "nativeSelection": {
+        "nativeGesture": "XCTest semantic StaticText.press(forDuration:1.2)",
+        "selectedVisibleText": "inspect",
+        "nativeSelectionHandlesVisible": true,
+        "nativeCopyMenuVisible": true,
+        "indicator": {
+          "label": "打开划词翻译",
+          "frame": {
+            "x": 222,
+            "y": 325,
+            "width": 44,
+            "height": 45
+          },
+          "meets44": true
+        },
+        "nativeMenuVerticalOverlap": {
+          "menuTop": 335,
+          "menuBottom": 379,
+          "indicatorTop": 325,
+          "indicatorBottom": 370
+        },
+        "screenshot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-native-selection-evidence/fresh-native-selection-02-actual-native-result.png",
+        "selectionPreferenceEnabledByTask": true,
+        "indicatorSemanticTap": {
+          "exists": true,
+          "isHittable": true,
+          "actualOutcome": "Safari native Lookup/查询 sheet for inspect, FluentRead card absent",
+          "unknownProviderPrompt": false,
+          "screenshot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fresh-device-native-icon-evidence/fresh-native-selection-04-after-observed-icon-tap.png",
+          "impact": "Native editing menu overlaps indicator and intercepts semantic tap",
+          "notWorkedAround": true
+        }
+      },
+      "pendingRetest": {
+        "e3Core": "completed-passed: menu cleanup/copy/new snapshot,46pt actions both detents, config+onegrant retention",
+        "productionYouTube": "in progress, separate production-youtube-acceptance.json",
+        "visibleExtensionOverlayWithKeyboard": "notrun",
+        "multiLineNativeHandleDrag": "notrun",
+        "physicaliPhone": "notrun"
+      },
+      "updatedArtifact": {
+        "at": 1792058927242,
+        "ownedUDID": "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
+        "installedApp": "/Users/thinkstu/Library/Developer/CoreSimulator/Devices/A407390F-7AA8-42AE-AFEB-F93EE99E9FF8/data/Containers/Bundle/Application/6A28BE18-4D21-4F4B-9195-31A63015C2F0/FluentRead.app",
+        "preparedApp": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-mobile-reviewed-final/Build/Products/Release-iphonesimulator/FluentRead.app",
+        "allFilesCompared": 480,
+        "mismatches": [],
+        "webFilesCompared": 462,
+        "webMismatches": [],
+        "webTreeSHA256": "c24aab5e0f58dffff29e6cbf576b24123b05a919f9b0d751262b9f7e9fb269d3",
+        "containerNativeSHA256": "d229ee13b6455e5860de894037610472da4bf4c67fbc0f0726c32502d195a6f7",
+        "extensionNativeSHA256": "5baa8c98633cbd1236c2f9dfb1b8f45c3301abb5abe3150cf2f0259f20efcfe8",
+        "nativeGuideSourceSnapshotSHA256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55"
+      },
+      "finalUpdate": {
+        "webTreeSHA256": "c24aab5e0f58dffff29e6cbf576b24123b05a919f9b0d751262b9f7e9fb269d3",
+        "sameDeviceNoUninstall": true,
+        "configRetained": {
+          "uiLanguage": "Chinese",
+          "targetLanguage": "Simplified Chinese",
+          "service": "Default free service",
+          "selection": "Show icon, enabled"
+        },
+        "grantsRetained": {
+          "site127NoRepeatPrompt": true,
+          "availableServices": 1,
+          "enabledServices": 17,
+          "noNewProviderPrompt": true
+        },
+        "initialHalfSheetAX": {
+          "main": {
+            "width": 203,
+            "height": 43
+          },
+          "section": {
+            "width": 45,
+            "height": 43
+          },
+          "note": "Initial native half-sheet scales WebView approximately0.967; stable/full-sheet actual measurements pending, not passed44pt yet"
+        },
+        "evidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/final-update-open-fixture-evidence",
+        "nativeSelectionRetest": {
+          "status": "passed",
+          "nativeWord": "inspect",
+          "translatedText": "检查",
+          "indicatorFrame": {
+            "x": 222,
+            "y": 285,
+            "width": 44,
+            "height": 45
+          },
+          "nativeMenuY": [
+            335,
+            379
+          ],
+          "indicatorMenuOverlap": false,
+          "actualSemanticTapOpens": "FluentRead selection dialog",
+          "cardFrame": {
+            "x": 12,
+            "y": 123,
+            "width": 378,
+            "height": 227
+          },
+          "unknownPermissionPrompts": 0,
+          "cardEvidence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/final-native-icon-evidence/fresh-native-selection-04-after-observed-icon-tap.png",
+          "steadyDictionaryAndClose": "pending bounded follow-up",
+          "initialNonSelectionGesture": "First case43 had no native selection and is input-inconclusive; original direct semantic longpress succeeded separately"
+        },
+        "dictionarySteadyState": {
+          "cardTexts": [
+            "英文释义 · 中文辅助",
+            "inspect",
+            "发音",
+            "IH0 N S P EH1 K T",
+            "译文",
+            "检",
+            "查",
+            "动词",
+            "数据来自开放词典",
+            "1",
+            "To examine critically or carefully; especially, to search out problems or determine condition; to scrutinize.",
+            "批判性或仔细审视;尤其是用于发现问题或确定状况;去审视。",
+            "2",
+            "To view and examine officially.",
+            "官方查看和检查。",
+            "3",
+            "To observe the status or nature of an object beyond what is found obvious upon its initial presentation; to 'view within' the object.",
+            "观察物体的状态或性质，超越最初呈现时显而易见的范围;“观察”物体内部。",
+            "Datamuse"
+          ],
+          "completedWithinObservation": true,
+          "nativeAlert": "",
+          "remainingPending": false
+        },
+        "cardRotation": {
+          "status": "passed-real-visible-card",
+          "fixtureMock": false,
+          "landscapeFrames": {
+            "app": {
+              "height": 402,
+              "width": 874,
+              "x": 0,
+              "y": 0
+            },
+            "buttons": [
+              {
+                "frame": {
+                  "height": 45,
+                  "width": 44,
+                  "x": 363,
+                  "y": 66
+                },
+                "label": "制作卡片"
+              },
+              {
+                "frame": {
+                  "height": 45,
+                  "width": 44,
+                  "x": 409,
+                  "y": 66
+                },
+                "label": "关闭翻译结果"
+              },
+              {
+                "frame": {
+                  "height": 45,
+                  "width": 77,
+                  "x": 151,
+                  "y": 66
+                },
+                "label": "免费 AI 讲解"
+              },
+              {
+                "frame": {
+                  "height": 45,
+                  "width": 44,
+                  "x": 402,
+                  "y": 128
+                },
+                "label": "复制原文"
+              },
+              {
+                "frame": {
+                  "height": 45,
+                  "width": 67,
+                  "x": 380,
+                  "y": 310
+                },
+                "label": "隐藏中文辅助"
+              },
+              {
+                "frame": {
+                  "height": 45,
+                  "width": 45,
+                  "x": 237,
+                  "y": 179
+                },
+                "label": "播放单词发音"
+              },
+              {
+                "frame": {
+                  "height": 45,
+                  "width": 44,
+                  "x": 402,
+                  "y": 241
+                },
+                "label": "复制译文"
+              }
+            ],
+            "element": {
+              "height": 310,
+              "width": 388,
+              "x": 74,
+              "y": 61
+            },
+            "screenImageHeight": 402,
+            "screenImageWidth": 874
+          },
+          "returnedPortrait": true,
+          "actualCloseResponded": true,
+          "screenshot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/final-card-stable-dimensions-evidence/final-card-01-stable-landscape.png",
+          "stableCapture": "Public XCUIScreen main after card bounds stable2 observations; earlier immediate app screenshot black frame retained separately"
+        },
+        "popupStableDimensions": {
+          "initialDetent": {
+            "webView": {
+              "width": 386,
+              "height": 451
+            },
+            "main": {
+              "width": 203,
+              "height": 43
+            },
+            "section": {
+              "width": 45,
+              "height": 43
+            },
+            "meets44": false
+          },
+          "expanded": {
+            "main": {
+              "height": 44,
+              "width": 210,
+              "x": 29,
+              "y": 364
+            },
+            "popup": {
+              "height": 812,
+              "width": 402,
+              "x": 0,
+              "y": 62
+            },
+            "section": {
+              "height": 44,
+              "width": 46,
+              "x": 245,
+              "y": 364
+            }
+          },
+          "requiresFurtherCoarseTargetAdjustment": true
+        },
+        "pageCycle": {
+          "translate": "passed",
+          "restore": "passed",
+          "retranslate": "passed",
+          "noAdditionalProviderPrompt": true,
+          "domReport": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/final-c24a-page-cycle-dom-report.json"
+        }
+      },
+      "selectionMenuFinalUpdate": {
+        "identity": "formal-selection-menu-final-installed-identity.json",
+        "installGuards": [
+          "formal-selection-menu-final-terminate-guard.json",
+          "formal-selection-menu-final-install-guard.json"
+        ],
+        "uninstalled": false,
+        "nativeHostSimulatorPIDs": [],
+        "focusEvents": [],
+        "violations": [],
+        "coreRetest": "passed",
+        "runtimeGuard": "menu-final-core-guard-report.json",
+        "screenshotsManuallyViewed": true,
+        "retained": {
+          "interface": "Chinese",
+          "target": "Simplified Chinese",
+          "service": "default free",
+          "availableServices": 1,
+          "enabledServices": 17,
+          "alwaysTranslate127": false
+        },
+        "touchTargets": {
+          "initial": {
+            "main": {
+              "height": 46,
+              "width": 203,
+              "x": 35,
+              "y": 708
+            },
+            "popup": {
+              "height": 450.9734660033167,
+              "width": 386,
+              "x": 8,
+              "y": 415.0265339966832
+            },
+            "section": {
+              "height": 46,
+              "width": 45,
+              "x": 243,
+              "y": 708
+            }
+          },
+          "expanded": {
+            "main": {
+              "height": 46,
+              "width": 210,
+              "x": 29,
+              "y": 368
+            },
+            "popup": {
+              "height": 812,
+              "width": 402,
+              "x": 0,
+              "y": 62
+            },
+            "section": {
+              "height": 46,
+              "width": 46,
+              "x": 245,
+              "y": 368
+            }
+          },
+          "allObservedMainAndSectionHeightAtLeast44": true
+        },
+        "selection": {
+          "initialNativeSelectedWord": "inspect",
+          "cardChinese": "检查",
+          "nativeMenuItemsAfterExplicitOpen": 0,
+          "copy": "real semantic tap changed button to 已复制译文 and visible toast",
+          "close": "card disappeared",
+          "newNativeSelectedWord": "boundaries",
+          "newCardChinese": "边界",
+          "staleInspectAbsent": true,
+          "sourceSnapshotPreservedAfterNativeRangeClear": true,
+          "dictionarySemanticQuality": "not-passed: boundaries Chinese translation 边界 is appropriate, but supplemental Datamuse definitions are film titles and off-topic; this case establishes source identity/UI lifecycle only, dictionary quality out of scope"
+        },
+        "screenshots": [
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/menu-final-core-evidence/menu-final-01-initial-sheet.png",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/menu-final-core-evidence/menu-final-02-expanded-sheet.png",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/menu-final-core-evidence/menu-final-04-card-no-native-menu.png",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/menu-final-core-evidence/menu-final-05-chinese-copy-feedback.png",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/menu-final-core-evidence/menu-final-07-new-source-card.png"
+        ]
       }
     }
   },
   "unchangedArtifactsComparedToInitial": {
-    "chrome": true,
-    "firefox": true,
+    "chrome": false,
+    "firefox": false,
     "safari": false,
-    "userscript": true
+    "userscript": false
+  },
+  "previousProductionChromePopup": {
+    "report": "production-popup-reviewed-final/report.json",
+    "sha256": "4e9f5951cd088d5a860d1d2eba537ffde16394aeaa298fca3d2f84cd4f75179f",
+    "passed": 11,
+    "translationRestoreRetranslateCounts": [
+      1,
+      0,
+      1
+    ],
+    "permissionRequests": 0,
+    "focusEvents": 0,
+    "scope": "Final production Chrome MV3 in isolated Edge without CSS injection; actual fine/coarse 320/390 popup and drawer, enlarged switch hitbox, translation cycle with controlled Microsoft transport"
+  },
+  "popupTouchCss46Verification": {
+    "report": "production-popup-native-touch-final/report.json",
+    "sha256": "535c3697a039913177e1cda5eaf97f5ff58df2f7de81ecce3355839492d0d6c2",
+    "passed": 8,
+    "scope": "CSS46 production Chrome MV3 before later selection-menu handler change; actual fine/coarse 320/390 popup and drawer, enlarged switch hitbox; popup CSS is unchanged in final artifact; no CSS injection or provider test rerun",
+    "review": {
+      "ok": true,
+      "suite": "production-popup-native-touch-final",
+      "browser": "Microsoft Edge with final production Chrome MV3 artifact; isolated owned temporary profile",
+      "artifactTree": {
+        "algorithm": "sha256 of sorted UTF-8 records: relativePath NUL fileSha256 NUL byteLength LF",
+        "sha256": "7794166a3ef5e5f3ed9cc95a294ac346d6cd1c9046cf7673752d86fc526a5bbd",
+        "fileCount": 473,
+        "totalBytes": 61933381,
+        "manifest": "artifact-tree-manifest.json",
+        "unchangedAfterValidation": true
+      },
+      "cssPolicy": "Actual unmodified built production CSS; no CSS or viewport-geometry injection",
+      "fixturePolicy": "Final 46px production Chrome MV3 artifact and actual built CSS in isolated Edge. Real popup document with owned fixed sourceTabId, actual teleported selection drawer and trusted CDP activation. Only native pointer-media emulation; no CSS/viewport-geometry injection. No translation operation/provider request in this eight-case scope. Prior eleven-case provider regression retains its separate artifact identity.",
+      "providerRequests": 0,
+      "permissionRequests": {
+        "popup": [],
+        "worker": []
+      },
+      "consoleErrors": [],
+      "workerUnhandledErrors": [],
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 132,
+          "top": -1040,
+          "width": 1440,
+          "height": 1000
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false,
+        "frontmostBefore": {
+          "pid": 65658,
+          "name": "问题报告程序"
+        },
+        "frontmostAfter": {
+          "pid": 65658,
+          "name": "问题报告程序"
+        }
+      },
+      "browserCloseReceipt": "shared-guard-fulfilled",
+      "profileRemoved": true,
+      "profileActuallyAbsent": true,
+      "visualReview": {
+        "reviewed": [
+          "popup-320px-touch.png",
+          "selection-drawer-320px-touch.png",
+          "selection-drawer-390px-touch.png",
+          "selection-drawer-390px-desktop.png"
+        ],
+        "result": "46px touch targets fit without overlap/horizontal overflow at 320/390px. Capsule and knob retain compact visual size and are centered in the enlarged button. Desktop sizes preserved; labels readable."
+      },
+      "validationBoundary": "Chromium DOM/pointer-media check only. The 46px CSS budget gives native sheet scaling margin; it does not guarantee 44pt at every possible native zoom or establish iOS acceptance. Separate prior eleven-case provider test retains its own tree identity.",
+      "casesPassed": 8,
+      "caseIds": [
+        "main-390px-desktop",
+        "selection-drawer-390px-desktop-preserved",
+        "main-320px-desktop",
+        "selection-drawer-320px-desktop-preserved",
+        "main-390px-touch",
+        "selection-drawer-390px-touch-46px",
+        "main-320px-touch",
+        "selection-drawer-320px-touch-46px"
+      ]
+    }
+  },
+  "avkitPlatformRuntime": {
+    "report": "avkit-loopback/runtime-acceptance.json",
+    "sha256": "d3877e2c21ca62ee0096ce3af247d5dba489c34f7b2e9eed61ba8970ce9b8542",
+    "results": {
+      "updatedAtEpochMs": 1792060842652,
+      "scope": "Research nativeFullscreen module on real Safari/AVKit; not complete production YouTube runtime or provider chain",
+      "device": {
+        "udid": "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
+        "name": "FluentRead-PR995-FreshPermissions-20261015",
+        "createdAt": "2026-10-15T09:38:41.634Z",
+        "ownedBy": "FluentRead PR995 fresh permission acceptance",
+        "previousDevicePreserved": "3D298EC7-49B4-4FDB-BD68-4AF09792BCBE"
+      },
+      "server": {
+        "pid": 38363,
+        "session": 67731,
+        "url": "http://127.0.0.1:51281/avkit-5e3814bc-e08b-436e-bb39-d93fc31cf9d0/",
+        "host": "127.0.0.1",
+        "scope": "module-only real AVKit probe; no production YouTube runtime or provider",
+        "sourceHashVerified": "c5856eda860e7c5b15fcb3f4ad45bb7707b6fc202f60a53f075bc0a4375b5e87",
+        "ownedUDID": "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
+        "nativeUIExecuted": true,
+        "previousREADMEDeviceSuperseded": true
+      },
+      "productionAppWebTree": "c24aab5e0f58dffff29e6cbf576b24123b05a919f9b0d751262b9f7e9fb269d3",
+      "moduleIdentity": {
+        "preparedAt": "2026-10-15T08:32:52.205Z",
+        "scope": "exact production nativeFullscreen.ts transpilation only; caller gate/runtime/provider not included",
+        "sourcePath": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/src/features/video-subtitle/content/nativeFullscreen.ts",
+        "sourceSha256": "c5856eda860e7c5b15fcb3f4ad45bb7707b6fc202f60a53f075bc0a4375b5e87",
+        "typescriptVersion": "5.7.3",
+        "compiler": {
+          "target": "ES2022",
+          "module": "ES2022"
+        },
+        "moduleSha256": "e7da397b9f52a3a92aff9b8ee804cc807e8d4258166f4a20f82386eaa78bbdb7",
+        "media": {
+          "source": "existing task-generated solid-colour fixture; no copyrighted footage or audio",
+          "codec": "h264",
+          "pixelFormat": "yuv420p",
+          "size": "640x360",
+          "durationSeconds": 30,
+          "sha256": "e2986b59c9d027d46465cbc44bce8b31d1b73f40299de941f3014490ffd3caad"
+        }
+      },
+      "cases": {
+        "openActualSafariLoopback": "passed",
+        "initialInlineReferenceRendered": "passed-visual",
+        "nativePlayback": "passed",
+        "nativeReferenceFullscreen": "passed-actual-native-screenshot",
+        "nativeModuleBilingualFullscreen": "passed-actual-native-video-render",
+        "nativeOffPreserved": "passed-five-second-actual-native-screenshot",
+        "nativeOriginalOnly": "passed-actual-native-screenshot",
+        "moduleDisableDestroy": "passed-real-controls-return-inline-reference-restored",
+        "nativeNoTranslation": "passed-reference-retained-and-no-empty-FluentRead-track"
+      },
+      "initialObserved": {
+        "nativeAPI": "function",
+        "supportsFullscreen": true,
+        "readyState": 1,
+        "referenceCues": 1,
+        "providerCallsFromModule": false
+      },
+      "evidenceDirectory": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-open-owned-page-evidence",
+      "guards": [
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-open-owned-page-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-baseline-fullscreen-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-reveal-native-controls-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-native-overflow-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-native-captions-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-module-bilingual-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-module-bilingual-retry-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-module-native-off-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-module-original-only-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-module-empty-cleanup-guard-report.json"
+      ],
+      "baselineEvidence": {
+        "nativeBeginEventTrusted": true,
+        "webkitNativeFullscreen": true,
+        "documentFullscreen": false,
+        "nativeVideo": "16:9 solid-color with expected portrait letterbox; visible REFERENCE ONLY — browser baseline rendered in video surface",
+        "screenshot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-baseline-fullscreen-evidence/avkit-baseline-01-actual-native-fullscreen-before-caption-choice.png",
+        "source": "Real button invokes unmodified webkitEnterFullscreen with user gesture"
+      },
+      "bilingualEvidence": {
+        "screenshot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-module-bilingual-retry-evidence/avkit-module-retry-02-real-fullscreen-bilingual-render-observation.png",
+        "nativeVisibleLines": [
+          "NATIVE ORIGINAL — module cue",
+          "原生译文 — 模块字幕"
+        ],
+        "referenceNotConfused": true,
+        "manuallyViewed": true,
+        "inlinePreparation": "FluentRead hidden/cues1; Reference showing/cues1",
+        "nativeDOMCuesCaveat": "After native takeover DOM reported FluentRead cues0 while actual AVKit visibly rendered bilingual; do not use DOM count alone as failure or success"
+      },
+      "harnessPreconditions": [
+        {
+          "stem": "avkit-module-bilingual",
+          "result": "native controls auto-hid before Close predicate; module never configured, not a production subtitle failure",
+          "retained": true
+        }
+      ],
+      "offEvidence": {
+        "systemMenuFluentReadListed": true,
+        "menuSelectedBadge": "Reference VTT remained selected in native UI while module caption rendered; badge is not used as rendering evidence",
+        "actualSystemOffClicked": true,
+        "observationSeconds": 5,
+        "nativeVideoHasNoCaptionVisual": true,
+        "screenshot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-module-native-off-evidence/avkit-module-03-after-real-system-off-and-observation.png"
+      },
+      "originalOnlyEvidence": {
+        "screenshot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-module-original-only-evidence/avkit-original-01-real-native-original-only.png",
+        "visible": "NATIVE ORIGINAL — module cue only",
+        "manuallyViewed": true
+      },
+      "emptyAndCleanupEvidence": {
+        "screenshots": [
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-module-empty-cleanup-evidence/avkit-empty-01-real-native-reference-retained.png",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-module-empty-cleanup-evidence/avkit-empty-02-system-no-empty-fluentread-track.png",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/avkit-module-empty-cleanup-evidence/avkit-cleanup-00-real-disable-and-destroy-returned-inline.png"
+        ],
+        "manuallyViewed": true,
+        "actualSystemTrackList": [
+          "关闭",
+          "自动（推荐）",
+          "英语（Reference VTT）"
+        ],
+        "noFluentReadTrack": true,
+        "finalState": {
+          "destroyed": true,
+          "enabled": false,
+          "nativeFullscreen": false,
+          "paused": true,
+          "remainingTrack": "Reference VTT showing with one baseline cue"
+        }
+      },
+      "notrun": [
+        "video replacement/rebinding",
+        "background resume",
+        "rotation during native AVKit",
+        "complete production YouTube flow/provider"
+      ]
+    }
+  },
+  "finalProductionChromeSelection": {
+    "report": "selection-menu-chrome-final/report.json",
+    "sha256": "90b5b1b9776d81c4e9d3a7a57ac28bd1272747e564ef346ff07807ddcae716eb",
+    "passed": 8,
+    "scope": "Final Chrome artifact: actual indicator handler preserves native Selection; controlled Microsoft responses, CDP touch plus DOM Range and explicit viewport/lifecycle fixtures; not Safari/physical acceptance",
+    "review": {
+      "ok": true,
+      "casesPassed": 8,
+      "runner": "scripts/run-mobile-selection-test.cjs (unchanged)",
+      "runnerExitCode": 0,
+      "resourcePolicy": {
+        "maxWorkers": 1,
+        "concurrency": 3
+      },
+      "artifactTree": {
+        "algorithm": "sha256 of sorted UTF-8 records: relativePath NUL fileSha256 NUL byteLength LF",
+        "sha256": "dd0f083a11feb38c98af0dfec4e7a7e00081af298f7243e0dc999235957348fb",
+        "fileCount": 473,
+        "totalBytes": 61933697
+      },
+      "artifactUnchangedDuringValidation": true,
+      "translationRequests": 3,
+      "controlledTranslation": "Actual production Microsoft provider transport redirected to owned loopback response.",
+      "ChromeSelectionPreservedAfterActualIndicatorClick": true,
+      "mockedConditions": [
+        "DOM Range after trusted CDP touch",
+        "isolated-world software-keyboard VisualViewport",
+        "visibilitychange and pagehide/pageshow"
+      ],
+      "notEstablished": [
+        "native iOS/Safari selection menu dismissal",
+        "native long-press/handles or mobile keyboard",
+        "physical device or live-provider acceptance"
+      ],
+      "visualReview": {
+        "reviewed": [
+          "01-touch-entry-390-light.png",
+          "02-card-390-light.png",
+          "05-card-320-dark.png"
+        ],
+        "result": "Entry beside selection, legible light/dark cards and fixed actions, no 320px horizontal overflow; Chrome selection highlight remains after entry."
+      },
+      "focus": {
+        "launchMode": "macos-background-cdp",
+        "focusPolicy": "launchservices-no-foreground",
+        "windowPlacement": {
+          "mode": "background-visible-no-focus",
+          "visible": true,
+          "hidden": false,
+          "centered": true,
+          "windowState": "normal",
+          "bounds": {
+            "left": 212,
+            "top": -990,
+            "width": 1280,
+            "height": 900
+          },
+          "displayTarget": "secondary",
+          "source": "macos-nsscreen",
+          "screenIndex": 1,
+          "browserFrontmost": false,
+          "frontmostBefore": {
+            "pid": 65658,
+            "name": "问题报告程序"
+          },
+          "frontmostAfter": {
+            "pid": 65658,
+            "name": "问题报告程序"
+          }
+        },
+        "focusEvents": []
+      },
+      "cleanup": {
+        "sharedOwnedCloseGuardUsed": true,
+        "runnerGuardedCloseAndProfileRemovalCompletedWithoutError": true,
+        "ownedPidAbsentAfterClose": true,
+        "browserPid": 57173
+      },
+      "pageErrors": [],
+      "noSourceBuildOrDeviceAction": true
+    }
   }
 }

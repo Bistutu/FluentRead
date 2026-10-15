@@ -6,13 +6,16 @@
  */
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {existsSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 import {lstat, mkdir, readFile, readdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 
 const root = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const toolNames = ['safari-web-extension-packager', 'safari-web-extension-converter'];
+// Node20 原生脚本与 WXT/平台共用 JSON 单一源，不解析 TypeScript 或维护第二份域表。
+const freeProviderOrigins = JSON.parse(readFileSync(new URL('../../src/core/config/freeProviderOrigins.json', import.meta.url), 'utf8'));
+const optionalProviderOrigins = Object.values(freeProviderOrigins).flat();
 
 function assert(condition, message) {
     if (!condition) throw new Error(message);
@@ -34,6 +37,12 @@ export function verifySafariManifest(manifest) {
     for (const permission of ['offscreen', 'identity']) {
         assert(!permissions.includes(permission), `Safari 产物包含不支持的权限 ${permission}`);
     }
+    assert(manifest.optional_host_permissions === undefined, 'Safari MV2 不能使用 optional_host_permissions，必须声明精确 optional_permissions');
+    const optional = manifest.optional_permissions;
+    assert(Array.isArray(optional) && optional.length === optionalProviderOrigins.length
+        && new Set(optional).size === optionalProviderOrigins.length
+        && optional.every(permission => optionalProviderOrigins.includes(permission)),
+    'Safari optional_permissions 必须与免费服务目录的精确域集合一致，不能缺少、重复或扩大授权范围');
     assert(manifest.content_scripts?.length > 0, 'Safari 产物缺少网页内容脚本');
     assert(manifest.browser_action?.default_popup, 'Safari 产物缺少扩展菜单入口');
     return manifest;
@@ -124,6 +133,17 @@ export function packagingArguments({extension, projectLocation, bundleId, platfo
     return [extension, '--project-location', projectLocation, '--app-name', 'FluentRead',
         '--bundle-identifier', bundleId, '--swift', '--copy-resources', '--no-open', '--no-prompt',
         ...(platform === 'both' ? [] : [`--${platform}-only`])];
+}
+
+/** 创建任何目录或调用 Apple 复制前，拒绝双向嵌套，保证输入产物树保持只读。 */
+export function validatePackagingDirectories(extension, projectLocation) {
+    const source = path.resolve(extension);
+    const target = path.resolve(projectLocation);
+    const sourcePrefix = source.endsWith(path.sep) ? source : `${source}${path.sep}`;
+    const targetPrefix = target.endsWith(path.sep) ? target : `${target}${path.sep}`;
+    assert(source !== target && !source.startsWith(targetPrefix) && !target.startsWith(sourcePrefix),
+        '源产物目录与包装目录不能相同或互相包含');
+    assert(!existsSync(target), `目标已存在，请保留现有工程并指定新的 --project-location：${target}`);
 }
 
 /** Apple 默认模板仍允许 iOS 15/macOS 10.14；使 App 安装范围与 Safari 26 能力门槛一致。 */
@@ -295,10 +315,9 @@ async function main() {
             developerDir: process.env.DEVELOPER_DIR ?? null, deviceAcceptance: 'not-run'}, null, 2));
         return;
     }
+    validatePackagingDirectories(config.extension, config.projectLocation);
     const build = await verifySafariBuild(config.extension);
     const args = packagingArguments(config);
-    assert(!existsSync(config.projectLocation), `目标已存在，请保留现有工程并指定新的 --project-location：${config.projectLocation}`);
-    assert(!config.extension.startsWith(`${config.projectLocation}${path.sep}`), '包装目录不能包含源产物目录');
     await mkdir(path.dirname(config.projectLocation), {recursive: true});
     const result = spawnSync(packager.executable, args, {stdio: 'inherit'});
     assert(result.status === 0, result.error?.message ?? 'Apple 打包工具未成功，保留部分输出以便检查；请使用新的目录重试');

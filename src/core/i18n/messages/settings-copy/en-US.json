@@ -1,5 +1,13 @@
 {
   "messages": {
+    "safari.freePool.policy": "Safari uses only authorized free translation services",
+    "safari.freePool.loading": "Checking service permissions…",
+    "safari.freePool.error": "Could not check service permissions. Reopen the panel or settings and try again.",
+    "safari.freePool.needsAccess": "Allow access to {provider} before translating.",
+    "safari.freePool.allowProvider": "Allow {provider}",
+    "safari.freePool.requestDenied": "Service access was not granted. Try again or choose another service in settings.",
+    "safari.freePool.permissionState": "Permission needed",
+    "safari.freePool.availableCount": "Available {count} / enabled {total}",
     "options.panel.floatingBall": "Floating button settings",
     "settings.general.bilingualSentenceHighlightGroupingHint": "When sentence boundaries differ, adjacent sentences are highlighted together.",
     "learning.collection.moreActions": "More saved-item actions",

@@ -1,5 +1,13 @@
 {
   "messages": {
+    "safari.freePool.policy": "Safari использует только разрешённые бесплатные сервисы перевода",
+    "safari.freePool.loading": "Проверка разрешений сервисов…",
+    "safari.freePool.error": "Не удалось проверить разрешения. Откройте панель или настройки заново и повторите попытку.",
+    "safari.freePool.needsAccess": "Разрешите доступ к {provider}, прежде чем переводить.",
+    "safari.freePool.allowProvider": "Разрешить {provider}",
+    "safari.freePool.requestDenied": "Доступ к сервису не разрешён. Повторите попытку или выберите другой сервис в настройках.",
+    "safari.freePool.permissionState": "Нужно разрешение",
+    "safari.freePool.availableCount": "Доступно: {count} / включено: {total}",
     "options.panel.floatingBall": "Настройки плавающей кнопки",
     "settings.general.bilingualSentenceHighlightGroupingHint": "Если границы предложений различаются, соседние предложения выделяются вместе.",
     "learning.collection.moreActions": "Другие действия с сохранённым",

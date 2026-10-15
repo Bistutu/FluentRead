@@ -22,7 +22,7 @@
       "tests": [
         "tests/popupAppLifecycle.test.ts"
       ],
-      "scenario": "真实菜单事件、配置保存、页面动作与卸载"
+      "scenario": "真实菜单事件、配置保存、页面动作、Safari 单线路授权及卸载归属"
     },
     "src/app/popup/PopupLanguageSelect.vue": {
       "kind": "behavior",
@@ -524,9 +524,10 @@
     "src/features/settings/ui/services/FreeTranslationSettings.vue": {
       "kind": "behavior",
       "tests": [
-        "tests/serviceDirectoryLifecycle.test.ts"
+        "tests/serviceDirectoryLifecycle.test.ts",
+        "tests/freeTranslationSettings.test.ts"
       ],
-      "scenario": "实际免费设置、取消和后台权重响应"
+      "scenario": "实际免费设置、取消、后台权重响应及 Safari 逐线路授权事件"
     },
     "src/features/settings/ui/services/ModelPicker.vue": {
       "kind": "behavior",
@@ -584,10 +585,11 @@
       "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
     },
     "src/features/settings/ui/services/ServiceConfiguration.vue": {
-      "kind": "frozen-debt",
-      "sourceSha256": "4459effbacb7900d0c15240b8575f5560976db91a4f2e3143e6649cb9edd60a5",
-      "reason": "渲染当前翻译服务的详细连接配置：连接字段（密钥、区域、端点等）直接排在服务标题下方、不再单设“连接与密钥”标题，输入下方是添加密钥与密钥使用方式；其后用模型偏好、提示词、请求限制、接口兼容几个页签显示代理、密钥要求、提示词、自定义请求体与请求头、按域名移除来源头等字段，以及服务和模型的独立请求限制；只有一个页签的服务改用小节标题。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
-      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceConfigurationLifecycle.test.ts"
+      ],
+      "scenario": "真实服务连接配置、授权线路过滤、异步取消及模板事件归属"
     },
     "src/features/settings/ui/services/ServiceNatureBadge.vue": {
       "kind": "frozen-debt",

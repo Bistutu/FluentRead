@@ -1,4 +1,4 @@
-import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import JSZip from 'jszip';
 import {createRequire} from 'node:module';
@@ -9,6 +9,7 @@ import ts from 'typescript';
 import {defineUnlistedScript} from 'wxt/utils/define-unlisted-script';
 import {createHash, generateKeyPairSync} from 'node:crypto';
 import {runInNewContext} from 'node:vm';
+import {FREE_PROVIDER_ORIGINS} from '@/src/core/config/freeProviderOrigins';
 import {GOOGLE_DRIVE_DEFAULT_CLIENT_ID, GOOGLE_DRIVE_EXTENSION_ID, GOOGLE_DRIVE_EXTENSION_PUBLIC_KEY, GOOGLE_DRIVE_SCOPES} from '@/src/platform/google-drive/constants';
 import {createDriveAuth, type DriveAuthPorts} from '@/src/platform/google-drive/auth';
 import type {Entrypoint, EntrypointGroup} from 'wxt';
@@ -78,6 +79,38 @@ describe('Safari unsigned delivery contract', () => {
         expect(readFileSync(resolve(PROJECT_ROOT, 'entrypoints/background.ts'), 'utf8')).toContain('safari: false');
     });
 
+    it('只在 Safari MV2 声明免费池单一目录的二十一个精确 optional permissions，required 网页权限不扩大', async () => {
+        const {verifySafariManifest} = await safariTools();
+        const source = createExtensionManifest({browser: 'safari', manifestVersion: 2});
+        const expected = Object.values(FREE_PROVIDER_ORIGINS).flat();
+        expect(source.optional_permissions).toEqual(expected);
+        expect(expected).toHaveLength(21); expect(new Set(expected).size).toBe(21);
+        expect(expected.every(origin => /^https:\/\/[a-z0-9.-]+\/\*$/u.test(origin))).toBe(true);
+        expect(source.optional_host_permissions).toBeUndefined();
+        expect(verifySafariManifest({...safariFixture(), optional_permissions: [...expected].reverse()})).toBeTruthy();
+        for (const env of [{browser: 'chrome', manifestVersion: 3}, {browser: 'chrome', manifestVersion: 2},
+            {browser: 'edge', manifestVersion: 3}, {browser: 'firefox', manifestVersion: 2}, {browser: 'firefox', manifestVersion: 3},
+            {browser: 'safari', manifestVersion: 3}] as const) {
+            const manifest = createExtensionManifest(env);
+            expect(manifest.optional_permissions).toBeUndefined(); expect(manifest.optional_host_permissions).toBeUndefined();
+            expect(manifest.host_permissions).toEqual(source.host_permissions);
+        }
+    });
+
+    it('Safari verifier 拒绝缺域、额外宽域、重复项和 MV3 optional_host_permissions 错字段', async () => {
+        const {verifySafariManifest} = await safariTools();
+        const manifest = safariFixture(); const exact = [...manifest.optional_permissions!];
+        for (const optional_permissions of [undefined, [], 'https://edge.microsoft.com/*', exact.slice(1),
+            ['<all_urls>'], ['https://*/*'], [...exact, '<all_urls>'], [...exact, 'https://*.google.com/*'],
+            [...exact.slice(1), exact[1]], [...exact.slice(1), 'http://edge.microsoft.com/*'],
+            [...exact.slice(1), 'https://unrelated.example/*']]) {
+            expect(() => verifySafariManifest({...manifest, optional_permissions})).toThrow('精确域集合');
+        }
+        for (const optional_host_permissions of [[], exact]) {
+            expect(() => verifySafariManifest({...manifest, optional_host_permissions})).toThrow('optional_host_permissions');
+        }
+    });
+
     it('打包新旧工具回退可用，生成参数始终复制资源且不打开、覆盖或签名', async () => {
         const {findPackager, packagingArguments, applyDeploymentTargets} = await safariTools();
         const probe = vi.fn((_command, args) => args[1] === 'safari-web-extension-packager'
@@ -98,6 +131,27 @@ describe('Safari unsigned delivery contract', () => {
         expect(applyDeploymentTargets('IPHONEOS_DEPLOYMENT_TARGET = 27.0;', 'ios')).toContain('27.0');
         expect(applyDeploymentTargets('MACOSX_DEPLOYMENT_TARGET = 15.0;', 'macos')).toContain('15.0');
         expect(() => applyDeploymentTargets('unknown template', 'both')).toThrow('deployment target');
+    });
+
+    it('CLI 目录预检拒绝双向嵌套、相同路径与已有输出；相邻目录不误判且不修改输入', async () => {
+        const {validatePackagingDirectories} = await safariTools();
+        const directory = mkdtempSync(resolve(tmpdir(), 'fluentread-safari-preflight-'));
+        const source = resolve(directory, 'source');
+        mkdirSync(source); writeFileSync(resolve(source, 'sentinel.txt'), 'input stays unchanged');
+        const existing = resolve(directory, 'existing'); mkdirSync(existing);
+        const target = resolve(directory, 'output'), sibling = resolve(directory, 'source-copy');
+        try {
+            for (const output of [source, resolve(source, 'new-wrapper'), directory,
+                resolve(source, 'nested/../normalized-wrapper')]) {
+                expect(() => validatePackagingDirectories(source, output)).toThrow('不能相同或互相包含');
+            }
+            expect(() => validatePackagingDirectories(source, existing)).toThrow('目标已存在');
+            expect(() => validatePackagingDirectories(source, target)).not.toThrow();
+            expect(() => validatePackagingDirectories(source, sibling)).not.toThrow();
+            expect(existsSync(target)).toBe(false); expect(existsSync(sibling)).toBe(false);
+            expect(readdirSync(source)).toEqual(['sentinel.txt']);
+            expect(readFileSync(resolve(source, 'sentinel.txt'), 'utf8')).toBe('input stays unchanged');
+        } finally {rmSync(directory, {recursive: true, force: true});}
     });
 
     it('检查最终文件，拒绝错放的浏览器后台、缺失引用和 Offscreen 容器', async () => {

@@ -14,6 +14,7 @@ let server: ViteDevServer, app: import('vue').App, state: Record<string, any>
 let props: {config: Config; service: string; active: boolean; selectedModelThinking: boolean; compute: Record<string, any>;
   options: typeof options; isValidAzureEndpoint: (value: string) => boolean; customProvider?: {id: string; name: string; endpoint: string; models: string[]}}
 let visible: import('vue').Ref<boolean>
+const readAccess = vi.fn()
 const send = vi.fn(), save = vi.fn(), queue = vi.fn(), read = vi.fn(), clear = vi.fn(), prepare = vi.fn(), confirm = vi.fn(), feedback = vi.fn(), emitDelete = vi.fn(), emitProvider = vi.fn()
 const subscriptions: {callback: (value: any) => void; stopped: boolean}[] = []
 const releases: (() => void)[] = [], jobs: Promise<unknown>[] = [], confirmations: {resolve: (value?: unknown) => void; reject: (error: unknown) => void}[] = []
@@ -38,12 +39,14 @@ async function acceptAction(index = 0) {
 }
 beforeEach(async () => {
   vi.clearAllMocks();subscriptions.length = 0;releases.length = 0;jobs.length = 0;confirmations.length = 0
+  readAccess.mockReset();readAccess.mockResolvedValue({supported:false,grantedIds:FREE_TRANSLATION_PROVIDERS.map(p=>p.id),preferredGrant:null})
   queue.mockResolvedValue(undefined);save.mockResolvedValue(undefined);read.mockResolvedValue(null);clear.mockResolvedValue(undefined)
   send.mockResolvedValue({success: true, durationMs: 25});prepare.mockResolvedValue({sourceLanguage: 'en', targetLanguage: 'zh'})
   confirm.mockImplementation(() => {const item = pending();confirmations.push(item);return item.promise})
-  Object.assign(globalThis, {[key]: {send, save, queue, read, clear, prepare, confirm, feedback, subscriptions}})
+  Object.assign(globalThis, {[key]: {readAccess, send, save, queue, read, clear, prepare, confirm, feedback, subscriptions}})
   const mocks: Plugin = {name: 'service-configuration-ports', enforce: 'pre', resolveId(id) {
     if (id.endsWith('.vue') && !id.endsWith('ServiceConfiguration.vue')) return '\0service-child'
+    if (/\/src\/platform\/browser\/freeProviderPermissions(?:\.ts)?$/u.test(id)) return '\0service-free-permissions'
     if (id === 'webextension-polyfill') return '\0service-browser'
     if (id === 'element-plus') return '\0service-element'
     if (/\/src\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0service-i18n'
@@ -53,6 +56,7 @@ beforeEach(async () => {
     if (/\/src\/features\/settings\/model\/chromeTranslationPreparation(?:\.ts)?$/u.test(id)) return '\0service-chrome-preparation'
     return null
   }, load(id) {
+    if (id === '\0service-free-permissions') return `export const readFreePoolAccess=globalThis.${key}.readAccess`
     if (id === '\0service-child') return 'export default {render: () => null}'
     if (id === '\0service-build-mode') return 'export const chatGPTPlanDevelopmentEnabled = false'
     if (id === '\0service-browser') return `export default {runtime: {sendMessage: globalThis.${key}.send}}`
@@ -93,6 +97,14 @@ afterEach(async () => {
 })
 
 describe('实际服务连接配置的活跃生命周期与确认归属', () => {
+  it('Safari免费检查仅请求已授权线路，未授权项不计作provider故障',async()=>{
+    props.service='freeTranslation';props.compute.showToken=false;await settle();readAccess.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:{id:'google',origins:[]}})
+    await check();expect(messages().map(([message])=>message.freeProviderId)).toEqual(['microsoft']);expect(Object.keys(state.freeProviderChecks)).toEqual(['microsoft']);expect(state.connectionTestState).toBe('success')
+    send.mockClear();readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});await check();expect(messages()).toHaveLength(0);expect(state.freeProviderChecks).toEqual({});expect(state.connectionTestState).toBe('idle');expect(state.connectionTestMessage).toBe('safari.freePool.permissionState');expect(state.connectionTestTitle).toBe('safari.freePool.permissionState')
+  })
+  it('Safari权限读取等待可取消，迟到授权快照不再发连接测试',async()=>{
+    props.service='freeTranslation';props.compute.showToken=false;await settle();const gate=pending();readAccess.mockReturnValue(gate.promise);let ended=false;const job=check().then(()=>{ended=true});await settle();expect(readAccess).toHaveBeenCalledOnce();props.active=false;await settle();expect(ended).toBe(true);gate.resolve({supported:true,grantedIds:['microsoft'],preferredGrant:null});await job;expect(messages()).toHaveLength(0)
+  })
   it('公开套餐旧配置没有设置页签，直接测试或提示词操作也不发消息或修改配置', async () => {
     props.config.model.chatgptPlan = 'saved-account-model';props.config.system_role.chatgptPlan = 'saved-system';props.config.user_role.chatgptPlan = 'saved-user'
     props.service = 'chatgptPlan';props.compute.showToken = false;await settle()

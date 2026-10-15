@@ -1,5 +1,13 @@
 {
   "messages": {
+    "safari.freePool.policy": "Safari 免费服务仅使用已授权的线路",
+    "safari.freePool.loading": "正在检查服务权限…",
+    "safari.freePool.error": "无法确认服务权限，请重新打开面板或设置后重试。",
+    "safari.freePool.needsAccess": "先允许访问 {provider}，再开始翻译。",
+    "safari.freePool.allowProvider": "允许 {provider}",
+    "safari.freePool.requestDenied": "尚未授权翻译服务。可以重试，或在设置中选择其他服务。",
+    "safari.freePool.permissionState": "待授权",
+    "safari.freePool.availableCount": "可用 {count} / 已启用 {total}",
     "options.panel.floatingBall": "悬浮球进阶设置",
     "settings.general.bilingualSentenceHighlightGroupingHint": "注意，当原文与译文的句子划分不同时，会一起高亮相邻句子。",
     "learning.collection.moreActions": "更多收藏操作",

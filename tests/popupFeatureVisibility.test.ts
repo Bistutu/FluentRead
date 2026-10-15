@@ -49,12 +49,13 @@ describe('popup feature visibility', () => {
         expect(runInNewContext(visible, {isThunderbird: true, currentPdfSource: undefined})).toBe(false);
         expect(runInNewContext(visible, {isThunderbird: false, currentPdfSource: {}})).toBe(false);
         const disabled = directive(entry, 'bind', 'disabled')!;
-        expect(disabled).toBe('!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule');
-        const ready = {config: {on: true}, currentSiteExtensionDisabled: false, translating: false, pageState: {savingRule: false}};
+        expect(disabled).toBe('!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule || (safariFreePool && (freePoolLoading || freePoolBusy))');
+        const ready = {config: {on: true}, currentSiteExtensionDisabled: false, translating: false, pageState: {savingRule: false}, safariFreePool: false, freePoolLoading: false, freePoolBusy: false};
         expect(runInNewContext(disabled, ready)).toBe(false);
         for (const blocked of [
             {...ready, config: {on: false}}, {...ready, currentSiteExtensionDisabled: true},
             {...ready, translating: true}, {...ready, pageState: {savingRule: true}},
+            {...ready, safariFreePool: true, freePoolLoading: true}, {...ready, safariFreePool: true, freePoolBusy: true},
         ]) expect(runInNewContext(disabled, blocked)).toBe(true);
         expect(directive(entry, 'bind', 'onClick')).toBe('pageButtons.section');
         expect(directive(entry, 'bind', 'aria-label')).toBe('sectionTranslationLabel');

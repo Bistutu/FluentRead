@@ -1,18 +1,19 @@
 <!--
  * @file src/features/settings/ui/services/FreeTranslationSettings.vue
  * 文件职责：编辑免费翻译服务的启停、选择策略、邮箱与等待时间。
- * 主要内容：按配置策略展示全部服务的启停、连接结果、耗时与分流参考，B站翻译仅标注免费；仅活跃分流视图合并读取后台快照，切换时取消等待和旧事件，邮箱草稿只在所属配置提交。
- * 模块边界：只修改传入的配置，由设置页统一持久化；只读取不含凭据的后台权重快照，不请求翻译。
+ * 主要内容：按配置策略展示全部服务的启停、连接结果、耗时与分流参考，B站翻译仅标注免费；Safari 单独呈现实际域授权并在真实点击中逐线路申请，权限查询有界且切换时取消等待；仅活跃分流视图合并读取后台快照，切换时取消等待和旧事件，邮箱草稿只在所属配置提交。
+ * 模块边界：只修改传入的配置，由设置页统一持久化；通过平台端口管理 Safari 授权，只读取不含凭据的后台权重快照，不请求翻译或更改启用顺序。
  -->
 <template>
   <div class="free-translation-settings" :class="{'is-advanced': advanced}" data-free-translation-settings>
     <template v-if="!advanced">
+      <p v-if="safariPermissions" class="mode-help" data-safari-free-pool role="status">{{ t('safari.freePool.policy') }} · {{ permissionSummary }}</p>
       <div class="mode-picker" role="radiogroup" :aria-label="translateLegacy('免费翻译选择模式')">
         <label class="mode-option" :class="{ 'is-selected': mode === 'balanced' }"><input type="radio" name="free-translation-mode" value="balanced" :checked="mode === 'balanced'" :aria-label="t('settings.services.freeWeights.mode')" :disabled="!active" :onChange="actions.setMode.bind(null, 'balanced')" /><span>{{ t('settings.services.freeWeights.mode') }}</span></label>
         <label class="mode-option" :class="{ 'is-selected': mode === 'sequential' }"><input type="radio" name="free-translation-mode" value="sequential" :checked="mode === 'sequential'" :aria-label="translateLegacy('优先顺序')" :disabled="!active" :onChange="actions.setMode.bind(null, 'sequential')" /><span>{{ translateLegacy('优先顺序') }}</span></label>
       </div>
       <p class="mode-help">{{ mode === 'balanced' ? t('settings.services.freeWeights.strategy') : translateLegacy('依次调用启用的免费接口；可使用上下按钮调整顺序') }}</p>
-      <p v-if="!isSequential && displayedWeightSnapshot.total === 0" class="service-unavailable" role="status">{{ t('settings.services.freeWeights.unavailable') }}</p>
+      <p v-if="!isSequential && displayedWeightSnapshot.total === 0 && (!safariPermissions || permissionAccess?.grantedIds.length)" class="service-unavailable" role="status">{{ t('settings.services.freeWeights.unavailable') }}</p>
       <section class="provider-section" :aria-label="translateLegacy(isSequential ? '免费翻译优先顺序' : '免费翻译服务')">
         <div class="section-heading"><h3>{{ isSequential ? translateLegacy('服务优先顺序') : t('settings.services.freeWeights.services') }}</h3><p>{{ t('settings.services.freeWeights.enabledCount', {count: order.length}) }}</p></div>
         <div v-if="!isSequential" class="routing-summary" data-testid="free-translation-weight-summary" :data-weight-total="displayedWeightSnapshot.total" :data-weight-observed-at="displayedWeightSnapshot.observedAt">
@@ -32,6 +33,9 @@
                 </div>
               </div>
               <div class="provider-actions">
+                <button v-if="safariPermissions && isEnabled(provider.id) && !providerGranted(provider.id)" class="provider-permission" type="button"
+                  :disabled="!active || permissionLoading || Boolean(grantingProvider) || !permissionAccess"
+                  :aria-label="t('safari.freePool.allowProvider', {provider: translateLegacy(provider.label)})" :onClick="actions.allow.bind(null, provider.id)">{{ t('safari.freePool.allowProvider', {provider: translateLegacy(provider.label)}) }}</button>
                 <button v-if="isSequential" type="button" :disabled="!active || !isEnabled(provider.id) || order.indexOf(provider.id) === 0" :aria-label="`${translateLegacy('上移')} ${translateLegacy(provider.label)}`" :title="translateLegacy('上移')" :onClick="actions.move.bind(null, provider.id, -1)"><svg aria-hidden="true" viewBox="0 0 16 16"><path d="m4 9 4-4 4 4" /></svg></button>
                 <button v-if="isSequential" type="button" :disabled="!active || !isEnabled(provider.id) || order.indexOf(provider.id) === order.length - 1" :aria-label="`${translateLegacy('下移')} ${translateLegacy(provider.label)}`" :title="translateLegacy('下移')" :onClick="actions.move.bind(null, provider.id, 1)"><svg aria-hidden="true" viewBox="0 0 16 16"><path d="m4 7 4 4 4-4" /></svg></button>
                 <el-switch :model-value="isEnabled(provider.id)" :disabled="!active || toggleDisabled(provider.id)" :aria-label="`${translateLegacy('启用')} ${translateLegacy(provider.label)}`" :onUpdate:modelValue="actions.toggle.bind(null, provider.id)" />
@@ -66,6 +70,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
 import browser from 'webextension-polyfill'
+import {browserCapabilities} from '@/src/platform/browser/capabilities'
+import {readFreePoolAccess, requestFreeProviderAccess, type FreePoolAccess} from '@/src/platform/browser/freeProviderPermissions'
 import type { Config } from '@/src/core/config/model'
 import { FREE_TRANSLATION_PROVIDERS, normalizeFreeTranslationMode, normalizeFreeTranslationOrder, normalizeMyMemoryEmail, type FreeTranslationProviderId } from '@/src/core/config/freeTranslation'
 import {
@@ -101,28 +107,71 @@ const order = computed(() => normalizeFreeTranslationOrder(config.value.freeTran
 const providers = computed(() => mode.value === 'sequential' ? [...order.value.flatMap(id => FREE_TRANSLATION_PROVIDERS.filter(provider => provider.id === id)), ...FREE_TRANSLATION_PROVIDERS.filter(provider => !order.value.includes(provider.id))] : [...FREE_TRANSLATION_PROVIDERS])
 const failedProviders = computed(() => providers.value.filter(provider => props.checks?.[provider.id]?.status === 'error' && props.checks[provider.id]?.error))
 const weightSnapshot = ref<FreeTranslationWeightSnapshot | null>(null)
-const localWeightSnapshot = computed(() => calculateFreeTranslationWeightSnapshot(order.value))
+const localWeightSnapshot = computed(() => calculateFreeTranslationWeightSnapshot(safariPermissions ? order.value.filter(providerGranted) : order.value))
 const displayedWeightSnapshot = computed(() => weightSnapshot.value || localWeightSnapshot.value)
 const weightByProvider = computed(() => new Map(displayedWeightSnapshot.value.entries.map(entry => [entry.providerId, entry])))
 const refreshMinutes = Math.round(FREE_TRANSLATION_WEIGHT_REFRESH_INTERVAL_MS / 60_000)
 let weightRefreshTimer: ReturnType<typeof setInterval> | undefined
 let weightRequestGeneration = 0
 const mounted = ref(false)
-const canReadWeights = computed(() => mounted.value && active.value && !advanced.value && mode.value === 'balanced')
+const safariPermissions = browserCapabilities.browser === 'safari'
+const permissionAccess = ref<FreePoolAccess | null>(null), permissionLoading = ref(false), permissionError = ref(''), grantingProvider = ref<string | null>(null)
+let permissionGeneration = 0
+let permissionReadController: AbortController | undefined
+const providerGranted = (id: string) => permissionAccess.value?.grantedIds.some(value => value === id) === true
+const permissionSummary = computed(() => permissionLoading.value || grantingProvider.value ? t('safari.freePool.loading')
+  : permissionError.value || t('safari.freePool.availableCount', {count: order.value.filter(providerGranted).length, total: order.value.length}))
+watch(() => [mounted.value, active.value, advanced.value, revision.value], () => {
+  const generation = ++permissionGeneration, current = capture()
+  permissionReadController?.abort();permissionReadController = undefined
+  permissionAccess.value = null;permissionError.value = '';grantingProvider.value = null
+  permissionLoading.value = safariPermissions && mounted.value && active.value && !advanced.value
+  if (!permissionLoading.value) return
+  const controller = new AbortController();permissionReadController = controller
+  void waitForSettingsTask(readFreePoolAccess(FREE_TRANSLATION_PROVIDERS.map(item => item.id)), controller.signal, 10_000, t('safari.freePool.error')).then(access => {
+    if (current() && generation === permissionGeneration) permissionAccess.value = access
+  }).catch(() => {if (current() && generation === permissionGeneration) permissionError.value = t('safari.freePool.error')})
+    .finally(() => {if (generation === permissionGeneration) permissionLoading.value = false})
+}, {flush: 'sync', immediate: true})
+function allowProvider(id: string): Promise<void> | void {
+  if (!safariPermissions || !active.value || advanced.value || !isEnabled(id) || providerGranted(id) || permissionLoading.value || grantingProvider.value || !permissionAccess.value) return
+  const provider = FREE_TRANSLATION_PROVIDERS.find(item => item.id === id)
+  if (!provider) return
+  const generation = permissionGeneration, current = capture()
+  let request: Promise<boolean>
+  try {request = requestFreeProviderAccess(provider.id)} catch {permissionError.value = t('safari.freePool.error');return}
+  grantingProvider.value = id;permissionError.value = ''
+  return (async () => {
+    try {
+      const granted = await request
+      if (!current() || generation !== permissionGeneration) return
+      if (!granted) {permissionError.value = t('safari.freePool.requestDenied');return}
+      const access = await waitForSettingsTask(readFreePoolAccess(FREE_TRANSLATION_PROVIDERS.map(item => item.id)), permissionReadController!.signal, 10_000, t('safari.freePool.error'))
+      if (!current() || generation !== permissionGeneration) return
+      permissionAccess.value = access
+      if (!access.grantedIds.includes(provider.id)) permissionError.value = t('safari.freePool.requestDenied')
+      restartWeightRefresh()
+    } catch {if (current() && generation === permissionGeneration) permissionError.value = t('safari.freePool.error')}
+    finally {if (generation === permissionGeneration) grantingProvider.value = null}
+  })()
+}
+const canReadWeights = computed(() => mounted.value && active.value && !advanced.value && mode.value === 'balanced'
+  && (!safariPermissions || permissionAccess.value !== null))
 let weightRequest: {controller: AbortController; promise: Promise<void>} | undefined
 
 function providerWeight(providerId: string): number {
-  if (!isEnabled(providerId)) return 0
+  if (!isEnabled(providerId) || (safariPermissions && !providerGranted(providerId))) return 0
   return weightByProvider.value.get(providerId)?.weight ?? 0
 }
 function formatPercentage(value: number): string { return `${Number.isFinite(value) ? value.toFixed(1) : '0.0'}%` }
 function formatProviderWeight(providerId: string): string { return formatPercentage(providerWeight(providerId)) }
 function weightStatus(providerId: string): string {
-  if (!isEnabled(providerId)) return 'disabled'
+  if (!isEnabled(providerId) || (safariPermissions && !providerGranted(providerId))) return 'disabled'
   const status = weightByProvider.value.get(providerId)?.status
   return status && status !== 'disabled' ? status : 'ready'
 }
 function providerState(providerId: FreeTranslationProviderId): string {
+  if (safariPermissions && !providerGranted(providerId)) return 'permission'
   const check = props.checks?.[providerId]
   if (check && check.status !== 'idle') return check.status
   const health = weightStatus(providerId)
@@ -130,18 +179,21 @@ function providerState(providerId: FreeTranslationProviderId): string {
 }
 function providerStateLabel(providerId: FreeTranslationProviderId): string {
   const state = providerState(providerId)
+  if (state === 'permission') return t('safari.freePool.permissionState')
   if (state === 'success') return translateLegacy('连接正常')
   if (state === 'error') return translateLegacy('连接失败')
   if (state === 'cooling' || state === 'recovering') return t(`settings.services.freeWeights.state.${state}`)
   return t(`settings.services.keys.${state === 'idle' ? 'unchecked' : state}`)
 }
 function providerDuration(providerId: FreeTranslationProviderId): number | undefined {
+  if (safariPermissions && !providerGranted(providerId)) return undefined
   const check = props.checks?.[providerId]
   if (check?.status !== 'success' && check?.status !== 'error') return undefined
   const duration = check.durationMs
   return typeof duration === 'number' && Number.isFinite(duration) && duration >= 0 ? Math.round(duration) : undefined
 }
 function providerStateTitle(providerId: FreeTranslationProviderId): string {
+  if (safariPermissions && !providerGranted(providerId)) return t('safari.freePool.permissionState')
   const check = props.checks?.[providerId]
   const pair = providerId === 'apertiumFree' ? 'en → es' : 'en → zh-Hans'
   const duration = providerDuration(providerId)
@@ -158,7 +210,7 @@ function isCurrentSnapshot(value: unknown): value is FreeTranslationWeightSnapsh
   const snapshot = value as FreeTranslationWeightSnapshot
   if (![0, 100].includes(snapshot.total) || !Number.isFinite(snapshot.observedAt) || !Array.isArray(snapshot.entries)
     || snapshot.entries.length !== FREE_TRANSLATION_PROVIDERS.length) return false
-  const ids = new Set<string>(), enabled = new Set(order.value)
+  const ids = new Set<string>(), enabled = new Set(safariPermissions ? order.value.filter(providerGranted) : order.value)
   let total = 0
   for (const entry of snapshot.entries) {
     if (!entry || !FREE_TRANSLATION_PROVIDERS.some(provider => provider.id === entry.providerId) || ids.has(entry.providerId)
@@ -218,6 +270,7 @@ const actions = computed(() => {
   return {
     setMode: (value: FreeTranslationMode) => {if (current()) setMode(value)},
     toggle: (id: string, value: boolean) => {if (current()) toggle(id, value)},
+    allow: (id: string) => {if (current()) return allowProvider(id)},
     move: (id: string, direction: -1 | 1) => {if (current()) move(id, direction)},
     setDuration: (value: number | undefined) => {if (current()) setDuration(value)},
     updateEmail: (value: string) => {if (current() && !advanced.value && typeof value === 'string') myMemoryEmailDraft.value = value},
@@ -274,6 +327,11 @@ onBeforeUnmount(() => {mounted.value = false})
 .provider-actions button { width: 24px; height: 26px; padding: 0; border: 1px solid var(--el-border-color); border-radius: 7px; color: var(--el-text-color-regular); background: var(--el-fill-color-blank); cursor: pointer; }
 .provider-actions button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
 .provider-actions button:disabled { opacity: .35; cursor: default; }
+.provider-actions button.provider-permission { width: auto; min-width: 44px; min-height: 44px; height: auto; padding: 5px 8px; font: inherit; white-space: normal; }
+.fallback-list > li:has(.provider-permission) { height: auto; min-height: 88px; }
+.provider-row:has(.provider-permission) { flex-wrap: wrap; }
+.provider-row:has(.provider-permission) .provider-actions { flex-basis: 100%; flex-wrap: wrap; justify-content: flex-end; }
+.provider-row:has(.provider-permission) .provider-permission { flex: 1; }
 .check-failures { display: grid; gap: 7px; margin: 10px 0 0; padding: 9px 12px; list-style: none; border-left: 2px solid var(--el-color-danger-light-5); background: var(--el-fill-color-light); color: var(--el-color-danger); font-size: 11px; line-height: 1.6; }
 .check-failures li { display: flex; flex-wrap: wrap; gap: 0 10px; }
 .check-failures strong { flex: none; font-weight: 600; }
