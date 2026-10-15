@@ -3,7 +3,7 @@
  *
  * 文件职责：实现 DOM 节点到 TranslationCandidate 的核心解析引擎，协调安全守卫、站点适配器、布局边界和文本有效性；为显式非原子行内容器保留直属正文与独立子段落的一致发现和悬浮边界。
  * 主要内容：按正文/全部节点范围协调候选；定义 TranslationCandidateCore、候选优选与键值函数，记录发现步骤和原因，按站点规则把显式换行拆为两种入口一致的内联候选，处理编辑器坐标命中屏障、hover 屏障、适配优先级、快照省略、缓存及坐标命中；局部脏内联子树仅在完整保护检查通过后回到最近显式非原子祖先重扫，不把每个正文子节点重定向成重复整段请求；发现强制目标时仅在当前 enter 的同步检查中复用既有决策和祖先选择器 miss，不跨生成器让出缓存；同步只读批量解析复用全部范围及无站点适配/应用外壳例外的普通正文祖先守卫和文本保护，涉及显式外壳权限或站点重定向目标时独立解析；无元素子节点的非文档表面不重复探测不可能成立的内联分段，仍由完整候选分类复验文本和保护；悬浮命中独立后代的包裹层时禁止回退吞并整个容器，让独立 tooltip 不抢占外层控件候选，保证全文与悬浮共享决策。 可核对的公开符号包括 TranslationCoreInspection、TranslationDiscoveryStep、getTranslationCandidateKey、selectPreferredTranslationCandidate、TranslationCandidateCore。
- * 模块边界：本文件属于可独立测试的 core 候选领域；可以读取传入 DOM 以计算结果，坐标命中栈与祖先守卫只在单次同步解析中复用，不跨手势缓存；不访问配置存储、不调用 provider、不注册页面监听器，也不负责译文渲染或 feature 生命周期。
+ * 模块边界：本文件属于可独立测试的 core 候选领域；内置站点提供的应用外壳正文入口仍须经过显式目标、局部保护与去重检查，不改变通用发现守卫；可以读取传入 DOM 以计算结果，坐标命中栈与祖先守卫只在单次同步解析中复用，不跨手势缓存；不访问配置存储、不调用 provider、不注册页面监听器，也不负责译文渲染或 feature 生命周期。
  */
 
 import {isTranslationTooltip} from './dom';
@@ -846,12 +846,53 @@ export class TranslationCandidateCore {
         return null;
     }
 
+    /** 只复验自动发现的站点授权；不读取译文 owner 的来源槽，也不改变手动 resolve 的权限。 */
+    isApplicationShellPolicyCurrent(element: Element, policyId: string): boolean {
+        if (!element.isConnected || !policyId) return false;
+        const adapter = this.adapters.find(item => item.id === policyId && item.discoverApplicationShellTargets);
+        if (!adapter?.discoverApplicationShellTargets) return false;
+        try {
+            for (const target of adapter.discoverApplicationShellTargets(element, this.context)) {
+                if (target !== element) continue;
+                const {decision, adapterId} = this.adapterDecision(element);
+                return adapterId === adapter.id && decision.kind === 'force-target' &&
+                    (decision.target ?? element) === element && !this.isWithinStructuralRegion(element);
+            }
+        } catch {
+            // 站点结构或策略失效时撤销自动授权，不回退成手动外壳权限。
+        }
+        return false;
+    }
+
     /**
      * 增量后序发现：每访问一个元素都会产出一步，包括被拒绝或裁剪的元素，
      * 使全文调用方可以执行帧预算而不改变候选语义。
      */
     *discoverSteps(root: Node): Generator<TranslationDiscoveryStep> {
-        yield* this.walkDiscoverySteps(root, true);
+        const supplementalAdapters = this.adapters.filter(adapter => adapter.discoverApplicationShellTargets);
+        if (!supplementalAdapters.length) {
+            yield* this.walkDiscoverySteps(root, true);
+            return;
+        }
+        const seen = new Set<Node>();
+        for (const step of this.walkDiscoverySteps(root, true)) {
+            if (step.candidate) seen.add(getTranslationCandidateKey(step.candidate));
+            yield step;
+        }
+        for (const adapter of supplementalAdapters) {
+            for (const element of adapter.discoverApplicationShellTargets!(root, this.context)) {
+                const {decision, adapterId} = this.adapterDecision(element);
+                // 权限仅用于该站点明确允许的正文，不让通用回退或其他规则借用外壳例外。
+                const inspected = adapterId === adapter.id && decision.kind === 'force-target' &&
+                    (decision.target ?? element) === element && !this.isWithinStructuralRegion(element)
+                    ? this.inspect(element, {allowTopLevelApplicationShell: true, protectedElement: element}).candidate
+                    : null;
+                const candidate = inspected ? {...inspected, applicationShellPolicyId: adapter.id} : null;
+                const key = candidate && getTranslationCandidateKey(candidate);
+                yield {element, phase: 'exit', ...(candidate && key && !seen.has(key) ? {candidate} : {})};
+                if (key) seen.add(key);
+            }
+        }
     }
 
     private *walkDiscoverySteps(root: Node, promoteExplicitOwner: boolean): Generator<TranslationDiscoveryStep> {

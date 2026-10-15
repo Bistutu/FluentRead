@@ -7,8 +7,11 @@
 // 都由 Playwright keyboard API 发送真实的浏览器按键。
 
 const {guardBrowserClose} = require('./testing/owned-browser-close.cjs');
+const {installControlledProvider} = require('./site-translation/controlled-provider.cjs');
+const {runStabilityProbes, runNativeCommentToggle} = require('./site-translation/stability-probes.cjs');
 const {reportErrorCodes} = require('./testing/site-error-diagnostics.cjs');
 const fs = require('node:fs');
+const {createHash} = require('node:crypto');
 const os = require('node:os');
 const path = require('node:path');
 const {createRequire} = require('node:module');
@@ -35,6 +38,7 @@ const SINGLE_TOKEN_TECHNICAL_WORDS = new Set([
 
 function isNaturalLanguageText(value) {
   const text = String(value || '').replace(/\s+/gu, ' ').trim();
+  if (/^https?:\/\/\S+$/iu.test(text)) return false;
   if (!text || /^#!|^#lang\b|^<!doctype\b|^<\?xml\b/iu.test(text)) return false;
   if (/^[a-z][a-z0-9_-]*(?:-stmt|-expr|-clause)?:\s*(?:hide|show|expand|collapse|藏起来)?$/iu.test(text)) {
     return false;
@@ -123,6 +127,10 @@ function parseArgs(argv) {
       args.background = false;
       continue;
     }
+    if (['--controlled-provider', '--stability-probes'].includes(token)) {
+      args[token === '--controlled-provider' ? 'controlledProvider' : 'stabilityProbes'] = true;
+      continue;
+    }
     if (token === '--allow-network') {
       args.allowNetwork = true;
       continue;
@@ -137,6 +145,7 @@ function parseArgs(argv) {
 
   args.timeout = Number(args.timeout);
   if (!Number.isFinite(args.timeout) || args.timeout <= 0) throw new Error('--timeout 必须为正数');
+  if (args.stabilityProbes && args.mode !== 'full') throw new Error('--stability-probes requires --mode full');
   if (!args.case) throw new Error('必须传入 --case，例如 example-com');
   if (!CASES[args.case]) throw new Error(`未知 case：${args.case}`);
   if (!['hover', 'full'].includes(args.mode)) throw new Error('--mode 必须是 hover 或 full');
@@ -159,6 +168,7 @@ function parseArgs(argv) {
     ...caseConfig,
     ...args,
     ...normalized,
+    ...(args.controlledProvider ? {service: 'microsoft'} : {}),
   };
 }
 
@@ -267,6 +277,7 @@ async function waitForCoverageReady(page, rules, timeout) {
       const technicalWordSet = new Set(technicalWords);
       const naturalLanguage = (value) => {
         const text = String(value || '').replace(/\s+/gu, ' ').trim();
+        if (/^https?:\/\/\S+$/iu.test(text)) return false;
         if (!text || /^#!|^#lang\b|^<!doctype\b|^<\?xml\b/iu.test(text)) return false;
         if (/^[a-z][a-z0-9_-]*(?:-stmt|-expr|-clause)?:\s*(?:hide|show|expand|collapse|藏起来)?$/iu.test(text)) {
           return false;
@@ -335,6 +346,7 @@ async function installCoverageTracker(page, rules) {
     const normalizeText = (value) => String(value || '').replace(/\s+/gu, ' ').trim();
     const technicalWordSet = new Set(technicalWords);
     const naturalLanguage = (text) => {
+      if (/^https?:\/\/\S+$/iu.test(text)) return false;
       if (!text || /^#!|^#lang\b|^<!doctype\b|^<\?xml\b/iu.test(text)) return false;
       if (/^[a-z][a-z0-9_-]*(?:-stmt|-expr|-clause)?:\s*(?:hide|show|expand|collapse|藏起来)?$/iu.test(text)) {
         return false;
@@ -2395,6 +2407,7 @@ function findHoverTargetInPage({
   const normalizeText = (value) => String(value || '').replace(/\s+/gu, ' ').trim();
   const technicalWordSet = new Set(technicalWords);
   const naturalLanguage = (text) => {
+    if (/^https?:\/\/\S+$/iu.test(text)) return false;
     if (!text || /^#!|^#lang\b|^<!doctype\b|^<\?xml\b/iu.test(text)) return false;
     if (/^[a-z][a-z0-9_-]*(?:-stmt|-expr|-clause)?:\s*(?:hide|show|expand|collapse|藏起来)?$/iu.test(text)) {
       return false;
@@ -2988,7 +3001,13 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const extensionDir = path.resolve(args.extensionDir);
   if (!fs.existsSync(path.join(extensionDir, 'manifest.json'))) throw new Error('插件 manifest.json 不存在');
-  assertFreshProductionExtension(extensionDir);
+  const buildFreshness = assertFreshProductionExtension(extensionDir);
+  const sha256 = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  const artifactBinding = {manifest: sha256(path.join(extensionDir, 'manifest.json')),
+    content: sha256(path.join(extensionDir, 'content-scripts/content.js')),
+    background: sha256(path.join(extensionDir, 'background.js')),
+    source: Object.fromEntries(['runtime.ts', 'mutationObservation.ts'].map(file =>
+      [file, sha256(path.join(__dirname, '../src/features/full-page-translation/content', file))]))};
   if (!fs.existsSync(args.browserPath)) throw new Error(`浏览器不存在：${args.browserPath}`);
 
   const artifactsDir = args.artifactsDir ? path.resolve(args.artifactsDir) : null;
@@ -3017,6 +3036,7 @@ async function main() {
   let page;
   let extensionId;
   let diagnosticService = args.service;
+  let controlledProvider;
   const attemptStartedAt = Date.now();
   try {
     assertDedicatedProfile(profileDir);
@@ -3055,8 +3075,10 @@ async function main() {
       };
     }
     context = launched.context;
+    if (args.controlledProvider) controlledProvider = await installControlledProvider(context, createPage, args.timeout);
     page = await createPage(context, args.timeout);
-    await page.goto(args.url, {waitUntil: 'domcontentloaded', timeout: args.timeout});
+    const navigation = await page.goto(args.url, {waitUntil: 'domcontentloaded', timeout: args.timeout});
+    if (navigation && navigation.status() >= 400) throw new Error(`External site returned HTTP ${navigation.status()}: ${args.url}`);
     await activateTab(context, page, args.timeout);
     reportProgress(`${args.case}/${args.mode} 页面已加载`);
     // 当前 main 默认关闭悬浮球，但 Control/Alt+T 快捷键仍独立工作；
@@ -3139,8 +3161,17 @@ async function main() {
         artifactsDir,
         await createUnchangedCompletionReader(context, page, args.timeout),
       );
+    const nativeComments = args.stabilityProbes && args.case === 'hacker-news-8863'
+      ? await runNativeCommentToggle({page, timeout: args.timeout, artifactsDir}) : undefined;
+    const stability = args.stabilityProbes
+      ? await runStabilityProbes({page, selector: args.selector, timeout: args.timeout, artifactsDir, toggleFull, observeMs: 5000}) : undefined;
     output = {
       ok: true,
+      artifactBinding,
+      buildFreshness,
+      stability,
+      nativeComments,
+      providerEvidence: controlledProvider ? await controlledProvider.snapshot() : {mode: 'live-provider'},
       case: args.case,
       mode: args.mode,
       hostMathRendering,
@@ -3355,6 +3386,7 @@ async function main() {
     throw error;
   }
   finally {
+    controlledProvider?.dispose();
     const cleanupErrors = [];
     let browserClosed = false;
     try {
@@ -3375,6 +3407,9 @@ async function main() {
     }
     if (cleanupErrors.length && !primaryError) throw cleanupErrors[0];
   }
+  output.cleanupConfirmed = true;
+  output.profileRemoved = !fs.existsSync(profileDir);
+  if (artifactsDir) fs.writeFileSync(path.join(artifactsDir, 'result.json'), JSON.stringify(output, null, 2));
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
@@ -3387,6 +3422,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  parseArgs,
   COVERAGE_EXCLUDED_ANCESTORS,
   COVERAGE_PROTECTED_DESCENDANTS,
   COVERAGE_TRACKER_KEY,

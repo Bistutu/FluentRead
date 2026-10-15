@@ -217,8 +217,10 @@ function createCommittedSingleSlotFixture(
     return {owner, state: attempt.state, wrapper, sources, translations};
 }
 
-function createCommittedMixedSourceFixture(document: Document, markup: string): CommittedReplayFixture {
-    document.body.innerHTML = `<section><h3 id="owner">${markup}</h3></section>`;
+function createCommittedMixedSourceFixture(
+    document: Document, markup: string, tag: 'h3' | 'p' = 'h3',
+): CommittedReplayFixture {
+    document.body.innerHTML = `<section class="markdown-body"><${tag} id="owner">${markup}</${tag}></section>`;
     const owner = document.querySelector<HTMLElement>('#owner')!;
     const core = getCurrentTranslationCore();
     const options = {protectedElement: owner};
@@ -257,7 +259,141 @@ async function flushLayoutRefresh(): Promise<void> {
     }
 }
 
+/**
+ * Issue #969 screenshot paragraph, from
+ * https://github.com/nicobailon/pi-subagents/blob/main/docs/models.md
+ * License: https://github.com/nicobailon/pi-subagents/blob/main/LICENSE
+ *
+ * MIT License
+ * Copyright (c) 2026 Nico Bailon
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+const githubModelsParagraph =
+    '<code>subagents.defaultModel</code> and <code>subagents.defaultProvider</code> apply to builtin, package, user, project, and runtime-registered agents. ' +
+    '<code>defaultModel</code> fills only agents that do not set <code>model</code> in frontmatter or in their runtime definition. ' +
+    '<code>defaultProvider</code> is also applied to frontmatter and override models so bare ids resolve against the intended provider. ' +
+    'Per-run model overrides and <code>agentOverrides.&lt;name&gt;.model</code> win over frontmatter and the global default. ' +
+    'The same <code>agentOverrides</code> block can change <code>tools</code>, <code>skills</code>, inherited context, prompt text, or disable an agent ' +
+    '(see <a href="https://github.com/nicobailon/pi-subagents/blob/main/docs/agents.md">agents.md</a>); matching custom-agent frontmatter is replaced for any field set by the override. ' +
+    'Runtime-registered agents take only <code>model</code>, <code>defaultProvider</code>, <code>fast</code>, and <code>thinking</code> ' +
+    'from <code>agentOverrides.&lt;name&gt;</code>; their other definition fields stay owned by the registering extension.';
+
 describe('双语译文骨架重放', () => {
+    it('issue #969 的 GitHub 混合行内代码段落在真实 MO 中保留译文并有界复验', async () => {
+        const {document} = parseHTML('<html><head></head><body></body></html>');
+        await withDocumentRealm(document, async () => {
+            vi.stubGlobal('location', {href: 'https://github.com/nicobailon/pi-subagents/blob/main/docs/models.md'});
+            const hook = boundedReplayHook();
+            const mutations: MutationRecord[] = [];
+            const artifactObserver = new MutationObserver(records => mutations.push(...records));
+            artifactObserver.observe(document.body, {childList: true, subtree: true});
+            try {
+                const fixture = createCommittedMixedSourceFixture(document, githubModelsParagraph, 'p');
+                const {owner, state, wrapper} = fixture;
+                const generation = state.generation;
+                const sourceNodes = [...state.sourceTextNodes!];
+                const codes = Array.from(owner.children).filter(child => child.localName === 'code');
+                const codeHTML = codes.map(code => code.outerHTML);
+                const sourceLink = Array.from(owner.children).find(child => child.localName === 'a')!;
+                const sourceLinkHref = sourceLink.getAttribute('href');
+                expect(codes).toHaveLength(14);
+                expect(fixture.sources).not.toContain('agents.md');
+                expect(sourceNodes.every(node => node.parentElement?.localName !== 'code')).toBe(true);
+                expect(getCurrentTranslationCore().inspect(owner).candidate?.element).toBe(owner);
+
+                const expectCurrent = () => {
+                    expect(getTranslationState(owner)).toBe(state);
+                    expect(state.generation).toBe(generation);
+                    expect(state.controller.signal.aborted).toBe(false);
+                    expect(state.bilingualContent).toBe(wrapper);
+                    expect(wrapper.parentNode).toBe(owner);
+                    expect(owner.querySelectorAll(':scope > .fluent-read-bilingual-content')).toHaveLength(1);
+                    expect(state.bilingualReplay?.sources).toEqual(fixture.sources);
+                    expect(state.bilingualReplay?.translations).toEqual(fixture.translations);
+                    expect(codes.map(code => code.outerHTML)).toEqual(codeHTML);
+                    expect(codes.every(code => code.parentNode === owner)).toBe(true);
+                    expect(sourceLink.parentNode).toBe(owner);
+                    expect(sourceLink.getAttribute('href')).toBe(sourceLinkHref);
+                    expect(isTranslationArtifactCurrent(owner, state) ||
+                        isBilingualArtifactDriftOnly(owner, state)).toBe(true);
+                };
+
+                await flushLayoutRefresh();
+                expect(hook).not.toHaveBeenCalled();
+                expect(state.sourceTextNodes).toEqual(sourceNodes);
+                expectCurrent();
+
+                // 旧版在 resize 后用另一套 Text 保护规则复验，静置正常也会进入自重放循环。
+                const RealmEvent = (document.defaultView as unknown as {Event: typeof Event}).Event;
+                for (let round = 0; round < 3; round += 1) {
+                    document.defaultView!.dispatchEvent(new RealmEvent('resize'));
+                    await flushLayoutRefresh();
+                    expect(hook).not.toHaveBeenCalled();
+                    expect(state.sourceTextNodes).toEqual(sourceNodes);
+                    expectCurrent();
+                }
+
+                // 原文链接提示只刷新安全骨架一次；译文副本的装饰不重写、不耗尽修复预算。
+                sourceLink.setAttribute('title', 'Agent definitions');
+                await flushLayoutRefresh();
+                expect(hook).toHaveBeenCalledTimes(1);
+                for (let round = 0; round < 3; round += 1) {
+                    const copiedLink = wrapper.querySelector('a')!;
+                    copiedLink.setAttribute('title', `Preview ${round}`);
+                    copiedLink.setAttribute('tabindex', round % 2 ? '-1' : '0');
+                    await flushLayoutRefresh();
+                    expect(hook).toHaveBeenCalledTimes(1);
+                    expect(state.sourceTextNodes).toEqual(sourceNodes);
+                    expectCurrent();
+                }
+                expect(hasBilingualArtifactHostWriteBudget(owner)).toBe(false);
+
+                // 等价 Text 重绘与宿主提示同时提交，重绑实时来源而不替换译文或原文 code/link。
+                const previous = sourceNodes[0]!;
+                const replacement = document.createTextNode(previous.data);
+                previous.parentNode!.replaceChild(replacement, previous);
+                owner.setAttribute('title', 'Equivalent host repaint');
+                await flushLayoutRefresh();
+                expect(hook).toHaveBeenCalledTimes(2);
+                expect(state.sourceTextNodes).toEqual([replacement, ...sourceNodes.slice(1)]);
+                expectCurrent();
+                await flushLayoutRefresh();
+                expect(hook).toHaveBeenCalledTimes(2);
+                expect(mutations.flatMap(record => Array.from(record.addedNodes))
+                    .filter(node => node === wrapper)).toHaveLength(1);
+                expect(mutations.flatMap(record => Array.from(record.removedNodes))
+                    .filter(node => node === wrapper)).toHaveLength(0);
+
+                const currentSource = owner.cloneNode(true) as HTMLElement;
+                currentSource.querySelector('.fluent-read-bilingual-content')!.remove();
+                restoreAllTranslations();
+                expect(getTranslationState(owner)).toBeUndefined();
+                expect(wrapper.parentNode).toBeNull();
+                expect(replacement.parentNode).toBe(owner);
+                expect(previous.parentNode).toBeNull();
+                expect(owner.innerHTML).toBe(currentSource.innerHTML);
+            } finally {
+                artifactObserver.disconnect();
+                setBilingualSkeletonRefreshHandler(undefined);
+                vi.unstubAllGlobals();
+            }
+        });
+    });
+
     it.each([
         ['Brown 数字 H3', '1<tt>&nbsp;</tt><a id="source-meta" name="(part._.Introduction)"></a>Introduction'],
         ['数字 badge', '<span id="source-meta">23</span>Introduction'],

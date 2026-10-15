@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "purpose": "网页稳定性维护集；使用同一 browser-translation-cases 契约，不替代全部站点回归。",
+  "cases": [
+    {
+      "case": "github-project-pr",
+      "category": "github",
+      "nativeScenario": "search-dialog"
+    },
+    {
+      "case": "hacker-news-8863",
+      "category": "discussion",
+      "nativeScenario": "comment-collapse-expand"
+    },
+    {
+      "case": "mdn-javascript-guide",
+      "category": "technical-documentation"
+    },
+    {
+      "case": "wikipedia-united-states",
+      "category": "long-article"
+    },
+    {
+      "case": "python-tutorial-introduction",
+      "category": "technical-documentation"
+    },
+    {
+      "case": "rust-book-getting-started",
+      "category": "technical-documentation"
+    },
+    {
+      "case": "go-tutorial-getting-started",
+      "category": "technical-documentation"
+    },
+    {
+      "case": "dart-language",
+      "category": "dynamic-documentation"
+    },
+    {
+      "case": "index-luke-preface",
+      "category": "reported-regression"
+    },
+    {
+      "case": "nasa-webb-news",
+      "category": "news"
+    }
+  ],
+  "requiredChecks": [
+    "body-coverage",
+    "protected-areas",
+    "translate-restore-retranslate",
+    "wrapper-uniqueness",
+    "host-rerender-probes",
+    "stop-and-no-late-mount"
+  ],
+  "evidenceRules": [
+    "controlled-provider verifies real-site DOM behavior only",
+    "native site actions and synthetic host changes must be identified separately",
+    "external failures remain failures and cannot count as required passes",
+    "Edge mobile viewport is not a physical mobile browser"
+  ]
+}
