@@ -158,10 +158,14 @@ afterEach(async () => {
 });
 
 describe('guardBrowserClose public API: actual owned process receipts', () => {
-    it.each(['/private/tmp', '/tmp'] as const)('accepts the exact literal %s owned profile and observes real process exit', async temporaryRoot => {
-        // Main executes on macOS, where both standard roots exist. Deliberately
-        // keep the launch spelling (including /tmp alias) rather than realpath
-        // normalizing it: ownership must match the actual argv spelling.
+    const literalTemporaryRoots = [...new Set([
+        tmpdir(), '/tmp', ...(process.platform === 'darwin' ? ['/private/tmp'] : []),
+    ])];
+    it.each(literalTemporaryRoots)('accepts the exact literal %s owned profile and observes real process exit', async temporaryRoot => {
+        // Exercise this platform's temporary roots. macOS additionally keeps
+        // both /tmp and /private/tmp spellings; Linux has no /private/tmp.
+        // Do not realpath-normalize the launch argument: ownership must match
+        // the exact argv spelling, including the macOS /tmp alias.
         const directory = mkdtempSync(join(temporaryRoot, 'fluentread-owned-close-'));
         roots.push(directory);
         const owner = await actor(directory), port = browserPort(owner.pid, () => nativeExit(owner));
