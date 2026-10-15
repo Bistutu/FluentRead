@@ -1,4 +1,4 @@
-import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import JSZip from 'jszip';
 import {createRequire} from 'node:module';
@@ -8,10 +8,11 @@ import {describe, expect, it, vi} from 'vitest';
 import ts from 'typescript';
 import {defineUnlistedScript} from 'wxt/utils/define-unlisted-script';
 import {createHash, generateKeyPairSync} from 'node:crypto';
+import {runInNewContext} from 'node:vm';
 import {GOOGLE_DRIVE_DEFAULT_CLIENT_ID, GOOGLE_DRIVE_EXTENSION_ID, GOOGLE_DRIVE_EXTENSION_PUBLIC_KEY, GOOGLE_DRIVE_SCOPES} from '@/src/platform/google-drive/constants';
 import {createDriveAuth, type DriveAuthPorts} from '@/src/platform/google-drive/auth';
 import type {Entrypoint, EntrypointGroup} from 'wxt';
-import {remoteConfigStorageBuildPlugin, createExtensionManifest, extendRemoteConfigBuildConfig, groupModuleWorkers, finalizeExtensionZip} from '@/wxt.config';
+import {remoteConfigStorageBuildPlugin, createExtensionManifest, extendRemoteConfigBuildConfig, groupModuleWorkers, finalizeExtensionZip, createSafariBackgroundPage, configureSafariBackgroundPage} from '@/wxt.config';
 
 const PROJECT_ROOT = resolve(__dirname, '..');
 
@@ -24,11 +25,31 @@ describe('Safari unsigned delivery contract', () => {
         const source = createExtensionManifest({browser: 'safari', manifestVersion: 2});
         return {...source, manifest_version: 2, version: '0.0.38',
             permissions: [...source.permissions!, ...source.host_permissions!],
-            background: {scripts: ['background.js'], persistent: false},
+            background: {page: 'safari-background.html', persistent: false},
             browser_action: {default_popup: 'popup.html'},
             content_scripts: [{matches: ['<all_urls>'], js: ['content.js']}],
         };
     }
+
+    const backgroundPage = () => createSafariBackgroundPage({browser: 'safari', manifestVersion: 2})[0];
+
+    it('只在 Safari MV2 的 WXT 后处理生成显式 UTF-8 页，保持原脚本及非持久生命周期', () => {
+        const manifest: Parameters<typeof configureSafariBackgroundPage>[1] = {background: {scripts: ['background.js'], persistent: false}};
+        configureSafariBackgroundPage({browser: 'safari', manifestVersion: 2}, manifest);
+        expect(manifest.background).toEqual({page: 'safari-background.html', persistent: false});
+        expect(backgroundPage()).toEqual({relativeDest: 'safari-background.html', contents: expect.stringMatching(/^<!doctype html>\n<html>\n<head><meta charset="utf-8">/u)});
+        for (const env of [{browser: 'chrome', manifestVersion: 3}, {browser: 'firefox', manifestVersion: 2}, {browser: 'safari', manifestVersion: 3}] as const) {
+            const untouched = {background: {scripts: ['original.js'], persistent: true}};
+            configureSafariBackgroundPage(env, untouched);
+            expect(untouched.background).toEqual({scripts: ['original.js'], persistent: true});
+            expect(createSafariBackgroundPage(env)).toEqual([]);
+        }
+        for (const background of [undefined, {}, {scripts: ['renamed.js'], persistent: false}, {scripts: ['background.js', 'extra.js'], persistent: false},
+            {scripts: ['background.js'], persistent: true}, {scripts: ['background.js'], persistent: false, page: 'other.html'},
+            {scripts: ['background.js'], persistent: false, service_worker: 'worker.js'}]) {
+            expect(() => configureSafariBackgroundPage({browser: 'safari', manifestVersion: 2}, {background})).toThrow('入口已变化');
+        }
+    });
 
     it('Safari 使用独立版本门槛及能力权限，保留共享网页业务入口', async () => {
         const {verifySafariManifest} = await safariTools();
@@ -42,6 +63,10 @@ describe('Safari unsigned delivery contract', () => {
         for (const invalid of [
             {...manifest, manifest_version: 3},
             {...manifest, background: {scripts: ['background.js'], persistent: true}},
+            {...manifest, background: {scripts: ['background.js'], persistent: false}},
+            {...manifest, background: {page: '../safari-background.html', persistent: false}},
+            {...manifest, background: {page: 'safari-background.html', scripts: ['background.js'], persistent: false}},
+            {...manifest, background: {page: 'safari-background.html', service_worker: 'background.js', persistent: false}},
             {...manifest, permissions: [...manifest.permissions, 'offscreen']},
             {...manifest, permissions: [...manifest.permissions, 'identity']},
             {...manifest, permissions: ['storage']},
@@ -80,11 +105,12 @@ describe('Safari unsigned delivery contract', () => {
         const directory = mkdtempSync(resolve(tmpdir(), 'fluentread-safari-contract-'));
         try {
             writeFileSync(resolve(directory, 'manifest.json'), JSON.stringify(safariFixture()));
+            writeFileSync(resolve(directory, backgroundPage().relativeDest), backgroundPage().contents);
             writeFileSync(resolve(directory, 'background.js'), '__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:safari:mv2__');
             writeFileSync(resolve(directory, 'popup.html'), '<html></html>');
             writeFileSync(resolve(directory, 'content.js'), 'sharedContent();');
             const verified = await verifySafariBuild(directory);
-            expect(verified).toEqual(expect.objectContaining({extension: directory, version: '0.0.38', checkedReferences: 3, artifactCount: 4}));
+            expect(verified).toEqual(expect.objectContaining({extension: directory, version: '0.0.38', checkedReferences: 4, artifactCount: 5}));
             writeFileSync(resolve(directory, 'content.js'), 'changedSharedContent();');
             const changed = await verifySafariBuild(directory);
             expect(changed.manifestSha256).toBe(verified.manifestSha256);
@@ -98,6 +124,188 @@ describe('Safari unsigned delivery contract', () => {
             rmSync(resolve(directory, 'content.js'));
             await expect(verifySafariBuild(directory)).rejects.toThrow('ENOENT');
         } finally {rmSync(directory, {recursive: true, force: true});}
+    });
+
+    it('拒绝后台页编码漂移、内联或远程脚本、缺失脚本及包内引用逃逸', async () => {
+        const {verifySafariBuild} = await safariTools();
+        const directory = mkdtempSync(resolve(tmpdir(), 'fluentread-safari-utf8-'));
+        const page = backgroundPage();
+        const reset = () => {
+            writeFileSync(resolve(directory, 'manifest.json'), JSON.stringify(safariFixture()));
+            writeFileSync(resolve(directory, page.relativeDest), page.contents);
+            writeFileSync(resolve(directory, 'background.js'), '__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:safari:mv2__');
+            writeFileSync(resolve(directory, 'popup.html'), '<html></html>');
+            writeFileSync(resolve(directory, 'content.js'), 'sharedContent();');
+        };
+        try {
+            reset();
+            for (const invalid of [
+                page.contents.replace('<meta charset="utf-8">', ''),
+                page.contents.replace('utf-8', 'gb18030'),
+                page.contents.replace('./background.js', 'https://example.invalid/background.js'),
+                page.contents.replace('./background.js', '../background.js'),
+                page.contents.replace('./background.js', './%2e%2e/background.js'),
+                page.contents.replace('./background.js', './background.js?charset=gb18030'),
+                page.contents.replace('</head>', '<base href="https://example.invalid/"></head>'),
+                page.contents.replace('</script>', 'globalThis.inline = true;</script>'),
+                page.contents.replace('</body>', '<script src="./background.js"></script></body>'),
+                page.contents.replace('<!doctype html>', '<!-- <meta charset="utf-8"> --><!doctype html>'),
+                Buffer.from([0xff, 0xfe, 0x3c, 0x00]),
+            ]) {
+                writeFileSync(resolve(directory, page.relativeDest), invalid);
+                await expect(verifySafariBuild(directory)).rejects.toThrow();
+            }
+            reset();
+            writeFileSync(resolve(directory, 'background.js'), Buffer.from([0xff, 0xfe]));
+            await expect(verifySafariBuild(directory)).rejects.toThrow();
+            reset();
+            rmSync(resolve(directory, 'background.js'));
+            await expect(verifySafariBuild(directory)).rejects.toThrow('ENOENT');
+            reset();
+            rmSync(resolve(directory, page.relativeDest));
+            await expect(verifySafariBuild(directory)).rejects.toThrow('ENOENT');
+            for (const invalid of ['../outside.js', '/outside.js', 'https://example.invalid/a.js', 'assets/../content.js', 'assets\\content.js', '%2e%2e/outside.js', 'content.js?x=1', '']) {
+                reset();
+                const manifest = safariFixture();
+                manifest.content_scripts[0].js = [invalid];
+                writeFileSync(resolve(directory, 'manifest.json'), JSON.stringify(manifest));
+                await expect(verifySafariBuild(directory)).rejects.toThrow('包内相对路径');
+            }
+            reset();
+            rmSync(resolve(directory, 'background.js'));
+            symlinkSync(resolve(directory, 'content.js'), resolve(directory, 'background.js'));
+            await expect(verifySafariBuild(directory)).rejects.toThrow('符号链接');
+            rmSync(resolve(directory, 'background.js'));
+            reset();
+            symlinkSync(directory, resolve(directory, 'linked-assets'));
+            const manifest = safariFixture();
+            manifest.content_scripts[0].js = ['linked-assets/content.js'];
+            writeFileSync(resolve(directory, 'manifest.json'), JSON.stringify(manifest));
+            await expect(verifySafariBuild(directory)).rejects.toThrow('符号链接');
+        } finally {rmSync(directory, {recursive: true, force: true});}
+    });
+
+    it('新包装验证 Apple 容器布局后复制本地指引，不写入扩展资源或遗留示例身份', async () => {
+        const {applyContainerGuide} = await safariTools();
+        const directory = mkdtempSync(resolve(tmpdir(), 'fluentread-safari-guide-'));
+        try {
+            const app = resolve(directory, 'Shared (App)');
+            mkdirSync(resolve(app, 'Resources/Base.lproj'), {recursive: true});
+            mkdirSync(resolve(directory, 'Shared (Extension)/Resources'), {recursive: true});
+            writeFileSync(resolve(app, 'ViewController.swift'), 'class ViewController: NSObject {}');
+            writeFileSync(resolve(app, 'Resources/Base.lproj/Main.html'), '<html></html>');
+            writeFileSync(resolve(app, 'Resources/Style.css'), ':root {}');
+            writeFileSync(resolve(app, 'Resources/Script.js'), 'unknown template');
+            mkdirSync(resolve(directory, 'iOS (App)'));
+            writeFileSync(resolve(directory, 'iOS (App)/Info.plist'), '<plist><dict><key>SFSafariWebExtensionConverterVersion</key><string>26.2</string><key>UIApplicationSceneManifest</key><dict></dict></dict></plist>');
+            mkdirSync(resolve(directory, 'macOS (App)'));
+            writeFileSync(resolve(directory, 'macOS (App)/Info.plist'), '<plist><dict><key>SFSafariWebExtensionConverterVersion</key><string>26.2</string></dict></plist>');
+            const project = resolve(directory, 'FluentRead.xcodeproj');
+            await expect(applyContainerGuide(project, 'org.test.Reader')).rejects.toThrow('模板布局');
+            expect(readFileSync(resolve(app, 'ViewController.swift'), 'utf8')).toBe('class ViewController: NSObject {}');
+            writeFileSync(resolve(app, 'Resources/Script.js'), 'function show() {}');
+            const report = await applyContainerGuide(project, 'org.test.Reader');
+            expect(report.files).toHaveLength(5);
+            expect(report.iosSettingsMinimum).toBe('26.2');
+            const swift = readFileSync(resolve(app, 'ViewController.swift'), 'utf8');
+            expect(swift).toContain('"org.test.Reader.Extension"');
+            expect(swift).toContain('#available(iOS 26.2, *)');
+            expect(swift).toContain('SFSafariSettings.openExtensionsSettings');
+            expect(swift).toContain('SFSafariApplication.showPreferencesForExtension');
+            expect(swift).toContain('Locale.preferredLanguages');
+            expect(swift).toContain('private weak var delegate: WKScriptMessageHandler?');
+            expect(swift).toContain('userContentController.add(WeakScriptMessageHandler(self), name: "controller")');
+            expect(swift).not.toContain('userContentController.add(self,');
+            expect(swift).toMatch(/deinit\s*\{\s*webView\?\.configuration\.userContentController\.removeScriptMessageHandler\(forName: "controller"\)/u);
+            expect(swift).toContain('#if targetEnvironment(simulator)');
+            expect(swift).toContain('canOpen = extensionSettingsIdentifier != nil');
+            expect(swift).toContain('forInfoDictionaryKey: "FluentReadDevelopmentTeam"');
+            expect(swift).toContain('return "\\(extensionBundleIdentifier) (\\(team))"');
+            expect(readFileSync(resolve(directory, 'iOS (App)/Info.plist'), 'utf8')).toContain('<string>$(DEVELOPMENT_TEAM)</string>');
+            expect(report.iosSettingsPolicy).toContain('manual steps');
+            expect(swift).not.toMatch(/prefs:|App-prefs:|org\.example|__FLUENTREAD_/i);
+            expect(existsSync(resolve(directory, 'Shared (Extension)/Resources/Script.js'))).toBe(false);
+        } finally {rmSync(directory, {recursive: true, force: true});}
+    });
+
+    it('三种 Apple 模板按平台严格定位，iOS-only 新增脚本引用且拒绝错配及符号链接', async () => {
+        const {applyContainerGuide, locateSafariTemplate, addIOSGuideScriptReference} = await safariTools();
+        const plist = (ios: boolean) => `<plist><dict><key>SFSafariWebExtensionConverterVersion</key><string>26.2</string>${ios ? '<key>UIApplicationSceneManifest</key><dict></dict>' : ''}</dict></plist>`;
+        const pbx = `\tAAAAAAAAAAAAAAAAAAAAAAAA /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };\n\tBBBBBBBBBBBBBBBBBBBBBBBB /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = AAAAAAAAAAAAAAAAAAAAAAAA /* Style.css */; };\n\t\tAAAAAAAAAAAAAAAAAAAAAAAA /* Style.css */,\n\t\tBBBBBBBBBBBBBBBBBBBBBBBB /* Style.css in Resources */,\n`;
+        for (const platform of ['both', 'ios', 'macos']) {
+            const directory = mkdtempSync(resolve(tmpdir(), `fluentread-safari-${platform}-`));
+            try {
+                const app = platform === 'both' ? 'Shared (App)' : 'FluentRead';
+                const extension = platform === 'both' ? 'Shared (Extension)' : 'FluentRead Extension';
+                mkdirSync(resolve(directory, app, 'Resources/Base.lproj'), {recursive: true});
+                mkdirSync(resolve(directory, extension, 'Resources'), {recursive: true});
+                writeFileSync(resolve(directory, extension, 'Resources/sentinel'), 'unchanged');
+                const project = resolve(directory, 'FluentRead.xcodeproj');
+                mkdirSync(project);
+                writeFileSync(resolve(project, 'project.pbxproj'), pbx);
+                writeFileSync(resolve(directory, app, 'ViewController.swift'), 'class ViewController: NSObject {}');
+                writeFileSync(resolve(directory, app, 'Resources/Base.lproj/Main.html'), '<html></html>');
+                writeFileSync(resolve(directory, app, 'Resources/Style.css'), ':root {}');
+                if (platform !== 'ios') writeFileSync(resolve(directory, app, 'Resources/Script.js'), 'function show() {}');
+                if (platform === 'both') {
+                    for (const [folder, ios] of [['iOS (App)', true], ['macOS (App)', false]] as const) {
+                        mkdirSync(resolve(directory, folder)); writeFileSync(resolve(directory, folder, 'Info.plist'), plist(ios));
+                    }
+                } else writeFileSync(resolve(directory, app, 'Info.plist'), plist(platform === 'ios'));
+                const layout = await locateSafariTemplate(project, platform);
+                expect(layout.extensionResources).toBe(resolve(directory, extension, 'Resources'));
+                for (const wrong of ['both', 'ios', 'macos'].filter(mode => mode !== platform)) await expect(locateSafariTemplate(project, wrong)).rejects.toThrow();
+                const guide = await applyContainerGuide(project, 'org.test.Reader', platform);
+                expect(guide.layout).toBe(platform === 'both' ? 'shared' : 'single-platform');
+                expect(readFileSync(resolve(directory, app, 'Resources/Script.js'), 'utf8')).toContain('function show(');
+                expect(readFileSync(resolve(directory, extension, 'Resources/sentinel'), 'utf8')).toBe('unchanged');
+                if (platform === 'ios') {
+                    const updated = readFileSync(resolve(project, 'project.pbxproj'), 'utf8');
+                    expect(updated.match(/\/\* Script.js in Resources \*\//g)).toHaveLength(2);
+                    expect(updated).toContain('sourcecode.javascript; path = Script.js;');
+                    expect(readFileSync(resolve(directory, app, 'Info.plist'), 'utf8')).toContain('$(DEVELOPMENT_TEAM)');
+                }
+                rmSync(resolve(directory, app, 'Resources/Script.js'));
+                symlinkSync(resolve(directory, app, 'Resources/Style.css'), resolve(directory, app, 'Resources/Script.js'));
+                await expect(applyContainerGuide(project, 'org.test.Reader', platform)).rejects.toThrow('符号链接');
+                rmSync(resolve(directory, app, 'Resources/Script.js'));
+                symlinkSync(resolve(directory, 'missing-script'), resolve(directory, app, 'Resources/Script.js'));
+                await expect(applyContainerGuide(project, 'org.test.Reader', platform)).rejects.toThrow('符号链接');
+            } finally {rmSync(directory, {recursive: true, force: true});}
+        }
+        expect(() => addIOSGuideScriptReference('unknown Apple template')).toThrow('模板已变化');
+        expect(() => addIOSGuideScriptReference(`${pbx}${pbx}`)).toThrow('模板已变化');
+    });
+
+    it('容器根据原生语言展示中英短步骤，旧 iOS 隐藏按钮，打开失败提供手动回退', () => {
+        const nodes = new Map<string, {textContent: string; hidden: boolean; addEventListener: ReturnType<typeof vi.fn>}>();
+        const node = (id: string) => {
+            if (!nodes.has(id)) nodes.set(id, {textContent: '', hidden: false, addEventListener: vi.fn()});
+            return nodes.get(id)!;
+        };
+        const document = {documentElement: {lang: ''}, title: '', getElementById: node, querySelector: node};
+        const postMessage = vi.fn();
+        const context = {document, window: {webkit: {messageHandlers: {controller: {postMessage}}}}};
+        const script = readFileSync(resolve(PROJECT_ROOT, 'scripts/safari/container/Script.js'), 'utf8');
+        runInNewContext(`(() => {${script}\nshow('ios', 'zh-Hans-CN', false);})();`, context);
+        expect(document.documentElement.lang).toBe('zh-Hans');
+        expect(document.title).toBe('流畅阅读');
+        expect(node('open-settings').hidden).toBe(true);
+        expect(node('manual-path').textContent).toContain('设置 → App → Safari浏览器 → 扩展 → 流畅阅读');
+        for (const id of ['step-enable', 'step-use']) {
+            expect(node(id).textContent).toContain('流畅阅读');
+            expect(node(id).textContent).not.toContain('FluentRead');
+        }
+        runInNewContext(`(() => {${script}\nshow('ios', 'en-US', true); settingsFailed();})();`, context);
+        expect(document.documentElement.lang).toBe('en');
+        expect(node('open-settings').hidden).toBe(false);
+        expect(node('status').textContent).toContain('manual path');
+        const listener = node('open-settings').addEventListener.mock.calls.at(-1)![1];
+        listener();
+        expect(postMessage).toHaveBeenCalledWith('open-settings');
+        runInNewContext(`(() => {${script}\nshow('mac', 'en', true, true);})();`, context);
+        expect(node('status').textContent).toContain('enabled');
+        expect(node('manual-path').textContent).toContain('Safari → Settings');
     });
 });
 

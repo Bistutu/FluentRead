@@ -37,7 +37,7 @@ Safari 原生版和 Userscripts 是独立运行渠道，请勿在同一网页同
 <details class="guide-details">
 <summary>维护者：生成并检查未签名 Xcode 包装</summary>
 
-需要 macOS、完整 Xcode、Node 20+ 和仓库锁定的 pnpm 依赖。项目固定使用 WXT 0.20.18 的 Safari MV2 目标；Safari 后台入口已有 `persistent: false`，符合 [Apple 的 iOS 后台要求](https://developer.apple.com/documentation/safariservices/optimizing-your-web-extension-for-safari)。
+需要 macOS、完整 Xcode、Node 20+ 和仓库锁定的 pnpm 依赖。项目固定使用 WXT 0.20.18 的 Safari MV2 目标；Safari 后台入口使用声明 UTF-8 的 `safari-background.html` 加载原后台脚本，保留 `persistent: false`，符合 [Apple 的 iOS 后台要求](https://developer.apple.com/documentation/safariservices/optimizing-your-web-extension-for-safari)。不要改回自动 `background.scripts` 页面：本次中文 iOS 26.2 模拟器曾因此无法保存首次语言设置，显式页面修复已通过同一 App 的对照验证。
 
 在仓库根目录依次执行：
 
@@ -50,7 +50,9 @@ pnpm safari:package --bundle-id org.example.FluentRead
 
 将示例 bundle ID 替换为维护者自己的标识。需要指定 Xcode 时在命令前设置 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`。构建遵循项目 resource-safe runner；包装不会重新运行重型构建。
 
-`safari:check` 只读取工具、Xcode 版本和 SDK 路径可用性；SDK 存在仍不等于已经安装了可用的模拟器运行时或连接了真机。`safari:verify` 校验 `.output/safari-mv2` 的最终清单、后台编译目标、内容脚本与文件引用。`safari:package` 优先发现 `safari-web-extension-packager`，旧 Xcode 回退到 `safari-web-extension-converter`，复制扩展资源并生成 macOS 与 iOS 工程。它不会打开 Xcode、签名、申请账号或上传。
+`safari:check` 只读取工具、Xcode 版本和 SDK 路径可用性；SDK 存在仍不等于已经安装了可用的模拟器运行时或连接了真机。`safari:verify` 校验 `.output/safari-mv2` 的最终清单、UTF-8 后台页、后台编译目标、内容脚本与文件引用。`safari:package` 优先发现 `safari-web-extension-packager`，旧 Xcode 回退到 `safari-web-extension-converter`，复制扩展资源并生成 macOS 与 iOS 工程。它不会打开 Xcode、签名、申请账号或上传。
+
+生成的容器 App 根据系统语言显示中文或英文启用指引，支持深色模式。iPhone 的手动路径为“设置 → App → Safari浏览器 → 扩展 → 流畅阅读”；随后只向需要翻译的网站授权。模拟器和未配置开发团队的构建只显示手动步骤。iOS 26.2+ 真机且 Xcode 已配置实际开发团队时，才显示 Apple 公开 API 的设置快捷入口；该真机快捷入口尚待验收。Mac 的按钮打开 Safari 扩展设置。包装脚本不会替你配置开发团队。
 
 包装会把 Apple 模板的最低系统版本提高到 iOS 26、macOS 14，避免 App 安装到明显不具备目标 Safari 的旧系统；已有更高门槛会保留。Mac 仍需升级到 Safari 26+。系统范围依据 [Apple Safari 26 发行说明](https://developer.apple.com/documentation/safari-release-notes/safari-26-release-notes)。
 
@@ -77,7 +79,7 @@ node scripts/testing/run-resource-safe.mjs -- xcodebuild -jobs 1 -project "报�
 
 ## 验收边界
 
-2026-10-15 在 Xcode 26.2 上实际完成 Safari 生产资源校验、Apple 包装与 macOS 通用架构编译（关闭开发者签名）。iOS Simulator 通用目标因组件缺失无法开始；直接指定 iOS target 并分别使用现有 Simulator/iPhoneOS SDK 后，扩展目标能编译链接，完整 App 均在资产目录处理阶段因缺少 Simulator runtime 失败。因此不能宣称 iOS App 构建通过；本机也没有可用 iOS 模拟器实例或已连接 Apple 设备。
+2026-10-15 在 Xcode 26.2 上完成 Safari 生产资源校验、Apple 包装与 macOS 通用架构编译。首次 iOS 构建因缺少 runtime 失败；安装 iOS 26.2（23C52）runtime 后，完整 Simulator App 和 iPhoneOS arm64 App 均编译通过，关闭开发者签名。专用 iPhone 模拟器已完成正式 App 安装、扩展启用、单站点授权、配置保留和三段示例文字的实际翻译。首次使用免费服务仍遇到连续服务域授权提示，遮挡了恢复操作，完整闭环尚未验收。网页权限与翻译服务域权限分别管理，不需要因此授予所有网站。iPhoneOS 产物仍需后续签名才能安装到真机。
 
 包装工具对 `world`、`match_about_blank` 和 `open_in_tab` 给出警告；[MDN 官方兼容数据](https://github.com/mdn/browser-compat-data/tree/main/webextensions/manifest)记录它们在当前最低 Safari 26 前已支持，其中 `open_in_tab` 始终在新标签打开。这些工具警告保留在证据中，不能由包装成功推断实际运行正常。静态清单与桌面窄视口验证只能证明各自范围，不能替代以下实机项目：
 
