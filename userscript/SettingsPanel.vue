@@ -1,7 +1,7 @@
 <!--
  * @file userscript/SettingsPanel.vue
  * 文件职责：提供 userscript 紧凑设置对话框，编辑翻译服务、触发方式、输入翻译与界面配置草稿。
- * 主要内容：复用配置目录、持久化入口和共享模型删除命令，清理模型选择、思考偏好与请求限制；AI 翻译超时按秒编辑，保留逐键输入草稿并在确认或保存时规范化为毫秒；动画样式末尾的“无”直接关闭界面动画并保留上次静态反馈样式。
+ * 主要内容：以共享纯配置 editor 管理手动保存、外部快照和在途草稿所有权，后继编辑与默认恢复不被旧保存覆盖；复用配置目录及模型删除命令，AI 超时按秒保留输入草稿并在确认或保存时规范化；只有已保存的运行时设置应用到当前页面。
  * 模块边界：只管理设置草稿和保存反馈，不实现网页翻译或扩展专有能力。
 -->
 <template>
@@ -175,7 +175,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref, watch} from 'vue';
+import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
 import browser from 'webextension-polyfill';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
 import {removeConfiguredModel} from '@/src/core/config/modelEditing';
@@ -186,7 +186,8 @@ import {applyTranslationLoadingStyleChoice, getTranslationLoadingStyleChoice, tr
 import TranslationLoadingPreview from '@/src/ui/components/TranslationLoadingPreview.vue';
 import UiSelect from '@/src/ui/components/UiSelect.vue';
 import {ElOption} from 'element-plus';
-import {config as runtimeConfig, configReady, saveConfig} from '@/src/services/config/store';
+import {config as runtimeConfig, configReady, requestConfigPatch, subscribeConfig} from '@/src/services/config/store';
+import {createConfigEditor} from '@/src/services/config/editor';
 import {customModelString, models, options, resolveConfiguredModel, services, servicesType} from '@/src/core/config/catalog';
 import {supportsInputBoxTranslationPrompt} from '@/src/core/config/inputTranslation';
 import {
@@ -426,10 +427,43 @@ function removeSelectedCustomModel(): void {
 
 watch(() => draft.value.service, cancelAddCustomModel);
 
+let disposed = false;
+let submitted = false;
+const configEditor = createConfigEditor({
+  copySnapshot: normalizeUserscriptConfig,
+  readDraft: () => draft.value,
+  writeDraft: snapshot => {draft.value = snapshot;},
+  async saveDraft(snapshot) {
+    submitted = true;
+    // 本地 patch 仍由 store 记录即时历史；失败回读权威状态，避免把乐观回声当成保存成功。
+    await requestConfigPatch(snapshot);
+    if (!disposed) await syncCurrentPage(normalizeUserscriptConfig(runtimeConfig));
+  },
+  onEdited: () => {status.value = '';statusIsError.value = false;},
+  onSaved: () => {status.value = '本次提交已保存，并已应用到当前页面。';},
+  onSaveError: error => {
+    statusIsError.value = true;
+    status.value = `保存失败：${error instanceof Error ? error.message : String(error)}`;
+  },
+});
+const unsubscribeConfig = subscribeConfig(configEditor.hydrate);
 onMounted(async () => {
-  await configReady;
-  draft.value = normalizeUserscriptConfig(runtimeConfig);
-  hydrated.value = true;
+  try {
+    await configReady;
+    if (disposed) return;
+    configEditor.initialize(runtimeConfig);
+    hydrated.value = true;
+  } catch (error) {
+    if (disposed) return;
+    statusIsError.value = true;
+    status.value = `设置加载失败：${error instanceof Error ? error.message : String(error)}`;
+  }
+});
+onUnmounted(() => {
+  disposed = true;
+  saving.value = false;
+  unsubscribeConfig();
+  configEditor.dispose();
 });
 
 function close(): void {
@@ -452,26 +486,32 @@ async function syncCurrentPage(next: Config): Promise<void> {
 }
 
 async function save(): Promise<void> {
-  if (saving.value || !hydrated.value) return;
+  if (disposed || saving.value || !hydrated.value) return;
   aiRequestTimeoutActions.value.commit();
   saving.value = true;
   status.value = '';
   statusIsError.value = false;
+  submitted = false;
   try {
-    const next = normalizeUserscriptConfig(draft.value);
-    await saveConfig(next, {recordHistory: true, immediateHistory: true});
-    draft.value = normalizeUserscriptConfig(next);
-    await syncCurrentPage(next);
-    status.value = '设置已保存，并已应用到当前页面。';
+    await configEditor.save();
+    // 无变化的手动保存仍允许把已有设置重新应用到页面，不生成空持久化请求。
+    if (!submitted && !disposed) {
+      await syncCurrentPage(normalizeUserscriptConfig(runtimeConfig));
+      if (!disposed && !status.value) status.value = '本次提交已保存，并已应用到当前页面。';
+    }
   } catch (error) {
-    statusIsError.value = true;
-    status.value = `保存失败：${error instanceof Error ? error.message : String(error)}`;
+    if (!disposed && !status.value) {
+      statusIsError.value = true;
+      status.value = `保存失败：${error instanceof Error ? error.message : String(error)}`;
+    }
   } finally {
-    saving.value = false;
+    if (!disposed) saving.value = false;
   }
 }
 
 function restoreDefaults(): void {
+  if (disposed || !hydrated.value) return;
+  configEditor.invalidateFeedback();
   const next = new Config();
   next.disableFloatingBall = false;
   draft.value = normalizeUserscriptConfig(next);
