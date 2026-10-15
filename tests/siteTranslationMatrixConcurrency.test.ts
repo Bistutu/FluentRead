@@ -297,3 +297,34 @@ describe('bounded real-site matrix scheduling', () => {
     expect(runAttempt).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('maintained compatibility profile', () => {
+  const {parseArgs, selectedEntries, childArgs} = require('../scripts/run-site-translation-matrix.cjs');
+  const {parseArgs: parseCase} = require('../scripts/run-site-translation-test.cjs');
+  const cases = require('./browser-translation-cases.json');
+  const profile = require('../scripts/site-translation/maintenance-cases.json');
+  const args = ['--extension-dir', '/temporary/production', '--playwright-root', '/runtime',
+    '--focus-safe-helper', '/helper', '--allow-network', '--mode', 'full'];
+
+  it('selects ten independent real required hosts and all requested content categories', () => {
+    const parsed = parseArgs([...args, '--profile', 'maintenance']);
+    const entries = selectedEntries(parsed, Object.entries(cases)) as Array<[string, {url: string; tier: string}]>;
+    expect(entries).toHaveLength(10);
+    expect(new Set(entries.map(([, value]) => new URL(value.url).hostname)).size).toBe(10);
+    expect(entries.every(([, value]) => value.tier === 'required')).toBe(true);
+    expect(profile.cases.map((entry: {category: string}) => entry.category))
+      .toEqual(expect.arrayContaining(['news', 'long-article', 'github', 'discussion', 'dynamic-documentation']));
+    expect(() => selectedEntries({...parsed, cases: ['example-com']}, Object.entries(cases))).toThrow('cannot be combined');
+    expect(() => selectedEntries({...parsed, profile: 'unknown'}, Object.entries(cases))).toThrow('Unknown profile');
+  });
+
+  it('forwards explicit controlled-provider and lifecycle scope to each child without changing default live-provider mode', () => {
+    const parsed = parseArgs([...args, '--controlled-provider', '--stability-probes']);
+    const child = childArgs(parsed, 'index-luke-preface', 'full');
+    expect(child).toEqual(expect.arrayContaining(['--controlled-provider', '--stability-probes']));
+    expect(parseCase(child.slice(1))).toMatchObject({controlledProvider: true, stabilityProbes: true, service: 'microsoft'});
+    expect(parseCase(childArgs(parseArgs(args), 'index-luke-preface', 'full').slice(1)).service).toBe('freeTranslation');
+    expect(() => parseArgs([...args, '--mode', 'both', '--stability-probes'])).toThrow('requires --mode full');
+    expect(() => parseCase([...child.slice(1), '--mode', 'hover'])).toThrow('requires --mode full');
+  });
+});

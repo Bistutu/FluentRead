@@ -128,6 +128,15 @@ afterEach(() => {
 });
 
 describe('synthetic 双语片段 source-only 重挂', () => {
+    it('只允许完整段落的自动外壳授权不能迁移为没有对应授权的行内片段', () => {
+        const scenario = createCommittedSyntheticScenario();
+        scenario.state.applicationShellPolicyId = 'mastodon';
+        const {record} = replaceWithEquivalentSource(scenario);
+        const result = transferEquivalentSyntheticBilingualSegments([record], () => true);
+        expect(result.transfers).toEqual([]);
+        expect(scenario.wrapper.isConnected).toBe(false);
+        expect(translationCore.resolve).not.toHaveBeenCalled();
+    });
     it('祖先组件整体 source-only 换代时按宿主相对路径原子迁移旧译文', () => {
         const scenario = createCommittedSyntheticScenario();
         const component = scenario.document.createElement('article');

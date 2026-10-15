@@ -1,13 +1,14 @@
 /**
  * @file src/core/site-adaptation/compiler.ts
  * 文件职责：将网站适配 JSON 编译为既有候选引擎使用的适配器，并组合内置与用户规则。
- * 主要内容：展开单层模板、按域名和路径匹配规则、保护原文并执行自定义整条覆盖。
+ * 主要内容：展开单层模板、按域名和路径匹配规则、保护原文并执行自定义整条覆盖；仅内置 Mastodon 策略可发现已核实顶层应用外壳中的公开正文，用户覆盖与停用会撤销该能力。
  * 模块边界：仅匹配 URL 与声明内容边界，不注入脚本或样式，不监听页面生命周期。
  */
 
 import {isLiteralLabel, isLiteralToken} from './literalLabel';
 import {createDeclarativeAdapter} from '@/src/core/translation/adapters/declarative';
-import type {TranslationSiteAdapter} from '@/src/core/translation/types';
+import {hasContentEditableMarker, isHiddenTranslationElement} from '@/src/core/translation/dom';
+import type {AdapterContext, TranslationSiteAdapter} from '@/src/core/translation/types';
 import type {SiteAdaptationSettings, SiteContentRule, SiteRecipe, SiteRule, SiteRulePack} from './types';
 
 /** 只提取 CSS 的属性依赖；无法准确读取的语法使用全属性观察，不猜测其含义。 */
@@ -165,11 +166,37 @@ export function compileSiteRulePack(pack: SiteRulePack): TranslationSiteAdapter[
     return pack.rules.map((rule) => compileRule(pack, rule));
 }
 
+/** 公开页实测结构的窄例外；不赋予 JSON 规则取消任意 no-translate 保护的能力。 */
+function* discoverMastodonApplicationShellTargets(root: Node, {url}: AdapterContext): Iterable<Element> {
+    if (url.hostname !== 'mastodon.social' || !/^\/@[^/]+(?:\/\d+)?\/?$/u.test(url.pathname)) return;
+    const document = root.nodeType === 9 ? root as Document : root.ownerDocument;
+    const shell = document?.getElementById('mastodon');
+    const validShell = () => Boolean(shell && shell.id === 'mastodon' && shell.parentElement === document?.body &&
+        shell.matches('div.app-holder.notranslate') && shell.getAttribute('translate')?.toLowerCase() !== 'no' &&
+        shell.getAttribute('data-notranslate') !== 'true' && !hasContentEditableMarker(shell) &&
+        !isHiddenTranslationElement(shell));
+    if (!validShell() || !shell || (!root.contains(shell) && !shell.contains(root))) return;
+    // 已通过 light-DOM 包含关系；外壳内的非元素节点必有元素父级。
+    const scanRoot = root.contains(shell) ? shell : root.nodeType === 1 ? root as Element : root.parentElement!;
+    const closestParagraph = scanRoot.closest('p');
+    const paragraphs = closestParagraph ? [closestParagraph] : scanRoot.querySelectorAll('p');
+    for (const paragraph of paragraphs) {
+        // 生成器让出后重新读取外壳，不能把刚被宿主移动或重新保护的节点继续放行。
+        if (!validShell()) return;
+        if (shell.contains(paragraph) && paragraph.matches('.status__content .status__content__text.translate p') &&
+            !paragraph.closest('form, nav, aside, header, footer, [role="navigation"], [role="banner"], [role="complementary"]')) {
+            yield paragraph;
+        }
+    }
+}
+
 /** 用户同名规则整条替换，保留内置位置；新增规则按声明顺序追加。 */
 export function composeSiteAdapters(builtinPack: SiteRulePack, settings: SiteAdaptationSettings): TranslationSiteAdapter[] {
     if (!settings.enabled) return [];
     const disabled = new Set(settings.disabledRuleIds);
     const adapters = new Map(compileSiteRulePack(builtinPack).map((adapter) => [adapter.id, adapter]));
+    const mastodon = adapters.get('mastodon');
+    if (mastodon) mastodon.discoverApplicationShellTargets = discoverMastodonApplicationShellTargets;
     compileSiteRulePack(settings.custom).forEach((adapter) => adapters.set(adapter.id, adapter));
     return [...adapters.values()].filter((adapter) => !disabled.has(adapter.id));
 }

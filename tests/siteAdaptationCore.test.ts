@@ -1,6 +1,7 @@
 import {parseHTML} from 'linkedom';
 import {describe, expect, it} from 'vitest';
 import {TranslationCandidateCore} from '@/src/core/translation/engine';
+import type {TranslationSiteAdapter} from '@/src/core/translation/types';
 import {extractTranslationText, extractTranslationTextFromNodes} from '@/src/core/translation/text';
 import {compileSiteRulePack, composeSiteAdapters, getSiteAdapterAttributeFilter, getSiteRuleObservedAttributes, resolveSiteRule} from '@/src/core/site-adaptation/compiler';
 import {normalizeSiteAdaptationSettings, parseSiteRulePack, SITE_RULE_LIMITS, validateSelectors} from '@/src/core/site-adaptation/schema';
@@ -494,5 +495,215 @@ describe('site adaptation compilation', () => {
         for (const id of ['editor', 'native']) expect(core.inspect(document.getElementById(id)!).candidate).toBeNull();
         expect(core.resolve(shadow.querySelector('p')!.firstChild)).toBeNull();
         expect(core.discover(document).map((candidate) => candidate.element.id)).toEqual(['body']);
+    });
+});
+
+describe('Mastodon public application shell discovery', () => {
+    const create = (settings: Partial<ReturnType<typeof normalizeSiteAdaptationSettings>> = {}, url = 'https://mastodon.social/@Mastodon') => {
+        // Reduced from the public production DOM captured on 2026-10-15: the site puts its entire React app in a body-level notranslate shell.
+        const {document} = parseHTML('<html><body><div id="mastodon" class="notranslate app-holder"><main><article><div class="status__content"><div class="status__content__text status__content__text--visible translate"><p id="post">Readable public message with <a class="mention" href="/@alice">@alice</a> and <code>document.querySelector()</code> safely preserved.</p></div></div></article></main></div></body></html>');
+        const configured = {...normalizeSiteAdaptationSettings(undefined), ...settings};
+        const core = new TranslationCandidateCore({url: new URL(url), adapters: composeSiteAdapters(builtinSiteRulePack, configured)});
+        return {document, core};
+    };
+    it('discovers the actual public paragraph and carries narrow source-protection permission into rendering', () => {
+        const {document, core} = create();
+        const candidates = core.discover(document);
+        expect(candidates.map(candidate => candidate.element.id)).toEqual(['post']);
+        expect(candidates[0]).toMatchObject({adapterId: 'mastodon', allowTopLevelApplicationShell: true,
+            applicationShellPolicyId: 'mastodon'});
+        const source = extractTranslationText(candidates[0]!.element, core.shouldStayOriginal, undefined,
+            {allowTopLevelApplicationShell: candidates[0]!.allowTopLevelApplicationShell, protectedElement: candidates[0]!.element});
+        expect(source).toBe('Readable public message with and safely preserved.');
+    });
+    it('revalidates automatic policy without treating a translated owner as fresh source', () => {
+        const {document, core} = create();
+        const post = document.getElementById('post')!;
+        expect(core.isApplicationShellPolicyCurrent(post, 'mastodon')).toBe(true);
+        // Single-text rendering hides its live source inside extension-owned slots. Policy checks
+        // must remain independent from source extraction, which the lifecycle validates separately.
+        post.innerHTML = '<span class="fluent-read-single-slot" data-fr-translation-owned="true" translate="no">已译正文</span>';
+        expect(core.isApplicationShellPolicyCurrent(post, 'mastodon')).toBe(true);
+        expect(core.isApplicationShellPolicyCurrent(post, 'different-policy')).toBe(false);
+        expect(core.isApplicationShellPolicyCurrent(post, '')).toBe(false);
+        post.remove();
+        expect(core.isApplicationShellPolicyCurrent(post, 'mastodon')).toBe(false);
+    });
+    it.each(['id', 'translate', 'data-notranslate', 'app-holder', 'content', 'translate-class', 'other-shell'])
+    ('revokes automatic policy when the current %s boundary changes', mutation => {
+        const {document, core} = create(); const shell = document.getElementById('mastodon')!;
+        const post = document.getElementById('post')!;
+        expect(core.isApplicationShellPolicyCurrent(post, 'mastodon')).toBe(true);
+        if (mutation === 'id') shell.id = 'different-app';
+        if (mutation === 'translate') shell.setAttribute('translate', 'no');
+        if (mutation === 'data-notranslate') shell.setAttribute('data-notranslate', 'true');
+        if (mutation === 'app-holder') shell.classList.remove('app-holder');
+        if (mutation === 'content') document.querySelector('.status__content')!.classList.remove('status__content');
+        if (mutation === 'translate-class') document.querySelector('.translate')!.classList.remove('translate');
+        if (mutation === 'other-shell') {
+            const other = document.createElement('div'); other.className = 'notranslate app-holder';
+            document.body.append(other); other.append(document.querySelector('main')!);
+        }
+        expect(core.isApplicationShellPolicyCurrent(post, 'mastodon')).toBe(false);
+    });
+    it.each([
+        {enabled: false}, {disabledRuleIds: ['mastodon']},
+        {custom: pack([rule({id: 'mastodon', match: {hosts: ['mastodon.social']}, content: [{css: ['p']}]})])},
+        {custom: pack([rule({id: 'prefer-post', priority: 999, match: {hosts: ['mastodon.social']}, content: [{css: ['p']}]})])},
+    ])('revokes a previously discovered policy under current configuration: %j', settings => {
+        const {document, core} = create(); const post = document.getElementById('post')!;
+        expect(core.discover(document)[0]?.applicationShellPolicyId).toBe('mastodon');
+        const {core: changedCore} = create(settings);
+        expect(changedCore.isApplicationShellPolicyCurrent(post, 'mastodon')).toBe(false);
+    });
+    it('keeps manual hover permission distinct from automatic site policy', () => {
+        const {document, core} = create(); const post = document.getElementById('post')!;
+        const manual = core.resolve(post);
+        expect(manual).toMatchObject({element: post, allowTopLevelApplicationShell: true});
+        expect(manual?.applicationShellPolicyId).toBeUndefined();
+        document.getElementById('mastodon')!.id = 'different-app';
+        expect(core.isApplicationShellPolicyCurrent(post, 'mastodon')).toBe(false);
+        const movedManual = core.resolve(post);
+        expect(movedManual).toMatchObject({element: post, allowTopLevelApplicationShell: true});
+        expect(movedManual?.applicationShellPolicyId).toBeUndefined();
+    });
+    it('discovers appended paragraphs and dirty inline roots without nesting or duplicate owners', () => {
+        const {document, core} = create();
+        const container = document.querySelector('.status__content__text')!;
+        container.insertAdjacentHTML('beforeend', '<p id="new">A new public post with <em>fresh readable words</em>.</p>');
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['post', 'new']);
+        const paragraph = document.getElementById('new')!;
+        for (const root of [container, paragraph, paragraph.querySelector('em')!, paragraph.querySelector('em')!.firstChild!]) {
+            expect(core.discover(root).filter(candidate => candidate.element === paragraph)).toHaveLength(1);
+        }
+        document.getElementById('mastodon')!.classList.remove('notranslate');
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['post', 'new']);
+    });
+    it('retains local no-translate, mentions, links, code, controls and user-protected descendants', () => {
+        const {document, core} = create({custom: pack([rule({id: 'extra-protection', match: {hosts: ['mastodon.social']}, protect: ['.private-copy']})])});
+        const post = document.getElementById('post')!;
+        post.insertAdjacentHTML('beforeend', '<span class="notranslate">Private inline text</span><span translate="no">Private translation marker</span><a translate="no" href="https://example.test">Private outbound URL</a><span class="hashtag">Private hashtag</span><span class="private-copy">User protected words</span><button>Reply now</button>');
+        const candidate = core.discover(document)[0]!;
+        const protection = {allowTopLevelApplicationShell: candidate.allowTopLevelApplicationShell, protectedElement: post};
+        expect(extractTranslationText(post, core.shouldStayOriginal, undefined, protection)).toBe('Readable public message with and safely preserved.');
+        const snapshot = createTranslationSourceSnapshot(post, core.shouldStayOriginal, undefined, protection, core.shouldOmitFromTranslation);
+        expect(snapshot.slots.map(slot => slot.source).join(' ')).not.toMatch(/Private|User protected|Reply|querySelector|@alice/);
+        for (const attribute of ['class="notranslate"', 'translate="no"', 'data-notranslate="true"', 'contenteditable="true"', 'hidden', 'aria-hidden="true"']) {
+            const wrapper = document.createElement('div'); wrapper.innerHTML = `<div ${attribute}><p id="blocked">Protected public sentence must remain original.</p></div>`;
+            document.querySelector('.status__content__text')!.append(wrapper);
+            expect(core.discover(document).map(item => item.element.id)).toEqual(['post']);
+            wrapper.remove();
+        }
+    });
+    it.each(['form', 'nav', 'aside', 'header', 'footer'])('does not use the app-shell exception within %s', tag => {
+        const {document, core} = create();
+        const status = document.querySelector('.status__content')!;
+        const structural = document.createElement(tag);
+        status.replaceWith(structural); structural.append(status);
+        expect(core.discover(document)).toEqual([]);
+    });
+    it.each([
+        {enabled: false}, {disabledRuleIds: ['mastodon']},
+        {custom: pack([rule({id: 'mastodon', match: {hosts: ['mastodon.social']}, content: [{css: ['p']} ]})])},
+        {custom: pack([rule({id: 'block-post', match: {hosts: ['mastodon.social']}, exclude: ['article']})])},
+        {custom: pack([rule({id: 'protect-post', match: {hosts: ['mastodon.social']}, protect: ['article']})])},
+        {custom: pack([rule({id: 'prefer-post', priority: 999, match: {hosts: ['mastodon.social']}, content: [{css: ['p']}]})])},
+    ])('restores strict protection when disabled, replaced or denied by user rules: %j', settings => {
+        const {document, core} = create(settings);
+        expect(core.discover(document)).toEqual([]);
+    });
+    it('does not grant the exception to an independently compiled user rule pack', () => {
+        const {document} = create();
+        const core = new TranslationCandidateCore({url: new URL('https://mastodon.social/@Mastodon'), adapters: compileSiteRulePack(builtinSiteRulePack)});
+        expect(core.discover(document)).toEqual([]);
+    });
+    it.each(['https://example.test/@Mastodon', 'https://mastodon.online/@Mastodon', 'https://mastodon.social/settings/profile', 'https://mastodon.social/auth/sign_in', 'https://mastodon.social/explore'])('does not extend the verified public route policy to %s', url => {
+        const {document, core} = create({}, url);
+        expect(core.discover(document)).toEqual([]);
+    });
+    it.each(['translate', 'data-notranslate', 'contenteditable', 'hidden', 'inert', 'aria-hidden'])('preserves an additional %s marker on the application shell', attribute => {
+        const {document, core} = create();
+        document.getElementById('mastodon')!.setAttribute(attribute, attribute === 'translate' ? 'no' : 'true');
+        expect(core.discover(document)).toEqual([]);
+    });
+    it('rejects changed shell identity, nested shells, undeclared content and unrelated scan roots', () => {
+        for (const mutation of ['id', 'app-holder', 'nested', 'translate', 'content', 'unrelated']) {
+            const {document, core} = create(); const shell = document.getElementById('mastodon')!;
+            if (mutation === 'id') shell.id = 'different-app';
+            if (mutation === 'app-holder') shell.classList.remove('app-holder');
+            if (mutation === 'nested') {const wrapper = document.createElement('section'); shell.replaceWith(wrapper); wrapper.append(shell);}
+            if (mutation === 'translate') document.querySelector('.translate')!.classList.remove('translate');
+            if (mutation === 'content') document.querySelector('.status__content')!.classList.remove('status__content');
+            const unrelated = document.createElement('span'); document.body.append(unrelated);
+            expect(core.discover(mutation === 'unrelated' ? unrelated : document), mutation).toEqual([]);
+        }
+    });
+    it.each(['translate', 'id'])('rechecks shell %s after a discovery yield and can discover again after it is restored', attribute => {
+        const {document, core} = create();
+        document.querySelector('.status__content__text')!.insertAdjacentHTML('beforeend', '<p id="second">Another readable public paragraph.</p>');
+        const iterator = core.discoverSteps(document); let step;
+        while (!(step = iterator.next()).done && !step.value.candidate) { /* reach first candidate */ }
+        expect(step.value?.candidate?.element.id).toBe('post');
+        const shell = document.getElementById('mastodon')!;
+        shell.setAttribute(attribute, attribute === 'translate' ? 'no' : 'different-app');
+        expect([...iterator].filter(item => item.candidate)).toEqual([]);
+        if (attribute === 'translate') shell.removeAttribute(attribute);
+        else shell.id = 'mastodon';
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['post', 'second']);
+    });
+});
+
+describe('application shell policy capability boundaries', () => {
+    function fixture() {
+        const {document} = parseHTML('<html><body><div class="notranslate"><p id="post">The explicitly authorized public source remains the only translation owner.</p><p id="other">Unrelated public source cannot borrow another owner permission.</p></div></body></html>');
+        const post = document.getElementById('post')!;
+        const other = document.getElementById('other')!;
+        const adapter: TranslationSiteAdapter = {
+            id: 'verified-public-site', genericCandidatePolicy: 'targets-only', matches: () => true,
+            decide: element => element === post
+                ? {kind: 'force-target', reason: 'verified-public-source'} : {kind: 'pass'},
+        };
+        const core = new TranslationCandidateCore({url: new URL('https://example.test/public'), adapters: [adapter]});
+        return {document, post, other, adapter, core};
+    }
+
+    it('ignores unrelated callback entries and deduplicates repeated explicit owners', () => {
+        const {document, post, other, adapter, core} = fixture();
+        adapter.discoverApplicationShellTargets = function* () { yield other; yield post; yield post; };
+        expect(core.isApplicationShellPolicyCurrent(post, adapter.id)).toBe(true);
+        expect(core.isApplicationShellPolicyCurrent(other, adapter.id)).toBe(false);
+        const candidates = core.discover(document);
+        expect(candidates).toHaveLength(1);
+        expect(candidates[0]).toMatchObject({element: post, applicationShellPolicyId: adapter.id,
+            allowTopLevelApplicationShell: true});
+        // When the root ceases to need an exception, normal discovery owns the paragraph.
+        // Supplemental duplicates must neither create a second owner nor grant extra permission.
+        post.parentElement!.classList.remove('notranslate');
+        const ordinary = core.discover(document);
+        expect(ordinary).toHaveLength(1);
+        expect(ordinary[0]?.element).toBe(post);
+        expect(ordinary[0]?.applicationShellPolicyId).toBeUndefined();
+        expect(ordinary[0]?.allowTopLevelApplicationShell).toBeUndefined();
+    });
+
+    it('rejects permission when the adapter redirects the requested owner to another element', () => {
+        const {document, post, other, adapter, core} = fixture();
+        adapter.discoverApplicationShellTargets = function* () { yield post; };
+        adapter.decide = element => element === post
+            ? {kind: 'force-target', target: other, reason: 'redirected-source'} : {kind: 'pass'};
+        expect(core.isApplicationShellPolicyCurrent(post, adapter.id)).toBe(false);
+        expect(core.discover(document)).toEqual([]);
+    });
+
+    it('revokes policy when callback iteration fails instead of falling back to manual permission', () => {
+        const {post, other, adapter, core} = fixture();
+        adapter.discoverApplicationShellTargets = function* () {
+            yield other;
+            throw new Error('The site policy could not inspect its current application boundary');
+        };
+        expect(core.isApplicationShellPolicyCurrent(post, adapter.id)).toBe(false);
+        const manual = core.resolve(post);
+        expect(manual).toMatchObject({element: post, allowTopLevelApplicationShell: true});
+        expect(manual?.applicationShellPolicyId).toBeUndefined();
     });
 });

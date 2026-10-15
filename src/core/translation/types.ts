@@ -51,6 +51,8 @@ export interface TranslationSiteAdapter {
     genericCandidatePolicy?: TranslationGenericCandidatePolicy;
     /** 规则依赖的属性名；null 表示不能安全穷举，必须观察全部属性。 */
     observedAttributes?: readonly string[] | null;
+    /** 内置站点策略可补充已核实的应用外壳正文；仍须经过引擎的显式目标与局部保护检查。 */
+    discoverApplicationShellTargets?(root: Node, context: AdapterContext): Iterable<Element>;
     matches(url: URL): boolean;
     decide(element: Element, context: AdapterContext): AdapterDecision;
     shouldStayOriginal?(element: Element, context: AdapterContext): boolean;
@@ -71,8 +73,10 @@ export interface TranslationCandidate {
     adapterId?: string;
     /** 显式全部节点候选在重校验、请求和重试时继续使用相同发现政策。 */
     scope?: TranslationScope;
-    /** 显式选中/悬浮解析允许穿过 body 直接子级的应用级 no-translate 外壳。 */
+    /** 显式选中/悬浮或内置站点正文策略允许穿过 body 直接子级的应用级 no-translate 外壳。 */
     allowTopLevelApplicationShell?: boolean;
+    /** 自动发现所用的内置外壳策略；异步提交与状态重建须重新验证，手动悬浮不携带。 */
+    applicationShellPolicyId?: string;
     /** 悬浮命中大型无语义容器时，按视觉段落/句群选择的范围。 */
     visualRange?: TranslationTextRange;
     /** Range 经过文本保护过滤后的请求来源快照。 */
