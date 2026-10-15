@@ -6,6 +6,7 @@
  */
 import type {MaterialCaptureInput, MaterialRecord} from './materialProtocol';
 import {canonicalMaterialUrl} from './materialModel';
+import {locateMaterialOriginalQuote, projectMaterialOriginalText} from './materialOriginalText';
 
 export const MATERIAL_RESUME_PARAMETER = '__fluentread_material';
 export interface MaterialResumeLink {href?: string; label: string; recovery?: string}
@@ -45,15 +46,10 @@ export function captureMaterialSelection(range: Range, quote: string): Pick<Mate
     const url = canonicalMaterialUrl(doc.location?.href);
     if (!url || !/^https?:/u.test(url)) return;
     const paragraph = element.closest<HTMLElement>('p,li,blockquote,dd,dt,figcaption,h1,h2,h3,h4,h5,h6') || element;
-    const text = (paragraph.textContent || '').replace(/\s+/gu, ' ').trim();
-    const selected = quote.replace(/\s+/gu, ' ').trim();
-    let index = text.indexOf(selected);
-    try {
-        const prefix = range.cloneRange(); prefix.selectNodeContents(paragraph); prefix.setEnd(range.startContainer, range.startOffset);
-        const offset = prefix.toString().replace(/\s+/gu, ' ').trimStart().length;
-        if (text.slice(offset, offset + selected.length) === selected) index = offset;
-    } catch { /* 不连贯选区只保留原句，不猜测偏移。 */ }
-    return {source: {kind: 'article', url, title: doc.title}, locator: {kind: 'text', quote: selected.slice(0, 6000),
+    const projection = projectMaterialOriginalText(paragraph, range);
+    const original = projection && locateMaterialOriginalQuote(projection, quote);
+    if (!original) return;
+    return {source: {kind: 'article', url, title: doc.title}, locator: {kind: 'text', quote: original.quote,
         ...(paragraph.id && paragraph.id.length < 256 ? {paragraphId: paragraph.id} : {}),
-        ...(index >= 0 ? {prefix: text.slice(Math.max(0, index - 160), index), suffix: text.slice(index + selected.length, index + selected.length + 160)} : {})}};
+        prefix: original.prefix, suffix: original.suffix}};
 }

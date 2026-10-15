@@ -344,14 +344,28 @@ describe('划词翻译挂载生命周期', () => {
         expect(mountedUi.remove).toHaveBeenCalledOnce();
     });
 
-    it('允许挂载器返回没有 Vue 实例的安全空结果', async () => {
-        const mountedUi = {remove: vi.fn()};
+    it('没有 Vue 实例的挂载句柄仍可恢复自有 host，卸载后停止恢复', async () => {
+        const {document, window} = parseHTML('<html><body></body></html>');
+        const host = document.createElement('fluent-read-selection-translator-ui');
+        document.body.appendChild(host);
+        vi.stubGlobal('MutationObserver', window.MutationObserver);
+        const mountedUi = {remove: vi.fn(() => host.remove()), shadowHost: host};
         mocks.createVueShadowUi.mockResolvedValue(mountedUi);
+        mocks.createModalDialogHostController.mockReturnValue({placeForRange: vi.fn(), dispose: vi.fn()});
         const runtime = await import('@/src/features/selection-translation/content/runtime');
-
-        await expect(runtime.mountSelectionTranslator({} as never)).resolves.toBeNull();
-        runtime.unmountSelectionTranslator();
-        expect(mountedUi.remove).toHaveBeenCalledOnce();
+        try {
+            await expect(runtime.mountSelectionTranslator({} as never)).resolves.toBeNull();
+            host.remove();
+            await vi.waitFor(() => expect(host.isConnected).toBe(true));
+            expect(mocks.createVueShadowUi).toHaveBeenCalledOnce();
+            runtime.unmountSelectionTranslator();
+            await new Promise(resolve => setTimeout(resolve, 0));
+            expect(host.isConnected).toBe(false);
+            expect(mountedUi.remove).toHaveBeenCalledOnce();
+        } finally {
+            runtime.unmountSelectionTranslator();
+            vi.unstubAllGlobals();
+        }
     });
 });
 

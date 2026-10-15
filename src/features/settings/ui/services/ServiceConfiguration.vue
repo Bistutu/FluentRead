@@ -1,8 +1,9 @@
 <!--
  * @file src/features/settings/ui/services/ServiceConfiguration.vue
  * 文件职责：渲染当前翻译服务的详细连接配置：连接字段（密钥、区域、端点等）直接排在服务标题下方、不再单设“连接与密钥”标题，输入下方是添加密钥与密钥使用方式；其后用模型偏好、提示词、请求限制、接口兼容几个页签显示代理、密钥要求、提示词、自定义请求体与请求头、按域名移除来源头等字段，以及服务和模型的独立请求限制；只有一个页签的服务改用小节标题。
- * 主要内容：组件派生字段可见性与连接示例，密钥列表始终展示全部已保存的密钥并区分参与请求与备用的行，密钥要求放在接口兼容页签，提示词可在确认后一键同步到所有 AI 服务；原生支持多文本的服务在请求限制中独立编辑默认开启的合并请求开关，当前模型限额按自定义请求体覆盖后的真实模型显示、读取和保存，保留其他模型限额；将成对密钥 ID 同步到 apiKeys 和兼容 token，区分缺少必填 Key 与允许匿名的连接检查并管理等待超时；免费翻译检查完整目录并逐服务展示结果，Chrome 在点击时准备当前语言对并用进度条显示模型下载比例，通过配置 store 提交修改；有效修复链接首次进入且未发生用户聚焦时直达连接按钮或当前标题；所有服务可手动停止等待；错误只保留共享诊断分类与可操作下一步，禁止展示原始错误详情，手动重试与字段定位保留当前选择；隐藏、缓存停用或配置变化取消所属等待，Chrome 状态只在活跃服务订阅，恢复、同步模板和删除共用当前操作所属确认，同步复验来源并按确认时刻重算目标。
- * 模块边界：组合服务交给独立草稿表单编辑，不展示普通服务的模型或凭据页签；无成员禁止连接测试，组合与各成员配置修改使旧测试失效，测试等待不早于逐路预算与整轮上限；本地模型设置只在对应服务首次呈现时异步加载，实例归属与后台下载由子组件维持；ChatGPT 套餐公开构建不渲染配置或确认窗口、不加载登录子模块，并停用全部设置动作，显式开发模式才通过独立子组件连接本机助手，不显示通用凭据或接口覆写；本组件不执行网页正文翻译或保存公开配置中的明文凭据；Chrome 内置翻译仅在当前点击页完成模型自检，其他连接测试经后台消息，Safari 免费线路检查仅请求已授权 provider，未授权项不记作连接故障；字段规则来自 core/config，服务切换由 ServiceCatalog 和 SettingsSections 负责。
+ * 主要内容：Safari 免费连接检查只包含已授权线路，权限读取失败与未授权分别显示可响应语言包的安全状态；组件派生字段可见性与连接示例，密钥列表始终展示全部已保存的密钥并区分参与请求与备用的行，密钥要求放在接口兼容页签，提示词可在确认后一键同步到所有 AI 服务；原生支持多文本的服务在请求限制中独立编辑默认开启的合并请求开关，当前模型限额按自定义请求体覆盖后的真实模型显示、读取和保存，保留其他模型限额；将成对密钥 ID 同步到 apiKeys 和兼容 token，区分缺少必填 Key 与允许匿名的连接检查并管理等待超时；免费翻译检查完整目录中的已授权服务并逐服务展示结果，Chrome 在点击时准备当前语言对并用进度条显示模型下载比例，通过配置 store 提交修改；有效修复链接首次进入且未发生用户聚焦时直达连接按钮或当前标题；所有服务可手动停止等待；错误只保留共享诊断分类与可操作下一步，禁止展示原始错误详情，手动重试与字段定位保留当前选择；隐藏、缓存停用或配置变化取消所属等待，Chrome 状态只在活跃服务订阅，恢复、同步模板和删除共用当前操作所属确认，同步复验来源并按确认时刻重算目标。
+ * 状态本地化：逐密钥、逐免费服务及独立失败状态保留安全资源 key，在展示时响应语言选择与异步语言包更新，不重新请求服务或翻译供应商原始错误。
+ * 模块边界：组合服务交给独立草稿表单编辑，不展示普通服务的模型或凭据页签；无成员禁止连接测试，组合与各成员配置修改使旧测试失效，测试等待不早于逐路预算与整轮上限；本地模型设置只在对应服务首次呈现时异步加载，实例归属与后台下载由子组件维持；ChatGPT 套餐公开构建不渲染配置或确认窗口、不加载登录子模块，并停用全部设置动作，显式开发模式才通过独立子组件连接本机助手，不显示通用凭据或接口覆写；本组件不执行网页正文翻译或保存公开配置中的明文凭据；Chrome 内置翻译仅在当前点击页完成模型自检，其他连接测试经后台消息，字段规则来自 core/config，服务切换由 ServiceCatalog 和 SettingsSections 负责。
  -->
 <template>
   <template v-if="!publicPlanBlocked">
@@ -334,8 +335,8 @@
       <strong>{{ connectionRepairText.title }}</strong>
       <span>{{ connectionRepairText.detail }}</span>
       <div class="connection-repair-actions">
-        <button type="button" class="connection-repair-button" data-connection-retry :disabled="connectionTestDisabled || connectionRetryWaiting" @click="testConnection()">{{ getDiagnosticActionLabel('retry', language) }}</button>
-        <button v-if="connectionTestDiagnostic.actions.includes('services')" type="button" class="connection-repair-button" data-connection-repair-config :disabled="!active" @click="focusConnectionConfiguration">{{ getDiagnosticActionLabel('services', language) }}</button>
+        <button type="button" class="connection-repair-button" data-connection-retry :disabled="connectionTestDisabled || connectionRetryWaiting" @click="testConnection()">{{ t('diagnostics.action.retry') }}</button>
+        <button v-if="connectionTestDiagnostic.actions.includes('services')" type="button" class="connection-repair-button" data-connection-repair-config :disabled="!active" @click="focusConnectionConfiguration">{{ t('diagnostics.action.services') }}</button>
       </div>
     </div>
 
@@ -490,7 +491,7 @@ import { isNativeBatchTranslationService, isNativeTranslationBatchEnabled } from
 import { requiresDeepLXToken } from '@/src/core/config/deeplx'
 import { getDeepLEndpoint } from '@/src/core/config/deepl'
 import browser from 'webextension-polyfill'
-import { normalizeDiagnostic, diagnoseFailure, getDiagnosticActionLabel, getDiagnosticText, type Diagnostic } from '@/src/services/diagnostics'
+import { normalizeDiagnostic, diagnoseFailure, type Diagnostic } from '@/src/services/diagnostics'
 import { requestConfigSave, waitForConfigPersistenceQueue } from '@/src/services/config/store'
 import { CONNECTION_TEST_MESSAGE, DEFAULT_OLLAMA_ENDPOINT, getAliyunTranslationEndpoint, getMimoEndpoint, MINIMAX_ENDPOINTS } from '@/src/core/config/constants'
 import { chromeTranslationPreparationStore } from '@/src/platform/browser/chromeTranslationPreparationRequest'
@@ -653,7 +654,16 @@ const usableApiKeyCount = computed(() => usableApiKeys.value.length)
 const apiKeyIndexes = computed(() => activeApiKeyIndexes(usableApiKeys.value, apiKeyRotationEnabled.value))
 const standbyApiKeys = computed(() => standbyApiKeyIndexes(usableApiKeys.value, apiKeyRotationEnabled.value))
 const usesApiKeyList = computed(() => compute.value.showToken && !compute.value.showServiceSecret)
-const apiKeyChecks = ref<Record<number, ApiKeyCheckState>>({})
+// 结果只保存本地化描述；在展示边界解析为既有子组件需要的字符串，语言包迟到时无需重新检查服务。
+type LocalizedCheckState = Omit<ApiKeyCheckState, 'error'> & {error?: LocalizedConnectionTestMessage}
+const apiKeyCheckStates = ref<Record<number, LocalizedCheckState>>({})
+const apiKeyChecks = computed<Record<number, ApiKeyCheckState>>(() => Object.fromEntries(
+  Object.entries(apiKeyCheckStates.value).map(([index, state]) => [index, localizeCheckState(state)]),
+))
+function localizeCheckState(state: LocalizedCheckState): ApiKeyCheckState {
+  const {error, ...result} = state
+  return {...result, ...(error ? {error: t(error.key, error.params)} : {})}
+}
 const apiKeySummary = ref<ApiKeySummary | null>(null)
 const apiKeyCheckMode = ref<'single' | 'all'>('all')
 
@@ -688,12 +698,12 @@ function removeApiKey(index: number): void {
 }
 
 function resetApiKeyChecks(): void {
-  apiKeyChecks.value = {}
+  apiKeyCheckStates.value = {}
   apiKeySummary.value = null
 }
 
-function setApiKeyState(index: number, state: ApiKeyCheckState): void {
-  apiKeyChecks.value = {...apiKeyChecks.value, [index]: state}
+function setApiKeyState(index: number, state: LocalizedCheckState): void {
+  apiKeyCheckStates.value = {...apiKeyCheckStates.value, [index]: state}
 }
 
 function updateApiKeySummary(): void {
@@ -790,12 +800,16 @@ function focusInitialRepair(requestedService: string): void {
 }
 const connectionTestDisabled = computed(() => !active.value || (isCompositeService.value && !compositeProvider.value?.services.length) || (!connectionTestBusy.value && (connectionRetryWaiting.value || usesApiKeyList.value && apiKeyIndexes.value.length === 0
     && (service.value === services.deeplx ? deepLXRequiresToken.value : compute.value.requireApiKey))))
-const freeProviderChecks = ref<FreeTranslationChecks>({})
+const freeProviderCheckStates = ref<{[Key in keyof FreeTranslationChecks]: LocalizedCheckState}>({})
+const freeProviderChecks = computed<FreeTranslationChecks>(() => Object.fromEntries(
+  Object.entries(freeProviderCheckStates.value).map(([providerId, state]) => [providerId, localizeCheckState(state)]),
+))
 const freeProviderRetryAt = new Map<string, number>()
 const connectionTestState = ref<ConnectionTestState>('idle')
 const connectionTestMessageState = ref<LocalizedConnectionTestMessage | string | null>(null)
 const connectionTestDiagnostic = shallowRef<Diagnostic | null>(null)
-const connectionRepairText = computed(() => connectionTestDiagnostic.value ? getDiagnosticText(connectionTestDiagnostic.value, language.value) : {title: '', detail: ''})
+// t 读取语言包修订号，异步资源到达后会刷新已显示的诊断。
+const connectionRepairText = computed(() => connectionTestDiagnostic.value ? {title: t(connectionTestDiagnostic.value.titleKey), detail: t(connectionTestDiagnostic.value.detailKey)} : {title: '', detail: ''})
 const connectionRetryWaiting = ref(false)
 const MAX_CONNECTION_RETRY_TIMER_MS = 2_147_483_647
 let connectionRetryDeadline = 0
@@ -817,7 +831,7 @@ function clearConnectionDiagnostic(): void {
   connectionRetryTimer = undefined
 }
 // 原始供应商错误仅用于分类，从不进入组件展示状态、详情或 title 属性。
-function describeConnectionFailure(error: unknown, applyCooldown = true): string {
+function describeConnectionFailure(error: unknown, applyCooldown = true): LocalizedConnectionTestMessage {
   const diagnostic = normalizeDiagnostic(error) || diagnoseFailure(error, {online: typeof navigator === 'undefined' ? undefined : navigator.onLine,
     ...(error instanceof ConnectionConfigurationError ? {reason: 'configuration-save' as const} : {})})
   if (!connectionTestDiagnostic.value) connectionTestDiagnostic.value = diagnostic
@@ -825,8 +839,7 @@ function describeConnectionFailure(error: unknown, applyCooldown = true): string
     connectionRetryDeadline = Math.max(connectionRetryDeadline, Date.now() + diagnostic.retryAfterMs)
     scheduleConnectionRetryWake()
   }
-  const text = getDiagnosticText(diagnostic, language.value)
-  return text.title
+  return localizedConnectionTestMessage(diagnostic.titleKey)
 }
 function focusConnectionConfiguration(): void {
   if (!active.value || !connectionTestDiagnostic.value) return
@@ -917,7 +930,7 @@ const connectionTestTitle = computed(() => {
 
 function resetConnectionTest(): void {
   clearConnectionDiagnostic()
-  freeProviderChecks.value = {}
+  freeProviderCheckStates.value = {}
   freeProviderRetryAt.clear()
   displayedChromePreparationPair.value = null
   chromeDownloadFraction.value = undefined
@@ -967,7 +980,7 @@ function formatChromePreparationStatus(status: ChromeTranslationPreparationStatu
   return localizedConnectionTestMessage('settings.services.chromePreparation.statusInitializing', params)
 }
 
-function formatChromePreparationError(error: unknown): LocalizedConnectionTestMessage | string {
+function formatChromePreparationError(error: unknown): LocalizedConnectionTestMessage {
   if (error instanceof ChromeTranslationPreparationError) {
     const {detail: _privateDetail, ...safeParams} = error.params || {}
     return localizedConnectionTestMessage(CHROME_PREPARATION_ERROR_KEYS[error.code], safeParams)
@@ -1010,7 +1023,7 @@ function stopApiKeyChecks(): void {
   connectionTestState.value = 'idle'
   connectionTestMessageState.value = null
   clearConnectionDiagnostic()
-  apiKeyChecks.value = Object.fromEntries(Object.entries(apiKeyChecks.value).map(([index, state]) => [index,
+  apiKeyCheckStates.value = Object.fromEntries(Object.entries(apiKeyCheckStates.value).map(([index, state]) => [index,
     state.status === 'checking' || state.status === 'queued' ? {status: 'idle' as const} : state]))
   updateApiKeySummary()
 }
@@ -1025,7 +1038,7 @@ async function testSingleApiKey(index: number): Promise<void> {
   activeConnection = controller
   connectionTestBusy.value = true
   connectionTestState.value = 'testing'
-  connectionTestMessageState.value = t('settings.services.keys.checking')
+  connectionTestMessageState.value = localizedConnectionTestMessage('settings.services.keys.checking')
   setApiKeyState(index, {status: 'checking'})
   updateApiKeySummary()
   try {
@@ -1036,7 +1049,7 @@ async function testSingleApiKey(index: number): Promise<void> {
     const success = await runApiKeyCheck(index, generation, controller.signal)
     if (generation !== connectionTestGeneration) return
     connectionTestState.value = success ? 'success' : 'error'
-    connectionTestMessageState.value = success ? t('settings.services.keys.passed') : t('settings.services.keys.failed')
+    connectionTestMessageState.value = localizedConnectionTestMessage(success ? 'settings.services.keys.passed' : 'settings.services.keys.failed')
   } catch (error) {
     if (generation === connectionTestGeneration) {
       connectionTestState.value = 'error'
@@ -1057,7 +1070,7 @@ async function testConnection(): Promise<void> {
   apiKeyCheckMode.value = 'all'
 
   const testedService = service.value
-  if (testedService === services.freeTranslation) freeProviderChecks.value = {}
+  if (testedService === services.freeTranslation) freeProviderCheckStates.value = {}
   const generation = ++connectionTestGeneration
   const controller = new AbortController()
   activeConnection = controller
@@ -1118,9 +1131,10 @@ async function testConnection(): Promise<void> {
     } else if (testedService === services.freeTranslation) {
       let access: Awaited<ReturnType<typeof readFreePoolAccess>>
       try {
-        access = await waitForConnectionStep(readFreePoolAccess(FREE_TRANSLATION_PROVIDERS.map(provider => provider.id)), CONNECTION_RESPONSE_WAIT_TIMEOUT_MS, 'safari.freePool.error', controller.signal)
+        access = await waitForConnectionStep(readFreePoolAccess(FREE_TRANSLATION_PROVIDERS.map(provider => provider.id), {signal: controller.signal}), CONNECTION_RESPONSE_WAIT_TIMEOUT_MS, 'safari.freePool.error', controller.signal)
       } catch {
         if (!isCurrent()) return
+        // 权限读取失败不归咎于供应商；保存安全 key，让迟到语言包仍可更新提示。
         connectionTestState.value = 'error'
         connectionTestMessageState.value = localizedConnectionTestMessage('safari.freePool.error')
         return
@@ -1129,7 +1143,7 @@ async function testConnection(): Promise<void> {
       const granted = new Set<string>(access.grantedIds)
       if (!granted.size) {
         connectionTestState.value = 'idle'
-        connectionTestMessageState.value = t('safari.freePool.permissionState')
+        connectionTestMessageState.value = localizedConnectionTestMessage('safari.freePool.permissionState')
         return
       }
       const providerDiagnostics = new Map<string, Diagnostic>()
@@ -1137,7 +1151,7 @@ async function testConnection(): Promise<void> {
         const diagnostic = normalizeDiagnostic(error) || diagnoseFailure(error, {online: typeof navigator === 'undefined' ? undefined : navigator.onLine})
         providerDiagnostics.set(providerId, diagnostic)
         if (diagnostic.retryAfterMs) freeProviderRetryAt.set(providerId, Date.now() + diagnostic.retryAfterMs)
-        return {success: false, ...(durationMs === undefined ? {} : {durationMs}), error: describeConnectionFailure(diagnostic, false)}
+        return {success: false, ...(durationMs === undefined ? {} : {durationMs}), error: describeConnectionFailure(diagnostic, false).key}
       }
       await checkAllFreeTranslationProviders({
         check: async freeProviderId => {
@@ -1157,9 +1171,16 @@ async function testConnection(): Promise<void> {
             return isCurrent() ? failProvider(freeProviderId, error) : undefined
           }
         },
-        update: (providerId, state) => {if (isCurrent() && granted.has(providerId)) freeProviderChecks.value = {...freeProviderChecks.value, [providerId]: state}},
+        update: (providerId, state) => {
+          if (!isCurrent() || !granted.has(providerId)) return
+          const {error: _untrustedError, ...result} = state
+          // 检查器的异常兜底可能携带原始错误；只用已归类诊断或固定失败 key，不把它翻译或展示。
+          freeProviderCheckStates.value = {...freeProviderCheckStates.value, [providerId]: {...result,
+            ...(state.status === 'error' ? {error: localizedConnectionTestMessage(providerDiagnostics.get(providerId)?.titleKey || 'settings.services.keys.failed')} : {}),
+          }}
+        },
         isCurrent,
-        failureMessage: t('settings.services.keys.failed'),
+        failureMessage: 'settings.services.keys.failed',
       })
       if (!isCurrent()) return
       const enabledProviders = normalizeFreeTranslationOrder(config.value.freeTranslationOrder)
@@ -1167,19 +1188,19 @@ async function testConnection(): Promise<void> {
       if (Object.entries(freeProviderChecks.value).some(([id, state]) => enabledProviders.includes(id) && state.status === 'success')) clearConnectionDiagnostic()
       else connectionTestDiagnostic.value = enabledProviders.map(id => providerDiagnostics.get(id)).find(Boolean) || connectionTestDiagnostic.value
       connectionTestState.value = Object.values(freeProviderChecks.value).every(check => check.status === 'success') ? 'success' : 'error'
-      connectionTestMessageState.value = t('settings.services.keys.summary', {
+      connectionTestMessageState.value = localizedConnectionTestMessage('settings.services.keys.summary', {
         passed: Object.values(freeProviderChecks.value).filter(check => check.status === 'success').length,
         failed: Object.values(freeProviderChecks.value).filter(check => check.status === 'error').length,
       })
     } else if (compute.value.showToken && !compute.value.showServiceSecret && apiKeyIndexes.value.length > 0) {
       const checks = [...apiKeyIndexes.value]
-      apiKeyChecks.value = Object.fromEntries(checks.map(index => [index, {status: 'queued' as const}]))
+      apiKeyCheckStates.value = Object.fromEntries(checks.map(index => [index, {status: 'queued' as const}]))
       let successes = 0
       for (const index of checks) {
         if (!isCurrent()) return
         if (await runApiKeyCheck(index, generation, controller.signal)) successes += 1
         if (connectionRetryWaiting.value) {
-          apiKeyChecks.value = Object.fromEntries(Object.entries(apiKeyChecks.value).map(([row, state]) => [row, state.status === 'queued' ? {status: 'idle' as const} : state]))
+          apiKeyCheckStates.value = Object.fromEntries(Object.entries(apiKeyCheckStates.value).map(([row, state]) => [row, state.status === 'queued' ? {status: 'idle' as const} : state]))
           break
         }
       }

@@ -1,3 +1,5 @@
+import {createUserscriptSettingsDataPlugin} from '@/userscript/settingsDataPlugin';
+import * as originalAppearance from '@/src/core/config/interfaceAppearance';
 import {readFileSync, realpathSync, mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
@@ -12,6 +14,7 @@ import {zhCNMessages, UI_LANGUAGE_BUNDLES, userscriptMessages} from '@/userscrip
 import {zhCNMessages as extensionChinese} from '@/src/core/i18n/messages/zh-CN';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
 import {aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
+import {learningMaterialLegacyText, learningMaterialPatterns} from '@/src/core/i18n/messages/learningMaterials';
 import {installInformationHighlight} from '@/userscript/informationHighlight';
 import {inflateWithPako} from '@/userscript/pakoRuntime';
 import * as chineseCharacterData from '@/src/core/language/chineseVariants';
@@ -21,8 +24,6 @@ import {createUserscriptFrancDataCompressionPlugin} from '@/userscript/francData
 import {createUserscriptTldtsDataCompressionPlugin} from '@/userscript/tldtsDataPlugin';
 import {createUserscriptAboutImagesCompressionPlugin} from '@/userscript/aboutImagesPlugin';
 import {createUserscriptServiceBrandIconsCompressionPlugin} from '@/userscript/serviceBrandIconsPlugin';
-import {createUserscriptInterfaceAppearanceDataPlugin} from '@/userscript/interfaceAppearanceDataPlugin';
-import * as originalAppearance from '@/src/core/config/interfaceAppearance';
 import originalServiceBrandPaths from '@/src/ui/assets/serviceBrandPaths.json';
 import {getSupportImageUrl as getNormalSupportImageUrl, getContactImageUrl as getNormalContactImageUrl} from '@/src/app/options/aboutImages';
 import ordinaryContactAsset from '@/src/app/options/assets/wechat-contact.jpg';
@@ -35,6 +36,7 @@ import {
     executionGuardEnd,
     executionGuardStart,
     createUserscriptCatalogCompressionPlugin,
+    createStandaloneOpenAITransportPlugin,
     findDexieGlobalRegistration,
     findFreeBrowserGlobals,
     injectUserscriptBrowserImports,
@@ -248,16 +250,16 @@ describe('userscript browser shim injection', () => {
     const registeredSupplementKeys = ['learning.panelLoadError', 'learning.reloadPage', ...Object.keys(aiRequestTimeoutMessages['en-US']),
         'sectionTranslation.picker.dragging', 'sectionTranslation.scope.selected', 'settings.services.deeplx.defaultRoute'];
     const publishedOverrideKeys = ['sectionTranslation.picker.preview', 'sectionTranslation.picker.instruction',
-        'popup.sectionTranslationTitle', 'settings.services.deeplx.endpointHelp'];
-    // Greasy Fork 的已发布文案投影仍对照原资源，不随当前完整远程词典更新。
-    const publishedLanguageFiles = {
+        'popup.sectionTranslationTitle', 'settings.services.deeplx.endpointHelp',
+        'document.pdfReading.exportHint', 'document.pdfReading.layoutExportHint', 'document.pdfReading.exportPageCount'];
+    const pinnedLanguageFiles = {
         'ja-JP': 'ja-JP.5bb4b24b0a41715f.json',
         'ko-KR': 'ko-KR.e6befd8f0b3fb833.json',
         'fr-FR': 'fr-FR.afc75e324ace2ce5.json',
         'ru-RU': 'ru-RU.52b510364aae90e1.json',
         'es-ES': 'es-ES.d821e30eac68a115.json',
     };
-    const publishedMessages: Record<string, Record<string, string>> = Object.fromEntries(Object.entries(publishedLanguageFiles)
+    const publishedMessages: Record<string, Record<string, string>> = Object.fromEntries(Object.entries(pinnedLanguageFiles)
         .map(([language, file]) => [language, JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8')).messages]));
     it('preserves pinned remote dictionaries for inlined panes and keeps embedded recovery copy', () => {
         const build = (userscriptConfig as {build: {cssCodeSplit: boolean; rollupOptions: {output: {inlineDynamicImports: boolean}}}}).build;
@@ -269,21 +271,32 @@ describe('userscript browser shim injection', () => {
         }
         for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {
             const original = extensionBundles[language as keyof typeof extensionBundles];
-            expect(bundle.legacyText).toBe(original.legacyText);
-            expect(bundle.legacyPatterns).toBe(original.legacyPatterns);
+            const materialSources = Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]);
+            expect(Object.keys(original.legacyText).filter(source => !(source in bundle.legacyText)).sort()).toEqual(materialSources.sort());
+            const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
+            for (const phase of ['early', 'late'] as const) {
+                expect(bundle.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
+            }
+            for (const [source, value] of Object.entries(bundle.legacyText)) expect(value).toBe(original.legacyText[source]);
+            for (const source of materialSources) expect(original.legacyText[source]).toBeTruthy();
+            if (language !== 'en-US') {
+                // 固定资源是发布契约；必须保持整包字节，不能只证明本地生成文件自洽。
+                const file = pinnedLanguageFiles[language as keyof typeof pinnedLanguageFiles];
+                expect(JSON.stringify(bundle) + '\n').toBe(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'));
+            }
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
                 !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.')
-                && !key.startsWith('safari.freePool.') && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
-                && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !key.startsWith('document.') && !registeredSupplementKeys.includes(key))));
-            if (language !== 'en-US') {
-                for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
-                Object.assign(kept, Object.fromEntries(Object.entries(publishedMessages[language]!).filter(([key]) => key.startsWith('document.'))));
-            }
+                && !key.startsWith('diagnostics.')
+                && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
+                && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
+                && !key.startsWith('safari.freePool.')
+                && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !registeredSupplementKeys.includes(key))));
+            if (language !== 'en-US') for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
             expect(bundle.messages).toEqual(kept);
             expect(original.messages['learning.reloadPage']).toBeTruthy();
         }
     });
-    it.each(Object.keys(publishedLanguageFiles) as Array<keyof typeof extensionBundles>)('freezes only the published %s document messages while retaining current extension copy', language => {
+    it.each(Object.keys(pinnedLanguageFiles) as Array<keyof typeof extensionBundles>)('freezes only the published %s document messages while retaining current extension copy', language => {
         const original = extensionBundles[language], projected = UI_LANGUAGE_BUNDLES[language];
         const originalBefore = JSON.stringify(original);
         const documentMessages = (messages: Record<string, string>) => Object.fromEntries(Object.entries(messages).filter(([key]) => key.startsWith('document.')));
@@ -300,7 +313,11 @@ describe('userscript browser shim injection', () => {
         const nonDocument = Object.fromEntries(Object.entries(projected.messages).filter(([key]) => !key.startsWith('document.')));
         for (const [key, value] of Object.entries(nonDocument)) expect(value).toBe(publishedOverrideKeys.includes(key)
             ? publishedMessages[language]![key] : original.messages[key]);
-        expect(projected.legacyText).toBe(original.legacyText); expect(projected.legacyPatterns).toBe(original.legacyPatterns);
+        // 原文案继续使用root已发布投影，材料扩展界面文本不重新进入脚本固定资源。
+        const materialSources = new Set(Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]));
+        expect(projected.legacyText).toEqual(Object.fromEntries(Object.entries(original.legacyText).filter(([source]) => !materialSources.has(source))));
+        const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
+        for (const phase of ['early', 'late'] as const) expect(projected.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
         expect(JSON.stringify(original)).toBe(originalBefore);
     });
     it.each(['standard', 'standalone'] as const)('keeps %s runtime icon inline and pins only the standard manager icon', async mode => {
@@ -351,9 +368,12 @@ describe('userscript browser shim injection', () => {
         }
         expect(extension['video.nativeFullscreenHint']).toBeTruthy();
         expect(Object.hasOwn(projected, 'video.nativeFullscreenHint')).toBe(false);
+        const diagnosticKeys = Object.keys(extension).filter(key => key.startsWith('diagnostics.'));
+        expect(diagnosticKeys.length).toBeGreaterThan(0);
+        const readerDialogKeys = ['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].map(name => `document.pdfReading.${name}`);
         const safariPermissionKeys = Object.keys(extension).filter(key => key.startsWith('safari.freePool.'));
         expect(safariPermissionKeys).toHaveLength(8);
-        for (const key of safariPermissionKeys) {
+        for (const key of [...diagnosticKeys, ...readerDialogKeys, ...safariPermissionKeys]) {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
@@ -367,13 +387,13 @@ describe('userscript browser shim injection', () => {
         }
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
             && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
+            && !diagnosticKeys.includes(key) && !readerDialogKeys.includes(key)
             && key !== 'video.nativeFullscreenHint'
             && !safariPermissionKeys.includes(key)
             && key !== 'popup.compact.translate' && key !== 'popup.compact.restore'
-            && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)
-                && (!key.startsWith('document.') || Object.hasOwn(publishedMessages[_language]!, key))));
+            && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)));
         expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
-        for (const key of retainedKeys) expect(projected[key]).toBe(publishedMessages[_language] && (publishedOverrideKeys.includes(key) || key.startsWith('document.'))
+        for (const key of retainedKeys) expect(projected[key]).toBe(publishedMessages[_language] && publishedOverrideKeys.includes(key)
             ? publishedMessages[_language]![key] : extension[key]);
         expect(projected['contextMenu.translateSelection']).toBeTruthy();
         expect(projected['contextMenu.translatePage']).toBeTruthy();
@@ -389,18 +409,33 @@ describe('userscript browser shim injection', () => {
         controller.refresh();controller.dispose();expect(controller.getState().enabled).toBe(false);
         expect(userscriptAliases.find(alias => alias.find === '@/src/features/information-highlight/public')?.replacement).toMatch(/userscript\/informationHighlight\.ts$/u);
     });
+    it('isolates material capture without replacing the original-text, vocabulary or reading contracts', () => {
+        const alias = userscriptAliases.find(entry => entry.replacement.endsWith('/userscript/materialCapture.ts'));
+        expect(alias?.find).toBeInstanceOf(RegExp);
+        const boundary = alias!.find as RegExp;
+        expect(boundary.test('@/src/features/vocabulary/material/public')).toBe(true);
+        for (const path of ['@/src/features/vocabulary/material/text/public', '@/src/features/vocabulary/public',
+            '@/src/features/reading-assistant/public', '@/src/features/vocabulary/material/public/nested']) {
+            expect(boundary.test(path)).toBe(false);
+        }
+    });
+    it('replaces only the vocabulary UI barrel and keeps every neighboring public contract distinct', () => {
+        const alias = userscriptAliases.find(entry => entry.replacement.endsWith('/userscript/vocabularyUi.ts'));
+        expect(alias?.find).toBeInstanceOf(RegExp);
+        const boundary = alias!.find as RegExp;
+        expect(boundary.test('@/src/features/vocabulary/ui/public')).toBe(true);
+        for (const path of ['@/src/features/vocabulary/public', '@/src/features/vocabulary/material/public',
+            '@/src/features/vocabulary/material/text/public', '@/src/features/reading-assistant/ui/public',
+            '@/src/features/vocabulary/ui/public/nested', '@/src/features/vocabulary/ui/VocabularyBook.vue']) {
+            expect(boundary.test(path)).toBe(false);
+        }
+    });
     it('pins each remote language file to a commit containing exactly its built contents', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const commit = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__);
         const bundles = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__) as Record<string, string>;
-        expect(commit).toBe('50e59c08290b47af8ea0d91c9d8403a8841c304f');
-        expect(bundles).toEqual({
-            'ja-JP': 'ja-JP.a2e0e46262be844e.json',
-            'ko-KR': 'ko-KR.496a2393c33e1f1a.json',
-            'fr-FR': 'fr-FR.ecb180570edeb097.json',
-            'ru-RU': 'ru-RU.3ae9903f73059e86.json',
-            'es-ES': 'es-ES.be72661f69196d35.json',
-        });
+        expect(commit).toBe('6112632a8ced3de4f104cab445eefdbc9f23bdb7');
+        expect(bundles).toEqual(pinnedLanguageFiles);
         for (const file of Object.values(bundles)) {
             const path = `userscript/languages/${file}`;
             const committed = execFileSync('git', ['show', `${commit}:${path}`], {cwd: process.cwd(), encoding: 'utf8'});
@@ -1523,12 +1558,186 @@ describe('standalone service brand paths at actual icon use', () => {
     });
 });
 
+// 只替换调用者和共享编排的测试端口；两个生产 wrapper、HTTP 实现及锁定 SDK 均由真实 Vite 解析、编译和执行。
+describe('standalone OpenAI transport build boundary', () => {
+    const root = process.cwd();
+    const owner = resolve(root, 'src/providers/translation/ai-sdk/openai-compatible');
+    const standaloneOwner = resolve(root, 'userscript/openaiCompatible.ts');
+    const transport = resolve(root, 'src/providers/translation/ai-sdk/openai-transport.ts');
+    const http = resolve(root, 'src/providers/translation/ai-sdk/openai-http.ts');
+    const callers = ['registry.ts', 'doubao.ts', 'azure-openai.ts'].map(name => resolve(root, 'src/providers/translation', name));
+    const resolveOwner = (source: string, importer?: string) => (createStandaloneOpenAITransportPlugin().resolveId as
+        (source: string, importer?: string) => string | null)(source, importer);
+
+    it.each(callers.flatMap(importer => [false, true].map(extension => ({importer, extension}))))(
+        'resolves the exact relative owner for $importer (explicit TS: $extension)', ({importer, extension}) => {
+            const original = readFileSync(importer, 'utf8');
+            const match = original.match(/import\s*\{translateWithOpenAICompatibleAiSdk\}\s*from\s*['"]([^'"]+)['"]/u);
+            expect(match?.[1]).toBe('./ai-sdk/openai-compatible');
+            expect(resolveOwner(match![1] + (extension ? '.ts' : ''), importer)).toBe(standaloneOwner);
+            expect(resolveOwner(match![1] + (extension ? '.ts' : ''), importer + '?fixture')).toBe(standaloneOwner);
+        });
+
+    it.each([owner, `${owner}.ts`, '@/src/providers/translation/ai-sdk/openai-compatible', '@/src/providers/translation/ai-sdk/openai-compatible.ts'])(
+        'resolves exact absolute or alias owner %s without an importer', source => {
+            expect(resolveOwner(source)).toBe(standaloneOwner);
+        });
+
+    it.each([
+        '@ai-sdk/openai-compatible', '@ai-sdk/openai-compatible.ts', 'ai',
+        './ai-sdk/openai-compatible.js', './ai-sdk/openai-compatible.ts?raw', './ai-sdk/openai-compatible?url',
+        './ai-sdk/openai-compatible-extra', './ai-sdk/openai-compatible/index.ts',
+        '@/other/openai-compatible', '@/src/providers/translation/ai-sdk/openai-compatible.tsx',
+        '@/src/providers/translation/ai-sdk/openai-compatible?raw', `${owner}.ts?commonjs-proxy`,
+        `${owner}-extra.ts`, `${owner}.ts.map`, `\0${owner}.ts`,
+        resolve(root, 'other/src/providers/translation/ai-sdk/openai-compatible.ts'),
+    ])('does not redirect vendor, other owner, suffix or virtual import %s', source => {
+        expect(resolveOwner(source, callers[0])).toBeNull();
+    });
+
+    it('does not guess the owner for a relative import without an importer or from another directory', () => {
+        expect(resolveOwner('./ai-sdk/openai-compatible')).toBeNull();
+        expect(resolveOwner('./ai-sdk/openai-compatible', resolve(root, 'other/registry.ts'))).toBeNull();
+    });
+
+    it('builds the real vendor, same-basename file and raw owner without redirecting them', async () => {
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-openai-vendor-boundary-'));
+        try {
+            const entryPath = resolve(root, 'userscript/openai-vendor-fixture.ts');
+            writeFileSync(resolve(fixture, 'openai-compatible.ts'), 'export const marker="separate-owner";');
+            const entrySource = 'import {createOpenAICompatible} from "@ai-sdk/openai-compatible";'
+                + `import {marker} from ${JSON.stringify(resolve(fixture, 'openai-compatible.ts'))};`
+                + `import rawOwner from ${JSON.stringify(`${owner}.ts?raw`)};`
+                + 'globalThis.vendorBoundaryFixture={model:createOpenAICompatible({name:"vendor-control",baseURL:"https://fixture.invalid/v1"})("vendor-control-model"),marker,rawOwner};';
+            const {build} = await import('vite');
+            const config = userscriptConfig as import('vite').UserConfig;
+            const result = await build({root, configFile: false, publicDir: false, logLevel: 'silent',
+                plugins: [createStandaloneOpenAITransportPlugin(), {name: 'controlled-vendor-consumer',
+                    resolveId(id) { return id === entryPath ? id : null; }, load(id) { return id === entryPath ? entrySource : null; }}],
+                resolve: config.resolve, define: config.define,
+                build: {...config.build, write: false, outDir: resolve(fixture, 'unused-output'),
+                    lib: {entry: entryPath, name: 'OpenAIVendorBoundary', formats: ['iife']},
+                    rollupOptions: {output: {inlineDynamicImports: true}}}});
+            const outputs = Array.isArray(result) ? result : [result];
+            expect(outputs).toHaveLength(1);
+            if (!('output' in outputs[0]) || outputs[0].output.length !== 1 || outputs[0].output[0].type !== 'chunk') throw new Error('Expected one real vendor build');
+            const chunk = outputs[0].output[0];
+            expect(chunk.imports).toEqual([]);expect(chunk.dynamicImports).toEqual([]);
+            expect(chunk.moduleIds.some(id => /\/node_modules\/@ai-sdk\/openai-compatible\/dist\//u.test(id))).toBe(true);
+            expect(chunk.moduleIds).toContain(realpathSync(resolve(fixture, 'openai-compatible.ts')));
+            expect(chunk.moduleIds).toContain(`${owner}.ts?raw`);
+            expect(chunk.moduleIds).not.toContain(`${owner}.ts`);
+            expect(chunk.moduleIds).not.toContain(standaloneOwner);
+            expect(chunk.moduleIds).not.toContain(http);
+            const forbiddenFetch = vi.fn(() => { throw new Error('Unexpected global network request'); });
+            const realm = {vendorBoundaryFixture: undefined as {model: {modelId: string}; marker: string; rawOwner: string} | undefined,
+                URL, URLSearchParams, Headers, Request, Response, TextDecoder, TextEncoder, Uint8Array, ArrayBuffer, AbortController,
+                ReadableStream, WritableStream, TransformStream, fetch: forbiddenFetch, console};
+            runInNewContext(chunk.code, realm, {timeout: 5_000});
+            expect(realm.vendorBoundaryFixture?.model.modelId).toBe('vendor-control-model');
+            expect(realm.vendorBoundaryFixture?.marker).toBe('separate-owner');
+            expect(realm.vendorBoundaryFixture?.rawOwner).toBe(readFileSync(`${owner}.ts`, 'utf8'));
+            expect(forbiddenFetch).not.toHaveBeenCalled();
+        } finally {rmSync(fixture, {recursive: true, force: true});}
+    }, 30_000);
+
+    it.each([
+        ['ordinary', '0', '0', false], ['standalone', '1', '0', true],
+        ['greasy-fork', '0', '1', false], ['standalone-and-greasy', '1', '1', false],
+    ] as const)('executes real %s owner builds and preserves the expected SDK module reachability', async (_label, standalone, greasy, lightweight) => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', standalone);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', greasy);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        vi.stubGlobal('window', {});
+        const forbiddenFetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => { throw new Error('Unexpected global network request'); });
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-openai-owner-'));
+        try {
+            vi.resetModules();
+            const {default: configuration} = await import('@/userscript/vite.config');
+            const config = configuration as import('vite').UserConfig;
+            const plugin = (config.plugins as import('vite').Plugin[]).find(item => item.name === 'standalone-openai-transport');
+            expect(Boolean(plugin)).toBe(lightweight);
+            const callerSources = new Map(callers.map(id => {
+                const match = readFileSync(id, 'utf8').match(/import\s*\{translateWithOpenAICompatibleAiSdk\}\s*from\s*['"]([^'"]+)['"]/u);
+                if (!match) throw new Error(`Production caller changed: ${id}`);
+                return [id, `export {translateWithOpenAICompatibleAiSdk} from ${JSON.stringify(match[1])};`];
+            }));
+            const imports = [...callers, owner, `${owner}.ts`, '@/src/providers/translation/ai-sdk/openai-compatible', '@/src/providers/translation/ai-sdk/openai-compatible.ts'];
+            const entryPath = resolve(fixture, 'entry.mjs');
+            writeFileSync(entryPath, imports.map((source, i) => `import {translateWithOpenAICompatibleAiSdk as run${i}} from ${JSON.stringify(source)};`).join('\n')
+                + `\nglobalThis.openAIOwnerFixture=[${imports.map((_, i) => `run${i}`).join(',')}];`);
+            const loadedCallers = new Set<string>();
+            const boundary: import('vite').Plugin = {name: 'controlled-openai-consumer', enforce: 'pre', load(id) {
+                if (callerSources.has(id)) { loadedCallers.add(id); return callerSources.get(id); }
+                // 共享编排另有独立合同测试；这里保留真实 execution.run 的可达性，且不替换任何 SDK 模块。
+                if (id === transport) return 'export function translateOpenAICompatible(call, execution) { return execution.run(call); } export const AI_SDK_MAX_RETRIES=2, AI_SDK_REQUEST_TIMEOUT_MS=120000;';
+                return null;
+            }};
+            const {build} = await import('vite');
+            const result = await build({root, configFile: false, publicDir: false, logLevel: 'silent',
+                plugins: [...(plugin ? [plugin] : []), boundary], resolve: config.resolve, define: config.define,
+                build: {...config.build, write: false, outDir: resolve(fixture, 'unused-output'),
+                    lib: {entry: entryPath, name: 'OpenAIOwnerFixture', formats: ['iife']}}});
+            const outputs = Array.isArray(result) ? result : [result];
+            expect(outputs).toHaveLength(1);
+            if (!('output' in outputs[0]) || outputs[0].output.length !== 1 || outputs[0].output[0].type !== 'chunk') throw new Error('Expected one actual owner build');
+            const chunk = outputs[0].output[0];
+            expect(chunk.dynamicImports).toEqual([]);
+            // 纯 re-export 的消费模块会被 Rollup 合并；load 证据仍固定三个真实 importer 的解析。
+            expect([...loadedCallers].sort()).toEqual(callers.slice().sort());
+            expect(chunk.moduleIds).toContain(transport);
+            expect(chunk.moduleIds.includes(standaloneOwner)).toBe(lightweight);
+            expect(chunk.moduleIds.includes(`${owner}.ts`)).toBe(!lightweight);
+            expect(chunk.moduleIds.includes(http)).toBe(lightweight);
+            const externalSDK = !lightweight && standalone === '0' && greasy === '1';
+            expect(chunk.imports.slice().sort()).toEqual(externalSDK ? ['@ai-sdk/openai-compatible', 'ai'] : []);
+            expect(chunk.moduleIds.some(id => /\/node_modules\/ai\/dist\//u.test(id))).toBe(!lightweight && !externalSDK);
+            expect(chunk.moduleIds.some(id => /\/node_modules\/@ai-sdk\/openai-compatible\/dist\//u.test(id))).toBe(!lightweight && !externalSDK);
+            if (lightweight) expect(chunk.moduleIds.filter(id => /\/node_modules\/(?:@ai-sdk\/|ai\/|zod\/)/u.test(id))).toEqual([]);
+            const realm = {openAIOwnerFixture: undefined as Array<(call: unknown) => Promise<string>> | undefined,
+                window: {}, URL, URLSearchParams, Headers, Request, Response, AbortController, AbortSignal, TextDecoder, TextEncoder,
+                ReadableStream, WritableStream, TransformStream, fetch: forbiddenFetch,
+                Uint8Array, ArrayBuffer, Error, TypeError, DOMException, structuredClone, performance,
+                crypto: globalThis.crypto, setTimeout, clearTimeout, console,
+                // Greasy 的外部出口也使用安装的真实 SDK，只把固定 @require 的加载位置替换为内存对象。
+                FluentReadUserscriptVendor: externalSDK ? {ai: await import('ai'), openAICompatible: await import('@ai-sdk/openai-compatible')} : undefined};
+            runInNewContext(chunk.code, realm, {timeout: 5_000});
+            const runs = realm.openAIOwnerFixture!;
+            expect(runs).toHaveLength(imports.length);
+            expect(new Set(runs).size).toBe(1);
+            const requests: Array<{url: string; body: string; headers: Headers}> = [];
+            const controller = new AbortController();
+            const requestBody = {model: 'controlled-build-model', messages: [{role: 'user', content: '构建端口 fixture'}], stream: false};
+            const call = {endpoint: {endpoint: 'https://fixture.invalid/v1/chat/completions', baseURL: 'https://fixture.invalid/v1/', queryParams: {'api-version': 'fixture'}},
+                apiKey: 'synthetic-build-key', headers: {'X-Owner': 'fixture'}, requestBody, maxRetries: 0, signal: controller.signal,
+                fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+                    requests.push({url: String(input), body: String(init?.body), headers: new Headers(init?.headers)});
+                    return new Response(JSON.stringify({choices: [{message: {role: 'assistant', content: '构建端口译文'}, finish_reason: 'stop'}]}),
+                        {headers: {'content-type': 'application/json'}});
+                }};
+            for (const run of runs) expect(await run(call)).toBe('构建端口译文');
+            expect(requests).toHaveLength(imports.length);
+            for (const request of requests) {
+                expect(request.url).toBe('https://fixture.invalid/v1/chat/completions?api-version=fixture');
+                expect(request.body).toBe(JSON.stringify(requestBody));
+                expect(request.headers.get('authorization')).toBe('Bearer synthetic-build-key');
+                expect(request.headers.get('x-owner')).toBe('fixture');
+            }
+            expect(forbiddenFetch).not.toHaveBeenCalled();
+        } finally {
+            rmSync(fixture, {recursive: true, force: true});
+            forbiddenFetch.mockRestore();
+            vi.unstubAllEnvs();vi.unstubAllGlobals();vi.resetModules();
+        }
+    }, 30_000);
+});
 
 describe('userscript appearance registry data owner', () => {
     const root=process.cwd(), id=resolve(root,'src/core/config/interfaceAppearance.ts');
     const actualSource=readFileSync(id,'utf8');
     type Transform={transform(code:string,id:string):{code:string;map:null}|null};
-    const plugin=(enabled=true)=>createUserscriptInterfaceAppearanceDataPlugin(root,enabled) as unknown as Transform;
+    const plugin=(enabled=true)=>createUserscriptSettingsDataPlugin(root,enabled,true) as unknown as Transform;
     const fixture=(skin='[{value:"skin"}]',font='[{value:"font"}]')=>`export const interfaceSkinOptions=${skin};export const interfaceFontOptions=${font};`;
     function transformed(code=actualSource){const result=plugin().transform(code,id);expect(result).not.toBeNull();return result!.code;}
     async function execute(source:string){
@@ -1571,7 +1780,7 @@ describe('userscript appearance registry data owner', () => {
         expect(plugin().transform('arbitrary executable source',other)).toBeNull();
     });
     it('keeps disabled mode inert without reading or executing a module',()=>{
-        const disabled=createUserscriptInterfaceAppearanceDataPlugin('/missing-appearance-root') as unknown as Transform;
+        const disabled=createUserscriptSettingsDataPlugin('/missing-appearance-root',false) as unknown as Transform;
         expect(disabled.transform('throw new Error("not reached")','/missing-appearance-root/src/core/config/interfaceAppearance.ts')).toBeNull();
     });
     it.each([
@@ -1600,7 +1809,7 @@ describe('userscript appearance registry data owner', () => {
         const directory=mkdtempSync(resolve(tmpdir(),'fluentread-appearance-owner-'));
         try{
             vi.resetModules();const {default:configuration}=await import('@/userscript/vite.config');const config=configuration as import('vite').UserConfig;
-            const selected=(config.plugins as import('vite').Plugin[]).find(item=>item.name==='compress-userscript-interface-appearance-data');expect(selected).toBeDefined();
+            const selected=(config.plugins as import('vite').Plugin[]).find(item=>item.name==='standalone-settings-data');expect(selected).toBeDefined();
             const entry=resolve(directory,'entry.ts');writeFileSync(entry,'import * as appearance from "@/src/core/config/interfaceAppearance";globalThis.appearanceOwner=appearance;');
             const {build}=await import('vite');const result=await build({root,configFile:false,publicDir:false,logLevel:'silent',plugins:[selected!],resolve:config.resolve,
                 build:{...config.build,write:false,outDir:resolve(directory,'unused'),lib:{entry,name:'AppearanceOwner',formats:['iife']},rollupOptions:{output:{inlineDynamicImports:true}}}});

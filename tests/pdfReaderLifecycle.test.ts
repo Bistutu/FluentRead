@@ -1463,3 +1463,44 @@ describe('standalone readable raster fallback source lease', () => {
         reader.release(); expect(destroy).toHaveBeenCalledOnce();
     });
 });
+
+it('exposes current visible material segment and restores that exact later paragraph in the actual reader component', async () => {
+    const doc = model(); doc.segments = [...doc.segments, {id: 1, source: 'Later original paragraph'}];
+    const page = (doc.binary as Extract<ParsedDocument['binary'], {kind: 'pdf'}>).pages[0];
+    page.segmentIndexes.push(1); page.blocks.push({...page.blocks[0], segmentIndex: 1, y: 500});
+    const reader = mountReader(doc, 'source'); await componentFlush();
+    const exposed = mountedApp._instance.subTree.component.exposed;
+    reader.state.zoom = '1'; await componentFlush();
+    reader.viewport.scrollTop = 450;
+    reader.viewport.getBoundingClientRect = () => ({left: 0, top: 0, right: 920, bottom: 600, width: 920, height: 600}) as DOMRect;
+    const host = reader.root.querySelector('.pdf-canvas-host')!;
+    host.getBoundingClientRect = () => ({left: 0, top: 12 - reader.viewport.scrollTop, right: 612, bottom: 804 - reader.viewport.scrollTop, width: 612, height: 792}) as DOMRect;
+    expect(exposed.captureMaterialLocation()).toBe(1);
+    reader.viewport.scrollTop = 0;
+    const restoring = exposed.resumeLocation(1);
+    for (let attempt = 0; attempt < 4; attempt++) {await componentFlush(); flushFrames();}
+    expect(await restoring).toBe(true); expect(reader.viewport.scrollTop).toBe(488);
+    reader.root.setAttribute('hidden', ''); expect(exposed.captureMaterialLocation()).toBeUndefined();
+    reader.root.removeAttribute('hidden');
+    const old = exposed.resumeLocation(0); mountedApp.unmount(); mountedApp = undefined;
+    expect(await old).toBe(false); expect(exposed.captureMaterialLocation()).toBeUndefined();
+});
+
+it('public material cancellation preserves user scrolling and invalidates both pending page and layout work', async () => {
+    const reader = mountReader(model(3)); await componentFlush(); const exposed = mountedApp._instance.subTree.component.exposed;
+    reader.viewport.scrollTop = 150;
+    const beforePageCommit = exposed.resumeLocation(2); exposed.cancelMaterialResume();
+    expect(await beforePageCommit).toBe(false); expect(reader.viewport.scrollTop).toBe(150);
+    const restoring = exposed.resumeLocation(1); await componentFlush();
+    expect(frames.size).toBeGreaterThan(0);
+    reader.viewport.scrollTop = 850; exposed.cancelMaterialResume(); flushFrames(); await componentFlush();
+    expect(await restoring).toBe(false); expect(reader.viewport.scrollTop).toBe(850);
+});
+
+it('programmatic scrolling alone does not claim trusted navigation ownership or cancel the pending material restore', async () => {
+    const reader = mountReader(model(3)); await componentFlush(); const exposed = mountedApp._instance.subTree.component.exposed;
+    const restoring = exposed.resumeLocation(1); await componentFlush();
+    reader.viewport.scrollTop = 850; reader.viewport.dispatchEvent(new document.defaultView!.Event('scroll'));
+    for (let attempt = 0; attempt < 4; attempt++) {flushFrames(); await componentFlush();}
+    expect(await restoring).toBe(true); expect(reader.viewport.scrollTop).not.toBe(850);
+});

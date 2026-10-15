@@ -7,5 +7,8 @@
 import originsByProvider from './freeProviderOrigins.json';
 import type {FreeTranslationProviderId} from './freeTranslation';
 
-for (const origins of Object.values(originsByProvider)) Object.freeze(origins);
-export const FREE_PROVIDER_ORIGINS: Readonly<Record<FreeTranslationProviderId, readonly string[]>> = Object.freeze(originsByProvider);
+export const FREE_PROVIDER_ORIGINS: Readonly<Record<FreeTranslationProviderId, readonly string[]>> = /* @__PURE__ */ (() => {
+    // 只冻结新建副本，不修改 JSON 导入对象；未使用目录的构建可删除整个纯初始化。
+    const origins = Object.fromEntries(Object.entries(originsByProvider).map(([id, values]) => [id, Object.freeze([...values])])) as Record<FreeTranslationProviderId, readonly string[]>;
+    return Object.freeze(origins);
+})();

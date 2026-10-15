@@ -628,9 +628,11 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
         if (input.graphics.some(shape => shape.kind === 'path' && shape.x >= region.x - 2 && right(shape) <= right(region) + 2
             && (shape.width >= region.width * 0.7 && (shape.height <= 2 || shaded) || shape.width <= 2 && shape.height <= line.fontSize * 1.5)
             && [shape.y, bottom(shape)].some(y => y > last.baseline + 1 && y < line.baseline - 1))) return true;
-        // 无逐行表线的表格以数值列基线分记录（含数值列自身）；SE 3.5 等字母编号不是数值，科学计数法仍是。
+        // 无逐行表线的表格以数值列基线分记录；数值可紧接单个单位表达（°、斜杠、乘点及上标），字母前缀编号和多词描述不能借此拆行。
         return lines.some(other => coversLine(region, other) && Math.abs(other.baseline - line.baseline) <= 1
-            && !readable(other.text) && /\d/u.test(other.text) && !/\p{L}/u.test(other.text.replace(/(\d)[eE]([+\-−]?\d)/gu, '$1$2')));
+            && !readable(other.text) && /\d/u.test(other.text)
+            && (!/\p{L}/u.test(other.text.replace(/(\d)[eE]([+\-−]?\d)/gu, '$1$2'))
+                || /^[+\-−]?(?:\d+(?:[.,]\d+)?|[.,]\d+)(?:[eE][+\-−]?\d+)?\s*°?\p{L}+\p{N}*(?:[\/·⋅*]°?\p{L}+\p{N}*)*$/u.test(other.text.trim())));
     };
     const tableEdges = new Map<PdfPreservedRegion, {xs: number[]; ys: number[]; rules: Rectangle[]}>();
     const uniqueEdges = (values: number[]) => {

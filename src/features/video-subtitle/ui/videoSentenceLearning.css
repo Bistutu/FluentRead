@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/ui/videoSentenceLearning.css
  * 文件职责：为完整句学习提供层次清楚、可折叠的播放器内双语阅读卡样式。
- * 主要内容：沿用既有视频菜单的局部深灰表面与品牌粉色，突出原句与下方重播，把播放辅助做成互斥分段项；译文与讲解默认阅读，编辑按需出现，纵向留白随小播放器可用高度收缩，固定操作和滚动正文保留原播放器控制区。
+ * 主要内容：沿用既有视频菜单的局部深灰表面与品牌粉色，突出原句与下方重播，把播放辅助做成互斥分段项；纵向留白随小播放器收缩，粗指针下主操作与顶栏图标保留至少 44px 点击区域，固定操作和滚动正文保留原播放器控制区。
  * 模块边界：仅匹配 FluentRead 自有面板后代，由字幕 runtime 显式注入和清理，不依赖宿主样式或 WXT Shadow UI 自动挂载。
  */
 #fluent-read-video-learning-panel .fr-video-learning {
@@ -123,3 +123,10 @@
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-navigation button { min-height: 32px; padding: 5px 6px; font-size: 12px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-footer { padding: var(--fr-learning-compact-space) 10px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-footer-actions button { min-height: 30px; padding: 5px 6px; font-size: 11px; }
+
+@media (pointer: coarse) {
+  #fluent-read-video-learning-panel .fr-video-learning-footer-actions button,
+  #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-footer-actions button { min-height: 44px; }
+  #fluent-read-video-learning-panel .fr-video-learning-header-actions button.fr-video-learning-icon,
+  #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-header-actions button.fr-video-learning-icon { min-width: 44px; min-height: 44px; }
+}

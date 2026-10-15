@@ -54,8 +54,9 @@ function node(predicate: (n: Node) => boolean) {const found = [...nodes].reverse
 beforeEach(async () => {
   vi.clearAllMocks();intervals.clear();timeouts.clear();clientModules.clear();observers.length = 0;animationFrames.clear();fontListeners.clear();geometry.visible = true;geometry.tops.clear();reducedMotion.mockReturnValue(false);development = false
   vi.stubGlobal('requestAnimationFrame', requestFrame);vi.stubGlobal('cancelAnimationFrame', cancelFrame)
-  vi.stubGlobal('document', {fonts: {addEventListener: (_type: string, callback: () => void) => fontListeners.add(callback), removeEventListener: (_type: string, callback: () => void) => fontListeners.delete(callback)}})
-  vi.stubGlobal('window', {matchMedia: () => ({matches: reducedMotion()})})
+  // 免费设置会注册/释放页面恢复事件；端口保留真实 EventTarget 语义，不用空函数掩盖监听生命周期。
+  vi.stubGlobal('document', Object.assign(new EventTarget(), {visibilityState: 'visible', fonts: {addEventListener: (_type: string, callback: () => void) => fontListeners.add(callback), removeEventListener: (_type: string, callback: () => void) => fontListeners.delete(callback)}}))
+  vi.stubGlobal('window', Object.assign(new EventTarget(), {matchMedia: () => ({matches: reducedMotion()})}))
   vi.stubGlobal('ResizeObserver', class {
     observe = vi.fn();unobserve = vi.fn();disconnect = vi.fn()
     constructor(callback: () => void) {observers.push({callback, observe: this.observe, unobserve: this.unobserve, disconnect: this.disconnect})}

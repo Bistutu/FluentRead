@@ -78,6 +78,7 @@ try {
         await mkdir(path.join(output, 'tools'), {recursive: true});
         for (const file of Object.keys(toolHashes)) await writeFile(path.join(output, 'tools', file), await readFile(path.join(root, 'scripts/quality', file)));
         report = {schemaVersion: 1, id: `quality-${Date.now()}`, createdAt: new Date().toISOString(), fingerprint,
+            plan: {sampleIds: samples.map(sample => sample.id), providerIds: providers, configurationId: configuration, repeats},
             corpus: {...corpus, sha256: identity.corpusSha256},
             environment: {node: process.version, platform: process.platform, sourceRoot,
                 revision: execFileSync('git', ['rev-parse', 'HEAD'], {cwd: sourceRoot, encoding: 'utf8'}).trim(),
@@ -94,7 +95,7 @@ try {
     }
     const save = async () => {
         report.updatedAt = new Date().toISOString();
-        report.summary = summarize(report.runs);
+        report.summary = summarize(report.runs, report.plan);
         if (baseline) report.comparison = compareReports(baseline, report);
         await writeFile(`${reportPath}.tmp`, JSON.stringify(report, null, 2) + '\n');
         await rename(`${reportPath}.tmp`, reportPath);

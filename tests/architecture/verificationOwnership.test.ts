@@ -33,6 +33,11 @@ const DOCS_TOOL_SCRIPTS = [
     'scripts/verify-docs-build.mjs',
     'scripts/verify-storybook-build.mjs',
 ];
+// 评测/报告/传输由 translationQuality 专项验证；运行器与供应商入口另由显式在线评测记录源码哈希。
+const QUALITY_TOOL_SCRIPTS = [
+    'scripts/quality/audit.mjs', 'scripts/quality/evaluate.mjs', 'scripts/quality/provider-entry.ts',
+    'scripts/quality/render.mjs', 'scripts/quality/report.mjs', 'scripts/quality/run.mjs', 'scripts/quality/transport.mjs',
+];
 
 type VerificationOwner =
     | 'brand-copy-functional'
@@ -133,6 +138,7 @@ function verificationOwners(path: string, strictCoverage: Set<string>): Verifica
     if (path === 'scripts/verify-brand-copy.mjs') owners.add('brand-copy-functional');
     if (path.startsWith('examples/')) owners.add('isolated-browser-regression');
     if (path.startsWith('scripts/run-') || path.startsWith('scripts/site-translation/')
+        || path === 'scripts/quality/review-browser.cjs'
         || path === 'scripts/capture-docs-ui.cjs') {
         owners.add('isolated-browser-regression');
     }
@@ -142,6 +148,7 @@ function verificationOwners(path: string, strictCoverage: Set<string>): Verifica
         || path.startsWith('scripts/wasm/')
         || PRODUCT_TOOL_SCRIPTS.includes(path)
         || DOCS_TOOL_SCRIPTS.includes(path)
+        || QUALITY_TOOL_SCRIPTS.includes(path)
         || path === 'scripts/generate-userscript-language-data.mjs'
         || path === 'scripts/build-userscript-standalone.mjs'
         || path === 'scripts/build-userscript-greasyfork.mjs'
@@ -303,10 +310,9 @@ const BUILD_ONLY_SRC_ALLOWLIST = new Set([
     'src/features/selection-translation/services/edgeTts.ts',
     // 可选 ECDICT 资产绑定 CacheStorage、Web Crypto 和固定 CDN 响应；完整性、缓存与降级由词典功能测试及双浏览器构建验证。
     'src/features/selection-translation/services/ecdictAsset.ts',
-    // Provider 注册表与 AI SDK transport 是依赖注入/网络协议组装；由注册表契约、功能测试和双浏览器构建共同验证。
+    // Provider 注册表是依赖注入组装；OpenAI 的共享边界、SDK 与 standalone 执行器已按真实离线合同进入严格覆盖。
     'src/providers/translation/registry.ts',
     'src/providers/translation/local-translation.ts',
-    'src/providers/translation/ai-sdk/openai-compatible.ts',
     // 以下文件逐一绑定真实网络协议或浏览器 offscreen API；纯端点、错误和鉴权逻辑已拆出并纳入 strict coverage。
     // DeepLX 自身包含模式选择、有序故障转移、共享时限及响应校验，现通过外部传输端口测试进入严格覆盖，不再按仅组装模块豁免。
     'src/providers/translation/azure-openai.ts',

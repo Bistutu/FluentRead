@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/core/pdfBlockFit.ts
  * 文件职责：为“原版排版”阅读把一段译文放回原文段落所占的矩形，决定哪些段落可以原位替换、可用高度和最终字号与分行。
- * 主要内容：筛选可原位替换的正文块并排除版面分析标记为保留的公式、图内标签、数字表格单元格与页眉页脚，含词语的表格单元格可以替换；量出段落下方到相邻内容之间的空白；从原字号开始按面积比例收缩，直到译文按行距排入可用高度或达到最小可读字号，超出时如实标记溢出而不裁掉文字。
+ * 主要内容：筛选可原位替换的正文块并排除版面分析标记为保留的公式、图内标签、数字表格单元格与页眉页脚，含词语的表格单元格可以替换；量出段落下方到相邻内容之间的空白；从原字号开始按面积比例收缩，能完整放下时保留该布局。仍然溢出时采用能够容纳一行的最大已测字号作可读预览，完整文本交给全文面板与导出续页，不因缩成小字也放不下而牺牲预览可读性。
  * 模块边界：纯几何与文字分行，不创建 DOM 或 Canvas、不读取像素、不调用翻译；字宽测量由调用方注入，页面旋转由展示层处理。
  */
 import type {PdfDocumentBlock, PdfDocumentPage} from './document';
@@ -81,6 +81,7 @@ export function fitPdfBlockText(input: PdfBlockFitInput, measure: PdfBlockMeasur
     const floor = Math.min(start, positive(input.minFontSize, 6));
     const ratio = Math.min(1.6, Math.max(1.25, positive(input.lineHeight, start) / start));
     let fontSize = start;
+    let overflowPreview: PdfBlockFit | undefined;
     for (let step = 0; ; step += 1) {
         // 字号已经明显缩小时收紧行距：原本一行高的位置可以排下两行小字，译文比原文长一倍的单行条目不必被截断。
         const lineHeight = fontSize * (fontSize < start * 0.75 ? Math.min(ratio, 1.12) : ratio);
@@ -92,7 +93,11 @@ export function fitPdfBlockText(input: PdfBlockFitInput, measure: PdfBlockMeasur
             return Math.max(max, Number.isFinite(measured) ? measured : Infinity);
         }, 0);
         const fits = needed <= height + lineHeight * 0.25 && widest <= width;
-        if (fits || fontSize <= floor || step >= 12) return {fontSize, lineHeight, lines, overflow: !fits};
+        const layout = {fontSize, lineHeight, lines, overflow: !fits};
+        // 保存首个能显示完整一行的布局；只有全文最终仍放不下时才使用，普通适配和表格边界不变。
+        if (!overflowPreview && lineHeight <= height + lineHeight * 0.25 && widest <= width) overflowPreview = layout;
+        if (fits) return layout;
+        if (fontSize <= floor || step >= 12) return overflowPreview ?? layout;
         fontSize = Math.max(floor, fontSize * Math.min(0.97, Math.max(0.8, Math.min(Math.sqrt(height / needed), width / widest))));
     }
 }

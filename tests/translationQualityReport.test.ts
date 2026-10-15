@@ -67,6 +67,7 @@ describe('translation quality report', () => {
         expect(page.visible()).toEqual([0, 1]);
         expect(page.document.getElementById('result-count')!.textContent).toBe('2 / 4 条结果');
         expect(page.document.querySelector('#run-0 .source')!.textContent).toBe('Do not exceed 25 ms.');
+        expect(page.document.querySelector('#run-0 .source')!.closest('details')).toBe(null);
         expect(page.document.querySelector('#run-0 .requirements')!.textContent).toContain('保留不得超过的否定关系');
         expect(page.document.querySelector('#run-2 .failure')!.textContent).toContain('不计为语义错误');
         expect(page.document.body.textContent).toContain('金额成本：未知');
@@ -219,5 +220,38 @@ describe('translation quality report', () => {
         expect(firstRow.querySelector('td:last-child')!.textContent).toBe('未知 / 160');
         report.runs[0].cost.responseBytes = null;
         expect(openReport(report).document.querySelector('tbody tr td:last-child')!.textContent).toBe('未知 / 未知');
+    });
+
+    it('只把本轮出现的唯一语料计入样本数，并将暂缓与实际请求失败区分', () => {
+        const report = fixture();
+        report.runs = [report.runs[0], {...report.runs[2],
+            failure: {category: 'deferred', message: 'Waiting for provider recovery'},
+            cost: {...report.runs[2].cost, httpRequests: 0, inputCharacters: 0},
+        }];
+        const page = openReport(report);
+        expect(page.document.querySelector('.stats')!.textContent).toContain('1个本轮样本 / 语料共 2 个');
+        expect(page.document.querySelector('#run-1 .badge')!.textContent).toBe('已暂缓 · 未发送请求');
+        expect(page.document.querySelector('#run-1 .failure')!.textContent).toContain('尚未发送请求');
+        expect(openReport({...report, runs: []}).document.querySelector('.stats')!.textContent).toContain('0个本轮样本 / 语料共 2 个');
+    });
+
+    it('对照表保留计划、恢复记录与真实发出请求的不同分母，并列出尚未执行的服务', () => {
+        const report = fixture();
+        const success = report.runs[0];
+        const noRequest = {...success.cost, httpRequests: 0, inputCharacters: 999, requestBytes: 0, responseBytes: 0};
+        report.plan = {sampleIds: ['technical-negation', 'news-budget'], providerIds: ['alpha', 'not-started'], configurationId: 'default', repeats: 2};
+        report.runs = [success,
+            {...success, status: 'failure', failure: {category: 'deferred', message: 'Cooldown'}, cost: noRequest},
+            {...success, status: 'cancelled', cost: noRequest},
+        ];
+        const page = openReport(report);
+        const rows = [...page.document.querySelectorAll('tbody tr')];
+        expect([...rows[0].querySelectorAll('td')].slice(0, 5).map(cell => cell.textContent)).toEqual(['4 / 3', '2 / 1', '1', '1', '0 / 1 / 1']);
+        expect(rows[1].querySelector('th')!.textContent).toContain('not-started');
+        expect([...rows[1].querySelectorAll('td')].slice(0, 5).map(cell => cell.textContent)).toEqual(['4 / 0', '0 / 0', '0', '0', '0 / 0 / 0']);
+        expect(rows[0].querySelector('td:nth-of-type(8)')!.textContent).toBe('20');
+        expect(page.document.body.textContent).toContain('零 HTTP');
+        expect(report.runs[1].cost.inputCharacters).toBe(999);
+        expect(openReport({...report, runs: []}).document.querySelector('.comparison > summary')!.textContent).toContain('2 组');
     });
 });

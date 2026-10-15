@@ -22,6 +22,7 @@ import type {PopupActiveTab} from '@/src/app/popup/pageActions';
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 const language = runtime.ref<UiLanguage>('zh-CN');
+const bundleRevision = runtime.ref(0);
 const config = new Config();
 const listeners = new Set<(value: Config) => void>();
 const patches = vi.fn(), openOptions = vi.fn(), createTab = vi.fn();
@@ -47,7 +48,7 @@ function model() {return summary().querySelector('.provider-summary-model');}
 
 beforeAll(async () => {
   registerAllUiLanguageBundles();
-  vi.stubGlobal('__popupSummaryFixture', {config, language, listeners, patches, openOptions, createTab, queryTabs, send, tabUpdated,
+  vi.stubGlobal('__popupSummaryFixture', {config, language, bundleRevision, listeners, patches, openOptions, createTab, queryTabs, send, tabUpdated,
     t: (key: string, params?: Parameters<typeof translate>[2]) => translate(key, language.value, params),
     translateLegacy: (text: string) => translateLegacyText(text, language.value)});
   server = await createServer({root: process.cwd(), configFile: false, appType: 'custom', logLevel: 'silent',
@@ -92,7 +93,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  vi.clearAllMocks();listeners.clear();tabUpdated.clear();language.value = 'zh-CN';
+  vi.clearAllMocks();listeners.clear();tabUpdated.clear();language.value = 'zh-CN';bundleRevision.value = 0;
   queryTabs.mockReset().mockResolvedValue([{id: 7, windowId: 3, url: 'https://example.test/a'}]);
   send.mockReset().mockImplementation(async (_id, message) => message.type === 'getFullPageTranslationState'
     ? {isTranslated: false} : {status: 'success', isTranslated: message.action === 'fullPage'});

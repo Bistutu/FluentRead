@@ -7,6 +7,7 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入、提示词或翻译结果。
  */
 import videoLearningText from './video-learning/en-US.json';
+import selfHelpText from './self-help/en-US.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
@@ -30,6 +31,7 @@ export const enUSMessages = {
     "popup.compact.translate": "Translate",
     "popup.compact.restore": "Restore",
     ...videoLearningText,
+    ...selfHelpText,
     ...compositeTranslationMessages['en-US'],
     ...pdfReadingMessages['en-US'],
     ...informationHighlightMessages['en-US'],

@@ -1,7 +1,7 @@
 /**
  * @file src/platform/browser/freeProviderPermissions.ts
  * 文件职责：封装 Safari 免费翻译服务的精确域授权查询与用户手势授权入口。
- * 主要内容：维护当前十七个匿名 provider 的完整请求域集合；仅 Safari 按实际授权过滤可用服务，查询受取消信号、原截止时间与两秒上限约束，失败明确拒绝；授权函数同步调用浏览器 API，保留点击手势，成功结果仍须重新查询实际授权。
+ * 主要内容：维护当前十七个匿名 provider 的完整请求域集合；仅 Safari 按实际授权过滤可用服务，查询受取消信号、原截止时间与两秒上限约束，失败明确拒绝；授权函数同步调用浏览器 API，保留点击手势，成功结果仍须重新查询实际授权；为界面提供可清理的授权变更事件。
  * 模块边界：这是 Safari 免费池的产品授权策略，不声称开放 CORS 接口技术上都需要授权；不请求所有站点、不发送供应商请求、不修改服务顺序、健康或持久配置，其他浏览器保持原行为。
  */
 import {isFreeTranslationProviderId, type FreeTranslationProviderId} from '@/src/core/config/freeTranslation';
@@ -82,4 +82,28 @@ export function isFreeProviderAllowed(access: FreePoolAccess, id: FreeTranslatio
 /** 无候选或单服务检查未授权时，在进入免费池尝试及健康记录之前拒绝。 */
 export function requireFreeProviderAccess(access: FreePoolAccess, id?: FreeTranslationProviderId): void {
     if (access.supported && (id ? !isFreeProviderAllowed(access, id) : access.grantedIds.length === 0)) throw permissionError(false);
+}
+
+/** 只监听实际域权限变化；刷新不得申请授权，界面负责保留同次点击的继续操作。 */
+export function subscribeFreeProviderAccessChanges(listener: (change: 'added' | 'removed') => void): () => void {
+    if (import.meta.env.BROWSER !== 'safari' || typeof browser === 'undefined') return () => undefined;
+    let active = true;
+    const cleanup: Array<() => void> = [];
+    for (const [name, change] of [['onAdded', 'added'], ['onRemoved', 'removed']] as const) {
+        const event = browser.permissions?.[name];
+        if (typeof event?.addListener !== 'function' || typeof event.removeListener !== 'function') continue;
+        const handle = (details: {origins?: string[]}) => {
+            if (active && details.origins?.length) listener(change);
+        };
+        try {
+            event.addListener(handle);
+            cleanup.push(() => event.removeListener(handle));
+        } catch { /* 部分浏览器不提供事件；界面重新激活时仍会复查实际授权。 */ }
+    }
+    return () => {
+        active = false;
+        for (const remove of cleanup) {
+            try {remove();} catch { /* 关闭中的扩展上下文可能已失效。 */ }
+        }
+    };
 }

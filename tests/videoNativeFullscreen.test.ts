@@ -263,3 +263,39 @@ describe('native fullscreen subtitles', () => {
     f.bridge.destroy();
   });
 });
+
+describe('native source choice ownership after entry', () => {
+  it.each(['leave', 'disable', 'destroy'] as const)('does not revive obsolete entry source after a newer choice then FluentRead on %s', action => {
+    for (const choice of ['source-b', 'off'] as const) {
+      const f = setup();
+      const other = {kind: 'subtitles', mode: 'hidden' as TextTrackMode}; f.sources.push(other);
+      f.bridge.sync(); f.enter();
+      f.select(choice === 'source-b' ? other : null);
+      f.select(f.tracks[0]);
+      if (action === 'leave') f.leave();
+      else if (action === 'disable') { f.state.enabled = false; f.bridge.sync(); }
+      else f.bridge.destroy();
+      expect(f.original.mode, `entry source must not return after ${choice}`).toBe('disabled');
+      expect(other.mode).toBe(choice === 'source-b' ? 'showing' : 'disabled');
+      f.bridge.destroy();
+    }
+  });
+});
+
+
+it('does not reassign source ownership during internal cue work or queued cleanup changes', () => {
+  const f = setup();
+  const other = {kind: 'subtitles', mode: 'hidden' as TextTrackMode}; f.sources.push(other);
+  f.bridge.sync(); f.enter(); f.select(other); f.select(f.tracks[0]);
+  const track = f.tracks[0], add = track.addCue;
+  track.addCue = cue => { f.change(); add(cue); };
+  f.state.translation = () => 'late cached translation';
+  f.bridge.sync();
+  expect(track.mode).toBe('showing');
+  f.leave(); f.change();
+  expect(other.mode).toBe('showing'); expect(f.original.mode).toBe('disabled');
+  f.enter(); f.select(null); f.leave(); f.change(); f.enter();
+  expect(other.mode).toBe('disabled'); expect(f.original.mode).toBe('disabled');
+  f.bridge.destroy(); f.change();
+  expect(f.document.querySelector('track')).toBeNull();
+});

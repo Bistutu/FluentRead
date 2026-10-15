@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/services/FreeTranslationSettings.vue
  * 文件职责：编辑免费翻译服务的启停、选择策略、邮箱与等待时间。
- * 主要内容：按配置策略展示全部服务的启停、连接结果、耗时与分流参考，B站翻译仅标注免费；Safari 单独呈现实际域授权并在真实点击中逐线路申请，权限查询有界且切换时取消等待；仅活跃分流视图合并读取后台快照，切换时取消等待和旧事件，邮箱草稿只在所属配置提交。
+ * 主要内容：按配置策略展示全部服务的启停、连接结果、耗时与分流参考，B站翻译仅标注免费；Safari 单独呈现实际域授权并在真实点击中逐线路申请，权限查询有界且切换时取消等待；撤权与重新激活时复查域权限，自己授权后的事件不取消原点击；错误保留翻译键；仅活跃分流视图合并读取后台快照，切换时取消等待和旧事件，邮箱草稿只在所属配置提交。
  * 模块边界：只修改传入的配置，由设置页统一持久化；通过平台端口管理 Safari 授权，只读取不含凭据的后台权重快照，不请求翻译或更改启用顺序。
  -->
 <template>
@@ -71,7 +71,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
 import browser from 'webextension-polyfill'
 import {browserCapabilities} from '@/src/platform/browser/capabilities'
-import {readFreePoolAccess, requestFreeProviderAccess, type FreePoolAccess} from '@/src/platform/browser/freeProviderPermissions'
+import {readFreePoolAccess, requestFreeProviderAccess, subscribeFreeProviderAccessChanges, type FreePoolAccess} from '@/src/platform/browser/freeProviderPermissions'
 import type { Config } from '@/src/core/config/model'
 import { FREE_TRANSLATION_PROVIDERS, normalizeFreeTranslationMode, normalizeFreeTranslationOrder, normalizeMyMemoryEmail, type FreeTranslationProviderId } from '@/src/core/config/freeTranslation'
 import {
@@ -115,44 +115,59 @@ let weightRefreshTimer: ReturnType<typeof setInterval> | undefined
 let weightRequestGeneration = 0
 const mounted = ref(false)
 const safariPermissions = browserCapabilities.browser === 'safari'
-const permissionAccess = ref<FreePoolAccess | null>(null), permissionLoading = ref(false), permissionError = ref(''), grantingProvider = ref<string | null>(null)
+const permissionAccess = ref<FreePoolAccess | null>(null), permissionLoading = ref(false), permissionError = ref<'' | 'safari.freePool.error' | 'safari.freePool.requestDenied'>(''), grantingProvider = ref<string | null>(null)
 let permissionGeneration = 0
 let permissionReadController: AbortController | undefined
+let permissionRefreshQueued = false
+let stopPermissionEvents: (() => void) | undefined
 const providerGranted = (id: string) => permissionAccess.value?.grantedIds.some(value => value === id) === true
 const permissionSummary = computed(() => permissionLoading.value || grantingProvider.value ? t('safari.freePool.loading')
-  : permissionError.value || t('safari.freePool.availableCount', {count: order.value.filter(providerGranted).length, total: order.value.length}))
-watch(() => [mounted.value, active.value, advanced.value, revision.value], () => {
+  : permissionError.value ? t(permissionError.value) : t('safari.freePool.availableCount', {count: order.value.filter(providerGranted).length, total: order.value.length}))
+function refreshPermissionAccess(clearError = true): void {
   const generation = ++permissionGeneration, current = capture()
   permissionReadController?.abort();permissionReadController = undefined
-  permissionAccess.value = null;permissionError.value = '';grantingProvider.value = null
+  permissionAccess.value = null;if (clearError) permissionError.value = '';grantingProvider.value = null;permissionRefreshQueued = false
   permissionLoading.value = safariPermissions && mounted.value && active.value && !advanced.value
   if (!permissionLoading.value) return
   const controller = new AbortController();permissionReadController = controller
-  void waitForSettingsTask(readFreePoolAccess(FREE_TRANSLATION_PROVIDERS.map(item => item.id)), controller.signal, 10_000, t('safari.freePool.error')).then(access => {
+  void waitForSettingsTask(readFreePoolAccess(FREE_TRANSLATION_PROVIDERS.map(item => item.id), {signal: controller.signal}), controller.signal, 10_000, t('safari.freePool.error')).then(access => {
     if (current() && generation === permissionGeneration) permissionAccess.value = access
-  }).catch(() => {if (current() && generation === permissionGeneration) permissionError.value = t('safari.freePool.error')})
+  }).catch(() => {if (current() && generation === permissionGeneration) permissionError.value = 'safari.freePool.error'})
     .finally(() => {if (generation === permissionGeneration) permissionLoading.value = false})
-}, {flush: 'sync', immediate: true})
+}
+watch(() => [mounted.value, active.value, advanced.value, revision.value, order.value.join('\0')], () => refreshPermissionAccess(), {flush: 'sync', immediate: true})
+function permissionAccessChanged(change: 'added' | 'removed' = 'added'): void {
+  // 自己的授权弹窗会触发 added/focus；先由同次点击复核并完成，再合并刷新。
+  if (change === 'added' && grantingProvider.value) {permissionRefreshQueued = true;return}
+  refreshPermissionAccess()
+}
+function permissionPageVisible(): void {if (document.visibilityState === 'visible') permissionAccessChanged()}
 function allowProvider(id: string): Promise<void> | void {
   if (!safariPermissions || !active.value || advanced.value || !isEnabled(id) || providerGranted(id) || permissionLoading.value || grantingProvider.value || !permissionAccess.value) return
   const provider = FREE_TRANSLATION_PROVIDERS.find(item => item.id === id)
   if (!provider) return
   const generation = permissionGeneration, current = capture()
   let request: Promise<boolean>
-  try {request = requestFreeProviderAccess(provider.id)} catch {permissionError.value = t('safari.freePool.error');return}
   grantingProvider.value = id;permissionError.value = ''
+  try {request = requestFreeProviderAccess(provider.id)} catch {
+    if (current() && generation === permissionGeneration) {permissionError.value = 'safari.freePool.error';grantingProvider.value = null}
+    return
+  }
   return (async () => {
     try {
       const granted = await request
       if (!current() || generation !== permissionGeneration) return
-      if (!granted) {permissionError.value = t('safari.freePool.requestDenied');return}
-      const access = await waitForSettingsTask(readFreePoolAccess(FREE_TRANSLATION_PROVIDERS.map(item => item.id)), permissionReadController!.signal, 10_000, t('safari.freePool.error'))
+      if (!granted) {permissionError.value = 'safari.freePool.requestDenied';return}
+      const access = await waitForSettingsTask(readFreePoolAccess(FREE_TRANSLATION_PROVIDERS.map(item => item.id), {signal: permissionReadController!.signal}), permissionReadController!.signal, 10_000, t('safari.freePool.error'))
       if (!current() || generation !== permissionGeneration) return
       permissionAccess.value = access
-      if (!access.grantedIds.includes(provider.id)) permissionError.value = t('safari.freePool.requestDenied')
+      if (!access.grantedIds.includes(provider.id)) permissionError.value = 'safari.freePool.requestDenied'
       restartWeightRefresh()
-    } catch {if (current() && generation === permissionGeneration) permissionError.value = t('safari.freePool.error')}
-    finally {if (generation === permissionGeneration) grantingProvider.value = null}
+    } catch {if (current() && generation === permissionGeneration) permissionError.value = 'safari.freePool.error'}
+    finally {if (generation === permissionGeneration) {
+      grantingProvider.value = null
+      if (permissionRefreshQueued) refreshPermissionAccess(false)
+    }}
   })()
 }
 const canReadWeights = computed(() => mounted.value && active.value && !advanced.value && mode.value === 'balanced'
@@ -278,8 +293,20 @@ const actions = computed(() => {
   }
 })
 watch(() => [canReadWeights.value, config.value, order.value.join('\0'), config.value.myMemoryEmail], restartWeightRefresh, {flush: 'sync', immediate: true})
-onMounted(() => {mounted.value = true})
-onBeforeUnmount(() => {mounted.value = false})
+onMounted(() => {
+  mounted.value = true
+  if (!safariPermissions) return
+  stopPermissionEvents = subscribeFreeProviderAccessChanges(permissionAccessChanged)
+  window.addEventListener('focus', permissionPageFocused)
+  document.addEventListener('visibilitychange', permissionPageVisible)
+})
+function permissionPageFocused(): void {permissionAccessChanged()}
+onBeforeUnmount(() => {
+  mounted.value = false
+  stopPermissionEvents?.()
+  window.removeEventListener('focus', permissionPageFocused)
+  document.removeEventListener('visibilitychange', permissionPageVisible)
+})
 </script>
 
 <style scoped>

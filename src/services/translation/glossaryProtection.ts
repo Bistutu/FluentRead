@@ -3,11 +3,13 @@
  * 文件职责：在统一翻译调用边界保护术语，使机器翻译、AI 与批量请求共用相同的本地回填规则。
  * 主要内容：按冻结范围一次选取用户与自动条目，文档入口保护地址、代码式名称及有限相邻数学表达式，复用首次匹配身份而不重复扫描；内部 g 标签原样送翻并避开用户短词匹配，保持消息和内部槽协议，按实际目标语言校验批量形状、行内结构和未翻译正文；纯术语判断比较 NFC 写法，实际回填保留原文 Unicode；userscript 编译时移除不支持的文档专属路径。
  * 模块边界：不自行调用网络或修改配置；缓存、取消、超时与最终结果验证仍由 broker 管理。
+ * 字素保护：先处理用户与文档术语，再对剩余完整 emoji 叠加同一占位符协议；摘要不强制保留，用户译法优先且未配置词库的翻译也受保护。
  */
 import {GlossaryPlaceholderError, protectGlossaryText, resolveGlossaryEntries, type GlossaryProtectionEntry} from '@/src/core/glossary';
 import {DocumentInlineMarkerError, documentInlineMarkerRanges, normalizeDocumentInlineMarkers, validateDocumentInlineMarkers} from '@/src/core/translation/documentInlineMarkers';
 import {findDocumentLiteralTerms} from '@/src/core/translation/documentLiterals';
 import {protectDocumentMathText} from '@/src/core/translation/documentMathProtection';
+import {findEmojiLiteralRanges, hasEmojiLiterals} from '@/src/core/translation/emojiLiterals';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {attachTranslationProviderConfig, getTranslationGlossarySourceSlots, getTranslationGlossarySourceText} from './requestSnapshot';
 import type {TranslationProviderConfigSnapshot, TranslationRequestMessage} from './types';
@@ -34,14 +36,22 @@ export function getGlossaryProtectionEntries(current: TranslationProviderConfigS
 export function prepareGlossaryRequest(message: TranslationRequestMessage, current: TranslationProviderConfigSnapshot) {
     const targetLanguage = message.targetLanguage?.trim() || current.to;
     const documentContext = import.meta.env.BROWSER !== 'userscript' && current.glossaryMatchContext?.context === 'document';
-    const plan = ('summaryPrompt' in message && message.summaryPrompt) ? {entries: [], automatic: []} : getGlossaryProtectionPlan(current, message.origin);
-    if (!plan.entries.length) return {message: documentContext
+    const summary = Boolean('summaryPrompt' in message && message.summaryPrompt);
+    const plan = summary ? {entries: [], automatic: []} : getGlossaryProtectionPlan(current, message.origin);
+    if (!plan.entries.length && (summary || !hasEmojiLiterals(message.origin))) return {message: documentContext
         ? attachTranslationProviderConfig({...message}, current) : message,
         restore: (result: unknown) => validateDocumentTranslationResult(current, message.origin, result, targetLanguage)};
     const originals = Array.isArray(message.origin) ? message.origin : [message.origin];
-    const packets = originals.map((text, index) => documentContext
-        ? protectDocumentMathText(text, plan.entries, plan.automatic, String(index), documentInlineMarkerRanges(text))
-        : protectGlossaryText(text, plan.entries, String(index)));
+    const packets = originals.map((text, index) => {
+        const terms = documentContext
+            ? protectDocumentMathText(text, plan.entries, plan.automatic, String(index), documentInlineMarkerRanges(text))
+            : protectGlossaryText(text, plan.entries, String(index));
+        const ranges = findEmojiLiteralRanges(terms.text);
+        if (!ranges.length) return terms;
+        const literals = protectGlossaryText(terms.text, [], `emoji-${index}`, [], undefined, ranges);
+        return {text: literals.text, tokens: [...terms.tokens, ...literals.tokens],
+            restore: (result: unknown) => terms.restore(literals.restore(result))};
+    });
     const tokens = Object.freeze(packets.flatMap(packet => packet.tokens));
     const providerConfig = Object.freeze({...current, glossaryProtectedTokens: tokens});
     return {

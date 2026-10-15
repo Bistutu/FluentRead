@@ -129,7 +129,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         if (id === '\0sections-provider-loader') return `export default await globalThis.${key}.loadProvider();`;
         if (id === '\0sections-service-catalog') return `import {h, onMounted} from 'vue';export default {props: ['active'], emits: ['add:service'], setup(props, {emit}) {onMounted(globalThis.${key}.catalogMounted);return () => props.active ? h('button', {'data-testid': 'fixture-add-service', onClick: () => emit('add:service')}, '添加服务') : null}};`;
         if (id === '\0sections-child') return 'export default {render: () => null};';
-        if (id === '\0sections-i18n') return `import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: k => k, translateLegacy: t => t}); export const localizeServiceOptions = options => options;`;
+        if (id === '\0sections-i18n') return `import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), bundleRevision: ref(0), t: k => k, translateLegacy: t => t}); export const localizeServiceOptions = options => options;`;
         if (id === '\0sections-config') return `export const {config, configReady, subscribeConfig, requestConfigPatch, handoffPendingConfigPatches} = globalThis.${key};`;
         if (id === '\0sections-appearance') return `export const applyInterfaceTheme = globalThis.${key}.theme;`;
         if (id === '\0sections-browser') return `export default globalThis.${key}.browser;`;

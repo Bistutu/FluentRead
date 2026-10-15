@@ -1,6 +1,6 @@
 /**
  * @file src/app/document-translation/selectionRuntime.ts
- * 文件职责：在扩展自有文档页中按需复用划词卡片，仅接受 PDF.js 原文文字层里的选区。
+ * 文件职责：在扩展自有文档页中按需复用划词卡片，接受 PDF.js 原文选区；存在文档模型适配器时也接受当前原版译文与重排段落选区。
  * 主要内容：等待配置水合和首个 PDF 文字层再加载卡片，提供跨页来源校验、排版换行清理、文件标题与页内上下文；在 closed Shadow Root 中复用 Vue、i18n 和构建样式，并在禁用、原文视图消失、页面卸载或异步挂载过期时释放所有资源。
  * 模块边界：本文件是扩展页面组合适配器，不伪造 ContentScriptContext、不实现翻译或朗读协议、不读取或转发凭据，也不修改 PDF 原文与浏览器原生选区。
  */
@@ -12,8 +12,12 @@ import {createUiI18nPlugin} from '@/src/ui/i18n';
 import {summarizeSelectionContext} from '@/src/features/selection-translation/core';
 import {sentenceAroundSelection} from '@/src/features/reading-assistant/selectionContext';
 import type {ReadingSelection} from '@/src/features/reading-assistant/public';
+import type {MaterialSelection} from '@/src/features/vocabulary/material/protocol';
 
 export const PDF_SOURCE_TEXT_SELECTOR = '[data-fluentread-pdf-text]';
+const PDF_MATERIAL_TEXT_SELECTOR = `${PDF_SOURCE_TEXT_SELECTOR},.pdf-reading-paragraph[data-pdf-segment-index],.pdf-translation-text`;
+const selectionSelector = (translated: boolean) => translated ? PDF_MATERIAL_TEXT_SELECTOR : PDF_SOURCE_TEXT_SELECTOR;
+const selectionExcluded = (translated: boolean) => translated ? EXCLUDED_SOURCE.replace('[data-fluentread-pdf-translation],', '') : EXCLUDED_SOURCE;
 export const PDF_SELECTION_RANGE_CHANGE = 'fluentread-pdf-selection-range-change';
 const EXCLUDED_SOURCE = 'input,textarea,select,button,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[data-fluentread-pdf-translation],[data-notranslate="true"],[hidden],[inert],[aria-hidden="true"]';
 
@@ -24,6 +28,7 @@ interface PdfSelectionAdapter {
     normalizeText(text: string): string;
     context(range: Range, text: string, limit: number): PdfSelectionContext;
     captureReading(range: Range, text: string, limit: number): ReadingSelection;
+    captureMaterial?(range: Range, quote: string): MaterialSelection | undefined;
     subscribeInvalidation(listener: () => void): () => void;
     invalidate(): void;
 }
@@ -36,6 +41,7 @@ interface OverlayMountOptions {
 }
 export interface DocumentSelectionRuntimeOptions {
     root: HTMLElement;
+    captureMaterial?: (range: Range, quote: string) => MaterialSelection | undefined;
     onSelectionRangeChange?: (range: Range | null) => void;
 }
 export interface DocumentSelectionRuntimeDependencies {
@@ -104,10 +110,10 @@ function boundaryElement(node: Node): Element | null {
     return node.nodeType === 1 ? node as Element : node.parentElement;
 }
 
-function sourceForNode(node: Node, root: HTMLElement): HTMLElement | null {
+function sourceForNode(node: Node, root: HTMLElement, translated = false): HTMLElement | null {
     const element = boundaryElement(node);
-    const source = element?.closest<HTMLElement>(PDF_SOURCE_TEXT_SELECTOR);
-    if (!source || !root.contains(source) || element?.closest(EXCLUDED_SOURCE)) return null;
+    const source = element?.closest<HTMLElement>(selectionSelector(translated));
+    if (!source || !root.contains(source) || element?.closest(selectionExcluded(translated))) return null;
     let current: HTMLElement | null = source;
     while (current && current !== root) {
         if (current.style?.display === 'none' || current.style?.visibility === 'hidden') return null;
@@ -116,8 +122,8 @@ function sourceForNode(node: Node, root: HTMLElement): HTMLElement | null {
     return source;
 }
 
-function firstSource(root: HTMLElement): HTMLElement | null {
-    return Array.from(root.querySelectorAll<HTMLElement>(PDF_SOURCE_TEXT_SELECTOR)).find(source => sourceForNode(source, root)) ?? null;
+function firstSource(root: HTMLElement, translated = false): HTMLElement | null {
+    return Array.from(root.querySelectorAll<HTMLElement>(selectionSelector(translated))).find(source => sourceForNode(source, root, translated)) ?? null;
 }
 
 function sourceOwner(source: HTMLElement | null): {element: Element | null; identity: string} {
@@ -126,11 +132,11 @@ function sourceOwner(source: HTMLElement | null): {element: Element | null; iden
         element?.getAttribute('data-fluentread-pdf-title'), element?.getAttribute('data-fluentread-pdf-source-url')].join('|')};
 }
 
-/** 跨页选区可以经过 PDF 画布和页面空白，但不能包含文件控件、校订输入或任何译文。 */
-export function acceptsPdfSourceRange(range: Range, root: HTMLElement): boolean {
+/** 跨页选区可以经过 PDF 画布和页面空白，但不能包含文件控件、校订输入；只有持有模型的适配器可接受译文。 */
+export function acceptsPdfSourceRange(range: Range, root: HTMLElement, translated = false): boolean {
     if (!range.startContainer.isConnected || !range.endContainer.isConnected) return false;
-    const startSource = sourceForNode(range.startContainer, root);
-    const endSource = sourceForNode(range.endContainer, root);
+    const startSource = sourceForNode(range.startContainer, root, translated);
+    const endSource = sourceForNode(range.endContainer, root, translated);
     if (!startSource || !endSource) return false;
     if (startSource === endSource) return true;
     const fragment = range.cloneContents();
@@ -141,16 +147,16 @@ export function acceptsPdfSourceRange(range: Range, root: HTMLElement): boolean 
         if (++visited > 5000) return false;
         if (!node.textContent?.trim()) continue;
         const element = boundaryElement(node);
-        if (element?.closest('[data-fluentread-pdf-decoration]') && !element.closest(EXCLUDED_SOURCE)) continue;
-        if (!element?.closest(PDF_SOURCE_TEXT_SELECTOR) || element.closest(EXCLUDED_SOURCE)) return false;
+        if (element?.closest('[data-fluentread-pdf-decoration]') && !element.closest(selectionExcluded(translated))) continue;
+        if (!element?.closest(selectionSelector(translated)) || element.closest(selectionExcluded(translated))) return false;
     }
     return true;
 }
 
 /** 单页保留浏览器按字形生成的空白；跨页仅收集克隆选区中的原文，排除页码与阅读工具说明。 */
-export function extractPdfSelectionText(range: Range, nativeText: string, root: HTMLElement): string {
-    const startSource = sourceForNode(range.startContainer, root);
-    const endSource = sourceForNode(range.endContainer, root);
+export function extractPdfSelectionText(range: Range, nativeText: string, root: HTMLElement, translated = false): string {
+    const startSource = sourceForNode(range.startContainer, root, translated);
+    const endSource = sourceForNode(range.endContainer, root, translated);
     if (!startSource || !endSource) return '';
     if (startSource === endSource) return nativeText;
     const fragment = range.cloneContents();
@@ -159,16 +165,16 @@ export function extractPdfSelectionText(range: Range, nativeText: string, root: 
     let node: Node | null;
     while ((node = walker.nextNode())) {
         const element = boundaryElement(node);
-        if (!element?.closest(PDF_SOURCE_TEXT_SELECTOR) || element.closest(EXCLUDED_SOURCE)
+        if (!element?.closest(selectionSelector(translated)) || element.closest(selectionExcluded(translated))
             || element.closest('[data-fluentread-pdf-decoration]')) continue;
         if (node.nodeType === 3) parts.push((node as Text).data);
-        else if (element.tagName === 'BR' || element.matches(PDF_SOURCE_TEXT_SELECTOR)) parts.push('\n');
+        else if (element.tagName === 'BR' || element.matches(selectionSelector(translated))) parts.push('\n');
     }
     return parts.join('');
 }
 
-function sourceContext(range: Range, text: string, limit: number, root: HTMLElement): PdfSelectionContext {
-    const source = sourceForNode(range.startContainer, root);
+function sourceContext(range: Range, text: string, limit: number, root: HTMLElement, translated = false): PdfSelectionContext {
+    const source = sourceForNode(range.startContainer, root, translated);
     const metadata = source?.closest<HTMLElement>('[data-fluentread-pdf-title]');
     const title = metadata?.getAttribute('data-fluentread-pdf-title')?.trim().slice(0, 512) || '';
     const rawUrl = source?.closest('[data-fluentread-pdf-source-url]')?.getAttribute('data-fluentread-pdf-source-url');
@@ -187,15 +193,17 @@ function sourceContext(range: Range, text: string, limit: number, root: HTMLElem
     return {title, sourceUrl, text: summarizeSelectionContext(pageText, text, Math.min(4000, Math.max(0, limit)))};
 }
 
-export function createPdfSelectionAdapter(root: HTMLElement): PdfSelectionAdapter {
+export function createPdfSelectionAdapter(root: HTMLElement, captureMaterial?: DocumentSelectionRuntimeOptions['captureMaterial']): PdfSelectionAdapter {
+    const translated = Boolean(captureMaterial);
     const invalidations = new Set<() => void>();
     return {
-        acceptsRange: range => acceptsPdfSourceRange(range, root),
-        extractText: (range, nativeText) => extractPdfSelectionText(range, nativeText, root),
+        acceptsRange: range => acceptsPdfSourceRange(range, root, translated),
+        extractText: (range, nativeText) => extractPdfSelectionText(range, nativeText, root, translated),
         normalizeText: normalizePdfSelectionText,
-        context: (range, text, limit) => sourceContext(range, text, limit, root),
+        context: (range, text, limit) => sourceContext(range, text, limit, root, translated),
+        captureMaterial: captureMaterial ? (range, quote) => acceptsPdfSourceRange(range, root, true) ? captureMaterial(range, quote) : undefined : undefined,
         captureReading(range, text, limit) {
-            const context = sourceContext(range, text, limit, root).text;
+            const context = sourceContext(range, text, limit, root, translated).text;
             return {text, context, sentence: context ? sentenceAroundSelection(context, text) : text};
         },
         subscribeInvalidation(listener) {invalidations.add(listener); return () => invalidations.delete(listener);},
@@ -292,12 +300,13 @@ export function mountDocumentSelectionTranslation(
     let selectedRange: Range | null = null;
     let selectedText = '';
     let selectedOwner: ReturnType<typeof sourceOwner> | null = null;
-    const adapter = createPdfSelectionAdapter(options.root);
+    const translated = Boolean(options.captureMaterial);
+    const adapter = createPdfSelectionAdapter(options.root, options.captureMaterial);
     const notifyRange = (range: Range | null) => {
         if (!range && !selectedRange) return;
         selectedRange = range;
         selectedText = range ? adapter.normalizeText(adapter.extractText(range, range.toString())) : '';
-        selectedOwner = range ? sourceOwner(sourceForNode(range.startContainer, options.root)) : null;
+        selectedOwner = range ? sourceOwner(sourceForNode(range.startContainer, options.root, translated)) : null;
         options.onSelectionRangeChange?.(range);
         options.root.dispatchEvent(new CustomEvent(PDF_SELECTION_RANGE_CHANGE, {detail: {range}}));
     };
@@ -311,21 +320,21 @@ export function mountDocumentSelectionTranslation(
     const refresh = () => {
         if (disposed) return;
         if (selectedRange) {
-            const owner = sourceOwner(sourceForNode(selectedRange.startContainer, options.root));
+            const owner = sourceOwner(sourceForNode(selectedRange.startContainer, options.root, translated));
             if (!adapter.acceptsRange(selectedRange) || owner.element !== selectedOwner?.element
                 || owner.identity !== selectedOwner?.identity || adapter.normalizeText(adapter.extractText(selectedRange, selectedRange.toString())) !== selectedText) {
                 adapter.invalidate();
                 notifyRange(null);
             }
         }
-        if (!ready || !dependencies.enabled() || !firstSource(options.root)) {
+        if (!ready || !dependencies.enabled() || !firstSource(options.root, translated)) {
             if (overlay || pending) removeOverlay();
             return;
         }
         if (overlay || pending) return;
         const owner = ++generation;
         const isCurrent = () => !disposed && generation === owner && dependencies.enabled()
-            && Boolean(firstSource(options.root));
+            && Boolean(firstSource(options.root, translated));
         pending = dependencies.mountOverlay({root: options.root, adapter, isCurrent,
             onSelectionRangeChange: range => {if (isCurrent() && (!range || adapter.acceptsRange(range))) notifyRange(range);},
         }).then(mounted => {
@@ -336,7 +345,7 @@ export function mountDocumentSelectionTranslation(
     };
     const observer = new MutationObserver(refresh);
     observer.observe(options.root, {childList: true, subtree: true, characterData: true, attributes: true,
-        attributeFilter: ['data-fluentread-pdf-text', 'data-fluentread-pdf-document-id', 'data-fluentread-pdf-title', 'data-fluentread-pdf-source-url', 'style', 'hidden', 'inert']});
+        attributeFilter: ['data-pdf-source-text', 'data-pdf-segment-index', 'data-fluentread-pdf-text', 'data-fluentread-pdf-document-id', 'data-fluentread-pdf-title', 'data-fluentread-pdf-source-url', 'style', 'hidden', 'inert']});
     const unsubscribe = dependencies.subscribe(refresh);
     const stopContextMenu = dependencies.installContextMenu?.(async () => {
         await dependencies.ready;

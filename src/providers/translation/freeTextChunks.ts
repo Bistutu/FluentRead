@@ -1,10 +1,11 @@
 /**
  * @file src/providers/translation/freeTextChunks.ts
- * 文件职责：免费网页服务按 Unicode 码点或 UTF-16 预算分块，保持术语保护标记完整并优先保留句子和词语边界。
- * 主要内容：一次扫描 FRTERM 标记及码点位置，切点遇到标记时退到标记前；请求默认优先完整句子与词语，识别句末引号、常见缩写和数字单位，超长单标记明确拒绝。
+ * 文件职责：免费网页服务按 Unicode 码点或 UTF-16 预算分块，保持完整 emoji 字素及术语保护标记并优先保留句子和词语边界。
+ * 主要内容：扫描 FRTERM 与 emoji 原子范围并映射码点位置，切点遇到原子时退到原子前；请求默认优先完整句子与词语，识别句末引号、常见缩写和数字单位，单个字素或标记超过硬预算时在请求前明确拒绝。
  * 模块边界：纯文本分块，不解码槽包、不恢复术语、不自行请求网络；共享循环保持换行、边缘空白与取消，provider 仅注入逐块传输。
  */
 import {abortErrorFromSignal} from '@/src/platform/http/runtime';
+import {findEmojiLiteralRanges} from '@/src/core/translation/emojiLiterals';
 
 const CLOSING_PUNCTUATION = /["'”’»」』）)\]}]/u;
 const TITLE_OR_INITIAL = /(?:^|[\s"'“‘(])(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|[A-Z])\.$/u;
@@ -47,10 +48,21 @@ export function* splitFreeTextChunks(text: string, limit: number, words = false,
     const spans: Array<[start: number, end: number]> = [];
     let point = 0, offset = 0;
     // 与术语保护链的 ASCII FRTERM 语法一致；只把完整标记视为不可拆单元。
-    for (const match of text.matchAll(/__FRTERM_[a-z0-9_]+?__/giu)) {
+    const atomic = [...text.matchAll(/__FRTERM_[a-z0-9_]+?__/giu)].map(match => {
         if (match[0].length > limit) throw Object.assign(new Error('术语保护标记超过翻译服务字符预算'), {freeFailure: 'request'});
-        while (offset < match.index) offset += points[point++]!.length;
-        spans.push([point, point + match[0].length]);
+        return {start: match.index, end: match.index + match[0].length};
+    });
+    for (const range of findEmojiLiteralRanges(text)) {
+        const value = text.slice(range.start, range.end);
+        if ((utf16 ? value.length : Array.from(value).length) > limit) throw Object.assign(
+            new RangeError('分块字符预算不足以容纳一个完整 emoji 字素'), {freeFailure: 'request'});
+        atomic.push(range);
+    }
+    for (const range of atomic.sort((a, b) => a.start - b.start)) {
+        while (offset < range.start) offset += points[point++]!.length;
+        const start = point;
+        while (offset < range.end) offset += points[point++]!.length;
+        spans.push([start, point]);
     }
     let start = 0, spanIndex = 0;
     while (start < points.length) {
@@ -62,6 +74,8 @@ export function* splitFreeTextChunks(text: string, limit: number, words = false,
             if (end === start) throw new RangeError('分块字符预算不足以容纳一个 Unicode 码点');
         }
         if (words && end < points.length) end = preferredBoundary(points, start, end);
+        // 当前块从原子开始时，词界至少通过整个原子；预算已预验，不会产生空块或越界请求。
+        if (spans[spanIndex]?.[0] === start) end = Math.max(end, spans[spanIndex]![1]);
         while (spans[spanIndex] && spans[spanIndex]![1] <= end) spanIndex++;
         const span = spans[spanIndex];
         if (span && span[0] < end) end = span[0];

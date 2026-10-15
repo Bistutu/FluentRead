@@ -15,6 +15,7 @@ import * as richPreviewSync from '@/src/features/document-translation/ui/richPre
 import * as pdfOcr from '@/src/features/document-translation/services/pdfOcr';
 import * as documentTasks from '@/src/features/document-translation/ui/useDocumentTasks';
 import * as downloadCopy from '@/src/app/document-translation/downloadCopy';
+import * as materialResume from '@/src/app/document-translation/materialResume';
 import {useConfigEditor} from '@/src/features/settings/model/useConfigEditor';
 import {createDocumentImportWorkflow} from '@/src/features/document-translation/services/importWorkflow';
 import {createDocumentRecognitionWorkflow} from '@/src/features/document-translation/services/recognitionWorkflow';
@@ -78,6 +79,7 @@ beforeEach(async () => {
     if (id === 'vue') return {...vue, onMounted: () => {}, onUnmounted: (fn: () => void) => unload.push(fn)};
     if (id === './index' || id === '@/src/app/document-translation' || id === '@/src/core/translation/result') return api;
     if (id === './downloadCopy') return downloadCopy;
+    if (id === './materialResume') return materialResume;
     if (id === 'webextension-polyfill') return {runtime: {sendMessage: materialTransport.sendMessage}, extension: {inIncognitoContext: false}};
     if (id.startsWith('element-plus') || id.endsWith('.css') || id.endsWith('.vue')) return {};
     return require(id);
@@ -98,12 +100,12 @@ describe('document batch page lifecycle', () => {
     await state.loadFiles([file('material.txt', 'An original paragraph stays with its document.')]);
     await state.saveDocumentMaterial();
     expect(materialTransport.sendMessage).not.toHaveBeenCalled();
-    state.documentQueue[0].historyId = 'fixture-content-fingerprint';
+    state.documentQueue[0].historyId = 'a'.repeat(32);
     await state.saveDocumentMaterial();
     expect(materialTransport.sendMessage).toHaveBeenCalledWith({type: 'fluentReadMaterials', action: 'generation'});
     expect(materialTransport.sendMessage).toHaveBeenLastCalledWith(expect.objectContaining({type: 'fluentReadMaterials', action: 'capture', input: expect.objectContaining({
-      source: {kind: 'document', fingerprint: 'fixture-content-fingerprint', title: 'material.txt'},
-      locator: expect.objectContaining({kind: 'document', fingerprint: 'fixture-content-fingerprint', page: 1, quote: 'An original paragraph stays with its document.'}), generation: 0,
+      source: {kind: 'document', fingerprint: 'a'.repeat(32), title: 'material.txt'},
+      locator: expect.objectContaining({kind: 'document', fingerprint: 'a'.repeat(32), page: 1, quote: 'An original paragraph stays with its document.'}), generation: 0,
     })}));
     expect(state.documentMaterialId).toBe('document-material');
     expect(translate).not.toHaveBeenCalled();

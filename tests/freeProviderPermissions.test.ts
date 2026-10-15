@@ -8,7 +8,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {BILIBILI_FREE_TRANSLATION_DOMAIN, FREE_TRANSLATION_PROVIDERS, type FreeTranslationProviderId} from '@/src/core/config/freeTranslation';
-import {FREE_PROVIDER_ORIGINS, FREE_PROVIDER_PERMISSION_QUERY_TIMEOUT_MS, isFreeProviderAllowed, readFreePoolAccess, requestFreeProviderAccess, requireFreeProviderAccess} from '@/src/platform/browser/freeProviderPermissions';
+import {FREE_PROVIDER_ORIGINS, FREE_PROVIDER_PERMISSION_QUERY_TIMEOUT_MS, isFreeProviderAllowed, readFreePoolAccess, requestFreeProviderAccess, requireFreeProviderAccess, subscribeFreeProviderAccessChanges} from '@/src/platform/browser/freeProviderPermissions';
 import {serializeTranslationError, unwrapTranslationResponse} from '@/src/services/translation/errors';
 
 afterEach(() => {vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs();});
@@ -242,5 +242,40 @@ describe('Safari 免费池授权端口', () => {
         const serialized = serializeTranslationError(error);
         expect(serialized).toMatchObject({...required, kind: 'bad-request'});
         expect(() => unwrapTranslationResponse(serialized)).toThrowError(expect.objectContaining(required));
+    });
+});
+
+
+describe('Safari 域权限事件生命周期', () => {
+    function eventPort() {
+        const listeners = new Set<(details: {origins?: string[]}) => void>();
+        return {listeners, addListener: vi.fn((callback: (details: {origins?: string[]}) => void) => listeners.add(callback)),
+            removeListener: vi.fn((callback: (details: {origins?: string[]}) => void) => listeners.delete(callback)),
+            emit(details: {origins?: string[]}) {for (const callback of listeners) callback(details);}};
+    }
+    it('只转发域变化，清理两类监听且迟到原回调不通知已关闭界面', () => {
+        const onAdded=eventPort(),onRemoved=eventPort(),listener=vi.fn();safari({onAdded,onRemoved});
+        const stop=subscribeFreeProviderAccessChanges(listener);
+        onAdded.emit({});onRemoved.emit({origins:[]});expect(listener).not.toHaveBeenCalled();
+        onAdded.emit({origins:['https://edge.microsoft.com/*']});onRemoved.emit({origins:['<all_urls>']});
+        expect(listener.mock.calls).toEqual([['added'],['removed']]);const late=[...onAdded.listeners][0];stop();
+        expect(onAdded.listeners.size).toBe(0);expect(onRemoved.listeners.size).toBe(0);late({origins:['https://edge.microsoft.com/*']});expect(listener).toHaveBeenCalledTimes(2);
+    });
+    it.each(['chrome','edge','firefox','userscript'])('%s 不注册原生权限事件', target => {
+        vi.stubEnv('BROWSER',target);const onAdded=eventPort(),onRemoved=eventPort();vi.stubGlobal('browser',{permissions:{onAdded,onRemoved}});
+        subscribeFreeProviderAccessChanges(vi.fn())();expect(onAdded.addListener).not.toHaveBeenCalled();expect(onRemoved.addListener).not.toHaveBeenCalled();
+    });
+    it('Safari 无browser时返回可清理的空订阅', () => {
+        vi.stubEnv('BROWSER','safari');vi.stubGlobal('browser',undefined);expect(()=>subscribeFreeProviderAccessChanges(vi.fn())()).not.toThrow();
+    });
+    it.each([undefined,{}, {onAdded:{addListener:vi.fn()}}, {onRemoved:{removeListener:vi.fn()}}])('缺失或不完整事件API不注册不可清理监听：%s', permissions => {
+        safari(permissions);expect(()=>subscribeFreeProviderAccessChanges(vi.fn())()).not.toThrow();
+        if(permissions&&'onAdded'in permissions&&permissions.onAdded)expect(permissions.onAdded.addListener).not.toHaveBeenCalled();
+    });
+    it('某事件注册失败仍监听另一事件，关闭上下文清理异常不阻断其余解绑', () => {
+        const onRemoved=eventPort(),listener=vi.fn();safari({onAdded:{addListener(){throw Error('unsupported');},removeListener:vi.fn()},onRemoved});
+        const stop=subscribeFreeProviderAccessChanges(listener);onRemoved.emit({origins:['https://edge.microsoft.com/*']});expect(listener).toHaveBeenCalledWith('removed');stop();expect(onRemoved.listeners.size).toBe(0);
+        const onAdded=eventPort(),other=eventPort();onAdded.removeListener.mockImplementation(()=>{throw Error('closed context');});safari({onAdded,onRemoved:other});
+        const cleanup=subscribeFreeProviderAccessChanges(listener),late=[...onAdded.listeners][0];cleanup();expect(other.listeners.size).toBe(0);listener.mockClear();late({origins:['https://edge.microsoft.com/*']});expect(listener).not.toHaveBeenCalled();
     });
 });

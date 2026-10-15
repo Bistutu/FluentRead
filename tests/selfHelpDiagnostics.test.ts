@@ -5,6 +5,9 @@ import {
   type DiagnosticCode, type DiagnosticReportInput,
 } from '../src/services/diagnostics';
 import {serializeTranslationError, TranslationRequestError} from '../src/services/translation/errors';
+import {registerAllUiLanguageBundles} from '../src/core/i18n/bundles';
+
+registerAllUiLanguageBundles();
 
 describe('self help diagnosis', () => {
   it('preserves structured error meaning across the existing translation message boundary', () => {
@@ -146,7 +149,7 @@ describe('self help diagnosis', () => {
     for (const other of ['source-closed', 'unsupported-page'] as const) expect(normalizeDiagnostic({code: other})!.actions).toEqual(['dismiss']);
   });
 
-  it('provides Chinese and English recovery guidance and labels for every diagnosis', () => {
+  it('provides registered language recovery guidance and labels for every diagnosis', () => {
     for (const code of DIAGNOSTIC_CODES) {
       const diagnostic = {code};
       for (const locale of ['zh-CN', 'zh-TW', 'en-US', 'fr']) {
@@ -193,7 +196,7 @@ describe('self help diagnosis', () => {
     expect(getDiagnosticSummary({code: 'authentication'})).toBe('服务验证失败');
   });
 
-  it('routes supported language variants and uses English for unsupported or empty locales', () => {
+  it('routes supported language variants and uses the shared default for unsupported or empty locales', () => {
     for (const [variant, canonical] of [['zh-TW', 'zh-CN'], ['EN-gb', 'en-US'], ['ja_JP', 'ja-JP'], ['ko', 'ko-KR'], ['fr-CA', 'fr-FR'], ['ru', 'ru-RU'], ['es-MX', 'es-ES']]) {
       expect(getDiagnosticText({code: 'authentication'}, variant)).toEqual(getDiagnosticText({code: 'authentication'}, canonical));
       expect(getDiagnosticSummary({code: 'authentication'}, variant)).toBe(getDiagnosticSummary({code: 'authentication'}, canonical));
@@ -201,10 +204,10 @@ describe('self help diagnosis', () => {
       expect(getDiagnosticUiText('first-use-ready', variant)).toBe(getDiagnosticUiText('first-use-ready', canonical));
     }
     for (const locale of ['', 'pt-BR', 'unknown-language']) {
-      expect(getDiagnosticText({code: 'page-unavailable'}, locale)).toEqual(getDiagnosticText({code: 'page-unavailable'}, 'en-US'));
-      expect(getDiagnosticSummary({code: 'page-unavailable'}, locale)).toBe(getDiagnosticSummary({code: 'page-unavailable'}, 'en-US'));
-      expect(getDiagnosticActionLabel('services', locale)).toBe(getDiagnosticActionLabel('services', 'en-US'));
-      expect(getDiagnosticUiText('privacy', locale)).toBe(getDiagnosticUiText('privacy', 'en-US'));
+      expect(getDiagnosticText({code: 'page-unavailable'}, locale)).toEqual(getDiagnosticText({code: 'page-unavailable'}, 'zh-CN'));
+      expect(getDiagnosticActionLabel('services', locale)).toBe(getDiagnosticActionLabel('services', 'zh-CN'));
+      expect(getDiagnosticUiText('privacy', locale)).toBe(getDiagnosticUiText('privacy', 'zh-CN'));
+      expect(getDiagnosticSummary({code: 'page-unavailable'}, locale)).toBe(getDiagnosticSummary({code: 'page-unavailable'}, 'zh-CN'));
     }
   });
 });

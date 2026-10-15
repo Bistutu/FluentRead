@@ -1,4 +1,5 @@
 /** 可离线呈现的质量评测证据；人工状态始终独立于自动检查。 */
+import type {QualityEvaluationPlan} from './evaluate.mjs';
 export interface QualityRequirement {
     id: string;
     category: string;
@@ -58,6 +59,7 @@ export interface QualityReport {
     corpus: {id: string; sha256: string; samples: QualitySample[]; [key: string]: unknown};
     environment: Record<string, unknown>;
     runs: QualityRun[];
+    plan?: QualityEvaluationPlan;
     comparison?: unknown;
     [key: string]: unknown;
 }

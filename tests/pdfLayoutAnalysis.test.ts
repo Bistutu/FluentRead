@@ -1225,7 +1225,16 @@ describe('PDF layout analysis on real paper typography', () => {
             'Second description belongs to the next table record and its continuation remains in that second record.']);
         expect(result.blocks.find(block => block.source === 'System group')!.cellBounds).toMatchObject({x: 50, y: 120.5, height: 180});
     });
-    it.each([[false, ['1', '2', '3']], [true, ['1', '2', '3']], [true, ['1e3', '2E-3', '3.4e+5']]] as const)('keeps numerical records separate in an open table with header rule %s and values %j', (header, values) => {
+    it.each([
+        [false, ['1', '2', '3']], [true, ['1', '2', '3']], [true, ['1e3', '2E-3', '3.4e+5']],
+        [false, ['1 kg', '2 kg', '3 kg']], [true, ['1 kg', '2 kg', '3 kg']],
+        [false, ['10 cm', '20 cm', '30 cm']], [true, ['10 cm', '20 cm', '30 cm']],
+        [true, ['0.5 kg', '-2 kg', '3e2 kg']],
+        [false, ['10 °C', '20 °C', '30 °C']], [true, ['10 °C', '20 °C', '30 °C']],
+        [false, ['1 m/s', '2 m/s', '3 m/s']], [true, ['1 m/s', '2 m/s', '3 m/s']],
+        [false, ['1kg', '2kg', '3kg']], [true, ['1kg', '2kg', '3kg']],
+        [false, ['1 kg/m³', '2 kg/m³', '3 kg/m³']], [true, ['1 kg/m³', '2 kg/m³', '3 kg/m³']],
+    ] as const)('keeps numerical records separate in an open table with header rule %s and values %j', (header, values) => {
         const graphics = [100, 180].map(y => ({kind: 'path' as const, x: 50, y, width: 500, height: .5}));
         if (header) graphics.push({kind: 'path', x: 50, y: 115, width: 500, height: .5});
         graphics.push(...[50, 250, 550].map(x => ({kind: 'path' as const, x, y: 100, width: .5, height: 80})));
@@ -1235,15 +1244,15 @@ describe('PDF layout analysis on real paper typography', () => {
         expect(result.blocks.map(block => block.source)).toEqual(['alpha description', 'beta description', 'gamma description', ...values]);
         expect(result.blocks.every(block => block.kind === 'table')).toBe(true);
     });
-    it('does not treat a wrapped alphanumeric competency label as a numerical record inside a grid row', () => {
+    it.each(['SE 3.5', '1 do go'])('does not treat a wrapped label or multiword description %s as a numerical record inside a grid row', label => {
         const graphics = [100, 160, 180].map(y => ({kind: 'path' as const, x: 50, y, width: 500, height: .5}));
         graphics.push(...[50, 250, 550].map(x => ({kind: 'path' as const, x, y: 100, width: .5, height: 80})));
         const result = analyze([
             atom('This first description continues', 60, 120, 150), atom('with the same product configuration.', 60, 135, 170),
-            atom('SE 3.5', 270, 135, 40), atom('Configuration Management', 270, 147, 130),
+            atom(label, 270, 135, 40), atom('Configuration Management', 270, 147, 130),
             atom('The next record', 60, 170, 120), atom('2', 270, 170, 5),
         ], graphics);
-        expect(result.blocks.map(block => block.source)).toEqual(['This first description continues with the same product configuration.', 'SE 3.5 Configuration Management', 'The next record', '2']);
+        expect(result.blocks.map(block => block.source)).toEqual(['This first description continues with the same product configuration.', `${label} Configuration Management`, 'The next record', '2']);
     });
     it('retains a right-column rowspan phrase across an internal row rule in the left column', () => {
         const graphics = [100, 120, 300].map(y => ({kind: 'path' as const, x: 50, y, width: 500, height: .5}));

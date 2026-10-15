@@ -132,5 +132,17 @@
   "材料来源历史无效": "Historique des sources de la ressource invalide",
   "材料来源历史身份不匹配": "L’identité de l’historique des sources ne correspond pas",
   "学习引用重复": "Référence d’apprentissage en double",
-  "阅读讲解": "Explication de lecture"
+  "阅读讲解": "Explication de lecture",
+  "更新学习位置": "Mettre à jour la position de lecture",
+  "当前段落尚未显示，请等待页面加载或滚动到文字后重试；原阅读位置已保留。": "Ce paragraphe n’est pas encore affiché. Attendez le chargement de la page ou faites défiler jusqu’au texte, puis réessayez. Votre position de lecture précédente a été conservée.",
+  "已保存本机学习位置，可从学习中心继续阅读。": "Position de lecture enregistrée sur cet appareil. Reprenez la lecture dans le centre d’apprentissage.",
+  "原文位置已变化或无法唯一匹配，已保留原定位。请找到原文后点击「更新学习位置」。": "Le texte d’origine a changé de place ou ne peut pas être identifié de façon unique. Votre position précédente a été conservée. Retrouvez le texte, puis cliquez sur « Mettre à jour la position de lecture ».",
+  "旧材料未保存可用的阅读位置。请找到原文后点击「更新学习位置」。": "Cette ancienne ressource ne contient aucune position de lecture enregistrée utilisable. Retrouvez le texte, puis cliquez sur « Mettre à jour la position de lecture ».",
+  "已恢复保存的页码或章节，请核对原文；开始阅读后记录新的位置。": "La page ou le chapitre enregistré a été rétabli. Vérifiez le texte d’origine ; une nouvelle position sera enregistrée lorsque vous commencerez à lire.",
+  "原段落布局尚未就绪，已保留阅读位置。请重新打开这份材料重试。": "La mise en page du paragraphe d’origine n’est pas encore prête. Votre position de lecture a été conservée. Rouvrez cette ressource pour réessayer.",
+  "已停止自动定位，继续记录当前阅读位置。": "Le positionnement automatique a été arrêté. Votre position de lecture actuelle continuera d’être enregistrée.",
+  "暂时未能确认原文位置。材料与原句仍保留，可在页面内搜索原句，或稍后重新打开。": "Nous n’avons pas pu confirmer l’emplacement du texte d’origine. Votre ressource et la citation enregistrée sont toujours disponibles. Recherchez la citation sur cette page ou rouvrez la ressource plus tard.",
+  "文档位置与材料内容指纹不一致": "La position dans le document ne correspond pas à l’empreinte du contenu de la ressource",
+  "精确文档位置只能用于文档材料": "Les positions précises dans un document ne sont utilisables que pour les ressources de type document",
+  "文档精确位置无效、超出预算或属于其他文件": "La position précise dans le document est invalide, dépasse la taille limite ou appartient à un autre fichier"
 }

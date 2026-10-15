@@ -734,6 +734,15 @@ footer button { font-weight: 500; color: var(--muted); }
 :root .popup-shell[data-interface-skin] .site-rule-row[data-popup-module="siteRule"] {
   min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
 }
+
+/* 首次操作与真实完成提示紧邻主操作，保持正文与主要功能可见。 */
+.first-use-hint { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.translation-meta { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; min-width: 0; }
+:root .popup-shell[data-interface-skin] .translation-meta > .site-rule-row[data-popup-module="siteRule"] { flex: 1; min-width: 0; margin-top: 0; }
+
+.popup-startup-recovery { padding: 20px; color: var(--ink); font-size: 12px; line-height: 1.6; }
+.popup-startup-recovery p { color: var(--muted); }
+.popup-startup-recovery button { padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
 .safari-free-pool-note { margin: 8px 0; color: var(--muted, #64748b); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 
 /* any-pointer 同时覆盖触屏与连接鼠标的 iPad；46px 为原生 sheet 缩放留余量，并非任意缩放下 44px 的保证。 */
@@ -818,16 +827,6 @@ footer button { font-weight: 500; color: var(--muted); }
 }
 :root[data-fluentread-android-popup][data-interface-skin] .popup-drawer.popup-quick-drawer button.switch.compact[aria-checked="true"]::before { background: var(--brand); }
 :root[data-fluentread-android-popup][data-interface-skin] .popup-drawer.popup-quick-drawer button.switch.compact i { position: absolute; left: 6px; top: 14px; }
-
-/* 首次操作与真实完成提示紧邻主操作，保持正文与主要功能可见。 */
-.first-use-hint { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
-.translation-meta { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; min-width: 0; }
-:root .popup-shell[data-interface-skin] .translation-meta > .site-rule-row[data-popup-module="siteRule"] { flex: 1; min-width: 0; margin-top: 0; }
-
-.popup-startup-recovery { padding: 20px; color: var(--ink); font-size: 12px; line-height: 1.6; }
-.popup-startup-recovery p { color: var(--muted); }
-.popup-startup-recovery button { padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
-
 
 /* 新单屏引导与自助诊断在 Popup 内沿用相同触摸预算，桌面仍保留紧凑状态入口。 */
 :root[data-fluentread-android-popup] .popup-shell .language-onboarding :is(.onboarding-language-option, .onboarding-confirm),

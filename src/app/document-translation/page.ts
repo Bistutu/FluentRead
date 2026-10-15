@@ -9,12 +9,13 @@ import DocumentApp from './DocumentApp.vue';
 import './document-page.css';
 import {createUiI18nPlugin} from '@/src/ui/i18n';
 import {mountDocumentSelectionTranslation} from './selectionRuntime';
+import type {MaterialSelection} from '@/src/features/vocabulary/material/protocol';
 
 /** 文档翻译 WXT 页面唯一挂载入口。 */
 export function mountDocumentTranslationApp(selector: string): void {
     const app = createApp(DocumentApp);
     app.use(createUiI18nPlugin({documentRoot: document.body, documentTitleKey: 'metadata.documentTitle'}));
-    app.mount(selector);
-    const selection = mountDocumentSelectionTranslation({root: document.body});
+    const owner = app.mount(selector) as unknown as {captureDocumentMaterialSelection(range: Range, quote: string): MaterialSelection | undefined};
+    const selection = mountDocumentSelectionTranslation({root: document.body, captureMaterial: (range, quote) => owner.captureDocumentMaterialSelection(range, quote)});
     app.onUnmount(selection.dispose);
 }

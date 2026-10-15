@@ -52,10 +52,11 @@ import {documentFreeAttemptCharacters, runDocumentFreeNativeCandidate, serialize
 
 type FreeTranslationRequest = Omit<TranslationProviderRequest<string>, 'origin'>;
 const FREE_TRANSLATION_DEADLINE = Symbol('free-translation-deadline');
-const FREE_TRANSLATION_ACCESS = Symbol('free-translation-access');
+const FREE_TRANSLATION_ACCESS = /* @__PURE__ */ Symbol('free-translation-access');
 // 所有内部调用均先经过 prepareRequest；分组与恢复沿用必填的同一截止时间。
 type FrozenRequest = FreeTranslationRequest & {readonly [FREE_TRANSLATION_DEADLINE]: number};
-type PreparedRequest = FrozenRequest & {readonly [FREE_TRANSLATION_ACCESS]: FreePoolAccess};
+// 非 Safari 不创建权限快照；Safari 的唯一入口在查询成功后附加授权集合。
+type PreparedRequest = FrozenRequest & {readonly [FREE_TRANSLATION_ACCESS]?: FreePoolAccess};
 type FreeProviderId = typeof FREE_TRANSLATION_PROVIDERS[number]['id'];
 
 export const FREE_TRANSLATION_BATCH_CONCURRENCY = 6;
@@ -161,12 +162,15 @@ async function translateNativeProviderGroup(
 export async function translateFreeTranslationProvider(providerId: string, message: TranslationProviderRequest<string>): Promise<unknown> {
     if (!isFreeTranslationProviderId(providerId)) throw new Error('无效的免费翻译服务');
     const origin = message.origin;
-    const prepared = await prepareAuthorizedRequest(prepareRequest(message), [providerId], providerId);
+    const frozen = prepareRequest(message);
+    const prepared = import.meta.env.BROWSER === 'safari'
+        ? await prepareAuthorizedRequest(frozen, [providerId], providerId) : frozen;
     return translateProviderText(providerId, {...prepared, origin});
 }
 
 function prepareRequest(message: FreeTranslationRequest): FrozenRequest {
     // provider 直调也在第一次 await 之前冻结；批量中的所有文本共享该副本与截止时间。
+    if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
     const current = createTranslationProviderConfigSnapshot({
         ...requireTranslationProviderConfig(message),
         // 免费链仅使用匿名公共服务，不能沿用独立 provider 已保存的 Key 或代理。
@@ -194,7 +198,6 @@ function prepareRequest(message: FreeTranslationRequest): FrozenRequest {
 }
 
 async function prepareAuthorizedRequest(message: FrozenRequest, order: readonly string[], providerId?: FreeProviderId): Promise<PreparedRequest> {
-    if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
     const access = await readFreePoolAccess(order, {signal: message.abortSignal, deadline: message[FREE_TRANSLATION_DEADLINE]});
     if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
     requireFreeProviderAccess(access, providerId);
@@ -210,8 +213,9 @@ function providerIdentity(id: string, current: TranslationProviderConfigSnapshot
 
 /** 为设置页提供实际可用池权重；Safari 同样过滤未授权项，保留全部健康记录与用户配置。 */
 export async function getFreeTranslationWeightSnapshot(current: TranslationProviderConfigSnapshot, now = Date.now()): Promise<FreeTranslationWeightSnapshot> {
-    const access = await readFreePoolAccess(normalizeFreeTranslationOrder(current.freeTranslationOrder));
-    const enabledProviderIds = access.grantedIds;
+    const enabled = normalizeFreeTranslationOrder(current.freeTranslationOrder);
+    const enabledProviderIds = import.meta.env.BROWSER === 'safari'
+        ? (await readFreePoolAccess(enabled)).grantedIds : enabled;
     const healthByIdentity = new Map((await runFallback.getHealthSnapshot()).map(entry => [entry.identity, entry]));
     const health = enabledProviderIds.flatMap(providerId => {
         const entry = healthByIdentity.get(providerIdentity(providerId, current));
@@ -233,9 +237,10 @@ function candidatesFor(text: string, message: PreparedRequest, groupSources?: re
     const current = requireTranslationProviderConfig(message);
     const routeByIdentity = new Map<string, string>();
     const enabled = normalizeFreeTranslationOrder(current.freeTranslationOrder);
+    const allowed = import.meta.env.BROWSER === 'safari'
+        ? enabled.filter(id => isFreeProviderAllowed(message[FREE_TRANSLATION_ACCESS]!, id as FreeProviderId)) : enabled;
     // 单线路仍让 provider 返回准确的语言方向错误；多线路不反复消费已证实无效的候选。
-    const candidates = enabled.filter(id => isFreeProviderAllowed(message[FREE_TRANSLATION_ACCESS], id as FreeProviderId))
-        .filter(id => enabled.length === 1 || id !== 'apertiumFree'
+    const candidates = allowed.filter(id => enabled.length === 1 || id !== 'apertiumFree'
         || !isKnownUnsupportedApertiumDirection(message.sourceLanguage!, message.targetLanguage!)).map(id => {
         const provider = FREE_TRANSLATION_PROVIDERS.find(item => item.id === id)!;
         const identity = providerIdentity(id, current);
@@ -393,12 +398,12 @@ export default async function freeTranslation(message: TranslationProviderReques
         || Array.isArray(origin) && origin.some(text => typeof text !== 'string')) throw new Error('免费翻译服务仅支持文本输入');
     const frozen = prepareRequest(message);
     if (Array.isArray(origin)) {
-        if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
         // 只提前返回原本没有候选工作的路径；普通小批次/混合池的逐段策略保持原样。
         if (origin.length === 0 || ((import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true
             || usesNativeFreeGroups(origin.length, frozen)) && origin.every(text => !text.trim()))) return origin;
     }
-    const prepared = await prepareAuthorizedRequest(frozen, normalizeFreeTranslationOrder(requireTranslationProviderConfig(frozen).freeTranslationOrder));
+    const prepared = import.meta.env.BROWSER === 'safari'
+        ? await prepareAuthorizedRequest(frozen, normalizeFreeTranslationOrder(requireTranslationProviderConfig(frozen).freeTranslationOrder)) : frozen;
     if (typeof origin === 'string') return translatePreparedText(origin, prepared);
     return translateFreeBatch(origin, prepared);
 }

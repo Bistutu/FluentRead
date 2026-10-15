@@ -2,11 +2,11 @@
 
 /**
  * Safari 交付边界：校验 WXT Safari 产物，检测本机 Apple 打包工具，并生成不打开、不签名的 Xcode 包装。
- * 不构建网页代码、不申请账号、不改写已有工程。实际安装、签名与 App Store 分发仍由维护者执行。
+ * 通过真实路径与文件系统对象身份隔离输入和输出，不构建网页代码、不申请账号、不改写已有工程。实际安装、签名与 App Store 分发仍由维护者执行。
  */
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, lstatSync, readFileSync, realpathSync, statSync} from 'node:fs';
 import {lstat, mkdir, readFile, readdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
@@ -135,15 +135,47 @@ export function packagingArguments({extension, projectLocation, bundleId, platfo
         ...(platform === 'both' ? [] : [`--${platform}-only`])];
 }
 
-/** 创建任何目录或调用 Apple 复制前，拒绝双向嵌套，保证输入产物树保持只读。 */
+/** realpath 在大小写不敏感卷上仍可能保留输入拼写；按 dev/ino 比较真实祖先，避免全局折叠大小写。 */
+function hasAncestorIdentity(directory, identity) {
+    for (let cursor = directory;; cursor = path.dirname(cursor)) {
+        const info = statSync(cursor, {bigint: true});
+        if (info.dev === identity.dev && info.ino === identity.ino) return true;
+        if (path.dirname(cursor) === cursor) return false;
+    }
+}
+
+/** 创建任何目录或调用 Apple 复制前，按真实路径及对象身份拒绝双向嵌套，保证输入产物树保持只读。 */
 export function validatePackagingDirectories(extension, projectLocation) {
-    const source = path.resolve(extension);
-    const target = path.resolve(projectLocation);
+    const source = realpathSync(path.resolve(extension));
+    const requestedTarget = path.resolve(projectLocation);
+    let ancestor = requestedTarget;
+    const suffix = [];
+    // 输出通常还不存在；先找真实祖先再补回后缀，不能把悬空链接或权限错误当成不存在。
+    for (;;) {
+        try {lstatSync(ancestor);}
+        catch (error) {
+            if (error?.code !== 'ENOENT') throw error;
+            const parent = path.dirname(ancestor);
+            assert(parent !== ancestor, '无法解析包装目录的已有祖先');
+            suffix.unshift(path.basename(ancestor));
+            ancestor = parent;
+            continue;
+        }
+        break;
+    }
+    const canonicalAncestor = realpathSync(ancestor);
+    const ancestorInfo = statSync(canonicalAncestor, {bigint: true});
+    if (suffix.length) assert(ancestorInfo.isDirectory(), '包装目录的已有祖先必须为目录');
+    const target = path.join(canonicalAncestor, ...suffix);
     const sourcePrefix = source.endsWith(path.sep) ? source : `${source}${path.sep}`;
     const targetPrefix = target.endsWith(path.sep) ? target : `${target}${path.sep}`;
-    assert(source !== target && !source.startsWith(targetPrefix) && !target.startsWith(sourcePrefix),
+    // 尚不存在的目标不能成为已有源的祖先；不能把两者共同的已有父目录误判为输出包含源。
+    const sourceContainsTarget = hasAncestorIdentity(canonicalAncestor, statSync(source, {bigint: true}));
+    const targetContainsSource = suffix.length === 0 && hasAncestorIdentity(source, ancestorInfo);
+    assert(source !== target && !source.startsWith(targetPrefix) && !target.startsWith(sourcePrefix)
+        && !sourceContainsTarget && !targetContainsSource,
         '源产物目录与包装目录不能相同或互相包含');
-    assert(!existsSync(target), `目标已存在，请保留现有工程并指定新的 --project-location：${target}`);
+    assert(!existsSync(requestedTarget), `目标已存在，请保留现有工程并指定新的 --project-location：${requestedTarget}`);
 }
 
 /** Apple 默认模板仍允许 iOS 15/macOS 10.14；使 App 安装范围与 Safari 26 能力门槛一致。 */

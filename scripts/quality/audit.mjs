@@ -23,6 +23,6 @@ report.audit = {rawReportId: report.id, rawReportSha256: sha256(raw), correction
     rendererSha256: sha256(await readFile(new URL('./report.mjs', import.meta.url))),
     method: 'Evidence-only correction; translations, requests, byte counts, durations and raw source/tool hashes are unchanged.'};
 report.id += '-audited';
-report.summary = summarize(report.runs);
+report.summary = summarize(report.runs, report.plan);
 await writeFile(output, JSON.stringify(report, null, 2) + '\n');
 await writeFile(output.replace(/\.json$/u, '') + '.html', renderQualityReport(report));

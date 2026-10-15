@@ -1,7 +1,7 @@
 /**
  * @file tests/videoPlayerBinding.test.ts
  * 文件职责：验证播放器入口绑定在原生控制栏、信息流 fallback、禁用和视频切换时的节点所有权。
- * 主要内容：覆盖进度徽标、悬浮/聚焦可见性、原生控件重挂载和清理行为。
+ * 主要内容：覆盖进度徽标、悬浮/聚焦可见性、原生控件重挂载和清理行为；实际观察器回调识别所持控制栏中的本实例按钮副本，保留其他实例和 tooltip 噪声边界。
  * 模块边界：使用注入的定位器与按钮工厂，不启动 content runtime 或字幕识别。
  */
 
@@ -56,6 +56,83 @@ function createFixture(markup = '<div class="player"><video></video><div class="
 afterEach(() => vi.unstubAllGlobals());
 
 describe('native picture-in-picture and fullscreen anchors', () => {
+  it.each(['before-live', 'after-live'] as const)('observer removes a same-host copied entry %s without a manual sync', placement => {
+    const fixture = createFixture('<div class="player"><video></video><div class="ytp-right-controls"><button>settings</button><button class="ytp-fullscreen-button">full</button></div></div>');
+    let notify!: MutationCallback;
+    vi.stubGlobal('MutationObserver', class {
+      constructor(callback: MutationCallback) {notify = callback;}
+      observe() {}
+      disconnect() {}
+    });
+    const click = vi.fn();
+    const createButton = vi.fn(() => {
+      const button = fixture.document.createElement('button');
+      button.id = 'fluent-read-video-subtitle-button';button.addEventListener('click', click);return button;
+    });
+    const binding = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+      getState: () => ({enabled: true}), createButton});
+    const live = createButton.mock.results[0].value, host = live.parentElement!;
+    const clone = live.cloneNode(true) as HTMLButtonElement;
+    clone.dispatchEvent(new fixture.window.Event('click', {bubbles: true}));
+    expect(click).not.toHaveBeenCalled();
+    // 追加在 fullscreen 之后同样不改变 live 的 nextElementSibling，两个分支都须由副本身份触发。
+    if (placement === 'before-live') host.insertBefore(clone, live); else host.appendChild(clone);
+    const scans = vi.spyOn(fixture.locator, 'sync');
+    notify([{type: 'childList', target: host, addedNodes: [clone], removedNodes: []}] as unknown as MutationRecord[], {} as MutationObserver);
+    expect(scans).toHaveBeenCalledOnce();expect(createButton).toHaveBeenCalledOnce();
+    expect(host.querySelectorAll('#fluent-read-video-subtitle-button')).toHaveLength(1);
+    expect(clone.isConnected).toBe(false);expect(live.parentElement).toBe(host);
+    live.dispatchEvent(new fixture.window.Event('click', {bubbles: true}));expect(click).toHaveBeenCalledOnce();
+    binding.destroy();scans.mockRestore();
+  });
+
+  it('observer repairs an entire copied control host with the live listener intact', () => {
+    const fixture = createFixture();
+    let notify!: MutationCallback;
+    vi.stubGlobal('MutationObserver', class {
+      constructor(callback: MutationCallback) {notify = callback;}
+      observe() {}
+      disconnect() {}
+    });
+    const click = vi.fn(), live = fixture.document.createElement('button');
+    live.id = 'fluent-read-video-subtitle-button';live.addEventListener('click', click);
+    const binding = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+      getState: () => ({enabled: true}), createButton: () => live});
+    const previous = live.parentElement!, replacement = previous.cloneNode(true) as HTMLElement;
+    previous.replaceWith(replacement);
+    notify([{type: 'childList', target: fixture.player, addedNodes: [replacement], removedNodes: [previous]}] as unknown as MutationRecord[], {} as MutationObserver);
+    expect(replacement.querySelectorAll('#fluent-read-video-subtitle-button')).toHaveLength(1);
+    expect(live.parentElement).toBe(replacement);live.dispatchEvent(new fixture.window.Event('click', {bubbles: true}));
+    expect(click).toHaveBeenCalledOnce();binding.destroy();
+  });
+
+  it('observer ignores other-owner and tooltip updates, and is inert after destroy', () => {
+    const fixture = createFixture('<div class="player"><video></video><div class="ytp-right-controls"><button>settings</button><button class="ytp-fullscreen-button">full</button></div></div>');
+    let notify!: MutationCallback;
+    vi.stubGlobal('MutationObserver', class {
+      constructor(callback: MutationCallback) {notify = callback;}
+      observe() {}
+      disconnect() {}
+    });
+    const live = fixture.document.createElement('button');live.id = 'fluent-read-video-subtitle-button';
+    const binding = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+      getState: () => ({enabled: true}), createButton: () => live});
+    const host = live.parentElement!, foreign = live.cloneNode(true) as HTMLButtonElement;
+    foreign.setAttribute('data-fluent-read-video-binding-owner', 'another-binding');host.insertBefore(foreign, live);
+    const tooltip = fixture.document.createElement('span');live.appendChild(tooltip);
+    const scans = vi.spyOn(fixture.locator, 'sync');
+    notify([
+      {type: 'childList', target: host, addedNodes: [foreign], removedNodes: []},
+      {type: 'childList', target: live, addedNodes: [tooltip], removedNodes: []},
+    ] as unknown as MutationRecord[], {} as MutationObserver);
+    expect(scans).not.toHaveBeenCalled();expect(foreign.isConnected).toBe(true);
+    const lateCopy = live.cloneNode(true) as HTMLButtonElement;
+    binding.destroy();host.appendChild(lateCopy);
+    notify([{type: 'childList', target: host, addedNodes: [lateCopy], removedNodes: []}] as unknown as MutationRecord[], {} as MutationObserver);
+    expect(scans).not.toHaveBeenCalled();expect(lateCopy.isConnected).toBe(true);expect(foreign.isConnected).toBe(true);
+    scans.mockRestore();
+  });
+
   it.each([false, true])('keeps only the live button after a controls deep clone (new media: %s)', newMedia => {
     const fixture = createFixture();
     const click = vi.fn();
@@ -780,6 +857,33 @@ it('missing MutationObserver still supports explicit sync and clean teardown', (
  expect(button.isConnected).toBe(false);
 });
 
+
+it.each(['disable', 'destroy'] as const)('cleans copies in detached X controls while retaining the open menu before %s', finish => {
+  const fixture = createFixture('<div class="player" data-testid="videoPlayer"><video></video><div class="x-controls"><button aria-label="Settings"></button><button>fullscreen</button></div></div>');
+  let enabled = true;
+  const live = fixture.document.createElement('button');
+  const menu = fixture.document.createElement('div');
+  const binding = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+    getState: () => ({enabled}), createButton: () => live, createMenu: () => menu});
+  const controls = live.parentElement!;
+  const clone = live.cloneNode(true) as HTMLButtonElement;
+  const foreign = live.cloneNode(true) as HTMLButtonElement;
+  foreign.setAttribute('data-fluent-read-video-binding-owner', 'another-binding');
+  controls.append(clone, foreign);
+  controls.remove();
+  binding.sync();
+  expect(menu.isConnected).toBe(true);
+  expect(live.parentElement).toBeNull();
+  if (finish === 'disable') {enabled = false; binding.sync();}
+  else binding.destroy();
+  expect(menu.isConnected).toBe(false);
+  expect(clone.parentElement).toBeNull();
+  expect(foreign.parentElement).toBe(controls);
+  fixture.player.appendChild(controls);
+  expect(controls.querySelectorAll('[data-fluent-read-video-binding-owner]')).toHaveLength(1);
+  expect(controls.querySelector('[data-fluent-read-video-binding-owner]')).toBe(foreign);
+  binding.destroy();
+});
 
 it('keeps an open X menu usable across controls removal and remount, then cleans up on disable', () => {
   const fixture = createFixture('<div class="player" data-testid="videoPlayer"><video></video><div class="x-controls"><button aria-label="Settings"></button><button>fullscreen</button></div></div>');

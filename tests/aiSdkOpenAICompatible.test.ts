@@ -41,7 +41,8 @@ import {resolveConfiguredModel, services, servicesType} from '@/src/core/config/
 import {getMissingCredentialMessage} from '@/src/core/config/validation';
 import {resolveTranslationLanguages} from '@/src/core/translation/languages';
 import {buildPageSummaryPrompt, buildPageSummarySystemPrompt} from '@/src/core/translation/prompts';
-import {translateWithOpenAICompatibleAiSdk, type AiSdkTranslationRequest} from '@/src/providers/translation/ai-sdk/openai-compatible';
+import {translateWithOpenAICompatibleAiSdk as translateWithSdk, type AiSdkTranslationRequest} from '@/src/providers/translation/ai-sdk/openai-compatible';
+import {translateWithOpenAICompatibleAiSdk as translateWithStandalone} from '@/userscript/openaiCompatible';
 import {resolveOpenAICompatibleEndpoint} from '@/src/providers/translation/ai-sdk/endpoints';
 import azureOpenai from '@/src/providers/translation/azure-openai';
 import {normalizeAiSdkError} from '@/src/providers/translation/ai-sdk/errors';
@@ -89,7 +90,7 @@ function deferredResponse() {
   return {promise, resolve, reject};
 }
 
-function ollamaBroker() {
+function ollamaBroker(translateWithOpenAICompatibleAiSdk: typeof translateWithSdk) {
   const current = {
     ...mockConfig,
     service: services.ollama,
@@ -123,7 +124,7 @@ function ollamaBroker() {
   });
 }
 
-describe('Vercel AI SDK OpenAI-compatible transport', () => {
+describe.each([['locked SDK', translateWithSdk], ['standalone HTTP', translateWithStandalone]] as const)('%s OpenAI-compatible transport', (_name, translateWithOpenAICompatibleAiSdk) => {
   beforeEach(() => {
     vi.useRealTimers();
     setRuntimeFetch();
@@ -636,7 +637,7 @@ describe('Vercel AI SDK OpenAI-compatible transport', () => {
       .mockImplementationOnce(() => firstTransport.promise)
       .mockImplementation(() => Promise.resolve(successResponse('第二条译文')));
     setRuntimeFetch(fetchMock);
-    const broker = ollamaBroker();
+    const broker = ollamaBroker(translateWithOpenAICompatibleAiSdk);
     const controller = new AbortController();
     const first = broker.translateWithCache(attachTranslationRequestControl({
       origin: 'The first English paragraph.', requestTimeoutMs: 5_000,
@@ -671,7 +672,7 @@ describe('Vercel AI SDK OpenAI-compatible transport', () => {
       })
       .mockImplementation(() => Promise.resolve(successResponse('重试译文')));
     setRuntimeFetch(fetchMock);
-    const broker = ollamaBroker();
+    const broker = ollamaBroker(translateWithOpenAICompatibleAiSdk);
     const first = broker.translateWithCache({
       origin: 'A slow English paragraph.', requestTimeoutMs: 1_000,
     }).catch(error => error);
@@ -705,7 +706,7 @@ describe('Vercel AI SDK OpenAI-compatible transport', () => {
       .mockImplementationOnce(() => firstTransport.promise)
       .mockImplementation(() => Promise.resolve(successResponse('下一条译文')));
     setRuntimeFetch(fetchMock);
-    const broker = ollamaBroker();
+    const broker = ollamaBroker(translateWithOpenAICompatibleAiSdk);
     const controller = new AbortController();
     const first = broker.translateWithCache(attachTranslationRequestControl({
       origin: 'A paragraph with a delayed response body.', requestTimeoutMs: 5_000,
@@ -741,7 +742,7 @@ describe('Vercel AI SDK OpenAI-compatible transport', () => {
       .mockResolvedValueOnce(new Response(failedBody, {status: 401, headers: {'content-type': 'application/json'}}))
       .mockImplementation(() => Promise.resolve(successResponse('重新配置后的译文')));
     setRuntimeFetch(fetchMock);
-    const broker = ollamaBroker();
+    const broker = ollamaBroker(translateWithOpenAICompatibleAiSdk);
     const failed = broker.translateWithCache({
       origin: 'A paragraph rejected by the local server.', requestTimeoutMs: 5_000,
     });
@@ -768,7 +769,7 @@ describe('Vercel AI SDK OpenAI-compatible transport', () => {
       return transport.promise.finally(() => {active -= 1;});
     });
     setRuntimeFetch(fetchMock);
-    const broker = ollamaBroker();
+    const broker = ollamaBroker(translateWithOpenAICompatibleAiSdk);
     const batch = broker.translateWithCache({
       origin: ['First paragraph in a document.', 'Second paragraph in a document.'],
       requestTimeoutMs: 5_000,

@@ -8,7 +8,7 @@ import {defineAsyncComponent} from 'vue';
 
 export * from './core/document';
 export * from './core/pdfSource';
-export {documentSourceLocators, createDocumentMaterialReference, resolveDocumentMaterialReference} from './core/materialLocator';
+export {documentSourceLocators, createDocumentMaterialReference, resolveDocumentMaterialReference, normalizeDocumentMaterialReference, DOCUMENT_MATERIAL_REFERENCE_LIMITS} from './core/materialLocator';
 export type {DocumentSourceLocator, DocumentMaterialReference} from './core/materialLocator';
 export type {PdfReadingPresentation} from './core/pdfReadingPlan';
 export {fetchOnlinePdf} from './services/pdfSource';

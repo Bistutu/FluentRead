@@ -1,7 +1,7 @@
 /**
  * @file src/features/vocabulary/materialContent.ts
  * 文件职责：在获准网页恢复本地材料的原段落或视频时间，并维护主动打开材料的阅读位置。
- * 主要内容：仅本地标识进入地址，后台核对来源后读取定位；动态内容有界等待，按当前界面语言提示歧义和失效位置，关闭及卸载撤销迟到响应、监听与计时器。
+ * 主要内容：仅本地标识进入地址，后台核对来源后读取定位；动态内容按整页游标分片扫描，变更合并后重试；文章只沿可信阅读输入后的滚动链更新，收藏和布局变化撤销旧任务；预算不足不覆盖已有位置，关闭及卸载清理所有异步归属。
  * 模块边界：使用配置公开服务与框架无关的界面翻译函数，不读取其他来源材料，不扫描或保存整页正文，不自动收藏新材料；文档恢复由文档页通过公共定位合同接入。
  */
 import {materialCapture, materialGeneration, materialResolve} from './materialClient';
@@ -9,37 +9,16 @@ import type {MaterialLocator, MaterialRecord} from './materialProtocol';
 import {canonicalMaterialUrl, normalizeMaterialSource} from './materialModel';
 import {MATERIAL_RESUME_PARAMETER} from './materialSource';
 import {getVideoLearningSource} from '@/src/features/video-subtitle/content/public';
+import {scanMaterialParagraphs, type MaterialParagraphScanOptions} from './materialParagraphScan';
 import {config} from '@/src/services/config/store';
 import {translateLegacyText} from '@/src/core/i18n';
 
-const PROSE = 'p,li,blockquote,dd,dt,figcaption,h1,h2,h3,h4,h5,h6';
-const EXCLUDED = '[data-fluent-read-ui],.fluent-read-bilingual-content,input,textarea,select,nav,aside,[contenteditable]:not([contenteditable="false"]),[hidden],[aria-hidden="true"]';
-const normalize = (text: string) => text.replace(/\s+/gu, ' ').trim();
 const SESSION_KEY = 'fluentread.material.resume';
+const SCROLL_SETTLE_MS = 1200;
 
-/** 重复原句必须由上下文唯一消歧；找不到时不滚到相似但错误的段落。 */
-export function locateMaterialParagraph(doc: Document, locator: MaterialLocator): HTMLElement | undefined {
-    const quote = normalize(locator.quote || '');
-    if (!quote) return;
-    const matches: HTMLElement[] = [];
-    const identified = locator.paragraphId ? doc.getElementById(locator.paragraphId) : null;
-    const candidates = identified ? [identified, ...Array.from(doc.querySelectorAll<HTMLElement>(PROSE)).filter(node => node !== identified)] : Array.from(doc.querySelectorAll<HTMLElement>(PROSE));
-    for (const node of candidates.slice(0, 6000)) {
-        if (node.closest(EXCLUDED)) continue;
-        const text = normalize(node.textContent || '');
-        let index = -1;
-        let occurrence = text.indexOf(quote);
-        while (occurrence >= 0) {
-            if ((!locator.prefix || normalize(text.slice(0, occurrence)).endsWith(normalize(locator.prefix)))
-                && (!locator.suffix || normalize(text.slice(occurrence + quote.length)).startsWith(normalize(locator.suffix)))) {index = occurrence; break;}
-            occurrence = text.indexOf(quote, occurrence + Math.max(1, quote.length));
-        }
-        if (index < 0) continue;
-        if (node === identified) return node;
-        if (!matches.some(previous => previous.contains(node) || node.contains(previous))) matches.push(node);
-        if (matches.length > 1) return;
-    }
-    return matches.length === 1 ? matches[0] : undefined;
+/** 整页定位是可取消的异步扫描；调用方须区分 incomplete、invalidated 与真正未找到。 */
+export function locateMaterialParagraph(doc: Document, locator: MaterialLocator, options: MaterialParagraphScanOptions = {}) {
+    return scanMaterialParagraphs(doc, {kind: 'locate', locator}, options);
 }
 
 export function mountMaterialContent(doc: Document, signal: AbortSignal, enabled: () => boolean): () => void {
@@ -54,9 +33,17 @@ export function mountMaterialContent(doc: Document, signal: AbortSignal, enabled
     let observer: MutationObserver | undefined;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+    let readingInputUntil = 0;
     let notice: HTMLElement | undefined;
     let lastPosition = '';
     let lastVideoSave = 0;
+    let restoreController: AbortController | undefined;
+    let positionController: AbortController | undefined;
+    let positionRevision = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let rescheduleRestore: (() => void) | undefined;
+    const cancelPosition = () => {positionRevision++; positionController?.abort(); positionController = undefined;};
+    const cancelReadingScroll = () => {clearTimeout(scrollTimer); scrollTimer = undefined; readingInputUntil = 0; cancelPosition();};
     const forgetSession = () => {try {view.sessionStorage?.removeItem(SESSION_KEY);} catch { /* 站点禁用会话存储时只保留当前阅读。 */ }};
     const rememberSession = (id: string, url: string) => {try {view.sessionStorage?.setItem(SESSION_KEY, JSON.stringify({id, url}));} catch { /* 仅保存本地标识，存储不可用不阻断恢复。 */ }};
     const sessionMaterial = (): string | undefined => {
@@ -69,7 +56,7 @@ export function mountMaterialContent(doc: Document, signal: AbortSignal, enabled
         forgetSession();
     };
     const current = (owner: number, url: string) => !disposed && !signal.aborted && enabled() && owner === epoch && canonicalMaterialUrl(view.location.href) === url;
-    const stopWaiting = () => {observer?.disconnect(); observer = undefined; clearTimeout(timeout); restoringPosition = false;};
+    const stopWaiting = () => {observer?.disconnect(); observer = undefined; clearTimeout(timeout); clearTimeout(retryTimer); rescheduleRestore = undefined; restoringPosition = false; restoreController?.abort(); restoreController = undefined;};
     const showNotice = (message: string) => {
         notice = doc.createElement('div');
         notice.setAttribute('data-fluent-read-ui', 'material-resume'); notice.setAttribute('role', 'status');
@@ -90,24 +77,17 @@ export function mountMaterialContent(doc: Document, signal: AbortSignal, enabled
             return identities.includes(normalizeMaterialSource({kind: 'video', url: view.location.href}).identityKey);
         } catch {return false;}
     });
-    const restore = (record: MaterialRecord): boolean => {
-        if (!record.locator) return true;
-        if (record.kind === 'video') {
-            const videos = materialVideos(record).filter(video => video.readyState > 0);
-            // 复用字幕学习当前媒体来源，X 多视频绝不根据 DOM 顺序猜测。
-            if (videos.length !== 1) return false;
-            const video = videos[0]; const time = (record.locator.startMs || 0) / 1000;
-            if (!Number.isFinite(video.duration) || time >= video.duration) return false;
-            try {video.pause(); video.currentTime = time; video.scrollIntoView({block: 'center', behavior: 'instant'}); return true;} catch {return false;}
-        }
-        const paragraph = locateMaterialParagraph(doc, record.locator);
-        if (!paragraph) return false;
-        paragraph.scrollIntoView({block: 'center', behavior: 'instant'});
-        if (typeof paragraph.animate === 'function') paragraph.animate([{outline: '3px solid #4f80ff', outlineOffset: '4px'}, {outline: '3px solid transparent', outlineOffset: '4px'}], {duration: 2400});
-        return true;
+    // 两个调用点均已核对 video 和待恢复 locator。
+    const restoreVideo = (record: MaterialRecord): boolean => {
+        const videos = materialVideos(record).filter(video => video.readyState > 0);
+        // 复用字幕学习当前媒体来源，X 多视频绝不根据 DOM 顺序猜测。
+        if (videos.length !== 1) return false;
+        const video = videos[0]; const time = (record.locator!.startMs || 0) / 1000;
+        if (!Number.isFinite(video.duration) || time >= video.duration) return false;
+        try {video.pause(); video.currentTime = time; video.scrollIntoView({block: 'center', behavior: 'instant'}); return true;} catch {return false;}
     };
     const load = async (id: string, resume: boolean) => {
-        const owner = ++epoch; stopWaiting(); active = undefined; activeGeneration = 0; lastPosition = '';
+        const owner = ++epoch; stopWaiting(); cancelReadingScroll(); active = undefined; activeGeneration = 0; lastPosition = '';
         const url = canonicalMaterialUrl(view.location.href);
         try {
             const [record, generation] = await Promise.all([materialResolve(id), materialGeneration()]);
@@ -115,21 +95,41 @@ export function mountMaterialContent(doc: Document, signal: AbortSignal, enabled
             if (!record) {forgetSession(); throw new Error('材料不存在');}
             active = record; activeUrl = url; activeGeneration = generation;
             rememberSession(id, url);
-            if (!resume || restore(record)) return;
+            if (!resume || !record.locator) return;
+            const restoreLocator = record.locator;
             restoringPosition = true;
-            let queued = false;
-            const tryAgain = () => {
-                if (queued) return; queued = true;
-                view.requestAnimationFrame(() => {queued = false; if (!current(owner, url)) {stopWaiting(); return;} if (restore(record)) stopWaiting();});
+            const attempt = async () => {
+                if (!restoringPosition || !current(owner, url)) return;
+                restoreController?.abort();
+                const controller = new AbortController(); restoreController = controller;
+                if (record.kind === 'video') {if (restoreVideo(record)) stopWaiting(); return;}
+                const result = await locateMaterialParagraph(doc, restoreLocator, {
+                    signal: controller.signal,
+                    isCurrent: () => restoringPosition && restoreController === controller && current(owner, url),
+                }).catch(() => ({status: 'incomplete' as const}));
+                if (!restoringPosition || restoreController !== controller || !current(owner, url)) return;
+                if (result.status === 'matched' && result.node?.isConnected) {
+                    result.node.scrollIntoView({block: 'center', behavior: 'instant'});
+                    if (typeof result.node.animate === 'function') result.node.animate([{outline: '3px solid #4f80ff', outlineOffset: '4px'}, {outline: '3px solid transparent', outlineOffset: '4px'}], {duration: 2400});
+                    stopWaiting();
+                } else if (result.status === 'invalidated') rescheduleRestore?.();
             };
-            observer = new MutationObserver(tryAgain); observer.observe(doc.body, {childList: true, subtree: true});
-            timeout = setTimeout(() => {stopWaiting(); if (current(owner, url)) showNotice(record.kind === 'video' ? '未能恢复视频时间。请确认原视频仍可播放，再从学习材料重新打开。' : '原段落已变化或无法唯一定位。材料与原句仍保留，可在页面内搜索原句，或从学习材料更新来源。');}, 8000);
+            // 变更风暴只更新一个安静期任务；不在每个动画帧重新扫描前6000段。
+            rescheduleRestore = () => {
+                if (!restoringPosition || !current(owner, url)) return;
+                restoreController?.abort(); clearTimeout(retryTimer);
+                retryTimer = setTimeout(() => {void attempt();}, 120);
+            };
+            observer = new MutationObserver(() => rescheduleRestore?.());
+            observer.observe(doc.documentElement, {childList: true, characterData: true, attributes: true, subtree: true});
+            timeout = setTimeout(() => {stopWaiting(); if (current(owner, url)) showNotice(record.kind === 'video' ? '未能恢复视频时间。请确认原视频仍可播放，再从学习材料重新打开。' : '暂时未能确认原文位置。材料与原句仍保留，可在页面内搜索原句，或稍后重新打开。');}, 8000);
+            void attempt();
         } catch {if (current(owner, url)) {forgetSession(); if (resume) showNotice('材料已移除、来源不匹配或当前隐私设置禁止读取。请从学习工作区检查来源并重新打开。');}}
     };
     const savePosition = async () => {
         const record = active; const owner = epoch; const url = canonicalMaterialUrl(view.location.href);
-        const capturedAt = Date.now();
-        if (!record || url !== activeUrl || !current(owner, url) || record.kind === 'document') return;
+        if (!record || url !== activeUrl || !current(owner, url) || record.kind === 'document' || restoringPosition) return;
+        cancelPosition(); const positionOwner = positionRevision;
         let locator: MaterialLocator | undefined;
         let sourceUrl = url;
         if (record.kind === 'video') {
@@ -137,30 +137,65 @@ export function mountMaterialContent(doc: Document, signal: AbortSignal, enabled
             if (videos.length === 1 && Number.isFinite(videos[0].currentTime)) {locator = {kind: 'video', startMs: Math.floor(videos[0].currentTime * 1000)};
                 sourceUrl = getVideoLearningSource(videos[0], view.location, doc).sourceUrl || url;}
         } else {
-            const node = Array.from(doc.querySelectorAll<HTMLElement>(PROSE)).slice(0, 6000).find(element => !element.closest(EXCLUDED) && element.getBoundingClientRect().bottom > 0 && element.getBoundingClientRect().top < view.innerHeight && normalize(element.textContent || '').length >= 20);
-            if (node) locator = {kind: 'text', quote: normalize(node.textContent!).slice(0, 6000), ...(node.id ? {paragraphId: node.id} : {})};
+            const controller = new AbortController(); positionController = controller;
+            const result = await scanMaterialParagraphs(doc, {kind: 'viewport'}, {signal: controller.signal,
+                isCurrent: () => positionOwner === positionRevision && record === active && current(owner, url)}).catch(() => undefined);
+            if (result?.status !== 'matched' || !result.locator?.quote) return;
+            locator = result.locator;
         }
-        if (!locator || JSON.stringify(locator) === lastPosition) return;
+        if (!locator || JSON.stringify(locator) === lastPosition || positionOwner !== positionRevision || !current(owner, url)) return;
+        const capturedAt = Date.now();
         const generation = activeGeneration;
-        try {await materialCapture({source: {...record.source, url: sourceUrl}, locator, positionOnly: true, generation, capturedAt}); if (current(owner, url)) lastPosition = JSON.stringify(locator);} catch { /* 归档、清空与隐私设置优先，不复活已删除材料。 */ }
+        try {await materialCapture({source: {...record.source, url: sourceUrl}, locator, positionOnly: true, generation, capturedAt}); if (positionOwner === positionRevision && current(owner, url)) lastPosition = JSON.stringify(locator);} catch { /* 归档、清空与隐私设置优先，不复活已删除材料。 */ }
     };
-    const onScroll = () => {clearTimeout(scrollTimer); scrollTimer = setTimeout(() => {void savePosition();}, 1200);};
-    const onTime = () => {if (Date.now() - lastVideoSave < 5000) return; lastVideoSave = Date.now(); void savePosition();};
-    const onLeave = () => {clearTimeout(scrollTimer); void savePosition();};
+    const onReadingInput = (event: Event) => {
+        if (!event.isTrusted || active?.kind !== 'article') return;
+        const input = event as KeyboardEvent;
+        if (input.ctrlKey || input.metaKey || input.altKey) return;
+        if (event.type === 'keydown' && !['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(input.key)) return;
+        const target = event.target as Element | null;
+        if (target?.nodeType === 1 && (target.closest('[data-fluent-read-ui],[id^="fluent-read-"]')
+            || event.type === 'keydown' && target.closest('input,textarea,select,button,a,[contenteditable]:not([contenteditable="false"])'))) return;
+        // 恢复尚在等动态内容或分片扫描时，读者开始阅读就撤销自动定位。
+        if (restoringPosition) stopWaiting();
+        readingInputUntil = Date.now() + SCROLL_SETTLE_MS;
+    };
+    const onScroll = (event: Event) => {
+        // 浏览器也会为程序滚动、译文重排、浮层内部滚动产生 scroll。
+        // 文章仅在读者输入后的正文滚动链上记录进度；暂停/时间轴继续走视频合同。
+        if (active?.kind !== 'video') {
+            const target = event.target as Element;
+            if (event.type !== 'scroll' || event.target !== doc && (target.nodeType !== 1 || target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[data-fluent-read-ui],[id^="fluent-read-"]'))) return;
+            if (!scrollTimer && Date.now() >= readingInputUntil) return;
+        }
+        cancelPosition(); clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {scrollTimer = undefined; readingInputUntil = 0; void savePosition();}, SCROLL_SETTLE_MS);
+    };
+    const onTime = () => {if (active?.kind !== 'video' || Date.now() - lastVideoSave < 5000) return; lastVideoSave = Date.now(); void savePosition();};
+    const onLeave = () => {cancelReadingScroll(); if (active?.kind === 'video') void savePosition();};
+    const onVisibility = () => {if (doc.visibilityState === 'hidden') cancelReadingScroll();};
+    const onLayout = () => {cancelReadingScroll(); rescheduleRestore?.();};
     const onCaptured = (event: Event) => {const id = (event as CustomEvent<unknown>).detail; if (typeof id === 'string' && id.length < 256) void load(id, false);};
-    const onMediaReady = () => {if (restoringPosition && active?.kind === 'video' && current(epoch, activeUrl) && restore(active)) stopWaiting();};
-    const onRoute = () => {if (active && canonicalMaterialUrl(view.location.href) !== activeUrl) {epoch++; active = undefined; forgetSession(); stopWaiting(); clearTimeout(scrollTimer); notice?.remove();}};
+    const onMediaReady = () => {if (restoringPosition && active?.kind === 'video' && current(epoch, activeUrl) && restoreVideo(active)) stopWaiting();};
+    const onRoute = () => {if (active && canonicalMaterialUrl(view.location.href) !== activeUrl) {epoch++; cancelReadingScroll(); active = undefined; forgetSession(); stopWaiting(); notice?.remove();}};
     doc.addEventListener('scroll', onScroll, {capture: true, passive: true});
+    doc.addEventListener('wheel', onReadingInput, {capture: true, passive: true});
+    doc.addEventListener('touchmove', onReadingInput, {capture: true, passive: true});
+    doc.addEventListener('keydown', onReadingInput, true);
+    doc.addEventListener('visibilitychange', onVisibility);
     doc.addEventListener('pause', onScroll, true);
     doc.addEventListener('timeupdate', onTime, true);
     doc.addEventListener('loadedmetadata', onMediaReady, true);
     doc.addEventListener('fluentread-material-captured', onCaptured);
     view.addEventListener('popstate', onRoute); view.addEventListener('hashchange', onRoute);
     view.addEventListener('pagehide', onLeave, true);
+    view.addEventListener('resize', onLayout);
+    doc.addEventListener('load', onLayout, true);
+    doc.fonts?.addEventListener('loadingdone', onLayout);
     const target = new URL(view.location.href); const id = target.searchParams.get(MATERIAL_RESUME_PARAMETER);
     if (id) {target.searchParams.delete(MATERIAL_RESUME_PARAMETER); view.history.replaceState(view.history.state, '', target.href); void load(id, true);}
     else {const rememberedId = sessionMaterial(); if (rememberedId) void load(rememberedId, true);}
-    const dispose = () => {if (disposed) return; disposed = true; epoch++; stopWaiting(); clearTimeout(scrollTimer); notice?.remove(); doc.removeEventListener('scroll', onScroll, true); doc.removeEventListener('pause', onScroll, true); doc.removeEventListener('timeupdate', onTime, true); doc.removeEventListener('loadedmetadata', onMediaReady, true); doc.removeEventListener('fluentread-material-captured', onCaptured); view.removeEventListener('popstate', onRoute); view.removeEventListener('hashchange', onRoute); view.removeEventListener('pagehide', onLeave, true); signal.removeEventListener('abort', dispose);};
+    const dispose = () => {if (disposed) return; disposed = true; epoch++; cancelReadingScroll(); stopWaiting(); notice?.remove(); doc.removeEventListener('scroll', onScroll, true); doc.removeEventListener('wheel', onReadingInput, true); doc.removeEventListener('touchmove', onReadingInput, true); doc.removeEventListener('keydown', onReadingInput, true); doc.removeEventListener('visibilitychange', onVisibility); doc.removeEventListener('pause', onScroll, true); doc.removeEventListener('timeupdate', onTime, true); doc.removeEventListener('loadedmetadata', onMediaReady, true); doc.removeEventListener('fluentread-material-captured', onCaptured); view.removeEventListener('popstate', onRoute); view.removeEventListener('hashchange', onRoute); view.removeEventListener('pagehide', onLeave, true); view.removeEventListener('resize', onLayout); doc.removeEventListener('load', onLayout, true); doc.fonts?.removeEventListener('loadingdone', onLayout); signal.removeEventListener('abort', dispose);};
     signal.addEventListener('abort', dispose, {once: true}); if (signal.aborted) dispose();
     return dispose;
 }

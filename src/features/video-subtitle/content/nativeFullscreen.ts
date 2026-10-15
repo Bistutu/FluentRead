@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/nativeFullscreen.ts
  * 文件职责：将已有 YouTube 字幕时间轴映射到 Safari 系统视频全屏可选择的原生 TextTrack。
- * 主要内容：页面内预备原生轨道，按显示方式组合已缓存译文与原文，由系统菜单选择显示，缓存更新保留用户模式，退出、禁用、换视频和卸载时仅保守恢复仍被选中轨道让位的站点原轨道；不重启网络翻译，也不承诺系统播放器显示网页覆盖层。
+ * 主要内容：页面内预备原生轨道，按显示方式组合已缓存译文与原文，由系统菜单选择显示，缓存更新保留用户模式，系统改选源轨或关闭时更新恢复归属，退出、禁用、换视频和卸载时仅保守恢复最近可证明让位的站点原轨道；不重启网络翻译，也不承诺系统播放器显示网页覆盖层。
  * 模块边界：只持有自己创建的 track 节点与 cue，运行时注入媒体、配置和缓存读取；系统字幕样式和后台脚本调度由浏览器负责。
  */
 import type {VideoSubtitleCue} from './youtubeSubtitleData';
@@ -53,28 +53,36 @@ export function createNativeFullscreenSubtitles(read: () => NativeFullscreenSubt
   let preparedKey = '';
   let preparedFingerprint = '';
   const previousShowing = new Set<TextTrack>();
-  const onTrackChange = () => sync();
+  const onTrackResource = () => sync();
+  const onTrackChange = () => {
+    // 只由当前列表的选择变化更新归属；内部 cue/模式写入不重新认领用户源轨。
+    if (active && !syncing) {
+      const sources = showingSources();
+      if (ownedMode() !== 'showing' || sources.length) {
+        previousShowing.clear();
+        for (const source of sources) previousShowing.add(source);
+      }
+    }
+    sync();
+  };
   const tracks = (): TextTrack[] => {
     try { return Array.from(trackList || []); } catch { return []; }
   };
   const ownedMode = () => {
     try { return node?.track.mode; } catch { return undefined; }
   };
+  const showingSources = (): TextTrack[] => tracks().filter(track => {
+    try { return track !== node?.track && ['subtitles', 'captions'].includes(track.kind) && track.mode === 'showing'; }
+    catch { return false; }
+  });
   const snapshotSources = () => {
     previousShowing.clear();
-    for (const track of tracks()) {
-      try {
-        if (track !== node?.track && ['subtitles', 'captions'].includes(track.kind) && track.mode === 'showing') previousShowing.add(track);
-      } catch { /* 宿主已销毁的轨道没有可恢复状态。 */ }
-    }
+    for (const track of showingSources()) previousShowing.add(track);
   };
   const restoreSources = () => {
     const current = tracks();
-    // 用户另选的站点轨优先；不能把进入前的原轨叠加到新选择上。
-    const anotherShowing = current.some(track => {
-      try { return track !== node?.track && ['subtitles', 'captions'].includes(track.kind) && track.mode === 'showing'; }
-      catch { return false; }
-    });
+    // 用户另选的站点轨优先；不能把之前观察到的源轨叠加到新选择上。
+    const anotherShowing = showingSources().length > 0;
     if (anotherShowing) return;
     for (const track of previousShowing) {
       try { if (current.includes(track) && track.mode === 'disabled') track.mode = 'showing'; }
@@ -85,8 +93,8 @@ export function createNativeFullscreenSubtitles(read: () => NativeFullscreenSubt
     const previous = node;
     node = null;
     if (!previous) return;
-    previous.removeEventListener('load', onTrackChange);
-    previous.removeEventListener('error', onTrackChange);
+    previous.removeEventListener('load', onTrackResource);
+    previous.removeEventListener('error', onTrackResource);
     try { previous.track.mode = 'disabled'; } catch { /* 失效的 TextTrack 不能阻止 DOM 回收。 */ }
     previous.remove();
   };
@@ -153,8 +161,8 @@ export function createNativeFullscreenSubtitles(read: () => NativeFullscreenSubt
         node.label = 'FluentRead';
         node.setAttribute('data-fluent-read-native-subtitles', 'true');
         node.srclang = state.language;
-        node.addEventListener('load', onTrackChange);
-        node.addEventListener('error', onTrackChange);
+        node.addEventListener('load', onTrackResource);
+        node.addEventListener('error', onTrackResource);
         video.appendChild(node);
         node.track.mode = 'hidden';
         fingerprint = '';

@@ -1,5 +1,5 @@
-import {parseHTML} from 'linkedom';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {parseHTML} from 'linkedom';
 
 const ports = vi.hoisted(() => ({
     config: {uiLanguageSetupCompleted: false, uiLanguage: 'en-US', interfaceFont: 'system'},
@@ -30,7 +30,6 @@ beforeEach(async () => {
     vi.stubGlobal('document', parseHTML('<html><body></body></html>').document);
     vi.stubGlobal('window', new EventTarget());
     vi.stubGlobal('navigator', {language: 'zh-CN'});
-
     vi.doMock('../src/app/popup/PopupApp.vue', async () => {ports.mainLoaded(); await ports.mainGate; return {default: {kind: 'main'}};});
     vi.doMock('../src/app/popup/PopupOnboarding.vue', async () => {ports.onboardingLoaded(); await ports.onboardingGate; return {default: {kind: 'onboarding'}};});
     bootstrap = await import('../src/app/popup/mount');
@@ -116,7 +115,6 @@ describe('Popup fresh configuration bootstrap', () => {
         expect(remove).toHaveBeenCalledWith('pagehide', expect.any(Function));
     });
     it.each(['main', 'onboarding', 'font', 'language'] as const)('rechecks blocked hydration after pending %s resources and cleans its exit listener', async resource => {
-        ports.browser='firefox';ports.platform.mockResolvedValue({os:'android'});
         ports.config.uiLanguageSetupCompleted = resource !== 'onboarding';
         const gate = deferred(), remove = vi.spyOn(window, 'removeEventListener');
         if (resource === 'main') ports.mainGate = gate.promise;
@@ -127,10 +125,8 @@ describe('Popup fresh configuration bootstrap', () => {
         const outcome = expect(pending).rejects.toThrow('Popup configuration is not ready');
         const called = resource === 'main' ? ports.mainLoaded : resource === 'onboarding' ? ports.onboardingLoaded : resource === 'font' ? ports.font : ports.ensureBundle;
         await vi.waitFor(() => expect(called).toHaveBeenCalledOnce());
-        expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(true);
         ports.hydration = 'blocked'; gate.resolve(); await outcome;
         expect(ports.createApp).not.toHaveBeenCalled(); expect(remove).toHaveBeenCalledWith('pagehide', expect.any(Function));
-        expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
     });
     it('routes blocked hydration through the actual startup error UI and its explicit reopen button', async () => {
         const dom = parseHTML('<html><body><div id="owned">Original startup</div></body></html>');

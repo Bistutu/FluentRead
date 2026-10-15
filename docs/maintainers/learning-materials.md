@@ -46,7 +46,7 @@
 
 实际组件 setup 夹具必须跟随公共入口演进：文档组合根的 `./index` 应接到同一 app 依赖端口，阅读面板的材料依赖应走 `material/public`。材料采集 fixture 使用真实公开的 begin/complete/client，只控制 runtime 传输；保存成功且取得权威记录 ID 后才关联，失败不得产生引用，来源元数据不得进入模型请求。不要通过空函数端口、删除原行为断言或跳过失败掩盖接入错误。
 
-共享词典修改后，先生成并提交内容寻址的 userscript 语言文件，再将 `userscriptLanguageResourceCommit` 固定到已推送且确实包含这些文件的提交。`userscriptViteConfig` 必须比较固定提交与本地文件的完整字节；旧 Greasy Fork 文案投影仍使用其原有资源对照。构建产物通过 verifier 不足以证明远程引用存在，须另核对固定地址。
+材料工作区目前依赖扩展后台；其新增文案通过构建期投影从 userscript 的远程词典中排除，保持已发布资源。确需更新脚本可用功能的文案时，先生成并提交内容寻址的语言文件，再将 `userscriptLanguageResourceCommit` 固定到已推送且确实包含这些文件的提交。`userscriptViteConfig` 必须比较固定提交与本地文件的完整字节；旧 Greasy Fork 文案投影仍使用其原有资源对照。构建产物通过 verifier 不足以证明远程引用存在，须另核对固定地址。
 
 ## 验证
 

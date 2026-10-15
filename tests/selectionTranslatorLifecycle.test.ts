@@ -2,7 +2,7 @@
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
  * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口，并组合实际 selection runtime 验证 Safari 已消费选区的 host 恢复、正文失效及离开清理。
- * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；新增入口可选官方模板和独立 Linkedom 节点树；组合模式将真实组件交给原始 runtime 的平台挂载端口；材料捕获使用真实代次冻结与完成逻辑，只替换来源提取和后台客户端；浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
+ * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；材料捕获使用真实代次冻结与完成逻辑，只替换来源提取和后台客户端；新增入口可选官方模板和独立 Linkedom 节点树；组合模式将真实组件交给原始 runtime 的平台挂载端口，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import * as speechProgress from '@/src/core/tts/speechProgress';
@@ -28,6 +28,7 @@ import * as visualViewport from '@/src/platform/dom/visualViewport';
 import * as modalDialogHost from '@/src/features/selection-translation/content/modalDialogHost';
 import {setSelectionContextMenuHandler, translateSelectionFromContextMenu as translateSelectionThroughBridge} from '@/src/features/selection-translation/content/contextMenuBridge';
 import {beginMaterialCapture as beginCapture, completeMaterialCapture as completeCapture, type MaterialSelection} from '@/src/features/vocabulary/materialCapture';
+import {projectMaterialOriginalText} from '@/src/features/vocabulary/materialOriginalText';
 
 vi.mock('webextension-polyfill', () => ({default: {}}));
 const materialPorts = vi.hoisted(() => ({generation: vi.fn(), capture: vi.fn()}));
@@ -36,7 +37,7 @@ vi.mock('@/src/features/vocabulary/materialClient', () => ({materialGeneration: 
 const filename = 'src/features/selection-translation/ui/SelectionTranslator.vue';
 const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
 const script = compileScript(descriptor, {id: 'selection-lifecycle'});
-type SelectionBuildTarget = 'chrome' | 'userscript' | 'safari';
+type SelectionBuildTarget = 'chrome' | 'userscript' | 'safari' | 'firefox';
 const setupSource = script.content;
 const compiledByTarget = new Map<SelectionBuildTarget, string>();
 function compileForTarget(target: SelectionBuildTarget): string {
@@ -180,12 +181,14 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         return releaseContextMenu;
     });
     const translateText = vi.fn().mockResolvedValue('这是译文'), translateTextBatch = vi.fn();
+    // 来源提取用受控 Range 端口；冻结代次及完成关联运行真实公共逻辑。
     materialPorts.generation.mockReset().mockResolvedValue(17);
     materialPorts.capture.mockReset().mockResolvedValue({id: 'material-fixture'});
     const captureMaterialSelection = vi.fn((_range: Range, quote: string): MaterialSelection => ({
         source: {kind: 'article', url: 'https://example.test/article', title: 'Selected article'}, locator: {kind: 'text', quote},
     }));
     const beginMaterialCapture = vi.fn(beginCapture), completeMaterialCapture = vi.fn(completeCapture);
+    const material = {captureMaterialSelection, beginMaterialCapture, completeMaterialCapture};
     let stopTts: MockInstance<(notifyRemote?: boolean) => void>;
     let ttsRequestId = 0;
     const modules: Record<string, unknown> = {
@@ -208,7 +211,8 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         '@/src/core/language/detect': detect,
         '@/src/core/language/partOfSpeech': partOfSpeech,
         '@/src/features/vocabulary/protocol': vocabularyProtocol,
-        '@/src/features/vocabulary/material/public': {captureMaterialSelection, beginMaterialCapture, completeMaterialCapture},
+        '@/src/features/vocabulary/material/public': material,
+        '@/src/features/vocabulary/material/text/public': {projectMaterialOriginalText},
         '@/src/core/hotkey': hotkey,
         '@/src/features/share-card/public': {isShareCardMounted: () => false},
         '@/src/features/selection-translation/content/selectionTtsContentController': {
@@ -257,7 +261,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         return vm;
     };
     if (!runtimeIntegration) mountActual();
-    return {get state() {return state;}, event, browser, config, listeners, window, document, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
+    return {get state() {return state;}, event, browser, config, listeners, window, document, material, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
         component: exports.default, mountActual,
         registerContextMenu, get contextMenuHandler() {return contextMenuHandler;},
         captureMaterialSelection, beginMaterialCapture, completeMaterialCapture, materialGeneration: materialPorts.generation, materialCapture: materialPorts.capture,
@@ -687,6 +691,40 @@ describe('explicit selection sentence collection', () => {
             reference: {kind: 'vocabulary', id: 'saved-sentence', excerpt: fixture.request.text},
         }));
     });
+    it('J1 saves only original DOM context while retaining privacy-stripped wordbook URLs and independent material identity', async () => {
+        const text = 'Use getUserID to load the original passage.';
+        const fixture = prepare(text);
+        const parsed = parseHTML('<html><body><p>Before. <span>Use <code>getUserID</code> to load the original passage.</span><span class="fluent-read-bilingual-content">受控译文不应保存</span> After.</p></body></html>');
+        const node = parsed.document.querySelector('span')!;
+        const range = {startContainer:node.firstChild!,startOffset:0,endContainer:node.lastChild!,endOffset:node.lastChild!.textContent!.length} as unknown as Range;
+        vi.stubGlobal('Node',parsed.window.Node);vi.stubGlobal('location',new URL('https://example.test/read?id=7&token=private#part'));
+        fixture.state.snapshot = {text,range};
+        fixture.material.captureMaterialSelection.mockReturnValue({source:{kind:'article',url:'https://example.test/read?id=7'},locator:{kind:'text',quote:text}});
+        await fixture.state.saveVocabularyEntry({isTrusted:true});
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({action:'upsert',input:expect.objectContaining({context:expect.objectContaining({text:'Before. Use getUserID to load the original passage. After.',sourceUrl:'https://example.test/read'})})}));
+        expect(fixture.materialCapture).toHaveBeenCalledWith(expect.objectContaining({source:{kind:'article',url:'https://example.test/read?id=7'},locator:{kind:'text',quote:text}}));
+    });
+    it.each(['over-budget','detached'] as const)('J1 retains only selected text when original context is %s', async condition => {
+        const text='Selected original sentence.';const fixture=prepare(text);
+        const parsed=parseHTML(`<html><body><p><span>${text}</span>${'b'.repeat(13000)}<span class="fluent-read-bilingual-content">译文不应保存</span></p></body></html>`);
+        const node=parsed.document.querySelector('span')!.firstChild!;
+        fixture.state.snapshot={text,range:{startContainer:node,startOffset:0,endContainer:node,endOffset:text.length}};
+        vi.stubGlobal('Node',parsed.window.Node);
+        if(condition==='detached')parsed.document.querySelector('p')!.remove();
+        await fixture.state.saveVocabularyEntry({isTrusted:true});
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({action:'upsert',input:expect.objectContaining({context:expect.objectContaining({text})})}));
+    });
+    it('J1 freezes original context before asynchronous material generation rather than rereading a mutated page', async () => {
+        const text='Selected original sentence.';const fixture=prepare(text);
+        const parsed=parseHTML(`<html><body><p>Before. <span>${text}</span> After.</p></body></html>`),node=parsed.document.querySelector('span')!.firstChild!;
+        fixture.state.snapshot={text,range:{startContainer:node,startOffset:0,endContainer:node,endOffset:text.length}};
+        vi.stubGlobal('Node',parsed.window.Node);vi.stubGlobal('location',new URL('https://example.test/first?private=1'));
+        let release!: (value:number)=>void;fixture.materialGeneration.mockReturnValueOnce(new Promise(resolve=>{release=resolve;}));
+        const pending=fixture.state.saveVocabularyEntry({isTrusted:true});
+        parsed.document.querySelector('p')!.textContent='Replacement page context';vi.stubGlobal('location',new URL('https://other.test/replaced'));
+        release(17);await pending;
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({action:'upsert',input:expect.objectContaining({context:expect.objectContaining({text:`Before. ${text} After.`,sourceUrl:'https://example.test/first'})})}));
+    });
 
     it('uses the captured language for other-language sentences and retrieves saved state after explicit card requests', async () => {
         const fixture = prepare('Les idées méritent notre attention.', 'fr');
@@ -706,9 +744,34 @@ describe('explicit selection sentence collection', () => {
         await fixture.state.refreshVocabularySaved(fixture.request);
         await fixture.state.saveVocabularyEntry({isTrusted: true});
         expect(fixture.browser.runtime.sendMessage.mock.calls.some(([message]) => message.type === vocabularyProtocol.VOCABULARY_BOOK_MESSAGE)).toBe(false);
-        expect(fixture.captureMaterialSelection).not.toHaveBeenCalled();
-        expect(fixture.beginMaterialCapture).not.toHaveBeenCalled();
+        expect(fixture.material.captureMaterialSelection).not.toHaveBeenCalled();
+        expect(fixture.material.beginMaterialCapture).not.toHaveBeenCalled();
         expect(fixture.materialCapture).not.toHaveBeenCalled();
+    });
+
+    it('still saves the vocabulary record when optional material DOM capture throws', async () => {
+        const fixture = prepare('Good ideas deserve attention.');
+        fixture.material.captureMaterialSelection.mockImplementation(() => {throw new Error('Source DOM detached');});
+        await fixture.state.saveVocabularyEntry({isTrusted: true});
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({action: 'upsert'}));
+        expect(fixture.state.isVocabularySaved).toBe(true);
+        expect(fixture.state.vocabularyBusy).toBe(false);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('does not save a stale selection while the material generation read is pending', async () => {
+        const fixture = prepare('Good ideas deserve attention.');
+        fixture.browser.runtime.sendMessage.mockClear();
+        const selection: MaterialSelection = {source: {kind: 'article', url: 'https://example.com/article'}, locator: {kind: 'text', quote: fixture.request.text}};
+        fixture.material.captureMaterialSelection.mockReturnValue(selection);
+        let finish!: (value: Awaited<ReturnType<typeof beginCapture>>) => void;
+        fixture.material.beginMaterialCapture.mockImplementation(() => new Promise<Awaited<ReturnType<typeof beginCapture>>>(resolve => {finish = resolve;}));
+        const pending = fixture.state.saveVocabularyEntry({isTrusted: true});
+        fixture.state.closeTooltip();
+        finish({selection, generation: 1, capturedAt: Date.now()});await pending;
+        expect(fixture.browser.runtime.sendMessage.mock.calls.some(([message]) => message.action === 'upsert')).toBe(false);
+        expect(fixture.material.completeMaterialCapture).not.toHaveBeenCalled();
+        expect(fixture.state.vocabularyBusy).toBe(false);
     });
 
     it('does not mark a new selection saved when the previous sentence save finishes late', async () => {
@@ -717,8 +780,8 @@ describe('explicit selection sentence collection', () => {
         fixture.browser.runtime.sendMessage.mockImplementation(message => message.action === 'upsert'
             ? new Promise(resolve => { finish = resolve; }) : Promise.resolve({success: true}));
         const pending = fixture.state.saveVocabularyEntry({isTrusted: true});
-        for (let n = 0; n < 4; n++) await Promise.resolve();
-        expect(finish).toBeTypeOf('function');
+        // 材料代次读取先完成，才进入已有词书的异步保存；确认实际请求已开始后测试迟到响应。
+        await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
         const text = 'Practice makes progress.';
         fixture.state.snapshot = {text};
         fixture.state.selectedText = text;
@@ -745,8 +808,8 @@ describe('explicit selection sentence collection', () => {
         expect(fixture.materialGeneration).toHaveBeenCalledOnce();
         expect(fixture.browser.runtime.sendMessage.mock.calls.some(([message]) => message.action === 'upsert')).toBe(false);
         selected.source.url = 'https://example.test/replacement'; selected.locator!.quote = 'Changed source';
-        generation(29); for (let n = 0; n < 4; n++) await Promise.resolve();
-        expect(finish).toBeTypeOf('function'); expect(fixture.completeMaterialCapture).not.toHaveBeenCalled();
+        generation(29); await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+        expect(fixture.completeMaterialCapture).not.toHaveBeenCalled();
         expect(fixture.materialCapture).not.toHaveBeenCalled();
         finish({success: true, data: {id: 'real-entry-29'}}); await pending;
         expect(fixture.materialCapture).toHaveBeenCalledOnce();
@@ -1468,6 +1531,75 @@ it('keeps an existing ordinary translation running when opening the learning vie
 
 
 describe('selection card geometry across content changes', () => {
+    it.each([
+        {isForward: true, left: 100, right: 150, expected: 222},
+        {isForward: false, left: 100, right: 150, expected: 28},
+        {isForward: true, left: 350, right: 380, expected: 278},
+        {isForward: false, left: 10, right: 100, expected: 172},
+        {isForward: true, left: 134, right: 184.85, expected: 256.85},
+    ])('leaves Firefox touch caret clearance independently of viewport margin: %j', scenario => {
+        const {state, window} = mountSelection(false, undefined, 'firefox');
+        Object.assign(window, {visualViewport: {width: 390, height: 500, offsetLeft: 0, offsetTop: 0}});
+        state.handleViewportResize();state.touchInteraction = true;
+        state.snapshot = {text: 'Selected text.', anchor: {left: scenario.left, right: scenario.right, top: 150, bottom: 174}, isForward: scenario.isForward};
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: `${scenario.expected}px`, top: '162px'});
+    });
+    it.each([true, false])('keeps full-line Firefox touch targets away from both handles for direction %s', isForward => {
+        const {state, window} = mountSelection(false, undefined, 'firefox');
+        Object.assign(window, {visualViewport: {width: 390, height: 300, offsetLeft: 80, offsetTop: 160}});
+        state.handleViewportResize();state.touchInteraction = true;
+        state.snapshot = {text: 'Full selected line.', anchor: {left: 80, right: 470, top: 160, bottom: 184}, isForward};
+        state.updatePosition(false);
+        const x = Number.parseFloat(state.indicatorStyle.left);
+        expect(x - 80).toBeGreaterThanOrEqual(72);expect(470 - x).toBeGreaterThanOrEqual(72);
+        expect(x - 22).toBeGreaterThanOrEqual(80);expect(x + 22).toBeLessThanOrEqual(470);
+        expect(state.indicatorStyle.top).toBe('188px');
+    });
+    it.each([true, false])('uses the actual Firefox touch endpoint line and scales its gap for direction %s', isForward => {
+        const {state} = mountSelection(false, undefined, 'firefox');
+        const rects = [{left: 100, right: 230, top: 100, bottom: 124, width: 130, height: 24},
+            {left: 100, right: 160, top: 124, bottom: 148, width: 60, height: 24}];
+        state.touchInteraction = true;state.pageZoom = 2;
+        state.snapshot = {text: 'Two selected lines.', range: {getClientRects: () => rects}, anchor: rects[0], isForward};
+        state.updatePosition();
+        expect(state.snapshot.anchor).toEqual(isForward ? rects[1] : rects[0]);
+        expect(state.indicatorStyle).toEqual(isForward ? {left: '196px', top: '136px'} : {left: '64px', top: '112px'});
+    });
+    it.each([true, false])('keeps the Firefox mouse entry at its existing offset for direction %s', isForward => {
+        const {state} = mountSelection(false, undefined, 'firefox');
+        state.snapshot = {text: 'Desktop selection.', anchor: {left: 100, right: 230, top: 100, bottom: 124}, isForward};
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: isForward ? '244px' : '86px', top: '138px'});
+    });
+    it.each([true, false])('preserves visibility without claiming caret clearance in an extremely narrow Firefox viewport: %s', isForward => {
+        const {state, window} = mountSelection(false, undefined, 'firefox');
+        Object.assign(window, {visualViewport: {width: 96, height: 300, offsetLeft: 0, offsetTop: 0}});
+        state.handleViewportResize();state.touchInteraction = true;
+        state.snapshot = {text: 'Full selected line.', anchor: {left: 0, right: 96, top: 150, bottom: 174}, isForward};
+        state.updatePosition(false);
+        const x = Number.parseFloat(state.indicatorStyle.left);
+        expect(x).toBe(isForward ? 68 : 28);
+        expect(x - 22).toBeGreaterThanOrEqual(0);expect(x + 22).toBeLessThanOrEqual(96);
+        // Neither outside side nor a 72px-safe interior exists: visibility is the explicit fallback only.
+        expect(Math.min(x, 96 - x)).toBeLessThan(72);
+    });
+    it('keeps Firefox touch vertical inset independent of its gap above a panned keyboard', () => {
+        const {state, window} = mountSelection(false, undefined, 'firefox');
+        Object.assign(window, {visualViewport: {width: 390, height: 300, offsetLeft: 80, offsetTop: 160}});
+        state.handleViewportResize();state.touchInteraction = true;
+        state.snapshot = {text: 'Selected text.', anchor: {left: 210, right: 260, top: 440, bottom: 464}, isForward: true};
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: '332px', top: '432px'});
+    });
+    it.each(['chrome', 'safari', 'userscript'] as const)('preserves the existing %s touch entry gap and viewport inset', target => {
+        const {state, window} = mountSelection(false, undefined, target);
+        Object.assign(window, {visualViewport: {width: 390, height: 300, offsetLeft: 80, offsetTop: 160}});
+        state.handleViewportResize();state.touchInteraction = true;
+        state.snapshot = {text: 'Selected text.', anchor: {left: 210, right: 260, top: 440, bottom: 464}, isForward: true};
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: '288px', top: '432px'});
+    });
     it('keeps a card and its entry within the panned visual viewport above a software keyboard', () => {
         const {state, window} = mountSelection();
         Object.assign(window, {visualViewport: {width: 390, height: 300, offsetLeft: 80, offsetTop: 160}});
@@ -1563,7 +1695,7 @@ describe('selection card geometry across content changes', () => {
     });
 });
 
-describe('Safari explicit touch selection consumption', () => {
+describe('Safari and Firefox explicit touch selection consumption', () => {
     function prepare(target: SelectionBuildTarget = 'safari', touch = true, initialText = 'Good ideas deserve attention.') {
         const fixture = mountSelection(false, {acceptsRange: () => true, normalizeText: (text: string) => text}, target, true);
         vi.stubGlobal('Element', class {});vi.stubGlobal('Node', class {});
@@ -1590,8 +1722,105 @@ describe('Safari explicit touch selection consumption', () => {
         const indicator=fixture.renderPort!.root.querySelector('.fr-selection-indicator');
         expect(indicator).not.toBeNull();await fixture.renderPort!.click(indicator!);await Vue.nextTick();
     }
-    it('runs the actual Safari touch indicator click, retains its snapshot/language and ignores late empty selectionchange',async()=>{
-        const fixture=prepare();
+    async function pointerEntry(fixture: ReturnType<typeof prepare>, type: string, patch: Record<string, unknown> = {}, element?: Element) {
+        await Vue.nextTick();
+        const entry = element ?? fixture.renderPort!.root.querySelector('.fr-selection-indicator')!;
+        expect(entry).not.toBeNull();
+        const event = new fixture.renderPort!.domWindow.Event(type, {bubbles: true, cancelable: true});
+        Object.defineProperties(event, Object.fromEntries(Object.entries({isTrusted: true, pointerId: 17, pointerType: 'touch',
+            isPrimary: true, button: 0, clientX: 180, clientY: 248, ...patch}).map(([key, value]) => [key, {value, configurable: true}])));
+        entry.dispatchEvent(event);await Vue.nextTick();return entry;
+    }
+    describe('Firefox pointer-only explicit entry', () => {
+        it('opens on trusted entry down/up without click, consumes the same selection and ignores a following compatibility click', async () => {
+            const fixture=prepare('firefox');const snapshot=fixture.state.snapshot;
+            const entry=await pointerEntry(fixture,'pointerdown');
+            expect(fixture.removeAllRanges).not.toHaveBeenCalled();expect(fixture.state.showTooltip).toBe(false);
+            await vi.advanceTimersByTimeAsync(105);
+            await pointerEntry(fixture,'pointerup',{clientX:183,clientY:249},entry);
+            expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.snapshot).toBe(snapshot);
+            expect(fixture.state.touchOpenedSelection).toBe(snapshot);expect(fixture.removeAllRanges).toHaveBeenCalledOnce();
+            expect(fixture.translateText).toHaveBeenCalledOnce();
+            await pointerEntry(fixture,'click',{detail:1},entry);
+            expect(fixture.translateText).toHaveBeenCalledOnce();expect(fixture.removeAllRanges).toHaveBeenCalledOnce();
+        });
+        it.each(['move','cancel','leave','secondary','wrong-id','untrusted','no-down','blur','hide','unmount','new-source','source-change-without-notification','hidden'] as const)
+        ('rejects %s before a Firefox touch entry can complete', async reason => {
+            const fixture=prepare('firefox');
+            const entry=await pointerEntry(fixture,reason==='no-down'?'pointerup':'pointerdown',reason==='untrusted'?{isTrusted:false}:{});
+            if(reason==='move')await pointerEntry(fixture,'pointermove',{clientX:210},entry);
+            if(reason==='cancel')await pointerEntry(fixture,'pointercancel',{},entry);
+            if(reason==='leave')await pointerEntry(fixture,'pointerleave',{},entry);
+            if(reason==='secondary')await pointerEntry(fixture,'pointerdown',{isPrimary:false,pointerId:18},entry);
+            if(reason==='blur')fixture.state.handleWindowBlur();
+            if(reason==='hide')fixture.state.hideAll();
+            if(reason==='unmount')fixture.unmount();
+            if(reason==='new-source') {fixture.replaceSelection('A new selection source.');fixture.state.applySelection(fixture.state.readSelectionSnapshot());}
+            if(reason==='source-change-without-notification')fixture.replaceSelection('The source changed without a selection event.');
+            if(reason==='hidden') {Object.assign(fixture.document,{visibilityState:'hidden'});fixture.state.handlePageVisibility();}
+            await pointerEntry(fixture,'pointerup',reason==='wrong-id'?{pointerId:18}:{},entry);
+            expect(fixture.translateText).not.toHaveBeenCalled();expect(fixture.removeAllRanges).not.toHaveBeenCalled();
+            expect(fixture.state.showTooltip).toBe(false);
+        });
+        it.each(['chrome','safari','userscript'] as const)('leaves %s pointer completion on its existing click path', async target => {
+            const fixture=prepare(target);const entry=await pointerEntry(fixture,'pointerdown');
+            const stopPropagation=vi.fn();
+            await pointerEntry(fixture,'pointerup',{stopPropagation},entry);expect(fixture.state.showTooltip).toBe(false);
+            expect(stopPropagation).not.toHaveBeenCalled();
+            await clickEntry(fixture);expect(fixture.state.showTooltip).toBe(true);
+        });
+        it('still opens Firefox through a keyboard click after an abandoned touch', async () => {
+            const fixture=prepare('firefox');const entry=await pointerEntry(fixture,'pointerdown');
+            await pointerEntry(fixture,'pointerleave',{},entry);
+            await pointerEntry(fixture,'click',{detail:0,pointerType:''},entry);
+            expect(fixture.state.showTooltip).toBe(true);expect(fixture.translateText).toHaveBeenCalledOnce();
+        });
+        it.each(['touch','mouse','keyboard'] as const)('rejects a moved touch and its compatibility click, then accepts a fresh %s entry', async next => {
+            const fixture=prepare('firefox');const entry=await pointerEntry(fixture,'pointerdown');
+            // Both points stay inside a44px button; movement must invalidate independently of pointerleave.
+            await pointerEntry(fixture,'pointermove',{clientX:195},entry);
+            await pointerEntry(fixture,'pointerup',{clientX:195},entry);
+            await pointerEntry(fixture,'click',{detail:1,clientX:195},entry);
+            expect(fixture.state.showTooltip).toBe(false);expect(fixture.translateText).not.toHaveBeenCalled();
+            if(next==='touch') {await pointerEntry(fixture,'pointerdown',{},entry);await pointerEntry(fixture,'pointerup',{},entry);}
+            if(next==='mouse') {await pointerEntry(fixture,'pointerdown',{pointerType:'mouse'},entry);await pointerEntry(fixture,'click',{pointerType:'mouse',detail:1},entry);}
+            if(next==='keyboard')await pointerEntry(fixture,'click',{pointerType:'',detail:0},entry);
+            expect(fixture.state.showTooltip).toBe(true);expect(fixture.translateText).toHaveBeenCalledOnce();
+        });
+        it('does not complete the old entry when the live native Range changes without replacing its saved source', async () => {
+            const fixture=prepare('firefox');const entry=await pointerEntry(fixture,'pointerdown');
+            const source={isConnected:true,ownerDocument:fixture.document};
+            const range={...fixture.range,startContainer:source,endContainer:source,cloneRange:()=>range};
+            Object.assign(fixture.selection,{anchorNode:source,getRangeAt:()=>range});
+            await pointerEntry(fixture,'pointerup',{},entry);
+            expect(fixture.state.showTooltip).toBe(false);expect(fixture.translateText).not.toHaveBeenCalled();
+            expect(fixture.removeAllRanges).not.toHaveBeenCalled();
+        });
+        it('keeps a pointer-opened card and its snapshot when only native selection clearing throws', async () => {
+            const fixture=prepare('firefox');fixture.removeAllRanges.mockImplementation(()=>{throw Error('native selection unavailable');});
+            const entry=await pointerEntry(fixture,'pointerdown');await pointerEntry(fixture,'pointerup',{},entry);
+            expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.touchOpenedSelection).toBe(fixture.state.snapshot);
+            expect(fixture.translateText).toHaveBeenCalledOnce();expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+        });
+        it('accepts a stationary held Firefox touch when released without an actual cancellation', async () => {
+            const fixture=prepare('firefox');const entry=await pointerEntry(fixture,'pointerdown');
+            await vi.advanceTimersByTimeAsync(1500);
+            expect(fixture.state.showTooltip).toBe(false);expect(fixture.removeAllRanges).not.toHaveBeenCalled();
+            await pointerEntry(fixture,'pointerup',{},entry);
+            expect(fixture.state.showTooltip).toBe(true);expect(fixture.translateText).toHaveBeenCalledOnce();
+        });
+        it('cancels on actual entry contextmenu without preventing the native menu and permits a fresh touch', async () => {
+            const fixture=prepare('firefox');const entry=await pointerEntry(fixture,'pointerdown');
+            const menu=new fixture.renderPort!.domWindow.Event('contextmenu',{bubbles:true,cancelable:true});
+            entry.dispatchEvent(menu);expect(menu.defaultPrevented).toBe(false);
+            await pointerEntry(fixture,'pointerup',{},entry);await pointerEntry(fixture,'click',{detail:1},entry);
+            expect(fixture.state.showTooltip).toBe(false);expect(fixture.translateText).not.toHaveBeenCalled();
+            await pointerEntry(fixture,'pointerdown',{},entry);await pointerEntry(fixture,'pointerup',{},entry);
+            expect(fixture.state.showTooltip).toBe(true);expect(fixture.translateText).toHaveBeenCalledOnce();
+        });
+    });
+    it.each(['safari', 'firefox'] as const)('runs the actual %s touch indicator click, retains its snapshot/language and ignores late empty selectionchange',async target=>{
+        const fixture=prepare(target);
         const snapshot=fixture.state.snapshot;
         const direction=fixture.state.effectiveTargetLanguage;
         await clickEntry(fixture);
@@ -1605,8 +1834,8 @@ describe('Safari explicit touch selection consumption', () => {
         expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.snapshot).toBe(snapshot);expect(fixture.translateText).toHaveBeenCalledOnce();
         expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
     });
-    it('respects the Chinese target-language gate and preserves configured reverse direction when enabled',async()=>{
-        const fixture=prepare('safari',true,'这是一段中文。');fixture.state.openTooltipFromIndicator();
+    it.each(['safari', 'firefox'] as const)('respects the %s Chinese target-language gate and preserves configured reverse direction when enabled',async target=>{
+        const fixture=prepare(target,true,'这是一段中文。');fixture.state.openTooltipFromIndicator();
         expect(fixture.state.showTooltip).toBe(false);expect(fixture.removeAllRanges).not.toHaveBeenCalled();
         fixture.config.from='en';fixture.config.selectionTranslatorBidirectional=true;fixture.state.selectionConfigVersion+=1;
         fixture.replaceSelection('这是一段新的中文。');
@@ -1614,13 +1843,13 @@ describe('Safari explicit touch selection consumption', () => {
         expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.manuallyRequestedSelection).toBe(false);
         expect(fixture.state.effectiveTargetLanguage).toBe('en');expect(fixture.removeAllRanges).toHaveBeenCalledOnce();
     });
-    it.each(['chrome','userscript','desktop','automatic'] as const)('preserves native selection for %s entry',async mode=>{
-        const fixture=prepare(mode==='chrome'||mode==='userscript'?mode:'safari',mode!=='desktop');
-        if(mode==='automatic')fixture.state.openTooltip();else await clickEntry(fixture);
+    it.each(['chrome','userscript','desktop','automatic','firefox-desktop','firefox-automatic'] as const)('preserves native selection for %s entry',async mode=>{
+        const fixture=prepare(mode.startsWith('firefox-')?'firefox':mode==='chrome'||mode==='userscript'?mode:'safari',mode!=='desktop'&&mode!=='firefox-desktop');
+        if(mode==='automatic'||mode==='firefox-automatic')fixture.state.openTooltip();else await clickEntry(fixture);
         expect(fixture.state.showTooltip).toBe(true);expect(fixture.removeAllRanges).not.toHaveBeenCalled();expect(fixture.state.touchOpenedSelection).toBeNull();
     });
-    it('releases touch ownership for new selection/hideAll and still closes when the retained source disconnects',async()=>{
-        const fixture=prepare();await clickEntry(fixture);
+    it.each(['safari', 'firefox'] as const)('releases %s touch ownership for new selection/hideAll and still closes when the retained source disconnects',async target=>{
+        const fixture=prepare(target);await clickEntry(fixture);
         fixture.replaceSelection('New ideas deserve careful attention.');
         fixture.state.applySelection(fixture.state.readSelectionSnapshot());
         expect(fixture.state.touchOpenedSelection).toBeNull();expect(fixture.state.showTooltip).toBe(false);
@@ -1630,8 +1859,14 @@ describe('Safari explicit touch selection consumption', () => {
         fixture.source.isConnected=false;fixture.state.scheduleSelectionLoss();
         expect(fixture.state.showTooltip).toBe(false);expect(fixture.state.touchOpenedSelection).toBeNull();
     });
-    it('keeps the opened card when native removeAllRanges throws and releases ownership on unmount',async()=>{
-        const fixture=prepare();fixture.removeAllRanges.mockImplementation(()=>{throw Error('native selection unavailable');});
+    it.each(['safari', 'firefox'] as const)('does not clear a newer native selection when the %s old entry is clicked', async target => {
+        const fixture=prepare(target);fixture.replaceSelection('A newer native selection.');
+        await clickEntry(fixture);
+        expect(fixture.state.showTooltip).toBe(true);expect(fixture.removeAllRanges).not.toHaveBeenCalled();
+        expect(fixture.state.touchOpenedSelection).toBeNull();
+    });
+    it.each(['safari', 'firefox'] as const)('keeps the opened %s card when native removeAllRanges throws and releases ownership on unmount',async target=>{
+        const fixture=prepare(target);fixture.removeAllRanges.mockImplementation(()=>{throw Error('native selection unavailable');});
         await clickEntry(fixture);expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.touchOpenedSelection).toBe(fixture.state.snapshot);
         fixture.unmount();expect(fixture.state.touchOpenedSelection).toBeNull();expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
     });
@@ -2378,10 +2613,11 @@ describe('selection card on an extension PDF page', () => {
         const acceptsRange = vi.fn(() => true);
         const context = vi.fn(() => ({text: 'The Transformer uses attention.', title: 'Attention Is All You Need', sourceUrl: 'https://arxiv.org/pdf/1706.03762'}));
         const captureReading = vi.fn(() => ({text: 'Transformer models', context: 'The Transformer uses attention.', sentence: 'The Transformer uses attention.'}));
+        const captureMaterial = vi.fn((_range: Range, _quote: string): MaterialSelection | undefined => undefined);
         let invalidate = () => {};
         const unsubscribeSource = vi.fn();
         const extractText = vi.fn((_range: Range, text: string) => text);
-        const fixture = mountSelection(false, {acceptsRange, extractText, normalizeText: (text: string) => text.replace(/\s+/g, ' ').trim(), context, captureReading,
+        const fixture = mountSelection(false, {acceptsRange, extractText, normalizeText: (text: string) => text.replace(/\s+/g, ' ').trim(), context, captureReading, captureMaterial,
             subscribeInvalidation: (listener: () => void) => {invalidate = listener; return unsubscribeSource;}});
         class FakeElement {}
         class FakeNode {}
@@ -2397,7 +2633,7 @@ describe('selection card on an extension PDF page', () => {
         fixture.config.selectionTranslatorTrigger = 'direct';
         fixture.config.selectionTranslatorDelay = 0;
         fixture.state.selectionConfigVersion += 1;
-        return {...fixture, acceptsRange, extractText, context, captureReading, range, unsubscribeSource, invalidate: () => invalidate()};
+        return {...fixture, acceptsRange, extractText, context, captureReading, captureMaterialSelection: captureMaterial, range, unsubscribeSource, invalidate: () => invalidate()};
     }
 
     it('only captures an adapter-approved source range and normalizes PDF wraps in the snapshot', () => {
@@ -2456,7 +2692,7 @@ describe('selection card on an extension PDF page', () => {
         fixture.config.harness.enabled = true;
         fixture.config.vocabularyBookEnabled = true;
         fixture.state.selectionConfigVersion += 1;
-        // 配置水合会撤销旧选区；真实用户在其完成后才选择 PDF 文本。
+        // 浏览器用户操作发生在配置通知和首次挂载更新之后，先等这一轮配置归属稳定。
         await Vue.nextTick();
         fixture.state.snapshot = fixture.state.readSelectionSnapshot();
         fixture.state.selectedText = 'Transformer models';
@@ -2467,6 +2703,7 @@ describe('selection card on an extension PDF page', () => {
         expect(fixture.captureReading).toHaveBeenCalled();
         expect(fixture.state.readingSelection.context).toBe('The Transformer uses attention.');
         expect(fixture.captureMaterialSelection).toHaveBeenCalledWith(fixture.range, 'The Transformer uses attention.');
+        expect(fixture.material.captureMaterialSelection).not.toHaveBeenCalled();
         expect(fixture.state.readingSelection.material).toEqual(selection);
         expect(fixture.materialCapture).not.toHaveBeenCalled();
         fixture.browser.runtime.sendMessage.mockResolvedValue({success: true, data: {id: 'saved'}});
@@ -3641,5 +3878,179 @@ describe('selection authentication settings action ownership and rendered entry'
         expect(fixture.state.error).toBe('密钥或权限无效');
         expect(fixture.state.noticeMessage).toBe('');
         expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
+
+it('captures document materials through the owner adapter and keeps safe optional failure isolated', () => {
+    const saved = {source: {kind: 'document', fingerprint: 'a'.repeat(32)}, locator: {kind: 'document', page: 2}};
+    const captureMaterial = vi.fn(() => saved);
+    const fixture = mountSelection(false, {acceptsRange: () => true, captureMaterial});
+    const range = {} as Range;
+    expect(fixture.state.captureMaterialSafely(range, 'selected translation')).toBe(saved);
+    expect(captureMaterial).toHaveBeenCalledWith(range, 'selected translation');
+    expect(fixture.material.captureMaterialSelection).not.toHaveBeenCalled();
+    captureMaterial.mockImplementation(() => {throw new Error('document unmounted');});
+    expect(fixture.state.captureMaterialSafely(range, 'selected translation')).toBeUndefined();
+    expect(fixture.material.captureMaterialSelection).not.toHaveBeenCalled();
+});
+
+
+describe('Safari reading input keyboard transition', () => {
+    // Render the actual parent SFC and deliver focus/input through its DOM listeners.
+    // A minimal child input and closed-root focus/viewport ports model the native boundary;
+    // they do not synthesize a Safari keyboard or claim browser acceptance.
+    async function keyboardTransitionFixture(target: SelectionBuildTarget = 'safari') {
+        const fixture = mountSelection(false, {acceptsRange: () => true}, target, true);
+        const port = fixture.renderPort!;
+        vi.stubGlobal('Node', port.domWindow.Node);
+        vi.stubGlobal('Element', port.domWindow.Element);
+        vi.stubGlobal('HTMLElement', port.domWindow.HTMLElement);
+        const host = port.document.createElement('div');
+        host.id = 'fluent-read-selection-translator-container';
+        const shadow = host.attachShadow({mode: 'closed'});
+        const ui = port.root.firstElementChild!;
+        shadow.append(ui); port.root.append(host);
+        const viewport = {width: 402, height: 754, scale: 1, offsetLeft: 0, offsetTop: 0};
+        Object.assign(fixture.window, {visualViewport: viewport});
+        let active: Element | null = null;
+        Object.defineProperty(shadow, 'activeElement', {get: () => active});
+        Object.assign(fixture.document, {activeElement: host,
+            getElementById: (id: string) => id === host.id ? host : null});
+        const source = {isConnected: true, ownerDocument: fixture.document};
+        const range = {startContainer: source, endContainer: source, collapsed: false,
+            toString: () => 'Keep the original source.', getClientRects: () => []};
+        const selected = Vue.markRaw({text: 'Keep the original source.', rangeText: 'Keep the original source.', range,
+            parts: [], anchor: {left: 20, right: 250, top: 400, bottom: 424, width: 230, height: 24}});
+        Object.assign(fixture.state, {snapshot: selected, selectedText: selected.text, readingMode: true, showTooltip: true});
+        fixture.config.selectionTranslatorAutoDismiss = true;
+        await Vue.nextTick();
+        const card = shadow.querySelector('.fr-translation-tooltip') as HTMLElement;
+        expect(card).not.toBeNull();
+        card.getBoundingClientRect = () => ({left: 12, top: 320, right: 390, bottom: 537, width: 378, height: 217}) as DOMRect;
+        fixture.state.tooltipRef = Vue.markRaw(card);
+        const form = port.document.createElement('form'); form.className = 'fr-reading-followup';
+        const input = port.document.createElement('input'); input.setAttribute('aria-label', '继续追问');
+        form.append(input); card.append(form);
+        const controller = new AbortController(); fixture.state.translationAbortController = controller;
+        const send = (where: 'window' | 'document', type: string, fields: Record<string, unknown> = {}) => {
+            const event = {isTrusted: true, target: fixture.document, ...fields};
+            for (const fn of [...(fixture.listeners.get(`${where}:${type}`) ?? [])]) fn(event);
+        };
+        const domEvent = (type: string, trusted = true) => {
+            const event = new port.domWindow.Event(type, {bubbles: true});
+            Object.defineProperty(event, 'isTrusted', {value: trusted}); input.dispatchEvent(event);
+        };
+        const focus = (trusted = true, interaction = true) => {
+            if (interaction) send('document', 'pointerdown', {target: host, pointerType: 'touch', button: 0});
+            active = input; domEvent('focusin', trusted);
+            if (interaction) send('document', 'pointerup', {target: host, pointerType: 'touch', button: 0});
+        };
+        const keyboardScroll = () => {
+            Object.assign(viewport, {height: 376, offsetTop: 284});
+            send('window', 'scroll');
+        };
+        return {...fixture, host, shadow, card, input, viewport, selected, source, controller, focus, domEvent, send,
+            keyboardScroll, setActive: (element: Element | null) => {active = element;}};
+    }
+
+    it('keeps the rendered owned card and request during the actual stable-scale keyboard document pan', async () => {
+        const f = await keyboardTransitionFixture();
+        f.focus(); await vi.advanceTimersByTimeAsync(231); f.keyboardScroll(); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(true);
+        expect(f.shadow.querySelector('.fr-translation-tooltip')).toBe(f.card);
+        expect(f.state.snapshot).toBe(f.selected);
+        expect(f.controller.signal.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(20);
+        expect(f.state.viewportSize).toMatchObject({width: 402, height: 376, top: 284});
+        expect(f.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+
+    it('does not renew the focus window on repeated keyboard pans and releases its wheel observer at expiry', async () => {
+        const f = await keyboardTransitionFixture(); f.focus();
+        expect(f.listeners.get('window:wheel')?.size).toBe(1);
+        await vi.advanceTimersByTimeAsync(700); f.keyboardScroll();
+        expect(f.state.showTooltip).toBe(true);
+        await vi.advanceTimersByTimeAsync(101);
+        expect(f.listeners.get('window:wheel')?.size).toBe(0);
+        f.keyboardScroll(); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(false);
+        expect(f.shadow.querySelector('.fr-translation-tooltip')).toBeNull();
+        expect(f.controller.signal.aborted).toBe(true);
+    });
+
+    it.each(['untrusted focus', 'no owned gesture', 'stale gesture', 'readonly', 'no viewport', 'no auto-dismiss'] as const)(
+        'does not arm keyboard protection for %s', async reason => {
+            const f = await keyboardTransitionFixture();
+            if (reason === 'readonly') f.input.setAttribute('readonly', '');
+            if (reason === 'no viewport') Object.assign(f.window, {visualViewport: undefined});
+            if (reason === 'no auto-dismiss') { f.config.selectionTranslatorAutoDismiss = false; f.notifyConfig(); }
+            if (reason === 'no owned gesture') vi.setSystemTime(0);
+            if (reason === 'stale gesture') {
+                f.send('document', 'pointerdown', {target: f.host, pointerType: 'touch', button: 0});
+                await vi.advanceTimersByTimeAsync(501);
+            }
+            f.focus(reason !== 'untrusted focus', reason !== 'no owned gesture' && reason !== 'stale gesture');
+            expect(f.listeners.get('window:wheel')?.size ?? 0).toBe(0);
+            f.keyboardScroll(); await Vue.nextTick();
+            expect(f.state.showTooltip).toBe(reason === 'no auto-dismiss');
+        },
+    );
+
+    it.each(['ordinary document scroll', 'nested scroll', 'pinch zoom', 'width change', 'focus lost', 'detached input', 'changed source', 'disconnected source'] as const)(
+        'keeps normal dismissal for %s during the short focus window', async reason => {
+            const f = await keyboardTransitionFixture(); f.focus();
+            Object.assign(f.viewport, {height: 376, offsetTop: 284});
+            let target: unknown = f.document;
+            if (reason === 'ordinary document scroll') f.viewport.height = 754;
+            if (reason === 'nested scroll') target = f.renderPort!.document.createElement('div');
+            if (reason === 'pinch zoom') f.viewport.scale = 1.2;
+            if (reason === 'width change') f.viewport.width = 300;
+            if (reason === 'focus lost') f.setActive(null);
+            if (reason === 'detached input') f.input.remove();
+            if (reason === 'changed source') f.state.snapshot = {...f.selected, text: 'A different source.'};
+            if (reason === 'disconnected source') f.source.isConnected = false;
+            f.send('window', 'scroll', {target}); await Vue.nextTick();
+            expect(f.state.showTooltip).toBe(false);
+            expect(f.controller.signal.aborted).toBe(true);
+            expect(f.listeners.get('window:wheel')?.size).toBe(0);
+        },
+    );
+
+    it.each(['wheel', 'touch move', 'outside pointer', 'scroll key', 'input', 'focusout', 'window blur', 'pagehide'] as const)(
+        'revokes only the temporary protection for deliberate intent or teardown: %s', async reason => {
+            const f = await keyboardTransitionFixture(); f.focus();
+            const preventDefault = vi.fn(), stopPropagation = vi.fn();
+            if (reason === 'wheel') f.send('window', 'wheel', {preventDefault, stopPropagation});
+            if (reason === 'touch move') f.send('document', 'pointermove', {pointerType: 'touch'});
+            if (reason === 'outside pointer') f.send('document', 'pointerdown', {target: f.renderPort!.document.createElement('p'), pointerType: 'touch', button: 0});
+            if (reason === 'scroll key') f.send('document', 'keydown', {target: f.host, key: 'PageDown', preventDefault, stopPropagation});
+            if (reason === 'input' || reason === 'focusout') f.domEvent(reason);
+            if (reason === 'window blur') f.send('window', 'blur');
+            if (reason === 'pagehide') f.send('window', 'pagehide');
+            expect(preventDefault).not.toHaveBeenCalled(); expect(stopPropagation).not.toHaveBeenCalled();
+            expect(f.listeners.get('window:wheel')?.size).toBe(0);
+            f.keyboardScroll(); await Vue.nextTick();
+            expect(f.state.showTooltip).toBe(false);
+            expect(f.controller.signal.aborted).toBe(true);
+        },
+    );
+
+    it('ignores an untrusted wheel, then unregisters the one observer and timer on unmount', async () => {
+        const f = await keyboardTransitionFixture(); f.focus();
+        f.send('window', 'wheel', {isTrusted: false}); f.keyboardScroll();
+        expect(f.state.showTooltip).toBe(true);
+        f.unmount(); expect(f.listeners.get('window:wheel')?.size).toBe(0);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(f.controller.signal.aborted).toBe(true);
+        expect(f.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['chrome', 'firefox', 'userscript'] as const)('does not register a page wheel listener or change %s dismissal', async target => {
+        const f = await keyboardTransitionFixture(target); f.focus();
+        expect(f.listeners.get('window:wheel')?.size ?? 0).toBe(0);
+        expect(f.listeners.get('document:wheel')?.size ?? 0).toBe(0);
+        f.keyboardScroll(); await Vue.nextTick();
+        expect(f.state.showTooltip).toBe(false);
     });
 });

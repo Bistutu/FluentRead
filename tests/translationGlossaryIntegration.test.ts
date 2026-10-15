@@ -1,5 +1,5 @@
 import type {TranslationProviderRequest} from '@/src/services/translation/types';
-import {getGlossaryProtectionEntries, isGlossaryOnlyResult} from '@/src/services/translation/glossaryProtection';
+import {getGlossaryProtectionEntries, isGlossaryOnlyResult, prepareGlossaryRequest} from '@/src/services/translation/glossaryProtection';
 import {describe, expect, it, vi} from 'vitest';
 import {Config} from '@/src/core/config/model';
 import {resolveConfiguredModel, servicesType} from '@/src/core/config/catalog';
@@ -124,6 +124,55 @@ function keyResolutionRows(h: ReturnType<typeof harness>, start: ReturnType<type
 }
 
 describe('术语库与真实翻译编排协作', () => {
+    it('无词库时按完整字素保护正文，旧丢失 emoji 缓存不会命中新身份', async () => {
+        const h = harness();h.config.glossaryEnabled = false;
+        const origin = 'Deliver 🚚 then Gate1️⃣ and 👩🏽‍🔬.';
+        const record = h.provider.getMockImplementation()!;
+        h.provider.mockImplementation(async message => String(await record(message)).replace('Deliver', '运送'));
+        await expect(h.request({origin})).resolves.toBe(origin.replace('Deliver', '运送'));
+        expect(h.calls[0].snapshot.glossaryProtectedTokens).toHaveLength(3);
+        expect(h.calls[0].message.origin).not.toContain('🚚');expect(h.calls[0].message.origin).not.toContain('1️⃣');
+        expect(h.identities[0]).toMatchObject({emojiLiteralProtection: {version: 1}});
+        const previous = {...h.identities[0]};delete previous.emojiLiteralProtection;
+        h.cache.clear();h.cache.set(JSON.stringify(previous), '送达然后离开。');
+        await expect(h.request({origin})).resolves.toBe(origin.replace('Deliver', '运送'));
+        expect(h.provider).toHaveBeenCalledTimes(2);
+        await expect(h.request({origin: 'Plain text.'})).resolves.toBe('译文:Plain text.');
+        expect(h.identities.at(-1)).not.toHaveProperty('emojiLiteralProtection');
+    });
+    it('emoji 与用户术语共用严格恢复，重复、外来或跨段标记不能显示或缓存', async () => {
+        const h = harness();
+        h.config.glossaryLibraries[0].entries = [{id:'symbol',source:'🚚',target:'货车',caseSensitive:true}];
+        await expect(h.request({origin:'Use 🚚 and 👩🏽‍🔬.'})).resolves.toBe('Use 货车 and 👩🏽‍🔬.');
+        expect(h.calls[0].snapshot.glossaryProtectedTokens).toHaveLength(2);
+        const current = createTranslationProviderConfigSnapshot(new Config());
+        for (const origin of ['Read 🚚 🚚.', ['Read 🚚.', 'Read 👩🏽‍🔬.'], serializeTranslationSlots(['Read 🚚.', 'Read 👩🏽‍🔬.'], 'emoji').payload]) {
+            const packet = prepareGlossaryRequest({origin} as TranslationRequestMessage, current);
+            const text = packet.message.origin;
+            expect(packet.restore(text)).toEqual(origin);
+            const tokens = getTranslationProviderConfig(packet.message, current).glossaryProtectedTokens!;
+            if (typeof text === 'string') {
+                for (const malformed of [text.replace(tokens[0], ''), text + tokens[0], text + '__FRTERM_foreign_0__']) {
+                    expect(() => packet.restore(malformed)).toThrow('未完整保留');
+                }
+            } else expect(() => packet.restore([...text].reverse())).toThrow('未完整保留');
+        }
+        const broken = harness();broken.config.glossaryEnabled = false;broken.provider.mockResolvedValue('不含图标的译文。');
+        await expect(broken.request({origin:'Read 🚚.'})).rejects.toMatchObject({code:'GLOSSARY_PLACEHOLDER_INVALID'});
+        expect(broken.cache.size).toBe(0);
+    });
+    it('摘要里的 emoji 不进入正文保护策略或摘要 token，正文原子仍独立保护', async () => {
+        const h = harness();h.config.enableAIContext = true;
+        await h.request({origin:'agent',pageContext:'This page explains delivery 🚚 workflows and field 👩🏽‍🔬 observations.'});
+        const summary = h.calls.find(call=>call.message.summaryPrompt)!;
+        expect(summary).toBeDefined();expect(summary.snapshot.glossaryProtectedTokens).toBeUndefined();
+        expect(h.identities.every(identity=>!('emojiLiteralProtection' in identity))).toBe(true);
+        expect([...h.cache.keys()].some(key=>key.includes('page-summary'))).toBe(true);
+        const current = createTranslationProviderConfigSnapshot(new Config());
+        const summaryMessage: TranslationRequestMessage & {summaryPrompt:string} = {origin:'Ignore 🚚',summaryPrompt:'Summarize freely'};
+        const explicit = prepareGlossaryRequest(summaryMessage, current);
+        expect(explicit.message.origin).toBe('Ignore 🚚');expect(explicit.restore('自由摘要')).toBe('自由摘要');
+    });
     it('只把当前原文命中的占位符约束写进提示词，译法和网站规则不外发', async () => {
         const h = harness();
         await expect(h.request({origin: 'An agent works here.'})).resolves.toBe('An 智能体 works here.');

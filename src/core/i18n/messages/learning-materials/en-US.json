@@ -132,5 +132,17 @@
   "材料来源历史无效": "Invalid material source history",
   "材料来源历史身份不匹配": "Material source history identity mismatch",
   "学习引用重复": "Duplicate learning reference",
-  "阅读讲解": "Reading explanation"
+  "阅读讲解": "Reading explanation",
+  "更新学习位置": "Update reading position",
+  "当前段落尚未显示，请等待页面加载或滚动到文字后重试；原阅读位置已保留。": "This paragraph is not visible yet. Wait for the page to load or scroll to the text, then try again. Your previous reading position has been kept.",
+  "已保存本机学习位置，可从学习中心继续阅读。": "Reading position saved on this device. Continue reading from the Learning Center.",
+  "原文位置已变化或无法唯一匹配，已保留原定位。请找到原文后点击「更新学习位置」。": "The original text has moved or cannot be uniquely matched. Your previous position has been kept. Find the text, then click “Update reading position”.",
+  "旧材料未保存可用的阅读位置。请找到原文后点击「更新学习位置」。": "This older material has no usable saved reading position. Find the text, then click “Update reading position”.",
+  "已恢复保存的页码或章节，请核对原文；开始阅读后记录新的位置。": "The saved page or chapter has been restored. Check the original text; a new position will be recorded when you start reading.",
+  "原段落布局尚未就绪，已保留阅读位置。请重新打开这份材料重试。": "The original paragraph’s layout is not ready yet. Your reading position has been kept. Reopen this material to try again.",
+  "已停止自动定位，继续记录当前阅读位置。": "Automatic positioning has stopped. Your current reading position will continue to be recorded.",
+  "暂时未能确认原文位置。材料与原句仍保留，可在页面内搜索原句，或稍后重新打开。": "We couldn’t confirm the original text’s location. Your material and saved quote are still available. Search for the quote on this page, or reopen the material later.",
+  "文档位置与材料内容指纹不一致": "The document position does not match the material’s content fingerprint",
+  "精确文档位置只能用于文档材料": "Exact document positions can only be used with document materials",
+  "文档精确位置无效、超出预算或属于其他文件": "The exact document position is invalid, exceeds the size limit, or belongs to another file"
 }

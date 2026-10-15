@@ -1,4 +1,5 @@
 import {createRequire} from 'node:module'
+import {readFileSync} from 'node:fs'
 import {parseHTML} from 'linkedom'
 import {dirname, resolve} from 'node:path'
 import vue from '@vitejs/plugin-vue'
@@ -8,15 +9,17 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation'
 import {defaultOption, options} from '@/src/core/config/catalog'
-import {diagnoseFailure, getDiagnosticText, getDiagnosticActionLabel} from '@/src/services/diagnostics'
+import {diagnoseFailure, getDiagnosticText} from '@/src/services/diagnostics'
+import {translate} from '@/src/core/i18n'
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
 const key = '__frServiceConfigurationLifecycle'
-const uiLanguage = runtime.ref('zh-CN')
 let server: ViteDevServer, app: import('vue').App, state: Record<string, any>
 let props: {config: Config; service: string; active: boolean; selectedModelThinking: boolean; compute: Record<string, any>;
   options: typeof options; isValidAzureEndpoint: (value: string) => boolean; customProvider?: {id: string; name: string; endpoint: string; models: string[]}}
 let visible: import('vue').Ref<boolean>
+let uiLanguage: import('vue').Ref<string>, uiBundleRevision: import('vue').Ref<number>
+let uiCatalogs: Map<string, Record<string, string>>
 const readAccess = vi.fn()
 const send = vi.fn(), save = vi.fn(), queue = vi.fn(), read = vi.fn(), clear = vi.fn(), prepare = vi.fn(), confirm = vi.fn(), feedback = vi.fn(), emitDelete = vi.fn(), emitProvider = vi.fn()
 const subscriptions: {callback: (value: any) => void; stopped: boolean}[] = []
@@ -41,12 +44,19 @@ async function acceptAction(index = 0) {
   await settle()
 }
 beforeEach(async () => {
-  uiLanguage.value = 'zh-CN';vi.clearAllMocks();subscriptions.length = 0;releases.length = 0;jobs.length = 0;confirmations.length = 0
+  vi.clearAllMocks();subscriptions.length = 0;releases.length = 0;jobs.length = 0;confirmations.length = 0
   readAccess.mockReset();readAccess.mockResolvedValue({supported:false,grantedIds:FREE_TRANSLATION_PROVIDERS.map(p=>p.id),preferredGrant:null})
   queue.mockResolvedValue(undefined);save.mockResolvedValue(undefined);read.mockResolvedValue(null);clear.mockResolvedValue(undefined)
   send.mockResolvedValue({success: true, durationMs: 25});prepare.mockResolvedValue({sourceLanguage: 'en', targetLanguage: 'zh'})
   confirm.mockImplementation(() => {const item = pending();confirmations.push(item);return item.promise})
-  Object.assign(globalThis, {[key]: {readAccess, send, save, queue, read, clear, prepare, confirm, feedback, subscriptions, uiLanguage}})
+  uiLanguage = runtime.ref('zh-CN');uiBundleRevision = runtime.ref(0);uiCatalogs = new Map()
+  const uiI18n = {language: uiLanguage, bundleRevision: uiBundleRevision, translateLegacy: (text: string) => text,
+    t: (name: string, params?: Record<string, string | number>) => {
+      void uiBundleRevision.value
+      const template = uiCatalogs.get(uiLanguage.value)?.[name] ?? (name.startsWith('diagnostics.') ? translate(name, 'zh-CN', params) : name)
+      return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (placeholder, field) => params?.[field] === undefined ? placeholder : String(params[field]))
+    }}
+  Object.assign(globalThis, {[key]: {readAccess, send, save, queue, read, clear, prepare, confirm, feedback, subscriptions, uiI18n}})
   const mocks: Plugin = {name: 'service-configuration-ports', enforce: 'pre', resolveId(id) {
     if (id.endsWith('.vue') && !id.endsWith('ServiceConfiguration.vue')) return '\0service-child'
     if (/\/src\/platform\/browser\/freeProviderPermissions(?:\.ts)?$/u.test(id)) return '\0service-free-permissions'
@@ -65,7 +75,7 @@ beforeEach(async () => {
     if (id === '\0service-browser') return `export default {runtime: {sendMessage: globalThis.${key}.send}}`
     if (id === '\0service-config') return `export const {queue: waitForConfigPersistenceQueue, save: requestConfigSave} = globalThis.${key}`
     if (id === '\0service-element') return `export const ElMessage = {success: globalThis.${key}.feedback};export const ElMessageBox = {confirm: globalThis.${key}.confirm};export const ElTabs = {}, ElTabPane = {}`
-    if (id === '\0service-i18n') return `export const useUiI18n = () => ({language: globalThis.${key}.uiLanguage, t: key => key, translateLegacy: text => text})`
+    if (id === '\0service-i18n') return `export const useUiI18n = () => globalThis.${key}.uiI18n`
     if (id === '\0service-chrome-store') return `export const chromeTranslationPreparationStore = {get: globalThis.${key}.read, clear: globalThis.${key}.clear, subscribe: callback => {
       const item = {callback, stopped: false};globalThis.${key}.subscriptions.push(item);return () => {item.stopped = true}}}`
     if (id === '\0service-chrome-preparation') return `export class ChromeTranslationPreparationError extends Error {constructor(code, message, params) {super(message);this.code = code;this.params = params}}
@@ -105,6 +115,11 @@ describe('实际服务连接配置的活跃生命周期与确认归属', () => {
     await check();expect(messages().map(([message])=>message.freeProviderId)).toEqual(['microsoft']);expect(Object.keys(state.freeProviderChecks)).toEqual(['microsoft']);expect(state.connectionTestState).toBe('success')
     send.mockClear();readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});await check();expect(messages()).toHaveLength(0);expect(state.freeProviderChecks).toEqual({});expect(state.connectionTestState).toBe('idle');expect(state.connectionTestMessage).toBe('safari.freePool.permissionState');expect(state.connectionTestTitle).toBe('safari.freePool.permissionState')
   })
+  it('Safari零授权提示随语言资源更新且不发provider检查',async()=>{
+    props.service='freeTranslation';props.compute.showToken=false;await settle();readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});await check();
+    expect(messages()).toHaveLength(0);uiLanguage.value='fr-FR';uiCatalogs.set('fr-FR',{'safari.freePool.permissionState':'Autorisation nécessaire'});uiBundleRevision.value++;await settle();
+    expect(state.connectionTestMessage).toBe('Autorisation nécessaire');expect(state.connectionTestTitle).toBe('Autorisation nécessaire');expect(state.connectionTestState).toBe('idle');
+  })
   it('Safari授权变更优先于逐路冷却，撤销后不显示旧诊断且仅重查当前授权线路', async () => {
     vi.useFakeTimers();props.service = 'freeTranslation';props.compute.showToken = false;await settle()
     readAccess.mockResolvedValue({supported: true, grantedIds: ['microsoft'], preferredGrant: null})
@@ -127,6 +142,10 @@ describe('实际服务连接配置的活跃生命周期与确认归属', () => {
     await check();expect(messages()).toHaveLength(0);expect(state.freeProviderChecks).toEqual({});expect(state.connectionTestDiagnostic).toBeNull()
     expect(state.connectionTestState).toBe('error');expect(state.connectionTestMessage).toBe('safari.freePool.error')
     expect(state.connectionTestMessage).not.toContain('private-site-permission-detail')
+    expect(readAccess.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
+    expect(state.connectionTestBusy).toBe(false)
+    uiLanguage.value = 'fr-FR';uiCatalogs.set('fr-FR', {'safari.freePool.error': 'Accès indisponible'});uiBundleRevision.value++;await settle()
+    expect(state.connectionTestMessage).toBe('Accès indisponible');expect(messages()).toHaveLength(0)
     readAccess.mockResolvedValueOnce({supported: true, grantedIds: ['google'], preferredGrant: null})
     await check();expect(messages().map(([message]) => message.freeProviderId)).toEqual(['google']);expect(state.connectionTestState).toBe('success')
   })
@@ -314,6 +333,42 @@ describe('实际服务连接配置的活跃生命周期与确认归属', () => {
     expect(JSON.stringify(state.freeProviderChecks)).not.toContain('private-secret')
     props.service = 'google';await settle();await check()
     expect(state.connectionTestMessage).toBe(getDiagnosticText({code: 'authentication'}).title)
+  })
+  it.each(['key', 'free', 'standalone'])('%s 已有错误响应语言切换及迟到语言包，保持诊断、配置和重试截止时间', async mode => {
+    vi.useFakeTimers()
+    if (mode !== 'key') {props.service = mode === 'free' ? 'freeTranslation' : 'google';props.compute.showToken = false;await settle()}
+    const configuration = JSON.stringify(props.config)
+    send.mockResolvedValue({success: false, error: 'private-secret https://private.example/token',
+      diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: 1200})})
+    await check(mode === 'key');await settle()
+    const requests = messages().length, timers = vi.getTimerCount()
+    const displayedErrors = () => mode === 'key' ? [state.apiKeyChecks[0].error]
+      : mode === 'free' ? Object.values(state.freeProviderChecks).map((result: any) => result.error) : [state.connectionTestMessage]
+    const chinese = getDiagnosticText({code: 'rate-limit'}).title
+    expect(displayedErrors().every(error => error === chinese)).toBe(true)
+    uiLanguage.value = 'fr-FR';await settle()
+    expect(displayedErrors().every(error => error === chinese)).toBe(true)
+    const french = JSON.parse(readFileSync(resolve('src/core/i18n/messages/self-help/fr-FR.json'), 'utf8'))
+    uiCatalogs.set('fr-FR', {...french, 'settings.services.keys.failed': 'Échec contrôlé', 'settings.services.keys.summary': '{passed} réussis, {failed} échoués'})
+    uiBundleRevision.value++;await settle()
+    expect(displayedErrors().every(error => error === french['diagnostics.rate-limit.title'])).toBe(true)
+    expect(state.connectionRepairText.title).toBe(french['diagnostics.rate-limit.title'])
+    if (mode === 'key') expect(state.connectionTestMessage).toBe('Échec contrôlé')
+    if (mode === 'free') expect(state.connectionTestMessage).toBe(`0 réussis, ${FREE_TRANSLATION_PROVIDERS.length} échoués`)
+    uiLanguage.value = 'es-ES';await settle()
+    // 旧语言资源的迟到修订不能把当前语言重新改成法语。
+    uiCatalogs.set('fr-FR', {...french, 'diagnostics.rate-limit.title': 'stale French title'});uiBundleRevision.value++;await settle()
+    expect(displayedErrors().every(error => error === chinese)).toBe(true)
+    const spanish = JSON.parse(readFileSync(resolve('src/core/i18n/messages/self-help/es-ES.json'), 'utf8'))
+    uiCatalogs.set('es-ES', spanish);uiBundleRevision.value++;await settle()
+    expect(displayedErrors().every(error => error === spanish['diagnostics.rate-limit.title'])).toBe(true)
+    expect(state.connectionTestDiagnostic.code).toBe('rate-limit');expect(messages()).toHaveLength(requests)
+    expect(JSON.stringify(props.config)).toBe(configuration);expect(vi.getTimerCount()).toBe(timers)
+    expect(JSON.stringify([state.apiKeyChecks, state.freeProviderChecks, state.connectionTestMessageState])).not.toContain('private-secret')
+    await vi.advanceTimersByTimeAsync(1199);await settle()
+    if (mode !== 'free') expect(state.connectionRetryWaiting).toBe(true)
+    await vi.advanceTimersByTimeAsync(1);await settle()
+    expect(state.connectionRetryWaiting).toBe(false);expect(vi.getTimerCount()).toBe(0);expect(messages()).toHaveLength(requests)
   })
   it('免费目录中单路限流独立冷却，健康的启用服务不会被展示为整体故障或阻塞手动检查', async () => {
     vi.useFakeTimers();props.service = 'freeTranslation';props.compute.showToken = false;props.config.freeTranslationOrder = ['google'];await settle()
@@ -691,12 +746,13 @@ describe('连接限流修复的七语按钮', () => {
       const retry = () => h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-retry'))!
       const text = (n: ServiceClientNode): string => String(n.value || '') + n.children.map(text).join('')
       for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES']) {
-        uiLanguage.value = locale;await settle()
-        expect(retry().props.disabled).toBe(true);expect(text(retry())).toBe(getDiagnosticActionLabel('retry', locale))
+        const catalog = JSON.parse(readFileSync(resolve('src/core/i18n/messages/self-help', locale + '.json'), 'utf8')) as Record<string, string>
+        uiCatalogs.set(locale, catalog);uiLanguage.value = locale;uiBundleRevision.value += 1;await settle()
+        expect(retry().props.disabled).toBe(true);expect(text(retry())).toBe(catalog['diagnostics.action.retry'])
         expect(text(retry())).not.toContain('Retry shortly')
       }
       await vi.advanceTimersByTimeAsync(1200);await settle();expect(retry().props.disabled).toBe(false)
-      expect(text(retry())).toBe(getDiagnosticActionLabel('retry', 'es-ES'));expect(messages()).toHaveLength(1);expect(h.clientErrors).toEqual([])
+      expect(text(retry())).toBe(uiCatalogs.get('es-ES')!['diagnostics.action.retry']);expect(messages()).toHaveLength(1);expect(h.clientErrors).toEqual([])
     } finally {await h.finish()}
   })
 })

@@ -152,6 +152,54 @@ describe('local material lifecycle', () => {
         await r.list(); expect(legacy).toHaveBeenCalledTimes(1);
         await r.clear(); await r.list(); expect(legacy).toHaveBeenCalledTimes(1);
     });
+    it('does not remigrate a newly linked vocabulary context under its privacy-stripped URL', async () => {
+        const entry = {id:'new-vocabulary',contexts:[{sourceUrl:'https://example.test/read',text:'Original translated context',capturedAt:100}]} as VocabularyEntry;
+        const r = new MaterialRepository(db,async () => [entry]);
+        const current = await r.capture({source,locator:{kind:'text',quote:'Original'},reference:{kind:'vocabulary',id:entry.id,excerpt:'Original'}},100);
+        const result = await r.list();
+        expect(result).toHaveLength(1);expect(result[0].id).toBe(current.id);
+        expect(result[0].locator?.quote).toBe('Original');
+        expect(result[0].source.url).toBe('https://example.test/read?id=1');
+    });
+    it('does not suppress a legacy vocabulary entry just because another reference kind has the same id', async () => {
+        const entry = {id:'shared-id',contexts:[{sourceUrl:'https://elsewhere.test/source',text:'Legacy original',capturedAt:100}]} as VocabularyEntry;
+        const r = new MaterialRepository(db,async () => [entry]);
+        await r.capture({source,reference:{kind:'session',id:entry.id,excerpt:'Legacy original'}},100);
+        expect(await r.list()).toHaveLength(2);
+    });
+    it('indexes linked vocabulary sources once without swallowing another context or merging distinct query identities', async () => {
+        const contexts = ['https://example.test/read','https://example.test/other','https://elsewhere.test/read','https://example.test/read?id=3'].map(sourceUrl => ({sourceUrl,text:'Same term',capturedAt:100}));
+        const r = new MaterialRepository(db,async () => [{id:'v',contexts}] as VocabularyEntry[]);
+        const first = await r.capture({source,locator:{kind:'text',quote:'Exact one'},reference:{kind:'vocabulary',id:'v'}},100);
+        const second = await r.capture({source:{...source,url:'https://example.test/read?id=2'},locator:{kind:'text',quote:'Exact two'},reference:{kind:'vocabulary',id:'v'}},101);
+        const rows = await r.list();expect(rows).toHaveLength(5);
+        expect(rows.find(row => row.id === first.id)?.locator?.quote).toBe('Exact one');
+        expect(rows.find(row => row.id === second.id)?.locator?.quote).toBe('Exact two');
+        expect(rows.map(row => row.source.url)).toEqual(expect.arrayContaining(['https://example.test/other','https://elsewhere.test/read','https://example.test/read?id=3']));
+    });
+    it('matches linked aliases, canonical video identities and real document source URLs while retaining unrelated local contexts', async () => {
+        const legacy = [
+            {id:'article',contexts:[{sourceUrl:'https://example.test/read',text:'old article',capturedAt:100}]},
+            {id:'video',contexts:[{sourceUrl:'https://youtu.be/abcdefghijk',text:'old video',capturedAt:100,video:{platform:'youtube',startMs:1000,endMs:2000}},{sourceUrl:'https://youtube.com/watch?v=bbbbbbbbbbb',text:'other video',capturedAt:100,video:{platform:'youtube',startMs:1000,endMs:2000}}]},
+            {id:'document',contexts:[{sourceUrl:'https://files.test/book.pdf',text:'document excerpt',capturedAt:100}]},
+            {id:'local',contexts:[{text:'local no source',capturedAt:100},{sourceUrl:'https://elsewhere.test/reading',text:'other reading',capturedAt:100}]},
+        ] as VocabularyEntry[];
+        const r = new MaterialRepository(db,async () => legacy);
+        const article = await r.capture({source,reference:{kind:'vocabulary',id:'article'}},100);
+        await r.update(article.id,{source:{...source,url:'https://moved.test/new'}});
+        await r.capture({source:{kind:'video',url:'https://youtube.com/watch?v=abcdefghijk'},reference:{kind:'vocabulary',id:'video'}},100);
+        await r.capture({source:{kind:'document',fingerprint:'remote',url:'https://files.test/book.pdf?edition=2'},reference:{kind:'vocabulary',id:'document'}},100);
+        await r.capture({source:{kind:'document',fingerprint:'local'},reference:{kind:'vocabulary',id:'local'}},100);
+        const rows = await r.list();expect(rows).toHaveLength(6);
+        expect(rows.filter(row => row.references.some(ref => ref.id === 'document'))).toHaveLength(1);
+        expect(rows.some(row => row.kind === 'article' && row.source.url === 'https://elsewhere.test/reading')).toBe(true);
+    });
+    it('ignores damaged stored article aliases without manufacturing a compatibility source', async () => {
+        const r = new MaterialRepository(db,async () => [{id:'v',contexts:[{sourceUrl:'https://elsewhere.test/read',text:'Legacy original',capturedAt:100}]}] as VocabularyEntry[]);
+        const current = await r.capture({source,reference:{kind:'vocabulary',id:'v'}},100);
+        await db.materials.update(current.id,{aliases:['article:invalid']});
+        expect(await r.list()).toHaveLength(2);
+    });
     it('cancels in-flight migration after clear', async () => {
         let resolve!: (entries: VocabularyEntry[]) => void;
         const pending = new Promise<VocabularyEntry[]>(done => {resolve=done;});

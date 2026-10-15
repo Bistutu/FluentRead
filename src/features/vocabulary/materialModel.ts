@@ -5,6 +5,7 @@
  * 模块边界：纯函数不访问 DOM、浏览器或存储；仓库是写入和并发控制的唯一入口。
  */
 import {sanitizeVocabularyVideoUrl} from './source';
+import {normalizeDocumentMaterialReference} from '@/src/features/document-translation/material/public';
 import type {MaterialErrorCode, MaterialLocator, MaterialReference, MaterialSource} from './materialProtocol';
 export class MaterialError extends Error {
     constructor(readonly code: MaterialErrorCode, message: string) {super(message); this.name = 'MaterialError';}
@@ -53,7 +54,7 @@ export function normalizeMaterialSource(input: MaterialSource): {source: Materia
     if (!identity || (url.startsWith('file:') && !fingerprint)) throw new MaterialError('invalid-input', '本地文件需要内容指纹；网页材料需要有效来源地址');
     return {source: {kind: input.kind, ...(url ? {url} : {}), ...(title ? {title} : {}), ...(fingerprint ? {fingerprint} : {})}, identityKey: `${input.kind}:${identity}`};
 }
-export function normalizeMaterialLocator(input: MaterialLocator | undefined): MaterialLocator | undefined {
+export function normalizeMaterialLocator(input: MaterialLocator | undefined, source?: Pick<MaterialSource, 'kind' | 'fingerprint'>): MaterialLocator | undefined {
     if (input === undefined) return undefined;
     if (!input || !['text', 'document', 'video'].includes(input.kind)) throw new MaterialError('invalid-input', '材料位置无效');
     const locator: MaterialLocator = {kind: input.kind};
@@ -71,6 +72,15 @@ export function normalizeMaterialLocator(input: MaterialLocator | undefined): Ma
     if (input.endMs !== undefined) {
         if (!Number.isFinite(input.endMs) || input.endMs < (locator.startMs ?? 0) || input.endMs > 315_360_000_000) throw new MaterialError('invalid-input', '视频结束时间无效');
         locator.endMs = Math.floor(input.endMs);
+    }
+    if (source?.kind === 'document' && locator.fingerprint && locator.fingerprint !== source.fingerprint) throw new MaterialError('invalid-input', '文档位置与材料内容指纹不一致');
+    if (input.documentReference !== undefined) {
+        if (input.kind !== 'document' || source && source.kind !== 'document') throw new MaterialError('invalid-input', '精确文档位置只能用于文档材料');
+        const fingerprint = source?.fingerprint ?? locator.fingerprint;
+        const reference = fingerprint ? normalizeDocumentMaterialReference(input.documentReference, fingerprint) : undefined;
+        if (!reference || locator.fingerprint && locator.fingerprint !== reference.materialId) throw new MaterialError('invalid-input', '文档精确位置无效、超出预算或属于其他文件');
+        locator.fingerprint = reference.materialId;
+        locator.documentReference = reference;
     }
     return locator;
 }

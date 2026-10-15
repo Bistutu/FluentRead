@@ -132,5 +132,17 @@
   "材料来源历史无效": "Historial de orígenes del material no válido",
   "材料来源历史身份不匹配": "La identidad del historial de orígenes no coincide",
   "学习引用重复": "Referencia de aprendizaje duplicada",
-  "阅读讲解": "Explicación de lectura"
+  "阅读讲解": "Explicación de lectura",
+  "更新学习位置": "Actualizar la posición de lectura",
+  "当前段落尚未显示，请等待页面加载或滚动到文字后重试；原阅读位置已保留。": "Este párrafo aún no se muestra. Espera a que se cargue la página o desplázate hasta el texto y vuelve a intentarlo. Se ha conservado tu posición de lectura anterior.",
+  "已保存本机学习位置，可从学习中心继续阅读。": "Posición de lectura guardada en este dispositivo. Continúa leyendo desde el centro de aprendizaje.",
+  "原文位置已变化或无法唯一匹配，已保留原定位。请找到原文后点击「更新学习位置」。": "El texto original ha cambiado de lugar o no se puede identificar de forma única. Se ha conservado tu posición anterior. Busca el texto y haz clic en «Actualizar la posición de lectura».",
+  "旧材料未保存可用的阅读位置。请找到原文后点击「更新学习位置」。": "Este material antiguo no tiene una posición de lectura guardada que se pueda usar. Busca el texto y haz clic en «Actualizar la posición de lectura».",
+  "已恢复保存的页码或章节，请核对原文；开始阅读后记录新的位置。": "Se ha restaurado la página o el capítulo guardado. Comprueba el texto original; se registrará una nueva posición cuando empieces a leer.",
+  "原段落布局尚未就绪，已保留阅读位置。请重新打开这份材料重试。": "El diseño del párrafo original aún no está listo. Se ha conservado tu posición de lectura. Vuelve a abrir este material para intentarlo de nuevo.",
+  "已停止自动定位，继续记录当前阅读位置。": "Se ha detenido la localización automática. Se seguirá registrando tu posición de lectura actual.",
+  "暂时未能确认原文位置。材料与原句仍保留，可在页面内搜索原句，或稍后重新打开。": "No hemos podido confirmar la ubicación del texto original. El material y la cita guardada siguen disponibles. Busca la cita en esta página o vuelve a abrir el material más tarde.",
+  "文档位置与材料内容指纹不一致": "La posición del documento no coincide con la huella del contenido del material",
+  "精确文档位置只能用于文档材料": "Las posiciones exactas de documento solo se pueden usar con materiales de tipo documento",
+  "文档精确位置无效、超出预算或属于其他文件": "La posición exacta del documento no es válida, supera el límite de tamaño o pertenece a otro archivo"
 }

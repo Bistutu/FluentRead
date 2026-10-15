@@ -11,13 +11,22 @@ import {diagnoseFailure, getDiagnosticSummary, getDiagnosticText, getDiagnosticA
 import {createPopupPageActions, type PopupPageState} from '@/src/app/popup/pageActions';
 import {Config} from '@/src/core/config/model';
 import {compileVueInlineFixture} from './helpers/compiledVueFixture';
+import * as i18n from '@/src/core/i18n';
+import {UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles';
+import type {UiLanguage, RegisteredUiLanguage} from '@/src/core/i18n';
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
+const loadLanguage = async (language: UiLanguage) => {
+  if (language !== 'zh-CN') i18n.registerUiLanguageBundle(language, UI_LANGUAGE_BUNDLES[language]);
+  return true;
+};
+const ensureUiLanguageBundle = vi.fn(loadLanguage);
 let dispose: (() => void) | undefined;
 function loadNotice() {
   const compiled = compileVueInlineFixture('src/features/self-help/ui/DiagnosticNotice.vue', {id: 'self-help-notice'});
   expect(compiled.parseErrors).toEqual([]);
-  const dependencies: Record<string, unknown> = {'vue': runtime, '@/src/services/diagnostics': diagnostics};
+  const dependencies: Record<string, unknown> = {'vue': runtime, '@/src/services/diagnostics': diagnostics,
+    '@/src/core/i18n': i18n, '@/src/platform/i18n/uiLanguageBundles': {ensureUiLanguageBundle}};
   const module = {exports: {} as {default: import('vue').Component}};
   // 只复用编译缓存；每次挂载执行同一真实 SFC 源码，诊断依赖也使用生产模块。
   new Function('require', 'exports', 'module', compiled.code)((id: string) => {
@@ -26,7 +35,7 @@ function loadNotice() {
   }, module.exports, module);
   return module.exports.default;
 }
-afterEach(() => {dispose?.();dispose = undefined;vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();});
+afterEach(() => {dispose?.();dispose = undefined;vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();ensureUiLanguageBundle.mockReset().mockImplementation(loadLanguage);});
 interface Host {tag: string; text: string; props: Record<string, any>; children: Host[]; parent: Host | null; focus: ReturnType<typeof vi.fn>; contains: (target: Host | null) => boolean; querySelector: (selector: string) => Host | null; scrollHeight: number; getBoundingClientRect?: () => {top: number; bottom: number}; closest?: (selector: string) => {getBoundingClientRect: () => {top: number; bottom: number}} | null}
 const node = (tag: string, text = ''): Host => {
   const value: Host = {tag, text, props: {}, children: [], parent: null, scrollHeight: 0,
@@ -189,7 +198,7 @@ describe('actual self help notice', () => {
     expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
     expect(f.button('查看详情').props['aria-expanded']).toBe(false);
     expect(contents(f.root)).not.toContain('导出失败');
-    await f.click('查看详情');await f.click('预览诊断');await f.click('预览诊断');
+    await f.click('查看详情');await f.click('预览诊断');await f.click('收起预览');
     expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
     f.props.diagnostic = {code: 'PRIVATE', message: 'private body'};await settle();
     expect(all(f.root, value => value.tag === 'section')).toHaveLength(0);
@@ -204,7 +213,7 @@ describe('actual self help notice', () => {
     await f.click('导出 JSON');expect(create).toHaveBeenCalledTimes(2);expect(contents(f.root)).not.toContain('导出失败');
     create.mockImplementationOnce(() => {throw new Error('blocked again');});
     await f.click('导出 JSON');expect(contents(f.root)).toContain('导出失败');
-    await f.click('预览诊断');await f.click('预览诊断');expect(contents(f.root)).not.toContain('导出失败');
+    await f.click('收起预览');await f.click('预览诊断');expect(contents(f.root)).not.toContain('导出失败');
   });
 
   it('waits for rate-limit cooldown, accepts updated remaining time, and clears timers on unmount', async () => {
@@ -214,7 +223,7 @@ describe('actual self help notice', () => {
     expect(f.button('重试').props.disabled).toBe(true);
     await f.click('重试');expect(f.emitted).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(2000);await settle();
-    expect(contents(f.button('重试'))).toContain('3s');
+    expect(contents(f.button('重试'))).toContain('3 秒');
     f.props.diagnostic = diagnoseFailure({kind: 'rate-limit', retryAfterMs: 3000});await settle();
     await f.click('查看详情');
     await vi.advanceTimersByTimeAsync(3000);await settle();
@@ -237,6 +246,87 @@ describe('actual self help notice', () => {
     expect(f.emitted).toHaveBeenCalledWith('services');
   });
 
+  it('refreshes the collapsed status name when a delayed language bundle arrives without mounting its popover', async () => {
+    let finish!: (loaded: boolean) => void;
+    i18n.registerUiLanguageBundle('fr-FR', {...UI_LANGUAGE_BUNDLES['fr-FR'], messages: {}});
+    ensureUiLanguageBundle.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+    const f = await mount(diagnoseFailure({kind: 'authentication'}), {language: 'fr-FR'});
+    expect(contents(f.root)).toContain('服务验证失败');
+    f.collapsed();expect(f.trigger().props['aria-label']).toContain('服务验证失败');expect(f.button('查看详情').props['aria-expanded']).toBe(false);
+    expect(all(f.root, value => value.props['data-diagnostic-details'] !== undefined)).toHaveLength(0);
+    i18n.registerUiLanguageBundle('fr-FR', UI_LANGUAGE_BUNDLES['fr-FR']);finish(true);await settle();
+    expect(contents(f.root)).toContain(i18n.translate('diagnostics.authentication.summary', 'fr-FR'));
+    expect(contents(f.root)).not.toContain('服务验证失败');
+    f.collapsed();expect(f.trigger().props['aria-label']).toContain(i18n.translate('diagnostics.authentication.summary', 'fr-FR'));
+    expect(f.button(i18n.translate('diagnostics.ui.details', 'fr-FR')).props['aria-expanded']).toBe(false);
+    expect(all(f.root, value => value.props['data-diagnostic-details'] !== undefined)).toHaveLength(0);
+    expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
+    await f.click(i18n.translate('diagnostics.ui.details', 'fr-FR'));
+    await f.click(i18n.translate('diagnostics.ui.service-action', 'fr-FR'));
+    expect(f.button(i18n.translate('diagnostics.ui.close-details', 'fr-FR'))).toBeDefined();
+    expect(f.button(i18n.translate('diagnostics.ui.dismiss-notice', 'fr-FR'))).toBeDefined();
+    expect(f.emitted).toHaveBeenCalledWith('services');
+  });
+
+  it('remeasures an already open popover after the current language resource arrives', async () => {
+    let finish!: (loaded: boolean) => void;
+    i18n.registerUiLanguageBundle('fr-FR', {...UI_LANGUAGE_BUNDLES['fr-FR'], messages: {}});
+    ensureUiLanguageBundle.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+    const f = await mount({code: 'authentication'}, {language: 'fr-FR'});
+    const host = all(f.root, value => value.tag === 'section')[0];
+    host.getBoundingClientRect = vi.fn(() => ({top: 220, bottom: 244}));
+    host.closest = () => ({getBoundingClientRect: () => ({top: 0, bottom: 560})});
+    await f.click('查看详情');const panel = all(f.root, value => 'data-diagnostic-details' in value.props)[0];
+    const previousReads = vi.mocked(host.getBoundingClientRect).mock.calls.length;
+    panel.scrollHeight = 400;
+    i18n.registerUiLanguageBundle('fr-FR', UI_LANGUAGE_BUNDLES['fr-FR']);finish(true);await settle();
+    expect(host.getBoundingClientRect).toHaveBeenCalledTimes(previousReads + 1);
+    expect(panel.props.class).toContain('below');expect(panel.props.style.maxHeight).toBe('298px');
+    expect(contents(panel)).toContain(i18n.translate('diagnostics.authentication.detail', 'fr-FR'));
+    expect(f.trigger().props['aria-expanded']).toBe(true);
+  });
+
+  it('updates delayed language resources without restarting cooldown or replacing the report, and ignores stale loads', async () => {
+    vi.useFakeTimers();vi.setSystemTime(100_000);
+    const pending = new Map<UiLanguage, (loaded: boolean) => void>();
+    for (const language of ['fr-FR', 'ja-JP', 'ko-KR'] as const) {
+      i18n.registerUiLanguageBundle(language, {...UI_LANGUAGE_BUNDLES[language], messages: {}});
+    }
+    ensureUiLanguageBundle.mockImplementation(language => new Promise(resolve => pending.set(language, resolve)));
+    const f = await mount({...diagnoseFailure({kind: 'rate-limit', retryAfterMs: 3000}), message: 'PRIVATE'}, {language: 'fr-FR'});
+    expect(contents(f.root)).toContain('服务请求受限');
+    await f.click('查看详情');await f.click('预览诊断');
+    const preview = contents(all(f.root, value => value.tag === 'pre')[0]);
+    await vi.advanceTimersByTimeAsync(2000);
+    const finish = async (language: RegisteredUiLanguage) => {
+      i18n.registerUiLanguageBundle(language, UI_LANGUAGE_BUNDLES[language]);
+      pending.get(language)!(true);await settle();
+    };
+    await finish('fr-FR');
+    expect(contents(f.root)).toContain(i18n.translate('diagnostics.rate-limit.summary', 'fr-FR'));
+    expect(contents(all(f.root, value => value.tag === 'pre')[0])).toBe(preview);
+    f.props.language = 'ja-JP';await settle();
+    f.props.language = 'ko-KR';await settle();
+    await finish('ko-KR');await finish('ja-JP');
+    expect(contents(f.root)).toContain(i18n.translate('diagnostics.rate-limit.summary', 'ko-KR'));
+    expect(contents(f.root)).not.toContain('PRIVATE');
+    expect(vi.getTimerCount()).toBe(1);
+    await vi.advanceTimersByTimeAsync(1000);await settle();
+    expect(f.button(i18n.translate('diagnostics.action.retry', 'ko-KR')).props.disabled).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('keeps safe fallback text when resource loading fails and cancels ownership on unmount', async () => {
+    ensureUiLanguageBundle.mockRejectedValueOnce(new Error('Unavailable language resource'));
+    const f = await mount(diagnoseFailure({kind: 'timeout'}));
+    expect(contents(f.root)).toContain('翻译超时');
+    let resolve!: (loaded: boolean) => void;
+    ensureUiLanguageBundle.mockImplementationOnce(() => new Promise(done => {resolve = done;}));
+    f.props.language = 'es-ES';await settle();
+    dispose?.();dispose = undefined;resolve(false);await settle();
+    expect(all(f.root, value => value.tag === 'section')).toHaveLength(0);
+  });
+
   it.each(['authentication', 'model-configuration', 'configuration'] as const)('offers user-triggered retry after repairing %s and keeps it disabled while busy', async code => {
     const f = await mount({code}, {busy: true});
     await f.click('查看详情');
@@ -254,7 +344,7 @@ describe('actual self help notice', () => {
       expect(contents(f.root)).toContain(getDiagnosticSummary(diagnostic, locale));
       expect(contents(f.root)).toContain(getDiagnosticText(diagnostic, locale).detail);
       expect(f.button(getDiagnosticActionLabel('retry', locale))).toBeDefined();
-      expect(f.button(getDiagnosticUiText('preview', locale)).props['aria-expanded']).toBe(true);
+      expect(f.button(i18n.translate('diagnostics.report.hidePreview', i18n.resolveUiLanguageFromLocale(locale))).props['aria-expanded']).toBe(true);
       expect(contents(f.root)).toContain(getDiagnosticUiText('privacy', locale));
       expect(preview.props['aria-label']).toBe(getDiagnosticUiText('report', locale));
       expect(all(f.root, value => value.tag === 'pre')[0]).toBe(preview);expect(contents(preview)).toBe(report);
@@ -262,6 +352,7 @@ describe('actual self help notice', () => {
       expect(contents(f.root)).toContain(getDiagnosticUiText('exportFailed', locale));
       expect(contents(f.root)).not.toContain('PRIVATE');
     }
+
   });
 });
 

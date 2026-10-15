@@ -1,0 +1,96 @@
+/**
+ * @file userscript/settingsDataPlugin.ts
+ * 文件职责：在 userscript 构建时无损压缩固定设置数据，完整设置版再压缩学习与目标语言目录。
+ * 主要内容：只从指定 const 的字面量 AST 读取 JSON 类型，拒绝计算、重复键和特殊原型键；原地替换初始化值，同步还原所有文本、类型和顺序；皮肤与字体注册表通过同一插件校验两个具名导出数组，保留文件注释、既有 Map 与函数。
+ * 模块边界：不执行源模块、不压缩可执行逻辑，不改远程语言资源；标准版只压缩完整消费的样式与界面注册表，避免目录表示阻止原有裁剪；沿用 pako，消费函数保持原实现，Greasy Fork 保留可读数据。
+ */
+import {resolve} from 'node:path';
+import {gzipSync, gunzipSync} from 'node:zlib';
+import ts from 'typescript';
+import {normalizePath, type Plugin} from 'vite';
+
+type Json = string | number | boolean | null | Json[] | {[key: string]: Json};
+
+function literal(node: ts.Expression, allowNumericKeys = true): Json {
+    if (ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isParenthesizedExpression(node)) return literal(node.expression, allowNumericKeys);
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+    if (ts.isNumericLiteral(node)) {
+        const value = Number(node.text);
+        if (Number.isFinite(value)) return value;
+    }
+    if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
+    if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
+    if (node.kind === ts.SyntaxKind.NullKeyword) return null;
+    if (ts.isArrayLiteralExpression(node)) return node.elements.map(element => literal(element, allowNumericKeys));
+    if (ts.isObjectLiteralExpression(node)) {
+        const result: {[key: string]: Json} = {};
+        for (const property of node.properties) {
+            if (!ts.isPropertyAssignment(property)
+                || !(ts.isIdentifier(property.name) || ts.isStringLiteral(property.name) || allowNumericKeys && ts.isNumericLiteral(property.name))) {
+                throw new Error('Standalone settings data requires literal object properties');
+            }
+            const key = ts.isNumericLiteral(property.name) ? String(Number(property.name.text)) : property.name.text;
+            if (key === '__proto__' || Object.prototype.hasOwnProperty.call(result, key)) {
+                throw new Error('Standalone settings data contains a duplicate or prototype key');
+            }
+            Object.defineProperty(result, key, {value: literal(property.initializer, allowNumericKeys), enumerable: true});
+        }
+        return result;
+    }
+    throw new Error('Standalone settings data requires JSON literals');
+}
+
+export function createUserscriptSettingsDataPlugin(root: string, enabled: boolean, fullOptions = true): Plugin {
+    const targets = new Map<string, {names: readonly string[]; appearance?: boolean}>([
+        [normalizePath(resolve(root, 'src/core/config/translationAppearance.ts')), {names: ['TRANSLATION_STYLE_PRESETS']}],
+        [normalizePath(resolve(root, 'src/core/config/interfaceAppearance.ts')), {names: ['interfaceSkinOptions', 'interfaceFontOptions'], appearance: true}],
+    ]);
+    if (fullOptions) {
+        targets.set(normalizePath(resolve(root, 'src/core/harness/promptLocales.ts')), {names: ['HARNESS_TRANSLATED_PROMPTS']});
+        targets.set(normalizePath(resolve(root, 'src/core/config/catalog.ts')), {names: ['localizedTargetLanguageLabels']});
+    }
+    return {
+        name: 'standalone-settings-data', enforce: 'pre',
+        transform(code, id) {
+            const target = targets.get(normalizePath(id.split('?')[0]));
+            if (!enabled || !target) return null;
+            // 注册表只接受唯一物理模块；保留其它既有设置表的 query-id 契约。
+            if (target.appearance && id.includes('?')) return null;
+            const unsupported = () => new Error('Userscript appearance registries must be unique exported const literal arrays');
+            try {
+                const source = ts.createSourceFile(id, code, ts.ScriptTarget.Latest, true);
+                // TypeScript 会恢复部分错误语法；先拒绝诊断，不能把损坏源码重新编码成合法数据。
+                if ((source as ts.SourceFile & {parseDiagnostics: readonly ts.Diagnostic[]}).parseDiagnostics.length) {
+                    throw new Error('Standalone settings data source has syntax errors');
+                }
+                const declarations = source.statements.filter(ts.isVariableStatement)
+                    .flatMap(statement => [...statement.declarationList.declarations]
+                        .filter(declaration => ts.isIdentifier(declaration.name) && target.names.includes(declaration.name.text))
+                        .map(declaration => ({declaration, constant: Boolean(statement.declarationList.flags & ts.NodeFlags.Const),
+                            exported: Boolean(statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword))})));
+                if (code.includes('__fluentreadInflateSettingsData') || target.names.some(name => declarations.filter(entry => entry.declaration.name.getText(source) === name).length !== 1)
+                    || declarations.some(entry => !entry.constant || !entry.declaration.initializer || target.appearance && !entry.exported)) {
+                    throw new Error(`Standalone settings data declaration changed: ${target.names.join(', ')}`);
+                }
+                let transformed = code;
+                for (const entry of [...declarations].sort((left, right) => right.declaration.pos - left.declaration.pos)) {
+                    const initializer = entry.declaration.initializer!;
+                    const data = literal(initializer, !target.appearance);
+                    if (target.appearance && (!Array.isArray(data) || !data.length)) throw unsupported();
+                    const json = JSON.stringify(data);
+                    const compressed = gzipSync(Buffer.from(json), {level: 9});
+                    if (target.appearance && JSON.stringify(JSON.parse(gunzipSync(compressed).toString('utf8'))) !== json) throw unsupported();
+                    // 和原字面量一样，未被消费的表不应触发还原；整个闭包只还原固定数据，无外部写入。
+                    const value = `/* @__PURE__ */ (() => JSON.parse(__fluentreadInflateSettingsData(Uint8Array.from(atob(${JSON.stringify(compressed.toString('base64'))}), character => character.charCodeAt(0)))))()`;
+                    transformed = transformed.slice(0, initializer.getStart(source)) + value + transformed.slice(initializer.end);
+                }
+                const importCode = "import {inflateWithPako as __fluentreadInflateSettingsData} from '@/userscript/pakoRuntime';\n";
+                const insertion = target.appearance ? source.statements[0].getStart(source) : 0;
+                return {code: transformed.slice(0, insertion) + importCode + transformed.slice(insertion), map: null};
+            } catch (error) {
+                if (target.appearance) throw unsupported();
+                throw error;
+            }
+        },
+    };
+}

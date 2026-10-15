@@ -1,7 +1,7 @@
 /**
  * @file tests/pdfBlockFit.test.ts
  * 文件职责：验证“原版排版”阅读把译文放回原文段落矩形时的取舍、可用空白和字号收缩。
- * 主要内容：受保护内容与图表区域内的文字不被替换；段落下方与右侧的空白按相邻内容和旋转页尺寸计算；译文放得下时保持原字号，放不下时逐步收缩到下限并如实标记溢出。
+ * 主要内容：受保护内容与图表区域内的文字不被替换；段落下方与右侧的空白按相邻内容和旋转页尺寸计算；全文能适配时逐步收缩，仍放不下时保留可读预览字号并如实标记溢出。
  * 模块边界：只测试纯几何与分行，字宽由测试注入；不创建 DOM、Canvas 或 PDF。
  */
 import {describe, expect, it} from 'vitest';
@@ -111,9 +111,16 @@ describe('PDF layout overlay text fitting', () => {
         expect(fit.lines.length * fit.lineHeight).toBeLessThanOrEqual(28 + fit.lineHeight * 0.25);
         expect(fit.lines.every(line => monospace(line, fit.fontSize) <= 100)).toBe(true);
     });
-    it('stops at the readable floor and reports overflow without dropping text', () => {
+    it('keeps a readable source-size preview when shrinking still cannot fit the full translation', () => {
         const fit = fitPdfBlockText({text: '字'.repeat(200), width: 100, height: 20, fontSize: 10, lineHeight: 13, minFontSize: 8, weight: 400}, monospace);
-        expect(fit.fontSize).toBe(8); expect(fit.overflow).toBe(true); expect(fit.lines.join('')).toBe('字'.repeat(200));
+        expect(fit.fontSize).toBe(10); expect(fit.overflow).toBe(true); expect(fit.lines.join('')).toBe('字'.repeat(200));
+        expect(fit.lineHeight).toBeLessThanOrEqual(20 + fit.lineHeight * 0.25);
+    });
+    it('reduces the preview only as far as needed for one line without crossing a short source box', () => {
+        const fit = fitPdfBlockText({text: '字'.repeat(200), width: 100, height: 9, fontSize: 12, lineHeight: 15, minFontSize: 6, weight: 400}, monospace);
+        expect(fit.fontSize).toBeLessThan(12); expect(fit.fontSize).toBeGreaterThan(6);
+        expect(fit.lineHeight).toBeLessThanOrEqual(9 + fit.lineHeight * 0.25);
+        expect(fit.overflow).toBe(true); expect(fit.lines.join('')).toBe('字'.repeat(200));
     });
     it('tolerates degenerate geometry and a floor above the source size', () => {
         const zero = fitPdfBlockText({text: '译文', width: 0, height: 0, fontSize: 0, lineHeight: 0, minFontSize: 0, weight: 400}, monospace);

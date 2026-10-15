@@ -796,6 +796,10 @@ onBeforeUnmount(() => { closeTools(); recordsGeneration += 1; restoreEpoch += 1;
 .fr-dark-theme .fr-reading-error { background: #482e35; color: #f5acb6; }
 .fr-dark-theme .fr-reading-navigation button, .fr-dark-theme .fr-reading-session small span, .fr-dark-theme .fr-reading-question { color: #e4a0bc; }
 @media (max-height: 420px) { .fr-reading-toolbar { padding-bottom: 4px; } .fr-reading-followup { margin-top: 4px; } }
+/* 避免 Safari 聚焦小字号追问框时自动放大、滚动宿主页并收起卡片。 */
+@media (any-pointer: coarse) {
+  .fr-reading-followup input, .fr-reading-followup input::placeholder { font-size: 16px; }
+}
 @keyframes fr-reading-breathe { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .fr-reading-pulse { animation: none; } }
 </style>
