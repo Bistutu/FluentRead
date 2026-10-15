@@ -42,6 +42,7 @@
       "tests/testConfiguration.test.ts"
     ],
     "unit": [
+      "tests/materialOriginalText.test.ts",
       "tests/documentHistoryCommitter.test.ts",
       "tests/fullPageSession.test.ts",
       "tests/compositeTranslationConfig.test.ts",
