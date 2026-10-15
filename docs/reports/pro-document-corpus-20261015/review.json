@@ -1,0 +1,203 @@
+{
+  "schema": 1,
+  "evidenceDirectory": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/corpus",
+  "reviewedOriginalSourcePages": {
+    "attention": [
+      3,
+      7
+    ],
+    "smith-levy": [
+      2,
+      12
+    ],
+    "nasa": [
+      20,
+      29,
+      30,
+      31
+    ],
+    "openstax": [
+      21,
+      25,
+      31
+    ]
+  },
+  "sourceRenderDirectory": "source-renders",
+  "layoutOverlayDirectory": "layout-review",
+  "originalPdfBytesUnchanged": true,
+  "rawSourceGlyphGeometryRetained": true,
+  "repairs": [
+    {
+      "id": "rotated-native-table",
+      "source": "nasa",
+      "pages": [
+        30,
+        31
+      ],
+      "before": "0 atoms from 7054 extracted characters",
+      "after": "55 and 48 atoms respectively; sourceRotation=90"
+    },
+    {
+      "id": "word-fragmented-grid",
+      "source": "nasa",
+      "pages": [
+        29,
+        30,
+        31
+      ],
+      "before": "Narrow leading border fragments were excluded; labels and descriptions read out of row order",
+      "after": "Fragmented borders connected; rowspans use local cell borders; labels precede descriptions"
+    },
+    {
+      "id": "math-letter-as-bullet",
+      "source": "smith-levy",
+      "pages": [
+        12
+      ],
+      "before": "An accented row-leading p was stripped as a repeating symbol-font list marker",
+      "after": "Math accent overlap and absent bullet spacing retain the original glyph"
+    },
+    {
+      "id": "textbook-question-under-formula",
+      "source": "openstax",
+      "pages": [
+        21
+      ],
+      "before": "A short list question became part of the preceding/following answer formula region",
+      "after": "Question remains translatable text; independent answer equations retain original regions"
+    },
+    {
+      "id": "discretionary-soft-hyphen",
+      "source": "controlled-test",
+      "before": "U+00AD at a line end was not joined and could disrupt word searches",
+      "after": "Canonical source joins soft-hyphenated lines; reading text strips discretionary soft hyphens without changing original source geometry"
+    },
+    {
+      "id": "native-word-bullet-gutter",
+      "source": "nasa",
+      "pages": [
+        31
+      ],
+      "before": "Private-use symbol-font bullets were mistaken for a separate math column and list records merged",
+      "after": "Same-baseline explicit bullet columns are reassociated; four original records each retain a canonical bullet"
+    },
+    {
+      "id": "preserved-table-before-linked-translations",
+      "source": "nasa",
+      "pages": [
+        31
+      ],
+      "before": "The preserved table was placed after its linked translated cell annotations because region regrouping ignored existing linked indexes; source block arrays could also disagree with explicit readingOrder",
+      "after": "Stable explicit reading order drives initial placement; regrouping includes existing linked indexes as anchors. Reversed source-array and same-order stability cases protect ordering."
+    },
+    {
+      "id": "rowspan-neighbor-rule",
+      "source": "independent-review-controlled-geometry",
+      "before": "The existing row-spanning cell phrase split into System and group when only its baselines changed from 220/232 to 194/206 across the other columns horizontal rule at y=200",
+      "after": "Same-cell evidence overrides row heuristics only when a horizontal boundary in another column lies strictly inside the candidate physical cell. Header rules coinciding with the body cell top edge do not establish a rowspan.",
+      "redBeforeFix": true,
+      "regressionTest": "stitches fragmented Word grid borders and keeps rowspan labels whole with first baseline 194",
+      "verification": "277 tests passed, 2 conditional skips, four-core four-dimensional coverage 100%; all selected 70 public source pages re-audited successfully"
+    },
+    {
+      "id": "open-numeric-table-records",
+      "source": "independent-review-controlled-geometry",
+      "before": "A table with only outer horizontal borders and three vertical rules merged three description/numeric records into two blocks, mistaking whole columns for known row-spanning cells",
+      "after": "Top/bottom borders and a header rule alone cannot override numerical record baselines. Both open fixtures retain six blocks; scientific numerical values remain separate. Alphanumeric SE labels remain multiline in real grid cells. Both original rowspan placements and a right-column mirror retain System group.",
+      "redBeforeFix": true,
+      "regressionTest": "keeps numerical records separate in an open table with header rule true and values [1,2,3]"
+    },
+    {
+      "id": "header-rule-is-not-rowspan",
+      "source": "independent-review-controlled-geometry",
+      "redBeforeFix": true,
+      "before": "Adding only the header border y=115 caused the open three-record numeric table to collapse from six blocks to two because a global row-edge count treated the header as body-span evidence.",
+      "after": "Span evidence must be an actual other-column horizontal border strictly inside the candidate cell bounds; the header is that body cell top boundary and is excluded. Numeric row evidence rejects alphanumeric labels such as SE 3.5 while accepting scientific notation.",
+      "verification": "Header/no-header open tables, scientific notation, multiline alphanumeric label, left/right rowspan fixtures, strict coverage, and all selected 70 public pages pass."
+    }
+  ],
+  "continuationEvidence": {
+    "source": "smith-levy",
+    "boundaries": [
+      {
+        "fromPage": 3,
+        "toPage": 4,
+        "kind": "word-break",
+        "sourceTail": "ef-",
+        "sourceHead": "fect"
+      },
+      {
+        "fromPage": 6,
+        "toPage": 7,
+        "kind": "word-break",
+        "sourceTail": "unli-",
+        "sourceHead": "kely"
+      }
+    ],
+    "sourceOrSegmentIdRewritten": false
+  },
+  "limits": [
+    "NASA original pages outside 14–31 (338 pages) and OpenStax outside 17–35 (979 pages) have not been audited here",
+    "The 70-page check demonstrates selected raw glyph and source-block representation, explicit order anchors and exact source identity; it is not complete semantic or visual acceptance",
+    "Original source screenshots and geometry overlays are QA evidence; they do not replace production browser and exported-file review",
+    "Search/copy, supplier translation, cancellation/retry, editable-history persistence and UI accessibility are owned by the parent integration checks",
+    "Sequential Node audit RSS is sampled at page boundaries and includes PDF.js/Vite plus previous documents; it is not browser peak-memory acceptance",
+    "The public 70-page selection contains no U+00AD; discretionary soft-hyphen behavior is verified using a controlled geometry fixture"
+  ],
+  "targetedTests": {
+    "passed": 277,
+    "conditionalSkips": 2,
+    "coreCoverage": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    }
+  },
+  "reviewedLayoutOverlays": [
+    "smith-levy-p2.png",
+    "nasa-p30.png",
+    "nasa-p31.png",
+    "openstax-p21.png"
+  ],
+  "rerunAudit": "node scripts/testing/run-resource-safe.mjs -- node scripts/testing/run-document-corpus-audit.cjs --manifest docs/reports/pro-document-corpus-20261015/manifest.json --input-dir <corpus-directory> --output <evidence-directory>",
+  "runtimeSourceFrozen": true,
+  "runtimeFreezeScope": [
+    "core/pdfLayoutAnalysis.ts",
+    "core/pdfReadingPlan.ts",
+    "core/pdfReadingRegions.ts",
+    "core/pdfContinuations.ts",
+    "services/binary.ts PDF import portion"
+  ],
+  "controlledTranslationPlacement": {
+    "scope": "Fixed placeholder strings only; no supplier or semantic acceptance",
+    "source": "nasa",
+    "pages": [
+      30,
+      31
+    ],
+    "passed": true
+  },
+  "auditSummary": {
+    "documents": 4,
+    "pages": 70,
+    "textItems": 8902,
+    "atomCharacters": 225530,
+    "missingAtoms": 0,
+    "missingBlocks": 0,
+    "sourceMismatches": 0
+  },
+  "nasaFinalStructureCheck": {
+    "pages": {
+      "29": 23,
+      "30": 17,
+      "31": 17
+    },
+    "countsAndOrderingMatchPreNumericFix": true,
+    "rowLabelsBeforeDescriptions": true,
+    "fourNativeBulletRecordsRetained": true,
+    "controlledTableBeforeLinkedTranslations": true,
+    "all70PageBlockCountsUnchanged": true
+  },
+  "runtimeFreezeSha256": "9cead25da6ada1ea2cbf5f07e1c17d628474b7ff6788bbebd69599114bd63271"
+}

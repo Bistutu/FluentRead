@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Web mutation lifecycle</title>
+  <style>
+    :root {color-scheme: light dark; font: 17px/1.65 system-ui, sans-serif; background: light-dark(#f3f5f8,#15181e); color: light-dark(#243044,#e1e7f0)}
+    body {max-width: 980px; margin: 0 auto; padding: 24px; box-sizing: border-box}
+    h1 {font-size: 25px; margin: 0 0 12px} h2 {font-size: 18px; margin: 0 0 8px}
+    nav {display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px}
+    button,a {font: inherit} button {padding: 6px 10px; border: 1px solid #8b95a5; border-radius: 6px; cursor: pointer}
+    nav a {padding: 6px; color: inherit} p {margin: 12px 0} code {font-size: .9em}
+    section {padding: 18px; margin: 12px 0; border: 1px solid #8994a755; border-radius: 10px; background: light-dark(#fff,#20262f)}
+    pre {max-width: 100%; overflow-x: auto}
+    #shadow-mount:empty {display: none}
+    @media (max-width: 500px) {body {padding: 12px} section {padding: 12px} h1 {font-size: 21px}}
+  </style>
+</head>
+<body>
+  <header translate="no">
+    <h1>网页翻译 · 动态生命周期</h1>
+    <nav aria-label="Fixture actions">
+      <a id="route-b" href="/route-b">切换规则 B</a>
+      <a id="route-b-next" href="/route-b/next">同规则导航</a>
+      <button id="ready" type="button">显示正文</button>
+      <button id="protect" type="button">保护正文</button>
+      <button id="unprotect" type="button">解除保护</button>
+      <button id="detach" type="button">卸载组件</button>
+      <button id="reattach" type="button">重插组件</button>
+      <button id="drop" type="button">释放组件</button>
+    </nav>
+  </header>
+  <main>
+    <section>
+      <h2 translate="no">普通 DOM</h2>
+      <p id="stable">A stable article paragraph stays readable while the application changes routes.</p>
+      <i id="light-flag" data-route-a="pending" data-route-b="pending"></i>
+      <p id="light-gated">This delayed article paragraph becomes available after the route-specific marker changes.</p>
+      <pre id="protected-code" translate="no"><code>SELECT user_id FROM events WHERE active = true;</code></pre>
+    </section>
+    <section id="shadow-mount"></section>
+  </main>
+  <script>
+    (() => {
+      const wrapper = '.fluent-read-bilingual-content';
+      const owned = '[data-fr-translation-owned="true"],[data-fr-translation-segment="true"]';
+      const sources = new Map();
+      const identities = new WeakMap();
+      let nextIdentity = 1;
+      const id = node => {if (!identities.has(node)) identities.set(node, nextIdentity++); return identities.get(node);};
+      const actions = [], lifecycle = [];
+      let released = null, retiredStyle = null;
+      let component = document.createElement('web-stability-component');
+      component.attachShadow({mode: 'open'}).innerHTML = `
+        <style>:host{display:block}h2{font:600 18px system-ui;margin:0 0 8px}p{margin:12px 0}code{font-size:.9em}</style>
+        <h2 translate="no">开放 Shadow DOM</h2>
+        <i id="shadow-flag" data-route-a="pending" data-route-b="pending"></i>
+        <p id="shadow-gated">This component paragraph becomes available when its own route marker changes.</p>
+        <code id="shadow-code" translate="no">keepOriginal(component.state)</code>`;
+      document.querySelector('#shadow-mount').appendChild(component);
+      const lookup = selector => document.querySelector(selector) ?? component?.shadowRoot.querySelector(selector);
+      for (const selector of ['#stable','#light-gated','#shadow-gated','#protected-code','#shadow-code']) {
+        const node = lookup(selector);
+        sources.set(selector, {html: node.innerHTML, text: node.textContent});
+      }
+      const record = (action, event) => actions.push({action, trusted: event.isTrusted, at: performance.now()});
+      for (const name of ['fluentread-translation-started', 'fluentread-translation-ended']) {
+        document.addEventListener(name, () => lifecycle.push({event: name, at: performance.now()}));
+      }
+      for (const selector of ['#route-b','#route-b-next']) {
+        document.querySelector(selector).addEventListener('click', event => {
+          event.preventDefault(); record(selector, event);
+          history.pushState({}, '', event.currentTarget.getAttribute('href'));
+        });
+      }
+      document.querySelector('#ready').addEventListener('click', event => {
+        record('ready', event);
+        const attribute = location.pathname.startsWith('/route-a') ? 'data-route-a' : 'data-route-b';
+        // Deliberately no text/childList/UI-status write: only the route-specific attributes may trigger discovery.
+        document.querySelector('#light-flag').setAttribute(attribute, 'ready');
+        component?.shadowRoot.querySelector('#shadow-flag').setAttribute(attribute, 'ready');
+      });
+      for (const [selector, protect] of [['#protect',true],['#unprotect',false]]) {
+        document.querySelector(selector).addEventListener('click', event => {
+          record(selector, event);
+          for (const candidate of ['#light-gated','#shadow-gated']) {
+            const node = lookup(candidate);
+            if (protect) node.setAttribute('translate','no'); else node.removeAttribute('translate');
+          }
+        });
+      }
+      document.querySelector('#detach').addEventListener('click', event => {record('detach',event); component?.remove();});
+      document.querySelector('#reattach').addEventListener('click', event => {
+        record('reattach',event);
+        if (component) document.querySelector('#shadow-mount').appendChild(component);
+      });
+      document.querySelector('#drop').addEventListener('click', event => {
+        record('drop',event);
+        if (!component) return;
+        released = {host: new WeakRef(component), root: new WeakRef(component.shadowRoot)};
+        component.remove(); component = null;
+      });
+      window.webMutationFixture = {
+        snapshot() {
+          const roots = [document, ...(component ? [component.shadowRoot] : [])];
+          return {url: location.href, actions: [...actions], lifecycle: [...lifecycle],
+            componentConnected: component?.isConnected ?? false,
+            componentPresent: Boolean(component),
+            owners: ['#stable','#light-gated','#shadow-gated'].flatMap(selector => {
+              const node = lookup(selector);
+              if (!node) return [];
+              const translations = [...node.querySelectorAll(wrapper)];
+              const rect = node.getBoundingClientRect();
+              return [{selector, connected: node.isConnected, html: node.innerHTML, source: sources.get(selector),
+                restored: node.innerHTML === sources.get(selector).html,
+                count: translations.length, wrappers: translations.map(translation => ({id: id(translation), text: translation.textContent,
+                  display: getComputedStyle(translation).display, marginTop: getComputedStyle(translation).marginTop,
+                  fontWeight: getComputedStyle(translation).fontWeight, color: getComputedStyle(translation).color,
+                  withinOwnerWidth: translation.getBoundingClientRect().right <= rect.right + 1 && translation.getBoundingClientRect().left >= rect.left - 1})),
+                owned: node.querySelectorAll(owned).length}];
+            }),
+            guards: ['#protected-code','#shadow-code'].flatMap(selector => {
+              const node = lookup(selector);
+              return node ? [{selector, intact: node.innerHTML === sources.get(selector).html, owned: node.querySelectorAll(owned).length}] : [];
+            }),
+            shadowStyleCount: component?.shadowRoot.querySelectorAll('#fluent-read-shadow-translation-styles[data-fr-translation-owned="true"]').length ?? 0,
+            owned: roots.reduce((count, root) => count + root.querySelectorAll(owned).length,0),
+            nested: roots.reduce((count, root) => count + root.querySelectorAll(wrapper+' '+wrapper).length,0),
+            horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1};
+        },
+        released() {return released && {hostCollected: !released.host.deref(), rootCollected: !released.root.deref()};},
+        rememberStyle() {
+          const style = component?.shadowRoot.querySelector('#fluent-read-shadow-translation-styles[data-fr-translation-owned="true"]');
+          if (!style) throw new Error('No owned shadow style to track');
+          retiredStyle = new WeakRef(style);
+        },
+        styleReleased() {return {styleCollected: Boolean(retiredStyle && !retiredStyle.deref()), hostConnected: component?.isConnected === true};},
+      };
+    })();
+  </script>
+</body>
+</html>

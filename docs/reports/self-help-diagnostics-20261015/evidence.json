@@ -1539,5 +1539,328 @@
       "Isolated Edge/Chromium extension tab with synthetic HTTP and controlled viewport, not physical mobile or other browser runtime.",
       "No new external live provider, Firefox/Safari runtime or screen-reader acceptance."
     ]
+  },
+  "mainIntegration": {
+    "base": "d3fb95d65",
+    "priorHead": "d17947f564e5e71afc03302138d06e8f7a3e8e28",
+    "conflicts": "Runtime file responsibility comment and test registry; preserved both sides.",
+    "strict": {
+      "files": 30,
+      "passed": 1465,
+      "businessModules": 11,
+      "perFileFourMetrics100": true
+    },
+    "newBoundaries": {
+      "file": "tests/fullPageVisibilityScheduling.test.ts",
+      "passed": 400,
+      "newCases": 5,
+      "review": "Independent read-only review; no weakened original assertions"
+    },
+    "productionPackage": {
+      "files": 474,
+      "sha256": "a3d32ce60163f29e506fd34ade1686f784138b6249794a920ca84b409b9a92dc",
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256",
+      "source": "d17947f564e5e71afc03302138d06e8f7a3e8e28 + merge d3fb95d65; production sources frozen"
+    },
+    "mainUi": {
+      "ok": true,
+      "cases": 22,
+      "screenshots": 19,
+      "refreshRounds": [
+        {
+          "previousDocumentToken": "fr-document-5uiglrtp8he-qi1dvuqrhgc-ojkzlrv1nj-8mnq4wrcwb",
+          "before": {
+            "status": "success",
+            "documentToken": "fr-document-r0s6cybkpjo-z51smmz7ch-ppy80066e7-14asrix2m4e",
+            "isTranslated": false,
+            "isSiteDisabled": false,
+            "toolbarStatus": "idle"
+          },
+          "command": {
+            "status": "success",
+            "action": "translated",
+            "isTranslated": true,
+            "documentToken": "fr-document-r0s6cybkpjo-z51smmz7ch-ppy80066e7-14asrix2m4e",
+            "toolbarStatus": "translating"
+          },
+          "transitions": [
+            {
+              "event": "message",
+              "at": 1792076896053,
+              "status": "idle",
+              "active": false,
+              "token": "fr-document-5uiglrtp8he-qi1dvuqrhgc-ojkzlrv1nj-8mnq4wrcwb",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "tab",
+              "at": 1792076896054,
+              "status": "loading"
+            },
+            {
+              "event": "tab",
+              "at": 1792076896081,
+              "status": "complete"
+            },
+            {
+              "event": "message",
+              "at": 1792076896146,
+              "status": "translating",
+              "active": true,
+              "token": "fr-document-r0s6cybkpjo-z51smmz7ch-ppy80066e7-14asrix2m4e",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "message",
+              "at": 1792076896198,
+              "status": "idle",
+              "active": true,
+              "token": "fr-document-r0s6cybkpjo-z51smmz7ch-ppy80066e7-14asrix2m4e",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "message",
+              "at": 1792076896199,
+              "status": "translating",
+              "active": true,
+              "token": "fr-document-r0s6cybkpjo-z51smmz7ch-ppy80066e7-14asrix2m4e",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "message",
+              "at": 1792076896207,
+              "status": "translated",
+              "active": true,
+              "token": "fr-document-r0s6cybkpjo-z51smmz7ch-ppy80066e7-14asrix2m4e",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            }
+          ]
+        },
+        {
+          "previousDocumentToken": "fr-document-r0s6cybkpjo-z51smmz7ch-ppy80066e7-14asrix2m4e",
+          "before": {
+            "status": "success",
+            "documentToken": "fr-document-ddwivukri7l-0v7wsrr93vkr-6cmf2pdidn2-cybg4ftlbg",
+            "isTranslated": false,
+            "isSiteDisabled": false,
+            "toolbarStatus": "idle"
+          },
+          "command": {
+            "status": "success",
+            "action": "translated",
+            "isTranslated": true,
+            "documentToken": "fr-document-ddwivukri7l-0v7wsrr93vkr-6cmf2pdidn2-cybg4ftlbg",
+            "toolbarStatus": "translating"
+          },
+          "transitions": [
+            {
+              "event": "message",
+              "at": 1792076896241,
+              "status": "idle",
+              "active": false,
+              "token": "fr-document-r0s6cybkpjo-z51smmz7ch-ppy80066e7-14asrix2m4e",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "tab",
+              "at": 1792076896242,
+              "status": "loading"
+            },
+            {
+              "event": "tab",
+              "at": 1792076896277,
+              "status": "complete"
+            },
+            {
+              "event": "message",
+              "at": 1792076896340,
+              "status": "translating",
+              "active": true,
+              "token": "fr-document-ddwivukri7l-0v7wsrr93vkr-6cmf2pdidn2-cybg4ftlbg",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "message",
+              "at": 1792076896392,
+              "status": "idle",
+              "active": true,
+              "token": "fr-document-ddwivukri7l-0v7wsrr93vkr-6cmf2pdidn2-cybg4ftlbg",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "message",
+              "at": 1792076896393,
+              "status": "translating",
+              "active": true,
+              "token": "fr-document-ddwivukri7l-0v7wsrr93vkr-6cmf2pdidn2-cybg4ftlbg",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "message",
+              "at": 1792076896402,
+              "status": "translated",
+              "active": true,
+              "token": "fr-document-ddwivukri7l-0v7wsrr93vkr-6cmf2pdidn2-cybg4ftlbg",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            }
+          ]
+        },
+        {
+          "previousDocumentToken": "fr-document-ddwivukri7l-0v7wsrr93vkr-6cmf2pdidn2-cybg4ftlbg",
+          "before": {
+            "status": "success",
+            "documentToken": "fr-document-krdrmv1kw-ktqb4jzjie-t97do1xk2k-wssax9ji4we",
+            "isTranslated": false,
+            "isSiteDisabled": false,
+            "toolbarStatus": "idle"
+          },
+          "command": {
+            "status": "success",
+            "action": "translated",
+            "isTranslated": true,
+            "documentToken": "fr-document-krdrmv1kw-ktqb4jzjie-t97do1xk2k-wssax9ji4we",
+            "toolbarStatus": "translating"
+          },
+          "transitions": [
+            {
+              "event": "message",
+              "at": 1792076896430,
+              "status": "idle",
+              "active": false,
+              "token": "fr-document-ddwivukri7l-0v7wsrr93vkr-6cmf2pdidn2-cybg4ftlbg",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "tab",
+              "at": 1792076896431,
+              "status": "loading"
+            },
+            {
+              "event": "tab",
+              "at": 1792076896465,
+              "status": "complete"
+            },
+            {
+              "event": "message",
+              "at": 1792076896532,
+              "status": "translating",
+              "active": true,
+              "token": "fr-document-krdrmv1kw-ktqb4jzjie-t97do1xk2k-wssax9ji4we",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "message",
+              "at": 1792076896584,
+              "status": "idle",
+              "active": true,
+              "token": "fr-document-krdrmv1kw-ktqb4jzjie-t97do1xk2k-wssax9ji4we",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "message",
+              "at": 1792076896585,
+              "status": "translating",
+              "active": true,
+              "token": "fr-document-krdrmv1kw-ktqb4jzjie-t97do1xk2k-wssax9ji4we",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            },
+            {
+              "event": "message",
+              "at": 1792076896593,
+              "status": "translated",
+              "active": true,
+              "token": "fr-document-krdrmv1kw-ktqb4jzjie-t97do1xk2k-wssax9ji4we",
+              "sender": {
+                "id": "djnlaiohfaaifbibleebjggkghlmcpcj",
+                "url": "http://127.0.0.1:60876/article",
+                "tabUrl": "http://127.0.0.1:60876/article",
+                "frameId": 0
+              }
+            }
+          ]
+        }
+      ],
+      "locales": 7,
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "snapshotUnchangedAfterRun": true,
+      "immutableSnapshotRemoved": true,
+      "report": "research/self-help-diagnostics-20261015/ui-main-integration/report.json"
+    },
+    "counting": "Targeted groups overlap; not summed. e4 special keyboard/scroll proof remains separate from a3 main flow.",
+    "limitations": [
+      "Controlled provider/observer tests are not native browser timing or live-provider proof.",
+      "No additional Firefox/Safari runtime, physical mobile or screen-reader acceptance."
+    ]
   }
 }

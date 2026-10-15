@@ -1,0 +1,1100 @@
+{
+  "status": "local-verification-passed-ci-fixes-awaiting-confirmation",
+  "baseCommit": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+  "taskBranch": "codex/web-stability-20261015",
+  "localEvidenceRoot": "/Users/thinkstu/Desktop/copy/research/web-stability-20261015",
+  "artifactBinding": {
+    "manifest": "a12a20416fc826d3dc7278b74a112b4170f8985b1ac8b1a74c91f73d5e09b642",
+    "content": "0b2ae2c8023d841d97d1bec613cb2966a957abcda362183a7ae0b39974340151",
+    "background": "9fdf621c665f0f6be68fc6985120b7f38b81548cdd0b511a39a4a1d661072f5d",
+    "source": {
+      "runtime.ts": "128ca543b0428cebffdbdaee0da8622c7a53c68581760c02eaa265a16f276706",
+      "mutationObservation.ts": "77533dfaae4bd85dfd5ae11befdae28e31aae3dc6d596b618a3f840b0c36ef09"
+    }
+  },
+  "reviewedProductDiffSha256": "afe872f01cad8d9736a5dd02ae43699fe88482ca029aa8b3c92b4489d43ee40d",
+  "maintenance": {
+    "requiredPassed": 10,
+    "requiredHosts": 10,
+    "provider": "controlled-microsoft-response",
+    "nativeHackerNewsCommentToggle": true,
+    "cases": [
+      {
+        "case": "github-project-pr",
+        "url": "https://github.com/FluentRead/FluentRead/pull/243",
+        "ok": true,
+        "coverage": [
+          {
+            "rule": "pull-request-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "body-headings",
+            "seen": 4,
+            "completed": 4
+          },
+          {
+            "rule": "body-paragraphs",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "body-list-items",
+            "seen": 3,
+            "completed": 3
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "retranslatedCoverage": [
+          {
+            "rule": "pull-request-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "body-headings",
+            "seen": 4,
+            "completed": 4
+          },
+          {
+            "rule": "body-paragraphs",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "body-list-items",
+            "seen": 3,
+            "completed": 3
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "stability": {
+          "ok": true,
+          "contractVersion": 2,
+          "observeMs": 5000,
+          "steps": [
+            "quiet",
+            "same-text-replacement",
+            "removed-wrapper-repaired",
+            "repair-settled",
+            "dynamic-append",
+            "restore",
+            "retranslate",
+            "stopped-session"
+          ]
+        },
+        "providerEvidence": {
+          "mode": "controlled-microsoft-response",
+          "scope": "real-site DOM compatibility only",
+          "workerCount": 1,
+          "requests": 161,
+          "texts": 176,
+          "active": 0,
+          "errors": []
+        },
+        "cleanupConfirmed": true,
+        "profileRemoved": true,
+        "evidence": "final/maintenance-release-candidate/github-project-pr/full/result.json"
+      },
+      {
+        "case": "hacker-news-8863",
+        "url": "https://news.ycombinator.com/item?id=8863",
+        "ok": true,
+        "coverage": [
+          {
+            "rule": "story-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "discussion-comments",
+            "seen": 70,
+            "completed": 70
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 0,
+            "completed": 0
+          }
+        ],
+        "retranslatedCoverage": [
+          {
+            "rule": "story-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "discussion-comments",
+            "seen": 70,
+            "completed": 70
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 0,
+            "completed": 0
+          }
+        ],
+        "stability": {
+          "ok": true,
+          "contractVersion": 2,
+          "observeMs": 5000,
+          "steps": [
+            "quiet",
+            "same-text-replacement",
+            "removed-wrapper-repaired",
+            "repair-settled",
+            "dynamic-append",
+            "restore",
+            "retranslate",
+            "stopped-session"
+          ]
+        },
+        "providerEvidence": {
+          "mode": "controlled-microsoft-response",
+          "scope": "real-site DOM compatibility only",
+          "workerCount": 1,
+          "requests": 125,
+          "texts": 302,
+          "active": 0,
+          "errors": []
+        },
+        "cleanupConfirmed": true,
+        "profileRemoved": true,
+        "evidence": "final/maintenance-release-candidate/hacker-news-8863/full/result.json"
+      },
+      {
+        "case": "mdn-javascript-guide",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Grammar_and_types",
+        "ok": true,
+        "coverage": [
+          {
+            "rule": "guide-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "guide-sections",
+            "seen": 7,
+            "completed": 7
+          },
+          {
+            "rule": "guide-paragraphs",
+            "seen": 122,
+            "completed": 122
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "retranslatedCoverage": [
+          {
+            "rule": "guide-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "guide-sections",
+            "seen": 7,
+            "completed": 7
+          },
+          {
+            "rule": "guide-paragraphs",
+            "seen": 122,
+            "completed": 122
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "stability": {
+          "ok": true,
+          "contractVersion": 2,
+          "observeMs": 5000,
+          "steps": [
+            "quiet",
+            "same-text-replacement",
+            "removed-wrapper-repaired",
+            "repair-settled",
+            "dynamic-append",
+            "restore",
+            "retranslate",
+            "stopped-session"
+          ]
+        },
+        "providerEvidence": {
+          "mode": "controlled-microsoft-response",
+          "scope": "real-site DOM compatibility only",
+          "workerCount": 1,
+          "requests": 289,
+          "texts": 888,
+          "active": 0,
+          "errors": []
+        },
+        "cleanupConfirmed": true,
+        "profileRemoved": true,
+        "evidence": "final/maintenance-release-candidate/mdn-javascript-guide/full/result.json"
+      },
+      {
+        "case": "wikipedia-united-states",
+        "url": "https://en.wikipedia.org/wiki/United_States",
+        "ok": true,
+        "coverage": [
+          {
+            "rule": "article-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "article-paragraphs",
+            "seen": 144,
+            "completed": 144
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "retranslatedCoverage": [
+          {
+            "rule": "article-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "article-paragraphs",
+            "seen": 144,
+            "completed": 144
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "stability": {
+          "ok": true,
+          "contractVersion": 2,
+          "observeMs": 5000,
+          "steps": [
+            "quiet",
+            "same-text-replacement",
+            "removed-wrapper-repaired",
+            "repair-settled",
+            "dynamic-append",
+            "restore",
+            "retranslate",
+            "stopped-session"
+          ]
+        },
+        "providerEvidence": {
+          "mode": "controlled-microsoft-response",
+          "scope": "real-site DOM compatibility only",
+          "workerCount": 1,
+          "requests": 1144,
+          "texts": 8561,
+          "active": 0,
+          "errors": []
+        },
+        "cleanupConfirmed": true,
+        "profileRemoved": true,
+        "evidence": "final/maintenance-release-candidate/wikipedia-united-states/full/result.json"
+      },
+      {
+        "case": "python-tutorial-introduction",
+        "url": "https://docs.python.org/3/tutorial/introduction.html",
+        "ok": true,
+        "coverage": [
+          {
+            "rule": "chapter-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "introduction-paragraphs",
+            "seen": 4,
+            "completed": 4
+          },
+          {
+            "rule": "numbers-paragraphs",
+            "seen": 10,
+            "completed": 10
+          },
+          {
+            "rule": "text-paragraphs",
+            "seen": 25,
+            "completed": 25
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "retranslatedCoverage": [
+          {
+            "rule": "chapter-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "introduction-paragraphs",
+            "seen": 4,
+            "completed": 4
+          },
+          {
+            "rule": "numbers-paragraphs",
+            "seen": 10,
+            "completed": 10
+          },
+          {
+            "rule": "text-paragraphs",
+            "seen": 25,
+            "completed": 25
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "stability": {
+          "ok": true,
+          "contractVersion": 2,
+          "observeMs": 5000,
+          "steps": [
+            "quiet",
+            "same-text-replacement",
+            "removed-wrapper-repaired",
+            "repair-settled",
+            "dynamic-append",
+            "restore",
+            "retranslate",
+            "stopped-session"
+          ]
+        },
+        "providerEvidence": {
+          "mode": "controlled-microsoft-response",
+          "scope": "real-site DOM compatibility only",
+          "workerCount": 1,
+          "requests": 120,
+          "texts": 323,
+          "active": 0,
+          "errors": []
+        },
+        "cleanupConfirmed": true,
+        "profileRemoved": true,
+        "evidence": "final/maintenance-release-candidate/python-tutorial-introduction/full/result.json"
+      },
+      {
+        "case": "rust-book-getting-started",
+        "url": "https://doc.rust-lang.org/book/ch01-00-getting-started.html",
+        "ok": true,
+        "coverage": [
+          {
+            "rule": "chapter-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "chapter-paragraphs",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "chapter-list-items",
+            "seen": 3,
+            "completed": 3
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 2,
+            "completed": 2
+          }
+        ],
+        "retranslatedCoverage": [
+          {
+            "rule": "chapter-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "chapter-paragraphs",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "chapter-list-items",
+            "seen": 3,
+            "completed": 3
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 2,
+            "completed": 2
+          }
+        ],
+        "stability": {
+          "ok": true,
+          "contractVersion": 2,
+          "observeMs": 5000,
+          "steps": [
+            "quiet",
+            "same-text-replacement",
+            "removed-wrapper-repaired",
+            "repair-settled",
+            "dynamic-append",
+            "restore",
+            "retranslate",
+            "stopped-session"
+          ]
+        },
+        "providerEvidence": {
+          "mode": "controlled-microsoft-response",
+          "scope": "real-site DOM compatibility only",
+          "workerCount": 1,
+          "requests": 13,
+          "texts": 26,
+          "active": 0,
+          "errors": []
+        },
+        "cleanupConfirmed": true,
+        "profileRemoved": true,
+        "evidence": "final/maintenance-release-candidate/rust-book-getting-started/full/result.json"
+      },
+      {
+        "case": "go-tutorial-getting-started",
+        "url": "https://go.dev/doc/tutorial/getting-started",
+        "ok": true,
+        "coverage": [
+          {
+            "rule": "tutorial-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "tutorial-paragraphs",
+            "seen": 22,
+            "completed": 22
+          },
+          {
+            "rule": "tutorial-steps",
+            "seen": 28,
+            "completed": 28
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "retranslatedCoverage": [
+          {
+            "rule": "tutorial-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "tutorial-paragraphs",
+            "seen": 22,
+            "completed": 22
+          },
+          {
+            "rule": "tutorial-steps",
+            "seen": 28,
+            "completed": 28
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "stability": {
+          "ok": true,
+          "contractVersion": 2,
+          "observeMs": 5000,
+          "steps": [
+            "quiet",
+            "same-text-replacement",
+            "removed-wrapper-repaired",
+            "repair-settled",
+            "dynamic-append",
+            "restore",
+            "retranslate",
+            "stopped-session"
+          ]
+        },
+        "providerEvidence": {
+          "mode": "controlled-microsoft-response",
+          "scope": "real-site DOM compatibility only",
+          "workerCount": 1,
+          "requests": 82,
+          "texts": 213,
+          "active": 0,
+          "errors": []
+        },
+        "cleanupConfirmed": true,
+        "profileRemoved": true,
+        "evidence": "final/maintenance-release-candidate/go-tutorial-getting-started/full/result.json"
+      },
+      {
+        "case": "dart-language",
+        "url": "https://dart.dev/language",
+        "ok": true,
+        "coverage": [
+          {
+            "rule": "page-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "page-description",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "language-overview",
+            "seen": 53,
+            "completed": 53
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "retranslatedCoverage": [
+          {
+            "rule": "page-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "page-description",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "language-overview",
+            "seen": 53,
+            "completed": 53
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "stability": {
+          "ok": true,
+          "contractVersion": 2,
+          "observeMs": 5000,
+          "steps": [
+            "quiet",
+            "same-text-replacement",
+            "removed-wrapper-repaired",
+            "repair-settled",
+            "dynamic-append",
+            "restore",
+            "retranslate",
+            "stopped-session"
+          ]
+        },
+        "providerEvidence": {
+          "mode": "controlled-microsoft-response",
+          "scope": "real-site DOM compatibility only",
+          "workerCount": 1,
+          "requests": 152,
+          "texts": 443,
+          "active": 0,
+          "errors": []
+        },
+        "cleanupConfirmed": true,
+        "profileRemoved": true,
+        "evidence": "final/maintenance-release-candidate/dart-language/full/result.json"
+      },
+      {
+        "case": "index-luke-preface",
+        "url": "https://use-the-index-luke.com/sql/preface",
+        "ok": true,
+        "coverage": [
+          {
+            "rule": "chapter-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "preface-paragraphs",
+            "seen": 23,
+            "completed": 23
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "retranslatedCoverage": [
+          {
+            "rule": "chapter-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "preface-paragraphs",
+            "seen": 23,
+            "completed": 23
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "stability": {
+          "ok": true,
+          "contractVersion": 2,
+          "observeMs": 5000,
+          "steps": [
+            "quiet",
+            "same-text-replacement",
+            "removed-wrapper-repaired",
+            "repair-settled",
+            "dynamic-append",
+            "restore",
+            "retranslate",
+            "stopped-session"
+          ]
+        },
+        "providerEvidence": {
+          "mode": "controlled-microsoft-response",
+          "scope": "real-site DOM compatibility only",
+          "workerCount": 1,
+          "requests": 86,
+          "texts": 219,
+          "active": 0,
+          "errors": []
+        },
+        "cleanupConfirmed": true,
+        "profileRemoved": true,
+        "evidence": "final/maintenance-release-candidate/index-luke-preface/full/result.json"
+      },
+      {
+        "case": "nasa-webb-news",
+        "url": "https://science.nasa.gov/missions/webb/nasas-webb-finds-clues-to-ancient-distant-origin-of-comet-3i-atlas/",
+        "ok": true,
+        "coverage": [
+          {
+            "rule": "news-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "news-body",
+            "seen": 14,
+            "completed": 14
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "retranslatedCoverage": [
+          {
+            "rule": "news-title",
+            "seen": 1,
+            "completed": 1
+          },
+          {
+            "rule": "news-body",
+            "seen": 14,
+            "completed": 14
+          },
+          {
+            "rule": "mandatory-visible-latin-h1",
+            "seen": 1,
+            "completed": 1
+          }
+        ],
+        "stability": {
+          "ok": true,
+          "contractVersion": 2,
+          "observeMs": 5000,
+          "steps": [
+            "quiet",
+            "same-text-replacement",
+            "removed-wrapper-repaired",
+            "repair-settled",
+            "dynamic-append",
+            "restore",
+            "retranslate",
+            "stopped-session"
+          ]
+        },
+        "providerEvidence": {
+          "mode": "controlled-microsoft-response",
+          "scope": "real-site DOM compatibility only",
+          "workerCount": 1,
+          "requests": 72,
+          "texts": 157,
+          "active": 0,
+          "errors": []
+        },
+        "cleanupConfirmed": true,
+        "profileRemoved": true,
+        "evidence": "final/maintenance-release-candidate/nasa-webb-news/full/result.json"
+      }
+    ]
+  },
+  "onlineProvider": {
+    "ok": true,
+    "case": "index-luke-preface",
+    "configuredService": "freeTranslation",
+    "scope": "Actual default free pool on the public SQL preface, translation/restore/retranslation and 8 stability probes; not a provider-quality benchmark or the issue reporter environment",
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "evidence": "final/live-provider-release-candidate/index-luke-preface/full/result.json"
+  },
+  "firefox": {
+    "ok": true,
+    "contentSha256": "75efde245ebb9bf1993b0b719f0fd11bdfe77ed232e9038592168374d021ce53",
+    "cases": [
+      "fixture-translated",
+      "fixture-restored",
+      "fixture-retranslated",
+      "fixture-dynamic",
+      "fixture-dynamic-restored",
+      "fixture-cancelled-late-response",
+      "fixture-stopped-session",
+      "fixture-narrow-dark",
+      "live-translated",
+      "live-restored",
+      "live-retranslated"
+    ],
+    "liveParagraphs": 23,
+    "provider": "loopback-controlled-openai-protocol",
+    "narrowViewport": {
+      "width": 500,
+      "height": 765,
+      "visibility": "visible",
+      "devicePixelRatio": 2
+    },
+    "browserClosed": true,
+    "profileRemoved": true,
+    "focusEvents": [],
+    "evidence": "final/firefox-release-candidate-settled/report.json",
+    "extensionVersion": "0.0.38",
+    "browserVersion": "159.0"
+  },
+  "selection": {
+    "ok": true,
+    "cases": 10,
+    "scope": "Isolated Edge, local controlled responses, including same-host recovery, in-flight response, repeat deletion limit, body replacement, cancel, disable, keyboard retry and 390px dark UI",
+    "evidence": "final/selection-release-candidate/report.json",
+    "visualReview": "final/selection-release-candidate/visual-review.json"
+  },
+  "mutationLifecycle": {
+    "ok": true,
+    "stages": 20,
+    "scope": "authored-local-domain-fixture-production-extension",
+    "styleCollection": [
+      {
+        "attempt": 0,
+        "styleCollected": true,
+        "hostConnected": true
+      },
+      {
+        "attempt": 1,
+        "styleCollected": true,
+        "hostConnected": true
+      },
+      {
+        "attempt": 2,
+        "styleCollected": true,
+        "hostConnected": true
+      },
+      {
+        "attempt": 3,
+        "styleCollected": true,
+        "hostConnected": true
+      },
+      {
+        "attempt": 4,
+        "styleCollected": true,
+        "hostConnected": true
+      },
+      {
+        "attempt": 5,
+        "styleCollected": true,
+        "hostConnected": true
+      },
+      {
+        "attempt": 6,
+        "styleCollected": true,
+        "hostConnected": true
+      },
+      {
+        "attempt": 7,
+        "styleCollected": true,
+        "hostConnected": true
+      }
+    ],
+    "browserClosed": true,
+    "profileRemoved": true,
+    "focusEvents": [],
+    "evidence": "mutation-lifecycle-v4/report.json",
+    "visualReview": "mutation-lifecycle-v4/visual-review.json"
+  },
+  "checks": {
+    "directProductSuite": {
+      "files": 18,
+      "passed": 1620
+    },
+    "dartAndHarnessSuite": {
+      "files": 5,
+      "passed": 561,
+      "note": "Before final native prefix-proof test additions; later 38-case probe run recorded separately"
+    },
+    "architecture": {
+      "files": 4,
+      "passed": 1069
+    },
+    "compile": "passed",
+    "chromeBuild": "passed",
+    "firefoxBuild": "passed",
+    "userscriptBuildAndVerifier": "passed",
+    "extensionManifestVerifier": "passed",
+    "testAudit": "passed",
+    "docsBuild": "passed",
+    "coverage": {
+      "changedLocationsCovered": true,
+      "scope": "Changed executable locations in 11 modified modules; 18-file coverage plus current section-only coverage. Does not claim whole runtime/state coverage. The changed runtime line 731 is additionally proven by the 420-test runtime/probe run; original global partial-module coverage limits remain.",
+      "evidence": "final/changed-coverage.json"
+    },
+    "independentProductReview": "No actionable finding; static review only; browser evidence listed separately",
+    "nativeProbeSuite": {
+      "passed": 38,
+      "scope": "Includes protected-mention-only and wrong-source prefix negative controls"
+    }
+  },
+  "visualReview": {
+    "priorMaintenanceRound": "All 10 visible final-translation screenshots reviewed; Dart introduction omission found and repaired",
+    "finalScreenshotsReviewed": [
+      "final/maintenance-release-candidate/dart-language/full/full-final-translation.png",
+      "final/live-provider-release-candidate/index-luke-preface/full/full-final-translation.png",
+      "final/firefox-release-candidate-settled/live-translated.png",
+      "final/firefox-release-candidate-settled/fixture-narrow-dark.png"
+    ],
+    "findings": "Dart lead now translated; source/translation spacing, links/code and visible controls preserved; no visible overlap in inspected viewports. Synthetic response text is not translation-quality evidence."
+  },
+  "retainedCounterexamples": [
+    {
+      "evidence": "mutation-lifecycle-cleanup-baseline/report.json",
+      "finding": "8/8 GC rounds retained detached style while its host remained connected; final 8/8 released it"
+    },
+    {
+      "evidence": "/private/tmp/fluentread-web-stability-20261015/native-feed/production-v2/report.json",
+      "finding": "Actual production full-page translation discovered no Mastodon posts through the top application shell; unit red/green and repaired native flow retained"
+    },
+    {
+      "evidence": "/private/tmp/fluentread-web-stability-20261015/firefox-release-candidate/report.json",
+      "finding": "Harness captured after selected 23 paragraphs completed but before full-page work settled; corrected wait keeps all error/coverage assertions"
+    },
+    {
+      "evidence": "/private/tmp/fluentread-web-stability-20261015/native-feed/production-v3/report.json",
+      "finding": "Harness incorrectly required the whole paragraph to start with the provider prefix despite leading protected hashtag; corrected source-slot proof has negative controls"
+    }
+  ],
+  "issueScope": {
+    "969": "Previously fixed GitHub resize product behavior: existing regression tests integrated. SQL preface now passes controlled and real-provider checks, but reporter environment is not reproduced.",
+    "956": "Host-removal recovery is demonstrated; insufficient reporter details to identify their cause."
+  },
+  "notVerified": [
+    "Physical Android Firefox and iOS/iPadOS Safari touch input",
+    "macOS Safari runtime and Safari signed distribution",
+    "Userscript MV3 managers and manager/browser combinations other than Violentmonkey 2.49.0 MV2 on Edge 131",
+    "Long-term or cross-region provider reliability and systematic translation quality",
+    "Every website, login-only feed, and unknown third-party protection shell"
+  ],
+  "followUpProcedure": "docs/maintainers/web-stability.md#浏览器与界面",
+  "referenceRepositoriesUsed": false,
+  "nativeFeed": {
+    "ok": true,
+    "stages": 9,
+    "url": "https://mastodon.social/@Mastodon",
+    "artifacts": {
+      "manifest": "a12a20416fc826d3dc7278b74a112b4170f8985b1ac8b1a74c91f73d5e09b642",
+      "content": "0b2ae2c8023d841d97d1bec613cb2966a957abcda362183a7ae0b39974340151",
+      "background": "9fdf621c665f0f6be68fc6985120b7f38b81548cdd0b511a39a4a1d661072f5d"
+    },
+    "pagination": {
+      "initialCount": 21,
+      "finalCount": 41,
+      "initialUniqueCount": 21,
+      "finalUniqueCount": 41,
+      "addedPostIds": [
+        "116845859785323046",
+        "116845797534360193",
+        "116845028734766663",
+        "116845027459435584",
+        "116845026249611350",
+        "116842477485971415",
+        "116842476311830381",
+        "116841091812450406",
+        "116840982412322056",
+        "116840917359553561",
+        "116840877383564254",
+        "116840803606178527",
+        "116840473398259601",
+        "116840458345748131",
+        "116839714185151652",
+        "116835166965413321",
+        "116835057991709906",
+        "116817713283031274",
+        "116771810379356574",
+        "116766061778856495"
+      ],
+      "newlyVisibleSources": [
+        {
+          "id": 114,
+          "postId": "116845859785323046"
+        },
+        {
+          "id": 115,
+          "postId": "116845859785323046"
+        },
+        {
+          "id": 116,
+          "postId": "116845859785323046"
+        }
+      ]
+    },
+    "scope": "native-mastodon-public-infinite-feed-and-spa-post-route",
+    "provider": "controlled-microsoft-response",
+    "trustedSameDocumentPostNavigation": true,
+    "pageErrors": [],
+    "trackerDisposed": true,
+    "browserClosed": true,
+    "profileRemoved": true,
+    "evidence": "final/native-feed/report.json",
+    "visualReview": "final/native-feed/ui-review.json",
+    "route": {
+      "before": "https://mastodon.social/@Mastodon",
+      "after": "https://mastodon.social/@FediGarden@social.growyourown.services/109747269585116888",
+      "documentToken": "__fluentReadNativeFeed_f7d6a7762f67409792d108b5db42077b",
+      "sameTimeOrigin": true,
+      "href": "/@FediGarden@social.growyourown.services/109747269585116888",
+      "trigger": "trusted native post permalink click"
+    }
+  },
+  "execution": {
+    "browser": "Isolated desktop Microsoft Edge production MV3; Firefox version in its section",
+    "launchMode": "macos-background-cdp for Edge; Firefox launch details in report",
+    "focusPolicy": "Secondary display, normal visible window, background launch; never daily profiles or bringToFront",
+    "controlledVsNative": "Maintenance mutations are controlled DOM probes on actual live pages; HN comment toggles and Mastodon pagination/navigation use native site controls",
+    "siteFailuresAtFinal": []
+  },
+  "userscriptManagerFollowUp": {
+    "ok": true,
+    "userscriptSha256": "bc79b555292bb614bdf5615d1a151598fb1fe8e12ea72ccebc0c938450c94740",
+    "manager": "Violentmonkey 2.49.0 MV2",
+    "browser": "Microsoft Edge 131",
+    "stages": 9,
+    "requests": 13,
+    "provider": "Real GM HTTP to a loopback controlled DeepLX endpoint",
+    "gcRounds": 16,
+    "documentAndShadowStylesCollected": true,
+    "hostStayedConnected": true,
+    "artifactUnchanged": true,
+    "browserClosed": true,
+    "profileRemoved": true,
+    "profileProcessesGone": true,
+    "focusEvents": [],
+    "consoleErrors": [],
+    "evidence": "final/userscript-manager/report.json",
+    "visualReview": "final/userscript-manager/visual-review.json",
+    "cleanup": "final/userscript-manager/cleanup.json",
+    "provenance": "final/userscript-manager/manager-provenance.json",
+    "scope": "MV2 and Edge 131 only; not MV3, Safari, mobile or private invalidation callback-count proof"
+  },
+  "ciFollowUp": {
+    "initialRun": "https://github.com/FluentRead/FluentRead/actions/runs/38700308975",
+    "initialCommit": "206f72b5c985172f87a93915fd69d652418e4753",
+    "initialResult": {
+      "testFilesPassed": 469,
+      "testFilesFailed": 2,
+      "testsPassed": 17354,
+      "testsFailed": 2,
+      "testsSkipped": 4,
+      "changedStrictModules": 14,
+      "allFourCoverageDimensions": 100
+    },
+    "fixes": [
+      {
+        "file": "scripts/testing/owned-browser-close.cjs",
+        "cause": "Owned Linux actor may exit after ps but before /proc stat; on ENOENT confirm absence with one bounded ps observation",
+        "baseline": "Actual actor-exit timing test fails against fa431a845 original guard and passes after repair; same original hash as CI",
+        "negativeControls": "Live or reused PID, empty successful ps, ps permission and stat permission failures continue to reject without signals"
+      },
+      {
+        "file": "tests/obsidianPdfLifecycle.test.ts",
+        "cause": "CI stack entered real PDF.js while test replaced URL constructor with a plain object",
+        "baseline": "Original Node22 baseline/HEAD and V8 coverage all pass locally; CI failure is not locally reproduced",
+        "repair": "Preserve URL constructor, verify API mock, gate two concurrent documents and prove controlled worker Blob and separate task destruction; production extraction unchanged"
+      }
+    ],
+    "targetedValidation": {
+      "node": "22.23.2 macOS",
+      "files": 3,
+      "passed": 125,
+      "scope": "ownedBrowserClose, processRegression including native focus-safe lifecycle, obsidianPdfLifecycle",
+      "log": "final/ci-followup/ci-fixes-combined-node22.log",
+      "audit": "passed",
+      "docsBuild": "passed"
+    },
+    "evidence": "final/ci-followup",
+    "latestCi": "Final Ubuntu CI required before merge; latest result tracked on PR #998",
+    "environmentBlockedAttempt": {
+      "node": "24.19.0",
+      "environment": "default macOS sandbox",
+      "result": "Native process tests cannot observe /bin/ps: spawn EPERM; reran intended Node22 scope with required process observation permission",
+      "log": "final/ci-followup/ci-fixes-combined-sandbox-blocked.log"
+    },
+    "secondRun": {
+      "url": "https://github.com/FluentRead/FluentRead/actions/runs/38706426065",
+      "commit": "2702ec7839ab8b926d9f1b035008ab040e25c2d1",
+      "testFilesPassed": 471,
+      "testFilesFailed": 1,
+      "testsPassed": 17454,
+      "testsFailed": 1,
+      "testsSkipped": 4,
+      "failure": "The exact-profile path test assumed /private/tmp exists on Linux; mkdtemp failed before its actor or guard ran",
+      "repair": "Enumerate the native temporary root and literal /tmp; retain literal /private/tmp additionally on macOS. Deduplicate spellings without realpath normalization; keep every actual ownership, process exit and profile removal assertion",
+      "scope": "Test fixture portability only; no guard or production source changes",
+      "targetedValidation": {
+        "node": "22.23.2 macOS",
+        "files": 1,
+        "passed": 100,
+        "note": "Native temp-root case added; Linux process behavior remains subject to final Ubuntu CI",
+        "testAudit": "passed",
+        "docsBuild": "passed",
+        "log": "final/ci-followup/ci-process-temp-roots-fixed.log"
+      }
+    }
+  }
+}

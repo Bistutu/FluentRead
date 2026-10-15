@@ -1,8 +1,8 @@
 /**
  * @file src/features/full-page-translation/content/runtime.ts
  * 文件职责：实现全文翻译的页面级会话引擎，负责候选发现、可见性调度、批量请求、动态 DOM 重扫、失败重试、缓存复用和恢复原文。
- * 主要内容：精确相同译文和有同目标语言证据的排版回显保留原文且不重复展示；以增量计数发布完成与失败摘要，仅对本会话失败目标重试和定位；维护 FullPageSession、AbortController、Intersection/Mutation 观察器、弹窗优先调度、精确属性写入过滤、候选所有权和生命周期重试；对变化来源等待安静窗口、跳过持续变化的计数，并清理延迟重扫，只有真实宿主删除启动候选回收，同批重复属性变化只处理一次；按时间片派发并在全文结果提交前让出主线程，合并同段 DOM 写入并在重挂时复用同批布局读数与单文本来源快照；合成行内段在延迟 loading 前后都按精确来源节点、HTML 和 Text 槽识别自身迁移；已拥有状态的发现候选直接登记复验，取消记录命中后才提取原文，避免整批重扫重复计算熔断签名；连续滚动时限频派发当前可见候选，空闲后恢复预取，按阅读进度撤回离开预取区的待派发候选，冻结请求/展示配置与识别范围，在弹窗关闭后继续正文，按实际节点阶段发布进度及工具栏结果；悬浮按候选停留而非每次移动计时，同段复用冻结的独立服务与快捷方案配置，到期复验最新命中并在路由切换取消；同目标预检单独读取受保护规则约束的行内代码语言上下文，发送与渲染仍只使用可翻译文本槽；恢复单个所有者或全文时重置篇章证据，统一恢复原文并清理重挂预算及孤儿产物；向局部翻译开放单候选 translateTarget 与单个译文所有者的恢复入口。
- * 模块边界：这是 content 侧编排层，不实现 provider 协议、纯候选算法或底层状态存储；翻译调用经 app client，发现规则来自 core/translation，渲染与状态分别交给 renderer、liveTextRender 和 state。
+ * 主要内容：精确相同译文和有同目标语言证据的排版回显保留原文且不重复展示；以增量计数发布完成与失败摘要，仅对本会话失败目标重试和定位；维护 FullPageSession、AbortController、Intersection/Mutation 观察器、弹窗优先调度、精确属性写入过滤、候选所有权和生命周期重试；对变化来源等待安静窗口、跳过持续变化的计数，并清理延迟重扫，只有真实宿主删除启动候选与断连观察根回收，重连前保留已排队 DOM 记录，实际翻译 owner 通过公共端口为其开放根安装译文样式，SPA 切换刷新全部活观察根的站点属性依赖，同批重复属性变化只处理一次；按时间片派发并在全文结果提交前让出主线程，合并同段 DOM 写入并在重挂时复用同批布局读数与单文本来源快照；合成行内段在延迟 loading 前后都按精确来源节点、HTML 和 Text 槽识别自身迁移；已拥有状态的发现候选直接登记复验，取消记录命中后才提取原文，避免整批重扫重复计算熔断签名；连续滚动时限频派发当前可见候选，空闲后恢复预取，按阅读进度撤回离开预取区的待派发候选，冻结请求/展示配置与识别范围，在弹窗关闭后继续正文，按实际节点阶段发布进度及工具栏结果；悬浮按候选停留而非每次移动计时，同段复用冻结的独立服务与快捷方案配置，到期复验最新命中并在路由切换取消；同目标预检单独读取受保护规则约束的行内代码语言上下文，发送与渲染仍只使用可翻译文本槽；恢复单个所有者或全文时重置篇章证据，统一恢复原文并清理重挂预算及孤儿产物；向局部翻译开放单候选 translateTarget 与单个译文所有者的恢复入口。
+ * 模块边界：这是 content 侧编排层，不实现 provider 协议、纯候选算法或底层状态存储；自动应用外壳许可在重试重新解析和所有者切换时保留来源，不降级为手动解析；翻译调用经 app client，发现规则来自 core/translation，渲染与状态分别交给 renderer、liveTextRender 和 state。
  * 诊断接线：仅当前全文会话的真实失败进入共享分类器；成功、恢复和换路由清除，完整根扫描没有任何候选时提示无正文，目标语预检和离屏等待不影响候选存在证据。
  */
 import {resetPageDiscourseContext} from '@/src/services/translation/context/pageDiscourse';
@@ -65,6 +65,7 @@ import {
     detachFailedTranslationUi,
     discardTranslation,
     getOwnedTranslationCandidateAtPoint, getTranslationState,
+    isTranslationApplicationShellPolicyCurrent,
     resolveTranslationStateNode,
     getTranslationOwnersForRemovedNode,
     markTranslationComplete,
@@ -104,6 +105,7 @@ import {
     type AcceptedUnchangedCompletion, canKeepTranslationAttempt,
     getCandidateTranslationTextProtectionOptions,
     isTranslationCandidateCurrent as candidateIsCurrent,
+    inheritTranslationApplicationShellPolicy,
     isTranslationStateCandidateCurrent, createTranslationMutationStabilityChecks,
     isTranslationStateSourceCurrent as attemptSourceIsCurrent,
     TRANSLATION_ARTIFACT_SELECTOR,
@@ -130,10 +132,11 @@ import {resetFullPageRouteSession} from './routeLifecycle';
 import {HoverTranslationScheduler, type HoverTranslationInvocation} from './hoverScheduler';
 import {personalCorrectionIsCurrent, registerPersonalCorrectionResult} from './personalCorrections';
 import {getSiteAdapterAttributeFilter} from '@/src/core/site-adaptation/compiler';
-import {isElementNode, asHTMLElement, mutationTargetElement, allMutationNodesMatch, createTranslationAttributeMutationFilter, createTranslationMutationObserverOptions, isOwnSyntheticSegmentMarkerMutation, mutationRootContains as nodeContains, collapseMutationRescanRoot as broadRescanRoot} from './mutationObservation';
+import {isElementNode, asHTMLElement, mutationTargetElement, isConnectedMutationRoot, allMutationNodesMatch, createTranslationAttributeMutationFilter, createTranslationMutationObserverOptions, isOwnSyntheticSegmentMarkerMutation, mutationRootContains as nodeContains, collapseMutationRescanRoot as broadRescanRoot} from './mutationObservation';
 import {isWithinTranslationModal, mayChangeTranslationModal} from './modalPriority';
 import {refreshModalSession} from './modalSession';
 import {createAttributeMutationBatch} from './attributeMutationBatch';
+import {prepareTranslationStyleRoot} from './styleRoots';
 import {createFullPageSessionState, type FullPageSession} from './fullPageSession';
 const translationSourceStability = new TranslationSourceStabilityGate<FullPageSession>({
     isCurrent: session => session.active && fullPageSession === session,
@@ -631,6 +634,7 @@ function registerSessionStatefulTarget(
     candidateOwner: HTMLElement,
     target: HTMLElement,
 ): void {
+    prepareTranslationStyleRoot(target);
     if (!session?.active) return;
     unregisterSessionStatefulTarget(session, target, true);
     const ancestors: Element[] = [];
@@ -733,6 +737,17 @@ export async function translateTarget(candidate: TranslationCandidate, displayMo
     const requestSession = requestOwner ?? getHoverTranslationRequestSession(); const requestCommitGeneration = requestSession.renderCommitGeneration ?? 0;
     const existingNode = resolveTranslationStateNode(candidate);
     const current = existingNode ? getTranslationState(existingNode) : undefined;
+    if (!isTranslationApplicationShellPolicyCurrent(candidate.element, candidate) ||
+        (current && existingNode && !isTranslationApplicationShellPolicyCurrent(existingNode, current))) {
+        if (existingNode && current) {
+            unregisterSessionStatefulTarget(statefulSession, existingNode);
+            withFullPageViewportAnchor(() => restoreTranslation(existingNode), [existingNode]);
+        }
+        return {status: 'not-current'};
+    }
+    if (current?.applicationShellPolicyId && !candidate.applicationShellPolicyId) {
+        candidate = {...candidate, applicationShellPolicyId: current.applicationShellPolicyId};
+    }
     if (existingNode && (current?.phase === "loading" || current?.phase === "translated")) {
         const nextIdentity = getTranslationInvocationIdentity(translationConfig);
         const shouldSwitchProfile = Boolean(nextIdentity && current.translationInvocationIdentity !== nextIdentity);
@@ -756,7 +771,7 @@ export async function translateTarget(candidate: TranslationCandidate, displayMo
             if (!retryAnchor.isConnected) {
                 return {status: "not-current", retryRoot: candidate.element.isConnected ? candidate.element : undefined};
             }
-            const refreshedCandidate = getCurrentTranslationCore(candidate.scope).resolve(retryAnchor);
+            const refreshedCandidate = inheritTranslationApplicationShellPolicy(candidate, getCurrentTranslationCore(candidate.scope).resolve(retryAnchor));
             return refreshedCandidate
                 ? translateTarget(
                     refreshedCandidate,
@@ -776,7 +791,7 @@ export async function translateTarget(candidate: TranslationCandidate, displayMo
         resetPageDiscourseContext();
         withFullPageViewportAnchor(() => restoreTranslation(existingNode), [existingNode]);
         if (shouldSwitchProfile && retryAnchor.isConnected) {
-            const refreshedCandidate = getCurrentTranslationCore(candidate.scope).resolve(retryAnchor);
+            const refreshedCandidate = inheritTranslationApplicationShellPolicy(candidate, getCurrentTranslationCore(candidate.scope).resolve(retryAnchor));
             if (refreshedCandidate) return translateTarget(
                 refreshedCandidate, displayMode, slide, owner, translationConfigOverride, forceFailedRequest);
         }
@@ -795,7 +810,7 @@ export async function translateTarget(candidate: TranslationCandidate, displayMo
             unregisterSessionStatefulTarget(statefulSession, existingNode);
             withFullPageViewportAnchor(() => restoreTranslation(existingNode), [existingNode]);
             if (!sourceAnchor?.isConnected) return {status: "not-current", retryRoot};
-            const refreshedCandidate = getCurrentTranslationCore(candidate.scope).resolve(sourceAnchor);
+            const refreshedCandidate = inheritTranslationApplicationShellPolicy(candidate, getCurrentTranslationCore(candidate.scope).resolve(sourceAnchor));
             if (!refreshedCandidate) return {status: "not-current", retryRoot};
             return translateTarget(
                 refreshedCandidate, displayMode, slide, owner, translationConfigOverride, forceFailedRequest);
@@ -886,6 +901,7 @@ export async function translateTarget(candidate: TranslationCandidate, displayMo
         candidate.allowTopLevelApplicationShell === true,
         getTranslationInvocationIdentity(translationConfig),
         candidate.scope,
+        candidate.applicationShellPolicyId,
     );
     if (!attempt) {
         if (synthetic) {
@@ -956,12 +972,12 @@ function resolveFullPageRetryCandidate(
     for (const start of starts) {
         if (!start || visited.has(start) || !start.isConnected) continue;
         visited.add(start);
-        const fresh = core.resolve(start);
+        const fresh = inheritTranslationApplicationShellPolicy(candidate, core.resolve(start));
         if (fresh?.element.isConnected) return fresh;
     }
 
     if (!candidate.element.isConnected) return null;
-    return core.inspect(candidate.element).candidate ?? null;
+    return inheritTranslationApplicationShellPolicy(candidate, core.inspect(candidate.element).candidate);
 }
 
 function finalizeFullPageCandidate(
@@ -1232,8 +1248,7 @@ function scheduleDiscoveredCandidate(session: FullPageSession, candidate: Transl
 function enqueueFullPageRescan(session: FullPageSession, changedNode: Node): void {
     if (!session.active) return;
     const root = changedNode.nodeType === 3 ? changedNode.parentElement : changedNode;
-    if (!root) return;
-    if (isElementNode(root) && !root.isConnected) return;
+    if (!root || !isConnectedMutationRoot(root)) return;
 
     const dirtyRoot: Node = root;
 
@@ -1297,7 +1312,7 @@ function flushMutationRescans(session: FullPageSession): void {
             const root = iterator.value as Node | undefined;
             if (!root) break;
             session.dirtyRoots.delete(root);
-            if (isElementNode(root) && !root.isConnected) continue;
+            if (!isConnectedMutationRoot(root)) continue;
             const rescanNotBefore = session.broadRescanCooldowns.get(root) ?? 0;
             if (session.broadRescanRoots.has(root) && performance.now() < rescanNotBefore) {
                 session.dirtyRoots.add(root);
@@ -1306,7 +1321,7 @@ function flushMutationRescans(session: FullPageSession): void {
             }
             normalizeOrphanedTranslationArtifacts(root);
             normalizeOrphanedSingleSlots(root);
-            if (isElementNode(root) && !root.isConnected) continue;
+            if (!isConnectedMutationRoot(root)) continue;
             session.activeDiscovery = {
                 root,
                 steps: getCurrentTranslationCore(session.scope).discoverSteps(root),
@@ -1314,6 +1329,10 @@ function flushMutationRescans(session: FullPageSession): void {
         }
 
         const active = session.activeDiscovery;
+        if (!isConnectedMutationRoot(active.root)) {
+            session.activeDiscovery = null;
+            continue;
+        }
         const step = active.steps.next();
         if (step.done) {
             if (active.root === document.documentElement && document.readyState !== 'loading'
@@ -1359,10 +1378,30 @@ function flushMutationRescans(session: FullPageSession): void {
 }
 
 function observeFullPageRoot(session: FullPageSession, root: Node): void {
-    if (session.roots.has(root)) return;
+    if (!isConnectedMutationRoot(root) || session.roots.has(root)) return;
     session.roots.add(root);
     session.modalDirty = true;
     session.mutationObserver.observe(root, createTranslationMutationObserverOptions(getCurrentTranslationCore(session.scope).adapters));
+}
+
+/** 路由切换刷新所有活树的属性依赖；卸载组件后断开旧 ShadowRoot，避免会话强引用累积。 */
+function refreshFullPageObservationRoots(session: FullPageSession, refreshOptions = false): void {
+    let removed = false;
+    for (const root of session.roots) {
+        if (isConnectedMutationRoot(root)) continue;
+        session.roots.delete(root);
+        session.dirtyRoots.delete(root);
+        if (session.activeDiscovery?.root === root) session.activeDiscovery = null;
+        removed = true;
+    }
+    if (!removed && !refreshOptions) return;
+    // MutationObserver 没有 unobserve。重连前接住已排队记录，不能因清理一个
+    // 卸载组件而丢掉同一任务内活页面上的正文/保护变化。只换属性选项无需断开。
+    const pending = removed ? session.mutationObserver.takeRecords() : [];
+    if (removed) session.mutationObserver.disconnect();
+    const options = createTranslationMutationObserverOptions(getCurrentTranslationCore(session.scope).adapters);
+    session.roots.forEach(root => session.mutationObserver.observe(root, options));
+    if (pending.length) processFullPageMutations(session, pending);
 }
 
 function resolveStatefulMutationTarget(element: Element): HTMLElement | false {
@@ -1533,6 +1572,7 @@ function runDisconnectedCandidatePrune(session: FullPageSession): void {
     if (!session.pruneIterator) {
         session.pruneIterator = session.scheduled.values();
         session.pruneRequested = false;
+        refreshFullPageObservationRoots(session);
     }
     const startedAt = performance.now();
 
@@ -1794,147 +1834,148 @@ function restoreStatefulTargetOutsideScope(session: FullPageSession, target: HTM
 function createFullPageMutationObserver(
     getSession: () => FullPageSession,
 ): MutationObserver {
-    return new MutationObserver((mutations) => {
-        const session = getSession();
-        if (!session.active || fullPageSession !== session) return;
-        const core = getCurrentTranslationCore(session.scope);
-        const siteAttributes = getSiteAdapterAttributeFilter(core.adapters);
-        // materialize 较宽行内段时，每个被移动来源节点都可能排入一条 childList 记录。
-        // 精确快照在本次回调内稳定，因此每个 loading generation 只校验一次，
-        // 避免进行 O(records) 次克隆。
-        const loadingSyntheticChecks = new WeakMap<TranslationState, boolean>();
-        // MathJax v2 单次回调可能产生数百条直属父级记录。实时 DOM 此时已处于回调
-        // 最终状态，因此每个有状态来源/文本槽快照只比较一次，不为每条
-        // Preview <-> staging-span 记录反复遍历很长的 P。
-        const shouldCheckAttribute = createTranslationAttributeMutationFilter();
-        const resolveRemovedOwners = transferEquivalentBilingualOwners(session, mutations);
-        const stabilityReads = createTranslationMutationStabilityChecks();
-        const attributeBatch = createAttributeMutationBatch({
-            resolveTargets: root => resolveStatefulMutationTargets(session, root),
-            readState: getTranslationState,
-            restoreOutsideScope: target => restoreStatefulTargetOutsideScope(session, target, reads),
-            sourceIsCurrent: (target, state) => reads.sourceIsCurrent(target, state),
-            isArtifact: isTranslationArtifact,
-            refreshSkeleton: (target, state) => withFullPageViewportAnchor(() =>
-                (reads.invalidate(), refreshBilingualTranslationSkeleton(target, state)), [target]),
-            restart: target => {
-                reads.invalidate();
-                restartStatefulTarget(session, target);
-            },
-            rescan: root => enqueueFullPageRescan(session, root),
-            schedule: (target, boundary) => scheduleStatefulAttributeReevaluation(session, target, boundary),
-            isActive: () => session.active && fullPageSession === session,
-            hasTargetsOnlyAdapter: core.adapters.some(adapter => adapter.genericCandidatePolicy === 'targets-only'),
-        });
-        const reads = {
-            ...stabilityReads,
-            invalidate: () => {
-                stabilityReads.invalidate();
-                attributeBatch.invalidate();
-            },
-        };
-        for (const mutation of mutations) {
-            if (isOwnMutation(mutation, loadingSyntheticChecks)) continue;
-            const mutationElement = mutationTargetElement(mutation.target);
-            if (mutation.type === 'attributes' && mutationElement && mutation.attributeName &&
-                !shouldCheckAttribute(mutationElement, mutation.attributeName)) continue;
-            // spinner、译文写入和普通属性/文本变化不会让候选脱离文档。
-            // 只有真实宿主删除才启动全队列的分片清理，避免每次渲染遍历离屏候选。
-            if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
-                scheduleDisconnectedCandidatePrune(session);
-            }
-            if (mayChangeTranslationModal(mutation, session.modal)) session.modalDirty = true;
-            const siteAttributeMutation = mutation.type === 'attributes' && mutation.attributeName !== null &&
-                (siteAttributes === null || siteAttributes.includes(mutation.attributeName));
-            if (!siteAttributeMutation && mutation.type === 'attributes' && (mutation.attributeName === 'aria-modal' ||
-                (mutation.attributeName === 'open' && mutationElement?.localName === 'dialog'))) {
-                enqueueFullPageRescan(session, mutation.target); continue;
-            }
-            const preservesContext = isTextEquivalentHostReplacement(mutation);
-            const removedOwners = mutation.type === "childList"
-                ? discardOwnersRemovedByHost(session, Array.from(mutation.removedNodes), resolveRemovedOwners, reads.invalidate)
-                : {removedAny: false, shouldRescan: false};
-            if (removedOwners.shouldRescan && mutationElement) enqueueFullPageRescan(session, mutationElement);
-            if (mutationElement && core.shouldIgnoreMutation(mutationElement) &&
-                !siteAttributeMutation && !resolveStatefulMutationTarget(mutationElement)) continue;
-            if (!preservesContext) invalidateContextSensitiveRequestCache(session);
-            if (mutation.type === "childList") {
-                if (core.adapters.length && mutationElement) {
-                    const affectedRoot = siteAttributes === null ? document.documentElement : getComposedParent(mutationElement) ?? mutationElement;
-                    for (const target of resolveStatefulMutationTargets(session, affectedRoot)) restoreStatefulTargetOutsideScope(session, target, reads);
-                }
-                const changedTarget = mutationElement ? resolveStatefulMutationTarget(mutationElement) : false;
-                const changedState = changedTarget ? getTranslationState(changedTarget) : undefined;
+    return new MutationObserver((mutations) => processFullPageMutations(getSession(), mutations));
+}
 
-                // 宿主直属 childList 可能只是受保护 renderer 事务。可翻译来源与精确
-                // Text 槽不变时保留 loading/error/translated 所有权；旧行为会在
-                // MathJax v2 于父 P 替换脱离文档且无 class 的 staging span 后移除
-                // 已提交 wrapper。扩展当前产物内部或移除它的 mutation 仍属于
-                // 权威宿主篡改，必须立即重启。
-                if (changedTarget && changedState) {
-                    const touchesArtifact = isTranslationArtifact(mutation.target) ||
-                        mutationTouchesCurrentTranslationArtifact(mutation, changedState);
-                    let sourceAndSlotsCurrent = reads.sourceIsCurrent(changedTarget, changedState);
-                    if (!touchesArtifact && !sourceAndSlotsCurrent && withFullPageViewportAnchor(() =>
-                        (reads.invalidate(), refreshBilingualTranslationSkeleton(changedTarget, changedState)), [changedTarget])) {
-                        sourceAndSlotsCurrent = true;
-                    }
-                    const canKeepAttempt = canKeepTranslationAttempt(
-                        changedTarget,
-                        changedState,
-                        attemptSourceIsCurrent,
-                        statefulSourceAndTextSlotsAreCurrent,
-                        !touchesArtifact || isTranslationArtifactCurrent(changedTarget, changedState),
-                    );
-                    if ((touchesArtifact || !sourceAndSlotsCurrent) && !canKeepAttempt) {
-                        reads.invalidate();
-                        restartStatefulTarget(session, changedTarget);
-                    }
-                }
-
-                // 纯删除可能把原结构容器变成有效段落，因此所有情况都要重新分类 mutation 目标。
-                enqueueFullPageRescan(session, mutation.target);
-
-                // 扫描 mutation 目标已经覆盖全部新增后代；逐个排入子节点会把一次 React
-                // commit 扩大为数十个冗余脏根。
-            } else if (mutation.type === "characterData") {
-                const target = mutation.target.parentElement
-                    ? resolveStatefulMutationTarget(mutation.target.parentElement)
-                    : false;
-                if (target) {
-                    const state = getTranslationState(target);
-                    const touchesArtifact = isTranslationArtifact(mutation.target);
-                    let sourceCurrent = state && reads.sourceIsCurrent(target, state);
-                    if (state && !touchesArtifact && !sourceCurrent && withFullPageViewportAnchor(() =>
-                        (reads.invalidate(), refreshBilingualTranslationSkeleton(target, state)), [target])) sourceCurrent = true;
-                    if (!state || touchesArtifact || !sourceCurrent || !canKeepTranslationAttempt(
-                        target,
-                        state,
-                        attemptSourceIsCurrent,
-                        statefulSourceAndTextSlotsAreCurrent,
-                    )) {
-                        reads.invalidate();
-                        restartStatefulTarget(session, target);
-                    }
-                } else {
-                    // hydration 框架常在不新增 Element 的情况下追加/替换 Text 节点，
-                    // 此时需重新分类其最近语义块。
-                    enqueueFullPageRescan(session, mutation.target);
-                }
-            } else if (mutation.type === "attributes") {
-                if (!mutationElement) continue;
-
-                // 相邻选择器可能影响兄弟正文；不能穷举的关系选择器保守重扫文档，
-                // 后续发现仍受既有帧预算、去重与广域重扫冷却约束。
-                const affectedRoot = siteAttributeMutation
-                    ? siteAttributes === null ? document.documentElement : getComposedParent(mutationElement) ?? mutationElement
-                    : mutationElement;
-                attributeBatch.process(affectedRoot, mutationElement, mutation.target, mutation.attributeName, siteAttributeMutation);
-            }
-        }
-        refreshFullPageModal(session);
-        attributeBatch.flush();
+function processFullPageMutations(session: FullPageSession, mutations: readonly MutationRecord[]): void {
+    if (!session.active || fullPageSession !== session) return;
+    const core = getCurrentTranslationCore(session.scope);
+    const siteAttributes = getSiteAdapterAttributeFilter(core.adapters);
+    // materialize 较宽行内段时，每个被移动来源节点都可能排入一条 childList 记录。
+    // 精确快照在本次回调内稳定，因此每个 loading generation 只校验一次，
+    // 避免进行 O(records) 次克隆。
+    const loadingSyntheticChecks = new WeakMap<TranslationState, boolean>();
+    // MathJax v2 单次回调可能产生数百条直属父级记录。实时 DOM 此时已处于回调
+    // 最终状态，因此每个有状态来源/文本槽快照只比较一次，不为每条
+    // Preview <-> staging-span 记录反复遍历很长的 P。
+    const shouldCheckAttribute = createTranslationAttributeMutationFilter();
+    const resolveRemovedOwners = transferEquivalentBilingualOwners(session, mutations);
+    const stabilityReads = createTranslationMutationStabilityChecks();
+    const attributeBatch = createAttributeMutationBatch({
+        resolveTargets: root => resolveStatefulMutationTargets(session, root),
+        readState: getTranslationState,
+        restoreOutsideScope: target => restoreStatefulTargetOutsideScope(session, target, reads),
+        sourceIsCurrent: (target, state) => reads.sourceIsCurrent(target, state),
+        isArtifact: isTranslationArtifact,
+        refreshSkeleton: (target, state) => withFullPageViewportAnchor(() =>
+            (reads.invalidate(), refreshBilingualTranslationSkeleton(target, state)), [target]),
+        restart: target => {
+            reads.invalidate();
+            restartStatefulTarget(session, target);
+        },
+        rescan: root => enqueueFullPageRescan(session, root),
+        schedule: (target, boundary) => scheduleStatefulAttributeReevaluation(session, target, boundary),
+        isActive: () => session.active && fullPageSession === session,
+        hasTargetsOnlyAdapter: core.adapters.some(adapter => adapter.genericCandidatePolicy === 'targets-only'),
     });
+    const reads = {
+        ...stabilityReads,
+        invalidate: () => {
+            stabilityReads.invalidate();
+            attributeBatch.invalidate();
+        },
+    };
+    for (const mutation of mutations) {
+        if (isOwnMutation(mutation, loadingSyntheticChecks)) continue;
+        const mutationElement = mutationTargetElement(mutation.target);
+        if (mutation.type === 'attributes' && mutationElement && mutation.attributeName &&
+            !shouldCheckAttribute(mutationElement, mutation.attributeName)) continue;
+        // spinner、译文写入和普通属性/文本变化不会让候选脱离文档。
+        // 只有真实宿主删除才启动全队列的分片清理，避免每次渲染遍历离屏候选。
+        if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
+            scheduleDisconnectedCandidatePrune(session);
+        }
+        if (mayChangeTranslationModal(mutation, session.modal)) session.modalDirty = true;
+        const siteAttributeMutation = mutation.type === 'attributes' && mutation.attributeName !== null &&
+            (siteAttributes === null || siteAttributes.includes(mutation.attributeName));
+        if (!siteAttributeMutation && mutation.type === 'attributes' && (mutation.attributeName === 'aria-modal' ||
+            (mutation.attributeName === 'open' && mutationElement?.localName === 'dialog'))) {
+            enqueueFullPageRescan(session, mutation.target); continue;
+        }
+        const preservesContext = isTextEquivalentHostReplacement(mutation);
+        const removedOwners = mutation.type === "childList"
+            ? discardOwnersRemovedByHost(session, Array.from(mutation.removedNodes), resolveRemovedOwners, reads.invalidate)
+            : {removedAny: false, shouldRescan: false};
+        if (removedOwners.shouldRescan && mutationElement) enqueueFullPageRescan(session, mutationElement);
+        if (mutationElement && core.shouldIgnoreMutation(mutationElement) &&
+            !siteAttributeMutation && !resolveStatefulMutationTarget(mutationElement)) continue;
+        if (!preservesContext) invalidateContextSensitiveRequestCache(session);
+        if (mutation.type === "childList") {
+            if (core.adapters.length && mutationElement) {
+                const affectedRoot = siteAttributes === null ? document.documentElement : getComposedParent(mutationElement) ?? mutationElement;
+                for (const target of resolveStatefulMutationTargets(session, affectedRoot)) restoreStatefulTargetOutsideScope(session, target, reads);
+            }
+            const changedTarget = mutationElement ? resolveStatefulMutationTarget(mutationElement) : false;
+            const changedState = changedTarget ? getTranslationState(changedTarget) : undefined;
+
+            // 宿主直属 childList 可能只是受保护 renderer 事务。可翻译来源与精确
+            // Text 槽不变时保留 loading/error/translated 所有权；旧行为会在
+            // MathJax v2 于父 P 替换脱离文档且无 class 的 staging span 后移除
+            // 已提交 wrapper。扩展当前产物内部或移除它的 mutation 仍属于
+            // 权威宿主篡改，必须立即重启。
+            if (changedTarget && changedState) {
+                const touchesArtifact = isTranslationArtifact(mutation.target) ||
+                    mutationTouchesCurrentTranslationArtifact(mutation, changedState);
+                let sourceAndSlotsCurrent = reads.sourceIsCurrent(changedTarget, changedState);
+                if (!touchesArtifact && !sourceAndSlotsCurrent && withFullPageViewportAnchor(() =>
+                    (reads.invalidate(), refreshBilingualTranslationSkeleton(changedTarget, changedState)), [changedTarget])) {
+                    sourceAndSlotsCurrent = true;
+                }
+                const canKeepAttempt = canKeepTranslationAttempt(
+                    changedTarget,
+                    changedState,
+                    attemptSourceIsCurrent,
+                    statefulSourceAndTextSlotsAreCurrent,
+                    !touchesArtifact || isTranslationArtifactCurrent(changedTarget, changedState),
+                );
+                if ((touchesArtifact || !sourceAndSlotsCurrent) && !canKeepAttempt) {
+                    reads.invalidate();
+                    restartStatefulTarget(session, changedTarget);
+                }
+            }
+
+            // 纯删除可能把原结构容器变成有效段落，因此所有情况都要重新分类 mutation 目标。
+            enqueueFullPageRescan(session, mutation.target);
+
+            // 扫描 mutation 目标已经覆盖全部新增后代；逐个排入子节点会把一次 React
+            // commit 扩大为数十个冗余脏根。
+        } else if (mutation.type === "characterData") {
+            const target = mutation.target.parentElement
+                ? resolveStatefulMutationTarget(mutation.target.parentElement)
+                : false;
+            if (target) {
+                const state = getTranslationState(target);
+                const touchesArtifact = isTranslationArtifact(mutation.target);
+                let sourceCurrent = state && reads.sourceIsCurrent(target, state);
+                if (state && !touchesArtifact && !sourceCurrent && withFullPageViewportAnchor(() =>
+                    (reads.invalidate(), refreshBilingualTranslationSkeleton(target, state)), [target])) sourceCurrent = true;
+                if (!state || touchesArtifact || !sourceCurrent || !canKeepTranslationAttempt(
+                    target,
+                    state,
+                    attemptSourceIsCurrent,
+                    statefulSourceAndTextSlotsAreCurrent,
+                )) {
+                    reads.invalidate();
+                    restartStatefulTarget(session, target);
+                }
+            } else {
+                // hydration 框架常在不新增 Element 的情况下追加/替换 Text 节点，
+                // 此时需重新分类其最近语义块。
+                enqueueFullPageRescan(session, mutation.target);
+            }
+        } else if (mutation.type === "attributes") {
+            if (!mutationElement) continue;
+
+            // 相邻选择器可能影响兄弟正文；不能穷举的关系选择器保守重扫文档，
+            // 后续发现仍受既有帧预算、去重与广域重扫冷却约束。
+            const affectedRoot = siteAttributeMutation
+                ? siteAttributes === null ? document.documentElement : getComposedParent(mutationElement) ?? mutationElement
+                : mutationElement;
+            attributeBatch.process(affectedRoot, mutationElement, mutation.target, mutation.attributeName, siteAttributeMutation);
+        }
+    }
+    refreshFullPageModal(session);
+    attributeBatch.flush();
 }
 
 function createFullPageSession(
@@ -2021,7 +2062,10 @@ export function resetFullPageTranslationRouteState(): void {
     hoverBilingualRemountCapitulations = createBilingualRemountCapitulationRegistry();
     invalidateHoverTranslationRequestSession();
     resetFullPageRouteSession(fullPageSession, document.documentElement, {
-        observe: observeFullPageRoot,
+        observe: (session, root) => {
+            refreshFullPageObservationRoots(session, true);
+            observeFullPageRoot(session, root);
+        },
         rescan: enqueueFullPageRescan,
     });
     resetAllBilingualArtifactHostWriteBudgets();

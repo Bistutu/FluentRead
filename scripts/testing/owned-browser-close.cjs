@@ -57,8 +57,8 @@ function profileIdentity(profile) {
     return {profile, realPath, dev: stat.dev, ino: stat.ino};
 }
 
-async function processSnapshot(pid, milliseconds = PS_MS) {
-    const stdout = await bounded(() => new Promise((resolve, reject) => {
+async function processRow(pid, milliseconds) {
+    return bounded(() => new Promise((resolve, reject) => {
         cp.execFile('/bin/ps', ['-ww', '-p', String(pid), '-o', 'pid=', '-o', 'lstart=', '-o', 'stat=', '-o', 'command='], {
             encoding: 'utf8', timeout: milliseconds, maxBuffer: 1024 * 1024,
             env: {...process.env, LC_ALL: 'C'},
@@ -71,6 +71,10 @@ async function processSnapshot(pid, milliseconds = PS_MS) {
             } else resolve(output);
         });
     }), milliseconds, 'PS_TIMEOUT');
+}
+
+async function processSnapshot(pid, milliseconds = PS_MS) {
+    const stdout = await processRow(pid, milliseconds);
     if (stdout === null) return null;
     if (typeof stdout !== 'string') throw failure('PS_INVALID', 'Invalid process observation');
     const row = stdout.trim();
@@ -79,7 +83,15 @@ async function processSnapshot(pid, milliseconds = PS_MS) {
     let start = match[2].replace(/\s+/g, ' ');
     if (process.platform === 'linux') {
         // Linux kernel ticks distinguish incarnations even within one second.
-        const stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8');
+        let stat;
+        try { stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8'); }
+        catch (error) {
+            // The observed actor can be reaped between ps and /proc. ENOENT
+            // alone is not absence: require a fresh, bounded ps no-row result.
+            // A live/reused PID, denied read or failed query still rejects.
+            if (error.code === 'ENOENT' && await processRow(pid, milliseconds) === null) return null;
+            throw error;
+        }
         const boundary = stat.lastIndexOf(') ');
         const ticks = stat.slice(boundary + 2).split(' ')[19];
         if (boundary < 0 || !stat.startsWith(`${pid} (`) || !/^\d+$/.test(ticks)) {

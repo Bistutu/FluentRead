@@ -43,6 +43,8 @@
     ],
     "unit": [
       "tests/documentHistoryCommitter.test.ts",
+      "tests/documentMaterialLocator.test.ts",
+      "tests/pdfContinuations.test.ts",
       "tests/fullPageSession.test.ts",
       "tests/compositeTranslationConfig.test.ts",
       "tests/compositeTranslationRouting.test.ts",
@@ -299,6 +301,7 @@
       "tests/videoTranscriptionCacheClient.test.ts",
       "tests/xCaptionSource.test.ts",
       "tests/siteAdaptationCore.test.ts",
+      "tests/siteDartDescription.test.ts",
       "tests/siteAdaptationSession.test.ts",
       "tests/siteAdaptationSettings.test.ts",
       "tests/siteAdaptationCatalog.test.ts",
@@ -692,7 +695,10 @@
       "tests/localTranslationWorker.test.ts",
       "tests/selfHelpNotice.test.ts",
       "tests/serviceRepairReturn.test.ts",
-      "tests/serviceRepairFocus.test.ts"
+      "tests/serviceRepairFocus.test.ts",
+      "tests/translationQualityEvaluation.test.ts",
+      "tests/translationQualityReport.test.ts",
+      "tests/translationQualityTransport.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",
@@ -716,6 +722,7 @@
       "tests/serializationPerformance.test.ts",
       "tests/translationLayoutMeasurements.test.ts",
       "tests/siteTranslationHarness.test.ts",
+      "tests/siteTranslationStability.test.ts",
       "tests/siteTranslationMatrixConcurrency.test.ts",
       "tests/siteTranslationIdle.test.ts",
       "tests/translationDocumentCorpus.test.ts",

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {parseHTML} from "linkedom";
-import {collectLiveTranslationTextSlots, getCurrentTranslationCore} from '@/src/core/translation/public';
+import {collectLiveTranslationTextSlots, getCurrentTranslationCore, setCurrentTranslationAdapters} from '@/src/core/translation/public';
+import {getCurrentTranslationStateTextNodes} from '@/src/features/full-page-translation/content/translationStability';
+import {defaultTranslationAdapters} from '@/src/core/translation/registry';
+import {builtinSiteRulePack} from '@/src/core/site-adaptation/catalog';
+import {composeSiteAdapters} from '@/src/core/site-adaptation/compiler';
+import {normalizeSiteAdaptationSettings} from '@/src/core/site-adaptation/schema';
 import {
     acquireTranslationLayoutOverride,
     beginTranslation,
@@ -1153,6 +1158,102 @@ describe("指定节点翻译状态机", () => {
 
         expect(restoreTranslation(target as unknown as HTMLElement)).toBe(true);
         expect(target.getAttribute("class")).toBeNull();
+    });
+});
+
+describe('Mastodon 独立 owner observer 的策略撤销', () => {
+    async function flushObservers() {
+        await Promise.resolve(); await Promise.resolve();
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        await Promise.resolve();
+    }
+
+    async function withCommittedOwner(check: (fixture: {
+        document: Document; owner: HTMLElement; shell: HTMLElement; wrapper: HTMLElement;
+        state: TranslationState; source: Text;
+    }) => Promise<void>) {
+        const {document, window} = parseHTML('<html><body><div id="mastodon" class="app-holder notranslate"><main><article><div class="status__content"><div class="status__content__text translate"><p id="post">A public post keeps its original text when automatic permission is revoked.</p></div></div></article></main></div></body></html>');
+        const owner = document.querySelector<HTMLElement>('#post')!;
+        const shell = document.querySelector<HTMLElement>('#mastodon')!;
+        const locationDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'location');
+        const observe = vi.spyOn(window.MutationObserver.prototype, 'observe');
+        try {
+            Object.defineProperty(globalThis, 'location', {configurable: true, value: {href: 'https://mastodon.social/@Mastodon'}});
+            setCurrentTranslationAdapters(composeSiteAdapters(builtinSiteRulePack, normalizeSiteAdaptationSettings(undefined)));
+            const core = getCurrentTranslationCore();
+            const candidate = core.discover(document)[0]!;
+            expect(candidate).toMatchObject({element: owner, applicationShellPolicyId: 'mastodon'});
+            const slots = collectLiveTranslationTextSlots(owner, core.shouldStayOriginal, undefined,
+                {allowTopLevelApplicationShell: true, protectedElement: owner});
+            expect(slots).toHaveLength(1);
+            const source = slots[0]!.node;
+            const attempt = beginTranslation(owner, 'bilingual', 'content', false, slots[0]!.source,
+                [source], true, undefined, 'content', candidate.applicationShellPolicyId)!;
+            expect(attempt).not.toBeNull();
+            const wrapper = document.createElement('span');
+            wrapper.className = 'fluent-read-bilingual-content';
+            wrapper.setAttribute('data-fr-translation-owned', 'true');
+            wrapper.setAttribute('translate', 'no');
+            wrapper.textContent = '这条译文会在授权撤销后安全恢复。';
+            owner.append(wrapper); setBilingualContent(owner, wrapper);
+            expect(markTranslationComplete(owner, attempt.state, attempt.generation, false)).toBe(true);
+            expect(ensureTranslationTruncationLayout(owner)).toBe(true);
+            expect(observe.mock.calls.some(([root, options]) => root === document.documentElement &&
+                options?.subtree === true && options?.attributeFilter?.includes('id'))).toBe(true);
+            await flushObservers();
+            expect(getTranslationState(owner)).toBe(attempt.state);
+            await check({document, owner, shell, wrapper, state: attempt.state, source});
+        } finally {
+            restoreTranslation(owner);
+            await flushObservers();
+            setCurrentTranslationAdapters(defaultTranslationAdapters);
+            if (locationDescriptor) Object.defineProperty(globalThis, 'location', locationDescriptor);
+            else Reflect.deleteProperty(globalThis, 'location');
+            observe.mockRestore();
+        }
+    }
+
+    it.each(['id', 'translate', 'data-notranslate', 'move'])('真实独立 observer 在 %s 撤销后恢复原文并取消旧状态', async change => {
+        await withCommittedOwner(async ({document, owner, shell, wrapper, state, source}) => {
+            if (change === 'move') {
+                const other = document.createElement('div'); other.className = 'notranslate';
+                document.body.append(other); other.append(shell.firstElementChild!);
+            } else shell.setAttribute(change, change === 'id' ? 'another-app' : change === 'translate' ? 'no' : 'true');
+            await flushObservers();
+            expect(getTranslationState(owner)).toBeUndefined();
+            expect(state.controller.signal.aborted).toBe(true);
+            expect(wrapper.parentNode).toBeNull();
+            expect(owner.firstChild).toBe(source);
+            expect(owner.textContent).toBe('A public post keeps its original text when automatic permission is revoked.');
+            expect(owner.isConnected).toBe(true);
+        });
+    });
+
+    it('真实独立 observer 保留策略仍有效的原状态与译文', async () => {
+        await withCommittedOwner(async ({owner, shell, wrapper, state, source}) => {
+            shell.classList.add('host-layout-change');
+            shell.setAttribute('title', 'Public application');
+            await flushObservers();
+            expect(getTranslationState(owner)).toBe(state);
+            expect(state.applicationShellPolicyId).toBe('mastodon');
+            expect(state.controller.signal.aborted).toBe(false);
+            expect(wrapper.parentNode).toBe(owner);
+            expect(owner.firstChild).toBe(source);
+        });
+    });
+    it('已拥有候选保留策略；观察器投递前撤销后不能再次开始或读取旧来源槽', async () => {
+        await withCommittedOwner(async ({document, owner, shell, state, source}) => {
+            Object.defineProperty(document, 'elementsFromPoint', {configurable: true, value: () => [owner]});
+            expect(getOwnedTranslationCandidateAtPoint(document, 10, 10))
+                .toMatchObject({element: owner, applicationShellPolicyId: 'mastodon'});
+            expect(getCurrentTranslationStateTextNodes(owner, state)).toEqual([source]);
+            shell.setAttribute('translate', 'no');
+            expect(getCurrentTranslationStateTextNodes(owner, state)).toEqual([]);
+            expect(beginTranslation(owner, 'bilingual', 'content', false, state.sourceText,
+                [source], true, undefined, 'content', state.applicationShellPolicyId)).toBeNull();
+            expect(markTranslationComplete(owner, state, state.generation, false)).toBe(false);
+            expect(tryRepairBilingualTranslationArtifact(owner, state)).toBe('not-repairable');
+        });
     });
 });
 

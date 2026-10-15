@@ -1,5 +1,7 @@
 # 测试与回归
 
+网页兼容维护集与生命周期验收见 [网页翻译稳定性维护](maintainers/web-stability.md)。该入口显式选择十个独立站点，复用已有正文与保护区契约，并将宿主 DOM 探针、原生站点操作、在线供应商和不同浏览器的证据分开记录。`fullPageVisibilityScheduling` 新增路由观察选项刷新、断连 ShadowRoot 回收/重新插入，以及重连观察器时保留待投递保护区变化；`contentFeatureMounting` 与划词 `--lifecycle-only` 验证入口被移除后的恢复、取消、错误重试、禁用和窄屏键盘操作。
+
 ## 网页操作提示
 
 网页提示按每条内容独立收缩：小品牌图标、具体结果和关闭按钮一行优先显示，不再用「流畅阅读 · 操作完成」占一行标题。品牌和状态仍供辅助技术读取；长文自动换行，缺少凭据时保留设置入口，关闭按钮至少 28px。提示外的留白允许继续点击网页，悬停或键盘聚焦暂停自动消失。
@@ -7,6 +9,12 @@
 `pnpm test tests/pageNotice.test.ts tests/informationHighlightContent.test.ts` 验证既有通知生命周期与智能高亮反馈。生产构建后使用 `node scripts/testing/run-page-notice-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <证据目录>`，在临时 Edge 后台可见窗口验证短提示尺寸、长文与设置操作、深色及窄屏、关闭/暂停和提示旁点击穿透，保存截图与布局报告。浏览器报告区分实际生产入口与长文布局夹具，不代表 Firefox 实机验收。
 
 ## 翻译结果与浏览器清理边界
+
+GitHub 文档出现译文消失、重现时，先记录扩展版本、浏览器、网页地址和触发动作。`tests/bilingualReplay.test.ts` 包含 Issue #969 截图对应的行内代码与链接段落，使用真实 MutationObserver 检查窗口 resize 后零自重放、译文零移除、链接提示变化、同文 Text 重绘与恢复原文。它验证当前实现的状态保持，不能单独证明反馈者的根因。
+
+生产 Chrome 构建后，运行 `node scripts/testing/run-github-document-stability-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --artifacts-dir <证据目录> --background --live --full-mode viewport`。默认访问截图对应的 `pi-subagents/docs/models.md`，在临时 Edge 后台正常窗口记录选定正文的译文增删和内部子节点重写、源码节点身份、链接与代码、窗口宽度变化、滚动返回、可信鼠标经过以及全文/段落翻译—恢复—再次翻译；尺寸复验有独立 Node 看门狗，页面观察器循环也必须失败并清理本次浏览器。`--full-mode all` 检查立即处理整页，省略 `--live` 使用自建 GitHub 域名夹具。`--published` 验证已核验散列的正式发行包，记录其版本与 content.js 散列，不对该外部包套用当前检出的源码新鲜度检查。网页使用实站 DOM，翻译响应受控；结果不代表在线供应商、其他扩展共存或反馈者安装版本的验收，GitHub 错误页单独记录为访问失败。
+
+正式发布包对照确认：0.0.35 在截图段落悬浮翻译后，窗口宽度变化可触发译文内部骨架反复重放。原因是 `agents.md` 链接从翻译槽中排除，却仍被实时结构签名记为正文；提交与复验签名因此不同。修复 `7db288d26` 统一了两者的 Text 保护政策，已包含在 [0.0.37](https://github.com/FluentRead/FluentRead/releases/tag/v0.0.37)。同一实站、受控响应和 resize/指针/滚动操作下，0.0.37 没有内部重写；0.0.34 同路径也未复现，不能把 0.0.35 的原因套用到它。旧包复现中整个 wrapper 没有移除，因此结论是已确认并修复译文内容的自刷新循环，反馈者的具体浏览器与触发动作仍未确认。
 
 `translationEchoValidationRegression` 与 `free-translation` 覆盖中文目标下长篇 Latin 外语结果的拒绝、既有线路降级、批量槽顺序、旧缓存失效、取消与共享请求期限。判定需要原文和结果都有充分的外语证据；中文结果、专名、技术标识、短句与不确定语言保持保守处理。拒绝错语种不等于对译文质量作完整评估。
 

@@ -190,6 +190,25 @@ describe('49F storage observation through the real browser adapter', () => {
 });
 
 describe('49F actual invalidation consumers', () => {
+    it('returns WXT-compatible invalidation unsubscribe and a safe handle after synchronous expiry', async () => {
+        const {createUserscriptContentContext} = await import('@/userscript/context');
+        const context = createUserscriptContentContext();
+        const removed = vi.fn(), retained = vi.fn();
+        const unsubscribe = context.onInvalidated(removed);
+        context.onInvalidated(retained);
+        expect(typeof unsubscribe).toBe('function');
+        unsubscribe(); unsubscribe();
+        context.invalidate();
+        expect(removed).not.toHaveBeenCalled();
+        expect(retained).toHaveBeenCalledOnce();
+        const late = vi.fn();
+        const unsubscribeLate = context.onInvalidated(late);
+        expect(late).toHaveBeenCalledOnce();
+        expect(typeof unsubscribeLate).toBe('function');
+        unsubscribeLate(); context.invalidate();
+        expect(late).toHaveBeenCalledOnce();
+    });
+
     it('still disposes installed page styles and all callbacks after an earlier cleanup throws', async () => {
         const {createUserscriptContentContext} = await import('@/userscript/context');
         const {installPageStyles} = await import('@/src/app/content/pageStyles');

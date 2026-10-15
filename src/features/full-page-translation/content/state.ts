@@ -2,7 +2,7 @@
  * @file src/features/full-page-translation/content/state.ts
  * 文件职责：维护每个被翻译 DOM 节点的可恢复状态、请求代次、译文工件和共享布局覆盖所有权，确保重复翻译、宿主变更和移除节点都能安全收敛。
  * 主要内容：包含 WeakMap 状态索引、begin/complete/error/discard 状态机、spinner/译文/retry/仅译文槽节点登记、无主槽原文解包、兼容字体标记与链接提示的译文复验及有界重挂、离线模板仅省略外层属性自比较并保留内容与复制工件复验、双语重放对象的纯组装与扩展源语言边界、已提交译文的前后位置及骨架重放换行快照、含固定高度 line-clamp 的共享样式租约、同批布局与来源保护读数复用及写入失效（释放最后一个旧祖先租约也立即失效）、祖先观察器引用计数、文本槽回写、按钮型 input 标签属性的原值记录与回滚、逐父节点单次读取子列表的移除子树所有者枚举、按真实状态变更发布增量阶段通知、清除通知携带旧来源以协调延迟区域任务，以及沿用当前 owner 快照并保护各滚动面的全量恢复。
- * 模块边界：该模块不发现候选、不请求翻译也不生成译文 HTML；runtime 负责会话编排，renderer 负责内容创建，本文件仅拥有 DOM 状态与可逆样式资源，重挂时撤下旧译文尺寸隔离并同步可信模板，避免跨 session 误删新结果。
+ * 模块边界：该模块不发现候选、不请求翻译也不生成译文 HTML；自动应用外壳许可随状态保存并在提交、修复和独立观察时向核心复验；runtime 负责会话编排，renderer 负责内容创建，本文件仅拥有 DOM 状态与可逆样式资源，重挂时撤下旧译文尺寸隔离并同步可信模板，避免跨 session 误删新结果。
  */
 import {getTranslatableControlValueAttribute, isTranslationTooltip} from "@/src/core/translation/dom";
 import {isIdentifierLikeText, isTranslationTextNodeProtected} from "@/src/core/translation/text";
@@ -120,6 +120,8 @@ export interface TranslationState {
     syntheticSegment: boolean;
     /** 显式翻译候选可穿过 body 直接子级的应用级 no-translate 外壳。 */
     allowTopLevelApplicationShell?: boolean;
+    /** 自动发现的内置站点许可来源；不得降级为手动悬浮的宽泛外壳许可。 */
+    applicationShellPolicyId?: string;
     /** 创建候选时的识别范围，恢复和宿主重挂沿用同一文本保护规则。 */
     scope?: TranslationScope;
     /** 添加加载指示器之前捕获的精确直接子节点。 */
@@ -526,7 +528,9 @@ export function beginTranslation(
     allowTopLevelApplicationShell = false,
     translationInvocationIdentity?: string,
     scope?: TranslationScope,
+    applicationShellPolicyId?: string,
 ): TranslationAttempt | null {
+    if (applicationShellPolicyId && !getCurrentTranslationCore(scope).isApplicationShellPolicyCurrent(node, applicationShellPolicyId)) return null;
     const previous = states.get(node);
     if (previous?.phase === "loading") return null;
 
@@ -565,6 +569,7 @@ export function beginTranslation(
         scope,
         syntheticSegment,
         allowTopLevelApplicationShell: allowTopLevelApplicationShell || undefined,
+        applicationShellPolicyId,
         syntheticSourceNodes: syntheticSegment ? Array.from(node.childNodes) : undefined,
         syntheticHost: syntheticSegment ? node.parentElement ?? undefined : undefined,
         originalStyleAttribute: node.getAttribute("style"),
@@ -604,6 +609,7 @@ export function isCurrentTranslation(
         state.generation === generation &&
         !state.controller.signal.aborted &&
         node.isConnected &&
+        isTranslationApplicationShellPolicyCurrent(node, state) &&
         (!validateSourceHTML || node.innerHTML === state.sourceHTML)
     );
 }
@@ -1096,7 +1102,7 @@ export function tryRepairBilingualTranslationArtifact(
         state.phase !== 'translated' ||
         state.mode !== 'bilingual' ||
         state.kind !== 'content' ||
-        !node.isConnected ||
+        !node.isConnected || !isTranslationApplicationShellPolicyCurrent(node, state) ||
         state.sourceStructureDirty ||
         !currentBilingualSourceStructureMatches(node, state)
     ) return 'not-repairable';
@@ -1267,12 +1273,18 @@ function stateOwnerForMutation(
     return closest;
 }
 
+/** 仅自动发现候选携带站点策略；手动悬浮沿用既有保护语义。 */
+export function isTranslationApplicationShellPolicyCurrent(owner: HTMLElement, state: Pick<TranslationState, 'scope' | 'applicationShellPolicyId'>): boolean {
+    return !state.applicationShellPolicyId || getCurrentTranslationCore(state.scope)
+        .isApplicationShellPolicyCurrent(owner, state.applicationShellPolicyId);
+}
+
 function currentTranslationOwnerIsProtected(
     owner: HTMLElement,
     state: TranslationState,
 ): boolean {
     const identityOwner = state.syntheticSegment ? state.syntheticHost : owner;
-    if (!identityOwner?.isConnected) return true;
+    if (!identityOwner?.isConnected || !isTranslationApplicationShellPolicyCurrent(identityOwner, state)) return true;
     const options = state.allowTopLevelApplicationShell === true
         ? {allowTopLevelApplicationShell: true, protectedElement: identityOwner}
         : {protectedElement: identityOwner};
@@ -1439,7 +1451,7 @@ function createTranslationLayoutRootObserver(root: TranslationLayoutObserverRoot
         subtree: true,
         attributes: true,
         attributeOldValue: true,
-        attributeFilter: ["style", "class", ...SOURCE_STRUCTURE_ATTRIBUTES],
+        attributeFilter: ["style", "class", "id", ...SOURCE_STRUCTURE_ATTRIBUTES],
         characterData: true,
     });
     // 只在有活动译文时响应真实窗口尺寸变化；不轮询、不观察尺寸写入，避免布局反馈循环。
@@ -2097,6 +2109,7 @@ export function getOwnedTranslationCandidateAtPoint(
             ...(state.syntheticSegment && state.sourceTextNodes?.length
                 ? {nodes: state.sourceTextNodes} : {}),
             ...(state.allowTopLevelApplicationShell ? {allowTopLevelApplicationShell: true} : {}),
+            ...(state.applicationShellPolicyId ? {applicationShellPolicyId: state.applicationShellPolicyId} : {}),
         };
     }
     return null;
