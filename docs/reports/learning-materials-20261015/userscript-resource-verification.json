@@ -1,0 +1,57 @@
+{
+  "commit": "50e59c08290b47af8ea0d91c9d8403a8841c304f",
+  "primaryRawGithub": true,
+  "results": [
+    {
+      "file": "ja-JP.a2e0e46262be844e.json",
+      "url": "https://raw.githubusercontent.com/FluentRead/FluentRead/50e59c08290b47af8ea0d91c9d8403a8841c304f/userscript/languages/ja-JP.a2e0e46262be844e.json",
+      "status": 200,
+      "bytes": 579719,
+      "sha256": "99623c9a6da17ae7dec5193256595c23a3080bcdb004740fc03c2df7b12753d8",
+      "contentDigest": "a2e0e46262be844e1feb5260dfd524b19aaec6943a29dd4d0b506b362a69b0ba",
+      "hashMatchesFilename": true,
+      "matchesLocal": true
+    },
+    {
+      "file": "ko-KR.496a2393c33e1f1a.json",
+      "url": "https://raw.githubusercontent.com/FluentRead/FluentRead/50e59c08290b47af8ea0d91c9d8403a8841c304f/userscript/languages/ko-KR.496a2393c33e1f1a.json",
+      "status": 200,
+      "bytes": 548181,
+      "sha256": "247e49b5673f97533d49ff92f5aba989fbe7f6681d4687588efe28319913b58f",
+      "contentDigest": "496a2393c33e1f1abfe069858b0a79aade918c29d4a5b2f085da3593bbb26403",
+      "hashMatchesFilename": true,
+      "matchesLocal": true
+    },
+    {
+      "file": "fr-FR.ecb180570edeb097.json",
+      "url": "https://raw.githubusercontent.com/FluentRead/FluentRead/50e59c08290b47af8ea0d91c9d8403a8841c304f/userscript/languages/fr-FR.ecb180570edeb097.json",
+      "status": 200,
+      "bytes": 548564,
+      "sha256": "5537d1e084403071a9b9c0af68e3139c4cc78dc0b27241ad377449914db4ac5d",
+      "contentDigest": "ecb180570edeb097d1b266eed4c520a6e4bd1127c8da6f2e3214d401a89cc647",
+      "hashMatchesFilename": true,
+      "matchesLocal": true
+    },
+    {
+      "file": "ru-RU.3ae9903f73059e86.json",
+      "url": "https://raw.githubusercontent.com/FluentRead/FluentRead/50e59c08290b47af8ea0d91c9d8403a8841c304f/userscript/languages/ru-RU.3ae9903f73059e86.json",
+      "status": 200,
+      "bytes": 718342,
+      "sha256": "838f2c50614a40f980902d1097fdfafb5fe31610aeb2c1b07a3a7c83d8bd29a4",
+      "contentDigest": "3ae9903f73059e86b4eb9cbf40bbfe3aa8a58e0593e09e932d6a76ae025fe51f",
+      "hashMatchesFilename": true,
+      "matchesLocal": true
+    },
+    {
+      "file": "es-ES.be72661f69196d35.json",
+      "url": "https://raw.githubusercontent.com/FluentRead/FluentRead/50e59c08290b47af8ea0d91c9d8403a8841c304f/userscript/languages/es-ES.be72661f69196d35.json",
+      "status": 200,
+      "bytes": 533725,
+      "sha256": "fdbb85f2ac2a6069fa11251fc2aab46085ef1e9d9034e1851042a768e12dfe7b",
+      "contentDigest": "be72661f69196d35f36ad1258d2d91c4a171353e30fb4203436d86f644c8aca7",
+      "hashMatchesFilename": true,
+      "matchesLocal": true
+    }
+  ],
+  "ok": true
+}

@@ -46,6 +46,8 @@
 
 实际组件 setup 夹具必须跟随公共入口演进：文档组合根的 `./index` 应接到同一 app 依赖端口，阅读面板的材料依赖应走 `material/public`。材料采集 fixture 使用真实公开的 begin/complete/client，只控制 runtime 传输；保存成功且取得权威记录 ID 后才关联，失败不得产生引用，来源元数据不得进入模型请求。不要通过空函数端口、删除原行为断言或跳过失败掩盖接入错误。
 
+共享词典修改后，先生成并提交内容寻址的 userscript 语言文件，再将 `userscriptLanguageResourceCommit` 固定到已推送且确实包含这些文件的提交。`userscriptViteConfig` 必须比较固定提交与本地文件的完整字节；旧 Greasy Fork 文案投影仍使用其原有资源对照。构建产物通过 verifier 不足以证明远程引用存在，须另核对固定地址。
+
 ## 验证
 
 日常只运行直接受影响的专项：`materialRepository`、`materialClient`、`materialSource`、`materialWorkspaceLifecycle`、`learningCenterLifecycle`、文档与视频对应组件用例及架构边界。材料及本次影响的组合根、本地化共十六个严格责任模块，statements、branches、functions、lines 均以 100% 为门槛。新增责任模块同时登记覆盖率 include 与测试矩阵，受影响范围以 `run-affected-tests.mjs --plan-only` 为准。生产视觉与跨页面行为由 `scripts/testing/run-material-workspace-test.cjs` 使用隔离 Edge 验证。
