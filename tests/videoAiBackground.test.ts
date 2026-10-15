@@ -26,7 +26,102 @@ function setup(response: unknown = {success: true, backend: 'wasm'}) {
 const context = (id: number) => ({sender: {tab: {id}}});
 const find = (handlers: readonly {type: string; handle: Function}[], type: string) => handlers.find((item) => item.type === type)!;
 
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    let reject!: (error: Error) => void;
+    const promise = new Promise<T>((yes, no) => {resolve = yes; reject = no;});
+    return {promise, resolve, reject};
+}
+
+const ownedEntryTypes = ['fluentReadTranscribeLocalVideoAudio', 'fluentReadPrepareLocalVideoModel'] as const;
+function waitingForPreviousCancellation(type: typeof ownedEntryTypes[number]) {
+    const previousResponse = deferred<{success: boolean; text: string}>();
+    const previousCancel = deferred<{success: boolean}>();
+    const fixture = setup({success: true, text: 'current owner response', backend: 'wasm'});
+    fixture.offscreen.send.mockReturnValueOnce(previousResponse.promise);
+    fixture.offscreen.sendIfPresent.mockReturnValueOnce(previousCancel.promise);
+    const start = fixture.handlers.find(handler => handler.type === type)!;
+    const cancel = fixture.handlers.find(handler => handler.type === 'fluentReadCancelLocalVideoTranscription')!;
+    return {
+        ...fixture, previousResponse, previousCancel,
+        start(generation: number, tab = 1, streamId = 'handoff') {
+            const message = {type, streamId, generation, model: 'tiny', keepWarm: true, audioPcm16Base64: 'AAAAAA=='};
+            return start.handle(message, context(tab));
+        },
+        cancel(generation: number, tab = 1, streamId = 'handoff') {
+            const message = {type: cancel.type, streamId, generation};
+            return cancel.handle(message, context(tab));
+        },
+    };
+}
+
 describe('video subtitle background ownership', () => {
+    it.each(ownedEntryTypes)('%s does not dispatch after its cancellation was acknowledged while the previous cancellation is pending', async type => {
+        const f = waitingForPreviousCancellation(type);
+        const first = f.start(1);
+        const firstRejected = expect(first).rejects.toThrow('generation 已取消');
+        const second = f.start(2);
+        const secondRejected = expect(second).rejects.toThrow('generation 已取消');
+        expect(f.offscreen.send).toHaveBeenCalledOnce();
+        expect(f.offscreen.sendIfPresent).toHaveBeenCalledWith(
+            {type: 'VIDEO_AI_CANCEL', streamId: 'tab:1:handoff:generation:1'}, {timeoutMs: 5_000});
+
+        await expect(f.cancel(2)).resolves.toEqual({success: true});
+        f.previousCancel.resolve({success: true});
+        await secondRejected;
+        expect(f.offscreen.send).toHaveBeenCalledOnce();
+        expect(f.storage.set).not.toHaveBeenCalled();
+        f.previousResponse.resolve({success: true, text: 'obsolete first response'});
+        await firstRejected;
+    });
+    it.each(ownedEntryTypes)('%s rejects an obsolete waiting generation after a third generation takes ownership', async type => {
+        const f = waitingForPreviousCancellation(type);
+        const first = f.start(1);
+        const firstRejected = expect(first).rejects.toThrow('generation 已取消');
+        const second = f.start(2);
+        const secondRejected = expect(second).rejects.toThrow('generation 已取消');
+        await expect(f.start(3)).resolves.toMatchObject({success: true, text: 'current owner response'});
+
+        f.previousCancel.resolve({success: true});
+        await secondRejected;
+        expect(f.offscreen.send).toHaveBeenCalledTimes(2);
+        expect(f.offscreen.send).not.toHaveBeenCalledWith(
+            expect.objectContaining({streamId: 'tab:1:handoff:generation:2'}), expect.anything());
+        await expect(f.start(4, 2, 'another-tab')).rejects.toThrow('另一个标签页');
+        f.previousResponse.resolve({success: true, text: 'obsolete first response'});
+        await firstRejected;
+        await expect(f.cancel(3)).resolves.toEqual({success: true});
+    });
+    it.each(ownedEntryTypes)('%s dispatches the current generation only after the previous cancellation completes successfully', async type => {
+        const f = waitingForPreviousCancellation(type);
+        const first = f.start(1);
+        const firstRejected = expect(first).rejects.toThrow('generation 已取消');
+        const second = f.start(2);
+        expect(f.offscreen.send).toHaveBeenCalledOnce();
+        f.previousCancel.resolve({success: true});
+        await expect(second).resolves.toMatchObject({success: true, text: 'current owner response'});
+        expect(f.offscreen.send).toHaveBeenCalledTimes(2);
+        expect(f.offscreen.send).toHaveBeenLastCalledWith(
+            expect.objectContaining({streamId: 'tab:1:handoff:generation:2'}), expect.anything());
+        f.previousResponse.resolve({success: true, text: 'obsolete first response'});
+        await firstRejected;
+        await expect(f.cancel(2)).resolves.toEqual({success: true});
+    });
+    it.each(ownedEntryTypes)('%s preserves a previous cancellation failure and releases only its current owner', async type => {
+        const f = waitingForPreviousCancellation(type);
+        const first = f.start(1);
+        const firstRejected = expect(first).rejects.toThrow('generation 已取消');
+        const second = f.start(2);
+        const failure = new Error('controlled previous cancellation failed');
+        const secondRejected = expect(second).rejects.toBe(failure);
+        f.previousCancel.reject(failure);
+        await secondRejected;
+        expect(f.offscreen.send).toHaveBeenCalledOnce();
+        await expect(f.start(1, 2, 'another-tab')).resolves.toMatchObject({success: true});
+        f.previousResponse.resolve({success: true, text: 'obsolete first response'});
+        await firstRejected;
+        await expect(f.cancel(1, 2, 'another-tab')).resolves.toEqual({success: true});
+    });
     it.each(['official', 'mirror', 'auto', 'https://untrusted.invalid', undefined])('validates cache-download source preference %s before forwarding', async preference => {
         const {handlers, offscreen} = setup();
         await find(handlers, 'fluentReadPrepareLocalVideoModel').handle({model: 'small', preference}, context(1));

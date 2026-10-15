@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {Config} from '@/src/core/config/model';
+import {services} from '@/src/core/config/catalog';
 import {createGlossaryLibrary} from '@/src/core/glossary';
 import {getVideoTranslationConfigFingerprint, mergeBilingualVideoSubtitleCues, normalizeVideoCaptionText, revealVideoSubtitleTranslation, translateVideoSubtitleCues, selectYoutubeCaptionCue, selectVideoSubtitleCueAtOffset, selectVideoSubtitlePretranslationCues, findProgressiveVideoCaptionCue, findActiveVideoCaptionCue, selectProgressiveVideoCaptionCue} from '@/src/features/video-subtitle/content/subtitleLogic';
 
@@ -241,13 +242,48 @@ describe('video subtitle logic', () => {
     await expect(translateVideoSubtitleCues(cues, async text => `译-${text.trim()}`, {concurrency: 2, onProgress: n => progress.push(n)})).resolves.toEqual([{...cues[0], text: '译-a'}, {...cues[1], text: '译-a'}, {...cues[2], text: '译-b'}]);
     expect(progress).toEqual([0, 1, 2]);
   });
-  it('配置指纹保留免费回退与 Minimax、Mimo、DeepL 计费地区身份', () => {
+  it('实际免费服务的线路顺序和模式变化均改变指纹，其他服务不受影响', () => {
     const config = new Config();
-    const identities = ['free', 'minimax', 'mimo', 'deepl'].map(service => {
-      config.videoService = service as Config['videoService'];
-      return getVideoTranslationConfigFingerprint(config);
-    });
-    expect(new Set(identities).size).toBe(4);
+    config.videoService = services.freeTranslation;
+    config.freeTranslationOrder = ['microsoft', 'google'];
+    config.freeTranslationMode = 'balanced';
+    const initial = getVideoTranslationConfigFingerprint(config);
+    config.freeTranslationOrder = ['google', 'microsoft'];
+    const reordered = getVideoTranslationConfigFingerprint(config);
+    expect(reordered).not.toBe(initial);
+    config.freeTranslationMode = 'sequential';
+    expect(getVideoTranslationConfigFingerprint(config)).not.toBe(reordered);
+
+    config.videoService = services.microsoft;
+    const machine = getVideoTranslationConfigFingerprint(config);
+    config.freeTranslationOrder = ['microsoft'];
+    config.freeTranslationMode = 'balanced';
+    expect(getVideoTranslationConfigFingerprint(config)).toBe(machine);
+  });
+  it('实际 DeepL 服务切换 API 套餐改变指纹，其他服务不受影响', () => {
+    const config = new Config();
+    config.videoService = services.deepL;
+    config.deeplApiPlan = 'free';
+    const free = getVideoTranslationConfigFingerprint(config);
+    config.deeplApiPlan = 'pro';
+    expect(getVideoTranslationConfigFingerprint(config)).not.toBe(free);
+
+    config.videoService = services.microsoft;
+    const machine = getVideoTranslationConfigFingerprint(config);
+    config.deeplApiPlan = 'free';
+    expect(getVideoTranslationConfigFingerprint(config)).toBe(machine);
+  });
+  it.each([services.minimax, services.mimo])('实际 %s 服务的地域与计费方案变化改变指纹', service => {
+    const config = new Config();
+    config.videoService = service;
+    const initial = getVideoTranslationConfigFingerprint(config);
+    if (service === services.minimax) config.minimaxRegion = 'global';
+    else config.mimoRegion = 'sgp';
+    const changedRegion = getVideoTranslationConfigFingerprint(config);
+    expect(changedRegion).not.toBe(initial);
+    if (service === services.minimax) config.minimaxBillingPlan = 'token-plan';
+    else config.mimoBillingPlan = 'token-plan';
+    expect(getVideoTranslationConfigFingerprint(config)).not.toBe(changedRegion);
   });
 
   it('空时间轴直接返回，空白 cue 保留原文', async () => {

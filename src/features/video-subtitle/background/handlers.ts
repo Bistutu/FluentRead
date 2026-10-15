@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/background/handlers.ts
  * 文件职责：承载视频字幕本地 Whisper 的后台所有权、代际取消和 Offscreen 调度。
- * 主要内容：校验 tab/stream/generation 与预下载来源偏好，串行转发识别、预热与取消请求，并用真实缓存键核对模型下载登记后的可用状态。
+ * 主要内容：校验 tab/stream/generation 与预下载来源偏好，串行转发识别、预热与取消请求，在等待旧代取消后、向 Offscreen 派发前及响应返回后复验当前所有者，阻止已取消或被接管的旧代工作重新启动；用真实缓存键核对模型下载登记后的可用状态。
  * 模块边界：只编排视频字幕与平台 Offscreen client，不实现 Whisper 推理，也不关闭共享 Offscreen 文档。
  */
 import type {OffscreenClient} from '@/src/platform/offscreen/client';
@@ -72,6 +72,9 @@ export function createVideoSubtitleBackgroundHandlers(dependencies: VideoSubtitl
         cancelled.mark(next);
         await offscreen.sendIfPresent<{success?: boolean}>({type: 'VIDEO_AI_CANCEL', streamId: workerStream(next)}, {timeoutMs: 5_000});
     };
+    const assertCurrentOwner = (requestOwner: Owner): void => {
+        if (cancelled.has(requestOwner) || owner !== requestOwner) throw new Error('本地视频 AI 字幕 generation 已取消');
+    };
     const transcribe: BackgroundMessageHandler<Context> = {
         type: 'fluentReadTranscribeLocalVideoAudio',
         async handle(message: any, context) {
@@ -81,8 +84,9 @@ export function createVideoSubtitleBackgroundHandlers(dependencies: VideoSubtitl
             owner = requestOwner;
             try {
                 if (previous) await cancelOwner(previous);
+                assertCurrentOwner(requestOwner);
                 const response = await offscreen.send<any>({type: 'VIDEO_AI_TRANSCRIBE', streamId: workerStream(next), model: normalizeVideoLocalTranscriptionModel(message.model), sourceLanguage: message.sourceLanguage, audioPcm16Base64: message.audioPcm16Base64, audioBase64: message.audioBase64}, {timeoutMs: getVideoLocalTranscriptionRequestTimeoutMs(message.model), cancelMessage: {type: 'VIDEO_AI_CANCEL', streamId: workerStream(next)}});
-                if (cancelled.has(next) || owner !== requestOwner) throw new Error('本地视频 AI 字幕 generation 已取消');
+                assertCurrentOwner(requestOwner);
                 return {success: true, ...response};
             } catch (error) {
                 if (owner === requestOwner) owner = null;
@@ -109,15 +113,16 @@ export function createVideoSubtitleBackgroundHandlers(dependencies: VideoSubtitl
             owner = requestOwner;
             try {
                 if (previous) await cancelOwner(previous);
+                assertCurrentOwner(requestOwner);
                 const model = normalizeVideoLocalTranscriptionModel(message.model);
                 const response = await offscreen.send<any>({type: 'VIDEO_AI_PREPARE', streamId: workerStream(next), model, keepWarm: true}, {timeoutMs: model === 'small' ? 600_000 : 120_000, cancelMessage: {type: 'VIDEO_AI_CANCEL', streamId: workerStream(next)}});
                 if (response?.success !== true) {
                     if (owner === requestOwner) owner = null;
                     return response;
                 }
-                if (cancelled.has(next) || owner !== requestOwner) throw new Error('本地视频 AI 字幕 generation 已取消');
+                assertCurrentOwner(requestOwner);
                 const models = await rememberDownloadedModel(model);
-                if (cancelled.has(next) || owner !== requestOwner) throw new Error('本地视频 AI 字幕 generation 已取消');
+                assertCurrentOwner(requestOwner);
                 return {success: true, ...response, model, models};
             } catch (error) {
                 if (owner === requestOwner) owner = null;
