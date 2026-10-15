@@ -86,6 +86,22 @@ describe('self help diagnosis', () => {
     expect(JSON.stringify([diagnostic, report])).not.toMatch(/private|SECRET|https:|message/);
   });
 
+  it('recognizes only definite missing-tab failures and offers reopening guidance without a dead-tab refresh', () => {
+    const expected = diagnoseFailure(undefined, {reason: 'source-closed'});
+    for (const error of ['No tab with id: 7.', new Error('No tab with id: 488121272.'), 'Error: No active tab', 'No active tab']) {
+      expect(diagnoseFailure(error)).toEqual(expected);
+    }
+    expect(expected.actions).toEqual(['dismiss']);
+    expect(getDiagnosticText(expected).detail).toBe('请重新打开需要翻译的网页，再打开流畅阅读。');
+    expect(normalizeDiagnostic({...expected, actions: ['refresh'], message: 'private'})).toEqual(expected);
+    expect(buildDiagnosticReport({diagnostic: expected, feature: 'popup'})).toEqual({schemaVersion: 1, diagnostic: {code: 'source-closed'}, feature: 'popup'});
+    for (const message of ['temporary tabs lookup failure', 'No tab with id: private text', 'Provider says No active tab', 'No tab with id: 7. https://private.example']) {
+      expect(diagnoseFailure(new Error(message)).code).toBe('unknown');
+    }
+    expect(diagnoseFailure({kind: 'provider', message: 'No active tab'}).code).toBe('provider');
+    expect(diagnoseFailure('No active tab', {online: false}).code).toBe('source-closed');
+  });
+
   it('distinguishes a cancelled request from a provider failure', () => {
     for (const error of [{name: 'AbortError'}, {code: 'ERR_CANCELED'}, {code: 'ABORT_ERR'}]) {
       expect(diagnoseFailure(error).code).toBe('cancelled');

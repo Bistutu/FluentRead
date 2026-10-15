@@ -9,6 +9,8 @@
   "diagnostics.unsupported-page.detail": "브라우저 내부 페이지와 확장 프로그램 스토어는 확장 프로그램의 접근을 제한합니다. 일반 웹페이지에서 번역을 사용하세요.",
   "diagnostics.page-unavailable.title": "페이지 번역 기능을 사용할 수 없습니다",
   "diagnostics.page-unavailable.detail": "페이지를 새로고침한 후 다시 시도하고, 확장 프로그램에 이 사이트의 접근 권한이 있는지 확인하세요. 브라우저 내부 페이지나 확장 프로그램 스토어 대신 일반 웹페이지를 사용하세요.",
+  "diagnostics.source-closed.title": "원래 페이지를 사용할 수 없습니다",
+  "diagnostics.source-closed.detail": "번역할 페이지를 다시 연 다음 FluentRead를 다시 여세요.",
   "diagnostics.context-invalid.title": "확장 프로그램 업데이트 후 페이지를 새로고침하세요",
   "diagnostics.context-invalid.detail": "페이지에서 아직 제출하지 않은 내용을 저장한 후 새로고침하여 번역을 계속하세요.",
   "diagnostics.authentication.title": "서비스 인증 정보나 권한을 확인하세요",

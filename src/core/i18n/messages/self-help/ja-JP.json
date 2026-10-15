@@ -9,6 +9,8 @@
   "diagnostics.unsupported-page.detail": "ブラウザーの内部ページや拡張機能ストアは、拡張機能からのアクセスを制限しています。通常のウェブページで翻訳してください。",
   "diagnostics.page-unavailable.title": "ページ翻訳機能を利用できません",
   "diagnostics.page-unavailable.detail": "ページを再読み込みして再試行し、拡張機能がこのサイトにアクセスできるか確認してください。ブラウザーの内部ページや拡張機能ストアではなく、通常のウェブページを使用してください。",
+  "diagnostics.source-closed.title": "元のページを利用できません",
+  "diagnostics.source-closed.detail": "翻訳するページを開き直してから、FluentReadをもう一度開いてください。",
   "diagnostics.context-invalid.title": "拡張機能の更新後はページの再読み込みが必要です",
   "diagnostics.context-invalid.detail": "ページ上の未送信の内容を保存してから、ページを再読み込みして翻訳を続けてください。",
   "diagnostics.authentication.title": "サービスの認証情報や権限を確認してください",

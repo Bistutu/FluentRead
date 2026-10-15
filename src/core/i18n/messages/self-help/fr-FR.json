@@ -9,6 +9,8 @@
   "diagnostics.unsupported-page.detail": "Les pages internes du navigateur et les boutiques d’extensions limitent l’accès des extensions. Essayez sur une page web ordinaire.",
   "diagnostics.page-unavailable.title": "Le composant de traduction de page est indisponible",
   "diagnostics.page-unavailable.detail": "Actualisez la page et réessayez. Vérifiez que l’extension peut accéder à ce site. Utilisez une page web ordinaire plutôt qu’une page interne du navigateur ou une boutique d’extensions.",
+  "diagnostics.source-closed.title": "La page d’origine n’est plus disponible",
+  "diagnostics.source-closed.detail": "Rouvrez la page à traduire, puis ouvrez à nouveau FluentRead.",
   "diagnostics.context-invalid.title": "Actualisez la page après la mise à jour de l’extension",
   "diagnostics.context-invalid.detail": "Enregistrez les données non envoyées sur la page, puis actualisez-la pour continuer à traduire.",
   "diagnostics.authentication.title": "Vérifiez les identifiants ou les autorisations du service",

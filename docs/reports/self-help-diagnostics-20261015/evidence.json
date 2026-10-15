@@ -53,7 +53,10 @@
     "lines": 100,
     "statements": 100,
     "functions": 100,
-    "branches": 100
+    "branches": 100,
+    "tests": 561,
+    "testFiles": 14,
+    "businessModules": 11
   },
   "screenshots": [
     "03-first-success.png",
@@ -65,7 +68,11 @@
     "11-ru-RU.png",
     "config-read-failure.png",
     "config-read-recovered.png",
-    "upgrade-diagnostic.png"
+    "upgrade-diagnostic.png",
+    "rate-reopened.png",
+    "source-closed.png",
+    "keyboard-service-check.png",
+    "keyboard-missing-key.png"
   ],
   "startupUi": {
     "ok": true,
@@ -250,5 +257,194 @@
     "branches": 100,
     "functions": 100,
     "lines": 100
+  },
+  "rateAndPermissionUi": {
+    "ok": true,
+    "cases": [
+      "Actual HTTP429 + Retry-After disables the retry action with remaining time",
+      "Close/reopen retains the original cooldown deadline and generates no provider request",
+      "After expiry retry enables but no automatic provider request occurs",
+      "User explicit retry reaches translated with the same fixed provider, source and language direction",
+      "Actual HTTP403 uses safe credentials-or-permissions classification without changing selected service or languages",
+      "Permission diagnostic opens the actual current service configuration and preserves preferences",
+      "Service connection test also classifies actual HTTP403 using safe text",
+      "New isolated chrome://version tab shows unsupported-page explanation without contacting the provider"
+    ],
+    "productionSnapshot": {
+      "revision": "936a8800824d4a9f9612b3481b4820deab41c398",
+      "manifestSha256": "a12a20416fc826d3dc7278b74a112b4170f8985b1ac8b1a74c91f73d5e09b642",
+      "popupHtmlSha256": "f87857f0d68c9855a7eeca1c91c69b2101be88fa286f05a3603660c9ea9e0e68",
+      "mountChunk": "mount-x-83fly5.js",
+      "mountSha256": "c33b40c2ff5d25dbf26bbe1c1de3eb908f12f44b6073df9686a3671834bf261d"
+    },
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "limitations": [
+      "Local HTTP fixtures with a fake credential and synthetic article; no online provider or daily browser data.",
+      "Edge/Chrome MV3 only; no host permission revocation or other-platform runtime claim."
+    ],
+    "retrySetting": 0,
+    "requestStatuses": [
+      429,
+      200,
+      403,
+      403
+    ],
+    "initialDeadline": 1792052496602,
+    "reopenedDeadline": 1792052496602,
+    "cooldownQuiet": {
+      "startedAt": 1792052486921,
+      "endedAt": 1792052488423,
+      "expectedRequests": 1,
+      "actualRequests": 1
+    },
+    "deadlineQuiet": {
+      "startedAt": 1792052489704,
+      "endedAt": 1792052497804,
+      "expectedRequests": 1,
+      "actualRequests": 1
+    },
+    "pageErrors": [],
+    "consoleErrors": [],
+    "browserFrontmost": false
+  },
+  "exitAndReopenUi": {
+    "ok": true,
+    "cases": [
+      {
+        "name": "close Popup during HTTP wait, then reopen after actual success",
+        "ok": true
+      },
+      {
+        "name": "same-url-late-200",
+        "ok": true
+      },
+      {
+        "name": "same-url-late-401",
+        "ok": true
+      },
+      {
+        "name": "source closed during HTTP wait",
+        "ok": true
+      }
+    ],
+    "testedBuild": {
+      "sha256": "d2752e1db22df4fce5acefbc19e5ed1f73561ecef89686be425a68cc86a10a44",
+      "files": 475
+    },
+    "limitations": [
+      "Edge production extension in isolated background profile; no live provider or Firefox runtime acceptance.",
+      "Same-URL reload cancelled the old connections before attempted delayed 200/401 delivery; this proves cancellation and document state, not delivery of old callbacks."
+    ],
+    "pageErrors": [],
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "visualReview": {
+      "allScreenshotsReviewed": true,
+      "count": 12,
+      "notes": "All waiting, reopen, source-closed immediate/repeated and manual-reopen completion images reviewed: readable, compact, no observed clipping. Source-closed has dismiss and diagnostic preview only; no dead-tab refresh."
+    }
+  },
+  "keyboardUi": {
+    "ok": true,
+    "cases": [
+      "Initial actual focus, radio arrows and Tab/Enter save English through production onboarding",
+      "Keyboard main action receives real HTTP401 and safe authentication diagnosis",
+      "Preview and export reached using uninterrupted Tab/Enter traversal without test focus calls",
+      "Close/reopen retains service, language and error current document state",
+      "Enter on diagnostic opens exact current OpenAI service and product focuses its check button without changing default",
+      "Keyboard connection check receives HTTP403 and safe repair guidance",
+      "Tab/Enter recheck succeeds and Return activates original source tab",
+      "Keyboard explicit retry translates original article using actual local HTTP success response",
+      "Close/reopen retains service, language and translated current document state",
+      "Keyboard main action restores original text",
+      "Close/reopen retains service, language and idle current document state",
+      "Ordinary service options without returnTabId do not auto-focus Check connection or send HTTP",
+      "Empty required key disables check, focuses service fallback, and Tab reaches actionable configuration without HTTP"
+    ],
+    "productionPackage": {
+      "sha256": "f3759ee2eb0b042c12ad265821b4815c4be81d15e4a80461c50eb4b46b9710dd",
+      "files": 475,
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+    },
+    "settingsEntryFocus": {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "testId": null,
+      "language": null,
+      "label": null,
+      "text": "Check connection",
+      "tabIndex": 0,
+      "focusVisible": true,
+      "documentHasFocus": true,
+      "visible": true,
+      "matches": true
+    },
+    "cleanup": {
+      "guardedCloseConfirmed": true,
+      "profileRemoved": true
+    },
+    "limitations": [
+      "Production popup.html is opened as an extension tab with a fixed sourceTabId; browser toolbar accelerators and OS-level Tab handling are not covered.",
+      "Local synthetic HTTP fixtures only; no real provider, personal credentials or daily browser profile.",
+      "Isolated Edge MV3 only; no Firefox runtime."
+    ],
+    "keyboardEventCount": 81,
+    "reopenStages": [
+      {
+        "stage": "1-authentication",
+        "before": "error",
+        "after": "error"
+      },
+      {
+        "stage": "2-translated",
+        "before": "translated",
+        "after": "translated"
+      },
+      {
+        "stage": "3-restored",
+        "before": "idle",
+        "after": "idle"
+      }
+    ],
+    "diagnosticRepairTabsBefore": 74,
+    "diagnosticRepairTabsAfter": 0,
+    "ordinaryOptions": {
+      "visibleFocusSamples": 12,
+      "allAvoidedCheckFocus": true,
+      "httpRequestsBefore": 8,
+      "httpRequestsAfter": 8
+    },
+    "requiredCredentialFallback": {
+      "initialFocus": {
+        "tag": "H4",
+        "id": "",
+        "role": null,
+        "testId": null,
+        "language": null,
+        "label": null,
+        "text": "OpenAI",
+        "tabIndex": -1,
+        "focusVisible": true,
+        "documentHasFocus": true,
+        "visible": true,
+        "matches": true
+      },
+      "tabStepsToInput": 4,
+      "httpRequestsBefore": 8,
+      "httpRequestsAfter": 8,
+      "exactFixtureCredentialFieldsRestored": true
+    },
+    "unhandledPageErrors": [],
+    "browserFrontmost": false
+  },
+  "repairFocusValidation": {
+    "relatedTests": 250,
+    "focusModuleTests": 38,
+    "perFileStatements": 100,
+    "perFileBranches": 100,
+    "perFileFunctions": 100,
+    "perFileLines": 100
   }
 }

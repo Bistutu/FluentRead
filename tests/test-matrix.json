@@ -710,7 +710,8 @@
       "tests/translationProgressMobileLifecycle.test.ts",
       "tests/selfHelpNotice.test.ts",
       "tests/serviceRepairReturn.test.ts",
-      "tests/materialRepository.test.ts"
+      "tests/materialRepository.test.ts",
+      "tests/serviceRepairFocus.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

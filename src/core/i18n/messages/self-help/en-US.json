@@ -9,6 +9,8 @@
   "diagnostics.unsupported-page.detail": "Browser internal pages and extension stores restrict extension access. Try translation on a regular webpage.",
   "diagnostics.page-unavailable.title": "The page translation component is unavailable",
   "diagnostics.page-unavailable.detail": "Refresh the page and retry, and check that the extension can access this website. Use a regular webpage instead of browser internal pages or extension stores.",
+  "diagnostics.source-closed.title": "The original page is no longer available",
+  "diagnostics.source-closed.detail": "Reopen the page you want to translate, then open FluentRead again.",
   "diagnostics.context-invalid.title": "Refresh this page after the extension update",
   "diagnostics.context-invalid.detail": "Save any unsubmitted work on the page, then refresh to continue translating.",
   "diagnostics.authentication.title": "Check service credentials or permissions",

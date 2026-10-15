@@ -9,7 +9,7 @@ import type {TranslationErrorKind} from '../translation/errors';
 import {resolveUiLanguageFromLocale, translate} from '@/src/core/i18n';
 
 export const DIAGNOSTIC_CODES = [
-  'cancelled', 'offline', 'no-content', 'unsupported-page', 'page-unavailable', 'context-invalid',
+  'cancelled', 'offline', 'no-content', 'unsupported-page', 'page-unavailable', 'source-closed', 'context-invalid',
   'authentication', 'model-configuration', 'configuration', 'configuration-save', 'rate-limit',
   'timeout', 'network', 'provider', 'unknown',
 ] as const;
@@ -24,7 +24,7 @@ export interface Diagnostic {
   retryAfterMs?: number;
 }
 export interface DiagnosticContext {
-  reason?: 'no-content' | 'unsupported-page' | 'configuration' | 'configuration-save' | 'cancelled';
+  reason?: 'no-content' | 'unsupported-page' | 'source-closed' | 'configuration' | 'configuration-save' | 'cancelled';
   online?: boolean;
 }
 
@@ -34,6 +34,7 @@ const actions: Record<DiagnosticCode, DiagnosticAction[]> = {
   'no-content': ['retry', 'site-settings', 'dismiss'],
   'unsupported-page': ['dismiss'],
   'page-unavailable': ['refresh', 'dismiss'],
+  'source-closed': ['dismiss'],
   'context-invalid': ['refresh', 'dismiss'],
   authentication: ['services', 'dismiss'],
   'model-configuration': ['services', 'dismiss'],
@@ -104,6 +105,7 @@ export function diagnoseFailure(error: unknown, context: DiagnosticContext = {})
   if (kind === 'bad-request') {
     return makeDiagnostic(/model|deployment|模型/iu.test(code + ' ' + message) ? 'model-configuration' : 'configuration');
   }
+  if (/^(?:Error:\s*)?(?:No tab with id:\s*\d+\.?|No active tab)\s*$/iu.test(message)) return makeDiagnostic('source-closed');
   if (/receiving end does not exist|could not establish connection|(?:没有|找不到|无)(?:消息)?接收端|接收端不存在/iu.test(message)) return makeDiagnostic('page-unavailable');
   if (/invalid_api_key|authentication|unauthorized|forbidden/iu.test(code)
       || /\b40[13]\b|api.?key.*(?:invalid|missing|expired)|unauthori[sz]ed|forbidden|鉴权|密钥.*(?:无效|未配置|过期)|凭据.*(?:无效|未配置)/iu.test(message)) return makeDiagnostic('authentication');

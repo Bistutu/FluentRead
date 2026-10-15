@@ -9,6 +9,8 @@
   "diagnostics.unsupported-page.detail": "浏览器内部页和扩展商店限制扩展访问。请在普通网页使用翻译。",
   "diagnostics.page-unavailable.title": "网页翻译组件暂不可用",
   "diagnostics.page-unavailable.detail": "刷新网页后重试，并检查扩展是否有此网站的访问权限。浏览器内部页和扩展商店请改用普通网页。",
+  "diagnostics.source-closed.title": "原网页已不可用",
+  "diagnostics.source-closed.detail": "请重新打开需要翻译的网页，再打开流畅阅读。",
   "diagnostics.context-invalid.title": "扩展已更新，需要刷新页面",
   "diagnostics.context-invalid.detail": "保存页面上尚未提交的内容，再刷新网页以继续翻译。",
   "diagnostics.authentication.title": "服务凭据或权限有问题",
