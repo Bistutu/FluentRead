@@ -543,6 +543,8 @@ node scripts/verify-userscript-build.mjs  # userscript 元数据与产物边界
 
 影响规划以 PR 基线到实际检出提交的 Git diff 为准，跟踪静态 import、使用明确路径的动态 import、barrel、CSS、夹具路径，以及现有组件测试直接读取 SFC 的文件路径；删除和重命名的旧路径同样参与追踪。测试归类复用 `tests/test-matrix.json`，架构组只执行一次。单纯新增测试登记或覆盖率清单保持定向范围；共享依赖、TypeScript/Vitest 执行环境变化则显式扩大到全部受影响行为套件，计划记录扩大原因。改动的严格覆盖模块没有可追踪行为测试时检查失败，不能以空选择通过。
 
+模板夹具路径按固定子目录和静态后缀匹配已知 Git 路径，例如 `./fixtures/page-context/${name}.html`；解析器不执行插值，不把 `src/${name}` 等仅含项目根的路径扩大为全源码。删除和重命名的旧路径仍参与匹配。无法确定子目录的动态读取，应在消费者中明确保留目录依赖；新增动态路径应同时检查真正消费者入选和无关目录未入选。
+
 严格覆盖率只统计此次改动并已纳入显式清单的源码，以及此次新纳入清单的已有源码；生成的临时配置继承真实测试插件与资源设置，并保留 statements/branches/functions/lines 四项 100% 门槛，逐文件检查。测试本身或纯文档变化没有覆盖源码目标时，执行所选行为测试并明确记录覆盖率未执行。计划与 coverage summary 作为 7 天 CI 证据保存；这些结果不代表全项目行为覆盖、真实浏览器、Firefox 实机或在线供应商验证。依赖图选择不能替代新增功能测试与必要的人工浏览器专项。
 
 本地可检查和执行相同范围：
@@ -561,7 +563,11 @@ node scripts/testing/run-resource-safe.mjs -- node scripts/testing/run-affected-
 1. `vitest.coverage.config.ts` 中列出的已迁移 TypeScript 业务模块，V8 statements、branches、functions、lines 必须同时达到 100%。
 2. `tests/architecture/verificationOwnership.test.ts` 审计其余 WXT entrypoint、Vue、CSS、HTML、browser runner、userscript 和文档文件，保证每个文件都由编译、双浏览器构建、静态契约、文档构建或隔离浏览器回归负责。
 
-新增 `src` 可执行模块默认必须进入第一道门禁。只有纯类型文件、纯 re-export barrel 和列明理由的静态 composition root 可以由第二道门禁负责。禁止使用 `v8 ignore`、扩大 exclude 或无断言执行来制造 100%。
+新增 `src` 可执行 TypeScript 模块默认必须进入第一道门禁。只有纯类型文件、纯 re-export barrel 和列明理由的静态 composition root 可以由第二道门禁负责；Vue 的业务验证归属按下述独立规则检查。禁止使用 `v8 ignore`、扩大 exclude 或无断言执行来制造 100%。
+
+`src` 与 `userscript` 的 Vue 另受 `tests/architecture/vue-verification-owners.json` 约束：已纳入严格覆盖的组件复用该边界；其他有业务行为的组件必须明确登记实际 SFC 消费者及场景。门禁检查测试存在且已归类、组件依赖可追踪、真实装载/执行与断言形态，并拒绝只出现源码名称、删除执行入口、挂载无关组件或仅 mock 目标 SFC 的登记；这些结构检查仍不能代替对领域断言的审查。纯展示与静态组装例外逐项说明，并检查脚本及模板没有新增状态、方法、事件和副作用。
+
+本轮保留 38 份历史 Vue 验证债务，记录完整源码 SHA-256、固定 `e765165d` Git blob、缺口及迁出条件；它们明确不算已验证的业务 owner。修改源码、刷新清单 hash 或把新增组件放进历史记录都会失败，必须迁出到真实组件行为测试或正式严格覆盖。少量记录附现有隔离浏览器入口及证据限制，入口存在不等于本轮已执行；不能用父组件的 mock、构建成功或任意浏览器脚本替代该组件行为证明。
 
 文档翻译的 parser、预览生成、二进制格式服务、翻译编排和展示模型全部进入第一道门禁；PDF.js worker 与真实 Canvas 像素采样适配由双浏览器构建及屏幕外文档浏览器回归负责。
 

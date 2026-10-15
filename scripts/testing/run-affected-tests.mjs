@@ -75,9 +75,15 @@ export function coverageRuntimeSignature(source) {
 
 function references(source, filename) {
     const values = new Set();
+    const templates = new Map();
     const ast = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const visit = node => {
         if (ts.isStringLiteralLike(node)) values.add(node.text);
+        if (ts.isTemplateExpression(node)) {
+            // 只记录静态片段；表达式既不执行，也不把不可解析的根路径扩大成整个源码树。
+            const parts = [node.head.text, ...node.templateSpans.map(span => span.literal.text)];
+            templates.set(JSON.stringify(parts), {parts});
+        }
         ts.forEachChild(node, visit);
     };
     visit(ast);
@@ -85,20 +91,41 @@ function references(source, filename) {
     for (const match of source.matchAll(/(['"`])((?:@\/|\/src\/|src\/|scripts\/|tests\/|userscript\/|assets\/|\.\.?\/)[^'"`\n]+)\1/gu)) {
         values.add(match[2]);
     }
-    return [...values];
+    return [...values, ...templates.values()];
 }
 
 export function buildDependencyGraph(files) {
     const graph = new Map();
     const known = new Set(Object.keys(files));
-    const resolveReference = (owner, value) => {
-        if (value.includes('${') || value.includes('\n')) return [];
+    const projectPath = (owner, value) => {
         let candidate;
         if (value.startsWith('@/')) candidate = value.slice(2);
         else if (value.startsWith('/src/')) candidate = value.slice(1);
         else if (/^(?:src|scripts|tests|userscript|entrypoints|docs|public|styles|assets)\//u.test(value)) candidate = value;
         else if (value.startsWith('.')) candidate = path.posix.normalize(path.posix.join(path.posix.dirname(owner), value));
-        else return [];
+        else return null;
+        return candidate;
+    };
+    const resolveReference = (owner, reference) => {
+        if (typeof reference !== 'string') {
+            const [head, ...tails] = reference.parts;
+            const prefix = projectPath(owner, head);
+            if (!prefix || reference.parts.some(part => part.includes('\n'))) return [];
+            const directory = head.endsWith('/') ? prefix.replace(/\/$/u, '') : path.posix.dirname(prefix);
+            // 至少固定一个项目根内的子目录，例如 tests/fixtures 或 src/features。
+            // `src/${name}`、`./${name}`、外部 URL 与越出仓库的路径没有可靠边界，要求调用者显式登记目录。
+            if (!/^(?:src|entrypoints|userscript|scripts|tests|docs|public|styles|assets)\/[^/]+(?:\/[^/]+)*$/u.test(directory)
+                || directory.split('/').some(part => part === '..' || part === '.')) return [];
+            const parts = [prefix, ...tails];
+            const query = parts.findIndex(part => /[?#]/u.test(part));
+            if (query >= 0) {parts.splice(query + 1);parts[query] = parts[query].split(/[?#]/u)[0];}
+            const escape = value => value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+            const pattern = new RegExp('^' + parts.map(escape).join('.*') + '$', 'u');
+            return [...known].filter(file => file.startsWith(directory + '/') && pattern.test(file));
+        }
+        if (reference.includes('${') || reference.includes('\n')) return [];
+        let candidate = projectPath(owner, reference);
+        if (!candidate) return [];
         candidate = candidate.split(/[?#]/u)[0];
         const alternatives = [candidate, ...['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue', '.json', '.css'].map(extension => candidate + extension),
             ...['index.ts', 'index.tsx', 'index.mts', 'index.js', 'index.vue'].map(index => `${candidate}/${index}`)];

@@ -1,0 +1,735 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "e765165d0b707a6e9cd8f5bac2d5fbbcaff79dd3",
+  "policy": "严格覆盖优先；非严格Vue需真实组件消费者。无状态展示逐项审查；存量缺口按固定历史源码冻结，既非行为owner也非覆盖证明。",
+  "components": {
+    "src/app/document-translation/DocumentApp.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/documentAppLifecycle.test.ts"
+      ],
+      "scenario": "真实文档导入、翻译、恢复、迟到结果与卸载"
+    },
+    "src/app/options/OptionsApp.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/optionsAppNavigationLifecycle.test.ts"
+      ],
+      "scenario": "导航切换、异步面板加载与来源归属"
+    },
+    "src/app/popup/PopupApp.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/popupAppLifecycle.test.ts"
+      ],
+      "scenario": "真实菜单事件、配置保存、页面动作与卸载"
+    },
+    "src/app/popup/PopupLanguageSelect.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/popupChildOwnership.test.ts"
+      ],
+      "scenario": "选项展开、语言切换和旧事件归属"
+    },
+    "src/app/popup/PopupOnboarding.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/popupChildOwnership.test.ts"
+      ],
+      "scenario": "预加载共享、确认与晚到导入"
+    },
+    "src/app/popup/PopupServices.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/popupServicesLifecycle.test.ts"
+      ],
+      "scenario": "模型选择、上下文切换和迟到选项"
+    },
+    "src/app/popup/PopupSiteRule.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "8d2afc4e2240409991012be3cb3594637a1c85af7e89e24099cde7843213eca7",
+      "reason": "渲染 Popup 的当前网站规则模块，使该区域既能保持默认嵌套视觉，也能作为独立模块参与用户布局排序。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/area-translation/ui/AreaTranslator.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "cfdb00648c3b0548bb17b8d6cae5174fab48db98c50ebbee175180d6a66afdf0",
+      "reason": "提供独立圈选阅读工具，按配置的快捷键（默认 Shift+Z）进入选区模式，松开鼠标后展示可拖动、可核对、可复制的原文与译文卡片。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/document-translation/ui/PdfReader.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/pdfReaderLifecycle.test.ts"
+      ],
+      "scenario": "实际阅读器渲染、选择、缩放与资源清理"
+    },
+    "src/features/floating-ball/ui/FloatingBall.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "40969a5ae2960a8396e0d378cf0c29ecc3acd70552171eae5d27804b21dc3e9a",
+      "reason": "呈现用户开启后的页面悬浮工具，将全文翻译、品牌手柄和漫画入口按顺序组织，并保留拖动停靠与可选常驻模式。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/full-page-translation/ui/TranslationProgressPanel.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "0da2346b1859b79a3a37f17081847ae8008a9cc5ff9dc612b46c3a6e4968fb1f",
+      "reason": "以半透明工作面板和低存在感状态勾选展示全文翻译进度，并允许用户临时收起，同时跟随扩展主题与系统深浅色偏好。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/glossary/ui/BuiltinGlossaries.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "c4f3baf89c43ed7a0507077de43d583e43e2ef0fac161c6afcf63c809e7ebe62",
+      "reason": "展示随扩展内嵌的主题词库，让用户先查看真实词条，再添加可编辑副本。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/glossary/ui/GlossarySettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/glossarySettingsComponent.test.ts"
+      ],
+      "scenario": "实际术语编辑、保存与来源选择"
+    },
+    "src/features/image-translation/ui/ImageOcrSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/implementationAudit49E.test.ts"
+      ],
+      "scenario": "实际语言包按钮、下载状态与卸载后响应"
+    },
+    "src/features/image-translation/ui/ImageTranslationSettingsPreview.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "b576fdfc3c3f5306ad3077ee20faea420110b25345886a820b064380e2ea4d8e",
+      "reason": "用本地示意图说明图片和漫画翻译的原图、译图对照方式。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/image-translation/ui/MangaEntry.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/mangaEntryComponentLifecycle.test.ts"
+      ],
+      "scenario": "实际入口按钮、空闲计时器与换章清理"
+    },
+    "src/features/image-translation/ui/MangaModelSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/implementationAudit49E.test.ts"
+      ],
+      "scenario": "实际模型下载、删除与错误恢复"
+    },
+    "src/features/image-translation/ui/MangaSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/implementationAudit49E.test.ts"
+      ],
+      "scenario": "实际网站规则新增校验和删除"
+    },
+    "src/features/model-usage/ui/ModelUsageDashboard.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/usageDashboardLifecycle.test.ts"
+      ],
+      "scenario": "格式化重用、筛选、迟到快照与卸载"
+    },
+    "src/features/reading-assistant/ui/HarnessReadingHistory.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/implementationAudit49C.test.ts"
+      ],
+      "scenario": "真实历史列表加载、删除与迟到选择"
+    },
+    "src/features/reading-assistant/ui/ReadingAnswer.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/implementationAudit49B.test.ts"
+      ],
+      "scenario": "实际回答与句法表、来源及引用交互"
+    },
+    "src/features/reading-assistant/ui/ReadingEvidence.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "9b5ad31bc9a8239632ae586dc8015a61e2df1e6c7a72baf24ecdd940db448422",
+      "reason": "在句末以无外框的双引号图标显示已经校验的原文依据和定位状态，保留失效来源的文字供读者核对。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/reading-assistant/ui/ReadingPanel.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/readingPanelLifecycle.test.ts"
+      ],
+      "scenario": "实际阅读卡片请求、取消与历史切换"
+    },
+    "src/features/reading-assistant/ui/SentenceAnalysis.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "8cc00ec930a81c505ea5358cb6051c3596cc42d1d0bf8e16ee04e59a5af2a5ef",
+      "reason": "在原文片段下展示当前界面语言的句中作用和词性，让学习者先总览结构，再点击查看含义。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/selection-translation/ui/SelectionTranslator.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/selectionTranslatorLifecycle.test.ts"
+      ],
+      "scenario": "实际划词面板、选择变化与迟到结果"
+    },
+    "src/features/selection-translation/ui/SpeechFollowText.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "b8b7ecb8f141af0d31530fd3e79ceac8caf625675ce544c609a9dc90b2caca69",
+      "reason": "在扩展自身的朗读文字上显示随音频推进的完整词高亮。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/AlwaysTranslateSites.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "bd3bee9987da6060eb2c34e87608801156211012bc5d8d38581ce5be725fd1c8",
+      "reason": "实现“始终翻译”、“禁用扩展”与“不显示悬浮球”三类网站名单编辑器，接收域名数组并通过 v-model 更新规范化后的规则集合。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/AreaTranslationSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/translationRecorderLifecycle.test.ts"
+      ],
+      "scenario": "实际录制设置、配置切换与KeepAlive"
+    },
+    "src/features/settings/ui/CloudConfigBackup.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "e7ef7459852d2c0554c41d133bcaea321924038d4f21eae0d5f458de212c4dc9",
+      "reason": "将 Google Drive 与 WebDAV 归入同一个配置云备份入口。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/ConfigManagement.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/implementationAudit49C.test.ts"
+      ],
+      "scenario": "实际恢复确认、旧事件及持久化归属"
+    },
+    "src/features/settings/ui/ContextMenuSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/featureMenuSettingsLifecycle.test.ts"
+      ],
+      "scenario": "实际菜单功能开关及隐藏后旧事件"
+    },
+    "src/features/settings/ui/ExcludedLanguageSettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "e039088668481625a79cf82d28f8aa6f3dd0880e9dd86dd77f78a72ef2f546d8",
+      "reason": "提供网页翻译排除语言的多选设置，使用可换行的选项按钮表达选中状态。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/FeatureServiceSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/featureMenuSettingsLifecycle.test.ts"
+      ],
+      "scenario": "实际服务覆盖选择及上下文失效"
+    },
+    "src/features/settings/ui/FloatingBallSettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "8033fa94eba8ed88b265a2fe5e36a2791de0668002e68263149de38a76a9d1ee",
+      "reason": "提供悬浮球的进阶外观与交互设置，把按钮显示方式、展开延迟、点击行为、紧凑尺寸、设置入口、收起不透明度和禁用网站集中在一处编辑。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/GoogleDriveSync.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "d16fc451ca9b1a1d40b40574b228aad61290b68b8d55ec385ef4f2d5a866f07f",
+      "reason": "把 Google Drive 作为配置云备份的一种存储方式接入共用界面。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。",
+      "browser": {
+        "runner": "scripts/testing/run-google-drive-sync-ui-test.cjs",
+        "scope": "真实同步页预览和上传下载方向、失败恢复",
+        "limitation": "身份及Drive响应为受控端口；本轮未执行浏览器，不能证明真实账号。"
+      }
+    },
+    "src/features/settings/ui/HarnessPromptSettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "eb4458a9d1db386b7bf8dfde8dcef7e8fc36e7dfa82076e06955da42cb9d8967",
+      "reason": "提供划词翻译通用指令和四种学习动作的提示词编辑界面。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/HarnessSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/promptEditorLifecycle.test.ts"
+      ],
+      "scenario": "真实阅读提示编辑与上下文切换"
+    },
+    "src/features/settings/ui/InformationHighlightModelCard.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/informationHighlightUiLifecycle.test.ts"
+      ],
+      "scenario": "实际模型选择、资源准备与页面归属"
+    },
+    "src/features/settings/ui/InformationHighlightPreferences.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/informationHighlightUiLifecycle.test.ts"
+      ],
+      "scenario": "实际偏好组件更新与订阅生命周期"
+    },
+    "src/features/settings/ui/InformationHighlightPreview.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "aa880ae11e4e48e37dc075caed28505bc39ead5828a5570bc8050ea861caf7f0",
+      "reason": "在自然段落中即时预览智能高亮的密度、六套配色和绘制方式，并可切换到未高亮的原文对比。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/InformationHighlightSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/informationHighlightSettingsLifecycle.test.ts"
+      ],
+      "scenario": "实际模型和样式控件、取消与旧事件"
+    },
+    "src/features/settings/ui/InputTranslationSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/promptEditorLifecycle.test.ts"
+      ],
+      "scenario": "真实输入提示编辑与上下文归属"
+    },
+    "src/features/settings/ui/InterfaceSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/interfaceSettingsLifecycle.test.ts"
+      ],
+      "scenario": "实际界面偏好、菜单布局与旧渲染事件"
+    },
+    "src/features/settings/ui/LearningCenter.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/learningCenterLifecycle.test.ts"
+      ],
+      "scenario": "真实子页按需加载、取消与迟到模块"
+    },
+    "src/features/settings/ui/LearningMemoryManager.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/learningCenterLifecycle.test.ts"
+      ],
+      "scenario": "真实记忆子页异步数据与停用"
+    },
+    "src/features/settings/ui/LocalDataManagement.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/implementationAudit49C.test.ts"
+      ],
+      "scenario": "vi.importActual实际数据页的删除确认和上下文切换"
+    },
+    "src/features/settings/ui/LocalTranslationModelSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/localTranslationModelSettingsLifecycle.test.ts"
+      ],
+      "scenario": "实际模型下载、移除与卸载后资源"
+    },
+    "src/features/settings/ui/LocalTtsSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/localModelSettingsLifecycle.test.ts"
+      ],
+      "scenario": "实际模型按钮、进度消息与旧事件"
+    },
+    "src/features/settings/ui/ParagraphCopySettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/paragraphCopySettingsLifecycle.test.ts"
+      ],
+      "scenario": "实际快捷键录制和配置归属"
+    },
+    "src/features/settings/ui/ParagraphHandlingSettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "cc75e1c0aa6055c4f196ed0581df5e4f926e4b9b0b6679babb79fa7b4316e950",
+      "reason": "在高级选项中集中呈现段落级翻译设置，包括参与翻译的最少字符数、免滚动预翻译字符数、长段落换行与译文位置。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/PopupLayoutEditor.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "5e26478ee00674a71d0590de3683a4c284d5a8a3a19e69ec7566e67194214887",
+      "reason": "提供可复用的 Popup 布局排序与显隐编辑器，供顶层模块和快捷功能两级布局共同使用。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/QuickTranslationProfiles.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/quickProfileSettingsLifecycle.test.ts"
+      ],
+      "scenario": "真实配置列表、快捷键冲突和旧事件"
+    },
+    "src/features/settings/ui/ReadingAssistanceSettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "4d8a76e622f7f98683852758284c6aa0164bf517b83882d1254d204db72784d3",
+      "reason": "作为翻译设置的首项，提供双语逐句高亮的当前样式入口和可立即体验的阅读示例。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/RemoteConfigSync.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "dc4cfe8109ac940587bc38c73c2709df4178d5989039425ff665047d448a9955",
+      "reason": "用清晰的保存、恢复与逐项合并流程完成Google Drive 与 WebDAV 共用的配置云备份。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/SectionTranslationSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/translationRecorderLifecycle.test.ts"
+      ],
+      "scenario": "实际录制设置、冲突重验与页面停用"
+    },
+    "src/features/settings/ui/SelectionSettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "7a5cf69c4e62441aa13e150f9af8bb5c6b09755101163e5d784306d38ddca7b5",
+      "reason": "作为统一划词翻译的设置入口，说明翻译卡片与按需学习，并提供即时预览。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/SentenceHighlightStyleSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/sharedUiComponentsLifecycle.test.ts"
+      ],
+      "scenario": "实际逐句高亮样式设置控件与模板事件"
+    },
+    "src/features/settings/ui/SettingsNavigationIcon.vue": {
+      "kind": "presentation",
+      "reason": "只把分区prop映射到静态图标表，不拥有路由或状态。"
+    },
+    "src/features/settings/ui/SettingsSections.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/settingsSectionsLifecycle.test.ts"
+      ],
+      "scenario": "实际分区装配、服务编辑及迟到加载"
+    },
+    "src/features/settings/ui/SiteAdaptationSettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "17a036999045e0b3e62f475d4d7c122d17a1e28792fe7a30392ae59c7522b8e6",
+      "reason": "提供易发现、可解释、可扩展的正文适配规则工作区。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/SitePreferencesSettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "44db6913d4aeb5b79b27f5157ab9ddf03a5988f4168b22a4e958101f20818491",
+      "reason": "在同一张紧凑偏好卡中管理全局自动翻译与网站的三项偏好。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/SiteRulePreview.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "2bde92413b15a4781456e43b291c215628fba2b169002e05755ed2d2186562eb",
+      "reason": "通过紧凑网址表单检查已保存的网站偏好与正文规则，检查前不展示结果占位。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/TranslationCacheSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/implementationAudit49C.test.ts"
+      ],
+      "scenario": "真实清理按钮、迟到确认与缓存统计"
+    },
+    "src/features/settings/ui/TranslationLoadingStyleSettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "ff05a903b360f2509b1d19ec5daca0c89fa1d0cd5fab1c4c200b5911dd299253",
+      "reason": "用一个样式选择器控制界面动画，让用户在“界面风格”页面比较预设或选择末尾“无”关闭动态效果。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/TranslationStyleSettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "7f59b9f75e82224a3eecf2f95379ad16af04631fda491f9c382b571962b23676",
+      "reason": "作为“界面风格”页的第一个分组，集中设置网页双语译文的样式预设、文字与独立背景色、精确字号等外观微调，并提供与网页一致的实时预览。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/VideoLocalModelSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/localModelSettingsLifecycle.test.ts"
+      ],
+      "scenario": "实际字幕模型加载、清理和能力变化"
+    },
+    "src/features/settings/ui/VideoSubtitleAppearanceSettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "7bea99275ca33c5690ccbdc840bc35b8a0817c6c529b23e1c8a21ad0729d3152",
+      "reason": "提供视频字幕外观设置，并用同一套 CSS 变量展示隔离的实时预览。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/WebDavBackup.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "e88a3abbf9c2ad71ddab8099e57d7c956882e2cdf6990c230ea54f6d52d5fecb",
+      "reason": "在左下主要操作区提供 WebDAV 设置与同步入口，右侧显示账号、服务器和同步时间，接入 WebDAV 配置云备份。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。",
+      "browser": {
+        "runner": "scripts/testing/run-webdav-backup-ui-test.cjs",
+        "scope": "真实配置页备份、预览、冲突与恢复控件",
+        "limitation": "浏览器专项需显式执行；本门禁只冻结旧源码，构建不证明交互。"
+      }
+    },
+    "src/features/settings/ui/WritingSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/promptEditorLifecycle.test.ts"
+      ],
+      "scenario": "真实写作设置模板、持久化与编辑保护"
+    },
+    "src/features/settings/ui/components/PopupPreview.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/interfaceSettingsLifecycle.test.ts"
+      ],
+      "scenario": "实际预览选项和菜单模块可见性"
+    },
+    "src/features/settings/ui/components/SettingsNumberInput.vue": {
+      "kind": "presentation",
+      "reason": "只透传父级属性到数值控件并显示单位，不保存或校验业务值。"
+    },
+    "src/features/settings/ui/components/SettingsPanel.vue": {
+      "kind": "presentation",
+      "reason": "仅按父级active/name控制容器显示并投影slot，不拥有状态。"
+    },
+    "src/features/settings/ui/components/SettingsPreviewLayout.vue": {
+      "kind": "presentation",
+      "reason": "只提供预览和设置插槽及响应式CSS，不执行业务。"
+    },
+    "src/features/settings/ui/components/SettingsSectionNavigation.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/settingsSectionNavigationLifecycle.test.ts"
+      ],
+      "scenario": "真实锚点导航、键盘与清理"
+    },
+    "src/features/settings/ui/services/ApiKeyList.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceEditorLifecycle.test.ts"
+      ],
+      "scenario": "真实密钥列表编辑和旧事件保护"
+    },
+    "src/features/settings/ui/services/CompositeTranslationFields.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceEditorLifecycle.test.ts"
+      ],
+      "scenario": "真实成员字段编辑、服务切换与停用"
+    },
+    "src/features/settings/ui/services/CompositeTranslationSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceEditorLifecycle.test.ts"
+      ],
+      "scenario": "真实组合草稿校验和提交"
+    },
+    "src/features/settings/ui/services/CustomOpenAIProviderDialog.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceEditorLifecycle.test.ts"
+      ],
+      "scenario": "真实供应商对话框提交与旧上下文"
+    },
+    "src/features/settings/ui/services/FreeTranslationSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceDirectoryLifecycle.test.ts"
+      ],
+      "scenario": "实际免费设置、取消和后台权重响应"
+    },
+    "src/features/settings/ui/services/ModelPicker.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceEditorLifecycle.test.ts"
+      ],
+      "scenario": "真实模型选择、增删和上下文失效"
+    },
+    "src/features/settings/ui/services/ModelVisionSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/modelVisionSettingsLifecycle.test.ts"
+      ],
+      "scenario": "真实保存/探测取消、超时和计时器清理"
+    },
+    "src/features/settings/ui/services/PromptTemplateEditor.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/promptEditorLifecycle.test.ts"
+      ],
+      "scenario": "真实输入、组合输入、变量插入与上下文变化"
+    },
+    "src/features/settings/ui/services/RequestHeaderSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceEditorLifecycle.test.ts"
+      ],
+      "scenario": "真实请求头规则校验与编辑归属"
+    },
+    "src/features/settings/ui/services/RequestLimitFields.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/requestLimitSettings.test.ts"
+      ],
+      "scenario": "真实数值事件、禁用与上限归一化"
+    },
+    "src/features/settings/ui/services/RequestLimitSettings.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/requestLimitSettings.test.ts"
+      ],
+      "scenario": "真实服务/模型限制继承和配置保存"
+    },
+    "src/features/settings/ui/services/ServiceCatalog.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceDirectoryLifecycle.test.ts"
+      ],
+      "scenario": "真实分组展开、选择和导航清理"
+    },
+    "src/features/settings/ui/services/ServiceCatalogItem.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "94a06a3ffe8fd3461a07e6446fe2c37b3660a3d7661584a249a70b4c23142ba9",
+      "reason": "为完整服务目录渲染紧凑的服务选择行。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/services/ServiceConfiguration.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "4459effbacb7900d0c15240b8575f5560976db91a4f2e3143e6649cb9edd60a5",
+      "reason": "渲染当前翻译服务的详细连接配置：连接字段（密钥、区域、端点等）直接排在服务标题下方、不再单设“连接与密钥”标题，输入下方是添加密钥与密钥使用方式；其后用模型偏好、提示词、请求限制、接口兼容几个页签显示代理、密钥要求、提示词、自定义请求体与请求头、按域名移除来源头等字段，以及服务和模型的独立请求限制；只有一个页签的服务改用小节标题。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/settings/ui/services/ServiceNatureBadge.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "5972d46edec15f06a33e116dd43e480c87e9d4b612354c1483c15801ad608821",
+      "reason": "在服务名称旁展示接口性质徽章。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/translation-center/ui/TranslationCenter.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/translationCenterComponent.test.ts"
+      ],
+      "scenario": "实际比较卡片请求、重排与迟到取消"
+    },
+    "src/features/translation-stats/ui/TranslationStatsDashboard.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/usageDashboardLifecycle.test.ts"
+      ],
+      "scenario": "真实统计组件异步刷新和页面归属"
+    },
+    "src/features/video-subtitle/ui/VideoSentenceLearning.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/videoSentenceLearningComponent.test.ts"
+      ],
+      "scenario": "实际字幕学习按钮、来源切换与请求清理"
+    },
+    "src/features/vocabulary/ui/CollectionEntry.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/vocabularyTtsPageCancellationRuntime.test.ts"
+      ],
+      "scenario": "实际词条模板播放事件和页面取消"
+    },
+    "src/features/vocabulary/ui/ReencounterPanel.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/vocabularyReencounterPanelLifecycle.test.ts"
+      ],
+      "scenario": "实际词书回答、订阅与离开清理"
+    },
+    "src/features/vocabulary/ui/SavedExplanation.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "fd0a8a90b2748e190fffedca71167cf038a23289df1529e3371befe5f1ff7166",
+      "reason": "展示和编辑收藏附带的简短解释，允许不调用 AI 的手动保存与清空。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/vocabulary/ui/VocabularyBook.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/vocabularyBookComponentLifecycle.test.ts"
+      ],
+      "scenario": "实际词书模板、复习与持久化"
+    },
+    "src/features/vocabulary/ui/VocabularySource.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/vocabularyVideoSourceUi.test.ts"
+      ],
+      "scenario": "实际来源链接渲染与视频定位"
+    },
+    "src/features/vocabulary/ui/VocabularyStudy.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/vocabularyStudyLifecycle.test.ts"
+      ],
+      "scenario": "实际复习请求、换词与迟到结果"
+    },
+    "src/features/writing-assistant/ui/WritingChoices.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "da526c1a9ee1573b4234e30c6d4537730e990fe674a54407d568515138186667",
+      "reason": "用统一品牌样式展示写作偏好的互斥选项，让长度、风格、语气和角色可以直接比较。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/writing-assistant/ui/WritingEntrySettings.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "0730858eae134718a9f020cef1de6de64d19514bfa60e55bafb1992329d3722a",
+      "reason": "提供写作入口的三种关闭范围和完整设置入口。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/writing-assistant/ui/WritingLanguagePicker.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "f568a66ae2a9d6f3a8c0b3e8af4a14a60e404f7fd6aa55ec28a410465fc90072",
+      "reason": "让写作语言默认跟随目标语言，同时允许本次回复选择另一种语言，不使用宿主系统的原生下拉菜单。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/writing-assistant/ui/WritingPanel.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/implementationAudit49B.test.ts"
+      ],
+      "scenario": "实际写作面板消费初始草稿并接收真实流协议结果"
+    },
+    "src/features/writing-assistant/ui/WritingPopover.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "c14f1cdf67cc4f039ead6ec2dc7849fe0675296cd23f5000f5c6be71130c7616",
+      "reason": "将写作卡片与入口菜单定位在当前回复操作旁，保持与宿主编辑器的空间关系。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/writing-assistant/ui/WritingStyleEditor.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "bc41167be5a54a6669467e799c52300d4ec3425ec825f86e6fd01aa846a85c54",
+      "reason": "集中呈现回答风格，把长度、表达风格、语气和回复身份组织成一次可确认的调整。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+    },
+    "src/features/writing-assistant/ui/WritingSurface.vue": {
+      "kind": "frozen-debt",
+      "sourceSha256": "90de757d8c83981cf70061ea08f767108a132c4048abde429f5d80e9ab0b4835",
+      "reason": "在隔离层中为 Gmail 与 GitHub 回复编辑器定位写作入口，维护当前编辑器的写作会话。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
+      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。",
+      "browser": {
+        "runner": "scripts/testing/run-writing-assistant-test.cjs",
+        "scope": "entry-menu/dynamic：真实写作入口、页面规则与动态重挂载",
+        "limitation": "当前自动writingIntegration将此SFC mock；浏览器入口存在不等于本轮已执行。"
+      }
+    },
+    "src/ui/components/DownloadProgress.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/localModelSettingsLifecycle.test.ts"
+      ],
+      "scenario": "真实下载进度子组件与资源操作"
+    },
+    "src/ui/components/UiLanguageOnboarding.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/uiLanguageOnboardingLifecycle.test.ts"
+      ],
+      "scenario": "实际语言向导、计时器与旧保存"
+    },
+    "src/ui/components/UiLanguageSelector.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/uiLanguageSelectorLifecycle.test.ts"
+      ],
+      "scenario": "实际语言选择、上下文和保存归属"
+    },
+    "userscript/SettingsPanel.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/userscriptFreeTranslationSettings.test.ts"
+      ],
+      "scenario": "真实userscript模板事件、受控持久化、authority、失败恢复及卸载；不把源码字符串当编辑证明"
+    }
+  }
+}

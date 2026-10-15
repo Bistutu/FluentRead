@@ -1,9 +1,10 @@
-import {readdirSync, readFileSync, statSync} from 'node:fs';
+import {existsSync, readdirSync, readFileSync, statSync} from 'node:fs';
 import {relative, resolve, sep} from 'node:path';
 import ts from 'typescript';
 import {Script} from 'node:vm';
 import {execFileSync} from 'node:child_process';
 import {describe, expect, it} from 'vitest';
+import {auditVueOwners, isDeclarativeVue, sourceHash, type VueOwner} from '../helpers/vueVerificationOwnership';
 
 const PROJECT_ROOT = resolve(__dirname, '../..');
 const AUDITED_EXTENSIONS = /\.(?:cjs|css|html|js|mjs|ts|vue)$/u;
@@ -387,6 +388,82 @@ describe('repository verification ownership', () => {
             && !strictCoverage.has(path));
 
         expect(uncovered).toEqual([]);
+    });
+
+    it('Vue 业务组件具有真实消费者，展示例外保持无状态，历史债务不能随源码变化续期', () => {
+        const registry = JSON.parse(readFileSync(projectPath('tests/architecture/vue-verification-owners.json'), 'utf8')) as {
+            schemaVersion: number; baselineCommit: string; components: Record<string, VueOwner>;
+        };
+        expect(registry.schemaVersion).toBe(1);
+        // 固定基线使新增组件/更新hash不能伪装成未修改的历史债务；迁出必须补真实行为证明。
+        const baseline = 'e765165d0b707a6e9cd8f5bac2d5fbbcaff79dd3';
+        expect(registry.baselineCommit).toBe(baseline);
+        const baselineBlobs = Object.fromEntries(execFileSync('git', ['ls-tree', '-r', baseline, '--', 'src', 'userscript'], {
+            cwd: PROJECT_ROOT, encoding: 'utf8',
+        }).trim().split('\n').flatMap(line => {
+            const match = line.match(/^\d+ blob ([a-f0-9]+)\t(.+\.vue)$/u);
+            return match ? [[match[2], match[1]]] : [];
+        }));
+        const components = Object.fromEntries(auditedFiles.filter(path => /^(?:src|userscript)\//u.test(path) && path.endsWith('.vue'))
+            .map(path => [path, readFileSync(projectPath(path), 'utf8')]));
+        const tests = Object.fromEntries([...new Set(Object.values(registry.components)
+            .flatMap(owner => owner.kind === 'behavior' ? owner.tests : []))]
+            .filter(path => existsSync(projectPath(path))).map(path => [path, readFileSync(projectPath(path), 'utf8')]));
+        const matrix = JSON.parse(readFileSync(projectPath('tests/test-matrix.json'), 'utf8')) as {groups: Record<string, string[]>};
+        expect(auditVueOwners({components, records: registry.components, strictCoverage, tests,
+            matrixTests: new Set(Object.values(matrix.groups).flat()), knownFiles: new Set(auditedFiles), baselineBlobs})).toEqual([]);
+    });
+
+    it('新增业务 Vue、被 mock 的 SFC 与只读源码断言不能借 build 归属通过', () => {
+        const component = 'src/features/example/ui/Card.vue', test = 'tests/card.test.ts';
+        const source = '<script setup>const value = ref(0)</script><template><button @click="value++">{{ value }}</button></template>';
+        const input = {components: {[component]: source}, records: {} as Record<string, VueOwner>, strictCoverage: new Set<string>(),
+            tests: {} as Record<string, string>, matrixTests: new Set([test]), knownFiles: new Set([component]), baselineBlobs: {}};
+        expect(auditVueOwners(input)).toEqual([expect.stringContaining('build 不替代行为')]);
+        input.records[component] = {kind: 'behavior', tests: [test], scenario: '实际按钮事件'};
+        input.tests[test] = `it('source only',()=>expect(readFileSync('${component}','utf8')).toContain('button'));`;
+        expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
+        input.tests[test] = `vi.mock('@/${component}',()=>({default:{}}));import Card from '@/${component}';
+            it('mock only',()=>{const app=createApp(Card);expect(app).toBeDefined()});`;
+        expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
+        input.tests[test] = `import Card from '@/${component}';it('actual component',()=>{const app=createApp(Card);expect(app).toBeDefined()});`;
+        expect(auditVueOwners(input)).toEqual([]);
+        input.tests[test] = `import Card from '@/${component}';it('mount removed',()=>expect(Card).toBeDefined());`;
+        expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
+        input.tests[test] = `import Other from '@/src/ui/Other.vue';it('unrelated mount',()=>{createApp(Other);expect(Other).toBeDefined()});`;
+        expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
+        input.tests[test] = `import Card from '@/${component}';import Other from '@/src/ui/Other.vue';
+            it('source name plus unrelated mount',()=>{createApp(Other);expect(Card).toBeDefined()});`;
+        expect(auditVueOwners(input)).toEqual([expect.stringContaining('不是可追踪的实际组件消费者')]);
+    });
+
+    it('展示形态审计拒绝脚本状态、模板方法与隐藏的模板副作用', () => {
+        const path = 'src/ui/Card.vue';
+        expect(isDeclarativeVue('<script setup>defineProps<{name:string}>()</script><template><p>{{name}}</p></template>', path)).toBe(true);
+        expect(isDeclarativeVue('<script setup>const count=ref(0)</script><template><p>{{count}}</p></template>', path)).toBe(false);
+        expect(isDeclarativeVue('<template><button @click="save()">Save</button></template>', path)).toBe(false);
+        expect(isDeclarativeVue('<template><p>{{ fetch("/secret") }}</p></template>', path)).toBe(false);
+        expect(isDeclarativeVue('<template><p :title="config.value = 1">Save</p></template>', path)).toBe(false);
+        expect(isDeclarativeVue('<template><input v-model="config.value" /></template>', path)).toBe(false);
+        expect(isDeclarativeVue('<template><div v-persist="config" /></template>', path)).toBe(false);
+        expect(isDeclarativeVue('<script setup>import {save} from "@/src/services/config/store"</script><template><p>Save</p></template>', path)).toBe(false);
+    });
+
+    it('冻结债务不能通过刷新hash接纳修改文件或新增文件', () => {
+        const path = 'src/ui/Legacy.vue', old = '<template><p>old</p></template>', next = '<template><p>changed</p></template>';
+        const baselineBlobs: Record<string, string> = {[path]: execFileSync('git', ['hash-object', '--stdin'], {input: old, encoding: 'utf8'}).trim()};
+        const input = {components: {[path]: old}, records: {[path]: {kind: 'frozen-debt', sourceSha256: sourceHash(old),
+            reason: '缺少组件消费者的固定历史缺口', exitCriteria: '补真实组件事件测试后迁出'} as VueOwner}, strictCoverage: new Set<string>(),
+            tests: {}, matrixTests: new Set<string>(), knownFiles: new Set([path]),
+            baselineBlobs};
+        expect(auditVueOwners(input)).toEqual([]);
+        input.components[path] = next;
+        expect(auditVueOwners(input)).toContainEqual(expect.stringContaining('历史 Vue 债务源码已变化'));
+        input.records[path] = {...input.records[path], kind: 'frozen-debt', reason: '试图续期', exitCriteria: '补行为测试', sourceSha256: sourceHash(next)};
+        expect(auditVueOwners(input)).toEqual([expect.stringContaining('不能重新冻结修改后的组件或新增组件')]);
+        input.components[path] = old;input.records[path] = {...input.records[path], sourceSha256: sourceHash(old)};
+        delete input.baselineBlobs[path];
+        expect(auditVueOwners(input)).toEqual([expect.stringContaining('不能重新冻结修改后的组件或新增组件')]);
     });
 
     it('覆盖率清单不能引用不存在的源码或把组装根伪装成业务覆盖', () => {
