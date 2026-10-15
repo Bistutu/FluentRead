@@ -170,6 +170,12 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         return releaseContextMenu;
     });
     const translateText = vi.fn().mockResolvedValue('这是译文'), translateTextBatch = vi.fn();
+    // 本组使用受控 Range；正文提取由 materialSource 专项验证，此处只替换公共材料端口。
+    const material = {
+        captureMaterialSelection: vi.fn((_range: unknown, _quote: string): unknown => undefined),
+        beginMaterialCapture: vi.fn(async (_selection: unknown, _privateContext: boolean): Promise<unknown> => undefined),
+        completeMaterialCapture: vi.fn(async (_operation: unknown, _reference: unknown, _isCurrent: () => boolean) => false),
+    };
     let stopTts: MockInstance<(notifyRemote?: boolean) => void>;
     let ttsRequestId = 0;
     const modules: Record<string, unknown> = {
@@ -192,6 +198,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         '@/src/core/language/detect': detect,
         '@/src/core/language/partOfSpeech': partOfSpeech,
         '@/src/features/vocabulary/protocol': vocabularyProtocol,
+        '@/src/features/vocabulary/material/public': material,
         '@/src/core/hotkey': hotkey,
         '@/src/features/share-card/public': {isShareCardMounted: () => false},
         '@/src/features/selection-translation/content/selectionTtsContentController': {
@@ -234,7 +241,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     if (renderPort) currentApp.directive('ui-i18n', {});
     const vm = currentApp.mount(renderPort?.root ?? {});
     const state = (vm.$ as any).setupState as Record<string, any>;
-    return {state, event, browser, config, listeners, window, document, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
+    return {state, event, browser, config, listeners, window, document, material, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
         registerContextMenu, get contextMenuHandler() {return contextMenuHandler;},
         lifecycleErrors, renderPort, unmount: () => { currentApp.unmount(); app = undefined; }};
 }
@@ -674,6 +681,33 @@ describe('explicit selection sentence collection', () => {
         await fixture.state.refreshVocabularySaved(fixture.request);
         await fixture.state.saveVocabularyEntry({isTrusted: true});
         expect(fixture.browser.runtime.sendMessage.mock.calls.some(([message]) => message.type === vocabularyProtocol.VOCABULARY_BOOK_MESSAGE)).toBe(false);
+        expect(fixture.material.captureMaterialSelection).not.toHaveBeenCalled();
+        expect(fixture.material.beginMaterialCapture).not.toHaveBeenCalled();
+    });
+
+    it('still saves the vocabulary record when optional material DOM capture throws', async () => {
+        const fixture = prepare('Good ideas deserve attention.');
+        fixture.material.captureMaterialSelection.mockImplementation(() => {throw new Error('Source DOM detached');});
+        await fixture.state.saveVocabularyEntry({isTrusted: true});
+        expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({action: 'upsert'}));
+        expect(fixture.state.isVocabularySaved).toBe(true);
+        expect(fixture.state.vocabularyBusy).toBe(false);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('does not save a stale selection while the material generation read is pending', async () => {
+        const fixture = prepare('Good ideas deserve attention.');
+        fixture.browser.runtime.sendMessage.mockClear();
+        const selection = {source: {kind: 'article', url: 'https://example.com/article'}, locator: {kind: 'text', quote: fixture.request.text}};
+        fixture.material.captureMaterialSelection.mockReturnValue(selection);
+        let finish!: (value: unknown) => void;
+        fixture.material.beginMaterialCapture.mockImplementation(() => new Promise(resolve => {finish = resolve;}));
+        const pending = fixture.state.saveVocabularyEntry({isTrusted: true});
+        fixture.state.closeTooltip();
+        finish({selection, generation: 1, capturedAt: Date.now()});await pending;
+        expect(fixture.browser.runtime.sendMessage.mock.calls.some(([message]) => message.action === 'upsert')).toBe(false);
+        expect(fixture.material.completeMaterialCapture).not.toHaveBeenCalled();
+        expect(fixture.state.vocabularyBusy).toBe(false);
     });
 
     it('does not mark a new selection saved when the previous sentence save finishes late', async () => {
@@ -682,6 +716,8 @@ describe('explicit selection sentence collection', () => {
         fixture.browser.runtime.sendMessage.mockImplementation(message => message.action === 'upsert'
             ? new Promise(resolve => { finish = resolve; }) : Promise.resolve({success: true}));
         const pending = fixture.state.saveVocabularyEntry({isTrusted: true});
+        // 材料代次读取先完成，才进入已有词书的异步保存；确认实际请求已开始后测试迟到响应。
+        await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
         const text = 'Practice makes progress.';
         fixture.state.snapshot = {text};
         fixture.state.selectedText = text;
@@ -2084,6 +2120,8 @@ describe('selection card on an extension PDF page', () => {
         fixture.config.harness.enabled = true;
         fixture.config.vocabularyBookEnabled = true;
         fixture.state.selectionConfigVersion += 1;
+        // 浏览器用户操作发生在配置通知和首次挂载更新之后，先等这一轮配置归属稳定。
+        await Vue.nextTick();
         fixture.state.snapshot = fixture.state.readSelectionSnapshot();
         fixture.state.selectedText = 'Transformer models';
         const request = fixture.state.beginSelectionContentRequest('Transformer models');

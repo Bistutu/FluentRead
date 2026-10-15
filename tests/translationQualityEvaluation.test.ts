@@ -89,7 +89,7 @@ describe('translation quality evidence boundaries', () => {
             httpRequests: 5, failures: {deferred: 1, unavailable: 1, cancelled: 2}, medianLatencyMs: 10});
         expect(summary.returned + summary.deferred + summary.cancelled + summary.failed).toBe(summary.recordedRuns);
         expect(summary).not.toHaveProperty('successRate');
-        expect(runs[1].failure?.category).toBe('deferred');
+        expect(runs[1]).toMatchObject({failure: {category: 'deferred'}});
     });
     it('keeps the exact plan when cancelled before a provider starts and never infers plans from historical rows', () => {
         const plan = {sampleIds: [sample.id, 'second'], providerIds: ['fixture', 'not-started'], configurationId: 'explicit', repeats: 2};

@@ -1113,6 +1113,12 @@ function openReadingHistory(): void {
   openReadingCard();
 }
 
+/** 材料定位是附加信息；宿主 DOM 或失效选区的读取失败不能中断阅读与原有收藏。 */
+function captureMaterialSafely(range: Range, quote: string): ReturnType<typeof captureMaterialSelection> {
+  if (isPrivateContext) return;
+  try { return captureMaterialSelection(range, quote); } catch { return; }
+}
+
 function openReadingCard(): void {
   if (!snapshot.value || !readingEnabled.value) return;
   if (shouldSkipChineseSelection(snapshot.value.text, effectiveTargetLanguage.value)) { hideAll(); return; }
@@ -1125,7 +1131,7 @@ function openReadingCard(): void {
   if (!readingSelection.value) {
     readingSelection.value = (props.selectionAdapter?.captureReading ?? captureReadingSelection)(snapshot.value.range, snapshot.value.text,
       readingPreferences.value.contextMode === 'paragraph' ? readingPreferences.value.maxContextChars : 0);
-    if (!isPrivateContext) readingSelection.value.material = captureMaterialSelection(snapshot.value.range, readingSelection.value.sentence || snapshot.value.text);
+    if (!isPrivateContext) readingSelection.value.material = captureMaterialSafely(snapshot.value.range, readingSelection.value.sentence || snapshot.value.text);
     disposeReadingEvidence();
     readingEvidenceAnchor = createReadingEvidenceAnchor(snapshot.value.range, readingSelection.value, {
       onInvalidate: () => { readingSourceRevision.value += 1; clearReadingEvidence(); },
@@ -1244,7 +1250,7 @@ async function saveVocabularyEntry(event: MouseEvent): Promise<void> {
   const wasSaved = isVocabularySaved.value;
   vocabularyBusy.value = true;
   const requestToken = vocabularySaveGate.begin();
-  const materialSelection = snapshot.value ? captureMaterialSelection(snapshot.value.range, contentRequest.text) : undefined;
+  const materialSelection = snapshot.value ? captureMaterialSafely(snapshot.value.range, contentRequest.text) : undefined;
   try {
     const materialOperation = await beginMaterialCapture(materialSelection, isPrivateContext);
     if (!vocabularySaveGate.isCurrent(requestToken) || !isContentRequestCurrent(contentRequest)) return;
