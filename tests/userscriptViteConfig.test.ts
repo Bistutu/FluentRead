@@ -388,6 +388,17 @@ describe('userscript browser shim injection', () => {
             expect(boundary.test(path)).toBe(false);
         }
     });
+    it('replaces only the vocabulary UI barrel and keeps every neighboring public contract distinct', () => {
+        const alias = userscriptAliases.find(entry => entry.replacement.endsWith('/userscript/vocabularyUi.ts'));
+        expect(alias?.find).toBeInstanceOf(RegExp);
+        const boundary = alias!.find as RegExp;
+        expect(boundary.test('@/src/features/vocabulary/ui/public')).toBe(true);
+        for (const path of ['@/src/features/vocabulary/public', '@/src/features/vocabulary/material/public',
+            '@/src/features/vocabulary/material/text/public', '@/src/features/reading-assistant/ui/public',
+            '@/src/features/vocabulary/ui/public/nested', '@/src/features/vocabulary/ui/VocabularyBook.vue']) {
+            expect(boundary.test(path)).toBe(false);
+        }
+    });
     it('pins each remote language file to a commit containing exactly its built contents', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const commit = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__);
