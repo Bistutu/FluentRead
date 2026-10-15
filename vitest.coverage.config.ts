@@ -400,6 +400,8 @@ export default defineConfig({
                 'src/features/document-translation/public.ts',
                 'src/features/document-translation/core/preview.ts',
                 'src/features/document-translation/core/pdfSource.ts',
+                'src/features/document-translation/core/materialLocator.ts',
+                'src/features/document-translation/core/pdfContinuations.ts',
                 'src/features/document-translation/core/pdfReadingPlan.ts',
                 'src/features/document-translation/core/pdfReadingRegions.ts',
                 'src/features/document-translation/core/pdfBlockFit.ts',

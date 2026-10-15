@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/ui/pdfPreview.ts
  * 文件职责：在浏览器 Canvas 环境中生成 PDF 预览和原版译页；显式重排导出按嵌入字体分页，仅公式图表编码为图像，由二进制服务绘制可复制文字。
- * 主要内容：共用 PDF.js 与有界单页 Canvas；每页一次像素读回复用阅读器的保护筛选、表格裁剪和有界拟合，超长译文返回完整批注；下载分批绘制并优先 JPEG 编码，预览和重排图表使用 PNG；取消、失败与完成释放画布，租约隔离阅读器与导出，迟到加载不能复活已释放资源。
+ * 主要内容：共用 PDF.js 与有界单页 Canvas；每页一次像素读回复用阅读器的保护筛选、表格裁剪和有界拟合，超长译文返回完整批注与逐行搜索层，缺字或离线时可用带相同 Unicode 文字层的有界光栅续页；下载分批绘制并优先 JPEG 编码，预览和重排图表使用 PNG；取消、失败与完成释放画布，租约隔离阅读器与导出，迟到加载不能复活已释放资源。
  * 模块边界：这里负责视觉光栅化而不决定片段翻译或文件结构；PDF 文本块来自 binary 服务，领域类型来自 core，Canvas/PDF.js 仅应在文档 UI 环境调用，不能进入通用纯算法层。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -18,6 +18,7 @@ import type {
     PdfReadingRasterizer,
     PdfOverflowNote,
     PdfRasterPageResult,
+    PdfRasterTextItem,
     PdfReadingRenderer,
 } from '@/src/features/document-translation/services/binary';
 import {paginatePdfReadingPlan, type PdfReadingRegionDraw} from '../core/pdfTextLayout';
@@ -287,7 +288,7 @@ export function sampledForegroundColor(
 function* paintPdfTranslationSteps(
     sourceCanvas: HTMLCanvasElement,
     input: PdfRasterPageInput,
-): Generator<void, {canvas: HTMLCanvasElement; overflowNotes: PdfOverflowNote[]}> {
+): Generator<void, {canvas: HTMLCanvasElement; overflowNotes: PdfOverflowNote[]; textItems: PdfRasterTextItem[]}> {
     // 原图编码完毕后可以原位绘制；导出不再同时保留两张全尺寸画布。
     const canvas = sourceCanvas;
     const context = canvas.getContext('2d', {alpha: false});
@@ -307,6 +308,7 @@ function* paintPdfTranslationSteps(
     };
 
     const overflowNotes: PdfOverflowNote[] = [];
+    const textItems: PdfRasterTextItem[] = [];
     if (rotation) context.save();
     try {
         const overlays = pdfOverlayBlocks({...input, segmentIndexes: input.blocks.map(block => block.segmentIndex)});
@@ -415,13 +417,19 @@ function* paintPdfTranslationSteps(
                 let textY = y;
                 lines.forEach((line) => {
                     context.fillText(line, textX, textY, maxWidth);
+                    if (line.trim()) {
+                        const measuredWidth = Math.min(context.measureText(line).width, maxWidth);
+                        const left = block.textAlign === 'center' ? textX - measuredWidth / 2 : block.textAlign === 'right' ? textX - measuredWidth : textX;
+                        textItems.push({segmentIndex: block.segmentIndex, text: line, x: left / scaleX, y: textY / scaleY,
+                            width: measuredWidth / scaleX, fontSize: fontSize / Math.min(scaleX, scaleY)});
+                    }
                     textY += lineHeight;
                 });
             } finally {context.restore();}
             if ((index + 1) % 16 === 0) yield;
         }
     } finally {if (rotation) context.restore();}
-    return {canvas, overflowNotes};
+    return {canvas, overflowNotes, textItems};
 }
 
 /** 同步预览端口；下载端口分批推进相同绘制步骤，允许处理输入与取消。 */
@@ -485,9 +493,9 @@ export async function rasterizePdfTranslationPage(input: PdfRasterPageInput): Pr
         const format = input.imageFormat ?? 'png';
         const data = await canvasToImageBytes(sourceCanvas, input.signal, format);
         input.signal?.throwIfAborted();
-        return format === 'jpeg' || step.value.overflowNotes.length ? {data, format, overflowNotes: step.value.overflowNotes} : data;
+        return {data, format, overflowNotes: step.value.overflowNotes, textItems: step.value.textItems};
     } finally {
-        steps.return({canvas: sourceCanvas, overflowNotes: []});
+        steps.return({canvas: sourceCanvas, overflowNotes: [], textItems: []});
         sourceCanvas.width = sourceCanvas.height = 0;
     }
 }
@@ -498,6 +506,7 @@ export const rasterizePdfReadingPages: PdfReadingRasterizer = async function* (i
     input.signal?.throwIfAborted();
     const canvas = document.createElement('canvas');
     let source: HTMLCanvasElement | undefined;
+    let sourceLease: ReturnType<typeof acquirePdfDocument> | undefined;
     try {
         const context = canvas.getContext('2d', {alpha: false});
         if (!context) throw new Error('浏览器 Canvas 初始化失败');
@@ -507,15 +516,18 @@ export const rasterizePdfReadingPages: PdfReadingRasterizer = async function* (i
             return context.measureText(text).width;
         });
         if (pages.some(page => page.items.some(item => item.kind === 'region'))) {
+            // 外部自定义 renderer 也可能因缺字进入内建回退；回退自身必须持有并释放源文档，不能依赖组合根的默认租约。
+            sourceLease = acquirePdfDocument(input.sourceBytes);
             source = await renderPdfSourceCanvas(input.sourceBytes, input.pageNumber, input.width, input.signal);
         }
-        for (const page of pages) {
+        for (const [pageIndex, page] of pages.entries()) {
             input.signal?.throwIfAborted();
             canvas.width = page.width * 2;
             canvas.height = page.height * 2;
             context.fillStyle = '#ffffff';
             context.fillRect(0, 0, canvas.width, canvas.height);
             context.save();
+            const textItems: PdfRasterTextItem[] = [];
             try {
                 context.scale(2, 2);
                 context.textBaseline = 'top';
@@ -525,6 +537,8 @@ export const rasterizePdfReadingPages: PdfReadingRasterizer = async function* (i
                     if (item.kind === 'text') {
                         context.font = `${item.font.weight} ${item.font.size}px ${family}`;
                         context.fillText(item.text, item.x, item.y);
+                        textItems.push({segmentIndex: item.segmentIndex, text: item.text,
+                            x: item.x, y: item.y, width: context.measureText(item.text).width, fontSize: item.font.size});
                     } else if (source) {
                         const r = item.sourceRect, rotation = input.rotation ?? 0;
                         const sx = source.width / input.width, sy = source.height / input.height;
@@ -543,17 +557,26 @@ export const rasterizePdfReadingPages: PdfReadingRasterizer = async function* (i
                         } finally {context.restore();}
                     }
                 }
+                if (input.footerLabel) {
+                    const label = `${input.footerLabel} · ${pageIndex + 1}/${pages.length}`;
+                    context.font = `400 9px ${family}`;
+                    context.fillStyle = '#6b7280';
+                    context.fillText(label, 44, page.height - 25);
+                    textItems.push({segmentIndex: -1, text: label, x: 44, y: page.height - 25,
+                        width: context.measureText(label).width, fontSize: 9});
+                }
             } finally {context.restore();}
             const format = input.imageFormat ?? 'png';
             const bytes = await canvasToImageBytes(canvas, input.signal, format);
             input.signal?.throwIfAborted();
-            yield {bytes, width: page.width, height: page.height, format};
+            yield {bytes, width: page.width, height: page.height, format, textItems, items: page.items};
             input.signal?.throwIfAborted();
             await new Promise<void>(resolve => setTimeout(resolve, 0));
         }
     } finally {
         canvas.width = canvas.height = 0;
         if (source) source.width = source.height = 0;
+        sourceLease?.release();
     }
 };
 

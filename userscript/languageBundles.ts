@@ -1,11 +1,22 @@
 /**
  * @file userscript/languageBundles.ts
  * 文件职责：在构建期保留 userscript 可呈现的界面文案，维持已发布语言资源的固定内容。
- * 主要内容：剔除没有扩展 popup 和本地模型后端的信息高亮文案、没有原生右键菜单发送者的操作失败通知，以及没有视频字幕运行时的完整句学习及原生全屏提示文案、Safari 原生免费池授权提示、扩展 Popup 专用缩写和新增文档页的配置读取、进度、续译与旧校订文案；已发布远程词典中的旧文档键保留原内容。脚本内联动态模块与样式，五种固定远程词典不新增扩展分块加载失败、AI 翻译超时或 DeepLX 直连文案，注册时由脚本补齐；局部划选同样在注册时更新文案，远端词典保留此前的点选提示；中英内嵌词典保留可用页面的新文案。
+ * 主要内容：剔除没有扩展 popup 和本地模型后端的信息高亮文案、没有原生右键菜单发送者的操作失败通知，以及没有视频字幕运行时的完整句学习及原生全屏提示文案、Safari 原生免费池授权提示、扩展 Popup 专用缩写和新增文档页的配置读取、进度、续译与旧校订文案；五种远程词典的 document 域在构建期静态取自已发布 JSON，避免扩展专用页面更新改变固定资源摘要。脚本内联动态模块与样式，五种固定远程词典不新增扩展分块加载失败、AI 翻译超时或 DeepLX 直连文案，注册时由脚本补齐；局部划选同样在注册时更新文案，远端词典保留此前的点选提示；中英内嵌词典保留可用页面的新文案。
  * 模块边界：只投影静态字典，不改变扩展词典、资源提交号或运行时语言装载协议。
  */
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '../src/core/i18n/bundles';
 import {zhCNMessages as extensionChinese} from '../src/core/i18n/messages/zh-CN';
+import publishedJapanese from './languages/ja-JP.5bb4b24b0a41715f.json';
+import publishedKorean from './languages/ko-KR.e6befd8f0b3fb833.json';
+import publishedFrench from './languages/fr-FR.afc75e324ace2ce5.json';
+import publishedRussian from './languages/ru-RU.52b510364aae90e1.json';
+import publishedSpanish from './languages/es-ES.d821e30eac68a115.json';
+
+// 这些静态构建输入与 vite.config.ts 的固定语言资源提交一致，不在脚本运行时读取文件或发起请求。
+const publishedLanguageBundles: Readonly<Record<string, {messages: Readonly<Record<string, string>>}>> = {
+    'ja-JP': publishedJapanese, 'ko-KR': publishedKorean, 'fr-FR': publishedFrench,
+    'ru-RU': publishedRussian, 'es-ES': publishedSpanish,
+};
 const publishedSectionMessages: Readonly<Record<string, Record<string, string>>> = {
     "ja-JP": {
         "sectionTranslation.picker.preview": "マウスを動かしてプレビュー、クリックで選択",
@@ -54,7 +65,7 @@ export function userscriptMessages<T extends Record<string, string>>(messages: T
 }
 export const zhCNMessages = userscriptMessages(extensionChinese);
 export const UI_LANGUAGE_BUNDLES = Object.fromEntries(Object.entries(extensionBundles).map(([language, bundle]) => {
-    const messages: Record<string, string> = userscriptMessages(bundle.messages);
+    let messages: Record<string, string> = userscriptMessages(bundle.messages);
     if (language !== 'en-US') {
         // 划选文案在注册时覆盖，继续引用已发布的同一份远程词典。
         Object.assign(messages, publishedSectionMessages[language]);
@@ -68,6 +79,11 @@ export const UI_LANGUAGE_BUNDLES = Object.fromEntries(Object.entries(extensionBu
         delete messages['settings.requestLimits.aiTimeout'];
         delete messages['settings.requestLimits.aiTimeoutHelp'];
         delete messages['settings.requestLimits.seconds'];
+        const published = publishedLanguageBundles[language]!.messages;
+        // 摘要包含键序：保留发布资源的旧键顺序，文档域逐字冻结；非文档更新仍保留当前内容与新增键。
+        const keys = [...Object.keys(published).filter(key => key.startsWith('document.') || Object.prototype.hasOwnProperty.call(messages, key)),
+            ...Object.keys(messages).filter(key => !key.startsWith('document.') && !Object.prototype.hasOwnProperty.call(published, key))];
+        messages = Object.fromEntries(keys.map(key => [key, key.startsWith('document.') ? published[key]! : messages[key]!]));
     }
     return [language, {...bundle, messages}];
 })) as typeof extensionBundles;
