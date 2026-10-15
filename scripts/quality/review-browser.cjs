@@ -44,6 +44,7 @@ let launchAttempted = false;
         await review.locator('#status').selectOption('flagged');
         evidence.cases.flagged = await review.locator('[data-run-index]:visible').count();
         assert(evidence.cases.flagged > 0);
+        assert(await review.locator('[data-run-index]:visible .source').first().isVisible(), 'Original text must be visible before expanding provenance');
         await review.locator('.source-details:visible summary').first().click();
         await shot(review, 'report-issue-source');
         await review.locator('#search').fill('no-matching-synthetic-value');

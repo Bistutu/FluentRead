@@ -33,6 +33,11 @@ const DOCS_TOOL_SCRIPTS = [
     'scripts/verify-docs-build.mjs',
     'scripts/verify-storybook-build.mjs',
 ];
+// 评测/报告/传输由 translationQuality 专项验证；运行器与供应商入口另由显式在线评测记录源码哈希。
+const QUALITY_TOOL_SCRIPTS = [
+    'scripts/quality/audit.mjs', 'scripts/quality/evaluate.mjs', 'scripts/quality/provider-entry.ts',
+    'scripts/quality/render.mjs', 'scripts/quality/report.mjs', 'scripts/quality/run.mjs', 'scripts/quality/transport.mjs',
+];
 
 type VerificationOwner =
     | 'brand-copy-functional'
@@ -133,6 +138,7 @@ function verificationOwners(path: string, strictCoverage: Set<string>): Verifica
     if (path === 'scripts/verify-brand-copy.mjs') owners.add('brand-copy-functional');
     if (path.startsWith('examples/')) owners.add('isolated-browser-regression');
     if (path.startsWith('scripts/run-') || path.startsWith('scripts/site-translation/')
+        || path === 'scripts/quality/review-browser.cjs'
         || path === 'scripts/capture-docs-ui.cjs') {
         owners.add('isolated-browser-regression');
     }
@@ -141,6 +147,7 @@ function verificationOwners(path: string, strictCoverage: Set<string>): Verifica
         || path.startsWith('scripts/wasm/')
         || PRODUCT_TOOL_SCRIPTS.includes(path)
         || DOCS_TOOL_SCRIPTS.includes(path)
+        || QUALITY_TOOL_SCRIPTS.includes(path)
         || path === 'scripts/generate-userscript-language-data.mjs'
         || path === 'scripts/build-userscript-standalone.mjs'
         || path === 'scripts/build-userscript-greasyfork.mjs'
