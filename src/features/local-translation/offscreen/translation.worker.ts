@@ -3,7 +3,7 @@
  *
  * 文件职责：在隔离 Worker 中运行轻量 OPUS 翻译和混元 Hy-MT2 翻译。
  * 主要内容：只读取已校验的离线模型；混元优先使用 WebGPU，OPUS 保持 CPU；复用有界线程与计算间歇，失败重建单线程 Worker，分句推理和重复保护约束资源与输出。
- * 模块边界：不下载模型、不读取页面配置，空闲释放、请求取消和最终超时由外层 Worker 生命周期控制。
+ * 模块边界：入站先经 feature 公共协议校验，不下载模型、不读取页面配置；空闲释放、请求取消和最终超时由外层 Worker 生命周期控制。
  */
 import {forceSingleThreadInference, localWasmThreads, paceLocalInference, paceLocalInitialization} from '@/src/shared/onnx/resources';
 import {env, InterruptableStoppingCriteria, pipeline} from '@huggingface/transformers';
@@ -16,17 +16,10 @@ import {assertLocalTranslationOutput, hunyuanTranslationPrompt, splitLocalTransl
 import {getTranslationArtifacts, matchTranslationArtifact, translationArtifactBlob} from './artifactStore';
 import {supportsHunyuanTranslation} from '@/src/platform/browser/localTranslationSupport';
 import {configureOnnxWasmBackend, withCompressedWasmBinary} from '@/src/shared/onnx/wasmBinary';
+import {readWorkerRequestId} from '@/src/core/messaging/validation';
+import {parseLocalTranslationWorkerRequest, type LocalTranslationWorkerRequest as WorkerRequest, type LocalTranslationWorkerResponse as WorkerResponse} from '../workerProtocol';
 
 type Translator = ((text: string, options?: Record<string, unknown>) => Promise<unknown>) & {dispose?: () => Promise<void>};
-interface WorkerRequest {
-    requestId: number;
-    singleThread?: boolean;
-    type: 'translate' | 'dispose';
-    model: string;
-    text?: string;
-    sourceLanguage?: string;
-    targetLanguage?: string;
-}
 const MAX_INFERENCE_MS = 90_000;
 let translator: Translator | undefined;
 let translatorRepository = '';
@@ -72,7 +65,7 @@ async function dispose(): Promise<void> {
     hunyuan = undefined;
 }
 
-async function getTranslator(request: WorkerRequest): Promise<Translator> {
+async function getTranslator(request: Extract<WorkerRequest, {type: 'translate'}>): Promise<Translator> {
     const item = getLocalTranslationModel(request.model);
     const repository = item.engine === 'opus'
         ? resolveOpusTranslationRepository(request.model, request.sourceLanguage!, request.targetLanguage!) : request.model;
@@ -133,7 +126,7 @@ async function getHunyuan(model: string): Promise<Wllama> {
     return engine;
 }
 
-async function translate(request: WorkerRequest): Promise<string> {
+async function translate(request: Extract<WorkerRequest, {type: 'translate'}>): Promise<string> {
     if (!request.text?.trim() || !request.sourceLanguage || !request.targetLanguage) throw new Error('LOCAL_TRANSLATION_INVALID_REQUEST');
     const isHunyuan = getLocalTranslationModel(request.model).engine === 'hunyuan';
     const engine = isHunyuan ? await getHunyuan(request.model) : await getTranslator(request);
@@ -176,18 +169,22 @@ async function translate(request: WorkerRequest): Promise<string> {
 
 export function startLocalTranslationWorker(): void {
     configureEnvironment();
-    self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
-        const request = event.data;
-        if (!request || typeof request.requestId !== 'number') return;
+    const post = (response: WorkerResponse) => self.postMessage(response);
+    self.addEventListener('message', (event: MessageEvent<unknown>) => {
+        const requestId = readWorkerRequestId(event.data);
+        if (requestId === undefined) return;
+        let request: WorkerRequest;
+        try { request = parseLocalTranslationWorkerRequest(event.data); }
+        catch (error) { post({requestId, success: false, error: error instanceof Error ? error.message : 'LOCAL_TRANSLATION_INVALID_REQUEST'}); return; }
         const run = async () => {
             try {
                 if (request.singleThread) {forceSingleThreadInference(); configureEnvironment();}
-                if (request.type === 'dispose') { await dispose(); self.postMessage({requestId: request.requestId, success: true}); return; }
+                if (request.type === 'dispose') { await dispose(); post({requestId: request.requestId, success: true}); return; }
                 const started = performance.now();
                 const result = await translate(request);
-                self.postMessage({requestId: request.requestId, success: true, result, backend, elapsedMs: performance.now() - started});
+                post({requestId: request.requestId, success: true, result, backend, elapsedMs: performance.now() - started});
             } catch (error) {
-                self.postMessage({requestId: request.requestId, success: false, error: error instanceof Error ? error.message : 'LOCAL_TRANSLATION_FAILED', ...(localWasmThreads()>1?{retrySingleThread:true}:{})});
+                post({requestId: request.requestId, success: false, error: error instanceof Error ? error.message : 'LOCAL_TRANSLATION_FAILED', ...(localWasmThreads()>1?{retrySingleThread:true}:{})});
             }
         };
         taskQueue = taskQueue.then(run, run);

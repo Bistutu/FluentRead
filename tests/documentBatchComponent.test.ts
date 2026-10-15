@@ -16,7 +16,9 @@ import * as pdfOcr from '@/src/features/document-translation/services/pdfOcr';
 import * as documentTasks from '@/src/features/document-translation/ui/useDocumentTasks';
 import * as downloadCopy from '@/src/app/document-translation/downloadCopy';
 import {useConfigEditor} from '@/src/features/settings/model/useConfigEditor';
-import {createDocumentFileLoadGuard} from '@/src/features/document-translation/services/translation';
+import {createDocumentImportWorkflow} from '@/src/features/document-translation/services/importWorkflow';
+import {createDocumentRecognitionWorkflow} from '@/src/features/document-translation/services/recognitionWorkflow';
+import {createDocumentExportWorkflow} from '@/src/features/document-translation/services/exportWorkflow';
 import {generateDocumentArchive} from '@/src/features/document-translation/services/archive';
 import {createDocumentHistoryCommitter} from '@/src/features/document-translation/services/historyCommitter';
 import {TranslationRequestError, serializeTranslationError} from '@/src/services/translation/errors';
@@ -55,7 +57,7 @@ beforeEach(async () => {
   download = vi.fn(async (document, translations, mode) => ({data: documentCore.renderDocument(document, translations, mode),
     fileName: documentCore.createDocumentDownloadName(document.fileName, mode), mimeType: 'text/plain'}));
   persist = vi.fn().mockResolvedValue(undefined);
-  const api = {...catalog, ...compositeTranslation, ...documentCore, ...presentation, ...preview, ...richPreviewSync, ...pdfOcr, ...documentTasks, useConfigEditor, createPdfPageRecognizer: () => async () => [], hasDistinctTranslation, Config, TranslationRequestError, serializeTranslationError, createDocumentFileLoadGuard,
+  const api = {...catalog, ...compositeTranslation, ...documentCore, ...presentation, ...preview, ...richPreviewSync, ...pdfOcr, ...documentTasks, useConfigEditor, createPdfPageRecognizer: () => async () => [], hasDistinctTranslation, Config, TranslationRequestError, serializeTranslationError, createDocumentImportWorkflow, createDocumentRecognitionWorkflow, createDocumentExportWorkflow,
     documentRetryBackoff: {maxWaitMs: 0}, createDocumentHistoryCommitter,
     createDocumentHistory: () => ({list: async () => [], load: async () => null, save: async () => false, remove: async () => {}, clear: async () => {}}), documentHistoryId: async () => '',
     parseDocumentFile: parseFile, translateDocumentSegments: translate, createDocumentDownload: download, generateDocumentArchive,

@@ -2,10 +2,11 @@
  * @file src/features/local-tts/offscreen/tts.ts
  * 文件职责：编排本地 Kokoro TTS 模型缓存、Worker 生命周期、下载状态和合成请求。
  * 主要内容：朗读不自动下载模型，串行复用一个 Worker，并按设备内存保留有界空闲会话；GPU 生命周期失败按总预算重建一次 CPU Worker，资源重建与显式取消分别校验代次；释放时取消在途及排队任务，模型操作互斥，真实下载字节进度原样发布。
- * 模块边界：只负责扩展自有 Offscreen 运行时，不决定在线/本地策略，也不直接操作网页 UI。
+ * 模块边界：只负责扩展自有 Offscreen 运行时，Worker 回复先经共享协议校验；不决定在线/本地策略，也不直接操作网页 UI。
  */
 
-import {parseSpeechCues, type SpeechCue} from '@/src/core/tts/speechProgress';
+import {readWorkerRequestId} from '@/src/core/messaging/validation';
+import type {InferenceBackend} from '@/src/core/messaging/inference';
 import {withLocalInferenceBudget} from '@/src/shared/onnx/resources';
 import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
 import {
@@ -27,29 +28,12 @@ import {
     LocalTtsLanguageUnsupportedError,
     LocalTtsModelNotDownloadedError,
     type LocalTtsAudio,
+    parseLocalTtsWorkerResponse,
+    type LocalTtsWorkerRequest as WorkerRequest,
+    type LocalTtsWorkerResponse as WorkerResponse,
 } from '../protocol';
 
-type LocalTtsWorkerBackend = 'webgpu' | 'wasm';
-
-interface WorkerRequest {
-    requestId: number;
-    type: 'prepare' | 'synthesize' | 'dispose';
-    device?: 'wasm';
-    text?: string;
-    voice?: string;
-    speed?: number;
-}
-
-interface WorkerResponse {
-    requestId: number;
-    success: boolean;
-    audio?: ArrayBuffer;
-    timings?: SpeechCue[];
-    samplingRate?: number;
-    backend?: LocalTtsWorkerBackend;
-    retryWithCpu?: boolean;
-    error?: string;
-}
+type LocalTtsWorkerBackend = InferenceBackend;
 
 interface PendingWorkerRequest {
     resolve: (response: WorkerResponse) => void;
@@ -136,14 +120,18 @@ function getWorker(): Worker {
     const workerUrl = getUrl?.('localTtsWorker.js')
         || new URL('localTtsWorker.js', window.location.href).toString();
     const next = new Worker(workerUrl, {type: 'module'});
-    next.onmessage = (event: MessageEvent<WorkerResponse>) => {
+    next.onmessage = (event: MessageEvent<unknown>) => {
         if (worker !== next) return;
-        const response = event.data;
-        const pending = response && pendingRequests.get(response.requestId);
+        const requestId = readWorkerRequestId(event.data);
+        if (requestId === undefined) return;
+        const pending = pendingRequests.get(requestId);
         if (!pending) return;
-        pendingRequests.delete(response.requestId);
+        pendingRequests.delete(requestId);
         window.clearTimeout(pending.timeout);
         if (pending.signal && pending.onAbort) pending.signal.removeEventListener('abort', pending.onAbort);
+        let response: WorkerResponse;
+        try { response = parseLocalTtsWorkerResponse(event.data); }
+        catch (error) { pending.reject(error); return; }
         if (response.success) pending.resolve(response);
         else if (response.retryWithCpu === true) {
             const error = createWorkerLifecycleError(response.error || '本地 TTS GPU Worker 失败，准备使用 CPU 重试');
@@ -306,7 +294,7 @@ export async function synthesizeLocalTts(
         if (!response.audio) throw new Error('本地 TTS 未返回音频');
         return {
             audio: response.audio,
-            ...(response.timings === undefined ? {} : {timings: parseSpeechCues(response.timings)}),
+            ...(response.timings === undefined ? {} : {timings: response.timings}),
             contentType: 'audio/wav',
             voice,
             backend: response.backend,

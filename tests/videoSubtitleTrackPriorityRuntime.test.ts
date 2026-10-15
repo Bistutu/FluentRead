@@ -1,7 +1,7 @@
 /**
  * @file tests/videoSubtitleTrackPriorityRuntime.test.ts
  * 文件职责：从实际 mountVideoSubtitleTranslation 公共入口验证 X 轨道优先与 YouTube 同轮选择、人工字幕回退及卸载后的异步资格。
- * 主要内容：真实桥消息、video、TextTrack 与配置订阅驱动播放器、轨道 loader、缓存和 DOM；覆盖同句调用预算、时钟漂移、NaN、seek、偏移、人工轨空档与迟到结果。
+ * 主要内容：真实桥消息、video、TextTrack 与配置订阅驱动播放器、轨道 loader、缓存和 DOM；覆盖同句调用预算、实际服务线路或套餐变化后的缓存失效、时钟漂移、NaN、seek、偏移、人工轨空档与迟到结果。
  * 模块边界：linkedom 补齐缺失的浏览器媒体/几何接口并按观察器订阅过滤记录；只 mock 外部端口，命名 selector spy 保留真实实现，不替换业务算法或修改全局数组原型。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -33,6 +33,7 @@ vi.mock('@/src/platform/browser/capabilities', async original => ({
 }));
 
 import {Config} from '@/src/core/config/model';
+import {services} from '@/src/core/config/catalog';
 // 唯一 runtime import：移入 repo 后默认消费真实源码；私有 runner 可 alias 两份完整字节快照做同一测试对照。
 import {mountVideoSubtitleTranslation} from '@/src/features/video-subtitle/content/runtime';
 import {
@@ -232,6 +233,47 @@ function clickMenu(f: ReturnType<typeof fixture>, selector: string) {
 }
 
 describe('public mounted X subtitle track priority and lifecycle', () => {
+  const requestChanges: Array<{label: string; before: Partial<Config>; after: Partial<Config>}> = [
+    {label: '免费线路顺序', before: {videoService: services.freeTranslation, freeTranslationOrder: ['microsoft', 'google']}, after: {freeTranslationOrder: ['google', 'microsoft']}},
+    {label: '免费线路模式', before: {videoService: services.freeTranslation, freeTranslationMode: 'balanced'}, after: {freeTranslationMode: 'sequential'}},
+    {label: 'DeepL API 套餐', before: {videoService: services.deepL, deeplApiPlan: 'free'}, after: {deeplApiPlan: 'pro'}},
+  ];
+  it.each(requestChanges)('$label 改变后，同源字幕清除旧成功缓存并重新翻译，同值回声不重复请求', async ({before, after}) => {
+    Object.assign(ports.config, before);
+    ports.translate.mockResolvedValueOnce('旧配置的译文').mockResolvedValueOnce('新配置的译文');
+    const f = fixture(); f.start(); await settle();
+    const source = 'The same subtitle after a real service setting changes.';
+    f.emitCue('settings', source); await settle();
+    expect(f.displayed()).toMatchObject({source, translated: '旧配置的译文', active: true});
+    f.emitVideo('timeupdate'); await settle();
+    expect(f.callsFor(source)).toBe(1);
+
+    f.changeConfig(after); await settle();
+    expect(f.callsFor(source)).toBe(2);
+    expect(f.displayed()).toMatchObject({source, translated: '新配置的译文', active: true});
+    f.changeConfig(after); await settle();
+    expect(f.callsFor(source)).toBe(2);
+  });
+  it.each(requestChanges)('$label 改变后取消旧同源请求，迟到旧结果不写回新缓存或播放器', async ({before, after}) => {
+    Object.assign(ports.config, before);
+    const old = deferred<string>();
+    let oldSignal!: AbortSignal;
+    ports.translate.mockImplementationOnce((_text: string, signal: AbortSignal) => {oldSignal = signal; return old.promise;})
+      .mockResolvedValueOnce('新配置的有效译文');
+    const f = fixture(); f.start(); await settle();
+    const source = 'An identical subtitle with an obsolete translation in flight.';
+    f.emitCue('late-settings', source); await settle();
+    expect(f.callsFor(source)).toBe(1);
+
+    f.changeConfig(after); await settle();
+    expect(oldSignal.aborted).toBe(true);
+    expect(f.callsFor(source)).toBe(2);
+    expect(f.displayed()).toMatchObject({source, translated: '新配置的有效译文', active: true});
+    old.resolve('旧配置的迟到译文'); await settle();
+    f.emitVideo('timeupdate'); await settle();
+    expect(f.callsFor(source)).toBe(2);
+    expect(f.displayed()).toMatchObject({source, translated: '新配置的有效译文', active: true});
+  });
   it('does not run an empty frame clock on ordinary YouTube; a later progressive cue starts and releases the clock at its boundary', async () => {
     const f = fixture();
     // 本例只验证媒体帧调度；原生字幕由下面的真实消息/媒体事件驱动。

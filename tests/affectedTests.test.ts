@@ -1,5 +1,5 @@
 import {execFileSync} from 'node:child_process';
-import {mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {afterEach, describe, expect, it, vi} from 'vitest';
@@ -43,6 +43,54 @@ describe('affected behavior test planning', () => {
             'tests/b.test.ts': "import css from '../src/ui.css?inline'; const folder = './fixtures';"};
         expect(select(['src/base.css'], input, []).testFiles).toEqual(['tests/architecture/boundary.test.ts', 'tests/b.test.ts']);
         expect(select(['tests/fixtures/sample.html'], input, []).testFiles).toEqual(['tests/architecture/boundary.test.ts', 'tests/b.test.ts', 'tests/fixture.test.ts']);
+    });
+    it.each([
+        ['relative URL', "readFileSync(new URL(`./fixtures/articles/${name}.html`, import.meta.url))"],
+        ['root alias', "import(`@/tests/fixtures/articles/${name}.html?raw`)"],
+        ['root path', "readFileSync(`tests/fixtures/articles/${name}.html`)"],
+        ['filename prefix and several substitutions', "readFileSync(`./fixtures/articles/page-${language}-${id}.html`)"],
+        ['concatenated directory', "readFileSync('./fixtures/articles/' + name + '.html')"],
+        ['template with a dynamic query', "import(`./fixtures/articles/${name}.html?variant=${variant}`)"],
+    ])('bounds dynamic %s to its declared fixture directory', (_variant, reader) => {
+        const input = {...files(), 'tests/fixture.test.ts': reader,
+            'tests/fixtures/articles/page-en-one.html': '', 'tests/fixtures/articles/page-en-one.json': '',
+            'tests/fixtures/other/page-en-one.html': ''};
+        expect(select(['tests/fixtures/articles/page-en-one.html'], input, []).testFiles)
+            .toEqual(['tests/architecture/boundary.test.ts', 'tests/fixture.test.ts']);
+        expect(select(['tests/fixtures/other/page-en-one.html'], input, []).testFiles)
+            .toEqual(['tests/architecture/boundary.test.ts']);
+        if (!reader.includes(' + ')) {
+            expect(select(['tests/fixtures/articles/page-en-one.json'], input, []).testFiles)
+                .toEqual(['tests/architecture/boundary.test.ts']);
+        }
+    });
+    it('retains renamed and deleted dynamic fixture dependencies without widening to unrelated paths', () => {
+        const reader = 'readFileSync(new URL(`./fixtures/articles/${name}.html`, import.meta.url))';
+        const input = {...files(), 'tests/fixture.test.ts': reader, 'tests/fixtures/articles/renamed.html': ''};
+        expect(select(['tests/fixtures/articles/old.html', 'tests/fixtures/articles/renamed.html'], input, []).testFiles)
+            .toEqual(['tests/architecture/boundary.test.ts', 'tests/fixture.test.ts']);
+        expect(select(['tests/fixtures/articles/deleted.html'], input, []).testFiles)
+            .toEqual(['tests/architecture/boundary.test.ts', 'tests/fixture.test.ts']);
+        expect(select(['tests/fixtures/articles-other/old.html'], input, []).testFiles)
+            .toEqual(['tests/architecture/boundary.test.ts']);
+    });
+    it('keeps the real Defuddle consumer selected for page-context input changes', () => {
+        const reader = 'tests/pageContextDefuddle.test.ts', fixture = 'tests/fixtures/page-context/semantic-elements.html';
+        const actualMatrix = JSON.parse(readFileSync('tests/test-matrix.json', 'utf8'));
+        const fixturePaths = readdirSync('tests/fixtures/page-context').map(name => `tests/fixtures/page-context/${name}`);
+        const sources: Record<string, string> = {...Object.fromEntries(fixturePaths.map(file => [file, ''])),
+            [reader]: readFileSync(reader, 'utf8'), 'tests/fixtures/unrelated.html': ''};
+        const plan = (changed: string[], input = sources) => selectAffected({files: input, changed, matrix: actualMatrix, coveragePaths: []});
+        expect(plan([fixture]).testFiles).toEqual([reader]);
+        const removed = {...sources};delete removed[fixture];
+        expect(plan([fixture], removed).testFiles).toEqual([reader]);
+        expect(plan([fixture, 'tests/fixtures/page-context/renamed.html'], removed).testFiles).toEqual([reader]);
+        expect(plan(['tests/fixtures/unrelated.html']).testFiles).toEqual([]);
+    });
+    it('does not evaluate template expressions or turn unbounded roots into all-source dependencies', () => {
+        const graph = buildDependencyGraph({'src/core/a.ts': '', 'tests/fixtures/a.html': '', 'tests/fixture.test.ts':
+            'const a = `src/${globalThis.untrusted()}.ts`; const b = `./${name}.html`; const c = `https://host/${name}`;'});
+        expect([...graph.get('tests/fixture.test.ts')!]).toEqual([]);
     });
     it('preserves deleted module references while never running deleted test files', () => {
         const input = files();delete input['src/core/a.ts'];

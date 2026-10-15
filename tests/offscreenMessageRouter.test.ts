@@ -1,3 +1,6 @@
+import {translationSnapshot} from './helpers/localInferenceFixtures';
+import type {OffscreenRequestMap} from '@/src/core/messaging/offscreen';
+import type {LocalTtsAudio} from '@/src/features/local-tts/protocol';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {createOffscreenMessageListener, type OffscreenMessageDependencies} from '@/src/app/offscreen/messageRouter';
 import {LOCAL_TRANSLATION_MODEL_IDS} from '@/src/core/config/localTranslation';
@@ -69,9 +72,9 @@ describe('Offscreen 消息静态路由', () => {
             localTts: {
                 synthesize: vi.fn(async () => ({
                     audio: new Uint8Array([82, 73, 70, 70]).buffer,
-                    contentType: 'audio/wav',
+                    contentType: 'audio/wav' as const,
                     voice: 'zf_001',
-                    backend: 'wasm',
+                    backend: 'wasm' as const,
                 })),
                 prepare: vi.fn(async () => ({warm: false})),
                 status: vi.fn(async () => ({models: []})),
@@ -90,9 +93,9 @@ describe('Offscreen 消息静态路由', () => {
             response: {
                 success: true,
                 audioBase64: 'UklGRg==',
-                contentType: 'audio/wav',
+                contentType: 'audio/wav' as const,
                 voice: 'zf_001',
-                backend: 'wasm',
+                backend: 'wasm' as const,
                 requestId: 'tts-binary-1',
             },
         });
@@ -153,7 +156,7 @@ describe('Offscreen 消息静态路由', () => {
 
     it('forwards generated text and timing metadata to playback without conflating synthesis and playback request IDs', async () => {
         const timings = [{startChar: 0, endChar: 5, startTime: 0, endTime: 2}];
-        const play = {type: 'PLAY_SELECTION_TTS', target: 'offscreen', audioBase64: 'UklGRg==', contentType: 'audio/wav',
+        const play = {type: 'PLAY_SELECTION_TTS', target: 'offscreen', audioBase64: 'UklGRg==', contentType: 'audio/wav' as const,
             text: 'Hello', timings, tabId: 0, clientRequestId: 'playback-client'};
         const admittedPlay = await reservePlay(play);
         await expect(dispatch(admittedPlay)).resolves.toEqual({handled: true, response: {success: true}});
@@ -173,8 +176,8 @@ describe('Offscreen 消息静态路由', () => {
         expect((await dispatch({type: 'VIDEO_AI_CANCEL'})).response).toEqual({success: true});
         const videoAi = {transcribe: vi.fn().mockResolvedValue({text: 'spoken'}), prepare: vi.fn().mockResolvedValue({model: 'tiny'}), cancel: vi.fn().mockResolvedValue(undefined)};
         const handler = createOffscreenMessageListener({...mocks, ttsPlayer: {play: mocks.play, stop: mocks.stop, seek: mocks.seek}, videoAi});
-        expect((await dispatch({type: 'VIDEO_AI_TRANSCRIBE', streamId: 'video-1'}, handler)).response).toEqual({success: true, text: 'spoken'});
-        expect(videoAi.transcribe).toHaveBeenCalledWith({type: 'VIDEO_AI_TRANSCRIBE', target: 'offscreen', streamId: 'video-1'});
+        expect((await dispatch({type: 'VIDEO_AI_TRANSCRIBE', streamId: 'video-1', audioPcm16Base64: 'AAAA'}, handler)).response).toEqual({success: true, text: 'spoken'});
+        expect(videoAi.transcribe).toHaveBeenCalledWith({type: 'VIDEO_AI_TRANSCRIBE', target: 'offscreen', streamId: 'video-1', audioPcm16Base64: 'AAAA'});
         expect((await dispatch({type: 'VIDEO_AI_PREPARE'}, handler)).response).toEqual({success: true, model: 'tiny'});
     expect((await dispatch({type: 'VIDEO_AI_CANCEL', streamId: 'video-1'}, handler)).response).toEqual({success: true});
     expect(videoAi.cancel).toHaveBeenCalledWith('video-1', 'cancel');
@@ -182,7 +185,7 @@ describe('Offscreen 消息静态路由', () => {
     expect(videoAi.cancel).toHaveBeenCalledWith('video-1', 'complete');
         expect((await dispatch({type: 'VIDEO_AI_CANCEL'}, handler)).response).toMatchObject({success: false});
         videoAi.transcribe.mockResolvedValueOnce(null);
-        expect((await dispatch({type: 'VIDEO_AI_TRANSCRIBE'}, handler)).response).toMatchObject({success: false});
+        expect((await dispatch({type: 'VIDEO_AI_TRANSCRIBE', audioPcm16Base64: 'AAAA'}, handler)).response).toMatchObject({success: false});
         videoAi.prepare.mockRejectedValueOnce(new Error('model offline'));
         expect((await dispatch({type: 'VIDEO_AI_PREPARE'}, handler)).response).toEqual({success: false, error: 'model offline'});
     });
@@ -659,7 +662,7 @@ describe('Offscreen 本地模型可取消请求', () => {
     ])('serializes WAV with validated %s timings while preserving voice and routing metadata', async (_kind, metadata, expected) => {
         const originalMetadata = structuredClone(metadata);
         const synthesize = vi.fn(async () => ({
-            audio: new Uint8Array([82, 73, 70, 70]).buffer, contentType: 'audio/wav', voice: 'zf_001', backend: 'wasm',
+            audio: new Uint8Array([82, 73, 70, 70]).buffer, contentType: 'audio/wav' as const, voice: 'zf_001', backend: 'wasm' as const,
             ...(metadata as object),
         }));
         const handler = createOffscreenMessageListener({...base, localTts: {
@@ -667,7 +670,7 @@ describe('Offscreen 本地模型可取消请求', () => {
         }});
         const result = await dispatch(ttsRequest, handler);
         expect(result).toEqual({handled: true, response: {
-            success: true, audioBase64: 'UklGRg==', contentType: 'audio/wav', voice: 'zf_001', backend: 'wasm', requestId: 'tts-1',
+            success: true, audioBase64: 'UklGRg==', contentType: 'audio/wav' as const, voice: 'zf_001', backend: 'wasm' as const, requestId: 'tts-1',
             ...(expected === undefined ? {} : {timings: expected}),
         }});
         if (expected === undefined) expect(result.response).not.toHaveProperty('timings');
@@ -677,8 +680,8 @@ describe('Offscreen 本地模型可取消请求', () => {
     });
 
     it('本地翻译取消立即中止 Worker 且只回复一次，迟到结果不污染同 ID 的重试', async () => {
-        const pending = deferred<unknown>();
-        const localTranslation = {translate: vi.fn((_request: Record<string, unknown>, _signal: AbortSignal) => pending.promise),
+        const pending = deferred<string>();
+        const localTranslation = {translate: vi.fn((_request: OffscreenRequestMap['LOCAL_TRANSLATION_TRANSLATE'], _signal: AbortSignal) => pending.promise),
             prepare: vi.fn(), status: vi.fn(), removeModel: vi.fn()};
         const handler = createOffscreenMessageListener({...base, localTranslation});
         const request = {type: 'LOCAL_TRANSLATION_TRANSLATE', target: 'offscreen', requestId: 'local-cancel', model,
@@ -720,8 +723,8 @@ describe('Offscreen 本地模型可取消请求', () => {
     });
 
     it('本地 TTS 合成校验参数、拒绝重复 requestId、保留错误码并支持取消', async () => {
-        const pending = deferred<unknown>();
-        const synthesize = vi.fn((_request: Record<string, unknown>, signal: AbortSignal) => {
+        const pending = deferred<LocalTtsAudio>();
+        const synthesize = vi.fn((_request: OffscreenRequestMap['LOCAL_TTS_SYNTHESIZE'], signal: AbortSignal) => {
             void signal;
             return pending.promise;
         });
@@ -740,7 +743,7 @@ describe('Offscreen 本地模型可取消请求', () => {
             .resolves.toEqual({handled: true, response: {success: true, cancelled: true, requestId: 'tts-1'}});
         await expect(first).resolves.toEqual({handled: true, response: {success: false, cancelled: true, requestId: 'tts-1', error: '本地 TTS 请求已取消'}});
         // 取消后迟到的结果不能再次回复。
-        pending.resolve({audio: new Uint8Array([1]).buffer});
+        pending.resolve({audio: new Uint8Array([1]).buffer, contentType: 'audio/wav', voice: 'auto'});
         await expect(dispatch({type: cancelType, requestId: 'tts-1'}, handler))
             .resolves.toEqual({handled: true, response: {success: true, cancelled: false, requestId: 'tts-1'}});
         await expect(dispatch({type: cancelType, requestId: '??'}, handler))
@@ -750,12 +753,12 @@ describe('Offscreen 本地模型可取消请求', () => {
         await expect(dispatch({...ttsRequest, requestId: 'tts-2'}, handler)).resolves.toEqual({handled: true, response: {
             success: false, error: 'model missing', errorCode: 'local-tts-model-not-downloaded', requestId: 'tts-2',
         }});
-        synthesize.mockResolvedValueOnce({audio: 'not-binary'});
+        synthesize.mockResolvedValueOnce({audio: 'not-binary'} as never);
         await expect(dispatch({...ttsRequest, requestId: 'tts-3'}, handler)).resolves.toEqual({handled: true, response: {
             success: false, error: '本地 TTS 合成音频结果无效', errorCode: undefined, requestId: 'tts-3',
         }});
         const large = new Uint8Array(0x8000 * 2 + 3).map((_, index) => index % 251);
-        synthesize.mockResolvedValueOnce({audio: new DataView(large.buffer, 1, large.length - 1), voice: 'zm_009'});
+        synthesize.mockResolvedValueOnce({audio: new DataView(large.buffer, 1, large.length - 1), voice: 'zm_009'} as never);
         const encoded = (await dispatch({...ttsRequest, requestId: 'tts-4'}, handler)).response as {audioBase64: string; voice: string};
         expect(encoded.voice).toBe('zm_009');
         expect(Buffer.from(encoded.audioBase64, 'base64')).toEqual(Buffer.from(large.subarray(1)));
@@ -771,18 +774,18 @@ describe('Offscreen 本地模型可取消请求', () => {
                 .resolves.toEqual({handled: true, response: {success: false, error: '本地翻译未启用'}});
         }
 
-        const pending = deferred<unknown>();
+        const pending = deferred<string>();
         const localTranslation = {
-            translate: vi.fn((_request: Record<string, unknown>, _signal: AbortSignal) => pending.promise),
-            prepare: vi.fn(async () => ({downloaded: true})),
+            translate: vi.fn((_request: OffscreenRequestMap['LOCAL_TRANSLATION_TRANSLATE'], _signal: AbortSignal) => pending.promise),
+            prepare: vi.fn(async () => translationSnapshot()),
             status: vi.fn(async () => ({models: []})),
-            pause: vi.fn(async () => ({paused: true})),
+            pause: vi.fn(async () => translationSnapshot('paused')),
             removeModel: vi.fn(async () => undefined),
         };
         const handler = createOffscreenMessageListener({...base, localTranslation});
-        await expect(dispatch({type: 'LOCAL_TRANSLATION_PREPARE', model}, handler)).resolves.toEqual({handled: true, response: {success: true, downloaded: true}});
+        await expect(dispatch({type: 'LOCAL_TRANSLATION_PREPARE', model}, handler)).resolves.toEqual({handled: true, response: {success: true, ...translationSnapshot()}});
         await expect(dispatch({type: 'LOCAL_TRANSLATION_PREPARE', model: 'unknown-model'}, handler)).resolves.toEqual({handled: true, response: {success: false, error: '本地翻译模型标识无效'}});
-        await expect(dispatch({type: 'LOCAL_TRANSLATION_PAUSE', model}, handler)).resolves.toEqual({handled: true, response: {success: true, paused: true}});
+        await expect(dispatch({type: 'LOCAL_TRANSLATION_PAUSE', model}, handler)).resolves.toEqual({handled: true, response: {success: true, ...translationSnapshot('paused')}});
         await expect(dispatch({type: 'LOCAL_TRANSLATION_STATUS'}, handler)).resolves.toEqual({handled: true, response: {success: true, models: []}});
         await expect(dispatch({type: 'LOCAL_TRANSLATION_REMOVE_MODEL', model}, handler)).resolves.toEqual({handled: true, response: {success: true}});
         expect(localTranslation.pause).toHaveBeenCalledWith({model});

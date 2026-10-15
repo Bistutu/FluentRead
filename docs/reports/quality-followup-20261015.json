@@ -1,0 +1,479 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-15",
+  "base": "e765165d0b707a6e9cd8f5bac2d5fbbcaff79dd3",
+  "sourceCommit": "767dccf4745dbf6e4333df04bc831a5cd9f2a9ed",
+  "branch": "codex/quality-followup-20261015",
+  "delivered": [
+    {
+      "item": 1,
+      "change": "Real service settings invalidate subtitle translation cache; stale results cannot commit.",
+      "evidence": [
+        "tests/videoSubtitleLogic.test.ts",
+        "tests/videoSubtitleTrackPriorityRuntime.test.ts"
+      ]
+    },
+    {
+      "item": 2,
+      "change": "Cancellation and newer generations revoke dispatch while an earlier cancellation ACK is pending.",
+      "evidence": [
+        "tests/videoAiBackground.test.ts"
+      ]
+    },
+    {
+      "item": 3,
+      "change": "Compact manual settings use the shared editor; late success or failure cannot overwrite later edits or restored defaults.",
+      "evidence": [
+        "tests/userscriptFreeTranslationSettings.test.ts",
+        "userscript compact-save browser scope"
+      ]
+    },
+    {
+      "item": 4,
+      "change": "Affected-test planning traces bounded dynamic fixture paths; real same-service behavior replaces cross-service fingerprint assertions. Vue verification debt is frozen and cannot silently expand.",
+      "evidence": [
+        "tests/affectedTests.test.ts",
+        "tests/architecture/verificationOwnership.test.ts"
+      ]
+    },
+    {
+      "item": 5,
+      "change": "Configuration authority, mutation client, lazy history and pure field policy have explicit ownership. Document import, OCR and export controllers share the sole task/history state.",
+      "evidence": [
+        "tests/configApplication.test.ts",
+        "tests/documentWorkflows.test.ts",
+        "tests/documentAppLifecycle.test.ts"
+      ]
+    },
+    {
+      "item": 6,
+      "change": "Shared typed DTOs and actual parsers connect video/background/Offscreen/Worker boundaries; invalid input and replies reject without corrupting pending ownership or later requests.",
+      "evidence": [
+        "tests/localInferenceMessageContracts.test.ts",
+        "tests/workerMessageContracts.test.ts",
+        "tests/localTranslationWorker.test.ts"
+      ]
+    }
+  ],
+  "regression": {
+    "scope": "Targeted deterministic tests; not the full repository suite.",
+    "files": 51,
+    "passed": 2615,
+    "failed": 0,
+    "skipped": 0,
+    "testFiles": [
+      "tests/configApplication.test.ts",
+      "tests/configStoreAuditBoundaries.test.ts",
+      "tests/configRestoreOwnership.test.ts",
+      "tests/configIndexedDbIntegration.test.ts",
+      "tests/configHistoryDomain.test.ts",
+      "tests/configApiKeys.test.ts",
+      "tests/configCount.test.ts",
+      "tests/config.test.ts",
+      "tests/implementationAudit48B.test.ts",
+      "tests/implementationAudit48I.test.ts",
+      "tests/userscriptCredentialPersistence.test.ts",
+      "tests/documentWorkflows.test.ts",
+      "tests/documentAppLifecycle.test.ts",
+      "tests/documentUserActions.test.ts",
+      "tests/documentBatchComponent.test.ts",
+      "tests/architecture/moduleBoundaries.test.ts",
+      "tests/documentPreviewOwnership.test.ts",
+      "tests/videoTranslationCache.test.ts",
+      "tests/videoTranslationScheduler.test.ts",
+      "tests/videoAiRequestSession.test.ts",
+      "tests/videoCaptionPlatformRuntime.test.ts",
+      "tests/videoCaptionPlatforms.test.ts",
+      "tests/selectionTtsSenderFrameRuntime.test.ts",
+      "tests/workerMessageContracts.test.ts",
+      "tests/localInferenceMessageContracts.test.ts",
+      "tests/videoSubtitleLogic.test.ts",
+      "tests/videoSubtitleTrackPriorityRuntime.test.ts",
+      "tests/videoAiBackground.test.ts",
+      "tests/videoAiBackendCoverage.test.ts",
+      "tests/modelCacheRemoval.test.ts",
+      "tests/offscreenMessageRouter.test.ts",
+      "tests/offscreenClient.test.ts",
+      "tests/offscreenAdapters.test.ts",
+      "tests/localTranslationRuntime.test.ts",
+      "tests/localTtsBackground.test.ts",
+      "tests/implementationAudit48D.test.ts",
+      "tests/implementationAudit48N.test.ts",
+      "tests/firefoxDocumentRuntime.test.ts",
+      "tests/localTranslationModelSettingsLifecycle.test.ts",
+      "tests/localTranslationWorker.test.ts",
+      "tests/videoAiWorker.test.ts",
+      "tests/videoAiOffscreen.test.ts",
+      "tests/localTts.test.ts",
+      "tests/localTtsWorker.test.ts",
+      "tests/videoTranscription.test.ts",
+      "tests/userscriptFreeTranslationSettings.test.ts",
+      "tests/configEditor.test.ts",
+      "tests/modelEditing.test.ts",
+      "tests/architecture/verificationOwnership.test.ts",
+      "tests/architecture/sourceFileHeaders.test.ts",
+      "tests/affectedTests.test.ts"
+    ],
+    "strictModules": 30,
+    "coverage": {
+      "lines": {
+        "total": 4781,
+        "covered": 4781,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 4781,
+        "covered": 4781,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 386,
+        "covered": 386,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 2686,
+        "covered": 2686,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "moduleMetrics": {
+      "src/app/offscreen/messageRouter.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/core/config/mutations.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/core/messaging/inference.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/core/messaging/offscreen.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/core/messaging/validation.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/core/messaging/video.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/document-translation/public.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/document-translation/services/exportWorkflow.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/document-translation/services/importWorkflow.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/document-translation/services/recognitionWorkflow.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/local-translation/workerProtocol.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/local-translation/background/handlers.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/local-tts/protocol.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/local-tts/background/handlers.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/local-tts/background/offscreenAdapter.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/video-subtitle/transcription.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/video-subtitle/workerProtocol.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/video-subtitle/background/handlers.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/video-subtitle/content/backgroundClient.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/video-subtitle/content/subtitleLogic.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/video-subtitle/offscreen/transcription.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/video-subtitle/offscreen/transcription.worker.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/platform/offscreen/client.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/platform/offscreen/localTranslation.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/platform/offscreen/requests.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/services/config/application.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/services/config/authority.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/services/config/historyRuntime.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/services/config/mutationClient.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/services/config/protocol.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      }
+    },
+    "sourceHashesMatchFinalValidation": true,
+    "localEvidence": "/private/tmp/fluentread-followup-integrated-final-validation.json"
+  },
+  "builds": {
+    "chrome": {
+      "passed": true,
+      "files": 472,
+      "bytes": 61885781,
+      "sha256": "35bc32614732a796cde2b04af9ad5fbefbcf1f80ac1b24cd29b16474e8d50225"
+    },
+    "firefox": {
+      "passed": true,
+      "files": 472,
+      "bytes": 61884736,
+      "sha256": "e4deca89a6d4963e5a770ba0263095ad4d15fcd5c98d29f8ce4dfd2a9ed1177b"
+    },
+    "userscript": {
+      "passed": true,
+      "bytes": 2066737,
+      "budget": 2095100,
+      "sha256": "1dc49fdd0572ae49d898878c158264b3f0ee5142358a4dbda5dc5e1209ed201d"
+    },
+    "typecheck": true,
+    "manifestVerifier": true,
+    "userscriptVerifier": true,
+    "docsBuild": true,
+    "testAudit": true
+  },
+  "browsers": {
+    "persistence": {
+      "passed": true,
+      "cases": 8,
+      "report": "/private/tmp/fluentread-followup-delivery-persistence/report.json",
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "browserFrontmost": false,
+      "cleanup": {
+        "profileRemoved": true
+      }
+    },
+    "history": {
+      "passed": true,
+      "cases": 9,
+      "report": "/private/tmp/fluentread-followup-delivery-history/report.json",
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "browserFrontmost": false,
+      "cleanup": {
+        "errors": [],
+        "receipt": "runner process exited successfully after guarded close"
+      }
+    },
+    "document": {
+      "passed": true,
+      "cases": 7,
+      "report": "/private/tmp/fluentread-followup-delivery-document/report.json",
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "browserFrontmost": false,
+      "cleanup": {
+        "errors": [],
+        "receipt": "runner process exited successfully after guarded close"
+      }
+    },
+    "userscript": {
+      "passed": true,
+      "cases": 4,
+      "report": "/private/tmp/fluentread-followup-delivery-userscript/compact-save-evidence.json",
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "browserFrontmost": false,
+      "cleanup": {
+        "errors": [],
+        "receipt": "runner process exited successfully after guarded close"
+      }
+    }
+  },
+  "remainingDebt": {
+    "vueComponents": 38,
+    "baseline": "e765165d0b707a6e9cd8f5bac2d5fbbcaff79dd3",
+    "status": "Explicit historical verification debt; these components are not counted as verified behavior owners.",
+    "details": "tests/architecture/vue-verification-owners.json"
+  },
+  "limits": [
+    "Model and transport ports are controlled in deterministic tests; no claim of live model downloads, GPU execution or online provider quality.",
+    "Real UI runs use isolated background Edge with local fixtures and a GM shim; Firefox build is not Firefox runtime proof, and the GM shim is not userscript-manager certification.",
+    "The separate existing selects suite failed its menuOutsideScrollArea DOM assertion. UiSelect bytes and compact template/styles match the baseline; compact-save certifies only four manual-save scenarios. No full selects or full-site pass is claimed."
+  ],
+  "changedSourceSha256": {
+    "src/app/document-translation/DocumentApp.vue": "dc7155deaef1643616e590b2943893d5db9807e46a54f6a1c71c61be6d9800ef",
+    "src/app/offscreen/messageRouter.ts": "80044819fb7079892adad4f504e6380e662f7759fd89f28f31df7da0249bd8b7",
+    "src/app/offscreen/runtime.ts": "92f34c9376939f257bb504b94536f32028f5ef420aa25d34a79550177eac3e7a",
+    "src/core/config/mutations.ts": "8245e42e1a6dec7c1747634a3528c6338365d2dbb1c877e1baa0ff83b4390384",
+    "src/core/messaging/inference.ts": "b3b80d6cb5ca2175ea97c7dd9f2db3c3f2c20fb70d18b73805f20a2f761bdaed",
+    "src/core/messaging/offscreen.ts": "6d3160d5d77f17422413a07e864cbac1ac1ea7aaad1b982bec34cd77aa66ba39",
+    "src/core/messaging/validation.ts": "0e933368efb60f853be008ceefc63a435f72093c1e2698ce959b41aaa48f25f3",
+    "src/core/messaging/video.ts": "577ee73d4a2bc252de51b52b6d1e5d82464cce62a27cde2bfc47e2a1ee6b83ae",
+    "src/features/document-translation/public.ts": "881394811e3c7df537d843af5b684186014a1f42949bebd464c8cf130854827d",
+    "src/features/document-translation/services/exportWorkflow.ts": "30c652977ae04d1c2de4bf32e07e6ef2a8dc543fdc41ba7b9ebe089d09824a00",
+    "src/features/document-translation/services/importWorkflow.ts": "976e8011b6a1653f5d185cacc658c03aa5f7964e00355f289a5f9ad0d9361a13",
+    "src/features/document-translation/services/recognitionWorkflow.ts": "019b72b95e247bf1b6232690cf4e4fb1faaf000b26d540b28841ca35e4eafb5b",
+    "src/features/local-translation/background/handlers.ts": "e096900e9dffeb664f9176a779497f8a2306c9b90096a3e660445bf7e35e3e9d",
+    "src/features/local-translation/offscreen/translation.ts": "5cb063dceb89f50026afce78b71967f6dfb3f149a53f2e92d3d4281b2fbfb952",
+    "src/features/local-translation/offscreen/translation.worker.ts": "2f73089fd8c5570e78960a9ec7babc5af774d7bdbd093a73c1d5f9589a81acad",
+    "src/features/local-translation/workerProtocol.ts": "54b0484a0cd1d9843d61fe3b06c9b1a7b569b36326c1735b5138b3d2789b450a",
+    "src/features/local-tts/background/handlers.ts": "e30ede67f6a9c87c26cada7c0d29b0481adf9f2aff593107f9983cc6f10ab1d3",
+    "src/features/local-tts/background/offscreenAdapter.ts": "c29f6c3362288832bf459f023d977c36b8c607fcf54c867cb9c216d431f3700e",
+    "src/features/local-tts/offscreen/tts.ts": "cb459235330b0830f140b4cee61039a8d186c24fa90c9b5549ecf488b6a59dec",
+    "src/features/local-tts/offscreen/tts.worker.ts": "650303d3dc47cb5bf85ee6416a79f8cecf8582f6c3c14b5829c5c8a07947d940",
+    "src/features/local-tts/protocol.ts": "bdba09b1140377dfd640befbffa57bf457958d865657da2d8d9de899fd25a8e9",
+    "src/features/video-subtitle/background/handlers.ts": "cb8c4914ee202d40c149162e11c92ce36ac0e50b6f32bbea66ea510219d6fd82",
+    "src/features/video-subtitle/content/backgroundClient.ts": "b8e36fe5b30aaac38cb887652d48fafd1e3fe1ddcf760fe9b8eb223c65a0413c",
+    "src/features/video-subtitle/content/runtime.ts": "5a9236d0df5626b47b99abdce4bf5705c8d421b3b112549ba61f624e8fc004b7",
+    "src/features/video-subtitle/content/subtitleLogic.ts": "8fffe8d08bec2824e432b5f46d096b44c1dc950bec7e3db556e2ae2acfa6a616",
+    "src/features/video-subtitle/offscreen/transcription.ts": "1ca04fdea75da20d5ad21fa2059fe84009ba8615a8780a1cbe4914aa028e979d",
+    "src/features/video-subtitle/offscreen/transcription.worker.ts": "3252038b45ba3c88c32d64aacef3ee579b6914a98356e7a2191550cd42774c5b",
+    "src/features/video-subtitle/transcription.ts": "02903878eaad48a84eaff34c76d2830550e384a28357c0ee5a8c06472475e9ab",
+    "src/features/video-subtitle/workerProtocol.ts": "76bd90bde50ab13daa4f0fc5d983efb3053b30eb6bb6063bf4732331fd6b553d",
+    "src/platform/offscreen/client.ts": "d973f079f2ec34f3aa59c002508919cc64d1ed4612c22bc8e63e1716af6ba3ee",
+    "src/platform/offscreen/localTranslation.ts": "eac681293a2cc148f74a024ed833b1b2ce948451ba2098ae8fd467646e141702",
+    "src/platform/offscreen/requests.ts": "2d97ab2ea1136afeb99fe65dc06483c66044f70c64dc7a855da10e45c75e7999",
+    "src/services/config/application.ts": "b197eac3f7ac0d3d45e58dbfb749dbd931a3329ead5d76f519afaaeef507d51d",
+    "src/services/config/authority.ts": "cc26165db956afe85843bc19dcc44cf1ff9ee34bfabe12aac7fd3c5a4863330b",
+    "src/services/config/historyRuntime.ts": "284f323ba97633d70a05831e7f58c39de162993dc7398f5d5f2bb84361a39541",
+    "src/services/config/mutationClient.ts": "5250bd639a5fccc399316da5a1694227a797c6c2db98477e9252468befe0b01a",
+    "src/services/config/protocol.ts": "b257eae31deb10d2f66be1b34ca2adfca9d75102aa4420cd2dc451d898c6ae7e",
+    "src/services/config/store.ts": "3f45aea6f84a56da7d17a903cd7775fd266cc468885d976d3b542ad41dc01cab",
+    "userscript/SettingsPanel.vue": "d840553e22a6283eab39ed8fe86b8befdea6de49ed32b9182ccedd722db35691"
+  },
+  "referenceProjectsUsed": false,
+  "additionalChecks": {
+    "compactSaveCli": {
+      "passed": 1,
+      "unselected": 250,
+      "log": "/private/tmp/fluentread-followup-compact-save-cli-node22.log"
+    },
+    "historyRunnerCleanup": {
+      "passed": 4,
+      "unselected": 19,
+      "log": "/private/tmp/fluentread-followup-config-history-runner-targeted.log"
+    }
+  },
+  "ciFollowup": {
+    "report": "docs/reports/quality-followup-pr993-ci-20261015.json",
+    "sourceCommit": "2d6ee12ee5fe76ecc42ecbbf6288c04037f75b65",
+    "reason": "首次PR CI发现两组旧消息fixture和一个真实失败挂载订阅泄漏；本报告其余字段保留原验证快照，后续修复与新证据见关联报告。"
+  }
+}

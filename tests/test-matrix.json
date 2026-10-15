@@ -682,7 +682,12 @@
       "tests/chatgptPlanSettingsLifecycle.test.ts",
       "tests/configEditor.test.ts",
       "tests/affectedTests.test.ts",
-      "tests/processRegression.test.ts"
+      "tests/processRegression.test.ts",
+      "tests/configApplication.test.ts",
+      "tests/localInferenceMessageContracts.test.ts",
+      "tests/documentWorkflows.test.ts",
+      "tests/workerMessageContracts.test.ts",
+      "tests/localTranslationWorker.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

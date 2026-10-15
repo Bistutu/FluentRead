@@ -1,3 +1,4 @@
+import {ttsPreparation} from './helpers/localInferenceFixtures';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {LOCAL_TTS_MODEL, LOCAL_TTS_MODEL_ID, LOCAL_TTS_MODEL_STATE_KEY} from '@/src/core/config/localTts';
@@ -35,8 +36,8 @@ function createStore(initial: Record<string, unknown> = {}) {
 function handlersFor(offscreen: Partial<Parameters<typeof createLocalTtsBackgroundHandlers>[0]['offscreen']>, store = createStore()) {
     const handlers = createLocalTtsBackgroundHandlers({
         offscreen: {
-            prepare: vi.fn(async () => ({})),
-            status: vi.fn(async () => ({})),
+            prepare: vi.fn(async () => ttsPreparation()),
+            status: vi.fn(async () => ({models: []})),
             remove: vi.fn(async () => undefined),
             ...offscreen,
         },
@@ -64,24 +65,42 @@ describe('本地 TTS 模型后台消息', () => {
         await expect(fromStorage.run(LOCAL_TTS_MODEL_STATE_MESSAGE)).resolves.toMatchObject({downloaded: true, models: [saved]});
 
         for (const models of [undefined, [null], [['array']], [{model: LOCAL_TTS_MODEL_ID, downloaded: 'yes'}]]) {
-            const empty = handlersFor({status: vi.fn(async () => ({models}))}, createStore({[LOCAL_TTS_MODEL_STATE_KEY]: 'corrupt'}));
+            const empty = handlersFor({status: vi.fn(async () => ({models} as never))}, createStore({[LOCAL_TTS_MODEL_STATE_KEY]: 'corrupt'}));
             await expect(empty.run(LOCAL_TTS_MODEL_STATE_MESSAGE)).resolves.toEqual({
                 success: true, model: LOCAL_TTS_MODEL_ID, downloaded: false, models: [defaultState],
             });
         }
     });
 
+    it.each([undefined, '170', Number.NaN, Number.POSITIVE_INFINITY, -1])('canonicalizes stored model size %s and discards malformed optional metadata', async downloadSizeMb => {
+        const record = {model: LOCAL_TTS_MODEL_ID, downloaded: true, downloadSizeMb, dtype: 7, revision: {value: 'bad'}, unrelated: 'discard'};
+        const original = structuredClone(record);
+        const subject = handlersFor({}, createStore({[LOCAL_TTS_MODEL_STATE_KEY]: record}));
+        const expected = {...defaultState, downloaded: true};
+        await expect(subject.run(LOCAL_TTS_MODEL_STATE_MESSAGE)).resolves.toEqual({success: true, model: LOCAL_TTS_MODEL_ID, downloaded: true, models: [expected]});
+        expect(subject.store.data[LOCAL_TTS_MODEL_STATE_KEY]).toStrictEqual(expected);
+        expect(record).toStrictEqual(original);
+    });
+    it('retains a legacy receipt without a size, valid string metadata, and a finite reported size', async () => {
+        const legacy = {model: LOCAL_TTS_MODEL_ID, downloaded: true, dtype: 'q4', revision: 'pinned-revision'};
+        const stored = handlersFor({}, createStore({[LOCAL_TTS_MODEL_STATE_KEY]: legacy}));
+        const expected = {...legacy, downloadSizeMb: LOCAL_TTS_MODEL.downloadSizeMb};
+        await expect(stored.run(LOCAL_TTS_MODEL_STATE_MESSAGE)).resolves.toMatchObject({models: [expected]});
+        expect(stored.store.data[LOCAL_TTS_MODEL_STATE_KEY]).toStrictEqual(expected);
+        const current = handlersFor({status: vi.fn(async () => ({models: [{...legacy, downloadSizeMb: 0}]}))});
+        await expect(current.run(LOCAL_TTS_MODEL_STATE_MESSAGE)).resolves.toMatchObject({models: [{...legacy, downloadSizeMb: 0}]});
+    });
     it('下载完成后始终记为已下载，并保留 Offscreen 返回的版本信息', async () => {
-        const described = handlersFor({prepare: vi.fn(async () => ({dtype: 'q4f16', revision: 'abc', backend: 'wasm'}))});
+        const described = handlersFor({prepare: vi.fn(async () => ({...ttsPreparation(), dtype: 'q4f16', revision: 'abc', backend: 'wasm' as const}))});
         const response = await described.run(LOCAL_TTS_MODEL_PREPARE_MESSAGE);
         expect(response).toMatchObject({success: true, backend: 'wasm', model: LOCAL_TTS_MODEL_ID, downloaded: true});
         expect(described.store.data[LOCAL_TTS_MODEL_STATE_KEY]).toEqual({...defaultState, downloaded: true, dtype: 'q4f16', revision: 'abc'});
 
         const reported = {model: LOCAL_TTS_MODEL_ID, downloaded: false, downloadSizeMb: 170};
-        const listed = handlersFor({prepare: vi.fn(async () => ({models: [reported], dtype: 7}))});
+        const listed = handlersFor({prepare: vi.fn(async () => ({...ttsPreparation(), models: [reported], dtype: 7} as never))});
         await expect(listed.run(LOCAL_TTS_MODEL_PREPARE_MESSAGE)).resolves.toMatchObject({models: [{...reported, downloaded: true}]});
 
-        const bare = handlersFor({prepare: vi.fn(async () => ({dtype: 1, revision: 2}))});
+        const bare = handlersFor({prepare: vi.fn(async () => ({...ttsPreparation(), dtype: 1, revision: 2} as never))});
         await bare.run(LOCAL_TTS_MODEL_PREPARE_MESSAGE);
         expect(bare.store.data[LOCAL_TTS_MODEL_STATE_KEY]).toEqual({...defaultState, downloaded: true, dtype: undefined, revision: undefined});
     });
@@ -91,7 +110,7 @@ describe('本地 TTS 模型后台消息', () => {
         const remove = vi.fn(() => new Promise<void>((resolve) => { finishRemove = resolve; }));
         const store = createStore();
         store.set.mockRejectedValueOnce(new Error('quota'));
-        const subject = handlersFor({remove, prepare: vi.fn(async () => ({}))}, store);
+        const subject = handlersFor({remove, prepare: vi.fn(async () => ttsPreparation())}, store);
 
         const removing = subject.run(LOCAL_TTS_MODEL_REMOVE_MESSAGE);
         await expect(subject.run(LOCAL_TTS_MODEL_REMOVE_MESSAGE)).rejects.toThrow('正在清除本地 TTS 模型');
@@ -146,20 +165,20 @@ describe('本地 TTS Offscreen 适配器', () => {
 
         for (const response of [{success: true, audioBase64: ''}, {success: true}, {success: false, error: ''}]) {
             const empty = createLocalTtsOffscreenAdapter(clientWith(async () => response));
-            await expect(empty.synthesize('x', 'zh-CN', 'auto')).rejects.toThrow('本地 TTS 合成失败');
+            await expect(empty.synthesize('x', 'zh-CN', 'auto')).rejects.toThrow(response.success ? 'Offscreen LOCAL_TTS_SYNTHESIZE响应消息格式无效' : '本地 TTS 合成失败');
         }
-        await expect(adapter.prepare()).rejects.toThrow('本地 TTS 模型下载失败');
-        await expect(adapter.status()).rejects.toThrow('无法读取本地 TTS 模型状态');
-        await expect(adapter.remove()).rejects.toThrow('本地 TTS 模型清除失败');
+        await expect(adapter.prepare()).rejects.toThrow('Offscreen LOCAL_TTS_PREPARE响应消息格式无效');
+        await expect(adapter.status()).rejects.toThrow('Offscreen LOCAL_TTS_STATUS响应消息格式无效');
+        await expect(adapter.remove()).rejects.toThrow('Offscreen LOCAL_TTS_REMOVE_MODEL响应消息格式无效');
         expect(localTtsErrorCode(await adapter.remove().catch((reason: unknown) => reason))).toBeUndefined();
         expect(new LocalTtsLanguageUnsupportedError('').message).toBe('本地 TTS 暂不支持语言：未知语言');
     });
 
     it('模型管理请求使用各自的超时并原样返回成功响应', async () => {
-        const client = clientWith(async (message) => ({success: true, type: message.type}));
+        const client = clientWith(async (message) => ({success: true, type: message.type, ...(message.type === 'LOCAL_TTS_PREPARE' ? ttsPreparation() : {models: []})}));
         const adapter = createLocalTtsOffscreenAdapter(client);
-        await expect(adapter.prepare(true)).resolves.toEqual({success: true, type: 'LOCAL_TTS_PREPARE'});
-        await expect(adapter.status()).resolves.toEqual({success: true, type: 'LOCAL_TTS_STATUS'});
+        await expect(adapter.prepare(true)).resolves.toEqual({success: true, type: 'LOCAL_TTS_PREPARE', ...ttsPreparation()});
+        await expect(adapter.status()).resolves.toEqual({success: true, type: 'LOCAL_TTS_STATUS', models: []});
         await expect(adapter.remove()).resolves.toBeUndefined();
         expect(client.send.mock.calls.map(([message, options]) => [message, options])).toEqual([
             [{type: 'LOCAL_TTS_PREPARE', keepWarm: true}, {timeoutMs: 300_000}],

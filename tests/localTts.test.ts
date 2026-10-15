@@ -280,6 +280,27 @@ describe('local TTS offscreen worker owner', () => {
         LocalTtsOwnerFakeWorker.instances = [];
     });
 
+    it('rejects malformed correlated audio, ignores unrelated identities and preserves valid audio with invalid optional timings', async () => {
+        vi.useFakeTimers();
+        const owner = await loadLocalTtsOwner();
+        const pending = owner.synthesizeLocalTts('first', 'en', 'auto');
+        const rejected = expect(pending).rejects.toThrow('消息格式无效');
+        const worker = await ownerWorkerAt(0), firstId = worker.lastMessage.requestId;
+        worker.reply({requestId: firstId, success: true, audio: new Uint8Array(4), retryWithCpu: true});
+        await rejected;
+        expect(LocalTtsOwnerFakeWorker.instances).toHaveLength(1); expect(worker.terminated).toBe(false);
+        const next = owner.synthesizeLocalTts('next', 'en', 'auto');
+        let settled = false; void next.then(() => {settled = true;});
+        await vi.waitFor(() => expect(worker.lastMessage.requestId).toBeGreaterThan(firstId));
+        for (const requestId of ['invalid', 0, firstId, worker.lastMessage.requestId + 1])
+            worker.reply({requestId, success: true, audio: new ArrayBuffer(4)});
+        await Promise.resolve(); expect(settled).toBe(false);
+        const audio = new ArrayBuffer(44);
+        worker.reply({requestId: worker.lastMessage.requestId, success: true, audio, timings: 'bad diagnostics'});
+        await expect(next).resolves.toMatchObject({audio, timings: [], contentType: 'audio/wav'});
+        owner.disposeLocalTtsWorker(); expect(vi.getTimerCount()).toBe(0);
+    });
+
     it.each([
         [4, 60_000], [8, 180_000], [undefined, 120_000],
     ])('设备内存%s时跨越30秒仍复用Worker，并在%s毫秒连续空闲后释放', async (memory, idleMs) => {

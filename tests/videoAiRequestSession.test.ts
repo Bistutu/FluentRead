@@ -29,9 +29,9 @@ describe('AI transcription request session identity', () => {
         expect(session.read('live', 4)).toBe(token);expect(session.read('full', 1)).toBeNull();
     });
     it('shares the actual background single-stream contract while old warmup and cancellation cannot own a newer generation', async () => {
-        let completeOld!: (response: {success: boolean}) => void;
-        const oldWarmup = new Promise<{success: boolean}>(resolve => {completeOld = resolve;});
-        const offscreen = {send: vi.fn().mockReturnValueOnce(oldWarmup).mockResolvedValue({success: true}),
+        let completeOld!: (response: {success: boolean; model: string}) => void;
+        const oldWarmup = new Promise<{success: boolean; model: string}>(resolve => {completeOld = resolve;});
+        const offscreen = {send: vi.fn().mockReturnValueOnce(oldWarmup).mockResolvedValue({success: true, model: 'small'}),
             sendIfPresent: vi.fn().mockResolvedValue({success: true})};
         const handlers = createVideoSubtitleBackgroundHandlers({offscreen: offscreen as unknown as OffscreenClient,
             storage: {get: async () => ({}), set: async () => undefined}});
@@ -48,7 +48,7 @@ describe('AI transcription request session identity', () => {
         const oldCancellation = {type: 'fluentReadCancelLocalVideoTranscription', ...full, reason: 'pause'};
         await expect(cancel.handle(oldCancellation, context)).resolves.toMatchObject({stale: true});
         expect(offscreen.sendIfPresent).toHaveBeenCalledOnce();
-        completeOld({success: true});await expect(first).resolves.toBeInstanceOf(Error);
+        completeOld({success: true, model: 'tiny'});await expect(first).resolves.toBeInstanceOf(Error);
         const currentCompletion = {type: 'fluentReadCancelLocalVideoTranscription', ...live, reason: 'complete'};
         await expect(cancel.handle(currentCompletion, context)).resolves.toMatchObject({completed: true});
     });

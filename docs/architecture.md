@@ -335,13 +335,36 @@ feature
 
 配置分为三层：
 
-- `core/config`：类型、默认值、纯 normalize/validate/migrate。
+- `core/config`：类型、默认值、纯 normalize/validate/migrate 与字段补丁规则。
 - `services/config`：latest-write-wins、历史记录、保存队列、凭据协调。
 - `platform/storage`：后台专属加密 IndexedDB、旧 WXT storage/会话凭据迁移与跨上下文只读代理。
 
-设置页、Popup 与文档页通过 `services/config/editor.ts` 管理独立草稿、权威快照和在途字段所有权，Vue 观察由 `features/settings/model/useConfigEditor.ts` 适配。页面只决定提交字段、`sync/post` 时机和保存反馈，不重复实现水合 guard、dirty 基线或迟到反馈代次。提交解除字段所有权后，必须协调请求期间收到的新权威快照，并保留后继编辑；没有新确认时不能用请求前的旧快照回滚草稿。模型删除使用 `core/config/modelEditing.ts` 的同一条领域命令，扩展与精简 Userscript 均清理选择、思考、凭据要求及请求限制。
+### 配置实例与编辑会话
 
-文档队列中的每个任务是译文、人工确认、设置指纹和修订的唯一状态来源，`useDocumentTasks` 仅切换当前任务引用，不在页面与队列之间复制这些字段。阅读预览仍可维护独立的已结算快照，导入错误与当前文档的翻译错误各自保存。历史保存由 `historyCommitter` 按文件串行协调；只有数据库事务实际提交才推进 `savedRevision`，拒绝或失败后相同修订仍可重试。存储操作超时会撤销后续写入资格并中止活动写事务，旧操作不能迟到覆盖新校订。最后一段返回后，任务及完成计数仍等待整个翻译调用结算。
+每个运行上下文由 `services/config/application.ts` 组装一个配置应用。工厂构造不读写存储；`start()` 才注册权威端观察并开始水合，重复启动复用同一就绪结果。默认 `store.ts` 绑定平台端口后立即启动，保留已有消费者的“导入即启动”语义；需要控制生命周期的测试和编排使用工厂显式启动。
+
+| 模块 | 状态与职责 |
+| --- | --- |
+| `services/config/authority.ts` | 唯一公开 `config`、revision、已提交影子及持久化队列；负责水合、凭据、原子提交和存储观察，通过受限端口与客户端协作。 |
+| `services/config/mutationClient.ts` | 实例私有的提交队列、pending 字段、ACK 代次、失败回读和关闭交接；读取同一权威视图，不创建另一份公开配置。 |
+| `services/config/historyRuntime.ts` | 独立的历史快照、游标、去抖及写队列；首次等待或订阅时水合，恢复通过 `ports.commit` 回到权威提交路径。 |
+| `services/config/application.ts`、`store.ts` | 前者通过显式端口组装实例，后者只绑定默认运行环境和稳定服务出口。 |
+| `services/config/protocol.ts` | 配置消息、请求和保存选项的纯契约。 |
+| `core/config/mutations.ts` | 字段筛选、旧 token 协调、凭据目的地和 CAS 的共享纯策略；规范字段集合由 authority 从初始 `Config` 固定后传入，不再额外构造默认配置或读取全局状态。 |
+
+设置页、Popup 与文档页通过 `services/config/editor.ts` 管理独立草稿、权威快照和在途字段所有权，Vue 观察由 `features/settings/model/useConfigEditor.ts` 适配。精简 Userscript 直接使用同一纯 editor，保留手动保存，提交期间仍可编辑或恢复默认；保存成功只应用已接受的运行时配置，后继草稿继续等待下一次提交。页面只决定提交字段、`sync/post` 时机和保存反馈，不重复实现水合 guard、dirty 基线或迟到反馈代次。提交解除字段所有权后，必须协调请求期间收到的新权威快照，并保留后继编辑；没有新确认时不能用请求前的旧快照回滚草稿。模型删除使用 `core/config/modelEditing.ts` 的同一条领域命令，扩展与精简 Userscript 均清理选择、思考、凭据要求及请求限制。
+
+### 文档工作流
+
+文档队列中的每个任务是译文、人工确认、设置指纹和修订的唯一状态来源，`useDocumentTasks` 仅切换当前任务引用，不在页面与队列之间复制这些字段。`DocumentApp.vue` 连接阅读器、翻译会话与展示交互，异步文件操作由 feature 的三个独立控制器管理：
+
+- `services/importWorkflow.ts`：统一文件、在线 PDF 与历史重新打开的导入代次和取消信号；校验格式/大小，解析后恢复 OCR 与旧校订，再交接完整任务。失败导入独立入队，不清除已有译文或改写当前任务的翻译错误。
+- `services/recognitionWorkflow.ts`：持有 OCR 子信号并清理父翻译会话监听，使用调用时的原文和语言；进度与结果必须仍属于捕获的翻译会话，才可交回页面。
+- `services/exportWorkflow.ts`：持有单文件/ZIP 导出的代次、取消和下载资源；捕获任务、文档、译文与修订，编码完成及下载交接时复核资格，只确认实际导出的修订，并清理对象 URL 与提示计时器。
+
+控制器通过任务读取、提交、进度展示和格式适配端口协作，不维护另一份队列、进度或 revision。切换、重置、取消和卸载显式撤销操作资格，迟到读取不能新增旧任务，迟到 OCR 不能改新文档，迟到导出不能下载旧内容。格式解析/编码仍在既有服务中，PDF 绘制与 OCR 运行时适配仍由 app `runtime.ts` 注入。
+
+阅读预览可维护独立的已结算快照，导入错误与翻译错误分别保存。文档历史仍只由 `historyCommitter` 按文件串行提交；只有数据库事务实际提交才推进 `savedRevision`，拒绝或失败后相同修订仍可重试。存储操作超时会撤销后续写入资格并中止活动写事务，旧操作不能迟到覆盖新校订。最后一段返回后，任务及完成计数仍等待整个翻译调用结算。
 
 全文会话的初始化与资源释放配对位于 `fullPageSession.ts`，每次会话有独立的候选索引、取消域、结果缓存与计时器，销毁首先撤销提交资格，且重复销毁不会重复结束进度。视频 AI 字幕的缓存/完整生成所有权由 `video-ai/subtitleSession.ts` 持有；直播与完整采集保留各自 PCM 生命周期，并由 `video-ai/requestSession.ts` 映射到同一 stream 内单调递增的后台请求代次，旧取消不能命中新请求。
 
@@ -369,6 +392,14 @@ userscript 没有跨站点共享的原子后台，因此计数采用每个顶层
 同时安全自动压缩旧副本，因此不得用有竞争的读改写“优化”掉这些键。
 
 消息必须使用版本化、可解析的 discriminated union。禁止在多个 feature 中散落同名字符串和 `any` payload。隐私或本机 bridge 协议还必须定义大小上限、TTL、URL 清洗、错误码和 stale-version 防护。
+
+### 本地推理 IPC 与 Worker
+
+本地视频转写、翻译和 TTS 复用现有消息名称与 Offscreen client。`core/messaging/inference.ts`、`video.ts`、`offscreen.ts` 定义序列化 DTO、按消息 type 关联的请求/响应及解析器；`validation.ts` 的字段表在类型层覆盖 DTO 的全部键，运行时检查必需/可选字段、枚举和有限数值。视频 content 只读取视频公共契约，避免仅为发消息加载翻译和 TTS 实现。
+
+`platform/offscreen/requests.ts` 在发送前和接收实际 `unknown` 回包后校验关联契约，也校验取消消息。文档准备、截止时间、取消、重建及 absent 时不创建文档的语义仍由同一个 `OffscreenClient` 持有。视频 `content/backgroundClient.ts` 只适配注入的 runtime 发送端口和回包解析；后台 handler 与 offscreen router 消费相同 DTO，并继续使用已有请求所有者和代次，不另建消息系统或 pending 缓存。
+
+本地翻译、TTS、Whisper 的 Worker 契约分别位于 `local-translation/workerProtocol.ts`、`local-tts/protocol.ts`、`video-subtitle/workerProtocol.ts`。拥有者和执行端共用请求、回复解析器，实际事件载荷从 `unknown` 开始，先校验请求编号并定位在途任务，再解析响应；非法或已结束的编号不关联请求，损坏的已知请求回包走拒绝和清理路径。契约模块不创建 Worker、不加载模型或拥有取消状态。可选诊断与语音时间标记沿用已有规范化规则，业务结果与生命周期继续由各自运行时处理。
 
 ## CSS 与 Vue
 

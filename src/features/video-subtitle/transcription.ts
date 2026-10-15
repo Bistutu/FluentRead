@@ -4,6 +4,7 @@
  * 主要内容：规范化模型配置、实际语言与分模块精度诊断，统一生成停止、Worker 墙钟终止和请求预算，给出预计下载体积，拦截异常重复，把多声道 PCM 混音重采样并保守移除外侧数字静音。
  * 模块边界：只处理传入数据，不读取配置仓库、不调用浏览器音频设备，也不下载或初始化模型。
  */
+import type {VideoRecognitionMetadata} from '@/src/core/messaging/video';
 
 export const VIDEO_LOCAL_TRANSCRIPTION_MODELS = [
   {
@@ -33,17 +34,10 @@ export const VIDEO_LOCAL_TRANSCRIPTION_MODELS = [
 ] as const;
 
 export type VideoLocalTranscriptionModel = typeof VIDEO_LOCAL_TRANSCRIPTION_MODELS[number]['value'];
-export type VideoAiModelDtype = 'fp32' | 'q4' | 'q8';
+export type VideoAiModelDtype = NonNullable<VideoRecognitionMetadata['encoderDtype']>;
 
 /** 实际模型调用的诊断；语言 token 概率不能解释为字幕准确率。 */
-export interface VideoAiRecognitionMetadata {
-  detectedLanguage?: string;
-  languageConfidence?: number;
-  languageDetectionMs?: number;
-  encoderReuse?: boolean;
-  encoderDtype?: VideoAiModelDtype;
-  decoderDtype?: VideoAiModelDtype;
-}
+export type VideoAiRecognitionMetadata = VideoRecognitionMetadata;
 
 /** 消息边界只保留真实、有限的诊断值；缺失字段不补造检测结果。 */
 export function normalizeVideoAiRecognitionMetadata(value: unknown): VideoAiRecognitionMetadata {

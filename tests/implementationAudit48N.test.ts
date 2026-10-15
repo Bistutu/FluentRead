@@ -1,3 +1,5 @@
+import {translationSnapshot} from './helpers/localInferenceFixtures';
+import {LOCAL_TRANSLATION_MODEL_IDS} from '@/src/core/config/localTranslation';
 let withProviderSnapshot: typeof import('./helpers/providerSnapshot').withProviderSnapshot;
 import {parseHTML} from 'linkedom';
 import {afterEach, describe, expect, it, vi} from 'vitest';
@@ -49,7 +51,7 @@ async function browserPort(browser: string, extensionDom?: boolean) {
             expect(envelope.target).toBe('offscreen');
             callback(envelope.type === 'FLUENT_READ_OFFSCREEN_READY'
                 ? {success: true, ready: true}
-                : {success: true, result: 'translated locally'});
+                : {success: true, result: 'translated locally', ...translationSnapshot()});
         }),
     };
     const offscreen: OffscreenDocumentApi = {
@@ -142,7 +144,7 @@ describe('implementation audit 48 N: userscript local translation boundary', () 
         expect(createElement).not.toHaveBeenCalled();
         expect(randomUUID).not.toHaveBeenCalled();
         expect(vi.getTimerCount()).toBe(0);
-        await expect(adapter.translate({text: 'Hello'})).resolves.toBe('translated locally');
+        await expect(adapter.translate({model:LOCAL_TRANSLATION_MODEL_IDS.m2m100,text:'Hello',sourceLanguage:'en',targetLanguage:'zh'})).resolves.toBe('translated locally');
         await expect(extensionDomClient.hasDocument()).resolves.toBe(true);
         expect(randomUUID).toHaveBeenCalledOnce();
         expect(port.messages[1]).toMatchObject({type: 'LOCAL_TRANSLATION_TRANSLATE', text: 'Hello'});
@@ -159,7 +161,7 @@ describe('implementation audit 48 N: userscript local translation boundary', () 
             translate: '本地翻译失败', prepare: '本地翻译模型下载失败', status: '无法读取本地翻译模型状态',
             pause: 'LOCAL_TRANSLATION_PAUSE_FAILED', remove: '本地翻译模型清除失败',
         }[operation];
-        const invoke = () => operation === 'translate' ? adapter.translate({text: 'Hello'})
+        const invoke = () => operation === 'translate' ? adapter.translate({model:LOCAL_TRANSLATION_MODEL_IDS.m2m100,text:'Hello',sourceLanguage:'en',targetLanguage:'zh'})
             : operation === 'status' ? adapter.status() : adapter[operation]('Xenova/m2m100_418M');
         for (const response of [{success: false, error: 'executor failed'}, {success: false, error: ''},
             {success: false, error: 42}, undefined]) {
@@ -167,7 +169,7 @@ describe('implementation audit 48 N: userscript local translation boundary', () 
                 callback((message as OffscreenMessage).type === 'FLUENT_READ_OFFSCREEN_READY'
                     ? {success: true, ready: true} : response);
             });
-            await expect(invoke()).rejects.toThrow(response?.error === 'executor failed' ? 'executor failed' : fallback);
+            await expect(invoke()).rejects.toThrow(response && typeof response.error === 'string' ? response.error || fallback : '响应消息格式无效');
         }
         expect(port.offscreen.createDocument).toHaveBeenCalledOnce();
     });

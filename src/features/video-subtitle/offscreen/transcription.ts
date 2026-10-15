@@ -2,7 +2,7 @@
  * @file src/features/video-subtitle/offscreen/transcription.ts
  * 文件职责：在 Offscreen Document 中串行调度视频 Whisper Worker、PCM 解码和模型预热。
  * 主要内容：复用共享并行预算及排队任务代次保护，管理单待处理转写、prepare 去重、模型切换、GPU 生命周期失败后的单次 CPU 重建、超时终止、首窗等待的有界预热租期、取消清理与按设备内存安排的空闲释放；透传实际语言检测诊断，预下载时校验本次来源偏好，并把字节及连接状态交给调用方。
- * 模块边界：只编排 Offscreen/Worker 资源，不解析字幕时间轴，也不管理后台 tab owner。
+ * 模块边界：只编排 Offscreen/Worker 资源，收到未知载荷先经共享 Worker 协议校验；不解析字幕时间轴，也不管理后台 tab owner。
  */
 import {withLocalInferenceBudget} from '@/src/shared/onnx/resources';
 import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
@@ -12,43 +12,22 @@ import {
   VIDEO_LOCAL_TRANSCRIPTION_MODELS,
   normalizeVideoAiRecognitionMetadata,
   resampleToWhisperAudio,
-  type VideoAiRecognitionMetadata,
 } from '@/src/features/video-subtitle/transcription';
 import { cacheVideoAiQ4ModelFiles, removeVideoAiModelFiles } from './modelCache';
 import type {DownloadProgress} from '@/src/core/download/progress';
 import type {ModelSourcePreference} from '@/src/platform/http/modelDownloads';
+import type {VideoPreparationResult, VideoTranscriptionCancelReason, VideoTranscriptionResult, VideoTranscriptionSegment} from '@/src/core/messaging/video';
+import {readWorkerRequestId} from '@/src/core/messaging/validation';
+import {parseVideoWorkerResponse, type VideoWorkerRequest as WorkerRequest, type VideoWorkerResponse as WorkerResponse} from '../workerProtocol';
 
-type LocalTranscriptionBackend = 'webgpu' | 'wasm';
-
-export interface LocalVideoTranscriptionSegment {
-  startMs: number;
-  endMs: number;
-  text: string;
-}
-
-export interface LocalVideoTranscriptionResult extends VideoAiRecognitionMetadata {
+export type LocalVideoTranscriptionSegment = VideoTranscriptionSegment;
+export interface LocalVideoTranscriptionResult extends VideoTranscriptionResult {
   text: string;
   segments: LocalVideoTranscriptionSegment[];
   model: string;
-  backend?: LocalTranscriptionBackend;
-  gpuInfo?: string;
-  skipped?: boolean;
-  decodeMs?: number;
-  inferenceMs?: number;
-  audioDurationMs?: number;
-  threads?: number;
-  dtype?: 'q4' | 'q8';
 }
-
-export interface LocalVideoTranscriptionPreparation extends VideoAiRecognitionMetadata {
-  model: ReturnType<typeof normalizeVideoLocalTranscriptionModel>;
-  backend?: LocalTranscriptionBackend;
-  gpuInfo?: string;
-  threads?: number;
-  dtype?: 'q4' | 'q8';
-}
-
-export type LocalVideoTranscriptionCancelReason = 'cancel' | 'complete';
+export type LocalVideoTranscriptionPreparation = VideoPreparationResult;
+export type LocalVideoTranscriptionCancelReason = VideoTranscriptionCancelReason;
 
 interface LocalVideoTranscriptionRequest {
   streamId?: string;
@@ -58,24 +37,8 @@ interface LocalVideoTranscriptionRequest {
   sourceLanguage?: string;
 }
 
-interface WorkerRequest {
-  requestId: number;
-  type: 'prepare' | 'transcribe';
-  device?: 'wasm';
-  model?: unknown;
-  sourceLanguage?: string;
-  languageSessionKey?: string;
-  audio?: Float32Array;
-}
-
-interface WorkerResponse extends Partial<LocalVideoTranscriptionResult> {
-  requestId: number;
-  success: boolean;
-  retryWithCpu?: boolean;
-  error?: string;
-}
-
 interface PendingWorkerRequest {
+  type: WorkerRequest['type'];
   resolve: (response: WorkerResponse) => void;
   reject: (error: unknown) => void;
   timeout: number;
@@ -162,12 +125,17 @@ function getWorker(): Worker {
   const workerUrl = runtimeGetUrl?.('videoTranscriptionWorker.js')
     || new URL('videoTranscriptionWorker.js', window.location.href).toString();
   const worker = new Worker(workerUrl, { type: 'module' });
-  worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-    const response = event.data;
-    const pending = response && pendingWorkerRequests.get(response.requestId);
+  worker.onmessage = (event: MessageEvent<unknown>) => {
+    if (transcriptionWorker !== worker) return;
+    const requestId = readWorkerRequestId(event.data);
+    if (requestId === undefined) return;
+    const pending = pendingWorkerRequests.get(requestId);
     if (!pending) return;
-    pendingWorkerRequests.delete(response.requestId);
+    pendingWorkerRequests.delete(requestId);
     window.clearTimeout(pending.timeout);
+    let response: WorkerResponse;
+    try { response = parseVideoWorkerResponse(event.data, pending.type); }
+    catch (error) { pending.reject(error); return; }
     if (response.success) pending.resolve(response);
     else if (response.retryWithCpu === true) {
       const error = createWorkerLifecycleError(response.error || '本地视频 AI GPU Worker 失败，准备使用 CPU 重试');
@@ -214,7 +182,7 @@ function requestWorkerNow(
       const error = createWorkerLifecycleError(`本地视频 AI Worker 超过 ${timeoutMs / 1000} 秒，已终止以保护浏览器性能`);
       terminateWorker(error);
     }, timeoutMs);
-    pendingWorkerRequests.set(requestId, { resolve, reject, timeout });
+    pendingWorkerRequests.set(requestId, { type: message.type, resolve, reject, timeout });
     try {
       worker.postMessage({ ...message, requestId }, transfer);
     } catch (error) {
@@ -226,6 +194,15 @@ function requestWorkerNow(
   });
 }
 
+function requestWorkerWithCpuFallback(
+  message: Omit<WorkerRequest, 'requestId'> & {type: 'transcribe'},
+  retryMessage: Omit<WorkerRequest, 'requestId'> & {type: 'transcribe'},
+  transfer: Transferable[], retryTransfer: Transferable[], timeoutMs: number, streamId?: string,
+): Promise<WorkerResponse & VideoTranscriptionResult>;
+function requestWorkerWithCpuFallback(
+  message: Omit<WorkerRequest, 'requestId'>, retryMessage: Omit<WorkerRequest, 'requestId'>,
+  transfer: Transferable[], retryTransfer: Transferable[], timeoutMs: number, streamId?: string,
+): Promise<WorkerResponse>;
 async function requestWorkerWithCpuFallback(
   message: Omit<WorkerRequest, 'requestId'>,
   retryMessage: Omit<WorkerRequest, 'requestId'>,
@@ -398,7 +375,7 @@ async function transcribeLocalVideoAudioNow(request: LocalVideoTranscriptionRequ
   }, [workerAudio.buffer], [retryAudio.buffer], getVideoLocalTranscriptionWorkerTimeoutMs(request.model), request.streamId);
   if (activeStreamId === request.streamId) firstAudioWarmLease = {streamId: request.streamId!, deadlineAt: 0};
   return {
-    text: typeof response.text === 'string' ? response.text : '',
+    text: response.text,
     segments: Array.isArray(response.segments) ? response.segments : [],
     model: typeof response.model === 'string'
       ? response.model

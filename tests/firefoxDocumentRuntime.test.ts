@@ -27,7 +27,7 @@ function createSubject(overrides: Partial<OffscreenMessageDependencies> = {}) {
         downloadOcrLanguages: vi.fn(async () => undefined),
         videoAi: {
             transcribe: vi.fn(async () => ({text: 'hello', cues: []})),
-            prepare: vi.fn(async () => ({ready: true})),
+            prepare: vi.fn(async () => ({model: 'tiny' as const, ready: true})),
             cancel: vi.fn(async () => undefined),
         },
         ...overrides,
@@ -144,8 +144,8 @@ describe('Firefox shared DOM runtime', () => {
         await expect(area.translateArea('data:image/png;base64,AA==', 'en', 'area', selection)).resolves.toMatchObject({lines: []});
         await tts.play({audioBase64: 'AA==', contentType: 'audio/wav', tabId: 7, clientRequestId: 'tts-a'});
         await tts.stop({tabId: 7, clientRequestId: 'tts-a'});
-        await expect(client.send({type: 'VIDEO_AI_PREPARE', model: 'whisper-tiny'})).resolves.toMatchObject({ready: true});
-        await expect(client.send({type: 'VIDEO_AI_TRANSCRIBE', streamId: 'stream-a'})).resolves.toMatchObject({text: 'hello'});
+        await expect(client.send({type: 'VIDEO_AI_PREPARE', model: 'tiny'})).resolves.toMatchObject({ready: true});
+        await expect(client.send({type: 'VIDEO_AI_TRANSCRIBE', streamId: 'stream-a', audioPcm16Base64: 'AAAA'})).resolves.toMatchObject({text: 'hello'});
         await client.sendIfPresent({type: 'VIDEO_AI_CANCEL', streamId: 'stream-a'});
         expect(dependencies.fetchImage).toHaveBeenCalledOnce();
         expect(dependencies.translateArea).toHaveBeenCalledWith('data:image/png;base64,AA==', 'en', 'area', selection, expect.any(AbortSignal), expect.any(String));

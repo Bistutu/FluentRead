@@ -4,7 +4,7 @@ import {createRenderer, h, markRaw, nextTick, ref} from 'vue';
 import {IDBFactory} from 'fake-indexeddb';
 import {parseHTML} from 'linkedom';
 import {Config} from '@/src/core/config/model';
-import {getDocumentMimeType, parseDocument, type PdfDocumentPage} from '@/src/features/document-translation/core/document';
+import {getDocumentMimeType, parseDocument, type ParsedDocument, type PdfDocumentPage} from '@/src/features/document-translation/core/document';
 import * as binaryService from '@/src/features/document-translation/services/binary';
 import {createDocumentHistory, documentHistoryId} from '@/src/features/document-translation/services/history';
 import {acquirePdfDocument} from '@/src/features/document-translation/ui/pdfPreview';
@@ -1185,6 +1185,63 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(state.documentQueue).toHaveLength(0);
         expect(ports.tasks).toHaveLength(before);
         expect(state.openingFile).toBe(false);
+    });
+
+    it.each(['reset', 'switch'] as const)('invalidates a pending parser on %s without allowing its late task into the current queue', async action => {
+        await state.loadFiles([file('first.txt'), file('second.txt')]);state.editSegment(0, 'First correction');
+        const first = state.documentQueue[0], second = state.documentQueue[1];
+        const parsing = deferred<ParsedDocument>();
+        const read = vi.spyOn(binaryService, 'parseDocumentFile').mockReturnValueOnce(parsing.promise);
+        const running = state.loadFiles([file('late.txt')]);const signal = read.mock.calls[0][1]!.signal!;
+        if (action === 'reset') {state.resetDocument();await state.loadFiles([file('replacement.txt')]);}
+        else state.selectDocument(second);
+        state.editSegment(0, 'Current correction');const current = state.parsedDocument;
+        const count = state.documentQueue.length;
+        parsing.resolve(parseDocument('late.txt', 'Late source.'));await running;await flush();
+        expect(signal.aborted).toBe(true);expect(state.documentQueue).toHaveLength(count);
+        expect(state.parsedDocument).toBe(current);expect(state.translatedSegments).toEqual(['Current correction']);
+        expect(first.translations).toEqual(['First correction']);expect(first.downloaded).toBe(0);
+        expect(state.documentQueue.some((item: {name: string}) => item.name === 'late.txt')).toBe(false);
+    });
+
+    it.each(['switch', 'unmount'] as const)('revokes a captured OCR session directly on %s without committing its late result or failure', async action => {
+        await state.loadFiles([file('scanned.pdf'), file('other.txt')]);
+        const original = state.parsedDocument;
+        const scanned = markRaw({...original, segments: [], binary: {...original.binary,
+            pages: original.binary.pages.map((page: PdfDocumentPage) => ({...page, scanned: true, segmentIndexes: [], blocks: []})),
+        }});
+        state.parsedDocument = scanned;
+        const recognizing = deferred<typeof scanned>();ports.recognize.mockReturnValueOnce(recognizing.promise);
+        const running = state.startTranslation();await flush();const controls = ports.recognize.mock.calls[0][2];
+        if (action === 'switch') {state.selectDocument(state.documentQueue[1]);state.editSegment(0, 'Other correction');}
+        else {app.unmount();app = null;}
+        const current = state.parsedDocument;
+        controls.onProgress({completed: 99, total: 100});
+        if (action === 'switch') recognizing.resolve({...scanned, segments: [{id: 0, source: 'late OCR'}]});
+        else recognizing.reject(new Error('late OCR failure'));
+        await running;await flush();
+        expect(controls.signal.aborted).toBe(true);expect(state.parsedDocument).toBe(current);
+        expect(state.recognitionProgress).toBe('');expect(state.errorMessage).toBe('');
+        expect(ports.translate).not.toHaveBeenCalled();expect(ports.batch).not.toHaveBeenCalled();
+        if (action === 'switch') expect(state.translatedSegments).toEqual(['Other correction']);
+    });
+
+    it.each(['switch', 'reset', 'unmount'] as const)('revokes pending export on %s before late encoding can download or ACK another task', async action => {
+        await state.loadFiles([file('first.txt'), file('second.txt')]);state.editSegment(0, 'First correction');
+        const first = state.documentQueue[0];
+        const encoding = deferred<binaryService.DocumentDownload>();
+        const encode = vi.spyOn(binaryService, 'createDocumentDownload').mockReturnValueOnce(encoding.promise);
+        const running = state.downloadDocument();const controls = encode.mock.calls[0][3]!;
+        if (action === 'switch') {state.selectDocument(state.documentQueue[1]);state.editSegment(0, 'Current correction');}
+        else if (action === 'reset') {state.resetDocument();await state.loadFiles([file('replacement.txt')]);state.editSegment(0, 'Current correction');}
+        else {app.unmount();app = null;}
+        const current = state.parsedDocument, progress = state.downloadProgress;
+        controls.onArchiveProgress!(99);controls.onPdfProgress!({phase: 'saving', completedPages: 1, totalPages: 1});
+        encoding.resolve({data: 'old export', fileName: 'old.txt', mimeType: 'text/plain'});await running;await flush();
+        expect(controls.signal!.aborted).toBe(true);expect(createUrl).not.toHaveBeenCalled();
+        expect(state.parsedDocument).toBe(current);expect(state.downloadProgress).toBe(progress);
+        expect(first.translations).toEqual(['First correction']);expect(first.downloaded).toBe(0);
+        if (action !== 'unmount') {expect(state.translatedSegments).toEqual(['Current correction']);expect(state.downloadedRevision).toBe(0);}
     });
 
     it('ignores late config save responses and releases pending download URLs and timer on pagehide', async () => {

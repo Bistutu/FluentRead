@@ -2,9 +2,13 @@
  * @file src/features/local-translation/background/handlers.ts
  *
  * 文件职责：连接设置页的模型操作和离屏下载任务，并广播持久进度。
- * 主要内容：即时转发下载、暂停和删除命令；只接受可信离屏页面的进度，将快照保存到扩展存储供所有设置页订阅。
+ * 主要内容：从未知入站数据逐字段校验试译、取消、模型和进度消息，即时转发下载、暂停和删除命令；只接受可信离屏页面的进度，将快照保存到扩展存储供所有设置页订阅。
  * 模块边界：后台不持有下载 Promise 或模型文件，不以页面是否打开决定任务生命周期。
  */
+import {isMessageRecord} from '@/src/core/messaging/validation';
+import type {LocalTranslationOffscreenOptions, LocalTranslationRequest} from '@/src/platform/offscreen/localTranslation';
+import type {LocalTranslationModelId, LocalTranslationDownloadSnapshot} from '@/src/core/config/localTranslation';
+import type {LocalTranslationStatus} from '@/src/core/messaging/offscreen';
 import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {
     LOCAL_TRANSLATION_MODEL_STATE_KEY, LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY,
@@ -19,11 +23,11 @@ export const LOCAL_TRANSLATION_PROGRESS_MESSAGE = 'fluentReadLocalTranslationDow
 
 export interface LocalTranslationBackgroundDependencies {
     readonly offscreen: {
-        prepare(model: unknown, keepWarm?: boolean): Promise<Record<string, unknown>>;
-        status(): Promise<Record<string, unknown>>;
-        remove(model: unknown): Promise<void>;
-        pause(model: unknown): Promise<Record<string, unknown>>;
-        translate(request: {model?: unknown; text: string; sourceLanguage?: unknown; targetLanguage?: unknown}, options?: {signal?: AbortSignal; timeoutMs?: number}): Promise<string>;
+        prepare(model: LocalTranslationModelId, keepWarm?: boolean): Promise<LocalTranslationDownloadSnapshot>;
+        status(): Promise<LocalTranslationStatus>;
+        remove(model: LocalTranslationModelId): Promise<void>;
+        pause(model: LocalTranslationModelId): Promise<LocalTranslationDownloadSnapshot>;
+        translate(request: LocalTranslationRequest, options?: LocalTranslationOffscreenOptions): Promise<string>;
     };
     readonly storage: {
         get(key: string): Promise<Record<string, unknown>>;
@@ -38,16 +42,16 @@ export function createLocalTranslationBackgroundHandlers(
     let writes = Promise.resolve();
     const trials = new Map<string, AbortController>();
     const modelFrom = (message: unknown) => {
-        const model = (message as {model?: unknown}).model;
-        if (!isLocalTranslationModel(model)) throw new Error('LOCAL_TRANSLATION_INVALID_MODEL');
-        return model;
+        if (!isMessageRecord(message) || !isLocalTranslationModel(message.model)) throw new Error('LOCAL_TRANSLATION_INVALID_MODEL');
+        return message.model;
     };
     return [
         {
             type: 'fluentReadTryLocalTranslation',
-            async handle(message) {
-                const input = message as unknown as {requestId?: unknown; text?: unknown; targetLanguage?: unknown};
-                const model = modelFrom(message);
+            async handle(message: unknown) {
+                if (!isMessageRecord(message)) throw new Error('LOCAL_TRANSLATION_INVALID_REQUEST');
+                const input = message;
+                const model = modelFrom(input);
                 if (typeof input.requestId !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/u.test(input.requestId)
                     || typeof input.text !== 'string' || !input.text.trim() || input.text.length > 2000
                     || typeof input.targetLanguage !== 'string') throw new Error('LOCAL_TRANSLATION_INVALID_REQUEST');
@@ -62,36 +66,37 @@ export function createLocalTranslationBackgroundHandlers(
         },
         {
             type: 'fluentReadCancelLocalTranslationTrial',
-            handle(message) {
-                const id = (message as unknown as {requestId?: string}).requestId;
-                if (id) trials.get(id)?.abort();
+            handle(message: unknown) {
+                if (isMessageRecord(message) && typeof message.requestId === 'string' && message.requestId) {
+                    trials.get(message.requestId)?.abort();
+                }
                 return {success: true};
             },
         },
         {
             type: LOCAL_TRANSLATION_MODEL_STATE_MESSAGE,
-            async handle() { return {success: true, ...await dependencies.offscreen.status()}; },
+            async handle() { return {...await dependencies.offscreen.status(), success: true}; },
         },
         {
             type: LOCAL_TRANSLATION_MODEL_PREPARE_MESSAGE,
-            async handle(message) { return {success: true, ...await dependencies.offscreen.prepare(modelFrom(message), false)}; },
+            async handle(message) { return {...await dependencies.offscreen.prepare(modelFrom(message), false), success: true}; },
         },
         {
             type: LOCAL_TRANSLATION_MODEL_PAUSE_MESSAGE,
-            async handle(message) { return {success: true, ...await dependencies.offscreen.pause(modelFrom(message))}; },
+            async handle(message) { return {...await dependencies.offscreen.pause(modelFrom(message)), success: true}; },
         },
         {
             type: LOCAL_TRANSLATION_MODEL_REMOVE_MESSAGE,
             async handle(message) {
                 await dependencies.offscreen.remove(modelFrom(message));
-                return {success: true, ...await dependencies.offscreen.status()};
+                return {...await dependencies.offscreen.status(), success: true};
             },
         },
         {
             type: LOCAL_TRANSLATION_PROGRESS_MESSAGE,
-            async handle(message, context) {
+            async handle(message: unknown, context) {
                 if (!dependencies.isTrustedProgress(context)) return {success: false};
-                const snapshot = normalizeLocalTranslationDownloadSnapshot((message as {snapshot?: unknown}).snapshot);
+                const snapshot = normalizeLocalTranslationDownloadSnapshot(isMessageRecord(message) ? message.snapshot : undefined);
                 if (!snapshot) return {success: false};
                 const write = writes.then(async () => {
                     const stored = await dependencies.storage.get(LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY);

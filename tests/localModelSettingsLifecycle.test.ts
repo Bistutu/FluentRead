@@ -43,6 +43,7 @@ import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener} f
 import {createDownloadProgressHandler} from '@/src/app/background/handlers/downloadProgress';
 import {watchDownloadProgress} from '@/src/platform/storage/downloadProgress';
 import {createDownloadProgressPublisher, downloadProgressKey, LOCAL_TTS_DOWNLOAD_ID, videoModelDownloadId} from '@/src/core/download/progress';
+import type {VideoPreparationResult} from '@/src/core/messaging/video';
 
 function deferred<T>() {
     let resolve!: (value: T) => void;
@@ -117,7 +118,7 @@ function backend() {
     const addVideoKeys = (model: string) => {for (const file of model === 'small' ? VIDEO_AI_SMALL_MODEL_FILES : VIDEO_AI_Q4_MODEL_FILES) videoKeys.add(getVideoAiModelFileUrl(model, file));};
     vi.stubGlobal('caches', {has: async () => true, open: async () => ({keys: async () => [...videoKeys].map(url => new Request(url))})});
     const writes: unknown[] = [];
-    const jobs = new Map<string, {done: ReturnType<typeof deferred<any>>; work: Promise<any>; received: number; report: (next: progressModule.DownloadProgress) => void}>();
+    const jobs = new Map<string, {done: ReturnType<typeof deferred<any>>; work: Promise<any>; received: number; report: (next: progressModule.DownloadProgress) => void; successResponse: {success: true; model?: VideoPreparationResult['model']}}>();
     const publishTasks = new Set<Promise<unknown>>();
     const reads: Array<{kind: Kind; gate: ReturnType<typeof deferred<any>>}> = [];
     const allReadGates: Array<ReturnType<typeof deferred<any>>> = [];
@@ -139,19 +140,23 @@ function backend() {
         remove: async (key: string) => {if (key in values) {const oldValue = values[key]; delete values[key]; changed({[key]: {oldValue}});}},
     };
     const progressHandler = createDownloadProgressHandler({runtimeId: 'owned-fixture', offscreenUrl: 'chrome-extension://owned-fixture/offscreen.html', storage});
-    const start = (id: string) => {
+    const start = (id: string, successResponse: {success: true; model?: VideoPreparationResult['model']} = {success: true}) => {
         const done = deferred<any>(); let report!: (next: progressModule.DownloadProgress) => void;
         const publisher = createDownloadProgressPublisher(message => {
             const task = Promise.resolve(progressHandler.handle(message, {sender: {id: 'owned-fixture', url: 'chrome-extension://owned-fixture/offscreen.html'}}));
             publishTasks.add(task); void task.finally(() => publishTasks.delete(task));
         }, {intervalMs: 0});
         const work = publisher.track(id, async publish => {report = publish; return done.promise;});
-        jobs.set(id, {done, work, received: 0, report}); return work;
+        jobs.set(id, {done, work, received: 0, report, successResponse}); return work;
     };
     const ttsOffscreen = {prepare: vi.fn(() => start(LOCAL_TTS_DOWNLOAD_ID)), status: vi.fn(async () => ({models: [values[ttsModel.LOCAL_TTS_MODEL_STATE_KEY] || {
         model: ttsModel.LOCAL_TTS_MODEL_ID, downloaded: false, downloadSizeMb: ttsModel.LOCAL_TTS_MODEL.downloadSizeMb,
     }]})), remove: vi.fn(async () => undefined)};
-    const videoOffscreen = {send: vi.fn((message: any) => start(videoModelDownloadId(message.model)).then(response => {if (response?.success) addVideoKeys(message.model); return response;})), sendIfPresent: vi.fn(async () => ({success: true}))};
+    // 默认完成包模拟实际离屏路由的准备结果；显式受控回包仍原样传递，不修饰坏消息。
+    const videoOffscreen = {send: vi.fn((message: {model: VideoPreparationResult['model']}) => start(videoModelDownloadId(message.model), {success: true, model: message.model}).then(response => {
+        if (response?.success === true) addVideoKeys(message.model);
+        return response;
+    })), sendIfPresent: vi.fn(async () => ({success: true}))};
     const listener = createBackgroundRuntimeMessageListener(createBackgroundMessageRouter<any>([
         ...createLocalTtsBackgroundHandlers({storage, offscreen: ttsOffscreen}),
         ...createVideoSubtitleBackgroundHandlers({storage, offscreen: videoOffscreen as any}),
@@ -176,8 +181,8 @@ function backend() {
         async transfer(id: string, transfer: progressModule.DownloadProgress['transfer'], loaded = 0, total = 800_000) {
             jobs.get(id)!.report({loaded, total, transfer}); await Promise.all([...publishTasks]); await settle();
         },
-        async finish(id: string, response: any = {success: true}) {const job = jobs.get(id)!; job.done.resolve(response); await job.work; await settle(); await Promise.all([...publishTasks]);},
-        async close() {for (const gate of allReadGates) gate.resolve({success: false}); for (const job of jobs.values()) job.done.resolve({success: true}); await Promise.allSettled([...jobs.values()].map(job => job.work)); await Promise.allSettled([...publishTasks]);},
+        async finish(id: string, response?: unknown) {const job = jobs.get(id)!; job.done.resolve(response === undefined ? job.successResponse : response); await job.work; await settle(); await Promise.all([...publishTasks]);},
+        async close() {for (const gate of allReadGates) gate.resolve({success: false}); for (const job of jobs.values()) job.done.resolve(job.successResponse); await Promise.allSettled([...jobs.values()].map(job => job.work)); await Promise.allSettled([...publishTasks]);},
     };
 }
 let fixture: ReturnType<typeof backend> | undefined;

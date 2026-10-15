@@ -1,3 +1,6 @@
+import {translationSnapshot, ttsPreparation} from './helpers/localInferenceFixtures';
+import {LOCAL_TRANSLATION_MODEL_IDS} from '@/src/core/config/localTranslation';
+import type {LocalTtsPreparation, LocalTtsStatus} from '@/src/core/messaging/offscreen';
 /**
  * @file tests/implementationAudit48D.test.ts
  * 文件职责：经真实公开入口审查 D 组离屏模型、Worker 释放、状态写入和 WAV 输出。
@@ -203,7 +206,7 @@ describe('audit48D TTS owner public lifecycle', () => {
 });
 
 describe('audit48D background public handlers', () => {
- async function handlers(status: () => Promise<Record<string, unknown>>, prepare = async () => ({})) {
+ async function handlers(status: () => Promise<LocalTtsStatus>, prepare = async (): Promise<LocalTtsPreparation> => ttsPreparation()) {
   const {createLocalTtsBackgroundHandlers} = await import('@/src/features/local-tts/background/handlers');
   const data: Record<string, unknown> = {};
   const offscreen = {status:vi.fn(status),prepare:vi.fn(prepare),remove:vi.fn(async () => undefined)};
@@ -211,7 +214,7 @@ describe('audit48D background public handlers', () => {
   return {data,offscreen,run:(type:string) => Promise.resolve(list.find(h => h.type === type)!.handle({type},undefined))};
  }
  it('refreshes a late state snapshot after removal instead of persisting old downloaded state', async () => {
-  const first = deferred<Record<string, unknown>>(); let reads = 0;
+  const first = deferred<LocalTtsStatus>(); let reads = 0;
   const s = await handlers(() => ++reads === 1 ? first.promise : Promise.resolve({models:[{model:LOCAL_TTS_MODEL_ID,downloaded:false}]}));
   const query = s.run('fluentReadGetLocalTtsModelState');
   await s.run('fluentReadRemoveLocalTtsModel'); first.resolve({models:[{model:LOCAL_TTS_MODEL_ID,downloaded:true}]});
@@ -219,7 +222,7 @@ describe('audit48D background public handlers', () => {
   expect(s.data[LOCAL_TTS_MODEL_STATE_KEY]).toMatchObject({downloaded:false});
  });
  it('rejects removal while prepare is in flight and releases the guard after failure', async () => {
-  const hold = deferred<Record<string,unknown>>(); const s = await handlers(async () => ({}), () => hold.promise);
+  const hold = deferred<LocalTtsPreparation>(); const s = await handlers(async () => ({models: []}), () => hold.promise);
   const preparation = s.run('fluentReadPrepareLocalTtsModel').catch(e => e.message);
   const remove = s.run('fluentReadRemoveLocalTtsModel').then(() => 'removed', e => e.message);
   hold.reject(new Error('download failed')); expect(await preparation).toBe('download failed');
@@ -320,17 +323,17 @@ describe('audit48D unchanged production adapter consumers', () => {
   const messages:Array<Record<string,any>>=[]; let failure=false;
   const client=createOffscreenClient({getOffscreen:() => ({createDocument:async () => undefined}),getRuntime:() => ({getContexts:async () => [{}],sendMessage:(value,callback) => {
    const m=value as Record<string,any>; messages.push(m);
-   callback(m.type === 'FLUENT_READ_OFFSCREEN_READY' ? {success:true,ready:true} : failure ? {success:false,error:'controlled failure'} : {success:true,result:'translated',model:m.model});
+   callback(m.type === 'FLUENT_READ_OFFSCREEN_READY' ? {success:true,ready:true} : failure ? {success:false,error:'controlled failure'} : {success:true,result:'translated',model:m.model,models:[],...translationSnapshot()});
   }})});
   const adapter=createLocalTranslationOffscreenAdapter(client); const abort=new AbortController();
-  await expect(adapter.translate({model:'model',text:'markers',sourceLanguage:'auto',targetLanguage:'zh',sourceLanguageDetectionText:'clean sample'},{signal:abort.signal})).resolves.toBe('translated');
+  await expect(adapter.translate({model:LOCAL_TRANSLATION_MODEL_IDS.m2m100,text:'markers',sourceLanguage:'auto',targetLanguage:'zh',sourceLanguageDetectionText:'clean sample'},{signal:abort.signal})).resolves.toBe('translated');
   expect(messages.find(m => m.type === 'LOCAL_TRANSLATION_TRANSLATE')).toMatchObject({target:'offscreen',sourceLanguageDetectionText:'clean sample',requestId:expect.any(String)});
-  await expect(adapter.prepare('model',true)).resolves.toMatchObject({model:'model'});
+  await expect(adapter.prepare(LOCAL_TRANSLATION_MODEL_IDS.m2m100,true)).resolves.toMatchObject({model:LOCAL_TRANSLATION_MODEL_IDS.m2m100});
   await expect(adapter.status()).resolves.toMatchObject({success:true});
-  await expect(adapter.pause('model')).resolves.toMatchObject({model:'model'});
-  await expect(adapter.remove('model')).resolves.toBeUndefined();
+  await expect(adapter.pause(LOCAL_TRANSLATION_MODEL_IDS.m2m100)).resolves.toMatchObject({model:LOCAL_TRANSLATION_MODEL_IDS.m2m100});
+  await expect(adapter.remove(LOCAL_TRANSLATION_MODEL_IDS.m2m100)).resolves.toBeUndefined();
   failure=true;
-  for (const action of [() => adapter.translate({text:'hello'}), () => adapter.prepare('model'), () => adapter.status(), () => adapter.pause('model'), () => adapter.remove('model')]) await expect(action()).rejects.toThrow('controlled failure');
+  for (const action of [() => adapter.translate({model:LOCAL_TRANSLATION_MODEL_IDS.m2m100,text:'hello',sourceLanguage:'en',targetLanguage:'zh'}), () => adapter.prepare(LOCAL_TRANSLATION_MODEL_IDS.m2m100), () => adapter.status(), () => adapter.pause(LOCAL_TRANSLATION_MODEL_IDS.m2m100), () => adapter.remove(LOCAL_TRANSLATION_MODEL_IDS.m2m100)]) await expect(action()).rejects.toThrow('controlled failure');
  });
 });
 
@@ -385,7 +388,7 @@ describe('audit48D storage consumer during removal', () => {
  it('lets a storage-triggered state query finish with the removed model instead of a transient error', async () => {
   const {createLocalTtsBackgroundHandlers}=await import('@/src/features/local-tts/background/handlers');
   let query:Promise<unknown>|undefined; const data:Record<string,unknown>={}; let list:ReturnType<typeof createLocalTtsBackgroundHandlers>;
-  list=createLocalTtsBackgroundHandlers({offscreen:{prepare:async () => ({}),status:async () => ({models:[{model:LOCAL_TTS_MODEL_ID,downloaded:false}]}),remove:async () => undefined},storage:{get:async key => ({[key]:data[key]}),set:async value => {
+  list=createLocalTtsBackgroundHandlers({offscreen:{prepare:async () => ttsPreparation(),status:async () => ({models:[{model:LOCAL_TTS_MODEL_ID,downloaded:false}]}),remove:async () => undefined},storage:{get:async key => ({[key]:data[key]}),set:async value => {
    Object.assign(data,value); if (!query) query=Promise.resolve(list[0].handle({type:list[0].type},undefined));
   }}});
   await list[2].handle({type:list[2].type},undefined); await expect(query).resolves.toMatchObject({downloaded:false});
@@ -423,7 +426,7 @@ describe('audit48D bounded background state reconciliation', () => {
    if(marker && process.env.AUDIT48D_LOOP_PROBE === '1' && reads<=9) writeFileSync(marker,JSON.stringify({moduleLoaded:true,reads,legalMutations:reads}));
    return {models:[{model:LOCAL_TTS_MODEL_ID,downloaded:stale}]};
   });
-  list=createLocalTtsBackgroundHandlers({offscreen:{status,prepare:async () => {downloaded=true;return {};},remove:async () => {downloaded=false;}},storage:{get:async key => ({[key]:stored[key]}),set:async value => {Object.assign(stored,value);}}});
+  list=createLocalTtsBackgroundHandlers({offscreen:{status,prepare:async () => {downloaded=true;return ttsPreparation();},remove:async () => {downloaded=false;}},storage:{get:async key => ({[key]:stored[key]}),set:async value => {Object.assign(stored,value);}}});
   await expect(list[0].handle({type:list[0].type},undefined)).rejects.toThrow('状态变更过于频繁');
   expect(reads).toBeLessThanOrEqual(8);
   expect(stored[LOCAL_TTS_MODEL_STATE_KEY]).toMatchObject({downloaded});
@@ -437,7 +440,7 @@ describe('audit48D bounded background state reconciliation', () => {
    const stale=downloaded; reads++;
    if(reads<=2) {const h=list[reads===1 ? 1 : 2];await h.handle({type:h.type},undefined);}
    return {models:[{model:LOCAL_TTS_MODEL_ID,downloaded:stale}]};
-  },prepare:async () => {downloaded=true;return {};},remove:async () => {downloaded=false;}},storage:{get:async () => ({}),set:async value => {writes.push((value[LOCAL_TTS_MODEL_STATE_KEY] as {downloaded:boolean}).downloaded);}}});
+  },prepare:async () => {downloaded=true;return ttsPreparation();},remove:async () => {downloaded=false;}},storage:{get:async () => ({}),set:async value => {writes.push((value[LOCAL_TTS_MODEL_STATE_KEY] as {downloaded:boolean}).downloaded);}}});
   await expect(list[0].handle({type:list[0].type},undefined)).resolves.toMatchObject({downloaded:false});
   expect(reads).toBe(3); expect(writes).toEqual([true,false,false]);
  });
@@ -445,7 +448,7 @@ describe('audit48D bounded background state reconciliation', () => {
   const {createLocalTtsBackgroundHandlers}=await import('@/src/features/local-tts/background/handlers');
   let downloaded=false; let mutation:Promise<unknown>|undefined; let list:ReturnType<typeof createLocalTtsBackgroundHandlers>;
   const writes:boolean[]=[];
-  list=createLocalTtsBackgroundHandlers({offscreen:{status:async () => ({models:[{model:LOCAL_TTS_MODEL_ID,downloaded}]}),prepare:async () => {downloaded=true;return {};},remove:async () => undefined},storage:{get:async () => ({}),set:async value => {
+  list=createLocalTtsBackgroundHandlers({offscreen:{status:async () => ({models:[{model:LOCAL_TTS_MODEL_ID,downloaded}]}),prepare:async () => {downloaded=true;return ttsPreparation();},remove:async () => undefined},storage:{get:async () => ({}),set:async value => {
    writes.push((value[LOCAL_TTS_MODEL_STATE_KEY] as {downloaded:boolean}).downloaded);
    if(!mutation) mutation=Promise.resolve(list[1].handle({type:list[1].type},undefined));
   }}});
@@ -454,20 +457,20 @@ describe('audit48D bounded background state reconciliation', () => {
  });
  it('refreshes a late snapshot that began during prepare and resolves after prepare persisted completion', async () => {
   const {createLocalTtsBackgroundHandlers}=await import('@/src/features/local-tts/background/handlers');
-  const prepared=deferred<Record<string,unknown>>(),snapshot=deferred<Record<string,unknown>>();let reads=0;
+  const prepared=deferred<LocalTtsPreparation>(),snapshot=deferred<LocalTtsStatus>();let reads=0;
   const stored:Record<string,unknown>={};
   const list=createLocalTtsBackgroundHandlers({offscreen:{prepare:() => prepared.promise,status:() => ++reads===1 ? snapshot.promise : Promise.resolve({models:[{model:LOCAL_TTS_MODEL_ID,downloaded:true}]}),remove:async () => undefined},storage:{get:async key => ({[key]:stored[key]}),set:async value => {Object.assign(stored,value);}}});
   const preparation=list[1].handle({type:list[1].type},undefined);
-  const query=list[0].handle({type:list[0].type},undefined);prepared.resolve({});await preparation;
+  const query=list[0].handle({type:list[0].type},undefined);prepared.resolve({warm: false,});await preparation;
   snapshot.resolve({models:[{model:LOCAL_TTS_MODEL_ID,downloaded:false}]});
   await expect(query).resolves.toMatchObject({downloaded:true});expect(stored[LOCAL_TTS_MODEL_STATE_KEY]).toMatchObject({downloaded:true});expect(reads).toBe(2);
  });
  it('retains the newest committed prepare when an older concurrent preparation completes late', async () => {
   const {createLocalTtsBackgroundHandlers}=await import('@/src/features/local-tts/background/handlers');
-  const older=deferred<Record<string,unknown>>(),newer=deferred<Record<string,unknown>>();const stored:Record<string,unknown>={};let calls=0;
-  const list=createLocalTtsBackgroundHandlers({offscreen:{prepare:() => ++calls===1 ? older.promise : newer.promise,status:async () => ({}),remove:async () => undefined},storage:{get:async key => ({[key]:stored[key]}),set:async value => {Object.assign(stored,value);}}});
+  const older=deferred<LocalTtsPreparation>(),newer=deferred<LocalTtsPreparation>();const stored:Record<string,unknown>={};let calls=0;
+  const list=createLocalTtsBackgroundHandlers({offscreen:{prepare:() => ++calls===1 ? older.promise : newer.promise,status:async () => ({models: []}),remove:async () => undefined},storage:{get:async key => ({[key]:stored[key]}),set:async value => {Object.assign(stored,value);}}});
   const a=list[1].handle({type:list[1].type},undefined),b=list[1].handle({type:list[1].type},undefined);
-  newer.resolve({revision:'newer'});await b;older.resolve({revision:'older'});await a;
+  newer.resolve({warm: false,revision:'newer'});await b;older.resolve({warm: false,revision:'older'});await a;
   await expect(list[0].handle({type:list[0].type},undefined)).resolves.toMatchObject({downloaded:true,models:[{revision:'newer'}]});
   expect(stored[LOCAL_TTS_MODEL_STATE_KEY]).toMatchObject({revision:'newer'});
  });
@@ -495,8 +498,8 @@ describe('audit48D remaining public offscreen branches', () => {
   let response:unknown=undefined;
   const client=createOffscreenClient({getOffscreen:() => ({createDocument:async () => undefined}),getRuntime:() => ({getContexts:async () => [{}],sendMessage:(m,callback) => callback((m as {type:string}).type==='FLUENT_READ_OFFSCREEN_READY' ? {success:true,ready:true} : response)})});
   const adapter=createLocalTranslationOffscreenAdapter(client);
-  const actions=[{run:() => adapter.translate({text:'hello'}),error:'本地翻译失败'},{run:() => adapter.prepare('model'),error:'本地翻译模型下载失败'},{run:() => adapter.status(),error:'无法读取本地翻译模型状态'},{run:() => adapter.pause('model'),error:'LOCAL_TRANSLATION_PAUSE_FAILED'},{run:() => adapter.remove('model'),error:'本地翻译模型清除失败'}];
-  for(response of [undefined,{success:false,error:''},{success:false,error:42}]) for(const action of actions) await expect(action.run()).rejects.toThrow(action.error);
+  const actions=[{run:() => adapter.translate({model:LOCAL_TRANSLATION_MODEL_IDS.m2m100,text:'hello',sourceLanguage:'en',targetLanguage:'zh'}),error:'本地翻译失败'},{run:() => adapter.prepare(LOCAL_TRANSLATION_MODEL_IDS.m2m100),error:'本地翻译模型下载失败'},{run:() => adapter.status(),error:'无法读取本地翻译模型状态'},{run:() => adapter.pause(LOCAL_TRANSLATION_MODEL_IDS.m2m100),error:'LOCAL_TRANSLATION_PAUSE_FAILED'},{run:() => adapter.remove(LOCAL_TRANSLATION_MODEL_IDS.m2m100),error:'本地翻译模型清除失败'}];
+  for(response of [undefined,{success:false,error:''},{success:false,error:42}]) for(const action of actions) await expect(action.run()).rejects.toThrow(response && typeof response === 'object' && 'error' in response && typeof response.error === 'string' ? action.error : '响应消息格式无效');
  });
 });
 
@@ -661,10 +664,11 @@ describe('audit48D Worker controlled model ports', () => {
  it('uses CPU defaults and rejects empty requests and empty model output without breaking the message queue', async () => {
   const s=await startWorker(async function*(){});
   await expect(s.send({requestId:1,type:'synthesize'})).resolves.toMatchObject({success:false,error:'本地 TTS 文本为空'});
-  await expect(s.send({requestId:2,type:'synthesize',text:'hello',speed:Infinity,voice:'  '})).resolves.toMatchObject({success:false,error:'本地 TTS 生成了静音音频'});
+  for(const [index,speed] of [Infinity,NaN].entries()) await expect(s.send({requestId:10+index,type:'synthesize',text:'hello',speed,voice:'  '})).resolves.toMatchObject({success:false,error:expect.stringContaining('消息格式无效')});
+  await expect(s.send({requestId:2,type:'synthesize',text:'hello',voice:'  '})).resolves.toMatchObject({success:false,error:'本地 TTS 生成了静音音频'});
   const stream=vi.fn(async function*(){yield {audio:{audio:new Float32Array([0.5]),sampling_rate:24000}};});external.fromPretrained.mockResolvedValue({stream,model:{}});
   await s.send({requestId:3,type:'dispose'});
-  await expect(s.send({requestId:4,type:'synthesize',text:' hi ',speed:NaN,voice:' '})).resolves.toMatchObject({success:true,backend:'wasm'});
+  await expect(s.send({requestId:4,type:'synthesize',text:' hi ',voice:' '})).resolves.toMatchObject({success:true,backend:'wasm'});
   expect(stream).toHaveBeenCalledWith('hi',{voice:'zf_001',speed:1,maxChunkLength:180});
  });
  it('keeps disposal idempotent when no model exists or its dispose port fails', async () => {
@@ -674,10 +678,12 @@ describe('audit48D Worker controlled model ports', () => {
   await s.send({requestId:2,type:'prepare'});await expect(s.send({requestId:3,type:'dispose'})).resolves.toMatchObject({success:true});expect(dispose).toHaveBeenCalledOnce();
   await expect(s.send({requestId:4,type:'dispose'})).resolves.toMatchObject({success:true});
  });
- it('ignores malformed messages without loading a model and still accepts a valid disposal', async () => {
+ it('ignores uncorrelated messages and rejects a malformed known request without loading a model or breaking disposal', async () => {
   const s=await startWorker(async function*(){});
-  for(const value of [null,{}, {requestId:'1',type:'prepare'},{requestId:1,type:'unknown'}]) s.scope.onmessage!({data:value} as MessageEvent);
+  for(const value of [null,{}, {requestId:'1',type:'prepare'}]) s.scope.onmessage!({data:value} as MessageEvent);
   await flush();expect(external.fromPretrained).not.toHaveBeenCalled();expect(s.scope.postMessage).not.toHaveBeenCalled();
+  await expect(s.send({requestId:1,type:'unknown'})).resolves.toMatchObject({requestId:1,success:false,error:expect.stringContaining('消息格式无效')});
+  expect(external.fromPretrained).not.toHaveBeenCalled();
   await expect(s.send({requestId:2,type:'dispose'})).resolves.toMatchObject({success:true});
  });
  it('wraps a non-Error GPU initialization rejection and locks the same worker to CPU after the failure', async () => {

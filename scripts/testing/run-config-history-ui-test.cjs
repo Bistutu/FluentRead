@@ -143,9 +143,12 @@ async function newOptions() {
     record('older version separates its historical edit from the settings restoration would change');
     const beforeRestoreCount = (await storedHistory()).entries.length;
     await dialog.getByRole('button', {name: '恢复此版本', exact: true}).click();
-    const confirm = page.locator('.el-message-box:visible');
+    const confirm = page.getByRole('dialog', {name: '确认恢复设置', exact: true});
     await confirm.waitFor();
+    assert.match(await confirm.innerText(), /将恢复 v\d+，并生成一份新的最近修改记录/);
+    await shot('settings-history-restore-confirmation');
     await confirm.getByRole('button', {name: '恢复', exact: true}).click();
+    await confirm.waitFor({state: 'hidden'});
     await dialog.waitFor({state: 'hidden'});
     await waitConfig('to', 'en');
     const restoredHistory = await storedHistory();
