@@ -2237,6 +2237,9 @@ function restoreSelectionSource(): void {
   hideAll();
 }
 
+// 内容装配层恢复被网页移除的 host 时，先检查组件持有的原文快照。
+defineExpose({revalidateSource: restoreSelectionSource});
+
 function handlePageHide(): void {
   isSelecting = false;
   uiPointerInteraction = false;

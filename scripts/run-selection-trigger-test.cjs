@@ -1464,12 +1464,26 @@ async function main() {
       await waitForSelectionUi(page, {indicator: false, tooltip: false}, '空选区收起入口');
       result.cases.push({id: 'lifecycle.empty-selection-cleans-entry', status: 'passed'});
 
+      await selectFresh('A replaced page must discard this pending selection translation.');
+      const requestsBeforeReplacement = translationRequestCount;
+      translationResponseDelayMs = 1200;
+      await clickSelectionIndicator(page);
+      await waitForSelectionUi(page, {tooltip: true, loading: true}, '替换正文前保留在途划词请求');
       await page.evaluate(() => {
         const nextBody = document.createElement('body');
         nextBody.innerHTML = '<main><p>New route body</p></main>';
         document.body.replaceWith(nextBody);
       });
       await waitForSameHost();
+      await waitForSelectionUi(page, {indicator: false, tooltip: false}, '恢复 host 时关闭来源已失效的卡片');
+      await page.waitForTimeout(1500);
+      await waitForSelectionUi(page, {indicator: false, tooltip: false}, '旧来源的迟到响应不能重新打开卡片');
+      assert(translationRequestCount === requestsBeforeReplacement + 1, '恢复失效来源的 host 重复发起翻译');
+      translationResponseDelayMs = 0;
+      await screenshot('selection-lifecycle-source-replaced-cleared');
+      result.cases.push({id: 'lifecycle.replaced-source-cancels-late-result', status: 'passed',
+        additionalRequests: 1, ui: await readSelectionUi(page),
+        scope: 'Actual production Chrome page/body mutation; Safari consumed-native-selection path is verified separately.'});
       await page.evaluate(() => history.pushState({}, '', '/selection-next-route'));
       await page.waitForTimeout(500);
       const nextRouteSelection = await selectFresh('The newly rendered route still supports selection translation.');

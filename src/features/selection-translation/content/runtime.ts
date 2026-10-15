@@ -1,7 +1,7 @@
 /**
  * @file src/features/selection-translation/content/runtime.ts
  * 文件职责：管理 SelectionTranslator Vue 覆盖层在内容脚本中的单例挂载、异步所有权校验与卸载，避免配置快速切换时旧 Promise 污染新实例。
- * 主要内容：缓存 ContentScriptContext，维护 mountRequestId、实例与 Shadow UI 句柄；普通翻译与学习卡片共用 closed Shadow Root，通过 modal host 控制器承接组件选区；观察自有 host 的祖先链，在页面重建时有界恢复同一实例，并在关闭或卸载时停止恢复。
+ * 主要内容：缓存 ContentScriptContext，维护 mountRequestId、实例与 Shadow UI 句柄；普通翻译与学习卡片共用 closed Shadow Root，通过 modal host 控制器承接组件选区；观察自有 host 的祖先链，在页面重建时先由组件复核来源再有界恢复同一实例，并在关闭或卸载时停止恢复。
  * 模块边界：运行时只负责编排组件生命周期，不读取 Selection API、不调用翻译或 TTS；这些行为归 Vue 组件与控制器，Shadow DOM 创建由 platform/shadow-ui 提供。
  */
 import SelectionTranslator from '@/src/features/selection-translation/ui/SelectionTranslator.vue';
@@ -36,6 +36,9 @@ function watchSelectionHost(host: HTMLElement, requestId: number, context: Conte
     const parent = ownerDocument.body ?? ownerDocument.documentElement;
     if (!host.isConnected && repairs < 2 && parent?.isConnected) {
       repairs += 1;
+      // Safari 已收起原生选区时，正文替换不一定再触发 selectionchange。
+      // 由当前组件复用来源校验并取消失效请求，不能把旧卡片随 host 一起复活。
+      selectionTranslatorInstance?.revalidateSource?.();
       // 原生 dialog 的迁移仍交给已有控制器；一般页面仅重新连接既有 host，不重建 Vue 或请求。
       modalDialogHost?.placeForRange(range);
       if (!host.isConnected) parent.appendChild(host);

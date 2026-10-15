@@ -1,8 +1,8 @@
 /**
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
- * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口。
- * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；新增入口可选官方模板和独立 Linkedom 节点树，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
+ * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口，并组合实际 selection runtime 验证 Safari 已消费选区的 host 恢复、正文失效及离开清理。
+ * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；新增入口可选官方模板和独立 Linkedom 节点树；组合模式将真实组件交给原始 runtime 的平台挂载端口，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import * as speechProgress from '@/src/core/tts/speechProgress';
@@ -25,6 +25,7 @@ import * as wordNormalization from '@/src/features/selection-translation/service
 import * as vocabularyProtocol from '@/src/features/vocabulary/protocol';
 import * as hotkey from '@/src/core/hotkey';
 import * as visualViewport from '@/src/platform/dom/visualViewport';
+import * as modalDialogHost from '@/src/features/selection-translation/content/modalDialogHost';
 import {setSelectionContextMenuHandler, translateSelectionFromContextMenu as translateSelectionThroughBridge} from '@/src/features/selection-translation/content/contextMenuBridge';
 
 vi.mock('webextension-polyfill', () => ({default: {}}));
@@ -109,7 +110,7 @@ function createSelectionTemplatePort() {
             else element.setAttribute(key, value === true ? '' : String(value));
         },
     });
-    return {renderer, root: document.body,
+    return {renderer, root: document.body, document, domWindow: parsed.window,
         click(element: Element) {
             clickResult = undefined;
             element.dispatchEvent(new parsed.window.Event('click', {bubbles: true}));
@@ -121,12 +122,14 @@ let app: Vue.App | undefined;
 afterEach(() => { app?.unmount(); app = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>,
-    targetOrProps: SelectionBuildTarget | Record<string, unknown> = 'chrome', readyOrTemplate: Promise<void> | boolean = Promise.resolve()) {
+    targetOrProps: SelectionBuildTarget | Record<string, unknown> = 'chrome', readyOrTemplate: Promise<void> | boolean = Promise.resolve(),
+    runtimeIntegration = false) {
     // 保留两侧原调用：主线 target/configReady 与本地 componentProps/可选完整模板。
     const browserTarget = typeof targetOrProps === 'string' ? targetOrProps : 'chrome';
     const componentProps = typeof targetOrProps === 'string' ? {} : targetOrProps;
     const configReady = typeof readyOrTemplate === 'boolean' ? Promise.resolve() : readyOrTemplate;
     const renderTemplate = typeof readyOrTemplate === 'boolean' ? readyOrTemplate : false;
+    const renderPort = renderTemplate ? createSelectionTemplatePort() : null;
     vi.useFakeTimers();
     const config = Object.assign(new Config(), {
         disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', theme: 'light',
@@ -143,7 +146,11 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         }),
     });
     const media = eventTarget('media');
-    const document = {...eventTarget('document'), getElementById: vi.fn(() => null)};
+    const documentPort = {...eventTarget('document'), getElementById: vi.fn(() => null)};
+    // 组合回归使用同一真实节点树；事件可信度与 Selection 几何仍由受控浏览器端口提供。
+    const document = runtimeIntegration
+        ? Object.assign(renderPort!.document, eventTarget('document')) as unknown as typeof documentPort
+        : documentPort;
     const window = {
         ...eventTarget('window'), innerWidth: 1000, innerHeight: 800, document,
         matchMedia: () => ({matches: false, ...media}),
@@ -216,7 +223,6 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         return modules[id] ?? {};
     };
     new Function('require', 'exports', compileForTarget(browserTarget))(loadModule, exports);
-    const renderPort = renderTemplate ? createSelectionTemplatePort() : null;
     if (renderPort) {
         const renderExports: Record<string, any> = {};
         new Function('require', 'exports', selectionTemplateCode())(loadModule, renderExports);
@@ -227,16 +233,24 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         createText: () => ({}), createComment: () => ({}), setText() {}, setElementText() {},
         parentNode: () => null, nextSibling: () => null,
     });
-    const currentApp: Vue.App = renderer.createApp(exports.default, {selectionAdapter, ...componentProps});
+    let currentApp: Vue.App | undefined;
+    let state: Record<string, any>;
     const lifecycleErrors = vi.fn();
-    currentApp.config.errorHandler = lifecycleErrors;
-    app = currentApp;
-    if (renderPort) currentApp.directive('ui-i18n', {});
-    const vm = currentApp.mount(renderPort?.root ?? {});
-    const state = (vm.$ as any).setupState as Record<string, any>;
-    return {state, event, browser, config, listeners, window, document, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
+    const mountActual = (props: Record<string, unknown> = {}, root = renderPort?.root ?? {}) => {
+        if (currentApp) throw new Error('The same component must not be mounted twice');
+        currentApp = renderer.createApp(exports.default, {selectionAdapter, ...componentProps, ...props});
+        currentApp.config.errorHandler = lifecycleErrors;
+        app = currentApp;
+        if (renderPort) currentApp.directive('ui-i18n', {});
+        const vm = currentApp.mount(root);
+        state = (vm.$ as any).setupState as Record<string, any>;
+        return vm;
+    };
+    if (!runtimeIntegration) mountActual();
+    return {get state() {return state;}, event, browser, config, listeners, window, document, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
+        component: exports.default, mountActual,
         registerContextMenu, get contextMenuHandler() {return contextMenuHandler;},
-        lifecycleErrors, renderPort, unmount: () => { currentApp.unmount(); app = undefined; }};
+        lifecycleErrors, renderPort, unmount: () => { currentApp?.unmount(); app = undefined; }};
 }
 
 describe('explicit free selection explanation', () => {
@@ -1545,6 +1559,162 @@ describe('Safari explicit touch selection consumption', () => {
         const fixture=prepare();fixture.removeAllRanges.mockImplementation(()=>{throw Error('native selection unavailable');});
         await clickEntry(fixture);expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.touchOpenedSelection).toBe(fixture.state.snapshot);
         fixture.unmount();expect(fixture.state.touchOpenedSelection).toBeNull();expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * 同一文档上的组合回归：执行原始 runtime.ts、真实 SFC setup/template 与 modal controller。
+ * 仅 WXT 创建宿主、浏览器可信事件/Selection 几何及翻译 provider 是受控端口。
+ * Linkedom 提供真实父子连接性、closed ShadowRoot 和异步 MutationObserver；不声称 AVKit/系统菜单实测。
+ */
+describe('Safari consumed selection and actual runtime host recovery', () => {
+    async function prepare() {
+        const fixture = mountSelection(false, undefined, 'safari', true, true);
+        const port = fixture.renderPort!, document = port.document;
+        vi.stubGlobal('Element', port.domWindow.Element);
+        vi.stubGlobal('Node', port.domWindow.Node);
+        vi.stubGlobal('MutationObserver', port.domWindow.MutationObserver);
+        Object.defineProperty(document, 'visibilityState', {configurable: true, value: 'visible', writable: true});
+        const paragraph = document.createElement('p');
+        paragraph.textContent = '这是一段需要认真阅读的中文。';
+        document.body.appendChild(paragraph);
+        const source = paragraph.firstChild!;
+        const range = Vue.markRaw({startContainer: source, endContainer: source, commonAncestorContainer: source, startOffset: 0,
+            endOffset: paragraph.textContent.length, collapsed: false,
+            getClientRects: () => [{left: 20, right: 310, top: 150, bottom: 174, width: 290, height: 24}],
+            toString: () => source.textContent!,
+            cloneRange: () => Vue.markRaw({...range}),
+        });
+        let cleared = true;
+        const removeAllRanges = vi.fn(() => {cleared = true;});
+        const selection = {get rangeCount() {return cleared ? 0 : 1;}, get isCollapsed() {return cleared;},
+            anchorNode: source, anchorOffset: 0, containsNode: () => false,
+            getRangeAt: () => range, toString: () => cleared ? '' : source.textContent!, removeAllRanges};
+        Object.assign(fixture.window, {getSelection: () => selection});
+        Object.assign(fixture.config, {on: true, from: 'en', to: 'zh-CN', selectionTranslatorBidirectional: true,
+            selectionTranslatorTrigger: 'icon', selectionTranslatorDelay: 0});
+        let resolveTranslation!: (text: string) => void;
+        fixture.translateText.mockImplementation(() => new Promise<string>(resolve => {resolveTranslation = resolve;}));
+        const host = document.createElement('fluent-read-selection-translator-ui');
+        const container = document.createElement('div');
+        host.id = 'fluent-read-selection-translator-container';
+        host.attachShadow({mode: 'closed'}).appendChild(container);
+        port.root = container;
+        const createUi = vi.fn(async (_context: unknown, options: {component: unknown; props: Record<string, unknown>}) => {
+            expect(options.component).toBe(fixture.component);
+            document.body.appendChild(host);
+            const instance = fixture.mountActual(options.props, container);
+            return {shadowHost: host, mounted: {instance}, remove: vi.fn(() => {fixture.unmount(); host.remove();})};
+        });
+        const runtimeExports: Record<string, any> = {};
+        const runtimeFilename = 'src/features/selection-translation/content/runtime.ts';
+        const compiledRuntime = ts.transpileModule(readFileSync(runtimeFilename, 'utf8'), {
+            compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
+        }).outputText;
+        const runtimePorts: Record<string, unknown> = {
+            '@/src/features/selection-translation/ui/SelectionTranslator.vue': {__esModule: true, default: fixture.component},
+            '@/src/services/config/store': {config: fixture.config},
+            '@/src/platform/shadow-ui': {createVueShadowUi: createUi}, './modalDialogHost': modalDialogHost,
+        };
+        new Function('require', 'exports', compiledRuntime)((id: string) => {
+            if (!(id in runtimePorts)) throw new Error(`Unexpected runtime import: ${id}`);
+            return runtimePorts[id];
+        }, runtimeExports);
+        const runtime = runtimeExports as typeof import('@/src/features/selection-translation/content/runtime');
+        const instance = await runtime.mountSelectionTranslator({isInvalid: false} as never);
+        const dispatch = (prefix: 'document' | 'window', type: string, event: Record<string, unknown>) => {
+            for (const listener of [...fixture.listeners.get(`${prefix}:${type}`) ?? []]) listener(event);
+        };
+        // 使用组件安装的指针监听器建立快照，随后点击官方模板绑定的入口。
+        dispatch('document', 'pointerdown', {isTrusted: true, pointerType: 'touch', button: 0, target: paragraph});
+        cleared = false; // 浏览器在按下之后才建立此次新的正文选区。
+        dispatch('document', 'pointerup', {isTrusted: true, pointerType: 'touch', button: 0, target: paragraph});
+        await vi.advanceTimersByTimeAsync(300);
+        await Vue.nextTick();
+        const indicator = container.querySelector('.fr-selection-indicator');
+        expect(indicator).not.toBeNull();
+        await port.click(indicator!);
+        await Vue.nextTick();
+        expect(removeAllRanges).toHaveBeenCalledOnce();
+        expect(selection.rangeCount).toBe(0);
+        expect(host.shadowRoot).toBeNull();
+        expect(fixture.state.touchOpenedSelection).toBe(fixture.state.snapshot);
+        expect(fixture.state.effectiveTargetLanguage).toBe('en');
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        return {fixture, document, paragraph, source, host, container, runtime, instance, createUi,
+            dispatch, resolveTranslation: (text: string) => resolveTranslation(text)};
+    }
+    async function settle() {await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();}
+
+    it('restores the same consumed-selection card and runtime instance without another request or target change', async () => {
+        const x = await prepare();
+        try {
+            const snapshot = x.fixture.state.snapshot;
+            x.host.remove();
+            await settle();
+            expect(x.host.isConnected).toBe(true);
+            expect(x.host.parentNode).toBe(x.document.body);
+            expect(await x.runtime.mountSelectionTranslator()).toBeNull(); // 已挂载入口不创建另一实例。
+            expect(x.createUi).toHaveBeenCalledOnce();
+            await expect(x.createUi.mock.results[0].value).resolves.toMatchObject({mounted: {instance: x.instance}});
+            expect(x.fixture.state.snapshot).toBe(snapshot);
+            expect(x.fixture.state.showTooltip).toBe(true);
+            expect(x.fixture.state.effectiveTargetLanguage).toBe('en');
+            x.resolveTranslation('Read this carefully.');
+            await settle();
+            expect(x.fixture.state.translationResult).toBe('Read this carefully.');
+            expect(x.fixture.translateText).toHaveBeenCalledOnce();
+            expect(x.fixture.lifecycleErrors).not.toHaveBeenCalled();
+        } finally {x.runtime.unmountSelectionTranslator();}
+    });
+
+    it('cleans the invalid consumed source after body replacement and rejects its late translation', async () => {
+        const x = await prepare();
+        try {
+            const replacement = x.document.createElement('body');
+            replacement.innerHTML = '<p>A different page source.</p>';
+            x.document.body.replaceWith(replacement);
+            await settle();
+            expect(x.source.isConnected).toBe(false);
+            expect(x.host.parentNode).toBe(replacement);
+            // Selection 已为空：不伪造 selectionchange/pageshow 来替代实际 host 恢复路径。
+            expect(x.fixture.state.showTooltip).toBe(false);
+            expect(x.fixture.state.snapshot).toBeNull();
+            expect(x.fixture.state.touchOpenedSelection).toBeNull();
+            expect(x.fixture.translateText.mock.calls[0][2].signal.aborted).toBe(true);
+            x.resolveTranslation('A late answer for the removed source.');
+            await settle();
+            expect(x.fixture.state.translationResult).toBe('');
+            expect(x.container.textContent).not.toContain('A late answer');
+            expect(x.createUi).toHaveBeenCalledOnce();
+        } finally {x.runtime.unmountSelectionTranslator();}
+    });
+
+    it.each(['pagehide', 'unmount'] as const)('does not resurrect the consumed card or late answer after %s', async reason => {
+        const x = await prepare();
+        try {
+            x.host.remove(); // 保留待处理的真实 MutationObserver 记录。
+            if (reason === 'pagehide') x.dispatch('window', 'pagehide', {isTrusted: true});
+            else x.runtime.unmountSelectionTranslator();
+            x.resolveTranslation('A late answer after leaving.');
+            await settle();
+            expect(x.fixture.state.touchOpenedSelection).toBeNull();
+            if (reason === 'pagehide') {
+                // 即使 runtime 仍保留空的入口宿主，也不能重新显示已由 pagehide 关闭的卡。
+                expect(x.fixture.state.showTooltip).toBe(false);
+                expect(x.fixture.state.snapshot).toBeNull();
+                expect(x.container.querySelector('.fr-translation-tooltip')).toBeNull();
+            } else {
+                expect(x.host.isConnected).toBe(false);
+                expect(x.container.childNodes).toHaveLength(0);
+            }
+            expect(x.fixture.state.translationResult).toBe('');
+            expect(x.fixture.translateText).toHaveBeenCalledOnce();
+            expect(x.createUi).toHaveBeenCalledOnce();
+            expect(x.fixture.lifecycleErrors).not.toHaveBeenCalled();
+        } finally {x.runtime.unmountSelectionTranslator();}
+        await settle();
+        expect(x.host.isConnected).toBe(false);
     });
 });
 
