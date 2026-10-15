@@ -4,6 +4,7 @@
 // 文档产品流程回归：临时 profile、生产扩展、真实 UI 输入和下载，网络仅连接本机确定性服务。
 // 覆盖所有支持格式、长 PDF/归档取消重试、暂停续译、失败恢复、完整校订、设置变化、离开保护及响应式外观。
 const assert = require('node:assert/strict');
+const {mapPdfLayoutPages} = require('./testing/pdf-output-pages.cjs');
 const {guardBrowserClose} = require('./testing/owned-browser-close.cjs');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -70,7 +71,7 @@ async function fixtureServer() {
   return {...state, state, releaseHeld: () => {state.holdSource = null; for (const release of [...state.held]) release();}, url: `http://127.0.0.1:${server.address().port}/v1/chat/completions`, close: () => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); }};
 }
 
-async function pdfPageTexts(bytes) {
+async function pdfPageTexts(bytes, withLabels = false) {
   const requireRepo = createRequire(path.join(__dirname, '..', 'package.json'));
   const {getDocument} = await import(requireRepo.resolve('pdfjs-dist/legacy/build/pdf.mjs'));
   const task = getDocument({data: new Uint8Array(bytes), disableFontFace: true, isEvalSupported: false, useWorkerFetch: false, verbosity: 0,
@@ -78,7 +79,7 @@ async function pdfPageTexts(bytes) {
   try {
     const pdf = await task.promise, pages = [];
     for (let number = 1; number <= pdf.numPages; number++) {const page = await pdf.getPage(number); try {pages.push((await page.getTextContent()).items.filter(item => 'str' in item).map(item => item.str).join('\n'));} finally {page.cleanup();}}
-    return pages;
+    return withLabels ? {texts: pages, labels: await pdf.getPageLabels()} : pages;
   } finally {await task.destroy();}
 }
 
@@ -238,19 +239,21 @@ async function main() {
         const dest = await download(mode);
         const bytes = fs.readFileSync(dest);
         const output = await PDFDocument.load(bytes);
-        // 原版排版下载：每个源页对应一个输出页；双语同页左右对照，译文保持单宽。
-        const texts = await pdfPageTexts(bytes), originals = texts.map((text, index) => ({index, text})).filter(entry => entry.text.includes('Long document page'));
-        assert.equal(output.getPageCount(), 100, '下载必须保留 100 个源页的一一对应关系');
+        // 原版页保持源页顺序；完整长译文可以在所属页后增加带标准页标签的续页。
+        const {texts, labels} = await pdfPageTexts(bytes, true);
+        const mapped = mapPdfLayoutPages(100, texts.map((text, index) => ({text, label: labels?.[index]})));
+        assert(mapped.ok, '下载必须保留 100 个源原版页和连续编号的所属续页');
+        const originals = mapped.pages.map((page, index) => ({index, text: page.text})).filter(entry => entry.text.includes('Long document page'));
         if (mode === 'bilingual') {
           assert.equal(originals.length, 100, '双语下载必须保留全部 100 个原页');
           originals.forEach((entry, order) => {
             assert.equal(Number(/Long document page\s+(\d+)/u.exec(entry.text)?.[1]), order + 1, '原页必须按源页顺序排列');
             assert.equal(entry.index, order, `第 ${order + 1} 个原页必须在同一个左右对照输出页中`);
           });
-        } else assert.equal(originals.length, 0, '仅译文下载不含原页矢量文字');
+        } else assert(texts.some(text => text.includes('100 页导出校订保留测试')), '仅译文必须保留可复制的人工校订');
         const expectedWidth = mode === 'bilingual' ? 595 * 2 + Math.max(8, Math.min(24, 595 * .025)) : 595;
-        for (const sheet of output.getPages()) {assert.equal(sheet.getWidth(), expectedWidth); assert.equal(sheet.getHeight(), 842);}
-        report.exampleLoads[mode] = {pages: output.getPageCount(), originalPages: originals.length, bytes: bytes.length, elapsedMs: Date.now() - start};
+        for (const index of mapped.indices) {const sheet = output.getPage(index); assert.equal(sheet.getWidth(), expectedWidth); assert.equal(sheet.getHeight(), 842);}
+        report.exampleLoads[mode] = {pages: output.getPageCount(), layoutPages: mapped.pages.length, continuationPages: mapped.continuations.length, bytes: bytes.length, elapsedMs: Date.now() - start};
       }
       await page.getByRole('button', {name: '校订译文', exact: true}).click();
       assert.equal(await page.locator('textarea.document-translation').first().inputValue(), '100 页导出校订保留测试');

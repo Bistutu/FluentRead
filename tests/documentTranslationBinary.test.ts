@@ -212,8 +212,8 @@ describe('binary document translation formats', () => {
         expect(result.getPageCount()).toBe(mode === 'bilingual' ? 6 : 4);
         expect(received.map(page => page.pageNumber)).toEqual([1, 2]);
         const expected = parsed.binary!.kind === 'pdf' ? parsed.binary!.pages.flatMap(page => page.blocks)
-            .filter(block => block.segmentIndex >= 0)
-            .map(block => block.kind === 'metadata' || block.kind === 'footer' ? parsed.segments[block.segmentIndex].source : translations[block.segmentIndex]).join('') : '';
+            .filter(block => block.segmentIndex >= 0 || block.kind === 'metadata' || block.kind === 'footer')
+            .map(block => block.kind === 'metadata' || block.kind === 'footer' ? parsed.segments[block.segmentIndex]?.source ?? block.source ?? '' : translations[block.segmentIndex]).join('') : '';
         expect(received.map(page => page.text).join('')).toBe(expected);
         expect(result.getPages().filter(page => page.getWidth() === 612).every(page => page.getHeight() === 792)).toBe(true);
     });

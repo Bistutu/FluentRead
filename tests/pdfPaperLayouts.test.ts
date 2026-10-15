@@ -6,10 +6,11 @@
  */
 import {readdirSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage} from 'pdf-lib';
+import {PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage} from 'pdf-lib';
 import {describe, expect, it} from 'vitest';
 import type {ParsedDocument, PdfDocumentBlock} from '@/src/features/document-translation/core/document';
 import {parseBinaryDocument} from '@/src/features/document-translation/services/binary';
+import {buildPdfReadingPlan} from '@/src/features/document-translation/core/pdfReadingPlan';
 
 interface Fonts {serif: PDFFont; bold: PDFFont; italic: PDFFont; sans: PDFFont}
 interface Sheet {page: PDFPage; fonts: Fonts; height: number}
@@ -84,6 +85,47 @@ function expectSoundStructure(document: ParsedDocument): void {
 }
 
 describe('common paper layouts survive real PDF parsing', () => {
+    it.each([90, 180, 270] as const)('recovers physically turned source text when the PDF display rotation is %i degrees', async rotation => {
+        const pdf = await PDFDocument.create(), font = await pdf.embedFont(StandardFonts.TimesRoman), sheet = pdf.addPage([612, 792]);
+        sheet.setRotation(degrees(rotation));
+        const source = 'Source native report text remains complete in its displayed reading direction.';
+        sheet.drawText(source, {x: rotation === 90 ? 100 : 500, y: rotation === 90 ? 50 : rotation === 180 ? 100 : 740, font, size: 10, rotate: degrees(rotation)});
+        const document = await parseBinaryDocument('turned-report.pdf', await pdf.save());
+        expect(sources(document)).toContain(source);
+        expect(pages(document)[0]).toMatchObject({sourceRotation: rotation});
+        expect(pages(document)[0].rotation).toBeUndefined();
+        expect(pages(document)[0].blocks[0].width).toBeGreaterThan(pages(document)[0].blocks[0].height * 10);
+        expect(buildPdfReadingPlan(document, pages(document)[0], []).entries.some(entry => entry.kind === 'text' && entry.text === source)).toBe(true);
+    });
+    it.each([0, 90, 180, 270] as const)('keeps ordinary horizontal source text in canonical coordinates when only display metadata is %i degrees', async rotation => {
+        const pdf = await PDFDocument.create(), font = await pdf.embedFont(StandardFonts.TimesRoman), sheet = pdf.addPage([612, 792]);
+        sheet.setRotation(degrees(rotation));
+        const source = 'Ordinary source paragraph retains its original coordinates and complete words.';
+        sheet.drawText(source, {x: 54, y: 700, font, size: 10});
+        const document = await parseBinaryDocument('metadata-turn.pdf', await pdf.save());
+        expect(sources(document)).toContain(source);
+        expect(pages(document)[0].rotation ?? 0).toBe(rotation);
+        expect(pages(document)[0].sourceRotation).toBeUndefined();
+        expect(pages(document)[0].blocks[0].x).toBeCloseTo(54);
+    });
+    it('retains a detached bottom footnote and source-only byline through PDF.js and the canonical reading plan', async () => {
+        const footnote = '1 This bottom footnote must remain available for translation and reading.';
+        const document = await build(sheet => {
+            centered(sheet, 'An Example Article for Source Preservation', 100, 17, sheet.fonts.serif);
+            centered(sheet, 'Ada Example, Bo Sample', 130, 12, sheet.fonts.serif);
+            paragraph(sheet, sentence('body', 4), 54, 200, 240);
+            sheet.page.drawLine({start: {x: 54, y: sheet.height - 748}, end: {x: 134, y: sheet.height - 748}, thickness: .5});
+            paragraph(sheet, footnote, 54, 765, 490, {size: 8, leading: 9});
+            centered(sheet, '8', 785, 8, sheet.fonts.serif);
+        });
+        expect(sources(document)).toContain(footnote);
+        expect(blockOf(document, footnote)).toMatchObject({kind: 'text', preserveSource: false});
+        const plan = buildPdfReadingPlan(document, pages(document)[0], []);
+        const text = plan.entries.filter(entry => entry.kind === 'text');
+        expect(text.map(entry => entry.text)).toEqual(expect.arrayContaining(['Ada Example, Bo Sample', footnote, '8']));
+        expect(new Set(plan.entries.map(entry => entry.id)).size).toBe(plan.entries.length);
+        expectSoundStructure(document);
+    });
     it('single-column LaTeX article: title, byline, abstract, numbered sections, display equation, footnote and page number', async () => {
         const abstract = sentence('abstract', 4), first = sentence('opening', 5), second = sentence('follow-up', 4);
         const document = await build(sheet => {
