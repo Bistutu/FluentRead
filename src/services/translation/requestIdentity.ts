@@ -1,7 +1,7 @@
 /**
  * @file src/services/translation/requestIdentity.ts
  * 文件职责：根据已冻结的请求配置构建翻译结果缓存身份，并统一模型、实际端点与上下文资格的纯策略。
- * 主要内容：维护单条、文本槽、原生批次与 AI 多段的身份维度，按实际消费的端点、合批偏好、图片原样成功策略、术语、文档保护、提示词、上下文泄漏门禁和自动识别样本隔离缓存；通过注入端口复用既有模型和端点解析。
+ * 主要内容：维护单条、文本槽、原生批次与 AI 多段的身份维度，按实际消费的端点、合批偏好、图片原样成功策略、术语、文档保护、提示词、上下文泄漏门禁和自动识别样本隔离缓存；仅含 emoji 的正文增加字素恢复策略，摘要沿用独立身份；通过注入端口复用既有模型和端点解析。
  * 模块边界：不读取全局配置、不发起 provider 请求、不操作缓存仓库或在途去重，也不持有取消、调度或统计状态；broker 使用本模块生成结果身份，传输和 pending 生命周期仍由 broker 负责。
  */
 import type {TranslationBrokerDependencies, TranslationProviderConfigSnapshot} from './types';
@@ -13,6 +13,7 @@ import {services} from '@/src/core/config/catalog';
 import {resolveTranslationRequestModel} from '@/src/core/config/requestModel';
 import {getAliyunTranslationEndpoint} from '@/src/core/config/constants';
 import {getDeepLEndpoint} from '@/src/core/config/deepl';
+import {hasEmojiLiterals} from '@/src/core/translation/emojiLiterals';
 
 export type CacheRequestMode = 'single' | 'slot-protocol' | 'batch' | 'ai-multi-segment';
 
@@ -122,6 +123,8 @@ export function createTranslationIdentityPolicy(deps: TranslationIdentityPorts) 
         return deps.buildTranslationCacheKey({
             requestMode: mode,
             sourceText: origin,
+            // 仅含 emoji 的正文采用新恢复契约；不能复用保护前已经丢失字素的结果。
+            ...(hasEmojiLiterals(origin) ? {emojiLiteralProtection: {version: 1}} : {}),
             sourceLanguage,
             targetLanguage,
             service,

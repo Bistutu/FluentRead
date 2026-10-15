@@ -19,9 +19,65 @@ const run = (translation: string) => ({sampleId: sample.id, providerId: 'fixture
 describe('translation quality evidence boundaries', () => {
     it('validates the real corpus with all domains and requirement categories, no invented human gold', () => {
         expect(validateCorpus(corpus)).toBe(corpus);
+        expect(corpus).toMatchObject({schemaVersion: 1, id: 'fluentread-translation-quality-v2'});
         expect(new Set(corpus.samples.map((item: any) => item.domain)).size).toBe(5);
         expect(new Set(corpus.samples.flatMap((item: any) => item.requirements.map((requirement: any) => requirement.category))).size).toBe(7);
         expect(corpus.samples.every((item: any) => item.humanReview.status === 'pending')).toBe(true);
+        const requirements = corpus.samples.flatMap((item: any) => item.requirements);
+        expect(requirements).toHaveLength(139);
+        expect(requirements.filter((item: any) => item.requiresHumanReview)).toHaveLength(98);
+    });
+    it.each(['getUserID', '保持getUserID不变', "'getUserID'", '“getUserID”', '&#39;getUserID&#39;'])(
+        'distinguishes intact API spelling from missing code formatting in %s', translation => {
+            const mixed = corpus.samples.find((item: any) => item.id === 'mixed-001');
+            expect(evaluateTranslation(mixed, translation)).toMatchObject([
+                {requirementId: 'mixed-001-r1', category: 'terminology', status: 'signal-clear'},
+                {requirementId: 'mixed-001-r2', status: 'needs-human-review'},
+                {requirementId: 'mixed-001-r3', status: 'needs-human-review'},
+                {requirementId: 'mixed-001-r4', status: 'needs-human-review'},
+                {requirementId: 'mixed-001-r5', category: 'format', status: 'flagged'},
+            ]);
+        },
+    );
+    it.each(['getUserid', 'getUserId', 'GetUserID', 'getuserid', 'GETUSERID', 'getUser',
+        'xgetUserID', '1getUserID', '_getUserID', '$getUserID',
+        'getUserIDx', 'getUserID1', 'getUserID_', 'getUserID$'])(
+        'flags wrong case, missing names and ASCII identifier affixes in %s', translation => {
+            const mixed = corpus.samples.find((item: any) => item.id === 'mixed-001');
+            expect(evaluateTranslation(mixed, translation)[0]).toMatchObject({category: 'terminology', status: 'flagged'});
+        },
+    );
+    it('retains literal backtick loss and duplication signals independently of API spelling', () => {
+        const mixed = corpus.samples.find((item: any) => item.id === 'mixed-001');
+        expect(evaluateTranslation(mixed, '保持`getUserID`不变')[4].status).toBe('signal-clear');
+        expect(evaluateTranslation(mixed, '`getUserID` 与 `getUserID`')[4].status).toBe('flagged');
+    });
+    it('keeps the five historical warnings as format risks without rewriting v1 or claiming paired improvement', () => {
+        const reportPath = new URL('../docs/reports/translation-quality-20261015/live-baseline-smoke/report.json', import.meta.url);
+        const raw = readFileSync(reportPath, 'utf8');
+        const historical = JSON.parse(raw);
+        const oldSample = historical.corpus.samples.find((item: any) => item.id === 'mixed-001');
+        const mixed = corpus.samples.find((item: any) => item.id === 'mixed-001');
+        expect(historical.corpus.id).toBe('fluentread-translation-quality-v1');
+        expect(oldSample.requirements).toHaveLength(4);
+        expect(mixed.source).toBe(oldSample.source);
+        expect(mixed.requirements.slice(1, 4)).toEqual(oldSample.requirements.slice(1));
+        expect(mixed.requirements[4]).toMatchObject({category: 'format', severity: oldSample.requirements[0].severity,
+            check: oldSample.requirements[0].check});
+        expect(corpus.samples.filter((item: any) => item.id !== mixed.id))
+            .toEqual(historical.corpus.samples.filter((item: any) => item.id !== mixed.id));
+        const flagged = historical.runs.filter((item: any) => item.sampleId === mixed.id
+            && item.status === 'success' && item.checks.some((check: any) => check.requirementId === 'mixed-001-r1' && check.status === 'flagged'));
+        expect(flagged).toHaveLength(5);
+        const revised = flagged.map((item: any) => ({...item, checks: evaluateTranslation(mixed, item.translation)}));
+        for (const item of revised) {
+            expect(item.checks.filter((check: any) => check.status === 'flagged'))
+                .toMatchObject([{requirementId: 'mixed-001-r5', category: 'format'}]);
+            expect(item.checks.filter((check: any) => check.status === 'needs-human-review')).toHaveLength(3);
+        }
+        expect(compareReports(historical, {...historical, corpus, runs: revised})).toEqual([]);
+        expect(JSON.stringify(historical)).toBe(JSON.stringify(JSON.parse(raw)));
+        expect(readFileSync(reportPath, 'utf8')).toBe(raw);
     });
     it('requires auditable provenance, unique IDs and explicit review evidence', () => {
         const duplicate = fixture(); duplicate.samples.push(duplicate.samples[0]);

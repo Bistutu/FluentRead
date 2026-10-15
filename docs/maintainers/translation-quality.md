@@ -4,7 +4,7 @@
 
 ## 样本与判定边界
 
-语料在 `tests/fixtures/translation-quality/corpus.json`，格式和标注规则见同目录的 `schema.json`、`README.md`。初始 35 条全部是 Codex 编写的合成测试情境，覆盖技术文档、新闻、口语、论文及混合语言。**全部尚待人工核对，没有人工金标准译文。** 98 条语义要求等待人工判定，40 条自动规则只检查局部可观察信号。
+语料在 `tests/fixtures/translation-quality/corpus.json`，格式和标注规则见同目录的 `schema.json`、`README.md`。当前 v2 的 35 条全部是 Codex 编写的合成测试情境，覆盖技术文档、新闻、口语、论文及混合语言。**全部尚待人工核对，没有人工金标准译文。** 98 条语义要求等待人工判定，41 条自动规则只检查局部可观察信号。v2 仅将 `mixed-001` 的 API 标识符检查与反引号格式检查分开；旧报告不重写，修改后的要求不与 v1 直接配对声称质量提升。
 
 自动结果使用 `signal-clear`、`flagged` 和 `needs-human-review`。规则没有发现疑点不代表语义正确；原文回显、否定反转或指代误解仍可能需要人工发现。报告不计算单一综合质量分，也不把代理阅读意见登记为人工审核。
 
@@ -64,4 +64,6 @@ pnpm compile
 
 生产浏览器审查入口为 `scripts/quality/review-browser.cjs`。需要显式传入 production 扩展目录、报告 HTML、Playwright 包目录和 `fluentread-browser-translation-test` 的 focus-safe helper。它只创建临时 Edge profile，在第二屏正常后台窗口里验证报告筛选/导出/刷新、长段落分块后的翻译—恢复—再次翻译、失败重试和页面卸载，保存截图与 JSON。响应夹具只证明操作和请求边界，不能冒充在线质量。
 
-共享集成文件仅有 `src/providers/translation/freeTextChunks.ts`、`free-chinese-web.ts` 和测试登记 `tests/test-matrix.json`。provider 函数签名保持兼容；wrapper 默认启用句/词边界，仍遵守码点/UTF-16 预算及 FRTERM 完整性；长单词无法装入预算时仍允许硬切。没有网页 DOM 改动，没有参考仓库运行时依赖。分段证据中的短预算压力样本可能多一次请求，须结合真实长段落耗时与输出审阅。
+provider 函数签名保持兼容；`freeTextChunks.ts` 默认启用句/词边界，遵守码点/UTF-16 预算、FRTERM 及完整 emoji 字素边界；长单词无法装入预算时仍允许硬切。一个 emoji 字素本身超过预算时，在发请求前明确失败。没有网页 DOM 改动，没有参考仓库运行时依赖。分段证据中的短预算压力样本可能多一次请求，须结合真实长段落耗时与输出审阅。
+
+普通翻译入口通过共享术语保护层自动将 emoji 字素转为 FRTERM，严格检查并原样回填；免费候选丢失、重复或串换标记时拒绝该候选。用户词条覆盖完整字素时仍优先，只匹配复合 emoji 的部分字符时跳过该匹配。仅含 emoji 的正文增加缓存策略身份，避免复用旧的丢字结果；摘要沿用独立缓存和原有自由生成语义。质量 runner 直接调用 adapter，不经过 broker 的字素保护层，因此历史留出报告仍是原始 provider 证据；此保护的回归证据来自离线实际 broker/免费池调用链，不代表供应商语义质量已通过人工审核。

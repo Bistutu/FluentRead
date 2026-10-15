@@ -94,6 +94,31 @@ beforeEach(async () => {
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('免费翻译服务', () => {
+    it.each([false, true])('broker 自动保护 emoji 后在免费池拒绝丢失标记的候选，批量=%s', async batch => {
+        Object.assign(mockConfig, {freeTranslationOrder:['transmart','google'],useCache:true,enableAIContext:false});
+        const {createTranslationBroker} = await import('@/src/services/translation/broker');
+        const cache = new Map<string,string>();
+        const broker = createTranslationBroker({ready:Promise.resolve(),getConfig:()=>providerConfigFixture(mockConfig),
+            providers:{freeTranslation:message=>freeTranslation(withProviderSnapshot(message as TranslationProviderRequest,mockConfig))},
+            cache:{get:async key=>cache.get(key)??null,set:async(key,value)=>{cache.set(key,value);return true;},clear:async()=>{},cleanup:async()=>{}},
+            serviceTypes:servicesType,endpointResolver:{resolveOpenAICompatibleEndpoint:()=>({endpoint:''}),aiSdkTransportProfile:''},
+            promptBuilder:{buildPageSummaryPrompt:()=>'',buildPageSummarySystemPrompt:()=>''},getMissingCredentialMessage:()=>null,
+            getTranslationLanguages:()=>({sourceLanguage:'en',targetLanguage:'zh-Hans'}),resolveConfiguredModel:()=>'',
+            buildTranslationCacheKey:identity=>JSON.stringify(identity)});
+        webMock.mockResolvedValue('省略图标的错误候选。');
+        googleMock.mockImplementation(async(text:string)=>`译文:${text}`);
+        googleOwnerMock.mockImplementation(async(texts:string[])=>texts.map(text=>`译文:${text}`));
+        const sources=['Deliver 🚚 now.','Observe 👩🏽‍🔬 at Gate1️⃣.'];
+        const origin=batch?sources:sources[0];
+        const result=await settle(broker.translateWithCache({origin} as any));
+        expect(result).toEqual(batch?sources.map(text=>`译文:${text}`):`译文:${sources[0]}`);
+        expect(webMock).toHaveBeenCalled();
+        expect(String(webMock.mock.calls[0][1])).toContain('__FRTERM_');
+        expect(String(webMock.mock.calls[0][1])).not.toContain('🚚');
+        expect([...cache.values()].join(' ')).not.toContain('错误候选');
+        expect([...cache.values()].join(' ')).not.toContain('__FRTERM_');
+        expect((await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).entries.find(entry=>entry.providerId==='transmart')?.status).toBe('ready');
+    });
     it.each([false, true])('图片免费池原样结果成功且不换线，原生分组=%s', async grouped => {
         const {allowUnchangedTranslationResult} = await import('@/src/services/translation/requestSnapshot');
         mockConfig.freeTranslationOrder = grouped ? ['microsoft'] : ['microsoft', 'google'];

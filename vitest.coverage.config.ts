@@ -649,6 +649,7 @@ export default defineConfig({
                 'src/providers/translation/mymemory.ts',
                 'src/providers/translation/free-web.ts',
                 'src/providers/translation/freeTextChunks.ts',
+                'src/core/translation/emojiLiterals.ts',
                 'src/providers/translation/free-chinese-web.ts',
                 'src/providers/translation/free-extra-web.ts',
                 'src/providers/translation/free-official-web.ts',

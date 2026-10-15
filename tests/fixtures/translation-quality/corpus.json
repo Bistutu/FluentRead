@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "fluentread-translation-quality-v1",
-  "title": "FluentRead 可审计翻译质量样本 v1",
+  "id": "fluentread-translation-quality-v2",
+  "title": "FluentRead 可审计翻译质量样本 v2",
   "description": "35 条任务原创合成样本；全部等待人工核对。自动检查只识别局部风险信号，人工语义要求不得折算成机器金标准。",
   "createdAt": "2026-10-15",
   "samples": [
@@ -1520,11 +1520,12 @@
           "id": "mixed-001-r1",
           "category": "terminology",
           "severity": "major",
-          "description": "API 名和大小写逐字保留，包括 ID 大写。",
+          "description": "API 标识符 getUserID 保持完整字面和大小写；此自动检查只验证标识符存在，格式另行检查。",
           "requiresHumanReview": false,
           "check": {
-            "type": "exact-preservation",
-            "value": "`getUserID`"
+            "type": "regex",
+            "value": "(?<![A-Za-z0-9_$])getUserID(?![A-Za-z0-9_$])",
+            "flags": "u"
           }
         },
         {
@@ -1547,6 +1548,17 @@
           "severity": "major",
           "description": "user ID 与 API 名中的 ID 保持标识符概念，不能译成密码或令牌。",
           "requiresHumanReview": true
+        },
+        {
+          "id": "mixed-001-r5",
+          "category": "format",
+          "severity": "major",
+          "description": "API 名的 Markdown 行内代码反引号保留；引号替换或实体写法变化作为格式疑点，不归为术语丢失。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "`getUserID`"
+          }
         }
       ]
     },

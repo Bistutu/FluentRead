@@ -3,9 +3,11 @@
  * 文件职责：把原文命中的术语保护为独立占位符，并在翻译结果中原位填回指定译法。
  * 主要内容：共享词边界与大小写规则，规范写法只用于定位并映射回原文，保留未命中字符与空译法的原始写法；长词优先、重复出现独立编号，避开内部槽标记及调用方指定的语法范围，严格检查丢失、重复和未知占位符；可选观察器报告已经接受的匹配供文档纯算法复用，不再扫描正文。
  * 模块边界：纯文本转换，不接触宿主 DOM、存储或翻译服务；译法按字面填入，不再次参与替换。
+ * 字面范围：调用方可提供原文范围保护键帽等不适用词边界的字素；既有术语匹配优先，槽标记和排除范围仍不可覆盖。
  */
 import {findGlossaryMatches} from './match';
 import {sha256Hex} from '@/src/shared/function/sha256';
+import {findEmojiLiteralRanges} from '@/src/core/translation/emojiLiterals';
 
 export type GlossaryProtectionEntry = Readonly<{source: string; target: string; caseSensitive: boolean}>;
 /** 已接受的匹配；范围以送翻文本的 UTF-16 偏移计，条目保留原对象身份。 */
@@ -80,12 +82,17 @@ export function protectGlossaryText(
     namespace = '0',
     excludedRanges: readonly {start: number; end: number}[] = [],
     onMatch?: (match: GlossaryProtectedMatch) => void,
+    literalRanges: readonly {start: number; end: number}[] = [],
 ) {
     const text = original;
     let prefix = `__FRTERM_${sha256Hex(namespace + '\0' + text).slice(0, 12)}_`;
     while (text.includes(prefix)) prefix += 'x';
     const values = new Map<string, string>();
     const tokenPieces = new Map<string, number>();
+    // 用户译法优先，但只能覆盖完整图形字素；半个肤色/ZWJ 序列保持原样，避免留下孤立修饰符。
+    const emojiRanges = entries.length ? findEmojiLiteralRanges(original) : [];
+    const emojiInteriors = emojiRanges.length ? new Uint8Array(original.length + 1) : undefined;
+    for (const range of emojiRanges) emojiInteriors!.fill(1, range.start + 1, range.end);
     // 槽标记两侧的下划线不属于正文；拆开后短语仍可命中槽的首尾。
     const pieces = text.split(/(___FLUENTREAD_[a-z0-9_-]+?_\d+_(?:BEGIN|END)___)/giu);
     let offset = 0;
@@ -95,13 +102,28 @@ export function protectGlossaryText(
         offset += piece.length;
         if (index % 2) {protectedOffset += piece.length; return piece;}
         const normalized = normalizeMatchText(piece);
-        const occupied = findGlossaryMatches(normalized.text, entries);
-        let cursor = 0;
-        let output = '';
-        for (const range of occupied) {
+        const occupied = findGlossaryMatches(normalized.text, entries).flatMap(range => {
             const start = normalized.offsets ? normalized.offsets[range.start] : range.start;
             const end = normalized.offsets ? normalized.offsets[range.end] : range.end;
-            if (start === undefined || end === undefined) continue;
+            if (start === undefined || end === undefined) return [];
+            if (emojiInteriors?.[pieceOffset + start] || emojiInteriors?.[pieceOffset + end]) return [];
+            return [{...range, start, end}];
+        });
+        let blockedIndex = 0, literalEnd = -1;
+        const literals = literalRanges.filter(range => Number.isInteger(range.start) && Number.isInteger(range.end)
+            && range.start >= pieceOffset && range.end <= offset && range.start < range.end).sort((a, b) => a.start - b.start)
+            .flatMap(range => {
+                const start = range.start - pieceOffset, end = range.end - pieceOffset;
+                while (occupied[blockedIndex] && occupied[blockedIndex]!.end <= start) blockedIndex++;
+                if (start < literalEnd || occupied[blockedIndex] && occupied[blockedIndex]!.start < end) return [];
+                literalEnd = end;
+                return [{start, end, entry: {source: piece.slice(start, end), target: '', caseSensitive: true}}];
+            });
+        const matches = literals.length ? [...occupied, ...literals].sort((a, b) => a.start - b.start) : occupied;
+        let cursor = 0;
+        let output = '';
+        for (const range of matches) {
+            const {start, end} = range;
             if (excludedRanges.some(range => pieceOffset + start < range.end && range.start < pieceOffset + end)) continue;
             const token = `${prefix}${values.size}__`;
             const value = range.entry.target || piece.slice(start, end);

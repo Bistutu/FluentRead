@@ -336,6 +336,7 @@
       "tests/freeTranslationHealthStorage.test.ts",
       "tests/freeChineseWebProviders.test.ts",
       "tests/freeTextChunks.test.ts",
+      "tests/emojiLiterals.test.ts",
       "tests/freeExtraWebProviders.test.ts",
       "tests/userscriptFreeTranslationSettings.test.ts",
       "tests/freeTranslationI18n.test.ts",
