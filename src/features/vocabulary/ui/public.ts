@@ -5,3 +5,4 @@
  * 模块边界：此入口仅供 UI 组合使用；后台、服务和纯算法应使用 vocabulary/public.ts 的数据合同。
  */
 export {default as VocabularyBook} from './VocabularyBook.vue';
+export {default as MaterialWorkspace} from './MaterialWorkspace.vue';

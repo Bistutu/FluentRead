@@ -2,6 +2,7 @@
  * @file src/features/reading-assistant/ui/ReadingPanel.vue
  * 文件职责：在划词卡内以内容为主呈现学习回答，复用父卡片导航、把次级操作送入顶栏固定槽、按需展开的原文译文对照与连续追问。
  * 主要内容：相同译文保留原文且不重复展示；按原文与配置复用各学习动作的已完成回答，显式重新生成；历史问答按轮次与问题摘要逐条展开，区分当前问答与旧回答，切换回答时收起历史；统一导航的学习卡默认收起原文与匹配译文，查看原文后可返回当前阅读，短回答不再保留一屏空白；独立面板仍在滚动区顶部展示对照内容，进入回答时滚过原文，译文晚到时保持回答位置，关闭局部浏览器滚动锚定以避免流式格式变化移动阅读位置；流式正文只更新内部滚动内容，回答出现或消失及状态变化才通知父卡片检查布局；重复点击当前动作保留位置和待发送追问；把原文朗读和 30 天问答记录收进次级操作，在回答下方区分原文收藏与学习笔记；原文收藏仅保存对应译文，笔记保存不依赖 AI 参考开关，让多语言动作标签按空间换行，统一呈现 Markdown，以局部主题变量保持正文、状态和操作文字的对比度，并以代次隔离过期请求；冻结每轮许可原文身份，显示就近引用和来源状态，历史恢复保留引文而不授予当前网页定位权限，回写前核查页面归属。
+ * 材料关联：只将会话或笔记标识与选中原句关联到本机材料，不复制回答正文；源快照不会发送给模型，取消与清空代次淘汰迟到写入。
  * 模块边界：不持有模型密钥、不扫描页面、不直接请求供应商；双布局复用追问节点而不加容器，保留父 scoped 样式、Vue 输入法指令及键盘边界；按有效服务限制B站为基础读懂/用法，隐藏且拒绝未验证的追问，临时默认动作不改保存偏好；历史回答保留原动作与追问，按当前服务限制重试/再生成，父导航回写不重新请求；记录由后台会话仓库保存，日期格式器只在本组件同步模板每轮渲染内复用并在下轮重解系统默认值，父划词组件负责选区、位置和 Shadow UI 生命周期。
  -->
 <template>
@@ -119,6 +120,7 @@ import type {HarnessSession, HarnessSessionSummary, HarnessStoredTurnStatus} fro
 import {normalizeLearningSourceText} from '@/src/features/vocabulary/public';
 import {VOCABULARY_BOOK_MESSAGE, type VocabularyBookResponse} from '@/src/features/vocabulary/protocol';
 import {detectlang} from '@/src/core/language/detect';
+import {beginMaterialCapture, completeMaterialCapture} from '@/src/features/vocabulary/material/public';
 
 const props = defineProps<{
   selection: ReadingSelection;
@@ -473,6 +475,7 @@ async function run(prompt: string, turns: ReadingTurn[], retrying = false): Prom
   copied.value = false;
   feedback.value = '';
   try {
+    const materialOperation = beginMaterialCapture(historicalText.value ? undefined : props.selection.material, props.privateContext);
     streamHandle = streamReading({
       type: 'fluentReadHarness', action: 'run', requestId,
       selection: {text: activeText.value, context: props.preferences.contextMode === 'paragraph' ? historicalContext.value || props.selection.context : '', sentence: ''},
@@ -496,6 +499,7 @@ async function run(prompt: string, turns: ReadingTurn[], retrying = false): Prom
         answer.value = response.text;
         model.value = response.model;
         if (response.sessionId) sessionId = response.sessionId;
+        if (response.sessionId) {const excerpt = activeText.value; void materialOperation.then(operation => completeMaterialCapture(operation, {kind: 'session', id: response.sessionId!, excerpt}, () => token === generation && sourceStillCurrent()));}
         if (response.turnId) anchorTurnId = response.turnId;
         if (response.persistenceWarning) sessionWarning.value = response.persistenceWarning;
         memoryCount.value = response.memoryCount || 0;
@@ -624,7 +628,10 @@ async function rememberLearning(): Promise<void> {
   const owner = currentTurnKey.value;
   remembering.value = true;
   try {
-    await saveLearningMemory({kind: 'lesson', content: `原文：${activeText.value.slice(0, 350)}\n${currentQuestion.value ? `问题：${currentQuestion.value.slice(0, 200)}\n` : ''}学习要点：${readableAnswer().slice(0, 1400)}`});
+    const operation = await beginMaterialCapture(historicalText.value ? undefined : props.selection.material, props.privateContext);
+    if (currentTurnKey.value !== owner || !props.active) return;
+    const memory = await saveLearningMemory({kind: 'lesson', content: `原文：${activeText.value.slice(0, 350)}\n${currentQuestion.value ? `问题：${currentQuestion.value.slice(0, 200)}\n` : ''}学习要点：${readableAnswer().slice(0, 1400)}`});
+    await completeMaterialCapture(operation, {kind: 'memory', id: memory.id, excerpt: activeText.value}, () => currentTurnKey.value === owner && props.active && !props.privateContext);
     if (currentTurnKey.value === owner) { remembered.value = true; feedback.value = t('reading.noteSaved'); }
   } catch (failure) { if (currentTurnKey.value === owner) feedback.value = failure instanceof Error ? failure.message : t('reading.noteSaveFailed'); }
   finally { remembering.value = false; }
@@ -634,11 +641,15 @@ async function saveWord(): Promise<void> {
   saving.value = true;
   const savingText = activeText.value;
   try {
+    const operation = await beginMaterialCapture(historicalText.value ? undefined : props.selection.material, props.privateContext);
+    if (activeText.value !== savingText || !props.active) return;
     const response = await browser.runtime.sendMessage({type: VOCABULARY_BOOK_MESSAGE, action: 'upsert', input: {
       sourceLanguage: props.sourceLanguage && props.sourceLanguage !== 'auto' ? props.sourceLanguage : detectlang(savingText), targetLanguage: props.targetLanguage, term: normalizeLearningSourceText(savingText),
       translation: activeTranslation.value?.text || '', context: {text: historicalContext.value || props.selection.context || activeText.value},
     }}) as VocabularyBookResponse;
     if (!response.success) throw new Error(response.error.message);
+    const id = (response.data as {id?: unknown})?.id;
+    if (typeof id === 'string') await completeMaterialCapture(operation, {kind: 'vocabulary', id, excerpt: savingText}, () => activeText.value === savingText && props.active && !props.privateContext);
     if (activeText.value === savingText) { saved.value = true; feedback.value = t('reading.sourceSaved'); }
   } catch (failure) { if (activeText.value === savingText) feedback.value = failure instanceof Error ? failure.message : '收藏失败，请重试。'; }
   finally { saving.value = false; }

@@ -1,0 +1,430 @@
+{
+  "createdAt": "2026-10-15T06:56:49.756182+00:00",
+  "baseCommit": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+  "branch": "codex/material-learning-workspace-20261015",
+  "scope": "Targeted materials integration only; no full regression suite.",
+  "checks": [
+    {
+      "name": "material domain/client/background",
+      "testsPassed": 38,
+      "coverageModules": 6,
+      "evidence": "coverage above; resource-safe Vitest run at 2026-10-15 14:23:33 +08:00",
+      "result": "passed"
+    },
+    {
+      "name": "material source/content/video identity",
+      "testsPassed": 52,
+      "log": "fluentread-material-source-coverage-refresh.log",
+      "result": "passed",
+      "logSha256": "2790928e4d60b58ffc372f3a27f3c7f538abcc61cd241c396f3a880b0e89931e"
+    },
+    {
+      "name": "DocumentApp and PdfReader full targeted files",
+      "testsPassed": 150,
+      "log": "fluentread-material-document-composition-final.log",
+      "result": "passed",
+      "logSha256": "6205a289ddfee5ca75ed723a0f94fd80f621b396ae51fab49e99a8efb01a788f"
+    },
+    {
+      "name": "material UI, LearningCenter, module boundaries, verification ownership, source headers",
+      "testsPassed": 1102,
+      "log": "fluentread-material-architecture-delivery.log",
+      "result": "passed",
+      "logSha256": "37f451d0dd8d8986dd43d3dcaf0649eb8e6bc31fd74fe5d2a0c3cf2ebcc54dd1"
+    },
+    {
+      "name": "video learning component",
+      "testsPassed": 20,
+      "log": "fluentread-material-video-component-final.log",
+      "result": "passed",
+      "logSha256": "ec85f38d135a343f935824c035758d92edb644a43924fe7b5a08a2888fc46042"
+    },
+    {
+      "name": "typecheck",
+      "command": "pnpm compile",
+      "log": "fluentread-material-typecheck-delivery.log",
+      "result": "passed",
+      "logSha256": "36ae1c459fbde9fad10a51b2d9fe4c71b46ac1e9a156298812ac1e7d486f49c6"
+    },
+    {
+      "name": "chrome production",
+      "command": "pnpm build",
+      "log": "fluentread-material-chrome-delivery.log",
+      "result": "passed",
+      "logSha256": "4677e1c08071baf60776f06213b7b5a56957a35d5a5f844c75ec9785a3f70370"
+    },
+    {
+      "name": "firefox production",
+      "command": "pnpm build:firefox",
+      "log": "fluentread-material-firefox-delivery.log",
+      "result": "passed",
+      "logSha256": "a0b24ff5b84615984a36b62056f615f5e0afa42bd508068707ef51b9aae39d5b"
+    },
+    {
+      "name": "userscript production and verifier",
+      "command": "pnpm build:userscript; node scripts/verify-userscript-build.mjs",
+      "log": "fluentread-material-userscript-accepted-verify.log",
+      "result": "passed",
+      "logSha256": "3a33519b210904341be598a2b4a400f47a429aebef7a8fd18d90044e0e24fc49"
+    },
+    {
+      "name": "test audit",
+      "command": "pnpm test:audit",
+      "log": "fluentread-material-test-audit-delivery.log",
+      "result": "passed",
+      "logSha256": "1ea50d06da353584d43e6d33c5cc623ada6e0cdad6a90b357d55565ff4f3edc2"
+    },
+    {
+      "name": "document button dimensions and center hit-testing",
+      "testsPassed": 5,
+      "result": "passed",
+      "evidence": "document-control-verification.json"
+    },
+    {
+      "name": "docs production",
+      "command": "pnpm docs:build",
+      "result": "passed",
+      "log": "fluentread-material-docs-delivery.log",
+      "logSha256": "27b256db92ba7cc9744a7032dac9413042a3aef24ce1810013ea633bf613c738"
+    }
+  ],
+  "coverage": [
+    {
+      "file": "src/app/background/handlers/vocabulary.ts",
+      "coverage": {
+        "statements": {
+          "covered": 18,
+          "total": 18,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 6,
+          "total": 6,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 18,
+          "total": 18,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 18,
+          "total": 18,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f"
+    },
+    {
+      "file": "src/features/vocabulary/materialBackground.ts",
+      "coverage": {
+        "statements": {
+          "covered": 53,
+          "total": 53,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 4,
+          "total": 4,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 66,
+          "total": 66,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 53,
+          "total": 53,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f"
+    },
+    {
+      "file": "src/features/vocabulary/materialClient.ts",
+      "coverage": {
+        "statements": {
+          "covered": 22,
+          "total": 22,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 14,
+          "total": 14,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 26,
+          "total": 26,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 22,
+          "total": 22,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f"
+    },
+    {
+      "file": "src/features/vocabulary/materialModel.ts",
+      "coverage": {
+        "statements": {
+          "covered": 74,
+          "total": 74,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 7,
+          "total": 7,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 94,
+          "total": 94,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 74,
+          "total": 74,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f"
+    },
+    {
+      "file": "src/features/vocabulary/materialProtocol.ts",
+      "coverage": {
+        "statements": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 0,
+          "total": 0,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f"
+    },
+    {
+      "file": "src/features/vocabulary/materialRepository.ts",
+      "coverage": {
+        "statements": {
+          "covered": 214,
+          "total": 214,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 21,
+          "total": 21,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 259,
+          "total": 259,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 214,
+          "total": 214,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "db96459783c91c56776483db1302faef43106956bf6d86dd9dd08eb0ca7d4c0f"
+    },
+    {
+      "file": "src/features/video-subtitle/content/learningSource.ts",
+      "coverage": {
+        "statements": {
+          "covered": 24,
+          "total": 24,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 33,
+          "total": 33,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 24,
+          "total": 24,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "26cbf43cd4a4e38824f6c7a4de5afc2eb24b422131f11354dff4974487e4d7e0"
+    },
+    {
+      "file": "src/features/vocabulary/materialCapture.ts",
+      "coverage": {
+        "statements": {
+          "covered": 12,
+          "total": 12,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 3,
+          "total": 3,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 15,
+          "total": 15,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 12,
+          "total": 12,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "26cbf43cd4a4e38824f6c7a4de5afc2eb24b422131f11354dff4974487e4d7e0"
+    },
+    {
+      "file": "src/features/vocabulary/materialContent.ts",
+      "coverage": {
+        "statements": {
+          "covered": 148,
+          "total": 148,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 23,
+          "total": 23,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 154,
+          "total": 154,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 148,
+          "total": 148,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "26cbf43cd4a4e38824f6c7a4de5afc2eb24b422131f11354dff4974487e4d7e0"
+    },
+    {
+      "file": "src/features/vocabulary/materialSource.ts",
+      "coverage": {
+        "statements": {
+          "covered": 46,
+          "total": 46,
+          "pct": 100
+        },
+        "functions": {
+          "covered": 2,
+          "total": 2,
+          "pct": 100
+        },
+        "branches": {
+          "covered": 56,
+          "total": 56,
+          "pct": 100
+        },
+        "lines": {
+          "covered": 46,
+          "total": 46,
+          "pct": 100
+        }
+      },
+      "rawCoverageSha256": "26cbf43cd4a4e38824f6c7a4de5afc2eb24b422131f11354dff4974487e4d7e0"
+    }
+  ],
+  "sourceSha256": {
+    "scripts/testing/material-document-fixtures.cjs": "ad49f1b7a43c2e8ce15e17857b3521e8dcee0fcfaf8a70bbbfaf76101db37075",
+    "scripts/testing/run-material-workspace-test.cjs": "e092bc84477e61250320c923ec1c2a10ca75c7a65dfe309c29093f4b4ff8c2b5",
+    "src/app/background/handlers/vocabulary.ts": "6ba30b2794ac3327647f6cb947df93e825613532fe5f4188c235913545fae008",
+    "src/app/background/messageRuntime.ts": "9ba4f4312b5ba847dddf92b39b0fa6d1654b0df1d76a0655454dba87ffe3c5c3",
+    "src/app/content/learningFeatures.ts": "9348aacf65d9757e712a1b57473d1bdc8c31fa971e9a9206169fef98b4c21ce1",
+    "src/app/content/runtime.ts": "69d96a36629826067eb5d5b4cc7c1c8eb65245254c892cb1d34470f3ff51e63b",
+    "src/app/document-translation/DocumentApp.vue": "07f1c6232dd5c6df196b1ccc32f534d30601f4cf69053768d3c012616bf84545",
+    "src/app/document-translation/document-page.css": "32d8b0d851de3d8dc61283e8b4e4df906e2a1eee745204ffe46da88316046ca8",
+    "src/app/document-translation/index.ts": "c620b093060573a2bab47d982eaa66daecd1fece06409480c7c29a09f1c8842e",
+    "src/features/document-translation/ui/PdfReader.vue": "4a126e79e77298a211053c422089beb34fe1005c82822b6825699b022183c9f8",
+    "src/features/reading-assistant/public.ts": "25d867b51bd8a5d844b41df5261e632de760d1301daefd91f8cef2cf7e7f4424",
+    "src/features/reading-assistant/types.ts": "7b2145aa1c6a27d1b7466ae593ccb0b4d535bb29cddc16d5ab4196569ec4fc81",
+    "src/features/reading-assistant/ui/ReadingPanel.vue": "3c90724f417c29596b1de313f6a885b12f5aae5f84d0aa413620c589f7f84c71",
+    "src/features/selection-translation/ui/SelectionTranslator.vue": "af0c9b59129f7ff89dc7f8236492782ef862a0f3984c991eeea75a73c61fc8ae",
+    "src/features/settings/background/openOptionsHandler.ts": "bc60eaaeabd13f510b0ba63e74da849684ed03b47df7b0bf49866400dc0e9b23",
+    "src/features/settings/ui/LearningCenter.vue": "7fb8938aeb1f808f091a7d45c174b397b6e680364ec7452dd75c1f784d476b2c",
+    "src/features/video-subtitle/content/learningSource.ts": "a4301314ed3153b063888330792d2c1553bd06935559d40c841bae67f53d8d04",
+    "src/features/video-subtitle/content/public.ts": "b6dbfba3c20d01b6fca0c6631c917c8096f84defee93ea449cf1671b295436b9",
+    "src/features/video-subtitle/content/sentenceLearningHost.ts": "f8c9b334d82f558a063f18e8a4b07fd974bc347f7616d4cfb4a8ae1a3f2ed37f",
+    "src/features/video-subtitle/ui/VideoSentenceLearning.vue": "bd10a098a3aa70d003a2c81ae03847c1dde58ca126d9ee6adcfe59e0acdf07c3",
+    "src/features/vocabulary/material/content/public.ts": "9e24c9635b8bfb124d41885e5a1a9d8bfe092cc3c00665c0254eedfa530723a8",
+    "src/features/vocabulary/material/protocol.ts": "934dc3fdd20378e905ef03d2c12d517314ec23525cd8d9ee471426c2f38b04e6",
+    "src/features/vocabulary/material/public.ts": "4c4eb2a4782b048c633b2a63b554e40edb044355ae0ea67fa06788109546b7c7",
+    "src/features/vocabulary/materialBackground.ts": "49169391fa405f3df98d61278a97ba76e71d1fc9daef55e07012aac651c7e1f6",
+    "src/features/vocabulary/materialCapture.ts": "c8e02dff81e72db90ff89d93b987146c639a44f218fe9c96f797fbfd1cdcc20b",
+    "src/features/vocabulary/materialClient.ts": "38b70a5364ed67d1fda7435e19413d4776339430575fa75fdd72f3c2d281bd12",
+    "src/features/vocabulary/materialContent.ts": "e5d5f7e185cacdb735a68d66729503762955c73705c7c81b1f5769e4e4c3c209",
+    "src/features/vocabulary/materialModel.ts": "a6df7eec05b92efaee6acf34cbe00881de3e34fea63d5b320edca989d8378cb3",
+    "src/features/vocabulary/materialProtocol.ts": "c022b010b06a359b5558cf15cd54b14e3c13549b4b33e687bdaefc9c2d5be03e",
+    "src/features/vocabulary/materialRepository.ts": "0147499fd14120eba8b36570b0143ce22070b84fb4a4f473d63da2cb7fbd675f",
+    "src/features/vocabulary/materialSource.ts": "0123962ee9358e2f3746408c6dc6b20b5272bd8c25dc674967f589e3d90e2c56",
+    "src/features/vocabulary/ui/MaterialWorkspace.vue": "eedf48f090734921f8cecf7ce9b3072f60db9c330d7efa7a1bfb11266197a14f",
+    "src/features/vocabulary/ui/public.ts": "ec20f45e21251d5b2c5e0b3e507825bf219ca13a2f7c8ffbe5ebf612d3044b9f",
+    "tests/architecture/vue-verification-owners.json": "04ea13ce5c4f5900657ed7b894f8f19596139ea76e905cd30636d4b338adafb5",
+    "tests/documentAppLifecycle.test.ts": "9fe1c0d312dc870ae479889c348898e2d4edba62ce2ffb006885c7eae00f06de",
+    "tests/learningCenterLifecycle.test.ts": "3bc278e99ad8ac3c3189ce851fcad03eda2271a7f9a803805e6c37ad4eb4d2d3",
+    "tests/materialClient.test.ts": "2040b63800e5e13b99b049f5d586c095d3d45daffc7f9bfb7f40b4d08005f7d0",
+    "tests/materialRepository.test.ts": "19eb04aae314be3909b9508cbfd95611c907d2a028dde452cf3b22d9b36ed01f",
+    "tests/materialSource.test.ts": "b75816345a76e97d00c45cda1633e65b7ad6dcf5e127ebd7eef29b634ed42af8",
+    "tests/materialWorkspaceLifecycle.test.ts": "d889e341fa1e878d1c540bf516da21657797a976456bff04eb7f85d74ec09e2b",
+    "tests/pdfReaderLifecycle.test.ts": "687e30e96aaa76e4a0da98cea3737274fca2a49d42945667b9a00e46b8aaa1b0",
+    "tests/test-matrix.json": "49de37064240b29d59bb37926ae24506bde98cd94e945d29739a33a20fb6ebde",
+    "tests/videoSentenceLearningComponent.test.ts": "667c0510d94ead2d8bc28fbb2d6bce0d3a7bcdf8319ef75cd8ecd05661cfc389",
+    "vitest.coverage.config.ts": "97f7b11b6020100af881b36890549d20cebf6a4d5d737046eba2201495733b77"
+  },
+  "artifactSha256": {
+    ".output/chrome-mv3/manifest.json": "a12a20416fc826d3dc7278b74a112b4170f8985b1ac8b1a74c91f73d5e09b642",
+    ".output/firefox-mv2/manifest.json": "9802dab15f2073f80469306f3bcdfb957f8204d6a2904fe65cc1ae26ee3965f1",
+    ".output/userscript/fluent-read.user.js": "d81392c3ab36f1a286b4958f632f5cdfac615974a829cc9bdfc7f2684c06b57b"
+  },
+  "screenshotsSha256": {
+    "document-missing-file-recovery.png": "e08d87d2094d763973cacdcf46269c392764f934b62edbc78e690d641caf9554",
+    "document-material-390.png": "89f815560b5597786eb52cc6128e4e4158f4fda94f61ccff1f388784ab228231",
+    "material-epub-resumed-chapter-2.png": "c0dfc0979380744c56a052339e248bca470f0a8a1ef760dedb98d65f620bc404",
+    "material-docx-390.png": "416e19a4ac1e0108e29afa062e6632fc01f58dafb94dc3ab3fc16df5ae0b0d35",
+    "article-resumed-position.png": "55937d335fa3477e26e49bc2d0dd0cbe961ad0d081e3b9abf986b4b3a143ddd9",
+    "material-docx-saved-page-2.png": "2793077d9dbc3439c6314cf3e983813e8bb3fe94b19ea46afeb3bc058fca9af3",
+    "document-same-name-mismatch.png": "c1486b1567be5bd63cc3c0b03eef304b0d332de6b3cd75a51f68f2d5dbfb209d",
+    "article-missing-passage-recovery.png": "6d28e3f5fd9f57503863d718f5bbceea5b1e0b2c4e2251d165120d53e27627f8",
+    "materials-empty.png": "068cdb11a0859087640eca83734341b36a04fc8ce5e40d01e16e8ccea8d630b2",
+    "material-docx-resumed-page-2.png": "006affccd16fdbfcf960c5af8e38111790964d64b4245983da25ef748be68128",
+    "material-authority-references.png": "7d9d07594f6a922967e8fae0c84e3b534cf1fdc4939024d0568ff3bbff78cbd3",
+    "video-resumed-position.png": "0ee72168d5c30c5b865615fa80b3e6e7f394b650999f8bd3c9b731e964ced9ed",
+    "material-epub-saved-chapter-2.png": "f0a94a0fe7fd0e65390fe71b6c0d41ac620d8db213929bb23a308620aeb9f234",
+    "document-reselected-original.png": "91d879181942be9d59fd514e8d8639806789d84a29c548e6f9a24dfa6b9d68fb",
+    "material-epub-390.png": "3d8d13257b25f5c58155b9ac3accbe7537e5b074bb381c41824ba61d07d4af7b",
+    "materials-desktop.png": "db911619f100090b5afe20b9642e9ea05ccae9a11279a1cb19cb6603ae1e6957",
+    "document-resumed-page-2.png": "a5a25ca63589dca3b0280b3d35b9a05d18a5ab5b7bf50bb70e45afe80bef1833",
+    "material-detail-dark-390.png": "e460a14a7509a7f85b29fb9ab0a331fc88fdb5e3534b45b5d1d842b53767016b",
+    "material-detail-desktop.png": "3ab64d72cf3863f88079843f176d968a2dc70a9b924655b181a16000eedbab0d"
+  },
+  "limitations": [
+    "Controlled local HTTP, MP4, PDF, DOCX and EPUB fixtures; no live provider, live YouTube/X, Firefox runtime, Safari or physical mobile acceptance.",
+    "Learning question fixture is written directly to its authoritative session store; this validates retrieval and preservation, not live model generation.",
+    "Private-window eligibility is covered by deterministic client and sender tests, not an incognito browser session."
+  ]
+}

@@ -1,7 +1,7 @@
 /**
  * @file src/app/document-translation/document-page.css
  * 文件职责：定义文档翻译独立页面的完整布局与主题表现，使导入区、阅读器、翻译进度、原文件保存、格式预览和导出操作在桌面与窄屏下保持可读。
- * 主要内容：让数字进度完整可见，保留零进度和完成进度条，失败后的续译提示保持紧凑单行且仅按需展开技术详情；声明页面级颜色变量与暗色覆盖，打开文档后的单行工具栏（内含翻译服务与目标语言选择）、可折叠的文件与目录侧栏和铺满窗口的阅读区，设置可收起的文件队列、本地范例、品牌头部、拖放卡片、工具栏、PDF 连续页及其不可见字体测量画布、EPUB/DOCX 分区、字幕与 JSON 行、设置摘要、下载预览和响应式断点。
+ * 主要内容：让数字进度完整可见，保留零进度和完成进度条，失败后的续译提示保持紧凑单行且仅按需展开技术详情；声明页面级颜色变量与暗色覆盖，打开文档后的单行工具栏（内含翻译服务与目标语言选择）、可折叠的文件与目录侧栏和铺满窗口的阅读区，设置可收起的文件队列、本地范例、品牌头部、拖放卡片、工具栏、PDF 连续页及其不可见字体测量画布、EPUB/DOCX 分区、字幕与 JSON 行、设置摘要、下载预览和响应式断点；材料保存按钮在各格式工具栏中保持紧凑宽度，窄屏独立排布并避免覆盖阅读控件。
  * 模块边界：样式仅服务 DocumentApp 的 class 结构，不解析文档、不控制翻译状态，也不覆盖 content 宿主页面；跨页面基础视觉 token 仍由 src/ui/styles/tokens.css 管理。
  */
 @import "../../ui/styles/feedback.css";
@@ -661,6 +661,7 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-taskbar .reader-tabs { flex: none; }
 .document-taskbar .reader-reading-controls { display: flex; flex: 1 1 auto; align-items: center; gap: 8px; min-width: 0; }
 .document-taskbar .reader-reading-controls > .mode-buttons, .document-taskbar .focus-toggle { flex: none; }
+.document-taskbar .material-save-button { flex: none; width: max-content; max-width: 100%; justify-self: start; }
 .document-taskbar .reader-controls-slot { flex: 0 1 auto; min-width: 0; padding-left: 8px; overflow: visible; }
 .document-taskbar .reader-controls-slot .pdf-viewer-toolbar { gap: 8px; flex-wrap: nowrap; }
 .document-taskbar .taskbar-actions { display: flex; grid-column: 3; grid-row: 1; align-items: center; min-width: 0; margin-left: 0; gap: 10px; flex-wrap: nowrap; }
@@ -676,12 +677,14 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .document-taskbar .translation-actions button { width: auto; }
 @media (min-width: 1000px) and (max-width: 1759px) {
   .document-taskbar { grid-template-columns: minmax(120px, 1fr) auto auto auto auto; gap: 8px 12px; }
+  .document-taskbar:has(.material-save-button) { grid-template-columns: minmax(120px, 1fr) auto auto auto auto auto; }
   .document-taskbar .taskbar-logo { display: none; }
   .document-taskbar .reader-toolbar, .document-taskbar .reader-reading-controls { display: contents; }
   .document-taskbar .reader-tabs { grid-column: 2; grid-row: 1; }
   .document-taskbar .reader-reading-controls > .mode-buttons { grid-column: 3; grid-row: 1; }
   .document-taskbar .document-zoom-control { grid-column: 4; grid-row: 1; }
   .document-taskbar .focus-toggle { grid-column: 5; grid-row: 1; }
+  .document-taskbar .material-save-button { grid-column: 6; grid-row: 1; }
   .document-taskbar .reader-controls-slot { grid-column: 1 / -1; grid-row: 2; padding: 8px 0 0; border: 0; border-top: 1px solid var(--line); }
   .document-taskbar .taskbar-actions { display: grid; grid-column: 1 / -1; grid-row: 2; grid-template-columns: minmax(0, 1fr) auto; padding-top: 7px; border-top: 1px solid var(--line); }
   .document-taskbar.has-pdf-controls .taskbar-actions { grid-row: 3; }
@@ -715,11 +718,15 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
   .document-taskbar .reader-tabs { grid-column: 2 / -1; grid-row: 1; justify-self: end; }
   .document-taskbar .reader-reading-controls > .mode-buttons { grid-column: 1; grid-row: 2; justify-self: start; }
   .document-taskbar .document-zoom-control { grid-column: 2; grid-row: 2; }
+  .document-taskbar .material-save-button { grid-column: 1 / -1; grid-row: 3; }
   .document-taskbar .reader-controls-slot { grid-column: 1 / -1; grid-row: 3; padding: 7px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+  .document-taskbar:has(.material-save-button) .reader-controls-slot { grid-row: 4; }
   .document-taskbar .reader-controls-slot .pdf-viewer-toolbar { gap: 7px; }
   .document-taskbar .focus-toggle { grid-column: 3; grid-row: 2; justify-self: end; margin-left: 0; }
   .document-taskbar .taskbar-actions { display: block; grid-column: 1 / -1; grid-row: 3; padding-top: 7px; border-top: 1px solid var(--line); }
+  .document-taskbar:has(.material-save-button) .taskbar-actions { grid-row: 4; }
   .document-taskbar.has-pdf-controls .taskbar-actions { grid-row: 4; }
+  .document-taskbar.has-pdf-controls:has(.material-save-button) .taskbar-actions { grid-row: 5; }
   .document-taskbar .toolbar-translation-settings { display: none; }
   .toolbar-primary-actions { width: 100%; }
   .document-taskbar .toolbar-settings-toggle { display: inline-flex; align-items: center; justify-content: center; margin-right: auto; }

@@ -6,8 +6,17 @@ The learning center starts with words, phrases, and sentences you save while rea
 
 ## What each tab saves
 
+**Reading materials** groups passages, question references, notes and reading positions by article, document or video. Saving one word remains lightweight and does not require a project.
+
+Use **Continue reading** to return to the original passage, document page/chapter or video time. Changed or ambiguous passages show recovery guidance. Documents use a content fingerprint: select the original file again if its local history has been removed. Same-name files with different content do not replace the original material.
+
+Topics and personal material notes are local. Reading questions and learning notes reference their original records; deleting those records does not leave answer copies in materials. Removing a material is reversible; clearing all materials permanently deletes its organization, positions and personal material notes, while preserving the original vocabulary and question records. Incognito windows cannot read or save materials.
+
+Material management provides a separate private JSON backup containing sources, excerpts, topics and material notes. These are excluded from default configuration sync and the older vocabulary backup. Import reports inserted, updated and skipped counts. Opening materials does not call an AI provider.
+
 | Tab | Source | Retention |
 | --- | --- | --- |
+| Reading materials | Source-linked passages, reading positions, topics and personal material notes | Until explicitly cleared; removed materials can be restored |
 | Words & sentences | Save icon in a translation card, **Save original** below an explanation, or **Save sentence** beside a highlighted sentence | Until you delete it |
 | Reading history | Questions and answers from reading, grammar, usage and practice; continue a conversation | 30 days |
 | Study notes | **Save study note** below an answer, or notes and learning preferences you add yourself | Until you delete it |

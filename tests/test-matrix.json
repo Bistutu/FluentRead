@@ -452,7 +452,9 @@
       "tests/compiledVueFixture.test.ts",
       "tests/mobileVisualViewport.test.ts",
       "tests/selfHelpDiagnostics.test.ts",
-      "tests/popupStartupFeedback.test.ts"
+      "tests/popupStartupFeedback.test.ts",
+      "tests/materialSource.test.ts",
+      "tests/materialClient.test.ts"
     ],
     "functional": [
       "tests/videoAiRequestSession.test.ts",
@@ -699,7 +701,8 @@
       "tests/floatingBallLifecycle.test.ts",
       "tests/translationProgressMobileLifecycle.test.ts",
       "tests/selfHelpNotice.test.ts",
-      "tests/serviceRepairReturn.test.ts"
+      "tests/serviceRepairReturn.test.ts",
+      "tests/materialRepository.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",
@@ -745,7 +748,8 @@
       "tests/vocabularyReencounterPanelLifecycle.test.ts",
       "tests/fullPageAttributeBoundary.test.ts",
       "tests/hnFirstTargetReadiness.test.ts",
-      "tests/targetLanguageAdversarial.test.ts"
+      "tests/targetLanguageAdversarial.test.ts",
+      "tests/materialWorkspaceLifecycle.test.ts"
     ]
   }
 }

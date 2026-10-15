@@ -1,0 +1,72 @@
+{
+  "ok": true,
+  "cases": [
+    "document-material-independent-of-collection-and-ai",
+    "real-pdf-fingerprint-and-page-resume",
+    "missing-file-and-same-name-fingerprint-recovery",
+    "real-docx-page-2-native-dom-and-fingerprint-resume",
+    "real-epub-chapter-2-original-dom-and-fingerprint-resume"
+  ],
+  "consoleErrors": [],
+  "cleanupConfirmed": true,
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "materialControlMeasurements": [
+    {
+      "format": "pdf",
+      "x": 8,
+      "y": 86,
+      "width": 97,
+      "height": 30,
+      "viewportWidth": 390,
+      "viewportHeight": 1000,
+      "unobscured": true
+    },
+    {
+      "format": "docx",
+      "x": 1320,
+      "y": 8,
+      "width": 98,
+      "height": 30,
+      "viewportWidth": 1432,
+      "viewportHeight": 916,
+      "unobscured": true
+    },
+    {
+      "format": "docx",
+      "x": 8,
+      "y": 86,
+      "width": 97,
+      "height": 30,
+      "viewportWidth": 390,
+      "viewportHeight": 1000,
+      "unobscured": true
+    },
+    {
+      "format": "epub",
+      "x": 1320,
+      "y": 8,
+      "width": 98,
+      "height": 30,
+      "viewportWidth": 1432,
+      "viewportHeight": 916,
+      "unobscured": true
+    },
+    {
+      "format": "epub",
+      "x": 8,
+      "y": 86,
+      "width": 97,
+      "height": 30,
+      "viewportWidth": 390,
+      "viewportHeight": 1000,
+      "unobscured": true
+    }
+  ],
+  "limitations": [
+    "Controlled local HTTP, MP4, PDF, DOCX and EPUB fixtures; no live provider, live YouTube/X, Firefox runtime, Safari or physical mobile acceptance.",
+    "Learning question fixture is written directly to its authoritative session store; this validates retrieval and preservation, not live model generation.",
+    "Private-window eligibility is covered by deterministic client and sender tests, not an incognito browser session."
+  ],
+  "scope": "Focused supplement: full button dimensions and center hit-testing for PDF, DOCX and EPUB; desktop plus 390px."
+}

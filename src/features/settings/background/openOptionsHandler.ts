@@ -60,7 +60,7 @@ export function createOpenOptionsPageHandler(
         async handle(message) {
             const section = parseSection(message.section);
             const learningTab = message.learningTab;
-            if (learningTab !== undefined && (section !== 'settings-vocabulary' || typeof learningTab !== 'string' || !['saved', 'history', 'memory'].includes(learningTab))) {
+            if (learningTab !== undefined && (section !== 'settings-vocabulary' || typeof learningTab !== 'string' || !['saved', 'materials', 'history', 'memory'].includes(learningTab))) {
                 throw new TypeError('无效的学习栏目');
             }
             const service = message.service;
