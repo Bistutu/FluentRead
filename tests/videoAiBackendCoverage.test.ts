@@ -231,7 +231,7 @@ describe('video transcription offscreen transport branches', () => {
     const worker = CoverageWorker.instances.at(-1)!;
     expect(Array.from(worker.lastMessage!.audio!)).toEqual([-1, 1]);
     worker.reply({requestId: worker.lastMessage!.requestId, success: true, text: null, segments: null, model: 1, backend: 'other', gpuInfo: 1, inferenceMs: '1', audioDurationMs: null, threads: null, dtype: 'other'});
-    await expect(signed).resolves.toMatchObject({text: '', segments: [], model: 'small'});
+    await expect(signed).rejects.toThrow('视频 Worker转写响应消息格式无效');
   });
 
   it('rejects worker timeouts and decode timeouts', async () => {
@@ -303,7 +303,7 @@ describe('video transcription background ownership races', () => {
     let failWarm = true;
     const closeWhenIdle = vi.fn(async () => undefined);
     const offscreen = {
-      send: vi.fn(async (message: any) => message.type === 'VIDEO_AI_PREPARE' && failWarm ? {success: false, error: 'warm failed'} : {success: true}),
+      send: vi.fn(async (message: any) => message.type === 'VIDEO_AI_PREPARE' && failWarm ? {success: false, error: 'warm failed'} : {success: true, model: 'tiny'}),
       sendIfPresent: vi.fn(async () => ({success: true})),
     } as any;
     const storage = {get: vi.fn(async () => ({})), set: vi.fn(async () => undefined)} as any;
@@ -323,7 +323,7 @@ describe('video transcription background ownership races', () => {
     let resolveFirst!: (value: unknown) => void;
     const firstResponse = new Promise((resolve) => { resolveFirst = resolve; });
     const offscreen = {
-      send: vi.fn((message: any) => message.streamId.endsWith(':1') ? firstResponse : Promise.resolve({text: 'new'})),
+      send: vi.fn((message: any) => message.streamId.endsWith(':1') ? firstResponse : Promise.resolve({success: true, text: 'new'})),
       sendIfPresent: vi.fn(async () => ({success: true})),
     } as any;
     const storage = {get: vi.fn(async () => ({})), set: vi.fn(async () => undefined)} as any;
@@ -375,7 +375,7 @@ describe('video transcription background ownership races', () => {
 
   it('cancels a previous warm generation before starting its replacement', async () => {
     const offscreen = {
-      send: vi.fn(async () => ({success: true, backend: 'wasm'})),
+      send: vi.fn(async () => ({success: true, model: 'tiny', backend: 'wasm'})),
       sendIfPresent: vi.fn(async () => ({success: true})),
     } as any;
     const storage = {get: vi.fn(async () => ({})), set: vi.fn(async () => undefined)};
@@ -391,7 +391,7 @@ describe('video transcription background ownership races', () => {
   });
 
   it('shares an exact reservation for same-generation prepare and transcription', async () => {
-    const response = {success: true, backend: 'wasm'};
+    const response = {success: true, model: 'tiny', backend: 'wasm'};
     const offscreen = {
       send: vi.fn(async (message: any) => message.type === 'VIDEO_AI_PREPARE' ? response : {success: true, text: 'ok'}),
       sendIfPresent: vi.fn(async () => ({success: true})),
@@ -410,7 +410,7 @@ describe('video transcription background ownership races', () => {
 
   it('releases completed ownership without canceling the idle worker', async () => {
     const offscreen = {
-      send: vi.fn(async () => ({success: true, backend: 'wasm'})),
+      send: vi.fn(async () => ({success: true, model: 'tiny', backend: 'wasm'})),
       sendIfPresent: vi.fn(async () => ({success: true})),
     } as any;
     const storage = {get: vi.fn(async () => ({})), set: vi.fn(async () => undefined)} as any;
@@ -451,11 +451,11 @@ describe('video transcription background ownership races', () => {
     const cancel = handler(handlers, 'fluentReadCancelLocalVideoTranscription');
     const responsePending = prepare.handle({model: 'tiny', keepWarm: true, streamId: 'warm-stream', generation: 1}, context(1));
     await cancel.handle({streamId: 'warm-stream', generation: 1}, context(1));
-    cancelResponse.resolve({success: true});
+    cancelResponse.resolve({success: true, model: 'tiny'});
     await expect(responsePending).rejects.toThrow('generation 已取消');
 
     const readPending = defer<Record<string, unknown>>();
-    offscreen.send.mockResolvedValue({success: true});
+    offscreen.send.mockResolvedValue({success: true, model: 'tiny'});
     storage.get.mockReturnValueOnce(readPending.promise);
     const readRequest = prepare.handle({model: 'tiny', keepWarm: true, streamId: 'warm-stream', generation: 2}, context(1));
     await tick();

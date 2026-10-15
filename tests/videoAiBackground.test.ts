@@ -11,7 +11,7 @@ function installModelKeys(models: string[]) {
     return {urls, keys, open};
 }
 
-function setup(response: unknown = {success: true, backend: 'wasm'}) {
+function setup(response: unknown = {success: true, model: 'tiny', text: '', backend: 'wasm'}) {
     const offscreen = {
         hasDocument: vi.fn(async () => true),
         ensureDocument: vi.fn(async () => undefined),
@@ -35,9 +35,9 @@ function deferred<T>() {
 
 const ownedEntryTypes = ['fluentReadTranscribeLocalVideoAudio', 'fluentReadPrepareLocalVideoModel'] as const;
 function waitingForPreviousCancellation(type: typeof ownedEntryTypes[number]) {
-    const previousResponse = deferred<{success: boolean; text: string}>();
+    const previousResponse = deferred<{success: boolean; text: string; model: 'tiny'}>();
     const previousCancel = deferred<{success: boolean}>();
-    const fixture = setup({success: true, text: 'current owner response', backend: 'wasm'});
+    const fixture = setup({success: true, text: 'current owner response', model: 'tiny', backend: 'wasm'});
     fixture.offscreen.send.mockReturnValueOnce(previousResponse.promise);
     fixture.offscreen.sendIfPresent.mockReturnValueOnce(previousCancel.promise);
     const start = fixture.handlers.find(handler => handler.type === type)!;
@@ -71,7 +71,7 @@ describe('video subtitle background ownership', () => {
         await secondRejected;
         expect(f.offscreen.send).toHaveBeenCalledOnce();
         expect(f.storage.set).not.toHaveBeenCalled();
-        f.previousResponse.resolve({success: true, text: 'obsolete first response'});
+        f.previousResponse.resolve({success: true, text: 'obsolete first response', model: 'tiny'});
         await firstRejected;
     });
     it.each(ownedEntryTypes)('%s rejects an obsolete waiting generation after a third generation takes ownership', async type => {
@@ -88,7 +88,7 @@ describe('video subtitle background ownership', () => {
         expect(f.offscreen.send).not.toHaveBeenCalledWith(
             expect.objectContaining({streamId: 'tab:1:handoff:generation:2'}), expect.anything());
         await expect(f.start(4, 2, 'another-tab')).rejects.toThrow('另一个标签页');
-        f.previousResponse.resolve({success: true, text: 'obsolete first response'});
+        f.previousResponse.resolve({success: true, text: 'obsolete first response', model: 'tiny'});
         await firstRejected;
         await expect(f.cancel(3)).resolves.toEqual({success: true});
     });
@@ -103,7 +103,7 @@ describe('video subtitle background ownership', () => {
         expect(f.offscreen.send).toHaveBeenCalledTimes(2);
         expect(f.offscreen.send).toHaveBeenLastCalledWith(
             expect.objectContaining({streamId: 'tab:1:handoff:generation:2'}), expect.anything());
-        f.previousResponse.resolve({success: true, text: 'obsolete first response'});
+        f.previousResponse.resolve({success: true, text: 'obsolete first response', model: 'tiny'});
         await firstRejected;
         await expect(f.cancel(2)).resolves.toEqual({success: true});
     });
@@ -118,7 +118,7 @@ describe('video subtitle background ownership', () => {
         await secondRejected;
         expect(f.offscreen.send).toHaveBeenCalledOnce();
         await expect(f.start(1, 2, 'another-tab')).resolves.toMatchObject({success: true});
-        f.previousResponse.resolve({success: true, text: 'obsolete first response'});
+        f.previousResponse.resolve({success: true, text: 'obsolete first response', model: 'tiny'});
         await firstRejected;
         await expect(f.cancel(1, 2, 'another-tab')).resolves.toEqual({success: true});
     });
@@ -188,7 +188,7 @@ describe('video subtitle background ownership', () => {
     it('serializes concurrent cache writes so Tiny and Base state are merged', async () => {
         const stored: Record<string, unknown> = {fluentReadVideoLocalTranscriptionModels: []};
         const offscreen = {
-            send: vi.fn(async () => ({success: true})),
+            send: vi.fn(async () => ({success: true, model: 'tiny'})),
             sendIfPresent: vi.fn(async () => ({success: true})),
         } as any;
         const storage = {

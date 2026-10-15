@@ -2,13 +2,13 @@
  * @file src/platform/offscreen/client.ts
  *
  * 文件职责：统一管理扩展自有 DOM 的创建、复用与消息发送，为 OCR、内置翻译和音频等后台能力提供基础设施客户端。
- * 主要内容：定义 runtime/document 依赖端口和 OffscreenClient，串行创建文档、等待接收端 ready 握手，并在接收端丢失时受控重建一次，恢复请求的取消信号贯穿排队和文档变更边界；准备超时后继续持有未结束的原生创建或关闭操作，避免迟到文档与后续重建重叠。默认 chromeOffscreenClient 连接浏览器 API。
+ * 主要内容：为 requests.ts 的已知消息端口及其它能力提供同一底层传输，定义 runtime/document 依赖端口和 OffscreenClient，串行创建文档、等待接收端 ready 握手，并在接收端丢失时受控重建一次，恢复请求的取消信号贯穿排队和文档变更边界；准备超时后继续持有未结束的原生创建或关闭操作，避免迟到文档与后续重建重叠。默认 chromeOffscreenClient 连接浏览器 API。
  * 模块边界：只封装文档生命周期与消息可靠性；默认连接 Chrome Offscreen，Firefox 注入文档容器与查询端口，不复制任务调度或业务逻辑。
  */
 
 export interface OffscreenMessage {
     readonly type: string;
-    readonly [field: string]: unknown;
+    readonly target?: string;
 }
 
 export const OFFSCREEN_READY_MESSAGE_TYPE = 'FLUENT_READ_OFFSCREEN_READY' as const;
@@ -57,7 +57,7 @@ export interface OffscreenSendOptions {
     /** 整次 prepare/rebuild/send 共用的相对预算，client 会在入口换算成绝对截止时间。 */
     readonly timeoutMs?: number;
     /** 请求取消或超时时尽力发送的纯数据清理消息。 */
-    readonly cancelMessage?: OffscreenMessage;
+    readonly cancelMessage?: OffscreenMessage & Readonly<Record<string, unknown>>;
 }
 
 export interface OffscreenClient {

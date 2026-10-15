@@ -84,7 +84,7 @@ function loadClient(relative: string, components: Map<string, Component>): Compo
 function task(phase: models.LocalTranslationDownloadPhase, downloadedBytes = 0, updatedAt = 1, model: models.LocalTranslationModelId = primary): models.LocalTranslationDownloadState {
     return {model, phase, downloadedBytes, totalBytes: 800_000, bytesPerSecond: 200_000, updatedAt};
 }
-function snapshot(tasks: models.LocalTranslationDownloadState[]) {return {version: 2, tasks};}
+function snapshot(tasks: models.LocalTranslationDownloadState[]): models.LocalTranslationDownloadSnapshot {return {version: 2, tasks};}
 function backend() {
     let current = snapshot([]);
     const values: Record<string, any> = {[models.LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY]: current};

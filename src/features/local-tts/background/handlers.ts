@@ -1,10 +1,12 @@
 /**
  * @file src/features/local-tts/background/handlers.ts
  * 文件职责：为设置页提供本地 TTS 模型的状态、下载和清除后台消息 handler。
- * 主要内容：解析状态查询、预下载与移除请求，让下载与清除互斥，以有界重读处理迟到状态并阻止过期写入，统一返回成功或错误结构。
+ * 主要内容：逐字段构造规范模型状态，旧记录缺少下载大小时采用目录默认值，丢弃损坏的可选版本字段；解析状态查询、预下载与移除请求，让下载与清除互斥，以有界重读处理迟到状态并阻止过期写入，统一返回成功或错误结构。
  * 模块边界：不执行语音合成；实际模型缓存和 Worker 初始化由 Offscreen 适配器完成，存储与适配器均由 runtime 注入。
  */
 
+import {isMessageRecord, isFiniteNumber} from '@/src/core/messaging/validation';
+import type {LocalTtsPreparation, LocalTtsStatus} from '@/src/core/messaging/offscreen';
 import type {BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
 import {LOCAL_TTS_MODEL, LOCAL_TTS_MODEL_ID, LOCAL_TTS_MODEL_STATE_KEY} from '@/src/core/config/localTts';
 
@@ -30,19 +32,22 @@ interface LocalTtsModelState {
 
 export interface LocalTtsBackgroundDependencies {
     readonly offscreen: {
-        prepare(keepWarm?: boolean): Promise<Record<string, unknown>>;
-        status(): Promise<Record<string, unknown>>;
+        prepare(keepWarm?: boolean): Promise<LocalTtsPreparation>;
+        status(): Promise<LocalTtsStatus>;
         remove(): Promise<void>;
     };
     readonly storage: Store;
 }
 
 function modelState(value: unknown): LocalTtsModelState | null {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const item = value as Record<string, unknown>;
-    return item.model === LOCAL_TTS_MODEL_ID && typeof item.downloaded === 'boolean'
-        ? item as unknown as LocalTtsModelState
-        : null;
+    if (!isMessageRecord(value) || value.model !== LOCAL_TTS_MODEL_ID || typeof value.downloaded !== 'boolean') return null;
+    return {
+        model: LOCAL_TTS_MODEL_ID,
+        downloaded: value.downloaded,
+        downloadSizeMb: isFiniteNumber(value.downloadSizeMb) && value.downloadSizeMb >= 0 ? value.downloadSizeMb : LOCAL_TTS_MODEL.downloadSizeMb,
+        ...(typeof value.dtype === 'string' ? {dtype: value.dtype} : {}),
+        ...(typeof value.revision === 'string' ? {revision: value.revision} : {}),
+    };
 }
 
 export function createLocalTtsBackgroundHandlers(
@@ -104,7 +109,7 @@ export function createLocalTtsBackgroundHandlers(
                     revision: typeof response.revision === 'string' ? response.revision : undefined,
                 };
                 await writeState({...current, downloaded: true}, revision);
-                return {success: true, ...response, model: LOCAL_TTS_MODEL_ID, downloaded: true, models: [{...current, downloaded: true}]};
+                return {...response, success: true, model: LOCAL_TTS_MODEL_ID, downloaded: true, models: [{...current, downloaded: true}]};
             } finally {
                 preparing -= 1;
                 // 下载结束后，期间开始的查询也必须重新读取，避免其迟到快照覆盖完成状态。

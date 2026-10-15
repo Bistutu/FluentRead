@@ -2,7 +2,7 @@
  * @file src/features/local-tts/offscreen/tts.worker.ts
  * 文件职责：在独立 Worker 中加载并运行 Kokoro v1.1 中文 TTS，避免推理阻塞 Offscreen DOM。
  * 主要内容：验证固定版本缓存及精确匹配的当前或历史镜像来源，保持已下载音色离线可用；处理 WebGPU/WASM 回退、有界线程和推理节流，串行合成与 PCM16 校验，保留真实句段时间并按块编码 WAV。
- * 模块边界：只运行本地模型，不访问配置、网页、标签页或直接播放 Audio。
+ * 模块边界：只运行本地模型，入站消息先经 feature 公共协议校验；不访问配置、网页、标签页或直接播放 Audio。
  */
 
 import type {SpeechCue} from '@/src/core/tts/speechProgress';
@@ -19,29 +19,11 @@ import {
 } from '@/src/core/config/localTts';
 import {configureOnnxWasmBackend, withCompressedWasmBinary} from '@/src/shared/onnx/wasmBinary';
 import {probeWebGpu} from '@/src/shared/onnx/webgpu';
+import {readWorkerRequestId} from '@/src/core/messaging/validation';
+import type {InferenceBackend} from '@/src/core/messaging/offscreen';
+import {parseLocalTtsWorkerRequest, type LocalTtsWorkerRequest as WorkerRequest, type LocalTtsWorkerResponse as WorkerResponse} from '../protocol';
 
-type LocalTtsDevice = 'webgpu' | 'wasm';
-
-interface WorkerRequest {
-    requestId: number;
-    type: 'prepare' | 'synthesize' | 'dispose';
-    text?: string;
-    voice?: string;
-    speed?: number;
-    /** 仅供外层 worker 重建流程强制本生命周期使用 WASM。 */
-    device?: 'wasm';
-}
-
-interface WorkerResponse {
-    requestId: number;
-    success: boolean;
-    audio?: ArrayBuffer;
-    timings?: SpeechCue[];
-    samplingRate?: number;
-    backend?: LocalTtsDevice;
-    error?: string;
-    retryWithCpu?: true;
-}
+type LocalTtsDevice = InferenceBackend;
 
 let modelPromise: Promise<KokoroTTS> | null = null;
 let modelBackend: LocalTtsDevice | undefined;
@@ -377,9 +359,12 @@ async function handle(request: WorkerRequest): Promise<void> {
 }
 
 export function startLocalTtsWorker(): void {
-    self.onmessage = (event: MessageEvent<WorkerRequest>) => {
-        const request = event.data;
-        if (!request || typeof request.requestId !== 'number' || !['prepare', 'synthesize', 'dispose'].includes(request.type)) return;
+    self.onmessage = (event: MessageEvent<unknown>) => {
+        const requestId = readWorkerRequestId(event.data);
+        if (requestId === undefined) return;
+        let request: WorkerRequest;
+        try { request = parseLocalTtsWorkerRequest(event.data); }
+        catch (error) { post({requestId, success: false, error: errorMessage(error)}); return; }
         void enqueue(() => handle(request));
     };
 }

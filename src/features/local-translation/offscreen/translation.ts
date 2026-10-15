@@ -3,7 +3,7 @@
  *
  * 文件职责：在 Offscreen Document 中管理本地翻译 Worker、模型缓存和请求取消。
  * 主要内容：串行复用模型 Worker，按设备内存保温并保护排队请求，显式释放使旧队列失效；按模型切换时终止旧实例，隔离旧实例的迟到错误，并提供下载、状态、清除和文本翻译能力。
- * 模块边界：不读取配置、不访问宿主网页 DOM；模型目录由 core 配置模块维护，指定与自动语言码解析由 core 语言模块负责。
+ * 模块边界：Worker 回复先经 feature 公共协议校验，不读取配置、不访问宿主网页 DOM；模型目录和语言码解析由 core 负责。
  */
 import {withLocalInferenceBudget} from '@/src/shared/onnx/resources';
 import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
@@ -15,26 +15,8 @@ import {
 import {resolveLocalTranslationLanguageCode} from '@/src/core/language/localTranslation';
 import {createLocalTranslationDownloadManager} from './downloads';
 import type {LocalTranslationDownloadSnapshot} from '@/src/core/config/localTranslation';
-
-interface WorkerRequest {
-    readonly requestId: number;
-    readonly singleThread?: boolean;
-    readonly type: 'prepare' | 'translate' | 'dispose';
-    readonly model?: LocalTranslationModelId;
-    readonly text?: string;
-    readonly sourceLanguage?: string;
-    readonly targetLanguage?: string;
-}
-
-interface WorkerResponse {
-    readonly requestId: number;
-    readonly retrySingleThread?: boolean;
-    readonly success: boolean;
-    readonly model?: string;
-    readonly result?: string;
-    readonly error?: string;
-    readonly dtype?: string;
-}
+import {readWorkerRequestId} from '@/src/core/messaging/validation';
+import {parseLocalTranslationWorkerResponse, type LocalTranslationWorkerCommand as WorkerCommand, type LocalTranslationWorkerResponse as WorkerResponse} from '../workerProtocol';
 
 interface PendingWorkerRequest {
     readonly resolve: (response: WorkerResponse) => void;
@@ -131,13 +113,18 @@ function getWorker(): Worker {
     const workerUrl = getUrl?.('localTranslationWorker.js')
         || new URL('localTranslationWorker.js', window.location.href).toString();
     const worker = new Worker(workerUrl, {type: 'module'});
-    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-        const response = event.data;
-        const pending = response && pendingWorkerRequests.get(response.requestId);
+    worker.onmessage = (event: MessageEvent<unknown>) => {
+        if (translationWorker !== worker) return;
+        const requestId = readWorkerRequestId(event.data);
+        if (requestId === undefined) return;
+        const pending = pendingWorkerRequests.get(requestId);
         if (!pending) return;
-        pendingWorkerRequests.delete(response.requestId);
+        pendingWorkerRequests.delete(requestId);
         window.clearTimeout(pending.timeout);
         if (pending.signal && pending.onAbort) pending.signal.removeEventListener('abort', pending.onAbort);
+        let response: WorkerResponse;
+        try { response = parseLocalTranslationWorkerResponse(event.data); }
+        catch (error) { pending.reject(error); return; }
         if (response.success || response.retrySingleThread) pending.resolve(response);
         else pending.reject(new Error(response.error || '本地翻译 Worker 失败'));
     };
@@ -149,7 +136,7 @@ function getWorker(): Worker {
     return worker;
 }
 
-function requestWorker(message: Omit<WorkerRequest, 'requestId'>, timeoutMs: number, signal?: AbortSignal): Promise<WorkerResponse> {
+function requestWorker(message: WorkerCommand, timeoutMs: number, signal?: AbortSignal): Promise<WorkerResponse> {
     clearIdleDispose();
     const generation = workerGeneration;
     const cancellation = cancellationGeneration;
@@ -165,7 +152,7 @@ function requestWorker(message: Omit<WorkerRequest, 'requestId'>, timeoutMs: num
 }
 
 function requestWorkerNow(
-    message: Omit<WorkerRequest, 'requestId'>,
+    message: WorkerCommand,
     timeoutMs: number,
     signal?: AbortSignal,
 ): Promise<WorkerResponse> {

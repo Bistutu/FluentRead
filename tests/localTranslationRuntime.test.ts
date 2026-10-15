@@ -1,3 +1,5 @@
+import {translationSnapshot} from './helpers/localInferenceFixtures';
+import type {OffscreenRequestMap} from '@/src/core/messaging/offscreen';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {createOffscreenMessageListener} from '@/src/app/offscreen/messageRouter';
 import {createLocalTranslationOffscreenAdapter} from '@/src/platform/offscreen/localTranslation';
@@ -32,7 +34,7 @@ beforeEach(() => {
 describe('local translation Offscreen adapter', () => {
   it('forwards detection context without changing the source text', async () => {
     send.mockResolvedValue({success: true, result: '译文'});
-    await createLocalTranslationOffscreenAdapter(client).translate({text: 'Reduce Waste during Filament Change',
+    await createLocalTranslationOffscreenAdapter(client).translate({model: LOCAL_TRANSLATION_MODEL_IDS.m2m100, text: 'Reduce Waste during Filament Change',
       sourceLanguage: 'auto', targetLanguage: 'zh', sourceLanguageDetectionText: 'English paragraph context'});
     expect(send.mock.calls[0][0]).toMatchObject({text: 'Reduce Waste during Filament Change', sourceLanguageDetectionText: 'English paragraph context'});
   });
@@ -68,7 +70,7 @@ describe('local translation Offscreen adapter', () => {
 
   it('validates prepare, status and remove responses', async () => {
     send
-      .mockResolvedValueOnce({success: true, model: LOCAL_TRANSLATION_MODEL_IDS.m2m100})
+      .mockResolvedValueOnce({success: true, ...translationSnapshot()})
       .mockResolvedValueOnce({success: true, models: []})
       .mockResolvedValueOnce({success: true});
     const adapter = createLocalTranslationOffscreenAdapter(client);
@@ -225,6 +227,25 @@ describe('local translation idle disposal while waiting for shared capacity', ()
       model: LOCAL_TRANSLATION_MODEL_IDS.opusZhEn, text: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh',
     }};
   }
+
+  it('rejects malformed correlated replies without retrying and keeps a later valid translation available', async () => {
+    const {owner, workers, request} = await warmOwner(8);
+    const workerClass = globalThis.Worker;
+    const originalPost = workerClass.prototype.postMessage;
+    workerClass.prototype.postMessage = function(message) {
+      this.onmessage?.(new MessageEvent('message', {data: {requestId: 'wrong', success: true, result: 'unrelated'}}));
+      this.onmessage?.(new MessageEvent('message', {data: {requestId: message.requestId + 1, success: true, result: 'foreign'}}));
+      this.onmessage?.(new MessageEvent('message', {data: {requestId: message.requestId, success: true, result: [], retrySingleThread: true}}));
+    };
+    try {
+      await expect(owner.translateLocalText(request)).rejects.toThrow('消息格式无效');
+      expect(workers).toHaveLength(1); expect(workers[0].terminate).not.toHaveBeenCalled();
+      workerClass.prototype.postMessage = originalPost;
+      await expect(owner.translateLocalText(request)).resolves.toBe('warm');
+      expect(workers).toHaveLength(1);
+    } finally {workerClass.prototype.postMessage = originalPost; owner.disposeLocalTranslationWorker();}
+    expect(vi.getTimerCount()).toBe(0);
+  });
 
   it('rejects a pre-cancelled translation before taking a queue or worker lease, and leaves later translation available', async () => {
     const {owner, workers, request} = await warmOwner(8);
@@ -484,10 +505,10 @@ describe('local translation background handlers', () => {
   it('acknowledges background jobs without marking them downloaded and only persists trusted completed progress', async () => {
     let stored: Record<string, unknown> = {[LOCAL_TRANSLATION_MODEL_STATE_KEY]: []};
     const offscreen = {
-      prepare: vi.fn(async () => ({success: true, model: LOCAL_TRANSLATION_MODEL_IDS.m2m100})),
+      prepare: vi.fn(async () => ({success: true, ...translationSnapshot()})),
       status: vi.fn(async () => ({models: [{model: LOCAL_TRANSLATION_MODEL_IDS.m2m100, downloaded: true}]})),
       remove: vi.fn(async () => undefined),
-      pause: vi.fn(async () => ({success: true})),
+      pause: vi.fn(async () => ({success: true, ...translationSnapshot('paused')})),
       translate: vi.fn(async () => 'result'),
     };
     const handlers = createLocalTranslationBackgroundHandlers({
@@ -504,7 +525,7 @@ describe('local translation background handlers', () => {
 
     await expect(prepare.handle({type: 'fluentReadPrepareLocalTranslationModel', model: LOCAL_TRANSLATION_MODEL_IDS.m2m100} as any, {})).resolves.toMatchObject({
       success: true,
-      model: LOCAL_TRANSLATION_MODEL_IDS.m2m100,
+      ...translationSnapshot(),
     });
     expect(stored[LOCAL_TRANSLATION_MODEL_STATE_KEY]).toEqual([]);
     await expect(state.handle({type: 'fluentReadGetLocalTranslationModelState'}, {})).resolves.toEqual({success: true, models: [{model: LOCAL_TRANSLATION_MODEL_IDS.m2m100, downloaded: true}]});
@@ -528,9 +549,9 @@ describe('local translation Offscreen message route', () => {
     model: LOCAL_TRANSLATION_MODEL_IDS.opusZhEn, text: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh',
   };
   const localDependencies = () => ({
-    translate: vi.fn(async (): Promise<unknown> => 'translated'),
-    prepare: vi.fn(async () => ({phase: 'queued'})),
-    pause: vi.fn(async () => ({phase: 'paused'})),
+    translate: vi.fn(async (): Promise<string> => 'translated'),
+    prepare: vi.fn(async () => translationSnapshot()),
+    pause: vi.fn(async () => translationSnapshot('paused')),
     status: vi.fn(async () => ({models: []})),
     removeModel: vi.fn(async () => undefined),
   });
@@ -548,8 +569,8 @@ describe('local translation Offscreen message route', () => {
   });
 
   it.each([
-    ['PREPARE', 'prepare', {success: true, phase: 'queued'}],
-    ['PAUSE', 'pause', {success: true, phase: 'paused'}],
+    ['PREPARE', 'prepare', {success: true, ...translationSnapshot()}],
+    ['PAUSE', 'pause', {success: true, ...translationSnapshot('paused')}],
     ['STATUS', 'status', {success: true, models: []}],
     ['REMOVE_MODEL', 'removeModel', {success: true}],
   ] as const)('forwards %s and returns its snapshot', async (operation, method, response) => {
@@ -581,7 +602,7 @@ describe('local translation Offscreen message route', () => {
   it.each(['reject', 'invalid-result'] as const)('reports executor failure: %s', async (mode) => {
     const local = localDependencies();
     if (mode === 'reject') local.translate.mockRejectedValue(new Error('executor failed'));
-    else local.translate.mockResolvedValue(null);
+    else local.translate.mockResolvedValue(null as never);
     await expect(route(local)({})).resolves.toMatchObject({success: false, requestId: 'route-1'});
   });
 
@@ -595,13 +616,13 @@ describe('local translation Offscreen message route', () => {
 
   it('passes a signal to the local executor and supports cancellation', async () => {
     let resolveTranslation!: (value: string) => void;
-    const translate = vi.fn((_message: Record<string, unknown>, _signal: AbortSignal) => new Promise<string>((resolve) => { resolveTranslation = resolve; }));
+    const translate = vi.fn((_message: OffscreenRequestMap['LOCAL_TRANSLATION_TRANSLATE'], _signal: AbortSignal) => new Promise<string>((resolve) => { resolveTranslation = resolve; }));
     const listener = createOffscreenMessageListener({
       ...baseOffscreenDependencies,
       translate: vi.fn(async () => 'chrome'),
       localTranslation: {
         translate,
-        prepare: vi.fn(async () => ({model: LOCAL_TRANSLATION_MODEL_IDS.m2m100})),
+        prepare: vi.fn(async () => translationSnapshot()),
         status: vi.fn(async () => ({models: []})),
         removeModel: vi.fn(async () => undefined),
       },

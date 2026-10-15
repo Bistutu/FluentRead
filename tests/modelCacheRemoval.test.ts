@@ -59,7 +59,7 @@ describe('model removal', () => {
   await expect(call('fluentReadRemoveLocalVideoModel',{model:'base'})).rejects.toThrow('正在');
   await expect(call('fluentReadPrepareLocalVideoModel',{model:'base'})).rejects.toThrow('清除');
   release();await expect(removing).resolves.toEqual({success:true,models:['base']});
-  send.mockImplementation(async()=>({success:false}));
+  send.mockImplementation(async()=>({success:false,error:''}));
   await expect(call('fluentReadRemoveLocalVideoModel',{model:'base'})).rejects.toThrow('清除失败');
   expect(values.fluentReadVideoLocalTranscriptionModels).toEqual(['base']);
  });

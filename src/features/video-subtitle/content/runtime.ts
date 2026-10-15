@@ -11,6 +11,7 @@ import {createVideoLearningPlacementOwner} from './sentenceLearningPlacement';
 import sentenceLearningStyles from '../ui/videoSentenceLearning.css?inline';
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import browser from 'webextension-polyfill';
+import {sendVideoSubtitleRequest} from './backgroundClient';
 import {sendRuntimeMessage} from '@/src/platform/browser/runtimeMessages';
 import {
   VIDEO_AI_CAPTION_CONTAINER_ID,
@@ -707,12 +708,12 @@ export function mountVideoSubtitleTranslation(): () => void {
   const transcribeAiAudioChunk = async (chunk: VideoAiAudioChunk, kind: VideoAiCaptureKind): Promise<VideoAiTranscriptionResult> => {
     const identity = aiRequests.read(kind, chunk.sessionId);
     if (destroyed || chunk.pcm.length === 0 || !identity) return { skipped: true };
-    const response = await sendRuntimeMessage({
+    const response = await sendVideoSubtitleRequest(sendRuntimeMessage, {
       type: 'fluentReadTranscribeLocalVideoAudio',
       ...identity,
       audioPcm16Base64: encodeVideoAiPcm16Base64(chunk.pcm),
 
-    }) as (VideoAiTranscriptionResult & {success?: boolean; error?: string}) | undefined;
+    });
     if (!response?.success) {
       throw new Error(response?.error || 'AI 字幕接口没有返回文字');
     }
@@ -734,11 +735,11 @@ export function mountVideoSubtitleTranslation(): () => void {
 
   const prepareAiTranscription = (kind: VideoAiCaptureKind, sessionId: number) => {
     const identity = aiRequests.start(kind, sessionId, activeAiModel, activeVideoLanguage);
-    if (identity) void sendRuntimeMessage({type: 'fluentReadPrepareLocalVideoModel', ...identity, keepWarm: true}).catch(() => undefined);
+    if (identity) void sendVideoSubtitleRequest(sendRuntimeMessage, {type: 'fluentReadPrepareLocalVideoModel', ...identity, keepWarm: true}).catch(() => undefined);
   };
   const cancelAiTranscription = (kind: VideoAiCaptureKind, sessionId: number, reason: string) => {
     const identity = aiRequests.read(kind, sessionId);
-    if (identity) void sendRuntimeMessage({type: 'fluentReadCancelLocalVideoTranscription', ...identity, reason}).catch(() => undefined);
+    if (identity) void sendVideoSubtitleRequest(sendRuntimeMessage, {type: 'fluentReadCancelLocalVideoTranscription', ...identity, reason}).catch(() => undefined);
   };
 
   const setAiFullProgress = (progress: Partial<VideoAiFullCaptureProgress>) => {

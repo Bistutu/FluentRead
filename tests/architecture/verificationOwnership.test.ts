@@ -267,7 +267,7 @@ const BUILD_ONLY_SRC_ALLOWLIST = new Set([
     'src/app/document-translation/runtime.ts',
     // 文档 WXT 页面 composition 只挂载 Vue/Element Plus 与页面样式；由文档组件回归和双浏览器构建验证。
     'src/app/document-translation/page.ts',
-    // 该模块绑定后台 IndexedDB 端口、会话/持久凭据迁移与页面生命周期；纯 schema/历史算法严格覆盖，集成行为由 config.test 验证。
+    // 默认组装根只注入存储及可信上下文并显式启动应用；authority/client/history/纯策略严格覆盖，既有导入与集成行为由 config.test 验证。
     'src/services/config/store.ts',
     // 自动备份 store 绑定加密配置仓库 watch 与配置保存队列；纯状态机严格覆盖，集成读写和恢复由 configAutoBackupStore.test 验证。
     'src/services/config/autoBackupStore.ts',
@@ -319,10 +319,8 @@ const BUILD_ONLY_SRC_ALLOWLIST = new Set([
     'src/providers/translation/microsoft.ts',
     'src/providers/translation/tongyi.ts',
     'src/providers/translation/zhipu.ts',
-    // 本地翻译绑定浏览器 Cache Storage、Offscreen 和独立 Worker；模型目录、协议取消、缓存和构建由专项测试覆盖。
+    // 本地翻译目录与真实 Cache Storage/Worker 生命周期保留专项归属；后台命令和 Offscreen 请求适配已进入严格覆盖。
     'src/core/config/localTranslation.ts',
-    'src/platform/offscreen/localTranslation.ts',
-    'src/features/local-translation/background/handlers.ts',
     'src/features/local-translation/background/runtime.ts',
     'src/features/local-translation/offscreen/modelCache.ts',
     'src/features/local-translation/offscreen/translation.ts',

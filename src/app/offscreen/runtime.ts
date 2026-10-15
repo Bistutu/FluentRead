@@ -110,7 +110,7 @@ export function startOffscreenApp(): void {
         mangaModelStatus:mangaOcrModelStatus,
         removeMangaModels,
         videoAi: {
-            transcribe: (request) => transcribeLocalVideoAudio(request as any),
+            transcribe: (request) => transcribeLocalVideoAudio(request),
             // 预热只加载已缓存的模型；只有预下载才有网络进度可发布。
             prepare: (request) => request.keepWarm === true
                 ? prepareLocalVideoTranscriptionModel(request.model, {keepWarm: true, streamId: request.streamId})
@@ -122,7 +122,7 @@ export function startOffscreenApp(): void {
             removeModel: request => removeLocalVideoTranscriptionModel(request.model),
         },
         localTranslation: {
-            translate: (request, signal) => translateLocalText(request as any, signal),
+            translate: (request, signal) => translateLocalText(request, signal),
             prepare: (request) => prepareLocalTranslationModel(request.model),
             pause: (request) => pauseLocalTranslationModelDownload(request.model),
             status: getLocalTranslationModelStatus,
@@ -131,8 +131,8 @@ export function startOffscreenApp(): void {
         },
         localTts: {
             synthesize: (request, signal) => synthesizeLocalTts(
-                String(request.text || ''),
-                String(request.language || ''),
+                request.text,
+                request.language,
                 request.voice,
                 signal,
             ),

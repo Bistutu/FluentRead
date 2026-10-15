@@ -344,7 +344,7 @@ describe('selection TTS Offscreen adapter', () => {
     it('forwards text and timings without mutation for both generated audio and legacy URL playback', async () => {
         const timings = [{startChar: 0, endChar: 5, startTime: 0, endTime: 1}];
         for (const payload of [
-            {...route, audioBase64: 'AA==', contentType: 'audio/wav', text: 'Hello', timings},
+            {...route, audioBase64: 'AA==', contentType: 'audio/wav' as const, text: 'Hello', timings},
             {...route, sourceUrl: 'https://example.test/audio', text: 'Hello'},
         ]) {
             preparePermit(); send.mockResolvedValueOnce({success: true});
@@ -364,14 +364,14 @@ describe('local TTS Offscreen adapter', () => {
         send.mockResolvedValueOnce({
             success: true,
             audioBase64: 'UklG',
-            contentType: 'audio/wav',
+            contentType: 'audio/wav' as const,
             voice: 'zf_001',
             backend: 'wasm',
         });
 
         await expect(adapter.synthesize('你好', 'zh-CN', 'zf_001', controller.signal)).resolves.toEqual({
             audio: new Uint8Array([82, 73, 70, 70]).buffer,
-            contentType: 'audio/wav',
+            contentType: 'audio/wav' as const,
             voice: 'zf_001',
             backend: 'wasm',
         });
@@ -396,7 +396,7 @@ describe('local TTS Offscreen adapter', () => {
         await expect(adapter.synthesize('hello', 'en-US', 'af_maple')).rejects.toThrow('local custom');
 
         send.mockResolvedValueOnce({success: true, audioBase64: ''});
-        await expect(adapter.synthesize('hello', 'en-US', 'af_maple')).rejects.toThrow('本地 TTS 合成失败');
+        await expect(adapter.synthesize('hello', 'en-US', 'af_maple')).rejects.toThrow('Offscreen LOCAL_TTS_SYNTHESIZE响应消息格式无效');
     });
 });
 
@@ -442,7 +442,7 @@ describe('TTS metadata across local synthesis, adapters and routed playback', ()
             notifyProgress: (audioRequest, progress) => notify(audioRequest, 'progress', progress),
         });
         const synthesizeLocal = vi.fn(async () => ({
-            audio: new Uint8Array([82, 73, 70, 70]).buffer, contentType: 'audio/wav', voice: 'zf_001', ...(metadata as object),
+            audio: new Uint8Array([82, 73, 70, 70]).buffer, contentType: 'audio/wav' as const, voice: 'zf_001', ...(metadata as object),
         }));
         const offscreen = createOffscreenMessageListener({
             ttsPlayer: player, translate: vi.fn(), fetchImage: vi.fn(), translateImage: vi.fn(), translateArea: vi.fn(), downloadOcrLanguages: vi.fn(),
@@ -472,7 +472,7 @@ describe('TTS metadata across local synthesis, adapters and routed playback', ()
         expect(result.response).toEqual({success: true, transport: 'offscreen', voice: 'zf_001'});
         expect(controller.completeRemoteRequest(request, result.response as {success: boolean; transport: string})).toBe('offscreen');
         expect(messages.find(message => message.type === 'PLAY_SELECTION_TTS')).toEqual({
-            type: 'PLAY_SELECTION_TTS', playbackToken: expect.any(String), audioBase64: 'UklGRg==', contentType: 'audio/wav', text: 'Hello world', tabId: 0, clientRequestId: request.clientRequestId,
+            type: 'PLAY_SELECTION_TTS', playbackToken: expect.any(String), audioBase64: 'UklGRg==', contentType: 'audio/wav' as const, text: 'Hello world', tabId: 0, clientRequestId: request.clientRequestId,
             ...(expectedTimings === undefined ? {} : {timings: expectedTimings}),
         });
         expect(synthesizeLocal).toHaveBeenCalledWith(expect.objectContaining({text: 'Hello world', language: 'en-US', voice: 'zf_001'}), expect.any(AbortSignal));

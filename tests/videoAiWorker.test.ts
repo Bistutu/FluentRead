@@ -85,6 +85,20 @@ async function loadProtocolWorker(transcriber: any, backend: 'webgpu' | 'wasm' =
 }
 
 describe('视频 AI Worker timestamp parser', () => {
+    it('rejects a malformed correlated command before loading a model and still accepts a later valid preparation', async () => {
+        const scope = await loadProtocolWorker(vi.fn());
+        try {
+            for (const value of [null, {}, {requestId: 0}, {requestId: NaN}]) scope.onmessage({data: value});
+            expect(scope.postMessage).not.toHaveBeenCalled();
+            scope.onmessage({data: {requestId: 1, type: 'transcribe', audio: new Uint8Array(4)}});
+            expect(scope.postMessage).toHaveBeenLastCalledWith({requestId: 1, success: false, error: expect.stringContaining('消息格式无效')});
+            expect(workerMocks.pipeline).not.toHaveBeenCalled();
+            scope.onmessage({data: {requestId: 2, type: 'prepare', model: 'tiny'}});
+            await waitForWorkerMessages(scope, 2);
+            expect(scope.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({requestId: 2, success: true, model: 'tiny', backend: 'wasm'}));
+            expect(workerMocks.pipeline).toHaveBeenCalledOnce();
+        } finally {vi.unstubAllGlobals();}
+    });
     it('忽略不属于识别协议的消息，未加载模型也能dispose，缺少音频返回数字静音', async () => {
         const scope = await loadProtocolWorker(vi.fn());
         try {
@@ -93,6 +107,7 @@ describe('视频 AI Worker timestamp parser', () => {
             const listener = scope.addEventListener.mock.calls[0][1];
             listener({});
             listener({data: {type: 'other'}});
+            scope.onmessage({data: {type: 'dispose'}});
             listener({data: {type: 'dispose'}});
             scope.onmessage({data: {requestId: 1, type: 'transcribe'}});
             await waitForWorkerMessages(scope, 1);
