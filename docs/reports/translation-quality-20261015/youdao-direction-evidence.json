@@ -1,0 +1,77 @@
+{
+  "liveObservations": [
+    {
+      "source": "Keep the API name `getUserID` unchanged，其他说明请译成中文。The response includes a user ID, not a password.",
+      "expectedDirection": {
+        "from": "en",
+        "to": "zh-CHS"
+      },
+      "returnedType": "zh-CHS2en",
+      "translation": "Keep the API name 'getUserID' unchanged. Other instructions should be translated into Chinese. The response includes a user ID, not a password.",
+      "httpStatus": 200
+    }
+  ],
+  "validation": {
+    "checkedAt": "2026-10-15T05:59:47.785Z",
+    "command": "pnpm test -- tests/freeChineseWebProviders.test.ts tests/implementationAudit48F.test.ts tests/finalCoveragePublicBoundariesB.test.ts --coverage.enabled --coverage.provider=v8 --coverage.all --coverage.include=src/providers/translation/free-chinese-web.ts --coverage.reportsDirectory=coverage/youdao-direction --coverage.reporter=text --coverage.reporter=json --coverage.reporter=json-summary --coverage.thresholds.statements=100 --coverage.thresholds.branches=100 --coverage.thresholds.functions=100 --coverage.thresholds.lines=100",
+    "exitCode": 0,
+    "runner": "scripts/testing/run-resource-safe.mjs",
+    "vitestVersion": "2.1.9",
+    "testFilesPassed": 3,
+    "testsPassed": 109,
+    "source": {
+      "path": "src/providers/translation/free-chinese-web.ts",
+      "sha256": "7f973c66e778d234da3c6c0c65117b1db389cb03ce96aed4e028b28c48d0c9e8"
+    },
+    "testSources": {
+      "tests/freeChineseWebProviders.test.ts": "a08d7dab2547c9d1ffd9998fbadbec9f7ae7bb1d3366a293f7a5be167c36f1ca",
+      "tests/implementationAudit48F.test.ts": "66d4318d8690f2819f3848713cf9728cd32182eb0c5405d0e122f9d469345357",
+      "tests/finalCoveragePublicBoundariesB.test.ts": "5a086d00b574d7a9e2df0acb01677e0fe5fc38f332973780d2f662f8656307e2"
+    },
+    "coverage": {
+      "provider": "v8",
+      "scope": [
+        "src/providers/translation/free-chinese-web.ts"
+      ],
+      "reportPath": "coverage/youdao-direction/coverage-summary.json",
+      "metrics": {
+        "statements": {
+          "total": 136,
+          "covered": 136,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 126,
+          "covered": 126,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 10,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 136,
+          "covered": 136,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "warnings": [
+      "Installed @deeplx/core dependency sourcemaps refer to missing upstream source files; all selected tests and four target-file thresholds passed."
+    ],
+    "limitations": [
+      "Coverage is scoped to the selected provider file; it is not full-repository coverage.",
+      "Offline transport fixtures do not prove live-provider availability, semantic accuracy, or browser-runtime acceptance."
+    ],
+    "testCases": {
+      "provider": 40,
+      "existingAudit": 55,
+      "existingPublicBoundaries": 14
+    }
+  }
+}

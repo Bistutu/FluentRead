@@ -694,7 +694,10 @@
       "tests/localTranslationWorker.test.ts",
       "tests/videoNativeFullscreen.test.ts",
       "tests/floatingBallLifecycle.test.ts",
-      "tests/translationProgressMobileLifecycle.test.ts"
+      "tests/translationProgressMobileLifecycle.test.ts",
+      "tests/translationQualityEvaluation.test.ts",
+      "tests/translationQualityReport.test.ts",
+      "tests/translationQualityTransport.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

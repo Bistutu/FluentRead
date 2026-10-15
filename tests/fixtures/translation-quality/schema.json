@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FluentRead auditable translation quality corpus v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "title",
+    "description",
+    "createdAt",
+    "samples"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "title": {
+      "$ref": "#/$defs/text"
+    },
+    "description": {
+      "$ref": "#/$defs/text"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date"
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/sample"
+      }
+    }
+  },
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "domain",
+        "sourceLanguage",
+        "targetLanguage",
+        "source",
+        "provenance",
+        "humanReview",
+        "requirements"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "domain": {
+          "enum": [
+            "technical",
+            "news",
+            "colloquial",
+            "academic",
+            "mixed-language"
+          ]
+        },
+        "sourceLanguage": {
+          "$ref": "#/$defs/text"
+        },
+        "targetLanguage": {
+          "$ref": "#/$defs/text"
+        },
+        "source": {
+          "$ref": "#/$defs/text"
+        },
+        "sourceContext": {
+          "$ref": "#/$defs/text"
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "author",
+            "createdAt",
+            "note"
+          ],
+          "properties": {
+            "kind": {
+              "const": "synthetic"
+            },
+            "author": {
+              "$ref": "#/$defs/text"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date"
+            },
+            "note": {
+              "$ref": "#/$defs/text"
+            }
+          }
+        },
+        "humanReview": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "reviewer",
+            "reviewedAt",
+            "note"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "pending",
+                "approved",
+                "needs-revision"
+              ]
+            },
+            "reviewer": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            },
+            "reviewedAt": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "note": {
+              "$ref": "#/$defs/text"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "pending"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "reviewer": {
+                    "type": "null"
+                  },
+                  "reviewedAt": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "reviewer": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reviewedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "requirements": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/requirement"
+          }
+        }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "category",
+        "severity",
+        "description",
+        "requiresHumanReview"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "category": {
+          "enum": [
+            "omission",
+            "mistranslation",
+            "negation",
+            "numbers-units",
+            "reference",
+            "terminology",
+            "format"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "major",
+            "minor"
+          ]
+        },
+        "description": {
+          "$ref": "#/$defs/text"
+        },
+        "requiresHumanReview": {
+          "type": "boolean"
+        },
+        "check": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "contains",
+                "regex",
+                "exact-preservation"
+              ]
+            },
+            "value": {
+              "$ref": "#/$defs/text"
+            },
+            "flags": {
+              "type": "string",
+              "pattern": "^[imsu]*$"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "contains",
+                      "exact-preservation"
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "not": {
+                  "required": [
+                    "flags"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "requiresHumanReview": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "check"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "check"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

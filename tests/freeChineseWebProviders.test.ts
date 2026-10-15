@@ -122,6 +122,52 @@ describe('free Chinese web providers', () => {
         expect(url.searchParams.get('to')).toBe('zh-CHS');
     });
 
+    it.each([
+        ['en', 'zh-Hans', 'zh-CHS2en'],
+        ['zh-Hans', 'en', 'en2zh-CHS'],
+    ])('rejects a declared Youdao reverse direction for %s → %s', async (source, target, type) => {
+        fetchMock.mockResolvedValueOnce(Response.json({fanyi: {type, tran: 'Keep the API name unchanged. 请保留 API 名称。'}}));
+        const error = await translateFreeChineseWebText('youdaoFree', 'Keep the API name unchanged. 请保留 API 名称。', source, target).catch(value => value);
+        expect(error).toMatchObject({freeFailure: 'request', message: '有道返回的翻译方向与请求不一致'});
+        expect(error.statusCode).toBeUndefined();
+        expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        ['en', 'zh-Hans', 'en2zh-CHS', '这是中文译文。'],
+        ['zh-Hans', 'en', ' ZH-CHS2EN ', 'This is an English translation.'],
+    ])('accepts the matching declared Youdao direction for %s → %s', async (source, target, type, tran) => {
+        fetchMock.mockResolvedValueOnce(Response.json({fanyi: {type, tran}}));
+        await expect(translateFreeChineseWebText('youdaoFree', 'Original source 原文', source, target)).resolves.toBe(tran);
+    });
+
+    it.each([undefined, null, 42, '', 'auto', 'future-protocol'])('does not infer a reversed direction from unknown Youdao type %s', async type => {
+        fetchMock.mockResolvedValueOnce(Response.json({fanyi: {type, tran: '可用译文'}}));
+        await expect(translateFreeChineseWebText('youdaoFree', 'Original source', 'en', 'zh-Hans')).resolves.toBe('可用译文');
+    });
+
+    it('falls back after a real Youdao adapter rejects reversed output without cooling the provider for the next text', async () => {
+        const run = createFreeFallbackRunner(1);
+        const backup = vi.fn(async () => '备用服务的中文译文');
+        let source = 'Keep the API name unchanged. 请保留 API 名称。';
+        const candidates = [
+            {identity: 'youdao-direction', label: '有道', translate: (signal: AbortSignal) =>
+                translateFreeChineseWebText('youdaoFree', source, 'en', 'zh-Hans', signal)},
+            {identity: 'backup-direction', label: '备用', translate: backup},
+        ];
+        fetchMock.mockResolvedValueOnce(Response.json({fanyi: {type: 'zh-CHS2en', tran: 'Keep the API name unchanged.'}}));
+        const options = {timeoutMs: 5000, cooldownMs: 60_000, mode: 'sequential' as const};
+        await expect(run(candidates, options)).resolves.toBe('备用服务的中文译文');
+        expect(backup).toHaveBeenCalledOnce();
+        expect((await run.getHealthSnapshot()).find(item => item.identity === 'youdao-direction')?.retryAt ?? 0).toBe(0);
+        source = 'Keep the API name unchanged.';
+        fetchMock.mockResolvedValueOnce(Response.json({fanyi: {type: 'en2zh-CHS', tran: '请保持 API 名称不变。'}}));
+        await expect(run(candidates, options)).resolves.toBe('请保持 API 名称不变。');
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(new URL(String(fetchMock.mock.calls[1]![0])).searchParams.get('q')).toBe(source);
+        expect(backup).toHaveBeenCalledOnce();
+    });
+
     it('keeps the end of long Youdao paragraphs when the upstream silently truncates oversized requests', async () => {
         // 真实匿名接口对 685 字符段落返回了在约 600 字符处截止的结果；此端口模拟该边界。
         fetchMock.mockImplementation(async input => Response.json({fanyi: {tran: new URL(String(input)).searchParams.get('q')!.slice(0, 598)}}));
