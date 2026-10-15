@@ -271,11 +271,34 @@ describe('userscript browser shim injection', () => {
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
                 !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && !key.startsWith('popup.compact.')
                 && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
-                && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !registeredSupplementKeys.includes(key))));
-            if (language !== 'en-US') for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
+                && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !key.startsWith('document.') && !registeredSupplementKeys.includes(key))));
+            if (language !== 'en-US') {
+                for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
+                Object.assign(kept, Object.fromEntries(Object.entries(publishedMessages[language]!).filter(([key]) => key.startsWith('document.'))));
+            }
             expect(bundle.messages).toEqual(kept);
             expect(original.messages['learning.reloadPage']).toBeTruthy();
         }
+    });
+    it.each(Object.keys(pinnedLanguageFiles) as Array<keyof typeof extensionBundles>)('freezes only the published %s document messages while retaining current extension copy', language => {
+        const original = extensionBundles[language], projected = UI_LANGUAGE_BUNDLES[language];
+        const originalBefore = JSON.stringify(original);
+        const documentMessages = (messages: Record<string, string>) => Object.fromEntries(Object.entries(messages).filter(([key]) => key.startsWith('document.')));
+        expect(documentMessages(projected.messages)).toEqual(documentMessages(publishedMessages[language]!));
+        for (const suffix of ['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage']) {
+            const key = `document.pdfReading.${suffix}`;
+            expect(original.messages[key]).toBeTruthy(); expect(projected.messages).not.toHaveProperty(key);
+        }
+        for (const suffix of ['exportHint', 'layoutExportHint', 'exportPageCount']) {
+            const key = `document.pdfReading.${suffix}`;
+            expect(original.messages[key]).toBeTruthy(); expect(original.messages[key]).not.toBe(publishedMessages[language]![key]);
+            expect(projected.messages[key]).toBe(publishedMessages[language]![key]);
+        }
+        const nonDocument = Object.fromEntries(Object.entries(projected.messages).filter(([key]) => !key.startsWith('document.')));
+        for (const [key, value] of Object.entries(nonDocument)) expect(value).toBe(publishedOverrideKeys.includes(key)
+            ? publishedMessages[language]![key] : original.messages[key]);
+        expect(projected.legacyText).toBe(original.legacyText); expect(projected.legacyPatterns).toBe(original.legacyPatterns);
+        expect(JSON.stringify(original)).toBe(originalBefore);
     });
     it.each(['standard', 'standalone'] as const)('keeps %s runtime icon inline and pins only the standard manager icon', async mode => {
         vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', mode === 'standalone' ? '1' : '');
@@ -334,9 +357,10 @@ describe('userscript browser shim injection', () => {
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
             && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
             && key !== 'popup.compact.translate' && key !== 'popup.compact.restore'
-            && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)));
+            && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)
+                && (!key.startsWith('document.') || Object.hasOwn(publishedMessages[_language]!, key))));
         expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
-        for (const key of retainedKeys) expect(projected[key]).toBe(publishedMessages[_language] && publishedOverrideKeys.includes(key)
+        for (const key of retainedKeys) expect(projected[key]).toBe(publishedMessages[_language] && (publishedOverrideKeys.includes(key) || key.startsWith('document.'))
             ? publishedMessages[_language]![key] : extension[key]);
         expect(projected['contextMenu.translateSelection']).toBeTruthy();
         expect(projected['contextMenu.translatePage']).toBeTruthy();
