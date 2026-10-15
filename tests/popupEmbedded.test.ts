@@ -25,6 +25,7 @@ function fixture(embedded = true) {
     class Observer {observe = vi.fn(); disconnect = vi.fn(); constructor(public callback: () => void) {observers.push(this);} }
     const computed = vi.fn(() => ({width: '380px'}));
     vi.stubGlobal('window', target); vi.stubGlobal('document', doc); vi.stubGlobal('browser', {runtime});
+    vi.stubGlobal('navigator', {language: 'zh-CN'});
     vi.stubGlobal('chrome', undefined); vi.stubGlobal('ResizeObserver', Observer); vi.stubGlobal('getComputedStyle', computed);
     const connect = (port = createPort(), data: unknown = {type: 'fluentread-floating-popup-connect', token: 'fixture-token'}, source = target.parent, ports = [port]) => {
         target.dispatchEvent(Object.assign(new Event('message'), {data, source, ports}));

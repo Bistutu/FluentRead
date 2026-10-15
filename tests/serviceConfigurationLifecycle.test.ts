@@ -7,6 +7,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation'
 import {defaultOption, options} from '@/src/core/config/catalog'
+import {diagnoseFailure, getDiagnosticText} from '@/src/services/diagnostics'
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
 const key = '__frServiceConfigurationLifecycle'
@@ -188,14 +189,124 @@ describe('实际服务连接配置的活跃生命周期与确认归属', () => {
     expect(messages()).toHaveLength(phase === 'response' ? 1 : 0)
     await vi.advanceTimersByTimeAsync(1);await settle();expect(ended).toBe(true)
     expect(state.connectionTestBusy).toBe(false);expect(state.connectionTestState).toBe('error');expect(vi.getTimerCount()).toBe(0)
-    expect(state.apiKeyChecks[0]).toMatchObject({status: 'error', error: phase === 'response'
-      ? 'settings.services.keys.responseTimeout' : 'settings.services.keys.configTimeout'})
+    expect(state.connectionTestDiagnostic.code).toBe(phase === 'response' ? 'timeout' : 'configuration-save')
+    expect(state.apiKeyChecks[0]).toMatchObject({status: 'error', error: getDiagnosticText(state.connectionTestDiagnostic).title})
     delayed.resolve({success: true});await job;await settle()
     expect(state.connectionTestState).toBe('error');expect(state.apiKeyChecks[0].status).toBe('error');expect(vi.getTimerCount()).toBe(0)
     await check(true);await settle()
     expect(state.connectionTestState).toBe('success');expect(state.connectionTestBusy).toBe(false)
     expect(state.apiKeyChecks[0]).toMatchObject({status: 'success', durationMs: 25})
     expect(messages()).toHaveLength(phase === 'response' ? 2 : 1);expect(vi.getTimerCount()).toBe(0)
+  })
+  it.each([
+    ['401 invalid_api_key request-body-secret https://private.example/path?token=fixture', 'authentication'],
+    ['429 rate limit account-secret', 'rate-limit'],
+    ['model not found: confidential-model', 'model-configuration'],
+    ['Failed to fetch https://private.example/private-document', 'network'],
+  ])('密钥失败按真实原因 %s 展示安全分类，重试保留服务与已有字段', async (error, code) => {
+    const before = JSON.stringify(props.config)
+    send.mockResolvedValueOnce({success: false, error})
+    await check(true)
+    expect(state.connectionTestDiagnostic.code).toBe(code)
+    expect(state.apiKeyChecks[0].error).toBe(getDiagnosticText(state.connectionTestDiagnostic).title)
+    expect(JSON.stringify([state.apiKeyChecks, state.connectionTestMessage, state.connectionTestDiagnostic])).not.toContain('secret')
+    expect(JSON.stringify([state.apiKeyChecks, state.connectionTestMessage, state.connectionTestDiagnostic])).not.toContain('private.example')
+    await check(true)
+    expect(state.connectionTestState).toBe('success');expect(state.connectionTestDiagnostic).toBeNull()
+    expect(JSON.stringify(props.config)).toBe(before);expect(props.service).toBe('deepseek')
+  })
+  it('供应商要求冷却时仅禁用手动重试、不安排自动请求，离开服务释放计时器', async () => {
+    vi.useFakeTimers()
+    send.mockResolvedValueOnce({success: false, error: 'private-secret', diagnostic: {...diagnoseFailure({kind: 'rate-limit', retryAfterMs: 1200}), titleKey: 'private-secret', actions: ['refresh']}})
+    await check(true);expect(state.connectionTestDiagnostic.code).toBe('rate-limit');expect(state.connectionRetryWaiting).toBe(true)
+    expect(state.connectionTestDisabled).toBe(true);await check(true);await check();expect(messages()).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(1200);await settle();expect(state.connectionRetryWaiting).toBe(false);expect(messages()).toHaveLength(1)
+    await check(true);expect(messages()).toHaveLength(2);expect(state.connectionTestState).toBe('success')
+    send.mockRejectedValueOnce(Object.assign(new Error('429'), {retryAfterMs: 1200}));await check(true)
+    props.service = 'openai';await settle();expect(state.connectionTestDiagnostic).toBeNull();expect(state.connectionRetryWaiting).toBe(false);expect(vi.getTimerCount()).toBe(0)
+  })
+  it('超出 32 位的 Retry-After 分段等待完整截止时间，切换或取消会清理后续唤醒', async () => {
+    vi.useFakeTimers();const maximumSegment = 2_147_483_647, cooldown = maximumSegment + 1200
+    send.mockResolvedValueOnce({success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: cooldown})})
+    await check(true);expect(state.connectionRetryWaiting).toBe(true);expect(vi.getTimerCount()).toBe(1)
+    await vi.advanceTimersByTimeAsync(1);await settle();expect(state.connectionRetryWaiting).toBe(true)
+    await check(true);expect(messages()).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(maximumSegment - 1);await settle()
+    expect(state.connectionRetryWaiting).toBe(true);expect(vi.getTimerCount()).toBe(1)
+    await vi.advanceTimersByTimeAsync(1199);await settle();expect(state.connectionRetryWaiting).toBe(true)
+    await vi.advanceTimersByTimeAsync(1);await settle();expect(state.connectionRetryWaiting).toBe(false);expect(vi.getTimerCount()).toBe(0)
+    expect(messages()).toHaveLength(1);await check(true);expect(messages()).toHaveLength(2)
+    send.mockResolvedValueOnce({success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: cooldown})})
+    await check(true);state.stopApiKeyChecks();expect(vi.getTimerCount()).toBe(0);expect(state.connectionRetryWaiting).toBe(false)
+    send.mockResolvedValueOnce({success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: cooldown})})
+    await check(true);props.service = 'google';await settle();expect(vi.getTimerCount()).toBe(0);expect(state.connectionRetryWaiting).toBe(false)
+    props.service = 'deepseek';await settle()
+    send.mockResolvedValueOnce({success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: cooldown})})
+    await check(true);app.unmount();expect(vi.getTimerCount()).toBe(0);expect(state.connectionRetryWaiting).toBe(false)
+  })
+  it('免费供应商超长 Retry-After 直接核对截止时间，32 位边界前后都不会提前请求', async () => {
+    vi.useFakeTimers();const maximumSegment = 2_147_483_647, cooldown = maximumSegment + 1200
+    props.service = 'freeTranslation';props.compute.showToken = false;await settle()
+    send.mockImplementation(async message => message.freeProviderId === 'microsoft'
+      ? {success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: cooldown})}
+      : {success: true, durationMs: 1})
+    await check();expect(state.connectionRetryWaiting).toBe(false)
+    await vi.advanceTimersByTimeAsync(maximumSegment);send.mockClear();await check()
+    expect(messages().some(([message]) => message.freeProviderId === 'microsoft')).toBe(false)
+    await vi.advanceTimersByTimeAsync(1199);send.mockClear();await check()
+    expect(messages().some(([message]) => message.freeProviderId === 'microsoft')).toBe(false)
+    await vi.advanceTimersByTimeAsync(1);send.mockClear();await check()
+    expect(messages().some(([message]) => message.freeProviderId === 'microsoft')).toBe(true)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+  it('配置保存失败不请求供应商，安全解释并允许用户手动重试', async () => {
+    save.mockRejectedValueOnce(new Error('storage denied apiKey=fixture-private-secret'))
+    await check(true);expect(messages()).toHaveLength(0)
+    expect(state.connectionTestDiagnostic.code).toBe('configuration-save')
+    expect(state.connectionTestMessage).not.toContain('fixture-private-secret')
+    await check(true);expect(messages()).toHaveLength(1);expect(state.connectionTestState).toBe('success')
+  })
+  it('免费目录的逐路错误与普通无 Key 服务都只保留安全分类', async () => {
+    props.service = 'freeTranslation';props.compute.showToken = false;await settle()
+    send.mockResolvedValue({success: false, error: '401 api key expired https://private.example?token=private-secret'})
+    await check()
+    expect(state.connectionTestDiagnostic.code).toBe('authentication')
+    for (const result of Object.values(state.freeProviderChecks) as {error: string}[]) expect(result.error).toBe(getDiagnosticText({code: 'authentication'}).title)
+    expect(JSON.stringify(state.freeProviderChecks)).not.toContain('private-secret')
+    props.service = 'google';await settle();await check()
+    expect(state.connectionTestMessage).toBe(getDiagnosticText({code: 'authentication'}).title)
+  })
+  it('免费目录中单路限流独立冷却，健康的启用服务不会被展示为整体故障或阻塞手动检查', async () => {
+    vi.useFakeTimers();props.service = 'freeTranslation';props.compute.showToken = false;props.config.freeTranslationOrder = ['google'];await settle()
+    send.mockImplementation(async message => message.freeProviderId === 'microsoft'
+      ? {success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: 1200})}
+      : {success: true, durationMs: 10})
+    await check();expect(state.connectionTestDiagnostic).toBeNull();expect(state.connectionRetryWaiting).toBe(false);expect(state.connectionTestDisabled).toBe(false)
+    expect(state.freeProviderChecks.microsoft.status).toBe('error');expect(state.freeProviderChecks.google.status).toBe('success')
+    send.mockClear();await check()
+    expect(messages().some(([message]) => message.freeProviderId === 'microsoft')).toBe(false)
+    expect(messages().some(([message]) => message.freeProviderId === 'google')).toBe(true)
+    expect(state.connectionTestDiagnostic).toBeNull();expect(props.config.freeTranslationOrder).toEqual(['google'])
+    await vi.advanceTimersByTimeAsync(1200);send.mockClear();await check()
+    expect(messages().some(([message]) => message.freeProviderId === 'microsoft')).toBe(true)
+  })
+  it('普通无 Key 服务检查可手动停止，迟到供应商结果不能重新打开失败状态', async () => {
+    props.service = 'google';props.compute.showToken = false;await settle()
+    const delayed = pending();send.mockReturnValueOnce(delayed.promise)
+    const job = check();await settle();expect(state.connectionTestBusy).toBe(true);expect(state.connectionTestDisabled).toBe(false)
+    state.stopApiKeyChecks();await settle();expect(state.connectionTestBusy).toBe(false);expect(state.connectionTestState).toBe('idle')
+    delayed.resolve({success: false, error: '401 private-secret'});await job
+    expect(state.connectionTestState).toBe('idle');expect(state.connectionTestDiagnostic).toBeNull()
+  })
+  it('修复入口只在当前活跃诊断定位字段，模型错误定位实际模型选择器', async () => {
+    const focus = vi.fn(), scrollIntoView = vi.fn(), modelFocus = vi.fn()
+    const field = {focus, scrollIntoView}, model = {focus: modelFocus, scrollIntoView}
+    state.configurationRoot = {querySelector: () => field, closest: () => ({querySelector: () => model})}
+    send.mockResolvedValueOnce({success: false, error: '401 invalid key'});await check(true)
+    state.focusConnectionConfiguration();expect(focus).toHaveBeenCalledWith({preventScroll: true})
+    send.mockResolvedValueOnce({success: false, error: 'model not found'});await check(true)
+    state.focusConnectionConfiguration();expect(modelFocus).toHaveBeenCalledOnce()
+    props.active = false;await settle();state.focusConnectionConfiguration();expect(modelFocus).toHaveBeenCalledOnce()
   })
   it('非法或已经不存在的密钥行不写配置、重置检查或发出请求', async () => {
     const before = JSON.stringify(props.config)
@@ -377,6 +488,22 @@ describe('实际服务父模板的本地子模块按需加载', () => {
       expect(h.allNodes().some(n => n.props['data-configuration-group'] === 'requests')).toBe(true)
       await (button!.props.onClick as () => Promise<void>)();await settle();expect(messages()).toHaveLength(1);expect(messages()[0][0]).toMatchObject({type: 'testTranslationService', service: 'chatgptPlan'})
       expect(h.source.config.model.chatgptPlan).toBe('fixture-account-model');expect(h.clientErrors).toEqual([])
+    } finally {await h.finish()}
+  })
+  it('实际父模板显示可操作安全诊断，手动重试成功后收起且保留选择', async () => {
+    const h = await mountServiceClient('google')
+    try {
+      const headerButton = () => h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-test-button'))!
+      send.mockResolvedValueOnce({success: false, error: '401 private-secret https://private.example'})
+      await (headerButton().props.onClick as () => Promise<void>)();await settle()
+      const repair = h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-repair'))
+      expect(repair?.props['data-diagnostic-code']).toBe('authentication')
+      const retry = h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-retry'))
+      expect(retry).toBeDefined();expect(retry?.props.disabled).toBe(false)
+      expect(h.allNodes().map(n => n.value || '').join(' ')).not.toContain('private-secret')
+      await (retry!.props.onClick as () => Promise<void>)();await settle()
+      expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-connection-repair'))).toBe(false)
+      expect(h.source.service).toBe('google');expect(messages()).toHaveLength(2);expect(h.clientErrors).toEqual([])
     } finally {await h.finish()}
   })
   it.each(['freeTranslation', 'google'])('普通服务%s不加载本地子模块或挂载模型 UI', async service => {

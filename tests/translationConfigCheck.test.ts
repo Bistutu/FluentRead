@@ -20,6 +20,7 @@ vi.mock('@/src/services/config/store', () => ({config: mocks.config}));
 vi.mock('@/src/features/page-notice/public', () => ({sendErrorMessage: mocks.sendErrorMessage}));
 
 import {checkConfig} from '@/src/features/full-page-translation/content/configCheck';
+import {getFullPageTranslationDiagnostic, notifyFullPageTranslationState} from '@/src/features/full-page-translation/content/stateNotification';
 
 describe('translation configuration guard', () => {
     beforeEach(() => {
@@ -29,6 +30,7 @@ describe('translation configuration guard', () => {
         mocks.config.customModel = {};
         mocks.config.display = 1;
         mocks.sendErrorMessage.mockReset();
+        notifyFullPageTranslationState(false);
     });
 
     it('插件关闭时直接停止且不显示误导提示', () => {
@@ -83,5 +85,16 @@ describe('translation configuration guard', () => {
         mocks.config.model['ai-demo'] = 'model-1';
 
         expect(checkConfig()).toBe(true);
+    });
+    it('仅显式全文入口记录模型和显示配置拒绝，关闭时清除，不把悬浮错误写入全文状态', () => {
+        mocks.config.service = 'ai-demo';
+        expect(checkConfig()).toBe(false); expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+        expect(checkConfig({}, true)).toBe(false);
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('model-configuration');
+        mocks.config.service = 'google'; mocks.config.display = 0;
+        expect(checkConfig({}, true)).toBe(false);
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('configuration');
+        mocks.config.on = false;
+        expect(checkConfig({}, true)).toBe(false); expect(getFullPageTranslationDiagnostic()).toBeUndefined();
     });
 });

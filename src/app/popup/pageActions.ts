@@ -1,9 +1,10 @@
 /**
  * @file src/app/popup/pageActions.ts
  * 文件职责：管理 Popup 的标签页状态读取、全文/局部操作和站点规则即时翻译归属。
- * 主要内容：区分状态读取、页面翻译与规则保存的操作归属；写规则前复验实际标签页，确认后台保存后反馈，禁用规则可中断翻译；原生在线 PDF 交给扩展阅读器，导航和失活使旧回复失效。
+ * 主要内容：区分状态读取、页面翻译与规则保存的操作归属；新文档通知只触发去重的只读握手，合并在途完成通知且不撤销当前操作；写规则前复验实际标签页，确认后台保存后反馈；原生在线 PDF 交给扩展阅读器，导航和失活使旧回复失效。
  * 模块边界：只通过注入端口读取标签页、发送已有消息、提交站点字段补丁和修改界面状态，不直接访问存储、创建观察器或实现网页翻译。
  */
+import {diagnoseFailure, normalizeDiagnostic, type Diagnostic} from '@/src/services/diagnostics'
 import type {Config} from '@/src/core/config/model'
 import {getSiteBaseDomain} from '@/src/core/site-rules/domain'
 import {isBrowserTabId} from '@/src/platform/browser/ids'
@@ -25,6 +26,8 @@ export interface PopupPagePorts {
   notice: (message: string, type?: 'success' | 'error') => void
   close: () => void
   translate: (key: string) => string
+  onStatus?: (response: unknown) => void
+  onFailure?: (diagnostic: Diagnostic) => void
   thunderbird: boolean
 }
 
@@ -32,9 +35,20 @@ export function createPopupPageActions(ports: PopupPagePorts) {
   const {state} = ports
   let revision = 0, readSequence = 0, stateSequence = 0, operation: symbol | null = null
   let ruleOperation: symbol | null = null
+  let documentToken: string | undefined
+  type DocumentHint = {token: string; response: {isTranslated?: unknown; toolbarStatus?: unknown}}
+  type DocumentProbe = {dirty: boolean; latest?: DocumentHint}
+  let documentProbe: DocumentProbe | undefined
+  const attemptedDocumentProbes = new Set<string>()
+  function tokenOf(response: unknown): string | undefined {
+    const value = (response as {documentToken?: unknown} | undefined)?.documentToken
+    return typeof value === 'string' && value.length > 0 && value.length <= 128 ? value : undefined
+  }
+  function acceptStatus(response: unknown) {stateSequence += 1;documentToken = tokenOf(response);ports.onStatus?.(response)}
   const disabled = () => Boolean(state.domain && ports.config().disabledExtensionDomains.includes(state.domain))
   function invalidate() {
     revision += 1;readSequence += 1;stateSequence += 1;operation = null;state.busy = false
+    documentProbe = undefined;attemptedDocumentProbes.clear()
     if (!ports.active()) {ruleOperation = null;state.savingRule = false}
   }
   function capture() {const captured = revision;return () => ports.active() && captured === revision}
@@ -45,6 +59,7 @@ export function createPopupPageActions(ports: PopupPagePorts) {
     if (!ports.active()) return
     ruleOperation = null;state.savingRule = false
     invalidate();const current = capture(), sequence = ++readSequence
+    documentToken = undefined;ports.onStatus?.(undefined)
     state.tabId = null;state.url = '';state.domain = '';state.translated = false
     try {
       const tab = await ports.getTab()
@@ -53,7 +68,7 @@ export function createPopupPageActions(ports: PopupPagePorts) {
       if (ports.openPdf && getPdfSourceUrl(state.url)) return
       try {
         const response = await ports.send(tab.id, {type: 'getFullPageTranslationState'}) as {isTranslated?: unknown} | undefined
-        if (current() && sequence === readSequence && statusVersion === stateSequence) state.translated = response?.isTranslated === true
+        if (current() && sequence === readSequence && statusVersion === stateSequence) {state.translated = response?.isTranslated === true;acceptStatus(response)}
       } catch {if (current() && sequence === readSequence && statusVersion === stateSequence) state.translated = false}
     } catch (error) {if (current()) console.warn('[FluentRead] 无法读取当前网站', error)}
   }
@@ -75,6 +90,7 @@ export function createPopupPageActions(ports: PopupPagePorts) {
   }
   async function translate(action: 'fullPage' | 'restore' | 'section', success: (response: {isTranslated?: unknown}) => void, failure: string, allowPdf = false) {
     const task = begin();if (!task) return
+    let responseVersion: number | undefined
     try {
       const tabId = await target(task.current);if (tabId === undefined || !task.current()) return
       const pdfSource = allowPdf ? getPdfSourceUrl(state.url) : null
@@ -84,13 +100,21 @@ export function createPopupPageActions(ports: PopupPagePorts) {
         return
       }
       if (allowPdf && action !== 'restore') {
-        const warning = ports.warning();if (warning) {ports.notice(warning, 'error');return}
+        const warning = ports.warning();if (warning) {ports.notice(warning, 'error');ports.onFailure?.(diagnoseFailure(undefined, {reason: 'configuration'}));return}
       }
+      responseVersion = stateSequence
       const response = await ports.send(tabId, {type: 'contextMenuTranslate', action}) as {status?: unknown; isTranslated?: unknown} | undefined
-      if (!task.current()) return
-      if (response?.status !== 'success') throw new Error('Translation failed')
+      if (!task.current() || ((action === 'fullPage' || action === 'restore') && responseVersion !== stateSequence)) return
+      if (response?.status !== 'success') {
+        acceptStatus(response)
+        responseVersion = stateSequence
+        const diagnostic = normalizeDiagnostic((response as {diagnostic?: unknown} | undefined)?.diagnostic)
+        if (diagnostic && ports.onFailure) {ports.onFailure(diagnostic);return}
+        throw response || new Error('Translation failed')
+      }
+      acceptStatus(response)
       success(response)
-    } catch {if (task.current()) ports.notice(failure, 'error')}
+    } catch (error) {if (task.current() && (responseVersion === undefined || action === 'section' || responseVersion === stateSequence)) {ports.notice(failure, 'error');ports.onFailure?.(diagnoseFailure(error, {reason: /^(https?|file):/u.test(state.url) ? undefined : 'unsupported-page', online: typeof navigator === 'undefined' ? undefined : navigator.onLine}))}}
     finally {task.finish()}
   }
   function toggle() {
@@ -98,6 +122,12 @@ export function createPopupPageActions(ports: PopupPagePorts) {
     const action = state.translated ? 'restore' : 'fullPage'
     return translate(action, response => {state.translated = typeof response.isTranslated === 'boolean' ? response.isTranslated : action === 'fullPage'},
       ports.thunderbird ? '请先打开一封邮件，然后重试翻译' : '当前页面暂不支持翻译，请刷新后重试', true)
+  }
+  async function retry() {
+    if (!ports.active() || state.busy || state.savingRule) return
+    const current = capture(), tabId = state.tabId, url = state.url
+    if (state.translated) await toggle()
+    if (current() && state.tabId === tabId && state.url === url && !state.translated) await toggle()
   }
   function section() {
     if (!ports.active() || state.busy || !ports.config().on || disabled()) return
@@ -151,5 +181,45 @@ export function createPopupPageActions(ports: PopupPagePorts) {
     } catch {if (task.current()) ports.notice('无法读取当前网站，请重试', 'error')}
     finally {task.finish()}
   }
-  return {hydrate, toggle, section, setAlways, setDisabled, invalidate}
+  /** 广播不能自行建立文档身份；向当前顶层文档只读复验，且不清 busy 或转移页面操作。 */
+  function probeCurrentDocument(token: string, response: {isTranslated?: unknown; toolbarStatus?: unknown}) {
+    const phase = typeof response.toolbarStatus === 'string' && ['idle', 'translating', 'translated', 'error'].includes(response.toolbarStatus) ? response.toolbarStatus : 'unknown'
+    if (documentProbe) {documentProbe.dirty = true;documentProbe.latest = {token, response: {isTranslated: response.isTranslated === true, toolbarStatus: phase}};return}
+    const attempt = `${token}:${phase}:${response.isTranslated === true}`
+    if (attemptedDocumentProbes.has(attempt)) return
+    attemptedDocumentProbes.add(attempt)
+    const probe: DocumentProbe = {dirty: false}, owned = capture(), tabId = state.tabId, url = state.url
+    documentProbe = probe
+    const currentOwner = () => owned() && state.tabId === tabId && state.url === url
+      && ports.config().on && !disabled() && !state.savingRule
+    const current = () => documentProbe === probe && currentOwner()
+    async function read() {
+      const version = stateSequence
+      try {
+        const tab = await ports.getTab()
+        if (!current() || !isBrowserTabId(tabId) || tab?.id !== tabId || (tab.pendingUrl || tab.url || '') !== url) return
+        const snapshot = await ports.send(tabId, {type: 'getFullPageTranslationState'}) as {status?: unknown; isTranslated?: unknown} | undefined
+        if (!current() || version !== stateSequence || snapshot?.status !== 'success' || !tokenOf(snapshot)) return
+        state.translated = snapshot.isTranslated === true;acceptStatus(snapshot)
+      } catch { /* 只读握手失败保留原状态；不安排计时重试，也不启动供应商请求。 */ }
+    }
+    void (async () => {
+      await read()
+      // 查询途中可能先收到最终结果、后收到旧快照；绑定后再合并读取一次即可，此后同令牌广播直接生效。
+      if (probe.dirty && current()) {probe.dirty = false;probe.latest = undefined;await read()}
+    })().finally(() => {
+      if (documentProbe !== probe) return
+      documentProbe = undefined
+      // 尾读期间又出现新文档或新阶段时，再消费一次尚未覆盖的事件；相同 token/阶段由 attempt 去重。
+      if (probe.dirty && probe.latest && currentOwner()) probeCurrentDocument(probe.latest.token, probe.latest.response)
+    })
+  }
+  function receiveStatus(tabId: number | undefined, url: string | undefined, response: {isTranslated?: unknown; documentToken?: unknown; toolbarStatus?: unknown}) {
+    if (!ports.active() || !ports.config().on || disabled() || state.savingRule || tabId !== state.tabId || (url !== undefined && url !== state.url)) return
+    const incomingToken = tokenOf(response)
+    if (!incomingToken) return
+    if (!documentToken || incomingToken !== documentToken) {probeCurrentDocument(incomingToken, response);return}
+    stateSequence += 1;state.translated = response.isTranslated === true;ports.onStatus?.(response)
+  }
+  return {hydrate, toggle, retry, receiveStatus, section, setAlways, setDisabled, invalidate}
 }

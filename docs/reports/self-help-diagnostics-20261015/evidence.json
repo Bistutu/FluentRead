@@ -1,0 +1,78 @@
+{
+  "base": "fa431a845",
+  "productionUi": {
+    "ok": true,
+    "production": true,
+    "cases": [
+      "fresh language selection reaches main action",
+      "first actual provider fixture result, not merely started",
+      "open popup rebinds same-URL refreshed document and accepts its live completion",
+      "actual auth error classified",
+      "keyboard reaches explicit export action",
+      "local preview and explicit keyboard-triggered safe report download",
+      "service repair opens exact service and detects actual 401",
+      "explicit return keeps settings and original page available",
+      "actual model error classified",
+      "actual rate error classified",
+      "actual offline recovery state",
+      "explicit retry resumes the same page after offline",
+      "actual timeout recovery state",
+      "explicit retry resumes the same page after timeout",
+      "cancel restores source and aborts in-flight local request",
+      "no content diagnosis uses completed empty scan",
+      "reopen restores current page diagnosis and selected service"
+    ],
+    "providerValidation": "Local HTTP fixtures only.",
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "limitations": [
+      "No Firefox, Safari, physical device or long-term cross-region provider acceptance."
+    ]
+  },
+  "refreshRounds": 3,
+  "unhandledPageErrors": [],
+  "window": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "windowState": "normal",
+    "displayTarget": "secondary",
+    "screenIndex": 1,
+    "browserFrontmost": false
+  },
+  "liveDefaultSmoke": {
+    "status": "translated"
+  },
+  "strictCoverage": {
+    "lines": 100,
+    "statements": 100,
+    "functions": 100,
+    "branches": 100
+  },
+  "screenshots": [
+    "03-first-success.png",
+    "05-report.png",
+    "07-settings-narrow.png",
+    "08-dark-rate.png",
+    "startup-failure.png"
+  ],
+  "startupUi": {
+    "ok": true,
+    "scope": "production popup mount-chunk delay/abort and explicit manual reload only",
+    "cases": [
+      "Production mount chunk remains pending past five seconds and renders safe manual recovery",
+      "Explicit recovery button reloads and restores the saved service, language direction and theme",
+      "Aborted production mount chunk renders fixed safe failure text and one explicit reopen action",
+      "Explicit reopen after removing the injected failure preserves all saved preferences"
+    ],
+    "slowDelayMs": 5403,
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "productionSnapshotRemoved": true,
+    "limitations": [
+      "No provider translation, Firefox, Safari or physical-device acceptance.",
+      "Startup failure is induced through this temporary page route only; configuration storage is real and unmodified."
+    ]
+  }
+}

@@ -450,7 +450,9 @@
       "tests/modelEditing.test.ts",
       "tests/documentTasks.test.ts",
       "tests/compiledVueFixture.test.ts",
-      "tests/mobileVisualViewport.test.ts"
+      "tests/mobileVisualViewport.test.ts",
+      "tests/selfHelpDiagnostics.test.ts",
+      "tests/popupStartupFeedback.test.ts"
     ],
     "functional": [
       "tests/videoAiRequestSession.test.ts",
@@ -695,7 +697,9 @@
       "tests/translationQualityTransport.test.ts",
       "tests/videoNativeFullscreen.test.ts",
       "tests/floatingBallLifecycle.test.ts",
-      "tests/translationProgressMobileLifecycle.test.ts"
+      "tests/translationProgressMobileLifecycle.test.ts",
+      "tests/selfHelpNotice.test.ts",
+      "tests/serviceRepairReturn.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

@@ -1,9 +1,67 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {getFullPageTranslationStateRevision, notifyFullPageTranslationState, getTranslationToolbarStatus, notifyTranslationToolbarStatus, subscribeTranslationToolbarStatus} from '@/src/features/full-page-translation/content/stateNotification';
+import {getFullPageTranslationStateRevision, getFullPageTranslationDocumentToken, getFullPageTranslationDiagnostic, notifyFullPageTranslationDiagnostic, notifyFullPageTranslationState, getTranslationToolbarStatus, notifyTranslationToolbarStatus, subscribeTranslationToolbarStatus} from '@/src/features/full-page-translation/content/stateNotification';
+import {diagnoseFailure} from '@/src/services/diagnostics';
 
 const install = (value: Record<string, unknown> | undefined) => {if (value === undefined) delete (globalThis as Record<string, unknown>).browser; else (globalThis as Record<string, unknown>).browser = value;};
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {vi.unstubAllGlobals(); vi.useRealTimers();});
 describe('full-page state notification', () => {
+    it('文档标识在翻译、恢复与诊断生命周期中保持不变，模块重新加载代表新文档', async () => {
+        const original = getFullPageTranslationDocumentToken();
+        expect(original).toMatch(/^fr-document-[a-z0-9-]+$/u);
+        notifyFullPageTranslationState(true); notifyTranslationToolbarStatus('translated');
+        notifyFullPageTranslationDiagnostic(diagnoseFailure(new Error('timeout')));
+        notifyFullPageTranslationState(false); notifyFullPageTranslationState(true);
+        expect(getFullPageTranslationDocumentToken()).toBe(original);
+        notifyFullPageTranslationState(false);
+        const random = vi.spyOn(Math, 'random').mockReturnValue(0.1);
+        try {
+            vi.resetModules();
+            const firstDocument = await import('@/src/features/full-page-translation/content/stateNotification');
+            const first = firstDocument.getFullPageTranslationDocumentToken();
+            expect(firstDocument.getFullPageTranslationDocumentToken()).toBe(first);
+            random.mockReturnValue(0.2); vi.resetModules();
+            const secondDocument = await import('@/src/features/full-page-translation/content/stateNotification');
+            expect(secondDocument.getFullPageTranslationDocumentToken()).not.toBe(first);
+            expect(getFullPageTranslationDocumentToken()).toBe(original);
+        } finally {random.mockRestore();}
+    });
+    it('脱敏诊断通过既有状态通知发布，不重放生命周期，读取和写入均隔离调用方修改', () => {
+        vi.useFakeTimers();
+        const sendMessage = vi.fn(); vi.stubGlobal('browser', {runtime: {sendMessage}});
+        const dispatchEvent = vi.fn(); vi.stubGlobal('document', {dispatchEvent, defaultView: {CustomEvent: class {}}});
+        notifyFullPageTranslationState(true);
+        const revision = getFullPageTranslationStateRevision(); dispatchEvent.mockClear(); sendMessage.mockClear();
+        const diagnostic = diagnoseFailure({kind: 'rate-limit', retryAfterMs: 2_000, message: 'private document / secret key'});
+        notifyFullPageTranslationDiagnostic({...diagnostic, message: 'private document / secret key'} as typeof diagnostic);
+        diagnostic.actions.length = 0;
+        expect(getFullPageTranslationDiagnostic()?.actions).toEqual(['services', 'retry', 'dismiss']);
+        const read = getFullPageTranslationDiagnostic()!; read.actions.length = 0;
+        expect(getFullPageTranslationDiagnostic()?.actions).toEqual(['services', 'retry', 'dismiss']);
+        notifyFullPageTranslationDiagnostic(diagnoseFailure({kind: 'rate-limit', retryAfterMs: 2_000}));
+        expect(sendMessage).toHaveBeenCalledOnce();
+        expect(sendMessage).toHaveBeenCalledWith({type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: true,
+            toolbarStatus: 'translating', diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: 2_000})});
+        expect(JSON.stringify(sendMessage.mock.calls)).not.toContain('private');
+        expect(getFullPageTranslationStateRevision()).toBe(revision); expect(dispatchEvent).not.toHaveBeenCalled();
+        notifyFullPageTranslationDiagnostic(undefined);
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+        expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: true, toolbarStatus: 'translating'});
+        notifyFullPageTranslationDiagnostic(diagnoseFailure(new Error('timeout')));
+        notifyFullPageTranslationState(false); expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+        notifyFullPageTranslationDiagnostic(diagnoseFailure(new Error('timeout')));
+        notifyFullPageTranslationState(true); expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+        notifyFullPageTranslationState(false);
+    });
+    it('限流冷却按原失败发生时刻减少；重开查询不会延长，过期后只保留诊断', () => {
+        vi.useFakeTimers(); vi.setSystemTime(10_000);
+        notifyFullPageTranslationState(true);
+        notifyFullPageTranslationDiagnostic(diagnoseFailure({kind: 'rate-limit', retryAfterMs: 2_000}));
+        expect(getFullPageTranslationDiagnostic()?.retryAfterMs).toBe(2_000);
+        vi.setSystemTime(11_500); expect(getFullPageTranslationDiagnostic()?.retryAfterMs).toBe(500);
+        vi.setSystemTime(12_001); expect(getFullPageTranslationDiagnostic()?.code).toBe('rate-limit');
+        expect(getFullPageTranslationDiagnostic()).not.toHaveProperty('retryAfterMs');
+        notifyFullPageTranslationState(false); expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+    });
     it('两个同步写入者互相切换状态时不会递归，只读入口追上最新结果', () => {
         const sendMessage = vi.fn(); vi.stubGlobal('browser', {runtime: {sendMessage}});
         notifyFullPageTranslationState(false);
@@ -17,7 +75,7 @@ describe('full-page state notification', () => {
             expect(second.mock.calls).toEqual([['idle'], ['error']]);
             expect(observer.mock.calls).toEqual([['idle'], ['translated']]);
             expect(getTranslationToolbarStatus()).toBe('translated');
-            expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', isTranslated: true, toolbarStatus: 'translated'});
+            expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: true, toolbarStatus: 'translated'});
         } finally {stops.forEach(stop => stop()); notifyFullPageTranslationState(false);}
     });
 
@@ -39,7 +97,7 @@ describe('full-page state notification', () => {
             expect(writer.mock.calls).toEqual([['idle'], ['translating']]);
             expect(observer.mock.calls).toEqual([['error']]);
             expect(getTranslationToolbarStatus()).toBe('error');
-            expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', isTranslated: true, toolbarStatus: 'error'});
+            expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: true, toolbarStatus: 'error'});
         } finally {stops.forEach(stop => stop()); notifyFullPageTranslationState(false);}
     });
     it('同步订阅当前结果，去重更新并释放监听；异常不阻断其余入口', () => {
@@ -75,7 +133,7 @@ describe('full-page state notification', () => {
             notifyFullPageTranslationState(true);
             expect(getTranslationToolbarStatus()).toBe('idle');
             expect(observer.mock.calls).toEqual([['idle'], ['idle']]);
-            expect(sendMessage.mock.calls).toEqual([[{type: 'fullPageTranslationState', isTranslated: false, toolbarStatus: 'idle'}]]);
+            expect(sendMessage.mock.calls).toEqual([[{type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: false, toolbarStatus: 'idle'}]]);
         } finally {restore(); stop();}
     });
 
@@ -91,7 +149,7 @@ describe('full-page state notification', () => {
             notifyFullPageTranslationState(false);
             expect(getTranslationToolbarStatus()).toBe('translating');
             expect(observer.mock.calls).toEqual([['translating'], ['translating']]);
-            expect(sendMessage.mock.calls).toEqual([[{type: 'fullPageTranslationState', isTranslated: true, toolbarStatus: 'translating'}]]);
+            expect(sendMessage.mock.calls).toEqual([[{type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: true, toolbarStatus: 'translating'}]]);
         } finally {restart(); stop(); notifyFullPageTranslationState(false);}
     });
 
@@ -107,7 +165,7 @@ describe('full-page state notification', () => {
             notifyFullPageTranslationState(false);
             expect(getTranslationToolbarStatus()).toBe('idle');
             expect(observer.mock.calls).toEqual([['translating']]);
-            expect(sendMessage.mock.calls).toEqual([[{type: 'fullPageTranslationState', isTranslated: false, toolbarStatus: 'idle'}]]);
+            expect(sendMessage.mock.calls).toEqual([[{type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: false, toolbarStatus: 'idle'}]]);
         } finally {writer(); removeObserver();}
     });
 
@@ -120,7 +178,7 @@ describe('full-page state notification', () => {
         try {
             notifyTranslationToolbarStatus('error');
             expect(getTranslationToolbarStatus()).toBe('idle');
-            expect(sendMessage.mock.calls).toEqual([[{type: 'fullPageTranslationState', isTranslated: false, toolbarStatus: 'idle'}]]);
+            expect(sendMessage.mock.calls).toEqual([[{type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: false, toolbarStatus: 'idle'}]]);
         } finally {restore();}
     });
     it.each(['constructor', 'dispatch', 'defaultView'] as const)('continues background synchronization when document %s throws', (failure) => {
@@ -133,10 +191,10 @@ describe('full-page state notification', () => {
         const before = getFullPageTranslationStateRevision();
         expect(() => notifyFullPageTranslationState(true)).not.toThrow();
         expect(getFullPageTranslationStateRevision()).toBe(before + 1);
-        expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', isTranslated: true, toolbarStatus: 'translating'});
+        expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: true, toolbarStatus: 'translating'});
         expect(() => notifyFullPageTranslationState(false)).not.toThrow();
         expect(getFullPageTranslationStateRevision()).toBe(before + 2);
-        expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', isTranslated: false, toolbarStatus: 'idle'});
+        expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: false, toolbarStatus: 'idle'});
     });
     it.each([false, true])('does not send an obsolete state after a lifecycle listener changes the session (throw=%s)', (throwAfterRestore) => {
         const Custom = vi.fn(function(_this: unknown) {return {};});
@@ -152,14 +210,14 @@ describe('full-page state notification', () => {
         const before = getFullPageTranslationStateRevision();
         expect(() => notifyFullPageTranslationState(true)).not.toThrow();
         expect(getFullPageTranslationStateRevision()).toBe(before + 2);
-        expect(sendMessage.mock.calls).toEqual([[{type: 'fullPageTranslationState', isTranslated: false, toolbarStatus: 'idle'}]]);
+        expect(sendMessage.mock.calls).toEqual([[{type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: false, toolbarStatus: 'idle'}]]);
     });
     it('deduplicates result updates without replaying lifecycle events or advancing session revision', () => {
         const sendMessage = vi.fn(); install({runtime: {sendMessage}});
         notifyFullPageTranslationState(true); const revision = getFullPageTranslationStateRevision();
         notifyTranslationToolbarStatus('translating'); expect(sendMessage).toHaveBeenCalledTimes(1);
         notifyTranslationToolbarStatus('error'); expect(getTranslationToolbarStatus()).toBe('error');
-        expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', isTranslated: true, toolbarStatus: 'error'});
+        expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: true, toolbarStatus: 'error'});
         expect(getFullPageTranslationStateRevision()).toBe(revision);
         notifyFullPageTranslationState(false); expect(getTranslationToolbarStatus()).toBe('idle'); install(undefined);
     });
@@ -167,8 +225,8 @@ describe('full-page state notification', () => {
         const dispatch = vi.fn(); const Custom = vi.fn(function(this: unknown, type: string) {return {type};}); const previous = (globalThis as Record<string, unknown>).document;
         (globalThis as Record<string, unknown>).document = {dispatchEvent: dispatch, defaultView: {CustomEvent: Custom}};
         const sendMessage = vi.fn(async () => undefined); install({runtime: {sendMessage}});
-        const before = getFullPageTranslationStateRevision(); notifyFullPageTranslationState(true); expect(getFullPageTranslationStateRevision()).toBe(before + 1); expect(Custom).toHaveBeenCalledWith('fluentread-translation-started'); expect(dispatch).toHaveBeenCalled(); expect(sendMessage).toHaveBeenCalledWith({type: 'fullPageTranslationState', isTranslated: true, toolbarStatus: 'translating'});
-        notifyFullPageTranslationState(false); expect(Custom).toHaveBeenLastCalledWith('fluentread-translation-ended'); expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', isTranslated: false, toolbarStatus: 'idle'}); (globalThis as Record<string, unknown>).document = previous;
+        const before = getFullPageTranslationStateRevision(); notifyFullPageTranslationState(true); expect(getFullPageTranslationStateRevision()).toBe(before + 1); expect(Custom).toHaveBeenCalledWith('fluentread-translation-started'); expect(dispatch).toHaveBeenCalled(); expect(sendMessage).toHaveBeenCalledWith({type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: true, toolbarStatus: 'translating'});
+        notifyFullPageTranslationState(false); expect(Custom).toHaveBeenLastCalledWith('fluentread-translation-ended'); expect(sendMessage).toHaveBeenLastCalledWith({type: 'fullPageTranslationState', documentToken: getFullPageTranslationDocumentToken(), isTranslated: false, toolbarStatus: 'idle'}); (globalThis as Record<string, unknown>).document = previous;
     });
     it('uses global CustomEvent, skips when document cannot dispatch, and tolerates browser failures', async () => {
         const previousDocument = (globalThis as Record<string, unknown>).document; const previousCustom = (globalThis as Record<string, unknown>).CustomEvent;

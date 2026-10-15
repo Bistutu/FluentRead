@@ -1,7 +1,7 @@
 /**
  * @file tests/popupAppLifecycle.test.ts
  * 文件职责：执行实际 Popup 与站点按钮客户端模板，验证生命周期、页面竞态、缓存事件及焦点归属。
- * 主要内容：保持真实 Vue/KeepAlive 和缓存模板，受控浏览器、持久化及展示端口覆盖延迟回复、失活、状态切换、抽屉和弹窗；网站保存执行真实共享 store，验证同 tick 草稿捕获与在途确认的字段归属。
+ * 主要内容：保持真实 Vue/KeepAlive、缓存和诊断模板，受控浏览器、持久化及展示端口覆盖延迟回复、失活、消息来源、诊断动作失败、状态切换、抽屉和弹窗；网站保存执行真实共享 store，验证同 tick 草稿捕获与在途确认的字段归属。
  * 模块边界：Linkedom 保留节点/事件树，动画、Element Plus、外部存储和浏览器为受控端口，普通 UI 用例控制保存端口；真实样式与浏览器流程另行验证。
  */
 import {createRequire} from 'node:module'
@@ -40,21 +40,22 @@ function compilePopupClient(file:string):string{
     compiled=Object.freeze({source,options,code:ts.transpileModule(code,popupCompileOptions.typescript).outputText,templateErrors:Object.freeze([...template.errors])})
     // 保留每次 loader 的模板错误断言；失败产物不进入缓存。
     expect(compiled.templateErrors).toEqual([])
-    if(popupCompilations.size>=2&&!popupCompilations.has(file))popupCompilations.delete(popupCompilations.keys().next().value!)
+    if(popupCompilations.size>=3&&!popupCompilations.has(file))popupCompilations.delete(popupCompilations.keys().next().value!)
     popupCompilations.set(file,compiled)
   }else expect(compiled.templateErrors).toEqual([])
   // 只共享不可变代码和编译诊断；Vite 服务、模块执行、组件及端口仍逐例新建。
   return compiled.code
 }
 let server:ViteDevServer,app:import('vue').App,document:Document,win:any,state:Record<string,any>,focused:Element|null,shown:import('vue').Ref<boolean>,events:Map<Element,Record<string,any>>
-const close=vi.fn(),noticeFocus=vi.fn(),patches=vi.fn(),getTab=vi.fn(),getSourceTab=vi.fn(),send=vi.fn(),createTab=vi.fn(),openOptions=vi.fn(),runtimeSend=vi.fn()
-let config:Config,subscribe:(value:Config)=>void,tabEvents:Record<string,Set<(...args:any[])=>void>>
+const close=vi.fn(),noticeFocus=vi.fn(),patches=vi.fn(),getTab=vi.fn(),getSourceTab=vi.fn(),send=vi.fn(),createTab=vi.fn(),openOptions=vi.fn(),runtimeSend=vi.fn(),reloadTab=vi.fn()
+let config:Config,subscribe:(value:Config)=>void,tabEvents:Record<string,Set<(...args:any[])=>void>>,runtimeEvents:Set<(...args:any[])=>void>
 type ConfigStore = typeof import('@/src/services/config/store')
 type ConfigSender = NonNullable<Parameters<ConfigStore['requestConfigPatch']>[1]>
 type ConfigWireMessage = Parameters<ConfigSender>[0]
 let persistenceStore:ConfigStore|undefined,persistenceUnsubscribe:(()=>void)|undefined
 let persistenceGates:Array<ReturnType<typeof deferred<void>>> = []
 function tabEvent(name:string,...args:any[]){for(const listener of tabEvents[name])listener(...args)}
+function runtimeEvent(message:unknown,sender:unknown){for(const listener of runtimeEvents)listener(message,sender)}
 function deferred<T=unknown>() {let resolve!: (value:T)=>void,reject!: (error:unknown)=>void;const promise=new Promise<T>((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject}}
 async function settle(){await runtime.nextTick();await Promise.resolve();await runtime.nextTick()}
 async function drain(){for(let i=0;i<10;i++)await settle()}
@@ -63,17 +64,18 @@ function eventOf(el:Element,name='onClick'){const fn=events.get(el)?.[name];expe
 function button(name:string){return document.querySelector(`[data-testid="${name}"]`)!}
 function commands(){return send.mock.calls.filter(call=>call[1].type==='contextMenuTranslate')}
 beforeEach(async()=>{
-  vi.clearAllMocks();for(const mock of [getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches])mock.mockReset();events=new Map();tabEvents={onUpdated:new Set(),onActivated:new Set(),onRemoved:new Set()};const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;focused=document.body
+  vi.clearAllMocks();for(const mock of [getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,reloadTab])mock.mockReset();events=new Map();runtimeEvents=new Set();tabEvents={onUpdated:new Set(),onActivated:new Set(),onRemoved:new Set()};const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;focused=document.body
   vi.stubGlobal('location',{search:''})
   Object.defineProperty(document,'activeElement',{configurable:true,get:()=>focused});win.close=close;win.matchMedia=()=>({matches:false,onchange:null})
-  for(const [key,value]of Object.entries({document,window:win,HTMLElement:win.HTMLElement,Event:win.Event,Node:win.Node,navigator:{languages:['zh-CN']}}))vi.stubGlobal(key,value)
+  for(const [key,value]of Object.entries({document,window:win,HTMLElement:win.HTMLElement,Event:win.Event,Node:win.Node,navigator:{languages:['zh-CN'],onLine:true}}))vi.stubGlobal(key,value)
   config=new Config();config.uiLanguageSetupCompleted=true;config.on=true;config.service='google';config.alwaysTranslateDomains=[];config.disabledExtensionDomains=[]
-  getTab.mockResolvedValue([{id:7,windowId:3,url:'https://example.com/a'}]);send.mockImplementation(async(_id,message)=>message.type==='getFullPageTranslationState'?{isTranslated:false}:{status:'success',isTranslated:message.action==='fullPage'});createTab.mockResolvedValue({id:8});openOptions.mockResolvedValue(undefined);runtimeSend.mockResolvedValue({success:true})
+  getTab.mockResolvedValue([{id:7,windowId:3,url:'https://example.com/a'}]);send.mockImplementation(async(_id,message)=>message.type==='getFullPageTranslationState'?{isTranslated:false,documentToken:'popup-fixture-document'}:{status:'success',isTranslated:message.action==='fullPage',documentToken:'popup-fixture-document'});createTab.mockResolvedValue({id:8});openOptions.mockResolvedValue(undefined);runtimeSend.mockResolvedValue({success:true})
   getSourceTab.mockResolvedValue({id:7,windowId:3,url:'https://example.com/a'})
-  ;(globalThis as any).__popupFixture={config,getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,tabEvents,subscribe:(fn:typeof subscribe)=>{subscribe=fn},runtime,capabilities:runtime.reactive({browser:'chrome',areaTranslation:true,imageTranslation:true})}
+  ;(globalThis as any).__popupFixture={config,getTab,getSourceTab,send,createTab,openOptions,runtimeSend,reloadTab,patches,tabEvents,runtimeEvents,subscribe:(fn:typeof subscribe)=>{subscribe=fn},runtime,capabilities:runtime.reactive({browser:'chrome',areaTranslation:true,imageTranslation:true})}
   // popup 测试控制组件事件与轮询，不使用文件观察或热更新。
   server=await createServer({root:process.cwd(),configFile:false,appType:'custom',logLevel:'silent',server:{watch:null},resolve:{alias:{'@':process.cwd()}},ssr:{noExternal:['webextension-polyfill']},plugins:[{name:'popup-owned-client',enforce:'pre',resolveId(id){
     if(/(?:\/|^)Popup(?:App|SiteRule)\.vue$/u.test(id))return resolve('src/app/popup',id.split('/').at(-1)!)+'.owned.ts'
+    if(/(?:\/|^)DiagnosticNotice\.vue$/u.test(id))return resolve('src/features/self-help/ui/DiagnosticNotice.vue')+'.owned.ts'
     if(id==='webextension-polyfill')return '\0popup-browser'
     if(/\/src\/services\/config\/store(?:\.ts)?$/u.test(id))return '\0popup-config'
     if(/\/src\/platform\/storage\/configStorageRuntime(?:\.ts)?$/u.test(id))return '\0popup-storage'
@@ -90,7 +92,7 @@ beforeEach(async()=>{
       const componentPath=id.slice(0,-9),file=componentPath.startsWith('/src/')?resolve(componentPath.slice(1)):componentPath
       return compilePopupClient(file)
     }
-    if(id==='\0popup-browser')return "const f=globalThis.__popupFixture;export default {tabs:{query:f.getTab,get:f.getSourceTab,sendMessage:f.send,create:f.createTab,...Object.fromEntries(Object.entries(f.tabEvents).map(([name,set])=>[name,{addListener:fn=>set.add(fn),removeListener:fn=>set.delete(fn)}]))},runtime:{getManifest:()=>({version:'0.0.35'}),getURL:p=>'extension://'+p,sendMessage:f.runtimeSend,openOptionsPage:f.openOptions}}"
+    if(id==='\0popup-browser')return "const f=globalThis.__popupFixture;export default {tabs:{query:f.getTab,get:f.getSourceTab,sendMessage:f.send,create:f.createTab,reload:f.reloadTab,...Object.fromEntries(Object.entries(f.tabEvents).map(([name,set])=>[name,{addListener:fn=>set.add(fn),removeListener:fn=>set.delete(fn)}]))},runtime:{id:'fixture-extension',onMessage:{addListener:fn=>f.runtimeEvents.add(fn),removeListener:fn=>f.runtimeEvents.delete(fn)},getManifest:()=>({version:'0.0.35'}),getURL:p=>'extension://'+p,sendMessage:f.runtimeSend,openOptionsPage:f.openOptions}}"
     if(id==='\0popup-config')return "const f=globalThis.__popupFixture;export const config=f.config;export const configReady=Promise.resolve();export const subscribeConfig=fn=>{f.subscribe(fn);return()=>{}};export const requestConfigPatch=async value=>f.patches(value);export const handoffPendingConfigPatches=async()=>{}"
     if(id==='\0popup-storage')return 'export const configStorage=globalThis.__popupFixture.persistencePort'
     if(id==='\0popup-credential-context')return 'export const isTrustedCredentialStorageContext=()=>true'
@@ -173,6 +175,96 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
   it('已有始终翻译站点仍接受真实启动状态，恢复按钮与页面一致',async()=>{
     config.alwaysTranslateDomains=['example.com'];send.mockResolvedValueOnce({isTranslated:true});await mount();expect(button('page-translation').getAttribute('aria-pressed')).toBe('true');await eventOf(button('page-translation'))();expect(commands()[0][1].action).toBe('restore')
   })
+  it('真实运行时结果仅接受当前扩展、顶层frame和当前文档，卸载后解除订阅',async()=>{
+    await mount();expect(runtimeEvents.size).toBe(1)
+    const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}
+    const failure={type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'authentication',actions:['export'],titleKey:'PRIVATE',message:'PRIVATE body'}}
+    for(const rejected of [
+      {...sender,id:'other-extension'}, {...sender,frameId:1}, {...sender,tab:{id:8,url:sender.url}},
+      {...sender,url:'https://example.com/old'}, {...sender,tab:{id:7,url:'https://example.com/old'}},
+    ]){runtimeEvent(failure,rejected);await drain();expect(button('page-translation').getAttribute('aria-pressed')).toBe('false');expect(document.querySelector('.fluentread-diagnostic')).toBeNull()}
+    runtimeEvent({...failure,type:'other-state'},sender);await drain();expect(document.querySelector('.fluentread-diagnostic')).toBeNull()
+    runtimeEvent({...failure,documentToken:'old-document-at-same-url'},sender);await drain();expect(document.querySelector('.fluentread-diagnostic')).toBeNull()
+    runtimeEvent({...failure,documentToken:undefined},sender);await drain();expect(document.querySelector('.fluentread-diagnostic')).toBeNull()
+    runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'translated',documentToken:'popup-fixture-document'},sender);await drain()
+    expect(button('page-translation').getAttribute('aria-pressed')).toBe('true');expect(document.querySelector('.first-use-hint')!.textContent).toContain('译文已显示')
+    runtimeEvent(failure,sender);await drain()
+    const diagnostic=document.querySelector('.fluentread-diagnostic')!;expect(diagnostic.getAttribute('data-diagnostic-code')).toBe('authentication');expect(diagnostic.textContent).toContain('服务凭据或权限有问题');expect(diagnostic.textContent).not.toContain('PRIVATE')
+    shown.value=false;await drain();runtimeEvent({type:'fullPageTranslationState',isTranslated:false,toolbarStatus:'idle',documentToken:'popup-fixture-document'},sender);expect(state.pageTranslated).toBe(true)
+    app.unmount();expect(runtimeEvents.size).toBe(0)
+  })
+  it('实际诊断动作遇到设置、刷新和重试失败时保留可见的安全恢复入口',async()=>{
+    await mount()
+    const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}
+    const publish=async(code:string)=>{runtimeEvent({type:'fullPageTranslationState',isTranslated:false,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code}},sender);await drain()}
+    const action=(label:string)=>{const node=[...document.querySelectorAll('.diagnostic-actions button')].find(button=>button.textContent===label);expect(node).toBeDefined();return eventOf(node!)}
+    await publish('authentication');createTab.mockRejectedValueOnce(Error('PRIVATE service tab error'));action('检查翻译服务')();await drain()
+    expect(document.querySelector('.notice')!.getAttribute('role')).toBe('alert');expect(document.querySelector('.notice')!.textContent).toContain('无法打开设置');expect(document.querySelector('[data-diagnostic-code="authentication"]')).not.toBeNull();expect(close).not.toHaveBeenCalled()
+    await publish('context-invalid');getTab.mockRejectedValueOnce(Error('PRIVATE query error'));action('刷新页面')();await drain()
+    expect(document.querySelector('.notice')!.textContent).toContain('原网页已关闭');expect(document.querySelector('[data-diagnostic-code="context-invalid"]')).not.toBeNull();expect(reloadTab).not.toHaveBeenCalled()
+    reloadTab.mockRejectedValueOnce(Error('PRIVATE reload error'));action('刷新页面')();await drain()
+    expect(document.querySelector('.notice')!.textContent).toContain('无法刷新网页');expect(close).not.toHaveBeenCalled()
+    await publish('timeout');send.mockRejectedValueOnce(Error('Failed to fetch PRIVATE provider body'));action('重试')();await drain()
+    expect(document.querySelector('[data-diagnostic-code="network"]')).not.toBeNull();expect(document.querySelector('.fluentread-diagnostic')!.textContent).toContain('无法连接翻译服务');expect(document.body.textContent).not.toContain('PRIVATE');expect(button('page-translation').hasAttribute('disabled')).toBe(false)
+    action('关闭')();await drain();expect(document.querySelector('.fluentread-diagnostic')).toBeNull()
+  })
+  it('权威计数同步保留真实鉴权诊断与报告预览，并继续允许打开当前服务设置',async()=>{
+    await mount()
+    const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}
+    runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'authentication'}},sender);await drain()
+    const previewButton=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='预览诊断')!
+    eventOf(previewButton)();await drain()
+    const preview=document.querySelector('.diagnostic-report pre')!,before=preview.textContent
+    expect(before).toContain('authentication');expect(document.querySelector('[data-diagnostic-code="authentication"]')).not.toBeNull()
+    subscribe(normalizeConfig({...config,count:config.count+1}));await drain()
+    expect(state.config.count).toBe(config.count+1)
+    expect(document.querySelector('[data-diagnostic-code="authentication"]')).not.toBeNull()
+    expect(document.querySelector('.diagnostic-report pre')).toBe(preview);expect(document.querySelector('.diagnostic-report pre')!.textContent).toBe(before)
+    const repair=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='检查翻译服务')!
+    eventOf(repair)();await drain()
+    expect(createTab).toHaveBeenCalledWith({url:expect.stringContaining('options.html?service=google')});expect(close).toHaveBeenCalledOnce()
+  })
+  it.each(['service','key','endpoint'] as const)('真实%s配置变更使旧诊断和报告预览失效',async change=>{
+    config.service='openai';config.apiKeys.openai=['fixture-key-before'];config.token.openai='fixture-key-before';await mount()
+    const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}
+    runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'authentication'}},sender);await drain()
+    const preview=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='预览诊断')!
+    eventOf(preview)();await drain();expect(document.querySelector('.diagnostic-report pre')).not.toBeNull()
+    if(change==='service')state.config.service='bing'
+    if(change==='key'){state.config.apiKeys.openai=['fixture-key-after'];state.config.token.openai='fixture-key-after'}
+    if(change==='endpoint')state.config.proxy.openai='https://changed-endpoint.example/v1'
+    await drain();expect(document.querySelector('.fluentread-diagnostic')).toBeNull();expect(document.querySelector('.diagnostic-report pre')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/fixture-key-before|fixture-key-after|changed-endpoint/)
+  })
+  it.each([
+    {surface:'toolbar',loading:'no-receiver'}, {surface:'toolbar',loading:'old-token'},
+    {surface:'embedded',loading:'no-receiver'}, {surface:'embedded',loading:'old-token'},
+  ])('$surface 同URL刷新在loading为$loading时通过complete重新握手接收新文档结果',async({surface,loading})=>{
+    if(surface==='embedded')win.location.search='?sourceTabId=7'
+    await mount()
+    const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}
+    if(loading==='no-receiver')send.mockRejectedValueOnce(Error('Could not establish connection. Receiving end does not exist.'))
+    else send.mockResolvedValueOnce({status:'success',isTranslated:false,toolbarStatus:'idle',documentToken:'popup-fixture-document'})
+    tabEvent('onUpdated',7,{status:'loading'},{id:7,windowId:3,active:true});await drain()
+    const result={type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'refreshed-document',diagnostic:{code:'authentication'}}
+    runtimeEvent(result,sender);await drain();expect(button('page-translation').getAttribute('aria-pressed')).toBe('false');expect(document.querySelector('.fluentread-diagnostic')).toBeNull()
+    send.mockImplementation(async(_id,message)=>message.type==='getFullPageTranslationState'?{status:'success',isTranslated:false,toolbarStatus:'idle',documentToken:'refreshed-document'}:{status:'success',isTranslated:message.action==='fullPage',documentToken:'refreshed-document'})
+    tabEvent('onUpdated',7,{status:'complete'},{id:7,windowId:3,active:true});await drain()
+    runtimeEvent({...result,documentToken:'popup-fixture-document'},sender);await drain();expect(document.querySelector('.fluentread-diagnostic')).toBeNull()
+    runtimeEvent(result,sender);await drain()
+    expect(button('page-translation').getAttribute('aria-pressed')).toBe('true');expect(document.querySelector('[data-diagnostic-code="authentication"]')).not.toBeNull();expect(commands()).toHaveLength(0)
+    expect(send.mock.calls.filter(call=>call[1].type==='getFullPageTranslationState')).toHaveLength(5)
+  })
+  it('complete时接收端尚未就绪，未知新令牌广播只触发当前文档只读握手后显示真实结果',async()=>{
+    win.location.search='?sourceTabId=7';await mount()
+    for(const status of ['loading','complete']){send.mockRejectedValueOnce(Error('Receiving end does not exist'));tabEvent('onUpdated',7,{status},{id:7,windowId:3,active:true});await drain()}
+    const snapshot={status:'success',isTranslated:true,toolbarStatus:'translated',documentToken:'late-ready-document'}
+    send.mockResolvedValueOnce(snapshot)
+    const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}
+    runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'translating',documentToken:'late-ready-document'},sender);await drain()
+    expect(button('page-translation').getAttribute('aria-pressed')).toBe('true');expect(document.querySelector('.first-use-hint')!.textContent).toContain('译文已显示')
+    expect(commands()).toHaveLength(0);expect(send).toHaveBeenLastCalledWith(7,{type:'getFullPageTranslationState'},{frameId:0})
+  })
   it('局部等待期间锁定实际按钮，连续旧事件只发送一次并只关闭一次',async()=>{
     await mount();const query=deferred<Array<{id:number;url:string}>>();getTab.mockReturnValueOnce(query.promise);const click=eventOf(button('section-translation')),pending=click();await click();await settle();expect(button('page-translation').hasAttribute('disabled')).toBe(true);query.resolve([{id:7,url:'https://example.com/a'}]);await pending;expect(commands()).toHaveLength(1);expect(close).toHaveBeenCalledOnce()
   })
@@ -231,9 +323,11 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     getTab.mockResolvedValue([{id:kind==='activate'||kind==='remove'?8:7,windowId:3,url:'https://example.net/b'}]);if(kind==='activate')tabEvent('onActivated',{tabId:8,windowId:3});else if(kind==='remove')tabEvent('onRemoved',7);else tabEvent('onUpdated',7,kind==='url'?{url:'https://example.net/b'}:{status:'loading'},{id:7,windowId:3,active:true})
     await drain();reply.resolve({status:'success',isTranslated:true});await pending;await drain();expect(state.currentSiteDomain).toBe('example.net');expect(button('page-translation').getAttribute('aria-pressed')).toBe('false');expect(close).not.toHaveBeenCalled()
   })
-  it('状态查询途中连续导航仍取最后页面，标题、完成和其它窗口事件不查询',async()=>{
+  it('状态查询途中连续导航仍取最后页面，完成时重新握手，标题和其它窗口事件不查询',async()=>{
     await mount();const first=deferred<Array<{id:number;windowId:number;url:string}>>();getTab.mockReturnValueOnce(first.promise);tabEvent('onUpdated',7,{status:'loading'},{id:7,windowId:3,active:true});getTab.mockResolvedValue([{id:7,windowId:3,url:'https://example.net/c'}]);tabEvent('onUpdated',7,{url:'https://example.net/c'},{id:7,windowId:3,active:true});await drain();first.resolve([{id:7,windowId:3,url:'https://example.com/b'}]);await drain();expect(state.currentSiteDomain).toBe('example.net')
-    const queries=getTab.mock.calls.length;tabEvent('onUpdated',7,{title:'new title'},{id:7,windowId:3,active:true});tabEvent('onUpdated',7,{status:'complete'},{id:7,windowId:3,active:true});tabEvent('onUpdated',9,{status:'loading'},{id:9,windowId:4,active:true});tabEvent('onActivated',{tabId:9,windowId:4});tabEvent('onRemoved',9);await drain();expect(getTab).toHaveBeenCalledTimes(queries);shown.value=false;await drain();tabEvent('onUpdated',7,{status:'loading'},{id:7,windowId:3,active:true});expect(getTab).toHaveBeenCalledTimes(queries);app.unmount();expect(Object.values(tabEvents).map(set=>set.size)).toEqual([0,0,0])
+    const queries=getTab.mock.calls.length;tabEvent('onUpdated',7,{title:'new title'},{id:7,windowId:3,active:true});tabEvent('onUpdated',9,{status:'complete'},{id:9,windowId:4,active:true});tabEvent('onUpdated',9,{status:'loading'},{id:9,windowId:4,active:true});tabEvent('onActivated',{tabId:9,windowId:4});tabEvent('onRemoved',9);await drain();expect(getTab).toHaveBeenCalledTimes(queries)
+    tabEvent('onUpdated',7,{status:'complete'},{id:7,windowId:3,active:true});await drain();expect(getTab).toHaveBeenCalledTimes(queries+1)
+    shown.value=false;await drain();tabEvent('onUpdated',7,{status:'loading'},{id:7,windowId:3,active:true});tabEvent('onUpdated',7,{status:'complete'},{id:7,windowId:3,active:true});expect(getTab).toHaveBeenCalledTimes(queries+1);app.unmount();expect(Object.values(tabEvents).map(set=>set.size)).toEqual([0,0,0])
   })
   it('抽屉关闭再打开、字段改回及暂停后旧控件均不能借用新会话',async()=>{
     await mount();await openFeature('hover');const hover=eventOf(button('hover-enable')),oldClose=eventOf(document.querySelector('.drawer-header > button')!);const initial=state.config.hotkey;state.config.hotkey='Shift';state.config.hotkey=initial;await drain();hover();expect(state.config.hotkey).toBe(initial)

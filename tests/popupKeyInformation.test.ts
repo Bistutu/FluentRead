@@ -75,7 +75,7 @@ beforeAll(async () => {
       if (id === '\0summary-browser') return `const f=globalThis.__popupSummaryFixture;const event={addListener:()=>{},removeListener:()=>{}};
         export default {tabs:{query:f.queryTabs,sendMessage:f.send,create:f.createTab,
           onUpdated:{addListener:fn=>f.tabUpdated.add(fn),removeListener:fn=>f.tabUpdated.delete(fn)},onActivated:event,onRemoved:event},
-        runtime:{getManifest:()=>({version:'0.0.35'}),getURL:p=>'extension://'+p,sendMessage:async()=>({success:true}),openOptionsPage:f.openOptions}};`;
+        runtime:{id:'fixture-extension',onMessage:{addListener:()=>{},removeListener:()=>{}},getManifest:()=>({version:'0.0.35'}),getURL:p=>'extension://'+p,sendMessage:async()=>({success:true}),openOptionsPage:f.openOptions}};`;
       if (id === '\0summary-config') return `const f=globalThis.__popupSummaryFixture;export const config=f.config;
         export const subscribeConfig=fn=>{f.listeners.add(fn);return()=>f.listeners.delete(fn)};
         export const requestConfigPatch=async value=>f.patches(value);export const handoffPendingConfigPatches=async()=>{};`;
@@ -139,6 +139,14 @@ async function mount(plugin?: Plugin) {
 }
 
 describe('Popup 首页关键信息', () => {
+  it('首次提示不覆盖偏好，已有翻译记录的用户不重复展示首译提示', async () => {
+    config.count = 0;const before = {service: config.service, from: config.from, to: config.to, model: config.model.openai};
+    await mount();expect(document.querySelector('[data-testid="first-translation-hint"]')).not.toBeNull();
+    publish(next => {next.count = 20});await settle();
+    expect(document.querySelector('[data-testid="first-translation-hint"]')).toBeNull();
+    expect({service: config.service, from: config.from, to: config.to, model: config.model.openai}).toEqual(before);
+    expect(patches).not.toHaveBeenCalled();
+  });
   it.each([['zh-CN', '打开 PDF 阅读器'], ['en-US', 'Open PDF reader']] as const)('%s PDF 主入口保留服务摘要并只打开携带原文地址的阅读器', async (locale, label) => {
     language.value = locale;
     queryTabs.mockResolvedValue([{id: 7, windowId: 3, url: 'https://example.test/docs/research.pdf?edition=2#page=5'}]);
@@ -196,11 +204,11 @@ describe('Popup 首页关键信息', () => {
     expect(button.querySelector('.translate-label')?.textContent).toBe(`Translate (${shortcut})`);
     expect(document.querySelector('[data-testid="section-translation"]')).not.toBeNull();
     expect(createTab).not.toHaveBeenCalled();
-    expect(send.mock.calls).toEqual([[7, {type: 'getFullPageTranslationState'}]]);
+    expect(send.mock.calls).toEqual([[7, {type: 'getFullPageTranslationState'}, {frameId: 0}]]);
 
     button.dispatchEvent(new window.Event('click'));await settle();
     expect(createTab).not.toHaveBeenCalled();
-    expect(send.mock.calls).toEqual([[7, {type: 'getFullPageTranslationState'}], [7, {type: 'contextMenuTranslate', action: 'fullPage'}]]);
+    expect(send.mock.calls).toEqual([[7, {type: 'getFullPageTranslationState'}, {frameId: 0}], [7, {type: 'contextMenuTranslate', action: 'fullPage'}, {frameId: 0}]]);
     expect(button.getAttribute('aria-pressed')).toBe('true');
     expect(button.querySelector('.translate-label')?.textContent).toBe(`Restore (${shortcut})`);
     expect(button.getAttribute('title')).toBe(`Restore this page · ${shortcut}`);
@@ -345,7 +353,7 @@ describe('Popup 首页关键信息', () => {
     const warning = document.querySelector('.credential-warning[role="alert"]');expect(warning).not.toBeNull();
     expect(warning?.textContent).toContain('配置提醒');
     warning!.querySelector('button')!.dispatchEvent(new window.Event('click'));await settle();
-    expect(createTab).toHaveBeenCalledWith({url: 'extension://options.html#settings-services'});
+    expect(createTab).toHaveBeenCalledWith({url: 'extension://options.html?service=openai&returnTabId=7#settings-services'});
   });
 
   it('摘要沿用同一个服务抽屉入口，浏览不会改配置', async () => {
