@@ -781,6 +781,21 @@ describe('public mounted YouTube timed cue selection and lifecycle', () => {
 
 
 // 人工轨通过实际页面发现与 loader 请求就绪；媒体输入非有限时仍走原 fresh 选择边界。
+describe('public mounted video player button follows the video translation switch', () => {
+  it('关闭视频字幕翻译后移除播放器入口和菜单，重新开启后恢复入口', async () => {
+    const f = fixture(); f.start(); await settle();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).not.toBeNull();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).not.toBeNull();
+
+    f.changeConfig({videoTranslationEnabled: false}); await settle();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).toBeNull();
+
+    f.changeConfig({videoTranslationEnabled: true}); await settle();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).not.toBeNull();
+  });
+});
+
 describe('public mounted YouTube nonfinite time and human track fallback', () => {
   it('NaN媒体时间保留两次真实选择且不猜测时间轴', async () => {
     ports.config.videoPreferHumanSubtitles = false;
