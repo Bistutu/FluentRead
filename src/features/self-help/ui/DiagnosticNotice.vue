@@ -1,32 +1,47 @@
 <!--
  * @file src/features/self-help/ui/DiagnosticNotice.vue
  * 文件职责：在失败现场展示本地诊断、可执行动作与用户控制的脱敏报告。
- * 主要内容：只接受白名单诊断，限制限流等待期内重试，预览时生成允许字段，明确点击导出才创建下载；切换诊断与卸载清理计时器和预览。
+ * 主要内容：只接受白名单诊断，限制限流等待期内重试，预览时生成允许字段，明确点击导出才创建下载；切换诊断与卸载清理计时器和预览；界面语言沿用按需资源，包到达后刷新文案，过期加载不覆盖当前语言。
  * 模块边界：不请求翻译、不修改服务或配置、不收集正文和 URL；重试与导航交给调用 feature，报告生成使用纯诊断服务。
 -->
 <template>
   <section v-if="safe" class="fluentread-diagnostic" :data-diagnostic-code="safe.code" data-i18n-ignore>
     <div role="status" aria-live="polite"><strong>{{ copy.title }}</strong><p>{{ copy.detail }}</p></div>
     <div class="diagnostic-actions">
-      <button v-for="action in safe.actions" :key="action" type="button" :disabled="busy || (action === 'retry' && remaining > 0)" @click="emit('action', action)">{{ getDiagnosticActionLabel(action, language) }}<span v-if="action === 'retry' && remaining > 0"> ({{ remaining }}s)</span></button>
-      <button type="button" :aria-expanded="Boolean(preview)" @click="togglePreview">{{ english ? 'Preview report' : '预览诊断' }}</button>
+      <button v-for="action in safe.actions" :key="action" type="button" :disabled="busy || (action === 'retry' && remaining > 0)" @click="emit('action', action)">{{ text(`diagnostics.action.${action}`) }}<span v-if="action === 'retry' && remaining > 0"> ({{ text('diagnostics.action.retryCountdown', {seconds: remaining}) }})</span></button>
+      <button type="button" :aria-expanded="Boolean(preview)" @click="togglePreview">{{ text(preview ? 'diagnostics.report.hidePreview' : 'diagnostics.report.preview') }}</button>
     </div>
     <div v-if="preview" class="diagnostic-report">
-      <p>{{ english ? 'Local only. Contains status and version; no page text, URLs or credentials.' : '仅在本地。只含状态和版本，不含正文、网址或凭据。' }}</p>
-      <pre tabindex="0" :aria-label="english ? 'Report preview' : '报告预览'">{{ preview }}</pre>
-      <button type="button" @click="download">{{ english ? 'Export JSON' : '导出 JSON' }}</button>
-      <small v-if="exportFailed" role="alert">{{ english ? 'Export failed. Select and copy the preview.' : '导出失败，可选中预览内容复制。' }}</small>
+      <p>{{ text('diagnostics.report.localOnly') }}</p>
+      <pre tabindex="0" :aria-label="text('diagnostics.report.previewLabel')">{{ preview }}</pre>
+      <button type="button" @click="download">{{ text('diagnostics.report.export') }}</button>
+      <small v-if="exportFailed" role="alert">{{ text('diagnostics.report.exportFailed') }}</small>
     </div>
   </section>
 </template>
 <script setup lang="ts">
 import {computed, onBeforeUnmount, ref, watch} from 'vue';
-import {buildDiagnosticReport, getDiagnosticActionLabel, getDiagnosticText, normalizeDiagnostic, type DiagnosticAction} from '@/src/services/diagnostics';
+import {buildDiagnosticReport, normalizeDiagnostic, type DiagnosticAction} from '@/src/services/diagnostics';
+import {resolveUiLanguageFromLocale, translate, type TranslationParams} from '@/src/core/i18n';
+import {ensureUiLanguageBundle} from '@/src/platform/i18n/uiLanguageBundles';
 const props = withDefaults(defineProps<{diagnostic: unknown; language?: string; busy?: boolean; version?: string; feature?: 'popup' | 'services'}>(), {language: 'zh-CN', busy: false, feature: 'popup'});
 const emit = defineEmits<{action: [action: DiagnosticAction]}>();
 const safe = computed(() => normalizeDiagnostic(props.diagnostic));
-const english = computed(() => props.language !== 'zh-CN');
-const copy = computed(() => safe.value ? getDiagnosticText(safe.value, props.language) : {title: '', detail: ''});
+const displayLanguage = computed(() => resolveUiLanguageFromLocale(props.language));
+const messageRevision = ref(0);
+// 显式 language prop 同样使用共享 loader 去重；Vue 停止 watcher 时会撤销尚未完成的加载所有权。
+watch(displayLanguage, (language, _previous, onCleanup) => {
+  let current = true;
+  onCleanup(() => {current = false;});
+  void ensureUiLanguageBundle(language).then(loaded => {
+    if (current && loaded) messageRevision.value += 1;
+  }).catch(() => undefined);
+}, {immediate: true});
+function text(key: string, params?: TranslationParams): string {
+  void messageRevision.value;
+  return translate(key, displayLanguage.value, params);
+}
+const copy = computed(() => safe.value ? {title: text(safe.value.titleKey), detail: text(safe.value.detailKey)} : {title: '', detail: ''});
 const preview = ref(''), exportFailed = ref(false), remaining = ref(0);
 let timer: ReturnType<typeof setInterval> | undefined;
 const downloadUrls = new Map<string, ReturnType<typeof setTimeout>>();

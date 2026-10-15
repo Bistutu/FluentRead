@@ -332,8 +332,8 @@
       <strong>{{ connectionRepairText.title }}</strong>
       <span>{{ connectionRepairText.detail }}</span>
       <div class="connection-repair-actions">
-        <button type="button" class="connection-repair-button" data-connection-retry :disabled="connectionTestDisabled || connectionRetryWaiting" @click="testConnection()">{{ connectionRetryWaiting ? (language.startsWith('zh') ? '请稍后重试' : 'Retry shortly') : getDiagnosticActionLabel('retry', language) }}</button>
-        <button v-if="connectionTestDiagnostic.actions.includes('services')" type="button" class="connection-repair-button" data-connection-repair-config :disabled="!active" @click="focusConnectionConfiguration">{{ getDiagnosticActionLabel('services', language) }}</button>
+        <button type="button" class="connection-repair-button" data-connection-retry :disabled="connectionTestDisabled || connectionRetryWaiting" @click="testConnection()">{{ t(connectionRetryWaiting ? 'diagnostics.action.retryLater' : 'diagnostics.action.retry') }}</button>
+        <button v-if="connectionTestDiagnostic.actions.includes('services')" type="button" class="connection-repair-button" data-connection-repair-config :disabled="!active" @click="focusConnectionConfiguration">{{ t('diagnostics.action.services') }}</button>
       </div>
     </div>
 
@@ -488,7 +488,7 @@ import { isNativeBatchTranslationService, isNativeTranslationBatchEnabled } from
 import { requiresDeepLXToken } from '@/src/core/config/deeplx'
 import { getDeepLEndpoint } from '@/src/core/config/deepl'
 import browser from 'webextension-polyfill'
-import { normalizeDiagnostic, diagnoseFailure, getDiagnosticActionLabel, getDiagnosticText, type Diagnostic } from '@/src/services/diagnostics'
+import { normalizeDiagnostic, diagnoseFailure, getDiagnosticText, type Diagnostic } from '@/src/services/diagnostics'
 import { requestConfigSave, waitForConfigPersistenceQueue } from '@/src/services/config/store'
 import { CONNECTION_TEST_MESSAGE, DEFAULT_OLLAMA_ENDPOINT, getAliyunTranslationEndpoint, getMimoEndpoint, MINIMAX_ENDPOINTS } from '@/src/core/config/constants'
 import { chromeTranslationPreparationStore } from '@/src/platform/browser/chromeTranslationPreparationRequest'
@@ -783,7 +783,8 @@ const freeProviderRetryAt = new Map<string, number>()
 const connectionTestState = ref<ConnectionTestState>('idle')
 const connectionTestMessageState = ref<LocalizedConnectionTestMessage | string | null>(null)
 const connectionTestDiagnostic = shallowRef<Diagnostic | null>(null)
-const connectionRepairText = computed(() => connectionTestDiagnostic.value ? getDiagnosticText(connectionTestDiagnostic.value, language.value) : {title: '', detail: ''})
+// t 读取语言包修订号，异步资源到达后会刷新已显示的诊断。
+const connectionRepairText = computed(() => connectionTestDiagnostic.value ? {title: t(connectionTestDiagnostic.value.titleKey), detail: t(connectionTestDiagnostic.value.detailKey)} : {title: '', detail: ''})
 const connectionRetryWaiting = ref(false)
 const MAX_CONNECTION_RETRY_TIMER_MS = 2_147_483_647
 let connectionRetryDeadline = 0

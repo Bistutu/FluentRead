@@ -5,6 +5,9 @@ import {
   type DiagnosticCode, type DiagnosticReportInput,
 } from '../src/services/diagnostics';
 import {serializeTranslationError, TranslationRequestError} from '../src/services/translation/errors';
+import {registerAllUiLanguageBundles} from '../src/core/i18n/bundles';
+
+registerAllUiLanguageBundles();
 
 describe('self help diagnosis', () => {
   it('preserves structured error meaning across the existing translation message boundary', () => {
@@ -125,7 +128,7 @@ describe('self help diagnosis', () => {
     expect(diagnoseFailure(new Error('Extension context invalidated')).actions).toEqual(['refresh', 'dismiss']);
   });
 
-  it('provides Chinese and English recovery guidance and labels for every diagnosis', () => {
+  it('provides registered language recovery guidance and labels for every diagnosis', () => {
     for (const code of DIAGNOSTIC_CODES) {
       const diagnostic = {code};
       for (const locale of ['zh-CN', 'zh-TW', 'en-US', 'fr']) {
