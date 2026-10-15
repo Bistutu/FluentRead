@@ -675,6 +675,76 @@ describe('guardBrowserClose public API: bounded operations and platform start id
         expect(existsSync(owner.profile)).toBe(true);
     });
 
+    it('confirms Linux exit when the owned actor disappears between ps and its kernel stat read', async () => {
+        const owner = await actor(), port = browserPort(owner.pid);
+        Object.defineProperty(process, 'platform', {configurable: true, value: 'linux'});
+        const originalRead = fsPort.readFileSync;
+        let statReads = 0;
+        vi.spyOn(fsPort, 'readFileSync').mockImplementation((file: string, ...args: any[]) => {
+            if (file !== `/proc/${owner.pid}/stat`) return originalRead(file, ...args);
+            if (++statReads === 1) return `${owner.pid} (owned actor) S ${Array(18).fill('0').join(' ')} 123456 0\n`;
+            throw Object.assign(Error('actor was reaped before reading its kernel stat'), {code: 'ENOENT'});
+        });
+        guardBrowserClose(port.session, owner.profile);
+        await captured(port);
+        const originalExec = cp.execFile;
+        let observations = 0;
+        vi.spyOn(cp, 'execFile').mockImplementation((file: string, args: string[], options: any, callback: Function) => {
+            if (file !== '/bin/ps' || !args.includes(String(owner.pid))) return originalExec(file, args, options, callback);
+            observations++;
+            if (observations !== 1) return originalExec(file, args, options, callback);
+            // ps really observed this actor. Hold only delivery of that result
+            // until the exact ChildProcess exits, reproducing the Linux race.
+            return originalExec(file, args, options, (error: Error | null, stdout: string, stderr: string) => {
+                if (error) return callback(error, stdout, stderr);
+                void nativeExit(owner).then(() => callback(null, stdout, stderr));
+            });
+        });
+        const kill = vi.spyOn(process, 'kill');
+        await port.session.close();
+        expect(observations).toBe(2);
+        expect(statReads).toBe(2);
+        expect(kill).not.toHaveBeenCalled();
+        expect(port.nativeClose).toHaveBeenCalledOnce();
+        expect(await owner.exited).toEqual({code: 0, signal: null});
+        expect(existsSync(owner.profile)).toBe(true);
+    });
+
+    it.each(['live', 'reused-pid', 'empty-success', 'ps-permission', 'stat-permission'] as const)(
+        'does not turn a Linux kernel stat failure into a gone receipt for %s evidence', async mode => {
+            const owner = await actor(), port = browserPort(owner.pid);
+            Object.defineProperty(process, 'platform', {configurable: true, value: 'linux'});
+            const originalRead = fsPort.readFileSync;
+            const statError = Object.assign(Error('kernel stat is unavailable'), {code: mode === 'stat-permission' ? 'EACCES' : 'ENOENT'});
+            let statReads = 0;
+            vi.spyOn(fsPort, 'readFileSync').mockImplementation((file: string, ...args: any[]) => {
+                if (file !== `/proc/${owner.pid}/stat`) return originalRead(file, ...args);
+                if (++statReads === 1) return `${owner.pid} (owned actor) S ${Array(18).fill('0').join(' ')} 123456 0\n`;
+                throw statError;
+            });
+            guardBrowserClose(port.session, owner.profile);
+            await captured(port);
+            const row = await psRow(owner.pid);
+            const psError = Object.assign(Error('ps denied observation'), {code: 'EACCES'});
+            let observations = 0;
+            psFault(owner.pid, callback => {
+                observations++;
+                if (observations === 1 || mode === 'live' || mode === 'stat-permission') callback(null, row, '');
+                else if (mode === 'reused-pid') callback(null, row.replace('--user-data-dir=', '--foreign-profile='), '');
+                else if (mode === 'empty-success') callback(null, '', '');
+                else callback(psError, '', '');
+            });
+            const kill = vi.spyOn(process, 'kill');
+            expect(await rejected(port.session.close())).toBe(mode === 'ps-permission' ? psError : statError);
+            expect(observations).toBe(mode === 'stat-permission' ? 1 : 2);
+            expect(statReads).toBe(2);
+            expect(kill).not.toHaveBeenCalled();
+            expect(owner.child.exitCode).toBeNull();
+            expect(events(owner).map(event => event.kind)).toEqual(['ready']);
+            expect(existsSync(owner.profile)).toBe(true);
+        },
+    );
+
     it.each(['unsupported', 'linux-invalid-stat', 'linux-wrong-stat-pid', 'linux-bad-ticks', 'linux-ticks-changed', 'darwin'] as const)('uses the %s process identity port conservatively', async mode => {
         const owner = await actor();
         const port = browserPort(owner.pid, mode === 'darwin' ? () => nativeExit(owner) : async () => {});
