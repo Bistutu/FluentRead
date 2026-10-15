@@ -1,7 +1,7 @@
 <!--
  * @file src/features/vocabulary/ui/MaterialWorkspace.vue
  * 文件职责：以阅读材料和收藏原句为主要内容，提供主题整理、回到出处、连续学习和本地笔记。
- * 主要内容：保留轻量材料列表，详情按来源聚合原句、实时收藏和问答；加载、重试、编辑、归档恢复均保护异步代次和卸载边界。
+ * 主要内容：保留轻量材料列表，详情按来源聚合原句、实时收藏和问答；窄屏引用正文预留覆盖式滚动条空间，保持滚动时行尾可读；加载、重试、编辑、归档恢复均保护异步代次和卸载边界。
  * 模块边界：只通过本地材料与既有学习客户端读写，不访问数据库或供应商；来源恢复由公共适配器处理，个人内容不进入配置同步。
  -->
 <template>
@@ -814,6 +814,10 @@ onBeforeUnmount(() => { active = false; generation++; detailGeneration++; browse
   }
 }
 @media(max-width:480px) {
+  .fr-material-references {
+    /* 覆盖式滚动条不为 gutter 留位，局部内边距保护原句和问答行尾。 */
+    padding-inline-end:16px
+  }
   .fr-material-toolbar {
     flex-wrap:wrap
   }
