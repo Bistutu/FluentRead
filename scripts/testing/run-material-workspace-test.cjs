@@ -15,7 +15,8 @@ for(const key of ['extension-dir','playwright-root','artifacts-dir']) assert(arg
 assert(['documents-only','sources-only','localization-only'].filter(key=>args[key]).length<=1,'Choose at most one focused scope');
 const extensionDir=path.resolve(args['extension-dir']),artifacts=path.resolve(args['artifacts-dir']);fs.mkdirSync(artifacts,{recursive:true});
 const {chromium}=createRequire(path.join(args['playwright-root'],'material-test.cjs'))('playwright');
-const helper=require(args['focus-safe-helper']||'./focus-safe-browser.cjs');
+// 与 owned-browser-close 共享仓库内 transport-only close / guarded signal 契约。
+const helper=require('./focus-safe-browser.cjs');
 const profileDir=fs.mkdtempSync(path.join(os.tmpdir(),'fluentread-material-ui-'));
 const report={ok:false,extensionDir,artifactType:'production',scope:args['documents-only']?'documents':args['sources-only']?'sources':'materials-full',consoleScope:'page console errors and unhandled page errors; background operations verified by actual responses',cases:[],screenshots:[],consoleErrors:[],limitations:['Controlled local HTTP, MP4, PDF, DOCX and EPUB fixtures; no live provider, live YouTube/X, Firefox runtime, Safari or physical mobile acceptance.','Learning question fixture is written directly to its authoritative session store; this validates retrieval and preservation, not live model generation.','Private-window eligibility is covered by deterministic client and sender tests, not an incognito browser session.']};
 const save=()=>fs.writeFileSync(path.join(artifacts,'report.json'),JSON.stringify(report,null,2));
@@ -58,9 +59,19 @@ const fixture=http.createServer((request,response)=>{
     const href=await page.getByRole('link',{name:'Continue reading',exact:true}).getAttribute('href');const source=await open(href);
     const notice=source.getByRole('status').filter({hasText:'We couldn’t confirm the original text’s location.'});await notice.waitFor({timeout:15000});assert(!/[\u3400-\u9fff]/u.test(await notice.innerText()));
     await shot('article-recovery-notice-en',source);await notice.getByRole('button',{name:'Close',exact:true}).click();assert.equal(await notice.count(),0);report.cases.push('english-native-content-notice-and-close');
-    const {PDFDocument}=createRequire(path.join(process.cwd(),'package.json'))('pdf-lib');const pdf=await PDFDocument.create();pdf.addPage().drawText('Localized material action fixture.');
+    const {PDFDocument}=createRequire(path.join(process.cwd(),'package.json'))('pdf-lib');const pdf=await PDFDocument.create();pdf.addPage().drawText('Localized material action fixture.',{x:48,y:760,size:16});
     const documentPage=await open(`${origin}/document.html`);await documentPage.locator('input[type=file]').first().setInputFiles({name:'localized-material.pdf',mimeType:'application/pdf',buffer:Buffer.from(await pdf.save())});
-    await documentPage.locator('.pdf-page-row[data-page-number="1"][data-render-state="ready"] canvas').first().waitFor({timeout:30000});await documentPage.getByRole('button',{name:'Save to materials',exact:true}).click();await documentPage.getByText('Reading position saved on this device. Continue reading from the Learning Center.',{exact:true}).waitFor();
+    await documentPage.locator('.pdf-page-row[data-page-number="1"][data-render-state="ready"] canvas').first().waitFor({timeout:30000});
+    // Canvas ready 不保证正文已在阅读视口内；材料保存必须有真实可见字形。
+    await documentPage.waitForFunction(()=>{
+      const viewport=document.querySelector('[data-pdf-scroll]');
+      const glyph=[...document.querySelectorAll('[data-fluentread-pdf-text] span')].find(node=>node.textContent.includes('Localized material action fixture.'));
+      if(!viewport||!glyph)return false;
+      const box=glyph.getBoundingClientRect(),area=viewport.getBoundingClientRect();
+      return box.width>0&&box.height>0&&box.top<area.bottom&&box.bottom>area.top&&box.left<area.right&&box.right>area.left;
+    },{},{timeout:30000});
+    report.visiblePdfGlyphBeforeSave=await documentPage.locator('[data-fluentread-pdf-text] span').filter({hasText:'Localized material action fixture.'}).first().boundingBox();
+    await documentPage.getByRole('button',{name:'Save to materials',exact:true}).click();await documentPage.getByText('Reading position saved on this device. Continue reading from the Learning Center.',{exact:true}).waitFor();
     await documentPage.getByRole('button',{name:'Update reading position',exact:true}).waitFor();await shot('document-material-en',documentPage);
     await documentPage.setViewportSize({width:390,height:1000});assert.equal(await documentPage.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     const control=documentPage.getByRole('button',{name:'Update reading position',exact:true});const bounds=await control.boundingBox();assert(bounds&&bounds.height>=24&&bounds.width<=180&&bounds.x>=0&&bounds.x+bounds.width<=390);
