@@ -1,6 +1,6 @@
 export interface UserscriptContentContext {
     readonly isInvalid: boolean;
-    onInvalidated(callback: () => void): void;
+    onInvalidated(callback: () => void): () => void;
     invalidate(): void;
 }
 
@@ -13,8 +13,12 @@ export function createUserscriptContentContext(): UserscriptContentContext {
             return invalid;
         },
         onInvalidated(callback) {
-            if (invalid) callback();
-            else callbacks.add(callback);
+            if (invalid) {
+                callback();
+                return () => {};
+            }
+            callbacks.add(callback);
+            return () => { callbacks.delete(callback); };
         },
         invalidate() {
             if (invalid) return;

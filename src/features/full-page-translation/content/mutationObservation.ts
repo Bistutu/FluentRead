@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/mutationObservation.ts
  * 文件职责：为全文翻译组合 DOM 观察选项，并计算突发变化的扫描边界和安全节点目标。
- * 主要内容：按既有 matches/tagName/style 契约识别元素，保留 ShadowRoot 的宿主观察目标；保留通用保护和产物完整性属性，合并网站依赖；复杂选择器取消属性过滤，校验合成段身份标记，按断言批量判定增删节点，按检查点去重同节点同属性的变化，并按树包含关系合并扫描根。
+ * 主要内容：按既有 matches/tagName/style 契约识别元素，保留 ShadowRoot 的宿主观察目标并按宿主连接性释放失效根；保留通用保护和产物完整性属性，合并网站依赖；复杂选择器取消属性过滤，校验合成段身份标记，按断言批量判定增删节点，按检查点去重同节点同属性的变化，并按树包含关系合并扫描根。
  * 模块边界：仅生成选项和读取传入节点的树关系，不创建 MutationObserver、不读取全局 DOM 或配置。
  */
 import {getSiteAdapterAttributeFilter} from '@/src/core/site-adaptation/compiler';
@@ -24,6 +24,13 @@ export function mutationTargetElement(node: Node): Element | null {
         if (isElementNode(host)) return host;
     }
     return node.parentElement;
+}
+
+/** ShadowRoot 的观察生命周期跟随宿主；普通 Fragment 不作为活页面的发现入口。 */
+export function isConnectedMutationRoot(node: Node): boolean {
+    return node.nodeType === 11 && 'host' in node
+        ? (node as ShadowRoot).host.isConnected
+        : node.isConnected;
 }
 
 /** 同一 observer 检查点只能读取最终 DOM；自有写入过滤后再标记，不吞掉后续真实宿主变化。 */

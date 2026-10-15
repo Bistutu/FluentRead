@@ -6,7 +6,7 @@ import productionReleaseCases from './fixtures/target-language-releases.json';
 import type {TranslationCandidate, TranslationSiteAdapter} from '@/src/core/translation/types';
 import {TranslationCandidateCore} from '@/src/core/translation/engine';
 import {compileSiteRulePack} from '@/src/core/site-adaptation/compiler';
-import {collapseMutationRescanRoot, isOwnSyntheticSegmentMarkerMutation, mutationRootContains} from '@/src/features/full-page-translation/content/mutationObservation';
+import {collapseMutationRescanRoot, isConnectedMutationRoot, isOwnSyntheticSegmentMarkerMutation, mutationRootContains} from '@/src/features/full-page-translation/content/mutationObservation';
 import {DEFAULT_EAGER_TRANSLATION_CHARACTERS} from '@/src/core/config/pageTranslation';
 
 const runtime = vi.hoisted(() => ({
@@ -399,8 +399,9 @@ class TestIntersectionObserver {
 class TestMutationObserver {
     static instances: TestMutationObserver[] = [];
 
-    readonly observe = vi.fn();
-    readonly disconnect = vi.fn();
+    readonly observed = new Map<Node, MutationObserverInit>();
+    readonly observe = vi.fn((root: Node, options: MutationObserverInit) => this.observed.set(root, options));
+    readonly disconnect = vi.fn(() => this.observed.clear());
     readonly takeRecords = vi.fn(() => [] as MutationRecord[]);
 
     constructor(private readonly callback: MutationCallback) {
@@ -409,6 +410,16 @@ class TestMutationObserver {
 
     emit(records: MutationRecord[]): void {
         this.callback(records, this as unknown as MutationObserver);
+    }
+
+    /** 模拟浏览器的注册范围与属性过滤，避免直接注入回调掩盖漏掉 observe 的缺陷。 */
+    emitRegistered(records: MutationRecord[]): void {
+        const delivered = records.filter(record => [...this.observed].some(([root, options]) =>
+            (root === record.target || options.subtree && root.contains(record.target)) &&
+            (record.type === 'attributes' ? options.attributes &&
+                (!options.attributeFilter || options.attributeFilter.includes(record.attributeName!))
+                : record.type === 'childList' ? options.childList : options.characterData)));
+        if (delivered.length) this.emit(delivered);
     }
 }
 
@@ -1881,6 +1892,13 @@ describe("全文翻译可见性锚点", () => {
         const shadow = root.attachShadow({mode: 'open'});
         shadow.innerHTML = '<p>Shadow paragraph.</p>';
         expect(collapseMutationRescanRoot(shadow.firstChild!)).toBe(shadow);
+        expect(isConnectedMutationRoot(document)).toBe(true);
+        expect(isConnectedMutationRoot(root)).toBe(true);
+        expect(isConnectedMutationRoot(shadow)).toBe(true);
+        expect(isConnectedMutationRoot(document.createDocumentFragment())).toBe(false);
+        root.remove();
+        expect(isConnectedMutationRoot(root)).toBe(false);
+        expect(isConnectedMutationRoot(shadow)).toBe(false);
     });
 
     it("全文 observer 覆盖译文 wrapper 的完整外层属性快照", () => {
@@ -2070,6 +2088,117 @@ describe("全文翻译可见性锚点", () => {
         expect(light.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
         expect(shadowProse.querySelector('[data-fr-translation-owned]')).toBeNull();
         expect(runtime.requests).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(['light', 'shadow'] as const)('SPA 切换后 %s 树观察新站点属性，迟到正文可翻译并响应保护变化', async (tree) => {
+        runtime.config.fullPageTranslationMode = 'all';
+        runtime.config.display = 1;
+        document.body.innerHTML = '<div id="host"></div>';
+        const host = document.querySelector<HTMLElement>('#host')!;
+        const root = tree === 'shadow' ? host.attachShadow({mode: 'open'}) : host;
+        root.innerHTML = '<i data-ready="no"></i><p>A paragraph becomes readable after the route has changed.</p>';
+        const flag = root.querySelector('i')!;
+        const paragraph = root.querySelector<HTMLElement>('p')!;
+        setLayoutBox(paragraph, 420, 60);
+        const adapters = compileSiteRulePack({version: 1, rules: [
+            {id: 'before-route', name: 'Before route', match: {hosts: ['example.com'], paths: ['/before*']},
+                mode: 'focus', content: [{css: ['.not-yet-readable']}]},
+            {id: 'after-route', name: 'After route', match: {hosts: ['example.com'], paths: ['/after*']},
+                mode: 'focus', content: [{css: ['[data-ready="yes"] + p']}]},
+        ]});
+        runtime.realCore = new TranslationCandidateCore({url: new URL('https://example.com/before'), adapters});
+        autoTranslateEnglishPage();
+        await finishScheduledWork();
+        const observer = TestMutationObserver.instances[0]!;
+        const observationRoot = tree === 'shadow' ? root : document.documentElement;
+        expect(observer.observed.get(observationRoot)?.attributeFilter).not.toContain('data-ready');
+        expect(runtime.requests).not.toHaveBeenCalled();
+
+        runtime.realCore = new TranslationCandidateCore({url: new URL('https://example.com/after'), adapters});
+        resetFullPageTranslationRouteState();
+        await finishScheduledWork();
+        expect(runtime.requests).not.toHaveBeenCalled();
+        expect(observer.observed.get(observationRoot)?.attributeFilter).toContain('data-ready');
+        const changeFlag = (value: string) => {
+            const oldValue = flag.getAttribute('data-ready');
+            flag.setAttribute('data-ready', value);
+            observer.emitRegistered([{type: 'attributes', target: flag, attributeName: 'data-ready', oldValue,
+                addedNodes: [], removedNodes: []} as unknown as MutationRecord]);
+        };
+        changeFlag('yes');
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(paragraph.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+        changeFlag('no');
+        await finishScheduledWork();
+        expect(paragraph.querySelector('[data-fr-translation-owned]')).toBeNull();
+        expect(paragraph.textContent).toBe('A paragraph becomes readable after the route has changed.');
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        restoreOriginalContent();
+        expect(observer.observed.size).toBe(0);
+        changeFlag('yes');
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+    });
+
+    it('卸载 Shadow DOM 组件释放观察根，保留待送达正文变化，重新插入可继续翻译', async () => {
+        runtime.config.fullPageTranslationMode = 'all';
+        runtime.config.display = 1;
+        document.body.innerHTML = '<i id="flag" data-ready="no"></i><p id="late">A live paragraph changes while a component is removed.</p>' +
+            '<p id="protected">This paragraph becomes protected in the same task.</p><div id="host"></div>';
+        const host = document.querySelector<HTMLElement>('#host')!;
+        const shadow = host.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<p>A shadow paragraph belongs to a removable component.</p>';
+        const paragraph = shadow.querySelector<HTMLElement>('p')!;
+        const late = document.querySelector<HTMLElement>('#late')!;
+        const protectedParagraph = document.querySelector<HTMLElement>('#protected')!;
+        const flag = document.querySelector('#flag')!;
+        [paragraph, late, protectedParagraph].forEach(element => setLayoutBox(element, 420, 60));
+        runtime.realCore = new TranslationCandidateCore({url: new URL('https://example.com'), adapters: compileSiteRulePack({
+            version: 1, rules: [{id: 'component', name: 'Component', match: {hosts: ['example.com']},
+                mode: 'augment', exclude: ['[data-ready="no"] + p']}],
+        })});
+        autoTranslateEnglishPage();
+        await finishScheduledWork();
+        const observer = TestMutationObserver.instances[0]!;
+        const previousState = getTranslationState(paragraph)!;
+        const protectedState = getTranslationState(protectedParagraph)!;
+        expect(previousState.phase).toBe('translated');
+        expect(observer.observed.has(shadow)).toBe(true);
+        expect(runtime.requests).toHaveBeenCalledTimes(2);
+        host.remove();
+        observer.emitRegistered([{type: 'childList', target: document.body, addedNodes: [], removedNodes: [host]} as unknown as MutationRecord]);
+        // disconnect 会清空原生 observer 队列；清理失效根之前必须接住活页面的这些记录。
+        flag.setAttribute('data-ready', 'yes');
+        protectedParagraph.setAttribute('translate', 'no');
+        observer.takeRecords.mockReturnValueOnce([
+            {type: 'attributes', target: flag, attributeName: 'data-ready', oldValue: 'no', addedNodes: [], removedNodes: []},
+            {type: 'attributes', target: protectedParagraph, attributeName: 'translate', oldValue: null, addedNodes: [], removedNodes: []},
+        ] as unknown as MutationRecord[]);
+        // 在 50ms 的发现重扫前检查，避免重扫碰巧修复而掩盖丢失 observer 记录。
+        await vi.advanceTimersByTimeAsync(0);
+        expect(protectedState.controller.signal.aborted).toBe(true);
+        expect(getTranslationState(protectedParagraph)).toBeUndefined();
+        expect(protectedParagraph.querySelector('[data-fr-translation-owned]')).toBeNull();
+        await finishScheduledWork();
+        expect(previousState.controller.signal.aborted).toBe(true);
+        expect(getTranslationState(paragraph)).toBeUndefined();
+        expect(observer.observed.has(shadow)).toBe(false);
+        expect(observer.observed.has(document.documentElement)).toBe(true);
+        expect(observer.takeRecords).toHaveBeenCalledOnce();
+        expect(late.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+        expect(runtime.requests).toHaveBeenCalledTimes(3);
+
+        document.body.appendChild(host);
+        observer.emitRegistered([{type: 'childList', target: document.body, addedNodes: [host], removedNodes: []} as unknown as MutationRecord]);
+        await finishScheduledWork();
+        expect(observer.observed.has(shadow)).toBe(true);
+        expect(paragraph.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+        expect(paragraph.querySelector('.fluent-read-bilingual-content .fluent-read-bilingual-content')).toBeNull();
+        restoreOriginalContent();
+        expect(observer.observed.size).toBe(0);
+        expect(paragraph.textContent).toBe('A shadow paragraph belongs to a removable component.');
+        expect(late.textContent).toBe('A live paragraph changes while a component is removed.');
     });
 
     it.each([[1, 'translated'], [1, 'loading'], [0, 'translated'], [0, 'loading']] as const)(
