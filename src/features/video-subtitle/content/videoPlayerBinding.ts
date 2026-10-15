@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/videoPlayerBinding.ts
  * 文件职责：把字幕入口和菜单绑定到定位器选中的视频播放器，并在信息流、全屏及原生控件重挂载时保持稳定。
- * 主要内容：以画中画和全屏控件为锚点维护入口顺序，按真实控件结构变化绑定入口，忽略字幕与 tooltip 内容更新，管理 fallback 控件、进度徽标和禁用状态下的节点清理。
+ * 主要内容：以画中画和全屏控件为锚点维护入口顺序，按真实控件结构变化绑定入口，在所持控制栏内清除站点深复制的本实例入口，观察器在原按钮位置不变时也识别本实例新副本，忽略字幕与 tooltip 内容更新，管理 fallback 控件、进度徽标和禁用状态下的节点清理。
  * 模块边界：只管理 FluentRead 播放器节点的挂载位置与事件；按钮行为、菜单内容和字幕业务由调用方注入。
  */
 
@@ -123,21 +123,40 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
   let fallback: HTMLElement | null = null;
   let destroyed = false;
   let cleaningNodes = false;
+  // 属性随 DOM 深复制而保留；只识别本实例入口的副本，不按公共 id 删除其他实例或页面节点。
+  const buttonOwner = `${Date.now()}-${Math.random()}`;
+  const buttonOwnerAttribute = 'data-fluent-read-video-binding-owner';
+  const ownedButtonSelector = `button[${buttonOwnerAttribute}="${buttonOwner}"]`;
   const activePlayers = new WeakSet<HTMLElement>();
   const positionedPlayers = new WeakSet<HTMLElement>();
   const previousPositions = new WeakMap<HTMLElement, {value: string; priority: string}>();
+
+  const removeClonedButtons = (scope: HTMLElement | null, liveButton: HTMLButtonElement | null) => {
+    if (!scope) return;
+    const previouslyCleaning = cleaningNodes;
+    cleaningNodes = true;
+    try {
+      for (const candidate of scope.querySelectorAll<HTMLButtonElement>(ownedButtonSelector)) {
+        if (candidate !== liveButton) candidate.remove();
+      }
+    } finally {
+      cleaningNodes = previouslyCleaning;
+    }
+  };
 
   const cleanNodes = () => {
     cleaningNodes = true;
     const buttonToRemove = button;
     const menuToRemove = menu;
     const fallbackToRemove = fallback;
+    const hostToClean = host;
     button = null;
     menu = null;
     fallback = null;
     host = null;
     before = null;
     try {
+      removeClonedButtons(hostToClean, buttonToRemove);
       buttonToRemove?.remove();
       menuToRemove?.remove();
       fallbackToRemove?.remove();
@@ -198,6 +217,7 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
     if (!preferred && next.player.getAttribute('data-testid') === 'videoPlayer') {
       // 原生控制栏的生命周期不代表用户结束菜单操作；保留已打开的菜单及焦点。
       if (menu && menu.parentElement === next.player && !menu.hidden) {
+        removeClonedButtons(host, button);
         button?.remove();
         host = null;
         return;
@@ -207,7 +227,10 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
       return;
     }
     const currentHostBelongs = host && host.parentElement && next.player.contains(host);
-    if (!currentHostBelongs) host = null;
+    if (!currentHostBelongs) {
+      removeClonedButtons(host, button);
+      host = null;
+    }
 
     if (!host) {
       if (preferred) host = preferred;
@@ -218,12 +241,15 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
       }
     } else if (preferred && preferred !== host) {
       // 原生控件真正重挂载后才换宿主；仅 display/opacity 变化不会触发此分支。
+      removeClonedButtons(host, button);
       host = preferred;
     }
 
+    removeClonedButtons(host, button);
     ensureContainingBlock(next.player);
     if (!button) {
       button = options.createButton();
+      button.setAttribute(buttonOwnerAttribute, buttonOwner);
       markVideoUi(button);
       button.addEventListener('click', (event) => {
         if (target) options.onButtonClick?.(event, target);
@@ -307,6 +333,12 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
     const playerRecords = records.filter(record => player.contains(record.target));
     if (playerRecords.length === 0) return;
     const isOwned = (node: Node) => node instanceof Element && Boolean(node.closest('.fluent-read-video-ui'));
+    // 原按钮仍在正确锚点时也可能新插入无监听的副本；只检查本实例所持控制栏，避免字幕/tooltip 自身更新触发重新扫描。
+    const addsOwnedButtonCopy = (node: Node): boolean => {
+      if (!(node instanceof Element) || !host?.contains(node)) return false;
+      return (node !== button && node.matches(ownedButtonSelector))
+        || Array.from(node.querySelectorAll(ownedButtonSelector)).some(copy => copy !== button);
+    };
     const correctlyPlaced = button?.parentElement === host && button?.nextElementSibling === before;
     const controlSelector = [VIDEO_RIGHT_CONTROLS_SELECTOR, FULLSCREEN_CONTROL_SELECTOR,
       PICTURE_IN_PICTURE_CONTROL_SELECTOR, VIDEO_X_SETTINGS_CONTROL_SELECTOR].join(', ');
@@ -318,6 +350,7 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
         || node.querySelector('button, [role="button"]')));
     };
     if (playerRecords.every(record => {
+      if (record.type === 'childList' && Array.from(record.addedNodes).some(addsOwnedButtonCopy)) return false;
       if (isOwned(record.target)) return true;
       if (record.type === 'attributes') return !affectsControls(record.target);
       const nodes = [...record.addedNodes, ...record.removedNodes];

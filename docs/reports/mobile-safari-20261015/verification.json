@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "recordedAt": "2026-10-15T10:48:43.211715+00:00",
+  "recordedAt": "2026-10-15T11:44:09.493894+00:00",
   "baseCommit": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
   "branch": "codex/mobile-safari-product-20261015",
   "overallGoalComplete": false,
   "status": "formal Safari UTF-8 and free-service permission policy reviewed; Simulator runtime checks tracked separately; physical-device acceptance pending",
   "evidenceRoot": "research/mobile-safari-20261015 (workspace level, outside repository)",
-  "sourceSnapshotSha256": "879ff2caccd2a711f977dc6c448a2564732999233d4c2849abe2cda05b4e3752",
+  "sourceSnapshotSha256": "30d5ba357533e0fdce419704463d51d8c6c248a560d87c8536bb24197bdfecd7",
   "changedRuntimeSources": {
     "package.json": "f2d0cb391c8a4049f85cacd393069f39bb62de49f2bf79558ae4e31f86991871",
     "scripts/safari/container/Main.html": "8359d2ff5a18fc2c655ef8798869b242b7c8495fa9a4575919213a2226d7789e",
@@ -44,7 +44,7 @@
     "src/features/video-subtitle/content/runtime.ts": "2ccd7ad37e76eab5f0905ae1d075e1437e5b7cf858fcf7844c59077bb568dc2c",
     "src/features/video-subtitle/content/translationCache.ts": "ecdda524d2891a331fbd7068e313a828e0fee39f71bcad1e33a65fde8477514b",
     "src/features/video-subtitle/content/ui.ts": "1c24a4e2ba8491df3e9fc583801bc7fd1cd016e7dc80613da32b292fbc177499",
-    "src/features/video-subtitle/content/videoPlayerBinding.ts": "f68544937394c992abdd89756d4640ef752107f3c3648dd5c60642c68ad788b4",
+    "src/features/video-subtitle/content/videoPlayerBinding.ts": "fe5b3cc8f9825f2a513d419efcb4c1627eda43eb713a4e752fe19e65d38abe37",
     "src/features/video-subtitle/content/videoPlayerLocator.ts": "67ff409285b5116088605c13174ea0b9a7881f2ac08f1aed73e68e73f8ddba97",
     "src/features/video-subtitle/content/youtubeHumanCaptions.ts": "675e1a19dc0de7b787bb6b56775ff0ae020e84368634c9750a2136c5cfd2e86e",
     "src/platform/browser/freeProviderPermissions.ts": "eb2d47c062e0c476e190b53059761d25607e4355bc47aea85cead162752a6f8a",
@@ -103,8 +103,8 @@
             "build:safari"
           ],
           "exitCode": 0,
-          "seconds": 25.54,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/safari.log"
+          "seconds": 27.41,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/youtube-controls-clone-final/safari.log"
         },
         {
           "name": "safari-verify",
@@ -117,8 +117,8 @@
             "--verify"
           ],
           "exitCode": 0,
-          "seconds": 0.26,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/safari-verify.log"
+          "seconds": 0.28,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/youtube-controls-clone-final/safari-verify.log"
         },
         {
           "name": "chrome",
@@ -127,8 +127,8 @@
             "build"
           ],
           "exitCode": 0,
-          "seconds": 25.21,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/chrome.log"
+          "seconds": 24.85,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/youtube-controls-clone-final/chrome.log"
         },
         {
           "name": "firefox",
@@ -137,8 +137,8 @@
             "build:firefox"
           ],
           "exitCode": 0,
-          "seconds": 27.35,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/firefox.log"
+          "seconds": 25.34,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/youtube-controls-clone-final/firefox.log"
         },
         {
           "name": "extension-manifests",
@@ -150,8 +150,8 @@
             "scripts/testing/verify-extension-manifests.mjs"
           ],
           "exitCode": 0,
-          "seconds": 0.32,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/extension-manifests.log"
+          "seconds": 0.66,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/youtube-controls-clone-final/extension-manifests.log"
         },
         {
           "name": "userscript",
@@ -160,8 +160,8 @@
             "build:userscript"
           ],
           "exitCode": 0,
-          "seconds": 5.89,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/userscript.log"
+          "seconds": 6.28,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/youtube-controls-clone-final/userscript.log"
         },
         {
           "name": "userscript-verify",
@@ -174,7 +174,7 @@
           ],
           "exitCode": 0,
           "seconds": 0.18,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/userscript-verify.log"
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/youtube-controls-clone-final/userscript-verify.log"
         },
         {
           "name": "audit",
@@ -186,13 +186,13 @@
             "test:audit"
           ],
           "exitCode": 0,
-          "seconds": 2.82,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/audit.log"
+          "seconds": 2.96,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/youtube-controls-clone-final/audit.log"
         }
       ],
-      "safari": "validation/mobile-selection-menu-final/safari.log",
-      "safariVerify": "validation/mobile-selection-menu-final/safari-verify.log",
-      "chromeFirefoxManifests": "validation/mobile-selection-menu-final/extension-manifests.log",
+      "safari": "validation/youtube-controls-clone-final/safari.log",
+      "safariVerify": "validation/youtube-controls-clone-final/safari-verify.log",
+      "chromeFirefoxManifests": "validation/youtube-controls-clone-final/extension-manifests.log",
       "intermediateCssOnlyResults": [
         {
           "name": "safari",
@@ -935,7 +935,7 @@
     },
     "latestTypes": {
       "passed": true,
-      "log": "validation/mobile-native-touch-final/selection-native-menu-compile.log"
+      "log": "validation/video-binding-clone-fix/compile.log"
     },
     "nativeSheetTouchMargin": {
       "cssPixels": 46,
@@ -996,7 +996,55 @@
     },
     "finalDocs": {
       "passed": true,
-      "log": "validation/mobile-selection-menu-final/docs-final.log"
+      "log": "validation/youtube-controls-clone-final/docs-final.log",
+      "scope": "Updated clone-fix and actual YouTube evidence report; VitePress build passed"
+    },
+    "videoControlsClone": {
+      "scope": "Controls DOM clone ownership; fixture proof only, actual mobile YouTube cloning not established",
+      "createdAt": "2026-10-15T11:04:18.351149+00:00",
+      "worktree": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015",
+      "head": "915672c7ced3bbbe118d7074f7c6e314b8242163",
+      "sourceSha256": {
+        "src/features/video-subtitle/content/videoPlayerBinding.ts": "fe5b3cc8f9825f2a513d419efcb4c1627eda43eb713a4e752fe19e65d38abe37",
+        "tests/videoPlayerBinding.test.ts": "0325465319538598c9980b92fe9c6a2fd5865fb90cd69fd390d0300f96bee98d"
+      },
+      "before": {
+        "cases": 44,
+        "passed": 42,
+        "failed": 2,
+        "failure": "two same-id buttons after controls.cloneNode(true), both unchanged media and new media key; cloned button retains data-bound but has no event listener",
+        "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/video-binding-clone-fix/before.log"
+      },
+      "after": {
+        "cases": 46,
+        "passed": 46,
+        "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/video-binding-clone-fix/after.log",
+        "coverage": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/video-binding-clone-fix/coverage-summary.json",
+        "dimensions": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        }
+      },
+      "related": {
+        "files": 5,
+        "cases": 152,
+        "passed": 152,
+        "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/video-binding-clone-fix/related.log"
+      },
+      "commands": {
+        "before": "node scripts/testing/run-resource-safe.mjs --max-workers 1 --concurrency 3 -- pnpm exec vitest run tests/videoPlayerBinding.test.ts --reporter=dot",
+        "after": "node scripts/testing/run-resource-safe.mjs --max-workers 1 --concurrency 3 -- pnpm exec vitest run tests/videoPlayerBinding.test.ts --config vitest.coverage.config.ts --coverage.include=src/features/video-subtitle/content/videoPlayerBinding.ts --coverage.reportsDirectory=/private/tmp/video-binding-clone-coverage --reporter=dot",
+        "related": "node scripts/testing/run-resource-safe.mjs --max-workers 1 --concurrency 3 -- pnpm exec vitest run tests/videoPlayerBinding.test.ts tests/videoPlayerLocator.test.ts tests/videoSubtitleTrackPriorityRuntime.test.ts tests/videoSubtitleViewport.test.ts tests/videoNativeFullscreen.test.ts --reporter=dot"
+      },
+      "scopeLimits": [
+        "No runtime module edits",
+        "No build or device/browser operations",
+        "Clone removal restricted to the old/current held controls host and exact binding instance marker",
+        "Other binding markers, same-id page nodes and clones outside held host remain untouched"
+      ],
+      "diffCheck": "passed"
     }
   },
   "productionBrowserSuites": [
@@ -1139,17 +1187,17 @@
   ],
   "artifacts": {
     "chrome": {
-      "sha256": "19f97c5473fbccbf8e31a0ad3e6ac81034597ed098e5adb033fa232a0c2cacb8",
+      "sha256": "f3fa12651d08ed60c7d38a259507c4650d8d6f144960c37bd40f8649ec5b9fc6",
       "files": 473,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "firefox": {
-      "sha256": "d411dffbcba76c903d1504715a1ca4c84a88a9b2b91fabfb76950611954c648c",
+      "sha256": "b5d3c4ba033952ddc77ec5d941427a1b4d5aae68ea8fcfaaacd921d6f92f73f4",
       "files": 473,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "safari": {
-      "sha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+      "sha256": "730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f",
       "files": 462,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
@@ -1160,11 +1208,11 @@
     }
   },
   "safari": {
-    "createdAt": "2026-10-15T10:35:05.373Z",
-    "artifactStatus": "Safari selection menu reviewed source wrapper with 46px coarse CSS; UI/device acceptance separately owned by root",
+    "createdAt": "2026-10-15T11:09:50.841Z",
+    "artifactStatus": "Safari controls clone ownership fix wrapper; actual YouTube/AVKit acceptance separately owned by root",
     "researchProbe": false,
     "reviewed": true,
-    "productionWebResourceSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+    "productionWebResourceSha256": "730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f",
     "productionWebResourceCount": 462,
     "nativeContainerSourceSha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
     "wrapper": {
@@ -1172,17 +1220,17 @@
       "version": "0.0.38",
       "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
       "checkedReferences": 10,
-      "buildSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+      "buildSha256": "730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f",
       "artifactCount": 462,
       "packager": {
         "name": "safari-web-extension-packager",
         "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/safari-web-extension-packager"
       },
       "projects": [
-        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-mobile-selection-menu-final/FluentRead/FluentRead.xcodeproj"
+        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-youtube-controls-clone-final/FluentRead/FluentRead.xcodeproj"
       ],
       "copiedExtensions": [
-        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-mobile-selection-menu-final/FluentRead/Shared (Extension)/Resources"
+        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-youtube-controls-clone-final/FluentRead/Shared (Extension)/Resources"
       ],
       "containerGuides": [
         {
@@ -1215,118 +1263,125 @@
     },
     "platforms": {
       "iosSimulator": {
-        "createdAt": "2026-10-15T10:35:05.369Z",
+        "createdAt": "2026-10-15T11:09:50.839Z",
         "platform": "iosSimulator",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-mobile-selection-menu-final/Build/Products/Release-iphonesimulator/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-mobile-selection-menu-final/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-youtube-controls-clone-final/Build/Products/Release-iphonesimulator/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-youtube-controls-clone-final/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
           "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+          "buildSha256": "730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f",
           "artifactCount": 462
         },
-        "compiledWebResourceSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+        "compiledWebResourceSha256": "730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f",
         "compiledWebResourceCount": 462,
         "nativeExtras": [
           "FluentRead Extension",
           "Info.plist"
         ],
-        "nativeExecutableSha256": "08f1f40e5a24f5c3ff02e4367b0cbc1d1cb6326ae110e4bb2068da148ca33f32",
+        "nativeExecutableSha256": "6b0a4b7aad464c42dc5046b5a93a32494892a8944c38526dfa18e4676631bdea",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-mobile-selection-menu-final.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-youtube-controls-clone-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-mobile-selection-menu-final.log",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-youtube-controls-clone-final.log",
         "signatureInspectionExitCode": 0,
         "signatureSummary": "linker ad-hoc; no developer team",
         "installedByThisAgent": false,
         "launchedByThisAgent": false
       },
       "macos": {
-        "createdAt": "2026-10-15T10:36:12.853Z",
+        "createdAt": "2026-10-15T11:11:04.189Z",
         "platform": "macos",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-mobile-selection-menu-final/Build/Products/Release/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-mobile-selection-menu-final/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-youtube-controls-clone-final/Build/Products/Release/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-youtube-controls-clone-final/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
           "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+          "buildSha256": "730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f",
           "artifactCount": 462
         },
-        "compiledWebResourceSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+        "compiledWebResourceSha256": "730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f",
         "compiledWebResourceCount": 462,
         "nativeExtras": [],
-        "nativeExecutableSha256": "95a73bcd61ec226e4466465c97fa8970789d320d54c66ae623b6c50638ca583c",
+        "nativeExecutableSha256": "9333a61ff06021755ba579b583c526184b162170c63d51bbba9e12e79b84a8ca",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-mobile-selection-menu-final.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-youtube-controls-clone-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-mobile-selection-menu-final.log",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-youtube-controls-clone-final.log",
         "signatureInspectionExitCode": 0,
         "signatureSummary": "linker ad-hoc; no developer team",
         "installedByThisAgent": false,
         "launchedByThisAgent": false
       },
       "iphoneos": {
-        "createdAt": "2026-10-15T10:37:06.707Z",
+        "createdAt": "2026-10-15T11:11:49.736Z",
         "platform": "iphoneos",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-mobile-selection-menu-final/build/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-mobile-selection-menu-final/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-youtube-controls-clone-final/build/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-youtube-controls-clone-final/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
           "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+          "buildSha256": "730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f",
           "artifactCount": 462
         },
-        "compiledWebResourceSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+        "compiledWebResourceSha256": "730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f",
         "compiledWebResourceCount": 462,
         "nativeExtras": [
           "FluentRead Extension",
           "Info.plist"
         ],
-        "nativeExecutableSha256": "e74ca9864bc45c2912b8716b7a67ab5fea12e5bf76d2d94040c729b63b0002f7",
+        "nativeExecutableSha256": "4832f3e1379ba1af4df0aea94612e54c703b009030e8cd112dff52377b9a9020",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-mobile-selection-menu-final.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-youtube-controls-clone-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-mobile-selection-menu-final.log",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-youtube-controls-clone-final.log",
         "signatureInspectionExitCode": 1,
         "signatureSummary": "unsigned; no developer team",
         "installedByThisAgent": false,
         "launchedByThisAgent": false
       }
     },
-    "previousAcceptance": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-mobile-native-touch-final.json",
-    "previousProductionWebResourceSha256": "d040dad230fb0ab3f1d47de4eea37e1dc52b7504491cbf9c6d5ed712c99b064c",
-    "priorAcceptedInteractionVersion": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-mobile-reviewed-final.json",
-    "formalWebBuildLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-selection-menu-final/safari.log",
-    "versionHistoryNote": "Root reports Safari touch explicit selection entry clears the same native selection while preserving independent snapshot ownership and reverse target behavior. Source lifecycle checks are separately owned by root. d040 is a preserved intermediate build. No assertion that minified JS bytes equal prior versions; this report verifies all current compiled resources against e3f9.",
+    "previousAcceptance": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-mobile-selection-menu-final.json",
+    "previousProductionWebResourceSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+    "priorAcceptedInteractionVersion": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-mobile-selection-menu-final.json",
+    "formalWebBuildLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/youtube-controls-clone-final/safari.log",
+    "versionHistoryNote": "This wrapper adds the bounded controls clone ownership fix. Local deep-clone fixtures establish the duplicate inert-button boundary but do not establish that real mobile YouTube cloned its controls. Root separately reports actual English/Chinese AVKit fullscreen on the preserved e3f9 build; those results are not relabeled as acceptance of this new build. No assertion that minified JavaScript bytes equal prior versions. All current compiled web resources are verified against 730bdbb3.",
     "nativeBuildsComplete": true,
-    "updatedAt": "2026-10-15T10:37:06.708Z"
+    "updatedAt": "2026-10-15T11:11:49.738Z",
+    "buildSourceHead": "915672c7ced3bbbe118d7074f7c6e314b8242163",
+    "controlsCloneValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/video-binding-clone-fix/summary.json",
+    "compileLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/video-binding-clone-fix/compile.log",
+    "formalWebValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/youtube-controls-clone-final/results.json",
+    "copiedResourceDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/resources-delta-selection-menu-to-clone-final.json",
+    "schemeInspectionLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/schemes-youtube-controls-clone-final.log",
+    "currentDeviceAcceptance": "Not performed by this agent. Root/UI agent owns installation and real Safari/AVKit/custom-menu acceptance."
   },
   "review": {
     "code": "independent scoped review found no remaining confirmed P1/P2 regressions",
@@ -1445,6 +1500,16 @@
       "status": "completed",
       "updatedAt": "2026-10-15T09:41:55Z",
       "url": "https://github.com/FluentRead/FluentRead/actions/runs/38709422336"
+    },
+    "ciPermissionsSuccess": {
+      "id": 38722958827,
+      "html_url": "https://github.com/FluentRead/FluentRead/actions/runs/38722958827",
+      "head_sha": "915672c7ced3bbbe118d7074f7c6e314b8242163",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T10:49:17Z",
+      "updated_at": "2026-10-15T11:35:35Z",
+      "report": "pr995-ci-permissions-success.json"
     }
   },
   "sourceSnapshotScope": "Runtime, build and native container files changed relative to baseCommit, including untracked source files; documentation excluded",
@@ -1763,6 +1828,13 @@
       "runtimeReport": "ios-ui-harness/formal-permissions-acceptance.json",
       "scope": "Zero grants, exact deny/retry/allow, actual translation/restore/retranslation/reload; older touch failure retained separately"
     },
+    "menuRepairArtifact": {
+      "commit": "915672c7ced3bbbe118d7074f7c6e314b8242163",
+      "nativeReport": "safari/acceptance-mobile-selection-menu-final.json",
+      "sourceSnapshotSha256": "879ff2caccd2a711f977dc6c448a2564732999233d4c2849abe2cda05b4e3752",
+      "webTreeSha256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+      "scope": "Native selection/menu/copy/new source and actual sheet target dimensions passed; production YouTube English/Chinese native rendering passed; custom menu and Off findings separately retained"
+    },
     "nativeTouch44Artifact": {
       "nativeReport": "safari/acceptance-mobile-reviewed-final.json",
       "sourceSnapshotSha256": "10c62a7c6b6d50772daf0f14e80e72af299d0f8f33f6da65c8a2955ec1a8ca96",
@@ -1778,7 +1850,7 @@
       "safari/acceptance-utf8-final.json"
     ]
   },
-  "productionBrowserSuitesScope": "Initial Edge suites retain their original artifact identity. The permission-policy revision has a separate current-production Chrome popup regression; none is physical-device acceptance.",
+  "productionBrowserSuitesScope": "Initial, permission, popup and selection suites retain their own versioned artifacts. The clone revision has its separate productionVideoControlsClone suite; none is physical-device acceptance.",
   "formalSimulatorRuntime": {
     "report": "ios-ui-harness/formal-permissions-acceptance.json",
     "sha256": "dd8fd62260ab93f8697fdb1101455c25d2485f7e4dafaae20fe24d76203308aa",
@@ -2913,7 +2985,7 @@
     "report": "selection-menu-chrome-final/report.json",
     "sha256": "90b5b1b9776d81c4e9d3a7a57ac28bd1272747e564ef346ff07807ddcae716eb",
     "passed": 8,
-    "scope": "Final Chrome artifact: actual indicator handler preserves native Selection; controlled Microsoft responses, CDP touch plus DOM Range and explicit viewport/lifecycle fixtures; not Safari/physical acceptance",
+    "scope": "Prior e3-stage Chrome artifact (before the video binding clone fix): actual indicator handler preserves native Selection; controlled Microsoft responses, CDP touch plus DOM Range and explicit viewport/lifecycle fixtures; not Safari/physical acceptance",
     "review": {
       "ok": true,
       "casesPassed": 8,
@@ -2989,6 +3061,394 @@
       },
       "pageErrors": [],
       "noSourceBuildOrDeviceAction": true
+    }
+  },
+  "productionVideoControlsClone": {
+    "report": "video-binding-clone-production/report.json",
+    "sha256": "686cc22efa76ea841b60d1044602065bffb3ab528dd4c01ecd064a8c13ece507",
+    "review": {
+      "ok": true,
+      "casesPassed": 5,
+      "caseResults": [
+        {
+          "name": "01-baseline-menu-opens",
+          "buttonCount": 1,
+          "menuCount": 1,
+          "menuVisible": true,
+          "baselineButtonConnected": true,
+          "sameBaselineButton": true,
+          "liveParent": "ytp-right-controls"
+        },
+        {
+          "name": "02-deep-cloned-controls-auto-repair-menu-opens",
+          "buttonCount": 1,
+          "menuCount": 1,
+          "menuVisible": true,
+          "deadCloneConnected": false,
+          "baselineButtonConnected": true,
+          "sameBaselineButton": true,
+          "liveParent": "ytp-right-controls",
+          "repairElapsedMs": 115.40000009536743
+        },
+        {
+          "name": "03-empty-controls-auto-repair-menu-opens",
+          "buttonCount": 1,
+          "menuCount": 1,
+          "menuVisible": true,
+          "deadCloneConnected": false,
+          "baselineButtonConnected": true,
+          "sameBaselineButton": true,
+          "liveParent": "ytp-right-controls",
+          "repairElapsedMs": 114.59999990463257
+        },
+        {
+          "name": "04-moved-controls-retain-live-handler",
+          "buttonCount": 1,
+          "menuCount": 1,
+          "menuVisible": true,
+          "deadCloneConnected": false,
+          "baselineButtonConnected": true,
+          "sameBaselineButton": true,
+          "liveParent": "ytp-right-controls",
+          "repairElapsedMs": 113.59999990463257
+        },
+        {
+          "name": "05-disabled-cleanup-no-remount-on-controls-mutation",
+          "buttonCount": 0,
+          "menuCount": 0,
+          "menuVisible": false,
+          "deadCloneConnected": false,
+          "baselineButtonConnected": false,
+          "sameBaselineButton": false,
+          "repairElapsedMs": 1662.5999999046326
+        }
+      ],
+      "runnerExitCode": 0,
+      "researchRunner": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/video-binding-clone-production/run.cjs",
+      "basedOn": "scripts/run-mobile-video-subtitle-test.cjs",
+      "scope": "Controlled mobile YouTube fixture binding integration only; native-fullscreen and broad caption/translation suite removed.",
+      "automaticRepair": "All mutation repair DOM polling completes before any further click/pointer input. No binding.sync/private runtime functions are called. Existing observer/runtime periodic synchronization may repair the DOM.",
+      "deepClone": {
+        "attributes": {
+          "id": "fluent-read-video-subtitle-button",
+          "class": "ytp-button fluent-read-video-subtitle-button fluent-read-video-ui notranslate fluent-read-video-subtitle-active",
+          "type": "button",
+          "role": "button",
+          "aria-pressed": "true",
+          "aria-expanded": "false",
+          "aria-haspopup": "menu",
+          "aria-controls": "fluent-read-video-subtitle-menu",
+          "aria-label": "流畅阅读字幕翻译：已开启",
+          "title": "流畅阅读字幕翻译：已开启",
+          "data-fluent-read-ui": "video-subtitle",
+          "translate": "no",
+          "data-fluent-read-click-bound": "true",
+          "data-fluent-read-video-binding-owner": "1792062914827-0.7327514846008654"
+        },
+        "originalAttributes": {
+          "id": "fluent-read-video-subtitle-button",
+          "class": "ytp-button fluent-read-video-subtitle-button fluent-read-video-ui notranslate fluent-read-video-subtitle-active",
+          "type": "button",
+          "role": "button",
+          "aria-pressed": "true",
+          "aria-expanded": "false",
+          "aria-haspopup": "menu",
+          "aria-controls": "fluent-read-video-subtitle-menu",
+          "aria-label": "流畅阅读字幕翻译：已开启",
+          "title": "流畅阅读字幕翻译：已开启",
+          "data-fluent-read-ui": "video-subtitle",
+          "translate": "no",
+          "data-fluent-read-click-bound": "true",
+          "data-fluent-read-video-binding-owner": "1792062914827-0.7327514846008654"
+        },
+        "clonedOwnClickProperty": false,
+        "initialCopiedEntryCount": 1,
+        "repairedBeforeClick": true
+      },
+      "artifactTree": {
+        "algorithm": "sha256 of sorted UTF-8 records: relativePath NUL fileSha256 NUL byteLength LF",
+        "sha256": "50495a26d0452a887a16f53fd7e511e5aa54ef7fc7f44ef265c2a62fdef89290",
+        "fileCount": 473,
+        "totalBytes": 61933916
+      },
+      "artifactUnchangedDuringValidation": true,
+      "evidenceLimits": [
+        "Controlled m.youtube.com HTML/player/timedtext fixture, not actual YouTube DOM/network",
+        "Production extension with mocked Microsoft response only",
+        "Chromium viewport and trusted CDP touch/pointer; no native mobile/AVKit/fullscreen operation",
+        "No call to binding.sync or business-private functions; repair must finish automatically before any click"
+      ],
+      "deactivationBoundary": "Public persisted on:false cleanup and subsequent controls mutation observed; no private destroy call or listener-introspection claim.",
+      "mockTranslationRequests": 1,
+      "consoleErrors": [],
+      "workerConsoleErrors": [],
+      "errors": [],
+      "focus": {
+        "launchMode": "macos-background-cdp",
+        "focusPolicy": "launchservices-no-foreground",
+        "windowPlacement": {
+          "mode": "background-visible-no-focus",
+          "visible": true,
+          "hidden": false,
+          "centered": true,
+          "windowState": "normal",
+          "bounds": {
+            "left": 212,
+            "top": -990,
+            "width": 1280,
+            "height": 900
+          },
+          "displayTarget": "secondary",
+          "source": "macos-nsscreen",
+          "screenIndex": 1,
+          "browserFrontmost": false,
+          "frontmostBefore": {
+            "pid": 65658,
+            "name": "问题报告程序"
+          },
+          "frontmostAfter": {
+            "pid": 65658,
+            "name": "问题报告程序"
+          }
+        },
+        "focusEvents": []
+      },
+      "cleanup": {
+        "browserCloseReceipt": "shared-guard-fulfilled",
+        "profileRemoved": true,
+        "profileActuallyAbsent": true
+      },
+      "visualReview": {
+        "reviewed": [
+          "02-deep-cloned-controls-auto-repair-menu-opens.png",
+          "03-empty-controls-auto-repair-menu-opens.png",
+          "05-disabled-cleanup-no-remount-on-controls-mutation.png"
+        ],
+        "result": "Actual production menu is visible after clone/empty-host repair; only one FluentRead entry remains. Disabled screenshot contains no FluentRead menu/entry/translation layer."
+      },
+      "realYouTubeRootCause": "Still unconfirmed: this demonstrates only the reproduced DOM-clone lifecycle against controlled HTML, not actual YouTube/player mutations.",
+      "noProductionOrRepositoryTestEditsBuildOrDeviceAction": true
+    }
+  },
+  "productionYouTubeRuntime": {
+    "report": "ios-ui-harness/production-youtube-acceptance.json",
+    "sha256": "4873a1fa1cdc7a4a3d01b0d3391a06aaf1654295d2bdc62c987dfa1f841ac44a",
+    "results": {
+      "updatedAtEpochMs": 1792063111247,
+      "scope": "Real public YouTube production extension runtime in task-owned iOS26.2 Safari; separate from exact-module AVKit fixture",
+      "status": "e3 production inline English/Chinese and moving AVKit bilingual/FluentRead track/exit restored passed; native Off selected-item click retained captions (not passed); custom menu and ad duplicate observations awaiting separate clone-version retest",
+      "device": {
+        "udid": "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
+        "name": "FluentRead-PR995-FreshPermissions-20261015",
+        "createdAt": "2026-10-15T09:38:41.634Z",
+        "ownedBy": "FluentRead PR995 fresh permission acceptance",
+        "previousDevicePreserved": "3D298EC7-49B4-4FDB-BD68-4AF09792BCBE"
+      },
+      "artifact": {
+        "webTreeSHA256": "e3f9c03a4d08d6325b0761924ff32dc48d7fdbda13759d376096275c541ea544",
+        "containerNativeSHA256": "08f1f40e5a24f5c3ff02e4367b0cbc1d1cb6326ae110e4bb2068da148ca33f32",
+        "extensionNativeSHA256": "4e21a5a153e3a1af4eff1fc38a8883c9ef81a5afb73b5a292d9aeb18d49d4f35",
+        "nativeGuideSourceSnapshotSHA256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55"
+      },
+      "candidate": "https://www.youtube.com/watch?v=R0JKCYZ8hng",
+      "sitePermissionsPolicy": "Only actual youtube.com/m.youtube.com host, one day; no all-sites, no sign-in",
+      "providerPolicy": "Retained default free; one exact Microsoft edge grant; no additional unknown provider domain approvals",
+      "invalidHarnessRuns": [
+        {
+          "stem": "production-youtube-open",
+          "reason": "xcodebuild returned success but totalTestCount=0; no product UI actions counted, subsequent same-case separate run actually discovered test"
+        }
+      ],
+      "cases": {
+        "publicVideoLoadsAndPlays": "passed-actual-native-screenshot; Chinese localized title",
+        "exactMobileHostGrant": "passed",
+        "productionSubtitleEntryInjected": "passed-actual-AX-and-screenshot",
+        "subtitleMenu": "not-passed: first semantic tap left no steady menu in AX/screenshot; no menu success claim",
+        "nativePlayerMediaNodeTap": "input-precondition-inconclusive: media node exists but isHittable false; no actual tap",
+        "semanticPlayerContainerTap": "executed on post-autoplay different video/ad; not candidate acceptance",
+        "candidatePaused": "passed actual 播放视频 button after 暂停视频 native touch",
+        "autoplayDisabled": "observed value0; later site caption reconfiguration reset value1, no persistence claim",
+        "humanEnglishTrack": "passed real language list named 英语 versus 英语(自动生成), selected via semantic menu tap",
+        "productionInlineBilingual": "passed-actual-English-source-and-Chinese-FR-overlay",
+        "genuineAVKitControls": "passed Close Button/PlayPause/Overflow Menu in native top-level window",
+        "nativeMovingBilingual": "passed-viewed-real-video-caption-changes",
+        "nativeProductionTrackListed": "passed actual native menu FluentRead",
+        "nativeOff": "not-passed: semantic click of already-selected native Off then5s screenshot still bilingual; selection badge contradictory, no root-cause attribution",
+        "nativeExitRestore": "passed: native Close returned same candidate inline English+Chinese subtitle overlay, paused about3:52"
+      },
+      "screenshots": [
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-open-retry-evidence/production-youtube-00-initial-actual-ui.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-site-grant-evidence/production-youtube-04-actual-production-popup-after-site-grant.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-subtitle-menu-evidence/production-youtube-05-real-fluentread-subtitle-menu.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-semantic-player-evidence/production-youtube-09-semantic-player-container-tap.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-human-english-evidence/production-youtube-20-after-human-english-track-choice.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-native-fullscreen-evidence/production-youtube-22-fullscreen-actual-controls.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-native-proof-evidence/production-youtube-24-genuine-native-avkit-controls.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-native-proof-evidence/production-youtube-25-playing-native-bilingual-render.png",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-native-proof-evidence/production-youtube-26-real-native-production-track-list.png"
+      ],
+      "guards": [
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-open-retry-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-entry-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-site-grant-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-subtitle-menu-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-player-controls-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-controls-state-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-semantic-player-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-permission-inspect-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-return-candidate-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-native-entry-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-native-player-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-pause-settings-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-caption-languages-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-human-english-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-native-fullscreen-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-native-proof-guard-report.json",
+        "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-native-off-exit-guard-report.json"
+      ],
+      "limitations": [
+        "iOS Simulator, not physical iPhone",
+        "No production YouTube success inferred from module-only fixture",
+        "Candidate autoplay completed before English-track/fullscreen control discovery; later ad/page is not used to claim candidate results",
+        "Unknown additional-permission banner preserved and not approved"
+      ],
+      "actualURL": "https://m.youtube.com/watch?v=R0JKCYZ8hng&pp=0gcJCY8Co7VqN5tD&ra=m",
+      "siteGrant": {
+        "actualAlert": "“流畅阅读”想要访问m.youtube.com。",
+        "choice": "允许1天",
+        "allSites": false
+      },
+      "observedProduction": {
+        "subtitleSwitch": "流畅阅读字幕翻译：已开启",
+        "frame": {
+          "x": 350,
+          "y": 284,
+          "width": 44,
+          "height": 45
+        },
+        "panel": "流畅阅读双语视频字幕",
+        "sourceOverlay": "YouTube 整段原文字幕",
+        "currentNativeCaptionLanguage": "Chinese; current target same as native, no English→Chinese provider claim",
+        "popupAvailableServices": 1,
+        "popupEnabledServices": 17
+      },
+      "postAutoplayObservation": {
+        "banner": "流畅阅读, 已请求额外权限, 检查",
+        "approved": false,
+        "nativeAlerts": [],
+        "candidateChanged": true,
+        "actualNewPageTitlePrefix": "How to practice effectively...for just about any",
+        "adTitle": "Introducing Grok Bot",
+        "subtitleButtonInstanceCount": 2,
+        "screenshot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-semantic-player-evidence/production-youtube-09-semantic-player-container-tap.png",
+        "notCountedForCandidate": true,
+        "additionalInspection": "banner self-disappeared before next case; 检查 absent so no domain read/no tap/no additional grant",
+        "entryFrames": [
+          {
+            "frame": {
+              "height": 45,
+              "width": 44,
+              "x": 306,
+              "y": 284
+            },
+            "hittable": true,
+            "label": "流畅阅读字幕翻译：已开启"
+          },
+          {
+            "frame": {
+              "height": 45,
+              "width": 44,
+              "x": 350,
+              "y": 284
+            },
+            "hittable": true,
+            "label": "流畅阅读字幕翻译：已开启"
+          }
+        ]
+      },
+      "inlineEvidence": {
+        "videoFrame": {
+          "x": 0,
+          "y": 110,
+          "width": 402,
+          "height": 226
+        },
+        "panelFrame": {
+          "x": 43,
+          "y": 265,
+          "width": 316,
+          "height": 60
+        },
+        "English": "as opposed to, say, sports or painting?",
+        "Chinese": "和体育或绘画相比？",
+        "nativeSiteLanguageBefore": "中文（中国）",
+        "chosenNativeSiteLanguage": "英语",
+        "target": "Simplified Chinese",
+        "providerAttribution": "unproven: no network instrumentation; do not claim machine provider or human track cache origin from screenshot alone"
+      },
+      "nativeEvidence": {
+        "nativeWindow": true,
+        "nativeControls": [
+          "Close Button",
+          "Play/Pause",
+          "Overflow Menu"
+        ],
+        "playingCaptionEnglish": "Neuroscientists have explored these issues, but so far,",
+        "playingCaptionChinese": "神经科学家们已经探讨了这些问题，但到目前为止，",
+        "actualNativeTrack": "FluentRead",
+        "trackSelectedBadgeCaveat": "Menu badge reported Off while dynamic bilingual rendered; no rendering inference from badge",
+        "noDOMShim": true,
+        "realEnterFullscreenButton": true
+      },
+      "freshReturnEntry": {
+        "count": 1,
+        "frame": {
+          "x": 350,
+          "y": 284,
+          "width": 44,
+          "height": 45
+        },
+        "hittable": true,
+        "nativeShortPressImmediateMenuLabelCount": 0,
+        "status": "menu not passed; fresh navigation does not establish handler identity"
+      },
+      "guardSummary": {
+        "allFocusEvents": [],
+        "allHostSimulatorPIDs": [],
+        "allViolations": [],
+        "failedHarnessRun": "production-youtube-player-controls: media node nonhittable, input not established"
+      },
+      "nativeOffEvidence": {
+        "screenshot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-native-off-exit-evidence/production-youtube-27-after-real-native-off-five-seconds.png",
+        "actualNativeOffSelectedBeforeClick": true,
+        "captionStillVisibleAfter5Seconds": true,
+        "notClaimedPassed": true,
+        "explicitFluentReadThenOffTransition": "notrun; deferred to focus clone menu update"
+      },
+      "nativeExitEvidence": {
+        "screenshot": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/production-youtube-native-off-exit-evidence/production-youtube-28-exit-returned-real-inline-subtitles.png",
+        "sameCandidate": true,
+        "englishSource": "Neuroscientists have explored these issues, but so far,",
+        "chineseTranslation": "神经科学家们已经探讨了这些问题，但到目前为止，",
+        "paused": true
+      },
+      "cloneControlsRetest": {
+        "status": "in-progress",
+        "scope": "730b normal update over e3; actual single entry/menu only, then explicit native FluentRead→Off contrast; old e3 native results retained",
+        "artifact": {
+          "webTreeSHA256": "730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f",
+          "containerNativeSHA256": "6b0a4b7aad464c42dc5046b5a93a32494892a8944c38526dfa18e4676631bdea",
+          "extensionNativeSHA256": "633f0c5b50ae656f0cbdb1e0bda8ffff1c76db349d5ccd5df2ee4d1de10c7416"
+        },
+        "identityFile": "formal-youtube-clone-final-installed-identity.json",
+        "updateUninstalled": false,
+        "productionResourceDiffVsE3": "only content-scripts/content.js,461 others byte-identical (packaging evidence)",
+        "guards": [
+          "formal-youtube-clone-final-terminate-guard.json",
+          "formal-youtube-clone-final-install-guard.json"
+        ],
+        "newProviderGrants": false
+      }
     }
   }
 }
