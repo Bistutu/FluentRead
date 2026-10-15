@@ -1,4 +1,5 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
+import * as materialCapture from '@/userscript/materialCapture';
 // Node 配置不编译 Vue 组件；空运行契约应能独立加载，不需要 mock 设置 UI。
 import {VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE as extensionTranscriptionStateMessage} from '@/src/features/video-subtitle/transcription';
 import {
@@ -24,6 +25,20 @@ import {
 } from '@/userscript/unsupportedCapabilities';
 
 describe('userscript extension-only capability stubs', () => {
+    it('材料只返回未关联，不读取原文或调用完成回调，也不导出假的持久化写口', async () => {
+        const reads = vi.fn(() => {throw new Error('Unsupported material capture must not inspect its inputs');});
+        const range = new Proxy({} as Range, {get: reads});
+        const selection = new Proxy({source: {kind: 'article' as const, url: 'https://example.test/article', title: 'Source'}, locator: {kind: 'text' as const, quote: 'Source quote'}}, {get: reads});
+        const isCurrent = vi.fn(() => true);
+        expect(materialCapture.captureMaterialSelection(range, 'Source quote')).toBeUndefined();
+        await expect(materialCapture.beginMaterialCapture(selection, false)).resolves.toBeUndefined();
+        await expect(materialCapture.beginMaterialCapture(selection, true)).resolves.toBeUndefined();
+        await expect(materialCapture.completeMaterialCapture({selection, generation: 1, capturedAt: 1}, {kind: 'note', id: 'fixture-note'}, isCurrent)).resolves.toBe(false);
+        await expect(materialCapture.completeMaterialCapture(undefined, {kind: 'note', id: 'fixture-note'})).resolves.toBe(false);
+        expect(reads).not.toHaveBeenCalled();
+        expect(isCurrent).not.toHaveBeenCalled();
+        expect(Object.keys(materialCapture).sort()).toEqual(['beginMaterialCapture', 'captureMaterialSelection', 'completeMaterialCapture']);
+    });
     it('完整设置页复用同源字幕状态消息契约，同时保留字幕能力关闭状态', () => {
         expect(VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE).toBe(extensionTranscriptionStateMessage);
         expect(isSupportedVideoPage()).toBe(false);

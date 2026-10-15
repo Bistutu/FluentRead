@@ -268,20 +268,18 @@ describe('userscript browser shim injection', () => {
         }
         for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {
             const original = extensionBundles[language as keyof typeof extensionBundles];
-            if (language === 'en-US') {
-                expect(bundle.legacyText).toBe(original.legacyText);
-                expect(bundle.legacyPatterns).toBe(original.legacyPatterns);
-            } else {
-                const materialSources = Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]);
-                expect(Object.keys(original.legacyText).filter(source => !(source in bundle.legacyText)).sort()).toEqual(materialSources.sort());
-                const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
-                for (const phase of ['early', 'late'] as const) {
-                    expect(bundle.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
-                }
+            const materialSources = Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]);
+            expect(Object.keys(original.legacyText).filter(source => !(source in bundle.legacyText)).sort()).toEqual(materialSources.sort());
+            const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
+            for (const phase of ['early', 'late'] as const) {
+                expect(bundle.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
+            }
+            for (const [source, value] of Object.entries(bundle.legacyText)) expect(value).toBe(original.legacyText[source]);
+            for (const source of materialSources) expect(original.legacyText[source]).toBeTruthy();
+            if (language !== 'en-US') {
                 // 固定资源是发布契约；必须保持整包字节，不能只证明本地生成文件自洽。
                 const file = pinnedLanguageFiles[language as keyof typeof pinnedLanguageFiles];
                 expect(JSON.stringify(bundle) + '\n').toBe(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'));
-                for (const source of materialSources) expect(original.legacyText[source]).toBeTruthy();
             }
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
                 !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.')
@@ -379,6 +377,16 @@ describe('userscript browser shim injection', () => {
         expect(controller.retry()).toMatchObject({enabled: false, mode: 'surprisal-local'});
         controller.refresh();controller.dispose();expect(controller.getState().enabled).toBe(false);
         expect(userscriptAliases.find(alias => alias.find === '@/src/features/information-highlight/public')?.replacement).toMatch(/userscript\/informationHighlight\.ts$/u);
+    });
+    it('isolates material capture without replacing the original-text, vocabulary or reading contracts', () => {
+        const alias = userscriptAliases.find(entry => entry.replacement.endsWith('/userscript/materialCapture.ts'));
+        expect(alias?.find).toBeInstanceOf(RegExp);
+        const boundary = alias!.find as RegExp;
+        expect(boundary.test('@/src/features/vocabulary/material/public')).toBe(true);
+        for (const path of ['@/src/features/vocabulary/material/text/public', '@/src/features/vocabulary/public',
+            '@/src/features/reading-assistant/public', '@/src/features/vocabulary/material/public/nested']) {
+            expect(boundary.test(path)).toBe(false);
+        }
     });
     it('pins each remote language file to a commit containing exactly its built contents', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
