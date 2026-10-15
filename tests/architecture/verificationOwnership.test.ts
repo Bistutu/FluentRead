@@ -143,6 +143,7 @@ function verificationOwners(path: string, strictCoverage: Set<string>): Verifica
         owners.add('isolated-browser-regression');
     }
     if (path.startsWith('scripts/testing/')
+        || path.startsWith('scripts/quality/')
         || path.startsWith('scripts/agent-bridge/')
         || path.startsWith('scripts/wasm/')
         || PRODUCT_TOOL_SCRIPTS.includes(path)
@@ -343,6 +344,17 @@ const BUILD_ONLY_SRC_ALLOWLIST = new Set([
 ]);
 
 describe('repository verification ownership', () => {
+    it('质量评测工具入口可解析，核心行为专项已登记', () => {
+        for (const path of listFiles('scripts/quality').filter(path => /\.(?:cjs|mjs)$/u.test(path))) {
+            expect(() => execFileSync(process.execPath, ['--check', projectPath(path)], {stdio: 'pipe'})).not.toThrow();
+        }
+        const matrix = JSON.parse(readFileSync(projectPath('tests/test-matrix.json'), 'utf8')) as {groups: Record<string, string[]>};
+        const registered = new Set(Object.values(matrix.groups).flat());
+        for (const test of ['translationQualityEvaluation', 'translationQualityReport', 'translationQualityTransport']) {
+            expect(registered.has(`tests/${test}.test.ts`)).toBe(true);
+        }
+    });
+
     it('按实际输出识别非 types 文件的纯声明，并保留运行时常量归属', () => {
         expect(isTypeOnlyModule('src/features/vocabulary/content/reencounterState.ts')).toBe(true);
         expect(isTypeOnlyModule('src/services/model-usage/types.ts')).toBe(false);
