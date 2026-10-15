@@ -435,8 +435,8 @@ footer > button { justify-self: end; }
 .provider-drawer-content { margin-top: 0; }
 /* overlay 滚动条不会为 stable gutter 扣除布局宽度；显式留出空间，避免其命中层挡住关闭按钮右缘。 */
 .popup-services-drawer .el-drawer__body { padding-right: 16px; scrollbar-gutter: stable; scrollbar-width: thin; }
-/* 横屏键盘可能只留下 80px：保留同一搜索输入和 46px 操作区，只把服务控件排成一行。 */
-.popup-drawer-modal[data-fluent-read-popup-short] .popup-services-drawer { padding-top: 4px; padding-bottom: 4px; }
+/* 横屏键盘可能只留下 58px：收回顶部 8px 外间距，让 48px 行和上下各 4px 内距完整可见。 */
+.popup-drawer-modal[data-fluent-read-popup-viewport][data-fluent-read-popup-short] .popup-services-drawer { max-height: var(--fluent-read-drawer-height); padding-top: 4px; padding-bottom: 4px; }
 .popup-drawer-modal[data-fluent-read-popup-short] .popup-services-drawer .drawer-handle { display: none; }
 .popup-drawer-modal[data-fluent-read-popup-short] .popup-service-picker {
   --fluent-read-service-control-height: 46px;
