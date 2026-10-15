@@ -72,5 +72,7 @@
   "diagnostics.unknown.summary": "번역 미완료",
   "diagnostics.ui.details": "자세히 보기",
   "diagnostics.ui.service-action": "서비스 확인",
-  "diagnostics.ui.site-action": "범위 확인"
+  "diagnostics.ui.site-action": "범위 확인",
+  "diagnostics.ui.close-details": "세부 정보 닫기",
+  "diagnostics.ui.dismiss-notice": "알림 숨기기"
 }

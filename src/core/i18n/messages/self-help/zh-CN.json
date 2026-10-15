@@ -72,5 +72,7 @@
   "diagnostics.unknown.summary": "翻译未完成",
   "diagnostics.ui.details": "查看详情",
   "diagnostics.ui.service-action": "检查服务",
-  "diagnostics.ui.site-action": "检查范围"
+  "diagnostics.ui.site-action": "检查范围",
+  "diagnostics.ui.close-details": "收起详情",
+  "diagnostics.ui.dismiss-notice": "忽略提示"
 }

@@ -72,5 +72,7 @@
   "diagnostics.unknown.summary": "Перевод не завершён",
   "diagnostics.ui.details": "Подробнее",
   "diagnostics.ui.service-action": "Проверить сервис",
-  "diagnostics.ui.site-action": "Проверить область"
+  "diagnostics.ui.site-action": "Проверить область",
+  "diagnostics.ui.close-details": "Закрыть подробности",
+  "diagnostics.ui.dismiss-notice": "Скрыть уведомление"
 }

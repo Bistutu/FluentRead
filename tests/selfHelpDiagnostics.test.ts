@@ -171,7 +171,7 @@ describe('self help diagnosis', () => {
 
   it('provides all diagnostic explanations, recovery actions and first-use/report copy in seven languages', () => {
     const locales = ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'];
-    const uiKeys = ['details', 'service-action', 'site-action', 'preview', 'report', 'privacy', 'export', 'exportFailed', 'first-use-start', 'first-use-translating', 'first-use-ready',
+    const uiKeys = ['close-details', 'dismiss-notice', 'details', 'service-action', 'site-action', 'preview', 'report', 'privacy', 'export', 'exportFailed', 'first-use-start', 'first-use-translating', 'first-use-ready',
       'refresh-failed', 'source-closed', 'source-looking', 'source-return', 'source-unavailable', 'source-returned', 'source-return-hint'] as const;
     const actions = ['retry', 'services', 'site-settings', 'refresh', 'dismiss'] as const;
     for (const locale of locales) {

@@ -136,8 +136,10 @@ export function getDiagnosticActionLabel(action: DiagnosticAction, locale = 'zh-
   return translate(`diagnostics.action.${action}`, resolveUiLanguageFromLocale(locale));
 }
 
-export type DiagnosticUiTextKey = "details" | "service-action" | "site-action" | "refresh-failed" | "source-closed" | "source-looking" | "source-return" | "source-unavailable" | "source-returned" | "source-return-hint" | "preview" | "report" | "privacy" | "export" | "exportFailed" | "first-use-start" | "first-use-translating" | "first-use-ready";
+export type DiagnosticUiTextKey = "close-details" | "dismiss-notice" | "details" | "service-action" | "site-action" | "refresh-failed" | "source-closed" | "source-looking" | "source-return" | "source-unavailable" | "source-returned" | "source-return-hint" | "preview" | "report" | "privacy" | "export" | "exportFailed" | "first-use-start" | "first-use-translating" | "first-use-ready";
 const diagnosticUiKeys: Record<DiagnosticUiTextKey, string> = {
+  "close-details": "diagnostics.ui.close-details",
+  "dismiss-notice": "diagnostics.ui.dismiss-notice",
   "details": "diagnostics.ui.details",
   "service-action": "diagnostics.ui.service-action",
   "site-action": "diagnostics.ui.site-action",

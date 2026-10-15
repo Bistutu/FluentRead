@@ -72,5 +72,7 @@
   "diagnostics.unknown.summary": "翻訳が未完了",
   "diagnostics.ui.details": "詳細を表示",
   "diagnostics.ui.service-action": "サービスを確認",
-  "diagnostics.ui.site-action": "範囲を確認"
+  "diagnostics.ui.site-action": "範囲を確認",
+  "diagnostics.ui.close-details": "詳細を閉じる",
+  "diagnostics.ui.dismiss-notice": "通知を非表示"
 }

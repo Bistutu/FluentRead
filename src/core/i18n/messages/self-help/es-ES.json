@@ -72,5 +72,7 @@
   "diagnostics.unknown.summary": "Traducción incompleta",
   "diagnostics.ui.details": "Ver detalles",
   "diagnostics.ui.service-action": "Revisar servicio",
-  "diagnostics.ui.site-action": "Revisar área"
+  "diagnostics.ui.site-action": "Revisar área",
+  "diagnostics.ui.close-details": "Cerrar detalles",
+  "diagnostics.ui.dismiss-notice": "Descartar aviso"
 }

@@ -36,8 +36,18 @@ function loadNotice() {
   return module.exports.default;
 }
 afterEach(() => {dispose?.();dispose = undefined;vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();ensureUiLanguageBundle.mockReset().mockImplementation(loadLanguage);});
-interface Host {tag: string; text: string; props: Record<string, any>; children: Host[]; parent: Host | null; focus: ReturnType<typeof vi.fn>}
-const node = (tag: string, text = ''): Host => ({tag, text, props: {}, children: [], parent: null, focus: vi.fn()});
+interface Host {tag: string; text: string; props: Record<string, any>; children: Host[]; parent: Host | null; focus: ReturnType<typeof vi.fn>; contains: (target: Host | null) => boolean; querySelector: (selector: string) => Host | null; scrollHeight: number; getBoundingClientRect?: () => {top: number; bottom: number}; closest?: (selector: string) => {getBoundingClientRect: () => {top: number; bottom: number}} | null}
+const node = (tag: string, text = ''): Host => {
+  const value: Host = {tag, text, props: {}, children: [], parent: null, scrollHeight: 0,
+    focus: vi.fn(() => {if (globalThis.document) (document as unknown as {activeElement: Host}).activeElement = value;}),
+    contains: target => Boolean(target && all(value, child => child === target).length),
+    querySelector: selector => all(value, child => {
+      const attribute = selector.match(/\[([^\]]+)\]/u)?.[1];
+      return Boolean(attribute && attribute in child.props && (!selector.includes(':not(:disabled)') || !child.props.disabled));
+    })[0] ?? null};
+  // Renderer hosts model DOM nodes; Vue refs must retain their identity, as native Elements do.
+  return runtime.markRaw(value);
+};
 function all(root: Host, predicate: (value: Host) => boolean): Host[] {
   return [...(predicate(root) ? [root] : []), ...root.children.flatMap(child => all(child, predicate))];
 }
@@ -45,6 +55,16 @@ function contents(root: Host): string {return root.text + root.children.map(cont
 async function settle() {for (let i = 0; i < 6; i++) {await Promise.resolve();await runtime.nextTick();}}
 async function mount(diagnostic: unknown, patch: Record<string, unknown> = {}) {
   vi.stubGlobal('navigator', {onLine: true});
+  type Listener = (event: {target: Host}) => void;
+  const documentListeners = new Map<string, Set<Listener>>(), windowListeners = new Map<string, Set<Listener>>();
+  const port = (listeners: Map<string, Set<Listener>>) => ({
+    addEventListener: vi.fn((type: string, listener: Listener) => {if (!listeners.has(type)) listeners.set(type, new Set());listeners.get(type)!.add(listener);}),
+    removeEventListener: vi.fn((type: string, listener: Listener) => {listeners.get(type)?.delete(listener);}),
+  });
+  // Preserve an explicitly supplied download port while giving the real SFC owned document/window event targets.
+  const documentPort = {...globalThis.document, activeElement: null as Host | null, ...port(documentListeners)};
+  const windowPort = {innerHeight: 700, ...port(windowListeners)};
+  vi.stubGlobal('document', documentPort);vi.stubGlobal('window', windowPort);
   const component = loadNotice();
   const props = runtime.shallowReactive({diagnostic, language: 'zh-CN', busy: false, feature: 'popup', version: '0.0.38', ...patch});
   const emitted = vi.fn();
@@ -62,50 +82,89 @@ async function mount(diagnostic: unknown, patch: Record<string, unknown> = {}) {
   const root = node('root');app.mount(root);dispose = () => app.unmount();await settle();
   expect(instance.$.render).toBeTypeOf('function');
   const buttons = () => all(root, value => value.tag === 'button');
-  const button = (label: string) => {const result = buttons().find(value => contents(value).startsWith(label) || value.props['aria-label'] === label);expect(result).toBeDefined();return result!;};
-  const click = async (label: string) => {const target = button(label);if (!target.props.disabled) target.props.onClick();await settle();};
-  return {root, props, emitted, button, click};
+  const button = (label: string) => {const result = buttons().find(value => contents(value).startsWith(label) || String(value.props['aria-label'] ?? '').includes(label));expect(result).toBeDefined();return result!;};
+  const click = async (label: string) => {const target = button(label);if (!target.props.disabled) target.props.onClick({type: 'click', preventDefault: vi.fn(), stopPropagation: vi.fn()});await settle();};
+  const trigger = () => all(root, value => 'data-diagnostic-details-toggle' in value.props)[0];
+  const collapsed = () => {
+    expect(trigger().props['aria-expanded']).toBe(false);expect(all(root, value => value.tag === 'button')).toHaveLength(1);
+    for (const attribute of ['data-diagnostic-details', 'data-diagnostic-primary', 'data-diagnostic-action', 'data-diagnostic-preview', 'data-diagnostic-dismiss']) expect(all(root, value => attribute in value.props)).toHaveLength(0);
+    expect(all(root, value => value.tag === 'pre')).toHaveLength(0);
+  };
+  const dispatchDocument = async (type: string, target: Host) => {for (const listener of documentListeners.get(type) ?? []) listener({target});await settle();};
+  const dispatchWindow = async (type: string) => {for (const listener of windowListeners.get(type) ?? []) listener({target: root});await settle();};
+  const listenerCounts = () => ({document: [...documentListeners.values()].reduce((count, listeners) => count + listeners.size, 0), window: [...windowListeners.values()].reduce((count, listeners) => count + listeners.size, 0)});
+  return {root, props, emitted, button, click, trigger, collapsed, document: documentPort, window: windowPort, dispatchDocument, dispatchWindow, documentListeners, listenerCounts};
 }
 
 describe('actual self help notice', () => {
-  it('keeps the popup compact until the user requests details, and Escape clears the preview without dismissing the error', async () => {
+  it('mounts only a status trigger until requested, and Escape clears the dialog preview without dismissing the error', async () => {
     const diagnostic = diagnoseFailure({kind: 'authentication'}), f = await mount(diagnostic);
-    expect(contents(f.root)).toContain(getDiagnosticSummary(diagnostic));
-    expect(contents(f.root)).not.toContain(getDiagnosticText(diagnostic).detail);
-    expect(contents(f.root)).not.toMatch(/预览诊断|导出 JSON|重试/);
-    expect(all(f.root, value => value.tag === 'button')).toHaveLength(3);
-    expect(f.button('检查服务').props.disabled).toBe(false);
-    await f.click('检查服务');expect(f.emitted).toHaveBeenLastCalledWith('services');
-    expect(f.button('查看详情').props['aria-expanded']).toBe(false);
+    f.collapsed();expect(contents(f.root)).toContain(getDiagnosticSummary(diagnostic));
+    const status = all(f.root, value => value.props.role === 'status')[0];
+    expect(status.props['aria-live']).toBe('polite');expect(status.props.class).toContain('diagnostic-sr-only');
+    expect(f.trigger().props.title).toBe(getDiagnosticSummary(diagnostic));expect(f.trigger().props['aria-haspopup']).toBe('dialog');
+    expect(contents(f.root)).not.toContain(getDiagnosticText(diagnostic).detail);expect(contents(f.root)).not.toMatch(/预览诊断|导出 JSON|重试/);
     await f.click('查看详情');expect(contents(f.root)).toContain(getDiagnosticText(diagnostic).detail);
-    expect(all(f.root, value => value.props.id === f.button('查看详情').props['aria-controls'])).toHaveLength(1);
+    const dialog = all(f.root, value => value.props.role === 'dialog')[0];
+    expect(dialog.props.id).toBe(f.trigger().props['aria-controls']);
+    expect(all(dialog, value => value.props.id === dialog.props['aria-labelledby'])).toHaveLength(1);
+    expect(f.button('检查服务').props.disabled).toBe(false);await f.click('检查服务');expect(f.emitted).toHaveBeenLastCalledWith('services');
     await f.click('预览诊断');expect(all(f.root, value => value.tag === 'pre')).toHaveLength(1);
     const event = {key: 'Escape', preventDefault: vi.fn(), stopPropagation: vi.fn()};
     all(f.root, value => value.tag === 'section')[0].props.onKeydown(event);await settle();
-    expect(event.preventDefault).toHaveBeenCalledOnce();expect(event.stopPropagation).toHaveBeenCalledOnce();
-    expect(f.button('查看详情').focus).toHaveBeenCalledOnce();
-    expect(f.button('查看详情').props['aria-expanded']).toBe(false);
-    expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
+    expect(event.preventDefault).toHaveBeenCalledOnce();expect(event.stopPropagation).toHaveBeenCalledOnce();expect(f.trigger().focus).toHaveBeenCalledOnce();f.collapsed();
     expect(contents(f.root)).not.toContain(getDiagnosticText(diagnostic).detail);
     await f.click('查看详情');expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
-    await f.click('关闭');expect(f.emitted).toHaveBeenLastCalledWith('dismiss');
+    await f.click('忽略提示');expect(f.emitted).toHaveBeenLastCalledWith('dismiss');
   });
 
-  it('places website scope repair first when completed discovery found no content, keeping retry available in details', async () => {
-    const f = await mount({code: 'no-content'});
-    expect(f.button('检查范围').props['data-diagnostic-action']).toBe('site-settings');
+  it('places website scope repair first in the requested dialog while retaining explicit retry', async () => {
+    const f = await mount({code: 'no-content'});f.collapsed();expect(contents(f.root)).not.toContain('重试');
+    await f.click('查看详情');expect(f.button('检查范围').props['data-diagnostic-action']).toBe('site-settings');
     await f.click('检查范围');expect(f.emitted).toHaveBeenLastCalledWith('site-settings');
-    expect(contents(f.root)).not.toContain('重试');
-    await f.click('查看详情');await f.click('重试');expect(f.emitted).toHaveBeenLastCalledWith('retry');
+    await f.click('重试');expect(f.emitted).toHaveBeenLastCalledWith('retry');
   });
 
-  it('keeps a closed-source diagnostic dismissible without offering a dead-page operation', async () => {
-    const f = await mount({code: 'source-closed'});
-    expect(all(f.root, value => value.tag === 'button')).toHaveLength(2);
-    expect(contents(f.root)).not.toMatch(/重试|刷新|检查服务/);
-    await f.click('查看详情');expect(contents(f.root)).toContain('请重新打开');
-    await f.click('查看详情');expect(contents(f.root)).not.toContain('请重新打开');
-    await f.click('关闭');expect(f.emitted).toHaveBeenCalledWith('dismiss');
+  it('keeps a closed-source dialog dismissible without offering a dead-page operation', async () => {
+    const f = await mount({code: 'source-closed'});f.collapsed();expect(contents(f.root)).not.toMatch(/重试|刷新|检查服务/);
+    await f.click('查看详情');expect(contents(f.root)).toContain('请重新打开');expect(all(f.root, value => 'data-diagnostic-primary' in value.props)).toHaveLength(0);
+    await f.click('收起详情');f.collapsed();expect(contents(f.root)).not.toContain('请重新打开');expect(f.emitted).not.toHaveBeenCalled();
+    await f.click('查看详情');await f.click('忽略提示');expect(f.emitted).toHaveBeenCalledWith('dismiss');
+  });
+
+  it.each(['pointerdown', 'focusin'])('retains internal %s but closes outside without stealing focus and releases all temporary listeners', async type => {
+    const f = await mount({code: 'authentication'});expect(f.listenerCounts()).toEqual({document: 0, window: 0});
+    await f.click('查看详情');await f.click('预览诊断');expect(f.listenerCounts()).toEqual({document: 3, window: 1});
+    expect([...f.documentListeners.keys()].sort()).toEqual(['focusin', 'pointerdown', 'scroll']);
+    for (const event of ['pointerdown', 'focusin', 'scroll']) expect(f.document.addEventListener).toHaveBeenCalledWith(event, expect.any(Function), true);
+    await f.dispatchDocument(type, all(f.root, value => value.tag === 'pre')[0]);expect(all(f.root, value => value.tag === 'pre')).toHaveLength(1);
+    const outsider = node('input');f.document.activeElement = outsider;await f.dispatchDocument(type, outsider);
+    f.collapsed();expect(f.document.activeElement).toBe(outsider);expect(f.trigger().focus).not.toHaveBeenCalled();expect(f.emitted).not.toHaveBeenCalled();expect(f.listenerCounts()).toEqual({document: 0, window: 0});
+    await f.click('查看详情');expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
+    dispose?.();dispose = undefined;expect(f.listenerCounts()).toEqual({document: 0, window: 0});
+  });
+
+  it.each([{code: 'timeout', busy: false, action: 'retry'}, {code: 'timeout', busy: true, action: undefined}, {code: 'source-closed', busy: false, action: undefined}])('focuses an enabled primary or close when the $code trigger still owns focus (busy=$busy)', async ({code, busy, action}) => {
+    const f = await mount({code}, {busy});f.document.activeElement = f.trigger();await f.click('查看详情');
+    const target = all(f.root, value => action ? value.props['data-diagnostic-action'] === action : 'data-diagnostic-close' in value.props)[0];
+    expect(target.focus).toHaveBeenCalledOnce();expect(f.document.activeElement).toBe(target);
+  });
+
+  it('does not steal newer focus or reopen after a queued opening is closed', async () => {
+    const f = await mount({code: 'timeout'}), outside = node('input');
+    f.trigger().props.onClick();f.document.activeElement = outside;await settle();expect(f.document.activeElement).toBe(outside);
+    expect(all(f.root, value => 'data-diagnostic-primary' in value.props)[0].focus).not.toHaveBeenCalled();
+    f.trigger().props.onClick();f.trigger().props.onClick();f.trigger().props.onClick();await settle();f.collapsed();expect(f.document.activeElement).toBe(outside);expect(f.listenerCounts()).toEqual({document: 0, window: 0});
+  });
+
+  it('remeasures against the popup-shell on external scroll and resize, ignores internal scroll and closes an offscreen anchor', async () => {
+    const f = await mount({code: 'timeout'});let rect = {top: 200, bottom: 224};const host = all(f.root, value => value.tag === 'section')[0];
+    host.getBoundingClientRect = vi.fn(() => rect);host.closest = () => ({getBoundingClientRect: () => ({top: 40, bottom: 560})});
+    await f.click('查看详情');const panel = all(f.root, value => 'data-diagnostic-details' in value.props)[0];panel.scrollHeight = 400;
+    await f.dispatchWindow('resize');expect(panel.props.class).toContain('below');expect(panel.props.style.maxHeight).toBe('318px');
+    const reads = vi.mocked(host.getBoundingClientRect).mock.calls.length;await f.dispatchDocument('scroll', panel);expect(vi.mocked(host.getBoundingClientRect)).toHaveBeenCalledTimes(reads);
+    rect = {top: 480, bottom: 504};await f.dispatchDocument('scroll', node('main'));expect(panel.props.class).toContain('above');expect(panel.props.style.maxHeight).toBe('422px');
+    rect = {top: 570, bottom: 594};await f.dispatchWindow('resize');f.collapsed();expect(f.trigger().focus).not.toHaveBeenCalled();expect(f.listenerCounts()).toEqual({document: 0, window: 0});
   });
 
   it('shows safe fixed recovery text and generates no report or download before explicit actions', async () => {
@@ -179,7 +238,7 @@ describe('actual self help notice', () => {
     const f = await mount(diagnoseFailure({kind: 'timeout'}), {language: 'en', busy: true});
     expect(contents(f.root)).toContain(getDiagnosticSummary({code: 'timeout'}, 'en'));
     await f.click(getDiagnosticUiText('details', 'en'));
-    for (const label of ['Retry', 'Check translation service', 'Dismiss']) {
+    for (const label of ['Retry', 'Check translation service', getDiagnosticUiText('dismiss-notice', 'en')]) {
       expect(f.button(label).props.disabled).toBe(true);await f.click(label);
     }
     expect(f.emitted).not.toHaveBeenCalled();
@@ -187,24 +246,44 @@ describe('actual self help notice', () => {
     expect(f.emitted).toHaveBeenCalledWith('services');
   });
 
-  it('refreshes the collapsed summary and action labels when a delayed language bundle arrives without mounting details', async () => {
+  it('refreshes the collapsed status name when a delayed language bundle arrives without mounting its popover', async () => {
     let finish!: (loaded: boolean) => void;
     i18n.registerUiLanguageBundle('fr-FR', {...UI_LANGUAGE_BUNDLES['fr-FR'], messages: {}});
     ensureUiLanguageBundle.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
     const f = await mount(diagnoseFailure({kind: 'authentication'}), {language: 'fr-FR'});
     expect(contents(f.root)).toContain('服务验证失败');
-    expect(f.button('检查服务')).toBeDefined();expect(f.button('查看详情').props['aria-expanded']).toBe(false);
+    f.collapsed();expect(f.trigger().props['aria-label']).toContain('服务验证失败');expect(f.button('查看详情').props['aria-expanded']).toBe(false);
     expect(all(f.root, value => value.props['data-diagnostic-details'] !== undefined)).toHaveLength(0);
     i18n.registerUiLanguageBundle('fr-FR', UI_LANGUAGE_BUNDLES['fr-FR']);finish(true);await settle();
     expect(contents(f.root)).toContain(i18n.translate('diagnostics.authentication.summary', 'fr-FR'));
     expect(contents(f.root)).not.toContain('服务验证失败');
-    expect(f.button(i18n.translate('diagnostics.ui.service-action', 'fr-FR'))).toBeDefined();
+    f.collapsed();expect(f.trigger().props['aria-label']).toContain(i18n.translate('diagnostics.authentication.summary', 'fr-FR'));
     expect(f.button(i18n.translate('diagnostics.ui.details', 'fr-FR')).props['aria-expanded']).toBe(false);
-    expect(f.button(i18n.translate('diagnostics.action.dismiss', 'fr-FR'))).toBeDefined();
     expect(all(f.root, value => value.props['data-diagnostic-details'] !== undefined)).toHaveLength(0);
     expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
+    await f.click(i18n.translate('diagnostics.ui.details', 'fr-FR'));
     await f.click(i18n.translate('diagnostics.ui.service-action', 'fr-FR'));
+    expect(f.button(i18n.translate('diagnostics.ui.close-details', 'fr-FR'))).toBeDefined();
+    expect(f.button(i18n.translate('diagnostics.ui.dismiss-notice', 'fr-FR'))).toBeDefined();
     expect(f.emitted).toHaveBeenCalledWith('services');
+  });
+
+  it('remeasures an already open popover after the current language resource arrives', async () => {
+    let finish!: (loaded: boolean) => void;
+    i18n.registerUiLanguageBundle('fr-FR', {...UI_LANGUAGE_BUNDLES['fr-FR'], messages: {}});
+    ensureUiLanguageBundle.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+    const f = await mount({code: 'authentication'}, {language: 'fr-FR'});
+    const host = all(f.root, value => value.tag === 'section')[0];
+    host.getBoundingClientRect = vi.fn(() => ({top: 220, bottom: 244}));
+    host.closest = () => ({getBoundingClientRect: () => ({top: 0, bottom: 560})});
+    await f.click('查看详情');const panel = all(f.root, value => 'data-diagnostic-details' in value.props)[0];
+    const previousReads = vi.mocked(host.getBoundingClientRect).mock.calls.length;
+    panel.scrollHeight = 400;
+    i18n.registerUiLanguageBundle('fr-FR', UI_LANGUAGE_BUNDLES['fr-FR']);finish(true);await settle();
+    expect(host.getBoundingClientRect).toHaveBeenCalledTimes(previousReads + 1);
+    expect(panel.props.class).toContain('below');expect(panel.props.style.maxHeight).toBe('298px');
+    expect(contents(panel)).toContain(i18n.translate('diagnostics.authentication.detail', 'fr-FR'));
+    expect(f.trigger().props['aria-expanded']).toBe(true);
   });
 
   it('updates delayed language resources without restarting cooldown or replacing the report, and ignores stale loads', async () => {

@@ -72,5 +72,7 @@
   "diagnostics.unknown.summary": "Traduction incomplète",
   "diagnostics.ui.details": "Voir les détails",
   "diagnostics.ui.service-action": "Vérifier le service",
-  "diagnostics.ui.site-action": "Vérifier la zone"
+  "diagnostics.ui.site-action": "Vérifier la zone",
+  "diagnostics.ui.close-details": "Fermer les détails",
+  "diagnostics.ui.dismiss-notice": "Ignorer l’alerte"
 }

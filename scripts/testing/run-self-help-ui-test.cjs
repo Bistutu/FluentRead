@@ -39,27 +39,28 @@ function diagnosticNotice(page, code) {
 }
 async function assertCollapsedDiagnostic(page, code, label) {
  const notice=diagnosticNotice(page,code);await notice.waitFor();
- assert.equal(await notice.locator('[data-diagnostic-details-toggle]').getAttribute('aria-expanded'),'false','Diagnosis details start collapsed');
- for(const selector of ['[data-diagnostic-details]','.diagnostic-actions','.diagnostic-report'])assert.equal(await notice.locator(selector).count(),0,'Collapsed diagnosis must not mount '+selector);
- assert.equal(await notice.locator('[data-diagnostic-dismiss]').count(),1);
- const metrics=await notice.evaluate(el=>{const rect=el.getBoundingClientRect();return {height:rect.height,width:rect.width,summary:el.querySelector('[data-diagnostic-summary]')?.textContent?.trim(),primaryAction:el.querySelector('[data-diagnostic-primary]')?.getAttribute('data-diagnostic-action')};});
- assert.ok(metrics.summary,'A visible short reason must remain');assert.ok(metrics.primaryAction,'A primary recovery action must remain');
- assert.ok(metrics.height>0&&metrics.height<=48,'Default diagnosis must fit a compact one/two-line row, not a details card: '+JSON.stringify(metrics));
+ const trigger=notice.locator('[data-diagnostic-details-toggle]');
+ assert.equal(await trigger.getAttribute('aria-expanded'),'false','Status popover starts closed');
+ for(const selector of ['[data-diagnostic-details]','.diagnostic-actions','.diagnostic-report','[data-diagnostic-primary]','[data-diagnostic-preview]','[data-diagnostic-dismiss]'])assert.equal(await notice.locator(selector).count(),0,'Closed status must not mount '+selector);
+ assert.equal(await notice.locator('button').count(),1,'Default diagnosis exposes only one status trigger');
+ const metrics=await trigger.evaluate(el=>{const rect=el.getBoundingClientRect();return {height:rect.height,width:rect.width,label:el.getAttribute('aria-label'),right:rect.right,viewport:innerWidth};});
+ assert.ok(metrics.label,'The status trigger must have a localized accessible reason');
+ assert.ok(metrics.height>0&&metrics.height<=24&&metrics.width<=28,'Default diagnosis must be a small icon: '+JSON.stringify(metrics));
+ assert.ok(metrics.right<=metrics.viewport,'Status trigger stays inside popup');
  (result.collapsedDiagnosticLayouts ||= {})[label]=metrics;return notice;
 }
 async function openDiagnosticDetails(page, code) {
  const notice=diagnosticNotice(page,code),toggle=notice.locator('[data-diagnostic-details-toggle]');
- if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.evaluate(el=>el.click());
- await notice.locator('[data-diagnostic-details]').waitFor();assert.equal(await toggle.getAttribute('aria-expanded'),'true');return notice;
+ if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();
+ await notice.locator('[data-diagnostic-details][role="dialog"]').waitFor();assert.equal(await toggle.getAttribute('aria-expanded'),'true');return notice;
 }
 async function activateDiagnosticAction(page, action, code) {
- const notice=diagnosticNotice(page,code),primary=notice.locator(`[data-diagnostic-primary][data-diagnostic-action="${action}"]`);
- let button=primary;
- if(!(await primary.count())) {await openDiagnosticDetails(page,code);button=notice.locator(`.diagnostic-actions [data-diagnostic-action="${action}"]`);}
- assert.equal(await button.count(),1,'Exactly one actual diagnosis action for '+action);assert.equal(await button.isEnabled(),true,'Diagnosis action must be enabled');await button.evaluate(el=>el.click());
+ const notice=await openDiagnosticDetails(page,code),button=notice.locator(`[data-diagnostic-action="${action}"]`);
+ assert.equal(await button.count(),1,'Exactly one actual diagnosis action for '+action);assert.equal(await button.isEnabled(),true,'Diagnosis action must be enabled');
+ try {await button.click();} catch(error) {if(action!=='services'||!page.isClosed())throw error;}
 }
 async function previewDiagnostic(page, code) {
- const notice=await openDiagnosticDetails(page,code);await notice.locator('[data-diagnostic-preview]').evaluate(el=>el.click());await notice.locator('.diagnostic-report pre').waitFor();return notice;
+ const notice=await openDiagnosticDetails(page,code);await notice.locator('[data-diagnostic-preview]').click();await notice.locator('.diagnostic-report pre').waitFor();return notice;
 }
 (async () => {
  try {
@@ -160,7 +161,7 @@ async function previewDiagnostic(page, code) {
     result.afterDownloadState = await popup.evaluate(async tabId=>{const s=await chrome.tabs.sendMessage(tabId,{type:'getFullPageTranslationState'},{frameId:0});return {active:s?.isTranslated,status:s?.toolbarStatus,code:s?.diagnostic?.code};},tabId);await shot(popup,'05-report');
     await popup.locator('[data-diagnostic-code="authentication"]').waitFor({timeout:2000});
     await popup.keyboard.press('Escape');await assertCollapsedDiagnostic(popup,'authentication','authentication-after-report');
-    assert.ok(await popup.locator('[data-diagnostic-details-toggle]').evaluate(el=>el===document.activeElement),'Escape must restore focus to the details toggle');
+    assert.ok(await popup.locator('[data-diagnostic-details-toggle]').evaluate(el=>el===document.activeElement),'Escape must restore focus to the status trigger');
     const [settings] = await Promise.all([context.waitForEvent('page'),activateDiagnosticAction(popup,'services','authentication')]);await settings.waitForLoadState();await settings.setViewportSize({width:1100,height:850});
     await settings.locator('[data-editing-service="openai"]').waitFor({timeout:30000});
     await settings.locator('.connection-test-button').first().evaluate(el=>el.click());

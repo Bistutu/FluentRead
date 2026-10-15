@@ -72,5 +72,7 @@
   "diagnostics.unknown.summary": "Translation incomplete",
   "diagnostics.ui.details": "View details",
   "diagnostics.ui.service-action": "Check service",
-  "diagnostics.ui.site-action": "Check scope"
+  "diagnostics.ui.site-action": "Check scope",
+  "diagnostics.ui.close-details": "Close details",
+  "diagnostics.ui.dismiss-notice": "Dismiss notice"
 }
