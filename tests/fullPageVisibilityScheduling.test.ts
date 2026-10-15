@@ -5,13 +5,16 @@ import technicalPr906Posts from './fixtures/chinese-technical-pr-906.json';
 import productionReleaseCases from './fixtures/target-language-releases.json';
 import type {TranslationCandidate, TranslationSiteAdapter} from '@/src/core/translation/types';
 import {TranslationCandidateCore} from '@/src/core/translation/engine';
-import {compileSiteRulePack} from '@/src/core/site-adaptation/compiler';
+import {compileSiteRulePack, composeSiteAdapters} from '@/src/core/site-adaptation/compiler';
+import {builtinSiteRulePack} from '@/src/core/site-adaptation/catalog';
+import {normalizeSiteAdaptationSettings} from '@/src/core/site-adaptation/schema';
 import {collapseMutationRescanRoot, isConnectedMutationRoot, isOwnSyntheticSegmentMarkerMutation, mutationRootContains} from '@/src/features/full-page-translation/content/mutationObservation';
 import {DEFAULT_EAGER_TRANSLATION_CHARACTERS} from '@/src/core/config/pageTranslation';
 
 const runtime = vi.hoisted(() => ({
     realCore: null as TranslationCandidateCore | null,
     realTextExtraction: false,
+    realSourceSnapshots: false,
     adapters: [] as TranslationSiteAdapter[],
     candidateEligible: vi.fn<(element: Element) => boolean>(() => true),
     ignoreMutation: vi.fn<(element: Element) => boolean>(() => false),
@@ -254,14 +257,16 @@ vi.mock("@/src/core/translation/public", async (importOriginal) => {
             runtime.realTextExtraction ? actual.extractTranslationTextFromNodes(...args)
                 : args[0].map((node) => node.textContent ?? "").join(""),
         applyTranslationsToSnapshot: (_snapshot: unknown, translations: readonly string[]) => translations.join(""),
-        collectLiveTranslationTextSlots: textSlots,
+        collectLiveTranslationTextSlots: (...args: Parameters<typeof actual.collectLiveTranslationTextSlots>) =>
+            runtime.realSourceSnapshots ? actual.collectLiveTranslationTextSlots(...args) : textSlots(args[0], args[1]),
         createTranslationTextProtectionCache: () => new WeakMap<Element, {
             depth: number;
             protected: boolean;
         }>(),
-        createTranslationSourceSnapshot: (element: HTMLElement, shouldStayOriginal?: (node: Element) => boolean) => ({
-            slots: textSlots(element, shouldStayOriginal).map(({source}) => ({source})),
-        }),
+        createTranslationSourceSnapshot: (...args: Parameters<typeof actual.createTranslationSourceSnapshot>) =>
+            runtime.realSourceSnapshots ? actual.createTranslationSourceSnapshot(...args) : ({
+                slots: textSlots(args[0], args[1]).map(({source}) => ({source})),
+            }),
         // 替身快照没有克隆骨架，按“多槽即可拍平”拼接整段原文；真实拍平判定由 translationCore 覆盖。
         buildWholeBlockTranslationSource: (snapshot: {slots: ReadonlyArray<{source: string}>}) =>
             snapshot.slots.length > 1
@@ -553,6 +558,7 @@ describe("全文翻译可见性锚点", () => {
         runtime.adapters = [];
         runtime.realCore = null;
         runtime.realTextExtraction = false;
+        runtime.realSourceSnapshots = false;
         runtime.candidateEligible.mockReset().mockReturnValue(true);
         runtime.ignoreMutation.mockReset().mockReturnValue(false);
         runtime.sourceReads.mockClear();
@@ -583,6 +589,162 @@ describe("全文翻译可见性锚点", () => {
             else Reflect.deleteProperty(globalThis, name);
         }
         replacedGlobals.clear();
+    });
+
+    describe('Mastodon automatic shell policy lifecycle', () => {
+        function fixture() {
+            runtime.config.display = 1; runtime.config.fullPageTranslationMode = 'all';
+            runtime.realTextExtraction = true; runtime.realSourceSnapshots = true;
+            document.body.innerHTML = '<div id="mastodon" class="app-holder notranslate"><main><article><div class="status__content"><div class="status__content__text translate"><p id="post">A public sentence owned by the current application shell.</p></div></div></article></main></div>';
+            const owner = document.querySelector<HTMLElement>('#post')!;
+            const shell = document.querySelector<HTMLElement>('#mastodon')!;
+            setLayoutBox(owner, 600, 80);
+            const configure = (changes = {}) => {runtime.realCore = new TranslationCandidateCore({
+                url: new URL('https://mastodon.social/@Mastodon'),
+                adapters: composeSiteAdapters(builtinSiteRulePack, {...normalizeSiteAdaptationSettings(undefined), ...changes}),
+            });};
+            configure();
+            const revoke = (change: string, deliver: boolean) => {
+                const records: MutationRecord[] = [];
+                if (change === 'move') {
+                    const other = document.createElement('div'); other.className = 'notranslate'; document.body.append(other);
+                    const main = shell.firstElementChild!; other.append(main);
+                    records.push({type: 'childList', target: shell, addedNodes: [], removedNodes: [main]} as unknown as MutationRecord,
+                        {type: 'childList', target: other, addedNodes: [main], removedNodes: []} as unknown as MutationRecord);
+                } else if (change === 'disabled' || change === 'override') {
+                    configure(change === 'disabled' ? {disabledRuleIds: ['mastodon']} : {custom: {version: 1, rules: [{
+                        id: 'mastodon', name: 'User rule', match: {hosts: ['mastodon.social']}, content: [{css: ['p']}],
+                    }]}});
+                    shell.classList.add('settings-changed');
+                    records.push({type: 'attributes', target: shell, attributeName: 'class', addedNodes: [], removedNodes: []} as unknown as MutationRecord);
+                } else {
+                    shell.setAttribute(change, change === 'id' ? 'another-app' : 'no');
+                    records.push({type: 'attributes', target: shell, attributeName: change, addedNodes: [], removedNodes: []} as unknown as MutationRecord);
+                }
+                if (deliver) TestMutationObserver.instances[0]!.emitRegistered(records);
+            };
+            return {owner, shell, revoke};
+        }
+        it.each(['id', 'translate', 'move', 'disabled', 'override'])('rejects a slow result after %s revokes automatic permission before observer delivery', async change => {
+            const {owner, revoke} = fixture(); const pending = deferred<string[]>();
+            runtime.requests.mockReturnValueOnce(pending.promise); autoTranslateEnglishPage();
+            await vi.advanceTimersByTimeAsync(60); await waitForRequestCount(1);
+            revoke(change, false); pending.resolve(['旧译文不应提交']); await finishScheduledWork();
+            expect(owner.querySelector('.fluent-read-bilingual-content')).toBeNull();
+            expect(getTranslationState(owner)).toBeUndefined();
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+        });
+        it.each(['id', 'translate', 'move', 'disabled', 'override'])('restores translated source when %s revokes automatic permission', async change => {
+            const {owner, revoke} = fixture(); autoTranslateEnglishPage(); await finishScheduledWork();
+            expect(owner.querySelector('.fluent-read-bilingual-content')).not.toBeNull();
+            revoke(change, true); await finishScheduledWork();
+            expect(owner.querySelector('.fluent-read-bilingual-content')).toBeNull();
+            expect(getTranslationState(owner)).toBeUndefined();
+            expect(owner.textContent).toBe('A public sentence owned by the current application shell.');
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+        });
+        it('preserves policy through restore, retranslation and equivalent owner remount', async () => {
+            const {owner, revoke} = fixture(); autoTranslateEnglishPage(); await finishScheduledWork();
+            expect(getTranslationState(owner)?.applicationShellPolicyId).toBe('mastodon');
+            restoreOriginalContent(); expect(getTranslationState(owner)).toBeUndefined();
+            autoTranslateEnglishPage(); await finishScheduledWork();
+            expect(getTranslationState(owner)?.applicationShellPolicyId).toBe('mastodon');
+            const parent = owner.parentElement!; const replacement = owner.cloneNode(true) as HTMLElement;
+            replacement.querySelectorAll('[data-fr-translation-owned]').forEach(node => node.remove());
+            owner.replaceWith(replacement);
+            TestMutationObserver.instances.findLast(observer => observer.observed.has(document.documentElement))!.emitRegistered([
+                {type: 'childList', target: parent, addedNodes: [replacement], removedNodes: [owner]} as unknown as MutationRecord,
+            ]);
+            await finishScheduledWork();
+            expect(getTranslationState(replacement)?.applicationShellPolicyId).toBe('mastodon');
+            expect(replacement.querySelector('.fluent-read-bilingual-content')).not.toBeNull();
+            expect(runtime.requests).toHaveBeenCalledTimes(2);
+            // fixture 的第一个 observer 已停止；当前 session 必须收到同一原站属性变化。
+            revoke('translate', false);
+            TestMutationObserver.instances.findLast(observer => observer.observed.has(document.documentElement))!.emitRegistered([
+                {type: 'attributes', target: document.getElementById('mastodon'), attributeName: 'translate', addedNodes: [], removedNodes: []} as unknown as MutationRecord,
+            ]);
+            await finishScheduledWork();
+            expect(replacement.querySelector('.fluent-read-bilingual-content')).toBeNull();
+            expect(getTranslationState(replacement)).toBeUndefined();
+        });
+        it('rejects remount into another protected application even with identical source and copied output', async () => {
+            const {owner, shell} = fixture(); autoTranslateEnglishPage(); await finishScheduledWork();
+            const replacement = shell.cloneNode(true) as HTMLElement; replacement.id = 'another-app';
+            shell.replaceWith(replacement);
+            TestMutationObserver.instances[0]!.emitRegistered([
+                {type: 'childList', target: document.body, addedNodes: [replacement], removedNodes: [shell]} as unknown as MutationRecord,
+            ]);
+            await finishScheduledWork();
+            expect(getTranslationState(replacement.querySelector<HTMLElement>('#post')!)).toBeUndefined();
+            expect(replacement.querySelector('.fluent-read-bilingual-content')).toBeNull();
+            expect(getTranslationState(owner)).toBeUndefined();
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+        });
+        it('preserves policy when switching the translation profile requires a fresh resolve', async () => {
+            const {owner, revoke} = fixture(); autoTranslateEnglishPage(); await finishScheduledWork();
+            const candidate = runtime.realCore!.resolve(owner)!;
+            expect(candidate.applicationShellPolicyId).toBeUndefined();
+            await translateTarget(candidate, 'bilingual', true, undefined, translationSnapshot({service: 'google'}));
+            await finishScheduledWork();
+            expect(getTranslationState(owner)?.applicationShellPolicyId).toBe('mastodon');
+            expect(runtime.requests).toHaveBeenCalledTimes(2);
+            revoke('id', true); await finishScheduledWork();
+            expect(owner.querySelector('.fluent-read-bilingual-content')).toBeNull();
+        });
+        it('preserves policy when changed source forces automatic repair to resolve and translate again', async () => {
+            const {owner, revoke} = fixture(); autoTranslateEnglishPage(); await finishScheduledWork();
+            const candidate = runtime.realCore!.discover(owner)[0]!;
+            owner.firstChild!.nodeValue = 'The website published a new public sentence.';
+            const retranslating = translateTarget(candidate, 'bilingual', true);
+            await finishScheduledWork(); await retranslating;
+            expect(owner.querySelector('.fluent-read-bilingual-content')?.textContent).toContain('new public sentence');
+            expect(getTranslationState(owner)?.applicationShellPolicyId).toBe('mastodon');
+            expect(runtime.requests).toHaveBeenCalledTimes(2);
+            revoke('id', true); await finishScheduledWork();
+            expect(owner.querySelector('.fluent-read-bilingual-content')).toBeNull();
+        });
+        it('manual hover has no automatic policy and preserves its existing application shell behavior', async () => {
+            const {owner, shell} = fixture(); const manual = runtime.realCore!.resolve(owner)!;
+            expect(manual.applicationShellPolicyId).toBeUndefined();
+            shell.id = 'different-app';
+            await translateTarget(manual, 'bilingual', false); await finishScheduledWork();
+            expect(owner.querySelector('.fluent-read-bilingual-content')).not.toBeNull();
+            expect(getTranslationState(owner)?.applicationShellPolicyId).toBeUndefined();
+            shell.id = 'another-manual-app'; await finishScheduledWork();
+            expect(owner.querySelector('.fluent-read-bilingual-content')).not.toBeNull();
+        });
+        it('failed automatic retry cannot lose policy and dispatch after shell protection changed', async () => {
+            const {owner, revoke} = fixture(); runtime.requests.mockRejectedValueOnce(new Error('Temporary provider failure'));
+            autoTranslateEnglishPage(); await finishScheduledWork();
+            expect(getTranslationState(owner)).toMatchObject({phase: 'error', applicationShellPolicyId: 'mastodon'});
+            expect(runtime.retryCallbacks).toHaveLength(1);
+            revoke('translate', false); runtime.retryCallbacks[0]!(); await finishScheduledWork();
+            expect(owner.querySelector('.fluent-read-bilingual-content')).toBeNull();
+            expect(getTranslationState(owner)).toBeUndefined();
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+        });
+        it.each(['id', 'translate', 'move'])('single-text rendering restores original slots when %s revokes policy', async change => {
+            const {owner, revoke} = fixture(); runtime.config.display = 0;
+            autoTranslateEnglishPage(); await finishScheduledWork();
+            expect(singleTranslationText(owner)).toContain('译:');
+            expect(getTranslationState(owner)?.applicationShellPolicyId).toBe('mastodon');
+            revoke(change, true); await finishScheduledWork();
+            expect(owner.querySelector('.fluent-read-single-slot')).toBeNull();
+            expect(owner.textContent).toBe('A public sentence owned by the current application shell.');
+            expect(getTranslationState(owner)).toBeUndefined();
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+        });
+        it.each(['id', 'translate', 'move', 'disabled', 'override'])('invalidates unchanged completion evidence after %s without relying on observer delivery', async change => {
+            const {owner, revoke} = fixture(); owner.textContent = 'Spec';
+            runtime.requests.mockImplementation(async origins => [...origins]);
+            autoTranslateEnglishPage(); const sessionId = getFullPageTranslationFrameState().sessionId!;
+            await finishScheduledWork();
+            expect(readFullPageUnchangedCompletion(owner, sessionId, 'Spec').status).toBe('available');
+            revoke(change, false);
+            expect(readFullPageUnchangedCompletion(owner, sessionId, 'Spec').status).toBe('unavailable');
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+        });
     });
 
     // 站点属性变化复用真实候选和规则，验证边界清理与异步提交。

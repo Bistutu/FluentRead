@@ -60,6 +60,13 @@
   },
   "rules": [
     {
+      "id": "dart",
+      "category": "documentation",
+      "verification": "site-fixture",
+      "fixture": "tests/siteDartDescription.test.ts",
+      "liveVerification": "docs/reports/web-stability-20261015/verification.json"
+    },
+    {
       "id": "mdn",
       "category": "documentation",
       "verification": "semantic-fixture",

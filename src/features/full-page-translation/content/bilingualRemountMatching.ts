@@ -2,7 +2,7 @@
  * @file src/features/full-page-translation/content/bilingualRemountMatching.ts
  * 文件职责：为同一宿主 mutation 边界的双语 owner 换代建立结构索引，避免旧/新段落两两验证。
  * 主要内容：缓存可信旧状态，按相对路径、语义范围和结构签名索引新节点，以共享候选组汇总歧义与译文差异；同批普通 owner 在相同识别范围下共享祖先保护读数，显式外壳例外仍按 owner 单独判断，同一只读阶段按父节点建立兄弟位置索引，保留严格位置配对和溢出身份校验。
- * 模块边界：只计算交接配对，不改写 DOM、不提交翻译状态、不发起请求；交接与布局恢复由 bilingualRemount 执行。
+ * 模块边界：只计算交接配对，缓存与匹配组区分自动外壳策略来源，不改写 DOM、不提交翻译状态、不发起请求；交接与布局恢复由 bilingualRemount 执行。
  */
 import {
     getTranslationOverflowGenerationIdentity,
@@ -77,7 +77,7 @@ function cachedSourceStructureSignature(
         signatures = new Map<string, string>();
         cache.set(owner, signatures);
     }
-    const cacheKey = `${allowTopLevelApplicationShell ? 1 : 0}:${state?.syntheticSegment ? 1 : 0}:${state?.scope ?? 'content'}`;
+    const cacheKey = JSON.stringify([allowTopLevelApplicationShell, state?.syntheticSegment, state?.scope ?? 'content', state?.applicationShellPolicyId]);
     const cached = signatures.get(cacheKey);
     if (cached !== undefined) return cached;
     const sourceTextNodes = state?.syntheticSegment ? collectLiveTranslationTextSlots(
@@ -157,6 +157,7 @@ export function matchBilingualRemountOwners(
                 const profile = JSON.stringify([
                     path, previousOwner.namespaceURI, previousOwner.localName,
                     state.allowTopLevelApplicationShell === true, state.syntheticSegment, state.scope ?? 'content',
+                    state.applicationShellPolicyId,
                     isTranslationSourceStructureOverflow(state.sourceStructureSignature),
                 ]);
                 let boundaryIndexes = indexes.get(mutation.target);

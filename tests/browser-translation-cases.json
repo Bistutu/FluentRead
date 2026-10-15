@@ -431,9 +431,10 @@
   "dart-language": {
     "url": "https://dart.dev/language",
     "hoverSelector": "main article section.content > p",
-    "requiredSelectors": ["main article section.content > p"],
+    "requiredSelectors": ["main article section.content > p", "header#site-content-title > .page-description"],
     "coverageRules": [
       {"name": "page-title", "selector": "main article h1", "kind": "heading", "minInitial": 1},
+      {"name": "page-description", "selector": "header#site-content-title > .page-description", "kind": "content", "minInitial": 1, "sourceIncludes": ["A brief introduction to Dart programs"]},
       {"name": "language-overview", "selector": "main article section.content > p", "kind": "content", "minInitial": 3}
     ],
     "forbiddenSelectors": ["main article pre, main article code"],
@@ -902,5 +903,80 @@
     "fullPageHotkey": "Alt+T",
     "service": "freeTranslation",
     "notes": "真实首页产品介绍逐卡翻译；持久 case 严格保留产品名称、页脚和搜索，不能用帮助中心文章代替本页面。实时投票数会由宿主自动更新，投票控件的原文与无译文断言由专站 fixture 和本次隔离浏览器专项证据覆盖，不对实时数字进行静态文本比较。"
+  },
+  "index-luke-preface": {
+    "url": "https://use-the-index-luke.com/sql/preface",
+    "hoverSelector": "#article p",
+    "requiredSelectors": [
+      "#content h1",
+      "#article p"
+    ],
+    "coverageRules": [
+      {
+        "name": "chapter-title",
+        "selector": "#content h1",
+        "kind": "heading",
+        "minInitial": 1
+      },
+      {
+        "name": "preface-paragraphs",
+        "selector": "#article p",
+        "kind": "content",
+        "minInitial": 8
+      }
+    ],
+    "forbiddenSelectors": [
+      "#article pre"
+    ],
+    "interactionSelectors": [
+      "#article a[href]"
+    ],
+    "modes": [
+      "hover",
+      "full"
+    ],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation",
+    "notes": "Issue #969 新反馈；观察静置、窗口变化及恢复重译，不能由旧版 GitHub 原因推断本页。"
+  },
+  "nasa-webb-news": {
+    "url": "https://science.nasa.gov/missions/webb/nasas-webb-finds-clues-to-ancient-distant-origin-of-comet-3i-atlas/",
+    "hoverSelector": ".entry-content > p.wp-block-paragraph",
+    "requiredSelectors": [
+      "h1",
+      ".entry-content > p.wp-block-paragraph"
+    ],
+    "coverageRules": [
+      {
+        "name": "news-title",
+        "selector": "h1",
+        "kind": "heading",
+        "minInitial": 1
+      },
+      {
+        "name": "news-body",
+        "selector": ".entry-content > p.wp-block-paragraph",
+        "kind": "content",
+        "minInitial": 8
+      }
+    ],
+    "forbiddenSelectors": [
+      "input[type=\"search\"]",
+      ".entry-content a[href=\"https://science.nasa.gov/webb\"]"
+    ],
+    "interactionSelectors": [
+      ".entry-content a[href]"
+    ],
+    "modes": [
+      "hover",
+      "full"
+    ],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation",
+    "notes": "NASA 科学新闻长文；正文与页面主标题逐节点覆盖，搜索框受保护。"
   }
 }

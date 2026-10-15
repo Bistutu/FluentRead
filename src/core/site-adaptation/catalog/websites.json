@@ -1,5 +1,20 @@
 [
   {
+    "id": "dart",
+    "name": "Dart 文档导语",
+    "match": {
+      "hosts": ["dart.dev"]
+    },
+    "mode": "augment",
+    "content": [
+      {
+        "css": ["#page-content article > .content > #site-content-title > p.page-description"]
+      }
+    ],
+    "protect": ["code", "pre", "input", "textarea"],
+    "exclude": ["nav"]
+  },
+  {
     "id": "mdn",
     "name": "MDN Web Docs",
     "match": {
