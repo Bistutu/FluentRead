@@ -7,6 +7,9 @@
 import type {ParsedDocument, PdfDocumentBlock, PdfDocumentPage} from '../core/document';
 import {pdfReaderDisplayRect} from './pdfReader';
 
+export const PDF_MATERIAL_MAX_LAYOUT_ATTEMPTS = 12;
+export const PDF_MATERIAL_FRAME_WAIT_MS = 750;
+
 export interface PdfMaterialLocation {segmentIndex: number; page: PdfDocumentPage; block: PdfDocumentBlock}
 export function pdfMaterialLocation(document: ParsedDocument, segmentIndex: number): PdfMaterialLocation | undefined {
     if (!Number.isSafeInteger(segmentIndex) || segmentIndex < 0 || !document.segments[segmentIndex] || document.binary?.kind !== 'pdf') return;
@@ -26,7 +29,7 @@ export interface PdfMaterialNavigationPorts {
     landed(location: PdfMaterialLocation): void;
 }
 
-/** 恢复期间的 DOM 更新有界等待；新请求、用户导航、文档替换及卸载都撤销旧请求。 */
+/** 恢复最多 12 次布局尝试，每次帧等待最多 750 ms；计时器获执行机会时总等待不超过 9 s。新请求、用户导航、文档替换及卸载都撤销旧请求。 */
 export function createPdfMaterialNavigation(ports: PdfMaterialNavigationPorts) {
     let controller: AbortController | undefined, disposed = false;
     const cancel = () => {controller?.abort(); controller = undefined;};
@@ -44,7 +47,7 @@ export function createPdfMaterialNavigation(ports: PdfMaterialNavigationPorts) {
                 await ports.resumePage(location.page.pageNumber);
                 if (!current()) return false;
                 let previous: number | undefined;
-                for (let attempt = 0; attempt < 12; attempt++) {
+                for (let attempt = 0; attempt < PDF_MATERIAL_MAX_LAYOUT_ATTEMPTS; attempt++) {
                     await ports.nextTick(); if (!current()) return false;
                     ports.prepare();
                     await ports.nextTick(); if (!current()) return false;
@@ -64,14 +67,19 @@ export function createPdfMaterialNavigation(ports: PdfMaterialNavigationPorts) {
     };
 }
 
-/** 原生动画帧等待同时监听取消，后台暂停帧或卸载不会留下永不结束的恢复 Promise。 */
+/** 暂停的动画帧最多等待 750 ms 定时器机会；冻结标签恢复执行后也会结束等待，取消/卸载立即清理所有句柄。 */
 export function waitPdfMaterialFrame(view: Pick<Window, 'requestAnimationFrame' | 'cancelAnimationFrame'>, signal: AbortSignal): Promise<boolean> {
     if (signal.aborted) return Promise.resolve(false);
     return new Promise(resolve => {
-        let frame = 0;
-        const done = (value: boolean) => {signal.removeEventListener('abort', abort); view.cancelAnimationFrame(frame); resolve(value);};
+        let frame = 0, settled = false;
+        let timer: ReturnType<typeof setTimeout>;
+        const done = (value: boolean) => {
+            if (settled) return;
+            settled = true; clearTimeout(timer); signal.removeEventListener('abort', abort); view.cancelAnimationFrame(frame); resolve(value);
+        };
         const abort = () => done(false);
         signal.addEventListener('abort', abort, {once: true});
+        timer = setTimeout(() => done(false), PDF_MATERIAL_FRAME_WAIT_MS);
         frame = view.requestAnimationFrame(() => done(true));
     });
 }

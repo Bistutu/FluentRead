@@ -1511,7 +1511,7 @@ it('saves the reader current visible paragraph and preserves the saved target wh
     state.parsedDocument = markRaw({...parsed, segments: [...parsed.segments, {id: 1, source: '  Later Cafe\u0301\noriginal paragraph  '}], binary: {...parsed.binary, pages: [{...parsed.binary.pages[0], segmentIndexes: [0, 1], blocks: [...parsed.binary.pages[0].blocks, {...parsed.binary.pages[0].blocks[0], segmentIndex: 1, y: 300, lines: [{x: 5, y: 300, baseline: 310, width: 50, height: 12, text: '  Later Cafe\u0301\noriginal paragraph  '}]}]}]}});
     await flush();
     const captureMaterialLocation = vi.fn(() => 1), resumeLocation = vi.fn(async () => true);
-    state.materialPdfReader = {captureMaterialLocation, resolveMaterialSelection: () => 1, resumePage: async () => {}, resumeLocation};
+    state.materialPdfReader = {captureMaterialLocation, resolveMaterialSelection: () => 1, resumePage: async () => {}, resumeLocation, cancelMaterialResume() {}};
     let saved: any;
     ports.sendMessage.mockImplementation(async (message: any) => {
         if (message.type !== 'fluentReadMaterials') return;
@@ -1524,11 +1524,11 @@ it('saves the reader current visible paragraph and preserves the saved target wh
     expect(saved.locator.documentReference.locator.position).toBe('[5,310]');
     expect(saved.locator.documentReference.materialId).toBe('a'.repeat(32));
     expect(state.captureDocumentMaterialSelection({} as Range, 'before public ref')).toBeUndefined();
-    state.materialPdfReader = {captureMaterialLocation, resolveMaterialSelection: () => 1, resumePage: async () => {}, resumeLocation};
+    state.materialPdfReader = {captureMaterialLocation, resolveMaterialSelection: () => 1, resumePage: async () => {}, resumeLocation, cancelMaterialResume() {}};
     const selected = state.captureDocumentMaterialSelection({} as Range, 'selected translated word');
     expect(selected.locator.quote).toBe('selected translated word'); expect(selected.locator.documentReference.locator.source).toBe(saved.locator.documentReference.locator.source);
     await state.restoreMaterialDocument(saved.id); await state.applyMaterialResume(); await flush();
-    state.materialPdfReader = {captureMaterialLocation, resolveMaterialSelection: () => 1, resumePage: async () => {}, resumeLocation}; await flush();
+    state.materialPdfReader = {captureMaterialLocation, resolveMaterialSelection: () => 1, resumePage: async () => {}, resumeLocation, cancelMaterialResume() {}}; await flush();
     expect(resumeLocation).toHaveBeenCalledWith(1);
     captureMaterialLocation.mockReturnValue(undefined as any); ports.sendMessage.mockClear();
     await state.saveDocumentMaterial(); expect(state.downloadNotice).toContain('原阅读位置已保留');
@@ -1549,7 +1549,7 @@ it.each([
         return {success: true, data: message.action === 'generation' ? 3 : saved};
     });
     let visibleSegment = 0;
-    const api = {resumePage: async (page: number) => {state.pdfPage = page;}, resumeLocation: async () => true,
+    const api = {resumePage: async (page: number) => {state.pdfPage = page;}, resumeLocation: async () => true, cancelMaterialResume() {},
         captureMaterialLocation: () => visibleSegment, resolveMaterialSelection: () => visibleSegment};
     await state.restoreMaterialDocument(saved.id); await flush(); state.materialPdfReader = api; await flush();
     expect(state.documentMaterialId).toBe(saved.id);
@@ -1566,4 +1566,36 @@ it.each([
         expect(captures).toHaveLength(1); expect(captures[0].positionOnly).toBe(true);
         expect(captures[0].locator.page).toBe(3); expect(captures[0].locator.documentReference.locator.scope).toBe('pdf:3');
     } finally {vi.useRealTimers();}
+});
+
+it('trusted reading gestures preempt only an active exact resume while unresolved saved references remain protected', async () => {
+    await state.loadFiles([file('interrupt-material.pdf')]); await flush(); state.documentQueue[0].historyId = 'a'.repeat(32);
+    const paused = deferred<boolean>();
+    const cancelMaterialResume = vi.fn(() => paused.resolve(false));
+    const api = {captureMaterialLocation: () => 0, resolveMaterialSelection: () => 0, resumePage: async () => {}, resumeLocation: vi.fn(() => paused.promise), cancelMaterialResume};
+    state.materialPdfReader = api;
+    const captured = state.documentMaterialSelection(); let record = {id: 'interrupt-material', kind: 'document', ...captured};
+    const writes: any[] = [];
+    ports.sendMessage.mockImplementation(async (message: any) => {
+        if (message.type !== 'fluentReadMaterials') return;
+        if (message.action === 'capture') writes.push(message.input);
+        return {success: true, data: message.action === 'generation' ? 3 : record};
+    });
+    await state.restoreMaterialDocument(record.id); await flush(); state.materialPdfReader = api;
+    const restoring = state.applyMaterialResume(); await flush(); expect(api.resumeLocation).toHaveBeenCalled();
+    const reading = walkHost(root).find(entry => typeof entry.props.onWheelPassive === 'function' && String(entry.props.class).includes('reading-content'))!;
+    reading.props.onWheelPassive({isTrusted: false}); expect(cancelMaterialResume).not.toHaveBeenCalled();
+    reading.props.onWheelPassive({isTrusted: true}); await restoring; await flush();
+    expect(cancelMaterialResume).toHaveBeenCalledOnce(); expect(state.downloadNotice).toContain('已停止自动定位');
+    vi.useFakeTimers();
+    try {state.materialPdfReader = api; state.queueMaterialPositionCapture(); await vi.advanceTimersByTimeAsync(1100); expect(writes).toHaveLength(1);}
+    finally {vi.useRealTimers();}
+    // 无法唯一匹配不属于正在执行的恢复，不能被一次普通滚动变成自动覆盖授权。
+    record = {...record, locator: {...record.locator, documentReference: {...record.locator.documentReference, locator: {...record.locator.documentReference.locator, source: 'Unavailable original'}}}};
+    await state.restoreMaterialDocument(record.id); await state.applyMaterialResume(); await flush();
+    expect(state.downloadNotice).toContain('原文位置已变化或无法唯一匹配');
+    vi.useFakeTimers();
+    try {state.materialPdfReader = api; reading.props.onWheelPassive({isTrusted: true}); state.queueMaterialPositionCapture(); await vi.advanceTimersByTimeAsync(1100); expect(writes).toHaveLength(1);}
+    finally {vi.useRealTimers();}
+    expect(cancelMaterialResume).toHaveBeenCalledOnce();
 });

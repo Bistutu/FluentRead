@@ -1467,3 +1467,22 @@ it('exposes current visible material segment and restores that exact later parag
     const old = exposed.resumeLocation(0); mountedApp.unmount(); mountedApp = undefined;
     expect(await old).toBe(false); expect(exposed.captureMaterialLocation()).toBeUndefined();
 });
+
+it('public material cancellation preserves user scrolling and invalidates both pending page and layout work', async () => {
+    const reader = mountReader(model(3)); await componentFlush(); const exposed = mountedApp._instance.subTree.component.exposed;
+    reader.viewport.scrollTop = 150;
+    const beforePageCommit = exposed.resumeLocation(2); exposed.cancelMaterialResume();
+    expect(await beforePageCommit).toBe(false); expect(reader.viewport.scrollTop).toBe(150);
+    const restoring = exposed.resumeLocation(1); await componentFlush();
+    expect(frames.size).toBeGreaterThan(0);
+    reader.viewport.scrollTop = 850; exposed.cancelMaterialResume(); flushFrames(); await componentFlush();
+    expect(await restoring).toBe(false); expect(reader.viewport.scrollTop).toBe(850);
+});
+
+it('programmatic scrolling alone does not claim trusted navigation ownership or cancel the pending material restore', async () => {
+    const reader = mountReader(model(3)); await componentFlush(); const exposed = mountedApp._instance.subTree.component.exposed;
+    const restoring = exposed.resumeLocation(1); await componentFlush();
+    reader.viewport.scrollTop = 850; reader.viewport.dispatchEvent(new document.defaultView!.Event('scroll'));
+    for (let attempt = 0; attempt < 4; attempt++) {flushFrames(); await componentFlush();}
+    expect(await restoring).toBe(true); expect(reader.viewport.scrollTop).not.toBe(850);
+});

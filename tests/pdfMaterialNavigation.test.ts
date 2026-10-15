@@ -2,7 +2,7 @@
 import {describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import type {ParsedDocument} from '@/src/features/document-translation/core/document';
-import {captureVisiblePdfMaterialLocation, pdfMaterialLocation, resolvePdfMaterialSelection, createPdfMaterialNavigation, waitPdfMaterialFrame, type PdfMaterialNavigationPorts} from '@/src/features/document-translation/ui/pdfMaterialNavigation';
+import {PDF_MATERIAL_MAX_LAYOUT_ATTEMPTS, PDF_MATERIAL_FRAME_WAIT_MS, captureVisiblePdfMaterialLocation, pdfMaterialLocation, resolvePdfMaterialSelection, createPdfMaterialNavigation, waitPdfMaterialFrame, type PdfMaterialNavigationPorts} from '@/src/features/document-translation/ui/pdfMaterialNavigation';
 function document(): ParsedDocument {
     return {fileName: 'same.pdf', format: 'pdf', label: 'PDF', parts: [], segments: [{id: 0, source: 'Same'}, {id: 1, source: 'Same'}],
         binary: {kind: 'pdf', bytes: new Uint8Array(), pages: [{pageNumber: 1, width: 600, height: 800, segmentIndexes: [0, 1], blocks: [
@@ -235,4 +235,41 @@ it('refuses a stale non-PDF source range and a visible segment with conflicting 
     expect(captureVisiblePdfMaterialLocation(f.ports)).toBe(0);
     f.model.binary.pages[1].blocks.push({...f.model.binary.pages[0].blocks[0]});
     expect(captureVisiblePdfMaterialLocation(f.ports)).toBeUndefined();
+});
+
+it('bounds a paused animation frame and removes its timer on abort or successful completion', async () => {
+    vi.useFakeTimers();
+    try {
+        let callback!: FrameRequestCallback; const cancelAnimationFrame = vi.fn();
+        const view = {requestAnimationFrame: (run: FrameRequestCallback) => {callback = run; return 11;}, cancelAnimationFrame};
+        const paused = waitPdfMaterialFrame(view, new AbortController().signal);
+        await vi.advanceTimersByTimeAsync(749); expect(cancelAnimationFrame).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1); expect(await paused).toBe(false); expect(cancelAnimationFrame).toHaveBeenCalledWith(11);
+        callback(0); expect(cancelAnimationFrame).toHaveBeenCalledTimes(1); expect(vi.getTimerCount()).toBe(0);
+        const ready = waitPdfMaterialFrame(view, new AbortController().signal); callback(0); expect(await ready).toBe(true); expect(vi.getTimerCount()).toBe(0);
+        const abort = new AbortController(), stopped = waitPdfMaterialFrame(view, abort.signal); abort.abort(); expect(await stopped).toBe(false); expect(vi.getTimerCount()).toBe(0);
+    } finally {vi.useRealTimers();}
+});
+it('user cancellation wins over a delayed restore frame and never scrolls the user back to the old target', async () => {
+    let position = 0, frameStarted!: () => void; const started = new Promise<void>(resolve => {frameStarted = resolve;});
+    const test = setup({align: () => {position = 400; return {position, visible: true};}, nextFrame: signal => new Promise(resolve => {
+        signal.addEventListener('abort', () => resolve(false), {once: true}); frameStarted();
+    })});
+    const pending = test.navigation.resumeLocation(1); await started;
+    position = 850; test.navigation.cancel();
+    expect(await pending).toBe(false); expect(position).toBe(850); expect(test.landed).not.toHaveBeenCalled();
+});
+
+it('limits cumulative slow-frame waiting to the declared attempts and leaves no animation or timeout handles', async () => {
+    vi.useFakeTimers();
+    try {
+        let id = 0; const animationTimers = new Map<number, ReturnType<typeof setTimeout>>();
+        const view = {requestAnimationFrame(callback: FrameRequestCallback) {const key = ++id; animationTimers.set(key, setTimeout(() => callback(0), PDF_MATERIAL_FRAME_WAIT_MS - 1)); return key;},
+            cancelAnimationFrame(key: number) {clearTimeout(animationTimers.get(key)); animationTimers.delete(key);}};
+        const test = setup({align: () => undefined, nextFrame: signal => waitPdfMaterialFrame(view, signal)});
+        const started = Date.now(), pending = test.navigation.resumeLocation(1);
+        await vi.advanceTimersByTimeAsync(PDF_MATERIAL_MAX_LAYOUT_ATTEMPTS * PDF_MATERIAL_FRAME_WAIT_MS);
+        expect(await pending).toBe(false); expect(id).toBe(PDF_MATERIAL_MAX_LAYOUT_ATTEMPTS);
+        expect(Date.now() - started).toBe(9000); expect(animationTimers.size).toBe(0); expect(vi.getTimerCount()).toBe(0);
+    } finally {vi.useRealTimers();}
 });

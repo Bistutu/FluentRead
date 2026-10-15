@@ -691,15 +691,18 @@ const historyEntries = ref<DocumentHistorySummary[]>([]);
 const materialPrivate = browser.extension?.inIncognitoContext === true;
 const materialSaving = ref(false);
 const documentMaterialId = ref('');
-const materialPdfReader = ref<{resumePage(page: number): Promise<void>; resumeLocation(segmentIndex: number): Promise<boolean>; resolveMaterialSelection(range: Range): number | undefined; captureMaterialLocation(): number | undefined} | null>(null);
+const materialPdfReader = ref<{resumePage(page: number): Promise<void>; resumeLocation(segmentIndex: number): Promise<boolean>; cancelMaterialResume(): void; resolveMaterialSelection(range: Range): number | undefined; captureMaterialLocation(): number | undefined} | null>(null);
 let pendingMaterialResume: MaterialRecord | undefined;
 let materialPositionTimer: ReturnType<typeof setTimeout> | undefined;
 let materialEpoch = 0;
 let materialResumeRevision = 0;
 let materialPositionCaptureAllowed = false;
+let interruptMaterialResume: (() => void) | undefined;
 /** 恢复引起的页码变化不写回定位；只有用户开始阅读后才记录新位置。 */
 function markMaterialReadingIntent(event: Event): void {
-  if (event.isTrusted && documentMaterialId.value && !pendingMaterialResume) materialPositionCaptureAllowed = true;
+  if (!event.isTrusted) return;
+  interruptMaterialResume?.();
+  if (documentMaterialId.value && !pendingMaterialResume) materialPositionCaptureAllowed = true;
 }
 function materialReadingPointerDown(event: PointerEvent): void {focusNativeReader(event); markMaterialReadingIntent(event);}
 /** 阅读器仅返回当前模型索引；完整原文引用由持有已核验文件摘要与模型的组合根创建。 */
@@ -758,13 +761,24 @@ async function applyMaterialResume(): Promise<void> {
   await nextTick(); if (disposed || request !== materialResumeRevision || owner !== materialEpoch || doc !== parsedDocument.value || pendingMaterialResume !== record) return;
   // PdfReader 公共出口按需加载独立 chunk；普通 nextTick 不代表异步组件的公开 ref 已就绪。
   const pdfReader = materialPdfReader.value;
-  if (doc.binary?.kind === 'pdf' && (typeof pdfReader?.resumePage !== 'function' || position.status === 'exact' && typeof pdfReader?.resumeLocation !== 'function')) return;
+  if (doc.binary?.kind === 'pdf' && (typeof pdfReader?.resumePage !== 'function' || position.status === 'exact' && (typeof pdfReader?.resumeLocation !== 'function' || typeof pdfReader?.cancelMaterialResume !== 'function'))) return;
   documentMaterialId.value = record.id;
   downloadNotice.value = position.status === 'coarse' ? '已恢复保存的页码或章节，请核对原文；开始阅读后记录新的位置。' : '';
   readerPage.value = Math.max(1, Math.min(page, readerPageCount.value));
   await nextTick(); if (disposed || request !== materialResumeRevision || owner !== materialEpoch || doc !== parsedDocument.value || pendingMaterialResume !== record) return;
   if (doc.binary?.kind === 'pdf') {
-    const restored = position.status === 'exact' ? await pdfReader!.resumeLocation(position.segmentIndex) : (await pdfReader!.resumePage(page), true);
+    let restored: boolean;
+    if (position.status === 'exact') {
+      const interrupt = () => {
+        if (disposed || request !== materialResumeRevision || owner !== materialEpoch || doc !== parsedDocument.value || pendingMaterialResume !== record) return;
+        materialResumeRevision += 1; interruptMaterialResume = undefined;
+        pdfReader!.cancelMaterialResume(); pendingMaterialResume = undefined;
+        downloadNotice.value = '已停止自动定位，继续记录当前阅读位置。';
+      };
+      interruptMaterialResume = interrupt;
+      try {restored = await pdfReader!.resumeLocation(position.segmentIndex);}
+      finally {if (interruptMaterialResume === interrupt) interruptMaterialResume = undefined;}
+    } else {await pdfReader!.resumePage(page); restored = true;}
     if (disposed || request !== materialResumeRevision || owner !== materialEpoch || doc !== parsedDocument.value || pendingMaterialResume !== record) return;
     if (!restored) {downloadNotice.value = '原段落布局尚未就绪，已保留阅读位置。请重新打开这份材料重试。'; return;}
   }

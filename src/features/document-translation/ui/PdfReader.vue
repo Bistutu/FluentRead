@@ -836,6 +836,12 @@ const materialNavigation = createPdfMaterialNavigation({
   },
 });
 async function resumeLocation(segmentIndex: number): Promise<boolean> {return materialNavigation.resumeLocation(segmentIndex);}
+/** 可信用户阅读操作抢占自动恢复，同时淘汰此前排队的页码、布局与重排锚点。 */
+function cancelMaterialResume(): void {
+  resumeRevision += 1; materialNavigation.cancel();
+  layoutUpdateGeneration += 1; readingUpdateGeneration += 1;
+  pendingReadingAnchor = lastReadingAnchor = undefined; pendingZoomAnchor = undefined;
+}
 function resolveMaterialSelection(range: Range): number | undefined {
   if (!mounted || closed || !viewport.value) return;
   return resolvePdfMaterialSelection(range, {document: props.document, renderedDocument: materialRenderDocument, identity: documentIdentity.value, viewport: viewport.value, sourceHosts});
@@ -848,7 +854,7 @@ function captureMaterialLocation(): number | undefined {
     residentPages: residentLayouts.value.map(layout => layout.page),
     readyPages: new Set(residentLayouts.value.filter(layout => states.value.get(layout.page.pageNumber)?.status === 'ready').map(layout => layout.page.pageNumber))});
 }
-defineExpose({resumePage, resumeLocation, resolveMaterialSelection, captureMaterialLocation});
+defineExpose({resumePage, resumeLocation, cancelMaterialResume, resolveMaterialSelection, captureMaterialLocation});
 function jumpToPosition(pageIndex: number, y: number): void {
   materialNavigation.cancel();
   const layout = layouts.value[pageIndex];
