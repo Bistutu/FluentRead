@@ -12,7 +12,7 @@ describe('learning center video source UI', () => {
     it('renders real fragment anchors, recoverable source states and ordinary article links', async () => {
         const require = createRequire(import.meta.url);
         const runtime = require('vue') as typeof import('vue');
-        const {renderToString} = require('@vue/server-renderer') as {renderToString(app: ReturnType<typeof runtime.createSSRApp>): Promise<string>};
+        const {renderToString} = require('vue/server-renderer') as {renderToString(app: ReturnType<typeof runtime.createSSRApp>): Promise<string>};
         server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(), plugins: [vue()], resolve: {alias: {'@': resolve(process.cwd())}}, server: {hmr: false, middlewareMode: true}});
         const component = (await server.ssrLoadModule('/src/features/vocabulary/ui/VocabularySource.vue')).default;
         const render = (context?: VocabularyContext) => renderToString(runtime.createSSRApp(component, {context}));

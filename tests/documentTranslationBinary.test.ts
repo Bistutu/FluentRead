@@ -28,6 +28,7 @@ const onePixelPng = Uint8Array.from(Buffer.from(
 const testRasterizer: PdfPageRasterizer = async () => onePixelPng;
 const onePixelJpeg = Uint8Array.from(Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAIBAQEBAQIBAQECAgICAgQDAgICAgUEBAMEBgUGBgYFBgYGBwkIBgcJBwYGCAsICQoKCgoKBggLDAsKDAkKCgr/2wBDAQICAgICAgUDAwUKBwYHCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgr/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AL+AA//Z', 'base64'));
 
+// 首次真实 PDF 导入包含 pdf.js/worker 冷加载；单 worker 覆盖率 CI 保留有界预算，进度与取消契约仍完整执行。
 it('reports PDF import page progress, yields to input, and supports page-boundary cancellation', async () => {
     const pdf = await PDFDocument.create();
     for (let index = 0; index < 10; index += 1) pdf.addPage().drawText(`Page ${index + 1} text`);
@@ -47,7 +48,7 @@ it('reports PDF import page progress, yields to input, and supports page-boundar
         if (page === 3) controller.abort(new Error('Import canceled'));
     }})).rejects.toThrow('Import canceled');
     expect(completed).toEqual([0, 1, 2, 3]);
-});
+}, 15_000);
 
 function loadBytes(fileName: string): Uint8Array {
     return Uint8Array.from(readFileSync(new URL(fileName, exampleRoot)));
