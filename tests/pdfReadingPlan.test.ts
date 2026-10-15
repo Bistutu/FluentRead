@@ -7,6 +7,57 @@ const page = (blocks: PdfDocumentBlock[], overrides: Partial<PdfDocumentPage> = 
 const document = (sources: Array<{source: string; role?: 'heading' | 'paragraph'}>): ParsedDocument => ({fileName: 'paper.pdf', format: 'pdf', label: 'PDF', parts: [], segments: sources.map((entry, id) => ({id, ...entry}))});
 
 describe('PDF canonical complete reading plan', () => {
+    it('places a preserved table before its translated cells using explicit order even when the source block array is reversed', () => {
+        const sourcePage = page([block(1, {kind: 'table', readingOrder: 20, y: 125}), block(0, {kind: 'table', readingOrder: 10, y: 100}), block(2, {kind: 'text', readingOrder: 30, y: 220})], {
+            preservedRegions: [{id: 'table', kind: 'table', x: 10, y: 90, width: 200, height: 90}],
+        });
+        const plan = buildPdfReadingPlan(document([{source: 'First cell'}, {source: 'Second cell'}, {source: 'After the table'}]), sourcePage, ['第一单元格', '第二单元格', '表后正文']);
+        expect(plan.entries.map(entry => entry.id)).toEqual(['pdf-3-region-table', 'pdf-3-segment-0', 'pdf-3-segment-1', 'pdf-3-segment-2']);
+        expect(plan.entries[0]).toMatchObject({kind: 'region', segmentIndexes: [0, 1]});
+    });
+    it('retains source array order when legacy blocks share the same explicit reading order', () => {
+        const sourcePage = page([block(1, {readingOrder: 4}), block(0, {readingOrder: 4})]);
+        const plan = buildPdfReadingPlan(document([{source: 'Second'}, {source: 'First'}]), sourcePage, []);
+        expect(plan.entries.map(entry => entry.id)).toEqual(['pdf-3-segment-1', 'pdf-3-segment-0']);
+    });
+    it('retains list structure in source and translated reading without changing source text or segment identity', () => {
+        const doc = document([{source: 'First list item'}, {source: 'Second list item'}]);
+        const sourcePage = page([block(0, {listMarker: '•'}), block(1, {listMarker: '▪'})]);
+        const before = JSON.stringify({doc, sourcePage});
+        const plan = buildPdfReadingPlan(doc, sourcePage, ['第一项']);
+        expect(plan.entries.filter(entry => entry.kind === 'text').map(entry => entry.text)).toEqual(['• 第一项', '▪ Second list item']);
+        expect(plan.entries[0]).toMatchObject({id: 'pdf-3-segment-0', source: 'First list item', translated: true});
+        expect(JSON.stringify({doc, sourcePage})).toBe(before);
+    });
+    it('renders legacy and translated discretionary soft hyphens as continuous searchable words while retaining source identity', () => {
+        const doc = document([{source: 'co\u00ADoperate'}, {source: 'another source'}]);
+        const plan = buildPdfReadingPlan(doc, page([block(0), block(1)]), ['', 'inter\u00ADnational']);
+        expect(plan.entries.filter(entry => entry.kind === 'text').map(entry => entry.text)).toEqual(['cooperate', 'international']);
+        expect(plan.entries[0]).toMatchObject({source: 'co\u00ADoperate', id: 'pdf-3-segment-0', translated: false});
+    });
+    it('retains parser source-only bylines and running text with unique stable block IDs', () => {
+        const byline = {...block(-1, {kind: 'metadata', preserveSource: true, readingOrder: 0}), source: 'Ada Example · ada@example.org'};
+        const footer = {...block(-1, {kind: 'footer', preserveSource: true, readingOrder: 2}), source: 'Example report · 2026'};
+        const sourcePage = page([byline, block(0, {readingOrder: 1}), footer]);
+        const plan = buildPdfReadingPlan(document([{source: 'Body paragraph'}]), sourcePage, ['正文']);
+        expect(plan.entries.map(entry => entry.kind === 'text' && entry.text)).toEqual(['Ada Example · ada@example.org', '正文', 'Example report · 2026']);
+        expect(new Set(plan.entries.map(entry => entry.id)).size).toBe(3);
+        expect(plan.entries.filter(entry => entry.kind === 'text' && entry.segmentIndex < 0).every(entry => entry.kind === 'text' && !entry.translated)).toBe(true);
+        expect(buildPdfReadingPlan(document([{source: 'Body paragraph'}]), sourcePage, ['正文'])).toEqual(plan);
+    });
+    it('does not confuse source-only math and controls with unrelated source-only metadata', () => {
+        const sourcePage = page([
+            {...block(-1, {kind: 'metadata', y: 10}), source: 'Ada Example'},
+            {...block(-1, {kind: 'formula', y: 100, preserveSource: true}), source: 'x = y'},
+            {...block(-1, {kind: 'footer', y: 740}), source: 'Footer source'},
+            {...block(-1, {kind: 'metadata', y: 40}), source: 'Legacy\u0001'},
+        ]);
+        const plan = buildPdfReadingPlan(document([]), sourcePage, []);
+        expect(plan.entries.filter(entry => entry.kind === 'text').map(entry => entry.text)).toEqual(['Ada Example', 'Footer source']);
+        expect(plan.entries.filter(entry => entry.kind === 'region')).toHaveLength(2);
+        expect(plan.entries.filter(entry => entry.kind === 'region').every(entry => entry.segmentIndexes.length === 0)).toBe(true);
+        expect(new Set(plan.entries.map(entry => entry.id)).size).toBe(plan.entries.length);
+    });
     it('retains full long translations with stable segment links and explicit multi-column reading order', () => {
         const doc = document([{source: 'right'}, {source: 'left', role: 'heading'}]);
         const sourcePage = page([block(0, {readingOrder: 4, kind: 'text'}), block(1, {readingOrder: 1})]);

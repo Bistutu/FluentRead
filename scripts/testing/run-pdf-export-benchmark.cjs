@@ -12,6 +12,7 @@
  * 不恢复或改变用户焦点。--preflight-only / --self-test-expectations 仅执行离线预检/回归。
  */
 const assert = require('node:assert/strict');
+const {mapPdfLayoutPages} = require('./pdf-output-pages.cjs');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -187,14 +188,14 @@ async function inspectPdf(bytes, requireRepo) {
   const task = getDocument({data: new Uint8Array(bytes), disableFontFace: true, isEvalSupported: false, useWorkerFetch: false, verbosity: 0,
     standardFontDataUrl: path.join(path.dirname(requireRepo.resolve('pdfjs-dist/package.json')), 'standard_fonts') + path.sep});
   try {
-    const pdf = await task.promise, pages = [];
+    const pdf = await task.promise, pages = [], labels = await pdf.getPageLabels();
     for (let number = 1; number <= pdf.numPages; number++) {
       const page = await pdf.getPage(number);
       try {
         const viewport = page.getViewport({scale: 1});
         const items = (await page.getTextContent()).items.filter(item => 'str' in item);
         const annotations = (await page.getAnnotations()).filter(annotation => annotation.subtype === 'Text').map(annotation => ({contents: annotation.contentsObj?.str ?? annotation.contents ?? '', rect: annotation.rect, flags: annotation.annotationFlags}));
-        pages.push({number, width: viewport.width, height: viewport.height, text: items.map(item => item.str).join('\n'), annotations});
+        pages.push({number, label: labels?.[number - 1], width: viewport.width, height: viewport.height, text: items.map(item => item.str).join('\n'), annotations});
       } finally {page.cleanup();}
     }
     return pages;
@@ -227,11 +228,12 @@ function validateOutput(sourcePages, outputPages, fixture, mode, layout, finalEx
     outputPages: outputTexts.map((text, outputIndex) => ({page: outputIndex + 1, hits: anchors.filter(anchor => text.includes(anchor)).length})).filter(entry => entry.hits > 0)}));
   const dimensionFailures = [], missingOriginalPages = [], incorrectPageOrder = [];
   const sideBySide = mode === 'bilingual';
+  const mapped = mapPdfLayoutPages(sourcePages.length, outputPages);
   sourcePages.forEach((source, index) => {
-    const output = outputPages[index], expectedWidth = sideBySide ? source.width * 2 + Math.max(8, Math.min(24, source.width * .025)) : source.width;
+    const output = mapped.pages[index], expectedWidth = sideBySide ? source.width * 2 + Math.max(8, Math.min(24, source.width * .025)) : source.width;
     if (!output || Math.abs(output.width - expectedWidth) > .02 || Math.abs(output.height - source.height) > .02) dimensionFailures.push({page: index + 1, expected: {width: expectedWidth, height: source.height}, actual: output && {width: output.width, height: output.height}});
     if (sideBySide && fingerprints[index].length && !sourceOrder[index].outputPages.length) missingOriginalPages.push(index + 1);
-    if (sideBySide && fingerprints[index].length && !sourceOrder[index].outputPages.some(entry => entry.page === index + 1 && entry.hits === fingerprints[index].length)) incorrectPageOrder.push(index + 1);
+    if (sideBySide && fingerprints[index].length && !sourceOrder[index].outputPages.some(entry => entry.page === mapped.indices[index] + 1 && entry.hits === fingerprints[index].length)) incorrectPageOrder.push(index + 1);
   });
   const annotations = outputPages.flatMap(page => page.annotations.map(annotation => ({page: page.number, pageWidth: page.width, pageHeight: page.height, ...annotation})));
   // Every Text annotation in this controlled export is a generated overflow note.
@@ -243,10 +245,16 @@ function validateOutput(sourcePages, outputPages, fixture, mode, layout, finalEx
     expected: finalExpectations.byMarker[FIXTURE_MARKER.exec(annotation.contents)?.[0]], actual: annotation.contents}));
   const expandedAnnotation = fixtureAnnotations.find(annotation => annotation.contents === finalExpectations.byMarker[fixture.expandedMarker]);
   const outsideAnnotations = fixtureAnnotations.filter(annotation => annotation.rect[0] < 0 || annotation.rect[1] < 0 || annotation.rect[2] > annotation.pageWidth + .01 || annotation.rect[3] > annotation.pageHeight + .01).map(annotation => ({page: annotation.page, rect: annotation.rect}));
-  const checks = {oneOutputPagePerSource: outputPages.length === sourcePages.length, originalPagesComplete: missingOriginalPages.length === 0,
+  const continuationText = sourcePages.map((_source, index) => tight(mapped.continuations.filter(item => item.sourcePage === index + 1)
+    .map(item => outputPages[item.index]?.text || '').join('')).replace(/原文第\d+页·译文续页\d+\/\d+/gu, ''));
+  const incompleteContinuations = mapped.labelled ? fixtureAnnotations.filter(annotation => {
+    const sourceIndex = mapped.indices.indexOf(annotation.page - 1);
+    return sourceIndex < 0 || !continuationText[sourceIndex].includes(tight(annotation.contents));
+  }).map(annotation => ({page: annotation.page, chars: annotation.contents.length})) : [];
+  const checks = {layoutPagesMapped: mapped.ok, visibleContinuationFullText: incompleteContinuations.length === 0, originalPagesComplete: missingOriginalPages.length === 0,
     originalPageOrder: incorrectPageOrder.length === 0, exactPageDimensions: dimensionFailures.length === 0, annotationFullText: incompleteAnnotations.length === 0,
     overflowAnnotationsPresent: fixtureAnnotations.length > 0, annotationNoPrint: fixtureAnnotations.every(annotation => !(annotation.flags & 4)), annotationInsidePage: outsideAnnotations.length === 0};
-  return {layout, checks, semanticOk: Object.values(checks).every(Boolean), sourceOrder, dimensionFailures, missingOriginalPages, incorrectPageOrder,
+  return {layout, pageMapping: {ok: mapped.ok, labelled: mapped.labelled, indices: mapped.indices, continuations: mapped.continuations}, checks, semanticOk: Object.values(checks).every(Boolean), sourceOrder, dimensionFailures, missingOriginalPages, incorrectPageOrder, incompleteContinuations,
     sourcePagesWithoutUniqueFingerprint: fingerprints.map((anchors, index) => !anchors.length ? index + 1 : null).filter(Boolean),
     annotations: {total: annotations.length, fixture: fixtureAnnotations.length, incomplete: incompleteAnnotations, outside: outsideAnnotations, expandedMarker: fixture.expandedMarker, expandedPage: expandedAnnotation?.page, expandedChars: expandedAnnotation?.contents.length,
       expandedAnnotationPresent: Boolean(expandedAnnotation), expandedNote: 'The first sixfold translation may fit at >=6pt; a note is required only when the bounded raster fitting cannot display all text.'}};

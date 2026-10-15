@@ -1,0 +1,233 @@
+{
+  "schema": 1,
+  "selectionPolicy": "Explicit source pages; remaining source pages remain untested and do not establish full-corpus acceptance",
+  "documents": [
+    {
+      "id": "attention",
+      "category": "paper",
+      "title": "Attention Is All You Need",
+      "file": "attention-1706.03762v7.pdf",
+      "sourceUrl": "https://arxiv.org/pdf/1706.03762v7",
+      "acquisition": "Reused existing local original from BabelDOC-APP/docs/1706.03762v7.pdf; no previous translations reused",
+      "pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "selectedFor": [
+        "Complete paper",
+        "Equations, attention diagrams, performance tables",
+        "Cross-page continuation and references"
+      ],
+      "sha256": "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697",
+      "bytes": 2215244
+    },
+    {
+      "id": "smith-levy",
+      "category": "paper",
+      "title": "The effect of word predictability on reading time is logarithmic",
+      "file": "smith-levy-2013.pdf",
+      "sourceUrl": "https://vorpus.org/papers/smith-levy-2013-predictability-logarithmic.pdf",
+      "acquisition": "Reused local publicly available author PDF from references/papers; references remain read-only",
+      "pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "sha256": "7c325f95f5b54bc529e9c8793d26651c306841c4d1c6b64303997db47a74df77",
+      "bytes": 1371901,
+      "selectedFor": [
+        "Complete true two-column journal paper",
+        "Footnotes and captions",
+        "Multi-column reading order and cross-page paragraphs"
+      ],
+      "orderChecks": [
+        {
+          "pageNumber": 2,
+          "name": "Visual left column precedes right column",
+          "prefixes": [
+            "is almost certain to continue",
+            "A second, related strand",
+            "The word who never occurs",
+            "likely given the grammatical context"
+          ]
+        }
+      ],
+      "continuationChecks": [
+        {
+          "to": 4,
+          "kind": "word-break",
+          "from": 3
+        },
+        {
+          "to": 7,
+          "kind": "word-break",
+          "from": 6
+        }
+      ]
+    },
+    {
+      "id": "nasa",
+      "category": "report",
+      "title": "NASA Systems Engineering Handbook, NASA/SP-2016-6105 REV 2",
+      "file": "nasa-systems-engineering-handbook.pdf",
+      "sourceUrl": "https://ntrs.nasa.gov/api/citations/20170001761/downloads/20170001761.pdf",
+      "acquisition": "Downloaded from official NASA NTRS endpoint on 2026-10-15; first nasa.gov download timed out and was replaced",
+      "pages": [
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "selectedFor": [
+        "Introduction and connected source page range",
+        "Diagrams and multicolumn tables",
+        "Table 2.7-1 across original pages 29-31"
+      ],
+      "sha256": "3153ae2e53e29452d5997efafe280a5f05cd21b43a047e988a17e1dd5207a38e",
+      "bytes": 4122125,
+      "orderChecks": [
+        {
+          "pageNumber": 30,
+          "name": "Row labels stay before descriptions across rowspan cells",
+          "prefixes": [
+            "SE 2.4",
+            "Confirming that a verified",
+            "SE 2.5",
+            "Transitioning the verified",
+            "SE 3.0",
+            "SE 3.1",
+            "Planning for the application",
+            "SE 3.2",
+            "Managing the product requirements"
+          ]
+        },
+        {
+          "pageNumber": 31,
+          "name": "Final continuation page keeps labels with table row descriptions",
+          "prefixes": [
+            "SE 3.5",
+            "Identifying the configuration",
+            "SE 3.6",
+            "Identifying and controlling",
+            "SE 3.7",
+            "Monitoring progress",
+            "SE 3.8",
+            "Evaluating technical"
+          ]
+        }
+      ],
+      "listChecks": [
+        {
+          "pageNumber": 31,
+          "name": "Four native symbol-font bullet records remain separate",
+          "prefixes": [
+            "Team Practitioner/Technical Engineer",
+            "Team Lead/Subsystem Lead",
+            "Project Systems Engineer",
+            "Chief Engineer"
+          ],
+          "marker": "•"
+        }
+      ],
+      "controlledPlacementChecks": [
+        {
+          "pageNumber": 30,
+          "regionKind": "table",
+          "name": "Original table precedes every linked placeholder translation"
+        },
+        {
+          "pageNumber": 31,
+          "regionKind": "table",
+          "name": "Original table precedes every linked placeholder translation"
+        }
+      ]
+    },
+    {
+      "id": "openstax",
+      "category": "textbook",
+      "title": "University Physics Volume 1",
+      "file": "openstax-university-physics-volume1.pdf",
+      "sourceUrl": "https://assets.openstax.org/oscms-prodcms/media/documents/UniversityPhysicsVolume1-LR.pdf",
+      "sourcePageUrl": "https://openstax.org/details/books/university-physics-volume-1",
+      "acquisition": "Downloaded from official OpenStax assets endpoint on 2026-10-15",
+      "pages": [
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35
+      ],
+      "selectedFor": [
+        "Connected first chapter source page range",
+        "Unit tables, measurement diagrams, display formulas",
+        "Example boxes and cross-page prose"
+      ],
+      "sha256": "baaa1f5ceef30bb30efbd192375ad6ae89e3baa8ac195ae081542971f3a4343a",
+      "bytes": 18516944,
+      "contentChecks": [
+        {
+          "pageNumber": 21,
+          "prefix": "How many protons are there in a bacterium?",
+          "kind": "text",
+          "translatable": true
+        }
+      ]
+    }
+  ]
+}

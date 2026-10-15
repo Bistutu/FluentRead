@@ -351,7 +351,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         const factory = new IDBFactory();
         const history = createDocumentHistory(factory);
         await history.save({id, name: 'history.txt', format: parsed.format, size: bytes.length, total: parsed.segments.length,
-            completed: 0, updatedAt: 1, bytes, mimeType, translations: [], fingerprint: '', parsed, parsedVersion: 16});
+            completed: 0, updatedAt: 1, bytes, mimeType, translations: [], fingerprint: '', parsed, parsedVersion: 17});
         app.unmount();
         vi.stubGlobal('indexedDB', factory);
         root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
@@ -517,7 +517,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         }
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(16);
+            expect(saved?.parsedVersion).toBe(17);
             expect(saved?.translations).toEqual(expectedTranslations);
             expect((saved?.parsed as any).segments.map((segment: any) => segment.source)).toEqual(expectedSources);
             expect(saved?.parsed).not.toHaveProperty('segmentOrigins');
@@ -579,7 +579,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
             .toBeLessThan(old.binary.pages[0].blocks[0].lines![0].runs![0].y);
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(16);
+            expect(saved?.parsedVersion).toBe(17);
             expect(saved?.completed).toBe(1); expect(saved?.total).toBe(2);
             expect(saved?.translations).toEqual(translations);
             expect((saved?.parsed as typeof fresh).binary).toEqual(fresh.binary);
@@ -627,7 +627,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(hostText(retained)).not.toContain(conditionRetained.translation);
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(16);
+            expect(saved?.parsedVersion).toBe(17);
             expect(saved?.translations).toEqual(['保留正文校订']);
             expect(saved?.retainedRevisions).toEqual([previousRetained, conditionRetained]);
             expect(saved?.completed).toBe(1); expect(saved?.total).toBe(1);

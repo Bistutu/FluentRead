@@ -1,0 +1,3481 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-15T08:20:05.649Z",
+  "node": "v24.19.0",
+  "manifestSha256": "755e1d51487dca923b196204a166d0fd954534f8d3b3dff7dcfc8ff336596ac1",
+  "pipeline": [
+    "PDF.js",
+    "pdfTextAtoms",
+    "analyzePdfPageLayout",
+    "pdfPageSegments",
+    "buildPdfReadingPlan"
+  ],
+  "sourceHashes": {
+    "services/binary.ts": "d69e3707a31dd8db6142859d019f5d2484074d39df86038ef3d86644f2a462ca",
+    "core/pdfLayoutAnalysis.ts": "9cead25da6ada1ea2cbf5f07e1c17d628474b7ff6788bbebd69599114bd63271",
+    "core/pdfReadingPlan.ts": "9b796622dfd93ec14a0e56549629cea3c88f879994b04d6b407eb53228f9e0d8",
+    "core/pdfReadingRegions.ts": "09f20132501e86e689acc9a0b0ea3741b481c55533219b284e50616d0070a1d0",
+    "core/pdfContinuations.ts": "259fa30e22e3ae020db1dc22576987e7337201a7a535d20b30318ebb0b1ea90e"
+  },
+  "limits": [
+    "Selected source pages only; unselected pages are explicitly listed as untested",
+    "Geometry coverage is not visual or semantic acceptance",
+    "Source reading plus explicitly configured placeholder-translation placement checks; no supplier, semantic translation, export, clipboard, browser or cancellation acceptance"
+  ],
+  "documents": [
+    {
+      "id": "attention",
+      "category": "paper",
+      "file": "attention-1706.03762v7.pdf",
+      "sourceUrl": "https://arxiv.org/pdf/1706.03762v7",
+      "sha256": "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697",
+      "bytes": 2215244,
+      "totalPages": 15,
+      "testedPages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "untestedPageCount": 0,
+      "pages": [
+        {
+          "pageNumber": 1,
+          "rawTextItems": 68,
+          "atoms": 67,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 2802,
+          "atomCharacters": 2764,
+          "blocks": 17,
+          "translatable": 8,
+          "textEntries": 17,
+          "preservedRegions": 0,
+          "columns": [
+            0,
+            1,
+            2
+          ],
+          "kinds": {
+            "text": 6,
+            "heading": 2,
+            "metadata": 9
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 73,
+          "rssBytes": 251576320
+        },
+        {
+          "pageNumber": 2,
+          "rawTextItems": 122,
+          "atoms": 122,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 4224,
+          "atomCharacters": 4186,
+          "blocks": 13,
+          "translatable": 12,
+          "textEntries": 13,
+          "preservedRegions": 0,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "heading": 3,
+            "text": 9,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 23,
+          "rssBytes": 258179072
+        },
+        {
+          "pageNumber": 3,
+          "rawTextItems": 54,
+          "atoms": 54,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 1806,
+          "atomCharacters": 1786,
+          "blocks": 8,
+          "translatable": 7,
+          "textEntries": 8,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "caption": 1,
+            "text": 4,
+            "heading": 2,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 10,
+          "rssBytes": 259948544
+        },
+        {
+          "pageNumber": 4,
+          "rawTextItems": 130,
+          "atoms": 130,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 2475,
+          "atomCharacters": 2424,
+          "blocks": 17,
+          "translatable": 10,
+          "textEntries": 11,
+          "preservedRegions": 4,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "figure-label": 2,
+            "caption": 1,
+            "text": 7,
+            "heading": 2,
+            "formula": 4,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 20,
+          "rssBytes": 260063232
+        },
+        {
+          "pageNumber": 5,
+          "rawTextItems": 160,
+          "atoms": 160,
+          "retainedListMarkers": 3,
+          "rawTextCharacters": 3155,
+          "atomCharacters": 3095,
+          "blocks": 21,
+          "translatable": 14,
+          "textEntries": 15,
+          "preservedRegions": 4,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "text": 11,
+            "formula": 6,
+            "heading": 3,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 12,
+          "rssBytes": 261029888
+        },
+        {
+          "pageNumber": 6,
+          "rawTextItems": 200,
+          "atoms": 200,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3433,
+          "atomCharacters": 3369,
+          "blocks": 33,
+          "translatable": 19,
+          "textEntries": 12,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "caption": 1,
+            "table": 19,
+            "heading": 2,
+            "text": 8,
+            "formula": 2,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 13,
+          "rssBytes": 262733824
+        },
+        {
+          "pageNumber": 7,
+          "rawTextItems": 163,
+          "atoms": 163,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3281,
+          "atomCharacters": 3229,
+          "blocks": 18,
+          "translatable": 14,
+          "textEntries": 15,
+          "preservedRegions": 2,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "text": 9,
+            "heading": 5,
+            "formula": 3,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 10,
+          "rssBytes": 261537792
+        },
+        {
+          "pageNumber": 8,
+          "rawTextItems": 217,
+          "atoms": 217,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3153,
+          "atomCharacters": 3056,
+          "blocks": 58,
+          "translatable": 25,
+          "textEntries": 13,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "caption": 1,
+            "table": 44,
+            "text": 8,
+            "formula": 1,
+            "heading": 3,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 16,
+          "rssBytes": 269828096
+        },
+        {
+          "pageNumber": 9,
+          "rawTextItems": 171,
+          "atoms": 171,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 2922,
+          "atomCharacters": 2818,
+          "blocks": 74,
+          "translatable": 16,
+          "textEntries": 9,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "caption": 1,
+            "table": 65,
+            "text": 6,
+            "heading": 1,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 21,
+          "rssBytes": 272859136
+        },
+        {
+          "pageNumber": 10,
+          "rawTextItems": 101,
+          "atoms": 101,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3064,
+          "atomCharacters": 3021,
+          "blocks": 55,
+          "translatable": 42,
+          "textEntries": 16,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "caption": 1,
+            "table": 39,
+            "text": 12,
+            "heading": 2,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 13,
+          "rssBytes": 275300352
+        },
+        {
+          "pageNumber": 11,
+          "rawTextItems": 106,
+          "atoms": 106,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3171,
+          "atomCharacters": 3129,
+          "blocks": 23,
+          "translatable": 20,
+          "textEntries": 21,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "text": 20,
+            "formula": 2,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 8,
+          "rssBytes": 273661952
+        },
+        {
+          "pageNumber": 12,
+          "rawTextItems": 92,
+          "atoms": 92,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3171,
+          "atomCharacters": 3138,
+          "blocks": 18,
+          "translatable": 16,
+          "textEntries": 17,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "text": 16,
+            "formula": 1,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 6,
+          "rssBytes": 274792448
+        },
+        {
+          "pageNumber": 13,
+          "rawTextItems": 73,
+          "atoms": 7,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 740,
+          "atomCharacters": 418,
+          "blocks": 3,
+          "translatable": 1,
+          "textEntries": 2,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "figure-label": 1,
+            "caption": 1,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 55,
+          "rssBytes": 277118976
+        },
+        {
+          "pageNumber": 14,
+          "rawTextItems": 114,
+          "atoms": 6,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 702,
+          "atomCharacters": 302,
+          "blocks": 4,
+          "translatable": 1,
+          "textEntries": 2,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "figure-label": 2,
+            "caption": 1,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 86,
+          "rssBytes": 323436544
+        },
+        {
+          "pageNumber": 15,
+          "rawTextItems": 114,
+          "atoms": 6,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 705,
+          "atomCharacters": 305,
+          "blocks": 4,
+          "translatable": 1,
+          "textEntries": 2,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "figure-label": 2,
+            "caption": 1,
+            "footer": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 71,
+          "rssBytes": 365395968
+        }
+      ],
+      "boundaries": [
+        {
+          "from": 1,
+          "to": 2,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "139e38b53e60a76084a722ac1300e096bd02bbfb21c66a311f33178a7f45b635",
+          "nextHeadSha256": "3c345f4338b71c7baa471397b27067fb742eccd6384a83d700f7c1d528bd8e35"
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "0d1232c8a180c281e8f4ef5f5158b3501d2fd8086e7b5ed6798785f7459fe4d1",
+          "nextHeadSha256": "676d708ef260d686460ccceb3f39866fddee3c1cde9d927de5c231620c8b75c0"
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "63bc689d2003903a7a2815ff41d530656ce604feac4494fd1a5308349104b608",
+          "nextHeadSha256": "dcc196a29b7a008af5e9fce8a033ff04908d24a12dc200dbb1931d1b8a82302f"
+        },
+        {
+          "from": 4,
+          "to": 5,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "b93e119e0c6036435456f52deeedc177ac287b6336193e1f69199691add2ec43",
+          "nextHeadSha256": "f937a4b0fe3e80fc6fe30c5ef5ef7c0fc1bcc7e337e279041818cf175b3fd577"
+        },
+        {
+          "from": 5,
+          "to": 6,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "cc36dc07c471e1acbaa00083d8faaa126871abae1efce37cd1fca6fba818c0c4",
+          "nextHeadSha256": "6d4b455f8912fa1c0ae018ba23c4746c279a6467a2541303895f3d18322f4495"
+        },
+        {
+          "from": 6,
+          "to": 7,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "f8e6650ad00d0b996a54df9b9b957d59f8d565cd7a54f5dac91e3eb0e9eaff2b",
+          "nextHeadSha256": "0784f63061f7985be6554d402eca348e1a85838bdb9ffdb98dd012fd42620b23"
+        },
+        {
+          "from": 7,
+          "to": 8,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "d46c1255a833153fc8366c0d1007bd19e6f4ff74c87d1cd09a97ead3f1464751",
+          "nextHeadSha256": "aada916d762eb6bb9b7aca28d0896735acd6690cdf6e97f369a6ae918bc8277c"
+        },
+        {
+          "from": 8,
+          "to": 9,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "685e3b36ce51e2560896deadc8f69ebc0ef30c9a0789b0ee95e6ffcc74f39796",
+          "nextHeadSha256": "9f06186938a27eb628548987a43b06c8bf6d5c1ad40f43f457af8e6c239a98b0"
+        },
+        {
+          "from": 9,
+          "to": 10,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "1f49d921a21b85fb28648b7f8ed66665a7c5d7b2788402e123340cfc4f23ce15",
+          "nextHeadSha256": "7685e19f31026580a085b22940737e227fffd95b3e9514beefc56ee58d5c5d2f"
+        },
+        {
+          "from": 10,
+          "to": 11,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "042f67e73a7133e7f67ffd8f04503b31523d81a7e96308f57755533d1ac2003d",
+          "nextHeadSha256": "6755867f4ffd0caca6eba8858992a111174333e655c9c223666b7b02e01986ba"
+        },
+        {
+          "from": 11,
+          "to": 12,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "cefb823059298ade8a4bc04b1c7bb0bc26ad5f1644845b1975f464c26445defa",
+          "nextHeadSha256": "99d75ed024906385ee8ef702d9b6bf917ea5b6091ee0827ddad0899cae661a92"
+        },
+        {
+          "from": 12,
+          "to": 13,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "9591bed4c628d3012fe2c979450eb517ce771511f6ba060f173b12195668d39b",
+          "nextHeadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "from": 13,
+          "to": 14,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "nextHeadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "from": 14,
+          "to": 15,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "nextHeadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "failures": [],
+      "durationMs": 488,
+      "continuations": [
+        {
+          "id": "pdf-continuation-6-69-7-70",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 6,
+            "segmentIndex": 69
+          },
+          "to": {
+            "pageNumber": 7,
+            "segmentIndex": 70
+          }
+        }
+      ],
+      "continuationChecks": [],
+      "peakSampledRssBytes": 365395968
+    },
+    {
+      "id": "smith-levy",
+      "category": "paper",
+      "file": "smith-levy-2013.pdf",
+      "sourceUrl": "https://vorpus.org/papers/smith-levy-2013-predictability-logarithmic.pdf",
+      "sha256": "7c325f95f5b54bc529e9c8793d26651c306841c4d1c6b64303997db47a74df77",
+      "bytes": 1371901,
+      "totalPages": 18,
+      "testedPages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "untestedPageCount": 0,
+      "pages": [
+        {
+          "pageNumber": 1,
+          "rawTextItems": 89,
+          "atoms": 89,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3834,
+          "atomCharacters": 3815,
+          "blocks": 27,
+          "translatable": 18,
+          "textEntries": 16,
+          "preservedRegions": 4,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "figure-label": 3,
+            "formula": 2,
+            "heading": 2,
+            "metadata": 2,
+            "text": 12,
+            "table": 6
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 39,
+          "rssBytes": 370098176
+        },
+        {
+          "pageNumber": 2,
+          "rawTextItems": 289,
+          "atoms": 289,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 6394,
+          "atomCharacters": 6256,
+          "blocks": 14,
+          "translatable": 11,
+          "textEntries": 13,
+          "preservedRegions": 1,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 11,
+            "formula": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [
+            {
+              "name": "Visual left column precedes right column",
+              "positions": [
+                3,
+                4,
+                7,
+                8
+              ],
+              "passed": true
+            }
+          ],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 18,
+          "rssBytes": 374652928
+        },
+        {
+          "pageNumber": 3,
+          "rawTextItems": 225,
+          "atoms": 224,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 5560,
+          "atomCharacters": 5466,
+          "blocks": 19,
+          "translatable": 11,
+          "textEntries": 11,
+          "preservedRegions": 2,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "figure-label": 7,
+            "footer": 1,
+            "caption": 1,
+            "text": 7,
+            "heading": 3
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 24,
+          "rssBytes": 382271488
+        },
+        {
+          "pageNumber": 4,
+          "rawTextItems": 157,
+          "atoms": 157,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 6620,
+          "atomCharacters": 6586,
+          "blocks": 12,
+          "translatable": 10,
+          "textEntries": 12,
+          "preservedRegions": 0,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 8,
+            "heading": 2
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 17,
+          "rssBytes": 385908736
+        },
+        {
+          "pageNumber": 5,
+          "rawTextItems": 316,
+          "atoms": 314,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 4855,
+          "atomCharacters": 4682,
+          "blocks": 27,
+          "translatable": 10,
+          "textEntries": 8,
+          "preservedRegions": 6,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 9,
+            "formula": 5,
+            "figure-label": 10,
+            "caption": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 23,
+          "rssBytes": 387776512
+        },
+        {
+          "pageNumber": 6,
+          "rawTextItems": 177,
+          "atoms": 177,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 6098,
+          "atomCharacters": 6035,
+          "blocks": 13,
+          "translatable": 11,
+          "textEntries": 13,
+          "preservedRegions": 0,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 7,
+            "heading": 4
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 12,
+          "rssBytes": 390070272
+        },
+        {
+          "pageNumber": 7,
+          "rawTextItems": 207,
+          "atoms": 207,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 6333,
+          "atomCharacters": 6248,
+          "blocks": 14,
+          "translatable": 12,
+          "textEntries": 13,
+          "preservedRegions": 1,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 9,
+            "heading": 3
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 13,
+          "rssBytes": 392232960
+        },
+        {
+          "pageNumber": 8,
+          "rawTextItems": 210,
+          "atoms": 198,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3106,
+          "atomCharacters": 2954,
+          "blocks": 21,
+          "translatable": 7,
+          "textEntries": 5,
+          "preservedRegions": 2,
+          "columns": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "kinds": {
+            "figure-label": 11,
+            "footer": 1,
+            "text": 5,
+            "formula": 2,
+            "caption": 1,
+            "heading": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 26,
+          "rssBytes": 388120576
+        },
+        {
+          "pageNumber": 9,
+          "rawTextItems": 170,
+          "atoms": 158,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3977,
+          "atomCharacters": 3829,
+          "blocks": 14,
+          "translatable": 6,
+          "textEntries": 6,
+          "preservedRegions": 2,
+          "columns": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "kinds": {
+            "figure-label": 5,
+            "footer": 1,
+            "formula": 2,
+            "caption": 1,
+            "text": 5
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 15,
+          "rssBytes": 390184960
+        },
+        {
+          "pageNumber": 10,
+          "rawTextItems": 96,
+          "atoms": 92,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3307,
+          "atomCharacters": 3243,
+          "blocks": 24,
+          "translatable": 8,
+          "textEntries": 10,
+          "preservedRegions": 2,
+          "columns": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "kinds": {
+            "footer": 2,
+            "figure-label": 13,
+            "caption": 1,
+            "text": 5,
+            "formula": 1,
+            "heading": 2
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 22,
+          "rssBytes": 392314880
+        },
+        {
+          "pageNumber": 11,
+          "rawTextItems": 151,
+          "atoms": 139,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 4163,
+          "atomCharacters": 4027,
+          "blocks": 16,
+          "translatable": 4,
+          "textEntries": 4,
+          "preservedRegions": 2,
+          "columns": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "kinds": {
+            "figure-label": 11,
+            "footer": 1,
+            "caption": 1,
+            "text": 3
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 12,
+          "rssBytes": 390856704
+        },
+        {
+          "pageNumber": 12,
+          "rawTextItems": 438,
+          "atoms": 438,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 5041,
+          "atomCharacters": 4901,
+          "blocks": 46,
+          "translatable": 17,
+          "textEntries": 16,
+          "preservedRegions": 8,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "heading": 3,
+            "text": 14,
+            "formula": 27
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 21,
+          "rssBytes": 392216576
+        },
+        {
+          "pageNumber": 13,
+          "rawTextItems": 375,
+          "atoms": 363,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 1892,
+          "atomCharacters": 1681,
+          "blocks": 43,
+          "translatable": 12,
+          "textEntries": 8,
+          "preservedRegions": 4,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 11,
+            "formula": 19,
+            "figure-label": 10,
+            "heading": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 24,
+          "rssBytes": 395051008
+        },
+        {
+          "pageNumber": 14,
+          "rawTextItems": 178,
+          "atoms": 166,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3962,
+          "atomCharacters": 3801,
+          "blocks": 16,
+          "translatable": 6,
+          "textEntries": 8,
+          "preservedRegions": 1,
+          "columns": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 6,
+            "figure-label": 8
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 13,
+          "rssBytes": 392691712
+        },
+        {
+          "pageNumber": 15,
+          "rawTextItems": 258,
+          "atoms": 216,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3329,
+          "atomCharacters": 2961,
+          "blocks": 29,
+          "translatable": 6,
+          "textEntries": 8,
+          "preservedRegions": 1,
+          "columns": [
+            0,
+            1,
+            2
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 5,
+            "figure-label": 21,
+            "heading": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 25,
+          "rssBytes": 394788864
+        },
+        {
+          "pageNumber": 16,
+          "rawTextItems": 345,
+          "atoms": 345,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 7772,
+          "atomCharacters": 7593,
+          "blocks": 41,
+          "translatable": 36,
+          "textEntries": 38,
+          "preservedRegions": 3,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 34,
+            "heading": 2,
+            "formula": 3
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 21,
+          "rssBytes": 396787712
+        },
+        {
+          "pageNumber": 17,
+          "rawTextItems": 454,
+          "atoms": 454,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 9075,
+          "atomCharacters": 8835,
+          "blocks": 66,
+          "translatable": 50,
+          "textEntries": 52,
+          "preservedRegions": 14,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 50,
+            "formula": 14
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 30,
+          "rssBytes": 393789440
+        },
+        {
+          "pageNumber": 18,
+          "rawTextItems": 154,
+          "atoms": 154,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3035,
+          "atomCharacters": 2956,
+          "blocks": 22,
+          "translatable": 17,
+          "textEntries": 19,
+          "preservedRegions": 3,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 17,
+            "formula": 3
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 7,
+          "rssBytes": 397344768
+        }
+      ],
+      "boundaries": [
+        {
+          "from": 1,
+          "to": 2,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "891a1fd200b769b5caab8a54030d8e801fcde32012bdbe8c339562a1f6710544",
+          "nextHeadSha256": "94ca534d74b70de4e0f7af97724300e7e8ed28c71ef178428b3d538398a2ca5e"
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "2170bc530df0450acebbc1411d69a44f53ffa131ca38b0ad80b588c559c2343d",
+          "nextHeadSha256": "14483e8cc92e5c33ce5f878083989a3f378d6cc99fea039d4a4b03a67a6438db"
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "b31ab98b229166fdce4da9ee5e5fe909b890877c23a85c7a3b9530f275c14d07",
+          "nextHeadSha256": "7edb70d7cd76562bc6f1cbafd4ef55e50d78b4792c3c3f776d29c8235eb022a1"
+        },
+        {
+          "from": 4,
+          "to": 5,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "98e0e2a0d4af2fbdde390118e051facf489db166c59fc9e286945750c6fcdccd",
+          "nextHeadSha256": "9b8e86b0ed9c433b03c156c40d653ba5050c5318458d73433e9de4749be35871"
+        },
+        {
+          "from": 5,
+          "to": 6,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "dbf08dad31b28b11b727d4f994ead65fda54686ea1d8a853a167d9f706900e50",
+          "nextHeadSha256": "ee41bd1c27d2ef2fe9a6d97656ff1dc32b3ff6654e48671da33606cef380a501"
+        },
+        {
+          "from": 6,
+          "to": 7,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "c7cc430079d8fe82fa55285cbdbd200c9709a65bb2a6541ecd683455c9d3bd5e",
+          "nextHeadSha256": "d2319991aac451f22155b78f41e5f8658930fc409ba190a1579b0352d355b4d3"
+        },
+        {
+          "from": 7,
+          "to": 8,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "8edca8df20c4e6f648fbbfc2fcb36d1255fe7c12f58fa16235580f31babc98f1",
+          "nextHeadSha256": "859fd619cc869ee9281cd98f93335ed956855bc01a1afbed5291fdee5518d20b"
+        },
+        {
+          "from": 8,
+          "to": 9,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "309d87d70a5efe159e8410a926f5100ceae6aab4aa81a58646893b71a54a992e",
+          "nextHeadSha256": "7b44d5ea26edd1c93ba2c798bfc2a83e80b4f48693831f6c9283390ef3e9c600"
+        },
+        {
+          "from": 9,
+          "to": 10,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "8124aaea62737dd9da5f8416c14659cdc3890e814eb5a4f4e82639f7d50dd7e3",
+          "nextHeadSha256": "1d6d46e2980d429bedfcfb5c30047acfb42fedf5a6c6f7d8ea9c2dff401e39cf"
+        },
+        {
+          "from": 10,
+          "to": 11,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "943f558fda09ccf5685a2e480aa713d713f4163cd2136eda29039efec34a7b3c",
+          "nextHeadSha256": "357cb9545ddbc5978ffc5a17d64dc7e9c09c0b371882ee69dd30954fb9183e11"
+        },
+        {
+          "from": 11,
+          "to": 12,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "12c557394d7c6bc3d257eb03dc6d291650788a9e4bd1abe10c8b0c2f1ad6fc11",
+          "nextHeadSha256": "5234031afd12f8adcca92cfded1f1decc378aec3f1b0b1a1d573bdcf646f62cc"
+        },
+        {
+          "from": 12,
+          "to": 13,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "d5da4dbf47184b6ca8ca816d7b7dc66c41701fee4932c4076410a085103d8551",
+          "nextHeadSha256": "33b148d05e4c93c8ead3b4b6444b1daaf975bcd351d50d2eeb0f975e58daa7bb"
+        },
+        {
+          "from": 13,
+          "to": 14,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "e6c282b245794054c829b451c42f0ca12272018fbe16890f677f8707ea3d7ab1",
+          "nextHeadSha256": "15aa4295194eb6e2fa24ead33cdc1e17a2e97f36c4928952cd2b0ccaf54c7d07"
+        },
+        {
+          "from": 14,
+          "to": 15,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "e6c282b245794054c829b451c42f0ca12272018fbe16890f677f8707ea3d7ab1",
+          "nextHeadSha256": "559e9d3eba0a286c66c09b96e1316aaa6e3fed9b5d8c061fd03a8e6e59b6ab40"
+        },
+        {
+          "from": 15,
+          "to": 16,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "66b829ae37d51debd1ab9b8dbb5b89c5fd6c290c474eef944f792d4db442cd03",
+          "nextHeadSha256": "97cc3b00d9b1b036caa130df76fa2cf12cb3c5226392e64d82d8dd8aa0705070"
+        },
+        {
+          "from": 16,
+          "to": 17,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "4d5a447207be29df3b011cd99a3724e4d8e3c59bdbfb4401d38bf3d80b5e93be",
+          "nextHeadSha256": "edf5ebd32ba670739519cafa81cfd470a2be2976421ebd277988d72ed00aa976"
+        },
+        {
+          "from": 17,
+          "to": 18,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "0a3fdc4a71432ba14cfb39b00fcf862afc23a08c7007039e9441adc224d6be5d",
+          "nextHeadSha256": "51791d0b6dfccfd9fc9c0a471b6a7016da93e5b3d4b7666bbab54bb973ca1f2e"
+        }
+      ],
+      "failures": [],
+      "durationMs": 427,
+      "continuations": [
+        {
+          "id": "pdf-continuation-3-39-4-40",
+          "kind": "word-break",
+          "from": {
+            "pageNumber": 3,
+            "segmentIndex": 39
+          },
+          "to": {
+            "pageNumber": 4,
+            "segmentIndex": 40
+          }
+        },
+        {
+          "id": "pdf-continuation-4-49-5-50",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 4,
+            "segmentIndex": 49
+          },
+          "to": {
+            "pageNumber": 5,
+            "segmentIndex": 50
+          }
+        },
+        {
+          "id": "pdf-continuation-5-58-6-60",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 5,
+            "segmentIndex": 58
+          },
+          "to": {
+            "pageNumber": 6,
+            "segmentIndex": 60
+          }
+        },
+        {
+          "id": "pdf-continuation-6-70-7-71",
+          "kind": "word-break",
+          "from": {
+            "pageNumber": 6,
+            "segmentIndex": 70
+          },
+          "to": {
+            "pageNumber": 7,
+            "segmentIndex": 71
+          }
+        },
+        {
+          "id": "pdf-continuation-16-184-17-185",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 16,
+            "segmentIndex": 184
+          },
+          "to": {
+            "pageNumber": 17,
+            "segmentIndex": 185
+          }
+        }
+      ],
+      "continuationChecks": [
+        {
+          "to": 4,
+          "kind": "word-break",
+          "from": 3,
+          "passed": true
+        },
+        {
+          "to": 7,
+          "kind": "word-break",
+          "from": 6,
+          "passed": true
+        }
+      ],
+      "peakSampledRssBytes": 397344768
+    },
+    {
+      "id": "nasa",
+      "category": "report",
+      "file": "nasa-systems-engineering-handbook.pdf",
+      "sourceUrl": "https://ntrs.nasa.gov/api/citations/20170001761/downloads/20170001761.pdf",
+      "sha256": "3153ae2e53e29452d5997efafe280a5f05cd21b43a047e988a17e1dd5207a38e",
+      "bytes": 4122125,
+      "totalPages": 356,
+      "testedPages": [
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "untestedPageCount": 338,
+      "pages": [
+        {
+          "pageNumber": 14,
+          "rawTextItems": 42,
+          "atoms": 42,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 2777,
+          "atomCharacters": 2774,
+          "blocks": 9,
+          "translatable": 9,
+          "textEntries": 8,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "heading": 3,
+            "text": 6
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 24,
+          "rssBytes": 400359424
+        },
+        {
+          "pageNumber": 15,
+          "rawTextItems": 5,
+          "atoms": 5,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 290,
+          "atomCharacters": 289,
+          "blocks": 2,
+          "translatable": 2,
+          "textEntries": 1,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "text": 2
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 2,
+          "rssBytes": 400687104
+        },
+        {
+          "pageNumber": 16,
+          "rawTextItems": 46,
+          "atoms": 46,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3456,
+          "atomCharacters": 3452,
+          "blocks": 8,
+          "translatable": 8,
+          "textEntries": 7,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "heading": 1,
+            "text": 7
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 7,
+          "rssBytes": 400850944
+        },
+        {
+          "pageNumber": 17,
+          "rawTextItems": 39,
+          "atoms": 39,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3161,
+          "atomCharacters": 3159,
+          "blocks": 6,
+          "translatable": 6,
+          "textEntries": 5,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "text": 6
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 5,
+          "rssBytes": 401211392
+        },
+        {
+          "pageNumber": 18,
+          "rawTextItems": 181,
+          "atoms": 181,
+          "retainedListMarkers": 1,
+          "rawTextCharacters": 2319,
+          "atomCharacters": 2214,
+          "blocks": 47,
+          "translatable": 4,
+          "textEntries": 3,
+          "preservedRegions": 2,
+          "columns": [
+            0,
+            1,
+            2
+          ],
+          "kinds": {
+            "figure-label": 43,
+            "caption": 1,
+            "text": 3
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 37,
+          "rssBytes": 402948096
+        },
+        {
+          "pageNumber": 19,
+          "rawTextItems": 78,
+          "atoms": 78,
+          "retainedListMarkers": 1,
+          "rawTextCharacters": 2171,
+          "atomCharacters": 2168,
+          "blocks": 31,
+          "translatable": 4,
+          "textEntries": 3,
+          "preservedRegions": 2,
+          "columns": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "kinds": {
+            "text": 3,
+            "figure-label": 27,
+            "caption": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 11,
+          "rssBytes": 400687104
+        },
+        {
+          "pageNumber": 20,
+          "rawTextItems": 56,
+          "atoms": 56,
+          "retainedListMarkers": 1,
+          "rawTextCharacters": 2804,
+          "atomCharacters": 2789,
+          "blocks": 32,
+          "translatable": 32,
+          "textEntries": 5,
+          "preservedRegions": 2,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "text": 6,
+            "table": 26
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 11,
+          "rssBytes": 401817600
+        },
+        {
+          "pageNumber": 21,
+          "rawTextItems": 18,
+          "atoms": 18,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 503,
+          "atomCharacters": 495,
+          "blocks": 15,
+          "translatable": 15,
+          "textEntries": 0,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "table": 14,
+            "text": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 3,
+          "rssBytes": 402620416
+        },
+        {
+          "pageNumber": 22,
+          "rawTextItems": 99,
+          "atoms": 96,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3590,
+          "atomCharacters": 3543,
+          "blocks": 24,
+          "translatable": 24,
+          "textEntries": 5,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "heading": 1,
+            "caption": 2,
+            "text": 3,
+            "table": 18
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 13,
+          "rssBytes": 402882560
+        },
+        {
+          "pageNumber": 23,
+          "rawTextItems": 33,
+          "atoms": 33,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 1716,
+          "atomCharacters": 1713,
+          "blocks": 12,
+          "translatable": 12,
+          "textEntries": 2,
+          "preservedRegions": 3,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "table": 9,
+            "caption": 1,
+            "text": 2
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 20,
+          "rssBytes": 403537920
+        },
+        {
+          "pageNumber": 24,
+          "rawTextItems": 42,
+          "atoms": 42,
+          "retainedListMarkers": 1,
+          "rawTextCharacters": 3123,
+          "atomCharacters": 3121,
+          "blocks": 10,
+          "translatable": 10,
+          "textEntries": 9,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "text": 10
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 5,
+          "rssBytes": 403865600
+        },
+        {
+          "pageNumber": 25,
+          "rawTextItems": 24,
+          "atoms": 24,
+          "retainedListMarkers": 1,
+          "rawTextCharacters": 1903,
+          "atomCharacters": 1901,
+          "blocks": 6,
+          "translatable": 6,
+          "textEntries": 5,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "text": 6
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 3,
+          "rssBytes": 404209664
+        },
+        {
+          "pageNumber": 26,
+          "rawTextItems": 45,
+          "atoms": 45,
+          "retainedListMarkers": 4,
+          "rawTextCharacters": 2748,
+          "atomCharacters": 2739,
+          "blocks": 12,
+          "translatable": 12,
+          "textEntries": 11,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "heading": 1,
+            "text": 10,
+            "caption": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 10,
+          "rssBytes": 401309696
+        },
+        {
+          "pageNumber": 27,
+          "rawTextItems": 63,
+          "atoms": 63,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 1262,
+          "atomCharacters": 1241,
+          "blocks": 29,
+          "translatable": 9,
+          "textEntries": 8,
+          "preservedRegions": 2,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "figure-label": 20,
+            "text": 8,
+            "caption": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 12,
+          "rssBytes": 401997824
+        },
+        {
+          "pageNumber": 28,
+          "rawTextItems": 18,
+          "atoms": 18,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 1202,
+          "atomCharacters": 1200,
+          "blocks": 5,
+          "translatable": 5,
+          "textEntries": 4,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "text": 3,
+            "heading": 1,
+            "caption": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 2,
+          "rssBytes": 402964480
+        },
+        {
+          "pageNumber": 29,
+          "rawTextItems": 94,
+          "atoms": 94,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 4272,
+          "atomCharacters": 4262,
+          "blocks": 23,
+          "translatable": 23,
+          "textEntries": 2,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "caption": 1,
+            "table": 21,
+            "text": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 30,
+          "rssBytes": 404733952
+        },
+        {
+          "pageNumber": 30,
+          "sourceRotation": 90,
+          "rawTextItems": 55,
+          "atoms": 55,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3964,
+          "atomCharacters": 3961,
+          "blocks": 17,
+          "translatable": 17,
+          "textEntries": 0,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "table": 16,
+            "text": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [
+            {
+              "name": "Row labels stay before descriptions across rowspan cells",
+              "positions": [
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+              ],
+              "passed": true
+            }
+          ],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [
+            {
+              "name": "Original table precedes every linked placeholder translation",
+              "regions": [
+                {
+                  "id": "pdf-30-region-table-1",
+                  "position": 0,
+                  "linkedPositions": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16
+                  ],
+                  "passed": true
+                }
+              ],
+              "passed": true
+            }
+          ],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 11,
+          "rssBytes": 401932288
+        },
+        {
+          "pageNumber": 31,
+          "sourceRotation": 90,
+          "rawTextItems": 48,
+          "atoms": 48,
+          "retainedListMarkers": 4,
+          "rawTextCharacters": 3090,
+          "atomCharacters": 3083,
+          "blocks": 17,
+          "translatable": 17,
+          "textEntries": 5,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "table": 11,
+            "text": 6
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [
+            {
+              "name": "Final continuation page keeps labels with table row descriptions",
+              "positions": [
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10
+              ],
+              "passed": true
+            }
+          ],
+          "contentChecks": [],
+          "listChecks": [
+            {
+              "name": "Four native symbol-font bullet records remain separate",
+              "passed": true
+            }
+          ],
+          "controlledPlacementChecks": [
+            {
+              "name": "Original table precedes every linked placeholder translation",
+              "regions": [
+                {
+                  "id": "pdf-31-region-table-1",
+                  "position": 0,
+                  "linkedPositions": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11
+                  ],
+                  "passed": true
+                }
+              ],
+              "passed": true
+            }
+          ],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 7,
+          "rssBytes": 403144704
+        }
+      ],
+      "boundaries": [
+        {
+          "from": 14,
+          "to": 15,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "639b33ce433db77de11fbac50fd0db344eca6664e45e366e4e5269faef8a210d",
+          "nextHeadSha256": "6a27394e0f6ddfeffd96a1c41e92c6df126c74955b3680c13f8dead97332e60c"
+        },
+        {
+          "from": 15,
+          "to": 16,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "9e495028b84cf774af05fbca9eccb245151671fc1174f388d33c099811446c1e",
+          "nextHeadSha256": "6fad24cb95687a1b660e55b3f3b30e3bc81151feac2128d902ceba4024754bbd"
+        },
+        {
+          "from": 16,
+          "to": 17,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "e6abb7e00a6e25fb01f5c46689f1e3aaa100111209a139ddbc6ab6550119bd88",
+          "nextHeadSha256": "712d91dd873eff663bb906e7b17154f8093f2d6fb790e56839138f697e27fcae"
+        },
+        {
+          "from": 17,
+          "to": 18,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "1e4f335967242bd38399041920e47d034783c1cf7fdf46f6f823b90cdba5ee45",
+          "nextHeadSha256": "74505c6dbc2a07ad21326d503a4723048ef16c464e9fd176ef6ba0f4d7999b4a"
+        },
+        {
+          "from": 18,
+          "to": 19,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "9e6c196a8b6bf634745ecd7fb3dee227dccb4dcd64e35633f214b84d615c2873",
+          "nextHeadSha256": "e6d1a5ab020a6d65ce848d36fc5cc846bbdc3676f2367187d4c0c74250038801"
+        },
+        {
+          "from": 19,
+          "to": 20,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "35b54b8a66b658b76e2fa45e79ffaf0ece3dba15c539dd0848609865768079ce",
+          "nextHeadSha256": "a87f9c265f4cf749ecb6644ad069d0c644782f15f4981cac71ecb0b5f2928dcf"
+        },
+        {
+          "from": 20,
+          "to": 21,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "78dc812e8adf010b56135fb5a51916be19c3966cf62272690d04449092b61cb6",
+          "nextHeadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "from": 21,
+          "to": 22,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "nextHeadSha256": "0544c9afdede404d76a7bf681fdcb6eb88491efcf9e1bb53bf3855aad3bbd245"
+        },
+        {
+          "from": 22,
+          "to": 23,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "dd1ce30ecead071701bf881863a7e50c8fe6ac8ec6009261b2937426f83b391e",
+          "nextHeadSha256": "71278bdc251af5dfe1e9d170cf6c5999a9e686ca7303b0ad70677a83818ce10e"
+        },
+        {
+          "from": 23,
+          "to": 24,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "74ac32938feff2c765177437fdd713ddc5f323c0eb4b16deca1aa20b5ca44eed",
+          "nextHeadSha256": "8966aa7fc8a0c5832aae01bec5460bea100f5466eecc57874762065d296c140d"
+        },
+        {
+          "from": 24,
+          "to": 25,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "de7800b89a50ba1712def6050b9606db25331a05c1eab21fc6cc290cb56b9d93",
+          "nextHeadSha256": "cba0a50588ee6f7a108073dec1082296d6aad22964cffd2ad46ed1036982a076"
+        },
+        {
+          "from": 25,
+          "to": 26,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "7c1afe8260088fff316cf5990cd7ba38fa5088dd1014f414850607d00904431b",
+          "nextHeadSha256": "2020a7c4a93be93de7c6e4c3a404d192f4e3f3f614510d8c3ff3a80d63c5e1fe"
+        },
+        {
+          "from": 26,
+          "to": 27,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "9e562cb0d7299bcb69a8b8915887916344b727bb9a959733dad3361eb278ebf2",
+          "nextHeadSha256": "c4c9a5d2db0182e75b2d5abace901d816c05d2fb1b1b9fa7d194ba7aaae903a1"
+        },
+        {
+          "from": 27,
+          "to": 28,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "9a83e9805406e579793b635c027406b2629a7fa06d7444e325d4951eedc2255b",
+          "nextHeadSha256": "fd09aa6814a1c6fa2a991704c3236168d718b0cb3b0a8c1816fdc31505d77df2"
+        },
+        {
+          "from": 28,
+          "to": 29,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "f0c46e1535a65732104172ef96771e9af926a36eb68b6be5032c1b8cbed770e9",
+          "nextHeadSha256": "14b345215eca3251d9934f9136b1d4448db61560bad36d2db1f14bd849dedc4e"
+        },
+        {
+          "from": 29,
+          "to": 30,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "14b345215eca3251d9934f9136b1d4448db61560bad36d2db1f14bd849dedc4e",
+          "nextHeadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "from": 30,
+          "to": 31,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "nextHeadSha256": "57a425a00b00bc834129e017a0943f117b38ae9b2d65972d9fee82deba3a3367"
+        }
+      ],
+      "failures": [],
+      "durationMs": 243,
+      "continuations": [],
+      "continuationChecks": [],
+      "peakSampledRssBytes": 404733952
+    },
+    {
+      "id": "openstax",
+      "category": "textbook",
+      "file": "openstax-university-physics-volume1.pdf",
+      "sourceUrl": "https://assets.openstax.org/oscms-prodcms/media/documents/UniversityPhysicsVolume1-LR.pdf",
+      "sha256": "baaa1f5ceef30bb30efbd192375ad6ae89e3baa8ac195ae081542971f3a4343a",
+      "bytes": 18516944,
+      "totalPages": 998,
+      "testedPages": [
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35
+      ],
+      "untestedPageCount": 979,
+      "pages": [
+        {
+          "pageNumber": 17,
+          "rawTextItems": 35,
+          "atoms": 35,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 1441,
+          "atomCharacters": 1429,
+          "blocks": 10,
+          "translatable": 5,
+          "textEntries": 6,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "footer": 2,
+            "heading": 3,
+            "figure-label": 3,
+            "caption": 1,
+            "text": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 42,
+          "rssBytes": 474103808
+        },
+        {
+          "pageNumber": 18,
+          "rawTextItems": 70,
+          "atoms": 70,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 5246,
+          "atomCharacters": 5234,
+          "blocks": 18,
+          "translatable": 13,
+          "textEntries": 12,
+          "preservedRegions": 1,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 3,
+            "text": 11,
+            "heading": 2,
+            "figure-label": 2
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 12,
+          "rssBytes": 478658560
+        },
+        {
+          "pageNumber": 19,
+          "rawTextItems": 37,
+          "atoms": 37,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3409,
+          "atomCharacters": 3407,
+          "blocks": 8,
+          "translatable": 6,
+          "textEntries": 8,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 5,
+            "caption": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 14,
+          "rssBytes": 479739904
+        },
+        {
+          "pageNumber": 20,
+          "rawTextItems": 141,
+          "atoms": 141,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 4279,
+          "atomCharacters": 4224,
+          "blocks": 14,
+          "translatable": 11,
+          "textEntries": 14,
+          "preservedRegions": 1,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 3,
+            "heading": 1,
+            "text": 9,
+            "caption": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 26,
+          "rssBytes": 482656256
+        },
+        {
+          "pageNumber": 21,
+          "rawTextItems": 57,
+          "atoms": 57,
+          "retainedListMarkers": 3,
+          "rawTextCharacters": 1434,
+          "atomCharacters": 1409,
+          "blocks": 11,
+          "translatable": 6,
+          "textEntries": 8,
+          "preservedRegions": 3,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 6,
+            "formula": 3
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [
+            {
+              "prefix": "How many protons are there in a bacterium?",
+              "passed": true
+            }
+          ],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 3,
+          "rssBytes": 483966976
+        },
+        {
+          "pageNumber": 22,
+          "rawTextItems": 19,
+          "atoms": 19,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 1161,
+          "atomCharacters": 1157,
+          "blocks": 7,
+          "translatable": 4,
+          "textEntries": 7,
+          "preservedRegions": 1,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "footer": 3,
+            "caption": 1,
+            "text": 2,
+            "heading": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 33,
+          "rssBytes": 494944256
+        },
+        {
+          "pageNumber": 23,
+          "rawTextItems": 30,
+          "atoms": 30,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 2060,
+          "atomCharacters": 2055,
+          "blocks": 5,
+          "translatable": 3,
+          "textEntries": 5,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "footer": 2,
+            "caption": 2,
+            "text": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 18,
+          "rssBytes": 495534080
+        },
+        {
+          "pageNumber": 24,
+          "rawTextItems": 74,
+          "atoms": 74,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 5211,
+          "atomCharacters": 5195,
+          "blocks": 14,
+          "translatable": 9,
+          "textEntries": 8,
+          "preservedRegions": 1,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 3,
+            "text": 9,
+            "figure-label": 2
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 9,
+          "rssBytes": 495894528
+        },
+        {
+          "pageNumber": 25,
+          "rawTextItems": 81,
+          "atoms": 81,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3181,
+          "atomCharacters": 3147,
+          "blocks": 19,
+          "translatable": 17,
+          "textEntries": 19,
+          "preservedRegions": 1,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 14,
+            "caption": 2,
+            "heading": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 12,
+          "rssBytes": 496779264
+        },
+        {
+          "pageNumber": 26,
+          "rawTextItems": 79,
+          "atoms": 79,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3587,
+          "atomCharacters": 3563,
+          "blocks": 12,
+          "translatable": 9,
+          "textEntries": 12,
+          "preservedRegions": 0,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 3,
+            "text": 7,
+            "caption": 1,
+            "heading": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 9,
+          "rssBytes": 497958912
+        },
+        {
+          "pageNumber": 27,
+          "rawTextItems": 45,
+          "atoms": 45,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 2421,
+          "atomCharacters": 2408,
+          "blocks": 7,
+          "translatable": 5,
+          "textEntries": 7,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "footer": 2,
+            "caption": 2,
+            "text": 3
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 18,
+          "rssBytes": 499187712
+        },
+        {
+          "pageNumber": 28,
+          "rawTextItems": 127,
+          "atoms": 127,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 1888,
+          "atomCharacters": 1819,
+          "blocks": 17,
+          "translatable": 7,
+          "textEntries": 10,
+          "preservedRegions": 8,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "footer": 3,
+            "caption": 2,
+            "heading": 1,
+            "text": 4,
+            "formula": 7
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 29,
+          "rssBytes": 492584960
+        },
+        {
+          "pageNumber": 29,
+          "rawTextItems": 116,
+          "atoms": 116,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 3450,
+          "atomCharacters": 3406,
+          "blocks": 16,
+          "translatable": 12,
+          "textEntries": 14,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 11,
+            "formula": 2,
+            "heading": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 8,
+          "rssBytes": 493862912
+        },
+        {
+          "pageNumber": 30,
+          "rawTextItems": 79,
+          "atoms": 79,
+          "retainedListMarkers": 1,
+          "rawTextCharacters": 3444,
+          "atomCharacters": 3419,
+          "blocks": 24,
+          "translatable": 14,
+          "textEntries": 17,
+          "preservedRegions": 4,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 3,
+            "heading": 2,
+            "text": 12,
+            "formula": 7
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 7,
+          "rssBytes": 495304704
+        },
+        {
+          "pageNumber": 31,
+          "rawTextItems": 130,
+          "atoms": 130,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 2988,
+          "atomCharacters": 2941,
+          "blocks": 28,
+          "translatable": 15,
+          "textEntries": 17,
+          "preservedRegions": 5,
+          "columns": [
+            0,
+            1,
+            2
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 14,
+            "formula": 11,
+            "heading": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 11,
+          "rssBytes": 496631808
+        },
+        {
+          "pageNumber": 32,
+          "rawTextItems": 172,
+          "atoms": 172,
+          "retainedListMarkers": 2,
+          "rawTextCharacters": 3474,
+          "atomCharacters": 3402,
+          "blocks": 16,
+          "translatable": 12,
+          "textEntries": 15,
+          "preservedRegions": 1,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 3,
+            "text": 8,
+            "heading": 3,
+            "caption": 1,
+            "formula": 1
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 10,
+          "rssBytes": 498106368
+        },
+        {
+          "pageNumber": 33,
+          "rawTextItems": 125,
+          "atoms": 125,
+          "retainedListMarkers": 2,
+          "rawTextCharacters": 3843,
+          "atomCharacters": 3802,
+          "blocks": 19,
+          "translatable": 15,
+          "textEntries": 17,
+          "preservedRegions": 2,
+          "columns": [
+            0
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 15,
+            "formula": 2
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 9,
+          "rssBytes": 492584960
+        },
+        {
+          "pageNumber": 34,
+          "rawTextItems": 210,
+          "atoms": 210,
+          "retainedListMarkers": 0,
+          "rawTextCharacters": 2534,
+          "atomCharacters": 2455,
+          "blocks": 22,
+          "translatable": 11,
+          "textEntries": 14,
+          "preservedRegions": 4,
+          "columns": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "kinds": {
+            "footer": 3,
+            "text": 11,
+            "formula": 8
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 9,
+          "rssBytes": 494239744
+        },
+        {
+          "pageNumber": 35,
+          "rawTextItems": 115,
+          "atoms": 115,
+          "retainedListMarkers": 1,
+          "rawTextCharacters": 4088,
+          "atomCharacters": 4045,
+          "blocks": 17,
+          "translatable": 11,
+          "textEntries": 12,
+          "preservedRegions": 3,
+          "columns": [
+            0,
+            1
+          ],
+          "kinds": {
+            "footer": 2,
+            "text": 9,
+            "heading": 2,
+            "formula": 2,
+            "figure-label": 2
+          },
+          "missingAtoms": [],
+          "missingBlocks": [],
+          "sourceTextMismatches": [],
+          "orderChecks": [],
+          "contentChecks": [],
+          "listChecks": [],
+          "controlledPlacementChecks": [],
+          "textOrderStable": true,
+          "uniqueEntryIds": true,
+          "invalidLinkedIndexes": [],
+          "orientationDroppedAllText": false,
+          "durationMs": 8,
+          "rssBytes": 496074752
+        }
+      ],
+      "boundaries": [
+        {
+          "from": 17,
+          "to": 18,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "7b00106c25588fd0e52d1e5f68dd3ba4d57dccd6808aa71373557e48901cb9ac",
+          "nextHeadSha256": "8f400e049c9645ee7f729c14181c42bd1107c909782931f5c000636b2fc6b86a"
+        },
+        {
+          "from": 18,
+          "to": 19,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "f67e2fd6b1a93f6087453e2284943db70f4471a946cd386292f7b1dd58565160",
+          "nextHeadSha256": "bd78fe64d27b6853a5b744cbbd95100253e747223de069360551c36c4e33b284"
+        },
+        {
+          "from": 19,
+          "to": 20,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "23b094cdf5ecc86fc5b21218261f49d6a1196b76fc94f13f1049b0a0049b15ac",
+          "nextHeadSha256": "47baacb324edfa86d3bf8fc6a7787cbd880b9d93946bef3709bca4340dd90849"
+        },
+        {
+          "from": 20,
+          "to": 21,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "343051a8e9f7225b635509380c5e5507082c87d2966d5b14370b897a69e07b6a",
+          "nextHeadSha256": "2648d90a28dd7da30cba91fb61d36b30ff2cc40ed52e47b4c19bcdfbbcc8f006"
+        },
+        {
+          "from": 21,
+          "to": 22,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "22184f5c67b52408a32ff392dc59cf236179f7309cf6e7b7e4151bfa7cd9aa38",
+          "nextHeadSha256": "2d06b3874a23d707151a1629926195efdf7b293342d841ce1c7ad82a8f586447"
+        },
+        {
+          "from": 22,
+          "to": 23,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "423e12b8b5686fa22f77761341ca93929f7faad10d257f21da754519484eba84",
+          "nextHeadSha256": "1a1a5f8f43880f0d0d43245649fa1d1e225e313e418033f1c25ed317360fcd22"
+        },
+        {
+          "from": 23,
+          "to": 24,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "94fb32907966372545daf19a5804a2b33418600123202b6750e5a1996a9b6c08",
+          "nextHeadSha256": "00785ea04a5b3b2e7bbbb55c705102db2fb94cf35d5cac06a3f6e2600ff5f246"
+        },
+        {
+          "from": 24,
+          "to": 25,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "fed884cb6ba5b9b8ecfde95e54fc609a853e09f32cb831159d6601d85be327d3",
+          "nextHeadSha256": "84477014c31efcc5f9ab2c27ebcaf37ee0c1833dca6d94dc6cdeb944897e58d1"
+        },
+        {
+          "from": 25,
+          "to": 26,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "bd1319bf8c753d176a0edc135b4a9c72692bc10637c3d103341d7ec413039f9e",
+          "nextHeadSha256": "c0677ffce79ea34361cb88666de22a18abf8b61b3558a1d895086c5209291f5b"
+        },
+        {
+          "from": 26,
+          "to": 27,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "74b03dd26d1413d82994d0c2f0e64fb99d72bae0eb7eed3fdcfdb90c0a0fad87",
+          "nextHeadSha256": "a80eed246ff1d630bb2817d95182491d4d2b260cf24bcb90d7f05909ef190fce"
+        },
+        {
+          "from": 27,
+          "to": 28,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "ea327dbb073e9b7eb61bd086b1b0bee45327e8b071f45da1fbf4e126966f998f",
+          "nextHeadSha256": "859af6420f5bf1d5c076ebd97021741fd4d643d2c592ecd2847ed498e5ec1d0d"
+        },
+        {
+          "from": 28,
+          "to": 29,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "2678d7cdd910e65c0026c3c6520a76e5b9b7ac2e8db93a36043495b01c13fd91",
+          "nextHeadSha256": "7d653e89ab0055559d3efb09613fb88811deeb7cdff277fe048133d9cda48deb"
+        },
+        {
+          "from": 29,
+          "to": 30,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "e56e29869d777e3f104fe881f0e5429c2eb3913c709b48f6a6b516d4de6a0163",
+          "nextHeadSha256": "0630345d854d8de278b01558d0be16dc663d9377606a3b76ef8619a10bacb90d"
+        },
+        {
+          "from": 30,
+          "to": 31,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "389b7561d67940a581182578a3a74fcd9f76b624be183f87e10a40a852feaf6a",
+          "nextHeadSha256": "e9887d8fc865864219d3bd98758abb76d4be2d751076f09d0162c8ee411f74bb"
+        },
+        {
+          "from": 31,
+          "to": 32,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "a0d9c530530a56d41706ad1396f21e0b8b296a481aab3f03460412c45a9ccf2d",
+          "nextHeadSha256": "af2836835451c9226c2dd0f90be342caedab1fc01077adf1a55b0b44a4b1093d"
+        },
+        {
+          "from": 32,
+          "to": 33,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "5943215d175d59ae979b3a075b311fe4fdc6afbc6feab439700cbd2626cef0f0",
+          "nextHeadSha256": "33e2c1b73b775ad43aa6423bcb18ded20cbe66e1d1847039d3e86f5832c0ea64"
+        },
+        {
+          "from": 33,
+          "to": 34,
+          "continuationCandidate": false,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "92b8dffb42e50b3bad407e54cabc5e9a4bd0f29ea49d8162894e148395c1dd29",
+          "nextHeadSha256": "952df56997934c8d567a3a24b4bded3dac953b8876d594e1f54001c5ecf54db5"
+        },
+        {
+          "from": 34,
+          "to": 35,
+          "continuationCandidate": true,
+          "sourcePagesRetained": true,
+          "semanticJoinTested": false,
+          "previousTailSha256": "0aa3baae4ceeef2be12ab03897f9ad00cff6cf07f618899e70d93f7edab951a1",
+          "nextHeadSha256": "05b7db5ce2f608d4b3c159db23706436cea88bbb816674d2b065c2d1f32a7ae2"
+        }
+      ],
+      "failures": [],
+      "durationMs": 348,
+      "continuations": [
+        {
+          "id": "pdf-continuation-17-4-18-5",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 17,
+            "segmentIndex": 4
+          },
+          "to": {
+            "pageNumber": 18,
+            "segmentIndex": 5
+          }
+        },
+        {
+          "id": "pdf-continuation-18-17-19-18",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 18,
+            "segmentIndex": 17
+          },
+          "to": {
+            "pageNumber": 19,
+            "segmentIndex": 18
+          }
+        },
+        {
+          "id": "pdf-continuation-20-34-21-35",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 20,
+            "segmentIndex": 34
+          },
+          "to": {
+            "pageNumber": 21,
+            "segmentIndex": 35
+          }
+        },
+        {
+          "id": "pdf-continuation-28-94-29-95",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 28,
+            "segmentIndex": 94
+          },
+          "to": {
+            "pageNumber": 29,
+            "segmentIndex": 95
+          }
+        },
+        {
+          "id": "pdf-continuation-30-120-31-121",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 30,
+            "segmentIndex": 120
+          },
+          "to": {
+            "pageNumber": 31,
+            "segmentIndex": 121
+          }
+        },
+        {
+          "id": "pdf-continuation-31-135-32-136",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 31,
+            "segmentIndex": 135
+          },
+          "to": {
+            "pageNumber": 32,
+            "segmentIndex": 136
+          }
+        },
+        {
+          "id": "pdf-continuation-32-147-33-148",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 32,
+            "segmentIndex": 147
+          },
+          "to": {
+            "pageNumber": 33,
+            "segmentIndex": 148
+          }
+        },
+        {
+          "id": "pdf-continuation-34-173-35-174",
+          "kind": "paragraph",
+          "from": {
+            "pageNumber": 34,
+            "segmentIndex": 173
+          },
+          "to": {
+            "pageNumber": 35,
+            "segmentIndex": 174
+          }
+        }
+      ],
+      "continuationChecks": [],
+      "peakSampledRssBytes": 499187712
+    }
+  ],
+  "failures": [],
+  "passed": true
+}
