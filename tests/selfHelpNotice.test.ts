@@ -134,6 +134,12 @@ describe('actual self help notice', () => {
     expect(f.emitted).toHaveBeenCalledWith('services');
   });
 
+  it.each(['authentication', 'model-configuration', 'configuration'] as const)('offers user-triggered retry after repairing %s and keeps it disabled while busy', async code => {
+    const f = await mount({code}, {busy: true});
+    expect(f.button('重试').props.disabled).toBe(true);await f.click('重试');expect(f.emitted).not.toHaveBeenCalled();
+    f.props.busy = false;await settle();await f.click('重试');expect(f.emitted).toHaveBeenCalledOnce();expect(f.emitted).toHaveBeenCalledWith('retry');
+  });
+
   it('switches actual recovery, report preview and export failure copy across all seven locales without losing the preview', async () => {
     vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {throw new Error('PRIVATE export failure');});
     const diagnostic = diagnoseFailure({kind: 'timeout'}), f = await mount(diagnostic);
@@ -291,7 +297,7 @@ describe('retry transaction ownership', () => {
     expect(f.state.translated).toBe(false);expect(f.state.busy).toBe(false);
     expect(f.failure).toHaveBeenCalledOnce();
     const diagnostic = f.failure.mock.calls[0][0];
-    expect(diagnostic.code).toBe(code);expect(diagnostic.actions).toEqual(['services', 'dismiss']);
+    expect(diagnostic.code).toBe(code);expect(diagnostic.actions).toEqual(['services', 'retry', 'dismiss']);
     expect(JSON.stringify(diagnostic)).not.toContain('PRIVATE');
   });
 

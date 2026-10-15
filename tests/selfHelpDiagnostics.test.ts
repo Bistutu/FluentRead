@@ -14,7 +14,7 @@ describe('self help diagnosis', () => {
     )));
     const diagnostic = diagnoseFailure(error);
     expect(diagnostic.code).toBe('authentication');
-    expect(diagnostic.actions).toEqual(['services', 'dismiss']);
+    expect(diagnostic.actions).toEqual(['services', 'retry', 'dismiss']);
     expect(JSON.stringify(diagnostic)).not.toMatch(/private|secret|https:|timeout/);
   });
 
@@ -106,7 +106,7 @@ describe('self help diagnosis', () => {
     expect(diagnoseFailure({kind: 'authentication'}, {reason: 'cancelled'}).code).toBe('cancelled');
     expect(diagnoseFailure(new Error('failed'), {reason: 'no-content'}).code).toBe('no-content');
     expect(diagnoseFailure(undefined, {reason: 'unsupported-page'}).actions).toEqual(['dismiss']);
-    expect(diagnoseFailure(undefined, {reason: 'configuration'}).actions).toEqual(['services', 'dismiss']);
+    expect(diagnoseFailure(undefined, {reason: 'configuration'}).actions).toEqual(['services', 'retry', 'dismiss']);
     const saveFailure = diagnoseFailure(new Error('save timeout'), {reason: 'configuration-save'});
     expect(saveFailure.code).toBe('configuration-save');
     expect(saveFailure.actions).toEqual(['retry', 'dismiss']);
@@ -139,6 +139,11 @@ describe('self help diagnosis', () => {
     first.actions.pop();
     expect(diagnoseFailure({kind: 'timeout'}).actions).toContain('dismiss');
     expect(diagnoseFailure(new Error('Extension context invalidated')).actions).toEqual(['refresh', 'dismiss']);
+  });
+
+  it.each(['authentication', 'model-configuration', 'configuration'] as const)('normalizes %s to service inspection followed by explicit retry only', code => {
+    expect(normalizeDiagnostic({code, actions: ['refresh'], message: 'PRIVATE'})).toMatchObject({code, actions: ['services', 'retry', 'dismiss']});
+    for (const other of ['source-closed', 'unsupported-page'] as const) expect(normalizeDiagnostic({code: other})!.actions).toEqual(['dismiss']);
   });
 
   it('provides Chinese and English recovery guidance and labels for every diagnosis', () => {

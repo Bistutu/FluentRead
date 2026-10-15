@@ -915,7 +915,7 @@ async function diagnosticAction(action: DiagnosticAction) {
   if (!popupContext.active.value || !pageDiagnostic.value) return;
   if (action === 'dismiss') {pageDiagnostic.value = undefined;return;}
   if (action === 'services') return openOptions('settings-services', undefined, config.value.service);
-  if (action === 'site-settings') return openOptions('settings-sites');
+  if (action === 'site-settings') return openOptions('settings-sites', 'adaptation', undefined, true);
   if (action === 'refresh') {
     const current = pageContext.capture();
     try {
@@ -987,12 +987,17 @@ function showNotice(message: string, type: 'success' | 'error' = 'success') {
 
 // 配置订阅是内容功能的唯一状态来源；避免无 revision 的广播晚到后覆盖新快照。
 function openDrawer(name: DrawerName) {if (!popupContext.active.value || (!config.value.on && name !== 'services' && name !== 'aiContext')) return;activeDrawer.value = name;drawerMounted.value = true;drawerVisible.value = true;}
-async function openOptions(section?: SettingsSection, target?: string, service?: string) {
+async function openOptions(section?: SettingsSection, target?: string, service?: string, repairSource = false) {
   if (!popupContext.active.value) return;
   const current = popupContext.capture();
   try {
     if (section) {
-      await browser.tabs.create({ url: `${browser.runtime.getURL('options.html')}${service ? `?service=${encodeURIComponent(service)}${currentTabId.value !== null ? `&returnTabId=${currentTabId.value}` : ''}` : target ? `?target=${encodeURIComponent(target)}` : ''}#${section}` });
+      const query = new URLSearchParams();
+      if (service) query.set('service', service);
+      if (target) query.set('target', target);
+      if ((service || repairSource) && currentTabId.value !== null) query.set('returnTabId', String(currentTabId.value));
+      const search = query.toString();
+      await browser.tabs.create({url: `${browser.runtime.getURL('options.html')}${search ? `?${search}` : ''}#${section}`});
     } else {
       await browser.runtime.openOptionsPage();
     }
