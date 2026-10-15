@@ -69,7 +69,9 @@ describe('划词翻译挂载生命周期', () => {
         const host = document.createElement('fluent-read-selection-translator-ui');
         document.body.appendChild(host);
         vi.stubGlobal('MutationObserver', window.MutationObserver);
-        const mountedUi = {...ui(), shadowHost: host};
+        const sourceChecks: boolean[] = [];
+        const revalidateSource = vi.fn(() => sourceChecks.push(host.isConnected));
+        const mountedUi = {...ui({revalidateSource}), shadowHost: host};
         mountedUi.remove.mockImplementation(() => host.remove());
         mocks.createVueShadowUi.mockResolvedValueOnce(mountedUi);
         mocks.createModalDialogHostController.mockReturnValue({placeForRange: vi.fn(), dispose: vi.fn()});
@@ -83,12 +85,16 @@ describe('划词翻译挂载生命周期', () => {
             replacement.innerHTML = '<p>Next article</p>';
             document.body.replaceWith(replacement);
             await vi.waitFor(() => expect(host.parentNode).toBe(replacement));
+            // 每次真实祖先重建先复核来源，不能先把旧卡片接回页面。
+            expect(sourceChecks).toEqual([false, false]);
+            expect(revalidateSource).toHaveBeenCalledTimes(2);
             expect(mocks.createVueShadowUi).toHaveBeenCalledOnce();
             expect(mountedUi.remove).not.toHaveBeenCalled();
             runtime.unmountSelectionTranslator();
             await new Promise(resolve => setTimeout(resolve, 0));
             expect(host.isConnected).toBe(false);
             expect(mountedUi.remove).toHaveBeenCalledOnce();
+            expect(revalidateSource).toHaveBeenCalledTimes(2);
         } finally {
             runtime.unmountSelectionTranslator();
             vi.unstubAllGlobals();
