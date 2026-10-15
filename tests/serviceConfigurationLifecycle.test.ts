@@ -8,10 +8,11 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation'
 import {defaultOption, options} from '@/src/core/config/catalog'
-import {diagnoseFailure, getDiagnosticText} from '@/src/services/diagnostics'
+import {diagnoseFailure, getDiagnosticText, getDiagnosticActionLabel} from '@/src/services/diagnostics'
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
 const key = '__frServiceConfigurationLifecycle'
+const uiLanguage = runtime.ref('zh-CN')
 let server: ViteDevServer, app: import('vue').App, state: Record<string, any>
 let props: {config: Config; service: string; active: boolean; selectedModelThinking: boolean; compute: Record<string, any>;
   options: typeof options; isValidAzureEndpoint: (value: string) => boolean; customProvider?: {id: string; name: string; endpoint: string; models: string[]}}
@@ -39,11 +40,11 @@ async function acceptAction(index = 0) {
   await settle()
 }
 beforeEach(async () => {
-  vi.clearAllMocks();subscriptions.length = 0;releases.length = 0;jobs.length = 0;confirmations.length = 0
+  uiLanguage.value = 'zh-CN';vi.clearAllMocks();subscriptions.length = 0;releases.length = 0;jobs.length = 0;confirmations.length = 0
   queue.mockResolvedValue(undefined);save.mockResolvedValue(undefined);read.mockResolvedValue(null);clear.mockResolvedValue(undefined)
   send.mockResolvedValue({success: true, durationMs: 25});prepare.mockResolvedValue({sourceLanguage: 'en', targetLanguage: 'zh'})
   confirm.mockImplementation(() => {const item = pending();confirmations.push(item);return item.promise})
-  Object.assign(globalThis, {[key]: {send, save, queue, read, clear, prepare, confirm, feedback, subscriptions}})
+  Object.assign(globalThis, {[key]: {send, save, queue, read, clear, prepare, confirm, feedback, subscriptions, uiLanguage}})
   const mocks: Plugin = {name: 'service-configuration-ports', enforce: 'pre', resolveId(id) {
     if (id.endsWith('.vue') && !id.endsWith('ServiceConfiguration.vue')) return '\0service-child'
     if (id === 'webextension-polyfill') return '\0service-browser'
@@ -60,7 +61,7 @@ beforeEach(async () => {
     if (id === '\0service-browser') return `export default {runtime: {sendMessage: globalThis.${key}.send}}`
     if (id === '\0service-config') return `export const {queue: waitForConfigPersistenceQueue, save: requestConfigSave} = globalThis.${key}`
     if (id === '\0service-element') return `export const ElMessage = {success: globalThis.${key}.feedback};export const ElMessageBox = {confirm: globalThis.${key}.confirm};export const ElTabs = {}, ElTabPane = {}`
-    if (id === '\0service-i18n') return "import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: key => key, translateLegacy: text => text})"
+    if (id === '\0service-i18n') return `export const useUiI18n = () => ({language: globalThis.${key}.uiLanguage, t: key => key, translateLegacy: text => text})`
     if (id === '\0service-chrome-store') return `export const chromeTranslationPreparationStore = {get: globalThis.${key}.read, clear: globalThis.${key}.clear, subscribe: callback => {
       const item = {callback, stopped: false};globalThis.${key}.subscriptions.push(item);return () => {item.stopped = true}}}`
     if (id === '\0service-chrome-preparation') return `export class ChromeTranslationPreparationError extends Error {constructor(code, message, params) {super(message);this.code = code;this.params = params}}
@@ -639,5 +640,26 @@ describe('真实服务父组件与返回组件的修复焦点', () => {
     expect(h.clientErrors).toEqual([])
     for (const node of h.allNodes()) if ((node as any).focus) expect((node as any).focus).not.toHaveBeenCalled()
     expect(h.fallbackHeading?.focus).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();await h.finish()
+  })
+})
+
+
+describe('连接限流修复的七语按钮', () => {
+  it('真实模板冷却期间仅禁用重试，不把五种语言变成英文或重置截止时间', async () => {
+    const h = await mountServiceClient('google')
+    try {
+      send.mockResolvedValueOnce({success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: 1200})})
+      const header = h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-test-button'))!
+      await (header.props.onClick as () => Promise<void>)();await settle()
+      const retry = () => h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-retry'))!
+      const text = (n: ServiceClientNode): string => String(n.value || '') + n.children.map(text).join('')
+      for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES']) {
+        uiLanguage.value = locale;await settle()
+        expect(retry().props.disabled).toBe(true);expect(text(retry())).toBe(getDiagnosticActionLabel('retry', locale))
+        expect(text(retry())).not.toContain('Retry shortly')
+      }
+      await vi.advanceTimersByTimeAsync(1200);await settle();expect(retry().props.disabled).toBe(false)
+      expect(text(retry())).toBe(getDiagnosticActionLabel('retry', 'es-ES'));expect(messages()).toHaveLength(1);expect(h.clientErrors).toEqual([])
+    } finally {await h.finish()}
   })
 })

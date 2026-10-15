@@ -334,7 +334,7 @@
       <strong>{{ connectionRepairText.title }}</strong>
       <span>{{ connectionRepairText.detail }}</span>
       <div class="connection-repair-actions">
-        <button type="button" class="connection-repair-button" data-connection-retry :disabled="connectionTestDisabled || connectionRetryWaiting" @click="testConnection()">{{ connectionRetryWaiting ? (language.startsWith('zh') ? '请稍后重试' : 'Retry shortly') : getDiagnosticActionLabel('retry', language) }}</button>
+        <button type="button" class="connection-repair-button" data-connection-retry :disabled="connectionTestDisabled || connectionRetryWaiting" @click="testConnection()">{{ getDiagnosticActionLabel('retry', language) }}</button>
         <button v-if="connectionTestDiagnostic.actions.includes('services')" type="button" class="connection-repair-button" data-connection-repair-config :disabled="!active" @click="focusConnectionConfiguration">{{ getDiagnosticActionLabel('services', language) }}</button>
       </div>
     </div>

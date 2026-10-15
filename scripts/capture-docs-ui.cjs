@@ -225,9 +225,8 @@ let launchAttempted = false, browserGuarded = false, hasPrimaryError = false
         }
       }
     }
-    await popup.locator('[data-testid="onboarding-welcome"]').waitFor()
-    await capture(popup, 'popup-welcome', '.popup-shell')
-    await popup.locator('[data-testid="onboarding-language-next"]').click()
+    await popup.locator('[data-testid="onboarding-language-step"]').waitFor()
+    await capture(popup, 'popup-language-initial', '.popup-shell')
     await popup.locator('[data-language="' + locale + '"]').click()
     await capture(popup, 'popup-language', '.popup-shell')
     await popup.locator('.onboarding-confirm').last().click()

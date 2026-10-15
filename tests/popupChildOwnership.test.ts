@@ -166,11 +166,27 @@ describe('PopupOnboarding 实际预加载和生命周期', () => {
   it.each(['cached', 'pagehide', 'unmount'])('%s 后还未启动加载的旧 saved/confirmed 无效', async reason => {
     await mount(onboardingPath);const old = handles(onboarding());invalidate(reason);await settle();old.onSaved('en-US');await old.onConfirmed('en-US');await drain();expect(fixture.loadMain).not.toHaveBeenCalled()
   })
-  it('失活再激活使旧确认永久失效，恢复外观订阅，新确认可复用已加载模块', async () => {
-    const loaded = deferred<any>();fixture.loadMain.mockReturnValue(loaded.promise);await mount(onboardingPath);const old = handles(onboarding()), pending = old.onConfirmed('en-US');await drain()
-    shown.value = false;await settle();loaded.resolve({render: () => runtime.h('div', {'data-main-app': 'true'})});await pending;await drain();shown.value = true;await settle()
-    expect(subscribers.size).toBe(1);expect(mediaListeners.size).toBe(1);await old.onConfirmed('en-US');expect(state.mainApp).toBeNull()
-    await handles(onboarding()).onConfirmed('en-US');await drain();expect(document.querySelector('[data-main-app]')).not.toBeNull();expect(fixture.loadMain).toHaveBeenCalledOnce()
+  it('已确认交接在失活后仍拒绝旧事件，重新激活只采用当前上下文', async () => {
+    const loaded = deferred<any>();fixture.loadMain.mockReturnValue(loaded.promise);await mount(onboardingPath)
+    fixture.config.uiLanguageSetupCompleted = true
+    const old = handles(onboarding()), pending = old.onConfirmed('en-US');await drain()
+    shown.value = false;await settle();loaded.resolve({render: () => runtime.h('div', {'data-main-app': 'true'})});await pending;await drain()
+    await old.onConfirmed('en-US');expect(state.mainApp).toBeNull();expect(fixture.loadMain).toHaveBeenCalledOnce()
+    shown.value = true;await drain();expect(document.querySelector('[data-main-app]')).not.toBeNull()
+    await old.onConfirmed('en-US');expect(fixture.loadMain).toHaveBeenCalledOnce();expect(subscribers.size).toBe(0);expect(mediaListeners.size).toBe(0)
+  })
+  it.each(['pending', 'loaded'])('已保存的语言交接在缓存期间 %s，恢复后复用模块且不要求再次保存', async phase => {
+    const loaded = deferred<any>();fixture.loadMain.mockReturnValue(loaded.promise);await mount(onboardingPath)
+    fixture.config.uiLanguage = 'ja-JP';fixture.config.uiLanguageSetupCompleted = true
+    const current = handles(onboarding());current.onSaved('ja-JP');const pending = current.onConfirmed('ja-JP');await drain()
+    expect(document.querySelector('[data-onboarding-port]')).toBeNull()
+    shown.value = false;await settle()
+    if (phase === 'loaded') {loaded.resolve({render: () => runtime.h('div', {'data-main-app': 'true'})});await pending;await drain();expect(state.mainApp).toBeNull()}
+    shown.value = true;await drain()
+    if (phase === 'pending') {loaded.resolve({render: () => runtime.h('div', {'data-main-app': 'true'})});await pending;await drain()}
+    expect(document.querySelector('[data-main-app]')).not.toBeNull();expect(fixture.loadMain).toHaveBeenCalledOnce()
+    expect(fixture.config.uiLanguage).toBe('ja-JP');expect(fixture.config.uiLanguageSetupCompleted).toBe(true)
+    expect(document.querySelector('[data-onboarding-port]')).toBeNull()
   })
   it('当前导入失败显示双语错误，重试只重载一次；失活后的旧重试无效', async () => {
     fixture.loadMain.mockRejectedValue(new Error('import failed'));await mount(onboardingPath);await handles(onboarding()).onConfirmed('en-US');await drain()

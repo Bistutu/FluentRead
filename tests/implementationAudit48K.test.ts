@@ -253,27 +253,29 @@ describe('48K 再次遇见状态合同的公开消费者', () => {
 });
 
 describe('48K 轻量资源经实际运行时消费者', () => {
-    it('客户端欢迎、选择、等待、保存失败和成功阶段直接呈现中英文资源', async () => {
+    it('客户端单屏语言选择、等待、保存失败重试与立即交接使用轻量文案', async () => {
         const saved = vi.fn(), confirmed = vi.fn(); mountClient(loadClientComponent('src/ui/components/UiLanguageOnboarding.vue'), {initialLanguage: 'en-US', onSaved: saved, onConfirmed: confirmed}); await settle();
-        expect(element('#language-onboarding-title').textContent).toContain('欢迎使用'); expect(element('#language-onboarding-title').textContent).toContain('Welcome');
-        expect(element('[data-testid="onboarding-language-next"]').textContent).toContain('Set interface language');
-        click('[data-testid="onboarding-language-next"]'); await settle();
+        expect(element('#language-onboarding-title').textContent).toContain('选择界面语言');
+        expect(document.querySelector('[data-testid="onboarding-language-next"]')).toBeNull();
         expect(element('#language-onboarding-title').textContent).toContain('Choose interface language');
         expect(element('[role="radiogroup"]').getAttribute('aria-label')).toBe('语言 / Language');
-        expect(element('.onboarding-back').textContent).toBe('返回 / Back');
+        expect(document.querySelector('.onboarding-back')).toBeNull();
+        expect(element('[data-language="ja-JP"]').textContent).toContain('日本語');
         const gate = deferred<boolean>(); ports.setLanguage.mockReturnValueOnce(gate.promise); click('.onboarding-form > .onboarding-confirm'); await settle();
         expect(element('.onboarding-form > .onboarding-confirm').textContent).toContain('加载中…'); expect(element('.onboarding-form > .onboarding-confirm').textContent).toContain('Loading…');
+        expect(saved).not.toHaveBeenCalled(); expect(confirmed).not.toHaveBeenCalled();
         gate.reject(new Error('controlled persistence failure')); await settle();
-        expect(element('[role="alert"]').textContent).toBe('界面语言保存失败，请重新打开设置页后重试。 / The interface language could not be saved. Reopen settings and try again.');
+        expect(element('[role="alert"]').textContent).toBe('Could not confirm the language was saved. Confirm again to retry.');
         expect(element('.onboarding-form > .onboarding-confirm').textContent).toContain('确认'); expect(element('.onboarding-form > .onboarding-confirm').textContent).toContain('Confirm');
         click('.onboarding-form > .onboarding-confirm'); await settle(); expect(saved).toHaveBeenCalledWith('en-US');
-        expect(element('#language-onboarding-title').textContent).toContain('准备好了'); expect(element('#language-onboarding-title').textContent).toContain('You’re all set');
-        await vi.advanceTimersByTimeAsync(1200); expect(confirmed).toHaveBeenCalledWith('en-US');
+        expect(confirmed).toHaveBeenCalledOnce(); expect(confirmed).toHaveBeenCalledWith('en-US');
+        expect(element('.onboarding-confirm').hasAttribute('disabled')).toBe(true);
+        click('.onboarding-confirm'); await settle(); expect(saved).toHaveBeenCalledOnce(); expect(confirmed).toHaveBeenCalledOnce();
         expect(translate('language.onboardingWelcomeNext', 'zh-CN')).toBe('设置界面语言');
     });
     it('实际 Popup 模块加载失败同时显示双语反馈，重试释放订阅并调用重开端口', async () => {
-        mountClient(loadClientComponent('src/app/popup/PopupOnboarding.vue')); await settle(); click('[data-testid="onboarding-language-next"]'); await settle();
-        click('.onboarding-form > .onboarding-confirm'); await settle(); await vi.advanceTimersByTimeAsync(1200); await settle();
+        mountClient(loadClientComponent('src/app/popup/PopupOnboarding.vue')); await settle();
+        click('.onboarding-form > .onboarding-confirm'); await settle();
         expect(element('.onboarding-load-error').textContent).toContain('菜单加载失败，请重试。');
         expect(element('.onboarding-load-error').textContent).toContain('The menu could not be loaded. Please retry.');
         expect(element('.onboarding-load-error button').textContent).toBe('重试 / Retry');

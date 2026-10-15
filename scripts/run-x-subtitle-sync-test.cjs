@@ -240,7 +240,7 @@ async function main() {
  assert.equal(configResult?.success,true,'configuration persisted through real background');
  const controlOnboarding = control.locator('[data-testid="ui-language-onboarding"]');
  if (await controlOnboarding.count()) {
-   await controlOnboarding.locator('[data-testid="onboarding-language-next"]').click();
+   await controlOnboarding.locator('[data-testid="onboarding-language-step"]').waitFor();
    await controlOnboarding.locator('[data-language="zh-CN"]').click();
    await controlOnboarding.locator('.onboarding-confirm').click();
    await controlOnboarding.waitFor({state:'hidden',timeout:30000});
