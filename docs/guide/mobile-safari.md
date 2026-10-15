@@ -5,7 +5,7 @@
 | 环境 | 安装入口 | 当前边界 |
 | --- | --- | --- |
 | Android Edge | 浏览器的扩展目录中搜索流畅阅读 | 目录、可安装项目和权限随浏览器版本及管理策略变化 |
-| Android Firefox | Firefox 扩展管理器或 Mozilla 扩展网站 | Mozilla 的流畅阅读页面已标示支持 Android；本次开发包仍须设备验收 |
+| Android Firefox | Firefox 扩展管理器或 Mozilla 扩展网站 | Mozilla 的流畅阅读页面已标示支持 Android；开发包已完成模拟器网页翻译与恢复，真机仍待验收 |
 | Android Via 等脚本环境 | [油猴脚本安装说明](/guide/userscript) | Via 请用源码独立版；已有 Android 13 模拟器证据，仍缺真机验收 |
 | iPhone/iPad 或 Mac Safari Userscripts | [Userscripts 安装与排查](/guide/userscript#safari-userscripts-安装与排查) | 核心网页和划词路径；没有扩展版的视频字幕、图片 OCR 或圈选翻译 |
 | Safari 原生 Web Extension | 本页下方的开发预览流程 | 提供 Safari 26+ 的源码构建与 Xcode 包装；尚未发布可安装的 Safari 商店版本 |
@@ -14,7 +14,7 @@
 
 **Android Edge：**从浏览器菜单进入扩展目录，找到流畅阅读并核对权限。安装后在扩展菜单打开流畅阅读；原先打开的文章需要刷新。没有扩展目录或找不到流畅阅读时，请先核对浏览器版本和组织管理策略，或使用支持的脚本环境。不要把桌面“加载已解压扩展”的步骤用于手机。Microsoft 的[移动策略文档](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-mobile-policies)确认 Android 扩展可以受管理策略禁用；此文不保证每个移动版本都能安装全部桌面扩展。更新后在扩展详情核对版本，再刷新文章。
 
-**Android Firefox：**打开菜单中的扩展管理器，或者访问 [Mozilla 上的流畅阅读](https://addons.mozilla.org/en-US/firefox/addon/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/)。2026-10-15 核查时，Mozilla 页面明确标示可用于 Firefox Android；请以当前设备实际出现的安装按钮继续。更新由 Firefox 的扩展机制管理；安装可用性、私密窗口权限及更新方式见 [Mozilla 官方说明](https://support.mozilla.org/en-US/kb/find-and-install-add-ons-firefox-android)。本次没有 Android Firefox 真机证据。
+**Android Firefox：**打开菜单中的扩展管理器，或者访问 [Mozilla 上的流畅阅读](https://addons.mozilla.org/en-US/firefox/addon/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/)。2026-10-15 核查时，Mozilla 页面明确标示可用于 Firefox Android；请以当前设备实际出现的安装按钮继续。更新由 Firefox 的扩展机制管理；安装可用性、私密窗口权限及更新方式见 [Mozilla 官方说明](https://support.mozilla.org/en-US/kb/find-and-install-add-ons-firefox-android)。当前开发包在 Android 12 模拟器的 Firefox 158 中，通过官方临时调试加载，完成了公开页面的实际翻译与恢复；这不替代商店安装更新或 Android 真机验收。
 
 **Safari Userscripts：**先安装 Userscripts 并授予正在阅读的网站权限，再导入脚本。只启用一种流畅阅读脚本。Greasy Fork 更新、手动导入的源码独立版和未来原生 Safari App 是不同渠道；手动文件需要手动替换并让管理器重新读取，构建成功不会自动更新已安装脚本。具体步骤与现有验证范围见[油猴脚本](/guide/userscript)。
 
@@ -23,7 +23,7 @@
 - **网页翻译：**打开普通 HTTP(S) 文章，从扩展菜单或悬浮球点击翻译。需要恢复时使用同一入口；更换语言或服务后先恢复原文再翻译。浏览器内部页与扩展商店不能注入。
 - **划词：**开启划词翻译，长按文字并调整系统选择手柄，再点选区旁的翻译图标。系统复制菜单可能同时显示；保留系统选区即可。仅触摸设备不需要鼠标悬停快捷键。
 - **选择服务：**从面板的翻译服务入口打开服务列表，再搜索服务或模型。软键盘出现时，抽屉会随可见区域调整，搜索、清除、返回和关闭按钮保持可用；列表可在抽屉内滚动，遮罩始终覆盖页面，防止误触背后的设置。清除搜索或返回不会改变已选择的默认服务。
-- **视频字幕：**仅扩展版提供字幕路径。YouTube 应在网页播放器中开启字幕，再使用流畅阅读的视频翻译。iOS 系统原生视频全屏不包含网页 DOM 浮层。原生扩展会尝试把已读取的原文与已缓存译文交给系统的“FluentRead”字幕轨道；字幕样式由系统播放器控制，后台挂起期间不保证及时出现新译文。未出现该轨道时，可使用站点字幕，或退出系统全屏继续在网页内阅读双语字幕。此桥接尚待 iPhone/iPad 实机确认。
+- **视频字幕：**仅扩展版提供字幕路径。YouTube 应在网页播放器中开启字幕，再使用流畅阅读的视频翻译。iOS 系统原生视频全屏不包含网页 DOM 浮层。原生扩展会预备包含已读取原文与已缓存译文的“FluentRead”字幕轨道；进入系统全屏后，在系统字幕菜单选择它。扩展不会在进入全屏或更新译文时替换系统当前的字幕选择。字幕样式由系统播放器控制，后台挂起期间不保证及时出现新译文。轨道未出现或切换异常时，可退出系统全屏继续在网页内阅读双语字幕。此桥接尚待 iPhone/iPad 实机确认。
 
 旋转屏幕、唤起软键盘或回到后台后的页面，应以当前可见区域重新放置浮层。若网页已被系统重新加载，先确认页面和扩展已恢复，再重新发起翻译；未完成请求不代表已经保存的译文。问题反馈请包含系统、浏览器、扩展或脚本版本、页面地址，以及是否使用系统视频全屏。
 
