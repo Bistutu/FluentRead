@@ -12,6 +12,7 @@
  * 模块边界：不创建请求路由、不替换 fetch、不伪造译文、不配置付费账户，不读取或输出任何凭据；只使用本次新建的临时浏览器配置，不操作用户浏览器。中文及无测试标记只能证明实际结果，译文质量和排版需结合保存的数据与图片人工复核。
  */
 const assert = require('node:assert/strict');
+const {mapPdfLayoutPages} = require('./pdf-output-pages.cjs');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -364,12 +365,12 @@ async function inspectPdf(bytes, requireRepo) {
   const task = getDocument({data: new Uint8Array(bytes), disableFontFace: true, isEvalSupported: false, useWorkerFetch: false, verbosity: 0,
     standardFontDataUrl: path.join(path.dirname(requireRepo.resolve('pdfjs-dist/package.json')), 'standard_fonts') + path.sep});
   try {
-    const pdf = await task.promise, pages = [];
+    const pdf = await task.promise, pages = [], labels = await pdf.getPageLabels();
     for (let number = 1; number <= pdf.numPages; number++) {
       const page = await pdf.getPage(number);
       try {
         const viewport = page.getViewport({scale: 1});
-        pages.push({number, width: viewport.width, height: viewport.height,
+        pages.push({number, label: labels?.[number - 1], width: viewport.width, height: viewport.height,
           text: (await page.getTextContent()).items.filter(item => 'str' in item).map(item => item.str).join('\n')});
       } finally {page.cleanup();}
     }
@@ -378,6 +379,7 @@ async function inspectPdf(bytes, requireRepo) {
 }
 
 function validatePdf(source, output) {
+  const mapped = mapPdfLayoutPages(source.length, output);
   const sourceTexts = source.map(page => compact(page.text));
   const evidence = source.map((page, index) => {
     const text = sourceTexts[index], anchors = [];
@@ -385,13 +387,13 @@ function validatePdf(source, output) {
       const start = Math.max(0, Math.min(Math.floor(text.length * fraction), text.length - 60)), anchor = text.slice(start, start + 60);
       if (anchor.length >= 24 && !sourceTexts.some((other, otherIndex) => otherIndex !== index && other.includes(anchor)) && !anchors.includes(anchor)) anchors.push(anchor);
     }
-    const actual = output[index], width = page.width * 2 + Math.max(8, Math.min(24, page.width * .025));
+    const actual = mapped.pages[index], width = page.width * 2 + Math.max(8, Math.min(24, page.width * .025));
     return {page: index + 1, anchors: anchors.length, sourceOrderOk: !anchors.length || Boolean(actual && anchors.every(anchor => compact(actual.text).includes(anchor))),
       dimensionsOk: Boolean(actual && Math.abs(actual.width - width) < .02 && Math.abs(actual.height - page.height) < .02),
       expectedWidth: width, actualWidth: actual?.width, expectedHeight: page.height, actualHeight: actual?.height};
   });
-  return {ok: source.length === output.length && evidence.every(page => page.sourceOrderOk && page.dimensionsOk),
-    oneOutputPagePerSource: source.length === output.length, sourcePages: source.length, outputPages: output.length, pages: evidence};
+  return {ok: mapped.ok && evidence.every(page => page.sourceOrderOk && page.dimensionsOk),
+    layoutPageMapping: {ok: mapped.ok, labelled: mapped.labelled, indices: mapped.indices, continuations: mapped.continuations}, sourcePages: source.length, outputPages: output.length, pages: evidence};
 }
 
 /** 只验证本次实际中文译段可从 PDF 文字层完整按顺序提取，不据此评价译意或图中公式。 */

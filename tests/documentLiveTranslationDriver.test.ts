@@ -508,3 +508,23 @@ describe('真实文档工具有界超时继续（离线守卫，不调用 MT）'
         expect(close).toHaveBeenCalledOnce(); expect(stop).toHaveBeenCalledOnce(); expect(report.ok).toBe(false); expect(report.focusFailure).toBe('Owned Edge activation');
     });
 });
+
+describe('source page labels with visible translation continuations', () => {
+    const {mapPdfLayoutPages} = createRequire(import.meta.url)('../scripts/testing/pdf-output-pages.cjs');
+    const labelled = (...labels: string[]) => labels.map(label => ({label}));
+    it('maps each source page and only its immediately following numbered continuations', () => {
+        const result = mapPdfLayoutPages(2, labelled('1', '1 · 译文续页 1', '1 · 译文续页 2', '2', '2 · 译文续页 1'));
+        expect(result.ok).toBe(true); expect(result.indices).toEqual([0, 3]); expect(result.continuations).toHaveLength(3);
+        expect(mapPdfLayoutPages(2, [{}, {}]).ok).toBe(true);
+    });
+    it.each([
+        ['1', '1 · 译文续页 2', '2'], ['1', '2', '1 · 译文续页 1'], ['1', '1', '2'], ['2', '1'],
+        ['1', '1 · 译文续页 1'], ['1', '2', '3'], ['1', '2', '2 · 译文续页 1', '2 · 译文续页 1'],
+    ])('rejects missing, repeated or misordered page labels: %j', (...labels) => {
+        expect(mapPdfLayoutPages(2, labelled(...labels)).ok).toBe(false);
+    });
+    it('rejects unlabelled output with an extra or missing page', () => {
+        expect(mapPdfLayoutPages(2, [{}, {}, {}]).ok).toBe(false);
+        expect(mapPdfLayoutPages(2, [{}]).ok).toBe(false);
+    });
+});

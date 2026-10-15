@@ -45,6 +45,8 @@
       "tests/materialOriginalText.test.ts",
       "tests/materialParagraphScan.test.ts",
       "tests/documentHistoryCommitter.test.ts",
+      "tests/documentMaterialLocator.test.ts",
+      "tests/pdfContinuations.test.ts",
       "tests/fullPageSession.test.ts",
       "tests/compositeTranslationConfig.test.ts",
       "tests/compositeTranslationRouting.test.ts",

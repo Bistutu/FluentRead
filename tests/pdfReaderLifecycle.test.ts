@@ -5,7 +5,7 @@ import PdfReader from '@/src/features/document-translation/ui/PdfReader.vue';
 import {buildPdfReadingPlan, type PdfReadingRegionEntry} from '@/src/features/document-translation/core/pdfReadingPlan';
 import type {ParsedDocument, PdfDocumentPage} from '@/src/features/document-translation/core/document';
 import {createPdfReaderRenderPort, PDF_READER_MAX_CANVAS_EDGE, PDF_READER_MAX_PAGE_PIXELS, PDF_READER_MAX_RESIDENT_PAGES, pdfReaderCanvasSize, pdfReaderDisplayRect, pdfReaderPageHasTranslation, pdfReaderPageKey, pdfReaderPageWindow, PdfReaderScheduler, type PdfReaderPageState, type PdfReaderRenderedPage, type PdfReaderSettings} from '@/src/features/document-translation/ui/pdfReader';
-import {acquirePdfDocument, releasePdfDocument} from '@/src/features/document-translation/ui/pdfPreview';
+import {acquirePdfDocument, releasePdfDocument, rasterizePdfReadingPages} from '@/src/features/document-translation/ui/pdfPreview';
 import {DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES} from '@/src/core/config/informationHighlight';
 import {scoreInformationKeywords} from '@/src/features/information-highlight/domain/keywords';
 import {INFORMATION_HIGHLIGHT_NAME} from '@/src/features/information-highlight/public';
@@ -47,6 +47,10 @@ beforeEach(() => {
     const createElement = document.createElement.bind(document);
     vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
         const element = markRaw(createElement(tag));
+        if (tag === 'dialog') Object.assign(element, {
+            showModal: vi.fn(() => element.setAttribute('open', '')),
+            close: vi.fn(() => {element.removeAttribute('open'); element.dispatchEvent(new document.defaultView!.Event('close'));}),
+        });
         if (tag !== 'canvas') return element;
         const context: any = {drawImage: vi.fn(), fillRect: vi.fn(), measureText: vi.fn((value: string) => ({width: value.length * 8})), fillText: vi.fn(), save: vi.fn(), restore: vi.fn(), translate: vi.fn(), rotate: vi.fn(), beginPath: vi.fn(), rect: vi.fn(), clip: vi.fn(), getImageData: vi.fn((_x: number, _y: number, width: number, height: number) => ({data: new Uint8ClampedArray(width * height * 4).fill(255)}))};
         context.canvas = element;
@@ -1314,5 +1318,130 @@ describe('PDF reader actual Vue component reading interaction', () => {
         click(item); await componentFlush();
         expect(hosted.viewport.scrollTop).toBeCloseTo(top + 70 * scale - 24, 8); expect(hosted.state.currentPage).toBe(2); expect(item.getAttribute('aria-current')).toBe('location'); expect(classes(item)).toContain('current');
         mountedApp.unmount(); mountedApp = undefined; await componentFlush(); expect(host.querySelector('.pdf-reader-outline')).toBeNull();
+    });
+});
+
+
+describe('PDF full passage access', () => {
+    it('opens a full corrected passage, updates live, and clears it on document replacement', async () => {
+        const doc = model();
+        const passage = 'Long corrected translation '.repeat(500);
+        const {root, state, currentTranslations, currentDocument} = mountReader(doc, 'bilingual', [passage]);
+        await componentFlush();
+        const button = root.querySelector<HTMLButtonElement>('.pdf-full-passage-button');
+        expect(button).not.toBeNull();
+        button!.click(); await componentFlush();
+        const dialog = root.querySelector<HTMLDialogElement>('.pdf-full-passage-dialog')!;
+        expect(dialog.hasAttribute('open')).toBe(true);
+        expect(dialog.querySelector('.pdf-full-passage-translation')!.textContent).toBe(passage);
+        currentTranslations.value = [passage + 'Final correction']; await componentFlush();
+        expect(dialog.querySelector('.pdf-full-passage-translation')!.textContent).toBe(passage + 'Final correction');
+        dialog.close(); await componentFlush();
+        expect(state.fullPassage).toBeUndefined();
+        await state.openFullPassage(1, 0); await componentFlush();
+        currentDocument.value = model(); await componentFlush();
+        expect(dialog.hasAttribute('open')).toBe(false);
+        expect(state.fullPassage).toBeUndefined();
+    });
+
+    it('does not reopen a passage after teardown while waiting for its DOM', async () => {
+        const {root, state} = mountReader(model(), 'bilingual', ['Translation']); await componentFlush();
+        const dialog = root.querySelector<HTMLDialogElement>('.pdf-full-passage-dialog')!;
+        const pending = state.openFullPassage(1, 0);
+        mountedApp.unmount(); mountedApp = undefined;
+        await pending;
+        expect(dialog.showModal).not.toHaveBeenCalled();
+    });
+});
+
+
+describe('PDF preserved source search', () => {
+    it('searches author metadata and figure labels without translation segment indexes', async () => {
+        const doc = model();
+        if (doc.binary?.kind !== 'pdf') throw new Error('Expected PDF');
+        doc.binary.pages[0].blocks.push({...doc.binary.pages[0].blocks[0], segmentIndex: -1, source: 'Author metadata', kind: 'metadata', y: 20});
+        doc.binary.pages[0].blocks.push({...doc.binary.pages[0].blocks[0], segmentIndex: -1, source: undefined, kind: 'figure-label', y: 200,
+            lines: [{x: 50, y: 200, width: 200, height: 12, text: 'Figure axis label'}]});
+        const {state} = mountReader(doc); await componentFlush();
+        state.searchQuery = 'author'; await componentFlush();
+        expect(state.searchHits).toHaveLength(1); expect(state.searchHits[0].y).toBe(20);
+        state.searchQuery = 'axis label'; await componentFlush();
+        expect(state.searchHits).toHaveLength(1); expect(state.searchHits[0].y).toBe(200);
+    });
+});
+
+describe('PDF cross-page context access', () => {
+    it('opens connected page fragments together from layout and readable controls without modifying sources or corrections', async () => {
+        const doc = model(3), sources = ['The source paragraph remains unfin-', 'ished yet continues across the next boundary without a final stop', 'and finishes on this page.'];
+        const translations = ['人工校订第一页', '人工校订第二页', '人工校订第三页'];
+        doc.segments.forEach((segment, index) => {segment.source = sources[index];});
+        if (doc.binary?.kind !== 'pdf') throw new Error('Expected PDF');
+        doc.binary.pages.forEach((page, index) => {page.blocks[0].y = index === 0 ? 600 : 70; page.blocks[0].height = index === 1 ? 600 : 40;});
+        const {root, state, currentPresentation} = mountReader(doc, 'bilingual', translations); await componentFlush();
+        expect(state.continuationBySegment.size).toBe(3);
+        click(root.querySelector('.pdf-full-passage-button')); await componentFlush();
+        expect(state.fullPassageParts.map((part: {page: number}) => part.page)).toEqual([1, 2, 3]);
+        expect([...root.querySelectorAll('.pdf-full-passage-translation')].map(node => node.textContent)).toEqual(translations);
+        expect(root.querySelector('#pdf-full-passage-heading')!.textContent).toContain('document.pdfReading.crossPageContext');
+        (root.querySelector('.pdf-full-passage-dialog') as HTMLDialogElement).close();
+        currentPresentation.value = 'readable'; await componentFlush(); flushFrames(); await componentFlush();
+        expect(root.querySelectorAll('.pdf-cross-page-context')).toHaveLength(3);
+        click(root.querySelector('.pdf-cross-page-context')); await componentFlush();
+        expect(state.fullPassageParts).toHaveLength(3);
+        expect(doc.segments.map(segment => segment.source)).toEqual(sources);
+        expect(translations).toEqual(['人工校订第一页', '人工校订第二页', '人工校订第三页']);
+    });
+});
+
+it('shows a waiting state for an untranslated adjacent fragment in cross-page context', async () => {
+    const doc = model(2);
+    doc.segments[0].source = 'The paragraph continues without a final stop'; doc.segments[1].source = 'and finishes on the next page.';
+    if (doc.binary?.kind !== 'pdf') throw new Error('Expected PDF');
+    doc.binary.pages[0].blocks[0].y = 650;
+    const {root, state} = mountReader(doc, 'bilingual', ['Reviewed first part', '']); await componentFlush();
+    await state.openFullPassage(1, 0); await componentFlush();
+    const texts = [...root.querySelectorAll('.pdf-full-passage-translation')].map(node => node.textContent);
+    expect(texts).toEqual(['Reviewed first part', 'document.pdfReading.waitingTranslation']);
+});
+
+
+describe('standalone readable raster fallback source lease', () => {
+    const plan = {pageNumber: 1, hasTranslation: true, entries: [{kind: 'region' as const, id: 'figure', pageNumber: 1, role: 'figure',
+        sourceRect: {x: 50, y: 100, width: 200, height: 120}, segmentIndexes: []}]};
+    const encodeCanvases = () => {
+        const create = vi.mocked(document.createElement).getMockImplementation()!;
+        vi.mocked(document.createElement).mockImplementation(tag => {
+            const canvas = create(tag);
+            if (tag === 'canvas') {
+                Object.assign((canvas as HTMLCanvasElement).getContext('2d')!, {scale: vi.fn()});
+                (canvas as any).toBlob.mockImplementation((done: (blob: Blob) => void) => done(new Blob([new Uint8Array([1])])));
+            }
+            return canvas;
+        });
+    };
+    it.each(['complete', 'cancel'] as const)('releases the worker and pagehide listener after %s without a composition-root lease', async action => {
+        encodeCanvases();
+        const remove = vi.spyOn(win, 'removeEventListener');
+        const doc = model(), controller = new AbortController();
+        if (doc.binary?.kind !== 'pdf') throw new Error('Expected PDF');
+        const bytes = doc.binary.bytes;
+        const run = async () => {for await (const page of rasterizePdfReadingPages({...pageModel(1), sourceBytes: bytes, translations: [], plan, signal: controller.signal})) {
+            expect(page.items).toHaveLength(1);
+            if (action === 'cancel') controller.abort(new Error('Stop standalone fallback'));
+        }};
+        if (action === 'cancel') await expect(run()).rejects.toThrow('Stop standalone fallback'); else await run();
+        expect(destroy).toHaveBeenCalledOnce();
+        expect(remove.mock.calls.some(([name]) => name === 'pagehide')).toBe(true);
+        expect(canvases.every(canvas => canvas.width === 0 && canvas.height === 0)).toBe(true);
+        const later = acquirePdfDocument(bytes); await later.promise;
+        expect(ports.getDocument).toHaveBeenCalledTimes(2); later.release();
+    });
+    it('keeps an existing reader lease alive until the reader releases it', async () => {
+        encodeCanvases(); const doc = model();
+        if (doc.binary?.kind !== 'pdf') throw new Error('Expected PDF');
+        const reader = acquirePdfDocument(doc.binary.bytes); await reader.promise;
+        for await (const _page of rasterizePdfReadingPages({...pageModel(1), sourceBytes: doc.binary.bytes, translations: [], plan})) { /* finish the real generator */ }
+        expect(ports.getDocument).toHaveBeenCalledOnce(); expect(destroy).not.toHaveBeenCalled();
+        reader.release(); expect(destroy).toHaveBeenCalledOnce();
     });
 });

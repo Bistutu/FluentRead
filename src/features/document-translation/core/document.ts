@@ -86,6 +86,10 @@ export interface PdfPreservedRegion {
 
 export interface PdfDocumentBlock {
     segmentIndex: number;
+    /** 不进入翻译分段的原文（作者、页眉、公式等）仍供重排阅读和文本导出保全。 */
+    source?: string;
+    /** 从原文字形单独识别的列表前缀；不送去翻译，重排文字保留其列表语义。 */
+    listMarker?: string;
     /** PDF 在缩放比例 1、页面旋转 0 下的左上角内容坐标；页面展示旋转由 PdfDocumentPage.rotation 决定。 */
     x: number;
     y: number;
@@ -112,7 +116,7 @@ export interface PdfDocumentPage {
     pageNumber: number;
     /** 保留 PDF 页面的实际展示方向；旧模型与未旋转页面可以省略。 */
     rotation?: 0 | 90 | 180 | 270;
-    /** 文字识别过的旋转扫描页：版面块已经按展示方向给出（因此不再带 rotation），这里只记下原页的旋转角，供导出时摆正嵌入的原页。 */
+    /** 已按展示方向解析的旋转原生页或扫描识别页：版面块不再带 rotation；记录原页旋转角供导出摆正嵌入的原页。 */
     sourceRotation?: 90 | 180 | 270;
     /** 展示方向的尺寸；90/270 度时，内容坐标系的宽高与这里交换。 */
     width: number;

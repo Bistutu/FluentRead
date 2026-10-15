@@ -554,7 +554,8 @@ describe('PDF baseline and structural reading analysis', () => {
         expect(result.preservedRegions.map(region => region.kind)).toEqual(['table', 'figure']);
         expect(result.preservedRegions[1]).toMatchObject({x: 170, y: 200, width: 170, height: 65});
         // 含词语的单元格各自成段并可翻译；纯数字单元格保留原样。
-        expect(result.blocks.filter(block => block.kind === 'table').map(block => [block.source, block.preserveSource])).toEqual([['Model', false], ['Baseline', false], ['Score', false], ['24.9', true]]);
+        // 表格现在先读完整表头再按记录逐行读，不能把整列值排在下一列表头之前。
+        expect(result.blocks.filter(block => block.kind === 'table').map(block => [block.source, block.preserveSource])).toEqual([['Model', false], ['Score', false], ['Baseline', false], ['24.9', true]]);
         expect(result.blocks.find(block => block.source === 'Image label')?.kind).toBe('figure-label');
         expect(result.blocks.filter(block => block.kind === 'caption').every(block => !block.preserveSource)).toBe(true);
         expect(result.blocks.find(block => block.source === 'A paragraph after the table.')?.textAlign).toBe('left');
@@ -982,6 +983,31 @@ describe('PDF layout analysis on real paper typography', () => {
         const slide = analyze([atom('Slide title', 40, 40, 200, 24), atom('Body copy of the slide is much smaller than its title text.', 40, 200, 400), atom('Second line of body copy keeps the body font dominant.', 40, 212, 400)]);
         expect(slide.blocks[0]).toMatchObject({kind: 'heading', source: 'Slide title'});
     });
+    it('keeps a separated bottom footnote translatable without treating the page number or next-column footer as a note', () => {
+        const page = analyze([
+            atom('The body paragraph uses the ordinary size of the article.', 54, 600, 240),
+            atom('The next complete line establishes the main body font.', 54, 612, 240),
+            atom('1 This footnote belongs to the left column of this article.', 54, 764, 240, 8),
+            atom('7', 302, 780, 5, 8),
+            atom('Downloaded from example.org', 318, 764, 150, 8),
+        ], [{kind: 'path', x: 54, y: 748, width: 80, height: .5}]);
+        expect(page.blocks.find(block => block.source.startsWith('1 This footnote'))).toMatchObject({kind: 'text', preserveSource: false});
+        expect(page.blocks.filter(block => block.kind === 'footer').map(block => block.source)).toEqual(['Downloaded from example.org', '7']);
+    });
+    it('retains a multline bottom note and independently preserves differently sized, shifted or nonoverlapping nearby labels', () => {
+        const body = [atom('This complete body paragraph establishes the ordinary text size for a long article.', 50, 100, 500),
+            atom('Its second complete line has enough ordinary letters to keep the body size stable.', 50, 112, 500)];
+        const rule = [{kind: 'path' as const, x: 50, y: 930, width: 24, height: .5}];
+        const start = atom('A note begins below its own footnote separator and continues', 50, 954, 240, 8);
+        const continuation = atom('with a second line outside the initial separator distance.', 50, 966, 240, 8);
+        for (const near of [atom('Smaller adjacent annotation', 50, 978, 120, 7.3), atom('Separate right annotation', 350, 978, 120, 8)]) {
+            const page = analyze([...body, start, continuation, near], rule, 800, 1000);
+            expect(page.blocks.find(block => block.source.startsWith('A note begins'))).toMatchObject({kind: 'text', preserveSource: false});
+            expect(page.blocks.flatMap(block => block.lines ?? []).some(line => line.runs?.some(run => run.text === near.text))).toBe(true);
+        }
+        const labels = analyze([...body, atom('See', 50, 954, 14, 8), atom('Tip', 66, 966, 14, 8)], rule, 800, 1000);
+        expect(labels.blocks.flatMap(block => block.lines ?? []).flatMap(line => line.runs ?? []).map(run => run.text)).toEqual(expect.arrayContaining(['See', 'Tip']));
+    });
     it('recognises dotted section numbers, appendix and acknowledgement headings, and rejects numbered list items and mid-paragraph numbers', () => {
         const body = (text: string, baseline: number, x = 40, width = 240) => atom(text, x, baseline, width);
         const result = analyze([atom('1. Introduction', 40, 100, 70), body('Making predictions about the future is a necessary part.', 121), body('It continues for another complete line of running text here', 133),
@@ -1039,7 +1065,7 @@ describe('PDF layout analysis on real paper typography', () => {
         const rules = [80, 100, 190].map(y => ({kind: 'path' as const, x: 40, y, width: 500, height: 0}));
         const result = analyze([atom('Category', 50, 94, 50), atom('Symptom', 300, 94, 50), atom('PCIe bandwidth degrada-', 50, 114, 120), atom('tion', 50, 126, 20), atom('Hidden size', 50, 138, 60), atom('Sequence length', 50, 150, 80),
             atom('Straggler rank identified', 300, 114, 130), atom('(via compute kernels)', 300, 126, 110), atom('2048', 300, 138, 20), atom('4096', 300, 150, 20)], rules);
-        expect(result.blocks.filter(block => block.kind === 'table').map(block => [block.source, block.preserveSource])).toEqual([['Category', false], ['PCIe bandwidth degradation', false], ['Hidden size', false], ['Sequence length', false], ['Symptom', false], ['Straggler rank identified (via compute kernels)', false], ['2048', true], ['4096', true]]);
+        expect(result.blocks.filter(block => block.kind === 'table').map(block => [block.source, block.preserveSource])).toEqual([['Category', false], ['Symptom', false], ['PCIe bandwidth degradation', false], ['Straggler rank identified (via compute kernels)', false], ['Hidden size', false], ['2048', true], ['Sequence length', false], ['4096', true]]);
     });
     it('splits a narrow but consistent gutter, rejoins a section number with its title and tolerates zero-size glyphs', () => {
         // 栏间距只有 1.4 个字宽，但明显大于词距且上下行都让出这条竖带。
@@ -1144,6 +1170,81 @@ describe('PDF layout analysis on real paper typography', () => {
         // 只出现一次、后面跟小写英文的单个字母是变量而不是项目符号；两行都以它开头时才是。
         const twice = analyze([atom('n', 60, 100, 6), atom('First point', 75, 100, 100), atom('n', 60, 112, 6), atom('Second point', 75, 112, 100)]);
         expect(twice.blocks.map(block => block.source)).toEqual(['First point', 'Second point']);
+        expect(twice.blocks.map(block => block.listMarker)).toEqual(['•', '•']);
+    });
+    it('retains repeated row-leading mathematical letters with an overlapping accent rather than stripping them as list markers', () => {
+        const math = (baseline: number) => [atom('p', 282, baseline, 4.5, 8), atom('~', 282.22, baseline - .85, 4.5, 8),
+            atom('i', 286.5, baseline + 1.3, 1.5, 5.2), atom('values approach zero.', 295, baseline, 100, 8)];
+        const page = analyze([...math(100), ...math(111)]);
+        expect(page.blocks.flatMap(block => block.lines ?? []).flatMap(line => line.runs ?? []).filter(run => run.text === 'p')).toHaveLength(2);
+        expect(page.blocks.every(block => !block.listMarker)).toBe(true);
+    });
+    it('reassociates a native Word symbol-font bullet gutter with each line and keeps four separate list records', () => {
+        const labels = ['Team Practitioner/Technical Engineer', 'Team Lead/Subsystem Lead', 'Project Systems Engineer', 'Chief Engineer'];
+        const atoms = labels.flatMap((label, index) => [atom('\uF0B7', 90, 100 + index * 14, 4.5), atom(label, 108, 100 + index * 14, 210)]);
+        const result = analyze(atoms);
+        expect(result.blocks.map(block => block.source)).toEqual(labels);
+        expect(result.blocks.every(block => block.kind === 'text' && block.listMarker === '•' && !block.preserveSource)).toBe(true);
+        expect(result.preservedRegions).toEqual([]);
+    });
+    it('removes discretionary soft hyphens from complete words and joins a soft-hyphenated line without changing raw glyphs', () => {
+        const first = 'This body line contains co\u00ADoperate and ends with inter\u00AD';
+        const second = 'national continuation words that remain in the same paragraph.';
+        const atoms = [atom(first, 54, 100, 420), atom(second, 54, 112, 420)];
+        const before = JSON.stringify(atoms), page = analyze(atoms);
+        expect(page.blocks[0].source).toBe('This body line contains cooperate and ends with international continuation words that remain in the same paragraph.');
+        expect(page.blocks[0].lines![0].runs![0]!.text).toBe(first);
+        expect(JSON.stringify(atoms)).toBe(before);
+    });
+    it('keeps a short textbook list question translatable between two display answers', () => {
+        const page = analyze([
+            atom('A longer paragraph establishes the normal text size and body language of this page.', 72, 100, 468),
+            atom('•', 90, 200, 4), atom('How many hydrogen atoms span the Sun?', 102, 200, 260),
+            atom('(Answer: 10 = 100 hydrogen atoms)', 102, 212, 186),
+            atom('•', 90, 225, 4), atom('How many protons are there in a bacterium?', 102, 225, 170),
+            atom('(Answer: 12 = 1000 protons)', 102, 237, 170),
+        ]);
+        expect(page.blocks.find(block => block.source.startsWith('How many protons'))).toMatchObject({kind: 'text', listMarker: '•', preserveSource: false});
+        expect(page.preservedRegions.every(region => !(region.y < 225 && region.y + region.height > 225))).toBe(true);
+    });
+    it.each([220, 194])('stitches fragmented Word grid borders and keeps rowspan labels whole with first baseline %i', baseline => {
+        const graphics = [100, 120, 300].flatMap(y => [{kind: 'path' as const, x: 50, y, width: 158, height: .5}, {kind: 'path' as const, x: 208, y, width: 521, height: .5}]);
+        graphics.push({kind: 'path', x: 120, y: 200, width: 88, height: .5}, {kind: 'path', x: 208, y: 200, width: 521, height: .5},
+            ...[50, 120, 208, 729].map(x => ({kind: 'path' as const, x, y: 100, width: .5, height: 200})),
+            ...[127, 139, 207, 219].map(y => ({kind: 'path' as const, x: 218, y, width: 480, height: 10})));
+        const result = analyze([
+            atom('Area', 60, 114, 40), atom('Name', 130, 114, 40), atom('Description', 218, 114, 70),
+            atom('System', 60, baseline, 45), atom('group', 60, baseline + 12, 35),
+            atom('First system', 130, 175, 65), atom('First description includes a complete row of ordinary text', 218, 135, 480), atom('This continuation belongs to this same record.', 218, 147, 440),
+            atom('Second system', 130, 260, 68), atom('Second description belongs to the next table record', 218, 215, 480), atom('and its continuation remains in that second record.', 218, 227, 440),
+        ], graphics, 792, 612);
+        expect(result.preservedRegions.filter(region => region.kind === 'table')).toEqual([expect.objectContaining({x: 50, width: 679})]);
+        expect(result.blocks.every(block => block.kind === 'table')).toBe(true);
+        expect(result.blocks.map(block => block.source)).toEqual(['Area', 'Name', 'Description', 'System group', 'First system',
+            'First description includes a complete row of ordinary text This continuation belongs to this same record.', 'Second system',
+            'Second description belongs to the next table record and its continuation remains in that second record.']);
+        expect(result.blocks.find(block => block.source === 'System group')!.cellBounds).toMatchObject({x: 50, y: 120.5, height: 180});
+    });
+    it('keeps numerical records separate when an open table has only outer horizontal borders and column rules', () => {
+        const graphics = [100, 180].map(y => ({kind: 'path' as const, x: 50, y, width: 500, height: .5}));
+        graphics.push(...[50, 250, 550].map(x => ({kind: 'path' as const, x, y: 100, width: .5, height: 80})));
+        const result = analyze(['alpha', 'beta', 'gamma'].flatMap((name, index) => [
+            atom(`${name} description`, 60, 120 + index * 15, 120), atom(String(index + 1), 270, 120 + index * 15, 5),
+        ]), graphics);
+        expect(result.blocks.map(block => block.source)).toEqual(['alpha description', 'beta description', 'gamma description', '1', '2', '3']);
+        expect(result.blocks.every(block => block.kind === 'table')).toBe(true);
+    });
+    it('keeps a table in the right column together after the complete left column', () => {
+        const graphics = [90, 110, 155].map(y => ({kind: 'path' as const, x: 318, y, width: 240, height: .5}));
+        const result = analyze([
+            atom('Right table heading', 324, 104, 210), atom('Right table body has ordinary words', 324, 124, 210), atom('and continues within its own table.', 324, 136, 210),
+            atom('Left column complete body first line has sufficient ordinary words', 54, 120, 240), atom('and the next complete line belongs to the same left paragraph', 54, 132, 240), atom('and this final line must still be before the right table.', 54, 144, 240),
+            atom('Right column ordinary body continues below the table', 318, 200, 240), atom('and another line establishes the right column properly.', 318, 212, 240),
+        ], graphics);
+        const left = result.blocks.findIndex(block => block.source.startsWith('Left column'));
+        const table = result.blocks.findIndex(block => block.source.startsWith('Right table heading'));
+        const right = result.blocks.findIndex(block => block.source.startsWith('Right column ordinary'));
+        expect(left).toBeLessThan(table); expect(table).toBeLessThan(right);
     });
     it('orders two columns by their body paragraphs: narrow labels join the column that covers them and a straddling block does not merge the columns', () => {
         const body = (tag: string, x: number, top: number) => [0, 1, 2].map(row => atom(`${tag} body line ${row} is a full justified line of ordinary column text`, x, top + row * 12, 240));

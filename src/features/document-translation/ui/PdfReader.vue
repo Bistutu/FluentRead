@@ -1,9 +1,9 @@
 <!--
  @file src/features/document-translation/ui/PdfReader.vue
  文件职责：以左右对照的连续页面显示可划词的 PDF 原页和保持原版排版的译文页，并保留“重排阅读”作为可选的显示方式。
- 主要内容：智能高亮按所选模型重新评分，模型切换传递固定请求身份；页面占满阅读区且不再附带逐页标题；原版排版在原页像素上按段落叠加可选择的译文文字层，译文逐段到达时只更新对应段落，等待中的段落显示设置中选定的翻译加载样式；公式、图表和页眉页脚保持原样，放不下的段落悬停展开，拖选与原生选区保留期间保持展开，译文文字层接住段间空白且背景不拦截选择；悬停译文高亮对应原文；拖选原文时把选区终点钉在指针附近，避免划过空白选中整页；重排阅读使用同一实际计划组织正文与原图裁剪，区域身份或坐标变化才重裁剪，普通译文变化复用原像素并保持阅读位置；目录按阅读顺序列出识别到的章节标题并标出当前位置，点击即跳转，可自行展开或传送到页面侧栏；触控板捏合与 Ctrl/Cmd 加减号只缩放阅读内容，保留指针所在页内坐标，捏合期间复用画布和文字层、停下后重绘；缩放与显示方式使用与页面一致的菜单而非浏览器原生下拉；搜索同时匹配原文与译文并逐处跳转，译文样式可调字号与字体；只挂载附近五页，目录开关、页码、缩放和显示方式控件可以传送到页面工具栏；卸载时释放全部页面资源；显式开启的信息高亮只评分真实可选文字，进度放在按钮提示里、只有出错才在工具栏显示并可重试，配置、页面和文档失效时取消旧绘制。
+ 主要内容：智能高亮按所选模型重新评分，模型切换传递固定请求身份；页面占满阅读区且不再附带逐页标题；原版排版在原页像素上按段落叠加可选择的译文文字层，译文逐段到达时只更新对应段落，等待中的段落显示设置中选定的翻译加载样式；公式、图表和页眉页脚保持原样，放不下的段落悬停展开并提供键盘可达的全文对照弹窗，拖选与原生选区保留期间保持展开，译文文字层接住段间空白且背景不拦截选择；悬停译文高亮对应原文；拖选原文时把选区终点钉在指针附近，避免划过空白选中整页；重排阅读使用同一实际计划组织正文与原图裁剪，区域身份或坐标变化才重裁剪，普通译文变化复用原像素并保持阅读位置；目录按阅读顺序列出识别到的章节标题并标出当前位置，点击即跳转，可自行展开或传送到页面侧栏；触控板捏合与 Ctrl/Cmd 加减号只缩放阅读内容，保留指针所在页内坐标，捏合期间复用画布和文字层、停下后重绘；缩放与显示方式使用与页面一致的菜单而非浏览器原生下拉；搜索同时匹配原文与译文并逐处跳转，译文样式可调字号与字体；只挂载附近五页，目录开关、页码、缩放和显示方式控件可以传送到页面工具栏；卸载时释放全部页面资源；显式开启的信息高亮只评分真实可选文字，进度放在按钮提示里、只有出错才在工具栏显示并可重试，配置、页面和文档失效时取消旧绘制。
  材料续读：仅公开等待 DOM 提交并淘汰旧布局锚点的 resumePage 页码方法，供已验证文件身份的文档组合根调用；原页渲染与下载结构保持自身职责。
- * 模块边界：组件只组织阅读布局、叠加层与页面调度；文档由组合根导入、翻译由既有服务提供，划词卡片由页面组合根复用统一翻译卡。
+ 模块边界：组件只组织阅读布局、叠加层与页面调度；文档由组合根导入、翻译由既有服务提供，划词卡片由页面组合根复用统一翻译卡。
 -->
 <template>
   <section class="pdf-layout-viewer" :aria-label="t('document.pdfReading.readerLabel')" data-document-reader="pdf" :data-pdf-presentation="presentation" :data-segment-count="document.segments.length" :data-fluentread-pdf-title="document.fileName" :data-fluentread-pdf-source-url="sourceUrl || undefined" :data-fluentread-pdf-document-id="documentIdentity">
@@ -81,7 +81,7 @@
                   <figure v-if="entry.kind === 'region'" class="pdf-reading-region" :data-pdf-region-id="entry.id" :data-pdf-region-kind="entry.role" :data-pdf-source-rect="JSON.stringify(entry.sourceRect)">
                     <div :ref="element => setRegionHost(layout.page.pageNumber, entry.id, element)" class="pdf-region-canvas" :style="{width: `${entry.sourceRect.width * (entry.role === 'figure' ? 2 : 1.5) * readingFontSize / 16}px`, aspectRatio: `${entry.sourceRect.width} / ${entry.sourceRect.height}`}" :aria-label="t('document.pdfReading.preservedRegion')" />
                   </figure>
-                  <p v-else class="pdf-reading-paragraph" :class="paragraphClasses(entry)" :data-pdf-segment-index="entry.segmentIndex" :data-pdf-source-text="entry.source" :data-pdf-source-id="entry.id" :data-pdf-role="entry.role" data-i18n-ignore>{{ entry.text }}<span v-if="translating && !entry.translated && isPending(entry.segmentIndex)" class="pdf-translation-spinner inline" data-fluentread-pdf-decoration aria-hidden="true"><TranslationLoadingPreview :loading-style="loadingStyle" :animated="animated" /></span></p>
+                  <p v-else class="pdf-reading-paragraph" :class="paragraphClasses(entry)" :data-pdf-segment-index="entry.segmentIndex" :data-pdf-source-text="entry.source" :data-pdf-source-id="entry.id" :data-pdf-role="entry.role" data-i18n-ignore>{{ entry.text }}<span v-if="translating && !entry.translated && isPending(entry.segmentIndex)" class="pdf-translation-spinner inline" data-fluentread-pdf-decoration aria-hidden="true"><TranslationLoadingPreview :loading-style="loadingStyle" :animated="animated" /></span><button v-if="continuationBySegment.has(entry.segmentIndex)" type="button" class="pdf-cross-page-context" data-fluentread-pdf-decoration :aria-label="t('document.pdfReading.crossPageContext')" :title="t('document.pdfReading.crossPageContext')" @click="openFullPassage(layout.page.pageNumber, entry.segmentIndex)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><path d="m6 4-3 3 3 3M3 7h9a4 4 0 0 1 0 8H9m2-3-3 3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg></button></p>
                 </template>
               </article>
               <div v-else class="pdf-page-frame">
@@ -92,6 +92,7 @@
                     <div v-if="entry.translated" class="pdf-translation-block" :class="{overflowing: entry.overflow, heading: entry.role === 'heading', 'selection-expanded': expandedSelectionBlocks.has(entry.id)}" :style="entry.boxStyle" :data-pdf-segment-index="entry.segmentIndex" :data-pdf-source-text="entry.source" :data-pdf-source-id="entry.id" :data-pdf-role="entry.role" data-i18n-ignore @pointerenter="showHighlight(layout, entry)">
                       <i v-for="(rect, index) in entry.eraseStyles" :key="index" class="pdf-translation-erase" :style="rect" aria-hidden="true" />
                       <p class="pdf-translation-text" :style="entry.textStyle" data-fluentread-pdf-lines><span v-for="(line, index) in entry.lines" :key="index" :class="{justified: line.justified}">{{ line.text }}</span></p>
+                      <button v-if="entry.overflow || continuationBySegment.has(entry.segmentIndex)" type="button" class="pdf-full-passage-button" data-fluentread-pdf-decoration :aria-label="t(continuationBySegment.has(entry.segmentIndex) ? 'document.pdfReading.crossPageContext' : 'document.pdfReading.fullPassage')" :title="t(continuationBySegment.has(entry.segmentIndex) ? 'document.pdfReading.crossPageContext' : 'document.pdfReading.fullPassage')" @click.stop="openFullPassage(layout.page.pageNumber, entry.segmentIndex)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><path d="M5 15 15 5M6 5h9v9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
                     </div>
                     <span v-else-if="translating && entry.pending" class="pdf-translation-spinner" :style="entry.spinnerStyle" :data-pdf-pending-segment="entry.segmentIndex" data-fluentread-pdf-decoration role="status" :aria-label="t('document.pdfReading.translatingBlock')"><TranslationLoadingPreview :loading-style="loadingStyle" :animated="animated" /></span>
                   </template>
@@ -105,6 +106,15 @@
       </div>
     </div>
     </div>
+    <dialog ref="fullPassageDialog" class="pdf-full-passage-dialog" aria-labelledby="pdf-full-passage-heading" @close="fullPassage = undefined">
+      <header><h2 id="pdf-full-passage-heading">{{ t(fullPassageParts.length > 1 ? 'document.pdfReading.crossPageContext' : 'document.pdfReading.fullPassage') }}<small v-if="fullPassage">{{ fullPassageParts.map(part => t('document.pdfReading.pageNumber', {page: part.page})).join(' → ') }}</small></h2><button type="button" autofocus :aria-label="t('document.pdfReading.closePassage')" @click="fullPassageDialog?.close()">×</button></header>
+      <div v-if="fullPassage" class="pdf-full-passage-content">
+        <div v-for="part in fullPassageParts" :key="part.segmentIndex" class="pdf-full-passage-pair">
+          <section class="pdf-full-passage-source"><h3>{{ t('document.pdfReading.original') }}<small v-if="fullPassageParts.length > 1"> · {{ t('document.pdfReading.pageNumber', {page: part.page}) }}</small></h3><p data-i18n-ignore>{{ document.segments[part.segmentIndex]?.source }}</p></section>
+          <section><h3>{{ t('document.pdfReading.translated') }}</h3><p class="pdf-full-passage-translation" data-i18n-ignore>{{ translations[part.segmentIndex] || t('document.pdfReading.waitingTranslation') }}</p></section>
+        </div>
+      </div>
+    </dialog>
   </section>
 </template>
 
@@ -114,6 +124,7 @@ import {useUiI18n} from '@/src/ui/i18n';
 import TranslationLoadingPreview from '@/src/ui/components/TranslationLoadingPreview.vue';
 import {DEFAULT_TRANSLATION_LOADING_STYLE, type TranslationLoadingStyle} from '@/src/core/config/translationLoadingStyle';
 import {hasDistinctTranslation} from '@/src/core/translation/result';
+import {findPdfContinuations} from '@/src/features/document-translation/core/pdfContinuations';
 import type {ParsedDocument, PdfDocumentPage} from '@/src/features/document-translation/core/document';
 import {fitPdfBlockText, pdfOverlayBlocks, type PdfBlockFit, type PdfOverlayBlock} from '@/src/features/document-translation/core/pdfBlockFit';
 import {buildPdfReadingPlan, type PdfReadingPlan, type PdfReadingPresentation, type PdfReadingRegionEntry, type PdfReadingTextEntry} from '@/src/features/document-translation/core/pdfReadingPlan';
@@ -141,6 +152,32 @@ watch(() => props.presentation, value => {presentation.value = value;});
 const {t} = useUiI18n();
 const viewport = ref<HTMLElement>();
 const toolbar = ref<HTMLElement>();
+/** 原位放不下的译文可用键盘打开独立全文；原生 dialog 管理焦点、Esc 与返回触发按钮。 */
+const fullPassageDialog = ref<HTMLDialogElement>();
+const fullPassage = ref<{page: number; segmentIndex: number}>();
+const continuationBySegment = computed(() => {
+  const map = new Map<number, ReturnType<typeof findPdfContinuations>>();
+  for (const pair of findPdfContinuations(props.document)) for (const part of [pair.from, pair.to]) {
+    const linked = map.get(part.segmentIndex) ?? []; linked.push(pair); map.set(part.segmentIndex, linked);
+  }
+  return map;
+});
+const fullPassageParts = computed(() => {
+  const current = fullPassage.value;
+  if (!current) return [];
+  const parts = new Map([[current.segmentIndex, current]]), queue = [current.segmentIndex];
+  for (let index = 0; index < queue.length; index++) for (const pair of continuationBySegment.value.get(queue[index]) ?? []) {
+    for (const part of [pair.from, pair.to]) if (!parts.has(part.segmentIndex)) {
+      parts.set(part.segmentIndex, {page: part.pageNumber, segmentIndex: part.segmentIndex}); queue.push(part.segmentIndex);
+    }
+  }
+  return [...parts.values()].sort((left, right) => left.page - right.page);
+});
+async function openFullPassage(page: number, segmentIndex: number): Promise<void> {
+  fullPassage.value = {page, segmentIndex};
+  await nextTick();
+  if (!closed && fullPassage.value) fullPassageDialog.value?.showModal();
+}
 const rasterScale = ref(1);
 let disposeZoomGestures: (() => void) | undefined;
 let rasterTimer: ReturnType<typeof setTimeout> | undefined;
@@ -219,9 +256,9 @@ const searchHits = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase();
   if (!query) return [];
   return pages.value.flatMap((page, pageIndex) => page.blocks.flatMap(block => {
-    const source = props.document.segments[block.segmentIndex]?.source ?? '';
+    const source = props.document.segments[block.segmentIndex]?.source ?? block.source ?? (block.lines ?? []).map(line => line.text).join(' ');
     const translation = props.translations[block.segmentIndex] ?? '';
-    return block.segmentIndex >= 0 && (source.toLocaleLowerCase().includes(query) || translation.toLocaleLowerCase().includes(query)) ? [{pageIndex, pageNumber: page.pageNumber, rotation: page.rotation, x: block.x, y: block.y, width: block.width, height: block.height}] : [];
+    return source.toLocaleLowerCase().includes(query) || translation.toLocaleLowerCase().includes(query) ? [{pageIndex, pageNumber: page.pageNumber, rotation: page.rotation, x: block.x, y: block.y, width: block.width, height: block.height}] : [];
   }));
 });
 const searchHighlight = computed(() => {
@@ -807,7 +844,7 @@ function createScheduler(): void {
   emit('page-change', 1);
   updateViewport();
 }
-watch(() => props.document, () => {informationController?.setEnabled(false); informationWanted = false; if (mounted) {createScheduler(); syncInformationHighlight();}}, {flush: 'post'});
+watch(() => props.document, () => {fullPassageDialog.value?.close(); fullPassage.value = undefined; informationController?.setEnabled(false); informationWanted = false; if (mounted) {createScheduler(); syncInformationHighlight();}}, {flush: 'post'});
 watch([zoom, presentation, () => props.mode], () => informationController?.refresh(), {flush: 'pre'});
 watch([presentation, () => props.mode, outlineOpen], () => {highlight.value = undefined; if (mounted) scheduleViewport();}, {flush: 'post'});
 watch([overlayPages, states], sampleBlockColors, {flush: 'post'});
@@ -868,6 +905,7 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   closed = true;
+  fullPassageDialog.value?.close();
   disposeZoomGestures?.();
   clearTimeout(rasterTimer); rasterTimer = undefined; pendingZoomAnchor = undefined;
   window.removeEventListener('resize', fitToolbarMenus);
@@ -891,6 +929,24 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.pdf-full-passage-dialog {padding: 0; width: min(920px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: var(--surface, #fff); color: var(--ink, #172033); box-shadow: 0 24px 80px #10182840;}
+.pdf-full-passage-dialog::backdrop {background: #10182870;}
+.pdf-full-passage-dialog header {display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--line);}
+.pdf-full-passage-dialog h2 {margin: 0; font-size: 16px; display: flex; gap: 12px; align-items: baseline;}
+.pdf-full-passage-dialog h2 small {font-size: 12px; font-weight: 400; color: var(--muted);}
+.pdf-full-passage-dialog header button {border: 0; background: transparent; color: inherit; font-size: 24px; width: 32px; height: 32px; cursor: pointer; border-radius: 8px;}
+.pdf-full-passage-content {padding: 20px; max-height: calc(100dvh - 140px); overflow: auto; overscroll-behavior: contain;}
+.pdf-full-passage-pair {position: relative; display: grid; grid-template-columns: minmax(180px, .6fr) minmax(0, 1.4fr); gap: 28px; align-items: start;}
+.pdf-full-passage-pair + .pdf-full-passage-pair {margin-top: 28px;}
+.pdf-full-passage-content section {min-width: 0;}
+.pdf-full-passage-source {position: sticky; top: 0; align-self: start; max-height: calc(100dvh - 180px); overflow: auto; overscroll-behavior: contain; background: var(--surface);}
+.pdf-full-passage-source p {font-size: 14px;}
+.pdf-full-passage-content h3 {font-size: 12px; font-weight: 500; margin: 0 0 10px; color: var(--muted);}
+.pdf-full-passage-content p {white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; margin: 0; font-size: 15px; line-height: 1.8;}
+.pdf-full-passage-button {position: absolute; right: -4px; bottom: -4px; z-index: 4; pointer-events: auto; cursor: pointer; border: 1px solid #cbd5e1; border-radius: 5px; padding: 0; width: 24px; height: 24px; background: #fff; color: #334155; font: 16px/1 sans-serif; box-shadow: 0 1px 4px #10182820;}
+.pdf-cross-page-context {display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-left: 6px; width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-soft); color: var(--muted); cursor: pointer;}
+.pdf-full-passage-dialog button:focus-visible, .pdf-cross-page-context:focus-visible, .pdf-full-passage-button:focus-visible {outline: 2px solid var(--brand); outline-offset: 2px;}
+@media (max-width: 600px) {.pdf-full-passage-content {padding: 16px;} .pdf-full-passage-pair {grid-template-columns: 1fr; gap: 20px;} .pdf-full-passage-source {position: static; max-height: none; overflow: visible;} .pdf-full-passage-dialog header {padding: 12px 16px;}}
 .pdf-layout-viewer {width: 100%; height: 100%; min-height: 0; flex: 1; min-width: 0; display: flex; flex-direction: column; color: var(--ink);}
 .pdf-viewer-toolbar {display: flex; align-items: center; gap: 14px; min-width: 0; font-size: 12px; color: var(--ink);}
 .pdf-viewer-toolbar.inline {padding: 8px 12px; flex-wrap: wrap; background: var(--surface); border-bottom: 1px solid var(--line);}
