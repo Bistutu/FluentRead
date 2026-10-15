@@ -67,6 +67,18 @@ export function classifyFailure(error, events = [], timedOut = false, cancelled 
         ...(providerStatus ? {providerStatus} : {}), ...(observedHttpStatus ? {observedHttpStatus} : {})};
 }
 
+/** An observed provider refusal still applies when the response body later times out. */
+export function providerDeferral(error, events = [], now = Date.now()) {
+    const categoryForStatus = status => status === 429 ? 'rate-limit' : status === 402 || status === 456 ? 'quota'
+        : status === 401 || status === 403 ? 'blocked' : undefined;
+    const refusal = events.findLast(event => categoryForStatus(event.status));
+    const explicit = ['blocked', 'rate-limit', 'quota'].includes(error?.freeFailure) ? error.freeFailure : undefined;
+    const category = categoryForStatus(refusal?.status) ?? explicit ?? categoryForStatus(error?.statusCode ?? error?.status);
+    if (!category) return undefined;
+    const retryTimes = events.map(event => event.retryAt).filter(value => Number.isFinite(value) && Number.isFinite(new Date(value).getTime()));
+    return {category, retryAt: Math.max(now + (category === 'rate-limit' ? 300_000 : 86_400_000), ...retryTimes)};
+}
+
 export function summarize(runs) {
     const groups = new Map();
     for (const run of runs) {

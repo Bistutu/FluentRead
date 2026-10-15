@@ -181,13 +181,18 @@
     },
     "evaluationTools": {
       "files": 3,
-      "passed": 27
+      "passed": 28,
+      "additionalDeferralVerification": {
+        "files": 2,
+        "passed": 18,
+        "note": "HTTP 429 refusal remains deferred after response-body timeout or caller cancellation; ordinary request errors do not defer the provider."
+      }
     },
     "note": "Suites overlap; counts must not be summed as distinct tests."
   },
   "toolSourceSha256": {
-    "evaluate.mjs": "80210e0476e75d1d9a070f53c01b7324881a098ca332b1c810af6da80d421002",
-    "run.mjs": "8df7670bb2e3c50d0f0239fa6157294e008945f8774704a39a541ae96b1b4bec",
+    "evaluate.mjs": "24ecb0f45060679e94e5b8257a1beec3d0f4f3ea8aab8845239ba587c81b4a9a",
+    "run.mjs": "8314e40ca256665b6ba65df3e2d1caba0f4383c5531a4384231e368257d0823a",
     "transport.mjs": "066b19c75db3e0beba25ba8f7313268786c9b752b8abf387935c07da72ea20b8",
     "report.mjs": "e0b682ee3f7779ff008b67166a0b4cb412da2d715ad6f429863050593c4201cf",
     "audit.mjs": "596e39e6eccfa68b1a4edc6ac6a7b516e0d1f00f02e978a9448b7fdf9549ed9c",

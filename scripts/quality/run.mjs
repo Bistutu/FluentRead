@@ -6,7 +6,7 @@ import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import os from 'node:os';
-import {validateCorpus, evaluateTranslation, classifyFailure, summarize, sha256, compareReports} from './evaluate.mjs';
+import {validateCorpus, evaluateTranslation, classifyFailure, providerDeferral, summarize, sha256, compareReports} from './evaluate.mjs';
 import {renderQualityReport} from './report.mjs';
 import {createMeasuredFetch} from './transport.mjs';
 
@@ -141,10 +141,8 @@ try {
             } catch (error) {
                 run.status = interrupted ? 'cancelled' : 'failure';
                 run.failure = classifyFailure(error, events, timedOut, interrupted);
-                if (['blocked', 'rate-limit', 'quota'].includes(run.failure.category)) {
-                    report.providerDeferrals[providerId] = {category: run.failure.category,
-                        retryAt: Math.max(Date.now() + (run.failure.category === 'rate-limit' ? 300_000 : 86_400_000), ...events.map(event => event.retryAt ?? 0))};
-                }
+                const deferral = providerDeferral(error, events);
+                if (deferral) report.providerDeferrals[providerId] = deferral;
             } finally {
                 if (timedOut || interrupted) controller.abort();
                 clearTimeout(timer);
