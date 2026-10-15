@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generatedAt": "2026-10-15T07:10:44.090Z",
+  "generatedAt": "2026-10-15T08:20:05.649Z",
   "node": "v24.19.0",
   "manifestSha256": "755e1d51487dca923b196204a166d0fd954534f8d3b3dff7dcfc8ff336596ac1",
   "pipeline": [
@@ -12,7 +12,7 @@
   ],
   "sourceHashes": {
     "services/binary.ts": "d69e3707a31dd8db6142859d019f5d2484074d39df86038ef3d86644f2a462ca",
-    "core/pdfLayoutAnalysis.ts": "18fdb506533bfc9e5f9c8190b6712dfffc80a47396cbdb7799619eaa4e98d137",
+    "core/pdfLayoutAnalysis.ts": "9cead25da6ada1ea2cbf5f07e1c17d628474b7ff6788bbebd69599114bd63271",
     "core/pdfReadingPlan.ts": "9b796622dfd93ec14a0e56549629cea3c88f879994b04d6b407eb53228f9e0d8",
     "core/pdfReadingRegions.ts": "09f20132501e86e689acc9a0b0ea3741b481c55533219b284e50616d0070a1d0",
     "core/pdfContinuations.ts": "259fa30e22e3ae020db1dc22576987e7337201a7a535d20b30318ebb0b1ea90e"
@@ -82,8 +82,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 68,
-          "rssBytes": 257228800
+          "durationMs": 73,
+          "rssBytes": 251576320
         },
         {
           "pageNumber": 2,
@@ -115,8 +115,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 24,
-          "rssBytes": 263503872
+          "durationMs": 23,
+          "rssBytes": 258179072
         },
         {
           "pageNumber": 3,
@@ -150,7 +150,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 10,
-          "rssBytes": 265420800
+          "rssBytes": 259948544
         },
         {
           "pageNumber": 4,
@@ -186,8 +186,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 18,
-          "rssBytes": 265928704
+          "durationMs": 20,
+          "rssBytes": 260063232
         },
         {
           "pageNumber": 5,
@@ -222,7 +222,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 12,
-          "rssBytes": 266993664
+          "rssBytes": 261029888
         },
         {
           "pageNumber": 6,
@@ -258,7 +258,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 13,
-          "rssBytes": 267583488
+          "rssBytes": 262733824
         },
         {
           "pageNumber": 7,
@@ -292,8 +292,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 9,
-          "rssBytes": 269631488
+          "durationMs": 10,
+          "rssBytes": 261537792
         },
         {
           "pageNumber": 8,
@@ -328,8 +328,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 18,
-          "rssBytes": 283525120
+          "durationMs": 16,
+          "rssBytes": 269828096
         },
         {
           "pageNumber": 9,
@@ -363,8 +363,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 20,
-          "rssBytes": 295665664
+          "durationMs": 21,
+          "rssBytes": 272859136
         },
         {
           "pageNumber": 10,
@@ -398,8 +398,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 16,
-          "rssBytes": 318226432
+          "durationMs": 13,
+          "rssBytes": 275300352
         },
         {
           "pageNumber": 11,
@@ -431,8 +431,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 9,
-          "rssBytes": 318537728
+          "durationMs": 8,
+          "rssBytes": 273661952
         },
         {
           "pageNumber": 12,
@@ -465,7 +465,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 6,
-          "rssBytes": 319651840
+          "rssBytes": 274792448
         },
         {
           "pageNumber": 13,
@@ -497,8 +497,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 60,
-          "rssBytes": 354058240
+          "durationMs": 55,
+          "rssBytes": 277118976
         },
         {
           "pageNumber": 14,
@@ -530,8 +530,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 74,
-          "rssBytes": 362889216
+          "durationMs": 86,
+          "rssBytes": 323436544
         },
         {
           "pageNumber": 15,
@@ -563,8 +563,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 66,
-          "rssBytes": 372260864
+          "durationMs": 71,
+          "rssBytes": 365395968
         }
       ],
       "boundaries": [
@@ -696,7 +696,7 @@
         }
       ],
       "failures": [],
-      "durationMs": 472,
+      "durationMs": 488,
       "continuations": [
         {
           "id": "pdf-continuation-6-69-7-70",
@@ -712,7 +712,7 @@
         }
       ],
       "continuationChecks": [],
-      "peakSampledRssBytes": 372260864
+      "peakSampledRssBytes": 365395968
     },
     {
       "id": "smith-levy",
@@ -779,7 +779,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 39,
-          "rssBytes": 380370944
+          "rssBytes": 370098176
         },
         {
           "pageNumber": 2,
@@ -824,7 +824,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 18,
-          "rssBytes": 381616128
+          "rssBytes": 374652928
         },
         {
           "pageNumber": 3,
@@ -859,8 +859,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 23,
-          "rssBytes": 388431872
+          "durationMs": 24,
+          "rssBytes": 382271488
         },
         {
           "pageNumber": 4,
@@ -893,8 +893,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 15,
-          "rssBytes": 393936896
+          "durationMs": 17,
+          "rssBytes": 385908736
         },
         {
           "pageNumber": 5,
@@ -930,7 +930,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 23,
-          "rssBytes": 396197888
+          "rssBytes": 387776512
         },
         {
           "pageNumber": 6,
@@ -964,7 +964,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 12,
-          "rssBytes": 398557184
+          "rssBytes": 390070272
         },
         {
           "pageNumber": 7,
@@ -998,7 +998,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 13,
-          "rssBytes": 400670720
+          "rssBytes": 392232960
         },
         {
           "pageNumber": 8,
@@ -1038,7 +1038,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 26,
-          "rssBytes": 396754944
+          "rssBytes": 388120576
         },
         {
           "pageNumber": 9,
@@ -1075,8 +1075,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 16,
-          "rssBytes": 398802944
+          "durationMs": 15,
+          "rssBytes": 390184960
         },
         {
           "pageNumber": 10,
@@ -1116,8 +1116,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 76,
-          "rssBytes": 402178048
+          "durationMs": 22,
+          "rssBytes": 392314880
         },
         {
           "pageNumber": 11,
@@ -1157,8 +1157,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 18,
-          "rssBytes": 400457728
+          "durationMs": 12,
+          "rssBytes": 390856704
         },
         {
           "pageNumber": 12,
@@ -1192,8 +1192,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 22,
-          "rssBytes": 401915904
+          "durationMs": 21,
+          "rssBytes": 392216576
         },
         {
           "pageNumber": 13,
@@ -1229,7 +1229,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 24,
-          "rssBytes": 404733952
+          "rssBytes": 395051008
         },
         {
           "pageNumber": 14,
@@ -1265,7 +1265,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 13,
-          "rssBytes": 402456576
+          "rssBytes": 392691712
         },
         {
           "pageNumber": 15,
@@ -1301,7 +1301,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 25,
-          "rssBytes": 404717568
+          "rssBytes": 394788864
         },
         {
           "pageNumber": 16,
@@ -1336,7 +1336,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 21,
-          "rssBytes": 406814720
+          "rssBytes": 396787712
         },
         {
           "pageNumber": 17,
@@ -1369,8 +1369,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 29,
-          "rssBytes": 404078592
+          "durationMs": 30,
+          "rssBytes": 393789440
         },
         {
           "pageNumber": 18,
@@ -1404,7 +1404,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 7,
-          "rssBytes": 407666688
+          "rssBytes": 397344768
         }
       ],
       "boundaries": [
@@ -1563,7 +1563,7 @@
         }
       ],
       "failures": [],
-      "durationMs": 497,
+      "durationMs": 427,
       "continuations": [
         {
           "id": "pdf-continuation-3-39-4-40",
@@ -1640,7 +1640,7 @@
           "passed": true
         }
       ],
-      "peakSampledRssBytes": 407666688
+      "peakSampledRssBytes": 397344768
     },
     {
       "id": "nasa",
@@ -1701,8 +1701,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 23,
-          "rssBytes": 411582464
+          "durationMs": 24,
+          "rssBytes": 400359424
         },
         {
           "pageNumber": 15,
@@ -1733,7 +1733,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 2,
-          "rssBytes": 411910144
+          "rssBytes": 400687104
         },
         {
           "pageNumber": 16,
@@ -1765,7 +1765,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 7,
-          "rssBytes": 412090368
+          "rssBytes": 400850944
         },
         {
           "pageNumber": 17,
@@ -1796,7 +1796,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 5,
-          "rssBytes": 412467200
+          "rssBytes": 401211392
         },
         {
           "pageNumber": 18,
@@ -1830,8 +1830,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 35,
-          "rssBytes": 413827072
+          "durationMs": 37,
+          "rssBytes": 402948096
         },
         {
           "pageNumber": 19,
@@ -1866,8 +1866,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 10,
-          "rssBytes": 411582464
+          "durationMs": 11,
+          "rssBytes": 400687104
         },
         {
           "pageNumber": 20,
@@ -1899,8 +1899,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 10,
-          "rssBytes": 412745728
+          "durationMs": 11,
+          "rssBytes": 401817600
         },
         {
           "pageNumber": 21,
@@ -1932,7 +1932,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 3,
-          "rssBytes": 413548544
+          "rssBytes": 402620416
         },
         {
           "pageNumber": 22,
@@ -1965,8 +1965,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 12,
-          "rssBytes": 413810688
+          "durationMs": 13,
+          "rssBytes": 402882560
         },
         {
           "pageNumber": 23,
@@ -1998,8 +1998,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 21,
-          "rssBytes": 414482432
+          "durationMs": 20,
+          "rssBytes": 403537920
         },
         {
           "pageNumber": 24,
@@ -2030,7 +2030,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 5,
-          "rssBytes": 414810112
+          "rssBytes": 403865600
         },
         {
           "pageNumber": 25,
@@ -2061,7 +2061,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 3,
-          "rssBytes": 415137792
+          "rssBytes": 404209664
         },
         {
           "pageNumber": 26,
@@ -2094,7 +2094,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 10,
-          "rssBytes": 411828224
+          "rssBytes": 401309696
         },
         {
           "pageNumber": 27,
@@ -2127,8 +2127,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 11,
-          "rssBytes": 412549120
+          "durationMs": 12,
+          "rssBytes": 401997824
         },
         {
           "pageNumber": 28,
@@ -2161,7 +2161,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 2,
-          "rssBytes": 413515776
+          "rssBytes": 402964480
         },
         {
           "pageNumber": 29,
@@ -2193,8 +2193,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 27,
-          "rssBytes": 415350784
+          "durationMs": 30,
+          "rssBytes": 404733952
         },
         {
           "pageNumber": 30,
@@ -2272,8 +2272,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 9,
-          "rssBytes": 416432128
+          "durationMs": 11,
+          "rssBytes": 401932288
         },
         {
           "pageNumber": 31,
@@ -2350,8 +2350,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 8,
-          "rssBytes": 412565504
+          "durationMs": 7,
+          "rssBytes": 403144704
         }
       ],
       "boundaries": [
@@ -2510,10 +2510,10 @@
         }
       ],
       "failures": [],
-      "durationMs": 236,
+      "durationMs": 243,
       "continuations": [],
       "continuationChecks": [],
-      "peakSampledRssBytes": 416432128
+      "peakSampledRssBytes": 404733952
     },
     {
       "id": "openstax",
@@ -2578,8 +2578,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 40,
-          "rssBytes": 480722944
+          "durationMs": 42,
+          "rssBytes": 474103808
         },
         {
           "pageNumber": 18,
@@ -2614,7 +2614,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 12,
-          "rssBytes": 485883904
+          "rssBytes": 478658560
         },
         {
           "pageNumber": 19,
@@ -2646,8 +2646,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 13,
-          "rssBytes": 486965248
+          "durationMs": 14,
+          "rssBytes": 479739904
         },
         {
           "pageNumber": 20,
@@ -2681,8 +2681,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 25,
-          "rssBytes": 496304128
+          "durationMs": 26,
+          "rssBytes": 482656256
         },
         {
           "pageNumber": 21,
@@ -2719,8 +2719,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 7,
-          "rssBytes": 492535808
+          "durationMs": 3,
+          "rssBytes": 483966976
         },
         {
           "pageNumber": 22,
@@ -2753,8 +2753,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 51,
-          "rssBytes": 503513088
+          "durationMs": 33,
+          "rssBytes": 494944256
         },
         {
           "pageNumber": 23,
@@ -2786,8 +2786,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 37,
-          "rssBytes": 504348672
+          "durationMs": 18,
+          "rssBytes": 495534080
         },
         {
           "pageNumber": 24,
@@ -2820,8 +2820,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 11,
-          "rssBytes": 504709120
+          "durationMs": 9,
+          "rssBytes": 495894528
         },
         {
           "pageNumber": 25,
@@ -2855,8 +2855,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 13,
-          "rssBytes": 505593856
+          "durationMs": 12,
+          "rssBytes": 496779264
         },
         {
           "pageNumber": 26,
@@ -2890,8 +2890,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 8,
-          "rssBytes": 506773504
+          "durationMs": 9,
+          "rssBytes": 497958912
         },
         {
           "pageNumber": 27,
@@ -2923,8 +2923,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 17,
-          "rssBytes": 507969536
+          "durationMs": 18,
+          "rssBytes": 499187712
         },
         {
           "pageNumber": 28,
@@ -2958,8 +2958,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 28,
-          "rssBytes": 502661120
+          "durationMs": 29,
+          "rssBytes": 492584960
         },
         {
           "pageNumber": 29,
@@ -2993,7 +2993,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 8,
-          "rssBytes": 503939072
+          "rssBytes": 493862912
         },
         {
           "pageNumber": 30,
@@ -3028,7 +3028,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 7,
-          "rssBytes": 505380864
+          "rssBytes": 495304704
         },
         {
           "pageNumber": 31,
@@ -3063,8 +3063,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 10,
-          "rssBytes": 506707968
+          "durationMs": 11,
+          "rssBytes": 496631808
         },
         {
           "pageNumber": 32,
@@ -3100,7 +3100,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 10,
-          "rssBytes": 508182528
+          "rssBytes": 498106368
         },
         {
           "pageNumber": 33,
@@ -3132,8 +3132,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 8,
-          "rssBytes": 509886464
+          "durationMs": 9,
+          "rssBytes": 492584960
         },
         {
           "pageNumber": 34,
@@ -3168,8 +3168,8 @@
           "uniqueEntryIds": true,
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
-          "durationMs": 11,
-          "rssBytes": 502759424
+          "durationMs": 9,
+          "rssBytes": 494239744
         },
         {
           "pageNumber": 35,
@@ -3205,7 +3205,7 @@
           "invalidLinkedIndexes": [],
           "orientationDroppedAllText": false,
           "durationMs": 8,
-          "rssBytes": 504594432
+          "rssBytes": 496074752
         }
       ],
       "boundaries": [
@@ -3373,7 +3373,7 @@
         }
       ],
       "failures": [],
-      "durationMs": 390,
+      "durationMs": 348,
       "continuations": [
         {
           "id": "pdf-continuation-17-4-18-5",
@@ -3473,7 +3473,7 @@
         }
       ],
       "continuationChecks": [],
-      "peakSampledRssBytes": 509886464
+      "peakSampledRssBytes": 499187712
     }
   ],
   "failures": [],

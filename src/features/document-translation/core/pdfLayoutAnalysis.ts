@@ -616,16 +616,23 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
         return columnEdges.get(key)!;
     };
     const newTableRow = (last: LayoutLine, line: LayoutLine, region: PdfPreservedRegion) => {
-        // 存在内部行界才可确认合并行单元格；只有顶底边框时，同列的大包围框不能盖过数值记录行证据。
-        if (sameGridCell(last, line, region) && tableEdges.get(region)!.ys.length > 2) return false;
+        // 只有当前格内部、其它列的横界才证明它跨了多行；表头线作为本格顶边不能证明正文跨行。
+        if (sameGridCell(last, line, region)) {
+            const cell = cellBounds({lines: [last], kind: 'table', region, bounds: last})!;
+            if (tableEdges.get(region)!.rules.some(shape => shape.height <= 2 && shape.width >= 6
+                && shape.y > cell.y + 1 && bottom(shape) < bottom(cell) - 1
+                && (shape.x >= right(cell) - 2 || right(shape) <= cell.x + 2))) return false;
+        }
         // 横表线、填色行边缘、逐行绘制的竖线端点都提供了明确的单元格行界；不能按小写开头把下一记录并入上一格。
         const shaded = shadedTables.some(table => Math.abs(table.x - region.x) < 1 && Math.abs(table.y - region.y) < 1);
         if (input.graphics.some(shape => shape.kind === 'path' && shape.x >= region.x - 2 && right(shape) <= right(region) + 2
             && (shape.width >= region.width * 0.7 && (shape.height <= 2 || shaded) || shape.width <= 2 && shape.height <= line.fontSize * 1.5)
             && [shape.y, bottom(shape)].some(y => y > last.baseline + 1 && y < line.baseline - 1))) return true;
-        // 无逐行表线的表格以同一基线上的数值列确认记录行，数值列自身也必须分行。
+        // 无逐行表线的表格以数值列基线分记录；数值可紧接单个单位表达（°、斜杠、乘点及上标），字母前缀编号和多词描述不能借此拆行。
         return lines.some(other => coversLine(region, other) && Math.abs(other.baseline - line.baseline) <= 1
-            && !readable(other.text) && /\d/u.test(other.text));
+            && !readable(other.text) && /\d/u.test(other.text)
+            && (!/\p{L}/u.test(other.text.replace(/(\d)[eE]([+\-−]?\d)/gu, '$1$2'))
+                || /^[+\-−]?(?:\d+(?:[.,]\d+)?|[.,]\d+)(?:[eE][+\-−]?\d+)?\s*°?\p{L}+\p{N}*(?:[\/·⋅*]°?\p{L}+\p{N}*)*$/u.test(other.text.trim())));
     };
     const tableEdges = new Map<PdfPreservedRegion, {xs: number[]; ys: number[]; rules: Rectangle[]}>();
     const uniqueEdges = (values: number[]) => {
