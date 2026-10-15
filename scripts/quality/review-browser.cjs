@@ -11,12 +11,13 @@ const reportFile = path.resolve(arg('report'));
 const output = path.resolve(arg('out'));
 const {chromium} = require(path.join(arg('playwright-root'), 'playwright'));
 const {launchFocusSafePersistentContext, newPageWithoutForeground, activateExtensionTabWithoutForeground} = require(arg('focus-safe-helper'));
+const emojiSource = 'The scientist 👩🏽‍🔬 arrives by 🚚 at Gate1️⃣.';
 const source = 'Calibration is complete. '.repeat(39) + 'The electroencephalography measurement must not exceed 3.5 kg. Dr. Smith verified the reading.';
 fs.mkdirSync(output, {recursive: true});
 const escape = text => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;');
 const server = http.createServer((request, response) => {
     response.writeHead(200, {'content-type': 'text/html; charset=utf-8'});
-    response.end(request.url === '/report' ? fs.readFileSync(reportFile) : `<!doctype html><html lang="en"><head><title>Quality boundary fixture</title><style>body{font:18px/1.7 system-ui;margin:40px auto;max-width:900px;padding:20px}p{margin:20px 0}#primary{font-size:16px}</style></head><body><h1>Translation boundary review</h1><p id="primary">${escape(source)}</p><p id="neighbor">The neighboring paragraph must remain unchanged.</p><p id="failure">The failed request must remain retryable after its source is preserved.</p><p id="pending">This pending request must stop when the reader cancels translation.</p></body></html>`);
+    response.end(request.url === '/report' ? fs.readFileSync(reportFile) : `<!doctype html><html lang="en"><head><title>Quality boundary fixture</title><style>body{font:18px/1.7 system-ui;margin:40px auto;max-width:900px;padding:20px}p{margin:20px 0}#primary{font-size:16px}</style></head><body><h1>Translation boundary review</h1><p id="primary">${escape(source)}</p><p id="neighbor">The neighboring paragraph must remain unchanged.</p><p id="emoji">${escape(emojiSource)}</p><p id="failure">The failed request must remain retryable after its source is preserved.</p><p id="pending">This pending request must stop when the reader cancels translation.</p></body></html>`);
 });
 const evidence = {ok: false, extension, reportFile, synthetic: true, screenshots: [], cases: {}, pageErrors: []};
 let session;
@@ -109,7 +110,8 @@ let launchAttempted = false;
                     const abort = () => {globalThis.__quality.cancelled++; reject(new DOMException('Cancelled fixture', 'AbortError'));};
                     if (init.signal.aborted) abort(); else init.signal.addEventListener('abort', abort, {once: true});
                 });
-                const translated = text.includes('electroencephalography') ? '脑电图测量结果不得超过 3.5 kg，Smith 博士核对了读数。'
+                const emojiTokens = text.match(/__FRTERM_[a-z0-9_]+?__/giu);
+                const translated = emojiTokens?.length ? '字素保护的生产验证。' + emojiTokens.join(' ') : text.includes('electroencephalography') ? '脑电图测量结果不得超过 3.5 kg，Smith 博士核对了读数。'
                     : text.startsWith('Calibration') ? '校准步骤已完成（受控测试响应）。' : '请求失败后仍可重试，原文保持完整。';
                 return Response.json({header: {ret_code: 'succ'}, auto_translation: [translated]});
             };
@@ -135,6 +137,17 @@ let launchAttempted = false;
         assert(!(await article.locator('#primary .fluent-read-bilingual-content').innerText()).includes('deliberately reversed'));
         evidence.cases.directionFallback = true;
         await shot(article, 'production-boundaries');
+        await trigger('#emoji');
+        await article.locator('#emoji .fluent-read-bilingual-content').waitFor();
+        const emojiTranslation = await article.locator('#emoji .fluent-read-bilingual-content').innerText();
+        for (const literal of ['👩🏽‍🔬', '🚚', '1️⃣']) assert.equal(emojiTranslation.split(literal).length - 1, 1, 'Complete literal must occur exactly once: ' + literal);
+        assert(!emojiTranslation.includes('__FRTERM_'));
+        evidence.cases.emojiLiteralRoundTrip = {source: emojiSource, translation: emojiTranslation,
+            providerResponse: 'Controlled response retains protection markers but contains no emoji; production broker must restore each complete literal.'};
+        await trigger('#emoji');
+        await article.waitForFunction(() => !document.querySelector('#emoji .fluent-read-bilingual-content'));
+        assert.equal((await article.locator('#emoji').innerText()).trim(), emojiSource);
+        await shot(article, 'production-emoji-restored-source');
         await worker.evaluate(() => {globalThis.__quality.scenario = 'failure';});
         await trigger('#failure');
         await article.locator('#failure .fluent-read-retry-wrapper').waitFor();
