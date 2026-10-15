@@ -64,30 +64,38 @@ beforeEach(() => {
 });
 
 describe('划词翻译挂载生命周期', () => {
-    it('站点移除划词 host 或替换 body 后恢复同一实例，卸载后不再复活', async () => {
+    it('先让当前实例复核来源，再恢复被移除或替换 body 的 host，卸载后不再复活', async () => {
         const {document, window} = parseHTML('<html><body><p>Original article</p></body></html>');
         const host = document.createElement('fluent-read-selection-translator-ui');
         document.body.appendChild(host);
         vi.stubGlobal('MutationObserver', window.MutationObserver);
-        const sourceChecks: boolean[] = [];
-        const revalidateSource = vi.fn(() => sourceChecks.push(host.isConnected));
-        const mountedUi = {...ui({revalidateSource}), shadowHost: host};
+        const source = document.querySelector('p')!;
+        const sourceChecks: Array<{sourceConnected: boolean; hostConnected: boolean}> = [];
+        const revalidateSource = vi.fn(() => {
+            sourceChecks.push({sourceConnected: source.isConnected, hostConnected: host.isConnected});
+        });
+        const instance = {revalidateSource};
+        const mountedUi = {...ui(instance), shadowHost: host};
         mountedUi.remove.mockImplementation(() => host.remove());
         mocks.createVueShadowUi.mockResolvedValueOnce(mountedUi);
         mocks.createModalDialogHostController.mockReturnValue({placeForRange: vi.fn(), dispose: vi.fn()});
         const runtime = await import('@/src/features/selection-translation/content/runtime');
         try {
-            await runtime.mountSelectionTranslator({} as never);
+            expect(await runtime.mountSelectionTranslator({} as never)).toBe(instance);
+            expect(revalidateSource).not.toHaveBeenCalled();
             host.remove();
             await vi.waitFor(() => expect(host.isConnected).toBe(true));
             expect(host.parentNode).toBe(document.body);
+            // 来源仍有效时也必须询问当前组件 owner，且在重新接入页面之前执行。
+            expect(sourceChecks).toEqual([{sourceConnected: true, hostConnected: false}]);
             const replacement = document.createElement('body');
             replacement.innerHTML = '<p>Next article</p>';
             document.body.replaceWith(replacement);
             await vi.waitFor(() => expect(host.parentNode).toBe(replacement));
-            // 每次真实祖先重建先复核来源，不能先把旧卡片接回页面。
-            expect(sourceChecks).toEqual([false, false]);
-            expect(revalidateSource).toHaveBeenCalledTimes(2);
+            expect(sourceChecks).toEqual([
+                {sourceConnected: true, hostConnected: false},
+                {sourceConnected: false, hostConnected: false},
+            ]);
             expect(mocks.createVueShadowUi).toHaveBeenCalledOnce();
             expect(mountedUi.remove).not.toHaveBeenCalled();
             runtime.unmountSelectionTranslator();

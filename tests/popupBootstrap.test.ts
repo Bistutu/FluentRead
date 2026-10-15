@@ -62,11 +62,12 @@ describe('Popup fresh configuration bootstrap', () => {
         ports.browser='firefox';ports.platform.mockRejectedValue(Error('platform unavailable'));await bootstrap.mountPreparedPopupApp('#owned');
         expect(ports.mount).toHaveBeenCalledOnce();expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);expect(ports.platform).toHaveBeenCalledOnce();
     });
-    it.each(['pagehide','unmount','mount-failure','config-failure'] as const)('%s 后迟到平台回复不能写回根标记',async reason=>{
+    it.each(['pagehide','unmount','mount-failure','config-failure','hydration-blocked'] as const)('%s 后迟到平台回复不能写回根标记',async reason=>{
         ports.browser='firefox';let resolve!: (value:{os:string})=>void;ports.platform.mockReturnValue(new Promise(yes=>{resolve=yes;}));
         if(reason==='mount-failure')ports.mount.mockImplementation(()=>{throw Error('mount failed');});
         if(reason==='config-failure'){ports.ready=Promise.reject(Error('config failed'));ports.ready.catch(()=>{});vi.resetModules();bootstrap=await import('../src/app/popup/mount');}
-        const pending=bootstrap.mountPreparedPopupApp('#owned');if(reason.endsWith('failure'))await expect(pending).rejects.toThrow();else await pending;
+        if(reason==='hydration-blocked')ports.hydration='blocked';
+        const pending=bootstrap.mountPreparedPopupApp('#owned');if(reason.endsWith('failure')||reason==='hydration-blocked')await expect(pending).rejects.toThrow();else await pending;
         if(reason==='pagehide')window.dispatchEvent(new Event('pagehide'));if(reason==='unmount')ports.unmountCallbacks.forEach(fn=>fn());
         resolve({os:'android'});await Promise.resolve();expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
     });

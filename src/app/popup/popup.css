@@ -782,6 +782,13 @@ footer button { font-weight: 500; color: var(--muted); }
   }
   :root[data-interface-skin] .popup-drawer.popup-quick-drawer button.switch.compact[aria-checked="true"]::before { background: var(--brand); }
   :root[data-interface-skin] .popup-drawer.popup-quick-drawer button.switch.compact i { position: absolute; left: 6px; top: 14px; }
+
+  /* 新单屏引导与自助诊断在 Popup 内沿用相同触摸预算，桌面仍保留紧凑状态入口。 */
+  :root .popup-shell .language-onboarding :is(.onboarding-language-option, .onboarding-confirm),
+  :root .popup-shell .fluentread-diagnostic button,
+  :root .popup-startup-recovery button { min-width: 46px; min-height: 46px; height: auto; }
+  :root .popup-shell .fluentread-diagnostic { flex-basis: 46px; width: 46px; height: 46px; }
+  :root .popup-shell .fluentread-diagnostic .diagnostic-close { flex-basis: 46px; }
 }
 
 /* Firefox Android 的固定扩展容器可能报告 fine pointer；已确认的 Android 容器仍使用与 coarse 相同的触摸命中预算。 */
@@ -820,3 +827,10 @@ footer button { font-weight: 500; color: var(--muted); }
 }
 :root[data-fluentread-android-popup][data-interface-skin] .popup-drawer.popup-quick-drawer button.switch.compact[aria-checked="true"]::before { background: var(--brand); }
 :root[data-fluentread-android-popup][data-interface-skin] .popup-drawer.popup-quick-drawer button.switch.compact i { position: absolute; left: 6px; top: 14px; }
+
+/* 新单屏引导与自助诊断在 Popup 内沿用相同触摸预算，桌面仍保留紧凑状态入口。 */
+:root[data-fluentread-android-popup] .popup-shell .language-onboarding :is(.onboarding-language-option, .onboarding-confirm),
+:root[data-fluentread-android-popup] .popup-shell .fluentread-diagnostic button,
+:root[data-fluentread-android-popup] .popup-startup-recovery button { min-width: 46px; min-height: 46px; height: auto; }
+:root[data-fluentread-android-popup] .popup-shell .fluentread-diagnostic { flex-basis: 46px; width: 46px; height: 46px; }
+:root[data-fluentread-android-popup] .popup-shell .fluentread-diagnostic .diagnostic-close { flex-basis: 46px; }

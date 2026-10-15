@@ -589,7 +589,7 @@
       "tests": [
         "tests/serviceConfigurationLifecycle.test.ts"
       ],
-      "scenario": "实际连接检测、Safari 授权线路过滤、取消、配置切换、迟到结果及安全诊断修复和逐服务重试"
+      "scenario": "实际连接检测、Safari 授权读取与线路过滤、取消、配置切换、迟到结果、模板事件及安全诊断修复和逐服务重试"
     },
     "src/features/settings/ui/services/ServiceNatureBadge.vue": {
       "kind": "frozen-debt",

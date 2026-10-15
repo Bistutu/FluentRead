@@ -2,7 +2,21 @@
 
 本项从 `fa431a845`（PR #993 已合并）独立实现，分支 `codex/mobile-safari-product-20261015`。Issue #969 的正文嵌入稳定性由独立任务负责；本项不改全文候选、调度或站点适配算法。Issue #992 的原反馈为 iOS YouTube 系统全屏无字幕、竖屏字幕居中，未给出浏览器与安装渠道，因此不把桌面夹具结果当作报告者环境已修复。
 
-移动布局修复及两端模拟器实测保存在 `215e40fba`。随后以 `5fe60fcfc` 整合主分支 `5b3d7e8b` 的专业文档更新；两个 userscript 冲突同时保留扩展专用文案过滤和已发布文档词典冻结规则。187 个移动生产文件与实测提交逐字节一致，上游文档代码保持原样，不列为本项新增功能。整合后 338 项关联检查、类型、四目标 Web 构建、文档和审计通过；新 Safari 463 资源摘要为 `dc433d0443bb8120bd9648320815d7ee89daabeb2957361aecf58c125fdd15ad`，三个 Apple 目标完整编译及资源比对通过。新生产 Chrome 的三项启动/抽屉检查通过，六张截图中四张与已审查的布局图字节相同，另两张重新查看；没有新增设备安装。本报告的 Android/iOS 实测仍对应各自明确的旧产物，不能挪作整合包的安装验收。
+截图中的遮罩缺口、背景误触、关闭按钮边缘被滚动条遮挡、返回列表位置错误及 Android 页脚裁切已修复，两端模拟器实测保存在 `215e40fba`。后续组合回归又发现 Safari 清空系统选区后，网页替换整个正文会恢复仍带旧内容的划词 host；`8d85e62c7` 在恢复前调用组件已有来源校验，关闭失效卡、取消请求并拒绝迟到回写，原文有效时保留同一实例和请求。
+
+材料整合轮次 `073cf5db2` 包含主分支 `633baacd32` 的专业文档、翻译质量、网页稳定性和材料学习工作区更新。保留材料的来源关联、隐私与保存代次约束，以及本分支的移动选区、键盘、原生字幕和 Safari 权限策略。265 项划词消费者检查及 343 项语言/字幕学习关联检查通过；来源恢复 runtime 定向四维覆盖率为 100%，代码未因整合改变。该轮四目标 Web 构建、verifier、类型及审计通过；原始源码摘要、每轮生产包与 Apple 编译记录分别保存在 `verification.json`。
+
+最新界面整合提交为 `657376c7f`，另包含主分支 `11732fa31` 的首次使用与自助诊断；随后 `acae06466` 修复了 userscript 构建体积。整合时保留完整遮罩、内部抽屉定位、Android 容器与滚动余量，并补齐新诊断入口的 46px 触摸区域。诊断“重试”接入 Safari 同一次点击的授权流程；服务权限读取失败继续显示明确的权限提示，不混为供应商故障。13 个相关测试文件共 590 项通过，挂载模块单独四维覆盖率 100%，类型检查通过。这些是本地定向检查，生产界面与各平台构建按该轮身份另存。
+
+该整合产物的生产 Chromium 专项完成 9 项、29 张截图复核：完整遮罩、320/390px 深浅色、长列表末项和返回、关闭四边、可见视口键盘夹具、新引导确认及诊断浮层均通过；新引导 8 个控件至少 46px，诊断入口和关闭均为 46×46px。正式通过记录为 `production-popup-integrated-117/attempt2/`，零控制台错误、零焦点违规，自有进程和 profile 已清理。首轮额外标题翻译请求与清理期间焦点事件仍保留为失败；重试修正空页面标题，并在身份复核后先用官方 Browser.close 退出，再由原关闭守护确认。未修改共享浏览器 helper、关闭焦点监测或把模拟 Android 标记当作设备运行证据。
+
+![整合后完整遮罩与服务搜索](./images/popup-service-mask-117.png)
+
+`117` 轮 Safari Web 产物为 467 文件，摘要 `2370a210fd9d816fcbfe569a9470406866342b0b2f7da9343a045beeab22de7c`，构建与校验通过。新的原生 wrapper 生成命令被自动审批拒绝；附既有人类任务授权记录复审后仍要求当前明确确认，命令均未执行，因此该轮 macOS／iOS Simulator／iPhoneOS 编译与安装没有通过结论。此前 `633` 的三目标编译和实际安装继续只代表旧产物。
+
+整合还触发 userscript 体积校验：原产物 2,097,258 字节，超过既有 2,095,100 字节上限；独立 `117` 主线构建为 2,090,732 字节并通过。修复仅在 userscript 构建中无损编码已有 14 种皮肤与 10 种字体的静态数据，在原位置同步恢复，完整保留值、枚举顺序和既有 API；共享业务源码、体积预算、固定资源地址、依赖与许可证均未修改，Greasy Fork 仍保留可读数据。正式修复产物为 2,093,894 字节，原 verifier 通过。完整配置消费者 228 项通过（含 35 项新场景），插件单独四维覆盖率 100%；加上上述 590 项，当前整合共 818 项不同的定向检查通过。根与临时检出的早期压缩字节差异没有被归因为路径影响；最终修复产物在两处摘要相同，历史失败与调查均保留。
+
+实际平台证据按版本分开：当前原生字幕模块在 iOS 26.2 Simulator 的真实 AVKit 中完成 FluentRead 勾选、动态双语、关闭后继续播放无残留、重选及退出恢复。另用正式 `228/d3` 扩展在真实 YouTube 完成相同操作，独立检查确认关闭后退出、再次进入仍保持关闭。前一轮 XCTest 因退出后网站标题切换为中文而失败，原失败保留；后一轮退出重入检查通过。系统菜单出现软件键盘的原因仍未建立。之前 Android/iOS Popup 截图对应各自原始产物，不挪作后续整合包的安装验收。
 
 ## 实现与边界
 
@@ -23,7 +37,7 @@
 ## 官方依据与现有能力核实
 
 - [Mozilla 的 FluentRead 商店页](https://addons.mozilla.org/en-US/firefox/addon/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/) 在本次核查时明确标示可用于 Firefox Android。这不等于本次开发包已完成 Android 设备验证。
-- [Microsoft 移动策略](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-mobile-policies)说明 Android 扩展可受管理策略限制；具体目录和安装按钮仍需当前浏览器确认。
+- [Microsoft 移动策略](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-mobile-policies)说明 Android 扩展可受管理策略限制；具体目录和安装按钮仍需当前浏览器确认。 微软当前 [API 支持表](https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/api-support)列出 Android 的 action、runtime、Offscreen、存储与 DNR；这不证明流畅阅读已进入移动目录。官方浏览器获取已定位 Google Play，当前隔离环境没有可用 Play Store／账号，尚未找到可验证的官方免账号 APK 路径；没有使用第三方镜像或宣称实际 Edge 安装通过。
 - Safari Userscripts 的核心网页/划词入口和 Via 既有说明继续保留；userscript 不提供扩展的视频字幕运行时，新原生全屏提示不进入其固定语言资源。
 - [Apple Safari 扩展说明](https://developer.apple.com/safari/extensions/)及[包装工具文档](https://developer.apple.com/documentation/safariservices/packaging-a-web-extension-for-safari)用于未签名包装流程。
 - [MDN 官方兼容数据](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/declarativeNetRequest.json)记录现有请求隔离所需的 `initiatorDomains`/`requestMethods` 从 Safari 26 开始支持。本项保留限制条件，不对旧 Safari 放宽来源范围。
@@ -33,10 +47,12 @@
 
 本地验证限定改动与直接影响范围。首轮 GitHub CI 因 `package.json` 新增 Safari 命令，被既有 planner 归为共享测试配置变更，自动执行全部 730 个测试文件；这不是本地专项范围。CI 的改动模块覆盖率均为 100%，但三个原本未改的测试文件失败：Linux 不存在 `/private/tmp`、Vue renderer 引用未声明入口，以及单个 PDF 导入用例超过默认 5 秒。已在 `cd55bc55c` 作最小测试修复，95 项定向检查通过；[Ubuntu 复验](https://github.com/FluentRead/FluentRead/actions/runs/38700538192)完整通过：730 文件、24,092 项通过及 4 项既有跳过，改动模块四维覆盖率 100%，类型和构建步骤也通过。后续 UTF-8 与原生指引提交 `82fa8085f` 的[独立 CI](https://github.com/FluentRead/FluentRead/actions/runs/38709422336)也已通过；它不包含本轮后续的权限与触摸修复。权限、46px 触摸目标与 Safari 原生选区菜单清理提交 `915672c7c` 的[质量检查](https://github.com/FluentRead/FluentRead/actions/runs/38722958827)和[文档检查](https://github.com/FluentRead/FluentRead/actions/runs/38722958865)随后均通过；随后控制栏副本修复提交 `48e195d54` 的[质量检查](https://github.com/FluentRead/FluentRead/actions/runs/38729484457)和[文档检查](https://github.com/FluentRead/FluentRead/actions/runs/38729484201)也通过。这些检查对应上述提交，不包含本报告后续的原生选择策略、键盘和完整布局修复。PDF 的本地超时未复现，仅增加该用例的 15 秒有界预算，保留全部进度与取消断言。
 
+布局及前三轮主线整合提交 `d08054108` 的[质量 CI](https://github.com/FluentRead/FluentRead/actions/runs/38757793503)也已通过：738 个文件、24,621 项通过及 5 项跳过，改动模块覆盖率四维 100%，类型和构建阶段均通过。它不包含随后 `8d85e62c7` 的来源复核修复和 `073cf5db2` 的材料整合；后者的定向验证单独记录。
+
 | 验证 | 结果与范围 |
 | --- | --- |
 | 类型检查 | `pnpm compile` 通过 |
-| 最终集成专项 | 10 文件、1,436 项通过，含 1,028 条文件头规则；其余覆盖模块边界、验证归属、真实 Vue 行为、浮层尺寸协商、字幕运行时与划词生命周期 |
+| 初轮集成专项 | 10 文件、1,436 项通过，含 1,028 条文件头规则；其余覆盖模块边界、验证归属、真实 Vue 行为、浮层尺寸协商、字幕运行时与划词生命周期 |
 | 平台/文案合约 | Safari manifest/包装/容器专项 42 项通过，浏览器能力 13 项通过；userscript 构建配置与固定语言资源投影专项通过 |
 | 严格覆盖率 | VisualViewport、新原生轨桥接及既有 popup/core/字幕缓存/人工字幕 6 个受影响模块四维均 100%（分别限定模块执行） |
 | Vue 行为归属 | 悬浮球与全文进度组件迁出冻结债务，真实 SFC setup/模板消费者分别 10 和 5 项通过 |
@@ -47,7 +63,7 @@
 | 构建 | Chrome、Firefox、Safari MV2、userscript 均通过，userscript verifier 通过；具体资源身份见 `verification.json` |
 | 文档与审计 | `pnpm docs:build`、`pnpm test:audit` 和 `git diff --check` 通过；审计发现 730 个已归类文件不代表已执行全量 |
 
-上述 Edge 浏览器专项使用 production 扩展、自有临时 profile、第二屏正常后台窗口、焦点监测与 owned-close 清理；翻译响应及页面受控。正式 UTF-8 修复后的 Chrome、Firefox、userscript 完整资源摘要与这些既有产物一致。CDP 触摸输入、DOM Range、VisualViewport/生命周期夹具不替代原生长按、系统键盘或移动真机。真实 Simulator Safari 的单独证据见下文。
+上述 Edge 浏览器专项使用 production 扩展、自有临时 profile、第二屏正常后台窗口、焦点监测与 owned-close 清理；翻译响应及页面受控。当时 UTF-8 修复轮次的 Chrome、Firefox、userscript 完整资源摘要与该轮既有产物一致，不是后续整合包的相同声明。CDP 触摸输入、DOM Range、VisualViewport/生命周期夹具不替代原生长按、系统键盘或移动真机。真实 Simulator Safari 的单独证据见下文。
 
 本地原始证据根目录：`research/mobile-safari-20261015/`（工作区层级）。失败轮次保留在各自目录，最终通过轮次另存，不覆盖失败证据。与本报告并列的 [verification.json](./verification.json) 记录源码摘要、构建身份和证据索引；`validation/` 保存类型检查、专项、覆盖率与构建日志。
 
@@ -140,6 +156,30 @@
 修复放在 Popup 唯一组装入口：仅当 Firefox 的公开 [`runtime.getPlatformInfo()`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/runtime/getPlatformInfo) 返回 Android 时，为固定容器启用视口限宽；轻量首次引导与主菜单共享这一设置。平台查询不阻塞挂载，关闭、卸载或加载失败清理自有标记，迟到响应不再写入。桌面保留中文 320px、英文 380px 的固有尺寸。227 个直接相关用例、挂载模块四维 100% 覆盖、类型检查及独立审查通过；四目标 Web 构建与 verifier、审计通过。新生产 Chrome 在隔离 Edge 的三项复验通过，五张截图已审查：桌面宽度保持、窄页面仍保留固有宽度，以及服务抽屉的搜索、清除、返回、关闭与重开。它使用明确的可见视口夹具，未当作 Android 键盘验收。随后新 Firefox 生产包在同一专用 Android 模拟器复验，英文主面板的设置、右侧功能卡和清除缓存完整位于屏幕内，原有英文设置与翻译统计保留；根代理已查看主面板和真实键盘搜索截图。该轮同时发现部分按钮仍使用较小的桌面点击区：返回和关闭约 28dp，不能把 iOS 的 46 点通过结果推到 Android。触摸尺寸作为后续修复另记，不将宽度通过等同于完整移动 UI 通过。
 
 
+## 网页重建后的划词来源复核
+
+真实 runtime 与真实 SFC 的组合回归首次为 3 通过、1 失败：Safari 图标入口已消费系统 Selection 后，仅移除 host 会正确恢复同一实例；但替换 body 后旧卡仍显示。新接线在已有 host 祖先观察器的恢复分支内先调用 Vue 公开实例的来源复核，不增加全页观察器或轮询。组件沿用 `restoreSelectionSource` 和 `hideAll`，有效来源不重发请求或改变反向目标语言；失效来源取消请求、清理快照，迟到结果不回写。pagehide 与卸载也不会复活卡片。
+
+修复后的 4 个组合用例全部通过，相关三文件 290 项通过；单独的 runtime 严格覆盖率为语句/行 100、函数 8、分支 70，四维 100%。第一次覆盖率遗漏公开端口调用的分支，补充当前 owner 在重新接入前复核的端口契约后通过，原失败日志保留。正式 Chrome 产物的 11 项生命周期检查通过，5 张截图逐张复核，含正文替换时取消、迟到响应、有限恢复、禁用重启、失败重试和 390px 深色键盘操作。该浏览器测试使用受控 Microsoft 响应，不能代替 Safari 的系统 Selection 行为。证据为 `validation/selection-runtime-source-combination/` 与 `selection-source-revalidation-production/`；材料整合后的版本另存。
+
+正式 `073/633` App 随后更新到专用 iOS Simulator，483 个 App 文件与 465 个 Web 资源逐字节匹配，Web 摘要为 `b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399`。真实长按 inspect 并点击入口后，系统 Selection 已清空，卡片显示“检查”；自有页面通过服务端命令移除 host 后恢复同一对象与卡片，再替换整个 body 后旧卡消失。两次 DOM 变更之间 selectionchange 计数始终为 2，没有卡外点击或人工 Selection 事件。再长按新正文 boundaries 能显示“边界”。独立 case 100 运行 31.530 秒、1 项通过，根代理查看了四个关键状态完整截图。该轮验证真实 Safari 的来源生命周期，未制造在线供应商迟到响应竞态。记录为 `ios-ui-harness/source-revalidation-633-acceptance.json`。
+
+同一源码的 Firefox 476 文件产物也在专用 Android 模拟器验证原生长按和句柄调整。permission 卡显示 ECDICT 本地词典“准许”，实际复制按钮出现勾选与 Translation copied 提示，关闭后没有残留，再选 service 显示“服务”。卡片和按钮布局已查看完整截图，未独立粘贴核对剪贴板。系统原生菜单保持开启时的一次正常时长点击仍未完成：本轮成功开卡发生在原生 Back 之后，近零时长 adb tap 曾缺 click，100ms 触摸随后产生可信 click 并开卡，不能据此把事件处理器判为缺陷。原生菜单和句柄仍与入口边缘部分重叠，后续需单独复核直接开卡体验。产物前后摘要一致，任务进程与端口已清理，记录为 `android-runtime/firefox-attempt5-selection-summary.json`。
+
+## 当前原生字幕策略的实际系统验证
+
+`avkit-loopback-system-choice-20261015/runtime-acceptance-current.json` 记录当前 `nativeFullscreen.ts` 的精确转译与实际 AVKit 测试。它只接入已有编号时间轴和缓存英中译文，不调用翻译供应商，不覆盖 YouTube 的调用入口。XCTest case 97 运行 91.062 秒、1 项通过：系统菜单实际勾选 FluentRead，画面编号从 2 更新至 3；点击“关闭”后继续播放 5 秒且菜单勾选关闭，观察区间视频时间从 11.70 秒推进至 19.72 秒，画面无字幕；再选 FluentRead 显示编号 5，退出后 Reference VTT 恢复，destroy 后自有轨被移除。
+
+根代理查看了动态双语、实际勾选、关闭无字幕及重选六张完整截图。菜单截图 04/06 同时出现软件键盘，原因未建立，原图与说明保留；该轮不声称完整原生菜单/键盘界面验收。旧 `730b` YouTube 关闭后残留的失败仍保留，真实 YouTube 新策略结果另记。
+
+![当前模块关闭字幕后实际继续播放](./images/safari-ios-avkit-current-off.png)
+
+![当前模块重新选择后的新编号字幕](./images/safari-ios-avkit-current-reselected.png)
+
+正式 `228/d3` 扩展随后使用公开 [TED 长视频](https://www.youtube.com/watch?v=iG9CE55wbtY)执行真实 YouTube 配对。case 98 先确认系统 FluentRead 勾选，英中字幕随视频前进；改选“关闭”后继续播放至少 5 秒，画面无字幕且系统勾选关闭；重选 FluentRead 后出现下一句英中字幕。最后实际退出已返回网页，但站点视频标题从英文改为中文，原有英文前缀断言失败，因此保留整轮 XCTest 的 1 项失败，不改写为通过。
+
+独立 case 99 运行 74.834 秒、1 项通过、0 失败：开始画面确认同一视频内联双语；选择关闭并退出后网页双语恢复，再进系统全屏时仍由系统勾选关闭，视频从 1:13 前进到 1:18 且没有字幕，最后退出至 1:20 的网页双语。根代理查看了退出、重新进入的实际勾选和继续播放三张完整截图。这支持当前策略在该候选和该安装产物上的关闭、重选及退出重入行为；不覆盖另一源轨选择（实际菜单没有其他源轨）、供应商归因、内存回收或物理设备。case 98/99 的系统菜单截图也出现软件键盘，原图保留，完整菜单/键盘交互仍需定位。记录为 `ios-ui-harness/production-youtube-228-native-acceptance.json`。
+
 ## 遮罩与滚动的后续样式修复
 
 用户提供的服务抽屉截图暴露了先前审查遗漏：整个 ElOverlay 被缩成可见区域，页面其他位置没有遮暗，也不再拦截背景按钮。新的生产浏览器回归在修复前稳定失败：页面 320×844px，而遮罩仅覆盖 x8–312、y40–280；在 (160,450) 实际命中背景“开源项目”链接。控件仍能点击不能证明模态层正确。失败报告 `production-popup-mask/before/report.json` 保留，不通过裁剪图片或绘制假键盘掩盖。
@@ -150,12 +190,12 @@
 
 最终布局修复为滚动条显式留出 16px 空间，Android 固定容器按可见页面高度限制主画布，并让服务面板在当前会话、焦点和所属容器都有效时恢复局部滚动位置。进入选择页回顶，返回时让源行露出；不滚动宿主网页、不夺取已转移的焦点。40 个服务 SFC 专项与类型检查通过，独立审查无新增阻断。生产 Chrome 最终六项复验全部通过，21 张完整截图逐张复核：320/390px × 浅/深色下整页遮罩拦截背景，列表末项可滚达，返回后默认服务可见，关闭按钮中心及四边均可点，收起模拟键盘保留查询，再次打开正常；桌面 320/380px 固有尺寸保留。报告为 `production-popup-layout-final/report.json`，明确不把模拟 VisualViewport 当作原生键盘。
 
-最终 Safari 资源摘要 `0d624626ee4fa1efe35a3b8c11fa6b5db80fc3ce815fdf95a26ffaeeed827033`，463 文件在三个原生目标中逐字节一致，四目标 Web、verifier、审计均通过。Android 最终包已实测主画布及根均为 512px，实际滑动后页脚完整可见，两个主要页脚按钮高 46px、下缘 507px，消除了先前的外层截断。Android 最终七组实际检查通过，包括主画布、页脚、46px 控件、服务末项返回、关闭按钮四边、真实键盘和完整遮罩；另有公开页翻译后短暂 Home→Firefox 往返保留双语、再恢复原文通过，不代表系统内存回收。任务 Firefox、调试端口和 AVD 均已关闭。iOS 最终 App 的 481 文件和 463 Web 资源逐字匹配，真实 micro 输入、清除、返回收键盘、关闭及配置保留通过，四个关键控件均为 46 点，完整画面遮罩持续覆盖 Popup；该轮未进行原生背景点击或末项滚动，明确不算这些通过。两端原始失败均保留，结果分别见 `android-runtime/firefox-attempt4-layout-summary.json` 和 `ios-ui-harness/popup-keyboard-acceptance.json`。
+布局修复轮次的 Safari 资源摘要 `0d624626ee4fa1efe35a3b8c11fa6b5db80fc3ce815fdf95a26ffaeeed827033`，463 文件在三个原生目标中逐字节一致，四目标 Web、verifier、审计均通过。该轮 Android 包已实测主画布及根均为 512px，实际滑动后页脚完整可见，两个主要页脚按钮高 46px、下缘 507px，消除了先前的外层截断。该轮 Android 七组实际检查通过，包括主画布、页脚、46px 控件、服务末项返回、关闭按钮四边、真实键盘和完整遮罩；另有公开页翻译后短暂 Home→Firefox 往返保留双语、再恢复原文通过，不代表系统内存回收。任务 Firefox、调试端口和 AVD 均已关闭。该轮 iOS App 的 481 文件和 463 Web 资源逐字匹配，真实 micro 输入、清除、返回收键盘、关闭及配置保留通过，四个关键控件均为 46 点，完整画面遮罩持续覆盖 Popup；该轮未进行原生背景点击或末项滚动，明确不算这些通过。两端原始失败均保留，结果分别见 `android-runtime/firefox-attempt4-layout-summary.json` 和 `ios-ui-harness/popup-keyboard-acceptance.json`。
 
-仍需完整验收：
+## 剩余验收
 
 - Safari macOS 与物理 iPhone/iPad 的安装、站点授权、更新保留配置、禁用/卸载。Simulator 的已验项目见各版本报告。
-- 实际 YouTube 完整字幕链路，以及物理设备上的 AVKit、视频旋转、换视频与后台冻结恢复；精确模块的 Simulator loopback 结果不能替代这些项目。
+- 实际 YouTube 的另一源轨选择、完整原生菜单/键盘交互、视频旋转、换视频与后台冻结恢复，以及物理设备 AVKit。已通过的 `228/d3` 候选关闭/重选/退出重入不扩大为这些项目的通过。
 - Android Edge/Firefox 真机安装更新、系统选词句柄、键盘、安全区、内存回收与网页/划词/字幕三条路径。
 - Safari Userscripts 实际管理器与设备、更广的真实供应商覆盖、真实音频播放、VoiceOver/TalkBack。
 
@@ -163,7 +203,7 @@
 
 ## 集成契约
 
-共享几何端口为 `src/platform/dom/visualViewport.ts`，业务自行持有生命周期与显示状态。公共配置字段和消息协议未新增。
+共享几何端口为 `src/platform/dom/visualViewport.ts`，业务自行持有生命周期与显示状态。移动适配自身未新增公共配置字段和消息协议；已整合上游功能的接口变化保留其原有约定。
 
 可能与其他并行任务冲突的共享文件：`package.json`、`wxt.config.ts`、`tests/test-matrix.json`、`tests/architecture/vue-verification-owners.json`、严格覆盖率清单、七种 i18n 消息、userscript 文案投影、文档导航与快速开始；另有全文进度组件和对应测试的最小移动定位接入，以及 Popup 组装入口对 Firefox Android 容器宽度的适配。合并时应保留各任务的新增条目，不整文件覆盖。CI 兼容性修复另涉及 `tests/ownedBrowserClose.test.ts`、`tests/vocabularyVideoSourceUi.test.ts`、`tests/documentTranslationBinary.test.ts`；前两个仅修测试环境适配，后一个仅调整单用例有界预算。
 
