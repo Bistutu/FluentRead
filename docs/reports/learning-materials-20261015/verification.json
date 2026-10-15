@@ -308,6 +308,133 @@
       "testsPassed": 11,
       "result": "passed",
       "evidence": "source-followup/report.json"
+    },
+    {
+      "name": "video subtitle panel actual material association",
+      "command": "node scripts/testing/run-resource-safe.mjs -- pnpm exec vitest run tests/videoSentenceLearningComponent.test.ts",
+      "log": "fluentread-material-video-association-accepted.log",
+      "logSha256": "ac2bead61b79f9eabe167960773a1d7817d01937cba35f60dedb747091aec26f",
+      "result": "passed",
+      "phase": "final-video-association-audit",
+      "testsPassed": 33
+    },
+    {
+      "name": "test audit after video association evidence",
+      "command": "pnpm test:audit",
+      "log": "fluentread-material-video-association-audit.log",
+      "logSha256": "acee4515d16e9ad2671f3a16e67abd650a820a78e47af7a03605161569a3ee77",
+      "result": "passed",
+      "phase": "final-video-association-audit"
+    },
+    {
+      "name": "docs after video association completion audit",
+      "command": "pnpm docs:build",
+      "log": "fluentread-material-video-association-docs-final.log",
+      "logSha256": "d88c823d0fc790300e224d271346a50799935c85b5a597a67d8a8ac1ebeae0a4",
+      "result": "passed",
+      "phase": "final-video-association-audit"
+    },
+    {
+      "name": "userscript fixed resource commit and build contracts",
+      "command": "resource-safe Vitest tests/userscriptViteConfig.test.ts",
+      "log": "fluentread-material-userscript-resource-pin-tests.log",
+      "logSha256": "a320db5ac95d41d8e469fdd8e1f47f8637bce9b5cd08e350538e0c83bcf92de1",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin",
+      "testsPassed": 188
+    },
+    {
+      "name": "typecheck after userscript fixed resource commit",
+      "command": "pnpm compile",
+      "log": "fluentread-material-resource-pin-typecheck.log",
+      "logSha256": "e97e2636befaf850e43600824c52748478dc03be1f23c249257e6e79da058489",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin"
+    },
+    {
+      "name": "userscript rebuilt with available language assets",
+      "command": "pnpm build:userscript",
+      "log": "fluentread-material-userscript-resource-pin-build.log",
+      "logSha256": "73bb9483c2a1dc0e50d2de3bcbddb25022e295405d3666dc886c6ea80f1d788f",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin"
+    },
+    {
+      "name": "userscript verifier after fixed resource commit",
+      "command": "node scripts/verify-userscript-build.mjs",
+      "log": "fluentread-material-userscript-resource-pin-verifier.log",
+      "logSha256": "9adb9ca41c66af359afc2365aa9de6f29ed28ab01782898985f05a10c3072d26",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin"
+    },
+    {
+      "name": "five immutable raw GitHub resources match local bytes and filenames",
+      "command": "HTTPS GET with system curl; compare full bytes and SHA256",
+      "log": "fluentread-material-userscript-resource-remote.json",
+      "logSha256": "cad41bf9d872cae1adbf1f3d8a25d7ea03a9e084c956a09551bfb5fe02058399",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin",
+      "testsPassed": 5,
+      "evidence": "userscript-resource-verification.json"
+    },
+    {
+      "name": "test audit after fixed resource commit",
+      "command": "pnpm test:audit",
+      "log": "fluentread-material-resource-pin-audit.log",
+      "logSha256": "acee4515d16e9ad2671f3a16e67abd650a820a78e47af7a03605161569a3ee77",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin"
+    },
+    {
+      "name": "docs after fixed resource commit",
+      "command": "pnpm docs:build",
+      "log": "fluentread-material-resource-pin-docs.log",
+      "logSha256": "5d04434271cb01c273d7995f553977b05dd40790158a3f2c63e13a713a2fee92",
+      "result": "passed",
+      "phase": "final-userscript-resource-pin"
+    },
+    {
+      "name": "main baseline same Chrome brand test",
+      "log": "fluentread-main-options-brand-baseline.log",
+      "logSha256": "8a1a1a9c82669ac90e0521e46dfe9bcffa5278b18c3be26491321f3928a3c588",
+      "result": "passed",
+      "phase": "ci-fixture-time-budget",
+      "testsPassed": 1,
+      "scope": "Read-only main/task timing comparison; final full test file preserves all assertions with a local 10s brand-test deadline."
+    },
+    {
+      "name": "task same Chrome brand test before timeout change",
+      "log": "fluentread-material-options-brand-before.log",
+      "logSha256": "30cd11372e1e7354e7abf53efaf06df91782edbcffd6d44824d9409c5247a8b1",
+      "result": "passed",
+      "phase": "ci-fixture-time-budget",
+      "testsPassed": 1,
+      "scope": "Read-only main/task timing comparison; final full test file preserves all assertions with a local 10s brand-test deadline."
+    },
+    {
+      "name": "options navigation and all platform brand tests",
+      "log": "fluentread-material-options-brand-accepted.log",
+      "logSha256": "3127b547cfdb130306adc52ef101ac7b1feb8c57f16cb0140626ab5f29daa938",
+      "result": "passed",
+      "phase": "ci-fixture-time-budget",
+      "testsPassed": 45,
+      "scope": "Read-only main/task timing comparison; final full test file preserves all assertions with a local 10s brand-test deadline."
+    },
+    {
+      "name": "final test audit after local fixture deadline",
+      "command": "pnpm test:audit",
+      "log": "fluentread-material-ci-fixture-final-audit.log",
+      "logSha256": "acee4515d16e9ad2671f3a16e67abd650a820a78e47af7a03605161569a3ee77",
+      "result": "passed",
+      "phase": "ci-fixture-time-budget"
+    },
+    {
+      "name": "final docs build after local fixture deadline",
+      "command": "pnpm docs:build",
+      "log": "fluentread-material-ci-fixture-final-docs.log",
+      "logSha256": "dd7e44d725486b42fb31f46e232558a6f85e01c95645d79ddff1b46ee9a9d9f3",
+      "result": "passed",
+      "phase": "ci-fixture-time-budget"
     }
   ],
   "coverage": [
@@ -831,23 +958,26 @@
     "tests/materialRepository.test.ts": "19eb04aae314be3909b9508cbfd95611c907d2a028dde452cf3b22d9b36ed01f",
     "tests/materialSource.test.ts": "6764369b5ddfed4ff2afd3ab89cc8c085319f61976d25774267cde732ae83858",
     "tests/materialWorkspaceLifecycle.test.ts": "d889e341fa1e878d1c540bf516da21657797a976456bff04eb7f85d74ec09e2b",
+    "tests/optionsAppNavigationLifecycle.test.ts": "aeafcd48674999eeface4cf058620a33cc7a8a48ab29cfd6af9e2805436957c1",
     "tests/pdfReaderLifecycle.test.ts": "687e30e96aaa76e4a0da98cea3737274fca2a49d42945667b9a00e46b8aaa1b0",
     "tests/readingPanelStreamingResize.test.ts": "f8dfd102678b4342094dbf3c2467898336a71e60764907a77869082f5edfea63",
     "tests/selectionTranslatorLifecycle.test.ts": "1690d66107a3195347de517695e6ad3c02e00a1146043806857bd89f59b5fdcf",
     "tests/sentenceActionsMount.test.ts": "f7e30b4cdd3b4ee30eb1a9b021dc84284c60f69cb227f51a11965438169815b3",
     "tests/test-matrix.json": "1f1d917aad3d4d6ebe66a63c8541e338ef60215192188060e1c23a6168ee6ab8",
-    "tests/videoSentenceLearningComponent.test.ts": "667c0510d94ead2d8bc28fbb2d6bce0d3a7bcdf8319ef75cd8ecd05661cfc389",
+    "tests/userscriptViteConfig.test.ts": "392020b72b4ccda5361e4bad25ea338d6cbad2242fb09899a09f4fc241fb6015",
+    "tests/videoSentenceLearningComponent.test.ts": "a3709c0a0343d980f466e0049d4c61c920548f292b46f3d0364897bbd9196df1",
     "userscript/languages/es-ES.be72661f69196d35.json": "fdbb85f2ac2a6069fa11251fc2aab46085ef1e9d9034e1851042a768e12dfe7b",
     "userscript/languages/fr-FR.ecb180570edeb097.json": "5537d1e084403071a9b9c0af68e3139c4cc78dc0b27241ad377449914db4ac5d",
     "userscript/languages/ja-JP.a2e0e46262be844e.json": "99623c9a6da17ae7dec5193256595c23a3080bcdb004740fc03c2df7b12753d8",
     "userscript/languages/ko-KR.496a2393c33e1f1a.json": "247e49b5673f97533d49ff92f5aba989fbe7f6681d4687588efe28319913b58f",
     "userscript/languages/ru-RU.3ae9903f73059e86.json": "838f2c50614a40f980902d1097fdfafb5fe31610aeb2c1b07a3a7c83d8bd29a4",
+    "userscript/vite.config.ts": "98cd57329931c8072bde35172a8dd2dcf34157dbb7bed569da99bd504394b36b",
     "vitest.coverage.config.ts": "e7e5fe32aca4cceaa9c0d3bd843f7c816ca254d333b0348fafc56b239b2decbb"
   },
   "artifactSha256": {
     ".output/chrome-mv3/manifest.json": "a12a20416fc826d3dc7278b74a112b4170f8985b1ac8b1a74c91f73d5e09b642",
     ".output/firefox-mv2/manifest.json": "9802dab15f2073f80469306f3bcdfb957f8204d6a2904fe65cc1ae26ee3965f1",
-    ".output/userscript/fluent-read.user.js": "712ca26542e135f08b934104cc312fc6f48476326191aef618473acfabbf6436"
+    ".output/userscript/fluent-read.user.js": "788dd577d2e43e43dd04d1243d25dd473d9bada028e9e0de5ac3040eee78f70a"
   },
   "screenshotsSha256": {
     "article-missing-passage-recovery.png": "6d28e3f5fd9f57503863d718f5bbceea5b1e0b2c4e2251d165120d53e27627f8",
@@ -890,14 +1020,14 @@
     "Private-window eligibility is covered by deterministic client and sender tests, not an incognito browser session."
   ],
   "coveragePlan": {
-    "source": "/private/tmp/fluentread-material-ci-plan-final.json",
-    "evidenceSha256": "a5b53e50e3e1f5078b4351add570250ab1d3dbb8803a15d8751f7e84e8f2875e",
+    "source": "/private/tmp/fluentread-material-ci-plan-resource-final.json",
+    "evidenceSha256": "33da68f41800546cdd6de797fb618ad559996b2e0fa10dfeae7af9f60fd2ea4a",
     "plannedModuleCount": 16,
     "recordedModuleCount": 16,
     "exactModuleSetMatch": true,
     "scope": "Aggregated targeted four-dimensional coverage; remote CI is separate from the recorded local checks."
   },
-  "updatedAt": "2026-10-15T08:00:45.301183+00:00",
+  "updatedAt": "2026-10-15T08:34:58.819513+00:00",
   "affectedPlan": {
     "base": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
     "reason": "changed-dependency-graph",
@@ -931,5 +1061,6 @@
       "cases": 4,
       "report": "localization/report.json"
     }
-  ]
+  ],
+  "finalFollowUpScope": "After final localized extension acceptance: video association tests, a local options brand-test deadline and docs changed; userscript fixed resource commit was corrected and rebuilt. Extension runtime source and Chrome/Firefox artifacts remained unchanged."
 }
