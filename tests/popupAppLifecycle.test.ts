@@ -225,6 +225,21 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     eventOf(repair)();await drain()
     expect(createTab).toHaveBeenCalledWith({url:expect.stringContaining('options.html?service=google')});expect(close).toHaveBeenCalledOnce()
   })
+  it('无正文诊断直达适配目标并携带固定来源，普通导航不附加来源且服务参数不丢失',async()=>{
+    win.location.search='?sourceTabId=7';getTab.mockResolvedValue([{id:99,url:'https://other.example/'}]);await mount()
+    runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'no-content'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain()
+    const inspect=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='检查网站范围')!;await eventOf(inspect)();await drain()
+    let url=new URL(createTab.mock.calls.at(-1)![0].url);expect(url.hash).toBe('#settings-sites');expect(url.searchParams.get('target')).toBe('adaptation');expect(url.searchParams.get('returnTabId')).toBe('7');expect(url.searchParams.has('service')).toBe(false);expect(getTab).not.toHaveBeenCalled()
+    createTab.mockClear();await state.openOptions('settings-sites','adaptation');url=new URL(createTab.mock.calls[0][0].url);expect(url.searchParams.get('target')).toBe('adaptation');expect(url.searchParams.has('returnTabId')).toBe(false)
+    createTab.mockClear();await state.openOptions('settings-services','connections','openai');url=new URL(createTab.mock.calls[0][0].url);expect(url.searchParams.get('service')).toBe('openai');expect(url.searchParams.get('target')).toBe('connections');expect(url.searchParams.get('returnTabId')).toBe('7')
+  })
+  it.each(['authentication','model-configuration','configuration'])('%s修复后明确重试恢复旧会话再翻译，不改变主按钮正常恢复语义',async code=>{
+    await mount();runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain()
+    expect(button('page-translation').getAttribute('aria-pressed')).toBe('true');expect(commands()).toHaveLength(0)
+    const retry=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='重试')!;await eventOf(retry)();await drain()
+    expect(commands().map(call=>[call[0],call[1].action])).toEqual([[7,'restore'],[7,'fullPage']]);expect(button('page-translation').getAttribute('aria-pressed')).toBe('true')
+    expect(document.querySelector('.fluentread-diagnostic')).toBeNull();await eventOf(button('page-translation'))();await drain();expect(commands().at(-1)![1].action).toBe('restore')
+  })
   it('首次使用、翻译中和真实完成提示在实际模板中跟随七种界面语言切换',async()=>{
     await mount()
     const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}

@@ -50,7 +50,7 @@
   "diagnostics.ui.source-return": "元のページに戻る",
   "diagnostics.ui.source-unavailable": "元のページは閉じられているか、現在アクセスできません。翻訳するページを開き、拡張機能から再試行してください。",
   "diagnostics.ui.source-returned": "元のページに戻りました。拡張機能から翻訳を再試行できます。",
-  "diagnostics.ui.source-return-hint": "サービスを確認したら元のページに戻り、拡張機能から翻訳を再試行してください。",
+  "diagnostics.ui.source-return-hint": "設定を確認したら元のページに戻り、拡張機能から翻訳を再試行してください。",
   "diagnostics.ui.first-use-start": "外国語のページを開き、翻訳をクリックして開始します。上で翻訳サービスを選べます。",
   "diagnostics.ui.first-use-translating": "翻訳中です。完了したらページ上で訳文を読めます。",
   "diagnostics.ui.first-use-ready": "訳文を表示しました。次回はテキストの選択や段落翻訳のショートカットも使えます。"

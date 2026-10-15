@@ -58,14 +58,15 @@ function createDomRenderer(document: Document, focus: ReturnType<typeof vi.fn>) 
 type NumericChange = (value: number | undefined) => void;
 type NumericPort = {disabled: boolean; change: NumericChange};
 
-async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation', requestLimits = false, development = false, serviceSelectors = false, search = ''}:
-    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string; requestLimits?: boolean; development?: boolean; serviceSelectors?: boolean; search?: string} = {}) {
+async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation', requestLimits = false, development = false, serviceSelectors = false, search = '', repairReturn = false}:
+    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string; requestLimits?: boolean; development?: boolean; serviceSelectors?: boolean; search?: string; repairReturn?: boolean} = {}) {
     const frames = new Map<number, FrameRequestCallback>();let nextFrame = 0;
     const query = vi.fn((_options: Record<string, unknown>) => Promise.resolve([] as {id?: number}[]));
     const send = vi.fn((_id: number, _message: {type: string; isEnabled?: boolean; mode?: string}) => Promise.resolve());
     const patch = vi.fn(() => Promise.resolve());const theme = vi.fn();const unsubscribe = vi.fn();
     const media = {matches: false, onchange: null as (() => void) | null};
     const location = {hash: '', search, protocol: 'chrome-extension:'};
+    if (repairReturn) vi.stubGlobal('location', {href: `chrome-extension://fixture/options.html${search}`});
     vi.stubGlobal('window', Object.assign(new EventTarget(), {location, navigator: {userAgent: ''}, matchMedia: () => media,
         requestAnimationFrame: (fn: FrameRequestCallback) => {frames.set(++nextFrame, fn);return nextFrame;},
         cancelAnimationFrame: (id: number) => frames.delete(id)}));
@@ -97,9 +98,11 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         },
         requestConfigPatch: patch,
         handoffPendingConfigPatches: vi.fn(() => Promise.resolve()), theme,
-        browser: {runtime: {sendMessage: vi.fn(() => Promise.resolve())}, tabs: {query, sendMessage: send}}};
+        browser: {runtime: {sendMessage: vi.fn(() => Promise.resolve())}, tabs: {query, sendMessage: send,
+            get: vi.fn(async () => ({id: 7, url: 'https://example.test/'})), update: vi.fn(async () => ({id: 7}))}}};
     (globalThis as Record<string, unknown>)[key] = data;
     const mocks: Plugin = {name: 'settings-sections-lifecycle-mocks', enforce: 'pre', resolveId(id, importer) {
+        if (repairReturn && /\/(?:ServiceRepairReturn|SettingsPanel)\.vue$/u.test(id)) return null;
         if (requestLimits && id.endsWith('/RequestLimitFields.vue')) return null;
         if (requestLimits && id.endsWith('/SettingsNumberInput.vue')) return null;
         if ((requestLimits || serviceSelectors) && (id.endsWith('/SettingsGroup.vue') || id.endsWith('/SettingsItem.vue'))) return '\0sections-slots';
@@ -126,7 +129,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         if (id === '\0sections-provider-loader') return `export default await globalThis.${key}.loadProvider();`;
         if (id === '\0sections-service-catalog') return `import {h, onMounted} from 'vue';export default {props: ['active'], emits: ['add:service'], setup(props, {emit}) {onMounted(globalThis.${key}.catalogMounted);return () => props.active ? h('button', {'data-testid': 'fixture-add-service', onClick: () => emit('add:service')}, '添加服务') : null}};`;
         if (id === '\0sections-child') return 'export default {render: () => null};';
-        if (id === '\0sections-i18n') return `import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: k => k, translateLegacy: t => t}); export const localizeServiceOptions = options => options;`;
+        if (id === '\0sections-i18n') return `import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), bundleRevision: ref(0), t: k => k, translateLegacy: t => t}); export const localizeServiceOptions = options => options;`;
         if (id === '\0sections-config') return `export const {config, configReady, subscribeConfig, requestConfigPatch, handoffPendingConfigPatches} = globalThis.${key};`;
         if (id === '\0sections-appearance') return `export const applyInterfaceTheme = globalThis.${key}.theme;`;
         if (id === '\0sections-browser') return `export default globalThis.${key}.browser;`;
@@ -144,6 +147,11 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         compileClientTemplate(child, 'src/features/settings/ui/services/RequestLimitFields.vue');
         const numberInput = (await server.ssrLoadModule('/src/features/settings/ui/components/SettingsNumberInput.vue')).default;
         compileClientTemplate(numberInput, 'src/features/settings/ui/components/SettingsNumberInput.vue');
+    }
+    if (repairReturn) {
+        for (const file of ['src/features/settings/ui/services/ServiceRepairReturn.vue', 'src/features/settings/ui/components/SettingsPanel.vue']) {
+            compileClientTemplate((await server.ssrLoadModule(`/${file}`)).default, file);
+        }
     }
     const component = (await server.ssrLoadModule('/src/features/settings/ui/SettingsSections.vue')).default;
     component.ssrRender = undefined;component.render = () => null;
@@ -192,6 +200,31 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
 }
 
 describe('设置主表单实际组件异步归属', () => {
+    it('网站修复返回条位于实际adaptation目标面板，只按明确来源返回', async () => {
+        const h = await mountSections({template: true, repairReturn: true, activeSection: 'settings-sites', search: '?target=adaptation&returnTabId=7'});
+        const button = h.document!.querySelector('[data-return-source-tab]')!;
+        expect(button.closest('[data-settings-panel="adaptation"]')).not.toBeNull();
+        expect(h.document!.querySelector('[data-service-repair-return]')!.textContent).toContain('检查配置后');
+        expect(h.data.browser.tabs.get).not.toHaveBeenCalled();
+        button.dispatchEvent(new h.domWindow!.Event('click'));await settle();
+        expect(h.data.browser.tabs.get).toHaveBeenCalledWith(7);expect(h.data.browser.tabs.update).toHaveBeenCalledWith(7, {active: true});
+    });
+    it('普通网站设置不展示没有来源的返回操作', async () => {
+        const h = await mountSections({template: true, repairReturn: true, activeSection: 'settings-sites'});
+        expect(h.document!.querySelector('[data-return-source-tab]')).toBeNull();expect(h.data.browser.tabs.get).not.toHaveBeenCalled();
+    });
+    it.each(['section', 'cached', 'scope', 'adaptation', 'config'] as const)('网站修复返回等待中 %s 改变后旧查询不能激活网页', async reason => {
+        const h = await mountSections({template: true, repairReturn: true, activeSection: 'settings-sites', search: '?target=adaptation&returnTabId=7'}), gate = deferred<{id: number; url: string}>();
+        h.data.browser.tabs.get.mockReturnValueOnce(gate.promise);
+        h.document!.querySelector('[data-return-source-tab]')!.dispatchEvent(new h.domWindow!.Event('click'));await settle();
+        if (reason === 'section') h.props.activeSection = 'settings-general';
+        if (reason === 'cached') h.visible.value = false;
+        if (reason === 'scope') h.state.config.translationScope = h.state.config.translationScope === 'all' ? 'body' : 'all';
+        if (reason === 'adaptation') h.state.config.siteAdaptation = {...h.state.config.siteAdaptation, enabled: !h.state.config.siteAdaptation.enabled};
+        if (reason === 'config') h.state.config = {...h.state.config};
+        await settle();gate.resolve({id: 7, url: 'https://example.test/'});await settle();
+        expect(h.data.browser.tabs.update).not.toHaveBeenCalled();
+    });
     it('离开服务设置关闭新服务对话框，隐藏时既不打开也不提交新服务', async () => {
         const {state, props} = await mountSections();state.openCustomProviderDialog();expect(state.customProviderDialogOpen).toBe(false);
         props.activeSection = 'settings-services';await settle();state.openCustomProviderDialog();expect(state.customProviderDialogOpen).toBe(true);

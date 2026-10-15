@@ -50,7 +50,7 @@
   "diagnostics.ui.source-return": "返回原网页",
   "diagnostics.ui.source-unavailable": "原网页已关闭或当前无法访问。请打开需要翻译的网页，再通过扩展重试。",
   "diagnostics.ui.source-returned": "已返回原网页，可通过扩展重试翻译。",
-  "diagnostics.ui.source-return-hint": "检查服务后，返回原网页，通过扩展重试翻译。",
+  "diagnostics.ui.source-return-hint": "检查配置后，返回原网页重试翻译。",
   "diagnostics.ui.first-use-start": "打开外文网页，点击翻译即可开始。可在上方选择翻译服务。",
   "diagnostics.ui.first-use-translating": "正在翻译，完成后可在网页中阅读译文。",
   "diagnostics.ui.first-use-ready": "译文已显示。下次也可选中文字，或用快捷键翻译段落。"

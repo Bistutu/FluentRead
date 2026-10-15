@@ -50,7 +50,7 @@
   "diagnostics.ui.source-return": "Revenir à la page d’origine",
   "diagnostics.ui.source-unavailable": "La page d’origine est fermée ou inaccessible. Ouvrez la page à traduire, puis réessayez depuis l’extension.",
   "diagnostics.ui.source-returned": "La page d’origine est active. Réessayez la traduction depuis l’extension.",
-  "diagnostics.ui.source-return-hint": "Après avoir vérifié le service, revenez à la page d’origine et réessayez la traduction depuis l’extension.",
+  "diagnostics.ui.source-return-hint": "Après avoir vérifié les réglages, revenez à la page d’origine et relancez la traduction depuis l’extension.",
   "diagnostics.ui.first-use-start": "Ouvrez une page en langue étrangère et lancez la traduction. Vous pouvez choisir un service ci-dessus.",
   "diagnostics.ui.first-use-translating": "Traduction en cours. Le résultat sera lisible sur la page une fois prêt.",
   "diagnostics.ui.first-use-ready": "La traduction est affichée. Vous pouvez aussi sélectionner du texte ou utiliser le raccourci de traduction des paragraphes."
