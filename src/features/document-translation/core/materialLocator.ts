@@ -26,6 +26,32 @@ export interface DocumentMaterialReference {
     locatorOccurrences?: number;
 }
 
+export const DOCUMENT_MATERIAL_REFERENCE_LIMITS = Object.freeze({source: 12000, context: 12000, scope: 2048, position: 512, total: 36000});
+
+/** 持久化边界只保留版本化白名单，并与文件内容摘要绑定；原文及邻文逐字符复制。 */
+export function normalizeDocumentMaterialReference(input: unknown, materialId: string): DocumentMaterialReference | undefined {
+    if (!/^[a-f\d]{32}$/u.test(materialId) || !input || typeof input !== 'object' || Array.isArray(input)) return;
+    const reference = input as Record<string, unknown>;
+    if (!Object.hasOwn(reference, 'version') || reference.version !== 1 || !Object.hasOwn(reference, 'materialId') || reference.materialId !== materialId
+        || !Object.hasOwn(reference, 'locator') || !reference.locator || typeof reference.locator !== 'object' || Array.isArray(reference.locator)) return;
+    const occurrences = reference.locatorOccurrences;
+    if (occurrences !== undefined && (!Object.hasOwn(reference, 'locatorOccurrences') || !Number.isSafeInteger(occurrences) || (occurrences as number) < 1)) return;
+    const value = reference.locator as Record<string, unknown>;
+    if (!Object.hasOwn(value, 'version') || value.version !== 1 || !Object.hasOwn(value, 'source') || typeof value.source !== 'string'
+        || value.source.length === 0 || value.source.length > DOCUMENT_MATERIAL_REFERENCE_LIMITS.source) return;
+    const locator: DocumentSourceLocator = {version: 1, source: value.source};
+    let total = value.source.length;
+    for (const key of ['scope', 'position', 'before', 'after'] as const) {
+        if (value[key] === undefined) continue;
+        const limit = key === 'scope' ? DOCUMENT_MATERIAL_REFERENCE_LIMITS.scope : key === 'position' ? DOCUMENT_MATERIAL_REFERENCE_LIMITS.position : DOCUMENT_MATERIAL_REFERENCE_LIMITS.context;
+        if (!Object.hasOwn(value, key) || typeof value[key] !== 'string' || value[key].length > limit) return;
+        total += value[key].length;
+        if (total > DOCUMENT_MATERIAL_REFERENCE_LIMITS.total) return;
+        locator[key] = value[key];
+    }
+    return {version: 1, materialId, locator, ...(occurrences === undefined ? {} : {locatorOccurrences: occurrences as number})};
+}
+
 type SourceSnapshot = {format?: unknown; segments?: unknown; binary?: unknown};
 
 /** 为旧快照容忍缺失结构，但不把脏数据解释为有效位置。 */

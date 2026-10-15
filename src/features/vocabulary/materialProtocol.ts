@@ -4,6 +4,8 @@
  * 主要内容：材料来源身份、原文定位、学习引用、主题和可序列化请求响应；正文与来源仅进入本地材料库。
  * 模块边界：不访问浏览器、数据库或同步配置；采集器与界面通过 typed client 访问后台权威仓库。
  */
+import type {DocumentMaterialReference} from '@/src/features/document-translation/material/public';
+
 export const MATERIAL_MESSAGE = 'fluentReadMaterials' as const;
 export const MATERIAL_CHANGED_MESSAGE = 'fluentReadMaterialsChanged' as const;
 export type MaterialKind = 'article' | 'document' | 'video';
@@ -12,6 +14,8 @@ export interface MaterialLocator {
     kind: 'text' | 'document' | 'video';
     quote?: string; prefix?: string; suffix?: string; paragraphId?: string;
     page?: number; section?: string; startMs?: number; endMs?: number; fingerprint?: string;
+    /** 原样保存的精确文档位置；quote 只作展示/搜索，不得代替此引用。 */
+    documentReference?: DocumentMaterialReference;
 }
 export interface MaterialReference {
     kind: 'vocabulary' | 'session' | 'memory' | 'note';

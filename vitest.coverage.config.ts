@@ -413,6 +413,8 @@ export default defineConfig({
                 'src/features/document-translation/core/preview.ts',
                 'src/features/document-translation/core/pdfSource.ts',
                 'src/features/document-translation/core/materialLocator.ts',
+                'src/app/document-translation/materialResume.ts',
+                'src/features/document-translation/ui/pdfMaterialNavigation.ts',
                 'src/features/document-translation/core/pdfContinuations.ts',
                 'src/features/document-translation/core/pdfReadingPlan.ts',
                 'src/features/document-translation/core/pdfReadingRegions.ts',

@@ -484,3 +484,14 @@ describe('document-page context menu routing', () => {
         expect(failed.event.addListener).not.toHaveBeenCalled();
     });
 });
+
+it('allows translated/reflow selection only with the document model owner and forwards capture without generic inference', () => {
+    const {root} = dom('<article data-page-number="1"><div data-fluentread-pdf-translation><p class="pdf-translation-text">译文</p></div><p class="pdf-reading-paragraph" data-pdf-segment-index="1">重排</p><button>Control</button></article>');
+    const selection = {source: {kind: 'document' as const, fingerprint: 'a'.repeat(32)}, locator: {kind: 'document' as const, page: 1}};
+    const capture = vi.fn(() => selection), adapter = createPdfSelectionAdapter(root, capture);
+    for (const node of [root.querySelector('.pdf-translation-text')!.firstChild!, root.querySelector('.pdf-reading-paragraph')!.firstChild!]) {
+        const picked = range(node); expect(adapter.acceptsRange(picked)).toBe(true); expect(adapter.captureMaterial?.(picked, '选中')).toBe(selection);
+    }
+    expect(adapter.captureMaterial?.(range(root.querySelector('button')!.firstChild!), 'Control')).toBeUndefined();
+    expect(capture).toHaveBeenCalledTimes(2);
+});

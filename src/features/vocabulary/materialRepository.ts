@@ -73,7 +73,7 @@ export class MaterialRepository {
         if (!input || typeof input !== 'object') throw new MaterialError('invalid-input', '材料采集内容无效');
         if (input.referenceMode !== undefined && (input.referenceMode !== 'update-existing' || input.reference === undefined)) throw new MaterialError('invalid-input', '材料引用更新模式无效');
         const normalized = normalizeMaterialSource(input.source);
-        const locator = normalizeMaterialLocator(input.locator);
+        const locator = normalizeMaterialLocator(input.locator, normalized.source);
         const reference = input.reference === undefined ? undefined : normalizeMaterialReference(input.reference, now);
         const capturedAt = input.capturedAt === undefined ? now : input.capturedAt;
         if (!Number.isFinite(capturedAt) || capturedAt < 0 || capturedAt > now + 60_000) throw new MaterialError('invalid-input', '材料采集时间无效');
@@ -103,7 +103,8 @@ export class MaterialRepository {
                     record.references.push(reference);
                 } else record.references[index] = {...reference, createdAt: record.references[index].createdAt};
             }
-            if (locator && capturedAt >= record.lastReadAt) record.locator = locator;
+            const preserveExactDocumentPosition = input.positionOnly && record.locator?.documentReference && !locator?.documentReference;
+            if (locator && capturedAt >= record.lastReadAt && !preserveExactDocumentPosition) record.locator = locator;
             record.lastReadAt = Math.max(record.lastReadAt, capturedAt);
             record.updatedAt = now;
             // 显式收藏可以恢复来源；归档状态由专门的恢复操作控制，自动采集不复活用户删除。
@@ -131,7 +132,7 @@ export class MaterialRepository {
                 }
                 record.source = normalized.source;
             }
-            if (patch.locator !== undefined) {record.locator = normalizeMaterialLocator(patch.locator); record.lastReadAt = now;}
+            if (patch.locator !== undefined) {record.locator = normalizeMaterialLocator(patch.locator, record.source); record.lastReadAt = now;}
         }, now);
     }
     async removeReference(id: string, kind: MaterialReference['kind'], referenceId: string): Promise<MaterialRecord> {
@@ -225,6 +226,6 @@ function normalizeImportedMaterial(value: MaterialRecord, now: number): Material
     const references = value.references.map(ref => normalizeMaterialReference(ref, now));
     if (new Set(references.map(ref => `${ref.kind}:${ref.id}`)).size !== references.length) throw new MaterialError('invalid-input', '学习引用重复');
     return {id: materialText(value.id, 256) || crypto.randomUUID(), identityKey: normalized.identityKey, aliases: [...new Set(aliases)], kind: normalized.source.kind, source: normalized.source,
-        title, topics: normalizeMaterialTopics(value.topics), references, locator: normalizeMaterialLocator(value.locator),
+        title, topics: normalizeMaterialTopics(value.topics), references, locator: normalizeMaterialLocator(value.locator, normalized.source),
         createdAt: timestamp(value.createdAt), updatedAt: timestamp(value.updatedAt), lastReadAt: timestamp(value.lastReadAt), archivedAt: value.archivedAt === null ? null : timestamp(value.archivedAt)};
 }

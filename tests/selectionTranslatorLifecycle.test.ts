@@ -3302,3 +3302,16 @@ describe('selection authentication settings action ownership and rendered entry'
         expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
     });
 });
+
+it('captures document materials through the owner adapter and keeps safe optional failure isolated', () => {
+    const saved = {source: {kind: 'document', fingerprint: 'a'.repeat(32)}, locator: {kind: 'document', page: 2}};
+    const captureMaterial = vi.fn(() => saved);
+    const fixture = mountSelection(false, {acceptsRange: () => true, captureMaterial});
+    const range = {} as Range;
+    expect(fixture.state.captureMaterialSafely(range, 'selected translation')).toBe(saved);
+    expect(captureMaterial).toHaveBeenCalledWith(range, 'selected translation');
+    expect(fixture.material.captureMaterialSelection).not.toHaveBeenCalled();
+    captureMaterial.mockImplementation(() => {throw new Error('document unmounted');});
+    expect(fixture.state.captureMaterialSafely(range, 'selected translation')).toBeUndefined();
+    expect(fixture.material.captureMaterialSelection).not.toHaveBeenCalled();
+});

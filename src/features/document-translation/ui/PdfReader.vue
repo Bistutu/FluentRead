@@ -129,16 +129,17 @@ import type {ParsedDocument, PdfDocumentPage} from '@/src/features/document-tran
 import {fitPdfBlockText, pdfOverlayBlocks, type PdfBlockFit, type PdfOverlayBlock} from '@/src/features/document-translation/core/pdfBlockFit';
 import {buildPdfReadingPlan, type PdfReadingPlan, type PdfReadingPresentation, type PdfReadingRegionEntry, type PdfReadingTextEntry} from '@/src/features/document-translation/core/pdfReadingPlan';
 import {sampledBackgroundRgb, sampledForegroundColor} from '@/src/features/document-translation/ui/pdfPreview';
-import {createPdfReaderRenderPort, pdfReaderPageKey, pdfReaderPageWindow, PdfReaderScheduler, type PdfReaderMode, type PdfReaderPageState} from '@/src/features/document-translation/ui/pdfReader';
+import {createPdfReaderRenderPort, pdfReaderDisplayRect, pdfReaderPageKey, pdfReaderPageWindow, PdfReaderScheduler, type PdfReaderMode, type PdfReaderPageState} from '@/src/features/document-translation/ui/pdfReader';
 import {installInformationHighlight, type InformationHighlightController} from '@/src/features/information-highlight/public';
 import {DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES, type InformationHighlightPreferences} from '@/src/core/config/informationHighlight';
 import type {InformationHighlightModelId} from '@/src/core/config/informationHighlightModel';
 import {matchesConfiguredHotkey} from '@/src/core/hotkey';
 import type {InformationHighlightResult, InformationHighlightState} from '@/src/features/information-highlight/protocol';
 import {installDocumentZoomGestures, type DocumentZoomPoint} from './documentZoom';
+import {captureVisiblePdfMaterialLocation, createPdfMaterialNavigation, resolvePdfMaterialSelection, waitPdfMaterialFrame, type PdfMaterialLocation} from './pdfMaterialNavigation';
 
 const props = withDefaults(defineProps<{document: ParsedDocument; translations?: readonly string[]; mode: PdfReaderMode; sourceUrl?: string; presentation?: PdfReadingPresentation; translating?: boolean; controlsTarget?: HTMLElement | null; outlineTarget?: HTMLElement | null; loadingStyle?: TranslationLoadingStyle; animated?: boolean; informationHighlight?: {preferences: InformationHighlightPreferences; scoreLocal(text: string, signal: AbortSignal, modelId?: InformationHighlightModelId): Promise<InformationHighlightResult>; available: boolean}}>(), {translations: () => [], sourceUrl: '', presentation: 'layout', translating: false, controlsTarget: null, outlineTarget: null, loadingStyle: DEFAULT_TRANSLATION_LOADING_STYLE, animated: true});
-const emit = defineEmits<{ 'update:presentation': [value: PdfReadingPresentation]; 'page-change': [page: number] }>();
+const emit = defineEmits<{ 'update:presentation': [value: PdfReadingPresentation]; 'page-change': [page: number]; 'material-position-change': [] }>();
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
 const PRESENTATIONS: PdfReadingPresentation[] = ['layout', 'readable'];
 const PAGE_GUTTER = 12;
@@ -538,6 +539,7 @@ let scheduler: PdfReaderScheduler | undefined;
 let observer: ResizeObserver | undefined;
 let animationFrame: number | undefined;
 let mounted = false;
+let materialRenderDocument = props.document;
 let closed = false;
 let nativePins: number[] = [];
 let cardPins: number[] = [];
@@ -769,12 +771,14 @@ function updateViewport(): void {
       key: pdfReaderPageKey(page, rasterScale.value, props.mode, presentation.value, regionEntries)};
   });
   lastReadingAnchor = captureReadingAnchor();
+  emit('material-position-change');
 }
 function scheduleViewport(): void {
   if (animationFrame !== undefined || closed) return;
   animationFrame = window.requestAnimationFrame(updateViewport);
 }
-function jumpTo(page: number): void {
+function jumpTo(page: number, restoringMaterial = false): void {
+  if (!restoringMaterial) materialNavigation.cancel();
   pendingReadingAnchor = lastReadingAnchor = undefined;
   readingUpdateGeneration += 1;
   const number = Math.max(1, Math.min(pages.value.length, Math.round(Number.isFinite(page) ? page : currentPage.value)));
@@ -785,15 +789,68 @@ function jumpTo(page: number): void {
 }
 let resumeRevision = 0;
 /** 等待首次 DOM 与页面高度提交，再淘汰此前排队的布局锚点；文档切换或后续请求取消旧恢复。 */
-async function resumePage(page: number): Promise<void> {
+async function resumePage(page: number, exactLocation = false): Promise<void> {
+  if (!exactLocation) materialNavigation.cancel();
   const revision = ++resumeRevision; const document = props.document;
   await nextTick();
   if (closed || !mounted || revision !== resumeRevision || document !== props.document) return;
   layoutUpdateGeneration += 1;
-  jumpTo(page);
+  jumpTo(page, true);
 }
-defineExpose({resumePage});
+/** 坐标属于当前已解析模型；每次落点都淘汰旧布局锚点，重排使用实际段落节点。 */
+function alignMaterialLocation(location: PdfMaterialLocation): {position: number; visible: boolean} | undefined {
+  const scroll = viewport.value; const layout = layouts.value.find(entry => entry.page.pageNumber === location.page.pageNumber);
+  if (!scroll || !layout) return;
+  layoutUpdateGeneration += 1; readingUpdateGeneration += 1;
+  pendingReadingAnchor = undefined; pendingZoomAnchor = undefined;
+  if (readable.value) {
+    const host = readingHosts.get(location.page.pageNumber);
+    const elements = host ? Array.from(host.querySelectorAll<HTMLElement>(`[data-pdf-segment-index="${location.segmentIndex}"]`)) : [];
+    if (elements.length !== 1 || elements[0].getAttribute('data-pdf-source-text') !== props.document.segments[location.segmentIndex]?.source) return;
+    const element = elements[0], bounds = scroll.getBoundingClientRect();
+    scroll.scrollTop = Math.max(0, scroll.scrollTop + element.getBoundingClientRect().top - bounds.top - PAGE_GUTTER * 2);
+    updateViewport();
+    const placed = element.getBoundingClientRect();
+    return {position: scroll.scrollTop, visible: placed.bottom > bounds.top && placed.top < bounds.top + scroll.clientHeight};
+  }
+  const rect = pdfReaderDisplayRect(location.block, location.page);
+  if (![rect.y, rect.height].every(Number.isFinite)) return;
+  scroll.scrollTop = Math.max(0, layout.top + rect.y * scale.value - PAGE_GUTTER * 2);
+  updateViewport();
+  const top = layout.top + rect.y * scale.value - scroll.scrollTop;
+  return {position: scroll.scrollTop, visible: top + rect.height * scale.value > 0 && top < scroll.clientHeight};
+}
+const materialNavigation = createPdfMaterialNavigation({
+  document: () => props.document,
+  active: () => mounted && !closed && materialRenderDocument === props.document,
+  mode: () => `${presentation.value}:${props.mode}`,
+  resumePage: page => resumePage(page, true), nextTick,
+  nextFrame: signal => waitPdfMaterialFrame(window, signal),
+  prepare: () => {if (readable.value) measureReadingHeights();},
+  align: alignMaterialLocation,
+  landed: location => {
+    if (!readable.value) return;
+    const element = readingHosts.get(location.page.pageNumber)?.querySelector<HTMLElement>(`[data-pdf-segment-index="${location.segmentIndex}"]`);
+    const id = element?.getAttribute('data-pdf-source-id');
+    if (id && element && viewport.value) lastReadingAnchor = {id, pageNumber: location.page.pageNumber, offset: element.getBoundingClientRect().top - viewport.value.getBoundingClientRect().top};
+  },
+});
+async function resumeLocation(segmentIndex: number): Promise<boolean> {return materialNavigation.resumeLocation(segmentIndex);}
+function resolveMaterialSelection(range: Range): number | undefined {
+  if (!mounted || closed || !viewport.value) return;
+  return resolvePdfMaterialSelection(range, {document: props.document, renderedDocument: materialRenderDocument, identity: documentIdentity.value, viewport: viewport.value, sourceHosts});
+}
+/** 与选区一样只返回当前模型索引；存储身份仍由文档组合根创建。 */
+function captureMaterialLocation(): number | undefined {
+  if (!mounted || closed || !viewport.value) return;
+  return captureVisiblePdfMaterialLocation({document: props.document, renderedDocument: materialRenderDocument, identity: documentIdentity.value,
+    viewport: viewport.value, sourceHosts, translatedHosts, readingHosts, mode: props.mode, readable: readable.value,
+    residentPages: residentLayouts.value.map(layout => layout.page),
+    readyPages: new Set(residentLayouts.value.filter(layout => states.value.get(layout.page.pageNumber)?.status === 'ready').map(layout => layout.page.pageNumber))});
+}
+defineExpose({resumePage, resumeLocation, resolveMaterialSelection, captureMaterialLocation});
 function jumpToPosition(pageIndex: number, y: number): void {
+  materialNavigation.cancel();
   const layout = layouts.value[pageIndex];
   if (!layout || !viewport.value) return;
   pendingReadingAnchor = lastReadingAnchor = undefined;
@@ -820,6 +877,7 @@ function handleViewportKey(event: KeyboardEvent): void {
 }
 function errorFor(pageNumber: number): string {const state = states.value.get(pageNumber); return state?.status === 'error' ? state.message : '';}
 function createScheduler(): void {
+  materialNavigation.cancel(); materialRenderDocument = props.document;
   bindZoomGestures();
   clearTimeout(rasterTimer); rasterTimer = undefined; rasterScale.value = scale.value;
   pendingZoomAnchor = undefined; zoomPoint = undefined;
@@ -904,6 +962,7 @@ onMounted(() => {
   }
 });
 onBeforeUnmount(() => {
+  materialNavigation.dispose();
   closed = true;
   fullPassageDialog.value?.close();
   disposeZoomGestures?.();

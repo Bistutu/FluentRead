@@ -119,7 +119,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(capture.input).toMatchObject({source: {kind: 'document', fingerprint: 'a'.repeat(32), title: 'same-title.txt'}, locator: {kind: 'document', page: 1, quote: 'Original learning paragraph'}, generation: 3});
         expect(capture.input.capturedAt).toEqual(expect.any(Number)); expect(state.documentMaterialId).toBe('document-material');
         expect(capture.input.reference).toBeUndefined();
-        expect(hostText(button!)).toBe('已加入学习材料'); expect(state.config.vocabularyBookEnabled).toBe(false); expect(state.config.harness.enabled).toBe(false);
+        expect(hostText(button!)).toBe('更新学习位置'); expect(state.config.vocabularyBookEnabled).toBe(false); expect(state.config.harness.enabled).toBe(false);
     });
     it.each(['off', 'private'])('independent material entry remains restricted when global context is %s', async mode => {
         if (mode === 'private') {
@@ -177,7 +177,12 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(state.docxPartIndex).toBe(2); expect(state.currentDocxPart.path).toBe('word/header1.xml'); expect(state.readerPage).toBe(2);
         state.parsedDocument = markRaw({...parsed, segments: parsed.segments.map((segment: any, index: number) => index === 0 ? {...segment, source: position.locator.quote} : segment)}); await flush();
         await state.restoreMaterialDocument('docx-section-material'); await state.applyMaterialResume(); await flush();
-        expect(state.docxPartIndex).toBe(1); expect(state.readerPage).toBe(2); expect(state.downloadNotice).toContain('原段落未匹配或不唯一');
+        expect(state.docxPartIndex).toBe(1); expect(state.readerPage).toBe(2); expect(state.downloadNotice).toBe('');
+        // 相同文字出现在另一原生位置不影响精确引用；真正原段落变化才保留待修复定位。
+        const originalIndex = parsed.binary.parts[1].paragraphSegments[80].segmentIndex;
+        state.parsedDocument = markRaw({...parsed, segments: parsed.segments.map((segment: any, index: number) => index === originalIndex ? {...segment, source: 'Reparsed original differs'} : segment)}); await flush();
+        await state.restoreMaterialDocument('docx-section-material'); await state.applyMaterialResume(); await flush();
+        expect(state.downloadNotice).toContain('原文位置已变化或无法唯一匹配');
     });
     it('material section mapping captures and restores the second EPUB chapter with its real segment offset', async () => {
         const bytes = new Uint8Array(readFileSync('examples/document-translation/sample.epub'));
@@ -207,8 +212,8 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
     });
     it('material resume ownership retains pending position when activation invalidates the early apply', async () => {
         await state.loadFiles([file('first.txt'), file('second.srt', Array.from({length: 81}, (_, index) => `${index + 1}\n00:00:01,000 --> 00:00:02,000\nCaption ${index + 1}.`).join('\n\n'))]); await flush();
-        state.documentQueue[0].historyId = 'first-fingerprint'; state.documentQueue[1].historyId = 'second-fingerprint';
-        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials' ? {success: true, data: {id: 'resume-second', kind: 'document', source: {kind: 'document', fingerprint: 'second-fingerprint'}, locator: {kind: 'document', page: 2}}} : undefined);
+        state.documentQueue[0].historyId = 'd'.repeat(32); state.documentQueue[1].historyId = 'e'.repeat(32);
+        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials' ? {success: true, data: {id: 'resume-second', kind: 'document', source: {kind: 'document', fingerprint: 'e'.repeat(32)}, locator: {kind: 'document', page: 2}}} : undefined);
         await state.restoreMaterialDocument('resume-second');
         state.selectDocument(state.documentQueue[1]);
         // 故意在 activeDocumentId 的 pre watcher 更新代次之前调用，复现生产历史恢复中的两次 apply。
@@ -217,8 +222,8 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
     });
     it('material resume ownership waits for the asynchronous PDF public ref before consuming the saved page', async () => {
         ports.pageCount = 3;
-        await state.loadFiles([file('async-reader.pdf')]); await flush(); state.documentQueue[0].historyId = 'async-pdf-fingerprint';
-        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials' ? {success: true, data: {id: 'async-reader-material', kind: 'document', source: {kind: 'document', fingerprint: 'async-pdf-fingerprint'}, locator: {kind: 'document', page: 2}}} : undefined);
+        await state.loadFiles([file('async-reader.pdf')]); await flush(); state.documentQueue[0].historyId = 'f'.repeat(32);
+        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials' ? {success: true, data: {id: 'async-reader-material', kind: 'document', source: {kind: 'document', fingerprint: 'f'.repeat(32)}, locator: {kind: 'document', page: 2}}} : undefined);
         // 生产公共出口 defineAsyncComponent 先挂占位节点；chunk 到达前不存在 resumePage。
         state.materialPdfReader = null;
         await state.restoreMaterialDocument('async-reader-material'); await state.applyMaterialResume(); await flush();
@@ -1497,4 +1502,68 @@ it('glossary gate document settings buttons open the modal and translate back to
     expect(text(status)).toContain('翻译完成');
     expect(ports.i18n).toHaveBeenCalledWith('document.translationProgress.count', {completed: 1, total: 1, percent: 100});
     expect(walk(root).find(entry => entry.props['data-testid'] === 'document-translation-progress')!.props['aria-valuenow']).toBe(100);
+});
+
+it('saves the reader current visible paragraph and preserves the saved target when the PDF layout becomes unavailable', async () => {
+    await state.loadFiles([file('visible-material.pdf')]); await flush();
+    state.documentQueue[0].historyId = 'a'.repeat(32);
+    const parsed = state.parsedDocument;
+    state.parsedDocument = markRaw({...parsed, segments: [...parsed.segments, {id: 1, source: '  Later Cafe\u0301\noriginal paragraph  '}], binary: {...parsed.binary, pages: [{...parsed.binary.pages[0], segmentIndexes: [0, 1], blocks: [...parsed.binary.pages[0].blocks, {...parsed.binary.pages[0].blocks[0], segmentIndex: 1, y: 300, lines: [{x: 5, y: 300, baseline: 310, width: 50, height: 12, text: '  Later Cafe\u0301\noriginal paragraph  '}]}]}]}});
+    await flush();
+    const captureMaterialLocation = vi.fn(() => 1), resumeLocation = vi.fn(async () => true);
+    state.materialPdfReader = {captureMaterialLocation, resolveMaterialSelection: () => 1, resumePage: async () => {}, resumeLocation};
+    let saved: any;
+    ports.sendMessage.mockImplementation(async (message: any) => {
+        if (message.type !== 'fluentReadMaterials') return;
+        if (message.action === 'generation') return {success: true, data: 3};
+        if (message.action === 'capture') {saved = {id: 'visible-material', kind: 'document', ...message.input}; return {success: true, data: saved};}
+        return {success: true, data: saved};
+    });
+    await state.saveDocumentMaterial();
+    expect(saved.locator.documentReference.locator.source).toBe('  Later Cafe\u0301\noriginal paragraph  ');
+    expect(saved.locator.documentReference.locator.position).toBe('[5,310]');
+    expect(saved.locator.documentReference.materialId).toBe('a'.repeat(32));
+    expect(state.captureDocumentMaterialSelection({} as Range, 'before public ref')).toBeUndefined();
+    state.materialPdfReader = {captureMaterialLocation, resolveMaterialSelection: () => 1, resumePage: async () => {}, resumeLocation};
+    const selected = state.captureDocumentMaterialSelection({} as Range, 'selected translated word');
+    expect(selected.locator.quote).toBe('selected translated word'); expect(selected.locator.documentReference.locator.source).toBe(saved.locator.documentReference.locator.source);
+    await state.restoreMaterialDocument(saved.id); await state.applyMaterialResume(); await flush();
+    state.materialPdfReader = {captureMaterialLocation, resolveMaterialSelection: () => 1, resumePage: async () => {}, resumeLocation}; await flush();
+    expect(resumeLocation).toHaveBeenCalledWith(1);
+    captureMaterialLocation.mockReturnValue(undefined as any); ports.sendMessage.mockClear();
+    await state.saveDocumentMaterial(); expect(state.downloadNotice).toContain('原阅读位置已保留');
+    expect(ports.sendMessage.mock.calls.some(([message]) => message.action === 'capture')).toBe(false);
+});
+
+it.each([
+    ['reader-controls-slot', 'onPointerdownCapture'],
+    ['sidebar-outline', 'onKeydownCapture'],
+])('resumed material accepts trusted navigation intent from external %s and records the new visible paragraph', async (containerClass, eventName) => {
+    ports.pageCount = 3; await state.loadFiles([file('navigation-material.pdf')]); await flush();
+    const fingerprint = 'a'.repeat(32); state.documentQueue[0].historyId = fingerprint;
+    const saved = {id: 'navigation-material', kind: 'document', source: {kind: 'document', fingerprint}, locator: {kind: 'document', page: 1}};
+    const captures: any[] = [];
+    ports.sendMessage.mockImplementation(async (message: any) => {
+        if (message.type !== 'fluentReadMaterials') return;
+        if (message.action === 'capture') {captures.push(message.input); return {success: true, data: saved};}
+        return {success: true, data: message.action === 'generation' ? 3 : saved};
+    });
+    let visibleSegment = 0;
+    const api = {resumePage: async (page: number) => {state.pdfPage = page;}, resumeLocation: async () => true,
+        captureMaterialLocation: () => visibleSegment, resolveMaterialSelection: () => visibleSegment};
+    await state.restoreMaterialDocument(saved.id); await flush(); state.materialPdfReader = api; await flush();
+    expect(state.documentMaterialId).toBe(saved.id);
+    const container = walkHost(root).find(entry => entry.props.class?.split?.(' ').includes(containerClass) && typeof entry.props[eventName] === 'function')!;
+    expect(container).toBeDefined();
+    vi.useFakeTimers();
+    try {
+        // 恢复和程序事件不会开启位置写回；执行真实 SFC 绑定，可信事件位由事件端口提供。
+        container.props[eventName]({isTrusted: false}); visibleSegment = 1; state.pdfPage = 2; await flush(); state.materialPdfReader = api;
+        state.queueMaterialPositionCapture(); await vi.advanceTimersByTimeAsync(1100); expect(captures).toHaveLength(0);
+        // 下一页/目录点击的 pointer 或键盘事件先到外部导航容器，再由阅读器通知新视口。
+        container.props[eventName]({isTrusted: true}); visibleSegment = 2; state.pdfPage = 3; await flush(); state.materialPdfReader = api;
+        state.queueMaterialPositionCapture(); await vi.advanceTimersByTimeAsync(1100);
+        expect(captures).toHaveLength(1); expect(captures[0].positionOnly).toBe(true);
+        expect(captures[0].locator.page).toBe(3); expect(captures[0].locator.documentReference.locator.scope).toBe('pdf:3');
+    } finally {vi.useRealTimers();}
 });

@@ -215,6 +215,7 @@ const props = defineProps<{
     normalizeText?: (text: string) => string;
     context?: (range: Range, text: string, limit: number) => {text: string; title: string; sourceUrl: string};
     captureReading?: (range: Range, text: string, limit: number) => ReadingSelection;
+    captureMaterial?: (range: Range, quote: string) => ReturnType<typeof captureMaterialSelection>;
     subscribeInvalidation?: (listener: () => void) => () => void;
   };
 }>();
@@ -1116,7 +1117,7 @@ function openReadingHistory(): void {
 /** 材料定位是附加信息；宿主 DOM 或失效选区的读取失败不能中断阅读与原有收藏。 */
 function captureMaterialSafely(range: Range, quote: string): ReturnType<typeof captureMaterialSelection> {
   if (isPrivateContext) return;
-  try { return captureMaterialSelection(range, quote); } catch { return; }
+  try { return props.selectionAdapter ? props.selectionAdapter.captureMaterial?.(range, quote) : captureMaterialSelection(range, quote); } catch { return; }
 }
 
 function openReadingCard(): void {
