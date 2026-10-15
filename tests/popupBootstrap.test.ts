@@ -1,8 +1,9 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {parseHTML} from 'linkedom';
 
 const ports = vi.hoisted(() => ({
     config: {uiLanguageSetupCompleted: false, uiLanguage: 'en-US', interfaceFont: 'system'},
-    ready: Promise.resolve() as Promise<void>,
+    ready: Promise.resolve() as Promise<void>, hydration: 'ready' as 'loading' | 'ready' | 'blocked',
     mainGate: undefined as Promise<void> | undefined, onboardingGate: undefined as Promise<void> | undefined,
     mainLoaded: vi.fn(), onboardingLoaded: vi.fn(), ensureBundle: vi.fn(async (_language: unknown) => {}), font: vi.fn(async (_font: unknown) => {}),
     createApp: vi.fn(), plugin: vi.fn(() => ({kind: 'i18n'})), use: vi.fn(), component: vi.fn(), mount: vi.fn(),
@@ -10,7 +11,7 @@ const ports = vi.hoisted(() => ({
 vi.mock('vue', () => ({createApp: ports.createApp}));
 vi.mock('element-plus/es/components/base/style/css', () => ({}));
 vi.mock('@element-plus/icons-vue', () => ({Coffee: {kind: 'coffee'}}));
-vi.mock('../src/services/config/store', () => ({config: ports.config, get configReady() {return ports.ready;}}));
+vi.mock('../src/services/config/store', () => ({config: ports.config, get configReady() {return ports.ready;}, getConfigHydrationStatus: () => ports.hydration}));
 vi.mock('../src/ui/i18n', () => ({createUiI18nPlugin: ports.plugin}));
 vi.mock('../src/platform/i18n/uiLanguageBundles', () => ({ensureUiLanguageBundle: ports.ensureBundle}));
 vi.mock('../src/ui/interfaceAppearance', () => ({prepareInterfaceFont: ports.font}));
@@ -18,10 +19,12 @@ function deferred() {let resolve!: () => void; const promise = new Promise<void>
 type Bootstrap = typeof import('../src/app/popup/mount');
 let bootstrap: Bootstrap;
 beforeEach(async () => {
-    vi.resetModules(); vi.clearAllMocks(); ports.ready = Promise.resolve(); ports.mainGate = undefined; ports.onboardingGate = undefined;
+    vi.resetModules(); vi.clearAllMocks(); ports.ready = Promise.resolve(); ports.hydration = 'ready'; ports.mainGate = undefined; ports.onboardingGate = undefined;
     Object.assign(ports.config, {uiLanguageSetupCompleted: false, uiLanguage: 'en-US', interfaceFont: 'system'});
     ports.font.mockReset().mockResolvedValue(undefined); ports.ensureBundle.mockReset().mockResolvedValue(undefined);
     ports.createApp.mockReturnValue({use: ports.use, component: ports.component, mount: ports.mount});
+    vi.stubGlobal('navigator', {language: 'zh-CN'});
+    vi.stubGlobal('window', new EventTarget());
     vi.stubGlobal('document', {body: {kind: 'owned-popup'}});
     vi.doMock('../src/app/popup/PopupApp.vue', async () => {ports.mainLoaded(); await ports.mainGate; return {default: {kind: 'main'}};});
     vi.doMock('../src/app/popup/PopupOnboarding.vue', async () => {ports.onboardingLoaded(); await ports.onboardingGate; return {default: {kind: 'onboarding'}};});
@@ -46,6 +49,45 @@ describe('Popup fresh configuration bootstrap', () => {
         expect(ports.plugin).toHaveBeenCalledWith({documentRoot: document.body, documentTitleKey: 'metadata.popupTitle'});
         expect(ports.use).toHaveBeenCalledWith({kind: 'i18n'}); expect(ports.component).toHaveBeenCalledWith('Coffee', {kind: 'coffee'});
         expect(ports.mount).toHaveBeenCalledWith('#owned');
+    });
+    it.each(['loading', 'blocked'] as const)('rejects resolved configuration with %s hydration before importing a root or preparing assets', async hydration => {
+        ports.hydration = hydration;
+        const remove = vi.spyOn(window, 'removeEventListener');
+        await expect(bootstrap.mountPreparedPopupApp('#owned')).rejects.toThrow('Popup configuration is not ready');
+        expect(ports.mainLoaded).not.toHaveBeenCalled(); expect(ports.onboardingLoaded).not.toHaveBeenCalled();
+        expect(ports.font).not.toHaveBeenCalled(); expect(ports.ensureBundle).not.toHaveBeenCalled(); expect(ports.createApp).not.toHaveBeenCalled();
+        expect(remove).toHaveBeenCalledWith('pagehide', expect.any(Function));
+    });
+    it.each(['main', 'onboarding', 'font', 'language'] as const)('rechecks blocked hydration after pending %s resources and cleans its exit listener', async resource => {
+        ports.config.uiLanguageSetupCompleted = resource !== 'onboarding';
+        const gate = deferred(), remove = vi.spyOn(window, 'removeEventListener');
+        if (resource === 'main') ports.mainGate = gate.promise;
+        if (resource === 'onboarding') ports.onboardingGate = gate.promise;
+        if (resource === 'font') ports.font.mockReturnValueOnce(gate.promise);
+        if (resource === 'language') ports.ensureBundle.mockReturnValueOnce(gate.promise);
+        const pending = bootstrap.mountPreparedPopupApp('#owned');
+        const outcome = expect(pending).rejects.toThrow('Popup configuration is not ready');
+        const called = resource === 'main' ? ports.mainLoaded : resource === 'onboarding' ? ports.onboardingLoaded : resource === 'font' ? ports.font : ports.ensureBundle;
+        await vi.waitFor(() => expect(called).toHaveBeenCalledOnce());
+        ports.hydration = 'blocked'; gate.resolve(); await outcome;
+        expect(ports.createApp).not.toHaveBeenCalled(); expect(remove).toHaveBeenCalledWith('pagehide', expect.any(Function));
+    });
+    it('routes blocked hydration through the actual startup error UI and its explicit reopen button', async () => {
+        const dom = parseHTML('<html><body><div id="owned">Original startup</div></body></html>');
+        vi.stubGlobal('document', dom.document);
+        const reload = vi.fn(); vi.stubGlobal('location', {reload}); ports.hydration = 'blocked';
+        const {mountPopupApp} = await import('../src/app/popup/index');
+        await mountPopupApp('#owned');
+        const root = dom.document.querySelector('#owned')!;
+        expect(root.textContent).toContain('暂时无法打开流畅阅读'); expect(root.textContent).toContain('偏好会保留');
+        expect(root.textContent).not.toMatch(/Popup configuration|Error|stack/);
+        expect(root.querySelectorAll('button')).toHaveLength(1); expect(ports.createApp).not.toHaveBeenCalled();
+        root.querySelector('button')!.dispatchEvent(new dom.window.Event('click')); expect(reload).toHaveBeenCalledOnce();
+        window.dispatchEvent(new Event('pagehide'));
+    });
+    it('preserves the no-window lifecycle boundary while mounting a genuinely ready configuration', async () => {
+        vi.stubGlobal('window', undefined);
+        await bootstrap.mountPreparedPopupApp('#owned'); expect(ports.createApp).toHaveBeenCalledWith({kind: 'onboarding'});
     });
     it('prepares the selected language and font before mounting the main root', async () => {
         ports.config.uiLanguageSetupCompleted = true; const gate = deferred(); ports.ensureBundle.mockReturnValueOnce(gate.promise);
@@ -100,7 +142,7 @@ describe('Popup fresh configuration bootstrap', () => {
         const target = new EventTarget(); vi.stubGlobal('window', target); const remove = vi.spyOn(target, 'removeEventListener');
         const gate = deferred(); ports.font.mockReturnValueOnce(gate.promise);
         const pending = bootstrap.mountPreparedPopupApp('#owned'); await vi.waitFor(() => expect(ports.font).toHaveBeenCalledOnce());
-        target.dispatchEvent(new Event('pagehide')); gate.resolve(); await pending;
+        target.dispatchEvent(new Event('pagehide')); ports.hydration = 'blocked'; gate.resolve(); await pending;
         expect(ports.createApp).not.toHaveBeenCalled(); expect(remove).toHaveBeenCalledWith('pagehide', expect.any(Function));
     });
     it('does not create an app when configuration hydration fails', async () => {

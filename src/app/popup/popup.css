@@ -713,3 +713,12 @@ footer button { font-weight: 500; color: var(--muted); }
 :root .popup-shell[data-interface-skin] .site-rule-row[data-popup-module="siteRule"] {
   min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
 }
+
+/* 首次操作与真实完成提示紧邻主操作，保持正文与主要功能可见。 */
+.first-use-hint { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.translation-meta { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; min-width: 0; }
+:root .popup-shell[data-interface-skin] .translation-meta > .site-rule-row[data-popup-module="siteRule"] { flex: 1; min-width: 0; margin-top: 0; }
+
+.popup-startup-recovery { padding: 20px; color: var(--ink); font-size: 12px; line-height: 1.6; }
+.popup-startup-recovery p { color: var(--muted); }
+.popup-startup-recovery button { padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }

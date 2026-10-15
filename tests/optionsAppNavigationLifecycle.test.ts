@@ -692,7 +692,8 @@ function compileClientOptions(browser: ClientBrowser): string {
   clientCompilations.set(browser, {source, code});
   return code;
 }
-async function mountClientOptions(requestedSection: string, browser: 'userscript' | 'chrome' | 'firefox', about?: AboutClientFixture) {
+type ClientRouteFixture = {target: string; internal?: boolean; initialSection?: string};
+async function mountClientOptions(requestedSection: string, browser: 'userscript' | 'chrome' | 'firefox', about?: AboutClientFixture, route?: ClientRouteFixture) {
   const scope = current!;
   if (!owns(scope)) throw inactive();
   if (!scope.server) await prepareFixture(scope, createFixtureServer, false);
@@ -724,7 +725,9 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
   for (const key of ['window', 'document', 'Node', 'Element', 'HTMLElement', 'SVGElement', 'Event'])
     vi.stubGlobal(key, key === 'window' ? window : window[key as keyof typeof window]);
   const prefix = '#fluentread-userscript-settings';
-  const location = {hash: `${prefix}/${requestedSection}`, search: '', href: `https://fixture.test/article${prefix}/${requestedSection}`};
+  const routeSearch=route ? '?target='+encodeURIComponent(route.target) : '';
+  const location = {hash: `${prefix}/${requestedSection}`, search: routeSearch, href: `https://fixture.test/article${routeSearch}${prefix}/${requestedSection}`};
+  const targetQueries: string[] = [], highlightedPanels: string[] = [];
   const historyPort = {replaceState: vi.fn((_state: unknown, _title: string, target: string | URL) => {location.hash = String(target);location.href = `https://fixture.test/article${location.hash}`;})};
   Object.assign(window, {location, history: historyPort, matchMedia: () => ({matches: false, addEventListener() {}, removeEventListener() {}}),
     setTimeout, clearTimeout, scrollTo: vi.fn()});
@@ -733,15 +736,16 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
   const frames = new Map<number, FrameRequestCallback>();let sequence = 0;
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {frames.set(++sequence, callback);return sequence;});
   vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
-  vi.stubGlobal('MutationObserver', class {observe() {} disconnect() {}});
+  const mutationCallbacks=new Set<()=>void>();
+  vi.stubGlobal('MutationObserver', class {callback:()=>void;constructor(callback:()=>void){this.callback=callback;mutationCallbacks.add(callback);}observe() {} disconnect() {mutationCallbacks.delete(this.callback);}});
   vi.stubGlobal('ResizeObserver', class {observe() {} disconnect() {}});
   const language = runtime.ref<UiLanguage>('zh-CN');
   const i18n = {language, t: (key: string, params?: TranslationParams) => core.translate(key, language.value, params), translateLegacy: (text: string) => core.translateLegacyText(text, language.value)};
   const config = {interfaceSkin: 'default'}, unsubscribe = vi.fn(), loads = {settings: vi.fn(), learning: vi.fn()};
   const errors: unknown[] = [];
   const display = runtime.defineComponent({setup: () => () => runtime.h('span')});
-  const anchorPort = runtime.defineComponent({setup(_props, {expose}) {expose({cancelPendingAnchor() {}});return () => runtime.h('span');}});
-  const settingsPort = runtime.defineComponent({name: 'SettingsDisplayPort', props: ['activeSection'], setup: props => () => runtime.h('section', {'data-settings-child': 'settings', 'data-active-section': props.activeSection}, props.activeSection)});
+  const anchorPort = runtime.defineComponent({setup(_props, {expose}) {expose({cancelPendingAnchor() {}, highlightAnchor(panel: string) {highlightedPanels.push(panel);}});return () => runtime.h('span');}});
+  const settingsPort = runtime.defineComponent({name: 'SettingsDisplayPort', props: ['activeSection'], setup: props => () => runtime.h('section', {'data-settings-child': 'settings', 'data-active-section': props.activeSection}, route ? (navigation.settingsPagePanels[props.activeSection] || []).map((panel: {id: string; targetIds: string[]}) => runtime.h('div', {class:'settings-page-panel', 'data-settings-panel':panel.id}, panel.targetIds.map(id=>runtime.h('div',{id},id)))) : props.activeSection)});
   const learningPort = runtime.defineComponent({name: 'LearningDisplayPort', setup: () => () => runtime.h('section', {'data-settings-child': 'learning'}, 'Saved display port')});
   const module = {exports: {} as {default: import('vue').Component}};
   const code = compileClientOptions(browser);
@@ -762,7 +766,7 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
   }, module.exports, module);
   const renderer = runtime.createRenderer<Node, Element>({
     // Native DOM nodes are non-reactive; preserve that identity for LinkeDOM refs too.
-    createElement: tag => runtime.markRaw(document.createElement(tag)), createText: text => runtime.markRaw(document.createTextNode(text)), createComment: text => runtime.markRaw(document.createComment(text)),
+    createElement: tag => {const element=runtime.markRaw(document.createElement(tag));if(route){element.getClientRects=()=>[{}] as unknown as DOMRectList;element.getBoundingClientRect=()=>({top:element.classList.contains('settings-card')?30:530-(element.closest('.settings-card')?.scrollTop||0),height:240} as DOMRect);Object.defineProperty(element,'clientHeight',{configurable:true,value:600});element.scrollTop=0;element.scrollTo=vi.fn((options?: ScrollToOptions | number)=>{element.scrollTop=typeof options==='number'?options:options?.top||0;});const queryAll=element.querySelectorAll.bind(element);element.querySelectorAll=((selector:string)=>{if(element.classList.contains('settings-card'))targetQueries.push(selector);return queryAll(selector);}) as typeof element.querySelectorAll;}return element;}, createText: text => runtime.markRaw(document.createTextNode(text)), createComment: text => runtime.markRaw(document.createComment(text)),
     insert: (node, parent, anchor) => parent.insertBefore(node, anchor ?? null), remove: node => node.parentNode?.removeChild(node),
     setText: (node, value) => {node.nodeValue = value;}, setElementText: (element, value) => {element.textContent = value;},
     parentNode: node => node.parentNode as Element | null, nextSibling: node => node.nextSibling,
@@ -786,7 +790,7 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
     },
   });
   const host = document.createElement('div');document.body.appendChild(host);
-  const app = renderer.createApp(module.exports.default, {settingsHashPrefix: browser === 'userscript' ? prefix : undefined});
+  const app = renderer.createApp(module.exports.default, {settingsHashPrefix: browser === 'userscript' ? prefix : undefined,...(route?.internal?{locationRouting:'internal',initialSection:route.initialSection}: {})});
   if (browser !== 'userscript') location.hash = `#${requestedSection}`;
   app.component('ElDialog', about ? runtime.defineComponent({
     props: {modelValue: Boolean}, emits: ['update:modelValue', 'closed'],
@@ -810,6 +814,7 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
   app.mount(host);mounted = true;
   const settle = async () => {for (let i = 0; i < 10; i++) {await Promise.resolve();await runtime.nextTick();}};
   await settle();
+  if(route){for(const callback of [...mutationCallbacks])callback();await settle();}
   const rail = (section: string) => host.querySelector<HTMLButtonElement>(`button[data-section="${section}"]`)!;
   const choose = async (section: string) => {rail(section).click();await settle();};
   const navigateHash = async (section: string) => {location.hash = browser === 'userscript' ? `${prefix}/${section}` : `#${section}`;window.dispatchEvent(new window.Event('hashchange'));await settle();};
@@ -822,11 +827,44 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
       width: image.getAttribute('width'), height: image.getAttribute('height')};
   };
   const notifyDialogClosed = () => {if (!dialogNotifications.closed) throw new Error('Dialog display port is not mounted');dialogNotifications.closed();};
-  return {host, loads, errors, language, t: i18n.t, location, prefix, unsubscribe, settle, rail, choose, navigateHash,
+  return {host, loads, errors, language, t: i18n.t, location, prefix, unsubscribe, settle, rail, choose, navigateHash, targetQueries, highlightedPanels,
     images, previewState, notifyDialogClosed, dialogSlotEvaluations: () => dialogSlotRuns,
     hostDocumentState, initialHostDocumentState, dispose: () => scope.unmount?.(),
     search: host.querySelector<HTMLInputElement>('input[type="search"]')!};
 }
+
+describe('OptionsApp actual client URL targets', () => {
+  it.each([['settings-sites','adaptation'],['settings-sites','preview'],['settings-interface','font']])('accepts only a registered panel in current section %s/%s',async(section,panel)=>{
+    const mounted=await mountClientOptions(section,'chrome',undefined,{target:panel});
+    expect(mounted.host.querySelector('[data-settings-child]')?.getAttribute('data-active-section')).toBe(section);
+    expect(mounted.targetQueries).toContain(`[data-settings-panel="${panel}"]`);
+    expect(mounted.highlightedPanels).toContain(panel);expect(mounted.errors).toEqual([]);
+    const content=mounted.host.querySelector<HTMLElement>('.settings-card')!;
+    expect(content.scrollTop).toBeGreaterThan(0);expect(mounted.location.search).toBe('?target='+encodeURIComponent(panel));
+  });
+  it('keeps a concrete registered search destination ahead of the panel fallback',async()=>{
+    const mounted=await mountClientOptions('settings-translation','chrome',undefined,{target:'floating-ball-settings'});
+    expect(mounted.targetQueries).toContain('#floating-ball-settings');
+    expect(mounted.targetQueries).not.toContain('[data-settings-panel="floating-ball-settings"]');
+    expect(mounted.highlightedPanels).toContain('floating-ball');expect(mounted.errors).toEqual([]);
+  });
+  it.each(['font','floating-ball-settings','body','adaptation"] [data-private="x','__proto__'])('rejects cross-section or unregistered target %s without submitting it as CSS',async target=>{
+    const mounted=await mountClientOptions('settings-sites','chrome',undefined,{target});
+    expect(mounted.host.querySelector('[data-settings-child]')?.getAttribute('data-active-section')).toBe('settings-sites');
+    expect(mounted.targetQueries).toEqual([]);expect(mounted.highlightedPanels).toEqual([]);
+    expect(mounted.host.querySelector<HTMLElement>('.settings-card')!.scrollTop).toBe(0);expect(mounted.errors).toEqual([]);
+  });
+  it('keeps a capability-hidden panel unavailable to a userscript URL target',async()=>{
+    const mounted=await mountClientOptions('settings-translation','userscript',undefined,{target:'information-highlight'});
+    expect(mounted.targetQueries).toEqual([]);expect(mounted.highlightedPanels).toEqual([]);expect(mounted.errors).toEqual([]);
+  });
+  it('leaves an internal mount on its own initial section regardless of host URL section/target',async()=>{
+    const mounted=await mountClientOptions('settings-sites','chrome',undefined,{target:'adaptation',internal:true,initialSection:'settings-general'});
+    expect(mounted.host.querySelector('[data-settings-child]')?.getAttribute('data-active-section')).toBe('settings-general');
+    expect(mounted.targetQueries).toEqual([]);expect(mounted.highlightedPanels).toEqual([]);
+    expect(mounted.location.hash).toBe('#settings-sites');expect(mounted.location.search).toBe('?target=adaptation');expect(mounted.errors).toEqual([]);
+  });
+});
 
 describe('OptionsApp actual client standalone capability navigation', () => {
   it.each([

@@ -1,4 +1,5 @@
 import {createRequire} from 'node:module'
+import {parseHTML} from 'linkedom'
 import {dirname, resolve} from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import {compileVueInlineFixture} from './helpers/compiledVueFixture'
@@ -7,9 +8,11 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation'
 import {defaultOption, options} from '@/src/core/config/catalog'
+import {diagnoseFailure, getDiagnosticText, getDiagnosticActionLabel} from '@/src/services/diagnostics'
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
 const key = '__frServiceConfigurationLifecycle'
+const uiLanguage = runtime.ref('zh-CN')
 let server: ViteDevServer, app: import('vue').App, state: Record<string, any>
 let props: {config: Config; service: string; active: boolean; selectedModelThinking: boolean; compute: Record<string, any>;
   options: typeof options; isValidAzureEndpoint: (value: string) => boolean; customProvider?: {id: string; name: string; endpoint: string; models: string[]}}
@@ -37,11 +40,11 @@ async function acceptAction(index = 0) {
   await settle()
 }
 beforeEach(async () => {
-  vi.clearAllMocks();subscriptions.length = 0;releases.length = 0;jobs.length = 0;confirmations.length = 0
+  uiLanguage.value = 'zh-CN';vi.clearAllMocks();subscriptions.length = 0;releases.length = 0;jobs.length = 0;confirmations.length = 0
   queue.mockResolvedValue(undefined);save.mockResolvedValue(undefined);read.mockResolvedValue(null);clear.mockResolvedValue(undefined)
   send.mockResolvedValue({success: true, durationMs: 25});prepare.mockResolvedValue({sourceLanguage: 'en', targetLanguage: 'zh'})
   confirm.mockImplementation(() => {const item = pending();confirmations.push(item);return item.promise})
-  Object.assign(globalThis, {[key]: {send, save, queue, read, clear, prepare, confirm, feedback, subscriptions}})
+  Object.assign(globalThis, {[key]: {send, save, queue, read, clear, prepare, confirm, feedback, subscriptions, uiLanguage}})
   const mocks: Plugin = {name: 'service-configuration-ports', enforce: 'pre', resolveId(id) {
     if (id.endsWith('.vue') && !id.endsWith('ServiceConfiguration.vue')) return '\0service-child'
     if (id === 'webextension-polyfill') return '\0service-browser'
@@ -58,7 +61,7 @@ beforeEach(async () => {
     if (id === '\0service-browser') return `export default {runtime: {sendMessage: globalThis.${key}.send}}`
     if (id === '\0service-config') return `export const {queue: waitForConfigPersistenceQueue, save: requestConfigSave} = globalThis.${key}`
     if (id === '\0service-element') return `export const ElMessage = {success: globalThis.${key}.feedback};export const ElMessageBox = {confirm: globalThis.${key}.confirm};export const ElTabs = {}, ElTabPane = {}`
-    if (id === '\0service-i18n') return "import {ref} from 'vue';export const useUiI18n = () => ({language: ref('zh-CN'), t: key => key, translateLegacy: text => text})"
+    if (id === '\0service-i18n') return `export const useUiI18n = () => ({language: globalThis.${key}.uiLanguage, t: key => key, translateLegacy: text => text})`
     if (id === '\0service-chrome-store') return `export const chromeTranslationPreparationStore = {get: globalThis.${key}.read, clear: globalThis.${key}.clear, subscribe: callback => {
       const item = {callback, stopped: false};globalThis.${key}.subscriptions.push(item);return () => {item.stopped = true}}}`
     if (id === '\0service-chrome-preparation') return `export class ChromeTranslationPreparationError extends Error {constructor(code, message, params) {super(message);this.code = code;this.params = params}}
@@ -188,14 +191,124 @@ describe('实际服务连接配置的活跃生命周期与确认归属', () => {
     expect(messages()).toHaveLength(phase === 'response' ? 1 : 0)
     await vi.advanceTimersByTimeAsync(1);await settle();expect(ended).toBe(true)
     expect(state.connectionTestBusy).toBe(false);expect(state.connectionTestState).toBe('error');expect(vi.getTimerCount()).toBe(0)
-    expect(state.apiKeyChecks[0]).toMatchObject({status: 'error', error: phase === 'response'
-      ? 'settings.services.keys.responseTimeout' : 'settings.services.keys.configTimeout'})
+    expect(state.connectionTestDiagnostic.code).toBe(phase === 'response' ? 'timeout' : 'configuration-save')
+    expect(state.apiKeyChecks[0]).toMatchObject({status: 'error', error: getDiagnosticText(state.connectionTestDiagnostic).title})
     delayed.resolve({success: true});await job;await settle()
     expect(state.connectionTestState).toBe('error');expect(state.apiKeyChecks[0].status).toBe('error');expect(vi.getTimerCount()).toBe(0)
     await check(true);await settle()
     expect(state.connectionTestState).toBe('success');expect(state.connectionTestBusy).toBe(false)
     expect(state.apiKeyChecks[0]).toMatchObject({status: 'success', durationMs: 25})
     expect(messages()).toHaveLength(phase === 'response' ? 2 : 1);expect(vi.getTimerCount()).toBe(0)
+  })
+  it.each([
+    ['401 invalid_api_key request-body-secret https://private.example/path?token=fixture', 'authentication'],
+    ['429 rate limit account-secret', 'rate-limit'],
+    ['model not found: confidential-model', 'model-configuration'],
+    ['Failed to fetch https://private.example/private-document', 'network'],
+  ])('密钥失败按真实原因 %s 展示安全分类，重试保留服务与已有字段', async (error, code) => {
+    const before = JSON.stringify(props.config)
+    send.mockResolvedValueOnce({success: false, error})
+    await check(true)
+    expect(state.connectionTestDiagnostic.code).toBe(code)
+    expect(state.apiKeyChecks[0].error).toBe(getDiagnosticText(state.connectionTestDiagnostic).title)
+    expect(JSON.stringify([state.apiKeyChecks, state.connectionTestMessage, state.connectionTestDiagnostic])).not.toContain('secret')
+    expect(JSON.stringify([state.apiKeyChecks, state.connectionTestMessage, state.connectionTestDiagnostic])).not.toContain('private.example')
+    await check(true)
+    expect(state.connectionTestState).toBe('success');expect(state.connectionTestDiagnostic).toBeNull()
+    expect(JSON.stringify(props.config)).toBe(before);expect(props.service).toBe('deepseek')
+  })
+  it('供应商要求冷却时仅禁用手动重试、不安排自动请求，离开服务释放计时器', async () => {
+    vi.useFakeTimers()
+    send.mockResolvedValueOnce({success: false, error: 'private-secret', diagnostic: {...diagnoseFailure({kind: 'rate-limit', retryAfterMs: 1200}), titleKey: 'private-secret', actions: ['refresh']}})
+    await check(true);expect(state.connectionTestDiagnostic.code).toBe('rate-limit');expect(state.connectionRetryWaiting).toBe(true)
+    expect(state.connectionTestDisabled).toBe(true);await check(true);await check();expect(messages()).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(1200);await settle();expect(state.connectionRetryWaiting).toBe(false);expect(messages()).toHaveLength(1)
+    await check(true);expect(messages()).toHaveLength(2);expect(state.connectionTestState).toBe('success')
+    send.mockRejectedValueOnce(Object.assign(new Error('429'), {retryAfterMs: 1200}));await check(true)
+    props.service = 'openai';await settle();expect(state.connectionTestDiagnostic).toBeNull();expect(state.connectionRetryWaiting).toBe(false);expect(vi.getTimerCount()).toBe(0)
+  })
+  it('超出 32 位的 Retry-After 分段等待完整截止时间，切换或取消会清理后续唤醒', async () => {
+    vi.useFakeTimers();const maximumSegment = 2_147_483_647, cooldown = maximumSegment + 1200
+    send.mockResolvedValueOnce({success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: cooldown})})
+    await check(true);expect(state.connectionRetryWaiting).toBe(true);expect(vi.getTimerCount()).toBe(1)
+    await vi.advanceTimersByTimeAsync(1);await settle();expect(state.connectionRetryWaiting).toBe(true)
+    await check(true);expect(messages()).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(maximumSegment - 1);await settle()
+    expect(state.connectionRetryWaiting).toBe(true);expect(vi.getTimerCount()).toBe(1)
+    await vi.advanceTimersByTimeAsync(1199);await settle();expect(state.connectionRetryWaiting).toBe(true)
+    await vi.advanceTimersByTimeAsync(1);await settle();expect(state.connectionRetryWaiting).toBe(false);expect(vi.getTimerCount()).toBe(0)
+    expect(messages()).toHaveLength(1);await check(true);expect(messages()).toHaveLength(2)
+    send.mockResolvedValueOnce({success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: cooldown})})
+    await check(true);state.stopApiKeyChecks();expect(vi.getTimerCount()).toBe(0);expect(state.connectionRetryWaiting).toBe(false)
+    send.mockResolvedValueOnce({success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: cooldown})})
+    await check(true);props.service = 'google';await settle();expect(vi.getTimerCount()).toBe(0);expect(state.connectionRetryWaiting).toBe(false)
+    props.service = 'deepseek';await settle()
+    send.mockResolvedValueOnce({success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: cooldown})})
+    await check(true);app.unmount();expect(vi.getTimerCount()).toBe(0);expect(state.connectionRetryWaiting).toBe(false)
+  })
+  it('免费供应商超长 Retry-After 直接核对截止时间，32 位边界前后都不会提前请求', async () => {
+    vi.useFakeTimers();const maximumSegment = 2_147_483_647, cooldown = maximumSegment + 1200
+    props.service = 'freeTranslation';props.compute.showToken = false;await settle()
+    send.mockImplementation(async message => message.freeProviderId === 'microsoft'
+      ? {success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: cooldown})}
+      : {success: true, durationMs: 1})
+    await check();expect(state.connectionRetryWaiting).toBe(false)
+    await vi.advanceTimersByTimeAsync(maximumSegment);send.mockClear();await check()
+    expect(messages().some(([message]) => message.freeProviderId === 'microsoft')).toBe(false)
+    await vi.advanceTimersByTimeAsync(1199);send.mockClear();await check()
+    expect(messages().some(([message]) => message.freeProviderId === 'microsoft')).toBe(false)
+    await vi.advanceTimersByTimeAsync(1);send.mockClear();await check()
+    expect(messages().some(([message]) => message.freeProviderId === 'microsoft')).toBe(true)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+  it('配置保存失败不请求供应商，安全解释并允许用户手动重试', async () => {
+    save.mockRejectedValueOnce(new Error('storage denied apiKey=fixture-private-secret'))
+    await check(true);expect(messages()).toHaveLength(0)
+    expect(state.connectionTestDiagnostic.code).toBe('configuration-save')
+    expect(state.connectionTestMessage).not.toContain('fixture-private-secret')
+    await check(true);expect(messages()).toHaveLength(1);expect(state.connectionTestState).toBe('success')
+  })
+  it('免费目录的逐路错误与普通无 Key 服务都只保留安全分类', async () => {
+    props.service = 'freeTranslation';props.compute.showToken = false;await settle()
+    send.mockResolvedValue({success: false, error: '401 api key expired https://private.example?token=private-secret'})
+    await check()
+    expect(state.connectionTestDiagnostic.code).toBe('authentication')
+    for (const result of Object.values(state.freeProviderChecks) as {error: string}[]) expect(result.error).toBe(getDiagnosticText({code: 'authentication'}).title)
+    expect(JSON.stringify(state.freeProviderChecks)).not.toContain('private-secret')
+    props.service = 'google';await settle();await check()
+    expect(state.connectionTestMessage).toBe(getDiagnosticText({code: 'authentication'}).title)
+  })
+  it('免费目录中单路限流独立冷却，健康的启用服务不会被展示为整体故障或阻塞手动检查', async () => {
+    vi.useFakeTimers();props.service = 'freeTranslation';props.compute.showToken = false;props.config.freeTranslationOrder = ['google'];await settle()
+    send.mockImplementation(async message => message.freeProviderId === 'microsoft'
+      ? {success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: 1200})}
+      : {success: true, durationMs: 10})
+    await check();expect(state.connectionTestDiagnostic).toBeNull();expect(state.connectionRetryWaiting).toBe(false);expect(state.connectionTestDisabled).toBe(false)
+    expect(state.freeProviderChecks.microsoft.status).toBe('error');expect(state.freeProviderChecks.google.status).toBe('success')
+    send.mockClear();await check()
+    expect(messages().some(([message]) => message.freeProviderId === 'microsoft')).toBe(false)
+    expect(messages().some(([message]) => message.freeProviderId === 'google')).toBe(true)
+    expect(state.connectionTestDiagnostic).toBeNull();expect(props.config.freeTranslationOrder).toEqual(['google'])
+    await vi.advanceTimersByTimeAsync(1200);send.mockClear();await check()
+    expect(messages().some(([message]) => message.freeProviderId === 'microsoft')).toBe(true)
+  })
+  it('普通无 Key 服务检查可手动停止，迟到供应商结果不能重新打开失败状态', async () => {
+    props.service = 'google';props.compute.showToken = false;await settle()
+    const delayed = pending();send.mockReturnValueOnce(delayed.promise)
+    const job = check();await settle();expect(state.connectionTestBusy).toBe(true);expect(state.connectionTestDisabled).toBe(false)
+    state.stopApiKeyChecks();await settle();expect(state.connectionTestBusy).toBe(false);expect(state.connectionTestState).toBe('idle')
+    delayed.resolve({success: false, error: '401 private-secret'});await job
+    expect(state.connectionTestState).toBe('idle');expect(state.connectionTestDiagnostic).toBeNull()
+  })
+  it('修复入口只在当前活跃诊断定位字段，模型错误定位实际模型选择器', async () => {
+    const focus = vi.fn(), scrollIntoView = vi.fn(), modelFocus = vi.fn()
+    const field = {focus, scrollIntoView}, model = {focus: modelFocus, scrollIntoView}
+    state.configurationRoot = {querySelector: () => field, closest: () => ({querySelector: () => model})}
+    send.mockResolvedValueOnce({success: false, error: '401 invalid key'});await check(true)
+    state.focusConnectionConfiguration();expect(focus).toHaveBeenCalledWith({preventScroll: true})
+    send.mockResolvedValueOnce({success: false, error: 'model not found'});await check(true)
+    state.focusConnectionConfiguration();expect(modelFocus).toHaveBeenCalledOnce()
+    props.active = false;await settle();state.focusConnectionConfiguration();expect(modelFocus).toHaveBeenCalledOnce()
   })
   it('非法或已经不存在的密钥行不写配置、重置检查或发出请求', async () => {
     const before = JSON.stringify(props.config)
@@ -253,7 +366,9 @@ type ServiceClientNode = {tag: string; props: Record<string, unknown>; parent?: 
   style: Record<string, unknown>; value?: unknown; addEventListener: () => void; removeEventListener: () => void}
 type LocalModule = {__esModule: true; default: import('vue').Component}
 type LocalPropsSnapshot = {config: Config; context: unknown; service: string; active: boolean}
-async function mountServiceClient(initialService = 'freeTranslation', development = false) {
+type RepairFixture = {href?: string; disabled?: boolean; initialNavigation?: boolean;
+  beforeSettle?: (fixture: {source: any; shown: import('vue').Ref<boolean>; stop: () => void; document: Document}) => void}
+async function mountServiceClient(initialService = 'freeTranslation', development = false, repair?: RepairFixture) {
   vi.useFakeTimers()
   const filename = resolve('src/features/settings/ui/services/ServiceConfiguration.vue')
   const compiled = compileVueInlineFixture(filename, {id: 'service-configuration-client'})
@@ -297,6 +412,26 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
     const resolved = id.startsWith('.') ? resolve(dirname(filename), id) : id
     dependencies.set(id, await server.ssrLoadModule(resolved))
   }
+  let repairDocument: Document | undefined, focusElement: Element | ServiceClientNode | null, fallbackHeading: HTMLElement | undefined
+  if (repair) {
+    const parsed = parseHTML('<html><body><button data-section="settings-services" aria-current="page">Services</button><input><h4 tabindex="-1">Current service</h4></body></html>')
+    repairDocument = parsed.document;focusElement = repair.initialNavigation ? repairDocument.querySelector('[data-section]') : repairDocument.body
+    Object.defineProperty(repairDocument, 'activeElement', {get: () => focusElement, configurable: true})
+    Object.defineProperty(repairDocument, 'visibilityState', {value: 'visible', writable: true})
+    fallbackHeading = repairDocument.querySelector<HTMLElement>('h4')!
+    fallbackHeading.getClientRects = () => [1] as unknown as DOMRectList
+    fallbackHeading.focus = vi.fn(() => {focusElement = fallbackHeading!;repairDocument!.dispatchEvent(new parsed.window.Event('focusin'))})
+    vi.stubGlobal('document', repairDocument);vi.stubGlobal('location', {href: repair.href || 'chrome-extension://fixture/options.html?returnTabId=7&service=freeTranslation'})
+    const returned = compileVueInlineFixture('src/features/settings/ui/services/ServiceRepairReturn.vue', {id: 'service-return-parent-focus'})
+    const childModule = {exports: {} as {default: import('vue').Component}}
+    const childDependencies: Record<string, unknown> = {'vue': runtime,
+      'webextension-polyfill': await server.ssrLoadModule('\0service-browser'), '@/src/ui/i18n': await server.ssrLoadModule('\0service-i18n'),
+      '@/src/services/diagnostics': await server.ssrLoadModule(resolve('src/services/diagnostics/index.ts')),
+      '../../model/useSettingsActionContext': await server.ssrLoadModule(resolve('src/features/settings/model/useSettingsActionContext.ts')),
+      './serviceRepairFocus': await server.ssrLoadModule(resolve('src/features/settings/ui/services/serviceRepairFocus.ts'))}
+    new Function('require', 'exports', 'module', returned.code)((id: string) => childDependencies[id], childModule.exports, childModule)
+    dependencies.set('./ServiceRepairReturn.vue', {default: childModule.exports.default})
+  }
   const module = {exports: {} as {default: import('vue').Component}}
   new Function('require', 'exports', 'module', compiled.code)((id: string) => {
     if (id === '../LocalTranslationModelSettings.vue') return requestLocal()
@@ -305,7 +440,14 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
     return dependencies.get(id)
   }, module.exports, module)
   evaluating = false
-  function node(tag: string): ServiceClientNode {return {tag, props: {}, children: [], style: {}, addEventListener: () => {}, removeEventListener: () => {}}}
+  function node(tag: string): ServiceClientNode {
+    const result = {tag, props: {}, children: [], style: {}, addEventListener: () => {}, removeEventListener: () => {}} as ServiceClientNode
+    if (repairDocument) Object.assign(result, {focus: vi.fn(() => {focusElement = result;repairDocument!.dispatchEvent(new (repairDocument!.defaultView as any).Event('focusin'))}),
+      getClientRects: () => [1], getAttribute: (key: string) => result.props[key] ?? null,
+      closest: () => ({querySelector: () => fallbackHeading})})
+    if (repairDocument) Object.defineProperties(result, {disabled: {get: () => result.props.disabled === true}, isConnected: {get: () => Boolean(result.parent)}})
+    return result
+  }
   function remove(n: ServiceClientNode) {
     if (n.parent) {const list = n.parent.children, index = list.indexOf(n);if (index >= 0) list.splice(index, 1)}
     n.parent = undefined
@@ -328,6 +470,7 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   const connectionTarget = node('section')
   const source = runtime.shallowReactive({...props, config: runtime.reactive(new Config()), service: initialService, connectionActionTarget: connectionTarget,
     active: true, compute: {showAI: false, showModel: false, showToken: false, requireApiKey: false, showServiceSecret: false}})
+  if (repair?.disabled) source.compute = {showAI: true, showModel: true, showToken: true, requireApiKey: true, showServiceSecret: false}
   const shown = runtime.ref(true), host = node('#host')
   const clientApp = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => shown.value
     ? runtime.h(module.exports.default, source) : runtime.h({render: () => null}, {key: 'other-client'})})})
@@ -336,7 +479,7 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   let stopped = false
   const stop = () => {if (!stopped) {stopped = true;clientApp.unmount()}}
   const finish = async () => {stop();for (const gate of gates) gate.resolve(localModule);await settle();vi.advanceTimersByTime(200);await settle()}
-  try {clientApp.mount(host);await settle()}
+  try {clientApp.mount(host);if (repairDocument) repair?.beforeSettle?.({source, shown, stop, document: repairDocument});await settle()}
   catch (error) {await finish();throw error}
   const resolveLocal = (index = 0) => {expect(gates[index]).toBeDefined();gates[index].resolve(localModule)}
   function localNodes(n = host): ServiceClientNode[] {return n.children.flatMap(child => [
@@ -344,7 +487,7 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   ])}
   function descendants(n: ServiceClientNode): ServiceClientNode[] {return [n, ...n.children.flatMap(descendants)]}
   const allNodes = () => [...descendants(host), ...descendants(connectionTarget)]
-  return {source, shown, host, requestLocal, requestChatGPT, gates, snapshots, childProps, mounted, unmounted, clientErrors, resolveLocal, localNodes, allNodes, stop, finish}
+  return {source, shown, host, requestLocal, requestChatGPT, gates, snapshots, childProps, mounted, unmounted, clientErrors, resolveLocal, localNodes, allNodes, stop, finish, repairDocument, fallbackHeading}
 }
 
 describe('实际服务父模板的本地子模块按需加载', () => {
@@ -377,6 +520,22 @@ describe('实际服务父模板的本地子模块按需加载', () => {
       expect(h.allNodes().some(n => n.props['data-configuration-group'] === 'requests')).toBe(true)
       await (button!.props.onClick as () => Promise<void>)();await settle();expect(messages()).toHaveLength(1);expect(messages()[0][0]).toMatchObject({type: 'testTranslationService', service: 'chatgptPlan'})
       expect(h.source.config.model.chatgptPlan).toBe('fixture-account-model');expect(h.clientErrors).toEqual([])
+    } finally {await h.finish()}
+  })
+  it('实际父模板显示可操作安全诊断，手动重试成功后收起且保留选择', async () => {
+    const h = await mountServiceClient('google')
+    try {
+      const headerButton = () => h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-test-button'))!
+      send.mockResolvedValueOnce({success: false, error: '401 private-secret https://private.example'})
+      await (headerButton().props.onClick as () => Promise<void>)();await settle()
+      const repair = h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-repair'))
+      expect(repair?.props['data-diagnostic-code']).toBe('authentication')
+      const retry = h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-retry'))
+      expect(retry).toBeDefined();expect(retry?.props.disabled).toBe(false)
+      expect(h.allNodes().map(n => n.value || '').join(' ')).not.toContain('private-secret')
+      await (retry!.props.onClick as () => Promise<void>)();await settle()
+      expect(h.allNodes().some(n => Object.hasOwn(n.props, 'data-connection-repair'))).toBe(false)
+      expect(h.source.service).toBe('google');expect(messages()).toHaveLength(2);expect(h.clientErrors).toEqual([])
     } finally {await h.finish()}
   })
   it.each(['freeTranslation', 'google'])('普通服务%s不加载本地子模块或挂载模型 UI', async service => {
@@ -449,5 +608,58 @@ describe('实际服务父模板的本地子模块按需加载', () => {
       h.resolveLocal(1);await settle();expect(h.mounted).toHaveBeenCalledOnce();expect(h.localNodes()).toHaveLength(1)
       expect(unhandled).toEqual([])
     } finally {process.off('unhandledRejection', onUnhandled);await h.finish()}
+  })
+})
+
+
+describe('真实服务父组件与返回组件的修复焦点', () => {
+  it('明确链接从默认导航直达 Teleport 检查按钮一次，不发检测消息或在同步后抢焦点', async () => {
+    const h = await mountServiceClient('freeTranslation', false, {initialNavigation: true})
+    const button = h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-test-button')) as any
+    expect(h.clientErrors).toEqual([]);expect(button.focus).toHaveBeenCalledOnce();expect(h.repairDocument?.activeElement).toBe(button)
+    expect(send).not.toHaveBeenCalled();h.source.config = runtime.reactive(new Config());await settle()
+    h.shown.value = false;await settle();h.shown.value = true;await settle();expect(button.focus).toHaveBeenCalledOnce();await h.finish()
+  })
+  it('连接按钮禁用时当前可读标题保留焦点，标题与配置区域均有稳定负tabindex', async () => {
+    const h = await mountServiceClient('openai', false, {href: 'chrome-extension://fixture/options.html?returnTabId=7&service=openai', disabled: true})
+    expect(h.clientErrors).toEqual([]);expect(h.fallbackHeading?.focus).toHaveBeenCalledOnce();expect(h.fallbackHeading?.getAttribute('tabindex')).toBe('-1');expect(h.repairDocument?.activeElement).toBe(h.fallbackHeading);expect(h.allNodes().find(n => Object.hasOwn(n.props, 'data-service-configuration-service'))?.props.tabindex).toBe('-1');expect(send).not.toHaveBeenCalled();await h.finish()
+  })
+  it.each(['ordinary', 'mismatch', 'pointer', 'focus', 'hidden', 'context', 'service', 'inactive', 'unmount'])('%s 不执行旧修复焦点', async reason => {
+    const h = await mountServiceClient('freeTranslation', false, {
+      href: reason === 'ordinary' ? 'chrome-extension://fixture/options.html' : reason === 'mismatch' ? 'chrome-extension://fixture/options.html?returnTabId=7&service=openai' : undefined,
+      beforeSettle({source, document, stop}) {
+        if (reason === 'pointer') document.dispatchEvent(new (document.defaultView as any).Event('pointerdown'))
+        if (reason === 'focus') {const input = document.querySelector('input')!;Object.defineProperty(document, 'activeElement', {value: input, configurable: true});document.dispatchEvent(new (document.defaultView as any).Event('focusin'))}
+        if (reason === 'hidden') {Object.assign(document, {visibilityState: 'hidden'});document.dispatchEvent(new (document.defaultView as any).Event('visibilitychange'))}
+        if (reason === 'context') source.config = runtime.reactive(new Config())
+        if (reason === 'service') source.service = 'google'
+        if (reason === 'inactive') source.active = false
+        if (reason === 'unmount') stop()
+      },
+    })
+    expect(h.clientErrors).toEqual([])
+    for (const node of h.allNodes()) if ((node as any).focus) expect((node as any).focus).not.toHaveBeenCalled()
+    expect(h.fallbackHeading?.focus).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();await h.finish()
+  })
+})
+
+
+describe('连接限流修复的七语按钮', () => {
+  it('真实模板冷却期间仅禁用重试，不把五种语言变成英文或重置截止时间', async () => {
+    const h = await mountServiceClient('google')
+    try {
+      send.mockResolvedValueOnce({success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: 1200})})
+      const header = h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-test-button'))!
+      await (header.props.onClick as () => Promise<void>)();await settle()
+      const retry = () => h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-retry'))!
+      const text = (n: ServiceClientNode): string => String(n.value || '') + n.children.map(text).join('')
+      for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES']) {
+        uiLanguage.value = locale;await settle()
+        expect(retry().props.disabled).toBe(true);expect(text(retry())).toBe(getDiagnosticActionLabel('retry', locale))
+        expect(text(retry())).not.toContain('Retry shortly')
+      }
+      await vi.advanceTimersByTimeAsync(1200);await settle();expect(retry().props.disabled).toBe(false)
+      expect(text(retry())).toBe(getDiagnosticActionLabel('retry', 'es-ES'));expect(messages()).toHaveLength(1);expect(h.clientErrors).toEqual([])
+    } finally {await h.finish()}
   })
 })

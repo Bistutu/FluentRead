@@ -25,6 +25,8 @@ vi.mock('@/src/app/content/features', () => ({
     restoreOriginalContent: () => {state.frameActions.push({frameId: state.currentFrame, action: 'restore'}); state.frameTranslations.set(state.currentFrame, false);},
     isFullPageTranslationActive: () => state.frameTranslations.get(state.currentFrame) === true,
     getTranslationToolbarStatus: () => 'idle',
+    getFullPageTranslationDiagnostic: () => undefined,
+    getFullPageTranslationDocumentToken: () => 'fixture-document',
 }));
 import {runContextMenuAction} from '@/src/app/background/contextMenuActions';
 import {CONFIG_AUTO_BACKUP_ALARM, CONFIG_AUTO_BACKUP_INTERVAL_MINUTES, installConfigAutoBackupRuntime} from '@/src/app/background/configAutoBackupRuntime';

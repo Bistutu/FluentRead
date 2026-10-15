@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
     invalidateFullPageTranslationSessionCache: vi.fn(),
     isFullPageTranslationActive: vi.fn(),
     getTranslationToolbarStatus: vi.fn(),
+    getFullPageTranslationDiagnostic: vi.fn(),
+    getFullPageTranslationDocumentToken: vi.fn(),
     readFullPageUnchangedCompletion: vi.fn(),
     mountAreaTranslator: vi.fn(),
     mountFloatingBall: vi.fn(),
@@ -62,6 +64,8 @@ vi.mock('@/src/app/content/features', () => ({
     invalidateFullPageTranslationSessionCache: mocks.invalidateFullPageTranslationSessionCache,
     isFullPageTranslationActive: mocks.isFullPageTranslationActive,
     getTranslationToolbarStatus: mocks.getTranslationToolbarStatus,
+    getFullPageTranslationDiagnostic: mocks.getFullPageTranslationDiagnostic,
+    getFullPageTranslationDocumentToken: mocks.getFullPageTranslationDocumentToken,
     readFullPageUnchangedCompletion: mocks.readFullPageUnchangedCompletion,
     getFullPageTranslationFrameState: () => ({sessionId: 7}),
     mountAreaTranslator: mocks.mountAreaTranslator,
@@ -105,11 +109,64 @@ beforeEach(() => {
     mocks.sendMessage.mockResolvedValue(undefined);
     mocks.isFullPageTranslationActive.mockReturnValue(false);
     mocks.getTranslationToolbarStatus.mockReturnValue('idle');
+    mocks.getFullPageTranslationDocumentToken.mockReturnValue('fixture-document');
     vi.stubGlobal('browser', {runtime: {sendMessage: mocks.sendMessage}});
     vi.stubGlobal('document', {getElementById: vi.fn(() => null)});
 });
 
 describe('内容脚本 runtime 消息协议', () => {
+    it('状态查询与全文及恢复回执共享当前文档标识，不缓存上一个文档标识', async () => {
+        const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
+        const respond = vi.fn();
+        const handler = createContentRuntimeMessageHandler({} as never, {isSiteDisabled: () => false,
+            updateSiteDisabled: vi.fn(async () => undefined)});
+        for (const token of ['fixture-document', 'replacement-document']) {
+            mocks.getFullPageTranslationDocumentToken.mockReturnValue(token);
+            handler({type: 'getFullPageTranslationState'}, {}, respond);
+            handler({type: 'contextMenuTranslate', action: 'fullPage'}, {}, respond);
+            handler({type: 'contextMenuTranslate', action: 'restore'}, {}, respond);
+            expect(respond.mock.calls.slice(-3).map(([response]) => response.documentToken)).toEqual([token, token, token]);
+        }
+    });
+    it('全文状态查询带回当前诊断；暂停、全局关闭和网站关闭时不返回旧页诊断', async () => {
+        const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
+        const diagnostic = {code: 'authentication', actions: ['services', 'dismiss']};
+        mocks.getFullPageTranslationDiagnostic.mockReturnValue(diagnostic);
+        let disabled = false, suspended = false;
+        const handler = createContentRuntimeMessageHandler({} as never, {
+            isSiteDisabled: () => disabled, isPageSuspended: () => suspended,
+            updateSiteDisabled: vi.fn(async () => undefined),
+        });
+        const respond = vi.fn(); handler({type: 'getFullPageTranslationState'}, {}, respond);
+        expect(respond).toHaveBeenLastCalledWith(expect.objectContaining({diagnostic}));
+        disabled = true; handler({type: 'getFullPageTranslationState'}, {}, respond);
+        expect(respond.mock.calls.at(-1)![0]).not.toHaveProperty('diagnostic');
+        disabled = false; suspended = true; handler({type: 'getFullPageTranslationState'}, {}, respond);
+        expect(respond.mock.calls.at(-1)![0]).not.toHaveProperty('diagnostic');
+        suspended = false; mocks.config.on = false; handler({type: 'getFullPageTranslationState'}, {}, respond);
+        expect(respond.mock.calls.at(-1)![0]).not.toHaveProperty('diagnostic');
+    });
+    it('全文启动即时回执保留最新实际失败状态，恢复回执清除诊断', async () => {
+        const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
+        const respond = vi.fn();
+        const handler = createContentRuntimeMessageHandler({} as never, {isSiteDisabled: () => false,
+            updateSiteDisabled: vi.fn(async () => undefined)});
+        const diagnostic = {code: 'model-configuration', actions: ['services', 'dismiss']};
+        mocks.autoTranslateEnglishPage.mockImplementation(() => {
+            mocks.getFullPageTranslationDiagnostic.mockReturnValue(diagnostic);
+            mocks.getTranslationToolbarStatus.mockReturnValue('error');
+        });
+        handler({type: 'contextMenuTranslate', action: 'fullPage'}, {}, respond);
+        expect(respond).toHaveBeenLastCalledWith({status: 'failed', action: 'unchanged', isTranslated: false,
+            documentToken: 'fixture-document', toolbarStatus: 'error', diagnostic});
+        mocks.restoreOriginalContent.mockImplementation(() => {
+            mocks.getFullPageTranslationDiagnostic.mockReturnValue(undefined);
+            mocks.getTranslationToolbarStatus.mockReturnValue('idle');
+    mocks.getFullPageTranslationDocumentToken.mockReturnValue('fixture-document');
+        });
+        handler({type: 'contextMenuTranslate', action: 'restore'}, {}, respond);
+        expect(respond).toHaveBeenLastCalledWith({status: 'success', action: 'restored', isTranslated: false, documentToken: 'fixture-document', toolbarStatus: 'idle'});
+    });
     it('信息高亮状态在暂停或关闭时仍可读，关闭可抢占，开启和重试遵循当前页面门禁', async () => {
         const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
         const respond = vi.fn(); let disabled = false, suspended = false, invalid = false;
@@ -149,7 +206,7 @@ describe('内容脚本 runtime 消息协议', () => {
         expect(mocks.autoTranslateEnglishPage).not.toHaveBeenCalled();
         expect(mocks.config.disableFloatingBall).toBe(true);
         handler({type: 'getFullPageTranslationState'}, {}, respond);
-        expect(respond).toHaveBeenLastCalledWith({status: 'success', isTranslated: false, isSiteDisabled: false, toolbarStatus: 'idle'});
+        expect(respond).toHaveBeenLastCalledWith({status: 'success', isTranslated: false, isSiteDisabled: false, documentToken: 'fixture-document', toolbarStatus: 'idle'});
         handler({type: 'translationCacheCleared'}, {}, respond);
         expect(mocks.invalidateFullPageTranslationSessionCache).toHaveBeenCalledOnce();
         suspended = false;
@@ -256,7 +313,7 @@ describe('内容脚本 runtime 消息协议', () => {
         expect(respond).toHaveBeenLastCalledWith({
             status: 'success',
             isTranslated: false,
-            isSiteDisabled: true, toolbarStatus: 'idle',
+            isSiteDisabled: true, documentToken: 'fixture-document', toolbarStatus: 'idle',
         });
     });
 
@@ -296,6 +353,7 @@ describe('内容脚本 runtime 消息协议', () => {
             status: 'success',
             action: 'translated',
             isTranslated: true,
+            documentToken: 'fixture-document', toolbarStatus: 'idle',
         });
 
         mocks.isFullPageTranslationActive.mockReturnValueOnce(false);
@@ -305,6 +363,7 @@ describe('内容脚本 runtime 消息协议', () => {
             status: 'success',
             action: 'restored',
             isTranslated: false,
+            documentToken: 'fixture-document', toolbarStatus: 'idle',
         });
         expect(handler({type: 'contextMenuTranslate', action: 'unknown'}, {}, respond)).toBe(false);
     });
@@ -405,7 +464,7 @@ describe('内容脚本 runtime 消息协议', () => {
         expect(respond).toHaveBeenLastCalledWith({
             status: 'success',
             isTranslated: false,
-            isSiteDisabled: false, toolbarStatus: 'idle',
+            isSiteDisabled: false, documentToken: 'fixture-document', toolbarStatus: 'idle',
         });
         expect(mocks.config).toMatchObject({
             disableFloatingBall: false,
@@ -721,7 +780,7 @@ describe('read-only exact unchanged query on existing content state channel', ()
         expect(fixture.handler({type: 'getFullPageTranslationState', unchangedQueries: undefined}, {}, fixture.respond)).toBe(true);
         expect(fixture.respond).toHaveBeenCalledOnce();
         expect(fixture.respond).toHaveBeenCalledWith({status: 'success', isTranslated: true,
-            isSiteDisabled: false, toolbarStatus: 'translated'});
+            isSiteDisabled: false, documentToken: 'fixture-document', toolbarStatus: 'translated'});
         expect(fixture.querySelectorAll).not.toHaveBeenCalled();
         expect(mocks.readFullPageUnchangedCompletion).not.toHaveBeenCalled();
         expect(mocks.sendMessage).not.toHaveBeenCalled();
@@ -859,7 +918,7 @@ describe('read-only exact unchanged query on existing content state channel', ()
         expect(fixture.handler({type: 'contextMenuTranslate', action}, {}, fixture.respond)).toBe(true);
         expect(port === 'autoTranslateEnglishPage' ? mocks.autoTranslateEnglishPage : mocks.restoreOriginalContent).toHaveBeenCalledOnce();
         expect(fixture.respond).toHaveBeenCalledOnce();
-        expect(fixture.respond).toHaveBeenCalledWith({status: 'failed', action: 'unchanged', isTranslated: active});
+        expect(fixture.respond).toHaveBeenCalledWith({status: 'failed', action: 'unchanged', isTranslated: active, documentToken: 'fixture-document', toolbarStatus: 'idle'});
         expect(mocks.sendMessage).not.toHaveBeenCalled();
     });
 });

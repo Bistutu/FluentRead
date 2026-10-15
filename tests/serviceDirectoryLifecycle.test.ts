@@ -281,6 +281,11 @@ describe('服务目录的搜索和导航归属', () => {
     if (reason === 'service') {expect(scroll).toHaveBeenCalledOnce();expect(workspaceScroll).toHaveBeenCalledOnce()}
     else {expect(scroll).not.toHaveBeenCalled();expect(workspaceScroll).not.toHaveBeenCalled()}
   })
+  it('当前服务标题始终支持程序聚焦且不加入普通Tab顺序', async () => {
+    await mountCatalog();expect(publicNode(n => n.tag === 'h4' && n.parent?.props.class === 'detail-title-row').props.tabindex).toBe('-1')
+    source.active = false;await settle();source.active = true;source.service = 'google';await settle()
+    expect(publicNode(n => n.tag === 'h4' && n.parent?.props.class === 'detail-title-row').props.tabindex).toBe('-1')
+  })
   it('正常切换或重复当前服务都关闭目录、恢复一次焦点并回到配置顶部', async () => {
     await mountCatalog();state.directoryOpen = true;props.service = 'google';await settle();expect(state.directoryOpen).toBe(false);expect(focus).toHaveBeenCalledOnce();expect(scroll).toHaveBeenCalledOnce()
     focus.mockClear();scroll.mockClear();workspaceScroll.mockClear();state.directoryOpen = true;await state.selectService('google');await settle()

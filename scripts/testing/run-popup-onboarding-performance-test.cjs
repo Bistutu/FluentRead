@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @file scripts/testing/run-popup-onboarding-performance-test.cjs
- * Measure first-use welcome and normal menu separately in a fresh, focus-safe Edge profile.
+ * Measure first-use language selection and normal menu separately in a fresh, focus-safe Edge profile.
  * Configuration timing uses the real runtime protocol; no credentials or config values are logged.
  */
 'use strict';
@@ -121,8 +121,8 @@ async function main() {
         await page.waitForFunction(() => Number.isFinite(globalThis.__onboardingPerf?.frameMs));
         const sample = await page.evaluate(() => ({...globalThis.__onboardingPerf,
           domNodes: document.querySelectorAll('*').length,
-          onboardingVisible: Boolean(document.querySelector('[data-testid="onboarding-welcome"]')),
-          englishReady: Boolean(document.querySelector('.welcome-copy .onboarding-title-secondary')?.textContent.trim()),
+          onboardingVisible: Boolean(document.querySelector('[data-testid="onboarding-language-step"]')),
+          englishReady: Boolean(document.querySelector('#language-onboarding-title small')?.textContent.trim()),
           height: document.querySelector('.popup-shell').getBoundingClientRect().height,
           overflowX: document.documentElement.scrollWidth > innerWidth,
           resources: performance.getEntriesByType('resource')
@@ -143,9 +143,9 @@ async function main() {
           assert.notEqual(sample.startupHints[0].used, sample.startupHints[0].received);
         }
         if (phase === 'onboarding' && process.argv.includes('--expect-lightweight')) {
-          assert.equal(sample.englishReady, true, 'Welcome first frame lacks English');
-          assert.equal(sample.scripts.some(script => /\/PopupApp-/u.test(script.file)), false, 'Welcome parsed the full main menu');
-          assert.equal(sample.fetches.some(fetch => /\/i18n\/en-US\.json$/u.test(fetch.path)), false, 'Welcome requested the full English bundle');
+          assert.equal(sample.englishReady, true, 'Language selection first frame lacks English');
+          assert.equal(sample.scripts.some(script => /\/PopupApp-/u.test(script.file)), false, 'Language selection parsed the full main menu');
+          assert.equal(sample.fetches.some(fetch => /\/i18n\/en-US\.json$/u.test(fetch.path)), false, 'Language selection requested the full English bundle');
         }
         if (process.argv.includes('--expect-lightweight')) {
           assert.equal(sample.messages.filter(message => message.type === 'configStorageRead' && message.key === 'local:config').length, 1, 'Startup reread the full configuration');
@@ -154,7 +154,6 @@ async function main() {
         assert.ok(sample.height <= 560);
         if (index === 0) await page.locator('.popup-shell').screenshot({path: path.join(artifactsDir, `${phase}.png`)});
         if (phase === 'onboarding' && index === count - 1) {
-          await page.locator('[data-testid="onboarding-language-next"]').click();
           await page.locator('[data-language="zh-CN"]').click();
           const start = await page.evaluate(() => performance.now());
           await page.locator('.onboarding-form .onboarding-confirm').click();

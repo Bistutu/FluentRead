@@ -18,6 +18,8 @@ export default defineConfig({
             reportsDirectory: 'coverage/core',
             reporter: ['text', 'json-summary', 'json', 'html'],
             include: [
+                'src/services/diagnostics/index.ts',
+                'src/app/popup/startupFeedback.ts',
                 'src/features/video-subtitle/content/learningSource.ts',
                 'src/features/vocabulary/materialContent.ts',
                 'src/features/vocabulary/materialCapture.ts',
@@ -360,6 +362,7 @@ export default defineConfig({
                 'src/app/popup/mount.ts',
                 'src/features/settings/model/useQuickProfileDraft.ts',
                 'src/features/settings/ui/services/freeTranslationChecks.ts',
+                'src/features/settings/ui/services/serviceRepairFocus.ts',
                 'src/core/config/deepl.ts',
                 'src/core/config/azure.ts',
                 'src/core/config/interfaceAppearance.ts',

@@ -2,18 +2,20 @@
  * @file tests/configApplication.test.ts
  * 文件职责：验证配置应用实例的显式启动、状态隔离和真实权威端到客户端提交协作。
  * 主要内容：直接组合生产 authority/client/history 与后台保存 handler，以可控存储和消息等待验证独立实例、计数重放及并发字段保留。
- * 模块边界：不替换配置领域规则，不读取真实凭据或浏览器存储，不复制生产 CAS 或 ACK 算法。
+ * 模块边界：不替换配置领域规则，不读取真实凭据或浏览器存储，不复制生产 CAS 或 ACK 算法；水合状态只验证既有初始化/写入保护标志的公开投影。
  */
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {normalizeConfig} from '@/src/core/config/model';
 import {extractConfigCredentials, sanitizeConfigCredentials} from '@/src/core/config/credentials';
 import {createConfigApplication, type ConfigApplication} from '@/src/services/config/application';
+import {createBaselineConfigHistory} from '@/src/services/config/history';
 import {createConfigPersistenceHandler} from '@/src/app/background/handlers/configPersistence';
 import type {ConfigStoragePort} from '@/src/platform/storage/configStorage';
 
 const applications: ConfigApplication[] = [];
 afterEach(async () => {
     await Promise.all(applications.splice(0).map(application => application.flushConfigHistory()));
+    vi.restoreAllMocks();
 });
 
 function pending<T>() {
@@ -74,6 +76,41 @@ describe('explicit configuration application ownership', () => {
         expect(port.setItem).not.toHaveBeenCalled();
     });
 
+    it('keeps hydration loading through a delayed public read, then reports ready without exposing configuration data', async () => {
+        const {port, records} = memoryStorage('ja');
+        const gate = pending<unknown>();
+        const app = application({...port, writeOwner: false, getItem: async <T>(key: string) => key === 'local:config' ? await gate.promise as T : port.getItem<T>(key)});
+        expect(app.getConfigHydrationStatus()).toBe('loading');
+        const ready = app.start(); expect(app.getConfigHydrationStatus()).toBe('loading');
+        gate.resolve(structuredClone(records.get('local:config'))); await ready;
+        expect(app.getConfigHydrationStatus()).toBe('ready'); expect(app.config.to).toBe('ja');
+    });
+    it.each(['local:config', 'local:credentials'])('reports blocked on %s read failure while preserving the resolving configReady contract and stored records', async failedKey => {
+        const {port, records} = memoryStorage('ja'); const before = JSON.stringify([...records]);
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const app = application({...port, writeOwner: false, getItem: async <T>(key: string) => {
+            if (key === failedKey) throw new Error('fixture-private-config-error');
+            return port.getItem<T>(key);
+        }});
+        await expect(app.start()).resolves.toBeUndefined(); await expect(app.configReady).resolves.toBeUndefined();
+        expect(app.getConfigHydrationStatus()).toBe('blocked');
+        expect(JSON.stringify([...records])).toBe(before); expect(port.setItem).not.toHaveBeenCalled(); expect(port.setItems).not.toHaveBeenCalled(); expect(port.removeItem).not.toHaveBeenCalled();
+        if (failedKey === 'local:credentials') expect(app.config.to).toBe('ja');
+    });
+    it('a genuinely new, successfully read configuration is ready and keeps the normal first-use flag', async () => {
+        const {port, records} = memoryStorage('en'); records.clear();
+        const app = application({...port, writeOwner: false}); await app.start();
+        expect(app.getConfigHydrationStatus()).toBe('ready'); expect(app.config.uiLanguageSetupCompleted).toBe(false);
+    });
+    it.each([true, false])('keeps ready hydration while reading existing history with write-owner=%s', async writeOwner => {
+        const {port, records} = memoryStorage('ja');
+        const storedHistory = createBaselineConfigHistory(normalizeConfig(records.get('local:config')), 4);
+        records.set('local:configHistory', storedHistory);
+        const app = application({...port, writeOwner}); await app.start(); await app.configHistoryReady;
+        expect(app.getConfigHydrationStatus()).toBe('ready');
+        expect(app.getConfigHistorySnapshot()).toEqual(storedHistory);
+        expect(records.get('local:configHistory')).toEqual(storedHistory);
+    });
     it('reconciles a rejected patch from an already received authoritative watch without another read', async () => {
         const {port, reads} = memoryStorage('en');
         const client = application({...port, writeOwner: false});

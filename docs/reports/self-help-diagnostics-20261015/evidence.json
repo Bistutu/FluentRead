@@ -1,0 +1,1635 @@
+{
+  "base": "fa431a845",
+  "productionUi": {
+    "ok": true,
+    "production": true,
+    "cases": [
+      "fresh language selection reaches main action",
+      "first actual provider fixture result, not merely started",
+      "open popup rebinds same-URL refreshed document and accepts its live completion",
+      "actual auth error classified",
+      "keyboard reaches explicit export action",
+      "local preview and explicit keyboard-triggered safe report download",
+      "service repair opens exact service and detects actual 401",
+      "explicit return keeps settings and original page available",
+      "actual model error classified",
+      "actual rate error classified",
+      "actual offline recovery state",
+      "explicit retry resumes the same page after offline",
+      "actual timeout recovery state",
+      "explicit retry resumes the same page after timeout",
+      "cancel restores source and aborts in-flight local request",
+      "no content diagnosis uses completed empty scan",
+      "reopen restores current page diagnosis and selected service",
+      "localized diagnosis and local report preview in ja-JP",
+      "localized diagnosis and local report preview in ko-KR",
+      "localized diagnosis and local report preview in fr-FR",
+      "localized diagnosis and local report preview in ru-RU",
+      "localized diagnosis and local report preview in es-ES"
+    ],
+    "providerValidation": "Local HTTP fixtures only.",
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "limitations": [
+      "No Firefox, Safari, physical device or long-term cross-region provider acceptance."
+    ],
+    "frozenBuildCopyRemoved": true,
+    "visualReview": {
+      "allScreenshotsReviewed": true,
+      "count": 19,
+      "sourceReview": "research/self-help-diagnostics-20261015/ui-repair-loop/visual-review.json",
+      "notes": "Manual Retry is visible for authentication and model diagnoses; light/dark/narrow/locale layouts fit native widths, report/settings vertical scrolling is expected. All image hashes recorded in the source review."
+    },
+    "sourceReport": "research/self-help-diagnostics-20261015/ui-repair-loop/report.json",
+    "screenshotCount": 19,
+    "languages": [
+      "zh-CN",
+      "en-US",
+      "ja-JP",
+      "ko-KR",
+      "fr-FR",
+      "ru-RU",
+      "es-ES"
+    ],
+    "source": "be6fe483a plus website repair return and authentication/model/configuration manual Retry; before Options panel whitelist patch",
+    "productionPackage": {
+      "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+      "files": 474,
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256",
+      "snapshotUnchangedAfterBothRuns": true,
+      "immutableSnapshotRemovedAfterRuns": true
+    }
+  },
+  "refreshRounds": 3,
+  "unhandledPageErrors": [],
+  "window": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "windowState": "normal",
+    "displayTarget": "secondary",
+    "screenIndex": 1,
+    "browserFrontmost": false
+  },
+  "liveDefaultSmoke": {
+    "status": "translated"
+  },
+  "strictCoverage": {
+    "lines": 100,
+    "statements": 100,
+    "functions": 100,
+    "branches": 100,
+    "tests": 823,
+    "testFiles": 20,
+    "businessModules": 11,
+    "sourceLog": "research/self-help-diagnostics-20261015/verification-repair-loop/final-strict.log",
+    "sourceCoverage": "research/self-help-diagnostics-20261015/verification-repair-loop/coverage/coverage-summary.json",
+    "modules": [
+      "src/app/background/handlers/connectionTest.ts",
+      "src/app/content/contextMenuCommands.ts",
+      "src/app/content/fullPageCompletionQuery.ts",
+      "src/app/popup/mount.ts",
+      "src/app/popup/pageActions.ts",
+      "src/app/popup/startupFeedback.ts",
+      "src/features/full-page-translation/content/configCheck.ts",
+      "src/features/full-page-translation/content/stateNotification.ts",
+      "src/features/settings/ui/services/serviceRepairFocus.ts",
+      "src/services/config/application.ts",
+      "src/services/diagnostics/index.ts"
+    ],
+    "scope": "Focused files and per-module coverage; overlapping targeted runs are not summed; not the full repository suite."
+  },
+  "screenshots": [
+    "03-first-success.png",
+    "05-report.png",
+    "07-settings-narrow.png",
+    "08-dark-rate.png",
+    "startup-failure.png",
+    "11-fr-FR.png",
+    "11-ru-RU.png",
+    "config-read-failure.png",
+    "config-read-recovered.png",
+    "upgrade-diagnostic.png",
+    "rate-reopened.png",
+    "source-closed.png",
+    "keyboard-service-check.png",
+    "keyboard-missing-key.png",
+    "onboarding-light.png",
+    "onboarding-dark.png",
+    "onboarding-save-failure.png",
+    "onboarding-menu-load-failure.png",
+    "service-save-unconfirmed.png",
+    "service-french-cooldown.png",
+    "service-auth-retry.png",
+    "service-switch-late-a.png",
+    "service-switch-recovered.png",
+    "site-return-narrow.png",
+    "site-repair-success.png"
+  ],
+  "startupUi": {
+    "ok": true,
+    "scope": "production popup mount-chunk delay/abort and explicit manual reload only",
+    "cases": [
+      "Production mount chunk remains pending past five seconds and renders safe manual recovery",
+      "Explicit recovery button reloads and restores the saved service, language direction and theme",
+      "Aborted production mount chunk renders fixed safe failure text and one explicit reopen action",
+      "Explicit reopen after removing the injected failure preserves all saved preferences"
+    ],
+    "slowDelayMs": 5403,
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "productionSnapshotRemoved": true,
+    "limitations": [
+      "No provider translation, Firefox, Safari or physical-device acceptance.",
+      "Startup failure is induced through this temporary page route only; configuration storage is real and unmodified."
+    ]
+  },
+  "localeLayouts": {
+    "en-US": {
+      "viewport": 380,
+      "scrollWidth": 380,
+      "root": 380,
+      "body": 380,
+      "right": 364
+    },
+    "ja-JP": {
+      "viewport": 320,
+      "scrollWidth": 320,
+      "root": 320,
+      "body": 320,
+      "right": 304
+    },
+    "ko-KR": {
+      "viewport": 320,
+      "scrollWidth": 320,
+      "root": 320,
+      "body": 320,
+      "right": 304
+    },
+    "fr-FR": {
+      "viewport": 380,
+      "scrollWidth": 380,
+      "root": 380,
+      "body": 380,
+      "right": 364
+    },
+    "ru-RU": {
+      "viewport": 380,
+      "scrollWidth": 380,
+      "root": 380,
+      "body": 380,
+      "right": 364
+    },
+    "es-ES": {
+      "viewport": 380,
+      "scrollWidth": 380,
+      "root": 380,
+      "body": 380,
+      "right": 364
+    }
+  },
+  "configReadUi": {
+    "ok": true,
+    "scope": "Production popup local:config delivery delay and explicit failure only; no module/network failure injection or disk modification",
+    "cases": [
+      "Distinctive preferences saved through real extension persistence before any fault",
+      "Real local:config callback received successfully but its delivery delayed beyond five seconds; waiting UI is visible",
+      "Releasing the actual successful read receipt mounts the original settings without reload or writes",
+      "Configuration read failure presents fixed safe error and explicit reopen action",
+      "Removing the page-only fault and explicitly reopening restores original language, service, direction and theme"
+    ],
+    "slowElapsedMs": 5048,
+    "productionSnapshot": {
+      "manifestSha256": "a12a20416fc826d3dc7278b74a112b4170f8985b1ac8b1a74c91f73d5e09b642",
+      "popupHtmlSha256": "f87857f0d68c9855a7eeca1c91c69b2101be88fa286f05a3603660c9ea9e0e68",
+      "mountChunk": "mount-x-83fly5.js",
+      "mountSha256": "c33b40c2ff5d25dbf26bbe1c1de3eb908f12f44b6073df9686a3671834bf261d"
+    },
+    "failureVisibleState": "safe-startup-error",
+    "failureExpectationMet": true,
+    "manualRecovery": "explicit in-page reopen button",
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "productionSnapshotRemoved": true,
+    "limitations": [
+      "Read failures are injected in one temporary popup callback/Promise delivery, not real database corruption.",
+      "No provider, Firefox, Safari or physical-device acceptance."
+    ],
+    "savedPreferencesPreserved": true,
+    "onboardingOnReadFailure": false,
+    "unhandledPageErrors": [],
+    "consoleErrors": [],
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "browserFrontmost": false
+  },
+  "existingUserUpgrade": {
+    "ok": true,
+    "scope": "Existing-user baseline production to current production in the same isolated Edge profile and unpacked path.",
+    "cases": [
+      "Baseline production persists non-default language/service/direction/theme/site rules/hotkeys/count and fake credential",
+      "Replace only fixed unpacked production path after guarded close; keep profile",
+      "Same extension identity and cold profile retain every stored non-sensitive preference and fake credential; no first-use wizard or first-translation hint",
+      "Existing user can open actual 401 diagnostic and privacy-safe report in retained English UI",
+      "Diagnostic action opens original selected service settings without changing saved configuration",
+      "Explicit retry continues original synthetic article with retained service and en→fr direction and a real local provider response",
+      "Restore remains available after upgrade and successful retry"
+    ],
+    "identity": {
+      "sameManifestKey": true,
+      "keySha256": "690b3cdccb9c674c74642dec3659bcdbddde1b565991ee3ce6690d7ef61f1072",
+      "expectedExtensionId": "djnlaiohfaaifbibleebjggkghlmcpcj",
+      "baselineVersion": "0.0.38",
+      "currentVersion": "0.0.38",
+      "sameProfile": true,
+      "sameUnpackedPath": true
+    },
+    "builds": {
+      "baseline": {
+        "sha256": "7b85cd2b9db7e12d78df7867813e3f5c85b1b3088364dbc2b1fa4eb1482a2137",
+        "files": 472
+      },
+      "current": {
+        "sha256": "f3b4ec67e48c7981e00bd3223c70d320d5462c22d5cd062b0ef2d87e172b9478",
+        "files": 475
+      }
+    },
+    "popupLayouts": {
+      "01-baseline-existing-user": {
+        "viewport": 380,
+        "scrollWidth": 380,
+        "body": 380
+      },
+      "02-upgraded-preferences-retained": {
+        "viewport": 380,
+        "scrollWidth": 380,
+        "body": 380
+      },
+      "03-upgraded-diagnostic-preview": {
+        "viewport": 380,
+        "scrollWidth": 380,
+        "body": 380
+      },
+      "05-upgraded-original-task-resumed": {
+        "viewport": 380,
+        "scrollWidth": 380,
+        "body": 380
+      }
+    },
+    "cleanup": {
+      "allOwnedBrowserCloseConfirmed": true,
+      "profileRemoved": true,
+      "unpackedRemoved": true,
+      "baselineSourceRemoved": true
+    },
+    "limitations": [
+      "Seeded existing-user profile on baseline production, not a historical daily profile.",
+      "Unpacked extension replacement models persisted-profile upgrade; not store delivery.",
+      "Edge/Chrome MV3 only; no Firefox runtime or real-provider acceptance.",
+      "Both snapshots retain manifest version 0.0.38; no version-triggered onInstalled update migration is claimed."
+    ],
+    "baselineRevision": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+    "candidateSource": "1c90e7e10 plus configuration hydration gate; production file-tree fingerprint recorded in builds.current",
+    "preservedPreferenceFieldCount": 189,
+    "preferenceDigestBefore": "20d4ee5cd6d2556b5d2491a31156f4811729eb2c9711ee34089d80c2000032c2",
+    "preferenceDigestAfter": "20d4ee5cd6d2556b5d2491a31156f4811729eb2c9711ee34089d80c2000032c2",
+    "fixtureCredentialPreserved": true,
+    "unhandledPageErrors": [],
+    "resumedStatus": "translated",
+    "restoredStatus": "idle",
+    "bothStagesBackgroundAndGuardedClose": true
+  },
+  "configHydrationStrictCoverage": {
+    "tests": 37,
+    "files": [
+      "src/services/config/application.ts",
+      "src/app/popup/mount.ts"
+    ],
+    "statements": 100,
+    "branches": 100,
+    "functions": 100,
+    "lines": 100
+  },
+  "rateAndPermissionUi": {
+    "ok": true,
+    "cases": [
+      "Actual HTTP429 + Retry-After disables the retry action with remaining time",
+      "Close/reopen retains the original cooldown deadline and generates no provider request",
+      "After expiry retry enables but no automatic provider request occurs",
+      "User explicit retry reaches translated with the same fixed provider, source and language direction",
+      "Actual HTTP403 uses safe credentials-or-permissions classification without changing selected service or languages",
+      "Permission diagnostic opens the actual current service configuration and preserves preferences",
+      "Service connection test also classifies actual HTTP403 using safe text",
+      "New isolated chrome://version tab shows unsupported-page explanation without contacting the provider"
+    ],
+    "productionSnapshot": {
+      "revision": "936a8800824d4a9f9612b3481b4820deab41c398",
+      "manifestSha256": "a12a20416fc826d3dc7278b74a112b4170f8985b1ac8b1a74c91f73d5e09b642",
+      "popupHtmlSha256": "f87857f0d68c9855a7eeca1c91c69b2101be88fa286f05a3603660c9ea9e0e68",
+      "mountChunk": "mount-x-83fly5.js",
+      "mountSha256": "c33b40c2ff5d25dbf26bbe1c1de3eb908f12f44b6073df9686a3671834bf261d"
+    },
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "limitations": [
+      "Local HTTP fixtures with a fake credential and synthetic article; no online provider or daily browser data.",
+      "Edge/Chrome MV3 only; no host permission revocation or other-platform runtime claim."
+    ],
+    "retrySetting": 0,
+    "requestStatuses": [
+      429,
+      200,
+      403,
+      403
+    ],
+    "initialDeadline": 1792052496602,
+    "reopenedDeadline": 1792052496602,
+    "cooldownQuiet": {
+      "startedAt": 1792052486921,
+      "endedAt": 1792052488423,
+      "expectedRequests": 1,
+      "actualRequests": 1
+    },
+    "deadlineQuiet": {
+      "startedAt": 1792052489704,
+      "endedAt": 1792052497804,
+      "expectedRequests": 1,
+      "actualRequests": 1
+    },
+    "pageErrors": [],
+    "consoleErrors": [],
+    "browserFrontmost": false
+  },
+  "exitAndReopenUi": {
+    "ok": true,
+    "cases": [
+      {
+        "name": "close Popup during HTTP wait, then reopen after actual success",
+        "ok": true
+      },
+      {
+        "name": "same-url-late-200",
+        "ok": true
+      },
+      {
+        "name": "same-url-late-401",
+        "ok": true
+      },
+      {
+        "name": "source closed during HTTP wait",
+        "ok": true
+      }
+    ],
+    "testedBuild": {
+      "sha256": "d2752e1db22df4fce5acefbc19e5ed1f73561ecef89686be425a68cc86a10a44",
+      "files": 475
+    },
+    "limitations": [
+      "Edge production extension in isolated background profile; no live provider or Firefox runtime acceptance.",
+      "Same-URL reload cancelled the old connections before attempted delayed 200/401 delivery; this proves cancellation and document state, not delivery of old callbacks."
+    ],
+    "pageErrors": [],
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "visualReview": {
+      "allScreenshotsReviewed": true,
+      "count": 12,
+      "notes": "All waiting, reopen, source-closed immediate/repeated and manual-reopen completion images reviewed: readable, compact, no observed clipping. Source-closed has dismiss and diagnostic preview only; no dead-tab refresh."
+    }
+  },
+  "keyboardUi": {
+    "ok": true,
+    "cases": [
+      "Initial actual focus, radio arrows and Tab/Enter save English through production onboarding",
+      "Keyboard main action receives real HTTP401 and safe authentication diagnosis",
+      "Preview and export reached using uninterrupted Tab/Enter traversal without test focus calls",
+      "Close/reopen retains service, language and error current document state",
+      "Enter on diagnostic opens exact current OpenAI service and product focuses its check button without changing default",
+      "Keyboard connection check receives HTTP403 and safe repair guidance",
+      "Tab/Enter recheck succeeds and Return activates original source tab",
+      "Keyboard explicit retry translates original article using actual local HTTP success response",
+      "Close/reopen retains service, language and translated current document state",
+      "Keyboard main action restores original text",
+      "Close/reopen retains service, language and idle current document state",
+      "Ordinary service options without returnTabId do not auto-focus Check connection or send HTTP",
+      "Empty required key disables check, focuses service fallback, and Tab reaches actionable configuration without HTTP"
+    ],
+    "productionPackage": {
+      "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+      "files": 474,
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256",
+      "snapshotUnchangedAfterBothRuns": true,
+      "immutableSnapshotRemovedAfterRuns": true
+    },
+    "settingsEntryFocus": {
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "testId": null,
+      "language": null,
+      "label": null,
+      "text": "Check connection",
+      "tabIndex": 0,
+      "focusVisible": true,
+      "documentHasFocus": true,
+      "visible": true,
+      "matches": true
+    },
+    "cleanup": {
+      "guardedCloseConfirmed": true,
+      "profileRemoved": true
+    },
+    "limitations": [
+      "Production popup.html is opened as an extension tab with a fixed sourceTabId; browser toolbar accelerators and OS-level Tab handling are not covered.",
+      "Local synthetic HTTP fixtures only; no real provider, personal credentials or daily browser profile.",
+      "Isolated Edge MV3 only; no Firefox runtime."
+    ],
+    "sourceReport": "research/self-help-diagnostics-20261015/keyboard-repair-loop/report.json",
+    "screenshotCount": 16,
+    "keyboardEventCount": 79,
+    "reopenStages": [
+      {
+        "stage": "1-authentication",
+        "before": "error",
+        "after": "error"
+      },
+      {
+        "stage": "2-translated",
+        "before": "translated",
+        "after": "translated"
+      },
+      {
+        "stage": "3-restored",
+        "before": "idle",
+        "after": "idle"
+      }
+    ],
+    "diagnosticRepairTabsBefore": 74,
+    "diagnosticRepairTabsAfter": 0,
+    "ordinaryOptions": {
+      "focusSamples": [
+        {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "testId": null,
+          "language": null,
+          "label": null,
+          "text": "FluentReadCloser languages. A bigger world.Basics›General settingsTranslation servicesTranslation settingsInterface styleSpecialized transla",
+          "tabIndex": -1,
+          "focusVisible": false,
+          "documentHasFocus": true,
+          "visible": true,
+          "matches": false
+        },
+        {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "testId": null,
+          "language": null,
+          "label": null,
+          "text": "FluentReadCloser languages. A bigger world.Basics›General settingsTranslation servicesTranslation settingsInterface styleSpecialized transla",
+          "tabIndex": -1,
+          "focusVisible": false,
+          "documentHasFocus": true,
+          "visible": true,
+          "matches": false
+        },
+        {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "testId": null,
+          "language": null,
+          "label": null,
+          "text": "FluentReadCloser languages. A bigger world.Basics›General settingsTranslation servicesTranslation settingsInterface styleSpecialized transla",
+          "tabIndex": -1,
+          "focusVisible": false,
+          "documentHasFocus": true,
+          "visible": true,
+          "matches": false
+        },
+        {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "testId": null,
+          "language": null,
+          "label": null,
+          "text": "FluentReadCloser languages. A bigger world.Basics›General settingsTranslation servicesTranslation settingsInterface styleSpecialized transla",
+          "tabIndex": -1,
+          "focusVisible": false,
+          "documentHasFocus": true,
+          "visible": true,
+          "matches": false
+        },
+        {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "testId": null,
+          "language": null,
+          "label": null,
+          "text": "FluentReadCloser languages. A bigger world.Basics›General settingsTranslation servicesTranslation settingsInterface styleSpecialized transla",
+          "tabIndex": -1,
+          "focusVisible": false,
+          "documentHasFocus": true,
+          "visible": true,
+          "matches": false
+        },
+        {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "testId": null,
+          "language": null,
+          "label": null,
+          "text": "FluentReadCloser languages. A bigger world.Basics›General settingsTranslation servicesTranslation settingsInterface styleSpecialized transla",
+          "tabIndex": -1,
+          "focusVisible": false,
+          "documentHasFocus": true,
+          "visible": true,
+          "matches": false
+        },
+        {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "testId": null,
+          "language": null,
+          "label": null,
+          "text": "FluentReadCloser languages. A bigger world.Basics›General settingsTranslation servicesTranslation settingsInterface styleSpecialized transla",
+          "tabIndex": -1,
+          "focusVisible": false,
+          "documentHasFocus": true,
+          "visible": true,
+          "matches": false
+        },
+        {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "testId": null,
+          "language": null,
+          "label": null,
+          "text": "FluentReadCloser languages. A bigger world.Basics›General settingsTranslation servicesTranslation settingsInterface styleSpecialized transla",
+          "tabIndex": -1,
+          "focusVisible": false,
+          "documentHasFocus": true,
+          "visible": true,
+          "matches": false
+        },
+        {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "testId": null,
+          "language": null,
+          "label": null,
+          "text": "FluentReadCloser languages. A bigger world.Basics›General settingsTranslation servicesTranslation settingsInterface styleSpecialized transla",
+          "tabIndex": -1,
+          "focusVisible": false,
+          "documentHasFocus": true,
+          "visible": true,
+          "matches": false
+        },
+        {
+          "tag": "BODY",
+          "id": "",
+          "role": null,
+          "testId": null,
+          "language": null,
+          "label": null,
+          "text": "FluentReadCloser languages. A bigger world.Basics›General settingsTranslation servicesTranslation settingsInterface styleSpecialized transla",
+          "tabIndex": -1,
+          "focusVisible": false,
+          "documentHasFocus": true,
+          "visible": true,
+          "matches": false
+        }
+      ],
+      "httpRequestsBefore": 8,
+      "httpRequestsAfter": 8
+    },
+    "requiredCredentialFallback": {
+      "initialFocus": {
+        "tag": "H4",
+        "id": "",
+        "role": null,
+        "testId": null,
+        "language": null,
+        "label": null,
+        "text": "OpenAI",
+        "tabIndex": -1,
+        "focusVisible": true,
+        "documentHasFocus": true,
+        "visible": true,
+        "matches": true
+      },
+      "httpRequestsBefore": 8,
+      "httpRequestsAfter": 8,
+      "tabStepsToInput": 4,
+      "exactFixtureCredentialFieldsRestored": true
+    },
+    "unhandledPageErrors": [],
+    "browserFrontmost": false,
+    "onboardingLayouts": {
+      "01-keyboard-language-initial": {
+        "componentHeight": 368.59375,
+        "shellHeight": 368.59375,
+        "viewport": 320,
+        "scrollWidth": 320,
+        "confirmVisible": true,
+        "radioCount": 7
+      },
+      "01b-keyboard-language-dark-narrow": {
+        "componentHeight": 368.59375,
+        "shellHeight": 368.59375,
+        "viewport": 320,
+        "scrollWidth": 320,
+        "confirmVisible": true,
+        "radioCount": 7
+      },
+      "02-keyboard-language-radio": {
+        "componentHeight": 368.59375,
+        "shellHeight": 368.59375,
+        "viewport": 380,
+        "scrollWidth": 380,
+        "confirmVisible": true,
+        "radioCount": 7
+      }
+    },
+    "onboardingAppearance": {
+      "savedTheme": "auto",
+      "scope": "Production intrinsic 320px narrow popup; local theme-only fixture, exact restoration before language confirmation",
+      "languageBeforeConfirmation": {
+        "uiLanguage": "zh-CN",
+        "uiLanguageSetupCompleted": false,
+        "service": "freeTranslation",
+        "from": "auto",
+        "to": "zh-Hans",
+        "count": 0
+      },
+      "restoredTheme": "auto"
+    },
+    "driverChanged": false
+  },
+  "repairFocusValidation": {
+    "relatedTests": 250,
+    "focusModuleTests": 38,
+    "perFileStatements": 100,
+    "perFileBranches": 100,
+    "perFileFunctions": 100,
+    "perFileLines": 100
+  },
+  "firstUseFaultUi": {
+    "ok": true,
+    "scope": "Production single-screen onboarding patch pre-dispatch failure, actual successful ACK delay, and actual main-module import abort",
+    "cases": [
+      "Pre-dispatch callback failure preserves unsaved setup and selected language; safe local feedback permits explicit retry into main",
+      "Native successful callback delayed over two seconds keeps all controls busy and repeat clicks send no additional language patch; release enters main without fixed delay",
+      "Actual main import abort after successful French save presents safe reopen; removing route and explicit reopen preserves saved language/setup and bypasses onboarding"
+    ],
+    "productionPackage": {
+      "sha256": "aae58851a17a10c205b24ac1ecd3626f0690dc357fe6745244c0b3e4fe4b4efd",
+      "files": 475,
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+    },
+    "limitations": [
+      "Page-local message fault injection is not disk corruption or proof of an unsuccessful write after a lost ACK.",
+      "Chrome MV3 production opened in isolated Edge extension tabs, not toolbar accelerators, Firefox or screen-reader acceptance.",
+      "No provider network or real personal configuration."
+    ],
+    "cleanup": {
+      "guardedCloseConfirmed": true,
+      "profileRemoved": true
+    },
+    "pageErrors": [],
+    "actualMainImport": {
+      "onboardingChunk": "PopupOnboarding-BPyhJYbl.js",
+      "mainChunk": "PopupApp-BVBcfg_Q.js",
+      "mainSha256": "9d197cc39d0c35c0a140ba0660c52b2b21da141f7520f9499d085eeaded45a2f"
+    },
+    "sourceReport": "research/self-help-diagnostics-20261015/first-use-fault-ui/report.json",
+    "screenshotCount": 7,
+    "externalRequestCount": 0,
+    "expectedConsoleErrors": [
+      {
+        "case": "main-import-abort",
+        "message": "Failed to load resource: net::ERR_FAILED"
+      }
+    ],
+    "preDispatch": {
+      "forwarded": false,
+      "authoritativeAfterFailure": {
+        "uiLanguage": "zh-CN",
+        "uiLanguageSetupCompleted": false,
+        "service": "freeTranslation"
+      },
+      "afterExplicitRetry": {
+        "uiLanguage": "en-US",
+        "uiLanguageSetupCompleted": true,
+        "service": "freeTranslation"
+      }
+    },
+    "ackDelay": {
+      "heldForMs": 2051,
+      "nativeSuccess": true,
+      "authoritativeWhileHeld": {
+        "uiLanguage": "en-US",
+        "uiLanguageSetupCompleted": true,
+        "service": "freeTranslation"
+      },
+      "releaseToMainMs": 82,
+      "busyButtonCount": 8,
+      "allButtonsDisabled": true
+    },
+    "mainImport": {
+      "abortCount": 1,
+      "savedPreferences": {
+        "uiLanguage": "fr-FR",
+        "uiLanguageSetupCompleted": true,
+        "service": "freeTranslation"
+      },
+      "afterExplicitReopen": {
+        "uiLanguage": "fr-FR",
+        "uiLanguageSetupCompleted": true,
+        "service": "freeTranslation"
+      }
+    },
+    "browserFrontmost": false
+  },
+  "serviceSaveReturnCancelUi": {
+    "ok": true,
+    "scope": "Actual full config-save reply failure/delay in temporary settings page, return to closed source, same-document in-flight cancel and explicit retranslation",
+    "cases": [
+      "Actual persistConfig full-save receipt failure shows configuration-save safely without provider request",
+      "Removing failure and explicitly retrying connection succeeds with preserved preferences",
+      "Holding successful save receipt beyond ten-second budget produces configuration-save and no provider request",
+      "Late successful save receipt does not start the old connection or clear the safe failure",
+      "Explicit retry after delayed receipt succeeds; only two user-requested checks contact provider",
+      "Settings remains open; returning to a closed source explains unavailability without opening or activating a spare tab",
+      "Actual in-flight cancellation closes held HTTP, releases busy state and restores source in the same document",
+      "Explicit retranslation after cancellation reaches translated on the same document with original settings",
+      "Real French HTTP429 cooldown keeps Réessayer disabled and makes no additional provider request"
+    ],
+    "productionSnapshot": {
+      "files": 475,
+      "sha256": "aae58851a17a10c205b24ac1ecd3626f0690dc357fe6745244c0b3e4fe4b4efd",
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+    },
+    "limitations": [
+      "Only persistConfig full-save receipt is changed or held after native success. This is not a database write failure or configStorageRead fault.",
+      "Local synthetic provider, fake credential and isolated Edge MV3 profile; no daily pages or other-platform runtime acceptance."
+    ],
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "snapshotRemoved": true,
+    "pageErrors": [],
+    "consoleErrors": [],
+    "sourceReport": "research/self-help-diagnostics-20261015/service-save-return-cancel-ui/report.json",
+    "screenshotCount": 11,
+    "saveFaultBoundary": "Only the full-save callback receipt is replaced or delayed after native success; not disk failure or configStorageRead failure.",
+    "saveClickToTimeoutMs": 10507,
+    "postReleaseQuietMs": 729,
+    "postReleaseProviderRequests": 1,
+    "closedSourceReturn": {
+      "tabsAndActiveStatesUnchanged": true,
+      "spareContentUnchanged": true,
+      "providerRequests": 2
+    },
+    "frenchCooldown": {
+      "retryLabel": "Réessayer",
+      "disabled": true,
+      "quietMs": 1221,
+      "providerRequests": 5
+    },
+    "preferencesPreserved": true,
+    "browserFrontmost": false
+  },
+  "screenshotProvenance": [
+    {
+      "file": "03-first-success.png",
+      "source": "ui-repair-loop/03-first-success.png",
+      "sha256": "4f1d60a3ad74ecb0a46228b082be8e9566a7b1663015c36f55e4e22ee3f5ae9a",
+      "productionPackage": {
+        "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+        "files": 474
+      }
+    },
+    {
+      "file": "05-report.png",
+      "source": "ui-repair-loop/05-report.png",
+      "sha256": "77bb95e6095e883d7e623c2a673f995912c2d8c970c3c43576e0a066f37a1108",
+      "productionPackage": {
+        "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+        "files": 474
+      }
+    },
+    {
+      "file": "07-settings-narrow.png",
+      "source": "ui-repair-loop/07-settings-narrow.png",
+      "sha256": "b3ca35e0bdbd2a9b96451a6eb586e946a067a78be4c5e1522f2e9eec63dc3ba8",
+      "productionPackage": {
+        "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+        "files": 474
+      }
+    },
+    {
+      "file": "08-dark-rate.png",
+      "source": "ui-repair-loop/08-dark-rate.png",
+      "sha256": "8689480ba8b1a5a96e503073825ea723b05e087c650c4ffa6b755b8ddc511515",
+      "productionPackage": {
+        "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+        "files": 474
+      }
+    },
+    {
+      "file": "11-fr-FR.png",
+      "source": "ui-repair-loop/11-fr-FR.png",
+      "sha256": "679d38d46ecc65575361f616f50584ae640389acdcafa82426ca00601bf89b7c",
+      "productionPackage": {
+        "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+        "files": 474
+      }
+    },
+    {
+      "file": "11-ru-RU.png",
+      "source": "ui-repair-loop/11-ru-RU.png",
+      "sha256": "36b5fd7788ed75dcaf318fbd1ad1fb26eca2467e8b7fb736013cefa7c0801a22",
+      "productionPackage": {
+        "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+        "files": 474
+      }
+    },
+    {
+      "file": "keyboard-service-check.png",
+      "source": "keyboard-repair-loop/06-keyboard-settings-authentication.png",
+      "sha256": "92495b273cfe86e06906db93df8b26621238d59bbb6fd81e366c1c7456419f58",
+      "productionPackage": {
+        "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+        "files": 474
+      }
+    },
+    {
+      "file": "keyboard-missing-key.png",
+      "source": "keyboard-repair-loop/11-disabled-check-heading-fallback.png",
+      "sha256": "ac0e8e2f3ad60de07f69aa73955a9daa698b04b9bcf4bf4e75b0d6fcc8a5d2b2",
+      "productionPackage": {
+        "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+        "files": 474
+      }
+    },
+    {
+      "file": "onboarding-light.png",
+      "source": "keyboard-single-screen/01-keyboard-language-initial.png",
+      "sha256": "cc1a73cea75beb7bf3d02b05b8df9390792dd6b5d7c1e2e504337f9da6a10715"
+    },
+    {
+      "file": "onboarding-dark.png",
+      "source": "keyboard-single-screen/01b-keyboard-language-dark-narrow.png",
+      "sha256": "702546d1dc5258d30f28c6af71bd2941b14046e716949e5d4458cde4c78bf006"
+    },
+    {
+      "file": "onboarding-save-failure.png",
+      "source": "first-use-fault-ui/02-safe-language-confirmation-error.png",
+      "sha256": "36036b4398df4c0e0112f23671635e6eb91fd616c88be503b3126237f5b41d29"
+    },
+    {
+      "file": "onboarding-menu-load-failure.png",
+      "source": "first-use-fault-ui/06-saved-language-main-import-safe-reopen.png",
+      "sha256": "9f18de1dd27cdc00f92a72eda783e3c543e40478087d5e5942ba799e106869d3"
+    },
+    {
+      "file": "service-save-unconfirmed.png",
+      "source": "service-save-return-cancel-ui/01-save-reply-failed.png",
+      "sha256": "ba7dcd96fed4dbb7e18fed27b76402f4d503b814d96feffab607999b850a391e"
+    },
+    {
+      "file": "service-french-cooldown.png",
+      "source": "service-save-return-cancel-ui/10-french-cooldown-localized.png",
+      "sha256": "a416ffe28842fc030b2f116003f1a89e7222529318df5412220f685e9eb2441a"
+    },
+    {
+      "file": "service-auth-retry.png",
+      "source": "ui-repair-loop/04-auth.png",
+      "sha256": "51f51533433623061db19e3ee0e99cd9be1cb27c40f0b2c2f4f5b30a39e04120",
+      "productionPackage": {
+        "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+        "files": 474
+      }
+    },
+    {
+      "file": "service-switch-late-a.png",
+      "source": "service-switch-ui/06-old-a-result-cannot-replace-b.png",
+      "sha256": "4f87f2e9149a90abe2a8a7254297d1de242123e7656ae76e042a2a4dd2a3b0ec",
+      "productionPackage": {
+        "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+        "files": 474
+      }
+    },
+    {
+      "file": "service-switch-recovered.png",
+      "source": "service-switch-ui/09-original-task-recovered-by-b.png",
+      "sha256": "8daa79a9b340928b0276ea717f10dae41c3d9988fa02277a3ab26df61351de6f",
+      "productionPackage": {
+        "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+        "files": 474
+      }
+    },
+    {
+      "file": "site-return-narrow.png",
+      "source": "site-scope-ui/final-production/02b-return-narrow-light.png",
+      "sha256": "09cd64f4b9180279bdef729b4f6ffb200d52896e6bff67edddee2a96f592d6a2",
+      "productionPackage": {
+        "sha256": "0c556fa739d869f8a06b586e9bd1e4fd2a00e4626f39ee9439edc9ddfae01537",
+        "files": 474,
+        "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+      }
+    },
+    {
+      "file": "site-repair-success.png",
+      "source": "site-scope-ui/final-production/06-explicit-translation-success.png",
+      "sha256": "47e3190eb28016c7c3aae3ced4b18bd33a30dd882c663f57db6d46631cb49239",
+      "productionPackage": {
+        "sha256": "0c556fa739d869f8a06b586e9bd1e4fd2a00e4626f39ee9439edc9ddfae01537",
+        "files": 474,
+        "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+      }
+    }
+  ],
+  "screenshotPrivacyReview": {
+    "reviewedUpdatedImages": 13,
+    "containsRealCredentials": false,
+    "containsPersonalPageContent": false,
+    "containsRawFailureMessages": false,
+    "notes": "All 35 current main UI/keyboard screenshots individually opened; the two selected service-switch images were independently opened too. Synthetic fixture UI only, credential inputs masked or empty; safe report shows only diagnosis/version/online scalars. Retained early images keep original provenance and package boundaries. The two selected final website-repair screenshots were independently opened: local rule UI and product translated state only, no plaintext credentials or source URL."
+  },
+  "integrationStatus": "Local targeted tests/builds and production fixture UI acceptance only. This record does not assert final-head remote CI success or physical-device acceptance.",
+  "singleScreenHeight": {
+    "source": "research/self-help-diagnostics-20261015/first-run-height-single-screen/report.json",
+    "passed": true,
+    "geometryCases": 9,
+    "screenshots": 11,
+    "productionPackage": {
+      "sha256": "aae58851a17a10c205b24ac1ecd3626f0690dc357fe6745244c0b3e4fe4b4efd",
+      "files": 475
+    },
+    "language": "fr-FR",
+    "confirmationPersisted": true,
+    "moduleFailureRetried": true,
+    "unexpectedErrors": 0,
+    "expectedInjectedModuleErrors": 1,
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "scope": "Controlled width variables at 280/320/360/400px and 320px dark; 130px extension-tab viewport does not constrain language/save-pending/main content. Real save ACK held, real main chunk aborted once, explicit reopen preserves French.",
+    "limitations": [
+      "Extension-tab layout fixture, not native toolbar sizing or OS keyboard",
+      "Five other browser runners received only shared onboarding selector repairs and syntax checks; their unrelated feature suites were not rerun"
+    ]
+  },
+  "priorSingleScreenBaseline": {
+    "productionUiSource": "research/self-help-diagnostics-20261015/ui-single-screen/report.json",
+    "keyboardUiSource": "research/self-help-diagnostics-20261015/keyboard-single-screen/report.json",
+    "productionPackage": {
+      "sha256": "aae58851a17a10c205b24ac1ecd3626f0690dc357fe6745244c0b3e4fe4b4efd",
+      "files": 475,
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+    },
+    "alternatePathHashTreeSha256": "76c85ab70c57cd473cc0a278ace51e007a0d2dcc953cb5df52d797a5bfa692f3",
+    "alternateHashAlgorithm": "SHA256 of sorted relative path + NUL + raw-file SHA256 + newline",
+    "strictTests": 703,
+    "strictFiles": 18,
+    "strictLog": "research/self-help-diagnostics-20261015/verification-final/one-screen-strict.log",
+    "keyboardEvents": 78,
+    "scope": "Retained baseline for original single-screen onset, first-use/save/height reports. Current repair-loop reruns below use a different package."
+  },
+  "serviceSwitchUi": {
+    "ok": true,
+    "scope": "Actual UI service A failure, service B explicit selection/default, original task recovery and persistence; late A receipt cannot replace B result",
+    "cases": [
+      "Initial A HTTP401 produces safe diagnosis without changing default or user language",
+      "Diagnostic opens exact current A and explicit connection check starts held actual A request",
+      "Selecting B only edits it: default remains A, old pending diagnostic clears, no automatic provider request",
+      "Explicit B default and check succeed; released late A HTTP401 cannot replace B selection, success or diagnosis",
+      "Explicit Return activates exact original document, leaves settings open and spare unchanged, without auto translation",
+      "Reopened popup retains B and original language settings; one explicit diagnostic Retry recovers original task through B",
+      "Closing/reopening preserves explicit B selection, translated same-document state, target/theme/UI preferences and no extra request"
+    ],
+    "productionSnapshot": {
+      "files": 474,
+      "sha256": "8cab45541c0aed7a00c1c54162a67aecf2c93b3e772cdffb88f66f9445d17692",
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+    },
+    "lateCallbackOrdering": {
+      "bSuccessReceivedAt": 1792058849730,
+      "releaseOldAAt": 1792058849987,
+      "aFailureReceivedAt": 1792058849991,
+      "confirmed": true,
+      "observer": "Passive native chrome.runtime.sendMessage callback wrapper for real testTranslationService only in extension pages; never changes response or dispatch."
+    },
+    "nativeReceipts": [
+      {
+        "service": "openai",
+        "startedAt": 1792058847659,
+        "protocol": "callback",
+        "receivedAt": 1792058849991,
+        "success": false,
+        "code": "authentication"
+      },
+      {
+        "service": "deepseek",
+        "startedAt": 1792058849725,
+        "protocol": "callback",
+        "receivedAt": 1792058849730,
+        "success": true
+      }
+    ],
+    "recoveryEvidence": {
+      "explicitAction": "Single explicit diagnostic Retry; no separate Restore or main Translate click",
+      "providerRequestCountBeforeRetry": 3,
+      "providerRequestCountAfterRetry": 4,
+      "sourceDomAssertion": "The actual original source content contained the exact synthetic translated text after B HTTP200.",
+      "sameDocumentToken": true
+    },
+    "switchQuiet": {
+      "start": 1792058848024,
+      "end": 1792058848680,
+      "providerRequests": 2
+    },
+    "lateReceiptQuiet": {
+      "start": 1792058850073,
+      "end": 1792058850888,
+      "providerRequests": 3
+    },
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "snapshotRemoved": true,
+    "visualReview": {
+      "allScreenshotsOpened": true,
+      "count": 11,
+      "notes": "Native screenshots 01/01b show all four diagnosis actions at 320px in light/dark with no clipping or horizontal overflow. Screenshots 02-07 show A repair, held A check, B editing-only then explicit default and success retained after A late failure, exact original-tab Return. Screenshots 08-10 show explicit diagnostic Retry and B/translated state before and after reopen. Inputs remain masked."
+    },
+    "pageErrors": [],
+    "consoleErrors": [],
+    "limitations": [
+      "Two fixed local synthetic provider endpoints, fake credentials and isolated Edge MV3; no daily pages, external provider or other-platform acceptance.",
+      "Native config patch only prepares both provider credentials/endpoints; the observed service B selection/default change is actual UI."
+    ],
+    "sourceReport": "research/self-help-diagnostics-20261015/service-switch-ui/report.json",
+    "screenshotCount": 11,
+    "requests": [
+      {
+        "index": 1,
+        "provider": "A",
+        "mode": "auth",
+        "startedAt": 1792058846384,
+        "respondedAt": 1792058846385,
+        "status": 401,
+        "closedAt": 1792058846385,
+        "closedBeforeResponse": false
+      },
+      {
+        "index": 2,
+        "provider": "A",
+        "mode": "hold",
+        "startedAt": 1792058847663,
+        "held": true,
+        "respondedAt": 1792058849987,
+        "status": 401,
+        "closedAt": 1792058849988,
+        "closedBeforeResponse": false
+      },
+      {
+        "index": 3,
+        "provider": "B",
+        "mode": "success",
+        "startedAt": 1792058849728,
+        "respondedAt": 1792058849728,
+        "status": 200,
+        "closedAt": 1792058849728,
+        "closedBeforeResponse": false
+      },
+      {
+        "index": 4,
+        "provider": "B",
+        "mode": "success",
+        "startedAt": 1792058852599,
+        "respondedAt": 1792058852599,
+        "status": 200,
+        "closedAt": 1792058852600,
+        "closedBeforeResponse": false
+      }
+    ]
+  },
+  "siteScopeRepair": {
+    "status": "passed",
+    "ok": true,
+    "cases": [
+      "Restrictive valid site focus rule yields real no-content diagnosis with no provider request",
+      "Diagnostic scope action opens correct adaptation UI with original source return context and unchanged preferences",
+      "Actual rule form corrects CSS scope, saves persistently, restores current session and preserves language/service/direction/theme without automatic requests",
+      "Real source return button activates the exact original document; returning alone sends no translation",
+      "Explicit UI translation succeeds in the original article after corrected scope",
+      "Reopening while translated preserves actual article translation, corrected scope and original preferences without requests",
+      "Explicit restore keeps corrected scope and all unrelated preferences without retry loops",
+      "Reopening retains corrected persisted website rule, original service/language/direction/theme and idle original document"
+    ],
+    "screenshotCount": 12,
+    "sourceReport": "research/self-help-diagnostics-20261015/site-scope-ui/final-production/report.json",
+    "productionPackage": {
+      "sha256": "0c556fa739d869f8a06b586e9bd1e4fd2a00e4626f39ee9439edc9ddfae01537",
+      "files": 474,
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+    },
+    "confirmedGapSource": "research/self-help-diagnostics-20261015/site-scope-ui/confirmed-entry-gap",
+    "priorPackageBoundary": "The main UI22, keyboard13/79 events and service switch7 used 8cab4554/474. This site acceptance uses 0c556fa7/474 with only Options panel whitelist routing as the additional production change. Prior gap and 8cab failed panel-location evidence retained.",
+    "entryContract": {
+      "section": "settings-sites",
+      "target": "adaptation",
+      "source": "numeric returnTabId only; no source URL; explicit repair links only"
+    },
+    "entryReturnGeometry": {
+      "top": 96.6796875,
+      "bottom": 128.6796875,
+      "left": 939.8828125,
+      "right": 1074,
+      "width": 1100,
+      "height": 850
+    },
+    "narrowReturnLayouts": [
+      {
+        "dark": false,
+        "top": 244.8828125,
+        "bottom": 276.8828125,
+        "left": 241.8828125,
+        "right": 376,
+        "viewport": 390,
+        "scrollWidth": 390,
+        "height": 850
+      },
+      {
+        "dark": true,
+        "top": 244.8828125,
+        "bottom": 276.8828125,
+        "left": 241.8828125,
+        "right": 376,
+        "viewport": 390,
+        "scrollWidth": 390,
+        "height": 850
+      }
+    ],
+    "afterRuleSave": {
+      "toolbarStatus": "idle",
+      "isTranslated": false,
+      "providerRequestsBeforeExplicitTranslation": 0
+    },
+    "keyboardReturn": {
+      "tabs": 6,
+      "enterSent": true,
+      "visibleFocusOnReturn": true,
+      "sameDocumentToken": true
+    },
+    "afterExplicitTranslation": {
+      "providerRequestCount": 2,
+      "toolbarStatus": "translated",
+      "translatedReopenStatus": "translated",
+      "preferencesAndRulesRetainedAfterRestoreAndReopen": true
+    },
+    "pageErrors": [],
+    "consoleErrors": [],
+    "cleanup": {
+      "guardedCloseConfirmed": true,
+      "profileRemoved": true
+    },
+    "visualReviewSource": "research/self-help-diagnostics-20261015/site-scope-ui/final-production/visual-review.json",
+    "limitations": [
+      "Synthetic local article and fake provider; no real account or daily browser.",
+      "Actual Edge MV3 extension tab, not toolbar/Firefox or OS-level input.",
+      "Initial onboarding completion, provider and deliberately restrictive focus rule are explicit native-persistence fixtures; scope correction/save/return/retry are real product UI."
+    ]
+  },
+  "finalBuildChecks": {
+    "source": "research/self-help-diagnostics-20261015/verification-repair-loop/final-checks.json",
+    "checks": [
+      {
+        "check": "chrome",
+        "exitCode": 0,
+        "log": "final-chrome.log"
+      },
+      {
+        "check": "compile",
+        "exitCode": 0,
+        "log": "final-compile.log"
+      },
+      {
+        "check": "firefox",
+        "exitCode": 0,
+        "log": "final-firefox.log"
+      },
+      {
+        "check": "userscript",
+        "exitCode": 0,
+        "log": "final-userscript.log"
+      },
+      {
+        "check": "userscript-verify",
+        "exitCode": 0,
+        "log": "final-userscript-verify.log"
+      },
+      {
+        "check": "manifests",
+        "exitCode": 0,
+        "log": "final-manifests.log"
+      },
+      {
+        "check": "audit",
+        "exitCode": 0,
+        "log": "final-audit.log"
+      },
+      {
+        "check": "strict",
+        "exitCode": 0,
+        "log": "final-strict.log"
+      }
+    ],
+    "docsBuild": "pending after this documentation update"
+  },
+  "compactNoticeRevision": {
+    "revisionBase": "2f8f510dbd568c99bbdc07991f2a14546c7ff0fa",
+    "defaultPresentation": "Inline short reason and one primary recovery action; details, secondary actions and report controls mount only on explicit disclosure.",
+    "productionPackage": {
+      "sha256": "e15c6296a6091a6a9eb1db781e714b213a95dff2040d9cda9d69b2a554bd9e6c",
+      "files": 474,
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256",
+      "unchangedAfterRun": true
+    },
+    "strict": {
+      "files": 3,
+      "passed": 164,
+      "module": "src/services/diagnostics/index.ts",
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "mainUi": {
+      "report": "ui-compact-notice/report.json",
+      "ok": true,
+      "cases": 22,
+      "screenshots": 19,
+      "refreshRounds": 3,
+      "defaultNoticeHeights": [
+        24
+      ],
+      "consoleErrors": [],
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 302,
+          "top": -965,
+          "width": 1100,
+          "height": 850
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false,
+        "frontmostBefore": {
+          "pid": 49648,
+          "name": "Google Chrome"
+        },
+        "frontmostAfter": {
+          "pid": 49648,
+          "name": "Google Chrome"
+        }
+      }
+    },
+    "screenshots": [
+      {
+        "file": "compact-default.png",
+        "source": "compact-notice-ui/zh-320-light-auth-hero.png",
+        "sha256": "70137f28707b4e8df7ea176e1edd7db899270f5308aa3b08a1287bf71d87538d",
+        "privacy": "Only product UI; no report, credentials, URL or page text."
+      },
+      {
+        "file": "compact-dark.png",
+        "source": "compact-notice-ui/02-zh-CN-dark-320.png",
+        "sha256": "3834eb9d412b88e1125cd8952338aa7b2214e03ad39263815f1eac150c514a1d",
+        "privacy": "Only product UI; no report, credentials, URL or page text."
+      },
+      {
+        "file": "compact-french.png",
+        "source": "compact-notice-ui/02-fr-FR-light-380.png",
+        "sha256": "4fada3f71406df06fe8ba8cdad8b90fc3bf667e6a6fb5eceb2e2c6014502dcd6",
+        "privacy": "Only product UI; no report, credentials, URL or page text."
+      }
+    ],
+    "limitations": [
+      "Local synthetic HTTP fixtures; no new live provider validation.",
+      "Existing native popup widths retained: zh/ja/ko 320px; en/fr/ru/es 380px.",
+      "No new Firefox/Safari runtime, physical device or screen-reader acceptance."
+    ],
+    "nativeUi": {
+      "report": "compact-notice-ui/report.json",
+      "ok": true,
+      "cases": 9,
+      "screenshots": 32,
+      "actualKeyboardEvents": 69,
+      "nativeMatrixSamples": 20,
+      "allCollapsedHeightsPx": [
+        24
+      ],
+      "nativePopupWidths": {
+        "zh-CN": 320,
+        "en-US": 380,
+        "ja-JP": 320,
+        "ko-KR": 320,
+        "fr-FR": 380,
+        "ru-RU": 380,
+        "es-ES": 380
+      },
+      "noCssInjection": true,
+      "pageErrors": [],
+      "consoleErrors": [],
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "snapshotRemoved": true,
+      "productionSnapshot": {
+        "files": 474,
+        "sha256": "e15c6296a6091a6a9eb1db781e714b213a95dff2040d9cda9d69b2a554bd9e6c",
+        "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+      },
+      "retryCooldown": {
+        "before": "重试 (8s)",
+        "afterDetailsReopened": "重试 (7s)"
+      },
+      "earlyDriverFailures": "Forced non-CJK 320px viewport against native 380px layout, and expected popup close during successful settings navigation. Both retained separately with guarded cleanup; not counted as passes."
+    }
+  },
+  "statusPopoverRevision": {
+    "revisionBase": "4fe8a42e42af91cb1832ca4cc69f3f4c25b5f62d",
+    "defaultPresentation": "24x24 status icon below the section translation button in the existing metadata row; recovery dialog only on explicit open.",
+    "productionSnapshot": {
+      "files": 474,
+      "sha256": "e4d90cdb129b2f3626255dadb9807347c382406efe346185802cc6937570bb06",
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+    },
+    "strict": {
+      "files": 5,
+      "passed": 233,
+      "coverage": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      }
+    },
+    "coreUi": {
+      "report": "status-popover-ui/core-pass-before-scroll-wheel-correction/report.json",
+      "coreOk": true,
+      "rawOk": false,
+      "cases": 9,
+      "nativeMatrixSamples": 20,
+      "openedLocales": 7,
+      "nativePopupWidths": {
+        "zh-CN": 320,
+        "en-US": 380,
+        "ja-JP": 320,
+        "ko-KR": 320,
+        "fr-FR": 380,
+        "ru-RU": 380,
+        "es-ES": 380
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "snapshotRemoved": true,
+      "headerCloseVisibility": {
+        "export-after-native-scroll": {
+          "top": 23,
+          "bottom": 45,
+          "panelTop": 12,
+          "panelBottom": 226.8984375,
+          "headingPosition": "sticky",
+          "panelScrollTop": 123,
+          "hitClose": true
+        },
+        "short-preview": {
+          "top": 23,
+          "bottom": 45,
+          "panelTop": 12,
+          "panelBottom": 201.0546875,
+          "headingPosition": "sticky",
+          "panelScrollTop": 0,
+          "hitClose": true
+        },
+        "short-internal-scroll": {
+          "top": 23,
+          "bottom": 45,
+          "panelTop": 12,
+          "panelBottom": 201.0546875,
+          "headingPosition": "sticky",
+          "panelScrollTop": 220.5,
+          "hitClose": true
+        }
+      },
+      "lastFailureBoundary": "Single wheel event consumed by inner shell before reaching outer-window scroll precondition. Original raw report retained; separate same-package addon verifies actual scroll and closure."
+    },
+    "scrollAddon": {
+      "report": "status-popover-ui/scroll-addon/report.json",
+      "ok": true,
+      "productionSnapshot": {
+        "files": 474,
+        "sha256": "e4d90cdb129b2f3626255dadb9807347c382406efe346185802cc6937570bb06",
+        "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+      },
+      "before": {
+        "windowY": 300,
+        "shellY": 11.5,
+        "shellHeight": 560,
+        "shellScrollHeight": 637
+      },
+      "wheelTrace": [
+        {
+          "windowY": 300,
+          "shellY": 0,
+          "triggerTop": 218.5546875,
+          "triggerBottom": 242.5546875,
+          "visibleTop": 0,
+          "visibleBottom": 260,
+          "triggerOutside": false,
+          "popoverOpen": true
+        },
+        {
+          "windowY": 0,
+          "shellY": 0,
+          "triggerTop": 518.5546875,
+          "triggerBottom": 542.5546875,
+          "visibleTop": 0,
+          "visibleBottom": 260,
+          "triggerOutside": true,
+          "popoverOpen": false
+        }
+      ],
+      "after": {
+        "windowY": 0,
+        "shellY": 0,
+        "triggerRect": "{\"x\":327,\"y\":518.5546875,\"width\":24,\"height\":24,\"top\":518.5546875,\"right\":351,\"bottom\":542.5546875,\"left\":327}",
+        "focusOnTrigger": false
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "snapshotRemoved": true
+    },
+    "fullMainFlowBaseline": {
+      "report": "ui-status-popover/report.json",
+      "ok": true,
+      "cases": 22,
+      "screenshots": 19,
+      "package": {
+        "files": 474,
+        "sha256": "a22d8b178bc90bdfe5e23c404a4cad2135cc2e704063f5027bd1a52c1e572fea",
+        "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+      },
+      "deltaToFinal": [
+        "Sticky diagnostic header CSS",
+        "Expanded watcher flush post before focus"
+      ]
+    },
+    "screenshots": [
+      {
+        "file": "status-default.png",
+        "source": "status-popover-ui/status-default-hero.png",
+        "sha256": "6633129a7769ad48b4455b0853e76b6e158abe6b456969bfe3c9ba3ea8eecfda",
+        "privacy": "Only synthetic product UI and allowlisted report fields; no private URL, text or credentials."
+      },
+      {
+        "file": "status-open.png",
+        "source": "status-popover-ui/status-expanded.png",
+        "sha256": "280b224af05cf88c31629c8b47c22d00693b788925ef46d6e117d541950bc78c",
+        "privacy": "Only synthetic product UI and allowlisted report fields; no private URL, text or credentials."
+      },
+      {
+        "file": "status-report.png",
+        "source": "status-popover-ui/04-export-header-visible.png",
+        "sha256": "35a1e4d5f6daf5a8e098897eaf165142293015dc6ab5061fe7a2b4c456ff8aca",
+        "privacy": "Only synthetic product UI and allowlisted report fields; no private URL, text or credentials."
+      }
+    ],
+    "review": {
+      "code": "Independent review confirmed scroll listener and cleanup; KeepAlive/pagehide context revision removes diagnosis and unmounts child.",
+      "ui": "Default hero, actual opened dialog and scrolled report inspected; fixed header close visibility.",
+      "operation": "Actual keyboard first-focus race fixed; busy/cooldown/report/export/source repair and scroll paths verified."
+    },
+    "limitations": [
+      "Isolated Edge/Chromium extension tab with synthetic HTTP and controlled viewport, not physical mobile or other browser runtime.",
+      "No new external live provider, Firefox/Safari runtime or screen-reader acceptance."
+    ]
+  },
+  "mainIntegration": {
+    "base": "d3fb95d65",
+    "priorHead": "d17947f564e5e71afc03302138d06e8f7a3e8e28",
+    "conflicts": "Runtime file responsibility comment and test registry; preserved both sides.",
+    "strict": {
+      "files": 30,
+      "passed": 1465,
+      "businessModules": 11,
+      "perFileFourMetrics100": true
+    },
+    "newBoundaries": {
+      "file": "tests/fullPageVisibilityScheduling.test.ts",
+      "passed": 400,
+      "newCases": 5,
+      "review": "Independent read-only review; no weakened original assertions"
+    },
+    "productionPackage": {
+      "files": 474,
+      "sha256": "a3d32ce60163f29e506fd34ade1686f784138b6249794a920ca84b409b9a92dc",
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256",
+      "source": "d17947f564e5e71afc03302138d06e8f7a3e8e28 + merge d3fb95d65; production sources frozen"
+    },
+    "mainUi": {
+      "ok": true,
+      "cases": 22,
+      "screenshots": 19,
+      "refreshRounds": 3,
+      "locales": 7,
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "snapshotUnchangedAfterRun": true,
+      "immutableSnapshotRemoved": true,
+      "report": "research/self-help-diagnostics-20261015/ui-main-integration/report.json"
+    },
+    "counting": "Targeted groups overlap; not summed. e4 special keyboard/scroll proof remains separate from a3 main flow.",
+    "limitations": [
+      "Controlled provider/observer tests are not native browser timing or live-provider proof.",
+      "No additional Firefox/Safari runtime, physical mobile or screen-reader acceptance."
+    ]
+  },
+  "materialIntegration": {
+    "base": "633baacd3",
+    "priorHead": "5b12b9cde369b309ae020c5fc1902cc38634e294",
+    "productionPackage": {
+      "files": 476,
+      "sha256": "a828650dacab446b967745b5c72f3036c69f7863a204545f657f6f39b3982a2f",
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256",
+      "source": "5b12b9cde + main 633baacd3 merge-pending; production sources frozen"
+    },
+    "scope": "Only verification metadata conflicts; popup/diagnostics/fullpage source unchanged. Material source remains main ownership.",
+    "targeted": {
+      "files": 7,
+      "passed": 231
+    },
+    "checks": {
+      "compile": "passed",
+      "Chrome": "passed",
+      "Firefox": "passed",
+      "userscript": "passed",
+      "manifests": "passed",
+      "userscriptVerifier": "passed",
+      "registrationAudit": "passed"
+    },
+    "mainUi": {
+      "ok": true,
+      "cases": 22,
+      "screenshots": 19,
+      "refreshRounds": 3,
+      "locales": 7,
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "snapshotUnchangedAfterRun": true,
+      "immutableSnapshotRemoved": true
+    },
+    "review": "19 original images individually inspected; root also opened auth, dark rate and French",
+    "firstAttempt": {
+      "outcome": "focus guard aborted before any test case or HTTP",
+      "cases": 0,
+      "http": 0,
+      "ownedBrowserBrieflyForeground": true,
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "immutableSnapshotRemoved": true,
+      "evidence": "ui-material-integration/attempt-focus-guard-first-open",
+      "policy": "Only one retry under unchanged focus guards; no manual foreground action"
+    },
+    "evidenceDirectories": [
+      "material-integration-verification",
+      "ui-material-integration"
+    ],
+    "limits": "No new live-provider, Firefox/Safari runtime, physical mobile or screen-reader proof; e4 keyboard/scroll cases remain separate-package history."
+  }
+}

@@ -1,7 +1,7 @@
 <!--
  @file src/app/popup/PopupApp.vue
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页。
- 主要内容：在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次语言引导独占内容；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈。
+ 主要内容：复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈。
  模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/config 管理；配置草稿复用共享编辑会话，保留 post 合并和关闭补丁交接。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
@@ -134,12 +134,21 @@
         </button>
       </div>
 
-      <PopupSiteRule
+      <template v-if="!pageDiagnostic">
+        <p v-if="pageResultStatus === 'translating'" class="first-use-hint" role="status" data-i18n-ignore>{{ getDiagnosticUiText('first-use-translating', config.uiLanguage) }}</p>
+        <p v-else-if="pageResultStatus === 'translated'" class="first-use-hint" role="status" data-i18n-ignore>{{ getDiagnosticUiText('first-use-ready', config.uiLanguage) }}</p>
+        <p v-else-if="config.count === 0 && config.on && !currentSiteExtensionDisabled && !credentialWarning" class="first-use-hint" data-testid="first-translation-hint" data-i18n-ignore>{{ getDiagnosticUiText('first-use-start', config.uiLanguage) }}</p>
+      </template>
+
+      <div v-if="(siteModuleNestedInTranslation && isSiteModuleVisible) || pageDiagnostic" class="translation-meta">
+        <PopupSiteRule
         v-if="siteModuleNestedInTranslation && isSiteModuleVisible"
         v-bind="siteRuleModuleProps"
         :onSetAlwaysTranslated="pageButtons.always"
         :onSetExtensionDisabled="pageButtons.disabled"
-      />
+        />
+        <DiagnosticNotice v-if="pageDiagnostic" :diagnostic="pageDiagnostic" :language="config.uiLanguage" :busy="translating" :version="version" @action="diagnosticAction" />
+      </div>
 
       <p v-if="notice" class="notice" :class="noticeType" :role="noticeType === 'error' ? 'alert' : 'status'" :aria-live="noticeType === 'error' ? 'assertive' : 'polite'">{{ notice }}</p>
     </section>
@@ -344,6 +353,9 @@
 
 <script lang="ts" setup>
 import PopupLanguageSelect from './PopupLanguageSelect.vue';
+import DiagnosticNotice from '@/src/features/self-help/ui/DiagnosticNotice.vue';
+import {getDiagnosticUiText, diagnoseFailure, normalizeDiagnostic, type Diagnostic, type DiagnosticAction} from '@/src/services/diagnostics';
+import {normalizeTranslationToolbarStatus, type TranslationToolbarStatus} from '@/src/features/full-page-translation/toolbarStatus';
 
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, toRefs, watch } from 'vue';
 import browser from 'webextension-polyfill';
@@ -357,6 +369,7 @@ import {
 } from '@/src/services/config/store';
 import { Setting } from '@element-plus/icons-vue';
 import {normalizeConfig} from '@/src/core/config/model';
+import {createApiKeyCheckRevision} from '@/src/core/config/apiKeyCheckIdentity';
 import {resolveUiLanguageFromLocale, type UiLanguage} from '@/src/core/i18n';
 import {
   options,
@@ -437,6 +450,14 @@ const donationVisible = ref(false);
 const donationQrEnlarged = ref(false);
 const donationCard = shallowRef<HTMLElement | null>(null);
 const donationTrigger = shallowRef<HTMLButtonElement | null>(null);
+const pageDiagnostic = shallowRef<Diagnostic>();
+const pageResultStatus = ref<TranslationToolbarStatus>('idle');
+function readPageResult(value: unknown) {
+  const response = value as {isTranslated?: unknown; toolbarStatus?: unknown; diagnostic?: unknown} | undefined;
+  pageResultStatus.value = normalizeTranslationToolbarStatus(response?.toolbarStatus);
+  pageDiagnostic.value = normalizeDiagnostic(response?.diagnostic);
+  if (pageResultStatus.value === 'error' && !pageDiagnostic.value) pageDiagnostic.value = diagnoseFailure(undefined);
+}
 const notice = ref('');
 const noticeType = ref<'success' | 'error'>('success');
 const hydrated = ref(false);
@@ -720,9 +741,12 @@ const areaPreviewKeys = computed(() => {
 const pageExited = ref(false);
 const popupContext = useSettingsActionContext(() => hydrated.value && !showLanguageOnboarding.value && !pageExited.value,
   () => [config.value, config.value.on]);
-const pageContext = useSettingsActionContext(() => popupContext.active.value, () => [config.value.on, config.value.service,
+// 权威计数同步会重新分配配置中的对象；比较实际值与安全连接指纹，不能因此撤销当前诊断。
+const pageConfigurationIdentity = computed(() => JSON.stringify([config.value.on, config.value.service,
   config.value.from, config.value.to, config.value.display, config.value.model[config.value.service],
-  config.value.customModel[config.value.service], config.value.disabledExtensionDomains.join(','), config.value.alwaysTranslateDomains.join(','), config.value.autoTranslate, credentialWarning.value]);
+  config.value.customModel[config.value.service], config.value.disabledExtensionDomains.join(','), config.value.alwaysTranslateDomains.join(','),
+  config.value.autoTranslate, credentialWarning.value, createApiKeyCheckRevision(config.value, config.value.service)]));
+const pageContext = useSettingsActionContext(() => popupContext.active.value, () => [pageConfigurationIdentity.value]);
 const cacheContext = useSettingsActionContext(() => popupContext.active.value, () => []);
 const tabSource = createPopupTabSource(window.location?.search || '', {
   get: id => browser.tabs.get(id), query: () => browser.tabs.query({active: true, currentWindow: true}),
@@ -731,10 +755,11 @@ const pageActions = createPopupPageActions({state: pageState, config: () => conf
   warning: () => credentialWarning.value || '', getTab: tabSource.getTab,
   persistRule: persistSiteRulePatch,
   openPdf: source => browser.tabs.create({url: createPdfReaderUrl(browser.runtime.getURL('document.html'), source)}),
-  send: (id, message) => browser.tabs.sendMessage(id, message), notice: showNotice, close: closePopupSurface, translate: t, thunderbird: isThunderbird});
+  onStatus: readPageResult, onFailure: diagnostic => {pageDiagnostic.value = diagnostic;notice.value = ''},
+  send: (id, message) => browser.tabs.sendMessage(id, message, {frameId: 0}), notice: showNotice, close: closePopupSurface, translate: t, thunderbird: isThunderbird});
 const {hydrate: hydrateCurrentSite, toggle: togglePageTranslation, section: startSectionTranslation,
   setAlways: setCurrentSiteAlwaysTranslated, setDisabled: setCurrentSiteExtensionDisabled} = pageActions;
-watch(pageContext.revision, () => {pageActions.invalidate();if (!config.value.on || currentSiteExtensionDisabled.value) pageTranslated.value = false}, {flush: 'sync'});
+watch(pageContext.revision, () => {pageActions.invalidate();readPageResult(undefined);if (!config.value.on || currentSiteExtensionDisabled.value) pageTranslated.value = false}, {flush: 'sync'});
 const pageRenderRevision = ref(0);
 watch(() => [pageState.tabId, pageState.url, pageState.translated, pageState.busy, pageState.savingRule], () => {pageRenderRevision.value += 1}, {flush: 'sync'});
 const pageButtons = computed(() => {
@@ -756,7 +781,7 @@ const donationActions = computed(() => {
 const popupActions = computed(() => {
   const current = popupContext.capture();
   const bind = (run: () => void | Promise<void>) => () => {if (current()) return run()};
-  return {settings: bind(() => openOptions()), serviceSettings: bind(() => openOptions('settings-services')),
+  return {settings: bind(() => openOptions()), serviceSettings: bind(() => openOptions('settings-services', undefined, config.value.service)),
     services: bind(() => openDrawer('services')), cache: bind(clearCache)};
 });
 const drawerContext = useSettingsActionContext(() => popupContext.active.value && drawerVisible.value,
@@ -770,7 +795,7 @@ const drawerActions = computed(() => {
   return {close: bind(() => {drawerVisible.value = false}), aiContext: bind(toggleAIContext), hover: bind(toggleDefaultHoverShortcut),
     selection: bind(toggleSelectionTranslation), image: bind(() => setImageTranslatorEnabled(config.value.disableImageTranslator)),
     area: bind(() => setAreaEnabled(!config.value.selectionAreaEnabled)), options: bind(() => openOptions(section)),
-    services: bind(() => openDrawer('services')), serviceSettings: bind(() => openOptions('settings-services')),
+    services: bind(() => openDrawer('services')), serviceSettings: bind(() => openOptions('settings-services', undefined, config.value.service)),
     translationSettings: bind(() => openOptions('settings-translation'))};
 });
 const drawerSelectionModes = computed(() => {
@@ -882,17 +907,46 @@ function toggleAIContext() {
   config.value.enableAIContext = !config.value.enableAIContext;
 }
 function handleTabUpdated(tabId: number, change: Tabs.OnUpdatedChangeInfoType, tab: Tabs.Tab) {
-  if (popupContext.active.value && (typeof change.url === 'string' || change.status === 'loading')
+  // loading 时内容脚本可能尚未接管；complete 再握手，才能绑定同 URL 刷新后的新文档令牌。
+  if (popupContext.active.value && (typeof change.url === 'string' || change.status === 'loading' || change.status === 'complete')
     && (tabSource.fixed ? tabId === tabSource.sourceTabId
       : tabId === currentTabId.value || (tab.active && (pageState.windowId === undefined || tab.windowId === pageState.windowId)))) void hydrateCurrentSite();
 }
 function handleTabActivated(info: Tabs.OnActivatedActiveInfoType) {
   if (!tabSource.fixed && popupContext.active.value && (pageState.windowId === undefined || info.windowId === pageState.windowId) && info.tabId !== currentTabId.value) void hydrateCurrentSite();
 }
+async function diagnosticAction(action: DiagnosticAction) {
+  if (!popupContext.active.value || !pageDiagnostic.value) return;
+  if (action === 'dismiss') {
+    const current = popupContext.capture();pageDiagnostic.value = undefined;
+    await nextTick();if (current()) document.querySelector<HTMLButtonElement>('[data-testid="page-translation"]')?.focus();
+    return;
+  }
+  if (action === 'services') return openOptions('settings-services', undefined, config.value.service);
+  if (action === 'site-settings') return openOptions('settings-sites', 'adaptation', undefined, true);
+  if (action === 'refresh') {
+    const current = pageContext.capture();
+    try {
+    const tab = await tabSource.getTab();
+    if (current() && tab?.id === currentTabId.value && (tab.pendingUrl || tab.url || '') === pageState.url) {
+      try {await browser.tabs.reload(tab.id);if (current()) closePopupSurface();} catch {if (current()) showNotice(getDiagnosticUiText('refresh-failed', config.value.uiLanguage), 'error');}
+    }
+    } catch {if (current()) showNotice(getDiagnosticUiText('source-closed', config.value.uiLanguage), 'error');}
+    return;
+  }
+  if (action === 'retry') {pageDiagnostic.value = undefined;await pageActions.retry();}
+}
+function handlePageResultMessage(message: unknown, sender: {id?: string; url?: string; tab?: {id?: number; url?: string; pendingUrl?: string}; frameId?: number}): undefined {
+  const response = message as {type?: unknown; isTranslated?: unknown; documentToken?: unknown} | undefined;
+  if (!pageContext.active.value || sender.id !== browser.runtime.id || (sender.url !== undefined && sender.url !== pageState.url) || sender.tab?.id !== currentTabId.value || (sender.frameId !== undefined && sender.frameId !== 0) || response?.type !== 'fullPageTranslationState') return;
+  pageActions.receiveStatus(sender.tab.id, sender.tab.pendingUrl || sender.tab.url, response);
+  return undefined;
+}
 function handleTabRemoved(tabId: number) {
   if (popupContext.active.value && tabId === (tabSource.fixed ? tabSource.sourceTabId : currentTabId.value)) void hydrateCurrentSite();
 }
 onMounted(() => {
+  browser.runtime.onMessage.addListener(handlePageResultMessage);
   document.addEventListener('keydown', handleDonationKeydown);
   browser.tabs.onUpdated.addListener(handleTabUpdated);
   browser.tabs.onActivated.addListener(handleTabActivated);
@@ -903,6 +957,7 @@ onUnmounted(() => {
   pageExited.value = true;
   window.removeEventListener('pagehide', saveOnPageHide);
   configEditor.dispose();
+  browser.runtime.onMessage.removeListener(handlePageResultMessage);
   document.removeEventListener('keydown', handleDonationKeydown);
   browser.tabs.onUpdated.removeListener(handleTabUpdated);
   browser.tabs.onActivated.removeListener(handleTabActivated);
@@ -940,12 +995,17 @@ function showNotice(message: string, type: 'success' | 'error' = 'success') {
 
 // 配置订阅是内容功能的唯一状态来源；避免无 revision 的广播晚到后覆盖新快照。
 function openDrawer(name: DrawerName) {if (!popupContext.active.value || (!config.value.on && name !== 'services' && name !== 'aiContext')) return;activeDrawer.value = name;drawerMounted.value = true;drawerVisible.value = true;}
-async function openOptions(section?: SettingsSection, target?: string) {
+async function openOptions(section?: SettingsSection, target?: string, service?: string, repairSource = false) {
   if (!popupContext.active.value) return;
   const current = popupContext.capture();
   try {
     if (section) {
-      await browser.tabs.create({ url: `${browser.runtime.getURL('options.html')}${target ? `?target=${encodeURIComponent(target)}` : ''}#${section}` });
+      const query = new URLSearchParams();
+      if (service) query.set('service', service);
+      if (target) query.set('target', target);
+      if ((service || repairSource) && currentTabId.value !== null) query.set('returnTabId', String(currentTabId.value));
+      const search = query.toString();
+      await browser.tabs.create({url: `${browser.runtime.getURL('options.html')}${search ? `?${search}` : ''}#${section}`});
     } else {
       await browser.runtime.openOptionsPage();
     }
