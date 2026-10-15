@@ -23,7 +23,7 @@ afterEach(async () => {
 
 // Local client compilation keeps the parent and child templates real without changing Vitest's
 // global SFC transform. Only module loading and browser/config/presentation boundaries are ports.
-async function mountLearning(initialTab?: string, options: {listGate?: Tab} = {}) {
+async function mountLearning(initialTab?: string, options: {listGate?: Tab; browser?: string} = {}) {
   const {window, document} = parseHTML('<html><body></body></html>')
   for (const key of ['window', 'document', 'Node', 'Element', 'HTMLElement', 'SVGElement', 'Event'])
     vi.stubGlobal(key, key === 'window' ? window : window[key as keyof typeof window])
@@ -81,6 +81,8 @@ async function mountLearning(initialTab?: string, options: {listGate?: Tab} = {}
   const display = runtime.defineComponent({setup: (_, {slots}) => () => runtime.h('span', slots.default?.())})
   const saved = runtime.defineComponent({setup: (_, {emit}) => () => runtime.h('section', {class: 'saved-display-port'},
     runtime.h('button', {onClick: () => emit('navigate', 'settings-data')}, 'Saved navigate'))})
+  const materialMount = vi.fn()
+  const material = runtime.defineComponent({setup: () => {materialMount();return () => runtime.h('section', {class: 'material-display-port'})}})
   const cache = new Map<string, Component>()
   const loads = {history: vi.fn(), memory: vi.fn()}
   const gates: Record<Tab, Array<ReturnType<typeof deferred<Namespace>>>> = {history: [], memory: []}
@@ -100,7 +102,8 @@ async function mountLearning(initialTab?: string, options: {listGate?: Tab} = {}
       if (id === '@/src/ui/i18n') return i18n
       if (id === '@/src/ui/dateFormat') return date
       if (id === '@/src/services/config/store') return store
-      if (id === '@/src/features/vocabulary/ui/public') return {VocabularyBook: saved, MaterialWorkspace: saved}
+      if (id === '@/src/platform/browser/capabilities') return {browserCapabilities: {browser: options.browser ?? 'chrome'}}
+      if (id === '@/src/features/vocabulary/ui/public') return {VocabularyBook: saved, MaterialWorkspace: material}
       if (id === '@/src/features/reading-assistant/ui/public') return load('history')
       if (id === './LearningMemoryManager.vue') return load('memory')
       if (id === '@/src/features/reading-assistant/public' || id === '../client') return client
@@ -151,10 +154,10 @@ async function mountLearning(initialTab?: string, options: {listGate?: Tab} = {}
     listGate.resolve({success: true, memories: [], sessions: [], hasMore: false});writeGate.resolve({success: true, memory})
     await settle();frames.clear();host.remove()})
   app.mount(host);await settle()
-  const choose = async (tab: 'saved' | Tab) => {host.querySelector<HTMLButtonElement>(`[data-option-index="${['saved', 'materials', 'history', 'memory'].indexOf(tab)}"]`)!.click();await settle()}
+  const choose = async (tab: 'saved' | Tab) => {host.querySelector<HTMLButtonElement>(`[data-option-index="${(options.browser === 'userscript' ? ['saved', 'history', 'memory'] : ['saved', 'materials', 'history', 'memory']).indexOf(tab)}"]`)!.click();await settle()}
   const resolvePanel = async (tab: Tab) => {gates[tab].at(-1)?.resolve(namespaces[tab]);await settle()}
   const actions = (action: string) => send.mock.calls.filter(([message]) => message.action === action)
-  return {host, props, shown, language, loads, gates, namespaces, clientErrors, navigations, reloads, send, configListeners, config,
+  return {host, props, shown, language, loads, gates, namespaces, clientErrors, navigations, reloads, send, configListeners, config, materialMount,
     memories, sessions, memory, session, listGate, writeGate, settle, choose, resolvePanel, stop, actions,
     pendingWrite: () => {pendingWrite = true}, listReply: () => ({success: true, memories: [...memories], sessions: [...sessions], hasMore: false}),
     notifyMemory: (enabled: boolean) => {config.harness.memoryEnabled = enabled;for (const listener of configListeners) listener(normalizeConfig(config))},
@@ -164,6 +167,45 @@ async function mountLearning(initialTab?: string, options: {listGate?: Tab} = {}
 }
 
 describe('LearningCenter actual client pane loading and lifetime', () => {
+  it.each([undefined, 'materials'])('keeps userscript saved reachable for initial %s and omits the unsupported materials control', async initial => {
+    const h = await mountLearning(initial, {browser: 'userscript'})
+    expect(h.host.querySelectorAll('[role="radio"]')).toHaveLength(3)
+    expect(h.host.querySelector('.saved-display-port')).not.toBeNull()
+    expect(h.host.querySelector('.material-display-port')).toBeNull()
+    expect(h.materialMount).not.toHaveBeenCalled()
+    expect(h.host.querySelector('.fr-learning-center-header')!.textContent).not.toContain('阅读材料')
+    h.host.querySelector<HTMLButtonElement>('.saved-display-port button')!.click()
+    expect(h.navigations).toEqual(['settings-data'])
+  })
+  it('skips materials with userscript keyboard navigation and falls back to saved on a later materials route', async () => {
+    const h = await mountLearning(undefined, {browser: 'userscript'})
+    h.key(h.host.querySelector<HTMLElement>('[data-option-index="0"]')!, 'ArrowRight')
+    await h.settle();await h.resolvePanel('history');h.flushFrames()
+    expect(h.host.querySelector('.harness-history')).not.toBeNull()
+    expect(h.host.querySelector('[data-option-index="1"][aria-checked="true"]')).not.toBeNull()
+    expect(h.host.querySelectorAll('[role="radio"][tabindex="0"]')).toHaveLength(1)
+    h.props.initialTab = 'materials';await h.settle()
+    expect(h.host.querySelector('.saved-display-port')).not.toBeNull()
+    expect(h.host.querySelector('[data-option-index="0"][aria-checked="true"]')).not.toBeNull()
+    await h.choose('memory');await h.resolvePanel('memory')
+    expect(h.host.querySelector('.fr-learning-memory')).not.toBeNull()
+    h.props.initialTab = 'saved';await h.settle()
+    h.props.initialTab = 'materials';await h.settle()
+    expect(h.host.querySelector('.saved-display-port')).not.toBeNull()
+    expect(h.materialMount).not.toHaveBeenCalled()
+    expect(h.clientErrors).toEqual([])
+  })
+  it.each(['chrome', 'firefox'])('retains the extension materials direct entry and later route on %s', async browser => {
+    const h = await mountLearning('materials', {browser})
+    expect(h.host.querySelectorAll('[role="radio"]')).toHaveLength(4)
+    expect(h.host.querySelector('.material-display-port')).not.toBeNull()
+    expect(h.materialMount).toHaveBeenCalledOnce()
+    h.props.initialTab = 'saved';await h.settle()
+    expect(h.host.querySelector('.saved-display-port')).not.toBeNull()
+    h.props.initialTab = 'materials';await h.settle()
+    expect(h.host.querySelector('.material-display-port')).not.toBeNull()
+    expect(h.materialMount).toHaveBeenCalledTimes(2)
+  })
   it.each([undefined, 'invalid', 'saved'])('shows default saved for initial %s without loading other panes', async initial => {
     const h = await mountLearning(initial)
     expect(h.host.querySelector('.saved-display-port')).not.toBeNull()

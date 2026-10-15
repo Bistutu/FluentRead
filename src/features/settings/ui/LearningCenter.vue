@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/LearningCenter.vue
  * 文件职责：把阅读材料、轻量收藏、最近 30 天的阅读记录和长期学习笔记组织成统一的学习中心。
- * 主要内容：保留默认收藏入口，按需加载按来源组织的材料、记录与笔记，提供等待和页面重载提示，集中展示本地保存说明和备份入口。
+ * 主要内容：保留默认收藏入口，按平台能力开放材料入口与直达参数，按需加载材料、记录与笔记，提供等待和页面重载提示，集中展示本地保存说明和备份入口。
  * 模块边界：只组合 vocabulary 和 reading-assistant 的公开 UI；各 feature 拥有数据操作生命周期，页面重载由设置入口处理。
  -->
 <template>
@@ -11,7 +11,7 @@
     </header>
     <p v-if="activeTab === 'saved'" class="fr-learning-center-purpose">{{ t(`learning.${activeTab}Description`) }}</p>
     <VocabularyBook v-if="activeTab === 'saved'" @navigate="emit('navigate', $event)" />
-    <MaterialWorkspace v-else-if="activeTab === 'materials'" @navigate="emit('navigate', $event)" @open-tab="activeTab = $event" />
+    <MaterialWorkspace v-else-if="materialWorkspaceAvailable && activeTab === 'materials'" @navigate="emit('navigate', $event)" @open-tab="activeTab = $event" />
     <HarnessReadingHistory v-else-if="activeTab === 'history'" />
     <LearningMemoryManager v-else :enabled="memoryEnabled" @navigate="emit('navigate', $event)" />
     <footer class="fr-learning-local">
@@ -30,12 +30,18 @@ import {useUiI18n} from '@/src/ui/i18n'
 import SegmentedControl from './components/SegmentedControl.vue'
 import UiIcon from '@/src/ui/components/UiIcon.vue'
 import {config, configReady, subscribeConfig} from '@/src/services/config/store'
+import {browserCapabilities} from '@/src/platform/browser/capabilities'
 
 const emit = defineEmits<{navigate: [section: string]; reload: [tab: string]}>()
 const {t} = useUiI18n()
 const props = defineProps<{initialTab?: string}>()
-const activeTab = ref(['saved', 'materials', 'history', 'memory'].includes(props.initialTab || '') ? props.initialTab! : 'saved')
-watch(() => props.initialTab, tab => { if (tab && ['saved', 'materials', 'history', 'memory'].includes(tab)) activeTab.value = tab })
+const materialWorkspaceAvailable = browserCapabilities.browser !== 'userscript'
+function resolveTab(tab?: string): string | undefined {
+  if (tab === 'materials' && !materialWorkspaceAvailable) return 'saved'
+  return tab && ['saved', 'materials', 'history', 'memory'].includes(tab) ? tab : undefined
+}
+const activeTab = ref(resolveTab(props.initialTab) ?? 'saved')
+watch(() => props.initialTab, tab => { const nextTab = resolveTab(tab); if (nextTab) activeTab.value = nextTab })
 const PanelLoading = () => h('p', {class: 'fr-learning-load', role: 'status'}, t('common.loading'))
 const PanelLoadError = () => h('div', {class: 'fr-learning-load', role: 'alert'}, [
   h('p', t('learning.panelLoadError')),
@@ -63,7 +69,7 @@ void configReady.then(() => { if (mounted) memoryEnabled.value = config.harness.
 onBeforeUnmount(() => { mounted = false; unsubscribe() })
 const tabs = computed(() => [
   {value: 'saved', label: t('learning.saved')},
-  {value: 'materials', label: '阅读材料'},
+  ...(materialWorkspaceAvailable ? [{value: 'materials', label: '阅读材料'}] : []),
   {value: 'history', label: t('learning.history')},
   {value: 'memory', label: t('learning.memory')},
 ])
