@@ -67,6 +67,7 @@ describe('translation quality report', () => {
         expect(page.visible()).toEqual([0, 1]);
         expect(page.document.getElementById('result-count')!.textContent).toBe('2 / 4 条结果');
         expect(page.document.querySelector('#run-0 .source')!.textContent).toBe('Do not exceed 25 ms.');
+        expect(page.document.querySelector('#run-0 .source')!.closest('details')).toBe(null);
         expect(page.document.querySelector('#run-0 .requirements')!.textContent).toContain('保留不得超过的否定关系');
         expect(page.document.querySelector('#run-2 .failure')!.textContent).toContain('不计为语义错误');
         expect(page.document.body.textContent).toContain('金额成本：未知');
@@ -219,5 +220,18 @@ describe('translation quality report', () => {
         expect(firstRow.querySelector('td:last-child')!.textContent).toBe('未知 / 160');
         report.runs[0].cost.responseBytes = null;
         expect(openReport(report).document.querySelector('tbody tr td:last-child')!.textContent).toBe('未知 / 未知');
+    });
+
+    it('只把本轮出现的唯一语料计入样本数，并将暂缓与实际请求失败区分', () => {
+        const report = fixture();
+        report.runs = [report.runs[0], {...report.runs[2],
+            failure: {category: 'deferred', message: 'Waiting for provider recovery'},
+            cost: {...report.runs[2].cost, httpRequests: 0, inputCharacters: 0},
+        }];
+        const page = openReport(report);
+        expect(page.document.querySelector('.stats')!.textContent).toContain('1个本轮样本 / 语料共 2 个');
+        expect(page.document.querySelector('#run-1 .badge')!.textContent).toBe('已暂缓 · 未发送请求');
+        expect(page.document.querySelector('#run-1 .failure')!.textContent).toContain('尚未发送请求');
+        expect(openReport({...report, runs: []}).document.querySelector('.stats')!.textContent).toContain('0个本轮样本 / 语料共 2 个');
     });
 });
