@@ -62,7 +62,10 @@
     "08-dark-rate.png",
     "startup-failure.png",
     "11-fr-FR.png",
-    "11-ru-RU.png"
+    "11-ru-RU.png",
+    "config-read-failure.png",
+    "config-read-recovered.png",
+    "upgrade-diagnostic.png"
   ],
   "startupUi": {
     "ok": true,
@@ -125,5 +128,127 @@
       "body": 380,
       "right": 364
     }
+  },
+  "configReadUi": {
+    "ok": true,
+    "scope": "Production popup local:config delivery delay and explicit failure only; no module/network failure injection or disk modification",
+    "cases": [
+      "Distinctive preferences saved through real extension persistence before any fault",
+      "Real local:config callback received successfully but its delivery delayed beyond five seconds; waiting UI is visible",
+      "Releasing the actual successful read receipt mounts the original settings without reload or writes",
+      "Configuration read failure presents fixed safe error and explicit reopen action",
+      "Removing the page-only fault and explicitly reopening restores original language, service, direction and theme"
+    ],
+    "slowElapsedMs": 5048,
+    "productionSnapshot": {
+      "manifestSha256": "a12a20416fc826d3dc7278b74a112b4170f8985b1ac8b1a74c91f73d5e09b642",
+      "popupHtmlSha256": "f87857f0d68c9855a7eeca1c91c69b2101be88fa286f05a3603660c9ea9e0e68",
+      "mountChunk": "mount-x-83fly5.js",
+      "mountSha256": "c33b40c2ff5d25dbf26bbe1c1de3eb908f12f44b6073df9686a3671834bf261d"
+    },
+    "failureVisibleState": "safe-startup-error",
+    "failureExpectationMet": true,
+    "manualRecovery": "explicit in-page reopen button",
+    "cleanupConfirmed": true,
+    "profileRemoved": true,
+    "productionSnapshotRemoved": true,
+    "limitations": [
+      "Read failures are injected in one temporary popup callback/Promise delivery, not real database corruption.",
+      "No provider, Firefox, Safari or physical-device acceptance."
+    ],
+    "savedPreferencesPreserved": true,
+    "onboardingOnReadFailure": false,
+    "unhandledPageErrors": [],
+    "consoleErrors": [],
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "browserFrontmost": false
+  },
+  "existingUserUpgrade": {
+    "ok": true,
+    "scope": "Existing-user baseline production to current production in the same isolated Edge profile and unpacked path.",
+    "cases": [
+      "Baseline production persists non-default language/service/direction/theme/site rules/hotkeys/count and fake credential",
+      "Replace only fixed unpacked production path after guarded close; keep profile",
+      "Same extension identity and cold profile retain every stored non-sensitive preference and fake credential; no first-use wizard or first-translation hint",
+      "Existing user can open actual 401 diagnostic and privacy-safe report in retained English UI",
+      "Diagnostic action opens original selected service settings without changing saved configuration",
+      "Explicit retry continues original synthetic article with retained service and en→fr direction and a real local provider response",
+      "Restore remains available after upgrade and successful retry"
+    ],
+    "identity": {
+      "sameManifestKey": true,
+      "keySha256": "690b3cdccb9c674c74642dec3659bcdbddde1b565991ee3ce6690d7ef61f1072",
+      "expectedExtensionId": "djnlaiohfaaifbibleebjggkghlmcpcj",
+      "baselineVersion": "0.0.38",
+      "currentVersion": "0.0.38",
+      "sameProfile": true,
+      "sameUnpackedPath": true
+    },
+    "builds": {
+      "baseline": {
+        "sha256": "7b85cd2b9db7e12d78df7867813e3f5c85b1b3088364dbc2b1fa4eb1482a2137",
+        "files": 472
+      },
+      "current": {
+        "sha256": "f3b4ec67e48c7981e00bd3223c70d320d5462c22d5cd062b0ef2d87e172b9478",
+        "files": 475
+      }
+    },
+    "popupLayouts": {
+      "01-baseline-existing-user": {
+        "viewport": 380,
+        "scrollWidth": 380,
+        "body": 380
+      },
+      "02-upgraded-preferences-retained": {
+        "viewport": 380,
+        "scrollWidth": 380,
+        "body": 380
+      },
+      "03-upgraded-diagnostic-preview": {
+        "viewport": 380,
+        "scrollWidth": 380,
+        "body": 380
+      },
+      "05-upgraded-original-task-resumed": {
+        "viewport": 380,
+        "scrollWidth": 380,
+        "body": 380
+      }
+    },
+    "cleanup": {
+      "allOwnedBrowserCloseConfirmed": true,
+      "profileRemoved": true,
+      "unpackedRemoved": true,
+      "baselineSourceRemoved": true
+    },
+    "limitations": [
+      "Seeded existing-user profile on baseline production, not a historical daily profile.",
+      "Unpacked extension replacement models persisted-profile upgrade; not store delivery.",
+      "Edge/Chrome MV3 only; no Firefox runtime or real-provider acceptance.",
+      "Both snapshots retain manifest version 0.0.38; no version-triggered onInstalled update migration is claimed."
+    ],
+    "baselineRevision": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+    "candidateSource": "1c90e7e10 plus configuration hydration gate; production file-tree fingerprint recorded in builds.current",
+    "preservedPreferenceFieldCount": 189,
+    "preferenceDigestBefore": "20d4ee5cd6d2556b5d2491a31156f4811729eb2c9711ee34089d80c2000032c2",
+    "preferenceDigestAfter": "20d4ee5cd6d2556b5d2491a31156f4811729eb2c9711ee34089d80c2000032c2",
+    "fixtureCredentialPreserved": true,
+    "unhandledPageErrors": [],
+    "resumedStatus": "translated",
+    "restoredStatus": "idle",
+    "bothStagesBackgroundAndGuardedClose": true
+  },
+  "configHydrationStrictCoverage": {
+    "tests": 37,
+    "files": [
+      "src/services/config/application.ts",
+      "src/app/popup/mount.ts"
+    ],
+    "statements": 100,
+    "branches": 100,
+    "functions": 100,
+    "lines": 100
   }
 }
