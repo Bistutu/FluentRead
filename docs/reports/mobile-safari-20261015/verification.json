@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "recordedAt": "2026-10-15T14:36:52.966503+00:00",
-  "baseCommit": "5b3d7e8b46dc0e5e78541552b7b7df363ddfb648",
+  "recordedAt": "2026-10-15T15:08:29.429415+00:00",
+  "baseCommit": "d3fb95d651831bc7974349b58054152dbba32b79",
   "branch": "codex/mobile-safari-product-20261015",
   "overallGoalComplete": false,
   "status": "System-selected native subtitles, Popup keyboard geometry and Firefox Android container sizing reviewed and built; each actual runtime result has its own artifact identity; physical-device acceptance pending",
@@ -105,8 +105,8 @@
             "build:firefox"
           ],
           "exitCode": 0,
-          "seconds": 25.81,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-5b-final/firefox.log"
+          "seconds": 25.37,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/firefox.log"
         },
         {
           "name": "safari",
@@ -115,8 +115,8 @@
             "build:safari"
           ],
           "exitCode": 0,
-          "seconds": 24.6,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-5b-final/safari.log"
+          "seconds": 25.89,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/safari.log"
         },
         {
           "name": "safari-verify",
@@ -129,8 +129,8 @@
             "--verify"
           ],
           "exitCode": 0,
-          "seconds": 0.24,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-5b-final/safari-verify.log"
+          "seconds": 0.28,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/safari-verify.log"
         },
         {
           "name": "chrome",
@@ -139,8 +139,8 @@
             "build"
           ],
           "exitCode": 0,
-          "seconds": 24.17,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-5b-final/chrome.log"
+          "seconds": 27.44,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/chrome.log"
         },
         {
           "name": "extension-manifests",
@@ -152,8 +152,8 @@
             "scripts/testing/verify-extension-manifests.mjs"
           ],
           "exitCode": 0,
-          "seconds": 0.28,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-5b-final/extension-manifests.log"
+          "seconds": 0.34,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/extension-manifests.log"
         },
         {
           "name": "userscript",
@@ -162,8 +162,8 @@
             "build:userscript"
           ],
           "exitCode": 0,
-          "seconds": 5.62,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-5b-final/userscript.log"
+          "seconds": 10.38,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/userscript.log"
         },
         {
           "name": "userscript-verify",
@@ -175,8 +175,8 @@
             "scripts/verify-userscript-build.mjs"
           ],
           "exitCode": 0,
-          "seconds": 0.18,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-5b-final/userscript-verify.log"
+          "seconds": 0.2,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/userscript-verify.log"
         },
         {
           "name": "audit",
@@ -188,13 +188,13 @@
             "test:audit"
           ],
           "exitCode": 0,
-          "seconds": 2.77,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-5b-final/audit.log"
+          "seconds": 17.35,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/audit.log"
         }
       ],
-      "safari": "validation/integrated-main-5b-final/safari.log",
-      "safariVerify": "validation/integrated-main-5b-final/safari-verify.log",
-      "chromeFirefoxManifests": "validation/integrated-main-5b-final/extension-manifests.log",
+      "safari": "validation/integrated-main-d3-final/safari.log",
+      "safariVerify": "validation/integrated-main-d3-final/safari-verify.log",
+      "chromeFirefoxManifests": "validation/integrated-main-d3-final/extension-manifests.log",
       "intermediateCssOnlyResults": [
         {
           "name": "safari",
@@ -937,7 +937,7 @@
     },
     "latestTypes": {
       "passed": true,
-      "log": "validation/integrated-main-5b-final/compile.log"
+      "log": "validation/integrated-main-d3-final/compile.log"
     },
     "nativeSheetTouchMargin": {
       "cssPixels": 46,
@@ -998,7 +998,7 @@
     },
     "finalDocs": {
       "passed": true,
-      "log": "validation/integrated-main-5b-final/docs-final.log",
+      "log": "validation/integrated-main-d3-final/docs-final.log",
       "scope": "Updated native-selection, keyboard, Android and complete modal layout evidence; VitePress build passed"
     },
     "videoControlsClone": {
@@ -2673,6 +2673,3509 @@
         "nextNativePhase": "integrated-main-5b-final; wait for newly built Safari resources, no old0d repackage",
         "acceptanceBoundary": "Prior actual mobile UI acceptance belongs to215e/0d build. Index mobile source is identical, but new integrated generated artifacts require fresh identity and owner-scheduled runtime smoke."
       }
+    },
+    "qualityMainIntegration": {
+      "mainCommit": "9e2d3a637d7855c8433f8a4ca286cece1cbd2ede",
+      "mergeCommit": "1ee858762",
+      "targetedTestsPassed": 129,
+      "i18nTestsPassed": 90,
+      "scope": [
+        "freeChineseWebProviders",
+        "freeTextChunks",
+        "freeProviderPermissions",
+        "verificationOwnership",
+        "i18n"
+      ],
+      "logs": [
+        "validation/integrated-main-9e-final/targeted.log",
+        "validation/integrated-main-9e-final/i18n.log"
+      ],
+      "review": {
+        "createdAt": "2026-10-15T14:47:05.338605+00:00",
+        "mode": "independent read-only current index merge review",
+        "headAtReview": "fd8118c1d0a9591ec4d7fe8e0eb1abfd2a00cb31",
+        "mobileBaseline": "215e40fbac40b5d7220975c40156939ec478d52f",
+        "upstream": "9e2d3a637d7855c8433f8a4ca286cece1cbd2ede",
+        "unmergedPaths": [],
+        "blockingFindings": [],
+        "mobileProductionFileCount": 187,
+        "mobileProductionFiles": [
+          {
+            "path": "scripts/safari/container/Main.html",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8359d2ff5a18fc2c655ef8798869b242b7c8495fa9a4575919213a2226d7789e"
+          },
+          {
+            "path": "scripts/safari/container/Script.js",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "ff9d564bd55a9742f77043dc08ebfd4cc2415989d70576851182d9c34c0ad2f8"
+          },
+          {
+            "path": "scripts/safari/container/Style.css",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "3f4c01b933fe9622c01784d8e2eec2a228225fb07284bb5adacaf4bef4319a40"
+          },
+          {
+            "path": "scripts/safari/container/ViewController.swift",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "6d9d7f1bb044d88eb17b644c8c038062f964a4486f59a90f4d3b081f09931d06"
+          },
+          {
+            "path": "scripts/safari/package.mjs",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "9b2f03d5d9b3729150498adf0e50318a30465ec3982c6c198aa280e5cfd6796f"
+          },
+          {
+            "path": "src/app/popup/PopupApp.vue",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "690998e1fdb09eada4e90445e11665d893d5396a39d7b007165c2c5b71b71a26"
+          },
+          {
+            "path": "src/app/popup/PopupDrawer.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "c58857059bbdd556ce47f589dc32ec8f95eda832b566929074e3712469aca8e8"
+          },
+          {
+            "path": "src/app/popup/PopupLanguageSelect.vue",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "cc66fb9b6ee0672ecf5f47223beb620c303034c3ecdc046bcf557fba16491bf7"
+          },
+          {
+            "path": "src/app/popup/PopupOnboarding.vue",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "0188eb21d63221255e76aab64ec9af5819dfef9315d750d9cb163c227592741f"
+          },
+          {
+            "path": "src/app/popup/PopupServices.vue",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8083cde0601b48e0b02a606cfd45eeea408eb103ac5cdd29fe2eca9a79ebe3bd"
+          },
+          {
+            "path": "src/app/popup/PopupSiteRule.vue",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8d2afc4e2240409991012be3cb3594637a1c85af7e89e24099cde7843213eca7"
+          },
+          {
+            "path": "src/app/popup/cache.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8ef3e51ed395166fc852f4ead1fa3a2082dab1f62f8a7e25252def845ed37453"
+          },
+          {
+            "path": "src/app/popup/embedded.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "97989f9ad8b6a131cf133511d3befeb0212cd1e8fac497dfa8fdf93676d1e3a3"
+          },
+          {
+            "path": "src/app/popup/index.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "cdbc36b9f3cadc4cd006bd1d3051d3edde975f35593253029458e3262fe7ed63"
+          },
+          {
+            "path": "src/app/popup/mount.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "208d90c048ac6014a6a97ae78db3cdb329a559d29635009d986892bbe7cc88cc"
+          },
+          {
+            "path": "src/app/popup/pageActions.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "e752c73c8549d92c49f94876de0abc50698039bfe66681bd90d8ae34a42f856d"
+          },
+          {
+            "path": "src/app/popup/pageContracts.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "5b719b1220446ad6c7be99ed388203a1dc829eacaa8f0e655ea066b0f2182280"
+          },
+          {
+            "path": "src/app/popup/popup.css",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8fe833c2781247d0c2308090dd795852d51852bc254bafa74f3c75d87b933b55"
+          },
+          {
+            "path": "src/app/popup/sourceTab.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "c798e3fd3ed6d5953dca5d2c56d8cb198a38c3c9b6167850ac21cec23a6f1eba"
+          },
+          {
+            "path": "src/core/config/freeProviderOrigins.json",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8b4004cade979ded8b2b76ac3398dfa108f9e423de2b6d7336dc2530cadf2418"
+          },
+          {
+            "path": "src/core/config/freeProviderOrigins.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "ee38f3e7bdaf46a7f9f3097da746d279a2215cf3bdbf336a88c15669f73b3f36"
+          },
+          {
+            "path": "src/features/floating-ball/background/popupHandler.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "601f8801374c4464cd20c99be0a9bc1b093f67c236dae69db127de91b8b99122"
+          },
+          {
+            "path": "src/features/floating-ball/content/anchoredPopup.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "c6a8ed6b145ef29489df1a0c3d3b69ea4a23b092a972bc96540351d25fe9b7bf"
+          },
+          {
+            "path": "src/features/floating-ball/content/runtime.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "6e0cc58b0ef5c4abe557188b2f6e0610f26919a24b111b4b020cfa575b0eb1d1"
+          },
+          {
+            "path": "src/features/floating-ball/position.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "309b6a9bb9d334832c8522f0857862cc21db8e8cb48048de1deb34942073b045"
+          },
+          {
+            "path": "src/features/floating-ball/public.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "73edfafea4db7cb112dbe7c407acbf1bf08fe1826332191da690789ba2929a19"
+          },
+          {
+            "path": "src/features/floating-ball/types.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "b2619a0085076445ed7e75f52eb0622a906638c9bfd72dd1e4636a1571a09121"
+          },
+          {
+            "path": "src/features/floating-ball/ui/FloatingBall.vue",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "7dc94a202f3a6ee588b98d02ab06314f95fc33fcb440587f7ef5ad707fa851e4"
+          },
+          {
+            "path": "src/features/full-page-translation/background/embeddedFrameHandlers.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "b3ff264c5c78133119f2e3511b39d3ba102fc632ea0b6243b0839145f4f4ccac"
+          },
+          {
+            "path": "src/features/full-page-translation/background/index.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "cfa37cb8373e09d45dd54a348b5d271217d60c87befcd1db0de00f743e4b037f"
+          },
+          {
+            "path": "src/features/full-page-translation/background/neteaseMailFrameHandlers.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "10f9d6794e18eeddd64b9e26fb15cb4eaceee40cb1ca71f248ce50ec1c79d461"
+          },
+          {
+            "path": "src/features/full-page-translation/background/qqMailFrameHandlers.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "673605e2be4a01f21b9e3b2a251829fbc4d9e2e53791c05fc963cb5805ff3e61"
+          },
+          {
+            "path": "src/features/full-page-translation/background/stateHandlers.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "ae98e7f1a1dfbf1a0ee1ae95c970ebe1d011a0e44b5155c422f70180b446307c"
+          },
+          {
+            "path": "src/features/full-page-translation/content/attributeMutationBatch.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "d31f28bb30025a9769ec56f0457c9ba1be558d45218993f6df6ffffae35f6d96"
+          },
+          {
+            "path": "src/features/full-page-translation/content/bilingualRemount.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "fffeeef82b3d90290420081fc9b7e28fd0536da57f5b47e93aeb4ac0591242c1"
+          },
+          {
+            "path": "src/features/full-page-translation/content/bilingualRemountMatching.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "f8323ab7c291cc638f24cac77bf8e5a1be9f1b4aeb3527729604d4f3bd33262c"
+          },
+          {
+            "path": "src/features/full-page-translation/content/bilingualReplay.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "4a395983508e4e0914562bfeb973d1259c2df1b30aeb4a1b19e0937e9a0507b4"
+          },
+          {
+            "path": "src/features/full-page-translation/content/configCheck.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "b909fc2d1290030ba522eeef0d7fd49577dc7d30954de7a4c0fac9ea198458ce"
+          },
+          {
+            "path": "src/features/full-page-translation/content/eagerTranslation.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "275e36c1a48db2c5542438093f6e1250c5da5c0a5806d2b061e153d8b96383e4"
+          },
+          {
+            "path": "src/features/full-page-translation/content/excerpt.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "e31dad2710e8da060c4fc07adab9db9692b565832348df759972360797912d7b"
+          },
+          {
+            "path": "src/features/full-page-translation/content/frameSession.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "f506a2084037724cc69578f930d3009f3ae56879099f310da75a1ac4a3046889"
+          },
+          {
+            "path": "src/features/full-page-translation/content/fullPagePriority.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "5a331fb6756da8d6f4dc4badcfc9070f86f662c2895aaac586b51bff8f0711ad"
+          },
+          {
+            "path": "src/features/full-page-translation/content/fullPageQueue.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "4d2aa2da9cda6f57979c03f0b6f452cdf0206561db2ccd18b5408339359c1077"
+          },
+          {
+            "path": "src/features/full-page-translation/content/fullPageSession.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "4378fc457041d4aaa0996b13a73f25d918217beb11dafe87913dfeb8aec4268f"
+          },
+          {
+            "path": "src/features/full-page-translation/content/hoverScheduler.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "1f8ae27c56c5312aa581f62dd3e24e9b360b3e77ca9fea011fdc01a070488bdf"
+          },
+          {
+            "path": "src/features/full-page-translation/content/layout.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "aa898b62ef08e4da5b012fe1bd721e4a807e3cef0f50348ce8e979bab53b41ac"
+          },
+          {
+            "path": "src/features/full-page-translation/content/liveTextRender.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "5933f01d3a7ce356abf336057e079bf1561bc25457a8e3be07a4eae599dd93c5"
+          },
+          {
+            "path": "src/features/full-page-translation/content/liveTextTranslation.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "b6978b9d4603c265503688c60c007da1ef28ba902b2e182554ab2ac78aea3346"
+          },
+          {
+            "path": "src/features/full-page-translation/content/loadingIndicator.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "ccfc93ed62202712e8f73775670b4d21f2de9fa81ec8255122cec684e861ba07"
+          },
+          {
+            "path": "src/features/full-page-translation/content/modalPriority.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "7b719a13139cb8b2e39aa6b7a2728da2386c357d32f0642e14506aef1b340654"
+          },
+          {
+            "path": "src/features/full-page-translation/content/modalSession.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "1cd45bcdc2fca9f5e876e528771864a312b327729399d67a3331adb8ba7f6080"
+          },
+          {
+            "path": "src/features/full-page-translation/content/mutationObservation.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8f8b765266068abc1dd66f81778455db4d30e3d97de0f4abeb2627b8c2f5ea50"
+          },
+          {
+            "path": "src/features/full-page-translation/content/orphanArtifacts.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "eb211cf43c25a35f6d1878f758e2c46a47b5be6238f2c4fff2afdce04ae36eab"
+          },
+          {
+            "path": "src/features/full-page-translation/content/outcomeSession.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "7dde9f445010e2eb6e9d7f4ccbe6f9322032207c18d48158e046237b816868cb"
+          },
+          {
+            "path": "src/features/full-page-translation/content/personalCorrections.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "51de5932c4ebb84c102745ef1cd2b6c130cb607b180974b1fd4b1a26a82e4de8"
+          },
+          {
+            "path": "src/features/full-page-translation/content/progressPanel.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "94416c7dced0d776123bf410f16a8fd3ec44782a4288212823cee1a0b9660edd"
+          },
+          {
+            "path": "src/features/full-page-translation/content/public.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "9a3a7aa330d9ecf03eac5da7fb2847756916e4d5435491467dd7d0f99abb5f98"
+          },
+          {
+            "path": "src/features/full-page-translation/content/renderer.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "d2f944eb8afb6fe41587f206f7750145742d254bc216793adb9c0649242a5050"
+          },
+          {
+            "path": "src/features/full-page-translation/content/renderingContainment.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "c4b2f8bd7ceb4c446dc7f06ff9965c73a72075c48005d434ff874607867b4f9e"
+          },
+          {
+            "path": "src/features/full-page-translation/content/requestSession.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "52d5bf9500bafba4df86bce5949749d363be2ad70b244b0b7280b0432e0d9ad8"
+          },
+          {
+            "path": "src/features/full-page-translation/content/routeLifecycle.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "35c24ca0425f9d7e0b1e4607c215749197316eb77335a68831e5081dfd82f003"
+          },
+          {
+            "path": "src/features/full-page-translation/content/runtime.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "60839c7c34a1054b9d8f6d3f7152bb37156c71d55e09b0b3ffa59fa8aa1e332b"
+          },
+          {
+            "path": "src/features/full-page-translation/content/sectionTranslation.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "37d182dcc7cc530d441b7575ff9374da5cdbb5f237321ecd4cce6b16adf9a87d"
+          },
+          {
+            "path": "src/features/full-page-translation/content/sentenceHighlight.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8bb8b3fb47004f8a9c7077f16914f2b643a7cc62612cfff977138feebbd9b4bc"
+          },
+          {
+            "path": "src/features/full-page-translation/content/sourceStability.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "3dce1b60b275b5de2b219870dd498492135d0025ab2e2e9fc868f40bac7f1e83"
+          },
+          {
+            "path": "src/features/full-page-translation/content/sourceStabilityGate.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "58ef2d353a38da9259bdc1b6cc40096418b31bf3cfb614dec4e51d3206d4e901"
+          },
+          {
+            "path": "src/features/full-page-translation/content/state.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "9c4439979c5702eaf86826f163e38b5d93923c52c6b7c15aa9002696cc594bb0"
+          },
+          {
+            "path": "src/features/full-page-translation/content/stateNotification.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "ad2c46d77845305604579fd5e20270bde730ca49bd6696e270e792b57030680b"
+          },
+          {
+            "path": "src/features/full-page-translation/content/syntheticRemount.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "6c75c87c9535585832d13149db4eeeb33115ad09f0e20722be83bb21fd6eb10d"
+          },
+          {
+            "path": "src/features/full-page-translation/content/titleTranslation.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "2ebb898bb56a95aaa37717df57156c3628b8e1c9c319e20cb378c02d569e4e90"
+          },
+          {
+            "path": "src/features/full-page-translation/content/translationConfigSnapshot.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "70795f2f8e689af4b197ae36d804be2ccec03bff656c7d480c39a550c12e24cd"
+          },
+          {
+            "path": "src/features/full-page-translation/content/translationRequest.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "4feb2a398ee1e4cf7b1dea7bc48eb2d59bde5ca0452634ee29a4c5b000cc923f"
+          },
+          {
+            "path": "src/features/full-page-translation/content/translationStability.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "545b404dce78098185ecc9ff4aec568ccedc87e9f8c65e1e9710a76b095c3225"
+          },
+          {
+            "path": "src/features/full-page-translation/content/viewportStability.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "e3c474f9a1a76f0c3dea95b13aaba0059d8a62df94574e3b39a38e6123e07894"
+          },
+          {
+            "path": "src/features/full-page-translation/content/visibleTranslation.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "fb6e60da95eacc653965a665f66d21fd30b3efe1f7a4f135f3748f405d33b3cf"
+          },
+          {
+            "path": "src/features/full-page-translation/core/errorMessage.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "619dfe141d764af5fecdad08a782e4a0d4a884048f38eec4687a6612cddd1539"
+          },
+          {
+            "path": "src/features/full-page-translation/core/hostMarkers.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "7ceb3ac37b87082b8051ccbc4e4ae61c326b5335b23dc69a92576541668178a6"
+          },
+          {
+            "path": "src/features/full-page-translation/core/outcomes.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "a260dfa8e00153c50c9c7a9a1c4968c8e08f209763e9fe9cfd1195c5951b040d"
+          },
+          {
+            "path": "src/features/full-page-translation/embeddedFrames.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "d3035b54f06e15932e33887c037f279e3f2beb81802ad361bb27915a472eea78"
+          },
+          {
+            "path": "src/features/full-page-translation/neteaseMailFrames.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "b1b667cf014255df98d07514dd5dc5254a1a17ef0a11eae5c73acf572f65d08f"
+          },
+          {
+            "path": "src/features/full-page-translation/progress.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "cbca3d4659c8a01a50e00c48f2d214c848df40fe4b5fe796681e19a9764764b1"
+          },
+          {
+            "path": "src/features/full-page-translation/public.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "9a74ec2ef2a238d2939c56c6af58c11214bc2c0e8a37d10716c035bb1e883e03"
+          },
+          {
+            "path": "src/features/full-page-translation/qqMailFrames.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "ac9b24964c793a830ff6a4253334f5495d69eafd5d8e38f3400ca091d50c423a"
+          },
+          {
+            "path": "src/features/full-page-translation/toolbarStatus.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "a3b436d26de5aaddf12bb72ec20a865ffa0775e009877f74ed43d2170b9ee2be"
+          },
+          {
+            "path": "src/features/full-page-translation/ui/TranslationProgressPanel.vue",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "1b33297965759c8117b56a4a956e7f7b981d7ff0d519a0391e2452f9e842ef5c"
+          },
+          {
+            "path": "src/features/full-page-translation/ui/modalProgressHint.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "27c6a9448487dad9a8df611c1f050d490104a4b97e52fe106185263b6ea26423"
+          },
+          {
+            "path": "src/features/full-page-translation/ui/progressPanelVisibility.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "0d65d19bd318e18f0d0987474a3b518466573418d76ba1f8656c6ee98c7e3647"
+          },
+          {
+            "path": "src/features/full-page-translation/ui/translationIndicators.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8c09c3c2bead7e4bcebff0799ceb1a53b962f95c8a0ca78fd9c231cc07e50cc4"
+          },
+          {
+            "path": "src/features/selection-translation/background/offscreenAdapter.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "4287bb3c063869f2d87a65a1795aeb818df4d88dba9ab8ef4239d46e71d5d7b9"
+          },
+          {
+            "path": "src/features/selection-translation/background/pageZoomHandler.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "b4ec39dfd5d2aff52da8c1f2582d7a49c50b1dc269c2ecbafbecb61389463b2e"
+          },
+          {
+            "path": "src/features/selection-translation/background/selectionTtsSynthesis.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "c4def858a349391b711566d541da3e83fc43303ffbe0ef880fe6760284933b9c"
+          },
+          {
+            "path": "src/features/selection-translation/background/ttsHandler.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "6b57aea791a6f6d964df9e7252651454735033a74cc8956295d9eb316aba5e70"
+          },
+          {
+            "path": "src/features/selection-translation/background/wordLookupHandler.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "acbc2907f985ecd122171b1824d39f55f41bb22b7e7d9f34cc5dc782e792d60c"
+          },
+          {
+            "path": "src/features/selection-translation/content/contextMenuBridge.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "ad0cec322b09317874568459a3ed2393c3b91b34f18700169da44129709a50f0"
+          },
+          {
+            "path": "src/features/selection-translation/content/index.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "6481663b1e3060f8d8130c69eb30e1e9d846c2f6d13a61fd175927902e8b2004"
+          },
+          {
+            "path": "src/features/selection-translation/content/modalDialogHost.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "36bc3dc969000a0492307e105e1ee4cea38b8a1b49d6f6a2a2a39c84a05ae02f"
+          },
+          {
+            "path": "src/features/selection-translation/content/runtime.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "a9beeabe4a9e74bee7cd22bc7cddb4619876cb6a45604dcd580ae70beaa6a450"
+          },
+          {
+            "path": "src/features/selection-translation/content/selectionTtsContentController.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "c9e40f8b8cee87359e37d50262ba361de0f2f0208a666b32d7f579d7dd2da517"
+          },
+          {
+            "path": "src/features/selection-translation/core.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "3c5f2d93a2872884b1029e3bae94b4b15362a300ba41adacfe9fd00f14f0ae68"
+          },
+          {
+            "path": "src/features/selection-translation/core/public.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "06e97ced3f3095c7b8874d629c746c67956de9e48fe5ed236c4265da052fac5c"
+          },
+          {
+            "path": "src/features/selection-translation/pageZoom.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "670fdd2caf050e305503bb0cd68b6423e3f96fdfac82e03a83d67d11654d4a86"
+          },
+          {
+            "path": "src/features/selection-translation/protocol.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "ccac85883d3174211a0bce0ab0676ee35dd00c794755e097fad6c033bfd760dd"
+          },
+          {
+            "path": "src/features/selection-translation/public.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "ed00222e57d0d144d6f52e7fb21f8884f0642ac46e4c27b6f205e9b9c80209d8"
+          },
+          {
+            "path": "src/features/selection-translation/services/ecdictAsset.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "f563e92002fa8e000a89d904bcdaa31aa202c6e1f6330251d1315df101f932c0"
+          },
+          {
+            "path": "src/features/selection-translation/services/edgeTts.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "099d21481d267fe641a6cdc1916979bf63de10d4c775e6492380fc6d68c73b87"
+          },
+          {
+            "path": "src/features/selection-translation/services/edgeTtsPolicy.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "9481a0fc07d849b53f3242a43afc08ad2856a301d5530fca76828fb2b0be5fbb"
+          },
+          {
+            "path": "src/features/selection-translation/services/wordDictionary.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "2fe44781d90bbf2d8e4bcf22561d39b98b98ac66e38c84220759f9438102e303"
+          },
+          {
+            "path": "src/features/selection-translation/services/wordNormalization.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "65c6144cc88624fd5d6443d3957649c70a1831697a5748c105c47a13e8165156"
+          },
+          {
+            "path": "src/features/selection-translation/speech/public.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8d60808dd4160ab9b19232b54fcf743a0541ca6134b43ae45ba3818a068c52bf"
+          },
+          {
+            "path": "src/features/selection-translation/ui/SelectionTranslator.vue",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "7ee2015a5b86ff2276fb94879b0286eaaf2cf4b746e5b14342d2ef7990394163"
+          },
+          {
+            "path": "src/features/selection-translation/ui/SpeechFollowText.vue",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "b8b7ecb8f141af0d31530fd3e79ceac8caf625675ce544c609a9dc90b2caca69"
+          },
+          {
+            "path": "src/features/video-subtitle/background/cacheHandlers.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "35c4e704ecf60836f3af0c3690a6cd2c234ba2a7bf4897aad905bc7c9f6ca4c1"
+          },
+          {
+            "path": "src/features/video-subtitle/background/handlers.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "cb8c4914ee202d40c149162e11c92ce36ac0e50b6f32bbea66ea510219d6fd82"
+          },
+          {
+            "path": "src/features/video-subtitle/background/runtime.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "cb657bbd762d04aed27c76b9592a8dd529933d902431b047bd684366809a5647"
+          },
+          {
+            "path": "src/features/video-subtitle/background/transcriptionCache.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "5295ae402c51bc70ce381853f7b3a30385ab889a71b0ef86d8c7e546b31ffbf8"
+          },
+          {
+            "path": "src/features/video-subtitle/content/backgroundClient.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "b8e36fe5b30aaac38cb887652d48fafd1e3fe1ddcf760fe9b8eb223c65a0413c"
+          },
+          {
+            "path": "src/features/video-subtitle/content/downloads.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "197af86196794ab2d0e88e4342d40a8366b1a62260f7fdd8d39db45c06b41b18"
+          },
+          {
+            "path": "src/features/video-subtitle/content/exportPrompt.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "95ff54e1d50ece295f2fb3df205c0da42915b1ed29095a2ad8799cabb28edd9a"
+          },
+          {
+            "path": "src/features/video-subtitle/content/hlsAudio.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8a4239b481fd09d1d87e706ab52a9a974f471c0d63e07288b80f1090d08430d0"
+          },
+          {
+            "path": "src/features/video-subtitle/content/hlsAudioRuntime.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "03956b6ec9fc502f2e0cc1842afd96735ac8f61d419fdf89494ff72260c4e7f4"
+          },
+          {
+            "path": "src/features/video-subtitle/content/karaoke.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "503f434966999b0386f4ee91cba583c20a8de158435c3f208ab5a5e67ac64308"
+          },
+          {
+            "path": "src/features/video-subtitle/content/karaokeLogic.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "e4b64e5b0366cda07cf8e5351e63e28d7475f75d2b7e9f61ca4746d3f8be0029"
+          },
+          {
+            "path": "src/features/video-subtitle/content/localModelReadiness.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "60d08749a31a111b8caac06380d0eaaed9078fc3affb92ffdefe7347854ca8fb"
+          },
+          {
+            "path": "src/features/video-subtitle/content/nativeFullscreen.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676"
+          },
+          {
+            "path": "src/features/video-subtitle/content/platformRuntime.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "6ba50ba020c40bdd7fee42265f07f160e5a30f18820f0262af49cc8072d29e97"
+          },
+          {
+            "path": "src/features/video-subtitle/content/platforms.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "711e1663804e02583927f58b2355bd7a5a4ec32f429fdeaea95d0ab1d2835340"
+          },
+          {
+            "path": "src/features/video-subtitle/content/playerMenu.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "5cc6bb174d6c94ffc9f8e1d2ccdbfcd688556d80955de8bacfbf998fb4112d8b"
+          },
+          {
+            "path": "src/features/video-subtitle/content/pretranslationController.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "221a53a530e44d774ce9487db46f14db8394fe29026f7a29b0a937182386ad94"
+          },
+          {
+            "path": "src/features/video-subtitle/content/runtime.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "2ccd7ad37e76eab5f0905ae1d075e1437e5b7cf858fcf7844c59077bb568dc2c"
+          },
+          {
+            "path": "src/features/video-subtitle/content/sentenceLearningHost.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "e6076b2c3f7d47cd10fba17f2822d2cbc48c6ad75b69172c79a2a1a6977096d3"
+          },
+          {
+            "path": "src/features/video-subtitle/content/sentenceLearningPlacement.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "deafac649a32fc31e85aade18a7aae81488603c4c368d5c8dbc65821fe9a7fbb"
+          },
+          {
+            "path": "src/features/video-subtitle/content/sentenceLearningSession.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "34a433dfdbc78801161a33a6e5a6775767eb0473d0db75ec0f78380ccf54b0e5"
+          },
+          {
+            "path": "src/features/video-subtitle/content/sentencePlayback.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "c68291fb6c862f485da09bdf8c8282a88e70544b1d9bcaed1ac2bf4e33e64f6e"
+          },
+          {
+            "path": "src/features/video-subtitle/content/sentenceTimeline.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "88936e88bfef5d9daa842e1e916f49ae895e997fb22c2b8b4805e6c5e804b4c2"
+          },
+          {
+            "path": "src/features/video-subtitle/content/serviceProfile.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "b73518428fcd84bb0e1c0e53e21840faf81af7499fb472ed836e62e63cdc2bc3"
+          },
+          {
+            "path": "src/features/video-subtitle/content/subtitleLanguage.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "66b708b5c63ef9c2beea87cb90c5e931818bdbfb26e2f8dcefd7a015dcaea94d"
+          },
+          {
+            "path": "src/features/video-subtitle/content/subtitleLayout.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "bbf04103cd09ce0de40cdbe9d1c11d92a36b4d6c7fbd61a5cc914dce806c51f8"
+          },
+          {
+            "path": "src/features/video-subtitle/content/subtitleLogic.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "8fffe8d08bec2824e432b5f46d096b44c1dc950bec7e3db556e2ae2acfa6a616"
+          },
+          {
+            "path": "src/features/video-subtitle/content/transcriptionCacheClient.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "4576766c9100f28373106c6b6071cfd425451f69a576ce5940af71760cbc56d8"
+          },
+          {
+            "path": "src/features/video-subtitle/content/translationCache.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "ecdda524d2891a331fbd7068e313a828e0fee39f71bcad1e33a65fde8477514b"
+          },
+          {
+            "path": "src/features/video-subtitle/content/translationScheduler.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "0ef0131aec23c5db181e807ca1e79bf07f942b5252be680ee9254c0129fd0fff"
+          },
+          {
+            "path": "src/features/video-subtitle/content/ui.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "1c24a4e2ba8491df3e9fc583801bc7fd1cd016e7dc80613da32b292fbc177499"
+          },
+          {
+            "path": "src/features/video-subtitle/content/video-ai/audioWindow.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "e687a86dacbff364f02813e4e1944dc1528ea09f5cb511b62e396fc8870020b3"
+          },
+          {
+            "path": "src/features/video-subtitle/content/video-ai/capture.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "0726ee74294996421a3c84879e95597970ef4cc7afbadf583ffe7b3518896357"
+          },
+          {
+            "path": "src/features/video-subtitle/content/video-ai/cueTimeline.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "c9ef561386208a9a5d1833aff25ff07c4b4132b754a4c97c27380f57321bf539"
+          },
+          {
+            "path": "src/features/video-subtitle/content/video-ai/fullCapture.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "d4603cf1524b358ad556e04bbf6acb98b4e2e82c638a837459cb3b57991787d8"
+          },
+          {
+            "path": "src/features/video-subtitle/content/video-ai/generationRegistry.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "717badc1c775764de22d82c160e12d03627646d3d575cd0cbf2bd88fd314a7f1"
+          },
+          {
+            "path": "src/features/video-subtitle/content/video-ai/modelMenu.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "bbc30ab2efc27a7f89a03261dfa22950192609996945ae141c4092fa35a8e3f0"
+          },
+          {
+            "path": "src/features/video-subtitle/content/video-ai/modelSetup.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "1a61d29600779852d984e9ec63ceeabd0c2f99a9815b77f1ed79656ef05cb2e1"
+          },
+          {
+            "path": "src/features/video-subtitle/content/video-ai/requestSession.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "12352956bf06e6364a57744163bb023e9d6c5bc75d0ace4fa145c9f29e28b417"
+          },
+          {
+            "path": "src/features/video-subtitle/content/video-ai/speechAlignment.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "e1c766a5cfa16f822bbb6f21079af6a2b32018945f40a53898737e27e8b349c6"
+          },
+          {
+            "path": "src/features/video-subtitle/content/video-ai/streamingTranscript.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "7c00e05e2d11d56639f68a54d2113cfc0d48727944e447d24088aefa6e0a3bb8"
+          },
+          {
+            "path": "src/features/video-subtitle/content/video-ai/subtitleSession.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "b0b5c0fd27e1696a03381fc4d7b2d9c45310b07edb26ac7d43d0848a20630a56"
+          },
+          {
+            "path": "src/features/video-subtitle/content/videoPlayerBinding.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "fe5b3cc8f9825f2a513d419efcb4c1627eda43eb713a4e752fe19e65d38abe37"
+          },
+          {
+            "path": "src/features/video-subtitle/content/videoPlayerLocator.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "67ff409285b5116088605c13174ea0b9a7881f2ac08f1aed73e68e73f8ddba97"
+          },
+          {
+            "path": "src/features/video-subtitle/content/xCaptionSource.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "89e6852f0432c180187d1076e238e98b3af5e86476cd55ad011350eab8b52af4"
+          },
+          {
+            "path": "src/features/video-subtitle/content/xSubtitleLoader.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "a74d2edeb17f4790ebadde3b04b6525fcb82f77492640ee0910211bff6b0d831"
+          },
+          {
+            "path": "src/features/video-subtitle/content/xVideoSubtitleData.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "1f125fa9046d714c6757d1b06dfa4c8c3ef93b81f1db2fcef7b6baa9e40a5b35"
+          },
+          {
+            "path": "src/features/video-subtitle/content/youtubeHumanCaptions.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "675e1a19dc0de7b787bb6b56775ff0ae020e84368634c9750a2136c5cfd2e86e"
+          },
+          {
+            "path": "src/features/video-subtitle/content/youtubeSubtitleData.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "c3432c66fe568608f53724b7089545355117e3657336c14759a3eef75516d759"
+          },
+          {
+            "path": "src/features/video-subtitle/content/youtubeTimedTextBridge.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "4aeed98b78a6357a219c2af7ea626d8e1dc5512e718f4449bdd130c205819a74"
+          },
+          {
+            "path": "src/features/video-subtitle/content/youtubeTimedTextBridgeCore.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "1b276bb63b51a28eac1b9da377f0f7b984b4e9c69288efde23c39af3f2be8679"
+          },
+          {
+            "path": "src/features/video-subtitle/content/youtubeTimedTextMessage.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "720e6e31311899675abf2182ccf2434134463102170f32b0bf975700e2c351ea"
+          },
+          {
+            "path": "src/features/video-subtitle/domain/public.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "0b756ecfe31b1746a89d11b1f48d9af22afc4221e597e517f166bc8f505bc9ee"
+          },
+          {
+            "path": "src/features/video-subtitle/offscreen/modelCache.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "0208514f68340deb75aeb0432cacd9d31989e8b2bd2e42eed8992c130042290f"
+          },
+          {
+            "path": "src/features/video-subtitle/offscreen/timestampParser.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "36da2c87309106f968332f44452be8cca1811b22fc23de61255f7c61959e9c26"
+          },
+          {
+            "path": "src/features/video-subtitle/offscreen/transcription.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "1ca04fdea75da20d5ad21fa2059fe84009ba8615a8780a1cbe4914aa028e979d"
+          },
+          {
+            "path": "src/features/video-subtitle/offscreen/transcription.worker.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "3252038b45ba3c88c32d64aacef3ee579b6914a98356e7a2191550cd42774c5b"
+          },
+          {
+            "path": "src/features/video-subtitle/offscreen/transcriptionOptions.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "59420ac99ef1bf9ea69c49e4ace5a4da5ce5d7177748543136686bc0bbd76bc7"
+          },
+          {
+            "path": "src/features/video-subtitle/offscreen/whisperEncoderReuse.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "5f6417b81b57d2a09615a7622ada0ba356e3304c4956ce3b42e6350bf0e27e7a"
+          },
+          {
+            "path": "src/features/video-subtitle/public.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "dce454e2a18372c2e765f885c06df7c50b049131b1ebb4982ece9f2e3576b862"
+          },
+          {
+            "path": "src/features/video-subtitle/transcription.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "02903878eaad48a84eaff34c76d2830550e384a28357c0ee5a8c06472475e9ab"
+          },
+          {
+            "path": "src/features/video-subtitle/transcriptionCache.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "9a66e02157444d590e170ff21f17f916fcae12cc0adfe25c56ac764b0063e0e0"
+          },
+          {
+            "path": "src/features/video-subtitle/ui/VideoSentenceLearning.vue",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "a278e825aee26fe98c807be5dc8993be18b80519fe0015061fa62d801933a54a"
+          },
+          {
+            "path": "src/features/video-subtitle/ui/videoSentenceLearning.css",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "bae5ad32b2bd2389bb995313173f6b8db27607fc95dedf9022329027c1a99662"
+          },
+          {
+            "path": "src/features/video-subtitle/workerProtocol.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "76bd90bde50ab13daa4f0fc5d983efb3053b30eb6bb6063bf4732331fd6b553d"
+          },
+          {
+            "path": "src/platform/browser/actionIcon.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "4d0a83e2be918ef6a47837364051bf85b33d3de0eb7d18cf4849f7c3cdbd6643"
+          },
+          {
+            "path": "src/platform/browser/capabilities.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "10fad76f00ab3ec68035c71f5624406aca4fb3b861e1762bf96853c6b89b49b2"
+          },
+          {
+            "path": "src/platform/browser/chromeTranslationPreparationRequest.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "32a4fc57bb1dbe6c152b7a8b3a5fcf4300d4197fe25798351c6d6a10048a5c9a"
+          },
+          {
+            "path": "src/platform/browser/freeProviderPermissions.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "eb2d47c062e0c476e190b53059761d25607e4355bc47aea85cead162752a6f8a"
+          },
+          {
+            "path": "src/platform/browser/ids.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "08289494cd6f9f9af3d2fbe99264b00d8d7ee35148320a3e770b25b63efa5460"
+          },
+          {
+            "path": "src/platform/browser/localTranslationSupport.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "e821dc2f0ce7d6da57298027e23f77337b698dd547eac19f37081d3ab87b9c95"
+          },
+          {
+            "path": "src/platform/browser/requestHeaderRules.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "33b130bd3dc643cc56e08e92b4cfe618800a2d7ee90b58d4bee214f5eb05a53a"
+          },
+          {
+            "path": "src/platform/browser/runtimeMessages.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "086a5a0be38c21fc37a68759080067e0bbff33efed2fe4428e54baf9dfbbdabd"
+          },
+          {
+            "path": "src/platform/dom/visualViewport.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "fec540c69ca5703e8051e04df51a79e192a2da55be359385eb4a91c11050c8d2"
+          },
+          {
+            "path": "src/providers/translation/free-translation.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "2374e76df1cef27a6948b4d4bcdb25cfe60611489bba40e9588643f147062c17"
+          },
+          {
+            "path": "wxt.config.ts",
+            "indexEquals215e": true,
+            "worktreeEquals215e": true,
+            "sha256": "09e6aea80f44a41f7cfa24acdf486f79d73c0011a086be9d36b35c4dbbd252d6"
+          }
+        ],
+        "upstreamExactFileCount": 51,
+        "upstreamExactFiles": [
+          {
+            "path": "docs/maintainers/translation-quality.md",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015.md",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/.gitattributes",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/.gitignore",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/auto/report.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/auto/tools/evaluate.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/auto/tools/provider-entry.ts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/auto/tools/report.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/auto/tools/run.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/auto/tools/transport.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/baseline/report.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/boundary-baseline/report.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/boundary-candidate/report.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/candidate/audited-report.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/candidate/report.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/candidate/tools/evaluate.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/candidate/tools/provider-entry.ts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/candidate/tools/report.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/candidate/tools/run.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/candidate/tools/transport.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/chunk-boundaries.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/independent-review.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/live-baseline-smoke/report.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/production-boundaries.png",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/production-loading.png",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/report-desktop.png",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/report-narrow-dark.png",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/verification.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "docs/reports/translation-quality-20261015/youdao-direction-evidence.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "scripts/quality/audit.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "scripts/quality/evaluate.d.mts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "scripts/quality/evaluate.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "scripts/quality/provider-entry.ts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "scripts/quality/render.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "scripts/quality/report.d.mts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "scripts/quality/report.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "scripts/quality/review-browser.cjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "scripts/quality/run.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "scripts/quality/transport.d.mts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "scripts/quality/transport.mjs",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "src/providers/translation/free-chinese-web.ts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "src/providers/translation/freeTextChunks.ts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "tests/fixtures/translation-quality/README.md",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "tests/fixtures/translation-quality/boundaries.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "tests/fixtures/translation-quality/corpus.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "tests/fixtures/translation-quality/schema.json",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "tests/freeChineseWebProviders.test.ts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "tests/freeTextChunks.test.ts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "tests/translationQualityEvaluation.test.ts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "tests/translationQualityReport.test.ts",
+            "indexEqualsUpstream": true
+          },
+          {
+            "path": "tests/translationQualityTransport.test.ts",
+            "indexEqualsUpstream": true
+          }
+        ],
+        "architectureOwnerUnion": "Exactly upstream9e bytes plus existing safari-build type/owner assignment from mobile branch; new scripts/quality owner and syntax/registration test retained.",
+        "matrix": {
+          "allPriorGroupsEntriesRetained": true,
+          "sixFunctionalEntriesExactlyOnce": [
+            "tests/videoNativeFullscreen.test.ts",
+            "tests/floatingBallLifecycle.test.ts",
+            "tests/translationProgressMobileLifecycle.test.ts",
+            "tests/translationQualityEvaluation.test.ts",
+            "tests/translationQualityReport.test.ts",
+            "tests/translationQualityTransport.test.ts"
+          ]
+        },
+        "providerDomainCheck": {
+          "urlLiteralsBefore": [
+            "https://dict.youdao.com/jsonapi_s?doctype=json&jsonversion=4",
+            "https://ifanyi.iciba.com/index.php?c=trans&m=fyV2"
+          ],
+          "urlLiteralsIndex": [
+            "https://dict.youdao.com/jsonapi_s?doctype=json&jsonversion=4",
+            "https://ifanyi.iciba.com/index.php?c=trans&m=fyV2"
+          ],
+          "allUrlLiteralsUnchanged": true,
+          "providerOriginMapByteIdentical215e": true,
+          "providerCount": 17,
+          "uniqueOriginCount": 21,
+          "youdao": [
+            "https://dict.youdao.com/*"
+          ],
+          "iciba": [
+            "https://ifanyi.iciba.com/*"
+          ],
+          "manifestPolicyNoChangeNeeded": true
+        },
+        "providerBehaviorScope": "Upstream changes Youdao response type validation AND shared translateFreeTextChunks words default/boundary heuristics. Shared default affects callers beyond Youdao; do not describe all provider behavior as unchanged. No endpoint, domain, permission-gate, pool scheduler or transport change in this index.",
+        "preservation": "All51 upstream files except union-resolved matrix/architecture are exact9e bytes, including2 production modules and quality tooling/docs/evidence. Treat as upstream feature preservation, not mobile delivery authorship.",
+        "writesByReviewer": {
+          "production": false,
+          "index": false,
+          "commit": false
+        },
+        "testsRunByReviewer": false,
+        "deviceOrAvdAction": false,
+        "nextNativePhase": "integrated-main-9e-final; wait for new frozen Safari build, do not reuse prior dc433 output"
+      }
+    },
+    "latestMainIntegration": {
+      "mainCommit": "d3fb95d651831bc7974349b58054152dbba32b79",
+      "mergeCommit": "88c6274c8",
+      "summary": {
+        "recordedAt": "2026-10-15T15:04:46.878127+00:00",
+        "sourceCommit": "88c6274c8",
+        "uniqueFiles": 9,
+        "uniqueTestsPassed": 1006,
+        "passes": {
+          "selectionTranslatorLifecycle": 256,
+          "selectionTranslatorCore": 67,
+          "contentFeatureMounting": 24,
+          "pageStyles": 11,
+          "fullPageVisibilityScheduling": 383,
+          "ownedBrowserClose": 100,
+          "popupAppLifecycle": 54,
+          "modalDialogHost": 65,
+          "contentRuntimeLifecycle": 46
+        },
+        "logs": [
+          "targeted.log",
+          "ownership-associated.log"
+        ],
+        "initialSandboxAttempt": {
+          "filesPassed": 4,
+          "ownedBrowserCloseFailed": 70,
+          "reason": "spawn EPERM prevented required process observation; 30 unrelated assertions passed. Preserve original log; do not count initial partial owned file as passing."
+        },
+        "rerun": {
+          "approvedOutsideSandbox": true,
+          "filesPassed": 5,
+          "testsPassed": 648,
+          "environmentFailureResolved": true
+        },
+        "compile": {
+          "passed": true,
+          "log": "compile.log"
+        },
+        "scope": "Resource-safe targeted suites; no local full-suite run, no device/runtime claim."
+      },
+      "review": {
+        "createdAt": "2026-10-15T15:02:11.182126+00:00",
+        "mode": "independent read-only committed merge review",
+        "sourceCommit": "88c6274c8796530c1639cd5eeecf432345e99ba7",
+        "upstream": "d3fb95d651831bc7974349b58054152dbba32b79",
+        "priorIntegrated9e": "1ee858762b0cf203cb190a0ddf1919eef3e15ca3",
+        "actualUiBaseline": "215e40fbac40b5d7220975c40156939ec478d52f",
+        "blockingFindings": [],
+        "worktreeCleanAtReview": true,
+        "ownedBrowserCloseExactUpstream": true,
+        "ownedBrowserCloseNote": "Upstream platform-specific tmpdir literal roots supersede old existsSync root filter, preserving Linux safety and Mac alias assertion; new actual actor race and5 failure-mode tests retained exactd3.",
+        "upstreamExactFileCount": 55,
+        "upstreamExactFiles": [
+          {
+            "path": "docs/guide/custom-hotkey.md",
+            "equalsUpstream": true
+          },
+          {
+            "path": "docs/guide/webpage-translation.md",
+            "equalsUpstream": true
+          },
+          {
+            "path": "docs/maintainers/web-stability.md",
+            "equalsUpstream": true
+          },
+          {
+            "path": "docs/reports/web-stability-20261015/verification.json",
+            "equalsUpstream": true
+          },
+          {
+            "path": "docs/testing.md",
+            "equalsUpstream": true
+          },
+          {
+            "path": "scripts/run-selection-trigger-test.cjs",
+            "equalsUpstream": true
+          },
+          {
+            "path": "scripts/run-site-translation-matrix.cjs",
+            "equalsUpstream": true
+          },
+          {
+            "path": "scripts/run-site-translation-test.cjs",
+            "equalsUpstream": true
+          },
+          {
+            "path": "scripts/site-translation/controlled-provider.cjs",
+            "equalsUpstream": true
+          },
+          {
+            "path": "scripts/site-translation/maintenance-cases.json",
+            "equalsUpstream": true
+          },
+          {
+            "path": "scripts/site-translation/stability-probes.cjs",
+            "equalsUpstream": true
+          },
+          {
+            "path": "scripts/testing/owned-browser-close.cjs",
+            "equalsUpstream": true
+          },
+          {
+            "path": "scripts/testing/run-github-document-stability-test.cjs",
+            "equalsUpstream": true
+          },
+          {
+            "path": "scripts/testing/run-web-mutation-lifecycle-test.cjs",
+            "equalsUpstream": true
+          },
+          {
+            "path": "scripts/testing/run-web-native-feed-test.cjs",
+            "equalsUpstream": true
+          },
+          {
+            "path": "scripts/testing/run-web-stability-firefox-test.cjs",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/app/content/pageStyles.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/core/site-adaptation/catalog/coverage.json",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/core/site-adaptation/catalog/websites.json",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/core/site-adaptation/compiler.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/core/translation/engine.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/core/translation/types.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/bilingualRemount.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/bilingualRemountMatching.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/bilingualReplay.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/hoverScheduler.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/mutationObservation.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/public.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/renderer.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/runtime.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/sectionTranslation.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/state.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/styleRoots.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/syntheticRemount.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/full-page-translation/content/translationStability.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "src/features/selection-translation/content/runtime.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/bilingualReplay.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/browser-translation-cases.json",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/contentFeatureMounting.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/fixtures/translation-pages/github-document-stability.html",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/fixtures/translation-pages/web-mutation-lifecycle.html",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/fullPageVisibilityScheduling.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/implementationAudit49F.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/obsidianPdfLifecycle.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/ownedBrowserClose.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/pageStyles.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/sectionTranslationRegion.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/siteAdaptationCore.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/siteDartDescription.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/siteTranslationHarness.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/siteTranslationMatrixConcurrency.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/siteTranslationStability.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/syntheticRemount.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "tests/translationState.test.ts",
+            "equalsUpstream": true
+          },
+          {
+            "path": "userscript/context.ts",
+            "equalsUpstream": true
+          }
+        ],
+        "matrixPreservesBothGroups": {
+          "1ee858762b0cf203cb190a0ddf1919eef3e15ca3": true,
+          "d3fb95d651831bc7974349b58054152dbba32b79": true
+        },
+        "coveragePreservesBothSourceSets": {
+          "1ee858762b0cf203cb190a0ddf1919eef3e15ca3": true,
+          "d3fb95d651831bc7974349b58054152dbba32b79": true
+        },
+        "newStyleRootsStrictInclude": true,
+        "mobileSourceComparison": {
+          "priorMapCount": 187,
+          "same215eCount": 174,
+          "changed215eCount": 13,
+          "changedExistingFiles": [
+            {
+              "path": "src/features/full-page-translation/content/bilingualRemount.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "d9625cceca27b7e94f41dcfd24f4eecc6bb2eb8c90e12beaa3a06a4e014b2615",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/bilingualRemountMatching.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "e31a7eac1a86e581b7ef2c107c974f2d95018841f385c94e88656786b7832121",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/bilingualReplay.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "294d13659e73a7587b33062845a781df4ae69a42e6b99d1ff0c9b8f09fcfa6c1",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/hoverScheduler.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "0d07d5dbf8afd2632927c5b2fecc8146a4bf453998a584c8531d7c52bd07a012",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/mutationObservation.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "77533dfaae4bd85dfd5ae11befdae28e31aae3dc6d596b618a3f840b0c36ef09",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/public.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "6608f18510b7117b2e604609e2d8f2fcffa086ba6b28e8bed9d8cc44accf7d7f",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/renderer.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "2c74816e64c4e21a30cbdebe379f4c2133797275e06619772ac800f83a97d147",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/runtime.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "128ca543b0428cebffdbdaee0da8622c7a53c68581760c02eaa265a16f276706",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/sectionTranslation.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "e7fd3ed85d77aa3d46710d70533d0d0e4a51aa6bd81a362f4955c9697dcc6103",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/state.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "f70ca567da413a9ca4a095eac7470e6342db31903646ba6f806166514cad2453",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/syntheticRemount.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "704a1a7d1789cbea09f787fdb08f4795a2efb4c1d05d63299e2e7af2c821e9ea",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/translationStability.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "d86f5bfa7d93962cab79187d3bc65bc0c33beae5b27e71fab7f949ad4ddfa6fd",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/content/runtime.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "282d31d9555b43a1673fafffe61da19ca6f6eb72a6acf65456c65f60c6c261ae",
+              "worktreeEqualsCommit": true
+            }
+          ],
+          "newRuntimeFiles": [
+            "src/features/full-page-translation/content/styleRoots.ts"
+          ],
+          "allEntries": [
+            {
+              "path": "scripts/safari/container/Main.html",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "8359d2ff5a18fc2c655ef8798869b242b7c8495fa9a4575919213a2226d7789e",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "scripts/safari/container/Script.js",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "ff9d564bd55a9742f77043dc08ebfd4cc2415989d70576851182d9c34c0ad2f8",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "scripts/safari/container/Style.css",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "3f4c01b933fe9622c01784d8e2eec2a228225fb07284bb5adacaf4bef4319a40",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "scripts/safari/container/ViewController.swift",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "6d9d7f1bb044d88eb17b644c8c038062f964a4486f59a90f4d3b081f09931d06",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "scripts/safari/package.mjs",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "9b2f03d5d9b3729150498adf0e50318a30465ec3982c6c198aa280e5cfd6796f",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/PopupApp.vue",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "690998e1fdb09eada4e90445e11665d893d5396a39d7b007165c2c5b71b71a26",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/PopupDrawer.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "c58857059bbdd556ce47f589dc32ec8f95eda832b566929074e3712469aca8e8",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/PopupLanguageSelect.vue",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "cc66fb9b6ee0672ecf5f47223beb620c303034c3ecdc046bcf557fba16491bf7",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/PopupOnboarding.vue",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "0188eb21d63221255e76aab64ec9af5819dfef9315d750d9cb163c227592741f",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/PopupServices.vue",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "8083cde0601b48e0b02a606cfd45eeea408eb103ac5cdd29fe2eca9a79ebe3bd",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/PopupSiteRule.vue",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "8d2afc4e2240409991012be3cb3594637a1c85af7e89e24099cde7843213eca7",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/cache.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "8ef3e51ed395166fc852f4ead1fa3a2082dab1f62f8a7e25252def845ed37453",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/embedded.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "97989f9ad8b6a131cf133511d3befeb0212cd1e8fac497dfa8fdf93676d1e3a3",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/index.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "cdbc36b9f3cadc4cd006bd1d3051d3edde975f35593253029458e3262fe7ed63",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/mount.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "208d90c048ac6014a6a97ae78db3cdb329a559d29635009d986892bbe7cc88cc",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/pageActions.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "e752c73c8549d92c49f94876de0abc50698039bfe66681bd90d8ae34a42f856d",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/pageContracts.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "5b719b1220446ad6c7be99ed388203a1dc829eacaa8f0e655ea066b0f2182280",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/popup.css",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "8fe833c2781247d0c2308090dd795852d51852bc254bafa74f3c75d87b933b55",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/app/popup/sourceTab.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "c798e3fd3ed6d5953dca5d2c56d8cb198a38c3c9b6167850ac21cec23a6f1eba",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/core/config/freeProviderOrigins.json",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "8b4004cade979ded8b2b76ac3398dfa108f9e423de2b6d7336dc2530cadf2418",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/core/config/freeProviderOrigins.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "ee38f3e7bdaf46a7f9f3097da746d279a2215cf3bdbf336a88c15669f73b3f36",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/floating-ball/background/popupHandler.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "601f8801374c4464cd20c99be0a9bc1b093f67c236dae69db127de91b8b99122",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/floating-ball/content/anchoredPopup.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "c6a8ed6b145ef29489df1a0c3d3b69ea4a23b092a972bc96540351d25fe9b7bf",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/floating-ball/content/runtime.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "6e0cc58b0ef5c4abe557188b2f6e0610f26919a24b111b4b020cfa575b0eb1d1",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/floating-ball/position.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "309b6a9bb9d334832c8522f0857862cc21db8e8cb48048de1deb34942073b045",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/floating-ball/public.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "73edfafea4db7cb112dbe7c407acbf1bf08fe1826332191da690789ba2929a19",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/floating-ball/types.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "b2619a0085076445ed7e75f52eb0622a906638c9bfd72dd1e4636a1571a09121",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/floating-ball/ui/FloatingBall.vue",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "7dc94a202f3a6ee588b98d02ab06314f95fc33fcb440587f7ef5ad707fa851e4",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/background/embeddedFrameHandlers.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "b3ff264c5c78133119f2e3511b39d3ba102fc632ea0b6243b0839145f4f4ccac",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/background/index.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "cfa37cb8373e09d45dd54a348b5d271217d60c87befcd1db0de00f743e4b037f",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/background/neteaseMailFrameHandlers.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "10f9d6794e18eeddd64b9e26fb15cb4eaceee40cb1ca71f248ce50ec1c79d461",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/background/qqMailFrameHandlers.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "673605e2be4a01f21b9e3b2a251829fbc4d9e2e53791c05fc963cb5805ff3e61",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/background/stateHandlers.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "ae98e7f1a1dfbf1a0ee1ae95c970ebe1d011a0e44b5155c422f70180b446307c",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/attributeMutationBatch.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "d31f28bb30025a9769ec56f0457c9ba1be558d45218993f6df6ffffae35f6d96",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/bilingualRemount.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "d9625cceca27b7e94f41dcfd24f4eecc6bb2eb8c90e12beaa3a06a4e014b2615",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/bilingualRemountMatching.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "e31a7eac1a86e581b7ef2c107c974f2d95018841f385c94e88656786b7832121",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/bilingualReplay.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "294d13659e73a7587b33062845a781df4ae69a42e6b99d1ff0c9b8f09fcfa6c1",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/configCheck.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "b909fc2d1290030ba522eeef0d7fd49577dc7d30954de7a4c0fac9ea198458ce",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/eagerTranslation.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "275e36c1a48db2c5542438093f6e1250c5da5c0a5806d2b061e153d8b96383e4",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/excerpt.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "e31dad2710e8da060c4fc07adab9db9692b565832348df759972360797912d7b",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/frameSession.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "f506a2084037724cc69578f930d3009f3ae56879099f310da75a1ac4a3046889",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/fullPagePriority.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "5a331fb6756da8d6f4dc4badcfc9070f86f662c2895aaac586b51bff8f0711ad",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/fullPageQueue.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "4d2aa2da9cda6f57979c03f0b6f452cdf0206561db2ccd18b5408339359c1077",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/fullPageSession.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "4378fc457041d4aaa0996b13a73f25d918217beb11dafe87913dfeb8aec4268f",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/hoverScheduler.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "0d07d5dbf8afd2632927c5b2fecc8146a4bf453998a584c8531d7c52bd07a012",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/layout.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "aa898b62ef08e4da5b012fe1bd721e4a807e3cef0f50348ce8e979bab53b41ac",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/liveTextRender.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "5933f01d3a7ce356abf336057e079bf1561bc25457a8e3be07a4eae599dd93c5",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/liveTextTranslation.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "b6978b9d4603c265503688c60c007da1ef28ba902b2e182554ab2ac78aea3346",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/loadingIndicator.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "ccfc93ed62202712e8f73775670b4d21f2de9fa81ec8255122cec684e861ba07",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/modalPriority.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "7b719a13139cb8b2e39aa6b7a2728da2386c357d32f0642e14506aef1b340654",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/modalSession.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "1cd45bcdc2fca9f5e876e528771864a312b327729399d67a3331adb8ba7f6080",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/mutationObservation.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "77533dfaae4bd85dfd5ae11befdae28e31aae3dc6d596b618a3f840b0c36ef09",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/orphanArtifacts.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "eb211cf43c25a35f6d1878f758e2c46a47b5be6238f2c4fff2afdce04ae36eab",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/outcomeSession.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "7dde9f445010e2eb6e9d7f4ccbe6f9322032207c18d48158e046237b816868cb",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/personalCorrections.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "51de5932c4ebb84c102745ef1cd2b6c130cb607b180974b1fd4b1a26a82e4de8",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/progressPanel.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "94416c7dced0d776123bf410f16a8fd3ec44782a4288212823cee1a0b9660edd",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/public.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "6608f18510b7117b2e604609e2d8f2fcffa086ba6b28e8bed9d8cc44accf7d7f",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/renderer.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "2c74816e64c4e21a30cbdebe379f4c2133797275e06619772ac800f83a97d147",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/renderingContainment.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "c4b2f8bd7ceb4c446dc7f06ff9965c73a72075c48005d434ff874607867b4f9e",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/requestSession.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "52d5bf9500bafba4df86bce5949749d363be2ad70b244b0b7280b0432e0d9ad8",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/routeLifecycle.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "35c24ca0425f9d7e0b1e4607c215749197316eb77335a68831e5081dfd82f003",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/runtime.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "128ca543b0428cebffdbdaee0da8622c7a53c68581760c02eaa265a16f276706",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/sectionTranslation.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "e7fd3ed85d77aa3d46710d70533d0d0e4a51aa6bd81a362f4955c9697dcc6103",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/sentenceHighlight.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "8bb8b3fb47004f8a9c7077f16914f2b643a7cc62612cfff977138feebbd9b4bc",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/sourceStability.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "3dce1b60b275b5de2b219870dd498492135d0025ab2e2e9fc868f40bac7f1e83",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/sourceStabilityGate.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "58ef2d353a38da9259bdc1b6cc40096418b31bf3cfb614dec4e51d3206d4e901",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/state.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "f70ca567da413a9ca4a095eac7470e6342db31903646ba6f806166514cad2453",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/stateNotification.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "ad2c46d77845305604579fd5e20270bde730ca49bd6696e270e792b57030680b",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/syntheticRemount.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "704a1a7d1789cbea09f787fdb08f4795a2efb4c1d05d63299e2e7af2c821e9ea",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/titleTranslation.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "2ebb898bb56a95aaa37717df57156c3628b8e1c9c319e20cb378c02d569e4e90",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/translationConfigSnapshot.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "70795f2f8e689af4b197ae36d804be2ccec03bff656c7d480c39a550c12e24cd",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/translationRequest.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "4feb2a398ee1e4cf7b1dea7bc48eb2d59bde5ca0452634ee29a4c5b000cc923f",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/translationStability.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "d86f5bfa7d93962cab79187d3bc65bc0c33beae5b27e71fab7f949ad4ddfa6fd",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/viewportStability.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "e3c474f9a1a76f0c3dea95b13aaba0059d8a62df94574e3b39a38e6123e07894",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/content/visibleTranslation.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "fb6e60da95eacc653965a665f66d21fd30b3efe1f7a4f135f3748f405d33b3cf",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/core/errorMessage.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "619dfe141d764af5fecdad08a782e4a0d4a884048f38eec4687a6612cddd1539",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/core/hostMarkers.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "7ceb3ac37b87082b8051ccbc4e4ae61c326b5335b23dc69a92576541668178a6",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/core/outcomes.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "a260dfa8e00153c50c9c7a9a1c4968c8e08f209763e9fe9cfd1195c5951b040d",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/embeddedFrames.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "d3035b54f06e15932e33887c037f279e3f2beb81802ad361bb27915a472eea78",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/neteaseMailFrames.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "b1b667cf014255df98d07514dd5dc5254a1a17ef0a11eae5c73acf572f65d08f",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/progress.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "cbca3d4659c8a01a50e00c48f2d214c848df40fe4b5fe796681e19a9764764b1",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/public.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "9a74ec2ef2a238d2939c56c6af58c11214bc2c0e8a37d10716c035bb1e883e03",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/qqMailFrames.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "ac9b24964c793a830ff6a4253334f5495d69eafd5d8e38f3400ca091d50c423a",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/toolbarStatus.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "a3b436d26de5aaddf12bb72ec20a865ffa0775e009877f74ed43d2170b9ee2be",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/ui/TranslationProgressPanel.vue",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "1b33297965759c8117b56a4a956e7f7b981d7ff0d519a0391e2452f9e842ef5c",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/ui/modalProgressHint.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "27c6a9448487dad9a8df611c1f050d490104a4b97e52fe106185263b6ea26423",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/ui/progressPanelVisibility.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "0d65d19bd318e18f0d0987474a3b518466573418d76ba1f8656c6ee98c7e3647",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/full-page-translation/ui/translationIndicators.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "8c09c3c2bead7e4bcebff0799ceb1a53b962f95c8a0ca78fd9c231cc07e50cc4",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/background/offscreenAdapter.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "4287bb3c063869f2d87a65a1795aeb818df4d88dba9ab8ef4239d46e71d5d7b9",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/background/pageZoomHandler.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "b4ec39dfd5d2aff52da8c1f2582d7a49c50b1dc269c2ecbafbecb61389463b2e",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/background/selectionTtsSynthesis.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "c4def858a349391b711566d541da3e83fc43303ffbe0ef880fe6760284933b9c",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/background/ttsHandler.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "6b57aea791a6f6d964df9e7252651454735033a74cc8956295d9eb316aba5e70",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/background/wordLookupHandler.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "acbc2907f985ecd122171b1824d39f55f41bb22b7e7d9f34cc5dc782e792d60c",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/content/contextMenuBridge.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "ad0cec322b09317874568459a3ed2393c3b91b34f18700169da44129709a50f0",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/content/index.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "6481663b1e3060f8d8130c69eb30e1e9d846c2f6d13a61fd175927902e8b2004",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/content/modalDialogHost.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "36bc3dc969000a0492307e105e1ee4cea38b8a1b49d6f6a2a2a39c84a05ae02f",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/content/runtime.ts",
+              "equals215e": false,
+              "equals9e": false,
+              "equalsUpstreamD3IfChanged": true,
+              "sha256": "282d31d9555b43a1673fafffe61da19ca6f6eb72a6acf65456c65f60c6c261ae",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/content/selectionTtsContentController.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "c9e40f8b8cee87359e37d50262ba361de0f2f0208a666b32d7f579d7dd2da517",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/core.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "3c5f2d93a2872884b1029e3bae94b4b15362a300ba41adacfe9fd00f14f0ae68",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/core/public.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "06e97ced3f3095c7b8874d629c746c67956de9e48fe5ed236c4265da052fac5c",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/pageZoom.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "670fdd2caf050e305503bb0cd68b6423e3f96fdfac82e03a83d67d11654d4a86",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/protocol.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "ccac85883d3174211a0bce0ab0676ee35dd00c794755e097fad6c033bfd760dd",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/public.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "ed00222e57d0d144d6f52e7fb21f8884f0642ac46e4c27b6f205e9b9c80209d8",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/services/ecdictAsset.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "f563e92002fa8e000a89d904bcdaa31aa202c6e1f6330251d1315df101f932c0",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/services/edgeTts.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "099d21481d267fe641a6cdc1916979bf63de10d4c775e6492380fc6d68c73b87",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/services/edgeTtsPolicy.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "9481a0fc07d849b53f3242a43afc08ad2856a301d5530fca76828fb2b0be5fbb",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/services/wordDictionary.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "2fe44781d90bbf2d8e4bcf22561d39b98b98ac66e38c84220759f9438102e303",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/services/wordNormalization.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "65c6144cc88624fd5d6443d3957649c70a1831697a5748c105c47a13e8165156",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/speech/public.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "8d60808dd4160ab9b19232b54fcf743a0541ca6134b43ae45ba3818a068c52bf",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/ui/SelectionTranslator.vue",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "7ee2015a5b86ff2276fb94879b0286eaaf2cf4b746e5b14342d2ef7990394163",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/selection-translation/ui/SpeechFollowText.vue",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "b8b7ecb8f141af0d31530fd3e79ceac8caf625675ce544c609a9dc90b2caca69",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/background/cacheHandlers.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "35c4e704ecf60836f3af0c3690a6cd2c234ba2a7bf4897aad905bc7c9f6ca4c1",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/background/handlers.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "cb8c4914ee202d40c149162e11c92ce36ac0e50b6f32bbea66ea510219d6fd82",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/background/runtime.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "cb657bbd762d04aed27c76b9592a8dd529933d902431b047bd684366809a5647",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/background/transcriptionCache.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "5295ae402c51bc70ce381853f7b3a30385ab889a71b0ef86d8c7e546b31ffbf8",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/backgroundClient.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "b8e36fe5b30aaac38cb887652d48fafd1e3fe1ddcf760fe9b8eb223c65a0413c",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/downloads.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "197af86196794ab2d0e88e4342d40a8366b1a62260f7fdd8d39db45c06b41b18",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/exportPrompt.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "95ff54e1d50ece295f2fb3df205c0da42915b1ed29095a2ad8799cabb28edd9a",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/hlsAudio.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "8a4239b481fd09d1d87e706ab52a9a974f471c0d63e07288b80f1090d08430d0",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/hlsAudioRuntime.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "03956b6ec9fc502f2e0cc1842afd96735ac8f61d419fdf89494ff72260c4e7f4",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/karaoke.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "503f434966999b0386f4ee91cba583c20a8de158435c3f208ab5a5e67ac64308",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/karaokeLogic.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "e4b64e5b0366cda07cf8e5351e63e28d7475f75d2b7e9f61ca4746d3f8be0029",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/localModelReadiness.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "60d08749a31a111b8caac06380d0eaaed9078fc3affb92ffdefe7347854ca8fb",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/nativeFullscreen.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/platformRuntime.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "6ba50ba020c40bdd7fee42265f07f160e5a30f18820f0262af49cc8072d29e97",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/platforms.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "711e1663804e02583927f58b2355bd7a5a4ec32f429fdeaea95d0ab1d2835340",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/playerMenu.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "5cc6bb174d6c94ffc9f8e1d2ccdbfcd688556d80955de8bacfbf998fb4112d8b",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/pretranslationController.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "221a53a530e44d774ce9487db46f14db8394fe29026f7a29b0a937182386ad94",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/runtime.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "2ccd7ad37e76eab5f0905ae1d075e1437e5b7cf858fcf7844c59077bb568dc2c",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/sentenceLearningHost.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "e6076b2c3f7d47cd10fba17f2822d2cbc48c6ad75b69172c79a2a1a6977096d3",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/sentenceLearningPlacement.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "deafac649a32fc31e85aade18a7aae81488603c4c368d5c8dbc65821fe9a7fbb",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/sentenceLearningSession.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "34a433dfdbc78801161a33a6e5a6775767eb0473d0db75ec0f78380ccf54b0e5",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/sentencePlayback.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "c68291fb6c862f485da09bdf8c8282a88e70544b1d9bcaed1ac2bf4e33e64f6e",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/sentenceTimeline.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "88936e88bfef5d9daa842e1e916f49ae895e997fb22c2b8b4805e6c5e804b4c2",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/serviceProfile.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "b73518428fcd84bb0e1c0e53e21840faf81af7499fb472ed836e62e63cdc2bc3",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/subtitleLanguage.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "66b708b5c63ef9c2beea87cb90c5e931818bdbfb26e2f8dcefd7a015dcaea94d",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/subtitleLayout.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "bbf04103cd09ce0de40cdbe9d1c11d92a36b4d6c7fbd61a5cc914dce806c51f8",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/subtitleLogic.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "8fffe8d08bec2824e432b5f46d096b44c1dc950bec7e3db556e2ae2acfa6a616",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/transcriptionCacheClient.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "4576766c9100f28373106c6b6071cfd425451f69a576ce5940af71760cbc56d8",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/translationCache.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "ecdda524d2891a331fbd7068e313a828e0fee39f71bcad1e33a65fde8477514b",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/translationScheduler.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "0ef0131aec23c5db181e807ca1e79bf07f942b5252be680ee9254c0129fd0fff",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/ui.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "1c24a4e2ba8491df3e9fc583801bc7fd1cd016e7dc80613da32b292fbc177499",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/video-ai/audioWindow.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "e687a86dacbff364f02813e4e1944dc1528ea09f5cb511b62e396fc8870020b3",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/video-ai/capture.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "0726ee74294996421a3c84879e95597970ef4cc7afbadf583ffe7b3518896357",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/video-ai/cueTimeline.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "c9ef561386208a9a5d1833aff25ff07c4b4132b754a4c97c27380f57321bf539",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/video-ai/fullCapture.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "d4603cf1524b358ad556e04bbf6acb98b4e2e82c638a837459cb3b57991787d8",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/video-ai/generationRegistry.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "717badc1c775764de22d82c160e12d03627646d3d575cd0cbf2bd88fd314a7f1",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/video-ai/modelMenu.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "bbc30ab2efc27a7f89a03261dfa22950192609996945ae141c4092fa35a8e3f0",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/video-ai/modelSetup.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "1a61d29600779852d984e9ec63ceeabd0c2f99a9815b77f1ed79656ef05cb2e1",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/video-ai/requestSession.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "12352956bf06e6364a57744163bb023e9d6c5bc75d0ace4fa145c9f29e28b417",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/video-ai/speechAlignment.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "e1c766a5cfa16f822bbb6f21079af6a2b32018945f40a53898737e27e8b349c6",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/video-ai/streamingTranscript.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "7c00e05e2d11d56639f68a54d2113cfc0d48727944e447d24088aefa6e0a3bb8",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/video-ai/subtitleSession.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "b0b5c0fd27e1696a03381fc4d7b2d9c45310b07edb26ac7d43d0848a20630a56",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/videoPlayerBinding.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "fe5b3cc8f9825f2a513d419efcb4c1627eda43eb713a4e752fe19e65d38abe37",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/videoPlayerLocator.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "67ff409285b5116088605c13174ea0b9a7881f2ac08f1aed73e68e73f8ddba97",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/xCaptionSource.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "89e6852f0432c180187d1076e238e98b3af5e86476cd55ad011350eab8b52af4",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/xSubtitleLoader.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "a74d2edeb17f4790ebadde3b04b6525fcb82f77492640ee0910211bff6b0d831",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/xVideoSubtitleData.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "1f125fa9046d714c6757d1b06dfa4c8c3ef93b81f1db2fcef7b6baa9e40a5b35",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/youtubeHumanCaptions.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "675e1a19dc0de7b787bb6b56775ff0ae020e84368634c9750a2136c5cfd2e86e",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/youtubeSubtitleData.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "c3432c66fe568608f53724b7089545355117e3657336c14759a3eef75516d759",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/youtubeTimedTextBridge.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "4aeed98b78a6357a219c2af7ea626d8e1dc5512e718f4449bdd130c205819a74",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/youtubeTimedTextBridgeCore.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "1b276bb63b51a28eac1b9da377f0f7b984b4e9c69288efde23c39af3f2be8679",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/content/youtubeTimedTextMessage.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "720e6e31311899675abf2182ccf2434134463102170f32b0bf975700e2c351ea",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/domain/public.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "0b756ecfe31b1746a89d11b1f48d9af22afc4221e597e517f166bc8f505bc9ee",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/offscreen/modelCache.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "0208514f68340deb75aeb0432cacd9d31989e8b2bd2e42eed8992c130042290f",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/offscreen/timestampParser.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "36da2c87309106f968332f44452be8cca1811b22fc23de61255f7c61959e9c26",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/offscreen/transcription.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "1ca04fdea75da20d5ad21fa2059fe84009ba8615a8780a1cbe4914aa028e979d",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/offscreen/transcription.worker.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "3252038b45ba3c88c32d64aacef3ee579b6914a98356e7a2191550cd42774c5b",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/offscreen/transcriptionOptions.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "59420ac99ef1bf9ea69c49e4ace5a4da5ce5d7177748543136686bc0bbd76bc7",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/offscreen/whisperEncoderReuse.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "5f6417b81b57d2a09615a7622ada0ba356e3304c4956ce3b42e6350bf0e27e7a",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/public.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "dce454e2a18372c2e765f885c06df7c50b049131b1ebb4982ece9f2e3576b862",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/transcription.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "02903878eaad48a84eaff34c76d2830550e384a28357c0ee5a8c06472475e9ab",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/transcriptionCache.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "9a66e02157444d590e170ff21f17f916fcae12cc0adfe25c56ac764b0063e0e0",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/ui/VideoSentenceLearning.vue",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "a278e825aee26fe98c807be5dc8993be18b80519fe0015061fa62d801933a54a",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/ui/videoSentenceLearning.css",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "bae5ad32b2bd2389bb995313173f6b8db27607fc95dedf9022329027c1a99662",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/features/video-subtitle/workerProtocol.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "76bd90bde50ab13daa4f0fc5d983efb3053b30eb6bb6063bf4732331fd6b553d",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/platform/browser/actionIcon.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "4d0a83e2be918ef6a47837364051bf85b33d3de0eb7d18cf4849f7c3cdbd6643",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/platform/browser/capabilities.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "10fad76f00ab3ec68035c71f5624406aca4fb3b861e1762bf96853c6b89b49b2",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/platform/browser/chromeTranslationPreparationRequest.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "32a4fc57bb1dbe6c152b7a8b3a5fcf4300d4197fe25798351c6d6a10048a5c9a",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/platform/browser/freeProviderPermissions.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "eb2d47c062e0c476e190b53059761d25607e4355bc47aea85cead162752a6f8a",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/platform/browser/ids.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "08289494cd6f9f9af3d2fbe99264b00d8d7ee35148320a3e770b25b63efa5460",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/platform/browser/localTranslationSupport.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "e821dc2f0ce7d6da57298027e23f77337b698dd547eac19f37081d3ab87b9c95",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/platform/browser/requestHeaderRules.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "33b130bd3dc643cc56e08e92b4cfe618800a2d7ee90b58d4bee214f5eb05a53a",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/platform/browser/runtimeMessages.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "086a5a0be38c21fc37a68759080067e0bbff33efed2fe4428e54baf9dfbbdabd",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/platform/dom/visualViewport.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "fec540c69ca5703e8051e04df51a79e192a2da55be359385eb4a91c11050c8d2",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "src/providers/translation/free-translation.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "2374e76df1cef27a6948b4d4bcdb25cfe60611489bba40e9588643f147062c17",
+              "worktreeEqualsCommit": true
+            },
+            {
+              "path": "wxt.config.ts",
+              "equals215e": true,
+              "equals9e": true,
+              "equalsUpstreamD3IfChanged": null,
+              "sha256": "09e6aea80f44a41f7cfa24acdf486f79d73c0011a086be9d36b35c4dbbd252d6",
+              "worktreeEqualsCommit": true
+            }
+          ],
+          "allChangedExistingExactUpstream": true,
+          "cannotClaimAll187Unchanged": true,
+          "popupNativeViewportPackagingSourceUnchanged": true
+        },
+        "providerPermissions": {
+          "same17Provider21OriginMapAndGateWxt": true,
+          "providerModulesUnchangedFrom9e": true,
+          "chineseProviderUrlLiteralsUnchanged215e": [
+            "https://dict.youdao.com/jsonapi_s?doctype=json&jsonversion=4",
+            "https://ifanyi.iciba.com/index.php?c=trans&m=fyV2"
+          ],
+          "noNewOriginDeclarationNeeded": true
+        },
+        "scopeNote": "Preserve all upstream full-page/style/adaptation and selection host recovery behaviors; prior0d actual UI remains version-specific and cannot stand in for d3 runtime tests. No new device tests claimed.",
+        "writesByReviewer": {
+          "source": false,
+          "index": false,
+          "commit": false
+        },
+        "testsRunByReviewer": false,
+        "deviceOrAvdAction": false
+      },
+      "limits": "Native Safari selection after host removal/body replacement was not rerun; component and runtime suites are separate, not joint actual-device evidence."
+    },
+    "popupResourceContinuity": {
+      "createdAt": "2026-10-15T15:05:38.665Z",
+      "previous": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-9e-final/FluentRead/Shared (Extension)/Resources",
+      "current": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-d3-final/FluentRead/Shared (Extension)/Resources",
+      "scope": "popup.html local src/href plus recursive static/literal dynamic ES imports, literal local resource strings, CSSurl references; no runtime/behavior claim",
+      "fileCount": 29,
+      "files": [
+        "assets/base-CMRK1q-d.css",
+        "assets/interface-skins-C-micYUc.css",
+        "assets/popup-CoxJp0cC.css",
+        "chunks/128-rof0LK9z.js",
+        "chunks/PopupApp-CSg__1yb.js",
+        "chunks/PopupDrawer-D1SB2hk4.js",
+        "chunks/PopupOnboarding-Brah3lNo.js",
+        "chunks/PopupServices-BIvcW78n.js",
+        "chunks/UiLanguageOnboarding-DeZi3wyt.js",
+        "chunks/UiSelect.vue_vue_type_style_index_0_lang-j6Zixhne.js",
+        "chunks/_plugin-vue_export-helper-DlAUqK2U.js",
+        "chunks/base-LxDgIgU8.js",
+        "chunks/capabilities-Cj2_c4b7.js",
+        "chunks/el-overlay-DwVm_6M_.js",
+        "chunks/featureServices-DCOgVYSb.js",
+        "chunks/freeProviderPermissions-m0vLfoGG.js",
+        "chunks/i18n-B1HlLzOe.js",
+        "chunks/interfaceAppearance-C9Kznhfs.js",
+        "chunks/mount-C__pT5uz.js",
+        "chunks/pdfSource-gjBoXda6.js",
+        "chunks/popup-LMsbbb96.js",
+        "chunks/popupQuickFeatureIcons-BOZF-9oy.js",
+        "chunks/serviceCatalog-kirGzROJ.js",
+        "chunks/useConfigEditor-gzWBkHVr.js",
+        "chunks/useSettingsActionContext-2y8xBzyt.js",
+        "chunks/visualViewport-DJZqT_lD.js",
+        "icon/128.png",
+        "popup-startup.js",
+        "popup.html"
+      ],
+      "changed": [],
+      "allDiscoveredPopupResourcesByteIdentical": true,
+      "opaqueImports": [],
+      "limitation": "Computed/runtime URLs and extension background/content scripts are outside this bounded popup graph; prior UI acceptance remains prior-version evidence."
+    },
+    "latestPhaseCleanup": {
+      "ios": {
+        "completedAtEpochMs": 1792075902219,
+        "status": "completed",
+        "scope": "Stage-only resource release; retain task device/data/App/runtime/evidence; no further video UI",
+        "ownedUDID": "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
+        "deviceName": "FluentRead-PR995-FreshPermissions-20261015",
+        "deviceState": "Shutdown",
+        "deviceDataPathStillExists": true,
+        "installedAppStillExists": true,
+        "preparedAppStillExists": true,
+        "installedWebTreeSHA256": "0d624626ee4fa1efe35a3b8c11fa6b5db80fc3ce815fdf95a26ffaeeed827033",
+        "runtimeRetained": [
+          {
+            "name": "iOS 26.2",
+            "buildversion": "23C52",
+            "identifier": "com.apple.CoreSimulator.SimRuntime.iOS-26-2",
+            "isAvailable": true
+          }
+        ],
+        "ownedXCTestProcessesAfter": [],
+        "deviceGuards": [
+          "phase-cleanup-device-terminate-guard.json",
+          "phase-cleanup-device-shutdown-guard.json"
+        ],
+        "focusEvents": [],
+        "violations": [],
+        "hostWindowOperations": [],
+        "serversReport": "phase-cleanup-servers.json",
+        "servers": [
+          {
+            "name": "fixture",
+            "pid": 46377,
+            "port": 62656,
+            "status": "stopped",
+            "ownershipVerified": true
+          },
+          {
+            "name": "avkit",
+            "pid": 38363,
+            "port": 51281,
+            "status": "stopped",
+            "ownershipVerified": true
+          }
+        ],
+        "preservation": "No device deletion/reset, no App uninstall, no runtime deletion, no other device mutation; all scripts/JSON/screenshots retained"
+      },
+      "servers": {
+        "startedAtEpochMs": 1792075818648,
+        "scope": "Only exact task loopback server current ownership; no port-only or stale-PID kill",
+        "servers": [
+          {
+            "name": "fixture",
+            "pid": 46377,
+            "port": 62656,
+            "expectedScript": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fixture-server.cjs",
+            "expectedCommand": "node research/mobile-safari-20261015/ios-ui-harness/fixture-server.cjs",
+            "metadata": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/fixture-server.json",
+            "status": "stopped",
+            "process": {
+              "code": 0,
+              "stdout": "node research/mobile-safari-20261015/ios-ui-harness/fixture-server.cjs",
+              "stderr": ""
+            },
+            "processStart": {
+              "code": 0,
+              "stdout": "Thu Oct 15 15:43:05 2026",
+              "stderr": ""
+            },
+            "cwd": {
+              "code": 0,
+              "stdout": "p46377\nfcwd\nn/Users/thinkstu/Desktop/copy",
+              "stderr": ""
+            },
+            "listener": {
+              "code": 0,
+              "stdout": "p46377\nf14\nn127.0.0.1:62656",
+              "stderr": ""
+            },
+            "metadataPIDMatches": true,
+            "ownershipVerified": true,
+            "scriptSHA256": "892c4b0e981bad9dabe95fa05de2ddcfa0f976445050941cdd43ef649ab2fc7e",
+            "signal": "SIGTERM",
+            "processAfter": {
+              "code": 1,
+              "stdout": "",
+              "stderr": ""
+            },
+            "listenerAfter": {
+              "code": 1,
+              "stdout": "",
+              "stderr": ""
+            }
+          },
+          {
+            "name": "avkit",
+            "pid": 38363,
+            "port": 51281,
+            "expectedScript": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/avkit-loopback/server.mjs",
+            "expectedCommand": "node /Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/avkit-loopback/server.mjs",
+            "metadata": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/avkit-loopback/owned-server.json",
+            "status": "stopped",
+            "process": {
+              "code": 0,
+              "stdout": "node /Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/avkit-loopback/server.mjs",
+              "stderr": ""
+            },
+            "processStart": {
+              "code": 0,
+              "stdout": "Thu Oct 15 18:04:05 2026",
+              "stderr": ""
+            },
+            "cwd": {
+              "code": 0,
+              "stdout": "p38363\nfcwd\nn/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/avkit-loopback",
+              "stderr": ""
+            },
+            "listener": {
+              "code": 0,
+              "stdout": "p38363\nf16\nn127.0.0.1:51281",
+              "stderr": ""
+            },
+            "metadataPIDMatches": true,
+            "ownershipVerified": true,
+            "scriptSHA256": "e4b46fc2a8b182dfe74a21cab2e998ff0f2f62b7b050186025851b6248e6d9f8",
+            "signal": "SIGTERM",
+            "processAfter": {
+              "code": 1,
+              "stdout": "",
+              "stderr": ""
+            },
+            "listenerAfter": {
+              "code": 1,
+              "stdout": "",
+              "stderr": ""
+            }
+          }
+        ],
+        "finishedAtEpochMs": 1792075819219
+      },
+      "android": "android-runtime/firefox-attempt4-layout-summary.json contains final verified cleanup receipt"
     }
   },
   "productionBrowserSuites": [
@@ -2815,32 +6318,32 @@
   ],
   "artifacts": {
     "chrome": {
-      "sha256": "bd137bbf2daf96fe7c9ec9aa020a4bf935a1d220426dc48557373fba6cf8f4e0",
+      "sha256": "2f18f919eb1bcbc2b5139e07a2c06dfeaca418d64306bf03ba39e18eb4e01c73",
       "files": 474,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "firefox": {
-      "sha256": "dba55ee66d73fef7046933ec8d0b35a29ff93e86aa8a6a7ea763190e7a34a06f",
+      "sha256": "9200b9315c108e79c351e7a5b4b19ab7d65d236d9c385d23b52038023687a3fd",
       "files": 474,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "safari": {
-      "sha256": "dc433d0443bb8120bd9648320815d7ee89daabeb2957361aecf58c125fdd15ad",
+      "sha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
       "files": 463,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "userscript": {
-      "sha256": "36204c9cc5994966d7dcfac3c83785a97f93874ce4d687277ac0ad9e140e29ca",
-      "bytes": 2074322,
+      "sha256": "1a1b692f76b17a1da7eef97991e19eb65490f0666d99cfdbbf772f83ffab9bcf",
+      "bytes": 2081503,
       "verifier": "passed"
     }
   },
   "safari": {
-    "createdAt": "2026-10-15T14:31:58.005062+00:00",
-    "artifactStatus": "Integrated main5b artifact: all3 native SDK builds and463resource per-file verification passed; build-only scope, no new device acceptance",
+    "createdAt": "2026-10-15T15:05:06.263009+00:00",
+    "artifactStatus": "Frozen88c/d3 artifact: all3 native SDK builds and463resource per-file verification passed; build-only scope, no new device acceptance",
     "researchProbe": false,
     "reviewed": true,
-    "productionWebResourceSha256": "dc433d0443bb8120bd9648320815d7ee89daabeb2957361aecf58c125fdd15ad",
+    "productionWebResourceSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
     "productionWebResourceCount": 463,
     "nativeContainerSourceSha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
     "nativeFullscreenSourceSha256": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
@@ -2852,17 +6355,17 @@
       "version": "0.0.38",
       "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
       "checkedReferences": 10,
-      "buildSha256": "dc433d0443bb8120bd9648320815d7ee89daabeb2957361aecf58c125fdd15ad",
+      "buildSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
       "artifactCount": 463,
       "packager": {
         "name": "safari-web-extension-packager",
         "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/safari-web-extension-packager"
       },
       "projects": [
-        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-5b-final/FluentRead/FluentRead.xcodeproj"
+        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-d3-final/FluentRead/FluentRead.xcodeproj"
       ],
       "copiedExtensions": [
-        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-5b-final/FluentRead/Shared (Extension)/Resources"
+        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-d3-final/FluentRead/Shared (Extension)/Resources"
       ],
       "containerGuides": [
         {
@@ -2895,105 +6398,105 @@
     },
     "platforms": {
       "iosSimulator": {
-        "createdAt": "2026-10-15T14:32:42.661Z",
+        "createdAt": "2026-10-15T15:06:21.531Z",
         "platform": "iosSimulator",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-5b-final/Build/Products/Release-iphonesimulator/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-5b-final/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-d3-final/Build/Products/Release-iphonesimulator/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-d3-final/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
           "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "dc433d0443bb8120bd9648320815d7ee89daabeb2957361aecf58c125fdd15ad",
+          "buildSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
           "artifactCount": 463
         },
-        "compiledWebResourceSha256": "dc433d0443bb8120bd9648320815d7ee89daabeb2957361aecf58c125fdd15ad",
+        "compiledWebResourceSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
         "compiledWebResourceCount": 463,
         "nativeExtras": [
           "FluentRead Extension",
           "Info.plist"
         ],
-        "nativeExecutableSha256": "7fdd7b0c1c65bc5793bd5cb4ada2983f8d3ae54427bc74cd7ccbced32fa3cafe",
+        "nativeExecutableSha256": "d726c6f1df8a7dea14d6bb5d6acbfe533978f000f3c66812f0768d8ee62c909e",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-integrated-main-5b-final.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-integrated-main-d3-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-integrated-main-5b-final.log",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-integrated-main-d3-final.log",
         "signatureInspectionExitCode": 0,
         "signatureSummary": "linker ad-hoc; no developer team",
         "installedByThisAgent": false,
         "launchedByThisAgent": false
       },
       "macos": {
-        "createdAt": "2026-10-15T14:33:36.038Z",
+        "createdAt": "2026-10-15T15:07:12.221Z",
         "platform": "macos",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-5b-final/Build/Products/Release/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-5b-final/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-d3-final/Build/Products/Release/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-d3-final/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
           "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "dc433d0443bb8120bd9648320815d7ee89daabeb2957361aecf58c125fdd15ad",
+          "buildSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
           "artifactCount": 463
         },
-        "compiledWebResourceSha256": "dc433d0443bb8120bd9648320815d7ee89daabeb2957361aecf58c125fdd15ad",
+        "compiledWebResourceSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
         "compiledWebResourceCount": 463,
         "nativeExtras": [],
-        "nativeExecutableSha256": "141d87fdad27a902a60f81deb8cd2ad66fb9c6f11d293450ef8b7ea082833fc4",
+        "nativeExecutableSha256": "ba2f06e54448cf1bbc76a321b15f7c79bf1a732e555fade3d2182fa522055963",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-integrated-main-5b-final.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-integrated-main-d3-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-integrated-main-5b-final.log",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-integrated-main-d3-final.log",
         "signatureInspectionExitCode": 0,
         "signatureSummary": "linker ad-hoc; no developer team",
         "installedByThisAgent": false,
         "launchedByThisAgent": false
       },
       "iphoneos": {
-        "createdAt": "2026-10-15T14:34:22.937Z",
+        "createdAt": "2026-10-15T15:07:52.366Z",
         "platform": "iphoneos",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-5b-final/build/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-5b-final/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-d3-final/build/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-d3-final/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
           "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "dc433d0443bb8120bd9648320815d7ee89daabeb2957361aecf58c125fdd15ad",
+          "buildSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
           "artifactCount": 463
         },
-        "compiledWebResourceSha256": "dc433d0443bb8120bd9648320815d7ee89daabeb2957361aecf58c125fdd15ad",
+        "compiledWebResourceSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
         "compiledWebResourceCount": 463,
         "nativeExtras": [
           "FluentRead Extension",
           "Info.plist"
         ],
-        "nativeExecutableSha256": "6fdc9477a978988141fe0dcc4329742fa289ea80ab71cd1c6fff279c88ef1ffb",
+        "nativeExecutableSha256": "b0d6cf0d5bbd97f2d301f91ae16aad8e202661fbd26256a629a6f5c1d9e9c088",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-integrated-main-5b-final.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-integrated-main-d3-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-integrated-main-5b-final.log",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-integrated-main-d3-final.log",
         "signatureInspectionExitCode": 1,
         "signatureSummary": "unsigned; no developer team",
         "installedByThisAgent": false,
@@ -3005,19 +6508,19 @@
     "formalWebValidation": {
       "result": "passed",
       "steps": 8,
-      "resultsPath": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-5b-final/results.json",
-      "resultsSha256": "173c3e015ac1635a83d071fc07e5e93ec46414001a78592a7b1812bba14f8be2"
+      "resultsPath": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/results.json",
+      "resultsSha256": "8a8741a8667de52fb611d842bbe6a0c97cf6989b2003dfecec74aa29fc15e5e2"
     },
-    "sourceValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-5b-final/source-at-build.json",
-    "independentReview": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-5b-index-review.json",
-    "webValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-5b-final/results.json",
+    "sourceValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/source-at-build.json",
+    "independentReview": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-d3-review.json",
+    "webValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/results.json",
     "nativeSourceValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/native-system-choice-final/native-validation-summary.json",
-    "packageLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/package-integrated-main-5b-final.log",
-    "schemesLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/schemes-integrated-main-5b-final.log",
-    "resourceDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/resources-delta-layout-to-integrated-main-5b-final.json",
-    "previousAcceptance": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-drawer-layout-final.json",
-    "previousProductionWebResourceSha256": "0d624626ee4fa1efe35a3b8c11fa6b5db80fc3ce815fdf95a26ffaeeed827033",
-    "versionHistoryNote": "Main#999 professional document runtime integrated unchanged.187 mobile production files are byte-identical to215e40fba (actual0d UI snapshot); new generated resource identity is build-only and does not inherit fresh actual UI acceptance. All prior0d and earlier raw evidence retained.",
+    "packageLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/package-integrated-main-d3-final.log",
+    "schemesLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/schemes-integrated-main-d3-final.log",
+    "resourceDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/resources-delta-integrated-9e-to-d3-final.json",
+    "previousAcceptance": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-integrated-main-9e-final.json",
+    "previousProductionWebResourceSha256": "b7b36040e584cb6d10856c2d2ea138cc3562df8704f80ba05bdfac9d874a857c",
+    "versionHistoryNote": "Preserves upstream#999/#994 and#998 web stability including selection host recovery/full-page lifecycle. Old187 mobile map has174 unchanged and13 upstream changed files; one full-page runtime file added. Popup/native/viewport source remains215e-identical. Newartifact build-only, root separately schedules Chrome smoke.",
     "acceptanceBoundary": "Native compilation/resource identity only; root/UI agent owns actual device/browser acceptance. No installation or device control by packaging agent.",
     "resourceSafeRunner": {
       "maxWorkers": 1,
@@ -3030,19 +6533,33 @@
     "simulatorAppHandedToUiAgent": false,
     "deviceInstallationBoundary": "No device installation, launch or UI by packaging agent in integrated phase.",
     "popupServicesSourceSha256": "8083cde0601b48e0b02a606cfd45eeea408eb103ac5cdd29fe2eca9a79ebe3bd",
-    "sourceCommit": "5fe60fcfc64b921a40fd51347c01b68a0d2c8594",
+    "sourceCommit": "88c6274c8796530c1639cd5eeecf432345e99ba7",
     "priorActualUiEvidence": {
       "sourceCommit": "215e40fba",
       "productionWebResourceSha256": "0d624626ee4fa1efe35a3b8c11fa6b5db80fc3ce815fdf95a26ffaeeed827033",
       "android": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/android-runtime/firefox-attempt4-layout-summary.json",
       "ios": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/drawer-layout-keyboard-search-discovered-summary.json",
-      "mobileSourceEquivalence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-5b-index-review.json"
+      "mobileSourceEquivalence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-d3-review.json",
+      "limitation": "Partial source continuity only: d3 changes13 existing selection/full-page runtime modules and adds styleRoots; earlier0d actual UI does not verify these new upstream runtime paths."
     },
     "actualUiAcceptanceForThisArtifact": "not run by packaging agent; parent may schedule isolated Chrome bundle/drawer smoke separately",
     "newAvdAttemptPreparedOrStarted": false,
-    "updatedAt": "2026-10-15T14:34:22.939Z",
-    "completedAt": "2026-10-15T14:34:23.015124+00:00",
-    "deviceUiPerformedThisPhase": false
+    "deviceUiPerformedThisPhase": false,
+    "mobileSourceComparison": {
+      "priorMapFiles": 187,
+      "same215e": 174,
+      "changed215e": 13,
+      "newRuntimeFiles": [
+        "src/features/full-page-translation/content/styleRoots.ts"
+      ],
+      "popupNativeViewportPackagingSourceUnchanged": true,
+      "recheckedAtPackaging": true,
+      "review": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-d3-review.json"
+    },
+    "finalHeadClaim": false,
+    "boundedPopupResourceContinuity": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/popup-resource-continuity-d3.json",
+    "updatedAt": "2026-10-15T15:07:52.368Z",
+    "completedAt": "2026-10-15T15:07:52.439477+00:00"
   },
   "review": {
     "code": "independent scoped review found no remaining confirmed P1/P2 regressions",
@@ -3504,7 +7021,7 @@
       "nativeReport": "safari/acceptance-drawer-layout-final.json",
       "sourceSnapshotSha256": "ea911e7d961ce23fbaee38cc73a8386e7e45478251acdf855413b8a42ceb1ae4",
       "webTreeSha256": "0d624626ee4fa1efe35a3b8c11fa6b5db80fc3ce815fdf95a26ffaeeed827033",
-      "scope": "All6 productionChrome cases and21 screenshots reviewed; actual Firefox Android7 groups and iOS realkeyboard passed. Current integrated build includes upstream document updates;187 mobile production files remain byte-identical, device evidence is not reassigned to new package."
+      "scope": "All6 productionChrome cases and21 screenshots reviewed; actual Firefox Android7 groups and iOS realkeyboard passed. Current integrated build includes upstream document, quality and web-stability changes. PopupApp, PopupServices, mount, CSS, viewport, native subtitles and Safari container remain byte-identical. Older187-file mobile list now has174 identical and13 upstream-changed files; device evidence is not reassigned to the new package."
     },
     "androidWidthArtifact": {
       "nativeReport": "safari/acceptance-android-popup-final.json",
@@ -3555,7 +7072,96 @@
       "safari/acceptance-guide-fixed.json",
       "safari/acceptance-single-platform.json",
       "safari/acceptance-utf8-final.json"
-    ]
+    ],
+    "documentMainIntegration": {
+      "mainCommit": "5b3d7e8b46dc0e5e78541552b7b7df363ddfb648",
+      "mergeCommit": "5fe60fcfc",
+      "sourceSnapshotSha256": "f50f0cfa03583daea3c03e1693765392df905ab6d4871524061ae2f9363b9f1e",
+      "webTreeSha256": "dc433d0443bb8120bd9648320815d7ee89daabeb2957361aecf58c125fdd15ad",
+      "nativeReport": "safari/acceptance-integrated-main-5b-final.json",
+      "scope": "Four Web and three native builds plus three production Chrome smoke cases passed; no device installation. Superseded by separate9e integration build."
+    },
+    "qualityMainIntegration": {
+      "mainCommit": "9e2d3a637d7855c8433f8a4ca286cece1cbd2ede",
+      "mergeCommit": "1ee858762",
+      "snapshot": {
+        "sourceFiles": {
+          "package.json": "f2d0cb391c8a4049f85cacd393069f39bb62de49f2bf79558ae4e31f86991871",
+          "scripts/safari/container/Main.html": "8359d2ff5a18fc2c655ef8798869b242b7c8495fa9a4575919213a2226d7789e",
+          "scripts/safari/container/Script.js": "ff9d564bd55a9742f77043dc08ebfd4cc2415989d70576851182d9c34c0ad2f8",
+          "scripts/safari/container/Style.css": "3f4c01b933fe9622c01784d8e2eec2a228225fb07284bb5adacaf4bef4319a40",
+          "scripts/safari/container/ViewController.swift": "6d9d7f1bb044d88eb17b644c8c038062f964a4486f59a90f4d3b081f09931d06",
+          "scripts/safari/package.mjs": "9b2f03d5d9b3729150498adf0e50318a30465ec3982c6c198aa280e5cfd6796f",
+          "src/app/popup/PopupApp.vue": "690998e1fdb09eada4e90445e11665d893d5396a39d7b007165c2c5b71b71a26",
+          "src/app/popup/PopupServices.vue": "8083cde0601b48e0b02a606cfd45eeea408eb103ac5cdd29fe2eca9a79ebe3bd",
+          "src/app/popup/mount.ts": "208d90c048ac6014a6a97ae78db3cdb329a559d29635009d986892bbe7cc88cc",
+          "src/app/popup/popup.css": "8fe833c2781247d0c2308090dd795852d51852bc254bafa74f3c75d87b933b55",
+          "src/core/config/freeProviderOrigins.json": "8b4004cade979ded8b2b76ac3398dfa108f9e423de2b6d7336dc2530cadf2418",
+          "src/core/config/freeProviderOrigins.ts": "ee38f3e7bdaf46a7f9f3097da746d279a2215cf3bdbf336a88c15669f73b3f36",
+          "src/core/i18n/messages/en-US.ts": "fefaccce594aec16c3a6cfde8d05f68b6fb5a285e76c7eddb8adbddba4cb7cfb",
+          "src/core/i18n/messages/es-ES.ts": "8e3c989bcef44b88f8fe92ceecc41f10e837df8af54cb2a1f5d07d6cb43a32fc",
+          "src/core/i18n/messages/fr-FR.ts": "044d3e0e5805a7ad8b68fc014f2c5c1c1f3b227582b5034c24cce2f456add393",
+          "src/core/i18n/messages/ja-JP.ts": "1e65af4f3a7d522c5e28803ae285be8e7f74358f161b0debb9f746f1deeac406",
+          "src/core/i18n/messages/ko-KR.ts": "a12334fcaf4511c55595a5ba8ae0fdc17d9002ee6a00d601c98751f0227152e2",
+          "src/core/i18n/messages/ru-RU.ts": "11d711876442e1e01e3690d336fda9a2ff7021e4bedb6ad07548232ad33aa469",
+          "src/core/i18n/messages/settings-copy/en-US.json": "61958ef9eef05f32c4bbb173c5dd80d24f44d48af9ae08b721ed14b43a1fd944",
+          "src/core/i18n/messages/settings-copy/es-ES.json": "37a16dff8cf08aa4400e3aedc3e740a47d74c9627ce9c6d7c960687c82fb9de1",
+          "src/core/i18n/messages/settings-copy/fr-FR.json": "929e5f0bc0ab483eb32c8029787abebb5c58acf700cfa7e80e6526f838f4af1f",
+          "src/core/i18n/messages/settings-copy/ja-JP.json": "5274819676b545d9249cea8e348c4e7479e672894c02022b266187fd410dd96f",
+          "src/core/i18n/messages/settings-copy/ko-KR.json": "e85288cccae44a2e603b396bf8bcf4eebc5cb6b6a2b51d4fcce5190bcce570c6",
+          "src/core/i18n/messages/settings-copy/ru-RU.json": "b8cf19e8a6b471f16277a0a7a3f6b63e90148207d20c6c9040938bde36b082da",
+          "src/core/i18n/messages/settings-copy/zh-CN.json": "d6ca67b4b1045195ded436a18124e7832f23df9472e716d18f95b80bcadd2e13",
+          "src/core/i18n/messages/zh-CN.ts": "8ee52024eb4b0f714d3a73e39192c0d93f9e80a9b012e38ec8f42c81aa9234e0",
+          "src/features/floating-ball/content/anchoredPopup.ts": "c6a8ed6b145ef29489df1a0c3d3b69ea4a23b092a972bc96540351d25fe9b7bf",
+          "src/features/floating-ball/ui/FloatingBall.vue": "7dc94a202f3a6ee588b98d02ab06314f95fc33fcb440587f7ef5ad707fa851e4",
+          "src/features/full-page-translation/ui/TranslationProgressPanel.vue": "1b33297965759c8117b56a4a956e7f7b981d7ff0d519a0391e2452f9e842ef5c",
+          "src/features/selection-translation/core.ts": "3c5f2d93a2872884b1029e3bae94b4b15362a300ba41adacfe9fd00f14f0ae68",
+          "src/features/selection-translation/ui/SelectionTranslator.vue": "7ee2015a5b86ff2276fb94879b0286eaaf2cf4b746e5b14342d2ef7990394163",
+          "src/features/settings/ui/services/FreeTranslationSettings.vue": "1ec580cbca47f5ed474e4f9b39136724d19eb88ef62d37bfc403a0af3dbe8456",
+          "src/features/settings/ui/services/ServiceConfiguration.vue": "251a3084643266336095f85775166b7d8dbcedb72dc5a93ac351652eaeb4bfa8",
+          "src/features/video-subtitle/content/nativeFullscreen.ts": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
+          "src/features/video-subtitle/content/playerMenu.ts": "5cc6bb174d6c94ffc9f8e1d2ccdbfcd688556d80955de8bacfbf998fb4112d8b",
+          "src/features/video-subtitle/content/runtime.ts": "2ccd7ad37e76eab5f0905ae1d075e1437e5b7cf858fcf7844c59077bb568dc2c",
+          "src/features/video-subtitle/content/translationCache.ts": "ecdda524d2891a331fbd7068e313a828e0fee39f71bcad1e33a65fde8477514b",
+          "src/features/video-subtitle/content/ui.ts": "1c24a4e2ba8491df3e9fc583801bc7fd1cd016e7dc80613da32b292fbc177499",
+          "src/features/video-subtitle/content/videoPlayerBinding.ts": "fe5b3cc8f9825f2a513d419efcb4c1627eda43eb713a4e752fe19e65d38abe37",
+          "src/features/video-subtitle/content/videoPlayerLocator.ts": "67ff409285b5116088605c13174ea0b9a7881f2ac08f1aed73e68e73f8ddba97",
+          "src/features/video-subtitle/content/youtubeHumanCaptions.ts": "675e1a19dc0de7b787bb6b56775ff0ae020e84368634c9750a2136c5cfd2e86e",
+          "src/platform/browser/freeProviderPermissions.ts": "eb2d47c062e0c476e190b53059761d25607e4355bc47aea85cead162752a6f8a",
+          "src/platform/dom/visualViewport.ts": "fec540c69ca5703e8051e04df51a79e192a2da55be359385eb4a91c11050c8d2",
+          "src/providers/translation/free-translation.ts": "2374e76df1cef27a6948b4d4bcdb25cfe60611489bba40e9588643f147062c17",
+          "userscript/languageBundles.ts": "ab7a652538f22a5554a121406afa0b01871a03122013543ddcf1a7204e4946c9",
+          "wxt.config.ts": "09e6aea80f44a41f7cfa24acdf486f79d73c0011a086be9d36b35c4dbbd252d6"
+        },
+        "sourceSnapshotSha256": "f50f0cfa03583daea3c03e1693765392df905ab6d4871524061ae2f9363b9f1e",
+        "sourceCommit": "1ee858762b0cf203cb190a0ddf1919eef3e15ca3",
+        "baseCommit": "9e2d3a637d7855c8433f8a4ca286cece1cbd2ede",
+        "artifacts": {
+          "chrome": {
+            "sha256": "5f4757170ae5648b29c101f8b6b64b2c9adf54e9d6606bccf289e18712698792",
+            "files": 474,
+            "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+          },
+          "firefox": {
+            "sha256": "191919c3d98174f44c7c3124e274e7b655b9b5a7411773a51d3790907eb3a60d",
+            "files": 474,
+            "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+          },
+          "safari": {
+            "sha256": "b7b36040e584cb6d10856c2d2ea138cc3562df8704f80ba05bdfac9d874a857c",
+            "files": 463,
+            "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+          },
+          "userscript": {
+            "sha256": "21b3eea643326919b05acc74480ab29b2aa99faad5ed35246c0128225503e919",
+            "bytes": 2075291,
+            "verifier": "passed"
+          }
+        }
+      },
+      "nativeReport": "safari/acceptance-integrated-main-9e-final.json",
+      "scope": "Four Web and three native builds plus three production Chrome smoke cases passed; no device installation. Superseded by separate d3 integration build."
+    }
   },
   "productionBrowserSuitesScope": "Initial, permission, popup and selection suites retain their own versioned artifacts. The clone, native-selection and keyboard revisions have separately versioned production browser suites; none is physical-device acceptance.",
   "formalSimulatorRuntime": {
@@ -8914,9 +12520,9 @@
   },
   "popupKeyboardSimulatorRuntime": {
     "report": "ios-ui-harness/popup-keyboard-acceptance.json",
-    "sha256": "6f5e6886d68fcb3b8d0326e8c96c347960d87c4234c9506edb20676cc1a3318f",
+    "sha256": "ae3e42f92ffe4bc4968deb43bb3a433327e0d50bbd833de5e187329c050f8ae8",
     "results": {
-      "updatedAtEpochMs": 1792074071863,
+      "updatedAtEpochMs": 1792075902219,
       "scope": "Real iOS26.2 Simulator Safari extension popup service search software keyboard; no service/provider permission selected",
       "ownedUDID": "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
       "artifactWebTreeSHA256": "730bdbb38f0f98d220df4b3b7f59b850399812d7772e7833889c5b91c737b24f",
@@ -9219,6 +12825,13 @@
         ],
         "newPermissionsRequested": false,
         "providerCallsTriggered": false
+      },
+      "phaseCleanup": {
+        "status": "completed",
+        "record": "phase-cleanup.json",
+        "deviceState": "Shutdown",
+        "servers": "both exact owned loopback processes ownership-verified and stopped",
+        "ownedXCTestProcessesAfter": []
       }
     }
   },
@@ -10273,8 +13886,71 @@
     }
   },
   "productionIntegratedSmoke": {
+    "report": "production-popup-integrated-d3/report.json",
+    "reportSha256": "408e09db2ebe1c7f928f114610ab266233f62c31646158bf923e88bad143a6e4",
+    "review": {
+      "reviewedAt": "2026-10-15T15:06:56.612234+00:00",
+      "sourceCommit": "88c6274c8796530c1639cd5eeecf432345e99ba7",
+      "report": "report.json",
+      "passed": true,
+      "cases": 3,
+      "screenshots": 6,
+      "scope": "Production Chrome MV3 in owned background Edge. Two desktop intrinsic widths and one light320 full service flow; explicit VisualViewport fixture, not native keyboard. No CSS injection.",
+      "artifactTree": {
+        "algorithm": "sha256 of sorted UTF-8 records: relativePath NUL fileSha256 NUL byteLength LF",
+        "sha256": "1d43e4e217e9771918e9719084ad7ea2fffcdd8af636610e10b7c0bc86786d76",
+        "fileCount": 474,
+        "totalBytes": 61991557,
+        "manifest": "artifact-tree-manifest.json",
+        "unchangedAfterValidation": true
+      },
+      "screenshotComparison": [
+        {
+          "name": "desktop-english-intrinsic-380.png",
+          "sameBytesAsReviewed9eImage": true
+        },
+        {
+          "name": "light-320-keyboard-search.png",
+          "sameBytesAsReviewed9eImage": false
+        },
+        {
+          "name": "light-320-keyboard-dismissed-while-open.png",
+          "sameBytesAsReviewed9eImage": false
+        },
+        {
+          "name": "light-320-keyboard-cleared.png",
+          "sameBytesAsReviewed9eImage": true
+        },
+        {
+          "name": "light-320-last-service-scrolled.png",
+          "sameBytesAsReviewed9eImage": false
+        },
+        {
+          "name": "light-320-keyboard-dismissed-reopened.png",
+          "sameBytesAsReviewed9eImage": false
+        }
+      ],
+      "screenshotsManuallyViewed": [
+        "light-320-keyboard-search.png",
+        "light-320-keyboard-dismissed-while-open.png",
+        "light-320-last-service-scrolled.png",
+        "light-320-keyboard-dismissed-reopened.png"
+      ],
+      "unchangedScreenshotsReview": "Other two screenshots are byte-identical to reviewed9e images.",
+      "findings": [],
+      "providerRequests": 0,
+      "permissionRequests": {
+        "popup": [],
+        "worker": []
+      },
+      "consoleErrors": [],
+      "focusEvents": [],
+      "ownedClose": "shared-guard-fulfilled",
+      "profileRemoved": true
+    }
+  },
+  "historicalProductionIntegratedSmoke": {
     "report": "production-popup-integrated-main/report.json",
-    "reportSha256": "776e3d29dc5088391916a321a276eb71a6d647cb05cd989db0b9743fe7e60f5f",
     "review": {
       "recordedAt": "2026-10-15T14:34:20.891895+00:00",
       "reviewer": "root",
@@ -10330,6 +14006,68 @@
       "focusEvents": [],
       "ownedClose": "shared-guard-fulfilled",
       "profileRemoved": true
+    }
+  },
+  "qualityIntegrationProductionSmoke": {
+    "report": "production-popup-integrated-9e/report.json",
+    "review": {
+      "reviewedAt": "2026-10-15T14:59:46.268169+00:00",
+      "sourceCommit": "1ee858762b0cf203cb190a0ddf1919eef3e15ca3",
+      "report": "report.json",
+      "passed": true,
+      "cases": 3,
+      "screenshots": 6,
+      "scope": "Actual production Chrome MV3 in owned background Edge. Two desktop intrinsic widths and one light320 service flow; explicit VisualViewport fixture, not native keyboard or mobile runtime. No CSS injection.",
+      "artifactTree": {
+        "algorithm": "sha256 of sorted UTF-8 records: relativePath NUL fileSha256 NUL byteLength LF",
+        "sha256": "ce96b99326db17675d3ea23f59191dfbd39a38beebda48f49b9ba13593848f7d",
+        "fileCount": 474,
+        "totalBytes": 61971592,
+        "manifest": "artifact-tree-manifest.json",
+        "unchangedAfterValidation": true
+      },
+      "screenshotComparison": [
+        {
+          "name": "desktop-english-intrinsic-380.png",
+          "sameBytesAsReviewed5bImage": true
+        },
+        {
+          "name": "light-320-keyboard-search.png",
+          "sameBytesAsReviewed5bImage": false
+        },
+        {
+          "name": "light-320-keyboard-dismissed-while-open.png",
+          "sameBytesAsReviewed5bImage": true
+        },
+        {
+          "name": "light-320-keyboard-cleared.png",
+          "sameBytesAsReviewed5bImage": true
+        },
+        {
+          "name": "light-320-last-service-scrolled.png",
+          "sameBytesAsReviewed5bImage": true
+        },
+        {
+          "name": "light-320-keyboard-dismissed-reopened.png",
+          "sameBytesAsReviewed5bImage": false
+        }
+      ],
+      "screenshotsManuallyViewed": [
+        "light-320-keyboard-search.png",
+        "light-320-keyboard-dismissed-reopened.png"
+      ],
+      "unchangedScreenshotsReview": "Other four screenshots are byte-identical to previously reviewed5b images.",
+      "findings": [],
+      "providerRequests": 0,
+      "permissionRequests": {
+        "popup": [],
+        "worker": []
+      },
+      "consoleErrors": [],
+      "focusEvents": [],
+      "ownedClose": "shared-guard-fulfilled",
+      "profileRemoved": true,
+      "preflight": "preflight-sandbox-blocked.json records local-server EPERM before browser launch; subsequent approved isolated run passed."
     }
   }
 }
