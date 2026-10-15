@@ -1,5 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi, type MockInstance} from 'vitest';
 import {readFileSync} from 'node:fs';
+import JSZip from 'jszip';
 import {createRenderer, h, markRaw, nextTick, ref} from 'vue';
 import {IDBFactory} from 'fake-indexeddb';
 import {parseHTML} from 'linkedom';
@@ -13,7 +14,7 @@ import DocumentApp from '@/src/app/document-translation/DocumentApp.vue';
 import {getDocumentDownloadCopy} from '@/src/app/document-translation/downloadCopy';
 import DocumentSegmentEditor from '@/src/app/document-translation/DocumentSegmentEditor.vue';
 
-const ports = vi.hoisted(() => ({tasks: [] as any[], zoomBindings: [] as any[], renderPending: undefined as any, pagePending: undefined as any, pageProvider: undefined as undefined | ((pageNumber: number, page: any) => Promise<any>), pageCount: 1, fetchPdf: vi.fn(), i18n: vi.fn(), sendMessage: vi.fn(), translate: vi.fn(), batch: vi.fn(), recognize: vi.fn(), createRecognizer: vi.fn(), actualRecognize: undefined as any, actualCreateRecognizer: undefined as any, unsubscribe: vi.fn(), observer: undefined as any, config: undefined as any}));
+const ports = vi.hoisted(() => ({privateContext: false, tasks: [] as any[], zoomBindings: [] as any[], renderPending: undefined as any, pagePending: undefined as any, pageProvider: undefined as undefined | ((pageNumber: number, page: any) => Promise<any>), pageCount: 1, fetchPdf: vi.fn(), i18n: vi.fn(), sendMessage: vi.fn(), translate: vi.fn(), batch: vi.fn(), recognize: vi.fn(), createRecognizer: vi.fn(), actualRecognize: undefined as any, actualCreateRecognizer: undefined as any, unsubscribe: vi.fn(), observer: undefined as any, config: undefined as any}));
 vi.mock('@/src/features/document-translation/services/pdfOcr', async () => {
     const actual = await vi.importActual<typeof import('@/src/features/document-translation/services/pdfOcr')>('@/src/features/document-translation/services/pdfOcr');
     ports.actualRecognize = actual.recognizePdfDocument;
@@ -30,7 +31,7 @@ vi.mock('@/src/features/document-translation/ui/documentZoom', () => ({installDo
 vi.mock('@/src/features/document-translation/services/pdfSource', async () => ({...await vi.importActual<typeof import('@/src/features/document-translation/services/pdfSource')>('@/src/features/document-translation/services/pdfSource'), fetchOnlinePdf: ports.fetchPdf}));
 vi.mock('@/src/features/document-translation/ui/PdfReader.vue', () => ({default: {props: ['document', 'translations', 'mode', 'sourceUrl'], setup: () => () => h('div', {'data-document-reader': 'pdf'})}}));
 vi.mock('@/src/app/document-translation/selectionRuntime', () => ({mountDocumentSelectionTranslation: () => ({dispose: () => {}})}));
-vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: ports.sendMessage, getURL: (path: string) => `chrome-extension://fixture/${path}`}, tabs: {create: vi.fn()}}}));
+vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: ports.sendMessage, getURL: (path: string) => `chrome-extension://fixture/${path}`}, tabs: {create: vi.fn()}, extension: {get inIncognitoContext() {return ports.privateContext;}}}}));
 vi.mock('@/src/services/config/store', async () => {
     const {Config} = await import('@/src/core/config/model');
     const config = new Config(); ports.config = config;
@@ -79,6 +80,7 @@ const hostText = (entry: HostNode): string => (entry.text || '') + entry.childre
 const windowTimers = new Set<ReturnType<typeof setTimeout>>();
 
 beforeEach(async () => {
+    ports.privateContext = false;
     ports.tasks = []; ports.zoomBindings = []; ports.renderPending = undefined; ports.pagePending = undefined; ports.pageProvider = undefined; ports.pageCount = 1;
     ports.fetchPdf.mockReset().mockResolvedValue(file('online.pdf')); ports.i18n.mockClear();
     ports.sendMessage.mockReset().mockResolvedValue(undefined); ports.translate.mockReset().mockResolvedValue('translated'); ports.unsubscribe.mockReset();
@@ -103,6 +105,129 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
+    it('independent material entry renders and saves while vocabulary and reading AI are both off', async () => {
+        state.config.vocabularyBookEnabled = false; state.config.harness.enabled = false; state.config.on = true;
+        await state.loadFiles([file('same-title.txt', 'Original learning paragraph')]); await flush();
+        state.documentQueue[0].historyId = 'a'.repeat(32);
+        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials'
+            ? {success: true, data: message.action === 'generation' ? 3 : {id: 'document-material'}} : undefined);
+        await flush();
+        const button = walkHost(root).find(entry => entry.type === 'button' && hostText(entry) === '加入学习材料');
+        expect(button).toBeDefined(); expect(button!.props.disabled).toBe(false);
+        await button!.props.onClick(); await flush();
+        const capture = ports.sendMessage.mock.calls.find(([message]) => message.type === 'fluentReadMaterials' && message.action === 'capture')?.[0];
+        expect(capture.input).toMatchObject({source: {kind: 'document', fingerprint: 'a'.repeat(32), title: 'same-title.txt'}, locator: {kind: 'document', page: 1, quote: 'Original learning paragraph'}, generation: 3});
+        expect(capture.input.capturedAt).toEqual(expect.any(Number)); expect(state.documentMaterialId).toBe('document-material');
+        expect(capture.input.reference).toBeUndefined();
+        expect(hostText(button!)).toBe('已加入学习材料'); expect(state.config.vocabularyBookEnabled).toBe(false); expect(state.config.harness.enabled).toBe(false);
+    });
+    it.each(['off', 'private'])('independent material entry remains restricted when global context is %s', async mode => {
+        if (mode === 'private') {
+            app.unmount(); ports.privateContext = true; root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState; await flush();
+        } else state.config.on = false;
+        await state.loadFiles([file('restricted.txt', 'Private material')]); await flush(); state.documentQueue[0].historyId = 'restricted-fingerprint'; await flush();
+        expect(walkHost(root).some(entry => entry.type === 'button' && hostText(entry) === '加入学习材料')).toBe(false);
+        await state.saveDocumentMaterial();
+        expect(ports.sendMessage.mock.calls.some(([message]) => message.type === 'fluentReadMaterials')).toBe(false);
+    });
+    it('keeps missing local materials recoverable and clears the restoring shell when an old session exists', async () => {
+        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials' ? {success: true, data: {id: 'missing-material', kind: 'document', source: {kind: 'document', fingerprint: 'b'.repeat(32)}, locator: {kind: 'document', page: 2}}} : undefined);
+        state.restoring = true; await state.restoreMaterialDocument('missing-material'); await flush();
+        expect(state.restoring).toBe(false); expect(state.importError).toContain('请选择原文件');
+        await state.loadFiles([file('same-title.txt', 'Different file')]); await flush();
+        state.documentQueue[0].historyId = 'c'.repeat(32); await state.applyMaterialResume();
+        expect(state.importError).toContain('内容指纹不一致'); expect(state.documentMaterialId).toBe('');
+        state.documentQueue[0].historyId = 'b'.repeat(32); await state.applyMaterialResume(); await flush();
+        expect(state.documentMaterialId).toBe('missing-material');
+    });
+    it('cancels pending material saves when the document changes and preserves the newly active file', async () => {
+        await state.loadFiles([file('first.txt'), file('second.txt')]); await flush();
+        state.documentQueue[0].historyId = 'first-file'; state.documentQueue[1].historyId = 'second-file';
+        const pending = deferred<{success: boolean; data: number}>();
+        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials' && message.action === 'generation' ? pending.promise : undefined);
+        const save = state.saveDocumentMaterial(); state.selectDocument(state.documentQueue[1]); await flush();
+        pending.resolve({success: true, data: 3}); await save; await flush();
+        expect(ports.sendMessage.mock.calls.some(([message]) => message.type === 'fluentReadMaterials' && message.action === 'capture')).toBe(false);
+        expect(state.documentMaterialId).toBe(''); expect(state.parsedDocument.fileName).toBe('second.txt');
+    });
+    it('material section mapping captures and restores the second DOCX part on its second reader page', async () => {
+        const zip = await JSZip.loadAsync(readFileSync('examples/document-translation/sample.docx'));
+        zip.file('word/header1.xml', `<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${Array.from({length: 85}, (_, index) => `<w:p><w:r><w:t>Second part unique paragraph ${index + 1}.</w:t></w:r></w:p>`).join('')}</w:hdr>`);
+        const bytes = await zip.generateAsync({type: 'uint8array'});
+        const fingerprint = await documentHistoryId(bytes); expect(fingerprint).toMatch(/^[a-f\d]{32}$/u);
+        await state.loadFiles([new File([bytes], 'material-sections.docx', {type: getDocumentMimeType('docx')})]); await flush();
+        state.documentQueue[0].historyId = fingerprint;
+        expect(state.docxParts[1].path).toBe('word/header1.xml');
+        state.docxPartIndex = 1; await flush(); state.readerPage = 2; await flush();
+        const position = state.documentMaterialSelection();
+        expect(position.locator).toMatchObject({kind: 'document', fingerprint, section: 'docx:1', page: 2, quote: 'Second part unique paragraph 81.'});
+        expect(walkHost(root).find(entry => entry.props['data-fluentread-material-fingerprint'] === fingerprint)?.props['data-fluentread-material-section']).toBe('docx:1');
+        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials'
+            ? {success: true, data: message.action === 'generation' ? 3 : {id: 'docx-section-material', kind: 'document', ...position}} : undefined);
+        await state.saveDocumentMaterial();
+        expect(ports.sendMessage.mock.calls.find(([message]) => message.type === 'fluentReadMaterials' && message.action === 'capture')?.[0].input.locator).toMatchObject({section: 'docx:1', page: 2, quote: 'Second part unique paragraph 81.'});
+        state.docxPartIndex = 0; await flush(); expect(state.readerPage).toBe(1);
+        await state.restoreMaterialDocument('docx-section-material'); await state.applyMaterialResume(); await flush();
+        expect(state.docxPartIndex).toBe(1); expect(state.currentDocxPart.path).toBe('word/header1.xml'); expect(state.readerPage).toBe(2);
+        expect(state.documentMaterialSelection().locator).toMatchObject(position.locator);
+        const parsed = state.parsedDocument;
+        const reorderedParts = [...parsed.binary.parts]; [reorderedParts[1], reorderedParts[2]] = [reorderedParts[2], reorderedParts[1]];
+        state.parsedDocument = markRaw({...parsed, binary: {...parsed.binary, parts: reorderedParts}}); await flush();
+        await state.restoreMaterialDocument('docx-section-material'); await state.applyMaterialResume(); await flush();
+        expect(state.docxPartIndex).toBe(2); expect(state.currentDocxPart.path).toBe('word/header1.xml'); expect(state.readerPage).toBe(2);
+        state.parsedDocument = markRaw({...parsed, segments: parsed.segments.map((segment: any, index: number) => index === 0 ? {...segment, source: position.locator.quote} : segment)}); await flush();
+        await state.restoreMaterialDocument('docx-section-material'); await state.applyMaterialResume(); await flush();
+        expect(state.docxPartIndex).toBe(1); expect(state.readerPage).toBe(2); expect(state.downloadNotice).toContain('原段落未匹配或不唯一');
+    });
+    it('material section mapping captures and restores the second EPUB chapter with its real segment offset', async () => {
+        const bytes = new Uint8Array(readFileSync('examples/document-translation/sample.epub'));
+        const fingerprint = await documentHistoryId(bytes); expect(fingerprint).toMatch(/^[a-f\d]{32}$/u);
+        await state.loadFiles([new File([bytes], 'material-chapters.epub', {type: getDocumentMimeType('epub')})]); await flush();
+        state.documentQueue[0].historyId = fingerprint;
+        expect(state.epubChapters).toHaveLength(2);
+        const second = state.epubChapters[1]; const firstQuote = state.parsedDocument.segments[state.epubChapters[0].segmentOffset].source;
+        const secondQuote = state.parsedDocument.segments[second.segmentOffset].source;
+        expect(second.segmentOffset).toBeGreaterThan(0); expect(secondQuote).not.toBe(firstQuote);
+        state.epubChapterIndex = 1; await flush();
+        const position = state.documentMaterialSelection();
+        expect(position.locator).toMatchObject({kind: 'document', fingerprint, section: 'epub:1', page: 1, quote: secondQuote});
+        expect(walkHost(root).find(entry => entry.props['data-fluentread-material-fingerprint'] === fingerprint)?.props['data-fluentread-material-section']).toBe('epub:1');
+        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials'
+            ? {success: true, data: message.action === 'generation' ? 3 : {id: 'epub-section-material', kind: 'document', ...position}} : undefined);
+        await state.saveDocumentMaterial();
+        expect(ports.sendMessage.mock.calls.find(([message]) => message.type === 'fluentReadMaterials' && message.action === 'capture')?.[0].input.locator).toMatchObject({section: 'epub:1', page: 1, quote: secondQuote});
+        state.epubChapterIndex = 0; await flush(); expect(state.currentEpubChapter.path).not.toBe(second.path);
+        await state.restoreMaterialDocument('epub-section-material'); await state.applyMaterialResume(); await flush();
+        expect(state.epubChapterIndex).toBe(1); expect(state.currentEpubChapter.path).toBe(second.path); expect(state.readerPage).toBe(1);
+        expect(state.documentMaterialSelection().locator).toMatchObject(position.locator);
+        const parsed = state.parsedDocument;
+        state.parsedDocument = markRaw({...parsed, binary: {...parsed.binary, chapters: [...parsed.binary.chapters].reverse()}}); await flush();
+        await state.restoreMaterialDocument('epub-section-material'); await state.applyMaterialResume(); await flush();
+        expect(state.epubChapterIndex).toBe(0); expect(state.currentEpubChapter.path).toBe(second.path); expect(state.readerPage).toBe(1);
+    });
+    it('material resume ownership retains pending position when activation invalidates the early apply', async () => {
+        await state.loadFiles([file('first.txt'), file('second.srt', Array.from({length: 81}, (_, index) => `${index + 1}\n00:00:01,000 --> 00:00:02,000\nCaption ${index + 1}.`).join('\n\n'))]); await flush();
+        state.documentQueue[0].historyId = 'first-fingerprint'; state.documentQueue[1].historyId = 'second-fingerprint';
+        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials' ? {success: true, data: {id: 'resume-second', kind: 'document', source: {kind: 'document', fingerprint: 'second-fingerprint'}, locator: {kind: 'document', page: 2}}} : undefined);
+        await state.restoreMaterialDocument('resume-second');
+        state.selectDocument(state.documentQueue[1]);
+        // 故意在 activeDocumentId 的 pre watcher 更新代次之前调用，复现生产历史恢复中的两次 apply。
+        await state.applyMaterialResume(); await flush();
+        expect(state.parsedDocument.fileName).toBe('second.srt'); expect(state.readerPage).toBe(2); expect(state.documentMaterialId).toBe('resume-second');
+    });
+    it('material resume ownership waits for the asynchronous PDF public ref before consuming the saved page', async () => {
+        ports.pageCount = 3;
+        await state.loadFiles([file('async-reader.pdf')]); await flush(); state.documentQueue[0].historyId = 'async-pdf-fingerprint';
+        ports.sendMessage.mockImplementation(async (message: any) => message.type === 'fluentReadMaterials' ? {success: true, data: {id: 'async-reader-material', kind: 'document', source: {kind: 'document', fingerprint: 'async-pdf-fingerprint'}, locator: {kind: 'document', page: 2}}} : undefined);
+        // 生产公共出口 defineAsyncComponent 先挂占位节点；chunk 到达前不存在 resumePage。
+        state.materialPdfReader = null;
+        await state.restoreMaterialDocument('async-reader-material'); await state.applyMaterialResume(); await flush();
+        expect(state.documentMaterialId).toBe(''); expect(state.pdfPage).toBe(1);
+        const resumePage = vi.fn(async (page: number) => {state.pdfPage = page;});
+        state.materialPdfReader = {resumePage}; await flush();
+        expect(resumePage).toHaveBeenCalledOnce(); expect(resumePage).toHaveBeenCalledWith(2);
+        expect(state.documentMaterialId).toBe('async-reader-material'); expect(state.pdfPage).toBe(2);
+    });
     it('uses each queued task as the immediate source of truth for edits and switches', async () => {
         await state.loadFiles([file('first.txt'), file('second.txt')]); await flush();
         const first = state.documentQueue[0];

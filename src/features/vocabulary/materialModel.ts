@@ -1,0 +1,85 @@
+/**
+ * @file src/features/vocabulary/materialModel.ts
+ * 文件职责：规范化本地学习材料身份与定位信息，防止 URL、片段和媒体时间相互混同。
+ * 主要内容：保留语义查询和 SPA hash 路由，去除追踪与时间参数；视频平台身份与本地文件指纹优先。
+ * 模块边界：纯函数不访问 DOM、浏览器或存储；仓库是写入和并发控制的唯一入口。
+ */
+import {sanitizeVocabularyVideoUrl} from './source';
+import type {MaterialErrorCode, MaterialLocator, MaterialReference, MaterialSource} from './materialProtocol';
+export class MaterialError extends Error {
+    constructor(readonly code: MaterialErrorCode, message: string) {super(message); this.name = 'MaterialError';}
+}
+export function materialText(value: unknown, max: number): string {
+    return typeof value === 'string' ? value.normalize('NFC').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/gu, '').trim().slice(0, max) : '';
+}
+/** URL 仅剥离已知追踪参数，保留 id、语言、章节等语义查询与 hash 路由。 */
+export function canonicalMaterialUrl(value: unknown): string {
+    if (typeof value !== 'string' || value.length > 8192) return '';
+    try {
+        const url = new URL(value);
+        if (!['http:', 'https:', 'file:'].includes(url.protocol) || url.username || url.password) return '';
+        for (const key of [...url.searchParams.keys()]) {
+            if (/^(?:utm_.+|fbclid|gclid|msclkid|__fluentread_material)$/iu.test(key)) url.searchParams.delete(key);
+        }
+        url.searchParams.sort();
+        // 原文锚点不是新材料；hash 路由仍然属于页面身份。
+        if (!/^#(?:\/|!\/)/u.test(url.hash)) url.hash = '';
+        return url.href;
+    } catch {return '';}
+}
+export function normalizeMaterialSource(input: MaterialSource): {source: MaterialSource; identityKey: string} {
+    if (!input || !['article', 'document', 'video'].includes(input.kind)) throw new MaterialError('invalid-input', '材料来源类型无效');
+    let url = canonicalMaterialUrl(input.url);
+    const fingerprint = materialText(input.fingerprint, 256);
+    const title = materialText(input.title, 240);
+    let identity = url;
+    if (input.kind === 'video' && url) {
+        const youtube = sanitizeVocabularyVideoUrl(url, 'youtube');
+        const x = sanitizeVocabularyVideoUrl(url, 'x');
+        if (youtube) {url = youtube; identity = `youtube:${new URL(youtube).searchParams.get('v')}`;}
+        else if (x) {
+            url = x;
+            const match = new URL(x).pathname.match(/\/status\/(\d+)(\/video\/[1-9]\d*)?/u)!;
+            identity = `x:${match[1]}${match[2] ?? ''}`;
+        } else {
+            const parsed = new URL(url);
+            if (['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be', 'x.com', 'www.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com'].includes(parsed.hostname)) throw new MaterialError('invalid-input', '请选择具体的视频，而不是平台首页或搜索页');
+            // 其他视频站点使用完整语义地址，时间坐标独立存储。
+            for (const key of ['t', 'start', 'end', 'time_continue']) parsed.searchParams.delete(key);
+            identity = parsed.href; url = parsed.href;
+        }
+    }
+    if (input.kind === 'document' && fingerprint) identity = `fingerprint:${fingerprint}`;
+    if (!identity || (url.startsWith('file:') && !fingerprint)) throw new MaterialError('invalid-input', '本地文件需要内容指纹；网页材料需要有效来源地址');
+    return {source: {kind: input.kind, ...(url ? {url} : {}), ...(title ? {title} : {}), ...(fingerprint ? {fingerprint} : {})}, identityKey: `${input.kind}:${identity}`};
+}
+export function normalizeMaterialLocator(input: MaterialLocator | undefined): MaterialLocator | undefined {
+    if (input === undefined) return undefined;
+    if (!input || !['text', 'document', 'video'].includes(input.kind)) throw new MaterialError('invalid-input', '材料位置无效');
+    const locator: MaterialLocator = {kind: input.kind};
+    for (const [key, max] of [['quote', 6000], ['prefix', 160], ['suffix', 160], ['paragraphId', 256], ['section', 240], ['fingerprint', 256]] as const) {
+        const value = materialText(input[key], max); if (value) locator[key] = value;
+    }
+    if (input.page !== undefined) {
+        if (!Number.isSafeInteger(input.page) || input.page < 1 || input.page > 1_000_000) throw new MaterialError('invalid-input', '文档页码无效');
+        locator.page = input.page;
+    }
+    if (input.startMs !== undefined) {
+        if (!Number.isFinite(input.startMs) || input.startMs < 0 || input.startMs > 315_360_000_000) throw new MaterialError('invalid-input', '视频时间无效');
+        locator.startMs = Math.floor(input.startMs);
+    }
+    if (input.endMs !== undefined) {
+        if (!Number.isFinite(input.endMs) || input.endMs < (locator.startMs ?? 0) || input.endMs > 315_360_000_000) throw new MaterialError('invalid-input', '视频结束时间无效');
+        locator.endMs = Math.floor(input.endMs);
+    }
+    return locator;
+}
+/** 原句只用于定位；回答与长期记忆由权威仓库管理，材料仅对个人笔记保留 note 正文。 */
+export function normalizeMaterialReference(input: MaterialReference, now: number): MaterialReference {
+    if (!input || !['vocabulary', 'session', 'memory', 'note'].includes(input.kind) || !materialText(input.id, 256)) throw new MaterialError('invalid-input', '学习引用无效');
+    return {kind: input.kind, id: materialText(input.id, 256), ...(materialText(input.excerpt, 6000) ? {excerpt: materialText(input.excerpt, 6000)} : {}), ...(input.kind === 'note' && materialText(input.note, 12000) ? {note: materialText(input.note, 12000)} : {}), ...(input.kind === 'note' && Number.isFinite(input.updatedAt) && input.updatedAt! >= 0 ? {updatedAt: Math.min(input.updatedAt!, now)} : {}), createdAt: Number.isFinite(input.createdAt) && input.createdAt! >= 0 ? Math.min(input.createdAt!, now) : now};
+}
+export function normalizeMaterialTopics(input: unknown): string[] {
+    if (!Array.isArray(input) || input.length > 30 || input.some(value => typeof value !== 'string' || value.length > 80)) throw new MaterialError('invalid-input', '主题最多 30 个，每个最多 80 字');
+    return [...new Set(input.map(value => materialText(value, 80)).filter(Boolean))];
+}

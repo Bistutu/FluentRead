@@ -448,7 +448,9 @@
       "tests/chatgptPlanConfig.test.ts",
       "tests/modelEditing.test.ts",
       "tests/documentTasks.test.ts",
-      "tests/compiledVueFixture.test.ts"
+      "tests/compiledVueFixture.test.ts",
+      "tests/materialSource.test.ts",
+      "tests/materialClient.test.ts"
     ],
     "functional": [
       "tests/videoAiRequestSession.test.ts",
@@ -687,7 +689,8 @@
       "tests/localInferenceMessageContracts.test.ts",
       "tests/documentWorkflows.test.ts",
       "tests/workerMessageContracts.test.ts",
-      "tests/localTranslationWorker.test.ts"
+      "tests/localTranslationWorker.test.ts",
+      "tests/materialRepository.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",
@@ -733,7 +736,8 @@
       "tests/vocabularyReencounterPanelLifecycle.test.ts",
       "tests/fullPageAttributeBoundary.test.ts",
       "tests/hnFirstTargetReadiness.test.ts",
-      "tests/targetLanguageAdversarial.test.ts"
+      "tests/targetLanguageAdversarial.test.ts",
+      "tests/materialWorkspaceLifecycle.test.ts"
     ]
   }
 }

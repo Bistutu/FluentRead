@@ -2,6 +2,7 @@
  * @file src/features/video-subtitle/ui/VideoSentenceLearning.vue
  * 文件职责：在现有播放器上提供可关闭的完整句学习面板，连接原始字幕、主动播放控制和现有收藏。
  * 主要内容：以双语阅读卡呈现原句、译文和按需讲解；索引跟随播放、合并快速换句的翻译请求，收起后暂停新请求，按配置身份管理自动译文并保留人工草稿；固定操作与准确的异步收藏状态支持小播放器连续学习。
+ * 材料关联：完整句收藏与问答引用归于可靠视频来源与原始时间，关闭、更换句子和隐私状态禁止迟到关联。
  * 模块边界：不创建播放器、不采集音频、不计算复习或掌握状态；翻译沿用注入的字幕服务，解释与收藏通过已有公共协议，卸载取消控制与迟到回写。
  -->
 <template>
@@ -63,12 +64,14 @@
 </template>
 <script setup lang="ts">
 import {computed, nextTick, onBeforeUnmount, ref, watch} from 'vue';
+import browser from 'webextension-polyfill';
 import {useUiI18n} from '@/src/ui/i18n';
 import {config, subscribeConfig} from '@/src/services/config/store';
 import {getVideoSentenceLearningAppearanceCssVars, normalizeVideoSentenceLearningAppearance} from '@/src/core/config/videoSentenceLearningAppearance';
 import {sendRuntimeMessage} from '@/src/platform/browser/runtimeMessages';
 import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
 import {streamReading} from '@/src/features/reading-assistant/public';
+import {beginMaterialCapture, completeMaterialCapture, type MaterialSelection} from '@/src/features/vocabulary/material/public';
 import {VOCABULARY_BOOK_MESSAGE, normalizeLearningSourceText, type VocabularyBookResponse, type VocabularyUpsertInput} from '@/src/features/vocabulary/public';
 import type {VideoSubtitleCue} from '../content/youtubeSubtitleData';
 import {buildVideoSentenceTimeline, createVideoSentenceTimeIndex} from '../content/sentenceTimeline';
@@ -204,6 +207,10 @@ function toggleMode(next: SentencePlaybackMode): void {
 function normal(): void { controller?.stop(); }
 function openLibrary(): void { void sendRuntimeMessage({type: 'openOptionsPage', section: 'settings-vocabulary'}).catch(() => undefined); }
 function openAppearance(): void { void sendRuntimeMessage({type: 'openOptionsPage', section: 'settings-interface', target: 'video-sentence-learning-appearance'}).catch(() => undefined); }
+function videoMaterial(): MaterialSelection | undefined {
+  const selected = sentence.value;
+  return props.sourceUrl && selected ? {source: {kind: 'video', url: props.sourceUrl, title: props.title}, locator: {kind: 'video', quote: selected.text, startMs: Math.floor(selected.startMs), endMs: Math.ceil(selected.endMs)}} : undefined;
+}
 function explain(): void {
   if (!sentence.value || explaining.value) return;
   if (!config.harness.enabled || !config.harness.actions.includes('usage')) {
@@ -215,11 +222,12 @@ function explain(): void {
   const context = config.harness.contextMode === 'paragraph'
     ? [sentence.value.previousText.slice(-800), sentence.value.text, sentence.value.nextText.slice(0, 800)].filter(Boolean).join('\n') : '';
   try {
+    const materialOperation = beginMaterialCapture(videoMaterial(), browser.extension?.inIncognitoContext === true);
     request = streamReading({type: 'fluentReadHarness', action: 'run', requestId: crypto.randomUUID(), intent: 'usage', studyMode: 'sentence',
       selection: {text: sentence.value.text, context, sentence: ''}, question: '简短解释这个句子的含义与一个关键表达；只依据原句和允许参考的字幕语境。'}, {
       progress(progress) { if (owns() && progress.kind === 'text') explanation.value = progress.text; },
       result(result) { if (!owns()) return; request = undefined; explaining.value = false;
-        if (result.success) explanation.value = result.text; else error.value = result.error; },
+        if (result.success) {explanation.value = result.text; if (result.sessionId) void materialOperation.then(operation => completeMaterialCapture(operation, {kind: 'session', id: result.sessionId!, excerpt: operation?.selection.locator?.quote}, owns));} else error.value = result.error; },
       error(cause) { if (owns()) { request = undefined; explaining.value = false; error.value = cause.message; } },
     });
   } catch (cause) { explaining.value = false; error.value = cause instanceof Error ? cause.message : t('video.learning.explainFailed'); }
@@ -234,8 +242,11 @@ async function save(): Promise<void> {
     context: {text: [selected.previousText.slice(-800), selected.text, selected.nextText.slice(0, 800)].filter(Boolean).join('\n'), sourceUrl: props.sourceUrl, pageTitle: props.title,
       video: {platform: props.platform, startMs: Math.floor(selected.startMs), endMs: Math.ceil(selected.endMs)}}};
   try {
+    const operation = beginMaterialCapture(videoMaterial(), browser.extension?.inIncognitoContext === true);
     const response = await sendRuntimeMessage({type: VOCABULARY_BOOK_MESSAGE, action: 'upsert', input}) as VocabularyBookResponse;
     if (!response.success) throw new Error(response.error.message);
+    const id = (response.data as {id?: unknown})?.id;
+    if (typeof id === 'string') await operation.then(capture => completeMaterialCapture(capture, {kind: 'vocabulary', id, excerpt: selected.text}, () => active));
     if (active) {
       const draft = drafts.get(selectedKey); if (draft) draft.savedSnapshot = selectedSnapshot;
       if (selectedKey === draftKey()) { savedSnapshot.value = selectedSnapshot; notice.value = ''; }

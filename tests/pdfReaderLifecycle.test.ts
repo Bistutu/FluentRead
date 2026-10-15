@@ -458,6 +458,27 @@ const click = (element: Element | null | undefined): void => {element!.dispatchE
 const classes = (element: Element | null | undefined): string[] => (element!.getAttribute('class') ?? '').split(/\s+/).filter(Boolean);
 function flushFrames(): void {const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback(0));}
 
+describe('PDF material resume ownership', () => {
+    it('restores after initial layout work and preserves the requested page through the first resize', async () => {
+        const reader = mountReader(documentModel(3));
+        const exposed = mountedApp._instance.subTree.component.exposed;
+        const restoring = exposed.resumePage(2);
+        resizeCallback!([], {} as ResizeObserver);
+        await restoring; await componentFlush(); flushFrames(); await componentFlush();
+        expect(reader.state.currentPage).toBe(2); expect(reader.state.pageInput).toBe(2);
+        expect(reader.pageChanges.at(-1)).toBe(2);
+        expect(reader.viewport.scrollTop).toBeGreaterThan(0);
+    });
+    it('keeps only the latest request and discards restore work after replacement or unmount', async () => {
+        const reader = mountReader(documentModel(3)); const exposed = mountedApp._instance.subTree.component.exposed;
+        const old = exposed.resumePage(2); const latest = exposed.resumePage(3);
+        await Promise.all([old, latest]); await componentFlush(); flushFrames(); await componentFlush(); expect(reader.state.currentPage).toBe(3);
+        const stale = exposed.resumePage(2); reader.currentDocument.value = documentModel(1); await stale; await componentFlush();
+        expect(reader.state.currentPage).toBe(1);
+        const closing = exposed.resumePage(1); mountedApp.unmount(); mountedApp = undefined; await closing;
+    });
+});
+
 describe('PDF document pinch zoom integration', () => {
     it('keeps the pointer over the same page point and reuses raster output until the pinch settles', async () => {
         const {root, viewport, state} = mountReader(model());

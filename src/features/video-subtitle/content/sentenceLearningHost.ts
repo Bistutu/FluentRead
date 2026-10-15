@@ -12,38 +12,10 @@ export type MutableVideoSentenceLearningProps = {
     -readonly [Key in keyof InstanceType<typeof VideoSentenceLearning>['$props']]: InstanceType<typeof VideoSentenceLearning>['$props'][Key]
 };
 
-export interface VideoLearningSource {
-    platform: 'youtube' | 'x';
-    sourceUrl?: string;
-    title: string;
-}
-
+export {getVideoLearningSource} from './learningSource';
+export type {VideoLearningSource} from './learningSource';
+import {getVideoLearningSource} from './learningSource';
 type SourceLocation = Pick<Location, 'href' | 'hostname'>;
-
-/** 单视频只接受同一帖子内的无歧义候选；编号视频页面与多视频必须由当前 video 的祖先链接给出编号。 */
-export function getVideoLearningSource(video: HTMLVideoElement, location: SourceLocation, document: Document): VideoLearningSource {
-    const platform = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'].includes(location.hostname) ? 'youtube' : 'x';
-    if (platform === 'youtube') return {platform, sourceUrl: sanitizeVocabularyVideoUrl(location.href, platform), title: document.title};
-    const article = video.closest('article');
-    const title = article?.querySelector('[data-testid="tweetText"]')?.textContent?.slice(0, 300) || document.title;
-    const linkSource = (link: HTMLAnchorElement): string | undefined => {
-        try { return sanitizeVocabularyVideoUrl(new URL(link.getAttribute('href')!, location.href).href, 'x'); } catch { return; }
-    };
-    let sourceUrl: string | undefined;
-    const pageSource = sanitizeVocabularyVideoUrl(location.href, 'x');
-    const indexedPage = !!pageSource && /\/video\/[1-9]\d*$/u.test(pageSource);
-    const explicit = video.closest<HTMLAnchorElement>('a[href*="/video/"]');
-    const explicitSource = explicit ? linkSource(explicit) : undefined;
-    if (explicitSource && /\/video\/[1-9]\d*$/u.test(explicitSource)) sourceUrl = explicitSource;
-    else if (article && article.querySelectorAll('video').length === 1 && !indexedPage) {
-        const candidates = Array.from(article.querySelectorAll<HTMLAnchorElement>('a[href*="/status/"]'))
-            .map(linkSource).filter((source): source is string => !!source);
-        if (candidates.length && candidates.every(source => !/\/video\/[1-9]\d*$/u.test(source) && source === candidates[0])) sourceUrl = candidates[0];
-    } else if (!article && document.querySelectorAll('video').length === 1 && document.querySelector('video') === video) {
-        sourceUrl = pageSource && !indexedPage ? pageSource : undefined;
-    }
-    return {platform, sourceUrl, title};
-}
 
 export interface VideoSentenceLearningHost {
     open(player: HTMLElement, props: MutableVideoSentenceLearningProps): void;

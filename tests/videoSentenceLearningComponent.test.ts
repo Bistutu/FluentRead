@@ -51,6 +51,8 @@ async function mount(): Promise<void> {
     if (id === '@/src/features/reading-assistant/ui/answer/public') return {ReadingAnswer: {}};
     if (id === '@/src/features/reading-assistant/public') return {streamReading};
     if (id === '@/src/features/vocabulary/public') return vocabulary;
+    if (id === 'webextension-polyfill') return {extension: {inIncognitoContext: false}};
+    if (id === '@/src/features/vocabulary/material/public') return {beginMaterialCapture: async () => undefined, completeMaterialCapture: async () => false};
     if (id === '../content/sentenceTimeline') return timeline;
     if (id === '../content/sentencePlayback') return playback;
     if (id === '../content/subtitleLogic') return {getVideoTranslationConfigFingerprint};

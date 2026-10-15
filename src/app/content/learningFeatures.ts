@@ -11,9 +11,14 @@ import {isWritingPage} from '@/src/core/config/writing';
 import {mountWritingAssistant, unmountWritingAssistant, isWritingAssistantMounted} from '@/src/features/writing-assistant/public';
 import type {ContentFeatureDefinition} from './featureRegistry';
 import {mountPersonalCorrectionContent, unmountPersonalCorrectionContent} from './personalCorrections';
+import browser from 'webextension-polyfill';
+import {mountMaterialContent} from '@/src/features/vocabulary/material/content/public';
 
 export function createLearningContentFeatures(ctx: ContentScriptContext, config: Config, capabilities: BrowserCapabilities): ContentFeatureDefinition[] {
+    let unmountMaterial = () => {};
     return [
+        {id: 'material-resume', isEnabled: () => capabilities.browser !== 'userscript' && config.on && browser.extension?.inIncognitoContext !== true,
+            mount: ({signal}) => {unmountMaterial = mountMaterialContent(document, signal, () => config.on);}, unmount: () => unmountMaterial()},
         ...(import.meta.env.BROWSER === 'userscript' ? [] : [
             {id: 'personal-corrections', isEnabled: () => capabilities.browser !== 'userscript' && config.on && config.personalCorrectionsEnabled === true,
                 mount: ({signal}) => mountPersonalCorrectionContent(ctx, signal), unmount: unmountPersonalCorrectionContent} satisfies ContentFeatureDefinition,
