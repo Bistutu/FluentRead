@@ -1,6 +1,6 @@
 <!--
  * @file src/features/settings/ui/services/ServiceRepairReturn.vue
- * 文件职责：为从 popup 来到服务或网站适配设置的用户提供明确、可取消的返回原网页操作。
+ * 文件职责：为从 popup 来到服务或网站适配设置的用户提供明确、可取消的返回原网页操作，并为支持触摸的设备保留足够的按钮触摸区域。
  * 主要内容：共享紧凑返回条，复用扩展页面安全来源解析，在首次挂载且服务匹配时通知父组件提供一次修复焦点；用户点击时重新验证来源标签页与网页协议，成功或不可用时给出紧凑本地提示，并阻止隐藏、所属配置切换、缓存停用及卸载后的迟到查询切换标签页；名称保留以兼容服务页调用方。
  * 模块边界：不收集或保存网页正文、URL、凭据或诊断报告，不自动翻译、不创建新页面、不关闭设置页；仅由明确点击触发 tabs.get 和 tabs.update。
  -->
@@ -63,5 +63,6 @@ watch(() => [active.value, props.context, props.contextKey], () => {busy.value =
 .service-repair-return button:hover:not(:disabled) { border-color: var(--brand); }
 .service-repair-return button:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
 .service-repair-return button:disabled { opacity: .6; cursor: default; }
+@media (any-pointer: coarse) { .service-repair-return button { min-height: 44px; } }
 @container (max-width: 420px) { .service-repair-return { align-items: flex-start; flex-direction: column; gap: 7px; } }
 </style>
