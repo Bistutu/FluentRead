@@ -2,7 +2,7 @@
  @file src/app/document-translation/DocumentApp.vue
  文件职责：实现独立文档翻译页面的完整 Vue 应用，提供按已提交段落计算的实时数字与进度条、暂停及等待重试状态、保留已有译文的跨服务续译入口、简短异常提示与按需展开的技术详情，承载文件导入、格式化预览、分段翻译、人工校订、原文结构变化后旧校订的独立保留、保存原文件和双语文件导出的用户流程。
  主要内容：相同译文保留原文且不重复展示；文档打开后按窗口宽度用一行或多行工具栏承载文件、阅读方式、页码缩放、翻译服务与目标语言、翻译与下载，窄窗口用翻译设置弹窗，矮小窗口用覆盖式侧栏保留正文高度；各种格式支持只缩放正文的触控板捏合与键盘操作，复用富文本预览并保持阅读位置；左侧可折叠的侧栏放文件列表与目录，其余空间留给正文；首页列出保存在本机的最近翻译，重新打开同一份文件时接着上次的译文继续；PDF 默认按原版排版左右对照，各种格式都从正在阅读的位置开始翻译；没有文字层的扫描版 PDF 在开始翻译时先逐页识别文字并显示进度；HTML、Markdown、纯文本与 ePub 的隔离预览只载入一次，译文逐段到达后原位更新并保留滚动位置，整篇译文几乎都与原文相同时状态里提示可换目标语言，带标题的文档（含 Word）在侧栏提供可按原文或译文显示的目录，Word 里的表格在阅读视图中仍按表格排版、只有一个部分时不显示部分切换，ePub 的全部章节列在侧栏目录里（按译文显示时用章内标题的译文）、当前章节下接着它其余的各级标题，正文上方不再占一行章节按钮，Word 与文本类预览在宽窗口左右对照；组织文档阅读与翻译、增量统计和人工校订，人工译法确认只在当前文件阅读会话中参与篇章参考，按原文件身份和冻结语言隔离，重译时清空；导入与在线下载绑定独立取消所有权；PDF 清晰阅读流式显示完整段落和原图区域，源页文字层与译文更新分离，下载按原版布局左右配对，长译文以完整批注保留；切换、删除、重置及卸载释放 PDF 任务和 URL；PDF/ePub/DOCX/ZIP 导出显示进度、支持取消重试，迟到结果不得回写。
- 模块边界：ChatGPT 套餐模型选项保留全局和文档实际 slug，独立选择也直接保存，不经过自定义模型哨兵或新增发现请求；组件负责页面交互与响应式状态，不自行解析二进制格式、不实现片段翻译队列、配置存储协议或导出编码；解析渲染来自 document-translation feature，配置协调来自 services/config，草稿共享设置编辑会话并保留文档字段与模型映射的原子补丁，运行时适配由本目录 runtime 注入。
+ 模块边界：ChatGPT 套餐模型选项保留全局和文档实际 slug，独立选择也直接保存，不经过自定义模型哨兵或新增发现请求；组件负责页面展示与交互，导入、OCR 与导出生命周期由 feature 控制器持有并经显式端口连接唯一任务模型；不自行解析二进制格式、不实现片段翻译队列、配置存储协议或导出编码；解析渲染来自 document-translation feature，配置协调来自 services/config，草稿共享设置编辑会话并保留文档字段与模型映射的原子补丁，运行时适配由本目录 runtime 注入。
 -->
 <!-- 文档页面归 app 层所有；WXT 入口只负责启动。 -->
 <template>
@@ -466,19 +466,17 @@ import {
   buildGlossaryRevision,
   DOCUMENT_MAX_BYTES,
   PDF_MAX_BYTES,
-  getDocumentMaxBytes,
   DOCUMENT_QUICK_SAMPLES,
   createDocumentDownload,
   createPdfPageRecognizer,
   documentRetryBackoff,
   generateDocumentArchive,
   createDocumentDownloadName,
-  createDocumentFileLoadGuard,
+  createDocumentImportWorkflow,
+  createDocumentRecognitionWorkflow,
+  createDocumentExportWorkflow,
   createDocumentHistory,
   createDocumentHistoryCommitter,
-  documentHistoryId,
-  restoreDocumentHistoryPdfOcr,
-  restoreDocumentHistoryRevisions,
   createDocumentPreviewHtml,
   fetchOnlinePdf,
   readPdfSourceFragment,
@@ -488,7 +486,6 @@ import {
   getDocumentAcceptAttribute,
   getDocumentEmptyReaderHint,
   getDocumentExportPreview,
-  getDocumentFormat,
   getDocumentMimeType,
   getDocumentReaderSourceClass,
   getDocxPartLabel as docxPartLabel,
@@ -564,7 +561,7 @@ const {language, t, translateLegacy} = useUiI18n();
 const downloadCopy = computed(() => getDocumentDownloadCopy(language.value));
 const fileInput = ref<HTMLInputElement | null>(null);
 const documentTasks = useDocumentTasks();
-const {documentQueue, activeDocumentId, parsedDocument, translatedSegments,
+const {documentQueue, activeDocumentId, activeTask, parsedDocument, translatedSegments,
   confirmedTranslationIds, taskFingerprint, runState, editRevision, downloadedRevision,
   errorMessage, documentBatchTranslation} = documentTasks;
 const outputMode = ref<DocumentRenderMode>('bilingual');
@@ -610,7 +607,6 @@ const downloadError = ref('');
 const downloadNotice = ref('');
 const originalDownloadError = ref('');
 const originalDownloadNotice = ref('');
-let downloadNoticeTimer: ReturnType<typeof setTimeout> | undefined;
 const readingModes = [{value: 'source', label: '原文'}, {value: 'bilingual', label: '双语'}, {value: 'translated', label: '译文'}] as const;
 const isDragging = ref(false);
 const translating = ref(false);
@@ -624,24 +620,19 @@ const preparingDownload = ref(false);
 const cancelingDownload = ref(false);
 const downloadProgress = ref('');
 const downloadPdfProgress = ref<PdfExportProgress | null>(null);
-let downloadController: AbortController | null = null;
 const onlinePdfUrl = ref('');
 const downloadingPdf = ref(false);
 const importProgress = ref('');
 /** 导入进度 0–1：下载按字节、解析按页；未知时为 0，进度条显示为往复动画。 */
 const importRatio = ref(0);
-let onlinePdfController: AbortController | null = null;
 const epubChapterIndex = ref(0);
 const docxPartIndex = ref(0);
 const hydrated = ref(false);
 const colorSchemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
 const isDark = ref(colorSchemeMedia.matches);
 let abortController: AbortController | null = null;
-const documentFileLoads = createDocumentFileLoadGuard();
 let translationRequestId = 0;
-let fileLoadController: AbortController | null = null;
 let disposed = false;
-const downloadUrls = new Map<string, ReturnType<typeof setTimeout>>();
 
 const batchRunning = ref(false);
 const batchNotice = ref('');
@@ -655,6 +646,16 @@ const batchCompletedCount = computed(() => documentQueue.value.filter(completeIt
 const batchPendingCount = computed(() => documentQueue.value.filter(item => item.document && !completeItem(item)).length);
 
 function selectDocument(item: DocumentQueueItem): void {
+  if (!item.document || item.id === activeDocumentId.value) return;
+  importWorkflow.cancel();
+  recognitionWorkflow.cancel();
+  exportWorkflow.reset();
+  if (translating.value) pauseTranslation();
+  activateDocument(item);
+}
+
+/** 导入控制器只交接当前代次的完整任务，不撤销同一次多文件读取。 */
+function activateDocument(item: DocumentQueueItem): void {
   if (!item.document || item.id === activeDocumentId.value) return;
   releaseDocumentPreview(parsedDocument.value);
   recognitionProgress.value = '';
@@ -723,21 +724,8 @@ async function restoreOpenDocument(): Promise<void> {
   } finally {restoring.value = false;}
 }
 async function openHistory(entry: DocumentHistorySummary): Promise<void> {
-  if (queueBusy.value) return;
-  const record = await history.load(entry.id);
-  if (!record) {await refreshHistory(); return;}
   if (disposed || queueBusy.value) return;
-  const snapshot = record.parsedVersion === PARSED_VERSION ? record.parsed as ParsedDocument | undefined : undefined;
-  if (!snapshot?.segments) {
-    // 没有快照或解析规则已经更新：重新解析原文件，按原文匹配恢复未改变段落的译文。
-    await loadFiles([new File([record.bytes], record.name, {type: record.mimeType})], record.sourceUrl);
-    return;
-  }
-  const item: DocumentQueueItem = {...createDocumentTaskState(), id: ++nextDocumentId, name: record.name, sourceUrl: record.sourceUrl, document: markRaw(snapshot), historyId: record.id, bytes: record.bytes, mimeType: record.mimeType,
-    ...restoreDocumentHistoryRevisions(record, snapshot, PARSED_VERSION), fingerprint: record.fingerprint, state: 'ready', revision: 0, savedRevision: 0, downloaded: 0, error: ''};
-  documentQueue.value.push(item);
-  if (documentQueue.value.length > 1) {sidebarOpen.value = true; sidebarTab.value = 'files';}
-  selectDocument(item);
+  await importWorkflow.openHistory(entry.id);
 }
 async function removeHistory(entry: DocumentHistorySummary): Promise<void> {
   await history.remove(entry.id);
@@ -754,6 +742,78 @@ function historyStatus(entry: DocumentHistorySummary): string {
   const date = new Date(entry.updatedAt).toLocaleDateString(language.value, {month: 'short', day: 'numeric'});
   return `${!entry.completed ? translateLegacy('尚未翻译') : entry.completed >= entry.total ? translateLegacy('翻译完成') : `${entry.completed} / ${entry.total}`} · ${date}`;
 }
+
+const importWorkflow = createDocumentImportWorkflow({
+  parseFile: (file, options) => parseDocumentFile(file, options), fetchPdf: (url, options) => fetchOnlinePdf(url, options),
+  history: historyAvailable ? history : null, parsedVersion: PARSED_VERSION,
+  createTask: (file, sourceUrl) => ({...createDocumentTaskState(), id: ++nextDocumentId, name: file.name, sourceUrl}),
+  appendTask: (item, select) => {
+    if (item.document) item.document = markRaw(item.document);
+    if (item.originalFile) item.originalFile = markRaw(item.originalFile);
+    documentQueue.value.push(item);
+    if (item.error) queueExpanded.value = true;
+    if (item.error || documentQueue.value.length > 1) {sidebarOpen.value = true;sidebarTab.value = 'files';}
+    if (select) activateDocument(documentQueue.value[documentQueue.value.length - 1]);
+  },
+  releaseDocument: releaseDocumentPreview,
+  onStart: () => {batchNotice.value = '';importError.value = '';importProgress.value = '';importRatio.value = 0;},
+  onPhase: phase => {
+    openingFile.value = phase === 'reading';downloadingPdf.value = phase === 'downloading';
+    importProgress.value = phase === 'downloading' ? t('document.pdfReading.downloading') : '';
+  },
+  onReadProgress: ({completed, total}) => {
+    importProgress.value = t('document.pdfReading.importPages', {completed, total});importRatio.value = total ? completed / total : 0;
+  },
+  onDownloadProgress: ({received, total}) => {
+    const size = (received / 1024 / 1024).toFixed(1);
+    importRatio.value = total ? received / total : 0;
+    importProgress.value = total ? t('document.pdfReading.downloadProgress', {size, percent: Math.round(received / total * 100)})
+      : t('document.pdfReading.downloadBytes', {size});
+  },
+  onOnlineError: error => {importError.value = error instanceof Error ? error.message : String(error);},
+  onFinished: persistHistory,
+  onHistoryMissing: refreshHistory,
+});
+const recognitionWorkflow = createDocumentRecognitionWorkflow({
+  recognize: (document, recognize, options) => recognizePdfDocument(document, recognize, options),
+  createRecognizer: language => createPdfPageRecognizer(language),
+  onProgress: progress => {recognitionProgress.value = progress ? t('document.pdfReading.recognizing', progress) : '';},
+});
+const exportWorkflow = createDocumentExportWorkflow({
+  createDownload: (document, translations, mode, options) => createDocumentDownload(document, translations, mode, options),
+  createArchive: async () => {const {default: JSZip} = await import('jszip');return new JSZip();},
+  generateArchive: (archive, options, progress) => generateDocumentArchive(archive, options, progress),
+  isActiveTask: task => activeTask.value === task,
+  containsTask: task => documentQueue.value.includes(task),
+  createUrl: blob => URL.createObjectURL(blob), revokeUrl: url => URL.revokeObjectURL(url),
+  triggerDownload: (url, fileName) => {const anchor = window.document.createElement('a');anchor.href = url;anchor.download = fileName;anchor.click();},
+  onState: ({busy, canceling}) => {preparingDownload.value = busy;cancelingDownload.value = canceling;},
+  onStart: kind => {
+    if (kind === 'batch') batchNotice.value = '';
+    else {downloadProgress.value = '';downloadPdfProgress.value = null;downloadError.value = '';}
+  },
+  onProgress: progress => {
+    const label = 'pdf' in progress ? pdfExportProgress(progress.pdf) : 'percent' in progress ? archiveExportProgress(progress.percent) : t('document.export.saving');
+    if (progress.kind === 'batch') batchNotice.value = progress.name ? `${progress.name} · ${label}` : label;
+    else {downloadProgress.value = label;if ('pdf' in progress) downloadPdfProgress.value = progress.pdf;}
+  },
+  onComplete: (kind, count) => {
+    if (kind === 'batch') batchNotice.value = t('document.batch.downloaded', {count});
+    else {
+      downloadNotice.value = '已生成下载文件，请在浏览器下载列表中查看。';
+      downloadProgress.value = '';downloadPdfProgress.value = null;downloadDialog.value?.close();
+    }
+  },
+  onError: (kind, error, canceled) => {
+    if (kind === 'batch') batchNotice.value = canceled ? t('document.export.canceled')
+      : t('document.batch.downloadFailed', {error: error instanceof Error ? error.message : String(error)});
+    else {
+      downloadPdfProgress.value = null;downloadProgress.value = canceled ? t('document.export.canceled') : '';
+      if (!canceled) downloadError.value = error instanceof Error ? error.message : String(error);
+    }
+  },
+  onNoticeExpired: () => {downloadNotice.value = '';},
+});
 
 function queueStatus(item: DocumentQueueItem): string {
   if (!item.document) return t('document.batch.importFailed');
@@ -813,54 +873,8 @@ function removeDocument(item: DocumentQueueItem, confirmed = false): void {
 }
 
 async function downloadBatch(): Promise<void> {
-  if (queueBusy.value) return;
-  const items = documentQueue.value.filter(completeItem);
-  if (!items.length) return;
-  preparingDownload.value = true;
-  const controller = new AbortController();
-  downloadController = controller;
-  cancelingDownload.value = false;
-  batchNotice.value = '';
-  const generation = batchGeneration;
-  const mode = outputMode.value;
-  try {
-    const {default: JSZip} = await import('jszip');
-    const zip = new JSZip();
-    for (const [index, item] of items.entries()) {
-      const download = await createDocumentDownload(item.document!, item.translations, mode, {
-        pdfPresentation: 'layout',
-        signal: controller.signal,
-        onPdfProgress: progress => { if (!controller.signal.aborted && downloadController === controller) batchNotice.value = `${item.name} · ${pdfExportProgress(progress)}`; },
-        onArchiveProgress: percent => { if (!controller.signal.aborted && downloadController === controller) batchNotice.value = `${item.name} · ${archiveExportProgress(percent)}`; },
-      });
-      controller.signal.throwIfAborted();
-      if (generation !== batchGeneration) return;
-      // 独立目录避免同名文件覆盖，文件名不能在 ZIP 中创建任意路径。
-      const name = download.fileName.replace(/[\\/\x00-\x1f]/g, '_');
-      zip.file(`${index + 1}/${name}`, download.data);
-    }
-    batchNotice.value = t('document.export.saving');
-    const bytes = await generateDocumentArchive(zip, {streamFiles: true}, {
-      signal: controller.signal,
-      onProgress: percent => { if (!controller.signal.aborted && downloadController === controller) batchNotice.value = archiveExportProgress(percent); },
-    });
-    const blob = new Blob([bytes], {type: 'application/zip'});
-    controller.signal.throwIfAborted();
-    if (generation !== batchGeneration) return;
-    saveDownloadBlob(blob, 'FluentRead-documents.zip');
-    for (const item of items) item.downloaded = item.revision;
-    batchNotice.value = t('document.batch.downloaded', {count: items.length});
-  } catch (error) {
-    if (generation === batchGeneration) batchNotice.value = controller.signal.aborted
-      ? t('document.export.canceled')
-      : t('document.batch.downloadFailed', {error: error instanceof Error ? error.message : String(error)});
-  } finally {
-    if (downloadController === controller) {
-      preparingDownload.value = false;
-      cancelingDownload.value = false;
-      downloadController = null;
-    }
-  }
+  if (disposed || queueBusy.value) return;
+  await exportWorkflow.batch(documentQueue.value.filter(completeItem), outputMode.value);
 }
 
 const accept = getDocumentAcceptAttribute();
@@ -1335,30 +1349,8 @@ function releaseDocumentPreview(document: ParsedDocument | null): void {
   if (document?.binary?.kind === 'pdf') releasePdfDocument(document.binary.bytes);
 }
 
-function clearDownloadUrls(): void {
-  downloadUrls.forEach((timer, url) => {
-    clearTimeout(timer);
-    URL.revokeObjectURL(url);
-  });
-  downloadUrls.clear();
-}
-
 function saveDownloadBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob);
-  try {
-    const anchor = window.document.createElement('a');
-    anchor.href = url;
-    anchor.download = fileName;
-    anchor.click();
-    const timer = setTimeout(() => {
-      URL.revokeObjectURL(url);
-      downloadUrls.delete(url);
-    }, 1000);
-    downloadUrls.set(url, timer);
-  } catch (error) {
-    URL.revokeObjectURL(url);
-    throw error;
-  }
+  exportWorkflow.saveBlob(blob, fileName);
 }
 
 function readerText(value: string): string {
@@ -1440,101 +1432,14 @@ function showError(message: string): void {
 
 async function loadFiles(files: File[], sourceUrl?: string): Promise<void> {
   if (disposed || queueBusy.value || !files.length) return;
-  const loadRequest = documentFileLoads.begin();
-  const controller = new AbortController();
-  fileLoadController = controller;
-  openingFile.value = true;
-  importProgress.value = '';
-  importRatio.value = 0;
-  batchNotice.value = '';
-  importError.value = '';
-  let opened = false;
-  try {
-    for (const file of files) {
-      const item: DocumentQueueItem = {...createDocumentTaskState(), id: ++nextDocumentId, name: file.name, sourceUrl, document: null,
-        translations: [], fingerprint: '', state: 'ready', revision: 0, downloaded: 0, error: ''};
-      try {
-        if (!getDocumentFormat(file.name)) throw new Error('暂不支持该文件格式，请选择 PDF、ePub、HTML、JSON、TXT、DOCX、Markdown 或字幕文件。');
-        if (file.size > getDocumentMaxBytes(file.name)) throw new Error(`文件大小超过 ${megabytes(getDocumentMaxBytes(file.name))}，请先拆分文件后再翻译。`);
-        const parsed = await parseDocumentFile(file, {signal: controller.signal, onPdfProgress: ({completed, total}) => {
-          if (loadRequest.isCurrent()) {importProgress.value = t('document.pdfReading.importPages', {completed, total}); importRatio.value = total ? completed / total : 0;}
-        }});
-        if (!loadRequest.isCurrent()) return;
-        if (!parsed.segments.length && parsed.binary?.kind !== 'pdf') throw new Error('文件中没有找到可翻译的文本片段。');
-        item.document = markRaw(parsed);
-        item.originalFile = markRaw(file);
-        if (historyAvailable) {
-          const bytes = parsed.binary?.bytes ?? new Uint8Array(await file.arrayBuffer());
-          const historyId = await documentHistoryId(bytes);
-          const saved = historyId ? await history.load(historyId) : null;
-          if (!loadRequest.isCurrent()) return;
-          Object.assign(item, {historyId, bytes, mimeType: file.type});
-          if (item.id === activeDocumentId.value) rememberOpenDocument(historyId);
-          // 分段规则变化时按原文恢复校订；片段数相等也不能按旧索引错位套用。
-          if (saved) {
-            // 原文件里的扫描页没有文字层，旧 OCR 快照不能被重解析后的空页覆盖；文字页仍使用本次解析。
-            const {document: restored, segmentOrigins} = restoreDocumentHistoryPdfOcr(saved, parsed);
-            item.document = markRaw(restored);
-            Object.assign(item, {...restoreDocumentHistoryRevisions(saved, restored, PARSED_VERSION, segmentOrigins), fingerprint: saved.fingerprint});
-          }
-        }
-      } catch (error) {
-        if (!loadRequest.isCurrent()) return;
-        item.error = error instanceof Error ? error.message : String(error);
-      }
-      documentQueue.value.push(item);
-      if (item.error) queueExpanded.value = true;
-      if (item.error || documentQueue.value.length > 1) {sidebarOpen.value = true; sidebarTab.value = 'files';}
-      // 新添加的文件立即成为当前文档；一次添加多份时停在第一份，其余在文件列表中等待。
-      if (item.document && !opened) {opened = true; selectDocument(item);}
-    }
-  } finally {
-    if (loadRequest.isCurrent()) {openingFile.value = false; importProgress.value = ''; persistHistory();}
-    if (fileLoadController === controller) fileLoadController = null;
-  }
+  await importWorkflow.loadFiles(files, sourceUrl);
 }
 
-function cancelImport(): void {
-  onlinePdfController?.abort();
-  onlinePdfController = null;
-  downloadingPdf.value = false;
-  documentFileLoads.invalidate();
-  fileLoadController?.abort();
-  fileLoadController = null;
-  openingFile.value = false;
-  importProgress.value = '';
-}
+function cancelImport(): void {importWorkflow.cancel();}
 
 async function openOnlinePdf(): Promise<void> {
   if (disposed || queueBusy.value) return;
-  const sourceUrl = onlinePdfUrl.value;
-  const controller = new AbortController();
-  onlinePdfController = controller;
-  downloadingPdf.value = true;
-  importError.value = '';
-  importProgress.value = t('document.pdfReading.downloading');
-  try {
-    const file = await fetchOnlinePdf(sourceUrl, {signal: controller.signal, onProgress: ({received, total}) => {
-      if (onlinePdfController !== controller) return;
-      const size = (received / 1024 / 1024).toFixed(1);
-      importRatio.value = total ? received / total : 0;
-      importProgress.value = total ? t('document.pdfReading.downloadProgress', {size, percent: Math.round(received / total * 100)})
-        : t('document.pdfReading.downloadBytes', {size});
-    }});
-    if (disposed || onlinePdfController !== controller) return;
-    downloadingPdf.value = false;
-    await loadFiles([file], sourceUrl);
-  } catch (error) {
-    if (!disposed && onlinePdfController === controller && !controller.signal.aborted) {
-      importError.value = error instanceof Error ? error.message : String(error);
-    }
-  } finally {
-    if (onlinePdfController === controller) {
-      onlinePdfController = null;
-      downloadingPdf.value = false;
-      importProgress.value = '';
-    }
-  }
+  await importWorkflow.openOnlinePdf(onlinePdfUrl.value);
 }
 
 function handleFileInput(event: Event): void {
@@ -1551,17 +1456,13 @@ function handleDrop(event: DragEvent): void {
 function resetDocument(): void {
   persistHistory();
   recognitionProgress.value = '';
-  if (downloadNoticeTimer !== undefined) {clearTimeout(downloadNoticeTimer); downloadNoticeTimer = undefined;}
   cancelImport();
   releaseDocumentPreview(parsedDocument.value);
   documentQueue.value.forEach(item => releaseDocumentPreview(item.document));
-  clearDownloadUrls();
-  fileLoadController?.abort();
-  fileLoadController = null;
+  exportWorkflow.reset();
+  recognitionWorkflow.cancel();
   clearConfirmation();
   configEditor.invalidateFeedback();
-  downloadController?.abort();
-  downloadController = null;
   cancelingDownload.value = false;
   downloadProgress.value = '';
   downloadPdfProgress.value = null;
@@ -1572,7 +1473,6 @@ function resetDocument(): void {
   batchRunning.value = false;
   documentTasks.clear();
   batchNotice.value = '';
-  documentFileLoads.invalidate();
   translationRequestId += 1;
   abortController?.abort();
   abortController = null;
@@ -1642,6 +1542,7 @@ function pauseTranslation(): void {
   translationRequestId += 1;
   abortController?.abort();
   abortController = null;
+  recognitionWorkflow.cancel();
   translating.value = false;
   runState.value = 'paused';
 }
@@ -1683,11 +1584,11 @@ async function startTranslation(restart = false): Promise<void> {
   try {
     if (scanned) {
       const source = document;
-      const recognized = await recognizePdfDocument(source, createPdfPageRecognizer(settings.sourceLanguage), {
-        signal: controller.signal, startPage: pdfPage.value - 1,
-        onProgress: ({completed, total}) => { if (requestId === translationRequestId) recognitionProgress.value = t('document.pdfReading.recognizing', {completed, total}); },
+      const recognized = await recognitionWorkflow.recognize(source, {
+        sourceLanguage: settings.sourceLanguage, signal: controller.signal, startPage: pdfPage.value - 1,
+        isCurrent: () => requestId === translationRequestId && parsedDocument.value === source,
       });
-      if (requestId !== translationRequestId || parsedDocument.value !== source) return;
+      if (!recognized) return;
       recognitionProgress.value = '';
       // 识别结果成为这份文档新的解析结果；之后的翻译、校订、保存和下载都基于它。
       document = markRaw(recognized);
@@ -1809,56 +1710,12 @@ function archiveExportProgress(percent: number): string {
   return t('document.export.packaging', {percent: Math.floor(percent)});
 }
 
-function cancelDownload(): void {
-  if (!downloadController) return;
-  cancelingDownload.value = true;
-  downloadController.abort();
-}
+function cancelDownload(): void {exportWorkflow.cancel();}
 
 async function downloadDocument(): Promise<void> {
-  const document = parsedDocument.value;
-  if (!document || !hasTranslation.value || queueBusy.value || (!translationComplete.value && !partialExportAcknowledged.value)) return;
-  preparingDownload.value = true;
-  const controller = new AbortController();
-  downloadController = controller;
-  cancelingDownload.value = false;
-  downloadProgress.value = '';
-  downloadPdfProgress.value = null;
-  downloadError.value = '';
-  const revision = editRevision.value;
-  const requestId = translationRequestId;
-  try {
-    const download = await createDocumentDownload(document, [...translatedSegments.value], outputMode.value, {
-      pdfPresentation: pdfPresentation.value,
-      signal: controller.signal,
-      onPdfProgress: progress => { if (!controller.signal.aborted && downloadController === controller) {downloadPdfProgress.value = progress; downloadProgress.value = pdfExportProgress(progress);} },
-      onArchiveProgress: percent => { if (!controller.signal.aborted && downloadController === controller) downloadProgress.value = archiveExportProgress(percent); },
-    });
-    controller.signal.throwIfAborted();
-    if (document !== parsedDocument.value || requestId !== translationRequestId) return;
-    saveDownloadBlob(new Blob([download.data], {type: download.mimeType}), download.fileName);
-    downloadedRevision.value = revision;
-    downloadNotice.value = '已生成下载文件，请在浏览器下载列表中查看。';
-    // 浮动提示几秒后自行消失，不占用工具栏的行高。
-    const shown = downloadNotice.value;
-    if (downloadNoticeTimer !== undefined) clearTimeout(downloadNoticeTimer);
-    downloadNoticeTimer = setTimeout(() => {downloadNoticeTimer = undefined; if (downloadNotice.value === shown) downloadNotice.value = '';}, 5000);
-    downloadProgress.value = '';
-    downloadPdfProgress.value = null;
-    downloadDialog.value?.close();
-  } catch (error) {
-    if (document === parsedDocument.value) {
-      downloadPdfProgress.value = null;
-      downloadProgress.value = controller.signal.aborted ? t('document.export.canceled') : '';
-      if (!controller.signal.aborted) downloadError.value = error instanceof Error ? error.message : String(error);
-    }
-  } finally {
-    if (downloadController === controller) {
-      preparingDownload.value = false;
-      cancelingDownload.value = false;
-      downloadController = null;
-    }
-  }
+  const task = activeTask.value;
+  if (disposed || !task?.document || !hasTranslation.value || queueBusy.value || (!translationComplete.value && !partialExportAcknowledged.value)) return;
+  await exportWorkflow.single(task, outputMode.value, pdfPresentation.value);
 }
 
 function guardBeforeUnload(event: BeforeUnloadEvent): void {
@@ -1890,6 +1747,9 @@ onMounted(() => {
 onUnmounted(() => {
   disposed = true;
   configEditor.dispose();
+  importWorkflow.dispose();
+  recognitionWorkflow.dispose();
+  exportWorkflow.dispose();
   resetDocument();
   colorSchemeMedia.removeEventListener?.('change', applyTheme);
   window.removeEventListener('pagehide', resetDocument);
