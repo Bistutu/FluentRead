@@ -350,7 +350,7 @@ import {getTranslationState} from "@/src/features/full-page-translation/content/
 import {toggleTranslationSection} from '@/src/features/full-page-translation/content/sectionTranslation';
 import {createBilingualRemountCapitulationRegistry} from '@/src/features/full-page-translation/content/bilingualRemount';
 import {resetFullPageRouteSession, type FullPageRouteLifecycleSession} from '@/src/features/full-page-translation/content/routeLifecycle';
-import {getTranslationToolbarStatus} from '@/src/features/full-page-translation/content/stateNotification';
+import {getFullPageTranslationDiagnostic, getTranslationToolbarStatus} from '@/src/features/full-page-translation/content/stateNotification';
 import {
     getFullPageTranslationProgress,
     runFullPageFailureAction,
@@ -2301,6 +2301,43 @@ describe("全文翻译可见性锚点", () => {
         changeFlag('yes');
         await finishScheduledWork();
         expect(runtime.requests).toHaveBeenCalledTimes(1);
+    });
+
+    it('失败 ShadowRoot owner 卸载时清除诊断，重连观察器仍处理同任务排队的活正文与保护变化', async () => {
+        runtime.config.fullPageTranslationMode = 'all'; runtime.config.display = 1;
+        document.body.innerHTML = '<i id="flag" data-ready="no"></i><p id="live">A live paragraph becomes readable while a failed component is removed.</p>' +
+            '<p id="protected">A translated neighbor becomes protected in the same task.</p><div id="failed-host"></div>';
+        const host = document.querySelector<HTMLElement>('#failed-host')!, shadow = host.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<p>A failed shadow paragraph belongs only to the removed component.</p>';
+        const failed = shadow.querySelector<HTMLElement>('p')!, live = document.querySelector<HTMLElement>('#live')!, protectedOwner = document.querySelector<HTMLElement>('#protected')!, flag = document.querySelector('#flag')!;
+        [failed, live, protectedOwner].forEach(element => setLayoutBox(element, 420, 60));
+        runtime.realCore = new TranslationCandidateCore({url: new URL('https://example.com'), adapters: compileSiteRulePack({version: 1, rules: [
+            {id: 'failed-component', name: 'Failed component', match: {hosts: ['example.com']}, mode: 'augment', exclude: ['[data-ready="no"] + p']},
+        ]})});
+        runtime.requests.mockImplementation(async origins => {
+            if (origins[0]!.includes('failed shadow')) throw Object.assign(new Error('Controlled unauthorized response'), {status: 401, kind: 'authentication'});
+            return origins.map(origin => `译:${origin}`);
+        });
+        autoTranslateEnglishPage(); await finishScheduledWork();
+        const observer = TestMutationObserver.instances[0]!, failedState = getTranslationState(failed)!, protectedState = getTranslationState(protectedOwner)!;
+        expect(failedState.phase).toBe('error'); expect(protectedState.phase).toBe('translated');
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('authentication'); expect(runtime.requests).toHaveBeenCalledTimes(2);
+        host.remove(); observer.emitRegistered([{type: 'childList', target: document.body, addedNodes: [], removedNodes: [host]} as unknown as MutationRecord]);
+        flag.setAttribute('data-ready', 'yes'); protectedOwner.setAttribute('translate', 'no');
+        observer.takeRecords.mockReturnValueOnce([
+            {type: 'attributes', target: flag, attributeName: 'data-ready', oldValue: 'no', addedNodes: [], removedNodes: []},
+            {type: 'attributes', target: protectedOwner, attributeName: 'translate', oldValue: null, addedNodes: [], removedNodes: []},
+        ] as unknown as MutationRecord[]);
+        // Check protection before the broad 50ms discovery can accidentally repair a dropped record.
+        await vi.advanceTimersByTimeAsync(0);
+        expect(protectedState.controller.signal.aborted).toBe(true); expect(getTranslationState(protectedOwner)).toBeUndefined();
+        expect(protectedOwner.querySelector('[data-fr-translation-owned]')).toBeNull();
+        await finishScheduledWork();
+        expect(observer.takeRecords).toHaveBeenCalledOnce(); expect(observer.observed.has(shadow)).toBe(false); expect(observer.observed.has(document.documentElement)).toBe(true);
+        expect(failedState.controller.signal.aborted).toBe(true); expect(getTranslationState(failed)).toBeUndefined();
+        expect(live.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1); expect(runtime.requests).toHaveBeenCalledTimes(3);
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined(); expect(getFullPageTranslationProgress().failed).toBe(0); expect(getTranslationToolbarStatus()).toBe('translated');
+        runtime.retryCallbacks[0]!(); await finishScheduledWork(); expect(runtime.requests).toHaveBeenCalledTimes(3);
     });
 
     it('卸载 Shadow DOM 组件释放观察根，保留待送达正文变化，重新插入可继续翻译', async () => {
@@ -8788,6 +8825,170 @@ describe("全文翻译可见性锚点", () => {
         observer.emit(lyrics, true);
         await finishScheduledWork();
         expect(lyrics.textContent).toContain('译:Third lyric must stay queued while offscreen.');
+    });
+    it.each(['authentication', 'rate-limit', 'timeout', 'network'] as const)('实际全文 %s 失败可查询脱敏分类，手动重试成功清除', async (kind) => {
+        runtime.config.fullPageTranslationMode = 'all'; runtime.config.display = 1;
+        document.body.innerHTML = '<p>Controlled diagnostic fixture source.</p>';
+        const element = document.querySelector<HTMLElement>('p')!;
+        runtime.candidates = [{element, kind: 'content', reason: 'diagnostic-fixture'}];
+        runtime.requests.mockRejectedValue(Object.assign(new Error('private text https://private.test/?token=secret'), {kind, retryAfterMs: 1000}));
+        autoTranslateEnglishPage(); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()?.code).toBe(kind);
+        expect(JSON.stringify(getFullPageTranslationDiagnostic())).not.toContain('private');
+        runtime.requests.mockImplementation(async origins => origins.map(origin => `译:${origin}`));
+        expect(runtime.retryCallbacks).toHaveLength(1); runtime.retryCallbacks[0]!(); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+        expect(getTranslationToolbarStatus()).toBe('translated');
+    });
+    it.each([
+        {display: 0, unchanged: false}, {display: 1, unchanged: false},
+        {display: 0, unchanged: true}, {display: 1, unchanged: true},
+    ])('部分失败后其他段成功不丢失准确分类，最后失败恢复才清除（display=$display unchanged=$unchanged）', async ({display, unchanged}) => {
+        runtime.config.fullPageTranslationMode = 'all'; runtime.config.display = display;
+        document.body.innerHTML = '<p>Failure owner source.</p><p>Independent successful source.</p>';
+        const [failedOwner, successfulOwner] = Array.from(document.querySelectorAll<HTMLElement>('p'));
+        runtime.candidates = [failedOwner!, successfulOwner!].map(element => ({element, kind: 'content', reason: 'mixed-diagnostic-outcomes'}));
+        const independent = deferred<string[]>();
+        runtime.requests.mockImplementation(async origins => {
+            if (origins[0]!.includes('Failure owner')) throw Object.assign(new Error('safe fixture'), {kind: 'authentication'});
+            return independent.promise;
+        });
+        autoTranslateEnglishPage(); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('authentication');
+        independent.resolve([unchanged ? 'Independent successful source.' : '译:Independent successful source.']);
+        await finishScheduledWork();
+        expect(getFullPageTranslationProgress().failed).toBe(1);
+        expect(getTranslationToolbarStatus()).toBe('error');
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('authentication');
+        runtime.requests.mockImplementation(async origins => origins.map(origin => `译:${origin}`));
+        runtime.retryCallbacks[0]!(); await finishScheduledWork();
+        expect(getFullPageTranslationProgress().failed).toBe(0);
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+        expect(getTranslationToolbarStatus()).toBe('translated');
+    });
+    it('最近失败修复后恢复较早仍失败段的分类，且恢复原文清除最后故障', async () => {
+        runtime.config.fullPageTranslationMode = 'all'; runtime.config.display = 1;
+        document.body.innerHTML = '<p>Earlier authentication source.</p><p>Later timeout source.</p>';
+        const [earlier, later] = Array.from(document.querySelectorAll<HTMLElement>('p'));
+        runtime.candidates = [earlier!, later!].map(element => ({element, kind: 'content', reason: 'diagnostic-owner-recovery'}));
+        const timeout = deferred<string[]>();
+        runtime.requests.mockImplementation(async origins => {
+            if (origins[0]!.includes('Earlier')) throw Object.assign(new Error('fixture'), {kind: 'authentication'});
+            return timeout.promise;
+        });
+        autoTranslateEnglishPage(); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('authentication');
+        timeout.reject(Object.assign(new Error('fixture'), {kind: 'timeout'})); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('timeout');
+        runtime.requests.mockImplementation(async origins => origins.map(origin => `译:${origin}`));
+        runtime.retryCallbacks[1]!(); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('authentication');
+        restoreTranslationOwner(earlier!); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+    });
+    it('完整根发现为空才标记无正文；迟到离屏候选和同目标语言候选均清除该诊断', async () => {
+        Object.defineProperty(document, 'readyState', {configurable: true, value: 'complete'});
+        autoTranslateEnglishPage(); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('no-content');
+        document.body.innerHTML = '<p>Late offscreen paragraph.</p>';
+        const element = document.querySelector<HTMLElement>('p')!;
+        setLayoutBox(element, 600, 80); setViewportRect(element, 20_000);
+        runtime.candidates = [{element, kind: 'content', reason: 'late-offscreen'}];
+        TestMutationObserver.instances[0]!.emit([{type: 'childList', target: document.body,
+            addedNodes: [element], removedNodes: []} as unknown as MutationRecord]);
+        await finishScheduledWork();
+        expect(runtime.requests).not.toHaveBeenCalled();
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+        restoreOriginalContent(); runtime.clearlyTargetLanguage.mockReturnValue(true);
+        runtime.config.fullPageTranslationMode = 'all';
+        autoTranslateEnglishPage(); await finishScheduledWork();
+        expect(runtime.requests).not.toHaveBeenCalled();
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+    });
+    it.each(['remove', 'replace'] as const)('分片发现期间 %s 文档根不会继续旧扫描或误报无正文，新根仍可翻译', async change => {
+        Object.defineProperty(document, 'readyState', {configurable: true, value: 'complete'});
+        runtime.config.fullPageTranslationMode = 'all'; runtime.config.display = 1;
+        document.body.innerHTML = '<div><span></span><span></span><span></span></div>';
+        const previousRoot = document.documentElement;
+        const core = new TranslationCandidateCore({url: new URL('https://example.com')}); runtime.realCore = core;
+        const discover = core.discoverSteps.bind(core), scans: Array<{root: Node; steps: number; completed: boolean}> = [];
+        vi.spyOn(core, 'discoverSteps').mockImplementation(function* (root) {
+            const scan = {root, steps: 0, completed: false}; scans.push(scan);
+            for (const step of discover(root)) {scan.steps += 1; yield step;}
+            scan.completed = true;
+        });
+        // Deterministic elapsed time yields after a real discovery step; the candidate algorithm is unchanged.
+        let clock = 0; replaceGlobal('performance', {now: () => clock += 9});
+        autoTranslateEnglishPage(); await vi.advanceTimersByTimeAsync(50);
+        const oldScan = scans.find(scan => scan.root === previousRoot)!;
+        expect(oldScan).toBeDefined(); expect(oldScan.steps).toBeGreaterThan(0); expect(oldScan.completed).toBe(false);
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined(); const previousSteps = oldScan.steps;
+        const currentRoot = document.createElement('html'); currentRoot.innerHTML = '<head></head><body><p>A fresh document root contains readable prose after the old discovery tree was disconnected.</p></body>';
+        if (change === 'remove') {previousRoot.remove(); document.appendChild(currentRoot);} else previousRoot.replaceWith(currentRoot);
+        expect(previousRoot.isConnected).toBe(false); expect(document.documentElement).toBe(currentRoot);
+        await finishScheduledWork();
+        expect(oldScan.steps).toBe(previousSteps); expect(oldScan.completed).toBe(false); expect(getFullPageTranslationDiagnostic()).toBeUndefined(); expect(runtime.requests).not.toHaveBeenCalled();
+        const paragraph = currentRoot.querySelector<HTMLElement>('p')!; setLayoutBox(paragraph, 600, 80);
+        resetFullPageTranslationRouteState(); await finishScheduledWork();
+        expect(scans.some(scan => scan.root === currentRoot && scan.completed)).toBe(true);
+        expect(paragraph.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1); expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined(); expect(getTranslationToolbarStatus()).toBe('translated');
+    });
+
+    it.each([{status: 401, kind: 'authentication'}, {status: 429, kind: 'rate-limit'}] as const)('route 后迟到 HTTP$status 不复活故障，新路由无正文证据随新候选清除', async ({status, kind}) => {
+        Object.defineProperty(document, 'readyState', {configurable: true, value: 'complete'});
+        runtime.config.fullPageTranslationMode = 'all'; runtime.config.display = 1;
+        document.body.innerHTML = '<p id="old-owner">The persistent owner belongs to the previous route candidate set.</p>';
+        const oldOwner = document.querySelector<HTMLElement>('#old-owner')!; setLayoutBox(oldOwner, 600, 80);
+        runtime.candidates = [{element: oldOwner, kind: 'content', reason: 'old-route-diagnostic'}];
+        const oldProvider = deferred<string[]>(); runtime.requests.mockReturnValueOnce(oldProvider.promise);
+        autoTranslateEnglishPage(); await finishScheduledWork(); expect(runtime.requests).toHaveBeenCalledTimes(1); expect(getTranslationState(oldOwner)?.phase).toBe('loading');
+        // Keep the same source node connected: the route epoch, rather than DOM removal, must reject its old failure.
+        runtime.candidates = []; resetFullPageTranslationRouteState(); await finishScheduledWork();
+        expect(oldOwner.isConnected).toBe(true); expect(getTranslationState(oldOwner)).toBeUndefined(); expect(getFullPageTranslationDiagnostic()?.code).toBe('no-content');
+        oldProvider.reject(Object.assign(new Error('Controlled previous route response'), {status, kind, ...(status === 429 ? {retryAfterMs: 2000} : {})}));
+        await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('no-content'); expect(getFullPageTranslationDiagnostic()?.retryAfterMs).toBeUndefined();
+        expect(getFullPageTranslationProgress().failed).toBe(0); expect(oldOwner.querySelector('.fluent-read-retry-wrapper')).toBeNull(); expect(runtime.requests).toHaveBeenCalledTimes(1);
+        const currentOwner = document.createElement('p'); currentOwner.textContent = 'New route content becomes readable after its initial empty candidate scan.'; document.body.appendChild(currentOwner); setLayoutBox(currentOwner, 600, 80);
+        runtime.candidates = [{element: currentOwner, kind: 'content', reason: 'new-route-diagnostic'}];
+        TestMutationObserver.instances[0]!.emitRegistered([{type: 'childList', target: document.body, addedNodes: [currentOwner], removedNodes: []} as unknown as MutationRecord]);
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(2); expect(currentOwner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined(); expect(getTranslationToolbarStatus()).toBe('translated'); expect(oldOwner.isConnected).toBe(true);
+    });
+
+    it('失败后服务成功返回无需变化结果也清除旧故障，不伪造已展示译文', async () => {
+        runtime.config.fullPageTranslationMode = 'all'; runtime.config.display = 1;
+        document.body.innerHTML = '<p>Unchanged accepted provider result.</p>';
+        const element = document.querySelector<HTMLElement>('p')!;
+        runtime.candidates = [{element, kind: 'content', reason: 'unchanged-recovery'}];
+        runtime.requests.mockRejectedValue(Object.assign(new Error('old timeout'), {kind: 'timeout'}));
+        autoTranslateEnglishPage(); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('timeout');
+        runtime.requests.mockImplementation(async origins => [...origins]);
+        runtime.retryCallbacks[0]!(); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+        expect(getTranslationToolbarStatus()).toBe('idle');
+        expect(element.querySelector('.fluent-read-bilingual-content')).toBeNull();
+    });
+    it('loading 空文档不提前诊断；恢复和路由切换清除失败，迟到取消请求不能重新写入', async () => {
+        Object.defineProperty(document, 'readyState', {configurable: true, value: 'loading'});
+        autoTranslateEnglishPage(); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+        restoreOriginalContent(); runtime.config.fullPageTranslationMode = 'all';
+        document.body.innerHTML = '<p>Cancelled diagnostic fixture.</p>';
+        const element = document.querySelector<HTMLElement>('p')!;
+        runtime.candidates = [{element, kind: 'content', reason: 'late-failure'}];
+        const request = deferred<string[]>(); runtime.requests.mockReturnValue(request.promise);
+        autoTranslateEnglishPage(); await finishScheduledWork(); restoreOriginalContent();
+        request.reject(Object.assign(new Error('late private failure'), {kind: 'authentication'}));
+        await finishScheduledWork(); expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+        runtime.requests.mockRejectedValue(Object.assign(new Error('failure'), {kind: 'timeout'}));
+        autoTranslateEnglishPage(); await finishScheduledWork();
+        expect(getFullPageTranslationDiagnostic()?.code).toBe('timeout');
+        resetFullPageTranslationRouteState(); expect(getFullPageTranslationDiagnostic()).toBeUndefined();
+        restoreOriginalContent(); expect(getFullPageTranslationDiagnostic()).toBeUndefined();
     });
     async function fiveFailedParagraphs(concurrency = 1) {
         runtime.config.fullPageTranslationMode = 'all';

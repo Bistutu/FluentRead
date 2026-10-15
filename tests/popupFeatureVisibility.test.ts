@@ -7,6 +7,8 @@ import {popupQuickFeatureOptions} from '@/src/core/config/interfaceAppearance';
 
 const mountPreparedPopupApp = vi.hoisted(() => vi.fn());
 vi.mock('@/src/app/popup/mount', () => ({mountPreparedPopupApp}));
+// 本文件只验证入口唤醒与路由；DOM 启动反馈由 popupStartupFeedback.test.ts 执行真实实现。
+vi.mock('@/src/app/popup/startupFeedback', () => ({createPopupStartupFeedback: () => ({dispose() {}, fail() {}})}));
 vi.mock('element-plus/es/components/base/style/css', () => ({}));
 vi.mock('@/src/app/popup/PopupApp.vue', () => ({default: {}}));
 vi.mock('@/src/app/popup/PopupOnboarding.vue', () => ({default: {}}));
@@ -145,33 +147,19 @@ describe('popup feature visibility', () => {
         expect(popup).toContain('@confirmed="handleLanguageOnboardingConfirmed"');
         expect(popup).toContain('if (!showLanguageOnboarding.value) await hydrateCurrentSite();');
         expect(popup).toContain('void hydrateCurrentSite();');
-        expect(onboarding).toContain('class="language-onboarding-backdrop"');
-        expect(onboarding).toContain('data-testid="onboarding-welcome"');
         expect(onboarding).toContain('data-testid="onboarding-language-step"');
-        expect(onboarding).toContain('WELCOME_GREETING_WORDS');
-        expect(onboarding).toContain('getUiLanguageBilingualLabel(option.value)');
+        expect(onboarding).toContain('nativeLanguageNames[option.value]');
+        expect(onboarding).toContain(':lang="option.value"');
         expect(onboarding).toContain("messageZh('language.onboardingTitle')");
         expect(onboarding).toContain("messageEn('language.onboardingTitle')");
         expect(onboarding).toContain("messageZh('language.onboardingConfirm')");
         expect(onboarding).toContain("messageEn('language.onboardingConfirm')");
-        expect(onboarding).not.toContain("messageZh('language.onboardingWelcomeDescription')");
-        expect(onboarding).not.toContain("messageEn('language.onboardingWelcomeDescription')");
-        expect(onboarding).not.toContain("messageZh('language.onboardingDescription')");
-        expect(onboarding).not.toContain("messageEn('language.onboardingDescription')");
-        expect(onboarding).not.toContain("language.onboardingBrowserHint");
-        expect(onboarding).not.toContain("language.onboardingConfirmHint");
-        expect(onboarding).not.toContain('class="onboarding-language-code"');
-        expect(onboarding).toContain('class="onboarding-confirm-guide"');
-        expect(onboarding).toContain('animation: onboarding-point 1.05s ease-in-out infinite');
-        expect(onboarding).toContain('M8 1v15M3 12l5 5 5-5');
-        expect(onboarding).not.toContain('>↘</span>');
-        expect(onboarding).not.toContain('transform: rotate(8deg);\n  animation: onboarding-point');
-        expect(onboarding).toContain('data-testid="onboarding-language-next"');
-        expect(onboarding).not.toContain('<select');
-        expect(onboarding).toContain('.onboarding-success::before');
-        expect(onboarding).not.toContain('.language-onboarding-card::before');
-        expect(onboarding).toContain('class="onboarding-success"');
-        expect(onboarding).toContain('setTimeout(() =>');
+        expect(onboarding).not.toContain('onboarding-welcome');
+        expect(onboarding).not.toContain('onboarding-back');
+        expect(onboarding).not.toContain('onboarding-success');
+        expect(onboarding).not.toContain('setTimeout');
+        expect(onboarding).not.toContain('min-height: 460px');
+        expect(onboarding).toContain('committed.value = true');
         expect(styles).toContain('.popup-shell.language-onboarding-shell { overflow-x: hidden; }');
         expect(styles).toContain('.popup-shell { max-height: 560px; overflow-y: auto;');
         expect(onboarding).toContain('.language-onboarding {\n  position: relative;');
@@ -250,7 +238,7 @@ describe('popup feature visibility', () => {
         expect(selector).toContain('<ElSelect');
         expect(selector).toContain('popper-class="ui-language-select-popper"');
         expect(selector).not.toContain('<select');
-        expect(onboarding).toContain('getUiLanguageBilingualLabel(option.value)');
+        expect(onboarding).toContain('nativeLanguageNames[option.value]');
     });
 
     it('blocks early interaction until the stored configuration is hydrated', () => {

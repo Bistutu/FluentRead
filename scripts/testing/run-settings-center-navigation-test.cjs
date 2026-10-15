@@ -264,8 +264,7 @@ const checkLayout = async label => {
     const popup = await open('popup.html');
     await popup.waitForFunction(() => document.documentElement.classList.contains('dark'));
     await popup.setViewportSize({width: 400, height: 600});
-    if (await popup.locator('[data-testid="onboarding-language-next"]').isVisible()) {
-      await popup.locator('[data-testid="onboarding-language-next"]').click();
+    if (await popup.locator('[data-testid="onboarding-language-step"]').isVisible()) {
       await popup.locator('.onboarding-form .onboarding-confirm').click();
     }
     await popup.locator('[data-testid="popup-feature-services"]').waitFor();

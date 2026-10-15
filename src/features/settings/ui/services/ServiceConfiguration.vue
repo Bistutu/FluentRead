@@ -1,12 +1,14 @@
 <!--
  * @file src/features/settings/ui/services/ServiceConfiguration.vue
  * 文件职责：渲染当前翻译服务的详细连接配置：连接字段（密钥、区域、端点等）直接排在服务标题下方、不再单设“连接与密钥”标题，输入下方是添加密钥与密钥使用方式；其后用模型偏好、提示词、请求限制、接口兼容几个页签显示代理、密钥要求、提示词、自定义请求体与请求头、按域名移除来源头等字段，以及服务和模型的独立请求限制；只有一个页签的服务改用小节标题。
- * 主要内容：组件派生字段可见性与连接示例，密钥列表始终展示全部已保存的密钥并区分参与请求与备用的行，密钥要求放在接口兼容页签，提示词可在确认后一键同步到所有 AI 服务；原生支持多文本的服务在请求限制中独立编辑默认开启的合并请求开关，当前模型限额按自定义请求体覆盖后的真实模型显示、读取和保存，保留其他模型限额；将成对密钥 ID 同步到 apiKeys 和兼容 token，区分缺少必填 Key 与允许匿名的连接检查并管理等待超时；免费翻译检查完整目录并逐服务展示结果，Chrome 在点击时准备当前语言对并用进度条显示模型下载比例，通过配置 store 提交修改；隐藏、缓存停用或配置变化取消所属等待，Chrome 状态只在活跃服务订阅，恢复、同步模板和删除共用当前操作所属确认，同步复验来源并按确认时刻重算目标。
+ * 主要内容：组件派生字段可见性与连接示例，密钥列表始终展示全部已保存的密钥并区分参与请求与备用的行，密钥要求放在接口兼容页签，提示词可在确认后一键同步到所有 AI 服务；原生支持多文本的服务在请求限制中独立编辑默认开启的合并请求开关，当前模型限额按自定义请求体覆盖后的真实模型显示、读取和保存，保留其他模型限额；将成对密钥 ID 同步到 apiKeys 和兼容 token，区分缺少必填 Key 与允许匿名的连接检查并管理等待超时；免费翻译检查完整目录并逐服务展示结果，Chrome 在点击时准备当前语言对并用进度条显示模型下载比例，通过配置 store 提交修改；有效修复链接首次进入且未发生用户聚焦时直达连接按钮或当前标题；所有服务可手动停止等待；错误只保留共享诊断分类与可操作下一步，禁止展示原始错误详情，手动重试与字段定位保留当前选择；隐藏、缓存停用或配置变化取消所属等待，Chrome 状态只在活跃服务订阅，恢复、同步模板和删除共用当前操作所属确认，同步复验来源并按确认时刻重算目标。
  * 模块边界：组合服务交给独立草稿表单编辑，不展示普通服务的模型或凭据页签；无成员禁止连接测试，组合与各成员配置修改使旧测试失效，测试等待不早于逐路预算与整轮上限；本地模型设置只在对应服务首次呈现时异步加载，实例归属与后台下载由子组件维持；ChatGPT 套餐公开构建不渲染配置或确认窗口、不加载登录子模块，并停用全部设置动作，显式开发模式才通过独立子组件连接本机助手，不显示通用凭据或接口覆写；本组件不执行网页正文翻译或保存公开配置中的明文凭据；Chrome 内置翻译仅在当前点击页完成模型自检，其他连接测试经后台消息，Safari 免费线路检查仅请求已授权 provider，未授权项不记作连接故障；字段规则来自 core/config，服务切换由 ServiceCatalog 和 SettingsSections 负责。
  -->
 <template>
   <template v-if="!publicPlanBlocked">
   <section
+    ref="configurationRoot"
+    tabindex="-1"
     class="settings-section service-connection-section"
     :data-service-configuration-service="service"
     :data-custom-service-configuration="compute.showCustomOpenAI ? 'true' : 'false'"
@@ -27,12 +29,13 @@
           type="button"
           class="connection-test-button"
           data-connection-test-button
+          ref="connectionTestButton"
           :disabled="connectionTestDisabled"
           @click="connectionTestBusy ? stopApiKeyChecks() : testConnection()"
         >
-          <svg v-if="connectionTestBusy && usesApiKeyList" class="connection-action-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1" /></svg>
+          <svg v-if="connectionTestBusy" class="connection-action-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1" /></svg>
           <svg v-else class="connection-action-icon" :class="{ 'is-spinning': connectionTestBusy }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" /></svg>
-          {{ connectionTestBusy ? (usesApiKeyList ? translateLegacy('停止检查') : t('settings.services.keys.checking')) : t('settings.services.keys.checkConnection') }}
+          {{ connectionTestBusy ? translateLegacy('停止检查') : t('settings.services.keys.checkConnection') }}
         </button>
     </div>
 
@@ -311,7 +314,7 @@
     <p v-if="service === services.deeplx && deepLXRequiresToken && !apiKeyIndexes.length" class="field-warning" data-deeplx-key-required role="status">{{ deepLXTokenHelp }}</p>
 
     <div
-      v-if="connectionTestMessage && (!compute.showToken || compute.showServiceSecret)"
+      v-if="connectionTestMessage && !connectionTestDiagnostic && (!compute.showToken || compute.showServiceSecret)"
       class="connection-test-result"
       :class="`is-${connectionTestState}`"
       data-connection-test-status
@@ -321,15 +324,22 @@
       <strong>{{ connectionTestTitle }}</strong>
       <span>{{ connectionTestMessage }}</span>
       <DownloadProgress v-if="chromeDownloadProgress" class="chrome-preparation-progress" detail="none" :progress="chromeDownloadProgress" :label="connectionTestMessage" data-chrome-preparation-progress />
-      <details v-if="connectionTestDetails" class="connection-test-details">
-        <summary>{{ t('settings.services.chromePreparation.errorDetailsSummary') }}</summary>
-        <code>{{ connectionTestDetails }}</code>
-      </details>
     </div>
     </section>
 
-    <div v-if="isCompositeService && connectionTestMessage" class="connection-test-result" :class="`is-${connectionTestState}`" data-connection-test-status role="status" aria-live="polite"><strong>{{ connectionTestTitle }}</strong><span>{{ connectionTestMessage }}</span></div>
-    <div v-if="service === services.chatgptPlan && !publicPlanBlocked && connectionTestMessage" class="connection-test-result" :class="`is-${connectionTestState}`" data-connection-test-status role="status" aria-live="polite"><strong>{{ connectionTestTitle }}</strong><span>{{ connectionTestMessage }}</span></div>
+    <div v-if="isCompositeService && connectionTestMessage && !connectionTestDiagnostic" class="connection-test-result" :class="`is-${connectionTestState}`" data-connection-test-status role="status" aria-live="polite"><strong>{{ connectionTestTitle }}</strong><span>{{ connectionTestMessage }}</span></div>
+    <div v-if="service === services.chatgptPlan && !publicPlanBlocked && connectionTestMessage && !connectionTestDiagnostic" class="connection-test-result" :class="`is-${connectionTestState}`" data-connection-test-status role="status" aria-live="polite"><strong>{{ connectionTestTitle }}</strong><span>{{ connectionTestMessage }}</span></div>
+
+    <div v-if="connectionTestState === 'error' && connectionTestDiagnostic" class="connection-test-result is-error connection-repair" data-connection-repair :data-diagnostic-code="connectionTestDiagnostic.code" role="status" aria-live="polite">
+      <strong>{{ connectionRepairText.title }}</strong>
+      <span>{{ connectionRepairText.detail }}</span>
+      <div class="connection-repair-actions">
+        <button type="button" class="connection-repair-button" data-connection-retry :disabled="connectionTestDisabled || connectionRetryWaiting" @click="testConnection()">{{ getDiagnosticActionLabel('retry', language) }}</button>
+        <button v-if="connectionTestDiagnostic.actions.includes('services')" type="button" class="connection-repair-button" data-connection-repair-config :disabled="!active" @click="focusConnectionConfiguration">{{ getDiagnosticActionLabel('services', language) }}</button>
+      </div>
+    </div>
+
+    <ServiceRepairReturn :active="active" :context="config" :context-key="service" @repair-ready="focusInitialRepair" />
 
     <header v-if="singleSettingsTab" class="configuration-group-heading settings-tabs-heading" data-service-settings-heading><h5>{{ singleSettingsTab }}</h5></header>
     <el-tabs v-if="settingsTabs.requests && !isCompositeService" v-model="activeSettingsTab" class="service-settings-tabs" :class="{ 'is-single-tab': singleSettingsTab }" data-service-settings-tabs>
@@ -460,7 +470,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, shallowRef, toRef, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, ref, shallowRef, toRef, watch } from 'vue'
 import type { Config } from '@/src/core/config/model'
 import {getCompositeTranslationProvider, isCompositeTranslationProviderId} from '@/src/core/config/compositeTranslation'
 import type { TranslationParams } from '@/src/core/i18n'
@@ -475,11 +485,12 @@ import { isValidCustomBody } from '@/src/core/config/customBody'
 import { resolveTranslationRequestModel } from '@/src/core/config/requestModel'
 import { isValidCustomHeaders } from '@/src/core/config/customHeaders'
 import { createApiKeyCheckRevision } from '@/src/core/config/apiKeyCheckIdentity'
-import { normalizeMyMemoryEmail } from '@/src/core/config/freeTranslation'
+import { normalizeFreeTranslationOrder, normalizeMyMemoryEmail } from '@/src/core/config/freeTranslation'
 import { isNativeBatchTranslationService, isNativeTranslationBatchEnabled } from '@/src/core/config/nativeBatch'
 import { requiresDeepLXToken } from '@/src/core/config/deeplx'
 import { getDeepLEndpoint } from '@/src/core/config/deepl'
 import browser from 'webextension-polyfill'
+import { normalizeDiagnostic, diagnoseFailure, getDiagnosticActionLabel, getDiagnosticText, type Diagnostic } from '@/src/services/diagnostics'
 import { requestConfigSave, waitForConfigPersistenceQueue } from '@/src/services/config/store'
 import { CONNECTION_TEST_MESSAGE, DEFAULT_OLLAMA_ENDPOINT, getAliyunTranslationEndpoint, getMimoEndpoint, MINIMAX_ENDPOINTS } from '@/src/core/config/constants'
 import { chromeTranslationPreparationStore } from '@/src/platform/browser/chromeTranslationPreparationRequest'
@@ -507,6 +518,8 @@ import ModelVisionSettings from './ModelVisionSettings.vue'
 import RequestLimitSettings from './RequestLimitSettings.vue'
 import RequestHeaderSettings from './RequestHeaderSettings.vue'
 import CompositeTranslationSettings from './CompositeTranslationSettings.vue'
+import ServiceRepairReturn from './ServiceRepairReturn.vue'
+import {createServiceRepairFocus} from './serviceRepairFocus'
 const ChatGPTPlanSettings = chatGPTPlanDevelopmentEnabled ? defineAsyncComponent(() => import('./ChatGPTPlanSettings.vue')) : null
 import { checkAllFreeTranslationProviders, type FreeTranslationChecks } from './freeTranslationChecks'
 import {readFreePoolAccess} from '@/src/platform/browser/freeProviderPermissions'
@@ -767,13 +780,72 @@ const CHROME_PREPARATION_ERROR_KEYS: Readonly<Record<ChromeTranslationPreparatio
   'model-unavailable': 'settings.services.chromePreparation.error.modelUnavailable',
 }
 const connectionTestBusy = ref(false)
-const connectionTestDisabled = computed(() => !active.value || (isCompositeService.value && !compositeProvider.value?.services.length) || (connectionTestBusy.value
-  ? !usesApiKeyList.value
-  : usesApiKeyList.value && apiKeyIndexes.value.length === 0
-    && (service.value === services.deeplx ? deepLXRequiresToken.value : compute.value.requireApiKey)))
+const configurationRoot = ref<HTMLElement>()
+const connectionTestButton = ref<HTMLButtonElement>()
+const focusRepairEntry = createServiceRepairFocus(() => nextTick())
+function focusInitialRepair(requestedService: string): void {
+  if (requestedService !== service.value) return
+  void focusRepairEntry(captureServiceActionContext(), () => ({button: connectionTestButton.value,
+    fallback: configurationRoot.value?.closest('.service-detail')?.querySelector<HTMLElement>('h4') || configurationRoot.value}))
+}
+const connectionTestDisabled = computed(() => !active.value || (isCompositeService.value && !compositeProvider.value?.services.length) || (!connectionTestBusy.value && (connectionRetryWaiting.value || usesApiKeyList.value && apiKeyIndexes.value.length === 0
+    && (service.value === services.deeplx ? deepLXRequiresToken.value : compute.value.requireApiKey))))
 const freeProviderChecks = ref<FreeTranslationChecks>({})
+const freeProviderRetryAt = new Map<string, number>()
 const connectionTestState = ref<ConnectionTestState>('idle')
 const connectionTestMessageState = ref<LocalizedConnectionTestMessage | string | null>(null)
+const connectionTestDiagnostic = shallowRef<Diagnostic | null>(null)
+const connectionRepairText = computed(() => connectionTestDiagnostic.value ? getDiagnosticText(connectionTestDiagnostic.value, language.value) : {title: '', detail: ''})
+const connectionRetryWaiting = ref(false)
+const MAX_CONNECTION_RETRY_TIMER_MS = 2_147_483_647
+let connectionRetryDeadline = 0
+let connectionRetryTimer: ReturnType<typeof setTimeout> | undefined
+// 浏览器计时器只接受 32 位有符号延时；每段醒来都重新核对完整截止时间，不能把长冷却溢出成即时重试。
+function scheduleConnectionRetryWake(): void {
+  clearTimeout(connectionRetryTimer)
+  connectionRetryTimer = undefined
+  const remaining = connectionRetryDeadline - Date.now()
+  connectionRetryWaiting.value = remaining > 0
+  if (remaining > 0) connectionRetryTimer = setTimeout(scheduleConnectionRetryWake, Math.min(MAX_CONNECTION_RETRY_TIMER_MS, remaining))
+  else connectionRetryDeadline = 0
+}
+function clearConnectionDiagnostic(): void {
+  connectionTestDiagnostic.value = null
+  connectionRetryWaiting.value = false
+  connectionRetryDeadline = 0
+  clearTimeout(connectionRetryTimer)
+  connectionRetryTimer = undefined
+}
+// 原始供应商错误仅用于分类，从不进入组件展示状态、详情或 title 属性。
+function describeConnectionFailure(error: unknown, applyCooldown = true): string {
+  const diagnostic = normalizeDiagnostic(error) || diagnoseFailure(error, {online: typeof navigator === 'undefined' ? undefined : navigator.onLine,
+    ...(error instanceof ConnectionConfigurationError ? {reason: 'configuration-save' as const} : {})})
+  if (!connectionTestDiagnostic.value) connectionTestDiagnostic.value = diagnostic
+  if (applyCooldown && diagnostic.retryAfterMs) {
+    connectionRetryDeadline = Math.max(connectionRetryDeadline, Date.now() + diagnostic.retryAfterMs)
+    scheduleConnectionRetryWake()
+  }
+  const text = getDiagnosticText(diagnostic, language.value)
+  return text.title
+}
+function focusConnectionConfiguration(): void {
+  if (!active.value || !connectionTestDiagnostic.value) return
+  const root = configurationRoot.value
+  const modelFailure = connectionTestDiagnostic.value.code === 'model-configuration'
+  const modelTarget = modelFailure ? root?.closest('.service-detail')?.querySelector<HTMLElement>('[data-testid="model-picker-trigger"]') : undefined
+  const target = modelTarget || root?.querySelector<HTMLElement>('.connection-card input:not([type="hidden"]), .connection-card select, .connection-card textarea, [data-free-translation-settings] input, [data-composite-service-settings] input')
+    || root?.closest('.service-detail')?.querySelector<HTMLElement>('[data-testid="model-picker-trigger"]')
+    || findServiceDirectoryControl(root)
+  target?.focus({preventScroll: true})
+  target?.scrollIntoView({block: 'nearest', inline: 'nearest'})
+}
+function findServiceDirectoryControl(root?: HTMLElement): HTMLElement | undefined {
+  const catalog = root?.closest('.service-catalog')
+  const search = catalog?.querySelector<HTMLElement>('.catalog-search input')
+  return search?.getClientRects().length ? search : catalog?.querySelector<HTMLElement>('.mobile-directory-toggle') || undefined
+}
+class ConnectionConfigurationError extends Error {}
+onBeforeUnmount(clearConnectionDiagnostic)
 // Chrome 只回报 0 到 1 的下载比例，不提供字节数；进度条用它的真实比例，文字里已有百分比。
 const chromeDownloadFraction = ref<number>()
 const chromeDownloadProgress = computed(() => isChromeConnectionTest.value && connectionTestState.value === 'testing' && chromeDownloadFraction.value !== undefined
@@ -791,11 +863,7 @@ const standaloneApiKeyCheck = computed<ApiKeyCheckState | undefined>(() => {
   if (connectionTestState.value === 'success') return {status: 'success'}
   return {status: 'error', error: connectionTestMessage.value}
 })
-const connectionTestDetails = computed(() => {
-  const message = connectionTestMessageState.value
-  if (!message || typeof message === 'string' || !message.params?.detail) return ''
-  return String(message.params.detail)
-})
+
 const isChromeConnectionTest = computed(() => service.value === services.chromeTranslator)
 const displayedChromePreparationPair = ref<ChromeTranslationPreparationPair | null>(null)
 const currentChromePreparationPair = computed(() => {
@@ -820,7 +888,10 @@ let connectionTestGeneration = 0
 let activeConnection: AbortController | undefined
 
 function waitForConnectionStep<T>(operation: Promise<T>, timeoutMs: number, timeoutKey: string, signal: AbortSignal): Promise<T> {
-  return waitForSettingsTask(operation, signal, timeoutMs, t(timeoutKey))
+  return waitForSettingsTask(operation, signal, timeoutMs, t(timeoutKey)).catch(error => {
+    if (timeoutKey === 'settings.services.keys.configTimeout' && !signal.aborted) throw new ConnectionConfigurationError()
+    throw error
+  })
 }
 const connectionTestTitle = computed(() => {
   if (service.value === services.freeTranslation && connectionTestState.value === 'idle') return connectionTestMessage.value
@@ -845,7 +916,9 @@ const connectionTestTitle = computed(() => {
 })
 
 function resetConnectionTest(): void {
+  clearConnectionDiagnostic()
   freeProviderChecks.value = {}
+  freeProviderRetryAt.clear()
   displayedChromePreparationPair.value = null
   chromeDownloadFraction.value = undefined
   connectionTestState.value = 'idle'
@@ -896,9 +969,10 @@ function formatChromePreparationStatus(status: ChromeTranslationPreparationStatu
 
 function formatChromePreparationError(error: unknown): LocalizedConnectionTestMessage | string {
   if (error instanceof ChromeTranslationPreparationError) {
-    return localizedConnectionTestMessage(CHROME_PREPARATION_ERROR_KEYS[error.code], error.params)
+    const {detail: _privateDetail, ...safeParams} = error.params || {}
+    return localizedConnectionTestMessage(CHROME_PREPARATION_ERROR_KEYS[error.code], safeParams)
   }
-  return error instanceof Error ? error.message : String(error)
+  return describeConnectionFailure(error)
 }
 
 async function runApiKeyCheck(index: number, generation: number, signal: AbortSignal): Promise<boolean> {
@@ -914,15 +988,15 @@ async function runApiKeyCheck(index: number, generation: number, signal: AbortSi
       service: service.value,
       keyIndex: index,
       keyRevision: createApiKeyCheckRevision(config.value, service.value),
-    }), CONNECTION_RESPONSE_WAIT_TIMEOUT_MS, 'settings.services.keys.responseTimeout', signal) as {success?: boolean; durationMs?: number; error?: string} | undefined
+    }), CONNECTION_RESPONSE_WAIT_TIMEOUT_MS, 'settings.services.keys.responseTimeout', signal) as {success?: boolean; durationMs?: number; error?: string; diagnostic?: unknown} | undefined
     if (generation !== connectionTestGeneration) return false
-    if (!response?.success) throw new Error(response?.error || '连接测试失败')
+    if (!response?.success) throw normalizeDiagnostic(response?.diagnostic) || new Error(response?.error || '连接测试失败')
     setApiKeyState(index, {status: 'success', durationMs: response.durationMs})
     updateApiKeySummary()
     return true
   } catch (error) {
     if (generation !== connectionTestGeneration) return false
-    setApiKeyState(index, {status: 'error', error: error instanceof Error ? error.message : String(error)})
+    setApiKeyState(index, {status: 'error', error: describeConnectionFailure(error)})
     updateApiKeySummary()
     return false
   }
@@ -935,6 +1009,7 @@ function stopApiKeyChecks(): void {
   connectionTestBusy.value = false
   connectionTestState.value = 'idle'
   connectionTestMessageState.value = null
+  clearConnectionDiagnostic()
   apiKeyChecks.value = Object.fromEntries(Object.entries(apiKeyChecks.value).map(([index, state]) => [index,
     state.status === 'checking' || state.status === 'queued' ? {status: 'idle' as const} : state]))
   updateApiKeySummary()
@@ -942,7 +1017,8 @@ function stopApiKeyChecks(): void {
 
 async function testSingleApiKey(index: number): Promise<void> {
   // 备用密钥不参与全量检查，但仍可逐个验证。
-  if (!active.value || connectionTestBusy.value || !usableApiKeys.value.includes(index)) return
+  if (!active.value || connectionTestBusy.value || connectionRetryWaiting.value || !usableApiKeys.value.includes(index)) return
+  clearConnectionDiagnostic()
   apiKeyCheckMode.value = 'single'
   const generation = ++connectionTestGeneration
   const controller = new AbortController()
@@ -964,7 +1040,7 @@ async function testSingleApiKey(index: number): Promise<void> {
   } catch (error) {
     if (generation === connectionTestGeneration) {
       connectionTestState.value = 'error'
-      connectionTestMessageState.value = error instanceof Error ? error.message : String(error)
+      connectionTestMessageState.value = describeConnectionFailure(error)
       setApiKeyState(index, {status: 'error', error: connectionTestMessageState.value})
       updateApiKeySummary()
     }
@@ -976,7 +1052,8 @@ async function testSingleApiKey(index: number): Promise<void> {
 }
 
 async function testConnection(): Promise<void> {
-  if (!active.value || connectionTestBusy.value || connectionTestDisabled.value) return
+  if (!active.value || connectionTestBusy.value || connectionTestDisabled.value || connectionRetryWaiting.value) return
+  clearConnectionDiagnostic()
   apiKeyCheckMode.value = 'all'
 
   const testedService = service.value
@@ -1039,7 +1116,15 @@ async function testConnection(): Promise<void> {
         },
       )
     } else if (testedService === services.freeTranslation) {
-      const access = await waitForConnectionStep(readFreePoolAccess(FREE_TRANSLATION_PROVIDERS.map(provider => provider.id)), CONNECTION_RESPONSE_WAIT_TIMEOUT_MS, 'safari.freePool.error', controller.signal)
+      let access: Awaited<ReturnType<typeof readFreePoolAccess>>
+      try {
+        access = await waitForConnectionStep(readFreePoolAccess(FREE_TRANSLATION_PROVIDERS.map(provider => provider.id)), CONNECTION_RESPONSE_WAIT_TIMEOUT_MS, 'safari.freePool.error', controller.signal)
+      } catch {
+        if (!isCurrent()) return
+        connectionTestState.value = 'error'
+        connectionTestMessageState.value = localizedConnectionTestMessage('safari.freePool.error')
+        return
+      }
       if (!isCurrent()) return
       const granted = new Set<string>(access.grantedIds)
       if (!granted.size) {
@@ -1047,17 +1132,40 @@ async function testConnection(): Promise<void> {
         connectionTestMessageState.value = t('safari.freePool.permissionState')
         return
       }
+      const providerDiagnostics = new Map<string, Diagnostic>()
+      const failProvider = (providerId: string, error: unknown, durationMs?: number) => {
+        const diagnostic = normalizeDiagnostic(error) || diagnoseFailure(error, {online: typeof navigator === 'undefined' ? undefined : navigator.onLine})
+        providerDiagnostics.set(providerId, diagnostic)
+        if (diagnostic.retryAfterMs) freeProviderRetryAt.set(providerId, Date.now() + diagnostic.retryAfterMs)
+        return {success: false, ...(durationMs === undefined ? {} : {durationMs}), error: describeConnectionFailure(diagnostic, false)}
+      }
       await checkAllFreeTranslationProviders({
-        check: freeProviderId => !granted.has(freeProviderId) ? Promise.resolve(undefined) : waitForConnectionStep(browser.runtime.sendMessage({
-          type: CONNECTION_TEST_MESSAGE,
-          service: testedService,
-          freeProviderId,
-        }), CONNECTION_RESPONSE_WAIT_TIMEOUT_MS, 'settings.services.keys.responseTimeout', controller.signal),
-        update: (providerId, state) => { if (isCurrent() && granted.has(providerId)) freeProviderChecks.value = {...freeProviderChecks.value, [providerId]: state} },
+        check: async freeProviderId => {
+          if (!granted.has(freeProviderId)) return undefined
+          const remaining = (freeProviderRetryAt.get(freeProviderId) || 0) - Date.now()
+          if (remaining > 0) return failProvider(freeProviderId, {kind: 'rate-limit', retryAfterMs: remaining})
+          freeProviderRetryAt.delete(freeProviderId)
+          try {
+            const response = await waitForConnectionStep(browser.runtime.sendMessage({
+              type: CONNECTION_TEST_MESSAGE,
+              service: testedService,
+              freeProviderId,
+            }), CONNECTION_RESPONSE_WAIT_TIMEOUT_MS, 'settings.services.keys.responseTimeout', controller.signal) as {success?: boolean; durationMs?: number; error?: string; diagnostic?: unknown} | undefined
+            if (!isCurrent()) return undefined
+            return response?.success ? response : failProvider(freeProviderId, normalizeDiagnostic(response?.diagnostic) || response?.error, response?.durationMs)
+          } catch (error) {
+            return isCurrent() ? failProvider(freeProviderId, error) : undefined
+          }
+        },
+        update: (providerId, state) => {if (isCurrent() && granted.has(providerId)) freeProviderChecks.value = {...freeProviderChecks.value, [providerId]: state}},
         isCurrent,
         failureMessage: t('settings.services.keys.failed'),
       })
       if (!isCurrent()) return
+      const enabledProviders = normalizeFreeTranslationOrder(config.value.freeTranslationOrder)
+      // 全目录包含停用服务；只要启用池仍有成功项，就保留逐路结果而不放大成整体故障。
+      if (Object.entries(freeProviderChecks.value).some(([id, state]) => enabledProviders.includes(id) && state.status === 'success')) clearConnectionDiagnostic()
+      else connectionTestDiagnostic.value = enabledProviders.map(id => providerDiagnostics.get(id)).find(Boolean) || connectionTestDiagnostic.value
       connectionTestState.value = Object.values(freeProviderChecks.value).every(check => check.status === 'success') ? 'success' : 'error'
       connectionTestMessageState.value = t('settings.services.keys.summary', {
         passed: Object.values(freeProviderChecks.value).filter(check => check.status === 'success').length,
@@ -1070,6 +1178,10 @@ async function testConnection(): Promise<void> {
       for (const index of checks) {
         if (!isCurrent()) return
         if (await runApiKeyCheck(index, generation, controller.signal)) successes += 1
+        if (connectionRetryWaiting.value) {
+          apiKeyChecks.value = Object.fromEntries(Object.entries(apiKeyChecks.value).map(([row, state]) => [row, state.status === 'queued' ? {status: 'idle' as const} : state]))
+          break
+        }
       }
       if (!isCurrent()) return
       const failures = checks.length - successes
@@ -1082,9 +1194,9 @@ async function testConnection(): Promise<void> {
       const response = await waitForConnectionStep(browser.runtime.sendMessage({
         type: CONNECTION_TEST_MESSAGE,
         service: testedService,
-      }), testWaitMs, 'settings.services.keys.responseTimeout', controller.signal) as {success?: boolean; durationMs?: number; error?: string} | undefined
+      }), testWaitMs, 'settings.services.keys.responseTimeout', controller.signal) as {success?: boolean; durationMs?: number; error?: string; diagnostic?: unknown} | undefined
       if (!isCurrent()) return
-      if (!response?.success) throw new Error(response?.error || '连接测试失败')
+      if (!response?.success) throw normalizeDiagnostic(response?.diagnostic) || new Error(response?.error || '连接测试失败')
       connectionTestState.value = 'success'
       connectionTestMessageState.value = `已完成真实翻译请求${typeof response.durationMs === 'number' ? `（${response.durationMs} ms）` : ''}。`
     }
@@ -1267,9 +1379,10 @@ watch(serviceActionOpen, open => {if (!open) pendingServiceAction.value = null},
 .chrome-preparation-progress { margin-top: 4px; }
 .connection-test-result.is-success { border-color: var(--el-color-success-light-5); color: var(--el-color-success); background: var(--el-color-success-light-9); }
 .connection-test-result.is-error { border-color: var(--el-color-danger-light-5); color: var(--el-color-danger); background: var(--el-color-danger-light-9); }
-.connection-test-details { margin-top: 5px; }
-.connection-test-details code { display: block; margin-top: 7px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.connection-test-details summary { cursor: pointer; }
+.connection-repair-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.connection-repair-button { min-height: 32px; padding: 4px 10px; border: 1px solid currentColor; border-radius: 7px; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+.connection-repair-button:hover:not(:disabled) { background: var(--surface); }
+.connection-repair-button:disabled { opacity: .6; cursor: default; }
 .field-warning, .error-text, .minimax-key-note.is-warning, .mimo-key-note.is-warning { color: var(--el-color-danger); font-size: 12px; line-height: 1.6; margin-top: 7px; }
 .minimax-key-note, .mimo-key-note { margin: 8px 0; }
 .minimax-endpoint code, .mimo-endpoint code { display: block; color: var(--muted); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }

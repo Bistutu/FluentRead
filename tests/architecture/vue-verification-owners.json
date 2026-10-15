@@ -589,7 +589,7 @@
       "tests": [
         "tests/serviceConfigurationLifecycle.test.ts"
       ],
-      "scenario": "真实服务连接配置、授权线路过滤、异步取消及模板事件归属"
+      "scenario": "实际连接检测、授权线路过滤、取消、配置切换、迟到结果、模板事件及安全诊断修复和逐服务重试"
     },
     "src/features/settings/ui/services/ServiceNatureBadge.vue": {
       "kind": "frozen-debt",
@@ -735,6 +735,20 @@
         "tests/implementationAudit49F.test.ts"
       ],
       "scenario": "真实userscript模板事件、受控持久化、authority、失败恢复，以及挂载失败、重入重试和正常卸载时的订阅与观察器释放；不把源码字符串当编辑证明"
+    },
+    "src/features/self-help/ui/DiagnosticNotice.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/selfHelpNotice.test.ts"
+      ],
+      "scenario": "真实诊断动作、限流冷却、报告预览与明确导出、失败重试及卸载资源清理"
+    },
+    "src/features/settings/ui/services/ServiceRepairReturn.vue": {
+      "kind": "behavior",
+      "tests": [
+        "tests/serviceRepairReturn.test.ts"
+      ],
+      "scenario": "合法来源标签页明确返回、关闭和切换后迟到操作拒绝"
     },
     "src/features/vocabulary/ui/MaterialWorkspace.vue": {
       "kind": "behavior",

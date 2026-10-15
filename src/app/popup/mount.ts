@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/mount.ts
  * 文件职责：在轻量启动入口唤醒后台后，读取配置并创建 Popup Vue 应用。
- * 主要内容：配置就绪后选择首启轻量根组件或完整主菜单；异步资源完成后复核最新引导、语言及字体，只准备变化的资源，页面退出后停止挂载；Firefox Android 通过公开平台 API 为首启与主菜单共用固定容器宽度模式，查询不阻塞挂载，退出、失败和卸载仅清理自身标记。
+ * 主要内容：配置 Promise 结束及异步资源完成后复验安全水合状态，按最新引导、语言及字体选择首启或主菜单，只准备变化的资源；Firefox Android 通过公开平台 API 为两种根组件共用容器宽度模式，查询不阻塞挂载，页面退出、启动失败和卸载仅清理自身标记。
  * 模块边界：这里不读取当前标签页、不保存配置，也不处理 Popup 业务事件；所有响应式交互在 PopupApp 中，feature 与 runtime 行为通过公开模块完成。
  */
 import {createApp, type Component} from 'vue';
@@ -9,7 +9,7 @@ import {Coffee} from '@element-plus/icons-vue';
 import browser from 'webextension-polyfill';
 import {browserCapabilities} from '@/src/platform/browser/capabilities';
 import {createUiI18nPlugin} from '@/src/ui/i18n'
-import {config, configReady} from '@/src/services/config/store'
+import {config, configReady, getConfigHydrationStatus} from '@/src/services/config/store'
 import {ensureUiLanguageBundle} from '@/src/platform/i18n/uiLanguageBundles'
 import {prepareInterfaceFont} from '@/src/ui/interfaceAppearance'
 
@@ -46,6 +46,7 @@ export async function mountPreparedPopupApp(selector: string): Promise<void> {
   try {
     await configReady;
     if (exited) return;
+    if (getConfigHydrationStatus() !== 'ready') throw new Error('Popup configuration is not ready');
     let preparedLanguage: typeof config.uiLanguage | undefined;
     let preparedFont: typeof config.interfaceFont | undefined;
     let onboarding: boolean;
@@ -59,6 +60,7 @@ export async function mountPreparedPopupApp(selector: string): Promise<void> {
         font === preparedFont ? undefined : prepareInterfaceFont(font),
       ]);
       if (exited) return;
+      if (getConfigHydrationStatus() !== 'ready') throw new Error('Popup configuration is not ready');
       App = root.default;
       if (!onboarding) preparedLanguage = language;
       preparedFont = font;

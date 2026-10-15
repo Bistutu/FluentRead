@@ -9,7 +9,7 @@ export {
     handleTranslation,
     autoTranslateEnglishPage,
     invalidateFullPageTranslationSessionCache,
-    isFullPageTranslationActive, getTranslationToolbarStatus, readFullPageUnchangedCompletion,
+    isFullPageTranslationActive, getTranslationToolbarStatus, getFullPageTranslationDiagnostic, getFullPageTranslationDocumentToken, readFullPageUnchangedCompletion,
     getFullPageTranslationFrameState,
     noteBilingualHostGesture,
     resetFullPageTranslationRouteState,
