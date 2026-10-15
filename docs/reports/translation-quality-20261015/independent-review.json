@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "id": "translation-quality-independent-agent-review-20261015",
+  "date": "2026-10-15",
+  "reviewer": {
+    "kind": "agent",
+    "name": "Codex report_ui subagent",
+    "humanQualityReview": false,
+    "independence": "生产分段修复由主代理编写，本子代理只读审查；transport工具由本子代理实现及专项验证，工具验证不是独立代码审查。"
+  },
+  "evidenceOrigin": "依据本子代理此前实际工具执行输出补记；本次只保存证据，未重跑或扩展测试。边界检验此前通过Node stdin执行，未单独保存脚本或日志文件。",
+  "worktree": "/Users/thinkstu/Desktop/copy/FluentRead-translation-quality-lab-20261015",
+  "sourceIdentity": {
+    "executionSourceHashCaptured": false,
+    "note": "执行当时未单独捕获源文件哈希。下列哈希是证据整理时的当前文件快照，不冒充执行时快照。freeTextChunks.ts已再次只读核对；free-chinese-web.ts后续新增有道响应方向校验，不属于当时的分段默认值审查结论。",
+    "sha256AtEvidenceWrite": {
+      "src/providers/translation/freeTextChunks.ts": "052be9054ae8df1d8ac7ab5adb9a2fc0a748751621647b5f1fe2819f99bed00c",
+      "src/providers/translation/free-chinese-web.ts": "7f973c66e778d234da3c6c0c65117b1db389cb03ce96aed4e028b28c48d0c9e8",
+      "tests/freeTextChunks.test.ts": "0a5013671070760f2fd97eb8766972c4cdea46098fdeaff61e577de8bbd1169f",
+      "scripts/quality/transport.mjs": "066b19c75db3e0beba25ba8f7313268786c9b752b8abf387935c07da72ea20b8",
+      "scripts/quality/transport.d.mts": "d177d94e7bb9096da5d0ff1d96a7338ea5d9a7e176be1816d2b3f615e5257545",
+      "tests/translationQualityTransport.test.ts": "146c89a41e7f79a87116ab6e48b94d80204edb61a3f9cbdb3cfdbe1461db2150"
+    }
+  },
+  "productionReview": {
+    "scope": [
+      "src/providers/translation/freeTextChunks.ts 的句末/词界优先算法及共享translateFreeTextChunks默认words=true",
+      "src/providers/translation/free-chinese-web.ts 中共享分块调用去除provider条件这一改动",
+      "tests/freeTextChunks.test.ts 的对应边界、FRTERM、UTF-16、取消与失败回归",
+      "读取free-web、free-official-web、free-extra-web、bilibili-free和deeplx的共享调用点以判断默认值影响"
+    ],
+    "conclusion": "在上述审查范围未确认P1/P2问题；这一结论不是全部生产代码或翻译语义质量通过。",
+    "observations": [
+      "先计算码点或UTF-16硬预算，再选择不大于预算的语义边界；随后遇FRTERM标记回退到标记前。",
+      "完整ASCII FRTERM标记超预算会在yield前拒绝；标记跨度扫描及单调推进机制仍保留。",
+      "新增候选边界只读取前32个和后16个码点的有限窗口，未增加对整段反复执行的无界正则；没有做CPU/内存基准，也未据此宣称复杂度形式化证明。",
+      "默认words=true扩展到此前按固定切点的匿名网页/B站/词霸等调用；有道原本启用词界，DeepL原本显式true并使用UTF-16预算和splitLines:false。",
+      "请求前/响应后的取消检查、逐行处理与边缘空白拼接位置保持不变；该边界检验不发送网络请求。"
+    ],
+    "laterChangeOutsideReview": "有道fanyi.type反向翻译拒绝逻辑是在本次分段审查之后加入；此JSON不将它计为已独立审查。"
+  },
+  "boundaryCheck": {
+    "kind": "deterministic-agent-authored-generated-boundary-check",
+    "seed": 1987,
+    "generator": "32位LCG: seed=(Math.imul(seed,1664525)+1013904223)>>>0; value=seed%n",
+    "executionHandle": {
+      "sessionId": 30601,
+      "resultChunkId": "f20271",
+      "exitCode": 0
+    },
+    "command": "node scripts/testing/run-resource-safe.mjs --max-workers 1 -- node <<'NODE'\nconst fs=require('node:fs'),ts=require('typescript'),exportsObject={};\nconst source=fs.readFileSync('src/providers/translation/freeTextChunks.ts','utf8');\nnew Function('require','exports',ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText)(()=>({abortErrorFromSignal:signal=>signal.reason}),exportsObject);\nconst marker='__FRTERM_0123456789ab_0__',tokens=['one ','Dr. ','A. ','12 ms ','3.5\\u00a0kg ','。','！','」','😀',marker,'x'.repeat(31),'\\r\\n','\\t',' word'];\nlet seed=1987;const random=n=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)%n),counts={codepoint:0,utf16:0};\nfor(let iteration=0;iteration<5000;iteration++){\n const text=Array.from({length:1+random(40)},()=>tokens[random(tokens.length)]).join(''),utf16=iteration%2===1,limit=marker.length+random(70),chunks=[];\n const generator=exportsObject.splitFreeTextChunks(text,limit,true,utf16);\n for(let step=0;step<=text.length+1;step++){\n  const next=generator.next();if(next.done)break;\n  if(!next.value)throw Error('empty chunk/no progress');\n  if((utf16?next.value.length:[...next.value].length)>limit)throw Error('budget');\n  if(/[\\uD800-\\uDBFF]$/.test(next.value)||/^[\\uDC00-\\uDFFF]/.test(next.value))throw Error('surrogate');\n  chunks.push(next.value);\n }\n if(chunks.join('')!==text)throw Error('loss or nontermination');\n if(chunks.reduce((n,c)=>n+[...c.matchAll(/__FRTERM_0123456789ab_0__/g)].length,0)!==[...text.matchAll(/__FRTERM_0123456789ab_0__/g)].length)throw Error('marker');\n counts[utf16?'utf16':'codepoint']++;\n}\nconsole.log(JSON.stringify({status:'passed',cases:counts,invariants:['non-empty progress','bounded codepoint/UTF16','source equality','intact marker count','surrogate integrity']}));\nNODE",
+    "caseCount": 5000,
+    "caseModes": {
+      "codepoint": 2500,
+      "utf16": 2500
+    },
+    "scope": {
+      "words": true,
+      "modeSelection": "iteration % 2 === 1 为UTF-16；其余为码点",
+      "tokenCount": "1+random(40)",
+      "limit": "marker.length+random(70)",
+      "tokens": [
+        "one ",
+        "Dr. ",
+        "A. ",
+        "12 ms ",
+        "3.5 kg ",
+        "。",
+        "！",
+        "」",
+        "😀",
+        "__FRTERM_0123456789ab_0__",
+        "x repeated 31 times",
+        "\r\n",
+        "\t",
+        " word"
+      ],
+      "moduleExecution": "读取实际TypeScript分块模块，经typescript.transpileModule转为CommonJS；仅替换未被该生成器调用的abortErrorFromSignal导入，直接调用splitFreeTextChunks。"
+    },
+    "assertions": [
+      "每次yield非空且在有界步数内完成",
+      "每块不超过选定码点或UTF-16预算",
+      "所有块拼接严格等于输入",
+      "完整FRTERM标记计数与输入一致",
+      "块首不为低代理、块尾不为高代理"
+    ],
+    "stdout": "{\"status\":\"passed\",\"cases\":{\"codepoint\":2500,\"utf16\":2500},\"invariants\":[\"non-empty progress\",\"bounded codepoint/UTF16\",\"source equality\",\"intact marker count\",\"surrogate integrity\"]}",
+    "result": "passed",
+    "countingNote": "仅计最终显式区分两种预算的5000轮；此前探索性运行没有叠加进此数字。5000轮不是5000条人工确认的语义质量样本。"
+  },
+  "transportVerification": {
+    "kind": "agent-implemented-tool-targeted-tests",
+    "command": "node scripts/testing/run-resource-safe.mjs --max-workers 1 -- node node_modules/vitest/vitest.mjs run tests/translationQualityTransport.test.ts",
+    "testFile": "tests/translationQualityTransport.test.ts",
+    "executionHandle": {
+      "sessionId": 24017,
+      "resultChunkId": "92158c",
+      "exitCode": 0
+    },
+    "result": "passed",
+    "testFiles": {
+      "passed": 1,
+      "total": 1
+    },
+    "tests": {
+      "passed": 10,
+      "total": 10
+    },
+    "durationMsReportedByVitest": 261,
+    "stdout": "RUN v2.1.9\n✓ tests/translationQualityTransport.test.ts (10 tests) 28ms\nTest Files 1 passed (1)\nTests 10 passed (10)\nStart at 14:16:58\nDuration 261ms (transform 56ms, setup 0ms, collect 35ms, tests 28ms, environment 0ms, prepare 39ms)",
+    "scope": [
+      "真实Node Response/ReadableStream，fetch mock，无外部网络",
+      "透明input/init与响应状态/头/url/redirected/type保留",
+      "按实际pull计量、无clone/tee、SSE消费者取消直达原reader",
+      "无正文、响应头前失败、头后断连、未完成正文",
+      "评测deadline、供应商局部AbortController、Request继承信号、signal:null解除继承",
+      "aborted与abortSource区分evaluation/request，consumerCancelled独立记录",
+      "Retry-After秒/日期/零/过去日期及非法超范围值",
+      "已知请求正文的字节计量；FormData和无法透明检查的请求流为null"
+    ]
+  },
+  "riskBoundaries": [
+    "不构成人工金标准、人工语义复核或用户验收。",
+    "分段是有界启发式；不保证跨块指代、完整语言学分句或所有语言的字素簇完整。",
+    "U.S.等缩写避免误当句末，但仍可能成为普通词界；保护策略不覆盖所有实体/缩写/数字单位。",
+    "有限固定种子样本不能证明所有输入；边界检验没有调用任何真实翻译服务。",
+    "默认词界可能改变请求数量和时延；本记录没有覆盖长期服务稳定性或端到端供应商质量。",
+    "transport专项验证Node响应流，不等于浏览器broker、Firefox、Safari、移动真机或用户验收。",
+    "旧在线事件没有aborted/abortSource字段时，不能从status:null和networkError:false推断局部超时；旧记录的审计修正由主任务单独处理。"
+  ]
+}

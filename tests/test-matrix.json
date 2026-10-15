@@ -126,7 +126,6 @@
       "tests/sectionTranslationRuntime.test.ts",
       "tests/hotkey.test.ts",
       "tests/i18n.test.ts",
-      "tests/i18nMaterials.test.ts",
       "tests/contentHotkeyRuntime.test.ts",
       "tests/inputTranslationContentFeature.test.ts",
       "tests/mainWorldBridgeLifecycle.test.ts",
@@ -448,12 +447,13 @@
       "tests/readingEvidence.test.ts",
       "tests/videoSentenceTimeline.test.ts",
       "tests/vocabularyVideoSource.test.ts",
+      "tests/i18nMaterials.test.ts",
+      "tests/materialSource.test.ts",
+      "tests/materialClient.test.ts",
       "tests/chatgptPlanConfig.test.ts",
       "tests/modelEditing.test.ts",
       "tests/documentTasks.test.ts",
-      "tests/compiledVueFixture.test.ts",
-      "tests/materialSource.test.ts",
-      "tests/materialClient.test.ts"
+      "tests/compiledVueFixture.test.ts"
     ],
     "functional": [
       "tests/videoAiRequestSession.test.ts",
@@ -520,6 +520,7 @@
       "tests/tongyi.test.ts",
       "tests/videoSubtitle.test.ts",
       "tests/vocabularyBook.test.ts",
+      "tests/materialRepository.test.ts",
       "tests/vocabularyBookComponent.test.ts",
       "tests/zhipuCredentials.test.ts",
       "tests/qqMailFrameRuntime.test.ts",
@@ -693,7 +694,9 @@
       "tests/documentWorkflows.test.ts",
       "tests/workerMessageContracts.test.ts",
       "tests/localTranslationWorker.test.ts",
-      "tests/materialRepository.test.ts"
+      "tests/translationQualityEvaluation.test.ts",
+      "tests/translationQualityReport.test.ts",
+      "tests/translationQualityTransport.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",
@@ -731,6 +734,7 @@
       "tests/userscriptCredentialPersistence.test.ts",
       "tests/userscriptDexieIsolation.test.ts",
       "tests/vocabularyBookComponentLifecycle.test.ts",
+      "tests/materialWorkspaceLifecycle.test.ts",
       "tests/vocabularyStudyLifecycle.test.ts",
       "tests/videoSentenceLearningComponent.test.ts",
       "tests/allNodesTranslationCore.test.ts",
@@ -739,8 +743,7 @@
       "tests/vocabularyReencounterPanelLifecycle.test.ts",
       "tests/fullPageAttributeBoundary.test.ts",
       "tests/hnFirstTargetReadiness.test.ts",
-      "tests/targetLanguageAdversarial.test.ts",
-      "tests/materialWorkspaceLifecycle.test.ts"
+      "tests/targetLanguageAdversarial.test.ts"
     ]
   }
 }

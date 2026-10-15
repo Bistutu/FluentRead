@@ -1,7 +1,7 @@
 /**
  * @file tests/freeTextChunks.test.ts
  * 文件职责：验证免费翻译分块不会损坏文档术语标记或 Unicode 正文。
- * 主要内容：回放真实长数学段的 60 个保护标记（52 次变量与 8 次集合运算符），检查精确匹配身份、长度预算、边缘切点、无丢重、严格恢复、普通文本兼容和大输入推进。
+ * 主要内容：回放真实长数学段的 60 个保护标记，检查精确匹配身份、长度预算、严格恢复和大输入推进；对照短语、缩写、引号句末、数字单位、换行与取消的实际请求边界。
  * 模块边界：离线纯文本测试，不把模拟回显当作实际翻译服务证据。
  */
 import {describe, expect, it, vi} from 'vitest';
@@ -83,6 +83,56 @@ describe('bounded free translation chunks', () => {
         expect([...splitFreeTextChunks(word, 500, true)][0]).toBe('a'.repeat(490) + ' ');
         expect([...splitFreeTextChunks('x'.repeat(501), 500, true)]).toEqual(['x'.repeat(500), 'x']);
         expect([...splitFreeTextChunks('  short ', 500, true)]).toEqual(['  short ']);
+    });
+
+    it.each([
+        ['The control group remained stable. Ask Dr. Smith to check the final measurements.', 60, 'The control group remained stable. '],
+        ['The operator said, "Do not restart." Leave the controller disabled until Friday.', 58, 'The operator said, "Do not restart." '],
+        ['务必保留对照组的完整记录。「不要重启！」保持控制器关闭，直到工程师确认。', 24, '务必保留对照组的完整记录。「不要重启！」'],
+    ])('keeps title and quoted-sentence context in bounded requests: %s', (source, limit, first) => {
+        const chunks = [...splitFreeTextChunks(source, limit, true)];
+        expect(chunks[0]).toBe(first);
+        expect(chunks.join('')).toBe(source);
+        expect(chunks.every(chunk => [...chunk].length <= limit)).toBe(true);
+    });
+
+    it.each(['3.5 kg', '25 °C', '12 ms', '16 MiB', '9.8 m/s²', '20 %', '3.5\u00a0kg', '3.5\u202fkg'])('keeps the quantity %s with its unit when both fit one request', quantity => {
+        const prefix = 'Keep the output steady and do not exceed ';
+        const source = `${prefix}${quantity} while the alarm is active.`;
+        const chunks = [...splitFreeTextChunks(source, prefix.length + quantity.search(/\s/u) + 2, true)];
+        expect(chunks[0]).toBe(prefix);
+        expect(chunks.some(chunk => chunk.includes(quantity))).toBe(true);
+        expect(chunks.join('')).toBe(source);
+    });
+
+    it('uses an earlier safe word boundary instead of splitting a word that fits the budget', () => {
+        expect([...splitFreeTextChunks('Use electroencephalography before treatment.', 25, true)])
+            .toEqual(['Use ', 'electroencephalography ', 'before treatment.']);
+        expect([...splitFreeTextChunks('Ask J. Smith to repeat the measurements.', 8, true)])
+            .toEqual(['Ask ', 'J. Smith', ' to ', 'repeat ', 'the ', 'measurem', 'ents.']);
+        // 超过上限的单词仍须推进；不能为了词界产生空请求或越过供应商预算。
+        expect([...splitFreeTextChunks('x'.repeat(51), 25, true)])
+            .toEqual(['x'.repeat(25), 'x'.repeat(25), 'x']);
+    });
+
+    it('defaults every shared transport to word boundaries and keeps decimals intact', async () => {
+        const translate = vi.fn(async (text: string) => text);
+        const source = 'Keep reading 12.375 volts until the system is stopped.';
+        await expect(translateFreeTextChunks(source, 18, translate)).resolves.toBe(source);
+        expect(translate.mock.calls.map(([text]) => text)).toEqual(['Keep reading', '12.375 volts', 'until the system', 'is stopped.']);
+        translate.mockClear();
+        await expect(translateFreeTextChunks('electroencephalography', 18, translate, undefined, false)).resolves.toBe('electroencephalography');
+        expect(translate.mock.calls.map(([text]) => text)).toEqual(['electroencephalogr', 'aphy']);
+    });
+
+    it('preserves mixed-language lines and request context with terms, quotes and full-paragraph opt-in', async () => {
+        const source = `  Keep ${marker} at 3.5 kg.\r\n他说：「不要重启！」\n\n`;
+        const translate = vi.fn(async (text: string) => text);
+        await expect(translateFreeTextChunks(source, 60, translate)).resolves.toBe(source);
+        expect(translate.mock.calls.map(([text]) => text)).toEqual([`Keep ${marker} at 3.5 kg.`, '他说：「不要重启！」']);
+        translate.mockClear();
+        await expect(translateFreeTextChunks(source, 100, translate, undefined, true, {splitLines: false})).resolves.toBe(source);
+        expect(translate.mock.calls.map(([text]) => text)).toEqual([source.trim()]);
     });
 
     it('advances through a large mixed input with intact markers and no loss or duplication', () => {
