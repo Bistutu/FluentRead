@@ -1,14 +1,16 @@
 /**
  * @file src/features/vocabulary/materialContent.ts
  * 文件职责：在获准网页恢复本地材料的原段落或视频时间，并维护主动打开材料的阅读位置。
- * 主要内容：仅本地标识进入地址，后台核对来源后读取定位；动态内容有界等待，歧义和失效位置提供明确提示，关闭及卸载撤销迟到响应、监听与计时器。
- * 模块边界：不读取其他来源材料，不扫描或保存整页正文，不自动收藏新材料；文档恢复由文档页通过公共定位合同接入。
+ * 主要内容：仅本地标识进入地址，后台核对来源后读取定位；动态内容有界等待，按当前界面语言提示歧义和失效位置，关闭及卸载撤销迟到响应、监听与计时器。
+ * 模块边界：使用配置公开服务与框架无关的界面翻译函数，不读取其他来源材料，不扫描或保存整页正文，不自动收藏新材料；文档恢复由文档页通过公共定位合同接入。
  */
 import {materialCapture, materialGeneration, materialResolve} from './materialClient';
 import type {MaterialLocator, MaterialRecord} from './materialProtocol';
 import {canonicalMaterialUrl, normalizeMaterialSource} from './materialModel';
 import {MATERIAL_RESUME_PARAMETER} from './materialSource';
 import {getVideoLearningSource} from '@/src/features/video-subtitle/content/public';
+import {config} from '@/src/services/config/store';
+import {translateLegacyText} from '@/src/core/i18n';
 
 const PROSE = 'p,li,blockquote,dd,dt,figcaption,h1,h2,h3,h4,h5,h6';
 const EXCLUDED = '[data-fluent-read-ui],.fluent-read-bilingual-content,input,textarea,select,nav,aside,[contenteditable]:not([contenteditable="false"]),[hidden],[aria-hidden="true"]';
@@ -72,8 +74,8 @@ export function mountMaterialContent(doc: Document, signal: AbortSignal, enabled
         notice = doc.createElement('div');
         notice.setAttribute('data-fluent-read-ui', 'material-resume'); notice.setAttribute('role', 'status');
         notice.style.cssText = 'position:fixed;bottom:20px;left:20px;right:20px;max-width:520px;z-index:2147483647;padding:12px 16px;border:1px solid #9ca3af;border-radius:12px;background:Canvas;color:CanvasText;box-shadow:0 4px 24px #0002;font:14px/1.5 system-ui;display:flex;gap:12px;align-items:center';
-        const text = doc.createElement('span'); text.textContent = message;
-        const close = doc.createElement('button'); close.type = 'button'; close.textContent = '关闭'; close.style.cssText = 'background:transparent;color:inherit;border:1px solid currentColor;border-radius:6px;padding:4px 8px;white-space:nowrap';
+        const text = doc.createElement('span'); text.textContent = translateLegacyText(message, config.uiLanguage);
+        const close = doc.createElement('button'); close.type = 'button'; close.textContent = translateLegacyText('关闭', config.uiLanguage); close.style.cssText = 'background:transparent;color:inherit;border:1px solid currentColor;border-radius:6px;padding:4px 8px;white-space:nowrap';
         close.addEventListener('click', () => {notice?.remove(); notice = undefined;}, {once: true});
         notice.append(text, close); doc.body.append(notice);
     };

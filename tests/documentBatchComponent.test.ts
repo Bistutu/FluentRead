@@ -22,6 +22,10 @@ import {createDocumentExportWorkflow} from '@/src/features/document-translation/
 import {generateDocumentArchive} from '@/src/features/document-translation/services/archive';
 import {createDocumentHistoryCommitter} from '@/src/features/document-translation/services/historyCommitter';
 import {TranslationRequestError, serializeTranslationError} from '@/src/services/translation/errors';
+import * as materialPorts from '@/src/features/vocabulary/material/public';
+
+const materialTransport = vi.hoisted(() => ({sendMessage: vi.fn()}));
+vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: materialTransport.sendMessage}, extension: {inIncognitoContext: false}}}));
 
 // 编译真实页面 setup，注入可控解析/翻译边界；可见控件与下载文件另由真实浏览器套件验证。
 const require = createRequire(import.meta.url);
@@ -46,6 +50,7 @@ const deferred = <T,>() => {
 
 beforeEach(async () => {
   unload = [];
+  materialTransport.sendMessage.mockReset().mockImplementation(async (message: any) => ({success: true, data: message.action === 'generation' ? 0 : message.action === 'capture' ? {id: 'document-material', source: message.input.source, locator: message.input.locator} : null}));
   vi.stubGlobal('window', {matchMedia: () => ({matches: false}), removeEventListener: () => {}, setTimeout,
     document: {createElement: () => ({click: vi.fn()})}});
   parseFile = vi.fn(async (input: File) => documentCore.parseDocument(input.name, await input.text()));
@@ -57,7 +62,7 @@ beforeEach(async () => {
   download = vi.fn(async (document, translations, mode) => ({data: documentCore.renderDocument(document, translations, mode),
     fileName: documentCore.createDocumentDownloadName(document.fileName, mode), mimeType: 'text/plain'}));
   persist = vi.fn().mockResolvedValue(undefined);
-  const api = {...catalog, ...compositeTranslation, ...documentCore, ...presentation, ...preview, ...richPreviewSync, ...pdfOcr, ...documentTasks, useConfigEditor, createPdfPageRecognizer: () => async () => [], hasDistinctTranslation, Config, TranslationRequestError, serializeTranslationError, createDocumentImportWorkflow, createDocumentRecognitionWorkflow, createDocumentExportWorkflow,
+  const api = {...materialPorts, ...catalog, ...compositeTranslation, ...documentCore, ...presentation, ...preview, ...richPreviewSync, ...pdfOcr, ...documentTasks, useConfigEditor, createPdfPageRecognizer: () => async () => [], hasDistinctTranslation, Config, TranslationRequestError, serializeTranslationError, createDocumentImportWorkflow, createDocumentRecognitionWorkflow, createDocumentExportWorkflow,
     documentRetryBackoff: {maxWaitMs: 0}, createDocumentHistoryCommitter,
     createDocumentHistory: () => ({list: async () => [], load: async () => null, save: async () => false, remove: async () => {}, clear: async () => {}}), documentHistoryId: async () => '',
     parseDocumentFile: parseFile, translateDocumentSegments: translate, createDocumentDownload: download, generateDocumentArchive,
@@ -71,9 +76,9 @@ beforeEach(async () => {
   const exports: Record<string, any> = {};
   new Function('require', 'exports', compiled)((id: string) => {
     if (id === 'vue') return {...vue, onMounted: () => {}, onUnmounted: (fn: () => void) => unload.push(fn)};
-    if (id === '@/src/app/document-translation' || id === '@/src/core/translation/result') return api;
+    if (id === './index' || id === '@/src/app/document-translation' || id === '@/src/core/translation/result') return api;
     if (id === './downloadCopy') return downloadCopy;
-    if (id === 'webextension-polyfill') return {runtime: {sendMessage: vi.fn()}};
+    if (id === 'webextension-polyfill') return {runtime: {sendMessage: materialTransport.sendMessage}, extension: {inIncognitoContext: false}};
     if (id.startsWith('element-plus') || id.endsWith('.css') || id.endsWith('.vue')) return {};
     return require(id);
   }, exports);
@@ -89,6 +94,21 @@ afterEach(() => {
 });
 
 describe('document batch page lifecycle', () => {
+  it('saves a material only after a document has a persisted file identity through the public material port', async () => {
+    await state.loadFiles([file('material.txt', 'An original paragraph stays with its document.')]);
+    await state.saveDocumentMaterial();
+    expect(materialTransport.sendMessage).not.toHaveBeenCalled();
+    state.documentQueue[0].historyId = 'fixture-content-fingerprint';
+    await state.saveDocumentMaterial();
+    expect(materialTransport.sendMessage).toHaveBeenCalledWith({type: 'fluentReadMaterials', action: 'generation'});
+    expect(materialTransport.sendMessage).toHaveBeenLastCalledWith(expect.objectContaining({type: 'fluentReadMaterials', action: 'capture', input: expect.objectContaining({
+      source: {kind: 'document', fingerprint: 'fixture-content-fingerprint', title: 'material.txt'},
+      locator: expect.objectContaining({kind: 'document', fingerprint: 'fixture-content-fingerprint', page: 1, quote: 'An original paragraph stays with its document.'}), generation: 0,
+    })}));
+    expect(state.documentMaterialId).toBe('document-material');
+    expect(translate).not.toHaveBeenCalled();
+  });
+
   it('reports a fatal failure immediately while still accepting successful results already requested', async () => {
     await state.loadFiles([file('partial.txt', 'First.\n\nSecond.')]);
     const pending = deferred<void>();

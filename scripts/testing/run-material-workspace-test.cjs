@@ -2,7 +2,7 @@
 /**
  * @file scripts/testing/run-material-workspace-test.cjs
  * 文件职责：使用生产扩展和第二屏隔离 Edge 验收材料工作区与真实来源恢复。
- * 主要内容：真实后台采集、主题与笔记、归档恢复、显式私密备份、文章定位、视频时间与本地 PDF、DOCX、EPUB 续读，保存宽窄屏/深色截图和失败证据。
+ * 主要内容：真实后台采集、主题与笔记、归档恢复、显式私密备份、文章定位、视频时间与本地 PDF、DOCX、EPUB 续读，保存宽窄屏/深色截图和失败证据，并专项检查英文界面与用户原文隔离。
  * 模块边界：本地 fixture 不调用翻译供应商；只使用本次 profile、生成 PDF/视频和自有临时文件，不操作用户日常浏览器。
  */
 'use strict';
@@ -12,11 +12,12 @@ const {execFileSync}=require('node:child_process');
 const {guardBrowserClose}=require('./owned-browser-close.cjs');
 const args=Object.fromEntries(process.argv.slice(2).reduce((pairs,value,index,all)=>{if(value.startsWith('--'))pairs.push([value.slice(2),all[index+1]]);return pairs;},[]));
 for(const key of ['extension-dir','playwright-root','artifacts-dir']) assert(args[key],`Missing --${key}`);
+assert(['documents-only','sources-only','localization-only'].filter(key=>args[key]).length<=1,'Choose at most one focused scope');
 const extensionDir=path.resolve(args['extension-dir']),artifacts=path.resolve(args['artifacts-dir']);fs.mkdirSync(artifacts,{recursive:true});
 const {chromium}=createRequire(path.join(args['playwright-root'],'material-test.cjs'))('playwright');
 const helper=require(args['focus-safe-helper']||'./focus-safe-browser.cjs');
 const profileDir=fs.mkdtempSync(path.join(os.tmpdir(),'fluentread-material-ui-'));
-const report={ok:false,extensionDir,artifactType:'production',consoleScope:'page console errors and unhandled page errors; background operations verified by actual responses',cases:[],screenshots:[],consoleErrors:[],limitations:['Controlled local HTTP, MP4, PDF, DOCX and EPUB fixtures; no live provider, live YouTube/X, Firefox runtime, Safari or physical mobile acceptance.','Learning question fixture is written directly to its authoritative session store; this validates retrieval and preservation, not live model generation.','Private-window eligibility is covered by deterministic client and sender tests, not an incognito browser session.']};
+const report={ok:false,extensionDir,artifactType:'production',scope:args['documents-only']?'documents':args['sources-only']?'sources':'materials-full',consoleScope:'page console errors and unhandled page errors; background operations verified by actual responses',cases:[],screenshots:[],consoleErrors:[],limitations:['Controlled local HTTP, MP4, PDF, DOCX and EPUB fixtures; no live provider, live YouTube/X, Firefox runtime, Safari or physical mobile acceptance.','Learning question fixture is written directly to its authoritative session store; this validates retrieval and preservation, not live model generation.','Private-window eligibility is covered by deterministic client and sender tests, not an incognito browser session.']};
 const save=()=>fs.writeFileSync(path.join(artifacts,'report.json'),JSON.stringify(report,null,2));
 const clip=path.join(artifacts,'learning-video.mp4');
 execFileSync(args['ffmpeg-path']||'ffmpeg',['-hide_banner','-loglevel','error','-y','-f','lavfi','-i','color=c=0x173c54:s=320x180:r=1:d=12','-an','-c:v','libx264','-pix_fmt','yuv420p',clip]);
@@ -40,8 +41,33 @@ const fixture=http.createServer((request,response)=>{
   const message=async request=>{const result=await page.evaluate(request=>chrome.runtime.sendMessage({type:'fluentReadMaterials',...request}),request);assert.equal(result.success,true,JSON.stringify(result));return result.data;};
   const waitRecord=async(id,predicate)=>{const deadline=Date.now()+15000;let record;do{record=await message({action:'get',id});if(predicate(record))return record;await page.waitForTimeout(100);}while(Date.now()<deadline);throw new Error('Material condition did not persist: '+JSON.stringify(record));};
   const shot=async(name,target=page)=>{if(['document-resumed-page-2','document-reselected-original'].includes(name))await target.locator('.pdf-page-row[data-page-number="2"][data-render-state="ready"] canvas').first().waitFor({timeout:30000});const file=path.join(artifacts,`${name}.png`);await target.screenshot({path:file,fullPage:false});report.screenshots.push(file);};
-  await shot('materials-empty');
-  if (!args['documents-only']) {
+  if (!args['localization-only']) await shot('materials-empty');
+  if (args['localization-only']) {
+    report.scope='materials-localization';
+    await patch({uiLanguage:'en-US'});await page.reload();
+    await page.getByRole('heading',{name:'Start with a passage worth keeping',exact:true}).waitFor();await shot('materials-empty-en');
+    const article=await message({action:'capture',input:{source:{kind:'article',url:`${endpoint}/article?id=localization`,title:'阅读材料'},locator:{kind:'text',quote:'材料已整理。'},reference:{kind:'note',id:'localization-note',note:'全部材料已清空。'}}});
+    await page.reload();await page.locator(`[data-material-id="${article.id}"]`).click();
+    await page.getByRole('heading',{name:'阅读材料',exact:true}).waitFor();await page.getByText('全部材料已清空。',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Organize material',exact:true}).waitFor();await page.getByLabel('Add your thoughts on this material').waitFor();
+    await page.locator('.fr-material-quote footer').getByText('Last read passage',{exact:true}).waitFor();
+    assert.equal(await page.locator('.fr-material-quote [data-i18n-ignore]').innerText(),'材料已整理。');
+    const interfaceText=await page.locator('.fr-materials').evaluate(root=>{const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const texts=[];while(walker.nextNode()){const node=walker.currentNode;if(!node.parentElement?.closest('[data-i18n-ignore]'))texts.push(node.textContent);}return texts.join(' ');});assert(!/[\u3400-\u9fff]/u.test(interfaceText),interfaceText);
+    await shot('material-detail-en');report.cases.push('english-ui-and-original-user-text');
+    await page.setViewportSize({width:390,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await shot('material-detail-en-390');report.cases.push('english-material-390-layout');
+    const href=await page.getByRole('link',{name:'Continue reading',exact:true}).getAttribute('href');const source=await open(href);
+    const notice=source.getByRole('status').filter({hasText:'The paragraph changed or cannot be uniquely located.'});await notice.waitFor({timeout:15000});assert(!/[\u3400-\u9fff]/u.test(await notice.innerText()));
+    await shot('article-recovery-notice-en',source);await notice.getByRole('button',{name:'Close',exact:true}).click();assert.equal(await notice.count(),0);report.cases.push('english-native-content-notice-and-close');
+    const {PDFDocument}=createRequire(path.join(process.cwd(),'package.json'))('pdf-lib');const pdf=await PDFDocument.create();pdf.addPage().drawText('Localized material action fixture.');
+    const documentPage=await open(`${origin}/document.html`);await documentPage.locator('input[type=file]').first().setInputFiles({name:'localized-material.pdf',mimeType:'application/pdf',buffer:Buffer.from(await pdf.save())});
+    await documentPage.getByRole('button',{name:'Save to materials',exact:true}).click();await documentPage.getByText('Saved locally. Continue reading from the Learning Center.',{exact:true}).waitFor();
+    await documentPage.getByRole('button',{name:'Saved to materials',exact:true}).waitFor();await shot('document-material-en',documentPage);
+    await documentPage.setViewportSize({width:390,height:1000});assert.equal(await documentPage.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    const control=documentPage.getByRole('button',{name:'Saved to materials',exact:true});const bounds=await control.boundingBox();assert(bounds&&bounds.height>=24&&bounds.width<=180&&bounds.x>=0&&bounds.x+bounds.width<=390);
+    assert.equal(await control.evaluate(node=>{const r=node.getBoundingClientRect();return node.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),true);
+    report.localizedDocumentControl=bounds;await shot('document-material-en-390',documentPage);report.cases.push('english-document-save-and-390-hit-test');
+  }
+  if (!args['documents-only']&&!args['localization-only']) {
   const article=await message({action:'capture',input:{source:{kind:'article',url:`${endpoint}/article?id=1&utm_source=fixture`,title:'让学习回到原文'},locator:{kind:'text',quote:'A stable source keeps the original sentence connected to its meaning.',paragraphId:'paragraph-10'},reference:{kind:'note',id:'seed-note',note:'阅读材料的价值，在于能从理解回到具体的语境。'}}});
   const duplicate=await message({action:'capture',input:{source:{kind:'article',url:`${endpoint}/article?utm_source=other&id=1`,title:'Another title'},reference:{kind:'note',id:'another-note',note:'再次遇见同一份材料。'}}});assert.equal(duplicate.id,article.id);
   await message({action:'capture',input:{source:{kind:'article',url:`${endpoint}/article?id=2`,title:'让学习回到原文'},locator:{kind:'text',quote:'Reading paragraph 2: understanding grows when we return to the material with a clear question.'}}});
@@ -71,6 +97,7 @@ const fixture=http.createServer((request,response)=>{
   const references=(await message({action:'get',id:article.id})).references;assert(references.filter(ref=>['memory','session','vocabulary'].includes(ref.kind)).every(ref=>!ref.note));
   await message({action:'clear'});assert.equal((await authority({type:'fluentReadVocabularyBook',action:'get',entryId:savedWord.id})).data.id,savedWord.id);assert.equal((await authority({type:'fluentReadHarness',action:'sessions-get',sessionId})).session.id,sessionId);assert((await authority({type:'fluentReadHarness',action:'memory-list'})).memories.some(value=>value.id===savedMemory.id));report.cases.push('authoritative-learning-references-and-independent-clear');
   }
+  if (!args['sources-only']&&!args['localization-only']) {
   const {PDFDocument,StandardFonts}=createRequire(path.join(process.cwd(),'package.json'))('pdf-lib');const pdf=await PDFDocument.create(),font=await pdf.embedFont(StandardFonts.Helvetica);for(let i=1;i<=3;i++){const p=pdf.addPage([600,800]);p.drawText(`Learning document page ${i}`,{x:50,y:730,size:20,font});p.drawText(`A distinct paragraph on page ${i} supports reliable reading.`,{x:50,y:680,size:12,font});}const pdfBytes=Buffer.from(await pdf.save());const pdfPath=path.join(artifacts,'learning-document.pdf');fs.writeFileSync(pdfPath,pdfBytes);
   await patch({vocabularyBookEnabled:false,harness:{enabled:false,memoryEnabled:false}});const documentPage=await open(`${origin}/document.html`);await documentPage.locator('input[type=file]').first().setInputFiles(pdfPath);await documentPage.getByRole('button',{name:'加入学习材料',exact:true}).waitFor({timeout:30000});await documentPage.getByRole('button',{name:'加入学习材料',exact:true}).click();await documentPage.getByText('已加入本机学习材料，可从学习中心继续阅读。',{exact:true}).waitFor();report.cases.push('document-material-independent-of-collection-and-ai');
   const document=(await message({action:'list'})).find(record=>record.kind==='document');assert(document?.source.fingerprint);await documentPage.locator('.pdf-page-navigation input').fill('2');await documentPage.locator('.pdf-page-navigation input').press('Enter');await waitRecord(document.id,record=>record.locator.page===2);const resumedDocument=await open(`${origin}/document.html?__fluentread_material=${document.id}`);await resumedDocument.getByRole('button',{name:'已加入学习材料',exact:true}).waitFor({timeout:30000});await resumedDocument.waitForFunction(()=>{const input=document.querySelector('.pdf-page-navigation input');return input?.value==='2';},{},{timeout:15000});await shot('document-resumed-page-2',resumedDocument);report.cases.push('real-pdf-fingerprint-and-page-resume');
@@ -81,6 +108,7 @@ const fixture=http.createServer((request,response)=>{
   await missingDocument.locator('input[type=file]').first().setInputFiles(pdfPath);await missingDocument.getByRole('button',{name:'已加入学习材料',exact:true}).waitFor({timeout:30000});await missingDocument.waitForFunction(()=>document.querySelector('.pdf-page-navigation input')?.value==='2');await shot('document-reselected-original',missingDocument);await missingDocument.setViewportSize({width:390,height:1000});assert.equal(await missingDocument.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const materialButton=missingDocument.getByRole('button',{name:'已加入学习材料',exact:true});const materialBounds=await materialButton.boundingBox();assert(materialBounds&&materialBounds.width<=180&&materialBounds.x>=0&&materialBounds.x+materialBounds.width<=390);await require('./material-document-fixtures.cjs').assertMaterialControl(missingDocument,'pdf',report);await shot('document-material-390',missingDocument);report.cases.push('missing-file-and-same-name-fingerprint-recovery');
 
   await require('./material-document-fixtures.cjs').runMaterialDocumentFixtures({open,origin,message,waitRecord,shot,artifacts,report});
+  }
   assert.deepEqual(report.consoleErrors,[],'Production pages emitted console errors');report.ok=true;
  }catch(error){report.error=error.stack||String(error);if(session){report.failurePages=[];for(const [index,target] of session.context.pages().entries()){const file=path.join(artifacts,`failure-page-${index}.png`);await target.screenshot({path:file}).catch(()=>{});report.failurePages.push({url:target.url(),screenshot:file,body:await target.locator('body').innerText().catch(()=> '')});}}process.exitCode=1;}
  finally{if(session){try{await session.close();closed=true;}catch(error){report.cleanupError=String(error);process.exitCode=1;}}if(closed)fs.rmSync(profileDir,{recursive:true,force:true});report.cleanupConfirmed=closed;await new Promise(resolve=>fixture.close(resolve));save();console.log(JSON.stringify(report,null,2));}

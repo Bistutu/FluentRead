@@ -1,0 +1,149 @@
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import ts from 'typescript';
+import {describe, expect, it, vi} from 'vitest';
+import * as Vue from 'vue';
+import {compileTemplate, parse} from 'vue/compiler-sfc';
+import {renderToString} from 'vue/server-renderer';
+import {parseHTML} from 'linkedom';
+import {translateLegacyText} from '@/src/core/i18n';
+import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
+import {learningMaterialLegacyText} from '@/src/core/i18n/messages/learningMaterials';
+import {createUiI18nPlugin} from '@/src/ui/i18n';
+
+vi.mock('@/src/services/config/store', () => ({
+    config: {uiLanguage: 'en-US'}, configReady: Promise.resolve(), getConfigRevision: () => 0,
+    subscribeConfig: () => () => {}, requestConfigPatch: async () => {},
+}));
+vi.mock('@/src/platform/i18n/uiLanguageBundles', () => ({ensureUiLanguageBundle: async () => true}));
+vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: async () => ({success: true})}}}));
+
+registerAllUiLanguageBundles();
+const languages = ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const;
+
+describe('学习材料旧模板本地化', () => {
+    it('六种词典完整接入运行时，界面与恢复错误均有实际译文', () => {
+        const sources = Object.keys(learningMaterialLegacyText['en-US']);
+        expect(sources.length).toBeGreaterThan(100);
+        for (const language of languages) {
+            const catalog: Readonly<Record<string, string>> = learningMaterialLegacyText[language];
+            expect(Object.keys(catalog).sort(), language).toEqual([...sources].sort());
+            for (const source of sources) {
+                const translated = translateLegacyText(source, language);
+                expect(catalog[source].trim(), `${language}: ${source}`).not.toBe('');
+                expect(translated, `${language}: ${source}`).toBe(catalog[source]);
+                expect(translated, `${language}: ${source}`).not.toBe(source);
+                if (language !== 'ja-JP') expect(translated).not.toMatch(/[\u3400-\u9fff]/u);
+            }
+        }
+    });
+
+    it('材料模型、仓库、后台与客户端抛出的中文错误没有遗漏', () => {
+        const errors = new Set<string>();
+        for (const file of ['materialModel.ts', 'materialRepository.ts', 'materialBackground.ts', 'materialClient.ts', 'materialContent.ts']) {
+            const path = join(process.cwd(), 'src/features/vocabulary', file);
+            const ast = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
+            const visit = (node: ts.Node) => {
+                if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)
+                    && ['MaterialError', 'MaterialClientError', 'Error'].includes(node.expression.text)) {
+                    const message = node.arguments?.[node.expression.text === 'Error' ? 0 : 1];
+                    if (message && ts.isStringLiteral(message) && /[\u3400-\u9fff]/u.test(message.text)) errors.add(message.text);
+                }
+                ts.forEachChild(node, visit);
+            };
+            visit(ast);
+        }
+        expect(errors.size).toBeGreaterThan(35);
+        for (const error of errors) {
+            for (const language of languages) {
+                const catalog: Readonly<Record<string, string>> = learningMaterialLegacyText[language];
+                expect(catalog[error], `${language}: ${error}`).toBeTruthy();
+                expect(translateLegacyText(error, language), `${language}: ${error}`).toBe(catalog[error]);
+            }
+        }
+    });
+
+    it('数量、页码、时间和导入汇总使用真实参数，不固定扫描器的数字占位', () => {
+        for (const language of languages) {
+            for (const count of [0, 1, 12, 125]) {
+                const sources = [
+                    `${count} 条学习内容`,
+                    `显示更多材料（${count} / 527）`,
+                    `继续第 ${count} 页`,
+                    `上次看到 ${count}:09`,
+                    `没有恢复材料，跳过 ${count} 条无效、冲突或较旧的记录。`,
+                    `已恢复 ${count} 份材料（新增 3 · 更新 17 · 跳过 29）。`,
+                ];
+                for (const source of sources) {
+                    const translated = translateLegacyText(source, language);
+                    expect(translated, `${language}: ${source}`).not.toBe(source);
+                    expect(translated.match(/\d+/gu), `${language}: ${source}`).toEqual(source.match(/\d+/gu));
+                    expect(translated).not.toMatch(/\{\d+\}/u);
+                    if (language !== 'ja-JP') expect(translated).not.toMatch(/[\u3400-\u9fff]/u);
+                }
+            }
+        }
+    });
+
+    it('不以材料关键词或数字猜测改写未登记的用户正文', () => {
+        for (const language of languages) {
+            for (const source of ['我的材料研究标题 125', '阅读这份材料让我想到下一步计划', '上次看到的原文是第 12 页的一段话', '笔记：已恢复 3 份材料']) {
+                expect(translateLegacyText(source, language)).toBe(source);
+            }
+        }
+    });
+
+    it('实际材料模板与共享指令翻译位置、来源回退和问答标签，同时保留用户原文、章节和问题', async () => {
+        const filename = 'src/features/vocabulary/ui/MaterialWorkspace.vue';
+        const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
+        const template = descriptor.template!.content;
+        const quote = template.match(/<blockquote v-if="selected\.locator\?\.quote"[\s\S]*?<\/blockquote>/u)![0];
+        const summary = template.match(/<summary><span v-if="turn\.question"[\s\S]*?<\/summary>/u)![0];
+        const detailSource = template.match(/<div class="fr-material-meta">[\s\S]*?<\/div>/u)![0];
+        const listSource = template.match(/<span :title="item\.source\.url"[\s\S]*?<\/span>/u)![0];
+        const compiled = compileTemplate({source: `<div>${quote}${summary}<aside>${detailSource}</aside><nav>${listSource}</nav></div>`, filename, id: 'material-i18n-boundaries', compilerOptions: {mode: 'function'}});
+        expect(compiled.errors).toEqual([]);
+        const render = new Function('Vue', compiled.code)(Vue);
+        const script = ts.createSourceFile(filename + '.ts', descriptor.scriptSetup!.content, ts.ScriptTarget.Latest, true);
+        const functions = script.statements.filter(node => ts.isFunctionDeclaration(node)
+            ? ['positionLabel', 'sourceLabel'].includes(node.name!.text)
+            : ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === 'kindLabel'))
+            .map(node => node.getText(script)).join('\n');
+        const labels = new Function(ts.transpileModule(functions + '\nreturn {positionLabel,sourceLabel,kindLabel};', {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText)();
+        for (const [kind, source, locator, position, sourceText] of [
+            ['article', {url: 'https://example.test/original'}, {kind: 'text'}, 'Last read passage', 'example.test/original'],
+            ['video', {url: 'https://example.test/video'}, {kind: 'video', startMs: 129000}, 'Last watched at 2:09', 'example.test/video'],
+            ['document', {}, {kind: 'document', page: 7, section: '阅读材料'}, 'Page 7', 'Local file'],
+            ['article', {url: 'invalid source'}, {kind: 'text'}, 'Last read passage', 'Source needs recovery'],
+        ] as const) {
+            for (const question of ['', '删除笔记']) {
+                const selected = {kind, source, locator: {...locator, quote: '加入学习材料'}};
+                const html = await renderToString(Vue.h({setup: () => ({selected, item: selected, turn: {question}, ...labels}), render}));
+                const {document, window} = parseHTML(`<html><body>${html}</body></html>`);
+                const root = document.body.firstElementChild as unknown as HTMLElement;
+                for (const [name, value] of Object.entries({document, Node: window.Node, MutationObserver: window.MutationObserver, NodeFilter: {SHOW_TEXT: 4}})) vi.stubGlobal(name, value);
+                let directive: any;
+                const app = {config: {globalProperties: {}}, provide: () => {}, directive: (_name: string, value: unknown) => {directive = value;}, mixin: () => {}, unmount: () => {}};
+                const plugin = createUiI18nPlugin();
+                if (typeof plugin.install !== 'function') throw new Error('UI i18n plugin must expose install');
+                try {
+                    plugin.install(app as any); directive.mounted(root);
+                    await vi.waitFor(() => expect(root.querySelector('footer')?.firstChild?.textContent).toBe(position));
+                    expect(root.querySelector('.fr-material-quote > span')?.textContent).toBe('加入学习材料');
+                    if (kind === 'document') expect(root.querySelector('footer > span')?.textContent).toBe(' · 阅读材料');
+                    expect(root.querySelector('summary')?.textContent).toBe(question || 'Reading explanation');
+                    expect(root.querySelector('aside .fr-material-meta > span:first-child')?.textContent).toBe({article: 'Article', video: 'Video', document: 'Document'}[kind]);
+                    expect(root.querySelector('aside .fr-material-meta > span:last-child')?.textContent).toBe(sourceText);
+                    expect(root.querySelector('nav > span')?.textContent).toBe(sourceText);
+                    expect(root.querySelector('aside .fr-material-meta > span:last-child')?.hasAttribute('data-i18n-ignore')).toBe(sourceText.startsWith('example.test/'));
+                    const walker = document.createTreeWalker(root as any, 4);
+                    let node = walker.nextNode();
+                    while (node) {
+                        if (!node.parentElement?.closest('[data-i18n-ignore]')) expect(node.textContent).not.toMatch(/[\u3400-\u9fff]/u);
+                        node = walker.nextNode();
+                    }
+                } finally {app.unmount(); vi.unstubAllGlobals();}
+            }
+        }
+    });
+});

@@ -327,6 +327,7 @@ export default defineConfig({
                 'src/core/language/technicalTokens.ts',
                 'src/core/i18n/messages/legacy-overrides.ts',
                 'src/core/i18n/messages/legacy-patterns.ts',
+                'src/core/i18n/messages/learningMaterials.ts',
                 'src/core/i18n/messages/legacy-corrections.ts',
                 'src/core/i18n/messages/runtime-feedback.ts',
                 'src/core/i18n/messages/runtime-feedback-patterns.ts',

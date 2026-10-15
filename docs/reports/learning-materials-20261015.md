@@ -13,7 +13,28 @@
 
 集成入口与字段合同见[维护说明](../maintainers/learning-materials.md)。
 
-## 验证范围与结果
+## 后续 CI 复核与当前状态
+
+首轮生产验收之后，PR 的首次 CI 暴露七个失败测试文件：`selectionTranslatorLifecycle`、`contentRuntimeLifecycle`、`readingPanelStreamingResize`、`documentBatchComponent`、`implementationAudit48K`、`sentenceActionsMount` 与 `i18n`。前六个涉及新增公共入口、组合根或材料消息端口的夹具尚未跟进；相关修复保留原有文档队列、流式展示、手动滚动、恢复和取消断言，并增加真实公共材料端口的行为检查。
+
+`i18n` 是实际本地化回归，不能归为夹具问题：同一测试在 main 基线 90 项通过，当前改动首次扫描产生 390 条未本地化记录。随后为六种非中文界面（en-US、ja-JP、ko-KR、fr-FR、ru-RU、es-ES）各补 134 条静态映射和六类动态模板，覆盖数量、页码、时间与导入汇总，保留真实数字，并验证不会改写用户正文。
+
+| 后续专项 | 已确认结果与日志 |
+| --- | --- |
+| 组合根与句子操作夹具 | `implementationAudit48K`、`sentenceActionsMount` 共 46 项通过；`/private/tmp/fluentread-material-composition-after.log` |
+| 学习中心设置入口 | `backgroundFeatureHandlers` 55 项通过，含 `materials` 实际导航与非法参数拒绝；`openOptionsHandler` 四维 100%；`/private/tmp/fluentread-material-options-handler-20261015.log` |
+| 文档队列与阅读面板 | `documentBatchComponent`、`readingPanelStreamingResize` 共 47 项通过；新增收藏、会话和学习笔记仅在成功保存后关联，以及来源不进入模型请求；`/private/tmp/fluentread-material-ci-fixtures-20261015.log` |
+| 内容与划词生命周期 | `contentRuntimeLifecycle`、`selectionTranslatorLifecycle` 共 271 项通过；`/private/tmp/fluentread-material-content-selection-after.log` |
+| 本地化资源与动态数字 | `i18n`、`i18nMaterials` 共 95 项通过；`/private/tmp/fluentread-material-i18n-accepted-strict.log` |
+| 当前严格覆盖率范围 | 最终受影响计划包含 209 个测试文件及十六个严格责任模块；十六模块已按专项验证 statements / branches / functions / lines 均为 100%，汇总见 verification.json |
+
+上述批次范围不同，不累加为全量测试总数。原生恢复提示已按显示时的界面语言翻译，来源专项 55 项通过，包含三类英文提示与关闭操作。实际 Vue 模板专项还检查原文保护边界、来源类型、页码、本地文件和默认问答标题；本地化与材料界面组合 104 项通过。最终架构、源码注释和验证归属 1076 项通过，测试审计登记 731 个文件、13188 个用例。
+
+最终源码的类型检查、Chrome/Firefox production 构建、userscript 构建与 verifier、manifest 检查及文档构建通过；userscript 的五份内容寻址语言资源已重新生成并保留旧资源。远程 CI 状态以 PR 当前提交的检查记录为准，本文不把首次失败的 CI 当作通过。
+
+## 首轮验证范围与结果（后续修复前）
+
+下表和随后截图记录首次交付阶段的证据，供保留与比较；它们不证明上节后续改动已经重新通过同样的全部检查。
 
 | 范围 | 证据 |
 | --- | --- |
@@ -25,7 +46,7 @@
 | 类型及产物 | `pnpm compile`、Chrome/Firefox production 构建、userscript 构建与 verifier、manifest verifier、测试审计、文档构建 |
 | 生产 Edge | 16 个材料操作场景通过；临时 profile，第二屏可见但不抢前台；页面 console/error 为 0，清理确认成功 |
 
-十个可执行责任模块的覆盖率汇总与源码摘要在 [verification.json](./learning-materials-20261015/verification.json)。生产逐项结果在 [browser-report.json](./learning-materials-20261015/browser-report.json)。另有 [文档按钮尺寸与中心遮挡检查](./learning-materials-20261015/document-control-verification.json)，记录桌面及 390px 的真实边界和点击命中。
+覆盖率汇总与源码摘要的统一归档入口为 [verification.json](./learning-materials-20261015/verification.json)，生产逐项归档入口为 [browser-report.json](./learning-materials-20261015/browser-report.json)。归档保留首轮与后续专项的范围，当前十六模块覆盖率及最终源码、构建产物摘要另行记录。另有 [文档按钮尺寸与中心遮挡检查](./learning-materials-20261015/document-control-verification.json)，记录桌面及 390px 的真实边界和点击命中。
 
 生产验收运行真实扩展后台、内容脚本、Vue 界面、IndexedDB、文件解析和播放器。生成的素材包括本地 HTTP 文章、12 秒 MP4、三页 PDF、90 段 DOCX 和双章节 EPUB。验证以下连续操作：
 
@@ -48,6 +69,22 @@
 - [EPUB 续读](./learning-materials-20261015/material-epub-resumed-chapter-2.png)
 
 验收修复了异步 PDF 阅读器尚未加载时提前消费恢复请求的问题：保留待恢复材料，等公开阅读器引用就绪后再定位，并以文档身份与调用代次约束晚到回调。代码复核发现的默认开关门控、焦点恢复、归档笔记编辑和跨页归档刷新问题也已修复并专项复验。
+
+## 后续来源范围的生产复验
+
+注册及组合根调整后，单独运行 `--sources-only true` 完成十一项。该次运行使用实际生产扩展、隔离 Edge、第二屏可见且不抢前台；`consoleErrors` 为空，`cleanupConfirmed` 为 true。[十一项来源复验报告及截图](./learning-materials-20261015/source-followup/report.json)保留原始证据路径 `/private/tmp/fluentread-material-registration-production/report.json`，完整命令与输出在 `/private/tmp/fluentread-material-registration-production.log`。
+
+十一项包含管理菜单键盘操作、规范地址去重、主题与独立草稿、文章定位、刷新位置跟踪、视频时间、失效片段提示、390px 深色界面、归档恢复、私密备份，以及权威学习记录的读取和独立清空。此范围不运行 PDF、DOCX、EPUB 的文档恢复用例。先前完整十六项与文档专选五项是后续修改前的独立记录，不能与这十一项合计为同一版本的生产验收。
+
+该次来源复验位于本地化修复之前。本地化修改使用下面单独记录的最终生产专项验收。
+
+## 最终英文生产专项
+
+`--localization-only true` 在修复后的 Chrome production 包上完成四项：英文界面及原用户文字、390px 材料详情、网页原生恢复提示及关闭、文档材料保存及窄屏中心点击命中。标题“阅读材料”、原句“材料已整理。”及笔记“全部材料已清空。”刻意与词典键相同，均保留原文；界面说明实际翻译为英文。
+
+六张原始截图已复核。英文文档按钮在 390px 下为 x=8、y=86、宽 123.53125、高 30 CSS px，中心命中按钮；无横向溢出。第二屏隔离 Edge 未进入前台，页面 console/error 为 0，临时 profile 清理成功。此专项没有重复运行之前的 PDF/DOCX/EPUB 完整恢复矩阵。
+
+[四项报告](./learning-materials-20261015/localization/report.json) · [英文材料详情](./learning-materials-20261015/localization/material-detail-en.png) · [390px 详情](./learning-materials-20261015/localization/material-detail-en-390.png) · [英文恢复提示](./learning-materials-20261015/localization/article-recovery-notice-en.png) · [英文文档窄屏](./learning-materials-20261015/localization/document-material-en-390.png)
 
 ## 重跑
 
@@ -75,8 +112,19 @@ node scripts/testing/run-resource-safe.mjs -- node scripts/testing/run-material-
   --ffmpeg-path /path/to/ffmpeg
 ```
 
-可追加 `--documents-only true` 仅检查文档保存、恢复和原文件校验。脚本只操作本次临时浏览器及合成内容，结束后清理临时 profile，不提交含原文的备份文件。
+可追加 `--documents-only true` 仅检查文档保存、恢复和原文件校验。来源专项使用以下独立命令：
+
+```sh
+node scripts/testing/run-resource-safe.mjs -- node scripts/testing/run-material-workspace-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root /path/to/node_modules \
+  --artifacts-dir /private/tmp/fluentread-material-sources-review \
+  --ffmpeg-path /path/to/ffmpeg \
+  --sources-only true
+```
+
+本地化范围可将上述最后一个参数替换为 `--localization-only true`。三种限定范围不能同时指定；不加范围参数才执行完整材料验收。脚本只操作本次临时浏览器及合成内容，结束后清理临时 profile，不提交含原文的备份文件。
 
 ## 未覆盖项
 
-本次没有运行全量回归、真实翻译供应商、真实 YouTube/X 站点、Firefox 运行时、Safari、移动真机或用户人工验收。YouTube/X 身份与多媒体匹配、无痕边界由确定性 DOM／sender／客户端测试覆盖；这些结果不能代替相应实站或浏览器验证。Firefox 证据仅为构建与 manifest 检查。生产问答 fixture 只证明权威记录读取、展示和材料清空时的保留，不证明在线模型生成链路。
+本次没有运行全量回归、真实翻译供应商、真实 YouTube/X 站点、Firefox 运行时、Safari、移动真机或用户人工验收，也没有运行真实无痕浏览器会话。YouTube/X 身份与多媒体匹配、无痕边界由确定性 DOM／sender／客户端测试覆盖；这些结果不能代替相应实站或浏览器验证。Firefox 证据仅为构建与 manifest 检查。生产问答 fixture 只证明权威记录读取、展示和材料清空时的保留，不证明在线模型生成链路。

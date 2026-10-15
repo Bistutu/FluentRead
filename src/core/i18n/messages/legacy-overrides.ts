@@ -8,6 +8,7 @@
  */
 import type {UiLanguage} from '../types';
 import {mangaLegacyMessages} from './manga';
+import {learningMaterialLegacyText} from './learningMaterials';
 
 const providerNames = {
     '微软翻译': 'Microsoft Translator',
@@ -2026,6 +2027,7 @@ export const legacyTextOverrides: Partial<Record<UiLanguage, Readonly<Record<str
         '默认关闭；仅在已适配接口生效，无法关闭时使用最低档': 'Off by default. Applies only to supported APIs and uses the lowest level when it cannot be disabled.',
         '当前模型是否启用 Thinking': 'Enable Thinking for the current model',
         ...mangaLegacyMessages['en-US'],
+        ...learningMaterialLegacyText['en-US'],
     },
     'ja-JP': {
         "自动检测适合大多数视频": "ほとんどの動画は自動検出で対応できます",
@@ -2377,6 +2379,7 @@ export const legacyTextOverrides: Partial<Record<UiLanguage, Readonly<Record<str
         '默认关闭；仅在已适配接口生效，无法关闭时使用最低档': 'デフォルトではオフです。対応済みの API でのみ有効になり、無効化できない場合は最小レベルを使用します。',
         '当前模型是否启用 Thinking': '現在のモデルで Thinking を有効にする',
         ...mangaLegacyMessages['ja-JP'],
+        ...learningMaterialLegacyText['ja-JP'],
     },
     'ko-KR': {
         "自动检测适合大多数视频": "대부분의 동영상은 자동 감지로 처리할 수 있습니다",
@@ -2727,6 +2730,7 @@ export const legacyTextOverrides: Partial<Record<UiLanguage, Readonly<Record<str
         '默认关闭；仅在已适配接口生效，无法关闭时使用最低档': '기본적으로 꺼져 있습니다. 지원되는 API에서만 적용되며 끌 수 없는 경우 가장 낮은 수준을 사용합니다.',
         '当前模型是否启用 Thinking': '현재 모델에서 Thinking 사용',
         ...mangaLegacyMessages['ko-KR'],
+        ...learningMaterialLegacyText['ko-KR'],
     },
     'fr-FR': {
         "自动检测适合大多数视频": "La détection automatique convient à la plupart des vidéos",
@@ -3082,6 +3086,7 @@ export const legacyTextOverrides: Partial<Record<UiLanguage, Readonly<Record<str
         '默认关闭；仅在已适配接口生效，无法关闭时使用最低档': 'Désactivé par défaut. S’applique uniquement aux API compatibles et utilise le niveau minimal lorsqu’il est impossible de le désactiver.',
         '当前模型是否启用 Thinking': 'Activer Thinking pour le modèle actuel',
         ...mangaLegacyMessages['fr-FR'],
+        ...learningMaterialLegacyText['fr-FR'],
     },
     'ru-RU': {
         "自动检测适合大多数视频": "Автоопределение подходит для большинства видео",
@@ -3434,6 +3439,7 @@ export const legacyTextOverrides: Partial<Record<UiLanguage, Readonly<Record<str
         '默认关闭；仅在已适配接口生效，无法关闭时使用最低档': 'По умолчанию выключено. Работает только с поддерживаемыми API; если отключение невозможно, используется минимальный уровень.',
         '当前模型是否启用 Thinking': 'Включить Thinking для текущей модели',
         ...mangaLegacyMessages['ru-RU'],
+        ...learningMaterialLegacyText['ru-RU'],
     },
     'es-ES': {
         "自动检测适合大多数视频": "La detección automática funciona para la mayoría de los vídeos",
@@ -3789,5 +3795,6 @@ export const legacyTextOverrides: Partial<Record<UiLanguage, Readonly<Record<str
         '默认关闭；仅在已适配接口生效，无法关闭时使用最低档': 'Desactivado de forma predeterminada. Solo se aplica a las API compatibles y usa el nivel mínimo cuando no se puede desactivar.',
         '当前模型是否启用 Thinking': 'Activar Thinking para el modelo actual',
         ...mangaLegacyMessages['es-ES'],
+        ...learningMaterialLegacyText['es-ES'],
     },
 };

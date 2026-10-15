@@ -38,10 +38,20 @@
 
 材料库独立于配置，不进入默认配置同步。`memoryEnabled` 控制 AI 参考笔记，不能阻断用户主动保存笔记的材料关联。无痕读写均拒绝。独立私密备份 `fluentread-learning-materials` 包含来源、原句、组织和个人笔记，不能冒充普通配置备份；导入必须校验、报告计数并保留清空前的操作 guard。
 
+## 本地化与测试端口
+
+材料界面文案、来源恢复提示和私密备份反馈使用集中资源；六种非中文界面（en-US、ja-JP、ko-KR、fr-FR、ru-RU、es-ES）各有 134 条静态映射，并共用六类保留真实数量、页码、时间与导入计数的动态模板。用户标题、原句、回答和个人笔记不能按关键词或数字被这些界面模板改写。
+
+内容脚本直接创建的原生通知不经过 Vue 模板，必须在创建通知文字与关闭按钮时应用当前界面语言，不能只补词典或依赖 Vue 本地化。界面标签与用户正文必须分别标记；不能把原文旁的页码、来源状态或默认问答标题放进 `data-i18n-ignore`。英文生产专项检查界面翻译，同时保留恰好与词典键相同的用户标题、原句和笔记。
+
+实际组件 setup 夹具必须跟随公共入口演进：文档组合根的 `./index` 应接到同一 app 依赖端口，阅读面板的材料依赖应走 `material/public`。材料采集 fixture 使用真实公开的 begin/complete/client，只控制 runtime 传输；保存成功且取得权威记录 ID 后才关联，失败不得产生引用，来源元数据不得进入模型请求。不要通过空函数端口、删除原行为断言或跳过失败掩盖接入错误。
+
 ## 验证
 
-日常只运行直接受影响的专项：`materialRepository`、`materialClient`、`materialSource`、`materialWorkspaceLifecycle`、`learningCenterLifecycle`、文档与视频对应组件用例及架构边界。新增可执行业务模块进入四维 100% 的覆盖率清单；生产视觉与跨页面行为由 `scripts/testing/run-material-workspace-test.cjs` 使用隔离 Edge 验证。
+日常只运行直接受影响的专项：`materialRepository`、`materialClient`、`materialSource`、`materialWorkspaceLifecycle`、`learningCenterLifecycle`、文档与视频对应组件用例及架构边界。材料及本次影响的组合根、本地化共十六个严格责任模块，statements、branches、functions、lines 均以 100% 为门槛。新增责任模块同时登记覆盖率 include 与测试矩阵，受影响范围以 `run-affected-tests.mjs --plan-only` 为准。生产视觉与跨页面行为由 `scripts/testing/run-material-workspace-test.cjs` 使用隔离 Edge 验证。
 
-生产脚本需要 Playwright、现有 `pdf-lib` 和本机 ffmpeg。它生成受控网页、MP4、PDF、DOCX 与 EPUB，不代表真实供应商、YouTube/X 实站、Firefox 运行时、Safari 或移动真机验收。实际结果与未覆盖项以同一提交的验收报告为准。
+生产脚本需要 Playwright、现有 `pdf-lib`、`jszip` 和本机 ffmpeg。它生成受控网页、MP4、PDF、DOCX 与 EPUB，不代表真实供应商、YouTube/X 实站、Firefox 运行时、Safari 或移动真机验收。实际结果与未覆盖项以同一提交的验收报告为准。
+
+生产 runner 提供默认完整范围、`--documents-only true`、`--sources-only true` 与 `--localization-only true` 四个独立执行范围。来源范围检查文章、视频、界面和原学习记录；文档范围检查 PDF、DOCX、EPUB；本地化范围检查英文界面、原文保护、原生恢复通知及窄屏文档入口。报告分别记录各次实际源码和产物，不能把不同批次的用例数相加。
 
 本次专项结果与可重跑命令见[2026-10-15 验收报告](../reports/learning-materials-20261015.md)。

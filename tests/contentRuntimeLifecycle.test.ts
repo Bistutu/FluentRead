@@ -1,8 +1,8 @@
 /**
  * @file tests/contentRuntimeLifecycle.test.ts
  * 文件职责：验证内容应用启动、配置等待、页面暂停恢复与离开时的生命周期边界。
- * 主要内容：隔离各 feature 的组合根依赖，验证自动站点规则在文章导航、锚点跳转、禁用与恢复后的触发归属，以及原始 XML、失效上下文、迟到初始化和伪造页面事件的清理边界。
- * 模块边界：不测试各 feature 的 Vue 组件或真实翻译请求；跨域 frame 的身份与会话另有专门测试。
+ * 主要内容：隔离各 feature 的组合根依赖，验证自动站点规则在文章导航、锚点跳转、禁用与恢复后的触发归属，以及材料公开生命周期、原始 XML、失效上下文、迟到初始化和伪造页面事件的清理边界。
+ * 模块边界：材料与浏览器 API 使用公开端口 mock，不测试各 feature 的 Vue 组件或真实翻译请求；跨域 frame 的身份与会话另有专门测试。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {installContentPageLifecycle, waitForContentDocument} from '@/src/app/content/pageLifecycle';
@@ -23,7 +23,13 @@ const mocks = vi.hoisted(() => ({
     setBridges: vi.fn(), siteAdaptationRouteChanged: vi.fn(),
     mountWriting: vi.fn(), unmountWriting: vi.fn(), writingMounted: false,
     floatingBallAllowed: true, shareCardMounted: false, mountShareCard: vi.fn(), mountReencounter: vi.fn(), unmountReencounter: vi.fn(),
+    mountMaterial: vi.fn(), unmountMaterial: vi.fn(),
 }));
+vi.mock('webextension-polyfill', () => ({default: {
+    get extension() {return (globalThis as any).browser?.extension;},
+    get runtime() {return (globalThis as any).browser?.runtime;},
+}}));
+vi.mock('@/src/features/vocabulary/material/content/public', () => ({mountMaterialContent: mocks.mountMaterial}));
 vi.mock('@/src/features/writing-assistant/public', () => ({
     mountWritingAssistant: () => {mocks.writingMounted = true; mocks.mountWriting();},
     unmountWritingAssistant: () => {mocks.writingMounted = false; mocks.unmountWriting();},
@@ -414,6 +420,7 @@ describe('content composition root 冷启动与暂停恢复', () => {
         mocks.autoTranslate.mockImplementation(() => { mocks.fullPageActive = true; });
         mocks.config.writing.enabled = false;
         mocks.writingMounted = false;
+        mocks.mountMaterial.mockReturnValue(mocks.unmountMaterial);
         mocks.shareCardMounted = false;
         mocks.config.disabledExtensionDomains = [];
         mocks.config.bilingualSentenceHighlightEnabled = true;
@@ -583,20 +590,25 @@ describe('content composition root 冷启动与暂停恢复', () => {
         expect(unsubscribe).toHaveBeenCalledOnce();
     });
 
-    it('写作和分享卡片遵循同一启停和 BFCache 恢复生命周期', async () => {
+    it('材料、写作和分享卡片遵循同一启停和 BFCache 恢复生命周期', async () => {
         Object.assign(page, {location: {href: 'https://github.com/FluentRead/FluentRead/issues/1'}});
         mocks.config.writing.enabled = true;
         const {startContentApp} = await import('@/src/app/content/runtime');
         const starting = startContentApp(context as never); ready(); await starting;
         expect(mocks.mountWriting).toHaveBeenCalledOnce();
         expect(mocks.mountShareCard).toHaveBeenCalledOnce();
+        expect(mocks.mountMaterial).toHaveBeenCalledWith(document, expect.any(AbortSignal), expect.any(Function));
+        const firstSignal = mocks.mountMaterial.mock.calls[0][1] as AbortSignal;
         transition(page, 'pagehide', true);
+        expect(firstSignal.aborted).toBe(true); expect(mocks.unmountMaterial).toHaveBeenCalledOnce();
         expect(mocks.writingMounted).toBe(false);
         expect(mocks.shareCardMounted).toBe(false);
         transition(page, 'pageshow', true);
         await vi.waitFor(() => expect(mocks.mountWriting).toHaveBeenCalledTimes(2));
         expect(mocks.mountShareCard).toHaveBeenCalledTimes(2);
+        expect(mocks.mountMaterial).toHaveBeenCalledTimes(2);
         invalidated();
+        expect(mocks.unmountMaterial).toHaveBeenCalledTimes(2);
         expect(mocks.writingMounted).toBe(false);
         expect(mocks.shareCardMounted).toBe(false);
     });

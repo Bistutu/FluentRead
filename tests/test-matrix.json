@@ -124,6 +124,7 @@
       "tests/sectionTranslationRuntime.test.ts",
       "tests/hotkey.test.ts",
       "tests/i18n.test.ts",
+      "tests/i18nMaterials.test.ts",
       "tests/contentHotkeyRuntime.test.ts",
       "tests/inputTranslationContentFeature.test.ts",
       "tests/mainWorldBridgeLifecycle.test.ts",
