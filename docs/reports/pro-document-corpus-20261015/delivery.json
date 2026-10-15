@@ -106,6 +106,19 @@
     "userscriptResourceContracts": {
       "files": 4,
       "passed": 315
+    },
+    "exportWithoutOptionalCorpus": {
+      "files": 9,
+      "passed": 312,
+      "conditionalSkips": 3,
+      "thresholds": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "scope": "All optional corpus/evidence environment variables removed; five generated-real-PDF rotation cases cover the NASA-only branch without changing source or thresholds.",
+      "finalTestSourceSha256": "4d140d3fac1f26dc5a5b853a651df5c784ae38a9672c169c96fdcf476645d8c9"
     }
   },
   "corpus": {
@@ -488,6 +501,18 @@
     "final-validation/userscript-ci-fix/baseline-dictionary-proof.json": {
       "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/userscript-ci-fix/baseline-dictionary-proof.json",
       "sha256": "8736b55b068cf88ffaa4132bc7dca048f63559e52845f1214519bdc768365ff3"
+    },
+    "final-validation/ci-no-corpus/final/verification.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/ci-no-corpus/final/verification.json",
+      "sha256": "bc2ffc6ee7160c873ae74a2feddaf89334ae3ae6243fe26544da2efa28f5cc52"
+    },
+    "final-validation/ci-no-corpus/final-typed/verification.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/ci-no-corpus/final-typed/verification.json",
+      "sha256": "3cff0aedae37efda630f14251a40a79d131cfb295f9d8b339b7cdb9c3d4e45f6"
+    },
+    "final-validation/ci-no-corpus/final/integration-final.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/ci-no-corpus/final/integration-final.json",
+      "sha256": "15fb5cf9b8d959b433f3b3e8cdc20c105916472c9a8c27281d1accf83108a51d"
     }
   },
   "productionUnchangedAfterAllRuns": true,

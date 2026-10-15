@@ -1,7 +1,7 @@
 /**
  * @file tests/documentPdfRotation.test.ts
  * 文件职责：以真实 PDF.js 解析验证旋转和页面裁剪在 PDF 导入、光栅端口与矢量原页导出之间保持一致。
- * 主要内容：四种页面旋转、有效 CropBox 与 MediaBox 交集、非零原点、空交集回退；识别过的旋转扫描页只用原页旋转角摆正嵌入的原页；验证原始字节不变、裁掉的字形不可见以及显示尺寸和字形矩阵精确保持。
+ * 主要内容：四种页面旋转、有效 CropBox 与 MediaBox 交集、非零原点、空交集回退；真实物理转向字形与页面旋转组合时恢复展示坐标，少量可恢复文字不应误切整页坐标；识别过的旋转扫描页只用原页旋转角摆正嵌入的原页；验证原始字节不变、裁掉的字形不可见以及显示尺寸和字形矩阵精确保持。
  * 模块边界：实际生成并读取 PDF 文件，不以 Canvas 端口模拟原页字形几何，不调用浏览器或翻译服务。
  */
 import {degrees, PDFDocument} from 'pdf-lib';
@@ -10,6 +10,7 @@ import {describe, expect, it, vi} from 'vitest';
 import {
     createDocumentDownload,
     parseBinaryDocument,
+    pdfPageTextGeometry,
     type PdfRasterPageInput,
 } from '@/src/features/document-translation/services/binary';
 
@@ -111,6 +112,51 @@ function expectRotatedSources(pages: Awaited<ReturnType<typeof outputText>>): vo
 }
 
 describe('real rotated PDF import and download', () => {
+    it.each([90, 180, 270] as const)('recovers physically turned source text in the real %s-degree display frame without public corpus files', async rotation => {
+        const pdf = await PDFDocument.create(), page = pdf.addPage([420, 640]);
+        page.setRotation(degrees(rotation));
+        const lines = [heading, firstParagraph, secondParagraph];
+        for (const [index, text] of lines.entries()) {
+            const position = rotation === 90 ? {x: 80 + index * 32, y: 70}
+                : rotation === 180 ? {x: 360, y: 80 + index * 32} : {x: 340 - index * 32, y: 550};
+            page.drawText(text, {...position, size: index ? 12 : 18, rotate: degrees(rotation)});
+        }
+        const bytes = await pdf.save(), before = bytes.slice();
+        const parsed = await parseBinaryDocument('physically-turned.pdf', bytes);
+        if (parsed.binary?.kind !== 'pdf') throw new Error('Expected parsed PDF');
+        const output = parsed.binary.pages[0], quarterTurn = rotation !== 180;
+        expect(output).toMatchObject({sourceRotation: rotation, width: quarterTurn ? 640 : 420, height: quarterTurn ? 420 : 640});
+        expect(output.rotation).toBeUndefined();
+        const source = output.segmentIndexes.map(index => parsed.segments[index].source).join(' ');
+        for (const text of lines) expect(source).toContain(text);
+        expect(output.blocks.every(block => block.x >= 0 && block.y >= 0 && block.x + block.width <= output.width
+            && block.y + block.height <= output.height)).toBe(true);
+        expect(bytes).toEqual(before); expect(parsed.binary.bytes).toEqual(before);
+    });
+
+    it.each(['none', 'minority'] as const)('keeps the canonical coordinate frame when physical rotation recovers %s of the real page text', async recovery => {
+        const pdf = await PDFDocument.create(), page = pdf.addPage([420, 640]);
+        page.setRotation(degrees(90));
+        page.drawText('Unusable upside-down source text', {x: 120, y: 450, size: 12, rotate: degrees(270)});
+        if (recovery === 'minority') {
+            page.drawText('Canonical text', {x: 40, y: 450, size: 12});
+            page.drawText('Display text', {x: 70, y: 80, size: 12, rotate: degrees(90)});
+        }
+        const {getDocument} = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        const task = getDocument({data: await pdf.save(), disableFontFace: true, isEvalSupported: false, useWorkerFetch: false});
+        try {
+            const source = await task.promise, actual = await source.getPage(1);
+            try {
+                const content = await actual.getTextContent(), canonical = actual.getViewport({scale: 1, rotation: 0});
+                const geometry = pdfPageTextGeometry(content.items.filter(item => 'str' in item), content.styles,
+                    actual.getViewport({scale: 1}), canonical);
+                expect(geometry.viewport).toBe(canonical); expect(geometry).toMatchObject({rotation: 90});
+                expect(geometry.sourceRotation).toBeUndefined();
+                expect(geometry.atoms.map(atom => atom.text)).toEqual(recovery === 'minority' ? ['Canonical text'] : []);
+            } finally {actual.cleanup();}
+        } finally {await task.destroy();}
+    });
+
     it('extracts every page rotation with unchanged content coordinates and rotated display dimensions', async () => {
         const bytes = await rotatedPdf();
         const originalBytes = bytes.slice();
