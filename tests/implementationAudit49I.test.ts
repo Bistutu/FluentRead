@@ -496,8 +496,12 @@ const locator={first(){return this;},waitFor:async()=>{},click:async()=>{},count
 const makePage=()=>{
  let ownWindow,currentUrl='about:blank';
  const use=()=>{global.window=ownWindow;global.document=ownWindow.document;global.HTMLElement=ownWindow.HTMLElement;};
- return {on(){},locator:()=>locator,getByRole:()=>locator,getByText:()=>locator,screenshot:async()=>{},close:async()=>{},waitForTimeout:async()=>{},waitForLoadState:async()=>{},url:()=>currentUrl,
-  goto:async url=>{currentUrl=url;const html=url.includes('/popup.html')?'<div data-feature="video-subtitle" class="feature-card"></div><div class="feature-card">图片翻译</div>'+ '<div class="feature-card"></div>'.repeat(4):url.includes('/options.html')?'<div class="sidebar"><button class="active">视频字幕翻译</button></div><section id="settings-video"><select aria-label="视频字幕翻译服务"></select></section>':'<div class="ytp-right-controls"><button id="fluent-read-video-subtitle-button" aria-pressed="true"></button></div>'+fs.readFileSync(process.env.AUDIT_VIDEO_MENU,'utf8');ownWindow=parseHTML('<html><body>'+html+'</body></html>').window;ownWindow.location={origin:'https://controlled.invalid'};ownWindow.postMessage=()=>{};use();},
+ return {on(){},locator:selector=>selector==='#fluent-read-video-subtitle-button'?{...locator,click:async()=>{
+    // 受控浏览器端口模拟公开 locator.click 激活；这不代替真实浏览器事件验收。
+    use();const button=document.getElementById('fluent-read-video-subtitle-button'),menu=document.getElementById('fluent-read-video-subtitle-menu');
+    menu.hidden=!menu.hidden;button.setAttribute('aria-expanded',String(!menu.hidden));log('public-menu-entry-click');
+  }}:locator,getByRole:()=>locator,getByText:()=>locator,screenshot:async()=>{},close:async()=>{},waitForTimeout:async()=>{},waitForLoadState:async()=>{},url:()=>currentUrl,
+  goto:async url=>{currentUrl=url;const html=url.includes('/popup.html')?'<div data-feature="video-subtitle" class="feature-card"></div><div class="feature-card">图片翻译</div>'+ '<div class="feature-card"></div>'.repeat(4):url.includes('/options.html')?'<div class="sidebar"><button class="active">视频字幕翻译</button></div><section id="settings-video"><select aria-label="视频字幕翻译服务"></select></section>':'<div class="ytp-right-controls"><button id="fluent-read-video-subtitle-button" class="fluent-read-video-subtitle-active" role="button" aria-haspopup="menu" aria-expanded="false" aria-controls="fluent-read-video-subtitle-menu"></button></div>'+fs.readFileSync(process.env.AUDIT_VIDEO_MENU,'utf8');ownWindow=parseHTML('<html><body>'+html+'</body></html>').window;ownWindow.location={origin:'https://controlled.invalid'};ownWindow.postMessage=()=>{};use();},
   reload:async()=>{},evaluate:async(callback,value)=>{use();const result=await callback(value);if(result?.modeCount!==undefined)log('actual-client-menu-consumed',result);return result;},
   waitForSelector:async()=>{},waitForFunction:async(callback,value,options)=>{use();const result=await callback(value);log('public-wait-function-port',{value,options,result});if(!result)throw Error('CONTROLLED_OVERLAY_TIMEOUT');},
   waitForEvent:async()=>{const file=path.join(process.env.TMPDIR,'controlled.srt');fs.writeFileSync(file,'1\n00:00:00,000 --> 00:00:01,200\nDownload test subtitle.\n');return {path:async()=>file,suggestedFilename:()=> 'fixture.srt'};}
@@ -1226,6 +1230,12 @@ it('selection public CLI clears its actual 25ms tracker after the next external 
     const order=['tracking-interval-start','tracking-interaction-failed','tracking-interval-clear','session-close','server-closed'].map(kind=>result.events.findIndex(event=>event.kind===kind));
     expect(order.every((index,position)=>index>=0&&(position===0||index>order[position-1]))).toBe(true);
     expect(result.directories.every(directory=>!directory.exists)).toBe(true);
+},12000);
+
+it('video fixture rejects an unknown suite before native or browser allocation',async()=>{
+    const result=await invoke(videoFixture,'launch',['--suite','unknown-suite']);
+    expect(result.code).toBe(1);expect(result.stderr).toContain('未知视频 fixture suite');
+    expect(count(result,'native-command-port')).toBe(0);expect(count(result,'launch')).toBe(0);
 },12000);
 
 it('video subtitle public CLI accepts all four actual client menu modes and passes the overlay timeout in the options position',async()=>{

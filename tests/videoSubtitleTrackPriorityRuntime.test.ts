@@ -1,7 +1,7 @@
 /**
  * @file tests/videoSubtitleTrackPriorityRuntime.test.ts
  * 文件职责：从实际 mountVideoSubtitleTranslation 公共入口验证 X 轨道优先与 YouTube 同轮选择、人工字幕回退及卸载后的异步资格。
- * 主要内容：真实桥消息、video、TextTrack 与配置订阅驱动播放器、轨道 loader、缓存和 DOM；覆盖同句调用预算、实际服务线路或套餐变化后的缓存失效、时钟漂移、NaN、seek、偏移、人工轨空档与迟到结果。
+ * 主要内容：真实桥消息、video、TextTrack 与配置订阅驱动播放器、轨道 loader、缓存和 DOM；覆盖菜单入口展开而非字幕开关的语义、真实模式项保存、同句调用预算、实际服务线路或套餐变化后的缓存失效、时钟漂移、NaN、seek、偏移、人工轨空档与迟到结果。
  * 模块边界：linkedom 补齐缺失的浏览器媒体/几何接口并按观察器订阅过滤记录；只 mock 外部端口，命名 selector spy 保留真实实现，不替换业务算法或修改全局数组原型。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -10,7 +10,7 @@ import {parseHTML} from 'linkedom';
 const ports = vi.hoisted(() => ({
   config: {} as Record<string, unknown>,
   subscribers: new Set<(value: unknown) => void>(),
-  translate: vi.fn(), send: vi.fn(), fetch: vi.fn(), watchProgress: vi.fn(), stopProgress: vi.fn(),
+  translate: vi.fn(), send: vi.fn(), fetch: vi.fn(), patch: vi.fn(), watchProgress: vi.fn(), stopProgress: vi.fn(),
 }));
 vi.mock('@/src/services/config/store', () => ({
   config: ports.config,
@@ -19,6 +19,7 @@ vi.mock('@/src/services/config/store', () => ({
     return () => ports.subscribers.delete(listener);
   },
   requestConfigPatch: async (patch: Record<string, unknown>) => {
+    ports.patch(patch);
     Object.assign(ports.config, patch);
     for (const listener of [...ports.subscribers]) listener(ports.config);
   },
@@ -34,17 +35,21 @@ vi.mock('@/src/platform/browser/capabilities', async original => ({
 
 import {Config} from '@/src/core/config/model';
 import {services} from '@/src/core/config/catalog';
+import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
 // 唯一 runtime import：移入 repo 后默认消费真实源码；私有 runner 可 alias 两份完整字节快照做同一测试对照。
 import {mountVideoSubtitleTranslation} from '@/src/features/video-subtitle/content/runtime';
 import {
   VIDEO_AI_CAPTION_CONTAINER_ID, VIDEO_NORMALIZED_CAPTION_OVERLAY_ID,
   VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS, VIDEO_SUBTITLE_PANEL_ID,
-  VIDEO_TRANSLATION_BUTTON_ID, VIDEO_TRANSLATION_LAYER_ID, VIDEO_TRANSLATION_MENU_ID,
+  VIDEO_TRANSLATION_ACTIVE_CLASS, VIDEO_TRANSLATION_BUTTON_ID, VIDEO_TRANSLATION_LAYER_ID, VIDEO_TRANSLATION_MENU_ID,
   VIDEO_TRANSLATION_OVERLAY_ID, X_SUBTITLE_RESOURCE_MESSAGE,
 } from '@/src/features/video-subtitle/content/ui';
 import {audioInit} from './fixtures/hlsAudio';
 import {YOUTUBE_TIMED_TEXT_MESSAGE} from '@/src/features/video-subtitle/content/youtubeTimedTextBridgeCore';
 import * as subtitleLogic from '@/src/features/video-subtitle/content/subtitleLogic';
+
+// 英文状态刷新依赖运行时已加载的资源包；测试注册真实文案，生产仍按当前语言加载。
+registerAllUiLanguageBundles();
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -79,6 +84,7 @@ beforeEach(() => {
     throw new Error('Unexpected model/runtime boundary: ' + message.type);
   });
   ports.fetch.mockReset().mockRejectedValue(new Error('Unexpected network request in subtitle fixture'));
+  ports.patch.mockReset();
   ports.stopProgress.mockReset(); ports.watchProgress.mockReset().mockReturnValue(ports.stopProgress);
 });
 afterEach(async () => {
@@ -231,6 +237,86 @@ function clickMenu(f: ReturnType<typeof fixture>, selector: string) {
   Object.defineProperty(event, 'isTrusted', {value: true});
   f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)!.querySelector(selector)!.dispatchEvent(event);
 }
+
+describe('public mounted player menu entry semantics', () => {
+  it.each(['x', 'youtube'] as const)('%s 入口只展开菜单，字幕模式与本机字幕开关保留各自语义', async platform => {
+    Object.assign(ports.config, {uiLanguage: 'zh-CN'});
+    const f = fixture(undefined, platform); const dispose = f.start(); await settle();
+    const button = f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)!;
+    const menu = f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)!;
+    const selectedMode = () => menu.querySelector<HTMLElement>('[data-mode][aria-checked="true"]')?.dataset.mode;
+    const subtitleSettings = () => ({enabled: ports.config.videoTranslationEnabled,
+      visible: ports.config.videoSubtitleVisible, mode: ports.config.videoSubtitleDisplayMode});
+    const clickEntry = async (trusted = true, entry = button) => {
+      const event = new f.window.Event('click', {bubbles: true});
+      Object.defineProperty(event, 'isTrusted', {value: trusted});
+      entry.dispatchEvent(event); await settle();
+    };
+    const expectMenuButton = (expanded: boolean, entry = button, currentMenu = menu) => {
+      expect(entry.getAttribute('role')).toBe('button');
+      expect(entry.getAttribute('aria-haspopup')).toBe('menu');
+      expect(entry.getAttribute('aria-controls')).toBe(VIDEO_TRANSLATION_MENU_ID);
+      expect(entry.hasAttribute('aria-pressed')).toBe(false);
+      expect(entry.getAttribute('aria-expanded')).toBe(String(expanded));
+      expect(currentMenu.hidden).toBe(!expanded);
+      expect(entry.title).toBe(entry.getAttribute('aria-label'));
+    };
+    expectMenuButton(false);
+    expect(button.getAttribute('aria-label')).toContain('已开启');
+    expect(button.classList.contains(VIDEO_TRANSLATION_ACTIVE_CLASS)).toBe(true);
+    expect(selectedMode()).toBe('bilingual');
+    const initialSettings = subtitleSettings(), initialRequests = ports.translate.mock.calls.length;
+    await clickEntry(false); expectMenuButton(false);
+    await clickEntry(); expectMenuButton(true);
+    await clickEntry(); expectMenuButton(false);
+    expect(subtitleSettings()).toEqual(initialSettings);
+    expect(ports.patch).not.toHaveBeenCalled();
+    expect(ports.translate).toHaveBeenCalledTimes(initialRequests);
+
+    // 配置刷新复用同一入口时也移除旧 pressed 状态，而不丢失状态文案或展开状态。
+    button.setAttribute('aria-pressed', 'true');
+    f.changeConfig({videoTranslationEnabled: false}); await settle();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBe(button);
+    expectMenuButton(false);
+    expect(button.getAttribute('aria-label')).toContain('已关闭');
+    expect(button.classList.contains(VIDEO_TRANSLATION_ACTIVE_CLASS)).toBe(false);
+    expect(selectedMode()).toBe('off');
+    f.changeConfig({videoTranslationEnabled: true, uiLanguage: 'en-US'}); await settle();
+    expectMenuButton(false);
+    expect(button.getAttribute('aria-label')).toContain('Enabled');
+    expect(button.classList.contains(VIDEO_TRANSLATION_ACTIVE_CLASS)).toBe(true);
+    await clickEntry(); expectMenuButton(true);
+    clickMenu(f, '[data-mode="off"]'); await settle();
+    expect(ports.patch).toHaveBeenCalledOnce();
+    expect(ports.patch).toHaveBeenLastCalledWith({videoTranslationEnabled: false});
+    expect(selectedMode()).toBe('off');
+    expect(subtitleSettings()).toEqual({...initialSettings, enabled: false});
+    expectMenuButton(true);
+    expect(button.classList.contains(VIDEO_TRANSLATION_ACTIVE_CLASS)).toBe(false);
+    if (platform === 'youtube') {
+      expect(f.document.querySelector('.ytp-subtitles-button')?.getAttribute('aria-pressed')).toBe('true');
+    }
+    clickMenu(f, '[data-action="close-menu"]'); await settle();
+    expectMenuButton(false);
+
+    dispose(); await settle();
+    expect(button.isConnected).toBe(false); expect(menu.isConnected).toBe(false);
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).toBeNull();
+    const disposeRemounted = f.start(); await settle();
+    const replacement = f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)!;
+    const replacementMenu = f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)!;
+    expect(replacement).not.toBe(button); expect(replacementMenu).not.toBe(menu);
+    expectMenuButton(false, replacement, replacementMenu);
+    expect(replacement.getAttribute('aria-label')).toContain('Off');
+    expect(replacement.classList.contains(VIDEO_TRANSLATION_ACTIVE_CLASS)).toBe(false);
+    await clickEntry(true, replacement); expectMenuButton(true, replacement, replacementMenu);
+    expect(ports.patch).toHaveBeenCalledOnce();
+    expect(ports.translate).toHaveBeenCalledTimes(initialRequests);
+    disposeRemounted(); await settle();
+    expect(replacement.isConnected).toBe(false); expect(replacementMenu.isConnected).toBe(false);
+  });
+});
 
 describe('public mounted X subtitle track priority and lifecycle', () => {
   const requestChanges: Array<{label: string; before: Partial<Config>; after: Partial<Config>}> = [

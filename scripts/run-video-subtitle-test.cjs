@@ -5,6 +5,32 @@ const os = require('node:os');
 const path = require('node:path');
 const { createRequire } = require('node:module');
 
+// 菜单入口的启用样式与菜单展开语义分别取证；aria-pressed 只属于真正的 toggle。
+async function readPlayerMenuButtonState(page) {
+  return page.evaluate(() => {
+    const button = document.querySelector('#fluent-read-video-subtitle-button');
+    const menu = document.querySelector('#fluent-read-video-subtitle-menu');
+    return {
+      present: Boolean(button), role: button?.getAttribute('role') ?? null,
+      hasPopup: button?.getAttribute('aria-haspopup') ?? null,
+      controls: button?.getAttribute('aria-controls') ?? null,
+      expanded: button?.getAttribute('aria-expanded') ?? null,
+      pressed: button?.getAttribute('aria-pressed') ?? null,
+      active: Boolean(button?.classList.contains('fluent-read-video-subtitle-active')),
+      menuPresent: Boolean(menu), menuHidden: menu ? menu.hidden : null,
+      offSelected: menu?.querySelector('[data-mode="off"]')?.getAttribute('aria-checked') === 'true',
+    };
+  });
+}
+function assertPlayerMenuButtonState(state, expanded) {
+  if (!state.present || !state.menuPresent || state.role !== 'button' || state.hasPopup !== 'menu'
+    || state.controls !== 'fluent-read-video-subtitle-menu' || state.pressed !== null
+    || !['true', 'false'].includes(state.expanded) || state.expanded !== String(!state.menuHidden)
+    || (expanded !== undefined && state.expanded !== String(expanded))) {
+    throw new Error(`播放器入口不符合菜单按钮契约：${JSON.stringify(state)}`);
+  }
+}
+
 function loadPlaywright(root) {
   try { return require('playwright'); } catch {
     const runtimeRequire = createRequire(path.join(path.resolve(root), '__fluentread_video_test__.cjs'));
@@ -264,7 +290,7 @@ async function main() {
       return {
         buttonPresent: Boolean(button),
         buttonInRightControls: Boolean(button?.closest('.ytp-right-controls')),
-        buttonEnabled: button?.getAttribute('aria-pressed') === 'true',
+        buttonEnabled: Boolean(button?.classList.contains('fluent-read-video-subtitle-active')),
         buttonLabel: button?.getAttribute('aria-label'),
       };
     });
@@ -272,14 +298,12 @@ async function main() {
       throw new Error(`播放器字幕翻译入口校验失败：${JSON.stringify(playerUiState)}`);
     }
 
-    const clickVideoTranslationButton = () => page.evaluate(() => {
-      const button = document.querySelector('#fluent-read-video-subtitle-button');
-      if (!(button instanceof HTMLElement)) throw new Error('找不到播放器字幕翻译入口');
-      button.click();
-    });
+    const clickVideoTranslationButton = () => page.locator('#fluent-read-video-subtitle-button').click();
 
+    assertPlayerMenuButtonState(await readPlayerMenuButtonState(page), false);
     await clickVideoTranslationButton();
     await page.locator('#fluent-read-video-subtitle-menu').waitFor({ state: 'visible', timeout: 10000 });
+    assertPlayerMenuButtonState(await readPlayerMenuButtonState(page), true);
     const playerMenuState = await page.evaluate(() => ({
       title: document.querySelector('#fluent-read-video-subtitle-menu .fluent-read-video-menu-title')?.textContent?.replace(/\s+/g, ' ').trim(),
       modeCount: document.querySelectorAll('#fluent-read-video-subtitle-menu [data-mode]').length,
@@ -412,17 +436,18 @@ async function main() {
     await page.locator('#fluent-read-video-subtitle-menu [data-mode="off"]').click({ force: true });
     await page.waitForFunction(() => {
       const button = document.querySelector('#fluent-read-video-subtitle-button');
-      return button?.getAttribute('aria-pressed') === 'false'
+      return Boolean(button) && !button.classList.contains('fluent-read-video-subtitle-active')
         && !document.querySelector('#fluent-read-video-subtitle')?.textContent?.trim();
     }, null, { timeout: 10000 });
+    assertPlayerMenuButtonState(await readPlayerMenuButtonState(page), true);
     const disabledFromPlayer = await page.evaluate(() => ({
-      buttonPressed: document.querySelector('#fluent-read-video-subtitle-button')?.getAttribute('aria-pressed'),
+      buttonActive: Boolean(document.querySelector('#fluent-read-video-subtitle-button')?.classList.contains('fluent-read-video-subtitle-active')),
       menuState: document.querySelector('#fluent-read-video-subtitle-menu [data-mode="off"]')?.getAttribute('aria-checked') === 'true' ? 'off' : 'on',
       overlayText: document.querySelector('#fluent-read-video-subtitle')?.textContent || '',
     }));
 
     await page.locator('#fluent-read-video-subtitle-menu [data-mode="bilingual"]').click({ force: true });
-    await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-button')?.getAttribute('aria-pressed') === 'true', null, { timeout: 10000 });
+    await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-button')?.classList.contains('fluent-read-video-subtitle-active') === true, null, { timeout: 10000 });
     await page.evaluate(() => {
       let container = document.querySelector('#ytp-caption-window-container');
       if (!container) {
@@ -440,8 +465,9 @@ async function main() {
       const overlay = document.querySelector('#fluent-read-video-subtitle');
       return Boolean(overlay?.textContent?.match(/[\u3400-\u9fff]/));
     }, null, { timeout: 45000 });
+    assertPlayerMenuButtonState(await readPlayerMenuButtonState(page), true);
     const reenabledFromPlayer = await page.evaluate(() => ({
-      buttonPressed: document.querySelector('#fluent-read-video-subtitle-button')?.getAttribute('aria-pressed'),
+      buttonActive: Boolean(document.querySelector('#fluent-read-video-subtitle-button')?.classList.contains('fluent-read-video-subtitle-active')),
       overlayText: document.querySelector('#fluent-read-video-subtitle')?.textContent || '',
     }));
 
