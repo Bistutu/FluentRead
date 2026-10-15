@@ -308,6 +308,31 @@
       "testsPassed": 11,
       "result": "passed",
       "evidence": "source-followup/report.json"
+    },
+    {
+      "name": "video subtitle panel actual material association",
+      "command": "node scripts/testing/run-resource-safe.mjs -- pnpm exec vitest run tests/videoSentenceLearningComponent.test.ts",
+      "log": "fluentread-material-video-association-accepted.log",
+      "logSha256": "ac2bead61b79f9eabe167960773a1d7817d01937cba35f60dedb747091aec26f",
+      "result": "passed",
+      "phase": "final-video-association-audit",
+      "testsPassed": 33
+    },
+    {
+      "name": "test audit after video association evidence",
+      "command": "pnpm test:audit",
+      "log": "fluentread-material-video-association-audit.log",
+      "logSha256": "acee4515d16e9ad2671f3a16e67abd650a820a78e47af7a03605161569a3ee77",
+      "result": "passed",
+      "phase": "final-video-association-audit"
+    },
+    {
+      "name": "docs after video association completion audit",
+      "command": "pnpm docs:build",
+      "log": "fluentread-material-video-association-docs-final.log",
+      "logSha256": "d88c823d0fc790300e224d271346a50799935c85b5a597a67d8a8ac1ebeae0a4",
+      "result": "passed",
+      "phase": "final-video-association-audit"
     }
   ],
   "coverage": [
@@ -836,7 +861,7 @@
     "tests/selectionTranslatorLifecycle.test.ts": "1690d66107a3195347de517695e6ad3c02e00a1146043806857bd89f59b5fdcf",
     "tests/sentenceActionsMount.test.ts": "f7e30b4cdd3b4ee30eb1a9b021dc84284c60f69cb227f51a11965438169815b3",
     "tests/test-matrix.json": "1f1d917aad3d4d6ebe66a63c8541e338ef60215192188060e1c23a6168ee6ab8",
-    "tests/videoSentenceLearningComponent.test.ts": "667c0510d94ead2d8bc28fbb2d6bce0d3a7bcdf8319ef75cd8ecd05661cfc389",
+    "tests/videoSentenceLearningComponent.test.ts": "a3709c0a0343d980f466e0049d4c61c920548f292b46f3d0364897bbd9196df1",
     "userscript/languages/es-ES.be72661f69196d35.json": "fdbb85f2ac2a6069fa11251fc2aab46085ef1e9d9034e1851042a768e12dfe7b",
     "userscript/languages/fr-FR.ecb180570edeb097.json": "5537d1e084403071a9b9c0af68e3139c4cc78dc0b27241ad377449914db4ac5d",
     "userscript/languages/ja-JP.a2e0e46262be844e.json": "99623c9a6da17ae7dec5193256595c23a3080bcdb004740fc03c2df7b12753d8",
@@ -897,7 +922,7 @@
     "exactModuleSetMatch": true,
     "scope": "Aggregated targeted four-dimensional coverage; remote CI is separate from the recorded local checks."
   },
-  "updatedAt": "2026-10-15T08:00:45.301183+00:00",
+  "updatedAt": "2026-10-15T08:16:50.445548+00:00",
   "affectedPlan": {
     "base": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
     "reason": "changed-dependency-graph",
@@ -931,5 +956,6 @@
       "cases": 4,
       "report": "localization/report.json"
     }
-  ]
+  ],
+  "finalFollowUpScope": "After the final localized production build, only video component tests and acceptance documentation changed; production source and artifact hashes remain unchanged."
 }

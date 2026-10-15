@@ -26,9 +26,12 @@
 | 文档队列与阅读面板 | `documentBatchComponent`、`readingPanelStreamingResize` 共 47 项通过；新增收藏、会话和学习笔记仅在成功保存后关联，以及来源不进入模型请求；`/private/tmp/fluentread-material-ci-fixtures-20261015.log` |
 | 内容与划词生命周期 | `contentRuntimeLifecycle`、`selectionTranslatorLifecycle` 共 271 项通过；`/private/tmp/fluentread-material-content-selection-after.log` |
 | 本地化资源与动态数字 | `i18n`、`i18nMaterials` 共 95 项通过；`/private/tmp/fluentread-material-i18n-accepted-strict.log` |
+| 视频字幕面板与材料关联 | `videoSentenceLearningComponent` 33 项通过（原 20 项加 13 项），执行真实材料 begin/complete/client，仅替代边界传输；`/private/tmp/fluentread-material-video-association-accepted.log` |
 | 当前严格覆盖率范围 | 最终受影响计划包含 209 个测试文件及十六个严格责任模块；十六模块已按专项验证 statements / branches / functions / lines 均为 100%，汇总见 verification.json |
 
-上述批次范围不同，不累加为全量测试总数。原生恢复提示已按显示时的界面语言翻译，来源专项 55 项通过，包含三类英文提示与关闭操作。实际 Vue 模板专项还检查原文保护边界、来源类型、页码、本地文件和默认问答标题；本地化与材料界面组合 104 项通过。最终架构、源码注释和验证归属 1076 项通过，测试审计登记 731 个文件、13188 个用例。
+上述批次范围不同，不累加为全量测试总数。原生恢复提示已按显示时的界面语言翻译，来源专项 55 项通过，包含三类英文提示与关闭操作。实际 Vue 模板专项还检查原文保护边界、来源类型、页码、本地文件和默认问答标题；本地化与材料界面组合 104 项通过。最终架构、源码注释和验证归属 1076 项通过，测试审计登记 731 个文件、13195 个静态登记用例。
+
+完成审计补齐了此前视频字幕面板中材料端口被空回调替代的直接行为证据：成功收藏和问答保留原视频来源、原句、时间、采集时间与代次及权威记录 ID；换句后的迟到收藏仍归原句，关闭后的迟到结果、问答停止、失败、缺 ID 和无痕环境不产生错误关联。该补验只改测试，不改变生产源码或已核验的构建产物。
 
 最终源码的类型检查、Chrome/Firefox production 构建、userscript 构建与 verifier、manifest 检查及文档构建通过；userscript 的五份内容寻址语言资源已重新生成并保留旧资源。远程 CI 状态以 PR 当前提交的检查记录为准，本文不把首次失败的 CI 当作通过。
 
