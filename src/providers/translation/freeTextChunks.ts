@@ -1,10 +1,45 @@
 /**
  * @file src/providers/translation/freeTextChunks.ts
- * 文件职责：免费网页服务按 Unicode 码点或 UTF-16 预算分块，保持术语保护标记完整。
- * 主要内容：一次扫描 FRTERM 标记及码点位置，切点遇到标记时退到标记前；有道保留既有句末/空白优先规则，超长单标记明确拒绝。
+ * 文件职责：免费网页服务按 Unicode 码点或 UTF-16 预算分块，保持术语保护标记完整并优先保留句子和词语边界。
+ * 主要内容：一次扫描 FRTERM 标记及码点位置，切点遇到标记时退到标记前；请求默认优先完整句子与词语，识别句末引号、常见缩写和数字单位，超长单标记明确拒绝。
  * 模块边界：纯文本分块，不解码槽包、不恢复术语、不自行请求网络；共享循环保持换行、边缘空白与取消，provider 仅注入逐块传输。
  */
 import {abortErrorFromSignal} from '@/src/platform/http/runtime';
+
+const CLOSING_PUNCTUATION = /["'”’»」』）)\]}]/u;
+const TITLE_OR_INITIAL = /(?:^|[\s"'“‘(])(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|[A-Z])\.$/u;
+const ABBREVIATION = /(?:^|\s)(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|e\.g|i\.e|(?:[A-Za-z]\.)+[A-Za-z])\.$/iu;
+// 仅保护明确的数字+单位组合；不把所有数字后的普通单词视为不可拆单位。
+const UNIT_START = /^(?:[yzafpnumcdhkMGTPEZYµμ]?(?:s|g|m|A|K|Hz|W|J|V|Pa|B)|min|h|mol|cd|KiB|MiB|GiB|TiB|°[CF]|%|‰)(?![\p{L}\p{N}_])/u;
+
+/** 预算内先取后半段的完整句子，再取安全词界；前半段词界能避免拆开一个本可装下的长词。 */
+function preferredBoundary(points: string[], start: number, end: number): number {
+    const middle = start + Math.ceil((end - start) / 2);
+    let sentence = 0, word = 0, early = 0, terminal = '';
+    let hasContent = false;
+    for (let cut = start + 1; cut <= end; cut++) {
+        const previous = points[cut - 1]!;
+        const whitespace = /\s/u.test(previous);
+        if (!whitespace) hasContent = true;
+        if (!whitespace && !CLOSING_PUNCTUATION.test(previous)) terminal = previous;
+        if (whitespace && (!hasContent || /\s/u.test(points[cut]!))) continue;
+        const cjkSentence = /[。！？]/u.test(terminal) && !CLOSING_PUNCTUATION.test(points[cut]!);
+        if (!whitespace && !cjkSentence) continue;
+        const before = points.slice(Math.max(start, cut - 32), cut).join('').trimEnd();
+        if (whitespace && (
+            /[\u00a0\u202f]/u.test(previous)
+            || TITLE_OR_INITIAL.test(before)
+            || (/\d$/u.test(before) && UNIT_START.test(points.slice(cut, cut + 16).join('')))
+        )) continue;
+        const unquoted = before.replace(/["'”’»」』）)\]}]+$/u, '');
+        const endsSentence = cjkSentence || (/[.!?]$/u.test(unquoted) && !ABBREVIATION.test(unquoted));
+        if (cut >= middle) {
+            word = cut;
+            if (endsSentence) sentence = cut;
+        } else early = cut;
+    }
+    return sentence || word || early || end;
+}
 
 export function* splitFreeTextChunks(text: string, limit: number, words = false, utf16 = false): Generator<string> {
     if (!Number.isInteger(limit) || limit < 1) throw new RangeError('分块字符预算必须为正整数');
@@ -26,17 +61,7 @@ export function* splitFreeTextChunks(text: string, limit: number, words = false,
             while (end < points.length && length + points[end]!.length <= limit) length += points[end++]!.length;
             if (end === start) throw new RangeError('分块字符预算不足以容纳一个 Unicode 码点');
         }
-        if (words && end < points.length) {
-            let sentence = 0, word = 0;
-            for (let index = start + Math.ceil((end - start) / 2); index < end; index++) {
-                const value = points[index]!;
-                if (/\s/u.test(value)) {
-                    word = index + 1;
-                    if (/[.!?]/u.test(points[index - 1]!)) sentence = word;
-                } else if (/[。！？]/u.test(value)) sentence = index + 1;
-            }
-            end = sentence || word || end;
-        }
+        if (words && end < points.length) end = preferredBoundary(points, start, end);
         while (spans[spanIndex] && spans[spanIndex]![1] <= end) spanIndex++;
         const span = spans[spanIndex];
         if (span && span[0] < end) end = span[0];
@@ -46,7 +71,7 @@ export function* splitFreeTextChunks(text: string, limit: number, words = false,
 }
 
 /** 默认保留逐行语义；允许服务整段处理换行，每块传输后检查取消，不提交迟到内容。 */
-export async function translateFreeTextChunks(text: string, limit: number, translate: (text: string) => Promise<string>, signal?: AbortSignal, words = false, options: {utf16?: boolean; splitLines?: boolean} = {}): Promise<string> {
+export async function translateFreeTextChunks(text: string, limit: number, translate: (text: string) => Promise<string>, signal?: AbortSignal, words = true, options: {utf16?: boolean; splitLines?: boolean} = {}): Promise<string> {
     let output = '';
     for (const line of options.splitLines === false ? [text] : text.split(/([\r\n]+)/u)) {
         for (const chunk of splitFreeTextChunks(line, limit, words, options.utf16)) {

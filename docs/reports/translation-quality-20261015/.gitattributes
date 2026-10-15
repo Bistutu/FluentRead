@@ -1,0 +1,4 @@
+# Keep the PR's hand-written runner and production fix readable; raw evidence remains inspectable.
+*.json linguist-generated=true
+**/*.json linguist-generated=true
+**/tools/* linguist-generated=true

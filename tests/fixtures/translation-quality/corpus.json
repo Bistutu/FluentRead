@@ -1,0 +1,1891 @@
+{
+  "schemaVersion": 1,
+  "id": "fluentread-translation-quality-v1",
+  "title": "FluentRead 可审计翻译质量样本 v1",
+  "description": "35 条任务原创合成样本；全部等待人工核对。自动检查只识别局部风险信号，人工语义要求不得折算成机器金标准。",
+  "createdAt": "2026-10-15",
+  "samples": [
+    {
+      "id": "tech-001",
+      "domain": "technical",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "A cache miss does not mean the request failed. Do not retry unless the server returns a retryable error.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "tech-001-r1",
+          "category": "negation",
+          "severity": "critical",
+          "description": "缓存未命中不等于请求失败；仅当服务器返回可重试错误时才允许重试。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "tech-001-r2",
+          "category": "terminology",
+          "severity": "major",
+          "description": "cache miss、request、retryable error 的译法清楚区分缓存状态、请求结果和错误属性。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "tech-001-r3",
+          "category": "omission",
+          "severity": "critical",
+          "description": "两句均有对应含义；保留 unless 限定条件。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "tech-002",
+      "domain": "technical",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "After HTTP 429, wait for Retry-After before retrying. Repeating an idempotent operation must not create a second order.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "tech-002-r1",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留 HTTP 状态码 429。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "429"
+          }
+        },
+        {
+          "id": "tech-002-r2",
+          "category": "terminology",
+          "severity": "major",
+          "description": "HTTP 响应头名称 Retry-After 必须逐字保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "Retry-After"
+          }
+        },
+        {
+          "id": "tech-002-r3",
+          "category": "negation",
+          "severity": "critical",
+          "description": "重复执行幂等操作不得生成第二笔订单。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "tech-002-r4",
+          "category": "terminology",
+          "severity": "major",
+          "description": "idempotent 应表达幂等语义，而非同一、简单或快速。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "tech-003",
+      "domain": "technical",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "The timeout is 0.5 ms, not 5 ms. The buffer holds 512 KiB; increasing it to 512 KB would change the limit.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "tech-003-r1",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留 0.5 毫秒的量值；小数点不可丢失。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "0\\.5\\s*(?:ms|毫秒)",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "tech-003-r2",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留被否定的 5 毫秒量值，不能与 0.5 混为一项。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "(?<![\\d.])5\\s*(?:ms|毫秒)",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "tech-003-r3",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留二进制单位 KiB。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "KiB"
+          }
+        },
+        {
+          "id": "tech-003-r4",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留十进制单位 KB。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "KB"
+          }
+        },
+        {
+          "id": "tech-003-r5",
+          "category": "numbers-units",
+          "severity": "critical",
+          "description": "512 KiB 与 512 KB 不能当作相同容量；两个 512 的归属明确。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "tech-003-r6",
+          "category": "negation",
+          "severity": "critical",
+          "description": "超时应为 0.5 ms，明确排除 5 ms。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "tech-004",
+      "domain": "technical",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Set `TRANSLATION_MODE=offline` before running `reader --dry-run`.\n\n```sh\nreader --input \"chapter 1.txt\" --dry-run\n```\n\nThe command previews changes; it does not write the file.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "tech-004-r1",
+          "category": "format",
+          "severity": "major",
+          "description": "内联配置赋值和反引号必须保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "`TRANSLATION_MODE=offline`"
+          }
+        },
+        {
+          "id": "tech-004-r2",
+          "category": "format",
+          "severity": "major",
+          "description": "内联命令及其选项必须保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "`reader --dry-run`"
+          }
+        },
+        {
+          "id": "tech-004-r3",
+          "category": "format",
+          "severity": "major",
+          "description": "代码块、引号、文件名、选项和换行必须原样保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "```sh\nreader --input \"chapter 1.txt\" --dry-run\n```"
+          }
+        },
+        {
+          "id": "tech-004-r4",
+          "category": "negation",
+          "severity": "critical",
+          "description": "命令只预览更改，不写入文件。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "tech-004-r5",
+          "category": "omission",
+          "severity": "major",
+          "description": "保留先设置环境变量再运行命令的顺序。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "tech-005",
+      "domain": "technical",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "It may retry the request, but it must not reorder the remaining jobs.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "tech-005-r1",
+          "category": "reference",
+          "severity": "major",
+          "description": "两处 it 都指调度器，而非队列或请求；背景只用于消歧，不需要插入正文。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "tech-005-r2",
+          "category": "negation",
+          "severity": "critical",
+          "description": "允许重试当前请求，但禁止改变其他任务顺序。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "tech-005-r3",
+          "category": "omission",
+          "severity": "major",
+          "description": "保留 remaining 的范围，不能误写为任何任务都不能重试。",
+          "requiresHumanReview": true
+        }
+      ],
+      "sourceContext": "The queue stores pending jobs. The scheduler removes one job at a time and sends its request."
+    },
+    {
+      "id": "tech-006",
+      "domain": "technical",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Dr. Lin tested v2.4.1 with a 3.14 MB file, e.g. a small PDF. The parser must keep U.S. addresses intact.\n\nA new paragraph begins here; the previous sentence has ended.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "tech-006-r1",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "版本号不能被分段、改写或遗漏。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "v2.4.1"
+          }
+        },
+        {
+          "id": "tech-006-r2",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "小数容量不可变成 3 与 14 两段。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "3\\.14\\s*(?:MB|兆字节)",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "tech-006-r3",
+          "category": "format",
+          "severity": "major",
+          "description": "Dr.、e.g.、U.S. 内部句点不应造成语义断裂或多余段落。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "tech-006-r4",
+          "category": "omission",
+          "severity": "major",
+          "description": "保留文件示例、美国地址约束以及第二段说明，不能丢弃短句或段落。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "tech-006-r5",
+          "category": "reference",
+          "severity": "major",
+          "description": "第二段的 previous sentence 指前一段的末句，不能误作当前句。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "tech-007",
+      "domain": "technical",
+      "sourceLanguage": "zh-Hans",
+      "targetLanguage": "en",
+      "source": "取消只会停止本次请求，不会关闭自动重试。超时后，请保留错误码 E_TIMEOUT，并允许用户重新发起请求。",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "tech-007-r1",
+          "category": "terminology",
+          "severity": "major",
+          "description": "错误码 E_TIMEOUT 必须逐字保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "E_TIMEOUT"
+          }
+        },
+        {
+          "id": "tech-007-r2",
+          "category": "negation",
+          "severity": "critical",
+          "description": "Cancellation stops only the current request; it does not disable automatic retries.",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "tech-007-r3",
+          "category": "terminology",
+          "severity": "major",
+          "description": "取消与超时应分别表达为 cancellation 与 timeout 的概念，不能互换。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "tech-007-r4",
+          "category": "omission",
+          "severity": "major",
+          "description": "保留超时后保存错误码、允许用户再次发起请求两项行为。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "news-001",
+      "domain": "news",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "The council has not approved the plan. It will vote again on 18 May; construction will begin only if the proposal passes.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "news-001-r1",
+          "category": "negation",
+          "severity": "critical",
+          "description": "尚未批准，不能写成已经批准或已否决。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-001-r2",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "再次投票日期是 5 月 18 日；开工以提案通过为条件，不能表述为确定开工。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-001-r3",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留 5 月 18 日，不强制一种合理的日期格式。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "(?:5\\s*月\\s*18\\s*(?:日|号)?|18\\s*(?:May|五月)|May\\s*18)",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "news-001-r4",
+          "category": "reference",
+          "severity": "major",
+          "description": "It 指议会或市议会，不是计划或建设项目。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "news-002",
+      "domain": "news",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "The share rose from 10% to 12%, an increase of 2 percentage points rather than 2%. Revenue fell by 3%.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "news-002-r1",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留初始占比 10%。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "10\\s*[%％]",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "news-002-r2",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留最终占比 12%。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "12\\s*[%％]",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "news-002-r3",
+          "category": "numbers-units",
+          "severity": "critical",
+          "description": "占比增加 2 个百分点，不是增长 2%；收入另行下降 3%。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-002-r4",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "rose 和 fell 的方向不能互换，不能把占比变化误写成收入变化。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "news-003",
+      "domain": "news",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "The operator said service had resumed. The newsroom could not independently verify that claim, and two stations remained closed.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "news-003-r1",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "恢复服务只是运营方的说法，报道者未独立核实；不得把声称写成已证实事实。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-003-r2",
+          "category": "negation",
+          "severity": "critical",
+          "description": "could not independently verify 的否定必须保留。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-003-r3",
+          "category": "reference",
+          "severity": "major",
+          "description": "that claim 指恢复服务的说法。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-003-r4",
+          "category": "omission",
+          "severity": "critical",
+          "description": "保留仍有两座车站关闭的限定，不得写成全线恢复。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "news-004",
+      "domain": "news",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "The revised estimate is $1.2 million, down from $1.5 million. These figures exclude tax and are not final costs.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "news-004-r1",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "金额应为 120 万美元，允许合理的中文数量表达。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "(?:\\$\\s*1\\.2\\s*(?:million|百万)|1\\.2\\s*百万\\s*美元|120\\s*万\\s*美元)",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "news-004-r2",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "原金额应为 150 万美元。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "(?:\\$\\s*1\\.5\\s*(?:million|百万)|1\\.5\\s*百万\\s*美元|150\\s*万\\s*美元)",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "news-004-r3",
+          "category": "numbers-units",
+          "severity": "critical",
+          "description": "金额从 150 万降至 120 万美元，不是反向变化；百万量级不可丢失。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-004-r4",
+          "category": "negation",
+          "severity": "critical",
+          "description": "估算不含税且不是最终成本，两项限制都要保留。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "news-005",
+      "domain": "news",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "It postponed its launch after the inspection. The ferry continued to operate on its usual route.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "news-005-r1",
+          "category": "reference",
+          "severity": "major",
+          "description": "首句 It 指新货运码头，而非渡轮；its launch 指码头启用。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-005-r2",
+          "category": "omission",
+          "severity": "major",
+          "description": "保留检查之后延期和渡轮按原路线运营两条信息。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-005-r3",
+          "category": "mistranslation",
+          "severity": "major",
+          "description": "launch 在此是启用/投入运营，不应译为发射。",
+          "requiresHumanReview": true
+        }
+      ],
+      "sourceContext": "A new cargo terminal and an existing passenger ferry share the harbor. Inspectors examined the terminal yesterday."
+    },
+    {
+      "id": "news-006",
+      "domain": "news",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Update — 08:30 UTC\n- North gate: open\n- South gate: closed until further notice\n\nThe update replaces the earlier bulletin; it does not reopen the south gate.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "news-006-r1",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "更新时间的小时和分钟须保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "08:30"
+          }
+        },
+        {
+          "id": "news-006-r2",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留时区 UTC。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "UTC"
+          }
+        },
+        {
+          "id": "news-006-r3",
+          "category": "format",
+          "severity": "major",
+          "description": "保留两个独立列表项。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "(?:^|\\n)[-*•]\\s*[^\\n]+\\n[-*•]\\s*[^\\n]+",
+            "flags": "mu"
+          }
+        },
+        {
+          "id": "news-006-r4",
+          "category": "negation",
+          "severity": "critical",
+          "description": "南门持续关闭，直到另行通知；公告更新不意味着南门重新开放。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-006-r5",
+          "category": "reference",
+          "severity": "major",
+          "description": "it 指更新公告，不是北门或南门。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "news-007",
+      "domain": "news",
+      "sourceLanguage": "fr",
+      "targetLanguage": "zh-Hans",
+      "source": "La mairie n’a pas annulé le vote. Elle l’a reporté de deux jours, sans changer la date d’ouverture du centre.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "news-007-r1",
+          "category": "negation",
+          "severity": "critical",
+          "description": "投票未取消，只推迟两天；中心开放日期没有变化。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-007-r2",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留两天的推迟量，不能写成推迟到两天前或两周后。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-007-r3",
+          "category": "reference",
+          "severity": "major",
+          "description": "Elle 指市政府，l’ 指投票；不得混淆投票与中心开放。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "news-007-r4",
+          "category": "omission",
+          "severity": "major",
+          "description": "两句中否定、延期和开放日期三项信息都要保留。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "colloquial-001",
+      "domain": "colloquial",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "I am not saying you are wrong. I just do not think we have enough evidence yet.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "colloquial-001-r1",
+          "category": "negation",
+          "severity": "critical",
+          "description": "第一句并非认定对方错误；第二句认为证据尚不充分，两个否定的作用域均须准确。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-001-r2",
+          "category": "omission",
+          "severity": "major",
+          "description": "保留 yet 的暂时性，不能写成永远没有证据。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-001-r3",
+          "category": "mistranslation",
+          "severity": "major",
+          "description": "保持委婉保留意见的语气，不能强化为指责或明确赞同。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "colloquial-002",
+      "domain": "colloquial",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Great, another meeting that could have been an email. Can we at least keep it under 15 minutes?",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "colloquial-002-r1",
+          "category": "mistranslation",
+          "severity": "major",
+          "description": "结合背景理解 Great 的讽刺意味；不能译成发自内心欢迎会议。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-002-r2",
+          "category": "numbers-units",
+          "severity": "critical",
+          "description": "请求时长少于 15 分钟，不能变成至少 15 分钟。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-002-r3",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留 15 分钟量值。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "15\\s*(?:分钟|分|minutes|min)",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "colloquial-002-r4",
+          "category": "reference",
+          "severity": "major",
+          "description": "it 指会议，不能指电子邮件。",
+          "requiresHumanReview": true
+        }
+      ],
+      "sourceContext": "The speaker is frustrated by unnecessary meetings and says this sarcastically."
+    },
+    {
+      "id": "colloquial-003",
+      "domain": "colloquial",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "I am down for coffee, but I am not up for a long drive. Let us meet near the station instead.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "colloquial-003-r1",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "down for 表示愿意喝咖啡，not up for 表示不愿长途开车；不能按上下方向直译。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-003-r2",
+          "category": "negation",
+          "severity": "major",
+          "description": "不愿长途开车的否定必须保留。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-003-r3",
+          "category": "omission",
+          "severity": "major",
+          "description": "保留改在车站附近见面的替代提议。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "colloquial-004",
+      "domain": "colloquial",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Could you send it to her after she checks the address? Please do not send it to me again.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "colloquial-004-r1",
+          "category": "reference",
+          "severity": "major",
+          "description": "it 指邀请函，her/she 指 Maya；me 指说话人。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-004-r2",
+          "category": "negation",
+          "severity": "critical",
+          "description": "不要再次发给说话人，不能误成不要发给 Maya。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-004-r3",
+          "category": "mistranslation",
+          "severity": "major",
+          "description": "核对地址在发送之前，不能颠倒先后。",
+          "requiresHumanReview": true
+        }
+      ],
+      "sourceContext": "Maya asked for the invitation. The speaker already has a copy, and Maya needs to check her own postal address."
+    },
+    {
+      "id": "colloquial-005",
+      "domain": "colloquial",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "You do not have to agree with me, but you must not share this draft yet.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "colloquial-005-r1",
+          "category": "negation",
+          "severity": "critical",
+          "description": "do not have to 表示没有义务同意，must not 表示禁止分享；不能把两种情态强度互换。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-005-r2",
+          "category": "omission",
+          "severity": "major",
+          "description": "保留 draft 和 yet：限制对象是草稿，限制时点是目前。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-005-r3",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "不能把前半句译成“你不该/不能同意我”，也不能把后半句译成“你不必分享”。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "colloquial-006",
+      "domain": "colloquial",
+      "sourceLanguage": "zh-Hans",
+      "targetLanguage": "en",
+      "source": "这事八字还没一撇，先别替我答应。等我确认了，再给他们回话。",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "colloquial-006-r1",
+          "category": "mistranslation",
+          "severity": "major",
+          "description": "“八字还没一撇”表达事情尚无定论，不能字面翻译成汉字笔画。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-006-r2",
+          "category": "negation",
+          "severity": "critical",
+          "description": "不要代表说话人提前答应，不能变成已经答应。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-006-r3",
+          "category": "reference",
+          "severity": "major",
+          "description": "“我”与“他们”的角色保持一致。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-006-r4",
+          "category": "omission",
+          "severity": "major",
+          "description": "保留确认之后才回复的先后条件。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "colloquial-007",
+      "domain": "colloquial",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "If the shop is still open, pick up two batteries—not two chargers. Otherwise, come straight home.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "colloquial-007-r1",
+          "category": "negation",
+          "severity": "critical",
+          "description": "需要电池，明确排除充电器。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-007-r2",
+          "category": "numbers-units",
+          "severity": "critical",
+          "description": "数量为两节/两块电池；不能购买两类商品或每类两件。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-007-r3",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "商店还开门才购买，否则直接回家。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "colloquial-007-r4",
+          "category": "omission",
+          "severity": "major",
+          "description": "保留 Otherwise 分支，不可只翻译购买请求。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "academic-001",
+      "domain": "academic",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "The treatment was associated with lower error rates, but this observational study does not establish causation.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "academic-001-r1",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "associated with 只表达相关关系，不能升级为处理导致错误率降低。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-001-r2",
+          "category": "negation",
+          "severity": "critical",
+          "description": "明确本观察性研究无法确立因果关系。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-001-r3",
+          "category": "terminology",
+          "severity": "major",
+          "description": "observational study 表达观察性研究，与随机试验或观察实验区分。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "academic-002",
+      "domain": "academic",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "The mean difference was −0.8 points (95% CI: −1.3 to −0.3; n = 240). A negative value favors the intervention.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "academic-002-r1",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "均值差为负 0.8；不可丢失负号。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "[−-]\\s*0\\.8",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "academic-002-r2",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "置信水平为 95%。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "95\\s*[%％]",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "academic-002-r3",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "样本量 240 必须保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "240"
+          }
+        },
+        {
+          "id": "academic-002-r4",
+          "category": "numbers-units",
+          "severity": "critical",
+          "description": "置信区间为负 1.3 到负 0.3；所有负号、上下界和单位“分”均须正确。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-002-r5",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "负值有利于干预组，不能反转解释方向。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "academic-003",
+      "domain": "academic",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "We did not find evidence that the two methods are equivalent. This is not evidence that they differ.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "academic-003-r1",
+          "category": "negation",
+          "severity": "critical",
+          "description": "未发现两种方法等价的证据，不等于已证明两种方法不同。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-003-r2",
+          "category": "reference",
+          "severity": "major",
+          "description": "This 指未找到等价证据这一结果，they 指两种方法。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-003-r3",
+          "category": "omission",
+          "severity": "critical",
+          "description": "两句都须保留；漏掉第二句会改变科学结论。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "academic-004",
+      "domain": "academic",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "For x > 0, define f(x) = log(x). Equation (2) applies only when x ≠ 1; see [12, pp. 4–6].",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "academic-004-r1",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "定义域约束 x > 0 逐字保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "x > 0"
+          }
+        },
+        {
+          "id": "academic-004-r2",
+          "category": "format",
+          "severity": "major",
+          "description": "函数定义逐字保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "f(x) = log(x)"
+          }
+        },
+        {
+          "id": "academic-004-r3",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "适用条件 x ≠ 1 逐字保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "x ≠ 1"
+          }
+        },
+        {
+          "id": "academic-004-r4",
+          "category": "format",
+          "severity": "major",
+          "description": "引文标号和页码逐字保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "[12, pp. 4–6]"
+          }
+        },
+        {
+          "id": "academic-004-r5",
+          "category": "negation",
+          "severity": "critical",
+          "description": "公式（2）仅在 x 不等于 1 时适用，不能误为等于或任意 x。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "academic-005",
+      "domain": "academic",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "It reduced the variance without changing the estimator. We evaluated it on the held-out set only.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "academic-005-r1",
+          "category": "reference",
+          "severity": "major",
+          "description": "两处 it 指重采样程序，不能指估计器或训练集。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-005-r2",
+          "category": "negation",
+          "severity": "critical",
+          "description": "降低方差时没有改变估计器。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-005-r3",
+          "category": "terminology",
+          "severity": "major",
+          "description": "variance、estimator、held-out set 分别保持方差、估计器、留出集概念。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-005-r4",
+          "category": "omission",
+          "severity": "critical",
+          "description": "仅在留出集评估，不能遗漏 only 并暗示使用训练集。",
+          "requiresHumanReview": true
+        }
+      ],
+      "sourceContext": "The paper introduces a resampling procedure. The estimator itself remains fixed. Training data and the held-out evaluation set are disjoint."
+    },
+    {
+      "id": "academic-006",
+      "domain": "academic",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Participants who withdrew before week 4 were excluded from the per-protocol analysis but remained in the intention-to-treat analysis.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "academic-006-r1",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "保留第 4 周时间点。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "(?:第\\s*4\\s*周|4\\s*周|week\\s*4)",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "academic-006-r2",
+          "category": "terminology",
+          "severity": "critical",
+          "description": "per-protocol analysis 与 intention-to-treat analysis 是不同的分析集/方法，不能合并。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-006-r3",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "第 4 周前退出者从符合方案分析中排除，但仍保留在意向性治疗分析中。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-006-r4",
+          "category": "omission",
+          "severity": "major",
+          "description": "保留 before 的时间边界与 but 两侧相反处理。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "academic-007",
+      "domain": "academic",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "The result is robust to removing the largest site. It should not be generalized to children, who were not included in the sample.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "academic-007-r1",
+          "category": "mistranslation",
+          "severity": "major",
+          "description": "robust to removing 指移除最大站点后结论仍稳健，不是移除该站点很困难。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-007-r2",
+          "category": "negation",
+          "severity": "critical",
+          "description": "不得推广至儿童，原因是样本不含儿童；两处否定都要保留。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-007-r3",
+          "category": "reference",
+          "severity": "major",
+          "description": "It 指研究结果；who 指儿童。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "academic-007-r4",
+          "category": "omission",
+          "severity": "critical",
+          "description": "保留外推限制及原因。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "mixed-001",
+      "domain": "mixed-language",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Keep the API name `getUserID` unchanged，其他说明请译成中文。The response includes a user ID, not a password.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "mixed-001-r1",
+          "category": "terminology",
+          "severity": "major",
+          "description": "API 名和大小写逐字保留，包括 ID 大写。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "`getUserID`"
+          }
+        },
+        {
+          "id": "mixed-001-r2",
+          "category": "negation",
+          "severity": "critical",
+          "description": "响应包含用户 ID，不包含/不是密码，不能反转。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "mixed-001-r3",
+          "category": "omission",
+          "severity": "major",
+          "description": "中文原句与英文说明均保留，不能整段因混合语言而跳过。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "mixed-001-r4",
+          "category": "terminology",
+          "severity": "major",
+          "description": "user ID 与 API 名中的 ID 保持标识符概念，不能译成密码或令牌。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "mixed-002",
+      "domain": "mixed-language",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Release note / 更新说明\n1. Fixed the retry loop.\n2. 保留旧设置。\n3. Do not reset `retryCount` on refresh.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "mixed-002-r1",
+          "category": "terminology",
+          "severity": "major",
+          "description": "代码标识 retryCount 原样保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "`retryCount`"
+          }
+        },
+        {
+          "id": "mixed-002-r2",
+          "category": "format",
+          "severity": "major",
+          "description": "三个编号条目及其顺序须保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "(?:^|\\n)1[.)、]\\s*[^\\n]+\\n2[.)、]\\s*[^\\n]+\\n3[.)、]\\s*[^\\n]+",
+            "flags": "mu"
+          }
+        },
+        {
+          "id": "mixed-002-r3",
+          "category": "negation",
+          "severity": "critical",
+          "description": "刷新时不得重置 retryCount，不能变成要求重置。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "mixed-002-r4",
+          "category": "omission",
+          "severity": "major",
+          "description": "已修复重试循环、保留旧设置、禁止刷新重置三项均需出现。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "mixed-003",
+      "domain": "mixed-language",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "The file is at `/docs/版本 2/guide.md`. 参见 https://example.org/guide?lang=en&v=2#retry；the link must remain usable.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "mixed-003-r1",
+          "category": "format",
+          "severity": "major",
+          "description": "包含空格与中文的路径及代码标记逐字保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "`/docs/版本 2/guide.md`"
+          }
+        },
+        {
+          "id": "mixed-003-r2",
+          "category": "format",
+          "severity": "major",
+          "description": "链接路径、查询参数、& 以及片段逐字保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "https://example.org/guide?lang=en&v=2#retry"
+          }
+        },
+        {
+          "id": "mixed-003-r3",
+          "category": "omission",
+          "severity": "major",
+          "description": "译文需说明文件位置及链接仍应可用；不能仅输出两个受保护字符串。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "mixed-004",
+      "domain": "mixed-language",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "The label says “電源オフ”, which means the power is off. It does not mean the device is unplugged. 状态码：PWR_OFF。",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "mixed-004-r1",
+          "category": "terminology",
+          "severity": "major",
+          "description": "状态码逐字保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "PWR_OFF"
+          }
+        },
+        {
+          "id": "mixed-004-r2",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "日文标签表示电源关闭；关闭与拔掉电源插头不同。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "mixed-004-r3",
+          "category": "negation",
+          "severity": "critical",
+          "description": "不能推断设备已拔掉插头，否定不可遗漏。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "mixed-004-r4",
+          "category": "reference",
+          "severity": "major",
+          "description": "It 指标签含义，而非状态码变量或未知主体。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "mixed-005",
+      "domain": "mixed-language",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Latency is 20 ms（不是 20 s）; throughput is 3.5 requests/s. Keep `p95_latency_ms` as the metric name.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "mixed-005-r1",
+          "category": "terminology",
+          "severity": "major",
+          "description": "指标名不能被翻译或改成 p50。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "`p95_latency_ms`"
+          }
+        },
+        {
+          "id": "mixed-005-r2",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "延迟为 20 毫秒。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "20\\s*(?:ms|毫秒)",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "mixed-005-r3",
+          "category": "numbers-units",
+          "severity": "major",
+          "description": "吞吐量的小数 3.5 必须保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "3\\.5",
+            "flags": "u"
+          }
+        },
+        {
+          "id": "mixed-005-r4",
+          "category": "numbers-units",
+          "severity": "critical",
+          "description": "延迟 20 毫秒而非 20 秒；吞吐量为每秒 3.5 次请求，两种单位不能混淆。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "mixed-005-r5",
+          "category": "omission",
+          "severity": "critical",
+          "description": "中文括号中的否定限制必须保留。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "mixed-006",
+      "domain": "mixed-language",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "请保留术语 cache miss。A cache miss triggers a fetch; a cache hit does not. 两种情况都会更新 lastSeen。",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "mixed-006-r1",
+          "category": "terminology",
+          "severity": "major",
+          "description": "源文明确要求保留字面术语 cache miss；输出中应出现该字符串。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "contains",
+            "value": "cache miss"
+          }
+        },
+        {
+          "id": "mixed-006-r2",
+          "category": "terminology",
+          "severity": "major",
+          "description": "变量 lastSeen 的大小写逐字保留。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "exact-preservation",
+            "value": "lastSeen"
+          }
+        },
+        {
+          "id": "mixed-006-r3",
+          "category": "terminology",
+          "severity": "major",
+          "description": "cache miss 与 cache hit 区分为未命中/命中，不可混成同一状态。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "mixed-006-r4",
+          "category": "negation",
+          "severity": "critical",
+          "description": "只在未命中时发起 fetch；命中不 fetch，但两种情况都更新 lastSeen。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "mixed-006-r5",
+          "category": "omission",
+          "severity": "major",
+          "description": "不能因输入包含中文而漏译英文中间句。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "mixed-007",
+      "domain": "mixed-language",
+      "sourceLanguage": "auto",
+      "targetLanguage": "zh-Hant",
+      "source": "保存に失敗しました。Retry only after the network is restored；ローカルの下書きは削除しないでください。",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "为 FluentRead 质量评测原创的合成样本；不摘录私有页面或外部作品，不陈述真实新闻、实验结果或产品承诺。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "mixed-007-r1",
+          "category": "negation",
+          "severity": "critical",
+          "description": "保存失败；恢复网络后才重试；不得删除本地草稿，三个状态和条件须准确。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "mixed-007-r2",
+          "category": "omission",
+          "severity": "critical",
+          "description": "日语、英语两个语种的所有子句均需翻译，不能跳过英文或最后日文句。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "mixed-007-r3",
+          "category": "terminology",
+          "severity": "major",
+          "description": "local draft 应表达本地草稿，不能变成服务器备份或已发布内容。",
+          "requiresHumanReview": true
+        }
+      ]
+    }
+  ]
+}

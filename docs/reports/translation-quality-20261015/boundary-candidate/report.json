@@ -1,0 +1,955 @@
+{
+  "schemaVersion": 1,
+  "id": "quality-1792044105252",
+  "createdAt": "2026-10-15T06:01:45.252Z",
+  "fingerprint": "cb0e7045afaaa44e078300ce1a45817b26e3efc0c86d20ad1b4b0879b12c9e9d",
+  "corpus": {
+    "schemaVersion": 1,
+    "id": "synthetic-chunk-boundaries-v1",
+    "title": "分段边界压力语料",
+    "description": "仅用于1000码点分段对照，人工核对状态pending。",
+    "createdAt": "2026-10-15",
+    "samples": [
+      {
+        "id": "boundary-word",
+        "domain": "technical",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-Hans",
+        "source": "Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete.      electroencephalography measures electrical activity. Do not remove the sensor.",
+        "provenance": {
+          "kind": "synthetic",
+          "author": "Codex",
+          "createdAt": "2026-10-15",
+          "note": "合成边界压力样本；重复校准句和有意空格将关键短语放在1000码点上限处，不代表真实文章分布。"
+        },
+        "humanReview": {
+          "status": "pending",
+          "reviewer": null,
+          "reviewedAt": null,
+          "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+        },
+        "requirements": [
+          {
+            "id": "boundary-word-meaning",
+            "category": "mistranslation",
+            "severity": "critical",
+            "description": "保留脑电图测量与不得移除传感器的意义。",
+            "requiresHumanReview": true
+          }
+        ]
+      },
+      {
+        "id": "boundary-unit",
+        "domain": "technical",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-Hans",
+        "source": "Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete.                     3.5 kg is the maximum permitted mass. Do not exceed this limit.",
+        "provenance": {
+          "kind": "synthetic",
+          "author": "Codex",
+          "createdAt": "2026-10-15",
+          "note": "合成边界压力样本；重复校准句和有意空格将关键短语放在1000码点上限处，不代表真实文章分布。"
+        },
+        "humanReview": {
+          "status": "pending",
+          "reviewer": null,
+          "reviewedAt": null,
+          "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+        },
+        "requirements": [
+          {
+            "id": "boundary-unit-meaning",
+            "category": "mistranslation",
+            "severity": "critical",
+            "description": "3.5 kg 是不得超过的上限，数值、单位和否定关系保持。",
+            "requiresHumanReview": true
+          },
+          {
+            "id": "boundary-unit-number",
+            "category": "numbers-units",
+            "severity": "critical",
+            "description": "检查3.5 kg数值和单位表面信号，仍需人工核对含义。",
+            "requiresHumanReview": false,
+            "check": {
+              "type": "regex",
+              "value": "3[.,]5\\s*(?:kg|千克|公斤)",
+              "flags": "u"
+            }
+          }
+        ]
+      },
+      {
+        "id": "boundary-title",
+        "domain": "technical",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-Hans",
+        "source": "Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete.                      Dr. Smith said, \"Leave the controller disabled.\" Keep it disabled until the inspection is complete.",
+        "provenance": {
+          "kind": "synthetic",
+          "author": "Codex",
+          "createdAt": "2026-10-15",
+          "note": "合成边界压力样本；重复校准句和有意空格将关键短语放在1000码点上限处，不代表真实文章分布。"
+        },
+        "humanReview": {
+          "status": "pending",
+          "reviewer": null,
+          "reviewedAt": null,
+          "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+        },
+        "requirements": [
+          {
+            "id": "boundary-title-meaning",
+            "category": "mistranslation",
+            "severity": "critical",
+            "description": "Dr. Smith 是同一人名，控制器应保持禁用直至检查完成。",
+            "requiresHumanReview": true
+          }
+        ]
+      }
+    ],
+    "sha256": "4441e92f2bae3ab82f0bcb4098c55a376c36b759fae7a503ab1a0b9f04e468ff"
+  },
+  "environment": {
+    "node": "v20.11.1",
+    "platform": "darwin",
+    "sourceRoot": "/Users/thinkstu/Desktop/copy/FluentRead-translation-quality-lab-20261015",
+    "revision": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+    "sourceHashes": {
+      "src/services/translation/types.ts": "74e3bf3405cc753308ec17fa3f3d691b4956f6e8ee8871c29e21757c77cc7966",
+      "src/core/config/freeTranslation.ts": "dc63b34bdf1820d847d53dff9008ccc04105edd4a49ee53c4f9653c69715ae63",
+      "src/core/config/scheduling.ts": "5e626322d4d4cc2a9da9466e1351a6666e1803d23a079bfdf48c930600a79c48",
+      "src/core/config/aiRequestTimeout.ts": "daa32fd29c9d39458a9470032a442c75e0fc584ff83e85e86a12b98a6e403390",
+      "src/core/config/deepl.ts": "261cbd896901299b6bb15647c1b8017dd8455e9fcbecb0222639b907440afabc",
+      "src/core/language/catalog.ts": "b3335b1a2eecc165f73ed4e547004d57615a2e0e455624c3df5f789cca6ff73d",
+      "src/core/language/codes.ts": "80d223e1bbe5ce822f28c4964f1c78394777b0d978dad407a6c05e47fa0f6ade",
+      "src/core/language/chinese.ts": "d28d0d1247abb8b325dde0423cac78f5a481889ebf76823f2e3b083b0a15d28c",
+      "src/core/config/customOpenAI.ts": "944ad426286e9655d8010bd16d41ad6a760309513d0070456b35a4bc20f90097",
+      "src/core/config/doubaoSeedTranslation.ts": "08f82cac4fd8682659928e806e83f1fa2d89bd540505913db094422dc68dffc5",
+      "src/core/config/translationAppearance.ts": "a7f8ab68bab1261111bb696f3343f075600171956400aab1b12ddf9b8a6ca73c",
+      "src/core/config/localTranslation.ts": "219b2fdda440267f286ff5dba75c63c904ebdcfe12b0380445cedc3a5d7af253",
+      "src/core/config/catalog.ts": "a326f7cc5ff390dc02b52440288db16836fb78a3d364d63a16dc13ea935e109a",
+      "src/core/config/nativeBatch.ts": "88289c0fb9cc6b87df5ae3a4d940d4659293976822c0eb1e3422f3f96eb8b494",
+      "src/shared/function/sha256.ts": "b6c83a561dddaac262a2537886b0d8fe8f78b6b97218e6b576f9a6128e9b6442",
+      "src/core/glossary/model.ts": "4791901ee0a51518f9d7edd76f470e1fcb38e985b739770c8ca4fb3d1fe2fdd5",
+      "src/core/glossary/revisionMemo.ts": "ffc0c01f45d0f18ff8c52fdd34da9d55b8f6a2c5101adb8152508159335a0292",
+      "src/core/glossary/match.ts": "b18d709adeb61cf65cd764b30db69297fe3156e84cf47be7166bc7589f1c9eef",
+      "src/core/glossary/transfer.ts": "26020eb1667ae30d3b10418fdd1a77529a34dd54126a9d58ee1a60f625c5d571",
+      "src/core/glossary/protection.ts": "9306603bc5d2e1a13046d591139a39c2055802330a53c29a4ac84f9eb370e61f",
+      "src/core/glossary/index.ts": "c552b465726b47bf1978a3c22e0e97e1e32baa1a9e72430a0dd9f10c9cfee147",
+      "src/core/translation/slotProtocol.ts": "189dfb2b439470e14ae2068ba234dca59898f97ef295560624195d3002c6593b",
+      "src/core/translation/documentLiterals.ts": "d76f950676eadef50f215bfa0376bac33a7b1bf9420dee30df3602a84443014f",
+      "src/core/translation/languages.ts": "377e5870208642f83bd163b3972a3f94723ec5b32375ed9cc25bff75d935ca44",
+      "src/services/translation/requestSnapshot.ts": "95b2a4ee1112c4e50403d8cdc473550eeb80bb1eff7bb8028672978b7f34c2f7",
+      "src/platform/http/runtime.ts": "d7f2296a755c41816ecb284187c81d1c330f5e47fac0b5ceb69a1f500493a8e7",
+      "src/core/config/apiKeys.ts": "b430a8cd136d7446e1993e25d3d84e3cfd7b0cb1843dd8369b0f00650ac6d317",
+      "src/core/config/apiKeyCheckIdentity.ts": "dbff74736fd047aff773d821313a70fbfe57c0b4862b52652f286650a1ce728b",
+      "src/core/config/vision.ts": "78679cabe334e35ef31070360e9c611e471ff474fbfe8643f76275cea3c8e3da",
+      "src/core/config/visionProbe.ts": "9a9032f1a989463bd7131f47eadda27a7b26530384277dc49c1920217008e157",
+      "src/platform/http/errors.ts": "6ef75a14f2b4ff54af535a50143d440a010c91cba38e65dd64624d1ef9517b50",
+      "src/core/translation/result.ts": "15384705b6b866c77d528979993e7a8e364a677ab88b4f66c3cd8b8c541058b4",
+      "src/core/translation/nativeBatch.ts": "6b593d20b0dbc1e8c535d82e674bb134bf578db5c9e5cbe275934dd746be7181",
+      "src/providers/translation/native-batch.ts": "18cb3ff071e08f77edee72549db157a96307534c248f985f75095aedb6a6c95b",
+      "src/providers/translation/microsoftTransport.ts": "1e6cd082f5b57dfca7e5cdfec150e88d9c54b9c21a8a663781c4079f637eeb76",
+      "src/providers/translation/microsoft.ts": "bc5714f6907a3d90c1d282728b7df09afc32c5efa3476187e2ecbaea98ecaee5",
+      "src/services/translation/freeRoutingPolicy.ts": "9bebaa38bc1b2d85c21b6c82c9980aeca86df17c5b7f43b6b7bb224ac3df0d70",
+      "src/providers/translation/googleRequestGate.ts": "4314fa39a39fa689d61c7ccba46fb82e0418ab06b0b8e0634a16ca5de6672491",
+      "src/providers/translation/google.ts": "dcdcc3ddf156e75da2aa8ef1365fe8c4c0728d54634c4d2c3e89f0c6440e54e4",
+      "src/providers/translation/freeTextChunks.ts": "052be9054ae8df1d8ac7ab5adb9a2fc0a748751621647b5f1fe2819f99bed00c",
+      "src/core/translation/dom.ts": "965bbea12ee7e7cd60030a2fec59080248e07f76fe1720c85dab5dc3853f14f8",
+      "src/core/translation/liveData.ts": "07885a95629f4ac980a64a5b9a793ada0d684b0160eb5ffb86afb1e76ed523c0",
+      "src/core/language/technicalTokens.ts": "8551daf82bc503038ac8adb9991ee68d953af82b267616749a460be7a8328908",
+      "src/core/language/functionWordData.ts": "caeb89e08bbf87f5bd4aa77a5a34a90243fb99ba5e5aead65c49d0b9f7befbf6",
+      "src/core/language/lexicon.ts": "a7f57d1dae473560e61190abc550217b2e14bd4beec5a42527d48b590fb18c35",
+      "src/core/config/pageTranslation.ts": "380a459a10097dbbe7a1a84664408f836abccc75f48feec969ab2b906f5dbc0c",
+      "src/core/translation/text.ts": "a58862eb9d5d8ea789eb9cf1cf40c7df975a5a7bfb7a5029591c70d763d8e4f1",
+      "src/core/translation/serialization.ts": "2a8663e6ebc1d013df2397861c4a3709cd10ffb746d1705a8e2cd2464b50d82d",
+      "src/providers/translation/free-web.ts": "6b6dd5c3c8710b70cf27caeb83d8800589d26560463e8a6c5d6c27cd1fceb648",
+      "src/core/language/chineseVariants.ts": "a78b88e2bfb128aafdc4305dfca9f8f4114a04cc5eb62797b10b3d30b8e7087f",
+      "src/core/language/chineseText.ts": "ec6e14fd6cb2b3bc1eddda4aee2595081b8c53b01a17c782827e6d65cf137e4b",
+      "src/core/language/scripts.ts": "559a1c78b32c63c4af32236d6c0b031e325e8c5cb55b5157b80d2128b81cccc1",
+      "src/core/language/statistical.ts": "6c8f262961d2e7c3d2272ed83c3888b3726eb9cbd28f7c9debb169faec93c0f4",
+      "src/core/language/identify.ts": "9991a9124a6c11f714cce106d4a02fa8796eedf14fc58bf563401c18bf45bb3d",
+      "src/core/language/confidence.ts": "b134d0839332ca77b0ed7d6d5c977432b629fdfb45e8f4bd0e134d4b450f030d",
+      "src/core/language/detect.ts": "d663299ca1d4980f458e61db115f9dd3605bc4d0084e28a847117f36a60cf961",
+      "src/providers/translation/free-chinese-web.ts": "7f973c66e778d234da3c6c0c65117b1db389cb03ce96aed4e028b28c48d0c9e8",
+      "src/providers/translation/free-official-web.ts": "afeec4c70b528dea1e811b553777232e0e40232278337ccdbd2df05ac48a409d",
+      "src/providers/translation/free-extra-web.ts": "cd23d025181a4d8eabe1a3858ac0da26b3d2f20ec9f99a34c06b5cb519c173b3",
+      "src/providers/translation/bilibili-free.ts": "c728b61054520fa075f59a27acc46da7d34fb577bbb61f6f4daf658824ce2841",
+      "src/platform/http/doubaoGuest.ts": "d45b7954474c747233f4d4d90444b558ef2e12d96a5ec88463a82a3a4ed1a0f6",
+      "src/providers/translation/doubao-web.ts": "327ac9b527d0203114830752f7a77cf503d85e2b4af60f5e37817f628977a6d5",
+      "src/core/translation/resultValidation.ts": "07769f6fef09a74328509b097a1eac0126d339f6b11b2e1f05a889903aa25cd0",
+      "scripts/quality/provider-entry.ts": "4aa516345b5d64acce9f568c163036d772dbeda25f28144751b64b73ac3c079b"
+    },
+    "toolHashes": {
+      "run.mjs": "fe15d2905891319536506422b8f11915704abaeb55507eb77da6cc374b3c995e",
+      "evaluate.mjs": "998430dc761af8343de78c520b09407797f02568735d518158fd869b23c53398",
+      "report.mjs": "949111512a0ea544aa5e0663704c48c1dbe0cf6ca5c27e239cb47d233dea50b6",
+      "transport.mjs": "1c0fceb95b79bdf8e3ba1ef308bbeaf98afa02f2dd2d35dc81c274d5063d3634",
+      "provider-entry.ts": "4aa516345b5d64acce9f568c163036d772dbeda25f28144751b64b73ac3c079b"
+    },
+    "bundleSha256": "0513eb508c9358d5861fdfa14c5820d2489d4b09fd64c0805ec1ffa0501a49a1",
+    "lockfileSha256": "f05a7705309a18c1da81c8a155aee748bbfe8974f8dd2f2d3a7de66adbdca206",
+    "mode": "live-node-production-adapters",
+    "configuration": "explicit",
+    "timeoutMs": 15000,
+    "privacy": "Only synthetic corpus text; no user profile, cookies, credentials, or private webpages.",
+    "scope": "Production provider source bundled for Node. Browser transport, broker, fallback, cache, and UI are separate acceptance checks. Context is the complete source segment; these anonymous adapters do not consume discourse context.",
+    "limitations": [
+      "No human gold translations or human semantic verdicts.",
+      "Single-network observations are not a global provider ranking.",
+      "Input characters count submitted Unicode code points, not billed tokens. Monetary cost is unknown; no paid credentials used.",
+      "Request/response byte counts omit headers and TLS; multipart body bytes may be unavailable."
+    ]
+  },
+  "baseline": {
+    "id": "quality-1792043996612",
+    "sha256": "58e7822bea204858c491fa2fa6734bde4df474b62343fb34580d5756862ecce7",
+    "createdAt": "2026-10-15T05:59:56.612Z",
+    "revision": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+    "sourceHashes": {
+      "src/services/translation/types.ts": "74e3bf3405cc753308ec17fa3f3d691b4956f6e8ee8871c29e21757c77cc7966",
+      "src/core/config/freeTranslation.ts": "dc63b34bdf1820d847d53dff9008ccc04105edd4a49ee53c4f9653c69715ae63",
+      "src/core/config/scheduling.ts": "5e626322d4d4cc2a9da9466e1351a6666e1803d23a079bfdf48c930600a79c48",
+      "src/core/config/aiRequestTimeout.ts": "daa32fd29c9d39458a9470032a442c75e0fc584ff83e85e86a12b98a6e403390",
+      "src/core/config/deepl.ts": "261cbd896901299b6bb15647c1b8017dd8455e9fcbecb0222639b907440afabc",
+      "src/core/language/catalog.ts": "b3335b1a2eecc165f73ed4e547004d57615a2e0e455624c3df5f789cca6ff73d",
+      "src/core/language/codes.ts": "80d223e1bbe5ce822f28c4964f1c78394777b0d978dad407a6c05e47fa0f6ade",
+      "src/core/language/chinese.ts": "d28d0d1247abb8b325dde0423cac78f5a481889ebf76823f2e3b083b0a15d28c",
+      "src/core/config/customOpenAI.ts": "944ad426286e9655d8010bd16d41ad6a760309513d0070456b35a4bc20f90097",
+      "src/core/config/doubaoSeedTranslation.ts": "08f82cac4fd8682659928e806e83f1fa2d89bd540505913db094422dc68dffc5",
+      "src/core/config/translationAppearance.ts": "a7f8ab68bab1261111bb696f3343f075600171956400aab1b12ddf9b8a6ca73c",
+      "src/core/config/localTranslation.ts": "219b2fdda440267f286ff5dba75c63c904ebdcfe12b0380445cedc3a5d7af253",
+      "src/core/config/catalog.ts": "a326f7cc5ff390dc02b52440288db16836fb78a3d364d63a16dc13ea935e109a",
+      "src/core/config/nativeBatch.ts": "88289c0fb9cc6b87df5ae3a4d940d4659293976822c0eb1e3422f3f96eb8b494",
+      "src/shared/function/sha256.ts": "b6c83a561dddaac262a2537886b0d8fe8f78b6b97218e6b576f9a6128e9b6442",
+      "src/core/glossary/model.ts": "4791901ee0a51518f9d7edd76f470e1fcb38e985b739770c8ca4fb3d1fe2fdd5",
+      "src/core/glossary/revisionMemo.ts": "ffc0c01f45d0f18ff8c52fdd34da9d55b8f6a2c5101adb8152508159335a0292",
+      "src/core/glossary/match.ts": "b18d709adeb61cf65cd764b30db69297fe3156e84cf47be7166bc7589f1c9eef",
+      "src/core/glossary/transfer.ts": "26020eb1667ae30d3b10418fdd1a77529a34dd54126a9d58ee1a60f625c5d571",
+      "src/core/glossary/protection.ts": "9306603bc5d2e1a13046d591139a39c2055802330a53c29a4ac84f9eb370e61f",
+      "src/core/glossary/index.ts": "c552b465726b47bf1978a3c22e0e97e1e32baa1a9e72430a0dd9f10c9cfee147",
+      "src/core/translation/slotProtocol.ts": "189dfb2b439470e14ae2068ba234dca59898f97ef295560624195d3002c6593b",
+      "src/core/translation/documentLiterals.ts": "d76f950676eadef50f215bfa0376bac33a7b1bf9420dee30df3602a84443014f",
+      "src/core/translation/languages.ts": "377e5870208642f83bd163b3972a3f94723ec5b32375ed9cc25bff75d935ca44",
+      "src/services/translation/requestSnapshot.ts": "95b2a4ee1112c4e50403d8cdc473550eeb80bb1eff7bb8028672978b7f34c2f7",
+      "src/platform/http/runtime.ts": "d7f2296a755c41816ecb284187c81d1c330f5e47fac0b5ceb69a1f500493a8e7",
+      "src/core/config/apiKeys.ts": "b430a8cd136d7446e1993e25d3d84e3cfd7b0cb1843dd8369b0f00650ac6d317",
+      "src/core/config/apiKeyCheckIdentity.ts": "dbff74736fd047aff773d821313a70fbfe57c0b4862b52652f286650a1ce728b",
+      "src/core/config/vision.ts": "78679cabe334e35ef31070360e9c611e471ff474fbfe8643f76275cea3c8e3da",
+      "src/core/config/visionProbe.ts": "9a9032f1a989463bd7131f47eadda27a7b26530384277dc49c1920217008e157",
+      "src/platform/http/errors.ts": "6ef75a14f2b4ff54af535a50143d440a010c91cba38e65dd64624d1ef9517b50",
+      "src/core/translation/result.ts": "15384705b6b866c77d528979993e7a8e364a677ab88b4f66c3cd8b8c541058b4",
+      "src/core/translation/nativeBatch.ts": "6b593d20b0dbc1e8c535d82e674bb134bf578db5c9e5cbe275934dd746be7181",
+      "src/providers/translation/native-batch.ts": "18cb3ff071e08f77edee72549db157a96307534c248f985f75095aedb6a6c95b",
+      "src/providers/translation/microsoftTransport.ts": "1e6cd082f5b57dfca7e5cdfec150e88d9c54b9c21a8a663781c4079f637eeb76",
+      "src/providers/translation/microsoft.ts": "bc5714f6907a3d90c1d282728b7df09afc32c5efa3476187e2ecbaea98ecaee5",
+      "src/services/translation/freeRoutingPolicy.ts": "9bebaa38bc1b2d85c21b6c82c9980aeca86df17c5b7f43b6b7bb224ac3df0d70",
+      "src/providers/translation/googleRequestGate.ts": "4314fa39a39fa689d61c7ccba46fb82e0418ab06b0b8e0634a16ca5de6672491",
+      "src/providers/translation/google.ts": "dcdcc3ddf156e75da2aa8ef1365fe8c4c0728d54634c4d2c3e89f0c6440e54e4",
+      "src/providers/translation/freeTextChunks.ts": "be2a0f4946b10e42e968e75974e390e53d00127d52cd8f2a573701f401d9393e",
+      "src/core/translation/dom.ts": "965bbea12ee7e7cd60030a2fec59080248e07f76fe1720c85dab5dc3853f14f8",
+      "src/core/translation/liveData.ts": "07885a95629f4ac980a64a5b9a793ada0d684b0160eb5ffb86afb1e76ed523c0",
+      "src/core/language/technicalTokens.ts": "8551daf82bc503038ac8adb9991ee68d953af82b267616749a460be7a8328908",
+      "src/core/language/functionWordData.ts": "caeb89e08bbf87f5bd4aa77a5a34a90243fb99ba5e5aead65c49d0b9f7befbf6",
+      "src/core/language/lexicon.ts": "a7f57d1dae473560e61190abc550217b2e14bd4beec5a42527d48b590fb18c35",
+      "src/core/config/pageTranslation.ts": "380a459a10097dbbe7a1a84664408f836abccc75f48feec969ab2b906f5dbc0c",
+      "src/core/translation/text.ts": "a58862eb9d5d8ea789eb9cf1cf40c7df975a5a7bfb7a5029591c70d763d8e4f1",
+      "src/core/translation/serialization.ts": "2a8663e6ebc1d013df2397861c4a3709cd10ffb746d1705a8e2cd2464b50d82d",
+      "src/providers/translation/free-web.ts": "6b6dd5c3c8710b70cf27caeb83d8800589d26560463e8a6c5d6c27cd1fceb648",
+      "src/core/language/chineseVariants.ts": "a78b88e2bfb128aafdc4305dfca9f8f4114a04cc5eb62797b10b3d30b8e7087f",
+      "src/core/language/chineseText.ts": "ec6e14fd6cb2b3bc1eddda4aee2595081b8c53b01a17c782827e6d65cf137e4b",
+      "src/core/language/scripts.ts": "559a1c78b32c63c4af32236d6c0b031e325e8c5cb55b5157b80d2128b81cccc1",
+      "src/core/language/statistical.ts": "6c8f262961d2e7c3d2272ed83c3888b3726eb9cbd28f7c9debb169faec93c0f4",
+      "src/core/language/identify.ts": "9991a9124a6c11f714cce106d4a02fa8796eedf14fc58bf563401c18bf45bb3d",
+      "src/core/language/confidence.ts": "b134d0839332ca77b0ed7d6d5c977432b629fdfb45e8f4bd0e134d4b450f030d",
+      "src/core/language/detect.ts": "d663299ca1d4980f458e61db115f9dd3605bc4d0084e28a847117f36a60cf961",
+      "src/providers/translation/free-chinese-web.ts": "b90790761c283277e5bc24e42d17c749fb8974357ede355307cb80bad9af3088",
+      "src/providers/translation/free-official-web.ts": "afeec4c70b528dea1e811b553777232e0e40232278337ccdbd2df05ac48a409d",
+      "src/providers/translation/free-extra-web.ts": "cd23d025181a4d8eabe1a3858ac0da26b3d2f20ec9f99a34c06b5cb519c173b3",
+      "src/providers/translation/bilibili-free.ts": "c728b61054520fa075f59a27acc46da7d34fb577bbb61f6f4daf658824ce2841",
+      "src/platform/http/doubaoGuest.ts": "d45b7954474c747233f4d4d90444b558ef2e12d96a5ec88463a82a3a4ed1a0f6",
+      "src/providers/translation/doubao-web.ts": "327ac9b527d0203114830752f7a77cf503d85e2b4af60f5e37817f628977a6d5",
+      "src/core/translation/resultValidation.ts": "07769f6fef09a74328509b097a1eac0126d339f6b11b2e1f05a889903aa25cd0",
+      "scripts/quality/provider-entry.ts": "4aa516345b5d64acce9f568c163036d772dbeda25f28144751b64b73ac3c079b"
+    },
+    "comparableSettings": true
+  },
+  "runs": [
+    {
+      "sampleId": "boundary-word",
+      "providerId": "transmart",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "attempt": 1,
+      "startedAt": "2026-10-15T06:01:45.265Z",
+      "status": "success",
+      "durationMs": 606,
+      "checks": [
+        {
+          "requirementId": "boundary-word-meaning",
+          "category": "mistranslation",
+          "status": "needs-human-review",
+          "description": "保留脑电图测量与不得移除传感器的意义。"
+        }
+      ],
+      "review": {
+        "status": "pending"
+      },
+      "cost": {
+        "httpRequests": 2,
+        "inputCharacters": 1058,
+        "requestBytes": 1524,
+        "responseBytes": 506,
+        "monetaryCost": null,
+        "unit": "USD",
+        "note": "Anonymous service; no billed token information. Bytes exclude headers/TLS."
+      },
+      "translation": "校准完毕校准完毕已完成。校准已完成。完成。校准完成。校准完成。      脑电图仪测量脑电活动。请勿移除传感器。",
+      "productionValidation": {
+        "untranslated": false,
+        "wrongLanguage": false
+      },
+      "transport": [
+        {
+          "endpoint": "https://transmart.qq.com/api/imt",
+          "requestBytes": 1210,
+          "responseBytes": 271,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        },
+        {
+          "endpoint": "https://transmart.qq.com/api/imt",
+          "requestBytes": 314,
+          "responseBytes": 235,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        }
+      ]
+    },
+    {
+      "sampleId": "boundary-word",
+      "providerId": "volcengineFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "attempt": 1,
+      "startedAt": "2026-10-15T06:01:46.183Z",
+      "status": "success",
+      "durationMs": 773,
+      "checks": [
+        {
+          "requirementId": "boundary-word-meaning",
+          "category": "mistranslation",
+          "status": "needs-human-review",
+          "description": "保留脑电图测量与不得移除传感器的意义。"
+        }
+      ],
+      "review": {
+        "status": "pending"
+      },
+      "cost": {
+        "httpRequests": 2,
+        "inputCharacters": 1058,
+        "requestBytes": 1166,
+        "responseBytes": 1193,
+        "monetaryCost": null,
+        "unit": "USD",
+        "note": "Anonymous service; no billed token information. Bytes exclude headers/TLS."
+      },
+      "translation": "校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。\n校准完成。校准完成。校准完成。      electroencephalography测量电活动。不要移除传感器。",
+      "productionValidation": {
+        "untranslated": false,
+        "wrongLanguage": false
+      },
+      "transport": [
+        {
+          "endpoint": "https://translate.volcengine.com/crx/translate/v1/",
+          "requestBytes": 1031,
+          "responseBytes": 1011,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        },
+        {
+          "endpoint": "https://translate.volcengine.com/crx/translate/v1/",
+          "requestBytes": 135,
+          "responseBytes": 182,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        }
+      ]
+    },
+    {
+      "sampleId": "boundary-word",
+      "providerId": "icibaFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "attempt": 1,
+      "startedAt": "2026-10-15T06:01:47.259Z",
+      "status": "success",
+      "durationMs": 754,
+      "checks": [
+        {
+          "requirementId": "boundary-word-meaning",
+          "category": "mistranslation",
+          "status": "needs-human-review",
+          "description": "保留脑电图测量与不得移除传感器的意义。"
+        }
+      ],
+      "review": {
+        "status": "pending"
+      },
+      "cost": {
+        "httpRequests": 2,
+        "inputCharacters": 1058,
+        "requestBytes": 1298,
+        "responseBytes": 6089,
+        "monetaryCost": null,
+        "unit": "USD",
+        "note": "Anonymous service; no billed token information. Bytes exclude headers/TLS."
+      },
+      "translation": "校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准      脑电图检查用于测量脑电活动。请勿移除传感器。",
+      "productionValidation": {
+        "untranslated": false,
+        "wrongLanguage": false
+      },
+      "transport": [
+        {
+          "endpoint": "https://ifanyi.iciba.com/index.php",
+          "requestBytes": 1098,
+          "responseBytes": 5561,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        },
+        {
+          "endpoint": "https://ifanyi.iciba.com/index.php",
+          "requestBytes": 200,
+          "responseBytes": 528,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        }
+      ]
+    },
+    {
+      "sampleId": "boundary-unit",
+      "providerId": "volcengineFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "attempt": 1,
+      "startedAt": "2026-10-15T06:01:48.318Z",
+      "status": "success",
+      "durationMs": 555,
+      "checks": [
+        {
+          "requirementId": "boundary-unit-meaning",
+          "category": "mistranslation",
+          "status": "needs-human-review",
+          "description": "3.5 kg 是不得超过的上限，数值、单位和否定关系保持。"
+        },
+        {
+          "requirementId": "boundary-unit-number",
+          "category": "numbers-units",
+          "status": "signal-clear",
+          "description": "检查3.5 kg数值和单位表面信号，仍需人工核对含义。"
+        }
+      ],
+      "review": {
+        "status": "pending"
+      },
+      "cost": {
+        "httpRequests": 2,
+        "inputCharacters": 1058,
+        "requestBytes": 1151,
+        "responseBytes": 1183,
+        "monetaryCost": null,
+        "unit": "USD",
+        "note": "Anonymous service; no billed token information. Bytes exclude headers/TLS."
+      },
+      "translation": "校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。\n校准完成。校准完成。校准完成。                     3.5 kg是最大允许质量。不要超过此限制。",
+      "productionValidation": {
+        "untranslated": false,
+        "wrongLanguage": false
+      },
+      "transport": [
+        {
+          "endpoint": "https://translate.volcengine.com/crx/translate/v1/",
+          "requestBytes": 1031,
+          "responseBytes": 1011,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        },
+        {
+          "endpoint": "https://translate.volcengine.com/crx/translate/v1/",
+          "requestBytes": 120,
+          "responseBytes": 172,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        }
+      ]
+    },
+    {
+      "sampleId": "boundary-unit",
+      "providerId": "icibaFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "attempt": 1,
+      "startedAt": "2026-10-15T06:01:49.177Z",
+      "status": "success",
+      "durationMs": 265,
+      "checks": [
+        {
+          "requirementId": "boundary-unit-meaning",
+          "category": "mistranslation",
+          "status": "needs-human-review",
+          "description": "3.5 kg 是不得超过的上限，数值、单位和否定关系保持。"
+        },
+        {
+          "requirementId": "boundary-unit-number",
+          "category": "numbers-units",
+          "status": "signal-clear",
+          "description": "检查3.5 kg数值和单位表面信号，仍需人工核对含义。"
+        }
+      ],
+      "review": {
+        "status": "pending"
+      },
+      "cost": {
+        "httpRequests": 2,
+        "inputCharacters": 1058,
+        "requestBytes": 1283,
+        "responseBytes": 6065,
+        "monetaryCost": null,
+        "unit": "USD",
+        "note": "Anonymous service; no billed token information. Bytes exclude headers/TLS."
+      },
+      "translation": "校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准                     最大允许重量为 3.5 kg。请勿超过此限值。",
+      "productionValidation": {
+        "untranslated": false,
+        "wrongLanguage": false
+      },
+      "transport": [
+        {
+          "endpoint": "https://ifanyi.iciba.com/index.php",
+          "requestBytes": 1098,
+          "responseBytes": 5561,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        },
+        {
+          "endpoint": "https://ifanyi.iciba.com/index.php",
+          "requestBytes": 185,
+          "responseBytes": 504,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        }
+      ]
+    },
+    {
+      "sampleId": "boundary-unit",
+      "providerId": "transmart",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "attempt": 1,
+      "startedAt": "2026-10-15T06:01:49.751Z",
+      "status": "success",
+      "durationMs": 606,
+      "checks": [
+        {
+          "requirementId": "boundary-unit-meaning",
+          "category": "mistranslation",
+          "status": "needs-human-review",
+          "description": "3.5 kg 是不得超过的上限，数值、单位和否定关系保持。"
+        },
+        {
+          "requirementId": "boundary-unit-number",
+          "category": "numbers-units",
+          "status": "signal-clear",
+          "description": "检查3.5 kg数值和单位表面信号，仍需人工核对含义。"
+        }
+      ],
+      "review": {
+        "status": "pending"
+      },
+      "cost": {
+        "httpRequests": 2,
+        "inputCharacters": 1058,
+        "requestBytes": 1509,
+        "responseBytes": 503,
+        "monetaryCost": null,
+        "unit": "USD",
+        "note": "Anonymous service; no billed token information. Bytes exclude headers/TLS."
+      },
+      "translation": "校准完毕校准完毕已完成。校准已完成。完成。校准完成。校准完成。                     3.5 kg是最大允许质量，请勿超过此限值。",
+      "productionValidation": {
+        "untranslated": false,
+        "wrongLanguage": false
+      },
+      "transport": [
+        {
+          "endpoint": "https://transmart.qq.com/api/imt",
+          "requestBytes": 1210,
+          "responseBytes": 271,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        },
+        {
+          "endpoint": "https://transmart.qq.com/api/imt",
+          "requestBytes": 299,
+          "responseBytes": 232,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        }
+      ]
+    },
+    {
+      "sampleId": "boundary-title",
+      "providerId": "icibaFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "attempt": 1,
+      "startedAt": "2026-10-15T06:01:50.660Z",
+      "status": "success",
+      "durationMs": 381,
+      "checks": [
+        {
+          "requirementId": "boundary-title-meaning",
+          "category": "mistranslation",
+          "status": "needs-human-review",
+          "description": "Dr. Smith 是同一人名，控制器应保持禁用直至检查完成。"
+        }
+      ],
+      "review": {
+        "status": "pending"
+      },
+      "cost": {
+        "httpRequests": 2,
+        "inputCharacters": 1095,
+        "requestBytes": 1325,
+        "responseBytes": 6194,
+        "monetaryCost": null,
+        "unit": "USD",
+        "note": "Anonymous service; no billed token information. Bytes exclude headers/TLS."
+      },
+      "translation": "校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准已完成。校准                      Smith 博士表示：“请将控制器设为禁用状态。”在检查完成前，请保持该状态。",
+      "productionValidation": {
+        "untranslated": false,
+        "wrongLanguage": false
+      },
+      "transport": [
+        {
+          "endpoint": "https://ifanyi.iciba.com/index.php",
+          "requestBytes": 1098,
+          "responseBytes": 5561,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        },
+        {
+          "endpoint": "https://ifanyi.iciba.com/index.php",
+          "requestBytes": 227,
+          "responseBytes": 633,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        }
+      ]
+    },
+    {
+      "sampleId": "boundary-title",
+      "providerId": "transmart",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "attempt": 1,
+      "startedAt": "2026-10-15T06:01:51.347Z",
+      "status": "success",
+      "durationMs": 589,
+      "checks": [
+        {
+          "requirementId": "boundary-title-meaning",
+          "category": "mistranslation",
+          "status": "needs-human-review",
+          "description": "Dr. Smith 是同一人名，控制器应保持禁用直至检查完成。"
+        }
+      ],
+      "review": {
+        "status": "pending"
+      },
+      "cost": {
+        "httpRequests": 2,
+        "inputCharacters": 1095,
+        "requestBytes": 1547,
+        "responseBytes": 539,
+        "monetaryCost": null,
+        "unit": "USD",
+        "note": "Anonymous service; no billed token information. Bytes exclude headers/TLS."
+      },
+      "translation": "校准完毕校准完毕已完成。校准已完成。完成。校准完成。校准完成。                      史密斯博士说，“关闭控制器。”在检查完成之前，保持关闭状态。",
+      "productionValidation": {
+        "untranslated": false,
+        "wrongLanguage": false
+      },
+      "transport": [
+        {
+          "endpoint": "https://transmart.qq.com/api/imt",
+          "requestBytes": 1210,
+          "responseBytes": 271,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        },
+        {
+          "endpoint": "https://transmart.qq.com/api/imt",
+          "requestBytes": 337,
+          "responseBytes": 268,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        }
+      ]
+    },
+    {
+      "sampleId": "boundary-title",
+      "providerId": "volcengineFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "attempt": 1,
+      "startedAt": "2026-10-15T06:01:52.246Z",
+      "status": "success",
+      "durationMs": 414,
+      "checks": [
+        {
+          "requirementId": "boundary-title-meaning",
+          "category": "mistranslation",
+          "status": "needs-human-review",
+          "description": "Dr. Smith 是同一人名，控制器应保持禁用直至检查完成。"
+        }
+      ],
+      "review": {
+        "status": "pending"
+      },
+      "cost": {
+        "httpRequests": 2,
+        "inputCharacters": 1095,
+        "requestBytes": 1189,
+        "responseBytes": 1207,
+        "monetaryCost": null,
+        "unit": "USD",
+        "note": "Anonymous service; no billed token information. Bytes exclude headers/TLS."
+      },
+      "translation": "校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。校准完成。\n校准完成。校准完成。校准完成。                      史密斯博士说，“让控制器禁用。”保持它禁用，直到检查完成。",
+      "productionValidation": {
+        "untranslated": false,
+        "wrongLanguage": false
+      },
+      "transport": [
+        {
+          "endpoint": "https://translate.volcengine.com/crx/translate/v1/",
+          "requestBytes": 1031,
+          "responseBytes": 1011,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        },
+        {
+          "endpoint": "https://translate.volcengine.com/crx/translate/v1/",
+          "requestBytes": 158,
+          "responseBytes": 196,
+          "status": 200,
+          "networkError": false,
+          "bodyComplete": true
+        }
+      ]
+    }
+  ],
+  "providerDeferrals": {},
+  "updatedAt": "2026-10-15T06:01:52.964Z",
+  "summary": [
+    {
+      "providerId": "transmart",
+      "configurationId": "explicit",
+      "attempted": 3,
+      "returned": 3,
+      "flagged": 0,
+      "pendingHuman": 3,
+      "failures": {},
+      "httpRequests": 6,
+      "medianLatencyMs": 606,
+      "note": "Automatic signals are not semantic accuracy; latency describes successful returns only."
+    },
+    {
+      "providerId": "volcengineFree",
+      "configurationId": "explicit",
+      "attempted": 3,
+      "returned": 3,
+      "flagged": 0,
+      "pendingHuman": 3,
+      "failures": {},
+      "httpRequests": 6,
+      "medianLatencyMs": 555,
+      "note": "Automatic signals are not semantic accuracy; latency describes successful returns only."
+    },
+    {
+      "providerId": "icibaFree",
+      "configurationId": "explicit",
+      "attempted": 3,
+      "returned": 3,
+      "flagged": 0,
+      "pendingHuman": 3,
+      "failures": {},
+      "httpRequests": 6,
+      "medianLatencyMs": 381,
+      "note": "Automatic signals are not semantic accuracy; latency describes successful returns only."
+    }
+  ],
+  "comparison": [
+    {
+      "sampleId": "boundary-word",
+      "providerId": "transmart",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "beforeStatus": "success",
+      "afterStatus": "success",
+      "comparable": true,
+      "compatibleSettings": true,
+      "resolvedSignals": [],
+      "newSignals": [],
+      "outputChanged": true,
+      "latencyDeltaMs": -694,
+      "semanticReview": "pending"
+    },
+    {
+      "sampleId": "boundary-word",
+      "providerId": "volcengineFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "beforeStatus": "success",
+      "afterStatus": "success",
+      "comparable": true,
+      "compatibleSettings": true,
+      "resolvedSignals": [],
+      "newSignals": [],
+      "outputChanged": true,
+      "latencyDeltaMs": -184,
+      "semanticReview": "pending"
+    },
+    {
+      "sampleId": "boundary-word",
+      "providerId": "icibaFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "beforeStatus": "success",
+      "afterStatus": "success",
+      "comparable": true,
+      "compatibleSettings": true,
+      "resolvedSignals": [],
+      "newSignals": [],
+      "outputChanged": true,
+      "latencyDeltaMs": -276,
+      "semanticReview": "pending"
+    },
+    {
+      "sampleId": "boundary-unit",
+      "providerId": "volcengineFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "beforeStatus": "success",
+      "afterStatus": "success",
+      "comparable": true,
+      "compatibleSettings": true,
+      "resolvedSignals": [],
+      "newSignals": [],
+      "outputChanged": true,
+      "latencyDeltaMs": -161,
+      "semanticReview": "pending"
+    },
+    {
+      "sampleId": "boundary-unit",
+      "providerId": "icibaFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "beforeStatus": "success",
+      "afterStatus": "success",
+      "comparable": true,
+      "compatibleSettings": true,
+      "resolvedSignals": [
+        "boundary-unit-number"
+      ],
+      "newSignals": [],
+      "outputChanged": true,
+      "latencyDeltaMs": -1182,
+      "semanticReview": "pending"
+    },
+    {
+      "sampleId": "boundary-unit",
+      "providerId": "transmart",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "beforeStatus": "success",
+      "afterStatus": "success",
+      "comparable": true,
+      "compatibleSettings": true,
+      "resolvedSignals": [],
+      "newSignals": [],
+      "outputChanged": true,
+      "latencyDeltaMs": -281,
+      "semanticReview": "pending"
+    },
+    {
+      "sampleId": "boundary-title",
+      "providerId": "icibaFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "beforeStatus": "success",
+      "afterStatus": "success",
+      "comparable": true,
+      "compatibleSettings": true,
+      "resolvedSignals": [],
+      "newSignals": [],
+      "outputChanged": true,
+      "latencyDeltaMs": -272,
+      "semanticReview": "pending"
+    },
+    {
+      "sampleId": "boundary-title",
+      "providerId": "transmart",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "beforeStatus": "success",
+      "afterStatus": "success",
+      "comparable": true,
+      "compatibleSettings": true,
+      "resolvedSignals": [],
+      "newSignals": [],
+      "outputChanged": true,
+      "latencyDeltaMs": -689,
+      "semanticReview": "pending"
+    },
+    {
+      "sampleId": "boundary-title",
+      "providerId": "volcengineFree",
+      "configurationId": "explicit",
+      "repeat": 1,
+      "beforeStatus": "success",
+      "afterStatus": "success",
+      "comparable": true,
+      "compatibleSettings": true,
+      "resolvedSignals": [],
+      "newSignals": [],
+      "outputChanged": true,
+      "latencyDeltaMs": -331,
+      "semanticReview": "pending"
+    }
+  ],
+  "interrupted": false,
+  "complete": true
+}

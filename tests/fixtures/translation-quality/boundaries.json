@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "id": "synthetic-chunk-boundaries-v1",
+  "title": "分段边界压力语料",
+  "description": "仅用于1000码点分段对照，人工核对状态pending。",
+  "createdAt": "2026-10-15",
+  "samples": [
+    {
+      "id": "boundary-word",
+      "domain": "technical",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete.      electroencephalography measures electrical activity. Do not remove the sensor.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "合成边界压力样本；重复校准句和有意空格将关键短语放在1000码点上限处，不代表真实文章分布。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "boundary-word-meaning",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "保留脑电图测量与不得移除传感器的意义。",
+          "requiresHumanReview": true
+        }
+      ]
+    },
+    {
+      "id": "boundary-unit",
+      "domain": "technical",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete.                     3.5 kg is the maximum permitted mass. Do not exceed this limit.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "合成边界压力样本；重复校准句和有意空格将关键短语放在1000码点上限处，不代表真实文章分布。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "boundary-unit-meaning",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "3.5 kg 是不得超过的上限，数值、单位和否定关系保持。",
+          "requiresHumanReview": true
+        },
+        {
+          "id": "boundary-unit-number",
+          "category": "numbers-units",
+          "severity": "critical",
+          "description": "检查3.5 kg数值和单位表面信号，仍需人工核对含义。",
+          "requiresHumanReview": false,
+          "check": {
+            "type": "regex",
+            "value": "3[.,]5\\s*(?:kg|千克|公斤)",
+            "flags": "u"
+          }
+        }
+      ]
+    },
+    {
+      "id": "boundary-title",
+      "domain": "technical",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh-Hans",
+      "source": "Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete.                      Dr. Smith said, \"Leave the controller disabled.\" Keep it disabled until the inspection is complete.",
+      "provenance": {
+        "kind": "synthetic",
+        "author": "Codex",
+        "createdAt": "2026-10-15",
+        "note": "合成边界压力样本；重复校准句和有意空格将关键短语放在1000码点上限处，不代表真实文章分布。"
+      },
+      "humanReview": {
+        "status": "pending",
+        "reviewer": null,
+        "reviewedAt": null,
+        "note": "样本及判定要求尚未经人工核对；自动信号和代理判断均不构成人工金标准。"
+      },
+      "requirements": [
+        {
+          "id": "boundary-title-meaning",
+          "category": "mistranslation",
+          "severity": "critical",
+          "description": "Dr. Smith 是同一人名，控制器应保持禁用直至检查完成。",
+          "requiresHumanReview": true
+        }
+      ]
+    }
+  ]
+}
