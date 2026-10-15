@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/popup.css
  * 文件职责：定义宽度随皮肤和界面语言、高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、设置抽屉、通知和响应式细节。
- * 主要内容：打开的独立抽屉遮罩跟随可见视口并保留内部滚动，服务搜索在触屏使用 16px 字号避免自动缩放；触摸设备的主画布、快捷和服务抽屉采用 46px 命中预算，为原生 sheet 缩放留余量，开关保留紧凑胶囊视觉，桌面沿用原有布局；以白色窄版画布、浅灰控件和品牌色强调翻译、局部及站点控制；两个操作以 42px 高度紧凑同排，主按钮弹性伸展并用短标题合并快捷键，辅助按钮以上方图标和下方文字收拢；网站规则不再绘制外层框，独立按钮沿用指示点展示保存状态并尊重减少动画偏好；保留版本与赞赏码的原位放大、服务及模型摘要、两列入口、完整开源胶囊与开关优先的快捷抽屉和必要的内部滚动。
+ * 主要内容：抽屉遮罩覆盖整页并拦截背景点击，内部抽屉跟随可见视口并保留滚动，服务搜索在触屏使用 16px 字号避免自动缩放；触摸设备的主画布、快捷和服务抽屉采用 46px 命中预算，为原生 sheet 缩放留余量，开关保留紧凑胶囊视觉，桌面沿用原有布局；以白色窄版画布、浅灰控件和品牌色强调翻译、局部及站点控制；两个操作以 42px 高度紧凑同排，主按钮弹性伸展并用短标题合并快捷键，辅助按钮以上方图标和下方文字收拢；网站规则不再绘制外层框，独立按钮沿用指示点展示保存状态并尊重减少动画偏好；保留版本与赞赏码的原位放大、服务及模型摘要、两列入口、完整开源胶囊与开关优先的快捷抽屉和必要的内部滚动。
  * 模块边界：样式只对应 PopupApp 的 DOM 和受控第三方组件，不决定配置值、能力可用性或消息行为；跨页面 token 在 src/ui/styles，Options/文档页各自维护页面样式。
  */
 @import "../../ui/styles/feedback.css";
@@ -403,15 +403,17 @@ footer > button { justify-self: end; }
 }
 
 .popup-drawer-modal { background: rgba(17, 20, 29, .48) !important; backdrop-filter: blur(2px); }
-/* 只在抽屉打开时以实际可见区域定位独立遮罩；根 popup 仍由自身内容决定固有尺寸。 */
+/* 遮罩始终覆盖整页并拦截背景点击；只有内部抽屉跟随可见区域，根 popup 保持固有尺寸。 */
 .popup-drawer-modal[data-fluent-read-popup-viewport] {
-  position: fixed !important; inset: auto !important;
-  left: var(--fluent-read-drawer-left) !important; top: var(--fluent-read-drawer-top) !important;
-  width: var(--fluent-read-drawer-width) !important; height: var(--fluent-read-drawer-height) !important;
+  position: fixed !important; inset: 0 !important;
+  width: 100% !important; height: 100% !important;
 }
 .popup-drawer-modal[data-fluent-read-popup-viewport] .popup-drawer {
-  width: min(100%, var(--interface-popup-width, 320px)) !important;
-  min-height: 0 !important; max-height: calc(100% - 8px);
+  left: var(--fluent-read-drawer-left) !important;
+  right: calc(100% - var(--fluent-read-drawer-left) - var(--fluent-read-drawer-width)) !important;
+  bottom: max(0px, calc(100% - var(--fluent-read-drawer-top) - var(--fluent-read-drawer-height))) !important;
+  width: min(var(--fluent-read-drawer-width), var(--interface-popup-width, 320px)) !important;
+  min-height: 0 !important; max-height: calc(var(--fluent-read-drawer-height) - 8px);
 }
 .popup-drawer {
   width: min(100vw, var(--interface-popup-width, 320px)) !important; min-height: 260px !important; max-height: 88vh;
