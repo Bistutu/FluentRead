@@ -1,5 +1,13 @@
 {
   "messages": {
+    "safari.freePool.policy": "Safari では許可済みの無料翻訳サービスのみを使用します",
+    "safari.freePool.loading": "サービスのアクセス権を確認中…",
+    "safari.freePool.error": "アクセス権を確認できません。パネルまたは設定を開き直して再試行してください。",
+    "safari.freePool.needsAccess": "翻訳する前に {provider} へのアクセスを許可してください。",
+    "safari.freePool.allowProvider": "{provider} を許可",
+    "safari.freePool.requestDenied": "アクセスが許可されていません。再試行するか、設定で別のサービスを選んでください。",
+    "safari.freePool.permissionState": "許可が必要",
+    "safari.freePool.availableCount": "利用可能 {count} / 有効 {total}",
     "options.panel.floatingBall": "フローティングボタンの詳細設定",
     "settings.general.bilingualSentenceHighlightGroupingHint": "原文と訳文で文の区切りが異なる場合は、隣接する文をまとめてハイライトします。",
     "learning.collection.moreActions": "保存した項目のその他の操作",

@@ -22,7 +22,7 @@
       "tests": [
         "tests/popupAppLifecycle.test.ts"
       ],
-      "scenario": "真实菜单事件、配置保存、页面动作与卸载"
+      "scenario": "真实菜单事件、配置保存、页面动作、Safari 单线路授权及卸载归属"
     },
     "src/app/popup/PopupLanguageSelect.vue": {
       "kind": "behavior",
@@ -65,16 +65,18 @@
       "scenario": "实际阅读器渲染、选择、缩放与资源清理"
     },
     "src/features/floating-ball/ui/FloatingBall.vue": {
-      "kind": "frozen-debt",
-      "sourceSha256": "40969a5ae2960a8396e0d378cf0c29ecc3acd70552171eae5d27804b21dc3e9a",
-      "reason": "呈现用户开启后的页面悬浮工具，将全文翻译、品牌手柄和漫画入口按顺序组织，并保留拖动停靠与可选常驻模式。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
-      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+      "kind": "behavior",
+      "tests": [
+        "tests/floatingBallLifecycle.test.ts"
+      ],
+      "scenario": "执行真实SFC setup与模板，验证触屏/鼠标激活去重、辅助点击、拖动取消、视口与props更新和卸载资源释放"
     },
     "src/features/full-page-translation/ui/TranslationProgressPanel.vue": {
-      "kind": "frozen-debt",
-      "sourceSha256": "0da2346b1859b79a3a37f17081847ae8008a9cc5ff9dc612b46c3a6e4968fb1f",
-      "reason": "以半透明工作面板和低存在感状态勾选展示全文翻译进度，并允许用户临时收起，同时跟随扩展主题与系统深浅色偏好。 当前尚未登记可确认的自动组件行为消费者；不把父组件mock或源码契约算作该组件行为证明。",
-      "exitCriteria": "修改此文件前，以真实SFC执行对应事件/异步/取消场景并登记消费者，或纳入正式逐文件严格覆盖；不得刷新冻结hash延续豁免。"
+      "kind": "behavior",
+      "tests": [
+        "tests/translationProgressMobileLifecycle.test.ts"
+      ],
+      "scenario": "真实SFC模板与progress/visibility/visualViewport消费者，验证软键盘与平移定位、旋转、后台与bfcache返回、会话限定重试/定位、隐藏/恢复和卸载资源释放"
     },
     "src/features/glossary/ui/BuiltinGlossaries.vue": {
       "kind": "frozen-debt",
@@ -522,9 +524,10 @@
     "src/features/settings/ui/services/FreeTranslationSettings.vue": {
       "kind": "behavior",
       "tests": [
-        "tests/serviceDirectoryLifecycle.test.ts"
+        "tests/serviceDirectoryLifecycle.test.ts",
+        "tests/freeTranslationSettings.test.ts"
       ],
-      "scenario": "实际免费设置、取消和后台权重响应"
+      "scenario": "实际免费设置、取消、后台权重响应及 Safari 逐线路授权事件"
     },
     "src/features/settings/ui/services/ModelPicker.vue": {
       "kind": "behavior",
@@ -586,7 +589,7 @@
       "tests": [
         "tests/serviceConfigurationLifecycle.test.ts"
       ],
-      "scenario": "实际连接检测、取消、配置切换、迟到结果及安全诊断修复和逐服务重试"
+      "scenario": "实际连接检测、授权线路过滤、取消、配置切换、迟到结果、模板事件及安全诊断修复和逐服务重试"
     },
     "src/features/settings/ui/services/ServiceNatureBadge.vue": {
       "kind": "frozen-debt",

@@ -947,6 +947,7 @@ export const ruRUMessages = {
     'video.modeTranslation': 'Перевод',
     'video.modeOriginal': 'Оригинал',
     'video.modeOff': 'Выкл.',
+    "video.nativeFullscreenHint": "В системном полноэкранном режиме выберите FluentRead в меню субтитров. Используются стандартный стиль и уже загруженные переводы. Если показ или переключение не работают, выйдите из полноэкранного режима для просмотра двуязычных субтитров.",
     'video.modeOffHint': 'Отключить субтитры FluentRead и оставить субтитры сайта',
     'video.timingShort': 'Сдвиг',
     'video.downloadOriginalShort': 'Оригинал',

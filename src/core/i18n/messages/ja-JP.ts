@@ -947,6 +947,7 @@ export const jaJPMessages = {
     'video.modeTranslation': '訳文',
     'video.modeOriginal': '原文',
     'video.modeOff': 'オフ',
+    "video.nativeFullscreenHint": "システムの全画面表示に入ったら、字幕メニューで FluentRead を選んでください。標準の字幕スタイルと取得済みの訳文を使います。表示や切り替えに問題がある場合は、全画面表示を終了して対訳字幕をご覧ください。",
     'video.modeOffHint': 'FluentRead の字幕をオフにし、サイトの字幕を使います',
     'video.timingShort': 'タイミング',
     'video.downloadOriginalShort': '原文字幕',

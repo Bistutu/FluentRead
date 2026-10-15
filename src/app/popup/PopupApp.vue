@@ -2,6 +2,7 @@
  @file src/app/popup/PopupApp.vue
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页。
  主要内容：复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈。
+ 移动整合：Safari 免费池的新译及诊断重试在真实点击内同步申请单个 provider 完整域权限，迟到许可不延续旧页面动作，恢复原文独立可用；实际 teleport 抽屉跟随可见视口，整页遮罩隔离背景，关闭、缓存失活和卸载立即释放，根画布保持固有尺寸。
  模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/config 管理；配置草稿复用共享编辑会话，保留 post 合并和关闭补丁交接。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
@@ -117,17 +118,20 @@
         <span><strong>配置提醒</strong>{{ credentialWarning }}</span>
         <button type="button" :onClick="popupActions.serviceSettings">去设置</button>
       </div>
+      <p v-if="safariFreePool" class="safari-free-pool-note" data-testid="safari-free-pool" role="status">
+        {{ t('safari.freePool.policy') }} · {{ freePoolStatus }}
+      </p>
 
       <div class="translate-action">
         <button class="translate-button" :class="{ translated: pageTranslated }" type="button"
           data-testid="page-translation" :aria-pressed="pageTranslated" :aria-busy="translating"
           :aria-label="pageTranslationLabel" :title="pageTranslationTitle"
-          :disabled="!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule" :onClick="pageButtons.toggle">
+          :disabled="!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule || (!pageTranslated && !currentPdfSource && safariFreePool && (freePoolLoading || freePoolBusy))" :onClick="pageButtons.toggle">
           <span v-if="translating" class="spinner" aria-hidden="true" />
           <span class="translate-label">{{ pageTranslationButtonLabel }}</span>
         </button>
         <button v-if="!isThunderbird && !currentPdfSource" class="section-translate-button" type="button" data-testid="section-translation"
-          :disabled="!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule" :aria-label="sectionTranslationLabel" :title="sectionTranslationLabel"
+          :disabled="!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule || (safariFreePool && (freePoolLoading || freePoolBusy))" :aria-label="sectionTranslationLabel" :title="sectionTranslationLabel"
           :onClick="pageButtons.section">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15M10 10l7 2.6-3 1.1-1.1 3z" /></svg>
           <span>{{ t('popup.sectionTranslation') }}</span>
@@ -229,7 +233,7 @@
       class="popup-drawer"
       :class="{ 'popup-quick-drawer': ['hover', 'selection', 'image'].includes(activeDrawer), 'popup-services-drawer': activeDrawer === 'services' }"
     >
-      <div class="drawer-surface">
+      <div ref="drawerSurface" class="drawer-surface">
         <div class="drawer-handle" />
         <header v-if="activeDrawer !== 'services'" class="drawer-header">
         <div class="drawer-heading"><button v-if="activeDrawer === 'aiContext'" type="button" :aria-label="t('popup.providers.title')" :onClick="drawerActions.services">←</button><div><h2>{{ drawerTitle }}</h2><p v-if="!['image', 'services'].includes(activeDrawer)">{{ drawerDescription }}</p></div></div>
@@ -368,11 +372,13 @@ import {
   subscribeConfig,
 } from '@/src/services/config/store';
 import { Setting } from '@element-plus/icons-vue';
+import {getVisualViewportRect, observeVisualViewport} from '@/src/platform/dom/visualViewport';
 import {normalizeConfig} from '@/src/core/config/model';
 import {createApiKeyCheckRevision} from '@/src/core/config/apiKeyCheckIdentity';
 import {resolveUiLanguageFromLocale, type UiLanguage} from '@/src/core/i18n';
 import {
   options,
+  services,
   resolveConfiguredModel,
   servicesType,
 } from '@/src/core/config/catalog';
@@ -400,6 +406,7 @@ import {createPopupPageActions, type PopupPageState, type PopupSiteRulePatch} fr
 import {createPopupTabSource} from './sourceTab';
 import {getEmbeddedPopupTabId, closePopupSurface} from './embedded';
 import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
+import {waitForSettingsTask} from '@/src/features/settings/model/taskWait';
 import {useConfigEditor} from '@/src/features/settings/model/useConfigEditor';
 import {applyInterfaceFont, applyInterfaceSkin} from '@/src/ui/interfaceAppearance';
 import { requestTranslationCacheClear } from './cache';
@@ -408,6 +415,8 @@ import {popupQuickFeatureIconPaths, popupQuickFeatureIconTones, type PopupQuickF
 import {useUiI18n} from '@/src/ui/i18n';
 import PopupSiteRule from './PopupSiteRule.vue';
 import {browserCapabilities} from '@/src/platform/browser/capabilities';
+import {readFreePoolAccess, requestFreeProviderAccess, type FreePoolAccess} from '@/src/platform/browser/freeProviderPermissions';
+import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
 import {createPdfReaderUrl, getPdfSourceUrl} from '@/src/features/document-translation/core/pdfSource';
 import {
   getTranslationServiceUnavailableMessage,
@@ -440,6 +449,8 @@ const config = ref(normalizeConfig(runtimeConfig));
 const onboardingLanguage = ref<UiLanguage>('zh-CN');
 const drawerVisible = ref(false);
 const drawerMounted = ref(false);
+const drawerSurface = shallowRef<HTMLElement | null>(null);
+let releaseDrawerViewport: (() => void) | undefined;
 const activeDrawer = ref<DrawerName>('hover');
 const pageState = reactive<PopupPageState>({tabId: null, url: '', domain: '', translated: false, busy: false, savingRule: false});
 const {busy: translating, translated: pageTranslated, tabId: currentTabId, domain: currentSiteDomain} = toRefs(pageState);
@@ -747,6 +758,32 @@ const pageConfigurationIdentity = computed(() => JSON.stringify([config.value.on
   config.value.customModel[config.value.service], config.value.disabledExtensionDomains.join(','), config.value.alwaysTranslateDomains.join(','),
   config.value.autoTranslate, credentialWarning.value, createApiKeyCheckRevision(config.value, config.value.service)]));
 const pageContext = useSettingsActionContext(() => popupContext.active.value, () => [pageConfigurationIdentity.value]);
+const safariFreePool = computed(() => browserCapabilities.browser === 'safari' && config.value.service === services.freeTranslation);
+const freePoolAccess = shallowRef<FreePoolAccess | null>(null);
+const freePoolLoading = ref(false), freePoolBusy = ref(false), freePoolError = ref('');
+let freePoolGeneration = 0;
+let freePoolReadController: AbortController | undefined;
+const freePoolStatus = computed(() => {
+  if (freePoolLoading.value || freePoolBusy.value) return t('safari.freePool.loading');
+  if (freePoolError.value) return freePoolError.value;
+  const access = freePoolAccess.value;
+  if (access?.grantedIds.length) return t('safari.freePool.availableCount', {count: access.grantedIds.length, total: config.value.freeTranslationOrder.length});
+  const provider = FREE_TRANSLATION_PROVIDERS.find(item => item.id === access?.preferredGrant?.id);
+  return t('safari.freePool.needsAccess', {provider: provider ? translateLegacy(provider.label) : ''});
+});
+watch(() => [popupContext.active.value, popupContext.revision.value, safariFreePool.value, config.value.freeTranslationOrder.join('\0')], () => {
+  const generation = ++freePoolGeneration, current = popupContext.capture();
+  freePoolReadController?.abort();freePoolReadController = undefined;
+  freePoolAccess.value = null;freePoolError.value = '';freePoolBusy.value = false;
+  freePoolLoading.value = popupContext.active.value && safariFreePool.value;
+  if (!freePoolLoading.value) return;
+  const controller = new AbortController();freePoolReadController = controller;
+  void waitForSettingsTask(readFreePoolAccess(config.value.freeTranslationOrder), controller.signal, 10_000, t('safari.freePool.error')).then(access => {
+    if (current() && generation === freePoolGeneration) freePoolAccess.value = access;
+  }).catch(() => {
+    if (current() && generation === freePoolGeneration) freePoolError.value = t('safari.freePool.error');
+  }).finally(() => {if (generation === freePoolGeneration) freePoolLoading.value = false;});
+}, {flush: 'sync', immediate: true});
 const cacheContext = useSettingsActionContext(() => popupContext.active.value, () => []);
 const tabSource = createPopupTabSource(window.location?.search || '', {
   get: id => browser.tabs.get(id), query: () => browser.tabs.query({active: true, currentWindow: true}),
@@ -765,10 +802,43 @@ watch(() => [pageState.tabId, pageState.url, pageState.translated, pageState.bus
 const pageButtons = computed(() => {
   const current = pageContext.capture(), version = pageRenderRevision.value;
   const owns = () => current() && version === pageRenderRevision.value;
-  return {toggle: () => {if (owns()) return togglePageTranslation()}, section: () => {if (owns()) return startSectionTranslation()},
+  return {toggle: () => {if (owns()) return runPageWithFreePoolAccess('toggle')}, section: () => {if (owns()) return runPageWithFreePoolAccess('section')},
     always: (value: boolean) => {if (owns()) return setCurrentSiteAlwaysTranslated(value)},
     disabled: (value: boolean) => {if (owns()) return setCurrentSiteExtensionDisabled(value)}};
 });
+function runPageWithFreePoolAccess(action: 'toggle' | 'section' | 'retry'): Promise<void> | void {
+  const run = () => action === 'toggle' ? togglePageTranslation() : action === 'retry' ? pageActions.retry() : startSectionTranslation();
+  // 恢复原文与打开 PDF 阅读器不产生新的免费池请求，不能被授权状态阻挡。
+  if ((action === 'toggle' && (pageTranslated.value || currentPdfSource.value)) || !safariFreePool.value) return run();
+  if (!pageContext.active.value || !config.value.on || translating.value || pageState.savingRule || currentSiteExtensionDisabled.value
+      || freePoolBusy.value || freePoolLoading.value) return;
+  const access = freePoolAccess.value;
+  if (access?.grantedIds.length) return run();
+  const provider = access?.preferredGrant;
+  if (!provider) {showNotice(t('safari.freePool.error'), 'error');return;}
+  const current = pageContext.capture(), generation = freePoolGeneration, owner = config.value, render = pageRenderRevision.value;
+  const identity = [owner.service, owner.from, owner.to, owner.freeTranslationOrder.join('\0'), pageState.tabId, pageState.url];
+  const owns = () => current() && generation === freePoolGeneration && config.value === owner && render === pageRenderRevision.value
+    && identity.every((value, index) => value === [owner.service, owner.from, owner.to, owner.freeTranslationOrder.join('\0'), pageState.tabId, pageState.url][index]);
+  let request: Promise<boolean>;
+  // request 必须是实际 click 中的首个副作用；此处之前不能 await、查询标签页或转交 background。
+  try {request = requestFreeProviderAccess(provider.id);} catch {showNotice(t('safari.freePool.error'), 'error');return;}
+  freePoolBusy.value = true;freePoolError.value = '';
+  return (async () => {
+    try {
+      if (!await request) {if (owns()) freePoolError.value = t('safari.freePool.requestDenied');return;}
+      if (!owns()) return;
+      const refreshed = await waitForSettingsTask(readFreePoolAccess(owner.freeTranslationOrder), freePoolReadController!.signal, 10_000, t('safari.freePool.error'));
+      if (!owns()) return;
+      freePoolAccess.value = refreshed;
+      if (!refreshed.grantedIds.includes(provider.id)) {freePoolError.value = t('safari.freePool.requestDenied');return;}
+      freePoolError.value = '';
+      // pageActions 仍复验实际标签页；授权等待中导航不能把旧翻译意图移交到新网页。
+      return await run();
+    } catch {if (owns()) freePoolError.value = t('safari.freePool.error');}
+    finally {if (generation === freePoolGeneration) freePoolBusy.value = false;}
+  })();
+}
 const donationRevision = ref(0);
 watch(donationVisible, () => {donationRevision.value += 1}, {flush: 'sync'});
 
@@ -808,6 +878,27 @@ const drawerDisplayModes = computed(() => {
     choose: () => {if (current() && config.value.on && (config.value.service !== 'google' || item.value !== 0)) config.value.display = item.value}}));
 });
 watch(popupContext.active, enabled => {if (!enabled) {drawerVisible.value = false;donationVisible.value = false;notice.value = '';if (noticeTimer) clearTimeout(noticeTimer)}}, {flush: 'sync'});
+// 仅向自己实际 teleport 出去的遮罩提供内部抽屉坐标；遮罩仍覆盖整页，根尺寸不参与键盘视口协商。
+watch([drawerVisible, drawerSurface, popupContext.active], ([visible, surface, active]) => {
+  releaseDrawerViewport?.();
+  releaseDrawerViewport = undefined;
+  const overlay = surface?.closest<HTMLElement>('.popup-drawer-modal');
+  if (!visible || !active || !overlay) return;
+  const properties = ['left', 'top', 'width', 'height'] as const;
+  const update = () => {
+    if (!drawerVisible.value || !popupContext.active.value || !overlay.isConnected) return;
+    const viewport = getVisualViewportRect();
+    for (const property of properties) overlay.style.setProperty(`--fluent-read-drawer-${property}`, `${viewport[property]}px`);
+    overlay.setAttribute('data-fluent-read-popup-viewport', '');
+  };
+  update();
+  const stop = observeVisualViewport(update);
+  releaseDrawerViewport = () => {
+    stop();
+    overlay.removeAttribute('data-fluent-read-popup-viewport');
+    for (const property of properties) overlay.style.removeProperty(`--fluent-read-drawer-${property}`);
+  };
+}, {flush: 'sync'});
 watch(() => config.value.on, enabled => {if (!enabled && activeDrawer.value !== 'services' && activeDrawer.value !== 'aiContext') drawerVisible.value = false}, {flush: 'sync'});
 watch(cacheContext.active, enabled => {if (!enabled) clearingCache.value = false}, {flush: 'sync'});
 
@@ -934,7 +1025,8 @@ async function diagnosticAction(action: DiagnosticAction) {
     } catch {if (current()) showNotice(getDiagnosticUiText('source-closed', config.value.uiLanguage), 'error');}
     return;
   }
-  if (action === 'retry') {pageDiagnostic.value = undefined;await pageActions.retry();}
+  // 重试包含新的全文请求；必须在原始 click 内先完成 Safari 授权入口，不能先 await 恢复动作。
+  if (action === 'retry') {pageDiagnostic.value = undefined;await runPageWithFreePoolAccess('retry');}
 }
 function handlePageResultMessage(message: unknown, sender: {id?: string; url?: string; tab?: {id?: number; url?: string; pendingUrl?: string}; frameId?: number}): undefined {
   const response = message as {type?: unknown; isTranslated?: unknown; documentToken?: unknown} | undefined;
@@ -953,6 +1045,8 @@ onMounted(() => {
   browser.tabs.onRemoved.addListener(handleTabRemoved);
 });
 onUnmounted(() => {
+  releaseDrawerViewport?.();
+  releaseDrawerViewport = undefined;
   persistOnPageExit();
   pageExited.value = true;
   window.removeEventListener('pagehide', saveOnPageHide);

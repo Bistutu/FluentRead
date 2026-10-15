@@ -56,6 +56,120 @@ function createFixture(markup = '<div class="player"><video></video><div class="
 afterEach(() => vi.unstubAllGlobals());
 
 describe('native picture-in-picture and fullscreen anchors', () => {
+  it.each([false, true])('keeps only the live button after a controls deep clone (new media: %s)', newMedia => {
+    const fixture = createFixture();
+    const click = vi.fn();
+    const created: HTMLButtonElement[] = [];
+    const binding = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+      getState: () => ({enabled: true}), createButton: () => {
+        const button = fixture.document.createElement('button');
+        button.id = 'fluent-read-video-subtitle-button';
+        button.dataset.fluentReadClickBound = 'true';
+        button.addEventListener('click', click);
+        created.push(button);
+        return button;
+      }});
+    const original = created[0];
+    const controls = original.parentElement!;
+    const replacement = controls.cloneNode(true) as HTMLElement;
+    const copiedButton = replacement.querySelector<HTMLButtonElement>('#fluent-read-video-subtitle-button')!;
+    expect(copiedButton.dataset.fluentReadClickBound).toBe('true');
+    copiedButton.dispatchEvent(new fixture.window.Event('click', {bubbles: true}));
+    expect(click).not.toHaveBeenCalled();
+    controls.replaceWith(replacement);
+    if (newMedia) fixture.setTarget({...fixture.target, key: 'video:ad'});
+    else binding.sync();
+    expect(replacement.querySelectorAll('#fluent-read-video-subtitle-button')).toHaveLength(1);
+    const live = created[created.length - 1];
+    expect(live.parentElement).toBe(replacement);
+    expect(copiedButton.isConnected).toBe(false);
+    live.dispatchEvent(new fixture.window.Event('click', {bubbles: true}));
+    expect(click).toHaveBeenCalledOnce();
+    expect(created).toHaveLength(newMedia ? 2 : 1);
+    if (newMedia) expect(live).not.toBe(original);
+    binding.destroy();
+    expect(replacement.querySelectorAll('#fluent-read-video-subtitle-button')).toHaveLength(0);
+  });
+
+  it.each(['move', 'empty-replacement'] as const)('retains the same live button for a controls %s', change => {
+    const fixture = createFixture();
+    const click = vi.fn();
+    const createButton = vi.fn(() => {
+      const button = fixture.document.createElement('button');
+      button.id = 'fluent-read-video-subtitle-button';
+      button.addEventListener('click', click);
+      return button;
+    });
+    const binding = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+      getState: () => ({enabled: true}), createButton});
+    const button = createButton.mock.results[0].value;
+    const previous = button.parentElement!;
+    let host = previous;
+    if (change === 'move') {
+      const wrapper = fixture.document.createElement('div');
+      fixture.player.appendChild(wrapper); wrapper.appendChild(previous);
+    } else {
+      host = fixture.document.createElement('div'); host.className = 'ytp-right-controls';
+      previous.replaceWith(host);
+    }
+    binding.sync();
+    expect(host.querySelectorAll('#fluent-read-video-subtitle-button')).toHaveLength(1);
+    expect(button.parentElement).toBe(host);
+    expect(createButton).toHaveBeenCalledOnce();
+    button.dispatchEvent(new fixture.window.Event('click', {bubbles: true}));
+    expect(click).toHaveBeenCalledOnce();
+    binding.destroy();
+    expect(host.querySelectorAll('#fluent-read-video-subtitle-button')).toHaveLength(0);
+  });
+
+  it('cleans its held host on destroy without deleting another binding or same-id page nodes', () => {
+    const fixture = createFixture();
+    const createButton = () => {
+      const button = fixture.document.createElement('button');
+      button.id = 'fluent-read-video-subtitle-button';
+      return button;
+    };
+    const first = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+      getState: () => ({enabled: true}), createButton});
+    const second = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+      getState: () => ({enabled: true}), createButton});
+    const host = fixture.player.querySelector<HTMLElement>('.ytp-right-controls')!;
+    const [firstButton, secondButton] = Array.from(host.querySelectorAll<HTMLButtonElement>('#fluent-read-video-subtitle-button'));
+    const clone = firstButton.cloneNode(true) as HTMLButtonElement;
+    host.appendChild(clone);
+    const pageButton = createButton(); host.appendChild(pageButton);
+    const outside = firstButton.cloneNode(true) as HTMLButtonElement;
+    fixture.document.body.appendChild(outside);
+    first.destroy();
+    expect(firstButton.isConnected).toBe(false);
+    expect(clone.isConnected).toBe(false);
+    expect(secondButton.isConnected).toBe(true);
+    expect(pageButton.isConnected).toBe(true);
+    expect(outside.isConnected).toBe(true);
+    second.destroy();
+    expect(secondButton.isConnected).toBe(false);
+  });
+
+  it('cleans copies left in the previous held host while moving to new native controls', () => {
+    const fixture = createFixture('<div class="player"><video></video></div>');
+    const binding = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+      getState: () => ({enabled: true}), createButton: () => {
+        const button = fixture.document.createElement('button');
+        button.id = 'fluent-read-video-subtitle-button'; return button;
+      }});
+    fixture.video.dispatchEvent(new fixture.window.Event('pointerover', {bubbles: true}));
+    const previous = fixture.player.querySelector<HTMLElement>('.fluent-read-video-controls')!;
+    const button = previous.querySelector<HTMLButtonElement>('button')!;
+    const clone = button.cloneNode(true) as HTMLButtonElement; previous.appendChild(clone);
+    const controls = fixture.document.createElement('div'); controls.className = 'ytp-right-controls';
+    fixture.player.appendChild(controls);
+    binding.sync();
+    expect(clone.isConnected).toBe(false);
+    expect(button.parentElement).toBe(controls);
+    expect(previous.querySelectorAll('button')).toHaveLength(0);
+    binding.destroy();
+  });
+
   it('ignores caption element and icon churn while rebinding native button and host structure', () => {
     const fixture = createFixture('<div class="player"><video></video><div class="captions"></div><div class="ytp-right-controls"><button aria-label="Settings"><span>icon</span></button><button aria-label="Full screen">full</button></div></div>');
     let notify!: MutationCallback;

@@ -947,6 +947,7 @@ export const frFRMessages = {
     'video.modeTranslation': 'Traduction',
     'video.modeOriginal': 'Original',
     'video.modeOff': 'Arrêt',
+    "video.nativeFullscreenHint": "Après être passé en plein écran système, choisissez FluentRead dans le menu des sous-titres. Le style natif et les traductions chargées sont utilisés. Si l’affichage ou le changement échoue, quittez le plein écran pour voir les sous-titres bilingues.",
     'video.modeOffHint': 'Désactiver les sous-titres FluentRead et garder ceux du site',
     'video.timingShort': 'Synchro',
     'video.downloadOriginalShort': 'Original',

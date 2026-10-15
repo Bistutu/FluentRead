@@ -1,5 +1,13 @@
 {
   "messages": {
+    "safari.freePool.policy": "Safari에서는 접근이 허용된 무료 번역 서비스만 사용합니다",
+    "safari.freePool.loading": "서비스 접근 권한 확인 중…",
+    "safari.freePool.error": "접근 권한을 확인하지 못했습니다. 패널이나 설정을 다시 열고 시도하세요.",
+    "safari.freePool.needsAccess": "번역을 시작하려면 {provider} 접근을 허용하세요.",
+    "safari.freePool.allowProvider": "{provider} 허용",
+    "safari.freePool.requestDenied": "서비스 접근이 허용되지 않았습니다. 다시 시도하거나 설정에서 다른 서비스를 선택하세요.",
+    "safari.freePool.permissionState": "권한 필요",
+    "safari.freePool.availableCount": "사용 가능 {count} / 활성화 {total}",
     "options.panel.floatingBall": "플로팅 버튼 상세 설정",
     "settings.general.bilingualSentenceHighlightGroupingHint": "원문과 번역문의 문장 구분이 다르면 인접한 문장을 함께 강조합니다.",
     "learning.collection.moreActions": "저장 항목 추가 작업",

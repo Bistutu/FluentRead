@@ -947,6 +947,7 @@ export const esESMessages = {
     'video.modeTranslation': 'Traducción',
     'video.modeOriginal': 'Original',
     'video.modeOff': 'Apagado',
+    "video.nativeFullscreenHint": "Tras entrar en pantalla completa del sistema, elige FluentRead en el menú de subtítulos. Se usan el estilo nativo y las traducciones cargadas. Si la visualización o el cambio fallan, sal de pantalla completa para ver los subtítulos bilingües.",
     'video.modeOffHint': 'Desactivar los subtítulos de FluentRead y mantener los del sitio',
     'video.timingShort': 'Sincronía',
     'video.downloadOriginalShort': 'Original',

@@ -1176,6 +1176,7 @@ export const enUSMessages = {
     'video.modeTranslation': 'Translated',
     'video.modeOriginal': 'Original',
     'video.modeOff': 'Off',
+    "video.nativeFullscreenHint": "After entering system fullscreen, choose FluentRead in the caption menu. It uses native styling and loaded translations. If display or switching fails, exit fullscreen for bilingual captions.",
     'video.modeOffHint': 'Turn off FluentRead subtitles and keep the site\'s captions',
     'video.timingShort': 'Timing',
     'video.downloadOriginalShort': 'Original',

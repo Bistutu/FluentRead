@@ -1,5 +1,13 @@
 {
   "messages": {
+    "safari.freePool.policy": "Safari solo usa servicios de traducción gratuitos autorizados",
+    "safari.freePool.loading": "Comprobando permisos de los servicios…",
+    "safari.freePool.error": "No se pudieron comprobar los permisos. Vuelve a abrir el panel o los ajustes e inténtalo de nuevo.",
+    "safari.freePool.needsAccess": "Permite el acceso a {provider} antes de traducir.",
+    "safari.freePool.allowProvider": "Permitir {provider}",
+    "safari.freePool.requestDenied": "No se ha autorizado el acceso al servicio. Inténtalo de nuevo o elige otro servicio en los ajustes.",
+    "safari.freePool.permissionState": "Permiso necesario",
+    "safari.freePool.availableCount": "Disponibles: {count} / activados: {total}",
     "options.panel.floatingBall": "Ajustes del botón flotante",
     "settings.general.bilingualSentenceHighlightGroupingHint": "Si las oraciones se dividen de forma distinta, se resaltan juntas las oraciones contiguas.",
     "learning.collection.moreActions": "Más acciones sobre elementos guardados",

@@ -1,8 +1,8 @@
 /**
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
- * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口。
- * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；材料捕获使用真实代次冻结与完成逻辑，只替换来源提取和后台客户端；新增入口可选官方模板和独立 Linkedom 节点树，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
+ * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口，并组合实际 selection runtime 验证 Safari 已消费选区的 host 恢复、正文失效及离开清理。
+ * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；新增入口可选官方模板和独立 Linkedom 节点树；组合模式将真实组件交给原始 runtime 的平台挂载端口；材料捕获使用真实代次冻结与完成逻辑，只替换来源提取和后台客户端；浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import * as speechProgress from '@/src/core/tts/speechProgress';
@@ -24,6 +24,8 @@ import * as partOfSpeech from '@/src/core/language/partOfSpeech';
 import * as wordNormalization from '@/src/features/selection-translation/services/wordNormalization';
 import * as vocabularyProtocol from '@/src/features/vocabulary/protocol';
 import * as hotkey from '@/src/core/hotkey';
+import * as visualViewport from '@/src/platform/dom/visualViewport';
+import * as modalDialogHost from '@/src/features/selection-translation/content/modalDialogHost';
 import {setSelectionContextMenuHandler, translateSelectionFromContextMenu as translateSelectionThroughBridge} from '@/src/features/selection-translation/content/contextMenuBridge';
 import {beginMaterialCapture as beginCapture, completeMaterialCapture as completeCapture, type MaterialSelection} from '@/src/features/vocabulary/materialCapture';
 
@@ -34,7 +36,7 @@ vi.mock('@/src/features/vocabulary/materialClient', () => ({materialGeneration: 
 const filename = 'src/features/selection-translation/ui/SelectionTranslator.vue';
 const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
 const script = compileScript(descriptor, {id: 'selection-lifecycle'});
-type SelectionBuildTarget = 'chrome' | 'userscript';
+type SelectionBuildTarget = 'chrome' | 'userscript' | 'safari';
 const setupSource = script.content;
 const compiledByTarget = new Map<SelectionBuildTarget, string>();
 function compileForTarget(target: SelectionBuildTarget): string {
@@ -111,7 +113,7 @@ function createSelectionTemplatePort() {
             else element.setAttribute(key, value === true ? '' : String(value));
         },
     });
-    return {renderer, root: document.body,
+    return {renderer, root: document.body, document, domWindow: parsed.window,
         click(element: Element) {
             clickResult = undefined;
             element.dispatchEvent(new parsed.window.Event('click', {bubbles: true}));
@@ -123,12 +125,14 @@ let app: Vue.App | undefined;
 afterEach(() => { app?.unmount(); app = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>,
-    targetOrProps: SelectionBuildTarget | Record<string, unknown> = 'chrome', readyOrTemplate: Promise<void> | boolean = Promise.resolve()) {
+    targetOrProps: SelectionBuildTarget | Record<string, unknown> = 'chrome', readyOrTemplate: Promise<void> | boolean = Promise.resolve(),
+    runtimeIntegration = false) {
     // 保留两侧原调用：主线 target/configReady 与本地 componentProps/可选完整模板。
     const browserTarget = typeof targetOrProps === 'string' ? targetOrProps : 'chrome';
     const componentProps = typeof targetOrProps === 'string' ? {} : targetOrProps;
     const configReady = typeof readyOrTemplate === 'boolean' ? Promise.resolve() : readyOrTemplate;
     const renderTemplate = typeof readyOrTemplate === 'boolean' ? readyOrTemplate : false;
+    const renderPort = renderTemplate ? createSelectionTemplatePort() : null;
     vi.useFakeTimers();
     const config = Object.assign(new Config(), {
         disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', theme: 'light',
@@ -145,9 +149,13 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         }),
     });
     const media = eventTarget('media');
-    const document = {...eventTarget('document'), getElementById: vi.fn(() => null), dispatchEvent: vi.fn()};
+    const documentPort = {...eventTarget('document'), getElementById: vi.fn(() => null), dispatchEvent: vi.fn()};
+    // 组合回归使用同一真实节点树；事件可信度与 Selection 几何仍由受控浏览器端口提供。
+    const document = runtimeIntegration
+        ? Object.assign(renderPort!.document, eventTarget('document')) as unknown as typeof documentPort
+        : documentPort;
     const window = {
-        ...eventTarget('window'), innerWidth: 1000, innerHeight: 800,
+        ...eventTarget('window'), innerWidth: 1000, innerHeight: 800, document,
         matchMedia: () => ({matches: false, ...media}),
         setTimeout, clearTimeout,
         requestAnimationFrame: (callback: () => void) => setTimeout(callback, 16),
@@ -189,6 +197,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         vue: {...Vue, useTemplateRef: () => Vue.ref(null)},
         'webextension-polyfill': browser,
         '@/src/platform/browser/runtimeMessages': runtimeMessages,
+        '@/src/platform/dom/visualViewport': visualViewport,
         '@/src/services/config/store': {config, configReady, requestConfigPatch, subscribeConfig: (listener: () => void) => { configListener = listener; return unsubscribeConfig; }},
         '@/src/services/translation/client': {translateText, translateTextBatch},
         '@/src/features/selection-translation/core': selectionCore,
@@ -224,7 +233,6 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         return modules[id] ?? {};
     };
     new Function('require', 'exports', compileForTarget(browserTarget))(loadModule, exports);
-    const renderPort = renderTemplate ? createSelectionTemplatePort() : null;
     if (renderPort) {
         const renderExports: Record<string, any> = {};
         new Function('require', 'exports', selectionTemplateCode())(loadModule, renderExports);
@@ -235,17 +243,25 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         createText: () => ({}), createComment: () => ({}), setText() {}, setElementText() {},
         parentNode: () => null, nextSibling: () => null,
     });
-    const currentApp: Vue.App = renderer.createApp(exports.default, {selectionAdapter, ...componentProps});
+    let currentApp: Vue.App | undefined;
+    let state: Record<string, any>;
     const lifecycleErrors = vi.fn();
-    currentApp.config.errorHandler = lifecycleErrors;
-    app = currentApp;
-    if (renderPort) currentApp.directive('ui-i18n', {});
-    const vm = currentApp.mount(renderPort?.root ?? {});
-    const state = (vm.$ as any).setupState as Record<string, any>;
-    return {state, event, browser, config, listeners, window, document, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
+    const mountActual = (props: Record<string, unknown> = {}, root = renderPort?.root ?? {}) => {
+        if (currentApp) throw new Error('The same component must not be mounted twice');
+        currentApp = renderer.createApp(exports.default, {selectionAdapter, ...componentProps, ...props});
+        currentApp.config.errorHandler = lifecycleErrors;
+        app = currentApp;
+        if (renderPort) currentApp.directive('ui-i18n', {});
+        const vm = currentApp.mount(root);
+        state = (vm.$ as any).setupState as Record<string, any>;
+        return vm;
+    };
+    if (!runtimeIntegration) mountActual();
+    return {get state() {return state;}, event, browser, config, listeners, window, document, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
+        component: exports.default, mountActual,
         registerContextMenu, get contextMenuHandler() {return contextMenuHandler;},
         captureMaterialSelection, beginMaterialCapture, completeMaterialCapture, materialGeneration: materialPorts.generation, materialCapture: materialPorts.capture,
-        lifecycleErrors, renderPort, unmount: () => { currentApp.unmount(); app = undefined; }};
+        lifecycleErrors, renderPort, unmount: () => { currentApp?.unmount(); app = undefined; }};
 }
 
 describe('explicit free selection explanation', () => {
@@ -1452,6 +1468,71 @@ it('keeps an existing ordinary translation running when opening the learning vie
 
 
 describe('selection card geometry across content changes', () => {
+    it('keeps a card and its entry within the panned visual viewport above a software keyboard', () => {
+        const {state, window} = mountSelection();
+        Object.assign(window, {visualViewport: {width: 390, height: 300, offsetLeft: 80, offsetTop: 160}});
+        state.handleViewportResize();
+        state.tooltipRef = {getBoundingClientRect: () => ({width: 388, height: 240})};
+        state.manualPopupPosition = {left: 20, top: 700};
+        state.manualPopupSize = {width: 388, height: 240};
+        state.applyManualPopupGeometry();
+        expect(state.tooltipStyle).toMatchObject({left: '92px', top: '308px', width: '366px', height: '140px', maxHeight: '140px'});
+        state.touchInteraction = true;
+        state.snapshot = {text: 'A selection.', anchor: {left: 0, top: 0, right: 5, bottom: 5}, isForward: true};
+        state.showTooltip = false;
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: '108px', top: '188px'});
+    });
+    it.each([true, false])('keeps a multiline touch entry beside the actual %s selection endpoint line', isForward => {
+        const {state} = mountSelection();
+        const rects = [{left: 100, right: 230, top: 100, bottom: 124, width: 130, height: 24},
+            {left: 100, right: 160, top: 124, bottom: 148, width: 60, height: 24}];
+        state.touchInteraction = true;
+        state.snapshot = {text: 'Two selected lines.', range: {getClientRects: () => rects}, anchor: rects[0], isForward};
+        state.updatePosition();
+        expect(state.snapshot.anchor).toEqual(isForward ? rects[1] : rects[0]);
+        expect(state.indicatorStyle).toEqual(isForward ? {left: '188px', top: '136px'} : {left: '72px', top: '112px'});
+        // A 44px entry stays beside this line rather than in the native menu band above/below it.
+        const x = Number.parseFloat(state.indicatorStyle.left), y = Number.parseFloat(state.indicatorStyle.top);
+        const endpoint = state.snapshot.anchor;
+        expect(y).toBeGreaterThan(endpoint.top);
+        expect(y).toBeLessThan(endpoint.bottom);
+        expect(isForward ? x - 22 >= endpoint.right : x + 22 <= endpoint.left).toBe(true);
+    });
+    it.each([
+        {isForward: true, left: 350, right: 380, expectedLeft: '322px'},
+        {isForward: false, left: 10, right: 100, expectedLeft: '128px'},
+        {isForward: true, left: 100, right: 150, expectedLeft: '178px'},
+        {isForward: false, left: 100, right: 150, expectedLeft: '72px'},
+        {isForward: true, left: 0, right: 390, expectedLeft: '362px'},
+        {isForward: false, left: 0, right: 390, expectedLeft: '28px'},
+    ])('uses available line-side space and keeps a full-width selection entry visible: %j', scenario => {
+        const {state, window} = mountSelection();
+        Object.assign(window, {visualViewport: {width: 390, height: 500, offsetLeft: 0, offsetTop: 0}});
+        state.handleViewportResize();
+        state.touchInteraction = true;
+        state.snapshot = {text: 'Selected text.', anchor: {left: scenario.left, right: scenario.right, top: 150, bottom: 174}, isForward: scenario.isForward};
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: scenario.expectedLeft, top: '162px'});
+    });
+    it.each([
+        {anchor: {left: 80, right: 470, top: 160, bottom: 184}, expectedLeft: '442px', expectedTop: '188px'},
+        {anchor: {left: 210, right: 260, top: 440, bottom: 464}, expectedLeft: '288px', expectedTop: '432px'},
+    ])('clamps a touch entry inside a panned keyboard viewport at vertical edges: %j', scenario => {
+        const {state, window} = mountSelection();
+        Object.assign(window, {visualViewport: {width: 390, height: 300, offsetLeft: 80, offsetTop: 160}});
+        state.handleViewportResize();
+        state.touchInteraction = true;
+        state.snapshot = {text: 'Selected text.', anchor: scenario.anchor, isForward: true};
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: scenario.expectedLeft, top: scenario.expectedTop});
+    });
+    it.each([true, false])('preserves desktop indicator offset for selection direction %s', isForward => {
+        const {state} = mountSelection();
+        state.snapshot = {text: 'Desktop selection.', anchor: {left: 100, right: 230, top: 100, bottom: 124}, isForward};
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: isForward ? '244px' : '86px', top: '138px'});
+    });
     it('preserves the opening position across learning tabs and expanding content', async () => {
         const {state} = mountSelection();
         state.tooltipRef = {getBoundingClientRect: () => ({width: 388, height: 180})};
@@ -1476,8 +1557,380 @@ describe('selection card geometry across content changes', () => {
         state.applyManualPopupGeometry();
         expect(state.tooltipStyle).toMatchObject({left: '510px', top: '490px', width: '450px', height: '240px'});
         window.innerWidth = 390; window.innerHeight = 400;
+        state.handleViewportResize();
         state.applyManualPopupGeometry();
         expect(state.tooltipStyle).toMatchObject({left: '12px', top: '248px', width: '366px', height: '140px'});
+    });
+});
+
+describe('Safari explicit touch selection consumption', () => {
+    function prepare(target: SelectionBuildTarget = 'safari', touch = true, initialText = 'Good ideas deserve attention.') {
+        const fixture = mountSelection(false, {acceptsRange: () => true, normalizeText: (text: string) => text}, target, true);
+        vi.stubGlobal('Element', class {});vi.stubGlobal('Node', class {});
+        let text=initialText;
+        const source={isConnected:true,ownerDocument:fixture.document};
+        const range=Vue.markRaw({startContainer:source,endContainer:source,startOffset:0,endOffset:text.length,collapsed:false,
+            getClientRects:()=>[{left:20,right:210,top:150,bottom:174,width:190,height:24}],
+            cloneRange:()=>range,toString:()=>text});
+        let cleared=false;
+        const removeAllRanges=vi.fn(()=>{cleared=true;});
+        const selection={get rangeCount(){return cleared?0:1;},get isCollapsed(){return cleared;},anchorNode:source,anchorOffset:0,
+            getRangeAt:()=>range,toString:()=>cleared?'':text,removeAllRanges};
+        Object.assign(fixture.window,{getSelection:()=>selection});
+        Object.assign(fixture.config,{selectionTranslatorTrigger:'icon',selectionTranslatorDelay:0});
+        fixture.state.selectionConfigVersion+=1;
+        fixture.state.touchInteraction=touch;
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());
+        const snapshot=fixture.state.snapshot;
+        return {...fixture,text,source,range,selection,removeAllRanges,snapshot,
+            replaceSelection: (next: string) => {text=next;range.endOffset=next.length;cleared=false;}};
+    }
+    async function clickEntry(fixture: ReturnType<typeof prepare>) {
+        await Vue.nextTick();
+        const indicator=fixture.renderPort!.root.querySelector('.fr-selection-indicator');
+        expect(indicator).not.toBeNull();await fixture.renderPort!.click(indicator!);await Vue.nextTick();
+    }
+    it('runs the actual Safari touch indicator click, retains its snapshot/language and ignores late empty selectionchange',async()=>{
+        const fixture=prepare();
+        const snapshot=fixture.state.snapshot;
+        const direction=fixture.state.effectiveTargetLanguage;
+        await clickEntry(fixture);
+        expect(fixture.removeAllRanges).toHaveBeenCalledOnce();expect(fixture.selection.rangeCount).toBe(0);
+        expect(fixture.state.snapshot).toBe(snapshot);expect(fixture.state.selectedText).toBe(fixture.text);
+        expect(fixture.state.manuallyRequestedSelection).toBe(false);expect(fixture.state.effectiveTargetLanguage).toBe(direction);
+        expect(fixture.state.touchOpenedSelection).toBe(snapshot);expect(fixture.translateText).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(800);
+        fixture.state.lastTrustedSelectionInteractionAt=Date.now();fixture.state.handleSelectionChange({isTrusted:true});
+        await vi.advanceTimersByTimeAsync(500);
+        expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.snapshot).toBe(snapshot);expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+    it('respects the Chinese target-language gate and preserves configured reverse direction when enabled',async()=>{
+        const fixture=prepare('safari',true,'这是一段中文。');fixture.state.openTooltipFromIndicator();
+        expect(fixture.state.showTooltip).toBe(false);expect(fixture.removeAllRanges).not.toHaveBeenCalled();
+        fixture.config.from='en';fixture.config.selectionTranslatorBidirectional=true;fixture.state.selectionConfigVersion+=1;
+        fixture.replaceSelection('这是一段新的中文。');
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());await clickEntry(fixture);
+        expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.manuallyRequestedSelection).toBe(false);
+        expect(fixture.state.effectiveTargetLanguage).toBe('en');expect(fixture.removeAllRanges).toHaveBeenCalledOnce();
+    });
+    it.each(['chrome','userscript','desktop','automatic'] as const)('preserves native selection for %s entry',async mode=>{
+        const fixture=prepare(mode==='chrome'||mode==='userscript'?mode:'safari',mode!=='desktop');
+        if(mode==='automatic')fixture.state.openTooltip();else await clickEntry(fixture);
+        expect(fixture.state.showTooltip).toBe(true);expect(fixture.removeAllRanges).not.toHaveBeenCalled();expect(fixture.state.touchOpenedSelection).toBeNull();
+    });
+    it('releases touch ownership for new selection/hideAll and still closes when the retained source disconnects',async()=>{
+        const fixture=prepare();await clickEntry(fixture);
+        fixture.replaceSelection('New ideas deserve careful attention.');
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());
+        expect(fixture.state.touchOpenedSelection).toBeNull();expect(fixture.state.showTooltip).toBe(false);
+        await clickEntry(fixture);expect(fixture.state.touchOpenedSelection).toBe(fixture.state.snapshot);
+        fixture.state.hideAll();expect(fixture.state.touchOpenedSelection).toBeNull();
+        fixture.replaceSelection('Fresh ideas deserve careful attention.');fixture.state.applySelection(fixture.state.readSelectionSnapshot());await clickEntry(fixture);
+        fixture.source.isConnected=false;fixture.state.scheduleSelectionLoss();
+        expect(fixture.state.showTooltip).toBe(false);expect(fixture.state.touchOpenedSelection).toBeNull();
+    });
+    it('keeps the opened card when native removeAllRanges throws and releases ownership on unmount',async()=>{
+        const fixture=prepare();fixture.removeAllRanges.mockImplementation(()=>{throw Error('native selection unavailable');});
+        await clickEntry(fixture);expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.touchOpenedSelection).toBe(fixture.state.snapshot);
+        fixture.unmount();expect(fixture.state.touchOpenedSelection).toBeNull();expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * 同一文档上的组合回归：执行原始 runtime.ts、真实 SFC setup/template 与 modal controller。
+ * 仅 WXT 创建宿主、浏览器可信事件/Selection 几何及翻译 provider 是受控端口。
+ * Linkedom 提供真实父子连接性、closed ShadowRoot 和异步 MutationObserver；不声称 AVKit/系统菜单实测。
+ */
+describe('Safari consumed selection and actual runtime host recovery', () => {
+    async function prepare() {
+        const fixture = mountSelection(false, undefined, 'safari', true, true);
+        const port = fixture.renderPort!, document = port.document;
+        vi.stubGlobal('Element', port.domWindow.Element);
+        vi.stubGlobal('Node', port.domWindow.Node);
+        vi.stubGlobal('MutationObserver', port.domWindow.MutationObserver);
+        Object.defineProperty(document, 'visibilityState', {configurable: true, value: 'visible', writable: true});
+        const paragraph = document.createElement('p');
+        paragraph.textContent = '这是一段需要认真阅读的中文。';
+        document.body.appendChild(paragraph);
+        const source = paragraph.firstChild!;
+        const range = Vue.markRaw({startContainer: source, endContainer: source, commonAncestorContainer: source, startOffset: 0,
+            endOffset: paragraph.textContent.length, collapsed: false,
+            getClientRects: () => [{left: 20, right: 310, top: 150, bottom: 174, width: 290, height: 24}],
+            toString: () => source.textContent!,
+            cloneRange: () => Vue.markRaw({...range}),
+        });
+        let cleared = true;
+        const removeAllRanges = vi.fn(() => {cleared = true;});
+        const selection = {get rangeCount() {return cleared ? 0 : 1;}, get isCollapsed() {return cleared;},
+            anchorNode: source, anchorOffset: 0, containsNode: () => false,
+            getRangeAt: () => range, toString: () => cleared ? '' : source.textContent!, removeAllRanges};
+        Object.assign(fixture.window, {getSelection: () => selection});
+        Object.assign(fixture.config, {on: true, from: 'en', to: 'zh-CN', selectionTranslatorBidirectional: true,
+            selectionTranslatorTrigger: 'icon', selectionTranslatorDelay: 0});
+        let resolveTranslation!: (text: string) => void;
+        fixture.translateText.mockImplementation(() => new Promise<string>(resolve => {resolveTranslation = resolve;}));
+        const host = document.createElement('fluent-read-selection-translator-ui');
+        const container = document.createElement('div');
+        host.id = 'fluent-read-selection-translator-container';
+        host.attachShadow({mode: 'closed'}).appendChild(container);
+        port.root = container;
+        const createUi = vi.fn(async (_context: unknown, options: {component: unknown; props: Record<string, unknown>}) => {
+            expect(options.component).toBe(fixture.component);
+            document.body.appendChild(host);
+            const instance = fixture.mountActual(options.props, container);
+            return {shadowHost: host, mounted: {instance}, remove: vi.fn(() => {fixture.unmount(); host.remove();})};
+        });
+        const runtimeExports: Record<string, any> = {};
+        const runtimeFilename = 'src/features/selection-translation/content/runtime.ts';
+        const compiledRuntime = ts.transpileModule(readFileSync(runtimeFilename, 'utf8'), {
+            compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
+        }).outputText;
+        const runtimePorts: Record<string, unknown> = {
+            '@/src/features/selection-translation/ui/SelectionTranslator.vue': {__esModule: true, default: fixture.component},
+            '@/src/services/config/store': {config: fixture.config},
+            '@/src/platform/shadow-ui': {createVueShadowUi: createUi}, './modalDialogHost': modalDialogHost,
+        };
+        new Function('require', 'exports', compiledRuntime)((id: string) => {
+            if (!(id in runtimePorts)) throw new Error(`Unexpected runtime import: ${id}`);
+            return runtimePorts[id];
+        }, runtimeExports);
+        const runtime = runtimeExports as typeof import('@/src/features/selection-translation/content/runtime');
+        const instance = await runtime.mountSelectionTranslator({isInvalid: false} as never);
+        const dispatch = (prefix: 'document' | 'window', type: string, event: Record<string, unknown>) => {
+            for (const listener of [...fixture.listeners.get(`${prefix}:${type}`) ?? []]) listener(event);
+        };
+        // 使用组件安装的指针监听器建立快照，随后点击官方模板绑定的入口。
+        dispatch('document', 'pointerdown', {isTrusted: true, pointerType: 'touch', button: 0, target: paragraph});
+        cleared = false; // 浏览器在按下之后才建立此次新的正文选区。
+        dispatch('document', 'pointerup', {isTrusted: true, pointerType: 'touch', button: 0, target: paragraph});
+        await vi.advanceTimersByTimeAsync(300);
+        await Vue.nextTick();
+        const indicator = container.querySelector('.fr-selection-indicator');
+        expect(indicator).not.toBeNull();
+        await port.click(indicator!);
+        await Vue.nextTick();
+        expect(removeAllRanges).toHaveBeenCalledOnce();
+        expect(selection.rangeCount).toBe(0);
+        expect(host.shadowRoot).toBeNull();
+        expect(fixture.state.touchOpenedSelection).toBe(fixture.state.snapshot);
+        expect(fixture.state.effectiveTargetLanguage).toBe('en');
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        return {fixture, document, paragraph, source, host, container, runtime, instance, createUi,
+            dispatch, resolveTranslation: (text: string) => resolveTranslation(text)};
+    }
+    async function settle() {await vi.advanceTimersByTimeAsync(32); await Vue.nextTick();}
+
+    it('restores the same consumed-selection card and runtime instance without another request or target change', async () => {
+        const x = await prepare();
+        try {
+            const snapshot = x.fixture.state.snapshot;
+            x.host.remove();
+            await settle();
+            expect(x.host.isConnected).toBe(true);
+            expect(x.host.parentNode).toBe(x.document.body);
+            expect(await x.runtime.mountSelectionTranslator()).toBeNull(); // 已挂载入口不创建另一实例。
+            expect(x.createUi).toHaveBeenCalledOnce();
+            await expect(x.createUi.mock.results[0].value).resolves.toMatchObject({mounted: {instance: x.instance}});
+            expect(x.fixture.state.snapshot).toBe(snapshot);
+            expect(x.fixture.state.showTooltip).toBe(true);
+            expect(x.fixture.state.effectiveTargetLanguage).toBe('en');
+            x.resolveTranslation('Read this carefully.');
+            await settle();
+            expect(x.fixture.state.translationResult).toBe('Read this carefully.');
+            expect(x.fixture.translateText).toHaveBeenCalledOnce();
+            expect(x.fixture.lifecycleErrors).not.toHaveBeenCalled();
+        } finally {x.runtime.unmountSelectionTranslator();}
+    });
+
+    it('cleans the invalid consumed source after body replacement and rejects its late translation', async () => {
+        const x = await prepare();
+        try {
+            const replacement = x.document.createElement('body');
+            replacement.innerHTML = '<p>A different page source.</p>';
+            x.document.body.replaceWith(replacement);
+            await settle();
+            expect(x.source.isConnected).toBe(false);
+            expect(x.host.parentNode).toBe(replacement);
+            // Selection 已为空：不伪造 selectionchange/pageshow 来替代实际 host 恢复路径。
+            expect(x.fixture.state.showTooltip).toBe(false);
+            expect(x.fixture.state.snapshot).toBeNull();
+            expect(x.fixture.state.touchOpenedSelection).toBeNull();
+            expect(x.fixture.translateText.mock.calls[0][2].signal.aborted).toBe(true);
+            x.resolveTranslation('A late answer for the removed source.');
+            await settle();
+            expect(x.fixture.state.translationResult).toBe('');
+            expect(x.container.textContent).not.toContain('A late answer');
+            expect(x.createUi).toHaveBeenCalledOnce();
+        } finally {x.runtime.unmountSelectionTranslator();}
+    });
+
+    it.each(['pagehide', 'unmount'] as const)('does not resurrect the consumed card or late answer after %s', async reason => {
+        const x = await prepare();
+        try {
+            x.host.remove(); // 保留待处理的真实 MutationObserver 记录。
+            if (reason === 'pagehide') x.dispatch('window', 'pagehide', {isTrusted: true});
+            else x.runtime.unmountSelectionTranslator();
+            x.resolveTranslation('A late answer after leaving.');
+            await settle();
+            expect(x.fixture.state.touchOpenedSelection).toBeNull();
+            if (reason === 'pagehide') {
+                // 即使 runtime 仍保留空的入口宿主，也不能重新显示已由 pagehide 关闭的卡。
+                expect(x.fixture.state.showTooltip).toBe(false);
+                expect(x.fixture.state.snapshot).toBeNull();
+                expect(x.container.querySelector('.fr-translation-tooltip')).toBeNull();
+            } else {
+                expect(x.host.isConnected).toBe(false);
+                expect(x.container.childNodes).toHaveLength(0);
+            }
+            expect(x.fixture.state.translationResult).toBe('');
+            expect(x.fixture.translateText).toHaveBeenCalledOnce();
+            expect(x.createUi).toHaveBeenCalledOnce();
+            expect(x.fixture.lifecycleErrors).not.toHaveBeenCalled();
+        } finally {x.runtime.unmountSelectionTranslator();}
+        await settle();
+        expect(x.host.isConnected).toBe(false);
+    });
+});
+
+describe('native mobile selection and page lifecycle', () => {
+    function mobileSelection() {
+        const fixture = mountSelection(false, {acceptsRange: () => true, normalizeText: (text: string) => text});
+        vi.stubGlobal('Element', class {}); vi.stubGlobal('Node', class {});
+        let text = 'Good ideas deserve attention.';
+        const source = {isConnected: true, ownerDocument: fixture.document};
+        const range = Vue.markRaw({startContainer: source, endContainer: source, collapsed: false, startOffset: 0,
+            getClientRects: () => [{left: 20, right: 210, top: 150, bottom: 174, width: 190, height: 24}],
+            cloneRange: () => range, toString: () => text});
+        Object.assign(fixture.window, {getSelection: () => ({rangeCount: 1, isCollapsed: false,
+            anchorNode: source, anchorOffset: 0, getRangeAt: () => range, toString: () => text})});
+        Object.assign(fixture.config, {selectionTranslatorTrigger: 'icon', selectionTranslatorDelay: 0});
+        fixture.state.selectionConfigVersion += 1;
+        const pointer = {isTrusted: true, pointerType: 'touch', button: 0, target: null};
+        return {...fixture, pointer, source, range, setText: (next: string) => {text = next;}};
+    }
+
+    it('waits for native long-press and handle adjustment to settle after pointercancel without freezing the range at contextmenu', async () => {
+        const fixture = mobileSelection();
+        fixture.state.handlePointerDown(fixture.pointer);
+        await vi.advanceTimersByTimeAsync(1800);
+        fixture.state.handleContextMenu({isTrusted: true, target: null});
+        // 系统菜单接管后有些浏览器不再向页面发送 pointerup/pointercancel。
+        fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(200);
+        fixture.setText('Good ideas deserve careful attention.');
+        fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(249);
+        expect(fixture.state.showIndicator).toBe(false);
+        await vi.advanceTimersByTimeAsync(32);
+        expect(fixture.state.selectedText).toBe('Good ideas deserve careful attention.');
+        expect(fixture.state.showIndicator).toBe(true);
+        expect(fixture.state.contextMenuSelection).toBeNull();
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        fixture.state.openTooltip();
+        await Vue.nextTick();
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+    });
+
+    it('preserves the direct trigger preference but never queries while the finger still owns selection', async () => {
+        const fixture = mobileSelection();
+        fixture.config.selectionTranslatorTrigger = 'direct';
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        const nativeSelection = (fixture.window as any).getSelection;
+        (fixture.window as any).getSelection = () => null;
+        fixture.state.handlePointerDown(fixture.pointer);
+        (fixture.window as any).getSelection = nativeSelection;
+        fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(400);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        fixture.state.handlePointerUp(fixture.pointer);
+        await vi.advanceTimersByTimeAsync(280);
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.state.showTooltip).toBe(true);
+    });
+
+    it('rejects a touch menu in an input before considering the previous body Range', async () => {
+        const fixture = mobileSelection();
+        fixture.state.handlePointerDown(fixture.pointer);
+        const target = Object.assign(Object.create(Element.prototype), {closest: () => ({}), getAttribute: () => null});
+        fixture.state.handleContextMenu({isTrusted: true, target});
+        fixture.state.handlePointerUp({...fixture.pointer, target});
+        fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(400);
+        expect(fixture.state.contextMenuSourceRejected).toBe(true);
+        expect(fixture.state.showIndicator).toBe(false);
+        expect(fixture.contextMenuHandler('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it.each(['untrusted', 'expired', 'closed', 'pagehide', 'unmount'] as const)('does not resurrect a touch selection after %s', async reason => {
+        const fixture = mobileSelection();
+        fixture.state.handlePointerDown({...fixture.pointer, isTrusted: reason !== 'untrusted'});
+        fixture.state.handlePointerCancel(fixture.pointer);
+        if (reason === 'expired') {
+            await vi.advanceTimersByTimeAsync(30_001);
+            // 隐藏之前合法出现的入口，但保留过期的触摸 deadline，验证事件本身不能重新武装。
+            fixture.state.showIndicator = false; fixture.state.snapshot = null;
+        }
+        else if (reason === 'closed') fixture.state.closeTooltip();
+        else if (reason === 'pagehide') fixture.state.handlePageHide();
+        else if (reason === 'unmount') fixture.unmount();
+        if (reason !== 'unmount') fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(400);
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.showIndicator).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('cancels queued automatic display when backgrounded and drops a disconnected source on resume', async () => {
+        const fixture = mobileSelection();
+        fixture.state.handlePointerDown(fixture.pointer);
+        fixture.state.handlePointerUp(fixture.pointer);
+        Object.assign(fixture.document, {visibilityState: 'hidden'});
+        fixture.state.handlePageVisibility();
+        await vi.advanceTimersByTimeAsync(400);
+        expect(fixture.state.showIndicator).toBe(false);
+        Object.assign(fixture.document, {visibilityState: 'visible'});
+        fixture.state.snapshot = fixture.state.readSelectionSnapshot();
+        fixture.state.selectedText = fixture.state.snapshot.text;
+        fixture.state.showTooltip = true;
+        const controller = new AbortController(); fixture.state.translationAbortController = controller;
+        fixture.state.restoreSelectionSource();
+        expect(fixture.state.showTooltip).toBe(true);
+        fixture.source.isConnected = false;
+        fixture.state.restoreSelectionSource();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(controller.signal.aborted).toBe(true);
+        fixture.unmount();
+        expect([...fixture.listeners.values()].every(listeners => listeners.size === 0)).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each(['rewritten', 'throwing'] as const)('drops a still-connected %s source on resume', reason => {
+        const fixture = mobileSelection();
+        fixture.state.snapshot = fixture.state.readSelectionSnapshot();
+        fixture.state.showTooltip = true;
+        if (reason === 'rewritten') fixture.setText('The source changed in the background.');
+        else fixture.range.toString = () => {throw new Error('source invalidated');};
+        expect(() => fixture.state.restoreSelectionSource()).not.toThrow();
+        expect(fixture.state.showTooltip).toBe(false);
+    });
+
+    it('preserves a cross-paragraph Selection with different Range serialization until the actual Range text changes', () => {
+        const fixture = mobileSelection();
+        const nativeText = 'First paragraph.\n\nSecond paragraph.';
+        let rangeText = 'First paragraph.Second paragraph.';
+        fixture.setText(nativeText);
+        fixture.range.toString = () => rangeText;
+        fixture.state.snapshot = fixture.state.readSelectionSnapshot();
+        expect(fixture.state.snapshot).toMatchObject({nativeText, text: nativeText, rangeText});
+        fixture.state.showTooltip = true;
+        fixture.state.restoreSelectionSource();
+        expect(fixture.state.showTooltip).toBe(true);
+        rangeText = 'First paragraph.The source changed.';
+        fixture.state.restoreSelectionSource();
+        expect(fixture.state.showTooltip).toBe(false);
     });
 });
 
@@ -2110,6 +2563,21 @@ describe('selection card bounded layout work', () => {
         expect(state.tooltipStyle).toMatchObject({left: '230px', top: '130px'});
         expect(element.getBoundingClientRect).toHaveBeenCalledTimes(1);
         expect(frames.size).toBe(0);
+    });
+
+    it.each(['fr-tooltip-content', 'fr-text-block', 'fr-popup-resize-handle'])('preserves touch pan on %s without starting card manipulation', async className => {
+        const {state, element, pointer} = await gestureFixture();
+        state.stopPopupGesture();
+        const target = Object.assign(Object.create(Object.getPrototypeOf(element)), {
+            dataset: {resizeEdge: className === 'fr-popup-resize-handle' ? 'se' : ''},
+            matches: (selector: string) => selector.split(',').some(part => part.trim() === `.${className}`),
+            closest: () => null,
+        });
+        const event = {...pointer('pointerdown', 250, 150), target, pointerType: 'touch'};
+        state.beginPopupGesture(event);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+        expect(state.popupManipulating).toBe(false);
+        expect(element.captured).toBe(false);
     });
 
     it('flushes the final accepted pointer point on release and rejects a late cancelled animation frame', async () => {

@@ -21,6 +21,8 @@ import {createUserscriptFrancDataCompressionPlugin} from '@/userscript/francData
 import {createUserscriptTldtsDataCompressionPlugin} from '@/userscript/tldtsDataPlugin';
 import {createUserscriptAboutImagesCompressionPlugin} from '@/userscript/aboutImagesPlugin';
 import {createUserscriptServiceBrandIconsCompressionPlugin} from '@/userscript/serviceBrandIconsPlugin';
+import {createUserscriptInterfaceAppearanceDataPlugin} from '@/userscript/interfaceAppearanceDataPlugin';
+import * as originalAppearance from '@/src/core/config/interfaceAppearance';
 import originalServiceBrandPaths from '@/src/ui/assets/serviceBrandPaths.json';
 import {getSupportImageUrl as getNormalSupportImageUrl, getContactImageUrl as getNormalContactImageUrl} from '@/src/app/options/aboutImages';
 import ordinaryContactAsset from '@/src/app/options/assets/wechat-contact.jpg';
@@ -270,8 +272,8 @@ describe('userscript browser shim injection', () => {
             expect(bundle.legacyText).toBe(original.legacyText);
             expect(bundle.legacyPatterns).toBe(original.legacyPatterns);
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
-                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && !key.startsWith('popup.compact.')
-                && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
+                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.')
+                && !key.startsWith('safari.freePool.') && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
                 && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !key.startsWith('document.') && !registeredSupplementKeys.includes(key))));
             if (language !== 'en-US') {
                 for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
@@ -347,6 +349,14 @@ describe('userscript browser shim injection', () => {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
+        expect(extension['video.nativeFullscreenHint']).toBeTruthy();
+        expect(Object.hasOwn(projected, 'video.nativeFullscreenHint')).toBe(false);
+        const safariPermissionKeys = Object.keys(extension).filter(key => key.startsWith('safari.freePool.'));
+        expect(safariPermissionKeys).toHaveLength(8);
+        for (const key of safariPermissionKeys) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
         expect(extension['document.config.loadFailed']).toBeTruthy();
         const readerRecoveryKeys = Object.keys(extension).filter(key => key.startsWith('document.config.') || key.startsWith('document.translationRecovery.')
             || key.startsWith('document.retainedRevisions.') || key.startsWith('document.translationProgress.'));
@@ -357,6 +367,8 @@ describe('userscript browser shim injection', () => {
         }
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
             && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
+            && key !== 'video.nativeFullscreenHint'
+            && !safariPermissionKeys.includes(key)
             && key !== 'popup.compact.translate' && key !== 'popup.compact.restore'
             && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)
                 && (!key.startsWith('document.') || Object.hasOwn(publishedMessages[_language]!, key))));
@@ -1508,5 +1520,95 @@ describe('standalone service brand paths at actual icon use', () => {
             expect(realm.controlledHostData).toBe(hostData);
             expect(readFileSync(resolve(root, 'public/third-party-notices/lobe-icons-MIT.txt'), 'utf8')).toContain('Copyright (c) 2023 LobeHub');
         } finally {rmSync(fixture, {recursive: true, force: true});vi.unstubAllEnvs();vi.resetModules();}
+    });
+});
+
+
+describe('userscript appearance registry data owner', () => {
+    const root=process.cwd(), id=resolve(root,'src/core/config/interfaceAppearance.ts');
+    const actualSource=readFileSync(id,'utf8');
+    type Transform={transform(code:string,id:string):{code:string;map:null}|null};
+    const plugin=(enabled=true)=>createUserscriptInterfaceAppearanceDataPlugin(root,enabled) as unknown as Transform;
+    const fixture=(skin='[{value:"skin"}]',font='[{value:"font"}]')=>`export const interfaceSkinOptions=${skin};export const interfaceFontOptions=${font};`;
+    function transformed(code=actualSource){const result=plugin().transform(code,id);expect(result).not.toBeNull();return result!.code;}
+    async function execute(source:string){
+        const {transformWithEsbuild}=await import('vite');
+        const compiled=await transformWithEsbuild(source,'appearance-owner.ts',{format:'cjs',target:'es2018'});
+        const module={exports:{} as typeof originalAppearance},decode=vi.fn(inflateBundledFrancData),unrelated={unchanged:true};
+        const realm={module,exports:module.exports,Uint8Array,atob,unrelated,require:(name:string)=>{expect(name).toBe('@/userscript/pakoRuntime');return {inflateWithPako:decode};}};
+        runInNewContext(compiled.code,realm,{timeout:5000});expect(realm.unrelated).toBe(unrelated);
+        return {api:module.exports,decode};
+    }
+    function ordered(value:unknown):unknown{
+        if(Array.isArray(value))return value.map(ordered);
+        if(value&&typeof value==='object')return Object.entries(value).map(([key,item])=>[key,ordered(item)]);
+        return value;
+    }
+    function complete(api:typeof originalAppearance){
+        expect(ordered(api.interfaceSkinOptions)).toEqual(ordered(originalAppearance.interfaceSkinOptions));
+        expect(ordered(api.interfaceFontOptions)).toEqual(ordered(originalAppearance.interfaceFontOptions));
+        expect(api.interfaceSkinOptions).toHaveLength(14);expect(api.interfaceFontOptions).toHaveLength(10);
+        for(const skin of api.interfaceSkinOptions){expect(api.getInterfaceSkinOption(skin.value)).toBe(skin);expect(api.normalizeInterfaceSkin(skin.value)).toBe(skin.value);expect(api.interfaceSkinUsesContentHeight(skin.value)).toBe(originalAppearance.interfaceSkinUsesContentHeight(skin.value));}
+        for(const font of api.interfaceFontOptions){expect(api.getInterfaceFontOption(font.value)).toBe(font);expect(api.normalizeInterfaceFont(font.value)).toBe(font.value);}
+        for(const value of ['cheese','ocean','matcha','sakura','emoji','midnight','paper','aurora','arcade','sunset','unknown',null,1]){
+            const expected=originalAppearance.getInterfaceSkinOption(value);expect(api.getInterfaceSkinOption(value)).toBe(api.interfaceSkinOptions.find(item=>item.value===expected.value));
+            expect(api.getInterfaceFontOption(value)).toBe(api.interfaceFontOptions[0]);
+        }
+        expect(api.DEFAULT_INTERFACE_FONT).toBe(originalAppearance.DEFAULT_INTERFACE_FONT);
+        expect(api.normalizePopupModuleOrder(['translation','translation','unknown'])).toEqual(originalAppearance.normalizePopupModuleOrder(['translation','translation','unknown']));
+    }
+    it('restores the whole real module synchronously with every ordered field, value and existing Map reference',async()=>{
+        const code=transformed();expect(code.startsWith(actualSource.slice(0,actualSource.indexOf('export const')))).toBe(true);
+        expect(code).toContain(actualSource.slice(actualSource.indexOf('export type InterfaceFont')));
+        const {api,decode}=await execute(code);complete(api);expect(decode).toHaveBeenCalledTimes(2);
+        const baseline=await execute(actualSource);complete(baseline.api);expect(baseline.decode).not.toHaveBeenCalled();
+    });
+    it('roundtrips all accepted literal runtime types, nested arrays and object enumeration order',async()=>{
+        const skin='[{value:"one",integer:42,fraction:1.25,yes:true,no:false,empty:null,text:`literal`,nested:["x",{second:2,first:1}],constructor:"own"}]';
+        const {api,decode}=await execute(transformed(fixture(skin)));expect(ordered(api.interfaceSkinOptions)).toEqual(ordered([{value:'one',integer:42,fraction:1.25,yes:true,no:false,empty:null,text:'literal',nested:['x',{second:2,first:1}],constructor:'own'}]));expect(decode).toHaveBeenCalledTimes(2);
+    });
+    it.each([id+'?raw',id+'?vue&type=script','\0'+id,resolve(root,'src/core/config/other.ts'),resolve(root,'node_modules/interfaceAppearance.ts')])('does not transform another module or decorated id %s',other=>{
+        expect(plugin().transform('arbitrary executable source',other)).toBeNull();
+    });
+    it('keeps disabled mode inert without reading or executing a module',()=>{
+        const disabled=createUserscriptInterfaceAppearanceDataPlugin('/missing-appearance-root') as unknown as Transform;
+        expect(disabled.transform('throw new Error("not reached")','/missing-appearance-root/src/core/config/interfaceAppearance.ts')).toBeNull();
+    });
+    it.each([
+        ['missing-font','export const interfaceSkinOptions=[];'],['duplicate-skin',fixture()+'export const interfaceSkinOptions=[];'],
+        ['duplicate-replacing-font','export const interfaceSkinOptions=[];export const interfaceSkinOptions=[];'],
+        ['non-export','const interfaceSkinOptions=[];export const interfaceFontOptions=[];'],
+        ['mutable','export let interfaceSkinOptions=[];export const interfaceFontOptions=[];'],
+        ['missing-initializer','export const interfaceSkinOptions;export const interfaceFontOptions=[];'],
+        ['empty-array',fixture('[]')],['non-array',fixture('{}')],['call',fixture('makeOptions()')],['identifier',fixture('options')],
+        ['spread-array',fixture('[...options]')],['array-hole',fixture('[,]')],['spread-object',fixture('[{...options}]')],
+        ['computed-key',fixture('[{["value"]:"one"}]')],['duplicate-key',fixture('[{value:1,value:2}]')],['proto-key',fixture('[{"__proto__":{}}]')],
+        ['getter',fixture('[{get value(){return 1}}]')],['method',fixture('[{value(){return 1}}]')],['shorthand',fixture('[{value}]')],
+        ['template-expression',fixture('[{value:`x${call()}`}]')],['non-finite',fixture('[{value:1e400}]')],['numeric-key',fixture('[{1:"one"}]')],
+    ])('rejects %s before any executable source can be evaluated',(_name,code)=>{expect(()=>plugin().transform(code,id)).toThrow('unique exported const literal arrays');});
+    it('rejects a corrupted codec roundtrip before producing transformed code',async()=>{
+        const zlib=await import('node:zlib');const {syncBuiltinESMExports}=await import('node:module');
+        const spy=vi.spyOn(zlib.default,'gunzipSync').mockReturnValueOnce(Buffer.from('null'));syncBuiltinESMExports();
+        try{expect(()=>plugin().transform(fixture(),id)).toThrow('unique exported const literal arrays');}
+        finally{spy.mockRestore();syncBuiltinESMExports();}
+    });
+    it.each([
+        ['standard','0','0',true],['standalone','1','0',true],['greasy-fork','0','1',false],['standalone-greasy','1','1',false],
+    ] as const)('uses the actual %s Vite mode and existing codec alias to preserve the complete API',async(_label,standalone,greasy,enabled)=>{
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE',standalone);vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE',greasy);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL','https://fixture.invalid/vendor.js');vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL','https://fixture.invalid/data.js');
+        const directory=mkdtempSync(resolve(tmpdir(),'fluentread-appearance-owner-'));
+        try{
+            vi.resetModules();const {default:configuration}=await import('@/userscript/vite.config');const config=configuration as import('vite').UserConfig;
+            const selected=(config.plugins as import('vite').Plugin[]).find(item=>item.name==='compress-userscript-interface-appearance-data');expect(selected).toBeDefined();
+            const entry=resolve(directory,'entry.ts');writeFileSync(entry,'import * as appearance from "@/src/core/config/interfaceAppearance";globalThis.appearanceOwner=appearance;');
+            const {build}=await import('vite');const result=await build({root,configFile:false,publicDir:false,logLevel:'silent',plugins:[selected!],resolve:config.resolve,
+                build:{...config.build,write:false,outDir:resolve(directory,'unused'),lib:{entry,name:'AppearanceOwner',formats:['iife']},rollupOptions:{output:{inlineDynamicImports:true}}}});
+            const results=Array.isArray(result)?result:[result];if(results.length!==1||!('output' in results[0])||results[0].output.length!==1||results[0].output[0].type!=='chunk')throw Error('Expected one real appearance consumer chunk');
+            const chunk=results[0].output[0];expect(chunk.imports).toEqual([]);expect(chunk.dynamicImports).toEqual([]);
+            const decode=vi.fn(atob),realm={appearanceOwner:undefined as typeof originalAppearance|undefined,atob:decode,Uint8Array,ArrayBuffer,pako:{ungzip}};
+            runInNewContext(chunk.code,realm,{timeout:5000});expect(realm.appearanceOwner).toBeDefined();complete(realm.appearanceOwner!);expect(decode).toHaveBeenCalledTimes(enabled?2:0);
+            expect(readFileSync(resolve(root,'public/third-party-notices/lobe-icons-MIT.txt'),'utf8')).toContain('Copyright (c) 2023 LobeHub');
+        }finally{rmSync(directory,{recursive:true,force:true});vi.unstubAllEnvs();vi.resetModules();}
     });
 });

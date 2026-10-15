@@ -488,8 +488,8 @@ export function getXSubtitleBottomInset(player: HTMLElement, viewport?: Pick<DOM
   return 12;
 }
 
-/** 将 X 的实际视频画面（扣除 contain 留白）换算到字幕层坐标；不改写宿主视频的布局。 */
-export function getXVideoSubtitleViewport(player: HTMLElement, layer: HTMLElement) {
+/** 将实际视频画面（扣除 contain 留白）换算到字幕层坐标；YouTube 移动页面和 X 共用，不改写宿主视频布局。 */
+export function getVideoSubtitleViewport(player: HTMLElement, layer: HTMLElement) {
   const video = player.querySelector('video');
   const layerRect = layer.getBoundingClientRect();
   const playerRect = player.getBoundingClientRect();
@@ -531,8 +531,30 @@ export function getXVideoSubtitleViewport(player: HTMLElement, layer: HTMLElemen
     height: Math.max(0, bottom - top) / scaleY,
     right: (layerRect.right - right) / scaleX,
     bottom: (layerRect.bottom - bottom) / scaleY,
-    controlsInset: getXSubtitleBottomInset(player, {left, right, top, bottom, height: Math.max(0, bottom - top)}) / scaleY,
+    controlsInset: (isXVideoPage() ? getXSubtitleBottomInset(player, {left, right, top, bottom, height: Math.max(0, bottom - top)})
+      : getYoutubeSubtitleBottomInset(player, {left, right, top, bottom, height: Math.max(0, bottom - top)})) / scaleY,
   };
+}
+
+/** 保留旧的专项测试/public helper 名称；几何算法由两个平台共用。 */
+export const getXVideoSubtitleViewport = getVideoSubtitleViewport;
+
+/** 只避开真实可见的底部控件；移动视频高度不足时不能保留桌面的 52px 起步底距。 */
+function getYoutubeSubtitleBottomInset(player: HTMLElement, viewport: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom' | 'height'>): number {
+  let inset = 12;
+  for (const controls of player.querySelectorAll<HTMLElement>('.ytp-chrome-bottom, .player-controls-bottom, .ytm-player-controls, .ytp-right-controls')) {
+    const rect = controls.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0 || rect.right <= viewport.left || rect.left >= viewport.right
+      || rect.top < viewport.top + viewport.height * .65 || rect.top >= viewport.bottom) continue;
+    let visible = true;
+    for (let current: HTMLElement | null = controls; current && visible; current = current.parentElement) {
+      const style = getComputedStyle(current);
+      visible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+      if (current === player) break;
+    }
+    if (visible) inset = Math.max(inset, viewport.bottom - rect.top + 8);
+  }
+  return inset;
 }
 
 export function syncTranslationOverlayPosition(container: HTMLElement | null): void {
@@ -545,7 +567,7 @@ export function syncTranslationOverlayPosition(container: HTMLElement | null): v
   if (!overlay || !panel || !player || !layer) return;
 
   const playerRect = player.getBoundingClientRect();
-  const viewport = isXVideoPage() ? getXVideoSubtitleViewport(player, layer) : null;
+  const viewport = getVideoSubtitleViewport(player, layer);
   if (viewport) {
     layer.style.setProperty('clip-path', `inset(${viewport.top}px ${viewport.right}px ${viewport.bottom}px ${viewport.left}px)`, 'important');
   } else {
@@ -576,19 +598,26 @@ export function syncTranslationOverlayPosition(container: HTMLElement | null): v
   const active = Boolean(overlay.textContent?.trim() || normalizedOverlay?.textContent?.trim());
   panel.classList.toggle(VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS, active);
   panel.style.width = 'max-content';
-  panel.style.setProperty('max-width', `${availableWidth}px`, 'important');
+  const fullscreen = Boolean(document.fullscreenElement?.contains(player));
+  panel.style.setProperty('max-width', fullscreen
+    ? `min(${availableWidth}px, calc(100% - max(12px, env(safe-area-inset-left, 0px)) - max(12px, env(safe-area-inset-right, 0px))))`
+    : `${availableWidth}px`, 'important');
   const playerHeight = viewport ? viewport.height : playerRect.height || 540;
-  const autoBottom = isXVideoPage() && appearance.position === 'bottom' && appearance.autoBottom;
+  const compactPlayer = playerWidth <= 600 || window.matchMedia?.('(pointer: coarse)').matches === true;
+  const autoBottom = (isXVideoPage() || compactPlayer) && appearance.position === 'bottom' && appearance.autoBottom;
   const requestedOffset = autoBottom ? viewport?.controlsInset ?? getXSubtitleBottomInset(player) : appearance.bottomOffset === 10 ? Math.min(Math.max(playerHeight * .1, 52), 96) : Math.max(12, playerHeight * appearance.bottomOffset / 100);
   const offset = Math.min(requestedOffset, Math.max(0, playerHeight - 24));
-  panel.style.setProperty('--fluent-read-video-subtitle-bottom', `${(viewport?.bottom || 0) + offset}px`);
-  panel.style.setProperty('top', appearance.position === 'top' ? `${(viewport?.top || 0) + offset}px` : appearance.position === 'center' ? viewport ? `${viewport.top + playerHeight / 2}px` : '50%' : 'auto', 'important');
+  const bottomInset = `${(viewport?.bottom || 0) + offset}px`;
+  panel.style.setProperty('--fluent-read-video-subtitle-bottom', fullscreen ? `max(${bottomInset}, calc(env(safe-area-inset-bottom, 0px) + 12px))` : bottomInset);
+  const topInset = `${(viewport?.top || 0) + offset}px`;
+  panel.style.setProperty('top', appearance.position === 'top' ? fullscreen ? `max(${topInset}, calc(env(safe-area-inset-top, 0px) + 12px))` : topInset : appearance.position === 'center' ? viewport ? `${viewport.top + playerHeight / 2}px` : '50%' : 'auto', 'important');
   panel.style.setProperty('bottom', appearance.position === 'bottom' ? 'var(--fluent-read-video-subtitle-bottom)' : 'auto', 'important');
-  panel.style.setProperty('max-height', `${Math.max(0, playerHeight - (appearance.position === 'center' ? 24 : offset + 12))}px`, 'important');
+  const maximumHeight = Math.max(0, playerHeight - (appearance.position === 'center' ? 24 : offset + 12));
+  panel.style.setProperty('max-height', fullscreen ? `min(${maximumHeight}px, calc(100% - max(env(safe-area-inset-top, 0px), env(safe-area-inset-bottom, 0px)) - max(env(safe-area-inset-top, 0px), env(safe-area-inset-bottom, 0px)) - 24px))` : `${maximumHeight}px`, 'important');
   panel.style.transform = appearance.position === 'center' ? 'translateY(-50%)' : 'none';
   if (!active) return;
   fitVideoSubtitleFontSize(baseFontSize * fontScale,
-    Math.max(0, playerHeight - (appearance.position === 'center' ? 24 : offset + 12)),
+    fullscreen ? Math.min(maximumHeight, panel.clientHeight || maximumHeight) : maximumHeight,
     size => panel.style.setProperty('--fluent-read-video-subtitle-font-size', `${size}px`),
     () => panel.scrollHeight);
 
@@ -600,14 +629,17 @@ export function syncTranslationOverlayPosition(container: HTMLElement | null): v
   const width = Math.min(Math.max(measuredWidth, 0), availableWidth);
   const usableRight = playerWidth - menuReserve - 12;
   const left = Math.max(12, Math.min((usableRight - width + 12) / 2, usableRight - width));
-  panel.style.left = `${(viewport?.left || 0) + left}px`;
+  const panelLeft = `${(viewport?.left || 0) + left}px`;
+  panel.style.left = fullscreen
+    ? `max(${(viewport?.left || 0) + 12}px, env(safe-area-inset-left, 0px), min(${panelLeft}, calc(100% - max(12px, env(safe-area-inset-right, 0px)) - ${width}px)))`
+    : panelLeft;
 
   // 双语模式下原生字幕仍然可见时，译文面板要放在原生字幕上方，不能用固定底部
   // 位置压住 YouTube 的分段字幕。逐词合并已经显示整段原文时，原文在同一个面板内，
   // 则继续使用固定底部锚点，避免随着原生 DOM 的词宽变化上下跳动。
   const displayMode = normalizeVideoSubtitleDisplayMode(config.videoSubtitleDisplayMode);
   const normalizedCaptionActive = layer?.classList.contains(VIDEO_NORMALIZED_CAPTION_ACTIVE_CLASS) === true;
-  if (!isXVideoPage() && appearance.position === 'bottom' && displayMode === 'bilingual' && !normalizedCaptionActive && visibleCaptionSegments.length > 0) {
+  if (!isXVideoPage() && !compactPlayer && appearance.position === 'bottom' && displayMode === 'bilingual' && !normalizedCaptionActive && visibleCaptionSegments.length > 0) {
     const playerHeight = playerRect.height || 540;
     const nativeCaptionTop = Math.min(...visibleCaptionSegments.map((rect) => rect.top - playerRect.top));
     const panelHeight = panel.getBoundingClientRect().height;
@@ -615,7 +647,7 @@ export function syncTranslationOverlayPosition(container: HTMLElement | null): v
     const maxBottom = Math.max(12, playerHeight - panelHeight - 12);
     const requestedBottom = playerHeight - nativeCaptionTop + 8;
     const bottom = Math.max(fallbackBottom, Math.min(requestedBottom, maxBottom));
-    panel.style.setProperty('--fluent-read-video-subtitle-bottom', `${bottom}px`);
+    panel.style.setProperty('--fluent-read-video-subtitle-bottom', fullscreen ? `max(${bottom}px, calc(env(safe-area-inset-bottom, 0px) + 12px))` : `${bottom}px`);
   }
 }
 
@@ -1443,13 +1475,36 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-model-prompt-confirm { background: var(--fr-video-menu-brand) !important; color: #fff !important; font-weight: 600 !important; }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-model-prompt-confirm:hover { background: #dc315f !important; }
 
-    /* 触屏上略微放大可点区域；仍保持单行结构，不额外增加行数。 */
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-native-fullscreen-hint {
+      margin: 4px 0 0 !important;
+      color: var(--fr-video-menu-muted) !important;
+      font-size: 11px !important;
+      line-height: 1.45 !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+    }
+    /* 触屏目标至少 44px；菜单沿既有最大高度滚动，不压缩触控区域。 */
     @media (pointer: coarse) {
-      #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-mode { min-height: 28px !important; }
-      #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-step { width: 28px !important; height: 28px !important; }
-      #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-ai { min-height: 32px !important; }
-      #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-download { min-height: 34px !important; }
-      #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-model-prompt-actions button { min-height: 32px !important; }
+      #${VIDEO_TRANSLATION_BUTTON_ID} { min-width: 44px !important; min-height: 44px !important; }
+      /* 双 ID 优先于 compact/wide 的次级按钮规则，关闭、模式、返回与操作均保留完整触控面积。 */
+      #${VIDEO_TRANSLATION_MENU_ID}#${VIDEO_TRANSLATION_MENU_ID} button {
+        min-width: 44px !important;
+        min-height: 44px !important;
+        touch-action: manipulation !important;
+      }
+      #${VIDEO_TRANSLATION_MENU_ID}[data-layout] .fluent-read-video-menu-step { width: 44px !important; height: 44px !important; }
+      /* 触屏步进器变宽后独立成行，时间标签保留全文，长语言可换行而不截成省略号。 */
+      #${VIDEO_TRANSLATION_MENU_ID}[data-layout] .fluent-read-video-menu-timing {
+        flex: 1 0 100% !important;
+        flex-wrap: wrap !important;
+      }
+      #${VIDEO_TRANSLATION_MENU_ID}[data-layout] .fluent-read-video-menu-timing .fluent-read-video-menu-row-label {
+        contain: none !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+      }
     }
     @keyframes fluent-read-video-download-spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) {

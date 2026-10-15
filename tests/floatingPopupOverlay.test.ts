@@ -40,6 +40,8 @@ beforeEach(() => {
         addEventListener: vi.fn(dom.window.addEventListener.bind(dom.window)),
         removeEventListener: vi.fn(dom.window.removeEventListener.bind(dom.window)),
         dispatchEvent: dom.window.dispatchEvent.bind(dom.window),
+        requestAnimationFrame: (callback: FrameRequestCallback) => setTimeout(() => callback(0), 16),
+        cancelAnimationFrame: (id: number) => clearTimeout(id),
     });
     vi.stubGlobal('document', dom.document);
     vi.stubGlobal('Event', dom.window.Event);
@@ -90,6 +92,7 @@ function fireWindow(type: string, values: Record<string, unknown> = {}) {
     const event = new Event(type, {cancelable: true});
     for (const [key, value] of Object.entries(values)) Object.defineProperty(event, key, {value});
     window.dispatchEvent(event);
+    if (type === 'resize') vi.advanceTimersByTime(16);
     return event;
 }
 
@@ -142,6 +145,34 @@ describe('悬浮 Popup 的视口定位', () => {
         expect(result.left + result.width).toBeLessThanOrEqual(viewport.width - 8);
         expect(result.top + result.height).toBeLessThanOrEqual(viewport.height - 8);
         expect(result.top + result.height <= anchor.top - 12 || result.top >= anchor.bottom + 12).toBe(true);
+    });
+});
+
+describe('悬浮 Popup 的移动可见视口', () => {
+    it('缩放平移后以可见边界定位，软键盘缩小时重新协商尺寸，关闭释放待处理回调', async () => {
+        const visual = document.createElement('div');
+        Object.assign(visual, {offsetLeft: 100, offsetTop: 150, width: 390, height: 350});
+        Object.defineProperty(window, 'visualViewport', {configurable: true, value: visual});
+        const f = fixture();
+        f.setAnchor({left: 430, right: 474, top: 200, bottom: 244});
+        await f.controller.toggle(f.button);
+        const frame = f.frame()!;
+        const connection = loadFrame(frame);
+        connection.port1.emit({type: 'ready', width: 380, height: 500, actualWidth: 374});
+        expect(frame.style.left).toBe('108px');
+        expect(frame.style.top).toBe('256px');
+        expect(frame.style.width).toBe('374px');
+        expect(frame.style.height).toBe('236px');
+        Object.assign(visual, {offsetTop: 220, height: 200});
+        visual.dispatchEvent(new globalThis.Event('resize'));
+        vi.advanceTimersByTime(16);
+        expect(frame.style.top).toBe('256px');
+        expect(frame.style.height).toBe('156px');
+        visual.dispatchEvent(new globalThis.Event('scroll'));
+        f.controller.close();
+        expect(vi.getTimerCount()).toBe(0);
+        vi.advanceTimersByTime(16);
+        expect(f.frame()).toBeNull();
     });
 });
 
@@ -376,7 +407,7 @@ describe('悬浮 Popup 的关闭和页面生命周期', () => {
         expect(f.button.focus).not.toHaveBeenCalled();
         expect(channel.port1.close).toHaveBeenCalledOnce();
         expect(channel.port2.close).toHaveBeenCalledOnce();
-        expect(removeListener.mock.calls.map(call => call[0])).toEqual(['pointerdown', 'keydown', 'resize', 'pagehide']);
+        expect(removeListener.mock.calls.map(call => call[0])).toEqual(['pointerdown', 'keydown', 'resize', 'orientationchange', 'pageshow', 'pagehide']);
         const calls = f.onOpenChange.mock.calls.length;
         fireWindow('pagehide');
         fireWindow('pointerdown');

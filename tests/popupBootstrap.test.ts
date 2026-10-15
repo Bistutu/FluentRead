@@ -1,13 +1,16 @@
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const ports = vi.hoisted(() => ({
     config: {uiLanguageSetupCompleted: false, uiLanguage: 'en-US', interfaceFont: 'system'},
     ready: Promise.resolve() as Promise<void>, hydration: 'ready' as 'loading' | 'ready' | 'blocked',
     mainGate: undefined as Promise<void> | undefined, onboardingGate: undefined as Promise<void> | undefined,
     mainLoaded: vi.fn(), onboardingLoaded: vi.fn(), ensureBundle: vi.fn(async (_language: unknown) => {}), font: vi.fn(async (_font: unknown) => {}),
+    browser: 'chrome', platform: vi.fn(), unmountCallbacks: [] as Array<()=>void>,
     createApp: vi.fn(), plugin: vi.fn(() => ({kind: 'i18n'})), use: vi.fn(), component: vi.fn(), mount: vi.fn(),
 }));
+vi.mock('webextension-polyfill', () => ({default: {runtime: {getPlatformInfo: ports.platform}}}));
+vi.mock('../src/platform/browser/capabilities', () => ({browserCapabilities: {get browser() {return ports.browser;}}}));
 vi.mock('vue', () => ({createApp: ports.createApp}));
 vi.mock('element-plus/es/components/base/style/css', () => ({}));
 vi.mock('@element-plus/icons-vue', () => ({Coffee: {kind: 'coffee'}}));
@@ -22,17 +25,71 @@ beforeEach(async () => {
     vi.resetModules(); vi.clearAllMocks(); ports.ready = Promise.resolve(); ports.hydration = 'ready'; ports.mainGate = undefined; ports.onboardingGate = undefined;
     Object.assign(ports.config, {uiLanguageSetupCompleted: false, uiLanguage: 'en-US', interfaceFont: 'system'});
     ports.font.mockReset().mockResolvedValue(undefined); ports.ensureBundle.mockReset().mockResolvedValue(undefined);
-    ports.createApp.mockReturnValue({use: ports.use, component: ports.component, mount: ports.mount});
-    vi.stubGlobal('navigator', {language: 'zh-CN'});
+    ports.browser='chrome';ports.platform.mockReset().mockResolvedValue({os:'mac'});ports.unmountCallbacks=[];
+    ports.mount.mockReset();ports.createApp.mockReturnValue({use: ports.use, component: ports.component, mount: ports.mount,onUnmount: (fn:()=>void)=>ports.unmountCallbacks.push(fn)});
+    vi.stubGlobal('document', parseHTML('<html><body></body></html>').document);
     vi.stubGlobal('window', new EventTarget());
-    vi.stubGlobal('document', {body: {kind: 'owned-popup'}});
+    vi.stubGlobal('navigator', {language: 'zh-CN'});
+
     vi.doMock('../src/app/popup/PopupApp.vue', async () => {ports.mainLoaded(); await ports.mainGate; return {default: {kind: 'main'}};});
     vi.doMock('../src/app/popup/PopupOnboarding.vue', async () => {ports.onboardingLoaded(); await ports.onboardingGate; return {default: {kind: 'onboarding'}};});
     bootstrap = await import('../src/app/popup/mount');
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {ports.unmountCallbacks.forEach(fn=>fn());vi.unstubAllGlobals();});
 
 describe('Popup fresh configuration bootstrap', () => {
+    it.each([false,true])('Android 固定容器对首次完成=%s 的独立根共享一次公开平台判别',async completed=>{
+        ports.browser='firefox';ports.platform.mockResolvedValue({os:'android'});ports.config.uiLanguageSetupCompleted=completed;
+        await bootstrap.mountPreparedPopupApp('#owned');
+        expect(ports.platform).toHaveBeenCalledOnce();expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(true);
+        expect(ports.createApp).toHaveBeenCalledWith({kind:completed?'main':'onboarding'});
+        ports.unmountCallbacks.forEach(fn=>fn());expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
+    });
+    it.each(['mac','win','linux','unknown'])('Firefox %s 平台保持工具栏固有宽度',async os=>{
+        ports.browser='firefox';ports.platform.mockResolvedValue({os});await bootstrap.mountPreparedPopupApp('#owned');
+        expect(ports.platform).toHaveBeenCalledOnce();expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
+    });
+    it.each(['chrome','safari','thunderbird'])('%s 不调用额外平台 API 或改变 popup 宽度模式',async browser=>{
+        ports.browser=browser;ports.platform.mockResolvedValue({os:'android'});await bootstrap.mountPreparedPopupApp('#owned');
+        expect(ports.platform).not.toHaveBeenCalled();expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
+    });
+    it('平台查询不结算不阻塞首启挂载，迟到 Android 回复可在菜单/旋转后启用当前 CSS 视口约束',async()=>{
+        ports.browser='firefox';let resolve!: (value:{os:string})=>void;ports.platform.mockReturnValue(new Promise(yes=>{resolve=yes;}));
+        await bootstrap.mountPreparedPopupApp('#owned');expect(ports.mount).toHaveBeenCalledOnce();expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
+        window.dispatchEvent(new Event('orientationchange'));resolve({os:'android'});await Promise.resolve();
+        expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(true);expect(ports.platform).toHaveBeenCalledOnce();
+    });
+    it('平台查询失败保留首启挂载且不重试',async()=>{
+        ports.browser='firefox';ports.platform.mockRejectedValue(Error('platform unavailable'));await bootstrap.mountPreparedPopupApp('#owned');
+        expect(ports.mount).toHaveBeenCalledOnce();expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);expect(ports.platform).toHaveBeenCalledOnce();
+    });
+    it.each(['pagehide','unmount','mount-failure','config-failure','hydration-blocked'] as const)('%s 后迟到平台回复不能写回根标记',async reason=>{
+        ports.browser='firefox';let resolve!: (value:{os:string})=>void;ports.platform.mockReturnValue(new Promise(yes=>{resolve=yes;}));
+        if(reason==='mount-failure')ports.mount.mockImplementation(()=>{throw Error('mount failed');});
+        if(reason==='config-failure'){ports.ready=Promise.reject(Error('config failed'));ports.ready.catch(()=>{});vi.resetModules();bootstrap=await import('../src/app/popup/mount');}
+        if(reason==='hydration-blocked')ports.hydration='blocked';
+        const pending=bootstrap.mountPreparedPopupApp('#owned');if(reason.endsWith('failure')||reason==='hydration-blocked')await expect(pending).rejects.toThrow();else await pending;
+        if(reason==='pagehide')window.dispatchEvent(new Event('pagehide'));if(reason==='unmount')ports.unmountCallbacks.forEach(fn=>fn());
+        resolve({os:'android'});await Promise.resolve();expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
+    });
+    it('pagehide 移除本入口持有的标记与监听，卸载重复释放安全',async()=>{
+        ports.browser='firefox';ports.platform.mockResolvedValue({os:'android'});const remove=vi.spyOn(window,'removeEventListener');await bootstrap.mountPreparedPopupApp('#owned');
+        window.dispatchEvent(new Event('pagehide'));expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);expect(remove).toHaveBeenCalledWith('pagehide',expect.any(Function));
+        ports.unmountCallbacks.forEach(fn=>fn());expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
+    });
+    it('挂载失败释放已建立的 Android 标记',async()=>{
+        ports.browser='firefox';ports.platform.mockResolvedValue({os:'android'});ports.mount.mockImplementation(()=>{throw Error('mount failed');});
+        await expect(bootstrap.mountPreparedPopupApp('#owned')).rejects.toThrow('mount failed');expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
+    });
+    it('卸载不移除其它宿主已经持有的容器标记',async()=>{
+        ports.browser='firefox';ports.platform.mockResolvedValue({os:'android'});document.documentElement.setAttribute('data-fluentread-android-popup','');
+        await bootstrap.mountPreparedPopupApp('#owned');ports.unmountCallbacks.forEach(fn=>fn());expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(true);
+    });
+
+    it('无 Window 宿主时仍可按配置组装并由 app 卸载释放',async()=>{
+        vi.stubGlobal('window',undefined);await bootstrap.mountPreparedPopupApp('#owned');expect(ports.mount).toHaveBeenCalledWith('#owned');
+        ports.unmountCallbacks.forEach(fn=>fn());
+    });
     it('waits for fresh configuration before importing or creating a root', async () => {
         const gate = deferred(); ports.ready = gate.promise;
         // Re-import the actual module after configuring its hydration port.
@@ -59,6 +116,7 @@ describe('Popup fresh configuration bootstrap', () => {
         expect(remove).toHaveBeenCalledWith('pagehide', expect.any(Function));
     });
     it.each(['main', 'onboarding', 'font', 'language'] as const)('rechecks blocked hydration after pending %s resources and cleans its exit listener', async resource => {
+        ports.browser='firefox';ports.platform.mockResolvedValue({os:'android'});
         ports.config.uiLanguageSetupCompleted = resource !== 'onboarding';
         const gate = deferred(), remove = vi.spyOn(window, 'removeEventListener');
         if (resource === 'main') ports.mainGate = gate.promise;
@@ -69,8 +127,10 @@ describe('Popup fresh configuration bootstrap', () => {
         const outcome = expect(pending).rejects.toThrow('Popup configuration is not ready');
         const called = resource === 'main' ? ports.mainLoaded : resource === 'onboarding' ? ports.onboardingLoaded : resource === 'font' ? ports.font : ports.ensureBundle;
         await vi.waitFor(() => expect(called).toHaveBeenCalledOnce());
+        expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(true);
         ports.hydration = 'blocked'; gate.resolve(); await outcome;
         expect(ports.createApp).not.toHaveBeenCalled(); expect(remove).toHaveBeenCalledWith('pagehide', expect.any(Function));
+        expect(document.documentElement.hasAttribute('data-fluentread-android-popup')).toBe(false);
     });
     it('routes blocked hydration through the actual startup error UI and its explicit reopen button', async () => {
         const dom = parseHTML('<html><body><div id="owned">Original startup</div></body></html>');

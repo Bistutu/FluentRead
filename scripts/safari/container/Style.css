@@ -1,0 +1,18 @@
+:root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 17px; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); color: light-dark(#20242b, #f2f3f5); background: light-dark(#f8f9fb, #181a1e); }
+main { max-width: 440px; margin: 16px auto; }
+header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+header img { border-radius: 12px; flex: none; }
+h1 { font-size: 24px; margin: 0 0 3px; }
+header p { margin: 0; font-size: 14px; color: light-dark(#626b78, #b0b8c4); }
+h2 { font-size: 20px; line-height: 1.35; margin: 0 0 16px; }
+ol { padding-left: 26px; margin: 0 0 22px; line-height: 1.55; }
+li { padding-left: 3px; margin-bottom: 12px; }
+li::marker { color: light-dark(#2865c7, #8eb8ff); font-weight: 600; }
+button { display: block; width: 100%; min-height: 46px; border: 0; border-radius: 10px; padding: 12px 16px; background: light-dark(#2865c7, #94bcff); color: light-dark(white, #102347); font: inherit; font-weight: 600; cursor: pointer; }
+button[hidden] { display: none; }
+button:focus-visible { outline: 3px solid light-dark(#152f58, #e0ebff); outline-offset: 3px; }
+.secondary, #status { font-size: 14px; line-height: 1.5; margin: 14px 0 0; color: light-dark(#626b78, #b0b8c4); }
+#status:empty { display: none; }
+@media (max-height: 500px) { main { margin-top: 0; } header { margin-bottom: 18px; } }
