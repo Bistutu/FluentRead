@@ -12,6 +12,9 @@ const EXPECTED_PROVIDER_FILES = [
     'ai-sdk/endpoints.ts',
     'ai-sdk/errors.ts',
     'ai-sdk/openai-compatible.ts',
+    'ai-sdk/openai-http.ts',
+    'ai-sdk/openai-transport.ts',
+    'ai-sdk/transport-errors.ts',
     'aliyun-translation.ts',
     'auth.ts',
     'azure-openai.ts',
@@ -227,9 +230,14 @@ describe('translation provider architecture', () => {
         expect(microsoftTransportCalls.every((call) => objectLiteralHasSignal(call.arguments[1]))).toBe(true);
     });
 
-    it('AI SDK compatibility transport 通过 runtimeFetch，不绕过 userscript 网络端口', () => {
-        const source = readProjectFile('src/providers/translation/ai-sdk/openai-compatible.ts');
+    it('共享 OpenAI transport 通过 runtimeFetch，两个执行器都不绕过其网络端口', () => {
+        const source = readProjectFile('src/providers/translation/ai-sdk/openai-transport.ts');
         expect(source).toContain('runtimeFetch(endpoint.exactEndpoint || input, init)');
         expect(source).not.toMatch(/\bawait\s+fetch\(/u);
+        const sdk = readProjectFile('src/providers/translation/ai-sdk/openai-compatible.ts');
+        const http = readProjectFile('src/providers/translation/ai-sdk/openai-http.ts');
+        expect(sdk).toContain('fetch: call.fetch');
+        expect(http).toContain('await call.fetch(');
+        expect(sdk + http).not.toMatch(/\b(?:await\s+fetch|globalThis\.fetch)\(/u);
     });
 });

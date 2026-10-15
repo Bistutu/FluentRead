@@ -34,6 +34,7 @@ import {
     executionGuardEnd,
     executionGuardStart,
     createUserscriptCatalogCompressionPlugin,
+    createStandaloneOpenAITransportPlugin,
     findDexieGlobalRegistration,
     findFreeBrowserGlobals,
     injectUserscriptBrowserImports,
@@ -1529,4 +1530,179 @@ describe('standalone service brand paths at actual icon use', () => {
             expect(readFileSync(resolve(root, 'public/third-party-notices/lobe-icons-MIT.txt'), 'utf8')).toContain('Copyright (c) 2023 LobeHub');
         } finally {rmSync(fixture, {recursive: true, force: true});vi.unstubAllEnvs();vi.resetModules();}
     });
+});
+
+// 只替换调用者和共享编排的测试端口；两个生产 wrapper、HTTP 实现及锁定 SDK 均由真实 Vite 解析、编译和执行。
+describe('standalone OpenAI transport build boundary', () => {
+    const root = process.cwd();
+    const owner = resolve(root, 'src/providers/translation/ai-sdk/openai-compatible');
+    const standaloneOwner = resolve(root, 'userscript/openaiCompatible.ts');
+    const transport = resolve(root, 'src/providers/translation/ai-sdk/openai-transport.ts');
+    const http = resolve(root, 'src/providers/translation/ai-sdk/openai-http.ts');
+    const callers = ['registry.ts', 'doubao.ts', 'azure-openai.ts'].map(name => resolve(root, 'src/providers/translation', name));
+    const resolveOwner = (source: string, importer?: string) => (createStandaloneOpenAITransportPlugin().resolveId as
+        (source: string, importer?: string) => string | null)(source, importer);
+
+    it.each(callers.flatMap(importer => [false, true].map(extension => ({importer, extension}))))(
+        'resolves the exact relative owner for $importer (explicit TS: $extension)', ({importer, extension}) => {
+            const original = readFileSync(importer, 'utf8');
+            const match = original.match(/import\s*\{translateWithOpenAICompatibleAiSdk\}\s*from\s*['"]([^'"]+)['"]/u);
+            expect(match?.[1]).toBe('./ai-sdk/openai-compatible');
+            expect(resolveOwner(match![1] + (extension ? '.ts' : ''), importer)).toBe(standaloneOwner);
+            expect(resolveOwner(match![1] + (extension ? '.ts' : ''), importer + '?fixture')).toBe(standaloneOwner);
+        });
+
+    it.each([owner, `${owner}.ts`, '@/src/providers/translation/ai-sdk/openai-compatible', '@/src/providers/translation/ai-sdk/openai-compatible.ts'])(
+        'resolves exact absolute or alias owner %s without an importer', source => {
+            expect(resolveOwner(source)).toBe(standaloneOwner);
+        });
+
+    it.each([
+        '@ai-sdk/openai-compatible', '@ai-sdk/openai-compatible.ts', 'ai',
+        './ai-sdk/openai-compatible.js', './ai-sdk/openai-compatible.ts?raw', './ai-sdk/openai-compatible?url',
+        './ai-sdk/openai-compatible-extra', './ai-sdk/openai-compatible/index.ts',
+        '@/other/openai-compatible', '@/src/providers/translation/ai-sdk/openai-compatible.tsx',
+        '@/src/providers/translation/ai-sdk/openai-compatible?raw', `${owner}.ts?commonjs-proxy`,
+        `${owner}-extra.ts`, `${owner}.ts.map`, `\0${owner}.ts`,
+        resolve(root, 'other/src/providers/translation/ai-sdk/openai-compatible.ts'),
+    ])('does not redirect vendor, other owner, suffix or virtual import %s', source => {
+        expect(resolveOwner(source, callers[0])).toBeNull();
+    });
+
+    it('does not guess the owner for a relative import without an importer or from another directory', () => {
+        expect(resolveOwner('./ai-sdk/openai-compatible')).toBeNull();
+        expect(resolveOwner('./ai-sdk/openai-compatible', resolve(root, 'other/registry.ts'))).toBeNull();
+    });
+
+    it('builds the real vendor, same-basename file and raw owner without redirecting them', async () => {
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-openai-vendor-boundary-'));
+        try {
+            const entryPath = resolve(root, 'userscript/openai-vendor-fixture.ts');
+            writeFileSync(resolve(fixture, 'openai-compatible.ts'), 'export const marker="separate-owner";');
+            const entrySource = 'import {createOpenAICompatible} from "@ai-sdk/openai-compatible";'
+                + `import {marker} from ${JSON.stringify(resolve(fixture, 'openai-compatible.ts'))};`
+                + `import rawOwner from ${JSON.stringify(`${owner}.ts?raw`)};`
+                + 'globalThis.vendorBoundaryFixture={model:createOpenAICompatible({name:"vendor-control",baseURL:"https://fixture.invalid/v1"})("vendor-control-model"),marker,rawOwner};';
+            const {build} = await import('vite');
+            const config = userscriptConfig as import('vite').UserConfig;
+            const result = await build({root, configFile: false, publicDir: false, logLevel: 'silent',
+                plugins: [createStandaloneOpenAITransportPlugin(), {name: 'controlled-vendor-consumer',
+                    resolveId(id) { return id === entryPath ? id : null; }, load(id) { return id === entryPath ? entrySource : null; }}],
+                resolve: config.resolve, define: config.define,
+                build: {...config.build, write: false, outDir: resolve(fixture, 'unused-output'),
+                    lib: {entry: entryPath, name: 'OpenAIVendorBoundary', formats: ['iife']},
+                    rollupOptions: {output: {inlineDynamicImports: true}}}});
+            const outputs = Array.isArray(result) ? result : [result];
+            expect(outputs).toHaveLength(1);
+            if (!('output' in outputs[0]) || outputs[0].output.length !== 1 || outputs[0].output[0].type !== 'chunk') throw new Error('Expected one real vendor build');
+            const chunk = outputs[0].output[0];
+            expect(chunk.imports).toEqual([]);expect(chunk.dynamicImports).toEqual([]);
+            expect(chunk.moduleIds.some(id => /\/node_modules\/@ai-sdk\/openai-compatible\/dist\//u.test(id))).toBe(true);
+            expect(chunk.moduleIds).toContain(realpathSync(resolve(fixture, 'openai-compatible.ts')));
+            expect(chunk.moduleIds).toContain(`${owner}.ts?raw`);
+            expect(chunk.moduleIds).not.toContain(`${owner}.ts`);
+            expect(chunk.moduleIds).not.toContain(standaloneOwner);
+            expect(chunk.moduleIds).not.toContain(http);
+            const forbiddenFetch = vi.fn(() => { throw new Error('Unexpected global network request'); });
+            const realm = {vendorBoundaryFixture: undefined as {model: {modelId: string}; marker: string; rawOwner: string} | undefined,
+                URL, URLSearchParams, Headers, Request, Response, TextDecoder, TextEncoder, Uint8Array, ArrayBuffer, AbortController,
+                ReadableStream, WritableStream, TransformStream, fetch: forbiddenFetch, console};
+            runInNewContext(chunk.code, realm, {timeout: 5_000});
+            expect(realm.vendorBoundaryFixture?.model.modelId).toBe('vendor-control-model');
+            expect(realm.vendorBoundaryFixture?.marker).toBe('separate-owner');
+            expect(realm.vendorBoundaryFixture?.rawOwner).toBe(readFileSync(`${owner}.ts`, 'utf8'));
+            expect(forbiddenFetch).not.toHaveBeenCalled();
+        } finally {rmSync(fixture, {recursive: true, force: true});}
+    }, 30_000);
+
+    it.each([
+        ['ordinary', '0', '0', false], ['standalone', '1', '0', true],
+        ['greasy-fork', '0', '1', false], ['standalone-and-greasy', '1', '1', false],
+    ] as const)('executes real %s owner builds and preserves the expected SDK module reachability', async (_label, standalone, greasy, lightweight) => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', standalone);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', greasy);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        vi.stubGlobal('window', {});
+        const forbiddenFetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => { throw new Error('Unexpected global network request'); });
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-openai-owner-'));
+        try {
+            vi.resetModules();
+            const {default: configuration} = await import('@/userscript/vite.config');
+            const config = configuration as import('vite').UserConfig;
+            const plugin = (config.plugins as import('vite').Plugin[]).find(item => item.name === 'standalone-openai-transport');
+            expect(Boolean(plugin)).toBe(lightweight);
+            const callerSources = new Map(callers.map(id => {
+                const match = readFileSync(id, 'utf8').match(/import\s*\{translateWithOpenAICompatibleAiSdk\}\s*from\s*['"]([^'"]+)['"]/u);
+                if (!match) throw new Error(`Production caller changed: ${id}`);
+                return [id, `export {translateWithOpenAICompatibleAiSdk} from ${JSON.stringify(match[1])};`];
+            }));
+            const imports = [...callers, owner, `${owner}.ts`, '@/src/providers/translation/ai-sdk/openai-compatible', '@/src/providers/translation/ai-sdk/openai-compatible.ts'];
+            const entryPath = resolve(fixture, 'entry.mjs');
+            writeFileSync(entryPath, imports.map((source, i) => `import {translateWithOpenAICompatibleAiSdk as run${i}} from ${JSON.stringify(source)};`).join('\n')
+                + `\nglobalThis.openAIOwnerFixture=[${imports.map((_, i) => `run${i}`).join(',')}];`);
+            const loadedCallers = new Set<string>();
+            const boundary: import('vite').Plugin = {name: 'controlled-openai-consumer', enforce: 'pre', load(id) {
+                if (callerSources.has(id)) { loadedCallers.add(id); return callerSources.get(id); }
+                // 共享编排另有独立合同测试；这里保留真实 execution.run 的可达性，且不替换任何 SDK 模块。
+                if (id === transport) return 'export function translateOpenAICompatible(call, execution) { return execution.run(call); } export const AI_SDK_MAX_RETRIES=2, AI_SDK_REQUEST_TIMEOUT_MS=120000;';
+                return null;
+            }};
+            const {build} = await import('vite');
+            const result = await build({root, configFile: false, publicDir: false, logLevel: 'silent',
+                plugins: [...(plugin ? [plugin] : []), boundary], resolve: config.resolve, define: config.define,
+                build: {...config.build, write: false, outDir: resolve(fixture, 'unused-output'),
+                    lib: {entry: entryPath, name: 'OpenAIOwnerFixture', formats: ['iife']}}});
+            const outputs = Array.isArray(result) ? result : [result];
+            expect(outputs).toHaveLength(1);
+            if (!('output' in outputs[0]) || outputs[0].output.length !== 1 || outputs[0].output[0].type !== 'chunk') throw new Error('Expected one actual owner build');
+            const chunk = outputs[0].output[0];
+            expect(chunk.dynamicImports).toEqual([]);
+            // 纯 re-export 的消费模块会被 Rollup 合并；load 证据仍固定三个真实 importer 的解析。
+            expect([...loadedCallers].sort()).toEqual(callers.slice().sort());
+            expect(chunk.moduleIds).toContain(transport);
+            expect(chunk.moduleIds.includes(standaloneOwner)).toBe(lightweight);
+            expect(chunk.moduleIds.includes(`${owner}.ts`)).toBe(!lightweight);
+            expect(chunk.moduleIds.includes(http)).toBe(lightweight);
+            const externalSDK = !lightweight && standalone === '0' && greasy === '1';
+            expect(chunk.imports.slice().sort()).toEqual(externalSDK ? ['@ai-sdk/openai-compatible', 'ai'] : []);
+            expect(chunk.moduleIds.some(id => /\/node_modules\/ai\/dist\//u.test(id))).toBe(!lightweight && !externalSDK);
+            expect(chunk.moduleIds.some(id => /\/node_modules\/@ai-sdk\/openai-compatible\/dist\//u.test(id))).toBe(!lightweight && !externalSDK);
+            if (lightweight) expect(chunk.moduleIds.filter(id => /\/node_modules\/(?:@ai-sdk\/|ai\/|zod\/)/u.test(id))).toEqual([]);
+            const realm = {openAIOwnerFixture: undefined as Array<(call: unknown) => Promise<string>> | undefined,
+                window: {}, URL, URLSearchParams, Headers, Request, Response, AbortController, AbortSignal, TextDecoder, TextEncoder,
+                ReadableStream, WritableStream, TransformStream, fetch: forbiddenFetch,
+                Uint8Array, ArrayBuffer, Error, TypeError, DOMException, structuredClone, performance,
+                crypto: globalThis.crypto, setTimeout, clearTimeout, console,
+                // Greasy 的外部出口也使用安装的真实 SDK，只把固定 @require 的加载位置替换为内存对象。
+                FluentReadUserscriptVendor: externalSDK ? {ai: await import('ai'), openAICompatible: await import('@ai-sdk/openai-compatible')} : undefined};
+            runInNewContext(chunk.code, realm, {timeout: 5_000});
+            const runs = realm.openAIOwnerFixture!;
+            expect(runs).toHaveLength(imports.length);
+            expect(new Set(runs).size).toBe(1);
+            const requests: Array<{url: string; body: string; headers: Headers}> = [];
+            const controller = new AbortController();
+            const requestBody = {model: 'controlled-build-model', messages: [{role: 'user', content: '构建端口 fixture'}], stream: false};
+            const call = {endpoint: {endpoint: 'https://fixture.invalid/v1/chat/completions', baseURL: 'https://fixture.invalid/v1/', queryParams: {'api-version': 'fixture'}},
+                apiKey: 'synthetic-build-key', headers: {'X-Owner': 'fixture'}, requestBody, maxRetries: 0, signal: controller.signal,
+                fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+                    requests.push({url: String(input), body: String(init?.body), headers: new Headers(init?.headers)});
+                    return new Response(JSON.stringify({choices: [{message: {role: 'assistant', content: '构建端口译文'}, finish_reason: 'stop'}]}),
+                        {headers: {'content-type': 'application/json'}});
+                }};
+            for (const run of runs) expect(await run(call)).toBe('构建端口译文');
+            expect(requests).toHaveLength(imports.length);
+            for (const request of requests) {
+                expect(request.url).toBe('https://fixture.invalid/v1/chat/completions?api-version=fixture');
+                expect(request.body).toBe(JSON.stringify(requestBody));
+                expect(request.headers.get('authorization')).toBe('Bearer synthetic-build-key');
+                expect(request.headers.get('x-owner')).toBe('fixture');
+            }
+            expect(forbiddenFetch).not.toHaveBeenCalled();
+        } finally {
+            rmSync(fixture, {recursive: true, force: true});
+            forbiddenFetch.mockRestore();
+            vi.unstubAllEnvs();vi.unstubAllGlobals();vi.resetModules();
+        }
+    }, 30_000);
 });

@@ -14,6 +14,7 @@ import {createUserscriptTldtsDataCompressionPlugin} from './tldtsDataPlugin';
 import {createUserscriptInlineCssCompressionPlugin} from './inlineCssPlugin';
 import {createUserscriptAboutImagesCompressionPlugin} from './aboutImagesPlugin';
 import {createUserscriptServiceBrandIconsCompressionPlugin} from './serviceBrandIconsPlugin';
+import {createUserscriptSettingsDataPlugin} from './settingsDataPlugin';
 import {UI_LANGUAGE_BUNDLES, zhCNMessages} from './languageBundles';
 import {createDeepLXRuntimeBuildPlugin} from '../scripts/testing/deeplx-runtime-build';
 
@@ -226,6 +227,16 @@ function bundledLibraryNotices(moduleIds: readonly string[]): string {
         if (id.startsWith('\0')) continue;
         const match = /^(.*\/node_modules\/\.pnpm\/[^/]+\/node_modules\/)(@[^/]+\/[^/]+|[^/]+)/u.exec(id);
         if (match) packageRoots.add(`${match[1]}${match[2]}`);
+    }
+    // 紧凑执行器按这些锁定上游的 HTTP/重试合同实现；即使通用 SDK 已裁掉，仍保留来源许可。
+    if (moduleIds.includes(resolve(root, 'src/providers/translation/ai-sdk/openai-http.ts'))) {
+        const aiRoot = fs.realpathSync(resolve(root, 'node_modules/ai'));
+        const aiRequire = createRequire(resolve(aiRoot, 'package.json'));
+        packageRoots.add(aiRoot);
+        packageRoots.add(fs.realpathSync(resolve(root, 'node_modules/@ai-sdk/openai-compatible')));
+        for (const name of ['@ai-sdk/provider', '@ai-sdk/provider-utils']) {
+            packageRoots.add(dirname(dirname(aiRequire.resolve(name))));
+        }
     }
     return [...packageRoots].sort().map((packageRoot) => {
         const manifest = JSON.parse(fs.readFileSync(resolve(packageRoot, 'package.json'), 'utf8')) as {
@@ -510,6 +521,21 @@ function unwrapWxtEntrypoints(): Plugin {
     };
 }
 
+/** standalone 只替换 FluentRead 自有 provider 入口；SDK 包、其它相似文件和标准构建保持原实现。 */
+export function createStandaloneOpenAITransportPlugin(): Plugin {
+    const original = resolve(root, 'src/providers/translation/ai-sdk/openai-compatible');
+    return {
+        name: 'standalone-openai-transport',
+        enforce: 'pre',
+        resolveId(source, importer) {
+            const target = source.startsWith('@/') ? resolve(root, source.slice(2))
+                : source.startsWith('.') && importer ? resolve(dirname(importer.split('?')[0]), source) : source;
+            return target === original || target === `${original}.ts`
+                ? resolve(root, 'userscript/openaiCompatible.ts') : null;
+        },
+    };
+}
+
 export const userscriptAliases = [
     ...(bundleLibraries ? [{find: '@/userscript/pakoRuntime', replacement: resolve(root, 'userscript/pakoBundled.ts')}] : []),
     // dexie 官方 ESM 入口把自身注册到跨 realm 共享的 globalThis[Symbol.for('Dexie')]，版本不一致时会在
@@ -544,7 +570,7 @@ export const userscriptAliases = [
 export default defineConfig({
     root,
     publicDir: false,
-    plugins: [createDeepLXRuntimeBuildPlugin(root), unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), createUserscriptFrancDataCompressionPlugin(root, !greasyForkSource), createUserscriptTldtsDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptAboutImagesCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptServiceBrandIconsCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss(), createUserscriptInlineCssCompressionPlugin(root, !greasyForkSource)],
+    plugins: [...(bundleLibraries && !greasyForkSource ? [createStandaloneOpenAITransportPlugin()] : []), createUserscriptSettingsDataPlugin(root, !greasyForkSource, bundleLibraries), createDeepLXRuntimeBuildPlugin(root), unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), createUserscriptFrancDataCompressionPlugin(root, !greasyForkSource), createUserscriptTldtsDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptAboutImagesCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptServiceBrandIconsCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss(), createUserscriptInlineCssCompressionPlugin(root, !greasyForkSource)],
     resolve: {
         alias: userscriptAliases,
     },

@@ -310,10 +310,9 @@ const BUILD_ONLY_SRC_ALLOWLIST = new Set([
     'src/features/selection-translation/services/edgeTts.ts',
     // 可选 ECDICT 资产绑定 CacheStorage、Web Crypto 和固定 CDN 响应；完整性、缓存与降级由词典功能测试及双浏览器构建验证。
     'src/features/selection-translation/services/ecdictAsset.ts',
-    // Provider 注册表与 AI SDK transport 是依赖注入/网络协议组装；由注册表契约、功能测试和双浏览器构建共同验证。
+    // Provider 注册表是依赖注入组装；OpenAI 的共享边界、SDK 与 standalone 执行器已按真实离线合同进入严格覆盖。
     'src/providers/translation/registry.ts',
     'src/providers/translation/local-translation.ts',
-    'src/providers/translation/ai-sdk/openai-compatible.ts',
     // 以下文件逐一绑定真实网络协议或浏览器 offscreen API；纯端点、错误和鉴权逻辑已拆出并纳入 strict coverage。
     // DeepLX 自身包含模式选择、有序故障转移、共享时限及响应校验，现通过外部传输端口测试进入严格覆盖，不再按仅组装模块豁免。
     'src/providers/translation/azure-openai.ts',
