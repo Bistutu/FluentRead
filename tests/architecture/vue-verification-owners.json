@@ -22,7 +22,7 @@
       "tests": [
         "tests/popupAppLifecycle.test.ts"
       ],
-      "scenario": "真实菜单事件、配置保存、页面动作与卸载"
+      "scenario": "真实菜单事件、配置保存、页面动作、Safari 单线路授权及卸载归属"
     },
     "src/app/popup/PopupLanguageSelect.vue": {
       "kind": "behavior",
@@ -524,9 +524,10 @@
     "src/features/settings/ui/services/FreeTranslationSettings.vue": {
       "kind": "behavior",
       "tests": [
-        "tests/serviceDirectoryLifecycle.test.ts"
+        "tests/serviceDirectoryLifecycle.test.ts",
+        "tests/freeTranslationSettings.test.ts"
       ],
-      "scenario": "实际免费设置、取消和后台权重响应"
+      "scenario": "实际免费设置、取消、后台权重响应及 Safari 逐线路授权事件"
     },
     "src/features/settings/ui/services/ModelPicker.vue": {
       "kind": "behavior",
@@ -588,7 +589,7 @@
       "tests": [
         "tests/serviceConfigurationLifecycle.test.ts"
       ],
-      "scenario": "实际连接检测、取消、配置切换、迟到结果及安全诊断修复和逐服务重试"
+      "scenario": "实际连接检测、Safari 授权线路过滤、取消、配置切换、迟到结果及安全诊断修复和逐服务重试"
     },
     "src/features/settings/ui/services/ServiceNatureBadge.vue": {
       "kind": "frozen-debt",

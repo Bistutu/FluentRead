@@ -286,6 +286,7 @@ describe('userscript browser shim injection', () => {
                 && !key.startsWith('diagnostics.')
                 && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
                 && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
+                && !key.startsWith('safari.freePool.')
                 && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !registeredSupplementKeys.includes(key))));
             if (language !== 'en-US') for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
             expect(bundle.messages).toEqual(kept);
@@ -343,7 +344,9 @@ describe('userscript browser shim injection', () => {
         const diagnosticKeys = Object.keys(extension).filter(key => key.startsWith('diagnostics.'));
         expect(diagnosticKeys.length).toBeGreaterThan(0);
         const readerDialogKeys = ['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].map(name => `document.pdfReading.${name}`);
-        for (const key of [...diagnosticKeys, ...readerDialogKeys]) {
+        const safariPermissionKeys = Object.keys(extension).filter(key => key.startsWith('safari.freePool.'));
+        expect(safariPermissionKeys).toHaveLength(8);
+        for (const key of [...diagnosticKeys, ...readerDialogKeys, ...safariPermissionKeys]) {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
@@ -359,6 +362,7 @@ describe('userscript browser shim injection', () => {
             && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
             && !diagnosticKeys.includes(key) && !readerDialogKeys.includes(key)
             && key !== 'video.nativeFullscreenHint'
+            && !safariPermissionKeys.includes(key)
             && key !== 'popup.compact.translate' && key !== 'popup.compact.restore'
             && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)));
         expect(Object.keys(projected)).toHaveLength(retainedKeys.length);

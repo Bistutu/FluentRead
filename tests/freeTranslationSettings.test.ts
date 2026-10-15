@@ -8,9 +8,19 @@ import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} fr
 import {compileVueFixture} from './helpers/compiledVueFixture';
 import {Config} from '@/src/core/config/model';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
+import {calculateFreeTranslationWeightSnapshot} from '@/src/services/translation/freeWeights';
 import {checkAllFreeTranslationProviders, type FreeTranslationChecks} from '@/src/features/settings/ui/services/freeTranslationChecks';
 
+const permissionEvents = new Set<(change: 'added' | 'removed') => void>();
+const permissionPorts = {browser: 'chrome', read: vi.fn(), request: vi.fn(), send: vi.fn(), events: permissionEvents,
+  translate: (key: string) => {void permissionBundleRevision.value;return permissionCatalogs.get(permissionLanguage.value)?.[key] || key;}};
+(globalThis as any).__freePermissionPorts = permissionPorts;
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
+const permissionLanguage = runtime.ref('zh-CN'), permissionBundleRevision = runtime.ref(0);
+const permissionCatalogs = new Map<string, Record<string, string>>();
+let settingsProps: {config: Config; advanced: boolean; checks: FreeTranslationChecks; active: boolean};
+function permissionEvent(change: 'added' | 'removed'): void {for (const callback of permissionEvents) callback(change);}
+async function drainPermission(): Promise<void> {for (let i=0;i<16;i++) {await Promise.resolve();await runtime.nextTick();}}
 const componentPath = 'src/features/settings/ui/services/FreeTranslationSettings.vue';
 type Node = {tag: string; props: Record<string, any>; text?: string};
 let server: ViteDevServer;
@@ -27,11 +37,15 @@ beforeAll(async () => {
     resolve: {alias: {'@': resolve(process.cwd(), '.')}}, server: {hmr: false, middlewareMode: true},
     ssr: {noExternal: ['webextension-polyfill']},
     plugins: [{name: 'fallback-ui-runtime', enforce: 'pre', resolveId(id) {
+      if (/\/src\/platform\/browser\/freeProviderPermissions(?:\.ts)?$/u.test(id)) return '\0free-permissions';
+      if (/\/src\/platform\/browser\/capabilities(?:\.ts)?$/u.test(id)) return '\0free-capabilities';
       if (id === 'webextension-polyfill') return '\0fallback-webextension-polyfill';
       return /\/src\/ui\/i18n(?:\.ts)?$/u.test(id) ? '\0fallback-i18n' : null;
     }, load(id) {
-      if (id === '\0fallback-webextension-polyfill') return 'export default {runtime: {sendMessage: async () => ({success: false})}};';
-      return id === '\0fallback-i18n' ? 'export const useUiI18n = () => ({t: key => key, translateLegacy: text => text});' : null;
+      if (id === '\0free-permissions') return 'export const readFreePoolAccess=(...args)=>globalThis.__freePermissionPorts.read(...args),requestFreeProviderAccess=(...args)=>globalThis.__freePermissionPorts.request(...args);export const subscribeFreeProviderAccessChanges=fn=>{globalThis.__freePermissionPorts.events.add(fn);return()=>globalThis.__freePermissionPorts.events.delete(fn)}';
+      if (id === '\0free-capabilities') return 'export const browserCapabilities=globalThis.__freePermissionPorts';
+      if (id === '\0fallback-webextension-polyfill') return 'export default {runtime: {sendMessage: (...args)=>globalThis.__freePermissionPorts.send(...args)}};';
+      return id === '\0fallback-i18n' ? 'export const useUiI18n = () => ({t: (...args) => globalThis.__freePermissionPorts.translate(...args), translateLegacy: text => text});' : null;
     }}, vue()],
   });
 });
@@ -49,17 +63,22 @@ async function mountComponent(advanced: boolean): Promise<void> {
   component.render = new Function('Vue', template.renderCode)(runtime);
   elements = [];
   renderer = runtime.createRenderer<Node, Node>({patchProp: (node, key, _previous, value) => {node.props[key] = value;}, insert: () => undefined, remove: () => undefined, createElement: tag => {const node = {tag, props: {}}; elements.push(node); return node;}, createText: () => ({tag: '#text', props: {}}), createComment: () => ({tag: '#comment', props: {}}), setText: () => undefined, setElementText: (node, value) => {node.text = value;}, parentNode: () => null, nextSibling: () => null, querySelector: () => null, setScopeId: () => undefined, cloneNode: node => ({...node}), insertStaticContent: () => [{tag: '#static', props: {}}, {tag: '#static', props: {}}]});
-  app = renderer.createApp(component, {config, advanced, checks});
+  settingsProps = runtime.reactive({config, advanced, checks, active: true});
+  app = renderer.createApp({setup: () => () => runtime.h(component, {...settingsProps, ref: (vm: any) => {if (vm) state = vm.$.setupState;}})});
   app.provide(runtime.ssrContextKey, {modules: new Set<string>()});
   app.config.warnHandler = () => undefined;
-  const vm = app.mount({tag: '#root', props: {}});
-  state = (vm.$ as unknown as {setupState: Record<string, any>}).setupState;
+  app.mount({tag: '#root', props: {}});
   await runtime.nextTick();
 }
 
 beforeEach(async () => {
-  // The external browser constructor is present in production; complete the renderer port.
-  vi.stubGlobal('ShadowRoot', parseHTML('<html><body></body></html>').window.ShadowRoot);
+  permissionEvents.clear();permissionCatalogs.clear();permissionLanguage.value='zh-CN';permissionBundleRevision.value=0;
+  // 权限恢复监听需要真实事件树；完整 DOM 端口也保留第三方展示组件的浏览器检测契约。
+  const dom = parseHTML('<html><body></body></html>');
+  Object.defineProperty(dom.document, 'visibilityState', {configurable:true, value:'visible'});
+  for (const [key,value] of Object.entries({window:dom.window, document:dom.document, Event:dom.window.Event,
+    ShadowRoot:dom.window.ShadowRoot, HTMLElement:dom.window.HTMLElement, navigator:{userAgent:'FluentRead fixture'}})) vi.stubGlobal(key,value);
+  permissionPorts.browser = 'chrome';permissionPorts.read.mockReset();permissionPorts.request.mockReset();permissionPorts.send.mockReset();permissionPorts.send.mockResolvedValue({success:false});
   config = runtime.reactive(new Config());
   checks = runtime.reactive({});
   await mountComponent(false);
@@ -69,6 +88,104 @@ afterAll(async () => server?.close());
 function control(ariaLabel: string): Node { const element = [...elements].reverse().find(node => node.props['aria-label'] === ariaLabel); expect(element, ariaLabel).toBeDefined(); return element!; }
 
 describe('free translation settings compiled component', () => {
+  it('Safari首次权重等待授权读取，并接受仅一条授权线路的后台冷却快照',async()=>{
+    app.unmount();permissionPorts.browser='safari';config.freeTranslationOrder=['microsoft','google'];let release!: (value:unknown)=>void;
+    permissionPorts.read.mockReturnValue(new Promise(resolve=>{release=resolve}));permissionPorts.send.mockClear();
+    const snapshot=calculateFreeTranslationWeightSnapshot(['microsoft'],[{providerId:'microsoft',retryAt:2000,failures:1,category:'unavailable'}],1000);
+    permissionPorts.send.mockResolvedValue({success:true,snapshot});await mountComponent(false);
+    for(let i=0;i<6;i++){await Promise.resolve();await runtime.nextTick();}
+    expect(state.canReadWeights).toBe(false);expect(permissionPorts.send).not.toHaveBeenCalled();
+    release({supported:true,grantedIds:['microsoft'],preferredGrant:{id:'google',origins:[]}});
+    for(let i=0;i<12;i++){await Promise.resolve();await runtime.nextTick();}
+    expect(permissionPorts.send).toHaveBeenCalledTimes(1);expect(state.weightSnapshot).toEqual(snapshot);
+    expect(state.localWeightSnapshot.total).toBe(100);expect(state.displayedWeightSnapshot.total).toBe(0);expect(state.weightStatus('microsoft')).toBe('cooling');expect(state.providerStateLabel('google')).toBe('safari.freePool.permissionState');
+    expect(elements.find(node=>node.props['data-provider-weight']==='microsoft')?.text).toBe('0.0%');
+  })
+  it('Safari授权完成会取消在flight的旧权重代，立即读取新权限快照且迟到旧结果不回写',async()=>{
+    app.unmount();permissionPorts.browser='safari';config.freeTranslationOrder=['microsoft','google'];
+    permissionPorts.read.mockResolvedValueOnce({supported:true,grantedIds:['microsoft'],preferredGrant:{id:'google',origins:[]}})
+      .mockResolvedValue({supported:true,grantedIds:['microsoft','google'],preferredGrant:null});
+    const pending: Array<(value:unknown)=>void>=[];permissionPorts.send.mockReset();
+    permissionPorts.send.mockImplementation(()=>new Promise(resolve=>pending.push(resolve)));
+    const drain=async()=>{for(let i=0;i<12;i++){await Promise.resolve();await runtime.nextTick();}};
+    await mountComponent(false);await drain();expect(pending).toHaveLength(1);
+    const oldSnapshot=calculateFreeTranslationWeightSnapshot(['microsoft'],[],1000);
+    const freshSnapshot=calculateFreeTranslationWeightSnapshot(['microsoft','google'],[{providerId:'microsoft',retryAt:4000,failures:1,category:'unavailable'}],2000);
+    permissionPorts.request.mockResolvedValue(true);
+    const grant=control('safari.freePool.allowProvider').props.onClick();expect(permissionPorts.request).toHaveBeenCalledWith('google');
+    await grant;await drain();expect(pending).toHaveLength(2);
+    pending[1]({success:true,snapshot:freshSnapshot});await drain();
+    expect(state.weightSnapshot).toEqual(freshSnapshot);expect(state.providerWeight('microsoft')).toBe(0);expect(state.providerWeight('google')).toBe(100);
+    pending[0]({success:true,snapshot:oldSnapshot});await drain();
+    expect(state.weightSnapshot).toEqual(freshSnapshot);expect(state.displayedWeightSnapshot.observedAt).toBe(2000);expect(permissionPorts.send).toHaveBeenCalledTimes(2);
+    expect(state.grantingProvider).toBeNull();expect(state.permissionError).toBe('');
+  })
+  it('Safari首次权限API错误不轮询权重、不自动重试授权读取',async()=>{
+    app.unmount();permissionPorts.browser='safari';permissionPorts.read.mockRejectedValue(Error('API unavailable'));permissionPorts.send.mockClear();await mountComponent(false);
+    for(let i=0;i<12;i++){await Promise.resolve();await runtime.nextTick();}
+    expect(state.permissionError).toBe('safari.freePool.error');expect(permissionPorts.read).toHaveBeenCalledTimes(1);expect(permissionPorts.send).not.toHaveBeenCalled();expect(state.canReadWeights).toBe(false);expect(permissionPorts.request).not.toHaveBeenCalled();
+  })
+  async function mountSafari() {
+    app.unmount();permissionPorts.browser='safari';config.freeTranslationOrder=['microsoft','google'];
+    permissionPorts.read.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:['https://edge.microsoft.com/*']}});
+    await mountComponent(false);await Promise.resolve();await runtime.nextTick();
+  }
+  it('Safari真实服务行显示待授权，实际允许按钮同步请求单线路，成功复核不修改freeOrder',async()=>{
+    await mountSafari();expect(state.providerStateLabel('microsoft')).toBe('safari.freePool.permissionState');expect(state.providerWeight('microsoft')).toBe(0);
+    const order=[...config.freeTranslationOrder],pending: {resolve?: (value:boolean)=>void}={};
+    permissionPorts.request.mockImplementation(()=>new Promise<boolean>(resolve=>{pending.resolve=resolve}));
+    const job=control('safari.freePool.allowProvider').props.onClick();expect(permissionPorts.request).toHaveBeenCalledTimes(1);
+    const provider=permissionPorts.request.mock.calls[0][0];expect(['microsoft','google']).toContain(provider);
+    permissionPorts.read.mockResolvedValue({supported:true,grantedIds:[provider],preferredGrant:null});pending.resolve!(true);await job;await runtime.nextTick();
+    expect(state.providerStateLabel(provider)).not.toBe('safari.freePool.permissionState');expect(config.freeTranslationOrder).toEqual(order);
+  })
+  it.each(['denied','partial','error'] as const)('Safari %s授权无故障耗时、无自动下一家，仍可手动重试',async kind=>{
+    await mountSafari();permissionPorts.request.mockImplementation(()=>kind==='error'?Promise.reject(Error('fixture')):Promise.resolve(kind!=='denied'));
+    await control('safari.freePool.allowProvider').props.onClick();await runtime.nextTick();
+    expect(permissionPorts.request).toHaveBeenCalledTimes(1);expect(state.permissionError).toMatch(/safari\.freePool\.(?:requestDenied|error)/);expect(state.providerDuration('google')).toBeUndefined();expect(state.grantingProvider).toBeNull();
+    expect(control('safari.freePool.allowProvider').props.disabled).toBe(false);
+  })
+  it('Safari卸载丢弃迟到授权和复核，读取失败显示独立错误',async()=>{
+    await mountSafari();let resolve!: (value:boolean)=>void;permissionPorts.request.mockReturnValue(new Promise<boolean>(yes=>{resolve=yes}));
+    const before=permissionPorts.read.mock.calls.length,job=control('safari.freePool.allowProvider').props.onClick();app.unmount();resolve(true);await job;
+    expect(permissionPorts.read).toHaveBeenCalledTimes(before);
+    permissionPorts.read.mockRejectedValue(Error('unavailable'));await mountComponent(false);await Promise.resolve();await runtime.nextTick();expect(state.permissionError).toBe('safari.freePool.error');
+  })
+  it('撤销权限刷新实际授权行和权重，保留显式重新授权入口',async()=>{
+    app.unmount();permissionPorts.browser='safari';config.freeTranslationOrder=['microsoft'];
+    permissionPorts.read.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null});await mountComponent(false);await drainPermission();
+    permissionPorts.read.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});
+    permissionPorts.send.mockResolvedValue({success:true,snapshot:calculateFreeTranslationWeightSnapshot([])});permissionEvent('removed');await drainPermission();
+    expect(state.providerGranted('microsoft')).toBe(false);expect(state.providerWeight('microsoft')).toBe(0);expect(state.permissionSummary).toBe('safari.freePool.availableCount');
+    permissionPorts.request.mockResolvedValue(false);await control('safari.freePool.allowProvider').props.onClick();expect(permissionPorts.request).toHaveBeenCalledWith('microsoft');
+  })
+  it('外部授权刷新但不发request，自身added与focus不淘汰同次授权并取得新权重',async()=>{
+    await mountSafari();await drainPermission();permissionPorts.read.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:{id:'google',origins:[]}});
+    permissionEvent('added');await drainPermission();expect(state.providerGranted('microsoft')).toBe(true);expect(permissionPorts.request).not.toHaveBeenCalled();
+    let release!:(granted:boolean)=>void;permissionPorts.request.mockImplementation(()=>{permissionEvent('added');window.dispatchEvent(new Event('focus'));return new Promise<boolean>(resolve=>{release=resolve;});});
+    const reads=permissionPorts.read.mock.calls.length,grant=state.allowProvider('google');expect(permissionPorts.read).toHaveBeenCalledTimes(reads);expect(permissionPorts.request).toHaveBeenCalledOnce();
+    permissionPorts.read.mockResolvedValue({supported:true,grantedIds:['microsoft','google'],preferredGrant:null});release(true);await grant;await drainPermission();expect(state.providerGranted('google')).toBe(true);expect(state.grantingProvider).toBeNull();
+  })
+  it.each(['removed','order','closed'] as const)('%s取消待授权后续，迟到许可不再复查或覆盖',async reason=>{
+    await mountSafari();await drainPermission();let release!:(granted:boolean)=>void;permissionPorts.request.mockReturnValue(new Promise<boolean>(resolve=>{release=resolve;}));const grant=state.allowProvider('microsoft');
+    if(reason==='removed')permissionEvent('removed');if(reason==='order')config.freeTranslationOrder=['google'];if(reason==='closed')app.unmount();await drainPermission();
+    const reads=permissionPorts.read.mock.calls.length;permissionPorts.read.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null});release(true);await grant;await drainPermission();expect(permissionPorts.read).toHaveBeenCalledTimes(reads);expect(state.providerGranted('microsoft')).toBe(false);
+  })
+  it('权限事件失效旧查询，停用不查询，重新激活及focus/visible回归会复查并关闭清理',async()=>{
+    app.unmount();permissionPorts.browser='safari';let late!:(access:unknown)=>void;permissionPorts.read.mockReturnValueOnce(new Promise(resolve=>{late=resolve;}));await mountComponent(false);
+    permissionPorts.read.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});permissionEvent('removed');await drainPermission();late({supported:true,grantedIds:['microsoft'],preferredGrant:null});await drainPermission();expect(state.providerGranted('microsoft')).toBe(false);
+    settingsProps.active=false;await drainPermission();const reads=permissionPorts.read.mock.calls.length;permissionEvent('added');await drainPermission();expect(permissionPorts.read).toHaveBeenCalledTimes(reads);
+    permissionPorts.read.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null});settingsProps.active=true;await drainPermission();expect(state.providerGranted('microsoft')).toBe(true);
+    permissionPorts.read.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});window.dispatchEvent(new Event('focus'));await drainPermission();expect(state.providerGranted('microsoft')).toBe(false);
+    permissionPorts.read.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null});document.dispatchEvent(new Event('visibilitychange'));await drainPermission();expect(state.providerGranted('microsoft')).toBe(true);
+    app.unmount();await drainPermission();expect(permissionEvents.size).toBe(0);const closed=permissionPorts.read.mock.calls.length;permissionEvent('removed');window.dispatchEvent(new Event('focus'));expect(permissionPorts.read).toHaveBeenCalledTimes(closed);
+  })
+  it('权限错误保存key并随语言及迟到资源刷新，不新增浏览器请求',async()=>{
+    await mountSafari();await drainPermission();permissionCatalogs.set('zh-CN',{'safari.freePool.requestDenied':'尚未授权'});permissionPorts.request.mockResolvedValue(false);
+    await state.allowProvider('microsoft');await drainPermission();expect(state.permissionSummary).toBe('尚未授权');const reads=permissionPorts.read.mock.calls.length;
+    permissionLanguage.value='en-US';await drainPermission();permissionCatalogs.set('en-US',{'safari.freePool.requestDenied':'Permission was not granted'});permissionBundleRevision.value++;await drainPermission();
+    expect(state.permissionSummary).toBe('Permission was not granted');expect(permissionPorts.read).toHaveBeenCalledTimes(reads);expect(permissionPorts.request).toHaveBeenCalledOnce();
+  })
   it('微软第一、B站第二仅展示免费标记，手动顺序仍可调整', async () => {
     expect(state.providers.slice(0, 2).map((provider: {id: string}) => provider.id)).toEqual(['microsoft', 'bilibiliFree']);
     expect(elements.filter(node => node.props['data-service-nature-badge'] === 'bilibiliFree').map(node => node.text)).toEqual(['免费']);

@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/services/ServiceConfiguration.vue
  * 文件职责：渲染当前翻译服务的详细连接配置：连接字段（密钥、区域、端点等）直接排在服务标题下方、不再单设“连接与密钥”标题，输入下方是添加密钥与密钥使用方式；其后用模型偏好、提示词、请求限制、接口兼容几个页签显示代理、密钥要求、提示词、自定义请求体与请求头、按域名移除来源头等字段，以及服务和模型的独立请求限制；只有一个页签的服务改用小节标题。
- * 主要内容：组件派生字段可见性与连接示例，密钥列表始终展示全部已保存的密钥并区分参与请求与备用的行，密钥要求放在接口兼容页签，提示词可在确认后一键同步到所有 AI 服务；原生支持多文本的服务在请求限制中独立编辑默认开启的合并请求开关，当前模型限额按自定义请求体覆盖后的真实模型显示、读取和保存，保留其他模型限额；将成对密钥 ID 同步到 apiKeys 和兼容 token，区分缺少必填 Key 与允许匿名的连接检查并管理等待超时；免费翻译检查完整目录并逐服务展示结果，Chrome 在点击时准备当前语言对并用进度条显示模型下载比例，通过配置 store 提交修改；有效修复链接首次进入且未发生用户聚焦时直达连接按钮或当前标题；所有服务可手动停止等待；错误只保留共享诊断分类与可操作下一步，禁止展示原始错误详情，手动重试与字段定位保留当前选择；隐藏、缓存停用或配置变化取消所属等待，Chrome 状态只在活跃服务订阅，恢复、同步模板和删除共用当前操作所属确认，同步复验来源并按确认时刻重算目标。
+ * 主要内容：Safari 免费连接检查只包含已授权线路，未授权显示可响应语言包的状态；组件派生字段可见性与连接示例，密钥列表始终展示全部已保存的密钥并区分参与请求与备用的行，密钥要求放在接口兼容页签，提示词可在确认后一键同步到所有 AI 服务；原生支持多文本的服务在请求限制中独立编辑默认开启的合并请求开关，当前模型限额按自定义请求体覆盖后的真实模型显示、读取和保存，保留其他模型限额；将成对密钥 ID 同步到 apiKeys 和兼容 token，区分缺少必填 Key 与允许匿名的连接检查并管理等待超时；免费翻译检查完整目录中的已授权服务并逐服务展示结果，Chrome 在点击时准备当前语言对并用进度条显示模型下载比例，通过配置 store 提交修改；有效修复链接首次进入且未发生用户聚焦时直达连接按钮或当前标题；所有服务可手动停止等待；错误只保留共享诊断分类与可操作下一步，禁止展示原始错误详情，手动重试与字段定位保留当前选择；隐藏、缓存停用或配置变化取消所属等待，Chrome 状态只在活跃服务订阅，恢复、同步模板和删除共用当前操作所属确认，同步复验来源并按确认时刻重算目标。
  * 状态本地化：逐密钥、逐免费服务及独立失败状态保留安全资源 key，在展示时响应语言选择与异步语言包更新，不重新请求服务或翻译供应商原始错误。
  * 模块边界：组合服务交给独立草稿表单编辑，不展示普通服务的模型或凭据页签；无成员禁止连接测试，组合与各成员配置修改使旧测试失效，测试等待不早于逐路预算与整轮上限；本地模型设置只在对应服务首次呈现时异步加载，实例归属与后台下载由子组件维持；ChatGPT 套餐公开构建不渲染配置或确认窗口、不加载登录子模块，并停用全部设置动作，显式开发模式才通过独立子组件连接本机助手，不显示通用凭据或接口覆写；本组件不执行网页正文翻译或保存公开配置中的明文凭据；Chrome 内置翻译仅在当前点击页完成模型自检，其他连接测试经后台消息，字段规则来自 core/config，服务切换由 ServiceCatalog 和 SettingsSections 负责。
  -->
@@ -523,6 +523,8 @@ import ServiceRepairReturn from './ServiceRepairReturn.vue'
 import {createServiceRepairFocus} from './serviceRepairFocus'
 const ChatGPTPlanSettings = chatGPTPlanDevelopmentEnabled ? defineAsyncComponent(() => import('./ChatGPTPlanSettings.vue')) : null
 import { checkAllFreeTranslationProviders, type FreeTranslationChecks } from './freeTranslationChecks'
+import {readFreePoolAccess} from '@/src/platform/browser/freeProviderPermissions'
+import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation'
 import { listPromptTemplateSyncTargets, syncPromptTemplates as applyPromptTemplateSync } from './promptTemplateSync'
 import {waitForSettingsTask} from '../../model/taskWait'
 import {useSettingsActionContext} from '../../model/useSettingsActionContext'
@@ -905,6 +907,7 @@ function waitForConnectionStep<T>(operation: Promise<T>, timeoutMs: number, time
   })
 }
 const connectionTestTitle = computed(() => {
+  if (service.value === services.freeTranslation && connectionTestState.value === 'idle') return connectionTestMessage.value
   if (service.value === services.freeTranslation && Object.keys(freeProviderChecks.value).length) {
     const checks = Object.values(freeProviderChecks.value)
     const passed = checks.filter(check => check.status === 'success').length
@@ -1126,6 +1129,14 @@ async function testConnection(): Promise<void> {
         },
       )
     } else if (testedService === services.freeTranslation) {
+      const access = await waitForConnectionStep(readFreePoolAccess(FREE_TRANSLATION_PROVIDERS.map(provider => provider.id), {signal: controller.signal}), CONNECTION_RESPONSE_WAIT_TIMEOUT_MS, 'safari.freePool.error', controller.signal)
+      if (!isCurrent()) return
+      const granted = new Set<string>(access.grantedIds)
+      if (!granted.size) {
+        connectionTestState.value = 'idle'
+        connectionTestMessageState.value = localizedConnectionTestMessage('safari.freePool.permissionState')
+        return
+      }
       const providerDiagnostics = new Map<string, Diagnostic>()
       const failProvider = (providerId: string, error: unknown, durationMs?: number) => {
         const diagnostic = normalizeDiagnostic(error) || diagnoseFailure(error, {online: typeof navigator === 'undefined' ? undefined : navigator.onLine})
@@ -1135,6 +1146,7 @@ async function testConnection(): Promise<void> {
       }
       await checkAllFreeTranslationProviders({
         check: async freeProviderId => {
+          if (!granted.has(freeProviderId)) return undefined
           const remaining = (freeProviderRetryAt.get(freeProviderId) || 0) - Date.now()
           if (remaining > 0) return failProvider(freeProviderId, {kind: 'rate-limit', retryAfterMs: remaining})
           freeProviderRetryAt.delete(freeProviderId)
@@ -1151,7 +1163,7 @@ async function testConnection(): Promise<void> {
           }
         },
         update: (providerId, state) => {
-          if (!isCurrent()) return
+          if (!isCurrent() || !granted.has(providerId)) return
           const {error: _untrustedError, ...result} = state
           // 检查器的异常兜底可能携带原始错误；只用已归类诊断或固定失败 key，不把它翻译或展示。
           freeProviderCheckStates.value = {...freeProviderCheckStates.value, [providerId]: {...result,

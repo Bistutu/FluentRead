@@ -91,7 +91,271 @@ beforeEach(async () => {
     ({attachTranslationProviderConfig, createTranslationProviderConfigSnapshot, getTranslationProviderConfig}
         = await import('@/src/services/translation/requestSnapshot'));
 });
-afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+
+describe('非 Safari 免费池不依赖权限策略', () => {
+    it.each(['chrome', 'firefox', 'userscript'])('%s 保留完整候选、连接检查与权重且不调用 Safari 权限端口', async browser => {
+        vi.stubEnv('BROWSER', browser);
+        const port = await import('@/src/platform/browser/freeProviderPermissions');
+        const readAccess = vi.spyOn(port, 'readFreePoolAccess').mockRejectedValue(new Error('Safari-only permission port'));
+        mockConfig.freeTranslationOrder = ['microsoft', 'alibabaFree'];
+        microsoftMock.mockRejectedValue(httpFailure(503)); officialMock.mockResolvedValue('有效译文');
+        await expect(settle(translateFreeText('Hello from FluentRead.'))).resolves.toBe('有效译文');
+        expect(microsoftMock).toHaveBeenCalledOnce(); expect(officialMock).toHaveBeenCalledOnce();
+        const weights = await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)));
+        expect(weights.entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('cooling');
+        expect(weights.entries.find(entry => entry.providerId === 'alibabaFree')?.status).toBe('ready');
+        microsoftMock.mockResolvedValue(['连接成功']);
+        await expect(translateFreeTranslationProvider('microsoft', withProviderSnapshot({origin: 'Check this service.'}, mockConfig))).resolves.toBe('连接成功');
+        const controller = new AbortController(); controller.abort(new Error('closed before dispatch'));
+        await expect(translateFreeTranslationProvider('microsoft', withProviderSnapshot({origin: 'Do not send.', abortSignal: controller.signal}, mockConfig))).rejects.toBe(controller.signal.reason);
+        expect(microsoftMock).toHaveBeenCalledTimes(2); expect(readAccess).not.toHaveBeenCalled();
+    });
+});
+
+describe('Safari 免费池授权过滤', () => {
+    function setGranted(hosts: readonly string[]) {
+        vi.stubEnv('BROWSER', 'safari');
+        const contains = vi.fn(async ({origins}: {origins: string[]}) => origins.every(origin => hosts.includes(origin)));
+        vi.stubGlobal('browser', {permissions: {contains}});
+        return contains;
+    }
+    function expectNoProviderCalls() {
+        for (const mock of [microsoftMock, officialMock, bilibiliMock, doubaoMock, googleMock, googleOwnerMock, myMemoryMock, webMock, chineseMock, extraMock]) {
+            expect(mock).not.toHaveBeenCalled();
+        }
+    }
+
+    it.each([
+        {documentBatch: false, native: false, slots: 0},
+        {documentBatch: true, native: false, slots: 0},
+        {documentBatch: true, native: false, slots: 3},
+        {documentBatch: true, native: false, slots: 15},
+        {documentBatch: false, native: true, slots: 15},
+    ])('原本无网络的空批次保持本地完成且不查询权限：$documentBatch/$native/$slots', async ({documentBatch, native, slots}) => {
+        const contains = setGranted([]);
+        mockConfig.freeTranslationOrder = native ? ['microsoft', 'google'] : ['alibabaFree', 'microsoft'];
+        const origin = Array.from({length: slots}, (_, index) => index % 2 ? ' \t\n' : '');
+        const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
+        const routes = vi.fn();
+        const before = await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)));
+        contains.mockClear();
+        await expect(freeTranslation(withProviderSnapshot(attachTranslationRouteObserver({origin, documentBatch}, routes), mockConfig))).resolves.toEqual(origin);
+        expect(contains).not.toHaveBeenCalled(); expectNoProviderCalls(); expect(routes).not.toHaveBeenCalled();
+        expect(await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).toEqual(before);
+        contains.mockClear();
+        const controller = new AbortController(); controller.abort();
+        await expect(freeTranslation(withProviderSnapshot({origin, documentBatch, abortSignal: controller.signal}, mockConfig))).rejects.toMatchObject({name: 'AbortError'});
+        expect(contains).not.toHaveBeenCalled(); expectNoProviderCalls();
+    });
+
+    it.each([undefined, null, 42, {}, ['Hello', 42], ['Hello', undefined]])('无效输入先报告准确格式错误，不查询权限：%s', async origin => {
+        const contains = setGranted([]);
+        await expect(freeTranslation(withProviderSnapshot({origin} as any, mockConfig))).rejects.toThrow('免费翻译服务仅支持文本输入');
+        expect(contains).not.toHaveBeenCalled(); expectNoProviderCalls();
+    });
+
+    it.each([false, true])('零授权在任何候选/健康/统计前拒绝，document=%s', async documentBatch => {
+        const contains = setGranted([]);
+        const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
+        const routes = vi.fn();
+        const before = await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)));
+        contains.mockClear();
+        const request = attachTranslationRouteObserver({origin: ['Hello from FluentRead.', 'This is a useful example.'], documentBatch}, routes);
+        await expect(freeTranslation(withProviderSnapshot(request, mockConfig))).rejects.toMatchObject({code: 'SAFARI_FREE_PROVIDER_PERMISSION_REQUIRED', retryable: false});
+        expect(contains).toHaveBeenCalledTimes(4);
+        expectNoProviderCalls(); expect(routes).not.toHaveBeenCalled();
+        expect(await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).toEqual(before);
+        expect(mockConfig.freeTranslationOrder).toEqual(['microsoft', 'alibabaFree', 'google', 'myMemory']);
+    });
+
+    it('仅授权候选参与顺序换线，未授权候选不算失败或改变配置', async () => {
+        setGranted(['https://translate.alibaba.com/*', 'https://api.mymemory.translated.net/*']);
+        officialMock.mockRejectedValue(httpFailure(503));
+        myMemoryMock.mockResolvedValue('有效译文');
+        await expect(settle(translateFreeText('Hello from FluentRead.'))).resolves.toBe('有效译文');
+        expect(microsoftMock).not.toHaveBeenCalled(); expect(googleMock).not.toHaveBeenCalled();
+        expect(officialMock).toHaveBeenCalledOnce(); expect(myMemoryMock).toHaveBeenCalledOnce();
+        const health = await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)));
+        expect(health.entries.find(item => item.providerId === 'microsoft')?.status).toBe('disabled');
+        expect(health.entries.find(item => item.providerId === 'google')?.status).toBe('disabled');
+        expect(mockConfig.freeTranslationOrder).toEqual(['microsoft', 'alibabaFree', 'google', 'myMemory']);
+    });
+
+    it.each(['google', 'lingvanexFree'])('%s 只授权部分请求域不会进入其内部备用/初始化请求', async id => {
+        mockConfig.freeTranslationOrder = [id];
+        setGranted([id === 'google' ? 'https://translate.google.com/*' : 'https://api-b2b.backenster.com/*']);
+        await expect(translateFreeText('Hello from FluentRead.')).rejects.toMatchObject({code: 'SAFARI_FREE_PROVIDER_PERMISSION_REQUIRED'});
+        expectNoProviderCalls();
+    });
+
+    it('只有微软获授权仍保留完整混合池的普通逐段策略', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft', 'alibabaFree'];
+        setGranted(['https://edge.microsoft.com/*']);
+        microsoftMock.mockImplementation(async (texts: string[]) => texts.map(() => '有效译文'));
+        const origin = Array.from({length: 9}, (_, index) => `This English paragraph number ${index} explains useful application settings.`);
+        await expect(settle(freeTranslation(withProviderSnapshot({origin}, mockConfig)))).resolves.toEqual(origin.map(() => '有效译文'));
+        expect(microsoftMock).toHaveBeenCalledTimes(9);
+        expect(microsoftMock.mock.calls.every(call => call[0].length === 1)).toBe(true);
+        expect(officialMock).not.toHaveBeenCalled();
+        expect(mockConfig.freeTranslationOrder).toEqual(['microsoft', 'alibabaFree']);
+    });
+
+    it('文档混合池过滤后仍用文档原生分组且不触发未授权标量服务', async () => {
+        mockConfig.freeTranslationOrder = ['alibabaFree', 'microsoft'];
+        setGranted(['https://edge.microsoft.com/*']);
+        microsoftMock.mockImplementation(async (texts: string[]) => texts.map(() => '有效译文'));
+        const origin = ['Hello from FluentRead.', 'This is a useful application.', 'The service translates paragraphs.'];
+        await expect(settle(freeTranslation(withProviderSnapshot({origin, documentBatch: true}, mockConfig)))).resolves.toEqual(origin.map(() => '有效译文'));
+        expect(microsoftMock).toHaveBeenCalledOnce();
+        expect(microsoftMock.mock.calls[0][0]).toEqual(origin);
+        expect(officialMock).not.toHaveBeenCalled();
+    });
+
+    it('单服务检查独立检查指定项，不受启用列表约束且无权不调用 provider', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        const contains = setGranted([]);
+        await expect(translateFreeTranslationProvider('alibabaFree', withProviderSnapshot({origin: 'Hello from FluentRead.'}, mockConfig)))
+            .rejects.toMatchObject({code: 'SAFARI_FREE_PROVIDER_PERMISSION_REQUIRED'});
+        expectNoProviderCalls();
+        expect(contains).toHaveBeenCalledWith({origins: ['https://translate.alibaba.com/*']});
+        expect(contains).toHaveBeenCalledOnce();
+        contains.mockResolvedValue(true); officialMock.mockResolvedValue('有效译文');
+        await expect(translateFreeTranslationProvider('alibabaFree', withProviderSnapshot({origin: 'Hello from FluentRead.'}, mockConfig))).resolves.toBe('有效译文');
+        expect(officialMock).toHaveBeenCalledOnce();
+        expect(mockConfig.freeTranslationOrder).toEqual(['microsoft']);
+    });
+
+    it('每次新请求重新验权，撤权后不沿用先前可用候选', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        const contains = setGranted(['https://edge.microsoft.com/*']);
+        microsoftMock.mockResolvedValue(['有效译文']);
+        await expect(settle(translateFreeText('Hello from FluentRead.'))).resolves.toBe('有效译文');
+        contains.mockResolvedValue(false);
+        await expect(translateFreeText('A second paragraph.')).rejects.toMatchObject({code: 'SAFARI_FREE_PROVIDER_PERMISSION_REQUIRED'});
+        expect(contains).toHaveBeenCalledTimes(2); expect(microsoftMock).toHaveBeenCalledOnce();
+    });
+
+    it('API失败不放行；查询期间取消的请求不因迟到授权结果继续', async () => {
+        const contains = setGranted([]);
+        contains.mockRejectedValueOnce(new Error('private failure'));
+        await expect(translateFreeText('Hello from FluentRead.')).rejects.toMatchObject({code: 'SAFARI_FREE_PROVIDER_PERMISSION_UNAVAILABLE'});
+        let resolve!: (allowed: boolean) => void;
+        contains.mockImplementation(() => new Promise<boolean>(done => {resolve = done;}));
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        const controller = new AbortController();
+        const pending = translateFreeText('Hello from FluentRead.', {abortSignal: controller.signal});
+        controller.abort(new DOMException('closed', 'AbortError'));
+        resolve(true);
+        await expect(pending).rejects.toBe(controller.signal.reason);
+        expectNoProviderCalls();
+    });
+
+    it('已取消的请求不再查询权限', async () => {
+        const contains = setGranted([]);
+        const controller = new AbortController(); controller.abort();
+        await expect(translateFreeText('Hello from FluentRead.', {abortSignal: controller.signal})).rejects.toMatchObject({name: 'AbortError'});
+        expect(contains).not.toHaveBeenCalled(); expectNoProviderCalls();
+    });
+
+    it.each(['after-query', 'before-batch'] as const)('权限端口成功后异步取消仍不进入候选：%s', async boundary => {
+        setGranted(['https://edge.microsoft.com/*']);
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        const controller = new AbortController(); const reason = new Error('caller closed between query and dispatch');
+        const port = await import('@/src/platform/browser/freeProviderPermissions');
+        vi.spyOn(port, 'readFreePoolAccess').mockImplementation(async () => {
+            queueMicrotask(() => {
+                if (boundary === 'after-query') controller.abort(reason);
+                else queueMicrotask(() => controller.abort(reason));
+            });
+            return {supported: true, grantedIds: ['microsoft'], preferredGrant: null};
+        });
+        await expect(freeTranslation(withProviderSnapshot({origin: ['Hello from FluentRead.'], abortSignal: controller.signal}, mockConfig))).rejects.toBe(reason);
+        expectNoProviderCalls();
+    });
+
+    it.each(['abort', 'timeout'] as const)('真实 broker 纯权限查询悬挂在 %s 后归还租约，晚结果不启动旧 provider', async ending => {
+        Object.assign(mockConfig, {freeTranslationOrder: ['microsoft'], maxConcurrentTranslations: 1,
+            translationRequestsPerSecond: 0, translationRequestsPerMinute: 0, useCache: false, enableAIContext: false});
+        const contains = setGranted([]);
+        let release!: (allowed: boolean) => void;
+        contains.mockImplementationOnce(() => new Promise<boolean>(resolve => {release = resolve;})).mockResolvedValue(true);
+        const {createTranslationBroker} = await import('@/src/services/translation/broker');
+        const {attachTranslationRequestControl} = await import('@/src/services/translation/requestSnapshot');
+        const broker = createTranslationBroker({
+            ready: Promise.resolve(), getConfig: () => mockConfig as unknown as TranslationConfigSource,
+            providers: {freeTranslation: message => freeTranslation(withProviderSnapshot(message as unknown as TranslationProviderRequest, mockConfig))},
+            cache: {get: async () => null, set: async () => true, clear: async () => {}, cleanup: async () => {}},
+            serviceTypes: servicesType,
+            endpointResolver: {resolveOpenAICompatibleEndpoint: () => ({endpoint: ''}), aiSdkTransportProfile: ''},
+            promptBuilder: {buildPageSummaryPrompt: () => '', buildPageSummarySystemPrompt: () => ''},
+            getMissingCredentialMessage: () => null,
+            getTranslationLanguages: () => ({sourceLanguage: 'en', targetLanguage: 'zh-Hans'}),
+            resolveConfiguredModel: () => '', buildTranslationCacheKey: identity => JSON.stringify(identity),
+        });
+        const controller = new AbortController();
+        const first = broker.translateWithCache(attachTranslationRequestControl({origin: 'First source paragraph.', requestTimeoutMs: 5_000},
+            {signal: controller.signal, ownershipKey: `permission-query-${ending}`})).catch(error => error);
+        await vi.advanceTimersByTimeAsync(20);
+        expect(contains).toHaveBeenCalledOnce(); expectNoProviderCalls();
+        if (ending === 'abort') controller.abort(); else await vi.advanceTimersByTimeAsync(2_000);
+        await expect(first).resolves.toMatchObject(ending === 'abort'
+            ? {name: 'AbortError'} : {code: 'SAFARI_FREE_PROVIDER_PERMISSION_UNAVAILABLE'});
+        expectNoProviderCalls();
+        microsoftMock.mockResolvedValue(['恢复译文']);
+        // 原 contains promise 尚未结束；下一请求必须能取得同一个后台并发槽。
+        await expect(settle(broker.translateWithCache({origin: 'Second source paragraph.', requestTimeoutMs: 5_000}))).resolves.toBe('恢复译文');
+        expect(microsoftMock).toHaveBeenCalledOnce();
+        release(true); await vi.advanceTimersByTimeAsync(0);
+        expect(microsoftMock).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('权限查询沿用剩余总预算，耗尽预算不查询且查询超时不记录候选健康', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        const contains = setGranted([]);
+        const before = await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)));
+        contains.mockClear(); contains.mockImplementation(() => new Promise(() => {}));
+        const assertion = expect(translateFreeText('Hello from FluentRead.', {requestTimeoutMs: 37})).rejects.toMatchObject({code: 'SAFARI_FREE_PROVIDER_PERMISSION_UNAVAILABLE'});
+        await vi.advanceTimersByTimeAsync(37); await assertion;
+        expect(contains).toHaveBeenCalledOnce(); expectNoProviderCalls();
+        contains.mockResolvedValue(false);
+        expect(await getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig)))).toEqual({...before, observedAt: Date.now()});
+        contains.mockClear();
+        await expect(translateFreeText('Hello from FluentRead.', {requestTimeoutMs: 0})).rejects.toMatchObject({code: 'SAFARI_FREE_PROVIDER_PERMISSION_UNAVAILABLE'});
+        expect(contains).not.toHaveBeenCalled(); expectNoProviderCalls(); expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('真实健康快照只给已授权服务分配权重，零授权不丢健康，重新授权可恢复冷却状态', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft', 'alibabaFree'];
+        const contains = setGranted(['https://edge.microsoft.com/*', 'https://translate.alibaba.com/*']);
+        microsoftMock.mockRejectedValue(httpFailure(503)); officialMock.mockResolvedValue('有效译文');
+        await expect(settle(translateFreeText('Hello from FluentRead.'))).resolves.toBe('有效译文');
+        const current = createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig));
+        const full = await getFreeTranslationWeightSnapshot(current);
+        expect(full.entries.find(item => item.providerId === 'microsoft')).toMatchObject({status: 'cooling', weight: 0});
+        expect(full.entries.find(item => item.providerId === 'alibabaFree')).toMatchObject({status: 'ready', weight: 100});
+        contains.mockImplementation(async ({origins}: {origins: string[]}) => origins[0] === 'https://translate.alibaba.com/*');
+        const single = await getFreeTranslationWeightSnapshot(current);
+        expect(single.total).toBe(100);
+        expect(single.entries.find(item => item.providerId === 'microsoft')).toMatchObject({status: 'disabled', weight: 0});
+        expect(single.entries.find(item => item.providerId === 'alibabaFree')).toMatchObject({status: 'ready', weight: 100});
+        contains.mockResolvedValue(false);
+        const empty = await getFreeTranslationWeightSnapshot(current);
+        expect(empty.total).toBe(0); expect(empty.entries.every(item => item.status === 'disabled' && item.weight === 0)).toBe(true);
+        contains.mockResolvedValue(true);
+        expect(await getFreeTranslationWeightSnapshot(current)).toEqual(full);
+        expect(mockConfig.freeTranslationOrder).toEqual(['microsoft', 'alibabaFree']);
+        expect(microsoftMock).toHaveBeenCalledOnce(); expect(officialMock).toHaveBeenCalledOnce();
+    });
+
+    it('健康快照查询权限失败明确传播，不以未过滤的配置回退', async () => {
+        const contains = setGranted([]); contains.mockRejectedValue(new Error('failed permission lookup'));
+        await expect(getFreeTranslationWeightSnapshot(createTranslationProviderConfigSnapshot(providerConfigFixture(mockConfig))))
+            .rejects.toMatchObject({code: 'SAFARI_FREE_PROVIDER_PERMISSION_UNAVAILABLE'});
+        expectNoProviderCalls();
+    });
+});
 
 describe('免费翻译服务', () => {
     it.each([false, true])('broker 自动保护 emoji 后在免费池拒绝丢失标记的候选，批量=%s', async batch => {

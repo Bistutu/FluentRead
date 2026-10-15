@@ -36,7 +36,7 @@ vi.mock('@/src/features/vocabulary/materialClient', () => ({materialGeneration: 
 const filename = 'src/features/selection-translation/ui/SelectionTranslator.vue';
 const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
 const script = compileScript(descriptor, {id: 'selection-lifecycle'});
-type SelectionBuildTarget = 'chrome' | 'userscript';
+type SelectionBuildTarget = 'chrome' | 'userscript' | 'safari';
 const setupSource = script.content;
 const compiledByTarget = new Map<SelectionBuildTarget, string>();
 function compileForTarget(target: SelectionBuildTarget): string {
@@ -1532,6 +1532,56 @@ describe('selection card geometry across content changes', () => {
         state.updatePosition(false);
         expect(state.indicatorStyle).toEqual({left: '108px', top: '188px'});
     });
+    it.each([true, false])('keeps a multiline touch entry beside the actual %s selection endpoint line', isForward => {
+        const {state} = mountSelection();
+        const rects = [{left: 100, right: 230, top: 100, bottom: 124, width: 130, height: 24},
+            {left: 100, right: 160, top: 124, bottom: 148, width: 60, height: 24}];
+        state.touchInteraction = true;
+        state.snapshot = {text: 'Two selected lines.', range: {getClientRects: () => rects}, anchor: rects[0], isForward};
+        state.updatePosition();
+        expect(state.snapshot.anchor).toEqual(isForward ? rects[1] : rects[0]);
+        expect(state.indicatorStyle).toEqual(isForward ? {left: '188px', top: '136px'} : {left: '72px', top: '112px'});
+        // A 44px entry stays beside this line rather than in the native menu band above/below it.
+        const x = Number.parseFloat(state.indicatorStyle.left), y = Number.parseFloat(state.indicatorStyle.top);
+        const endpoint = state.snapshot.anchor;
+        expect(y).toBeGreaterThan(endpoint.top);
+        expect(y).toBeLessThan(endpoint.bottom);
+        expect(isForward ? x - 22 >= endpoint.right : x + 22 <= endpoint.left).toBe(true);
+    });
+    it.each([
+        {isForward: true, left: 350, right: 380, expectedLeft: '322px'},
+        {isForward: false, left: 10, right: 100, expectedLeft: '128px'},
+        {isForward: true, left: 100, right: 150, expectedLeft: '178px'},
+        {isForward: false, left: 100, right: 150, expectedLeft: '72px'},
+        {isForward: true, left: 0, right: 390, expectedLeft: '362px'},
+        {isForward: false, left: 0, right: 390, expectedLeft: '28px'},
+    ])('uses available line-side space and keeps a full-width selection entry visible: %j', scenario => {
+        const {state, window} = mountSelection();
+        Object.assign(window, {visualViewport: {width: 390, height: 500, offsetLeft: 0, offsetTop: 0}});
+        state.handleViewportResize();
+        state.touchInteraction = true;
+        state.snapshot = {text: 'Selected text.', anchor: {left: scenario.left, right: scenario.right, top: 150, bottom: 174}, isForward: scenario.isForward};
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: scenario.expectedLeft, top: '162px'});
+    });
+    it.each([
+        {anchor: {left: 80, right: 470, top: 160, bottom: 184}, expectedLeft: '442px', expectedTop: '188px'},
+        {anchor: {left: 210, right: 260, top: 440, bottom: 464}, expectedLeft: '288px', expectedTop: '432px'},
+    ])('clamps a touch entry inside a panned keyboard viewport at vertical edges: %j', scenario => {
+        const {state, window} = mountSelection();
+        Object.assign(window, {visualViewport: {width: 390, height: 300, offsetLeft: 80, offsetTop: 160}});
+        state.handleViewportResize();
+        state.touchInteraction = true;
+        state.snapshot = {text: 'Selected text.', anchor: scenario.anchor, isForward: true};
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: scenario.expectedLeft, top: scenario.expectedTop});
+    });
+    it.each([true, false])('preserves desktop indicator offset for selection direction %s', isForward => {
+        const {state} = mountSelection();
+        state.snapshot = {text: 'Desktop selection.', anchor: {left: 100, right: 230, top: 100, bottom: 124}, isForward};
+        state.updatePosition(false);
+        expect(state.indicatorStyle).toEqual({left: isForward ? '244px' : '86px', top: '138px'});
+    });
     it('preserves the opening position across learning tabs and expanding content', async () => {
         const {state} = mountSelection();
         state.tooltipRef = {getBoundingClientRect: () => ({width: 388, height: 180})};
@@ -1559,6 +1609,80 @@ describe('selection card geometry across content changes', () => {
         state.handleViewportResize();
         state.applyManualPopupGeometry();
         expect(state.tooltipStyle).toMatchObject({left: '12px', top: '248px', width: '366px', height: '140px'});
+    });
+});
+
+describe('Safari explicit touch selection consumption', () => {
+    function prepare(target: SelectionBuildTarget = 'safari', touch = true, initialText = 'Good ideas deserve attention.') {
+        const fixture = mountSelection(false, {acceptsRange: () => true, normalizeText: (text: string) => text}, target, true);
+        vi.stubGlobal('Element', class {});vi.stubGlobal('Node', class {});
+        let text=initialText;
+        const source={isConnected:true,ownerDocument:fixture.document};
+        const range=Vue.markRaw({startContainer:source,endContainer:source,startOffset:0,endOffset:text.length,collapsed:false,
+            getClientRects:()=>[{left:20,right:210,top:150,bottom:174,width:190,height:24}],
+            cloneRange:()=>range,toString:()=>text});
+        let cleared=false;
+        const removeAllRanges=vi.fn(()=>{cleared=true;});
+        const selection={get rangeCount(){return cleared?0:1;},get isCollapsed(){return cleared;},anchorNode:source,anchorOffset:0,
+            getRangeAt:()=>range,toString:()=>cleared?'':text,removeAllRanges};
+        Object.assign(fixture.window,{getSelection:()=>selection});
+        Object.assign(fixture.config,{selectionTranslatorTrigger:'icon',selectionTranslatorDelay:0});
+        fixture.state.selectionConfigVersion+=1;
+        fixture.state.touchInteraction=touch;
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());
+        const snapshot=fixture.state.snapshot;
+        return {...fixture,text,source,range,selection,removeAllRanges,snapshot,
+            replaceSelection: (next: string) => {text=next;range.endOffset=next.length;cleared=false;}};
+    }
+    async function clickEntry(fixture: ReturnType<typeof prepare>) {
+        await Vue.nextTick();
+        const indicator=fixture.renderPort!.root.querySelector('.fr-selection-indicator');
+        expect(indicator).not.toBeNull();await fixture.renderPort!.click(indicator!);await Vue.nextTick();
+    }
+    it('runs the actual Safari touch indicator click, retains its snapshot/language and ignores late empty selectionchange',async()=>{
+        const fixture=prepare();
+        const snapshot=fixture.state.snapshot;
+        const direction=fixture.state.effectiveTargetLanguage;
+        await clickEntry(fixture);
+        expect(fixture.removeAllRanges).toHaveBeenCalledOnce();expect(fixture.selection.rangeCount).toBe(0);
+        expect(fixture.state.snapshot).toBe(snapshot);expect(fixture.state.selectedText).toBe(fixture.text);
+        expect(fixture.state.manuallyRequestedSelection).toBe(false);expect(fixture.state.effectiveTargetLanguage).toBe(direction);
+        expect(fixture.state.touchOpenedSelection).toBe(snapshot);expect(fixture.translateText).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(800);
+        fixture.state.lastTrustedSelectionInteractionAt=Date.now();fixture.state.handleSelectionChange({isTrusted:true});
+        await vi.advanceTimersByTimeAsync(500);
+        expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.snapshot).toBe(snapshot);expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+    it('respects the Chinese target-language gate and preserves configured reverse direction when enabled',async()=>{
+        const fixture=prepare('safari',true,'这是一段中文。');fixture.state.openTooltipFromIndicator();
+        expect(fixture.state.showTooltip).toBe(false);expect(fixture.removeAllRanges).not.toHaveBeenCalled();
+        fixture.config.from='en';fixture.config.selectionTranslatorBidirectional=true;fixture.state.selectionConfigVersion+=1;
+        fixture.replaceSelection('这是一段新的中文。');
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());await clickEntry(fixture);
+        expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.manuallyRequestedSelection).toBe(false);
+        expect(fixture.state.effectiveTargetLanguage).toBe('en');expect(fixture.removeAllRanges).toHaveBeenCalledOnce();
+    });
+    it.each(['chrome','userscript','desktop','automatic'] as const)('preserves native selection for %s entry',async mode=>{
+        const fixture=prepare(mode==='chrome'||mode==='userscript'?mode:'safari',mode!=='desktop');
+        if(mode==='automatic')fixture.state.openTooltip();else await clickEntry(fixture);
+        expect(fixture.state.showTooltip).toBe(true);expect(fixture.removeAllRanges).not.toHaveBeenCalled();expect(fixture.state.touchOpenedSelection).toBeNull();
+    });
+    it('releases touch ownership for new selection/hideAll and still closes when the retained source disconnects',async()=>{
+        const fixture=prepare();await clickEntry(fixture);
+        fixture.replaceSelection('New ideas deserve careful attention.');
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());
+        expect(fixture.state.touchOpenedSelection).toBeNull();expect(fixture.state.showTooltip).toBe(false);
+        await clickEntry(fixture);expect(fixture.state.touchOpenedSelection).toBe(fixture.state.snapshot);
+        fixture.state.hideAll();expect(fixture.state.touchOpenedSelection).toBeNull();
+        fixture.replaceSelection('Fresh ideas deserve careful attention.');fixture.state.applySelection(fixture.state.readSelectionSnapshot());await clickEntry(fixture);
+        fixture.source.isConnected=false;fixture.state.scheduleSelectionLoss();
+        expect(fixture.state.showTooltip).toBe(false);expect(fixture.state.touchOpenedSelection).toBeNull();
+    });
+    it('keeps the opened card when native removeAllRanges throws and releases ownership on unmount',async()=>{
+        const fixture=prepare();fixture.removeAllRanges.mockImplementation(()=>{throw Error('native selection unavailable');});
+        await clickEntry(fixture);expect(fixture.state.showTooltip).toBe(true);expect(fixture.state.touchOpenedSelection).toBe(fixture.state.snapshot);
+        fixture.unmount();expect(fixture.state.touchOpenedSelection).toBeNull();expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
     });
 });
 

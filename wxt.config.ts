@@ -13,6 +13,7 @@ import {packageWasmDiagnostics, packageTesseractWasm, packageTesseractWorker} fr
 import {tesseractSdkBuildPlugin} from './scripts/wasm/tesseract-sdk-build';
 import {GOOGLE_DRIVE_DEFAULT_CLIENT_ID, GOOGLE_DRIVE_EXTENSION_PUBLIC_KEY, GOOGLE_DRIVE_SCOPES} from './src/platform/google-drive/constants';
 import {createDeepLXRuntimeBuildPlugin} from './scripts/testing/deeplx-runtime-build';
+import {FREE_PROVIDER_ORIGINS} from './src/core/config/freeProviderOrigins';
 
 
 const packageJson = JSON.parse(fs.readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
@@ -149,6 +150,9 @@ export function createExtensionManifest(
     // 更早系统不应安装后才发现请求头适配不可用，最低版本同时写入可检查的清单。
     const safariManifest = env.browser === 'safari' ? {
         browser_specific_settings: {safari: {strict_min_version: '26.0'}},
+        // iOS 26.2 单变量验收中，只有显式 optional_permissions 才实际弹出服务域授权。
+        // 这是 MV2 字段；required 网页访问保持原样，授权入口每次仅请求一个服务的精确域。
+        ...(env.manifestVersion === 2 ? {optional_permissions: Object.values(FREE_PROVIDER_ORIGINS).flat()} : {}),
     } : {};
     return {
         name: '__MSG_extensionName__',

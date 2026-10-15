@@ -30,6 +30,8 @@ export default defineConfig({
                 'src/features/vocabulary/materialRepository.ts',
                 'src/features/vocabulary/materialModel.ts',
                 'src/features/vocabulary/materialProtocol.ts',
+                'src/core/config/freeProviderOrigins.ts',
+                'src/platform/browser/freeProviderPermissions.ts',
                 'src/core/i18n/serviceLabels.ts',
                 'src/platform/chatgpt-plan/bridge.ts',
                 'src/platform/chatgpt-plan/events.ts',

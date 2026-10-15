@@ -48,6 +48,12 @@ function compilePopupClient(file:string):string{
   return compiled.code
 }
 let server:ViteDevServer,app:import('vue').App,document:Document,win:any,state:Record<string,any>,focused:Element|null,shown:import('vue').Ref<boolean>,events:Map<Element,Record<string,any>>
+const readAccess=vi.fn(),requestAccess=vi.fn()
+let permissionEvents:Set<(change:'added'|'removed')=>void>
+let locale:import('vue').Ref<string>,bundleRevision:import('vue').Ref<number>,localized:boolean,englishLoaded:boolean
+const catalogs=Object.fromEntries(['zh-CN','en-US'].map(id=>[id,JSON.parse(readFileSync(resolve('src/core/i18n/messages/settings-copy',id+'.json'),'utf8')).messages]))
+function permissionEvent(kind:'added'|'removed'){for(const listener of permissionEvents)listener(kind)}
+function permissionText(key:string,params:Record<string,unknown>={}){void bundleRevision.value;if(!localized)return key;const id=locale.value==='en-US'&&englishLoaded?'en-US':'zh-CN';let text=catalogs[id][key]||key;for(const[k,v]of Object.entries(params))text=text.replaceAll('{'+k+'}',String(v));return text}
 const close=vi.fn(),noticeFocus=vi.fn(),patches=vi.fn(),getTab=vi.fn(),getSourceTab=vi.fn(),send=vi.fn(),createTab=vi.fn(),openOptions=vi.fn(),runtimeSend=vi.fn(),reloadTab=vi.fn()
 let config:Config,subscribe:(value:Config)=>void,tabEvents:Record<string,Set<(...args:any[])=>void>>,runtimeEvents:Set<(...args:any[])=>void>
 type ConfigStore = typeof import('@/src/services/config/store')
@@ -65,14 +71,15 @@ function eventOf(el:Element,name='onClick'){const fn=events.get(el)?.[name];expe
 function button(name:string){return document.querySelector(`[data-testid="${name}"]`)!}
 function commands(){return send.mock.calls.filter(call=>call[1].type==='contextMenuTranslate')}
 beforeEach(async()=>{
-  vi.clearAllMocks();for(const mock of [getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,reloadTab])mock.mockReset();events=new Map();runtimeEvents=new Set();tabEvents={onUpdated:new Set(),onActivated:new Set(),onRemoved:new Set()};const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;focused=document.body
+  permissionEvents=new Set();locale=runtime.ref('zh-CN');bundleRevision=runtime.ref(0);localized=false;englishLoaded=false;
+  vi.clearAllMocks();for(const mock of [getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,reloadTab,readAccess,requestAccess])mock.mockReset();events=new Map();runtimeEvents=new Set();tabEvents={onUpdated:new Set(),onActivated:new Set(),onRemoved:new Set()};const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;focused=document.body
   vi.stubGlobal('location',{search:''})
   Object.defineProperty(document,'activeElement',{configurable:true,get:()=>focused});win.close=close;win.matchMedia=()=>({matches:false,onchange:null})
   for(const [key,value]of Object.entries({document,window:win,HTMLElement:win.HTMLElement,Event:win.Event,Node:win.Node,navigator:{languages:['zh-CN'],onLine:true}}))vi.stubGlobal(key,value)
   config=new Config();config.uiLanguageSetupCompleted=true;config.on=true;config.service='google';config.alwaysTranslateDomains=[];config.disabledExtensionDomains=[]
   getTab.mockResolvedValue([{id:7,windowId:3,url:'https://example.com/a'}]);send.mockImplementation(async(_id,message)=>message.type==='getFullPageTranslationState'?{isTranslated:false,documentToken:'popup-fixture-document'}:{status:'success',isTranslated:message.action==='fullPage',documentToken:'popup-fixture-document'});createTab.mockResolvedValue({id:8});openOptions.mockResolvedValue(undefined);runtimeSend.mockResolvedValue({success:true})
   getSourceTab.mockResolvedValue({id:7,windowId:3,url:'https://example.com/a'})
-  ;(globalThis as any).__popupFixture={config,getTab,getSourceTab,send,createTab,openOptions,runtimeSend,reloadTab,patches,tabEvents,runtimeEvents,subscribe:(fn:typeof subscribe)=>{subscribe=fn},runtime,capabilities:runtime.reactive({browser:'chrome',areaTranslation:true,imageTranslation:true})}
+  ;(globalThis as any).__popupFixture={permissionEvents,locale,bundleRevision,permissionText,readAccess,requestAccess,config,getTab,getSourceTab,send,createTab,openOptions,runtimeSend,reloadTab,patches,tabEvents,runtimeEvents,subscribe:(fn:typeof subscribe)=>{subscribe=fn},runtime,capabilities:runtime.reactive({browser:'chrome',areaTranslation:true,imageTranslation:true})}
   // popup 测试控制组件事件与轮询，不使用文件观察或热更新。
   server=await createServer({root:process.cwd(),configFile:false,appType:'custom',logLevel:'silent',server:{watch:null},resolve:{alias:{'@':process.cwd()}},ssr:{noExternal:['webextension-polyfill']},plugins:[{name:'popup-owned-client',enforce:'pre',resolveId(id){
     if(/(?:\/|^)Popup(?:App|SiteRule)\.vue$/u.test(id))return resolve('src/app/popup',id.split('/').at(-1)!)+'.owned.ts'
@@ -83,6 +90,7 @@ beforeEach(async()=>{
     if(/\/src\/platform\/storage\/credentialContext(?:\.ts)?$/u.test(id))return '\0popup-credential-context'
     if(/\/src\/ui\/i18n(?:\.ts)?$/u.test(id))return '\0popup-i18n'
     if(/\/src\/ui\/interfaceAppearance(?:\.ts)?$/u.test(id))return '\0popup-appearance'
+    if(/\/src\/platform\/browser\/freeProviderPermissions(?:\.ts)?$/u.test(id))return '\0popup-permissions'
     if(/\/src\/platform\/browser\/capabilities(?:\.ts)?$/u.test(id))return '\0popup-capabilities'
     if(id.endsWith('/PopupDrawer')||id.endsWith('/PopupDrawer.ts'))return '\0popup-drawer'
     if(id==='@element-plus/icons-vue')return '\0popup-icons'
@@ -97,8 +105,9 @@ beforeEach(async()=>{
     if(id==='\0popup-config')return "const f=globalThis.__popupFixture;export const config=f.config;export const configReady=Promise.resolve();export const subscribeConfig=fn=>{f.subscribe(fn);return()=>{}};export const requestConfigPatch=async value=>f.patches(value);export const handoffPendingConfigPatches=async()=>{}"
     if(id==='\0popup-storage')return 'export const configStorage=globalThis.__popupFixture.persistencePort'
     if(id==='\0popup-credential-context')return 'export const isTrustedCredentialStorageContext=()=>true'
-    if(id==='\0popup-i18n')return "import {ref} from 'vue';const language=ref('zh-CN');export const useUiI18n=()=>({language,bundleRevision:ref(0),t:key=>key,translateLegacy:text=>text})"
+    if(id==='\0popup-i18n')return "const f=globalThis.__popupFixture;export const useUiI18n=()=>({language:f.locale,bundleRevision:f.bundleRevision,t:f.permissionText,translateLegacy:text=>text})"
     if(id==='\0popup-appearance')return 'export const applyInterfaceFont=()=>{},applyInterfaceSkin=()=>{}'
+    if(id==='\0popup-permissions')return 'export const readFreePoolAccess=globalThis.__popupFixture.readAccess,requestFreeProviderAccess=globalThis.__popupFixture.requestAccess;export const subscribeFreeProviderAccessChanges=fn=>{globalThis.__popupFixture.permissionEvents.add(fn);return()=>globalThis.__popupFixture.permissionEvents.delete(fn)}'
     if(id==='\0popup-capabilities')return 'export const browserCapabilities=globalThis.__popupFixture.capabilities'
     if(id==='\0popup-icons')return 'export const Setting={render:()=>null}'
     if(id==='\0popup-drawer')return "import {h} from 'vue';export default {setup(_, {attrs,slots}){return()=>attrs.modelValue||attrs['model-value']?h('div',{...attrs,class:'drawer-port'},slots.default?.()):null}}"
@@ -130,6 +139,126 @@ async function mount(){
   app=renderer.createApp({setup:()=>()=>runtime.h(runtime.KeepAlive,null,{default:()=>shown.value?runtime.h(component,{ref:(vm:any)=>{if(vm)state=vm.$.setupState}}):runtime.h({render:()=>null},{key:'other'})})});app.component('OwnedTransition',{setup:(_:unknown,{slots}:any)=>()=>slots.default?.()});app.config.warnHandler=()=>{};app.mount(document.getElementById('app')!);await drain()
 }
 describe('实际 Popup 缓存模板与页面操作',()=>{
+  async function safariFree(granted: string[] = []) {
+    config.service='freeTranslation';config.freeTranslationOrder=['microsoft','google'];(globalThis as any).__popupFixture.capabilities.browser='safari'
+    readAccess.mockResolvedValue({supported:true,grantedIds:granted,preferredGrant:{id:'microsoft',origins:['https://edge.microsoft.com/*']}})
+    await mount();await drain()
+  }
+  it('Safari授权是新译click的同步首个副作用，仅一次单线路请求；完整复核后才发页面动作',async()=>{
+    await safariFree();const gate=deferred<boolean>();requestAccess.mockReturnValue(gate.promise)
+    const queries=getTab.mock.calls.length,reads=readAccess.mock.calls.length,order=[...state.config.freeTranslationOrder]
+    const pending=eventOf(button('page-translation'))()
+    expect(requestAccess).toHaveBeenCalledWith('microsoft');expect(getTab).toHaveBeenCalledTimes(queries);expect(readAccess).toHaveBeenCalledTimes(reads);expect(commands()).toHaveLength(0)
+    eventOf(button('section-translation'))();expect(requestAccess).toHaveBeenCalledTimes(1)
+    readAccess.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:{id:'google',origins:[]}});gate.resolve(true);await pending;await drain()
+    expect(commands().map(call=>call[1].action)).toEqual(['fullPage']);expect(state.config.freeTranslationOrder).toEqual(order)
+    readAccess.mockClear();requestAccess.mockClear();await eventOf(button('page-translation'))();expect(commands().at(-1)![1].action).toBe('restore');expect(readAccess).not.toHaveBeenCalled();expect(requestAccess).not.toHaveBeenCalled()
+  })
+  it.each(['denied','partial','throws','rejects'] as const)('Safari授权%s不继续、不尝试第二线路，保留配置顺序',async result=>{
+    await safariFree();const before=JSON.stringify(state.config.freeTranslationOrder)
+    requestAccess.mockImplementation(()=>{if(result==='throws')throw Error('fixture');if(result==='rejects')return Promise.reject(Error('fixture'));return Promise.resolve(result!=='denied')})
+    await eventOf(button('page-translation'))();await drain();expect(commands()).toHaveLength(0);expect(requestAccess).toHaveBeenCalledWith('microsoft');expect(JSON.stringify(state.config.freeTranslationOrder)).toBe(before)
+    expect(state.freePoolBusy).toBe(false);expect(state.freePoolError||state.notice).toMatch(/safari\.freePool\.(?:error|requestDenied)/)
+    if(result==='denied'||result==='partial')expect(document.querySelector('[data-testid="safari-free-pool"]')?.textContent).toContain('safari.freePool.requestDenied')
+  })
+  it.each(['language','service','tab','cached','unmount'] as const)('Safari授权等待期间%s失效，迟到许可不能翻译',async reason=>{
+    await safariFree();const gate=deferred<boolean>();requestAccess.mockReturnValue(gate.promise);const pending=eventOf(button('page-translation'))()
+    if(reason==='language')state.config.to='ja'
+    if(reason==='service')state.config.service='microsoft'
+    if(reason==='tab'){getTab.mockResolvedValue([{id:8,windowId:3,url:'https://example.net/b'}]);tabEvent('onActivated',{tabId:8,windowId:3})}
+    if(reason==='cached')shown.value=false
+    if(reason==='unmount')app.unmount()
+    await drain();gate.resolve(true);await pending;await drain();expect(commands()).toHaveLength(0)
+  })
+  it('Safari权限读取异常明确反馈且不request；已授权与Chrome固定服务不请求权限',async()=>{
+    config.service='freeTranslation';(globalThis as any).__popupFixture.capabilities.browser='safari';readAccess.mockRejectedValue(Error('API unavailable'));await mount();await drain()
+    expect(document.querySelector('[data-testid="safari-free-pool"]')?.textContent).toContain('safari.freePool.error');await eventOf(button('page-translation'))();expect(requestAccess).not.toHaveBeenCalled();expect(commands()).toHaveLength(0)
+    state.config.service='google';await drain();await eventOf(button('page-translation'))();expect(commands()).toHaveLength(1);expect(requestAccess).not.toHaveBeenCalled()
+  })
+  it.each([false,true])('Safari诊断重试先同步授权并保留root恢复再译语义：已有译文=%s',async translated=>{
+    await safariFree();runtimeEvent({type:'fullPageTranslationState',isTranslated:translated,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'configuration'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain();
+    const gate=deferred<boolean>();requestAccess.mockImplementation(()=>{permissionEvent('added');return gate.promise});
+    const retry=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='重试')!;const pending=eventOf(retry)();
+    expect(requestAccess).toHaveBeenCalledWith('microsoft');expect(commands()).toHaveLength(0);
+    readAccess.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null});gate.resolve(true);await pending;await drain();
+    expect(commands().map(call=>call[1].action)).toEqual(translated?['restore','fullPage']:['fullPage']);
+  })
+  it('Safari诊断已授权重试的来源等待同样可被撤权取消',async()=>{
+    await safariFree(['microsoft']);runtimeEvent({type:'fullPageTranslationState',isTranslated:false,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'configuration'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain();
+    const gate=deferred<any>();getTab.mockReturnValue(gate.promise);const retry=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='重试')!;const pending=eventOf(retry)();await drain();
+    readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});permissionEvent('removed');gate.resolve([{id:7,windowId:3,url:'https://example.com/a'}]);await pending;await drain();expect(commands()).toHaveLength(0);
+  })
+  it('P2 mounted revoke refreshes actual access and permits explicit reauthorization',async()=>{
+    await safariFree(['microsoft']);expect(state.freePoolAccess.grantedIds).toEqual(['microsoft'])
+    readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}})
+    permissionEvent('removed');await drain();expect(state.freePoolAccess.grantedIds).toEqual([])
+    expect(document.querySelector('[data-testid="safari-free-pool"]')?.textContent).toContain('safari.freePool.needsAccess')
+    requestAccess.mockResolvedValue(false);await eventOf(button('page-translation'))();expect(requestAccess).toHaveBeenCalledTimes(1);expect(commands()).toHaveLength(0)
+  })
+  it('P2 external grant refreshes available set without auto translation',async()=>{
+    await safariFree();readAccess.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null})
+    permissionEvent('added');await drain();expect(state.freePoolAccess.grantedIds).toEqual(['microsoft']);expect(commands()).toHaveLength(0);expect(requestAccess).not.toHaveBeenCalled()
+  })
+  it('P2 own synchronous added and focus retain the first click then translate exactly once',async()=>{
+    await safariFree();const gate=deferred<boolean>()
+    requestAccess.mockImplementation(()=>{permissionEvent('added');win.dispatchEvent(new win.Event('focus'));return gate.promise})
+    const before=readAccess.mock.calls.length,pending=eventOf(button('page-translation'))()
+    expect(requestAccess).toHaveBeenCalledTimes(1);expect(readAccess).toHaveBeenCalledTimes(before);expect(commands()).toHaveLength(0)
+    readAccess.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null});gate.resolve(true);await pending;await drain()
+    expect(commands().map(call=>call[1].action)).toEqual(['fullPage']);expect(state.freePoolBusy).toBe(false)
+  })
+  it('P2 removal during grant discards late granted result and retains explicit retry',async()=>{
+    await safariFree();const gate=deferred<boolean>();requestAccess.mockReturnValue(gate.promise)
+    const pending=eventOf(button('page-translation'))();permissionEvent('removed');await drain();readAccess.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null});gate.resolve(true);await pending;await drain()
+    expect(commands()).toHaveLength(0);expect(state.freePoolAccess.grantedIds).toEqual([]);expect(state.freePoolBusy).toBe(false)
+  })
+  it('P2 removal after grant while source-tab lookup waits cancels the continuation',async()=>{
+    await safariFree();const tab=deferred<any>();getTab.mockReturnValue(tab.promise);requestAccess.mockResolvedValue(true);readAccess.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null})
+    const pending=eventOf(button('page-translation'))();await drain();expect(state.freePoolBusy).toBe(true);expect(commands()).toHaveLength(0)
+    readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});permissionEvent('removed');await drain();tab.resolve([{id:7,windowId:3,url:'https://example.com/a'}]);await pending;await drain();expect(commands()).toHaveLength(0)
+  })
+  it('P2 already granted translation waiting for source tab is invalidated by removal',async()=>{
+    await safariFree(['microsoft']);const tab=deferred<any>();getTab.mockReturnValue(tab.promise)
+    const pending=eventOf(button('page-translation'))();await drain();expect(commands()).toHaveLength(0);expect(requestAccess).not.toHaveBeenCalled()
+    readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});permissionEvent('removed');await drain();tab.resolve([{id:7,windowId:3,url:'https://example.com/a'}]);await pending;await drain();expect(commands()).toHaveLength(0)
+  })
+  it('P2 already granted section on translated page is invalidated by removal',async()=>{
+    await safariFree(['microsoft']);state.pageState.translated=true;await drain();const tab=deferred<any>();getTab.mockReturnValue(tab.promise)
+    const pending=eventOf(button('section-translation'))();await drain();expect(commands()).toHaveLength(0)
+    readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});permissionEvent('removed');await drain();tab.resolve([{id:7,windowId:3,url:'https://example.com/a'}]);await pending;await drain();expect(commands()).toHaveLength(0)
+  })
+  it('P2 removal does not cancel pending restore-original action',async()=>{
+    await safariFree(['microsoft']);state.pageState.translated=true;await drain();const tab=deferred<any>();getTab.mockReturnValue(tab.promise)
+    const pending=eventOf(button('page-translation'))();await drain();permissionEvent('removed');await drain();tab.resolve([{id:7,windowId:3,url:'https://example.com/a'}]);await pending;await drain()
+    expect(commands().map(call=>call[1].action)).toEqual(['restore']);expect(requestAccess).not.toHaveBeenCalled()
+  })
+  it('P2 removal does not cancel a different service pending page action',async()=>{
+    await safariFree(['microsoft']);state.config.service='google';await drain();const tab=deferred<any>();getTab.mockReturnValue(tab.promise)
+    const pending=eventOf(button('page-translation'))();await drain();permissionEvent('removed');await drain();tab.resolve([{id:7,windowId:3,url:'https://example.com/a'}]);await pending;await drain()
+    expect(commands().map(call=>call[1].action)).toEqual(['fullPage']);expect(requestAccess).not.toHaveBeenCalled()
+  })
+  it('P2 removed invalidates an older access read',async()=>{
+    const gate=deferred<any>();config.service='freeTranslation';config.freeTranslationOrder=['microsoft'];(globalThis as any).__popupFixture.capabilities.browser='safari';readAccess.mockReturnValueOnce(gate.promise)
+    await mount();readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});permissionEvent('removed');await drain()
+    gate.resolve({supported:true,grantedIds:['microsoft'],preferredGrant:null});await drain();expect(state.freePoolAccess.grantedIds).toEqual([])
+  })
+  it('P2 native event absence still refreshes on focus and visible return',async()=>{
+    await safariFree(['microsoft']);readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}})
+    win.dispatchEvent(new win.Event('focus'));await drain();expect(state.freePoolAccess.grantedIds).toEqual([])
+    readAccess.mockResolvedValue({supported:true,grantedIds:['microsoft'],preferredGrant:null});Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});document.dispatchEvent(new win.Event('visibilitychange'));await drain();expect(state.freePoolAccess.grantedIds).toEqual(['microsoft'])
+  })
+  it('P2 cached inactive popup rechecks on reactivation and releases event listener on close',async()=>{
+    await safariFree(['microsoft']);shown.value=false;await drain();const before=readAccess.mock.calls.length
+    readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});permissionEvent('removed');await drain();expect(readAccess).toHaveBeenCalledTimes(before)
+    shown.value=true;await drain();expect(state.freePoolAccess.grantedIds).toEqual([]);app.unmount();await drain();expect(permissionEvents.size).toBe(0)
+    const closed=readAccess.mock.calls.length;permissionEvent('added');win.dispatchEvent(new win.Event('focus'));expect(readAccess).toHaveBeenCalledTimes(closed)
+  })
+  it('P2 denial updates after language switch and delayed lazy bundle without another request',async()=>{
+    localized=true;await safariFree();requestAccess.mockResolvedValue(false);await eventOf(button('page-translation'))();await drain()
+    expect(state.freePoolStatus).toBe(catalogs['zh-CN']['safari.freePool.requestDenied']);const reads=readAccess.mock.calls.length
+    locale.value='en-US';await drain();englishLoaded=true;bundleRevision.value++;await drain()
+    expect(state.freePoolStatus).toBe(catalogs['en-US']['safari.freePool.requestDenied']);expect(readAccess).toHaveBeenCalledTimes(reads);expect(requestAccess).toHaveBeenCalledTimes(1)
+  })
   it('Popup 来源解析接受零和安全整数，无参数继续查询活动网页',async()=>{
     const query=vi.fn(async()=>[{id:99}]),get=vi.fn(async(id:number)=>({id}));const normal=createPopupTabSource('?other=1',{query,get})
     expect(normal).toMatchObject({fixed:false,sourceTabId:null});await expect(normal.getTab()).resolves.toEqual({id:99});query.mockResolvedValueOnce([]);await expect(normal.getTab()).resolves.toBeUndefined()

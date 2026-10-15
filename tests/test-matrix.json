@@ -44,6 +44,7 @@
     "unit": [
       "tests/materialOriginalText.test.ts",
       "tests/materialParagraphScan.test.ts",
+      "tests/freeProviderPermissions.test.ts",
       "tests/documentHistoryCommitter.test.ts",
       "tests/documentMaterialLocator.test.ts",
       "tests/documentMaterialIntegration.test.ts",

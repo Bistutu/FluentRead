@@ -1,0 +1,19 @@
+{
+  "microsoft": ["https://edge.microsoft.com/*"],
+  "bilibiliFree": ["https://index-translate.bilibili.com/*"],
+  "transmart": ["https://transmart.qq.com/*"],
+  "volcengineFree": ["https://translate.volcengine.com/*"],
+  "doubaoWeb": ["https://www.doubao.com/*"],
+  "google": ["https://translate.google.com/*", "https://translate.google.co.uk/*", "https://translate-pa.googleapis.com/*", "https://translate.googleapis.com/*"],
+  "youdaoFree": ["https://dict.youdao.com/*"],
+  "icibaFree": ["https://ifanyi.iciba.com/*"],
+  "yandexFree": ["https://translate.yandex.net/*"],
+  "myMemory": ["https://api.mymemory.translated.net/*"],
+  "sogouFree": ["https://translate.sogou.com/*"],
+  "reversoFree": ["https://api.reverso.net/*"],
+  "apertiumFree": ["https://apertium.org/*"],
+  "alibabaFree": ["https://translate.alibaba.com/*"],
+  "modernMtFree": ["https://webapi.modernmt.com/*"],
+  "laraFree": ["https://webapi.laratranslate.com/*"],
+  "lingvanexFree": ["https://lingvanex.com/*", "https://api-b2b.backenster.com/*"]
+}
