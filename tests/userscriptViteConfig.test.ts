@@ -247,14 +247,15 @@ describe('userscript browser shim injection', () => {
         'sectionTranslation.picker.dragging', 'sectionTranslation.scope.selected', 'settings.services.deeplx.defaultRoute'];
     const publishedOverrideKeys = ['sectionTranslation.picker.preview', 'sectionTranslation.picker.instruction',
         'popup.sectionTranslationTitle', 'settings.services.deeplx.endpointHelp'];
-    const pinnedLanguageFiles = {
+    // Greasy Fork 的已发布文案投影仍对照原资源，不随当前完整远程词典更新。
+    const publishedLanguageFiles = {
         'ja-JP': 'ja-JP.5bb4b24b0a41715f.json',
         'ko-KR': 'ko-KR.e6befd8f0b3fb833.json',
         'fr-FR': 'fr-FR.afc75e324ace2ce5.json',
         'ru-RU': 'ru-RU.52b510364aae90e1.json',
         'es-ES': 'es-ES.d821e30eac68a115.json',
     };
-    const publishedMessages: Record<string, Record<string, string>> = Object.fromEntries(Object.entries(pinnedLanguageFiles)
+    const publishedMessages: Record<string, Record<string, string>> = Object.fromEntries(Object.entries(publishedLanguageFiles)
         .map(([language, file]) => [language, JSON.parse(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8')).messages]));
     it('preserves pinned remote dictionaries for inlined panes and keeps embedded recovery copy', () => {
         const build = (userscriptConfig as {build: {cssCodeSplit: boolean; rollupOptions: {output: {inlineDynamicImports: boolean}}}}).build;
@@ -280,7 +281,7 @@ describe('userscript browser shim injection', () => {
             expect(original.messages['learning.reloadPage']).toBeTruthy();
         }
     });
-    it.each(Object.keys(pinnedLanguageFiles) as Array<keyof typeof extensionBundles>)('freezes only the published %s document messages while retaining current extension copy', language => {
+    it.each(Object.keys(publishedLanguageFiles) as Array<keyof typeof extensionBundles>)('freezes only the published %s document messages while retaining current extension copy', language => {
         const original = extensionBundles[language], projected = UI_LANGUAGE_BUNDLES[language];
         const originalBefore = JSON.stringify(original);
         const documentMessages = (messages: Record<string, string>) => Object.fromEntries(Object.entries(messages).filter(([key]) => key.startsWith('document.')));
@@ -380,8 +381,14 @@ describe('userscript browser shim injection', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const commit = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__);
         const bundles = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__) as Record<string, string>;
-        expect(commit).toBe('6112632a8ced3de4f104cab445eefdbc9f23bdb7');
-        expect(bundles).toEqual(pinnedLanguageFiles);
+        expect(commit).toBe('50e59c08290b47af8ea0d91c9d8403a8841c304f');
+        expect(bundles).toEqual({
+            'ja-JP': 'ja-JP.a2e0e46262be844e.json',
+            'ko-KR': 'ko-KR.496a2393c33e1f1a.json',
+            'fr-FR': 'fr-FR.ecb180570edeb097.json',
+            'ru-RU': 'ru-RU.3ae9903f73059e86.json',
+            'es-ES': 'es-ES.be72661f69196d35.json',
+        });
         for (const file of Object.values(bundles)) {
             const path = `userscript/languages/${file}`;
             const committed = execFileSync('git', ['show', `${commit}:${path}`], {cwd: process.cwd(), encoding: 'utf8'});

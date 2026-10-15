@@ -11,6 +11,6 @@ export type {ReadingEvidenceAnchor} from './evidenceAnchor';
 export {buildReadingEvidence, parseReadingEvidence} from '@/src/core/harness/evidence';
 export type {ReadingEvidenceSource} from '@/src/core/harness/evidence';
 export type {ReadingSelection} from './types';
-export {streamReading} from './client';
+export {streamReading, getHarnessSession} from './client';
 export {clearLearningMemories, deleteLearningMemory, listLearningMemories, saveLearningMemory} from './client';
 export type {LearningMemory} from '@/src/services/harness/learningMemory';

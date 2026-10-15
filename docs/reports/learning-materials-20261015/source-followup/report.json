@@ -1,0 +1,65 @@
+{
+  "ok": true,
+  "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-material-learning-20261015/.output/chrome-mv3",
+  "artifactType": "production",
+  "scope": "sources",
+  "consoleScope": "page console errors and unhandled page errors; background operations verified by actual responses",
+  "cases": [
+    "keyboard-management-menu",
+    "canonical-duplicate-and-same-title-distinct-source",
+    "topics-notes-and-independent-drafts",
+    "real-content-text-resume",
+    "refresh-keeps-material-position-tracking",
+    "real-video-time-and-progress",
+    "source-fragment-failure-recovery-guidance",
+    "390-dark-layout-and-keyboard",
+    "archive-restore-preserves-records",
+    "explicit-private-backup-clear-and-restore",
+    "authoritative-learning-references-and-independent-clear"
+  ],
+  "screenshots": [
+    "materials-empty.png",
+    "materials-desktop.png",
+    "material-detail-desktop.png",
+    "article-resumed-position.png",
+    "video-resumed-position.png",
+    "article-missing-passage-recovery.png",
+    "material-detail-dark-390.png",
+    "material-authority-references.png"
+  ],
+  "consoleErrors": [],
+  "limitations": [
+    "Controlled local HTTP, MP4, PDF, DOCX and EPUB fixtures; no live provider, live YouTube/X, Firefox runtime, Safari or physical mobile acceptance.",
+    "Learning question fixture is written directly to its authoritative session store; this validates retrieval and preservation, not live model generation.",
+    "Private-window eligibility is covered by deterministic client and sender tests, not an incognito browser session."
+  ],
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 132,
+      "top": -1040,
+      "width": 1440,
+      "height": 1000
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 65658,
+      "name": "问题报告程序"
+    },
+    "frontmostAfter": {
+      "pid": 65658,
+      "name": "问题报告程序"
+    }
+  },
+  "cleanupConfirmed": true,
+  "originalReport": "/private/tmp/fluentread-material-registration-production/report.json"
+}

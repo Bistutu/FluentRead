@@ -12,6 +12,7 @@ import {lookupWord} from '@/src/features/selection-translation/services/wordDict
 import {createSelectionPageZoomBrowserPort, createSelectionPageZoomHandler} from '@/src/features/selection-translation/background/pageZoomHandler';
 import {synthesizeEdgeTts} from '@/src/features/selection-translation/services/edgeTts';
 import {vocabularyBook} from '@/src/features/vocabulary/repository';
+import {createBrowserMaterialHandler, type MaterialBackgroundContext} from './handlers/vocabulary';
 import {clearTranslationCache, getTranslationCacheStats, translateWithCache} from '@/src/app/translation/runtime';
 import {serializeTranslationError} from '@/src/services/translation/errors';
 import {createBackgroundMessageRouter, createBackgroundRuntimeMessageListener, type BackgroundMessageHandler} from '@/src/services/messaging/backgroundRouter';
@@ -54,7 +55,7 @@ import {createEmbeddedFrameBackgroundHandlers, type EmbeddedFrameBackgroundConte
 import {buildGlossaryRevision} from '@/src/core/glossary';
 type BackgroundRuntimeContext = QQMailFrameBackgroundContext & NeteaseMailFrameBackgroundContext
     & EmbeddedFrameBackgroundContext & ConfigPersistenceContext & VocabularyBackgroundContext & SelectionTtsContext
-    & FullPageBackgroundContext & AreaTranslationBackgroundContext & PopupContext;
+    & FullPageBackgroundContext & AreaTranslationBackgroundContext & PopupContext & MaterialBackgroundContext;
 export interface BackgroundMessageRuntimeOptions {
     tabTranslationStates: TabTranslationStateStore;
     onFullPageStateChanged(tabId: number): void;
@@ -146,6 +147,7 @@ export function installBackgroundMessageRuntime(options: BackgroundMessageRuntim
             sendTabMessage: (tabId, message, options) => browser.tabs.sendMessage(tabId, message, options),
             warn: (message, error) => console.warn(message, error),
         }),
+        createBrowserMaterialHandler({ready: configReady, config, vocabularyBook}),
         ...createVocabularyBackgroundHandlers({
             configReady,
             isVocabularyBookEnabled: () => config.vocabularyBookEnabled === true, isReencounterEnabled: () => config.on && config.vocabularyReencounterEnabled === true && !browser.extension.inIncognitoContext,

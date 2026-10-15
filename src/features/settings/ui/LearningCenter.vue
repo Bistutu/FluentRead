@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/LearningCenter.vue
- * 文件职责：把单词与句子、最近 30 天的阅读记录和长期学习笔记组织成统一的学习中心。
- * 主要内容：即时展示收藏，首次打开时加载记录与笔记，提供等待和页面重载提示，集中展示本地保存说明和备份入口。
+ * 文件职责：把阅读材料、轻量收藏、最近 30 天的阅读记录和长期学习笔记组织成统一的学习中心。
+ * 主要内容：保留默认收藏入口，按需加载按来源组织的材料、记录与笔记，提供等待和页面重载提示，集中展示本地保存说明和备份入口。
  * 模块边界：只组合 vocabulary 和 reading-assistant 的公开 UI；各 feature 拥有数据操作生命周期，页面重载由设置入口处理。
  -->
 <template>
@@ -11,6 +11,7 @@
     </header>
     <p v-if="activeTab === 'saved'" class="fr-learning-center-purpose">{{ t(`learning.${activeTab}Description`) }}</p>
     <VocabularyBook v-if="activeTab === 'saved'" @navigate="emit('navigate', $event)" />
+    <MaterialWorkspace v-else-if="activeTab === 'materials'" @navigate="emit('navigate', $event)" @open-tab="activeTab = $event" />
     <HarnessReadingHistory v-else-if="activeTab === 'history'" />
     <LearningMemoryManager v-else :enabled="memoryEnabled" @navigate="emit('navigate', $event)" />
     <footer class="fr-learning-local">
@@ -33,8 +34,8 @@ import {config, configReady, subscribeConfig} from '@/src/services/config/store'
 const emit = defineEmits<{navigate: [section: string]; reload: [tab: string]}>()
 const {t} = useUiI18n()
 const props = defineProps<{initialTab?: string}>()
-const activeTab = ref(['saved', 'history', 'memory'].includes(props.initialTab || '') ? props.initialTab! : 'saved')
-watch(() => props.initialTab, tab => { if (tab && ['saved', 'history', 'memory'].includes(tab)) activeTab.value = tab })
+const activeTab = ref(['saved', 'materials', 'history', 'memory'].includes(props.initialTab || '') ? props.initialTab! : 'saved')
+watch(() => props.initialTab, tab => { if (tab && ['saved', 'materials', 'history', 'memory'].includes(tab)) activeTab.value = tab })
 const PanelLoading = () => h('p', {class: 'fr-learning-load', role: 'status'}, t('common.loading'))
 const PanelLoadError = () => h('div', {class: 'fr-learning-load', role: 'alert'}, [
   h('p', t('learning.panelLoadError')),
@@ -42,6 +43,11 @@ const PanelLoadError = () => h('div', {class: 'fr-learning-load', role: 'alert'}
 ])
 const HarnessReadingHistory = defineAsyncComponent({
   loader: () => import('@/src/features/reading-assistant/ui/public').then(module => module.HarnessReadingHistory),
+  loadingComponent: PanelLoading,
+  errorComponent: PanelLoadError,
+})
+const MaterialWorkspace = defineAsyncComponent({
+  loader: () => import('@/src/features/vocabulary/ui/public').then(module => module.MaterialWorkspace),
   loadingComponent: PanelLoading,
   errorComponent: PanelLoadError,
 })
@@ -57,6 +63,7 @@ void configReady.then(() => { if (mounted) memoryEnabled.value = config.harness.
 onBeforeUnmount(() => { mounted = false; unsubscribe() })
 const tabs = computed(() => [
   {value: 'saved', label: t('learning.saved')},
+  {value: 'materials', label: '阅读材料'},
   {value: 'history', label: t('learning.history')},
   {value: 'memory', label: t('learning.memory')},
 ])
@@ -81,7 +88,7 @@ const tabs = computed(() => [
 .fr-learning-storage p { margin:8px 0 0; font-size:11px; line-height:1.8; }
 .fr-learning-local button:focus-visible,.fr-learning-storage summary:focus-visible { outline:2px solid var(--brand); outline-offset:3px; }
 @media (max-width:600px) {
-  .fr-learning-center-header :deep(.segmented-control) { width:100%; gap:14px; }
+  .fr-learning-center-header :deep(.segmented-control) { width:100%; gap:12px; flex-wrap:wrap; }
   .fr-learning-center-header :deep(.segmented-control button) { font-size:12px; }
 }
 </style>
