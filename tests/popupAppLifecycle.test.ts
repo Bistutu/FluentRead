@@ -166,26 +166,27 @@ async function focusedServiceSearchAtCompact(scrollTop = 22, naturalTop = 92) {
   Object.defineProperties(scroller,{clientTop:{configurable:true,value:0},clientHeight:{configurable:true,value:229},
     scrollTop:{configurable:true,get:()=>offset,set:(value:number)=>{offset=Math.max(0,value)}}})
   const rect=(top:number,bottom:number)=>({top,bottom,left:20,right:284,x:20,y:top,width:264,height:bottom-top,toJSON(){return this}}) as DOMRect
-  scroller.getBoundingClientRect=()=>rect(16,245);heading.getBoundingClientRect=()=>rect(16,72)
+  scroller.getBoundingClientRect=()=>rect(16,245);heading.getBoundingClientRect=()=>{const top=Math.max(16,naturalTop-56-offset);return rect(top,top+56)}
   // naturalTop默认92对应生产真实滚动22px后的top70，非正常flow无间距的假设。
   border.getBoundingClientRect=()=>rect(naturalTop-offset,naturalTop+48-offset)
   return {input,border,heading,scroller,focusCalls:noticeFocus.mock.calls.length}
 }
 function growServiceViewport(height=263){Object.assign(viewport,{height});viewport.dispatchEvent(new win.Event('resize'));flushViewport()}
 describe('实际 Popup 缓存模板与页面操作',()=>{
-  it('搜索恢复到普通高度仅回退所属抽屉4px，让完整外框与focus ring离开吸顶标题',async()=>{
+  it('搜索恢复到普通高度仅回退所属抽屉2px，让完整border离开动态吸顶标题',async()=>{
     const f=await focusedServiceSearchAtCompact();const picker=document.querySelector('[data-service-picker]')
     const hostScroll=vi.fn();win.scrollTo=hostScroll
-    expect(f.scroller.scrollTop).toBe(22);expect(f.border.getBoundingClientRect().top-2).toBeLessThan(f.heading.getBoundingClientRect().bottom)
+    expect(f.scroller.scrollTop).toBe(22);expect(f.border.getBoundingClientRect().top).toBeLessThan(f.heading.getBoundingClientRect().bottom)
     growServiceViewport();await drain()
-    expect(f.scroller.scrollTop).toBe(18);expect(f.border.getBoundingClientRect().top-2).toBe(f.heading.getBoundingClientRect().bottom)
+    expect(f.scroller.scrollTop).toBe(20);expect(f.border.getBoundingClientRect().top).toBe(72);expect(f.heading.getBoundingClientRect().bottom).toBe(72)
+    growServiceViewport(300);await drain();expect(f.scroller.scrollTop).toBe(20)
     expect(document.querySelector('input[type="search"]')).toBe(f.input);expect(document.querySelector('[data-service-picker]')).toBe(picker)
     expect(f.input.value).toBe('micro');expect(document.activeElement).toBe(f.input);expect(noticeFocus).toHaveBeenCalledTimes(f.focusCalls);expect(hostScroll).not.toHaveBeenCalled()
   })
   it('仅剩2px可回退时按真实容器clamp到0，至少保留完整搜索border且不滚宿主',async()=>{
     const f=await focusedServiceSearchAtCompact(2,72);growServiceViewport();await drain()
     expect(f.scroller.scrollTop).toBe(0);expect(f.border.getBoundingClientRect().top).toBe(f.heading.getBoundingClientRect().bottom)
-    // 此布局没有额外留白；不把受0边界限制的focus ring宣称为完整可见。
+    // border与header紧邻，focus ring不作为可通过滚动分离的边界。
     expect(f.border.getBoundingClientRect().top-2).toBeLessThan(f.heading.getBoundingClientRect().bottom)
     expect(f.input.value).toBe('micro');expect(document.activeElement).toBe(f.input);expect(noticeFocus).toHaveBeenCalledTimes(f.focusCalls)
   })
@@ -195,7 +196,7 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     f.border.getBoundingClientRect=()=>({top:100,bottom:148,left:20,right:284,width:264,height:48}) as DOMRect
     growServiceViewport();await drain();expect(f.scroller.scrollTop).toBe(22)
     f.border.getBoundingClientRect=()=>({top:92-f.scroller.scrollTop,bottom:140-f.scroller.scrollTop,left:20,right:284,width:264,height:48}) as DOMRect
-    growServiceViewport(300);await drain();expect(f.scroller.scrollTop).toBe(18);expect(noticeFocus).toHaveBeenCalledTimes(f.focusCalls)
+    growServiceViewport(300);await drain();expect(f.scroller.scrollTop).toBe(20);expect(noticeFocus).toHaveBeenCalledTimes(f.focusCalls)
   })
   it('键盘恢复后的异步修正不能抢回用户已移走的焦点或重置未聚焦长列表',async()=>{
     const f=await focusedServiceSearchAtCompact(),outside=document.createElement('button');document.body.appendChild(outside)

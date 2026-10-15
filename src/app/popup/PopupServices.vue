@@ -208,13 +208,13 @@ function ownView() {
   const value = session.value, token = viewRevision.value, current = capture();
   return () => current() && token === viewRevision.value && (value ? ownsSession(value) : !session.value);
 }
-function revealInScroller(scroller: HTMLElement, destination: HTMLElement, sticky: Element | null, margin = 0) {
+function revealInScroller(scroller: HTMLElement, destination: HTMLElement, sticky: Element | null) {
   const bounds = scroller.getBoundingClientRect(), item = destination.getBoundingClientRect();
   const top = Math.max(bounds.top + scroller.clientTop, sticky?.getBoundingClientRect().bottom ?? bounds.top);
   const bottom = bounds.top + scroller.clientTop + scroller.clientHeight;
   if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) return;
-  const delta = item.top - margin < top ? item.top - margin - top
-    : item.bottom + margin > bottom ? Math.min(item.top - margin - top, item.bottom + margin - bottom) : 0;
+  const delta = item.top < top ? item.top - top
+    : item.bottom > bottom ? Math.min(item.top - top, item.bottom - bottom) : 0;
   if (delta) scroller.scrollTop = Math.max(0, scroller.scrollTop + delta);
 }
 function revealFocusedSearch(owner: () => boolean) {
@@ -228,8 +228,8 @@ function revealFocusedSearch(owner: () => boolean) {
     const border = input.closest<HTMLElement>('.service-picker-search'), heading = root.querySelector('.service-picker-heading');
     if (!border || !heading) return;
     const item = border.getBoundingClientRect(), cover = heading.getBoundingClientRect();
-    // 只修正标题压住当前搜索外框的情形；尽量保留本组件的2px focus ring，滚动始终受容器0边界约束。
-    if (item.top - 2 < cover.bottom && item.bottom > cover.top) revealInScroller(scroller, border, heading, 2);
+    // 只让完整border离开吸顶标题；标题会随滚动解除sticky，不为紧邻标题的focus ring额外移动。
+    if (item.top < cover.bottom && item.bottom > cover.top) revealInScroller(scroller, border, heading);
   });
 }
 defineExpose({revealFocusedSearch});
