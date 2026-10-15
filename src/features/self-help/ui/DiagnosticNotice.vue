@@ -140,7 +140,8 @@ onBeforeUnmount(() => {stopWatching();clearTimer();for (const [url, release] of 
 .diagnostic-trigger svg { width: 16px; height: 16px; }
 .diagnostic-trigger[aria-expanded="true"] { box-shadow: inset 0 0 0 1px currentColor; }
 .diagnostic-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.diagnostic-details { box-sizing: border-box; position: absolute; right: 0; z-index: 30; width: min(276px, calc(100vw - 32px)); padding: 10px 12px; border: 1px solid var(--line, #ddd); border-radius: 10px; background: var(--surface, #fff); box-shadow: 0 5px 20px rgba(20, 30, 50, .14); overflow-y: auto; overscroll-behavior: contain; }
+/* 叠加滚动条不扣除布局宽度；右侧保留16px，避免滚动后的命中层挡住关闭按钮右缘。 */
+.diagnostic-details { box-sizing: border-box; position: absolute; right: 0; z-index: 30; width: min(276px, calc(100vw - 32px)); padding: 10px 12px; padding-right: 16px; border: 1px solid var(--line, #ddd); border-radius: 10px; background: var(--surface, #fff); box-shadow: 0 5px 20px rgba(20, 30, 50, .14); overflow-y: auto; overscroll-behavior: contain; }
 .diagnostic-details.above { bottom: calc(100% + 6px); }
 .diagnostic-details.below { top: calc(100% + 6px); }
 .diagnostic-heading { position: sticky; top: -10px; z-index: 1; display: flex; align-items: center; gap: 8px; margin: -10px 0 5px; padding-top: 10px; background: var(--surface, #fff); }
