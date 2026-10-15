@@ -158,9 +158,13 @@ afterEach(async () => {
 });
 
 describe('guardBrowserClose public API: actual owned process receipts', () => {
-    it.each(['/private/tmp', '/tmp'].filter(root => existsSync(root)))('accepts the exact literal %s owned profile and observes real process exit', async temporaryRoot => {
-        // macOS 提供两个路径，Linux 通常只有 /tmp；仅对当前系统实际存在的根验证。
-        // 保留启动时路径的字面值（包括 /tmp 别名），不能 realpath 后掩盖 argv 身份差异。
+    const literalTemporaryRoots = [...new Set([
+        tmpdir(), '/tmp', ...(process.platform === 'darwin' ? ['/private/tmp'] : []),
+    ])].filter(root => existsSync(root));
+    it.each(literalTemporaryRoots)('accepts the exact literal %s owned profile and observes real process exit', async temporaryRoot => {
+        // 验证当前平台实际存在的原生临时目录；macOS 同时保留 /tmp 与 /private/tmp。
+        // 保留启动参数的字面路径，不能用 realpath 掩盖进程 argv 的所有权差异。
+
         const directory = mkdtempSync(join(temporaryRoot, 'fluentread-owned-close-'));
         roots.push(directory);
         const owner = await actor(directory), port = browserPort(owner.pid, () => nativeExit(owner));

@@ -1068,12 +1068,33 @@
       "docsBuild": "passed"
     },
     "evidence": "final/ci-followup",
-    "latestCi": "Pending push and CI confirmation",
+    "latestCi": "Final Ubuntu CI required before merge; latest result tracked on PR #998",
     "environmentBlockedAttempt": {
       "node": "24.19.0",
       "environment": "default macOS sandbox",
       "result": "Native process tests cannot observe /bin/ps: spawn EPERM; reran intended Node22 scope with required process observation permission",
       "log": "final/ci-followup/ci-fixes-combined-sandbox-blocked.log"
+    },
+    "secondRun": {
+      "url": "https://github.com/FluentRead/FluentRead/actions/runs/38706426065",
+      "commit": "2702ec7839ab8b926d9f1b035008ab040e25c2d1",
+      "testFilesPassed": 471,
+      "testFilesFailed": 1,
+      "testsPassed": 17454,
+      "testsFailed": 1,
+      "testsSkipped": 4,
+      "failure": "The exact-profile path test assumed /private/tmp exists on Linux; mkdtemp failed before its actor or guard ran",
+      "repair": "Enumerate the native temporary root and literal /tmp; retain literal /private/tmp additionally on macOS. Deduplicate spellings without realpath normalization; keep every actual ownership, process exit and profile removal assertion",
+      "scope": "Test fixture portability only; no guard or production source changes",
+      "targetedValidation": {
+        "node": "22.23.2 macOS",
+        "files": 1,
+        "passed": 100,
+        "note": "Native temp-root case added; Linux process behavior remains subject to final Ubuntu CI",
+        "testAudit": "passed",
+        "docsBuild": "passed",
+        "log": "final/ci-followup/ci-process-temp-roots-fixed.log"
+      }
     }
   }
 }
