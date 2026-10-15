@@ -470,5 +470,10 @@
       "unselected": 19,
       "log": "/private/tmp/fluentread-followup-config-history-runner-targeted.log"
     }
+  },
+  "ciFollowup": {
+    "report": "docs/reports/quality-followup-pr993-ci-20261015.json",
+    "sourceCommit": "2d6ee12ee5fe76ecc42ecbbf6288c04037f75b65",
+    "reason": "首次PR CI发现两组旧消息fixture和一个真实失败挂载订阅泄漏；本报告其余字段保留原验证快照，后续修复与新证据见关联报告。"
   }
 }
