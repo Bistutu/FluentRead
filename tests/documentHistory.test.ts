@@ -5,7 +5,7 @@
  * 模块边界：只测试历史存储服务，不挂载页面、不解析文档、不发起翻译。
  */
 import {IDBFactory} from 'fake-indexeddb';
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import {parseDocument, type ParsedDocument, type PdfDocumentBlock, type PdfDocumentLine} from '@/src/features/document-translation/core/document';
 import {createDocumentHistory, documentHistoryId, restoreDocumentHistoryPdfOcr, restoreDocumentHistoryRevisions, restoreDocumentHistoryTranslations, DOCUMENT_HISTORY_MAX_BYTES, DOCUMENT_HISTORY_MAX_ENTRIES, type DocumentHistoryRecord} from '@/src/features/document-translation/services/history';
 
@@ -478,12 +478,21 @@ describe('document history storage', () => {
         // 被其他标签页占用：打开请求被阻塞或一直没有结果，都在时限内退化为空结果，之后可以恢复。
         const blockedFactory = {open: () => {const pending = {} as unknown as IDBOpenDBRequest; queueMicrotask(() => pending.onblocked?.(new Event('blocked') as IDBVersionChangeEvent)); return pending;}} as unknown as IDBFactory;
         expect(await createDocumentHistory(blockedFactory).list()).toEqual([]);
-        let silent = true; const later = new IDBFactory();
-        const hanging = createDocumentHistory({open: (name: string, version?: number) => silent ? {} as IDBOpenDBRequest : later.open(name, version)} as unknown as IDBFactory, 20);
-        const started = Date.now();
-        expect(await hanging.load('a')).toBeNull(); expect(await hanging.save(record('a', 1))).toBe(false); expect(Date.now() - started).toBeLessThan(1000);
-        silent = false;
-        expect(await hanging.save(record('a', 1))).toBe(true); expect((await hanging.list()).map(entry => entry.id)).toEqual(['a']);
+        // 只控制超时计时器；fake-indexeddb 仍通过真实任务执行事务，恢复成功不依赖机器恰好空闲20ms。
+        vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+        try {
+            let silent = true; const later = new IDBFactory();
+            const hanging = createDocumentHistory({open: (name: string, version?: number) => silent ? {} as IDBOpenDBRequest : later.open(name, version)} as unknown as IDBFactory, 20);
+            let settled = false;
+            const loading = hanging.load('a').then(value => {settled = true; return value;});
+            await vi.advanceTimersByTimeAsync(19); expect(settled).toBe(false);
+            await vi.advanceTimersByTimeAsync(1); expect(await loading).toBeNull();
+            const saving = hanging.save(record('a', 1));
+            await vi.advanceTimersByTimeAsync(20); expect(await saving).toBe(false);
+            silent = false;
+            expect(await hanging.save(record('a', 1))).toBe(true); expect((await hanging.list()).map(entry => entry.id)).toEqual(['a']);
+            expect(vi.getTimerCount()).toBe(0);
+        } finally {vi.useRealTimers();}
         const broken = createDocumentHistory({open: () => {throw new Error('unavailable');}} as unknown as IDBFactory);
         expect(await broken.list()).toEqual([]); expect(await broken.load('a')).toBeNull();
     });
