@@ -553,6 +553,7 @@ describe('进度面板组件实时订阅与显隐', () => {
       if (id === 'vue') return {...vue, onMounted: (fn: () => void) => mounted.push(fn), onBeforeUnmount: (fn: () => void) => unmount.push(fn)};
       if (id.endsWith('/progress')) return progressApi;
       if (id === './progressPanelVisibility') return {createProgressPanelVisibility};
+      if (id === '@/src/platform/dom/visualViewport') return {getSafeVisualViewportRect: () => ({left: 0, top: 0, right: 1000, bottom: 800, width: 1000, height: 800}), observeVisualViewport: () => () => {}};
       if (id.endsWith('/site-rules/domain')) return siteDomainApi;
       if (id.endsWith('/store')) return {config, subscribeConfig: (fn: typeof publishConfig) => {publishConfig = fn; return vi.fn();}};
       if (id.endsWith('/i18n')) return {useUiI18n: () => ({t: (key: string) => key})};
@@ -786,6 +787,7 @@ describe('进度面板稳定 key 的完整 DOM 与真实 i18n 生命周期', () 
         if (id === 'vue') return {...vue, Transition: TransitionPort};
         if (id === '@/src/features/full-page-translation/progress') return progressApi;
         if (id === './progressPanelVisibility') return {createProgressPanelVisibility};
+        if (id === '@/src/platform/dom/visualViewport') return {getSafeVisualViewportRect: () => ({left: 0, top: 0, right: 1000, bottom: 800, width: 1000, height: 800}), observeVisualViewport: () => () => {}};
         if (id === '@/src/services/config/store') return store;
         if (id === '@/src/core/site-rules/domain') return siteDomainApi;
         if (id === '@/src/ui/i18n') return i18n;

@@ -258,7 +258,10 @@ export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration:
     display.append(createModeGroup(language), createTimingRow(language));
     const actions = createTextElement('div', 'fluent-read-video-menu-section fluent-read-video-menu-actions', '');
     actions.append(createDownloadActions(language), createDownloadStatus());
-    main.append(display, actions);
+    const nativeHint = keyedText('p', 'fluent-read-video-menu-source-hint fluent-read-video-native-fullscreen-hint', 'video.nativeFullscreenHint', language);
+    nativeHint.dataset.nativeFullscreenHint = 'true';
+    nativeHint.hidden = true;
+    main.append(display, actions, nativeHint);
     menu.appendChild(main);
     return menu;
 }

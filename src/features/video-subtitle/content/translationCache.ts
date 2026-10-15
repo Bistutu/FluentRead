@@ -13,10 +13,14 @@ export class VideoTranslationCache {
   private readonly videoTranslationFailures = new Map<string, {attempts: number; retryAt: number}>();
   private readonly translationScheduler: VideoTranslationScheduler;
   private pretranslationCacheVersion = 0;
+  private visibleRevision = 0;
+  /** 原生字幕轨只在成功缓存变化时重建完整时间轴。 */
+  get revision(): number { return this.visibleRevision; }
   constructor(translate: (text: string, signal: AbortSignal) => Promise<string>) {
     this.translationScheduler = new VideoTranslationScheduler(translate);
   }
   clear(): void {
+    if (this.translatedVideoCache.size) this.visibleRevision += 1;
     this.translatedVideoCache.clear();
     this.cancelPending();
   }
@@ -79,6 +83,7 @@ export class VideoTranslationCache {
         if (requestVersion === this.pretranslationCacheVersion) {
           this.videoTranslationFailures.delete(key);
           this.translatedVideoCache.set(key, result);
+          this.visibleRevision += 1;
           if (this.translatedVideoCache.size > 160) {
             const oldestKey = this.translatedVideoCache.keys().next().value;
             if (oldestKey) this.translatedVideoCache.delete(oldestKey);

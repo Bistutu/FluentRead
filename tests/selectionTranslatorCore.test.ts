@@ -311,6 +311,12 @@ describe('selection translator core geometry', () => {
         });
     });
 
+    it('uses a panned visual viewport origin when keyboard or zoom changes the visible region', () => {
+        expect(calculateSelectionPopupPosition({top: 120, bottom: 144, left: 20, right: 100, width: 80, height: 24},
+            {width: 280, height: 160}, {left: 80, top: 100, width: 320, height: 300}))
+            .toEqual({left: 92, top: 154, placement: 'bottom'});
+    });
+
     it('reserves the reading viewport before a streamed answer grows and keeps its anchor side', () => {
         const anchor = {top: 720, right: 970, bottom: 744, left: 940, width: 30, height: 24};
         const layout = calculateReadingPopupLayout(anchor, {width: 1200, height: 900});

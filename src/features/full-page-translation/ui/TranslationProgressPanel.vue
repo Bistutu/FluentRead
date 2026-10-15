@@ -1,7 +1,7 @@
 <!--
  * @file src/features/full-page-translation/ui/TranslationProgressPanel.vue
  * 文件职责：以半透明工作面板和低存在感状态勾选展示全文翻译进度，并允许用户临时收起，同时跟随扩展主题与系统深浅色偏好。
- * 主要内容：组件订阅实时进度和配置更新，通过展示控制器延迟短任务的展开并等待连续空闲后收起；失败时保留完成/失败摘要和局部重试入口；弹窗等待时保留静态提示，仅剩离屏候选且悬浮球关闭或被站点名单隐藏时退化为淡勾选。
+ * 主要内容：组件订阅实时进度和配置更新，通过展示控制器延迟短任务的展开并等待连续空闲后收起；失败时保留完成/失败摘要和局部重试入口；按可视视口与安全区保持工作面板和触摸操作在软键盘上方，后台恢复后重新定位并在卸载时释放视口监听；弹窗等待时保留静态提示，仅剩离屏候选且悬浮球关闭或被站点名单隐藏时退化为淡勾选。
  * 模块边界：组件通过会话限定端口请求失败重试或定位，不直接发出翻译请求，也不保存业务进度；数据只来自 progress.ts，是否创建 Shadow UI 由 content/progressPanel.ts 决定，样式局限于组件作用域。
  -->
 <template>
@@ -9,6 +9,7 @@
     <aside
       v-if="isVisible"
       class="fr-translation-progress"
+      :style="viewportStyle"
       :class="{ 'fr-dark': isDark, 'fr-static': !animationsEnabled, 'fr-modal-waiting': isModalWaiting, 'fr-compact': isCompact, 'fr-failed': hasFailures, 'fr-idle': progress.running === 0 && progress.queued === 0 }"
       :data-session-id="progress.sessionId"
       :data-running="progress.running"
@@ -94,6 +95,7 @@ import {config, subscribeConfig} from '@/src/services/config/store';
 import {isFloatingBallDisabledOnSite} from '@/src/core/site-rules/domain';
 import {useUiI18n} from '@/src/ui/i18n';
 import {createProgressPanelVisibility, type ProgressPanelDisplayMode} from './progressPanelVisibility';
+import {getSafeVisualViewportRect, observeVisualViewport} from '@/src/platform/dom/visualViewport';
 
 const progress = ref(getFullPageTranslationProgress());
 const dismissedSessionId = ref<number | null>(null);
@@ -110,6 +112,18 @@ const {t} = useUiI18n();
 
 let unsubscribeProgress: (() => void) | null = null;
 let unsubscribeConfig: (() => void) | null = null;
+let unsubscribeViewport: (() => void) | null = null;
+const viewport = ref(getSafeVisualViewportRect());
+const viewportStyle = computed(() => {
+  const bounds = viewport.value;
+  const gap = bounds.width <= 420 ? 10 : 16;
+  return {
+    right: `${Math.max(0, window.innerWidth - bounds.right) + gap}px`,
+    bottom: `${Math.max(0, window.innerHeight - bounds.bottom) + gap}px`,
+    maxWidth: `${Math.max(1, bounds.width - gap * 2)}px`,
+    maxHeight: `${Math.max(1, bounds.height - gap * 2)}px`,
+  };
+});
 
 const isDark = computed(() => configuredTheme.value === 'dark' || (
   configuredTheme.value === 'auto' && prefersDark.value
@@ -156,6 +170,7 @@ function dismiss(): void {
 }
 
 onMounted(() => {
+  unsubscribeViewport = observeVisualViewport(() => {viewport.value = getSafeVisualViewportRect();});
   updatePreferredTheme();
   darkModeMediaQuery.addEventListener('change', updatePreferredTheme);
   unsubscribeProgress = subscribeFullPageTranslationProgress((nextProgress) => {
@@ -169,6 +184,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  unsubscribeViewport?.();
+  unsubscribeViewport = null;
   visibility.dispose();
   darkModeMediaQuery.removeEventListener('change', updatePreferredTheme);
   unsubscribeProgress?.();
@@ -180,11 +197,14 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .fr-translation-progress {
+  box-sizing: border-box;
   position: fixed;
   right: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
   z-index: 2147483645;
   display: grid;
+  overflow: auto;
+  overscroll-behavior: contain;
   grid-template-columns: 34px minmax(0, 1fr) 28px;
   gap: 10px;
   align-items: center;
@@ -430,6 +450,13 @@ onBeforeUnmount(() => {
     bottom: max(10px, env(safe-area-inset-bottom));
     width: min(270px, calc(100vw - 20px));
   }
+}
+
+@media (any-pointer: coarse), (max-width: 420px) {
+  .fr-translation-progress:not(.fr-compact) { grid-template-columns: 34px minmax(0, 1fr) 44px; }
+  .fr-progress-dismiss { width:44px; height:44px; align-self:start; touch-action:manipulation; }
+  .fr-progress-action { min-width:44px; min-height:44px; touch-action:manipulation; }
+  .fr-progress-counts { flex-wrap:wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

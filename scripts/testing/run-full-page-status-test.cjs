@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
-const {guardBrowserClose} = require('./owned-browser-close.cjs');
+const {guardBrowserClose, getGuardedBrowserPid} = require('./owned-browser-close.cjs');
 const {assertFreshProductionExtension} = require('../run-site-translation-test.cjs');
 const {patchStoredConfig} = require('../run-selection-trigger-test.cjs');
 const {readFloatingUiState} = require('../run-full-page-translation-test.cjs');
@@ -26,9 +26,22 @@ const helper = require(arg('focus-safe-helper'));
 assert.ok(!process.argv.includes('--headed'), '本专项仅允许后台隔离测试');
 fs.mkdirSync(output, {recursive: true});
 const report = {ok: false, scope: 'Production extension, controlled page and provider responses; full-page status, UI hiding and cancellation', cases: [], errors: [], screenshots: []};
-const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-full-page-status-'));
-let launched;
+let profileDir;
+let launched, focusMonitor, browserPid, focusFailure, focusTimer;
+let cleanupStarted = false, browserLaunchStarted = false;
 const timeout = 30000;
+function failFocus(error) {
+  focusFailure ||= error;
+  report.ok = false; report.focusError = String(focusFailure.stack || focusFailure);
+  if (!cleanupStarted) void launched?.close().catch(closeError => {report.asynchronousCloseError = String(closeError);});
+}
+async function checkFocus() {
+  if (focusFailure) throw focusFailure;
+  if (focusMonitor.error) throw focusMonitor.error;
+  const front = await helper.queryMacFrontmostApplication();
+  (report.focusSamples ||= []).push({at: Date.now(), name: front?.name, pid: front?.pid});
+  assert(front && front.pid !== browserPid, 'Owned status browser must stay outside foreground');
+}
 
 function find(node, predicate) {
   if (!node) return null;
@@ -58,6 +71,7 @@ async function waitStatus(page, predicate, label) {
   const deadline = Date.now() + timeout;
   let value;
   do {
+    if (focusFailure) throw focusFailure;
     value = await status(page);
     if (predicate(value)) {report.cases.push({label, ...value}); return value;}
     await page.waitForTimeout(75);
@@ -68,6 +82,14 @@ async function waitStatus(page, predicate, label) {
 (async () => {
   try {
     assertFreshProductionExtension(extensionDir);
+    profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-full-page-status-'));
+    report.profileMode = 'temporary-isolated';
+    assert.equal(typeof helper.startFocusEventMonitor, 'function');
+    focusMonitor = helper.startFocusEventMonitor({onEvent(event) {
+      if (!cleanupStarted && browserPid && event.pid === browserPid) failFocus(new Error('Owned status browser activated during native focus observation'));
+    }, onError: error => {if (!cleanupStarted) failFocus(error);}});
+    report.focusObserver = await focusMonitor.ready;
+    browserLaunchStarted = true;
     launched = await helper.launchFocusSafePersistentContext({chromium, profileDir,
       browserPath: '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
       background: true, headless: false, displayTarget: 'secondary', viewport: {width: 1100, height: 800},
@@ -75,7 +97,17 @@ async function waitStatus(page, predicate, label) {
     guardBrowserClose(launched, profileDir);
     Object.assign(report, {launchMode: launched.launchMode, focusPolicy: launched.focusPolicy, windowPlacement: launched.windowPlacement});
     assert.equal(launched.launchMode, 'macos-background-cdp');
+    assert.equal(launched.focusPolicy, 'launchservices-no-foreground');
+    assert.equal(launched.windowPlacement.mode, 'background-visible-no-focus');
     assert.equal(launched.windowPlacement.browserFrontmost, false);
+    browserPid = await getGuardedBrowserPid(launched); report.browserPid = browserPid;
+    assert(!focusMonitor.events.some(event => event.pid === browserPid), 'Owned browser must not activate during launch');
+    await checkFocus();
+    let checkingFocus = false;
+    focusTimer = setInterval(() => {
+      if (checkingFocus || cleanupStarted) return;
+      checkingFocus = true; void checkFocus().catch(failFocus).finally(() => {checkingFocus = false;});
+    }, 500);
     const context = launched.context;
     const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
     await worker.evaluate(() => {
@@ -188,24 +220,39 @@ async function waitStatus(page, predicate, label) {
       return {left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
         viewportWidth: innerWidth, viewportHeight: innerHeight,
         dark: node.classList.contains('fr-dark'), text: node.textContent,
-        actionsEnabled: [...node.querySelectorAll('.fr-progress-action')].every(button => !button.disabled)};
+        actionsEnabled: [...node.querySelectorAll('.fr-progress-action')].every(button => !button.disabled),
+        targets: [...node.querySelectorAll('button')].map(button => {
+          const box = button.getBoundingClientRect(); return {label: button.textContent.trim() || button.getAttribute('aria-label'), width: box.width, height: box.height};
+        })};
     });
     assert.ok(narrowPanel.dark && narrowPanel.actionsEnabled);
     assert.ok(narrowPanel.left >= 0 && narrowPanel.right <= narrowPanel.viewportWidth + 1 &&
       narrowPanel.top >= 0 && narrowPanel.bottom <= narrowPanel.viewportHeight + 1, JSON.stringify(narrowPanel));
     assert.match(narrowPanel.text, /retry/i);
+    assert.ok(narrowPanel.targets.every(target => target.width >= 44 && target.height >= 44), JSON.stringify(narrowPanel.targets));
     report.cases.push({label: 'narrow dark English failure panel fits viewport', ...narrowPanel});
     await screenshot('narrow-failure');
     await toggle();
     await page.waitForFunction(() => !document.querySelector('.fluent-read-bilingual-content, .fluent-read-loading, .fluent-read-retry-wrapper'));
     assert.equal(await page.locator('main').textContent(), 'The first paragraph stays readable while translation is running.The second paragraph keeps its original host element and text.The third paragraph checks recovery after a failed request.');
     assert.deepEqual(report.errors, []);
+    await checkFocus();
     report.ok = true;
-  } catch (error) {report.failure = error.stack || String(error); process.exitCode = 1;}
+  } catch (error) {report.failure = (focusFailure || error).stack || String(focusFailure || error); process.exitCode = 1;}
   finally {
+    cleanupStarted = true; clearInterval(focusTimer);
     if (launched) {
       try {await launched.close(); await fs.promises.rm(profileDir, {recursive: true, force: true, maxRetries: 10, retryDelay: 150});}
-      catch (error) {report.ok = false; report.cleanupError = String(error); process.exitCode = 1;}
+      catch (error) {report.ok = false; report.cleanupError = String(error); report.retainedProfile = profileDir; process.exitCode = 1;}
+    }
+    else if (profileDir) {
+      if (!browserLaunchStarted) fs.rmSync(profileDir, {recursive: true, force: true});
+      else report.retainedProfile = profileDir;
+    }
+    if (focusMonitor) {
+      try {await focusMonitor.stop();}
+      catch (error) {report.ok = false; report.focusObserverCleanupError = String(error); process.exitCode = 1;}
+      report.focusEvents = [...focusMonitor.events];
     }
     fs.writeFileSync(path.join(output, 'report.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify({ok: report.ok, cases: report.cases.length, output, failure: report.failure, cleanupError: report.cleanupError}));

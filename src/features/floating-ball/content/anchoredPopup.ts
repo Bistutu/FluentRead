@@ -4,6 +4,8 @@
  * 主要内容：通过注入的消息端口领取一次性凭据，仅向指定 iframe 传递 MessagePort；完成内容尺寸协商后显示，按视口和按钮位置避让，清理关闭后的资源。
  * 模块边界：不读取用户配置、不复制 Popup 内容、不执行翻译；Popup 自身负责界面，后台负责页面来源授权，调用方负责可信用户事件与宿主生命周期。
  */
+import {getSafeVisualViewportRect, observeVisualViewport} from '@/src/platform/dom/visualViewport';
+
 export interface AnchoredPopupPorts {
     getUrl(): string;
     request(): Promise<{success?: boolean; token?: string; error?: string}>;
@@ -12,7 +14,10 @@ export interface AnchoredPopupPorts {
 
 /** 面板向屏幕内侧展开并比按钮上移 24px；横向放不下时改用按钮上方或下方，保留按钮关闭入口。 */
 export function positionAnchoredPopup(anchor: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>,
-    size: {width: number; height: number}, viewport: {width: number; height: number}) {
+    size: {width: number; height: number}, viewport: {width: number; height: number; left?: number; top?: number}) {
+    const offsetLeft = viewport.left ?? 0, offsetTop = viewport.top ?? 0;
+    anchor = {left: anchor.left - offsetLeft, right: anchor.right - offsetLeft,
+        top: anchor.top - offsetTop, bottom: anchor.bottom - offsetTop};
     const margin = 8, gap = 12;
     const width = Math.min(size.width, Math.max(1, viewport.width - margin * 2));
     let height = Math.min(size.height, Math.max(1, viewport.height - margin * 2));
@@ -28,7 +33,7 @@ export function positionAnchoredPopup(anchor: Pick<DOMRect, 'left' | 'right' | '
         desiredTop = preferAbove ? anchor.top - gap - height : anchor.bottom + gap;
     }
     const top = Math.max(margin, Math.min(desiredTop, viewport.height - margin - height));
-    return {left, top, width, height};
+    return {left: left + offsetLeft, top: top + offsetTop, width, height};
 }
 
 export function createAnchoredPopup(container: HTMLElement, host: HTMLElement, ports: AnchoredPopupPorts) {
@@ -38,11 +43,12 @@ export function createAnchoredPopup(container: HTMLElement, host: HTMLElement, p
     let timeout: ReturnType<typeof setTimeout> | null = null;
     let size = {width: 320, height: 560};
     let requestedWidth = 320;
+    let stopObservingViewport: (() => void) | undefined;
 
     const place = () => {
         if (!frame || !anchor) return;
         const bounds = positionAnchoredPopup(anchor.getBoundingClientRect(), size,
-            {width: window.innerWidth, height: window.innerHeight});
+            getSafeVisualViewportRect());
         Object.assign(frame.style, {left: `${bounds.left}px`, top: `${bounds.top}px`,
             width: `${bounds.width}px`, height: `${bounds.height}px`});
         return bounds;
@@ -68,7 +74,8 @@ export function createAnchoredPopup(container: HTMLElement, host: HTMLElement, p
         frame = null;
         window.removeEventListener('pointerdown', outside, true);
         window.removeEventListener('keydown', keydown, true);
-        window.removeEventListener('resize', reposition);
+        stopObservingViewport?.();
+        stopObservingViewport = undefined;
         window.removeEventListener('pagehide', pagehide);
         ports.onOpenChange(false);
         if (restoreFocus) anchor?.focus({preventScroll: true});
@@ -95,7 +102,7 @@ export function createAnchoredPopup(container: HTMLElement, host: HTMLElement, p
             ports.onOpenChange(true);
             window.addEventListener('pointerdown', outside, true);
             window.addEventListener('keydown', keydown, true);
-            window.addEventListener('resize', reposition);
+            stopObservingViewport = observeVisualViewport(reposition);
             window.addEventListener('pagehide', pagehide);
             timeout = setTimeout(() => close(), 15_000);
             try {

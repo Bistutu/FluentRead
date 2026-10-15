@@ -45,6 +45,7 @@ type VerificationOwner =
     | 'strict-v8-coverage'
     | 'test-infrastructure-contract'
     | 'thunderbird-build'
+    | 'safari-build'
     | 'userscript-build';
 
 interface OwnedFile {
@@ -123,6 +124,7 @@ function verificationOwners(path: string, strictCoverage: Set<string>): Verifica
     // 步骤 3：各自独立的发布出口和测试基础设施由对应流水线负责。
     if (path.startsWith('userscript/')) owners.add('userscript-build');
     if (path.startsWith('scripts/thunderbird/')) owners.add('thunderbird-build');
+    if (path.startsWith('scripts/safari/')) owners.add('safari-build');
     if (path === 'src/services/config/store.ts') owners.add('config-storage-functional');
     if (path === 'src/features/document-translation/ui/pdfPreview.ts') owners.add('document-browser-functional');
     if (path === 'src/features/full-page-translation/content/state.ts') owners.add('full-page-state-functional');

@@ -1,7 +1,7 @@
 /**
  * @file userscript/languageBundles.ts
  * 文件职责：在构建期保留 userscript 可呈现的界面文案，维持已发布语言资源的固定内容。
- * 主要内容：剔除没有扩展 popup 和本地模型后端的信息高亮文案、没有原生右键菜单发送者的操作失败通知，以及没有视频字幕运行时的完整句学习文案、扩展 Popup 专用缩写和新增文档页的配置读取、进度、续译与旧校订文案；已发布远程词典中的旧文档键保留原内容。脚本内联动态模块与样式，五种固定远程词典不新增扩展分块加载失败、AI 翻译超时或 DeepLX 直连文案，注册时由脚本补齐；局部划选同样在注册时更新文案，远端词典保留此前的点选提示；中英内嵌词典保留可用页面的新文案。
+ * 主要内容：剔除没有扩展 popup 和本地模型后端的信息高亮文案、没有原生右键菜单发送者的操作失败通知，以及没有视频字幕运行时的完整句学习及原生全屏提示文案、扩展 Popup 专用缩写和新增文档页的配置读取、进度、续译与旧校订文案；已发布远程词典中的旧文档键保留原内容。脚本内联动态模块与样式，五种固定远程词典不新增扩展分块加载失败、AI 翻译超时或 DeepLX 直连文案，注册时由脚本补齐；局部划选同样在注册时更新文案，远端词典保留此前的点选提示；中英内嵌词典保留可用页面的新文案。
  * 模块边界：只投影静态字典，不改变扩展词典、资源提交号或运行时语言装载协议。
  */
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '../src/core/i18n/bundles';
@@ -46,6 +46,7 @@ const publishedDeepLXEndpointHelp: Readonly<Record<string, string>> = {
 export function userscriptMessages<T extends Record<string, string>>(messages: T): T {
     return Object.fromEntries(Object.entries(messages).filter(([key]) => !key.startsWith('informationHighlight.')
         && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.')
+        && key !== 'video.nativeFullscreenHint'
         && !key.startsWith('popup.compact.') && !key.startsWith('document.config.')
         && !key.startsWith('document.translationRecovery.')
         && !key.startsWith('document.retainedRevisions.') && !key.startsWith('document.translationProgress.'))) as T;

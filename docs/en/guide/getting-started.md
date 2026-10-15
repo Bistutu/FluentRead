@@ -75,3 +75,5 @@ If translation does not start, make sure the extension is enabled and refresh a 
 - [Webpage translation](/en/guide/webpage-translation)
 - [Appearance & reading aids](/en/config/appearance)
 - [Translation providers](/en/config/translation-engines)
+
+For mobile and Safari installation, updates, touch controls, and video fullscreen limitations, see [Mobile & Safari](./mobile-safari).

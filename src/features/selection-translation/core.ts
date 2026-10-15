@@ -26,6 +26,8 @@ export interface PopupSize {
 export interface ViewportSize {
     width: number;
     height: number;
+    left?: number;
+    top?: number;
 }
 
 export interface PopupPosition {
@@ -436,16 +438,20 @@ export function calculateSelectionPopupPosition(
     padding = DEFAULT_PADDING,
     gap = DEFAULT_GAP,
 ): PopupPosition {
-    const maxLeft = Math.max(padding, viewport.width - popup.width - padding);
-    const left = clamp(anchor.left, padding, maxLeft);
-    const fitsAbove = anchor.top - popup.height - gap >= padding;
+    const viewportLeft = viewport.left ?? 0;
+    const viewportTop = viewport.top ?? 0;
+    const minLeft = viewportLeft + padding;
+    const minTop = viewportTop + padding;
+    const maxLeft = Math.max(minLeft, viewportLeft + viewport.width - popup.width - padding);
+    const left = clamp(anchor.left, minLeft, maxLeft);
+    const fitsAbove = anchor.top - popup.height - gap >= minTop;
     const placement = fitsAbove ? 'top' : 'bottom';
     const rawTop = fitsAbove ? anchor.top - popup.height - gap : anchor.bottom + gap;
-    const maxTop = Math.max(padding, viewport.height - popup.height - padding);
+    const maxTop = Math.max(minTop, viewportTop + viewport.height - popup.height - padding);
 
     return {
         left,
-        top: clamp(rawTop, padding, maxTop),
+        top: clamp(rawTop, minTop, maxTop),
         placement,
     };
 }

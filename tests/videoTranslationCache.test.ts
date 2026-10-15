@@ -18,13 +18,17 @@ describe('VideoTranslationCache', () => {
     const translate = vi.fn(async () => '同步译文');
     const cache = new VideoTranslationCache(translate);
     expect(cache.peek('Hello world')).toBeUndefined();
+    expect(cache.revision).toBe(0);
     await cache.request(' Hello   world ', true);
     expect(cache.peek('Hello\nworld')).toBe('同步译文');
+    expect(cache.revision).toBe(1);
     cache.cancelPending();
     expect(cache.peek(' Hello world ')).toBe('同步译文');
+    expect(cache.revision).toBe(1);
     expect(translate).toHaveBeenCalledOnce();
     cache.clear();
     expect(cache.peek('Hello world')).toBeUndefined();
+    expect(cache.revision).toBe(2);
   });
 
   it('取消过期预取不算失败，同文回到窗口后可以立即重新请求', async () => {

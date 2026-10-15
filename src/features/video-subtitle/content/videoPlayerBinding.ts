@@ -292,6 +292,7 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
   };
 
   document.addEventListener('pointerover', onPointerOver, true);
+  document.addEventListener('pointerdown', onPointerOver, true);
   document.addEventListener('pointerout', onPointerOut, true);
   document.addEventListener('focusin', onFocusIn, true);
   document.addEventListener('focusout', onFocusOut, true);
@@ -338,6 +339,7 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
       unsubscribe();
       controlsObserver?.disconnect();
       document.removeEventListener('pointerover', onPointerOver, true);
+      document.removeEventListener('pointerdown', onPointerOver, true);
       document.removeEventListener('pointerout', onPointerOut, true);
       document.removeEventListener('focusin', onFocusIn, true);
       document.removeEventListener('focusout', onFocusOut, true);

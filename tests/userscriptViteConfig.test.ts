@@ -269,7 +269,7 @@ describe('userscript browser shim injection', () => {
             expect(bundle.legacyText).toBe(original.legacyText);
             expect(bundle.legacyPatterns).toBe(original.legacyPatterns);
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
-                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && !key.startsWith('popup.compact.')
+                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.')
                 && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
                 && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !registeredSupplementKeys.includes(key))));
             if (language !== 'en-US') for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
@@ -323,6 +323,8 @@ describe('userscript browser shim injection', () => {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
+        expect(extension['video.nativeFullscreenHint']).toBeTruthy();
+        expect(Object.hasOwn(projected, 'video.nativeFullscreenHint')).toBe(false);
         expect(extension['document.config.loadFailed']).toBeTruthy();
         const readerRecoveryKeys = Object.keys(extension).filter(key => key.startsWith('document.config.') || key.startsWith('document.translationRecovery.')
             || key.startsWith('document.retainedRevisions.') || key.startsWith('document.translationProgress.'));
@@ -333,6 +335,7 @@ describe('userscript browser shim injection', () => {
         }
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
             && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
+            && key !== 'video.nativeFullscreenHint'
             && key !== 'popup.compact.translate' && key !== 'popup.compact.restore'
             && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)));
         expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
