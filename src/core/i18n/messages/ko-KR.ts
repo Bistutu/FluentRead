@@ -6,6 +6,7 @@
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/ko-KR.json';
+import selfHelpText from './self-help/ko-KR.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
 import {pdfReadingMessages} from './pdfReading';
@@ -29,6 +30,7 @@ export const koKRMessages = {
     "popup.compact.translate": "번역",
     "popup.compact.restore": "복원",
     ...videoLearningText,
+    ...selfHelpText,
     ...compositeTranslationMessages['ko-KR'],
     ...pdfReadingMessages['ko-KR'],
     ...informationHighlightMessages['ko-KR'],
