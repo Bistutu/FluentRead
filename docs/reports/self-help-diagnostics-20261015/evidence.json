@@ -1256,5 +1256,125 @@
       }
     ],
     "docsBuild": "pending after this documentation update"
+  },
+  "compactNoticeRevision": {
+    "revisionBase": "2f8f510dbd568c99bbdc07991f2a14546c7ff0fa",
+    "defaultPresentation": "Inline short reason and one primary recovery action; details, secondary actions and report controls mount only on explicit disclosure.",
+    "productionPackage": {
+      "sha256": "e15c6296a6091a6a9eb1db781e714b213a95dff2040d9cda9d69b2a554bd9e6c",
+      "files": 474,
+      "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256",
+      "unchangedAfterRun": true
+    },
+    "strict": {
+      "files": 3,
+      "passed": 164,
+      "module": "src/services/diagnostics/index.ts",
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "mainUi": {
+      "report": "ui-compact-notice/report.json",
+      "ok": true,
+      "cases": 22,
+      "screenshots": 19,
+      "refreshRounds": 3,
+      "defaultNoticeHeights": [
+        24
+      ],
+      "consoleErrors": [],
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 302,
+          "top": -965,
+          "width": 1100,
+          "height": 850
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false,
+        "frontmostBefore": {
+          "pid": 49648,
+          "name": "Google Chrome"
+        },
+        "frontmostAfter": {
+          "pid": 49648,
+          "name": "Google Chrome"
+        }
+      }
+    },
+    "screenshots": [
+      {
+        "file": "compact-default.png",
+        "source": "compact-notice-ui/zh-320-light-auth-hero.png",
+        "sha256": "70137f28707b4e8df7ea176e1edd7db899270f5308aa3b08a1287bf71d87538d",
+        "privacy": "Only product UI; no report, credentials, URL or page text."
+      },
+      {
+        "file": "compact-dark.png",
+        "source": "compact-notice-ui/02-zh-CN-dark-320.png",
+        "sha256": "3834eb9d412b88e1125cd8952338aa7b2214e03ad39263815f1eac150c514a1d",
+        "privacy": "Only product UI; no report, credentials, URL or page text."
+      },
+      {
+        "file": "compact-french.png",
+        "source": "compact-notice-ui/02-fr-FR-light-380.png",
+        "sha256": "4fada3f71406df06fe8ba8cdad8b90fc3bf667e6a6fb5eceb2e2c6014502dcd6",
+        "privacy": "Only product UI; no report, credentials, URL or page text."
+      }
+    ],
+    "limitations": [
+      "Local synthetic HTTP fixtures; no new live provider validation.",
+      "Existing native popup widths retained: zh/ja/ko 320px; en/fr/ru/es 380px.",
+      "No new Firefox/Safari runtime, physical device or screen-reader acceptance."
+    ],
+    "nativeUi": {
+      "report": "compact-notice-ui/report.json",
+      "ok": true,
+      "cases": 9,
+      "screenshots": 32,
+      "actualKeyboardEvents": 69,
+      "nativeMatrixSamples": 20,
+      "allCollapsedHeightsPx": [
+        24
+      ],
+      "nativePopupWidths": {
+        "zh-CN": 320,
+        "en-US": 380,
+        "ja-JP": 320,
+        "ko-KR": 320,
+        "fr-FR": 380,
+        "ru-RU": 380,
+        "es-ES": 380
+      },
+      "noCssInjection": true,
+      "pageErrors": [],
+      "consoleErrors": [],
+      "cleanupConfirmed": true,
+      "profileRemoved": true,
+      "snapshotRemoved": true,
+      "productionSnapshot": {
+        "files": 474,
+        "sha256": "e15c6296a6091a6a9eb1db781e714b213a95dff2040d9cda9d69b2a554bd9e6c",
+        "algorithm": "sorted [relative path, SHA256(raw file bytes)] JSON, SHA256"
+      },
+      "retryCooldown": {
+        "before": "重试 (8s)",
+        "afterDetailsReopened": "重试 (7s)"
+      },
+      "earlyDriverFailures": "Forced non-CJK 320px viewport against native 380px layout, and expected popup close during successful settings navigation. Both retained separately with guarded cleanup; not counted as passes."
+    }
   }
 }

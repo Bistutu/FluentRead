@@ -34,6 +34,33 @@ async function fitNativePopup(page) {
  const bounds=await page.evaluate(()=>({viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,root:document.documentElement.clientWidth,body:document.body.getBoundingClientRect().width,right:Math.max(...['.popup-header','.hero-card','.fluentread-diagnostic'].flatMap(selector=>[...document.querySelectorAll(selector)].map(el=>el.getBoundingClientRect().right)))}));
  assert.ok(bounds.scrollWidth<=bounds.viewport&&bounds.body<=bounds.viewport&&bounds.right<=bounds.viewport);return bounds;
 }
+function diagnosticNotice(page, code) {
+ return page.locator(code ? `[data-diagnostic-code="${code}"]` : '[data-diagnostic-code]');
+}
+async function assertCollapsedDiagnostic(page, code, label) {
+ const notice=diagnosticNotice(page,code);await notice.waitFor();
+ assert.equal(await notice.locator('[data-diagnostic-details-toggle]').getAttribute('aria-expanded'),'false','Diagnosis details start collapsed');
+ for(const selector of ['[data-diagnostic-details]','.diagnostic-actions','.diagnostic-report'])assert.equal(await notice.locator(selector).count(),0,'Collapsed diagnosis must not mount '+selector);
+ assert.equal(await notice.locator('[data-diagnostic-dismiss]').count(),1);
+ const metrics=await notice.evaluate(el=>{const rect=el.getBoundingClientRect();return {height:rect.height,width:rect.width,summary:el.querySelector('[data-diagnostic-summary]')?.textContent?.trim(),primaryAction:el.querySelector('[data-diagnostic-primary]')?.getAttribute('data-diagnostic-action')};});
+ assert.ok(metrics.summary,'A visible short reason must remain');assert.ok(metrics.primaryAction,'A primary recovery action must remain');
+ assert.ok(metrics.height>0&&metrics.height<=48,'Default diagnosis must fit a compact one/two-line row, not a details card: '+JSON.stringify(metrics));
+ (result.collapsedDiagnosticLayouts ||= {})[label]=metrics;return notice;
+}
+async function openDiagnosticDetails(page, code) {
+ const notice=diagnosticNotice(page,code),toggle=notice.locator('[data-diagnostic-details-toggle]');
+ if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.evaluate(el=>el.click());
+ await notice.locator('[data-diagnostic-details]').waitFor();assert.equal(await toggle.getAttribute('aria-expanded'),'true');return notice;
+}
+async function activateDiagnosticAction(page, action, code) {
+ const notice=diagnosticNotice(page,code),primary=notice.locator(`[data-diagnostic-primary][data-diagnostic-action="${action}"]`);
+ let button=primary;
+ if(!(await primary.count())) {await openDiagnosticDetails(page,code);button=notice.locator(`.diagnostic-actions [data-diagnostic-action="${action}"]`);}
+ assert.equal(await button.count(),1,'Exactly one actual diagnosis action for '+action);assert.equal(await button.isEnabled(),true,'Diagnosis action must be enabled');await button.evaluate(el=>el.click());
+}
+async function previewDiagnostic(page, code) {
+ const notice=await openDiagnosticDetails(page,code);await notice.locator('[data-diagnostic-preview]').evaluate(el=>el.click());await notice.locator('.diagnostic-report pre').waitFor();return notice;
+}
 (async () => {
  try {
   server = http.createServer((req, res) => {
@@ -122,9 +149,9 @@ async function fitNativePopup(page) {
    await source.goto(base + '/article?case=' + testMode);
    await popup.reload();await popup.locator('[data-testid="page-translation"]').waitFor();await click('[data-testid="page-translation"]');
    await popup.locator(`[data-diagnostic-code="${expected}"]`).waitFor({timeout:30000});
-   await shot(popup,'04-' + testMode);record('actual '+testMode+' error classified');
+   await assertCollapsedDiagnostic(popup,expected,testMode);await shot(popup,'04-' + testMode);record('actual '+testMode+' error classified');
    if (testMode === 'auth') {
-    await popup.getByRole('button',{name:'预览诊断'}).evaluate(el=>el.click());
+    await previewDiagnostic(popup,'authentication');
     const report = await popup.locator('.diagnostic-report pre').textContent();
     await popup.locator('.diagnostic-report pre').focus();await popup.keyboard.press('Tab');
     assert.ok(await popup.locator('.diagnostic-report button').evaluate(el=>el===document.activeElement));record('keyboard reaches explicit export action');
@@ -132,7 +159,9 @@ async function fitNativePopup(page) {
     const [file] = await Promise.all([popup.waitForEvent('download'),popup.keyboard.press('Enter')]);await file.saveAs(path.join(out,'diagnostic.json'));record('local preview and explicit keyboard-triggered safe report download');
     result.afterDownloadState = await popup.evaluate(async tabId=>{const s=await chrome.tabs.sendMessage(tabId,{type:'getFullPageTranslationState'},{frameId:0});return {active:s?.isTranslated,status:s?.toolbarStatus,code:s?.diagnostic?.code};},tabId);await shot(popup,'05-report');
     await popup.locator('[data-diagnostic-code="authentication"]').waitFor({timeout:2000});
-    const [settings] = await Promise.all([context.waitForEvent('page'),popup.getByRole('button',{name:'检查翻译服务'}).evaluate(el=>el.click())]);await settings.waitForLoadState();await settings.setViewportSize({width:1100,height:850});
+    await popup.keyboard.press('Escape');await assertCollapsedDiagnostic(popup,'authentication','authentication-after-report');
+    assert.ok(await popup.locator('[data-diagnostic-details-toggle]').evaluate(el=>el===document.activeElement),'Escape must restore focus to the details toggle');
+    const [settings] = await Promise.all([context.waitForEvent('page'),activateDiagnosticAction(popup,'services','authentication')]);await settings.waitForLoadState();await settings.setViewportSize({width:1100,height:850});
     await settings.locator('[data-editing-service="openai"]').waitFor({timeout:30000});
     await settings.locator('.connection-test-button').first().evaluate(el=>el.click());
     await settings.locator('[data-connection-repair][data-diagnostic-code="authentication"]').waitFor({timeout:30000});
@@ -147,16 +176,16 @@ async function fitNativePopup(page) {
     popup = await open(`chrome-extension://${id}/popup.html?sourceTabId=${tabId}`,{width:320,height:600});
    }
   }
-  await popup.emulateMedia({colorScheme:'dark'});await patch(popup,{theme:'dark'});await popup.reload();await popup.locator('[data-diagnostic-code="rate-limit"]').waitFor();await shot(popup,'08-dark-rate');
+  await popup.emulateMedia({colorScheme:'dark'});await patch(popup,{theme:'dark'});await popup.reload();await popup.locator('[data-diagnostic-code="rate-limit"]').waitFor();await assertCollapsedDiagnostic(popup,'rate-limit','rate-dark');await shot(popup,'08-dark-rate');
   for (const failure of ['offline', 'timeout']) {
    mode = failure;await source.goto(base + '/article?case=' + failure);
    await patch(popup,{aiRequestTimeoutMs:10000});await popup.reload();await popup.locator('[data-testid="page-translation"]').waitFor();
    if(failure==='offline')await context.setOffline(true);
    await click('[data-testid="page-translation"]');
    await popup.locator(`[data-diagnostic-code="${failure}"]`).waitFor({timeout:45000});
-   await shot(popup,'09-'+failure);record('actual '+failure+' recovery state');
+   await assertCollapsedDiagnostic(popup,failure,failure);await shot(popup,'09-'+failure);record('actual '+failure+' recovery state');
    await context.setOffline(false);mode = 'success';
-   await popup.locator('[data-diagnostic-code] .diagnostic-actions button').filter({hasText:'重试'}).evaluate(el=>el.click());
+   await activateDiagnosticAction(popup,'retry',failure);
    await popup.locator('.first-use-hint').filter({hasText:'译文已显示'}).waitFor({timeout:30000});record('explicit retry resumes the same page after '+failure);
   }
   mode='hold';await source.goto(base+'/article?case=cancel');await popup.reload();await popup.locator('[data-testid="page-translation"]').waitFor();await click('[data-testid="page-translation"]');
@@ -164,17 +193,16 @@ async function fitNativePopup(page) {
   await click('[data-testid="page-translation"]');await popup.locator('[data-testid="page-translation"][aria-pressed="false"]').waitFor();
   until=Date.now()+3000;while(!closedPending.includes('hold')&&Date.now()<until)await new Promise(r=>setTimeout(r,50));assert.ok(closedPending.includes('hold'),'Restore must abort the pending provider request');record('cancel restores source and aborts in-flight local request');
   mode = 'success';await source.goto(base+'/empty');await popup.reload();await popup.locator('[data-testid="page-translation"]').waitFor();await click('[data-testid="page-translation"]');
-  await popup.locator('[data-diagnostic-code="no-content"]').waitFor({timeout:30000});await shot(popup,'09-no-content');record('no content diagnosis uses completed empty scan');
+  await popup.locator('[data-diagnostic-code="no-content"]').waitFor({timeout:30000});await assertCollapsedDiagnostic(popup,'no-content','no-content');await shot(popup,'09-no-content');record('no content diagnosis uses completed empty scan');
   await popup.close();popup=await open(`chrome-extension://${id}/popup.html?sourceTabId=${tabId}`,{width:320,height:600});await popup.locator('[data-diagnostic-code="no-content"]').waitFor();assert.equal(await popup.locator('.provider-summary-heading strong').textContent(),'OpenAI');record('reopen restores current page diagnosis and selected service');
-  await patch(popup,{service:'openai',uiLanguage:'en-US',theme:'light'});await popup.reload();await popup.locator('[data-diagnostic-code="no-content"]').waitFor();result.localeLayouts={'en-US':await fitNativePopup(popup)};await shot(popup,'10-english');
+  await patch(popup,{service:'openai',uiLanguage:'en-US',theme:'light'});await popup.reload();await popup.locator('[data-diagnostic-code="no-content"]').waitFor();result.localeLayouts={'en-US':await fitNativePopup(popup)};await assertCollapsedDiagnostic(popup,'no-content','en-US');await shot(popup,'10-english');
   if(args.locales==='true') {
-   for(const [locale,title] of [['ja-JP','翻訳できる本文が見つかりません'],['ko-KR','번역할 본문을 찾지 못했습니다'],['fr-FR','Aucun texte à traduire trouvé'],['ru-RU','Текст для перевода не найден'],['es-ES','No se encontró texto para traducir']]) {
+   for(const [locale,title] of [['ja-JP','本文が見つかりません'],['ko-KR','본문을 찾지 못함'],['fr-FR','Aucun texte trouvé'],['ru-RU','Текст не найден'],['es-ES','No se encontró texto']]) {
     await patch(popup,{uiLanguage:locale});await popup.reload();
-    await popup.locator('[data-diagnostic-code="no-content"] strong').filter({hasText:title}).waitFor();
-    assert.equal(await popup.locator('[data-diagnostic-code="no-content"] strong').textContent(),title);
+    await popup.locator('[data-diagnostic-code="no-content"] [data-diagnostic-summary]').filter({hasText:title}).waitFor();
+    assert.equal(await popup.locator('[data-diagnostic-code="no-content"] [data-diagnostic-summary]').textContent(),title);
     result.localeLayouts[locale]=await fitNativePopup(popup);
-    await popup.locator('.diagnostic-actions > button').last().evaluate(el=>el.click());
-    await popup.locator('.diagnostic-report pre').waitFor();
+    await assertCollapsedDiagnostic(popup,'no-content',locale);await previewDiagnostic(popup,'no-content');
     assert.ok(await popup.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await shot(popup,'11-'+locale);record('localized diagnosis and local report preview in '+locale);
    }

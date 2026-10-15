@@ -120,6 +120,72 @@ export function diagnoseFailure(error: unknown, context: DiagnosticContext = {})
 
 type Copy = {title: string; detail: string};
 type DiagnosticLanguage = 'zh' | 'en' | 'ja' | 'ko' | 'fr' | 'ru' | 'es';
+/** 紧凑失败提示只概括已归因的原因；完整解释与恢复建议仍由详情文案提供。 */
+const summaries: Record<DiagnosticLanguage, Record<DiagnosticCode, string>> = {
+  zh: {
+    cancelled: '翻译已取消', offline: '网络未连接', 'no-content': '未找到正文',
+    'unsupported-page': '此页面不支持翻译', 'page-unavailable': '网页翻译暂不可用',
+    'source-closed': '原网页不可用', 'context-invalid': '页面需要刷新',
+    authentication: '服务验证失败', 'model-configuration': '模型不可用',
+    configuration: '服务配置需检查', 'configuration-save': '保存尚未确认',
+    'rate-limit': '服务请求受限', timeout: '翻译超时', network: '服务连接失败',
+    provider: '服务处理失败', unknown: '翻译未完成',
+  },
+  en: {
+    cancelled: 'Translation cancelled', offline: 'Offline', 'no-content': 'No page text found',
+    'unsupported-page': 'Page not supported', 'page-unavailable': 'Page translation unavailable',
+    'source-closed': 'Original page unavailable', 'context-invalid': 'Page refresh required',
+    authentication: 'Service verification failed', 'model-configuration': 'Model unavailable',
+    configuration: 'Check service settings', 'configuration-save': 'Save not confirmed',
+    'rate-limit': 'Service requests limited', timeout: 'Translation timed out', network: 'Service connection failed',
+    provider: 'Service request failed', unknown: 'Translation incomplete',
+  },
+  ja: {
+    cancelled: '翻訳をキャンセルしました', offline: 'ネットワーク未接続', 'no-content': '本文が見つかりません',
+    'unsupported-page': '翻訳に非対応のページ', 'page-unavailable': 'ページ翻訳を利用できません',
+    'source-closed': '元のページを利用できません', 'context-invalid': '再読み込みが必要です',
+    authentication: 'サービス認証に失敗', 'model-configuration': 'モデルを利用できません',
+    configuration: 'サービス設定を要確認', 'configuration-save': '保存を確認できません',
+    'rate-limit': 'サービスのリクエスト制限', timeout: '翻訳がタイムアウト', network: 'サービス接続に失敗',
+    provider: 'サービスの処理に失敗', unknown: '翻訳が未完了',
+  },
+  ko: {
+    cancelled: '번역 취소됨', offline: '네트워크 연결 없음', 'no-content': '본문을 찾지 못함',
+    'unsupported-page': '지원되지 않는 페이지', 'page-unavailable': '페이지 번역 사용 불가',
+    'source-closed': '원래 페이지 사용 불가', 'context-invalid': '페이지 새로고침 필요',
+    authentication: '서비스 인증 실패', 'model-configuration': '모델 사용 불가',
+    configuration: '서비스 설정 확인 필요', 'configuration-save': '저장 확인 불가',
+    'rate-limit': '서비스 요청 제한', timeout: '번역 시간 초과', network: '서비스 연결 실패',
+    provider: '서비스 처리 실패', unknown: '번역 미완료',
+  },
+  fr: {
+    cancelled: 'Traduction annulée', offline: 'Hors ligne', 'no-content': 'Aucun texte trouvé',
+    'unsupported-page': 'Page non prise en charge', 'page-unavailable': 'Traduction de page indisponible',
+    'source-closed': 'Page d’origine indisponible', 'context-invalid': 'Actualisation nécessaire',
+    authentication: 'Échec de vérification du service', 'model-configuration': 'Modèle indisponible',
+    configuration: 'Configuration à vérifier', 'configuration-save': 'Enregistrement non confirmé',
+    'rate-limit': 'Requêtes du service limitées', timeout: 'Délai de traduction dépassé', network: 'Échec de connexion au service',
+    provider: 'Échec du traitement du service', unknown: 'Traduction incomplète',
+  },
+  ru: {
+    cancelled: 'Перевод отменён', offline: 'Нет подключения к сети', 'no-content': 'Текст не найден',
+    'unsupported-page': 'Страница не поддерживается', 'page-unavailable': 'Перевод страницы недоступен',
+    'source-closed': 'Исходная страница недоступна', 'context-invalid': 'Нужно обновить страницу',
+    authentication: 'Ошибка проверки доступа', 'model-configuration': 'Модель недоступна',
+    configuration: 'Проверьте настройки сервиса', 'configuration-save': 'Сохранение не подтверждено',
+    'rate-limit': 'Запросы сервиса ограничены', timeout: 'Время перевода истекло', network: 'Ошибка подключения к сервису',
+    provider: 'Ошибка обработки сервиса', unknown: 'Перевод не завершён',
+  },
+  es: {
+    cancelled: 'Traducción cancelada', offline: 'Sin conexión', 'no-content': 'No se encontró texto',
+    'unsupported-page': 'Página no compatible', 'page-unavailable': 'Traducción de página no disponible',
+    'source-closed': 'Página original no disponible', 'context-invalid': 'Es necesario recargar',
+    authentication: 'Falló la verificación del servicio', 'model-configuration': 'Modelo no disponible',
+    configuration: 'Revisa los ajustes del servicio', 'configuration-save': 'Guardado sin confirmar',
+    'rate-limit': 'Solicitudes del servicio limitadas', timeout: 'Tiempo de traducción agotado', network: 'Falló la conexión al servicio',
+    provider: 'Falló el procesamiento del servicio', unknown: 'Traducción incompleta',
+  },
+};
 const text: Record<DiagnosticLanguage, Record<DiagnosticCode, Copy>> = {
   zh: {
     cancelled: {title: '翻译已取消', detail: '原文和当前设置已保留。准备好后可以再次翻译。'},
@@ -264,13 +330,19 @@ function language(locale: string): DiagnosticLanguage {
 export function getDiagnosticText(diagnostic: Pick<Diagnostic, 'code'>, locale = 'zh-CN'): Copy {
   return {...text[language(locale)][diagnostic.code]};
 }
+export function getDiagnosticSummary(diagnostic: Pick<Diagnostic, 'code'>, locale = 'zh-CN'): string {
+  return summaries[language(locale)][diagnostic.code];
+}
 export function getDiagnosticActionLabel(action: DiagnosticAction, locale = 'zh-CN'): string {
   return labels[language(locale)][action];
 }
 
-export type DiagnosticUiTextKey = "preview" | "report" | "privacy" | "export" | "exportFailed" | "first-use-start" | "first-use-translating" | "first-use-ready" | "refresh-failed" | "source-closed" | "source-looking" | "source-return" | "source-unavailable" | "source-returned" | "source-return-hint";
+export type DiagnosticUiTextKey = "details" | "service-action" | "site-action" | "preview" | "report" | "privacy" | "export" | "exportFailed" | "first-use-start" | "first-use-translating" | "first-use-ready" | "refresh-failed" | "source-closed" | "source-looking" | "source-return" | "source-unavailable" | "source-returned" | "source-return-hint";
 const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = {
   zh: {
+    "details": "查看详情",
+    "service-action": "检查服务",
+    "site-action": "检查范围",
     "refresh-failed": "无法刷新网页，请手动刷新后重试。",
     "source-closed": "原网页已关闭，请重新打开网页。",
     "source-looking": "正在查找原网页…",
@@ -288,6 +360,9 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "译文已显示。下次也可选中文字，或用快捷键翻译段落。",
   },
   en: {
+    "details": "View details",
+    "service-action": "Check service",
+    "site-action": "Check scope",
     "refresh-failed": "Could not reload the page. Reload it manually and try again.",
     "source-closed": "The original page is closed. Open it again.",
     "source-looking": "Finding your page…",
@@ -305,6 +380,9 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "Translation is ready. You can also select text or use the paragraph shortcut.",
   },
   ja: {
+    "details": "詳細を表示",
+    "service-action": "サービスを確認",
+    "site-action": "範囲を確認",
     "refresh-failed": "ページを再読み込みできませんでした。手動で再読み込みしてから再試行してください。",
     "source-closed": "元のページは閉じられています。もう一度開いてください。",
     "source-looking": "元のページを探しています…",
@@ -322,6 +400,9 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "訳文を表示しました。次回はテキストの選択や段落翻訳のショートカットも使えます。",
   },
   ko: {
+    "details": "자세히 보기",
+    "service-action": "서비스 확인",
+    "site-action": "범위 확인",
     "refresh-failed": "페이지를 새로고침하지 못했습니다. 직접 새로고침한 후 다시 시도하세요.",
     "source-closed": "원래 페이지가 닫혔습니다. 페이지를 다시 여세요.",
     "source-looking": "원래 페이지를 찾는 중…",
@@ -339,6 +420,9 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "번역문이 표시되었습니다. 다음에는 텍스트를 선택하거나 문단 번역 단축키를 사용할 수도 있습니다.",
   },
   fr: {
+    "details": "Voir les détails",
+    "service-action": "Vérifier le service",
+    "site-action": "Vérifier la zone",
     "refresh-failed": "Impossible d’actualiser la page. Actualisez-la manuellement, puis réessayez.",
     "source-closed": "La page d’origine est fermée. Rouvrez-la.",
     "source-looking": "Recherche de la page d’origine…",
@@ -356,6 +440,9 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "La traduction est affichée. Vous pouvez aussi sélectionner du texte ou utiliser le raccourci de traduction des paragraphes.",
   },
   ru: {
+    "details": "Подробнее",
+    "service-action": "Проверить сервис",
+    "site-action": "Проверить область",
     "refresh-failed": "Не удалось обновить страницу. Обновите её вручную и повторите попытку.",
     "source-closed": "Исходная страница закрыта. Откройте её снова.",
     "source-looking": "Поиск исходной страницы…",
@@ -373,6 +460,9 @@ const uiText: Record<DiagnosticLanguage, Record<DiagnosticUiTextKey, string>> = 
     "first-use-ready": "Перевод отображён. В следующий раз можно также выделить текст или использовать сочетание клавиш для перевода абзаца.",
   },
   es: {
+    "details": "Ver detalles",
+    "service-action": "Revisar servicio",
+    "site-action": "Revisar área",
     "refresh-failed": "No se pudo recargar la página. Recárgala manualmente y vuelve a intentarlo.",
     "source-closed": "La página original está cerrada. Vuelve a abrirla.",
     "source-looking": "Buscando la página original…",
