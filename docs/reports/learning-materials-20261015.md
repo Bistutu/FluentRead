@@ -28,6 +28,7 @@
 | 本地化资源与动态数字 | `i18n`、`i18nMaterials` 共 95 项通过；`/private/tmp/fluentread-material-i18n-accepted-strict.log` |
 | 视频字幕面板与材料关联 | `videoSentenceLearningComponent` 33 项通过（原 20 项加 13 项），执行真实材料 begin/complete/client，仅替代边界传输；`/private/tmp/fluentread-material-video-association-accepted.log` |
 | userscript 固定资源引用 | `userscriptViteConfig` 188 项通过，保留旧 Greasy Fork 投影断言并校验当前五份资源与固定提交完全一致；`/private/tmp/fluentread-material-userscript-resource-pin-tests.log` |
+| OptionsApp 多语言品牌响应性 | CI 中 Chrome 用例约 5.1s 超过默认 5s；主分支／任务分支同名用例对照均通过，未复现功能回归。仅这组三平台用例使用 10s 局部时限，全部断言和清理时限保留；完整文件 45 项通过，`/private/tmp/fluentread-material-options-brand-accepted.log` |
 | 当前严格覆盖率范围 | 最终受影响计划包含 209 个测试文件及十六个严格责任模块；十六模块已按专项验证 statements / branches / functions / lines 均为 100%，汇总见 verification.json |
 
 上述批次范围不同，不累加为全量测试总数。原生恢复提示已按显示时的界面语言翻译，来源专项 55 项通过，包含三类英文提示与关闭操作。实际 Vue 模板专项还检查原文保护边界、来源类型、页码、本地文件和默认问答标题；本地化与材料界面组合 104 项通过。最终架构、源码注释和验证归属 1076 项通过，测试审计登记 731 个文件、13195 个静态登记用例。
