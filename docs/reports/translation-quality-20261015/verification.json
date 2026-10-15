@@ -1,0 +1,210 @@
+{
+  "baseCommit": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+  "sourceSha256": {
+    "src/providers/translation/freeTextChunks.ts": "052be9054ae8df1d8ac7ab5adb9a2fc0a748751621647b5f1fe2819f99bed00c",
+    "src/providers/translation/free-chinese-web.ts": "7f973c66e778d234da3c6c0c65117b1db389cb03ce96aed4e028b28c48d0c9e8"
+  },
+  "reports": {
+    "baseline": {
+      "sha256": "74109426ec9ad337a2d5268d42ddcd14b1143c949499be637d8d474b242a87c8",
+      "complete": true,
+      "records": 315,
+      "httpRequests": 443,
+      "humanReviewed": 0
+    },
+    "candidate": {
+      "sha256": "540bc8a7230d85304a0d08e5ad70ed4c60c232f130ba11e3b8a41ddb8cdcc127",
+      "complete": true,
+      "records": 315,
+      "httpRequests": 435,
+      "humanReviewed": 0
+    },
+    "auto": {
+      "sha256": "e34b53d0fa487d0ec7266dfd2d2e903d3c4c4c5a6303b2a0bab4e9d03ee7218f",
+      "complete": true,
+      "records": 108,
+      "httpRequests": 136,
+      "humanReviewed": 0
+    },
+    "boundary-baseline": {
+      "sha256": "58e7822bea204858c491fa2fa6734bde4df474b62343fb34580d5756862ecce7",
+      "complete": true,
+      "records": 9,
+      "httpRequests": 18,
+      "humanReviewed": 0
+    },
+    "boundary-candidate": {
+      "sha256": "1fee895300aae0555f7f65842de5a5289cdd246f3ff492f1ad4471ef1aa27339",
+      "complete": true,
+      "records": 9,
+      "httpRequests": 18,
+      "humanReviewed": 0
+    }
+  },
+  "resume": {
+    "checkpointSha256": "70585f279638ca276ddcf30f635e3285b6402973cc0171ea4c2eded09ec1c69d",
+    "checkpointRecords": 15,
+    "interrupted": true,
+    "preservedExactly": true,
+    "finalRecords": 315,
+    "uniqueRecords": 315,
+    "cancellationBoundary": "CLI interrupted between requests; transport unit tests and production browser separately verify in-flight cancellation."
+  },
+  "builds": {
+    "chrome": true,
+    "firefox": true,
+    "userscript": true,
+    "userscriptVerifier": true,
+    "manifests": true,
+    "compile": true,
+    "docs": true,
+    "testAudit": true
+  },
+  "buildArtifacts": {
+    ".output/chrome-mv3/background.js": {
+      "sha256": "3670b1f017eb82973b46fe33cca89f393b7d40eeb66714616264fc3a5f18f50b",
+      "bytes": 2191038
+    },
+    ".output/firefox-mv2/background.js": {
+      "sha256": "eea577d2ea1d5953befb802cbdfede1c1cba0cb8ee19e00bc2c7881db7c74df9",
+      "bytes": 2190859
+    },
+    ".output/userscript/fluent-read.user.js": {
+      "sha256": "cccba1b3fd8dd49243edd0f38e3f5b8ee0879d53e2ff0c10dd6b204e54457403",
+      "bytes": 2068882
+    }
+  },
+  "browser": {
+    "ok": true,
+    "extension": "/Users/thinkstu/Desktop/copy/FluentRead-translation-quality-lab-20261015/.output/chrome-mv3",
+    "reportFile": "/private/tmp/fluentread-quality-final-report-preview.html",
+    "synthetic": true,
+    "screenshots": [
+      "/Users/thinkstu/Desktop/copy/research/translation-quality-20261015/browser-routing-final/report-desktop.png",
+      "/Users/thinkstu/Desktop/copy/research/translation-quality-20261015/browser-routing-final/report-issue-source.png",
+      "/Users/thinkstu/Desktop/copy/research/translation-quality-20261015/browser-routing-final/report-empty.png",
+      "/Users/thinkstu/Desktop/copy/research/translation-quality-20261015/browser-routing-final/report-narrow.png",
+      "/Users/thinkstu/Desktop/copy/research/translation-quality-20261015/browser-routing-final/report-narrow-dark.png",
+      "/Users/thinkstu/Desktop/copy/research/translation-quality-20261015/browser-routing-final/production-boundaries.png",
+      "/Users/thinkstu/Desktop/copy/research/translation-quality-20261015/browser-routing-final/production-failure.png",
+      "/Users/thinkstu/Desktop/copy/research/translation-quality-20261015/browser-routing-final/production-retry.png",
+      "/Users/thinkstu/Desktop/copy/research/translation-quality-20261015/browser-routing-final/production-loading.png"
+    ],
+    "cases": {
+      "flagged": 52,
+      "refresh": true,
+      "keyboard": true,
+      "export": 35,
+      "narrowOverflow": false,
+      "reportUnload": true,
+      "toggle": [
+        1,
+        0,
+        1
+      ],
+      "requests": [
+        "Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete. Calibration is complete.",
+        "The electroencephalography measurement must not exceed 3.5 kg. Dr. Smith verified the reading."
+      ],
+      "routes": [
+        "youdaoFree",
+        "transmart",
+        "transmart"
+      ],
+      "directionFallback": true,
+      "retry": true,
+      "loading": true,
+      "cancelledRequests": 1,
+      "pageRefresh": true,
+      "pageUnload": true
+    },
+    "pageErrors": [],
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 212,
+        "top": -990,
+        "width": 1280,
+        "height": 900
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false,
+      "frontmostBefore": {
+        "pid": 65658,
+        "name": "问题报告程序"
+      },
+      "frontmostAfter": {
+        "pid": 65658,
+        "name": "问题报告程序"
+      }
+    },
+    "browser": "131.0.2903.147",
+    "cleanupConfirmed": true,
+    "scope": "Production Edge with controlled HTTP responses. Standalone report visual review plus actual provider/broker/fallback, long-chunk requests, restore/retranslate, retry, loading, cancellation, refresh and unload."
+  },
+  "review": {
+    "code": "Independent production boundary and adapter review, 5000 deterministic Unicode/budget cases, plus separate evaluator audit. Identified evaluator defects corrected with tests.",
+    "ui": "Screenshots inspected. Initial mobile filters crowded primary content; final filters collapse by default. Desktop,390px,dark,empty,source expansion reviewed.",
+    "operations": "See browser cases, tool tests, resume evidence, and coverage records."
+  },
+  "uncovered": [
+    "Human semantic review of all samples and translations remains pending; no human gold corpus claimed.",
+    "No Firefox runtime, Safari, mobile-device or screen-reader acceptance in this task.",
+    "Live adapter results use Node; production Edge uses controlled transport.",
+    "Single network/time window; availability and quality may drift.",
+    "Anonymous providers do not consume sourceContext; cross-paragraph antecedent resolution is not validated by this suite."
+  ],
+  "references": "No reference repository code or design copied.",
+  "tests": {
+    "segmentation": {
+      "files": 7,
+      "passed": 272,
+      "record": "chunk-boundaries.json"
+    },
+    "youdao": {
+      "files": 3,
+      "passed": 109,
+      "record": "youdao-direction-evidence.json"
+    },
+    "architectureAndFreePool": {
+      "files": 4,
+      "passed": 1215,
+      "sourceHeaderChecks": 1026
+    },
+    "evaluationTools": {
+      "files": 3,
+      "passed": 28,
+      "additionalDeferralVerification": {
+        "files": 2,
+        "passed": 18,
+        "note": "HTTP 429 refusal remains deferred after response-body timeout or caller cancellation; ordinary request errors do not defer the provider."
+      }
+    },
+    "note": "Suites overlap; counts must not be summed as distinct tests."
+  },
+  "toolSourceSha256": {
+    "evaluate.mjs": "24ecb0f45060679e94e5b8257a1beec3d0f4f3ea8aab8845239ba587c81b4a9a",
+    "run.mjs": "8314e40ca256665b6ba65df3e2d1caba0f4383c5531a4384231e368257d0823a",
+    "transport.mjs": "066b19c75db3e0beba25ba8f7313268786c9b752b8abf387935c07da72ea20b8",
+    "report.mjs": "e0b682ee3f7779ff008b67166a0b4cb412da2d715ad6f429863050593c4201cf",
+    "audit.mjs": "596e39e6eccfa68b1a4edc6ac6a7b516e0d1f00f02e978a9448b7fdf9549ed9c",
+    "render.mjs": "69275e55e9cd50985524218b3695f8123123a4907ec9564d76c589332da24b16",
+    "review-browser.cjs": "8648ebc5783e2afc99eed8895d4bf0e0e87869aa23374b4287d570935257f7f8"
+  },
+  "reportAudit": {
+    "source": "candidate/report.json",
+    "view": "candidate/audited-report.json",
+    "rawSha256": "540bc8a7230d85304a0d08e5ad70ed4c60c232f130ba11e3b8a41ddb8cdcc127",
+    "viewSha256": "7793f64036de43e929426ade61a445b9c902e0ed6df5e0424a97172ad0676dd1",
+    "corrections": 3,
+    "reason": "Earlier observer did not record local provider aborts; three no-header Google failures conservatively reclassified unavailable, without claiming their exact cause."
+  }
+}
