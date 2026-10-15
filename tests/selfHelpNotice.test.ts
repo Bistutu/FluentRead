@@ -7,7 +7,7 @@
 import {createRequire} from 'node:module';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import * as diagnostics from '@/src/services/diagnostics';
-import {diagnoseFailure, getDiagnosticText, getDiagnosticActionLabel, getDiagnosticUiText} from '@/src/services/diagnostics';
+import {diagnoseFailure, getDiagnosticSummary, getDiagnosticText, getDiagnosticActionLabel, getDiagnosticUiText} from '@/src/services/diagnostics';
 import {createPopupPageActions, type PopupPageState} from '@/src/app/popup/pageActions';
 import {Config} from '@/src/core/config/model';
 import {compileVueInlineFixture} from './helpers/compiledVueFixture';
@@ -36,8 +36,8 @@ function loadNotice() {
   return module.exports.default;
 }
 afterEach(() => {dispose?.();dispose = undefined;vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();ensureUiLanguageBundle.mockReset().mockImplementation(loadLanguage);});
-interface Host {tag: string; text: string; props: Record<string, any>; children: Host[]; parent: Host | null}
-const node = (tag: string, text = ''): Host => ({tag, text, props: {}, children: [], parent: null});
+interface Host {tag: string; text: string; props: Record<string, any>; children: Host[]; parent: Host | null; focus: ReturnType<typeof vi.fn>}
+const node = (tag: string, text = ''): Host => ({tag, text, props: {}, children: [], parent: null, focus: vi.fn()});
 function all(root: Host, predicate: (value: Host) => boolean): Host[] {
   return [...(predicate(root) ? [root] : []), ...root.children.flatMap(child => all(child, predicate))];
 }
@@ -62,22 +62,62 @@ async function mount(diagnostic: unknown, patch: Record<string, unknown> = {}) {
   const root = node('root');app.mount(root);dispose = () => app.unmount();await settle();
   expect(instance.$.render).toBeTypeOf('function');
   const buttons = () => all(root, value => value.tag === 'button');
-  const button = (label: string) => {const result = buttons().find(value => contents(value).startsWith(label));expect(result).toBeDefined();return result!;};
+  const button = (label: string) => {const result = buttons().find(value => contents(value).startsWith(label) || value.props['aria-label'] === label);expect(result).toBeDefined();return result!;};
   const click = async (label: string) => {const target = button(label);if (!target.props.disabled) target.props.onClick();await settle();};
   return {root, props, emitted, button, click};
 }
 
 describe('actual self help notice', () => {
+  it('keeps the popup compact until the user requests details, and Escape clears the preview without dismissing the error', async () => {
+    const diagnostic = diagnoseFailure({kind: 'authentication'}), f = await mount(diagnostic);
+    expect(contents(f.root)).toContain(getDiagnosticSummary(diagnostic));
+    expect(contents(f.root)).not.toContain(getDiagnosticText(diagnostic).detail);
+    expect(contents(f.root)).not.toMatch(/预览诊断|导出 JSON|重试/);
+    expect(all(f.root, value => value.tag === 'button')).toHaveLength(3);
+    expect(f.button('检查服务').props.disabled).toBe(false);
+    await f.click('检查服务');expect(f.emitted).toHaveBeenLastCalledWith('services');
+    expect(f.button('查看详情').props['aria-expanded']).toBe(false);
+    await f.click('查看详情');expect(contents(f.root)).toContain(getDiagnosticText(diagnostic).detail);
+    expect(all(f.root, value => value.props.id === f.button('查看详情').props['aria-controls'])).toHaveLength(1);
+    await f.click('预览诊断');expect(all(f.root, value => value.tag === 'pre')).toHaveLength(1);
+    const event = {key: 'Escape', preventDefault: vi.fn(), stopPropagation: vi.fn()};
+    all(f.root, value => value.tag === 'section')[0].props.onKeydown(event);await settle();
+    expect(event.preventDefault).toHaveBeenCalledOnce();expect(event.stopPropagation).toHaveBeenCalledOnce();
+    expect(f.button('查看详情').focus).toHaveBeenCalledOnce();
+    expect(f.button('查看详情').props['aria-expanded']).toBe(false);
+    expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
+    expect(contents(f.root)).not.toContain(getDiagnosticText(diagnostic).detail);
+    await f.click('查看详情');expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
+    await f.click('关闭');expect(f.emitted).toHaveBeenLastCalledWith('dismiss');
+  });
+
+  it('places website scope repair first when completed discovery found no content, keeping retry available in details', async () => {
+    const f = await mount({code: 'no-content'});
+    expect(f.button('检查范围').props['data-diagnostic-action']).toBe('site-settings');
+    await f.click('检查范围');expect(f.emitted).toHaveBeenLastCalledWith('site-settings');
+    expect(contents(f.root)).not.toContain('重试');
+    await f.click('查看详情');await f.click('重试');expect(f.emitted).toHaveBeenLastCalledWith('retry');
+  });
+
+  it('keeps a closed-source diagnostic dismissible without offering a dead-page operation', async () => {
+    const f = await mount({code: 'source-closed'});
+    expect(all(f.root, value => value.tag === 'button')).toHaveLength(2);
+    expect(contents(f.root)).not.toMatch(/重试|刷新|检查服务/);
+    await f.click('查看详情');expect(contents(f.root)).toContain('请重新打开');
+    await f.click('查看详情');expect(contents(f.root)).not.toContain('请重新打开');
+    await f.click('关闭');expect(f.emitted).toHaveBeenCalledWith('dismiss');
+  });
+
   it('shows safe fixed recovery text and generates no report or download before explicit actions', async () => {
     const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:fixture');
     const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
     const anchor = {href: '', download: '', click: vi.fn()};
     const createElement = vi.fn(() => anchor);vi.stubGlobal('document', {createElement});
     const f = await mount({...diagnoseFailure({kind: 'authentication'}), message: 'PRIVATE body', actions: ['export'], titleKey: '<script>PRIVATE</script>'});
-    expect(contents(f.root)).toContain('服务凭据或权限有问题');
+    expect(contents(f.root)).toContain('服务验证失败');
     expect(contents(f.root)).not.toMatch(/PRIVATE|script|导出 JSON/);
     expect(create).not.toHaveBeenCalled();expect(createElement).not.toHaveBeenCalled();
-    await f.click('预览诊断');
+    await f.click('查看详情');await f.click('预览诊断');
     const pre = all(f.root, value => value.tag === 'pre')[0];
     expect(pre.props.tabindex).toBe('0');
     expect(JSON.parse(contents(pre))).toEqual({schemaVersion: 1, diagnostic: {code: 'authentication'}, feature: 'popup', extensionVersion: '0.0.38', online: true});
@@ -93,12 +133,13 @@ describe('actual self help notice', () => {
   it('clears report previews and unsafe input on diagnosis changes, and recovers from export failure', async () => {
     vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {throw new Error('download denied');});
     const f = await mount(diagnoseFailure({kind: 'timeout'}));
-    await f.click('预览诊断');await f.click('导出 JSON');
+    await f.click('查看详情');await f.click('预览诊断');await f.click('导出 JSON');
     expect(contents(f.root)).toContain('导出失败');
     f.props.diagnostic = diagnoseFailure({kind: 'authentication'});await settle();
     expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
+    expect(f.button('查看详情').props['aria-expanded']).toBe(false);
     expect(contents(f.root)).not.toContain('导出失败');
-    await f.click('预览诊断');await f.click('收起预览');
+    await f.click('查看详情');await f.click('预览诊断');await f.click('收起预览');
     expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
     f.props.diagnostic = {code: 'PRIVATE', message: 'private body'};await settle();
     expect(all(f.root, value => value.tag === 'section')).toHaveLength(0);
@@ -109,7 +150,7 @@ describe('actual self help notice', () => {
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
     vi.stubGlobal('document', {createElement: () => ({href: '', download: '', click() {}})});
     const f = await mount(diagnoseFailure({kind: 'timeout'}));
-    await f.click('预览诊断');await f.click('导出 JSON');expect(contents(f.root)).toContain('导出失败');
+    await f.click('查看详情');await f.click('预览诊断');await f.click('导出 JSON');expect(contents(f.root)).toContain('导出失败');
     await f.click('导出 JSON');expect(create).toHaveBeenCalledTimes(2);expect(contents(f.root)).not.toContain('导出失败');
     create.mockImplementationOnce(() => {throw new Error('blocked again');});
     await f.click('导出 JSON');expect(contents(f.root)).toContain('导出失败');
@@ -119,11 +160,13 @@ describe('actual self help notice', () => {
   it('waits for rate-limit cooldown, accepts updated remaining time, and clears timers on unmount', async () => {
     vi.useFakeTimers();vi.setSystemTime(100_000);
     const f = await mount(diagnoseFailure({kind: 'rate-limit', retryAfterMs: 5000}));
+    await f.click('查看详情');
     expect(f.button('重试').props.disabled).toBe(true);
     await f.click('重试');expect(f.emitted).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(2000);await settle();
     expect(contents(f.button('重试'))).toContain('3 秒');
     f.props.diagnostic = diagnoseFailure({kind: 'rate-limit', retryAfterMs: 3000});await settle();
+    await f.click('查看详情');
     await vi.advanceTimersByTimeAsync(3000);await settle();
     expect(f.button('重试').props.disabled).toBe(false);
     await f.click('重试');expect(f.emitted).toHaveBeenCalledWith('retry');
@@ -134,12 +177,33 @@ describe('actual self help notice', () => {
 
   it('disables operational actions while busy and uses the same safe English text as its parent', async () => {
     const f = await mount(diagnoseFailure({kind: 'timeout'}), {language: 'en', busy: true});
-    expect(contents(f.root)).toContain('Translation timed out');
+    expect(contents(f.root)).toContain(getDiagnosticSummary({code: 'timeout'}, 'en'));
+    await f.click(getDiagnosticUiText('details', 'en'));
     for (const label of ['Retry', 'Check translation service', 'Dismiss']) {
       expect(f.button(label).props.disabled).toBe(true);await f.click(label);
     }
     expect(f.emitted).not.toHaveBeenCalled();
     f.props.busy = false;await settle();await f.click('Check translation service');
+    expect(f.emitted).toHaveBeenCalledWith('services');
+  });
+
+  it('refreshes the collapsed summary and action labels when a delayed language bundle arrives without mounting details', async () => {
+    let finish!: (loaded: boolean) => void;
+    i18n.registerUiLanguageBundle('fr-FR', {...UI_LANGUAGE_BUNDLES['fr-FR'], messages: {}});
+    ensureUiLanguageBundle.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+    const f = await mount(diagnoseFailure({kind: 'authentication'}), {language: 'fr-FR'});
+    expect(contents(f.root)).toContain('服务验证失败');
+    expect(f.button('检查服务')).toBeDefined();expect(f.button('查看详情').props['aria-expanded']).toBe(false);
+    expect(all(f.root, value => value.props['data-diagnostic-details'] !== undefined)).toHaveLength(0);
+    i18n.registerUiLanguageBundle('fr-FR', UI_LANGUAGE_BUNDLES['fr-FR']);finish(true);await settle();
+    expect(contents(f.root)).toContain(i18n.translate('diagnostics.authentication.summary', 'fr-FR'));
+    expect(contents(f.root)).not.toContain('服务验证失败');
+    expect(f.button(i18n.translate('diagnostics.ui.service-action', 'fr-FR'))).toBeDefined();
+    expect(f.button(i18n.translate('diagnostics.ui.details', 'fr-FR')).props['aria-expanded']).toBe(false);
+    expect(f.button(i18n.translate('diagnostics.action.dismiss', 'fr-FR'))).toBeDefined();
+    expect(all(f.root, value => value.props['data-diagnostic-details'] !== undefined)).toHaveLength(0);
+    expect(all(f.root, value => value.tag === 'pre')).toHaveLength(0);
+    await f.click(i18n.translate('diagnostics.ui.service-action', 'fr-FR'));
     expect(f.emitted).toHaveBeenCalledWith('services');
   });
 
@@ -151,8 +215,8 @@ describe('actual self help notice', () => {
     }
     ensureUiLanguageBundle.mockImplementation(language => new Promise(resolve => pending.set(language, resolve)));
     const f = await mount({...diagnoseFailure({kind: 'rate-limit', retryAfterMs: 3000}), message: 'PRIVATE'}, {language: 'fr-FR'});
-    expect(contents(f.root)).toContain('服务暂时限流或额度不足');
-    await f.click('预览诊断');
+    expect(contents(f.root)).toContain('服务请求受限');
+    await f.click('查看详情');await f.click('预览诊断');
     const preview = contents(all(f.root, value => value.tag === 'pre')[0]);
     await vi.advanceTimersByTimeAsync(2000);
     const finish = async (language: RegisteredUiLanguage) => {
@@ -160,12 +224,12 @@ describe('actual self help notice', () => {
       pending.get(language)!(true);await settle();
     };
     await finish('fr-FR');
-    expect(contents(f.root)).toContain(i18n.translate('diagnostics.rate-limit.title', 'fr-FR'));
+    expect(contents(f.root)).toContain(i18n.translate('diagnostics.rate-limit.summary', 'fr-FR'));
     expect(contents(all(f.root, value => value.tag === 'pre')[0])).toBe(preview);
     f.props.language = 'ja-JP';await settle();
     f.props.language = 'ko-KR';await settle();
     await finish('ko-KR');await finish('ja-JP');
-    expect(contents(f.root)).toContain(i18n.translate('diagnostics.rate-limit.title', 'ko-KR'));
+    expect(contents(f.root)).toContain(i18n.translate('diagnostics.rate-limit.summary', 'ko-KR'));
     expect(contents(f.root)).not.toContain('PRIVATE');
     expect(vi.getTimerCount()).toBe(1);
     await vi.advanceTimersByTimeAsync(1000);await settle();
@@ -176,7 +240,7 @@ describe('actual self help notice', () => {
   it('keeps safe fallback text when resource loading fails and cancels ownership on unmount', async () => {
     ensureUiLanguageBundle.mockRejectedValueOnce(new Error('Unavailable language resource'));
     const f = await mount(diagnoseFailure({kind: 'timeout'}));
-    expect(contents(f.root)).toContain('翻译等待超时');
+    expect(contents(f.root)).toContain('翻译超时');
     let resolve!: (loaded: boolean) => void;
     ensureUiLanguageBundle.mockImplementationOnce(() => new Promise(done => {resolve = done;}));
     f.props.language = 'es-ES';await settle();
@@ -186,6 +250,7 @@ describe('actual self help notice', () => {
 
   it.each(['authentication', 'model-configuration', 'configuration'] as const)('offers user-triggered retry after repairing %s and keeps it disabled while busy', async code => {
     const f = await mount({code}, {busy: true});
+    await f.click('查看详情');
     expect(f.button('重试').props.disabled).toBe(true);await f.click('重试');expect(f.emitted).not.toHaveBeenCalled();
     f.props.busy = false;await settle();await f.click('重试');expect(f.emitted).toHaveBeenCalledOnce();expect(f.emitted).toHaveBeenCalledWith('retry');
   });
@@ -193,11 +258,11 @@ describe('actual self help notice', () => {
   it('switches actual recovery, report preview and export failure copy across all seven locales without losing the preview', async () => {
     vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {throw new Error('PRIVATE export failure');});
     const diagnostic = diagnoseFailure({kind: 'timeout'}), f = await mount(diagnostic);
-    await f.click(getDiagnosticUiText('preview', 'zh-CN'));
+    await f.click('查看详情');await f.click(getDiagnosticUiText('preview', 'zh-CN'));
     const preview = all(f.root, value => value.tag === 'pre')[0], report = contents(preview);
     for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES', 'pt-BR']) {
       f.props.language = locale;await settle();
-      expect(contents(f.root)).toContain(getDiagnosticText(diagnostic, locale).title);
+      expect(contents(f.root)).toContain(getDiagnosticSummary(diagnostic, locale));
       expect(contents(f.root)).toContain(getDiagnosticText(diagnostic, locale).detail);
       expect(f.button(getDiagnosticActionLabel('retry', locale))).toBeDefined();
       expect(f.button(i18n.translate('diagnostics.report.hidePreview', i18n.resolveUiLanguageFromLocale(locale))).props['aria-expanded']).toBe(true);

@@ -69,6 +69,14 @@ function runtimeEvent(message:unknown,sender:unknown){for(const listener of runt
 function deferred<T=unknown>() {let resolve!: (value:T)=>void,reject!: (error:unknown)=>void;const promise=new Promise<T>((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject}}
 async function settle(){await runtime.nextTick();await Promise.resolve();await runtime.nextTick()}
 async function drain(){for(let i=0;i<10;i++)await settle()}
+function expectCollapsedDiagnostic(){
+  expect(document.querySelector('[data-diagnostic-details-toggle]')?.getAttribute('aria-expanded')).toBe('false')
+  expect(document.querySelector('[data-diagnostic-details]')).toBeNull();expect(document.querySelector('.diagnostic-actions')).toBeNull();expect(document.querySelector('.diagnostic-report')).toBeNull()
+}
+async function openDiagnosticDetails(){
+  expectCollapsedDiagnostic();await eventOf(document.querySelector('[data-diagnostic-details-toggle]')!)();await drain()
+  expect(document.querySelector('[data-diagnostic-details-toggle]')!.getAttribute('aria-expanded')).toBe('true');expect(document.querySelector('[data-diagnostic-details]')).not.toBeNull()
+}
 async function openFeature(name:string){eventOf(document.querySelector(`[data-popup-quick-feature="${name}"]`)!)();for(let i=0;i<100;i++){await drain();if(document.querySelector('.drawer-header > button'))return;await new Promise(resolve=>setTimeout(resolve,2))}throw new Error('实际抽屉端口未挂载')}
 function eventOf(el:Element,name='onClick'){const fn=events.get(el)?.[name];expect(fn,name).toBeTypeOf('function');return fn}
 function button(name:string){return document.querySelector(`[data-testid="${name}"]`)!}
@@ -225,6 +233,7 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
   })
   it.each([false,true])('Safari诊断重试先同步授权并保留root恢复再译语义：已有译文=%s',async translated=>{
     await safariFree();runtimeEvent({type:'fullPageTranslationState',isTranslated:translated,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'configuration'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain();
+    await openDiagnosticDetails();
     const gate=deferred<boolean>();requestAccess.mockImplementation(()=>{permissionEvent('added');return gate.promise});
     const retry=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='重试')!;const pending=eventOf(retry)();
     expect(requestAccess).toHaveBeenCalledWith('microsoft');expect(commands()).toHaveLength(0);
@@ -233,6 +242,7 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
   })
   it('Safari诊断已授权重试的来源等待同样可被撤权取消',async()=>{
     await safariFree(['microsoft']);runtimeEvent({type:'fullPageTranslationState',isTranslated:false,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'configuration'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain();
+    await openDiagnosticDetails();
     const gate=deferred<any>();getTab.mockReturnValue(gate.promise);const retry=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='重试')!;const pending=eventOf(retry)();await drain();
     readAccess.mockResolvedValue({supported:true,grantedIds:[],preferredGrant:{id:'microsoft',origins:[]}});permissionEvent('removed');gate.resolve([{id:7,windowId:3,url:'https://example.com/a'}]);await pending;await drain();expect(commands()).toHaveLength(0);
   })
@@ -367,30 +377,30 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'translated',documentToken:'popup-fixture-document'},sender);await drain()
     expect(button('page-translation').getAttribute('aria-pressed')).toBe('true');expect(document.querySelector('.first-use-hint')!.textContent).toContain('译文已显示')
     runtimeEvent(failure,sender);await drain()
-    const diagnostic=document.querySelector('.fluentread-diagnostic')!;expect(diagnostic.getAttribute('data-diagnostic-code')).toBe('authentication');expect(diagnostic.textContent).toContain('服务凭据或权限有问题');expect(diagnostic.textContent).not.toContain('PRIVATE')
+    const diagnostic=document.querySelector('.fluentread-diagnostic')!;expect(diagnostic.getAttribute('data-diagnostic-code')).toBe('authentication');expect(diagnostic.textContent).toContain('服务验证失败');expect(diagnostic.textContent).not.toContain('PRIVATE');expectCollapsedDiagnostic()
     shown.value=false;await drain();runtimeEvent({type:'fullPageTranslationState',isTranslated:false,toolbarStatus:'idle',documentToken:'popup-fixture-document'},sender);expect(state.pageTranslated).toBe(true)
     app.unmount();expect(runtimeEvents.size).toBe(0)
   })
   it('实际诊断动作遇到设置、刷新和重试失败时保留可见的安全恢复入口',async()=>{
     await mount()
     const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}
-    const publish=async(code:string)=>{runtimeEvent({type:'fullPageTranslationState',isTranslated:false,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code}},sender);await drain()}
-    const action=(label:string)=>{const node=[...document.querySelectorAll('.diagnostic-actions button')].find(button=>button.textContent===label);expect(node).toBeDefined();return eventOf(node!)}
-    await publish('authentication');createTab.mockRejectedValueOnce(Error('PRIVATE service tab error'));action('检查翻译服务')();await drain()
+    const publish=async(code:string)=>{runtimeEvent({type:'fullPageTranslationState',isTranslated:false,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code}},sender);await drain();expectCollapsedDiagnostic()}
+    const action=(id:string)=>{const node=document.querySelector(`[data-diagnostic-action="${id}"]`);expect(node).not.toBeNull();return eventOf(node!)}
+    await publish('authentication');createTab.mockRejectedValueOnce(Error('PRIVATE service tab error'));action('services')();await drain()
     expect(document.querySelector('.notice')!.getAttribute('role')).toBe('alert');expect(document.querySelector('.notice')!.textContent).toContain('无法打开设置');expect(document.querySelector('[data-diagnostic-code="authentication"]')).not.toBeNull();expect(close).not.toHaveBeenCalled()
-    await publish('context-invalid');getTab.mockRejectedValueOnce(Error('PRIVATE query error'));action('刷新页面')();await drain()
+    await publish('context-invalid');getTab.mockRejectedValueOnce(Error('PRIVATE query error'));action('refresh')();await drain()
     expect(document.querySelector('.notice')!.textContent).toContain('原网页已关闭');expect(document.querySelector('[data-diagnostic-code="context-invalid"]')).not.toBeNull();expect(reloadTab).not.toHaveBeenCalled()
-    reloadTab.mockRejectedValueOnce(Error('PRIVATE reload error'));action('刷新页面')();await drain()
+    reloadTab.mockRejectedValueOnce(Error('PRIVATE reload error'));action('refresh')();await drain()
     expect(document.querySelector('.notice')!.textContent).toContain('无法刷新网页');expect(close).not.toHaveBeenCalled()
-    await publish('timeout');send.mockRejectedValueOnce(Error('Failed to fetch PRIVATE provider body'));action('重试')();await drain()
-    expect(document.querySelector('[data-diagnostic-code="network"]')).not.toBeNull();expect(document.querySelector('.fluentread-diagnostic')!.textContent).toContain('无法连接翻译服务');expect(document.body.textContent).not.toContain('PRIVATE');expect(button('page-translation').hasAttribute('disabled')).toBe(false)
-    action('关闭')();await drain();expect(document.querySelector('.fluentread-diagnostic')).toBeNull()
+    await publish('timeout');send.mockRejectedValueOnce(Error('Failed to fetch PRIVATE provider body'));action('retry')();await drain()
+    expect(document.querySelector('[data-diagnostic-code="network"]')).not.toBeNull();expect(document.querySelector('.fluentread-diagnostic')!.textContent).toContain('服务连接失败');expect(document.body.textContent).not.toContain('PRIVATE');expect(button('page-translation').hasAttribute('disabled')).toBe(false)
+    eventOf(document.querySelector('[data-diagnostic-dismiss]')!)();await drain();expect(document.querySelector('.fluentread-diagnostic')).toBeNull()
   })
   it('权威计数同步保留真实鉴权诊断与报告预览，并继续允许打开当前服务设置',async()=>{
     await mount()
     const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}
     runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'authentication'}},sender);await drain()
-    const previewButton=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='预览诊断')!
+    await openDiagnosticDetails();const previewButton=document.querySelector('[data-diagnostic-preview]')!
     eventOf(previewButton)();await drain()
     const preview=document.querySelector('.diagnostic-report pre')!,before=preview.textContent
     expect(before).toContain('authentication');expect(document.querySelector('[data-diagnostic-code="authentication"]')).not.toBeNull()
@@ -398,14 +408,14 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     expect(state.config.count).toBe(config.count+1)
     expect(document.querySelector('[data-diagnostic-code="authentication"]')).not.toBeNull()
     expect(document.querySelector('.diagnostic-report pre')).toBe(preview);expect(document.querySelector('.diagnostic-report pre')!.textContent).toBe(before)
-    const repair=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='检查翻译服务')!
+    const repair=document.querySelector('[data-diagnostic-primary][data-diagnostic-action="services"]')!
     eventOf(repair)();await drain()
     expect(createTab).toHaveBeenCalledWith({url:expect.stringContaining('options.html?service=google')});expect(close).toHaveBeenCalledOnce()
   })
   it('无正文诊断直达适配目标并携带固定来源，普通导航不附加来源且服务参数不丢失',async()=>{
     win.location.search='?sourceTabId=7';getTab.mockResolvedValue([{id:99,url:'https://other.example/'}]);await mount()
     runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'no-content'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain()
-    const inspect=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='检查网站范围')!;await eventOf(inspect)();await drain()
+    expectCollapsedDiagnostic();const inspect=document.querySelector('[data-diagnostic-primary][data-diagnostic-action="site-settings"]')!;await eventOf(inspect)();await drain()
     let url=new URL(createTab.mock.calls.at(-1)![0].url);expect(url.hash).toBe('#settings-sites');expect(url.searchParams.get('target')).toBe('adaptation');expect(url.searchParams.get('returnTabId')).toBe('7');expect(url.searchParams.has('service')).toBe(false);expect(getTab).not.toHaveBeenCalled()
     createTab.mockClear();await state.openOptions('settings-sites','adaptation');url=new URL(createTab.mock.calls[0][0].url);expect(url.searchParams.get('target')).toBe('adaptation');expect(url.searchParams.has('returnTabId')).toBe(false)
     createTab.mockClear();await state.openOptions('settings-services','connections','openai');url=new URL(createTab.mock.calls[0][0].url);expect(url.searchParams.get('service')).toBe('openai');expect(url.searchParams.get('target')).toBe('connections');expect(url.searchParams.get('returnTabId')).toBe('7')
@@ -413,7 +423,7 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
   it.each(['authentication','model-configuration','configuration'])('%s修复后明确重试恢复旧会话再翻译，不改变主按钮正常恢复语义',async code=>{
     await mount();runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain()
     expect(button('page-translation').getAttribute('aria-pressed')).toBe('true');expect(commands()).toHaveLength(0)
-    const retry=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='重试')!;await eventOf(retry)();await drain()
+    await openDiagnosticDetails();const retry=document.querySelector('.diagnostic-actions [data-diagnostic-action="retry"]')!;await eventOf(retry)();await drain()
     expect(commands().map(call=>[call[0],call[1].action])).toEqual([[7,'restore'],[7,'fullPage']]);expect(button('page-translation').getAttribute('aria-pressed')).toBe('true')
     expect(document.querySelector('.fluentread-diagnostic')).toBeNull();await eventOf(button('page-translation'))();await drain();expect(commands().at(-1)![1].action).toBe('restore')
   })
@@ -432,7 +442,7 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     config.service='openai';config.apiKeys.openai=['fixture-key-before'];config.token.openai='fixture-key-before';await mount()
     const sender={id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0}
     runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'authentication'}},sender);await drain()
-    const preview=[...document.querySelectorAll('.diagnostic-actions button')].find(node=>node.textContent==='预览诊断')!
+    await openDiagnosticDetails();const preview=document.querySelector('[data-diagnostic-preview]')!
     eventOf(preview)();await drain();expect(document.querySelector('.diagnostic-report pre')).not.toBeNull()
     if(change==='service')state.config.service='bing'
     if(change==='key'){state.config.apiKeys.openai=['fixture-key-after'];state.config.token.openai='fixture-key-after'}

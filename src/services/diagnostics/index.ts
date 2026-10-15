@@ -128,12 +128,19 @@ export function getDiagnosticText(diagnostic: Pick<Diagnostic, 'code'>, locale =
     detail: translate(`diagnostics.${diagnostic.code}.detail`, language),
   };
 }
+/** 紧凑原因沿用同一按需语言包，不在纯诊断模块内置其他语言。 */
+export function getDiagnosticSummary(diagnostic: Pick<Diagnostic, 'code'>, locale = 'zh-CN'): string {
+  return translate(`diagnostics.${diagnostic.code}.summary`, resolveUiLanguageFromLocale(locale));
+}
 export function getDiagnosticActionLabel(action: DiagnosticAction, locale = 'zh-CN'): string {
   return translate(`diagnostics.action.${action}`, resolveUiLanguageFromLocale(locale));
 }
 
-export type DiagnosticUiTextKey = "refresh-failed" | "source-closed" | "source-looking" | "source-return" | "source-unavailable" | "source-returned" | "source-return-hint" | "preview" | "report" | "privacy" | "export" | "exportFailed" | "first-use-start" | "first-use-translating" | "first-use-ready";
+export type DiagnosticUiTextKey = "details" | "service-action" | "site-action" | "refresh-failed" | "source-closed" | "source-looking" | "source-return" | "source-unavailable" | "source-returned" | "source-return-hint" | "preview" | "report" | "privacy" | "export" | "exportFailed" | "first-use-start" | "first-use-translating" | "first-use-ready";
 const diagnosticUiKeys: Record<DiagnosticUiTextKey, string> = {
+  "details": "diagnostics.ui.details",
+  "service-action": "diagnostics.ui.service-action",
+  "site-action": "diagnostics.ui.site-action",
   "refresh-failed": "diagnostics.ui.refresh-failed",
   "source-closed": "diagnostics.ui.source-closed",
   "source-looking": "diagnostics.ui.source-looking",
