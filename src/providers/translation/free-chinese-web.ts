@@ -1,7 +1,7 @@
 /**
  * @file src/providers/translation/free-chinese-web.ts
  * 文件职责：适配有道网页普通翻译和金山词霸匿名网页翻译接口。
- * 主要内容：按码点预算且不切术语标记，生成公开网页协议所需签名，解密词霸响应，限制支持的中英方向；有道按安全长度分块，避免匿名接口静默截去长段落末尾，同时保留文本槽、换行、边缘空白、取消和结构化失败分类；取消或 HTTP 失败后等待未读正文结算再归还免费池容量。
+ * 主要内容：按码点预算且不切术语标记，生成公开网页协议所需签名，解密词霸响应，限制支持的中英方向；有道按安全长度分块，并拒绝响应明确声明的反向翻译，避免匿名接口静默截断或改写目标语言，同时保留文本槽、换行、边缘空白、取消和结构化失败分类；取消或 HTTP 失败后等待未读正文结算再归还免费池容量。
  * 模块边界：本文件只负责固定匿名 HTTP provider；不读取账号、Cookie、用户密钥、代理或存储，不负责免费服务编排、重试和并发。
  */
 import AES from 'crypto-js/aes';
@@ -123,8 +123,15 @@ async function fetchJson(provider: FreeChineseWebProvider, query: string, from: 
             throw Object.assign(statusError, {freeFailure: classifyStatus(response.status)});
         }
         if (provider === 'youdaoFree') {
-            const result = await readJsonResponse<{fanyi?: {tran?: unknown}} | null>(response, '有道返回的不是有效 JSON');
+            const result = await readJsonResponse<{fanyi?: {tran?: unknown; type?: unknown}} | null>(response, '有道返回的不是有效 JSON');
             if (signal?.aborted) throw abortErrorFromSignal(signal);
+            // jsonapi_s 在中英混合文本上可能忽略 from/to 并返回反向结果。
+            // 只依据已观察到的两种明确协议值拒绝；缺失或未知 type 不猜方向，继续交给公共结果校验。
+            const responseDirection = typeof result?.fanyi?.type === 'string' ? result.fanyi.type.trim().toLowerCase() : '';
+            if ((responseDirection === 'en2zh-chs' || responseDirection === 'zh-chs2en')
+                && responseDirection !== `${from}2${to}`.toLowerCase()) {
+                throw failure('有道返回的翻译方向与请求不一致', 'request');
+            }
             const translated = result?.fanyi?.tran;
             if (typeof translated !== 'string' || !translated.trim()) throw failure('有道返回内容无效', 'unavailable');
             return translated;
@@ -149,7 +156,7 @@ async function fetchJson(provider: FreeChineseWebProvider, query: string, from: 
 
 async function translatePlain(provider: FreeChineseWebProvider, text: string, from: string, to: string, signal?: AbortSignal): Promise<string> {
     const limit = provider === 'youdaoFree' ? YOUDAO_MAX_CHUNK_CODEPOINTS : ICIBA_MAX_CHUNK_CODEPOINTS;
-    return translateFreeTextChunks(text, limit, chunk => fetchJson(provider, chunk, from, to, signal), signal, provider === 'youdaoFree');
+    return translateFreeTextChunks(text, limit, chunk => fetchJson(provider, chunk, from, to, signal), signal);
 }
 
 export async function translateFreeChineseWebText(provider: FreeChineseWebProvider, text: string, source: string, target: string, signal?: AbortSignal): Promise<string> {

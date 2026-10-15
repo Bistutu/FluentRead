@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 1,
+  "kind": "deterministic-request-boundary-comparison",
+  "baselineCommit": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+  "modulePath": "src/providers/translation/freeTextChunks.ts",
+  "sourceHash": {
+    "before": "be2a0f4946b10e42e968e75974e390e53d00127d52cd8f2a573701f401d9393e",
+    "after": "052be9054ae8df1d8ac7ab5adb9a2fc0a748751621647b5f1fe2819f99bed00c"
+  },
+  "provenance": {
+    "source": "Task-authored synthetic text; no private pages or provider requests.",
+    "humanReviewStatus": "not-human-reviewed",
+    "evaluation": "Direct execution of both TypeScript modules with a recording echo transport. This proves request boundaries and losslessness; it does not prove real-provider semantic translation quality."
+  },
+  "samples": [
+    {
+      "id": "title-name",
+      "text": "The control group remained stable. Ask Dr. Smith to check the final measurements.",
+      "limit": 60,
+      "words": true,
+      "requirement": "Keep Dr. Smith in one request instead of treating the title period as a sentence end.",
+      "mode": "sentence-aware",
+      "budgetKind": "synthetic-boundary-stress",
+      "before": {
+        "chunks": [
+          "The control group remained stable. Ask Dr. ",
+          "Smith to check the final measurements."
+        ],
+        "requests": [
+          "The control group remained stable. Ask Dr.",
+          "Smith to check the final measurements."
+        ],
+        "requestCount": 2,
+        "requestedCodepoints": 80,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      },
+      "after": {
+        "chunks": [
+          "The control group remained stable. ",
+          "Ask Dr. Smith to check the final measurements."
+        ],
+        "requests": [
+          "The control group remained stable.",
+          "Ask Dr. Smith to check the final measurements."
+        ],
+        "requestCount": 2,
+        "requestedCodepoints": 80,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      }
+    },
+    {
+      "id": "quoted-negation",
+      "text": "The operator said, \"Do not restart.\" Leave the controller disabled until Friday.",
+      "limit": 58,
+      "words": true,
+      "requirement": "End the first request after the complete quoted sentence, before the following clause.",
+      "mode": "sentence-aware",
+      "budgetKind": "synthetic-boundary-stress",
+      "before": {
+        "chunks": [
+          "The operator said, \"Do not restart.\" Leave the controller ",
+          "disabled until Friday."
+        ],
+        "requests": [
+          "The operator said, \"Do not restart.\" Leave the controller",
+          "disabled until Friday."
+        ],
+        "requestCount": 2,
+        "requestedCodepoints": 79,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      },
+      "after": {
+        "chunks": [
+          "The operator said, \"Do not restart.\" ",
+          "Leave the controller disabled until Friday."
+        ],
+        "requests": [
+          "The operator said, \"Do not restart.\"",
+          "Leave the controller disabled until Friday."
+        ],
+        "requestCount": 2,
+        "requestedCodepoints": 79,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      }
+    },
+    {
+      "id": "quantity-unit",
+      "text": "Keep the output steady and do not exceed 3.5 kg while the alarm is active.",
+      "limit": 46,
+      "words": true,
+      "requirement": "Keep 3.5 kg in one request when the complete quantity fits the budget.",
+      "mode": "sentence-aware",
+      "budgetKind": "synthetic-boundary-stress",
+      "before": {
+        "chunks": [
+          "Keep the output steady and do not exceed 3.5 ",
+          "kg while the alarm is active."
+        ],
+        "requests": [
+          "Keep the output steady and do not exceed 3.5",
+          "kg while the alarm is active."
+        ],
+        "requestCount": 2,
+        "requestedCodepoints": 73,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      },
+      "after": {
+        "chunks": [
+          "Keep the output steady and do not exceed ",
+          "3.5 kg while the alarm is active."
+        ],
+        "requests": [
+          "Keep the output steady and do not exceed",
+          "3.5 kg while the alarm is active."
+        ],
+        "requestCount": 2,
+        "requestedCodepoints": 73,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      }
+    },
+    {
+      "id": "early-word-boundary",
+      "text": "Use electroencephalography before treatment.",
+      "limit": 25,
+      "words": true,
+      "requirement": "Do not split a word that fits within one request when an earlier whitespace boundary is available.",
+      "mode": "sentence-aware",
+      "budgetKind": "synthetic-boundary-stress",
+      "before": {
+        "chunks": [
+          "Use electroencephalograph",
+          "y before treatment."
+        ],
+        "requests": [
+          "Use electroencephalograph",
+          "y before treatment."
+        ],
+        "requestCount": 2,
+        "requestedCodepoints": 44,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      },
+      "after": {
+        "chunks": [
+          "Use ",
+          "electroencephalography ",
+          "before treatment."
+        ],
+        "requests": [
+          "Use",
+          "electroencephalography",
+          "before treatment."
+        ],
+        "requestCount": 3,
+        "requestedCodepoints": 42,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      }
+    },
+    {
+      "id": "cjk-closing-quote",
+      "text": "务必保留对照组的完整记录。「不要重启！」保持控制器关闭，直到工程师确认。",
+      "limit": 24,
+      "words": true,
+      "requirement": "Keep the closing quote attached to its Chinese sentence.",
+      "mode": "sentence-aware",
+      "budgetKind": "synthetic-boundary-stress",
+      "before": {
+        "chunks": [
+          "务必保留对照组的完整记录。「不要重启！",
+          "」保持控制器关闭，直到工程师确认。"
+        ],
+        "requests": [
+          "务必保留对照组的完整记录。「不要重启！",
+          "」保持控制器关闭，直到工程师确认。"
+        ],
+        "requestCount": 2,
+        "requestedCodepoints": 36,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      },
+      "after": {
+        "chunks": [
+          "务必保留对照组的完整记录。「不要重启！」",
+          "保持控制器关闭，直到工程师确认。"
+        ],
+        "requests": [
+          "务必保留对照组的完整记录。「不要重启！」",
+          "保持控制器关闭，直到工程师确认。"
+        ],
+        "requestCount": 2,
+        "requestedCodepoints": 36,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      }
+    },
+    {
+      "id": "default-decimal",
+      "text": "Keep reading 12.375 volts until the system is stopped.",
+      "limit": 18,
+      "requirement": "Default shared transport must not hard-cut 12.375 into separate requests when it fits.",
+      "mode": "transport-default",
+      "budgetKind": "synthetic-boundary-stress",
+      "before": {
+        "chunks": [
+          "Keep reading 12.37",
+          "5 volts until the ",
+          "system is stopped."
+        ],
+        "requests": [
+          "Keep reading 12.37",
+          "5 volts until the",
+          "system is stopped."
+        ],
+        "requestCount": 3,
+        "requestedCodepoints": 53,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      },
+      "after": {
+        "chunks": [
+          "Keep reading ",
+          "12.375 volts ",
+          "until the system ",
+          "is stopped."
+        ],
+        "requests": [
+          "Keep reading",
+          "12.375 volts",
+          "until the system",
+          "is stopped."
+        ],
+        "requestCount": 4,
+        "requestedCodepoints": 51,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      }
+    },
+    {
+      "id": "actual-2000-budget",
+      "text": "Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. The replacement controller remains disconnected until approval.",
+      "limit": 2000,
+      "requirement": "At the free web provider 2000-codepoint budget, prefer the complete prior sentence to cutting replacement.",
+      "mode": "transport-default",
+      "budgetKind": "production-provider-budget",
+      "before": {
+        "chunks": [
+          "Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. The replacement ",
+          "controller remains disconnected until approval."
+        ],
+        "requests": [
+          "Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. The replacement",
+          "controller remains disconnected until approval."
+        ],
+        "requestCount": 2,
+        "requestedCodepoints": 2046,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      },
+      "after": {
+        "chunks": [
+          "Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. ",
+          "The replacement controller remains disconnected until approval."
+        ],
+        "requests": [
+          "Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged. Calibration remains unchanged.",
+          "The replacement controller remains disconnected until approval."
+        ],
+        "requestCount": 2,
+        "requestedCodepoints": 2046,
+        "sourcePreserved": true,
+        "budgetRespected": true
+      }
+    }
+  ],
+  "reproduction": {
+    "sourceVersion": "before: git show baselineCommit:modulePath; after: checked-out modulePath; SHA-256 of both recorded above.",
+    "execution": "TypeScript transpileModule to CommonJS with the existing runtime abort helper stubbed; invoke translateFreeTextChunks(text, limit, recordingEcho, undefined, words) for every sample. Raw chunks call splitFreeTextChunks with the respective transport-default words value (before false, after true).",
+    "limitation": "Synthetic low limits isolate boundary decisions; only actual-2000-budget uses a production provider budget. Request count increases are reported; translation semantics require separate real-provider review."
+  },
+  "validation": {
+    "testFiles": [
+      "tests/freeTextChunks.test.ts",
+      "tests/freeWebProviders.test.ts",
+      "tests/freeChineseWebProviders.test.ts",
+      "tests/freeExtraWebProviders.test.ts",
+      "tests/freeOfficialWebProviders.test.ts",
+      "tests/bilibiliFreeTranslation.test.ts",
+      "tests/deeplx.test.ts"
+    ],
+    "result": "passed",
+    "passedFiles": 7,
+    "passedTests": 272,
+    "coveredModule": "src/providers/translation/freeTextChunks.ts",
+    "coveragePercent": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "runner": "scripts/testing/run-resource-safe.mjs",
+    "scope": "Deterministic unit and provider-port tests; network transports are mocked. No real-provider semantic, Firefox, Safari, mobile-device or user acceptance claim."
+  }
+}
