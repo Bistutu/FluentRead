@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "recordedAt": "2026-10-15T15:08:29.429415+00:00",
-  "baseCommit": "d3fb95d651831bc7974349b58054152dbba32b79",
+  "recordedAt": "2026-10-15T16:22:41.265967+00:00",
+  "baseCommit": "633baacd32cb9aa32789dfe4472c880311df50cc",
   "branch": "codex/mobile-safari-product-20261015",
   "overallGoalComplete": false,
-  "status": "System-selected native subtitles, Popup keyboard geometry and Firefox Android container sizing reviewed and built; each actual runtime result has its own artifact identity; physical-device acceptance pending",
+  "status": "Mobile source ownership repair integrated with material workspace; actual AVKit module selection/Off/reselection passed on iOS Simulator, YouTube and latest package device evidence separately versioned; physical acceptance incomplete",
   "evidenceRoot": "research/mobile-safari-20261015 (workspace level, outside repository)",
-  "sourceSnapshotSha256": "f50f0cfa03583daea3c03e1693765392df905ab6d4871524061ae2f9363b9f1e",
+  "sourceSnapshotSha256": "cf41d5a78915b5d0a3dc6263ff8feb8069b17fc6cd7b71146af89595a03783c8",
   "changedRuntimeSources": {
     "package.json": "f2d0cb391c8a4049f85cacd393069f39bb62de49f2bf79558ae4e31f86991871",
     "scripts/safari/container/Main.html": "8359d2ff5a18fc2c655ef8798869b242b7c8495fa9a4575919213a2226d7789e",
@@ -37,8 +37,9 @@
     "src/features/floating-ball/content/anchoredPopup.ts": "c6a8ed6b145ef29489df1a0c3d3b69ea4a23b092a972bc96540351d25fe9b7bf",
     "src/features/floating-ball/ui/FloatingBall.vue": "7dc94a202f3a6ee588b98d02ab06314f95fc33fcb440587f7ef5ad707fa851e4",
     "src/features/full-page-translation/ui/TranslationProgressPanel.vue": "1b33297965759c8117b56a4a956e7f7b981d7ff0d519a0391e2452f9e842ef5c",
+    "src/features/selection-translation/content/runtime.ts": "8ad04c5f38288d52f942e80fcbb3983cf3c61497a544e84a90eefcf790f0646f",
     "src/features/selection-translation/core.ts": "3c5f2d93a2872884b1029e3bae94b4b15362a300ba41adacfe9fd00f14f0ae68",
-    "src/features/selection-translation/ui/SelectionTranslator.vue": "7ee2015a5b86ff2276fb94879b0286eaaf2cf4b746e5b14342d2ef7990394163",
+    "src/features/selection-translation/ui/SelectionTranslator.vue": "1b9192ebe42d56fbb9281f6865cc60240320854168b550ba3f2d50e6fdab6502",
     "src/features/settings/ui/services/FreeTranslationSettings.vue": "1ec580cbca47f5ed474e4f9b39136724d19eb88ef62d37bfc403a0af3dbe8456",
     "src/features/settings/ui/services/ServiceConfiguration.vue": "251a3084643266336095f85775166b7d8dbcedb72dc5a93ac351652eaeb4bfa8",
     "src/features/video-subtitle/content/nativeFullscreen.ts": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
@@ -105,8 +106,8 @@
             "build:firefox"
           ],
           "exitCode": 0,
-          "seconds": 25.37,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/firefox.log"
+          "seconds": 25.86,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/firefox.log"
         },
         {
           "name": "safari",
@@ -115,8 +116,8 @@
             "build:safari"
           ],
           "exitCode": 0,
-          "seconds": 25.89,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/safari.log"
+          "seconds": 24.22,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/safari.log"
         },
         {
           "name": "safari-verify",
@@ -129,8 +130,8 @@
             "--verify"
           ],
           "exitCode": 0,
-          "seconds": 0.28,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/safari-verify.log"
+          "seconds": 0.23,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/safari-verify.log"
         },
         {
           "name": "chrome",
@@ -139,8 +140,8 @@
             "build"
           ],
           "exitCode": 0,
-          "seconds": 27.44,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/chrome.log"
+          "seconds": 23.99,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/chrome.log"
         },
         {
           "name": "extension-manifests",
@@ -152,8 +153,8 @@
             "scripts/testing/verify-extension-manifests.mjs"
           ],
           "exitCode": 0,
-          "seconds": 0.34,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/extension-manifests.log"
+          "seconds": 0.29,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/extension-manifests.log"
         },
         {
           "name": "userscript",
@@ -162,8 +163,8 @@
             "build:userscript"
           ],
           "exitCode": 0,
-          "seconds": 10.38,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/userscript.log"
+          "seconds": 5.65,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/userscript.log"
         },
         {
           "name": "userscript-verify",
@@ -175,8 +176,8 @@
             "scripts/verify-userscript-build.mjs"
           ],
           "exitCode": 0,
-          "seconds": 0.2,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/userscript-verify.log"
+          "seconds": 0.17,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/userscript-verify.log"
         },
         {
           "name": "audit",
@@ -188,72 +189,13 @@
             "test:audit"
           ],
           "exitCode": 0,
-          "seconds": 17.35,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/audit.log"
+          "seconds": 2.89,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/audit.log"
         }
       ],
-      "safari": "validation/integrated-main-d3-final/safari.log",
-      "safariVerify": "validation/integrated-main-d3-final/safari-verify.log",
-      "chromeFirefoxManifests": "validation/integrated-main-d3-final/extension-manifests.log",
-      "intermediateCssOnlyResults": [
-        {
-          "name": "safari",
-          "command": [
-            "pnpm",
-            "build:safari"
-          ],
-          "exitCode": 0,
-          "seconds": 25.08,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/safari.log"
-        },
-        {
-          "name": "safari-verify",
-          "command": [
-            "node",
-            "scripts/testing/run-resource-safe.mjs",
-            "--",
-            "node",
-            "scripts/safari/package.mjs",
-            "--verify"
-          ],
-          "exitCode": 0,
-          "seconds": 0.71,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/safari-verify.log"
-        },
-        {
-          "name": "chrome",
-          "command": [
-            "pnpm",
-            "build"
-          ],
-          "exitCode": 0,
-          "seconds": 25.51,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/chrome.log"
-        },
-        {
-          "name": "firefox",
-          "command": [
-            "pnpm",
-            "build:firefox"
-          ],
-          "exitCode": 0,
-          "seconds": 24.78,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/firefox.log"
-        },
-        {
-          "name": "extension-manifests",
-          "command": [
-            "node",
-            "scripts/testing/run-resource-safe.mjs",
-            "--",
-            "node",
-            "scripts/testing/verify-extension-manifests.mjs"
-          ],
-          "exitCode": 0,
-          "seconds": 0.42,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/mobile-native-touch-final/extension-manifests.log"
-        }
-      ]
+      "safari": "validation/integrated-main-633-final/safari.log",
+      "safariVerify": "validation/integrated-main-633-final/safari-verify.log",
+      "chromeFirefoxManifests": "validation/integrated-main-633-final/extension-manifests.log"
     },
     "formalArchitectureTests": {
       "verificationOwnership": 20,
@@ -937,7 +879,7 @@
     },
     "latestTypes": {
       "passed": true,
-      "log": "validation/integrated-main-d3-final/compile.log"
+      "log": "validation/integrated-main-633-final/compile.log"
     },
     "nativeSheetTouchMargin": {
       "cssPixels": 46,
@@ -998,8 +940,8 @@
     },
     "finalDocs": {
       "passed": true,
-      "log": "validation/integrated-main-d3-final/docs-final.log",
-      "scope": "Updated native-selection, keyboard, Android and complete modal layout evidence; VitePress build passed"
+      "log": "validation/integrated-main-633-final/docs-final.log",
+      "scope": "Source-revalidation repair, material integration and current actual AVKit module results; earlier versioned failures retained."
     },
     "videoControlsClone": {
       "scope": "Controls DOM clone ownership; fixture proof only, actual mobile YouTube cloning not established",
@@ -4076,6 +4018,435 @@
       }
     },
     "latestMainIntegration": {
+      "summary": {
+        "sourceCommit": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
+        "baseCommit": "633baacd32cb9aa32789dfe4472c880311df50cc",
+        "selectionConsumerTests": 265,
+        "associatedTests": 343,
+        "uniqueTotal": 608,
+        "logs": [
+          "validation/materials-merge/selection-conflict-resolution.json",
+          "validation/integrated-main-633-final/targeted.log"
+        ],
+        "compile": {
+          "passed": true,
+          "log": "validation/integrated-main-633-final/compile.log"
+        },
+        "previousSourceFix": {
+          "uniqueTests": 290,
+          "runtimeCoverage": "100% in statements, branches, functions and lines; runtime source unchanged by633 integration",
+          "evidence": "validation/selection-runtime-source-combination/summary.json",
+          "coverage": "validation/selection-runtime-source-combination/coverage/verification.json"
+        },
+        "sourceAndIndexReview": "merge-main-633-review.json",
+        "scope": "Targeted integration checks only; no local full-suite run."
+      },
+      "selectionConflictResolution": {
+        "at": "2026-10-15T15:35:51.669443+00:00",
+        "incoming": "633baacd3 (#997)",
+        "file": "tests/selectionTranslatorLifecycle.test.ts",
+        "conflictResolution": [
+          "Union mobile runtime/visualViewport/modal imports and upstream materialCapture imports/ports",
+          "Retain real-DOM optional/deferred mounting harness and all four Safari runtime combination cases",
+          "Add material document dispatchEvent port for ordinary harness and preserve real-DOM integration mode",
+          "Return material extraction/generation/capture/real begin+complete orchestration spies alongside mobile runtime mount API"
+        ],
+        "retainedStaticItTitles": {
+          "ours": 137,
+          "theirs": 119,
+          "merged": 140,
+          "missing": []
+        },
+        "test": {
+          "command": "FLUENTREAD_TEST_MAX_WORKERS=1 pnpm exec vitest run tests/selectionTranslatorLifecycle.test.ts --maxWorkers=1 --maxConcurrency=3",
+          "cases": 265,
+          "exitCode": 0,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/materials-merge/selection-lifecycle.log"
+        },
+        "scope": "Only owned test resolved/staged; no other file edited or staged by this agent. Production SFC conflict resolved separately by root. No business method replacement: begin/complete capture invoke actual materialCapture functions, extraction and background clients are controlled ports. No browser/device/build/commit/push.",
+        "sha256": "696f78208b59d7be3cb02791bf815a40835ffdc1a004dfee18eb78257f8fadbc"
+      },
+      "review": {
+        "reviewedAt": "2026-10-15T15:38:07.711600+00:00",
+        "mode": "read-only pending-index/worktree union review; merge completed by owner during review",
+        "sourceHeadAtStart": "e88c24bd428dd2141fc4284ff11401ce8556f947",
+        "sourceHeadAtEnd": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
+        "upstream": "633baacd32cb9aa32789dfe4472c880311df50cc",
+        "unmergedPathsAtEnd": [],
+        "blockingFindings": [],
+        "upstreamPreservation": {
+          "changedUpstreamFiles": 113,
+          "exactUpstreamFiles": 107,
+          "unionFiles": [
+            "src/features/selection-translation/ui/SelectionTranslator.vue",
+            "tests/architecture/vue-verification-owners.json",
+            "tests/selectionTranslatorLifecycle.test.ts",
+            "tests/test-matrix.json",
+            "tests/userscriptViteConfig.test.ts",
+            "vitest.coverage.config.ts"
+          ],
+          "allNewMaterialProductionCodeExactUpstream": true
+        },
+        "mobileRepair": {
+          "runtimeExactPreMerge": true,
+          "sfcRevalidateSourceExposeRetained": true,
+          "touchOwnershipNativeSelectionMenuViewportBranchesRetained": true,
+          "headerCombinesMobileAndMaterial": true,
+          "nativeFullscreenPopupViewportAndContainerExactPreMerge": true,
+          "previous4dDeviceResultsNotReclaimed": true
+        },
+        "materialInterfaces": {
+          "sourceLanguage": "Existing vocabularySourceLanguage(contentRequest), explicit source/target language props and video inputs retained; new optional ReadingSelection.material does not change language direction.",
+          "privacy": "SFC save exits in private context; reading material snapshot only nonprivate; beginMaterialCapture exits before generation lookup; client and background both reject private/incognito.",
+          "modelBoundary": "ReadingPanel and VideoSentenceLearning construct explicit text/context/sentence model request objects; local material source is not spread into model transport.",
+          "captureOwnership": "vocabulary request token/content request check after generation await and actual upsert success, then guarded reference completion; stale material operation does not authorize a new selection."
+        },
+        "video": {
+          "learningSourceAndContentPublicExactUpstream": true,
+          "oldSentenceLearningHostReexportsPreserved": true,
+          "nativeModePolicyUnchanged": true
+        },
+        "testAndCoverage": {
+          "matrixPreservesBoth": {
+            "e88c24bd428dd2141fc4284ff11401ce8556f947": true,
+            "633baacd32cb9aa32789dfe4472c880311df50cc": true
+          },
+          "coveragePreservesBoth": {
+            "e88c24bd428dd2141fc4284ff11401ce8556f947": true,
+            "633baacd32cb9aa32789dfe4472c880311df50cc": true
+          },
+          "selectionWorktreeContainsMobileCombinationAndMaterialOwnershipCases": true,
+          "vueOwnersMobileBehaviorAndNewMaterialOwnersRetained": true,
+          "noTestsRerunByReviewer": true
+        },
+        "i18n": {
+          "extensionMaterialJsonAndSourceExactUpstream": true,
+          "userscriptProjectionRetainsMobileFiltersAndPublishedDocumentFreeze": true,
+          "newRemoteLanguageCommit": "50e59c08290b47af8ea0d91c9d8403a8841c304f",
+          "newPinnedResources": [
+            {
+              "file": "userscript/languages/es-ES.be72661f69196d35.json",
+              "exactPinnedCommit": true,
+              "contentDigest": "be72661f69196d35"
+            },
+            {
+              "file": "userscript/languages/fr-FR.ecb180570edeb097.json",
+              "exactPinnedCommit": true,
+              "contentDigest": "ecb180570edeb097"
+            },
+            {
+              "file": "userscript/languages/ja-JP.a2e0e46262be844e.json",
+              "exactPinnedCommit": true,
+              "contentDigest": "a2e0e46262be844e"
+            },
+            {
+              "file": "userscript/languages/ko-KR.496a2393c33e1f1a.json",
+              "exactPinnedCommit": true,
+              "contentDigest": "496a2393c33e1f1a"
+            },
+            {
+              "file": "userscript/languages/ru-RU.3ae9903f73059e86.json",
+              "exactPinnedCommit": true,
+              "contentDigest": "3ae9903f73059e86"
+            }
+          ],
+          "legacyGreasyForkProjectionUsesOldPublishedDocumentSourceIntentionally": true
+        },
+        "scopeLimits": [
+          "Integration correctness review, not a new material feature audit or live acceptance.",
+          "Source changed for material integration; do not claim all selection/video learning production bytes remain old4d.",
+          "Future wrapper must use new owner-announced Safari resources; no build/install/UI here."
+        ],
+        "actions": {
+          "sourceEdits": false,
+          "indexEdits": false,
+          "commit": false,
+          "testsOrBuilds": false,
+          "deviceOrExternalMessages": false
+        }
+      }
+    },
+    "sourceRevalidation": {
+      "summary": {
+        "at": "2026-10-15T15:23:39.649471+00:00",
+        "status": "PASS",
+        "testFile": "tests/selectionTranslatorLifecycle.test.ts",
+        "newCases": 4,
+        "newCoverage": [
+          "Safari pointer listeners capture a real connected Text-node source; actual template indicator click removes native Selection while keeping reverse English target",
+          "Real runtime MutationObserver reconnects same closed-shadow host/Vue mount without duplicate translation, source snapshot or target change",
+          "Whole-body replacement invalidates source without synthetic selectionchange/pageshow; exposed real SFC validator clears card/snapshot, aborts request and ignores late result",
+          "Queued host repair followed by component pagehide or runtime unmount cannot resurrect card/late answer; final runtime disposal prevents host resurrection"
+        ],
+        "testCounts": {
+          "selectionTranslatorLifecycle": 260,
+          "contentFeatureMounting": 24,
+          "shadowUi": 6,
+          "total": 290
+        },
+        "command": "FLUENTREAD_TEST_MAX_WORKERS=1 pnpm exec vitest run tests/selectionTranslatorLifecycle.test.ts tests/contentFeatureMounting.test.ts tests/shadowUi.test.ts --maxWorkers=1 --maxConcurrency=3",
+        "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/selection-runtime-source-combination/targeted-290.log",
+        "baseline": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/selection-runtime-source-combination/before-fix.json",
+        "baselineLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/selection-runtime-source-combination/before-fix-red.log",
+        "fourCaseGreen": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/selection-runtime-source-combination/after-fix-four-cases.log",
+        "sourceFiles": {
+          "src/features/selection-translation/content/runtime.ts": "8ad04c5f38288d52f942e80fcbb3983cf3c61497a544e84a90eefcf790f0646f",
+          "src/features/selection-translation/ui/SelectionTranslator.vue": "bc3774beb76fe30abaae2d9198a47b49757c85e29484b0735b965ac5f0e98911",
+          "tests/selectionTranslatorLifecycle.test.ts": "580514be6616169730218185edc3194b79e651d4640d68536fc6eed1492e438b"
+        },
+        "scope": "Production TS runtime source is transpiled and executed against the official compiled SFC setup/render. The platform createVueShadowUi port mounts that actual component with runtime-supplied props, returning actual Vue public proxy; actual modal controller and Linkedom connected DOM/closed-shadow/MutationObserver execute. Browser trusted-event/Selection geometry/provider and WXT host creation are controlled ports. Final combined cases use normal webpage path without selectionAdapter. No production/decision-method mocks or artificial events used for invalid source cleanup. This does not prove real Safari system-menu/UI behavior.",
+        "notes": [
+          "RED evidence used the initial adapter-normalized fixture; final fixture was narrowed to the normal webpage path, preserving the failing source-replacement assertion.",
+          "Targeted stderr contains the pre-existing intentional dictionary timeout case; suite passes.",
+          "Only existing test file edited by this agent, no new registry/module. Production source fix belongs to root.",
+          "No build/browser/AVD/device, commit or push performed."
+        ],
+        "compile": {
+          "command": "pnpm compile",
+          "exitCode": 0,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/selection-runtime-source-combination/compile.log"
+        },
+        "finishedAt": "2026-10-15T15:23:53.375266+00:00"
+      },
+      "strictCoverage": {
+        "at": "2026-10-15T15:31:30.727498+00:00",
+        "sourceCommit": "8d85e62c7",
+        "status": "PASS",
+        "testFiles": [
+          "tests/contentFeatureMounting.test.ts"
+        ],
+        "cases": 24,
+        "coverageInclude": "src/features/selection-translation/content/runtime.ts",
+        "coverage": {
+          "lines": {
+            "total": 100,
+            "covered": 100,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 8,
+            "covered": 8,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 100,
+            "covered": 100,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 70,
+            "covered": 70,
+            "skipped": 0,
+            "pct": 100
+          }
+        },
+        "command": "pnpm test:coverage -- tests/contentFeatureMounting.test.ts --maxWorkers=1 --maxConcurrency=3 --coverage.include=src/features/selection-translation/content/runtime.ts --coverage.reportsDirectory=/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/selection-runtime-source-combination/coverage --coverage.reporter=text --coverage.reporter=json --coverage.reporter=json-summary",
+        "thresholds": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "scope": "V8-instrumented real runtime module, existing host lifecycle test enhanced with current owner public-method contract. Real Linkedom host deletion/body replacement records connected source before reattach; no mirrored source business logic. Full SFC/runtime semantics remain covered by prior 4 integration cases, not counted toward this V8 runtime metric.",
+        "change": "Only tests/contentFeatureMounting.test.ts: current mounted instance exposes revalidateSource; verifies zero call on initial mount, valid/invalid source revalidation occurs before host reconnect and no more calls after unmount.",
+        "files": {
+          "src/features/selection-translation/content/runtime.ts": "8ad04c5f38288d52f942e80fcbb3983cf3c61497a544e84a90eefcf790f0646f",
+          "src/features/selection-translation/ui/SelectionTranslator.vue": "bc3774beb76fe30abaae2d9198a47b49757c85e29484b0735b965ac5f0e98911",
+          "tests/contentFeatureMounting.test.ts": "2d4ce5ef672c3e345ac678050271d133fbc59a27a9988eac7668c43b9cf7cbde"
+        },
+        "logs": {
+          "initial": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/selection-runtime-source-combination/coverage/before-owner-contract.log",
+          "final": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/selection-runtime-source-combination/coverage/strict-final.log",
+          "summary": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/selection-runtime-source-combination/coverage/coverage-summary.json",
+          "raw": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/selection-runtime-source-combination/coverage/coverage-final.json"
+        },
+        "initialResult": "24 tests passed; only new revalidateSource-present branch missed, branches98.57%; no lowered thresholds.",
+        "finalResult": "24 tests passed, all four metrics100%, exit0; git diff --check exit0; no production edit/build/browser/device/commit/push."
+      },
+      "review": {
+        "reviewedAt": "2026-10-15T15:22:39.569631+00:00",
+        "base": "d080541081079fd1663787107181ee4fa533e2ef",
+        "mode": "independent read-only minimal working-diff review",
+        "blockingFindings": [],
+        "sourceSha256": {
+          "src/features/selection-translation/content/runtime.ts": "8ad04c5f38288d52f942e80fcbb3983cf3c61497a544e84a90eefcf790f0646f",
+          "src/features/selection-translation/ui/SelectionTranslator.vue": "bc3774beb76fe30abaae2d9198a47b49757c85e29484b0735b965ac5f0e98911",
+          "tests/selectionTranslatorLifecycle.test.ts": "580514be6616169730218185edc3194b79e651d4640d68536fc6eed1492e438b"
+        },
+        "checked": [
+          "createVueShadowUi stores actual app.mount(container) return; Vue3.5.13 getComponentPublicInstance returns exposed proxy, so defineExpose revalidateSource is callable via mounted.instance.",
+          "Only disconnected own host, valid generation/context and enabled config enter restoration. No added DOM command/message bridge and closed ShadowRoot remains closed.",
+          "Existing restoreSelectionSource keeps connected same-document noncollapsed range with unchanged rangeText and accepted range. It does not require current native Selection, so consumed Safari native selection preserves valid card/target/request.",
+          "Invalid source follows existing hideAll: clears snapshot/touch ownership and aborts/reset request; late translation cannot reopen via that state. No new request started by revalidation.",
+          "snapshot->onSelectionRangeChange callback is flush post, preventing synchronous recursive recovery through hideAll; repairs increments before method call and no await in added path.",
+          "Pagehide existing handler clears card; hidden revalidation defers to existing pageshow/visibility check. Runtime unmount invalidates request generation and disposes observer before removing Vue, so queued observer cannot revive disposed instance.",
+          "Actual combination test uses original runtimeTS+official SFC compile/render+actual modal controller, actual Vue public proxy and Linkedom closed shadow/MutationObserver; controlled browser range/Selection/provider ports are explicitly scoped.",
+          "Read before-fix RED evidence; independently did not rerun tests or infer native device acceptance."
+        ],
+        "limitations": [
+          "GREEN/associated/compile results belong to implementation agent; not yet available in reviewed evidence directory.",
+          "No claim Safari native menu/body lifecycle device acceptance from Linkedom fixture."
+        ],
+        "sourceEdits": false,
+        "indexEdits": false,
+        "testsRun": false,
+        "buildOrDeviceAction": false
+      },
+      "limits": "Controlled Selection geometry/ports plus actual compiled SFC/runtime/MutationObserver; not native Safari UI evidence."
+    },
+    "materialsMainIntegration": {
+      "summary": {
+        "sourceCommit": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
+        "baseCommit": "633baacd32cb9aa32789dfe4472c880311df50cc",
+        "selectionConsumerTests": 265,
+        "associatedTests": 343,
+        "uniqueTotal": 608,
+        "logs": [
+          "validation/materials-merge/selection-conflict-resolution.json",
+          "validation/integrated-main-633-final/targeted.log"
+        ],
+        "compile": {
+          "passed": true,
+          "log": "validation/integrated-main-633-final/compile.log"
+        },
+        "previousSourceFix": {
+          "uniqueTests": 290,
+          "runtimeCoverage": "100% in statements, branches, functions and lines; runtime source unchanged by633 integration",
+          "evidence": "validation/selection-runtime-source-combination/summary.json",
+          "coverage": "validation/selection-runtime-source-combination/coverage/verification.json"
+        },
+        "sourceAndIndexReview": "merge-main-633-review.json",
+        "scope": "Targeted integration checks only; no local full-suite run."
+      },
+      "selectionConflictResolution": {
+        "at": "2026-10-15T15:35:51.669443+00:00",
+        "incoming": "633baacd3 (#997)",
+        "file": "tests/selectionTranslatorLifecycle.test.ts",
+        "conflictResolution": [
+          "Union mobile runtime/visualViewport/modal imports and upstream materialCapture imports/ports",
+          "Retain real-DOM optional/deferred mounting harness and all four Safari runtime combination cases",
+          "Add material document dispatchEvent port for ordinary harness and preserve real-DOM integration mode",
+          "Return material extraction/generation/capture/real begin+complete orchestration spies alongside mobile runtime mount API"
+        ],
+        "retainedStaticItTitles": {
+          "ours": 137,
+          "theirs": 119,
+          "merged": 140,
+          "missing": []
+        },
+        "test": {
+          "command": "FLUENTREAD_TEST_MAX_WORKERS=1 pnpm exec vitest run tests/selectionTranslatorLifecycle.test.ts --maxWorkers=1 --maxConcurrency=3",
+          "cases": 265,
+          "exitCode": 0,
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/materials-merge/selection-lifecycle.log"
+        },
+        "scope": "Only owned test resolved/staged; no other file edited or staged by this agent. Production SFC conflict resolved separately by root. No business method replacement: begin/complete capture invoke actual materialCapture functions, extraction and background clients are controlled ports. No browser/device/build/commit/push.",
+        "sha256": "696f78208b59d7be3cb02791bf815a40835ffdc1a004dfee18eb78257f8fadbc"
+      },
+      "review": {
+        "reviewedAt": "2026-10-15T15:38:07.711600+00:00",
+        "mode": "read-only pending-index/worktree union review; merge completed by owner during review",
+        "sourceHeadAtStart": "e88c24bd428dd2141fc4284ff11401ce8556f947",
+        "sourceHeadAtEnd": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
+        "upstream": "633baacd32cb9aa32789dfe4472c880311df50cc",
+        "unmergedPathsAtEnd": [],
+        "blockingFindings": [],
+        "upstreamPreservation": {
+          "changedUpstreamFiles": 113,
+          "exactUpstreamFiles": 107,
+          "unionFiles": [
+            "src/features/selection-translation/ui/SelectionTranslator.vue",
+            "tests/architecture/vue-verification-owners.json",
+            "tests/selectionTranslatorLifecycle.test.ts",
+            "tests/test-matrix.json",
+            "tests/userscriptViteConfig.test.ts",
+            "vitest.coverage.config.ts"
+          ],
+          "allNewMaterialProductionCodeExactUpstream": true
+        },
+        "mobileRepair": {
+          "runtimeExactPreMerge": true,
+          "sfcRevalidateSourceExposeRetained": true,
+          "touchOwnershipNativeSelectionMenuViewportBranchesRetained": true,
+          "headerCombinesMobileAndMaterial": true,
+          "nativeFullscreenPopupViewportAndContainerExactPreMerge": true,
+          "previous4dDeviceResultsNotReclaimed": true
+        },
+        "materialInterfaces": {
+          "sourceLanguage": "Existing vocabularySourceLanguage(contentRequest), explicit source/target language props and video inputs retained; new optional ReadingSelection.material does not change language direction.",
+          "privacy": "SFC save exits in private context; reading material snapshot only nonprivate; beginMaterialCapture exits before generation lookup; client and background both reject private/incognito.",
+          "modelBoundary": "ReadingPanel and VideoSentenceLearning construct explicit text/context/sentence model request objects; local material source is not spread into model transport.",
+          "captureOwnership": "vocabulary request token/content request check after generation await and actual upsert success, then guarded reference completion; stale material operation does not authorize a new selection."
+        },
+        "video": {
+          "learningSourceAndContentPublicExactUpstream": true,
+          "oldSentenceLearningHostReexportsPreserved": true,
+          "nativeModePolicyUnchanged": true
+        },
+        "testAndCoverage": {
+          "matrixPreservesBoth": {
+            "e88c24bd428dd2141fc4284ff11401ce8556f947": true,
+            "633baacd32cb9aa32789dfe4472c880311df50cc": true
+          },
+          "coveragePreservesBoth": {
+            "e88c24bd428dd2141fc4284ff11401ce8556f947": true,
+            "633baacd32cb9aa32789dfe4472c880311df50cc": true
+          },
+          "selectionWorktreeContainsMobileCombinationAndMaterialOwnershipCases": true,
+          "vueOwnersMobileBehaviorAndNewMaterialOwnersRetained": true,
+          "noTestsRerunByReviewer": true
+        },
+        "i18n": {
+          "extensionMaterialJsonAndSourceExactUpstream": true,
+          "userscriptProjectionRetainsMobileFiltersAndPublishedDocumentFreeze": true,
+          "newRemoteLanguageCommit": "50e59c08290b47af8ea0d91c9d8403a8841c304f",
+          "newPinnedResources": [
+            {
+              "file": "userscript/languages/es-ES.be72661f69196d35.json",
+              "exactPinnedCommit": true,
+              "contentDigest": "be72661f69196d35"
+            },
+            {
+              "file": "userscript/languages/fr-FR.ecb180570edeb097.json",
+              "exactPinnedCommit": true,
+              "contentDigest": "ecb180570edeb097"
+            },
+            {
+              "file": "userscript/languages/ja-JP.a2e0e46262be844e.json",
+              "exactPinnedCommit": true,
+              "contentDigest": "a2e0e46262be844e"
+            },
+            {
+              "file": "userscript/languages/ko-KR.496a2393c33e1f1a.json",
+              "exactPinnedCommit": true,
+              "contentDigest": "496a2393c33e1f1a"
+            },
+            {
+              "file": "userscript/languages/ru-RU.3ae9903f73059e86.json",
+              "exactPinnedCommit": true,
+              "contentDigest": "3ae9903f73059e86"
+            }
+          ],
+          "legacyGreasyForkProjectionUsesOldPublishedDocumentSourceIntentionally": true
+        },
+        "scopeLimits": [
+          "Integration correctness review, not a new material feature audit or live acceptance.",
+          "Source changed for material integration; do not claim all selection/video learning production bytes remain old4d.",
+          "Future wrapper must use new owner-announced Safari resources; no build/install/UI here."
+        ],
+        "actions": {
+          "sourceEdits": false,
+          "indexEdits": false,
+          "commit": false,
+          "testsOrBuilds": false,
+          "deviceOrExternalMessages": false
+        }
+      }
+    },
+    "webStabilityMainIntegration": {
       "mainCommit": "d3fb95d651831bc7974349b58054152dbba32b79",
       "mergeCommit": "88c6274c8",
       "summary": {
@@ -5993,49 +6364,7 @@
       },
       "limits": "Native Safari selection after host removal/body replacement was not rerun; component and runtime suites are separate, not joint actual-device evidence."
     },
-    "popupResourceContinuity": {
-      "createdAt": "2026-10-15T15:05:38.665Z",
-      "previous": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-9e-final/FluentRead/Shared (Extension)/Resources",
-      "current": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-d3-final/FluentRead/Shared (Extension)/Resources",
-      "scope": "popup.html local src/href plus recursive static/literal dynamic ES imports, literal local resource strings, CSSurl references; no runtime/behavior claim",
-      "fileCount": 29,
-      "files": [
-        "assets/base-CMRK1q-d.css",
-        "assets/interface-skins-C-micYUc.css",
-        "assets/popup-CoxJp0cC.css",
-        "chunks/128-rof0LK9z.js",
-        "chunks/PopupApp-CSg__1yb.js",
-        "chunks/PopupDrawer-D1SB2hk4.js",
-        "chunks/PopupOnboarding-Brah3lNo.js",
-        "chunks/PopupServices-BIvcW78n.js",
-        "chunks/UiLanguageOnboarding-DeZi3wyt.js",
-        "chunks/UiSelect.vue_vue_type_style_index_0_lang-j6Zixhne.js",
-        "chunks/_plugin-vue_export-helper-DlAUqK2U.js",
-        "chunks/base-LxDgIgU8.js",
-        "chunks/capabilities-Cj2_c4b7.js",
-        "chunks/el-overlay-DwVm_6M_.js",
-        "chunks/featureServices-DCOgVYSb.js",
-        "chunks/freeProviderPermissions-m0vLfoGG.js",
-        "chunks/i18n-B1HlLzOe.js",
-        "chunks/interfaceAppearance-C9Kznhfs.js",
-        "chunks/mount-C__pT5uz.js",
-        "chunks/pdfSource-gjBoXda6.js",
-        "chunks/popup-LMsbbb96.js",
-        "chunks/popupQuickFeatureIcons-BOZF-9oy.js",
-        "chunks/serviceCatalog-kirGzROJ.js",
-        "chunks/useConfigEditor-gzWBkHVr.js",
-        "chunks/useSettingsActionContext-2y8xBzyt.js",
-        "chunks/visualViewport-DJZqT_lD.js",
-        "icon/128.png",
-        "popup-startup.js",
-        "popup.html"
-      ],
-      "changed": [],
-      "allDiscoveredPopupResourcesByteIdentical": true,
-      "opaqueImports": [],
-      "limitation": "Computed/runtime URLs and extension background/content scripts are outside this bounded popup graph; prior UI acceptance remains prior-version evidence."
-    },
-    "latestPhaseCleanup": {
+    "priorLayoutPhaseCleanup": {
       "ios": {
         "completedAtEpochMs": 1792075902219,
         "status": "completed",
@@ -6176,6 +6505,48 @@
         "finishedAtEpochMs": 1792075819219
       },
       "android": "android-runtime/firefox-attempt4-layout-summary.json contains final verified cleanup receipt"
+    },
+    "popupResourceContinuityD3": {
+      "createdAt": "2026-10-15T15:05:38.665Z",
+      "previous": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-9e-final/FluentRead/Shared (Extension)/Resources",
+      "current": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-d3-final/FluentRead/Shared (Extension)/Resources",
+      "scope": "popup.html local src/href plus recursive static/literal dynamic ES imports, literal local resource strings, CSSurl references; no runtime/behavior claim",
+      "fileCount": 29,
+      "files": [
+        "assets/base-CMRK1q-d.css",
+        "assets/interface-skins-C-micYUc.css",
+        "assets/popup-CoxJp0cC.css",
+        "chunks/128-rof0LK9z.js",
+        "chunks/PopupApp-CSg__1yb.js",
+        "chunks/PopupDrawer-D1SB2hk4.js",
+        "chunks/PopupOnboarding-Brah3lNo.js",
+        "chunks/PopupServices-BIvcW78n.js",
+        "chunks/UiLanguageOnboarding-DeZi3wyt.js",
+        "chunks/UiSelect.vue_vue_type_style_index_0_lang-j6Zixhne.js",
+        "chunks/_plugin-vue_export-helper-DlAUqK2U.js",
+        "chunks/base-LxDgIgU8.js",
+        "chunks/capabilities-Cj2_c4b7.js",
+        "chunks/el-overlay-DwVm_6M_.js",
+        "chunks/featureServices-DCOgVYSb.js",
+        "chunks/freeProviderPermissions-m0vLfoGG.js",
+        "chunks/i18n-B1HlLzOe.js",
+        "chunks/interfaceAppearance-C9Kznhfs.js",
+        "chunks/mount-C__pT5uz.js",
+        "chunks/pdfSource-gjBoXda6.js",
+        "chunks/popup-LMsbbb96.js",
+        "chunks/popupQuickFeatureIcons-BOZF-9oy.js",
+        "chunks/serviceCatalog-kirGzROJ.js",
+        "chunks/useConfigEditor-gzWBkHVr.js",
+        "chunks/useSettingsActionContext-2y8xBzyt.js",
+        "chunks/visualViewport-DJZqT_lD.js",
+        "icon/128.png",
+        "popup-startup.js",
+        "popup.html"
+      ],
+      "changed": [],
+      "allDiscoveredPopupResourcesByteIdentical": true,
+      "opaqueImports": [],
+      "limitation": "Computed/runtime URLs and extension background/content scripts are outside this bounded popup graph; prior UI acceptance remains prior-version evidence."
     }
   },
   "productionBrowserSuites": [
@@ -6318,33 +6689,33 @@
   ],
   "artifacts": {
     "chrome": {
-      "sha256": "2f18f919eb1bcbc2b5139e07a2c06dfeaca418d64306bf03ba39e18eb4e01c73",
-      "files": 474,
+      "sha256": "855609934fd04f78698612edbaa15a6efd91a8694621606a679ede863e7da666",
+      "files": 476,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "firefox": {
-      "sha256": "9200b9315c108e79c351e7a5b4b19ab7d65d236d9c385d23b52038023687a3fd",
-      "files": 474,
+      "sha256": "2c223daa260b73ce781578301296d36347a1d0afc46839f0a4bc393be33030f1",
+      "files": 476,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "safari": {
-      "sha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
-      "files": 463,
+      "sha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+      "files": 465,
       "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
     },
     "userscript": {
-      "sha256": "1a1b692f76b17a1da7eef97991e19eb65490f0666d99cfdbbf772f83ffab9bcf",
-      "bytes": 2081503,
+      "sha256": "2d71101b42961c92987684c066556971ca6c70da52cf836ef4f7c4e61b1b0018",
+      "bytes": 2091317,
       "verifier": "passed"
     }
   },
   "safari": {
-    "createdAt": "2026-10-15T15:05:06.263009+00:00",
-    "artifactStatus": "Frozen88c/d3 artifact: all3 native SDK builds and463resource per-file verification passed; build-only scope, no new device acceptance",
+    "createdAt": "2026-10-15T15:40:40.941406+00:00",
+    "artifactStatus": "Frozen073/material633 artifact: all3 native SDK builds and465resource per-file verification passed; build-only scope, no new device acceptance",
     "researchProbe": false,
     "reviewed": true,
-    "productionWebResourceSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
-    "productionWebResourceCount": 463,
+    "productionWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+    "productionWebResourceCount": 465,
     "nativeContainerSourceSha256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55",
     "nativeFullscreenSourceSha256": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
     "popupAppSourceSha256": "690998e1fdb09eada4e90445e11665d893d5396a39d7b007165c2c5b71b71a26",
@@ -6355,17 +6726,17 @@
       "version": "0.0.38",
       "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
       "checkedReferences": 10,
-      "buildSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
-      "artifactCount": 463,
+      "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+      "artifactCount": 465,
       "packager": {
         "name": "safari-web-extension-packager",
         "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/safari-web-extension-packager"
       },
       "projects": [
-        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-d3-final/FluentRead/FluentRead.xcodeproj"
+        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-633-final/FluentRead/FluentRead.xcodeproj"
       ],
       "copiedExtensions": [
-        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-d3-final/FluentRead/Shared (Extension)/Resources"
+        "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-xcode-integrated-main-633-final/FluentRead/Shared (Extension)/Resources"
       ],
       "containerGuides": [
         {
@@ -6398,105 +6769,105 @@
     },
     "platforms": {
       "iosSimulator": {
-        "createdAt": "2026-10-15T15:06:21.531Z",
+        "createdAt": "2026-10-15T15:41:54.181Z",
         "platform": "iosSimulator",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-d3-final/Build/Products/Release-iphonesimulator/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-d3-final/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-633-final/Build/Products/Release-iphonesimulator/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-633-final/Build/Products/Release-iphonesimulator/FluentRead.app/PlugIns/FluentRead Extension.appex",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
           "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
-          "artifactCount": 463
+          "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+          "artifactCount": 465
         },
-        "compiledWebResourceSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
-        "compiledWebResourceCount": 463,
+        "compiledWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+        "compiledWebResourceCount": 465,
         "nativeExtras": [
           "FluentRead Extension",
           "Info.plist"
         ],
-        "nativeExecutableSha256": "d726c6f1df8a7dea14d6bb5d6acbfe533978f000f3c66812f0768d8ee62c909e",
+        "nativeExecutableSha256": "90f1df99b39f7a27964f4a9dbe56ef00f8dea69c156ad2dc42a76dc18e418fb5",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-integrated-main-d3-final.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-ios-simulator-integrated-main-633-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-integrated-main-d3-final.log",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iosSimulator-integrated-main-633-final.log",
         "signatureInspectionExitCode": 0,
         "signatureSummary": "linker ad-hoc; no developer team",
         "installedByThisAgent": false,
         "launchedByThisAgent": false
       },
       "macos": {
-        "createdAt": "2026-10-15T15:07:12.221Z",
+        "createdAt": "2026-10-15T15:42:42.698Z",
         "platform": "macos",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-d3-final/Build/Products/Release/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-d3-final/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-633-final/Build/Products/Release/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-macos-integrated-main-633-final/Build/Products/Release/FluentRead.app/Contents/PlugIns/FluentRead Extension.appex/Contents/Resources",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
           "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
-          "artifactCount": 463
+          "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+          "artifactCount": 465
         },
-        "compiledWebResourceSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
-        "compiledWebResourceCount": 463,
+        "compiledWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+        "compiledWebResourceCount": 465,
         "nativeExtras": [],
-        "nativeExecutableSha256": "ba2f06e54448cf1bbc76a321b15f7c79bf1a732e555fade3d2182fa522055963",
+        "nativeExecutableSha256": "1fb71397ca261d1d785fc6c2ec8a77a11f0762f7c3ce0c437b3f40ab98826c89",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-integrated-main-d3-final.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-macos-integrated-main-633-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-integrated-main-d3-final.log",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-macos-integrated-main-633-final.log",
         "signatureInspectionExitCode": 0,
         "signatureSummary": "linker ad-hoc; no developer team",
         "installedByThisAgent": false,
         "launchedByThisAgent": false
       },
       "iphoneos": {
-        "createdAt": "2026-10-15T15:07:52.366Z",
+        "createdAt": "2026-10-15T15:43:24.456Z",
         "platform": "iphoneos",
-        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-d3-final/build/FluentRead.app",
-        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-d3-final/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
+        "app": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-633-final/build/FluentRead.app",
+        "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-target-iphoneos-integrated-main-633-final/build/FluentRead.app/PlugIns/FluentRead Extension.appex",
         "source": {
           "extension": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-mv2",
           "version": "0.0.38",
           "manifestSha256": "d7bcd7044f90b52d4dee774f7cef84f019b4b56fb73434de3304c9381a6cbae5",
           "checkedReferences": 10,
-          "buildSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
-          "artifactCount": 463
+          "buildSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+          "artifactCount": 465
         },
-        "compiledWebResourceSha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
-        "compiledWebResourceCount": 463,
+        "compiledWebResourceSha256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+        "compiledWebResourceCount": 465,
         "nativeExtras": [
           "FluentRead Extension",
           "Info.plist"
         ],
-        "nativeExecutableSha256": "b0d6cf0d5bbd97f2d301f91ae16aad8e202661fbd26256a629a6f5c1d9e9c088",
+        "nativeExecutableSha256": "72d2c6f562535b80abd46af070e55f59ee53aa43c15fed0cc852f701d2f4cdd2",
         "guideResourcesByteIdentical": true,
         "build": {
           "result": "passed",
           "exitCode": 0,
-          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-integrated-main-d3-final.log",
+          "log": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/build-iphoneos-target-integrated-main-633-final.log",
           "configuration": "Release",
           "jobs": 1,
           "CODE_SIGNING_ALLOWED": "NO",
           "CODE_SIGNING_REQUIRED": "NO"
         },
-        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-integrated-main-d3-final.log",
+        "signatureLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/signature-iphoneos-integrated-main-633-final.log",
         "signatureInspectionExitCode": 1,
         "signatureSummary": "unsigned; no developer team",
         "installedByThisAgent": false,
@@ -6508,19 +6879,19 @@
     "formalWebValidation": {
       "result": "passed",
       "steps": 8,
-      "resultsPath": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/results.json",
-      "resultsSha256": "8a8741a8667de52fb611d842bbe6a0c97cf6989b2003dfecec74aa29fc15e5e2"
+      "resultsPath": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/results.json",
+      "resultsSha256": "024e41df9bc6bf658f0efb9da9fca2197341f6edb150d96a5d84463759028994"
     },
-    "sourceValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/source-at-build.json",
-    "independentReview": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-d3-review.json",
-    "webValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-d3-final/results.json",
+    "sourceValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/source-at-build.json",
+    "independentReview": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-633-review.json",
+    "webValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/integrated-main-633-final/results.json",
     "nativeSourceValidation": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/validation/native-system-choice-final/native-validation-summary.json",
-    "packageLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/package-integrated-main-d3-final.log",
-    "schemesLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/schemes-integrated-main-d3-final.log",
-    "resourceDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/resources-delta-integrated-9e-to-d3-final.json",
-    "previousAcceptance": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-integrated-main-9e-final.json",
-    "previousProductionWebResourceSha256": "b7b36040e584cb6d10856c2d2ea138cc3562df8704f80ba05bdfac9d874a857c",
-    "versionHistoryNote": "Preserves upstream#999/#994 and#998 web stability including selection host recovery/full-page lifecycle. Old187 mobile map has174 unchanged and13 upstream changed files; one full-page runtime file added. Popup/native/viewport source remains215e-identical. Newartifact build-only, root separately schedules Chrome smoke.",
+    "packageLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/package-integrated-main-633-final.log",
+    "schemesLog": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/schemes-integrated-main-633-final.log",
+    "resourceDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/resources-delta-selection-to-633-final.json",
+    "previousAcceptance": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/acceptance-selection-source-revalidation-final.json",
+    "previousProductionWebResourceSha256": "4d973883ac2add80087a29a0979cbbc70591dfa4e7fa32be5f0b4c2d8b0c8052",
+    "versionHistoryNote": "Integrates upstream633 material workspace into073. Preserves source-revalidation fix, nativeFullscreen7ae and containerf84. Material interfaces/SFC/video learning source and sharedi18n are new; do not infer all selection/video learning bytes unchanged. Current228 actualYouTube and prior4d source-revalidation artifacts remain separate historical snapshots; no installation/UI by packaging agent.",
     "acceptanceBoundary": "Native compilation/resource identity only; root/UI agent owns actual device/browser acceptance. No installation or device control by packaging agent.",
     "resourceSafeRunner": {
       "maxWorkers": 1,
@@ -6533,39 +6904,49 @@
     "simulatorAppHandedToUiAgent": false,
     "deviceInstallationBoundary": "No device installation, launch or UI by packaging agent in integrated phase.",
     "popupServicesSourceSha256": "8083cde0601b48e0b02a606cfd45eeea408eb103ac5cdd29fe2eca9a79ebe3bd",
-    "sourceCommit": "88c6274c8796530c1639cd5eeecf432345e99ba7",
+    "sourceCommit": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
     "priorActualUiEvidence": {
       "sourceCommit": "215e40fba",
       "productionWebResourceSha256": "0d624626ee4fa1efe35a3b8c11fa6b5db80fc3ce815fdf95a26ffaeeed827033",
       "android": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/android-runtime/firefox-attempt4-layout-summary.json",
       "ios": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/drawer-layout-keyboard-search-discovered-summary.json",
-      "mobileSourceEquivalence": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-d3-review.json",
-      "limitation": "Partial source continuity only: d3 changes13 existing selection/full-page runtime modules and adds styleRoots; earlier0d actual UI does not verify these new upstream runtime paths."
+      "mobileSourceEquivalence": "Partial continuity only; see current mobileSourceComparison andd3 review, not all187 unchanged.",
+      "limitation": "Earlier0d/228 actual UI does not validate new633 material integration or source-revalidation fix. New bundle/source identity and parent Chrome smoke are separate evidence."
     },
-    "actualUiAcceptanceForThisArtifact": "not run by packaging agent; parent may schedule isolated Chrome bundle/drawer smoke separately",
+    "actualUiAcceptanceForThisArtifact": "Build-only from packaging agent; parent runs version-specific Chrome11lifecycle smoke and owns any later device installation.",
     "newAvdAttemptPreparedOrStarted": false,
     "deviceUiPerformedThisPhase": false,
     "mobileSourceComparison": {
-      "priorMapFiles": 187,
-      "same215e": 174,
-      "changed215e": 13,
-      "newRuntimeFiles": [
-        "src/features/full-page-translation/content/styleRoots.ts"
+      "comparedToSource": "8d85e62c7171cf46d150e3b2c3bf8bf25a1e6df4",
+      "unchangedPopupNativeViewportContainerPaths": [
+        "src/app/popup/PopupApp.vue",
+        "src/app/popup/PopupServices.vue",
+        "src/app/popup/mount.ts",
+        "src/app/popup/popup.css",
+        "src/features/video-subtitle/content/nativeFullscreen.ts",
+        "src/platform/dom/visualViewport.ts",
+        "scripts/safari/container/ViewController.swift"
       ],
-      "popupNativeViewportPackagingSourceUnchanged": true,
-      "recheckedAtPackaging": true,
-      "review": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-d3-review.json"
+      "changedProductionInputCount": 46,
+      "preciseDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/source-delta-selection-to-633-final.json",
+      "review": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/merge-main-633-review.json"
     },
     "finalHeadClaim": false,
-    "boundedPopupResourceContinuity": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/popup-resource-continuity-d3.json",
-    "updatedAt": "2026-10-15T15:07:52.368Z",
-    "completedAt": "2026-10-15T15:07:52.439477+00:00"
+    "upstreamBase": "633baacd32cb9aa32789dfe4472c880311df50cc",
+    "sourceDelta": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/safari/source-delta-selection-to-633-final.json",
+    "updatedAt": "2026-10-15T15:43:24.458Z",
+    "completedAt": "2026-10-15T15:43:24.527933+00:00",
+    "simulatorAppPathProvidedForLaterInstallation": true
   },
   "review": {
     "code": "independent scoped review found no remaining confirmed P1/P2 regressions",
     "visual": "screenshots inspected; 44px specificity and truncated timing label repaired",
     "operations": "normal/loading/error/retry/cancel/toggle/restore/refresh/background/dispose covered in scoped unit and controlled production browser runs",
-    "nativeContainer": "Independent review repaired WKScriptMessageHandler retain cycle with weak forwarding and unregister; strict CSP/local bridge and all template layouts reviewed; Swift compiled on all three targets; dynamic deallocation not instrumented"
+    "nativeContainer": "Independent review repaired WKScriptMessageHandler retain cycle with weak forwarding and unregister; strict CSP/local bridge and all template layouts reviewed; Swift compiled on all three targets; dynamic deallocation not instrumented",
+    "latestEvidenceScope": {
+      "report": "final-evidence-scope-review.json",
+      "scope": "Independent report identity and result-scope review; corrections applied in acceptance and current versioned indices."
+    }
   },
   "evidenceLimits": [
     "Earlier Edge suites use controlled pages/provider responses, CDP touch, DOM Range, viewport/lifecycle/fullscreen shims; they are not native mobile acceptance.",
@@ -6579,11 +6960,11 @@
     "AVKit presentation, OS reclamation, real audio and VoiceOver/TalkBack require their own runtime evidence."
   ],
   "remainingAcceptance": [
-    "Safari macOS/iPhone/iPad install, site permissions, update retaining configuration, disable/uninstall",
-    "iOS native selection, keyboard, rotation, safe areas and AVKit subtitle Off/switch/return",
-    "Android Edge/Firefox device installation/update and three translation paths",
-    "Background suspension/memory reclamation on devices",
-    "Real provider and audio behavior; VoiceOver/TalkBack; Safari Userscripts manager runtime"
+    "Physical iPhone/iPad/Android and macOS Safari installation, update, permissions and disable/uninstall",
+    "YouTube alternate native source track, native menu/keyboard interaction, rotation, video changes and background reclamation; scoped228 Off/reselection/reentry is separately observed",
+    "Firefox Android direct entry activation while native actionmode remains open; current633 card/copy feedback/close/new source is separately observed",
+    "Android Edge installation and Safari Userscripts manager runtime",
+    "Real provider and audio behavior, physical-device safe areas and VoiceOver/TalkBack"
   ],
   "continuation": {
     "ciFixCommit": "cd55bc55c",
@@ -6698,6 +7079,22 @@
       "created_at": "2026-10-15T11:44:28Z",
       "updated_at": "2026-10-15T12:29:00Z",
       "report": "pr995-ci-clone-success.json"
+    },
+    "ciLayoutSuccess": {
+      "id": 38757793503,
+      "html_url": "https://github.com/FluentRead/FluentRead/actions/runs/38757793503",
+      "head_sha": "d080541081079fd1663787107181ee4fa533e2ef",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T15:09:16Z",
+      "updated_at": "2026-10-15T15:57:39Z",
+      "report": "pr995-ci-layout-success.json",
+      "log": "validation/ci-layout-d080.log",
+      "testFiles": 738,
+      "testsPassed": 24621,
+      "testsSkipped": 5,
+      "changedModuleCoverage": "100% statements, branches, functions and lines",
+      "scope": "d080 layout integration only; excludes later source revalidation and material merge"
     }
   },
   "sourceSnapshotScope": "Runtime, build and native container files changed relative to baseCommit, including untracked source files; documentation excluded",
@@ -7021,7 +7418,7 @@
       "nativeReport": "safari/acceptance-drawer-layout-final.json",
       "sourceSnapshotSha256": "ea911e7d961ce23fbaee38cc73a8386e7e45478251acdf855413b8a42ceb1ae4",
       "webTreeSha256": "0d624626ee4fa1efe35a3b8c11fa6b5db80fc3ce815fdf95a26ffaeeed827033",
-      "scope": "All6 productionChrome cases and21 screenshots reviewed; actual Firefox Android7 groups and iOS realkeyboard passed. Current integrated build includes upstream document, quality and web-stability changes. PopupApp, PopupServices, mount, CSS, viewport, native subtitles and Safari container remain byte-identical. Older187-file mobile list now has174 identical and13 upstream-changed files; device evidence is not reassigned to the new package."
+      "scope": "All6 productionChrome cases and21 screenshots reviewed; actual Firefox Android7 groups and iOS keyboard passed at215e/0d. Later source and upstream material changes have separate snapshots and do not inherit these device verdicts."
     },
     "androidWidthArtifact": {
       "nativeReport": "safari/acceptance-android-popup-final.json",
@@ -7161,6 +7558,191 @@
       },
       "nativeReport": "safari/acceptance-integrated-main-9e-final.json",
       "scope": "Four Web and three native builds plus three production Chrome smoke cases passed; no device installation. Superseded by separate d3 integration build."
+    },
+    "webStabilityMainIntegration": {
+      "sourceCommit": "88c6274c8796530c1639cd5eeecf432345e99ba7",
+      "baseCommit": "d3fb95d651831bc7974349b58054152dbba32b79",
+      "snapshot": {
+        "sourceFiles": {
+          "package.json": "f2d0cb391c8a4049f85cacd393069f39bb62de49f2bf79558ae4e31f86991871",
+          "scripts/safari/container/Main.html": "8359d2ff5a18fc2c655ef8798869b242b7c8495fa9a4575919213a2226d7789e",
+          "scripts/safari/container/Script.js": "ff9d564bd55a9742f77043dc08ebfd4cc2415989d70576851182d9c34c0ad2f8",
+          "scripts/safari/container/Style.css": "3f4c01b933fe9622c01784d8e2eec2a228225fb07284bb5adacaf4bef4319a40",
+          "scripts/safari/container/ViewController.swift": "6d9d7f1bb044d88eb17b644c8c038062f964a4486f59a90f4d3b081f09931d06",
+          "scripts/safari/package.mjs": "9b2f03d5d9b3729150498adf0e50318a30465ec3982c6c198aa280e5cfd6796f",
+          "src/app/popup/PopupApp.vue": "690998e1fdb09eada4e90445e11665d893d5396a39d7b007165c2c5b71b71a26",
+          "src/app/popup/PopupServices.vue": "8083cde0601b48e0b02a606cfd45eeea408eb103ac5cdd29fe2eca9a79ebe3bd",
+          "src/app/popup/mount.ts": "208d90c048ac6014a6a97ae78db3cdb329a559d29635009d986892bbe7cc88cc",
+          "src/app/popup/popup.css": "8fe833c2781247d0c2308090dd795852d51852bc254bafa74f3c75d87b933b55",
+          "src/core/config/freeProviderOrigins.json": "8b4004cade979ded8b2b76ac3398dfa108f9e423de2b6d7336dc2530cadf2418",
+          "src/core/config/freeProviderOrigins.ts": "ee38f3e7bdaf46a7f9f3097da746d279a2215cf3bdbf336a88c15669f73b3f36",
+          "src/core/i18n/messages/en-US.ts": "fefaccce594aec16c3a6cfde8d05f68b6fb5a285e76c7eddb8adbddba4cb7cfb",
+          "src/core/i18n/messages/es-ES.ts": "8e3c989bcef44b88f8fe92ceecc41f10e837df8af54cb2a1f5d07d6cb43a32fc",
+          "src/core/i18n/messages/fr-FR.ts": "044d3e0e5805a7ad8b68fc014f2c5c1c1f3b227582b5034c24cce2f456add393",
+          "src/core/i18n/messages/ja-JP.ts": "1e65af4f3a7d522c5e28803ae285be8e7f74358f161b0debb9f746f1deeac406",
+          "src/core/i18n/messages/ko-KR.ts": "a12334fcaf4511c55595a5ba8ae0fdc17d9002ee6a00d601c98751f0227152e2",
+          "src/core/i18n/messages/ru-RU.ts": "11d711876442e1e01e3690d336fda9a2ff7021e4bedb6ad07548232ad33aa469",
+          "src/core/i18n/messages/settings-copy/en-US.json": "61958ef9eef05f32c4bbb173c5dd80d24f44d48af9ae08b721ed14b43a1fd944",
+          "src/core/i18n/messages/settings-copy/es-ES.json": "37a16dff8cf08aa4400e3aedc3e740a47d74c9627ce9c6d7c960687c82fb9de1",
+          "src/core/i18n/messages/settings-copy/fr-FR.json": "929e5f0bc0ab483eb32c8029787abebb5c58acf700cfa7e80e6526f838f4af1f",
+          "src/core/i18n/messages/settings-copy/ja-JP.json": "5274819676b545d9249cea8e348c4e7479e672894c02022b266187fd410dd96f",
+          "src/core/i18n/messages/settings-copy/ko-KR.json": "e85288cccae44a2e603b396bf8bcf4eebc5cb6b6a2b51d4fcce5190bcce570c6",
+          "src/core/i18n/messages/settings-copy/ru-RU.json": "b8cf19e8a6b471f16277a0a7a3f6b63e90148207d20c6c9040938bde36b082da",
+          "src/core/i18n/messages/settings-copy/zh-CN.json": "d6ca67b4b1045195ded436a18124e7832f23df9472e716d18f95b80bcadd2e13",
+          "src/core/i18n/messages/zh-CN.ts": "8ee52024eb4b0f714d3a73e39192c0d93f9e80a9b012e38ec8f42c81aa9234e0",
+          "src/features/floating-ball/content/anchoredPopup.ts": "c6a8ed6b145ef29489df1a0c3d3b69ea4a23b092a972bc96540351d25fe9b7bf",
+          "src/features/floating-ball/ui/FloatingBall.vue": "7dc94a202f3a6ee588b98d02ab06314f95fc33fcb440587f7ef5ad707fa851e4",
+          "src/features/full-page-translation/ui/TranslationProgressPanel.vue": "1b33297965759c8117b56a4a956e7f7b981d7ff0d519a0391e2452f9e842ef5c",
+          "src/features/selection-translation/core.ts": "3c5f2d93a2872884b1029e3bae94b4b15362a300ba41adacfe9fd00f14f0ae68",
+          "src/features/selection-translation/ui/SelectionTranslator.vue": "7ee2015a5b86ff2276fb94879b0286eaaf2cf4b746e5b14342d2ef7990394163",
+          "src/features/settings/ui/services/FreeTranslationSettings.vue": "1ec580cbca47f5ed474e4f9b39136724d19eb88ef62d37bfc403a0af3dbe8456",
+          "src/features/settings/ui/services/ServiceConfiguration.vue": "251a3084643266336095f85775166b7d8dbcedb72dc5a93ac351652eaeb4bfa8",
+          "src/features/video-subtitle/content/nativeFullscreen.ts": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
+          "src/features/video-subtitle/content/playerMenu.ts": "5cc6bb174d6c94ffc9f8e1d2ccdbfcd688556d80955de8bacfbf998fb4112d8b",
+          "src/features/video-subtitle/content/runtime.ts": "2ccd7ad37e76eab5f0905ae1d075e1437e5b7cf858fcf7844c59077bb568dc2c",
+          "src/features/video-subtitle/content/translationCache.ts": "ecdda524d2891a331fbd7068e313a828e0fee39f71bcad1e33a65fde8477514b",
+          "src/features/video-subtitle/content/ui.ts": "1c24a4e2ba8491df3e9fc583801bc7fd1cd016e7dc80613da32b292fbc177499",
+          "src/features/video-subtitle/content/videoPlayerBinding.ts": "fe5b3cc8f9825f2a513d419efcb4c1627eda43eb713a4e752fe19e65d38abe37",
+          "src/features/video-subtitle/content/videoPlayerLocator.ts": "67ff409285b5116088605c13174ea0b9a7881f2ac08f1aed73e68e73f8ddba97",
+          "src/features/video-subtitle/content/youtubeHumanCaptions.ts": "675e1a19dc0de7b787bb6b56775ff0ae020e84368634c9750a2136c5cfd2e86e",
+          "src/platform/browser/freeProviderPermissions.ts": "eb2d47c062e0c476e190b53059761d25607e4355bc47aea85cead162752a6f8a",
+          "src/platform/dom/visualViewport.ts": "fec540c69ca5703e8051e04df51a79e192a2da55be359385eb4a91c11050c8d2",
+          "src/providers/translation/free-translation.ts": "2374e76df1cef27a6948b4d4bcdb25cfe60611489bba40e9588643f147062c17",
+          "userscript/languageBundles.ts": "ab7a652538f22a5554a121406afa0b01871a03122013543ddcf1a7204e4946c9",
+          "wxt.config.ts": "09e6aea80f44a41f7cfa24acdf486f79d73c0011a086be9d36b35c4dbbd252d6"
+        },
+        "sourceSnapshotSha256": "f50f0cfa03583daea3c03e1693765392df905ab6d4871524061ae2f9363b9f1e",
+        "sourceCommit": "88c6274c8796530c1639cd5eeecf432345e99ba7",
+        "baseCommit": "d3fb95d651831bc7974349b58054152dbba32b79",
+        "artifacts": {
+          "chrome": {
+            "sha256": "2f18f919eb1bcbc2b5139e07a2c06dfeaca418d64306bf03ba39e18eb4e01c73",
+            "files": 474,
+            "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+          },
+          "firefox": {
+            "sha256": "9200b9315c108e79c351e7a5b4b19ab7d65d236d9c385d23b52038023687a3fd",
+            "files": 474,
+            "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+          },
+          "safari": {
+            "sha256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
+            "files": 463,
+            "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+          },
+          "userscript": {
+            "sha256": "1a1b692f76b17a1da7eef97991e19eb65490f0666d99cfdbbf772f83ffab9bcf",
+            "bytes": 2081503,
+            "verifier": "passed"
+          }
+        }
+      },
+      "nativeReport": "safari/acceptance-integrated-main-d3-final.json",
+      "scope": "Four Web and three native targets plus three Popup production smoke cases passed. This228 package was later installed for native module/YouTube validation, independently recorded."
+    },
+    "selectionSourceFix": {
+      "sourceCommit": "8d85e62c7171cf46d150e3b2c3bf8bf25a1e6df4",
+      "snapshot": {
+        "sourceFiles": {
+          "package.json": "f2d0cb391c8a4049f85cacd393069f39bb62de49f2bf79558ae4e31f86991871",
+          "scripts/safari/container/Main.html": "8359d2ff5a18fc2c655ef8798869b242b7c8495fa9a4575919213a2226d7789e",
+          "scripts/safari/container/Script.js": "ff9d564bd55a9742f77043dc08ebfd4cc2415989d70576851182d9c34c0ad2f8",
+          "scripts/safari/container/Style.css": "3f4c01b933fe9622c01784d8e2eec2a228225fb07284bb5adacaf4bef4319a40",
+          "scripts/safari/container/ViewController.swift": "6d9d7f1bb044d88eb17b644c8c038062f964a4486f59a90f4d3b081f09931d06",
+          "scripts/safari/package.mjs": "9b2f03d5d9b3729150498adf0e50318a30465ec3982c6c198aa280e5cfd6796f",
+          "src/app/popup/PopupApp.vue": "690998e1fdb09eada4e90445e11665d893d5396a39d7b007165c2c5b71b71a26",
+          "src/app/popup/PopupServices.vue": "8083cde0601b48e0b02a606cfd45eeea408eb103ac5cdd29fe2eca9a79ebe3bd",
+          "src/app/popup/mount.ts": "208d90c048ac6014a6a97ae78db3cdb329a559d29635009d986892bbe7cc88cc",
+          "src/app/popup/popup.css": "8fe833c2781247d0c2308090dd795852d51852bc254bafa74f3c75d87b933b55",
+          "src/core/config/freeProviderOrigins.json": "8b4004cade979ded8b2b76ac3398dfa108f9e423de2b6d7336dc2530cadf2418",
+          "src/core/config/freeProviderOrigins.ts": "ee38f3e7bdaf46a7f9f3097da746d279a2215cf3bdbf336a88c15669f73b3f36",
+          "src/core/i18n/messages/en-US.ts": "fefaccce594aec16c3a6cfde8d05f68b6fb5a285e76c7eddb8adbddba4cb7cfb",
+          "src/core/i18n/messages/es-ES.ts": "8e3c989bcef44b88f8fe92ceecc41f10e837df8af54cb2a1f5d07d6cb43a32fc",
+          "src/core/i18n/messages/fr-FR.ts": "044d3e0e5805a7ad8b68fc014f2c5c1c1f3b227582b5034c24cce2f456add393",
+          "src/core/i18n/messages/ja-JP.ts": "1e65af4f3a7d522c5e28803ae285be8e7f74358f161b0debb9f746f1deeac406",
+          "src/core/i18n/messages/ko-KR.ts": "a12334fcaf4511c55595a5ba8ae0fdc17d9002ee6a00d601c98751f0227152e2",
+          "src/core/i18n/messages/ru-RU.ts": "11d711876442e1e01e3690d336fda9a2ff7021e4bedb6ad07548232ad33aa469",
+          "src/core/i18n/messages/settings-copy/en-US.json": "61958ef9eef05f32c4bbb173c5dd80d24f44d48af9ae08b721ed14b43a1fd944",
+          "src/core/i18n/messages/settings-copy/es-ES.json": "37a16dff8cf08aa4400e3aedc3e740a47d74c9627ce9c6d7c960687c82fb9de1",
+          "src/core/i18n/messages/settings-copy/fr-FR.json": "929e5f0bc0ab483eb32c8029787abebb5c58acf700cfa7e80e6526f838f4af1f",
+          "src/core/i18n/messages/settings-copy/ja-JP.json": "5274819676b545d9249cea8e348c4e7479e672894c02022b266187fd410dd96f",
+          "src/core/i18n/messages/settings-copy/ko-KR.json": "e85288cccae44a2e603b396bf8bcf4eebc5cb6b6a2b51d4fcce5190bcce570c6",
+          "src/core/i18n/messages/settings-copy/ru-RU.json": "b8cf19e8a6b471f16277a0a7a3f6b63e90148207d20c6c9040938bde36b082da",
+          "src/core/i18n/messages/settings-copy/zh-CN.json": "d6ca67b4b1045195ded436a18124e7832f23df9472e716d18f95b80bcadd2e13",
+          "src/core/i18n/messages/zh-CN.ts": "8ee52024eb4b0f714d3a73e39192c0d93f9e80a9b012e38ec8f42c81aa9234e0",
+          "src/features/floating-ball/content/anchoredPopup.ts": "c6a8ed6b145ef29489df1a0c3d3b69ea4a23b092a972bc96540351d25fe9b7bf",
+          "src/features/floating-ball/ui/FloatingBall.vue": "7dc94a202f3a6ee588b98d02ab06314f95fc33fcb440587f7ef5ad707fa851e4",
+          "src/features/full-page-translation/ui/TranslationProgressPanel.vue": "1b33297965759c8117b56a4a956e7f7b981d7ff0d519a0391e2452f9e842ef5c",
+          "src/features/selection-translation/content/runtime.ts": "8ad04c5f38288d52f942e80fcbb3983cf3c61497a544e84a90eefcf790f0646f",
+          "src/features/selection-translation/core.ts": "3c5f2d93a2872884b1029e3bae94b4b15362a300ba41adacfe9fd00f14f0ae68",
+          "src/features/selection-translation/ui/SelectionTranslator.vue": "bc3774beb76fe30abaae2d9198a47b49757c85e29484b0735b965ac5f0e98911",
+          "src/features/settings/ui/services/FreeTranslationSettings.vue": "1ec580cbca47f5ed474e4f9b39136724d19eb88ef62d37bfc403a0af3dbe8456",
+          "src/features/settings/ui/services/ServiceConfiguration.vue": "251a3084643266336095f85775166b7d8dbcedb72dc5a93ac351652eaeb4bfa8",
+          "src/features/video-subtitle/content/nativeFullscreen.ts": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
+          "src/features/video-subtitle/content/playerMenu.ts": "5cc6bb174d6c94ffc9f8e1d2ccdbfcd688556d80955de8bacfbf998fb4112d8b",
+          "src/features/video-subtitle/content/runtime.ts": "2ccd7ad37e76eab5f0905ae1d075e1437e5b7cf858fcf7844c59077bb568dc2c",
+          "src/features/video-subtitle/content/translationCache.ts": "ecdda524d2891a331fbd7068e313a828e0fee39f71bcad1e33a65fde8477514b",
+          "src/features/video-subtitle/content/ui.ts": "1c24a4e2ba8491df3e9fc583801bc7fd1cd016e7dc80613da32b292fbc177499",
+          "src/features/video-subtitle/content/videoPlayerBinding.ts": "fe5b3cc8f9825f2a513d419efcb4c1627eda43eb713a4e752fe19e65d38abe37",
+          "src/features/video-subtitle/content/videoPlayerLocator.ts": "67ff409285b5116088605c13174ea0b9a7881f2ac08f1aed73e68e73f8ddba97",
+          "src/features/video-subtitle/content/youtubeHumanCaptions.ts": "675e1a19dc0de7b787bb6b56775ff0ae020e84368634c9750a2136c5cfd2e86e",
+          "src/platform/browser/freeProviderPermissions.ts": "eb2d47c062e0c476e190b53059761d25607e4355bc47aea85cead162752a6f8a",
+          "src/platform/dom/visualViewport.ts": "fec540c69ca5703e8051e04df51a79e192a2da55be359385eb4a91c11050c8d2",
+          "src/providers/translation/free-translation.ts": "2374e76df1cef27a6948b4d4bcdb25cfe60611489bba40e9588643f147062c17",
+          "userscript/languageBundles.ts": "ab7a652538f22a5554a121406afa0b01871a03122013543ddcf1a7204e4946c9",
+          "wxt.config.ts": "09e6aea80f44a41f7cfa24acdf486f79d73c0011a086be9d36b35c4dbbd252d6"
+        },
+        "sourceSnapshotSha256": "50f6b465a4c6c40af4ea1ce14babd20c0829bd455e4553f15bc19eef4271809b",
+        "sourceCommit": "8d85e62c7171cf46d150e3b2c3bf8bf25a1e6df4",
+        "baseCommit": "d3fb95d651831bc7974349b58054152dbba32b79",
+        "artifacts": {
+          "chrome": {
+            "sha256": "6837ccacc69ec1bd914af14036393ab279f73223245e2fcecc8f53caa30990bb",
+            "files": 474,
+            "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+          },
+          "firefox": {
+            "sha256": "2bcb8b211ac4bd5e19504c4f0f44cdd8801f0e2237ccd15b52150356b625769b",
+            "files": 474,
+            "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+          },
+          "safari": {
+            "sha256": "4d973883ac2add80087a29a0979cbbc70591dfa4e7fa32be5f0b4c2d8b0c8052",
+            "files": 463,
+            "algorithm": "recursive name-sorted SHA256(relative POSIX path + NUL + byte length + NUL + bytes)"
+          },
+          "userscript": {
+            "sha256": "e40edf23782652354f07cd047246569116f7e523dae8476408d52fff811d5b5e",
+            "bytes": 2081624,
+            "verifier": "passed"
+          }
+        }
+      },
+      "nativeReport": "safari/acceptance-selection-source-revalidation-final.json",
+      "productionReview": {
+        "reviewedAt": "2026-10-15T15:28:29.713218+00:00",
+        "sourceCommit": "8d85e62c7",
+        "passed": true,
+        "cases": 11,
+        "screenshotsManuallyViewed": [
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/selection-source-revalidation-production/selection-lifecycle-icon-restored-light.png",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/selection-source-revalidation-production/selection-lifecycle-card-restored-light.png",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/selection-source-revalidation-production/selection-lifecycle-source-replaced-cleared.png",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/selection-source-revalidation-production/selection-lifecycle-error-retry.png",
+          "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/selection-source-revalidation-production/selection-lifecycle-390-dark.png"
+        ],
+        "findings": [],
+        "codeReview": "validation/selection-runtime-source-combination/independent-review.json",
+        "report": "report.json",
+        "reportSha256": "defe91dd97141c5267afe85d78d96f0cce5338b07b0579cea6d3db17c74ebda3",
+        "sourceSnapshot": "50f6b465a4c6c40af4ea1ce14babd20c0829bd455e4553f15bc19eef4271809b",
+        "scope": "New production Chrome MV3 actual host/body mutation, pending cancellation, bounded recovery, disable/re-enable, late results, error/retry, 390px dark and trusted keyboard actions. Controlled Microsoft transport, not actual Safari consumed Selection, mobile hardware or live providers.",
+        "consoleErrors": [],
+        "focusChecks": 7,
+        "ownedBrowserForegroundObserved": false,
+        "cleanup": "Runner completed exit0 with final report ok and no cleanupErrors/retainedProfile; guarded owned close and profile cleanup are in runner finally. No separate new PID query."
+      },
+      "scope": "Source validation repair before material workspace integration; four Web/three native builds and eleven Chrome lifecycle cases passed, no Simulator installation of this4d package."
     }
   },
   "productionBrowserSuitesScope": "Initial, permission, popup and selection suites retain their own versioned artifacts. The clone, native-selection and keyboard revisions have separately versioned production browser suites; none is physical-device acceptance.",
@@ -8546,9 +9128,9 @@
   },
   "productionYouTubeRuntime": {
     "report": "ios-ui-harness/production-youtube-acceptance.json",
-    "sha256": "eed7c1c060a00ec8a0bd941b47c7ee1876e8a64a5624758e59b127d6a6df78d0",
+    "sha256": "4e64a2b0499bbc128095a2299e8395ca5371f706903aea765e009d15b868f453",
     "results": {
-      "updatedAtEpochMs": 1792072957101,
+      "updatedAtEpochMs": 1792080709448,
       "scope": "Real public YouTube production extension runtime in task-owned iOS26.2 Safari; separate from exact-module AVKit fixture",
       "status": "Versioned runtime: e3 production inline/native moving bilingual/track/exit passed;730 native bilingual+explicit FluentRead selected passed, actual Off retains stale captions (not passed); custom menu not established at paused cue gap",
       "device": {
@@ -9041,6 +9623,12 @@
         ],
         "keyboardRetest": "separate actual PASS recorded in popup-keyboard-acceptance.json; no service selection or new grants",
         "hostFocusQualification": "One observed Google Chrome PID49648 activation during94-discovered; not Simulator/Xcode, no guard violation, no causal attribution. All other listed1cfa runs had no activation events."
+      },
+      "integrated228NativeRetest": {
+        "status": "228 versioned runtime: phase98 FR/Off/reselect pixels passed with original XCTest exit-selector failure retained; independent phase99 Off exit/reentry passed",
+        "report": "production-youtube-228-native-acceptance.json",
+        "artifactWebTreeSHA256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
+        "phase99": "Off exit/reentry passed; no alternate source item; menu keyboard boundary retained"
       }
     }
   },
@@ -13885,70 +14473,6 @@
       }
     }
   },
-  "productionIntegratedSmoke": {
-    "report": "production-popup-integrated-d3/report.json",
-    "reportSha256": "408e09db2ebe1c7f928f114610ab266233f62c31646158bf923e88bad143a6e4",
-    "review": {
-      "reviewedAt": "2026-10-15T15:06:56.612234+00:00",
-      "sourceCommit": "88c6274c8796530c1639cd5eeecf432345e99ba7",
-      "report": "report.json",
-      "passed": true,
-      "cases": 3,
-      "screenshots": 6,
-      "scope": "Production Chrome MV3 in owned background Edge. Two desktop intrinsic widths and one light320 full service flow; explicit VisualViewport fixture, not native keyboard. No CSS injection.",
-      "artifactTree": {
-        "algorithm": "sha256 of sorted UTF-8 records: relativePath NUL fileSha256 NUL byteLength LF",
-        "sha256": "1d43e4e217e9771918e9719084ad7ea2fffcdd8af636610e10b7c0bc86786d76",
-        "fileCount": 474,
-        "totalBytes": 61991557,
-        "manifest": "artifact-tree-manifest.json",
-        "unchangedAfterValidation": true
-      },
-      "screenshotComparison": [
-        {
-          "name": "desktop-english-intrinsic-380.png",
-          "sameBytesAsReviewed9eImage": true
-        },
-        {
-          "name": "light-320-keyboard-search.png",
-          "sameBytesAsReviewed9eImage": false
-        },
-        {
-          "name": "light-320-keyboard-dismissed-while-open.png",
-          "sameBytesAsReviewed9eImage": false
-        },
-        {
-          "name": "light-320-keyboard-cleared.png",
-          "sameBytesAsReviewed9eImage": true
-        },
-        {
-          "name": "light-320-last-service-scrolled.png",
-          "sameBytesAsReviewed9eImage": false
-        },
-        {
-          "name": "light-320-keyboard-dismissed-reopened.png",
-          "sameBytesAsReviewed9eImage": false
-        }
-      ],
-      "screenshotsManuallyViewed": [
-        "light-320-keyboard-search.png",
-        "light-320-keyboard-dismissed-while-open.png",
-        "light-320-last-service-scrolled.png",
-        "light-320-keyboard-dismissed-reopened.png"
-      ],
-      "unchangedScreenshotsReview": "Other two screenshots are byte-identical to reviewed9e images.",
-      "findings": [],
-      "providerRequests": 0,
-      "permissionRequests": {
-        "popup": [],
-        "worker": []
-      },
-      "consoleErrors": [],
-      "focusEvents": [],
-      "ownedClose": "shared-guard-fulfilled",
-      "profileRemoved": true
-    }
-  },
   "historicalProductionIntegratedSmoke": {
     "report": "production-popup-integrated-main/report.json",
     "review": {
@@ -14069,5 +14593,722 @@
       "profileRemoved": true,
       "preflight": "preflight-sandbox-blocked.json records local-server EPERM before browser launch; subsequent approved isolated run passed."
     }
+  },
+  "sourceCommit": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
+  "productionSelectionSourceRevalidation": {
+    "report": "selection-source-revalidation-integrated-633/report.json",
+    "sha256": "03b83e99143ea4e2efc6b90f51574a54748ce3e9b845abec752e5a1f897c183b",
+    "review": {
+      "recordedAt": "2026-10-15T15:45:15.705559+00:00",
+      "sourceCommit": "073cf5db29ed0b7bc5b68e37cbfb057369878fb3",
+      "passed": true,
+      "cases": 11,
+      "report": "report.json",
+      "sha256": "03b83e99143ea4e2efc6b90f51574a54748ce3e9b845abec752e5a1f897c183b",
+      "screenshotComparison": [
+        {
+          "name": "selection-lifecycle-icon-restored-light.png",
+          "sameBytesAsReviewed8dImage": true
+        },
+        {
+          "name": "selection-lifecycle-card-restored-light.png",
+          "sameBytesAsReviewed8dImage": true
+        },
+        {
+          "name": "selection-lifecycle-source-replaced-cleared.png",
+          "sameBytesAsReviewed8dImage": true
+        },
+        {
+          "name": "selection-lifecycle-error-retry.png",
+          "sameBytesAsReviewed8dImage": true
+        },
+        {
+          "name": "selection-lifecycle-390-dark.png",
+          "sameBytesAsReviewed8dImage": true
+        }
+      ],
+      "visualReview": "All five screenshots byte-identical to manually reviewed8d source-fix production images.",
+      "findings": [],
+      "scope": "Production extension in isolated desktop Edge; local Microsoft HTTP fixture and controlled host/body mutations. Trusted CDP input (DOM range fallback recorded when needed), real closed Shadow DOM. 390px is desktop viewport emulation, not mobile hardware. No live-provider, Firefox or Safari claim.",
+      "focusChecks": [
+        {
+          "label": "selection startup",
+          "frontmost": {
+            "pid": 99817,
+            "name": "ChatGPT"
+          },
+          "browserFrontmost": false
+        },
+        {
+          "label": "selection-lifecycle-icon-restored-light",
+          "frontmost": {
+            "pid": 99817,
+            "name": "ChatGPT"
+          },
+          "browserFrontmost": false
+        },
+        {
+          "label": "selection-lifecycle-card-restored-light",
+          "frontmost": {
+            "pid": 99817,
+            "name": "ChatGPT"
+          },
+          "browserFrontmost": false
+        },
+        {
+          "label": "selection-lifecycle-source-replaced-cleared",
+          "frontmost": {
+            "pid": 99817,
+            "name": "ChatGPT"
+          },
+          "browserFrontmost": false
+        },
+        {
+          "label": "selection-lifecycle-error-retry",
+          "frontmost": {
+            "pid": 99817,
+            "name": "ChatGPT"
+          },
+          "browserFrontmost": false
+        },
+        {
+          "label": "selection-lifecycle-390-dark",
+          "frontmost": {
+            "pid": 99817,
+            "name": "ChatGPT"
+          },
+          "browserFrontmost": false
+        },
+        {
+          "label": "selection lifecycle final cleanup",
+          "frontmost": {
+            "pid": 99817,
+            "name": "ChatGPT"
+          },
+          "browserFrontmost": false
+        }
+      ],
+      "cleanup": "Completed exit0; final report has no cleanupErrors or retainedProfile; runner performs owned guarded close and profile cleanup."
+    }
+  },
+  "currentAvkitModuleRuntime": {
+    "report": "avkit-loopback-system-choice-20261015/runtime-acceptance-current.json",
+    "sha256": "83a0fe633158b9511b4c15d890a4dcd59e2bcae77d06ba63310caf8b8ae19bc9",
+    "results": {
+      "completedAtEpochMs": 1792078723300,
+      "status": "passed bounded exact-current-module plus genuine AVKit FR-Off-reselect-exit; not production YouTube acceptance",
+      "moduleIdentity": {
+        "at": "2026-10-15T15:20:26.971Z",
+        "scope": "Exact current nativeFullscreen module + genuine AVKit; not production YouTube runtime/provider",
+        "sourcePath": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/src/features/video-subtitle/content/nativeFullscreen.ts",
+        "sourceHEAD": "d080541081079fd1663787107181ee4fa533e2ef",
+        "sourceSha256": "7ae3788b87c935fd4685e7f5778409cd6c95332046e9ea7114e92f00c7345676",
+        "moduleSha256": "092971e80b7778e673e688195a2a72a158942dd52ad02d90377062a7d730f0b6",
+        "typescriptVersion": "5.7.3",
+        "compiler": {
+          "target": "ES2022",
+          "module": "ES2022"
+        },
+        "fixture": {
+          "loop": true,
+          "durationSeconds": 30,
+          "syntheticSilentH264": true,
+          "cachedCues": 6,
+          "cueDurationMs": 5000,
+          "originalAndChineseNumbered": true
+        },
+        "files": {
+          "fixture.mp4": "e2986b59c9d027d46465cbc44bce8b31d1b73f40299de941f3014490ffd3caad",
+          "index.html": "af76e85747cf61afa1c7fd7e24f16fff1441665dc8942ebffda50ec475e860f2",
+          "nativeFullscreen.js": "092971e80b7778e673e688195a2a72a158942dd52ad02d90377062a7d730f0b6",
+          "probe.css": "5889f7822500b0c71f40ba3b1cfa97d33c802f52e35dca9affd1bc30b6099c53",
+          "probe.js": "8153fcebbea335c8668fbd06eacebd90b5a62eff112cee8cec4aa6e2ff55e5ee",
+          "reference.vtt": "081c5759ad7c84d3e1a3af4bd4a53f557651e159075f42ff2c0c51a871a7b57b",
+          "server.mjs": "e4b46fc2a8b182dfe74a21cab2e998ff0f2f62b7b050186025851b6248e6d9f8"
+        }
+      },
+      "installedProductionAppIdentityFile": "../ios-ui-harness/formal-integrated-main-d3-final-installed-identity.json",
+      "installedProductionWebTreeSHA256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
+      "device": "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
+      "test": {
+        "stem": "avkit-current-native-selection",
+        "case": "test97CurrentModuleActualNativeSelectionOffReselectExit",
+        "executed": 1,
+        "failures": 0,
+        "seconds": 91.062
+      },
+      "actualResults": {
+        "prepared": "Reference showing; owned FR hidden,6 cached numbered cues; no forced selection onbegin",
+        "explicitFR": "real system FR Selected trait/checkmark and real numbered EnglishChinese2→3 visible over native video",
+        "off": "actual native Off selected after FR; video advanced11.7047→19.7212sec with minimum5sec observation; real native pixels no captions; later Off Selected trait/checkmark; ownedFR and Reference modesdisabled",
+        "reselect": "real system FR choice restored showing6cues; new native EnglishChinese numbered5 rendered, not stale prior2/3",
+        "exit": "trusted real webkitendfullscreen at25.7221sec; inline Reference returned showing; ownedFR hidden; actual pausedtrue, nativeFullscreenfalse",
+        "destroy": "ownedFR removed; only Reference VTT remains showing; no module resume"
+      },
+      "trackTransitionsFile": "native-track-transitions.json",
+      "realNativeEventsTrusted": true,
+      "screenshotsManuallyViewed": [
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09"
+      ],
+      "evidenceDirectory": "../ios-ui-harness/avkit-current-native-selection-evidence/",
+      "focusEvents": [],
+      "hostSimulatorPIDsObserved": [],
+      "violations": [],
+      "cleanupErrors": [],
+      "guard": "../ios-ui-harness/avkit-current-native-selection-guard-report.json",
+      "UIQualification": "Actual software keyboard visible in system-menu screenshots04/06, absent in playing02/03/05/07. Cause not established; no complete native menu/keyboard UI acceptance claimed; screenshots retained unmodified.",
+      "setupQualification": "Bootstatus guard observed one Microsoft Edge activation PID97893; no attribution to test, no Simulator/Xcode activation or violation. Actual97run focusEvents empty.",
+      "limitations": [
+        "module-only caller with fixed local cached bilingual timeline, not YouTube runtime gate/caption acquisition/cache completeness",
+        "no provider request or additional service/site grant",
+        "not physical iPhone/iPad or background/rotation/SPA player lifecycle",
+        "old c585 module and e3/730 production failures retained; this success does not overwrite them"
+      ],
+      "currentBoundary": "native closed, owned track destroyed; Safari inline local synthetic video paused; current ownedserver retained for future platform observations"
+    },
+    "limits": "Exact native module transpilation with controlled cached cues and actual AVKit; production App228 identity is independent, not full YouTube/cache/provider validation. Software keyboard observed in two menu screenshots has an unresolved cause."
+  },
+  "physicalAppleAvailability": {
+    "checkedAt": "2026-10-15T15:29:18.244795+00:00",
+    "report": "physical-devices-current-authorized.json",
+    "command": "xcrun devicectl list devices --json-output physical-devices-current-authorized.json",
+    "result": "No devices found",
+    "physicalAppleDevices": 0,
+    "initialSandboxAttempt": "CoreDeviceService initialization timed out; this did not establish absence. Approved read-only retry completed successfully.",
+    "actions": "List only; no pairing, signing, installation or device mutation."
+  },
+  "androidEdgeOfficialRoute": {
+    "checkedAt": "2026-10-15T15:18:28.179435+00:00",
+    "scope": "Read-only official installation route research; no device/server/UI/login/APK download",
+    "environmentConstraint": "Per current parent inventory: task GoogleAPI31 image has no usable PlayStore/account; not changed or re-inspected by boot.",
+    "officialRoutes": {
+      "stable": {
+        "package": "com.microsoft.emmx",
+        "url": "https://play.google.com/store/apps/details?hl=en&id=com.microsoft.emmx",
+        "publisher": "Microsoft Corporation",
+        "accountlessApkDirectLinkFound": false
+      },
+      "canary": {
+        "package": "com.microsoft.emmx.canary",
+        "url": "https://play.google.com/store/apps/details?hl=en_US&id=com.microsoft.emmx.canary",
+        "publisher": "Microsoft Corporation",
+        "accountlessApkDirectLinkFound": false
+      },
+      "beta": {
+        "officialDownloadReference": "https://learn.microsoft.com/en-us/deployedge/microsoft-edge-relnote-mobile-beta-channel",
+        "observedRoute": "Google Play link in Microsoft release notes"
+      }
+    },
+    "officialDownloadPageChecks": {
+      "download": "https://www.microsoft.com/en-us/edge/download",
+      "redirectObserved": "https://explore.microsoft.com/en-us/edge/download?form=MA13FJ",
+      "mobile": "https://www.microsoft.com/en-us/edge/mobile",
+      "insider": "https://www.microsoft.com/en-us/edge/download/insider",
+      "result": "Public indexed download page exposes Android section but no APK URL in extracted content. Direct small HTML GET attempts for en/zh download/mobile/insider all403; no response APK or guessed update API was fetched.",
+      "boundedConclusion": "No verified official no-account APK route found; this is not proof that Microsoft cannot offer one in another region/flow."
+    },
+    "extensionMechanism": {
+      "officialProductSupport": "Microsoft mobile marketing describes extensions varying by OS; Microsoft API table explicitly lists Android for action/runtime/scripting/storage/permissions/DNR. This confirms an extension API surface, not unrestricted installation or FluentRead compatibility.",
+      "stableCurrentCatalogOrInstallById": "No current product documentation/metadata found proving unrestricted stable install-by-ID/CRX or FluentRead Android catalog eligibility; desktop extension instructions and stale FAQ do not establish Android flow.",
+      "canaryExperimentalCandidate": {
+        "source": "https://raw.githubusercontent.com/microsoft/amplifier-browser-bridge/main/docs/ANDROID.md",
+        "reportedSteps": "Settings > About Microsoft Edge > tap build number5times > Developer Options > Extension install by crx; genuine CRX3 local file",
+        "evidenceClass": "Microsoft-owned project experimental runbook, partly community-derived; expressly not a supported product install path, own extension not confirmed on Android.",
+        "notEstablished": [
+          "Current Stable has only a fixed curated list",
+          "Canary/Beta exclusivity",
+          "Current build exposes same hidden options",
+          "FluentRead installation/runtime success"
+        ],
+        "allowedNextUse": "Only a bounded experiment after official browser installation becomes possible; do not document as guaranteed support."
+      }
+    },
+    "fluentRead": {
+      "edgeStoreId": "kakgmllfpjldjhcnkghpplmlbnmcoflp",
+      "repoSource": "README.md:53",
+      "storeUrl": "https://microsoftedge.microsoft.com/addons/detail/kakgmllfpjldjhcnkghpplmlbnmcoflp",
+      "storeTitleObserved": "FluentRead-流畅阅读",
+      "androidInstallability": "Not established by desktop listing or API availability; requires actual Android catalog/installation check."
+    },
+    "nextStep": {
+      "currentOwnedAvd": "Blocked before browser testing: no verified official accountless APK delivery and no usable PlayStore/account. Do not start AVD merely to repeat this known acquisition gap.",
+      "minimalUnblockingOptions": [
+        "Obtain a Microsoft-provided Android APK/download route with verifiable provenance, then inspect package/minSDK/arm64/signature before a separately authorized download/install.",
+        "Use an explicitly authorized Play-capable isolated test environment/account to install the official Stable or Canary listing. No account creation or login done here."
+      ],
+      "afterOfficialBrowserAvailable": "First inspect actual extension menu/catalog for FluentRead ID. If unavailable and Canary exposes the reported developer CRX path, separately test a realCRX3 built from current Edge artifact; do not rename ZIP or claim desktop Load unpacked works on Android."
+    },
+    "sources": [
+      {
+        "url": "https://www.microsoft.com/en-us/edge/mobile",
+        "type": "Microsoft product marketing, indexed text only"
+      },
+      {
+        "url": "https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/api-support",
+        "type": "Microsoft product API support documentation"
+      },
+      {
+        "url": "https://learn.microsoft.com/en-us/deployedge/microsoft-edge-relnote-mobile-beta-channel",
+        "type": "Microsoft product release notes links Android to GooglePlay"
+      },
+      {
+        "url": "https://play.google.com/store/apps/details?hl=en&id=com.microsoft.emmx",
+        "type": "Microsoft publisher official store listing"
+      },
+      {
+        "url": "https://play.google.com/store/apps/details?hl=en_US&id=com.microsoft.emmx.canary",
+        "type": "Microsoft publisher official store listing"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/microsoft/amplifier-browser-bridge/main/docs/ANDROID.md",
+        "type": "Experimental developer-project evidence, not product support promise"
+      }
+    ],
+    "actions": {
+      "apkDownloaded": false,
+      "thirdPartyApkSourceUsed": false,
+      "login": false,
+      "deviceStarted": false,
+      "adbStarted": false,
+      "productionOrDocsEdited": false
+    },
+    "additionalApiCrossCheck": {
+      "checkedAt": "2026-10-15T15:57:25.208475+00:00",
+      "source": "https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/api-support",
+      "officialTable": "Android listed for offscreen, action, runtime, scripting, storage, permissions and DNR; commands/contextMenus/windows rows omit Android. Platform list alone does not prove an individual device build or FluentRead store installation.",
+      "repository": "src/app/background/contextMenuRuntime.ts explicitly checks create/removeAll/update/onClicked availability before menu setup; no production change from this read-only check.",
+      "capabilityContract": "Existing Edge runtime capability keeps offscreen availability; do not disable it based on an assumption that Android lacks the API.",
+      "contextMenuRuntimeSha256": "2e09ef5996da5ae66b2be3b191487143794fbfc7b4efc98a9d205fa8287fed4f"
+    }
+  },
+  "historicalPopupSmokeD3": {
+    "report": "production-popup-integrated-d3/report.json",
+    "reportSha256": "408e09db2ebe1c7f928f114610ab266233f62c31646158bf923e88bad143a6e4",
+    "review": {
+      "reviewedAt": "2026-10-15T15:06:56.612234+00:00",
+      "sourceCommit": "88c6274c8796530c1639cd5eeecf432345e99ba7",
+      "report": "report.json",
+      "passed": true,
+      "cases": 3,
+      "screenshots": 6,
+      "scope": "Production Chrome MV3 in owned background Edge. Two desktop intrinsic widths and one light320 full service flow; explicit VisualViewport fixture, not native keyboard. No CSS injection.",
+      "artifactTree": {
+        "algorithm": "sha256 of sorted UTF-8 records: relativePath NUL fileSha256 NUL byteLength LF",
+        "sha256": "1d43e4e217e9771918e9719084ad7ea2fffcdd8af636610e10b7c0bc86786d76",
+        "fileCount": 474,
+        "totalBytes": 61991557,
+        "manifest": "artifact-tree-manifest.json",
+        "unchangedAfterValidation": true
+      },
+      "screenshotComparison": [
+        {
+          "name": "desktop-english-intrinsic-380.png",
+          "sameBytesAsReviewed9eImage": true
+        },
+        {
+          "name": "light-320-keyboard-search.png",
+          "sameBytesAsReviewed9eImage": false
+        },
+        {
+          "name": "light-320-keyboard-dismissed-while-open.png",
+          "sameBytesAsReviewed9eImage": false
+        },
+        {
+          "name": "light-320-keyboard-cleared.png",
+          "sameBytesAsReviewed9eImage": true
+        },
+        {
+          "name": "light-320-last-service-scrolled.png",
+          "sameBytesAsReviewed9eImage": false
+        },
+        {
+          "name": "light-320-keyboard-dismissed-reopened.png",
+          "sameBytesAsReviewed9eImage": false
+        }
+      ],
+      "screenshotsManuallyViewed": [
+        "light-320-keyboard-search.png",
+        "light-320-keyboard-dismissed-while-open.png",
+        "light-320-last-service-scrolled.png",
+        "light-320-keyboard-dismissed-reopened.png"
+      ],
+      "unchangedScreenshotsReview": "Other two screenshots are byte-identical to reviewed9e images.",
+      "findings": [],
+      "providerRequests": 0,
+      "permissionRequests": {
+        "popup": [],
+        "worker": []
+      },
+      "consoleErrors": [],
+      "focusEvents": [],
+      "ownedClose": "shared-guard-fulfilled",
+      "profileRemoved": true
+    }
+  },
+  "productionYouTube228Runtime": {
+    "report": "ios-ui-harness/production-youtube-228-native-acceptance.json",
+    "sha256": "03e509de8d2aa75ec6f90e02b8b215754a9434aef04074d5e1fc51adc10095bf",
+    "results": {
+      "updatedAtEpochMs": 1792080709448,
+      "status": "228 versioned runtime: phase98 FR/Off/reselect pixels passed with original XCTest exit-selector failure retained; independent phase99 Off exit/reentry passed",
+      "artifactWebTreeSHA256": "228fbbd5e3b1c1997b53d6ff3825598c82fa159dce7821c2dc310bc9ea688c7a",
+      "identityFile": "formal-integrated-main-d3-final-installed-identity.json",
+      "candidate": {
+        "URL": "https://m.youtube.com/watch?v=iG9CE55wbtY&t=30",
+        "officialSource": "https://www.ted.com/talks/sir_ken_robinson_do_schools_kill_creativity",
+        "observedEnglishTitle": "Do schools kill creativity? | Sir Ken Robinson | TED",
+        "observedLocalizedTitle": "Ken Robinson认为学校扼杀创造力",
+        "duration": "20min3sec"
+      },
+      "phase98": {
+        "runner": "youtube-current-production-native-pair",
+        "XCTestStatus": "failed",
+        "executed": 1,
+        "failures": 1,
+        "durationSeconds": 130.144,
+        "failureBoundary": "After real native Close tap, actual page returns inline but media label changed English→Chinese. Assertion using old English prefix failed; original xcresult/summary preserved.",
+        "nativeFR": "actual system FR Selected/checkmark; moving EnglishChinese cues Laughter→There have been three themes...",
+        "nativeOff": "real Off chosen after FR; minimum5sec playback observation, new actual video pose/frame with no caption pixels; system Off Selected/checkmark",
+        "nativeReselect": "actual FR chosen again; new EnglishChinese sentence just the variety of it and the range of it visible",
+        "exit": "Actual native Close returned inline; original English-label assertion failed after title localized. Independent phase99 initial00 screenshot now confirms same-candidate inline English/Chinese pixels.",
+        "actualMediaAXPerScreenshot": {
+          "02": [
+            "Other, 0x106a8b9d0, {{50.0, 110.0}, {301.0, 226.0}}, label: 'Ken Robinson认为学校扼杀创造力, 20分钟3秒钟', value: 40秒钟, Focused"
+          ],
+          "03": [
+            "Other, 0x106a91ac0, {{50.0, 110.0}, {301.0, 226.0}}, label: 'Ken Robinson认为学校扼杀创造力, 20分钟3秒钟', value: 44秒钟, Focused"
+          ],
+          "04": [
+            "Other, 0x106b2f0b0, {{50.0, 110.0}, {301.0, 226.0}}, label: 'Ken Robinson认为学校扼杀创造力, 20分钟3秒钟', value: 46秒钟, Focused"
+          ],
+          "05": [
+            "Other, 0x1068a2d80, {{50.0, 110.0}, {301.0, 226.0}}, label: 'Ken Robinson认为学校扼杀创造力, 20分钟3秒钟', value: 53秒钟, Focused"
+          ],
+          "06": [
+            "Other, 0x1068ac620, {{50.0, 110.0}, {301.0, 226.0}}, label: 'Ken Robinson认为学校扼杀创造力, 20分钟3秒钟', value: 55秒钟, Focused"
+          ],
+          "07": [
+            "Other, 0x106c386f0, {{50.0, 110.0}, {301.0, 226.0}}, label: 'Ken Robinson认为学校扼杀创造力, 20分钟3秒钟', value: 1分钟0秒钟, Focused"
+          ]
+        },
+        "screenshotsManuallyViewed": [
+          "02",
+          "03",
+          "04",
+          "05",
+          "06",
+          "07"
+        ],
+        "evidenceDirectory": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/youtube-current-production-native-pair-evidence",
+        "UIQualification": "Native-menu screenshots04/06 include software keyboard despite prior pre-native keyboard nonexistence check; cause not established; not complete menu/keyboard UI acceptance. Full screenshots retained.",
+        "inlineQualification": "00b paused screenshot contains no visible inline subtitle; do not count it as inline pixels pass. Real production cached bilingual cue was an AX precondition and later native pixels separately proved bilingual rendering.",
+        "providerAttribution": "unproven; no evidence distinguishes cached human target track reuse vs network machine provider; no new service chosen",
+        "humanSourceTrackClassification": "English source visible; did not inspect human-vs-ASR track list on this candidate",
+        "newGrants": false,
+        "focusEvents": [],
+        "hostSimulatorPIDsObserved": [],
+        "violations": []
+      },
+      "modulePlatformControl": "../avkit-loopback-system-choice-20261015/runtime-acceptance-current.json",
+      "oldFailuresRetained": "e3/730 Off failures remain in production-youtube-acceptance.json;1cfa incomplete input cases remain distinct",
+      "remaining": "Alternative native source track selection not covered; physical devices and full native-menu/keyboard UI acceptance not covered. Provider/human-track provenance remains unproven.",
+      "phase99": {
+        "runner": "youtube-current-off-exit-reentry",
+        "XCTestStatus": "passed",
+        "executed": 1,
+        "failures": 0,
+        "durationSeconds": 74.834,
+        "evidenceDirectory": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/youtube-current-off-exit-reentry-evidence",
+        "screenshotsManuallyViewed": [
+          "00",
+          "02",
+          "03",
+          "04",
+          "05",
+          "06"
+        ],
+        "priorFRExit": "00 actual inline same candidate at1min1sec with English/Chinese page captions; independent of phase98 paused00b without caption pixels",
+        "offBeforeExit": "FR selected in system menu01; actual Off selected then playback;02 no caption pixels at1min9sec",
+        "offExit": "03 actual inline at1min11sec; webpage bilingual returns after native exit",
+        "offReentry": "04 actual system Off Selected/checkmark at1min13sec; FR unselected",
+        "movingWhileOff": "05 actual video advances to1min18sec with no native caption pixels; minimum3sec bounded playback; no automatic FR reopening or stale cue",
+        "finalExit": "06 actual inline same candidate1min20sec with webpage English/Chinese captions",
+        "alternateSourceTrack": "not covered: actual native menu only Off/Auto/FluentRead, no alternate source item",
+        "UIQualification": "04 contains software keyboard, cause not established; not complete native-menu/keyboard UI acceptance; full screenshot retained",
+        "focusEvents": [],
+        "hostSimulatorPIDsObserved": [],
+        "violations": []
+      }
+    }
+  },
+  "safariSourceRevalidation633": {
+    "report": "ios-ui-harness/source-revalidation-633-acceptance.json",
+    "sha256": "b1477062c4b845113584a1c594caeb811d1933426c907dde8ce5c20af32fe651",
+    "results": {
+      "updatedAtEpochMs": 1792081290257,
+      "status": "passed: actual633 Safari source host recovery, body replacement invalidation and fresh native selection",
+      "scope": "Production integrated-main-633-final App; owned public localhost fixture; real native Safari longpress/explicit selection entry; no production source edits",
+      "ownedUDID": "A407390F-7AA8-42AE-AFEB-F93EE99E9FF8",
+      "artifact": {
+        "preparedApp": "/Users/thinkstu/Desktop/copy/FluentRead-mobile-safari-product-20261015/.output/safari-derived-ios-integrated-main-633-final/Build/Products/Release-iphonesimulator/FluentRead.app",
+        "allFilesCompared": 483,
+        "webFilesCompared": 465,
+        "webTreeSHA256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+        "containerNativeSHA256": "90f1df99b39f7a27964f4a9dbe56ef00f8dea69c156ad2dc42a76dc18e418fb5",
+        "nativeGuideSourceSnapshotSHA256": "f84de75f396c8d102cb0a6a516db55d645b015aed2eaf5296e89f1ddba419f55"
+      },
+      "identityFile": "formal-integrated-main-633-final-installed-identity.json",
+      "runner": "source-revalidation-633",
+      "XCTest": {
+        "case": "test100IntegratedSourceRecoveryRealNativeSelection",
+        "status": "passed",
+        "executed": 1,
+        "failures": 0,
+        "durationSeconds": 31.53
+      },
+      "fixture": {
+        "serverMetadata": "source-revalidation-fixture/owned-server.json",
+        "DOMReports": "source-revalidation-fixture/reports.ndjson",
+        "samePageLifecycle": "9edeb73b-fdd5-4962-9e9f-c8877329d659",
+        "ownership": "127.0.0.1:62656, nonce-scoped command/poll/report endpoints; only owned document DOM modified",
+        "scriptSHA256": "d57cb672ff6bec73e3cc6d87bd150a0e95f3010a13fed5333d090ba0b2c56bbf"
+      },
+      "actualSteps": [
+        {
+          "step": "native-longpress-and-explicit-icon",
+          "result": "passed",
+          "selectedText": "inspect",
+          "visibleResult": "inspect / 检查",
+          "nativeSelection": "rangeCount0; selectionChanges2 after actual entry; no native editing menu",
+          "screenshot": "source-633-02-original-result-before-mutation.png"
+        },
+        {
+          "step": "server-command-host.remove",
+          "result": "passed",
+          "evidence": "Original source still connected; immediate host disconnected then same object hostId1 restored; actual result card unchanged",
+          "selectionChanges": 2,
+          "screenshot": "source-633-03-same-host-card-recovered.png"
+        },
+        {
+          "step": "server-command-body.replaceWith",
+          "result": "passed",
+          "evidence": "Old source disconnected; same host object1 restored but stale result absent from AX and screenshot; no pointerdown/card-outside click",
+          "selectionChanges": 2,
+          "screenshot": "source-633-04-body-replaced-old-card-cleared.png"
+        },
+        {
+          "step": "fresh-native-selection",
+          "result": "passed",
+          "selectedText": "boundaries",
+          "visibleResult": "boundaries / 边界; new source identity, old inspect not reused",
+          "selectionChanges": 4,
+          "screenshot": "source-633-06-new-source-result.png"
+        }
+      ],
+      "screenshotsManuallyViewed": [
+        "source-633-02-original-result-before-mutation.png",
+        "source-633-03-same-host-card-recovered.png",
+        "source-633-04-body-replaced-old-card-cleared.png",
+        "source-633-06-new-source-result.png"
+      ],
+      "evidenceDirectory": "/Users/thinkstu/Desktop/copy/research/mobile-safari-20261015/ios-ui-harness/source-revalidation-633-evidence",
+      "guard": {
+        "report": "source-revalidation-633-guard-report.json",
+        "focusEvents": [],
+        "hostSimulatorPIDsObserved": [],
+        "violations": [],
+        "cleanupErrors": []
+      },
+      "notCovered": [
+        "Real provider late-response cancellation race not staged; unit coverage remains separate",
+        "No live provider attribution, universal dictionary semantic quality, physical device or full mobile matrix claim",
+        "No body replacement via outside click, no artificial selectionchange, no extension state injection"
+      ],
+      "setupBoundaries": [
+        "Initial native observer initialization in sandbox failed before owned action; formal-integrated-main-633-final-terminate-guard.json retained; escalated sameguard retry completed",
+        "Initial runner launch used relative path and failed module resolution before UI; subsequent absolute-path resource-safe run executed exactly1 test"
+      ],
+      "cleanup": {
+        "status": "complete",
+        "report": "phase-633-cleanup.json",
+        "device": "Shutdown; App/data/runtime preserved",
+        "servers": "both exact owned servers stopped",
+        "ownedXCTestProcesses": []
+      }
+    }
+  },
+  "androidFirefoxSelection633": {
+    "report": "android-runtime/firefox-attempt5-selection-summary.json",
+    "sha256": "e1b79e5c6b7a9d0a43ece6d81fe9d1eef4ccb78553e5c94531ca0822fde15c1f",
+    "results": {
+      "recordedAt": "2026-10-15T16:19:57.372497+00:00",
+      "status": "bounded-actual-selection-path-observed-with-native-menu-activation-limit",
+      "scope": "Official Firefox Android 158 on task-only API31 arm64 emulator; real adb touchscreen long press/drag/stationary press and Android Back. Public https://example.com/ only. Not physical-device evidence; no iOS/browser matrix repeated. No production changes/build/DOM Range injection/business invocation.",
+      "browser": {
+        "package": "org.mozilla.firefox",
+        "version": "158.0",
+        "versionSource": "Previously installed official signed APK retained in task-only AVD/profile; no reinstall or version-change in attempt5",
+        "apkSha256": "4e57f3d92b5f77feab700d454e8efb5030279855a2bae7db1a14521ac60df466",
+        "temporaryAddon": "{3096bd53-3bda-4556-b076-ebf47442a5c1}",
+        "tool": "locked web-ext-run 0.2.4"
+      },
+      "artifact": {
+        "source": "073cf5db2",
+        "baseMain": "633baacd3",
+        "at": "2026-10-15T16:18:44.429515+00:00",
+        "files": 476,
+        "bytes": 62155623,
+        "canonical": {
+          "algorithm": "recursive directory name-sort, SHA256(relative POSIX path + NUL + byte length + NUL + raw file bytes)",
+          "sha256": "2c223daa260b73ce781578301296d36347a1d0afc46839f0a4bc393be33030f1"
+        },
+        "hashRecords": {
+          "algorithm": "SHA256 sorted UTF8 relativePath NUL fileSHA256 NUL byteLength LF",
+          "sha256": "457a9d953dfc1f8d20c4e99f635c505dd4a22dd3959cf12c1ead89ab004d93d1"
+        },
+        "unchanged": true
+      },
+      "runtime": {
+        "serial": "emulator-5580",
+        "adb": "127.0.0.1:5048; every action through owned-adb-attempt5.py",
+        "controllerPid": 13933,
+        "adbServerPid": 13958,
+        "headlessEmulatorPid": 13982,
+        "rdpPort": 53575,
+        "bootCompletedAt": "2026-10-15T15:55:07.721Z",
+        "uiCutoff": "2026-10-15T16:23:07.721Z",
+        "cores": 2,
+        "ramMiB": 2048,
+        "onlyOwnedTransport": true
+      },
+      "configuration": {
+        "changedOnlyViaActualUI": "Enabled selection translation Show icon in existing task profile; Auto Detect → Simplified Chinese, bilingual. No injected config.",
+        "evidence": [
+          "attempt5-ui/selection-05-config.png",
+          "attempt5-ui/selection-06-drawer-before.png",
+          "attempt5-ui/selection-07-drawer-enabled.png"
+        ]
+      },
+      "results": [
+        {
+          "check": "Native selection and real handle adjustment",
+          "status": "observed",
+          "detail": "Long press selected documentation. A first handle gesture collapsed selection (retained failure). Real draganddrop then expanded native text to or use in documentation; screenshot + actual Selection read agree.",
+          "evidence": [
+            "attempt5-ui/selection-08-native-longpress.png",
+            "attempt5-ui/selection-09-native-handle-adjusted.png",
+            "attempt5-ui/selection-11-native-handle-second.png",
+            "attempt5-ui/selection-11-native-handle-second-page.json"
+          ]
+        },
+        {
+          "check": "Entry → permission card",
+          "status": "observed-after-native-Back-and-repeated-real-tap",
+          "detail": "With native menu present, fresh target point hit owned host but no DOM events/card. Real Back collapsed native selection and retained entry. First near-zero-duration adb tap had pointerdown/up only. Subsequent real tap produced trusted touch click and displayed card. This does not establish that repeated taps or Back are necessary for ordinary finger interaction.",
+          "evidence": [
+            "attempt5-ui/selection-24-permission-before.png",
+            "attempt5-ui/selection-25-before-native-tap-page.json",
+            "attempt5-ui/selection-28-after-back-probe-page.json",
+            "attempt5-ui/selection-32-detailed-live-entry-tap-page.json",
+            "attempt5-ui/selection-32-after-live-entry-tap-page.json",
+            "attempt5-ui/selection-33-card-translated.png"
+          ]
+        },
+        {
+          "check": "Translation source and copy feedback",
+          "status": "observed",
+          "detail": "Card showed permission → 准许 and ECDICT local dictionary attribution. Actual translation-copy button tap produced pink check and visible Translation copied toast in immediate screenshot. Clipboard content was not independently read/pasted; delayed capture no longer contains transient toast. No online provider attributed.",
+          "evidence": [
+            "attempt5-ui/selection-33-card-translated.png",
+            "attempt5-ui/selection-34-copy-immediate.png",
+            "attempt5-ui/selection-34-copy-feedback.png"
+          ]
+        },
+        {
+          "check": "Close and second source",
+          "status": "observed",
+          "detail": "Actual close removed first card. Fresh service long press produced new native selection and FR entry. Native-menu short taps did not open; Back then near-zero tap lacked click. Same-coordinate real stationary 100ms touchscreen press produced trusted down/up/click and service → 服务 card. Final close removed card without visible residue.",
+          "evidence": [
+            "attempt5-ui/selection-35-card-closed.png",
+            "attempt5-ui/selection-36-second-word-native.png",
+            "attempt5-ui/selection-40-complete-events-page.json",
+            "attempt5-ui/selection-41-final-events-page.json",
+            "attempt5-ui/selection-42-service-card-stable.png",
+            "attempt5-ui/selection-44-final-closed.png"
+          ]
+        }
+      ],
+      "remainingLimits": [
+        "Native menu overlaps a small upper portion of the entry and a blue handle overlaps its lower-left region. A realistic 100ms entry touch while native actionmode is still active was not attempted before cleanup; direct single-touch opening in this state remains unverified.",
+        "Near-zero-duration adb tap was inconsistent; observed pointerdown cancellation did not suppress the later trusted click in successful sequences, so these observations do not justify a production pointer-handler change.",
+        "Page main-world event target/composedPath retargets closed shadow to the owned host. Read-only official inspector confirmed internal entry/card DOM, but page probe cannot expose internal button target.",
+        "Android accessibility XML omits the closed-shadow FR controls here; screen pixels plus official inspector and real trusted event evidence establish them.",
+        "Initial probes used microtask timing for defaultPreventedAfter, which is not post-dispatch. Later diagnostic uses setTimeout(0) and records defaultPreventedAfterDispatch; rely on later field.",
+        "No physical Android, online provider quality, browser/OS memory reclamation, or broad site matrix acceptance."
+      ],
+      "diagnostics": {
+        "scope": "Passive main-world capture listeners only; no preventDefault/stopPropagation/synthetic events/business state/Range mutation. Official read-only inspector/walker queried actual closed shadow; evaluateJSAsync only read native Selection/viewport/elementFromPoint.",
+        "removed": true,
+        "evidence": [
+          "attempt5-ui/selection-43-probe-removed-page.json",
+          "attempt5-ui/selection-44-probe-absent-page.json"
+        ],
+        "rawCommandLogs": [
+          "client-commands-attempt5.jsonl",
+          "attempt5-ui/actions.jsonl"
+        ]
+      },
+      "cleanup": {
+        "runnerCleanup": true,
+        "forwardRemoved": true,
+        "runnerFinishedAt": "2026-10-15T16:17:37.865Z",
+        "firefoxPidofAfterRunner": "exit 1, no PID (before guard stop)",
+        "guardStatus": "stopped-by-owner",
+        "guardStoppedAt": "2026-10-15T16:17:53.852Z",
+        "guardControllerExit": 0,
+        "violations": [],
+        "focusEvents": [],
+        "keysMetadataUnchanged": true,
+        "ownedProcessesAbsent": true,
+        "ownedPorts5048And53575Absent": true,
+        "data": "Task AVD/profile retained; only owned services stopped; no default ADB or other devices touched.",
+        "evidence": [
+          "firefox-production-attempt5-selection-run.json",
+          "boot-owned-avd-attempt5-report.json",
+          "attempt5-artifact-before.json",
+          "attempt5-artifact-after.json"
+        ]
+      },
+      "reviewedScreenshots": [
+        "selection-08-native-longpress.png",
+        "selection-11-native-handle-second.png",
+        "selection-18-fresh-before-entry.png",
+        "selection-19-fresh-entry-immediate.png",
+        "selection-24-permission-before.png",
+        "selection-26-permission-entry-immediate.png",
+        "selection-28-after-back-tap-immediate.png",
+        "selection-33-card-translated.png",
+        "selection-34-copy-immediate.png",
+        "selection-35-card-closed.png",
+        "selection-36-second-word-native.png",
+        "selection-42-service-card-stable.png",
+        "selection-44-final-closed.png"
+      ]
+    }
+  },
+  "safariInstalled633": {
+    "report": "ios-ui-harness/formal-integrated-main-633-final-installed-identity.json",
+    "sha256": "6ae79b3bc3daa7a48a9a45108ef0a6a032388b14d6173e2a275f0149e3333bd5",
+    "allFilesCompared": 483,
+    "webFilesCompared": 465,
+    "webTreeSHA256": "b2acf907c6042a1b82e656523166485bca48775b216f28c0d85567cfc4b62399",
+    "scope": "Separate actual Simulator update and source lifecycle evidence; packaging-agent installedByThisAgent remains false."
   }
 }
