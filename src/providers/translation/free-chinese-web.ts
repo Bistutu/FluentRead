@@ -1,7 +1,7 @@
 /**
  * @file src/providers/translation/free-chinese-web.ts
  * 文件职责：适配有道网页普通翻译和金山词霸匿名网页翻译接口。
- * 主要内容：按码点预算且不切术语标记，生成公开网页协议所需签名，解密词霸响应，限制支持的中英方向；有道按安全长度分块，并拒绝响应明确声明的反向翻译，避免匿名接口静默截断或改写目标语言，同时保留文本槽、换行、边缘空白、取消和结构化失败分类；取消或 HTTP 失败后等待未读正文结算再归还免费池容量。
+ * 主要内容：按码点预算且不切术语标记，生成公开网页协议所需签名，解密词霸响应，限制支持的中英方向；有道按安全长度分块，拒绝响应明确声明的反向翻译，仅按本块完整身份恢复服务删除下划线的术语标记，缺失、重复或身份变化仍失败；保留文本槽、换行、边缘空白、取消和结构化失败分类，取消或 HTTP 失败后等待未读正文结算再归还免费池容量。
  * 模块边界：本文件只负责固定匿名 HTTP provider；不读取账号、Cookie、用户密钥、代理或存储，不负责免费服务编排、重试和并发。
  */
 import AES from 'crypto-js/aes';
@@ -16,6 +16,7 @@ import {serializeTranslationSlots} from '@/src/core/translation/serialization';
 import {getTranslationGlossarySourceText} from '@/src/services/translation/requestSnapshot';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
+import {GlossaryPlaceholderError, validateGlossaryProtectedTokens} from '@/src/core/glossary/protection';
 
 export type FreeChineseWebProvider = 'youdaoFree' | 'icibaFree';
 
@@ -78,6 +79,22 @@ function youdaoSign(query: string, timestamp: string): string {
     return MD5(`${YOUDAO_CLIENT}${query}${timestamp}${YOUDAO_SECRET}${queryDigest}`).toString();
 }
 
+/** 有道会把 __FRTERM_nonce_0__ 写成 FRTERM nonce0 或 FRTERM nonce 0；只还原本块完整 nonce/index，不猜测丢字或跨块身份。 */
+export function normalizeYoudaoProtectedTokens(query: string, translated: string): string {
+    const tokens = query.match(/__FRTERM_[a-f0-9]{12}_x*\d+__/gu);
+    if (!tokens) return translated;
+    const canonical = new Map(tokens.map(token => [token.replace(/_/gu, ''), token]));
+    const normalized = translated.replace(/__FRTERM_[a-f0-9]{12}_x*\d+__|(?<![A-Za-z0-9_])FRTERM[ _]*[a-z0-9]{12}x*[ _]*\d+(?![A-Za-z0-9_])/giu, marker => {
+        // 完整标记逐字保留；不能吞掉与标记相邻、实际属于正文的额外下划线。
+        if (marker.startsWith('__')) return marker;
+        const token = canonical.get(marker.replace(/[ _]/gu, ''));
+        if (!token) throw new GlossaryPlaceholderError();
+        return token;
+    });
+    validateGlossaryProtectedTokens(query, normalized, tokens);
+    return normalized;
+}
+
 function decryptIciba(content: unknown): Record<string, unknown> {
     if (typeof content !== 'string' || !content) throw failure('词霸返回内容无效', 'unavailable');
     try {
@@ -134,7 +151,11 @@ async function fetchJson(provider: FreeChineseWebProvider, query: string, from: 
             }
             const translated = result?.fanyi?.tran;
             if (typeof translated !== 'string' || !translated.trim()) throw failure('有道返回内容无效', 'unavailable');
-            return translated;
+            try { return normalizeYoudaoProtectedTokens(query, translated); }
+            catch (error) {
+                // 本块标记不兼容只换线，不冷却服务或影响下一段普通文字的权重。
+                throw Object.assign(error as Error, {freeFailure: 'request'});
+            }
         }
         const envelope = await readJsonResponse<{content?: unknown} | null>(response, '词霸返回的不是有效 JSON');
         if (signal?.aborted) throw abortErrorFromSignal(signal);

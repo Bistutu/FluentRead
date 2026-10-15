@@ -10,11 +10,15 @@ import AES from 'crypto-js/aes';
 import encUtf8 from 'crypto-js/enc-utf8';
 import modeECB from 'crypto-js/mode-ecb';
 import padPkcs7 from 'crypto-js/pad-pkcs7';
-import {translateFreeChineseWebText} from '@/src/providers/translation/free-chinese-web';
+import {normalizeYoudaoProtectedTokens, translateFreeChineseWebText} from '@/src/providers/translation/free-chinese-web';
 import {setRuntimeFetch} from '@/src/platform/http/runtime';
 import {serializeTranslationSlots, parseTranslationSlots} from '@/src/core/translation/serialization';
 import {detectChineseScript} from '@/src/core/language/detect';
 import {createFreeFallbackRunner} from '@/src/services/translation/freeFallback';
+import youdaoMarkerFixtures from './fixtures/translation-quality/youdao-marker-separators.json';
+import {protectGlossaryText} from '@/src/core/glossary/protection';
+import {findEmojiLiteralRanges} from '@/src/core/translation/emojiLiterals';
+import * as sha256 from '@/src/shared/function/sha256';
 
 const fetchMock = vi.fn<typeof fetch>();
 const responseKey = 'aahc3TfyfCEmER33';
@@ -33,6 +37,84 @@ beforeEach(() => { fetchMock.mockReset(); setRuntimeFetch(fetchMock); });
 afterEach(() => setRuntimeFetch());
 
 describe('free Chinese web providers', () => {
+    describe('Youdao protected marker separator normalization', () => {
+        const token = '__FRTERM_ba0a31bfeba6_0__';
+        it.each(['FRTERM ba0a31bfeba60', 'FRTERM ba0a31bfeba6 0', 'FRTERM_ba0a31bfeba6_0', token])('restores the full known identity in %s without changing surrounding prose', marker => {
+            expect(normalizeYoudaoProtectedTokens(`The ${token} symbol.`, `前文。${marker}符号，后文。`)).toBe(`前文。${token}符号，后文。`);
+        });
+        it('leaves ordinary unprotected requests unchanged', () => {
+            expect(normalizeYoudaoProtectedTokens('ordinary source', 'FRTERM ba0a31bfeba60')).toBe('FRTERM ba0a31bfeba60');
+        });
+        it('supports independent indices, collision suffixes and repeated source tokens', () => {
+            const other = '__FRTERM_b28e1c582e74_x12__';
+            expect(normalizeYoudaoProtectedTokens(`${token} ${other} ${token}`, 'FRTERM b28e1c582e74x 12、FRTERM ba0a31bfeba60、FRTERM ba0a31bfeba6 0'))
+                .toBe(`${other}、${token}、${token}`);
+        });
+        it('handles collision prefixes produced by the actual protection factory', () => {
+            const hash = vi.spyOn(sha256, 'sha256Hex').mockReturnValue('a'.repeat(12) + '0'.repeat(52));
+            try {
+                const source = '__FRTERM_aaaaaaaaaaaa_ __FRTERM_aaaaaaaaaaaa_x 🚚';
+                const packet = protectGlossaryText(source, [], 'emoji-0', [], undefined, findEmojiLiteralRanges(source));
+                expect(packet.tokens).toEqual(['__FRTERM_aaaaaaaaaaaa_xx0__']);
+                expect(packet.restore(normalizeYoudaoProtectedTokens(packet.text, '观察员 FRTERM aaaaaaaaaaaaxx0'))).toBe('观察员 🚚');
+            } finally {hash.mockRestore();}
+        });
+        it('preserves ordinary adjacent underscores and ASCII prose around intact tokens', () => {
+            const query = `before__${token}__after`;
+            expect(normalizeYoudaoProtectedTokens(query, query)).toBe(query);
+            const other = '__FRTERM_b28e1c582e74_12__';
+            expect(normalizeYoudaoProtectedTokens(`${query} ${other}`, `${query} FRTERM b28e1c582e7412`)).toBe(`${query} ${other}`);
+        });
+        it.each(youdaoMarkerFixtures.samples)('restores the unchanged saved $sampleId response offline, preserving every other character', sample => {
+            const packet = protectGlossaryText(sample.source, [], 'emoji-0', [], undefined, findEmojiLiteralRanges(sample.source));
+            expect(packet.text).toBe(sample.preparedText);
+            expect(() => packet.restore(sample.rawTranslation)).toThrowError('翻译服务未完整保留术语');
+            const normalized = normalizeYoudaoProtectedTokens(packet.text, sample.rawTranslation);
+            const restored = packet.restore(normalized);
+            expect(restored.split(sample.emoji)).toHaveLength(2);
+            expect(restored.replace(sample.emoji, packet.tokens[0])).toBe(normalized);
+        });
+        it.each([
+            '', 'FRTERM ba0a31bfeba6', 'FRTERM ba0a31bfeba6 1', 'FRTERM ba0a31bfeba6 00',
+            'FRTERM ba0a31bfeba6 01', 'FRTERM ca0a31bfeba6 0', 'FRTERM ba0a31bfeba6x 0',
+            'frterm ba0a31bfeba60', 'FRTERM BA0A31BFEBA60', 'FRTERM ba0a31bfeba 0',
+            'FRTERM ba0a31bfeba6\n0', 'xFRTERM ba0a31bfeba60', 'FRTERM ba0a31bfeba60x',
+            '_FRTERM ba0a31bfeba60', 'FRTERM ba0a31bfeba60_',
+            `${token} FRTERM ba0a31bfeba60`, `${token} __FRTERM_ca0a31bfeba6_0__`,
+            `${token} FRTERM ca0a31bfeba60`,
+        ])('keeps missing, changed, duplicate and foreign identities rejected: %s', response => {
+            expect(() => normalizeYoudaoProtectedTokens(token, response)).toThrowError('翻译服务未完整保留术语');
+        });
+        it('normalizes through the actual adapter before returning to the free pool', async () => {
+            fetchMock.mockResolvedValueOnce(Response.json({fanyi: {type: 'en2zh-chs', tran: 'FRTERM ba0a31bfeba60符号'}}));
+            await expect(translateFreeChineseWebText('youdaoFree', `The ${token} symbol`, 'en', 'zh-Hans')).resolves.toBe(`${token}符号`);
+            expect(fetchMock).toHaveBeenCalledOnce();
+        });
+        it('still rejects an explicitly opposite direction even with recoverable markers', async () => {
+            fetchMock.mockResolvedValueOnce(Response.json({fanyi: {type: 'zh-chs2en', tran: 'FRTERM ba0a31bfeba60'}}));
+            await expect(translateFreeChineseWebText('youdaoFree', token, 'en', 'zh-Hans')).rejects.toMatchObject({freeFailure: 'request'});
+        });
+        it.each(['标记丢失', 'FRTERM ba0a31bfeba60 FRTERM ba0a31bfeba60', 'FRTERM ca0a31bfeba60'])('keeps rejected markers local to the text and leaves the actual free-pool line ready: %s', response => {
+            return (async () => {
+                fetchMock.mockResolvedValueOnce(Response.json({fanyi: {tran: response}}));
+                const run = createFreeFallbackRunner(1);
+                let rejected: unknown;
+                const first = {identity: 'youdao-marker', label: 'Youdao', translate: async (signal: AbortSignal) => {
+                    try {return await translateFreeChineseWebText('youdaoFree', token, 'en', 'zh-Hans', signal);}
+                    catch (error) {rejected = error;throw error;}
+                }};
+                const options = {timeoutMs: 1_000, cooldownMs: 60_000, mode: 'sequential' as const};
+                await expect(run([first, {identity: 'fallback', label: 'fallback', translate: async () => '替补译文'}], options)).resolves.toBe('替补译文');
+                expect(rejected).toMatchObject({code: 'GLOSSARY_PLACEHOLDER_INVALID', freeFailure: 'request', retryable: false});
+                const health = (await run.getHealthSnapshot()).find(entry => entry.identity === first.identity);
+                expect(health?.failures ?? 0).toBe(0);expect(health?.retryAt ?? 0).toBe(0);
+                fetchMock.mockResolvedValueOnce(Response.json({fanyi: {tran: '下一段正常译文'}}));
+                await expect(run([{...first, translate: signal => translateFreeChineseWebText('youdaoFree', 'Next ordinary paragraph.', 'en', 'zh-Hans', signal)}], options)).resolves.toBe('下一段正常译文');
+                expect(fetchMock).toHaveBeenCalledTimes(2);
+            })();
+        });
+    });
+
     it.each(['youdaoFree', 'icibaFree'] as const)('%s retains a non-success stream until its body ends, preserving HTTP classification', async provider => {
         const {response, body} = streamResponse(429);
         fetchMock.mockResolvedValueOnce(response);
