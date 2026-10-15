@@ -1,4 +1,5 @@
 import {createRequire} from 'node:module'
+import {parseHTML} from 'linkedom'
 import {dirname, resolve} from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import {compileVueInlineFixture} from './helpers/compiledVueFixture'
@@ -364,7 +365,9 @@ type ServiceClientNode = {tag: string; props: Record<string, unknown>; parent?: 
   style: Record<string, unknown>; value?: unknown; addEventListener: () => void; removeEventListener: () => void}
 type LocalModule = {__esModule: true; default: import('vue').Component}
 type LocalPropsSnapshot = {config: Config; context: unknown; service: string; active: boolean}
-async function mountServiceClient(initialService = 'freeTranslation', development = false) {
+type RepairFixture = {href?: string; disabled?: boolean; initialNavigation?: boolean;
+  beforeSettle?: (fixture: {source: any; shown: import('vue').Ref<boolean>; stop: () => void; document: Document}) => void}
+async function mountServiceClient(initialService = 'freeTranslation', development = false, repair?: RepairFixture) {
   vi.useFakeTimers()
   const filename = resolve('src/features/settings/ui/services/ServiceConfiguration.vue')
   const compiled = compileVueInlineFixture(filename, {id: 'service-configuration-client'})
@@ -408,6 +411,26 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
     const resolved = id.startsWith('.') ? resolve(dirname(filename), id) : id
     dependencies.set(id, await server.ssrLoadModule(resolved))
   }
+  let repairDocument: Document | undefined, focusElement: Element | ServiceClientNode | null, fallbackHeading: HTMLElement | undefined
+  if (repair) {
+    const parsed = parseHTML('<html><body><button data-section="settings-services" aria-current="page">Services</button><input><h4 tabindex="-1">Current service</h4></body></html>')
+    repairDocument = parsed.document;focusElement = repair.initialNavigation ? repairDocument.querySelector('[data-section]') : repairDocument.body
+    Object.defineProperty(repairDocument, 'activeElement', {get: () => focusElement, configurable: true})
+    Object.defineProperty(repairDocument, 'visibilityState', {value: 'visible', writable: true})
+    fallbackHeading = repairDocument.querySelector<HTMLElement>('h4')!
+    fallbackHeading.getClientRects = () => [1] as unknown as DOMRectList
+    fallbackHeading.focus = vi.fn(() => {focusElement = fallbackHeading!;repairDocument!.dispatchEvent(new parsed.window.Event('focusin'))})
+    vi.stubGlobal('document', repairDocument);vi.stubGlobal('location', {href: repair.href || 'chrome-extension://fixture/options.html?returnTabId=7&service=freeTranslation'})
+    const returned = compileVueInlineFixture('src/features/settings/ui/services/ServiceRepairReturn.vue', {id: 'service-return-parent-focus'})
+    const childModule = {exports: {} as {default: import('vue').Component}}
+    const childDependencies: Record<string, unknown> = {'vue': runtime,
+      'webextension-polyfill': await server.ssrLoadModule('\0service-browser'), '@/src/ui/i18n': await server.ssrLoadModule('\0service-i18n'),
+      '@/src/services/diagnostics': await server.ssrLoadModule(resolve('src/services/diagnostics/index.ts')),
+      '../../model/useSettingsActionContext': await server.ssrLoadModule(resolve('src/features/settings/model/useSettingsActionContext.ts')),
+      './serviceRepairFocus': await server.ssrLoadModule(resolve('src/features/settings/ui/services/serviceRepairFocus.ts'))}
+    new Function('require', 'exports', 'module', returned.code)((id: string) => childDependencies[id], childModule.exports, childModule)
+    dependencies.set('./ServiceRepairReturn.vue', {default: childModule.exports.default})
+  }
   const module = {exports: {} as {default: import('vue').Component}}
   new Function('require', 'exports', 'module', compiled.code)((id: string) => {
     if (id === '../LocalTranslationModelSettings.vue') return requestLocal()
@@ -416,7 +439,14 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
     return dependencies.get(id)
   }, module.exports, module)
   evaluating = false
-  function node(tag: string): ServiceClientNode {return {tag, props: {}, children: [], style: {}, addEventListener: () => {}, removeEventListener: () => {}}}
+  function node(tag: string): ServiceClientNode {
+    const result = {tag, props: {}, children: [], style: {}, addEventListener: () => {}, removeEventListener: () => {}} as ServiceClientNode
+    if (repairDocument) Object.assign(result, {focus: vi.fn(() => {focusElement = result;repairDocument!.dispatchEvent(new (repairDocument!.defaultView as any).Event('focusin'))}),
+      getClientRects: () => [1], getAttribute: (key: string) => result.props[key] ?? null,
+      closest: () => ({querySelector: () => fallbackHeading})})
+    if (repairDocument) Object.defineProperties(result, {disabled: {get: () => result.props.disabled === true}, isConnected: {get: () => Boolean(result.parent)}})
+    return result
+  }
   function remove(n: ServiceClientNode) {
     if (n.parent) {const list = n.parent.children, index = list.indexOf(n);if (index >= 0) list.splice(index, 1)}
     n.parent = undefined
@@ -439,6 +469,7 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   const connectionTarget = node('section')
   const source = runtime.shallowReactive({...props, config: runtime.reactive(new Config()), service: initialService, connectionActionTarget: connectionTarget,
     active: true, compute: {showAI: false, showModel: false, showToken: false, requireApiKey: false, showServiceSecret: false}})
+  if (repair?.disabled) source.compute = {showAI: true, showModel: true, showToken: true, requireApiKey: true, showServiceSecret: false}
   const shown = runtime.ref(true), host = node('#host')
   const clientApp = renderer.createApp({setup: () => () => runtime.h(runtime.KeepAlive, null, {default: () => shown.value
     ? runtime.h(module.exports.default, source) : runtime.h({render: () => null}, {key: 'other-client'})})})
@@ -447,7 +478,7 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   let stopped = false
   const stop = () => {if (!stopped) {stopped = true;clientApp.unmount()}}
   const finish = async () => {stop();for (const gate of gates) gate.resolve(localModule);await settle();vi.advanceTimersByTime(200);await settle()}
-  try {clientApp.mount(host);await settle()}
+  try {clientApp.mount(host);if (repairDocument) repair?.beforeSettle?.({source, shown, stop, document: repairDocument});await settle()}
   catch (error) {await finish();throw error}
   const resolveLocal = (index = 0) => {expect(gates[index]).toBeDefined();gates[index].resolve(localModule)}
   function localNodes(n = host): ServiceClientNode[] {return n.children.flatMap(child => [
@@ -455,7 +486,7 @@ async function mountServiceClient(initialService = 'freeTranslation', developmen
   ])}
   function descendants(n: ServiceClientNode): ServiceClientNode[] {return [n, ...n.children.flatMap(descendants)]}
   const allNodes = () => [...descendants(host), ...descendants(connectionTarget)]
-  return {source, shown, host, requestLocal, requestChatGPT, gates, snapshots, childProps, mounted, unmounted, clientErrors, resolveLocal, localNodes, allNodes, stop, finish}
+  return {source, shown, host, requestLocal, requestChatGPT, gates, snapshots, childProps, mounted, unmounted, clientErrors, resolveLocal, localNodes, allNodes, stop, finish, repairDocument, fallbackHeading}
 }
 
 describe('实际服务父模板的本地子模块按需加载', () => {
@@ -576,5 +607,37 @@ describe('实际服务父模板的本地子模块按需加载', () => {
       h.resolveLocal(1);await settle();expect(h.mounted).toHaveBeenCalledOnce();expect(h.localNodes()).toHaveLength(1)
       expect(unhandled).toEqual([])
     } finally {process.off('unhandledRejection', onUnhandled);await h.finish()}
+  })
+})
+
+
+describe('真实服务父组件与返回组件的修复焦点', () => {
+  it('明确链接从默认导航直达 Teleport 检查按钮一次，不发检测消息或在同步后抢焦点', async () => {
+    const h = await mountServiceClient('freeTranslation', false, {initialNavigation: true})
+    const button = h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-test-button')) as any
+    expect(h.clientErrors).toEqual([]);expect(button.focus).toHaveBeenCalledOnce();expect(h.repairDocument?.activeElement).toBe(button)
+    expect(send).not.toHaveBeenCalled();h.source.config = runtime.reactive(new Config());await settle()
+    h.shown.value = false;await settle();h.shown.value = true;await settle();expect(button.focus).toHaveBeenCalledOnce();await h.finish()
+  })
+  it('连接按钮禁用时当前可读标题保留焦点，标题与配置区域均有稳定负tabindex', async () => {
+    const h = await mountServiceClient('openai', false, {href: 'chrome-extension://fixture/options.html?returnTabId=7&service=openai', disabled: true})
+    expect(h.clientErrors).toEqual([]);expect(h.fallbackHeading?.focus).toHaveBeenCalledOnce();expect(h.fallbackHeading?.getAttribute('tabindex')).toBe('-1');expect(h.repairDocument?.activeElement).toBe(h.fallbackHeading);expect(h.allNodes().find(n => Object.hasOwn(n.props, 'data-service-configuration-service'))?.props.tabindex).toBe('-1');expect(send).not.toHaveBeenCalled();await h.finish()
+  })
+  it.each(['ordinary', 'mismatch', 'pointer', 'focus', 'hidden', 'context', 'service', 'inactive', 'unmount'])('%s 不执行旧修复焦点', async reason => {
+    const h = await mountServiceClient('freeTranslation', false, {
+      href: reason === 'ordinary' ? 'chrome-extension://fixture/options.html' : reason === 'mismatch' ? 'chrome-extension://fixture/options.html?returnTabId=7&service=openai' : undefined,
+      beforeSettle({source, document, stop}) {
+        if (reason === 'pointer') document.dispatchEvent(new (document.defaultView as any).Event('pointerdown'))
+        if (reason === 'focus') {const input = document.querySelector('input')!;Object.defineProperty(document, 'activeElement', {value: input, configurable: true});document.dispatchEvent(new (document.defaultView as any).Event('focusin'))}
+        if (reason === 'hidden') {Object.assign(document, {visibilityState: 'hidden'});document.dispatchEvent(new (document.defaultView as any).Event('visibilitychange'))}
+        if (reason === 'context') source.config = runtime.reactive(new Config())
+        if (reason === 'service') source.service = 'google'
+        if (reason === 'inactive') source.active = false
+        if (reason === 'unmount') stop()
+      },
+    })
+    expect(h.clientErrors).toEqual([])
+    for (const node of h.allNodes()) if ((node as any).focus) expect((node as any).focus).not.toHaveBeenCalled()
+    expect(h.fallbackHeading?.focus).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();await h.finish()
   })
 })

@@ -9,17 +9,18 @@ import * as vue from 'vue'
 import type {UiLanguage} from '@/src/core/i18n'
 import * as diagnostics from '@/src/services/diagnostics'
 import * as actionContext from '@/src/features/settings/model/useSettingsActionContext'
+import * as repairFocus from '@/src/features/settings/ui/services/serviceRepairFocus'
 import {compileVueInlineFixture} from './helpers/compiledVueFixture'
 const get = vi.fn(), update = vi.fn()
 const disposals: (() => void)[] = []
 type TestNode = {props: Record<string, any>; children: TestNode[]; parent?: TestNode; value?: string}
 async function settle() {for (let i = 0; i < 8; i++) await Promise.resolve();await vue.nextTick()}
-async function mount(href = 'chrome-extension://fixture/options.html?returnTabId=7', locale: UiLanguage = 'zh-CN') {
+async function mount(href = 'chrome-extension://fixture/options.html?returnTabId=7', locale: UiLanguage = 'zh-CN', initial: {active?: boolean; contextKey?: string} = {}) {
   vi.stubGlobal('location', {href})
   const compiled = compileVueInlineFixture('src/features/settings/ui/services/ServiceRepairReturn.vue', {id: 'service-return'})
   const language = vue.ref<UiLanguage>(locale)
   const dependencies: Record<string, unknown> = {'vue': vue, 'webextension-polyfill': {default: {tabs: {get, update}}},
-    '@/src/ui/i18n': {useUiI18n: () => ({language})}, '@/src/services/diagnostics': diagnostics, '../../model/useSettingsActionContext': actionContext}
+    '@/src/ui/i18n': {useUiI18n: () => ({language})}, '@/src/services/diagnostics': diagnostics, '../../model/useSettingsActionContext': actionContext, './serviceRepairFocus': repairFocus}
   const module = {exports: {} as {default: vue.Component}}
   new Function('require', 'exports', 'module', compiled.code)((id: string) => {if (!(id in dependencies)) throw new Error(id);return dependencies[id]}, module.exports, module)
   const make = (): TestNode => ({props: {}, children: []})
@@ -29,8 +30,9 @@ async function mount(href = 'chrome-extension://fixture/options.html?returnTabId
     remove, createElement: make, createText: make, createComment: make, setText: (n, value) => {n.value = value}, setElementText: (n, value) => {n.value = value},
     parentNode: n => n.parent || null, nextSibling: n => n.parent?.children[n.parent.children.indexOf(n) + 1] || null,
     insertStaticContent: () => {throw new Error('Unexpected static content')}})
-  const props = vue.reactive({active: true, context: {}, contextKey: 'deepseek'}), shown = vue.ref(true), host = make()
-  const app = renderer.createApp({setup: () => () => vue.h(vue.KeepAlive, null, {default: () => shown.value ? vue.h(module.exports.default, props) : vue.h({render: () => null}, {key: 'hidden'})})})
+  const ready = vi.fn()
+  const props = vue.reactive({active: true, context: {}, contextKey: 'deepseek', ...initial}), shown = vue.ref(true), host = make()
+  const app = renderer.createApp({setup: () => () => vue.h(vue.KeepAlive, null, {default: () => shown.value ? vue.h(module.exports.default, {...props, onRepairReady: ready}) : vue.h({render: () => null}, {key: 'hidden'})})})
   app.config.warnHandler = () => {};app.mount(host)
   let stopped = false
   const stop = () => {if (!stopped) {stopped = true;app.unmount()}}
@@ -39,11 +41,29 @@ async function mount(href = 'chrome-extension://fixture/options.html?returnTabId
   const button = () => nodes().find(n => Object.hasOwn(n.props, 'data-return-source-tab'))
   const text = () => nodes().map(n => n.value || '').join(' ')
   const click = async () => {const element = button();if (element) await element.props.onClick();await settle()}
-  return {props, shown, stop, button, text, click, language}
+  return {props, shown, stop, button, text, click, language, ready}
 }
 beforeEach(() => {vi.clearAllMocks();get.mockResolvedValue({id: 7, url: 'https://example.test/private?secret=fixture'});update.mockResolvedValue({id: 7})})
 afterEach(() => {for (const stop of disposals.splice(0)) stop();vi.unstubAllGlobals()})
 describe('服务修复后返回来源网页', () => {
+  it('有效明确修复链接只在首次活跃挂载通知一次，不随同步或重新激活抢焦点', async () => {
+    const h = await mount('chrome-extension://fixture/options.html?returnTabId=7&service=deepseek')
+    expect(h.ready).toHaveBeenCalledOnce();expect(h.ready).toHaveBeenCalledWith('deepseek');expect(get).not.toHaveBeenCalled()
+    h.props.context = {};h.props.active = false;await settle();h.props.active = true;await settle()
+    h.props.contextKey = 'google';await settle();h.props.contextKey = 'deepseek';h.shown.value = false;await settle();h.shown.value = true;await settle()
+    expect(h.ready).toHaveBeenCalledOnce()
+  })
+  it.each([
+    ['https://fixture/options.html?returnTabId=7&service=deepseek', {}],
+    ['chrome-extension://fixture/options.html?service=deepseek', {}],
+    ['chrome-extension://fixture/options.html?returnTabId=7', {}],
+    ['chrome-extension://fixture/options.html?returnTabId=7&service=deepseek&service=deepseek', {}],
+    ['chrome-extension://fixture/options.html?returnTabId=7&service=openai', {}],
+    ['chrome-extension://fixture/options.html?returnTabId=7&service=deepseek', {active: false}],
+  ] as const)('非有效初次修复场景不请求焦点：%s %j', async (href, initial) => {
+    const h = await mount(href, 'zh-CN', initial);expect(h.ready).not.toHaveBeenCalled()
+    h.props.active = true;h.props.contextKey = 'deepseek';await settle();expect(h.ready).not.toHaveBeenCalled()
+  })
   it.each(['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const)('%s 实际模板的空闲、等待、失败和返回成功反馈使用同一语言词库', async locale => {
     const h = await mount('chrome-extension://fixture/options.html?returnTabId=7', locale)
     expect(h.text()).toContain(diagnostics.getDiagnosticUiText('source-return-hint', locale))

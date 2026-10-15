@@ -351,6 +351,7 @@ export default defineConfig({
                 'src/app/popup/mount.ts',
                 'src/features/settings/model/useQuickProfileDraft.ts',
                 'src/features/settings/ui/services/freeTranslationChecks.ts',
+                'src/features/settings/ui/services/serviceRepairFocus.ts',
                 'src/core/config/deepl.ts',
                 'src/core/config/azure.ts',
                 'src/core/config/interfaceAppearance.ts',

@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/services/ServiceRepairReturn.vue
  * 文件职责：为从 popup 来到服务设置的用户提供明确、可取消的返回原网页操作。
- * 主要内容：只从扩展页面解析安全的来源标签页 ID；用户点击时重新验证来源标签页与网页协议，成功或不可用时给出紧凑本地提示，并阻止隐藏、服务切换、缓存停用及卸载后的迟到查询切换标签页。
+ * 主要内容：复用扩展页面安全来源解析，在首次挂载且服务匹配时通知父组件提供一次修复焦点；用户点击时重新验证来源标签页与网页协议，成功或不可用时给出紧凑本地提示，并阻止隐藏、服务切换、缓存停用及卸载后的迟到查询切换标签页。
  * 模块边界：不收集或保存网页正文、URL、凭据或诊断报告，不自动翻译、不创建新页面、不关闭设置页；仅由明确点击触发 tabs.get 和 tabs.update。
  -->
 <template>
@@ -11,14 +11,17 @@
   </div>
 </template>
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
 import browser from 'webextension-polyfill'
 import {useUiI18n} from '@/src/ui/i18n'
 import {getDiagnosticUiText} from '@/src/services/diagnostics'
 import {useSettingsActionContext} from '../../model/useSettingsActionContext'
+import {readServiceRepairSource} from './serviceRepairFocus'
 const props = withDefaults(defineProps<{active?: boolean; context?: unknown; contextKey?: string}>(), {active: true})
 const {language} = useUiI18n()
-const sourceTabId = readSourceTabId()
+const emit = defineEmits<{'repair-ready': [service: string]}>()
+const source = readServiceRepairSource(typeof location === 'undefined' ? '' : location.href)
+const sourceTabId = source?.tabId
 const busy = ref(false)
 const status = ref<'idle' | 'unavailable' | 'returned'>('idle')
 const {active, capture} = useSettingsActionContext(() => props.active, () => [props.context, props.contextKey])
@@ -27,16 +30,7 @@ const message = computed(() => status.value === 'unavailable'
   : status.value === 'returned'
     ? getDiagnosticUiText('source-returned', language.value)
     : getDiagnosticUiText('source-return-hint', language.value))
-function readSourceTabId(): number | undefined {
-  try {
-    const source = new URL(location.href)
-    if (!['chrome-extension:', 'moz-extension:', 'safari-web-extension:'].includes(source.protocol)) return undefined
-    const values = source.searchParams.getAll('returnTabId')
-    if (values.length !== 1 || !/^\d{1,16}$/u.test(values[0])) return undefined
-    const id = Number(values[0])
-    return Number.isSafeInteger(id) && id >= 0 ? id : undefined
-  } catch {return undefined}
-}
+onMounted(() => {if (active.value && source?.service && source.service === props.contextKey) emit('repair-ready', source.service)})
 async function returnToSource(): Promise<void> {
   if (!active.value || busy.value || sourceTabId === undefined) return
   const current = capture()

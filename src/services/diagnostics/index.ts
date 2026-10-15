@@ -8,7 +8,7 @@
 import type {TranslationErrorKind} from '../translation/errors';
 
 export const DIAGNOSTIC_CODES = [
-  'cancelled', 'offline', 'no-content', 'unsupported-page', 'page-unavailable', 'context-invalid',
+  'cancelled', 'offline', 'no-content', 'unsupported-page', 'page-unavailable', 'source-closed', 'context-invalid',
   'authentication', 'model-configuration', 'configuration', 'configuration-save', 'rate-limit',
   'timeout', 'network', 'provider', 'unknown',
 ] as const;
@@ -23,7 +23,7 @@ export interface Diagnostic {
   retryAfterMs?: number;
 }
 export interface DiagnosticContext {
-  reason?: 'no-content' | 'unsupported-page' | 'configuration' | 'configuration-save' | 'cancelled';
+  reason?: 'no-content' | 'unsupported-page' | 'source-closed' | 'configuration' | 'configuration-save' | 'cancelled';
   online?: boolean;
 }
 
@@ -33,6 +33,7 @@ const actions: Record<DiagnosticCode, DiagnosticAction[]> = {
   'no-content': ['retry', 'site-settings', 'dismiss'],
   'unsupported-page': ['dismiss'],
   'page-unavailable': ['refresh', 'dismiss'],
+  'source-closed': ['dismiss'],
   'context-invalid': ['refresh', 'dismiss'],
   authentication: ['services', 'dismiss'],
   'model-configuration': ['services', 'dismiss'],
@@ -103,6 +104,7 @@ export function diagnoseFailure(error: unknown, context: DiagnosticContext = {})
   if (kind === 'bad-request') {
     return makeDiagnostic(/model|deployment|模型/iu.test(code + ' ' + message) ? 'model-configuration' : 'configuration');
   }
+  if (/^(?:Error:\s*)?(?:No tab with id:\s*\d+\.?|No active tab)\s*$/iu.test(message)) return makeDiagnostic('source-closed');
   if (/receiving end does not exist|could not establish connection|(?:没有|找不到|无)(?:消息)?接收端|接收端不存在/iu.test(message)) return makeDiagnostic('page-unavailable');
   if (/invalid_api_key|authentication|unauthorized|forbidden/iu.test(code)
       || /\b40[13]\b|api.?key.*(?:invalid|missing|expired)|unauthori[sz]ed|forbidden|鉴权|密钥.*(?:无效|未配置|过期)|凭据.*(?:无效|未配置)/iu.test(message)) return makeDiagnostic('authentication');
@@ -125,6 +127,7 @@ const text: Record<DiagnosticLanguage, Record<DiagnosticCode, Copy>> = {
     'no-content': {title: '没有找到可翻译的正文', detail: '等待页面加载后重试，或检查此网站的翻译范围。也可以选中文字进行翻译。'},
     'unsupported-page': {title: '此页面无法直接翻译', detail: '浏览器内部页和扩展商店限制扩展访问。请在普通网页使用翻译。'},
     'page-unavailable': {title: '网页翻译组件暂不可用', detail: '刷新网页后重试，并检查扩展是否有此网站的访问权限。浏览器内部页和扩展商店请改用普通网页。'},
+    'source-closed': {title: '原网页已不可用', detail: '请重新打开需要翻译的网页，再打开流畅阅读。'},
     'context-invalid': {title: '扩展已更新，需要刷新页面', detail: '保存页面上尚未提交的内容，再刷新网页以继续翻译。'},
     authentication: {title: '服务凭据或权限有问题', detail: '检查 API Key 是否有效，以及账号是否有当前模型的访问权限。也可以在服务设置中选择其他服务。'},
     'model-configuration': {title: '当前模型配置不可用', detail: '在服务设置中核对模型名称和接口地址，并测试连接；保存后返回这里重试。'},
@@ -142,6 +145,7 @@ const text: Record<DiagnosticLanguage, Record<DiagnosticCode, Copy>> = {
     'no-content': {title: 'No translatable text found', detail: 'Wait for the page to load and retry, or check this site’s translation scope. You can also select text to translate.'},
     'unsupported-page': {title: 'This page cannot be translated directly', detail: 'Browser internal pages and extension stores restrict extension access. Try translation on a regular webpage.'},
     'page-unavailable': {title: 'The page translation component is unavailable', detail: 'Refresh the page and retry, and check that the extension can access this website. Use a regular webpage instead of browser internal pages or extension stores.'},
+    'source-closed': {title: 'The original page is no longer available', detail: 'Reopen the page you want to translate, then open FluentRead again.'},
     'context-invalid': {title: 'Refresh this page after the extension update', detail: 'Save any unsubmitted work on the page, then refresh to continue translating.'},
     authentication: {title: 'Check service credentials or permissions', detail: 'Check that your API key is valid and your account can access the selected model. You can also select another service in settings.'},
     'model-configuration': {title: 'The selected model is unavailable', detail: 'Check the model name and endpoint in service settings and test the connection. Save, then return here to retry.'},
@@ -159,6 +163,7 @@ const text: Record<DiagnosticLanguage, Record<DiagnosticCode, Copy>> = {
     "no-content": {"title": "翻訳できる本文が見つかりません", "detail": "ページの読み込みを待って再試行するか、このサイトの翻訳範囲を確認してください。テキストを選択して翻訳することもできます。"},
     "unsupported-page": {"title": "このページは直接翻訳できません", "detail": "ブラウザーの内部ページや拡張機能ストアは、拡張機能からのアクセスを制限しています。通常のウェブページで翻訳してください。"},
     "page-unavailable": {"title": "ページの翻訳コンポーネントを利用できません", "detail": "ページを再読み込みして再試行し、拡張機能にこのサイトへのアクセス権があるか確認してください。内部ページや拡張機能ストアでは、通常のウェブページを開いてください。"},
+    "source-closed": {"title": "元のページを利用できません", "detail": "翻訳するページを開き直してから、FluentReadをもう一度開いてください。"},
     "context-invalid": {"title": "拡張機能の更新後はページの再読み込みが必要です", "detail": "ページ上の未送信の内容を保存してから、ページを再読み込みして翻訳を続けてください。"},
     "authentication": {"title": "サービスの認証情報または権限を確認してください", "detail": "API Key が有効で、アカウントに現在のモデルを利用する権限があるか確認してください。サービス設定で別のサービスを選ぶこともできます。"},
     "model-configuration": {"title": "現在のモデルを利用できません", "detail": "サービス設定でモデル名と API アドレスを確認し、接続テストを行ってください。保存後にここへ戻って再試行してください。"},
@@ -176,6 +181,7 @@ const text: Record<DiagnosticLanguage, Record<DiagnosticCode, Copy>> = {
     "no-content": {"title": "번역할 본문을 찾지 못했습니다", "detail": "페이지가 로드될 때까지 기다린 후 재시도하거나 이 사이트의 번역 범위를 확인하세요. 텍스트를 선택해 번역할 수도 있습니다."},
     "unsupported-page": {"title": "이 페이지는 직접 번역할 수 없습니다", "detail": "브라우저 내부 페이지와 확장 프로그램 스토어는 확장 프로그램의 접근을 제한합니다. 일반 웹페이지에서 번역을 사용하세요."},
     "page-unavailable": {"title": "페이지 번역 구성 요소를 사용할 수 없습니다", "detail": "페이지를 새로고침한 후 재시도하고 확장 프로그램에 이 사이트의 접근 권한이 있는지 확인하세요. 브라우저 내부 페이지나 확장 프로그램 스토어 대신 일반 웹페이지를 사용하세요."},
+    "source-closed": {"title": "원래 페이지를 사용할 수 없습니다", "detail": "번역할 페이지를 다시 연 다음 FluentRead를 다시 여세요."},
     "context-invalid": {"title": "확장 프로그램 업데이트 후 페이지 새로고침이 필요합니다", "detail": "페이지에서 아직 제출하지 않은 내용을 저장한 후 새로고침하여 번역을 계속하세요."},
     "authentication": {"title": "서비스 인증 정보나 권한을 확인하세요", "detail": "API Key가 유효한지, 계정에 현재 모델의 접근 권한이 있는지 확인하세요. 서비스 설정에서 다른 서비스를 선택할 수도 있습니다."},
     "model-configuration": {"title": "현재 모델을 사용할 수 없습니다", "detail": "서비스 설정에서 모델 이름과 API 주소를 확인하고 연결을 테스트하세요. 저장한 후 여기로 돌아와 다시 시도하세요."},
@@ -193,6 +199,7 @@ const text: Record<DiagnosticLanguage, Record<DiagnosticCode, Copy>> = {
     "no-content": {"title": "Aucun texte à traduire trouvé", "detail": "Attendez le chargement de la page, puis réessayez, ou vérifiez la zone à traduire sur ce site. Vous pouvez aussi sélectionner du texte à traduire."},
     "unsupported-page": {"title": "Cette page ne peut pas être traduite directement", "detail": "Les pages internes du navigateur et les boutiques d’extensions limitent l’accès des extensions. Utilisez la traduction sur une page web ordinaire."},
     "page-unavailable": {"title": "Le composant de traduction de la page est indisponible", "detail": "Actualisez la page et réessayez. Vérifiez aussi que l’extension est autorisée à accéder à ce site. Utilisez une page web ordinaire plutôt qu’une page interne ou une boutique d’extensions."},
+    "source-closed": {"title": "La page d’origine n’est plus disponible", "detail": "Rouvrez la page à traduire, puis ouvrez à nouveau FluentRead."},
     "context-invalid": {"title": "Actualisez la page après la mise à jour de l’extension", "detail": "Enregistrez les éléments non envoyés sur la page, puis actualisez-la pour continuer à traduire."},
     "authentication": {"title": "Vérifiez les identifiants ou les autorisations du service", "detail": "Vérifiez que la clé API est valide et que votre compte a accès au modèle choisi. Vous pouvez aussi choisir un autre service dans les réglages."},
     "model-configuration": {"title": "Le modèle choisi est indisponible", "detail": "Vérifiez le nom du modèle et l’adresse de l’API dans les réglages du service, puis testez la connexion. Enregistrez et revenez ici pour réessayer."},
@@ -210,6 +217,7 @@ const text: Record<DiagnosticLanguage, Record<DiagnosticCode, Copy>> = {
     "no-content": {"title": "Текст для перевода не найден", "detail": "Дождитесь загрузки страницы и повторите попытку или проверьте область перевода для этого сайта. Также можно выделить текст и перевести его."},
     "unsupported-page": {"title": "Эту страницу нельзя перевести напрямую", "detail": "Внутренние страницы браузера и магазины расширений ограничивают доступ расширений. Используйте перевод на обычной веб-странице."},
     "page-unavailable": {"title": "Компонент перевода страницы недоступен", "detail": "Обновите страницу и повторите попытку. Проверьте, есть ли у расширения доступ к этому сайту. Вместо внутренних страниц браузера и магазинов расширений откройте обычную веб-страницу."},
+    "source-closed": {"title": "Исходная страница больше недоступна", "detail": "Снова откройте страницу, которую хотите перевести, затем откройте FluentRead."},
     "context-invalid": {"title": "После обновления расширения нужно обновить страницу", "detail": "Сохраните неотправленные данные на странице, затем обновите её, чтобы продолжить перевод."},
     "authentication": {"title": "Проверьте ключи доступа и разрешения сервиса", "detail": "Убедитесь, что ключ API действителен, а у аккаунта есть доступ к выбранной модели. Также можно выбрать другой сервис в настройках."},
     "model-configuration": {"title": "Выбранная модель недоступна", "detail": "Проверьте имя модели и адрес API в настройках сервиса и протестируйте подключение. Сохраните настройки и вернитесь сюда, чтобы повторить попытку."},
@@ -227,6 +235,7 @@ const text: Record<DiagnosticLanguage, Record<DiagnosticCode, Copy>> = {
     "no-content": {"title": "No se encontró texto para traducir", "detail": "Espera a que se cargue la página y reintenta, o revisa el área de traducción de este sitio. También puedes seleccionar texto para traducirlo."},
     "unsupported-page": {"title": "Esta página no se puede traducir directamente", "detail": "Las páginas internas del navegador y las tiendas de extensiones limitan el acceso de las extensiones. Usa la traducción en una página web normal."},
     "page-unavailable": {"title": "El componente de traducción de la página no está disponible", "detail": "Recarga la página y reintenta. Comprueba también que la extensión tenga acceso a este sitio. Usa una página web normal en lugar de una página interna o una tienda de extensiones."},
+    "source-closed": {"title": "La página original ya no está disponible", "detail": "Vuelve a abrir la página que quieras traducir y después abre FluentRead de nuevo."},
     "context-invalid": {"title": "Recarga la página tras actualizar la extensión", "detail": "Guarda el contenido de la página que aún no hayas enviado y recárgala para seguir traduciendo."},
     "authentication": {"title": "Revisa las credenciales o los permisos del servicio", "detail": "Comprueba que la clave API sea válida y que tu cuenta tenga acceso al modelo elegido. También puedes elegir otro servicio en los ajustes."},
     "model-configuration": {"title": "El modelo elegido no está disponible", "detail": "Revisa el nombre del modelo y la dirección de la API en los ajustes del servicio y prueba la conexión. Guarda los cambios y vuelve aquí para reintentar."},

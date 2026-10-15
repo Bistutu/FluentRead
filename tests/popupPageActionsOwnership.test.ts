@@ -15,11 +15,52 @@ function setup(pdfEnabled = true) {
   const state:PopupPageState={tabId:7,url:'https://example.com/a',domain:'example.com',translated:false,busy:false,savingRule:false}
   let active=true,warning='',thunderbird=false
   const getTab=vi.fn(async():Promise<PopupActiveTab|undefined>=>({id:7,url:'https://example.com/a'})),send=vi.fn(async(_id:number,_message:{type:string;action?:string}):Promise<unknown>=>({status:'success',isTranslated:true})),notice=vi.fn(),close=vi.fn()
-  const openPdf=vi.fn(async(_sourceUrl:string):Promise<unknown>=>undefined),persistRule=vi.fn(async():Promise<void>=>undefined)
-  const actions=createPopupPageActions({state,config:()=>cfg,active:()=>active,warning:()=>warning,getTab,send,persistRule,openPdf:pdfEnabled?openPdf:undefined,notice,close,translate:key=>key,get thunderbird(){return thunderbird}})
-  return {cfg,state,getTab,send,openPdf,persistRule,notice,close,actions,setActive:(value:boolean)=>{active=value},setWarning:(value:string)=>{warning=value},setThunderbird:()=>{thunderbird=true}}
+  const openPdf=vi.fn(async(_sourceUrl:string):Promise<unknown>=>undefined),persistRule=vi.fn(async():Promise<void>=>undefined),failure=vi.fn(),status=vi.fn()
+  const actions=createPopupPageActions({state,config:()=>cfg,active:()=>active,warning:()=>warning,getTab,send,persistRule,openPdf:pdfEnabled?openPdf:undefined,notice,close,translate:key=>key,onFailure:failure,onStatus:status,get thunderbird(){return thunderbird}})
+  return {cfg,state,getTab,send,openPdf,persistRule,notice,close,actions,failure,status,setActive:(value:boolean)=>{active=value},setWarning:(value:string)=>{warning=value},setThunderbird:()=>{thunderbird=true}}
 }
 afterEach(()=>vi.restoreAllMocks())
+describe('Popup 来源关闭诊断与读取归属',()=>{
+  it.each([undefined,{id:-1}])('当前来源不存在 %j 时立即解释，不发送或转移操作',async tab=>{
+    const f=setup();f.getTab.mockResolvedValueOnce(tab);await f.actions.hydrate()
+    expect(f.failure).toHaveBeenCalledWith(expect.objectContaining({code:'source-closed',actions:['dismiss']}))
+    expect(f.state).toMatchObject({tabId:null,url:'',translated:false});expect(f.send).not.toHaveBeenCalled()
+  })
+  it.each([['No tab with id: 7.','source-closed'],['No active tab','source-closed'],['temporary tabs lookup failure','unknown'],['Could not establish connection. Receiving end does not exist.','page-unavailable']])('当前读取失败 %s 保持准确分类 %s',async(message,code)=>{
+    vi.spyOn(console,'warn').mockImplementation(()=>{});const f=setup();f.getTab.mockRejectedValueOnce(Error(message));await f.actions.hydrate()
+    expect(f.failure).toHaveBeenCalledWith(expect.objectContaining({code}));expect(f.send).not.toHaveBeenCalled()
+  })
+  it.each(['absent','closed','other-error'] as const)('旧读取 %s 晚于新查询时不覆盖新页面',async outcome=>{
+    vi.spyOn(console,'warn').mockImplementation(()=>{});const f=setup(),old=deferred<PopupActiveTab|undefined>();f.getTab.mockReturnValueOnce(old.promise);const pending=f.actions.hydrate()
+    f.getTab.mockResolvedValueOnce({id:8,url:'https://new.example/'});await f.actions.hydrate()
+    if(outcome==='absent')old.resolve(undefined);else old.reject(Error(outcome==='closed'?'No tab with id: 7.':'temporary lookup failure'))
+    await pending;expect(f.failure).not.toHaveBeenCalled();expect(f.state.tabId).toBe(8);expect(f.state.translated).toBe(true)
+  })
+  it.each(['absent','closed','valid'] as const)('旧来源读取 %s 不覆盖其间确认的新命令',async outcome=>{
+    const f=setup(),old=deferred<PopupActiveTab|undefined>();f.getTab.mockReturnValueOnce(old.promise);const pending=f.actions.hydrate();await f.actions.toggle()
+    if(outcome==='closed')old.reject(Error('No tab with id: 7.'));else old.resolve(outcome==='absent'?undefined:{id:8,url:'https://obsolete.example/'})
+    await pending;expect(f.failure).not.toHaveBeenCalled();expect(f.state.tabId).toBe(7);expect(f.state.translated).toBe(true);expect(f.send).toHaveBeenCalledOnce()
+  })
+  it.each(['absent','closed'] as const)('Popup 退出后晚到的 %s 不产生恢复提示',async outcome=>{
+    const f=setup(),old=deferred<PopupActiveTab|undefined>();f.getTab.mockReturnValueOnce(old.promise);const pending=f.actions.hydrate();f.setActive(false)
+    if(outcome==='absent')old.resolve(undefined);else old.reject(Error('No tab with id: 7.'));await pending;expect(f.failure).not.toHaveBeenCalled()
+  })
+  it.each([undefined,'No tab with id: 7.','No active tab','temporary tabs lookup failure'] as const)('翻译时来源读取失败 %s 不把空URL误诊成内部页',async message=>{
+    const f=setup();f.state.tabId=null;f.state.url='';if(message)f.getTab.mockRejectedValueOnce(Error(message));else f.getTab.mockResolvedValueOnce(undefined)
+    await f.actions.toggle();expect(f.failure).toHaveBeenCalledWith(expect.objectContaining({code:message==='temporary tabs lookup failure'?'unknown':'source-closed'}))
+    expect(f.send).not.toHaveBeenCalled();expect(f.state.busy).toBe(false)
+  })
+  it('空URL内容接收端缺失仍是可刷新页面组件故障，已知内部页才是限制页面',async()=>{
+    for(const [url,message,code] of [['','Could not establish connection. Receiving end does not exist.','page-unavailable'],['chrome://extensions','access denied','unsupported-page'],['chrome://extensions','No tab with id: 7.','source-closed']]){
+      const f=setup();f.state.url=url;f.getTab.mockResolvedValueOnce({id:7,url});f.send.mockRejectedValueOnce(Error(message));await f.actions.toggle()
+      expect(f.failure).toHaveBeenCalledWith(expect.objectContaining({code}));expect(f.state.busy).toBe(false)
+    }
+  })
+  it('来源读取失败时不借用旧内部页URL归因，也不发送给另一个标签页',async()=>{
+    const f=setup();f.state.url='chrome://extensions';f.getTab.mockRejectedValueOnce(Error('temporary lookup failure'));await f.actions.toggle()
+    expect(f.failure).toHaveBeenCalledWith(expect.objectContaining({code:'unknown'}));expect(f.send).not.toHaveBeenCalled()
+  })
+})
 describe('Popup 页面状态与操作所有权',()=>{
   it('启动状态晚到不能覆盖刚完成的翻译；失败的旧状态也不能回退新结果',async()=>{
     for(const rejected of [false,true]){const {state,actions,send}=setup(),old=deferred();send.mockImplementationOnce(()=>old.promise);const hydrate=actions.hydrate();await settle();await actions.toggle();expect(state.translated).toBe(true);if(rejected)old.reject(Error('old receiver'));else old.resolve({isTranslated:false});await hydrate;expect(state.translated).toBe(true);expect(state.busy).toBe(false)}

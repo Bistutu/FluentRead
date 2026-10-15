@@ -691,7 +691,8 @@
       "tests/workerMessageContracts.test.ts",
       "tests/localTranslationWorker.test.ts",
       "tests/selfHelpNotice.test.ts",
-      "tests/serviceRepairReturn.test.ts"
+      "tests/serviceRepairReturn.test.ts",
+      "tests/serviceRepairFocus.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",
