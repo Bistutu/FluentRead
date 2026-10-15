@@ -55,7 +55,7 @@ async function runMaterialDocumentFixtures({open, origin, message, waitRecord, s
         await add.waitFor({state: 'visible', timeout: 30000});
         await assertMaterialControl(page,format,report);
         await add.click();
-        await page.getByRole('button', {name: '已加入学习材料', exact: true}).waitFor({timeout: 15000});
+        await page.getByRole('button', {name: '更新学习位置', exact: true}).waitFor({timeout: 15000});
         const matches = (await message({action: 'list'})).filter(record => record.kind === 'document' && record.source.title === path.basename(filePath));
         assert.equal(matches.length, 1, `${format}: the imported original must map to exactly one material`);
         const record = matches[0];
@@ -82,13 +82,13 @@ async function runMaterialDocumentFixtures({open, origin, message, waitRecord, s
     await shot('material-docx-saved-page-2', docxPage);
     await docxPage.close();
     const resumedDocx = await open(`${origin}/document.html?__fluentread_material=${encodeURIComponent(docxRecord.id)}`);
-    await resumedDocx.getByRole('button', {name: '已加入学习材料', exact: true}).waitFor({timeout: 30000});
+    await resumedDocx.getByRole('button', {name: '更新学习位置', exact: true}).waitFor({timeout: 30000});
     await assertDocxPageTwo(resumedDocx);
     assert.equal(await resumedDocx.locator('.reading-content').getAttribute('data-fluentread-material-fingerprint'), savedDocx.source.fingerprint);
     await shot('material-docx-resumed-page-2', resumedDocx);
     report.cases.push('real-docx-page-2-native-dom-and-fingerprint-resume');
     report.materialDocumentFixtures.push({format: 'docx', file: docxPath, materialId: docxRecord.id, fingerprint: savedDocx.source.fingerprint, page: 2, section: 'docx:0', firstOriginal: docxParagraph(81), lastOriginal: docxParagraph(90), visibleOriginalParagraphs: 10});
-    await resumedDocx.setViewportSize({width:390,height:1000});assert.equal(await resumedDocx.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const narrowDocxButton=await resumedDocx.getByRole('button',{name:'已加入学习材料',exact:true}).boundingBox();assert(narrowDocxButton&&narrowDocxButton.width<=180&&narrowDocxButton.x>=0&&narrowDocxButton.x+narrowDocxButton.width<=390);await assertMaterialControl(resumedDocx,'docx',report);await shot('material-docx-390',resumedDocx);
+    await resumedDocx.setViewportSize({width:390,height:1000});assert.equal(await resumedDocx.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const narrowDocxButton=await resumedDocx.getByRole('button',{name:'更新学习位置',exact:true}).boundingBox();assert(narrowDocxButton&&narrowDocxButton.width<=180&&narrowDocxButton.x>=0&&narrowDocxButton.x+narrowDocxButton.width<=390);await assertMaterialControl(resumedDocx,'docx',report);await shot('material-docx-390',resumedDocx);
     await resumedDocx.close();
 
     const assertEpubChapterTwo = async page => {
@@ -114,13 +114,13 @@ async function runMaterialDocumentFixtures({open, origin, message, waitRecord, s
     await shot('material-epub-saved-chapter-2', epubPage);
     await epubPage.close();
     const resumedEpub = await open(`${origin}/document.html?__fluentread_material=${encodeURIComponent(epubRecord.id)}`);
-    await resumedEpub.getByRole('button', {name: '已加入学习材料', exact: true}).waitFor({timeout: 30000});
+    await resumedEpub.getByRole('button', {name: '更新学习位置', exact: true}).waitFor({timeout: 30000});
     await assertEpubChapterTwo(resumedEpub);
     assert.equal(await resumedEpub.locator('.reading-content').getAttribute('data-fluentread-material-fingerprint'), savedEpub.source.fingerprint);
     await shot('material-epub-resumed-chapter-2', resumedEpub);
     report.cases.push('real-epub-chapter-2-original-dom-and-fingerprint-resume');
     report.materialDocumentFixtures.push({format: 'epub', file: epubPath, materialId: epubRecord.id, fingerprint: savedEpub.source.fingerprint, page: 1, section: 'epub:1', originalHeading: chapterTitle(2), originalPassage: epubParagraph(2)});
-    await resumedEpub.setViewportSize({width:390,height:1000});assert.equal(await resumedEpub.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const narrowEpubButton=await resumedEpub.getByRole('button',{name:'已加入学习材料',exact:true}).boundingBox();assert(narrowEpubButton&&narrowEpubButton.width<=180&&narrowEpubButton.x>=0&&narrowEpubButton.x+narrowEpubButton.width<=390);await assertMaterialControl(resumedEpub,'epub',report);await shot('material-epub-390',resumedEpub);
+    await resumedEpub.setViewportSize({width:390,height:1000});assert.equal(await resumedEpub.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const narrowEpubButton=await resumedEpub.getByRole('button',{name:'更新学习位置',exact:true}).boundingBox();assert(narrowEpubButton&&narrowEpubButton.width<=180&&narrowEpubButton.x>=0&&narrowEpubButton.x+narrowEpubButton.width<=390);await assertMaterialControl(resumedEpub,'epub',report);await shot('material-epub-390',resumedEpub);
     await resumedEpub.close();
     return report.materialDocumentFixtures;
 }

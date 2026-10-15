@@ -2,11 +2,14 @@
  * @file userscript/languageBundles.ts
  * 文件职责：在构建期保留 userscript 可呈现的界面文案，维持已发布语言资源的固定内容。
  * 主要内容：剔除没有扩展 popup 和本地模型后端的信息高亮文案、没有原生右键菜单发送者的操作失败通知，以及没有视频字幕运行时的完整句学习及原生全屏提示文案、扩展 Popup 专用缩写和新增文档页的配置读取、进度、续译与旧校订文案；已发布远程词典中的旧文档键保留原内容。脚本内联动态模块与样式，五种固定远程词典不新增扩展分块加载失败、AI 翻译超时或 DeepLX 直连文案，注册时由脚本补齐；局部划选同样在注册时更新文案，远端词典保留此前的点选提示；中英内嵌词典保留可用页面的新文案。
- * 集成兼容：扩展专用诊断与新PDF弹窗不进入脚本词典；五种远程资源中的旧导出说明保留已发布文本，避免固定提交引用不存在的新摘要。
+ * 集成兼容：扩展专用诊断与新PDF弹窗不进入脚本词典；五种远程资源中的旧导出说明保留已发布文本，尚无脚本后台支持的材料旧文案与模板按目录排除，避免固定提交引用不存在的新摘要；英文内嵌契约不变。
  * 模块边界：只投影静态字典，不改变扩展词典、资源提交号或运行时语言装载协议。
  */
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '../src/core/i18n/bundles';
 import {zhCNMessages as extensionChinese} from '../src/core/i18n/messages/zh-CN';
+import {learningMaterialLegacyText, learningMaterialPatterns} from '../src/core/i18n/messages/learningMaterials';
+
+const materialPatternSources = new Set(learningMaterialPatterns.map(({pattern}) => pattern));
 const publishedSectionMessages: Readonly<Record<string, Record<string, string>>> = {
     "ja-JP": {
         "sectionTranslation.picker.preview": "マウスを動かしてプレビュー、クリックで選択",
@@ -86,7 +89,15 @@ export function userscriptMessages<T extends Record<string, string>>(messages: T
 export const zhCNMessages = userscriptMessages(extensionChinese);
 export const UI_LANGUAGE_BUNDLES = Object.fromEntries(Object.entries(extensionBundles).map(([language, bundle]) => {
     const messages: Record<string, string> = userscriptMessages(bundle.messages);
+    let {legacyText, legacyPatterns} = bundle;
     if (language !== 'en-US') {
+        // 材料目录目前均为未发布的新键；沿目录裁剪也涵盖后续定位提示，不改既有远程文本或顺序。
+        const materialSources = new Set(Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]));
+        legacyText = Object.fromEntries(Object.entries(legacyText).filter(([source]) => !materialSources.has(source)));
+        legacyPatterns = {
+            early: legacyPatterns.early.filter(([source]) => !materialPatternSources.has(source)),
+            late: legacyPatterns.late.filter(([source]) => !materialPatternSources.has(source)),
+        };
         // 划选文案在注册时覆盖，继续引用已发布的同一份远程词典。
         Object.assign(messages, publishedSectionMessages[language], publishedPdfExportMessages[language]);
         messages['settings.services.deeplx.endpointHelp'] = publishedDeepLXEndpointHelp[language]!;
@@ -100,5 +111,5 @@ export const UI_LANGUAGE_BUNDLES = Object.fromEntries(Object.entries(extensionBu
         delete messages['settings.requestLimits.aiTimeoutHelp'];
         delete messages['settings.requestLimits.seconds'];
     }
-    return [language, {...bundle, messages}];
+    return [language, {...bundle, messages, legacyText, legacyPatterns}];
 })) as typeof extensionBundles;

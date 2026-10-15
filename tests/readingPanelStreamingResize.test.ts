@@ -13,6 +13,10 @@ import {DEFAULT_HARNESS_PREFERENCES, HARNESS_ACTIONS, isReadingActionSupported, 
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import {buildReadingEvidence, readingEvidenceText} from '@/src/core/harness/evidence';
 import type {ReadingProgress, ReadingRequest, ReadingResponse} from '@/src/features/reading-assistant/types';
+import {beginMaterialCapture, completeMaterialCapture} from '@/src/features/vocabulary/material/public';
+
+const materialTransport = vi.hoisted(() => ({sendMessage: vi.fn()}));
+vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: materialTransport.sendMessage}, extension: {inIncognitoContext: false}}}));
 
 const runtime=createRequire(import.meta.url)('vue') as typeof import('vue');
 type HostNode=Node & {__readingProps?:Record<string,any>;__readingEvents?:Record<string,EventListener>};
@@ -28,11 +32,20 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
   const view={innerHeight:800,innerWidth:390,addEventListener:document.addEventListener.bind(document),removeEventListener:document.removeEventListener.bind(document),dispatchEvent:document.dispatchEvent.bind(document)};
   Object.defineProperty(document,'defaultView',{configurable:true,value:view});
   vi.stubGlobal('document',document);
+  vi.stubGlobal('CustomEvent',window.CustomEvent);
   vi.stubGlobal('requestAnimationFrame',(callback:FrameRequestCallback)=>{frames.set(++frameId,callback);return frameId;});
   vi.stubGlobal('cancelAnimationFrame',(id:number)=>frames.delete(id));
   const calls:StreamCall[]=[],resize=vi.fn(),errors=vi.fn();
-  const sendMessage=vi.fn(async()=>({success:true})),writeClipboard=vi.fn(async(_text:string)=>undefined),playSource=vi.fn();
-  const saveLearningMemory=vi.fn(async(_memory: {kind: string; content: string})=>({}));
+  const materialCaptures: any[] = [];
+  const sendMessage=vi.fn(async(request: any): Promise<any> => {
+    if (request.type === 'fluentReadMaterials') {
+      if (request.action === 'capture') materialCaptures.push(request.input);
+      return {success:true,data:request.action === 'generation' ? 0 : {id:'material-fixture'}};
+    }
+    return {success:true};
+  }),writeClipboard=vi.fn(async(_text:string)=>undefined),playSource=vi.fn();
+  materialTransport.sendMessage.mockReset().mockImplementation(sendMessage);
+  const saveLearningMemory=vi.fn(async(_memory: {kind: string; content: string})=>({id:'memory-fixture'}));
   const translateLegacy=vi.fn((text:string)=>text);
   vi.stubGlobal('navigator',{clipboard:{writeText:writeClipboard}});
   const modules:Record<string,unknown>={
@@ -47,6 +60,7 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
     './ReadingAnswer.vue':{default:runtime.defineComponent({props:['text'],setup:props=>()=>runtime.h('div',{'data-reading-answer':''},props.text)})},
     '../client':{streamReading:(request:ReadingRequest,callbacks:StreamCall['callbacks'])=>{const call={request,callbacks,cancel:vi.fn()};calls.push(call);return {cancel:call.cancel};},
       getHarnessSession:async()=>null,listHarnessSessions:async()=>({sessions:[],hasMore:false}),saveLearningMemory},
+    '@/src/features/vocabulary/material/public':{beginMaterialCapture, completeMaterialCapture},
     '@/src/features/vocabulary/public':{normalizeLearningSourceText:(text:string)=>text.trim()},
     '@/src/features/vocabulary/protocol':{VOCABULARY_BOOK_MESSAGE:'fixture-vocabulary'},
     '@/src/core/language/detect':{detectlang:()=> 'en'},
@@ -97,7 +111,7 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
   const viewport=host.querySelector('.fr-reading-result') as unknown as HTMLElement;
   if(viewport){Object.defineProperty(viewport,'scrollTop',{configurable:true,writable:true,value:0});Object.defineProperty(panel.answerBody,'offsetTop',{configurable:true,value:100});}
   const finish=(text:string,call=calls.at(-1)!)=>call.callbacks.result({success:true,text,service:'deepseek',model:'fixture-model'});
-  return {host,toolsTarget,panel,props,calls,resize,viewport,finish,errors,window,sendMessage,writeClipboard,playSource,translateLegacy,saveLearningMemory,styles:compiled.styleCode,unmount:()=>{dispose?.();dispose=undefined;}};
+  return {host,toolsTarget,panel,props,calls,resize,viewport,finish,errors,window,sendMessage,materialCaptures,writeClipboard,playSource,translateLegacy,saveLearningMemory,styles:compiled.styleCode,unmount:()=>{dispose?.();dispose=undefined;}};
 }
 
 it('copies and saves readable source quotes without leaking model citation IDs or external markers', async () => {
@@ -116,6 +130,44 @@ it('copies and saves readable source quotes without leaking model citation IDs o
   const note=saveLearningMemory.mock.calls[0][0].content;
   expect(note).toContain('【reading.evidence.label】 Practice helps.');
   expect(note).not.toContain('[[cite:');
+});
+
+describe('reading material associations through the public capture port',()=>{
+  const material = {source:{kind:'article',url:'https://source.test/private-material',title:'Original source'},locator:{kind:'text',quote:'Practice helps.'}};
+  const selection = {text:'Practice helps.',sentence:'Practice helps.',context:'Practice helps every day.',material};
+  it.each([false,true])('associates only a successfully persisted session and keeps source metadata outside model input (success=%s)',async success=>{
+    const {calls,materialCaptures}=await mountPanel({selection});
+    expect(calls[0].request.selection).toEqual({text:'Practice helps.',context:'Practice helps every day.',sentence:''});
+    expect(JSON.stringify(calls[0].request)).not.toContain('source.test');
+    expect(JSON.stringify(calls[0].request)).not.toContain('material');
+    expect(materialCaptures).toEqual([]);
+    calls[0].callbacks.result(success ? {success:true,text:'Explanation',service:'deepseek',model:'fixture',sessionId:'persisted-session'} : {success:false,error:'session failed'});
+    await tick();
+    if (success) {
+      await vi.waitFor(()=>expect(materialCaptures).toHaveLength(1));
+      expect(materialCaptures[0]).toMatchObject({...material,reference:{kind:'session',id:'persisted-session',excerpt:'Practice helps.'}});
+      expect(materialCaptures[0].reference.note).toBeUndefined();
+    } else expect(materialCaptures).toEqual([]);
+  });
+  it.each([false,true])('associates vocabulary only after the real save response succeeds (success=%s)',async success=>{
+    const {panel,sendMessage,materialCaptures}=await mountPanel({selection});
+    const transport = sendMessage.getMockImplementation()!;
+    sendMessage.mockImplementation(async request=>request.type==='fixture-vocabulary' ? success ? {success:true,data:{id:'saved-entry'}} : {success:false,error:{message:'save failed'}} : transport(request));
+    await panel.saveWord();
+    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({type:'fixture-vocabulary',action:'upsert'}));
+    expect(materialCaptures).toHaveLength(success ? 1 : 0);
+    if (success) expect(materialCaptures[0].reference).toEqual({kind:'vocabulary',id:'saved-entry',excerpt:'Practice helps.'});
+  });
+  it.each([false,true])('associates a learning note only after its authoritative save succeeds (success=%s)',async success=>{
+    const {panel,finish,saveLearningMemory,materialCaptures}=await mountPanel({selection});
+    finish('Readable explanation'); await tick();
+    if (!success) saveLearningMemory.mockRejectedValueOnce(new Error('note save failed'));
+    await panel.rememberLearning();
+    expect(saveLearningMemory).toHaveBeenCalledOnce();
+    expect(materialCaptures).toHaveLength(success ? 1 : 0);
+    if (success) expect(materialCaptures[0].reference).toEqual({kind:'memory',id:'memory-fixture',excerpt:'Practice helps.'});
+    expect(JSON.stringify(saveLearningMemory.mock.calls[0][0])).not.toContain('source.test');
+  });
 });
 
 describe('reading panel streaming resize boundaries through actual setup and template',()=>{

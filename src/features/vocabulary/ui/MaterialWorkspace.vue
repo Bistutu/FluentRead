@@ -32,7 +32,7 @@
     <div v-else class="fr-material-layout" :class="{'has-selection': selected}">
       <nav ref="materialListElement" class="fr-material-list" aria-label="材料列表">
         <button v-for="item in visibleMaterials" :key="item.id" type="button" class="fr-material-card" :data-material-id="item.id" :class="{selected: selectedId === item.id}" :aria-current="selectedId === item.id ? 'true' : undefined" @click="select(item.id)">
-          <span class="fr-material-meta"><UiIcon :name="icon(item.kind)" :size="14" />{{ kindLabel(item.kind) }}<span :title="item.source.url" data-i18n-ignore>{{ sourceLabel(item) }}</span></span>
+          <span class="fr-material-meta"><UiIcon :name="icon(item.kind)" :size="14" />{{ kindLabel(item.kind) }}<span :title="item.source.url" :data-i18n-ignore="sourceLabel(item) === '本地文件' || sourceLabel(item) === '来源待恢复' ? undefined : ''">{{ sourceLabel(item) }}</span></span>
           <strong data-i18n-ignore>{{ item.title }}</strong>
           <span v-if="preview(item)" class="fr-material-preview" data-i18n-ignore>{{ preview(item) }}</span>
           <span class="fr-material-meta"><span v-if="item.topics.length" class="fr-material-topic" data-i18n-ignore>{{ item.topics.join(' · ') }}</span><span>{{ item.references.length }} 条学习内容</span><span>{{ formatDate(item.lastReadAt) }}</span></span>
@@ -42,7 +42,7 @@
       <article v-if="selected" class="fr-material-detail" aria-label="材料学习内容">
         <header class="fr-material-heading">
           <button class="fr-material-back" type="button" @click="backToList"><UiIcon name="arrow-right" style="transform:rotate(180deg)" :size="14" />材料列表</button>
-          <div class="fr-material-meta">{{ kindLabel(selected.kind) }} · <span data-i18n-ignore>{{ sourceLabel(selected) }}</span></div>
+          <div class="fr-material-meta"><span>{{ kindLabel(selected.kind) }}</span> · <span :data-i18n-ignore="sourceLabel(selected) === '本地文件' || sourceLabel(selected) === '来源待恢复' ? undefined : ''">{{ sourceLabel(selected) }}</span></div>
           <h2 data-i18n-ignore tabindex="-1" ref="detailHeading">{{ selected.title }}</h2>
           <div class="fr-material-actions">
             <a v-if="resume.href && !archived" class="fr-material-primary" :href="resume.href" target="_blank" rel="noopener noreferrer">{{ resume.label }} <UiIcon name="arrow-right" :size="15" /></a>
@@ -61,7 +61,7 @@
           <small>更换地址后会重新核对材料身份；原句仍可用于找回位置。</small>
           <div class="fr-material-actions"><button type="submit" class="fr-material-primary" :disabled="busy || !draft.title.trim()">保存</button><button type="button" :disabled="busy" @click="cancelEdit">取消</button></div>
         </form>
-        <blockquote v-if="selected.locator?.quote" class="fr-material-quote" data-i18n-ignore>{{ selected.locator.quote }}<footer>{{ positionLabel(selected) }}</footer></blockquote>
+        <blockquote v-if="selected.locator?.quote" class="fr-material-quote"><span data-i18n-ignore>{{ selected.locator.quote }}</span><footer>{{ positionLabel(selected) }}<span v-if="selected.locator.kind === 'document' && selected.locator.section" data-i18n-ignore> · {{ selected.locator.section }}</span></footer></blockquote>
         <div v-if="detailLoading" class="fr-material-feedback" role="status">正在读取学习内容…</div>
         <p v-if="detailError" class="fr-material-feedback error" role="alert">{{ detailError }} <button type="button" @click="loadReferences">重试</button></p>
         <section class="fr-material-references" aria-label="材料中的原句、问答与笔记">
@@ -74,7 +74,7 @@
             </template>
             <template v-else-if="resolved[referenceKey(reference)]?.session">
               <blockquote data-i18n-ignore>{{ resolved[referenceKey(reference)].session!.text }}</blockquote>
-              <details v-for="turn in resolved[referenceKey(reference)].session!.turns" :key="turn.id" class="fr-material-turn"><summary data-i18n-ignore>{{ turn.question || '阅读讲解' }}</summary><ReadingAnswer v-if="turn.answer" :text="turn.answer" /><p v-else>这次问答没有保存回答。</p></details>
+              <details v-for="turn in resolved[referenceKey(reference)].session!.turns" :key="turn.id" class="fr-material-turn"><summary><span v-if="turn.question" data-i18n-ignore>{{ turn.question }}</span><template v-else>阅读讲解</template></summary><ReadingAnswer v-if="turn.answer" :text="turn.answer" /><p v-else>这次问答没有保存回答。</p></details>
             </template>
             <template v-else><p v-if="reference.excerpt" data-i18n-ignore>{{ reference.excerpt }}</p><p v-if="reference.note" class="fr-material-note" data-i18n-ignore>{{ reference.note }}</p><p v-if="resolved[referenceKey(reference)]?.memory" class="fr-material-note" data-i18n-ignore>{{ resolved[referenceKey(reference)].memory }}</p></template>
             <small v-if="resolved[referenceKey(reference)]?.missing">原记录已删除或过期，保留这段原句供查找。</small>
@@ -174,7 +174,7 @@ function sourceLabel(item: MaterialRecord) { try {
 catch {
     return '来源待恢复';
 } }
-function positionLabel(item: MaterialRecord) { const locator = item.locator; return locator?.kind === 'document' ? `第 ${locator.page || 1} 页${locator.section ? ` · ${locator.section}` : ''}` : locator?.kind === 'video' ? `上次看到 ${Math.floor((locator.startMs || 0) / 60000)}:${String(Math.floor((locator.startMs || 0) / 1000) % 60).padStart(2, '0')}` : '上次阅读的原文'; }
+function positionLabel(item: MaterialRecord) { const locator = item.locator; return locator?.kind === 'document' ? `第 ${locator.page || 1} 页` : locator?.kind === 'video' ? `上次看到 ${Math.floor((locator.startMs || 0) / 60000)}:${String(Math.floor((locator.startMs || 0) / 1000) % 60).padStart(2, '0')}` : '上次阅读的原文'; }
 function replace(item: MaterialRecord) {
     const matches = (item.archivedAt !== null) === archived.value;
     materials.value = materials.value.flatMap(previous => previous.id === item.id ? matches ? [item] : [] : [previous]).sort((a, b) => b.lastReadAt - a.lastReadAt);

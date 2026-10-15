@@ -12,6 +12,7 @@ import {zhCNMessages, UI_LANGUAGE_BUNDLES, userscriptMessages} from '@/userscrip
 import {zhCNMessages as extensionChinese} from '@/src/core/i18n/messages/zh-CN';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
 import {aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
+import {learningMaterialLegacyText, learningMaterialPatterns} from '@/src/core/i18n/messages/learningMaterials';
 import {installInformationHighlight} from '@/userscript/informationHighlight';
 import {inflateWithPako} from '@/userscript/pakoRuntime';
 import * as chineseCharacterData from '@/src/core/language/chineseVariants';
@@ -246,7 +247,8 @@ describe('userscript browser shim injection', () => {
     const registeredSupplementKeys = ['learning.panelLoadError', 'learning.reloadPage', ...Object.keys(aiRequestTimeoutMessages['en-US']),
         'sectionTranslation.picker.dragging', 'sectionTranslation.scope.selected', 'settings.services.deeplx.defaultRoute'];
     const publishedOverrideKeys = ['sectionTranslation.picker.preview', 'sectionTranslation.picker.instruction',
-        'popup.sectionTranslationTitle', 'settings.services.deeplx.endpointHelp'];
+        'popup.sectionTranslationTitle', 'settings.services.deeplx.endpointHelp',
+        'document.pdfReading.exportHint', 'document.pdfReading.layoutExportHint', 'document.pdfReading.exportPageCount'];
     const pinnedLanguageFiles = {
         'ja-JP': 'ja-JP.5bb4b24b0a41715f.json',
         'ko-KR': 'ko-KR.e6befd8f0b3fb833.json',
@@ -266,10 +268,25 @@ describe('userscript browser shim injection', () => {
         }
         for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {
             const original = extensionBundles[language as keyof typeof extensionBundles];
-            expect(bundle.legacyText).toBe(original.legacyText);
-            expect(bundle.legacyPatterns).toBe(original.legacyPatterns);
+            if (language === 'en-US') {
+                expect(bundle.legacyText).toBe(original.legacyText);
+                expect(bundle.legacyPatterns).toBe(original.legacyPatterns);
+            } else {
+                const materialSources = Object.keys(learningMaterialLegacyText[language as keyof typeof learningMaterialLegacyText]);
+                expect(Object.keys(original.legacyText).filter(source => !(source in bundle.legacyText)).sort()).toEqual(materialSources.sort());
+                const materialPatterns = learningMaterialPatterns.map(({pattern}) => pattern);
+                for (const phase of ['early', 'late'] as const) {
+                    expect(bundle.legacyPatterns[phase]).toEqual(original.legacyPatterns[phase].filter(([source]) => !materialPatterns.includes(source)));
+                }
+                // 固定资源是发布契约；必须保持整包字节，不能只证明本地生成文件自洽。
+                const file = pinnedLanguageFiles[language as keyof typeof pinnedLanguageFiles];
+                expect(JSON.stringify(bundle) + '\n').toBe(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'));
+                for (const source of materialSources) expect(original.legacyText[source]).toBeTruthy();
+            }
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
                 !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.')
+                && !key.startsWith('diagnostics.')
+                && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
                 && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
                 && !key.startsWith('document.translationProgress.') && (language === 'en-US' || !registeredSupplementKeys.includes(key))));
             if (language !== 'en-US') for (const key of publishedOverrideKeys) kept[key] = publishedMessages[language]![key]!;
@@ -325,6 +342,13 @@ describe('userscript browser shim injection', () => {
         }
         expect(extension['video.nativeFullscreenHint']).toBeTruthy();
         expect(Object.hasOwn(projected, 'video.nativeFullscreenHint')).toBe(false);
+        const diagnosticKeys = Object.keys(extension).filter(key => key.startsWith('diagnostics.'));
+        expect(diagnosticKeys.length).toBeGreaterThan(0);
+        const readerDialogKeys = ['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].map(name => `document.pdfReading.${name}`);
+        for (const key of [...diagnosticKeys, ...readerDialogKeys]) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
         expect(extension['document.config.loadFailed']).toBeTruthy();
         const readerRecoveryKeys = Object.keys(extension).filter(key => key.startsWith('document.config.') || key.startsWith('document.translationRecovery.')
             || key.startsWith('document.retainedRevisions.') || key.startsWith('document.translationProgress.'));
@@ -335,6 +359,7 @@ describe('userscript browser shim injection', () => {
         }
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
             && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readerRecoveryKeys.includes(key)
+            && !diagnosticKeys.includes(key) && !readerDialogKeys.includes(key)
             && key !== 'video.nativeFullscreenHint'
             && key !== 'popup.compact.translate' && key !== 'popup.compact.restore'
             && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)));

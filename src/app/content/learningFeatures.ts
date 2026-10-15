@@ -1,8 +1,8 @@
 /**
  * @file src/app/content/learningFeatures.ts
- * 文件职责：组装页面内个人校订与写作入口的静态功能定义。
- * 主要内容：将当前配置、浏览器能力和 WXT context 接入校订与写作助手的启用判断和挂载所有权；句子听读与收藏统一由主动划词后的卡片承接。
- * 模块边界：只组织 feature 公开生命周期，不为普通悬停挂载句子工具条，不处理编辑器、校订存储或学习数据。
+ * 文件职责：组装页面内材料续读、个人校订与写作入口的静态功能定义。
+ * 主要内容：将配置、浏览器能力、无痕状态和 WXT context 接入公开挂载所有权；材料续读持有独立清理函数，油猴构建排除材料与校订登记。
+ * 模块边界：只组织 feature 公开生命周期；句子听读与收藏统一由主动划词后的卡片承接，不为普通悬停挂载句子工具条，不处理编辑器、存储或学习数据。
  */
 import type {ContentScriptContext} from 'wxt/utils/content-script-context';
 import type {Config} from '@/src/core/config/model';
@@ -17,9 +17,9 @@ import {mountMaterialContent} from '@/src/features/vocabulary/material/content/p
 export function createLearningContentFeatures(ctx: ContentScriptContext, config: Config, capabilities: BrowserCapabilities): ContentFeatureDefinition[] {
     let unmountMaterial = () => {};
     return [
-        {id: 'material-resume', isEnabled: () => capabilities.browser !== 'userscript' && config.on && browser.extension?.inIncognitoContext !== true,
-            mount: ({signal}) => {unmountMaterial = mountMaterialContent(document, signal, () => config.on);}, unmount: () => unmountMaterial()},
         ...(import.meta.env.BROWSER === 'userscript' ? [] : [
+            {id: 'material-resume', isEnabled: () => capabilities.browser !== 'userscript' && config.on && browser.extension?.inIncognitoContext !== true,
+                mount: ({signal}) => {unmountMaterial = mountMaterialContent(document, signal, () => config.on);}, unmount: () => unmountMaterial()} satisfies ContentFeatureDefinition,
             {id: 'personal-corrections', isEnabled: () => capabilities.browser !== 'userscript' && config.on && config.personalCorrectionsEnabled === true,
                 mount: ({signal}) => mountPersonalCorrectionContent(ctx, signal), unmount: unmountPersonalCorrectionContent} satisfies ContentFeatureDefinition,
         ]),

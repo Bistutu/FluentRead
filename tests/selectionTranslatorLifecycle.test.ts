@@ -2,7 +2,7 @@
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
  * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理、鉴权配置动作归属；可选真实 SFC 模板模式验证两处错误入口。
- * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；新增入口可选官方模板和独立 Linkedom 节点树，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
+ * 模块边界：默认编译真实 Vue setup 并使用原有空渲染；材料捕获使用真实代次冻结与完成逻辑，只替换来源提取和后台客户端；新增入口可选官方模板和独立 Linkedom 节点树，浏览器、子组件与语言是受控 ports，不声称 CSS、原生焦点或真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import * as speechProgress from '@/src/core/tts/speechProgress';
@@ -26,8 +26,11 @@ import * as vocabularyProtocol from '@/src/features/vocabulary/protocol';
 import * as hotkey from '@/src/core/hotkey';
 import * as visualViewport from '@/src/platform/dom/visualViewport';
 import {setSelectionContextMenuHandler, translateSelectionFromContextMenu as translateSelectionThroughBridge} from '@/src/features/selection-translation/content/contextMenuBridge';
+import {beginMaterialCapture as beginCapture, completeMaterialCapture as completeCapture, type MaterialSelection} from '@/src/features/vocabulary/materialCapture';
 
 vi.mock('webextension-polyfill', () => ({default: {}}));
+const materialPorts = vi.hoisted(() => ({generation: vi.fn(), capture: vi.fn()}));
+vi.mock('@/src/features/vocabulary/materialClient', () => ({materialGeneration: materialPorts.generation, materialCapture: materialPorts.capture}));
 
 const filename = 'src/features/selection-translation/ui/SelectionTranslator.vue';
 const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
@@ -143,7 +146,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         }),
     });
     const media = eventTarget('media');
-    const document = {...eventTarget('document'), getElementById: vi.fn(() => null)};
+    const document = {...eventTarget('document'), getElementById: vi.fn(() => null), dispatchEvent: vi.fn()};
     const window = {
         ...eventTarget('window'), innerWidth: 1000, innerHeight: 800, document,
         matchMedia: () => ({matches: false, ...media}),
@@ -170,12 +173,14 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         return releaseContextMenu;
     });
     const translateText = vi.fn().mockResolvedValue('这是译文'), translateTextBatch = vi.fn();
-    // 本组使用受控 Range；正文提取由 materialSource 专项验证，此处只替换公共材料端口。
-    const material = {
-        captureMaterialSelection: vi.fn((_range: unknown, _quote: string): unknown => undefined),
-        beginMaterialCapture: vi.fn(async (_selection: unknown, _privateContext: boolean): Promise<unknown> => undefined),
-        completeMaterialCapture: vi.fn(async (_operation: unknown, _reference: unknown, _isCurrent: () => boolean) => false),
-    };
+    // 来源提取用受控 Range 端口；冻结代次及完成关联运行真实公共逻辑。
+    materialPorts.generation.mockReset().mockResolvedValue(17);
+    materialPorts.capture.mockReset().mockResolvedValue({id: 'material-fixture'});
+    const captureMaterialSelection = vi.fn((_range: Range, quote: string): MaterialSelection => ({
+        source: {kind: 'article', url: 'https://example.test/article', title: 'Selected article'}, locator: {kind: 'text', quote},
+    }));
+    const beginMaterialCapture = vi.fn(beginCapture), completeMaterialCapture = vi.fn(completeCapture);
+    const material = {captureMaterialSelection, beginMaterialCapture, completeMaterialCapture};
     let stopTts: MockInstance<(notifyRemote?: boolean) => void>;
     let ttsRequestId = 0;
     const modules: Record<string, unknown> = {
@@ -243,6 +248,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     const state = (vm.$ as any).setupState as Record<string, any>;
     return {state, event, browser, config, listeners, window, document, material, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
         registerContextMenu, get contextMenuHandler() {return contextMenuHandler;},
+        captureMaterialSelection, beginMaterialCapture, completeMaterialCapture, materialGeneration: materialPorts.generation, materialCapture: materialPorts.capture,
         lifecycleErrors, renderPort, unmount: () => { currentApp.unmount(); app = undefined; }};
 }
 
@@ -661,6 +667,13 @@ describe('explicit selection sentence collection', () => {
             }),
         }));
         expect(fixture.state.isVocabularySaved).toBe(true);
+        expect(fixture.completeMaterialCapture).toHaveBeenCalledWith(expect.objectContaining({generation: 17}),
+            {kind: 'vocabulary', id: 'saved-sentence', excerpt: fixture.request.text}, expect.any(Function));
+        expect(fixture.materialCapture).toHaveBeenCalledWith(expect.objectContaining({
+            source: {kind: 'article', url: 'https://example.test/article', title: 'Selected article'},
+            locator: {kind: 'text', quote: fixture.request.text}, generation: 17,
+            reference: {kind: 'vocabulary', id: 'saved-sentence', excerpt: fixture.request.text},
+        }));
     });
 
     it('uses the captured language for other-language sentences and retrieves saved state after explicit card requests', async () => {
@@ -683,6 +696,7 @@ describe('explicit selection sentence collection', () => {
         expect(fixture.browser.runtime.sendMessage.mock.calls.some(([message]) => message.type === vocabularyProtocol.VOCABULARY_BOOK_MESSAGE)).toBe(false);
         expect(fixture.material.captureMaterialSelection).not.toHaveBeenCalled();
         expect(fixture.material.beginMaterialCapture).not.toHaveBeenCalled();
+        expect(fixture.materialCapture).not.toHaveBeenCalled();
     });
 
     it('still saves the vocabulary record when optional material DOM capture throws', async () => {
@@ -698,10 +712,10 @@ describe('explicit selection sentence collection', () => {
     it('does not save a stale selection while the material generation read is pending', async () => {
         const fixture = prepare('Good ideas deserve attention.');
         fixture.browser.runtime.sendMessage.mockClear();
-        const selection = {source: {kind: 'article', url: 'https://example.com/article'}, locator: {kind: 'text', quote: fixture.request.text}};
+        const selection: MaterialSelection = {source: {kind: 'article', url: 'https://example.com/article'}, locator: {kind: 'text', quote: fixture.request.text}};
         fixture.material.captureMaterialSelection.mockReturnValue(selection);
-        let finish!: (value: unknown) => void;
-        fixture.material.beginMaterialCapture.mockImplementation(() => new Promise(resolve => {finish = resolve;}));
+        let finish!: (value: Awaited<ReturnType<typeof beginCapture>>) => void;
+        fixture.material.beginMaterialCapture.mockImplementation(() => new Promise<Awaited<ReturnType<typeof beginCapture>>>(resolve => {finish = resolve;}));
         const pending = fixture.state.saveVocabularyEntry({isTrusted: true});
         fixture.state.closeTooltip();
         finish({selection, generation: 1, capturedAt: Date.now()});await pending;
@@ -726,6 +740,58 @@ describe('explicit selection sentence collection', () => {
         await pending;
         expect(fixture.state.isVocabularySaved).toBe(false);
         expect(fixture.state.noticeMessage).toBe('');
+        expect(fixture.completeMaterialCapture).not.toHaveBeenCalled();
+        expect(fixture.materialCapture).not.toHaveBeenCalled();
+    });
+
+    it('freezes source and generation before awaiting save, then links only the actual successful entry id', async () => {
+        const fixture = prepare('Good ideas deserve attention.');
+        const selected: MaterialSelection = {source: {kind: 'article', url: 'https://example.test/original'},
+            locator: {kind: 'text', quote: fixture.request.text}};
+        fixture.captureMaterialSelection.mockReturnValueOnce(selected);
+        let generation!: (value: number) => void, finish!: (value: unknown) => void;
+        fixture.materialGeneration.mockReturnValueOnce(new Promise<number>(resolve => {generation = resolve;}));
+        fixture.browser.runtime.sendMessage.mockImplementation(message => message.action === 'upsert'
+            ? new Promise(resolve => {finish = resolve;}) : Promise.resolve({success: true}));
+        const capturedAt = Date.now(), pending = fixture.state.saveVocabularyEntry({isTrusted: true});
+        expect(fixture.beginMaterialCapture).toHaveBeenCalledWith(selected, false);
+        expect(fixture.materialGeneration).toHaveBeenCalledOnce();
+        expect(fixture.browser.runtime.sendMessage.mock.calls.some(([message]) => message.action === 'upsert')).toBe(false);
+        selected.source.url = 'https://example.test/replacement'; selected.locator!.quote = 'Changed source';
+        generation(29); await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+        expect(fixture.completeMaterialCapture).not.toHaveBeenCalled();
+        expect(fixture.materialCapture).not.toHaveBeenCalled();
+        finish({success: true, data: {id: 'real-entry-29'}}); await pending;
+        expect(fixture.materialCapture).toHaveBeenCalledOnce();
+        expect(fixture.materialCapture).toHaveBeenCalledWith({
+            source: {kind: 'article', url: 'https://example.test/original'}, locator: {kind: 'text', quote: fixture.request.text},
+            generation: 29, capturedAt, reference: {kind: 'vocabulary', id: 'real-entry-29', excerpt: fixture.request.text},
+        });
+        expect(fixture.state.isVocabularySaved).toBe(true); expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('does not upsert or link an obsolete selection while its material generation is pending', async () => {
+        const fixture = prepare('Good ideas deserve attention.');
+        let generation!: (value: number) => void;
+        fixture.materialGeneration.mockReturnValueOnce(new Promise<number>(resolve => {generation = resolve;}));
+        const pending = fixture.state.saveVocabularyEntry({isTrusted: true});
+        const text = 'Practice makes progress.';
+        fixture.state.snapshot = {text}; fixture.state.selectedText = text; fixture.state.beginSelectionContentRequest(text);
+        generation(31); await pending;
+        expect(fixture.browser.runtime.sendMessage.mock.calls.some(([message]) => message.action === 'upsert')).toBe(false);
+        expect(fixture.completeMaterialCapture).not.toHaveBeenCalled(); expect(fixture.materialCapture).not.toHaveBeenCalled();
+        expect(fixture.state.isVocabularySaved).toBe(false);
+    });
+
+    it.each([
+        ['failed save', {success: false, error: {message: 'Controlled save failure'}}],
+        ['missing saved data', {success: true}], ['missing entry id', {success: true, data: {}}],
+    ] as const)('does not associate a material after %s', async (_label, response) => {
+        const fixture = prepare('Good ideas deserve attention.');
+        fixture.browser.runtime.sendMessage.mockResolvedValue(response);
+        await fixture.state.saveVocabularyEntry({isTrusted: true});
+        expect(fixture.completeMaterialCapture).not.toHaveBeenCalled(); expect(fixture.materialCapture).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
     });
 
     it.each(['untrusted', 'disabled', 'missing-answer'] as const)('does not save when %s', async condition => {
@@ -2045,10 +2111,11 @@ describe('selection card on an extension PDF page', () => {
         const acceptsRange = vi.fn(() => true);
         const context = vi.fn(() => ({text: 'The Transformer uses attention.', title: 'Attention Is All You Need', sourceUrl: 'https://arxiv.org/pdf/1706.03762'}));
         const captureReading = vi.fn(() => ({text: 'Transformer models', context: 'The Transformer uses attention.', sentence: 'The Transformer uses attention.'}));
+        const captureMaterial = vi.fn((_range: Range, _quote: string): MaterialSelection | undefined => undefined);
         let invalidate = () => {};
         const unsubscribeSource = vi.fn();
         const extractText = vi.fn((_range: Range, text: string) => text);
-        const fixture = mountSelection(false, {acceptsRange, extractText, normalizeText: (text: string) => text.replace(/\s+/g, ' ').trim(), context, captureReading,
+        const fixture = mountSelection(false, {acceptsRange, extractText, normalizeText: (text: string) => text.replace(/\s+/g, ' ').trim(), context, captureReading, captureMaterial,
             subscribeInvalidation: (listener: () => void) => {invalidate = listener; return unsubscribeSource;}});
         class FakeElement {}
         class FakeNode {}
@@ -2064,7 +2131,7 @@ describe('selection card on an extension PDF page', () => {
         fixture.config.selectionTranslatorTrigger = 'direct';
         fixture.config.selectionTranslatorDelay = 0;
         fixture.state.selectionConfigVersion += 1;
-        return {...fixture, acceptsRange, extractText, context, captureReading, range, unsubscribeSource, invalidate: () => invalidate()};
+        return {...fixture, acceptsRange, extractText, context, captureReading, captureMaterialSelection: captureMaterial, range, unsubscribeSource, invalidate: () => invalidate()};
     }
 
     it('only captures an adapter-approved source range and normalizes PDF wraps in the snapshot', () => {
@@ -2117,6 +2184,9 @@ describe('selection card on an extension PDF page', () => {
 
     it('uses the adapter for PDF reading and vocabulary source metadata', async () => {
         const fixture = preparePdf();
+        const selection: MaterialSelection = {source: {kind: 'document', fingerprint: 'raw-file-fingerprint', title: 'Attention Is All You Need'},
+            locator: {kind: 'document', page: 3, quote: 'The Transformer uses attention.'}};
+        fixture.captureMaterialSelection.mockReturnValue(selection);
         fixture.config.harness.enabled = true;
         fixture.config.vocabularyBookEnabled = true;
         fixture.state.selectionConfigVersion += 1;
@@ -2130,11 +2200,17 @@ describe('selection card on an extension PDF page', () => {
         fixture.state.openReadingCard();
         expect(fixture.captureReading).toHaveBeenCalled();
         expect(fixture.state.readingSelection.context).toBe('The Transformer uses attention.');
+        expect(fixture.captureMaterialSelection).toHaveBeenCalledWith(fixture.range, 'The Transformer uses attention.');
+        expect(fixture.material.captureMaterialSelection).not.toHaveBeenCalled();
+        expect(fixture.state.readingSelection.material).toEqual(selection);
+        expect(fixture.materialCapture).not.toHaveBeenCalled();
         fixture.browser.runtime.sendMessage.mockResolvedValue({success: true, data: {id: 'saved'}});
         await fixture.state.saveVocabularyEntry({isTrusted: true});
         expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({action: 'upsert', input: expect.objectContaining({context: expect.objectContaining({
             text: 'The Transformer uses attention.', sourceUrl: 'https://arxiv.org/pdf/1706.03762', pageTitle: 'Attention Is All You Need',
         })})}));
+        expect(fixture.materialCapture).toHaveBeenCalledWith(expect.objectContaining({...selection, generation: 17,
+            reference: {kind: 'vocabulary', id: 'saved', excerpt: 'Transformer models'}}));
     });
 });
 

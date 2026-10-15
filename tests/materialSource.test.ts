@@ -1,7 +1,7 @@
 /**
  * @file tests/materialSource.test.ts
  * 文件职责：验证材料继续阅读的来源、段落定位与页面生命周期。
- * 主要内容：覆盖 SPA 地址、个人原句不进入链接、文件指纹、重复段落、空白语境、动态恢复、路由切换、隐私和卸载后的迟到响应。
+ * 主要内容：覆盖 SPA 地址、个人原句不进入链接、文件指纹、重复段落、空白语境、动态恢复、界面语言提示、路由切换、隐私和卸载后的迟到响应。
  * 模块边界：使用隔离 DOM 与可控本地消息端口，不冒充真实站点、浏览器播放器或文档文件验收。
  */
 import {parseHTML} from 'linkedom';
@@ -13,9 +13,12 @@ import {beginMaterialCapture, completeMaterialCapture} from '@/src/features/voca
 import type {MaterialRecord} from '@/src/features/vocabulary/materialProtocol';
 import {getVideoLearningSource} from '@/src/features/video-subtitle/content/public';
 import {sanitizeVocabularyVideoUrl} from '@/src/features/vocabulary/source';
+import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
 
-const ports = vi.hoisted(() => ({resolve: vi.fn(), generation: vi.fn(), capture: vi.fn()}));
+const ports = vi.hoisted(() => ({resolve: vi.fn(), generation: vi.fn(), capture: vi.fn(), config: {uiLanguage: 'zh-CN' as 'zh-CN' | 'en-US'}}));
 vi.mock('@/src/features/vocabulary/materialClient', () => ({materialResolve: ports.resolve, materialGeneration: ports.generation, materialCapture: ports.capture}));
+vi.mock('@/src/services/config/store', () => ({config: ports.config}));
+registerAllUiLanguageBundles();
 const record = (overrides: Partial<MaterialRecord> = {}): MaterialRecord => ({id: 'material-1', identityKey: 'article:https://example.com/read?id=1#/chapter/2', kind: 'article', title: 'Reading', source: {kind: 'article', url: 'https://example.com/read?id=1#/chapter/2'}, locator: {kind: 'text', quote: 'unique original sentence'}, topics: [], references: [], createdAt: 1, updatedAt: 1, lastReadAt: 1, archivedAt: null, ...overrides});
 const tick = async () => {await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await vi.advanceTimersByTimeAsync(0);};
 const dispose: Array<() => void> = [];
@@ -36,7 +39,7 @@ function dom(body: string, url = 'https://example.com/read?id=1&__fluentread_mat
     for (const node of document.querySelectorAll('p,video')) (node as unknown as HTMLElement).scrollIntoView = vi.fn();
     return {document: document as unknown as Document, window, location};
 }
-beforeEach(() => {vi.useFakeTimers(); ports.resolve.mockReset(); ports.capture.mockReset(); ports.generation.mockReset().mockResolvedValue(3); ports.capture.mockResolvedValue(record());});
+beforeEach(() => {vi.useFakeTimers(); ports.config.uiLanguage = 'zh-CN'; ports.resolve.mockReset(); ports.capture.mockReset(); ports.generation.mockReset().mockResolvedValue(3); ports.capture.mockResolvedValue(record());});
 afterEach(() => {dispose.splice(0).forEach(stop => stop()); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('材料来源与继续阅读', () => {
@@ -140,6 +143,23 @@ describe('材料来源与继续阅读', () => {
         location.pathname = '/changed'; window.dispatchEvent(new window.Event('popstate')); expect(document.querySelector('[role="status"]')).toBeNull();
         ports.resolve.mockResolvedValue(null); const other = dom(''); dispose.push(mountMaterialContent(other.document, new AbortController().signal, () => true)); await tick();
         expect(other.document.querySelector('[role="status"]')?.textContent).toContain('材料已移除');
+    });
+    it.each([
+        ['article', 'We couldn’t confirm the original text’s location. Your material and saved quote are still available. Search for the quote on this page, or reopen the material later.'],
+        ['video', 'Could not restore the video position. Check that the original video still plays, then reopen it from your learning materials.'],
+        ['missing', 'The material was removed, the source does not match, or privacy settings block access. Check the source in the learning workspace and reopen it.'],
+    ] as const)('%s 原生恢复提示及关闭按钮使用实际 en-US 资源', async (kind, message) => {
+        const {document} = dom(kind === 'video' ? '<video></video>' : '<p>Changed content</p>');
+        const value = kind === 'video' ? record({kind: 'video', identityKey: 'video:https://example.com/read?id=1#/chapter/2',
+            source: {kind: 'video', url: 'https://example.com/read?id=1#/chapter/2'}, locator: {kind: 'video', startMs: 5000}}) : record();
+        ports.resolve.mockResolvedValue(kind === 'missing' ? null : value);
+        dispose.push(mountMaterialContent(document, new AbortController().signal, () => true));
+        // 提示在异步读取或等待结束时读取当前语言，不冻结挂载时的中文配置。
+        ports.config.uiLanguage = 'en-US'; await tick(); await vi.advanceTimersByTimeAsync(8000);
+        const notice = document.querySelector('[role="status"]')!;
+        expect(notice.querySelector('span')?.textContent).toBe(message);
+        expect(notice.querySelector('button')?.textContent).toBe('Close');
+        notice.querySelector('button')!.click(); expect(document.querySelector('[role="status"]')).toBeNull();
     });
     it('取消挂载后忽略迟到读取与错误，不插入恢复提示', async () => {
         const {document} = dom(''); let resolve!: (value: MaterialRecord) => void; ports.resolve.mockReturnValue(new Promise(done => {resolve = done;}));
