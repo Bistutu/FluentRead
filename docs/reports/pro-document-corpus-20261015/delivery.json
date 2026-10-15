@@ -1,0 +1,538 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-15T08:47:00.397921+00:00",
+  "worktree": "/Users/thinkstu/Desktop/copy/FluentRead-pro-document-20261015",
+  "branch": "codex/pro-document-reading-export-20261015",
+  "baseCommit": "fa431a8459f3c1ddcd0c274d6c027cb8223b16c2",
+  "productionSourceCommit": "e5020ae2eb774bc2ea1efc16fd8f97550ffa8b3a",
+  "productionSnapshot": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/production-chrome-delivery",
+  "productionFingerprint": "01313bcc4e98313e9c03e338a18c2752ffc14d73df0674ee2af4b21c1c0be93a",
+  "productionUnchangedDuringUiRun": true,
+  "implementation": [
+    "PDF orientation, columns, row-spanning/open tables, footnotes, bullets and source-only blocks preserve reading content.",
+    "Optional cross-page context and keyboard-accessible full-passage dialog prioritize translation and retain independent original segment identities.",
+    "Layout PDF exports contain searchable Unicode, complete visible long-translation continuation pages and standard source-page labels. Readable fallback accepts genuine image-only pages and retains source glyph layers.",
+    "History migration and local material references use exact original content plus native positions/context; ambiguous revisions remain available. DOCX/EPUB native identity is restored."
+  ],
+  "validation": {
+    "scope": "Targeted suites only; overlapping suite counts are not summed.",
+    "core": {
+      "files": 7,
+      "passed": 277,
+      "conditionalSkips": 2
+    },
+    "export": {
+      "files": 9,
+      "passed": 309,
+      "conditionalSkips": 1
+    },
+    "history": {
+      "files": 5,
+      "passed": 288,
+      "conditionalSkips": 1
+    },
+    "architectureI18nAndDriver": {
+      "files": 5,
+      "passed": 1189
+    },
+    "readerLifecycle": {
+      "files": 3,
+      "passed": 152
+    },
+    "updatedLiveDriver": {
+      "files": 1,
+      "passed": 44
+    },
+    "coverage": {
+      "src/features/document-translation/core/pdfContinuations.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/document-translation/core/pdfLayoutAnalysis.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/document-translation/core/pdfReadingPlan.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/document-translation/core/pdfReadingRegions.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/document-translation/core/pdfBlockFit.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/document-translation/services/binary.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/document-translation/core/materialLocator.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "src/features/document-translation/services/history.ts": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      }
+    },
+    "commandsPassed": [
+      "pnpm test:audit",
+      "pnpm compile",
+      "pnpm build",
+      "pnpm build:firefox",
+      "pnpm docs:build",
+      "pnpm build:userscript",
+      "node scripts/verify-userscript-build.mjs"
+    ],
+    "skipBoundary": "Pre-existing opt-in local corpus/Harness fixtures were not configured in these deterministic suites; the explicit 70-page public corpus audit ran separately.",
+    "userscriptResourceContracts": {
+      "files": 4,
+      "passed": 315
+    },
+    "exportWithoutOptionalCorpus": {
+      "files": 9,
+      "passed": 312,
+      "conditionalSkips": 3,
+      "thresholds": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "scope": "All optional corpus/evidence environment variables removed; five generated-real-PDF rotation cases cover the NASA-only branch without changing source or thresholds.",
+      "finalTestSourceSha256": "4d140d3fac1f26dc5a5b853a651df5c784ae38a9672c169c96fdcf476645d8c9"
+    }
+  },
+  "corpus": {
+    "documents": 4,
+    "selectedPages": 70,
+    "missingAtoms": 0,
+    "missingBlocks": 0,
+    "sourceMismatches": 0,
+    "manifest": "manifest.json",
+    "report": "report.json",
+    "selection": [
+      {
+        "id": "attention",
+        "testedPages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "totalPages": 15,
+        "untestedPageCount": 0
+      },
+      {
+        "id": "smith-levy",
+        "testedPages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        "totalPages": 18,
+        "untestedPageCount": 0
+      },
+      {
+        "id": "nasa",
+        "testedPages": [
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ],
+        "totalPages": 356,
+        "untestedPageCount": 338
+      },
+      {
+        "id": "openstax",
+        "testedPages": [
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ],
+        "totalPages": 998,
+        "untestedPageCount": 979
+      }
+    ]
+  },
+  "productionUi": {
+    "passed": 19,
+    "screenshotsReviewed": 20,
+    "consoleErrors": [],
+    "workerErrors": [],
+    "cleanupErrors": [],
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 132,
+        "top": -1020,
+        "width": 1440,
+        "height": 960
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false,
+      "frontmostBefore": {
+        "pid": 65658,
+        "name": "问题报告程序"
+      },
+      "frontmostAfter": {
+        "pid": 65658,
+        "name": "问题报告程序"
+      }
+    },
+    "longCorrectionCharacters": 2074,
+    "actualDownloads": 3,
+    "nativeFormats": [
+      "docx",
+      "epub"
+    ],
+    "longDocument": {
+      "name": "optional long public PDF import cancellation retry and original-page memory budget",
+      "ok": true,
+      "source": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/corpus/nasa-systems-engineering-handbook.pdf",
+      "bytes": 4122125,
+      "pages": 356,
+      "mode": "original only",
+      "cancellationMs": 3094,
+      "importMs": 3458,
+      "before": {
+        "heap": {
+          "usedJSHeapSize": 32822772,
+          "totalJSHeapSize": 36151904
+        },
+        "residents": []
+      },
+      "afterCancel": {
+        "heap": {
+          "usedJSHeapSize": 44898114,
+          "totalJSHeapSize": 52786670
+        },
+        "residents": []
+      },
+      "atPage300": {
+        "heap": {
+          "usedJSHeapSize": 42121274,
+          "totalJSHeapSize": 43325994
+        },
+        "residents": [
+          {
+            "page": 298,
+            "canvases": [
+              {
+                "width": 1780,
+                "height": 2304,
+                "pixels": 4101120
+              }
+            ]
+          },
+          {
+            "page": 299,
+            "canvases": [
+              {
+                "width": 1780,
+                "height": 2304,
+                "pixels": 4101120
+              }
+            ]
+          },
+          {
+            "page": 300,
+            "canvases": [
+              {
+                "width": 1780,
+                "height": 2304,
+                "pixels": 4101120
+              }
+            ]
+          },
+          {
+            "page": 301,
+            "canvases": [
+              {
+                "width": 1780,
+                "height": 2304,
+                "pixels": 4101120
+              }
+            ]
+          },
+          {
+            "page": 302,
+            "canvases": [
+              {
+                "width": 1780,
+                "height": 2304,
+                "pixels": 4101120
+              }
+            ]
+          }
+        ]
+      },
+      "closed": true,
+      "imports": {
+        "canceled": 1,
+        "successful": 1
+      },
+      "scope": "One canceled import and one complete import of the public 356-page handbook; page 300 original reading only. No claim of translating this book or bounding retained parsed-text heap."
+    }
+  },
+  "livePublicDocuments": {
+    "documents": [
+      {
+        "name": "attention-1706.03762v7-selected.pdf",
+        "pages": 3,
+        "segments": 29,
+        "state": "complete",
+        "translationMs": 5227,
+        "sourceSha256": "889e144b83f3aecdd2fd1ccefeb79beeb6de0efbbf6b87ff2168981629b17ad1"
+      },
+      {
+        "name": "nasa-systems-engineering-handbook-selected.pdf",
+        "pages": 3,
+        "segments": 57,
+        "state": "complete",
+        "translationMs": 3197,
+        "sourceSha256": "801bf2c9f7259edf0705ac0474556ada37f4f640e6d6f5a7a6972eb42508dbea"
+      },
+      {
+        "name": "openstax-university-physics-volume1-selected.pdf",
+        "pages": 4,
+        "segments": 27,
+        "state": "complete",
+        "translationMs": 9267,
+        "sourceSha256": "2093d979ad4c122590f274a4e0e6b4dec1eac25e1c6921e37b662ef1f0a6c349"
+      }
+    ],
+    "sourcePages": 10,
+    "translatedSegments": 113,
+    "firstAttemptAllPassed": false,
+    "preservedFailure": {
+      "report": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/live-public-delivery/report.json",
+      "document": "openstax-university-physics-volume1-selected.pdf",
+      "completed": 12,
+      "total": 27,
+      "observed": "Actual UI showed request timeout and retry; old driver selectors did not recognize the current recovery UI.",
+      "repair": "Validation driver now reads current alert/status details and terminal state, with unchanged deadline/settings/translation/focus guards. Production code was unchanged.",
+      "retest": "A new isolated run of only OpenStax completed 27/27 and exported all four pages. No timeout occurred on retest, so actual same-page timeout recovery was not exercised."
+    }
+  },
+  "exportVisualReview": {
+    "pdfs": 7,
+    "allOutputPagesRenderedAndViewed": 36,
+    "report": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-pdf-review/review.json"
+  },
+  "reviews": {
+    "code": "Independent read-only review reproduced and verified repairs for DOCX identity, repeated reference deletion, image-only fallback, table rowspan/open/headered rows, and PDF.js lease cleanup. No remaining confirmed blocker in the reviewed diff.",
+    "ui": "All 20 production screenshots inspected; no new overlap or horizontal overflow found.",
+    "operations": "19 actual production cases plus real public translation and downloads; driver timeout selector drift repaired and covered by 44 targeted tests."
+  },
+  "sharedIntegrationContracts": {
+    "src/features/document-translation/core/document.ts": "Optional PdfDocumentBlock.source/listMarker and display-normalized sourceRotation.",
+    "src/features/document-translation/public.ts": "Local material reference create/resolve/locator functions and types; no learning workspace/database added.",
+    "src/app/document-translation/DocumentApp.vue": "PARSED_VERSION 17 causes safe reparse through existing history workflow.",
+    "src/app/document-translation/runtime.ts": "Default searchable raster fallback injected through existing export ports; PDF.js lease remains scoped.",
+    "src/core/i18n/messages/pdfReading.ts": "Seven-language full passage/cross-page/waiting/export strings.",
+    "tests/test-matrix.json and vitest.coverage.config.ts": "New materialLocator/pdfContinuations modules registered in existing audit/coverage contracts.",
+    "userscript/languageBundles.ts": "Remote five-language document.* subset stays byte-identical to the published immutable JSON; extension-only PDF copy cannot invalidate pinned resources."
+  },
+  "limits": [
+    "Firefox build passed; Firefox runtime, Safari, mobile devices and assistive technologies were not exercised here.",
+    "No physical trackpad or system clipboard roundtrip; trusted native copy event was verified without overwriting the clipboard.",
+    "NASA 338 pages and OpenStax 979 pages outside the selected corpus remain unaudited; no full-book translation acceptance.",
+    "Real provider results include a retained first-run timeout; availability and scientific translation semantics are not guaranteed by this run.",
+    "Cross-page detection is conservative; preserved image labels remain in the original language and are searchable only where source glyph data exists.",
+    "Memory is a page-300 snapshot with five resident pages and bounded canvases, not a peak-memory or entire-book translation benchmark.",
+    "The Node native-Canvas controlled pure-image adapter has host font limitations; actual browser Unicode appearance was separately inspected.",
+    "Legacy custom raster ports without text metadata retain their existing image-only contract."
+  ],
+  "referenceProjects": {
+    "borrowedDesignOrCode": false,
+    "modified": false
+  },
+  "preservedEarlierRunFailures": [
+    "ui-production-v1: sandbox LaunchServices bootstrap failure",
+    "ui-production-final: sticky source overlap found and fixed",
+    "live-public-final: mutable build directory changed during a test; later runs use immutable snapshots",
+    "live-public-delivery: actual OpenStax timeout retained"
+  ],
+  "evidence": {
+    "final-validation/report.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/report.json",
+      "sha256": "b3dc327b7e3a7c6da80d528300c89f24ad015475a708fb60647ce4824fea382a"
+    },
+    "final-validation/source-sha256.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/source-sha256.json",
+      "sha256": "dcf478d5f973853b8a096a22488b62887c1381841f9541555073483f94d5913f"
+    },
+    "final-validation/manifests.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/manifests.json",
+      "sha256": "f815577ec06feae6dbf1200dcafea5c597717437292fc8c9ca5dd0a7394487d4"
+    },
+    "ui-production-delivery/report.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/ui-production-delivery/report.json",
+      "sha256": "07ffa695fbd48888cacca16ef254096d9ad0df5014722e10d0f5395e35d1dc7d"
+    },
+    "ui-production-delivery/ui-review.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/ui-production-delivery/ui-review.json",
+      "sha256": "bdef8fddf865a2e9b4f85bc90016e8812a6dc7d8ed2339b2efb64ddcfaeeaa48"
+    },
+    "live-public-delivery/report.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/live-public-delivery/report.json",
+      "sha256": "a5318e7399ef3ee5969fe644816b9bcb31c758c0b95edc087e8e3528d3a92db2"
+    },
+    "live-openstax-delivery/report.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/live-openstax-delivery/report.json",
+      "sha256": "9ccb2a83f2de3d3436bdefe6d7b84b01b2f5d9805f9004dd7a3545d795255b71"
+    },
+    "live-driver-recovery-fix-20261015/verification.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/live-driver-recovery-fix-20261015/verification.json",
+      "sha256": "f01eef1e2a55de64e5e75e94382a8b6c88db02368214107065f23c388d5d598f"
+    },
+    "final-pdf-review/renders.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-pdf-review/renders.json",
+      "sha256": "0d890ef863f94871e748049ba441f4572fceeceece0046cac27b9c79f343610b"
+    },
+    "final-pdf-review/review.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-pdf-review/review.json",
+      "sha256": "1ed9826a73f65549574cf01e4631a3f94047835e826d0a1e766d5269639216c7"
+    },
+    "export-coverage-runs/pure-image-reviewed-final.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/export-coverage-runs/pure-image-reviewed-final.json",
+      "sha256": "d14997640cb66304ecd614797dfe14db0f61f8c5720b36ea6b10be2d99e36151"
+    },
+    "export-coverage-runs/pure-image-final-evidence.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/export-coverage-runs/pure-image-final-evidence.json",
+      "sha256": "f915d980ca4a595f3e5051e10bc91af91e9f813aa470c5be042a63257b5eb960"
+    },
+    "history-coverage/evidence.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/history-coverage/evidence.json",
+      "sha256": "aefd9d33d038f1515b439b9e06481fbcb9f567b9807c6ee35a3b9291a3cc16cb"
+    },
+    "final-validation/post-driver-report.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/post-driver-report.json",
+      "sha256": "8358c1bc056568b1e3d9bf80675d0316dfd29660e78e32de0ed5ed9eb646c441"
+    },
+    "final-validation/userscript-ci-fix/verification.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/userscript-ci-fix/verification.json",
+      "sha256": "1cdc3ebb4978175f38283e51c56f992e34207342b0a3c0a3b251eb4fa75d615a"
+    },
+    "final-validation/userscript-ci-fix/baseline-dictionary-proof.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/userscript-ci-fix/baseline-dictionary-proof.json",
+      "sha256": "8736b55b068cf88ffaa4132bc7dca048f63559e52845f1214519bdc768365ff3"
+    },
+    "final-validation/ci-no-corpus/final/verification.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/ci-no-corpus/final/verification.json",
+      "sha256": "bc2ffc6ee7160c873ae74a2feddaf89334ae3ae6243fe26544da2efa28f5cc52"
+    },
+    "final-validation/ci-no-corpus/final-typed/verification.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/ci-no-corpus/final-typed/verification.json",
+      "sha256": "3cff0aedae37efda630f14251a40a79d131cfb295f9d8b339b7cdb9c3d4e45f6"
+    },
+    "final-validation/ci-no-corpus/final/integration-final.json": {
+      "path": "/Users/thinkstu/Desktop/copy/research/pro-document-20261015/final-validation/ci-no-corpus/final/integration-final.json",
+      "sha256": "15fb5cf9b8d959b433f3b3e8cdc20c105916472c9a8c27281d1accf83108a51d"
+    }
+  },
+  "productionUnchangedAfterAllRuns": true,
+  "runtimeSourceUnchangedAfterBuild": "Extension src/ is unchanged; userscript build-time projection was subsequently repaired and separately built/verified.",
+  "finalDriverSha256": "dd69e00fb933ff42f7456952b57c89d2777ea4dbc3de8215f6d2241f3dacff4e",
+  "ciFirstRun": {
+    "run": "https://github.com/FluentRead/FluentRead/actions/runs/38709183579",
+    "state": "failed",
+    "files": {
+      "passed": 284,
+      "failed": 4
+    },
+    "tests": {
+      "passed": 11229,
+      "failed": 8,
+      "skipped": 5
+    },
+    "cause": "The seven updated PDF document message keys changed five immutable userscript language bundle hashes.",
+    "fix": "Build-time projection restores published remote document.* values and excludes new extension-only document keys; all non-document copy and immutable pin/verifier contracts remain unchanged.",
+    "verification": "315 targeted tests, userscript build and verifier passed; five entire bundle JSON files match git show of the fixed published commit byte for byte.",
+    "rerun": "Triggered by follow-up PR commit; status recorded separately in published.json."
+  }
+}

@@ -13,7 +13,7 @@ import {
     type CreateDocumentDownloadOptions,
 } from '@/src/features/document-translation/services/binary';
 import {createDocumentSegmentTranslator} from '@/src/features/document-translation/services/translation';
-import {acquirePdfDocument, renderPdfReadingPages, rasterizePdfTranslationPage, renderPdfPageImage} from '@/src/features/document-translation/ui/pdfPreview';
+import {acquirePdfDocument, renderPdfReadingPages, rasterizePdfReadingPages, rasterizePdfTranslationPage, renderPdfPageImage} from '@/src/features/document-translation/ui/pdfPreview';
 import type {PdfPageRecognizer} from '@/src/features/document-translation/services/pdfOcr';
 import {config, configReady} from '@/src/services/config/store';
 import {supportsNativeTranslationBatch} from '@/src/services/translation/capabilities';
@@ -62,6 +62,7 @@ export async function createDocumentDownload(
             ...options,
             pdfPageRasterizer: options.pdfPageRasterizer ?? rasterizePdfTranslationPage,
             pdfReadingRenderer: options.pdfReadingRenderer ?? (options.pdfReadingRasterizer ? undefined : renderPdfReadingPages),
+            pdfReadingRasterizer: options.pdfReadingRasterizer ?? rasterizePdfReadingPages,
         });
     } finally {
         lease?.release();

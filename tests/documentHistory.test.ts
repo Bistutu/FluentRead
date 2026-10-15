@@ -1,7 +1,7 @@
 /**
  * @file tests/documentHistory.test.ts
  * 文件职责：验证“最近翻译”的本地存取与解析迁移：稳定标识、摘要列表、按原文恢复独立校订、淘汰与存储不可用时的安静降级。
- * 主要内容：使用内存 IndexedDB 真实执行读写；检查解析版本和分段位置变化时只复用未变化原文，重复片段逐次恢复而不跳过空译文，没有旧原文时仅采用同版本同数量的兼容恢复；检查列表不含文件字节并按最近更新时间排序，保存的是调用方数据的副本，条数与总字节超限时淘汰最旧记录，过大或没有标识的记录不保存，数据库缺失或出错时返回空结果而不抛出。
+ * 主要内容：使用内存 IndexedDB 真实执行读写；检查解析版本和分段位置变化时只复用未变化原文，重复片段仅凭唯一位置或邻文恢复而不跳过空译文，没有旧原文时仅采用同版本同数量的兼容恢复；检查列表不含文件字节并按最近更新时间排序，保存的是调用方数据的副本，条数与总字节超限时淘汰最旧记录，过大或没有标识的记录不保存，数据库缺失或出错时返回空结果而不抛出。
  * 模块边界：只测试历史存储服务，不挂载页面、不解析文档、不发起翻译。
  */
 import {IDBFactory} from 'fake-indexeddb';
@@ -56,19 +56,26 @@ describe('document history translation migration', () => {
         expect(restoreDocumentHistoryTranslations(saved, parsed(['Inserted', 'Right', 'Left Right', 'case', 'Spaced', 'Left']), 7))
             .toEqual(['', '右侧校订', '', '', '', '左侧校订']);
     });
-    it('preserves independent duplicate revisions in occurrence order when repetitions are removed or added', () => {
+    it('retains ambiguous duplicate revisions instead of guessing occurrence order after insertion or removal', () => {
         const saved = record('duplicates', 1, {parsed: parsed(['Repeat', 'Between', 'Repeat', 'Repeat']), total: 4,
             translations: ['第一次校订', '中间校订', '第二次校订', '第三次校订']});
-        expect(restoreDocumentHistoryTranslations(saved, parsed(['Repeat', 'Repeat']), 7)).toEqual(['第一次校订', '第二次校订']);
+        expect(restoreDocumentHistoryTranslations(saved, parsed(['Repeat', 'Repeat']), 7)).toEqual(['', '']);
         expect(restoreDocumentHistoryTranslations(saved, parsed(['Repeat', 'New', 'Repeat', 'Between', 'Repeat', 'Repeat']), 7))
-            .toEqual(['第一次校订', '', '第二次校订', '中间校订', '第三次校订', '']);
+            .toEqual(['', '', '', '中间校订', '第二次校订', '']);
     });
     it('consumes empty and whitespace duplicate slots without borrowing later completed revisions', () => {
-        const saved = record('empty-duplicates', 1, {parsed: parsed(['Repeat', 'Repeat', 'Repeat', 'Sparse']), total: 4,
+        const saved = record('empty-duplicates', 1, {parsed: parsed(['Repeat', 'Repeat', 'Repeat', 'Sparse']), parsedVersion: 7, total: 4,
             translations: ['', ' \n ', '第三次校订']});
         expect(restoreDocumentHistoryTranslations(saved, parsed(['Repeat', 'Repeat', 'Repeat', 'Sparse']), 7))
             .toEqual(['', ' \n ', '第三次校订', '']);
         expect(restoreDocumentHistoryTranslations(saved, parsed(['Repeat']), 7)).toEqual(['']);
+    });
+    it.each([NaN, Infinity, -1, 1.5])('refuses order compatibility for unlocated duplicates with an invalid parser version: %s', currentVersion => {
+        const saved = record('invalid-source-order-version', 1, {parsed: parsed(['Repeat', 'Repeat']), parsedVersion: currentVersion,
+            total: 2, translations: ['第一页独立校订', '第二页独立校订']});
+        expect(restoreDocumentHistoryRevisions(saved, parsed(['Repeat', 'Repeat']), currentVersion)).toEqual({translations: ['', ''], retainedRevisions: [
+            {source: 'Repeat', translation: '第一页独立校订'}, {source: 'Repeat', translation: '第二页独立校订'},
+        ]});
     });
     it('uses stored segment identifiers and tolerates legacy source snapshots without identifiers', () => {
         const saved = record('identifiers', 1, {parsed: {segments: [{id: 2, source: 'Third slot'}, {id: 0, source: 'First slot'}, {id: 99, source: 'Missing slot'}]},
@@ -97,7 +104,7 @@ describe('document history translation migration', () => {
         const saved = record('invalid-origins', 1, {parsed: {segments: [null, 12, {source: 'Different'}, {source: 'Same'}]},
             translations: ['空对象不能套译文', '数字不能套译文', '另一原文校订', '同原文校订']});
         expect(restoreDocumentHistoryTranslations(saved, parsed(['Same', 'Same', 'Same', 'Same', 'Same', 'Same', 'Same', 'Same']), 7,
-            [-1, 1.5, NaN, 99, 0, 1, 2, '3' as any])).toEqual(['同原文校订', '', '', '', '', '', '', '']);
+            [-1, 1.5, NaN, 99, 0, 1, 2, '3' as any])).toEqual(['', '', '', '', '', '', '', '']);
     });
     it.each([undefined, null, 12, 'old snapshot', {}, {segments: null}, {segments: []}, {segments: [null, {source: 12}]}])
         ('allows index compatibility only for missing sources from the same known parsing version: %j', snapshot => {
@@ -119,7 +126,7 @@ describe('document history translation migration', () => {
 
 describe('document history retained revisions', () => {
     it('archives only unconsumed independent slots and reserves direct origins including empty revisions', () => {
-        const saved = record('unmatched', 1, {parsed: parsed(['Left', 'Right', 'Repeat', 'Repeat']),
+        const saved = record('unmatched', 1, {parsed: parsed(['Left', 'Right', 'Repeat', 'Repeat']), parsedVersion: 16,
             translations: ['左侧校订', '右侧校订', '', '第二次独立校订']});
         const result = restoreDocumentHistoryRevisions(saved, parsed(['Repeat', 'Right']), 16, [2, undefined]);
         expect(result.translations).toEqual(['', '右侧校订']);
@@ -330,7 +337,7 @@ describe('document history scanned-PDF migration', () => {
     it.each([
         {native: [], expected: []},
         {native: ['Repeat'], expected: ['文字页校订']},
-        {native: ['Inserted', 'Repeat', 'Repeat'], expected: ['', '文字页校订', '']},
+        {native: ['Inserted', 'Repeat', 'Repeat'], expected: ['', '', '']},
     ])('keeps OCR duplicate revisions when native occurrences change: $native', ({native, expected}) => {
         const current = pdf([native, null, null]);
         const previous = pdf([['Repeat'], ['Repeat'], ['Repeat', 'Repeat']]);

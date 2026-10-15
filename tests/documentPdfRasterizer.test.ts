@@ -365,3 +365,34 @@ describe('PDF rasterizer resource lifecycle', () => {
         expect(pdf.cleanup).toHaveBeenCalledOnce();
     });
 });
+
+describe('PDF searchable raster metadata', () => {
+    it.each(['left', 'center', 'right'] as const)('exports actual painted line position for %s alignment without retaining pixel memory', async textAlign => {
+        const block = {segmentIndex: 0, x: 20, y: 30, width: 200, height: 40, fontSize: 12, lineHeight: 14, lineCount: 1, fontFamily: 'sans', fontWeight: 400 as const, textAlign};
+        const result = await rasterizePdfTranslationPage({...input(), blocks: [block], translations: ['Searchable line']});
+        expect(result).not.toBeInstanceOf(Uint8Array);
+        if (result instanceof Uint8Array) throw new Error('Missing searchable metadata');
+        expect(result.textItems).toHaveLength(1);
+        const item = result.textItems![0];
+        const painted = canvases[0].getContext().fillText.mock.calls[0];
+        const scale = 2.4;
+        const width = Math.min('Searchable line'.length * 8, painted[3]);
+        expect(item).toMatchObject({segmentIndex: 0, text: 'Searchable line', y: 30});
+        expect(item.width).toBeCloseTo(width / scale);
+        expect(item.x).toBeCloseTo((painted[1] - (textAlign === 'center' ? width / 2 : textAlign === 'right' ? width : 0)) / scale);
+        expect(canvases[0]).toMatchObject({width: 0, height: 0});
+    });
+
+    it('keeps complete selectable lines and source page footer in offline continuation raster pages', async () => {
+        const text = 'Offline continuation 🦄 🔬 text. '.repeat(200);
+        const plan = {pageNumber: 3, hasTranslation: true, entries: [{kind: 'text' as const, id: 'long', pageNumber: 3,
+            segmentIndex: 0, role: 'paragraph', source: 'Source', text, translated: true, sourceRect: {x: 20, y: 30, width: 200, height: 40}}]};
+        const results = [];
+        for await (const result of rasterizePdfReadingPages({...input(), pageNumber: 3, plan, footerLabel: 'Source page 3'})) results.push(result);
+        expect(results.length).toBeGreaterThan(1);
+        const content = results.flatMap(result => result.textItems!.filter(item => item.segmentIndex === 0).map(item => item.text)).join('').replace(/\s/gu, '');
+        expect(content).toBe(text.replace(/\s/gu, ''));
+        expect(results.every((result, index) => result.textItems!.at(-1)!.text === `Source page 3 · ${index + 1}/${results.length}`)).toBe(true);
+        expect(canvases.every(canvas => canvas.width === 0 && canvas.height === 0)).toBe(true);
+    });
+});

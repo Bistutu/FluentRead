@@ -1,10 +1,11 @@
 /**
  * @file src/features/document-translation/services/history.ts
  * 文件职责：在浏览器本地保存最近翻译过的文档及其译文，使文档翻译首页可以列出记录并一键恢复阅读。
- * 主要内容：以文件内容摘要为稳定标识，在独立的 IndexedDB 库中保存原始文件字节、解析结果快照、译文、进度与设置指纹；解析规则变化后按原文和重复出现次序恢复未变化片段的独立校订，复用同文件中页号、展示尺寸与旋转一致的已识别扫描页；原文件、逐行及逐项稳定几何均一致时，保留因字体指标修正而合并的连续普通文字段，使用新字形重建边界而不拼接译文；其余文字页保持新解析结果，统一重编号全文片段；本次复用的旧索引保留独立校订与空槽并从原文匹配池排除，不写入解析快照；列表只返回不含文件字节的摘要并按最近更新时间排序；超过条数或总字节上限时淘汰最旧的记录；数据库不可用、被其他标签页占用而超时或读写失败时安静降级为“没有记录”，并在其他标签页需要升级或删除时让出连接，不影响打开和翻译文档。
+ * 主要内容：以文件内容摘要为稳定标识，在独立的 IndexedDB 库中保存原始文件字节、解析结果快照、译文、进度与设置指纹；解析规则变化后按原文与双向唯一的原生位置或邻文恢复未变化片段的独立校订，歧义校订独立保留，复用同文件中页号、展示尺寸与旋转一致的已识别扫描页；原文件、逐行及逐项稳定几何均一致时，保留因字体指标修正而合并的连续普通文字段，使用新字形重建边界而不拼接译文；其余文字页保持新解析结果，统一重编号全文片段；本次复用的旧索引保留独立校订与空槽并从原文匹配池排除，不写入解析快照；列表只返回不含文件字节的摘要并按最近更新时间排序；超过条数或总字节上限时淘汰最旧的记录；数据库不可用、被其他标签页占用而超时或读写失败时安静降级为“没有记录”，并在其他标签页需要升级或删除时让出连接，不影响打开和翻译文档。
  * 保存生命周期：超时撤销后续写入资格并取消活跃写事务，只有真实事务提交后才确认保存成功，避免迟到打开数据库的旧修订覆盖新校订。
  * 模块边界：只负责本地存取与已有译文匹配，不解析文档、不发起翻译、不读取配置，也不把任何内容发送到网络；页面状态、解析版本与何时保存由文档页面组合根决定。
  */
+import {documentSourceLocators, matchDocumentSourceLocators} from '../core/materialLocator';
 import type {DocumentSegment, ParsedDocument, PdfDocumentBlock, PdfDocumentLine, PdfDocumentPage, PdfDocumentRun} from '../core/document';
 
 export const DOCUMENT_HISTORY_MAX_ENTRIES = 20;
@@ -45,7 +46,7 @@ export interface DocumentHistory {
 }
 
 /**
- * 重新解析时只复用原文完全相同的片段；重复原文逐次消费，空译文也占据自己的出现位置。
+ * 重新解析时只复用原文完全相同且位置明确的片段；重复原文不猜测出现次序，空译文也占据自己的已确认位置。
  * 没有原文快照的旧记录仅在解析版本已知且一致、片段总数一致时按索引恢复。
  */
 export function restoreDocumentHistoryTranslations(
@@ -67,42 +68,23 @@ function matchDocumentHistoryTranslations(
     const snapshot = record.parsed && typeof record.parsed === 'object'
         ? record.parsed as {segments?: unknown} : undefined;
     const previous = Array.isArray(snapshot?.segments) ? snapshot.segments : [];
-    // 复用 OCR 段的来源是已验证的旧数组位置；原文仍需一致，坏映射不能套用其他段的译文。
-    const origins = document.segments.map((segment, index) => {
-        const origin = segmentOrigins?.[index];
-        const candidate = typeof origin === 'number' && Number.isInteger(origin) && origin >= 0 ? previous[origin] : undefined;
-        return candidate && typeof candidate === 'object' && candidate.source === segment.source ? origin : undefined;
-    });
-    const reserved = new Set(origins.filter(origin => origin !== undefined));
-    const direct = new Map<number, string>();
-    const bySource = new Map<string, {slots: Array<{translation: string; origin: number}>; next: number}>();
+    const slots = new Map<number, string>();
     previous.forEach((segment: unknown, index: number) => {
         if (!segment || typeof segment !== 'object') return;
         const candidate = segment as {source?: unknown; id?: unknown};
         if (typeof candidate.source !== 'string') return;
-        const slot = typeof candidate.id === 'number' && Number.isInteger(candidate.id) && candidate.id >= 0
-            ? candidate.id : index;
-        const translation = record.translations[slot];
-        const normalized = typeof translation === 'string' ? translation : '';
-        direct.set(index, normalized);
-        if (reserved.has(index)) return;
-        let occurrences = bySource.get(candidate.source);
-        if (!occurrences) {
-            occurrences = {slots: [], next: 0};
-            bySource.set(candidate.source, occurrences);
-        }
-        occurrences.slots.push({translation: normalized, origin: index});
+        const slot = typeof candidate.id === 'number' && Number.isInteger(candidate.id) && candidate.id >= 0 ? candidate.id : index;
+        slots.set(index, typeof record.translations[slot] === 'string' ? record.translations[slot] : '');
     });
-    if (direct.size) {
-        const translations = document.segments.map((segment, index) => {
-            const origin = origins[index];
-            if (origin !== undefined) {consumed.add(origin); return direct.get(origin)!;}
-            const occurrences = bySource.get(segment.source);
-            const slot = occurrences?.slots[occurrences.next++];
-            if (slot) consumed.add(slot.origin);
-            return slot?.translation ?? '';
-        });
-        return {translations, consumed};
+    if (slots.size) {
+        const origins = matchDocumentSourceLocators(documentSourceLocators(snapshot!), documentSourceLocators(document), segmentOrigins,
+            record.parsed === document || Number.isInteger(currentVersion) && currentVersion >= 0 && record.parsedVersion === currentVersion);
+        return {translations: origins.map(origin => {
+            if (origin === undefined) return '';
+            consumed.add(origin);
+            // matcher 只返回已归一的旧槽索引；IndexedDB 快照是稳定的普通数据。
+            return slots.get(origin)!;
+        }), consumed};
     }
     const compatible = Number.isInteger(currentVersion) && currentVersion >= 0
         && record.parsedVersion === currentVersion && record.total === document.segments.length;

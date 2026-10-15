@@ -8,6 +8,8 @@ import {defineAsyncComponent} from 'vue';
 
 export * from './core/document';
 export * from './core/pdfSource';
+export {documentSourceLocators, createDocumentMaterialReference, resolveDocumentMaterialReference} from './core/materialLocator';
+export type {DocumentSourceLocator, DocumentMaterialReference} from './core/materialLocator';
 export type {PdfReadingPresentation} from './core/pdfReadingPlan';
 export {fetchOnlinePdf} from './services/pdfSource';
 // 解析与导出公共 API 可独立使用；进入 PDF 阅读界面时才加载 Vue 组件及扩展配置。
