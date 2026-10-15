@@ -65,7 +65,8 @@ async function noOverflow() {assert.equal(await page.evaluate(() => document.doc
     await client.send('Network.enable');
     await page.setViewportSize({width: 320, height: 560});
     await page.goto(`${origin}/${manifest.action.default_popup}`);
-    await page.getByTestId('onboarding-language-next').click();
+    if (expected === 'baseline') await page.getByTestId('onboarding-language-next').click();
+    else await page.getByTestId('onboarding-language-step').waitFor();
     const radios = page.locator('.onboarding-language-options [role="radio"]');
     await radios.first().waitFor();assert.equal(await radios.count(), 7);
     const values = await radios.evaluateAll(nodes => nodes.map(n => n.dataset.language));

@@ -19,7 +19,7 @@
   "diagnostics.model-configuration.detail": "Vérifiez le nom du modèle et l’adresse de l’API dans les paramètres du service, puis testez la connexion. Enregistrez et revenez ici pour réessayer.",
   "diagnostics.configuration.title": "Vérifiez la configuration du service actuel",
   "diagnostics.configuration.detail": "Vérifiez l’adresse de l’API, le modèle et les paramètres de requête dans les paramètres du service, puis testez la connexion. Enregistrez et revenez ici pour réessayer.",
-  "diagnostics.configuration-save.title": "La configuration n’est pas encore enregistrée",
+  "diagnostics.configuration-save.title": "Impossible de confirmer l’enregistrement des paramètres",
   "diagnostics.configuration-save.detail": "Le test de connexion n’a pas commencé. Patientez un instant et réessayez ; les valeurs saisies sont conservées. Si le problème persiste, rouvrez les paramètres et vérifiez la configuration.",
   "diagnostics.rate-limit.title": "Trop de requêtes ou quota épuisé",
   "diagnostics.rate-limit.detail": "Patientez avant de réessayer, ou vérifiez le quota et choisissez un autre service dans les paramètres. Votre choix ne changera pas automatiquement.",

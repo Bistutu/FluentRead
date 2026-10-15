@@ -19,7 +19,7 @@
   "diagnostics.model-configuration.detail": "在服务设置中核对模型名称和接口地址，并测试连接；保存后返回这里重试。",
   "diagnostics.configuration.title": "当前服务配置需要检查",
   "diagnostics.configuration.detail": "在服务设置中检查接口地址、模型和请求参数，并测试连接；保存后返回这里重试。",
-  "diagnostics.configuration-save.title": "配置尚未保存",
+  "diagnostics.configuration-save.title": "无法确认配置已保存",
   "diagnostics.configuration-save.detail": "连接检查尚未开始。请稍候重试；当前填写内容会保留。若持续失败，请重新打开设置页检查配置。",
   "diagnostics.rate-limit.title": "服务暂时限流或额度不足",
   "diagnostics.rate-limit.detail": "等待服务恢复后重试，或在服务设置中检查额度、选择其他服务。你的选择不会被自动修改。",

@@ -332,7 +332,7 @@ async function main() {
     await popup.locator('.popup-shell').waitFor({state: 'visible', timeout: 30000});
     const onboarding = popup.locator('[data-testid="ui-language-onboarding"]');
     if (await onboarding.count()) {
-      await onboarding.locator('[data-testid="onboarding-language-next"]').click();
+      await onboarding.locator('[data-testid="onboarding-language-step"]').waitFor();
       await onboarding.locator('[data-language="zh-CN"]').click();
       await onboarding.locator('.onboarding-confirm').click();
       await onboarding.waitFor({state: 'hidden', timeout: 30000});

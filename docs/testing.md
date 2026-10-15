@@ -171,13 +171,13 @@ node scripts/testing/run-site-rules-navigation-test.cjs \
 
 ## Popup 首次打开与语言引导
 
-生产构建后运行 `node scripts/testing/run-popup-first-run-height-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <捆绑Node包目录> --browser-path <Edge可执行文件> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-popup-first-run`。只检查首启相关范围：配置读取延迟 1.2 秒时，等待状态与欢迎页高度一致，首个欢迎帧已有双语文字且不请求完整英文目录，卡片没有缩放入场。短视口还检查高度由内容撑开，避免重现 130px 高度锁定。
+生产构建后运行 `node scripts/testing/run-popup-first-run-height-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <捆绑Node包目录> --browser-path <Edge可执行文件> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-popup-first-run`。只检查首启相关范围：配置等待结束后直接显示单屏语言选择，不出现欢迎、下一步、返回或固定完成动画；高度随内容自适应，不要求占位和首屏等高，也不能把测试 extension tab 的 viewport 当作原生 Popup 高度。短视口检查内容撑开，避免重现 130px 高度锁定。
 
-语言页覆盖 280、320、360、400px 宽度和深色主题，确认七个完整双语名称、末项占满整行、确认按钮可见、无横向溢出及内部裁切；逐项选择、返回欢迎页保留选择、确认和重开后不重复引导。脚本使用独立临时 Edge profile 与第二屏后台窗口，保存启动帧尺寸、布局指标和截图；`--baseline` 仅记录旧布局，不代表新验收通过。此证据不包含系统工具栏点击到 Popup 创建的延迟，也不代表 Firefox 实机或商店版本验证。
+语言页按所选宽度和深色主题检查七种语言原生名称、确认按钮可见、无横向溢出及内部裁切；选择只预览，保存等待期间控件冻结，保存确认成功后立即进入主菜单，重开不重复引导。脚本使用独立临时 Edge profile 与第二屏后台窗口，保存启动帧尺寸、布局指标和截图；`--baseline` 仅记录旧布局，不代表新验收通过。此证据不包含系统工具栏点击到 Popup 创建的延迟，也不代表 Firefox 实机或商店版本验证。
 
 追加 `--confirm-language es-ES --fail-main-once` 可验证其他界面语言的真实按需资源、确认后的主菜单加载失败、重试和重开持久化。仅在本次临时 profile 中阻断一次主菜单模块请求，报告单独保留注入的网络错误；重试会重新打开文档，避免浏览器缓存失败的模块 import，已保存的语言不能丢失。
 
-启动性能对照使用 `node scripts/testing/run-popup-onboarding-performance-test.cjs --extension-dir .output/chrome-mv3 --cold-worker --expect-lightweight --artifacts-dir /private/tmp/fluentread-onboarding-performance`。同一个隔离 Edge 实例分别采样七次未完成引导的欢迎页与七次普通菜单，通过 CDP 确认各阶段首次采样的后台已停止；记录配置消息耗时、首屏 DOM/下一帧时间、实际解析脚本字节和布局。`--expect-lightweight` 断言欢迎页未解析完整主菜单、未读取完整英文包，主配置只读取一次；旧包对照省略此参数。HTML 在 Vue 模块加载前通过无依赖脚本发送 `popupStartup` 提前唤醒后台，只获取引导是否完成的布尔提示，用于并行预取模块。实际界面始终由 store 新读配置后决定。单独加 `--stale-startup-hint`（省略 `--expect-lightweight`）会反转两种状态的后台提示，验证过期提示只能多加载候选模块，不能决定最终显示页面。普通菜单配置、首帧主题与保存退出专项可用 `run-popup-startup-ui-test.cjs --startup-only --opens 2` 限定启动与持久化范围。
+启动性能对照使用 `node scripts/testing/run-popup-onboarding-performance-test.cjs --extension-dir .output/chrome-mv3 --cold-worker --expect-lightweight --artifacts-dir /private/tmp/fluentread-onboarding-performance`。同一个隔离 Edge 实例分别采样七次未完成引导的单屏语言页与七次普通菜单，通过 CDP 确认各阶段首次采样的后台已停止；记录配置消息耗时、首屏 DOM/下一帧时间、实际解析脚本字节和布局。`--expect-lightweight` 断言首启未解析完整主菜单、未读取完整英文包，主配置只读取一次；旧包对照省略此参数。HTML 在 Vue 模块加载前通过无依赖脚本发送 `popupStartup` 提前唤醒后台，只获取引导是否完成的布尔提示，用于并行预取模块。实际界面始终由 store 新读配置后决定。单独加 `--stale-startup-hint`（省略 `--expect-lightweight`）会反转两种状态的后台提示，验证过期提示只能多加载候选模块，不能决定最终显示页面。普通菜单配置、首帧主题与保存退出专项可用 `run-popup-startup-ui-test.cjs --startup-only --opens 2` 限定启动与持久化范围。
 
 ## Popup 操作恢复与翻译服务 UI
 

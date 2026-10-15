@@ -19,7 +19,7 @@
   "diagnostics.model-configuration.detail": "Revisa el nombre del modelo y la dirección de la API en los ajustes del servicio y prueba la conexión. Guarda los cambios y vuelve aquí para reintentarlo.",
   "diagnostics.configuration.title": "Revisa la configuración del servicio actual",
   "diagnostics.configuration.detail": "Revisa la dirección de la API, el modelo y los parámetros de la solicitud en los ajustes del servicio y prueba la conexión. Guarda los cambios y vuelve aquí para reintentarlo.",
-  "diagnostics.configuration-save.title": "La configuración aún no se ha guardado",
+  "diagnostics.configuration-save.title": "No se pudo confirmar que se guardara la configuración",
   "diagnostics.configuration-save.detail": "La prueba de conexión no ha comenzado. Espera un momento y vuelve a intentarlo; los valores introducidos se conservan. Si el problema continúa, vuelve a abrir los ajustes y revisa la configuración.",
   "diagnostics.rate-limit.title": "Demasiadas solicitudes o cuota agotada",
   "diagnostics.rate-limit.detail": "Espera antes de reintentarlo, o revisa la cuota y elige otro servicio en los ajustes. Tu selección no cambiará automáticamente.",

@@ -19,7 +19,7 @@
   "diagnostics.model-configuration.detail": "サービス設定でモデル名と接続先 URL を確認し、接続をテストしてください。保存後、ここに戻って再試行してください。",
   "diagnostics.configuration.title": "現在のサービス設定を確認してください",
   "diagnostics.configuration.detail": "サービス設定で接続先 URL、モデル、リクエストパラメーターを確認し、接続をテストしてください。保存後、ここに戻って再試行してください。",
-  "diagnostics.configuration-save.title": "設定がまだ保存されていません",
+  "diagnostics.configuration-save.title": "設定の保存を確認できません",
   "diagnostics.configuration-save.detail": "接続確認はまだ始まっていません。少し待って再試行してください。入力内容は保持されています。問題が続く場合は設定を開き直して確認してください。",
   "diagnostics.rate-limit.title": "リクエスト制限または利用枠の不足です",
   "diagnostics.rate-limit.detail": "しばらく待って再試行するか、サービス設定で利用枠を確認して別のサービスを選んでください。選択が自動で変更されることはありません。",

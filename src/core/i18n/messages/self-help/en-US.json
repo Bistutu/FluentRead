@@ -19,7 +19,7 @@
   "diagnostics.model-configuration.detail": "Check the model name and endpoint in service settings and test the connection. Save, then return here to retry.",
   "diagnostics.configuration.title": "Check the current service configuration",
   "diagnostics.configuration.detail": "Check the endpoint, model and request parameters in service settings and test the connection. Save, then return here to retry.",
-  "diagnostics.configuration-save.title": "Your configuration has not been saved",
+  "diagnostics.configuration-save.title": "Could not confirm the configuration was saved",
   "diagnostics.configuration-save.detail": "The connection check has not started. Wait a moment and retry; your entered values are preserved. If this continues, reopen settings and check the configuration.",
   "diagnostics.rate-limit.title": "The service is rate limited or out of quota",
   "diagnostics.rate-limit.detail": "Wait before retrying, or check quota and select another service in settings. Your selection will not change automatically.",

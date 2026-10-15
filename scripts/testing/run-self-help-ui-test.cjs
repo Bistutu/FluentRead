@@ -60,8 +60,7 @@ async function fitNativePopup(page) {
   const source = await open(base + '/article', {width:1000,height:700});
   const tabId = await worker.evaluate(async url => (await chrome.tabs.query({})).find(t => t.url === url).id, source.url());
   let popup = await open(`chrome-extension://${id}/popup.html?sourceTabId=${tabId}`, {width:320,height:600});
-  await popup.locator('[data-testid="onboarding-language-next"]').waitFor();await shot(popup, '01-install');
-  await popup.locator('[data-testid="onboarding-language-next"]').evaluate(el => el.click());
+  await popup.locator('[data-testid="onboarding-language-step"]').waitFor();await shot(popup, '01-install');
   await popup.locator('[data-language="zh-CN"]').evaluate(el => el.click());
   await popup.locator('.onboarding-form .onboarding-confirm').evaluate(el => el.click());
   await popup.locator('[data-testid="page-translation"]').waitFor({timeout:30000});record('fresh language selection reaches main action');await shot(popup, '02-first-action');

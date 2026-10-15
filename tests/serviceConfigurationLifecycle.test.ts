@@ -688,3 +688,25 @@ describe('真实服务父组件与返回组件的修复焦点', () => {
     expect(h.fallbackHeading?.focus).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();await h.finish()
   })
 })
+
+
+describe('连接限流修复的七语按钮', () => {
+  it('真实模板冷却期间仅禁用重试，不把五种语言变成英文或重置截止时间', async () => {
+    const h = await mountServiceClient('google')
+    try {
+      send.mockResolvedValueOnce({success: false, diagnostic: diagnoseFailure({kind: 'rate-limit', retryAfterMs: 1200})})
+      const header = h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-test-button'))!
+      await (header.props.onClick as () => Promise<void>)();await settle()
+      const retry = () => h.allNodes().find(n => Object.hasOwn(n.props, 'data-connection-retry'))!
+      const text = (n: ServiceClientNode): string => String(n.value || '') + n.children.map(text).join('')
+      for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES']) {
+        const catalog = JSON.parse(readFileSync(resolve('src/core/i18n/messages/self-help', locale + '.json'), 'utf8')) as Record<string, string>
+        uiCatalogs.set(locale, catalog);uiLanguage.value = locale;uiBundleRevision.value += 1;await settle()
+        expect(retry().props.disabled).toBe(true);expect(text(retry())).toBe(catalog['diagnostics.action.retry'])
+        expect(text(retry())).not.toContain('Retry shortly')
+      }
+      await vi.advanceTimersByTimeAsync(1200);await settle();expect(retry().props.disabled).toBe(false)
+      expect(text(retry())).toBe(uiCatalogs.get('es-ES')!['diagnostics.action.retry']);expect(messages()).toHaveLength(1);expect(h.clientErrors).toEqual([])
+    } finally {await h.finish()}
+  })
+})

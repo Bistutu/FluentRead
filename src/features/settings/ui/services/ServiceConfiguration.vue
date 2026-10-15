@@ -335,7 +335,7 @@
       <strong>{{ connectionRepairText.title }}</strong>
       <span>{{ connectionRepairText.detail }}</span>
       <div class="connection-repair-actions">
-        <button type="button" class="connection-repair-button" data-connection-retry :disabled="connectionTestDisabled || connectionRetryWaiting" @click="testConnection()">{{ t(connectionRetryWaiting ? 'diagnostics.action.retryLater' : 'diagnostics.action.retry') }}</button>
+        <button type="button" class="connection-repair-button" data-connection-retry :disabled="connectionTestDisabled || connectionRetryWaiting" @click="testConnection()">{{ t('diagnostics.action.retry') }}</button>
         <button v-if="connectionTestDiagnostic.actions.includes('services')" type="button" class="connection-repair-button" data-connection-repair-config :disabled="!active" @click="focusConnectionConfiguration">{{ t('diagnostics.action.services') }}</button>
       </div>
     </div>

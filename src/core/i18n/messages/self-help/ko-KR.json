@@ -19,7 +19,7 @@
   "diagnostics.model-configuration.detail": "서비스 설정에서 모델 이름과 API 주소를 확인하고 연결을 테스트하세요. 저장한 후 여기로 돌아와 다시 시도하세요.",
   "diagnostics.configuration.title": "현재 서비스 설정을 확인하세요",
   "diagnostics.configuration.detail": "서비스 설정에서 API 주소, 모델, 요청 매개변수를 확인하고 연결을 테스트하세요. 저장한 후 여기로 돌아와 다시 시도하세요.",
-  "diagnostics.configuration-save.title": "설정이 아직 저장되지 않았습니다",
+  "diagnostics.configuration-save.title": "설정 저장을 확인할 수 없습니다",
   "diagnostics.configuration-save.detail": "연결 확인이 아직 시작되지 않았습니다. 잠시 후 다시 시도하세요. 입력한 내용은 유지됩니다. 문제가 계속되면 설정을 다시 열어 확인하세요.",
   "diagnostics.rate-limit.title": "요청이 제한되었거나 할당량이 부족합니다",
   "diagnostics.rate-limit.detail": "잠시 기다린 후 다시 시도하거나, 서비스 설정에서 할당량을 확인하고 다른 서비스를 선택하세요. 선택한 서비스는 자동으로 변경되지 않습니다.",
