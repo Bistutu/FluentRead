@@ -805,7 +805,7 @@ async function main() {
         fs.writeFileSync(path.join(artifactsDir, 'video-menu-only-reopened-ax.json'), `${JSON.stringify(menuAccessibility, null, 2)}\n`);
         if (nodes.length !== 1) throw new Error(`播放器菜单入口 AX button 数量不符：${nodes.length}`);
         const properties = Object.fromEntries((nodes[0].properties || []).map(property => [property.name, property.value?.value]));
-        if (properties.haspopup !== 'menu' || properties.expanded !== true || Object.hasOwn(properties, 'pressed')) {
+        if (properties.hasPopup !== 'menu' || properties.expanded !== true || Object.hasOwn(properties, 'pressed')) {
           throw new Error(`播放器菜单入口 AX 语义不符：${JSON.stringify(properties)}`);
         }
       } finally {
