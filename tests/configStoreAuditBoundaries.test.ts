@@ -127,6 +127,22 @@ function configstoreAuditHistory(): ConfigHistoryState {
 }
 
 describe('configstoreAudit storage owners, count replay and message authority', () => {
+    it('restores cloud website rules through the real import, store and encrypted repository without losing content labels', async () => {
+        const {store, repository} = await configstoreAuditLoad({owner: true, indexed: true,
+            initial: {token: {openai: 'fixture-local-key'}}});
+        const siteAdaptation = normalizeConfig({siteAdaptation: {enabled: false, disabledRuleIds: ['reddit'], custom: {
+            version: 1, rules: [{id: 'mine', name: 'My rule', match: {hosts: ['example.com']},
+                content: [{css: ['article p'], key: 'article-body'}]}],
+        }}}).siteAdaptation;
+        const imported = prepareConfigForImport({...store.config, siteAdaptation}, store.config, {credentialMode: 'replace'});
+        await store.saveConfig(imported, {recordHistory: true, immediateHistory: true});
+        expect(store.config.siteAdaptation).toEqual(siteAdaptation);
+        const stored = await repository!.get<Record<string, unknown>>('local:config');
+        expect(stored!.siteAdaptation).toEqual(siteAdaptation);
+        expect(stored).not.toHaveProperty('token');
+        expect((await store.prepareHydratedConfigForExport()).siteAdaptation).toEqual(siteAdaptation);
+        expect(store.config.token.openai).toBe('fixture-local-key');
+    });
     it('consumes raw import ownership before JSON messaging and persists through the real background handler and IndexedDB', async () => {
         const service = 'aliyunTranslation';
         const initial = normalizeConfig({service, token: {[service]: 'fixture-id'}, secret: {[service]: 'fixture-secret'}, serviceRegion: {[service]: 'cn-hangzhou'}});

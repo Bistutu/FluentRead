@@ -21,6 +21,30 @@ function fixture(shared={remote:null as CloudSyncRemote|null}) {
     return {service,ports,records,connections,shared,get state(){return state as DriveSyncState;},get local(){return local;},set local(value){local=value;}};
 }
 describe('WebDAV 配置云备份事务',()=>{
+    it.each(['download', 'merge'] as const)('普通备份跨设备%s网站规则及正文标签，保留本机连接', async direction => {
+        const source = fixture(); await source.service.save(input);
+        source.local = config({...source.local, siteAdaptation: {enabled: true, disabledRuleIds: ['reddit'], custom: {
+            version: 1, profiles: {article: {mode: 'focus', content: [{css: ['article p'], key: 'article-body'}]}},
+            rules: [{id: 'mine', name: 'My rule', match: {hosts: ['example.com']}, profile: 'article'}],
+        }}});
+        let preview = await source.service.prepare(password);
+        await createWebDavBackup(source.ports).commit(preview.id, password, 'upload', {});
+        const saved = source.shared.remote!.content;
+        const payload = await decryptDriveConfig(saved, password) as {config: Record<string, unknown>};
+        expect(payload.config.siteAdaptation).toEqual(source.local.siteAdaptation);
+        expect(payload.config).not.toHaveProperty('token');
+        const target = fixture(source.shared); await target.service.save(input);
+        const original = structuredClone(target.local);
+        preview = await target.service.prepare(password);
+        expect(preview.changes).toContainEqual(expect.objectContaining({label: '网站规则', sensitive: true}));
+        await createWebDavBackup(target.ports).commit(preview.id, password, direction,
+            Object.fromEntries(preview.changes.map(change => [change.id, 'remote'])));
+        expect(target.local.siteAdaptation).toEqual(source.local.siteAdaptation);
+        expect(target.local.token).toEqual(original.token);
+        expect(target.local.proxy).toEqual(original.proxy);
+        expect(target.shared.remote!.content).toBe(saved);
+        expect(target.ports.api.write).not.toHaveBeenCalled();
+    });
     it.each(['upload','merge'] as const)('无 ETag 兼容预览允许 %s，worker 重启后仍可提交且保护本机密钥',async direction=>{
         const f=fixture();await f.service.save(input);
         const initial=await f.service.prepare(password);await f.service.commit(initial.id,password,'upload',{});

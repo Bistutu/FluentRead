@@ -22,6 +22,15 @@ const validConfig = {
 }
 
 describe('configuration transfer helpers', () => {
+  it.each(['merge', 'replace'] as const)('网站规则经%s凭据的真实导入仍保留正文 key 和模板', credentialMode => {
+    const current = normalizeConfig({...validConfig, siteAdaptation: {enabled: false, disabledRuleIds: ['reddit'], custom: {
+      version: 1, profiles: {custom: {mode: 'focus', content: [{css: ['article p'], key: 'article-body'}]}},
+      rules: [{id: 'mine', name: 'My rule', match: {hosts: ['example.com']}, profile: 'custom'}],
+    }}})
+    const exported = prepareConfigForExport(current)
+    expect(prepareConfigForImport(exported, new Config(), {credentialMode}).siteAdaptation).toEqual(current.siteAdaptation)
+    expect(prepareConfigForImport(publicConfigFile(exported), new Config()).siteAdaptation).toEqual(current.siteAdaptation)
+  })
   it('原生合批按服务偏好完整往返，旧导入仍默认开启且错误类型不误关闭', () => {
     const current = normalizeConfig({...validConfig, nativeBatchTranslationEnabled: {google: false, deepL: false}})
     const exported = prepareConfigForExport(current)
