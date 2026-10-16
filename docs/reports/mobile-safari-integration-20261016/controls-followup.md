@@ -166,3 +166,7 @@ Safari 包装修复沿实际 native target 和 Debug/Release 配置校正 App/Ex
 Userscripts 专用未签名测试包仍停留在首次引导，目录与刷新控件禁用，原始结果 1 SKIP、0 FAIL；未读取 Demo，也未验证 FluentRead 脚本运行，无法归因于 App Groups 或签名。临时站点权限已恢复为“询问”。
 
 f5a 当前尚未验收真实 Safari 播放中菜单、菜单滚动、学习触摸与长句滚动、新版系统全屏、横屏、后台恢复、完整安装更新矩阵、物理设备、VoiceOver/TalkBack；不同旧版本的已测场景保留在主线整合报告中；此前 Android Edge 商店版页面质量异常仍未闭环。本轮未借用参考仓库实现。
+
+## 同播放器入口副本后续修复
+
+本轮新增修复、最终构建及平台边界见[同播放器重复入口修复补充](./clone-entry-followup.md)。该报告保留旧包失败和真实 Safari 跳过结果，不将本地编译或受控 Chromium 通过转记为真实平台验收。
