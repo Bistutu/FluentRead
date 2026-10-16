@@ -1,6 +1,16 @@
 # 移动字幕控件与 Safari 后续验证
 
-当前产品源码为 `f5a82d11a5b6b6a5de2f2ea726065a56cdb2e6ca`。受控生产 Edge 的动作检查和 18 张原图复核在声明范围内通过；真实 Safari Simulator 已在**暂停状态**完成菜单正常打开、关闭和入口焦点返回，播放中菜单、滚动与双语同帧仍未验收。f5a Firefox 已完成既存文档翻译、Home 返回、恢复和重译，但暴露了法文、阿文输出质量问题。对应共享修复单独提交为 [PR #1014](https://github.com/FluentRead/FluentRead/pull/1014)；其 d6b135e 生产包已在另一轮 Android 翻译—恢复—重译中显示对应中文，范围及供应商来源限制见下文。[PR #1009](https://github.com/FluentRead/FluentRead/pull/1009) 的检查状态不能代替移动端视觉和触摸验收。此前服务选择与主线整合记录见[主线整合报告](./main-followup.md)。
+以下字幕与原生历史验收对应产品源码 `f5a82d11a5b6b6a5de2f2ea726065a56cdb2e6ca`；随后新增的触屏入口修复见下节，历史结果不转记为新包。受控生产 Edge 的动作检查和 18 张原图复核在声明范围内通过；真实 Safari Simulator 已在**暂停状态**完成菜单正常打开、关闭和入口焦点返回，播放中菜单、滚动与双语同帧仍未验收。f5a Firefox 已完成既存文档翻译、Home 返回、恢复和重译，但暴露了法文、阿文输出质量问题。对应共享修复单独提交为 [PR #1014](https://github.com/FluentRead/FluentRead/pull/1014)；其 d6b135e 生产包已在另一轮 Android 翻译—恢复—重译中显示对应中文，范围及供应商来源限制见下文。[PR #1009](https://github.com/FluentRead/FluentRead/pull/1009) 的检查状态不能代替移动端视觉和触摸验收。此前服务选择与主线整合记录见[主线整合报告](./main-followup.md)。
+
+## 触屏悬浮入口的能力判断修复
+
+F32 的专用 Android Firefox 实际入口只有 40px，折叠变换使右侧主体超出 360px 可见视口。F33 在同一阅读文档连续三次读到 `maxTouchPoints=5`、`pointer:coarse=false`、`any-pointer:coarse=false`，原有粗指针媒体查询不足以覆盖这个实际触屏环境。现在组件在首次渲染前读取硬件触摸能力：触屏主体及紧凑、漫画模式保留完整 44px 入口，不再沿边缘平移或裁切；同时由 `any-pointer:coarse` 支持浏览器报告的粗指针。没有触摸能力的桌面呈现保持原规则。
+
+五份定向文件共 106 项、类型检查和测试审计通过，Chrome、Firefox、Safari Web、userscript 生产构建及 userscript 校验通过。受控 Edge 首次挂载前开启触摸能力，并实际断言硬件 class、计算样式、可见视口与五个圆内命中点。14 项功能检查通过，包括取消迟到响应、翻译—恢复—重译、拖动、刷新、横屏、深色设置与卸载后重挂载；但关闭测试浏览器时观察到一次前台激活，整轮仍判失败，未作为完整验收通过。六张未经修改的原图均已查看。随后仅修正本任务浏览器脚本的正常退出：在原归属校验器清理前请求 CDP 正常关闭，焦点事件继续监控至进程消失。第二轮同一生产产物的 14 项检查全部通过，页面与 worker 错误为零，未记录前台激活，精确归属清理成功并删除临时 profile；第一轮失败原件保留。见[实际报告](./current-touch-edge/report.json)和[原件复制索引](./current-touch-edge/provenance.json)。
+
+![触屏入口保持完整 44px，位于阅读页可见视口内](./current-touch-edge/portrait-idle.png)
+
+Edge 使用本地翻译响应和明确标记的可见视口夹具，不能证明原生软键盘、在线供应商或 Firefox 的非粗指针路径。新修复的 Android 原生复验仍待完成。F33 已返回原阅读页并释放所属运行资源，历史目标 Off 尚未恢复，原始 cleanup 保持失败；未知旧标签未操作，旧设置页是否关闭仍未观察到。
 
 ## 当前已确认的范围
 
