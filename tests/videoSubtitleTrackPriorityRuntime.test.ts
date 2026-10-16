@@ -47,6 +47,8 @@ import {
 import {audioInit} from './fixtures/hlsAudio';
 import {YOUTUBE_TIMED_TEXT_MESSAGE} from '@/src/features/video-subtitle/content/youtubeTimedTextBridgeCore';
 import * as subtitleLogic from '@/src/features/video-subtitle/content/subtitleLogic';
+import {createSubtitleLayoutObserver} from '@/src/features/video-subtitle/content/subtitleLayoutObserver';
+import {VIDEO_SUBTITLE_SCROLL_HOST_ID} from '@/src/features/video-subtitle/content/subtitleControlLayout';
 
 // 英文状态刷新依赖运行时已加载的资源包；测试注册真实文案，生产仍按当前语言加载。
 registerAllUiLanguageBundles();
@@ -247,6 +249,8 @@ function mobileYoutubeLayoutFixture() {
   defineBrowserPort(f.video, 'offsetWidth', {configurable: true, value: 402});
   defineBrowserPort(f.video, 'offsetHeight', {configurable: true, value: 226});
   f.player.classList.add('ytp-mweb-player');
+  // 继承的桌面入口端口只供按钮挂载；移动几何没有这条桌面控件，不给它虚构整个播放器的障碍矩形。
+  defineBrowserPort(f.player.querySelector('.ytp-right-controls')!, 'getBoundingClientRect', {value: () => ({...bounds, width: 0, height: 0, right: 0, bottom: 48})});
   const scope = f.document.createElement('div'); scope.id = 'player-container-id'; scope.className = 'player-container sticky-player';
   f.player.before(scope); scope.appendChild(f.player);
   const root = f.document.createElement('ytm-custom-control');
@@ -263,6 +267,75 @@ function mobileYoutubeLayoutFixture() {
 }
 
 describe('public mounted mobile YouTube subtitle control layout', () => {
+  it('滚动字幕通过真实入口开菜单时撤回兄弟host，关闭恢复同句位置，Off彻底清理', async () => {
+    ports.config.videoPreferHumanSubtitles = false;
+    const f = mobileYoutubeLayoutFixture();
+    for (const [className, left, top, width, height] of [
+      ['player-controls-middle-core-buttons', 91, 133, 220, 56], ['player-controls-top', 234, 48, 144, 48],
+    ] as const) {
+      const node = f.document.createElement('div'); node.className = className; f.root.appendChild(node);
+      defineBrowserPort(node, 'getBoundingClientRect', {value: () => ({left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON() {return {};}})});
+    }
+    const text = 'This unusually long caption remains paused while the menu opens. '.repeat(10);
+    f.start(); f.emitTimedText([{startMs: 0, durationMs: 20000, text}]); f.setCaption(text); await vi.advanceTimersByTimeAsync(32);
+    const panel = f.document.getElementById(VIDEO_SUBTITLE_PANEL_ID)!;
+    defineBrowserPort(panel, 'scrollHeight', {get: () => 600}); defineBrowserPort(panel, 'clientHeight', {get: () => 75});
+    panel.scrollTop = 120;
+    const layer = f.document.getElementById(VIDEO_TRANSLATION_LAYER_ID)!, menu = f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)!;
+    expect(panel.parentElement?.id).toBe(VIDEO_SUBTITLE_SCROLL_HOST_ID); expect(layer.parentElement).toBe(f.player);
+    const toggleMenu = async () => {
+      const event = new f.window.Event('click', {bubbles: true}); Object.defineProperty(event, 'isTrusted', {value: true});
+      f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)!.dispatchEvent(event); await settle();
+    };
+    await toggleMenu();
+    expect(menu.hidden).toBe(false); expect(menu.parentElement).toBe(f.player);
+    expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull(); expect(panel.parentElement).toBe(layer);
+    expect(panel.hasAttribute('data-fluent-read-subtitle-scrollable')).toBe(false); expect(panel.hasAttribute('tabindex')).toBe(false);
+    expect(panel.style.getPropertyValue('--fluent-read-video-subtitle-padding')).toBeFalsy();
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull(); expect(f.displayed().source).toBe(text.trim());
+    await toggleMenu();
+    expect(menu.hidden).toBe(true); expect(panel.parentElement?.id).toBe(VIDEO_SUBTITLE_SCROLL_HOST_ID); expect(panel.scrollTop).toBe(120);
+    expect(f.document.querySelectorAll('#' + VIDEO_SUBTITLE_PANEL_ID)).toHaveLength(1);
+    await toggleMenu(); clickMenu(f, '[data-mode="off"]'); await settle();
+    expect(ports.config.videoTranslationEnabled).toBe(false); expect(menu.isConnected).toBe(false);
+    expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull(); expect(panel.hasAttribute('tabindex')).toBe(false);
+  });
+
+  it('中部和顶部控件单独显隐也触发空区重排，不依赖媒体或周期同步', async () => {
+    ports.config.videoPreferHumanSubtitles = false;
+    const f = mobileYoutubeLayoutFixture();
+    const middle = f.document.createElement('div'); middle.className = 'player-controls-middle-core-buttons';
+    const top = f.document.createElement('div'); top.className = 'player-controls-top';
+    const bounds = (left: number, y: number, width: number, height: number) => ({left, top: y, width, height, right: left + width, bottom: y + height, x: left, y, toJSON() {return {};}});
+    defineBrowserPort(middle, 'getBoundingClientRect', {value: () => bounds(91, 133, 220, 56)});
+    defineBrowserPort(top, 'getBoundingClientRect', {value: () => bounds(234, 48, 144, 48)});
+    middle.setAttribute('style', 'visibility:hidden'); top.setAttribute('style', 'visibility:hidden'); f.root.append(middle, top);
+    const text = 'The controls change while this caption remains paused.';
+    f.start(); f.emitTimedText([{startMs: 0, durationMs: 20000, text}]); f.setCaption(text); await vi.advanceTimersByTimeAsync(32);
+    expect(f.displayed().active).toBe(true); expect(f.displayed().source).toBe(text);
+    const panel = f.document.getElementById(VIDEO_SUBTITLE_PANEL_ID)!;
+    expect(Number.parseFloat(panel.style.maxWidth)).toBeGreaterThan(250);
+    middle.setAttribute('style', 'visibility:visible'); top.setAttribute('style', 'visibility:visible'); await vi.advanceTimersByTimeAsync(16);
+    expect(Number.parseFloat(panel.style.maxWidth)).toBeLessThan(180); expect(Number.parseFloat(panel.style.maxHeight)).toBeLessThan(80);
+    middle.setAttribute('style', 'visibility:hidden'); top.setAttribute('style', 'visibility:hidden'); await vi.advanceTimersByTimeAsync(16);
+    expect(Number.parseFloat(panel.style.maxWidth)).toBeGreaterThan(250);
+  });
+
+  it('没有ResizeObserver的环境仍可调度，销毁后迟到帧与控件记录不能重新布局', () => {
+    const f = fixture(undefined, 'youtube');
+    const callbacks: MutationCallback[] = [], frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('ResizeObserver', undefined);
+    vi.stubGlobal('MutationObserver', class {constructor(callback: MutationCallback) {callbacks.push(callback);} observe() {} disconnect() {}});
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {frames.push(callback); return frames.length;});
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const layout = vi.fn(), observer = createSubtitleLayoutObserver(layout, () => true);
+    callbacks[0]([], {} as MutationObserver);
+    observer.observe(f.player, f.video); frames[0](0); expect(layout).toHaveBeenCalledOnce();
+    observer.schedule(); observer.destroy(); frames[1](16); callbacks[0]([], {} as MutationObserver); observer.schedule();
+    expect(layout).toHaveBeenCalledOnce(); expect(frames).toHaveLength(2);
+  });
+
   it('updates sibling control visibility and replacement within one layout frame without a manual subtitle sync', async () => {
     const f = mobileYoutubeLayoutFixture(); f.root.style.visibility = 'hidden';
     f.start(); f.setCaption('Mobile sibling control caption.');

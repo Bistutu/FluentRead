@@ -123,7 +123,7 @@ import {mountPlatformCaptions} from './platformRuntime';
 import {YoutubeHumanCaptions} from './youtubeHumanCaptions';
 import {createVideoSubtitleDownloads} from './downloads';
 import {confirmVideoSubtitleExport} from './exportPrompt';
-import {getYoutubeSubtitleControlsScope, YOUTUBE_SUBTITLE_CONTROLS_SELECTOR} from './youtubeControlsScope';
+import {createSubtitleLayoutObserver} from './subtitleLayoutObserver';
 
 // 兼容既有测试与外部调用方；AI 时间轴的实现位于 video-ai 目录。
 export {
@@ -208,62 +208,14 @@ export function mountVideoSubtitleTranslation(): () => void {
   });
   const closeSentenceLearning = learning.close;
   const openSentenceLearning = learning.open;
-  let layoutPlayer: HTMLElement | null = null;
-  let layoutVideo: HTMLVideoElement | null = null;
-  let layoutControlsScope: HTMLElement | null = null;
-  let layoutControls: HTMLElement[] = [];
-  let layoutFrame: number | undefined;
-  const scheduleSubtitleLayout = () => {
-    if (destroyed || layoutFrame !== undefined) return;
-    layoutFrame = window.requestAnimationFrame(() => {
-      layoutFrame = undefined;
-      if (destroyed) return;
-      const target = playerLocator.getTarget();
-      if (learning.isOpen() && target?.video === observedVideo) learning.syncPlayer(target.player, target.video);
-      if (menuElement?.isConnected) syncVideoPlayerMenuLayout(menuElement);
-      syncTranslationOverlayPosition(observedContainer);
-    });
-  };
-  const layoutObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(scheduleSubtitleLayout) : null;
-  // 移动端底控在播放器的兄弟分支中，显隐不改变 video 尺寸；只订阅同视频范围，忽略自有字幕/菜单写入。
-  const controlsObserver = new MutationObserver(records => {
-    const scope = layoutControlsScope;
-    if (!scope || !layoutPlayer || !layoutVideo || destroyed) return;
-    const ownUi = (node: Node) => node instanceof Element && Boolean(node.closest('.fluent-read-video-ui'));
-    const relevant = records.filter(record => !ownUi(record.target)
-      && (record.type === 'attributes' || [...record.addedNodes, ...record.removedNodes].some(node => !ownUi(node))));
-    if (!relevant.length) return;
-    // 容器重绑或新增第二个视频后立即收回旧订阅，避免继续读取其它视频的控件。
-    if (getYoutubeSubtitleControlsScope(layoutPlayer, layoutVideo) !== scope) {
-      observeSubtitleLayout(layoutPlayer, layoutVideo);
-      return;
-    }
-    const currentControls = Array.from(scope.querySelectorAll<HTMLElement>(YOUTUBE_SUBTITLE_CONTROLS_SELECTOR)).filter(node => !ownUi(node));
-    const controls = [...layoutControls, ...currentControls];
-    const related = (node: Node) => controls.some(control => node === control || node.contains(control) || control.contains(node));
-    const changed = relevant.some(record => record.type === 'attributes' ? related(record.target)
-      : [...record.addedNodes, ...record.removedNodes].some(node => !ownUi(node) && related(node)));
-    layoutControls = currentControls;
-    if (changed) scheduleSubtitleLayout();
-  });
-  const observeSubtitleLayout = (player: HTMLElement | null, video: HTMLVideoElement | null) => {
-    const scope = player && video && isYouTubeVideoPage() ? getYoutubeSubtitleControlsScope(player, video) : null;
-    if (layoutPlayer === player && layoutVideo === video && layoutControlsScope === scope) return;
-    layoutObserver?.disconnect();
-    controlsObserver.disconnect();
-    layoutPlayer = player;
-    layoutVideo = video;
-    layoutControlsScope = scope;
-    layoutControls = scope ? Array.from(scope.querySelectorAll<HTMLElement>(YOUTUBE_SUBTITLE_CONTROLS_SELECTOR)) : [];
-    if (player) layoutObserver?.observe(player);
-    if (video) layoutObserver?.observe(video);
-    if (scope) controlsObserver.observe(scope, {subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'id']});
-    if (player && video) scheduleSubtitleLayout();
-    else if (layoutFrame !== undefined) {
-      window.cancelAnimationFrame(layoutFrame);
-      layoutFrame = undefined;
-    }
-  };
+  const subtitleLayout = createSubtitleLayoutObserver(() => {
+    const target = playerLocator.getTarget();
+    if (learning.isOpen() && target?.video === observedVideo) learning.syncPlayer(target.player, target.video);
+    if (menuElement?.isConnected) syncVideoPlayerMenuLayout(menuElement);
+    syncTranslationOverlayPosition(observedContainer);
+  }, isYouTubeVideoPage);
+  const scheduleSubtitleLayout = subtitleLayout.schedule;
+  const observeSubtitleLayout = subtitleLayout.observe;
   let pretranslationTrackRequest: Promise<void> | undefined;
   let pretranslationTrackRequestKey = '';
   let pretranslationTrackRetryAt = 0;
@@ -1891,13 +1843,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     observedVideo = null;
     if (uiSyncTimer !== undefined) window.clearInterval(uiSyncTimer);
     captionObserver?.disconnect();
-    layoutObserver?.disconnect();
-    controlsObserver.disconnect();
-    if (layoutFrame !== undefined) window.cancelAnimationFrame(layoutFrame);
-    layoutPlayer = null;
-    layoutVideo = null;
-    layoutControlsScope = null;
-    layoutControls = [];
+    subtitleLayout.destroy();
     unsubscribeConfig();
     document.removeEventListener('click', handleDocumentClick, true);
     document.removeEventListener('keydown', handleDocumentKeydown, true);

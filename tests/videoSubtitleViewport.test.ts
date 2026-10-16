@@ -22,6 +22,11 @@ import {DEFAULT_VIDEO_SUBTITLE_APPEARANCE} from '@/src/core/config/videoSubtitle
 import {getYoutubeSubtitleControlsScope} from '@/src/features/video-subtitle/content/youtubeControlsScope';
 import {
   applyVideoDisplayState,
+  getOrCreateTranslationOverlay,
+  getOrCreateNormalizedCaptionOverlay,
+  getOrCreateVideoSubtitleLayer,
+  clearRenderedVideoTranslation,
+  deactivateNormalizedVideoCaption,
   getXVideoSubtitleViewport,
   installVideoSubtitleStyle,
   removeTranslationOverlay,
@@ -31,6 +36,7 @@ import {
   VIDEO_TRANSLATION_LAYER_ID,
   VIDEO_TRANSLATION_OVERLAY_ID,
 } from '@/src/features/video-subtitle/content/ui';
+import {findOwnedSubtitlePanel, getVisibleYoutubeSubtitleControls, VIDEO_SUBTITLE_SCROLL_HOST_ID} from '@/src/features/video-subtitle/content/subtitleControlLayout';
 
 type Rect = {left: number; top: number; width: number; height: number; right: number; bottom: number};
 
@@ -93,7 +99,219 @@ function fixture(options: {
   return {document, window, player, video, layer};
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {vi.restoreAllMocks(); vi.unstubAllGlobals();});
+
+function mobileControlFixture() {
+  const f = fixture({player: rect(0, 48, 402, 226), intrinsic: [400, 300]});
+  Object.defineProperty(f.window, 'location', {configurable: true, value: new URL('https://m.youtube.com/watch?v=controls')});
+  f.player.id = 'movie_player'; f.player.classList.add('html5-video-player', 'ytp-mweb-player');
+  const scope = f.document.createElement('div'); scope.id = 'player-container-id'; scope.className = 'player-container';
+  f.player.before(scope); scope.appendChild(f.player);
+  const controls = f.document.createElement('div'); controls.id = 'player-control-overlay';
+  controls.style.pointerEvents = 'auto'; controls.style.position = 'absolute'; controls.style.zIndex = '6';
+  scope.appendChild(controls);
+  const obstacles = [
+    ['player-controls-top', rect(234, 48, 144, 48)], ['player-controls-middle-core-buttons', rect(91, 133, 220, 56)],
+    ['player-controls-bottom', rect(12, 200, 312, 44)], ['ytPlayerProgressBarDragContainer', rect(30, 230, 342, 44)],
+  ] as const;
+  for (const [className, bounds] of obstacles) {
+    const node = f.document.createElement('div'); node.className = className; controls.appendChild(node);
+    Object.defineProperty(node, 'getBoundingClientRect', {value: () => bounds});
+  }
+  // 浏览器布局端口：同一原字号短句为153×60；真实长句在窄区换成三行，压紧内距后72高；极长句高600。
+  let cue: 'short' | 'long' | 'huge' = 'short';
+  const overlay = getOrCreateTranslationOverlay(f.player), original = getOrCreateNormalizedCaptionOverlay(f.player);
+  const panel = overlay.parentElement!;
+  let scrollPosition = 0;
+  f.layer.classList.add('fluent-read-video-normalized-caption-active');
+  const dimensions = () => {
+    const maximum = Number.parseFloat(panel.style.getPropertyValue('max-width').match(/[\d.]+/)?.[0] || '') || 277;
+    const width = Math.min(maximum, cue === 'short' ? 153 : 241);
+    const compact = panel.style.getPropertyValue('--fluent-read-video-subtitle-gap') === '2px';
+    const full = cue === 'huge' ? 600 : cue === 'short' || width >= 241 ? 60 : compact ? 72 : 81;
+    const maximumHeight = Number.parseFloat(panel.style.getPropertyValue('max-height').match(/[\d.]+/)?.[0] || '');
+    return {width, full, height: Number.isFinite(maximumHeight) ? Math.min(full, maximumHeight) : full};
+  };
+  Object.defineProperties(panel, {
+    getBoundingClientRect: {value: () => {const d = dimensions(), top = Number.parseFloat(panel.style.top);
+      // 模拟真实浏览器在临时移除max-height时夹回scrollTop；布局完成后应恢复同句滚动位置。
+      scrollPosition = Math.min(scrollPosition, Math.max(0, d.full - d.height));
+      return rect(Number.parseFloat(panel.style.left.match(/[\d.]+/)?.[0] || '') || 0, 48 + (Number.isFinite(top) ? top : 226 - Number.parseFloat(panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom').match(/[\d.]+/)?.[0] || '') - d.height), d.width, d.height);}},
+    scrollHeight: {get: () => dimensions().full}, clientHeight: {get: () => dimensions().height},
+    scrollTop: {get: () => scrollPosition, set: (value: number) => {scrollPosition = value;}},
+  });
+  const nativeBounds = f.window.HTMLElement.prototype.getBoundingClientRect;
+  vi.spyOn(f.window.HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    if (this.id === VIDEO_SUBTITLE_SCROLL_HOST_ID) return {...rect(20, 70, 402, 226), x: 20, y: 70, toJSON() {return {};}} as DOMRect;
+    return nativeBounds.call(this);
+  });
+  const setCue = (next: typeof cue) => {
+    cue = next; original.textContent = next === 'short' ? '(Audience) Good.' : next === 'long' ? 'Good morning. How are you?' : 'A very long caption '.repeat(40);
+    overlay.textContent = next === 'short' ? '（观众）很好。' : next === 'long' ? '早上好。你好吗？' : '很长的字幕。'.repeat(40);
+  };
+  const container = f.document.createElement('div'); f.player.appendChild(container);
+  const sync = () => syncTranslationOverlayPosition(container);
+  setCue('short');
+  return {...f, scope, controls, obstacles, panel, overlay, original, container, setCue, sync};
+}
+
+describe('mobile YouTube readable control avoidance', () => {
+  it('控制区域跳过自有UI和零尺寸，去重父子组并限制可见障碍数', () => {
+    const f = mobileControlFixture();
+    const add = (className: string, bounds: Rect, owned = false) => {
+      const node = f.document.createElement('div'); node.className = className + (owned ? ' fluent-read-video-ui' : '');
+      Object.defineProperty(node, 'getBoundingClientRect', {value: () => bounds}); f.controls.appendChild(node);
+    };
+    add('player-controls-middle-core-buttons', rect(91, 133, 220, 56));
+    add('player-controls-middle-core-buttons', rect(91, 133, 220, 56), true);
+    add('player-controls-bottom', rect(1, 1, 0, 0));
+    expect(getVisibleYoutubeSubtitleControls(f.player)).toHaveLength(4);
+    add('player-controls-bottom', rect(91, 133, 221, 56));
+    add('player-controls-bottom', rect(91, 133, 220, 57));
+    for (let i = 0; i < 20; i++) add('player-controls-bottom', rect(i, 240, 10, 10));
+    expect(getVisibleYoutubeSubtitleControls(f.player)).toHaveLength(16);
+  });
+
+  it('仅player全屏不避让未绘制的外部兄弟控件，scope全屏才将它们纳入空区与滚动宿主', () => {
+    const f = mobileControlFixture();
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: f.player});
+    f.sync(); expect(f.panel.dataset.fluentReadSubtitleLayout).toBeUndefined();
+    expect(f.panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom')).toContain('12px');
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: f.scope});
+    f.setCue('huge'); f.sync();
+    expect(f.panel.dataset.fluentReadSubtitleLayout).toBe('scroll');
+    expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)?.parentElement).toBe(f.scope);
+  });
+  it('短句和长句在顶部/中部/底部控件之间完整显示，暂停也保留原字号；隐藏后回到底部中心', () => {
+    const f = mobileControlFixture(); Object.defineProperty(f.video, 'paused', {value: true});
+    for (const cue of ['short', 'long'] as const) {
+      f.setCue(cue); f.sync();
+      const panel = f.panel.getBoundingClientRect();
+      expect(f.panel.dataset.fluentReadSubtitleLayout).toBe('free');
+      expect(f.panel.hasAttribute('tabindex')).toBe(false); expect(f.panel.scrollHeight).toBeLessThanOrEqual(panel.height);
+      expect(f.panel.style.getPropertyValue('--fluent-read-video-subtitle-font-size')).toBe('16px');
+      for (const [, obstacle] of f.obstacles) expect(panel.right <= obstacle.left || panel.left >= obstacle.right || panel.bottom <= obstacle.top || panel.top >= obstacle.bottom).toBe(true);
+      expect(panel.left).toBeGreaterThanOrEqual(50); expect(panel.right).toBeLessThanOrEqual(351.5);
+      expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull();
+    }
+    f.controls.hidden = true; f.sync();
+    expect(f.panel.dataset.fluentReadSubtitleLayout).toBeUndefined(); expect(f.panel.style.top).toBe('auto');
+    expect(f.panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom')).toBe('12px');
+    expect(f.panel.style.getPropertyValue('--fluent-read-video-subtitle-padding')).toBeUndefined();
+    expect(f.panel.style.getPropertyValue('--fluent-read-video-subtitle-gap')).toBeUndefined();
+  });
+
+  it('极长句使用同scope遮罩之上的唯一自有host，保留模式、原字号及周期滚动位置', () => {
+    const f = mobileControlFixture(); f.setCue('huge'); f.sync();
+    const host = f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)!;
+    expect(host.parentElement).toBe(f.scope); expect(host.previousElementSibling).toBe(f.controls);
+    expect(f.layer.parentElement).toBe(f.player); expect(f.panel.parentElement).toBe(host);
+    expect(host.style.transform).toBe('translate(-20px, -22px) scale(1, 1)');
+    expect(host.style.getPropertyValue('clip-path')).toBe(f.layer.style.getPropertyValue('clip-path'));
+    expect(f.panel.getAttribute('tabindex')).toBe('0'); expect(f.panel.getAttribute('role')).toBe('region');
+    expect(f.panel.style.getPropertyValue('--fluent-read-video-subtitle-font-size')).toBe('16px');
+    expect(getOrCreateTranslationOverlay(f.player)).toBe(f.overlay);
+    expect(getOrCreateNormalizedCaptionOverlay(f.player)).toBe(f.original);
+    expect(f.document.querySelectorAll(`#${VIDEO_SUBTITLE_PANEL_ID}`)).toHaveLength(1);
+    f.panel.scrollTop = 120; f.sync(); expect(f.panel.scrollTop).toBe(120);
+    f.overlay.textContent += '译文渐进更新'; f.sync(); expect(f.panel.scrollTop).toBe(120);
+    f.original.textContent = 'A different long sentence '.repeat(40); f.sync(); expect(f.panel.scrollTop).toBe(0);
+    for (const mode of ['translation-only', 'original-only', 'bilingual'] as const) {
+      config.videoSubtitleDisplayMode = mode; applyVideoDisplayState(f.container);
+      expect(host.classList.contains('fluent-read-video-display-translation-only')).toBe(mode === 'translation-only');
+      expect(host.classList.contains('fluent-read-video-display-original-only')).toBe(mode === 'original-only');
+    }
+    deactivateNormalizedVideoCaption(f.document);
+    expect(host.classList.contains('fluent-read-video-normalized-caption-active')).toBe(false);
+    config.videoSubtitleVisible = false; applyVideoDisplayState(f.container);
+    expect(f.panel.parentElement).toBe(f.layer); expect(host.isConnected).toBe(false);
+    expect(f.panel.hasAttribute('tabindex')).toBe(false);
+  });
+
+  it('临时host随同视频scope重绑，layer被替换时采用原panel且不造同ID副本', () => {
+    const f = mobileControlFixture();
+    const foreignLayer = f.document.createElement('div');
+    expect(findOwnedSubtitlePanel(foreignLayer, VIDEO_SUBTITLE_PANEL_ID)).toBeNull(); expect(f.panel.parentElement).toBe(f.layer);
+    f.setCue('huge'); f.sync();
+    const oldHost = f.panel.parentElement!;
+    f.scope.id = 'old-container';
+    const next = f.document.createElement('div'); next.id = 'player-container-id'; next.className = 'player-container';
+    f.scope.after(next); next.append(f.player, f.controls); f.sync();
+    expect(oldHost.isConnected).toBe(false); expect(f.panel.parentElement?.parentElement).toBe(next);
+    f.layer.remove(); getOrCreateTranslationOverlay(f.player);
+    expect(f.document.querySelectorAll(`#${VIDEO_SUBTITLE_PANEL_ID}`)).toHaveLength(1);
+    expect(f.document.getElementById(VIDEO_SUBTITLE_PANEL_ID)).toBe(f.panel);
+    expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull();
+  });
+
+  it('控件占满画面而没有可读空区时撤回已有滚动host，不留下空卡片或临时交互', () => {
+    const f = mobileControlFixture(); f.setCue('huge'); f.sync();
+    expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).not.toBeNull();
+    const covering = f.document.createElement('div'); covering.className = 'player-controls-top'; f.controls.appendChild(covering);
+    Object.defineProperty(covering, 'getBoundingClientRect', {value: () => rect(0, 48, 402, 226)});
+    f.sync();
+    expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull(); expect(f.panel.parentElement).toBe(f.layer);
+    expect(f.panel.hasAttribute('tabindex')).toBe(false); expect(f.panel.dataset.fluentReadSubtitleLayout).toBeUndefined();
+    expect(f.original.textContent).toContain('A very long caption');
+  });
+
+  it('全屏只含player时在原layer滚动；不可测宿主不残留，自有显示状态清空也能释放交互', () => {
+    const f = mobileControlFixture(); f.player.appendChild(f.controls); f.setCue('huge');
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: f.player}); f.sync();
+    expect(f.panel.parentElement).toBe(f.layer); expect(f.panel.getAttribute('tabindex')).toBe('0');
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: null}); f.scope.appendChild(f.controls);
+    Object.defineProperty(f.layer, 'clientWidth', {configurable: true, value: 0}); Object.defineProperty(f.layer, 'clientHeight', {configurable: true, value: 0}); f.sync();
+    expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).not.toBeNull();
+    vi.mocked(f.window.HTMLElement.prototype.getBoundingClientRect).mockReturnValue({...rect(0, 0, 0, 0), x: 0, y: 0, toJSON() {return {};}} as DOMRect);
+    f.sync(); expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull(); expect(f.panel.parentElement).toBe(f.layer);
+    clearRenderedVideoTranslation(f.document); f.original.textContent = ''; config.videoSubtitleVisible = false; applyVideoDisplayState(f.container);
+    expect(f.panel.hasAttribute('tabindex')).toBe(false);
+  });
+
+  it('退出滚动host只保留卡片原有焦点，不自动聚焦；按压中的Space尾事件仍由该卡片消费', () => {
+    const f = mobileControlFixture(); f.setCue('huge'); f.sync();
+    let active: Element = f.document.body;
+    Object.defineProperty(f.document, 'activeElement', {configurable: true, get: () => active});
+    const focus = vi.spyOn(f.panel, 'focus').mockImplementation(() => {active = f.panel;});
+    const append = f.layer.appendChild.bind(f.layer);
+    Object.defineProperty(f.layer, 'appendChild', {value: (node: Node) => {if (node === f.panel && active === f.panel) active = f.document.body; return append(node);}});
+    f.controls.hidden = true; f.sync(); expect(focus).not.toHaveBeenCalled();
+    f.controls.hidden = false; f.sync(); f.panel.focus();
+    const space = new f.window.Event('keydown', {bubbles: true, cancelable: true}); Object.defineProperty(space, 'key', {value: ' '}); f.panel.dispatchEvent(space);
+    f.controls.hidden = true; f.sync();
+    expect(f.document.activeElement).toBe(f.panel); expect(f.panel.hasAttribute('tabindex')).toBe(false);
+    const play = vi.fn(); f.scope.addEventListener('keyup', play);
+    const up = new f.window.Event('keyup', {bubbles: true}); Object.defineProperty(up, 'key', {value: ' '}); f.document.activeElement!.dispatchEvent(up);
+    expect(play).not.toHaveBeenCalled();
+  });
+
+  it('滚动键实际改变卡片位置，Tab/触摸保留原生默认动作，尾随事件不会冒泡启动宿主', () => {
+    const f = mobileControlFixture(); f.setCue('huge'); f.sync();
+    const hostPlay = vi.fn(); f.scope.addEventListener('click', hostPlay); f.scope.addEventListener('keydown', hostPlay); f.scope.addEventListener('keyup', hostPlay);
+    const key = (type: string, value: string, shiftKey = false) => {const event = new f.window.Event(type, {bubbles: true, cancelable: true}); Object.defineProperties(event, {key: {value}, shiftKey: {value: shiftKey}}); f.panel.dispatchEvent(event); return event;};
+    expect(key('keydown', 'ArrowDown').defaultPrevented).toBe(true); expect(f.panel.scrollTop).toBe(40);
+    key('keyup', 'ArrowDown'); key('keydown', 'End'); expect(f.panel.scrollTop).toBe(f.panel.scrollHeight - f.panel.clientHeight);
+    key('keydown', 'Home'); expect(f.panel.scrollTop).toBe(0); key('keydown', ' '); expect(f.panel.scrollTop).toBeGreaterThan(0);
+    key('keydown', 'ArrowUp'); key('keydown', 'PageDown'); key('keydown', 'PageUp'); key('keydown', ' ', true);
+    expect(key('keydown', 'Enter').defaultPrevented).toBe(true);
+    expect(key('keydown', 'Tab').defaultPrevented).toBe(false); expect(key('keydown', 'Escape').defaultPrevented).toBe(false);
+    key('keydown', 'k'); key('keyup', 'k'); expect(hostPlay).not.toHaveBeenCalled();
+    const touch = new f.window.Event('touchstart', {bubbles: true, cancelable: true}); f.panel.dispatchEvent(touch); expect(touch.defaultPrevented).toBe(false);
+    f.controls.hidden = true; f.sync();
+    const end = new f.window.Event('touchend', {bubbles: true, cancelable: true}); f.panel.dispatchEvent(end); expect(end.defaultPrevented).toBe(false);
+    f.panel.dispatchEvent(new f.window.Event('click', {bubbles: true})); key('keyup', ' '); expect(hostPlay).not.toHaveBeenCalled();
+    expect(f.panel.hasAttribute('tabindex')).toBe(false); expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull();
+    key('keydown', 'z'); expect(hostPlay).toHaveBeenCalledOnce();
+    const outsideWheel = vi.fn(); f.scope.addEventListener('wheel', outsideWheel); f.panel.dispatchEvent(new f.window.Event('wheel', {bubbles: true})); expect(outsideWheel).toHaveBeenCalledOnce();
+    f.controls.hidden = false; f.sync(); config.videoSubtitleAppearance = {...DEFAULT_VIDEO_SUBTITLE_APPEARANCE, position: 'top'}; f.sync();
+    expect(f.panel.hasAttribute('tabindex')).toBe(false); expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull();
+    config.videoSubtitleAppearance = {...DEFAULT_VIDEO_SUBTITLE_APPEARANCE}; f.sync(); clearRenderedVideoTranslation(f.document);
+    expect(f.panel.hasAttribute('tabindex')).toBe(false);
+    f.setCue('huge'); f.sync(); const other = f.document.createElement('div'); f.document.body.appendChild(other); getOrCreateVideoSubtitleLayer(other);
+    expect(f.panel.parentElement).toBe(f.layer); expect(f.panel.hasAttribute('tabindex')).toBe(false);
+    removeTranslationOverlay(); expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull();
+  });
+});
 
 describe('X video subtitle viewport', () => {
   it('finds the centered painted portrait area for contain', () => {
