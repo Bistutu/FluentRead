@@ -54,6 +54,7 @@ describe('userscript remote UI language data', () => {
         await expect(loader.ensureUiLanguageBundle('en-US')).resolves.toBe(true);
         expect(hasUiLanguageBundle('en-US')).toBe(true);
         for (const key of deeplxKeys) expect(translate(key, 'en-US')).toBe(extensionBundles['en-US'].messages[key]);
+        expect((await import('@/src/core/i18n')).translateLegacyText('网站阅读字体', 'en-US')).toBe(extensionBundles['en-US'].legacyText['网站阅读字体']);
         expect(JSON.stringify(pinned.english)).toBe(original);
         expect(requests).toEqual([]);
     });
@@ -73,7 +74,7 @@ describe('userscript remote UI language data', () => {
         vi.stubGlobal('pako', {ungzip});
         const original = UI_LANGUAGE_BUNDLES['en-US'];
         const messages = Object.fromEntries(Object.entries(original.messages).filter(([key]) => !key.startsWith('document.')));
-        const expected = {...original, messages};
+        const expected = {...original, messages, legacyText: {...original.legacyText, '网站阅读字体': extensionBundles['en-US'].legacyText['网站阅读字体']}};
         const core = await import('@/src/core/i18n');
         expect(core.hasUiLanguageBundle('en-US')).toBe(false);
         const register = vi.spyOn(core, 'registerUiLanguageBundle');
@@ -87,6 +88,7 @@ describe('userscript remote UI language data', () => {
             for (const [key, value] of Object.entries(messages)) expect(core.translate(key, 'en-US')).toBe(value);
             expect(original.legacyText['配置服务']).toBeTruthy();
             expect(core.translateLegacyText('配置服务', 'en-US')).toBe(original.legacyText['配置服务']);
+            expect(core.translateLegacyText('网站阅读字体', 'en-US')).toBe(extensionBundles['en-US'].legacyText['网站阅读字体']);
             expect(core.translateLegacyText('翻译连接：Google；自定义服务：2；凭据和地址已隐藏', 'en-US'))
                 .toBe('Connection: Google; custom services: 2; credentials and addresses hidden');
             await expect(loader.ensureUiLanguageBundle('en-US')).resolves.toBe(true);
@@ -192,9 +194,11 @@ describe('userscript remote UI language data', () => {
                 const loader = await import('@/userscript/uiLanguageBundles');
                 await expect(loader.ensureUiLanguageBundle(language)).resolves.toBe(true);
                 await assertSweepCopy();
+                expect(core.translateLegacyText('网站阅读字体', language)).toBe(extensionBundles[language].legacyText['网站阅读字体']);
+                expect(JSON.stringify(original)).toBe(remoteSource.trimEnd());
                 expect(register).toHaveBeenCalledTimes(1);
                 expect(register).toHaveBeenCalledWith(language, {
-                    ...original, messages: {...recovery, ...original.messages, ...aiRequestTimeoutMessages[language], ...sweepCopy(language), ...deeplxCopy(language)},
+                    ...original, legacyText: {...original.legacyText, '网站阅读字体': extensionBundles[language].legacyText['网站阅读字体']}, messages: {...recovery, ...original.messages, ...aiRequestTimeoutMessages[language], ...sweepCopy(language), ...deeplxCopy(language)},
                 });
                 for (const [key, text] of Object.entries(recovery)) {
                     expect(core.translate(key, language)).toBe(text);
@@ -239,7 +243,7 @@ describe('userscript remote UI language data', () => {
             await expect(loader.ensureUiLanguageBundle('fr-FR')).resolves.toBe(true);
             expect(register).toHaveBeenCalledTimes(1);
             expect(register).toHaveBeenCalledWith('fr-FR', {
-                ...supplied, messages: {...supplied.messages, ...aiRequestTimeoutMessages['fr-FR'], ...sweepCopy('fr-FR'), ...deeplxCopy('fr-FR')},
+                ...supplied, legacyText: {...supplied.legacyText, '网站阅读字体': extensionBundles['fr-FR'].legacyText['网站阅读字体']}, messages: {...supplied.messages, ...aiRequestTimeoutMessages['fr-FR'], ...sweepCopy('fr-FR'), ...deeplxCopy('fr-FR')},
             });
             expect(core.translate('learning.panelLoadError', 'fr-FR')).toBe('Remote section recovery');
             expect(core.translate('learning.reloadPage', 'fr-FR')).toBe('Remote reload');

@@ -118,7 +118,27 @@
     "video.downloadConnecting": "Connexion à {source} · {attempt}/{attempts}",
     "video.downloadSwitching": "Passage à {source} · {attempt}/{attempts}",
     "video.downloadReceiving": "Téléchargement depuis {source}",
-    "video.downloadRetry": "Réessayer"
+    "video.downloadRetry": "Réessayer",
+    "popup.readingAppearance.title": "Apparence de lecture",
+    "popup.readingAppearance.font": "Police du texte de la page",
+    "popup.readingAppearance.original": "Police du site",
+    "popup.readingAppearance.system": "Police système",
+    "popup.readingAppearance.previewHint": "Prévisualisez immédiatement la police du texte original et traduit. Par défaut, seule cette page est modifiée.",
+    "popup.readingAppearance.remember": "Mémoriser ce site",
+    "popup.readingAppearance.currentSite": "Site actuel",
+    "popup.readingAppearance.saved": "Préférence enregistrée",
+    "popup.readingAppearance.unsaved": "Aucune préférence enregistrée",
+    "popup.readingAppearance.save": "Enregistrer ce choix",
+    "popup.readingAppearance.savedHint": "L’aperçu et la restauration ne concernent que cette page. Utilisez « Enregistrer ce choix » pour modifier la préférence du site.",
+    "popup.readingAppearance.restore": "Restaurer la police du site",
+    "popup.readingAppearance.forget": "Effacer la préférence du site",
+    "popup.readingAppearance.forgetHint": "Après suppression, les nouvelles pages de ce site utiliseront sa police d’origine.",
+    "popup.readingAppearance.retry": "Réessayer le chargement",
+    "popup.readingAppearance.applying": "Application…",
+    "popup.readingAppearance.ready": "Le changement de police ne modifie pas le contenu de la traduction.",
+    "popup.readingAppearance.loading": "Lecture de la page…",
+    "popup.readingAppearance.description": "Choisissez une police confortable pour le texte de cette page.",
+    "popup.readingAppearance.error": "Impossible d’appliquer l’apparence. Attendez le chargement de la page, puis réessayez."
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "La connexion a changé. Générez un nouvel aperçu.",
@@ -131,6 +151,7 @@
     "支持完整 Chat Completions 地址或以 /v1 结尾的 Base URL；模型须支持 Chat Completions。": "Saisissez une URL Chat Completions complète ou une Base URL se terminant par /v1 ; le modèle doit prendre en charge Chat Completions.",
     "网络问题通常几分钟后重试；限流按服务提示恢复；拦截可能需要几小时；日额度通常隔天恢复。": "Réessayez les problèmes réseau après quelques minutes.",
     "DeepLX 地址包含 {{apiKey}} 或 {{token}} 占位符，请填写 API Key；无 Key 地址请移除占位符。": "L’adresse DeepLX contient l’espace réservé {{apiKey}} ou {{token}}. Saisissez une clé API ou supprimez l’espace réservé pour une adresse sans clé.",
-    "刷新列表。": "Actualiser la liste"
+    "刷新列表。": "Actualiser la liste",
+    "网站阅读字体": "Police de lecture du site"
   }
 }

@@ -118,7 +118,27 @@
     "video.downloadConnecting": "Подключение к {source} · {attempt}/{attempts}",
     "video.downloadSwitching": "Переключение на {source} · {attempt}/{attempts}",
     "video.downloadReceiving": "Загрузка из {source}",
-    "video.downloadRetry": "Повторить загрузку"
+    "video.downloadRetry": "Повторить загрузку",
+    "popup.readingAppearance.title": "Оформление чтения",
+    "popup.readingAppearance.font": "Шрифт текста страницы",
+    "popup.readingAppearance.original": "Шрифт сайта",
+    "popup.readingAppearance.system": "Системный шрифт",
+    "popup.readingAppearance.previewHint": "Сразу просмотрите шрифт оригинала и перевода. По умолчанию изменения действуют только на этой странице.",
+    "popup.readingAppearance.remember": "Запомнить для сайта",
+    "popup.readingAppearance.currentSite": "Текущий сайт",
+    "popup.readingAppearance.saved": "Настройка сохранена",
+    "popup.readingAppearance.unsaved": "Нет сохранённой настройки",
+    "popup.readingAppearance.save": "Сохранить выбор",
+    "popup.readingAppearance.savedHint": "Просмотр и восстановление действуют только на этой странице. Чтобы изменить настройку сайта, нажмите «Сохранить выбор».",
+    "popup.readingAppearance.restore": "Вернуть шрифт сайта",
+    "popup.readingAppearance.forget": "Удалить настройку сайта",
+    "popup.readingAppearance.forgetHint": "После удаления новые страницы сайта будут использовать исходный шрифт.",
+    "popup.readingAppearance.retry": "Повторить загрузку",
+    "popup.readingAppearance.applying": "Применение…",
+    "popup.readingAppearance.ready": "Изменение шрифта не меняет содержание перевода.",
+    "popup.readingAppearance.loading": "Чтение текущей страницы…",
+    "popup.readingAppearance.description": "Выберите удобный шрифт текста для этой страницы.",
+    "popup.readingAppearance.error": "Не удалось применить оформление. Дождитесь загрузки страницы и повторите попытку."
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "Подключение изменилось. Создайте новый предварительный просмотр.",
@@ -131,6 +151,7 @@
     "支持完整 Chat Completions 地址或以 /v1 结尾的 Base URL；模型须支持 Chat Completions。": "Введите полный адрес Chat Completions или Base URL, оканчивающийся на /v1; модель должна поддерживать Chat Completions.",
     "网络问题通常几分钟后重试；限流按服务提示恢复；拦截可能需要几小时；日额度通常隔天恢复。": "Повторите сетевой запрос через несколько минут.",
     "DeepLX 地址包含 {{apiKey}} 或 {{token}} 占位符，请填写 API Key；无 Key 地址请移除占位符。": "Адрес DeepLX содержит заполнитель {{apiKey}} или {{token}}. Введите API-ключ либо удалите заполнитель для адреса без ключа.",
-    "刷新列表。": "Обновить список"
+    "刷新列表。": "Обновить список",
+    "网站阅读字体": "Шрифт чтения на сайте"
   }
 }

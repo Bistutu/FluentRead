@@ -1,7 +1,7 @@
 /**
  * @file userscript/uiLanguageBundles.ts
  * 文件职责：按需加载并注册 userscript 的六种非中文界面语言。
- * 主要内容：英文内嵌 gzip；其他语言从静态 JSON 获取并缓存在 GM 私有存储中，注册时补齐缺少的错误恢复、AI 翻译超时、局部划选与 DeepLX 直连文案，保留已发布远端文件内容与提交号。
+ * 主要内容：英文内嵌 gzip；其他语言从静态 JSON 获取并缓存在 GM 私有存储中，注册时补齐缺少的错误恢复、AI 翻译超时、局部划选、DeepLX 直连及配置历史标签文案，保留已发布远端文件内容与提交号。
  * 模块边界：只注册核心 i18n 资源，不访问宿主网页存储；扩展继续使用自己的按需资源加载器。
  */
 import {
@@ -16,6 +16,16 @@ import {inflateGzipBase64} from './compression';
 import {userscriptFetch} from './http';
 import {getStoredValue, setStoredValue} from './storage';
 import {aiRequestTimeoutMessages} from '@/src/core/i18n/messages/aiRequestTimeout';
+
+// 配置导入和历史仍可展示扩展站点偏好；注册时补齐标签，不改变固定远程词典。
+const readingAppearanceLegacyLabels: Readonly<Record<RegisteredUiLanguage, string>> = {
+    "en-US": "Website reading font",
+    "ja-JP": "サイトの閲覧フォント",
+    "ko-KR": "웹사이트 읽기 글꼴",
+    "fr-FR": "Police de lecture du site",
+    "ru-RU": "Шрифт чтения на сайте",
+    "es-ES": "Fuente de lectura del sitio"
+};
 
 const pending = new Map<RegisteredUiLanguage, Promise<boolean>>();
 
@@ -167,7 +177,8 @@ export const ensureUiLanguageBundle: EnsureUiLanguageBundle = (value) => {
         .then((bundle) => {
             if (!isBundle(bundle)) throw new TypeError('界面语言资源格式无效');
             const recovery = recoveryMessages[registered];
-            registerUiLanguageBundle(registered, {...bundle, messages: {
+            registerUiLanguageBundle(registered, {...bundle, legacyText: {...bundle.legacyText,
+                '网站阅读字体': readingAppearanceLegacyLabels[registered]}, messages: {
                 ...recovery, ...bundle.messages, ...aiRequestTimeoutMessages[registered], ...sectionSweepMessages[registered],
                 ...deeplxMessages[registered],
             }});
