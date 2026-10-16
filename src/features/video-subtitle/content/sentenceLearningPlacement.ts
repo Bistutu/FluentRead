@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/sentenceLearningPlacement.ts
  * 文件职责：管理学习卡的媒体坐标、物理挂载与本次页面会话拖动位置，避免移动控件遮挡或全屏迁移丢失状态。
- * 主要内容：仅为已验证单视频mweb容器建立自有透明绘制层，整块原学习宿主保持Vue状态与焦点；仍按原播放器和用户默认角落定位，拖动以剩余空间比例记忆，保留底部控制区并合并每帧指针更新。
+ * 主要内容：仅为已验证单视频mweb容器建立自有透明绘制层，整块原学习宿主保持Vue状态与焦点；按原播放器和用户默认角落定位，向自有宿主发布实际短高度滚动布局标记，拖动以剩余空间比例记忆并保留底部控制区。
  * 模块边界：只操作自有面板和frame，以既有player验证同视频范围，不选择媒体、不更改媒体时间/速度、不保存学习数据或全局配置；host负责创建、同媒体迁移与最终销毁。
  */
 import {normalizeVideoSentenceLearningAppearance, type VideoSentenceLearningAppearance} from '@/src/core/config/videoSentenceLearningAppearance';
@@ -112,6 +112,8 @@ export function createVideoSentenceLearningPlacement(options: {
             width: `${bounds.panelWidth}px`, maxHeight: `${next.maxHeight}px`});
         host.style.setProperty('--fluent-read-video-learning-max-height', `${next.maxHeight}px`);
         host.dataset.compact = String(next.compact || appearance.layout === 'compact');
+        // 固定操作区在此高度内会挤空正文；仅真实可用高度决定整卡滚动，不受用户密度偏好影响。
+        host.dataset.shortHeight = String(next.maxHeight <= 240);
     };
     const schedule = () => { if (active && frame === undefined) frame = win.requestAnimationFrame(paint); };
     const stopDrag = () => { drag = undefined; pointer = undefined; delete host.dataset.dragging; };

@@ -155,6 +155,19 @@ describe('学习面板有界位置规则', () => {
 });
 
 describe('学习面板拖动与 DOM 生命周期', () => {
+    it('真实resize帧按可用高度切换整卡滚动标记，舒适/紧凑偏好不覆盖短高归属', () => {
+        const f = fixture({width: 402, height: 226});
+        const placement = createVideoSentenceLearningPlacement({host: f.host, player: f.player, appearance: appearance({layout: 'comfortable'}), onDragPosition: vi.fn()});
+        expect(f.host.style.maxHeight).toBe('162px'); expect(f.host.dataset.shortHeight).toBe('true');
+        f.size.height = 305; f.resize(); f.flush();
+        expect(f.host.style.maxHeight).toBe('241px'); expect(f.host.dataset.shortHeight).toBe('false');
+        placement.setAppearance(appearance({layout: 'compact'})); f.flush();
+        expect(f.host.dataset.compact).toBe('true'); expect(f.host.dataset.shortHeight).toBe('false');
+        f.size.height = 304; f.observers[0].callback(); f.flush();
+        expect(f.host.style.maxHeight).toBe('240px'); expect(f.host.dataset.shortHeight).toBe('true');
+        placement.destroy();
+    });
+
     it('仅标题栏主按钮启动拖动，不截获正文、表单或其他指针', () => {
         const f = fixture(); const changed = vi.fn();
         const placement = createVideoSentenceLearningPlacement({host: f.host, player: f.player, appearance: appearance(), onDragPosition: changed});

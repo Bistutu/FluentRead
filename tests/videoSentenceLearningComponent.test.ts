@@ -128,6 +128,17 @@ beforeEach(() => {
 afterEach(() => {close(); vi.unstubAllGlobals(); vi.useRealTimers();});
 
 describe('完整句学习组件的调度与异步归属回归', () => {
+  it.each([false, true])('换句只归顶当前owned滚动区，短高整卡=%s，页面与外层portal滚动不变', async short => {
+    const f = portalKeyboardFixture(), host = f.panel.parentElement!;
+    host.id = 'fluent-read-video-learning-panel'; host.dataset.shortHeight = String(short);
+    await mount(); state.panel = vue.markRaw(f.panel);
+    const body = f.document.createElement('div'); f.panel.appendChild(body); state.body = vue.markRaw(body);
+    body.scrollTop = 42; f.panel.scrollTop = 180; host.scrollTop = 200; f.document.documentElement.scrollTop = 2720;
+    f.key('ArrowRight', video); await flush();
+    expect(state.index).toBe(1); expect(body.scrollTop).toBe(0); expect(f.panel.scrollTop).toBe(short ? 0 : 180);
+    expect(host.scrollTop).toBe(200); expect(f.document.documentElement.scrollTop).toBe(2720);
+  });
+
   it('portal面板以显式媒体player消费真实窗口学习键，并让位同视频兄弟菜单', async () => {
     const f = portalKeyboardFixture(); await mount(); state.panel = vue.markRaw(f.panel);
     expect(f.panel.parentElement!.parentElement).not.toBe(f.player);

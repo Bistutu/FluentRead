@@ -1,7 +1,7 @@
 <!--
  * @file src/features/video-subtitle/ui/VideoSentenceLearning.vue
  * 文件职责：在现有播放器上提供可关闭的完整句学习面板，连接原始字幕、主动播放控制和现有收藏。
- * 主要内容：以双语阅读卡呈现原句、译文和按需讲解；索引跟随播放、合并快速换句的翻译请求，收起后暂停新请求，按配置身份管理自动译文并保留人工草稿；固定操作与准确的异步收藏状态支持小播放器连续学习。
+ * 主要内容：以双语阅读卡呈现原句、译文和按需讲解；索引跟随播放、合并快速换句的翻译请求，短高换句只归顶自有整卡滚动区，收起后暂停新请求；按配置身份管理自动译文、人工草稿与准确的异步收藏状态。
  * 材料关联：完整句收藏与问答引用归于可靠视频来源与原始时间，关闭、更换句子和隐私状态禁止迟到关联。
  * 模块边界：不创建或定位播放器，学习键只接受包含当前视频的显式逻辑播放器及面板自身，菜单让位限定已验证同视频范围；不采集音频或计算掌握状态，翻译沿用注入服务，卸载取消控制与迟到回写。
  -->
@@ -165,7 +165,11 @@ watch([() => sentence.value?.id, () => props.sourceLanguage, () => props.targetL
   explanation.value = draft?.explanation || ''; explanationStopped.value = draft?.stopped || false; savedSnapshot.value = draft?.savedSnapshot || '';
   editingTranslation.value = false; editingExplanation.value = false; error.value = ''; notice.value = ''; translationError.value = '';
   scheduleTranslation(next[0] === deferredSentenceId ? 120 : 0); deferredSentenceId = undefined;
-  if (next[0] !== previous?.[0]) void nextTick(() => { if (active && body.value) body.value.scrollTop = 0; });
+  if (next[0] !== previous?.[0]) void nextTick(() => {
+    if (!active || !body.value) return;
+    body.value.scrollTop = 0;
+    if (panel.value?.closest('#fluent-read-video-learning-panel[data-short-height="true"]')) panel.value.scrollTop = 0;
+  });
 }, {immediate: true});
 watch(expanded, (open) => {
   if (open) scheduleTranslation();
