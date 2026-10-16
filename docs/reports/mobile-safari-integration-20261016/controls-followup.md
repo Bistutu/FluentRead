@@ -24,6 +24,18 @@ F34 使用运行源码 `a2ecda302d3a0199ffe9f0222ee2998a37bd7d5d` 的完整 478 
 
 [限定结果与动作计数](./current-touch-firefox/root-outcome-summary.json)、[独立原图与原始记录复核](./current-touch-firefox/outcome-review.json)、[原始恢复断言](./current-touch-firefox/restoration-verified.json)、[选取的六张原图及复制哈希](./current-touch-firefox/provenance.json)。运行结束后清理 PASS，五个所属进程与四个专用端口均释放，未记录前台激活或归属违规，主机密钥仅核对元数据且保持不变；产物前后两种完整哈希相等。这个场景没有触摸悬浮球、拖动、旋转、重挂载或唤起软键盘，不能作为这些交互或完整移动矩阵通过的证明。
 
+## Android Firefox 单次原生拖动观察
+
+F35 保持同一 `a2ecda302` 生产包，通过正常设置开启悬浮球，并执行一次 600ms 原生拖动。44×44 主体从右侧中心 `(326, 252)` 移到左侧 `(34, 328)`；拖动后仍完整位于可见视口内，五个圆内采样点均命中自有节点。为独立观察拖动，临时将点击行为从“翻译”改为“仅拖动”（内部值 `none`），随后已实际恢复“翻译”。关闭开关后，最终阅读页自有悬浮节点为 0，六段原文、空选区和滚动 `(0, 73)` 保持；只关闭本轮新建的设置页，原生标签数恢复为 2。
+
+![Firefox：拖动前完整的右侧入口](./current-touch-firefox-drag/16-ball-before.png)
+
+![Firefox：一次原生拖动后吸附左侧](./current-touch-firefox-drag/17-ball-after.png)
+
+这些是已观察到的局部行为，**本轮完整验收未通过**。返回常规设置时，实际原生选项标签比 DOM 文字多一个前导 TAB；经独立审阅，另用一次窄范围恢复脚本匹配该实际标签，并将该已打开菜单的等待上限从 120 改为 600 秒，全局截止不变。原 28 个冻结文件未修改。最终阅读页观察距关闭开关的读回约 247 秒，超过预设 120 秒窗口，因此没有创建最终恢复证书，原始 `cleanup.status=FAILED` 保留。清理记录同时确认所属进程及端口已释放；随后独立资源检查也确认没有运行中的测试模拟器、重型构建或遗留监听。
+
+[局部观察与未通过边界](./current-touch-firefox-drag/root-outcome-summary.json)、[独立原图与输入复核](./current-touch-firefox-drag/independent-outcome-review.json)、[原始清理结果](./current-touch-firefox-drag/cleanup.json)、[独立资源释放检查](./current-touch-firefox-drag/root-fresh-post-release.json)、[原件复制索引](./current-touch-firefox-drag/provenance.json)。前后完整 478 文件双哈希一致。新吸附位置只保留在专用测试配置中，未证明重启后持久化；未执行最终旋转状态读回、原生键盘、旋转、进度层或翻译整链验收。脚本的时限与标签匹配问题不作为产品失败的证据，也不据此重复同一次拖动。
+
 ## 最新 Safari 本地包装与三目标编译
 
 同一 `a2ecda302` 运行源码已在新目录生成 Safari 双平台工程，并顺序完成 macOS、iOS Simulator、arm64 iPhoneOS 编译。三个命令均退出码 0；每份实际产物内的 Web 467 文件逐项长度及哈希匹配，源 Web 前后双哈希保持不变。新工程四个 target、八份配置及实际 App/Extension 的 bundle ID 均已核对。
