@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import {parseHTML} from 'linkedom';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
@@ -2692,6 +2693,46 @@ describe('translation candidate core', () => {
         expect(core.resolve(document.querySelector('#advertise')?.firstChild)).toBeNull();
         expect(core.resolve(document.querySelector('#unscoped-copy')?.firstChild)).toBeNull();
     });
+
+    it.each(['/search/?q=language&type=posts', '/r/languagelearning/search/?q=reading&type=comments'])(
+        'Reddit 搜索 %s 在 focus 范围发现 SDUI 标题和评论，保护元数据与操作', (pathname) => {
+            const fixture = readFileSync(new URL('./fixtures/translation-pages/reddit-search.html', import.meta.url), 'utf8');
+            const {document} = parseHTML(fixture);
+            const core = createTranslationCore({url: new URL(pathname, 'https://www.reddit.com')});
+            const expected = ['search-title', 'search-comment', 'comment-first', 'comment-second', 'comment-list'];
+            const before = document.body.innerHTML;
+            const candidates = core.discover(document);
+            expect(candidates.map(candidate => candidate.element.id)).toEqual(expected);
+            for (const id of expected) {
+                const owner = document.getElementById(id)!;
+                expect(core.resolve(owner.firstChild)).toMatchObject({element: owner, adapterId: 'reddit'});
+            }
+            expect(core.resolve(document.querySelector('#search-title mark')!.firstChild)?.element.id).toBe('search-title');
+            expect(core.resolve(document.querySelector('#search-comment mark')!.firstChild)?.element.id).toBe('search-comment');
+            for (const selector of ['nav a', 'button', 'input', '#post-metadata a', '#author', 'faceplate-timeago',
+                '#search-heading', '#result-label', '#sidebar p']) {
+                for (const element of document.querySelectorAll(selector)) {
+                    expect(core.resolve(element.firstChild ?? element), selector).toBeNull();
+                }
+            }
+            const sources = candidates.map(candidate => extractTranslationText(candidate.element, core.shouldStayOriginal));
+            expect(sources.join('\n')).not.toMatch(/KEEP_ORIGINAL_CODE|Upvote|Share|Reply|Show more|u\/example|r\/languagelearning|hours ago/);
+            expect(document.body.innerHTML).toBe(before);
+
+            const late = document.createElement('article');
+            late.setAttribute('data-testid', 'sdui-post-unit');
+            late.innerHTML = '<a href="/r/example/comments/late/"><span id="late-title" data-testid="post-title-text">A newly loaded search result about daily reading</span></a><button>Share</button>';
+            document.querySelector('main')!.append(late);
+            expect(core.discover(late).map(candidate => candidate.element.id)).toEqual(['late-title']);
+            const title = late.querySelector('#late-title')!;
+            title.removeAttribute('data-testid');
+            expect(core.resolve(title.firstChild)).toBeNull();
+            title.setAttribute('data-testid', 'post-title-text');
+            expect(core.resolve(title.firstChild)?.element).toBe(title);
+            late.remove();
+            expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(expected);
+        },
+    );
 
     it.each(['content', 'all'] as const)('Reddit %s 范围不叠加外部译文，也不吞掉未翻译的相邻正文', (scope) => {
         const {document} = page(`<main><shreddit-post>

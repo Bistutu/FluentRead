@@ -767,7 +767,7 @@ node scripts/testing/run-translation-mutation-test.cjs \
 
 该回归检查宿主为新增链接写入 `tabindex=-1/0` 时保持同一个译文节点，避免把键盘焦点管理误判为内容损坏；正文、链接目的地或隐藏状态变化仍由确定性测试验证失效行为。仅译文模式还检查相邻 DOM 更新不会因原文位于扩展槽内而撤销翻译。固定高度按钮覆盖嵌套 flex/grid 标签、文字边界、点击与“翻译—恢复—再次翻译”，使用确定性翻译服务排除网络响应波动；真实 GitHub 页面结果需单独记录，不能以本地夹具代替。表单内的具名 submit 与用户输入框属于非候选控件，按完整 `outerHTML` 比对翻译前后与恢复原文，确保布局租约不在同层控件上留下属性残留。此类断言要求证据截图保持非侵入：Playwright 默认的 `caret: 'hide'` 会给每个 `input`/`textarea`/`[contenteditable]` 写入 `caret-color` 再以空值清除，在宿主控件上留下空 `style` 属性，因此浏览器回归截图统一使用 `caret: 'initial'`。
 
-### Reddit 多翻译器共存
+### Reddit 多翻译器共存与搜索结果
 
 页面 HTML 曾同时包含外部译文的 font 容器与 FluentRead 双语 wrapper。旧快照把前者作为受保护原文复制，净化后丢失其标记，形成第三份译文。`translationCore.test.ts` 覆盖该结构的候选边界、快照省略与普通术语/代码保留。
 
@@ -782,6 +782,12 @@ node scripts/testing/run-reddit-translation-test.cjs \
 ```
 
 同时检查正文与全部节点范围、悬浮 `[1,0,1]`、全文翻译与恢复、外部译文在请求前/途中/完成后出现、移除外部译文后重新翻译，以及外部 DOM 身份和 URL 保持不变。真实 Reddit 如果返回人机验证页，应单独记录为站点限制，不能把本地结构测试表述为真实帖子验证。
+
+Reddit 搜索结果沿用内置 focus 规则，补充 SDUI 的 `post-title-text` 标题与 `search-comment-content` 评论正文，不依赖 `shreddit` 标签。标题作为完整单元；评论内的段落、列表和引用分别发现，纯文本评论也能翻译。搜索框、导航、作者、时间和投票/分享/回复按钮继续受保护。
+
+issue #1000 的 `reddit-search.html` 是依据报告选择器独立编写的最小结构夹具，并非实站快照。上述命令追加 `--search-only`，只运行全站 `/search/` 与社区 `/r/.../search/` 的搜索专项，覆盖 focus 正文范围、标题与评论悬浮 `[1,0,1]`、全文翻译、动态新增和移除结果、恢复后再翻译、链接与按钮节点身份和点击行为。`translationCore.test.ts` 同时检查候选发现与悬浮解析一致，以及 `data-testid` 被移除和恢复后的目标复验。
+
+额外追加 `--live-search` 才会访问真实公开搜索页；翻译仍使用本地确定性微软响应。报告将 HTTP 状态、搜索目标数、实际翻译数和站点限制单独记录，真实页面不可访问时不算实站验证通过，也不代表在线供应商的翻译质量。
 
 ### GitHub Latest 仅译文反复翻译
 
