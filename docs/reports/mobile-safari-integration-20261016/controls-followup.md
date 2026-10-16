@@ -10,7 +10,33 @@ F32 的专用 Android Firefox 实际入口只有 40px，折叠变换使右侧主
 
 ![触屏入口保持完整 44px，位于阅读页可见视口内](./current-touch-edge/portrait-idle.png)
 
-Edge 使用本地翻译响应和明确标记的可见视口夹具，不能证明原生软键盘、在线供应商或 Firefox 的非粗指针路径。新修复的 Android 原生复验仍待完成。F33 已返回原阅读页并释放所属运行资源，历史目标 Off 尚未恢复，原始 cleanup 保持失败；未知旧标签未操作，旧设置页是否关闭仍未观察到。
+Edge 使用本地翻译响应和明确标记的可见视口夹具，不能证明原生软键盘或在线供应商。F33 的原始 cleanup 保持失败；随后 F34 已用新修复的生产包完成下述限定原生复验和历史目标 Off 恢复，不回写历史结果。
+
+## Android Firefox 触屏能力复验与关闭恢复
+
+F34 使用运行源码 `a2ecda302d3a0199ffe9f0222ee2998a37bd7d5d` 的完整 478 文件 Firefox 生产包，在专用 Android API 31 模拟器、Firefox 158 中复验。实际页面仍报告 `pointer:coarse=false`、`any-pointer:coarse=false`、`maxTouchPoints=5`；首次呈现已有硬件触摸 class，主体为 44×44，完整位于 360×504 可见视口内。计算样式为无平移、无裁切、透明度 0.7，五个圆内采样点均命中自有节点。这个结果验证了此前媒体查询遗漏的实际能力组合。
+
+![Firefox：两种粗指针查询均为 false 时，入口仍完整显示](./current-touch-firefox/03-reader.png)
+
+通过正常扩展菜单新建本轮设置页后，仅执行一次条件关闭操作；实际开关由 true 变为 false。返回原阅读页后，自有悬浮节点为 0，六段原文、无译文与空选区均保留，滚动仍为 `(0, 73)`。只关闭本轮确认新建的设置页，原生标签数由 3 恢复为 2；未知旧错误标签没有操作，旧 F32 设置页是否关闭仍未观察到。恢复目标来自 F32 的已留存 Off 记录，未冒充本轮初始状态。
+
+![Firefox：本轮设置页关闭后返回原文，标签数恢复为 2](./current-touch-firefox/28-final-reader.png)
+
+[限定结果与动作计数](./current-touch-firefox/root-outcome-summary.json)、[独立原图与原始记录复核](./current-touch-firefox/outcome-review.json)、[原始恢复断言](./current-touch-firefox/restoration-verified.json)、[选取的六张原图及复制哈希](./current-touch-firefox/provenance.json)。运行结束后清理 PASS，五个所属进程与四个专用端口均释放，未记录前台激活或归属违规，主机密钥仅核对元数据且保持不变；产物前后两种完整哈希相等。这个场景没有触摸悬浮球、拖动、旋转、重挂载或唤起软键盘，不能作为这些交互或完整移动矩阵通过的证明。
+
+## 最新 Safari 本地包装与三目标编译
+
+同一 `a2ecda302` 运行源码已在新目录生成 Safari 双平台工程，并顺序完成 macOS、iOS Simulator、arm64 iPhoneOS 编译。三个命令均退出码 0；每份实际产物内的 Web 467 文件逐项长度及哈希匹配，源 Web 前后双哈希保持不变。新工程四个 target、八份配置及实际 App/Extension 的 bundle ID 均已核对。
+
+| 本地产物 | 完整 App 文件数 | 实际 App 与 Extension 签名状态 |
+| --- | --- | --- |
+| macOS | 482 | 链接器 ad-hoc，无开发者团队 |
+| iOS Simulator | 485 | 链接器 ad-hoc，无开发者团队 |
+| arm64 iPhoneOS | 485 | 未签名 |
+
+App ID 为 `org.example.FluentReadDevelopment`，Extension ID 为 `org.example.FluentReadDevelopment.Extension`。三份完整 App 均另经独立磁盘双哈希复核。iOS appex 的原生可执行文件和 `Info.plist` 不计入 Web 467 文件；没有其他额外资源或 provisioning profile。Apple 模板仍为 native `1.0 / build 1`，本轮不改版本，也不构成安装更新身份验收。
+
+[执行摘要](./current-touch-native/execution-summary.json)、[完整产物与原生诊断](./current-touch-native/compiled-artifact-identities.json)、[独立磁盘复核](./current-touch-native/root-independent-compiled-review.json)、[原件复制索引](./current-touch-native/provenance.json)。本轮没有安装、启动模拟器或 Safari、签署开发者证书、发布或操作真机；仅接受包装、编译和资源一致性。既有原生 Safari 运行结果仍对应下文的历史版本。
 
 ## 当前已确认的范围
 
