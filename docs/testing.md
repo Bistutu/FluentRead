@@ -10,6 +10,8 @@
 
 ## 翻译结果与浏览器清理边界
 
+GitHub 等站点的软导航可能在 `pushState` 后才整体替换 body。独立 Vue Shadow UI 统一挂在 html 下，悬浮球与划词入口因而保留原实例，不依赖路由事件、Turbo 事件或固定延时重建。`pnpm test tests/shadowUi.test.ts tests/contentFeatureMounting.test.ts tests/contentFeatureRegistry.test.ts tests/floatingBallLifecycle.test.ts tests/userscriptPlatform.test.ts` 验证真实 WXT 0.20.18 挂载在路由检查后经历 0、34、572、1000ms 延迟 body 替换时仍存活，以及既有禁用、恢复与上下文失效清理；WXT DOM 用例仅替换 Vue app 端口，不代表 GitHub 实站或真实浏览器验收。
+
 GitHub 文档出现译文消失、重现时，先记录扩展版本、浏览器、网页地址和触发动作。`tests/bilingualReplay.test.ts` 包含 Issue #969 截图对应的行内代码与链接段落，使用真实 MutationObserver 检查窗口 resize 后零自重放、译文零移除、链接提示变化、同文 Text 重绘与恢复原文。它验证当前实现的状态保持，不能单独证明反馈者的根因。
 
 生产 Chrome 构建后，运行 `node scripts/testing/run-github-document-stability-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --artifacts-dir <证据目录> --background --live --full-mode viewport`。默认访问截图对应的 `pi-subagents/docs/models.md`，在临时 Edge 后台正常窗口记录选定正文的译文增删和内部子节点重写、源码节点身份、链接与代码、窗口宽度变化、滚动返回、可信鼠标经过以及全文/段落翻译—恢复—再次翻译；尺寸复验有独立 Node 看门狗，页面观察器循环也必须失败并清理本次浏览器。`--full-mode all` 检查立即处理整页，省略 `--live` 使用自建 GitHub 域名夹具。`--published` 验证已核验散列的正式发行包，记录其版本与 content.js 散列，不对该外部包套用当前检出的源码新鲜度检查。网页使用实站 DOM，翻译响应受控；结果不代表在线供应商、其他扩展共存或反馈者安装版本的验收，GitHub 错误页单独记录为访问失败。
