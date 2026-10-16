@@ -1,6 +1,6 @@
 # 移动字幕控件与 Safari 后续验证
 
-当前产品源码为 `f5a82d11a5b6b6a5de2f2ea726065a56cdb2e6ca`。受控生产 Edge 的动作检查和 18 张原图复核在声明范围内通过；最新真实 Safari Simulator A4 为 **0 PASS、1 SKIP、0 FAIL**，四次顺序采样的播放器 `isHittable` 均为 false，字幕与菜单验收未执行到。2026-10-16 07:48 UTC 查询时，该提交的[代码质量检查](https://github.com/FluentRead/FluentRead/actions/runs/38867036327)与[文档构建](https://github.com/FluentRead/FluentRead/actions/runs/38867036357)均通过，[PR #1009](https://github.com/FluentRead/FluentRead/pull/1009)状态为 CLEAN；检查状态不替代移动端视觉和触摸验收。此前服务选择与主线整合记录见[主线整合报告](./main-followup.md)。
+当前产品源码为 `f5a82d11a5b6b6a5de2f2ea726065a56cdb2e6ca`。受控生产 Edge 的动作检查和 18 张原图复核在声明范围内通过；真实 Safari Simulator 已在**暂停状态**完成菜单正常打开、关闭和入口焦点返回，播放中菜单、滚动与双语同帧仍未验收。f5a Firefox 已完成既存文档翻译、Home 返回、恢复和重译，但暴露了法文、阿文输出质量问题。对应共享修复单独提交为 [PR #1014](https://github.com/FluentRead/FluentRead/pull/1014)；其 d6b135e 生产包已在另一轮 Android 翻译—恢复—重译中显示对应中文，范围及供应商来源限制见下文。[PR #1009](https://github.com/FluentRead/FluentRead/pull/1009) 的检查状态不能代替移动端视觉和触摸验收。此前服务选择与主线整合记录见[主线整合报告](./main-followup.md)。
 
 ## 当前已确认的范围
 
@@ -24,7 +24,61 @@ f5a 的受控 Edge 使用生产扩展、移动 YouTube 拓扑夹具和细/粗指
 
 这些是 Edge/Chromium 受控夹具结论，不能转记为真实 YouTube、Safari、真机触摸或惯性滚动通过。解释、收藏按钮的可达性不证明其后端功能完成；本轮未写入收藏。
 
-## 最新 Safari 结果与待办
+## 当前 Safari 菜单分项结果
+
+最新更正脚本保持 f5a / `3f3df2dc…` / 完整 485 文件的同一生产包。在专用 iPhone 16 Pro / iOS 26.2 Simulator 中，实际入口和关闭控件均为 44×45、在当前播放器内且可命中；正常点击各一次后菜单打开、关闭，关闭控件消失，原图显示蓝色焦点返回 FluentRead 入口。入口在 Safari AX 中是 `Other`，关闭控件是 `MenuItem`；HTML 按钮的测试定位不能预设它们一定映射为 `Button`。
+
+这一轮**只能接受暂停状态的菜单开关**。首次播放器触摸后的快照已经是 Play=1、Pause=0，菜单及最终快照的视频值均停在 4 秒，最终原图显示大播放键和 `0:04`。随后未观察到双语字幕，原始 XCTest 为 **0 PASS、1 SKIP、0 FAIL，62.307 秒**；不能把片头暂停时未出字幕归因于翻译服务。菜单标题、服务、关闭、学习入口和模式文字清楚，但时间行位于下边缘并被截断，尚未执行内部滚动，不能宣称全部内容可达。
+
+[原始计数](./current-safari-menu-close/runtime-summary.json)、[真实菜单动作记录](./current-safari-menu-close/A9-menu-result.json)、[逐图验收及播放限制](./current-safari-menu-close/runtime-acceptance-visual-review.json)。三张原图由主 Agent 和子 Agent 分别查看，下列两张是未经修改的原件。
+
+![Safari：正常点击后菜单打开，底部滚动仍待验收](./current-safari-menu-close/A9-menu-after-one-normal-tap.png)
+
+![Safari：菜单正常关闭、焦点返回入口；视频停在 0:04](./current-safari-menu-close/unverified-final.png)
+
+结束后恢复原 d9 完整 485 文件，核对 Userscripts 47 文件、Demo 和所查 App 私有 17 文件；专用模拟器关闭，116 个已知所属进程退出，focus、violations、cleanupErrors 均为 0。此边界不等于全部扩展设置或缓存的恢复证明。[清理记录](./current-safari-menu-close/fresh-release.json)。
+
+前置诊断保留原始失败与跳过，不覆盖为通过：
+
+| 轮次 | 实际观察及边界 |
+| --- | --- |
+| [A5](./current-safari-a5/runtime-acceptance-visual-review.json) | 一次当前播放器中心触摸后观察到原生控件；CC 的 AX 查询失败，原始 1 FAIL，未进入菜单。 |
+| [A6](./current-safari-a6/runtime-acceptance-visual-review.json) | 原图显示原生控件和 FR 入口，完整 AX 入口为 Other、44×45；测试仅筛 Button，原始 1 SKIP。 |
+| [A7](./current-safari-a7/runtime-acceptance-visual-review.json) | 同一 TED 标题由英文变中文，组合前提停止；原始 1 SKIP、无中心或菜单触摸，不能断言实际几何移动。 |
+| [A8](./current-safari-a8/runtime-acceptance-visual-review.json) | 正常点击已打开菜单；关闭控件的 MenuItem 类型被测试筛选漏掉，原始 1 SKIP、未关闭。 |
+| [A9 原稿](./current-safari-a9-setup/runtime-acceptance-visual-review.json) | 测试编号的全局替换误改了内部设备 ID，setUp 阻止全部 Safari UI 动作，原始摘要 1 FAIL。随后直接检查完整原始差异，同时恢复被误改的排除身份哈希，并增加构建前常量断言；原稿和失败证据完整保留。 |
+
+A8 的内部排除身份字符串也受编号替换影响；外部运行 guard 的生产身份、完整文件校验和排除值一直保持正确。更正仅用于独立新测试副本，没有修改产品或历史证据。完整选取及原件 SHA-256 见[复制索引](./runtime-followup-provenance.json)。
+
+## 当前 Android Firefox 文档循环
+
+f5a 生产扩展通过既有官方临时加载路线运行于专用 Firefox 158 / API 31 AVD。正常 Translate→Home→返回→Restore→再次 Translate 后，译文节点数为 `0→5→5→0→5`；同一文档 timeOrigin 保持，六段原文完整恢复，未重复插入译文。Home 与返回动作相隔约 25.9 秒，观察到 hidden→visible；这不是系统回收、杀进程或长后台验收。
+
+[动作与逐段证据](./current-firefox-f21/runtime-acceptance.json)、[恢复断言](./current-firefox-f21/functional-checks.json)。本轮没有导航或重载，文档 URL 为 example.com，但六语内容的最初来源和网络／缓存路径未知，因此不能称新鲜公网来源验收。实际供应商和缓存来源也没有被动证据。
+
+![Firefox：英语译文可见，但下方阿文输出异常仍保留](./current-firefox-f21/f21-08-first-translated.png)
+
+法文结果混合中文，阿文结果仍是阿文且丢失空格，**整页质量不通过**。后续离线证明这两组值会通过原共享校验及 broker 缓存读取，两条中英专用线路也会把 auto 法文、阿文按英文请求；不能反推现场一定使用了这两条线路或命中了持久缓存。PR #1014 修复这些已证明的契约缺口，已通过 815 项相关测试、两模块四维 100% 覆盖及四目标 Web 构建；其实际设备复验单独记录。
+
+本轮 21 张原图均由执行子 Agent 查看，主 Agent 另查看关键页面、Popup、恢复与返回图。官方 APK、服务、语言和权限未改变，Edge 无操作。所属 Firefox runner、端口转发、AVD/ADB 进程均已退出，专用数据保留，focus/violations 为 0。[来源边界](./current-firefox-f21/source-provenance.json)、[异常逐段记录](./current-firefox-f21/quality-diagnostic.json)、[清理记录](./current-firefox-f21/cleanup.json)。
+
+## PR #1014 独立 Android 复验
+
+F22 使用 d6b135e 生产 Firefox 包（478 文件，raw SHA-256 `9d2ed18771f174ddc5ceee4d9c39fc28f28fc83926c98e49e2b404160dd398f6`），沿相同专用 Firefox 官方临时加载路线进行一次正常翻译、恢复、再次翻译。默认免费服务、自动源语言和简体中文目标保持不变，未导航、重载、清缓存或改动权限。
+
+实际译文节点为 `0→5→0→5`，六段原文精确恢复，中文原段没有重复译文。两轮完整就绪分别在操作后约 53.43 秒、23.11 秒观测到，均在 90 秒预算内；法文和阿文两轮均显示对应中文，F21 的异常输出未重现，两轮结果逐段一致。[单场景摘要](./current-firefox-f22/summary.json)、[操作断言](./current-firefox-f22/functional-checks.json)、[逐段对应](./current-firefox-f22/paragraph-correspondence.json)。
+
+![F22：首次阿文、法文译文为中文](./current-firefox-f22/f22-10-first-ar-visible.png)
+
+![F22：再次翻译的法文与中文对应](./current-firefox-f22/f22-19-retranslated-visible.png)
+
+23 张原图由执行 Agent 逐张查看，主 Agent 另查看首次译文、恢复及再次翻译的四张关键原图。该轮是限定文档循环通过，尚未覆盖整页语义质量、横屏、键盘或真机辅助功能。测试内保持同一文档，但初次网络来源、实际胜出供应商及旧坏缓存是否被读取或拒绝仍未知，不能从输出变化反推这些机制已经现场证明。[视觉复核](./current-firefox-f22/visual-review.json)、[原始验收范围](./current-firefox-f22/runtime-acceptance.json)。
+
+10:20:58 UTC 清理完成，6 个已知所属 PID/进程组及专用 5048、5580、5581、60540 端口均退出；AVD 数据保留，Edge 未操作，focus、violations、cleanupErrors 为 0，产物两种完整哈希复核一致。[清理记录](./current-firefox-f22/cleanup.json)、[产物复核](./current-firefox-f22/postflight-identity.json)。
+
+PR #1014 的 d6b135e 远程检查另有六个 slot 回归失败，集中于将大量外语残留当成成功结果的旧测试夹具；仍在修复并保留请求隔离及质量校验契约。上述设备结果不替代 CI，也不将共享修复混入 PR #1009 的 f5a 产品版本。
+
+## A3 / A4 历史记录
 
 A3 在专用竖屏 iPhone 16 Pro / iOS 26.2 Simulator A407 上使用 f5a 生产包，完整 App 身份为 `3f3df2dc7993788676427a6544e5cd17937f2a7da8d8e4a5f6c1d215417679dd`，Web raw SHA-256 为 `1040bd47a0d9b907d30a91fa7d27e7aa46b7c5c1e258bb6e3223ba4082838705`，完整文件数 485。
 
@@ -61,4 +115,4 @@ Safari 包装修复沿实际 native target 和 Debug/Release 配置校正 App/Ex
 
 Userscripts 专用未签名测试包仍停留在首次引导，目录与刷新控件禁用，原始结果 1 SKIP、0 FAIL；未读取 Demo，也未验证 FluentRead 脚本运行，无法归因于 App Groups 或签名。临时站点权限已恢复为“询问”。
 
-f5a 当前尚未验收真实 Safari 菜单/学习触摸与长句滚动、新版系统全屏、横屏、后台恢复、完整安装更新矩阵、物理设备、VoiceOver/TalkBack；不同旧版本的已测场景保留在主线整合报告中；此前 Android Edge 商店版页面质量异常仍未闭环。本轮未借用参考仓库实现。
+f5a 当前尚未验收真实 Safari 播放中菜单、菜单滚动、学习触摸与长句滚动、新版系统全屏、横屏、后台恢复、完整安装更新矩阵、物理设备、VoiceOver/TalkBack；不同旧版本的已测场景保留在主线整合报告中；此前 Android Edge 商店版页面质量异常仍未闭环。本轮未借用参考仓库实现。
