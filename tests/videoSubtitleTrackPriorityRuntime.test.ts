@@ -1,7 +1,7 @@
 /**
  * @file tests/videoSubtitleTrackPriorityRuntime.test.ts
  * 文件职责：从实际 mountVideoSubtitleTranslation 公共入口验证 X 轨道优先与 YouTube 同轮选择、人工字幕回退及卸载后的异步资格。
- * 主要内容：真实桥消息、video、TextTrack 与配置订阅驱动播放器、轨道 loader、缓存和 DOM；覆盖同句调用预算、实际服务线路或套餐变化后的缓存失效、时钟漂移、NaN、seek、偏移、人工轨空档与迟到结果。
+ * 主要内容：真实桥消息、video、TextTrack 与配置订阅驱动播放器、轨道 loader、缓存和 DOM；覆盖两站字幕开关的入口移除与恢复、同句调用预算、实际服务线路或套餐变化后的缓存失效、时钟漂移、NaN、seek、偏移、人工轨空档与迟到结果。
  * 模块边界：linkedom 补齐缺失的浏览器媒体/几何接口并按观察器订阅过滤记录；只 mock 外部端口，命名 selector spy 保留真实实现，不替换业务算法或修改全局数组原型。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -780,22 +780,47 @@ describe('public mounted YouTube timed cue selection and lifecycle', () => {
 });
 
 
-// 人工轨通过实际页面发现与 loader 请求就绪；媒体输入非有限时仍走原 fresh 选择边界。
 describe('public mounted video player button follows the video translation switch', () => {
-  it('关闭视频字幕翻译后移除播放器入口和菜单，重新开启后恢复入口', async () => {
-    const f = fixture(); f.start(); await settle();
+  it.each(['x', 'youtube'] as const)('%s：关闭视频字幕翻译后移除已打开的菜单，重复开启只恢复一份入口', async platform => {
+    const f = fixture(undefined, platform); f.start(); await settle();
     expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).not.toBeNull();
-    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).not.toBeNull();
+    const oldMenu = f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)!;
+    oldMenu.hidden = false;
 
     f.changeConfig({videoTranslationEnabled: false}); await settle();
     expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
     expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).toBeNull();
+    expect(oldMenu.isConnected).toBe(false);
+    f.emitVideo('loadedmetadata'); await vi.advanceTimersByTimeAsync(1100);
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
 
     f.changeConfig({videoTranslationEnabled: true}); await settle();
+    f.changeConfig({videoTranslationEnabled: true}); await settle();
+    expect(f.document.querySelectorAll('#' + VIDEO_TRANSLATION_BUTTON_ID)).toHaveLength(1);
+    expect(f.document.querySelectorAll('#' + VIDEO_TRANSLATION_MENU_ID)).toHaveLength(1);
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).not.toBe(oldMenu);
+  });
+
+  it.each(['x', 'youtube'] as const)('%s：初始关闭时不挂载入口，菜单关闭后仍保持扩展总开关开启', async platform => {
+    ports.config.videoTranslationEnabled = false;
+    const f = fixture(undefined, platform); f.start(); await vi.advanceTimersByTimeAsync(1100);
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).toBeNull();
+    expect(ports.translate).not.toHaveBeenCalled();
+
+    f.changeConfig({videoTranslationEnabled: true, videoSubtitleVisible: false}); await settle();
     expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).not.toBeNull();
+    f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)!.hidden = false;
+    clickMenu(f, '[data-mode="off"]'); await settle();
+    expect(ports.config.videoTranslationEnabled).toBe(false);
+    expect(ports.config.on).toBe(true);
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).toBeNull();
+    expect(f.document.getElementById('host')?.textContent).toBe('host original');
   });
 });
 
+// 人工轨通过实际页面发现与 loader 请求就绪；媒体输入非有限时仍走原 fresh 选择边界。
 describe('public mounted YouTube nonfinite time and human track fallback', () => {
   it('NaN媒体时间保留两次真实选择且不猜测时间轴', async () => {
     ports.config.videoPreferHumanSubtitles = false;

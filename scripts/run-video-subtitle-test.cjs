@@ -411,17 +411,21 @@ async function main() {
 
     await page.locator('#fluent-read-video-subtitle-menu [data-mode="off"]').click({ force: true });
     await page.waitForFunction(() => {
-      const button = document.querySelector('#fluent-read-video-subtitle-button');
-      return button?.getAttribute('aria-pressed') === 'false'
+      return !document.querySelector('#fluent-read-video-subtitle-button, #fluent-read-video-subtitle-menu')
         && !document.querySelector('#fluent-read-video-subtitle')?.textContent?.trim();
     }, null, { timeout: 10000 });
     const disabledFromPlayer = await page.evaluate(() => ({
-      buttonPressed: document.querySelector('#fluent-read-video-subtitle-button')?.getAttribute('aria-pressed'),
-      menuState: document.querySelector('#fluent-read-video-subtitle-menu [data-mode="off"]')?.getAttribute('aria-checked') === 'true' ? 'off' : 'on',
+      buttonPresent: Boolean(document.querySelector('#fluent-read-video-subtitle-button')),
+      menuPresent: Boolean(document.querySelector('#fluent-read-video-subtitle-menu')),
       overlayText: document.querySelector('#fluent-read-video-subtitle')?.textContent || '',
     }));
 
-    await page.locator('#fluent-read-video-subtitle-menu [data-mode="bilingual"]').click({ force: true });
+    const disableDeadline = Date.now() + 5000;
+    while ((await readExtensionConfig(popup)).videoTranslationEnabled !== false) {
+      if (Date.now() > disableDeadline) throw new Error('播放器关闭字幕后配置未持久化');
+      await page.waitForTimeout(50);
+    }
+    await persistExtensionConfig(popup, {videoTranslationEnabled: true});
     await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-button')?.getAttribute('aria-pressed') === 'true', null, { timeout: 10000 });
     await page.evaluate(() => {
       let container = document.querySelector('#ytp-caption-window-container');
@@ -481,7 +485,7 @@ async function main() {
       disabledFromPlayer,
       reenabledFromPlayer,
       extensionPageErrors,
-      disabledClearedOverlay: disabledFromPlayer.buttonPressed === 'false' && disabledFromPlayer.overlayText === '',
+      disabledClearedOverlay: !disabledFromPlayer.buttonPresent && !disabledFromPlayer.menuPresent && disabledFromPlayer.overlayText === '',
       artifactsDir,
       launchMode,
       focusPolicy,
