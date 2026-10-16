@@ -1,0 +1,38 @@
+<!doctype html>
+<!-- Issue #1000 的最小 SDUI 搜索结构夹具；依据报告中的选择器独立编写，并非实站抓取。 -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Reddit search fixture</title>
+<style>
+body {font:18px Arial;margin:32px;color:#202020;background:white;}
+main {max-width:820px;} article {padding:16px 0;border-bottom:1px solid #ddd;}
+p {line-height:1.6;} h2 {font-size:24px;} a {color:#164b80;}
+button,input {font:inherit;} nav,aside,.metadata {font-size:14px;color:#555;}
+mark {background:#ffedaa;}
+</style></head>
+<body>
+<nav id="navigation"><a href="/">Reddit Home</a><button id="menu">Open menu</button></nav>
+<form id="search-form"><label>Search Reddit <input id="query" value="language learning"></label><button id="search-button">Search</button></form>
+<main id="search-results">
+  <h1 id="search-heading">Search results for language learning</h1>
+  <article id="post-result" data-testid="sdui-post-unit">
+    <div class="metadata" id="post-metadata"><a id="community" href="/r/languagelearning/">r/languagelearning</a> · <faceplate-timeago>Three hours ago</faceplate-timeago></div>
+    <a id="post-link" href="/r/languagelearning/comments/example/discussion/"><h2><span id="search-title" data-testid="post-title-text">A practical guide to <mark>language learning</mark> with daily reading</span></h2></a>
+    <p id="result-label">Popular result from this community</p>
+    <button id="post-vote" data-testid="vote-arrows">Upvote</button><button id="post-share">Share</button>
+  </article>
+  <article id="comment-result" data-testid="search-sdui-comment-unit">
+    <div class="metadata" id="comment-metadata"><a id="author" href="/user/example/">u/example</a> · <faceplate-timeago>Two hours ago</faceplate-timeago></div>
+    <div id="search-comment" data-testid="search-comment-content">Reading <mark>short stories</mark> every day helps me learn new words in context.</div>
+    <button id="comment-reply">Reply</button>
+  </article>
+  <article id="rich-comment-result" data-testid="search-sdui-comment-unit">
+    <div data-testid="search-comment-content" id="rich-comment">
+      <p id="comment-first">Keep a small reading journal and <a id="source-link" href="/r/languagelearning/wiki/">review useful examples</a> regularly.</p>
+      <p id="comment-second">Compare the original meaning with your own notes. <code id="protected-code">KEEP_ORIGINAL_CODE</code></p>
+      <ul><li id="comment-list">Practice with one short article each day.</li></ul>
+      <button id="comment-action">Show more replies</button>
+    </div>
+  </article>
+</main>
+<aside id="sidebar"><h2>Related communities</h2><p>Discover more communities</p></aside>
+</body></html>

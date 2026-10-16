@@ -347,6 +347,25 @@
         ],
         "key": "reddit-comment-prose",
         "resolve": "closest"
+      },
+      {
+        "css": [
+          "[data-testid=\"post-title-text\"]"
+        ],
+        "key": "reddit-search-title",
+        "resolve": "self",
+        "atomic": true
+      },
+      {
+        "css": [
+          "[data-testid=\"search-comment-content\"] p",
+          "[data-testid=\"search-comment-content\"] li",
+          "[data-testid=\"search-comment-content\"] blockquote",
+          "[data-testid=\"search-comment-content\"]"
+        ],
+        "key": "reddit-search-comment",
+        "resolve": "self",
+        "atomic": false
       }
     ],
     "protect": [

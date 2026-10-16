@@ -2,8 +2,9 @@
 /**
  * @file scripts/testing/run-reddit-translation-test.cjs
  * 在全新临时 Edge 中重现页面已有译文的 font 结构，检查 FluentRead 的
- * 正文/全部节点范围、悬浮切换、全文翻译、迟到响应及外部译文增删。只提供本地夹具
- * 和确定性微软响应，不执行用户粘贴的脚本，不访问外部网络，不激活 macOS 前台。
+ * 正文/全部节点范围、悬浮切换、全文翻译、迟到响应及外部译文增删，以及 SDUI 搜索结果。
+ * 默认只提供本地夹具和确定性微软响应；--search-only 限定搜索专项，--live-search
+ * 额外尝试公开搜索页并单独记录站点限制。不执行用户脚本，不激活 macOS 前台。
  */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -18,6 +19,10 @@ const args = {timeout: 30000};
 for (let i = 2; i < process.argv.length; i++) {
   const key = process.argv[i];
   if (key === '--background') continue;
+  if (key === '--search-only' || key === '--live-search') {
+    args[key.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = true;
+    continue;
+  }
   assert.ok(key.startsWith('--') && process.argv[i + 1], `Invalid argument ${key}`);
   args[key.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = process.argv[++i];
 }
@@ -73,11 +78,13 @@ async function main() {
     await helper.activateExtensionTabWithoutForeground(context, page);
     await page.keyboard.down('Alt'); await page.keyboard.press('t'); await page.keyboard.up('Alt');
   };
-  const toggleHover = async (page, selector) => {
+  const toggleHover = async (page, selector, pointerOnly = false) => {
     await helper.activateExtensionTabWithoutForeground(context, page);
+    await page.locator(selector).scrollIntoViewIfNeeded();
     const box = await page.locator(selector).boundingBox();
     assert.ok(box);
-    await page.mouse.click(box.x + 20, box.y + 8);
+    if (pointerOnly) await page.mouse.move(box.x + 20, box.y + 8);
+    else await page.mouse.click(box.x + 20, box.y + 8);
     await page.keyboard.down('Control'); await page.keyboard.up('Control');
   };
   const addForeign = (page, id) => page.evaluate(id => {
@@ -106,13 +113,18 @@ async function main() {
     worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: args.timeout});
     await installWorker(worker);
     const fixture = fs.readFileSync(path.join(root, 'tests/fixtures/translation-pages/reddit-duplicates.html'), 'utf8');
+    const searchFixture = fs.readFileSync(path.join(root, 'tests/fixtures/translation-pages/reddit-search.html'), 'utf8');
     const url = 'https://www.reddit.com/r/MiniMax_AI/comments/fluentread_fixture/';
-    await context.route('**/*', route => {
+    const searchUrls = ['https://www.reddit.com/search/?q=language&type=posts',
+      'https://www.reddit.com/r/languagelearning/search/?q=reading&type=comments'];
+    const fixtureRoute = route => {
       const request = route.request();
       if (request.isNavigationRequest() && request.url() === url) return route.fulfill({status: 200, contentType: 'text/html', body: fixture});
+      if (request.isNavigationRequest() && searchUrls.includes(request.url())) return route.fulfill({status: 200, contentType: 'text/html', body: searchFixture});
       if (/^https?:/.test(request.url())) return route.abort('blockedbyclient');
       return route.continue();
-    });
+    };
+    await context.route('**/*', fixtureRoute);
     popup = await helper.newPageWithoutForeground(context, args.timeout);
     await popup.goto(`chrome-extension://${new URL(worker.url()).host}/popup.html`);
     await popup.waitForTimeout(600);
@@ -120,7 +132,108 @@ async function main() {
       hotkey: 'Control', floatingBallHotkey: 'Alt+T', fullPageTranslationMode: 'all', useCache: false,
       enableAIContext: false, enableAIMultiSegment: false, uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true};
     await patchConfig(report.config);
-    for (const scope of ['content', 'all']) {
+    await patchConfig({translationScope: 'content'});
+    for (const [index, searchUrl] of searchUrls.entries()) {
+      await worker.evaluate(() => { globalThis.redditRequests = []; });
+      const page = await helper.newPageWithoutForeground(context, args.timeout);
+      const result = {kind: 'search', scope: 'content', url: searchUrl}; report.cases.push(result);
+      const prefix = `search-content-${index}`;
+      page.on('pageerror', error => report.errors.push(error.message));
+      try {
+        await page.goto(searchUrl, {waitUntil: 'domcontentloaded'});
+        await page.waitForSelector('#fluent-read-page-styles', {state: 'attached'});
+        await page.waitForTimeout(600);
+        const original = await page.locator('main').innerHTML();
+        const ids = ['search-title', 'search-comment', 'comment-first', 'comment-second', 'comment-list'];
+        const protectedSelectors = ['nav', 'form', 'aside', '#search-heading', '#result-label',
+          '#post-metadata', '#comment-metadata', '#protected-code', 'button'];
+        const protectedHtml = await page.locator(protectedSelectors.join(',')).evaluateAll(nodes => nodes.map(node => node.outerHTML));
+        await page.evaluate(() => {
+          window.searchLinks = [...document.querySelectorAll('a')];
+          window.searchButtons = [...document.querySelectorAll('button')];
+          window.searchClicks = 0;
+          window.searchButtons.forEach(button => button.addEventListener('click', () => { window.searchClicks++; }));
+        });
+        result.hoverCounts = {};
+        for (const id of ['search-title', 'search-comment']) {
+          result.hoverCounts[id] = [];
+          for (const expected of [1, 0, 1]) {
+            await toggleHover(page, `#${id}`, true); await waitCount(page, `#${id} ${owned}`, expected);
+            result.hoverCounts[id].push(await count(page, `#${id} ${owned}`));
+            assert.equal(await count(page, owned), expected);
+            assert.equal(page.url(), searchUrl);
+          }
+          await toggleHover(page, `#${id}`, true); await waitCount(page, owned, 0);
+        }
+        await toggleFull(page); await waitCount(page, owned, ids.length); await waitCount(page, '.fluent-read-loading', 0);
+        for (const id of ids) {
+          assert.equal(await count(page, `#${id} ${owned}`), 1, id);
+          assert.match(await page.locator(`#${id} ${owned}`).textContent(), /流畅阅读测试译文/);
+        }
+        await page.evaluate(() => {
+          const card = document.createElement('article'); card.id = 'late-result';
+          card.setAttribute('data-testid', 'search-sdui-comment-unit');
+          card.innerHTML = '<a href="/r/example/comments/late/"><span id="late-title" data-testid="post-title-text">Another useful search result loaded after scrolling</span></a><div id="late-comment" data-testid="search-comment-content">This newly loaded comment describes a helpful reading habit.</div><button>Reply</button>';
+          document.querySelector('main').append(card);
+        });
+        await waitCount(page, owned, ids.length + 2); await waitCount(page, '.fluent-read-loading', 0);
+        result.dynamicCount = await count(page, owned);
+        await page.locator('#late-result').evaluate(node => node.remove());
+        await waitCount(page, owned, ids.length);
+        assert.equal(await page.locator(protectedSelectors.join(',')).evaluateAll(nodes => nodes.map(node => node.outerHTML)).then(value => JSON.stringify(value)), JSON.stringify(protectedHtml));
+        assert.equal(await page.evaluate(() => window.searchLinks.every(link => link.isConnected) && window.searchButtons.every(button => button.isConnected)), true);
+        await page.locator('#post-share').click();
+        assert.equal(await page.evaluate(() => window.searchClicks), 1);
+        const requests = await worker.evaluate(() => globalThis.redditRequests.flat());
+        assert.equal(requests.some(text => /KEEP_ORIGINAL_CODE|Upvote|Share|Reply|Show more|u\/example|r\/languagelearning|hours ago|Search results/.test(text)), false);
+        result.requests = requests;
+        await page.screenshot({path: path.join(args.artifactsDir, `${prefix}-translated.png`), caret: 'initial'});
+        await toggleFull(page); await waitCount(page, owned, 0); await page.waitForTimeout(300);
+        assert.equal(await page.locator('main').innerHTML(), original);
+        result.restored = true;
+        await toggleFull(page); await waitCount(page, owned, ids.length); await waitCount(page, '.fluent-read-loading', 0);
+        assert.equal(await page.locator(`${owned} ${owned}`).count(), 0);
+        for (const id of ids) assert.equal(await count(page, `#${id} ${owned}`), 1, id);
+        await toggleFull(page); await waitCount(page, owned, 0); await page.waitForTimeout(300);
+        assert.equal(await page.locator('main').innerHTML(), original);
+        assert.equal(page.url(), searchUrl);
+        result.passed = true;
+        console.log(`${prefix}: hover 1/0/1, full coverage, dynamic results, restore/retranslate passed`);
+      } catch (error) {
+        result.error = error.stack;
+        result.dom = await page.locator('body').innerHTML().catch(() => '');
+        await page.screenshot({path: path.join(args.artifactsDir, `${prefix}-failure.png`), caret: 'initial'}).catch(() => {});
+        throw error;
+      } finally { save(); await page.close(); }
+    }
+    if (args.liveSearch) {
+      await patchConfig({translationScope: 'content'});
+      await context.unroute('**/*', fixtureRoute);
+      const page = await helper.newPageWithoutForeground(context, args.timeout);
+      report.liveSearch = {url: searchUrls[0], provider: report.provider};
+      try {
+        const response = await page.goto(searchUrls[0], {waitUntil: 'domcontentloaded', timeout: args.timeout});
+        report.liveSearch.status = response?.status();
+        await page.locator('[data-testid="post-title-text"], [data-testid="search-comment-content"]').first().waitFor({timeout: 12000}).catch(() => {});
+        report.liveSearch.targets = await count(page, '[data-testid="post-title-text"], [data-testid="search-comment-content"]');
+        if (report.liveSearch.targets) {
+          await page.waitForSelector('#fluent-read-page-styles', {state: 'attached', timeout: args.timeout});
+          await page.waitForTimeout(600);
+          await toggleFull(page); await page.waitForSelector(owned, {timeout: args.timeout});
+          report.liveSearch.translations = await count(page, owned);
+          report.liveSearch.outcome = 'translated-with-deterministic-provider';
+        } else {
+          report.liveSearch.outcome = 'unverified-no-search-targets';
+          report.liveSearch.text = (await page.locator('body').innerText()).slice(0, 2000);
+        }
+        fs.writeFileSync(path.join(args.artifactsDir, 'live-search.html'), await page.content());
+        await page.screenshot({path: path.join(args.artifactsDir, 'live-search.png'), caret: 'initial'});
+      } catch (error) {
+        report.liveSearch.outcome = report.liveSearch.targets ? 'unverified-translation-error' : 'unverified-site-or-network-error';
+        report.liveSearch.error = error.message;
+      } finally { save(); await page.close(); await context.route('**/*', fixtureRoute); }
+    }
+    for (const scope of args.searchOnly ? [] : ['content', 'all']) {
       await patchConfig({translationScope: scope});
       await worker.evaluate(() => { globalThis.redditRequests = []; });
       const page = await helper.newPageWithoutForeground(context, args.timeout);
