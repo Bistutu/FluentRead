@@ -30,6 +30,8 @@ GitHub 仓库列表和 Issue 列表同时保留旧容器与当前结构的保护
 
 ## 视频完整句学习
 
+视频字幕总开关关闭时，YouTube/X 播放器按钮和菜单必须移除；播放器菜单的「关闭」遵循同一行为，重新开启从扩展弹窗或设置页操作。`videoSubtitleTrackPriorityRuntime` 覆盖两个平台初始关闭、已打开菜单的移除、周期同步后保持隐藏、重复开启不产生副本，以及隐藏字幕与关闭功能的区别。生产 Chrome 构建后使用 `node scripts/run-video-menu-state-test.cjs --button-visibility-only --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <证据目录>` 定向验证：初始关闭、外部配置关闭、控制栏重建、刷新、菜单关闭、重新开启，以及字幕关闭时网页段落翻译—恢复—再次翻译的 `[1, 0, 1]`。脚本使用临时 Edge 后台正常窗口与受控 YouTube/X DOM、媒体和翻译响应；不代表原站、在线服务或 Firefox 运行验收。
+
 AI 字幕运行时的缓存恢复与完整生成提交由 `video-ai/subtitleSession.ts` 统一拥有：媒体、模型、来源语言变化或卸载后，旧缓存不能写入新会话；原生轨道就绪时拒绝缓存恢复；同媒体元数据补全保持生成开始时的模型与语言快照。`videoAiSubtitleSession` 使用受控未决 Promise 验证这些边界、请求去重、新旧请求终结顺序、失败恢复、重入与销毁，完整时间轴提交会复制身份和 cue，缓存失败保留已识别字幕。
 
 `video-ai/requestSession.ts` 将完整和实时采集器的本地 session 映射为同一后台流的单调请求 generation，避免相同本地计数碰撞。模型预热、转写和取消共用冻结身份，缓存恢复不虚构识别请求；销毁后禁止新请求，原采集器仍用精确旧身份终止资源。`videoAiRequestSession` 联合真实后台 handler 验证旧预热、旧取消与新代际的隔离；`videoSubtitleTrackPriorityRuntime` 继续验证实际挂载、原生字幕优先、模型切换、元数据补全、预览和离开清理。两模块四维覆盖率单列；这组端口/DOM 证据不代表真实 PCM 采集、本地模型准确率或原站播放验收。

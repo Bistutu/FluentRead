@@ -12,6 +12,7 @@ const arg = (name, fallback) => {
   return index < 0 ? fallback : process.argv[index + 1];
 };
 const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
+const buttonVisibilityOnly = process.argv.includes('--button-visibility-only');
 const artifacts = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-video-menu-state'));
 const helperPath = arg('focus-safe-helper');
 const playwrightRoot = arg('playwright-root');
@@ -63,10 +64,17 @@ async function main() {
       return chrome.runtime.sendMessage({type: 'persistConfig', clientId: 'video-menu-state-proof', sequence,
         config: {...current, ...patch}, ...(Number.isSafeInteger(current.__fluentConfigRevision) ? {baseRevision: current.__fluentConfigRevision} : {})});
     }, {patch, sequence: ++sequence});
-    assert.equal(response.success, true);
+    assert.equal(response.success, true, response.error || 'Fixture configuration write failed');
   };
+  const waitForStoredVideoToggle = async value => control.waitForFunction(async expected => {
+    const stored = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
+    if (!stored.success) throw new Error('Cannot read fixture configuration');
+    const current = typeof stored.value === 'string' ? JSON.parse(stored.value) : stored.value || {};
+    return current.videoTranslationEnabled === expected;
+  }, value, {timeout: 5000});
   await patchConfig({on: true, uiLanguage: 'zh-CN', from: 'en', to: 'zh-Hans',
-    videoTranslationEnabled: true, videoSubtitleVisible: true, videoSubtitleDisplayMode: 'bilingual',
+    videoTranslationEnabled: !buttonVisibilityOnly, videoSubtitleVisible: true, videoSubtitleDisplayMode: 'bilingual',
+    ...(buttonVisibilityOnly ? {service: 'microsoft', display: 1, hotkey: 'Control', useCache: false} : {}),
     videoService: 'microsoft', videoServiceDefaultMigrated: true, videoLocalModel: 'tiny', videoSourceLanguage: 'auto'});
   const cached = await control.evaluate(() => chrome.runtime.sendMessage({type: 'fluentReadSetVideoAiSubtitleCache',
     source: {mediaId: '424242'}, model: 'tiny', sourceLanguage: 'auto',
@@ -83,24 +91,81 @@ async function main() {
       headers: {'accept-ranges': 'bytes', 'content-range': `bytes ${start}-${end}/${bytes.length}`},
       body: bytes.subarray(start, end + 1)});
   });
-  await context.route(url, route => route.fulfill({contentType: 'text/html', body: `<!doctype html><html><head><meta charset="utf-8"><style>
+  const fixtureHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
     .fixture-controls{position:absolute;bottom:0;left:12px;right:12px;display:flex;align-items:center;height:44px;background:#222;color:#fff}
     .fixture-controls button{display:flex;align-items:center;justify-content:center;width:32px;height:32px;flex:none;padding:0;border:0;background:transparent;color:#fff;font-size:20px}
     .fixture-time{flex:1;min-width:0;font:12px Arial;white-space:nowrap;overflow:hidden}
     .fixture-actions{display:flex;align-items:center;flex:none}
     [data-testid="videoPlayer"]:fullscreen{width:100vw!important;height:100vh!important}
     </style></head><body style="margin:24px;background:#f3f5f9">
-    <h1>字幕菜单状态同步</h1><article><div data-testid="videoPlayer" style="position:relative;width:960px;height:540px;overflow:hidden">
+    <h1>字幕菜单状态同步</h1><p id="fixture-text">This ordinary webpage paragraph remains available for translation when video subtitles are disabled.</p><article><div data-testid="videoPlayer" style="position:relative;width:960px;height:540px;overflow:hidden">
     <video src="https://video.twimg.com/ext_tw_video/424242/pu/fixture.mp4" style="width:100%;height:100%" muted></video>
     <div class="fixture-controls"><button aria-label="Play" onclick="this.dataset.clicked='true'">▶</button><span class="fixture-time">0:02 / 0:13</span>
     <div class="fixture-actions"><button aria-label="Captions">▣</button><button aria-label="Volume">◖</button><button aria-label="Settings">⚙</button>
     <div id="fixture-pip"><button aria-label="Picture in picture" onclick="this.dataset.clicked='true'">▣</button></div>
     <div id="fixture-fullscreen"><button aria-label="Full screen" onclick="this.closest('[data-testid=videoPlayer]').requestFullscreen()">⛶</button></div>
-    </div></div></div></article></body></html>`}));
+    </div></div></div></article></body></html>`;
+  await context.route(url, route => route.fulfill({contentType: 'text/html', body: fixtureHtml}));
   page = await helper.newPageWithoutForeground(context);
   await page.goto(url);
   await helper.activateExtensionTabWithoutForeground({serviceWorkers: () => [worker]}, page);
   await page.locator('video').hover();
+  if (buttonVisibilityOnly) {
+    report.evidence = 'Production extension; YouTube/X DOM and media fixtures; deterministic translation; no live site or ASR';
+    const youtubeUrl = 'https://www.youtube.com/watch?v=button-visibility';
+    await context.route(youtubeUrl, route => route.fulfill({contentType: 'text/html', body: fixtureHtml
+      .replace('data-testid="videoPlayer"', 'id="movie_player" class="html5-video-player"')
+      .replace('class="fixture-controls"', 'class="fixture-controls ytp-right-controls"')
+      .replace('<video src=', '<video class="html5-main-video" src=')}));
+    const waitForEntry = async enabled => {
+      await page.waitForFunction(expected => {
+        const buttons = document.querySelectorAll('#fluent-read-video-subtitle-button');
+        const menus = document.querySelectorAll('#fluent-read-video-subtitle-menu');
+        return buttons.length === Number(expected) && menus.length === Number(expected);
+      }, enabled);
+    };
+    for (const [platform, address] of [['x', url], ['youtube', youtubeUrl]]) {
+      await patchConfig({videoTranslationEnabled: false});
+      if (page.url() !== address) await page.goto(address);
+      await helper.activateExtensionTabWithoutForeground({serviceWorkers: () => [worker]}, page);
+      await page.locator('#fluent-read-page-styles').waitFor({state: 'attached'});
+      await page.waitForTimeout(1100);
+      await waitForEntry(false);
+      const paragraph = page.locator('#fixture-text');
+      const translationCounts = [];
+      for (const expected of [1, 0, 1]) {
+        await paragraph.hover(); await paragraph.click();
+        await page.keyboard.down('Control'); await page.keyboard.up('Control');
+        await page.waitForFunction(count => document.querySelectorAll('#fixture-text .fluent-read-bilingual-content').length === count, expected);
+        translationCounts.push(await paragraph.locator('.fluent-read-bilingual-content').count());
+      }
+      await waitForEntry(false);
+      await patchConfig({videoTranslationEnabled: true}); await waitForEntry(true);
+      await page.locator('#fluent-read-video-subtitle-button').click();
+      await page.locator('#fluent-read-video-subtitle-menu').waitFor({state: 'visible'});
+      await patchConfig({videoTranslationEnabled: false}); await waitForEntry(false);
+      await page.locator('.fixture-controls').evaluate(controls => controls.replaceWith(controls.cloneNode(true)));
+      await page.waitForTimeout(1100); await waitForEntry(false);
+      await page.screenshot({path: path.join(artifacts, `${platform}-disabled.png`)});
+      fs.writeFileSync(path.join(artifacts, `${platform}-disabled.html`), await page.content());
+      await page.reload();
+      await page.locator('#fluent-read-page-styles').waitFor({state: 'attached'});
+      await page.waitForTimeout(1100); await waitForEntry(false);
+      await patchConfig({videoTranslationEnabled: true}); await waitForEntry(true);
+      await page.locator('#fluent-read-video-subtitle-button').click();
+      await page.locator('#fluent-read-video-subtitle-menu [data-mode="off"]').click();
+      await waitForEntry(false);
+      await waitForStoredVideoToggle(false);
+      await patchConfig({videoTranslationEnabled: true}); await waitForEntry(true);
+      await patchConfig({videoTranslationEnabled: true}); await waitForEntry(true);
+      await page.screenshot({path: path.join(artifacts, `${platform}-enabled.png`)});
+      report.checks.push({platform, translationCounts, initialDisabled: true, openMenuRemoved: true,
+        controlsRebuiltWhileDisabled: true, reloadDisabled: true, menuOffRemovesEntry: true, singleEntryAfterReenable: true});
+    }
+    assert.deepEqual(report.errors, []);
+    report.success = true;
+    return;
+  }
   const checkPlacement = async name => {
     await page.waitForFunction(() => {
       const button = document.querySelector('#fluent-read-video-subtitle-button');
@@ -242,15 +307,20 @@ async function main() {
   assert.equal(await worker.evaluate(() => globalThis.fixtureTranslationCalls), beforeModeToggle);
   report.checks.push('四段显示方式同步且保持单选；原文与双语切换保留已完成译文，不重复请求');
   await menu.locator('[data-mode="off"]').click();
-  await checkedMode('off');
-  await checked(action('toggle-ai-subtitle'), false);
+  await page.waitForFunction(() => !document.querySelector('#fluent-read-video-subtitle-button, #fluent-read-video-subtitle-menu'));
+  await waitForStoredVideoToggle(false);
   await page.waitForFunction(() => !document.querySelector('#fluent-read-video-subtitle-original')?.textContent);
-  assert.equal(await menu.locator('[data-timing-row]').isVisible(), false);
-  await screenshot('off');
-  await menu.locator('[data-mode="bilingual"]').click();
+  await page.locator('[data-testid="videoPlayer"]').screenshot({path: path.join(artifacts, 'off.png')});
+  await page.evaluate(() => document.querySelector('[data-testid="videoPlayer"]').append(window.fixtureControls));
+  await patchConfig({videoTranslationEnabled: true});
+  await page.locator('#fluent-read-video-subtitle-button').click();
   await checkedMode('bilingual');
   await checked(action('toggle-ai-subtitle'), true);
-  report.checks.push('“关闭”停止 AI 并收起时间行，重新选择显示方式后恢复缓存字幕');
+  await page.evaluate(() => {
+    window.fixtureMenu = document.querySelector('#fluent-read-video-subtitle-menu');
+    window.fixtureControls.remove();
+  });
+  report.checks.push('“关闭”停止 AI 并移除按钮和菜单，从扩展配置重新开启后恢复入口与缓存字幕');
   await patchConfig({videoSubtitleVisible: false, videoSubtitleDisplayMode: 'original-only'});
   await checkedMode('off');
   await menu.locator('[data-mode="original-only"]').click();
@@ -341,6 +411,9 @@ async function main() {
   for (const name of ['download-subtitles', 'download-translated-subtitles', 'download-bilingual-subtitles']) {
     const downloaded = page.waitForEvent('download');
     await clickAction(name);
+    if (name !== 'download-subtitles') {
+      await menu.locator('[data-export-prompt] [data-export-choice="complete"]').click();
+    }
     const download = await downloaded;
     const destination = path.join(artifacts, `${name}.srt`);
     await download.saveAs(destination);

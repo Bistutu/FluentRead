@@ -189,8 +189,10 @@ async function sampleStableVideoToggleState(page, control, expected, durationMs 
       const playerButton = document.querySelector('#fluent-read-video-subtitle-button');
       const offChoice = document.querySelector('#fluent-read-video-subtitle-menu [data-mode="off"]');
       return {
-        button: playerButton?.getAttribute('aria-pressed') || '',
-        menu: offChoice ? String(offChoice.getAttribute('aria-checked') !== 'true') : '',
+        button: playerButton?.getAttribute('aria-pressed') || 'false',
+        menu: offChoice ? String(offChoice.getAttribute('aria-checked') !== 'true') : 'false',
+        buttonPresent: Boolean(playerButton),
+        menuPresent: Boolean(offChoice),
       };
     });
     const stored = await readExtensionConfig(control);
@@ -206,6 +208,8 @@ async function sampleStableVideoToggleState(page, control, expected, durationMs 
   const expectedString = String(expected);
   if (samples.some((sample) => sample.button !== expectedString
     || sample.menu !== expectedString
+    || sample.buttonPresent !== expected
+    || sample.menuPresent !== expected
     || sample.stored !== expected)) {
     throw new Error(`字幕翻译开关在稳定窗口内发生跳变：${JSON.stringify(samples)}`);
   }
@@ -680,8 +684,8 @@ async function main() {
         const playerButton = document.querySelector('#fluent-read-video-subtitle-button');
         const offChoice = document.querySelector('#fluent-read-video-subtitle-menu [data-mode="off"]');
         const next = JSON.stringify({
-          button: playerButton?.getAttribute('aria-pressed') || '',
-          menu: offChoice ? String(offChoice.getAttribute('aria-checked') !== 'true') : '',
+          button: String(Boolean(playerButton)),
+          menu: String(Boolean(offChoice)),
         });
         if (next === last) return;
         last = next;
@@ -701,21 +705,14 @@ async function main() {
     });
     const beforeDisableConfig = await readExtensionConfig(control);
     await page.locator('#fluent-read-video-subtitle-menu [data-mode="off"]').press('Enter');
-    await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-menu [data-mode="off"]')?.getAttribute('aria-checked') === 'true', null, { timeout: 10000 });
-    const disabledMenu = await page.evaluate(() => {
-      const off = document.querySelector('#fluent-read-video-subtitle-menu [data-mode="off"]');
-      const bilingual = document.querySelector('#fluent-read-video-subtitle-menu [data-mode="bilingual"]');
-      return {
-        offChecked: off?.getAttribute('aria-checked') || '',
-        bilingualChecked: bilingual?.getAttribute('aria-checked') || '',
-        buttonPressed: document.querySelector('#fluent-read-video-subtitle-button')?.getAttribute('aria-pressed') || '',
-        offBackground: off ? getComputedStyle(off).backgroundColor : '',
-        timingVisible: Boolean(document.querySelector('#fluent-read-video-subtitle-menu [data-timing-row]')?.getClientRects().length),
-      };
-    });
-    if (disabledMenu.offChecked !== 'true' || disabledMenu.bilingualChecked !== 'false' || disabledMenu.buttonPressed !== 'false'
-      || !/^rgba\(255, 255, 255, 0\.14\)$/u.test(disabledMenu.offBackground) || disabledMenu.timingVisible) {
-      throw new Error(`关闭状态的字幕显示选择不够明确：${JSON.stringify(disabledMenu)}`);
+    await page.waitForFunction(() => !document.querySelector('#fluent-read-video-subtitle-button, #fluent-read-video-subtitle-menu'), null, { timeout: 10000 });
+    const disabledMenu = await page.evaluate(() => ({
+      buttonPresent: Boolean(document.querySelector('#fluent-read-video-subtitle-button')),
+      menuPresent: Boolean(document.querySelector('#fluent-read-video-subtitle-menu')),
+      timingVisible: Boolean(document.querySelector('#fluent-read-video-subtitle-menu [data-timing-row]')?.getClientRects().length),
+    }));
+    if (disabledMenu.buttonPresent || disabledMenu.menuPresent || disabledMenu.timingVisible) {
+      throw new Error(`关闭视频字幕翻译后播放器入口未移除：${JSON.stringify(disabledMenu)}`);
     }
     const disabledStabilitySamples = await sampleStableVideoToggleState(page, control, false);
     const afterDisableConfig = await readExtensionConfig(control);
@@ -723,8 +720,9 @@ async function main() {
       || comparableConfigWithoutVideoToggle(afterDisableConfig) !== comparableConfigWithoutVideoToggle(beforeDisableConfig)) {
       throw new Error(`关闭字幕翻译产生了额外配置差异：${JSON.stringify({beforeDisableConfig, afterDisableConfig})}`);
     }
-    await page.locator('#fluent-read-video-subtitle-menu').screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-menu-disabled.png') });
-    await page.locator('#fluent-read-video-subtitle-menu [data-mode="bilingual"]').press('Enter');
+    await page.screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-menu-disabled.png') });
+    await persistExtensionConfig(control, {videoTranslationEnabled: true});
+    await page.locator('#fluent-read-video-subtitle-button').press('Enter');
     await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-menu [data-mode="bilingual"]')?.getAttribute('aria-checked') === 'true', null, { timeout: 10000 });
     const enabledStabilitySamples = await sampleStableVideoToggleState(page, control, true);
     const afterEnableConfig = await readExtensionConfig(control);
