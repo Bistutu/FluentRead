@@ -2,7 +2,7 @@
  * @file src/core/translation/resultValidation.ts
  * 文件职责：识别翻译服务误返原文或明显错语种的响应，避免将其当成成功译文。
  * 主要内容：复用语言识别副本排除纯符号、数字和技术标识，提供保持字词内容的原样响应比较，供图片入口接受空白、标点边界或 U+200B 包装的原文；仅在既有外语证据下识别原文回显，保留字词、大小写和符号差异，补足中文目标下短标签列表、运算符标签丢词或大小写回显、整段日文及有充分外语证据的长 Latin 正文错语种判定；文档行内正文可在完整原句的既有外语证据下识别普通多词标签原样返回，专名和单词仍保持保守。
- * 补充边界：可信外语长正文中，少量汉字替换不能掩盖大量保留的 Latin 原词，阿拉伯正文丢空格也不能冒充中文译文；成对外语引文、短名称与技术标识不作为新增拒绝证据。
+ * 补充边界：可信外语长正文中，少量汉字替换不能掩盖大量保留的 Latin 原词，阿拉伯正文丢空格也不能冒充中文译文；成对外语引文、短名称与完整槽标记代码不作为新增拒绝证据，标记之间的正文仍参与判定。
  * 模块边界：仅做保守的纯文本判定；不读取配置或缓存、不请求服务，也不改写原文与译文。
  */
 import {getChineseScript} from '@/src/core/language/chinese';
@@ -138,15 +138,21 @@ function outsideQuotedText(value: string): string {
         .replace(/(?<![\p{L}\p{N}])'(?:[^'\n]|(?<=[\p{Script=Latin}\p{M}])'(?=[\p{Script=Latin}\p{M}]))*'(?![\p{L}\p{N}])/gu, ' ');
 }
 
+/** 仅新残留规则的识别副本排除完整代码标记；不解包、不吞标记之间的正文，也不赋予逐槽语义。 */
+function residueDetectionCopy(value: string): string {
+    // nonce 在三下划线处停止，避免从损坏标记跨过下一标记；仅完整标准序号及 BEGIN/END 参与遮蔽。
+    return createLanguageDetectionCopy(value.replace(/___FLUENTREAD_(?:(?!___)[a-z0-9_-])+?_(?:0|[1-9]\d*)_(?:BEGIN|END)___/giu, ' ')).text;
+}
+
 /** 原文归属必须可信，且引文之外仍有大量外语正文；比例不能独立作为错语种依据。 */
 function hasDominantForeignResidue(origin: string, result: string, targetLanguage: string): boolean {
-    const translated = createLanguageDetectionCopy(outsideQuotedText(result)).text;
+    const translated = residueDetectionCopy(outsideQuotedText(result));
     const han = (translated.match(/\p{Script=Han}/gu) ?? []).length;
     const arabic = (translated.match(/\p{Script=Arabic}/gu) ?? []).length;
     const latin = (translated.match(/\p{Script=Latin}/gu) ?? []).length;
     // 无汉字的 Latin 正文继续使用原有统计判定，不扩大不确定混合段落。
     if (arabic < 60 && (han === 0 || latin < 60 || latin <= han * 6)) return false;
-    const source = createLanguageDetectionCopy(origin).text;
+    const source = residueDetectionCopy(origin);
     const identification = identifyTextLanguage(origin);
     if (identification.status !== 'identified'
         || identification.languages.some(language => isLanguageCodeMatch(language, targetLanguage))) return false;
