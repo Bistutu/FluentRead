@@ -251,6 +251,8 @@ PR #906 技术中文专项将上述模式参数替换为 `--technical-pr-906`，
 
 ## 云备份范围与敏感信息选择
 
+`googleDriveConfig`、`googleDriveSync` 与 `webDavBackup` 定向覆盖网站规则普通备份：复制内置 Reddit 规则、带或不带正文 `key`、共享模板、全局开关和停用列表均可保存；解密、worker 重启后恢复与合并保留规则及本机连接。`configTransfer`、`configDomainBoundaries` 和 `configStoreAuditBoundaries` 还验证真实导入、配置保存与加密 IndexedDB 不会再次删掉正文标签。规则范围只接受严格归一化结构，额外凭据、未知字段和伪装标量仍被排除，其他配置中的同名 `key`/`custom` 不获得例外。恢复旧普通备份时保留其中未包含的网站规则；其他普通设置仍按原契约处理删除。这些测试使用受控存储和协议端口，不代表真实云账号或跨设备联调。
+
 更新日期：2026 年 10 月 4 日。生产扩展构建完成后，使用 WebDAV 本机 HTTP 夹具运行本次范围专项：
 
 ```sh

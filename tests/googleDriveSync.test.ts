@@ -38,6 +38,45 @@ async function synced() {
     return f;
 }
 describe('Google Drive 同步事务', () => {
+    it('恢复缺失网站规则的旧普通备份时保留本机规则，云端文件不被重写', async () => {
+        const f = fixture();
+        f.local = config({...f.local, siteAdaptation: {...new Config().siteAdaptation, disabledRuleIds: ['reddit']}});
+        const original = structuredClone(f.local);
+        const payload = completePayload(config({theme: 'dark'})) as {config: Record<string, unknown>};
+        delete payload.config.siteAdaptation;
+        const content = await encryptDriveConfig(payload, password);
+        f.remote = {file: {id: 'fixture-file', version: '1', modifiedTime: ''}, content};
+        const preview = await f.service.prepare(password);
+        await createGoogleDriveSync(f.ports).commit(preview.id, password, 'download', {});
+        expect(f.local).toMatchObject({theme: 'dark', siteAdaptation: original.siteAdaptation, token: original.token});
+        expect(f.remote.content).toBe(content);
+        expect(f.ports.api.write).not.toHaveBeenCalled();
+    });
+    it.each(['download', 'merge'] as const)('普通备份跨 worker 保存并%s自定义网站规则，保留本机凭据', async direction => {
+        const f = fixture();
+        f.local = config({...f.local, siteAdaptation: {enabled: false, disabledRuleIds: ['reddit'], custom: {
+            version: 1, rules: [{id: 'reddit', name: 'My Reddit', match: {hosts: ['*.reddit.com']},
+                content: [{css: ['shreddit-post h1'], key: 'reddit-post-title'}]}],
+        }}});
+        const original = structuredClone(f.local);
+        let preview = await f.service.prepare(password);
+        await createGoogleDriveSync(f.ports).commit(preview.id, password, 'upload', {});
+        const saved = f.remote!.content;
+        const payload = await decryptDriveConfig(saved, password) as {config: Record<string, unknown>};
+        expect(payload.config.siteAdaptation).toEqual(original.siteAdaptation);
+        expect(payload.config).not.toHaveProperty('token');
+        f.local = config({...original, siteAdaptation: new Config().siteAdaptation});
+        preview = await f.service.prepare(password);
+        expect(preview.changes).toContainEqual(expect.objectContaining({label: '网站规则', sensitive: true}));
+        expect(JSON.stringify(preview.changes)).not.toContain('reddit-post-title');
+        await createGoogleDriveSync(f.ports).commit(preview.id, password, direction,
+            Object.fromEntries(preview.changes.map(change => [change.id, 'remote'])));
+        expect(f.local.siteAdaptation).toEqual(original.siteAdaptation);
+        expect(f.local.token).toEqual(original.token);
+        expect(f.local.proxy).toEqual(original.proxy);
+        expect(f.remote!.content).toBe(saved);
+        expect(f.ports.api.write).toHaveBeenCalledOnce();
+    });
     it('只读备份仍展示差异并可在后台重启后恢复，伪造保存请求也不能写入云端', async () => {
         const f=await synced();
         const originalTarget=f.local.to;
