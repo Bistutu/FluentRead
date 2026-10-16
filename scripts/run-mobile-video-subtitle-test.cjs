@@ -14,7 +14,7 @@ const arg = (name, fallback) => { const i = process.argv.indexOf(`--${name}`); r
 const suiteFlags = process.argv.slice(2).filter(value=>value==='--suite'||value.startsWith('--suite='));
 if(suiteFlags.length>1) throw Error('--suite may be specified only once');
 const selectedSuite = suiteFlags[0]?.startsWith('--suite=')?suiteFlags[0].slice('--suite='.length):arg('suite','lifecycle');
-if (!['menu','lifecycle'].includes(selectedSuite)) throw Error('--suite must be menu or lifecycle (default: lifecycle)');
+if (!['menu','lifecycle','control-clones'].includes(selectedSuite)) throw Error('--suite must be menu, lifecycle or control-clones (default: lifecycle)');
 const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
 const artifacts = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-mobile-video'));
 const playwrightRoot = arg('playwright-root');
@@ -27,6 +27,14 @@ const translated = '在视频底部观看双语字幕。';
 const url = 'https://m.youtube.com/watch?v=fluentread-mobile-992';
 const report = {selectedSuite,fixture:'mobile-youtube-production-extension', evidenceLimits:['local HTML and timedtext fixtures', 'mock translation', 'Chromium viewport/touch emulation', 'isolated-extension-world webkit capability/event shim only; no iOS/AVKit rendering', 'fullscreen geometry uses an explicit DOM property fixture; no system/window fullscreen', 'no live provider or mobile device'], cases:[], errors:[]};
 if(selectedSuite==='menu') report.evidenceLimits.push('Explicit menu suite: shared caption readiness, touch/desktop menus and fullscreen geometry only; native-selection shim, video replacement, reload and persisted-pageshow lifecycle assertions are not executed; menu success is not lifecycle acceptance');
+if(selectedSuite==='control-clones') Object.assign(report,{fixture:'same-scope-control-clones-production-extension',evidenceLimits:[
+  'Local desktop/mobile YouTube HTML, generated media and timedtext fixtures; mock translation',
+  'Actual built extension content and native Chromium MutationObserver; no binding import, sync call or cleanup model',
+  'Trusted CDP entry/Close clicks on the original live entry; no synthetic click acceptance',
+  'Chromium viewport/touch emulation only; no live YouTube, Safari, iOS/AVKit or Safari E2/AX attribution',
+  'Private factory call counts are not instrumented; observed live identity and owner uniqueness are checked',
+  'No fullscreen/native-track shim, subtitle accuracy or reload/pageshow lifecycle acceptance in this suite',
+]});
 fs.mkdirSync(artifacts, {recursive:true});
 let session, profileDir, page, control, focusMonitor, browserPid, focusTimer, focusError, closing, worker, evaluateBusinessWorld;
 let launchAttempted = false, cleanupStarted = false;
@@ -65,6 +73,123 @@ const diagnoseTrackResources = () => page.evaluate(async()=>{
         }
         return results;
 });
+
+async function runControlClonesSuite(context, configure, mediaBase64) {
+  const hash = value => require('node:crypto').createHash('sha256').update(value).digest('hex');
+  const manifestBytes = fs.readFileSync(path.join(extensionDir,'manifest.json'));
+  const manifest = JSON.parse(manifestBytes);
+  report.extensionIdentity = {directory:extensionDir,manifestSHA256:hash(manifestBytes),contentScripts:
+    [...new Set((manifest.content_scripts||[]).flatMap(entry=>entry.js||[]))].map(file=>{
+      const bytes=fs.readFileSync(path.join(extensionDir,file));return {file,sha256:hash(bytes),size:bytes.length};
+    })};
+  assert.ok(report.extensionIdentity.contentScripts.some(entry=>entry.file==='content-scripts/content.js'),'Require the manifest-declared production content entry');
+  const cdp=await context.newCDPSession(page);
+  for(const layout of ['desktop','mobile']) {
+    await configure({on:true,videoTranslationEnabled:true,videoSubtitleVisible:true,videoSubtitleDisplayMode:'bilingual'});
+    await cdp.send('Emulation.setTouchEmulationEnabled',layout==='mobile'?{enabled:true,maxTouchPoints:1}:{enabled:false});
+    await page.setViewportSize(layout==='mobile'?{width:390,height:844}:{width:1280,height:900});
+    const fixtureUrl=`https://${layout==='mobile'?'m':'www'}.youtube.com/watch?v=fluentread-control-clones-${layout}`;
+    const timedtext=`https://${layout==='mobile'?'m':'www'}.youtube.com/api/timedtext?v=fluentread-control-clones-${layout}&lang=en`;
+    const controls='<div data-fixture-controls="original" class="'+(layout==='mobile'?'player-controls-bottom player-controls-bottom-right':'ytp-right-controls')+'"><button aria-label="Settings">Settings</button><button aria-label="Full screen">Fullscreen</button></div>';
+    const video=`<video playsinline preload="auto" src="data:video/mp4;base64,${mediaBase64}"></video>`;
+    const player=`<div id="movie_player" class="html5-video-player${layout==='mobile'?' ytp-mweb-player':''}">${video}<div class="ytp-caption-window-container"><span class="ytp-caption-segment">${source}</span></div>${layout==='desktop'?controls:''}</div>`;
+    const topology=layout==='mobile'?`<div id="player-container-id" class="player-container sticky-player">${player}<ytm-custom-control><ytm-watch-player-controls><div id="player-control-overlay"><div class="player-controls-content">${controls}</div></div></ytm-watch-player-controls></ytm-custom-control></div>`:player;
+    await page.route(fixtureUrl,route=>route.fulfill({status:200,contentType:'text/html',body:`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Control clone ownership fixture</title><style>html,body{margin:0;background:#e9edf3;font:16px Arial}#player-container-id,#movie_player{position:relative;width:100%;height:min(56.25vw,500px);background:#101820}video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}[data-fixture-controls]{position:absolute;right:8px;bottom:8px;display:flex;gap:8px;height:44px}[data-fixture-controls] button{min-width:44px;height:44px}[data-fixture-controls="copy"]{bottom:62px}.ytp-caption-window-container{position:absolute;top:35%;color:white}</style><script>var ytInitialPlayerResponse=${JSON.stringify({videoDetails:{videoId:`fluentread-control-clones-${layout}`},captions:{playerCaptionsTracklistRenderer:{captionTracks:[{baseUrl:timedtext,languageCode:'en',name:{simpleText:'English'}}]}}})};</script></head><body>${topology}<p>Controlled production content ownership fixture; not a live mobile site.</p></body></html>`}));
+    const timedtextUrl=new URL(timedtext);
+    await page.route(candidate=>candidate.origin===timedtextUrl.origin&&candidate.pathname===timedtextUrl.pathname&&
+      candidate.searchParams.getAll('v').length===1&&candidate.searchParams.get('v')===timedtextUrl.searchParams.get('v'),
+      route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({events:[{tStartMs:0,dDurationMs:30000,segs:[{utf8:source}]}]})}));
+    report.stage=`control-clones-${layout}-ready`;save();
+    await page.goto(fixtureUrl,{waitUntil:'domcontentloaded'});
+    await helper.activateExtensionTabWithoutForeground(context,page);
+    await page.waitForFunction(()=>document.querySelector('video')?.readyState>=2&&
+      document.querySelector('[data-fixture-controls="original"] #fluent-read-video-subtitle-button')?.getAttribute('data-fluent-read-video-binding-owner')&&
+      document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===true);
+    const baseline=await page.evaluate(layout=>{
+      const live=document.querySelector('[data-fixture-controls="original"] #fluent-read-video-subtitle-button');
+      const player=document.querySelector('#movie_player'),host=live.parentElement;
+      const scope=layout==='mobile'?document.querySelector('#player-container-id'):player;
+      const probe=window.__controlCloneProbe={live,player,host,scope,owner:live.getAttribute('data-fluent-read-video-binding-owner'),
+        nativeButtons:[...host.querySelectorAll('button')].filter(node=>node!==live),cases:[],clicks:[]};
+      document.addEventListener('click',event=>{
+        if(live.contains(event.target))probe.clicks.push({kind:'entry',trusted:event.isTrusted});
+        else if(event.target.closest?.('#fluent-read-video-subtitle-menu [data-action="close-menu"]'))probe.clicks.push({kind:'close',trusted:event.isTrusted});
+      },true);
+      return {layout,url:location.href,liveInOriginalHost:host.matches('[data-fixture-controls="original"]'),scopeContainsHost:scope.contains(host),
+        scopeIsPlayer:scope===player,scopeVideoCount:scope.querySelectorAll('video').length,coarsePointer:matchMedia('(pointer:coarse)').matches,
+        ariaPressed:live.getAttribute('aria-pressed'),ariaExpanded:live.getAttribute('aria-expanded'),ariaHaspopup:live.getAttribute('aria-haspopup'),ariaControls:live.getAttribute('aria-controls')};
+    },layout);
+    assert.equal(baseline.url,fixtureUrl);assert.equal(baseline.liveInOriginalHost,true);assert.equal(baseline.scopeContainsHost,true);
+    assert.equal(baseline.scopeIsPlayer,layout==='desktop');assert.equal(baseline.scopeVideoCount,1);assert.equal(baseline.coarsePointer,layout==='mobile');
+    assert.equal(baseline.ariaPressed,null);assert.equal(baseline.ariaExpanded,'false');assert.equal(baseline.ariaHaspopup,'menu');assert.equal(baseline.ariaControls,'fluent-read-video-subtitle-menu');
+    for(const kind of ['whole-host','loose']) {
+      report.stage=`control-clones-${layout}-${kind}`;save();await checkFocus();
+      const repair=await page.evaluate(async kind=>{
+        const p=window.__controlCloneProbe,selector=`button[data-fluent-read-video-binding-owner="${p.owner}"]`;
+        const foreign=p.live.cloneNode(true);foreign.setAttribute('data-fluent-read-video-binding-owner',`fixture-foreign-${kind}`);
+        const outside=p.live.cloneNode(true),unrelated=document.createElement('div');unrelated.className='html5-video-player';unrelated.hidden=true;
+        unrelated.append(document.createElement('video'),outside);document.body.appendChild(unrelated);
+        const sibling=kind==='whole-host'?p.host.cloneNode(true):null;
+        const copy=sibling?sibling.querySelector(selector):p.live.cloneNode(true);
+        if(sibling){sibling.setAttribute('data-fixture-controls','copy');sibling.appendChild(foreign);} else p.scope.appendChild(foreign);
+        const records=[],observer=new MutationObserver(batch=>records.push(...batch));observer.observe(p.scope,{childList:true,subtree:true});
+        const startedAt=performance.now();
+        if(sibling)p.host.parentElement.appendChild(sibling);else p.scope.appendChild(copy);
+        const immediateOwnCount=p.scope.querySelectorAll(selector).length;
+        // No task, click, locator/sync call or synthetic event can repair the copy before this checkpoint.
+        await new Promise(resolve=>queueMicrotask(resolve));
+        const afterMicrotask={ownCount:p.scope.querySelectorAll(selector).length,copyConnected:copy.isConnected,elapsedMs:performance.now()-startedAt};
+        await new Promise(resolve=>setTimeout(resolve,0));observer.disconnect();
+        p.cases.push({kind,copy,foreign,outside,sibling});
+        return {kind,immediateOwnCount,afterMicrotask,afterTaskOwnCount:p.scope.querySelectorAll(selector).length,
+          removedCopyObserved:records.some(record=>[...record.removedNodes].some(node=>node===copy||node.contains?.(copy))),
+          liveIdentity:p.host.querySelector('#fluent-read-video-subtitle-button')===p.live,liveConnected:p.live.isConnected,liveParentUnchanged:p.live.parentElement===p.host,
+          nativeButtonsUnchanged:p.nativeButtons.every(node=>node.isConnected&&node.parentElement===p.host),
+          siblingRetained:!sibling||sibling.isConnected,siblingNativeRetained:!sibling||Boolean(sibling.querySelector('[aria-label="Full screen"]')),
+          foreignRetained:foreign.isConnected,unrelatedRetained:outside.isConnected&&!p.scope.contains(outside),url:location.href};
+      },kind);
+      const receipt={name:`${layout}-${kind}`,status:'OBSERVED_PENDING_ASSERTIONS',baseline,repair};report.cases.push(receipt);save();
+      assert.equal(repair.immediateOwnCount,2,`${layout}/${kind}: fixture must insert a real same-owner copy`);
+      assert.equal(repair.afterMicrotask.ownCount,1,JSON.stringify(repair));assert.equal(repair.afterMicrotask.copyConnected,false,JSON.stringify(repair));
+      assert.equal(repair.afterTaskOwnCount,1);assert.equal(repair.removedCopyObserved,true);
+      for(const key of ['liveIdentity','liveConnected','liveParentUnchanged','nativeButtonsUnchanged','siblingRetained','siblingNativeRetained','foreignRetained','unrelatedRetained'])assert.equal(repair[key],true,`${layout}/${kind}: ${key}`);
+      assert.equal(repair.url,fixtureUrl);
+      const entry=page.locator('[data-fixture-controls="original"] #fluent-read-video-subtitle-button');
+      await entry.click();
+      await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===false&&window.__controlCloneProbe.live.getAttribute('aria-expanded')==='true');
+      await page.screenshot({path:path.join(artifacts,`control-clones-${layout}-${kind}-menu-open.png`)});
+      await page.locator('#fluent-read-video-subtitle-menu [data-action="close-menu"]').click();
+      await page.waitForFunction(()=>document.querySelector('#fluent-read-video-subtitle-menu')?.hidden===true&&window.__controlCloneProbe.live.getAttribute('aria-expanded')==='false');
+      const menu=await page.evaluate(()=>{
+        const p=window.__controlCloneProbe;return {focusReturned:document.activeElement===p.live,ariaPressed:p.live.getAttribute('aria-pressed'),
+          selectedMode:document.querySelector('#fluent-read-video-subtitle-menu [data-mode][aria-checked="true"]')?.getAttribute('data-mode'),clicks:p.clicks.slice(-2),url:location.href};
+      });
+      assert.equal(menu.focusReturned,true);assert.equal(menu.ariaPressed,null);assert.equal(menu.selectedMode,'bilingual');assert.equal(menu.url,fixtureUrl);
+      assert.deepEqual(menu.clicks,[{kind:'entry',trusted:true},{kind:'close',trusted:true}]);
+      Object.assign(receipt,{status:'PASS',menu});save();
+      await page.screenshot({path:path.join(artifacts,`control-clones-${layout}-${kind}-menu-closed.png`)});
+    }
+    fs.writeFileSync(path.join(artifacts,`control-clones-${layout}-dom.html`),await page.evaluate(()=>{
+      const clone=document.documentElement.cloneNode(true);clone.querySelectorAll('video').forEach(node=>node.removeAttribute('src'));return clone.outerHTML;
+    }));
+    // Reuse real configuration persistence/subscription, exercising binding disable without global content disposal.
+    await configure({videoTranslationEnabled:false});
+    await page.waitForFunction(()=>!window.__controlCloneProbe.live.isConnected&&!document.querySelector('#fluent-read-video-subtitle-menu'));
+    const disabled=await page.evaluate(()=>{
+      const p=window.__controlCloneProbe;return {liveRemoved:!p.live.isConnected,
+        ownCount:p.scope.querySelectorAll(`button[data-fluent-read-video-binding-owner="${p.owner}"]`).length,
+        foreignRetained:p.cases.every(item=>item.foreign.isConnected),unrelatedRetained:p.cases.every(item=>item.outside.isConnected),
+        nativeButtonsRetained:p.nativeButtons.every(node=>node.isConnected&&node.parentElement===p.host)};
+    });
+    const disableReceipt={name:`${layout}-configuration-disable`,status:'OBSERVED_PENDING_ASSERTIONS',...disabled};report.cases.push(disableReceipt);save();
+    assert.deepEqual(disabled,{liveRemoved:true,ownCount:0,foreignRetained:true,unrelatedRetained:true,nativeButtonsRetained:true});
+    disableReceipt.status='PASS';save();
+    await page.goto('about:blank'); // Navigation separates fixtures; this is not a reload/unload-cleanup assertion.
+  }
+  await configure({on:false});
+  assert.equal(report.errors.length,0,report.errors.join('\n'));
+  report.stage='control-clones-complete';save();
+}
 
 async function main() {
   assert.ok(fs.existsSync(path.join(extensionDir,'manifest.json')), '需要 production 扩展构建');
@@ -135,6 +260,7 @@ async function main() {
   page.on('console',message=>(report.console ||= []).push({type:message.type(),text:message.text()}));
   page.on('requestfailed',request=>(report.requestFailures ||= []).push({url:request.url().slice(0,300),failure:request.failure()}));
   page.on('response',response=>{if(response.url().includes('/api/timedtext'))(report.timedtextResponses ||= []).push({url:response.url(),status:response.status()});});
+  if(selectedSuite==='control-clones'){await runControlClonesSuite(context,configure,mediaBase64);return;}
   const timedtext='https://m.youtube.com/api/timedtext?v=fluentread-mobile-992&lang=en';
   await page.route('**/api/timedtext**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({events:[{tStartMs:0,dDurationMs:30000,segs:[{utf8:source}]}]})}));
   await page.route(url,route=>route.fulfill({status:200,contentType:'text/html',body:`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Mobile YouTube subtitle fixture</title><style>html,body{margin:0;background:#e9edf3;font:16px Arial}#movie_player{position:relative;width:100%;height:min(56.25vw,100svh);aspect-ratio:16/9;background:#101820;overflow:hidden}video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.ytp-caption-window-container{position:absolute;left:0;right:0;top:45%;text-align:center;color:white}.ytp-caption-segment{background:#000b}.ytp-right-controls{position:absolute;right:8px;bottom:8px;height:32px;display:flex;gap:8px}.ytp-right-controls button{height:32px;background:#223345;color:white}.controls-hidden .ytp-right-controls{opacity:0;pointer-events:none}#description{padding:20px;line-height:1.6}</style><script>var ytInitialPlayerResponse=${JSON.stringify({videoDetails:{videoId:'fluentread-mobile-992'},captions:{playerCaptionsTracklistRenderer:{captionTracks:[{baseUrl:timedtext,languageCode:'en',name:{simpleText:'English'}}]}}})};</script></head><body><div id="movie_player" class="html5-video-player controls-hidden"><video playsinline preload="auto" src="data:video/mp4;base64,${mediaBase64}"></video><div id="ytp-caption-window-container" class="ytp-caption-window-container"><span class="ytp-caption-segment">${source}</span></div><div class="ytp-right-controls"><button aria-label="Settings">Settings</button><button aria-label="Fullscreen">Fullscreen</button></div></div><div id="description">Mobile YouTube layout fixture<br>生产扩展字幕定位与系统轨道接口专项<br>不是移动真机验收</div></body></html>`}));
@@ -540,6 +666,8 @@ main().catch(async error=>{
   try{await closeOwned();}catch(error){report.errors.push(String(error));process.exitCode=1;}
   if(focusMonitor){
     try{await focusMonitor.stop();}catch(error){report.focusObserverCleanupError=String(error);process.exitCode=1;}
+    const observerError=focusMonitor.error;
+    if(observerError){report.focusObserverError=String(observerError);report.errors.push(report.focusObserverError);process.exitCode=1;}
     report.focusEvents=[...focusMonitor.events];
     if(browserPid&&report.focusEvents.some(event=>event.pid===browserPid)){
       report.errors.push('Owned test browser activated during complete focus observation, including cleanup');process.exitCode=1;

@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/videoPlayerBinding.ts
  * 文件职责：把字幕入口和菜单绑定到定位器选中的视频播放器，并在信息流、全屏及原生控件重挂载时保持稳定。
- * 主要内容：以画中画和全屏控件为锚点维护入口顺序，移动 YouTube 仅在已验证同视频容器中认领外部底部右控制组和交互；自有菜单宿主按媒体播放器坐标校准并隔离原生控制层，重挂仅恢复菜单原有焦点；修复入口、副本与所有权，管理 fallback、进度徽标和禁用清理。
+ * 主要内容：以画中画和全屏控件为锚点维护入口顺序，移动 YouTube 仅在已验证同视频容器中认领外部底部右控制组和交互；自有菜单宿主按媒体播放器坐标校准并隔离原生控制层，重挂仅恢复菜单原有焦点；在已认领的局部播放器范围清理自身入口副本，管理 fallback、进度徽标和禁用清理。
  * 模块边界：只管理 FluentRead 播放器节点的挂载位置与事件；公开菜单宿主校准供既有布局帧调用，不重扫播放器或重建入口；按钮行为、菜单内容和字幕业务由调用方注入。
  */
 
@@ -128,6 +128,7 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
   let menuHost: HTMLElement | null = null;
   let menuPointer: {node: HTMLElement; value: string; priority: string} | null = null;
   let host: HTMLElement | null = null;
+  let ownedScope: HTMLElement | null = null;
   let before: Element | null = null;
   let fallback: HTMLElement | null = null;
   let destroyed = false;
@@ -136,6 +137,9 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
   const buttonOwner = `${Date.now()}-${Math.random()}`;
   const buttonOwnerAttribute = 'data-fluent-read-video-binding-owner';
   const ownedButtonSelector = `button[${buttonOwnerAttribute}="${buttonOwner}"]`;
+  // 通用定位器可能回退到页面根；入口副本修复不能因此扩大为全页查询和清理。
+  const scopeForOwnedCopies = (scope: HTMLElement): HTMLElement | null =>
+    scope === document.body || scope === document.documentElement ? null : scope;
   const activePlayers = new WeakSet<HTMLElement>();
   const positionedPlayers = new WeakSet<HTMLElement>();
   const previousPositions = new WeakMap<HTMLElement, {value: string; priority: string}>();
@@ -170,14 +174,17 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
     const menuHostToRemove = menuHost;
     const fallbackToRemove = fallback;
     const hostToClean = host;
+    const scopeToClean = ownedScope;
     button = null;
     menu = null;
     menuHost = null;
     fallback = null;
     host = null;
+    ownedScope = null;
     before = null;
     try {
       restoreMenuPointer();
+      removeClonedButtons(scopeToClean, buttonToRemove);
       removeClonedButtons(hostToClean, buttonToRemove);
       buttonToRemove?.remove();
       menuToRemove?.remove();
@@ -295,6 +302,12 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
 
   const place = (next: VideoPlayerTarget): void => {
     const scope = controlsScope(next);
+    const nextOwnedScope = scopeForOwnedCopies(scope);
+    // 站点可保留旧控制组并追加深复制组；只清 host 会漏掉同播放器内无监听的入口。
+    // 保留此前认领的局部范围，第二视频或重挂使范围收缩时仍能清除自身旧副本。
+    if (ownedScope !== nextOwnedScope) removeClonedButtons(ownedScope, button);
+    ownedScope = nextOwnedScope;
+    removeClonedButtons(ownedScope, button);
     const preferred = nativeControls(next.player, scope);
     // X 的控制栏在悬浮后才挂载。等待真实控制栏，避免右下角 fallback 首帧闪现后跳到进度左侧。
     if (!preferred && next.player.getAttribute('data-testid') === 'videoPlayer') {
@@ -414,13 +427,15 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
     if (!target) return;
     const scope = controlsScope(target);
     // 第二视频/播放器移出会让 scope 退回 player，而变更记录仍属于旧容器；先撤回失效宿主，再按新范围过滤噪声。
-    if ((host && !scope.contains(host)) || (menuHost && menuHost.parentElement !== scope)) {sync(); return;}
+    if ((ownedScope && ownedScope !== scopeForOwnedCopies(scope))
+      || (host && !scope.contains(host)) || (menuHost && menuHost.parentElement !== scope)) {sync(); return;}
     const playerRecords = records.filter(record => scope.contains(record.target));
     if (playerRecords.length === 0) return;
     const isOwned = (node: Node) => node instanceof Element && Boolean(node.closest('.fluent-read-video-ui'));
-    // 原按钮仍在正确锚点时也可能新插入无监听的副本；只检查本实例所持控制栏，避免字幕/tooltip 自身更新触发重新扫描。
+    // 原按钮仍在正确锚点时也可能在旁边插入无监听副本；仅检查当前局部范围，页面根仍限于持有 host。
     const addsOwnedButtonCopy = (node: Node): boolean => {
-      if (!(node instanceof Element) || !host?.contains(node)) return false;
+      const copyScope = scopeForOwnedCopies(scope) || host;
+      if (!(node instanceof Element) || !copyScope?.contains(node)) return false;
       return (node !== button && node.matches(ownedButtonSelector))
         || Array.from(node.querySelectorAll(ownedButtonSelector)).some(copy => copy !== button);
     };

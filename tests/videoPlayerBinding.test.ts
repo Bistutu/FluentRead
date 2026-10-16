@@ -16,8 +16,8 @@ import {createVideoPlayerBinding} from '@/src/features/video-subtitle/content/vi
 import type {VideoPlayerLocator, VideoPlayerTarget} from '@/src/features/video-subtitle/content/videoPlayerLocator';
 import {createVideoPlayerMenu, syncVideoPlayerMenuLayout} from '@/src/features/video-subtitle/content/playerMenu';
 
-function createFixture(markup = '<div class="player"><video></video><div class="ytp-right-controls"><button>settings</button><button>other</button></div></div>') {
-  const parsed = parseHTML(`<!doctype html><body>${markup}</body>`);
+function createFixture(markup = '<div class="player"><video></video><div class="ytp-right-controls"><button>settings</button><button>other</button></div></div>', fullDocument = false) {
+  const parsed = parseHTML(fullDocument ? `<!doctype html><html><head></head><body>${markup}</body></html>` : `<!doctype html><body>${markup}</body>`);
   const view = parsed.window;
   vi.stubGlobal('window', view);
   vi.stubGlobal('document', parsed.document);
@@ -131,6 +131,43 @@ function ownedMenu() {
 }
 
 describe('mobile YouTube owned menu rendering scope', () => {
+  it('observer repairs a site-moved menu host within the same scope while retaining content, listeners and focus', () => {
+    const f = createMobileYoutubeFixture(); mobileMenuGeometry(f);
+    const menu = ownedMenu(), item = menu.querySelector<HTMLButtonElement>('button')!;
+    menu.hidden = false;
+    let active: Element = f.document.body;
+    Object.defineProperty(f.document, 'activeElement', {configurable: true, get: () => active});
+    const focus = vi.spyOn(item, 'focus').mockImplementation(() => {active = item;});
+    const menuClick = vi.fn(), buttonClick = vi.fn(); menu.addEventListener('click', menuClick);
+    const factory = vi.fn(() => menu);
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: factory, onButtonClick: buttonClick});
+    const host = menu.parentElement!, button = f.createButton.mock.results[0].value;
+    expect(host.classList.contains('fluent-read-video-menu-host')).toBe(true);
+    expect(host.parentElement).toBe(f.scope); expect(host.clientWidth).toBe(402); expect(host.clientHeight).toBe(226);
+    const wrongParent = f.document.createElement('div'); f.scope.appendChild(wrongParent);
+    wrongParent.appendChild(host); active = item;
+    const append = f.scope.appendChild.bind(f.scope);
+    Object.defineProperty(f.scope, 'appendChild', {configurable: true, value: (node: Node) => {
+      if (node === host) active = f.document.body;
+      return append(node);
+    }});
+    // Target, sole video, scope and button host stay valid; only the menu host's direct parent is wrong.
+    expect(f.scope.querySelectorAll('video')).toHaveLength(1);
+    expect(f.scope.contains(f.controls)).toBe(true); expect(button.parentElement).toBe(f.controls);
+    expect(host.parentElement).toBe(wrongParent); expect(focus).not.toHaveBeenCalled();
+    f.changed(wrongParent, [host]); // Actual binding observer notification; no explicit sync or scope transition.
+    expect(host.parentElement).toBe(f.scope); expect(menu.parentElement).toBe(host); expect(menu.hidden).toBe(false);
+    expect(button.parentElement).toBe(f.controls); expect(binding.getTarget()).toBe(f.target);
+    expect(factory).toHaveBeenCalledOnce(); expect(f.createButton).toHaveBeenCalledOnce();
+    expect(focus).toHaveBeenCalledOnce(); expect(focus).toHaveBeenCalledWith({preventScroll: true}); expect(active).toBe(item);
+    item.dispatchEvent(new f.window.Event('click', {bubbles: true})); expect(menuClick).toHaveBeenCalledOnce();
+    button.dispatchEvent(new f.window.Event('click', {bubbles: true})); expect(buttonClick).toHaveBeenCalledOnce();
+    binding.destroy();
+    expect(menu.isConnected).toBe(false); expect(host.isConnected).toBe(false); expect(button.isConnected).toBe(false);
+    expect(wrongParent.isConnected).toBe(true);
+  });
+
   it('calibrates the existing menu through its layout port without scanning the locator or recreating entry/menu', () => {
     const f = createMobileYoutubeFixture(), geometry = mobileMenuGeometry(f), menu = ownedMenu();
     const factory = vi.fn(() => menu), scans = vi.spyOn(f.locator, 'sync');
@@ -1312,6 +1349,230 @@ it('skips text-only player updates and unrelated mixed records while rebinding r
   expect(scans).toHaveBeenCalledOnce();
   expect(button.parentElement).toBe(replacement);
   binding.destroy();
+});
+
+describe('same-player owner copies outside the held control host', () => {
+  const ownerAttribute = 'data-fluent-read-video-binding-owner';
+  const buttonSelector = '#fluent-read-video-subtitle-button';
+
+  function cloneFixture(layout: 'desktop' | 'mobile', fullDocument = false) {
+    if (layout === 'mobile') return createMobileYoutubeFixture();
+    const f = createFixture('<div class="player"><video></video><div class="ytp-right-controls">'
+      + '<button aria-label="Settings">settings</button><button aria-label="Full screen">fullscreen</button></div></div>', fullDocument);
+    const callbacks: MutationCallback[] = [];
+    vi.stubGlobal('MutationObserver', class {
+      constructor(callback: MutationCallback) {callbacks.push(callback);}
+      observe() {}
+      disconnect() {}
+    });
+    const createButton = vi.fn(() => {
+      const button = f.document.createElement('button'); button.id = 'fluent-read-video-subtitle-button'; return button;
+    });
+    return {...f, scope: f.player, controls: f.player.querySelector<HTMLElement>('.ytp-right-controls')!, createButton,
+      changed(target: Node, addedNodes: Node[] = [], removedNodes: Node[] = []) {
+        const records = [{type: 'childList', target, addedNodes, removedNodes}] as unknown as MutationRecord[];
+        for (const callback of callbacks) callback(records, {} as MutationObserver);
+      }};
+  }
+
+  function unrelatedCopy(f: ReturnType<typeof cloneFixture>, live: HTMLButtonElement) {
+    const player = f.document.createElement('div'); player.className = 'html5-video-player';
+    player.appendChild(f.document.createElement('video'));
+    const copy = live.cloneNode(true) as HTMLButtonElement;
+    player.appendChild(copy); f.document.body.appendChild(player);
+    return copy;
+  }
+
+  it.each(['desktop', 'mobile'] as const)('observer removes a full sibling host copy in the %s scope without recreating the live entry', layout => {
+    const f = cloneFixture(layout), click = vi.fn();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, onButtonClick: click});
+    const live = f.createButton.mock.results[0].value;
+    const sibling = f.controls.cloneNode(true) as HTMLElement;
+    const copy = sibling.querySelector<HTMLButtonElement>(buttonSelector)!;
+    const foreign = live.cloneNode(true) as HTMLButtonElement;
+    foreign.setAttribute(ownerAttribute, 'another-binding'); sibling.appendChild(foreign);
+    const outside = unrelatedCopy(f, live), parent = f.controls.parentElement!;
+    parent.appendChild(sibling); // Keep H first and connected; H2 is an additional group, not a replacement.
+    expect(copy.isConnected).toBe(true);
+    f.changed(parent, [sibling]); // Deliver one record to the actual binding observer; do not call sync manually.
+    expect(copy.isConnected).toBe(false);
+    expect(sibling.isConnected).toBe(true);
+    expect(sibling.querySelector('[aria-label="Full screen"]')?.isConnected).toBe(true);
+    expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+    expect(live.parentElement).toBe(f.controls);
+    expect(f.scope.querySelectorAll(`button[${ownerAttribute}="${live.getAttribute(ownerAttribute)}"]`)).toHaveLength(1);
+    expect(f.createButton).toHaveBeenCalledOnce();
+    live.dispatchEvent(new f.window.Event('click', {bubbles: true}));
+    expect(click).toHaveBeenCalledOnce(); expect(click.mock.calls[0][1]).toBe(f.target);
+    binding.destroy();
+    expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+  });
+
+  it.each(['body', 'documentElement'] as const)('does not claim %s for owner-wide scans while cleaning its held host', rootName => {
+    const f = cloneFixture('desktop', true), root = f.document[rootName];
+    expect(root.tagName).toBe(rootName === 'body' ? 'BODY' : 'HTML');
+    expect(root.contains(f.controls)).toBe(true);
+    f.setTarget({...f.target, player: root});
+    const scans = vi.spyOn(root, 'querySelectorAll');
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton});
+    const live = f.createButton.mock.results[0].value;
+    const copy = live.cloneNode(true) as HTMLButtonElement;
+    const foreign = live.cloneNode(true) as HTMLButtonElement;
+    foreign.setAttribute(ownerAttribute, 'another-binding');
+    f.controls.appendChild(copy); f.controls.appendChild(foreign);
+    const outside = unrelatedCopy(f, live);
+    binding.sync();
+    expect(copy.isConnected).toBe(false); expect(live.parentElement).toBe(f.controls);
+    expect(outside.isConnected).toBe(true); expect(foreign.isConnected).toBe(true);
+    expect(scans.mock.calls.filter(([selector]) => selector.includes(ownerAttribute))).toHaveLength(0);
+    const observedCopy = live.cloneNode(true) as HTMLButtonElement;
+    f.controls.appendChild(observedCopy); f.changed(f.controls, [observedCopy]);
+    expect(observedCopy.isConnected).toBe(false); expect(live.parentElement).toBe(f.controls);
+    expect(outside.isConnected).toBe(true); expect(foreign.isConnected).toBe(true);
+    expect(scans.mock.calls.filter(([selector]) => selector.includes(ownerAttribute))).toHaveLength(0);
+    const lateCopy = live.cloneNode(true) as HTMLButtonElement;
+    f.controls.appendChild(lateCopy);
+    binding.destroy();
+    expect(live.isConnected).toBe(false); expect(lateCopy.isConnected).toBe(false);
+    expect(outside.isConnected).toBe(true); expect(foreign.isConnected).toBe(true);
+    expect(scans.mock.calls.filter(([selector]) => selector.includes(ownerAttribute))).toHaveLength(0);
+    expect(f.createButton).toHaveBeenCalledOnce();
+  });
+
+  it('observes the previous mobile scope when an internal host survives a sibling clone and second video batch', () => {
+    const f = cloneFixture('mobile'), click = vi.fn();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, onButtonClick: click});
+    const live = f.createButton.mock.results[0].value;
+    f.controls.classList.add('ytp-right-controls'); f.player.appendChild(f.controls);
+    f.changed(f.player, [f.controls]); // Outer scope still contains exactly its original video.
+    expect(live.parentElement).toBe(f.controls); expect(f.player.contains(f.controls)).toBe(true);
+    expect(f.scope.querySelector('.fluent-read-video-menu-host')).toBeNull();
+    const sibling = f.controls.cloneNode(true) as HTMLElement;
+    const copy = sibling.querySelector<HTMLButtonElement>(buttonSelector)!;
+    const foreign = live.cloneNode(true) as HTMLButtonElement;
+    foreign.setAttribute(ownerAttribute, 'another-binding'); sibling.appendChild(foreign);
+    const outside = unrelatedCopy(f, live), secondVideo = f.document.createElement('video');
+    f.scope.appendChild(sibling); f.scope.appendChild(secondVideo);
+    expect(f.player.contains(sibling)).toBe(false);
+    f.changed(f.scope, [sibling, secondVideo]); // Current scope is now player; this record belongs only to old scope.
+    expect(copy.isConnected).toBe(false);
+    expect(sibling.isConnected).toBe(true); expect(secondVideo.isConnected).toBe(true);
+    expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+    expect(live.parentElement).toBe(f.controls); expect(f.createButton).toHaveBeenCalledOnce();
+    live.dispatchEvent(new f.window.Event('click', {bubbles: true})); expect(click).toHaveBeenCalledOnce();
+    binding.destroy();
+    expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+  });
+
+  it('cleans the old player scope before holding a newly created entry in another player', () => {
+    const f = cloneFixture('desktop'), click = vi.fn();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, onButtonClick: click});
+    const live = f.createButton.mock.results[0].value;
+    const sibling = f.controls.cloneNode(true) as HTMLElement;
+    const copy = sibling.querySelector<HTMLButtonElement>(buttonSelector)!;
+    const loose = live.cloneNode(true) as HTMLButtonElement;
+    const foreign = live.cloneNode(true) as HTMLButtonElement;
+    foreign.setAttribute(ownerAttribute, 'another-binding'); sibling.appendChild(foreign);
+    f.controls.parentElement!.appendChild(sibling); f.scope.appendChild(loose);
+    const outside = unrelatedCopy(f, live), nextPlayer = f.document.createElement('div');
+    nextPlayer.className = 'html5-video-player';
+    nextPlayer.innerHTML = '<video></video><div class="ytp-right-controls"><button aria-label="Full screen">fullscreen</button></div>';
+    f.document.body.appendChild(nextPlayer);
+    const nextTarget = {...f.target, player: nextPlayer, video: nextPlayer.querySelector<HTMLVideoElement>('video')!, key: 'video:other-player'};
+    f.setTarget(nextTarget); // No observer delivery for old-scope copies before this real locator notification.
+    const nextLive = f.createButton.mock.results[1].value;
+    expect(live.isConnected).toBe(false); expect(copy.isConnected).toBe(false); expect(loose.isConnected).toBe(false);
+    expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+    expect(f.scope.querySelectorAll(`button[${ownerAttribute}="${live.getAttribute(ownerAttribute)}"]`)).toHaveLength(0);
+    expect(nextLive.parentElement).toBe(nextPlayer.querySelector('.ytp-right-controls'));
+    expect(binding.getTarget()).toBe(nextTarget); expect(f.createButton).toHaveBeenCalledTimes(2);
+    nextLive.dispatchEvent(new f.window.Event('click', {bubbles: true}));
+    expect(click).toHaveBeenCalledOnce(); expect(click.mock.calls[0][1]).toBe(nextTarget);
+    binding.destroy();
+    expect(nextLive.isConnected).toBe(false);
+    expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+  });
+
+  it.each(['desktop', 'mobile'] as const)('observer removes a loose same-owner entry outside the held host in the %s scope', layout => {
+    const f = cloneFixture(layout), click = vi.fn();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, onButtonClick: click});
+    const live = f.createButton.mock.results[0].value, copy = live.cloneNode(true) as HTMLButtonElement;
+    const foreign = live.cloneNode(true) as HTMLButtonElement;
+    foreign.setAttribute(ownerAttribute, 'another-binding');
+    f.scope.appendChild(copy); f.scope.appendChild(foreign);
+    const outside = unrelatedCopy(f, live);
+    expect(f.controls.contains(copy)).toBe(false);
+    f.changed(f.scope, [copy, foreign]);
+    expect(copy.isConnected).toBe(false);
+    expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+    expect(live.parentElement).toBe(f.controls); expect(f.createButton).toHaveBeenCalledOnce();
+    live.dispatchEvent(new f.window.Event('click', {bubbles: true})); expect(click).toHaveBeenCalledOnce();
+    binding.destroy();
+    expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+  });
+
+  it.each((['desktop', 'mobile'] as const).flatMap(layout =>
+    (['disable', 'media-key', 'destroy'] as const).map(action => ({layout, action}))))(
+    '$action cleans prior $layout scope copies before any observer delivery', ({layout, action}) => {
+      const f = cloneFixture(layout), click = vi.fn(); let enabled = true;
+      const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+        getState: () => ({enabled}), createButton: f.createButton, onButtonClick: click});
+      const live = f.createButton.mock.results[0].value;
+      const sibling = f.controls.cloneNode(true) as HTMLElement;
+      const copy = sibling.querySelector<HTMLButtonElement>(buttonSelector)!;
+      const loose = live.cloneNode(true) as HTMLButtonElement;
+      const foreign = live.cloneNode(true) as HTMLButtonElement;
+      foreign.setAttribute(ownerAttribute, 'another-binding'); sibling.appendChild(foreign);
+      f.controls.parentElement!.appendChild(sibling); f.scope.appendChild(loose);
+      const outside = unrelatedCopy(f, live);
+      // No f.changed(): the lifecycle boundary must clean its captured scope itself.
+      if (action === 'disable') {enabled = false; binding.sync();}
+      else if (action === 'media-key') f.setTarget({...f.target, key: 'video:replacement'});
+      else binding.destroy();
+      expect(live.isConnected).toBe(false);
+      expect(copy.isConnected).toBe(false); expect(loose.isConnected).toBe(false);
+      expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+      const own = f.scope.querySelectorAll(`button[${ownerAttribute}="${live.getAttribute(ownerAttribute)}"]`);
+      if (action === 'media-key') {
+        const replacement = f.createButton.mock.results[1].value;
+        expect(f.createButton).toHaveBeenCalledTimes(2); expect(own).toHaveLength(1);
+        expect(own[0]).toBe(replacement); expect(replacement.parentElement).toBe(f.controls);
+        replacement.dispatchEvent(new f.window.Event('click', {bubbles: true})); expect(click).toHaveBeenCalledOnce();
+      } else {expect(f.createButton).toHaveBeenCalledOnce(); expect(own).toHaveLength(0);}
+      binding.destroy();
+      expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+    });
+
+  it('cleans the previous mobile controls scope when a second video revokes external ownership', () => {
+    const f = cloneFixture('mobile'), click = vi.fn();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, onButtonClick: click});
+    const live = f.createButton.mock.results[0].value;
+    f.video.dispatchEvent(new f.window.Event('pointerover', {bubbles: true}));
+    const sibling = f.controls.cloneNode(true) as HTMLElement;
+    const copy = sibling.querySelector<HTMLButtonElement>(buttonSelector)!;
+    const loose = live.cloneNode(true) as HTMLButtonElement;
+    const foreign = live.cloneNode(true) as HTMLButtonElement;
+    foreign.setAttribute(ownerAttribute, 'another-binding'); sibling.appendChild(foreign);
+    f.controls.parentElement!.appendChild(sibling); f.scope.appendChild(loose);
+    const outside = unrelatedCopy(f, live), secondVideo = f.document.createElement('video');
+    f.scope.appendChild(secondVideo);
+    f.changed(f.scope, [secondVideo]); // The first delivered record observes an already ambiguous old scope.
+    expect(copy.isConnected).toBe(false); expect(loose.isConnected).toBe(false);
+    expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+    expect(live.isConnected).toBe(true); expect(f.player.contains(live)).toBe(true);
+    expect(live.parentElement?.classList.contains('fluent-read-video-controls')).toBe(true);
+    expect(f.createButton).toHaveBeenCalledOnce();
+    expect(f.scope.querySelectorAll(`button[${ownerAttribute}="${live.getAttribute(ownerAttribute)}"]`)).toHaveLength(1);
+    live.dispatchEvent(new f.window.Event('click', {bubbles: true})); expect(click).toHaveBeenCalledOnce();
+    binding.destroy();
+    expect(foreign.isConnected).toBe(true); expect(outside.isConnected).toBe(true);
+  });
 });
 
 it('missing MutationObserver still supports explicit sync and clean teardown', () => {
