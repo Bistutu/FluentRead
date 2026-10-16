@@ -1,7 +1,7 @@
 /**
  * @file tests/videoSubtitleTrackPriorityRuntime.test.ts
  * 文件职责：从实际 mountVideoSubtitleTranslation 公共入口验证 X 轨道优先与 YouTube 同轮选择、人工字幕回退及卸载后的异步资格。
- * 主要内容：真实桥消息、video、TextTrack 与配置订阅驱动播放器、轨道 loader、缓存和 DOM；覆盖菜单入口展开而非字幕开关的语义、真实模式项保存、同句调用预算、实际服务线路或套餐变化后的缓存失效、时钟漂移、NaN、seek、偏移、人工轨空档与迟到结果。
+ * 主要内容：真实桥消息、video、TextTrack 与配置订阅驱动播放器、轨道 loader、缓存和 DOM；覆盖菜单入口展开而非字幕开关的语义、Off 禁用清理与外部启用重建、真实模式项保存、同句调用预算、实际服务线路或套餐变化后的缓存失效、时钟漂移、NaN、seek、偏移、人工轨空档与迟到结果。
  * 模块边界：linkedom 补齐缺失的浏览器媒体/几何接口并按观察器订阅过滤记录；只 mock 外部端口，命名 selector spy 保留真实实现，不替换业务算法或修改全局数组原型。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -273,48 +273,75 @@ describe('public mounted player menu entry semantics', () => {
     expect(ports.patch).not.toHaveBeenCalled();
     expect(ports.translate).toHaveBeenCalledTimes(initialRequests);
 
-    // 配置刷新复用同一入口时也移除旧 pressed 状态，而不丢失状态文案或展开状态。
+    // 启用时刷新同一入口会清理旧 pressed；语言刷新不改变字幕或菜单状态。
     button.setAttribute('aria-pressed', 'true');
-    f.changeConfig({videoTranslationEnabled: false}); await settle();
+    f.changeConfig({uiLanguage: 'en-US'}); await settle();
     expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBe(button);
-    expectMenuButton(false);
-    expect(button.getAttribute('aria-label')).toContain('已关闭');
-    expect(button.classList.contains(VIDEO_TRANSLATION_ACTIVE_CLASS)).toBe(false);
-    expect(selectedMode()).toBe('off');
-    f.changeConfig({videoTranslationEnabled: true, uiLanguage: 'en-US'}); await settle();
     expectMenuButton(false);
     expect(button.getAttribute('aria-label')).toContain('Enabled');
     expect(button.classList.contains(VIDEO_TRANSLATION_ACTIVE_CLASS)).toBe(true);
+    expect(selectedMode()).toBe('bilingual');
+    expect(subtitleSettings()).toEqual(initialSettings);
+    expect(ports.patch).not.toHaveBeenCalled();
+    expect(ports.translate).toHaveBeenCalledTimes(initialRequests);
+
     await clickEntry(); expectMenuButton(true);
     clickMenu(f, '[data-mode="off"]'); await settle();
     expect(ports.patch).toHaveBeenCalledOnce();
     expect(ports.patch).toHaveBeenLastCalledWith({videoTranslationEnabled: false});
-    expect(selectedMode()).toBe('off');
     expect(subtitleSettings()).toEqual({...initialSettings, enabled: false});
-    expectMenuButton(true);
-    expect(button.classList.contains(VIDEO_TRANSLATION_ACTIVE_CLASS)).toBe(false);
-    if (platform === 'youtube') {
-      expect(f.document.querySelector('.ytp-subtitles-button')?.getAttribute('aria-pressed')).toBe('true');
-    }
-    clickMenu(f, '[data-action="close-menu"]'); await settle();
-    expectMenuButton(false);
-
-    dispose(); await settle();
+    // #1004：Off 关闭视频功能后移除入口和菜单，不从已卸载菜单内重新启用。
     expect(button.isConnected).toBe(false); expect(menu.isConnected).toBe(false);
     expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
     expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).toBeNull();
+    if (platform === 'youtube') {
+      expect(f.document.querySelector('.ytp-subtitles-button')?.getAttribute('aria-pressed')).toBe('true');
+    }
+    f.changeConfig({uiLanguage: 'zh-CN'}); await settle();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).toBeNull();
+    dispose(); await settle();
+
+    // 禁用时重新挂载仍不创建播放器 UI；外部配置重新启用才创建全新节点。
     const disposeRemounted = f.start(); await settle();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).toBeNull();
+    f.changeConfig({videoTranslationEnabled: true, uiLanguage: 'en-US'}); await settle();
     const replacement = f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)!;
     const replacementMenu = f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)!;
     expect(replacement).not.toBe(button); expect(replacementMenu).not.toBe(menu);
+    expect(f.document.querySelectorAll(`#${VIDEO_TRANSLATION_BUTTON_ID}`)).toHaveLength(1);
+    expect(f.document.querySelectorAll(`#${VIDEO_TRANSLATION_MENU_ID}`)).toHaveLength(1);
     expectMenuButton(false, replacement, replacementMenu);
-    expect(replacement.getAttribute('aria-label')).toContain('Off');
-    expect(replacement.classList.contains(VIDEO_TRANSLATION_ACTIVE_CLASS)).toBe(false);
+    expect(replacement.getAttribute('aria-label')).toContain('Enabled');
+    expect(replacement.classList.contains(VIDEO_TRANSLATION_ACTIVE_CLASS)).toBe(true);
+    expect(subtitleSettings()).toEqual(initialSettings);
+    const enabledRequests = ports.translate.mock.calls.length;
     await clickEntry(true, replacement); expectMenuButton(true, replacement, replacementMenu);
+    clickMenu(f, '[data-action="close-menu"]'); await settle();
+    expectMenuButton(false, replacement, replacementMenu);
     expect(ports.patch).toHaveBeenCalledOnce();
-    expect(ports.translate).toHaveBeenCalledTimes(initialRequests);
+    expect(ports.translate).toHaveBeenCalledTimes(enabledRequests);
     disposeRemounted(); await settle();
     expect(replacement.isConnected).toBe(false); expect(replacementMenu.isConnected).toBe(false);
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).toBeNull();
+
+    // 已启用时重新挂载也使用新节点及新监听，不复活旧入口或旧菜单。
+    const disposeEnabledRemount = f.start(); await settle();
+    const freshButton = f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)!;
+    const freshMenu = f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)!;
+    expect(freshButton).not.toBe(replacement); expect(freshMenu).not.toBe(replacementMenu);
+    expectMenuButton(false, freshButton, freshMenu);
+    expect(freshButton.getAttribute('aria-label')).toContain('Enabled');
+    const remountRequests = ports.translate.mock.calls.length;
+    await clickEntry(true, freshButton); expectMenuButton(true, freshButton, freshMenu);
+    expect(ports.patch).toHaveBeenCalledOnce();
+    expect(ports.translate).toHaveBeenCalledTimes(remountRequests);
+    disposeEnabledRemount(); await settle();
+    expect(freshButton.isConnected).toBe(false); expect(freshMenu.isConnected).toBe(false);
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).toBeNull();
   });
 });
 
@@ -867,6 +894,21 @@ describe('public mounted YouTube timed cue selection and lifecycle', () => {
 
 
 // 人工轨通过实际页面发现与 loader 请求就绪；媒体输入非有限时仍走原 fresh 选择边界。
+describe('public mounted video player button follows the video translation switch', () => {
+  it('关闭视频字幕翻译后移除播放器入口和菜单，重新开启后恢复入口', async () => {
+    const f = fixture(); f.start(); await settle();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).not.toBeNull();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).not.toBeNull();
+
+    f.changeConfig({videoTranslationEnabled: false}); await settle();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBeNull();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)).toBeNull();
+
+    f.changeConfig({videoTranslationEnabled: true}); await settle();
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).not.toBeNull();
+  });
+});
+
 describe('public mounted YouTube nonfinite time and human track fallback', () => {
   it('NaN媒体时间保留两次真实选择且不猜测时间轴', async () => {
     ports.config.videoPreferHumanSubtitles = false;

@@ -212,8 +212,11 @@ async function sampleStableVideoToggleState(page, control, expected, durationMs 
   const startedAt = Date.now();
   while (Date.now() - startedAt < durationMs) {
     const menuButton = await readPlayerMenuButtonState(page);
-    assertPlayerMenuButtonState(menuButton);
-    const ui = {button: String(menuButton.active), menu: String(!menuButton.offSelected), menuButton};
+    if (expected) assertPlayerMenuButtonState(menuButton);
+    else if (menuButton.present || menuButton.menuPresent) {
+      throw new Error(`关闭视频后播放器入口或菜单仍存在：${JSON.stringify(menuButton)}`);
+    }
+    const ui = {button: String(menuButton.active), menu: String(menuButton.menuPresent && !menuButton.offSelected), menuButton};
     const stored = await readExtensionConfig(control);
     samples.push({
       elapsedMs: Date.now() - startedAt,
@@ -552,7 +555,7 @@ async function main() {
     await videoSettingsPage.close();
 
     } else {
-      // 菜单专项只配置隔离 profile 的必要前置，不访问 Options/文档配置或字幕处理矩阵。
+      // 菜单专项仅配置隔离 profile 的前置；关闭后通过真实 Options 总开关重新启用。
       await persistExtensionConfig(control, {on: true, uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true,
         from: 'auto', to: 'zh-Hans', videoTranslationEnabled: true, videoService: 'microsoft',
         videoServiceDefaultMigrated: true, videoSubtitleVisible: true, videoSubtitleDisplayMode: 'bilingual', useCache: false});
@@ -719,7 +722,7 @@ async function main() {
         const offChoice = document.querySelector('#fluent-read-video-subtitle-menu [data-mode="off"]');
         const next = JSON.stringify({
           button: String(Boolean(playerButton?.classList.contains('fluent-read-video-subtitle-active'))),
-          menu: offChoice ? String(offChoice.getAttribute('aria-checked') !== 'true') : '',
+          menu: String(Boolean(offChoice && offChoice.getAttribute('aria-checked') !== 'true')),
         });
         if (next === last) return;
         last = next;
@@ -739,31 +742,47 @@ async function main() {
     });
     const beforeDisableConfig = await readExtensionConfig(control);
     await page.locator('#fluent-read-video-subtitle-menu [data-mode="off"]').press('Enter');
-    await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-menu [data-mode="off"]')?.getAttribute('aria-checked') === 'true', null, { timeout: 10000 });
-    const disabledMenu = await page.evaluate(() => {
-      const off = document.querySelector('#fluent-read-video-subtitle-menu [data-mode="off"]');
-      const bilingual = document.querySelector('#fluent-read-video-subtitle-menu [data-mode="bilingual"]');
-      return {
-        offChecked: off?.getAttribute('aria-checked') || '',
-        bilingualChecked: bilingual?.getAttribute('aria-checked') || '',
-        buttonActive: Boolean(document.querySelector('#fluent-read-video-subtitle-button')?.classList.contains('fluent-read-video-subtitle-active')),
-        offBackground: off ? getComputedStyle(off).backgroundColor : '',
-        timingVisible: Boolean(document.querySelector('#fluent-read-video-subtitle-menu [data-timing-row]')?.getClientRects().length),
-      };
-    });
-    if (disabledMenu.offChecked !== 'true' || disabledMenu.bilingualChecked !== 'false' || disabledMenu.buttonActive
-      || !/^rgba\(255, 255, 255, 0\.14\)$/u.test(disabledMenu.offBackground) || disabledMenu.timingVisible) {
-      throw new Error(`关闭状态的字幕显示选择不够明确：${JSON.stringify(disabledMenu)}`);
-    }
+    await page.waitForFunction(() => !document.querySelector('#fluent-read-video-subtitle-button')
+      && !document.querySelector('#fluent-read-video-subtitle-menu')
+      && !document.querySelector('#fluent-read-video-subtitle')?.textContent?.trim(), null, {timeout: 10000});
+    const disabledMenu = await page.evaluate(() => ({
+      buttonPresent: Boolean(document.querySelector('#fluent-read-video-subtitle-button')),
+      menuPresent: Boolean(document.querySelector('#fluent-read-video-subtitle-menu')),
+      overlayText: document.querySelector('#fluent-read-video-subtitle')?.textContent || '',
+    }));
     const disabledStabilitySamples = await sampleStableVideoToggleState(page, control, false);
     const afterDisableConfig = await readExtensionConfig(control);
     if (afterDisableConfig.__fluentConfigRevision !== beforeDisableConfig.__fluentConfigRevision + 1
       || comparableConfigWithoutVideoToggle(afterDisableConfig) !== comparableConfigWithoutVideoToggle(beforeDisableConfig)) {
       throw new Error(`关闭字幕翻译产生了额外配置差异：${JSON.stringify({beforeDisableConfig, afterDisableConfig})}`);
     }
-    await page.locator('#fluent-read-video-subtitle-menu').screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-menu-disabled.png') });
-    await page.locator('#fluent-read-video-subtitle-menu [data-mode="bilingual"]').press('Enter');
-    await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-menu [data-mode="bilingual"]')?.getAttribute('aria-checked') === 'true', null, { timeout: 10000 });
+    await page.screenshot({path: path.join(artifactsDir, 'video-subtitle-fixture-disabled.png'), fullPage: false});
+    // Off 会销毁入口和菜单；只通过真实设置控件恢复，不能点击旧节点或直接写配置。
+    const reenableSettingsPage = await createPage();
+    let reenabledFromSettings;
+    try {
+      await reenableSettingsPage.goto(`chrome-extension://${extensionId}/options.html#settings-video`, {waitUntil: 'domcontentloaded'});
+      await activatePage(reenableSettingsPage);
+      const toggle = reenableSettingsPage.locator('#settings-video').getByRole('switch', {name: '视频字幕翻译', exact: true});
+      await toggle.waitFor({state: 'visible', timeout: 10000});
+      if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('设置页未显示视频关闭状态');
+      await toggle.press('Enter');
+      await reenableSettingsPage.waitForFunction(() => document.querySelector('#settings-video .feature-enable-card [role="switch"]')?.getAttribute('aria-checked') === 'true', null, {timeout: 10000});
+      await waitForAsyncCondition(async () => (await readExtensionConfig(control)).videoTranslationEnabled === true,
+        {timeoutMs: 10000, message: '从真实设置页重新启用视频未持久化'});
+      reenabledFromSettings = await readVideoSettingsState(reenableSettingsPage);
+      assertEnabledVideoSettingsState(reenabledFromSettings, await readExtensionConfig(control));
+      await reenableSettingsPage.screenshot({path: path.join(artifactsDir, 'video-subtitle-fixture-settings-reenabled.png'), fullPage: true});
+    } finally {
+      await reenableSettingsPage.close();
+    }
+    await activatePage(page);
+    await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-button')?.classList.contains('fluent-read-video-subtitle-active') === true
+      && document.querySelector('#fluent-read-video-subtitle-menu')?.hidden === true, null, {timeout: 10000});
+    assertPlayerMenuButtonState(await readPlayerMenuButtonState(page), false);
+    await page.locator('#fluent-read-video-subtitle-button').press('Enter');
+    await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-menu')?.hidden === false, null, {timeout: 10000});
+    assertPlayerMenuButtonState(await readPlayerMenuButtonState(page), true);
     const enabledStabilitySamples = await sampleStableVideoToggleState(page, control, true);
     const afterEnableConfig = await readExtensionConfig(control);
     if (afterEnableConfig.__fluentConfigRevision !== afterDisableConfig.__fluentConfigRevision + 1
@@ -819,9 +838,9 @@ async function main() {
       await page.screenshot({path: path.join(artifactsDir, 'video-menu-only-closed.png'), fullPage: false});
       evidence = {ok: pageErrors.length === 0 && consoleErrors.length === 0 && unexpectedNetworkRequests.length === 0
         && translationRequests === 0 && aiTranslationSources.length === 0,
-        suite, scope: 'Production menu-button semantics, keyboard Enter, real menu mode Off/bilingual, close/reopen and persistence only',
-        notRun: ['Options/document cross-context UI', 'subtitle translation/provider quality', 'download', 'timing/pretranslation/karaoke', 'native mobile/assistive technology'],
-        navigationMode, playerUi, menu, disabledMenu, menuAccessibility,
+        suite, scope: 'Production menu-button semantics, keyboard Off removes entry/menu, real Options switch re-enables, close/reopen and persistence only',
+        notRun: ['full Options/document cross-context matrix', 'subtitle translation/provider quality', 'download', 'timing/pretranslation/karaoke', 'native mobile/assistive technology'],
+        navigationMode, playerUi, menu, disabledMenu, reenabledFromSettings, menuAccessibility,
         menuButtons: {initial: initialMenuButton, opened: openedMenuButton, closed: closedMenuButton, reopened: reopenedMenuButton, final: finalMenuButton},
         videoToggleStability: {edges: videoToggleEdges, disabledSamples: disabledStabilitySamples.length, enabledSamples: enabledStabilitySamples.length},
         translationRequests, aiTranslationRequests: aiTranslationSources.length, pageErrors, consoleErrors, unexpectedNetworkRequests,
@@ -1450,6 +1469,7 @@ async function main() {
       playerUi,
       menu,
       disabledMenu,
+      reenabledFromSettings,
       popupFeature,
       initialVideoSettingsState,
       videoSettingsDescription,
