@@ -1,0 +1,242 @@
+/**
+ * @file tests/readingAppearanceContent.test.ts
+ * 文件职责：验证阅读字体会话的正文选择、非正文继承保护和可逆生命周期。
+ * 主要内容：用真实 DOM 节点及可控样式/观察器端口覆盖动态译文、闭合根、宿主样式更新、移除、反复启停和释放。
+ * 模块边界：不模拟浏览器排版或声称验证像素效果；样式端口显式补齐 linkedom 未实现的级联和 important 优先级。
+ */
+import {parseHTML} from 'linkedom';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {registerVisibleTranslationRoot, readVisibleTranslationRoot} from '@/src/features/full-page-translation/content/visibleTranslation';
+import {createReadingAppearanceController, READING_APPEARANCE_FONT} from '@/src/features/reading-appearance/content';
+
+const patchedPriorityPrototypes = new Set<object>();
+function fixture(html: string) {
+    const {document, window} = parseHTML(`<html><head></head><body>${html}</body></html>`);
+    const observers: Array<{callback: MutationCallback; roots: Node[]; active: boolean}> = [];
+    const priorities = new WeakMap<object, Map<string, string>>();
+    const prototype = Object.getPrototypeOf(document.body.style) as CSSStyleDeclaration;
+    if (!prototype.getPropertyPriority) {
+        Object.defineProperty(prototype, 'getPropertyPriority', {configurable: true, value() {return '';}});
+        patchedPriorityPrototypes.add(prototype);
+    }
+    const nativeSet = prototype.setProperty;
+    vi.spyOn(prototype, 'setProperty').mockImplementation(function(this: object, key: string, value: string | null, priority?: string) {
+        let map = priorities.get(this); if (!map) {map = new Map(); priorities.set(this, map);} map.set(key, priority || '');
+        return nativeSet.call(this, key, value);
+    });
+    vi.spyOn(prototype, 'getPropertyPriority').mockImplementation(function(this: object, key: string) {return priorities.get(this)?.get(key) || '';});
+    const Observer = class {
+        entry: typeof observers[number];
+        constructor(callback: MutationCallback) {this.entry = {callback, roots: [], active: false}; observers.push(this.entry);}
+        observe(root: Node) {this.entry.active = true; this.entry.roots.push(root);}
+        disconnect() {this.entry.active = false; this.entry.roots = [];}
+    };
+    const family = (element: Element | null): string => element?.hasAttribute('data-empty-family') ? '' : element ? (element as HTMLElement).style.fontFamily || element.getAttribute('data-family') || family(element.parentElement) : 'Georgia';
+    const view = new Proxy(window, {get(target, key) {
+        if (key === 'MutationObserver') return Observer;
+        if (key === 'getComputedStyle') return (element: HTMLElement, pseudo?: string) => ({fontFamily: family(element), display: element.style.display || 'block', visibility: 'visible', content: pseudo ? element.getAttribute('data-pseudo') || 'none' : 'normal'});
+        if (key === 'setTimeout') return (callback: () => void, ms: number) => setTimeout(callback, ms);
+        if (key === 'clearTimeout') return (id: number) => clearTimeout(id);
+        return Reflect.get(target, key);
+    }});
+    Object.defineProperty(document, 'defaultView', {value: view});
+    const element = (id: string) => document.getElementById(id)! as unknown as HTMLElement;
+    const mutate = () => {for (const observer of observers) if (observer.active) observer.callback([], {} as MutationObserver); vi.advanceTimersByTime(60);};
+    return {document: document as unknown as Document, element, observers, mutate};
+}
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => {
+    vi.restoreAllMocks(); vi.useRealTimers();
+    for (const prototype of patchedPriorityPrototypes) Reflect.deleteProperty(prototype, 'getPropertyPriority');
+    patchedPriorityPrototypes.clear();
+});
+
+describe('reading appearance content controller', () => {
+    it('starts disabled and restores original inline families, priority, unrelated styles and text identity', () => {
+        const f = fixture('<article><p id="p" style="font-family: Georgia; color: red">Readable paragraph <em id="em">with emphasis</em>.</p><p id="clean">Another paragraph.</p></article>');
+        const p = f.element('p'), original = p.firstChild;
+        p.style.setProperty('font-family', 'Georgia', 'important');
+        const controller = createReadingAppearanceController(f.document);
+        expect(f.observers).toHaveLength(0);
+        expect(p.style.fontFamily).toBe('Georgia');
+        controller.setEnabled(true);
+        expect(p.style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        expect(f.element('em').style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        expect(p.firstChild).toBe(original);
+        expect(p.style.color).toBe('red');
+        controller.setEnabled(false);
+        expect(p.style.fontFamily).toBe('Georgia');
+        expect(p.style.getPropertyPriority('font-family')).toBe('important');
+        expect(f.element('clean').hasAttribute('style')).toBe(false);
+        expect(f.observers.every(observer => !observer.active)).toBe(true);
+        controller.dispose();
+    });
+    it('protects icons, private glyphs, monospace, formulas, controls and nested UI from changed inheritance', () => {
+        const f = fixture('<p id="p">Ordinary readable text <span id="icon" data-family="Material Symbols Rounded">settings</span><span id="private">&#xe001;</span><code id="code">const x = 1</code><span id="mono" data-family="Consolas">fixed width</span><span class="katex" id="math">a + b</span><button id="button">Press me</button><span data-fluent-read-ui id="ui">Extension UI</span></p><nav><p id="nav">Navigation text</p></nav><div contenteditable="true"><p id="edit">Editable paragraph</p></div>');
+        const controller = createReadingAppearanceController(f.document);
+        controller.setEnabled(true);
+        expect(f.element('p').style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        expect(f.element('icon').style.fontFamily).toBe('Material Symbols Rounded');
+        expect(f.element('mono').style.fontFamily).toBe('Consolas');
+        for (const id of ['private', 'code', 'math', 'button', 'ui']) expect(f.element(id).style.fontFamily).toBe('Georgia');
+        for (const id of ['nav', 'edit']) expect(f.element(id).style.fontFamily).toBeFalsy();
+        controller.dispose();
+        expect(f.element('icon').hasAttribute('style')).toBe(false);
+    });
+    it('conservatively skips pseudo-element hosts and symbol/monospace prose', () => {
+        const f = fixture('<p id="pseudo" data-pseudo="&#34;home&#34;">Text with generated icon</p><p id="symbols" data-family="Custom Icons">An icon ligature</p><p id="mono" data-family="monospace">Text in a monospace font</p>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        for (const id of ['pseudo', 'symbols', 'mono']) expect(f.element(id).style.fontFamily).toBeFalsy();
+        controller.dispose();
+    });
+    it('handles later bilingual and closed translations, style changes and removed nodes', () => {
+        const f = fixture('<p id="p">Original paragraph</p><span id="host"></span>');
+        const host = f.element('host'), root = host.attachShadow({mode: 'closed'});
+        host.className = 'fluent-read-single-slot'; host.setAttribute('data-fr-translation-owned', 'true'); host.setAttribute('translate', 'no');
+        registerVisibleTranslationRoot(host, root);
+        root.innerHTML = '<span>Translated words</span>';
+        const controller = createReadingAppearanceController(f.document, {readTranslationRoot: readVisibleTranslationRoot});
+        controller.setEnabled(true);
+        expect((root.firstChild as HTMLElement).style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        expect(f.observers[0].roots).toContain(root);
+        const translated = f.document.createElement('span'); translated.className = 'fluent-read-bilingual-content'; translated.textContent = '译文正文';
+        f.document.body.append(translated); f.mutate();
+        expect(translated.style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        f.element('p').style.setProperty('font-family', 'Courier New'); f.mutate();
+        expect(f.element('p').style.fontFamily).toBe('Courier New');
+        translated.remove(); f.mutate();
+        expect(translated.style.fontFamily).toBeFalsy();
+        host.remove(); f.mutate();
+        expect(f.observers[0].roots).not.toContain(root);
+        controller.dispose();
+        expect(f.element('p').style.fontFamily).toBe('Courier New');
+    });
+    it('ignores layout-only style changes from translation observers', () => {
+        const f = fixture('<p id="p">Original paragraph</p>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        const p = f.element('p'), oldValue = p.getAttribute('style');
+        p.style.height = '100px';
+        f.observers[0].callback([{type: 'attributes', attributeName: 'style', target: p, oldValue} as unknown as MutationRecord], {} as MutationObserver);
+        expect(vi.getTimerCount()).toBe(0);
+        p.style.fontFamily = 'Arial';
+        f.observers[0].callback([{type: 'attributes', attributeName: 'style', target: p, oldValue} as unknown as MutationRecord], {} as MutationObserver);
+        expect(vi.getTimerCount()).toBe(1);
+        controller.dispose();
+    });
+    it('supports generic long prose, empty computed families and non-style mutations', () => {
+        const f = fixture('<div id="long">This is a long ordinary prose container outside a semantic article element.</div><div id="short">Menu</div><p id="p">Text <code id="empty" data-empty-family>code</code></p>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        expect(f.element('long').style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        expect(f.element('short').style.fontFamily).toBeFalsy();
+        expect(f.element('empty').style.fontFamily).toBeFalsy();
+        f.observers[0].callback([{type: 'childList', target: f.document.body, addedNodes: [], removedNodes: []} as unknown as MutationRecord], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        f.observers[0].callback([{type: 'attributes', attributeName: 'class', target: f.element('p')} as unknown as MutationRecord], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        f.observers[0].callback([{type: 'attributes', attributeName: 'style', target: f.element('short'), oldValue: null} as unknown as MutationRecord], {} as MutationObserver);
+        expect(vi.getTimerCount()).toBe(0);
+        controller.dispose();
+    });
+    it('ignores protected clock and hover changes and styles new paragraphs without rewriting unrelated prose', () => {
+        const f = fixture('<nav><span id="clock">12:00</span></nav><article><p id="stable">An unchanged reading paragraph.</p></article>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        const stable = f.element('stable'), set = vi.mocked(stable.style.setProperty);
+        set.mockClear();
+        const callback = f.observers[0].callback;
+        callback([{type: 'characterData', target: f.element('clock').firstChild} as unknown as MutationRecord], {} as MutationObserver);
+        callback([{type: 'attributes', attributeName: 'class', target: f.element('clock')} as unknown as MutationRecord], {} as MutationObserver);
+        expect(vi.getTimerCount()).toBe(0);
+        expect(set).not.toHaveBeenCalled();
+        const added = f.document.createElement('p'); added.textContent = 'A newly inserted reading paragraph.';
+        stable.parentElement!.append(added);
+        callback([{type: 'childList', target: stable.parentElement!, addedNodes: [added], removedNodes: []} as unknown as MutationRecord], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(added.style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        expect(set.mock.contexts.some(context => context === stable.style)).toBe(false);
+        expect(stable.style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        controller.dispose();
+    });
+    it('recomputes affected text containers and collapses overlapping dirty subtrees', () => {
+        const f = fixture('<article id="article"><div id="empty"></div><p id="p">A paragraph <em id="em">emphasis</em></p></article><span role="button" id="control">Action</span>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        const callback = f.observers[0].callback;
+        callback([{type: 'attributes', attributeName: 'class', target: f.element('article')}, {type: 'attributes', attributeName: 'class', target: f.element('p')}, {type: 'attributes', attributeName: 'class', target: f.element('em')}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        const added = f.document.createTextNode('Newly added text'), comment = f.document.createComment('comment');
+        f.element('empty').append(added, comment);
+        callback([{type: 'childList', target: f.element('empty'), addedNodes: [added, comment], removedNodes: []}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(f.element('empty').style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        const text = f.document.createTextNode('temporary'); f.element('article').append(text); text.remove();
+        callback([{type: 'childList', target: f.element('article'), addedNodes: [], removedNodes: [text]}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        callback([{type: 'characterData', target: f.element('control').firstChild}, {type: 'childList', target: f.document}] as unknown as MutationRecord[], {} as MutationObserver);
+        expect(vi.getTimerCount()).toBe(0);
+        controller.dispose();
+    });
+    it('handles stylesheet invalidation, global events and a document without a body', () => {
+        const f = fixture('<p id="p">A paragraph</p>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        const callback = f.observers[0].callback;
+        const style = f.document.createElement('style'); f.document.head.append(style);
+        callback([{type: 'childList', target: f.document.head, addedNodes: [style], removedNodes: []}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        f.document.dispatchEvent(new f.document.defaultView!.Event('fluentread-translation-started'));
+        expect(vi.getTimerCount()).toBe(1); vi.advanceTimersByTime(60);
+        callback([{type: 'attributes', attributeName: 'class', target: f.document.documentElement}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        controller.setEnabled(false); Object.defineProperty(f.document, 'body', {value: null}); controller.setEnabled(true);
+        expect(f.observers.at(-1)!.active).toBe(true);
+        controller.dispose();
+    });
+    it('handles real closed-shadow insertion records and preserves newly protected inherited fonts', () => {
+        const f = fixture('<p id="p">Original paragraph <span id="changing">Inline prose</span><span id="host"></span></p>');
+        const host = f.element('host'), root = host.attachShadow({mode: 'closed'});
+        host.className = 'fluent-read-single-slot'; host.setAttribute('data-fr-translation-owned', 'true');
+        registerVisibleTranslationRoot(host, root);
+        const controller = createReadingAppearanceController(f.document, {readTranslationRoot: readVisibleTranslationRoot}); controller.setEnabled(true);
+        const translated = f.document.createElement('span'); translated.textContent = 'Later translated text'; root.append(translated);
+        f.observers[0].callback([{type: 'childList', target: root, addedNodes: [translated], removedNodes: []}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(translated.style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        f.element('changing').setAttribute('role', 'button');
+        f.observers[0].callback([{type: 'attributes', attributeName: 'role', target: f.element('changing')}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(f.element('changing').style.fontFamily).toBe('Georgia');
+        const added = f.document.createElement('span'); added.textContent = 'New prose'; f.element('p').append(added);
+        f.observers[0].callback([{type: 'attributes', attributeName: 'class', target: added}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(added.style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        controller.dispose();
+    });
+    it('restores the affected inherited-font ancestor before recomputing nested controls and inherited code', () => {
+        const f = fixture('<p id="p">Text <span id="scope">prose <span role="button" id="action">Action</span><code id="code">x</code></span></p><p id="unrelated">Other paragraph</p>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        expect(f.element('code').style.fontFamily).toBe('Georgia');
+        expect(f.element('action').style.fontFamily).toBe('Georgia');
+        const set = vi.mocked(f.element('p').style.setProperty); set.mockClear();
+        f.element('scope').className = 'changed';
+        f.observers[0].callback([{type: 'attributes', attributeName: 'class', target: f.element('scope')}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(f.element('code').style.fontFamily).toBe('Georgia');
+        expect(f.element('action').style.fontFamily).toBe('Georgia');
+        expect(set.mock.contexts.some(context => context === f.element('unrelated').style)).toBe(false);
+        controller.dispose();
+    });
+    it('rechecks eligibility and author styles, coalesces work, cancels pending updates and cannot restart after disposal', () => {
+        const f = fixture('<p id="p">Original paragraph</p>');
+        const controller = createReadingAppearanceController(f.document);
+        controller.setEnabled(true); controller.setEnabled(true);
+        expect(f.observers).toHaveLength(1);
+        f.element('p').setAttribute('role', 'button'); f.mutate();
+        expect(f.element('p').style.fontFamily).toBeFalsy();
+        f.element('p').removeAttribute('role'); f.mutate();
+        expect(f.element('p').style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        f.observers[0].callback([], {} as MutationObserver); f.observers[0].callback([], {} as MutationObserver);
+        expect(vi.getTimerCount()).toBe(1);
+        controller.setEnabled(false); expect(vi.getTimerCount()).toBe(0);
+        controller.setEnabled(true); controller.dispose(); controller.setEnabled(true);
+        expect(f.element('p').style.fontFamily).toBeFalsy();
+        expect(f.observers.every(observer => !observer.active)).toBe(true);
+    });
+});

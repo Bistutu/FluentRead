@@ -1,6 +1,6 @@
 /**
  * @file src/app/popup/popup.css
- * 文件职责：定义桌面宽度随皮肤和界面语言、Firefox Android 固定容器限制画布不超过视口，高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、设置抽屉、通知和响应式细节。
+ * 文件职责：定义桌面宽度随皮肤和界面语言、Firefox Android 固定容器限制画布不超过视口，高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、阅读外观独立入口、设置抽屉、通知和响应式细节。
  * 主要内容：整页遮罩持续拦截背景，内部抽屉跟随可见视口并保留内部滚动，服务搜索在触屏使用 16px 字号避免自动缩放；触摸设备的主画布、快捷和服务抽屉采用 46px 命中预算，为原生 sheet 缩放留余量，开关保留紧凑胶囊视觉，桌面沿用原有布局；以白色窄版画布、浅灰控件和品牌色强调翻译、局部及站点控制；两个操作以 42px 高度紧凑同排，主按钮弹性伸展并用短标题合并快捷键，辅助按钮以上方图标和下方文字收拢；网站规则不再绘制外层框，独立按钮沿用指示点展示保存状态并尊重减少动画偏好；保留版本与赞赏码的原位放大、服务及模型摘要、两列入口、完整开源胶囊与开关优先的快捷抽屉和必要的内部滚动。
  * 模块边界：样式只对应 PopupApp 的 DOM 和受控第三方组件，不决定配置值、能力可用性或消息行为；跨页面 token 在 src/ui/styles，Options/文档页各自维护页面样式。
  */
@@ -834,3 +834,14 @@ footer button { font-weight: 500; color: var(--muted); }
 :root[data-fluentread-android-popup] .popup-startup-recovery button { min-width: 46px; min-height: 46px; height: auto; }
 :root[data-fluentread-android-popup] .popup-shell .fluentread-diagnostic { flex-basis: 46px; width: 46px; height: 46px; }
 :root[data-fluentread-android-popup] .popup-shell .fluentread-diagnostic .diagnostic-close { flex-basis: 46px; }
+
+/* 阅读外观沿用页面 token 和抽屉控件，不将网页字体选择混入扩展界面设置。 */
+.reading-appearance-entry { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 10px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; }
+.reading-appearance-entry > span:first-child { color: var(--brand-strong); font: 600 15px system-ui, sans-serif; }
+.reading-appearance-entry strong { font-size: 12px; }
+.reading-appearance-entry small { flex: 1; color: var(--muted); font-size: 11px; }
+.reading-appearance-entry:disabled, .reading-appearance-content button:disabled { opacity: .5; cursor: not-allowed; }
+.reading-appearance-hint { margin: 8px 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.reading-appearance-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.reading-appearance-actions .secondary-action { flex: 1; margin-top: 0; }
+.reading-appearance-save { flex-shrink: 0; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); color: var(--ink); font-size: 11px; cursor: pointer; }

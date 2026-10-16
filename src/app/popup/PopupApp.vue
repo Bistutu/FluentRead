@@ -1,7 +1,7 @@
 <!--
  @file src/app/popup/PopupApp.vue
- 文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页。
- 主要内容：复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈；Safari 免费池精确授权，撤权取消待发操作，授权事件合并刷新，错误随语言资源更新；打开的实际 teleport 抽屉复用平台可见视口订阅跟随键盘与缩放，整页遮罩保持背景拦截，关闭、缓存失活和卸载立即释放，根画布保持固有尺寸。
+ 文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉、当前网页阅读外观和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页。
+ 主要内容：阅读外观复用功能抽屉，分离当前页字体预览与主动网站记忆；复用真实全文完成状态呈现首次翻译指引和就地自助诊断，配置修复定位当前服务，本地报告由用户预览并手动导出；在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译与局部同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次单屏语言选择独占内容，保存后立即显示主菜单；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈；Safari 免费池精确授权，撤权取消待发操作，授权事件合并刷新，错误随语言资源更新；打开的实际 teleport 抽屉复用平台可见视口订阅跟随键盘与缩放，整页遮罩保持背景拦截，关闭、缓存失活和卸载立即释放，根画布保持固有尺寸。
  模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/config 管理；配置草稿复用共享编辑会话，保留 post 合并和关闭补丁交接。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
@@ -47,6 +47,12 @@
         </button>
       </div>
     </header>
+
+    <button class="reading-appearance-entry" type="button" data-testid="reading-appearance-entry"
+      :disabled="!config.on || currentSiteExtensionDisabled || !!currentPdfSource" aria-haspopup="dialog"
+      :aria-expanded="drawerVisible && activeDrawer === 'readingAppearance'" :onClick="popupActions.readingAppearance">
+      <span aria-hidden="true">Aa</span><strong>阅读外观</strong><small>网页正文字体</small><span aria-hidden="true">›</span>
+    </button>
 
     <Transition name="donation-fade">
       <div
@@ -242,6 +248,31 @@
       <div v-if="activeDrawer === 'services'" class="drawer-content provider-drawer-content">
         <PopupServices :config="config" :service-options="allServiceOptions" :active="drawerVisible && activeDrawer === 'services'" :onClose="drawerActions.close" />
       </div>
+      <div v-else-if="activeDrawer === 'readingAppearance'" class="drawer-content reading-appearance-content" :aria-busy="readingAppearance.busy">
+        <div class="choice-block">
+          <label>网页正文字体</label>
+          <div class="chips two" role="group" aria-label="网页正文字体">
+            <button type="button" :class="{selected: readingAppearance.ready && readingAppearance.font === 'original'}"
+              :aria-pressed="readingAppearance.ready && readingAppearance.font === 'original'" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.original">网站原样</button>
+            <button type="button" :class="{selected: readingAppearance.ready && readingAppearance.font === 'system'}"
+              :aria-pressed="readingAppearance.ready && readingAppearance.font === 'system'" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.system">系统默认</button>
+          </div>
+        </div>
+        <p class="reading-appearance-hint">立即预览原文和译文的正文字体。默认仅作用于当前页面。</p>
+        <div class="setting-row">
+          <span><strong>记住此网站</strong><small>{{ pageState.domain || '当前网站' }} · {{ readingAppearance.remembered ? '已有保存偏好' : '尚未保存偏好' }}</small></span>
+          <button class="reading-appearance-save" type="button" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.remember">保存当前选择</button>
+        </div>
+        <p v-if="readingAppearance.remembered" class="reading-appearance-hint">预览和恢复仅作用于当前页；点击“保存当前选择”才会更新网站偏好。</p>
+        <div class="reading-appearance-actions">
+          <button class="secondary-action" type="button" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.restore">恢复网站原样</button>
+          <button class="secondary-action" type="button" :disabled="!readingAppearance.ready || readingAppearance.busy || !readingAppearance.remembered" :onClick="readingButtons.forget">清除此网站偏好</button>
+        </div>
+        <p class="reading-appearance-hint">清除网站偏好后，下次打开此网站将使用网站原样。</p>
+        <p v-if="readingAppearance.error" class="notice error" role="alert">{{ readingAppearance.error }}</p>
+        <button v-if="readingAppearance.error" class="secondary-action" type="button" :disabled="readingAppearance.busy" :onClick="readingButtons.retry">重试读取</button>
+        <p v-else class="reading-appearance-hint" role="status">{{ readingAppearance.busy ? '正在应用…' : readingAppearance.ready ? '切换字体只改变阅读显示，不影响翻译内容。' : '正在读取当前网页…' }}</p>
+      </div>
       <div v-else-if="activeDrawer === 'aiContext'" class="drawer-content ai-context-details" data-i18n-ignore>
         <div class="ai-context-detail-state" :data-ai-context-state="aiContextPresentation.state">
           <span class="ai-context-status" role="status">{{ t(`popup.aiContext.status.${aiContextPresentation.state}`) }}</span>
@@ -343,7 +374,7 @@
       </div>
 
         <p v-if="notice && noticeType === 'error'" class="notice error" role="alert">{{ notice }}</p>
-        <button v-if="!['aiContext', 'services'].includes(activeDrawer)" class="drawer-settings-link" type="button" data-i18n-ignore :onClick="drawerActions.options">
+        <button v-if="!['aiContext', 'services', 'readingAppearance'].includes(activeDrawer)" class="drawer-settings-link" type="button" data-i18n-ignore :onClick="drawerActions.options">
           <span><strong>{{ t('popup.quickSettings.moreSettings') }}</strong></span>
           <span aria-hidden="true">↗</span>
         </button>
@@ -402,6 +433,7 @@ import {
 } from '@/src/core/config/interfaceAppearance';
 import { resolveAIContextPresentation } from '@/src/ui/view-model/aiContext';
 import {createPopupPageActions, type PopupPageState, type PopupSiteRulePatch} from './pageActions';
+import {createReadingAppearanceActions, type ReadingAppearanceState} from './readingAppearanceActions';
 import {createPopupTabSource} from './sourceTab';
 import {getEmbeddedPopupTabId, closePopupSurface} from './embedded';
 import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
@@ -422,7 +454,7 @@ import {
   isTranslationServiceAvailable,
 } from '@/src/services/translation/capabilities';
 
-type DrawerName = 'services' | 'hover' | 'selection' | 'appearance' | 'image' | 'aiContext';
+type DrawerName = 'readingAppearance' | 'services' | 'hover' | 'selection' | 'appearance' | 'image' | 'aiContext';
 type SettingsSection = 'settings-selection' | 'settings-general' | 'settings-interface' | 'settings-image-translation' | 'settings-area-translation' | 'settings-translation' | 'settings-services' | 'settings-sites' | 'settings-video' | 'settings-vocabulary';
 interface PopupQuickFeatureViewModel {
   id: PopupQuickFeatureId;
@@ -480,6 +512,7 @@ let pageExitSaveStarted = false;
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
 const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
+  readingAppearance: 'settings-interface',
   services: 'settings-services',
   aiContext: 'settings-general',
   hover: 'settings-translation',
@@ -734,8 +767,9 @@ const popupQuickFeatureViewModels = computed<Record<PopupQuickFeatureId, PopupQu
 };});
 const visiblePopupQuickFeatures = computed(() => visiblePopupQuickFeatureIds.value
   .map((featureId) => popupQuickFeatureViewModels.value[featureId]));
-const drawerTitle = computed(() => ({ services: t('popup.providers.title'), aiContext: t('popup.aiContext.title'), hover: '鼠标悬停翻译设置', selection: '划词翻译设置', appearance: '译文显示设置', image: '图片翻译' }[activeDrawer.value]));
+const drawerTitle = computed(() => ({ readingAppearance: '阅读外观', services: t('popup.providers.title'), aiContext: t('popup.aiContext.title'), hover: '鼠标悬停翻译设置', selection: '划词翻译设置', appearance: '译文显示设置', image: '图片翻译' }[activeDrawer.value]));
 const drawerDescription = computed(() => ({
+  readingAppearance: '为当前网页选择舒适的正文字体。',
   services: '',
   aiContext: t('popup.aiContext.intro'),
   hover: '将鼠标停在段落上，按快捷键查看译文。',
@@ -813,13 +847,32 @@ const cacheContext = useSettingsActionContext(() => popupContext.active.value, (
 const tabSource = createPopupTabSource(window.location?.search || '', {
   get: id => browser.tabs.get(id), query: () => browser.tabs.query({active: true, currentWindow: true}),
 }, getEmbeddedPopupTabId());
+const readingAppearance = reactive<ReadingAppearanceState>({font: 'original', remembered: false, busy: false, ready: false, error: ''});
+const readingContext = useSettingsActionContext(() => popupContext.active.value && config.value.on && !currentSiteExtensionDisabled.value && !currentPdfSource.value && drawerVisible.value && activeDrawer.value === 'readingAppearance',
+  () => [pageState.tabId, pageState.url, pageContext.revision.value]);
+const readingActions = createReadingAppearanceActions({state: readingAppearance, active: () => readingContext.active.value,
+  target: () => ({tabId: pageState.tabId, url: pageState.url}), getTab: tabSource.getTab,
+  send: (id, message) => browser.tabs.sendMessage(id, message, {frameId: 0})});
+watch(readingContext.revision, () => {readingActions.invalidate();if (readingContext.active.value) void readingActions.read()}, {flush: 'sync'});
+const readingButtons = computed(() => {
+  const current = readingContext.capture();
+  const bind = (action: () => Promise<void>) => () => {if (current()) return action()};
+  return {original: bind(() => readingActions.set('original')), system: bind(() => readingActions.set('system')),
+    remember: bind(() => readingActions.set(readingAppearance.font, true)), forget: bind(() => readingActions.set(readingAppearance.font, false)),
+    restore: bind(() => readingActions.set('original')), retry: bind(() => readingActions.read())};
+});
 const pageActions = createPopupPageActions({state: pageState, config: () => config.value, active: () => pageContext.active.value,
   warning: () => credentialWarning.value || '', getTab: tabSource.getTab,
   persistRule: persistSiteRulePatch,
   openPdf: source => browser.tabs.create({url: createPdfReaderUrl(browser.runtime.getURL('document.html'), source)}),
   onStatus: readPageResult, onFailure: diagnostic => {pageDiagnostic.value = diagnostic;notice.value = ''},
   send: (id, message) => browser.tabs.sendMessage(id, message, {frameId: 0}), notice: showNotice, close: closePopupSurface, translate: t, thunderbird: isThunderbird});
-const {hydrate: hydrateCurrentSite, toggle: togglePageTranslation, section: startSectionTranslation,
+async function hydrateCurrentSite() {
+  readingActions.invalidate();
+  await pageActions.hydrate();
+  if (readingContext.active.value) await readingActions.read();
+}
+const {toggle: togglePageTranslation, section: startSectionTranslation,
   setAlways: setCurrentSiteAlwaysTranslated, setDisabled: setCurrentSiteExtensionDisabled} = pageActions;
 watch(pageContext.revision, () => {pageActions.invalidate();readPageResult(undefined);if (!config.value.on || currentSiteExtensionDisabled.value) pageTranslated.value = false}, {flush: 'sync'});
 const pageRenderRevision = ref(0);
@@ -890,7 +943,7 @@ const popupActions = computed(() => {
   const current = popupContext.capture();
   const bind = (run: () => void | Promise<void>) => () => {if (current()) return run()};
   return {settings: bind(() => openOptions()), serviceSettings: bind(() => openOptions('settings-services', undefined, config.value.service)),
-    services: bind(() => openDrawer('services')), cache: bind(clearCache)};
+    services: bind(() => openDrawer('services')), readingAppearance: bind(() => openDrawer('readingAppearance')), cache: bind(clearCache)};
 });
 const drawerContext = useSettingsActionContext(() => popupContext.active.value && drawerVisible.value,
   () => [config.value, activeDrawer.value, config.value.on, config.value.hotkey, config.value.customHotkey,
@@ -938,6 +991,9 @@ watch([drawerVisible, drawerSurface, popupContext.active], ([visible, surface, a
   };
 }, {flush: 'sync'});
 watch(() => config.value.on, enabled => {if (!enabled && activeDrawer.value !== 'services' && activeDrawer.value !== 'aiContext') drawerVisible.value = false}, {flush: 'sync'});
+watch([currentSiteExtensionDisabled, currentPdfSource], ([disabled, pdf]) => {
+  if ((disabled || pdf) && activeDrawer.value === 'readingAppearance') drawerVisible.value = false;
+}, {flush: 'sync'});
 watch(cacheContext.active, enabled => {if (!enabled) clearingCache.value = false}, {flush: 'sync'});
 
 function applyTheme(theme: string) {
@@ -1125,7 +1181,7 @@ function showNotice(message: string, type: 'success' | 'error' = 'success') {
 }
 
 // 配置订阅是内容功能的唯一状态来源；避免无 revision 的广播晚到后覆盖新快照。
-function openDrawer(name: DrawerName) {if (!popupContext.active.value || (!config.value.on && name !== 'services' && name !== 'aiContext')) return;activeDrawer.value = name;drawerMounted.value = true;drawerVisible.value = true;}
+function openDrawer(name: DrawerName) {if ((name === 'readingAppearance' && (currentSiteExtensionDisabled.value || !!currentPdfSource.value)) || !popupContext.active.value || (!config.value.on && name !== 'services' && name !== 'aiContext')) return;activeDrawer.value = name;drawerMounted.value = true;drawerVisible.value = true;}
 async function openOptions(section?: SettingsSection, target?: string, service?: string, repairSource = false) {
   if (!popupContext.active.value) return;
   const current = popupContext.capture();

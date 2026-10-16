@@ -715,7 +715,11 @@
       "tests/selfHelpNotice.test.ts",
       "tests/serviceRepairReturn.test.ts",
       "tests/materialRepository.test.ts",
-      "tests/serviceRepairFocus.test.ts"
+      "tests/serviceRepairFocus.test.ts",
+      "tests/readingAppearanceRuntime.test.ts",
+      "tests/readingAppearanceContent.test.ts",
+      "tests/popupReadingAppearance.test.ts",
+      "tests/readingAppearanceComposition.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",
