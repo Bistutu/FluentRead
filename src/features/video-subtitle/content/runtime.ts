@@ -1746,7 +1746,7 @@ export function mountVideoSubtitleTranslation(): () => void {
 
   playerBinding = createVideoPlayerBinding({
     locator: playerLocator,
-    getState: () => ({enabled: !destroyed && config.on && isSupportedVideoPage(),
+    getState: () => ({enabled: !destroyed && config.on && config.videoTranslationEnabled && isSupportedVideoPage(),
       progress: isAiFullActive() && aiFullPhase !== 'ready' ? aiFullProgress.progress : null}),
     createButton: createPlayerButton,
     createMenu: target => createPlayerMenu(target.player),
