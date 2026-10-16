@@ -2,6 +2,8 @@
 
 以下字幕与原生历史验收对应产品源码 `f5a82d11a5b6b6a5de2f2ea726065a56cdb2e6ca`；随后新增的触屏入口修复见下节，历史结果不转记为新包。受控生产 Edge 的动作检查和 18 张原图复核在声明范围内通过；真实 Safari Simulator 已在**暂停状态**完成菜单正常打开、关闭和入口焦点返回，播放中菜单、滚动与双语同帧仍未验收。f5a Firefox 已完成既存文档翻译、Home 返回、恢复和重译，但暴露了法文、阿文输出质量问题。对应共享修复单独提交为 [PR #1014](https://github.com/FluentRead/FluentRead/pull/1014)；其 d6b135e 生产包已在另一轮 Android 翻译—恢复—重译中显示对应中文，范围及供应商来源限制见下文。[PR #1009](https://github.com/FluentRead/FluentRead/pull/1009) 的检查状态不能代替移动端视觉和触摸验收。此前服务选择与主线整合记录见[主线整合报告](./main-followup.md)。
 
+后续字幕菜单修复及其独立证据见[字幕菜单滚动与键盘焦点修复](./menu-scroll-followup.md)。该分项的受控浏览器结果、旧测试预期更正和最近真实 Safari SKIP 分别记录，不能替代下文的历史版本身份或原生验收。
+
 ## 触屏悬浮入口的能力判断修复
 
 F32 的专用 Android Firefox 实际入口只有 40px，折叠变换使右侧主体超出 360px 可见视口。F33 在同一阅读文档连续三次读到 `maxTouchPoints=5`、`pointer:coarse=false`、`any-pointer:coarse=false`，原有粗指针媒体查询不足以覆盖这个实际触屏环境。现在组件在首次渲染前读取硬件触摸能力：触屏主体及紧凑、漫画模式保留完整 44px 入口，不再沿边缘平移或裁切；同时由 `any-pointer:coarse` 支持浏览器报告的粗指针。没有触摸能力的桌面呈现保持原规则。

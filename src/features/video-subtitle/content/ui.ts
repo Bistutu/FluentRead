@@ -970,6 +970,7 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
       word-break: normal !important;
       white-space: normal !important;
       overflow: auto !important;
+      scroll-padding-top: calc(28px + 6px) !important;
       overscroll-behavior: contain !important;
       scrollbar-width: thin !important;
       cursor: default !important;
@@ -1068,6 +1069,10 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
     #${VIDEO_TRANSLATION_MENU_ID}[data-layout="wide"] .fluent-read-video-menu-download-status { flex: 1 0 100% !important; }
 
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-title {
+      position: sticky !important;
+      top: -6px !important;
+      z-index: 1 !important;
+      background: var(--fr-video-menu-surface) !important;
       display: flex !important;
       align-items: center !important;
       justify-content: space-between !important;
@@ -1525,6 +1530,7 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
     /* 触屏目标至少 44px；菜单沿既有最大高度滚动，不压缩触控区域。 */
     @media (pointer: coarse) {
       #${VIDEO_TRANSLATION_BUTTON_ID} { min-width: 44px !important; min-height: 44px !important; }
+      #${VIDEO_TRANSLATION_MENU_ID} { scroll-padding-top: calc(44px + 6px) !important; }
       /* 双 ID 优先于 compact/wide 的次级按钮规则，关闭、模式、返回与操作均保留完整触控面积。 */
       #${VIDEO_TRANSLATION_MENU_ID}#${VIDEO_TRANSLATION_MENU_ID} button {
         min-width: 44px !important;
