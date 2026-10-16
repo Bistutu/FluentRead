@@ -213,8 +213,7 @@ async function main() {
     const popup = await createIsolatedPage();
     await popup.goto(`chrome-extension://${extensionId}/popup.html`, { waitUntil: 'domcontentloaded' });
     await activateTestPage(popup);
-    await popup.waitForSelector('[data-feature="video-subtitle"]', { timeout: 15000 });
-    await popup.waitForFunction(() => document.querySelectorAll('.feature-card').length === 6, null, { timeout: 10000 });
+    await popup.locator('.popup-shell[data-config-ready="true"]').waitFor({state: 'visible', timeout: 15000});
     await persistExtensionConfig(popup, {
       on: true,
       display: 1,
@@ -227,34 +226,36 @@ async function main() {
       useCache: false,
     });
     await popup.reload({ waitUntil: 'domcontentloaded' });
-    await popup.waitForSelector('[data-feature="video-subtitle"]', { timeout: 15000 });
+    await popup.locator('.popup-shell[data-config-ready="true"]').waitFor({state: 'visible', timeout: 15000});
     await popup.waitForFunction(
       () => !document.querySelector('[data-testid="ui-language-onboarding"]'),
       null,
       { timeout: 10000 },
     );
     const popupConfig = await readExtensionConfig(popup);
-    const popupState = await popup.evaluate((config) => ({
-      featurePresent: Boolean(document.querySelector('[data-feature="video-subtitle"]')),
-      featureCount: document.querySelectorAll('.feature-card').length,
-      imageFeaturePresent: [...document.querySelectorAll('.feature-card')].some((node) => node.textContent?.includes('图片翻译')),
-      floatingFeaturePresent: [...document.querySelectorAll('.feature-card')].some((node) => node.textContent?.includes('全文悬浮球')),
-      betaMarkers: [...document.querySelectorAll('[data-feature="video-subtitle"] *')]
-        .filter((node) => /beta|测试版/iu.test(node.textContent || '')).length,
-      popupHeight: document.body.scrollHeight,
-      config,
-    }), popupConfig);
-    if (popupState.featureCount !== 6 || !popupState.imageFeaturePresent || popupState.floatingFeaturePresent || popupState.betaMarkers !== 0 || popupState.config.videoService !== 'microsoft') {
-      throw new Error(`Popup 快捷功能卡校验失败：数量=${popupState.featureCount}，图片翻译=${popupState.imageFeaturePresent}`);
+    // 当前 Popup 的视频服务入口位于服务分配列表，总开关在完整视频设置中。
+    await popup.locator('[data-testid="popup-feature-services"]').click();
+    const servicePanel = popup.locator('.popup-service-panel');
+    await servicePanel.locator('[data-feature-service="video"]').waitFor({state: 'visible', timeout: 10000});
+    const popupState = await popup.evaluate((config) => {
+      const row = document.querySelector('.popup-service-panel [data-feature-service="video"]');
+      return {
+        videoServiceAssignmentPresent: Boolean(row),
+        videoServiceAssignmentSummary: row?.querySelector('.assignment-value')?.textContent?.trim() || '',
+        betaMarkers: [...(row?.querySelectorAll('*') || [])].filter(node => /beta|测试版/iu.test(node.textContent || '')).length,
+        popupHeight: document.body.scrollHeight,
+        config,
+      };
+    }, popupConfig);
+    if (!popupState.videoServiceAssignmentPresent || !popupState.videoServiceAssignmentSummary
+      || popupState.betaMarkers !== 0 || popupState.config.videoService !== 'microsoft') {
+      throw new Error(`Popup 视频服务分配入口校验失败：${JSON.stringify(popupState)}`);
     }
-    await popup.locator('[data-feature="video-subtitle"]').click();
-    await popup.getByText('YouTube 字幕翻译').waitFor({ state: 'visible', timeout: 10000 });
-    const videoDrawerState = await popup.evaluate(() => ({
-      drawerVisible: Boolean([...document.querySelectorAll('.drawer-content')].find((node) => node.textContent?.includes('视频翻译服务'))),
-      providerCount: document.querySelectorAll('.drawer-content select option').length,
-    }));
-    await popup.screenshot({ path: path.join(artifactsDir, 'popup-video-beta-drawer.png'), fullPage: true });
-    await popup.screenshot({ path: path.join(artifactsDir, 'popup-video-beta.png'), fullPage: true });
+    const videoServiceAssignmentState = {
+      entryPresent: popupState.videoServiceAssignmentPresent,
+      summary: popupState.videoServiceAssignmentSummary,
+    };
+    await popup.screenshot({path: path.join(artifactsDir, 'popup-video-service-assignment.png'), fullPage: true});
     await popup.close();
 
     const options = await createIsolatedPage();
@@ -503,15 +504,14 @@ async function main() {
       ok: true,
       url: page.url(),
       popupState: {
-        featurePresent: popupState.featurePresent,
-        featureCount: popupState.featureCount,
-        imageFeaturePresent: popupState.imageFeaturePresent,
+        videoServiceAssignmentPresent: popupState.videoServiceAssignmentPresent,
+        videoServiceAssignmentSummary: popupState.videoServiceAssignmentSummary,
         popupHeight: popupState.popupHeight,
         textService: popupState.config.service,
         videoService: popupState.config.videoService,
         videoTranslationEnabled: popupState.config.videoTranslationEnabled,
       },
-      videoDrawerState,
+      videoServiceAssignmentState,
       optionsState,
       playerUiState,
       playerMenuState,

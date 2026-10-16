@@ -2,7 +2,7 @@
  * @file src/platform/shadow-ui/vue.ts
  *
  * 文件职责：把 Vue 应用挂载到扩展创建的隔离 Shadow DOM，并注入跨 feature 共享的基础样式与事件隔离设置。
- * 主要内容：定义 VueShadowMount 与 VueShadowUiOptions，依据 options 创建隔离宿主、样式和 app，将 app 与当前自有容器交给装配 hook；异步创建前后检查扩展上下文，释放失败构建的 app 与 DOM，并按挂载归属返回由 WXT 管理的资源句柄。
+ * 主要内容：定义 VueShadowMount 与 VueShadowUiOptions，把独立浮层宿主挂到 html 以跨越软导航的 body 替换，创建隔离样式和 app，将当前自有容器交给装配 hook；异步创建前后检查扩展上下文，释放失败构建的 app 与 DOM，并按挂载归属返回由 WXT 管理的资源句柄。
  * 模块边界：本文件属于 platform 基础设施边界，只封装浏览器、网络、存储上下文或 Shadow DOM 机制；不决定翻译业务策略，不直接实现 feature，业务层通过类型化端口消费这里的能力。
  */
 
@@ -101,6 +101,9 @@ export async function createVueShadowUi(
   const shadowUiOptions = {
     name: options.name,
     position: 'overlay',
+    // Turbo 等软导航会在路由事件后替换整个 body；独立浮层放在 html 下，
+    // 保留同一 Vue 实例和交互状态，清理仍由 WXT 与 feature 生命周期负责。
+    anchor: 'html',
     alignment: 'top-left',
     zIndex: options.zIndex ?? 2_147_483_647,
     mode: options.mode ?? 'open',

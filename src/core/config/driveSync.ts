@@ -2,7 +2,7 @@
  * @file src/core/config/driveSync.ts
  * 文件职责：定义默认排除敏感信息的云同步范围、兼容完整快照和不泄露凭据的差异预览。
  * 主要内容：投影普通设置、读取 v1 完整与 v2 普通快照，兼容枚举列表去重与退役条目迁移，保留凭据明确删除语义、执行三方字段合并，并将请求体、
- * 地址、请求头、密钥和未知字段统一隐藏，普通设置包含不带统计或凭据的公开组合配置和按服务保存的原生翻译合批偏好并展示稳定名称和值；数组整体合并。
+ * 地址、请求头、密钥和未知字段统一隐藏，普通设置包含经严格结构校验的网站规则、不带统计或凭据的公开组合配置和按服务保存的原生翻译合批偏好；旧备份缺失的网站规则保留本机值，数组整体合并。
  * 模块边界：只处理纯数据；不拥有口令、加密、存储、浏览器消息或 Google API。
  */
 import {options, servicesType} from './catalog';
@@ -247,16 +247,20 @@ export function projectDriveSyncConfig(config: DriveSyncConfig, includeSensitive
     if (includeSensitive) return structuredClone(config);
     const normalized = toDriveSyncConfig(config);
     return Object.fromEntries(Object.entries(config).filter(([key, value]) => KNOWN_SETTINGS.has(key)
-        && !CONNECTION_FIELDS.has(key) && !PRIVATE_FIELDS.has(key) && !containsExcludedSettings(value)
+        && !CONNECTION_FIELDS.has(key) && !PRIVATE_FIELDS.has(key)
+        // 网站规则的 custom 是规则包，content.key 是诊断标签；必须完全符合归一化后的
+        // 严格规则结构才能备份，不能把这两个字段名的例外放宽到其他配置中的凭据。
+        && (key === 'siteAdaptation' ? driveValuesEqual(value, normalized[key]) : !containsExcludedSettings(value))
         && (!(value && typeof value === 'object') || SETTINGS_SCHEMA[key] !== null && typeof SETTINGS_SCHEMA[key] === 'object')
         && !hasUnknownStructure(value, normalized[key]))
         .map(([key, value]) => [key, structuredClone(value)]));
 }
 
-/** 普通范围仅替换可备份设置；本机完整连接、未知字段和私密偏好保持原子性。 */
+/** 普通范围替换可备份设置；旧备份缺失的网站规则及本机完整连接、未知字段和私密偏好保留。 */
 export function restoreDriveSyncSettings(local: DriveSyncConfig, settings: DriveSyncConfig): DriveSyncConfig {
     const projected = projectDriveSyncConfig(local);
-    const preserved = Object.fromEntries(Object.entries(local).filter(([key]) => !Object.hasOwn(projected, key)));
+    const preserved = Object.fromEntries(Object.entries(local).filter(([key]) => !Object.hasOwn(projected, key)
+        || key === 'siteAdaptation' && !Object.hasOwn(settings, key)));
     return {...structuredClone(settings), ...structuredClone(preserved)};
 }
 

@@ -2,6 +2,8 @@
 
 Follow YouTube and X videos or Google Meet, Teams and Zoom web meetings with bilingual captions, using accessible captions provided by the platform.
 
+Turning off **Video subtitle translation** immediately removes the FluentRead button and menu from YouTube and X players, including after a page reload. Enable it again from the extension popup or settings to restore the button without refreshing. Webpage translation continues to follow its own settings. Choosing **Off** in the player menu also turns off video subtitle translation and removes its button and menu while preserving the website's native captions; use the popup or settings to enable it again.
+
 ## Sentence learning
 
 Choose the book-icon **Start sentence learning** button in the FluentRead menu of a YouTube or X player. The optional panel groups original timed captions into sentences, with surrounding context and a translation requested for the whole original sentence. Missing punctuation and long captions are labelled as fragments. Enable original captions if no timeline is available. X local AI captions must finish generating before learning is available.

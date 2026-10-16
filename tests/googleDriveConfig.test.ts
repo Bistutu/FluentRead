@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {Config, normalizeConfig} from '@/src/core/config/model';
 import {CONFIG_CREDENTIAL_FIELDS} from '@/src/core/config/credentials';
+import {builtinSiteRulePack} from '@/src/core/site-adaptation/catalog';
 import {buildDriveSyncDiff, driveSyncPayload as completePayload, driveValuesEqual, parseDriveSyncPayload, resolveDriveSyncDiff, toDriveSyncConfig, projectDriveSyncConfig, restoreDriveSyncSettings, parseDriveSyncSnapshot, validateDriveSyncConsent} from '@/src/core/config/driveSync';
 
 const driveSyncPayload = (config: Record<string, unknown>) => completePayload(config, true);
@@ -149,6 +150,64 @@ describe('Google Drive 完整快照和安全合并', () => {
 
 
 describe('普通云备份范围与 v1 兼容', () => {
+    it.each([false, true])('自定义网站规则保留正文标签和模板，content.key 存在：%s', withKey => {
+        const reddit = structuredClone(builtinSiteRulePack.rules.find(rule => rule.id === 'reddit')!);
+        expect(reddit.content![0].key).toBe('reddit-post-title');
+        if (!withKey) reddit.content!.forEach(content => {delete content.key;});
+        const siteAdaptation = {
+            enabled: false, disabledRuleIds: ['reddit'],
+            custom: {version: 1, profiles: {custom: {content: [{css: ['article p'], ...(withKey ? {key: 'article-body'} : {})}]}},
+                rules: [reddit, {id: 'mine', name: '我的规则', match: {hosts: ['example.com']}, profile: 'custom'}]},
+        };
+        const local = complete({siteAdaptation});
+        expect(local.siteAdaptation).toEqual(siteAdaptation);
+        const settings = projectDriveSyncConfig(local);
+        expect(settings.siteAdaptation).toEqual(siteAdaptation);
+        const payload = completePayload(local);
+        expect(parseDriveSyncSnapshot(payload)).toEqual({config: settings, includesSensitive: false});
+        expect(projectDriveSyncConfig(parseDriveSyncPayload(completePayload(local, true))).siteAdaptation).toEqual(siteAdaptation);
+        (settings.siteAdaptation as typeof siteAdaptation).custom.rules[0].name = 'changed clone';
+        expect(local.siteAdaptation).toEqual(siteAdaptation);
+    });
+    it('普通备份保留默认网站规则开关，恢复和合并可覆盖已有本机规则', () => {
+        const base = complete();
+        expect(projectDriveSyncConfig(base).siteAdaptation).toEqual(new Config().siteAdaptation);
+        const local = complete({siteAdaptation: {...new Config().siteAdaptation, disabledRuleIds: ['reddit']}});
+        const remote = projectDriveSyncConfig(base);
+        expect(restoreDriveSyncSettings(local, remote).siteAdaptation).toEqual(base.siteAdaptation);
+        const diff = buildDriveSyncDiff(null, projectDriveSyncConfig(local), remote);
+        expect(diff.changes).toHaveLength(1);
+        expect(diff.changes[0]).toMatchObject({label: '网站规则', sensitive: true});
+        const merged = resolveDriveSyncDiff(diff, {'0': 'remote'});
+        expect(restoreDriveSyncSettings(local, merged).siteAdaptation).toEqual(base.siteAdaptation);
+        // 旧普通快照从未带入网站规则，恢复时不能把本机规则重置为空。
+        const {siteAdaptation: _omitted, ...oldSettings} = remote;
+        expect(restoreDriveSyncSettings(local, oldSettings).siteAdaptation).toEqual(local.siteAdaptation);
+    });
+    it('网站规则的结构白名单拒绝嵌套凭据、未知字段与伪装标量', () => {
+        const base = complete();
+        const siteAdaptation = new Config().siteAdaptation;
+        const reddit = structuredClone(builtinSiteRulePack.rules.find(rule => rule.id === 'reddit')!);
+        const invalid = [
+            {...siteAdaptation, token: 'fixture-secret'},
+            {...siteAdaptation, enabled: 'fixture-secret'},
+            {...siteAdaptation, disabledRuleIds: [{key: 'fixture-secret'}]},
+            {...siteAdaptation, custom: {...siteAdaptation.custom, opaque: 'fixture-secret'}},
+            {...siteAdaptation, custom: {version: 1, rules: [{...reddit, apiKey: 'fixture-secret'}]}},
+            {...siteAdaptation, custom: {version: 1, rules: [{...reddit, content: [{css: ['p'], key: {token: 'fixture-secret'}}]}]}},
+            {...siteAdaptation, custom: {version: 1, rules: [{...reddit, content: [{css: ['p'], authorization: 'fixture-secret'}]}]}},
+            {...siteAdaptation, custom: {version: 1, profiles: {mine: {token: 'fixture-secret'}}, rules: []}},
+        ];
+        for (const value of invalid) {
+            expect(projectDriveSyncConfig({siteAdaptation: value})).toEqual({});
+            const payload = {format: 'fluentread-complete-config', version: 2, scope: 'settings',
+                config: {...projectDriveSyncConfig(base), siteAdaptation: value}};
+            expect(() => parseDriveSyncSnapshot(payload)).toThrow('不属于此范围');
+        }
+        // 规则字段的例外不能作用于连接配置或其他偏好中的同名字段。
+        expect(projectDriveSyncConfig({key: 'fixture-secret', custom: 'https://fixture.invalid',
+            shareCard: {...base.shareCard as object, css: ['p'], key: 'fixture-secret'}})).toEqual({});
+    });
     it('普通旧备份的标量列表去重或移除退役服务时仍可读取，嵌入对象仍拒绝', () => {
         const payload = completePayload(complete()) as {config: Record<string, unknown>};
         const order = ['microsoft', 'deeplx', 'google', 'lingvaFree', 'google'];

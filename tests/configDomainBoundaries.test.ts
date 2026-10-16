@@ -42,6 +42,26 @@ import {
 } from '@/src/core/config/validation';
 
 describe('配置领域边界与防御分支', () => {
+    it('公开配置与历史保留合法网站正文标签，额外凭据和其他路径同名字段仍被清洗', () => {
+        const siteAdaptation = normalizeConfig({siteAdaptation: {enabled: false, disabledRuleIds: ['reddit'], custom: {
+            version: 1, rules: [{id: 'mine', name: 'My rule', match: {hosts: ['example.com']},
+                content: [{css: ['article p'], key: 'article-body'}]}],
+        }}}).siteAdaptation;
+        const source = {siteAdaptation, key: 'fixture-secret', future: {siteAdaptation, key: 'fixture-secret'}};
+        const sanitized = sanitizeConfigCredentials(source);
+        expect(sanitized.siteAdaptation).toEqual(siteAdaptation);
+        expect(sanitized.siteAdaptation).not.toBe(siteAdaptation);
+        expect(sanitized).not.toHaveProperty('key');
+        expect(sanitized).not.toHaveProperty('future.key');
+        expect(sanitized).not.toHaveProperty('future.siteAdaptation.custom.rules.0.content.0.key');
+        expect(sanitizeConfigHistoryCredentials({entries: [{config: source}]}))
+            .toMatchObject({entries: [{config: {siteAdaptation}}]});
+        const invalid = {...siteAdaptation, token: 'fixture-secret', custom: {version: 1,
+            rules: [{...siteAdaptation.custom.rules[0], content: [{css: ['p'], key: {token: 'fixture-secret'}}]}]}};
+        expect(sanitizeConfigCredentials({siteAdaptation: invalid}).siteAdaptation)
+            .toEqual({...siteAdaptation, custom: {version: 1, rules: []}});
+        expect(JSON.stringify(sanitizeConfigCredentials({siteAdaptation: invalid}))).not.toContain('fixture-secret');
+    });
     it('页面识别范围仅接受全部节点枚举，旧配置和非法值保持默认正文模式', () => {
         expect(normalizeConfig({}).translationScope).toBe('content');
         expect(normalizeConfig({translationScope: 'all'}).translationScope).toBe('all');

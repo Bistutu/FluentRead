@@ -10,6 +10,8 @@
 
 ## 翻译结果与浏览器清理边界
 
+GitHub 等站点的软导航可能在 `pushState` 后才整体替换 body。独立 Vue Shadow UI 统一挂在 html 下，悬浮球与划词入口因而保留原实例，不依赖路由事件、Turbo 事件或固定延时重建。`pnpm test tests/shadowUi.test.ts tests/contentFeatureMounting.test.ts tests/contentFeatureRegistry.test.ts tests/floatingBallLifecycle.test.ts tests/userscriptPlatform.test.ts` 验证真实 WXT 0.20.18 挂载在路由检查后经历 0、34、572、1000ms 延迟 body 替换时仍存活，以及既有禁用、恢复与上下文失效清理；WXT DOM 用例仅替换 Vue app 端口，不代表 GitHub 实站或真实浏览器验收。
+
 GitHub 文档出现译文消失、重现时，先记录扩展版本、浏览器、网页地址和触发动作。`tests/bilingualReplay.test.ts` 包含 Issue #969 截图对应的行内代码与链接段落，使用真实 MutationObserver 检查窗口 resize 后零自重放、译文零移除、链接提示变化、同文 Text 重绘与恢复原文。它验证当前实现的状态保持，不能单独证明反馈者的根因。
 
 生产 Chrome 构建后，运行 `node scripts/testing/run-github-document-stability-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --artifacts-dir <证据目录> --background --live --full-mode viewport`。默认访问截图对应的 `pi-subagents/docs/models.md`，在临时 Edge 后台正常窗口记录选定正文的译文增删和内部子节点重写、源码节点身份、链接与代码、窗口宽度变化、滚动返回、可信鼠标经过以及全文/段落翻译—恢复—再次翻译；尺寸复验有独立 Node 看门狗，页面观察器循环也必须失败并清理本次浏览器。`--full-mode all` 检查立即处理整页，省略 `--live` 使用自建 GitHub 域名夹具。`--published` 验证已核验散列的正式发行包，记录其版本与 content.js 散列，不对该外部包套用当前检出的源码新鲜度检查。网页使用实站 DOM，翻译响应受控；结果不代表在线供应商、其他扩展共存或反馈者安装版本的验收，GitHub 错误页单独记录为访问失败。
@@ -29,6 +31,8 @@ GitHub 仓库列表和 Issue 列表同时保留旧容器与当前结构的保护
 生产 Chrome 扩展构建后运行 `node scripts/testing/run-personal-corrections-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <捆绑 Node 包目录> --focus-safe-helper <focus-safe-browser.cjs 路径> --artifacts-dir <证据目录> --real-url https://example.com`。脚本使用第二屏临时 Edge 后台窗口和可信输入，翻译响应为确定性 Google 夹具；网页、双语渲染、后台消息和加密存储使用生产实现。验证原句重复复用时零额外 provider 请求、近似句只作草稿、两种语言与标题语境隔离、材料/项目范围、恢复重译、公共缓存隔离、页签栏右侧语言与底部紧凑范围的实际几何、范围帮助的真实悬停/焦点与 390px 提示边界、焦点恢复，保存 JSON、DOM 和截图。此证据不代表在线译文质量或 Firefox 实机验收。
 
 ## 视频完整句学习
+
+视频字幕总开关关闭时，YouTube/X 播放器按钮和菜单必须移除；播放器菜单的「关闭」遵循同一行为，重新开启从扩展弹窗或设置页操作。`videoSubtitleTrackPriorityRuntime` 覆盖两个平台初始关闭、已打开菜单的移除、周期同步后保持隐藏、重复开启不产生副本，以及隐藏字幕与关闭功能的区别。生产 Chrome 构建后使用 `node scripts/run-video-menu-state-test.cjs --button-visibility-only --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <证据目录>` 定向验证：初始关闭、外部配置关闭、控制栏重建、刷新、菜单关闭、重新开启，以及字幕关闭时网页段落翻译—恢复—再次翻译的 `[1, 0, 1]`。脚本使用临时 Edge 后台正常窗口与受控 YouTube/X DOM、媒体和翻译响应；不代表原站、在线服务或 Firefox 运行验收。
 
 AI 字幕运行时的缓存恢复与完整生成提交由 `video-ai/subtitleSession.ts` 统一拥有：媒体、模型、来源语言变化或卸载后，旧缓存不能写入新会话；原生轨道就绪时拒绝缓存恢复；同媒体元数据补全保持生成开始时的模型与语言快照。`videoAiSubtitleSession` 使用受控未决 Promise 验证这些边界、请求去重、新旧请求终结顺序、失败恢复、重入与销毁，完整时间轴提交会复制身份和 cue，缓存失败保留已识别字幕。
 
@@ -250,6 +254,8 @@ PR #906 技术中文专项将上述模式参数替换为 `--technical-pr-906`，
 该证据覆盖生产扩展页面、后台 Web Crypto 与实际配置存储；Google 登录授权和 Drive HTTP 为受控夹具，不代表真实 Google 账号、两台设备或商店发行版本的联调结果。配置与公开发布步骤见 [Google Drive 同步教程](./maintainers/google-drive-sync-guide.md)。
 
 ## 云备份范围与敏感信息选择
+
+`googleDriveConfig`、`googleDriveSync` 与 `webDavBackup` 定向覆盖网站规则普通备份：复制内置 Reddit 规则、带或不带正文 `key`、共享模板、全局开关和停用列表均可保存；解密、worker 重启后恢复与合并保留规则及本机连接。`configTransfer`、`configDomainBoundaries` 和 `configStoreAuditBoundaries` 还验证真实导入、配置保存与加密 IndexedDB 不会再次删掉正文标签。规则范围只接受严格归一化结构，额外凭据、未知字段和伪装标量仍被排除，其他配置中的同名 `key`/`custom` 不获得例外。恢复旧普通备份时保留其中未包含的网站规则；其他普通设置仍按原契约处理删除。这些测试使用受控存储和协议端口，不代表真实云账号或跨设备联调。
 
 更新日期：2026 年 10 月 4 日。生产扩展构建完成后，使用 WebDAV 本机 HTTP 夹具运行本次范围专项：
 
@@ -767,7 +773,7 @@ node scripts/testing/run-translation-mutation-test.cjs \
 
 该回归检查宿主为新增链接写入 `tabindex=-1/0` 时保持同一个译文节点，避免把键盘焦点管理误判为内容损坏；正文、链接目的地或隐藏状态变化仍由确定性测试验证失效行为。仅译文模式还检查相邻 DOM 更新不会因原文位于扩展槽内而撤销翻译。固定高度按钮覆盖嵌套 flex/grid 标签、文字边界、点击与“翻译—恢复—再次翻译”，使用确定性翻译服务排除网络响应波动；真实 GitHub 页面结果需单独记录，不能以本地夹具代替。表单内的具名 submit 与用户输入框属于非候选控件，按完整 `outerHTML` 比对翻译前后与恢复原文，确保布局租约不在同层控件上留下属性残留。此类断言要求证据截图保持非侵入：Playwright 默认的 `caret: 'hide'` 会给每个 `input`/`textarea`/`[contenteditable]` 写入 `caret-color` 再以空值清除，在宿主控件上留下空 `style` 属性，因此浏览器回归截图统一使用 `caret: 'initial'`。
 
-### Reddit 多翻译器共存
+### Reddit 多翻译器共存与搜索结果
 
 页面 HTML 曾同时包含外部译文的 font 容器与 FluentRead 双语 wrapper。旧快照把前者作为受保护原文复制，净化后丢失其标记，形成第三份译文。`translationCore.test.ts` 覆盖该结构的候选边界、快照省略与普通术语/代码保留。
 
@@ -782,6 +788,12 @@ node scripts/testing/run-reddit-translation-test.cjs \
 ```
 
 同时检查正文与全部节点范围、悬浮 `[1,0,1]`、全文翻译与恢复、外部译文在请求前/途中/完成后出现、移除外部译文后重新翻译，以及外部 DOM 身份和 URL 保持不变。真实 Reddit 如果返回人机验证页，应单独记录为站点限制，不能把本地结构测试表述为真实帖子验证。
+
+Reddit 搜索结果沿用内置 focus 规则，补充 SDUI 的 `post-title-text` 标题与 `search-comment-content` 评论正文，不依赖 `shreddit` 标签。标题作为完整单元；评论内的段落、列表和引用分别发现，纯文本评论也能翻译。搜索框、导航、作者、时间和投票/分享/回复按钮继续受保护。
+
+issue #1000 的 `reddit-search.html` 是依据报告选择器独立编写的最小结构夹具，并非实站快照。上述命令追加 `--search-only`，只运行全站 `/search/` 与社区 `/r/.../search/` 的搜索专项，覆盖 focus 正文范围、标题与评论悬浮 `[1,0,1]`、全文翻译、动态新增和移除结果、恢复后再翻译、链接与按钮节点身份和点击行为。`translationCore.test.ts` 同时检查候选发现与悬浮解析一致，以及 `data-testid` 被移除和恢复后的目标复验。
+
+额外追加 `--live-search` 才会访问真实公开搜索页；翻译仍使用本地确定性微软响应。报告将 HTTP 状态、搜索目标数、实际翻译数和站点限制单独记录，真实页面不可访问时不算实站验证通过，也不代表在线供应商的翻译质量。
 
 ### GitHub Latest 仅译文反复翻译
 
