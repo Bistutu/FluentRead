@@ -76,7 +76,7 @@ F22 使用 d6b135e 生产 Firefox 包（478 文件，raw SHA-256 `9d2ed18771f174
 
 10:20:58 UTC 清理完成，6 个已知所属 PID/进程组及专用 5048、5580、5581、60540 端口均退出；AVD 数据保留，Edge 未操作，focus、violations、cleanupErrors 为 0，产物两种完整哈希复核一致。[清理记录](./current-firefox-f22/cleanup.json)、[产物复核](./current-firefox-f22/postflight-identity.json)。
 
-PR #1014 的 d6b135e 远程检查另有六个 slot 回归失败，集中于将大量外语残留当成成功结果的旧测试夹具；仍在修复并保留请求隔离及质量校验契约。上述设备结果不替代 CI，也不将共享修复混入 PR #1009 的 f5a 产品版本。
+PR #1014 后续提交 `ec9d9192ddf8c32dd67ef8e0daf115eeeb162e44` 已修复六项 slot 回归，并补齐完整字面量标记不应被误算作外语正文的边界。当前直接专项 208/208、六文件严格专项 870/870 通过，两模块四维覆盖均为 100%；两个测试集合存在重叠，不累加计数。Chrome、Firefox、Safari Web、userscript 构建与对应校验通过，远程[代码质量](https://github.com/FluentRead/FluentRead/actions/runs/38889217443/job/116934356640)和[文档构建](https://github.com/FluentRead/FluentRead/actions/runs/38889217441/job/116934356359)均已成功。上述 Android 实际复验仍只对应 d6b135e，不能转记为 ec9 的设备结果；共享修复也未混入 PR #1009 的 f5a 产品包。
 
 ## A3 / A4 历史记录
 
