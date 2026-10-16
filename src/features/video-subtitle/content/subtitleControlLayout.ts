@@ -115,6 +115,9 @@ function setSubtitlePanelScrollable(panel: HTMLElement, enabled: boolean): void 
     owner = {enabled: false, source: '', dispose: () => events.forEach(name => panel.removeEventListener(name, handle))};
     subtitleScrollOwners.set(panel, owner);
   }
+  // 先恢复滚动样式（含子项不收缩），再消费保存位置，避免浏览器按旧滚动范围钳制。
+  if (enabled) {panel.dataset.fluentReadSubtitleScrollable = 'true'; panel.tabIndex = 0; panel.setAttribute('role', 'region');}
+  else {delete panel.dataset.fluentReadSubtitleScrollable; panel.removeAttribute('tabindex'); panel.removeAttribute('role');}
   if (owner) {
     const source = panel.querySelector('.fluent-read-video-subtitle-original')?.textContent?.trim()
       || panel.querySelector('.fluent-read-video-subtitle')?.textContent?.trim() || '';
@@ -123,8 +126,6 @@ function setSubtitlePanelScrollable(panel: HTMLElement, enabled: boolean): void 
     owner.savedScrollTop = undefined;
     owner.enabled = enabled; owner.source = enabled ? source : '';
   }
-  if (enabled) {panel.dataset.fluentReadSubtitleScrollable = 'true'; panel.tabIndex = 0; panel.setAttribute('role', 'region');}
-  else {delete panel.dataset.fluentReadSubtitleScrollable; panel.removeAttribute('tabindex'); panel.removeAttribute('role');}
 }
 
 export function resetSubtitlePanelLayout(panel: HTMLElement, dispose = false): void {
@@ -199,10 +200,11 @@ export function positionMobileYoutubeSubtitle(panel: HTMLElement, player: HTMLEl
     panel.style.setProperty('bottom', 'auto', 'important');
     panel.style.setProperty('max-height', `${region.height}px`, 'important');
     panel.dataset.fluentReadSubtitleLayout = scrolling ? 'scroll' : 'free';
-    setSubtitlePanelScrollable(panel, scrolling);
     // 普通避让字幕也需绘制在外部暗罩之上；是否滚动仍独立决定指针和键盘交互。
     if (scrolling || controls.some(({element}) => !player.contains(element))) alignScrollHost(panel, layer, player);
     else restoreScrollHost(panel);
+    // 重挂会重建真实滚动盒；必须等最终parent、尺寸和滚动CSS齐备后才恢复并消费保存值。
+    setSubtitlePanelScrollable(panel, scrolling);
   };
   const distance = (area: VideoSubtitleRect) => Math.abs(Math.max(area.left, Math.min(preferred.left, area.left + area.width - preferred.width)) - preferred.left)
     + Math.abs(Math.max(area.top, Math.min(preferred.top, area.top + area.height - preferred.height)) - preferred.top);

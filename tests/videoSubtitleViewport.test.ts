@@ -29,6 +29,7 @@ import {
   deactivateNormalizedVideoCaption,
   getXVideoSubtitleViewport,
   installVideoSubtitleStyle,
+  markVideoUi,
   removeTranslationOverlay,
   syncTranslationOverlayPosition,
   VIDEO_PLAYER_HOST_CLASS,
@@ -38,6 +39,7 @@ import {
 } from '@/src/features/video-subtitle/content/ui';
 import {findOwnedSubtitlePanel, getVisibleYoutubeSubtitleControls, VIDEO_SUBTITLE_SCROLL_HOST_ID} from '@/src/features/video-subtitle/content/subtitleControlLayout';
 import {createVideoPlayerMenu} from '@/src/features/video-subtitle/content/playerMenu';
+import {createVideoSentenceLearningHost} from '@/src/features/video-subtitle/content/sentenceLearningHost';
 
 type Rect = {left: number; top: number; width: number; height: number; right: number; bottom: number};
 
@@ -102,7 +104,7 @@ function fixture(options: {
 
 afterEach(() => {vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
-function mobileControlFixture() {
+function mobileControlFixture(resetScrollBoxOnReparent = false) {
   const f = fixture({player: rect(0, 48, 402, 226), intrinsic: [400, 300]});
   Object.defineProperty(f.window, 'location', {configurable: true, value: new URL('https://m.youtube.com/watch?v=controls')});
   f.player.id = 'movie_player'; f.player.classList.add('html5-video-player', 'ytp-mweb-player');
@@ -139,7 +141,7 @@ function mobileControlFixture() {
       scrollPosition = Math.min(scrollPosition, Math.max(0, d.full - d.height));
       return rect(Number.parseFloat(panel.style.left.match(/[\d.]+/)?.[0] || '') || 0, 48 + (Number.isFinite(top) ? top : 226 - Number.parseFloat(panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom').match(/[\d.]+/)?.[0] || '') - d.height), d.width, d.height);}},
     scrollHeight: {get: () => dimensions().full}, clientHeight: {get: () => dimensions().height},
-    scrollTop: {get: () => scrollPosition, set: (value: number) => {scrollPosition = value;}},
+    scrollTop: {get: () => scrollPosition, set: (value: number) => {const d = dimensions(); scrollPosition = Math.max(0, Math.min(value, d.full - d.height));}},
   });
   const nativeBounds = f.window.HTMLElement.prototype.getBoundingClientRect;
   vi.spyOn(f.window.HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
@@ -152,11 +154,37 @@ function mobileControlFixture() {
   };
   const container = f.document.createElement('div'); f.player.appendChild(container);
   const sync = () => syncTranslationOverlayPosition(container);
+  if (resetScrollBoxOnReparent) {
+    const append = f.window.HTMLElement.prototype.appendChild;
+    // 浏览器边界：跨父节点重新建立滚动盒会丢弃原偏移，重挂前的scrollTop赋值不能保住位置。
+    vi.spyOn(f.window.HTMLElement.prototype, 'appendChild').mockImplementation(function <T extends Node>(this: HTMLElement, node: T): T {
+      const movedPanel = (node as Node) === panel && node.parentElement !== this;
+      const result = append.call(this, node) as T;
+      if (movedPanel) scrollPosition = 0;
+      return result;
+    });
+  }
   setCue('short');
   return {...f, scope, controls, obstacles, panel, overlay, original, container, setCue, sync};
 }
 
 describe('mobile YouTube readable control avoidance', () => {
+  it('菜单和学习面板关闭后在最终滚动盒恢复同句位置，跨父节点归零不能吞掉保存值', () => {
+    const f = mobileControlFixture(true); f.setCue('huge'); f.sync();
+    f.panel.scrollTop = 10000; expect(f.panel.scrollTop).toBe(f.panel.scrollHeight - f.panel.clientHeight);
+    f.panel.scrollTop = 120; f.sync(); expect(f.panel.scrollTop).toBe(120);
+    const menu = createVideoPlayerMenu('zh-CN', false); f.player.appendChild(menu); menu.hidden = false;
+    f.sync(); f.sync(); expect(f.panel.parentElement).toBe(f.layer); expect(f.panel.hasAttribute('tabindex')).toBe(false);
+    menu.hidden = true; f.sync();
+    expect(f.panel.parentElement?.id).toBe(VIDEO_SUBTITLE_SCROLL_HOST_ID); expect(f.panel.scrollTop).toBe(120);
+    f.sync(); expect(f.panel.scrollTop).toBe(120);
+    const learning = createVideoSentenceLearningHost({markUi: markVideoUi, mount: () => () => {}});
+    learning.open(f.player, {video: f.video, cues: [], platform: 'youtube', title: 'Learning', sourceLanguage: 'en', targetLanguage: 'zh-CN', translate: async value => value});
+    f.sync(); expect(f.panel.parentElement).toBe(f.layer);
+    learning.close(); f.sync(); expect(f.panel.scrollTop).toBe(120);
+    f.original.textContent = 'Another long caption '.repeat(40); f.sync(); expect(f.panel.scrollTop).toBe(0);
+  });
+
   it('控制区域跳过自有UI和零尺寸，去重父子组并限制可见障碍数', () => {
     const f = mobileControlFixture();
     const add = (className: string, bounds: Rect, owned = false) => {
