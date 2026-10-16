@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/readingAppearanceActions.ts
  * 文件职责：编排阅读外观抽屉的当前网页读取、即时预览与明确站点记忆操作。
- * 主要内容：复验固定来源标签页和文档令牌，串行处理操作；抽屉失活与导航立即撤销旧回复，错误可重试，默认消息不携带持久化意图。
+ * 主要内容：复验固定来源标签页和文档令牌，串行处理操作；抽屉失活与导航立即撤销旧回复，错误返回稳定本地化键并可重试，默认消息不携带持久化意图。
  * 模块边界：仅经注入的 Popup 标签页与消息端口工作，不读写配置或存储，不修改网页 DOM。
  */
 import type {PopupActiveTab} from './pageContracts'
@@ -48,7 +48,7 @@ export function createReadingAppearanceActions(ports: Ports) {
       }
       state.font = response.font;state.remembered = response.remembered;documentToken = response.documentToken;state.ready = true
     } catch {
-      if (owns()) state.error = '无法应用阅读外观，请确认当前网页已加载后重试。'
+      if (owns()) state.error = 'popup.readingAppearance.error'
     } finally {if (owns()) state.busy = false}
   }
   return {invalidate, read: () => run(), set: (font: ReadingFont, remember?: boolean) => run(font, remember)}

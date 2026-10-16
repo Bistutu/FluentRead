@@ -93,3 +93,49 @@ describe('reading appearance page lifecycle', () => {
         }
     });
 });
+
+
+describe('reading appearance route and suspension ownership', () => {
+    it.each(['#/article/1', '#!/article/1'])('resets previews and rejects old commands on %s navigation', async route => {
+        const h = setup(); h.navigate(`https://example.com/${route}`); h.runtime.activate();
+        const before = await h.get() as {documentToken: string};
+        await h.set('system');
+        h.changeUrl(`https://example.com/${route.replace('/1', '/2')}`);
+        expect(await h.set('original', true, before.documentToken)).toEqual({status: 'stale'});
+        expect(h.persist).not.toHaveBeenCalled();
+        expect(await h.get()).toMatchObject({font: 'original', remembered: false});
+        expect(h.controller.setEnabled).toHaveBeenLastCalledWith(false);
+    });
+    it('preserves preview and token on ordinary anchors and identical route notifications', async () => {
+        const h = setup(); h.runtime.activate(); await h.set('system');
+        const before = await h.get();
+        h.navigate('https://news.example.com/article#section');
+        h.runtime.routeChanged();
+        expect(await h.get()).toEqual(before);
+        h.navigate('https://news.example.com/article#another');
+        expect(await h.get()).toEqual(before);
+    });
+    it.each(['#/article/2', '#!/article/2'])('does not apply a pending old-page save to %s', async next => {
+        const h = setup(); h.runtime.activate();
+        let finish!: () => void;
+        h.persist.mockImplementationOnce(() => new Promise<void>(resolve => {finish = resolve;}));
+        const pending = h.set('system', true);
+        await Promise.resolve(); await Promise.resolve();
+        h.navigate(`https://news.example.com/${next}`);
+        finish();
+        expect(await pending).toEqual({status: 'stale'});
+        expect(await h.get()).toMatchObject({font: 'original'});
+    });
+    it('suspend/reactivate invalidates pending responses and tokens without erasing the page preview', async () => {
+        const h = setup(); h.runtime.activate(); await h.set('system');
+        const before = await h.get() as {documentToken: string};
+        let finish!: () => void;
+        h.persist.mockImplementationOnce(() => new Promise<void>(resolve => {finish = resolve;}));
+        const pending = h.set('original', true); await Promise.resolve(); await Promise.resolve();
+        h.runtime.suspend(); h.runtime.suspend(); h.runtime.activate();
+        finish(); expect(await pending).toEqual({status: 'stale'});
+        expect(await h.get()).toMatchObject({font: 'system'});
+        expect(await h.set('original', undefined, before.documentToken)).toEqual({status: 'stale'});
+        expect(await h.set('original')).toMatchObject({font: 'original'});
+    });
+});

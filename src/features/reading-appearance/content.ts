@@ -1,7 +1,7 @@
 /**
  * @file src/features/reading-appearance/content.ts
  * 文件职责：为网页正文和受控译文提供可逆的系统无衬线字体会话。
- * 主要内容：按文字节点的容器选择正文，保护图标、公式、代码和交互控件；先读取原始字体再局部覆盖，并为非正文后代保留继承字体。仅重算动态 DOM 与样式更新影响的子树，忽略导航与控件内部变化，关闭时撤销本会话的属性并释放观察器。
+ * 主要内容：按文字节点的容器选择正文，保护图标、公式、代码和交互控件；先读取原始字体再局部覆盖，并为非正文后代保留继承字体。按批次合并动态 DOM 与样式更新子树，追踪节点迁移和保护字体变化，忽略无关导航与控件内部变化，关闭时撤销本会话的属性并释放观察器。
  * 模块边界：只操作传入文档的 font-family，不改写文字或 DOM 结构、不访问配置；闭合译文根通过只读端口注入。复杂伪元素容器保守跳过，不穿透未知闭合根或 iframe。
  */
 import {getComposedParent, isIconFontElement} from '@/src/core/translation/dom';
@@ -23,10 +23,12 @@ export function createReadingAppearanceController(document: Document, ports: Rea
     const overrides = new Map<HTMLElement, Override>();
     const dirty = new Set<Element>();
     const known = new WeakMap<Element, Entry>();
+    // 弱引用记录本会话曾承载覆盖的分支；纯导航控件的节点替换无需触发恢复扫描。
+    let coveredBranches = new WeakSet<Element>();
     const shadowRoots = new Set<ShadowRoot>();
     let fullScan = true;
-    const within = (element: Element, ancestor: Element): boolean => {
-        for (let current: Element | null = element; current; current = getComposedParent(current)) if (current === ancestor) return true;
+    const withinAny = (element: Element | null, ancestors: ReadonlySet<Element>): boolean => {
+        for (let current = element; current; current = getComposedParent(current)) if (ancestors.has(current)) return true;
         return false;
     };
     const restore = (selected: (element: HTMLElement) => boolean = () => true) => {
@@ -53,11 +55,16 @@ export function createReadingAppearanceController(document: Document, ports: Rea
         // 继承字体受祖先覆盖影响；只提升到相关的最高覆盖祖先，保留其他段落。
         for (const element of [...dirty]) {
             let scope = element;
-            for (let ancestor = getComposedParent(element); ancestor; ancestor = getComposedParent(ancestor)) if (overrides.has(ancestor as HTMLElement)) scope = ancestor;
+            for (let ancestor = getComposedParent(element); ancestor; ancestor = getComposedParent(ancestor)) {
+                // 新保护容器可能在本批次中创建，先识别未知祖先，不能沿用迁移前的资格。
+                if (ancestor !== document.documentElement && (!known.has(ancestor) || overrides.has(ancestor as HTMLElement))) scope = ancestor;
+            }
             if (scope !== element) {dirty.delete(element); dirty.add(scope);}
         }
-        const scopes = fullScan ? (document.body ? [document.body] : []) : [...dirty].filter(element => element.isConnected && ![...dirty].some(other => other !== element && within(element, other)));
-        restore(element => !element.isConnected || scopes.some(scope => within(element, scope)));
+        // 集合式祖先查找避免一批 N 个变更逐对比较子树，恢复也只走各节点的祖先链。
+        const scopes = fullScan ? (document.body ? [document.body] : []) : [...dirty].filter(element => element.isConnected && !withinAny(getComposedParent(element), dirty));
+        const scopeSet = new Set(scopes);
+        restore(element => !element.isConnected || withinAny(element, scopeSet));
         dirty.clear(); fullScan = false;
         const entries: Entry[] = [];
         for (const root of shadowRoots) if (!root.host.isConnected) shadowRoots.delete(root);
@@ -93,9 +100,14 @@ export function createReadingAppearanceController(document: Document, ports: Rea
         }
         // 只覆盖直接承载正文的元素；每个受影响的非正文子元素固定原字体，
         // 避免祖先的继承变化把代码、按钮和连字图标变成普通文本。
+        const markedBranches = new Set<Element>();
         for (const entry of entries) {
             if (entry.target) apply(entry.element, READING_APPEARANCE_FONT);
             else if (entry.parent?.target) apply(entry.element, entry.family);
+            // 本批次去重，不能因旧分支曾被标记就停止：节点迁移后祖先链已经改变。
+            if (overrides.has(entry.element)) for (let ancestor: Element | null = entry.element; ancestor && !markedBranches.has(ancestor); ancestor = getComposedParent(ancestor)) {
+                markedBranches.add(ancestor); coveredBranches.add(ancestor);
+            }
         }
         if (!observer) observer = new view!.MutationObserver(records => {
             if (!records.length) {fullScan = true; schedule(); return;}
@@ -103,11 +115,17 @@ export function createReadingAppearanceController(document: Document, ports: Rea
             for (const record of records) {
                 const element = record.target.nodeType === 1 ? record.target as Element : record.target.nodeType === 11 ? (record.target as ShadowRoot).host : record.target.parentElement;
                 if (!element) continue;
+                // 移除通知必须先于保护区过滤处理：节点可能仍连接文档，但已迁入 nav/form。
+                // 同时涵盖整个容器的移动、断连清理和同批次移除后重新插入。
+                if (record.type === 'childList') for (const node of Array.from(record.removedNodes)) {
+                    if (node.nodeType === 1 && coveredBranches.has(node as Element)) {dirty.add(node as Element); changed = true;}
+                }
                 if (element.matches('style,link') || (record.type === 'childList' && [...Array.from(record.addedNodes), ...Array.from(record.removedNodes)].some(node => node.nodeType === 1 && (node as Element).matches('style,link')))) {fullScan = true; changed = true; continue;}
                 // 控件、导航与代码内部的时钟、hover 和编辑不影响正文。
                 // 自身资格标记变化仍可重新启用正文，祖先保护边界内部无需扫描。
                 const fixedProtected = 'nav,header,footer,button,form,pre,code,kbd,samp,input,textarea,select,svg,math';
-                if (element.closest(fixedProtected) || element.parentElement?.closest(excluded)) continue;
+                const updatesPinnedFont = record.type === 'attributes' && overrides.has(element as HTMLElement);
+                if (!updatesPinnedFont && (element.closest(fixedProtected) || element.parentElement?.closest(excluded))) continue;
                 if (record.type !== 'attributes' && element.closest(excluded)) continue;
                 if (record.type === 'attributes' && record.attributeName === 'style') {
                     // 翻译布局观察器会写入高度、换行等属性；字体未变时不反复触发双方重扫。
@@ -150,7 +168,7 @@ export function createReadingAppearanceController(document: Document, ports: Rea
             timer = undefined;
             for (const event of events) document.removeEventListener(event, scheduleFullScan, true);
             view.removeEventListener('resize', scheduleFullScan);
-            restore(); dirty.clear(); shadowRoots.clear();
+            restore(); dirty.clear(); shadowRoots.clear(); coveredBranches = new WeakSet();
         }
     };
     return {setEnabled, dispose() {setEnabled(false); disposed = true;}};

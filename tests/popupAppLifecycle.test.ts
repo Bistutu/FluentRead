@@ -201,6 +201,32 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     expect(button('reading-appearance-entry').hasAttribute('disabled')).toBe(true)
   })
 
+  it('阅读外观失败反馈随语言即时变化，关闭重开重新读取且不复用旧按钮',async()=>{
+    localized=true;englishLoaded=true
+    const fallback=send.getMockImplementation()!
+    let fail=true
+    send.mockImplementation(async(id,message)=>{
+      if(message.type==='getReadingAppearanceState') {
+        if(fail) throw new Error('unavailable')
+        return {status:'success',font:'system',remembered:false,documentToken:'fresh-reading-doc'}
+      }
+      return fallback(id,message)
+    })
+    await mount();eventOf(button('reading-appearance-entry'))()
+    for(let i=0;i<100&&!document.querySelector('.reading-appearance-content');i++){await drain();await new Promise(resolve=>setTimeout(resolve,2))}
+    await drain()
+    const error=()=>document.querySelector('.reading-appearance-content [role="alert"]')!.textContent
+    expect(error()).toBe(catalogs['zh-CN']['popup.readingAppearance.error'])
+    locale.value='en-US';bundleRevision.value++;await drain()
+    expect(error()).toBe(catalogs['en-US']['popup.readingAppearance.error'])
+    expect(button('reading-appearance-entry').textContent).toContain(catalogs['en-US']['popup.readingAppearance.title'])
+    const oldRetry=eventOf(document.querySelector('.reading-appearance-content > .secondary-action')!)
+    eventOf(document.querySelector('.drawer-header > button')!)();await drain()
+    fail=false;eventOf(button('reading-appearance-entry'))();await drain()
+    expect(state.readingAppearance.ready).toBe(true);expect(state.readingAppearance.font).toBe('system')
+    const count=send.mock.calls.length;oldRetry();await drain();expect(send).toHaveBeenCalledTimes(count)
+  })
+
   it('真实服务搜索在键盘 viewport 变化时保留输入，清除、返回与关闭仍属当前抽屉',async()=>{
     executeServicePicker=true;await mount();eventOf(document.querySelector('.provider-summary')!)()
     for(let i=0;i<100&&!document.querySelector('[data-feature-service="default"]');i++){await drain();await new Promise(resolve=>setTimeout(resolve,2))}

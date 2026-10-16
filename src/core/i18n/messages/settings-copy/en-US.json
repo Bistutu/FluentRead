@@ -118,7 +118,27 @@
     "video.downloadConnecting": "Connecting to {source} · {attempt}/{attempts}",
     "video.downloadSwitching": "Switching to {source} · {attempt}/{attempts}",
     "video.downloadReceiving": "Downloading from {source}",
-    "video.downloadRetry": "Retry download"
+    "video.downloadRetry": "Retry download",
+    "popup.readingAppearance.title": "Reading appearance",
+    "popup.readingAppearance.font": "Page text font",
+    "popup.readingAppearance.original": "Original website font",
+    "popup.readingAppearance.system": "System default",
+    "popup.readingAppearance.previewHint": "Preview the font for original and translated text immediately. Changes apply only to this page by default.",
+    "popup.readingAppearance.remember": "Remember this website",
+    "popup.readingAppearance.currentSite": "Current website",
+    "popup.readingAppearance.saved": "Preference saved",
+    "popup.readingAppearance.unsaved": "No saved preference",
+    "popup.readingAppearance.save": "Save current choice",
+    "popup.readingAppearance.savedHint": "Preview and restore affect only this page. Use “Save current choice” to update the website preference.",
+    "popup.readingAppearance.restore": "Restore original font",
+    "popup.readingAppearance.forget": "Clear website preference",
+    "popup.readingAppearance.forgetHint": "After clearing the preference, new pages on this website will use the original font.",
+    "popup.readingAppearance.retry": "Retry loading",
+    "popup.readingAppearance.applying": "Applying…",
+    "popup.readingAppearance.ready": "Changing the font affects only its appearance, not the translation.",
+    "popup.readingAppearance.loading": "Reading the current page…",
+    "popup.readingAppearance.description": "Choose a comfortable text font for this page.",
+    "popup.readingAppearance.error": "Could not apply reading appearance. Wait for the page to load, then try again."
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "The sync connection changed. Generate a new preview.",
@@ -131,6 +151,7 @@
     "支持完整 Chat Completions 地址或以 /v1 结尾的 Base URL；模型须支持 Chat Completions。": "Enter a full Chat Completions endpoint or a Base URL ending in /v1; the model must support Chat Completions.",
     "网络问题通常几分钟后重试；限流按服务提示恢复；拦截可能需要几小时；日额度通常隔天恢复。": "Retry network issues after a few minutes; follow service guidance for limits; blocks may take hours; daily limits usually reset the next day.",
     "DeepLX 地址包含 {{apiKey}} 或 {{token}} 占位符，请填写 API Key；无 Key 地址请移除占位符。": "The DeepLX address contains the {{apiKey}} or {{token}} placeholder. Enter an API key, or remove the placeholder for an address without a key.",
-    "刷新列表。": "Refresh list"
+    "刷新列表。": "Refresh list",
+    "网站阅读字体": "Website reading font"
   }
 }

@@ -240,3 +240,113 @@ describe('reading appearance content controller', () => {
         expect(f.observers.every(observer => !observer.active)).toBe(true);
     });
 });
+
+describe('dynamic protection regressions', () => {
+    it('restores nodes moved into protected navigation', () => {
+        const f = fixture('<article id="article"><p id="p">Readable paragraph</p></article><nav id="nav"></nav>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        const p = f.element('p'), article = f.element('article'), nav = f.element('nav');
+        nav.append(p);
+        f.observers[0].callback([
+            {type: 'childList', target: article, addedNodes: [], removedNodes: [p]},
+            {type: 'childList', target: nav, addedNodes: [p], removedNodes: []},
+        ] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(p.style.fontFamily).toBeFalsy();
+        controller.dispose();
+    });
+    it('allows protected code font to change with an author class', () => {
+        const f = fixture('<p id="p">Readable paragraph <code id="code">snippet</code></p>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        const code = f.element('code');
+        code.setAttribute('data-family', 'Consolas'); code.className = 'code-theme';
+        f.observers[0].callback([{type: 'attributes', target: code, attributeName: 'class'}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(f.document.defaultView!.getComputedStyle(code).fontFamily).toBe('Consolas');
+        controller.dispose();
+    });
+    it.each(['nav', 'form', 'div'])('reclassifies a moved subtree through a newly created %s boundary and back', tag => {
+        const f = fixture('<main id="main"><article id="moving"><p id="p">Moving paragraph</p></article><p id="stable">Stable paragraph</p></main><nav id="outer"></nav>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        const moving = f.element('moving'), main = f.element('main'), p = f.element('p');
+        const wrapper = f.document.createElement(tag); f.element('outer').append(wrapper); wrapper.append(moving);
+        const callback = f.observers[0].callback;
+        const writes = vi.mocked(p.style.setProperty); writes.mockClear();
+        callback([
+            {type: 'childList', target: main, addedNodes: [], removedNodes: [moving]},
+            {type: 'childList', target: f.element('outer'), addedNodes: [wrapper], removedNodes: []},
+            {type: 'childList', target: wrapper, addedNodes: [moving], removedNodes: []},
+        ] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(p.style.fontFamily).toBeFalsy();
+        expect(writes.mock.contexts.some(context => context === f.element('stable').style)).toBe(false);
+        main.append(moving);
+        callback([
+            {type: 'childList', target: wrapper, addedNodes: [], removedNodes: [moving]},
+            {type: 'childList', target: main, addedNodes: [moving], removedNodes: []},
+        ] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(p.style.fontFamily).toBe(READING_APPEARANCE_FONT);
+        expect(vi.getTimerCount()).toBe(0);
+        moving.remove();
+        callback([{type: 'childList', target: main, addedNodes: [], removedNodes: [moving]}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(p.hasAttribute('style')).toBe(false);
+        controller.dispose();
+    });
+    it('coalesces protected font changes without touching unrelated prose or losing host inline updates', () => {
+        const f = fixture('<p id="p">Text <button id="button">Action</button><code id="code">snippet</code></p><p id="stable">Stable paragraph</p>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        const button = f.element('button'), code = f.element('code'), callback = f.observers[0].callback;
+        const oldValue = button.getAttribute('style'); button.style.height = '20px';
+        callback([{type: 'attributes', target: button, attributeName: 'style', oldValue}] as unknown as MutationRecord[], {} as MutationObserver);
+        expect(vi.getTimerCount()).toBe(0);
+        const writes = vi.mocked(button.style.setProperty); writes.mockClear();
+        button.setAttribute('data-family', 'Material Icons'); button.className = 'icon-button';
+        code.setAttribute('data-family', 'Consolas'); code.className = 'code-theme';
+        const records = Array.from({length: 100}, () => [button, code].map(target => ({type: 'attributes', target, attributeName: 'class'}))).flat();
+        callback(records as unknown as MutationRecord[], {} as MutationObserver);
+        expect(vi.getTimerCount()).toBe(1); vi.advanceTimersByTime(60);
+        expect(button.style.fontFamily).toBe('Material Icons'); expect(code.style.fontFamily).toBe('Consolas');
+        expect(writes.mock.contexts.filter(context => context === f.element('p').style)).toHaveLength(1);
+        expect(writes.mock.contexts.some(context => context === f.element('stable').style)).toBe(false);
+        expect(vi.getTimerCount()).toBe(0);
+        const previous = button.getAttribute('style'); button.style.setProperty('font-family', 'Arial', 'important');
+        callback([{type: 'attributes', target: button, attributeName: 'style', oldValue: previous}] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60); controller.dispose();
+        expect(button.style.fontFamily).toBe('Arial'); expect(button.style.height).toBe('20px');
+        expect(code.hasAttribute('style')).toBe(false);
+    });
+
+    it('ignores replacements inside untouched protected controls', () => {
+        const f = fixture('<nav id="nav"><span id="clock">12:00</span></nav><p id="p">Readable paragraph</p>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        const clock = f.element('clock'); clock.remove();
+        const next = f.document.createElement('span'); next.textContent = '12:01'; f.element('nav').append(next);
+        f.observers[0].callback([{type: 'childList', target: f.element('nav'), addedNodes: [next], removedNodes: [clock]}] as unknown as MutationRecord[], {} as MutationObserver);
+        expect(vi.getTimerCount()).toBe(0);
+        controller.dispose();
+    });
+
+    it('tracks a previously covered subtree through successive new containers', () => {
+        const f = fixture('<main id="main"><article id="moving"><p id="p">Moving paragraph</p></article></main><div id="destination"></div><nav id="nav"></nav>');
+        const controller = createReadingAppearanceController(f.document); controller.setEnabled(true);
+        const moving = f.element('moving'), main = f.element('main'), destination = f.element('destination');
+        const callback = f.observers[0].callback;
+        destination.append(moving);
+        callback([
+            {type: 'childList', target: main, addedNodes: [], removedNodes: [moving]},
+            {type: 'childList', target: destination, addedNodes: [moving], removedNodes: []},
+        ] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        f.element('nav').append(destination);
+        callback([
+            {type: 'childList', target: f.document.body, addedNodes: [], removedNodes: [destination]},
+            {type: 'childList', target: f.element('nav'), addedNodes: [destination], removedNodes: []},
+        ] as unknown as MutationRecord[], {} as MutationObserver);
+        vi.advanceTimersByTime(60);
+        expect(f.element('p').style.fontFamily).toBeFalsy();
+        controller.dispose();
+    });
+
+});

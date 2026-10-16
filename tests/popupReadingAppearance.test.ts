@@ -149,9 +149,31 @@ describe('Popup 阅读外观入口与操作文案', () => {
     const source = readFileSync(resolve(__dirname, '../src/app/popup/PopupApp.vue'), 'utf8')
     expect(source).toContain('data-testid="reading-appearance-entry"')
     expect(source).toContain("activeDrawer === 'readingAppearance'")
-    for (const label of ['网站原样', '系统默认', '保存当前选择', '清除此网站偏好', '恢复网站原样']) expect(source).toContain(label)
-    expect(source).toContain('默认仅作用于当前页面')
+    for (const key of ['original', 'system', 'save', 'forget', 'restore']) expect(source).toContain(`popup.readingAppearance.${key}`)
+    expect(source).toContain('popup.readingAppearance.previewHint')
     expect(source).toContain("remember: bind(() => readingActions.set(readingAppearance.font, true))")
     expect(source).toContain("forget: bind(() => readingActions.set(readingAppearance.font, false))")
+  })
+})
+
+
+describe('Reading appearance localized copy', () => {
+  it('provides every rendered label and failure in all seven language catalogs', async () => {
+    const {registerAllUiLanguageBundles} = await import('@/src/core/i18n/bundles')
+    const {translate} = await import('@/src/core/i18n')
+    registerAllUiLanguageBundles()
+    const source = readFileSync(resolve(__dirname, '../src/app/popup/PopupApp.vue'), 'utf8')
+    const keys = new Set([...source.matchAll(/popup\.readingAppearance\.[a-zA-Z]+/g)].map(match => match[0]))
+    keys.add('popup.readingAppearance.error')
+    expect(keys.size).toBe(20)
+    for (const language of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const) {
+      const catalog = JSON.parse(readFileSync(resolve(__dirname, '../src/core/i18n/messages/settings-copy', `${language}.json`), 'utf8')).messages
+      for (const key of keys) {
+        expect(catalog[key]?.trim(), `${language}: ${key}`).toBeTruthy()
+        expect(translate(key, language)).toBe(catalog[key])
+        if (language !== 'zh-CN') expect(catalog[key]).not.toBe(translate(key, 'zh-CN'))
+        if (language !== 'zh-CN' && language !== 'ja-JP') expect(catalog[key]).not.toMatch(/[\u3400-\u9fff]/u)
+      }
+    }
   })
 })

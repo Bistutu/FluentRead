@@ -48,10 +48,10 @@
       </div>
     </header>
 
-    <button class="reading-appearance-entry" type="button" data-testid="reading-appearance-entry"
+    <button class="reading-appearance-entry" type="button" data-testid="reading-appearance-entry" data-i18n-ignore
       :disabled="!config.on || currentSiteExtensionDisabled || !!currentPdfSource" aria-haspopup="dialog"
       :aria-expanded="drawerVisible && activeDrawer === 'readingAppearance'" :onClick="popupActions.readingAppearance">
-      <span aria-hidden="true">Aa</span><strong>阅读外观</strong><small>网页正文字体</small><span aria-hidden="true">›</span>
+      <span aria-hidden="true">Aa</span><strong>{{ t('popup.readingAppearance.title') }}</strong><small>{{ t('popup.readingAppearance.font') }}</small><span aria-hidden="true">›</span>
     </button>
 
     <Transition name="donation-fade">
@@ -248,30 +248,30 @@
       <div v-if="activeDrawer === 'services'" class="drawer-content provider-drawer-content">
         <PopupServices :config="config" :service-options="allServiceOptions" :active="drawerVisible && activeDrawer === 'services'" :onClose="drawerActions.close" />
       </div>
-      <div v-else-if="activeDrawer === 'readingAppearance'" class="drawer-content reading-appearance-content" :aria-busy="readingAppearance.busy">
+      <div v-else-if="activeDrawer === 'readingAppearance'" class="drawer-content reading-appearance-content" data-i18n-ignore :aria-busy="readingAppearance.busy">
         <div class="choice-block">
-          <label>网页正文字体</label>
-          <div class="chips two" role="group" aria-label="网页正文字体">
+          <label>{{ t('popup.readingAppearance.font') }}</label>
+          <div class="chips two" role="group" :aria-label="t('popup.readingAppearance.font')">
             <button type="button" :class="{selected: readingAppearance.ready && readingAppearance.font === 'original'}"
-              :aria-pressed="readingAppearance.ready && readingAppearance.font === 'original'" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.original">网站原样</button>
+              :aria-pressed="readingAppearance.ready && readingAppearance.font === 'original'" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.original">{{ t('popup.readingAppearance.original') }}</button>
             <button type="button" :class="{selected: readingAppearance.ready && readingAppearance.font === 'system'}"
-              :aria-pressed="readingAppearance.ready && readingAppearance.font === 'system'" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.system">系统默认</button>
+              :aria-pressed="readingAppearance.ready && readingAppearance.font === 'system'" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.system">{{ t('popup.readingAppearance.system') }}</button>
           </div>
         </div>
-        <p class="reading-appearance-hint">立即预览原文和译文的正文字体。默认仅作用于当前页面。</p>
+        <p class="reading-appearance-hint">{{ t('popup.readingAppearance.previewHint') }}</p>
         <div class="setting-row">
-          <span><strong>记住此网站</strong><small>{{ pageState.domain || '当前网站' }} · {{ readingAppearance.remembered ? '已有保存偏好' : '尚未保存偏好' }}</small></span>
-          <button class="reading-appearance-save" type="button" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.remember">保存当前选择</button>
+          <span><strong>{{ t('popup.readingAppearance.remember') }}</strong><small>{{ pageState.domain || t('popup.readingAppearance.currentSite') }} · {{ readingAppearance.remembered ? t('popup.readingAppearance.saved') : t('popup.readingAppearance.unsaved') }}</small></span>
+          <button class="reading-appearance-save" type="button" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.remember">{{ t('popup.readingAppearance.save') }}</button>
         </div>
-        <p v-if="readingAppearance.remembered" class="reading-appearance-hint">预览和恢复仅作用于当前页；点击“保存当前选择”才会更新网站偏好。</p>
+        <p v-if="readingAppearance.remembered" class="reading-appearance-hint">{{ t('popup.readingAppearance.savedHint') }}</p>
         <div class="reading-appearance-actions">
-          <button class="secondary-action" type="button" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.restore">恢复网站原样</button>
-          <button class="secondary-action" type="button" :disabled="!readingAppearance.ready || readingAppearance.busy || !readingAppearance.remembered" :onClick="readingButtons.forget">清除此网站偏好</button>
+          <button class="secondary-action" type="button" :disabled="!readingAppearance.ready || readingAppearance.busy" :onClick="readingButtons.restore">{{ t('popup.readingAppearance.restore') }}</button>
+          <button class="secondary-action" type="button" :disabled="!readingAppearance.ready || readingAppearance.busy || !readingAppearance.remembered" :onClick="readingButtons.forget">{{ t('popup.readingAppearance.forget') }}</button>
         </div>
-        <p class="reading-appearance-hint">清除网站偏好后，下次打开此网站将使用网站原样。</p>
-        <p v-if="readingAppearance.error" class="notice error" role="alert">{{ readingAppearance.error }}</p>
-        <button v-if="readingAppearance.error" class="secondary-action" type="button" :disabled="readingAppearance.busy" :onClick="readingButtons.retry">重试读取</button>
-        <p v-else class="reading-appearance-hint" role="status">{{ readingAppearance.busy ? '正在应用…' : readingAppearance.ready ? '切换字体只改变阅读显示，不影响翻译内容。' : '正在读取当前网页…' }}</p>
+        <p class="reading-appearance-hint">{{ t('popup.readingAppearance.forgetHint') }}</p>
+        <p v-if="readingAppearance.error" class="notice error" role="alert">{{ t(readingAppearance.error) }}</p>
+        <button v-if="readingAppearance.error" class="secondary-action" type="button" :disabled="readingAppearance.busy" :onClick="readingButtons.retry">{{ t('popup.readingAppearance.retry') }}</button>
+        <p v-else class="reading-appearance-hint" role="status">{{ readingAppearance.busy ? t('popup.readingAppearance.applying') : readingAppearance.ready ? t('popup.readingAppearance.ready') : t('popup.readingAppearance.loading') }}</p>
       </div>
       <div v-else-if="activeDrawer === 'aiContext'" class="drawer-content ai-context-details" data-i18n-ignore>
         <div class="ai-context-detail-state" :data-ai-context-state="aiContextPresentation.state">
@@ -767,9 +767,9 @@ const popupQuickFeatureViewModels = computed<Record<PopupQuickFeatureId, PopupQu
 };});
 const visiblePopupQuickFeatures = computed(() => visiblePopupQuickFeatureIds.value
   .map((featureId) => popupQuickFeatureViewModels.value[featureId]));
-const drawerTitle = computed(() => ({ readingAppearance: '阅读外观', services: t('popup.providers.title'), aiContext: t('popup.aiContext.title'), hover: '鼠标悬停翻译设置', selection: '划词翻译设置', appearance: '译文显示设置', image: '图片翻译' }[activeDrawer.value]));
+const drawerTitle = computed(() => ({ readingAppearance: t('popup.readingAppearance.title'), services: t('popup.providers.title'), aiContext: t('popup.aiContext.title'), hover: '鼠标悬停翻译设置', selection: '划词翻译设置', appearance: '译文显示设置', image: '图片翻译' }[activeDrawer.value]));
 const drawerDescription = computed(() => ({
-  readingAppearance: '为当前网页选择舒适的正文字体。',
+  readingAppearance: t('popup.readingAppearance.description'),
   services: '',
   aiContext: t('popup.aiContext.intro'),
   hover: '将鼠标停在段落上，按快捷键查看译文。',

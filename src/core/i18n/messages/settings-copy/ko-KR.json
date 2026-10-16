@@ -118,7 +118,27 @@
     "video.downloadConnecting": "{source}에 연결 중 · {attempt}/{attempts}",
     "video.downloadSwitching": "{source}(으)로 전환 중 · {attempt}/{attempts}",
     "video.downloadReceiving": "{source}에서 다운로드 중",
-    "video.downloadRetry": "다운로드 재시도"
+    "video.downloadRetry": "다운로드 재시도",
+    "popup.readingAppearance.title": "읽기 모양",
+    "popup.readingAppearance.font": "페이지 본문 글꼴",
+    "popup.readingAppearance.original": "웹사이트 원래 글꼴",
+    "popup.readingAppearance.system": "시스템 기본값",
+    "popup.readingAppearance.previewHint": "원문과 번역문의 글꼴을 즉시 미리 봅니다. 기본적으로 현재 페이지에만 적용됩니다.",
+    "popup.readingAppearance.remember": "이 웹사이트 기억",
+    "popup.readingAppearance.currentSite": "현재 웹사이트",
+    "popup.readingAppearance.saved": "설정 저장됨",
+    "popup.readingAppearance.unsaved": "저장된 설정 없음",
+    "popup.readingAppearance.save": "현재 선택 저장",
+    "popup.readingAppearance.savedHint": "미리 보기와 복원은 현재 페이지에만 적용됩니다. 웹사이트 설정을 바꾸려면 ‘현재 선택 저장’을 누르세요.",
+    "popup.readingAppearance.restore": "원래 글꼴로 복원",
+    "popup.readingAppearance.forget": "웹사이트 설정 지우기",
+    "popup.readingAppearance.forgetHint": "설정을 지우면 다음에 여는 페이지에는 웹사이트 원래 글꼴이 사용됩니다.",
+    "popup.readingAppearance.retry": "다시 불러오기",
+    "popup.readingAppearance.applying": "적용 중…",
+    "popup.readingAppearance.ready": "글꼴을 바꿔도 번역 내용은 바뀌지 않습니다.",
+    "popup.readingAppearance.loading": "현재 페이지를 읽는 중…",
+    "popup.readingAppearance.description": "현재 페이지에서 편하게 읽을 본문 글꼴을 선택하세요.",
+    "popup.readingAppearance.error": "읽기 모양을 적용하지 못했습니다. 페이지가 로드된 후 다시 시도하세요."
   },
   "legacy": {
     "同步连接已变化，请重新生成预览。": "동기화 연결이 변경되었습니다. 미리보기를 다시 생성하세요.",
@@ -131,6 +151,7 @@
     "支持完整 Chat Completions 地址或以 /v1 结尾的 Base URL；模型须支持 Chat Completions。": "전체 Chat Completions 주소 또는 /v1로 끝나는 Base URL을 입력하세요. 모델은 Chat Completions를 지원해야 합니다.",
     "网络问题通常几分钟后重试；限流按服务提示恢复；拦截可能需要几小时；日额度通常隔天恢复。": "네트워크 문제는 몇 분 후 다시 시도합니다.",
     "DeepLX 地址包含 {{apiKey}} 或 {{token}} 占位符，请填写 API Key；无 Key 地址请移除占位符。": "DeepLX 주소에 {{apiKey}} 또는 {{token}} 자리 표시자가 포함되어 있습니다. API 키를 입력하거나 키가 필요 없는 주소에서는 자리 표시자를 삭제하세요.",
-    "刷新列表。": "목록 새로고침"
+    "刷新列表。": "목록 새로고침",
+    "网站阅读字体": "웹사이트 읽기 글꼴"
   }
 }
