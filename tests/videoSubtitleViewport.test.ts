@@ -1,7 +1,7 @@
 /**
  * @file tests/videoSubtitleViewport.test.ts
- * 文件职责：验证 X 视频字幕按实际画面矩形定位时的 object-fit、object-position 和 layer 坐标换算。
- * 主要内容：覆盖竖屏 contain、横屏留白、cover/none/scale-down、缩放 layer、缺失尺寸和同步样式。
+ * 文件职责：验证 X/YouTube 视频字幕按实际画面矩形定位时的 object-fit、object-position、控件安全区和 layer 坐标换算。
+ * 主要内容：覆盖竖屏 contain、横屏留白、cover/none/scale-down、缩放 layer、移动端同视频兄弟控件显隐与隔离、缺失尺寸和同步样式。
  * 模块边界：只测试视频字幕 UI 的几何契约，不启动播放器绑定、识别、翻译或浏览器运行时。
  */
 
@@ -19,6 +19,7 @@ vi.mock('@/src/services/config/store', () => ({
 
 import {config} from '@/src/services/config/store';
 import {DEFAULT_VIDEO_SUBTITLE_APPEARANCE} from '@/src/core/config/videoSubtitleAppearance';
+import {getYoutubeSubtitleControlsScope} from '@/src/features/video-subtitle/content/youtubeControlsScope';
 import {
   applyVideoDisplayState,
   getXVideoSubtitleViewport,
@@ -286,6 +287,62 @@ describe('X video subtitle viewport', () => {
     expect(panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom')).toBe('48px');
     controls.style.opacity = '0'; syncTranslationOverlayPosition(container);
     expect(panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom')).toBe('12px');
+  });
+
+  it('avoids mobile YouTube sibling bottom controls inside the verified single-video container', () => {
+    // 真实 iOS Safari DOM 的所有权与几何：402×226 播放器、居中 4:3 画面、播放器外的左右底控。
+    const {document, window, player, video, layer} = fixture({player: rect(0, 48, 402, 226), intrinsic: [400, 300]});
+    Object.defineProperty(window, 'location', {configurable: true, value: new URL('https://m.youtube.com/watch?v=mobile')});
+    player.id = 'movie_player'; player.classList.add('html5-video-player', 'ytp-mweb-player');
+    const scope = document.createElement('div'); scope.id = 'player-container-id'; scope.className = 'player-container sticky-player';
+    player.before(scope); scope.appendChild(player);
+    const root = document.createElement('ytm-custom-control');
+    root.innerHTML = '<ytm-watch-player-controls><div id="player-control-overlay"><div class="player-controls-content"><div class="player-controls-bottom player-controls-bottom-left"></div><div class="player-controls-bottom player-controls-bottom-right"></div></div></div></ytm-watch-player-controls>';
+    scope.appendChild(root);
+    const controls = root.querySelectorAll<HTMLElement>('.player-controls-bottom');
+    Object.defineProperty(controls[0], 'getBoundingClientRect', {value: () => rect(12, 200, 312, 44)});
+    Object.defineProperty(controls[1], 'getBoundingClientRect', {value: () => rect(324, 200, 66, 44)});
+    const panel = document.createElement('div'); panel.id = VIDEO_SUBTITLE_PANEL_ID;
+    const overlay = document.createElement('div'); overlay.id = VIDEO_TRANSLATION_OVERLAY_ID; overlay.textContent = '双语字幕';
+    panel.appendChild(overlay); layer.appendChild(panel);
+    const container = document.createElement('div'); player.appendChild(container);
+    const bottom = () => {syncTranslationOverlayPosition(container); return panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom');};
+    expect(player.contains(controls[0])).toBe(false);
+    expect(getYoutubeSubtitleControlsScope(player, null)).toBe(player);
+    expect(getYoutubeSubtitleControlsScope(player, video)).toBe(scope);
+    expect(bottom()).toBe('82px');
+    for (const property of ['visibility', 'display', 'opacity'] as const) {
+      root.style[property] = property === 'visibility' ? 'hidden' : property === 'display' ? 'none' : '0';
+      expect(bottom()).toBe('12px');
+      root.style.removeProperty(property);
+      expect(bottom()).toBe('82px');
+    }
+    root.hidden = true; expect(bottom()).toBe('12px'); root.hidden = false;
+    const outside = document.createElement('video'); document.body.appendChild(outside);
+    expect(getYoutubeSubtitleControlsScope(player, outside)).toBe(player);
+    expect(bottom()).toBe('82px');
+    scope.appendChild(outside); expect(bottom()).toBe('12px');
+    outside.remove(); expect(bottom()).toBe('82px');
+    scope.classList.remove('player-container'); expect(bottom()).toBe('12px');
+    scope.classList.add('player-container'); scope.id = 'unrelated-wrapper'; expect(bottom()).toBe('12px');
+    // 即使整页误带相同 id/class，也不扩大查询范围到 body。
+    document.body.id = 'player-container-id'; document.body.className = 'player-container'; expect(bottom()).toBe('12px');
+  });
+
+  it('does not reserve mobile sibling controls outside the painted video or in the upper area', () => {
+    const {document, window, player, layer} = fixture({player: rect(0, 0, 402, 226), intrinsic: [400, 300]});
+    Object.defineProperty(window, 'location', {configurable: true, value: new URL('https://m.youtube.com/watch?v=mobile')});
+    player.id = 'movie_player'; player.classList.add('html5-video-player', 'ytp-mweb-player');
+    const scope = document.createElement('div'); scope.id = 'player-container-id'; scope.className = 'player-container';
+    player.before(scope); scope.appendChild(player);
+    const controls = document.createElement('div'); controls.className = 'player-controls-bottom'; scope.appendChild(controls);
+    let controlRect = rect(0, 190, 40, 30);
+    Object.defineProperty(controls, 'getBoundingClientRect', {value: () => controlRect});
+    expect(getXVideoSubtitleViewport(player, layer)?.controlsInset).toBe(12);
+    controlRect = rect(70, 20, 200, 30);
+    expect(getXVideoSubtitleViewport(player, layer)?.controlsInset).toBe(12);
+    controlRect = rect(70, 190, 200, 30);
+    expect(getXVideoSubtitleViewport(player, layer)?.controlsInset).toBe(44);
   });
 
   it('constrains fullscreen captions by both notch sides and the upper/lower system safe areas', () => {

@@ -1,7 +1,7 @@
 /**
  * @file tests/videoSubtitleTrackPriorityRuntime.test.ts
  * 文件职责：从实际 mountVideoSubtitleTranslation 公共入口验证 X 轨道优先与 YouTube 同轮选择、人工字幕回退及卸载后的异步资格。
- * 主要内容：真实桥消息、video、TextTrack 与配置订阅驱动播放器、轨道 loader、缓存和 DOM；覆盖菜单入口展开而非字幕开关的语义、两站初始禁用与 Off 清理、媒体事件后不复活、重复外部启用重建、真实模式项保存、同句调用预算、实际服务线路或套餐变化后的缓存失效、时钟漂移、NaN、seek、偏移、人工轨空档与迟到结果。
+ * 主要内容：真实桥消息、video、TextTrack 与配置订阅驱动播放器、轨道 loader、缓存和 DOM；覆盖移动端兄弟底控显隐与字幕布局自动同步、重绑和清理、菜单入口展开语义、两站初始禁用与 Off 清理、媒体事件后不复活、重复外部启用重建、真实模式项保存、同句调用预算、实际服务线路或套餐变化后的缓存失效、时钟漂移、NaN、seek、偏移、人工轨空档与迟到结果。
  * 模块边界：linkedom 补齐缺失的浏览器媒体/几何接口并按观察器订阅过滤记录；只 mock 外部端口，命名 selector spy 保留真实实现，不替换业务算法或修改全局数组原型。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -122,7 +122,9 @@ function fixture(nativeText?: string, platform: 'x' | 'youtube' = 'x') {
     configurable: true, get() { return selectValues.get(this) || ''; },
     set(value: string) { selectValues.set(this, value); },
   });
-  const computed = (element: Element) => ({display: (element as HTMLElement).style.display || 'block', visibility: 'visible', opacity: '1', position: 'relative', objectFit: 'contain', objectPosition: '50% 50%'});
+  const computed = (element: Element) => ({display: (element as HTMLElement).style.display || 'block',
+    visibility: (element as HTMLElement).style.visibility || 'visible', opacity: (element as HTMLElement).style.opacity || '1',
+    position: 'relative', objectFit: 'contain', objectPosition: '50% 50%'});
   defineBrowserPort(window, 'getComputedStyle', {configurable: true, writable: true, value: computed});
   const trackEvents = new window.EventTarget();
   const tracks = Object.assign([] as TextTrack[], {
@@ -156,6 +158,7 @@ function fixture(nativeText?: string, platform: 'x' | 'youtube' = 'x') {
   for (const name of ['Node', 'Element', 'HTMLElement', 'HTMLButtonElement', 'HTMLVideoElement', 'HTMLStyleElement', 'MutationObserver', 'CustomEvent']) {
     vi.stubGlobal(name, window[name as keyof typeof window]);
   }
+  const observerRegistrations = new Set<Map<Node, MutationObserverInit>>();
   if (platform === 'youtube') {
     // linkedom childList 会错发未订阅 attributes；此端口只按 observe 选项过滤，保留真实 DOM 记录与业务回调。
     const NativeObserver = window.MutationObserver;
@@ -165,6 +168,7 @@ function fixture(nativeText?: string, platform: 'x' | 'youtube' = 'x') {
       private readonly observer: MutationObserver;
       private deliveries = 0;
       constructor(callback: MutationCallback) {
+        observerRegistrations.add(this.registrations);
         this.observer = new NativeObserver(records => {
           const delivered = records.filter(record => record.type !== 'attributes' || [...this.registrations].some(([target, options]) =>
             options.attributes && (target === record.target || options.subtree && target.contains(record.target))
@@ -228,10 +232,101 @@ function fixture(nativeText?: string, platform: 'x' | 'youtube' = 'x') {
     });
     window.dispatchEvent(event);
   };
-  return {document, window, player, video, tracks, native, makeTrack, start, emitResource, emitCue, emitVideo, changeTracks, changeConfig, displayed, callsFor, setCaption, emitTimedText};
+  return {document, window, player, video, tracks, native, makeTrack, start, emitResource, emitCue, emitVideo, changeTracks, changeConfig, displayed, callsFor, setCaption, emitTimedText, observerRegistrations};
 }
 const settle = () => vi.advanceTimersByTimeAsync(0);
 const nativeSource = 'The native caption remains visible.';
+
+function mobileYoutubeLayoutFixture() {
+  const f = fixture(undefined, 'youtube');
+  defineBrowserPort(f.window, 'location', {configurable: true, value: new URL('https://m.youtube.com/watch?v=cue-proof')});
+  const bounds = {left: 0, top: 48, width: 402, height: 226, right: 402, bottom: 274, x: 0, y: 48, toJSON: () => ({})};
+  defineBrowserPort(f.window.HTMLElement.prototype, 'getBoundingClientRect', {configurable: true, value: () => bounds});
+  defineBrowserPort(f.video, 'videoWidth', {configurable: true, value: 400});
+  defineBrowserPort(f.video, 'videoHeight', {configurable: true, value: 300});
+  defineBrowserPort(f.video, 'offsetWidth', {configurable: true, value: 402});
+  defineBrowserPort(f.video, 'offsetHeight', {configurable: true, value: 226});
+  f.player.classList.add('ytp-mweb-player');
+  const scope = f.document.createElement('div'); scope.id = 'player-container-id'; scope.className = 'player-container sticky-player';
+  f.player.before(scope); scope.appendChild(f.player);
+  const root = f.document.createElement('ytm-custom-control');
+  root.innerHTML = '<ytm-watch-player-controls><div id="player-control-overlay"><div class="player-controls-content"><div class="player-controls-bottom player-controls-bottom-left"></div><div class="player-controls-bottom player-controls-bottom-right"></div></div></div></ytm-watch-player-controls>';
+  scope.appendChild(root);
+  const controls = root.querySelectorAll<HTMLElement>('.player-controls-bottom');
+  for (const [index, control] of [...controls].entries()) {
+    const left = index === 0 ? 12 : 324, width = index === 0 ? 312 : 66;
+    defineBrowserPort(control, 'getBoundingClientRect', {configurable: true, value: () => ({...bounds, left, width, right: left + width, top: 200, y: 200, height: 44, bottom: 244})});
+  }
+  const bottom = () => f.document.getElementById(VIDEO_SUBTITLE_PANEL_ID)?.style.getPropertyValue('--fluent-read-video-subtitle-bottom');
+  const layoutSubscriptions = (target: Node) => [...f.observerRegistrations].filter(registrations => registrations.get(target)?.attributeFilter?.includes('hidden')).length;
+  return {...f, scope, root, controls, bottom, layoutSubscriptions};
+}
+
+describe('public mounted mobile YouTube subtitle control layout', () => {
+  it('updates sibling control visibility and replacement within one layout frame without a manual subtitle sync', async () => {
+    const f = mobileYoutubeLayoutFixture(); f.root.style.visibility = 'hidden';
+    f.start(); f.setCaption('Mobile sibling control caption.');
+    await vi.advanceTimersByTimeAsync(32);
+    expect(f.bottom()).toBe('12px'); expect(f.layoutSubscriptions(f.scope)).toBe(1);
+    const requestFrame = vi.spyOn(f.window, 'requestAnimationFrame');
+    try {
+      const panel = f.document.getElementById(VIDEO_SUBTITLE_PANEL_ID)!;
+      panel.setAttribute('style', panel.getAttribute('style') + ';max-width:280px');
+      f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)!.classList.add('fixture-menu-state');
+      await settle(); expect(requestFrame).not.toHaveBeenCalled();
+      // linkedom 的 CSSStyleDeclaration 不派发 style 记录；setAttribute 保留原生 DOM 记录与实际订阅回调。
+      f.root.setAttribute('style', 'visibility:visible'); f.root.setAttribute('style', 'visibility:visible;opacity:1');
+      await settle(); expect(requestFrame).toHaveBeenCalledTimes(1);
+    } finally {requestFrame.mockRestore();}
+    // 只推进一帧，短于播放器周期同步；不手动触发字幕/媒体/resize 更新。
+    await vi.advanceTimersByTimeAsync(16);
+    expect(f.bottom()).toBe('82px');
+    f.root.setAttribute('style', 'opacity:0'); await vi.advanceTimersByTimeAsync(16); expect(f.bottom()).toBe('12px');
+    f.root.setAttribute('style', 'opacity:1'); await vi.advanceTimersByTimeAsync(16); expect(f.bottom()).toBe('82px');
+    f.root.hidden = true; await vi.advanceTimersByTimeAsync(16); expect(f.bottom()).toBe('12px');
+    f.root.hidden = false; await vi.advanceTimersByTimeAsync(16); expect(f.bottom()).toBe('82px');
+    // class 改变后的 computed visibility 来自宿主 CSS；保留真实 MutationObserver 和布局消费者。
+    const computed = f.window.getComputedStyle;
+    const hiddenByClass = (element: Element) => ({...computed(element), visibility: element.classList.contains('controls-hidden') ? 'hidden' : computed(element).visibility});
+    defineBrowserPort(f.window, 'getComputedStyle', {configurable: true, value: hiddenByClass});
+    vi.stubGlobal('getComputedStyle', hiddenByClass);
+    const ancestor = f.root.querySelector<HTMLElement>('#player-control-overlay')!;
+    ancestor.classList.add('controls-hidden'); await vi.advanceTimersByTimeAsync(16); expect(f.bottom()).toBe('12px');
+    ancestor.classList.remove('controls-hidden'); await vi.advanceTimersByTimeAsync(16); expect(f.bottom()).toBe('82px');
+    f.root.remove(); await vi.advanceTimersByTimeAsync(16); expect(f.bottom()).toBe('12px');
+    f.scope.appendChild(f.root); await vi.advanceTimersByTimeAsync(16); expect(f.bottom()).toBe('82px');
+  });
+
+  it('rebinds the same video to its new scope and releases subscriptions on Off and destroy', async () => {
+    const f = mobileYoutubeLayoutFixture(); const dispose = f.start();
+    f.setCaption('The same mobile video keeps its caption.'); await vi.advanceTimersByTimeAsync(32);
+    expect(f.bottom()).toBe('82px');
+    const nextScope = f.document.createElement('div'); nextScope.id = 'player-container-id'; nextScope.className = 'player-container';
+    f.scope.id = 'old-player-container'; f.scope.after(nextScope); nextScope.appendChild(f.player);
+    await vi.advanceTimersByTimeAsync(32);
+    expect(f.bottom()).toBe('12px'); expect(f.layoutSubscriptions(f.scope)).toBe(0); expect(f.layoutSubscriptions(nextScope)).toBe(1);
+    nextScope.appendChild(f.root); await vi.advanceTimersByTimeAsync(16); expect(f.bottom()).toBe('82px');
+    const secondVideo = f.document.createElement('video'); nextScope.appendChild(secondVideo);
+    await vi.advanceTimersByTimeAsync(32);
+    expect(f.bottom()).toBe('12px'); expect(f.layoutSubscriptions(nextScope)).toBe(0);
+    secondVideo.remove(); f.changeConfig({videoSubtitleVisible: false}); await settle();
+    expect(f.layoutSubscriptions(f.player)).toBe(0);
+    f.changeConfig({videoSubtitleVisible: true}); await vi.advanceTimersByTimeAsync(16);
+    expect(f.bottom()).toBe('82px'); expect(f.layoutSubscriptions(nextScope)).toBe(1);
+    f.changeConfig({videoTranslationEnabled: false}); await settle();
+    expect(f.layoutSubscriptions(nextScope)).toBe(0);
+    const disabledBottom = f.bottom();
+    f.root.setAttribute('style', 'visibility:hidden'); await vi.advanceTimersByTimeAsync(16);
+    expect(f.bottom()).toBe(disabledBottom); expect(f.displayed().active).toBe(false);
+    f.changeConfig({videoTranslationEnabled: true}); await vi.advanceTimersByTimeAsync(16);
+    expect(f.layoutSubscriptions(nextScope)).toBe(1);
+    dispose(); await settle();
+    expect([...f.observerRegistrations].every(registrations => registrations.size === 0)).toBe(true);
+    f.root.setAttribute('style', 'visibility:visible'); await vi.advanceTimersByTimeAsync(32);
+    expect(f.document.getElementById(VIDEO_SUBTITLE_PANEL_ID)).toBeNull();
+  });
+});
+
 function clickMenu(f: ReturnType<typeof fixture>, selector: string) {
   const event = new f.window.Event('click', {bubbles: true});
   Object.defineProperty(event, 'isTrusted', {value: true});

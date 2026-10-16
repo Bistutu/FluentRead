@@ -2,7 +2,7 @@
  * @file src/features/video-subtitle/content/ui.ts
  *
  * 文件职责：封装视频字幕 content UI 的界面语言转换与可访问名称刷新，避免 YouTube 播放器运行时承载重复的文案拼装。
- * 主要内容：提供视频菜单本地化、菜单与完整句学习共享的局部外观变量、按逐字高亮开关写入字幕行、校时与就地模型选择控件样式、节点创建、播放器定位；每次原生字幕读取按候选集合与局部父链排除嵌套内层，保留外层全文和顺序，避免片段两两包含扫描，不跨调用缓存节点；过滤 YouTube 滚动窗口裁掉的旧行，按实际画面约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
+ * 主要内容：提供视频菜单本地化、菜单与完整句学习共享的局部外观变量、按逐字高亮开关写入字幕行、校时与就地模型选择控件样式、节点创建、播放器定位；每次原生字幕读取按候选集合与局部父链排除嵌套内层，保留外层全文和顺序，避免片段两两包含扫描，不跨调用缓存节点；过滤 YouTube 滚动窗口裁掉的旧行，按实际画面及同视频可见底控约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
  * 模块边界：只读取界面配置并操作视频 feature 拥有的节点、样式和下载链接，不发起翻译或识别请求；任务生命周期由 runtime 管理。
  */
 
@@ -12,6 +12,7 @@ import {type VideoSubtitleDisplayMode} from '@/src/core/config/model';
 import {cuesToSrt, sanitizeSubtitleFilename, type VideoSubtitleCue} from './youtubeSubtitleData';
 import {getCaptionPlatform} from './platforms';
 import {fitVideoSubtitleFontSize} from './subtitleLayout';
+import {getYoutubeSubtitleControlsScope, YOUTUBE_SUBTITLE_CONTROLS_SELECTOR} from './youtubeControlsScope';
 import {createVideoKaraokeController, setVideoCaptionText, type VideoKaraokeController, VIDEO_KARAOKE_FILL_PROPERTY, VIDEO_KARAOKE_STATE_ATTRIBUTE, VIDEO_KARAOKE_TEXT_ATTRIBUTE, VIDEO_KARAOKE_UNIT_CLASS} from './karaoke';
 
 import {
@@ -541,16 +542,18 @@ export const getXVideoSubtitleViewport = getVideoSubtitleViewport;
 
 /** 只避开真实可见的底部控件；移动视频高度不足时不能保留桌面的 52px 起步底距。 */
 function getYoutubeSubtitleBottomInset(player: HTMLElement, viewport: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom' | 'height'>): number {
+  const scope = getYoutubeSubtitleControlsScope(player);
   let inset = 12;
-  for (const controls of player.querySelectorAll<HTMLElement>('.ytp-chrome-bottom, .player-controls-bottom, .ytm-player-controls, .ytp-right-controls')) {
+  for (const controls of scope.querySelectorAll<HTMLElement>(YOUTUBE_SUBTITLE_CONTROLS_SELECTOR)) {
+    if (controls.closest('.fluent-read-video-ui')) continue;
     const rect = controls.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0 || rect.right <= viewport.left || rect.left >= viewport.right
       || rect.top < viewport.top + viewport.height * .65 || rect.top >= viewport.bottom) continue;
     let visible = true;
     for (let current: HTMLElement | null = controls; current && visible; current = current.parentElement) {
       const style = getComputedStyle(current);
-      visible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
-      if (current === player) break;
+      visible = !current.hidden && style.display !== 'none' && style.visibility !== 'hidden' && style.visibility !== 'collapse' && style.opacity !== '0';
+      if (current === scope) break;
     }
     if (visible) inset = Math.max(inset, viewport.bottom - rect.top + 8);
   }
