@@ -1,7 +1,7 @@
 /**
  * @file tests/videoSubtitleViewport.test.ts
  * 文件职责：验证 X/YouTube 视频字幕按实际画面矩形定位时的 object-fit、object-position、控件安全区和 layer 坐标换算。
- * 主要内容：覆盖竖屏 contain、横屏留白、cover/none/scale-down、缩放 layer、移动端同视频兄弟控件显隐与隔离、缺失尺寸和同步样式。
+ * 主要内容：覆盖竖屏 contain、横屏留白、cover/none/scale-down、缩放 layer、同视频兄弟控件显隐与隔离、普通避让字幕点击穿透、临时宿主恢复和极长句滚动。
  * 模块边界：只测试视频字幕 UI 的几何契约，不启动播放器绑定、识别、翻译或浏览器运行时。
  */
 
@@ -37,6 +37,7 @@ import {
   VIDEO_TRANSLATION_OVERLAY_ID,
 } from '@/src/features/video-subtitle/content/ui';
 import {findOwnedSubtitlePanel, getVisibleYoutubeSubtitleControls, VIDEO_SUBTITLE_SCROLL_HOST_ID} from '@/src/features/video-subtitle/content/subtitleControlLayout';
+import {createVideoPlayerMenu} from '@/src/features/video-subtitle/content/playerMenu';
 
 type Rect = {left: number; top: number; width: number; height: number; right: number; bottom: number};
 
@@ -178,12 +179,14 @@ describe('mobile YouTube readable control avoidance', () => {
     f.sync(); expect(f.panel.dataset.fluentReadSubtitleLayout).toBeUndefined();
     expect(f.panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom')).toContain('12px');
     Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: f.scope});
+    f.sync(); expect(f.panel.parentElement?.id).toBe(VIDEO_SUBTITLE_SCROLL_HOST_ID); expect(f.panel.hasAttribute('tabindex')).toBe(false);
     f.setCue('huge'); f.sync();
     expect(f.panel.dataset.fluentReadSubtitleLayout).toBe('scroll');
     expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)?.parentElement).toBe(f.scope);
   });
   it('短句和长句在顶部/中部/底部控件之间完整显示，暂停也保留原字号；隐藏后回到底部中心', () => {
     const f = mobileControlFixture(); Object.defineProperty(f.video, 'paused', {value: true});
+    const listen = vi.spyOn(f.panel, 'addEventListener');
     for (const cue of ['short', 'long'] as const) {
       f.setCue(cue); f.sync();
       const panel = f.panel.getBoundingClientRect();
@@ -192,13 +195,62 @@ describe('mobile YouTube readable control avoidance', () => {
       expect(f.panel.style.getPropertyValue('--fluent-read-video-subtitle-font-size')).toBe('16px');
       for (const [, obstacle] of f.obstacles) expect(panel.right <= obstacle.left || panel.left >= obstacle.right || panel.bottom <= obstacle.top || panel.top >= obstacle.bottom).toBe(true);
       expect(panel.left).toBeGreaterThanOrEqual(50); expect(panel.right).toBeLessThanOrEqual(351.5);
-      expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull();
+      const host = f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)!;
+      expect(host.parentElement).toBe(f.scope); expect(f.panel.parentElement).toBe(host); expect(f.layer.parentElement).toBe(f.player);
+      expect(host.style.getPropertyValue('clip-path')).toBe(f.layer.style.getPropertyValue('clip-path'));
+      expect(f.panel.hasAttribute('data-fluent-read-subtitle-scrollable')).toBe(false); expect(f.panel.hasAttribute('role')).toBe(false);
     }
+    expect(listen).not.toHaveBeenCalled();
+    const reachedScope = vi.fn(); f.scope.addEventListener('click', reachedScope);
+    const click = new f.window.Event('click', {bubbles: true, cancelable: true}); f.panel.dispatchEvent(click);
+    expect(reachedScope).toHaveBeenCalledOnce(); expect(click.defaultPrevented).toBe(false);
     f.controls.hidden = true; f.sync();
+    expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull(); expect(f.panel.parentElement).toBe(f.layer);
     expect(f.panel.dataset.fluentReadSubtitleLayout).toBeUndefined(); expect(f.panel.style.top).toBe('auto');
     expect(f.panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom')).toBe('12px');
     expect(f.panel.style.getPropertyValue('--fluent-read-video-subtitle-padding')).toBeUndefined();
     expect(f.panel.style.getPropertyValue('--fluent-read-video-subtitle-gap')).toBeUndefined();
+  });
+
+  it('仅内部可见控件、隐藏或画面外的外部控件不会提升普通字幕，同矩形的外部可见控件仍被识别', () => {
+    const f = mobileControlFixture(); f.player.appendChild(f.controls);
+    const outside = f.document.createElement('div'); outside.className = 'player-controls-middle-core-buttons'; f.scope.appendChild(outside);
+    let bounds = rect(91, 133, 220, 56);
+    Object.defineProperty(outside, 'getBoundingClientRect', {value: () => bounds});
+    outside.hidden = true; f.sync();
+    expect(f.panel.dataset.fluentReadSubtitleLayout).toBe('free'); expect(f.panel.parentElement).toBe(f.layer);
+    outside.hidden = false; bounds = rect(91, 500, 220, 56); f.sync(); expect(f.panel.parentElement).toBe(f.layer);
+    // 内部重复与外部重复都保留几何去重；外部代表不能被内部先出现的同矩形吞掉。
+    const inside = outside.cloneNode() as HTMLElement; f.controls.appendChild(inside);
+    Object.defineProperty(inside, 'getBoundingClientRect', {value: () => rect(91, 133, 220, 56)});
+    bounds = rect(91, 133, 220, 56); f.sync();
+    expect(getVisibleYoutubeSubtitleControls(f.player)).toHaveLength(4);
+    expect(f.panel.parentElement?.id).toBe(VIDEO_SUBTITLE_SCROLL_HOST_ID);
+    outside.hidden = true; f.sync(); expect(f.panel.parentElement).toBe(f.layer); expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull();
+  });
+
+  it('普通宿主复用唯一面板和显示模式，free与scroll切换、菜单、手动位置和Off沿用原清理', () => {
+    const f = mobileControlFixture(); f.sync();
+    const host = f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)!;
+    for (const mode of ['translation-only', 'original-only', 'bilingual'] as const) {
+      config.videoSubtitleDisplayMode = mode; applyVideoDisplayState(f.container);
+      expect(host.classList.contains('fluent-read-video-display-translation-only')).toBe(mode === 'translation-only');
+      expect(host.classList.contains('fluent-read-video-display-original-only')).toBe(mode === 'original-only');
+    }
+    f.setCue('huge'); f.sync(); expect(f.panel.getAttribute('tabindex')).toBe('0'); expect(f.panel.parentElement).toBe(host);
+    f.setCue('long'); f.sync(); expect(f.panel.hasAttribute('tabindex')).toBe(false); expect(f.panel.parentElement).toBe(host);
+    expect(f.panel.hasAttribute('data-fluent-read-subtitle-scrollable')).toBe(false);
+    expect(getOrCreateTranslationOverlay(f.player)).toBe(f.overlay); expect(f.document.querySelectorAll('#' + VIDEO_SUBTITLE_PANEL_ID)).toHaveLength(1);
+    // 此处消费真实菜单节点及布局接口；入口事件的公共runtime回归在独立测试文件中。
+    const menu = createVideoPlayerMenu('zh-CN', false); f.player.appendChild(menu); menu.hidden = false; f.sync();
+    expect(f.panel.parentElement).toBe(f.layer); expect(host.isConnected).toBe(false);
+    menu.hidden = true; f.sync(); expect(f.panel.parentElement?.id).toBe(VIDEO_SUBTITLE_SCROLL_HOST_ID);
+    config.videoSubtitleAppearance = {...DEFAULT_VIDEO_SUBTITLE_APPEARANCE, position: 'top'}; f.sync();
+    expect(f.panel.parentElement).toBe(f.layer); expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull();
+    config.videoSubtitleAppearance = {...DEFAULT_VIDEO_SUBTITLE_APPEARANCE}; f.sync();
+    const enabled = config.videoTranslationEnabled; config.videoTranslationEnabled = false; applyVideoDisplayState(f.container); config.videoTranslationEnabled = enabled;
+    expect(f.panel.parentElement).toBe(f.layer); expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull();
+    removeTranslationOverlay(); expect(f.panel.isConnected).toBe(false);
   });
 
   it('极长句使用同scope遮罩之上的唯一自有host，保留模式、原字号及周期滚动位置', () => {

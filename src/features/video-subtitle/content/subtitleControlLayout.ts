@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/subtitleControlLayout.ts
- * 文件职责：移动 YouTube 字幕在同视频可见控件之间选择可读空区，并拥有极长句滚动卡片的局部交互与临时宿主。
- * 主要内容：读取顶部、中部、底部和进度控件几何，保留字号并有限调整卡片宽度；仅自有字幕节点处理滚动，不添加全页输入监听。
+ * 文件职责：移动 YouTube 字幕在同视频可见控件之间选择可读空区，拥有外部控件遮罩之上的临时宿主与极长句滚动卡片的局部交互。
+ * 主要内容：读取顶部、中部、底部和进度控件几何，保留字号并有限调整卡片宽度；普通避让字幕保持点击穿透，仅极长句在自有节点处理滚动，不添加全页输入监听。
  * 模块边界：不读取或保存配置、不改变播放器/菜单/媒体/宿主样式；显示层通过显式调用更新、还原与清理，几何切分复用 subtitleLayout。
  */
 import {getVideoSubtitleFreeRegions, videoSubtitleRectsOverlap, type VideoSubtitleRect} from './subtitleLayout';
@@ -145,11 +145,13 @@ export function finishSubtitlePanelLayout(panel: HTMLElement, menuOpen = false):
   restoreScrollHost(panel);
 }
 
-/** 同视频范围内读取实际可见控件；不把覆盖整面的控制根节点当成障碍物。 */
-export function getVisibleYoutubeSubtitleControls(player: HTMLElement): DOMRect[] {
+type VisibleSubtitleControl = {element: HTMLElement; rect: DOMRect};
+
+/** 同视频范围内读取实际可见控件与所属分支；不把覆盖整面的控制根节点当成障碍物。 */
+function getVisibleSubtitleControlEntries(player: HTMLElement): VisibleSubtitleControl[] {
   const scope = getYoutubeSubtitleControlsScope(player);
   const fullscreen = player.ownerDocument.fullscreenElement;
-  const rectangles: DOMRect[] = [];
+  const entries: VisibleSubtitleControl[] = [];
   for (const controls of scope.querySelectorAll<HTMLElement>(YOUTUBE_SUBTITLE_CONTROLS_SELECTOR)) {
     if (controls.closest('.fluent-read-video-ui')) continue;
     if (fullscreen?.contains(player) && !fullscreen.contains(controls)) continue;
@@ -161,10 +163,19 @@ export function getVisibleYoutubeSubtitleControls(player: HTMLElement): DOMRect[
       visible = !current.hidden && style.display !== 'none' && style.visibility !== 'hidden' && style.visibility !== 'collapse' && style.opacity !== '0';
       if (current === scope) break;
     }
-    if (visible && !rectangles.some(other => other.left === rect.left && other.top === rect.top && other.width === rect.width && other.height === rect.height)) rectangles.push(rect);
-    if (rectangles.length >= 16) break;
+    if (visible) {
+      const duplicate = entries.findIndex(({rect: other}) => other.left === rect.left && other.top === rect.top && other.width === rect.width && other.height === rect.height);
+      if (duplicate < 0) entries.push({element: controls, rect});
+      // 同矩形优先保留外部分支的代表，去重后仍能识别播放器外的暗色控件遮罩。
+      else if (!player.contains(controls)) entries[duplicate] = {element: controls, rect};
+    }
+    if (entries.length >= 16) break;
   }
-  return rectangles;
+  return entries;
+}
+
+export function getVisibleYoutubeSubtitleControls(player: HTMLElement): DOMRect[] {
+  return getVisibleSubtitleControlEntries(player).map(({rect}) => rect);
 }
 
 /** 仅在移动自动贴底发生碰撞时选择少量空区；先保留字号和宽度，再限宽和压紧卡片内距。 */
@@ -174,7 +185,9 @@ export function positionMobileYoutubeSubtitle(panel: HTMLElement, player: HTMLEl
   const scaleY = layer.clientHeight > 0 ? layerRect.height / layer.clientHeight : 1;
   const toLocal = (rect: DOMRect): VideoSubtitleRect => ({left: (rect.left - layerRect.left) / scaleX, top: (rect.top - layerRect.top) / scaleY,
     width: rect.width / scaleX, height: rect.height / scaleY});
-  const obstacles = getVisibleYoutubeSubtitleControls(player).map(toLocal).filter(rect => videoSubtitleRectsOverlap(rect, viewport));
+  const controls = getVisibleSubtitleControlEntries(player).map(({element, rect}) => ({element, rect: toLocal(rect)}))
+    .filter(({rect}) => videoSubtitleRectsOverlap(rect, viewport));
+  const obstacles = controls.map(({rect}) => rect);
   if (!obstacles.length) return false;
   const preferred = toLocal(panel.getBoundingClientRect());
   if (!obstacles.some(rect => videoSubtitleRectsOverlap(preferred, rect))) return false;
@@ -187,7 +200,8 @@ export function positionMobileYoutubeSubtitle(panel: HTMLElement, player: HTMLEl
     panel.style.setProperty('max-height', `${region.height}px`, 'important');
     panel.dataset.fluentReadSubtitleLayout = scrolling ? 'scroll' : 'free';
     setSubtitlePanelScrollable(panel, scrolling);
-    if (scrolling) alignScrollHost(panel, layer, player);
+    // 普通避让字幕也需绘制在外部暗罩之上；是否滚动仍独立决定指针和键盘交互。
+    if (scrolling || controls.some(({element}) => !player.contains(element))) alignScrollHost(panel, layer, player);
     else restoreScrollHost(panel);
   };
   const distance = (area: VideoSubtitleRect) => Math.abs(Math.max(area.left, Math.min(preferred.left, area.left + area.width - preferred.width)) - preferred.left)

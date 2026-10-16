@@ -1,7 +1,7 @@
 /**
  * @file tests/videoPlayerBinding.test.ts
  * 文件职责：验证播放器入口绑定在原生控制栏、信息流 fallback、禁用和视频切换时的节点所有权。
- * 主要内容：覆盖进度徽标、悬浮/聚焦可见性、原生控件重挂载和清理行为；实际观察器回调识别所持控制栏中的本实例按钮副本，保留其他实例和 tooltip 噪声边界。
+ * 主要内容：覆盖进度徽标、悬浮/聚焦可见性、原生控件重挂载和清理行为；包含无桌面挂载端口的移动 YouTube 同视频兄弟控制层，以及观察器处理副本和卸载的所有权边界。
  * 模块边界：使用注入的定位器与按钮工厂，不启动 content runtime 或字幕识别。
  */
 
@@ -14,6 +14,7 @@ vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: vi.fn(
 
 import {createVideoPlayerBinding} from '@/src/features/video-subtitle/content/videoPlayerBinding';
 import type {VideoPlayerLocator, VideoPlayerTarget} from '@/src/features/video-subtitle/content/videoPlayerLocator';
+import {createVideoPlayerMenu, syncVideoPlayerMenuLayout} from '@/src/features/video-subtitle/content/playerMenu';
 
 function createFixture(markup = '<div class="player"><video></video><div class="ytp-right-controls"><button>settings</button><button>other</button></div></div>') {
   const parsed = parseHTML(`<!doctype html><body>${markup}</body>`);
@@ -53,7 +54,474 @@ function createFixture(markup = '<div class="player"><video></video><div class="
   };
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {vi.restoreAllMocks(); vi.unstubAllGlobals();});
+
+/** 仅使用已知 mweb 同视频拓扑；不保留桌面 .ytp-right-controls，也不模拟像素层叠或浏览器命中。 */
+function createMobileYoutubeFixture() {
+  const fixture = createFixture('<div id="player-container-id" class="player-container sticky-player">'
+    + '<div id="movie_player" class="player html5-video-player ytp-mweb-player"><video></video></div>'
+    + '<ytm-custom-control><ytm-watch-player-controls><div id="player-control-overlay">'
+    + '<div class="player-controls-content"><div class="player-controls-top">'
+    + '<button aria-label="Settings">settings</button><button aria-label="Subtitles">CC</button></div>'
+    + '<div class="player-controls-bottom player-controls-bottom-right">'
+    + '<button aria-label="Full screen">fullscreen</button>'
+    + '</div></div></div></ytm-watch-player-controls></ytm-custom-control></div>');
+  const scope = fixture.document.querySelector<HTMLElement>('#player-container-id')!;
+  Object.defineProperty(fixture.window, 'location', {configurable: true, value: new URL('https://m.youtube.com/watch?v=entry-ownership')});
+  const controls = scope.querySelector<HTMLElement>('.player-controls-bottom-right')!;
+  const observerCallbacks: MutationCallback[] = [];
+  const disconnect = vi.fn();
+  vi.stubGlobal('MutationObserver', class {
+    constructor(callback: MutationCallback) {observerCallbacks.push(callback);}
+    observe() {}
+    disconnect = disconnect;
+  });
+  const changed = (target: Node, addedNodes: Node[] = [], removedNodes: Node[] = []) => {
+    const records = [{type: 'childList', target, addedNodes, removedNodes}] as unknown as MutationRecord[];
+    for (const callback of observerCallbacks) callback(records, {} as MutationObserver);
+  };
+  const createButton = vi.fn(() => {
+    const button = fixture.document.createElement('button');
+    button.id = 'fluent-read-video-subtitle-button';
+    return button;
+  });
+  return {...fixture, scope, controls, changed, createButton, disconnect};
+}
+
+/** 用显式浏览器布局端口消费宿主样式；不声称 linkedom 可验证真实层叠命中。 */
+function mobileMenuGeometry(f: ReturnType<typeof createMobileYoutubeFixture>) {
+  const geometry = {
+    player: {left: 40, top: 80, width: 402, height: 226},
+    base: {left: 20, top: 30, width: 804, height: 452},
+    width: 402, height: 226,
+  };
+  const bounds = (value: typeof geometry.player) => ({...value, right: value.left + value.width,
+    bottom: value.top + value.height, x: value.left, y: value.top, toJSON: () => ({})});
+  Object.defineProperties(f.player, {
+    getBoundingClientRect: {configurable: true, value: () => bounds(geometry.player)},
+    clientWidth: {configurable: true, get: () => geometry.width},
+    clientHeight: {configurable: true, get: () => geometry.height},
+  });
+  const nativeRect = f.window.HTMLElement.prototype.getBoundingClientRect;
+  vi.spyOn(f.window.HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    if (this.classList.contains('fluent-read-video-menu-host')) {
+      Object.defineProperties(this, {
+        clientWidth: {configurable: true, get: () => Number.parseFloat(this.style.width)},
+        clientHeight: {configurable: true, get: () => Number.parseFloat(this.style.height)},
+      });
+      return bounds(geometry.base) as DOMRect;
+    }
+    return nativeRect.call(this);
+  });
+  return geometry;
+}
+
+/** 保留真实菜单与样式序列化，仅补 linkedom 尚缺的标准 CSS priority 接口。 */
+function ownedMenu() {
+  const menu = createVideoPlayerMenu('en-US', false), actual = menu.style, priorities = new Map<string, string>();
+  Object.defineProperty(menu, 'style', {configurable: true, value: new Proxy(actual, {
+    get(target, property) {
+      if (property === 'getPropertyPriority') return (name: string) => priorities.get(name) || '';
+      if (property === 'setProperty') return (name: string, value: string, priority = '') => {priorities.set(name, priority); actual.setProperty(name, value);};
+      if (property === 'removeProperty') return (name: string) => {priorities.delete(name); return actual.removeProperty(name);};
+      const value = Reflect.get(target, property); return typeof value === 'function' ? value.bind(target) : value;
+    },
+  })});
+  return menu;
+}
+
+describe('mobile YouTube owned menu rendering scope', () => {
+  it('calibrates the existing menu through its layout port without scanning the locator or recreating entry/menu', () => {
+    const f = createMobileYoutubeFixture(), geometry = mobileMenuGeometry(f), menu = ownedMenu();
+    const factory = vi.fn(() => menu), scans = vi.spyOn(f.locator, 'sync');
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: factory});
+    const host = menu.parentElement!, button = f.createButton.mock.results[0].value; scans.mockClear();
+    geometry.width = 240; geometry.height = 320; Object.assign(geometry.player, {left: 60, top: 100, width: 240, height: 320});
+    binding.syncMenuHost();
+    expect(menu.parentElement).toBe(host); expect(host.clientWidth).toBe(240); expect(host.clientHeight).toBe(320);
+    expect(scans).not.toHaveBeenCalled(); expect(factory).toHaveBeenCalledOnce(); expect(f.createButton).toHaveBeenCalledOnce();
+    expect(button.parentElement).toBe(f.controls);
+    binding.destroy(); binding.syncMenuHost(); expect(host.isConnected).toBe(false); expect(scans).not.toHaveBeenCalled();
+  });
+
+  it.each(['disabled', 'no-menu', 'detached-menu', 'detached-player', 'moved-video'] as const)('layout-only notifications cannot create/revive a menu after %s', state => {
+    const f = createMobileYoutubeFixture(); mobileMenuGeometry(f);
+    const menu = ownedMenu(), factory = vi.fn(() => state === 'no-menu' ? null : menu);
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: state !== 'disabled'}), createButton: f.createButton, createMenu: factory});
+    const parent = menu.parentElement;
+    if (state === 'detached-menu') menu.remove();
+    if (state === 'detached-player') f.player.remove();
+    if (state === 'moved-video') f.document.body.appendChild(f.video);
+    const scans = vi.spyOn(f.locator, 'sync'); scans.mockClear(); const before = factory.mock.calls.length;
+    binding.syncMenuHost();
+    expect(scans).not.toHaveBeenCalled(); expect(factory).toHaveBeenCalledTimes(before);
+    if (state === 'detached-menu') expect(menu.isConnected).toBe(false);
+    else expect(menu.parentElement).toBe(parent);
+    binding.destroy();
+  });
+
+  it('keeps the media factory target while the real menu layout consumes a player-sized transparent sibling host', () => {
+    const f = createMobileYoutubeFixture(); mobileMenuGeometry(f);
+    f.player.style.position = 'relative'; f.player.style.zIndex = '0';
+    const overlay = f.scope.querySelector<HTMLElement>('#player-control-overlay')!;
+    overlay.style.zIndex = '6'; overlay.style.pointerEvents = 'auto';
+    const original = [f.player, f.scope, f.controls, overlay].map(node => node.getAttribute('style'));
+    const menu = ownedMenu(); menu.hidden = false;
+    Object.defineProperty(menu, 'scrollHeight', {value: 600});
+    const factory = vi.fn(() => menu);
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: factory});
+    const host = menu.parentElement!;
+    expect(host.classList.contains('fluent-read-video-menu-host')).toBe(true);
+    expect(host.parentElement).toBe(f.scope);
+    expect(host.style.getPropertyValue('pointer-events')).toBe('none');
+    expect(menu.style.getPropertyValue('pointer-events')).toBe('auto');
+    expect(host.clientWidth).toBe(402); expect(host.clientHeight).toBe(226);
+    expect(host.style.transform).toBe('translate(10px, 25px) scale(0.5, 0.5)');
+    expect(host.style.getPropertyValue('transform-origin')).toBe('0 0');
+    syncVideoPlayerMenuLayout(menu); expect(menu.dataset.layout).toBe('wide');
+    binding.sync(); binding.sync();
+    expect(factory).toHaveBeenCalledOnce(); expect(factory).toHaveBeenCalledWith(f.target);
+    expect(f.document.querySelectorAll('#fluent-read-video-subtitle-menu')).toHaveLength(1);
+    expect([f.player, f.scope, f.controls, overlay].map(node => node.getAttribute('style'))).toEqual(original);
+    binding.destroy();
+    expect(host.isConnected).toBe(false); expect(menu.isConnected).toBe(false);
+    expect(menu.style.getPropertyValue('pointer-events')).toBeFalsy();
+  });
+
+  it('reuses the same menu across player-only fullscreen, exit and scope fullscreen, restoring its prior pointer declaration', () => {
+    const f = createMobileYoutubeFixture(); mobileMenuGeometry(f);
+    const menu = ownedMenu(); menu.style.setProperty('pointer-events', 'all');
+    const factory = vi.fn(() => menu);
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: factory});
+    const previous = menu.parentElement!;
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: f.player});
+    f.setTarget({...f.target, fullscreen: true});
+    expect(menu.parentElement).toBe(f.player); expect(previous.isConnected).toBe(false);
+    expect(menu.style.getPropertyValue('pointer-events')).toBe('all');
+    expect(menu.style.getPropertyPriority('pointer-events')).toBeFalsy();
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: null}); f.setTarget(f.target);
+    const restored = menu.parentElement!; expect(restored.parentElement).toBe(f.scope);
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: f.scope});
+    f.setTarget({...f.target, fullscreen: true});
+    expect(menu.parentElement).toBe(restored); expect(factory).toHaveBeenCalledOnce();
+    binding.destroy(); expect(menu.style.getPropertyValue('pointer-events')).toBe('all');
+  });
+
+  it('reparents the owned menu host to a replacement known scope without rebuilding menu content', () => {
+    const f = createMobileYoutubeFixture(); mobileMenuGeometry(f);
+    const menu = ownedMenu(), factory = vi.fn(() => menu);
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: factory});
+    const host = menu.parentElement!, next = f.document.createElement('div');
+    next.id = 'player-container-id'; next.className = 'player-container';
+    f.scope.id = 'old-player-container'; f.scope.after(next);
+    const native = f.scope.querySelector('ytm-custom-control')!; next.append(f.player, native);
+    f.changed(f.scope, [], [f.player, native]);
+    expect(host.parentElement).toBe(next); expect(menu.parentElement).toBe(host);
+    expect(factory).toHaveBeenCalledOnce(); expect(f.document.querySelectorAll('.fluent-read-video-menu-host')).toHaveLength(1);
+    binding.destroy(); expect(host.isConnected).toBe(false);
+  });
+
+  it('preserves only an existing menu focus when moving it and does not take external focus', () => {
+    const f = createMobileYoutubeFixture(); mobileMenuGeometry(f);
+    const menu = ownedMenu(), item = menu.querySelector<HTMLButtonElement>('button')!;
+    let active: Element = f.document.body;
+    Object.defineProperty(f.document, 'activeElement', {configurable: true, get: () => active});
+    const focus = vi.spyOn(item, 'focus').mockImplementation(() => {active = item;});
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: () => menu});
+    expect(focus).not.toHaveBeenCalled();
+    active = item;
+    const append = f.player.appendChild.bind(f.player);
+    Object.defineProperty(f.player, 'appendChild', {value: (node: Node) => {if (node === menu) active = f.document.body; return append(node);}});
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: f.player}); f.setTarget({...f.target, fullscreen: true});
+    expect(focus).toHaveBeenCalledOnce(); expect(focus).toHaveBeenCalledWith({preventScroll: true}); expect(active).toBe(item);
+    const external = f.document.createElement('input'); f.document.body.appendChild(external); active = external;
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: null}); f.setTarget(f.target);
+    expect(active).toBe(external); expect(focus).toHaveBeenCalledOnce();
+    binding.destroy();
+  });
+
+  it('Off removes menu and host, re-enable owns one fresh menu and late callbacks after destroy stay inert', () => {
+    const f = createMobileYoutubeFixture(); mobileMenuGeometry(f);
+    let enabled = true;
+    const factory = vi.fn(() => ownedMenu());
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled}), createButton: f.createButton, createMenu: factory});
+    const menu = factory.mock.results[0].value, host = menu.parentElement!;
+    enabled = false; binding.sync();
+    expect(menu.isConnected).toBe(false); expect(host.isConnected).toBe(false);
+    enabled = true; binding.sync();
+    expect(factory).toHaveBeenCalledTimes(2); expect(f.document.querySelectorAll('#fluent-read-video-subtitle-menu')).toHaveLength(1);
+    binding.destroy(); f.changed(f.scope, [f.document.createElement('div')]); binding.sync();
+    expect(f.document.querySelector('.fluent-read-video-menu-host')).toBeNull(); expect(factory).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps an open menu in the player when the external scope becomes ambiguous and recovers the same menu', () => {
+    const f = createMobileYoutubeFixture(); mobileMenuGeometry(f);
+    const menu = ownedMenu(); menu.hidden = false;
+    const factory = vi.fn(() => menu);
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: factory});
+    const host = menu.parentElement!, other = f.document.createElement('video'); f.scope.appendChild(other);
+    f.changed(f.scope, [other]);
+    expect(menu.parentElement).toBe(f.player); expect(menu.hidden).toBe(false);
+    expect(host.isConnected).toBe(false); expect(menu.style.getPropertyValue('pointer-events')).toBeFalsy();
+    other.remove(); f.changed(f.scope, [], [other]);
+    expect(menu.parentElement?.parentElement).toBe(f.scope); expect(factory).toHaveBeenCalledOnce();
+    binding.destroy();
+  });
+
+  it('releases an empty owned host when a replacement optional menu factory returns null', () => {
+    const f = createMobileYoutubeFixture(); mobileMenuGeometry(f);
+    const menu = ownedMenu(), factory = vi.fn<() => HTMLElement | null>().mockReturnValueOnce(menu).mockReturnValue(null);
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: factory});
+    const host = menu.parentElement!; f.document.body.appendChild(menu);
+    binding.sync();
+    expect(factory).toHaveBeenCalledTimes(2); expect(menu.isConnected).toBe(false); expect(host.isConnected).toBe(false);
+    expect(menu.style.getPropertyValue('pointer-events')).toBeFalsy();
+    binding.destroy();
+  });
+
+  it.each(['player-size', 'host-size'] as const)('uses the original player when %s geometry is unavailable and recovers when measurable', missing => {
+    const f = createMobileYoutubeFixture(), geometry = mobileMenuGeometry(f);
+    if (missing === 'player-size') {geometry.player.width = 0; geometry.width = 0;}
+    else geometry.base.height = 0;
+    const menu = ownedMenu();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: () => menu});
+    expect(menu.parentElement).toBe(f.player); expect(f.scope.querySelector('.fluent-read-video-menu-host')).toBeNull();
+    geometry.player.width = 402; geometry.width = 402; geometry.base.height = 452;
+    binding.sync(); expect(menu.parentElement?.parentElement).toBe(f.scope);
+    binding.destroy();
+  });
+
+  it.each(['value', 'priority'] as const)('does not overwrite a changed menu pointer %s during release', change => {
+    const f = createMobileYoutubeFixture(); mobileMenuGeometry(f);
+    const menu = ownedMenu();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu: () => menu});
+    const value = change === 'value' ? 'none' : 'auto', priority = change === 'value' ? 'important' : '';
+    menu.style.setProperty('pointer-events', value, priority);
+    binding.destroy(); expect(menu.style.getPropertyValue('pointer-events')).toBe(value);
+    expect(menu.style.getPropertyPriority('pointer-events')).toBe(priority);
+  });
+});
+
+describe('mobile YouTube same-video external controls without a desktop mount port', () => {
+  it('mounts one live entry beside external native fullscreen while retaining the media target', () => {
+    const f = createMobileYoutubeFixture();
+    const onButtonClick = vi.fn();
+    const createMenu = vi.fn(() => f.document.createElement('div'));
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, createMenu, onButtonClick});
+    expect(f.player.querySelector('.ytp-right-controls')).toBeNull();
+    expect(f.player.contains(f.controls)).toBe(false);
+    expect(f.controls.querySelectorAll('button:not(#fluent-read-video-subtitle-button)')).toHaveLength(1);
+    expect(f.scope.querySelector('.player-controls-top [aria-label="Settings"]')).not.toBeNull();
+    expect(f.scope.querySelectorAll('#fluent-read-video-subtitle-button')).toHaveLength(1);
+    const button = f.scope.querySelector<HTMLButtonElement>('#fluent-read-video-subtitle-button')!;
+    expect(button.parentElement).toBe(f.controls);
+    expect(button.nextElementSibling).toBe(f.controls.querySelector('[aria-label="Full screen"]'));
+    expect(binding.getTarget()).toBe(f.target);
+    expect(createMenu).toHaveBeenCalledWith(f.target);
+    binding.sync();
+    expect(f.createButton).toHaveBeenCalledOnce();
+    expect(createMenu).toHaveBeenCalledOnce();
+    // 这里只验证绑定回调与实际节点身份；真实可信点击和覆盖层命中由生产浏览器专项验证。
+    button.dispatchEvent(new f.window.Event('click', {bubbles: true}));
+    expect(onButtonClick).toHaveBeenCalledOnce();
+    expect(onButtonClick.mock.calls[0][1]).toBe(f.target);
+    binding.destroy();
+  });
+
+  it.each(['pointerdown', 'focusin'])('associates external %s with only its current player and releases on leaving', type => {
+    const f = createMobileYoutubeFixture();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton});
+    const native = f.controls.querySelector('button')!;
+    native.dispatchEvent(new f.window.Event(type, {bubbles: true}));
+    expect(f.player.getAttribute('data-fluent-read-video-active')).toBe('true');
+    const outside = f.document.createElement('button'); f.document.body.appendChild(outside);
+    const leaving = new f.window.Event(type === 'focusin' ? 'focusout' : 'pointerout', {bubbles: true});
+    Object.defineProperty(leaving, 'relatedTarget', {value: outside});
+    native.dispatchEvent(leaving);
+    expect(f.player.getAttribute('data-fluent-read-video-active')).toBe('false');
+    outside.dispatchEvent(new f.window.Event(type, {bubbles: true}));
+    expect(f.player.getAttribute('data-fluent-read-video-active')).toBe('false');
+    binding.destroy();
+  });
+
+  it('preserves interaction when pointer and focus move between media and its external controls', () => {
+    const f = createMobileYoutubeFixture();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton});
+    const native = f.controls.querySelector('button')!;
+    f.video.dispatchEvent(new f.window.Event('pointerover', {bubbles: true}));
+    for (const type of ['pointerout', 'focusout']) {
+      const leaving = new f.window.Event(type, {bubbles: true});
+      Object.defineProperty(leaving, 'relatedTarget', {value: native});
+      f.video.dispatchEvent(leaving);
+      expect(f.player.getAttribute('data-fluent-read-video-active')).toBe('true');
+    }
+    native.dispatchEvent(new f.window.Event('focusin', {bubbles: true}));
+    expect(f.scope.querySelectorAll('#fluent-read-video-subtitle-button')).toHaveLength(1);
+    expect(f.createButton).toHaveBeenCalledOnce();
+    binding.destroy();
+  });
+
+  it.each(['empty', 'deep-clone'] as const)('observer repairs an external %s replacement with the same live listener', replacementKind => {
+    const f = createMobileYoutubeFixture(), click = vi.fn();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, onButtonClick: click});
+    const live = f.createButton.mock.results[0]?.value;
+    expect(live?.parentElement).toBe(f.controls);
+    const replacement = f.controls.cloneNode(true) as HTMLElement;
+    const copy = replacement.querySelector<HTMLButtonElement>('#fluent-read-video-subtitle-button')!;
+    if (replacementKind === 'empty') copy.remove();
+    else {
+      copy.dispatchEvent(new f.window.Event('click', {bubbles: true}));
+      expect(click).not.toHaveBeenCalled();
+    }
+    const parent = f.controls.parentElement!;
+    f.controls.replaceWith(replacement);
+    f.changed(parent, [replacement], [f.controls]);
+    expect(replacement.querySelectorAll('#fluent-read-video-subtitle-button')).toHaveLength(1);
+    expect(live?.parentElement).toBe(replacement);
+    expect(copy.isConnected).toBe(false);
+    expect(f.createButton).toHaveBeenCalledOnce();
+    live!.dispatchEvent(new f.window.Event('click', {bubbles: true}));
+    expect(click).toHaveBeenCalledOnce();
+    binding.destroy();
+  });
+
+  it('observer removes a same-host copied entry without replacing the live entry or claiming another owner', () => {
+    const f = createMobileYoutubeFixture(), click = vi.fn();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton, onButtonClick: click});
+    const live = f.createButton.mock.results[0]?.value;
+    expect(live?.parentElement).toBe(f.controls);
+    const copy = live!.cloneNode(true) as HTMLButtonElement;
+    const foreign = live!.cloneNode(true) as HTMLButtonElement;
+    foreign.setAttribute('data-fluent-read-video-binding-owner', 'another-binding');
+    f.controls.insertBefore(copy, live!); f.controls.appendChild(foreign);
+    f.changed(f.controls, [copy, foreign]);
+    expect(copy.isConnected).toBe(false);
+    expect(foreign.isConnected).toBe(true);
+    expect(live!.parentElement).toBe(f.controls);
+    expect(f.createButton).toHaveBeenCalledOnce();
+    live!.dispatchEvent(new f.window.Event('click', {bubbles: true}));
+    expect(click).toHaveBeenCalledOnce();
+    binding.destroy();
+    expect(foreign.isConnected).toBe(true);
+  });
+
+  it('keeps the entry inside player-only fullscreen and restores the external group on exit', () => {
+    const f = createMobileYoutubeFixture();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton});
+    const live = f.createButton.mock.results[0].value;
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: f.player});
+    f.setTarget({...f.target, fullscreen: true});
+    expect(f.controls.contains(live)).toBe(false);
+    expect(f.player.contains(live)).toBe(true);
+    expect(live.parentElement?.classList.contains('fluent-read-video-controls')).toBe(true);
+    expect(binding.getTarget()?.player).toBe(f.player);
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: null});
+    f.setTarget(f.target);
+    expect(live.parentElement).toBe(f.controls);
+    expect(f.createButton).toHaveBeenCalledOnce();
+    binding.destroy();
+  });
+
+  it('retains the external group when the fullscreen element contains the whole same-video scope', () => {
+    const f = createMobileYoutubeFixture();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton});
+    const live = f.createButton.mock.results[0].value;
+    Object.defineProperty(f.document, 'fullscreenElement', {configurable: true, value: f.scope});
+    f.setTarget({...f.target, fullscreen: true});
+    expect(live.parentElement).toBe(f.controls);
+    expect(f.player.querySelector('.fluent-read-video-controls')).toBeNull();
+    expect(f.createButton).toHaveBeenCalledOnce();
+    binding.destroy();
+  });
+
+  it.each(['second-video', 'player-reparent'] as const)('observer immediately releases an external host whose ownership becomes invalid: %s', mutation => {
+    const f = createMobileYoutubeFixture();
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton});
+    const live = f.createButton.mock.results[0].value;
+    const copy = live.cloneNode(true); f.controls.appendChild(copy);
+    let added: Node[] = [], removed: Node[] = [];
+    if (mutation === 'second-video') {
+      const otherVideo = f.document.createElement('video'); f.scope.appendChild(otherVideo); added = [otherVideo];
+    } else {
+      const outside = f.document.createElement('div'); f.document.body.appendChild(outside);
+      outside.appendChild(f.player); removed = [f.player];
+    }
+    // 记录发生在原 scope，不能因重新查询范围退回 player 就丢弃这次结构变更。
+    f.changed(f.scope, added, removed);
+    expect(live.isConnected).toBe(false);
+    expect(copy.isConnected).toBe(false);
+    expect(f.controls.querySelector('#fluent-read-video-subtitle-button')).toBeNull();
+    expect(f.createButton).toHaveBeenCalledOnce();
+    binding.destroy();
+    f.changed(f.scope, [f.document.createElement('button')]);
+    expect(f.createButton).toHaveBeenCalledOnce();
+    expect(f.document.querySelector('#fluent-read-video-subtitle-button')).toBeNull();
+  });
+
+  it('Off removes held external entries and copies, re-enable creates a live entry, and late work cannot resurrect after destroy', () => {
+    const f = createMobileYoutubeFixture();
+    let enabled = true;
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled}), createButton: f.createButton});
+    const first = f.createButton.mock.results[0]?.value;
+    expect(first?.parentElement).toBe(f.controls);
+    const copy = first!.cloneNode(true) as HTMLButtonElement; f.controls.appendChild(copy);
+    const foreign = first!.cloneNode(true) as HTMLButtonElement;
+    foreign.setAttribute('data-fluent-read-video-binding-owner', 'another-binding'); f.controls.appendChild(foreign);
+    enabled = false; binding.sync();
+    expect(first!.isConnected).toBe(false);
+    expect(copy.isConnected).toBe(false);
+    expect(foreign.isConnected).toBe(true);
+    expect(f.player.hasAttribute('data-fluent-read-video-active')).toBe(false);
+    foreign.remove();
+    enabled = true; binding.sync();
+    expect(f.createButton).toHaveBeenCalledTimes(2);
+    const second = f.createButton.mock.results[1].value;
+    expect(second).not.toBe(first);
+    expect(second.parentElement).toBe(f.controls);
+    binding.destroy();
+    f.changed(f.controls, [f.document.createElement('button')]);
+    f.controls.dispatchEvent(new f.window.Event('pointerdown', {bubbles: true}));
+    f.controls.dispatchEvent(new f.window.Event('focusin', {bubbles: true}));
+    binding.sync();
+    expect(f.scope.querySelectorAll('#fluent-read-video-subtitle-button')).toHaveLength(0);
+    expect(f.createButton).toHaveBeenCalledTimes(2);
+    expect(f.disconnect).toHaveBeenCalledOnce();
+  });
+
+  it.each(['second-video', 'unknown-container'] as const)('does not adopt sibling controls when same-video ownership is ambiguous: %s', ambiguity => {
+    const f = createMobileYoutubeFixture();
+    if (ambiguity === 'second-video') f.scope.appendChild(f.document.createElement('video'));
+    else f.scope.id = 'unrelated-container';
+    const binding = createVideoPlayerBinding({document: f.document, locator: f.locator,
+      getState: () => ({enabled: true}), createButton: f.createButton});
+    f.controls.dispatchEvent(new f.window.Event('pointerdown', {bubbles: true}));
+    f.controls.dispatchEvent(new f.window.Event('focusin', {bubbles: true}));
+    expect(f.controls.querySelector('#fluent-read-video-subtitle-button')).toBeNull();
+    expect(f.player.getAttribute('data-fluent-read-video-active')).not.toBe('true');
+    expect(f.createButton).not.toHaveBeenCalled();
+    binding.destroy();
+  });
+});
 
 describe('native picture-in-picture and fullscreen anchors', () => {
   it.each(['before-live', 'after-live'] as const)('observer removes a same-host copied entry %s without a manual sync', placement => {

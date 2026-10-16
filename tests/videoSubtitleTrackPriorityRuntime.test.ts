@@ -43,12 +43,16 @@ import {
   VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS, VIDEO_SUBTITLE_PANEL_ID,
   VIDEO_TRANSLATION_ACTIVE_CLASS, VIDEO_TRANSLATION_BUTTON_ID, VIDEO_TRANSLATION_LAYER_ID, VIDEO_TRANSLATION_MENU_ID,
   VIDEO_TRANSLATION_OVERLAY_ID, X_SUBTITLE_RESOURCE_MESSAGE,
+  markVideoUi,
 } from '@/src/features/video-subtitle/content/ui';
 import {audioInit} from './fixtures/hlsAudio';
 import {YOUTUBE_TIMED_TEXT_MESSAGE} from '@/src/features/video-subtitle/content/youtubeTimedTextBridgeCore';
 import * as subtitleLogic from '@/src/features/video-subtitle/content/subtitleLogic';
 import {createSubtitleLayoutObserver} from '@/src/features/video-subtitle/content/subtitleLayoutObserver';
 import {VIDEO_SUBTITLE_SCROLL_HOST_ID} from '@/src/features/video-subtitle/content/subtitleControlLayout';
+import {createVideoSentenceLearningHost} from '@/src/features/video-subtitle/content/sentenceLearningHost';
+import {createVideoSentenceLearningPlacement} from '@/src/features/video-subtitle/content/sentenceLearningPlacement';
+import {normalizeVideoSentenceLearningAppearance} from '@/src/core/config/videoSentenceLearningAppearance';
 
 // 英文状态刷新依赖运行时已加载的资源包；测试注册真实文案，生产仍按当前语言加载。
 registerAllUiLanguageBundles();
@@ -241,6 +245,16 @@ const nativeSource = 'The native caption remains visible.';
 
 function mobileYoutubeLayoutFixture() {
   const f = fixture(undefined, 'youtube');
+  // linkedom 缺标准 CSS priority 接口；保留实际 style 序列化，只补浏览器单属性优先级端口。
+  const stylePrototype = Object.getPrototypeOf(f.player.style);
+  const priorities = new WeakMap<object, Map<string, string>>();
+  const set = stylePrototype.setProperty, remove = stylePrototype.removeProperty;
+  defineBrowserPort(stylePrototype, 'getPropertyPriority', {configurable: true, value: function (this: object, name: string) {return priorities.get(this)?.get(name) || '';}});
+  defineBrowserPort(stylePrototype, 'setProperty', {configurable: true, value: function (this: object, name: string, value: string, priority = '') {
+    if (!priorities.has(this)) priorities.set(this, new Map());
+    priorities.get(this)!.set(name, priority); return set.call(this, name, value);
+  }});
+  defineBrowserPort(stylePrototype, 'removeProperty', {configurable: true, value: function (this: object, name: string) {priorities.get(this)?.delete(name); return remove.call(this, name);}});
   defineBrowserPort(f.window, 'location', {configurable: true, value: new URL('https://m.youtube.com/watch?v=cue-proof')});
   const bounds = {left: 0, top: 48, width: 402, height: 226, right: 402, bottom: 274, x: 0, y: 48, toJSON: () => ({})};
   defineBrowserPort(f.window.HTMLElement.prototype, 'getBoundingClientRect', {configurable: true, value: () => bounds});
@@ -267,6 +281,102 @@ function mobileYoutubeLayoutFixture() {
 }
 
 describe('public mounted mobile YouTube subtitle control layout', () => {
+  it.each(['resize', 'orientationchange', 'visualViewport-resize', 'visualViewport-scroll'] as const)('calibrates the owned menu host before real menu measurement in the next %s frame', async eventName => {
+    const f = mobileYoutubeLayoutFixture();
+    const viewport = f.document.createElement('div');
+    Object.assign(viewport, {width: 402, height: 720, offsetLeft: 0, offsetTop: 0, scale: 1});
+    defineBrowserPort(f.window, 'visualViewport', {configurable: true, value: viewport});
+    const geometry = {left: 0, top: 48, width: 402, height: 226};
+    const rect = (left: number, top: number, width: number, height: number) => ({left, top, width, height,
+      right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({})});
+    defineBrowserPort(f.player, 'getBoundingClientRect', {configurable: true, value: () => rect(geometry.left, geometry.top, geometry.width, geometry.height)});
+    defineBrowserPort(f.player, 'clientWidth', {configurable: true, get: () => geometry.width});
+    defineBrowserPort(f.player, 'clientHeight', {configurable: true, get: () => geometry.height});
+    const nativeRect = f.window.HTMLElement.prototype.getBoundingClientRect;
+    defineBrowserPort(f.window.HTMLElement.prototype, 'getBoundingClientRect', {configurable: true, value: function (this: HTMLElement) {
+      return this.classList.contains('fluent-read-video-menu-host')
+        ? rect(0, 0, Number.parseFloat(this.style.width), Number.parseFloat(this.style.height)) : nativeRect.call(this);
+    }});
+    const dispose = f.start(); await vi.advanceTimersByTimeAsync(32);
+    const menu = f.document.getElementById(VIDEO_TRANSLATION_MENU_ID)!, host = menu.parentElement!;
+    defineBrowserPort(host, 'clientWidth', {configurable: true, get: () => Number.parseFloat(host.style.width)});
+    defineBrowserPort(host, 'clientHeight', {configurable: true, get: () => Number.parseFloat(host.style.height)});
+    defineBrowserPort(menu, 'scrollHeight', {configurable: true, get: () => 250});
+    const button = f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)!;
+    const click = new f.window.Event('click', {bubbles: true}); Object.defineProperty(click, 'isTrusted', {value: true}); button.dispatchEvent(click);
+    expect(menu.hidden).toBe(false); expect(menu.dataset.layout).toBe('wide'); expect(host.clientWidth).toBe(402);
+    Object.assign(geometry, {left: 12, top: 36, width: 240, height: 320});
+    if (eventName.startsWith('visualViewport-')) viewport.dispatchEvent(new f.window.Event(eventName.slice('visualViewport-'.length)));
+    else f.window.dispatchEvent(new f.window.Event(eventName));
+    // 只推进实际事件调度的一帧，远短于1秒播放器同步；不调用 binding.sync 或媒体/配置刷新。
+    await vi.advanceTimersByTimeAsync(16);
+    expect(menu.parentElement).toBe(host); expect(host.clientWidth).toBe(240); expect(host.clientHeight).toBe(320);
+    expect(host.style.transform).toBe('translate(12px, 36px) scale(1, 1)'); expect(menu.dataset.layout).toBe('stack');
+    expect(f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)).toBe(button);
+    expect(f.document.querySelectorAll('#' + VIDEO_TRANSLATION_MENU_ID)).toHaveLength(1);
+    f.window.dispatchEvent(new f.window.Event('resize')); dispose(); await vi.advanceTimersByTimeAsync(16);
+    expect(f.scope.querySelector('.fluent-read-video-menu-host')).toBeNull();
+  });
+
+  it.each([false, true])('学习宿主增删在一帧内撤回/恢复字幕host，scroll=%s，模式与Off保持正确', async scrolling => {
+    ports.config.videoPreferHumanSubtitles = false;
+    const f = mobileYoutubeLayoutFixture();
+    for (const [className, left, top, width, height] of [
+      ['player-controls-middle-core-buttons', 91, 133, 220, 56], ['player-controls-top', 234, 48, 144, 48],
+    ] as const) {
+      const node = f.document.createElement('div'); node.className = className; f.root.appendChild(node);
+      defineBrowserPort(node, 'getBoundingClientRect', {value: () => ({left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON() {return {};}})});
+    }
+    const text = scrolling ? 'A long paused caption. '.repeat(40) : 'Good morning. How are you?';
+    f.start(); f.emitTimedText([{startMs: 0, durationMs: 20000, text}]); f.setCaption(text); await vi.advanceTimersByTimeAsync(32);
+    const panel = f.document.getElementById(VIDEO_SUBTITLE_PANEL_ID)!, layer = f.document.getElementById(VIDEO_TRANSLATION_LAYER_ID)!;
+    // 浏览器测量端口区分普通卡片与极长卡片；学习宿主的真实增删由实际host实现负责。
+    const height = () => Math.min(scrolling ? 600 : 60, Number.parseFloat(panel.style.maxHeight) || 600);
+    defineBrowserPort(panel, 'getBoundingClientRect', {value: () => {
+      const width = Math.min(153, Number.parseFloat(panel.style.maxWidth) || 153), h = height();
+      const left = Number.parseFloat(panel.style.left) || 56, explicitTop = Number.parseFloat(panel.style.top);
+      const top = 48 + (Number.isFinite(explicitTop) ? explicitTop : 226 - Number.parseFloat(panel.style.getPropertyValue('--fluent-read-video-subtitle-bottom')) - h);
+      return {left, top, width, height: h, right: left + width, bottom: top + h, x: left, y: top, toJSON() {return {};}};
+    }});
+    defineBrowserPort(panel, 'scrollHeight', {get: () => scrolling ? 600 : 60}); defineBrowserPort(panel, 'clientHeight', {get: height});
+    f.emitVideo('timeupdate'); await vi.advanceTimersByTimeAsync(32);
+    expect(panel.dataset.fluentReadSubtitleLayout).toBe(scrolling ? 'scroll' : 'free'); expect(panel.parentElement?.id).toBe(VIDEO_SUBTITLE_SCROLL_HOST_ID);
+    panel.scrollTop = scrolling ? 120 : 0;
+    const learning = createVideoSentenceLearningHost({markUi: markVideoUi, mount: host => {
+      const view = f.document.createElement('section'); host.appendChild(view); return () => view.remove();
+    }, place: (host, player) => createVideoSentenceLearningPlacement({host, player,
+      appearance: normalizeVideoSentenceLearningAppearance(ports.config.videoSentenceLearningAppearance), onDragPosition() {}})});
+    const open = () => learning.open(f.player, {video: f.video, cues: [], platform: 'youtube', title: 'Learning', sourceLanguage: 'en', targetLanguage: 'zh-CN', translate: async value => value});
+    try {
+      open(); await vi.advanceTimersByTimeAsync(16);
+      const learningPanel = f.document.getElementById('fluent-read-video-learning-panel')!;
+      const learningFrame = learningPanel.parentElement!;
+      expect(learningFrame.classList.contains('fluent-read-video-learning-frame')).toBe(true); expect(learningFrame.parentElement).toBe(f.scope);
+      expect(learning.isConnected(f.player)).toBe(true); expect(panel.parentElement).toBe(layer);
+      expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull(); expect(panel.hasAttribute('tabindex')).toBe(false);
+      // 整块frame变更也要通知真实字幕runtime；此视图端口不负责自动修复第三方DOM删除。
+      learningFrame.remove(); await vi.advanceTimersByTimeAsync(16);
+      expect(learning.isConnected(f.player)).toBe(false); expect(panel.parentElement?.id).toBe(VIDEO_SUBTITLE_SCROLL_HOST_ID);
+      f.scope.appendChild(learningFrame); await vi.advanceTimersByTimeAsync(16); expect(panel.parentElement).toBe(layer);
+      const frame = vi.spyOn(f.window, 'requestAnimationFrame');
+      learningPanel.setAttribute('style', learningPanel.getAttribute('style') + ';max-height:170px'); learningPanel.firstElementChild!.append('Learning content');
+      learningFrame.setAttribute('style', learningFrame.getAttribute('style') + ';transform:translate(0px,0px)');
+      panel.setAttribute('style', panel.getAttribute('style') + ';opacity:1'); await settle(); expect(frame).not.toHaveBeenCalled(); frame.mockRestore();
+      learning.close(); await vi.advanceTimersByTimeAsync(16);
+      expect(panel.parentElement?.id).toBe(VIDEO_SUBTITLE_SCROLL_HOST_ID); expect(panel.scrollTop).toBe(scrolling ? 120 : 0);
+      open(); await vi.advanceTimersByTimeAsync(16);
+      // 切换仅原文按既有runtime契约清空翻译会话；同句滚动保留已在未换模式的关闭路径独立验证。
+      f.changeConfig({videoSubtitleDisplayMode: 'original-only'}); await settle();
+      expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull(); expect(layer.classList.contains('fluent-read-video-display-original-only')).toBe(true);
+      learning.close(); await vi.advanceTimersByTimeAsync(16);
+      expect(panel.parentElement?.id).toBe(VIDEO_SUBTITLE_SCROLL_HOST_ID);
+      expect(panel.parentElement?.classList.contains('fluent-read-video-display-original-only')).toBe(true);
+      open(); await vi.advanceTimersByTimeAsync(16); f.changeConfig({videoTranslationEnabled: false}); await settle();
+      learning.close(); await vi.advanceTimersByTimeAsync(1100);
+      expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull(); expect(panel.hasAttribute('tabindex')).toBe(false);
+    } finally {learning.close();}
+  });
+
   it('滚动字幕通过真实入口开菜单时撤回兄弟host，关闭恢复同句位置，Off彻底清理', async () => {
     ports.config.videoPreferHumanSubtitles = false;
     const f = mobileYoutubeLayoutFixture();
@@ -288,7 +398,8 @@ describe('public mounted mobile YouTube subtitle control layout', () => {
       f.document.getElementById(VIDEO_TRANSLATION_BUTTON_ID)!.dispatchEvent(event); await settle();
     };
     await toggleMenu();
-    expect(menu.hidden).toBe(false); expect(menu.parentElement).toBe(f.player);
+    expect(menu.hidden).toBe(false); expect(menu.parentElement?.classList.contains('fluent-read-video-menu-host')).toBe(true);
+    expect(menu.parentElement?.parentElement).toBe(f.scope);
     expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull(); expect(panel.parentElement).toBe(layer);
     expect(panel.hasAttribute('data-fluent-read-subtitle-scrollable')).toBe(false); expect(panel.hasAttribute('tabindex')).toBe(false);
     expect(panel.style.getPropertyValue('--fluent-read-video-subtitle-padding')).toBeFalsy();
@@ -299,6 +410,7 @@ describe('public mounted mobile YouTube subtitle control layout', () => {
     expect(f.document.querySelectorAll('#' + VIDEO_SUBTITLE_PANEL_ID)).toHaveLength(1);
     await toggleMenu(); clickMenu(f, '[data-mode="off"]'); await settle();
     expect(ports.config.videoTranslationEnabled).toBe(false); expect(menu.isConnected).toBe(false);
+    expect(f.scope.querySelector('.fluent-read-video-menu-host')).toBeNull();
     expect(f.document.getElementById(VIDEO_SUBTITLE_SCROLL_HOST_ID)).toBeNull(); expect(panel.hasAttribute('tabindex')).toBe(false);
   });
 

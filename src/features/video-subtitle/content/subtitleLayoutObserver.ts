@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/subtitleLayoutObserver.ts
  * 文件职责：拥有字幕布局的尺寸、同视频原生控件显隐和结构订阅，并将重排合并到单个动画帧。
- * 主要内容：移动控件观察只在验证后的同视频范围，排除自有字幕/菜单变更；重绑、关闭和销毁解除观察并取消未执行帧。
+ * 主要内容：移动控件观察只在验证后的同视频范围，排除自有字幕/菜单变更，仅响应学习面板宿主的挂载和关闭；重绑、关闭和销毁解除观察并取消未执行帧。
  * 模块边界：只调度注入的布局回调，不读取字幕内容或配置，不修改宿主/媒体状态。
  */
 import {getYoutubeSubtitleControlsScope, YOUTUBE_SUBTITLE_CONTROLS_SELECTOR} from './youtubeControlsScope';
@@ -26,6 +26,12 @@ export function createSubtitleLayoutObserver(onLayout: () => void, isYoutubePage
   const controlsObserver = new MutationObserver(records => {
     const scope = layoutControlsScope;
     if (!scope || !layoutPlayer || !layoutVideo || destroyed) return;
+    // 只响应真实学习宿主或其整块自有frame增删，不响应面板内部或字幕自己的布局写入。
+    const learningSelector = '#fluent-read-video-learning-panel.fluent-read-video-ui[data-fluent-read-ui="video-subtitle"]';
+    if (records.some(record => record.type === 'childList'
+      && [...record.addedNodes, ...record.removedNodes].some(node => node instanceof Element
+        && (node.matches(learningSelector) || node.matches('.fluent-read-video-learning-frame.fluent-read-video-ui[data-fluent-read-ui="video-subtitle"]')
+          && node.querySelector(learningSelector))))) scheduleSubtitleLayout();
     const ownUi = (node: Node) => node instanceof Element && Boolean(node.closest('.fluent-read-video-ui'));
     const relevant = records.filter(record => !ownUi(record.target)
       && (record.type === 'attributes' || [...record.addedNodes, ...record.removedNodes].some(node => !ownUi(node))));

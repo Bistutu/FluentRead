@@ -12,6 +12,7 @@ import {type VideoSubtitleDisplayMode} from '@/src/core/config/model';
 import {cuesToSrt, sanitizeSubtitleFilename, type VideoSubtitleCue} from './youtubeSubtitleData';
 import {getCaptionPlatform} from './platforms';
 import {fitVideoSubtitleFontSize} from './subtitleLayout';
+import {getYoutubeSubtitleControlsScope} from './youtubeControlsScope';
 import {getVisibleYoutubeSubtitleControls, positionMobileYoutubeSubtitle, resetSubtitlePanelLayout, finishSubtitlePanelLayout,
   prepareSubtitlePanelLayout, findOwnedSubtitlePanel, syncSubtitleScrollHostState, VIDEO_SUBTITLE_SCROLL_HOST_ID} from './subtitleControlLayout';
 import {createVideoKaraokeController, setVideoCaptionText, type VideoKaraokeController, VIDEO_KARAOKE_FILL_PROPERTY, VIDEO_KARAOKE_STATE_ATTRIBUTE, VIDEO_KARAOKE_TEXT_ATTRIBUTE, VIDEO_KARAOKE_UNIT_CLASS} from './karaoke';
@@ -587,6 +588,7 @@ export function syncTranslationOverlayPosition(container: HTMLElement | null): v
   const playerWidth = viewport ? viewport.width : playerRect.width || 960;
   const menu = document.getElementById(VIDEO_TRANSLATION_MENU_ID);
   const menuOpen = menu instanceof HTMLElement && !menu.hidden;
+  const learningOpen = Boolean(getYoutubeSubtitleControlsScope(player).querySelector('#fluent-read-video-learning-panel.fluent-read-video-ui[data-fluent-read-ui="video-subtitle"]'));
   const menuReserve = menuOpen && playerWidth >= 640
     ? Math.min(menu.getBoundingClientRect().width + 20, playerWidth * .34)
     : 0;
@@ -637,11 +639,11 @@ export function syncTranslationOverlayPosition(container: HTMLElement | null): v
       : panelLeft;
   };
   centerPanel();
-  // 菜单开启时撤回自有兄弟滚动宿主，字幕回原层且不接收指针，避免新增层遮挡既有菜单。
-  const adaptive = !menuOpen && isYouTubeVideoPage() && compactPlayer && autoBottom && config.on !== false && config.videoTranslationEnabled !== false && config.videoSubtitleVisible !== false && viewport
+  // 菜单或学习面板开启时撤回兄弟宿主；字幕回原层且不接收指针，避免遮挡当前交互面板。
+  const adaptive = !menuOpen && !learningOpen && isYouTubeVideoPage() && compactPlayer && autoBottom && config.on !== false && config.videoTranslationEnabled !== false && config.videoSubtitleVisible !== false && viewport
     && positionMobileYoutubeSubtitle(panel, player, layer, viewport, availableWidth);
   if (adaptive) return;
-  finishSubtitlePanelLayout(panel, menuOpen);
+  finishSubtitlePanelLayout(panel, menuOpen || learningOpen);
   fitVideoSubtitleFontSize(baseFontSize * fontScale,
     fullscreen ? Math.min(maximumHeight, panel.clientHeight || maximumHeight) : maximumHeight,
     size => panel.style.setProperty('--fluent-read-video-subtitle-font-size', `${size}px`),
