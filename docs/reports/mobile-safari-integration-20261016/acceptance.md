@@ -2,6 +2,8 @@
 
 本文保留 `34e317046` 及此前产物的验收记录；后续主线整合、d9 生产菜单与原生运行结果见[后续验收](./main-followup.md)。不同版本的证据分别记录。
 
+2026-10-18 补充：服务概览可见标题已提交为 `a41dddd`，55 项组件专项、类型检查、测试审计、三份生产 Web 构建及四格 320×480 Edge 视口检查通过。旧 `8274d0c` 的活动软键盘横竖屏单流程另为 1 PASS / 0 SKIP / 0 FAIL；它不含新标题，横屏列表仍被键盘遮挡。版本与证据边界见[标题与旋转补充](./services-title-rotation-followup.md)。下文保留各阶段当时的记录。
+
 2026-10-17 的 `8274d0c` Safari 触摸 Popup 快捷入口改用受限定的两列 flex 布局，保留各皮肤间距及奇数末项半宽。103 项专项、三份生产 Web 构建、三目标本地原生编译、30 项桌面 Edge CSS 夹具通过。默认中文竖屏 sheet 展开场景与七动作服务抽屉／键盘场景分别为 1 PASS / 0 SKIP / 0 FAIL；后者选定测试耗时 51.294 秒，确认搜索、清空、Back 和关闭的实际结果。普通收起态下缘仍有裁剪，原生 sheet 展开不等于 DOM 滚动；旋转仍待验收；视频全屏 prefix 本次 0 PASS / 1 SKIP / 0 FAIL，目标闭包未通过，未进入播放或全屏，结论为 UNVERIFIED。详见 [快捷入口布局与分范围验证](./popup-feature-layout.md) 及 [公开验证摘要](./popup-feature-layout-evidence/verification-summary.json)。
 
 2026-10-17 的 `461c2fb` Safari 触摸 Popup 竖屏填宽与有限键盘流程见[竖屏填宽补充](./portrait-touch-width-followup.md)。选择器“返回”和关闭已通过；焦点保持／返回未单独验收，旋转等范围按独立场景记录。

@@ -46,3 +46,7 @@ Safari 触摸独立 Popup 的快捷入口改为两列换行，卡片按内容确
 两个场景结束后均已恢复原 D9 包、核对限定的保留数据，专用模拟器为 Shutdown，所属资源已释放。这仅覆盖固定的原生 FluentRead 数据 13 文件、Userscripts 包 47 文件和 Demo396，不代表全部扩展设置、存储或缓存保存。
 
 本次只确认上述默认中文竖屏场景；旋转、其他原生皮肤或语言、VoiceOver、物理设备、实时供应商和全量回归仍未验收。原生视频全屏 prefix 本次为 **0 PASS / 1 SKIP / 0 FAIL（UNVERIFIED）**，选定测试 13.076 秒，运行 guard 60.880 秒。单次导航后 owner 精确匹配，已知 Player／TED 各 1，但唯一目标闭包未通过；尚未进入 currentURLExposure，不能确认精确当前 host 或页面完全加载。未执行 Play、全屏、AVKit Close 或 cue 观察，也没有授权动作或截图。源记录未区分具体哪个闭包条件失败，因此不推断根因。D9 已恢复，专用模拟器 Shutdown，资源释放；只读 known-node closure 诊断正在准备，尚未执行。见 [本次停止摘要及 10 份原始 JSON](./popup-feature-layout-evidence/video-prefix-stop/summary.public.json)。本稿没有声明 CC／Off／重新选择或完整视频目标通过。公开包不含 SDK 日志、App、私有完整文件清单或进程记录。各项范围与逐件大小／SHA256 见 [验证摘要](./popup-feature-layout-evidence/verification-summary.json) 和 [复制索引](./popup-feature-layout-evidence/copy-index.json)。
+
+## 后续标题与键盘旋转检查（2026-10-18）
+
+旧 `8274d0c` 新增完成一条保持软键盘的横竖屏流程，1 PASS / 0 SKIP / 0 FAIL；`gpt` 保留并完成清空、返回、关闭。横屏列表被键盘遮住，未选择服务商。服务概览标题随后以 `a41dddd` 补充，已通过四格桌面 Edge 320×480 视口检查；法文桌面壳固有 380px 宽度按夹具边界记录，新标题尚无原生编译或界面结果。历史记录保留，详见[标题与活动键盘旋转补充](./services-title-rotation-followup.md)。
