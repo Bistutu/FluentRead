@@ -204,7 +204,7 @@ export function createHarnessLanguageModel(config: Config, service: string, mode
   if (service === services.chatgptPlan) {
     const unavailable = getTranslationServiceUnavailableMessage(service);
     if (unavailable) throw Object.assign(new Error(unavailable), {kind: 'bad-request', retryable: false});
-    return createChatGPTPlanHarnessModel(model);
+    return createSingleHarnessLanguageModel(config, service, model);
   }
   if (service === services.bilibili) return createSingleHarnessLanguageModel(config, service, model);
   const keys = getServiceApiKeys(config, service);

@@ -68,6 +68,37 @@ describe('harness model gateway', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('keys the local plan input only by the trimmed model while preserving saved configuration', () => {
+    const config = new Config();
+    const key = getHarnessModelInputKey(config, services.chatgptPlan, ' account-model ');
+    config.token[services.chatgptPlan] = 'unused-fixture-key';
+    config.proxy[services.chatgptPlan] = 'https://unused.fixture/v1';
+    config.apiKeys[services.chatgptPlan] = ['unused-fixture-A', 'unused-fixture-B'];
+    const before = JSON.stringify(config);
+    expect(key).toMatch(/^[a-f0-9]{64}$/u);
+    expect(getHarnessModelInputKey(config, services.chatgptPlan, 'account-model')).toBe(key);
+    expect(getHarnessModelInputKey(config, services.chatgptPlan, 'other-model')).not.toBe(key);
+    expect(JSON.stringify(config)).toBe(before);
+  });
+
+  it('changes the provider input key when rotation, required credentials or thinking changes', () => {
+    const config = new Config();
+    const service = services.deepseek, model = 'deepseek-v4-flash';
+    delete config.token[service];
+    const withoutCredential = getHarnessModelInputKey(config, service, model);
+    config.token[service] = 'fixture-A';
+    expect(getHarnessModelInputKey(config, service, model)).not.toBe(withoutCredential);
+    config.apiKeys[service] = ['fixture-A', 'fixture-B'];
+    const rotating = getHarnessModelInputKey(config, service, model);
+    config.apiKeyRecoveryMs += 60_000;
+    expect(getHarnessModelInputKey(config, service, model)).not.toBe(rotating);
+    config.apiKeyRotationEnabled[service] = false;
+    const fixedKey = getHarnessModelInputKey(config, service, model);
+    expect(fixedKey).not.toBe(rotating);
+    config.modelThinking[service] = {[model]: true};
+    expect(getHarnessModelInputKey(config, service, model)).not.toBe(fixedKey);
+  });
+
   it('uses the fixed anonymous Bilibili endpoint without residual keys, proxy, tools or model overrides', async () => {
     const config = new Config();
     config.token[services.bilibili] = 'must-not-send';
