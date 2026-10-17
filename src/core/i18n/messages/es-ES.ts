@@ -9,6 +9,7 @@ import videoLearningText from './video-learning/es-ES.json';
 import selfHelpText from './self-help/es-ES.json';
 import {compositeTranslationMessages, compositeTranslationLegacyText} from './compositeTranslation';
 import {aiRequestTimeoutMessages} from './aiRequestTimeout';
+import {mimoRetirementLegacyText} from './mimoRetirement';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/es-ES.json';
@@ -2385,7 +2386,7 @@ const esESLegacyTextBase: Readonly<Record<string, string>> = {
     "API 凭据和翻译次数不会随设置版本恢复": 'Las credenciales de la API y el número de traducciones no se revierten con la versión establecida.',
     'FluentRead 备份': 'Copia de seguridad de FluentRead',
     'FluentRead 翻译中心': 'Centro de Traducción FluentRead',
-    "MiMo 旧编号将于北京时间 2026-10-21 10:00 失效。直连官方 API 时，自定义模型及请求体中的 mimo-v2.5 / mimo-v2.5-pro 会分别按 mimo-v2.6-flash / mimo-v2.6-pro 请求并按新模型计费；第三方网关请手动确认型号。": "Los ID antiguos de MiMo caducan el 2026-10-21 a las 10:00, hora de Pekín. En las solicitudes directas a la API oficial, mimo-v2.5 / mimo-v2.5-pro en modelos personalizados o cuerpos de solicitud se envían como mimo-v2.6-flash / mimo-v2.6-pro, respectivamente, con las nuevas tarifas. Comprueba manualmente los modelos de pasarelas de terceros.",
+    ...mimoRetirementLegacyText['es-ES'],
     "MiMo 按量付费 Key 通常以 sk- 开头；请确认 Key 来自 API Keys 页面": 'Las teclas de pago por uso de MiMo suelen empezar con sk-; Por favor, asegúrate de que la clave proviene de la página de Claves API.',
     'OCR 服务初始化失败，请重新打开设置页后重试。': 'Falló la inicialización del servicio OCR. Por favor, vuelve a abrir la página de configuración e inténtalo de nuevo.',
     'Offscreen 文档': 'Documento fuera de pantalla',
