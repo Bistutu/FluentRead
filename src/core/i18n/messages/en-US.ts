@@ -2377,6 +2377,7 @@ const enUSLegacyTextBase: Readonly<Record<string, string>> = {
     "API 凭据和翻译次数不会随设置版本恢复": 'API credentials and translation counts do not revert with the set version.',
     'FluentRead 备份': 'FluentRead backup',
     'FluentRead 翻译中心': 'FluentRead Translation Center',
+    "MiMo 旧编号将于北京时间 2026-10-21 10:00 失效。直连官方 API 时，自定义模型及请求体中的 mimo-v2.5 / mimo-v2.5-pro 会分别按 mimo-v2.6-flash / mimo-v2.6-pro 请求并按新模型计费；第三方网关请手动确认型号。": "MiMo legacy IDs expire at 10:00 Beijing time on 2026-10-21. For direct official API requests, custom model and request-body IDs mimo-v2.5 / mimo-v2.5-pro are sent as mimo-v2.6-flash / mimo-v2.6-pro and billed at the new rates. Check model IDs with your third-party gateway.",
     "MiMo 按量付费 Key 通常以 sk- 开头；请确认 Key 来自 API Keys 页面": 'MiMo pay-as-you-go keys usually start with sk-; Please make sure the Key comes from the API Keys page.',
     'OCR 服务初始化失败，请重新打开设置页后重试。': 'OCR service initialization failed. Please reopen the settings page and try again.',
     'Offscreen 文档': 'Offscreen document',

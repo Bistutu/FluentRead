@@ -2388,6 +2388,7 @@ const jaJPLegacyTextBase: Readonly<Record<string, string>> = {
     "API 凭据和翻译次数不会随设置版本恢复": 'APIの認証情報や翻訳数は設定されたバージョンで元に戻ることはありません。',
     'FluentRead 备份': 'FluentRead バックアップ',
     'FluentRead 翻译中心': 'FluentRead 翻訳センター',
+    "MiMo 旧编号将于北京时间 2026-10-21 10:00 失效。直连官方 API 时，自定义模型及请求体中的 mimo-v2.5 / mimo-v2.5-pro 会分别按 mimo-v2.6-flash / mimo-v2.6-pro 请求并按新模型计费；第三方网关请手动确认型号。": "MiMo の旧 ID は北京時間 2026-10-21 10:00 に無効になります。公式 API への直接リクエストでは、カスタムモデルとリクエスト本文の mimo-v2.5 / mimo-v2.5-pro をそれぞれ mimo-v2.6-flash / mimo-v2.6-pro に置換し、新モデルの料金が適用されます。外部ゲートウェイのモデル ID は手動で確認してください。",
     "MiMo 按量付费 Key 通常以 sk- 开头；请确认 Key 来自 API Keys 页面": 'MiMoの従量分支払キーは通常sk-で始まります;キーがAPIキーのページから取得されていることを確認してください。',
     'OCR 服务初始化失败，请重新打开设置页后重试。': 'OCRサービスの初期化に失敗しました。設定ページを再度開いて、もう一度お試しください。',
     'Offscreen 文档': 'オフスクリーン文書',

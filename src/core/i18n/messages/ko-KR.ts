@@ -2388,6 +2388,7 @@ const koKRLegacyTextBase: Readonly<Record<string, string>> = {
     "API 凭据和翻译次数不会随设置版本恢复": 'API 자격 증명과 번역 수는 설정된 버전과 함께 되돌리지 않습니다.',
     'FluentRead 备份': '플루언트리드 백업',
     'FluentRead 翻译中心': '플루언트리드 번역 센터',
+    "MiMo 旧编号将于北京时间 2026-10-21 10:00 失效。直连官方 API 时，自定义模型及请求体中的 mimo-v2.5 / mimo-v2.5-pro 会分别按 mimo-v2.6-flash / mimo-v2.6-pro 请求并按新模型计费；第三方网关请手动确认型号。": "MiMo의 기존 ID는 베이징 시간 2026-10-21 10:00에 만료됩니다. 공식 API에 직접 요청할 때 사용자 지정 모델 및 요청 본문의 mimo-v2.5 / mimo-v2.5-pro는 각각 mimo-v2.6-flash / mimo-v2.6-pro로 전송되며 새 모델 요금이 적용됩니다. 타사 게이트웨이의 모델 ID는 직접 확인하세요.",
     "MiMo 按量付费 Key 通常以 sk- 开头；请确认 Key 来自 API Keys 页面": 'MiMo의 페이 페이 유 키는 보통 sk-로 시작합니다; 키가 API 키 페이지에서 가져오는지 꼭 확인해 주세요.',
     'OCR 服务初始化失败，请重新打开设置页后重试。': 'OCR 서비스 초기화가 실패했습니다. 설정 페이지를 다시 열고 다시 시도해 주세요.',
     'Offscreen 文档': '오프스크린 문서',

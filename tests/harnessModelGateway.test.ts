@@ -27,6 +27,32 @@ describe('harness model gateway', () => {
     planBuild.enabled = false;
   });
 
+  it.each([
+    ['mimo', 'https://api.xiaomimimo.com/v1/chat/completions', 'mimo-v2.5', 'mimo-v2.6-flash'],
+    ['mimo', 'https://token-plan-sgp.xiaomimimo.com/v1/chat/completions', 'mimo-v2.5-pro', 'mimo-v2.6-pro'],
+    ['custom:mimo', 'https://api.xiaomimimo.com/v1', 'mimo-v2.5-pro', 'mimo-v2.6-pro'],
+    ['mimo', 'https://gateway.example/v1/chat/completions', 'mimo-v2.5', 'mimo-v2.5'],
+  ])('reading/writing gateway maps %s at %s without editing saved settings', async (service, endpoint, legacy, expected) => {
+    const config = new Config();
+    config.harness.model = legacy;
+    config.writing.model = legacy;
+    if (service.startsWith('custom:')) {
+      config.customOpenAIProviders = [{id: service, name: 'MiMo', endpoint, models: [legacy]}];
+    } else config.proxy[service] = endpoint;
+    const before = JSON.stringify(config);
+    const bodies: Record<string, unknown>[] = [];
+    setRuntimeFetch(async (_input, init) => {
+      const body = JSON.parse(String(init?.body)); bodies.push(body);
+      if (body.stream) return new Response('data: {"choices":[{"index":0,"delta":{"content":"done"},"finish_reason":null}]}\n\ndata: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', {headers: {'content-type': 'text/event-stream'}});
+      return response({choices: [{message: {role: 'assistant', content: 'done'}, finish_reason: 'stop'}]});
+    });
+    const model = createHarnessLanguageModel(config, service, legacy);
+    expect((await generateText({model, prompt: 'Explain', maxRetries: 0})).text).toBe('done');
+    expect(await streamText({model, prompt: 'Explain', maxRetries: 0}).text).toBe('done');
+    expect(bodies.map(body => body.model)).toEqual([expected, expected]);
+    expect(JSON.stringify(config)).toBe(before);
+  });
+
   it('refuses saved ChatGPT requests in the public build before any transport and preserves their configuration', () => {
     const config = new Config(); config.service = services.chatgptPlan;
     config.model[services.chatgptPlan] = 'saved-account-model';
