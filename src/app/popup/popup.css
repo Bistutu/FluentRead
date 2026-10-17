@@ -733,7 +733,7 @@ footer button { font-weight: 500; color: var(--muted); }
 :root[data-fluentread-embedded-popup] #app { width: min(100vw, var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px))); }
 :root[data-fluentread-embedded-popup] .popup-shell { max-height: min(560px, 100dvh); }
 
-/* 仅公开平台 API 确认的 Firefox Android 使用固定视口宽度；桌面工具栏与 Safari 继续保留固有尺寸。 */
+/* 仅公开平台 API 确认的 Firefox Android 使用固定视口宽度；桌面工具栏继续保留固有尺寸。 */
 :root[data-fluentread-android-popup],
 :root[data-fluentread-android-popup] body,
 :root[data-fluentread-android-popup] #app {
@@ -741,6 +741,14 @@ footer button { font-weight: 500; color: var(--muted); }
 }
 /* Android 已由浏览器给出固定页面高度，只保留画布内部滚动，避免外层再截住页脚。 */
 :root[data-fluentread-android-popup] .popup-shell { max-height: min(560px, 100dvh); }
+
+/* Safari 触摸工具栏的宿主已给定视口；页内 iframe 继续保留自己的宽度契约。 */
+:root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]),
+:root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]) body,
+:root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]) #app { width: 100%; }
+:root[data-fluentread-safari-touch-popup]:not([data-fluentread-embedded-popup]) .popup-drawer-modal[data-fluent-read-popup-viewport] .popup-drawer {
+  width: var(--fluent-read-drawer-width) !important;
+}
 
 /* 同排操作保持紧凑高度；短标题合并快捷键，完整用途和长组合由按钮提示呈现。 */
 :root .popup-shell[data-interface-skin] .translate-action { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 6px; }
