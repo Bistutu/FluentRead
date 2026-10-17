@@ -119,10 +119,12 @@ pnpm test:regression:all
 | `src/features/document-translation/services/translation.ts` | `37ec202e3e6dea1821a0d27f0fac263e3d9148b3b58aff8cd8f80db55a4bdb19` |
 | `src/app/document-translation/DocumentApp.vue` | `e342a5775480e529e8847a48eaad7891793bbc82a73637cdb914236c92f25d67` |
 | `src/features/vocabulary/materialRepository.ts` | `4794c327862cd39222b78311630df59982f88fede8e893c706b70c20e281b178` |
-| `src/app/background/contextMenuRuntime.ts` | `338f1b6f62c6f8fb4033f0bf04bcac03acfd7ef7c549995484108d62262c9062` |
-| `src/app/background/contextMenuUpdates.ts` | `1f857c4d02bb4362080cdd3b176da2f4cfd8f9fcdc0cf560b9fd1e858ecff0ba` |
+| `src/app/background/contextMenuRuntime.ts` | `d955f41ea519c809f1f685602e5767527aeae73e249b53fffae989c0bd9f4170` |
+| `src/app/background/contextMenuUpdates.ts` | `5744616f3aac49621646bcc4c773842922e51b5ddf492bbb8cbe6caca07a54a0` |
 
 调度器最终重新审查包含 70 项定向测试（四维覆盖率均 100%）、96 个独立时间/lease/deadline 场景，以及配置和时钟回调重入的取消/追加顺序反例。曾建议删除的 timer 分支被实际重入反例否定；先修复重入归属，再凭不变量移除真正不可达分支，没有添加覆盖率忽略或降低门槛。
+
+完整回归追加发现菜单 runtime 超出既有 142 行上限；未提高门槛，将相同状态捕获闭包移至既有菜单更新模块，runtime 降至 140 行。修正后重新完成三轮：平台/存储审查者核查实现与 AST 等价，统筹审查者核查 click → store → query → native 队列及方法绑定，媒体/文档审查者核查性能与异常/导航/写入中断，并以 6 组轻量探针复验。6 套邻接与架构测试共 177 项通过，表中两个菜单哈希为该次重新审查后的快照；其余四个生产文件及五个测试未变。
 
 另做六个生产文件的联合交叉审查：文档排序继续进入相同 broker/scheduler，素材缓存只属于事务，菜单只影响显示归属；不更改消息协议、设置 schema、权限、依赖、workflow、并发/批次限制或重试预算。
 
