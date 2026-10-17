@@ -29,7 +29,31 @@ Edge v4 的短模式实际滚动到首项和末项，完整 46px 行可见并通
 
 macOS／Simulator 为链接器 ad-hoc、无开发者团队；iPhoneOS 未签名、无团队。这些分类来自 Root 实际记录的 codesign／file 结果，并由独审结合真实可执行文件 hash 复核，不等于开发者签名、发布或真机验收。产品版本、依赖与权限没有因本次修复改变，未借用参考仓库实现。
 
-## 新产品原生运行：权限提示站点不一致，SKIP
+## 最新原生运行 R7：键盘、短列表与回程通过
+
+同一 7e504c21… 生产包在任务专用 iPhone 16 Pro／iOS 26.2 Simulator 中实际运行，官方结果为 **1 PASS / 0 SKIP / 0 FAIL**；所选方法 73.008 秒，官方测试总耗时 79.124 秒。未增加产品修改，也未放宽原有 3 秒新鲜度、完整行、命中、单次手势或退出检查。
+
+实际流程为：打开服务选择器并输入 `gpt`，保持原生软键盘旋转到横屏；在 58px 抽屉的保守 50px 内容区中只拖动一次，让操作行滚走，随后完整显示 Fireworks AI 的 46px 服务行。该行有实时命中证据，长模型摘要单行省略，没有点击服务或触发翻译。正常旋回竖屏后，`gpt` 与原生键盘保留，搜索框重新显示在标题下；清除搜索、返回服务概览、关闭抽屉和原生 Popup、回到已知本地夹具均实际完成。
+
+| 场景 | 原图 |
+| --- | --- |
+| 竖屏输入与软键盘 | [截图](./services-short-viewport-evidence/native-r7/portrait-gpt-keyboard.png) |
+| 横屏紧凑操作行 | [截图](./services-short-viewport-evidence/native-r7/landscape-controls.png) |
+| 一次拖动后完整服务行 | [截图](./services-short-viewport-evidence/native-r7/landscape-complete-row.png) |
+| 回到竖屏，搜索框恢复可见 | [截图](./services-short-viewport-evidence/native-r7/portrait-return.png) |
+| 清除后返回服务概览 | [截图](./services-short-viewport-evidence/native-r7/returned-overview.png) |
+| 关闭抽屉后的主 Popup | [截图](./services-short-viewport-evidence/native-r7/returned-popup.png) |
+| 关闭原生 Popup 后的本地夹具 | [截图](./services-short-viewport-evidence/native-r7/closed-fixture.png) |
+
+12 张原始 PNG 已由 Root 与独审分别逐张检查；独审另读完 69 份 JSON（含 10 份 AX）及 81 行附件清单。公开七图保持原始字节，见[本轮摘要](./services-short-viewport-evidence/native-r7/summary.json)及[复制索引](./services-short-viewport-evidence/native-r7/copy-index.json)。本轮没有权限选择，站点授权恢复后的持久性仍未知。查询和键盘连续性不等于物理 DOM 节点或焦点身份的证明，也不推广为所有 Popup 控件均为 46px。
+
+运行后重新核对本轮恢复路径：D9 包 485 文件、内嵌 Web 467 文件、限定原生私有范围 13 文件、Userscripts 应用 47 文件及 Demo 396 字节与基线一致，独审完成逐文件 hash／大小复核。未复制回私有文件，不声称所有扩展存储保持；所属进程和端口释放，模拟器 Shutdown，主机前台应用保持。
+
+### 中间原生运行仍保留 SKIP
+
+R2–R6 的结果均为 **0 PASS / 1 SKIP / 0 FAIL**，没有改写：R2 因权限提示站点不匹配停止；R3 停在视频页原生控件最后检查，R4 对精确授权的 m.youtube.com 实际选择“允许1天”后用尽准备时限，均未进入本地 Popup 验收；R5 停在滚动前快照新鲜度检查；R6 实际完成一次拖动并显示 Fireworks AI，但测试的五项已知服务集合漏掉该行，未进入回程。R7 仅在测试识别集合中补齐现有服务的精确标签，再实际通过完整流程。快照读取调整和测试标签补齐均未改变产品包；各轮原始材料在本地分别保留。
+
+## 历史原生运行 R2：权限提示站点不一致，SKIP
 
 7e504c21… 的生产包已在任务专用 iPhone 16 Pro／iOS 26.2 Simulator 中实际安装并运行。官方结果为 **0 PASS / 1 SKIP / 0 FAIL**，所选方法 21.985 秒，官方测试总耗时 28.313 秒。
 
@@ -43,7 +67,7 @@ macOS／Simulator 为链接器 ad-hoc、无开发者团队；iPhoneOS 未签名�
 
 退出后，安装前 D9 基线包的 485 份文件、其中 467 份 Web 资源、13 份限定原生私有文件、Userscripts 应用 47 份文件及 396 字节 Demo 均按完整文件图核对恢复；未将私有文件复制回去，也不声称全部扩展存储均已恢复。所属进程已退出、端口释放，模拟器 Shutdown，主机前台应用保持。结果与复制哈希见[原生摘要](./services-short-viewport-evidence/native/summary.json)及[复制索引](./services-short-viewport-evidence/native/copy-index.json)。
 
-**本轮原生列表、键盘及高度恢复仍未验收通过。** SKIP 和安全恢复不等于产品 UI 通过。
+**R2 本身没有验收原生列表、键盘及高度恢复。** 其 SKIP 和安全恢复不等于产品 UI 通过；同一产品后续 R7 的实际通过单独记录于上节。
 
 ## 浏览器原始截图
 
