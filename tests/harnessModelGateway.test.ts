@@ -91,10 +91,11 @@ describe('harness model gateway', () => {
     config.apiKeys[service] = ['fixture-A', 'fixture-B'];
     const rotating = getHarnessModelInputKey(config, service, model);
     config.apiKeyRecoveryMs += 60_000;
-    expect(getHarnessModelInputKey(config, service, model)).not.toBe(rotating);
+    const changedRecovery = getHarnessModelInputKey(config, service, model);
+    expect(changedRecovery).not.toBe(rotating);
     config.apiKeyRotationEnabled[service] = false;
     const fixedKey = getHarnessModelInputKey(config, service, model);
-    expect(fixedKey).not.toBe(rotating);
+    expect(fixedKey).not.toBe(changedRecovery);
     config.modelThinking[service] = {[model]: true};
     expect(getHarnessModelInputKey(config, service, model)).not.toBe(fixedKey);
   });
