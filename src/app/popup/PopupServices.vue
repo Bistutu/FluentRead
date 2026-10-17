@@ -5,10 +5,12 @@
  主要内容：突出网页默认服务，以紧凑列表展示各功能的独立服务或继承状态，继承行在同一行标出“跟随默认”与实际跟随的服务，且仅在模型与默认服务的配置模型不同时才显示模型行，以统一状态标签呈现服务并让多语言名称完整换行，保留本地图标、配置模型和配置提醒；选择面板合并功能标题、返回与关闭操作，搜索框随列表一起滚动，常用区只放可直接使用的服务，按免费翻译、已配置或正在使用的服务、微软与谷歌、热门服务排序，待配置的服务留在更多服务中，当前选中项始终在常用区，更多服务默认展开并按机器翻译、云服务厂商与 AI 翻译分组，选项下方标出配置模型或待配置状态，支持模型搜索及键盘导航，保留不可用的旧选择，缓存默认、继承或独立行的配置模型及本地化说明，避免将设置中的模型声明为最终请求模型；只让当前活跃配置和所属面板的事件修改草稿，焦点返回复验面板与用户焦点；切换时仅重置所属抽屉的滚动，渲染后在同一归属保护内让搜索框或原分配行可见，不滚动宿主页面；可见区扩大时只修正仍聚焦的同一搜索外框被吸顶标题遮住的位置，保留查询和长列表滚动归属。
  模块边界：复用功能服务映射、模型解析及供应商能力，只修改父级配置草稿；保存由 PopupApp 负责，不请求翻译或处理连接密钥。
  键盘布局：极矮可见区复用同一输入和按钮排成单行，保留原有键盘顺序及控件名称；普通高度保留标题及关闭吸顶、搜索随列表滚动，不因旋转重建查询或会话。
+ 概览标题：复用原关闭工具行显示本地化标题，窄屏允许标题换行且不压缩关闭命中区。
 -->
 <template>
   <div ref="panel" class="popup-service-panel" data-i18n-ignore :onKeydown="panelActions.keydown">
     <div v-if="!editing" class="popup-service-toolbar">
+      <h2 class="service-overview-title">{{ t('popup.providers.title') }}</h2>
       <button type="button" class="service-panel-close" :aria-label="t('common.close')" :onClick="panelActions.close">×</button>
     </div>
     <div v-if="!editing" class="popup-service-overview">
@@ -297,7 +299,8 @@ const panelActions = computed(() => {
 });
 </script>
 <style scoped>
-.popup-service-toolbar { position: sticky; top: 0; z-index: 1; display: flex; justify-content: flex-end; margin-bottom: 8px; background: var(--surface); }
+.popup-service-toolbar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; margin-bottom: 8px; background: var(--surface); }
+.service-overview-title { flex: 1; min-width: 0; margin: 0; color: var(--ink); font-size: 12px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
 .service-panel-close { display: grid; place-items: center; flex: none; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; color: var(--muted); background: var(--surface-soft); font-size: 22px; cursor: pointer; }
 .service-panel-close:hover { color: var(--ink); background: var(--brand-soft); }
 .popup-service-overview { display: grid; grid-template-columns: minmax(0, 1fr); }
