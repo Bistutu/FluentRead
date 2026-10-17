@@ -230,8 +230,8 @@ function revealFocusedSearch(owner: () => boolean) {
     const border = input.closest<HTMLElement>('.service-picker-search'), heading = root.querySelector('.service-picker-heading');
     if (!border || !heading) return;
     const item = border.getBoundingClientRect(), cover = heading.getBoundingClientRect();
-    // 只让完整border离开吸顶标题；标题会随滚动解除sticky，不为紧邻标题的focus ring额外移动。
-    if (item.top < cover.bottom && item.bottom > cover.top) revealInScroller(scroller, border, heading);
+    // 包括搜索框已完整卷到标题上方的情况；只移动当前抽屉，不重新聚焦或为focus ring额外移动。
+    if (item.top < cover.bottom) revealInScroller(scroller, border, heading);
   });
 }
 defineExpose({revealFocusedSearch});
