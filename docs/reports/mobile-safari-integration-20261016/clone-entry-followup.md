@@ -41,3 +41,5 @@
 本次新增证据按[复制索引](./clone-entry-evidence/provenance.json)保留 66 份原件，共 1911054 字节，逐份复制后重哈希；App、二进制、DerivedData、SDK 原始日志及 E2 私有附件未纳入仓库。JSON 中的绝对路径是研究原件标识，仓库可用副本以索引的 copy 字段为准。
 
 真实 Safari 播放中菜单和滚动、AVKit、完整安装更新、原生键盘、旋转、长期后台恢复、物理设备与 VoiceOver／TalkBack 仍未完成。独立 PR #1014 的翻译质量及 #1015 的 Safari bridge／学习后续保持各自范围，本次未借鉴参考仓库实现，也未改版本、依赖或权限。
+
+2026-10-17 补充：`461c2fb` 的 portrait Popup 填宽，以及搜索、清除、选择器“返回”和关闭的限定结果见[竖屏填宽补充](./portrait-touch-width-followup.md)。上文保留 `cae1d612…` 当时的构建、SKIP 与边界；此补充不覆盖视频菜单／滚动、AVKit、旋转、后台恢复或物理设备，也不把“返回已通过”扩展为焦点返回验收。
