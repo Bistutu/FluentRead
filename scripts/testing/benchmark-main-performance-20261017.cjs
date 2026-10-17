@@ -1,6 +1,6 @@
 /**
  * Compare the real baseline/worktree scheduler and document translator without a build.
- * Run from any directory: node <repo>/scripts/benchmarks/main-performance-20261017.cjs
+ * Run from any directory: node <repo>/scripts/testing/benchmark-main-performance-20261017.cjs
  * Requires the repository's installed TypeScript and the baseline commit in local Git.
  * One warm-up and five measured runs per size; no network, generated files, or timing gates.
  * The deterministic operation-count regressions live in the normal test suite.

@@ -90,7 +90,7 @@
 
 ```sh
 pnpm test tests/translationRequestScheduler.test.ts tests/documentTranslationApi.test.ts tests/documentAppLifecycle.test.ts tests/materialRepository.test.ts tests/contextMenuRuntimeOwnership.test.ts
-node scripts/benchmarks/main-performance-20261017.cjs
+node scripts/testing/benchmark-main-performance-20261017.cjs
 pnpm test:regression:all
 ```
 
@@ -127,6 +127,8 @@ pnpm test:regression:all
 另做六个生产文件的联合交叉审查：文档排序继续进入相同 broker/scheduler，素材缓存只属于事务，菜单只影响显示归属；不更改消息协议、设置 schema、权限、依赖、workflow、并发/批次限制或重试预算。
 
 ## 验收状态
+
+本节保留草稿创建时的验证快照；后续完整验收与 CI 终态以 [PR #1019](https://github.com/FluentRead/FluentRead/pull/1019) 的最新验收记录为准。
 
 完整验收进行中，当前仅作草稿交付。早期运行因第三轮发现 scheduler 缺陷主动中断（exit 130）；冻结快照的第二次运行已通过测试归属审计、WXT prepare 和类型检查，之后在完整 Vitest/覆盖率阶段因执行环境中断未取得终态，不计作通过。2026-10-17 01:35 UTC 已核对全部生产/测试文件哈希不变且没有遗留活跃进程，重新启动完整流水线；完整测试、全局覆盖率、各端构建与远端 CI 结果待补齐。真实浏览器和在线供应商验收仍未执行。
 
