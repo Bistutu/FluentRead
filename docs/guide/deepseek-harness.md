@@ -100,8 +100,6 @@
 
 升级时保留已配置的服务、自定义模型、学习动作、上下文和提示词。旧翻译卡片单独开启时会迁移到统一划词入口；只有旧卡片在用的快捷键或悬停方式也会迁移。旧设置链接仍可打开新的划词翻译页面。
 
-学习会话沿用 DeepSeek Harness 的浏览器适配，不绑定 DeepSeek 模型。[来源与许可](https://github.com/FluentRead/FluentRead/blob/main/public/third-party-notices/deepseek-harness-MIT.txt)
-
 </details>
 
 ## 朗读设置

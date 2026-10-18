@@ -12,7 +12,7 @@ An open-source browser extension for bilingual translation.
 
 </div>
 
-FluentRead displays translations alongside the original webpage and provides selection translation, AI reading assistance, image and document translation, and bilingual video subtitles. Its reading card integrates a **browser adaptation of the DeepSeek Harness session core** for contextual explanations and follow-up questions.
+FluentRead displays translations alongside the original webpage and provides selection translation, AI reading assistance, image and document translation, and bilingual video subtitles. Its reading card provides contextual explanations and follow-up questions.
 
 <div align="center">
 
@@ -39,14 +39,6 @@ For a closer look, [watch the full official introduction (4+ minutes, in Chinese
 | Services and settings | Free translation services, DeepL, AI providers, and local Ollama models, with glossaries, translation styles, shortcuts, and menu layout settings. |
 
 See the [user guide](https://read.thinkstu.com/en/guide/) for instructions and supported formats. AI explanations require a configured AI service. Third-party pricing and availability depend on the provider.
-
-## DeepSeek Harness
-
-The reading card adapts the conversation-event and message organization components of the DeepSeek Harness session core for the browser. FluentRead connects these to the selected text, permitted paragraph context, model services, and local reading history. It supports different AI providers and models, with optional learning memories.
-
-The adaptation is used for selection-based reading assistance. Full-page, hover, and regular selection translation use their respective translation pipelines. See the [integration map](./docs/reports/harness-embedding-map-20260905.md) for scope and upstream references, and the [third-party notice](./public/third-party-notices/deepseek-harness-MIT.txt) for its MIT license.
-
-[Reading card guide](https://read.thinkstu.com/en/guide/deepseek-harness)
 
 ## Installation
 

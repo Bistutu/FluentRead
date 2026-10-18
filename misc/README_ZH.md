@@ -12,7 +12,7 @@
 
 </div>
 
-流畅阅读支持在原网页中对照阅读原文与译文，并提供划词翻译、AI 阅读辅助、图片翻译、文档翻译和视频双语字幕。翻译卡片接入了 **DeepSeek Harness 会话内核的浏览器适配**，支持结合上下文解释选中文字并连续追问。
+流畅阅读支持在原网页中对照阅读原文与译文，并提供划词翻译、AI 阅读辅助、图片翻译、文档翻译和视频双语字幕。翻译卡片支持结合上下文解释选中文字并连续追问。
 
 <div align="center">
 
@@ -39,14 +39,6 @@
 | 翻译服务与设置 | 支持免费翻译服务、DeepL、AI 服务和本地 Ollama，可配置术语库、译文样式、快捷键及菜单栏布局。 |
 
 各功能的使用方法与支持范围见[使用指南](https://read.thinkstu.com/guide/)。AI 讲解需要配置可用的 AI 服务；第三方服务的费用与可用性由服务商决定。
-
-## DeepSeek Harness
-
-翻译卡片采用 DeepSeek Harness 会话内核中会话事件与消息组织部分的浏览器适配，由流畅阅读连接网页选区、允许参考的段落、模型服务和本地阅读记录。支持选择不同 AI 服务与模型，并提供可选的学习记忆。
-
-该适配用于选区阅读辅助。全文、悬浮和普通划词翻译使用各自的翻译流程。接入范围和上游来源见[内核集成说明](../docs/reports/harness-embedding-map-20260905.md)，MIT 许可见[第三方声明](../public/third-party-notices/deepseek-harness-MIT.txt)。
-
-[翻译卡片使用指南](https://read.thinkstu.com/guide/deepseek-harness)
 
 ## 安装
 
