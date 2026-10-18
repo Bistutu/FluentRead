@@ -24,6 +24,8 @@ When a translation matches the source, FluentRead keeps the source without displ
 2. Choose the target language and translation service, then click **Translate this page**.
 3. Read in bilingual mode, or select **Translation only** to focus on the result. Click **Restore original** to return to the page as it was.
 
+Links retained in bilingual translations, such as user mentions (`@username`) and web addresses, keep the original link color so they remain easy to distinguish from surrounding text.
+
 The default translates as you read. If you need the whole page at once, change the translation range in settings. After restoring, you can translate again with another language or service.
 
 Paragraphs already in the target language keep their original text. A clearly Chinese paragraph can include browser names, build terms, parameters, units or repository links without triggering another translation. Foreign sentences, words explicitly marked for translation and uncertain mixed content still remain eligible, as does conversion between Simplified and Traditional Chinese.

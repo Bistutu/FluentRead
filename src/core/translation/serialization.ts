@@ -2,7 +2,7 @@
  * @file src/core/translation/serialization.ts
  *
  * 文件职责：把候选 DOM 安全序列化为可翻译文本槽，并在异步请求后依据源快照恢复到仍然匹配的真实节点。
- * 主要内容：定义 TranslationTextSlot、TranslationSourceSnapshot 与样式覆盖规则，重导出独立的纯文本槽协议，负责活节点收集（排除候选内的独立 tooltip）、译文写入克隆、可无损拍平骨架的整段原文重建与整块译文纯文本降级、隐藏/编辑/宿主 metadata 省略、可见公式骨架保全、译文产物过滤，以及支持同批样式/几何读数复用，识别 line-clamp 与溢出截断并提供临时解除截断的样式覆盖规则。 可核对的公开符号包括 TranslationTextSlot、TranslationSourceSnapshot、SerializedTranslationSlots、TranslationStyleOverride、translationTruncationStyleOverrides、serializeTranslationSlots、parseTranslationSlots、createTranslationSourceSnapshot、buildWholeBlockTranslationSource。
+ * 主要内容：定义 TranslationTextSlot、TranslationSourceSnapshot 与样式覆盖规则，重导出独立的纯文本槽协议，负责活节点收集（排除候选内的独立 tooltip）、译文写入克隆、可无损拍平骨架的整段原文重建与整块译文纯文本降级、隐藏/编辑/宿主 metadata 省略、链接实际颜色与可见公式骨架保全、译文产物过滤，以及支持同批样式/几何读数复用，识别 line-clamp 与溢出截断并提供临时解除截断的样式覆盖规则。 可核对的公开符号包括 TranslationTextSlot、TranslationSourceSnapshot、SerializedTranslationSlots、TranslationStyleOverride、translationTruncationStyleOverrides、serializeTranslationSlots、parseTranslationSlots、createTranslationSourceSnapshot、buildWholeBlockTranslationSource。
  * 模块边界：本文件属于可独立测试的 core 候选领域；可以读取传入 DOM 以计算结果，但不访问配置存储、不调用 provider、不注册页面监听器，也不负责译文渲染或 feature 生命周期。
  */
 
@@ -271,6 +271,15 @@ export function createTranslationSourceSnapshot(
             omittedElements.add(element);
         } else if (formula) {
             formulaElements.add(element);
+        } else if (element.localName === 'a') {
+            // 克隆脱离页面后会失去 class、祖先选择器与继承的颜色；在本地骨架上
+            // 固化原链接的实际颜色，renderer 只放行这一项，不复制宿主的整段样式。
+            try {
+                const color = element.ownerDocument.defaultView?.getComputedStyle(element).color;
+                if (color) (clonedElements[index] as HTMLElement).style.color = color;
+            } catch {
+                // 已卸载或受限文档无法读样式时，克隆仍保留来源的内联颜色。
+            }
         }
     });
     clone.querySelectorAll(translationArtifactSelector).forEach((child) => child.remove());
