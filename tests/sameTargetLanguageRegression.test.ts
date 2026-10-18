@@ -31,6 +31,8 @@ const runtime = vi.hoisted(() => ({
     },
 }));
 
+// 可选浏览器证据由预检边界套件验证；这里保留原有纯识别与请求/DOM契约。
+vi.mock('@/src/services/translation/languagePreflight', () => ({shouldSkipTranslationWithEvidence: async () => false}));
 vi.mock('@/src/services/config/store', () => ({config: runtime.config}));
 vi.mock('@/src/services/translation/client', () => ({
     translateText: async (origin: string) => {

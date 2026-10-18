@@ -1018,6 +1018,14 @@ node scripts/testing/run-translation-stats-ui-test.cjs \
 
 ## 简体与繁体中文回归
 
+同目标与排除语言的定向回归运行 `pnpm test tests/languageChineseInterface.test.ts tests/languagePreflight.test.ts tests/targetLanguageReadingHoldout.test.ts tests/sameTargetLanguageClient.test.ts tests/sameTargetLanguageSlots.test.ts tests/translationStability.test.ts`。中文规则、补充检测资格、同文复用、超时、取消、配置快照及结构化槽分别验证。补充检测只接受本地候选与浏览器可靠单语言结果一致的长文，浏览器 API 不可用或超时则继续原翻译流程；不会覆盖源语言设置。
+
+质量夹具分为开发后留出的 96 条样例与实现稳定后评估的第二组 60 条盲测，均以 SHA256 冻结，分别对全部 52 个目标检查误跳过及正确跳过比例。已经查看的样例作为回归集，不再称为盲测；不以提高跳过比例为由放宽混排或简繁转换的期望。历史语料中“您的更改已保存。”没有简繁区别，语言标签更正为两者共享，此更正不计入提升。
+
+相对主线同一识别核心，第一组正确跳过为 51/80 → 67/80，第二组独立盲测为 29/55 → 36/55；4,992 和 3,120 组文本—目标组合均零误跳过。这些是有限人工编写样例，不能推断全部网站或线上供应商的准确率。补充资格限长 1,024 字符并保留最近 128 项完整文本结果，超限继续翻译；不将热缓存耗时当成新文本耗时。Userscript 在同依赖独立主线 `0fef0669` 上为 2,092,304 字节，候选 2,099,247，增加 6,943 字节（0.332%）；体积预算按既有 1 KB 步长最小增加 5 KB，协议与执行断言不变。
+
+生产 Chrome 产物的网页链路使用 `node scripts/testing/run-target-language-reading-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <path> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <path>`。脚本在临时后台 Edge 中验证 Control 悬浮、Alt+T 全文、恢复再译、目标切换、动态文本与零请求跳过，记录 DOM、请求和截图。本地响应仅用于证明调用和显示契约，不证明在线供应商的翻译质量。
+
 `tests/chineseLanguage.test.ts` 覆盖语言别名、显式脚本优先、共享字和简繁混排；中文语境由明确字形或短语确认，常用中性汉字无需逐字白名单，简繁冲突由人工常用字表与 Unicode 17.0.0 Unihan 单向变体数据共同检查。截图评论语料位于 `tests/fixtures/chinese-language-posts.json`，覆盖普通中文、`OpenAI`/`CoT` 嵌入、同目标跳过和跨语言保留；完整外语、短混排与未确认的罕见字仍允许翻译。供应商协议矩阵、旧配置迁移、术语隔离和并发缓存分别由 `chineseTranslationProviders`、配置测试、`glossary`、`translationBroker` 与 `translationCache` 测试覆盖。
 
 生产扩展可重复运行以下浏览器专项：

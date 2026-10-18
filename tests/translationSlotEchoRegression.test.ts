@@ -20,6 +20,8 @@ import {translateTextSlots, type FullPageTranslationConfigSnapshot,
 
 const ports = vi.hoisted(() => ({single: vi.fn(), batch: vi.fn()}));
 const ownedChromeEnvironments = new Set<ChromeTranslationEnvironment>();
+// 可选浏览器证据由预检边界套件验证；这里保留原有纯识别与请求/DOM契约。
+vi.mock('@/src/services/translation/languagePreflight', () => ({shouldSkipTranslationWithEvidence: async () => false}));
 vi.mock('@/src/services/translation/client', () => ({translateText: ports.single, translateTextBatch: ports.batch}));
 vi.mock('@/src/services/config/store', () => ({config: {maxConcurrentTranslations: 2}}));
 vi.mock('@/src/core/translation/public', () => import('@/src/core/translation/slotProtocol'));

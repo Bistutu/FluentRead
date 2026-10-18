@@ -1,16 +1,16 @@
 /**
  * @file src/features/full-page-translation/content/personalCorrections.ts
- * 文件职责：把读者主动确认的校订记忆接入安全的网页双语文本单元，提供编辑、预览与撤销后的可逆渲染端口。
- * 主要内容：按材料摘要、源目标语言及最近标题构造匹配身份，在 provider 请求前查找精确校订；以弱映射保留服务底稿，复验来源和节点所有权后原位重绘，删除且无底稿时恢复原文；标题或 SPA 材料变化时以无 IO 观察立即恢复旧语境的个人结果。
+ * 文件职责：把读者主动确认的校订记忆接入安全的网页翻译单元，提供双语编辑、预览及两种显示模式下撤销后的可逆渲染端口。
+ * 主要内容：按材料摘要、源目标语言及最近标题构造匹配身份，在 provider 请求前查找精确校订；以弱映射保留服务底稿，复用活动所有者索引与当前模式重绘端口，删除且无底稿时恢复原文；标题、移动或 SPA 材料变化时以无 IO 观察立即恢复旧语境的个人结果。
  * 模块边界：只处理全文功能内部的 DOM 所有权与公共记忆服务适配，不持久化阅读历史、不改变请求队列、不把个人结果写入供应商缓存；含代码、公式等不能安全拍平的单元不开放编辑。
  */
 import {createMaterialId, type CorrectionQuery} from '@/src/core/personal-corrections/public';
 import {personalCorrections} from '@/src/services/personal-corrections/public';
 import {config} from '@/src/services/config/store';
 import {buildWholeBlockTranslationSource, createTranslationSourceSnapshot, getCurrentTranslationCore} from '@/src/core/translation/public';
-import {getTranslationState, setBilingualContent, restoreTranslation, type TranslationState} from './state';
+import {getTranslationOwnersWithin, getTranslationState, setBilingualContent, restoreTranslation, type TranslationState} from './state';
 import {statefulSourceAndTextSlotsAreCurrent, isTranslationArtifactCurrent} from './translationStability';
-import {refreshBilingualTranslationSkeleton} from './bilingualReplay';
+import {refreshTranslationPresentation} from './displayMode';
 import {withFullPageViewportAnchor} from './viewportStability';
 
 export interface PersonalCorrectionSnapshot {
@@ -104,13 +104,28 @@ function currentPair(node: HTMLElement, state: TranslationState, snapshot: Perso
         && snapshot.query.context === readPersonalCorrectionContext(node);
 }
 
+/** 活动状态是两种显示模式共同的归属入口，不依赖某种译文工件仍存在于 DOM。 */
+function* correctionOwners(root: Node = document) {
+    for (const node of getTranslationOwnersWithin(root)) {
+        const state = getTranslationState(node)!;
+        const snapshot = metadata.get(state);
+        if (snapshot) yield {node, state, snapshot};
+    }
+}
+
+function applyCorrection(node: HTMLElement, state: TranslationState, snapshot: PersonalCorrectionSnapshot,
+    translation: string, recordId?: string): boolean {
+    if (!translation.trim() || !currentPair(node, state, snapshot)) return false;
+    const replay = state.bilingualReplay!;
+    replay.translations = replay.sources.map((_, index) => index === 0 ? translation : '');
+    replay.personalCorrectionId = recordId;
+    return withFullPageViewportAnchor(() => refreshTranslationPresentation(node, state), [node]);
+}
+
 /** 语境或材料变化使旧个人结果立即失效；旧服务底稿也属于旧语境，此时恢复原文。 */
 export function invalidateStalePersonalCorrectionContexts(): void {
-    for (const element of document.querySelectorAll<HTMLElement>('.fluent-read-bilingual-content[data-fr-personal-correction="true"]')) {
-        const node = element.parentElement;
-        const state = node ? getTranslationState(node) : undefined;
-        const snapshot = state ? metadata.get(state) : undefined;
-        if (node && state && snapshot && ownsPair(node, state, snapshot) && !currentPair(node, state, snapshot)) {
+    for (const {node, state, snapshot} of correctionOwners()) {
+        if (state.bilingualReplay?.personalCorrectionId && ownsPair(node, state, snapshot) && !currentPair(node, state, snapshot)) {
             withFullPageViewportAnchor(() => restoreTranslation(node), [node]);
         }
     }
@@ -129,7 +144,7 @@ export function watchPersonalCorrectionContext(signal: AbortSignal): () => void 
                 if (node.nodeType !== 1) return false;
                 const element = node as Element;
                 if (element.matches('[data-fr-translation-owned="true"]')) return false;
-                return element.matches(headings) || Boolean(element.querySelector(`${headings},.fluent-read-bilingual-content[data-fr-personal-correction="true"]`));
+                return element.matches(headings) || Boolean(element.querySelector(headings)) || !correctionOwners(element).next().done;
             });
         });
         if (relevant) invalidateStalePersonalCorrectionContexts();
@@ -172,13 +187,7 @@ export function readPersonalCorrectionPair(element: Element): PersonalCorrection
     if (!node || !state?.bilingualReplay || !snapshot || !currentPair(node, state, snapshot)) return null;
     const isCurrent = () => currentPair(node, state, snapshot);
     return {...snapshot.query, translation: state.bilingualReplay.translations.join(''), isCurrent,
-        apply(translation, recordId) {
-            if (!translation.trim() || !isCurrent()) return false;
-            const replay = state.bilingualReplay!;
-            replay.translations = replay.sources.map((_, index) => index === 0 ? translation : '');
-            replay.personalCorrectionId = recordId;
-            return withFullPageViewportAnchor(() => refreshBilingualTranslationSkeleton(node, state), [node]);
-        }};
+        apply: (translation, recordId) => applyCorrection(node, state, snapshot, translation, recordId)};
 }
 
 export function listVisiblePersonalCorrectionPairs(query: CorrectionQuery): PersonalCorrectionPair[] {
@@ -196,11 +205,7 @@ export function listVisiblePersonalCorrectionPairs(query: CorrectionQuery): Pers
 export function disableVisiblePersonalCorrections(): void {
     enableGeneration += 1;
     refreshRevision += 1;
-    for (const element of document.querySelectorAll<HTMLElement>('.fluent-read-bilingual-content')) {
-        const node = element.parentElement;
-        const state = node ? getTranslationState(node) : undefined;
-        const snapshot = state ? metadata.get(state) : undefined;
-        if (!node || !state || !snapshot) continue;
+    for (const {node, state, snapshot} of correctionOwners()) {
         if (!ownsPair(node, state, snapshot)) {
             // 宿主已经改写的内容保持宿主权威，但旧个人底稿不得在后续骨架修复时重新采用。
             if (state.bilingualReplay?.personalCorrectionId) {
@@ -216,7 +221,7 @@ export function disableVisiblePersonalCorrections(): void {
                 && snapshot.query.context === readPersonalCorrectionContext(node)) {
                 state.bilingualReplay.translations = [...snapshot.baseline];
                 state.bilingualReplay.personalCorrectionId = undefined;
-                withFullPageViewportAnchor(() => refreshBilingualTranslationSkeleton(node, state), [node]);
+                withFullPageViewportAnchor(() => refreshTranslationPresentation(node, state), [node]);
             } else withFullPageViewportAnchor(() => restoreTranslation(node), [node]);
         }
         metadata.delete(state);
@@ -227,23 +232,20 @@ export async function refreshVisiblePersonalCorrections(): Promise<void> {
     if (!isPersonalCorrectionEnabled()) {disableVisiblePersonalCorrections(); return;}
     const revision = ++refreshRevision;
     invalidateStalePersonalCorrectionContexts();
-    for (const element of document.querySelectorAll<HTMLElement>('.fluent-read-bilingual-content')) {
-        const node = element.parentElement;
-        const state = node ? getTranslationState(node) : undefined;
-        const snapshot = state ? metadata.get(state) : undefined;
-        if (!node || !state || !snapshot || !currentPair(node, state, snapshot)) continue;
+    for (const {node, state, snapshot} of correctionOwners()) {
+        if (!currentPair(node, state, snapshot)) continue;
         let match;
         try { match = await personalCorrections.lookup(snapshot.query); } catch { continue; }
         if (revision !== refreshRevision) return;
         if (!isPersonalCorrectionEnabled()) {disableVisiblePersonalCorrections(); return;}
         if (!currentPair(node, state, snapshot)) continue;
         if (match.exact) {
-            readPersonalCorrectionPair(element)?.apply(match.exact.translation, match.exact.id);
+            applyCorrection(node, state, snapshot, match.exact.translation, match.exact.id);
         } else if (state.bilingualReplay?.personalCorrectionId) {
             if (snapshot.baseline) {
                 state.bilingualReplay.translations = [...snapshot.baseline];
                 state.bilingualReplay.personalCorrectionId = undefined;
-                withFullPageViewportAnchor(() => refreshBilingualTranslationSkeleton(node, state), [node]);
+                withFullPageViewportAnchor(() => refreshTranslationPresentation(node, state), [node]);
             } else withFullPageViewportAnchor(() => restoreTranslation(node), [node]);
         }
     }

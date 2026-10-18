@@ -1,0 +1,1096 @@
+{
+  "schemaVersion": 1,
+  "description": "独立阅读场景留出语料。在查看本次新核心改动与测量结果前撰写并冻结，仅用于测量泛化；不得根据本语料添加词表、名称名单或逐条规则。languages 为唯一允许跳过的目标；空数组为混合正文或共享汉字歧义，对所有目标保留翻译。未设 requireSkip，召回仅按分组比较，不强迫每条得到确定归属。简繁同形且中文句法明确的文本同时允许两种中文目标。样本均为独立合成，不代表真实产品、服务或新闻。",
+  "groups": [
+    {
+      "id": "short-hans",
+      "cases": 16
+    },
+    {
+      "id": "short-hant",
+      "cases": 16
+    },
+    {
+      "id": "han-context",
+      "cases": 16
+    },
+    {
+      "id": "japanese-boundary",
+      "cases": 16
+    },
+    {
+      "id": "technical-reading",
+      "cases": 16
+    },
+    {
+      "id": "mixed-reading",
+      "cases": 16
+    }
+  ],
+  "cases": [
+    {
+      "id": "reading-short-hans-01",
+      "text": "请先点确认",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-02",
+      "text": "换个位置试试",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-03",
+      "text": "这行先别动",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-04",
+      "text": "余额已结清",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-05",
+      "text": "内容已归档",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-06",
+      "text": "请把灯关好",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-07",
+      "text": "图片正在上传",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-08",
+      "text": "密码已更新",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-09",
+      "text": "这个值太大",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-10",
+      "text": "请核对地址",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-11",
+      "text": "别忘了签名",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-12",
+      "text": "温度降下来了",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-13",
+      "text": "为啥还没到",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-14",
+      "text": "这页没有声音",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-15",
+      "text": "门口有人等你",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hans-16",
+      "text": "离开前请锁门",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "short-hans",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-01",
+      "text": "請先按確認",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-02",
+      "text": "換個地方試試",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-03",
+      "text": "這行暫時別動",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-04",
+      "text": "餘額已經結清",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-05",
+      "text": "內容已經歸檔",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-06",
+      "text": "請把門關好",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-07",
+      "text": "圖片正在上傳",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-08",
+      "text": "密碼已經更新",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-09",
+      "text": "這個數值太大",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-10",
+      "text": "請核對住址",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-11",
+      "text": "別忘了簽名",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-12",
+      "text": "溫度已降下來",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-13",
+      "text": "為何還沒抵達",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-14",
+      "text": "這頁沒有聲音",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-15",
+      "text": "門邊有人等你",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-short-hant-16",
+      "text": "離開前請鎖門",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "short-hant",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-01",
+      "text": "你可以先休息，等我回家再一起吃水果。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "shared",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-02",
+      "text": "大家可以先休息一下，等我把事情做好。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "shared",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-03",
+      "text": "如果今天有空，就和我一起去吃西瓜。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "shared",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-04",
+      "text": "不要把杯子放在桌子的最外面。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "shared",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-05",
+      "text": "他先把事情做好，再去找自己的朋友。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "shared",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-06",
+      "text": "我今天有事，可不可以明天再一起去？",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "shared",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-07",
+      "text": "如果你也想去，可以先和我一起做完此事。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "shared",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-08",
+      "text": "桌子上有一盒水果，大家可以一起吃。",
+      "languages": [
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "shared",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-09",
+      "text": "请把旧收据装进纸袋，明天带到前台换票。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "han-context",
+        "conversion",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-10",
+      "text": "这辆车刚完成维修，暂时不能开到桥上。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "han-context",
+        "conversion",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-11",
+      "text": "编辑确认以后，系统会自动将记录存入数据库。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "han-context",
+        "conversion",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-12",
+      "text": "网页已经恢复正常，点击右侧按钮即可继续。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "han-context",
+        "conversion",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-13",
+      "text": "請把舊單據放進紙袋，明早帶到櫃檯換票。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "conversion",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-14",
+      "text": "這輛車剛完成維修，暫時不能開到橋上。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "conversion",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-15",
+      "text": "編輯確認以後，系統會自動將紀錄存入資料庫。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "conversion",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-han-context-16",
+      "text": "網頁已經恢復正常，點選右側按鈕即可繼續。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "han-context",
+        "conversion",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-01",
+      "text": "道がぬれているので、帰りは足元に気をつけてください。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-02",
+      "text": "この箱には、まだ使っていない切手が入っています。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-03",
+      "text": "荷物を受け取ったら、受付の人に名前を伝えてください。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-04",
+      "text": "明日の朝までに返事をもらえると助かります。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-05",
+      "text": "新しい電池に交換してから、もう一度電源を入れてください。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-06",
+      "text": "途中で画面を閉じても、入力した内容は残ります。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-07",
+      "text": "次の停留所で降りるので、先に通路を空けておきます。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-08",
+      "text": "この写真は、祖父が若いころに使っていた店の前です。",
+      "languages": [
+        "ja"
+      ],
+      "tags": [
+        "japanese-boundary",
+        "kana",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-09",
+      "text": "製品安全情報",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-10",
+      "text": "沿線観光案内",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-11",
+      "text": "東京都交通局",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-12",
+      "text": "北陸地方整備局",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-13",
+      "text": "社員募集要項",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-14",
+      "text": "国際交流会館",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-15",
+      "text": "航空貨物運送",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-japanese-boundary-16",
+      "text": "株式会社山川商事",
+      "languages": [],
+      "tags": [
+        "japanese-boundary",
+        "pure-han-ambiguous",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-01",
+      "text": "请把 LumenDock 4.8 的配置文件另存一份。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-02",
+      "text": "这次只修复 CedarPanel 里的字体设置。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-03",
+      "text": "升级 PebbleSync 2.6 后，请重新打开标签页。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-04",
+      "text": "报告已经导出为 PDF，原始 CSV 仍保留在本机。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-05",
+      "text": "请先保存 QuartzRelay 的修改，再退出当前窗口。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-06",
+      "text": "这段日志里的 HTTP 状态码已经修正。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-07",
+      "text": "在 config.toml 中填好路径以后，点击保存即可。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-08",
+      "text": "版本 v7.4.2 只调整排版，不会删除本地记录。",
+      "languages": [
+        "zh-Hans"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-09",
+      "text": "請把 MossCanvas 3.7 的設定檔另外存一份。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-10",
+      "text": "這次只修復 HarborNote 裡的字型設定。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-11",
+      "text": "升級 AmberQueue 5.2 後，請重新開啟分頁。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-12",
+      "text": "報告已經匯出為 PDF，原始 CSV 仍保留在本機。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-13",
+      "text": "請先儲存 WillowFrame 的修改，再離開目前視窗。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-14",
+      "text": "這段日誌裡的 HTTP 狀態碼已經修正。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-15",
+      "text": "在 settings.yaml 中填好路徑以後，按下儲存即可。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-technical-reading-16",
+      "text": "版本 v6.3.8 只調整排版，不會刪除本機紀錄。",
+      "languages": [
+        "zh-Hant"
+      ],
+      "tags": [
+        "technical-reading",
+        "technical",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-01",
+      "text": "界面只显示一句英文：“Bring your own cable.”，其他说明保持不变。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-02",
+      "text": "系统提示 Try a different address before continuing，需要先处理这个问题。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-03",
+      "text": "The parcel will arrive after sunset. 这句中文只是补充说明。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-04",
+      "text": "请把下面的英文一起翻译：Leave the side door unlocked until noon.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-05",
+      "text": "这里记录了今天的变更。Keep both receipts until the payment clears.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-06",
+      "text": "报错原文是“Your seat has not been reserved.”，不要漏掉其中的否定。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-07",
+      "text": "这是中文说明。次の便は明日の朝に出発します。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-08",
+      "text": "中文提示后面还有一句韩文：우산은 문 옆에 놓아 주세요.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-09",
+      "text": "畫面只顯示一句英文：「Keep this receipt for your records.」，其他內容不變。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-10",
+      "text": "系統提示 Choose another pickup point before paying，需要先處理這個問題。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-11",
+      "text": "The library closes earlier on Fridays. 這句中文只是補充說明。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-12",
+      "text": "請把下面的英文一起翻譯：Use the lower entrance after eight o'clock.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-13",
+      "text": "這裡記錄了今天的變更。Do not unplug the device while the light is blinking.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-14",
+      "text": "錯誤原文是「The last transfer did not complete.」，不要漏掉其中的否定。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-15",
+      "text": "這是中文說明。駅の入口は反対側にあります。",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    },
+    {
+      "id": "reading-mixed-reading-16",
+      "text": "繁體中文之後還有一句韓文：영수증은 계산대에서 받을 수 있습니다.",
+      "languages": [],
+      "tags": [
+        "mixed-reading",
+        "reading-holdout"
+      ]
+    }
+  ]
+}

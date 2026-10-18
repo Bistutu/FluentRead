@@ -1,7 +1,7 @@
 /**
  * @file tests/popupAppLifecycle.test.ts
  * 文件职责：执行实际 Popup 与站点按钮客户端模板，验证生命周期、页面竞态、缓存事件及焦点归属。
- * 主要内容：保持真实 Vue/KeepAlive、缓存和诊断模板，受控浏览器、持久化及展示端口覆盖延迟回复、失活、消息来源、诊断动作失败、状态切换、抽屉和弹窗；真实服务选择子组件以布局端口验证键盘恢复时仅修正所属 scroller 的搜索外框；网站保存执行真实共享 store，验证同 tick 草稿捕获与在途确认的字段归属。
+ * 主要内容：保持真实 Vue/KeepAlive、缓存和诊断模板，受控浏览器、持久化及展示端口覆盖延迟回复、失活、消息来源、诊断动作失败、状态切换、抽屉和弹窗；真实服务选择子组件以布局端口验证键盘恢复时仅修正所属 scroller 的搜索外框；网站和显示模式保存执行真实共享 store，验证同 tick 草稿捕获、关闭交接与在途确认的字段归属。
  * 模块边界：Linkedom 保留节点/事件树，动画、Element Plus、外部存储和浏览器为受控端口，普通 UI 用例控制保存端口；真实样式与浏览器流程另行验证。
  */
 import {createRequire} from 'node:module'
@@ -13,6 +13,8 @@ import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
 import ts from 'typescript'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config, normalizeConfig} from '@/src/core/config/model'
+import {zhCNMessages} from '@/src/core/i18n/messages/zh-CN'
+import {enUSMessages} from '@/src/core/i18n/messages/en-US'
 import {extractConfigCredentials, sanitizeConfigCredentials} from '@/src/core/config/credentials'
 import type {ConfigStoragePort} from '@/src/platform/storage/configStorage'
 import {createPopupTabSource} from '@/src/app/popup/sourceTab'
@@ -54,14 +56,16 @@ function flushViewport(){const pending=[...viewportFrames.values()];viewportFram
 const readAccess=vi.fn(),requestAccess=vi.fn()
 let permissionEvents:Set<(change:'added'|'removed')=>void>
 let locale:import('vue').Ref<string>,bundleRevision:import('vue').Ref<number>,localized:boolean,englishLoaded:boolean
-const catalogs=Object.fromEntries(['zh-CN','en-US'].map(id=>[id,JSON.parse(readFileSync(resolve('src/core/i18n/messages/settings-copy',id+'.json'),'utf8')).messages]))
+const catalogs:Record<string,Readonly<Record<string,string>>>={'zh-CN':zhCNMessages,'en-US':enUSMessages}
 function permissionEvent(kind:'added'|'removed'){for(const listener of permissionEvents)listener(kind)}
 function permissionText(key:string,params:Record<string,unknown>={}){void bundleRevision.value;if(!localized)return key;const id=locale.value==='en-US'&&englishLoaded?'en-US':'zh-CN';let text=catalogs[id][key]||key;for(const[k,v]of Object.entries(params))text=text.replaceAll('{'+k+'}',String(v));return text}
-const close=vi.fn(),noticeFocus=vi.fn(),patches=vi.fn(),getTab=vi.fn(),getSourceTab=vi.fn(),send=vi.fn(),createTab=vi.fn(),openOptions=vi.fn(),runtimeSend=vi.fn(),reloadTab=vi.fn()
+const close=vi.fn(),noticeFocus=vi.fn(),patches=vi.fn(),handoff=vi.fn(),getTab=vi.fn(),getSourceTab=vi.fn(),send=vi.fn(),createTab=vi.fn(),openOptions=vi.fn(),runtimeSend=vi.fn(),reloadTab=vi.fn()
 let config:Config,subscribe:(value:Config)=>void,tabEvents:Record<string,Set<(...args:any[])=>void>>,runtimeEvents:Set<(...args:any[])=>void>
 type ConfigStore = typeof import('@/src/services/config/store')
 type ConfigSender = NonNullable<Parameters<ConfigStore['requestConfigPatch']>[1]>
 type ConfigWireMessage = Parameters<ConfigSender>[0]
+type ConfigBatchSender = Parameters<ConfigStore['handoffPendingConfigPatches']>[1]
+type ConfigBatchWireMessage = Parameters<ConfigBatchSender>[0]
 let persistenceStore:ConfigStore|undefined,persistenceUnsubscribe:(()=>void)|undefined
 let persistenceGates:Array<ReturnType<typeof deferred<void>>> = []
 function tabEvent(name:string,...args:any[]){for(const listener of tabEvents[name])listener(...args)}
@@ -84,7 +88,7 @@ function button(name:string){return document.querySelector(`[data-testid="${name
 function commands(){return send.mock.calls.filter(call=>call[1].type==='contextMenuTranslate')}
 beforeEach(async()=>{
   permissionEvents=new Set();locale=runtime.ref('zh-CN');bundleRevision=runtime.ref(0);localized=false;englishLoaded=false;
-  vi.clearAllMocks();executeServicePicker=false;for(const mock of [getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,reloadTab,readAccess,requestAccess])mock.mockReset();events=new Map();runtimeEvents=new Set();tabEvents={onUpdated:new Set(),onActivated:new Set(),onRemoved:new Set()};const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;focused=document.body
+  vi.clearAllMocks();executeServicePicker=false;for(const mock of [getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,handoff,reloadTab,readAccess,requestAccess])mock.mockReset();events=new Map();runtimeEvents=new Set();tabEvents={onUpdated:new Set(),onActivated:new Set(),onRemoved:new Set()};const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;focused=document.body
   vi.stubGlobal('location',{search:''})
   Object.defineProperty(document,'activeElement',{configurable:true,get:()=>focused});win.close=close;win.matchMedia=()=>({matches:false,onchange:null})
   viewport=Object.assign(document.createElement('div'),{width:320,height:600,offsetLeft:0,offsetTop:0});win.visualViewport=viewport;win.innerWidth=320;win.innerHeight=600;viewportFrames=new Map();let frame=0
@@ -93,7 +97,7 @@ beforeEach(async()=>{
   config=new Config();config.uiLanguageSetupCompleted=true;config.on=true;config.service='google';config.alwaysTranslateDomains=[];config.disabledExtensionDomains=[]
   getTab.mockResolvedValue([{id:7,windowId:3,url:'https://example.com/a'}]);send.mockImplementation(async(_id,message)=>message.type==='getFullPageTranslationState'?{isTranslated:false,documentToken:'popup-fixture-document'}:{status:'success',isTranslated:message.action==='fullPage',documentToken:'popup-fixture-document'});createTab.mockResolvedValue({id:8});openOptions.mockResolvedValue(undefined);runtimeSend.mockResolvedValue({success:true})
   getSourceTab.mockResolvedValue({id:7,windowId:3,url:'https://example.com/a'})
-  ;(globalThis as any).__popupFixture={permissionEvents,locale,bundleRevision,permissionText,readAccess,requestAccess,config,getTab,getSourceTab,send,createTab,openOptions,runtimeSend,reloadTab,patches,tabEvents,runtimeEvents,subscribe:(fn:typeof subscribe)=>{subscribe=fn},runtime,capabilities:runtime.reactive({browser:'chrome',areaTranslation:true,imageTranslation:true})}
+  ;(globalThis as any).__popupFixture={permissionEvents,locale,bundleRevision,permissionText,readAccess,requestAccess,config,getTab,getSourceTab,send,createTab,openOptions,runtimeSend,reloadTab,patches,handoff,tabEvents,runtimeEvents,subscribe:(fn:typeof subscribe)=>{subscribe=fn},runtime,capabilities:runtime.reactive({browser:'chrome',areaTranslation:true,imageTranslation:true})}
   // popup 测试控制组件事件与轮询，不使用文件观察或热更新。
   server=await createServer({root:process.cwd(),configFile:false,appType:'custom',logLevel:'silent',server:{watch:null},resolve:{alias:{'@':process.cwd()}},ssr:{noExternal:['element-plus','webextension-polyfill']},plugins:[{name:'popup-owned-client',enforce:'pre',resolveId(id){
     if(/(?:\/|^)Popup(?:App|SiteRule)\.vue$/u.test(id)||(executeServicePicker&&/(?:\/|^)PopupServices\.vue$/u.test(id)))return resolve('src/app/popup',id.split('/').at(-1)!)+'.owned.ts'
@@ -117,7 +121,7 @@ beforeEach(async()=>{
       return compilePopupClient(file)
     }
     if(id==='\0popup-browser')return "const f=globalThis.__popupFixture;export default {tabs:{query:f.getTab,get:f.getSourceTab,sendMessage:f.send,create:f.createTab,reload:f.reloadTab,...Object.fromEntries(Object.entries(f.tabEvents).map(([name,set])=>[name,{addListener:fn=>set.add(fn),removeListener:fn=>set.delete(fn)}]))},runtime:{id:'fixture-extension',onMessage:{addListener:fn=>f.runtimeEvents.add(fn),removeListener:fn=>f.runtimeEvents.delete(fn)},getManifest:()=>({version:'0.0.35'}),getURL:p=>'extension://'+p,sendMessage:f.runtimeSend,openOptionsPage:f.openOptions}}"
-    if(id==='\0popup-config')return "const f=globalThis.__popupFixture;export const config=f.config;export const configReady=Promise.resolve();export const subscribeConfig=fn=>{f.subscribe(fn);return()=>{}};export const requestConfigPatch=async value=>f.patches(value);export const handoffPendingConfigPatches=async()=>{}"
+    if(id==='\0popup-config')return "const f=globalThis.__popupFixture;export const config=f.config;export const configReady=Promise.resolve();export const subscribeConfig=fn=>{f.subscribe(fn);return()=>{}};export const requestConfigPatch=async value=>f.patches(value);export const handoffPendingConfigPatches=(...args)=>Promise.resolve(f.handoff(...args))"
     if(id==='\0popup-storage')return 'export const configStorage=globalThis.__popupFixture.persistencePort'
     if(id==='\0popup-credential-context')return 'export const isTrustedCredentialStorageContext=()=>true'
     if(id==='\0popup-i18n')return "const f=globalThis.__popupFixture;export const useUiI18n=()=>({language:f.locale,bundleRevision:f.bundleRevision,t:f.permissionText,translateLegacy:text=>text})"
@@ -139,14 +143,22 @@ async function attachPersistence(gates:Array<ReturnType<typeof deferred<void>>> 
   const port:ConfigStoragePort={writeOwner:false,getItem:async<T>(key:string)=>(records.get(key)??null) as T|null,setItem:async<T>(key:string,value:T)=>{records.set(key,structuredClone(value))},removeItem:async(key:string)=>{records.delete(key)},watch:()=>()=>{}}
   ;(globalThis as any).__popupFixture.persistencePort=port
   persistenceStore=await server.ssrLoadModule('/src/services/config/store.ts?popup-persistence') as ConfigStore;await persistenceStore.configReady
-  const messages:ConfigWireMessage[]=[]
+  const messages:ConfigWireMessage[]=[],batches:ConfigBatchWireMessage[]=[],applied=new Set<number>();let revision=10
+  const commit=(message:Pick<ConfigWireMessage,'sequence'|'config'>|ConfigBatchWireMessage['patches'][number])=>{
+    if(applied.has(message.sequence))return
+    applied.add(message.sequence);revision+=1
+    records.set('local:config',{...records.get('local:config') as Record<string,unknown>,...message.config,__fluentConfigRevision:revision})
+  }
   const sender:ConfigSender=vi.fn(async message=>{
     const index=messages.length;messages.push(structuredClone(message));await gates[index]?.promise
-    records.set('local:config',{...records.get('local:config') as Record<string,unknown>,...message.config,__fluentConfigRevision:11+index})
-    return {success:true,revision:11+index}
+    commit(message);return {success:true,revision}
   })
-  patches.mockImplementation(value=>persistenceStore!.requestConfigPatch(value,sender));persistenceUnsubscribe=persistenceStore.subscribeConfig(value=>subscribe(value))
-  return {records,messages,sender,store:persistenceStore}
+  const batchSender:ConfigBatchSender=vi.fn(async message=>{
+    batches.push(structuredClone(message));for(const patch of message.patches)commit(patch)
+    return {success:true,revision}
+  })
+  patches.mockImplementation(value=>persistenceStore!.requestConfigPatch(value,sender));handoff.mockImplementation(()=>persistenceStore!.handoffPendingConfigPatches(sender,batchSender));persistenceUnsubscribe=persistenceStore.subscribeConfig(value=>subscribe(value))
+  return {records,messages,batches,sender,batchSender,store:persistenceStore}
 }
 async function mount(){
   const component=(await server.ssrLoadModule('/src/app/popup/PopupApp.vue')).default;shown=runtime.ref(true)
@@ -517,10 +529,11 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     if(layout==='independent')config.popupModuleOrder=['siteRule','translation','quickFeatures','footer']
     await mount();runtimeEvent({type:'fullPageTranslationState',isTranslated:true,toolbarStatus:'error',documentToken:'popup-fixture-document',diagnostic:{code:'authentication'}},{id:'fixture-extension',url:'https://example.com/a',tab:{id:7,url:'https://example.com/a'},frameId:0});await drain()
     const translation=document.querySelector('[data-popup-module="translation"]')!,meta=translation.querySelector('.translation-meta')!,notice=document.querySelector('.fluentread-diagnostic')!
-    expect(document.querySelectorAll('.fluentread-diagnostic')).toHaveLength(1);expect(notice.parentElement).toBe(meta);expect(notice.closest('[data-popup-module="translation"]')).toBe(translation);expectCollapsedDiagnostic()
+    const tools=meta.querySelector('.translation-tools')!,mode=button('popup-display-mode')
+    expect(document.querySelectorAll('.fluentread-diagnostic')).toHaveLength(1);expect(notice.parentElement).toBe(tools);expect(mode.closest('.translation-tools')).toBe(tools);expect(notice.nextElementSibling?.contains(mode)).toBe(true);expect(notice.closest('[data-popup-module="translation"]')).toBe(translation);expectCollapsedDiagnostic()
     expect(translation.querySelectorAll('[data-diagnostic-details-toggle]')).toHaveLength(1)
     const site=document.querySelector('[data-popup-module="siteRule"]')
-    if(layout==='nested'){expect(site?.parentElement).toBe(meta);expect(site?.nextElementSibling).toBe(notice)}
+    if(layout==='nested'){expect(site?.parentElement).toBe(meta);expect(site?.nextElementSibling).toBe(tools)}
     else if(layout==='hidden')expect(site).toBeNull()
     else {expect(site).not.toBeNull();expect(site!.closest('[data-popup-module="translation"]')).toBeNull();expect(meta.querySelector('[data-popup-module="siteRule"]')).toBeNull()}
     const expected=config.popupModuleOrder.filter(id=>layout!=='hidden'||id!=='siteRule')
@@ -653,6 +666,46 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
   it('抽屉关闭再打开、字段改回及暂停后旧控件均不能借用新会话',async()=>{
     await mount();await openFeature('hover');const hover=eventOf(button('hover-enable')),oldClose=eventOf(document.querySelector('.drawer-header > button')!);const initial=state.config.hotkey;state.config.hotkey='Shift';state.config.hotkey=initial;await drain();hover();expect(state.config.hotkey).toBe(initial)
     eventOf(document.querySelector('.drawer-header > button')!)();await drain();eventOf(document.querySelector('[data-popup-quick-feature="hover"]')!)();await drain();oldClose();expect(state.drawerVisible).toBe(true);eventOf(button('hover-enable'))();await drain();expect(state.config.hotkey).toBe('none');const disabledHover=eventOf(button('hover-enable'));state.config.on=false;state.config.on=true;await drain();disabledHover();expect(state.drawerVisible).toBe(false);expect(state.config.hotkey).toBe('none')
+  })
+  it('右下角模式图标直接双向切换并保存共享偏好，不触发页面重译或打开抽屉',async()=>{
+    config.service='bing';config.display=1;localized=true;await mount();const {messages,records}=await attachPersistence()
+    const toggle=()=>button('popup-display-mode'),meta=document.querySelector('.translation-meta')!
+    expect(meta.contains(toggle())).toBe(true);expect(toggle().getAttribute('aria-label')).toBe('当前：双语，点击切换为仅译文');expect(toggle().hasAttribute('disabled')).toBe(false)
+    eventOf(toggle())();await drain();await persistenceStore!.waitForConfigPersistenceQueue();await drain()
+    expect(state.config.display).toBe(0);expect(records.get('local:config')).toMatchObject({display:0});expect(messages.at(-1)!.config).toEqual({display:0});expect(toggle().getAttribute('aria-label')).toBe('当前：仅译文，点击切换为双语')
+    eventOf(toggle())();await drain();await persistenceStore!.waitForConfigPersistenceQueue();await drain()
+    expect(state.config.display).toBe(1);expect(records.get('local:config')).toMatchObject({display:1});expect(toggle().getAttribute('aria-label')).toBe('当前：双语，点击切换为仅译文')
+    expect(commands()).toHaveLength(0);expect(state.drawerVisible).toBe(false);expect(close).not.toHaveBeenCalled()
+  })
+  it('Google 双语模式禁用切换为仅译文，已有仅译文偏好仍可一键修复为双语',async()=>{
+    config.display=1;localized=true;await mount();const toggle=()=>button('popup-display-mode')
+    expect(toggle().hasAttribute('disabled')).toBe(true);expect(toggle().getAttribute('aria-label')).toBe('当前：双语，Google 翻译仅支持双语显示')
+    eventOf(toggle())();await drain();expect(state.config.display).toBe(1);expect(patches).not.toHaveBeenCalled()
+    state.config.service='bing';state.config.display=0;await drain();expect(toggle().getAttribute('aria-label')).toBe('当前：仅译文，点击切换为双语')
+    state.config.service='google';await drain();expect(state.config.display).toBe(0);expect(toggle().hasAttribute('disabled')).toBe(false);expect(toggle().getAttribute('aria-label')).toContain('点击切换为双语')
+    eventOf(toggle())();await drain();expect(state.config.display).toBe(1);expect(toggle().hasAttribute('disabled')).toBe(true)
+  })
+  it.each(['display','service','paused','cached','pagehide','unmount'] as const)('%s 变化后缓存的模式按钮回调失效，不借用新会话',async reason=>{
+    config.service='bing';config.display=1;await mount();const stale=eventOf(button('popup-display-mode'))
+    if(reason==='display'){state.config.display=0;state.config.display=1}
+    if(reason==='service'){state.config.service='google';state.config.service='bing'}
+    if(reason==='paused'){state.config.on=false;state.config.on=true}
+    if(reason==='cached'){shown.value=false;await drain();shown.value=true}
+    if(reason==='pagehide')win.dispatchEvent(new win.Event('pagehide'))
+    if(reason==='unmount')app.unmount()
+    await drain();const saves=patches.mock.calls.length;stale();await drain();expect(state.config.display).toBe(1);expect(patches).toHaveBeenCalledTimes(saves)
+    if(reason!=='pagehide'&&reason!=='unmount'){eventOf(button('popup-display-mode'))();await drain();expect(state.config.display).toBe(0)}
+  })
+  it.each(['pagehide','unmount'] as const)('%s 捕获模式切换的同 tick 草稿，并在前一 ACK 未完成时同步交接最终偏好',async reason=>{
+    config.service='bing';config.display=1;await mount();const first=deferred<void>(),{messages,batches,records}=await attachPersistence([first])
+    state.config.to='ja';await drain();expect(messages).toHaveLength(1);expect(messages[0].config).toEqual({to:'ja'});expect(records.get('local:config')).toMatchObject({display:1})
+    // 真实 click 后不让 post watcher 先运行；退出函数必须捕获刚改动的显示偏好。
+    eventOf(button('popup-display-mode'))();expect(state.config.display).toBe(0)
+    if(reason==='pagehide')win.dispatchEvent(new win.Event('pagehide'));else app.unmount()
+    expect(batches).toHaveLength(1);expect(batches[0].patches.map(patch=>patch.config)).toEqual([{to:'ja'},{display:0}]);expect(records.get('local:config')).toMatchObject({to:'ja',display:0})
+    // Firefox 的 pagehide + unmount 不重复交接，迟到 ACK 也不能恢复旧显示模式。
+    app.unmount();await drain();expect(batches).toHaveLength(1);first.resolve();await persistenceStore!.waitForConfigPersistenceQueue();await drain()
+    expect(records.get('local:config')).toMatchObject({to:'ja',display:0})
   })
   it('实际显示模式保留 Google 保存偏好，并阻止旧服务和旧划词模式按钮',async()=>{
     config.display=0;config.popupQuickFeatureVisibility.appearance=true;config.selectionTranslatorMode='bilingual';config.disableSelectionTranslator=false;await mount();await openFeature('appearance');const translated=()=>document.querySelector('[aria-label="翻译模式"] button')!;expect(translated().getAttribute('aria-pressed')).toBe('true');expect(translated().hasAttribute('disabled')).toBe(true);state.config.display=1;await drain();eventOf(translated())();expect(state.config.display).toBe(1);state.config.service='bing';await drain();const enabled=eventOf(translated());state.config.service='google';state.config.service='bing';await drain();enabled();expect(state.config.display).toBe(1);eventOf(translated())();expect(state.config.display).toBe(0)

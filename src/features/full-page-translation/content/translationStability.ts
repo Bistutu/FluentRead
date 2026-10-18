@@ -1,11 +1,12 @@
 /**
  * @file src/features/full-page-translation/content/translationStability.ts
  * 文件职责：提供动态页面翻译的语义稳定性判断、轻量完成证据复验和实时文本槽重绑定，隔离 React/虚拟列表重建造成的生命周期噪声。
- * 主要内容：判断原文与译文工件是否仍完整，排队行内候选逐一复验全部来源节点及顺序，在保留宿主链接焦点管理的前提下决定是否保留当前翻译 generation，并在逐槽核对当前来源后把异步结果映射到实时 Text 节点与空白边界；重挂提取原文和文本槽时共享单文本读取，多槽仍保留独立的链接标识符与属性标签提取政策；按钮型 input 的译文写在标签属性上，另按已记录属性值复验其时效与自身写入。
+ * 主要内容：判断原文与译文工件是否仍完整，排队行内候选逐一复验全部来源节点及顺序，在保留宿主链接焦点管理的前提下决定是否保留当前翻译 generation，并在逐槽核对当前来源后把异步结果映射到实时 Text 节点与空白边界；同值完成证明排除同步语言跳过和符合补充检测资格的长未知正文，避免将本地原文回填认证为供应商结果；重挂提取原文和文本槽时共享单文本读取，多槽仍保留独立的链接标识符与属性标签提取政策；按钮型 input 的译文写在标签属性上，另按已记录属性值复验其时效与自身写入。
  * 模块边界：本文件不读取配置、不监听 DOM、不执行 provider 请求；自动应用外壳候选和轻量完成证据必须重新认证原策略，runtime 通过回调提供当前来源与槽位快照。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
+import {getSupplementalLanguageCandidate} from '@/src/core/language/supplement';
 import type {TranslationScope} from '@/src/core/translation/public';
 import {
     collectLiveTranslationTextSlots,
@@ -111,6 +112,8 @@ export function createAcceptedUnchangedCompletion(owner: HTMLElement, candidate:
         sources[0]!.includes('$$$') ||
         !hasDistinctTranslation('', outputs[0]) || hasDistinctTranslation(sources[0]!, outputs[0]) ||
         shouldSkipTranslationForTarget(sources[0]!, config.targetLanguage, config.excludedLanguages) ||
+        // 长未知正文可能由补充预检在本地回填，单凭同值结果不能证明 provider 已返回。
+        getSupplementalLanguageCandidate(sources[0]!) !== undefined ||
         !['freeTranslation', 'microsoft', 'google'].includes(config.service)) return undefined;
     return {reason: 'accepted-result-identical', sources: [...sources], outputs: [...outputs],
         sourceNodes: [...state.sourceTextNodes], sourceStructureSignature: state.sourceStructureSignature,

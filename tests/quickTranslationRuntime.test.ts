@@ -119,6 +119,28 @@ describe('快捷翻译 content composition', () => {
             .toBe(mocks.cancelPendingHoverTranslation);
     });
 
+    it('三种快捷入口传递默认显示继承语义，调整全局模式后同一全文方案仍恢复原文', () => {
+        let active = false;
+        mocks.isFullPageTranslationActive.mockImplementation(() => active);
+        mocks.restoreOriginalContent.mockImplementation(() => {active = false;});
+        mocks.autoTranslateEnglishPage.mockImplementation(() => {active = true;});
+        const current = config();
+        mountConfiguredQuickTranslation(current, {} as any, () => false, new AbortController().signal);
+        const deps = mocks.mountedDependencies!, selected = profile({displayMode: 'inherit'});
+        deps.runHover(selected, 12, 34);
+        deps.runSection({...selected, action: 'section'});
+        deps.runFullPage({...selected, action: 'full-page'});
+        for (const invocation of [mocks.handleTranslation.mock.calls[0][2],
+            mocks.startSectionTranslationPicker.mock.calls[0][0], mocks.autoTranslateEnglishPage.mock.calls[0][0]]) {
+            expect(invocation).toMatchObject({service: services.openai, model: 'quick-model', targetLanguage: 'ja'});
+            expect(invocation).not.toHaveProperty('displayMode');
+        }
+        current.display = 0;
+        deps.runFullPage({...selected, action: 'full-page'});
+        expect(mocks.restoreOriginalContent).toHaveBeenCalledTimes(2);
+        expect(mocks.autoTranslateEnglishPage).toHaveBeenCalledOnce();
+    });
+
     it('邮件 frame 转发解析后的全文方案，并保留本地悬停执行器', () => {
         const forward = vi.fn();
         mountConfiguredQuickTranslation(config(), {} as any, () => false, new AbortController().signal, vi.fn(), forward);

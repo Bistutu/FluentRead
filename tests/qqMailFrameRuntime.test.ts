@@ -26,6 +26,7 @@ vi.mock('@/src/services/config/store', () => ({
 vi.mock('@/src/core/config/constants', () => ({constants: {}}));
 vi.mock('@/src/features/site-rules/domain', () => ({isExtensionDisabledOnSite: mocks.isDisabled}));
 vi.mock('@/src/features/full-page-translation/public', () => ({
+    createPageTranslationDisplayModeSync: (_initial: unknown, apply: (next: any) => void) => apply,
     autoTranslateEnglishPage: mocks.autoTranslateEnglishPage,
     getFullPageTranslationFrameState: mocks.getState,
     invalidateFullPageTranslationSessionCache: vi.fn(),

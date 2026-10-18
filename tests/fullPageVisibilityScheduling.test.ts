@@ -78,6 +78,8 @@ const runtime = vi.hoisted(() => ({
     clearlyTargetLanguage: vi.fn<(value: string, targetLanguage: string, excluded?: readonly string[]) => boolean>(() => false),
 }));
 
+// 可选浏览器证据由预检边界套件验证；这里保留原有纯识别与请求/DOM契约。
+vi.mock('@/src/services/translation/languagePreflight', () => ({shouldSkipTranslationWithEvidence: async () => false}));
 vi.mock("@/src/features/full-page-translation/content/configCheck", () => ({checkConfig: () => true}));
 vi.mock('@/src/features/full-page-translation/ui/modalProgressHint', () => ({syncModalTranslationHint: vi.fn()}));
 vi.mock("@/src/core/config/catalog", async (importOriginal) => ({
@@ -347,6 +349,7 @@ import {
     restoreTranslationOwner,
 } from "@/src/features/full-page-translation/content/runtime";
 import {getTranslationState} from "@/src/features/full-page-translation/content/state";
+import {syncPageTranslationDisplayMode} from '@/src/features/full-page-translation/content/displayMode';
 import {toggleTranslationSection} from '@/src/features/full-page-translation/content/sectionTranslation';
 import {createBilingualRemountCapitulationRegistry} from '@/src/features/full-page-translation/content/bilingualRemount';
 import {resetFullPageRouteSession, type FullPageRouteLifecycleSession} from '@/src/features/full-page-translation/content/routeLifecycle';
@@ -589,6 +592,60 @@ describe("全文翻译可见性锚点", () => {
             else Reflect.deleteProperty(globalThis, name);
         }
         replacedGlobals.clear();
+    });
+
+    describe('popup display mode synchronization', () => {
+        function displayFixture(display = 1) {
+            runtime.config.display = display; runtime.config.fullPageTranslationMode = 'all';
+            runtime.realTextExtraction = true; runtime.realSourceSnapshots = true;
+            document.body.innerHTML = '<main><p>First public paragraph to translate.</p></main>';
+            const main = document.querySelector<HTMLElement>('main')!, owner = main.firstElementChild as HTMLElement;
+            setLayoutBox(owner, 600, 80);
+            runtime.realCore = new TranslationCandidateCore({url: new URL('https://example.com')});
+            return {owner, main};
+        }
+        it.each([0, 1])('in-flight display=%s follows the new global mode; new DOM keeps the same session and requests each paragraph once', async display => {
+            const {owner, main} = displayFixture(display), pending = deferred<string[]>();
+            runtime.requests.mockReturnValueOnce(pending.promise); autoTranslateEnglishPage();
+            await vi.advanceTimersByTimeAsync(60); await waitForRequestCount(1);
+            runtime.config.display = display === 0 ? 1 : 0;
+            syncPageTranslationDisplayMode(runtime.config.display);
+            pending.resolve(['第一段译文']); await finishScheduledWork();
+            expect(getTranslationState(owner)?.mode).toBe(display === 0 ? 'bilingual' : 'single');
+            const session = getFullPageTranslationFrameState().sessionId;
+            const added = document.createElement('p'); added.textContent = 'A second public paragraph added after the display switch.';
+            main.appendChild(added); setLayoutBox(added, 600, 80);
+            TestMutationObserver.instances.findLast(observer => observer.observed.has(document.documentElement))!.emitRegistered([
+                {type: 'childList', target: main, addedNodes: [added], removedNodes: []} as unknown as MutationRecord,
+            ]);
+            await finishScheduledWork();
+            expect(getTranslationState(added)?.mode).toBe(display === 0 ? 'bilingual' : 'single');
+            expect(getFullPageTranslationFrameState().sessionId).toBe(session);
+            expect(runtime.requests).toHaveBeenCalledTimes(2);
+            const oldArtifacts = [...owner.querySelectorAll('[data-fr-translation-owned]')];
+            runtime.config.display = display; syncPageTranslationDisplayMode(display);
+            TestMutationObserver.instances.findLast(observer => observer.observed.has(document.documentElement))!.emitRegistered([
+                {type: 'childList', target: owner, addedNodes: [...owner.querySelectorAll('[data-fr-translation-owned]')],
+                    removedNodes: oldArtifacts} as unknown as MutationRecord,
+            ]);
+            await finishScheduledWork();
+            expect(getTranslationState(owner)?.mode).toBe(display === 0 ? 'single' : 'bilingual');
+            expect(getTranslationState(added)?.mode).toBe(display === 0 ? 'single' : 'bilingual');
+            expect(runtime.requests).toHaveBeenCalledTimes(2);
+            restoreOriginalContent();
+            expect(owner.textContent).toBe('First public paragraph to translate.');
+            expect(document.querySelector('[data-fr-translation-owned]')).toBeNull();
+        });
+        it.each(['google', 'explicit'])('%s keeps the frozen bilingual request when global mode changes', async kind => {
+            const {owner} = displayFixture();
+            if (kind === 'google') runtime.config.service = 'google';
+            autoTranslateEnglishPage(kind === 'explicit' ? {displayMode: 'bilingual'} : {});
+            await finishScheduledWork();
+            runtime.config.display = 0; syncPageTranslationDisplayMode(0); await finishScheduledWork();
+            expect(getTranslationState(owner)?.mode).toBe('bilingual');
+            expect(owner.querySelector('.fluent-read-bilingual-content')).not.toBeNull();
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+        });
     });
 
     describe('Mastodon automatic shell policy lifecycle', () => {
@@ -5574,7 +5631,7 @@ describe("全文翻译可见性锚点", () => {
         expect(singleTranslationText(paragraph)).toBe("译:Mode changes apply to the next session.");
     });
 
-    it("全文会话冻结服务、模型、语言、缓存、AI 上下文、显示模式和样式，配置热更新不会混入后续候选", async () => {
+    it("全文会话冻结请求配置与样式，显示模式热更新复用已有译文且不改变语言", async () => {
         runtime.config.enableAIContext = true;
         runtime.config.modelThinking.microsoft = {'microsoft-default': true};
         runtime.config.display = 1;
@@ -5632,8 +5689,10 @@ describe("全文翻译可见性锚点", () => {
             {targetLanguage: 'zh', style: 2, sourceText: 'First paragraph uses the session snapshot.', longParagraphLineBreak: false, translationBeforeOriginal: false},
             {targetLanguage: 'zh', style: 2, sourceText: 'Later paragraph must use the same snapshot.', longParagraphLineBreak: false, translationBeforeOriginal: false},
         ]);
-        expect(first.querySelector('.fluent-read-bilingual-content')?.getAttribute('lang')).toBe('zh');
-        expect(second.querySelector('.fluent-read-bilingual-content')?.getAttribute('lang')).toBe('zh');
+        expect(first.querySelector('.fluent-read-single-slot')?.getAttribute('lang')).toBe('zh');
+        expect(second.querySelector('.fluent-read-single-slot')?.getAttribute('lang')).toBe('zh');
+        expect(getTranslationState(first)?.mode).toBe('single');
+        expect(getTranslationState(second)?.mode).toBe('single');
     });
 
     it("立即翻译整页模式也会直接处理会话中动态追加的内容", async () => {

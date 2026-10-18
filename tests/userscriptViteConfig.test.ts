@@ -286,7 +286,7 @@ describe('userscript browser shim injection', () => {
                 expect(JSON.stringify(bundle) + '\n').toBe(readFileSync(resolve(process.cwd(), 'userscript/languages', file), 'utf8'));
             }
             const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
-                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.')
+                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && key !== 'video.nativeFullscreenHint' && !key.startsWith('popup.compact.') && !key.startsWith('popup.displayMode.')
                 && !key.startsWith('diagnostics.')
                 && !['waitingTranslation', 'crossPageContext', 'fullPassage', 'closePassage'].some(name => key === `document.pdfReading.${name}`)
                 && !key.startsWith('document.config.') && !key.startsWith('document.translationRecovery.') && !key.startsWith('document.retainedRevisions.')
@@ -363,7 +363,7 @@ describe('userscript browser shim injection', () => {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
-        for (const key of ['popup.compact.translate', 'popup.compact.restore']) {
+        for (const key of ['popup.compact.translate', 'popup.compact.restore', 'popup.displayMode.bilingual', 'popup.displayMode.translationOnly', 'popup.displayMode.googleBilingualOnly']) {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
@@ -391,7 +391,7 @@ describe('userscript browser shim injection', () => {
             && !diagnosticKeys.includes(key) && !readerDialogKeys.includes(key)
             && key !== 'video.nativeFullscreenHint'
             && !safariPermissionKeys.includes(key)
-            && key !== 'popup.compact.translate' && key !== 'popup.compact.restore'
+            && key !== 'popup.compact.translate' && key !== 'popup.compact.restore' && !key.startsWith('popup.displayMode.')
             && (_language === 'zh-CN' || _language === 'en-US' || !registeredSupplementKeys.includes(key)));
         expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
         for (const key of retainedKeys) expect(projected[key]).toBe(publishedMessages[_language] && publishedOverrideKeys.includes(key)
