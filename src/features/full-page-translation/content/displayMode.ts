@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/displayMode.ts
  * 文件职责：复用已提交的原译文槽即时切换网页双语与仅译文呈现，保留宿主原文身份与恢复能力。
- * 主要内容：复验来源及现有工件后，仅替换扩展自己的双语容器或闭合 Shadow 文本槽；沿用冻结的语言、样式、译文位置和服务限制，跳过显式快捷方案、控件及过期来源。
+ * 主要内容：复验来源及现有工件后，仅替换扩展自己的双语容器或闭合 Shadow 文本槽；沿用冻结的语言、样式、译文位置和服务限制，模式切换跳过显式快捷方案；校订更新可原位重绘当前模式。
  * 模块边界：不请求 provider、不修改会话配置、不创建消息或订阅；content 现有配置订阅与 runtime 提交入口调用本模块。
  */
 import {applyTranslationsToSnapshot, collectLiveTranslationTextSlots, createTranslationSourceSnapshot,
@@ -17,11 +17,11 @@ import {getTranslationStateProtectionBoundary, getTranslationTextProtectionOptio
 import {withFullPageViewportAnchor} from './viewportStability';
 
 /** 请求与显示解耦：显式模式覆盖与 Google 的双语限制始终沿用本次请求。 */
-export function syncTranslationDisplayMode(node: HTMLElement, state: TranslationState, display: number): boolean {
+export function syncTranslationDisplayMode(node: HTMLElement, state: TranslationState, display: number, refresh = false): boolean {
     const replay = state.bilingualReplay;
     const mode = display === 0 ? 'single' : 'bilingual';
     if (!node.isConnected || state.kind !== 'content' || state.phase !== 'translated' || !replay ||
-        replay.displayModeOverridden || (mode === 'single' && replay.service === 'google') || state.mode === mode) return false;
+        (!refresh && (replay.displayModeOverridden || (mode === 'single' && replay.service === 'google') || state.mode === mode))) return false;
     if ((!statefulSourceAndTextSlotsAreCurrent(node, state) && !refreshBilingualTranslationSkeleton(node, state)) ||
         !isTranslationArtifactCurrent(node, state)) return false;
     const core = getCurrentTranslationCore(state.scope);
@@ -29,7 +29,7 @@ export function syncTranslationDisplayMode(node: HTMLElement, state: Translation
     const protection = getTranslationTextProtectionOptions(state.allowTopLevelApplicationShell, node);
     const parts = collectLiveTranslationTextSlots(node, core.shouldStayOriginal, boundary, {
         ...protection,
-        sourceTextSlotHosts: new Set(state.singleTextSlotHosts?.map(({host}) => host)),
+        sourceTextSlotHosts: new Set((state.singleTextSlotHosts || []).map(({host}) => host)),
     });
     if (parts.length !== replay.sources.length || replay.translations.length !== parts.length ||
         parts.some((part, index) => part.source !== replay.sources[index])) return false;
@@ -38,9 +38,8 @@ export function syncTranslationDisplayMode(node: HTMLElement, state: Translation
         resetTranslationPresentation(node, state, mode);
         if (mode === 'single') {
             setLiveTranslationSourceSnapshot(node, parts.map(({node: source}) => source));
-            const hosts = appendSingleTranslationSlots(node, parts.map((part, index) => ({node: part.node,
-                text: `${part.prefix}${replay.translations[index]}${part.suffix}`})), replay);
-            setSingleTextSlotHosts(node, hosts);
+            setSingleTextSlotHosts(node, appendSingleTranslationSlots(node, parts.map((part, index) => ({node: part.node,
+                text: `${part.prefix}${replay.translations[index]}${part.suffix}`})), replay));
         } else {
             // 必须先解包自有文本槽：原始 Text 身份不变，安全骨架仍从当前宿主属性构建。
             const snapshot = createTranslationSourceSnapshot(node, core.shouldStayOriginal, boundary,
@@ -53,6 +52,11 @@ export function syncTranslationDisplayMode(node: HTMLElement, state: Translation
         setRenderedStyleAttribute(node);
     }, [node]);
     return true;
+}
+
+/** 校订底稿更新只重绘当前模式，显式快捷方案的模式与请求身份保持不变。 */
+export function refreshTranslationPresentation(node: HTMLElement, state: TranslationState): boolean {
+    return syncTranslationDisplayMode(node, state, state.mode === 'single' ? 0 : 1, true);
 }
 
 /** 迟到的安全骨架重放完成后补齐当前显示偏好，避免同值配置去重留下旧模式。 */
