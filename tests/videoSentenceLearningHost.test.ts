@@ -272,6 +272,64 @@ describe('learning panel mount ownership', () => {
 });
 
 describe('saved X video position restoration', () => {
+    it('keeps later user playback and position when the same document remounts the feature', async () => {
+        const f = fixture(undefined, 'https://x.com/reader/status/123#fluentread-video=3000,5500');
+        let paused = false, position = 0;
+        const seek = vi.fn((value: number) => { position = value; });
+        Object.defineProperty(f.video, 'paused', {configurable: true, get: () => paused});
+        Object.defineProperty(f.video, 'currentTime', {configurable: true, get: () => position, set: seek});
+        f.video.pause = vi.fn(() => { paused = true; });
+        f.video.play = vi.fn(async () => { paused = false; });
+        const firstMount = createSavedVideoPositionRestorer();
+        expect(firstMount.restore(f.video, f.location, f.document)).toBe(true);
+        expect(f.video.currentTime).toBe(3); expect(f.video.paused).toBe(true);
+
+        // 模拟用户继续播放；返回同一 document 后的视频功能会创建另一份 factory。
+        f.video.currentTime = 20; await f.video.play();
+        const secondMount = createSavedVideoPositionRestorer();
+        expect(secondMount.restore(f.video, f.location, f.document)).toBe(false);
+        expect(f.video.currentTime).toBe(20); expect(f.video.paused).toBe(false);
+        expect(f.video.pause).toHaveBeenCalledOnce(); expect(seek).toHaveBeenCalledTimes(2);
+        expect(f.video.play).toHaveBeenCalledOnce();
+    });
+
+    it('allows another source, fragment, video or document after a successful restoration', () => {
+        const f = fixture(undefined, 'https://x.com/reader/status/123#fluentread-video=3000,5500');
+        expect(createSavedVideoPositionRestorer().restore(f.video, f.location, f.document)).toBe(true);
+        f.location.href = 'https://x.com/reader/status/456#fluentread-video=3000,5500';
+        expect(createSavedVideoPositionRestorer().restore(f.video, f.location, f.document)).toBe(true);
+        f.location.hash = '#fluentread-video=6000,8000';
+        expect(createSavedVideoPositionRestorer().restore(f.video, f.location, f.document)).toBe(true);
+        expect(f.video.currentTime).toBe(6);
+        const replacement = f.document.createElement('video') as HTMLVideoElement;
+        Object.assign(replacement, {readyState: 1, duration: 60, currentTime: 0, pause: vi.fn()});
+        f.video.replaceWith(replacement);
+        expect(createSavedVideoPositionRestorer().restore(replacement, f.location, f.document)).toBe(true);
+        expect(replacement.currentTime).toBe(6);
+        const another = fixture(undefined, f.location.href);
+        expect(createSavedVideoPositionRestorer().restore(another.video, another.location, another.document)).toBe(true);
+        expect(another.video.currentTime).toBe(6);
+        // 同一节点移入另一 document 后，旧页面的成功记录也不能阻止新页面的合法定位。
+        another.video.replaceWith(replacement); replacement.currentTime = 20;
+        expect(another.document.querySelector('video')).toBe(replacement);
+        expect(createSavedVideoPositionRestorer().restore(replacement, another.location, another.document)).toBe(true);
+        expect(replacement.currentTime).toBe(6);
+    });
+
+    it('consumes a receipt only after a successful seek, including across factories', () => {
+        const f = fixture(undefined, 'https://x.com/reader/status/123#fluentread-video=3000,5500');
+        let seekable = false, position = 0;
+        Object.defineProperty(f.video, 'currentTime', {configurable: true, get: () => position, set(value: number) {
+            if (!seekable) throw new Error('Seek blocked'); position = value;
+        }});
+        expect(createSavedVideoPositionRestorer().restore(f.video, f.location, f.document)).toBe(false);
+        seekable = true;
+        expect(createSavedVideoPositionRestorer().restore(f.video, f.location, f.document)).toBe(true);
+        expect(f.video.currentTime).toBe(3); f.video.currentTime = 20;
+        expect(createSavedVideoPositionRestorer().restore(f.video, f.location, f.document)).toBe(false);
+        expect(f.video.currentTime).toBe(20); expect(f.video.pause).toHaveBeenCalledTimes(2);
+    });
+
     it('restores only the exact video identity once, preserves paused playback and accepts a new fragment or video instance', () => {
         const f = fixture('<article><a href="/reader/status/123/video/1"><video id="first"></video></a><a href="/reader/status/123/video/2"><video id="second"></video></a></article>', 'https://x.com/reader/status/123/video/2#fluentread-video=3000,5500');
         const second = f.document.getElementById('second')! as HTMLVideoElement; Object.assign(second, {readyState: 1, duration: 60, currentTime: 0, pause: vi.fn()});

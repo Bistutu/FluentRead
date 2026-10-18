@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/sentenceLearningHost.ts
  * 文件职责：封装视频句子学习面板的节点所有权、可靠来源选择和收藏片段的单次定位恢复。
- * 主要内容：只从当前视频的明确链接或无歧义帖子识别 X 来源；保存完整 video/N 身份，恢复时核对同一来源与安全时间范围；向组件同步逻辑player与来源语言，物理挂载可交给placement；同媒体全屏迁移保留原节点，关闭和失联先释放所有权避免卸载重入，只在原媒体及已验证的同视频控件范围内归还入口焦点。
+ * 主要内容：只从当前视频的明确链接或无歧义帖子识别 X 来源；保存完整 video/N 身份，恢复时核对同一来源与安全时间范围；成功定位记录随 document 弱引用保留，功能重挂载不覆盖用户后续进度；向组件同步逻辑player与来源语言，物理挂载可交给placement；同媒体全屏迁移保留原节点，关闭和失联先释放所有权避免卸载重入，只在原媒体及已验证的同视频控件范围内归还入口焦点。
  * 模块边界：不静态导入 Vue 或组件实现、不加载字幕和调用翻译服务；composition root 注入挂载与界面标记，原始媒体与 cue 数据仍由既有运行时持有。
  */
 import type VideoSentenceLearning from '../ui/VideoSentenceLearning.vue';
@@ -103,11 +103,13 @@ export function createVideoSentenceLearningHost(ports: {
     };
 }
 
-/** 只在可靠 X 来源完全一致时恢复一次；元数据未就绪、时长未知或 seek 失败均保留重试机会。 */
+// 记录属于页面和媒体节点，不属于可随 BFCache／总开关重建的功能实例；不强持有 document 或 video。
+const restoredVideoPositions = new WeakMap<Document, WeakMap<HTMLVideoElement, Set<string>>>();
+
+/** 同一 document 的可靠 X 来源与片段只成功恢复一次；元数据未就绪、时长未知或 seek 失败仍可重试。 */
 export function createSavedVideoPositionRestorer(): {
     restore(video: HTMLVideoElement, location: SourceLocation & Pick<Location, 'hash'>, document: Document): boolean;
 } {
-    const restored = new WeakMap<HTMLVideoElement, Set<string>>();
     return {
         restore(video, location, document) {
             if (video.readyState < 1) return false;
@@ -117,9 +119,14 @@ export function createSavedVideoPositionRestorer(): {
             const source = sanitizeVocabularyVideoUrl(location.href, 'x');
             if (!range || !source || getVideoLearningSource(video, location, document).sourceUrl !== source) return false;
             const key = source + location.hash;
-            if (restored.get(video)?.has(key)) return false;
+            let restored = restoredVideoPositions.get(document);
+            if (restored?.get(video)?.has(key)) return false;
             if (!Number.isFinite(video.duration) || video.duration <= 0 || range.startMs >= video.duration * 1_000) return false;
             try { video.pause(); video.currentTime = range.startMs / 1_000; } catch { return false; }
+            if (!restored) {
+                restored = new WeakMap<HTMLVideoElement, Set<string>>();
+                restoredVideoPositions.set(document, restored);
+            }
             const keys = restored.get(video) || new Set<string>(); keys.add(key); restored.set(video, keys);
             return true;
         },

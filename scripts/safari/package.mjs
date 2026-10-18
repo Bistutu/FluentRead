@@ -240,7 +240,7 @@ function projectReferences(object, key) {
 }
 
 /** 按 productType → 配置列表 → 配置读取身份；同时拒绝共享配置、额外 target 和身份覆盖。 */
-function safariTargetConfigurations(project, platform) {
+function safariTargetConfigurations(project, platform, includeDeploymentTargets = false) {
     assert(['both', 'ios', 'macos'].includes(platform), '未知 Apple 模板平台');
     const targets = projectObjects(project, 'PBXNativeTarget'), projects = projectObjects(project, 'PBXProject');
     const lists = projectObjects(project, 'XCConfigurationList'), configs = projectObjects(project, 'XCBuildConfiguration');
@@ -260,6 +260,21 @@ function safariTargetConfigurations(project, platform) {
             assert(!/\bbaseConfigurationReference\s*=/u.test(config.body), 'Apple 模板不能通过外部配置覆盖身份');
             const settings = [...config.body.matchAll(/^\t{3}buildSettings = \{\n([\s\S]*?)^\t{3}\};$/gmu)];
             assert(settings.length === 1, 'Apple 工程 buildSettings 布局已变化');
+            if (includeDeploymentTargets) {
+                // 条件、Info.plist 或非标准 key 不能悄悄退回项目值；只接受明确的模板设置。
+                const seenDeploymentSettings = new Set();
+                for (const line of settings[0][1].split('\n')) {
+                    assert(!/^\s*"?INFOPLIST_KEY_(?:MinimumOSVersion|LSMinimumSystemVersion)(?=[\s"\[=])/u.test(line),
+                        'Apple 模板包含 Info.plist deployment target 覆盖');
+                    if (/^\s*"?(?:SDKROOT|IPHONEOS_DEPLOYMENT_TARGET|MACOSX_DEPLOYMENT_TARGET)(?=[\s"\[=])/u.test(line)) {
+                        const value = /^\t{4}(SDKROOT|IPHONEOS_DEPLOYMENT_TARGET|MACOSX_DEPLOYMENT_TARGET) = ([^;\n]+);$/u.exec(line);
+                        assert(value && !seenDeploymentSettings.has(value[1]),
+                            'Apple 模板包含不支持或重复的 deployment target 或 SDK 覆盖');
+                        seenDeploymentSettings.add(value[1]);
+                        if (value[1] !== 'SDKROOT') deploymentVersionParts(value[2]);
+                    }
+                }
+            }
             return {...config, name: projectProperty(config, 'name'), settings: settings[0][1],
                 settingsStart: config.bodyStart + settings[0].index + settings[0][0].indexOf('\n') + 1};
         });
@@ -287,8 +302,17 @@ function safariTargetConfigurations(project, platform) {
             const inherited = projectConfigs.find(item => item.name === config.name);
             const sdk = (setting(config, 'SDKROOT', false) ?? setting(inherited, 'SDKROOT'))[1];
             assert(expectedSDKs.includes(sdk), 'Apple target SDK 与请求的平台不符');
+            let deploymentTarget;
+            if (includeDeploymentTargets) {
+                const key = sdk === 'iphoneos' ? 'IPHONEOS_DEPLOYMENT_TARGET' : 'MACOSX_DEPLOYMENT_TARGET';
+                const own = setting(config, key, false), source = own ? config : inherited;
+                const version = (own ?? setting(inherited, key))[1];
+                deploymentVersionParts(version);
+                deploymentTarget = {setting: key, version, source: own ? 'target' : 'project', sourceConfigurationId: source.id};
+            }
             return {id: config.id, name: config.name, bundleId, sdk,
-                start: config.settingsStart + match.index + match[0].indexOf(' = ') + 3, length: match[1].length};
+                start: config.settingsStart + match.index + match[0].indexOf(' = ') + 3, length: match[1].length,
+                ...(includeDeploymentTargets ? {deploymentTarget} : {})};
         });
         assert(values[0].sdk === values[1].sdk, 'Apple target 的 Debug/Release 平台混淆');
         const kind = `${productType}:${values[0].sdk}`;
@@ -299,6 +323,37 @@ function safariTargetConfigurations(project, platform) {
     assert(result.length === expectedSDKs.length * 2 && usedLists.size === lists.size && usedConfigs.size === configs.size,
         'Apple 模板 App/Extension 或配置关联不完整');
     return result;
+}
+
+function deploymentVersionParts(version) {
+    assert(typeof version === 'string' && /^(?:0|[1-9][0-9]*)(?:\.(?:0|[1-9][0-9]*)){0,2}$/u.test(version),
+        'Apple deployment target 必须是确定的数字版本字面值');
+    const parts = version.split('.').map(Number);
+    assert(parts.every(Number.isSafeInteger), 'Apple deployment target 版本超出安全范围');
+    return parts;
+}
+
+function maximumDeploymentVersion(left, right) {
+    if (left === undefined) return right;
+    const a = deploymentVersionParts(left), b = deploymentVersionParts(right);
+    for (let index = 0; index < 3; index++) {
+        if ((a[index] ?? 0) !== (b[index] ?? 0)) return (a[index] ?? 0) > (b[index] ?? 0) ? left : right;
+    }
+    return left;
+}
+
+/** 最终工程读回：跨 App/Extension 及 Debug/Release 取最高安装要求，保留逐配置来源。 */
+export function readSafariDeploymentRequirements(project, platform) {
+    const minimumOS = {};
+    const targets = safariTargetConfigurations(project, platform, true).map(target => ({
+        id: target.id, name: target.name, productType: target.productType, configurationListId: target.configurationListId,
+        configurations: target.configurations.map(config => {
+            const os = config.sdk === 'iphoneos' ? 'ios' : 'macos';
+            minimumOS[os] = maximumDeploymentVersion(minimumOS[os], config.deploymentTarget.version);
+            return {id: config.id, name: config.name, sdk: config.sdk, ...config.deploymentTarget};
+        }),
+    }));
+    return {minimumOS, targets};
 }
 
 /** Apple 单平台工具可能保留默认 App ID；仅修改实际 native target 所属配置的值。 */
@@ -491,6 +546,7 @@ async function main() {
     const copiedExtensions = [];
     const containerGuides = [];
     const targetBundleIdentifiers = [];
+    const targetDeploymentRequirements = [], minimumOS = {};
     for (const project of projects) {
         const template = await locateSafariTemplate(project, config.platform);
         const copied = await verifySafariBuild(template.extensionResources);
@@ -500,10 +556,14 @@ async function main() {
         const deploymentProject = applyDeploymentTargets(await readFile(file, 'utf8'), config.platform);
         await writeFile(file, applySafariBundleIdentifiers(deploymentProject, config.bundleId, config.platform));
         containerGuides.push(await applyContainerGuide(project, config.bundleId, config.platform));
-        targetBundleIdentifiers.push({project, targets: verifySafariBundleIdentifiers(await readFile(file, 'utf8'), config.bundleId, config.platform)});
+        const finalProject = await readFile(file, 'utf8');
+        targetBundleIdentifiers.push({project, targets: verifySafariBundleIdentifiers(finalProject, config.bundleId, config.platform)});
+        const deployment = readSafariDeploymentRequirements(finalProject, config.platform);
+        targetDeploymentRequirements.push({project, ...deployment});
+        for (const [os, version] of Object.entries(deployment.minimumOS)) minimumOS[os] = maximumDeploymentVersion(minimumOS[os], version);
     }
-    const report = {...build, packager, projects, copiedExtensions, containerGuides, targetBundleIdentifiers, bundleId: config.bundleId, platform: config.platform,
-        minimumOS: {ios: '26.0', macos: '14.0'}, minimumSafari: '26.0', signed: false, installed: false};
+    const report = {...build, packager, projects, copiedExtensions, containerGuides, targetBundleIdentifiers, targetDeploymentRequirements, bundleId: config.bundleId, platform: config.platform,
+        minimumOS, minimumSafari: '26.0', signed: false, installed: false};
     await writeFile(path.join(config.projectLocation, 'fluentread-package-report.json'), `${JSON.stringify(report, null, 2)}\n`);
     console.log(JSON.stringify(report, null, 2));
 }

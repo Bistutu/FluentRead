@@ -70,6 +70,92 @@ describe('Safari unsigned delivery contract', () => {
         return [section('PBXNativeTarget', targets), section('PBXProject', [project]), section('XCBuildConfiguration', configs), section('XCConfigurationList', lists)].join('\n\n');
     }
 
+    function deploymentProject(platform: 'both' | 'ios' | 'macos') {
+        return bundleProject(platform).replaceAll(/^(\t{4}SDKROOT = [^;]+;)$/gmu,
+            '$1\n\t\t\t\tIPHONEOS_DEPLOYMENT_TARGET = 26.0;\n\t\t\t\tMACOSX_DEPLOYMENT_TARGET = 14.0;');
+    }
+
+    function editDeploymentConfiguration(project: string, index: number, edit: (config: string) => string) {
+        let current = 0;
+        return project.replace(/^\t\t[A-F0-9]{24} \/\* XCBuildConfiguration \*\/ = \{\n[\s\S]*?^\t\t\};$/gmu,
+            config => current++ === index ? edit(config) : config);
+    }
+
+    it.each(['both', 'ios', 'macos'] as const)('从 %s 最终 target 配置报告实际部署要求，单平台不虚报另一平台', async platform => {
+        const {applyDeploymentTargets, applySafariBundleIdentifiers, verifySafariBundleIdentifiers, readSafariDeploymentRequirements} = await safariTools();
+        const original = deploymentProject(platform).replaceAll('IPHONEOS_DEPLOYMENT_TARGET = 26.0;', 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;')
+            .replaceAll('MACOSX_DEPLOYMENT_TARGET = 14.0;', 'MACOSX_DEPLOYMENT_TARGET = 10.14;');
+        const finalProject = applySafariBundleIdentifiers(applyDeploymentTargets(original, platform), 'org.test.Reader', platform);
+        const report = readSafariDeploymentRequirements(finalProject, platform);
+        expect(report.minimumOS).toEqual(platform === 'both' ? {ios: '26.0', macos: '14.0'} : platform === 'ios' ? {ios: '26.0'} : {macos: '14.0'});
+        expect(report.targets).toHaveLength(platform === 'both' ? 4 : 2);
+        for (const target of report.targets) {
+            expect(target.configurations.map((config: {name: string}) => config.name)).toEqual(['Debug', 'Release']);
+            for (const config of target.configurations) {
+                expect(config.version).toBe(config.sdk === 'iphoneos' ? '26.0' : '14.0');
+                expect(config.setting).toBe(config.sdk === 'iphoneos' ? 'IPHONEOS_DEPLOYMENT_TARGET' : 'MACOSX_DEPLOYMENT_TARGET');
+                expect(config.source).toBe('target');
+                expect(config.sourceConfigurationId).toBe(config.id);
+            }
+        }
+        const identities: SafariTargetIdentity[] = verifySafariBundleIdentifiers(finalProject, 'org.test.Reader', platform);
+        expect(identities.flatMap(target => target.configurations).every(config =>
+            Object.keys(config).sort().join(',') === 'bundleId,id,name,sdk')).toBe(true);
+    });
+
+    it('较高版本及 minor/patch 按数字比较；每个平台聚合所有目标的 Debug/Release 实际值', async () => {
+        const {applyDeploymentTargets, readSafariDeploymentRequirements} = await safariTools();
+        let project = deploymentProject('both').replaceAll('IPHONEOS_DEPLOYMENT_TARGET = 26.0;', 'IPHONEOS_DEPLOYMENT_TARGET = 26.9.9;')
+            .replaceAll('MACOSX_DEPLOYMENT_TARGET = 14.0;', 'MACOSX_DEPLOYMENT_TARGET = 15.2.3;');
+        project = editDeploymentConfiguration(project, 9, config => config.replace('26.9.9;', '26.10.1;'));
+        project = editDeploymentConfiguration(project, 2, config => config.replace('15.2.3;', '15.3.0;'));
+        expect(applyDeploymentTargets(project, 'both')).toBe(project);
+        const report = readSafariDeploymentRequirements(project, 'both');
+        expect(report.minimumOS).toEqual({ios: '26.10.1', macos: '15.3.0'});
+        expect(report.targets.flatMap((target: {configurations: {version: string}[]}) => target.configurations).map((config: {version: string}) => config.version))
+            .toEqual(['15.3.0', '15.2.3', '15.2.3', '15.2.3', '26.9.9', '26.9.9', '26.9.9', '26.10.1']);
+        expect(readSafariDeploymentRequirements(deploymentProject('ios').replaceAll('26.0;', '27.0.2;'), 'ios').minimumOS).toEqual({ios: '27.0.2'});
+    });
+
+    it('target 覆盖优先，缺省继承同名项目配置，不把项目较高值错误归给显式 target', async () => {
+        const {readSafariDeploymentRequirements} = await safariTools();
+        let project = editDeploymentConfiguration(deploymentProject('ios'), 0, config => config.replace('26.0;', '27.3;'));
+        project = editDeploymentConfiguration(project, 1, config => config.replace('26.0;', '27.4;'));
+        expect(readSafariDeploymentRequirements(project, 'ios').minimumOS).toEqual({ios: '26.0'});
+        project = editDeploymentConfiguration(project, 2, config => config.replace('\t\t\t\tIPHONEOS_DEPLOYMENT_TARGET = 26.0;\n', ''));
+        project = editDeploymentConfiguration(project, 5, config => config.replace('26.0;', '28.1.2;'));
+        const report = readSafariDeploymentRequirements(project, 'ios');
+        expect(report.minimumOS).toEqual({ios: '28.1.2'});
+        const inherited = report.targets[0].configurations[0];
+        const projectDebugId = [...project.matchAll(/^\t\t([A-F0-9]{24}) \/\* XCBuildConfiguration \*\/ =/gmu)][0][1];
+        expect(inherited).toMatchObject({name: 'Debug', sdk: 'iphoneos', version: '27.3', source: 'project', sourceConfigurationId: projectDebugId});
+        expect(report.targets[0].configurations[1]).toMatchObject({name: 'Release', version: '26.0', source: 'target'});
+        const sdkInherited = editDeploymentConfiguration(project, 2, config => config.replace('\t\t\t\tSDKROOT = iphoneos;\n', ''));
+        expect(readSafariDeploymentRequirements(sdkInherited, 'ios')).toEqual(report);
+    });
+
+    it('部署要求缺失、重复、条件/外部覆盖、宏值或未知格式均停止，不猜政策 floor', async () => {
+        const {readSafariDeploymentRequirements} = await safariTools();
+        const source = deploymentProject('ios');
+        const line = 'IPHONEOS_DEPLOYMENT_TARGET = 26.0;';
+        const invalid = [
+            source.replaceAll('\t\t\t\tIPHONEOS_DEPLOYMENT_TARGET = 26.0;\n', ''),
+            editDeploymentConfiguration(source, 2, config => config.replace(line, `${line}\n\t\t\t\t${line}`)),
+            editDeploymentConfiguration(source, 0, config => config.replace(line, `${line}\n\t\t\t\t${line}`)),
+            ...['"IPHONEOS_DEPLOYMENT_TARGET[sdk=iphoneos*]" = 27.0;', 'IPHONEOS_DEPLOYMENT_TARGET[sdk=iphoneos*] = 27.0;',
+                '"IPHONEOS_DEPLOYMENT_TARGET" = 27.0;', 'IPHONEOS_DEPLOYMENT_TARGET = $(inherited);',
+                'IPHONEOS_DEPLOYMENT_TARGET = "27.0";', 'IPHONEOS_DEPLOYMENT_TARGET = 26..1;',
+                'IPHONEOS_DEPLOYMENT_TARGET = 26.0.1.2;', 'IPHONEOS_DEPLOYMENT_TARGET = 9007199254740992;']
+                .map(value => editDeploymentConfiguration(source, 2, config => config.replace(line, value))),
+            editDeploymentConfiguration(source, 0, config => config.replace(line, '"IPHONEOS_DEPLOYMENT_TARGET[sdk=iphoneos*]" = 29.0;')),
+            editDeploymentConfiguration(source, 2, config => config.replace(line, `${line}\n\t\t\t\t"SDKROOT[sdk=iphoneos*]" = iphoneos;`)),
+            ...['INFOPLIST_KEY_MinimumOSVersion', 'INFOPLIST_KEY_LSMinimumSystemVersion'].map(key =>
+                editDeploymentConfiguration(source, 2, config => config.replace(line, `${line}\n\t\t\t\t${key} = 29.0;`))),
+            source.replace('isa = XCBuildConfiguration;', 'isa = XCBuildConfiguration;\n\t\t\tbaseConfigurationReference = FFFFFFFFFFFFFFFFFFFFFFFF;'),
+        ];
+        for (const project of invalid) expect(() => readSafariDeploymentRequirements(project, 'ios')).toThrow();
+    });
+
     it.each(['both', 'ios', 'macos'] as const)('按真实 target 配置关联修正 %s 的 App/Extension 身份，不全局替换并可重复校验', async platform => {
         const {applySafariBundleIdentifiers, verifySafariBundleIdentifiers} = await safariTools();
         const original = bundleProject(platform), requested = 'org.example.FluentReadDevelopment';
