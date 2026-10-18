@@ -176,9 +176,12 @@ describe('options navigation view-model', () => {
     }
     expect(filterNavigationItems('')).toEqual([])
     expect(filterNavigationItems('不存在的设置项')).toEqual([])
-    expect(filterNavigationItems('Harness')).toEqual([
-      expect.objectContaining({ id: 'settings-selection' }),
-    ])
+    for (const keyword of ['翻译卡片', '学习辅助', '解释深度', '学习记忆']) {
+      expect(filterNavigationItems(keyword)).toEqual([
+        expect.objectContaining({ id: 'settings-selection' }),
+      ])
+    }
+    expect(filterNavigationItems('Harness')).toEqual([])
   })
 })
 
