@@ -775,6 +775,7 @@ describe('extension manifest capability contract', () => {
         expect(entry).toContain("'https://mail.qq.com/cgi-bin/readmail*'");
         expect(entry).toContain("'https://disqus.com/embed/comments/*'");
         expect(entry).toContain("'https://www.kaggleusercontent.com/kf/*/__results__.html*'");
+        expect(entry).toContain("'https://*.hf.space/*'");
         expect(entry).toContain("window.location.hostname === 'mail.qq.com'");
         expect(entry).toContain('startQqMailFrameApp(ctx) : startEmbeddedFrameApp(ctx)');
         expect(entry).toContain('allFrames: true');

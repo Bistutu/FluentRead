@@ -2,6 +2,12 @@
 
 网页兼容维护集与生命周期验收见 [网页翻译稳定性维护](maintainers/web-stability.md)。该入口显式选择十个独立站点，复用已有正文与保护区契约，并将宿主 DOM 探针、原生站点操作、在线供应商和不同浏览器的证据分开记录。`fullPageVisibilityScheduling` 新增路由观察选项刷新、断连 ShadowRoot 回收/重新插入，以及重连观察器时保留待投递保护区变化；`contentFeatureMounting` 与划词 `--lifecycle-only` 验证入口被移除后的恢复、取消、错误重试、禁用和窄屏键盘操作。
 
+## Hugging Face Spaces 内嵌正文
+
+扩展通过受限子 frame 入口翻译 Hugging Face Space 的 `*.hf.space` 应用正文，复用顶层全文会话、恢复原文和子 frame 快捷键；从 Hugging Face 其他页面软导航进入 Space 也会建立会话。后台核验浏览器提供的顶层 URL、子 frame URL 和 frameId，仅允许 Space 标识与应用子域精确配对。当前支持名称由英文字母、数字及单连字符组成的标准 Space 地址；含点、下划线或自定义域名的映射尚未覆盖。
+
+`pnpm test tests/issue146EmbeddedFrames.test.ts tests/supportedFrameEntrypoint.test.ts tests/qqMailFrameRuntime.test.ts tests/qqMailFrameSession.test.ts tests/extensionManifestContract.test.ts` 验证 URL 配对、命令授权、SPA 进入/退出、会话同步与清理。生产 Chrome 构建后运行 `node scripts/testing/run-huggingface-frame-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper scripts/testing/focus-safe-browser.cjs --artifacts-dir <证据目录>`，在第二屏临时 Edge 后台正常窗口验证翻译—恢复—再次翻译、frame 快捷键、动态正文、晚加载 frame、来源拒绝和唯一顶层浮球，并保存 DOM 与截图。网页响应与翻译传输受控；实站、在线供应商和 Firefox 运行证据须单独记录。
+
 ## 网页操作提示
 
 网页提示按每条内容独立收缩：小品牌图标、具体结果和关闭按钮一行优先显示，不再用「流畅阅读 · 操作完成」占一行标题。品牌和状态仍供辅助技术读取；长文自动换行，缺少凭据时保留设置入口，关闭按钮至少 28px。提示外的留白允许继续点击网页，悬停或键盘聚焦暂停自动消失。

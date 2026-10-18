@@ -551,6 +551,41 @@ describe('frame bridge cleanup after extension reload', () => {
     );
 });
 
+describe('Hugging Face Space top frame bridge', () => {
+    it('从首页软导航进入 Space 后同步会话，离开应用页拒绝命令并清理监听', async () => {
+        const {window, listeners} = installGlobals('https://huggingface.co/');
+        const {installEmbeddedTopFrameBridge} = await import('@/src/app/content/embeddedFrameRuntime');
+        const lifetime = new AbortController();
+        installEmbeddedTopFrameBridge(() => true, lifetime.signal);
+        expect(mocks.addRuntimeListener).toHaveBeenCalledOnce();
+        expect(mocks.sendMessage).not.toHaveBeenCalled();
+        const listener = mocks.addRuntimeListener.mock.calls[0][0];
+        const respond = vi.fn();
+        const command = {type: 'embeddedFrameCommand', action: 'state'};
+        const sender = {id: 'extension-id'};
+        expect(listener(command, sender, respond)).toBe(false);
+
+        window.location.href = 'https://huggingface.co/spaces/FineEnvs/RL-Explorer';
+        for (const notify of listeners.get('fluentread-route-change') ?? []) notify();
+        expect(mocks.sendMessage).toHaveBeenCalledWith({type: 'embeddedFrameChanged'});
+        expect(listener(command, sender, respond)).toBe(true);
+        expect(respond).toHaveBeenCalledWith({...mocks.getState(), enabled: true});
+        expect(listener({...command, action: 'toggle'}, {id: 'other'}, respond)).toBe(false);
+        expect(listener({...command, action: 'toggle'}, sender, respond)).toBe(true);
+        expect(mocks.autoTranslateEnglishPage).toHaveBeenCalledOnce();
+
+        window.location.href += '/tree/main';
+        mocks.sendMessage.mockClear();
+        for (const notify of listeners.get('fluentread-route-change') ?? []) notify();
+        expect(mocks.sendMessage).not.toHaveBeenCalled();
+        expect(listener({...command, action: 'toggle'}, sender, respond)).toBe(false);
+        expect(mocks.autoTranslateEnglishPage).toHaveBeenCalledOnce();
+        lifetime.abort();
+        expect(mocks.removeRuntimeListener).toHaveBeenCalledWith(listener);
+        expect([...listeners.values()].every(set => set.size === 0)).toBe(true);
+    });
+});
+
 describe('QQ legacy top frame bridge', () => {
     it('does not install on unrelated URLs', async () => {
         installGlobals('https://mail.qq.com/cgi-bin/readmail?mailid=x');

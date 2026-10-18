@@ -1,7 +1,7 @@
 /**
  * @file src/app/content/embeddedFrameRuntime.ts
- * 文件职责：让 OMG! Ubuntu 评论和 Kaggle 笔记本正文 iframe 跟随所属文章的翻译会话。
- * 主要内容：通过既有配置订阅即时重排网页双语与仅译文工件，不重发翻译请求；顶层提供无凭据会话快照，受限子 frame 经后台认证后挂载翻译手势、样式与会话控制；真实路由变化同步失效上下文与请求提交代次，同地址通知不重复清理。
+ * 文件职责：让 OMG! Ubuntu 评论、Kaggle 笔记本和 Hugging Face Spaces 正文 iframe 跟随所属页面的翻译会话。
+ * 主要内容：通过既有配置订阅即时重排网页双语与仅译文工件，不重发翻译请求；顶层提供无凭据会话快照并支持从 Hugging Face 其他页面软导航进入 Space，受限子 frame 经后台认证后挂载翻译手势、样式与会话控制；真实路由变化同步失效上下文与请求提交代次，同地址通知不重复清理。
  * 模块边界：不在广告或其他第三方 frame 挂载功能；URL 配对由后台验证，正文候选由共享翻译核心处理。
  */
 import type {ContentScriptContext} from 'wxt/utils/content-script-context';
@@ -35,8 +35,11 @@ import {createHoverTranslationConfigSubscription} from './hoverTranslationConfig
 
 /** 页面事件只提示刷新；frame 必须经后台校验 tab、URL 和 frameId 后读取顶层真实状态。 */
 export function installEmbeddedTopFrameBridge(isEnabled: () => boolean, signal: AbortSignal): void {
-    if (window.top !== window || !isSupportedEmbeddedTopUrl(window.location.href)) return;
+    // Hugging Face 使用 SPA 导航；先在其顶层注册，再逐次核验当前 Space 路由。
+    if (window.top !== window || (!isSupportedEmbeddedTopUrl(window.location.href) &&
+        new URL(window.location.href).origin !== 'https://huggingface.co')) return;
     const notify = () => {
+        if (!isSupportedEmbeddedTopUrl(window.location.href)) return;
         try { void browser.runtime.sendMessage({type: EMBEDDED_FRAME_CHANGED}).catch(() => undefined); }
         catch { /* 扩展更新后仍允许本页自行恢复。 */ }
     };
@@ -52,7 +55,8 @@ export function installEmbeddedTopFrameBridge(isEnabled: () => boolean, signal: 
     };
     const listener = (message: any, sender: any, respond: (value: unknown) => void): boolean => {
         if (message?.type !== EMBEDDED_FRAME_COMMAND || sender?.id !== browser.runtime.id ||
-            (message.action !== 'state' && message.action !== 'toggle')) return false;
+            (message.action !== 'state' && message.action !== 'toggle') ||
+            !isSupportedEmbeddedTopUrl(window.location.href)) return false;
         if (message.action === 'toggle') toggle(message.invocation);
         respond({...getFullPageTranslationFrameState(), enabled: isEnabled()});
         return true;
@@ -61,6 +65,7 @@ export function installEmbeddedTopFrameBridge(isEnabled: () => boolean, signal: 
     signal.addEventListener('abort', removeMessageListener, {once: true});
     document.addEventListener('fluentread-translation-started', notify, {signal});
     document.addEventListener('fluentread-translation-ended', notify, {signal});
+    document.addEventListener('fluentread-route-change', notify, {signal});
     notify();
 }
 

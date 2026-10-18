@@ -106,7 +106,7 @@ export async function startContentApp(ctx: ContentScriptContext,
         ? installQqMailTopFrameBridge(isPageRuntimeEnabled, pageEventController.signal)
             ?? installNeteaseMailTopFrameBridge(isPageRuntimeEnabled, pageEventController.signal)
         : undefined;
-    if (capabilities.browser !== 'userscript') {
+    if (import.meta.env.BROWSER !== 'userscript' && capabilities.browser !== 'userscript') {
         installEmbeddedTopFrameBridge(isPageRuntimeEnabled, pageEventController.signal);
     }
     const disposePageFeatures = (): void => {
