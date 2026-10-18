@@ -105,8 +105,21 @@ const remoteUiLanguageBundles = Object.fromEntries(Object.entries(UI_LANGUAGE_BU
         return [language, fileName];
     }));
 const unicodeNotice = `/*\n${fs.readFileSync(resolve(root, 'public/third-party-notices/unicode-17.0.0.txt'), 'utf8')}\n*/`;
-const serviceIconsNotice = `/*\n${fs.readFileSync(resolve(root, 'public/third-party-notices/lobe-icons-MIT.txt'), 'utf8')}\n*/`;
-const tinycolorNotice = `/*\n@ctrl/tinycolor 3.6.1 — MIT\n${fs.readFileSync(resolve(root, 'public/third-party-notices/tinycolor-MIT.txt'), 'utf8')}\n*/`;
+const serviceIconsLicense = fs.readFileSync(resolve(root, 'public/third-party-notices/lobe-icons-MIT.txt'), 'utf8');
+const tinycolorLicense = fs.readFileSync(resolve(root, 'public/third-party-notices/tinycolor-MIT.txt'), 'utf8');
+const serviceIconsNotice = `/*\n${serviceIconsLicense}\n*/`;
+// 两个库共用完全相同的 MIT 正文；分别保留包/版本、来源、提交与版权，只合并授权和免责正文。
+const sharedMitNotice = bundleLibraries ? '' : (() => {
+    const permissionStart = 'Permission is hereby granted';
+    const iconsStart = serviceIconsLicense.indexOf(permissionStart);
+    const tinycolorStart = tinycolorLicense.indexOf(permissionStart);
+    const normalize = (text: string) => text.replace(/\s+/gu, ' ').trim();
+    if (iconsStart < 0 || tinycolorStart < 0
+        || normalize(serviceIconsLicense.slice(iconsStart)) !== normalize(tinycolorLicense.slice(tinycolorStart))) {
+        throw new Error('Bundled MIT notice bodies differ; retain both complete notices');
+    }
+    return `/*\n${serviceIconsLicense.slice(0, iconsStart).trimEnd()}\n\n@ctrl/tinycolor 3.6.1 — MIT\n${tinycolorLicense.slice(0, tinycolorStart).trimEnd()}\n\n${serviceIconsLicense.slice(iconsStart).trimEnd()}\n*/`;
+})();
 const browserShimPath = resolve(root, 'userscript/browser.ts');
 const projectRoot = `${normalizePath(root)}/`;
 const siteCatalogDir = resolve(root, 'src/core/site-adaptation/catalog');
@@ -209,8 +222,7 @@ export function wrapUserscriptEntry(entryCode: string, bootstrapCode: string, th
     return [
         metadata,
         unicodeNotice,
-        serviceIconsNotice,
-        ...(!bundleLibraries ? [tinycolorNotice] : []),
+        bundleLibraries ? serviceIconsNotice : sharedMitNotice,
         ...(thirdPartyNotices ? [thirdPartyNotices] : []),
         executionGuardStart,
         'if (!globalThis.__fluentReadUserscriptBootstrapped) {',

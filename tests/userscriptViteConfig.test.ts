@@ -562,6 +562,29 @@ describe('userscript browser shim injection', () => {
         expect(bootstrap).toBeGreaterThan(condition);
         expect(entry).toBeGreaterThan(bootstrap);
         expect(guardEnd).toBeGreaterThan(entry);
+
+        const notices = wrapped.slice(0, guardStart);
+        const iconsLicense = readFileSync(resolve(process.cwd(), 'public/third-party-notices/lobe-icons-MIT.txt'), 'utf8');
+        const tinycolorLicense = readFileSync(resolve(process.cwd(), 'public/third-party-notices/tinycolor-MIT.txt'), 'utf8');
+        const permissionStart = 'Permission is hereby granted';
+        const iconsStart = iconsLicense.indexOf(permissionStart);
+        const tinycolorStart = tinycolorLicense.indexOf(permissionStart);
+        expect(notices).toContain(iconsLicense.slice(0, iconsStart).trimEnd());
+        expect(notices).toContain('@ctrl/tinycolor 3.6.1 — MIT');
+        expect(notices).toContain(tinycolorLicense.slice(0, tinycolorStart).trimEnd());
+        expect(notices).toContain(iconsLicense.slice(iconsStart).trimEnd());
+        const sharedMitStart = notices.indexOf(`/*\n${iconsLicense.slice(0, iconsStart).trimEnd()}`);
+        expect(sharedMitStart).toBeGreaterThanOrEqual(0);
+        const sharedMitEnd = notices.indexOf('\n*/', sharedMitStart);
+        expect(sharedMitEnd).toBeGreaterThan(sharedMitStart);
+        expect(notices.slice(sharedMitStart, sharedMitEnd + 3).split(permissionStart)).toHaveLength(2);
+        const unicodeLicense = readFileSync(resolve(process.cwd(), 'public/third-party-notices/unicode-17.0.0.txt'), 'utf8');
+        expect(notices).toContain(`/*\n${unicodeLicense}\n*/`);
+        expect(wrapped.slice(guardStart)).toBe([
+            executionGuardStart,
+            'if (!globalThis.__fluentReadUserscriptBootstrapped) {',
+            'BOOTSTRAP_SENTINEL', 'ENTRY_SENTINEL', '}', executionGuardEnd,
+        ].join('\n'));
     });
 
     it('在 app 使用的 public contract 边界替换扩展专属 feature 与可信 GM 凭据上下文', () => {
