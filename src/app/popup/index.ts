@@ -7,6 +7,7 @@
 import './popup.css';
 import {createPopupStartupFeedback} from './startupFeedback';
 import 'element-plus/es/components/base/style/css';
+import 'element-plus/es/components/tooltip/style/css';
 import '@/src/ui/styles/interface-skins.css';
 import {isEmbeddedPopup, isPopupSurfaceActive, observeEmbeddedPopupSize, preparePopupSurface} from './embedded';
 type PopupRuntime = {
