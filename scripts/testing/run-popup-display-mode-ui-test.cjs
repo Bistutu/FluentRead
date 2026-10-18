@@ -2,8 +2,8 @@
 'use strict';
 /**
  * @file scripts/testing/run-popup-display-mode-ui-test.cjs
- * 文件职责：在隔离生产扩展中验证紧随网站按钮的双语/仅译文图标、持久化和现有译文即时刷新。
- * 主要内容：使用 skill 的后台安全启动 helper、原生激活事件观察器与本地确定性服务，记录语言/主题/触屏下网站按钮及图标的顺序、紧凑间距、自然换行与边界，以及诊断浮层、快关重开、最新写入胜出和恢复原文。
+ * 文件职责：在隔离生产扩展中验证右下角双语/仅译文图标、持久化和现有译文即时刷新。
+ * 主要内容：使用 skill 的后台安全启动 helper、原生激活事件观察器与本地确定性服务，记录语言/主题/触屏布局、诊断浮层、快关重开、最新写入胜出和恢复原文。
  * 模块边界：只操作本脚本的临时 Edge profile 和 HTTP 页面；不修改产品构建、用户浏览器配置、供应商服务或全局桌面焦点。
  */
 const assert = require('node:assert/strict');
@@ -138,41 +138,21 @@ async function geometry(page, name, touch = false) {
   await fit(page, {touch});
   const metrics = await page.evaluate(() => {
     const rect = selector => {const r = document.querySelector(selector)?.getBoundingClientRect();return r && {x:r.x,y:r.y,width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
-    const shell = document.querySelector('.popup-shell');const button = document.querySelector('[data-testid="popup-display-mode"]'),meta=document.querySelector('.translation-meta');
-    const selectors=[['always','[data-setting="always-translate-site"]'],['disabled','[data-setting="disable-extension-site"]'],
-      ['mode','[data-testid="popup-display-mode"]'],['diagnostic','[data-diagnostic-details-toggle]']];
-    const controls=selectors.map(([key,selector])=>({key,bounds:rect(selector)})).filter(item=>item.bounds);
-    const order=[...meta.querySelectorAll('[data-setting], [data-testid="popup-display-mode"], [data-diagnostic-details-toggle]')]
-      .map(node=>node.hasAttribute('data-diagnostic-details-toggle')?'diagnostic':node.hasAttribute('data-testid')?'mode':node.dataset.setting==='always-translate-site'?'always':'disabled');
+    const shell = document.querySelector('.popup-shell');const button = document.querySelector('[data-testid="popup-display-mode"]');
     const ids = [...document.querySelectorAll('[id]')].map(node => node.id);
-    return {shell:rect('.popup-shell'),button:rect('[data-testid="popup-display-mode"]'),meta:rect('.translation-meta'),controls,order,footer:rect('footer'),
+    return {shell:rect('.popup-shell'),button:rect('[data-testid="popup-display-mode"]'),local:rect('[data-testid="section-translation"]'),tools:rect('.translation-tools'),meta:rect('.translation-meta'),rules:rect('.site-rule-row'),footer:rect('footer'),
       viewport:{width:innerWidth,height:innerHeight,scale:devicePixelRatio},coarse:matchMedia('(any-pointer: coarse)').matches,scrollWidth:shell.scrollWidth,clientWidth:shell.clientWidth,
       scrollHeight:shell.scrollHeight,clientHeight:shell.clientHeight,horizontalOverflow:document.documentElement.scrollWidth > innerWidth + 1 || shell.scrollWidth > shell.clientWidth + 1,
       buttonLabel:button.getAttribute('aria-label'),title:button.title,buttonText:button.textContent.trim(),mode:button.dataset.displayMode,duplicateIds:ids.filter((id,index) => ids.indexOf(id) !== index)};
   });
-  report.layout[name]=metrics;save();
+  metrics.centerOffset=Math.abs(metrics.button.left+metrics.button.width/2-metrics.local.left-metrics.local.width/2);report.layout[name]=metrics;save();
   assert(metrics.shell.width <= 400 && metrics.shell.height <= 560 && !metrics.horizontalOverflow, `${name}: popup bounds ${JSON.stringify(metrics)}`);
   assert.equal(metrics.duplicateIds.length, 0);assert(metrics.buttonLabel && metrics.title);assert.equal(metrics.buttonText, '');
   assert.equal(metrics.button.width, touch ? 46 : 24);assert.equal(metrics.button.height, touch ? 46 : 24);
-  assert.deepEqual(metrics.order,['always','disabled','mode',...(metrics.controls.some(item=>item.key==='diagnostic')?['diagnostic']:[])],`${name}: website buttons must precede mode and diagnostic`);
-  for(let index=0;index<metrics.controls.length;index++) {
-    const current=metrics.controls[index],bounds=current.bounds;
-    assert(bounds.left>=metrics.meta.left-1 && bounds.right<=metrics.meta.right+1 && bounds.top>=metrics.meta.top-1 && bounds.bottom<=metrics.meta.bottom+1,`${name}: ${current.key} outside meta bounds`);
-    if(index===0){assert(Math.abs(bounds.left-metrics.meta.left)<=1,`${name}: website controls must start at the row edge`);continue;}
-    const previous=metrics.controls[index-1].bounds,overlap=Math.min(bounds.bottom,previous.bottom)-Math.max(bounds.top,previous.top);
-    if(overlap>1) {
-      const gap=bounds.left-previous.right;
-      assert(gap>=0 && gap<=10,`${name}: ${current.key} must compactly follow previous control (gap ${gap}px)`);
-      assert(Math.abs((bounds.top+bounds.bottom-previous.top-previous.bottom)/2)<=1,`${name}: same-row controls must align vertically`);
-    } else {
-      assert(bounds.top>=previous.bottom && Math.abs(bounds.left-metrics.meta.left)<=1,`${name}: ${current.key} must wrap to the next row's start`);
-      assert(previous.right+bounds.width+10>metrics.meta.right-1,`${name}: ${current.key} wrapped despite available space`);
-    }
-    for(const earlier of metrics.controls.slice(0,index)) {
-      const other=earlier.bounds;
-      assert(Math.min(bounds.right,other.right)-Math.max(bounds.left,other.left)<=1 || Math.min(bounds.bottom,other.bottom)-Math.max(bounds.top,other.top)<=1,`${name}: ${earlier.key} and ${current.key} overlap`);
-    }
-  }
+  const center = rect => rect.left + rect.width / 2;
+  assert(Math.abs(center(metrics.button) - center(metrics.local)) <= 1, `${name}: mode icon must align below local button (offset ${metrics.centerOffset}px)`);
+  assert(metrics.button.top >= metrics.local.bottom, `${name}: icon must be below local action`);
+  assert(metrics.tools.right <= metrics.shell.right && metrics.rules.right <= metrics.tools.left + 1, `${name}: right tools and rules overlap`);
   assert(metrics.footer.bottom <= metrics.viewport.height + 1, `${name}: footer clipped`);
   if (touch) assert(metrics.coarse, 'Touch emulation must enable any-pointer coarse');
   report.layout[name] = metrics;return metrics;
@@ -224,7 +204,7 @@ const server = http.createServer(async (request, response) => {
     await until(async () => {try {return (await control.evaluate(tab => chrome.tabs.sendMessage(tab,{type:'getFullPageTranslationState'}),contentTab)).status === 'success';}catch {return false;}},'content ready');
     currentCase = 'layout';
     for (const [name,theme,uiLanguage,touch] of [['zh-light','light','zh-CN',false],['zh-dark','dark','zh-CN',false],['en-light','light','en-US',false],['zh-touch','light','zh-CN',true]]) {
-      await patch({theme,uiLanguage});popup = await openPopup({touch});await geometry(popup,name,touch);await shot(popup,`popup-${name}-2x`);await closePage(popup);report.cases.push({name:`${name}: mode icon compactly follows website buttons with natural wrapping and no overflow`,passed:true});
+      await patch({theme,uiLanguage});popup = await openPopup({touch});await geometry(popup,name,touch);await shot(popup,`popup-${name}-2x`);await closePage(popup);report.cases.push({name:`${name}: compact icon below local action without overflow`,passed:true});
     }
     await patch({theme:'light',uiLanguage:'zh-CN'});popup = await openPopup();
     currentCase = 'mode-toggle';const toggle = () => popup.locator('[data-testid="popup-display-mode"]');
