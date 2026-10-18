@@ -350,6 +350,37 @@
       },
       {
         "css": [
+          "shreddit-profile-comment [id$=\"-post-rtjson-content\"] p",
+          "shreddit-profile-comment [id$=\"-post-rtjson-content\"] li",
+          "shreddit-profile-comment [id$=\"-post-rtjson-content\"] blockquote",
+          "shreddit-profile-comment [id$=\"-post-rtjson-content\"] h1",
+          "shreddit-profile-comment [id$=\"-post-rtjson-content\"] h2",
+          "shreddit-profile-comment [id$=\"-post-rtjson-content\"] h3",
+          "shreddit-profile-comment [id$=\"-post-rtjson-content\"] h4",
+          "shreddit-profile-comment [id$=\"-post-rtjson-content\"] h5",
+          "shreddit-profile-comment [id$=\"-post-rtjson-content\"] h6"
+        ],
+        "key": "reddit-profile-comment-prose",
+        "resolve": "closest"
+      },
+      {
+        "css": [
+          "shreddit-profile-comment [id$=\"-post-rtjson-content\"]"
+        ],
+        "key": "reddit-profile-comment-body",
+        "resolve": "self",
+        "atomic": false
+      },
+      {
+        "css": [
+          "shreddit-profile-comment h2 a"
+        ],
+        "key": "reddit-profile-card-title",
+        "resolve": "closest",
+        "atomic": true
+      },
+      {
+        "css": [
           "[data-testid=\"post-title-text\"]"
         ],
         "key": "reddit-search-title",

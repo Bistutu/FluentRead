@@ -6,6 +6,8 @@ GitHub release notes show translations after each explicit source line break for
 
 Discord's server icon rail stays unchanged in both reading-area and all-nodes modes; channel message text remains translatable.
 
+Reddit user profiles support post text, comment cards, and their parent post titles across the Overview, Posts, and Comments tabs. Navigation, author names, timestamps, and voting controls stay unchanged in the default reading area.
+
 <GuideVisual kind="rules" en />
 
 ## Missing content
